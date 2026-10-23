@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-10-23.6
+# GRANITE_VERSION: 2026-10-23.7
 """
 What the Journals say a vote on no bill was about.
 
@@ -780,7 +780,65 @@ def passage(text, at, body):
                             out["said"] = earlier + said
                             out["heading"] = h0[1]
                             out["start"] = h0[0]
+    # Or names it only by its kind, after another question it raised was
+    # decided: "The question now being adoption of the motion to suspend
+    # House Rules." puts the motion Reps. Flanagan and Shurtleff moved, "to
+    # permit introduction and consideration of Senate Bill 9", above Rep.
+    # William O'Brien's appeal and its 286-89 (16 September 2015). The vote
+    # after it, 285-93, decided that motion, and the motion's words are what
+    # it was for (put_again).
+    if now and not any(x.get("earlier") or x["k"] == "moved" for x in out["said"]):
+        got = put_again(text, out["start"], now["t"])
+        if got:
+            moved, h_at, h = got
+            out["said"] = [dict(moved, earlier=True)] + out["said"]
+            out["heading"] = out["heading"] or h
+            out["start"] = min(out["start"], h_at)
     return out
+
+
+THE_MOTION_TO = re.compile(r"\bthe\s+motion\s+to\s+[^.?]{3,80}", re.I)
+# A motion made on another motion, as passage() reads one.
+ON_THE_MOTION = re.compile(r"\b(?:the|a)\s+motion\b|\bmotion\s+(?:of|to)\b", re.I)
+
+
+def put_again(text, start, q, reach=60000):
+    """(the motion's sentence, its block's offset, its heading) for the
+    motion that a question put at `start` names by its kind alone -- "The
+    question now being adoption of the motion to suspend House Rules." --
+    or None.
+
+    It is the motion of that kind moved last before it, in the same stretch
+    of the day: walked back only over what a motion raises and decides
+    before it is itself decided -- an appeal of a ruling on it, a challenge,
+    an objection, a motion on that motion (CONTINUES) -- and never over
+    another heading, the day's start or more than four such blocks. A
+    motion on that motion -- to amend it, to table it, to limit debate on
+    it -- is walked past, never taken for it: "Rep. Callum moved to limit
+    debate on the motion to print remonstrances" is not the motion to print
+    them (2021). A stretch whose motion of that kind was already put to a
+    question is not this one's."""
+    m = THE_MOTION_TO.search(q or "")
+    want = (set(kinds_in(m.group(0))) - {"motion", "other", "report"}) if m else set()
+    if not want:
+        return None
+    lo = max(0, start - reach)
+    day = list(DAY_HEADER.finditer(text, lo, start))
+    if day:
+        lo = day[-1].start()
+    for n, (h, s, e) in enumerate(reversed(_blocks(text, lo, start))):
+        if n >= 4:
+            return None
+        said = _said(text, s, e)
+        at = [i for i, x in enumerate(said) if x["k"] == "moved" and want & set(kinds_in(x["t"]))
+              and not ON_THE_MOTION.search(x["t"])]
+        if at:
+            if any(x["k"] == "question" and want & set(kinds_in(x["t"])) for x in said[at[-1] + 1:]):
+                return None
+            return said[at[-1]], s, h
+        if not (h and CONTINUES.match(h)):
+            return None
+    return None
 
 
 def outcome_after(text, end, body):
