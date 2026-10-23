@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-10-23.4
+# GRANITE_VERSION: 2026-10-23.5
 """
 A page a term of the votes not on a bill: what each was about, how it went,
 and the session day it was taken on.
@@ -137,6 +137,7 @@ def rows_of(rollcalls, site):
             kind = e["kind"] if e else file_kind_of(words)
             out[term].append({
                 "key": key, "body": r.get("body"), "date": day, "kind": kind,
+                "group": VP.group_of(e) if e else VP.group_of(kind),
                 "line": (e or {}).get("line") or "",
                 "heading": (e or {}).get("heading") or "",
                 "words": words, "shown": bool(e), "member": (e or {}).get("member") or "",
@@ -149,6 +150,7 @@ def rows_of(rollcalls, site):
         key = re.sub(r"[^\w-]", "", e.get("key") or "")
         out[e.get("term") or P.vote_term(e["date"][:4], e["date"])].append({
             "key": key, "body": e.get("body"), "date": e.get("date"), "kind": e.get("kind"),
+            "group": VP.group_of(e),
             "line": e.get("line") or "", "heading": e.get("heading") or "", "words": "",
             "shown": True, "member": e.get("member") or "", "yeas": e.get("yeas"), "nays": e.get("nays"),
             "report": VP.report_anchor(e) if e.get("report") else "",
@@ -209,11 +211,13 @@ def row_html(x):
         count, how = f'{x["yeas"]}–{x["nays"]}', "a division"
     elif x["how"] == "voice":
         count, how = "", "a voice vote"
+    elif x["how"] == "without objection":
+        count, how = "", "without objection"
     else:
         count, how = f'{x["yeas"]}–{x["nays"]}', ""
     chip = C.vote_chip(None, x["passed"], "", {}) if x["passed"] is not None else ""
     note = f'<small>{E(how)}</small>' if how else ""
-    return (f'<tr data-kind="{E(VP.group_of(x["kind"]))}"><td class="d" data-l="Day">{when}'
+    return (f'<tr data-kind="{E(VP.group_of(x))}"><td class="d" data-l="Day">{when}'
             f'<span class="vch">{E(CHAMBER.get(x["body"], ""))}</span></td>'
             f'<td class="k" data-l="Kind">{E(label)}</td>'
             f'<td class="b" data-l="What it was">{desc}</td>'
@@ -242,7 +246,7 @@ def page_body(term, rows, terms, path, base):
     kinds = VP.load()["kinds"]
     # The filter names a group once: "Misc votes" for a reprimand, a member's
     # privileges and every question with no name of its own (VP.group_of).
-    n = Counter(VP.group_of(x["kind"]) for x in rows)
+    n = Counter(VP.group_of(x) for x in rows)
     groups = list(dict.fromkeys(VP.group_of(k) for k in kinds))
     opts = '<option value="">Every kind</option>' + "".join(
         f'<option value="{E(g)}">{E(VP.group_words(g))} ({n[g]})</option>' for g in groups if n[g])

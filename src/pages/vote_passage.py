@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-10-23.3
+# GRANITE_VERSION: 2026-10-23.4
 """
 The Journal's words for a vote on no bill, as every page shows them.
 
@@ -51,6 +51,9 @@ CHAMBER = {"H": "House", "S": "Senate"}
 # October 2026, to be marked clearly).
 DIVISION_NOTE = "A division: the journal gives the count, not each member’s vote."
 VOICE_NOTE = "A voice vote: the journal gives no count and no member’s vote."
+# And the Journal's own words where it says the question carried "without
+# objection" (the owner, 23 October 2026): no vote was taken at all.
+WO_NOTE = "Adopted without objection: no member objected, so no vote was taken."
 
 
 def load(path=SOURCE):
@@ -217,11 +220,17 @@ def report_html(e, esc):
 
 # ------------------------------------------------- the kinds a reader sees
 
-def group_of(kind, path=SOURCE):
-    """The per-term list's filter's name for a kind: "misc" for a
-    reprimand, a member's privileges and every question with no name of its
-    own (journal_motions.GROUPS), else the kind itself."""
-    return (load(path).get("groups") or {}).get(kind or "", kind or "")
+def group_of(x, path=SOURCE):
+    """The per-term list's filter's name for a vote (an entry, or a row
+    carrying its `group`) or for a bare kind: "misc" for a reprimand, a
+    member's privileges, a rules suspension, an appeal of a ruling, a member
+    going on under unanimous consent and every question with no name of its
+    own (journal_motions.GROUPS, group_of), else the kind itself."""
+    if isinstance(x, dict):
+        if x.get("group"):
+            return x["group"]
+        x = x.get("kind") or ""
+    return (load(path).get("groups") or {}).get(x or "", x or "")
 
 
 def group_words(group, path=SOURCE):
@@ -312,10 +321,30 @@ def _row_vote(raw):
             int(m.group("n")) if m.group("n") else None)
 
 
+_TIED_RX = None
+
+
+def _tied_kind(raw):
+    """The kind of question that arises on a bill a docket row states, of
+    journal_motions.TIED_KINDS, or ""."""
+    import re
+    global _TIED_RX
+    if _TIED_RX is None:
+        _TIED_RX = [("suspend_rules", re.compile(r"\bsusp\w*\b[^.;]{0,40}\brules?\b|\brules?\s+suspen",
+                                                 re.I)),
+                    ("appeal", re.compile(r"ruling\s+of\s+(?:the\s+)?chair|\buph[eo]ld|\bappeal",
+                                          re.I)),
+                    ("member_continue", re.compile(r"member\s+(?:be\s+allowed\s+to\s+)?continue|"
+                                                   r"continue\s+speaking", re.I))]
+    return next((k for k, rx in _TIED_RX if rx.search(raw or "")), "")
+
+
 def motion_events(term, bill, events, rcs=(), path=SOURCE):
     """The divisions and voice votes on moving the previous question,
-    limiting debate or dividing the question of `bill` that nothing draws
-    yet, each as a floor row ({"type": "floor", "action", "mover", "motion",
+    limiting debate or dividing the question of `bill`, and the divisions on
+    a question that arose on it -- a suspension of the rules for it, a ruling
+    on a motion about it, a member going on in its debate (journal_motions.
+    TIED_KINDS) -- that nothing draws yet, each as a floor row ({"type": "floor", "action", "mover", "motion",
     "vote_kind", "yeas", "nays", "date", "body", ...}) and where in `events`
     it falls (`_at`, the index of the row it stands before or comes from).
 
@@ -340,12 +369,17 @@ def motion_events(term, bill, events, rcs=(), path=SOURCE):
             continue
         days.setdefault((b, d), i)
         raw = e.get("raw") or e.get("action") or ""
-        kind = JM.bill_motion_of(raw)
+        kind = JM.bill_motion_of(raw) or _tied_kind(raw)
         if not kind:
             continue
         got = _row_vote(raw)
         if e.get("type") in ("floor", "veto_override"):
             given.add((b, d, kind))        # the Votes tab draws it already
+            continue
+        if kind in JM.TIED_KINDS:
+            # A suspension, a ruling or a member going on on a row no reader
+            # of the docket draws: not drawn from here, so the Journal's
+            # division of it is (a floor row of one is drawn, and given above).
             continue
         if not got:
             continue                       # moved, and no vote stated: the Journal may give it
@@ -379,6 +413,8 @@ def motion_events(term, bill, events, rcs=(), path=SOURCE):
         out.append({"type": "floor", "action": j.get("words") or "", "mover": j.get("mover") or "",
                     "motion": "MA" if j.get("passed") else "MF",
                     "vote_kind": "DV" if j.get("how") == "division" else "VV",
+                    # The Journal's own words for how: "without objection".
+                    "wo": j.get("how") == "without objection",
                     "yeas": j.get("yeas"), "nays": j.get("nays"), "date": d, "body": b,
                     "raw": " ".join(x.get("t") or "" for x in j.get("said") or []),
                     "cite": j.get("journal") or "", "cite_page": j.get("page"),

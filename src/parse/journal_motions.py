@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-10-23.5
+# GRANITE_VERSION: 2026-10-23.6
 """
 What the Journals say a vote on no bill was about.
 
@@ -114,6 +114,21 @@ THE OWNER'S REVIEW OF 23 OCTOBER 2026 added three things.
   session day, where the bill's docket shows it before the chamber that day
   and states no such vote itself.
 
+THE OWNER'S SECOND REVIEW, the same day, added three more.
+
+  Misc votes take a rules suspension, an appeal of a ruling and a member
+  going on under unanimous consent too (GROUPS, group_of); each row and
+  session day still says which it was.
+
+  A question that arose on one bill is the bill's (tied_bill): a suspension
+  the motion to suspend names one bill for, a ruling on a motion that names
+  one bill, a member going on in one bill's debate (that bill's docket
+  showing it before the chamber that day). Named in the sentences that put
+  it (tied_subject), not anywhere in the passage; two bills, none.
+
+  How a vote was decided is the Journal's own word for it: "without
+  objection" where the Journal says so, and never read off the chamber.
+
 A WRITER RUN ON A SUBSET DESTROYS THE REST (CLAUDE.md). This reads every
 year whose Journals are on disk and keeps, from the file it is replacing,
 the years whose Journals are not -- so a machine without some of them does
@@ -164,7 +179,7 @@ KINDS = {
     "member_continue": "Shall the member continue",
     "disorderly": "Disorderly speech",
     "appeal": "Appeal of the chair's ruling",
-    "suspend_rules": "Suspending the rules",
+    "suspend_rules": "Rules suspension",
     "rules": "The chamber's own rules",
     "print": "Printing in the Journal",
     "limit_debate": "Limiting debate",
@@ -177,8 +192,33 @@ KINDS = {
     "other": "Misc vote",
 }
 # The per-term list's filter: the kinds it names as one, and that name.
-GROUPS = {"reprimand": "misc", "privileges": "misc", "motion": "misc", "other": "misc"}
+#
+# AND SINCE THE OWNER'S SECOND REVIEW (23 October 2026: "I'd like to merge
+# rules suspensions into the misc category as well as shall the member
+# continue if it's on unanimous consent, but if it's on a bill, it should be
+# tied to that bill. Appeals of the chair should be grouped into misc if they
+# are not relating to a particular bill"), a rules suspension and an appeal
+# of a ruling left on no bill are misc votes too; a member continuing is one
+# where it arose under unanimous consent (group_of), and keeps its own name
+# otherwise. Each still carries its own kind on its row and its session day:
+# only the filter merges them. One that the Journal ties to one bill is that
+# bill's (tied_bill), and not on the list at all.
+GROUPS = {"reprimand": "misc", "privileges": "misc", "motion": "misc", "other": "misc",
+          "suspend_rules": "misc", "appeal": "misc"}
 GROUP_WORDS = {"misc": "Misc votes"}
+
+
+def group_of(kind, said=(), heading=""):
+    """The filter's group for a vote of `kind` whose passage is `said`, under
+    `heading`: a member continuing is a misc vote where the member spoke by
+    the House's consent -- an objection to a member's unanimous consent put
+    the question, or the question says so ("shall the member be permitted to
+    continue speaking with the consent of the House", 20 March 2019)."""
+    if kind == "member_continue":
+        words = " ".join([heading or ""] + [x.get("t") or "" for x in said or ()]).lower()
+        return "misc" if (any(x.get("k") in ("uc", "objection") for x in said or ())
+                          or "consent" in words) else "member_continue"
+    return GROUPS.get(kind, kind)
 # What each kind is, in the parser's own reasons for holding a passage back
 # and on the bench: never shown on a page.
 NAMES = {
@@ -1090,12 +1130,19 @@ def contradicts(words, said):
                (b in mine and a in theirs and a not in mine) for a, b in OPPOSED)
 
 
+# A bill named in words: "consideration of Senate Bill 9" (16 September 2015).
+BILL_WORDS = re.compile(r"\b(?P<k>Senate|House)\s+Bill\s+(?:No\.\s*)?(?P<n>\d{1,4})\b")
+
+
 def bills_in(said):
     """The bill numbers the passage names, as data/bills.json keys them."""
     got = []
     for x in said:
-        for m in BILL.finditer(x["t"]):
-            b = f"{'SS' if m.group('ss') else ''}{m.group('k')}{int(m.group('n'))}"
+        found = [(m.start(), f"{'SS' if m.group('ss') else ''}{m.group('k')}{int(m.group('n'))}")
+                 for m in BILL.finditer(x["t"])]
+        found += [(m.start(), f"{'SB' if m.group('k') == 'Senate' else 'HB'}{int(m.group('n'))}")
+                  for m in BILL_WORDS.finditer(x["t"])]
+        for _at, b in sorted(found):
             if b not in got:
                 got.append(b)
     return got
@@ -1344,9 +1391,9 @@ def load_rollcalls(path):
     return rolls, nobill
 
 
-def read_vote(r, j, root, cache, careers, bills, urls, approved):
+def read_vote(r, j, root, cache, careers, bills, urls, approved, days=None):
     """One roll call on no bill, its tally `j` in the Journal: the entry this
-    file holds for it, shown or held back."""
+    file holds for it, shown or held back. `days` is docket_days()."""
     key = rc_key(r)
     body = r["body"]
     f = j["file"]
@@ -1430,8 +1477,19 @@ def read_vote(r, j, root, cache, careers, bills, urls, approved):
     # the term (vote_passage.on_bill).
     put = [x for x in said if x["k"] in ("question", "moved", "challenge")]
     bm = bill_motion_of(put[-1]["t"]) if put else ""
-    if bm and e["bill"] and not held:
-        e["bill_motion"], e["on_bill"] = bm, e["bill"]
+    # And a question that arose on one bill -- a member allowed to go on in
+    # its debate, a ruling on a motion about it, a suspension of the rules
+    # for it -- is that bill's too (the owner's second review; tied_bill).
+    e["group"] = group_of(kind, said, p["heading"])
+    tieable = bm or kind in ("appeal", "suspend_rules") or (kind == "member_continue"
+                                                             and e["group"] != "misc")
+    if not held and tieable:
+        tie, src, why = tied_bill(text, p, tied_subject(bm or kind, said), term_bills, body,
+                                  (rd, when), days, bm or kind)
+        if tie:
+            e["bill_motion"], e["on_bill"], e["on_bill_from"] = bm or kind, tie, src
+        elif why:
+            e["on_bill_held"] = why
     # The committee's report the question is on, whole (report_of).
     rep, rwhy = report_of(text, j["at"])
     if rep:
@@ -1488,9 +1546,12 @@ DIV_SENT = re.compile(
 JOURNAL_ONLY = {"reprimand", "privileges", "member_continue", "appeal", "suspend_rules", "rules"}
 
 
-def journal_only(f, body, root, cache, careers, urls, term_of, approved=None):
+def journal_only(f, body, root, cache, careers, urls, term_of, approved=None,
+                 bills=None, days=None, tied=None):
     """[entry] -- the divisions under a heading of a no-bill kind in one House
-    Journal, and the voice votes on a reprimand, a censure or an expulsion."""
+    Journal, and the voice votes on a reprimand, a censure or an expulsion.
+    A division on a question that arose on one bill (tied_bill) goes to
+    `tied` instead, as a vote on that bill's own business."""
     if body != "H":
         return []
     text = _read(f, cache)
@@ -1504,15 +1565,27 @@ def journal_only(f, body, root, cache, careers, urls, term_of, approved=None):
         kind = classify(p["heading"], said, "")
         if kind not in JOURNAL_ONLY:
             continue
+        # The division decides the question put last, and only that one: an
+        # appeal ruled out of order and then "The question now being adoption
+        # of the motion to Recommit" is a division on recommitting SB 160-FN
+        # (4 May 2011), not on the appeal.
+        qs = [x["t"] for x in said if x["k"] == "question"]
+        if kind in TIED_KINDS and qs and kind not in kinds_in(qs[-1]):
+            continue
         bs = bills_in(said)
+        group = group_of(kind, said, p["heading"])
+        # A question that may have arose on one bill: tried below, first.
+        tieable = kind in ("appeal", "suspend_rules") or (kind == "member_continue"
+                                                         and group != "misc")
         # A division on a bill's own motion is the bill's: its page has it.
-        if bs and kind not in ("appeal", "reprimand", "privileges", "member_continue"):
+        if bs and kind not in ("appeal", "reprimand", "privileges", "member_continue") \
+                and not tieable:
             continue
         # Nor a motion on a bill at all: the question last put names a bill
         # and is not a ruling or a member's consent -- tabling SB 162-FN is
         # SB 162-FN's (3 June 2021), whatever its title says.
         put = [x for x in said if x["k"] in ("question", "moved", "challenge", "uc", "objection")]
-        if put and bills_in(put[-1:]) and not re.search(
+        if put and bills_in(put[-1:]) and not tieable and not re.search(
                 r"ruling|decision\s+of|unanimous\s+consent|reprimand|censure", put[-1]["t"], re.I):
             continue
         when = sitting_date(text, m.start(), body)
@@ -1529,12 +1602,31 @@ def journal_only(f, body, root, cache, careers, urls, term_of, approved=None):
         carried = bool(carried)
         sent = re.sub(r"\s+", " ", m.group(0)).strip()
         term = term_of(str(when.year), when.isoformat())
+        if tieable:
+            term_bills = (bills or {}).get(term) or set()
+            bill, src, _why = tied_bill(text, p, tied_subject(kind, said), term_bills, body,
+                                        (when,), days, kind)
+            if bill:
+                if tied is not None:
+                    tied.append({
+                        "key": f"{when.isoformat()}-{body}-t{m.start()}", "body": body,
+                        "date": when.isoformat(), "term": term, "bill": bill, "bill_from": src,
+                        "motion": kind, "words": TIED_WORDS[kind], "mover": "",
+                        "how": "division", "yeas": y, "nays": n, "passed": carried,
+                        "file": rel, "journal": journal_name(f, body), "page": page,
+                        "pdf_page": pdf, "url": urls.get(rel, ""), "heading": p["heading"] or "",
+                        "said": said + [{"k": "outcome", "t": sent}], "at": m.start()})
+                continue
+            # A suspension for one bill that cannot be tied to it stays what
+            # it was before: the bill's own business, which its page has.
+            if kind == "suspend_rules" and bs:
+                continue
         e = {"key": f"{when.isoformat()}-{body}-d{m.start()}", "body": body,
              "date": when.isoformat(), "term": term, "file": rel,
              "journal": journal_name(f, body), "page": page, "pdf_page": pdf,
              "url": urls.get(rel, ""), "how": "division", "yeas": y, "nays": n,
              "passed": carried, "heading": p["heading"] or "",
-             "said": said + [{"k": "outcome", "t": sent}], "kind": kind,
+             "said": said + [{"k": "outcome", "t": sent}], "kind": kind, "group": group,
              "bills": bs, "bill": bs[0] if len(bs) == 1 else "", "at": m.start()}
         every = " ".join(x["t"] for x in said)
         if kind in PERSONAL:
@@ -1594,10 +1686,12 @@ def journal_only(f, body, root, cache, careers, urls, term_of, approved=None):
         out.append({"key": f"{when.isoformat()}-{body}-v{h_at}", "body": body,
                     "date": when.isoformat(), "term": term, "file": rel,
                     "journal": journal_name(f, body), "page": page, "pdf_page": pdf,
-                    "url": urls.get(rel, ""), "how": "voice", "yeas": None, "nays": None,
+                    "url": urls.get(rel, ""),
+                    "how": ("without objection" if WITHOUT_OBJECTION.search(chunk[:v.end()])
+                            else "voice"), "yeas": None, "nays": None,
                     "passed": v.group("v").lower() == "adopted", "heading": h,
                     "said": said + [{"k": "outcome", "t": v.group(0).strip()}],
-                    "kind": "reprimand", "bills": [], "bill": "", "after": aft,
+                    "kind": "reprimand", "group": "misc", "bills": [], "bill": "", "after": aft,
                     "member": name, "member_id": resolve_member(name, body, term, careers),
                     "line": "", "at": h_at})
     # A vote that names a member is summed up only by a person (gate 7), here as
@@ -1674,7 +1768,16 @@ DIVISION_ASKED = re.compile(r"\bdivision\s+(?:vote\s+)?(?:was|is)\s+requested\b|
 VOICE_VERDICT = re.compile(
     r"^(?:The\s+)?(?:motion(?:\s+to\s+(?:limit\s+debate|divide(?:\s+the\s+question)?|move\s+the\s+"
     r"previous\s+question|call\s+the\s+question))?\s+(?:was\s+)?)?(?P<v>adopted|failed|carried|lost|"
-    r"prevailed|defeated)\b(?:\s+and\s+debate\s+was\s+limited)?\s*\.?$", re.I)
+    r"prevailed|defeated)\b(?:\s+and\s+debate\s+was\s+limited|,?\s+without\s+objection)?\s*\.?$",
+    re.I)
+# HOW THE JOURNAL SAYS IT WAS DECIDED (the owner, 23 October 2026: "Adopted
+# without objection is fine, I think that's more common in the Senate but
+# don't take that as an absolute rule"). Read off the Journal's own words for
+# each vote, never off the chamber: "Without objection, Senator Birdsell moved
+# to call the question. Adopted." is carried without objection; "Senator
+# Birdsell moved to call the question. Adopted." is a voice vote, as the
+# Senate's docket calls the same motion of 2018 ("MA, VV").
+WITHOUT_OBJECTION = re.compile(r"\bwithout\s+objection\b", re.I)
 # What a decision may name: this motion, or "the motion". Anything else
 # decided -- an amendment, the committee's report, a motion to table -- is
 # another question's.
@@ -1813,6 +1916,10 @@ def bill_motion_votes(f, body, root, cache, urls, term_of):
             why[f"held: {got[1]}"] += 1
             continue
         how, y, n, carried, said = got
+        if how == "voice" and (WITHOUT_OBJECTION.search(said) or re.search(
+                r"without\s+objection,?\s*$", _joined(text[max(0, m.start() - 80):m.start()]),
+                re.I)):
+            how = "without objection"
         if how == "roll call":
             why["a roll call: the roll-call file's"] += 1
             continue
@@ -1851,6 +1958,102 @@ def bill_from_words(src):
     return "the bill it names" if src == "named" else "the bill being debated"
 
 
+# ------------------------------------------- a question that arose on a bill
+#
+# THE OWNER'S SECOND REVIEW (23 October 2026): "shall the member continue ...
+# if it's on a bill, it should be tied to that bill. Appeals of the chair
+# should be grouped into misc if they are not relating to a particular bill
+# if it's possible to know that from the data." And a rules suspension the
+# Journal ties to one bill. Each is that bill's where the Journal shows it
+# arose on that one bill, by the same gates as a motion on its debate: one
+# bill, a bill of the term, the tally paired (the passage shown), and the
+# bill's own docket showing it before that chamber that day. Two numbers that
+# disagree -- the special order of HB 1609-FN challenged as one of "HB 1142"
+# (11 March 2026) -- tie it to neither, and it stays a misc vote, quoted.
+TIED_KINDS = {"member_continue", "appeal", "suspend_rules"}
+# The card's question, in the site's vote words (words/votes.json).
+TIED_WORDS = {"member_continue": "Shall the Member Continue",
+              "appeal": "Uphold the Ruling of the Chair",
+              "suspend_rules": "Suspend the Rules"}
+MDY = re.compile(r"\b(\d{1,2})/(\d{1,2})/(\d{4})\b")
+
+
+def docket_days(root):
+    """{(bill, chamber): {day}} -- every day each bill's docket shows it
+    before a chamber: the day a row was entered and every day a row states,
+    from the Docket files beside the Journals; None where there are none."""
+    files = sorted(Path(root).glob("Docket*.txt"))
+    if not files:
+        return None
+    out = defaultdict(set)
+    for f in files:
+        with open(f, encoding="utf-8-sig", errors="replace") as fh:
+            for line in fh:
+                p = line.rstrip("\n").split("|")
+                if len(p) < 7:
+                    continue
+                key = (p[3].strip().upper().replace(" ", ""), p[4].strip().upper())
+                for m in MDY.finditer(p[2] + " " + p[5]):
+                    try:
+                        out[key].add(date(int(m.group(3)), int(m.group(1)), int(m.group(2))).isoformat())
+                    except ValueError:
+                        pass
+    return out
+
+
+def tied_subject(kind, said):
+    """The sentences that say what a question of `kind` arose on: for a
+    suspension of the rules, the motion to suspend them; for an appeal, the
+    challenge and the motion the Chair ruled on; for a motion on a bill's
+    debate or a member going on, the whole passage. A motion moved earlier
+    in the passage on something else is not what a suspension was for: Rep.
+    Horn's motion to print the debate on HB 1640-FN, and then Rep.
+    Leishman's to suspend the rules for the rest of the day's calendar (12
+    March 2020)."""
+    put = [x for x in said if x["k"] != "outcome"]
+    if kind == "suspend_rules":
+        return [x for x in put if x["k"] in ("moved", "question")
+                and re.search(r"\bsusp\w*|\brules?\s+be\s+(?:so\s+far\s+)?suspended", x["t"], re.I)]
+    if kind == "appeal":
+        at = next((i for i, x in enumerate(put) if x["k"] in ("ruled", "challenge")), None)
+        if at is None:
+            return [x for x in put if x["k"] in ("challenge", "question")]
+        before = [x for x in put[:at] if x["k"] == "moved"][-1:]
+        return before + [x for x in put[at:] if x["k"] in ("ruled", "challenge")]
+    return put
+
+
+def tied_bill(text, p, subject, term_bills, body, when, days, kind):
+    """(bill, "named"|"debate", "") for the one bill a question arose on, or
+    ("", "", why). `p` is the passage, `subject` the sentences that say what
+    it arose on (tied_subject), `term_bills` the term's bills (empty where
+    data/bills.json is not here), `when` the roll call's day and its page's.
+
+    A bill the subject names is the bill. Where it names none, a member
+    going on in a bill's debate is that bill's -- the bill whose stretch of
+    the day it stands in (stretch_bill), and only where that bill's docket
+    shows it before the chamber that day; a suspension or a ruling that
+    names no bill is no bill's."""
+    bs = bills_in(subject)
+    if len(bs) > 1:
+        return "", "", "the passage names more than one bill"
+    if bs:
+        if term_bills and bs[0] not in term_bills:
+            return "", "", "the bill it names is not a bill of the term"
+        return bs[0], "named", ""
+    if kind != "member_continue":
+        return "", "", "the passage names no bill"
+    bill, why = stretch_bill(text, p["start"], body)
+    if not bill:
+        return "", "", why
+    if days is None:
+        return "", "", "no docket on disk to show the bill before the chamber that day"
+    on = days.get((bill.upper(), body)) or set()
+    if not any(d and str(d) in on for d in when):
+        return "", "", "the bill's docket does not show it before the chamber that day"
+    return bill, "debate", ""
+
+
 # ------------------------------------------------------------------- build
 
 def load_approved(path=APPROVED):
@@ -1875,6 +2078,10 @@ def build(rollcalls_path, root="."):
     bills = load_bills(root / "data" / "bills.json")
     urls = addresses(root / "archive" / "queue.csv")
     approved = load_approved(APPROVED)
+    # Which days each bill's docket shows it before a chamber: what ties a
+    # question that arose on a bill to it (tied_bill). None without the
+    # Docket files, and then only a bill the passage names is tied.
+    days = docket_days(root)
     cache = {}
     entries, stats = {}, Counter()
     years_read = set()
@@ -1888,9 +2095,9 @@ def build(rollcalls_path, root="."):
             stats["not placed in a Journal"] += 1
             continue
         stats["placed"] += 1
-        e = read_vote(r, j, root, cache, careers, bills, urls, approved)
+        e = read_vote(r, j, root, cache, careers, bills, urls, approved, days)
         entries[e["key"]] = e
-    only = []
+    only, tied = [], []
     seen_files = set()
     for (y, b) in sorted({(str(r["year"]), "H") for r in rolls}):
         for f in RO.journal_files(root, b, y):
@@ -1898,7 +2105,8 @@ def build(rollcalls_path, root="."):
                 continue
             seen_files.add(f)
             years_read.add((y, b))
-            only += journal_only(f, b, root, cache, careers, urls, P.vote_term, approved)
+            only += journal_only(f, b, root, cache, careers, urls, P.vote_term, approved,
+                                 bills, days, tied)
     for b in ("H", "S"):
         d = root / RO.JOURNAL_DIRS[b]
         if d.is_dir():
@@ -1921,6 +2129,26 @@ def build(rollcalls_path, root="."):
                     continue
                 motions_seen[one] = e["file"]
                 on_bills.append(e)
+    # And the divisions on a question that arose on one bill (journal_only).
+    # ONE JOURNAL ON DISK TWICE IS ONE: journals/2010/ holds copies of House
+    # Journals of 2011 (HJ 9, 22 and 24 among them), and a division read from
+    # each copy is one division, keyed the same.
+    once = set()
+    for e in tied:
+        if e["key"] in once:
+            stats["bill motions: printed twice, kept once"] += 1
+            continue
+        once.add(e["key"])
+        stats[f"bill motions: a division on {e['motion'].replace('_', ' ')}, tied to "
+              f"{bill_from_words(e['bill_from'])}"] += 1
+        on_bills.append(e)
+    kept, once = [], set()
+    for e in only:
+        if e["key"] not in once:
+            once.add(e["key"])
+            kept.append(e)
+    stats["journal-only votes printed twice, kept once"] = len(only) - len(kept)
+    only = kept
     return entries, only, years_read, stats, on_bills
 
 
@@ -1939,7 +2167,16 @@ def summarize(entries, only):
             if e.get("line_held"):
                 why["line: " + e["line_held"]] += 1
     s["journal-only divisions"] = sum(1 for x in only if x["how"] == "division")
-    s["journal-only voice votes"] = sum(1 for x in only if x["how"] == "voice")
+    s["journal-only voice votes"] = sum(1 for x in only if x["how"] in ("voice", "without objection"))
+    # The roll calls on no bill a question that arose on one bill ties to it,
+    # by kind, and why the rest of those kinds are not.
+    for e in entries.values():
+        if e.get("held"):
+            continue
+        if e.get("on_bill"):
+            why[f"tied to a bill: {e.get('bill_motion')}, {bill_from_words(e.get('on_bill_from'))}"] += 1
+        elif e.get("on_bill_held") and e.get("kind") in TIED_KINDS:
+            why[f"not tied: {e['kind']}: {e['on_bill_held']}"] += 1
     # The reports, on the votes shown: kept whole, or not bounded and why.
     for e in list(entries.values()) + list(only):
         if e.get("held"):
@@ -2036,8 +2273,8 @@ def main():
     print(f"  {s['journal-only divisions']:,} divisions and {s['journal-only voice votes']:,} "
           "voice votes only the Journal has, under a heading of a vote on no bill")
     print(f"  {s['reports kept whole']:,} committee reports kept whole, for 'View the report'")
-    print(f"  {s['on a bill, filed under none']:,} roll calls filed under no bill are a motion on "
-          "one bill's debate")
+    print(f"  {s['on a bill, filed under none']:,} roll calls filed under no bill are one bill's: a "
+          "motion on its debate, or a question that arose on it")
     print(f"  {len(on_bills):,} divisions and voice votes on a bill's own debate (previous question, "
           "limiting debate, dividing the question):")
     for k, v in sorted(stats.items(), key=lambda kv: (-kv[1], kv[0])):

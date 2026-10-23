@@ -1,4 +1,4 @@
-// GRANITE_VERSION: 2026-09-07.237
+// GRANITE_VERSION: 2026-09-07.239
 // esc, dateWords and dateSpan, clock, cmteLink and pchip are components.js's,
 // which every page loads before this file (the component plan's C1 and C2),
 // and so is WORDBOOK, the words of src/pages/words/ that the build writes into
@@ -3187,7 +3187,7 @@ function renderFacets(){
   refocus(held);
 }
 
-function simpleDonut(rc,bid,i){
+function simpleDonut(rc,bid,i,what){
   // A division vote is counted but anonymous. Same ring, same colours, same
   // threshold line as a roll call -- the difference between the two is who is
   // named, not how the count should look. It used to be drawn in a different
@@ -3211,7 +3211,7 @@ function simpleDonut(rc,bid,i){
   // members in office, and "237 needed" alone does not say of what.
   const tick=rc.threshold_unknown?"":marker(a,R,need,rc.threshold_rule||"");
   return `<div class="votewrap"><svg class="donut" viewBox="0 0 172 206" width="172" height="206"
-    role="img" aria-label="Division vote, ${y} yes to ${n} no, needing ${
+    role="img" aria-label="${what||"Division vote"}, ${y} yes to ${n} no, needing ${
       rc.threshold_unknown?"more than a majority":need}${
       rc.threshold_rule?`, ${esc(rc.threshold_rule)}`:""}">
     <g transform="rotate(90 86 86)">${seg(avail*y/tot,"var(--yes)",won)}</g>
@@ -3261,7 +3261,28 @@ function ballotCell(rc,m){
   return `<div class="m" translate="no">${esc(m.n)}${o?`<span class="p mo" translate="yes">${esc(o)}</span>`:""}</div>`;
 }
 
+// THE BALLOTS AGAINST THE COUNT (the owner, 23 October 2026, who saw one
+// Republican ballot drawn as a whole ring under a count of 214-119 and took
+// the site for broken). The party ring is drawn from the members' ballots,
+// and its proportions are only true where those ballots add up to the
+// clerk's count. Where they do not, the ring is the count's own (the
+// division's ring) and a line says why; BALLOT_SLACK is how far apart the
+// two may be and still be drawn by party. None, because none is needed:
+// measured that day on all 9,565 roll calls of 1999-2026, every card's Yea
+// and Nay ballots add up to its count exactly -- rollcall_parser makes the
+// ballots the headline and keeps the 14 summaries that disagree as "stated"
+// -- so the count's ring is drawn only for a record that is broken.
+const BALLOT_SLACK=0;
+const BALLOT_GAP_NOTE=`<p class="note ballotgap">The list of members’
+      votes does not add up to the recorded count, so the ring shows the count alone.</p>`;
+function ballotsAddUp(rc){
+  let y=0,n=0;
+  for(const tl of Object.values(rc.tally||{})){y+=tl.Yea||0;n+=tl.Nay||0;}
+  return Math.abs(y-(rc.yeas||0))<=BALLOT_SLACK&&Math.abs(n-(rc.nays||0))<=BALLOT_SLACK;
+}
 function donut(bid,i,rc){
+  if(!ballotsAddUp(rc))
+    return simpleDonut(rc,bid,i,"Roll call")+BALLOT_GAP_NOTE;
   // Yes on the LEFT in green, no on the RIGHT in red, growing up from a gap at
   // six o'clock. Green for yes and red for no is the chamber's own convention
   // -- the buttons on a member's desk -- so it describes the vote rather than
@@ -4167,6 +4188,11 @@ function renderVotes(b,d){
       body=simpleDonut(rc,b.id,i)+`<p class="note" style="margin-top:11px">Decided on a
         division vote. There is a total count of how many legislators voted for
         each side, but no record of how individual members voted.</p>`;
+    }else if(rc.wo){
+      // BY THE JOURNAL'S OWN WORDS (the owner, 23 October 2026): a motion the
+      // Journal says was carried "without objection" was put to no vote.
+      body=`<p class="note" style="margin-top:6px">Adopted without objection: no member
+        objected, so no vote was taken and nobody was counted.</p>`;
     }else{
       body=`<p class="note" style="margin-top:6px">Decided on a voice vote. There is
         no count and no record of how individual members voted.</p>`;
@@ -4183,7 +4209,8 @@ function renderVotes(b,d){
       <div class="rchead"><h2 class="rcq">${voteHead(rc.mk,rc.question,rc.mf)}${
         rc.amendment?` <span class="ramd">${esc(rc.amendment)}</span>`:""}</h2>
       <span class="rcd">${sittingLink(rc.body==="H"?"H":"S",rc.date,dateWords(rc.date))} · ${
-        rc.body==="H"?"House":"Senate"}${AVK[vk]?` · ${termMark(vk,AVK[vk])}`:""}</span>
+        rc.body==="H"?"House":"Senate"}${rc.wo?" · Without Objection":
+          AVK[vk]?` · ${termMark(vk,AVK[vk])}`:""}</span>
       ${voteChip(rc.mk||"",rc.passed,b.id,rc.mf)}</div>
       ${rc.mrec?`<p class="rcrec">In the record: <span translate="no">${esc(rc.mrec)}</span></p>`:""}
       ${rc.mover?`<p class="rcby">Moved by ${rc.mover_m?personLink(rc.mover_m):esc(rc.mover)}</p>`:""}
