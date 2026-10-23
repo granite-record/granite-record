@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.668
+# GRANITE_VERSION: 2026-09-04.669
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -61815,6 +61815,40 @@ def _weak_marker_approximate(B):
     return "ok", ("a stated opening drawn plainly and a weak marker's start drawn approximate, "
                   "on a committee sitting and on the floor; the committee page and the floor "
                   "player say so too")
+
+
+@check("build", "a roll call on no bill is drawn on its session day from its card, with its "
+                "parties and members, as a roll call on a bill is")
+def _nobill_ring_on_session_day():
+    """The person's rule for the Votes tab (23 October 2026: "The two
+    displays should not be structured differently from each other") holds
+    on the session day too. A roll call on a bill names its bill's record
+    and its card there (data-bill, data-card), and app.js draws the bill
+    page's ring and party rows from it; a roll call on no bill named
+    nothing, so the 21 May 2026 reprimand vote, 288-54 by roll call, was a
+    ring of two counts that told a screen reader it was a division (the
+    preview, 23 October 2026). It names its term's nobill/<term>.json card
+    now. Read off the fixture: every such slot leads to a card that has its
+    members, and app.js reads that record as it reads a bill's."""
+    shared, _base, _ran, _days = _fixture_site_shared()
+    site = shared / "site"
+    rx = re.compile(r'<div class="svote" data-vote="\d+" data-bill="nobill/([^"]+)" '
+                    r'data-card="(\d+)"')
+    found = []
+    for f in sorted((site / "session").rglob("*.html")):
+        for m in rx.finditer(f.read_text(encoding="utf-8", errors="replace")):
+            found.append((f.relative_to(site).as_posix(), m.group(1), int(m.group(2))))
+    assert found, "no session day draws a roll call on no bill from its card"
+    for where, term, i in found:
+        nb = site / "nobill" / f"{term}.json"
+        assert nb.is_file(), f"{where} names nobill/{term}.json, which the build did not write"
+        cards = json.loads(nb.read_text(encoding="utf-8")).get("rollcalls") or []
+        assert i < len(cards) and cards[i].get("members"), (
+            f"{where}: card {i} of nobill/{term}.json has no members to draw")
+    app = _paths.locate("src/pages/app.js").read_text(encoding="utf-8")
+    assert "(nb?nobillRecord:billRecord)(key,drawSessionVotes)" in app, (
+        "app.js's session-day ring does not read a term's record of roll calls on no bill")
+    return "ok", f"{len(found)} roll calls on no bill on the fixture's session days, each from its card"
 
 
 @check("frontend", "every link that leaves the site carries the outside-link mark, says it opens a "

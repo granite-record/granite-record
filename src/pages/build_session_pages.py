@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-19.45
+# GRANITE_VERSION: 2026-09-19.46
 """
 A page for every day the House sat.
 
@@ -450,7 +450,8 @@ def _ballots_here(it):
     return bool(rc.get("bill")) and session_days._bill_of(rc["bill"]) == it.bill.upper()
 
 
-def others_html(others, body, members, esc, payloads, day="", term="", years=None):
+def others_html(others, body, members, esc, payloads, day="", term="", years=None,
+                nobill=None):
     """The day's votes on no bill -- the chamber's own rules, a ruling of the
     chair, printing a debate, a member allowed to go on speaking, a
     reprimand -- each as the roll-call file words it, and, where the Journal
@@ -474,7 +475,12 @@ def others_html(others, body, members, esc, payloads, day="", term="", years=Non
             f"{esc(term)}</a>." if term else "") + "</p>"]
     for it in others:
         e = VP.entry(rollcall_id(it.rc)) if it.rc is not None else None
-        block = vote_html(it, "", body, "", {}, members, esc, payloads, journal=e)
+        # A ROLL CALL ON NO BILL IS DRAWN AS ONE ON A BILL IS (23 October
+        # 2026): its card in nobill/<term>.json (`nobill`, {roll call: index})
+        # holds the ballots, so the ring has the parties and the members, where
+        # it had the count alone and called itself a division.
+        block = vote_html(it, "", body, "", nobill or {}, members, esc, payloads, journal=e,
+                          key=f"nobill/{term}" if term else None)
         if e:
             block += journal_extra_html(e, body, members, esc, term, years)
         H.append(block + "</div>")
@@ -1378,7 +1384,7 @@ def moment_html(m, date, esc):
     return f'<span class="mjumps">{out}</span>'
 
 
-def vote_html(it, bill, body, year, cards, members, esc, payloads, journal=None):
+def vote_html(it, bill, body, year, cards, members, esc, payloads, journal=None, key=None):
     """One motion of the day on a bill, in the approved vote words (the
     person, 8 October 2026): the motion's own name with only OTP, OTPA, ITL
     and IS abbreviated and a plain gloss; the chip saying what the vote did,
@@ -1426,8 +1432,11 @@ def vote_html(it, bill, body, year, cards, members, esc, payloads, journal=None)
         payloads.append(pl)
         rid = rollcall_id(it.rc)
         card = cards.get(rid) if rid else None
-        full = (f' data-bill="{esc(str(year))}/{esc(bill)}" data-card="{card}"'
-                if card is not None and year and it.kind == "RC" else "")
+        # `key`: a record other than the bill's -- a term's roll calls on no
+        # bill, "nobill/2025-2026" -- whose card `cards` names.
+        where = key or (f"{year}/{bill}" if year else "")
+        full = (f' data-bill="{esc(where)}" data-card="{card}"'
+                if card is not None and where and it.kind == "RC" else "")
         ring = f'<div class="svote" data-vote="{i}"{full}></div>'
     # data-motion: the record's own words for the motion, which the head
     # says in the approved words, kept for whatever reads the page by them.
@@ -1586,7 +1595,8 @@ def render(day, narrative, titles, years, members, esc, chair=None, rec=None, ct
                   + f'<div class="w4b">{note}<div class="cards">{"".join(cards)}</div></div></section>')
 
     oth = others_html(getattr(day, "others", ()), body, members, esc, payloads,
-                      day=day.date, term=term, years=years)
+                      day=day.date, term=term, years=years,
+                      nobill=((ctx or {}).get("nobill") or {}).get(term) or {})
     if oth:
         S_.append(C.section("Votes on No Bill", oth, "nobill"))
     # Debates whose bill is not among the day's actions, or is there only for
@@ -1867,7 +1877,8 @@ def floor_record(path=FLOOR_RECORD):
               "presided, and no roll call names its card on its bill's Votes tab")
         got = {}
     return {"presiding": got.get("presiding") or {}, "cards": got.get("cards") or {},
-            "moments": got.get("moments") or {}, "seats": got.get("seats") or {}}
+            "moments": got.get("moments") or {}, "seats": got.get("seats") or {},
+            "nobill": got.get("nobill") or {}}
 
 
 def load_rows(site):
@@ -2491,13 +2502,14 @@ def chamber(a, site, base, body, days):
     ctx = {"members": members, "numbers": load_numbers(site), "years": years,
            "amendments": amendments, "cards": fr["cards"], "presided": fr["presiding"],
            "offices": published_officers(site), "acts": acts_of, "floor": floor,
-           "data": data, "moments": fr.get("moments") or {}}
+           "data": data, "moments": fr.get("moments") or {}, "nobill": fr.get("nobill") or {}}
     # WHAT THE PAGE'S CARDS ARE DRAWN FROM (the record pages' bill cards,
     # 10 October 2026): each bill's index row, for its chip, byline and rail;
     # meta.json's committee codes, for a committee's link; and each floor
     # station's moment, for the time its card plays the day's recording at.
     draw = {"rows": load_rows(site), "codes": load_codes(site),
-            "moments": fr.get("moments") or {}, "cards": fr["cards"]}
+            "moments": fr.get("moments") or {}, "cards": fr["cards"],
+            "nobill": fr.get("nobill") or {}}
     excused = 0
     order = mine[: a.limit] if a.limit else mine
     weeks = calendar_weeks(site)

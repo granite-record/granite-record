@@ -1,4 +1,4 @@
-// GRANITE_VERSION: 2026-09-07.240
+// GRANITE_VERSION: 2026-09-07.241
 // esc, dateWords and dateSpan, clock, cmteLink and pchip are components.js's,
 // which every page loads before this file (the component plan's C1 and C2),
 // and so is WORDBOOK, the words of src/pages/words/ that the build writes into
@@ -9299,10 +9299,13 @@ function drawSessionVotes(){
     let html="";
     try{
       if(key&&card!=null){
-        billRecord(key,drawSessionVotes);
+        // A term's roll calls on no bill ("nobill/2025-2026") are a record
+        // of their own, drawn as the member Votes tab draws them.
+        const nb=key.indexOf("nobill/")===0;
+        (nb?nobillRecord:billRecord)(key,drawSessionVotes);
         const d=BILL_RECS[key], rc=d&&(d.rollcalls||[])[+card];
         if(rc&&(rc.members||[]).length){
-          const id=key.split("/")[1];
+          const id=nb?`NB-${key.split("/")[1]}`:key.split("/")[1];
           html=donut(id,+card,rc);
         }
       }

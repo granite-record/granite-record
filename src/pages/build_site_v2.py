@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-05.232
+# GRANITE_VERSION: 2026-09-05.233
 """
 Generate the faceted site from real General Court data.
 
@@ -3093,7 +3093,7 @@ def term_seats(votes_by_member):
             for t, ms in sorted(seen.items())}
 
 
-def write_floor_record(data_dir, votes_by_member, cards, moments=None):
+def write_floor_record(data_dir, votes_by_member, cards, moments=None, nobill=None):
     """data/floor_record.json (FLOOR_RECORD, above). Returns its path."""
     presiding = defaultdict(list)
     for rows in votes_by_member.values():
@@ -3108,9 +3108,12 @@ def write_floor_record(data_dir, votes_by_member, cards, moments=None):
                   "Presiding ballot names (presiding), and where each roll call's card is "
                   "on its bill's Votes tab (cards, the index into the bill record's "
                   "rollcalls); the seat each member held in each term, off their own "
-                  "ballots (seats). Written by build_site_v2.py, which reads the ballots.",
+                  "ballots (seats); and where each roll call on no bill is in its term's "
+                  "nobill/<term>.json (nobill). Written by build_site_v2.py, which reads "
+                  "the ballots.",
         "presiding": {k: sorted(v) for k, v in sorted(presiding.items())},
-        "cards": cards, "moments": moments or {}, "seats": seats},
+        "cards": cards, "moments": moments or {}, "seats": seats,
+        "nobill": nobill or {}},
         separators=(",", ":"), sort_keys=True),
         encoding="utf-8")
     print(f"{f}: {len(presiding):,} roll calls with a presiding ballot, "
@@ -12131,10 +12134,12 @@ def main():
     # What the session days need of the floor that only the ballots and the
     # bills' Votes tabs say: who presided over each roll call, and where each
     # roll call's card is (write_floor_record, FLOOR_RECORD).
-    write_floor_record(D, votes_by_member, rc_cards, floor_moments)
+    # The cards of the roll calls on no bill first (nobill/<term>.json),
+    # since the session days draw those from them too.
+    nobill = write_nobill_cards(out, rollcalls, votes_by_bill, legs, unnamed)
+    write_floor_record(D, votes_by_member, rc_cards, floor_moments, nobill)
     # The members' Votes tabs' shared file, once build_bills has said where
     # each roll call's card is (write_rollcall_index).
-    nobill = write_nobill_cards(out, rollcalls, votes_by_bill, legs, unnamed)
     write_rollcall_index(out, rollcalls, rc_cards, nobill)
     lg = build_legislators(out, legs, votes_by_member, towns, unnamed,
                            sponsored, bill_year, links, former, offices,
