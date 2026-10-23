@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-10-23.1
+# GRANITE_VERSION: 2026-10-23.2
 """
 The site's translations: what is translated, what has gone stale, and the
 proofreader's sheet out and back. src/pages/i18n.py says how a translation
@@ -14,7 +14,7 @@ is kept current; this is how a person works on one.
 
 --lang names the language (es, the one there is so far). No network.
 
-THE SHEET is a CSV a spreadsheet opens: the key, where the code says it, the
+THE SHEET is a CSV a spreadsheet opens: the key, where on the site it is, the
 English, the Spanish, its state, a note, and two columns for the proofreader
 -- "corrected", the Spanish as it should read where it should change, and
 "ok", where "yes" passes the entry (its Spanish, or the corrected one, as it
@@ -46,7 +46,22 @@ import json
 
 import i18n
 
-COLUMNS = ("key", "where", "english", "translation", "state", "note", "corrected", "ok")
+COLUMNS = ("key", "on the site", "english", "translation", "state", "note", "corrected", "ok")
+
+# Where on the site a key's words are, by the key's first part: what the
+# proofreader is told, in place of the file and line the code says it at.
+AREAS = {"nav": "the header", "page": "the header", "theme": "Settings", "set": "Settings",
+         "notice": "an English page, to a reader who chose Spanish",
+         "home": "the home page", "card": "the home page's cards",
+         "web": "the home page's webinar box", "state": "the home page's status box",
+         "fresh": "the home page, under the session days",
+         "sess": "the home page's session days", "cal": "Coming up (the week's meetings)",
+         "kind": "Coming up: a kind of meeting", "find": "the search box's results",
+         "search": "the search box", "yt": "Settings: Your town", "foot": "the footer"}
+
+
+def area(key):
+    return AREAS.get(key.split(".")[0], "")
 
 
 def path(lang):
@@ -90,7 +105,7 @@ def sheet(lang, out, drafts_only=False):
             e = data["strings"].get(key, {})
             if drafts_only and e.get("state") == "proofread":
                 continue
-            w.writerow([key, "; ".join(words[key]["where"][:3]), words[key]["en"],
+            w.writerow([key, area(key), words[key]["en"],
                         e.get(lang, ""), e.get("state", "missing"), e.get("note", ""), "", ""])
             n += 1
     print(f"{out}: {n} entries for the proofreader")
