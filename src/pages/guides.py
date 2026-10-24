@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-10-11.25
+# GRANITE_VERSION: 2026-10-11.26
 """
 The how-to guides: their words, their sources, and what each was checked
 against. Read by build_civics.py, which draws them on the Resources hub's
@@ -3351,3 +3351,168 @@ def unchecked(g):
 def checked_on(g):
     """The oldest check on the guide: what its date says it is worth."""
     return min((c["checked"] for c in g["claims"] if c["checked"]), default=None)
+
+
+# ---------------------------------------------------------------------------
+# THE GUIDES IN ANOTHER LANGUAGE (the owner, 24 October 2026: "The how to
+# pages are the next important section I think is worth translating."). A
+# guide's words are the data above, so they are translated as data: every
+# piece of words a page prints (i18n.pieces -- a paragraph, a list item, a
+# heading, a table cell, a button's label) has its own entry in
+# lang/<code>.json, keyed by the page and a slug of its own first words,
+# "guide.how-to-vote.you-can-register-if-on-election", and keeping the
+# English it was made from. So an edit to one sentence re-opens one piece:
+# the page says that piece in English until its translation catches up,
+# and preflight names it meanwhile. A key is not a position: a paragraph put
+# in above another leaves the other's key, and its translation, alone.
+#
+# A FIGURE IS NOT TRANSLATED. Where a page's words carry a count, a date or a
+# name from the record, the piece holds its [[figure]] and the figure is
+# filled in after (build_civics.fill), so the night's numbers never make a
+# translation stale. The words SAID and HELP write once for several pages
+# are keyed once, where they are written ("guide.said.announced.a-hearing-
+# is-announced"), and the shorthand table on Using This Site is the
+# glossary's own words, said in the glossary's translations (gloss.*).
+# ---------------------------------------------------------------------------
+SHORTHAND_SLOT = "<!-- shorthand -->"
+
+
+def topic_of(slug):
+    """civics.py's page `slug`, one of civics.HOW_TO, or None."""
+    return next((t for t in civics.TOPICS if t["slug"] == slug and slug in civics.HOW_TO), None)
+
+
+def topic_body(t):
+    """A page of civics.py's as it is translated: its shorthand table, which
+    is drawn from the glossary in the page's language, left as a slot."""
+    return t["body"].replace(civics.SHORTHAND_TABLE, SHORTHAND_SLOT)
+
+
+def wording(slug):
+    """[(where, words, html)] of everything the page `slug` -- a guide, or a
+    page of civics.HOW_TO -- prints in its own words, in reading order:
+    `html` False where the words are plain text (a title, a button's label),
+    True where they are a page's HTML, which is translated piece by piece.
+    The record's own words (In the Record's bills and chapters) and the
+    law's references ("RSA 654:7, I") are not in it."""
+    t = topic_of(slug)
+    if t:
+        out = [("title", t["title"], False), ("lead", t["blurb"], False),
+               ("page", reused(topic_body(t)), True)]
+        if t.get("holds"):
+            out.append(("the limit it states", t["holds"], True))
+        return out + [("Where This Comes From", label, False) for label, _u in t["sources"]]
+    g = next((g for g in GUIDES if g["slug"] == slug), None)
+    if g is None:
+        return []
+    out = [("title", g["title"], False), ("lead", g["blurb"], False),
+           ("At a Glance", g["glance"], True)]
+    for node in g["flow"]:
+        out.append(("At a Glance, the diagram", node[1], True))
+        if node[0] == "ask":
+            for a, then in node[2]:
+                out += [("At a Glance, the diagram", a, True), ("At a Glance, the diagram", then, True)]
+    for k, s_ in enumerate(g["steps"], 1):
+        where = f"step {k}"
+        out += [(where, s_["title"], False), (where, s_["text"], True), (where, s_["note"], True)]
+        out += [(where, label, False) for label, _u in s_["actions"]]
+    out.append(("after the steps", g["more"], True))
+    out += [("See Also", label, False) for label, _u in g["see"]]
+    return out + [("Where This Comes From", label, False) for label, _u in g["sources"]]
+
+
+def _shared():
+    """{English: key} of the pieces SAID, HELP and DMV_HELP write once for
+    several pages, each keyed where it is written."""
+    import i18n
+    out = {}
+    for name, block in ([(f"said.{n}", h) for n, h in SAID.items()]
+                        + [(f"help.{n}", h[0]) for n, h in HELP.items()]
+                        + [("help.dmv", DMV_HELP)]):
+        seen = {}
+        for s, e in i18n.pieces(block):
+            en = i18n.norm(block[s:e])
+            if en in out:
+                continue
+            base = f"guide.{name}.{i18n.slug_words(en)}"
+            key, n = base, 2
+            while seen.get(key, en) != en:
+                key, n = f"{base}-{n}", n + 1
+            seen[key] = en
+            out[en] = key
+    return out
+
+
+def page_words(slug):
+    """[(key, English, where)] of every piece of the page `slug`, in reading
+    order, once each: a title and lead under .title and .lead, every other
+    piece under a slug of its own first words, numbered where two of the
+    page's begin alike, or under its shared key (_shared)."""
+    import i18n
+    shared, keys, used, out = _shared(), {}, {}, []
+    for where, words, is_html in wording(slug):
+        if not words:
+            continue
+        spans = i18n.pieces(words) if is_html else [(0, len(words))]
+        for s, e in spans:
+            en = i18n.norm(words[s:e])
+            if not en or en in keys:
+                continue
+            if where in ("title", "lead") and not is_html:
+                key = f"guide.{slug}.{where}"
+            elif en in shared:
+                key = shared[en]
+            else:
+                base = f"guide.{slug}.{i18n.slug_words(en)}"
+                key, n = base, 2
+                while used.get(key, en) != en:
+                    key, n = f"{base}-{n}", n + 1
+            used[key] = en
+            keys[en] = key
+            out.append((key, en, f"guides/{slug}: {where}"))
+    return out
+
+
+def page_keys(slug):
+    """{English: key} of the page `slug`'s pieces (page_words), which
+    i18n.say_html draws the page in another language with."""
+    return {en: key for key, en, _w in page_words(slug)}
+
+
+def task_words():
+    """[(key, English, where)] of the How-To Guides tab's own words: each
+    group's heading, and each task in a reader's words with its line."""
+    import i18n
+    out = [(f"guide.group.{i18n.slug_words(group)}", group, "the How-To Guides tab")
+           for group, _tasks in TASKS]
+    out.append(("guide.group.more", MORE, "the How-To Guides tab"))
+    for _group, tasks in TASKS:
+        for t in tasks:
+            out += [(f"guide.task.{t['slug']}.does", i18n.norm(t["does"]), "the How-To Guides tab"),
+                    (f"guide.task.{t['slug']}.line", i18n.norm(t["line"]), "the How-To Guides tab")]
+    return out
+
+
+def translated(lang):
+    """The slugs of the guides `lang` has (i18n.PAGES), in its order."""
+    import i18n
+    return [p[len("guides/"):-len(".html")] for p in i18n.PAGES.get(lang, ())
+            if p.startswith("guides/")]
+
+
+def translated_words():
+    """Every piece of every guide a language other than English has, and the
+    How-To Guides tab's words where one has the hub: what i18n.code_words
+    asks a catalog to answer. A piece several guides share is listed once."""
+    import i18n
+    out, seen = [], set()
+    langs = [c for c in i18n.LANGS if c != i18n.DEFAULT]
+    slugs = list(dict.fromkeys(s for c in langs for s in translated(c)))
+    rows = [r for s in slugs for r in page_words(s)]
+    if any(i18n.has(c, "resources.html") for c in langs):
+        rows += task_words()
+    for key, en, where in rows:
+        if key not in seen:
+            seen.add(key)
+            out.append((key, en, where))
+    return out

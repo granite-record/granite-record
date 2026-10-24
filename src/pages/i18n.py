@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-10-23.2
+# GRANITE_VERSION: 2026-10-23.3
 """
 The site in more than one language, and how a translation stays current.
 
@@ -93,7 +93,21 @@ STATES = ("draft", "proofread")
 # address is its English one under /es/ (href). Only these are built in that
 # language; every other page is English to everybody, and a reader who chose
 # another language is told so on it (find.js, langNotice).
-PAGES = {"es": ("index.html", "learn/glossary.html")}
+#
+# THE HOW-TO GUIDES (the owner, 24 October 2026: "The how to pages are the
+# next important section I think is worth translating."): the Resources hub,
+# whose How-To Guides are in Spanish at /es/resources, and every guide,
+# civics.py's three pages that became guides among them. A guide named here
+# is translated piece by piece (say_html, guides.page_words); one added to
+# guides.py and not here is English to everybody until it is added.
+GUIDE_PAGES = tuple(f"guides/{s}.html" for s in (
+    "your-representatives", "contact-your-legislators", "attend-a-hearing", "submit-testimony",
+    "testifying", "read-a-bill", "using-this-site", "how-to-vote", "run-for-office",
+    "renew-drivers-license", "register-a-car", "real-id", "new-to-new-hampshire",
+    "food-and-health-assistance", "file-for-unemployment", "heating-and-electric-help",
+    "property-tax-abatement", "property-tax-relief", "public-records", "vital-records",
+    "tour-the-state-house"))
+PAGES = {"es": ("index.html", "learn/glossary.html", "resources.html") + GUIDE_PAGES}
 
 _CATALOGS = {}
 # What a build asked for and could not give: (lang, key, why). report() says
@@ -229,6 +243,159 @@ def gloss_js(lang):
             out[term] = got
     body = json.dumps(out, ensure_ascii=False, separators=(",", ":"), sort_keys=True)
     return "window.GR_GLOSS=" + body.replace("</", "<\\/") + ";"
+
+
+# THE HOW-TO GUIDES IN ANOTHER LANGUAGE (the owner, 24 October 2026: "The
+# how to pages are the next important section I think is worth
+# translating."). A guide's words are data -- guides.py's steps and notes,
+# and civics.py's three pages that became guides -- written as HTML a
+# paragraph or a list item at a time, so they are translated a PIECE at a
+# time: a run of words, with the markup inside a sentence (<b>, <a>, <em>),
+# between the tags that lay a page out (<p>, <li>, <td>, <span>, <h2>). A
+# change to one sentence re-opens the one piece it is in: the page says that
+# piece in English, marked lang="en", until its translation is brought up
+# to the new English, and every other piece stays translated. guides.py
+# says which pieces each page has, and their keys (page_words).
+INLINE = frozenset("a abbr b bdi br cite code em i kbd mark q s small strong sub sup time u wbr"
+                   .split())
+# Whose insides are never words to translate: a drawing is a drawing.
+OPAQUE = frozenset("svg script style template math".split())
+_MARKUP = re.compile(r"<!--.*?-->|<(/?)([a-zA-Z][a-zA-Z0-9]*)\b[^>]*?(/?)>", re.S)
+_OPEN = re.compile(r"<([a-z]+)\b[^>]*>")
+
+
+def norm(s):
+    """A piece's English as the catalog keeps it: every run of white space
+    one space, so a paragraph re-wrapped in the source is the same piece."""
+    return re.sub(r"\s+", " ", s or "").strip()
+
+
+def _words_in(s):
+    """Whether `s` holds a word: a letter outside its tags, entities and
+    [[figures]] -- not a dash, a number or a figure alone."""
+    import html as _h
+    t = re.sub(r"\[\[\w+\]\]|\{[a-z_][a-z0-9_]*\}", " ", re.sub(r"<[^>]+>", " ", s))
+    return bool(re.search(r"[^\W\d_]", _h.unescape(t)))
+
+
+def _unwrap(html, s, e):
+    """(s, e) inside any inline tag that wraps the whole of html[s:e]: a
+    button's label is the words, and its link stays outside them."""
+    while True:
+        m = _OPEN.match(html, s)
+        if not m or m.group(1) not in INLINE or m.group(1) in ("br", "wbr"):
+            return s, e
+        name, close = m.group(1), f"</{m.group(1)}>"
+        if not html[s:e].endswith(close):
+            return s, e
+        depth = 0
+        for t in re.finditer(rf"<(/?){name}\b[^>]*>", html[s:e]):
+            depth += -1 if t.group(1) else 1
+            if depth == 0 and s + t.end() != e:
+                return s, e              # the first tag closes before the end
+        s, e = m.end(), e - len(close)
+
+
+def pieces(html):
+    """[(start, end)] of every piece of words in `html`, in reading order:
+    a run of text and inline markup (INLINE) between the tags that lay the
+    page out, its outer white space and any tag that wraps the whole of it
+    left outside. A comment ends a run; a drawing (OPAQUE) is skipped."""
+    html = html or ""
+    out, start, depth, pos = [], None, 0, 0
+
+    def flush(end):
+        nonlocal start
+        if start is not None:
+            s, e = start, end
+            while s < e and html[s].isspace():
+                s += 1
+            while e > s and html[e - 1].isspace():
+                e -= 1
+            s, e = _unwrap(html, s, e)
+            if s < e and _words_in(html[s:e]):
+                out.append((s, e))
+        start = None
+
+    for m in _MARKUP.finditer(html):
+        if not depth and start is None and html[pos:m.start()].strip():
+            start = pos
+        pos = m.end()
+        if m.group(0).startswith("<!--"):
+            if not depth:
+                flush(m.start())
+            continue
+        close, name, single = m.group(1) == "/", m.group(2).lower(), m.group(3) == "/"
+        if depth:
+            if name in OPAQUE and not single:
+                depth += -1 if close else 1
+            continue
+        if name in OPAQUE and not close and not single:
+            flush(m.start())
+            depth = 1
+        elif name in INLINE:
+            if start is None and not close:
+                start = m.start()
+        else:
+            flush(m.start())
+    if not depth and start is None and html[pos:].strip():
+        start = pos
+    flush(len(html))
+    return out
+
+
+def slug_words(en, n=6, cap=40):
+    """A piece's own first words as a key's last part: "you-can-register-if"."""
+    import html as _h
+    import unicodedata
+    t = _h.unescape(re.sub(r"\[\[\w+\]\]|<[^>]+>", " ", en or ""))
+    flat = unicodedata.normalize("NFKD", t).encode("ascii", "ignore").decode().lower()
+    s = ""
+    for w in re.findall(r"[a-z0-9]+", flat)[:n]:
+        if s and len(s) + 1 + len(w) > cap:
+            break
+        s = f"{s}-{w}" if s else w
+    return s or "x"
+
+
+def _current(lang, key, en):
+    """lookup(), with what was asked kept for preflight and what was missed
+    for report(), as say() keeps them."""
+    SAID.add((lang, key, en))
+    got = lookup(lang, key, en)
+    if got is None:
+        MISSES.add((lang, key, "stale" if catalog(lang).get("strings", {}).get(key) else "missing"))
+    return got
+
+
+def say_piece(lang, key, en):
+    """`en`, one piece of a data's words (a guide's title), in `lang`, or
+    None where it has no current translation -- the caller says the English
+    and marks it so. The English for English."""
+    if lang == DEFAULT:
+        return en
+    return _current(lang, key, en)
+
+
+def say_html(lang, html, keys):
+    """`html` in `lang`, piece by piece (pieces): each piece's words from
+    the catalog under keys[its English], or, where the catalog has none
+    current for that English, the English in <span lang="en">, so a screen
+    reader says it in English and nothing translated from other English is
+    ever shown. `keys` is {English: key} for the page (guides.page_keys)."""
+    if lang == DEFAULT or not html:
+        return html
+    out, pos = [], 0
+    for s, e in pieces(html):
+        en = norm(html[s:e])
+        key = keys.get(en)
+        got = _current(lang, key, en) if key else None
+        if not key:
+            MISSES.add((lang, f"(no key for {en[:50]!r})", "unkeyed"))
+        out += [html[pos:s], got if got is not None else f'<span lang="en">{html[s:e]}</span>']
+        pos = e
+    out.append(html[pos:])
+    return "".join(out)
 
 
 def report(out=print):
@@ -403,6 +570,11 @@ def code_words(root=None):
         for field in ("name", "says"):
             if e.get(field):
                 add(gloss_key(term, field), e[field], "words/glossary.json")
+    # The how-to guides' words, piece by piece, for every guide a language
+    # has (guides.page_words): their own words are data, not say() calls.
+    import guides
+    for key, en, where in guides.translated_words():
+        add(key, en, where)
     return words, problems
 
 

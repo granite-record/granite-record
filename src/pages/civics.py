@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-08.56
+# GRANITE_VERSION: 2026-09-08.57
 """
 The topics of the civics section: their order, their names, and their prose.
 
@@ -38,6 +38,7 @@ testify has decided.
 
 import re
 
+import i18n as I
 import legislative_year
 
 # The order is the order of the proposal, and it is the order the "next
@@ -691,27 +692,34 @@ def reach(places, town):
         '<i class="is-me"></i>' if p == town else "<i></i>" for p in places) + "</span>")
 
 
-def layers_diagram(rows, heading, town=""):
+def layers_diagram(rows, heading, town="", lang="en"):
+    """The table of everyone who represents one town (reps_example), its
+    words in `lang` (the owner's guides in Spanish, 24 October 2026)."""
+    seat = I.say(lang, "reps.seat", "Seat")
+    district_ = I.say(lang, "reps.district_col", "District")
+    members_ = I.say(lang, "reps.members", "Members")
+    by = I.say(lang, "reps.elected_by", "Elected by")
     out = [f'<figure class="l-fig l-lay" role="group" aria-label="{heading}">'
            f'<div class="l-tablewrap l-stack"><table class="l-table" role="table">'
            f'<caption class="sr">{heading}</caption>'
            '<thead role="rowgroup"><tr role="row">'
-           '<th scope="col" role="columnheader">Seat</th>'
-           '<th scope="col" role="columnheader">District</th>'
-           '<th scope="col" role="columnheader">Members</th>'
-           '<th scope="col" role="columnheader">Elected by</th>'
+           f'<th scope="col" role="columnheader">{seat}</th>'
+           f'<th scope="col" role="columnheader">{district_}</th>'
+           f'<th scope="col" role="columnheader">{members_}</th>'
+           f'<th scope="col" role="columnheader">{by}</th>'
            '</tr></thead><tbody role="rowgroup">']
     for layer, district, members, shared, mark, places in rows:
         out.append(
             f'<tr role="row">'
             f'<th scope="row" role="rowheader" class="is-text">{layer}{mark_html(mark)}</th>'
-            f'<td role="cell" data-l="District">{district}</td>'
-            f'<td role="cell" data-l="Members">{members}</td>'
-            f'<td role="cell" data-l="Elected by" class="l-by">{shared}{reach(places, town)}</td></tr>')
-    out.append("</tbody></table></div>"
-               "<figcaption>Under each row, one square for each town or city that votes for the "
-               f'seat: <i class="l-key is-me" aria-hidden="true"></i>{town}, '
-               '<i class="l-key" aria-hidden="true"></i>another town or city.</figcaption></figure>')
+            f'<td role="cell" data-l="{district_}">{district}</td>'
+            f'<td role="cell" data-l="{members_}">{members}</td>'
+            f'<td role="cell" data-l="{by}" class="l-by">{shared}{reach(places, town)}</td></tr>')
+    out.append("</tbody></table></div><figcaption>" + I.say(
+        lang, "reps.caption", "Under each row, one square for each town or city that votes for the "
+        'seat: <i class="l-key is-me" aria-hidden="true"></i>{town}, '
+        '<i class="l-key" aria-hidden="true"></i>another town or city.', town=town)
+        + "</figcaption></figure>")
     return wide("".join(out))
 
 
@@ -728,15 +736,19 @@ def layers_diagram(rows, heading, town=""):
 REPS_EXAMPLE = "Danville"
 
 
-def _names(xs):
+def _names(xs, lang="en"):
     xs = list(xs)
-    return xs[0] if len(xs) == 1 else ", ".join(xs[:-1]) + " and " + xs[-1]
+    return (xs[0] if len(xs) == 1 else ", ".join(xs[:-1])
+            + I.say(lang, "reps.and", " and ") + xs[-1])
 
 
 _WORD = {2: "two", 3: "three", 4: "four", 5: "five", 6: "six"}
+# The same small numbers in the languages the guides are in (i18n.PAGES):
+# a number word is a form of the number, like a date's month.
+_WORDS = {"en": _WORD, "es": {2: "dos", 3: "tres", 4: "cuatro", 5: "cinco", 6: "seis"}}
 
 
-def reps_example(districts, town=REPS_EXAMPLE):
+def reps_example(districts, town=REPS_EXAMPLE, lang="en"):
     """Every figure the page states about its worked example, from
     site/districts.json: the diagram itself, and the few facts the prose
     beside it names -- which floterial, what it is laid over, how many. They
@@ -792,33 +804,43 @@ def reps_example(districts, town=REPS_EXAMPLE):
               "district teaches the point more cleanly")
 
     def wide(n, kind):
-        return f"{town} and {n:,} other {kind}"
+        if kind == "towns":
+            return I.say(lang, "reps.and_towns", "{town} and {n} other towns", town=town, n=f"{n:,}")
+        return I.say(lang, "reps.and_places", "{town} and {n} other towns and cities",
+                     town=town, n=f"{n:,}")
 
     sen, sk = others(lambda w: w.get("senate") == rec.get("senate"))
     cou, ck = others(lambda w: w.get("council") == rec.get("council"))
     con, nk = others(lambda w: w.get("congress") == rec.get("congress"))
+    def together(names):
+        return I.say(lang, "reps.together", "{names} together", names=_names(names, lang))
+
+    def district(n):
+        return I.say(lang, "reps.district", "District {n}", n=n)
     rows = [
-        (f"State House &mdash; {town}'s own district",
+        (I.say(lang, "reps.own", "State House &mdash; {town}'s own district", town=town),
          f"{o['county']} {o['district']}", str(o.get("seats") or 1),
-         f"{town} voters alone" if not own_with
-         else f"{_names([town] + own_with)} together", "", [town] + own_with),
-        ("State House &mdash; floterial",
+         I.say(lang, "reps.alone", "{town} voters alone", town=town) if not own_with
+         else together([town] + own_with), "", [town] + own_with),
+        (I.say(lang, "reps.floterial", "State House &mdash; floterial"),
          f"{f['county']} {f['district']}", str(f.get("seats") or 1),
-         f"{_names([town] + flot_with)} together",
-         ("sub", f"Laid over {len(under)} districts"), [town] + flot_with),
-        ("State Senate", f"District {rec.get('senate')}", "1",
+         together([town] + flot_with),
+         ("sub", I.say(lang, "reps.laid_over", "Laid over {n} districts", n=len(under))),
+         [town] + flot_with),
+        (I.say(lang, "reps.senate", "State Senate"), district(rec.get("senate")), "1",
          wide(len(sen), sk), "", [town] + sen),
-        ("Executive Council", f"District {rec.get('council')}", "1",
+        (I.say(lang, "reps.council", "Executive Council"), district(rec.get("council")), "1",
          wide(len(cou), ck), "", [town] + cou),
-        ("US House", f"District {rec.get('congress')}", "1",
+        (I.say(lang, "reps.us_house", "US House"), district(rec.get("congress")), "1",
          wide(len(con), nk), "", [town] + con),
-        ("US Senate", "The whole state", "2",
-         "Every voter in New Hampshire", "", None),
+        (I.say(lang, "reps.us_senate", "US Senate"), I.say(lang, "reps.whole", "The whole state"), "2",
+         I.say(lang, "reps.every", "Every voter in New Hampshire"), "", None),
     ]
     beneath = sorted(d for c, d in under)
 
     def seats(n):
-        return f"{n} seat" + ("" if n == 1 else "s")
+        return (I.say(lang, "reps.one_seat", "{n} seat", n=n) if n == 1
+                else I.say(lang, "reps.n_seats", "{n} seats", n=n))
 
     # THE FLOTERIAL LAID OVER THE DISTRICTS BENEATH IT: each of them by its
     # name, its places and its seats, the reader's own town marked. The page
@@ -833,22 +855,26 @@ def reps_example(districts, town=REPS_EXAMPLE):
                   for x in w.get("house") or [] if (x.get("county"), x.get("district")) == key), 1)
         base.append((f"{c} {d}", places, n))
     order = [p for _, ps, _ in base for p in ps]
-    band = (f'<figure class="l-flot" role="group" aria-label="{f["county"]} {f["district"]}, '
-            f'laid over {f["county"]} {_names([str(d) for d in beneath])}">'
-            f'<p class="l-fband"><b>{f["county"]} {f["district"]}</b>, floterial: '
-            f'{seats(f.get("seats") or 1)}, elected by {_names(order)} together</p>'
-            '<ol class="l-fbase">' + "".join(
-                ('<li class="is-me">' if town in ps else "<li>") + f'<b>{name}</b>{_names(ps)}'
+    flot = f'{f["county"]} {f["district"]}'
+    flot_under = f'{f["county"]} {_names([str(d) for d in beneath], lang)}'
+    band = ('<figure class="l-flot" role="group" aria-label="'
+            + I.say(lang, "reps.band_label", "{flot}, laid over {under}", flot=flot, under=flot_under)
+            + '"><p class="l-fband">'
+            + I.say(lang, "reps.band", "<b>{flot}</b>, floterial: {seats}, elected by {names} together",
+                    flot=flot, seats=seats(f.get("seats") or 1), names=_names(order, lang))
+            + '</p><ol class="l-fbase">' + "".join(
+                ('<li class="is-me">' if town in ps else "<li>") + f'<b>{name}</b>{_names(ps, lang)}'
                 f'<span class="l-sub">{seats(n)}</span></li>' for name, ps, n in base)
             + "</ol></figure>")
     return {
         "reps_town": town,
         "reps_example": layers_diagram(
-            rows, f"Everyone who represents a voter in {town}", town),
+            rows, I.say(lang, "reps.heading", "Everyone who represents a voter in {town}", town=town),
+            town, lang),
         "reps_band": band,
-        "reps_flot": f"{f['county']} {f['district']}",
-        "reps_flot_under": f"{f['county']} {_names([str(d) for d in beneath])}",
-        "reps_under_n": _WORD.get(len(beneath), str(len(beneath))),
+        "reps_flot": flot,
+        "reps_flot_under": flot_under,
+        "reps_under_n": _WORDS.get(lang, _WORD).get(len(beneath), str(len(beneath))),
     }
 
 
@@ -2449,6 +2475,29 @@ def _shorthand():
 
 
 SHORTHAND_TABLE = _shorthand()
+
+
+def shorthand_table(lang="en"):
+    """The shorthand table in `lang` (the owner's guides in Spanish, 24
+    October 2026): each term as the record prints it, and its name and
+    meaning in the glossary's own translations (i18n.say_gloss), so the
+    table and the glossary never say a term two ways in either language."""
+    if lang == I.DEFAULT:
+        return SHORTHAND_TABLE
+    import components
+    g, E = components.WORDBOOK["glossary"], components.esc
+    notes = {"OTPA": I.say(lang, "reps.otpa_note", "the docket also writes OTP/A or OTP/AM")}
+
+    def row(k):
+        e = g[k]
+        name = I.say_gloss(lang, k, "name", e["name"])
+        says = I.say_gloss(lang, k, "says", e["says"]) if e.get("says") else ""
+        says = E(says) + (f" ({notes[k]})" if k in notes else "")
+        own = f' ({E(name)})' if name != e["name"] else ""
+        return (f'<tr><th scope="row"><b lang="en">{"-" if k in SHORTHAND_SUFFIXES else ""}{E(k)}</b></th>'
+                f'<td><b><span lang="en">{E(e["name"])}</span>{own}{":" if says else ""}</b>'
+                f'{" " + says if says else ""}</td></tr>')
+    return "<table><tbody>\n" + "\n".join(row(k) for k in SHORTHAND) + "\n</tbody></table>"
 
 
 BODY_SITE = """

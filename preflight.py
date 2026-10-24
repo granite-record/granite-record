@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.674
+# GRANITE_VERSION: 2026-09-04.675
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -62136,6 +62136,496 @@ def _spanish_glossary(i18n, BC, chrome):
                   "the English page names its twin")
 
 
+@check("build", "the how-to guides are built in Spanish at /es/guides/, piece by piece from the "
+                "catalog, each naming its English page and each English page naming it, with the "
+                "Resources hub's How-To Guides beside them",
+       needs=("i18n", "guides", "build_civics", "chrome", "civics"))
+def _spanish_guides(i18n, G, BC, chrome, civics):
+    """The owner, 24 October 2026: "The how to pages are the next important
+    section I think is worth translating." Every guide i18n.PAGES names --
+    guides.py's and the three pages of civics.HOW_TO -- is drawn in Spanish
+    from the same data as the English (build_civics.guide_page_lang,
+    article_page_lang), a piece at a time (i18n.say_html, guides.page_keys),
+    and the hub's How-To Guides with them (hub_page_lang).
+
+    It fails if PAGES names a guide that is not one; if a Spanish guide
+    falls back to English anywhere (a miss i18n.say_html records); if one
+    is not lang=es naming its English page, asks to be indexed while Spanish
+    is unlisted, lacks its Spanish title, the line saying its outside pages
+    are in English, or the footer's button for a mistake in the translation;
+    if a link to another guide Spanish has goes to the English one, or an
+    outside page's button is not marked as English; if the hub lacks a task
+    or links its English guide; if an English page does not name its twin;
+    if In the Record keeps an English sentence or leaves a chapter's name
+    unmarked; or if Using This Site's shorthand stops being the glossary's
+    words in either language."""
+    import copy
+    import html as _h
+    base = "https://graniterecord.org"
+    strings = i18n.catalog("es")["strings"]
+    slugs = G.translated("es")
+    known = {g["slug"] for g in G.GUIDES} | set(civics.HOW_TO)
+    unknown = sorted(set(slugs) - known)
+    assert not unknown, f"i18n.PAGES names guides there are none of: {unknown}"
+    english_only = sorted(known - set(slugs))
+    bad, misses = [], set(i18n.MISSES)
+    try:
+        i18n.MISSES.clear()
+        for slug in slugs:
+            t = G.topic_of(slug)
+            if t:
+                body = G.reused(G.topic_body(t)) + (t.get("holds") or "")
+                figures = {k: "7" for k in re.findall(r"\[\[(\w+)\]\]", body)}
+                page = BC.article_page_lang(t, "es", base, figures)
+                title = t["title"]
+            else:
+                g = next(g for g in G.GUIDES if g["slug"] == slug)
+                page = BC.guide_page_lang(g, "es", base)
+                title = g["title"]
+                for s_ in g["steps"]:
+                    for _label, u in s_["actions"]:
+                        if u.startswith("http") and f'href="{_h.escape(u, quote=True)}" target="_blank" ' \
+                                f'rel="noopener" hreflang="en"' not in page:
+                            bad.append(f"{slug}: the button to {u} is not marked as an English page")
+            if not page.startswith(f'<!DOCTYPE html><html lang="es" data-alt-en="/guides/{slug}"'):
+                bad.append(f"{slug}: not lang=es naming /guides/{slug}")
+            if not i18n.offered("es") and '<meta name="robots" content="noindex">' not in page:
+                bad.append(f"{slug}: asks to be indexed while Spanish is unlisted")
+            es_title = strings[f"guide.{slug}.title"]["es"]
+            if f"<h1>{_h.escape(es_title, quote=True)}</h1>" not in page:
+                bad.append(f"{slug}: its <h1> is not its Spanish title {es_title!r}")
+            if strings["guides.lang_note"]["es"] not in page:
+                bad.append(f"{slug}: no line saying the pages it links are in English")
+            if "data-trreport hidden" not in page:
+                bad.append(f"{slug}: no button for a mistake in the translation")
+            for other in slugs:
+                # (The footer's way to the English page is the one link
+                # that must lead there, and it says so: hreflang="en".)
+                if re.search(rf'href="/?guides/{re.escape(other)}(?:\.html)?(?:#[^"]*)?"(?! hreflang="en")',
+                             page):
+                    bad.append(f"{slug}: links the English {other} where its Spanish is built")
+            if "[[" in page:
+                bad.append(f"{slug}: an unfilled figure")
+            # The English page, named by its twin.
+            en = ('<!DOCTYPE html><html lang="en"><head></head><body>'
+                  + chrome.footer_html("en") + "</body></html>")
+            named = BC.name_versions(f"guides/{slug}.html", en)
+            if f'<html lang="en" data-alt-es="/es/guides/{slug}"' not in named \
+                    or f'href="/es/guides/{slug}" hreflang="es"' not in named:
+                bad.append(f"{slug}: the English page does not name its Spanish twin")
+            del title
+        fell = sorted(i18n.MISSES)
+        assert not fell, (f"{len(fell)} pieces of the Spanish guides fell back to English: "
+                          + "; ".join(f"{k} ({why})" for _l, k, why in fell[:6]))
+        # The hub's How-To Guides.
+        hub = BC.hub_page_lang("es", base, G.GUIDES, BC.how_to_topics(civics.TOPICS))
+        if not hub.startswith('<!DOCTYPE html><html lang="es" data-alt-en="/resources"'):
+            bad.append("the hub is not lang=es naming /resources")
+        for _group, tasks in G.TASKS:
+            for task in tasks:
+                if task["slug"] in slugs and f'href="/es/guides/{task["slug"]}"' not in hub:
+                    bad.append(f"the hub does not link the Spanish {task['slug']}")
+                does = strings[f"guide.task.{task['slug']}.does"]["es"]
+                if does not in hub:
+                    bad.append(f"the hub lacks the task {does!r}")
+        assert not i18n.MISSES, f"the hub fell back to English: {sorted(i18n.MISSES)[:4]}"
+    finally:
+        i18n.MISSES.clear()
+        i18n.MISSES.update(misses)
+    # In the Record, its sentences in Spanish and the record's words marked.
+    rec = ('<h3 class="g-ch"><a href="/laws/654">Chapter 654: Voters and Checklists</a></h3>'
+           '<p class="g-what">Bills now before the General Court that would change it:</p>'
+           '<ul class="rs-list"><li>HB 1</li></ul>'
+           f'<p class="g-what">Laws that changed it since {BC.RECENT_FROM}, newest first:</p>'
+           '<ul class="rs-list"><li>HB 2</li></ul><details class="rs-more"><summary>Show all 9'
+           '</summary><ul class="rs-list"><li>HB 3</li></ul></details>'
+           f'<p class="g-what">No bill has changed it since {BC.RECENT_FROM}, and none now before the '
+           'General Court would.</p>')
+    got = BC._record_lang(rec, "es")
+    for english in ("Bills now before", "Laws that changed", "No bill has changed", "Show all",
+                    ">Chapter "):
+        if english in got:
+            bad.append(f"In the Record keeps {english!r} in English")
+    if '<span lang="en">Voters and Checklists</span>' not in got or got.count('lang="en"') != 4:
+        bad.append("In the Record does not mark the record's own words as English")
+    # The shorthand table: the glossary's words, in either language.
+    if civics.shorthand_table("en") != civics.SHORTHAND_TABLE:
+        bad.append("the English shorthand table is no longer the one Using This Site had")
+    es_table = civics.shorthand_table("es")
+    for k in civics.SHORTHAND:
+        name = strings[i18n.gloss_key(k, "name")]["es"]
+        if _h.escape(name) not in es_table:
+            bad.append(f"the Spanish shorthand table lacks {k}'s glossary name {name!r}")
+    # The worked example of a town's representatives, its English unchanged
+    # by the words it now asks the catalog for.
+    dist = {"Danville": {"0": {"senate": "23", "council": "3", "congress": "1",
+                               "house": [{"county": "Rockingham", "district": "8", "seats": 1},
+                                         {"county": "Rockingham", "district": "32", "seats": 1,
+                                          "floterial": True}]}},
+            "Fremont": {"0": {"senate": "23", "council": "3", "congress": "1",
+                              "house": [{"county": "Rockingham", "district": "7", "seats": 1},
+                                        {"county": "Rockingham", "district": "32", "seats": 1,
+                                         "floterial": True}]}}}
+    en_ex = civics.reps_example(copy.deepcopy(dist))
+    es_ex = civics.reps_example(copy.deepcopy(dist), lang="es")
+    if "Rockingham 7 and 8" not in en_ex["reps_flot_under"] \
+            or "Everyone who represents a voter in Danville" not in en_ex["reps_example"] \
+            or "1 seat, elected by Fremont and Danville together" not in en_ex["reps_band"]:
+        bad.append("the worked example's English changed: " + en_ex["reps_band"][:120])
+    if es_ex["reps_flot_under"] != "Rockingham 7 y 8" or es_ex["reps_under_n"] != "dos" \
+            or "Todos los que representan a un votante de Danville" not in es_ex["reps_example"]:
+        bad.append("the worked example is not in Spanish: " + es_ex["reps_flot_under"])
+    assert not bad, f"{len(bad)} faults: " + "; ".join(bad[:8])
+    pieces = Counter(k.split(".")[1] for k, _en, _w in G.translated_words())
+    return "ok", (f"{len(slugs)} guides and the hub in Spanish, {sum(pieces.values())} pieces, every one "
+                  "current; each names its English page and is named by it"
+                  + (f"; English only: {', '.join(english_only)}" if english_only else ""))
+
+
+@check("build", "a guide whose English changes says that piece in English, marked, and never "
+                "the Spanish of what it no longer says, while every other piece stays "
+                "translated, and the catalog check names it",
+       needs=("i18n", "guides", "build_civics"))
+def _spanish_guides_stale(i18n, G, BC):
+    """The hard rule of the guides in Spanish (the owner, 24 October 2026: the
+    translation "should not go out of date when page information is
+    updated", of 23 October, held for the guides): a translation is a piece
+    of a guide -- a paragraph, a list item, a heading, a button's label --
+    with the English it was made from. Here a fixture copy of How to Vote has
+    two of its English list items edited, as a person editing guides.py
+    would: one past its first words, which keeps its key and makes its entry
+    stale, and one at its first words, which is a new key with no entry.
+    The Spanish page must say each of them in English, in <span lang="en">,
+    and never the Spanish of the old words, while their neighbours stay in
+    Spanish; and i18n.check must name the stale entry, the missing one and
+    the entry no code asks for any more -- which is what fails preflight
+    until a translation is brought up to date."""
+    import copy
+    import html
+    i = next(k for k, g in enumerate(G.GUIDES) if g["slug"] == "how-to-vote")
+    real = G.GUIDES[i]
+    g = copy.deepcopy(real)
+    s_ = g["steps"][1]
+    edits = [("living in the town or city ward where you are registering.",
+              "living in the town or city ward where you register."),
+             ("You can register as a Democrat, a Republican, or Undeclared.",
+              "Register as a Democrat, a Republican, or Undeclared.")]
+    for old, new in edits:
+        assert old in s_["text"], f"How to Vote no longer says {old!r}: choose another sentence"
+        s_["text"] = s_["text"].replace(old, new)
+    strings = i18n.catalog("es")["strings"]
+    stale_key = "guide.how-to-vote.living-in-the-town-or-city"
+    gone_key = "guide.how-to-vote.you-can-register-as-a-democrat"
+    for k in (stale_key, gone_key):
+        assert k in strings, f"es.json has no {k}: the fixture's keys have moved"
+    misses = set(i18n.MISSES)
+    G.GUIDES[i] = g
+    try:
+        i18n.MISSES.clear()
+        page = BC.guide_page_lang(g, "es", "https://graniterecord.org")
+        missed = set(i18n.MISSES)
+        problems = i18n.check("es")
+        new_key = G.page_keys("how-to-vote")[edits[1][1]]
+    finally:
+        G.GUIDES[i] = real
+        i18n.MISSES.clear()
+        i18n.MISSES.update(misses)
+    bad = []
+    for old, new in edits:
+        if f'<span lang="en">{new}</span>' not in page:
+            bad.append(f"the edited English {new!r} is not on the page, marked as English")
+    for k in (stale_key, gone_key):
+        if strings[k]["es"] in page:
+            bad.append(f"the page still says the Spanish of English it no longer says: {strings[k]['es']!r}")
+    for k in ("guide.how-to-vote.at-least-18-years-old", "guide.how-to-vote.a-united-states-citizen-and",
+              "guide.how-to-vote.make-sure-you-can-register", "guide.how-to-vote.there-is-no-minimum-time-you"):
+        if html.escape(strings[k]["es"], quote=False) not in page and strings[k]["es"] not in page:
+            bad.append(f"a piece the edit did not touch is no longer in Spanish: {k}")
+    if ("es", stale_key, "stale") not in missed or ("es", new_key, "missing") not in missed:
+        bad.append(f"the build did not keep the misses for report(): {sorted(missed)}")
+    said = [p for p in problems if p.startswith(f"{stale_key} is stale")]
+    absent = [p for p in problems if p.startswith(f"{new_key} has no es words")]
+    orphan = [p for p in problems if p.startswith(f"{gone_key} is in lang/es.json and no code asks")]
+    if not (said and absent and orphan) or len(problems) != 3:
+        bad.append(f"the catalog check does not name the edit as it should: {problems[:5]}")
+    assert not bad, "; ".join(bad)
+    return "ok", ("an edit past a piece's first words shows it in English and names its entry "
+                  "stale; an edit at its first words shows it in English and names the new key "
+                  "missing and the old one unused; the rest of the page stays in Spanish")
+
+
+TRREPORT_TEST = r"""
+import { createRequire } from "node:module";
+import { readFileSync } from "node:fs";
+import { onRequest } from __FN__;
+const require = createRequire(import.meta.url);
+require("./stub.js");
+const LANG = process.argv[2];
+const on = {};
+document.addEventListener = (t, f) => { (on[t] = on[t] || []).push(f); };
+document.documentElement.getAttribute = n => (n === "lang" ? LANG : null);
+const footBtn = { hidden: true, focus() {} };
+document.querySelectorAll = s => (s === "[data-trreport]" ? [footBtn] : []);
+const made = [];
+const mk = document.createElement;
+document.createElement = t => {
+  const e = mk(t), kids = {}, attrs = {};
+  e.querySelector = s => (kids[s] ||= mk("div"));
+  e.setAttribute = (k, v) => { attrs[k] = String(v); };
+  e._kids = kids;
+  e._attrs = attrs;
+  made.push(e);
+  return e;
+};
+const para = {}, main = { contains: n => n === para };
+const byId = document.getElementById;
+document.getElementById = id => (id === "main" ? main : byId(id));
+let sel = "";
+globalThis.getSelection = () => ({ isCollapsed: !sel, rangeCount: sel ? 1 : 0,
+  getRangeAt: () => ({ commonAncestorContainer: para }), toString: () => sel });
+globalThis.setTimeout = () => 0;
+Object.assign(location, { pathname: "/es/guides/how-to-vote", hostname: "graniterecord.org",
+  origin: "https://graniterecord.org" });
+let env = {}, posted = 0;
+const page = { fetch: async u => new URL(u).pathname === "/es/guides/how-to-vote"
+  ? new Response('<!DOCTYPE html><html lang="es" data-alt-en="/guides/how-to-vote">')
+  : new Response("", { status: 404 }) };
+globalThis.fetch = async (url, opts = {}) => {
+  if (url !== "/api/report")
+    return { ok: true, status: 200, json: async () => ({ finished: "2026-10-24T08:00:00Z" }) };
+  posted++;
+  return onRequest({ env, request: new Request("https://graniterecord.org/api/report", {
+    method: opts.method, body: opts.body,
+    headers: { ...opts.headers, "Origin": "https://graniterecord.org" } }) });
+};
+try { (0, eval)(readFileSync("./page.js", "utf8")); }
+catch (e) { console.log("LOAD " + e.constructor.name + ": " + e.message); process.exit(1); }
+const mine = t => (on[t] || []).filter(f => /trreport|trform|trclose|trpill/.test(String(f)));
+const fail = [];
+const tick = () => new Promise(r => setImmediate(r));
+if (LANG === "en") {
+  const any = ["click", "submit", "pointerdown"].some(t => mine(t).length) || (on.selectionchange || []).length;
+  if (any || !footBtn.hidden) fail.push("an English page carries the translation report's behaviour");
+  console.log(fail.length ? "FAILED: " + fail.join("; ") : "ALL OK");
+  process.exit(fail.length ? 1 : 0);
+}
+if (footBtn.hidden) fail.push("the footer's button stays hidden on a page in Spanish");
+const pill = made.find(e => e.className === "trpill");
+if (!pill) fail.push("no button in the corner for selected words");
+// Words of the page selected, then the footer's button pressed.
+sel = "Vote";
+(on.selectionchange || []).forEach(f => f({}));
+if (pill && pill.hidden) fail.push("the corner button is not shown while words are selected");
+let T = 1000000;
+Date.now = () => T;
+const press = { closest: s => (s === "[data-trreport]" ? footBtn : null) };
+mine("pointerdown").forEach(f => f({ target: press }));
+mine("click").forEach(f => f({ target: press }));
+const box = made.find(e => e.className === "trbox");
+if (!box || box.hidden) fail.push("pressing the button opens no box");
+const html = box ? box.innerHTML : "";
+const W = JSON.parse(readFileSync("./want.json", "utf8"));
+for (const w of W.box) if (!html.includes(w)) fail.push("the box lacks " + JSON.stringify(w));
+if (box && box._kids[".trq"].textContent !== "Vote") fail.push("the box does not show the words selected");
+if (box && (box._attrs.role !== "dialog" || box._attrs["aria-labelledby"] !== "trbox-h"))
+  fail.push("the box is not a dialog named by its heading");
+if (box && box._kids[".trquote"].hidden) fail.push("the words selected are hidden");
+async function send(words, quote) {
+  const st = { textContent: "", innerHTML: "" }, btn = { disabled: false };
+  const form = { elements: { note: { value: words }, quote: { checked: quote }, website: { value: "" } },
+    closest: s => (s === ".trform" ? form : null),
+    querySelector: s => (s === ".trstate" ? st : btn) };
+  T += 9000;
+  mine("submit").forEach(f => f({ target: form, preventDefault() {} }));
+  // Until the send is done: the button is given back when it is.
+  for (let i = 0; i < 2000 && btn.disabled; i++) await tick();
+  await tick();
+  return { st, left: form.elements.note.value };
+}
+const stored = [];
+const good = { DB: { prepare: sql => ({ bind: (...a) => ({ first: async () => 1,
+  run: async () => { if (/INTO reports/.test(sql)) stored.push(a); } }) }) }, ASSETS: page };
+env = good;
+const few = await send("no", true);
+if (few.st.textContent !== W.few || posted) fail.push("a note of two letters was sent: " + few.st.textContent);
+const ok = await send("Debería decir «Votar».", true);
+const row = stored[0] || [];
+const want = ["translation:/es/guides/how-to-vote", "translation", "/es/guides/how-to-vote", "",
+              "translation", "«Vote»\n\nDebería decir «Votar»."];
+if (JSON.stringify(row.slice(1, 7)) !== JSON.stringify(want))
+  fail.push("the report stored is not the page, its language, the kind and the words selected: "
+            + JSON.stringify(row.slice(1, 7)));
+if (row[7] !== "2026-10-24T08:00:00Z") fail.push("the report does not say which build: " + row[7]);
+if (ok.st.textContent !== W.thanks || ok.left !== "") fail.push("a kept report was not thanked and cleared: " + ok.st.textContent);
+const noquote = await send("Otra cosa está mal aquí.", false);
+if (!stored[1] || stored[1][6] !== "Otra cosa está mal aquí.") fail.push("the words selected were sent though unticked");
+env = { ASSETS: page };
+const down = await send("No hay base de datos.", true);
+if (!down.st.innerHTML.includes("mailto:contact@graniterecord.org") || !down.st.innerHTML.includes(W.failed)
+    || down.left === "" || /Gracias/.test(down.st.textContent + down.st.innerHTML))
+  fail.push("a report not kept does not offer the email with the words kept: " + down.st.innerHTML);
+if (!decodeURIComponent(down.st.innerHTML).includes("page: https://graniterecord.org/es/guides/how-to-vote"))
+  fail.push("the email does not name the page");
+(on.keydown || []).forEach(f => f({ key: "Escape", target: {} }));
+if (box && !box.hidden) fail.push("Escape does not close the box");
+console.log("@@" + JSON.stringify({ box: html.slice(0, 300) }));
+console.log(fail.length ? "FAILED: " + fail.join("; ") : "ALL OK");
+process.exit(fail.length ? 1 : 0);
+"""
+
+
+@check("frontend", "every page in Spanish offers a way to report a mistake in its translation, "
+                   "which sends the page, its language and the words the reader selected",
+       needs=("chrome", "i18n", "compile_reports"))
+def _translation_report(chrome, i18n, CR):
+    """The owner, 24 October 2026: "We should also add a report button for
+    translation inaccuracy." Every page in another language carries, in its
+    footer, a button (chrome.tr_report) that components.js shows and that
+    opens a box posting to /api/report as a record's own box does, as a
+    report of the kind "translation": the page's address, which names its
+    language, the reader's words, and the words they had selected on the
+    page before pressing it, so a proofreader's note says which sentence.
+
+    Run in node: components.js as the page loads it, with the Spanish words
+    file's words, on a page whose <html lang> is "es", posting into
+    report.js's own onRequest. It must show the button; open the box with
+    its words in Spanish and the selected words in it; refuse a note of two
+    letters; store a report whose record, kind, address, field and note are
+    the page's, "translation" and the selected words quoted before the
+    reader's, with the build; leave the selected words out when the reader
+    unticks them; offer the email address with the words kept when nothing
+    is stored; and close on Escape. On a page in English none of it runs.
+    And the compiler, which reads what the Function stores, must take such a
+    report as well formed, show it where the site built that page, and hold
+    it where it did not."""
+    import build_pages as BP
+    es_foot, en_foot = chrome.footer_html("es"), chrome.footer_html("en")
+    assert 'data-trreport hidden' in es_foot and 'data-trreport' not in en_foot, (
+        "the footer's button for a mistake in the translation is missing in Spanish or there in English")
+    strings = i18n.catalog("es")["strings"]
+    assert strings["foot.tr_report"]["es"] in es_foot, "the footer's button is not in Spanish"
+    fn, stub = Path("functions/api/report.js"), Path("tests/dom_stub.js")
+    if not fn.exists():
+        return "skip", "no functions/api/report.js here"
+    node = shutil.which("node")
+    if not node:
+        return "skip", "node is not on PATH"
+    js = Path("src/pages/components.js").read_text(encoding="utf-8")
+    words = i18n.words_js("es", BP.with_words(js))
+    want = {"box": [html_escape(strings["trrep.title"]["es"]), 'name="note"', 'name="website"',
+                    'name="quote" checked', 'id="trbox-h"', "mailto:contact@graniterecord.org"],
+            "few": strings["trrep.few"]["es"], "thanks": strings["trrep.thanks"]["es"],
+            "failed": html_escape(strings["trrep.failed"]["es"].split(" (")[0])}
+    results = {}
+    for lang in ("es", "en"):
+        root = Path(tempfile.mkdtemp())
+        try:
+            prog = (words + "\n" if lang == "es" else "") + _with_components("")
+            (root / "page.js").write_text(prog, encoding="utf-8")
+            (root / "stub.js").write_text(stub.read_text(encoding="utf-8"), encoding="utf-8")
+            (root / "want.json").write_text(json.dumps(want, ensure_ascii=False), encoding="utf-8")
+            (root / "t.mjs").write_text(TRREPORT_TEST.replace("__FN__", json.dumps(fn.resolve().as_uri())),
+                                        encoding="utf-8")
+            r = _run([node, "t.mjs", lang], capture_output=True, text=True, cwd=root, encoding="utf-8")
+            results[lang] = r
+            assert r.returncode == 0 and "ALL OK" in r.stdout, (
+                f"on a page in {lang}: " + (r.stdout + r.stderr).strip()[-600:])
+        finally:
+            shutil.rmtree(root, ignore_errors=True)
+    # The compiler: a translation report as the Function stores it.
+    row = {"id": 5, "at": "2026-10-24T12:00:00Z", "record": "translation:/es/guides/how-to-vote",
+           "kind": "translation", "url": "/es/guides/how-to-vote", "tab": "", "field": "translation",
+           "note": "«Vote» debería decir «Votar».", "build": "", "hidden": 0}
+    assert CR.well_formed(row), "the compiler sets aside a translation report as malformed"
+    assert not CR.well_formed(dict(row, field="other")), "the compiler takes a translation of another field"
+    assert not CR.well_formed(dict(row, tab="Votes")), "the compiler takes a translation with a tab"
+    assert not CR.well_formed(dict(row, record="bill:2026/HB1", kind="bill", url="/bill/2026/hb1")), (
+        "the compiler takes a bill's report of the field a translation has")
+    judged, _ = CR.judge([row], {}, {"/es/guides/how-to-vote"})
+    assert judged and not judged[0][1] and judged[0][2] == "/es/guides/how-to-vote", (
+        f"a translation report from a built page is not shown: {judged}")
+    judged, _ = CR.judge([row], {}, set())
+    assert judged and judged[0][1], "a translation report from a page the site did not build is not held"
+    site = Path(tempfile.mkdtemp())
+    try:
+        for rel in ("es/index.html", "es/guides/how-to-vote.html", "es/learn/glossary.html"):
+            (site / rel).parent.mkdir(parents=True, exist_ok=True)
+            (site / rel).write_text("x", encoding="utf-8")
+        got = CR.translated_pages(site)
+    finally:
+        shutil.rmtree(site, ignore_errors=True)
+    assert got == {"/es/", "/es/guides/how-to-vote", "/es/learn/glossary"}, got
+    return "ok", ("the footer's button in Spanish only; in node the box opens in Spanish with the "
+                  "words selected, sends the page, its language and those words, is stored by "
+                  "report.js, offers the email when it is not, and runs on no English page; the "
+                  "compiler shows it from a built page and holds it from any other")
+
+
+def html_escape(s):
+    import html
+    return html.escape(s, quote=False)
+
+
+@check("frontend", "every published guide in a language i18n.PAGES gives it is built in that "
+                   "language beside its English, each naming the other, and the hub with them",
+       needs=("i18n", "guides", "civics"))
+def _spanish_guides_built(i18n, G, civics):
+    """The fixture's whole build (build_civics.main, the owner's request of
+    24 October 2026): every guide it publishes in English that i18n.PAGES
+    gives Spanish is written at /es/guides/<slug> too, a guide held back in
+    English has no Spanish copy left, each English page names its twin on
+    <html> and in its footer, the Spanish hub /es/resources is written and
+    names /resources, and every link on a Spanish guide to /es/ leads to a
+    page the build wrote."""
+    absent = [x for x in CHAIN_NEEDS if not _paths.locate(x).exists()]
+    if absent:
+        return "skip", "not here: " + ", ".join(absent)
+    shared, _base, _ran, _days = _fixture_site_shared()
+    site = shared / "site"
+    langs = [c for c in i18n.LANGS if c != i18n.DEFAULT]
+    bad, n = [], 0
+    for f in sorted((site / "guides").glob("*.html")):
+        en = f.read_text(encoding="utf-8")
+        draft = 'class="g-draft"' in en
+        for lang in langs:
+            twin = site / lang / "guides" / f.name
+            has = i18n.has(lang, f"guides/{f.name}")
+            if has and not draft:
+                n += 1
+                if not twin.is_file():
+                    bad.append(f"{f.stem} is published and has no {lang} page")
+                    continue
+                if f'data-alt-{lang}="/{lang}/guides/{f.stem}"' not in en[:600]:
+                    bad.append(f"the English {f.stem} does not name its {lang} twin")
+                t = twin.read_text(encoding="utf-8")
+                if f'data-alt-en="/guides/{f.stem}"' not in t[:600]:
+                    bad.append(f"{lang}/guides/{f.stem} does not name its English page")
+                for h in re.findall(rf'href="(/{lang}/[^"#]*)', t):
+                    rel = h.strip("/")
+                    if not ((site / f"{rel}.html").is_file() or (site / rel / "index.html").is_file()):
+                        bad.append(f"{lang}/guides/{f.stem} links {h}, which the build did not write")
+            elif twin.exists():
+                bad.append(f"{lang}/guides/{f.name} is written beside an English page that is "
+                           + ("a draft" if draft else "not in i18n.PAGES"))
+    for lang in langs:
+        for f in sorted((site / lang / "guides").glob("*.html")) if (site / lang / "guides").is_dir() else []:
+            if not (site / "guides" / f.name).is_file():
+                bad.append(f"{lang}/guides/{f.name} has no English page")
+        if i18n.has(lang, "resources.html"):
+            hub = site / lang / "resources.html"
+            if not hub.is_file():
+                bad.append(f"no {lang}/resources.html")
+            elif 'data-alt-en="/resources"' not in hub.read_text(encoding="utf-8")[:600]:
+                bad.append(f"{lang}/resources.html does not name /resources")
+            if f'data-alt-{lang}="/{lang}/resources"' not in (site / "resources.html").read_text(
+                    encoding="utf-8")[:600]:
+                bad.append(f"/resources does not name its {lang} twin")
+    assert n, "the fixture published no guide that has a Spanish page"
+    assert not bad, f"{len(bad)} faults: " + "; ".join(bad[:6])
+    return "ok", (f"{n} published guides on the fixture each beside its Spanish page, each naming "
+                  "the other; the Spanish hub with them; every /es/ link leads to a page")
+
+
 @check("build", "the home page is built in Spanish at /es/ from the same data as the English, "
                 "unlisted until offered, and each names the other",
        needs=("i18n",))
@@ -69222,6 +69712,36 @@ ok("production, /api/report with a query string is still that path: stored",
 r = await onRequest({ env: prev, request: sentTo("https://abc123.graniterecord.pages.dev",
   "https://abc123.graniterecord.pages.dev", { ...good, note: "sent to a preview" }) });
 ok("preview, a preview deployment's own address: stored", r.status === 204 && rows.length === before + 3);
+// A MISTAKE IN A TRANSLATION (the owner, 24 October 2026): reported from the
+// page's own address, which names its language, as the field "translation"
+// with no tab, and kept only from a page the site built in that language.
+const tr = { record: "translation:/es/guides/how-to-vote", url: "/es/guides/how-to-vote", tab: "",
+  field: "translation", build: "", elapsed: 9000, note: "\u00abVote\u00bb should read \u00abVotar\u00bb." };
+ok("a translation report passes", validate(tr) && validate(tr).kind === "translation");
+ok("the Spanish home page's passes", validate({ ...tr, record: "translation:/es/", url: "/es/" }) !== null);
+for (const [rec, url] of [["translation:/es/guides/how-to-vote", "/es/guides/real-id"],
+    ["translation:/es/Guides/x", "/es/Guides/x"], ["translation:/es/a/b/c/d", "/es/a/b/c/d"],
+    ["translation:/fr/x", "/fr/x"], ["translation:/es/../x", "/es/../x"], ["translation:/es", "/es"],
+    ["translation:/es/x-", "/es/x-"], ["translation:/es/x.html", "/es/x.html"],
+    ["translation:es/x", "es/x"], ["translation:/es/x", "/bill/2026/hb1"], ["translation:/bill/2026/hb1", "/bill/2026/hb1"]])
+  ok(`${rec} from ${url} is refused`, validate({ ...tr, record: rec, url }) === null);
+ok("a translation of another field is refused", validate({ ...tr, field: "other" }) === null);
+ok("a translation with a tab is refused", validate({ ...tr, tab: "Votes" }) === null);
+ok("a bill's report of the translation field is refused", validate({ ...good, field: "translation" }) === null);
+const esPage = { fetch: async u => new URL(u).pathname === "/es/guides/how-to-vote"
+  ? new Response('<!DOCTYPE html><html lang="es" data-alt-en="/guides/how-to-vote">')
+  : new Response("", { status: 404 }) };
+const nTr = rows.length;
+r = await onRequest({ env: { ...env, ASSETS: esPage }, request: req("https://graniterecord.org", tr) });
+ok("a translation report from a page in Spanish is stored", r.status === 204 && rows.length === nTr + 1);
+r = await onRequest({ env: { ...env, ASSETS: esPage }, request: req("https://graniterecord.org",
+  { ...tr, record: "translation:/es/guides/real-id", url: "/es/guides/real-id", note: "no such page" }) });
+ok("a translation report from a page the site did not build is not", r.status === 204 && rows.length === nTr + 1);
+r = await onRequest({ env: { ...env, ASSETS: { fetch: async () => new Response('<!DOCTYPE html><html lang="en">') } },
+  request: req("https://graniterecord.org", { ...tr, note: "a page in English" }) });
+ok("a translation report from a page not in its language is not", r.status === 204 && rows.length === nTr + 1);
+r = await onRequest({ env, request: req("https://graniterecord.org", { ...tr, note: "no page to check" }) });
+ok("a translation report with no page to check is not", r.status === 204 && rows.length === nTr + 1);
 console.log(fail.length ? "FAILED: " + fail.join("; ") : "ALL OK");
 process.exit(fail.length ? 1 : 0);
 """
@@ -70270,6 +70790,17 @@ def _report_agree(CR):
     sent = set(re.findall(r"^\s*(\w+)[:,]", payload, re.M))
     read = set(re.findall(r"(?<![.\w])body\.(\w+)", js))   # not request.body.getReader
     assert sent == read, f"app.js sends {sorted(sent)}, report.js reads {sorted(read)}"
+    # A MISTAKE IN A TRANSLATION (24 October 2026): components.js's box sends
+    # the same keys, and its field is the one report.js and the compiler
+    # name TRANSLATION.
+    comp = Path("src/pages/components.js").read_text(encoding="utf-8")
+    tm = re.search(r"var payload=\{(.*?)\};", comp, re.S)
+    assert tm, "components.js no longer builds the translation report's payload"
+    tsent = set(re.findall(r"(?:^|[{,])\s*(\w+):", tm.group(1)))
+    assert tsent == read, f"components.js's translation box sends {sorted(tsent)}, report.js reads {sorted(read)}"
+    fm = re.search(r'export const TRANSLATION = "(\w+)";', js)
+    assert fm and fm.group(1) == CR.TRANSLATION and f'field:"{CR.TRANSLATION}"' in tm.group(1), (
+        "report.js, compile_reports.py and components.js do not name a translation's field alike")
     # The tabs: a tab the box sends and the Function refuses is a report
     # dropped while the reader is told thank you -- which is what happened to
     # every report sent from a member's Co-sponsored tab.
@@ -70336,7 +70867,8 @@ for (const [url, record, file] of pages) {
   const r = await onRequest({ env, request: new Request("https://graniterecord.org/api/report", {
     method: "POST", headers: { "Origin": "https://graniterecord.org",
                                "Content-Type": "application/json" },
-    body: JSON.stringify({ record, url, tab: "", field: "other", build: "", elapsed: 9000,
+    body: JSON.stringify({ record, url, tab: "", build: "", elapsed: 9000,
+                           field: record.startsWith("translation:") ? "translation" : "other",
                            note: "A check that a report from this page is kept." }) }) });
   if (r.status !== 204 || rows !== before + 1) bad.push(url);
 }
@@ -70361,6 +70893,13 @@ def _report_pages_kept(site, fn, node):
                 continue
             pages.append([f"/{folder}/{f.stem}", f"{kind}:{m.group(1)}", str(f.resolve())])
             sent[kind] += 1
+    # And from every page built in another language, a mistake in its
+    # translation (24 October 2026), as components.js's box sends one.
+    for f in sorted((Path(site) / "es").rglob("*.html")) if (Path(site) / "es").is_dir() else []:
+        rel = f.relative_to(site).with_suffix("").as_posix()
+        url = "/" + (rel[:-len("index")] if rel.split("/")[-1] == "index" else rel)
+        pages.append([url, f"translation:{url}", str(f.resolve())])
+        sent["translation"] += 1
     root = Path(tempfile.mkdtemp())
     try:
         (root / "pages.json").write_text(json.dumps(pages), encoding="utf-8")
@@ -70400,8 +70939,9 @@ def _report_pages():
     assert sent.get("member"), "no legislator page carries GR_MEMBER, so none has a report box"
     assert not bad, (f"{len(bad)} of {total:,} pages send a report the Function drops while "
                      f"thanking the reader: " + ", ".join(bad[:6]))
-    return "ok", (f"{sent.get('member', 0):,} legislator and {sent.get('committee', 0):,} "
-                  f"committee pages each sent one report, and every one was kept"
+    return "ok", (f"{sent.get('member', 0):,} legislator, {sent.get('committee', 0):,} committee "
+                  f"and {sent.get('translation', 0):,} Spanish pages each sent one report, and every "
+                  "one was kept"
                   + (f"; {boxless} pages carry no box" if boxless else ""))
 
 

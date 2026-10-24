@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-08.67
+# GRANITE_VERSION: 2026-09-08.68
 """
 The civics section: a hub and one page per topic, in order.
 
@@ -899,7 +899,7 @@ def glossary_page_lang(lang, base):
 
 
 def name_versions(page, english):
-    """`english`, the page at GLOSSARY_PAGE in English, naming its versions in
+    """`english`, the page at `page` in English, naming its versions in
     the other languages: on <html> (data-alt-<code>, which the language
     script reads), in the footer's link to each, and to a search engine
     (hreflang) once every version is offered (i18n.offered)."""
@@ -1441,12 +1441,18 @@ def guide_ready(g, fetched, chapters, sections=None):
     return ""
 
 
-def guide_record(g, data, bills, chapters):
+def guide_record(g, data, bills, chapters, lang=I.DEFAULT):
     """IN THE RECORD: what the legislature is doing to the law the guide
     describes, by rule and without a word about it -- the bills now moving
     that would change its chapters, and the laws that changed them most
     recently, each with its chapter's own page. The plan: "here is how the
-    program works, and here is the legislature changing it"."""
+    program works, and here is the legislature changing it".
+
+    In another language the sentences are translated and the record's own
+    words -- a chapter's name, a bill's number and status -- are printed as
+    the record has them, marked lang="en" (i18n.py, the first kind)."""
+    if lang != I.DEFAULT:
+        return _record_lang(guide_record(g, data, bills, chapters), lang)
     import build_rsa as BR
     rows = []
     pend = BR.chapter_pending(data, bills)
@@ -1480,37 +1486,104 @@ RECENT_FROM = 2020
 RECENT_SHOWN = 8
 
 
-def guide_flow(g):
+def _record_lang(english, lang):
+    """In the Record (guide_record) in `lang`: its sentences translated, the
+    chapters' names and the bills' lists marked as the record's English."""
+    if not english:
+        return english
+    now = I.say(lang, "guides.rec_now", "Bills now before the General Court that would change it:")
+    since = I.say(lang, "guides.rec_since", "Laws that changed it since {year}, newest first:",
+                  year=RECENT_FROM)
+    none = I.say(lang, "guides.rec_none", "No bill has changed it since {year}, and none now "
+                 "before the General Court would.", year=RECENT_FROM)
+    out = english.replace(
+        '<p class="g-what">Bills now before the General Court that would change it:</p>',
+        f'<p class="g-what">{now}</p>').replace(
+        f'<p class="g-what">Laws that changed it since {RECENT_FROM}, newest first:</p>',
+        f'<p class="g-what">{since}</p>').replace(
+        f'<p class="g-what">No bill has changed it since {RECENT_FROM}, and none now before the '
+        'General Court would.</p>', f'<p class="g-what">{none}</p>')
+    out = re.sub(r'<h3 class="g-ch"><a href="([^"]*)">Chapter ([^:<]+)(?:: ([^<]*))?</a></h3>',
+                 lambda m: (f'<h3 class="g-ch"><a href="{m.group(1)}">'
+                            + I.say(lang, "guides.rec_chapter", "Chapter {n}", n=m.group(2))
+                            + (f': <span lang="en">{m.group(3)}</span>' if m.group(3) else "")
+                            + "</a></h3>"), out)
+    out = re.sub(r"<summary>Show all (\d+)</summary>",
+                 lambda m: "<summary>" + I.say(lang, "guides.rec_all", "Show all {n}", n=m.group(1))
+                 + "</summary>", out)
+    return out.replace('<ul class="rs-list">', '<ul class="rs-list" lang="en">')
+
+
+class Words:
+    """A guide's own words in one language (the owner, 24 October 2026: "The
+    how to pages are the next important section I think is worth
+    translating."). h(html) is a piece of the page's HTML, t(text) a plain
+    text of it (a title, a button's label) escaped for the page. In English
+    both are the words as written; in another language each piece is its
+    translation where the catalog has one translated from this English
+    (i18n.say_html, guides.page_keys), and the English, marked lang="en",
+    where it has none -- never words translated from English the page no
+    longer says."""
+
+    def __init__(self, lang=I.DEFAULT, slug=""):
+        self.lang = lang
+        self.keys = G.page_keys(slug) if slug and lang != I.DEFAULT else {}
+
+    def h(self, html_):
+        return I.say_html(self.lang, html_, self.keys)
+
+    def t(self, text, attr=False):
+        """`text` escaped; in another language its translation, or the
+        English in <span lang="en"> (bare where `attr`: an attribute)."""
+        if self.lang == I.DEFAULT:
+            return E(text)
+        en = I.norm(text)
+        key = self.keys.get(en)
+        got = I.say_piece(self.lang, key, en) if key else None
+        if got is not None:
+            return E(got)
+        if not key:
+            I.MISSES.add((self.lang, f"(no key for {en[:50]!r})", "unkeyed"))
+        return E(text) if attr else f'<span lang="en">{E(text)}</span>'
+
+
+def guide_flow(g, w=Words()):
     """THE DIAGRAM: the path through the guide, box to box, a question's
     answers side by side. HTML rather than a picture, so a screen reader
     reads it as the list it is, and it reflows on a phone."""
     items = []
     for node in g["flow"]:
         if node[0] == "box":
-            items.append(f'<li class="g-fbox"><span>{node[1]}</span></li>')
+            items.append(f'<li class="g-fbox"><span>{w.h(node[1])}</span></li>')
         else:
-            answers = "".join(f'<li><b>{a}</b><span>{then}</span></li>' for a, then in node[2])
-            items.append(f'<li class="g-fask"><p class="g-fq">{node[1]}</p>'
+            answers = "".join(f'<li><b>{w.h(a)}</b><span>{w.h(then)}</span></li>' for a, then in node[2])
+            items.append(f'<li class="g-fask"><p class="g-fq">{w.h(node[1])}</p>'
                          f'<ul class="g-fans">{answers}</ul></li>')
-    return (f'<figure class="g-flow" role="group" aria-label="{E(g["title"])}, in short">'
+    label = (E(g["title"]) + ", in short" if w.lang == I.DEFAULT else
+             E(I.say(w.lang, "guides.in_short", "{title}, in short",
+                     title=html.unescape(w.t(g["title"], attr=True)))))
+    return (f'<figure class="g-flow" role="group" aria-label="{label}">'
             f'<ol>{"".join(items)}</ol></figure>')
 
 
-def guide_steps(g):
+def guide_steps(g, w=Words()):
     """THE STEPS, numbered: each one's words, a note set apart where
     something has changed, a button to the official page it needs, and the
     sections of law it rests on, each linked to its place on the Laws
-    pages."""
+    pages. An outside page is in English (hreflang) on a page in another
+    language, which says so once at its top."""
     out = []
+    the_law = I.say(w.lang, "guides.the_law", "The law:")
     for s_ in g["steps"]:
         acts = "".join(f'<a class="g-btn" href="{E(u)}"'
-                       + ('' if u.startswith("/") else ' target="_blank" rel="noopener"')
-                       + f'>{E(label)}</a>' for label, u in s_["actions"])
+                       + ('' if u.startswith("/") else ' target="_blank" rel="noopener"'
+                          + ('' if w.lang == I.DEFAULT else ' hreflang="en"'))
+                       + f'>{w.t(label)}</a>' for label, u in s_["actions"])
         law = ", ".join(f'<a href="{E(G.law_href(r))}">{E(r)}</a>' for r in s_["law"])
-        out.append(f'<li class="g-step"><h3 class="g-sh">{E(s_["title"])}</h3>{s_["text"]}'
-                   + (f'<p class="g-note" role="note">{s_["note"]}</p>' if s_["note"] else "")
+        out.append(f'<li class="g-step"><h3 class="g-sh">{w.t(s_["title"])}</h3>{w.h(s_["text"])}'
+                   + (f'<p class="g-note" role="note">{w.h(s_["note"])}</p>' if s_["note"] else "")
                    + (f'<p class="g-acts">{acts}</p>' if acts else "")
-                   + (f'<p class="g-law">The law: {law}</p>' if law else "") + "</li>")
+                   + (f'<p class="g-law">{the_law} {law}</p>' if law else "") + "</li>")
     return f'<ol class="g-steps">{"".join(out)}</ol>'
 
 
@@ -1564,6 +1637,287 @@ def guide_page(tmpl, g, base, record, draft_why=""):
     return p.replace('<div id="results"></div>',
                      '<div id="results"><div class="l-page g-page">' + hub_bar("guides") + headx
                      + f'<div class="l-art">{article}</div></div>{OTP_JS}</div>', 1)
+
+
+# ---------------------------------------------------------------------------
+# THE HOW-TO GUIDES IN ANOTHER LANGUAGE (the owner, 24 October 2026: "The how
+# to pages are the next important section I think is worth translating.").
+# Every guide a language has (i18n.PAGES) is written at its English address
+# under /<code>/, and the Resources hub's How-To Guides with them, drawn in
+# the frame the home page is (build_pages.shell), so the header, the footer
+# and Settings are in that language. Each piece of a guide's words is its
+# translation where the catalog has one made from the English the guide says
+# now, and the English, marked so, where it has not (Words, i18n.say_html);
+# the record's own words stay English, and so does every page the guides send
+# a reader to outside this site, which the page says once at its top. A link
+# to a page the language has goes to that page in it (lang_links).
+# ---------------------------------------------------------------------------
+def lang_links(html_, lang):
+    """`html_` with every link to a page `lang` has (i18n.has) sent to that
+    page in `lang`; every other link left as it is, to the English page."""
+    if lang == I.DEFAULT:
+        return html_
+
+    def one(m):
+        h = m.group(1)
+        if re.match(r"[a-z][a-z0-9+.-]*:|//|#", h):
+            return m.group(0)
+        path, _, frag = h.partition("#")
+        p = path.lstrip("/")
+        page = p if p.endswith(".html") else (f"{p}.html" if p else "index.html")
+        if p.startswith(f"{lang}/") or not I.has(lang, page):
+            return m.group(0)
+        return f'href="{I.href(lang, page)}' + (f"#{frag}" if frag else "") + '"'
+    return re.sub(r'href="([^"]*)"', one, html_)
+
+
+def lang_sections(english, translated, where):
+    """`translated` cut at its h2s as split_sections cuts a page, each
+    section keeping the address its English has, so a link to a section --
+    a guide's button to Testifying and Attending's #s-how-hearings-are-
+    announced -- reaches it in either language."""
+    en, out = split_sections(english, where), split_sections(translated, where)
+    if len(en) != len(out):
+        raise SystemExit(f"{where}: the translation has {len(out)} sections where the English has "
+                         f"{len(en)}")
+    return [(eid, h, c) for (eid, _h, _c), (_sid, h, c) in zip(en, out)]
+
+
+def lang_hub_bar(lang):
+    """The Resources bar over a guide in `lang`: the hub, and How-To Guides
+    marked, in that language; Learn and the Official Sources are English
+    pages, and say so."""
+    hub = I.href(lang, HUB_PAGE)
+    en = I.say(lang, "guides.in_english", "in English")
+    tabs = (f'<a class="l-hubtab" href="{hub}#guides" aria-current="true">'
+            + I.say(lang, "guides.hub_guides", "How-To Guides") + "</a>"
+            + f'<a class="l-hubtab" href="{HUB}#learn" hreflang="en">'
+            + I.say(lang, "guides.hub_learn", "Learn") + f'<span class="l-hubin">&nbsp;({en})</span></a>'
+            + f'<a class="l-hubtab" href="{HUB}#sources" hreflang="en">'
+            + I.say(lang, "guides.hub_sources", "Official Sources")
+            + f'<span class="l-hubin">&nbsp;({en})</span></a>')
+    name = I.say(lang, "guides.hub", "Resources")
+    return (f'<nav class="l-hub" aria-label="{E(name)}"><p class="l-hubname">'
+            f'<a href="{hub}">{name}</a></p><div class="l-hubtabs">{tabs}</div></nav>')
+
+
+def lang_note(lang):
+    """The line under a guide's title in another language: what is in it."""
+    return ('<p class="langnote">' + I.say(
+        lang, "guides.lang_note", "This guide is in Spanish. The official pages it links to, and "
+        "the record itself, are in English.") + "</p>")
+
+
+def lang_sources(sources, w):
+    """Where This Comes From in `w`'s language: each source by its name in
+    that language, the page itself as it is (sources_list)."""
+    return lang_links(sources_list([(html.unescape(w.t(label, attr=True)), u) for label, u in sources]),
+                      w.lang).replace('target="_blank" rel="noopener">',
+                                      'target="_blank" rel="noopener" hreflang="en">')
+
+
+def lang_otp(secs, path, lang):
+    """On This Page, in `lang`, for a page drawn in the home page's frame."""
+    here = I.href(lang, path)
+    items = "".join(f'<li><a href="{E(here)}#{E(sid)}">{_plain(h)}</a></li>' for sid, h, _ in secs)
+    on = I.say(lang, "guides.on_page", "On this page")
+    return (f'<div class="pageacts" id="pageacts"><details class="l-otp"><summary>{on}</summary>'
+            f'<nav class="l-otpb" aria-label="{E(on)}"><ol>{items}</ol></nav></details></div>')
+
+
+def guide_page_lang(g, lang, base, record=""):
+    """The guide `g` in `lang`, written at i18n.href(lang, its page): the
+    page guide_page draws, piece by piece in that language, in the home
+    page's frame. `record` is In the Record in that language (guide_record)."""
+    import build_pages as BP
+    page = guide_href(g["slug"])
+    w = Words(lang, g["slug"])
+    title = w.t(g["title"])
+    secs = [("at-a-glance", I.say(lang, "guides.glance", "At a Glance"),
+             f'<p class="g-glance">{w.h(g["glance"])}</p>' + civics.wide(guide_flow(g, w))),
+            ("steps", I.say(lang, "guides.steps", "Step by Step"), guide_steps(g, w))]
+    if g["more"]:
+        secs += lang_sections(g["more"], w.h(g["more"]), I.href(lang, page))
+    if record:
+        secs.append(("in-the-record", I.say(lang, "guides.record", "In the Record"), record))
+    if g["see"]:
+        secs.append(("see-also", I.say(lang, "guides.see", "See Also"), '<ul class="g-see">' + "".join(
+            f'<li><a href="{E(u)}">{w.t(label)}</a></li>' for label, u in g["see"]) + "</ul>"))
+    secs.append(("sources", I.say(lang, "guides.sources", "Where This Comes From"),
+                 lang_sources(g["sources"], w)))
+    when = G.checked_on(g)
+    note = ""
+    if when and (build_date.today() - _day(when)).days > G.STALE_DAYS:
+        note = ('<p class="g-stale" role="note">' + I.say(
+            lang, "guides.stale", "<strong>This guide may be out of date.</strong> It was last checked "
+            "{date}. Check each step against the official page it links before you rely on it.",
+            date=E(C.date_words(_day(when), "full", lang))) + "</p>")
+    checked = ('<p class="g-checked">' + I.say(lang, "guides.checked", "Checked against its sources {date}.",
+                                                date=E(C.date_words(_day(when), "full", lang)))
+               + "</p>" if when else "")
+    head_ = (f'<header class="l-head"><h1>{title}</h1>'
+             f'<p class="l-lead">{dashes(w.t(g["blurb"]))}</p>' + lang_note(lang) + note + checked
+             + lang_otp(secs, page, lang) + "</header>")
+    article = lang_links("".join(section(*s_) for s_ in secs), lang)
+    body = ('<div class="l-page g-page">' + lang_hub_bar(lang) + head_
+            + f'<div class="l-art">{article}</div></div>{OTP_JS}')
+    plain = html.unescape(re.sub(r"<[^>]+>", "", title))
+    return BP.shell(f"{E(plain)} — Granite Record", page, body,
+                    desc=html.unescape(re.sub(r"<[^>]+>", "", w.t(g["blurb"], attr=True))),
+                    base=base, lang=lang)
+
+
+def figures_lang(figures, lang, dist):
+    """The figures a page of civics.HOW_TO fills, with those that are words
+    rather than a number said in `lang`: the email sentence, the year video
+    began, the day the page was built, and the worked example of a town's
+    representatives (civics.reps_example)."""
+    if lang == I.DEFAULT:
+        return figures
+    out = dict(figures)
+    out["follow_email"] = (
+        I.say(lang, "guides.follow_email_live", "A feed needs no account and no email address. "
+              "Updates can also come by email: sign up in the same <b>Follow</b> control, and the "
+              '<a href="data.html#privacy">Data page</a> says what is kept and for how long.')
+        if S.follow_live() else
+        I.say(lang, "guides.follow_email_off", "There is no email option yet. No account, no email "
+              "address, nothing to leak."))
+    if figures.get("hearing_video_since"):
+        out["hearing_video_since"] = I.say(lang, "guides.video_since", ", nearly every one since {year}",
+                                           year=figures["hearing_video_from"])
+    out["built_on"] = C.date_words(build_date.today(), "full", lang)
+    if dist:
+        got = civics.reps_example(dist, lang=lang)
+        out.update({k: (f"{v:,}" if isinstance(v, int) else v) for k, v in got.items()})
+    return out
+
+
+def article_page_lang(t, lang, base, figures, names=None, con=None):
+    """A page of civics.HOW_TO in `lang`, at i18n.href(lang, its page): its
+    words piece by piece (Words), the paragraphs guides.SAID writes once
+    among them, the shorthand table from the glossary's translations, and
+    the figures filled in after, in the language's forms (figures_lang)."""
+    import build_pages as BP
+    page = guide_href(t["slug"])
+    w = Words(lang, t["slug"])
+    english = G.reused(G.topic_body(t))
+    body = w.h(english)
+    body = body.replace(G.SHORTHAND_SLOT, civics.shorthand_table(lang))
+    body = fill(body, figures)
+    if names is not None:
+        body = suffixed(body, names)
+    if con is not None:
+        body = CT.link_citations(body, con)
+    secs = lang_sections(english, body, I.href(lang, page))
+    if t.get("holds"):
+        sid, h, c = secs[-1]
+        secs[-1] = (sid, h, c + f'<p class="l-note">{fill(w.h(t["holds"]), figures)}</p>')
+    if t["sources"]:
+        secs.append(("sources", I.say(lang, "guides.sources", "Where This Comes From"),
+                     lang_sources(t["sources"], w)))
+    title = w.t(t["title"])
+    lead = dashes(w.t(t["blurb"])) if t["blurb"] else ""
+    foot = ('<nav class="l-pager" aria-label="' + E(I.say(lang, "guides.other", "Other guides"))
+            + '"><span class="l-pgp"></span>'
+            f'<a class="l-pgm" href="{I.href(lang, HUB_PAGE)}#guides">'
+            + I.say(lang, "guides.all", "All How-To Guides") + '</a><span class="l-pgn"></span></nav>')
+    head_ = (f'<header class="l-head"><h1>{title}</h1>'
+             + (f'<p class="l-lead">{lead}</p>' if lead else "") + lang_note(lang)
+             + lang_otp(secs, page, lang) + "</header>")
+    article = lang_links("".join(section(*s_) for s_ in secs), lang) + foot
+    out = BP.shell(f"{E(html.unescape(re.sub(r'<[^>]+>', '', title)))} — Granite Record", page,
+                   '<div class="l-page">' + lang_hub_bar(lang) + head_
+                   + f'<div class="l-art">{article}</div></div>{OTP_JS}',
+                   desc=html.unescape(re.sub(r"<[^>]+>", "", w.t(t["blurb"], attr=True))),
+                   base=base, lang=lang)
+    if "[[" in out:
+        raise SystemExit(f"{I.href(lang, page)} would publish an unfilled figure: "
+                         + out[out.index("[["):out.index("[[") + 40])
+    return out
+
+
+def hub_guides_lang(lang, published=(), articles=()):
+    """The How-To Guides tab in `lang` (hub_guides): every guide by its task
+    in a reader's words and its line, under the tab's groups, each from the
+    catalog where it is current and in English, marked, where it is not."""
+    here = {g["slug"] for g in published} | {t["slug"] for t in articles}
+
+    def said(key, en, plain=False):
+        got = I.say_piece(lang, key, I.norm(en))
+        if got is not None:
+            return E(got) if plain else got
+        return f'<span lang="en">{E(en) if plain else en}</span>'
+
+    def item(slug, does, line):
+        return (f'<li><a href="{E(I.href(lang, guide_href(slug)))}"><b>{does}</b>'
+                f'<span>{dashes(line)}</span></a></li>')
+    secs, listed = [], set()
+    for group, tasks in G.TASKS:
+        lis = "".join(item(t["slug"], said(f"guide.task.{t['slug']}.does", t["does"]),
+                           said(f"guide.task.{t['slug']}.line", t["line"]))
+                      for t in tasks if t["slug"] in here)
+        listed |= {t["slug"] for t in tasks}
+        if lis:
+            secs.append(hub_section("g-" + _slug(group),
+                                    said(f"guide.group.{I.slug_words(group)}", group, plain=True),
+                                    f'<ul class="r-tasks">{lis}</ul>'))
+    rest = "".join(item(g["slug"], Words(lang, g["slug"]).t(g["title"]),
+                        Words(lang, g["slug"]).t(g["blurb"]))
+                   for g in published if g["slug"] not in listed)
+    if rest:
+        secs.append(hub_section("g-more", said("guide.group.more", G.MORE, plain=True),
+                                f'<ul class="r-tasks">{rest}</ul>'))
+    return ('<p class="r-intro">' + I.say(
+        lang, "guides.hub_intro", "Step-by-step help with things people do with the state, and with "
+        "taking part in the legislature. Each step-by-step guide links the official page that has the "
+        "final word, and says when it was last checked against it.") + "</p>" + "".join(secs))
+
+
+def hub_page_lang(lang, base, published=(), articles=()):
+    """The Resources hub in `lang`, at i18n.href(lang, HUB_PAGE): its
+    How-To Guides in that language (hub_guides_lang), and the way to Learn
+    and the Official Sources, which are in English and say so."""
+    import build_pages as BP
+    title = I.say(lang, "guides.hub", "Resources")
+    lead = I.say(lang, "guides.hub_lead", "How to get things done with New Hampshire&rsquo;s state "
+                 "and local government, how it works, and where to find what it publishes itself.")
+    en = I.say(lang, "guides.in_english", "in English")
+    goto = ('<ul class="r-goto">'
+            f'<li><a href="{HUB}#learn" hreflang="en"><b>'
+            + I.say(lang, "guides.hub_learn", "Learn") + f' ({en})</b><span>'
+            + I.say(lang, "guides.hub_learn_line", "How each part of state and local government works.")
+            + f'</span></a></li><li><a href="{HUB}#sources" hreflang="en"><b>'
+            + I.say(lang, "guides.hub_sources", "Official Sources") + f' ({en})</b><span>'
+            + I.say(lang, "guides.hub_sources_line", "The state&rsquo;s own sites, where its records and "
+                    "services are.") + "</span></a></li></ul>")
+    guides = I.say(lang, "guides.hub_guides", "How-To Guides")
+    body = ('<div class="l-page r-hub"><header class="l-head r-head">'
+            f'<h1>{title}</h1><p class="l-lead">{lead}</p><p class="langnote">' + I.say(
+                lang, "guides.hub_lang_note", "This page is in Spanish, and so are the guides it "
+                "lists. The official pages they link to, and the record itself, are in English.")
+            + '</p></header>'
+            f'<div class="r-sheet" id="guides"><h2 class="twnph">{guides}</h2>'
+            + lang_links(hub_guides_lang(lang, published, articles), lang) + '</div>'
+            '<div class="r-sheet" id="more"><h2 class="twnph">'
+            + I.say(lang, "guides.hub_more", "More Resources") + f"</h2>{goto}</div></div>")
+    return BP.shell(f"{title} — Granite Record", HUB_PAGE, body,
+                    desc=html.unescape(re.sub(r"<[^>]+>", "", lead)), base=base, lang=lang)
+
+
+def write_lang(site, page, make):
+    """Each other language's version of `page` that i18n.PAGES names, as
+    make(lang) draws it, at i18n.href(lang, page). Returns the languages."""
+    done = []
+    for lang in I.LANGS:
+        if lang == I.DEFAULT or not I.has(lang, page):
+            continue
+        dst = site / I.href(lang, page).lstrip("/")
+        if page.endswith("index.html"):
+            dst = dst / "index.html"
+        dst.parent.mkdir(parents=True, exist_ok=True)
+        dst.write_text(make(lang), encoding="utf-8")
+        done.append(lang)
+    return done
 
 
 HOME_SLOT = re.compile(r"<!-- guides -->.*?<!-- /guides -->", re.S)
@@ -1674,13 +2028,21 @@ def build_guides(site, tmpl, base, drafts=False):
             continue
         out.mkdir(parents=True, exist_ok=True)
         record = guide_record(g, data, bills, chapters)
-        (out / f"{g['slug']}.html").write_text(
-            S.clean_links(guide_page(tmpl, unlinked(g, held), base, record, why)), encoding="utf-8")
+        page = guide_page(tmpl, unlinked(g, held), base, record, why)
+        # AND IN EACH OTHER LANGUAGE THE GUIDE IS IN (i18n.PAGES; the owner,
+        # 24 October 2026), which the English names as its twin. Only a
+        # published guide: a draft is for a person to read in English.
+        langs = [] if why else write_lang(site, guide_href(g["slug"]), lambda lang: guide_page_lang(
+            unlinked(g, held), lang, base, guide_record(g, data, bills, chapters, lang)))
+        if langs:
+            page = name_versions(guide_href(g["slug"]), page)
+        (out / f"{g['slug']}.html").write_text(S.clean_links(page), encoding="utf-8")
         if not why:
             published.append(g)
             urls.append(base + S.canon("/" + guide_href(g["slug"])))
         print(f"  guides/{g['slug']}.html" + (f" (DRAFT: {why})" if why else ", checked "
-                                                + G.checked_on(g)))
+                                                + G.checked_on(g))
+              + (f"; and in {', '.join(langs)}" if langs else ""))
     # A GUIDE HELD BACK LEAVES NO OLD COPY: a page written by an earlier build
     # whose claims have since been unset is not served in its place.
     # The pages that became guides (civics.HOW_TO) are written into the same
@@ -1691,6 +2053,16 @@ def build_guides(site, tmpl, base, drafts=False):
             if f.name not in keep:
                 f.unlink()
                 print(f"  guides/{f.name}: removed, no longer published")
+        # And its copy in another language, which is written only beside a
+        # published English one.
+        for lang in I.LANGS:
+            there = site / lang / GUIDE_DIR
+            if lang == I.DEFAULT or not there.is_dir():
+                continue
+            for f in there.glob("*.html"):
+                if f.name not in keep:
+                    f.unlink()
+                    print(f"  {lang}/guides/{f.name}: removed, no longer published")
     return published, urls
 
 
@@ -1864,6 +2236,9 @@ def main():
     # Constitution tab, wherever the Constitution as read holds it.
     con = PCON.load()
     learn = learn_topics(topics)
+    # The district map, for the worked example of a town's representatives
+    # in another language (figures_lang).
+    dist = _load(site / "districts.json", {})
     for t in topics:
         moved = t["slug"] in civics.HOW_TO
         # A PARAGRAPH A GUIDE ALSO SAYS IS THE GUIDE'S (23 October 2026):
@@ -1893,6 +2268,11 @@ def main():
                               lead=dashes(E(t["blurb"])) if t["blurb"] else "",
                               description=t["blurb"], secs=secs, foot=guides_foot(),
                               base=a.base, hub="guides")
+            # AND IN EACH OTHER LANGUAGE IT IS IN (i18n.PAGES; the owner, 24
+            # October 2026), its figures in that language's forms.
+            if write_lang(site, guide_href(t["slug"]), lambda lang: article_page_lang(
+                    t, lang, a.base, figures_lang(figures, lang, dist), names, con)):
+                page = name_versions(guide_href(t["slug"]), page)
             (site / GUIDE_DIR).mkdir(parents=True, exist_ok=True)
             (site / GUIDE_DIR / f"{t['slug']}.html").write_text(S.clean_links(page), encoding="utf-8")
             gurls.append(a.base + S.canon("/" + guide_href(t["slug"])))
@@ -1959,8 +2339,13 @@ def main():
 
     # ---- the hub ----------------------------------------------------------
     groups = official_sources(numbers_results(Path(".")))
-    (site / HUB_PAGE).write_text(S.clean_links(hub_page(tmpl, a.base, learn, groups, published,
-                                                        articles)), encoding="utf-8")
+    hub = hub_page(tmpl, a.base, learn, groups, published, articles)
+    # Its How-To Guides in each other language the hub is in (i18n.PAGES).
+    langs = write_lang(site, HUB_PAGE, lambda lang: hub_page_lang(lang, a.base, published, articles))
+    if langs:
+        hub = name_versions(HUB_PAGE, hub)
+        print(f"  {HUB_PAGE}: its How-To Guides in {', '.join(langs)} too")
+    (site / HUB_PAGE).write_text(S.clean_links(hub), encoding="utf-8")
     # THE OLD HUB'S FILE GOES. /learn redirects to the hub (_redirects), and a
     # learn.html left in the folder by an earlier build would be served in
     # the redirect's place by a host that prefers a file.

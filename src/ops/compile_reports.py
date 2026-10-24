@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-12.12
+# GRANITE_VERSION: 2026-09-12.13
 """
 What readers reported, compiled for a person and for the session that triages.
 
@@ -137,8 +137,12 @@ def current_years():
 # than the Function wrote it, and it is set aside, not shown.
 FIELDS = ("date", "status", "sponsor", "vote", "hearing", "committee", "text",
           "link", "chapter", "veto", "topic", "fiscal", "other")
-RECORD = re.compile(r"^(bill:\d{4}/[A-Z]{2,6}\d{1,4}|member:\d{1,7}|committee:[A-Za-z]\d{2,3}(?:-\d{4})?)$")
-PATH = re.compile(r"^/(bill/\d{4}/[a-z]{2,6}\d{1,4}|legislator/[a-z0-9-]{1,80}|committee/[A-Za-z]\d{2,3}(?:-\d{4})?)$")
+# And a page in another language whose translation a reader reports (the
+# owner, 24 October 2026): "translation:" and the page's own address, with
+# TRANSLATION as its field and no other kind's (report.js says the same).
+RECORD = re.compile(r"^(bill:\d{4}/[A-Z]{2,6}\d{1,4}|member:\d{1,7}|committee:[A-Za-z]\d{2,3}(?:-\d{4})?|translation:/es/(?:[a-z0-9]+(?:-[a-z0-9]+)*(?:/[a-z0-9]+(?:-[a-z0-9]+)*){0,2})?)$")
+PATH = re.compile(r"^/(bill/\d{4}/[a-z]{2,6}\d{1,4}|legislator/[a-z0-9-]{1,80}|committee/[A-Za-z]\d{2,3}(?:-\d{4})?|es/(?:[a-z0-9]+(?:-[a-z0-9]+)*(?:/[a-z0-9]+(?:-[a-z0-9]+)*){0,2})?)$")
+TRANSLATION = "translation"
 # The tabs the pages render, and nothing else: a tab is a label, and a
 # free-text tab was 24 letters of a reader's own words outside the quotation.
 TABS = ("", "Summary", "Bill Text", "Votes", "Hearings", "Reports", "Sponsors",
@@ -479,9 +483,25 @@ def member_pages(site):
     return out
 
 
-def page_of(record, members):
-    """The address a record's page has, built from the record. None if none."""
+def translated_pages(site):
+    """The addresses of the pages built in another language, from the built
+    site itself: /es/, /es/guides/how-to-vote."""
+    out = set()
+    for lang_dir in (Path(site) / "es",):
+        if lang_dir.is_dir():
+            for f in lang_dir.rglob("*.html"):
+                rel = f.relative_to(site).with_suffix("").as_posix()
+                out.add("/" + (rel[:-len("index")] if rel.split("/")[-1] == "index" else rel))
+    return out
+
+
+def page_of(record, members, pages=frozenset()):
+    """The address a record's page has, built from the record. None if none.
+    A translation's is its own address, where the site built a page there
+    (`pages`, translated_pages)."""
     kind, _, ref = record.partition(":")
+    if kind == "translation":
+        return ref if ref in pages else None
     if kind == "bill":
         yr, bid = ref.split("/")
         return f"/bill/{yr}/{bid.lower()}"
@@ -497,7 +517,8 @@ def well_formed(r):
                     and RECORD.match(str(r.get("record", "")))
                     and PATH.match(str(r.get("url", "")))
                     and renamed_tab(r).get("tab", "") in TABS
-                    and r.get("field") in FIELDS
+                    and (r.get("field") == TRANSLATION and not r.get("tab")
+                         if r["record"].startswith("translation:") else r.get("field") in FIELDS)
                     and BUILD.match(str(r.get("build", "")))
                     and isinstance(r.get("note"), str) and 3 <= len(r["note"]) <= 1000
                     and r.get("hidden") in (0, 1)
@@ -719,6 +740,8 @@ PRODUCERS = {
 
 def producer(record, field):
     kind, _, ref = record.partition(":")
+    if kind == "translation":
+        return "src/pages/lang/es.json, the translation (python3 src/ops/translations.py --set)"
     if kind == "member":
         return "build_site_v2.py (member_labels), build_legislator_pages.py"
     if kind == "committee":
@@ -752,15 +775,16 @@ def handled():
     return out
 
 
-def judge(rows, members):
-    """[(row, reasons)] for well-formed rows, and the count set aside."""
+def judge(rows, members, pages=frozenset()):
+    """[(row, reasons)] for well-formed rows, and the count set aside.
+    `pages` is the built pages in another language (translated_pages)."""
     good = [renamed_tab(r) for r in rows if well_formed(r)]
     per_record = Counter(r["record"] for r in good)
     flood = len(good) > FLOOD
     out = []
     for r in good:
         why = screen(r["note"], bool(r["hidden"]))
-        page = page_of(r["record"], members)
+        page = page_of(r["record"], members, pages)
         if page is None:
             why.append("the record has no page in the built site")
         elif r["url"] != page:
@@ -777,7 +801,7 @@ def compile_rows(rows, which, site, day, nonce=None, earlier_held=()):
     """(markdown, counts). Pure: everything it needs is passed in."""
     nonce = nonce or secrets.token_hex(6)
     members = member_pages(site)
-    judged, malformed = judge(rows, members)
+    judged, malformed = judge(rows, members, translated_pages(site))
     held = [(r, why) for r, why, _ in judged if why]
     shown = [(r, page) for r, why, page in judged if not why]
     ledger = handled()
@@ -851,7 +875,7 @@ def open_held(which, site):
     """Held reports from earlier nights that no person has closed: (id, record, field, reasons)."""
     closed = handled()
     rows = [r for r in issues(which) if not closed.get((which, r.get("id")))]
-    judged, _ = judge(rows, member_pages(site))
+    judged, _ = judge(rows, member_pages(site), translated_pages(site))
     return [(r["id"], r["record"], r["field"], "; ".join(why)) for r, why, _ in judged if why]
 
 
@@ -886,7 +910,7 @@ def close(report_id, verdict, why, by, which, site):
     rec = next((r for r in issues(which) if r.get("id") == report_id), None)
     if not rec:
         sys.exit(f"no report #{report_id} from the {which} database to close")
-    judged, _ = judge([rec], member_pages(site))
+    judged, _ = judge([rec], member_pages(site), translated_pages(site))
     was_held = bool(judged and judged[0][1])
     if was_held and by == "claude":
         sys.exit(f"#{report_id} was held. {PEOPLE_ONLY}: --by with their name.")

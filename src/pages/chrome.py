@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-10-23.3
+# GRANITE_VERSION: 2026-10-23.4
 """
 The frame every page shares, written once: the head's fonts, icons, share
 card, theme script and stylesheet; the header and its sections; the footer;
@@ -304,6 +304,19 @@ FOOT_JS = (
 # words, for a reader who does not read this one. It is hidden until
 # LANG_HEAD finds the language offered to this reader (html.langs), and on a
 # Spanish page it leads to the page's English and back.
+def tr_report(lang):
+    """On a page in another language, the button that reports a mistake in
+    its translation (the owner, 24 October 2026: "We should also add a
+    report button for translation inaccuracy."). Hidden as written:
+    components.js shows it, and opens the box it sends from, so a page read
+    without JavaScript keeps the address above it instead."""
+    if lang == i18n.DEFAULT:
+        return ""
+    return ('\n<p class="trrep"><button type="button" class="trbtn" data-trreport hidden>'
+            + say(lang, "foot.tr_report", "See a mistake in the translation? Tell us")
+            + "</button></p>")
+
+
 def footer_html(lang="en", alt=None):
     """The footer in `lang`. `alt` is {code: address} of this page in the
     other languages; a page that has no other is offered the other
@@ -337,7 +350,7 @@ def footer_html(lang="en", alt=None):
 <a class="fbk out" href="https://forms.gle/PYw9c3xgpDDwvX7E9" target="_blank"
  rel="noopener">{say(lang, "foot.think", "What do you think?")}</a>
 <p class="fbknote">{say(lang, "foot.new", "The site is new and being tested. Found an error?")}
-<a href="mailto:contact@graniterecord.org">contact@graniterecord.org</a></p>
+<a href="mailto:contact@graniterecord.org">contact@graniterecord.org</a></p>{tr_report(lang)}
 </div>
 </div>
 <p class="footlang">{" ".join(others)}</p>

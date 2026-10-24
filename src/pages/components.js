@@ -1,4 +1,4 @@
-// GRANITE_VERSION: 2026-10-09.15
+// GRANITE_VERSION: 2026-10-09.16
 /* THE SITE'S COMPONENTS, IN THE BROWSER. Published as site/components.js and
    loaded by every page, in its head, before app.js, find.js and any page's
    own script, so each of them draws a person, a committee, a date or a time
@@ -648,4 +648,145 @@ function electLine(key,election,takesOffice,today){
   return vals?String(s).replace(/\{([a-z_][a-z0-9_]*)\}/g,function(m,k){
     return Object.prototype.hasOwnProperty.call(vals,k)?vals[k]:m;}):s;
 };
+// A MISTAKE IN A TRANSLATION, REPORTED FROM THE PAGE (the owner, 24 October
+// 2026: "We should also add a report button for translation inaccuracy.").
+// On a page in another language (<html lang> not "en") the footer's button,
+// [data-trreport], written hidden (chrome.tr_report), is shown; while words
+// of the page are selected a small button in the corner offers the same.
+// Either opens one box, which posts to /api/report as a record's own box does
+// (app.js, reportBox): the kind "translation", the page's address, which
+// names its language, the reader's words and, where they had selected some
+// of the page before pressing, those words too, so a proofreader's note says
+// which sentence it means. Nothing identifies the reader. If the send fails
+// they keep their words and are offered an email with all of it filled in.
+// functions/api/report.js keeps it only from a page the site built in that
+// language. In this file, among the behaviour, because the words file of a
+// page in another language (/lang/<code>.js) carries what it says (tr).
+(function(){
+  if(typeof document==="undefined"||!document.addEventListener||!document.documentElement)return;
+  var lang=document.documentElement.getAttribute("lang")||"en";
+  if(lang==="en")return;
+  var TO="contact@graniterecord.org", MAXQ=300, MAXW=650, box=null, pill=null, back=null;
+  var quote="", held="", opened=0, build=null;
+  function picked(){
+    var s=typeof window!=="undefined"&&window.getSelection?window.getSelection():null;
+    if(!s||s.isCollapsed||!s.rangeCount)return "";
+    var main=document.getElementById("main"), n=s.getRangeAt(0).commonAncestorContainer;
+    if(!main||!n||!main.contains(n))return "";
+    var t=String(s).replace(/\s+/g," ").trim();
+    return t.length>MAXQ?t.slice(0,MAXQ-1)+"…":t;
+  }
+  function make(){
+    box=document.createElement("div");
+    box.className="trbox";box.hidden=true;
+    box.setAttribute("role","dialog");box.setAttribute("aria-labelledby","trbox-h");
+    box.innerHTML='<form class="trform" novalidate><div class="trhead"><h2 id="trbox-h">'
+      +esc(tr("trrep.title","Report a mistake in the translation"))+'</h2>'
+      +'<button type="button" class="trclose" aria-label="'+esc(tr("trrep.close","Close"))+'">×</button></div>'
+      +'<p class="trwhat">'+tr("trrep.what","Tell us what is wrong in this page&rsquo;s translation, and how it should read if you know. Nothing here identifies you, which also means we cannot reply: for an answer, write to {to}.",
+        {to:'<a href="mailto:'+TO+'">'+TO+"</a>"})+"</p>"
+      +'<div class="trquote" hidden><p class="trql">'+esc(tr("trrep.selected","The words you selected:"))+"</p>"
+      +'<blockquote class="trq"></blockquote><label class="trinc"><input type="checkbox" name="quote" checked> '
+      +esc(tr("trrep.include","Send them with your note"))+"</label></div>"
+      +'<p><label>'+esc(tr("trrep.wrong","What is wrong?"))+'<br><textarea name="note" rows="4" maxlength="'+MAXW+'"></textarea></label></p>'
+      +'<p style="position:absolute;left:-9999px" aria-hidden="true"><label>Leave this empty '
+      +'<input name="website" tabindex="-1" autocomplete="off"></label></p>'
+      +'<p><button type="submit">'+esc(tr("trrep.send","Send"))+'</button> '
+      +'<span class="trstate" role="status" aria-live="polite"></span></p></form>';
+    document.body.appendChild(box);
+  }
+  function open(from){
+    if(!box)make();
+    back=from||null;
+    var q=box.querySelector(".trquote");
+    q.hidden=!quote;
+    box.querySelector(".trq").textContent=quote;
+    box.querySelector(".trstate").textContent="";
+    box.hidden=false;
+    if(pill)pill.hidden=true;
+    opened=Date.now();
+    if(build===null){
+      build="";
+      fetch("/build.json").then(function(r){return r.ok?r.json():{};})
+        .then(function(d){build=String((d&&d.finished)||"");}).catch(function(){});
+    }
+    var t=box.querySelector("textarea");
+    if(t&&t.focus)t.focus();
+  }
+  function shut(){
+    if(!box||box.hidden)return;
+    box.hidden=true;
+    if(back&&back.focus)back.focus();
+  }
+  function failed(st,payload,why){
+    var subject="Translation problem on "+location.hostname+payload.url;
+    var body=payload.note+"\n\n--\npage: "+location.origin+payload.url+"\nlanguage: "+lang
+      +"\nbuild: "+(payload.build||"-")+"\n";
+    st.innerHTML=esc(tr("trrep.failed","That did not send ({why}). Your words are still in the box.",{why:why}))
+      +' <a href="mailto:'+TO+"?subject="+encodeURIComponent(subject)+"&amp;body="+encodeURIComponent(body)+'">'
+      +esc(tr("trrep.by_email","Send it by email instead"))+"</a>.";
+  }
+  function send(form){
+    var st=form.querySelector(".trstate"), btn=form.querySelector("button[type=submit]");
+    var words=form.elements.note.value.trim();
+    if(words.length<3){st.textContent=tr("trrep.few","Say in a few words what is wrong.");return;}
+    var withq=quote&&form.elements.quote&&form.elements.quote.checked;
+    var url=location.pathname.replace(/\.html$/,"");
+    var payload={record:"translation:"+url,url:url,tab:"",field:"translation",
+      note:(withq?"«"+quote+"»\n\n":"")+words,build:build||"",
+      elapsed:Date.now()-(opened||Date.now()),website:form.elements.website.value};
+    btn.disabled=true;
+    st.textContent=tr("trrep.sending","Sending…");
+    var ctl=typeof AbortController!=="undefined"?new AbortController():null;
+    var timer=setTimeout(function(){if(ctl)ctl.abort();},6000);
+    return fetch("/api/report",{method:"POST",signal:ctl?ctl.signal:undefined,
+      headers:{"Content-Type":"application/json"},body:JSON.stringify(payload)})
+      .then(function(r){
+        // 503 and 429 are the Function's answers for a report it accepted
+        // and could not keep (report.js), so each says so in words.
+        if(!r.ok)throw new Error(r.status===503?tr("trrep.unsaved","the site could not save it just now"):
+          r.status===429?tr("trrep.full","the site is taking no more reports just now"):
+          tr("trrep.status","the server answered {n}",{n:r.status}));
+        form.elements.note.value="";
+        st.textContent=tr("trrep.thanks","Thank you. We will check the translation.");
+      })
+      .catch(function(err){
+        failed(st,payload,err&&err.name==="AbortError"?tr("trrep.timeout","no answer in six seconds"):
+          (err&&err.message)||tr("trrep.offline","no connection"));
+      })
+      .then(function(){clearTimeout(timer);btn.disabled=false;});
+  }
+  function arm(){
+    var all=document.querySelectorAll("[data-trreport]");
+    for(var i=0;i<all.length;i++)all[i].hidden=false;
+    if(!pill&&document.body){
+      pill=document.createElement("button");
+      pill.type="button";pill.className="trpill";pill.hidden=true;
+      pill.setAttribute("data-trreport","pill");
+      pill.textContent=tr("trrep.pill","Report a mistake in these words");
+      document.body.appendChild(pill);
+    }
+  }
+  // The words selected when the button is pressed: a press can take the
+  // selection away before the click arrives, so it is held at the press.
+  document.addEventListener("pointerdown",function(e){
+    if(e.target.closest&&e.target.closest("[data-trreport]"))held=picked();
+  },true);
+  document.addEventListener("click",function(e){
+    var b=e.target.closest&&e.target.closest("[data-trreport]");
+    if(b){quote=picked()||held;held="";open(b);return;}
+    if(e.target.closest&&e.target.closest(".trclose"))shut();
+  });
+  document.addEventListener("submit",function(e){
+    var f=e.target.closest&&e.target.closest(".trform");
+    if(!f)return;
+    e.preventDefault();
+    send(f);
+  });
+  document.addEventListener("keydown",function(e){if(e.key==="Escape")shut();});
+  document.addEventListener("selectionchange",function(){
+    if(pill)pill.hidden=!picked()||!!(box&&!box.hidden);
+  });
+  if(document.readyState==="loading")document.addEventListener("DOMContentLoaded",arm);else arm();
+})();
 // BEHAVIOUR:END
