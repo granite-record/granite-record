@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-08.69
+# GRANITE_VERSION: 2026-09-08.70
 """
 The civics section: a hub and one page per topic, in order.
 
@@ -1280,60 +1280,123 @@ def hub_section(sid, heading, content):
     return section(sid, heading, content, level=3)
 
 
+# THE RESOURCES HUB'S TOPICS, EACH WITH A PICTURE (the person, 24 October
+# 2026: "the visuals could use another pass ... maybe adding icons for each
+# topic?"). One drawing per topic, in the line the nav's icons are drawn in
+# (components.ICON_PAINT), on a round badge beside the topic's name. Every
+# drawing is components.icon's, as every icon on the site must be: the ones
+# the hub added are in components.ICONS with the nav's, and in components.js,
+# which preflight holds to it byte for byte. Each is aria-hidden: the topic's
+# name beside it is what a screen reader reads.
+# A card's own picture where its topic's would mislead -- a car beside moving
+# to New Hampshire -- by the slug of the guide or page it links.
+CARD_ICON = {
+    "how-to-vote": "ballot", "renew-drivers-license": "idcard", "register-a-car": "car",
+    "your-representatives": "person", "submit-testimony": "testify",
+    "new-to-new-hampshire": "map", "food-and-health-assistance": "heart",
+    "how-a-bill-becomes-law": "bill", "general-court": "capitol", "legislative-year": "calendar",
+}
+# Each topic's picture, by the name the tab heads it with.
+TOPIC_ICON = {
+    # the How-To Guides tab (guides.TASKS)
+    "Take Part in the Legislature": "testify", "Voting and Elections": "ballot",
+    "Driving and Vehicles": "car", "Help and Benefits": "heart", "Property and Records": "house",
+    "Around Your Town": "pin", "Visiting the State House": "capitol", G.MORE: "book",
+    # the Learn tab (civics.GROUPS, and what follows them)
+    "How the State Works": "columns", "How to Take Part": "testify", "Taking Part": "testify",
+    "Start Here": "book", NUMBERS_TITLE: "chart", GLOSSARY_TITLE: "book", "Laws (RSA)": "law",
+    # the Official Sources tab (official_sources' groups)
+    "The General Court": "capitol", "The Governor and State Agencies": "columns",
+    "The Courts": "law", "Elections and the Constitution": "ballot", "Towns and Counties": "map",
+    "Other Ways to Follow New Hampshire Legislation": "follow",
+}
+
+
+def badge(name):
+    """The picture for `name` -- a topic's name, or a drawing's own key -- on
+    its round badge, or a book where there is none, hidden from screen
+    readers."""
+    key = TOPIC_ICON.get(name, name)
+    return f'<span class="g-ic">{C.icon(key if key in C.ICONS else "book")}</span>'
+
+
+def fold(fid, name, label, count, body):
+    """One topic of a Resources tab, folded shut: a <details> whose summary is
+    its badge (by `name`, the English topic), its `label` as the page prints
+    it, and how many it holds, and whose body is `body`. Opened by its
+    heading, with or without a script."""
+    return (f'<details class="g-topic" id="{fid}"><summary>{badge(name)}'
+            f'<span class="g-tname">{label}</span> <span class="g-tn">({count})</span></summary>'
+            f'<div class="g-body">{body}</div></details>')
+
+
+def cards(items):
+    """A row of short cards, each a link with its topic's badge, a title and,
+    where given, a line: [(href, topic name, title html, line html)]."""
+    return ('<ul class="g-cards">' + "".join(
+        f'<li><a href="{E(h)}">{badge(n)}<span class="g-ct"><b>{t}</b>'
+        + (f'<span>{dashes(line)}</span>' if line else "") + '</span></a></li>'
+        for h, n, t, line in items) + "</ul>")
+
+
 def hub_learn(topics):
+    """The Learn tab (24 October 2026, the person's second pass on the hub's
+    look): Start Here as three cards; each of civics.GROUPS, and the pages
+    that became How-To Guides, folded shut under its badge; then the
+    reference pages -- The Record in Numbers, the Glossary and the Laws -- as
+    cards of their own, since they are looked things up in rather than read
+    in order."""
     by_slug = {t["slug"]: t for t in topics}
     n = len(topics)
-    start = "".join(
-        f'<li><a href="{E(learn_href(slug))}"><b>{E(by_slug[slug]["title"])}</b>'
-        f'<span>{E(why)}</span></a></li>' for slug, why in START if slug in by_slug)
+    start = cards([(learn_href(slug), CARD_ICON.get(slug, "Start Here"), E(by_slug[slug]["title"]),
+                    E(why))
+                   for slug, why in START if slug in by_slug])
     started = {slug for slug, _ in START}
     out = [f'<p class="r-intro">{NUMBER_WORD.get(n, n)} short pages on the parts of state '
            'and local government, each one linked to where you can watch it happening in '
            'the record.</p>',
-           hub_section("start", "Start Here", f'<ul class="r-start">{start}</ul>')]
+           hub_section("start", "Start Here", start)]
+    folds = []
     for group, note in civics.GROUPS:
+        mine = [t for t in topics if t["group"] == group and t["slug"] not in started]
         lis = "".join(
             f'<li><a href="{E(learn_href(t["slug"]))}">{E(t["title"])}</a>'
-            f'<p>{dashes(E(t["blurb"]))}</p></li>'
-            for t in topics if t["group"] == group and t["slug"] not in started)
+            f'<p>{dashes(E(t["blurb"]))}</p></li>' for t in mine)
         if lis:
-            out.append(hub_section("s-" + _slug(group), E(group),
-                                   f'<p class="r-intro">{E(note)}</p><ul class="r-topics">{lis}</ul>'))
+            folds.append(fold("s-" + _slug(group), group, E(group), len(mine),
+                              f'<p class="r-intro">{E(note)}</p><ul class="r-topics">{lis}</ul>'))
     # TAKING PART, ON THE HOW-TO GUIDES TAB NOW (17 October 2026: Learn
     # "should focus more on educational content while still linking to those
     # other guides when applicable"). The three pages that moved are named
-    # here by their task, with the tab that holds the rest.
-    moved = "".join(
-        f'<li><a href="{E(guide_href(t["slug"]))}">{G.task_of(t["slug"])[1]["does"]}</a>'
-        f'<p>{G.task_of(t["slug"])[1]["line"]}</p></li>'
-        for t in how_to_topics(civics.TOPICS) if G.task_of(t["slug"])[1])
+    # here by their headline, with the tab that holds the rest.
+    moved = [(t, G.task_of(t["slug"])[1]) for t in how_to_topics(civics.TOPICS)
+             if G.task_of(t["slug"])[1]]
     if moved:
-        out.append(hub_section(
-            "taking-part", "Taking Part",
+        folds.append(fold(
+            "taking-part", "Taking Part", "Taking Part", len(moved),
             # No link to the tab in the line: the strip is above it, and the
             # tab's count is of the pages its panel links.
             '<p class="r-intro">Finding who represents you, speaking on a bill and following one '
             'are How-To Guides now, step by step, with the rest of the guides.</p>'
-            f'<ul class="r-topics">{moved}</ul>'))
+            '<ul class="r-topics">' + "".join(
+                f'<li><a href="{E(guide_href(t["slug"]))}">{task["head"]}</a>'
+                f'<p>{task["line"]}</p></li>' for t, task in moved) + "</ul>"))
+    out.append(hub_section("s-topics", "By Topic", "".join(folds)))
     # NOT ONE OF THE NUMBERED PAGES. The topics are short explanations meant
-    # to be read in order; this is a long table of statistics counted from the
-    # record, for a different reader, so it sits after them under its own
-    # heading, which is its link.
-    out.append(hub_section(
-        "numbers", f'<a href="{E(learn_href(NUMBERS_SLUG))}">{NUMBERS_TITLE}</a>',
-        '<p class="r-intro">Counted from the General Court&rsquo;s own record.</p>'
-        f'<p class="r-one">{curly(NUMBERS_WHAT[0].upper() + NUMBERS_WHAT[1:])}.</p>'))
-    out.append(hub_section(
-        "glossary", f'<a href="{E(learn_href(GLOSSARY_SLUG))}">{GLOSSARY_TITLE}</a>',
-        '<p class="r-intro">The record&rsquo;s words and abbreviations, A to Z.</p>'))
+    # to be read in order; these are looked things up in, for a different
+    # reader, so they sit after them as cards of their own.
+    ref = [(learn_href(NUMBERS_SLUG), NUMBERS_TITLE, NUMBERS_TITLE,
+            curly(NUMBERS_WHAT[0].upper() + NUMBERS_WHAT[1:]) + "."),
+           (learn_href(GLOSSARY_SLUG), GLOSSARY_TITLE, GLOSSARY_TITLE,
+            "The record&rsquo;s words and abbreviations, A to Z.")]
     # THE STATUTES, the next layer after the constitution (RSA_PAGE.md §10),
     # where build_rsa.py will write them: only where the statute table is on
     # this disk, so the hub never links a page a night did not build.
     if Path("db/NH_RSA.psv").is_file():
-        out.append(hub_section(
-            "statutes", '<a href="/laws">Laws (RSA)</a>',
-            '<p class="r-intro">Every chapter of the state&rsquo;s laws, searchable by number or '
-            'subject, each section with the bills that changed it and the bills that would.</p>'))
+        ref.append(("/laws", "Laws (RSA)", "Laws (RSA)",
+                    "Every chapter of the state&rsquo;s laws, searchable by number or subject, "
+                    "each section with the bills that changed it and the bills that would."))
+    out.append(hub_section("reference", "Reference", cards(ref)))
     return "".join(out)
 
 
@@ -1396,7 +1459,8 @@ def guides_tab(lang, published=(), articles=()):
             '</p></form>')
     # MOST COMMON, by headline, as a row of short boxes.
     by_slug = {r[2]: r for r in rows}
-    common = "".join(f'<li><a href="{href(s)}">{by_slug[s][3]}</a></li>'
+    common = "".join(f'<li><a href="{href(s)}">{badge(CARD_ICON.get(s, by_slug[s][0]))}'
+                     f'<span>{by_slug[s][3]}</span></a></li>'
                      for s in G.COMMON if s in by_slug)
     # EVERY GUIDE BY TOPIC, each group a <details> shut until opened.
     topics, order = [], []
@@ -1407,9 +1471,8 @@ def guides_tab(lang, published=(), articles=()):
         mine = [r for r in rows if r[0] == group]
         lis = "".join(f'<li><a href="{href(r[2])}">{r[3]}</a><span>{dashes(r[4])}</span></li>'
                       for r in mine)
-        topics.append(f'<details class="g-topic" id="g-{_slug(group)}"><summary>'
-                      f'<span class="g-tname">{mine[0][1]}</span> <span class="g-tn">'
-                      f'({len(mine)})</span></summary><ul class="g-list">{lis}</ul></details>')
+        topics.append(fold(f"g-{_slug(group)}", group, mine[0][1], len(mine),
+                           f'<ul class="g-list">{lis}</ul>'))
     # What the suggestions read: each guide's headline and line as shown, and
     # every word it is known by, in English and, on another language's tab,
     # in that language too, so a reader may type either.
@@ -2253,8 +2316,9 @@ def follow_elsewhere():
     if names != sorted(names, key=str.casefold):
         raise SystemExit("civics.FOLLOW_INDEPENDENT is not in alphabetical order, which is "
                          "the only order that ranks none of them: " + ", ".join(names))
-    return hub_section(
-        "follow-elsewhere", FOLLOW_HEADING,
+    n = len(civics.FOLLOW_OFFICIAL) + len(civics.FOLLOW_INDEPENDENT)
+    return fold(
+        "follow-elsewhere", FOLLOW_HEADING, FOLLOW_HEADING, n,
         '<p class="r-intro">From the legislature itself:</p>'
         '<ul class="r-srcs r-follow">' + "".join(li(*r) for r in civics.FOLLOW_OFFICIAL) + "</ul>"
         '<p class="r-intro">And from independent sites, run apart from the General Court and from '
@@ -2263,14 +2327,17 @@ def follow_elsewhere():
 
 
 def hub_sources(groups):
-    secs = "".join(hub_section(
-        "src-" + _slug(group), E(group),
+    """The Official Sources tab: each group of official_sources folded shut
+    under its badge, as the other two tabs' topics are (24 October 2026), and
+    the other ways to follow legislation last, folded the same way."""
+    folds = "".join(fold(
+        "src-" + _slug(group), group, E(group), len(rows),
         '<ul class="r-srcs">' + "".join(
             f'<li><a href="{E(u)}" target="_blank" rel="noopener">{name}</a>'
             f'<span class="l-dmeta">{meta}</span></li>' for name, u, meta in rows) + "</ul>")
         for group, rows in groups)
     return ('<p class="r-intro">The sites the Learn pages cite as their sources. Each opens in '
-            'a new tab.</p>' + secs + follow_elsewhere()
+            'a new tab.</p>' + hub_section("src-all", "By Branch", folds + follow_elsewhere())
             + '<p class="r-close">Every page here ends with its sources. If something is wrong, '
             '<a href="mailto:contact@graniterecord.org">tell us</a> &mdash; that address exists '
             'for this.</p>')

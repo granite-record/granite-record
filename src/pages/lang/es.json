@@ -2415,6 +2415,11 @@
    "es": "Puede que tenga que hablar de su situación con un especialista del Departamento en una entrevista; el Departamento le avisa si hace falta. También dará pruebas de la situación de su hogar. El formulario 800V da ejemplos de lo que se acepta, y puede subir documentos por NH Easy. Téngalos a mano en la entrevista para evitar demoras.",
    "state": "draft"
   },
+  "guide.group.around-your-town": {
+   "en": "Around Your Town",
+   "es": "En su municipio",
+   "state": "draft"
+  },
   "guide.group.driving-and-vehicles": {
    "en": "Driving and Vehicles",
    "es": "Conducir y vehículos",
@@ -5807,6 +5812,11 @@
    "es": "Asistir o hablar en una audiencia pública",
    "state": "draft"
   },
+  "guide.task.attend-a-hearing.head": {
+   "en": "How to attend or speak at a hearing",
+   "es": "Cómo asistir o hablar en una audiencia",
+   "state": "draft"
+  },
   "guide.task.attend-a-hearing.line": {
    "en": "Find a bill&rsquo;s hearing, go in person or watch it, and ask to speak.",
    "es": "Busque la audiencia de un proyecto de ley, vaya en persona o véala, y pida la palabra.",
@@ -5815,6 +5825,11 @@
   "guide.task.child-care-scholarship.does": {
    "en": "Get help paying for child care",
    "es": "Obtener ayuda para pagar el cuidado infantil",
+   "state": "draft"
+  },
+  "guide.task.child-care-scholarship.head": {
+   "en": "How to get help paying for child care",
+   "es": "Cómo obtener ayuda para pagar el cuidado infantil",
    "state": "draft"
   },
   "guide.task.child-care-scholarship.line": {
@@ -5827,6 +5842,11 @@
    "es": "Comunicarse con sus legisladores",
    "state": "draft"
   },
+  "guide.task.contact-your-legislators.head": {
+   "en": "How to contact your legislators",
+   "es": "Cómo comunicarse con sus legisladores",
+   "state": "draft"
+  },
   "guide.task.contact-your-legislators.line": {
    "en": "Email or call the people who represent you, and write a message they can act on.",
    "es": "Escriba o llame a quienes lo representan, y escriba un mensaje que puedan tomar en cuenta.",
@@ -5835,6 +5855,11 @@
   "guide.task.domestic-violence-help.does": {
    "en": "Get help after domestic violence, sexual assault or stalking",
    "es": "Obtener ayuda después de violencia doméstica, agresión sexual o acecho",
+   "state": "draft"
+  },
+  "guide.task.domestic-violence-help.head": {
+   "en": "How to get help after domestic violence, sexual assault or stalking",
+   "es": "Cómo obtener ayuda después de violencia doméstica, agresión sexual o acecho",
    "state": "draft"
   },
   "guide.task.domestic-violence-help.line": {
@@ -5847,6 +5872,11 @@
    "es": "Solicitar beneficios por desempleo",
    "state": "draft"
   },
+  "guide.task.file-for-unemployment.head": {
+   "en": "How to file for unemployment",
+   "es": "Cómo solicitar beneficios por desempleo",
+   "state": "draft"
+  },
   "guide.task.file-for-unemployment.line": {
    "en": "Your claim, the weekly claims that follow, and how to appeal.",
    "es": "Su solicitud, las solicitudes semanales que siguen, y cómo apelar.",
@@ -5855,6 +5885,11 @@
   "guide.task.food-and-health-assistance.does": {
    "en": "Apply for food or health assistance",
    "es": "Solicitar ayuda para alimentos o salud",
+   "state": "draft"
+  },
+  "guide.task.food-and-health-assistance.head": {
+   "en": "How to apply for food or health assistance",
+   "es": "Cómo solicitar ayuda para alimentos o salud",
    "state": "draft"
   },
   "guide.task.food-and-health-assistance.line": {
@@ -5867,6 +5902,11 @@
    "es": "Obtener ayuda con las facturas de calefacción y electricidad",
    "state": "draft"
   },
+  "guide.task.heating-and-electric-help.head": {
+   "en": "How to get help with heating and electric bills",
+   "es": "Cómo obtener ayuda con las facturas de calefacción y electricidad",
+   "state": "draft"
+  },
   "guide.task.heating-and-electric-help.line": {
    "en": "Fuel assistance, help with electric bills, weatherization, and what to do with no heat.",
    "es": "Ayuda para combustible, ayuda con las facturas de electricidad, climatización, y qué hacer si se queda sin calefacción.",
@@ -5875,6 +5915,11 @@
   "guide.task.homelessness-help.does": {
    "en": "Get help if you are homeless or may lose your home",
    "es": "Obtener ayuda si no tiene hogar o puede perder su vivienda",
+   "state": "draft"
+  },
+  "guide.task.homelessness-help.head": {
+   "en": "How to get help if you are homeless or may lose your home",
+   "es": "Cómo obtener ayuda si no tiene hogar o puede perder su vivienda",
    "state": "draft"
   },
   "guide.task.homelessness-help.line": {
@@ -5887,6 +5932,11 @@
    "es": "Votar",
    "state": "draft"
   },
+  "guide.task.how-to-vote.head": {
+   "en": "How to vote",
+   "es": "Cómo votar",
+   "state": "draft"
+  },
   "guide.task.how-to-vote.line": {
    "en": "Check that you are registered, register if you are not, and find what to bring and where to go.",
    "es": "Compruebe que está inscrito, inscríbase si no lo está, y sepa qué llevar y adónde ir.",
@@ -5895,6 +5945,11 @@
   "guide.task.new-to-new-hampshire.does": {
    "en": "Move to New Hampshire",
    "es": "Mudarse a New Hampshire",
+   "state": "draft"
+  },
+  "guide.task.new-to-new-hampshire.head": {
+   "en": "How to move to New Hampshire",
+   "es": "Cómo mudarse a New Hampshire",
    "state": "draft"
   },
   "guide.task.new-to-new-hampshire.line": {
@@ -5907,6 +5962,11 @@
    "es": "Apelar el avalúo de su impuesto a la propiedad",
    "state": "draft"
   },
+  "guide.task.property-tax-abatement.head": {
+   "en": "How to appeal your property tax assessment",
+   "es": "Cómo apelar el avalúo de su impuesto a la propiedad",
+   "state": "draft"
+  },
   "guide.task.property-tax-abatement.line": {
    "en": "Ask your town for an abatement, and appeal if it says no.",
    "es": "Pida a su municipio una reducción, y apele si se la niega.",
@@ -5915,6 +5975,11 @@
   "guide.task.property-tax-relief.does": {
    "en": "Get property tax relief on a low or moderate income",
    "es": "Obtener un alivio del impuesto a la propiedad con ingresos bajos o moderados",
+   "state": "draft"
+  },
+  "guide.task.property-tax-relief.head": {
+   "en": "How to get property tax relief",
+   "es": "Cómo obtener un alivio del impuesto a la propiedad",
    "state": "draft"
   },
   "guide.task.property-tax-relief.line": {
@@ -5927,6 +5992,11 @@
    "es": "Obtener un registro público",
    "state": "draft"
   },
+  "guide.task.public-records.head": {
+   "en": "How to get a public record",
+   "es": "Cómo obtener un registro público",
+   "state": "draft"
+  },
   "guide.task.public-records.line": {
    "en": "Ask a town, school district, county or state agency for its records.",
    "es": "Pida sus registros a un municipio, un distrito escolar, un condado o una agencia estatal.",
@@ -5935,6 +6005,11 @@
   "guide.task.read-a-bill.does": {
    "en": "Read a bill",
    "es": "Leer un proyecto de ley",
+   "state": "draft"
+  },
+  "guide.task.read-a-bill.head": {
+   "en": "How to read a bill",
+   "es": "Cómo leer un proyecto de ley",
    "state": "draft"
   },
   "guide.task.read-a-bill.line": {
@@ -5947,6 +6022,11 @@
    "es": "Obtener una REAL ID",
    "state": "draft"
   },
+  "guide.task.real-id.head": {
+   "en": "How to get a REAL ID",
+   "es": "Cómo obtener una REAL ID",
+   "state": "draft"
+  },
   "guide.task.real-id.line": {
    "en": "Whether you need one, and the documents to bring.",
    "es": "Si la necesita, y los documentos que debe llevar.",
@@ -5955,6 +6035,11 @@
   "guide.task.register-a-car.does": {
    "en": "Register a car",
    "es": "Registrar un vehículo",
+   "state": "draft"
+  },
+  "guide.task.register-a-car.head": {
+   "en": "How to register a car",
+   "es": "Cómo registrar un vehículo",
    "state": "draft"
   },
   "guide.task.register-a-car.line": {
@@ -5967,6 +6052,11 @@
    "es": "Renovar su licencia de conducir",
    "state": "draft"
   },
+  "guide.task.renew-drivers-license.head": {
+   "en": "How to renew your driver&rsquo;s license",
+   "es": "Cómo renovar su licencia de conducir",
+   "state": "draft"
+  },
   "guide.task.renew-drivers-license.line": {
    "en": "Online or at a DMV appointment, and what to do if it has expired.",
    "es": "En línea o con cita en el DMV, y qué hacer si ya venció.",
@@ -5975,6 +6065,11 @@
   "guide.task.run-for-office.does": {
    "en": "Run for office",
    "es": "Postularse a un cargo",
+   "state": "draft"
+  },
+  "guide.task.run-for-office.head": {
+   "en": "How to run for office",
+   "es": "Cómo postularse a un cargo",
    "state": "draft"
   },
   "guide.task.run-for-office.line": {
@@ -5987,6 +6082,11 @@
    "es": "Prepararse para tormentas, cortes de electricidad y emergencias",
    "state": "draft"
   },
+  "guide.task.storms-and-emergencies.head": {
+   "en": "How to prepare for storms, power outages and emergencies",
+   "es": "Cómo prepararse para tormentas, cortes de electricidad y emergencias",
+   "state": "draft"
+  },
   "guide.task.storms-and-emergencies.line": {
    "en": "Emergency alerts, supplies, power outage and winter storm safety, and where to find a warm place.",
    "es": "Alertas de emergencia, suministros, seguridad durante cortes de electricidad y tormentas de invierno, y dónde encontrar un lugar cálido.",
@@ -5995,6 +6095,11 @@
   "guide.task.submit-testimony.does": {
    "en": "Send testimony online or in writing",
    "es": "Enviar testimonio en línea o por escrito",
+   "state": "draft"
+  },
+  "guide.task.submit-testimony.head": {
+   "en": "How to submit testimony on a bill",
+   "es": "Cómo enviar testimonio sobre un proyecto de ley",
    "state": "draft"
   },
   "guide.task.submit-testimony.line": {
@@ -6007,6 +6112,11 @@
    "es": "Aprender cómo funcionan las audiencias antes de ir",
    "state": "draft"
   },
+  "guide.task.testifying.head": {
+   "en": "How public hearings work",
+   "es": "Cómo funcionan las audiencias públicas",
+   "state": "draft"
+  },
   "guide.task.testifying.line": {
    "en": "The notices, signing in, speaking, written testimony and what follows a hearing, in one place.",
    "es": "Los avisos, la inscripción, cómo hablar, el testimonio escrito y lo que sigue a una audiencia, en un solo lugar.",
@@ -6015,6 +6125,11 @@
   "guide.task.tour-the-state-house.does": {
    "en": "Tour the State House",
    "es": "Visitar el Capitolio",
+   "state": "draft"
+  },
+  "guide.task.tour-the-state-house.head": {
+   "en": "How to tour the State House",
+   "es": "Cómo visitar el Capitolio",
    "state": "draft"
   },
   "guide.task.tour-the-state-house.line": {
@@ -6027,14 +6142,39 @@
    "es": "Incluir un artículo en la convocatoria de la asamblea municipal",
    "state": "draft"
   },
+  "guide.task.town-warrant-article.head": {
+   "en": "How to put an article on your town meeting warrant",
+   "es": "Cómo incluir un artículo en la convocatoria de la asamblea municipal",
+   "state": "draft"
+  },
   "guide.task.town-warrant-article.line": {
    "en": "Petition your selectmen or school board to put a question to the voters.",
    "es": "Pida por petición a los concejales o a la junta escolar que sometan una pregunta a los votantes.",
    "state": "draft"
   },
+  "guide.task.trash-and-recycling.does": {
+   "en": "Get rid of trash, recycling and hazardous waste",
+   "es": "Deshacerse de la basura, el reciclaje y los desechos peligrosos",
+   "state": "draft"
+  },
+  "guide.task.trash-and-recycling.head": {
+   "en": "How to get rid of trash, recycling and hazardous waste",
+   "es": "Cómo deshacerse de la basura, el reciclaje y los desechos peligrosos",
+   "state": "draft"
+  },
+  "guide.task.trash-and-recycling.line": {
+   "en": "Your transfer station, what never goes in the trash, hazardous waste days and composting.",
+   "es": "Su estación de transferencia, lo que nunca va a la basura, los días de desechos peligrosos y el compostaje.",
+   "state": "draft"
+  },
   "guide.task.using-this-site.does": {
    "en": "Use this site to follow a bill",
    "es": "Usar este sitio para seguir un proyecto de ley",
+   "state": "draft"
+  },
+  "guide.task.using-this-site.head": {
+   "en": "How to follow a bill on this site",
+   "es": "Cómo seguir un proyecto de ley en este sitio",
    "state": "draft"
   },
   "guide.task.using-this-site.line": {
@@ -6047,6 +6187,11 @@
    "es": "Obtener un acta de nacimiento, defunción, matrimonio o divorcio",
    "state": "draft"
   },
+  "guide.task.vital-records.head": {
+   "en": "How to get a birth, death, marriage or divorce certificate",
+   "es": "Cómo obtener un acta de nacimiento, defunción, matrimonio o divorcio",
+   "state": "draft"
+  },
   "guide.task.vital-records.line": {
    "en": "From your town or city clerk or the state: who may ask and what to bring.",
    "es": "Con el secretario de su municipio o ciudad o con el estado: quién puede pedirla y qué llevar.",
@@ -6055,6 +6200,11 @@
   "guide.task.your-representatives.does": {
    "en": "Find your representatives",
    "es": "Encontrar a sus representantes",
+   "state": "draft"
+  },
+  "guide.task.your-representatives.head": {
+   "en": "How to find your representatives",
+   "es": "Cómo encontrar a sus representantes",
    "state": "draft"
   },
   "guide.task.your-representatives.line": {
@@ -6869,6 +7019,192 @@
    "es": "Puede designar a uno de los firmantes como el <b>peticionario principal</b>. Si no lo hace, el peticionario principal es el primer votante inscrito de la lista.",
    "state": "draft"
   },
+  "guide.trash-and-recycling.ask-your-town-how-it-takes": {
+   "en": "Ask your town how it takes trash and recycling: a transfer station, pickup, bags or stickers.",
+   "es": "Pregunte a su municipio cómo recoge la basura y el reciclaje: una estación de transferencia, recolección, bolsas o etiquetas adhesivas.",
+   "state": "draft"
+  },
+  "guide.trash-and-recycling.collection-day-contacts-by-town": {
+   "en": "Collection day contacts by town (Department of Environmental Services)",
+   "es": "Contactos por municipio para los días de recolección (Departamento de Servicios Ambientales)",
+   "state": "draft"
+  },
+  "guide.trash-and-recycling.collection-event-contacts-2026-2027": {
+   "en": "Collection event contacts, 2026-2027 (Department of Environmental Services)",
+   "es": "Contactos para las recolecciones, 2026-2027 (Departamento de Servicios Ambientales)",
+   "state": "draft"
+  },
+  "guide.trash-and-recycling.compost-at-home": {
+   "en": "Compost at home",
+   "es": "Haga compost en casa",
+   "state": "draft"
+  },
+  "guide.trash-and-recycling.compost-food-scraps-and-yard-trim": {
+   "en": "Compost food scraps and yard trim at home, or in a town program.",
+   "es": "Haga compost con los restos de comida y los recortes del jardín en casa, o en un programa municipal.",
+   "state": "draft"
+  },
+  "guide.trash-and-recycling.composting-at-home-epa": {
+   "en": "Composting at home (EPA)",
+   "es": "Compostaje en casa (EPA)",
+   "state": "draft"
+  },
+  "guide.trash-and-recycling.composting-at-home-epa-2": {
+   "en": "Composting at Home (EPA)",
+   "es": "Compostaje en casa (EPA)",
+   "state": "draft"
+  },
+  "guide.trash-and-recycling.electronics-batteries-mercury-yard-waste": {
+   "en": "Electronics, batteries, mercury, yard waste",
+   "es": "Aparatos electrónicos, baterías, mercurio, desechos de jardín",
+   "state": "draft"
+  },
+  "guide.trash-and-recycling.electronics-computers-and-monitors": {
+   "en": "<b>Electronics:</b> computers and monitors, printers, televisions and other screens, cell phones, copiers and fax machines.",
+   "es": "<b>Aparatos electrónicos:</b> computadoras y monitores, impresoras, televisores y otras pantallas, teléfonos celulares, fotocopiadoras y máquinas de fax.",
+   "state": "draft"
+  },
+  "guide.trash-and-recycling.every-town-must-either-run-a": {
+   "en": "Every town must either run a solid waste facility, often called the transfer station or the dump, or make sure its residents can use one elsewhere. The town sets the rules: what must be separated for recycling, how trash is collected, what it costs, and whether you must use special bags or stickers, which the town sells at a reasonable price. A town may fine people who break its rules.",
+   "es": "Cada municipio debe tener una instalación para desechos sólidos, a menudo llamada la estación de transferencia (transfer station) o el basurero (dump), o asegurarse de que sus residentes puedan usar una en otro lugar. El municipio fija las reglas: qué hay que separar para reciclar, cómo se recoge la basura, cuánto cuesta y si hay que usar bolsas o etiquetas adhesivas especiales, que el municipio vende a un precio razonable. Un municipio puede multar a quien no cumpla sus reglas.",
+   "state": "draft"
+  },
+  "guide.trash-and-recycling.hazardous-products-keep-them-for-a": {
+   "en": "Hazardous products: keep them for a collection day",
+   "es": "Productos peligrosos: guárdelos para un día de recolección",
+   "state": "draft"
+  },
+  "guide.trash-and-recycling.household-hazardous-waste-epa": {
+   "en": "Household hazardous waste (EPA)",
+   "es": "Desechos peligrosos del hogar (EPA)",
+   "state": "draft"
+  },
+  "guide.trash-and-recycling.household-hazardous-waste-epa-2": {
+   "en": "Household Hazardous Waste (EPA)",
+   "es": "Desechos peligrosos del hogar (EPA)",
+   "state": "draft"
+  },
+  "guide.trash-and-recycling.how-to-prepare-for-storms-power": {
+   "en": "How to prepare for storms, power outages and other emergencies",
+   "es": "Cómo prepararse para tormentas, cortes de electricidad y otras emergencias",
+   "state": "draft"
+  },
+  "guide.trash-and-recycling.if-a-container-is-corroding-call": {
+   "en": "If a container is corroding, call your fire department for instructions.",
+   "es": "Si un envase se está corroyendo, llame a su departamento de bomberos para recibir instrucciones.",
+   "state": "draft"
+  },
+  "guide.trash-and-recycling.is-it-something-special": {
+   "en": "Is it something special?",
+   "es": "¿Es algo especial?",
+   "state": "draft"
+  },
+  "guide.trash-and-recycling.keep-it-for-a-household-hazardous": {
+   "en": "Keep it for a household hazardous waste collection.",
+   "es": "Guárdelos para una recolección de desechos peligrosos del hogar.",
+   "state": "draft"
+  },
+  "guide.trash-and-recycling.keep-them-in-their-original-containers": {
+   "en": "Keep them in their original containers with the labels on, and never mix them.",
+   "es": "Guárdelos en sus envases originales con las etiquetas puestas, y nunca los mezcle.",
+   "state": "draft"
+  },
+  "guide.trash-and-recycling.lead": {
+   "en": "Your town's transfer station or trash pickup, what may never go in the trash in New Hampshire, household hazardous waste collection days, and composting at home.",
+   "es": "La estación de transferencia o la recolección de basura de su municipio, lo que nunca puede ir a la basura en New Hampshire, los días de recolección de desechos peligrosos del hogar y el compostaje en casa.",
+   "state": "draft"
+  },
+  "guide.trash-and-recycling.learn-your-towns-rules": {
+   "en": "Learn your town’s rules",
+   "es": "Conozca las reglas de su municipio",
+   "state": "draft"
+  },
+  "guide.trash-and-recycling.leaves-and-yard-waste": {
+   "en": "Leaves and yard waste.",
+   "es": "Hojas y desechos de jardín.",
+   "state": "draft"
+  },
+  "guide.trash-and-recycling.leftover-products-that-can-catch-fire": {
+   "en": "Leftover products that can catch fire, react, explode, corrode or poison, such as paints, cleaners, oils, batteries and pesticides, are <b>household hazardous waste</b>. Do not pour them down the drain, on the ground or into a storm drain, and check before putting any out with the trash.",
+   "es": "Los restos de productos que pueden incendiarse, reaccionar, explotar, corroer o envenenar, como pinturas, productos de limpieza, aceites, baterías y pesticidas, son <b>desechos peligrosos del hogar</b>. No los eche por el desagüe, en el suelo ni en una alcantarilla pluvial, y averigüe antes de poner alguno con la basura.",
+   "state": "draft"
+  },
+  "guide.trash-and-recycling.never-in-the-trash-ask-your": {
+   "en": "Never in the trash. Ask your transfer station where it goes.",
+   "es": "Nunca a la basura. Pregunte en su estación de transferencia adónde van.",
+   "state": "draft"
+  },
+  "guide.trash-and-recycling.never-put-these-in-the-trash": {
+   "en": "Never put these in the trash",
+   "es": "Nunca ponga esto en la basura",
+   "state": "draft"
+  },
+  "guide.trash-and-recycling.paint-cleaners-pesticides-oil": {
+   "en": "Paint, cleaners, pesticides, oil",
+   "es": "Pintura, productos de limpieza, pesticidas, aceite",
+   "state": "draft"
+  },
+  "guide.trash-and-recycling.products-that-contain-mercury-such-as": {
+   "en": "<b>Products that contain mercury</b>, such as mercury fever thermometers. Keep them separate from your trash, for recycling or hazardous waste disposal.",
+   "es": "<b>Productos que contienen mercurio</b>, como los termómetros de mercurio para la fiebre. Manténgalos separados de su basura, para reciclarlos o desecharlos como desechos peligrosos.",
+   "state": "draft"
+  },
+  "guide.trash-and-recycling.solid-waste-management-rsa-149-m": {
+   "en": "Solid Waste Management, RSA 149-M",
+   "es": "Manejo de desechos sólidos, RSA 149-M",
+   "state": "draft"
+  },
+  "guide.trash-and-recycling.some-garages-accept-used-motor-oil": {
+   "en": "Some garages accept used motor oil for recycling.",
+   "es": "Algunos talleres aceptan aceite de motor usado para reciclarlo.",
+   "state": "draft"
+  },
+  "guide.trash-and-recycling.state-law-forbids-putting-these-in": {
+   "en": "State law forbids putting these in a landfill or incinerator anywhere in New Hampshire:",
+   "es": "La ley estatal prohíbe poner estas cosas en un relleno sanitario o un incinerador en cualquier lugar de New Hampshire:",
+   "state": "draft"
+  },
+  "guide.trash-and-recycling.take-them-to-a-household-hazardous": {
+   "en": "Take them to a household hazardous waste collection. The Department of Environmental Services lists each town&rsquo;s contact for one, often a regional event run by a planning commission or a nearby city. If your town has no event listed, call the Department&rsquo;s Household Hazardous Waste Program at (603) 271-2047.",
+   "es": "Llévelos a una recolección de desechos peligrosos del hogar. El Departamento de Servicios Ambientales tiene la lista del contacto de cada municipio, a menudo para un evento regional organizado por una comisión de planificación o una ciudad cercana. Si su municipio no tiene un evento en la lista, llame al Programa de Desechos Peligrosos del Hogar (Household Hazardous Waste Program) del Departamento al (603) 271-2047.",
+   "state": "draft"
+  },
+  "guide.trash-and-recycling.title": {
+   "en": "How to Get Rid of Trash, Recycling, Yard Waste and Hazardous Waste",
+   "es": "Cómo deshacerse de la basura, el reciclaje, los desechos de jardín y los desechos peligrosos",
+   "state": "draft",
+   "note": "transfer station: 'estación de transferencia', with the English once, and the dump 'basurero'; wet-cell battery: 'batería de celda húmeda', the statute's term."
+  },
+  "guide.trash-and-recycling.towns-and-transfer-stations-must-make": {
+   "en": "Towns and transfer stations must make information available on recycling batteries and electronics and on where mercury products are accepted, and should offer recycling for batteries and electronics where they can. Ask at yours.",
+   "es": "Los municipios y las estaciones de transferencia deben dar información sobre el reciclaje de baterías y aparatos electrónicos y sobre dónde se aceptan los productos con mercurio, y deberían ofrecer reciclaje de baterías y aparatos electrónicos cuando puedan. Pregunte en la suya.",
+   "state": "draft"
+  },
+  "guide.trash-and-recycling.trash-and-recycling-are-your-towns": {
+   "en": "Trash and recycling are your town&rsquo;s to run: every town must provide a place for its residents&rsquo; trash, or arrange for one, and sets its own rules, fees and recycling. Some things may not go in the trash anywhere in New Hampshire: electronics, wet-cell and lithium-ion batteries, products containing mercury, and leaves and yard waste. Paint, pesticides, cleaners and other hazardous household products go to a household hazardous waste collection.",
+   "es": "La basura y el reciclaje están a cargo de su municipio: cada municipio debe ofrecer a sus residentes un lugar para la basura, o arreglar uno, y fija sus propias reglas, cuotas y reciclaje. Algunas cosas no pueden ir a la basura en ningún lugar de New Hampshire: los aparatos electrónicos, las baterías de celda húmeda y de iones de litio, los productos que contienen mercurio, y las hojas y los desechos de jardín. La pintura, los pesticidas, los productos de limpieza y otros productos peligrosos del hogar van a una recolección de desechos peligrosos del hogar.",
+   "state": "draft"
+  },
+  "guide.trash-and-recycling.wet-cell-and-lithium-ion-batteries": {
+   "en": "Wet-cell and lithium-ion batteries.",
+   "es": "Baterías de celda húmeda y de iones de litio.",
+   "state": "draft"
+  },
+  "guide.trash-and-recycling.you-can-compost-food-scraps-from": {
+   "en": "You can compost food scraps from your kitchen with leaves and other yard trim. Mix &ldquo;greens&rdquo;, such as fruit and vegetable scraps, coffee grounds and grass clippings, with &ldquo;browns&rdquo;, such as dry leaves, twigs, shredded paper and cardboard. Leave out meat, fish, bones, dairy, fats and oils, which attract animals, and pet waste. If you have no room, look for a town or community composting program that collects food scraps or takes them at a drop-off.",
+   "es": "Puede hacer compost con los restos de comida de su cocina junto con hojas y otros recortes del jardín. Mezcle materiales &ldquo;verdes&rdquo;, como restos de frutas y verduras, café molido y césped cortado, con materiales &ldquo;marrones&rdquo;, como hojas secas, ramitas, papel y cartón triturados. No ponga carne, pescado, huesos, lácteos, grasas ni aceites, que atraen animales, ni excrementos de mascotas. Si no tiene espacio, busque un programa de compostaje municipal o comunitario que recoja los restos de comida o los reciba en un punto de entrega.",
+   "state": "draft"
+  },
+  "guide.trash-and-recycling.your-town-or-city-office-and": {
+   "en": "Your town or city office, and your transfer station, for the local rules, hours and fees and the date of the next household hazardous waste collection.",
+   "es": "La oficina de su municipio o ciudad, y su estación de transferencia, para las reglas locales, el horario y las cuotas, y la fecha de la próxima recolección de desechos peligrosos del hogar.",
+   "state": "draft"
+  },
+  "guide.trash-and-recycling.your-town-or-city-office-its": {
+   "en": "Your town or city office, its website or the transfer station can tell you the hours, what it takes and how, including anything large.",
+   "es": "La oficina de su municipio o ciudad, su sitio web o la estación de transferencia pueden decirle el horario, qué acepta y cómo, incluidos los objetos grandes.",
+   "state": "draft"
+  },
   "guide.using-this-site.a-bill-still-moving-through-the": {
    "en": "A bill still moving through the General Court carries an RSS feed, and so does every sitting member, every current committee, and every topic. The <b>Follow</b> control on a record's page gives the address where there is one. There are also feeds for the record's newest actions and for hearings coming up. A bill's feed ends once the bill is settled. [[follow_email]]",
    "es": "Un proyecto de ley que todavía avanza en la Legislatura tiene un canal RSS, y también lo tienen cada miembro en funciones, cada comité actual y cada tema. El control <b>Follow</b> (seguir) de la página de un registro da la dirección cuando la hay. También hay canales con las acciones más recientes del registro y con las próximas audiencias. El canal de un proyecto de ley termina cuando el proyecto queda resuelto. [[follow_email]]",
@@ -7399,9 +7735,55 @@
    "es": "Todas las guías prácticas",
    "state": "draft"
   },
+  "guides.by_topic": {
+   "en": "All Guides by Topic",
+   "es": "Todas las guías por tema",
+   "state": "draft"
+  },
   "guides.checked": {
    "en": "Checked against its sources {date}.",
    "es": "Revisada con sus fuentes el {date}.",
+   "state": "draft"
+  },
+  "guides.common": {
+   "en": "Most Common",
+   "es": "Las más consultadas",
+   "state": "draft"
+  },
+  "guides.find_all": {
+   "en": "Search the whole site for “{q}”",
+   "es": "Buscar “{q}” en todo el sitio",
+   "state": "draft"
+  },
+  "guides.find_hint": {
+   "en": "For example: renew my license",
+   "es": "Por ejemplo: renovar mi licencia",
+   "state": "draft"
+  },
+  "guides.find_label": {
+   "en": "What do you need to do?",
+   "es": "¿Qué necesita hacer?",
+   "state": "draft",
+   "note": "The guide search on the How-To tab. {n} and {q} are filled in by the page: keep them as they are. Most Common: 'Las más consultadas', the guides people most often need."
+  },
+  "guides.find_list": {
+   "en": "Suggested guides",
+   "es": "Guías sugeridas",
+   "state": "draft"
+  },
+  "guides.find_many": {
+   "en": "{n} guides match",
+   "es": "{n} guías coinciden",
+   "state": "draft"
+  },
+  "guides.find_none": {
+   "en": "No guide matches. Press Enter to search the whole site.",
+   "es": "Ninguna guía coincide. Presione Intro para buscar en todo el sitio.",
+   "state": "draft"
+  },
+  "guides.find_one": {
+   "en": "1 guide matches",
+   "es": "1 guía coincide",
    "state": "draft"
   },
   "guides.follow_email_live": {
@@ -8694,388 +9076,6 @@
   "yt.yours": {
    "en": "Your town: {place}",
    "es": "Su municipio: {place}",
-   "state": "draft"
-  },
-  "guide.trash-and-recycling.title": {
-   "en": "How to Get Rid of Trash, Recycling, Yard Waste and Hazardous Waste",
-   "es": "Cómo deshacerse de la basura, el reciclaje, los desechos de jardín y los desechos peligrosos",
-   "state": "draft",
-   "note": "transfer station: 'estación de transferencia', with the English once, and the dump 'basurero'; wet-cell battery: 'batería de celda húmeda', the statute's term."
-  },
-  "guide.trash-and-recycling.lead": {
-   "en": "Your town's transfer station or trash pickup, what may never go in the trash in New Hampshire, household hazardous waste collection days, and composting at home.",
-   "es": "La estación de transferencia o la recolección de basura de su municipio, lo que nunca puede ir a la basura en New Hampshire, los días de recolección de desechos peligrosos del hogar y el compostaje en casa.",
-   "state": "draft"
-  },
-  "guide.trash-and-recycling.trash-and-recycling-are-your-towns": {
-   "en": "Trash and recycling are your town&rsquo;s to run: every town must provide a place for its residents&rsquo; trash, or arrange for one, and sets its own rules, fees and recycling. Some things may not go in the trash anywhere in New Hampshire: electronics, wet-cell and lithium-ion batteries, products containing mercury, and leaves and yard waste. Paint, pesticides, cleaners and other hazardous household products go to a household hazardous waste collection.",
-   "es": "La basura y el reciclaje están a cargo de su municipio: cada municipio debe ofrecer a sus residentes un lugar para la basura, o arreglar uno, y fija sus propias reglas, cuotas y reciclaje. Algunas cosas no pueden ir a la basura en ningún lugar de New Hampshire: los aparatos electrónicos, las baterías de celda húmeda y de iones de litio, los productos que contienen mercurio, y las hojas y los desechos de jardín. La pintura, los pesticidas, los productos de limpieza y otros productos peligrosos del hogar van a una recolección de desechos peligrosos del hogar.",
-   "state": "draft"
-  },
-  "guide.trash-and-recycling.ask-your-town-how-it-takes": {
-   "en": "Ask your town how it takes trash and recycling: a transfer station, pickup, bags or stickers.",
-   "es": "Pregunte a su municipio cómo recoge la basura y el reciclaje: una estación de transferencia, recolección, bolsas o etiquetas adhesivas.",
-   "state": "draft"
-  },
-  "guide.trash-and-recycling.is-it-something-special": {
-   "en": "Is it something special?",
-   "es": "¿Es algo especial?",
-   "state": "draft"
-  },
-  "guide.trash-and-recycling.electronics-batteries-mercury-yard-waste": {
-   "en": "Electronics, batteries, mercury, yard waste",
-   "es": "Aparatos electrónicos, baterías, mercurio, desechos de jardín",
-   "state": "draft"
-  },
-  "guide.trash-and-recycling.never-in-the-trash-ask-your": {
-   "en": "Never in the trash. Ask your transfer station where it goes.",
-   "es": "Nunca a la basura. Pregunte en su estación de transferencia adónde van.",
-   "state": "draft"
-  },
-  "guide.trash-and-recycling.paint-cleaners-pesticides-oil": {
-   "en": "Paint, cleaners, pesticides, oil",
-   "es": "Pintura, productos de limpieza, pesticidas, aceite",
-   "state": "draft"
-  },
-  "guide.trash-and-recycling.keep-it-for-a-household-hazardous": {
-   "en": "Keep it for a household hazardous waste collection.",
-   "es": "Guárdelos para una recolección de desechos peligrosos del hogar.",
-   "state": "draft"
-  },
-  "guide.trash-and-recycling.compost-food-scraps-and-yard-trim": {
-   "en": "Compost food scraps and yard trim at home, or in a town program.",
-   "es": "Haga compost con los restos de comida y los recortes del jardín en casa, o en un programa municipal.",
-   "state": "draft"
-  },
-  "guide.trash-and-recycling.learn-your-towns-rules": {
-   "en": "Learn your town’s rules",
-   "es": "Conozca las reglas de su municipio",
-   "state": "draft"
-  },
-  "guide.trash-and-recycling.every-town-must-either-run-a": {
-   "en": "Every town must either run a solid waste facility, often called the transfer station or the dump, or make sure its residents can use one elsewhere. The town sets the rules: what must be separated for recycling, how trash is collected, what it costs, and whether you must use special bags or stickers, which the town sells at a reasonable price. A town may fine people who break its rules.",
-   "es": "Cada municipio debe tener una instalación para desechos sólidos, a menudo llamada la estación de transferencia (transfer station) o el basurero (dump), o asegurarse de que sus residentes puedan usar una en otro lugar. El municipio fija las reglas: qué hay que separar para reciclar, cómo se recoge la basura, cuánto cuesta y si hay que usar bolsas o etiquetas adhesivas especiales, que el municipio vende a un precio razonable. Un municipio puede multar a quien no cumpla sus reglas.",
-   "state": "draft"
-  },
-  "guide.trash-and-recycling.your-town-or-city-office-its": {
-   "en": "Your town or city office, its website or the transfer station can tell you the hours, what it takes and how, including anything large.",
-   "es": "La oficina de su municipio o ciudad, su sitio web o la estación de transferencia pueden decirle el horario, qué acepta y cómo, incluidos los objetos grandes.",
-   "state": "draft"
-  },
-  "guide.trash-and-recycling.never-put-these-in-the-trash": {
-   "en": "Never put these in the trash",
-   "es": "Nunca ponga esto en la basura",
-   "state": "draft"
-  },
-  "guide.trash-and-recycling.state-law-forbids-putting-these-in": {
-   "en": "State law forbids putting these in a landfill or incinerator anywhere in New Hampshire:",
-   "es": "La ley estatal prohíbe poner estas cosas en un relleno sanitario o un incinerador en cualquier lugar de New Hampshire:",
-   "state": "draft"
-  },
-  "guide.trash-and-recycling.electronics-computers-and-monitors": {
-   "en": "<b>Electronics:</b> computers and monitors, printers, televisions and other screens, cell phones, copiers and fax machines.",
-   "es": "<b>Aparatos electrónicos:</b> computadoras y monitores, impresoras, televisores y otras pantallas, teléfonos celulares, fotocopiadoras y máquinas de fax.",
-   "state": "draft"
-  },
-  "guide.trash-and-recycling.wet-cell-and-lithium-ion-batteries": {
-   "en": "Wet-cell and lithium-ion batteries.",
-   "es": "Baterías de celda húmeda y de iones de litio.",
-   "state": "draft"
-  },
-  "guide.trash-and-recycling.products-that-contain-mercury-such-as": {
-   "en": "<b>Products that contain mercury</b>, such as mercury fever thermometers. Keep them separate from your trash, for recycling or hazardous waste disposal.",
-   "es": "<b>Productos que contienen mercurio</b>, como los termómetros de mercurio para la fiebre. Manténgalos separados de su basura, para reciclarlos o desecharlos como desechos peligrosos.",
-   "state": "draft"
-  },
-  "guide.trash-and-recycling.leaves-and-yard-waste": {
-   "en": "Leaves and yard waste.",
-   "es": "Hojas y desechos de jardín.",
-   "state": "draft"
-  },
-  "guide.trash-and-recycling.towns-and-transfer-stations-must-make": {
-   "en": "Towns and transfer stations must make information available on recycling batteries and electronics and on where mercury products are accepted, and should offer recycling for batteries and electronics where they can. Ask at yours.",
-   "es": "Los municipios y las estaciones de transferencia deben dar información sobre el reciclaje de baterías y aparatos electrónicos y sobre dónde se aceptan los productos con mercurio, y deberían ofrecer reciclaje de baterías y aparatos electrónicos cuando puedan. Pregunte en la suya.",
-   "state": "draft"
-  },
-  "guide.trash-and-recycling.hazardous-products-keep-them-for-a": {
-   "en": "Hazardous products: keep them for a collection day",
-   "es": "Productos peligrosos: guárdelos para un día de recolección",
-   "state": "draft"
-  },
-  "guide.trash-and-recycling.leftover-products-that-can-catch-fire": {
-   "en": "Leftover products that can catch fire, react, explode, corrode or poison, such as paints, cleaners, oils, batteries and pesticides, are <b>household hazardous waste</b>. Do not pour them down the drain, on the ground or into a storm drain, and check before putting any out with the trash.",
-   "es": "Los restos de productos que pueden incendiarse, reaccionar, explotar, corroer o envenenar, como pinturas, productos de limpieza, aceites, baterías y pesticidas, son <b>desechos peligrosos del hogar</b>. No los eche por el desagüe, en el suelo ni en una alcantarilla pluvial, y averigüe antes de poner alguno con la basura.",
-   "state": "draft"
-  },
-  "guide.trash-and-recycling.keep-them-in-their-original-containers": {
-   "en": "Keep them in their original containers with the labels on, and never mix them.",
-   "es": "Guárdelos en sus envases originales con las etiquetas puestas, y nunca los mezcle.",
-   "state": "draft"
-  },
-  "guide.trash-and-recycling.if-a-container-is-corroding-call": {
-   "en": "If a container is corroding, call your fire department for instructions.",
-   "es": "Si un envase se está corroyendo, llame a su departamento de bomberos para recibir instrucciones.",
-   "state": "draft"
-  },
-  "guide.trash-and-recycling.take-them-to-a-household-hazardous": {
-   "en": "Take them to a household hazardous waste collection. The Department of Environmental Services lists each town&rsquo;s contact for its collection.",
-   "es": "Llévelos a una recolección de desechos peligrosos del hogar. El Departamento de Servicios Ambientales tiene la lista del contacto de cada municipio para su recolección.",
-   "state": "draft"
-  },
-  "guide.trash-and-recycling.some-garages-accept-used-motor-oil": {
-   "en": "Some garages accept used motor oil for recycling.",
-   "es": "Algunos talleres aceptan aceite de motor usado para reciclarlo.",
-   "state": "draft"
-  },
-  "guide.trash-and-recycling.collection-day-contacts-by-town": {
-   "en": "Collection day contacts by town (Department of Environmental Services)",
-   "es": "Contactos por municipio para los días de recolección (Departamento de Servicios Ambientales)",
-   "state": "draft"
-  },
-  "guide.trash-and-recycling.household-hazardous-waste-epa": {
-   "en": "Household hazardous waste (EPA)",
-   "es": "Desechos peligrosos del hogar (EPA)",
-   "state": "draft"
-  },
-  "guide.trash-and-recycling.compost-at-home": {
-   "en": "Compost at home",
-   "es": "Haga compost en casa",
-   "state": "draft"
-  },
-  "guide.trash-and-recycling.you-can-compost-food-scraps-from": {
-   "en": "You can compost food scraps from your kitchen with leaves and other yard trim. Mix &ldquo;greens&rdquo;, such as fruit and vegetable scraps, coffee grounds and grass clippings, with &ldquo;browns&rdquo;, such as dry leaves, twigs, shredded paper and cardboard. Leave out meat, fish, bones, dairy, fats and oils, which attract animals, and pet waste. If you have no room, look for a town or community composting program that collects food scraps or takes them at a drop-off.",
-   "es": "Puede hacer compost con los restos de comida de su cocina junto con hojas y otros recortes del jardín. Mezcle materiales &ldquo;verdes&rdquo;, como restos de frutas y verduras, café molido y césped cortado, con materiales &ldquo;marrones&rdquo;, como hojas secas, ramitas, papel y cartón triturados. No ponga carne, pescado, huesos, lácteos, grasas ni aceites, que atraen animales, ni excrementos de mascotas. Si no tiene espacio, busque un programa de compostaje municipal o comunitario que recoja los restos de comida o los reciba en un punto de entrega.",
-   "state": "draft"
-  },
-  "guide.trash-and-recycling.composting-at-home-epa": {
-   "en": "Composting at home (EPA)",
-   "es": "Compostaje en casa (EPA)",
-   "state": "draft"
-  },
-  "guide.trash-and-recycling.your-town-or-city-office-and": {
-   "en": "Your town or city office, and your transfer station, for the local rules, hours and fees and the date of the next household hazardous waste collection.",
-   "es": "La oficina de su municipio o ciudad, y su estación de transferencia, para las reglas locales, el horario y las cuotas, y la fecha de la próxima recolección de desechos peligrosos del hogar.",
-   "state": "draft"
-  },
-  "guide.trash-and-recycling.how-to-prepare-for-storms-power": {
-   "en": "How to prepare for storms, power outages and other emergencies",
-   "es": "Cómo prepararse para tormentas, cortes de electricidad y otras emergencias",
-   "state": "draft"
-  },
-  "guide.trash-and-recycling.collection-event-contacts-2026-2027": {
-   "en": "Collection event contacts, 2026-2027 (Department of Environmental Services)",
-   "es": "Contactos para las recolecciones, 2026-2027 (Departamento de Servicios Ambientales)",
-   "state": "draft"
-  },
-  "guide.trash-and-recycling.household-hazardous-waste-epa-2": {
-   "en": "Household Hazardous Waste (EPA)",
-   "es": "Desechos peligrosos del hogar (EPA)",
-   "state": "draft"
-  },
-  "guide.trash-and-recycling.composting-at-home-epa-2": {
-   "en": "Composting at Home (EPA)",
-   "es": "Compostaje en casa (EPA)",
-   "state": "draft"
-  },
-  "guide.trash-and-recycling.solid-waste-management-rsa-149-m": {
-   "en": "Solid Waste Management, RSA 149-M",
-   "es": "Manejo de desechos sólidos, RSA 149-M",
-   "state": "draft"
-  },
-  "guide.group.around-your-town": {
-   "en": "Around Your Town",
-   "es": "En su municipio",
-   "state": "draft"
-  },
-  "guide.task.trash-and-recycling.does": {
-   "en": "Get rid of trash, recycling and hazardous waste",
-   "es": "Deshacerse de la basura, el reciclaje y los desechos peligrosos",
-   "state": "draft"
-  },
-  "guide.task.trash-and-recycling.line": {
-   "en": "Your transfer station, what never goes in the trash, hazardous waste days and composting.",
-   "es": "Su estación de transferencia, lo que nunca va a la basura, los días de desechos peligrosos y el compostaje.",
-   "state": "draft"
-  },
-  "guide.task.your-representatives.head": {
-   "en": "How to find your representatives",
-   "es": "Cómo encontrar a sus representantes",
-   "state": "draft"
-  },
-  "guide.task.contact-your-legislators.head": {
-   "en": "How to contact your legislators",
-   "es": "Cómo comunicarse con sus legisladores",
-   "state": "draft"
-  },
-  "guide.task.attend-a-hearing.head": {
-   "en": "How to attend or speak at a hearing",
-   "es": "Cómo asistir o hablar en una audiencia",
-   "state": "draft"
-  },
-  "guide.task.submit-testimony.head": {
-   "en": "How to submit testimony on a bill",
-   "es": "Cómo enviar testimonio sobre un proyecto de ley",
-   "state": "draft"
-  },
-  "guide.task.testifying.head": {
-   "en": "How public hearings work",
-   "es": "Cómo funcionan las audiencias públicas",
-   "state": "draft"
-  },
-  "guide.task.read-a-bill.head": {
-   "en": "How to read a bill",
-   "es": "Cómo leer un proyecto de ley",
-   "state": "draft"
-  },
-  "guide.task.using-this-site.head": {
-   "en": "How to follow a bill on this site",
-   "es": "Cómo seguir un proyecto de ley en este sitio",
-   "state": "draft"
-  },
-  "guide.task.how-to-vote.head": {
-   "en": "How to vote",
-   "es": "Cómo votar",
-   "state": "draft"
-  },
-  "guide.task.run-for-office.head": {
-   "en": "How to run for office",
-   "es": "Cómo postularse a un cargo",
-   "state": "draft"
-  },
-  "guide.task.town-warrant-article.head": {
-   "en": "How to put an article on your town meeting warrant",
-   "es": "Cómo incluir un artículo en la convocatoria de la asamblea municipal",
-   "state": "draft"
-  },
-  "guide.task.renew-drivers-license.head": {
-   "en": "How to renew your driver&rsquo;s license",
-   "es": "Cómo renovar su licencia de conducir",
-   "state": "draft"
-  },
-  "guide.task.register-a-car.head": {
-   "en": "How to register a car",
-   "es": "Cómo registrar un vehículo",
-   "state": "draft"
-  },
-  "guide.task.real-id.head": {
-   "en": "How to get a REAL ID",
-   "es": "Cómo obtener una REAL ID",
-   "state": "draft"
-  },
-  "guide.task.new-to-new-hampshire.head": {
-   "en": "How to move to New Hampshire",
-   "es": "Cómo mudarse a New Hampshire",
-   "state": "draft"
-  },
-  "guide.task.food-and-health-assistance.head": {
-   "en": "How to apply for food or health assistance",
-   "es": "Cómo solicitar ayuda para alimentos o salud",
-   "state": "draft"
-  },
-  "guide.task.file-for-unemployment.head": {
-   "en": "How to file for unemployment",
-   "es": "Cómo solicitar beneficios por desempleo",
-   "state": "draft"
-  },
-  "guide.task.child-care-scholarship.head": {
-   "en": "How to get help paying for child care",
-   "es": "Cómo obtener ayuda para pagar el cuidado infantil",
-   "state": "draft"
-  },
-  "guide.task.domestic-violence-help.head": {
-   "en": "How to get help after domestic violence, sexual assault or stalking",
-   "es": "Cómo obtener ayuda después de violencia doméstica, agresión sexual o acecho",
-   "state": "draft"
-  },
-  "guide.task.homelessness-help.head": {
-   "en": "How to get help if you are homeless or may lose your home",
-   "es": "Cómo obtener ayuda si no tiene hogar o puede perder su vivienda",
-   "state": "draft"
-  },
-  "guide.task.storms-and-emergencies.head": {
-   "en": "How to prepare for storms, power outages and emergencies",
-   "es": "Cómo prepararse para tormentas, cortes de electricidad y emergencias",
-   "state": "draft"
-  },
-  "guide.task.heating-and-electric-help.head": {
-   "en": "How to get help with heating and electric bills",
-   "es": "Cómo obtener ayuda con las facturas de calefacción y electricidad",
-   "state": "draft"
-  },
-  "guide.task.property-tax-abatement.head": {
-   "en": "How to appeal your property tax assessment",
-   "es": "Cómo apelar el avalúo de su impuesto a la propiedad",
-   "state": "draft"
-  },
-  "guide.task.property-tax-relief.head": {
-   "en": "How to get property tax relief",
-   "es": "Cómo obtener un alivio del impuesto a la propiedad",
-   "state": "draft"
-  },
-  "guide.task.public-records.head": {
-   "en": "How to get a public record",
-   "es": "Cómo obtener un registro público",
-   "state": "draft"
-  },
-  "guide.task.vital-records.head": {
-   "en": "How to get a birth, death, marriage or divorce certificate",
-   "es": "Cómo obtener un acta de nacimiento, defunción, matrimonio o divorcio",
-   "state": "draft"
-  },
-  "guide.task.trash-and-recycling.head": {
-   "en": "How to get rid of trash, recycling and hazardous waste",
-   "es": "Cómo deshacerse de la basura, el reciclaje y los desechos peligrosos",
-   "state": "draft"
-  },
-  "guide.task.tour-the-state-house.head": {
-   "en": "How to tour the State House",
-   "es": "Cómo visitar el Capitolio",
-   "state": "draft"
-  },
-  "guides.find_label": {
-   "en": "What do you need to do?",
-   "es": "¿Qué necesita hacer?",
-   "state": "draft",
-   "note": "The guide search on the How-To tab. {n} and {q} are filled in by the page: keep them as they are. Most Common: 'Las más consultadas', the guides people most often need."
-  },
-  "guides.find_hint": {
-   "en": "For example: renew my license",
-   "es": "Por ejemplo: renovar mi licencia",
-   "state": "draft"
-  },
-  "guides.find_list": {
-   "en": "Suggested guides",
-   "es": "Guías sugeridas",
-   "state": "draft"
-  },
-  "guides.find_one": {
-   "en": "1 guide matches",
-   "es": "1 guía coincide",
-   "state": "draft"
-  },
-  "guides.find_many": {
-   "en": "{n} guides match",
-   "es": "{n} guías coinciden",
-   "state": "draft"
-  },
-  "guides.find_none": {
-   "en": "No guide matches. Press Enter to search the whole site.",
-   "es": "Ninguna guía coincide. Presione Intro para buscar en todo el sitio.",
-   "state": "draft"
-  },
-  "guides.find_all": {
-   "en": "Search the whole site for “{q}”",
-   "es": "Buscar “{q}” en todo el sitio",
-   "state": "draft"
-  },
-  "guides.common": {
-   "en": "Most Common",
-   "es": "Las más consultadas",
-   "state": "draft"
-  },
-  "guides.by_topic": {
-   "en": "All Guides by Topic",
-   "es": "Todas las guías por tema",
    "state": "draft"
   }
  }

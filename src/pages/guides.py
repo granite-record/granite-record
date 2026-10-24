@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-10-11.34
+# GRANITE_VERSION: 2026-10-11.35
 """
 The how-to guides: their words, their sources, and what each was checked
 against. Read by build_civics.py, which draws them on the Resources hub's
@@ -4030,9 +4030,8 @@ GUIDES += [WEATHER]
 # trash anywhere in the state -- and sends the reader to the town for the
 # rest. The EPA's pages on household hazardous waste and composting at home,
 # read on 24 October 2026, give the safe handling. The Department of
-# Environmental Services' list of collection days refuses a cloud session:
-# its claim waits for the person's printout, and the guide is held back until
-# it is read.
+# Environmental Services' list of collection contacts refuses a cloud
+# session; it was read in the person's printout the same day.
 # ---------------------------------------------------------------------------
 TR_READ = "2026-10-24"
 DES_HHW = ("https://www.des.nh.gov/sites/g/files/ehbemt341/files/documents/"
@@ -4089,7 +4088,10 @@ TRASH = guide(
           "them.</li>"
           "<li>If a container is corroding, call your fire department for instructions.</li>"
           "<li>Take them to a household hazardous waste collection. The Department of "
-          "Environmental Services lists each town&rsquo;s contact for its collection.</li>"
+          "Environmental Services lists each town&rsquo;s contact for one, often a regional "
+          "event run by a planning commission or a nearby city. If your town has no event "
+          "listed, call the Department&rsquo;s Household Hazardous Waste Program at (603) "
+          "271-2047.</li>"
           "<li>Some garages accept used motor oil for recycling.</li></ul>",
           actions=[("Collection day contacts by town (Department of Environmental Services)",
                     DES_HHW),
@@ -4108,8 +4110,11 @@ TRASH = guide(
      ("Composting at Home (EPA)", EPA_COMPOST),
      ("Solid Waste Management, RSA 149-M", "/laws/149-m")],
     ["149-M"],
-    [claim("The Department's list of household hazardous waste collection event contacts, by "
-           "town.", DES_HHW),
+    # Read in the person's printout of 24 October 2026 (revised 27 March 2026).
+    [claim("Contacts for 2026-2027 household hazardous waste collection events, town by town, "
+           "many hosted by a regional planning commission, a city or a district; No Event "
+           "Identified where a town has none; the Household Hazardous Waste Program at (603) "
+           "271-2047 or hhw@des.nh.gov.", DES_HHW, TR_READ),
      claim("Each town shall provide a facility or assure access to another approved solid "
            "waste facility for its residents; bylaws on its facility, reasonable rates, "
            "separation and collection of refuse; designated bags or containers or disposal "
@@ -4189,8 +4194,10 @@ def task(slug, does, line, head=None):
 # MOST COMMON, the tab's first list: chosen by judgment, as HOME's are -- the
 # site keeps no count of what is read -- the errands a member of the public
 # most often has with the state and the legislature. The person's to change.
+# New to New Hampshire took food and health assistance's place the same day,
+# at the person's word.
 COMMON = ["how-to-vote", "renew-drivers-license", "register-a-car", "your-representatives",
-          "submit-testimony", "food-and-health-assistance"]
+          "submit-testimony", "new-to-new-hampshire"]
 
 
 TASKS = [

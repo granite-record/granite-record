@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.689
+# GRANITE_VERSION: 2026-09-04.690
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -32659,7 +32659,8 @@ def _how_to_moved():
     # each guide by its "How to" headline.
     for group, _ts in G.TASKS:
         if any(links_to(guides_pane, t["slug"]) for t in _ts):
-            assert re.search(rf'<summary><span class="g-tname">{re.escape(group)}</span>', guides_pane), \
+            assert re.search(rf'<summary>(?:<span class="g-ic".*?</span>)?<span class="g-tname">'
+                             rf'{re.escape(group)}</span>', guides_pane), \
                 f"the How-To tab does not fold the group {group!r} under its name"
             for t in _ts:
                 if links_to(guides_pane, t["slug"]):

@@ -1,4 +1,4 @@
-// GRANITE_VERSION: 2026-10-09.17
+// GRANITE_VERSION: 2026-10-09.18
 /* THE SITE'S COMPONENTS, IN THE BROWSER. Published as site/components.js and
    loaded by every page, in its head, before app.js, find.js and any page's
    own script, so each of them draws a person, a committee, a date or a time
@@ -259,7 +259,18 @@ var ICONS={
   play:'<path fill="currentColor" stroke="none" d="M8 5.5v13l10.5-6.5z"/>',
   globe:'<circle cx="12" cy="12" r="8.75"/><path d="M3.25 12h17.5"/>'+
     '<path d="M12 3.25c2.4 2.4 3.6 5.3 3.6 8.75s-1.2 6.35-3.6 8.75c-2.4-2.4-3.6-5.3-3.6-8.75'+
-    's1.2-6.35 3.6-8.75z"/>'
+    's1.2-6.35 3.6-8.75z"/>',
+  // the Resources hub's topics (build_civics.badge; 24 October 2026)
+  capitol:'<path d="M3.25 20.75h17.5M4.25 13.25h15.5"/><path d="M5.75 20.75v-7.5M9.25 20.75v-7.5M14.75 20.75v-7.5M18.25 20.75v-7.5"/><path d="M6.75 13.25a5.25 5.25 0 0 1 10.5 0"/><path d="M12 8V3.25h2.5"/>',
+  ballot:'<rect x="3.75" y="11.25" width="16.5" height="9.5" rx="1"/><path d="M7.75 11.25v-7.5h8.5v7.5"/><path d="M10 7.5l1.5 1.5 3-3"/><path d="M8.5 15.75h7"/>',
+  car:'<path d="M4.75 12.25 6.4 7.6a1.5 1.5 0 0 1 1.4-1h8.4a1.5 1.5 0 0 1 1.4 1l1.65 4.65"/><rect x="3.25" y="12.25" width="17.5" height="5" rx="1.25"/><path d="M6 17.25v2.5M18 17.25v2.5"/><circle cx="7.25" cy="14.75" r=".75"/><circle cx="16.75" cy="14.75" r=".75"/>',
+  heart:'<path d="M12 20.25s-7.75-4.6-7.75-10.1A4.15 4.15 0 0 1 12 7.6a4.15 4.15 0 0 1 7.75 2.55c0 5.5-7.75 10.1-7.75 10.1z"/>',
+  house:'<path d="M3.5 11 12 4l8.5 7"/><path d="M5.75 9.25v11.5h12.5V9.25"/><path d="M10 20.75v-5.5h4v5.5"/>',
+  pin:'<path d="M12 21s-6.25-6.1-6.25-11a6.25 6.25 0 0 1 12.5 0c0 4.9-6.25 11-6.25 11z"/><circle cx="12" cy="10" r="2.25"/>',
+  columns:'<path d="M3.25 20.75h17.5M4.25 9.25h15.5L12 4z"/><path d="M6.75 9.25v11.5M10.25 9.25v11.5M13.75 9.25v11.5M17.25 9.25v11.5"/>',
+  chart:'<path d="M3.75 20.25h16.5"/><path d="M6.75 20.25v-6M11 20.25V8.75M15.25 20.25v-9M19.25 20.25V5.75"/>',
+  map:'<path d="M3.75 6.25 9 4l6 2.25 5.25-2.25v13.75L15 20l-6-2.25-5.25 2.25z"/><path d="M9 4v13.75M15 6.25V20"/>',
+  idcard:'<rect x="2.75" y="5.25" width="18.5" height="13.5" rx="1.5"/><circle cx="8.5" cy="11" r="2"/><path d="M5.5 15.75c.6-1.5 1.6-2.25 3-2.25s2.4.75 3 2.25"/><path d="M14 10h4.5M14 13.25h3"/>'
 };
 function icon(name){
   var inner=typeof name==="string"&&Object.prototype.hasOwnProperty.call(ICONS,name)?ICONS[name]:null;
