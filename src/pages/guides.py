@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-10-11.31
+# GRANITE_VERSION: 2026-10-11.32
 """
 The how-to guides: their words, their sources, and what each was checked
 against. Read by build_civics.py, which draws them on the Resources hub's
@@ -3858,8 +3858,9 @@ GUIDES += [HOMELESS]
 # refuses this machine's own requests but answered that), the National
 # Weather Service's page on winter watches and warnings, read directly, and
 # 211 New Hampshire. New Hampshire's own alert system, NH Alerts, is the
-# Department of Safety's, whose pages refuse a cloud session: its claim waits
-# for the person's printout, and the guide is held back until it is read.
+# Department of Safety's, whose pages refuse a cloud session: they and ReadyNH
+# were read in the PDFs the person printed and sent the same day. Neither page
+# calls NH Alerts free, so the guide does not.
 # Every safety instruction is the federal page's own, in plain words; none is
 # this site's advice.
 # ---------------------------------------------------------------------------
@@ -3875,7 +3876,7 @@ WEATHER = guide(
     "storms-and-emergencies", "How to Prepare for Storms, Power Outages and Other Emergencies",
     "Getting New Hampshire's emergency alerts, keeping supplies at home and in the car, staying "
     "safe in a power outage or winter storm, and where to find a warm place or help.",
-    "Sign up for NH Alerts, the state&rsquo;s free emergency alerts, and keep enough food, "
+    "Sign up for NH Alerts, the state&rsquo;s official emergency alerts, and keep enough food, "
     "water and supplies at home to last several days. In a storm or a power outage, never run "
     "a generator, grill or camp stove indoors, and never heat your home with a gas stove or "
     "oven: carbon monoxide can kill. If you need a warm place or other help, call 2-1-1. In an "
@@ -3886,8 +3887,16 @@ WEATHER = guide(
          [("Yes", "Keep the refrigerator and freezer closed. Use a generator only outdoors."),
           ("You need a warm place", "Call 2-1-1, or ask your town about warming centers.")])],
     [step("Get alerts",
-          "<p><b>NH Alerts</b> is New Hampshire&rsquo;s free emergency notification system. "
-          "Sign up to choose how you are reached, including text messages to your phone.</p>"
+          "<p><b>NH Alerts</b> is New Hampshire&rsquo;s official emergency notification system. "
+          "It sends alerts about local weather, evacuations, AMBER Alerts, hazardous materials "
+          "and other emergencies by phone call, text message, email or app. Create an account to "
+          "choose how you are reached; to get text messages, add your mobile number as a text "
+          "(SMS) contact. Or download the Genasys Protect app, which shows alerts where you are "
+          "without an account. Anyone who lives, works, owns property or often visits where NH "
+          "Alerts is used can sign up, and you can add the places your family lives.</p>"
+          "<p><b>ReadyNH.gov</b> is the state&rsquo;s official source of information during "
+          "emergencies, with what to do before, during and after floods, extreme cold and heat, "
+          "power outages, winter storms and other disasters.</p>"
           "<p>The National Weather Service&rsquo;s alerts tell you how serious a storm is:</p>"
           "<ul><li><b>Advisory: be aware.</b> Winter weather is expected; be ready for "
           "difficult driving.</li>"
@@ -3896,7 +3905,7 @@ WEATHER = guide(
           "winter storm warning, find shelter right away and delay travel.</li></ul>"
           "<p>A NOAA Weather Radio and the Emergency Alert System on radio and TV give alerts "
           "too.</p>",
-          actions=[("Sign up for NH Alerts", NH_ALERTS),
+          actions=[("Sign up for NH Alerts", NH_ALERTS), ("ReadyNH", READYNH),
                    ("Watches and warnings (National Weather Service)", NWS_WINTER)]),
      step("Keep supplies at home and in the car",
           "<p>After an emergency you may need to manage on your own for several days. A basic "
@@ -3952,10 +3961,19 @@ WEATHER = guide(
      ("Winter weather watches, warnings and advisories (National Weather Service)", NWS_WINTER),
      ("2-1-1 New Hampshire", NH211_HOME)],
     [],
-    # NH Alerts and ReadyNH wait for the person's printouts.
-    [claim("NH Alerts is New Hampshire's free emergency notification system; registering lets "
-           "you choose how you are contacted, including text messages.", NH_ALERTS),
-     claim("ReadyNH is where to enroll in NH Alerts.", READYNH),
+    # NH Alerts and ReadyNH, read in the person's printouts of 24 October 2026.
+    [claim("NH Alerts is the State's official emergency and public notification system, by "
+           "phone calls, text messages, emails and app notifications, for local weather "
+           "impacts, evacuations, AMBER Alerts, missing persons, hazardous materials incidents "
+           "and severe traffic situations; registering lets you choose how you are contacted, "
+           "and for texts add your mobile number as an SMS contact; the Genasys Protect app "
+           "gives location-based alerts without an account; anyone who lives, works, owns "
+           "property or regularly visits an area where NH Alerts are used can sign up, and may "
+           "register for areas where loved ones live.", NH_ALERTS, WX_READ),
+     claim("ReadyNH.gov is New Hampshire's official source for information during state "
+           "emergencies: sign up for NH Alerts, and learn what to do before, during and after a "
+           "disaster, among them blackouts and power outages, extreme cold and heat, floods and "
+           "winter storms.", READYNH, WX_READ),
      claim("After an emergency you may need to survive on your own for several days; a basic "
            "kit: water, one gallon per person per day for several days; at least a several-day "
            "supply of non-perishable food; a battery-powered or hand crank radio; a flashlight; "

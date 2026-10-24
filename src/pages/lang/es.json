@@ -5361,6 +5361,282 @@
    "es": "Muchos avisos de comités de la Cámara dicen además que una &ldquo;executive session on pending legislation may be held throughout the day, time permitting, from the time the committee is initially convened&rdquo; (puede celebrarse una sesión ejecutiva sobre proyectos pendientes a lo largo del día, si el tiempo lo permite, desde que el comité se reúne por primera vez). Eso significa que el comité puede votar cualquier proyecto de ley pendiente en cualquier momento de ese día, así que el aviso no da hora para la votación: para ver una votación en particular quizá tenga que mirar todo el día, y puede que se entere de cuándo ocurrió solo después. Los calendarios de la Cámara imprimen esa línea desde al menos febrero de 1997, y lo siguen haciendo.",
    "state": "draft"
   },
+  "guide.storms-and-emergencies.2-1-1-new-hampshire": {
+   "en": "2-1-1 New Hampshire",
+   "es": "2-1-1 New Hampshire",
+   "state": "draft"
+  },
+  "guide.storms-and-emergencies.2-1-1-new-hampshire-at": {
+   "en": "2-1-1 New Hampshire, at any hour, for shelters, warming places and other help near you, and your town or city for local warming centers and storm information. In an emergency, call 911.",
+   "es": "2-1-1 New Hampshire, a cualquier hora, para refugios, lugares para calentarse y otra ayuda cerca de usted, y su municipio o ciudad para los centros de calentamiento locales y la información sobre tormentas. En una emergencia, llame al 911.",
+   "state": "draft"
+  },
+  "guide.storms-and-emergencies.a-cell-phone-with-chargers-and": {
+   "en": "a cell phone with chargers and a backup battery.",
+   "es": "un teléfono celular con cargadores y una batería de respaldo.",
+   "state": "draft"
+  },
+  "guide.storms-and-emergencies.a-first-aid-kit-and-a": {
+   "en": "a first aid kit and a whistle to signal for help;",
+   "es": "un botiquín de primeros auxilios y un silbato para pedir ayuda;",
+   "state": "draft"
+  },
+  "guide.storms-and-emergencies.a-flashlight-a-battery-powered-or": {
+   "en": "a flashlight, a battery-powered or hand-crank radio, and extra batteries;",
+   "es": "una linterna, una radio de pilas o de manivela, y pilas adicionales;",
+   "state": "draft"
+  },
+  "guide.storms-and-emergencies.a-noaa-weather-radio-and-the": {
+   "en": "A NOAA Weather Radio and the Emergency Alert System on radio and TV give alerts too.",
+   "es": "Una radio meteorológica de la NOAA (NOAA Weather Radio) y el Sistema de Alerta de Emergencia en la radio y la televisión también dan alertas.",
+   "state": "draft"
+  },
+  "guide.storms-and-emergencies.add-what-your-household-needs-such": {
+   "en": "Add what your household needs, such as medicines. Store it all in one or two containers that are easy to carry, and replace anything that expires.",
+   "es": "Agregue lo que necesite su hogar, como medicamentos. Guárdelo todo en uno o dos recipientes fáciles de llevar, y reemplace lo que se venza.",
+   "state": "draft"
+  },
+  "guide.storms-and-emergencies.advisory-be-aware-winter-weather-is": {
+   "en": "<b>Advisory: be aware.</b> Winter weather is expected; be ready for difficult driving.",
+   "es": "<b>Advertencia (Advisory): esté atento.</b> Se espera tiempo invernal; prepárese para manejar en condiciones difíciles.",
+   "state": "draft"
+  },
+  "guide.storms-and-emergencies.after-an-emergency-you-may-need": {
+   "en": "After an emergency you may need to manage on your own for several days. A basic kit includes:",
+   "es": "Después de una emergencia, puede que tenga que arreglárselas solo durante varios días. Un equipo básico incluye:",
+   "state": "draft"
+  },
+  "guide.storms-and-emergencies.at-least-a-several-day-supply": {
+   "en": "at least a several-day supply of food that will not spoil, and a manual can opener;",
+   "es": "por lo menos comida que no se eche a perder para varios días, y un abrelatas manual;",
+   "state": "draft"
+  },
+  "guide.storms-and-emergencies.avoid-overexertion-when-shoveling-or": {
+   "en": "Avoid overexertion when shoveling or walking in snow, which can bring on a heart attack.",
+   "es": "Evite el esfuerzo excesivo al palear nieve o caminar en la nieve, que puede provocar un ataque al corazón.",
+   "state": "draft"
+  },
+  "guide.storms-and-emergencies.build-a-kit-ready-gov": {
+   "en": "Build a kit (Ready.gov)",
+   "es": "Arme un equipo (Ready.gov)",
+   "state": "draft"
+  },
+  "guide.storms-and-emergencies.build-a-kit-ready-gov-fema": {
+   "en": "Build a kit (Ready.gov, FEMA)",
+   "es": "Arme un equipo (Ready.gov, FEMA)",
+   "state": "draft"
+  },
+  "guide.storms-and-emergencies.call-2-1-1-at-any": {
+   "en": "Call <b>2-1-1</b>, at any hour, for shelters, warming places, utility help and other services near you. In an emergency, call 911.",
+   "es": "Llame al <b>2-1-1</b>, a cualquier hora, para encontrar refugios, lugares para calentarse, ayuda con los servicios públicos y otros servicios cerca de usted. En una emergencia, llame al 911.",
+   "state": "draft"
+  },
+  "guide.storms-and-emergencies.call-2-1-1-or-ask": {
+   "en": "Call 2-1-1, or ask your town about warming centers.",
+   "es": "Llame al 2-1-1, o pregunte en su municipio por los centros de calentamiento.",
+   "state": "draft"
+  },
+  "guide.storms-and-emergencies.carbon-monoxide-can-kill-and-you": {
+   "en": "<b>Carbon monoxide can kill</b>, and you cannot see or smell it. Use a generator, camp stove or grill only outdoors, at least 20 feet from windows, doors and attached garages. Never heat your home with a gas stove or oven. Have carbon monoxide detectors with battery backup on every level of your home.",
+   "es": "<b>El monóxido de carbono puede matar</b>, y no se puede ver ni oler. Use un generador, una estufa de campamento o una parrilla solo al aire libre, a por lo menos 20 pies de ventanas, puertas y garajes adjuntos. Nunca caliente su hogar con una estufa u horno de gas. Tenga detectores de monóxido de carbono con batería de respaldo en cada piso de su casa.",
+   "state": "draft"
+  },
+  "guide.storms-and-emergencies.frostbite-causes-loss-of-feeling-and": {
+   "en": "<b>Frostbite</b> causes loss of feeling and color in the face, fingers and toes. Go to a warm room and soak in warm water; do not massage the skin or use a heating pad.",
+   "es": "<b>La congelación</b> causa pérdida de sensibilidad y de color en la cara, los dedos de las manos y de los pies. Vaya a un cuarto cálido y remoje la zona en agua tibia; no frote la piel ni use una almohadilla térmica.",
+   "state": "draft"
+  },
+  "guide.storms-and-emergencies.get-alerts": {
+   "en": "Get alerts",
+   "es": "Reciba alertas",
+   "state": "draft"
+  },
+  "guide.storms-and-emergencies.has-the-power-gone-out": {
+   "en": "Has the power gone out?",
+   "es": "¿Se fue la electricidad?",
+   "state": "draft"
+  },
+  "guide.storms-and-emergencies.how-to-get-help-if-you": {
+   "en": "How to get help if you are homeless or may lose your home",
+   "es": "Cómo obtener ayuda si no tiene hogar o puede perder su vivienda",
+   "state": "draft"
+  },
+  "guide.storms-and-emergencies.how-to-get-help-with-heating": {
+   "en": "How to get help with heating and electric bills",
+   "es": "Cómo obtener ayuda con las facturas de calefacción y electricidad",
+   "state": "draft"
+  },
+  "guide.storms-and-emergencies.hypothermia-a-body-temperature-below-95": {
+   "en": "<b>Hypothermia</b>, a body temperature below 95 degrees, is an emergency. Go to a warm room, warm the center of the body first, and keep dry and wrapped in warm blankets, including the head and neck.",
+   "es": "<b>La hipotermia</b>, una temperatura corporal de menos de 95 grados, es una emergencia. Vaya a un cuarto cálido, caliente primero el centro del cuerpo, y manténgase seco y envuelto en mantas, incluidas la cabeza y el cuello.",
+   "state": "draft"
+  },
+  "guide.storms-and-emergencies.if-it-is-very-cold-or": {
+   "en": "<b>If it is very cold or very hot,</b> go to a place in your community with power. Ask local officials which warming or cooling places are open.",
+   "es": "<b>Si hace mucho frío o mucho calor,</b> vaya a un lugar de su comunidad que tenga electricidad. Pregunte a las autoridades locales qué lugares para calentarse o refrescarse están abiertos.",
+   "state": "draft"
+  },
+  "guide.storms-and-emergencies.if-you-are-running-out-of": {
+   "en": "If you are running out of heating fuel or have no heat, call your community action agency: fuel assistance can arrange an emergency delivery. The guide to help with heating and electric bills has the agencies.",
+   "es": "Si se le está acabando el combustible para la calefacción o no tiene calefacción, llame a su agencia de acción comunitaria: la asistencia de combustible puede organizar una entrega de emergencia. La guía de ayuda con las facturas de calefacción y electricidad tiene las agencias.",
+   "state": "draft"
+  },
+  "guide.storms-and-emergencies.if-you-need-a-warm-place": {
+   "en": "If you need a warm place or other help",
+   "es": "Si necesita un lugar cálido u otra ayuda",
+   "state": "draft"
+  },
+  "guide.storms-and-emergencies.in-a-power-outage": {
+   "en": "In a power outage",
+   "es": "Durante un corte de electricidad",
+   "state": "draft"
+  },
+  "guide.storms-and-emergencies.in-a-winter-storm": {
+   "en": "In a winter storm",
+   "es": "Durante una tormenta de invierno",
+   "state": "draft"
+  },
+  "guide.storms-and-emergencies.in-the-car-keep-jumper-cables": {
+   "en": "In the car, keep jumper cables, sand, a flashlight, warm clothes, blankets, bottled water and snacks, and keep the gas tank full.",
+   "es": "En el auto, tenga cables para pasar corriente, arena, una linterna, ropa abrigada, mantas, agua embotellada y bocadillos, y mantenga lleno el tanque de gasolina.",
+   "state": "draft"
+  },
+  "guide.storms-and-emergencies.keep-supplies-at-home-and-in": {
+   "en": "Keep supplies at home and in the car",
+   "es": "Tenga suministros en casa y en el auto",
+   "state": "draft"
+  },
+  "guide.storms-and-emergencies.keep-supplies-for-several-days-at": {
+   "en": "Keep supplies for several days at home, and a kit in your car.",
+   "es": "Tenga suministros para varios días en casa, y un equipo en su auto.",
+   "state": "draft"
+  },
+  "guide.storms-and-emergencies.keep-the-refrigerator-and-freezer-closed": {
+   "en": "Keep the refrigerator and freezer closed. Use a generator only outdoors.",
+   "es": "Mantenga cerrados el refrigerador y el congelador. Use un generador solo al aire libre.",
+   "state": "draft"
+  },
+  "guide.storms-and-emergencies.keep-the-refrigerator-and-freezer-closed-2": {
+   "en": "<b>Keep the refrigerator and freezer closed.</b> A refrigerator keeps food cold for about 4 hours, and a full freezer for about 48 hours. Throw out food that has been at 40 degrees or warmer for 2 hours or more: when in doubt, throw it out.",
+   "es": "<b>Mantenga cerrados el refrigerador y el congelador.</b> Un refrigerador mantiene la comida fría unas 4 horas, y un congelador lleno unas 48 horas. Tire la comida que haya estado a 40 grados o más durante 2 horas o más: si tiene dudas, tírela.",
+   "state": "draft"
+  },
+  "guide.storms-and-emergencies.lead": {
+   "en": "Getting New Hampshire's emergency alerts, keeping supplies at home and in the car, staying safe in a power outage or winter storm, and where to find a warm place or help.",
+   "es": "Cómo recibir las alertas de emergencia de New Hampshire, tener suministros en casa y en el auto, mantenerse a salvo durante un corte de electricidad o una tormenta de invierno, y dónde encontrar un lugar cálido o ayuda.",
+   "state": "draft"
+  },
+  "guide.storms-and-emergencies.nh-alerts-department-of-safety": {
+   "en": "NH Alerts (Department of Safety)",
+   "es": "NH Alerts (Departamento de Seguridad)",
+   "state": "draft"
+  },
+  "guide.storms-and-emergencies.nh-alerts-is-new-hampshires-official": {
+   "en": "<b>NH Alerts</b> is New Hampshire&rsquo;s official emergency notification system. It sends alerts about local weather, evacuations, AMBER Alerts, hazardous materials and other emergencies by phone call, text message, email or app. Create an account to choose how you are reached; to get text messages, add your mobile number as a text (SMS) contact. Or download the Genasys Protect app, which shows alerts where you are without an account. Anyone who lives, works, owns property or often visits where NH Alerts is used can sign up, and you can add the places your family lives.",
+   "es": "<b>NH Alerts</b> es el sistema oficial de notificaciones de emergencia de New Hampshire. Envía alertas sobre el tiempo local, evacuaciones, alertas AMBER, materiales peligrosos y otras emergencias por llamada telefónica, mensaje de texto, correo electrónico o aplicación. Cree una cuenta para elegir cómo quiere recibirlas; para recibir mensajes de texto, agregue su número de celular como contacto de texto (SMS). O descargue la aplicación Genasys Protect, que muestra las alertas donde usted esté sin necesidad de una cuenta. Cualquier persona que viva, trabaje, tenga una propiedad o visite con frecuencia un lugar donde se usa NH Alerts puede inscribirse, y puede agregar los lugares donde vive su familia.",
+   "state": "draft"
+  },
+  "guide.storms-and-emergencies.plan-ahead-for-medicines-that-need": {
+   "en": "<b>Plan ahead for medicines that need refrigeration</b> and for medical devices that need power.",
+   "es": "<b>Planifique con anticipación para los medicamentos que necesitan refrigeración</b> y para los aparatos médicos que necesitan electricidad.",
+   "state": "draft"
+  },
+  "guide.storms-and-emergencies.power-outages-ready-gov": {
+   "en": "Power outages (Ready.gov)",
+   "es": "Cortes de electricidad (Ready.gov)",
+   "state": "draft"
+  },
+  "guide.storms-and-emergencies.power-outages-ready-gov-fema": {
+   "en": "Power outages (Ready.gov, FEMA)",
+   "es": "Cortes de electricidad (Ready.gov, FEMA)",
+   "state": "draft"
+  },
+  "guide.storms-and-emergencies.readynh": {
+   "en": "ReadyNH",
+   "es": "ReadyNH",
+   "state": "draft"
+  },
+  "guide.storms-and-emergencies.readynh-gov-is-the-states-official": {
+   "en": "<b>ReadyNH.gov</b> is the state&rsquo;s official source of information during emergencies, with what to do before, during and after floods, extreme cold and heat, power outages, winter storms and other disasters.",
+   "es": "<b>ReadyNH.gov</b> es la fuente oficial de información del estado durante las emergencias, con lo que hay que hacer antes, durante y después de inundaciones, frío y calor extremos, cortes de electricidad, tormentas de invierno y otros desastres.",
+   "state": "draft"
+  },
+  "guide.storms-and-emergencies.sign-up-for-nh-alerts": {
+   "en": "Sign up for NH Alerts",
+   "es": "Inscribirse en NH Alerts",
+   "state": "draft"
+  },
+  "guide.storms-and-emergencies.sign-up-for-nh-alerts-and": {
+   "en": "Sign up for NH Alerts, and learn what a watch and a warning mean.",
+   "es": "Inscríbase en NH Alerts y aprenda qué significan una vigilancia y un aviso.",
+   "state": "draft"
+  },
+  "guide.storms-and-emergencies.sign-up-for-nh-alerts-the": {
+   "en": "Sign up for NH Alerts, the state&rsquo;s official emergency alerts, and keep enough food, water and supplies at home to last several days. In a storm or a power outage, never run a generator, grill or camp stove indoors, and never heat your home with a gas stove or oven: carbon monoxide can kill. If you need a warm place or other help, call 2-1-1. In an emergency, call 911.",
+   "es": "Inscríbase en NH Alerts, las alertas de emergencia oficiales del estado, y tenga en casa suficiente comida, agua y suministros para varios días. Durante una tormenta o un corte de electricidad, nunca use un generador, una parrilla o una estufa de campamento dentro de la casa, y nunca caliente su hogar con una estufa u horno de gas: el monóxido de carbono puede matar. Si necesita un lugar cálido u otra ayuda, llame al 2-1-1. En una emergencia, llame al 911.",
+   "state": "draft"
+  },
+  "guide.storms-and-emergencies.stay-off-the-roads-if-you": {
+   "en": "Stay off the roads if you can. If you are trapped in your car, stay inside it.",
+   "es": "No salga a la carretera si puede evitarlo. Si queda atrapado en su auto, quédese dentro.",
+   "state": "draft"
+  },
+  "guide.storms-and-emergencies.the-national-weather-services-alerts": {
+   "en": "The National Weather Service&rsquo;s alerts tell you how serious a storm is:",
+   "es": "Las alertas del Servicio Meteorológico Nacional (National Weather Service) le indican qué tan grave es una tormenta:",
+   "state": "draft"
+  },
+  "guide.storms-and-emergencies.title": {
+   "en": "How to Prepare for Storms, Power Outages and Other Emergencies",
+   "es": "Cómo prepararse para tormentas, cortes de electricidad y otras emergencias",
+   "state": "draft",
+   "note": "The National Weather Service's terms: Advisory 'advertencia', Watch 'vigilancia', Warning 'aviso', each with the English, which is what the alerts themselves say."
+  },
+  "guide.storms-and-emergencies.warning-take-action-dangerous-weather-is": {
+   "en": "<b>Warning: take action.</b> Dangerous weather is coming or has begun. Under a winter storm warning, find shelter right away and delay travel.",
+   "es": "<b>Aviso (Warning): actúe.</b> El tiempo peligroso se acerca o ya empezó. Bajo un aviso de tormenta de invierno, busque refugio de inmediato y aplace sus viajes.",
+   "state": "draft"
+  },
+  "guide.storms-and-emergencies.watch-be-prepared-a-significant-storm": {
+   "en": "<b>Watch: be prepared.</b> A significant storm is possible.",
+   "es": "<b>Vigilancia (Watch): esté preparado.</b> Es posible una tormenta importante.",
+   "state": "draft"
+  },
+  "guide.storms-and-emergencies.watches-and-warnings-national-weather": {
+   "en": "Watches and warnings (National Weather Service)",
+   "es": "Vigilancias y avisos (Servicio Meteorológico Nacional)",
+   "state": "draft"
+  },
+  "guide.storms-and-emergencies.water-one-gallon-per-person-per": {
+   "en": "water, one gallon per person per day, for several days;",
+   "es": "agua, un galón por persona por día, para varios días;",
+   "state": "draft"
+  },
+  "guide.storms-and-emergencies.winter-weather-ready-gov": {
+   "en": "Winter weather (Ready.gov)",
+   "es": "Tiempo invernal (Ready.gov)",
+   "state": "draft"
+  },
+  "guide.storms-and-emergencies.winter-weather-ready-gov-fema": {
+   "en": "Winter weather (Ready.gov, FEMA)",
+   "es": "Tiempo invernal (Ready.gov, FEMA)",
+   "state": "draft"
+  },
+  "guide.storms-and-emergencies.winter-weather-watches-warnings-and": {
+   "en": "Winter weather watches, warnings and advisories (National Weather Service)",
+   "es": "Vigilancias, avisos y advertencias de tiempo invernal (Servicio Meteorológico Nacional)",
+   "state": "draft"
+  },
+  "guide.storms-and-emergencies.yes": {
+   "en": "Yes",
+   "es": "Sí",
+   "state": "draft"
+  },
+  "guide.storms-and-emergencies.you-need-a-warm-place": {
+   "en": "You need a warm place",
+   "es": "Necesita un lugar cálido",
+   "state": "draft"
+  },
   "guide.submit-testimony.a-sign-in-for-or-against": {
    "en": "A sign-in for or against is part of the record and is counted. For House hearings this site publishes only how many people signed in supporting, opposing and neutral, never names or written testimony.",
    "es": "Una inscripción a favor o en contra forma parte del registro y se cuenta. De las audiencias de la Cámara, este sitio publica solo cuántas personas se inscribieron a favor, en contra y neutrales, nunca nombres ni testimonios escritos.",
@@ -5704,6 +5980,16 @@
   "guide.task.run-for-office.line": {
    "en": "Who files where and when, and what it takes, from governor to town offices.",
    "es": "Quién se inscribe dónde y cuándo, y qué se necesita, desde gobernador hasta cargos municipales.",
+   "state": "draft"
+  },
+  "guide.task.storms-and-emergencies.does": {
+   "en": "Prepare for storms, power outages and emergencies",
+   "es": "Prepararse para tormentas, cortes de electricidad y emergencias",
+   "state": "draft"
+  },
+  "guide.task.storms-and-emergencies.line": {
+   "en": "Emergency alerts, supplies, power outage and winter storm safety, and where to find a warm place.",
+   "es": "Alertas de emergencia, suministros, seguridad durante cortes de electricidad y tormentas de invierno, y dónde encontrar un lugar cálido.",
    "state": "draft"
   },
   "guide.task.submit-testimony.does": {
@@ -8408,287 +8694,6 @@
   "yt.yours": {
    "en": "Your town: {place}",
    "es": "Su municipio: {place}",
-   "state": "draft"
-  },
-  "guide.storms-and-emergencies.title": {
-   "en": "How to Prepare for Storms, Power Outages and Other Emergencies",
-   "es": "Cómo prepararse para tormentas, cortes de electricidad y otras emergencias",
-   "state": "draft",
-   "note": "The National Weather Service's terms: Advisory 'advertencia', Watch 'vigilancia', Warning 'aviso', each with the English, which is what the alerts themselves say."
-  },
-  "guide.storms-and-emergencies.lead": {
-   "en": "Getting New Hampshire's emergency alerts, keeping supplies at home and in the car, staying safe in a power outage or winter storm, and where to find a warm place or help.",
-   "es": "Cómo recibir las alertas de emergencia de New Hampshire, tener suministros en casa y en el auto, mantenerse a salvo durante un corte de electricidad o una tormenta de invierno, y dónde encontrar un lugar cálido o ayuda.",
-   "state": "draft"
-  },
-  "guide.storms-and-emergencies.sign-up-for-nh-alerts-the": {
-   "en": "Sign up for NH Alerts, the state&rsquo;s free emergency alerts, and keep enough food, water and supplies at home to last several days. In a storm or a power outage, never run a generator, grill or camp stove indoors, and never heat your home with a gas stove or oven: carbon monoxide can kill. If you need a warm place or other help, call 2-1-1. In an emergency, call 911.",
-   "es": "Inscríbase en NH Alerts, las alertas de emergencia gratuitas del estado, y tenga en casa suficiente comida, agua y suministros para varios días. Durante una tormenta o un corte de electricidad, nunca use un generador, una parrilla o una estufa de campamento dentro de la casa, y nunca caliente su hogar con una estufa u horno de gas: el monóxido de carbono puede matar. Si necesita un lugar cálido u otra ayuda, llame al 2-1-1. En una emergencia, llame al 911.",
-   "state": "draft"
-  },
-  "guide.storms-and-emergencies.sign-up-for-nh-alerts-and": {
-   "en": "Sign up for NH Alerts, and learn what a watch and a warning mean.",
-   "es": "Inscríbase en NH Alerts y aprenda qué significan una vigilancia y un aviso.",
-   "state": "draft"
-  },
-  "guide.storms-and-emergencies.keep-supplies-for-several-days-at": {
-   "en": "Keep supplies for several days at home, and a kit in your car.",
-   "es": "Tenga suministros para varios días en casa, y un equipo en su auto.",
-   "state": "draft"
-  },
-  "guide.storms-and-emergencies.has-the-power-gone-out": {
-   "en": "Has the power gone out?",
-   "es": "¿Se fue la electricidad?",
-   "state": "draft"
-  },
-  "guide.storms-and-emergencies.yes": {
-   "en": "Yes",
-   "es": "Sí",
-   "state": "draft"
-  },
-  "guide.storms-and-emergencies.keep-the-refrigerator-and-freezer-closed": {
-   "en": "Keep the refrigerator and freezer closed. Use a generator only outdoors.",
-   "es": "Mantenga cerrados el refrigerador y el congelador. Use un generador solo al aire libre.",
-   "state": "draft"
-  },
-  "guide.storms-and-emergencies.you-need-a-warm-place": {
-   "en": "You need a warm place",
-   "es": "Necesita un lugar cálido",
-   "state": "draft"
-  },
-  "guide.storms-and-emergencies.call-2-1-1-or-ask": {
-   "en": "Call 2-1-1, or ask your town about warming centers.",
-   "es": "Llame al 2-1-1, o pregunte en su municipio por los centros de calentamiento.",
-   "state": "draft"
-  },
-  "guide.storms-and-emergencies.get-alerts": {
-   "en": "Get alerts",
-   "es": "Reciba alertas",
-   "state": "draft"
-  },
-  "guide.storms-and-emergencies.nh-alerts-is-new-hampshires-free": {
-   "en": "<b>NH Alerts</b> is New Hampshire&rsquo;s free emergency notification system. Sign up to choose how you are reached, including text messages to your phone.",
-   "es": "<b>NH Alerts</b> es el sistema gratuito de notificaciones de emergencia de New Hampshire. Inscríbase para elegir cómo quiere recibirlas, incluidos mensajes de texto a su teléfono.",
-   "state": "draft"
-  },
-  "guide.storms-and-emergencies.the-national-weather-services-alerts": {
-   "en": "The National Weather Service&rsquo;s alerts tell you how serious a storm is:",
-   "es": "Las alertas del Servicio Meteorológico Nacional (National Weather Service) le indican qué tan grave es una tormenta:",
-   "state": "draft"
-  },
-  "guide.storms-and-emergencies.advisory-be-aware-winter-weather-is": {
-   "en": "<b>Advisory: be aware.</b> Winter weather is expected; be ready for difficult driving.",
-   "es": "<b>Advertencia (Advisory): esté atento.</b> Se espera tiempo invernal; prepárese para manejar en condiciones difíciles.",
-   "state": "draft"
-  },
-  "guide.storms-and-emergencies.watch-be-prepared-a-significant-storm": {
-   "en": "<b>Watch: be prepared.</b> A significant storm is possible.",
-   "es": "<b>Vigilancia (Watch): esté preparado.</b> Es posible una tormenta importante.",
-   "state": "draft"
-  },
-  "guide.storms-and-emergencies.warning-take-action-dangerous-weather-is": {
-   "en": "<b>Warning: take action.</b> Dangerous weather is coming or has begun. Under a winter storm warning, find shelter right away and delay travel.",
-   "es": "<b>Aviso (Warning): actúe.</b> El tiempo peligroso se acerca o ya empezó. Bajo un aviso de tormenta de invierno, busque refugio de inmediato y aplace sus viajes.",
-   "state": "draft"
-  },
-  "guide.storms-and-emergencies.a-noaa-weather-radio-and-the": {
-   "en": "A NOAA Weather Radio and the Emergency Alert System on radio and TV give alerts too.",
-   "es": "Una radio meteorológica de la NOAA (NOAA Weather Radio) y el Sistema de Alerta de Emergencia en la radio y la televisión también dan alertas.",
-   "state": "draft"
-  },
-  "guide.storms-and-emergencies.sign-up-for-nh-alerts": {
-   "en": "Sign up for NH Alerts",
-   "es": "Inscribirse en NH Alerts",
-   "state": "draft"
-  },
-  "guide.storms-and-emergencies.watches-and-warnings-national-weather": {
-   "en": "Watches and warnings (National Weather Service)",
-   "es": "Vigilancias y avisos (Servicio Meteorológico Nacional)",
-   "state": "draft"
-  },
-  "guide.storms-and-emergencies.keep-supplies-at-home-and-in": {
-   "en": "Keep supplies at home and in the car",
-   "es": "Tenga suministros en casa y en el auto",
-   "state": "draft"
-  },
-  "guide.storms-and-emergencies.after-an-emergency-you-may-need": {
-   "en": "After an emergency you may need to manage on your own for several days. A basic kit includes:",
-   "es": "Después de una emergencia, puede que tenga que arreglárselas solo durante varios días. Un equipo básico incluye:",
-   "state": "draft"
-  },
-  "guide.storms-and-emergencies.water-one-gallon-per-person-per": {
-   "en": "water, one gallon per person per day, for several days;",
-   "es": "agua, un galón por persona por día, para varios días;",
-   "state": "draft"
-  },
-  "guide.storms-and-emergencies.at-least-a-several-day-supply": {
-   "en": "at least a several-day supply of food that will not spoil, and a manual can opener;",
-   "es": "por lo menos comida que no se eche a perder para varios días, y un abrelatas manual;",
-   "state": "draft"
-  },
-  "guide.storms-and-emergencies.a-flashlight-a-battery-powered-or": {
-   "en": "a flashlight, a battery-powered or hand-crank radio, and extra batteries;",
-   "es": "una linterna, una radio de pilas o de manivela, y pilas adicionales;",
-   "state": "draft"
-  },
-  "guide.storms-and-emergencies.a-first-aid-kit-and-a": {
-   "en": "a first aid kit and a whistle to signal for help;",
-   "es": "un botiquín de primeros auxilios y un silbato para pedir ayuda;",
-   "state": "draft"
-  },
-  "guide.storms-and-emergencies.a-cell-phone-with-chargers-and": {
-   "en": "a cell phone with chargers and a backup battery.",
-   "es": "un teléfono celular con cargadores y una batería de respaldo.",
-   "state": "draft"
-  },
-  "guide.storms-and-emergencies.add-what-your-household-needs-such": {
-   "en": "Add what your household needs, such as medicines. Store it all in one or two containers that are easy to carry, and replace anything that expires.",
-   "es": "Agregue lo que necesite su hogar, como medicamentos. Guárdelo todo en uno o dos recipientes fáciles de llevar, y reemplace lo que se venza.",
-   "state": "draft"
-  },
-  "guide.storms-and-emergencies.in-the-car-keep-jumper-cables": {
-   "en": "In the car, keep jumper cables, sand, a flashlight, warm clothes, blankets, bottled water and snacks, and keep the gas tank full.",
-   "es": "En el auto, tenga cables para pasar corriente, arena, una linterna, ropa abrigada, mantas, agua embotellada y bocadillos, y mantenga lleno el tanque de gasolina.",
-   "state": "draft"
-  },
-  "guide.storms-and-emergencies.build-a-kit-ready-gov": {
-   "en": "Build a kit (Ready.gov)",
-   "es": "Arme un equipo (Ready.gov)",
-   "state": "draft"
-  },
-  "guide.storms-and-emergencies.in-a-power-outage": {
-   "en": "In a power outage",
-   "es": "Durante un corte de electricidad",
-   "state": "draft"
-  },
-  "guide.storms-and-emergencies.carbon-monoxide-can-kill-and-you": {
-   "en": "<b>Carbon monoxide can kill</b>, and you cannot see or smell it. Use a generator, camp stove or grill only outdoors, at least 20 feet from windows, doors and attached garages. Never heat your home with a gas stove or oven. Have carbon monoxide detectors with battery backup on every level of your home.",
-   "es": "<b>El monóxido de carbono puede matar</b>, y no se puede ver ni oler. Use un generador, una estufa de campamento o una parrilla solo al aire libre, a por lo menos 20 pies de ventanas, puertas y garajes adjuntos. Nunca caliente su hogar con una estufa u horno de gas. Tenga detectores de monóxido de carbono con batería de respaldo en cada piso de su casa.",
-   "state": "draft"
-  },
-  "guide.storms-and-emergencies.keep-the-refrigerator-and-freezer-closed-2": {
-   "en": "<b>Keep the refrigerator and freezer closed.</b> A refrigerator keeps food cold for about 4 hours, and a full freezer for about 48 hours. Throw out food that has been at 40 degrees or warmer for 2 hours or more: when in doubt, throw it out.",
-   "es": "<b>Mantenga cerrados el refrigerador y el congelador.</b> Un refrigerador mantiene la comida fría unas 4 horas, y un congelador lleno unas 48 horas. Tire la comida que haya estado a 40 grados o más durante 2 horas o más: si tiene dudas, tírela.",
-   "state": "draft"
-  },
-  "guide.storms-and-emergencies.plan-ahead-for-medicines-that-need": {
-   "en": "<b>Plan ahead for medicines that need refrigeration</b> and for medical devices that need power.",
-   "es": "<b>Planifique con anticipación para los medicamentos que necesitan refrigeración</b> y para los aparatos médicos que necesitan electricidad.",
-   "state": "draft"
-  },
-  "guide.storms-and-emergencies.if-it-is-very-cold-or": {
-   "en": "<b>If it is very cold or very hot,</b> go to a place in your community with power. Ask local officials which warming or cooling places are open.",
-   "es": "<b>Si hace mucho frío o mucho calor,</b> vaya a un lugar de su comunidad que tenga electricidad. Pregunte a las autoridades locales qué lugares para calentarse o refrescarse están abiertos.",
-   "state": "draft"
-  },
-  "guide.storms-and-emergencies.power-outages-ready-gov": {
-   "en": "Power outages (Ready.gov)",
-   "es": "Cortes de electricidad (Ready.gov)",
-   "state": "draft"
-  },
-  "guide.storms-and-emergencies.in-a-winter-storm": {
-   "en": "In a winter storm",
-   "es": "Durante una tormenta de invierno",
-   "state": "draft"
-  },
-  "guide.storms-and-emergencies.stay-off-the-roads-if-you": {
-   "en": "Stay off the roads if you can. If you are trapped in your car, stay inside it.",
-   "es": "No salga a la carretera si puede evitarlo. Si queda atrapado en su auto, quédese dentro.",
-   "state": "draft"
-  },
-  "guide.storms-and-emergencies.avoid-overexertion-when-shoveling-or": {
-   "en": "Avoid overexertion when shoveling or walking in snow, which can bring on a heart attack.",
-   "es": "Evite el esfuerzo excesivo al palear nieve o caminar en la nieve, que puede provocar un ataque al corazón.",
-   "state": "draft"
-  },
-  "guide.storms-and-emergencies.frostbite-causes-loss-of-feeling-and": {
-   "en": "<b>Frostbite</b> causes loss of feeling and color in the face, fingers and toes. Go to a warm room and soak in warm water; do not massage the skin or use a heating pad.",
-   "es": "<b>La congelación</b> causa pérdida de sensibilidad y de color en la cara, los dedos de las manos y de los pies. Vaya a un cuarto cálido y remoje la zona en agua tibia; no frote la piel ni use una almohadilla térmica.",
-   "state": "draft"
-  },
-  "guide.storms-and-emergencies.hypothermia-a-body-temperature-below-95": {
-   "en": "<b>Hypothermia</b>, a body temperature below 95 degrees, is an emergency. Go to a warm room, warm the center of the body first, and keep dry and wrapped in warm blankets, including the head and neck.",
-   "es": "<b>La hipotermia</b>, una temperatura corporal de menos de 95 grados, es una emergencia. Vaya a un cuarto cálido, caliente primero el centro del cuerpo, y manténgase seco y envuelto en mantas, incluidas la cabeza y el cuello.",
-   "state": "draft"
-  },
-  "guide.storms-and-emergencies.winter-weather-ready-gov": {
-   "en": "Winter weather (Ready.gov)",
-   "es": "Tiempo invernal (Ready.gov)",
-   "state": "draft"
-  },
-  "guide.storms-and-emergencies.if-you-need-a-warm-place": {
-   "en": "If you need a warm place or other help",
-   "es": "Si necesita un lugar cálido u otra ayuda",
-   "state": "draft"
-  },
-  "guide.storms-and-emergencies.call-2-1-1-at-any": {
-   "en": "Call <b>2-1-1</b>, at any hour, for shelters, warming places, utility help and other services near you. In an emergency, call 911.",
-   "es": "Llame al <b>2-1-1</b>, a cualquier hora, para encontrar refugios, lugares para calentarse, ayuda con los servicios públicos y otros servicios cerca de usted. En una emergencia, llame al 911.",
-   "state": "draft"
-  },
-  "guide.storms-and-emergencies.if-you-are-running-out-of": {
-   "en": "If you are running out of heating fuel or have no heat, call your community action agency: fuel assistance can arrange an emergency delivery. The guide to help with heating and electric bills has the agencies.",
-   "es": "Si se le está acabando el combustible para la calefacción o no tiene calefacción, llame a su agencia de acción comunitaria: la asistencia de combustible puede organizar una entrega de emergencia. La guía de ayuda con las facturas de calefacción y electricidad tiene las agencias.",
-   "state": "draft"
-  },
-  "guide.storms-and-emergencies.2-1-1-new-hampshire": {
-   "en": "2-1-1 New Hampshire",
-   "es": "2-1-1 New Hampshire",
-   "state": "draft"
-  },
-  "guide.storms-and-emergencies.2-1-1-new-hampshire-at": {
-   "en": "2-1-1 New Hampshire, at any hour, for shelters, warming places and other help near you, and your town or city for local warming centers and storm information. In an emergency, call 911.",
-   "es": "2-1-1 New Hampshire, a cualquier hora, para refugios, lugares para calentarse y otra ayuda cerca de usted, y su municipio o ciudad para los centros de calentamiento locales y la información sobre tormentas. En una emergencia, llame al 911.",
-   "state": "draft"
-  },
-  "guide.storms-and-emergencies.how-to-get-help-with-heating": {
-   "en": "How to get help with heating and electric bills",
-   "es": "Cómo obtener ayuda con las facturas de calefacción y electricidad",
-   "state": "draft"
-  },
-  "guide.storms-and-emergencies.how-to-get-help-if-you": {
-   "en": "How to get help if you are homeless or may lose your home",
-   "es": "Cómo obtener ayuda si no tiene hogar o puede perder su vivienda",
-   "state": "draft"
-  },
-  "guide.storms-and-emergencies.nh-alerts-department-of-safety": {
-   "en": "NH Alerts (Department of Safety)",
-   "es": "NH Alerts (Departamento de Seguridad)",
-   "state": "draft"
-  },
-  "guide.storms-and-emergencies.readynh": {
-   "en": "ReadyNH",
-   "es": "ReadyNH",
-   "state": "draft"
-  },
-  "guide.storms-and-emergencies.build-a-kit-ready-gov-fema": {
-   "en": "Build a kit (Ready.gov, FEMA)",
-   "es": "Arme un equipo (Ready.gov, FEMA)",
-   "state": "draft"
-  },
-  "guide.storms-and-emergencies.power-outages-ready-gov-fema": {
-   "en": "Power outages (Ready.gov, FEMA)",
-   "es": "Cortes de electricidad (Ready.gov, FEMA)",
-   "state": "draft"
-  },
-  "guide.storms-and-emergencies.winter-weather-ready-gov-fema": {
-   "en": "Winter weather (Ready.gov, FEMA)",
-   "es": "Tiempo invernal (Ready.gov, FEMA)",
-   "state": "draft"
-  },
-  "guide.storms-and-emergencies.winter-weather-watches-warnings-and": {
-   "en": "Winter weather watches, warnings and advisories (National Weather Service)",
-   "es": "Vigilancias, avisos y advertencias de tiempo invernal (Servicio Meteorológico Nacional)",
-   "state": "draft"
-  },
-  "guide.task.storms-and-emergencies.does": {
-   "en": "Prepare for storms, power outages and emergencies",
-   "es": "Prepararse para tormentas, cortes de electricidad y emergencias",
-   "state": "draft"
-  },
-  "guide.task.storms-and-emergencies.line": {
-   "en": "Emergency alerts, supplies, power outage and winter storm safety, and where to find a warm place.",
-   "es": "Alertas de emergencia, suministros, seguridad durante cortes de electricidad y tormentas de invierno, y dónde encontrar un lugar cálido.",
    "state": "draft"
   }
  }
