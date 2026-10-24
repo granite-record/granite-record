@@ -1,4 +1,4 @@
-// GRANITE_VERSION: 2026-09-07.244
+// GRANITE_VERSION: 2026-09-07.245
 // esc, dateWords and dateSpan, clock, cmteLink and pchip are components.js's,
 // which every page loads before this file (the component plan's C1 and C2),
 // and so is WORDBOOK, the words of src/pages/words/ that the build writes into
@@ -2225,6 +2225,187 @@ function sponsorHintLine(list){
     ?`<br><br>Looking for bills sponsored by ${named(list[0])}? ${a(list[0],"Use the sponsor filter")}.`
     :`<br><br>Looking for bills sponsored by ${list.map(p=>a(p,named(p))).join(" or ")}? `
       +"Choose one to use the sponsor filter.";
+}
+/* A FILTER OFFERED FOR ITS NAME, AS YOU TYPE (the person, 24 October 2026:
+   "Searching for a topic in the searchbar in the laws page or the bills page
+   should show a dropdown if you type in the name of a filter like 'housing'
+   asking if you want to view all bills with the housing topics or all bills
+   referred to the housing committee, and clicking it will select that filter
+   without you having to manually scroll through all the list of topics").
+
+   WHAT MATCHES. The words typed against each filter's name, word by word,
+   letters only, case and accents set aside, a plural as its singular (stem),
+   and the words that name no subject -- "and", "of", "bill" (STOPSET) --
+   left out on both sides. "House" and "Senate" name a chamber, not a
+   subject: typed alone they offer nothing, and typed with a subject they
+   must be the committee's own -- "senate education" is not House Education
+   Funding. A filter is offered where every word typed is a word of its name,
+   the last perhaps only begun, three letters at least ("hous" offers
+   Housing: the reader is still typing it); or where every word of its name
+   was typed, with others besides ("affordable housing" offers Housing). A
+   filter already chosen is not offered again, and a bill number or a statute
+   offers nothing.
+
+   WHAT CHOOSING ONE DOES. What ticking it in the list does -- the list
+   narrows, its group opens with the tick in it, the address names it -- and
+   the words it stands for leave the box, since the filter now says them:
+   "housing" leaves the box empty, "affordable housing" leaves "affordable".
+   Return without choosing searches the words as it always has.
+
+   A COMBOBOX, WAI-ARIA's pattern, as find.js's address box is (filterCombo):
+   the box says it controls the list and whether it is open; the arrow keys
+   move through the offers, aria-activedescendant naming the one they are on;
+   Return takes it; Escape shuts the list and only the list; a status line
+   says how many there are. Each offer is 44px high. The Laws page offers its
+   own filters through these same two functions (build_rsa's LANDING_JS). */
+const FO_MOST=8,FO_KIND=4,FO_MIN=3,FO_WAIT=150;
+const FO_CHAMBER=new Set(["house","senate"]);
+const foWords=s=>String(s||"").normalize("NFD").replace(/[̀-ͯ]/g,"").toLowerCase()
+  .replace(/&/g," and ").split(/[^a-z0-9]+/).filter(w=>w&&!STOPSET.has(w));
+// A word typed against a word of a name: the same, the same as a singular,
+// or -- the last word typed, nothing after it -- the start of it.
+function foWord(t,v,open){
+  return t===v||stem(t)===stem(v)||(open&&t.length>=FO_MIN&&v.startsWith(t));
+}
+// How the words typed fit a name: null, or {how, used}. `how` 0 is the name
+// itself, 1 the name begun or a part of it, 2 the name among other words;
+// `used` the words typed that it stands for.
+function foFit(typed,open,name){
+  const vs=foWords(name),subj=vs.filter(v=>!FO_CHAMBER.has(v));
+  const ts=typed.filter(t=>!FO_CHAMBER.has(t));
+  if(!ts.length||!subj.length)return null;
+  if(typed.some(t=>FO_CHAMBER.has(t)&&!vs.includes(t)&&vs.some(v=>FO_CHAMBER.has(v))))return null;
+  const last=typed.length-1;
+  if(ts.every(t=>subj.some(v=>foWord(t,v,open&&t===typed[last]))))
+    return {how:ts.length===subj.length&&subj.every(v=>ts.some(t=>foWord(t,v,false)))?0:1,
+            used:typed.map((_,i)=>i)};
+  const used=[];
+  for(const v of subj){
+    const i=typed.findIndex((t,j)=>!used.includes(j)&&foWord(t,v,false));
+    if(i<0)return null;
+    used.push(i);
+  }
+  typed.forEach((t,i)=>{if(FO_CHAMBER.has(t)&&vs.includes(t))used.push(i);});
+  return {how:2,used};
+}
+// The filters offered for what is typed, best first: each group a filter's
+// key, its values as [value, name, count], and `say(name, value)`, the
+// offer's words in HTML. Each offer carries `rest`, the words typed that it
+// does not stand for.
+function filterOffers(q,groups){
+  const raw=String(q||""),typed=foWords(raw),open=!/\s$/.test(raw);
+  if(raw.trim().length<FO_MIN||!typed.length)return [];
+  const out=[];
+  for(const g of groups){
+    const found=[];
+    for(const [v,name,n] of g.values||[]){
+      const fit=foFit(typed,open,name);
+      if(fit)found.push({key:g.key,v,name,n,how:fit.how,html:g.say(name,v),
+        rest:typed.filter((_,i)=>!fit.used.includes(i)).join(" ")});
+    }
+    found.sort((a,b)=>a.how-b.how||(b.n||0)-(a.n||0)||(a.name<b.name?-1:a.name>b.name?1:0));
+    out.push(...found.slice(0,g.most||FO_KIND));
+  }
+  return out.slice(0,FO_MOST);
+}
+// The box `inp` and a list under it, made a combobox. `o.offers(text)` gives
+// the offers, `o.choose(offer)` takes one; Return is the caller's, which asks
+// enter() first: true where an offer the arrows are on was taken.
+function filterCombo(inp,o){
+  const lid=inp.id+"-offers";
+  const list=document.createElement("ul");
+  list.id=lid;list.className="qoffers";list.hidden=true;
+  list.setAttribute("role","listbox");list.setAttribute("aria-label",o.label||"Filters that match");
+  const say=document.createElement("span");
+  say.className="sr";say.setAttribute("role","status");
+  inp.setAttribute("role","combobox");inp.setAttribute("aria-autocomplete","list");
+  inp.setAttribute("aria-expanded","false");inp.setAttribute("aria-controls",lid);
+  if(inp.parentNode){inp.parentNode.appendChild(list);inp.parentNode.appendChild(say);}
+  let rows=[],act=-1,timer=0;
+  const draw=()=>{
+    list.innerHTML=rows.map((r,i)=>`<li role="option" class="qoffer" id="${lid}-${i}" data-i="${i}"
+      aria-selected="${i===act}"><span>${r.html}</span>${r.n!=null
+      ?`<span class="c">${Number(r.n).toLocaleString()}</span>`:""}</li>`).join("");
+    list.hidden=!rows.length;
+    inp.setAttribute("aria-expanded",rows.length?"true":"false");
+    if(act>=0){
+      inp.setAttribute("aria-activedescendant",`${lid}-${act}`);
+      const on=document.getElementById(`${lid}-${act}`);
+      if(on&&on.scrollIntoView)on.scrollIntoView({block:"nearest"});
+    }else inp.removeAttribute("aria-activedescendant");
+  };
+  const shut=()=>{clearTimeout(timer);if(rows.length||act>=0){rows=[];act=-1;draw();}say.textContent="";};
+  const update=()=>{
+    rows=o.offers(inp.value)||[];act=-1;draw();
+    say.textContent=!rows.length?"":rows.length===1
+      ?"1 filter matches; the down arrow chooses it."
+      :`${rows.length} filters match; the down arrow chooses one.`;
+  };
+  const choose=i=>{const r=rows[i];if(!r)return;shut();o.choose(r);};
+  inp.addEventListener("input",()=>{clearTimeout(timer);timer=setTimeout(update,FO_WAIT);});
+  inp.addEventListener("keydown",e=>{
+    if(e.key==="ArrowDown"||e.key==="ArrowUp"){
+      if(!rows.length)update();
+      if(!rows.length)return;
+      e.preventDefault();
+      act=e.key==="ArrowDown"?(act+1)%rows.length:act<=0?rows.length-1:act-1;
+      draw();
+    }else if(e.key==="Escape"){
+      // The list, and not the page's own Escape, nor the box's clearing.
+      if(rows.length){e.preventDefault();e.stopPropagation();shut();}
+    }else if(e.key==="Tab")shut();
+  });
+  inp.addEventListener("blur",shut);
+  // Pressing an offer keeps the focus in the box, so the box is not left,
+  // and the list shut, before the click lands.
+  list.addEventListener("mousedown",e=>e.preventDefault());
+  list.addEventListener("click",e=>{
+    const li=e.target&&e.target.closest&&e.target.closest("[data-i]");
+    if(!li)return;
+    e.stopPropagation();choose(+li.getAttribute("data-i"));
+  });
+  return {list,say,update,shut,rows:()=>rows,active:()=>act,
+    enter(){if(rows.length&&act>=0){choose(act);return true;}shut();return false;}};
+}
+// THE BILL SEARCH'S OFFERS: a Topic, or a Committee, of the bills in the
+// term, by name; each with the count it would list -- the filters already
+// chosen kept, this one added, and the words it does not stand for searched.
+function billOffers(q){
+  if(!IDX.length)return [];
+  const t=String(q||"").trim();
+  if(billNumbers(t)||RSA_SHAPE.test(t))return [];
+  const inYear=IDX.filter(inTermOf);
+  const vals=k=>{const c={};inYear.forEach(b=>facetVals(b,k).forEach(v=>{
+    if(v&&!sel[k].has(v))c[v]=(c[v]||0)+1;}));return Object.keys(c).map(v=>[v,v,c[v]]);};
+  const offers=filterOffers(q,[
+    {key:"topic",values:vals("topic"),say:v=>`All bills with the topic <b>${esc(v)}</b>`},
+    // "House No Committee Assignment" is a filter, and no committee.
+    {key:"committee",values:vals("committee").filter(x=>!/\bno committee\b/i.test(x[0])),
+     say:v=>`All bills referred to the <b>${esc(v)}</b> committee`}]);
+  for(const o of offers){
+    const was=query;
+    query=o.rest;sel[o.key].add(o.v);
+    try{o.n=IDX.filter(b=>matches(b)).length;}
+    finally{sel[o.key].delete(o.v);query=was;}
+  }
+  return offers;
+}
+// An offer taken, as ticking it in the list would be. Off the list -- a
+// bill's own page, a member's, a committee's -- it is taken where the list
+// is: /bills with the filter in its address, which /bills reads.
+function takeOffer(o){
+  if(PAGE||window.GR_STATIC||window.GR_STANDALONE){
+    const p=new URLSearchParams(),newest=((META&&META.terms)||[])[0];
+    if(window.GR_STANDALONE&&!PAGE&&term&&newest&&term!==newest)p.set("term",term);
+    if(o.rest)p.set("q",o.rest);
+    p.append(o.key,o.v);
+    location.href=BASE+"bills?"+p.toString();
+    return;
+  }
+  if(focused)unfocus(0);
+  query=o.rest;$("#q").value=o.rest;clearTimeout(QDRAW);addressSearch(o.rest);
+  sel[o.key].add(o.v);openGroups.add(o.key);
+  render();
 }
 let OFFERS={key:null,html:""};
 function emptyResult(){
@@ -8967,7 +9148,9 @@ document.addEventListener("click",e=>{
     jm.closest("li").remove();
     if(shut[0]){shut[0].tabIndex=-1;shut[0].focus({preventScroll:true});}
     return;}
-  const g=e.target.closest(".fhead");
+  // The bill search's own groups. The Laws page draws its filters with the
+  // same classes and opens them itself (build_rsa's LANDING_JS).
+  const g=e.target.closest("#facets .fhead");
   if(g){openGroups.has(g.dataset.g)?openGroups.delete(g.dataset.g):openGroups.add(g.dataset.g);renderFacets();return;}
   // The phone's filter disclosure. The class goes on .shell rather than on
   // the panel because the stylesheet has to move three things -- the button,
@@ -9222,8 +9405,12 @@ $("#q").addEventListener("input",e=>{
                    term===ALL_TERMS?QWAIT_ALL:QWAIT);
 });
 
+// THE FILTERS OFFERED AS THE BOX IS TYPED IN (filterOffers, filterCombo): a
+// topic or a committee by its name. Return takes the offer the arrow keys
+// are on, and with none searches the words, as it did before there were any.
+const QOFFERS=filterCombo($("#q"),{offers:billOffers,choose:takeOffer,label:"Filters that match the words typed"});
 $("#q").addEventListener("keydown",e=>{
-  if(e.key==="Enter"){e.preventDefault();submitSearch();}
+  if(e.key==="Enter"){e.preventDefault();if(QOFFERS.enter())return;submitSearch();}
 });
 $("#qgo").addEventListener("click",submitSearch);
 // "/" JUMPS TO THE SEARCH BOX, BUT NEVER OUT OF SOMETHING BEING TYPED IN.

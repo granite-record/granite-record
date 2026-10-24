@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.679
+# GRANITE_VERSION: 2026-09-04.680
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -19014,6 +19014,13 @@ def _class_collisions():
         # _components_agree -- a town page draws in Python what the My Town
         # card and the map's panel draw in the browser
         "elect", "elhead", "elwhere", "ellist", "elnf", "elnone", "elnow", "elline",
+        # THE BILL SEARCH'S BOX AND FILTERS, drawn by bills.html and app.js
+        # for /bills and by build_rsa for the Laws page's search, which the
+        # person asked to work as the bill search does (24 October 2026): the
+        # box and the count under it, the filter groups, their heads, badges
+        # and counts, the Filter button, the Bill Type filter's letters
+        # beside a name (a title's number on /laws), and Clear as a link
+        "qline", "qbox", "qhint", "facets", "ftoggle", "fhead", "badge", "c", "tname", "tcode", "link",
     }
     here = Path(".")
     # The components draw on both sides by design: components.js with the
@@ -38527,6 +38534,406 @@ def _rsa_landing(B, RSA, S):
     assert re.search(r"\.rs-banner\{[^}]*var\(--t-lead\)", css), "the repeal banner is not at the lead's size"
     return "ok", ("Title V names Chapter 72 before it opens; status, topic and title filters; 71 repealed "
                   "in 1973 and 373 moved to RSA 246, in words")
+
+
+@check("build", "the Laws landing is laid out as the bill search is: its search box first, its filters as the "
+       "bill search's groups with Topic open and the rest shut, and the topics by name",
+       needs=("build_rsa", "rsa", "shell", "parse_constitution"))
+def _laws_search_layout(B, RSA, S, PC):
+    """The person, 24 October 2026: "Topics in the rsa pages should be sorted
+    alphabetically", and "The search system on the RSA page should be more
+    similar to the bills page with the searchbar at the top, the filters on
+    the left side that are dropdowns closed by default except for the first
+    one which is the most common filter to be used, likely topics for the
+    laws page".
+
+    The topics here are named to sort wrongly three ways: by how many
+    chapters hold each (Zoning first, as the list ran until that day), by
+    case ("animals" after "Zoning") and by accent ("élections" after both).
+    The markup is the bill search's (app.js fgroup, bills.html's box and
+    Filter button), so the two read as one search; and on the page with its
+    Constitution tab, the search is first in the statutes' panel, above the
+    panel's lead."""
+    t = _rsa_fixture_table(RSA)
+    topics = {"3-A": ["Zoning and Planning", "élections"], "404": ["Zoning and Planning", "Banking", "animals"],
+              "999": ["Agriculture"]}
+    data = {"bills": {}, "statute": {}, "enacted": {}, "asof": {"laws_through": 2025}}
+    page = B.landing_page(S.template(Path("site")), t, data, "https://graniterecord.org", topics, {}, con={})
+    shown = re.findall(r'<input type="checkbox" name="tp" value="([^"]+)">', page)
+    assert shown == ["animals", "Banking", "élections", "Zoning and Planning"], (
+        f"the Topic filter lists {shown}, not by name with case and accents set aside")
+    assert B.shown_order("Éducation") < B.shown_order("Elections") < B.shown_order("fish") \
+        < B.shown_order("Fish & Game"), "shown_order does not set case and accents aside"
+    # The count beside a topic is of the chapters the page lists: RSA 999,
+    # which no row lists, does not count, nor offer Agriculture at all.
+    assert 'value="Agriculture"' not in page and re.search(
+        r'value="Zoning and Planning"><span>Zoning and Planning</span><span class="c">2</span>', page), (
+        "a topic counts a chapter the page does not list")
+    # The search box first, as the bill search's is, in its markup.
+    assert re.search(r'<div class="lw-q" role="search" aria-label="Search the laws"><form id="rsform" '
+                     r'class="qline"[^>]*>.*?<div class="qbox"><input id="rsq"', page), (
+        "the Laws search is not the bill search's box (.qline, .qbox) in a role=search row")
+    assert page.index('id="rsq"') < page.index('id="lwfacets"') < page.index('id="lwdir"'), (
+        "the search box does not come before the filters, nor the filters before the directory")
+    heads = re.findall(r'<button type="button" class="fhead" data-lwg="(\w+)" aria-expanded="(\w+)" '
+                       r'aria-controls="lwg-\1">', page)
+    assert heads == [("tp", "true"), ("st", "false"), ("ti", "false")], (
+        f"the filter groups and whether each is open: {heads}, not Topic open first and Status and Title shut")
+    for key, shut in (("tp", False), ("st", True), ("ti", True)):
+        m = re.search(rf'<div class="fbody(?: whole)?" id="lwg-{key}"( hidden)?>', page)
+        assert m and bool(m.group(1)) == shut, f"the {key} group's body is {'open' if shut else 'shut'}"
+    assert page.count('<div class="fgroup') == 3 and 'class="fopt"' in page and 'class="c"' in page, (
+        "the groups are not drawn as the bill search's (.fgroup, .fopt, .c)")
+    assert ('<button class="ftoggle" id="lwftoggle" type="button" aria-expanded="false" '
+            'aria-controls="lwfacets">') in page, "no Filter button for a narrow screen, as /bills has"
+    assert '<aside class="facets lw-side" id="lwfacets" aria-label="Filters">' in page
+    js = B.LANDING_JS
+    for said, what in (('closest(".fhead[data-lwg]")', "a group's head does not open and shut it"),
+                       ('root.classList.toggle("fopen",on)', "the Filter button does not open the groups"),
+                       ('tog.setAttribute("aria-expanded"', "the Filter button does not say it is open"),
+                       ('NAMES={tp:"topic",st:"status",ti:"title"}', "the filters are not in the address"),
+                       ("history.replaceState(history.state", "the filters are not written into the address"),
+                       ("keepCh(chOf(x[0]))", "the search's hits are not held to the filters")):
+        assert said in js, what
+    css = Path("src/pages/app.css").read_text(encoding="utf-8")
+    narrow = re.search(r"@media \(max-width:59\.9375em\)\{\n  \.lw\{[^\n]*grid-template-areas:\"t\" \"f\" \"d\""
+                       r"(.*?)\n\}", css, re.S)
+    assert narrow and ".shell .lw .ftoggle{display:flex}" in narrow.group(1) \
+        and ".shell .lw:not(.fopen) .facets{display:none}" in narrow.group(1), (
+            "under 60em the Laws filters are not behind their Filter button, as the bill search's are")
+    assert ".shell .lw .facets{display:block}" in css and \
+        ".shell:has(.rs-page) > .facets,.shell:has(.rs-page) > .ftoggle{display:none}" in css, (
+            "the template's rule that hides its own filter column on the Laws pages hides theirs too")
+    assert "#q,#rsq{" in css and "#qgo,#rsgo{" in css, "the Laws box is not drawn as the bill search's"
+    app = Path("src/pages/app.js").read_text(encoding="utf-8")
+    assert 'const g=e.target.closest("#facets .fhead");' in app, (
+        "app.js's click on a filter group's head is not held to /bills' own, so the Laws page's would redraw it")
+    con = PC.load()
+    if not con:
+        return "ok", "the layout held; collected/constitution.json is not here, so the tabbed page was not drawn"
+    tabbed = B.landing_page(S.template(Path("site")), t, data, "https://graniterecord.org", topics, {}, con=con)
+    panel = tabbed[tabbed.index('id="statutes" role="tabpanel"'):]
+    assert panel.index('id="rsq"') < panel.index("Includes changes through 2025"), (
+        "in the statutes' panel the search is under the panel's lead, not at the top")
+    return "ok", ("topics animals, Banking, élections, Zoning and Planning; the box first, Topic open, Status "
+                  "and Title shut, the Filter button under 60em; the search above the panel's lead")
+
+
+def _passed_record(body, steps=()):
+    """A bill page that carries its record, as shell.page writes one: the
+    bill's text (billtext.body) and its journey's steps."""
+    rec = {"billtext": {"version": "FINAL VERSION", "body": body},
+           "journey": {"steps": [dict(s) for s in steps], "rail": []}}
+    return ('<!DOCTYPE html><html><body><script type="application/json" id="gr-data">'
+            + json.dumps(rec).replace("</", "<\\/") + "</script></body></html>")
+
+
+@check("build", "a statute page lists the bills passed that change it and have not taken effect, each with "
+       "when it takes effect: the chaptered law's day, the section's own, a counted day said as counted, "
+       "and \"not stated\" where the record says none", needs=("build_rsa", "rsa", "shell"))
+def _rsa_passed_not_in_effect(B, RSA, S):
+    """The person, 24 October 2026: "Pending rsas should show when a bill has
+    passed but has not yet taken effect, with a line about when the bill
+    takes effect and a link to its page". Until then Pending was the bills
+    still before the General Court, and after the session there were none.
+
+    Seven bills of the sitting term change RSA 91-A, on 24 October 2026:
+      HB 1  law, its rail's Law stop January 1, 2027: "Takes effect January 1, 2027"
+      HB 2  law in parts, its chaptered text's own last lines: section 2, the
+            prospective repeal of 91-A:6, II, on January 1, 2027, the rest
+            (91-A:5) on August 1, 2026 -- and a docket line that is another
+            bill's, which is not read (HB 1184 of 2026's)
+      HB 3  law, its Law stop August 1, 2026: in effect, and not listed
+      HB 4  became law unsigned on October 1, 2026, "60 days after its
+            passage": November 30, 2026, said as counted
+      HB 5  through both chambers and with the Governor, no effective date in
+            its text: "Effective date not stated in the record we hold"
+      HB 6  law, nothing in its record to read: listed apart, as stated
+            nowhere, and not counted as pending
+      HB 7  in committee: one of the bills before the General Court
+    And the readers each hold real lines from the bills' pages (24 October
+    2026): HB 1384's 12:01 a.m., SB 245's "Sections 3.4.5", SB 464's Article
+    44 sentence, HB 1184's "Effective:", HB 358 of 2023's line not read."""
+    import datetime as _dt
+    cols = ["id", "TitleNo", "ChapterNo", "SectionNo", "Title", "Chapter", "Section", "SourceNote",
+            "rsa", "EntireRSA", "titleNumber", "url"]
+    rows_ = []
+    for n, (sec, head) in enumerate((("4", "Minutes and Records Available for Public Inspection."),
+                                     ("5", "Exemptions."), ("6", "Fees."))):
+        rows_.append([str(n), "VI", "91-A", f"91-A-{sec}", "TITLE VI PUBLIC OFFICERS AND EMPLOYEES",
+                      "CHAPTER 91-A ACCESS TO GOVERNMENTAL RECORDS AND MEETINGS", f"Section 91-A:{sec} {head}",
+                      "", "", "<codesect> I. The records.<br> II. The fees.</codesect>", "6",
+                      f"VI\\91-A\\91-A-{sec}.htm"])
+    t = RSA.Table([dict(zip(cols, r)) for r in rows_])
+    data = {"bills": {"2025-2026": {
+        "HB1": {"changes": ["91-A:4"]}, "HB2": {"changes": ["91-A:5", "91-A:6"]}, "HB3": {"changes": ["91-A:5"]},
+        "HB4": {"changes": ["91-A:5"]}, "HB5": {"changes": ["91-A:4"]}, "HB6": {"changes": ["91-A:4"]},
+        "HB7": {"changes": ["91-A:4"]}}}, "statute": {}, "enacted": {}, "asof": {"laws_through": 2026}}
+    law = lambda i, gm, g, lday, ch, status="Signed into law": {   # noqa: E731
+        "id": i, "n": i[:2] + " " + i[2:], "year": 2026, "title": "relative to records", "kind": "law",
+        "status": status, "chip": "Became Law", "term": "2025-2026", "chapter": ch,
+        "rail": [["Ip", "2026-01-07"], ["Hp", "2026-03-05"], ["Sp", "2026-05-07"], [gm, g, "signed"],
+                 ["Lp", lday, f"Chapter {ch}"]]}
+    idx = [law("HB1", "Gp", "2026-07-02", "2027-01-01", "207"), law("HB2", "Gp", "2026-07-02", "", "205"),
+           law("HB3", "Gp", "2026-06-02", "2026-08-01", "90"),
+           law("HB4", "Gp", "2026-10-01", "", "128", "Became law unsigned"), law("HB6", "Gp", "2026-06-11", "", "129"),
+           {"id": "HB5", "n": "HB 5", "year": 2026, "title": "y", "kind": "active", "status": "Enrolled",
+            "chip": "Enrolled", "term": "2025-2026",
+            "rail": [["Ip", "2026-01-07"], ["Hp", "2026-03-05"], ["Sp", "2026-05-07"], ["Gh"], ["L-"]]},
+           {"id": "HB7", "n": "HB 7", "year": 2026, "title": "z", "kind": "active", "status": "In committee",
+            "chip": "In committee", "term": "2025-2026"}]
+    idx[3]["rail"][3][2] = "unsigned"
+    root = Path(tempfile.mkdtemp(prefix="gr-rsapass-"))
+    try:
+        (root / "idx").mkdir()
+        (root / "idx" / "2025-2026.json").write_text(json.dumps(idx), encoding="utf-8")
+        (root / "bill" / "2026").mkdir(parents=True)
+        (root / "bill" / "2026" / "hb2.html").write_text(_passed_record(
+            "Be it Enacted by the Senate and House of Representatives in General Court convened:\n"
+            "205:1 Records. Amend RSA 91-A:5, I to read as follows:\nI. The records.\n"
+            "205:2 Prospective Repeal. RSA 91-A:6, II, relative to fees, is repealed.\n"
+            "205:3 Effective Date.\nI. Section 2 of this act shall take effect January 1, 2027.\n"
+            "II. The remainder of this act shall take effect 30 days after its passage.\n"
+            "Approved: July 02, 2026\nEffective Date:\nI. Section 2 effective January 1, 2027\n"
+            "II. Remainder effective August 1, 2026",
+            [{"act": "law", "text": "Chapter 205, in effect in parts: section 2 on Jan 1, 2028, "
+                                    "the rest on Jan 1, 2028"}]), encoding="utf-8")
+        (root / "bill" / "2026" / "hb4.html").write_text(_passed_record(
+            "128:1 Repeal. RSA 91-A:5, II is repealed.\n128:2 Effective Date. This act shall take effect "
+            "60 days after its passage.\nApproved: October 01, 2026\nEffective Date:\nEnacted in accordance "
+            "with Article 44, Part II of the N.H. Constitution, without the signature of the governor "
+            "October 1, 2026"), encoding="utf-8")
+        (root / "bill" / "2026" / "hb5.html").write_text(_passed_record(
+            "1 Records. Amend RSA 91-A:4 to read as follows: the records."), encoding="utf-8")
+        bills = B.Bills(root, "2025-2026", today=_dt.date(2026, 10, 24), table=t)
+        page = B.chapter_page(S.template(Path("site")), t, data, bills, "91-A", "https://graniterecord.org")
+        pending = B.chapter_pending(data, bills)
+    finally:
+        shutil.rmtree(root, ignore_errors=True)
+    block = page[page.index('class="rs-pending"'):page.index('class="rs-sec"')]
+    known = block[block.index("<h2>Passed, not yet in effect</h2>"):block.index("<h2>Passed this term")]
+    want = {"HB1": "Takes effect January 1, 2027.",
+            "HB2": "Its changes here take effect January 1, 2027: ",
+            "HB4": "Takes effect November 30, 2026 (60 days after its passage, counted from October 1, 2026, "
+                   "the day it became law without the Governor&#x27;s signature).",
+            "HB5": "Effective date not stated in the record we hold."}
+    for bill, line in want.items():
+        item = known[known.index(f'href="/bill/2026/{bill.lower()}"'):]
+        item = item[:item.index("</li>")]
+        assert line in item, f"{bill}'s line in the chapter's list is {re.sub(r'<[^>]+>', '', item)!r}"
+    hb2 = known[known.index('href="/bill/2026/hb2"'):]
+    hb2 = hb2[:hb2.index("</li>")]
+    assert 'href="/laws/91-a#s6">91-A:6</a>' in hb2 and "91-A:5" not in hb2, (
+        "HB 2's change to 91-A:6, section 2 of the act, is not the one listed, or its part already in "
+        "effect (91-A:5) is")
+    assert "Jan 1, 2028" not in page and "January 1, 2028" not in page, (
+        "HB 2's day was read from a docket line that is another bill's, over its own chaptered text")
+    assert "Passed both chambers; with the Governor" in known and "chapter 207 of the Laws of 2026" in known, \
+        "a bill with the Governor, or a law's chapter of the session laws, is not said"
+    tags = "".join(re.findall(r'<details class="rs-tag">.*?</details>', page, re.S))
+    assert 'href="/bill/2026/hb3"' not in block + tags, "HB 3, in effect since August 1, 2026, is listed as pending"
+    unread = block[block.index("<h2>Passed this term, effective date not stated</h2>"):]
+    assert 'href="/bill/2026/hb6"' in unread[:unread.index("</ul>")] and 'href="/bill/2026/hb6"' not in known, \
+        "a law whose record states no effective date is not listed apart"
+    assert "Bills now before the General Court" in block and 'href="/bill/2026/hb7"' in block
+    assert pending.get("91-A") == ["2025-2026/HB1", "2025-2026/HB2", "2025-2026/HB4", "2025-2026/HB5",
+                                   "2025-2026/HB7"], f"RSA 91-A's pending changes are {pending.get('91-A')}"
+    s6 = page[page.index('id="s6"'):]
+    assert "Change takes effect Jan 1, 2027" in s6[:s6.index("</summary>")] and \
+        "Its change to this section takes effect January 1, 2027." in s6, "91-A:6's tag does not say its day"
+    s5 = page[page.index('id="s5"'):page.index('id="s6"')]
+    tag5 = s5[s5.index('<details class="rs-tag">'):s5.index("</details>")]
+    assert "Change takes effect Nov 30, 2026" in tag5 and 'href="/bill/2026/hb2"' not in tag5, (
+        "91-A:5's tag is not HB 4's day alone: HB 2's change there took effect August 1, 2026 -- " + tag5[:300])
+    s4 = page[page.index('id="s4"'):page.index('id="s5"')]
+    assert "Pending: 4 bills" in s4, "91-A:4's tag does not count its four bills"
+
+    # The readers, on lines as the bills' pages print them.
+    day = _dt.date
+    parts = B.chaptered_parts("x\nApproved: July 02, 2026\nEffective Date:\nI. Section 2 effective 12:01 a.m. "
+                              "January 1, 2027\nII. Remainder effective January 1, 2027")
+    assert [(sorted(p.secs), p.rest, p.day) for p in parts] == [([2], False, day(2027, 1, 1)),
+                                                                ([], True, day(2027, 1, 1))], parts
+    assert B.effect_words(B.Effect(parts, "law", False), day(2026, 10, 24)) == "Takes effect January 1, 2027."
+    parts = B.chaptered_parts("x\nEffective Date:\nI. Section 2 effective January 1, 2028\nII. Sections 3.4.5 "
+                              "effective January 1, 2026\nV. Remainder effective July 31, 2025")
+    assert parts and sorted(parts[1].secs) == [3, 4, 5], parts
+    parts = B.chaptered_parts("x\nEffective Date: January 01, 2027\nEnacted in accordance with Article 44, Part II "
+                              "of the N.H. Constitution, without the signature of the governor June 20, 2026")
+    assert len(parts) == 1 and parts[0].rest and parts[0].day == day(2027, 1, 1), parts
+    parts = B.chaptered_parts("x\nVETOED July 10, 2026 / Veto Overridden August 19, 2026.\nEffective:\n"
+                              "I. Section 3 effective August 19, 2027\nII. Remainder effective October 18, 2026")
+    assert [p.day for p in parts] == [day(2027, 8, 19), day(2026, 10, 18)], parts
+    assert B.chaptered_parts("x\nEffective Date:\nI. Sec 20, except RSA 275:82 eff July 1, 2025\nII. RSA 275:82 "
+                             "inserted by Sec 20 eff July 1, 2026\nIII. Remainder effective October 3, 2023") is None, \
+        "a part read only in part (HB 358 of 2023's 'Sec 20, except RSA 275:82') was read as though whole"
+    parts = B.journey_parts({"journey": {"steps": [{"act": "law", "text": "Chapter 287, in effect in parts: sections "
+                                                    "1 and 2 as section 3 provides, section 14 on Jan 1, 2027, the "
+                                                    "rest on Jan 1, 2026"}]}})
+    assert [(sorted(p.secs), p.day, p.how) for p in parts] == [
+        ([1, 2], None, "as section 3 of the act provides"), ([14], day(2027, 1, 1), ""), ([], day(2026, 1, 1), "")], parts
+    assert B.note_days("2026, 179:1, eff. Aug. 18, 2026; 262:5, eff. Jan. 1, 2027; 309:8, eff. Jan. 1, 2027.",
+                       "2026", "309") == {8: day(2027, 1, 1)}
+    assert B.note_days("2015, 276:127, eff. July 1, 2105.", "2015", "276") == {}, \
+        "a note's slip of the keys (RSA 287-E:16's 2105) was read as a day"
+    many = tuple(B.Part(frozenset([n]), False, "", d, "") for n, d in
+                 ((1, day(2025, 8, 26)), (4, day(2026, 1, 1)), (3, day(2027, 7, 1)))) + (
+        B.Part(frozenset(), True, "", day(2025, 7, 1), ""),)
+    assert B.effect_words(B.Effect(many, "law", False), day(2026, 10, 24)) == (
+        "Section 3 of the act takes effect July 1, 2027; its other parts have taken effect."), \
+        B.effect_words(B.Effect(many, "law", False), day(2026, 10, 24))
+    return "ok", ("HB 1 on January 1, 2027; HB 2's section 2 on 91-A:6 and not its part in effect, its own "
+                  "chaptered lines over another bill's docket line; HB 4 counted to November 30, 2026 and "
+                  "said so; HB 5 with the Governor, not stated; HB 6 apart; HB 3 not listed")
+
+
+# The harness of _filter_offers: app.js in node beside stub.js (dom_stub.js),
+# with a search box that keeps its attributes, so the combobox's can be read.
+_OFFERS_HARNESS = r"""
+require("./stub.js");
+const fs = require("fs");
+const q = document.querySelector("#q");
+q.id = "q"; q.attrs = {};
+q.setAttribute = (k, v) => { q.attrs[k] = String(v); };
+q.getAttribute = k => (k in q.attrs ? q.attrs[k] : null);
+q.removeAttribute = k => { delete q.attrs[k]; };
+const urls = [];
+history.replaceState = (s, t, u) => { urls.push(String(u)); };
+let s;
+try { s = (0, eval)(fs.readFileSync("./page.js", "utf8")
+  + "; ({filterOffers, QOFFERS, sel, IDX, openGroups, setMeta:(m)=>{META=m;}, setTerm:(t)=>{term=t;},"
+  + " getQuery:()=>query})"); }
+catch (e) { console.log("LOAD " + e.constructor.name + ": " + e.message); process.exit(1); }
+s.setMeta({terms: ["2025-2026"], committee_codes: {}, topics: ["Housing", "Education - General"]});
+const row = (id, topic, committees) => ({id, n: id, title: "relative to " + topic.toLowerCase(), kind: "active",
+  status: "In committee", chip: "In committee", committees, committee: committees[0] || "", topic, sponsor: "",
+  term: "2025-2026", year: 2026, passage: "", votedays: [], nrc: 0, last_action: ""});
+s.IDX.length = 0;
+s.IDX.push(row("HB1", "Housing", ["House Housing"]), row("HB2", "Housing", ["House Judiciary"]),
+           row("HB3", "Education - General", ["House Housing"]), row("HB4", "Education - General", ["Senate Education"]),
+           row("HB5", "Elections", ["House No Committee Assignment"]));
+s.setTerm("2025-2026");
+const out = {};
+const type = v => { q.value = v; q.fire("input"); };
+const key = k => q.fire("keydown", {key: k});
+try {
+  type("housing");
+  out.offers = s.QOFFERS.rows().map(o => [o.key, o.v, o.n, o.rest]);
+  out.list = s.QOFFERS.list.innerHTML;
+  out.shown = !s.QOFFERS.list.hidden;
+  out.box = [q.attrs.role, q.attrs["aria-autocomplete"], q.attrs["aria-controls"], q.attrs["aria-expanded"]];
+  out.say = s.QOFFERS.say.textContent;
+  key("ArrowDown");
+  out.active = q.attrs["aria-activedescendant"];
+  out.selected = (s.QOFFERS.list.innerHTML.match(/aria-selected="true"/g) || []).length;
+  key("Enter");
+  out.taken = {topic: [...s.sel.topic], query: s.getQuery(), box: q.value, open: s.openGroups.has("topic"),
+    url: urls.filter(u => u.includes("topic=")).pop() || "", shut: s.QOFFERS.list.hidden,
+    expanded: q.attrs["aria-expanded"]};
+  out.facets = document.querySelector("#facets").innerHTML;
+  s.sel.topic.clear();
+  type("affordable housing");
+  out.affordable = s.QOFFERS.rows().map(o => [o.key, o.v, o.rest]);
+  type("senate housing");
+  out.senate = s.QOFFERS.rows().map(o => [o.key, o.v]);
+  type("hou");
+  out.begun = s.QOFFERS.rows().map(o => [o.key, o.v]);
+  type("ho");
+  out.short = s.QOFFERS.rows().length;
+  type("HB 1");
+  out.number = s.QOFFERS.rows().length;
+  type("education");
+  out.education = s.QOFFERS.rows().map(o => [o.key, o.v]);
+  type("housing"); key("Escape");
+  out.escape = [s.QOFFERS.rows().length, s.QOFFERS.list.hidden];
+  // Return with the offers open and none chosen: the words are searched.
+  type("housing");
+  out.openBeforeReturn = s.QOFFERS.rows().length;
+  key("Enter");
+  out.words = {query: s.getQuery(), topic: [...s.sel.topic], committee: [...s.sel.committee]};
+  // The Laws page's filters, given to the same function as LANDING_JS gives them.
+  out.laws = s.filterOffers("housing", [
+    {key: "tp", values: [["Housing", "Housing", 23], ["Zoning and Planning", "Zoning and Planning", 40]],
+     say: n => "All chapters with the topic <b>" + n + "</b>"},
+    {key: "ti", values: [["XVII", "Housing and Redevelopment", 11], ["LV", "Proceedings in Special Cases", 30]],
+     say: (n, v) => "All chapters in <b>Title " + v + ": " + n + "</b>"}]).map(o => [o.key, o.v, o.html]);
+} catch (e) { out.threw = e.constructor.name + ": " + e.message + " " + (e.stack || "").split("\n")[1]; }
+process.stdout.write("\n@@" + JSON.stringify(out));
+"""
+
+
+@check("frontend", "typing a filter's name in the bill search's box offers that filter, as a combobox, and "
+                   "choosing one ticks it as the list would; Return without choosing searches the words",
+       needs=("build_rsa",))
+def _filter_offers(B):
+    """The person, 24 October 2026: "Searching for a topic in the searchbar in
+    the laws page or the bills page should show a dropdown if you type in the
+    name of a filter like 'housing' asking if you want to view all bills with
+    the housing topics or all bills referred to the housing committee, and
+    clicking it will select that filter without you having to manually scroll
+    through all the list of topics."
+
+    This runs app.js in node on five bills: "housing" offers the topic
+    Housing and the House Housing committee, each with the count it would
+    list; the box is a combobox (WAI-ARIA's pattern) whose arrow keys name the
+    offer they are on in aria-activedescendant; Return on it ticks the topic,
+    opens its group, writes it into the address and takes the word out of the
+    box. "affordable housing" offers the same and leaves "affordable";
+    "senate housing" offers no House committee; "hou" offers what it begins;
+    two letters, a bill number, or Escape offer nothing; and Return with the
+    offers open and none chosen searches the words, as it did before. The
+    Laws page gives the same function its own filters (LANDING_JS)."""
+    js, stub = Path("src/pages/app.js"), Path("tests/dom_stub.js")
+    node = shutil.which("node") or shutil.which("node.exe")
+    if not (js.exists() and stub.exists() and node):
+        return "skip", "app.js, dom_stub.js or node is not here"
+    root = Path(tempfile.mkdtemp())
+    try:
+        (root / "page.js").write_text(_with_components(js.read_text(encoding="utf-8")), encoding="utf-8")
+        (root / "stub.js").write_text(stub.read_text(encoding="utf-8"), encoding="utf-8")
+        (root / "go.js").write_text(_OFFERS_HARNESS, encoding="utf-8")
+        r = _run([node, "go.js"], cwd=root, capture_output=True, text=True, timeout=60)
+        assert r.returncode == 0 and "@@" in (r.stdout or ""), (
+            "app.js did not run under node: " + (r.stderr or r.stdout or "")[-300:])
+        got = json.loads(r.stdout.rsplit("@@", 1)[1])
+    finally:
+        shutil.rmtree(root, ignore_errors=True)
+    assert "threw" not in got, f"the offers threw {got['threw']}"
+    assert got["offers"] == [["topic", "Housing", 2, ""], ["committee", "House Housing", 2, ""]], (
+        f"'housing' offers {got['offers']}")
+    assert "All bills with the topic <b>Housing</b>" in got["list"] and \
+        "All bills referred to the <b>House Housing</b> committee" in got["list"] and \
+        got["list"].count('role="option"') == 2 and got["shown"], f"the list drawn: {got['list'][:300]}"
+    assert got["box"] == ["combobox", "list", "q-offers", "true"], f"the box's combobox attributes: {got['box']}"
+    assert got["say"].startswith("2 filters match"), f"the status line says {got['say']!r}"
+    assert got["active"] == "q-offers-0" and got["selected"] == 1, (
+        f"the down arrow put aria-activedescendant on {got['active']!r}")
+    assert got["taken"] == {"topic": ["Housing"], "query": "", "box": "", "open": True,
+                            "url": got["taken"]["url"], "shut": True, "expanded": "false"} \
+        and "topic=Housing" in got["taken"]["url"], f"Return on the offer: {got['taken']}"
+    assert re.search(r'data-g="topic"\s+aria-expanded="true"', got["facets"]) and re.search(
+        r'data-f="topic"\s+value="Housing" checked', got["facets"]), "the Topic group is not open with Housing ticked"
+    assert got["affordable"] == [["topic", "Housing", "affordable"], ["committee", "House Housing", "affordable"]], \
+        f"'affordable housing' offers {got['affordable']}"
+    assert got["senate"] == [["topic", "Housing"]], f"'senate housing' offers {got['senate']}"
+    assert got["begun"] == [["topic", "Housing"], ["committee", "House Housing"]], f"'hou' offers {got['begun']}"
+    assert got["short"] == 0 and got["number"] == 0, "two letters, or a bill number, offered a filter"
+    assert got["education"] == [["topic", "Education - General"], ["committee", "Senate Education"]], (
+        f"'education' offers {got['education']}: the committee named for it first, and no 'No Committee "
+        "Assignment'")
+    assert got["escape"] == [0, True], "Escape does not shut the offers"
+    assert got["openBeforeReturn"] == 2 and got["words"] == {"query": "housing", "topic": [], "committee": []}, (
+        f"Return with no offer chosen did not search the words: {got['words']}")
+    assert got["laws"] == [["tp", "Housing", "All chapters with the topic <b>Housing</b>"],
+                           ["ti", "XVII", "All chapters in <b>Title XVII: Housing and Redevelopment</b>"]], got["laws"]
+    for said in ("window.filterCombo(box,{offers:lawOffers,choose:take", "if(offers&&offers.enter())return;",
+                 '{key:"tp",values:vals("tp")', '{key:"ti",values:vals("ti")', '{key:"st",values:vals("st")'):
+        assert said in B.LANDING_JS, f"the Laws page's search does not offer its filters: no {said}"
+    css = Path("src/pages/app.css").read_text(encoding="utf-8")
+    assert re.search(r"\.qoffer\{[^}]*min-height:44px", css), "an offer is not 44px tall"
+    return "ok", ("'housing' offers the topic and the House Housing committee with their counts; the arrow, "
+                  "Return and Escape as WAI-ARIA's combobox; the topic ticked and in the address, the word out "
+                  "of the box; Return on words still searches them; the Laws page's filters through the same")
 
 
 @check("build", "the Constitution as nh.gov publishes it: every article of the saved pages read, numbered as the "
