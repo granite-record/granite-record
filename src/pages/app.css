@@ -1,4 +1,4 @@
-/* GRANITE_VERSION: 2026-09-07.310 */
+/* GRANITE_VERSION: 2026-09-07.311 */
 /* ONE STYLESHEET FOR EVERY PAGE (23 October 2026). Every page of the site
    links this file, /app.css: the record pages shell.page() makes from
    bills.html, and the five build_pages.py writes -- the home page, Officials,
@@ -1537,8 +1537,8 @@ line-height:1.1}
   /* A STATUTE ON PAPER IS THE STATUTE (the polish of 12 October 2026): a
      chapter page prints its sections in one column, without the sidebar
      that lists them; the Laws landing its directory, without the filters
-     or the reader. */
-  .rs-side,.lw-side,.lw-read{display:none !important}
+     or the reader -- or the box that searches them, or its offers. */
+  .rs-side,.lw-side,.lw-read,.lw-q,.qoffers{display:none !important}
   .rs-chap,.lw{display:block}
   /* A RECORDING'S BOX IS NOT ITS PLAYER. The whole box was left off, and the
      box is where the times are: Play's own words -- "Play from 04:33:32,
@@ -2102,9 +2102,9 @@ b,strong,h1,h2,h3,h4{font-weight:600}button{font:inherit;color:inherit;backgroun
 border-radius:var(--r-in);background:var(--surface);color:var(--ink-2);cursor:pointer}
 #year{height:42px;padding:0 var(--sp-4);font:inherit;font-size:var(--t-ui);border:1px solid var(--edge);
 border-radius:var(--r-out);background:var(--surface);cursor:pointer}
-#q{flex:1;height:42px;padding:0 var(--sp-5);font:inherit;font-size:var(--t-ui);border:1px solid var(--edge);
+#q,#rsq{flex:1;height:42px;padding:0 var(--sp-5);font:inherit;font-size:var(--t-ui);border:1px solid var(--edge);
 border-radius:var(--r-out);background:var(--paper)}
-#q:focus{outline:none;border-color:var(--pine);box-shadow:0 0 0 3px var(--pine-soft);background:var(--surface)}
+#q:focus,#rsq:focus{outline:none;border-color:var(--pine);box-shadow:0 0 0 3px var(--pine-soft);background:var(--surface)}
 /* The search list narrows as you type and needs no button. On one bill's own
    view it must not: re-running the search there takes the bill off the screen
    the reader is reading. So the query is held until they say so, and this and
@@ -2117,12 +2117,27 @@ border-radius:var(--r-out);background:var(--paper)}
    characters, which at a large text size on a phone is wider than the
    screen: at 24px on a 375px phone the box stood 7px past the edge (the
    rendered sweep, 8 October 2026). */
-.qbox #q{flex:1;padding-right:46px;min-width:0}
-#qgo{position:absolute;right:4px;top:4px;width:34px;height:34px;font-size:var(--t-ui);
+.qbox #q,.qbox #rsq{flex:1;padding-right:46px;min-width:0}
+#qgo,#rsgo{position:absolute;right:4px;top:4px;width:34px;height:34px;font-size:var(--t-ui);
 line-height:1;border:1px solid transparent;border-radius:var(--r-out);background:none;
 color:var(--ink-2);cursor:pointer}
-#qgo:hover{border-color:var(--edge);background:var(--wash);color:var(--pine)}
+#qgo:hover,#rsgo:hover{border-color:var(--edge);background:var(--wash);color:var(--pine)}
 #qgo:disabled{opacity:.35;cursor:default}
+/* A FILTER OFFERED FOR ITS NAME AS THE BOX IS TYPED IN (app.js filterCombo;
+   the person, 24 October 2026): a list under the box and over what is below
+   it, each offer a row 44px high with its count at the right, and the one
+   the arrow keys are on, or the pointer, in the wash of a thing chosen. The
+   bill search's box and the Laws page's alike. */
+.qoffers{position:absolute;left:0;right:0;top:calc(100% + 4px);z-index:40;margin:0;padding:var(--sp-2) 0;
+list-style:none;background:var(--surface);border:1px solid var(--edge);border-radius:var(--r-out);
+box-shadow:0 8px 24px var(--shadow);max-height:min(60vh,26rem);overflow-y:auto}
+.qoffers[hidden]{display:none}
+.qoffer{display:flex;align-items:center;gap:var(--sp-4);min-height:44px;box-sizing:border-box;
+padding:var(--sp-2) var(--sp-5);font-size:var(--t-ui);line-height:1.35;color:var(--ink);cursor:pointer}
+.qoffer b{font-weight:600}
+.qoffer .c{margin-left:auto;flex:0 0 auto;font-size:var(--t-sm);color:var(--ink-2);font-variant-numeric:tabular-nums}
+.qoffer[aria-selected="true"],.qoffer:hover{background:var(--pine-soft)}
+.qoffer[aria-selected="true"]{box-shadow:inset 3px 0 0 var(--pine)}
 /* THE SORT FIRST, THEN THE COUNT (bills.html, 8 October 2026). Flush with
    the term picker above it, which is why the row has no side margin of its
    own, and held at the top of the row: when the count wraps to a second or
@@ -7173,6 +7188,17 @@ border-bottom:2px solid var(--ink-2);transform:rotate(-45deg);transition:transfo
 .rs-pending{margin:1.5rem 0 1rem;padding:1rem 1.125rem;background:var(--surface);
   border:1px solid var(--rule-2);border-left:3px solid var(--pine);border-radius:var(--r-in)}
 .rs-pending h2{font:600 var(--t-ui)/1.35 var(--sans);margin:0 0 .625rem;color:var(--ink)}
+/* THE BILLS PASSED AND NOT YET IN EFFECT (build_rsa Bills.passing; the
+   person, 24 October 2026), a line each: the bill, its status, when it takes
+   effect, and the sections it changes here -- above the bills still before
+   the General Court, and in a section's tag. */
+.rs-plist{list-style:none;margin:0 0 .75rem;padding:0}
+.rs-plist li{padding:.375rem 0;border-bottom:1px solid var(--rule);font:400 var(--t-sm)/1.5 var(--sans)}
+.rs-plist li:last-child{border-bottom:0}
+.rs-plist a{color:var(--pine);font-weight:600}
+.rs-plist .rs-eff{color:var(--ink)}
+.rs-plist .rs-in a{font-weight:500}
+.rs-plist + h2{margin-top:.875rem}
 /* A REPEALED CHAPTER SAYS SO AT THE SIZE OF THE LEAD, in a box of its own
    (the person, 11 October 2026: "the text is quite small"). Ink rather than a
    status red: a repeal is not a bill voted down. */
@@ -7193,8 +7219,11 @@ border-bottom:2px solid var(--ink-2);transform:rotate(-45deg);transition:transfo
    that (rendered 11 October 2026). The shell's empty filter column the same:
    app.js sets .nofacets at the same moment, and until then the Laws pages
    stood in the right-hand column of two (the dry run of 45efda3). A browser
-   without :has() keeps the flash. */
-body:has(.rs-page) .searchrow,.shell:has(.rs-page) .facets,.shell:has(.rs-page) .ftoggle{display:none}
+   without :has() keeps the flash. The shell's own column and button, its
+   children: the Laws landing's search draws a filter column and a Filter
+   button of its own, with the bill search's classes, inside the page
+   (.lw, below). */
+body:has(.rs-page) .searchrow,.shell:has(.rs-page) > .facets,.shell:has(.rs-page) > .ftoggle{display:none}
 .shell:has(.rs-page){grid-template-columns:1fr}
 
 /* THE CHAPTER PAGE: its sections in a sidebar beside the text, sticky and
@@ -7234,33 +7263,28 @@ body:has(.rs-page) .searchrow,.shell:has(.rs-page) .facets,.shell:has(.rs-page) 
 /* THE LANDING, laid out as the bill search is (the person, 11 October
    2026): filters at the side, the directory of titles and chapters in the
    middle, the chosen section's text on the right, sticky as the directory
-   scrolls. One column under 60em, where a section opens on its own page. */
+   scrolls. One column under 60em, where a section opens on its own page.
+   AND THE SEARCH ACROSS THE TOP (the person, 24 October 2026), the bill
+   search's box (.qline, .qbox, #rsq beside #q above) with the count under
+   it, and the filters in the bill search's groups (.facets, .fgroup, .fhead,
+   .fbody, .fopt), 17rem wide as its column is. */
 .rs-landing{max-width:none}
-.lw{display:grid;grid-template-columns:15rem minmax(0,1fr) minmax(0,1fr);gap:var(--sp-8);align-items:start;
-  margin-top:var(--sp-6)}
-.lw-side{position:sticky;top:16px;max-height:calc(100vh - 32px);overflow-y:auto;overflow-x:hidden}
-.lw-side .rs-search{margin:0 0 .75rem}
-.lw-side .rs-search input{font-size:var(--t-ui);padding:.5rem .75rem}
-.rs-search label{display:block;font:600 var(--t-label)/1.3 var(--sans);letter-spacing:.06em;
-  text-transform:uppercase;color:var(--ink-2);margin-bottom:.5rem}
-.rs-search input{width:100%;box-sizing:border-box;font:400 var(--t-lead)/1.3 var(--sans);
-  padding:.75rem 1rem;color:var(--ink);background:var(--surface);border:1px solid var(--edge);
-  border-radius:var(--r-in)}
-.lw-fbox > summary{display:none}
-.lw-f{border-top:1px solid var(--rule);padding:.625rem 0}
-.lw-f h2{font:600 var(--t-ui)/1.3 var(--sans);color:var(--ink);margin:0 0 .375rem}
+.lw{display:grid;grid-template-columns:17rem minmax(0,1fr) minmax(0,1fr);
+  grid-template-areas:"f d r";gap:var(--sp-6) var(--sp-8);align-items:start;margin-top:var(--sp-6)}
+.lw-q{margin:var(--sp-6) 0 0}
+.lw-q .qhint{margin-top:var(--sp-3)}
+.lw > .ftoggle{grid-area:t}
+.lw-side{grid-area:f}
+.lw-dir{grid-area:d}
+.lw-read{grid-area:r}
+/* The template's shell hides its own filter column on a page that is not
+   the bill search (.nofacets, and :has(.rs-page) above); this one is the
+   Laws page's own, and stays. */
+.shell .lw .facets{display:block}
+.lw-side .fbody > .lw-fnote{margin:0 0 var(--sp-3)}
 .lw-fnote{font:400 var(--t-sm)/1.4 var(--sans);color:var(--ink-2);margin:0 0 .375rem}
-.lw-f ul{list-style:none;margin:0;padding:0}
-.lw-f ul.lw-scroll{max-height:16rem;overflow-y:auto}
-.lw-f label{display:flex;align-items:baseline;gap:.5rem;padding:.1875rem 0;cursor:pointer;
-  font:400 var(--t-sm)/1.35 var(--sans);color:var(--ink)}
-.lw-f label input{flex:none;margin:0;accent-color:var(--pine);position:relative;top:.125rem}
-.lw-f label span:first-of-type{flex:1 1 auto;min-width:0}
-.lw-f label b{font-weight:600;margin-right:.25rem}
-.lw-n{flex:none;color:var(--ink-2);font-variant-numeric:tabular-nums}
-.lw-clear{margin-top:.5rem;font:500 var(--t-sm)/1.3 var(--sans);color:var(--pine);background:none;
-  border:1px solid var(--edge);border-radius:var(--r-in);padding:.375rem .75rem;cursor:pointer}
-.lw-count{font:500 var(--t-sm)/1.4 var(--sans);color:var(--ink-2);margin:0 0 .5rem}
+.lw-clear{margin-top:var(--sp-5)}
+.lw-count{font:500 var(--t-sm)/1.4 var(--sans);color:var(--ink-2)}
 .rs-hits{margin:.25rem 0 1.5rem;padding:0;list-style:none}
 .rs-hits li{padding:.375rem 0;border-bottom:1px solid var(--rule);font:400 var(--t-ui)/1.45 var(--sans)}
 .rs-hits a{color:var(--pine)}
@@ -7318,15 +7342,21 @@ body:has(.rs-page) .searchrow,.shell:has(.rs-page) .facets,.shell:has(.rs-page) 
 .lw-empty,.lw-wait{font:400 var(--t-sm)/1.5 var(--sans);color:var(--ink-2);margin:1rem 0}
 .lw-rcrumb{font:500 var(--t-sm)/1.4 var(--sans);color:var(--ink-2);margin:.875rem 0 0}
 .lw-read .lw-own{margin-left:0;padding-top:.75rem;border-top:1px solid var(--rule)}
-@media (max-width:75em){.lw{grid-template-columns:14rem minmax(0,1fr) minmax(0,.9fr)}}
-@media (max-width:60em){
-  .lw{grid-template-columns:minmax(0,1fr);gap:var(--sp-6)}
-  .lw-side{position:static;max-height:none;overflow:visible}
-  .lw-fbox > summary{display:block;cursor:pointer;font:600 var(--t-ui)/1.3 var(--sans);color:var(--ink);
-    padding:.625rem .75rem;border:1px solid var(--edge);border-radius:var(--r-in);background:var(--surface)}
-  .lw-fbox[open] > summary{margin-bottom:.5rem}
+@media (max-width:75em){.lw{grid-template-columns:17rem minmax(0,1fr) minmax(0,.85fr)}}
+/* UNDER 60EM, AS THE BILL SEARCH IS: the box, then the Filter button, the
+   groups it opens, and the directory; the groups shut until the button is
+   pressed (.lw.fopen, LANDING_JS), two to a row on a tablet. */
+@media (max-width:59.9375em){
+  .lw{grid-template-columns:minmax(0,1fr);grid-template-areas:"t" "f" "d";gap:0}
+  .shell .lw .ftoggle{display:flex}
+  .shell .lw:not(.fopen) .facets{display:none}
+  .lw.fopen .ftoggle .chev{transform:rotate(90deg)}
+  .lw.fopen .ftoggle{margin-bottom:var(--sp-4)}
   .lw-read{display:none}
-  .lw-f ul.lw-scroll{max-height:11rem}
+}
+@media (min-width:37.5em) and (max-width:59.9375em){
+  .shell .lw.fopen .facets{display:grid;grid-template-columns:1fr 1fr;column-gap:var(--sp-8);align-items:start}
+  .lw.fopen .facets > :not(.fgroup){grid-column:1 / -1}
 }
 @media (max-width:45em){
   .lw-title > summary{grid-template-columns:minmax(0,1fr)}

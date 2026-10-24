@@ -1,16 +1,17 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-10-11.19
+# GRANITE_VERSION: 2026-10-11.20
 """
 The statutes (RSA) as pages: /laws, and one page a chapter at /laws/<chapter>.
 
     python3 src/pages/build_rsa.py --site site --base https://graniterecord.org
 
 Asks nobody. Reads the General Court's statute table through rsa.py, what
-rsa.py wrote (rsa_citations.json), and the bill index the site build wrote
+rsa.py wrote (rsa_citations.json), the bill index the site build wrote
 (site/idx/<term>.json) for each bill's number, title and whether it is still
-moving. Writes site/laws.html, site/laws/<chapter>.html and the three files the
-landing page's search reads, site/laws/chapters.json, headings.json and
-words.json.
+moving, and for a law the record its page carries (site/bill/<year>/<id>.html,
+through site_read) for when it takes effect. Writes site/laws.html,
+site/laws/<chapter>.html and the three files the landing page's search reads,
+site/laws/chapters.json, headings.json and words.json.
 
 THE DESIGN IS RSA_PAGE.md (7 October 2026), with the person's asks of 11
 October: "a more easily searchable and viewable interface for RSAs,
@@ -26,17 +27,19 @@ A CHAPTER PAGE, top to bottom (RSA_PAGE.md §5):
 1. The chapter's number and name, and one line saying what the text is: the
    table as the General Court holds it, through the laws of the latest year
    its source notes name, with the official page one link away.
-2. Pending: the sitting term's bills still moving that say they change this
-   chapter, as chips, each section they name tagged below.
+2. Pending: the bills passed that change this chapter and have not taken
+   effect, a line each saying when they do (Bills.passing, the person's ask
+   of 24 October 2026); then the sitting term's bills still moving that say
+   they change it, as chips. Each section they name is tagged below.
 3. The sections in order, under the chapter's own inner headings, each an
    anchor (/laws/91-a#s4) carrying: its heading, a Pending tag where a bill
-   still moving would change it, its text with every citation the table
-   holds linked to its own anchor and the first use of each defined term
-   that applies to it marked (rsa.Defined, the person's ask of 24 October
-   2026), its source note, and four folds -- How it has changed (the source
-   note's laws, newest first, each the bill it was), Also proposed by (every
-   other bill whose own instructions name the section, failed ones
-   included), Cites, Cited by.
+   passed or still moving would change it, its text with every citation the
+   table holds linked to its own anchor and the first use of each defined
+   term that applies to it marked (rsa.Defined, the person's ask of 24
+   October 2026), its source note, and four folds -- How it has changed
+   (the source note's laws, newest first, each the bill it was), Also
+   proposed by (every other bill whose own instructions name the section,
+   failed ones included), Cites, Cited by.
 4. A repealed section is one muted line, its anchor kept, so an old bill's
    link still lands on something true.
 
@@ -62,6 +65,7 @@ import html
 import json
 import math
 import re
+import unicodedata
 
 import build_date
 import components as C
@@ -69,6 +73,7 @@ import constitution_tab as CT
 import parse_constitution as PC
 import rsa
 import shell as S
+import site_read as SR
 import structured as LD
 
 E = html.escape
@@ -103,6 +108,16 @@ def nice(name):
         else:
             out.append("-".join(x[:1].upper() + x[1:].lower() for x in w.split("-")))
     return " ".join(out)
+
+
+def shown_order(name):
+    """A name's place in a list sorted by what it shows, letters only: case
+    and accents set aside, so "Éducation" sits with "Education" and "fish &
+    Game" with "Fish & Game" (the person, 24 October 2026: "Topics in the
+    rsa pages should be sorted alphabetically"). The name itself breaks a tie,
+    so the order is the same on every machine."""
+    flat = unicodedata.normalize("NFKD", str(name or ""))
+    return ("".join(c for c in flat if not unicodedata.combining(c)).casefold(), str(name or ""))
 
 
 def bill_order(key):
@@ -179,6 +194,12 @@ def term_of_year(y):
     return f"{a}-{a + 1}"
 
 
+def term_before(term):
+    """ "2025-2026" -> "2023-2024"; "" for anything else."""
+    m = re.fullmatch(r"(\d{4})-(\d{4})", term or "")
+    return f"{int(m.group(1)) - 2}-{int(m.group(2)) - 2}" if m else ""
+
+
 def chapter_label(ch, name):
     """ "Chapter 71: The Tax Commission" (the person, 11 October 2026: "Laws
     should also be labeled as Chapter 71: The Tax Commission rather than just
@@ -221,8 +242,10 @@ def chapter_topics(data, bills):
 
 
 def chapter_pending(data, bills):
-    """{chapter: [bill keys]} for the sitting term's bills still moving that
-    say they change it."""
+    """{chapter: [bill keys]} for the changes pending to it: the sitting
+    term's bills still before the General Court that say they change it
+    (Bills.pending), and the bills passed that change it and have not taken
+    effect there (Bills.passing)."""
     out = collections.defaultdict(set)
     for term, bs in data.get("bills", {}).items():
         for bill, rec in bs.items():
@@ -231,17 +254,412 @@ def chapter_pending(data, bills):
             if chs and bills.pending(k):
                 for ch in chs:
                     out[ch].add(k)
+    # Not a law whose effective date the record does not state: it is listed
+    # on the chapter's page under a heading that says so, and is not counted
+    # as pending, which it may not be.
+    for k, p in bills.passing(data).items():
+        if p.effect.parts or p.effect.awaiting:
+            for a in p.addrs:
+                out[a.split(":")[0]].add(k)
     return {ch: sorted(ks, key=bill_order) for ch, ks in out.items()}
+
+
+# ------------------------------------------------------------------ in effect
+
+# WHEN A PASSED BILL TAKES EFFECT (the person, 24 October 2026: "Pending
+# rsas should show when a bill has passed but has not yet taken effect, with
+# a line about when the bill takes effect and a link to its page"). Until
+# that day Pending was only the bills still before the General Court, so
+# from the session's end to the next there was none: on 24 October 2026 the
+# Laws page offered "Bills pending this term" at 0, while 68 of the term's
+# laws took effect on a day still to come, most on 1 January 2027.
+#
+# WHERE THE DAY COMES FROM, IN ORDER (Bills.effect):
+#   1. The chaptered law's own last lines, "Effective Date: January 01, 2027",
+#      or a line a part: "I. Section 3 effective January 1, 2027" and "II.
+#      Remainder effective August 1, 2026". The final version's text in the
+#      bill's record ends with them.
+#   2. The day the bill's page dates its Law stop by (its index row's rail),
+#      which the docket's governor line gives -- for a law whose record has
+#      no such lines, or whose record is not read (below).
+#   3. The page's own words for a law in effect in parts ("Chapter 205, in
+#      effect in parts: section 3 on Jan 1, 2027, the rest on Aug 1, 2026",
+#      build_site_v2._j_effective_parts), from the same docket line.
+#   4. The act's own Effective Date section, "This act shall take effect
+#      January 1, 2027"; and "60 days after its passage" counted from the day
+#      of passage the chaptered law states -- the veto overridden, the day it
+#      became law without the Governor's signature, or Approved -- or, where
+#      it states none, the Governor's stop on the rail, and the line says
+#      how it was counted.
+#   5. Nothing read: "Effective date not stated in the record we hold".
+# The chaptered law first because the docket's line can be another bill's:
+# HB 1184 of 2026's reads "I. Sec 2 eff 1/1/27 II. Sec 3 eff 1/1/27 III. Rem
+# eff 1/1/28", which is HB 1102's, overridden the same day; its chaptered
+# text says section 3 on August 19, 2027 and the rest on October 18, 2026.
+# Of the 70 laws of the last two terms whose rail gives one day and whose
+# text has the lines, the two agree on all 70 (24 October 2026).
+#
+# A part with no day -- "as section 21 provides", on another bill becoming
+# law or a federal approval -- is said as the law says it, and does not by
+# itself make a change pending.
+Part = collections.namedtuple("Part", "secs rest addr day how")
+Part.__doc__ = """One part of a law and when it takes effect: `secs` the
+act's own section numbers it covers, `rest` whether it is the remainder (or
+the whole act), `addr` a statute address it names instead ("RSA 654:12, VI
+as inserted by section 5"), `day` a datetime.date or None, `how` the words
+for a day that is not stated or was counted ("as section 21 of the act
+provides", "60 days after its passage, counted from ...")."""
+
+Effect = collections.namedtuple("Effect", "parts source awaiting")
+Effect.__doc__ = """When a passed bill takes effect: its parts (none where
+nothing is read), where they were read ("law", "docket", "text" or ""), and
+whether the bill awaits the Governor rather than being law."""
+
+Passed = collections.namedtuple("Passed", "key effect addrs year")
+Passed.__doc__ = """A bill passed and not yet in effect everywhere it changes
+the statutes: its effect, {address: the day the change there takes effect,
+or None where the record does not say which part makes it}, and the year of
+the session laws it is a chapter of ("" for a bill awaiting the Governor)."""
+
+MONTH_NO = {m[:3].lower(): i + 1 for i, m in enumerate(C.MONTHS)}
+DATE_WORDS = re.compile(r"\b(Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)[a-z]*\.?\s+(\d{1,2})[,.]?\s+(\d{4})\b",
+                        re.I)
+
+
+def day_of(m):
+    """A DATE_WORDS match as a datetime.date, or None."""
+    try:
+        return datetime.date(int(m.group(3)), MONTH_NO[m.group(1).lower()[:3]], int(m.group(2)))
+    except (KeyError, ValueError):
+        return None
+
+
+def day_said(words):
+    """The day `words` is and nothing else ("January 01, 2027.", "on
+    September 1, 2027", "at 12:01 a.m. on July 1, 2035", "12:01 a.m.
+    January 1, 2027", "July 1, 2027 at 12:01 a.m."), or None."""
+    w = re.sub(r"(?:\bat\s+)?\b\d{1,2}:\d\d\s*[ap]\.?\s*m\.?(?:\s+on\b)?", " ", (words or ""), flags=re.I)
+    w = re.sub(r"^\s*on\s+", "", w.strip(), flags=re.I)
+    m = DATE_WORDS.fullmatch(w.strip().rstrip(" ."))
+    return day_of(m) if m else None
+
+
+def act_sections(words):
+    """The act's own sections a part names -- "Section 3", "Sections 7-10",
+    "Sec 1,2,5,6,11,12", "Sections 3.4.5", "sections 1 to 2 and 5 to 6",
+    "Section 5 paragraph VI" (section 5) -- as a frozenset, or None where the
+    words are not plainly a list of them."""
+    m = re.match(r"\s*sec(?:tion)?s?\b\.?\s*(.*)$", words or "", re.I | re.S)
+    if not m:
+        return None
+    s = re.sub(r"\s+of\s+(?:this|the)\s+act\b.*$", "", m.group(1), flags=re.I)
+    s = re.sub(r",?\s*paragraphs?\s+[IVXL]+\b.*$", "", s, flags=re.I)
+    s = re.sub(r"\s*(?:-|–|\bto\b|\bthrough\b)\s*", "-", s.strip(" .,;"))
+    nums = set()
+    for p in re.split(r"\s*(?:,|\.|&|\+|\band\b)\s*|\s+", s):
+        if not p:
+            continue
+        r = re.fullmatch(r"(\d{1,3})(?:-(\d{1,3}))?", p)
+        if not r:
+            return None
+        a, b = int(r.group(1)), int(r.group(2) or r.group(1))
+        if b < a or b - a > 300:
+            return None
+        nums.update(range(a, b + 1))
+    return frozenset(nums) or None
+
+
+def part_of(words):
+    """A part's words as (secs, rest, addr): the remainder or the whole act,
+    a statute address it names, or the act's sections; None where the words
+    are none of them ("Sec 20, except RSA 275:82")."""
+    w = re.sub(r"\s+", " ", (words or "").strip(" .,;:"))
+    if re.fullmatch(r"(?:the )?(?:rem(?:ainder|\.)?|rest)(?: of (?:this|the) act)?|this act", w, re.I):
+        return frozenset(), True, ""
+    if re.match(r"RSA\b", w, re.I):
+        cs = list(rsa.cites(w))
+        if len(cs) == 1 and not re.search(r"\bexcept\b", w, re.I):
+            return frozenset(), False, rsa.addr_of(cs[0])
+        return None
+    s = act_sections(w)
+    return (s, False, "") if s else None
+
+
+# The chaptered law's own last lines: "Effective Date:" (or "Effective:"),
+# then one day or a line a part. The sentence saying it was enacted without
+# the Governor's signature carries the day of enactment, not of effect, and
+# is set aside first.
+TRAILER_AT = re.compile(r"\nEffective(?: Date)?:")
+ARTICLE_44 = re.compile(r"Enacted in accordance with Article 44[^\n]*", re.I)
+TRAILER_PART = re.compile(r"^(?:[IVXL]{1,5}\.\s*)?(?P<what>.+?)\s+(?:shall\s+take\s+effect|effectuve|effective|eff\.?)"
+                          r"\s+(?P<when>.+?)\s*\.?$", re.I)
+PROVIDED = re.compile(r"as\s+provided\s+(?:in|by)\s+sec(?:tion)?\.?\s*(\d{1,3})(?:\s*,?\s*paragraph\s+[IVXL]+)?"
+                      r"(?:\s+of\s+this\s+act)?\.?", re.I)
+
+
+def chaptered_parts(body):
+    """The parts the chaptered law's last lines give, or None where it has
+    none or a line this does not read -- then the next source is asked."""
+    at = None
+    for at in TRAILER_AT.finditer(body or ""):
+        pass
+    if not at:
+        return None
+    lines = [x.strip() for x in ARTICLE_44.sub("", body[at.end():]).split("\n") if x.strip()]
+    if not lines:
+        return None
+    if len(lines) == 1 and day_said(lines[0]):
+        return (Part(frozenset(), True, "", day_said(lines[0]), ""),)
+    parts = []
+    for x in lines:
+        m = TRAILER_PART.match(x)
+        what = part_of(m.group("what")) if m else None
+        if what is None:
+            return None
+        day, prov = day_said(m.group("when")), PROVIDED.fullmatch(m.group("when").strip())
+        if day:
+            parts.append(Part(*what, day, ""))
+        elif prov:
+            parts.append(Part(*what, None, f"as section {prov.group(1)} of the act provides"))
+        else:
+            return None
+    return tuple(parts)
+
+
+# The bill's page's own words for a law in effect in parts, written by
+# build_site_v2._j_effective_parts: each part's words, then "on Jan 1, 2027"
+# or "as section 3 provides", parts apart by a comma.
+PAGE_PARTS = re.compile(r"\bin effect in parts:\s*(.+)$", re.S)
+PAGE_PART_END = re.compile(r"\s+(?:on\s+(?P<day>(?:Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)[a-z]*\.?"
+                           r"\s+\d{1,2},\s+\d{4})|as\s+section\s+(?P<prov>\d{1,3})\s+provides)(?:,\s*|\s*$)")
+
+
+def journey_parts(rec):
+    """The parts the bill's page states for a law in effect in parts, or
+    None."""
+    steps = [s for s in ((rec or {}).get("journey") or {}).get("steps") or [] if s.get("act") == "law"]
+    m = PAGE_PARTS.search((steps[-1].get("text") or "") if steps else "")
+    if not m:
+        return None
+    s, pos, parts = m.group(1).strip(), 0, []
+    for e in PAGE_PART_END.finditer(s):
+        what = part_of(s[pos:e.start()])
+        if what is None:
+            return None
+        if e.group("day"):
+            day = day_of(DATE_WORDS.match(e.group("day")))
+            if not day:
+                return None
+            parts.append(Part(*what, day, ""))
+        else:
+            parts.append(Part(*what, None, f"as section {e.group('prov')} of the act provides"))
+        pos = e.end()
+    return tuple(parts) if parts and pos == len(s) else None
+
+
+# The act's own section on when it takes effect: "4 Effective Date." in a
+# bill, "205:5 Effective Date." (or "282 : 5") in the chaptered law, to the
+# lines after it.
+ACT_EFFECT = re.compile(r"(?:^|\n)[ \t]*(?:\d{1,4}[ \t]*:[ \t]*)?\d{1,3}[ \t]+Effective Date\.[ \t]*(?P<text>.*?)"
+                        r"(?=\n(?:Approved:|VETOED|Veto Overridden|Enacted in accordance|Effective(?: Date)?:)|\Z)",
+                        re.S | re.I)
+ACT_PART = re.compile(r"^(?:[IVXL]{1,5}\.\s*)?(?P<what>.+?)\s+(?:shall\s+)?takes?\s+effect\s+(?P<when>.+?)\.?$",
+                      re.I | re.S)
+AFTER_PASSAGE = re.compile(r"(?P<n>\d{1,3})\s+days\s+after\s+(?:its\s+)?passage", re.I)
+UPON_PASSAGE = re.compile(r"(?:up)?on\s+(?:its\s+)?passage", re.I)
+# The day of passage, as the chaptered law states it, most particular first.
+PASSED_ON = (("Veto Overridden", "the day the veto was overridden"),
+             ("without the signature of the governor", "the day it became law without the Governor's signature"),
+             ("Approved:", "the day it was approved"))
+
+
+def passage_day(body, row):
+    """(day, words) for the day a law passed, from the chaptered law's last
+    lines, or failing those from the Governor's stop on its rail where the
+    Governor signed it or let it become law unsigned; (None, "")."""
+    for said, words in PASSED_ON:
+        i = (body or "").rfind(said)
+        m = DATE_WORDS.search(body, i + len(said), i + len(said) + 40) if i >= 0 else None
+        if m and day_of(m):
+            return day_of(m), words
+    g = next((s for s in row.get("rail") or [] if str(s[0])[:1] == "G"), None)
+    if g and len(g) > 2 and g[0] == "Gp" and g[2] in ("signed", "unsigned"):
+        try:
+            return datetime.date.fromisoformat(g[1]), ("the day the Governor signed it" if g[2] == "signed"
+                                                       else "the day it became law without the Governor's signature")
+        except ValueError:
+            pass
+    return None, ""
+
+
+def act_parts(body, passed=(None, ""), awaiting=False):
+    """The parts the act's own Effective Date section gives, every sentence
+    of it read or None. A day after its passage is counted from `passed`
+    where it is known and said as counted; for a bill awaiting the Governor
+    it is said as the text says it."""
+    found = list(ACT_EFFECT.finditer(body or ""))
+    if not found:
+        return None
+    text = found[-1].group("text").strip()
+    lines = [x.strip() for x in re.split(r"\n|(?<=\.)\s+(?=[IVXL]{1,5}\.\s)", text) if x.strip()]
+    day0, how0 = passed
+    parts = []
+    for x in lines:
+        m = ACT_PART.match(x)
+        what = part_of(m.group("what")) if m else None
+        if what is None:
+            return None
+        when = m.group("when").strip()
+        day, prov = day_said(when), PROVIDED.fullmatch(when)
+        after, upon = AFTER_PASSAGE.fullmatch(when.rstrip(". ")), UPON_PASSAGE.fullmatch(when.rstrip(". "))
+        if day:
+            parts.append(Part(*what, day, ""))
+        elif prov:
+            parts.append(Part(*what, None, f"as section {prov.group(1)} of the act provides"))
+        elif (after or upon) and awaiting:
+            parts.append(Part(*what, None, f"{after.group('n')} days after it becomes law" if after
+                              else "the day it becomes law"))
+        elif (after or upon) and day0:
+            n = int(after.group("n")) if after else 0
+            parts.append(Part(*what, day0 + datetime.timedelta(days=n),
+                              f"{n} days after its passage, counted from {C.date_words(day0, 'full')}, {how0}"
+                              if n else f"on its passage: {how0}"))
+        else:
+            return None
+    return tuple(parts) or None
+
+
+def body_of(rec):
+    """The text a record holds of its bill, as the bill's page shows it."""
+    return ((rec or {}).get("billtext") or {}).get("body") or ""
+
+
+NOTE_YEARS = 30
+
+
+def note_days(note, year, chapter):
+    """{the act's section: the day it took or takes effect} that a statute
+    section's source note gives for one session law: "2026, 262:1, eff. Jan.
+    1, 2027; 309:7, eff. Jan. 1, 2027." gives {7: 2027-01-01} for chapter 309
+    of 2026. The note is the Office of Legislative Services' own account of
+    the section, and settles a part the law dates only "as section 9
+    provides": RSA 362-A:9's note puts HB 1718 of 2026's section 8 at January
+    1, 2027 (24 October 2026)."""
+    out = {}
+    note = note or ""
+    opens = list(rsa.YEAR_OPEN.finditer(note))
+    for i, g in enumerate(opens):
+        if int(g.group(1)) != int(year or 0):
+            continue
+        group = note[g.end():opens[i + 1].start() if i + 1 < len(opens) else len(note)]
+        for part in group.split(";"):
+            m = re.match(rf"\s*{int(chapter)}:(\d{{1,4}}(?:\s*[-,]\s*\d{{1,4}})*)\s*,\s*eff\.\s*(.+)$", part, re.S)
+            d = DATE_WORDS.match(m.group(2).strip()) if m else None
+            # A day more than NOTE_YEARS after the law's own year is a slip
+            # of the keys, not a plan: RSA 287-E:16's note reads "2015,
+            # 276:127, eff. July 1, 2105".
+            if not d or not day_of(d) or day_of(d).year - int(year) > NOTE_YEARS:
+                continue
+            for a, b in re.findall(r"(\d+)(?:\s*-\s*(\d+))?", m.group(1)):
+                for n in range(int(a), int(b or a) + 1):
+                    out[n] = day_of(d)
+    return out
+
+
+def numbered_sections(body, chapter):
+    """{the act's section number: its text} from a chaptered law's body,
+    whose sections open "205:1 ", "205:2 " (or "282 : 1 ") in order -- the
+    law's own chapter number, so the statute's own headings inside an
+    amendment ("193-F:4 Pupil Safety") are not taken for them. {} where they
+    do not run from 1."""
+    if not chapter or not str(chapter).isdigit():
+        return {}
+    heads, want = [], 1
+    for m in re.finditer(rf"(?:^|\n)[ \t]*{int(chapter)}[ \t]*:[ \t]*(\d{{1,3}})[ \t]+(?=[A-Z])", body or ""):
+        if int(m.group(1)) == want:
+            heads.append((want, m.start()))
+            want += 1
+    return {n: body[at:(heads[i + 1][1] if i + 1 < len(heads) else len(body))]
+            for i, (n, at) in enumerate(heads)}
+
+
+def effect_words(eff, today):
+    """The line under a passed bill on the Laws pages: when it takes
+    effect, each part in order of its day, said as taking effect or as
+    having taken effect by `today`, a part with no day as the law says it,
+    and a day counted with how it was counted."""
+    if not eff.parts:
+        return "Effective date not stated in the record we hold."
+    # Parts on one day with nothing more to say are one part.
+    if len({(p.day, p.how) for p in eff.parts}) == 1 and eff.parts[0].day and not eff.parts[0].how:
+        parts = [Part(frozenset(), True, "", eff.parts[0].day, "")]
+    else:
+        parts = sorted(eff.parts, key=lambda p: (p.day is None, p.day or datetime.date.min, p.rest))
+
+    def when(p):
+        return (C.date_words(p.day, "full") + (f" ({p.how})" if p.how else "")) if p.day else p.how
+
+    def verb(p):
+        if p.day and p.day <= today:
+            return "took effect"
+        return "take effect" if len(p.secs) > 1 else "takes effect"
+    if len(parts) == 1 and parts[0].rest:
+        p = parts[0]
+        if eff.awaiting:
+            return f"If it becomes law, it takes effect {when(p)}, its text says."
+        return f"{verb(p)[:1].upper()}{verb(p)[1:]} {when(p)}."
+    # The parts still to come first, by their day, and those with no day; the
+    # parts in effect after them, named where there is one and gathered
+    # where there are more (HB 282 of 2025 has twelve, five in effect).
+    later = [p for p in parts if not p.day or p.day > today]
+    done = [p for p in parts if p.day and p.day <= today]
+    said = [f"{part_name(p)} {verb(p)} {when(p)}" for p in later]
+    if len(done) == 1:
+        said.append(f"{part_name(done[0])} {verb(done[0])} {when(done[0])}")
+    elif done:
+        said.append("its other parts have taken effect")
+    said = "; ".join(said)
+    if eff.awaiting:
+        return f"If it becomes law, its text says: {said}."
+    return said[:1].upper() + said[1:] + "."
+
+
+def part_name(p):
+    """A part as the line names it: "the rest", "RSA 654:12", "section 3 of
+    the act", "sections 1, 2, 5 and 6 of the act", "sections 7 to 10 of the
+    act"."""
+    if p.rest:
+        return "the rest"
+    if p.addr:
+        return f"RSA {p.addr}"
+    nums, runs = sorted(p.secs), []
+    for n in nums:
+        if runs and n == runs[-1][1] + 1:
+            runs[-1][1] = n
+        else:
+            runs.append([n, n])
+    said = []
+    for a, b in runs:
+        said += [str(a)] if a == b else [str(a), str(b)] if b == a + 1 else [f"{a} to {b}"]
+    word = "section" if len(nums) == 1 else "sections"
+    return f"{word} {', '.join(said[:-1]) + ' and ' + said[-1] if len(said) > 1 else said[0]} of the act"
 
 
 # ------------------------------------------------------------------ bills
 
 class Bills:
     """Each bill's number, title, chip and whether it is still moving, from
-    the site's own index (site/idx/<term>.json)."""
+    the site's own index (site/idx/<term>.json); and, for a bill passed, when
+    it takes effect, from its record (site/bill/<year>/<id>.html, through
+    site_read) and its row."""
 
-    def __init__(self, site, current):
-        self.rows, self.current = {}, current
+    def __init__(self, site, current, today=None, table=None):
+        self.rows, self.current, self.site = {}, current, Path(site)
+        # The day the build is "now" for: build_date.today(), or the day a
+        # check states. The statute table, where given, lends its source
+        # notes' days to a part a law does not date (note_days).
+        self.as_of, self.table = today or build_date.today(), table
+        self._records, self._effects, self._later, self._passing = {}, {}, {}, None
         for p in sorted((Path(site) / "idx").glob("[0-9][0-9][0-9][0-9]-[0-9][0-9][0-9][0-9].json")):
             try:
                 for r in json.loads(p.read_text(encoding="utf-8")):
@@ -257,13 +675,247 @@ class Bills:
         return bool(r) and S.still_moving(dict(r, term=r.get("term") or key.split("/")[0]),
                                           self.current)
 
+    def awaiting(self, key):
+        """Passed both chambers and with the Governor: still moving, its
+        rail's Governor stop the one it is at ("Gh")."""
+        return self.moving(key) and any(str(s[0]) == "Gh" for s in self.row(key).get("rail") or [])
+
     def pending(self, key):
-        """Pending, as the Laws page says it: still moving, and not sent to
-        interim study (the person, 22 October 2026: a bill studied "won't
-        become law this year regardless of whether [it is] recommended for
-        future legislation"). It is followable still (shell.still_moving),
+        """Pending before the General Court, as the Laws page says it: still
+        moving, and not sent to interim study (the person, 22 October 2026: a
+        bill studied "won't become law this year regardless of whether [it
+        is] recommended for future legislation"), nor through both chambers
+        and with the Governor, which is listed with the bills passed
+        (passing). A bill studied is followable still (shell.still_moving),
         and listed under Other bills that proposed changes."""
-        return self.moving(key) and self.row(key).get("kind") != "study"
+        return self.moving(key) and self.row(key).get("kind") != "study" and not self.awaiting(key)
+
+    def record(self, key):
+        """The bill's record as its page carries it (site_read.one), once."""
+        if key not in self._records:
+            r, (term, _, bill) = self.row(key), key.partition("/")
+            self._records[key] = SR.one(self.site, r.get("year") or term[:4], bill) or {}
+        return self._records[key]
+
+    def note_later(self, addr):
+        """Whether a section's source note dates anything in a year not
+        before the build's: the only notes that can move a law's day later."""
+        if addr not in self._later:
+            note = self.table.sections[addr].note if self.table is not None and addr in self.table.sections else ""
+            self._later[addr] = any(int(y) >= self.as_of.year for y in re.findall(r"\beff\.[^;]*?\b(\d{4})\b", note))
+        return self._later[addr]
+
+    def law_year(self, key):
+        """The year of the session laws a law is a chapter of, where its
+        statutes' source notes do not say: the year the Governor signed it or
+        let it become law, and failing that the year of its page. A law
+        signed in January can be the year before's -- HB 778 of 2025, signed
+        8 January 2026, is chapter 305 of 2025 (extract_chapters) -- which is
+        why the notes are asked first (passing)."""
+        g = next((s for s in self.row(key).get("rail") or [] if str(s[0])[:1] == "G"), None)
+        if g and len(g) > 1 and g[0] == "Gp" and re.match(r"\d{4}-", g[1] or ""):
+            return g[1][:4]
+        return str(self.row(key).get("year") or key[:4])
+
+    def effect(self, key):
+        """When a law, or a bill awaiting the Governor, takes effect (the
+        sources in order are above Part); None for any other bill.
+
+        WHICH RECORDS ARE READ. Every law of the sitting term and the one
+        before it, and every older law whose rail gives no one day: an older
+        law with one day on its rail is in effect when that day has passed,
+        and its record would only say so again. In effect in parts, an older
+        law can still have one to come -- HB 495 of 2019's section 2 takes
+        effect November 1, 2029 -- so those are read whatever their term."""
+        if key in self._effects:
+            return self._effects[key]
+        r, term = self.row(key), key.split("/")[0]
+        eff = None
+        rail_law = next((s for s in r.get("rail") or [] if str(s[0])[:1] == "L"), None)
+        one = rail_law[1] if rail_law and len(rail_law) > 1 and rail_law[1] else ""
+        try:
+            one_day = datetime.date.fromisoformat(one) if one else None
+        except ValueError:
+            one_day = None
+        if r.get("kind") == "law":
+            recent = term in (self.current, term_before(self.current))
+            if one_day and not recent:
+                eff = Effect((Part(frozenset(), True, "", one_day, ""),), "docket", False)
+            else:
+                rec = self.record(key)
+                body = body_of(rec)
+                parts, source = chaptered_parts(body), "law"
+                if not parts and one_day:
+                    parts, source = (Part(frozenset(), True, "", one_day, ""),), "docket"
+                if not parts:
+                    parts, source = journey_parts(rec), "docket"
+                if not parts:
+                    parts, source = act_parts(body, passage_day(body, r)), "text"
+                eff = Effect(parts or (), source if parts else "", False)
+        elif self.awaiting(key):
+            parts = act_parts(body_of(self.record(key)), awaiting=True)
+            eff = Effect(parts or (), "text" if parts else "", True)
+        self._effects[key] = eff
+        return eff
+
+    def passing(self, data):
+        """{bill key: Passed} for every bill passed whose change to a statute
+        has not taken effect: a law with a part still to come, a bill awaiting
+        the Governor, and a law of the sitting term whose record states no day
+        we can read ("Effective date not stated in the record we hold"),
+        which cannot be said to be in effect.
+
+        WHERE IN THE STATUTES. A law in effect on one day changes every
+        section it names on that day. A law in effect in parts changes each
+        section on the day of the part of the act that changes it: the act's
+        sections are matched to the statutes by the source notes (RSA
+        193-F:4's "2026, 205:1" is section 1 of chapter 205) and by each
+        section of the chaptered text read on its own (rsa.changes) -- the
+        text is needed, since a change still to come is often not in the note
+        yet: HB 131 of 2026's section 3, a prospective repeal of RSA 193-F:4,
+        V on January 1, 2027, is not in 193-F:4's note. A section whose part
+        is not found carries the law, undated (None), so the line with every
+        part is still there to read.
+
+        AND THE SOURCE NOTE, WHERE IT DATES THE LAW'S SECTION ITSELF (note_days).
+        It dates a part the law gives no day ("as section 9 provides"), and a
+        day still to come there is taken over the law's own, since a later act
+        can move it: SB 36 of 2026 moved HB 712 of 2025's section 14 from
+        January 1 to July 1, 2027, which RSA 329:49-a's note says and HB 712's
+        chaptered text cannot. A day already past in a note is not taken over
+        a day still to come in the law, because a note can give two of the
+        act's sections one day: RSA 170-E:11's note reads "197:1, 2, eff.
+        Sept. 10, 2024", where HB 1407 of 2024's section 2, which repeals and
+        reenacts paragraph I(c), takes effect December 31, 2026. Held against
+        the notes section by section on 24 October 2026, the parts read here
+        agree on 452 of 459, and those 7 are these cases."""
+        if self._passing is not None:
+            return self._passing
+        named = collections.defaultdict(set)
+        by_note = collections.defaultdict(lambda: collections.defaultdict(set))
+        law_year = {}
+        for term, bs in (data or {}).get("bills", {}).items():
+            for bill, rec in bs.items():
+                named[f"{term}/{bill}"].update(rec.get("changes") or [])
+        for a, rows in (data or {}).get("enacted", {}).items():
+            for y, law, b in rows:
+                if not b:
+                    continue
+                named[b].add(a)
+                ch, _, n = str(law).partition(":")
+                if n.isdigit() and ch == str(self.row(b).get("chapter") or ""):
+                    by_note[b][a].add(int(n))
+                    law_year[b] = y
+        out = {}
+        for key in sorted(named, key=bill_order):
+            r = self.row(key)
+            if r.get("kind") != "law" and not self.awaiting(key):
+                continue
+            eff = self.effect(key)
+            if eff is None:
+                continue
+            today, addrs = self.as_of, {}
+            if not eff.parts:
+                if eff.awaiting or key.split("/")[0] == self.current:
+                    addrs = {a: None for a in named[key]}
+            elif eff.awaiting:
+                addrs = {a: min((p.day for p in eff.parts if p.day), default=None) for a in named[key]}
+            else:
+                whole = len(eff.parts) == 1 and eff.parts[0].rest
+                secs = collections.defaultdict(set)
+                for a, ns in by_note[key].items():
+                    secs[a] |= ns
+                if not whole:
+                    for n, text in numbered_sections(body_of(self.record(key)), r.get("chapter")).items():
+                        for a in rsa.changes(text):
+                            secs[a].add(n)
+                rest = next((p for p in eff.parts if p.rest), None)
+                undated = any(p.day is None for p in eff.parts)
+                of_sec = {}
+                for p in eff.parts:
+                    for n in sorted(p.secs):
+                        of_sec.setdefault(n, p.day)
+                for a in sorted(named[key]):
+                    # The note is asked for a day still to come, or for a part
+                    # the law does not date, so a note that can give neither
+                    # is not read.
+                    said = (note_days(self.table.sections[a].note, law_year[key], r.get("chapter"))
+                            if self.table is not None and key in law_year and a in self.table.sections
+                            and (self.note_later(a) or undated) else {})
+                    if whole:
+                        # The law's one day, or the note's still to come for
+                        # its section of the law, where a later act moved it.
+                        moved = [said[n] for n in secs[a] if n in said and said[n] > today]
+                        days = moved or [eff.parts[0].day]
+                    else:
+                        days = [p.day for p in eff.parts if p.addr and p.addr == a]
+                        if not secs[a] and not days:
+                            if any(p.day and p.day > today for p in eff.parts):
+                                addrs[a] = None
+                            continue
+                        for n in secs[a]:
+                            d = of_sec[n] if n in of_sec else (rest.day if rest else None)
+                            nd = said.get(n)
+                            days.append(nd if nd and (nd > today or not d) else d)
+                    later = [d for d in days if d and d > today]
+                    if later:
+                        addrs[a] = min(later)
+            if addrs:
+                out[key] = Passed(key, eff, addrs,
+                                  "" if eff.awaiting else str(law_year.get(key) or self.law_year(key)))
+        self._passing = out
+        return out
+
+    def passed_item(self, key, data, here=None, path="", addr=None):
+        """A passed bill as the Laws pages list it: its number linked to its
+        page, its status, and the line saying when it takes effect.
+
+        On a section's tag (`addr`), the day its change there takes effect,
+        where that is not simply the law's one day. In a chapter's list
+        (`here`, its page at `path`), the sections of it the bill changes,
+        linked, under the day each change takes effect where the law's days
+        differ by section; the whole line, with every part, is the bill's
+        own page's."""
+        p = self.passing(data).get(key)
+        if not p:
+            return ""
+        r, eff, today = self.row(key), p.effect, self.as_of
+        term = key.split("/")[0]
+        when = "" if term == self.current else f' <span class="rs-yr">{E(term)}</span>'
+        if eff.awaiting:
+            st = "Passed both chambers; with the Governor"
+        else:
+            st = (r.get("status") or "Became law") + (
+                f", chapter {r['chapter']} of the Laws of {p.year}" if r.get("chapter") and p.year
+                else f", chapter {r['chapter']}" if r.get("chapter") else "")
+        one = eff.parts[0].day if len(eff.parts) == 1 and eff.parts[0].rest else None
+        line, where = effect_words(eff, today), ""
+        if addr:
+            day = p.addrs.get(addr)
+            if day and not eff.awaiting and day != one:
+                line = f"Its change to this section takes effect {C.date_words(day, 'full')}."
+        elif here:
+            mine = sorted((a for a in p.addrs if a.startswith(here + ":")), key=rsa.addr_key)
+
+            def links(addrs):
+                return ", ".join(f'<a href="{E(path)}#{E(sec_anchor(a))}">{E(a)}</a>' for a in addrs[:SHOWN]) + (
+                    f" and {len(addrs) - SHOWN} more" if len(addrs) > SHOWN else "")
+            if mine and not eff.awaiting and eff.parts and all(p.addrs[a] for a in mine) \
+                    and any(p.addrs[a] != one for a in mine):
+                by_day = collections.defaultdict(list)
+                for a in mine:
+                    by_day[p.addrs[a]].append(a)
+                line = None
+                where = (' <span class="rs-eff">Its changes here take effect '
+                         + "; ".join(f"{E(C.date_words(d, 'full'))}: {links(by_day[d])}" for d in sorted(by_day))
+                         + ".</span>")
+            elif mine:
+                where = f' <span class="rs-in">Changes {links(mine)}.</span>'
+            elif here in p.addrs:
+                where = ' <span class="rs-in">Changes this chapter.</span>'
+        return (f'<li><a href="{E(self.url(key))}" title="{E(r.get("title") or "")}">{E(self.label(key))}</a>{when}'
+                f' <span class="rs-st">{E(st)}</span>'
+                + (f' <span class="rs-eff">{E(line)}</span>' if line else "") + where + "</li>")
 
     def label(self, key):
         r = self.row(key)
@@ -522,6 +1174,11 @@ def chapter_page(tmpl, table, data, bills, ch, base):
                 cited_by[t].append(src)
     pending_ch = sorted({k for a, ks in proposed.items() for k in ks if bills.pending(k)},
                         key=bill_order)
+    # THE BILLS PASSED THAT CHANGE IT AND HAVE NOT TAKEN EFFECT (Bills.passing),
+    # each with when it does, above the bills still before the General Court.
+    passing = bills.passing(data)
+    passed_ch = sorted((k for k, p in passing.items() if any(a == ch or a.startswith(ch + ":") for a in p.addrs)),
+                       key=bill_order)
     latest = data.get("asof", {}).get("laws_through") or ""
     # THE PAGE'S OWN ADDRESS, AS THE HOST SERVES IT (16 October 2026): the
     # canonical, og:url, citation and the sections' own links all start from
@@ -567,10 +1224,21 @@ def chapter_page(tmpl, table, data, bills, ch, base):
             f'<p class="rs-kick">RSA {E(ch)}</p><h1>{E(title)}</h1>{gone}'
             f'<p class="l-lead">{lead}</p>' + S.cite_block(path, title, base, S.BUILT) + "</header>")
     pend = ""
-    if pending_ch:
-        pend = ('<section class="rs-pending" aria-label="Pending"><h2>Bills now before the '
-                f'General Court that would change this chapter</h2>'
-                + folded([bills.chip(k) for k in pending_ch]) + "</section>")
+    if pending_ch or passed_ch:
+        # A law whose record states no effective date that can be read is
+        # listed apart, under words that do not say it is not yet in effect.
+        known = [k for k in passed_ch if passing[k].effect.parts or passing[k].effect.awaiting]
+        unread = [k for k in passed_ch if k not in known]
+        pend = ('<section class="rs-pending" aria-label="Pending changes">'
+                + ('<h2>Passed, not yet in effect</h2><ul class="rs-plist">'
+                   + "".join(bills.passed_item(k, data, ch, path) for k in known) + "</ul>"
+                   if known else "")
+                + ('<h2>Passed this term, effective date not stated</h2><ul class="rs-plist">'
+                   + "".join(bills.passed_item(k, data, ch, path) for k in unread) + "</ul>"
+                   if unread else "")
+                + ('<h2>Bills now before the General Court that would change this chapter</h2>'
+                   + folded([bills.chip(k) for k in pending_ch]) if pending_ch else "")
+                + "</section>")
     toc_items = []
     body = []
     sub = None
@@ -589,13 +1257,15 @@ def chapter_page(tmpl, table, data, bills, ch, base):
             continue
         toc_items.append(f'<li><a href="{E(path)}#{E(anchor)}"><b>{E(a)}</b> {E(s.heading)}</a></li>')
         pend_k = sorted((k for k in proposed.get(a, []) if bills.pending(k)), key=bill_order)
+        passed_k = [k for k in passed_ch if a in passing[k].addrs]
         hist = list(reversed(data.get("enacted", {}).get(a, [])))
         # A BILL IN THE HISTORY IS NOT ALSO "PROPOSED" (the person, 11 October
         # 2026: the two "sometimes show the exact same bill numbers which is
         # redundant"): the other list is the bills that did not become this
-        # section's law.
+        # section's law -- nor one passed and pending here, which its tag lists.
         in_hist = {b for _y, _law, b in hist if b}
-        other = [k for k in proposed.get(a, []) if not bills.pending(k) and k not in in_hist]
+        other = [k for k in proposed.get(a, []) if not bills.pending(k) and k not in in_hist
+                 and k not in passed_k]
         rows = []
         if hist:
             items = []
@@ -619,10 +1289,20 @@ def chapter_page(tmpl, table, data, bills, ch, base):
                                                  for t in sorted(cited_by[a], key=rsa.addr_key)],
                                                 "rs-refs")))
         tag = ""
-        if pend_k:
-            tag = (f'<details class="rs-tag"><summary>Pending: {len(pend_k)} '
-                   f'bill{"s" if len(pend_k) != 1 else ""}</summary>'
-                   + folded([bills.chip(k) for k in pend_k]) + "</details>")
+        if pend_k or passed_k:
+            # One law passed and nothing else: the tag says the day its change
+            # here takes effect, where the record says which part makes it.
+            n = len(pend_k) + len(passed_k)
+            one = passing[passed_k[0]] if len(passed_k) == 1 and not pend_k else None
+            day = one.addrs[a] if one else None
+            tag_says = (f"Change takes effect {C.date_words(day, 'medium')}" if day and not one.effect.awaiting
+                        else "Passed, effective date not stated" if one and not one.effect.parts
+                        and not one.effect.awaiting
+                        else f'Pending: {n} bill{"s" if n != 1 else ""}')
+            tag = (f'<details class="rs-tag"><summary>{E(tag_says)}</summary>'
+                   + ('<ul class="rs-plist">' + "".join(bills.passed_item(k, data, addr=a) for k in passed_k)
+                      + "</ul>" if passed_k else "")
+                   + (folded([bills.chip(k) for k in pend_k]) if pend_k else "") + "</details>")
         folds = "".join(
             f'<details class="rs-fold"><summary>{E(h)}</summary>'
             + (f'<p class="rs-note">{E(n)}</p>' if n else "") + f"{c}</details>"
@@ -760,7 +1440,7 @@ LANDING_JS = """<script>
   var root=document.getElementById("lw");if(!root)return;
   var box=document.getElementById("rsq"),out=document.getElementById("rsout"),dir=document.getElementById("lwdir"),
       read=document.getElementById("lwread"),count=document.getElementById("lwcount");
-  var narrow=function(){return window.matchMedia&&matchMedia("(max-width:60em)").matches;};
+  var narrow=function(){return window.matchMedia&&matchMedia("(max-width:59.9375em)").matches;};
   var CH=null,HD=null,WD=null,PAGES={};
   function get(u){return fetch(u).then(function(r){return r.ok?r.json():null;});}
   function esc(s){return String(s).replace(/[&<>"]/g,function(c){return {"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c];});}
@@ -819,9 +1499,19 @@ LANDING_JS = """<script>
     });
   },true);
 
-  // ---- THE FILTERS: status, topic and title, over the chapters the page lists.
+  // ---- THE FILTERS: topic, status and title, over the chapters the page
+  // lists, in the bill search's groups (the person, 24 October 2026): a
+  // group's head opens and shuts it, and how many are chosen in a group is
+  // on its head, and on the Filter button that opens them under 60em, as on
+  // /bills. What is chosen is in the address (?topic=Housing), which the page
+  // reads when it opens, so a filtered list can be kept and sent.
   var rows=[].slice.call(root.querySelectorAll(".lw-ch")),titles=[].slice.call(root.querySelectorAll(".lw-title"));
-  function picked(name){return [].slice.call(root.querySelectorAll('input[name="'+name+'"]:checked')).map(function(x){return x.value;});}
+  var side=document.getElementById("lwfacets"),tog=document.getElementById("lwftoggle"),
+      clear=document.getElementById("lwclear"),form=document.getElementById("rsform");
+  var NAMES={tp:"topic",st:"status",ti:"title"},SHOWN=[0,0];
+  function inputs(name){return [].slice.call(side.querySelectorAll('input[name="'+name+'"]'));}
+  function picked(name){return inputs(name).filter(function(x){return x.checked;}).map(function(x){return x.value;});}
+  function anyPicked(){return picked("st").length+picked("tp").length+picked("ti").length;}
   function keep(li){
     var st=picked("st"),tp=picked("tp"),ti=picked("ti");
     if(st.length){var ok=st.some(function(v){return v==="in"?li.getAttribute("data-rep")!=="1":
@@ -829,19 +1519,59 @@ LANDING_JS = """<script>
     if(tp.length){var mine=(li.getAttribute("data-topics")||"").split("|");if(!tp.some(function(v){return mine.indexOf(v)>=0;}))return false;}
     if(ti.length&&ti.indexOf(li.getAttribute("data-title"))<0)return false;
     return true;}
+  // A chapter the search finds is kept where its row is.
+  function keepCh(c){var li=root.querySelector('.lw-ch[data-ch="'+c+'"]');return !li||keep(li);}
+  function head(key){return side.querySelector('.fhead[data-lwg="'+key+'"]');}
+  function openGroup(h,on){
+    if(!h)return;
+    h.setAttribute("aria-expanded",on?"true":"false");h.parentNode.classList.toggle("open",on);
+    var b=document.getElementById(h.getAttribute("aria-controls"));if(b)b.hidden=!on;}
+  side.addEventListener("click",function(e){
+    var h=e.target.closest&&e.target.closest(".fhead[data-lwg]");
+    if(h)openGroup(h,h.getAttribute("aria-expanded")!=="true");});
+  // Under 60em the groups are behind the Filter button, shut until it is
+  // pressed; Escape inside them shuts them and goes back to the button.
+  if(tog)tog.addEventListener("click",function(){
+    var on=!root.classList.contains("fopen");root.classList.toggle("fopen",on);
+    tog.setAttribute("aria-expanded",on?"true":"false");});
+  root.addEventListener("keydown",function(e){
+    if(e.key!=="Escape"||!tog||!root.classList.contains("fopen")||!(e.target.closest&&e.target.closest("#lwfacets,#lwftoggle")))return;
+    root.classList.remove("fopen");tog.setAttribute("aria-expanded","false");tog.focus();});
+  function badges(){
+    var all=0;
+    Object.keys(NAMES).forEach(function(k){var n=picked(k).length,b=head(k)&&head(k).querySelector(".badge");all+=n;
+      if(b){b.textContent=n?String(n):"";b.hidden=!n;}});
+    var tb=tog&&tog.querySelector(".badge");if(tb){tb.textContent=all?String(all):"";tb.hidden=!all;}
+  }
+  function address(){
+    try{
+      var p=new URLSearchParams(location.search);
+      Object.keys(NAMES).forEach(function(k){p.delete(NAMES[k]);picked(k).forEach(function(v){p.append(NAMES[k],v);});});
+      var s=p.toString(),want=location.pathname+(s?"?"+s:"")+location.hash;
+      if(want!==location.pathname+location.search+location.hash)history.replaceState(history.state,"",want);
+    }catch(e){}
+  }
+  // The count under the box: the chapters listed, or the search's hits.
+  function tell(hits){
+    if(hits!=null){count.textContent=hits.toLocaleString()+(hits===1?" match":" matches")
+      +(anyPicked()?" in the filters chosen":"");return;}
+    count.textContent=anyPicked()?SHOWN[0].toLocaleString()+" chapter"+(SHOWN[0]===1?"":"s")+" in "+SHOWN[1]
+      +" title"+(SHOWN[1]===1?"":"s")+" match":count.getAttribute("data-all");
+  }
   function filter(){
-    var any=picked("st").length+picked("tp").length+picked("ti").length,shown=0,ts=0;
+    var any=anyPicked(),shown=0,ts=0;
     rows.forEach(function(li){var k=keep(li);li.hidden=!k;if(k)shown++;});
     titles.forEach(function(t){var n=t.querySelectorAll(".lw-ch:not([hidden])").length;t.hidden=!n;
       if(n)ts++;var c=t.querySelector(".lw-tn");if(c)c.textContent=any?n+" of "+c.getAttribute("data-all"):c.getAttribute("data-all");
       if(any&&n&&n<=40)t.open=true;});
-    count.textContent=any?shown.toLocaleString()+" chapter"+(shown===1?"":"s")+" in "+ts+" title"+(ts===1?"":"s")+" match":
-      count.getAttribute("data-all");
-    document.getElementById("lwclear").hidden=!any;
+    SHOWN=[shown,ts];
+    clear.hidden=!any;badges();address();
+    // The search's hits are held to the filters too, as the bill search's are.
+    if(box.value.trim())run();else tell();
   }
-  root.addEventListener("change",function(e){if(e.target.matches&&e.target.matches(".lw-side input[type=checkbox]"))filter();});
-  document.getElementById("lwclear").addEventListener("click",function(){
-    [].forEach.call(root.querySelectorAll(".lw-side input[type=checkbox]"),function(x){x.checked=false;});
+  side.addEventListener("change",function(e){if(e.target.matches&&e.target.matches("input[type=checkbox]"))filter();});
+  clear.addEventListener("click",function(){
+    inputs("st").concat(inputs("tp"),inputs("ti")).forEach(function(x){x.checked=false;});
     titles.forEach(function(t){t.open=false;});filter();});
 
   // ---- THE SEARCH: a number goes straight to it; words are ranked across the
@@ -859,18 +1589,21 @@ LANDING_JS = """<script>
     if(a.indexOf(":")<0)return "Chapter "+c+": "+(info[0]||"");
     var h=(hd.filter(function(x){return x[0]===a;})[0]||[])[1]||"";return h;}
   function show(list,note){
-    dir.hidden=count.hidden=!!(list||note);
-    out.innerHTML=!list&&!note?"":(note?'<p class="rs-note">'+esc(note)+'</p>':'')+(list&&list.length?'<ol class="rs-hits">'
+    var on=!!(list||note);
+    dir.hidden=on;
+    out.innerHTML=!on?"":(note?'<p class="rs-note">'+esc(note)+'</p>':'')+(list&&list.length?'<ol class="rs-hits">'
       +list.slice(0,60).map(function(r){var sec=r[0].indexOf(":")>=0;
         return '<li><a href="'+link(r[0])+'"'+(sec?' data-sec="'+esc(r[0])+'"':'')+'>'
           +(sec?'<b>RSA '+esc(r[0])+'</b> ':'')+esc(r[1]||"")+'</a>'
           +(sec&&CH&&CH[chOf(r[0])]?' <span class="rs-in">in Chapter '+esc(chOf(r[0]))+'</span>':'')+'</li>';}).join("")+'</ol>':'');
+    tell(on?(list||[]).length:null);
   }
   function run(){
     var q=box.value.trim();
     if(!q){show(null,"");return;}
     var m=CITE.exec(q);
     Promise.all([chapters(),heads(),WD?WD:get("laws/words.json").then(function(d){return WD=d||{words:{}};})]).then(function(r){
+      if(box.value.trim()!==q)return;
       var ch=r[0],hd=r[1],wd=r[2];
       if(m&&ch[m[1].toUpperCase()]){
         var c=m[1].toUpperCase(),a=c+(m[2]?":"+m[2]:"");
@@ -889,20 +1622,70 @@ LANDING_JS = """<script>
         if(a)add(a,hs[a],w,1);});});
       var list=Object.keys(hit).map(function(a){return [a,name[a]||hs[a]||"",Object.keys(hit[a].w).length,hit[a].s];})
         .filter(function(x){return x[2]>=Math.min(ws.length,Math.max(1,ws.length-1));})
+        .filter(function(x){return keepCh(chOf(x[0]));})
         .sort(function(x,y){var cx=x[0].indexOf(":")<0,cy=y[0].indexOf(":")<0;
           return y[2]-x[2]||(cy-cx)||y[3]-x[3]||(x[0]<y[0]?-1:1);});
       var all=list.filter(function(x){return x[2]===ws.length;}).length;
       show(list,list.length?(all===list.length?"Matching every word:":all+" match every word; then the closest:")
-        :"Nothing found. Try fewer words, or a chapter number such as 91-A.");
+        :"Nothing found. Try fewer words, "+(anyPicked()?"fewer filters, ":"")+"or a chapter number such as 91-A.");
     });
   }
-  // The filters fold on a narrow screen, where they would fill the first one.
-  if(narrow())document.getElementById("lwfbox").open=false;
   var t=null;box.addEventListener("input",function(){clearTimeout(t);t=setTimeout(run,180);});
   // The search's files are fetched once the box is chosen, not on the first
   // letter typed, so the first answer does not wait for them.
   box.addEventListener("focus",function(){chapters();heads();if(!WD)WD=get("laws/words.json").then(function(d){return WD=d||{words:{}};});},{once:true});
-  document.getElementById("rsform").addEventListener("submit",function(e){e.preventDefault();run();});
+
+  // ---- A FILTER OFFERED FOR ITS NAME as the box is typed in (the person,
+  // 24 October 2026): app.js's filterOffers and filterCombo, which the bill
+  // search's box uses, given this page's filters -- a topic, a title by its
+  // name, a status. Choosing one ticks it as a click in its group would, and
+  // the words it stands for leave the box. app.js loads after this script,
+  // so they are taken up once the page has; without them the box searches
+  // as it always has.
+  var offers=null;
+  var SAY_ST={"in":"All chapters <b>in force</b>","pend":"All chapters with <b>pending changes</b>",
+              "rep":"All <b>repealed or moved</b> chapters"};
+  function named(x){var lab=x.closest("label"),s=lab&&(lab.querySelector(".tname > span")||lab.querySelector("span"));
+    return s?s.textContent:x.value;}
+  function counted(x){var c=x.closest("label").querySelector(".c");return c?Number(c.textContent.replace(/,/g,"")):null;}
+  function lawOffers(q){
+    if(CITE.test(q)||!window.filterOffers)return [];
+    function vals(k){return inputs(k).filter(function(x){return !x.checked;}).map(function(x){return [x.value,named(x),counted(x)];});}
+    return window.filterOffers(q,[
+      {key:"tp",values:vals("tp"),say:function(n){return "All chapters with the topic <b>"+esc(n)+"</b>";}},
+      {key:"ti",values:vals("ti"),say:function(n,v){return "All chapters in <b>Title "+esc(v)+": "+esc(n)+"</b>";}},
+      {key:"st",values:vals("st"),say:function(n,v){return SAY_ST[v]||esc(n);}}]);
+  }
+  function take(o){
+    var x=inputs(o.key).filter(function(i){return i.value===o.v;})[0];
+    if(!x)return;
+    x.checked=true;openGroup(head(o.key),true);
+    box.value=o.rest;clearTimeout(t);
+    if(!o.rest)show(null,"");
+    filter();
+  }
+  form.addEventListener("submit",function(e){
+    e.preventDefault();
+    // Return takes the offer the arrow keys are on; with none, the words are
+    // searched, as they always were.
+    if(offers&&offers.enter())return;
+    clearTimeout(t);run();
+  });
+  function wire(){
+    if(offers||!window.filterCombo)return;
+    offers=window.filterCombo(box,{offers:lawOffers,choose:take,label:"Filters that match the words typed"});
+  }
+  if(document.readyState==="loading")document.addEventListener("DOMContentLoaded",wire);else wire();
+
+  // ---- WHAT THE ADDRESS NAMES: the filters chosen (?topic=, ?status=,
+  // ?title=, each as often as chosen), their groups open; and a search, as
+  // the box's form sends one where the page's script has not loaded.
+  (function(){
+    var p;try{p=new URLSearchParams(location.search);}catch(e){return;}
+    Object.keys(NAMES).forEach(function(k){p.getAll(NAMES[k]).forEach(function(v){
+      inputs(k).forEach(function(x){if(x.value===v){x.checked=true;openGroup(head(k),true);}});});});
+    if(p.get("q"))box.value=p.get("q");
+  })();
   // A title linked from a chapter's breadcrumb (/laws#t-VI) opens.
   var h=location.hash.match(/^#t-(.+)$/);if(h){var d=document.getElementById("t-"+decodeURIComponent(h[1]));if(d){d.open=true;}}
   filter();
@@ -948,6 +1731,12 @@ def landing_page(tmpl, table, data, base, topics, pending, con=None):
     General Court's own table of contents does -- and a section's text on the
     right when one is chosen, with the way to its own page.
 
+    AND MORE AS THE BILL SEARCH IS (the person, 24 October 2026): the search
+    box across the top with the count under it, and the filters as the bill
+    search's groups, Topic open and Status and Title shut; under 60em, behind
+    the bill search's Filter button. Typing a filter's name in the box offers
+    that filter (LANDING_JS, app.js filterCombo).
+
     AND THE CONSTITUTION ON A TAB OF ITS OWN (the person, 17 October 2026),
     from collected/constitution.json, which `con` is when a check hands it
     in. The statutes are the first tab and read as they did, their lead at
@@ -981,7 +1770,9 @@ def landing_page(tmpl, table, data, base, topics, pending, con=None):
     for ch in sorted(table.chapters, key=rsa.chap_key):
         info = table.chapters[ch]
         groups.setdefault((info["title_no"], info["title"]), []).append(ch)
-    tcount = collections.Counter(t for ts in topics.values() for t in ts)
+    # Counted over the chapters the page lists: a bill can name a chapter the
+    # table does not hold, and the filter then promised rows it could not show.
+    tcount = collections.Counter(t for c, ts in topics.items() if c in table.chapters for t in ts)
     n_rep = sum(1 for c in table.chapters.values() if c["repealed"])
     n_pend = sum(1 for c in table.chapters if pending.get(c))
     blocks, title_opts = [], []
@@ -1027,37 +1818,74 @@ def landing_page(tmpl, table, data, base, topics, pending, con=None):
             # A title's first three chapter names stood under its count until
             # 14 October 2026; the person asked for the count alone.
             f'</summary><ul class="lw-chs">{"".join(lis)}</ul></details>')
-        title_opts.append(f'<li><label><input type="checkbox" name="ti" value="{E(tno)}"> '
-                          f'<span><b>{E(tl)}</b> {E(tn)}</span></label></li>')
-    topic_opts = "".join(f'<li><label><input type="checkbox" name="tp" value="{E(t)}"> <span>{E(t)}</span>'
-                         f'<span class="lw-n">{n}</span></label></li>'
-                         for t, n in sorted(tcount.items(), key=lambda x: (-x[1], x[0])))
+        title_opts.append(f'<label class="fopt"><input type="checkbox" name="ti" value="{E(tno)}">'
+                          f'<span class="tname"><b class="tcode">{E(tno)}</b><span>{E(tn)}</span></span>'
+                          f'<span class="c">{len(chs):,}</span></label>')
+    # THE TOPICS BY NAME (the person, 24 October 2026: "Topics in the rsa
+    # pages should be sorted alphabetically"), case and accents set aside
+    # (shown_order). They ran by how many chapters each holds.
+    topic_opts = "".join(f'<label class="fopt"><input type="checkbox" name="tp" value="{E(t)}">'
+                         f'<span>{E(t)}</span><span class="c">{n:,}</span></label>'
+                         for t, n in sorted(tcount.items(), key=lambda x: shown_order(x[0])))
     n_all = len(table.chapters)
+    status_opts = "".join(
+        f'<label class="fopt"><input type="checkbox" name="st" value="{v}"><span>{w}</span>'
+        f'<span class="c">{n:,}</span></label>'
+        for v, w, n in (("in", "In force", n_all - n_rep), ("pend", "Pending changes", n_pend),
+                        ("rep", "Repealed or moved", n_rep)))
+
+    def group(key, label, body, opened=False, whole=False):
+        """A filter as the bill search draws one (app.js fgroup): its head a
+        button that opens and shuts it, with the count chosen in a badge."""
+        return (f'<div class="fgroup{" open" if opened else ""}"><button type="button" class="fhead" '
+                f'data-lwg="{key}" aria-expanded="{"true" if opened else "false"}" aria-controls="lwg-{key}">'
+                f'<span>{label}</span><span class="badge" hidden></span><span class="chev" aria-hidden="true">'
+                f'&#9656;</span></button><div class="fbody{" whole" if whole else ""}" id="lwg-{key}"'
+                f'{"" if opened else " hidden"}>{body}</div></div>')
+    # THE SEARCH AT THE TOP AND THE FILTERS ON THE LEFT, AS THE BILL SEARCH
+    # HAS THEM (the person, 24 October 2026: "the searchbar at the top, the
+    # filters on the left side that are dropdowns closed by default except
+    # for the first one which is the most common filter to be used, likely
+    # topics for the laws page"). The bill search's own parts and classes --
+    # the box and its Return key (.qline, .qbox), the count under it (.qhint),
+    # the groups (.fgroup, .fhead, .fbody, .fopt) and, under 60em, the button
+    # that opens them (.ftoggle) -- so the two read as one search; app.css
+    # carries the few rules the Laws page's place in the template needs.
+    search = (
+        '<div class="lw-q" role="search" aria-label="Search the laws">'
+        '<form id="rsform" class="qline" action="/laws"><label for="rsq" class="sr">Search the laws</label>'
+        '<div class="qbox"><input id="rsq" name="q" type="search" spellcheck="false" autocomplete="off" '
+        'placeholder="Chapter, section or key words"><button id="rsgo" type="submit" '
+        'title="Search" aria-label="Search">&#8629;</button></div></form>'
+        f'<p class="qhint"><span class="lw-count" id="lwcount" role="status" aria-live="polite" aria-atomic="true" '
+        f'data-all="{n_all:,} chapters in {len(groups)} titles">{n_all:,} chapters in {len(groups)} titles</span></p>'
+        '</div>')
+    toggle = ('<button class="ftoggle" id="lwftoggle" type="button" aria-expanded="false" aria-controls="lwfacets">'
+              '<span>Filter by topic, status or title</span><span class="badge" hidden></span>'
+              '<span class="chev" aria-hidden="true">&#9656;</span></button>')
     side = (
-        '<aside class="lw-side" aria-label="Search and filters">'
-        '<form id="rsform" class="rs-search" role="search"><label for="rsq">Search the laws</label>'
-        '<input id="rsq" type="search" autocomplete="off" placeholder="91-A:4, or right to know"></form>'
-        '<details class="lw-fbox" id="lwfbox" open><summary>Filters</summary>'
-        '<div class="lw-f"><h2>Status</h2><ul>'
-        f'<li><label><input type="checkbox" name="st" value="in"> <span>In force</span><span class="lw-n">{n_all - n_rep:,}</span></label></li>'
-        f'<li><label><input type="checkbox" name="st" value="pend"> <span>Bills pending this term</span><span class="lw-n">{n_pend:,}</span></label></li>'
-        f'<li><label><input type="checkbox" name="st" value="rep"> <span>Repealed or moved</span><span class="lw-n">{n_rep:,}</span></label></li>'
-        '</ul></div>'
-        f'<div class="lw-f"><h2>Topic</h2><p class="lw-fnote">From the bills that changed each chapter.</p>'
-        f'<ul class="lw-scroll">{topic_opts}</ul></div>'
-        f'<div class="lw-f"><h2>Title</h2><ul class="lw-scroll">{"".join(title_opts)}</ul></div>'
-        '<button type="button" class="lw-clear" id="lwclear" hidden>Clear filters</button></details></aside>')
-    middle = (f'<section class="lw-dir" aria-label="The laws by title"><p class="lw-count" id="lwcount" '
-              f'data-all="{n_all:,} chapters in {len(groups)} titles">{n_all:,} chapters in {len(groups)} titles</p>'
+        '<aside class="facets lw-side" id="lwfacets" aria-label="Filters">'
+        + group("tp", "Topic", '<p class="lw-fnote">From the bills that changed each chapter.</p>' + topic_opts,
+                opened=True)
+        + group("st", "Status", '<p class="lw-fnote">Pending: a bill now before the General Court, or a law '
+                'passed and not yet in effect.</p>' + status_opts, whole=True)
+        + group("ti", "Title", "".join(title_opts))
+        + '<button type="button" class="link lw-clear" id="lwclear" hidden>Clear all filters</button></aside>')
+    middle = ('<section class="lw-dir" aria-label="The laws by title">'
               '<div id="rsout" aria-live="polite"></div>'
               f'<div id="lwdir">{"".join(blocks)}</div></section>')
     reader = ('<aside class="lw-read" id="lwread" aria-label="The section chosen" aria-live="polite">'
               '<p class="lw-empty">Choose a chapter, then a section, to read it here.</p></aside>')
-    art = f'<div class="lw" id="lw">{side}{middle}{reader}</div>'
+    art = f'{search}<div class="lw" id="lw">{toggle}{side}{middle}{reader}</div>'
     if con:
         # The constitution's sidebar is a chapter page's, so the chapter
         # page's script marks the article being read in it.
         art = CT.tabbed(art, rsa_lead, con) + CHAPTER_JS
+        # The search first in its panel, above the panel's lead: at the top,
+        # as the bill search's is (the person, 24 October 2026).
+        lead = f'<p class="l-lead">{rsa_lead}</p>'
+        assert art.count(lead + search) == 1, "the statutes' panel no longer opens with its lead and the search"
+        art = art.replace(lead + search, search + lead, 1)
     return p.replace('<div id="results"></div>',
                      f'<div id="results"><div class="l-page rs-page rs-landing">{head}{art}</div>{LANDING_JS}</div>', 1)
 
@@ -1082,7 +1910,7 @@ def main():
         return 0
     data = json.loads(cit.read_text(encoding="utf-8"))
     current = term_of_year(build_date.today().year)
-    bills = Bills(site, current)
+    bills = Bills(site, current, table=table)
     tmpl = S.template(site)
     out = site / "laws"
     out.mkdir(parents=True, exist_ok=True)
@@ -1111,8 +1939,12 @@ def main():
         (out / name).write_text(json.dumps(obj, ensure_ascii=False, separators=(",", ":")),
                                 encoding="utf-8")
     sizes = {n: (out / n).stat().st_size for n in ("chapters.json", "headings.json", "words.json")}
+    passing = bills.passing(data)
+    unread = sum(1 for p in passing.values() if not p.effect.parts)
     print(f"build_rsa: {len(topics):,} of {len(table.chapters):,} chapters with a topic from their bills, "
-          f"{len(pending):,} with a bill pending")
+          f"{len(pending):,} with a change pending; {len(passing):,} bills passed and not yet in effect "
+          f"in {len({a.split(':')[0] for p in passing.values() for a in p.addrs}):,} chapters, "
+          f"{unread:,} of them with no effective date read ({len(bills._records):,} records read)")
     print(f"build_rsa: {len(chs):,} chapter pages and the landing page; search files "
           + ", ".join(f"{n} {s / 1e6:.1f} MB" for n, s in sizes.items()))
     # SAID EITHER WAY: a landing page without its Constitution tab is a page
