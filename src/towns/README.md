@@ -12,11 +12,13 @@ folder the places it is elected from.
 | Districts | `parse_districts` (`site/districts.json`), `parse_sos_districts` (the Secretary of State's own table, held against ours), `parse_granit` (NH GRANIT's geometry), `build_district_geometry` (that geometry made small for the district map, `generated/district_geometry.json`) |
 | Clerks and polling places | `parse_clerks_csv` (`collected/town_clerks.json`), and `parse_clerks`, the PDF reader it supersedes |
 | Officials | `parse_officials` (NHDOT's directory, `collected/town_officials.json`), `parse_town_sites` and `town_boards` (the towns' own websites), `parse_county_roster` (`collected/county_officials.json`) |
+| Streets | `parse_tiger_streets` (`collected/nh_streets.json`): every street with house numbers, by town and ZIP code, from the Census Bureau's TIGER/Line files, for the address box's suggestions |
 | How old each of those is | `town_sources`: which source gives each official a town page shows, the date its copy carries in its own file, the floors its file must not fall under, and when it is due to be read again -- after the town meetings, the cities' elections, before a general election, or after a year. `python3 src/towns/town_sources.py` prints the map; preflight's `_town_sources_fresh` is the reminder |
 
 Nothing here asks the network. What these read was put on disk under
 `records/sources/` and `records/districts/`, or saved under `town_sites/` by `town_sites`,
-which is in `fetch/other/` with `fetch_town_clerks`.
+which is in `fetch/other/` with `fetch_town_clerks` -- and `tiger_streets`, which
+saves the Census Bureau's street files under `records/sources/tiger/`.
 
 Run by: `build_all.py`'s `plan()` for `parse_districts`, every night. The
 rest are run by a person when a source changes, and each writes a committed

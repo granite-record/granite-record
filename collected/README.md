@@ -48,5 +48,14 @@ How old each of the town files is, and when each is due to be read again, is
   whether the two still agree.
   `election_2024.json` is the first, and the matching rule's test set
   (`src/parse/score_members_elect.py`).
+- `nh_streets.json` -- every New Hampshire street that carries house
+  numbers, by town and ZIP code, with its numbers' ranges: the list the Your
+  town panel's address box suggests from (the person, 24 October 2026).
+  Read from the Census Bureau's TIGER/Line files by
+  `src/towns/parse_tiger_streets.py`, from the zips
+  `src/fetch/other/tiger_streets.py` saves under `records/sources/tiger/`,
+  which is not tracked; its `source` says which release and when it was
+  published. `src/pages/build_addr_index.py` cuts it into the site's
+  `addr/` files every night. About 2 MB; a new release is a year apart.
 
 The documents the town files were read from are in `records/sources/`.

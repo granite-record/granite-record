@@ -45,6 +45,12 @@ headings name each committee's statute, and shares the Calendar's reading of
 each meeting (`build_calendar.statstud` and `study_recordings`), so a card and
 the page play the same recording.
 
+The address box's suggestions (24 October 2026) are `build_addr_index.py`'s:
+`site/addr/<key>.json`, New Hampshire's streets from
+`collected/nh_streets.json` in about 350 files named by a street's first two
+letters, which `find.js` fetches as a reader types in the Your town panel and
+matches in the browser, so the Census is asked only for the address chosen.
+
 The components are in two files with the same helpers under the same names
 (9 October 2026): `components.py`, which the builders draw a person, a
 committee, a chip, a date and a time with, and `components.js`, which every

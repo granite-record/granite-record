@@ -1,7 +1,8 @@
 # src/fetch/other/
 
 Fetchers for everyone else: the Secretary of State (`fetch_town_clerks`),
-towns' own websites (`town_sites`), and UNH's scanned journals and the
+towns' own websites (`town_sites`), the Census Bureau's TIGER/Line street
+files (`tiger_streets`, 24 October 2026), and UNH's scanned journals and the
 Internet Archive (`unh_survey`, `unh_fetch`, `unh_ia`). All are run by hand,
 each with its own pacing; `refusal.check()` does not apply.
 
