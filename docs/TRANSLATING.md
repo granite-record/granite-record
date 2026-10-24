@@ -34,6 +34,38 @@ it, in English, with its Spanish name and meaning beside it, because that
 English is what a reader meets on a bill's page. The pop-up on a term says
 the same on a Spanish page, from the shared words file `/lang/es.js`.
 
+**The how-to guides** (24 October 2026) are in Spanish at `/es/guides/`, every
+one `i18n.PAGES` names -- the guides of `src/pages/guides.py` and the three
+pages of `civics.HOW_TO` -- with the Resources hub's How-To Guides at
+`/es/resources`. A guide's words are data, written as HTML, so they are
+translated a **piece** at a time: a paragraph, a list item, a heading, a table
+cell, a button's label. Each piece is an entry keyed by its page and a slug of
+its own first words, `guide.how-to-vote.you-can-register-if-on-election`, so
+a paragraph put in above another leaves the other alone. A piece that several
+guides share is keyed once, where it is written: `guide.said.*` for the
+paragraphs about hearings that `guides.SAID` writes once, `guide.help.*` for
+the Who Can Help entries. The hub's tasks are `guide.task.<slug>.does` and
+`.line`.
+
+A piece keeps its markup: a link (`<a href="...">`) keeps its address, and a
+`[[figure]]` -- a count the build fills in, such as `[[house_districts]]` --
+stays exactly as it is, because the number is the record's, filled in after
+the words are translated. Titles and button labels are plain text. Words the
+reader should see in English inside a Spanish piece, such as the request a
+reader copies to send a New Hampshire office, may be wrapped in
+`<span lang="en">`.
+
+The official pages the guides send a reader to are in English, and each guide
+says so once under its title. A link to another guide goes to its Spanish page.
+
+**Reporting a mistake in a translation.** Every page in Spanish has a button
+in its footer, *¿Ve un error de traducción? Avísenos*, and while words of the
+page are selected, a button in the corner offers the same. It opens a box that
+sends the page's address, its language, the reader's note and the words they
+had selected, to the same place as the record pages' *Report a problem* box.
+The reports reach the morning's triage file, under
+`src/pages/lang/es.json`, with the reader's words quoted.
+
 ## How a translation stays current
 
 The English stays in the code, where the page is written. Each piece of the
@@ -137,5 +169,12 @@ English changed while the sheet was out, or a correction lost a `{brace}`.
 - Translating another page: add it to `i18n.PAGES["es"]`, build its words
   with `say()`, and have its builder write the page for each language it has,
   as `build_pages.py` does for the home page.
+- A new how-to guide is English to everybody until it is added to
+  `i18n.GUIDE_PAGES`; from then on preflight asks for every piece of it.
+- Changing a guide's English: the piece you changed shows in English on the
+  Spanish page, and preflight names it -- stale, where the change is past its
+  first words; missing, with its old key named as unused, where the change is
+  in them. `python3 src/ops/translations.py --set` the new key, or the stale
+  one, and `--drop-unused` the old.
 
 `src/pages/i18n.py` explains the machinery in full.

@@ -29,8 +29,11 @@ anything this repository emits, and `src/checks/check_live.py` reports both.
 
 **In this project's own code there is exactly one exception**, and its own
 header says so: `functions/api/report.js`, the endpoint behind the "report a
-problem" box on bill, member and committee pages. It is write-only, it is on no
-page's critical path, and when it is down the box falls back to an email link.
+problem" box on bill, member and committee pages, and behind the box on a page
+in another language that reports a mistake in its translation (since 24
+October 2026; it takes a report only from a page the site built in that
+language). It is write-only, it is on no page's critical path, and when it is
+down the box falls back to an email link.
 If you are looking for something to attack, it is this. (`workers/` is
 where a Cloudflare Worker deployed on its own would go; it holds none.)
 

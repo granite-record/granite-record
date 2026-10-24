@@ -303,6 +303,19 @@ FOOT_JS = (
     '.toLocaleDateString(window.GR_LOCALE||"en-US",{year:"numeric",month:"long",day:"numeric"})});'
     '}).catch(function(){});</script>')
 
+def tr_report(lang):
+    """On a page in another language, the button that reports a mistake in
+    its translation (the owner, 24 October 2026: "We should also add a
+    report button for translation inaccuracy."). Hidden as written:
+    components.js shows it, and opens the box it sends from, so a page read
+    without JavaScript keeps the address above it instead."""
+    if lang == i18n.DEFAULT:
+        return ""
+    return ('\n<p class="trrep"><button type="button" class="trbtn" data-trreport hidden>'
+            + say(lang, "foot.tr_report", "See a mistake in the translation? Tell us")
+            + "</button></p>")
+
+
 # The footer. The line under the attribution is the person's own credit, asked
 # for on 7 October 2026: who makes the site, quietly, and the way to About.
 # In either language (footer_html), and FOOTER is the English, which every
@@ -356,7 +369,7 @@ def footer_html(lang="en", alt=None):
 <a class="fbk out" href="https://forms.gle/PYw9c3xgpDDwvX7E9" target="_blank"
  rel="noopener">{say(lang, "foot.think", "What do you think?")}</a>
 <p class="fbknote">{say(lang, "foot.new", "The site is new and being tested. Found an error?")}
-<a href="mailto:contact@graniterecord.org">contact@graniterecord.org</a></p>
+<a href="mailto:contact@graniterecord.org">contact@graniterecord.org</a></p>{tr_report(lang)}
 </div>
 </div>
 <div class="footlang"><label class="footlangl" for="footlang">{icon("globe")}<span>{" · ".join(said)}</span></label>

@@ -1,4 +1,4 @@
-// GRANITE_VERSION: 2026-09-12.11
+// GRANITE_VERSION: 2026-09-12.12
 /*
  * POST /api/report -- a reader says something on a page is wrong.
  *
@@ -67,8 +67,20 @@ export const RENAMED_TABS = new Map([["Videos", "Hearings"], ["Sessions", "Meeti
 // committees by code (H05, s100) -- or, for a committee the General Court
 // filed under a code it later gave a different one, by the code and the first
 // year of its run (S03-1989, 25 September), which no code of theirs can be.
-const RECORD = /^(bill:\d{4}\/[A-Z]{2,6}\d{1,4}|member:\d{1,7}|committee:[A-Za-z]\d{2,3}(?:-\d{4})?)$/;
-const PATH = /^\/(bill\/\d{4}\/[a-z]{2,6}\d{1,4}|legislator\/[a-z0-9-]{1,80}|committee\/[A-Za-z]\d{2,3}(?:-\d{4})?)$/;
+//
+// AND A PAGE IN ANOTHER LANGUAGE, whose translation a reader says is wrong
+// (the owner, 24 October 2026: "We should also add a report button for
+// translation inaccuracy."). Its record is "translation:" and the page's own
+// address, which names its language -- /es/, /es/guides/how-to-vote -- at
+// most three words deep, in the lower case and hyphens a page's address is
+// written in. Its field is TRANSLATION and no other kind's is; it has no
+// tab; and onRequest keeps it only where the page there is one the site
+// built in that language (translatedPage). A new language is a new prefix
+// here and in compile_reports.py, and preflight sends a report from every
+// page the build writes in one.
+const RECORD = /^(bill:\d{4}\/[A-Z]{2,6}\d{1,4}|member:\d{1,7}|committee:[A-Za-z]\d{2,3}(?:-\d{4})?|translation:\/es\/(?:[a-z0-9]+(?:-[a-z0-9]+)*(?:\/[a-z0-9]+(?:-[a-z0-9]+)*){0,2})?)$/;
+const PATH = /^\/(bill\/\d{4}\/[a-z]{2,6}\d{1,4}|legislator\/[a-z0-9-]{1,80}|committee\/[A-Za-z]\d{2,3}(?:-\d{4})?|es\/(?:[a-z0-9]+(?:-[a-z0-9]+)*(?:\/[a-z0-9]+(?:-[a-z0-9]+)*){0,2})?)$/;
+export const TRANSLATION = "translation";
 const BUILD = /^[0-9T:.+\-Z]{0,40}$/;
 // A legislator's address is the slug build_site_v2.member_slug writes: the
 // name, then the county or "sd", then the district, lowercased, with every run
@@ -126,13 +138,17 @@ export function validate(body) {
   const field = String(body.field ?? "");
   const build = String(body.build ?? "");
   const elapsed = Number(body.elapsed);
-  if (!RECORD.test(record) || !PATH.test(url) || !FIELDS.has(field)) return null;
+  if (!RECORD.test(record) || !PATH.test(url)) return null;
   if (!TABS.has(tab) || !BUILD.test(build)) return null;
   if (!Number.isFinite(elapsed) || elapsed < MIN_ELAPSED_MS) return null;
   // The record and the page must be the same thing.
   const kind = record.slice(0, record.indexOf(":"));
   const ref = record.slice(kind.length + 1);
-  if (kind === "bill") {
+  // A translation is reported as one, and nothing else is.
+  if (kind === "translation" ? field !== TRANSLATION : !FIELDS.has(field)) return null;
+  if (kind === "translation") {
+    if (url !== ref || tab !== "") return null;
+  } else if (kind === "bill") {
     const [yr, id] = ref.split("/");
     if (url !== `/bill/${yr}/${id.toLowerCase()}`) return null;
   } else if (kind === "committee") {
@@ -163,6 +179,22 @@ export async function memberPageMatches(env, request, url, id) {
     if (!res.ok) return false;
     const html = await res.text();
     return html.includes(`window.GR_MEMBER="${id}"`);
+  } catch {
+    return false;
+  }
+}
+
+// A page in another language is only accepted if the built page at that
+// address is one, in the language its address names (24 October 2026): the
+// address is the sender's to write, as a member's slug is.
+export async function translatedPage(env, request, url) {
+  if (!env.ASSETS) return false;
+  const lang = url.split("/")[1];
+  try {
+    const res = await env.ASSETS.fetch(new URL(url, request.url));
+    if (!res.ok) return false;
+    const html = await res.text();
+    return html.includes(`<html lang="${lang}"`);
   } catch {
     return false;
   }
@@ -251,6 +283,8 @@ export async function onRequest(context) {
     const r = validate(body);
     if (!r) return NOTHING();
     if (r.kind === "member" && !(await memberPageMatches(env, request, r.url, r.ref)))
+      return NOTHING();
+    if (r.kind === "translation" && !(await translatedPage(env, request, r.url)))
       return NOTHING();
     if (!env.DB) {
       console.log("report not stored: no DB binding on this deployment");
