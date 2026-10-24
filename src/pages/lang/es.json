@@ -46,6 +46,186 @@
    "es": "en {n} días",
    "state": "draft"
   },
+  "cal.kd.act_conference": {
+   "en": "Last day to act on committee of conference reports",
+   "es": "Último día para votar los informes de los comités de conferencia",
+   "state": "draft"
+  },
+  "cal.kd.act_other": {
+   "en": "Last day to act on the other chamber's bills",
+   "es": "Último día para votar los proyectos de ley de la otra cámara",
+   "state": "draft"
+  },
+  "cal.kd.ahead": {
+   "en": "Key dates ahead",
+   "es": "Próximas fechas clave",
+   "state": "draft"
+  },
+  "cal.kd.both": {
+   "en": "Both chambers",
+   "es": "Ambas cámaras",
+   "state": "draft"
+  },
+  "cal.kd.chip": {
+   "en": "Key Date",
+   "es": "Fecha clave",
+   "state": "draft"
+  },
+  "cal.kd.crossover": {
+   "en": "Crossover",
+   "es": "Paso a la otra cámara",
+   "state": "draft"
+  },
+  "cal.kd.crossover_house": {
+   "en": "Crossover in the House",
+   "es": "Paso a la otra cámara, en la Cámara",
+   "state": "draft"
+  },
+  "cal.kd.crossover_senate": {
+   "en": "Crossover in the Senate",
+   "es": "Paso a la otra cámara, en el Senado",
+   "state": "draft"
+  },
+  "cal.kd.first_day": {
+   "en": "{name} (first day)",
+   "es": "{name} (primer día)",
+   "state": "draft"
+  },
+  "cal.kd.general_election": {
+   "en": "General election",
+   "es": "Elección general",
+   "state": "draft"
+  },
+  "cal.kd.house": {
+   "en": "House",
+   "es": "Cámara",
+   "state": "draft"
+  },
+  "cal.kd.house_incumbents": {
+   "en": "House members running again may file bill requests",
+   "es": "Los representantes que buscan la reelección pueden solicitar proyectos de ley",
+   "state": "draft"
+  },
+  "cal.kd.house_requests": {
+   "en": "House bill requests for {year}",
+   "es": "Solicitudes de proyectos de ley de la Cámara para {year}",
+   "state": "draft"
+  },
+  "cal.kd.house_signoff": {
+   "en": "House sponsors sign off",
+   "es": "Los patrocinadores de la Cámara aprueban la redacción de sus proyectos",
+   "state": "draft"
+  },
+  "cal.kd.interim_study": {
+   "en": "Interim study reports due",
+   "es": "Vencen los informes de estudio interino",
+   "state": "draft"
+  },
+  "cal.kd.introduce_house": {
+   "en": "Last day to introduce House bills",
+   "es": "Último día para presentar proyectos de ley de la Cámara",
+   "state": "draft"
+  },
+  "cal.kd.last_day": {
+   "en": "{name} (last day)",
+   "es": "{name} (último día)",
+   "state": "draft"
+  },
+  "cal.kd.last_requests": {
+   "en": "Last day to file bill requests",
+   "es": "Último día para presentar solicitudes de proyectos de ley",
+   "state": "draft"
+  },
+  "cal.kd.last_senate_request": {
+   "en": "Last day to request a Senate bill",
+   "es": "Último día para solicitar un proyecto de ley del Senado",
+   "state": "draft"
+  },
+  "cal.kd.open_members": {
+   "en": "Bill requests open to every member",
+   "es": "Solicitudes de proyectos de ley abiertas a todos los miembros",
+   "state": "draft"
+  },
+  "cal.kd.open_representatives": {
+   "en": "Bill requests open to every representative",
+   "es": "Solicitudes de proyectos de ley abiertas a todos los representantes",
+   "state": "draft"
+  },
+  "cal.kd.organization_day": {
+   "en": "Organization Day",
+   "es": "Día de Organización",
+   "state": "draft"
+  },
+  "cal.kd.retained": {
+   "en": "Retained bills reported",
+   "es": "Informes sobre los proyectos de ley retenidos",
+   "state": "draft"
+  },
+  "cal.kd.senate": {
+   "en": "Senate",
+   "es": "Senado",
+   "state": "draft"
+  },
+  "cal.kd.senate_incumbents": {
+   "en": "Senators running again may file bill requests",
+   "es": "Los senadores que buscan la reelección pueden solicitar proyectos de ley",
+   "state": "draft"
+  },
+  "cal.kd.senate_requests": {
+   "en": "Senate bill requests for {year}",
+   "es": "Solicitudes de proyectos de ley del Senado para {year}",
+   "state": "draft"
+  },
+  "cal.kd.senate_signoff": {
+   "en": "Senate sponsors sign off",
+   "es": "Los patrocinadores del Senado aprueban la redacción de sus proyectos",
+   "state": "draft"
+  },
+  "cal.kd.session_opens": {
+   "en": "The session opens",
+   "es": "Comienza la sesión",
+   "state": "draft"
+  },
+  "cal.kd.state_primary": {
+   "en": "State primary",
+   "es": "Elección primaria estatal",
+   "state": "draft"
+  },
+  "cal.kd.town_april": {
+   "en": "Town meeting day in towns that chose April",
+   "es": "Día de la asamblea municipal en los municipios que eligieron abril",
+   "state": "draft"
+  },
+  "cal.kd.town_may": {
+   "en": "Town meeting day in towns that chose May",
+   "es": "Día de la asamblea municipal en los municipios que eligieron mayo",
+   "state": "draft"
+  },
+  "cal.kd.town_meeting": {
+   "en": "Town meeting day",
+   "es": "Día de la asamblea municipal",
+   "state": "draft"
+  },
+  "cal.kd.veto_day": {
+   "en": "Veto day",
+   "es": "Día de vetos",
+   "state": "draft"
+  },
+  "cal.kd.veto_day_house": {
+   "en": "Veto day in the House",
+   "es": "Día de vetos en la Cámara",
+   "state": "draft"
+  },
+  "cal.kd.veto_day_senate": {
+   "en": "Veto day in the Senate",
+   "es": "Día de vetos en el Senado",
+   "state": "draft"
+  },
+  "cal.kd.year_opens": {
+   "en": "The {year} session opens",
+   "es": "Comienza la sesión de {year}",
+   "state": "draft"
+  },
   "cal.n_bills": {
    "en": "{n} bills",
    "es": "{n} proyectos de ley",
@@ -1050,13 +1230,13 @@
    "state": "draft"
   },
   "home.search_hint": {
-   "en": "Name, town, subject or bill",
-   "es": "Nombre, municipio, tema o proyecto de ley",
+   "en": "Bill number, topic, name or town",
+   "es": "Proyecto, tema, nombre o municipio",
    "state": "draft"
   },
   "home.search_label": {
-   "en": "Search bills, officials, towns and committees",
-   "es": "Buscar proyectos de ley, funcionarios, municipios y comités",
+   "en": "Search for a bill, a legislator, a committee, a town, a subject or a guide",
+   "es": "Busque un proyecto de ley, un legislador, un comité, un municipio, un tema o una guía",
    "state": "draft"
   },
   "home.slogan": {
@@ -1071,8 +1251,8 @@
    "state": "draft"
   },
   "home.try": {
-   "en": "Try a bill number, a subject, a legislator or a committee. Your town shows who represents you.",
-   "es": "Pruebe con un número de proyecto de ley, un tema, un legislador o un comité. Su municipio le muestra quién lo representa.",
+   "en": "Try <b>HB 1</b>, <b>housing</b>, <b>Concord</b> or a legislator&rsquo;s name. It finds bills since 1989, legislators past and present, committees, towns and who represents them, subjects and how-to guides.",
+   "es": "Pruebe con <b>HB 1</b>, <b>housing</b>, <b>Concord</b> o el nombre de un legislador. Encuentra proyectos de ley desde 1989, legisladores actuales y anteriores, comités, municipios y quién los representa, temas y guías prácticas.",
    "state": "draft"
   },
   "home.year_link": {
@@ -1259,6 +1439,21 @@
   "state.between": {
    "en": "Between Sessions",
    "es": "Entre sesiones",
+   "state": "draft"
+  },
+  "state.deadline": {
+   "en": "Next deadline:",
+   "es": "Próximo plazo:",
+   "state": "draft"
+  },
+  "state.deadline_on": {
+   "en": "{name}, {date}",
+   "es": "{name}, {date}",
+   "state": "draft"
+  },
+  "state.deadline_until": {
+   "en": "{name}, until {date}",
+   "es": "{name}, hasta el {date}",
    "state": "draft"
   },
   "state.in": {

@@ -1,4 +1,4 @@
-/* GRANITE_VERSION: 2026-09-07.303 */
+/* GRANITE_VERSION: 2026-09-07.304 */
 /* ONE STYLESHEET FOR EVERY PAGE (23 October 2026). Every page of the site
    links this file, /app.css: the record pages shell.page() makes from
    bills.html, and the five build_pages.py writes -- the home page, Officials,
@@ -257,6 +257,19 @@
 --cal-conf:#9E2B25;--cal-conf-bg:#FAE7E5;
 --cal-floor:#6B3FA0;--cal-floor-bg:#EFE9F7;
 --cal-study:#9C276C;--cal-study-bg:#F9E8F0;
+/* KEY DATES ARE GOLD (the owner, 24 October 2026: the elections, town
+   meeting days and the legislature's deadlines "on the calendar page too
+   under a separate meeting type in the key"; key_dates.py). Not a kind of
+   meeting, so not one of the General Court's colours: the palette's own
+   yellow, the table's --st-table, on its tint, with the ink turned a few
+   degrees toward yellow, away from the executive session's orange. As the
+   table's gold it was 12.6 (CIEDE2000) from that orange in both themes,
+   nearer than any two kinds above; at #766600 it is 19.1 in light, and at
+   #E6CE58 17.4 in dark, beyond the nearest pair of the six (17.5 and 15.2),
+   and 25 or more from every other. Measured on 24 October 2026; preflight
+   measures its contrast with the rest. A key date always carries its name
+   and its Key Date chip, so the colour is never all that says what it is. */
+--cal-date:#766600;--cal-date-bg:#FBF2D9;
 /* The home page's session box when the House is between sittings. These two
    were literals in build_pages.py's stylesheet -- the last pair of colours
    outside the palette, and so the last pair nothing could measure or
@@ -378,6 +391,7 @@ color-scheme:light}
 --cal-conf:#F0938C;--cal-conf-bg:#43211F;
 --cal-floor:#C4A6EE;--cal-floor-bg:#30264A;
 --cal-study:#F5A3CD;--cal-study-bg:#472436;
+--cal-date:#E6CE58;--cal-date-bg:#3A3116;
 --wait:#E0BE7C;--wait-bg:#3A3116;
 --rep:#D9776F;--dem:#A9C6F0;--ind:#B9A9E0;
 --rep-soft:#3B2422;--dem-soft:#22304A;--ind-soft:#2E2842;
@@ -433,6 +447,7 @@ color-scheme:dark}
 --cal-conf:#F0938C;--cal-conf-bg:#43211F;
 --cal-floor:#C4A6EE;--cal-floor-bg:#30264A;
 --cal-study:#F5A3CD;--cal-study-bg:#472436;
+--cal-date:#E6CE58;--cal-date-bg:#3A3116;
 --wait:#E0BE7C;--wait-bg:#3A3116;
 --rep:#D9776F;--dem:#A9C6F0;--ind:#B9A9E0;
 --rep-soft:#3B2422;--dem-soft:#22304A;--ind-soft:#2E2842;
@@ -843,6 +858,7 @@ background:var(--surface);color:var(--ink-2);white-space:nowrap}
 .chip.k-conf{background:var(--cal-conf-bg);color:var(--cal-conf)}
 .chip.k-floor{background:var(--cal-floor-bg);color:var(--cal-floor)}
 .chip.k-study{background:var(--cal-study-bg);color:var(--cal-study)}
+.chip.k-date{background:var(--cal-date-bg);color:var(--cal-date)}
 .calkind{flex:0 0 auto}
 /* A PARTY'S LETTER, where a row has room for the letter and not for a
    person's chip: the party's ink on the party's tint, and the letter, so a
@@ -874,6 +890,7 @@ border-radius:var(--r-out) 0 0 var(--r-out)}
 .calmix .k-conf{background:var(--cal-conf)}
 .calmix .k-floor{background:var(--cal-floor)}
 .calmix .k-study{background:var(--cal-study)}
+.calmix .k-date{background:var(--cal-date)}
 /* A kind the table does not name borrows no colour that means something
    else; it is the neutral edge grey. */
 .calmix .k-other{background:var(--edge)}
@@ -893,7 +910,26 @@ margin:0 0 var(--sp-6);padding:0;font-size:var(--t-sm);color:var(--ink-2)}
 .calkey .k-conf{background:var(--cal-conf)}
 .calkey .k-floor{background:var(--cal-floor)}
 .calkey .k-study{background:var(--cal-study)}
+.calkey .k-date{background:var(--cal-date)}
 .calmeet > summary{padding-left:calc(var(--sp-6) + 5px)}
+/* A KEY DATE ON THE CALENDAR (build_pages.cal_days, key_dates.card_html; the
+   owner, 24 October 2026): first in its day, a card of its own class rather
+   than a meeting's, on the Key Dates gold's tint with a bar of the gold, so
+   an election or a deadline never reads as one more committee. It opens on
+   the schedule page's sentence and its source, as a meeting's card opens on
+   its bills. */
+.calkd{position:relative;background:var(--cal-date-bg);border:1px solid var(--rule-2);
+border-left:4px solid var(--cal-date);border-radius:var(--r-out);margin:0 0 var(--sp-4)}
+.calkd[open]{box-shadow:0 3px 10px var(--shadow)}
+.calkd > summary{display:flex;align-items:baseline;gap:var(--sp-2) var(--sp-5);flex-wrap:wrap;
+padding:var(--sp-5) var(--sp-6);cursor:pointer;list-style:none;min-height:44px}
+.calkd > summary::-webkit-details-marker{display:none}
+.calkd > summary:focus-visible{outline:2px solid var(--pine);outline-offset:-2px}
+.calkd .calcmte{color:var(--ink)}
+.calkd .calwho{font-size:var(--t-ui);color:var(--ink-2)}
+.calkd .caret{margin-left:auto;color:var(--ink-2);flex:none}
+.calkd[open] > summary .caret{transform:rotate(90deg)}
+.calkd .kdsrc{margin:var(--sp-4) 0 0;font-size:var(--t-sm);color:var(--ink-2);line-height:1.45}
 
 /* One line of the day's schedule, above the bills it took. Only drawn when
    the day holds more than one, because a single-slot meeting has already said
@@ -944,6 +980,11 @@ display:inline-block;padding:var(--sp-1) 0}
   .calmeet > summary{gap:var(--sp-2) var(--sp-4);padding:var(--sp-5) var(--sp-5)}
   .calcmte{flex:1 1 calc(100% - 3rem);order:1;min-width:0}
   .calmeet .caret{order:1;margin-left:auto}
+  /* A key date's card the same way round: its name and the caret, then the
+     chip and whose date it is. */
+  .calkd > summary{gap:var(--sp-2) var(--sp-4);padding:var(--sp-5) var(--sp-5)}
+  .calkd .caret{order:1;margin-left:auto}
+  .calkd .calwho{order:3}
   .caltime,.calcount{order:2}
   .calkind,.calwhere{order:3}
   .calbills li{flex-direction:column;gap:var(--sp-1)}
@@ -1438,6 +1479,7 @@ line-height:1.1}
   --cal-hear:#1F5594;--cal-hear-bg:#E3ECF7;--cal-meet:#1E5B3C;--cal-meet-bg:#E3EFE7;
   --cal-exec:#94500E;--cal-exec-bg:#FCEEDF;--cal-conf:#9E2B25;--cal-conf-bg:#FAE7E5;
   --cal-floor:#6B3FA0;--cal-floor-bg:#EFE9F7;--cal-study:#9C276C;--cal-study-bg:#F9E8F0;
+  --cal-date:#766600;--cal-date-bg:#FBF2D9;
   --wait:#8A6D2F;--wait-bg:#FBF3E2;
   --rep:#B03A32;--dem:#1E3F73;--ind:#6B5B95;
   --rep-soft:#F6E7E6;--dem-soft:#E6EDF7;--ind-soft:#EEEAF3;
@@ -5378,6 +5420,7 @@ font-size:var(--t-ui);font-weight:500}
 .cmdots .k-conf{background:var(--cal-conf)}
 .cmdots .k-floor{background:var(--cal-floor)}
 .cmdots .k-study{background:var(--cal-study)}
+.cmdots .k-date{background:var(--cal-date)}
 /* The selected week a band, the selected day solid, today a ring. The band
    is pine mixed into the page rather than --pine-soft, which on the light
    page is about 1.0:1 against it -- a band nobody could see. */
@@ -5510,6 +5553,7 @@ border-width:0 2px 2px 0;transform:rotate(45deg);visibility:hidden}
 .calcat.k-conf{--cat:var(--cal-conf)}
 .calcat.k-floor{--cat:var(--cal-floor)}
 .calcat.k-study{--cat:var(--cal-study)}
+.calcat.k-date{--cat:var(--cal-date)}
 .calview{scroll-margin-top:var(--sp-6)}
 .calview:focus{outline:none}
 .calview:focus-visible{outline:2px solid var(--pine);outline-offset:4px}
@@ -5563,6 +5607,8 @@ text-decoration:none;border-bottom:1px solid var(--rule)}
 .wke:last-child .wkgo{border-bottom:0}
 .wkgo:hover{background:var(--wash)}
 .wkgo:hover .wkc{text-decoration:underline}
+/* A key date's entry on the gold's tint, as its card is (24 October 2026). */
+.wkkd .wkgo{background:var(--cal-date-bg)}
 .wkgo:focus-visible,.wkday:focus-visible{outline:2px solid var(--pine);outline-offset:-2px}
 .wkbar{display:flex;flex-direction:column;align-self:stretch}
 .wkbar i{flex:1 1 0;display:block;background:var(--edge)}
@@ -5572,6 +5618,7 @@ text-decoration:none;border-bottom:1px solid var(--rule)}
 .wkbar .k-conf{background:var(--cal-conf)}
 .wkbar .k-floor{background:var(--cal-floor)}
 .wkbar .k-study{background:var(--cal-study)}
+.wkbar .k-date{background:var(--cal-date)}
 .wkx{min-width:0;display:flex;flex-direction:column}
 .wkt{font-size:var(--t-sm);font-weight:500;line-height:1.35;color:var(--ink-2);
 font-variant-numeric:tabular-nums}
@@ -5608,6 +5655,7 @@ box-shadow:0 6px 20px var(--shadow);pointer-events:none}
 .pkbar .k-conf{background:var(--cal-conf)}
 .pkbar .k-floor{background:var(--cal-floor)}
 .pkbar .k-study{background:var(--cal-study)}
+.pkbar .k-date{background:var(--cal-date)}
 /* Wide enough for "12:45 PM", so the names line up under one another. */
 .pkt{flex:none;min-width:4.6em;font-weight:600;font-variant-numeric:tabular-nums}
 .pkn{min-width:0}
@@ -8237,9 +8285,10 @@ border-radius:var(--r-in);box-shadow:0 10px 26px var(--shadow);max-height:min(60
 :where(body.pg) .hqdrop[hidden]{display:none}
 :where(body.pg) .hqhint{font-size:var(--t-sm);color:var(--ink-2);margin:var(--sp-3) 0 0;max-width:34rem}
 /* THE WEBINAR (build_pages.home_webinar, until 11 November 2026): one quiet
-   box between the lead and the search, in the pine of the site's own links,
-   with one button. In one column it keeps that place (order 3, after the
-   lead, which is written before it). */
+   box under the search (the owner, 24 October 2026: "Could you move the
+   webinar below the search bar?"), in the pine of the site's own links,
+   with one button. In one column it keeps that place: order 4, the search's,
+   and after the search and its hint, which are written before it. */
 :where(body.pg) .webinar{background:var(--pine-soft);border:1px solid var(--rule);border-left:4px solid var(--pine);
   border-radius:var(--r-in);padding:var(--sp-6) var(--sp-7);margin:var(--sp-6) 0 var(--sp-4);max-width:40rem}
 :where(body.pg) .webinar[hidden]{display:none}
@@ -8249,7 +8298,7 @@ border-radius:var(--r-in);box-shadow:0 10px 26px var(--shadow);max-height:min(60
 :where(body.pg) .webinar .wbgo{display:inline-block;background:var(--pine);color:var(--on-pine);font-weight:600;
   text-decoration:none;border-radius:var(--r-in);padding:var(--sp-4) var(--sp-6)}
 :where(body.pg) .webinar .wbgo:hover,:where(body.pg) .webinar .wbgo:focus-visible{text-decoration:underline}
-@media (max-width:73.74875em){:where(body.pg) .hcols .webinar{order:3}}
+@media (max-width:73.74875em){:where(body.pg) .hcols .webinar{order:4}}
 /* IN ONE COLUMN, UNDER ITS BOX. Below 1180px the columns dissolve and each
    block is placed by its own order (the hero 1-3, the search 4, the cards
    5); a block with none came first, so the hint stood over the logo on a
@@ -8271,6 +8320,27 @@ border-radius:var(--r-in);box-shadow:0 10px 26px var(--shadow);max-height:min(60
    Saturday a reader cannot take next week's meetings for the week gone. */
 :where(body.pg) .calwk{display:flex;flex-wrap:wrap;align-items:center;gap:var(--sp-2) var(--sp-4);
 margin:0 0 var(--sp-4);font-size:var(--t-ui);color:var(--ink-2)}
+/* COMING UP'S KEY DATES (key_dates.row_html and ahead_html; the owner, 24
+   October 2026: "Coming up should list major events like the election
+   days, town meeting days, organization day, etc"). An event, not a
+   meeting: a line on the Key Dates gold's tint with its bar, not a card that
+   opens, leading to its day on the Calendar. In the week's days, first in
+   its day; after the week, the next few under their own heading. */
+:where(body.pg) .kdrow{margin:0 0 var(--sp-3);padding:var(--sp-3) var(--sp-5);
+background:var(--cal-date-bg);border-left:4px solid var(--cal-date);border-radius:var(--r-in);
+font-size:var(--t-ui);line-height:1.45}
+:where(body.pg) .kdrow[hidden]{display:none}
+:where(body.pg) .kdrow a{color:var(--pine);font-weight:600}
+:where(body.pg) .kdrow time{display:block;font-size:var(--t-sm);color:var(--ink-2);
+font-variant-numeric:tabular-nums}
+:where(body.pg) .kdwho{font-size:var(--t-sm);color:var(--ink-2);white-space:nowrap}
+:where(body.pg) .kdahead{margin:var(--sp-6) 0 0}
+:where(body.pg) .kdh{font-size:var(--t-ui);font-weight:600;color:var(--ink-2);margin:0 0 var(--sp-3);
+font-family:var(--sans);letter-spacing:0;text-transform:none}
+:where(body.pg) .kdlist{list-style:none;margin:0;padding:0}
+/* THE NEXT DEADLINE, in the status box over the way to the schedule it
+   comes from (build_pages.deadline_line). It hides itself the day after. */
+:where(body.pg) .statedue[hidden]{display:none}
 /* THE SLOGAN IN THE WORDMARK'S FACE, LARGER (D13, item 117): Source Serif 4
    at 700, the site's nearest to the lockup's letters, as the drawing has it. */
 :where(body.pg) .slogan{font-family:var(--serif);font-size:1.75rem;font-weight:700;line-height:1.15;

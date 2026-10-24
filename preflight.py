@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.674
+# GRANITE_VERSION: 2026-09-04.675
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -23089,6 +23089,14 @@ def _palette():
     for k in ("hear", "meet", "exec", "conf", "floor", "study"):
         TEXT += [(f"cal-{k}", f"cal-{k}-bg")]
         BOUND += [(f"cal-{k}", "surface"), (f"cal-{k}", "paper")]
+    # KEY DATES' GOLD (24 October 2026, the owner: the elections, town
+    # meeting days and deadlines "under a separate meeting type in the key"):
+    # its ink as the six kinds' are, and its tint is also the ground of a key
+    # date's card and of Coming up's key-date lines, so the words drawn on it
+    # -- the name, the source line, the links -- hold 4.5:1 there too.
+    TEXT += [("cal-date", "cal-date-bg"), ("ink", "cal-date-bg"),
+             ("ink-2", "cal-date-bg"), ("pine", "cal-date-bg")]
+    BOUND += [("cal-date", "surface"), ("cal-date", "paper")]
 
     bad, n = [], 0
     for scheme, t in (("light", tok), ("dark", dark)):
@@ -58122,6 +58130,12 @@ def _meet_kind_colours():
     both. So this now wants them in k-study, on its own --cal-study token,
     with the other five as they were.
 
+    KEY DATES ARE THE SEVENTH COLOUR in the key since 24 October 2026 (the
+    owner: "those dates should show up on the calendar page too under a
+    separate meeting type in the key"): k-date, on --cal-date, last in the
+    key and the boxes. Not a kind of meeting, so no kind in the record maps
+    to it; its chip, key, dot, bars and box are held here as the six are.
+
     This holds each kind that occurs in the record to its class, each class
     to a chip rule, a bar rule, a key rule, a grid dot, a preview bar and a
     box in app.css, each drawn from its own --cal- token; the key to every
@@ -58141,7 +58155,7 @@ def _meet_kind_colours():
                                      for k in want if got[k] != want[k]))
     css = Path("src/pages/app.css").read_text(encoding="utf-8")
     tok = {"k-hearing": "hear", "k-exec": "exec", "k-meet": "meet",
-           "k-conf": "conf", "k-floor": "floor", "k-study": "study"}
+           "k-conf": "conf", "k-floor": "floor", "k-study": "study", "k-date": "date"}
     for cls, t in tok.items():
         for rule in (rf"\.chip\.{cls}\{{[^}}]*var\(--cal-{t}\)",
                      rf"\.calmix \.{cls}\{{background:var\(--cal-{t}\)\}}",
@@ -58159,9 +58173,10 @@ def _meet_kind_colours():
     assert legend == list(tok), f"the key names {legend}, not {list(tok)}, in that order"
     names = [w for _c, w in BP.MEET_LEGEND]
     assert names == ["Public Hearing", "Executive Session", "Work Session",
-                     "Committee of Conference", "Session Day", "Study Committee"], (
+                     "Committee of Conference", "Session Day", "Study Committee",
+                     "Key Dates"], (
         f"the key's names are {names}: one per kind, work sessions and study "
-        "committees apart, in title case")
+        "committees apart, and the key dates last, in title case")
 
     import contextlib
     import datetime as _dt
@@ -58194,7 +58209,7 @@ def _meet_kind_colours():
     key = re.search(r'<ul class="calkey"[^>]*>(.*?)</ul>', t)
     assert key, "a week's page carries no key to its colours for a reader without script"
     assert re.findall(r'<i class="(k-[a-z]+)"', key.group(1)) == list(tok), (
-        "the key is not the six colours in the boxes' order")
+        "the key is not the seven colours in the boxes' order")
     boxes = re.findall(r'<label class="calcat (k-[a-z]+)"><input type="checkbox" name="cat" '
                        r'value="([a-z]+)"( checked)?><span class="cbx" aria-hidden="true">'
                        r'</span>([^<]*)</label>', t)
@@ -58211,7 +58226,7 @@ def _meet_kind_colours():
     chip = re.search(r'<span class="chip calkind (k-[a-z]+)">Statutory Committee</span>', t)
     assert chip and chip.group(1) == "k-study", (
         "a statutory committee's chip does not wear the study committees' colour")
-    return "ok", (f"{len(want)} kinds on six colours, each from its own token, "
+    return "ok", (f"{len(want)} kinds on six colours and the key dates on a seventh, each from its own token, "
                   "study committees apart from work sessions, and the key and the boxes on the week")
 
 
@@ -62785,9 +62800,11 @@ def _calendar_page_shape():
                      'name="who"', 'name="what"', "calsrc", "Show everything"):
             assert gone not in t, f"the week's page still carries {gone!r}"
         boxes = re.findall(r'<input type="checkbox" name="cat" value="([a-z]+)"( checked)?>', t)
+        # KEY DATES, THE SEVENTH (24 October 2026), on for a new reader.
         assert boxes == [("hearing", " checked"), ("exec", " checked"), ("work", " checked"),
-                         ("conf", " checked"), ("floor", " checked"), ("study", "")], (
-            f"the row of boxes is {boxes}: six, every one on but Study Committee")
+                         ("conf", " checked"), ("floor", " checked"), ("study", ""),
+                         ("date", " checked")], (
+            f"the row of boxes is {boxes}: seven, every one on but Study Committee")
         assert re.search(r'<legend class="sr">[^<]+</legend><div class="calcatrow">', t), (
             "the row of boxes has no name for a screen reader to give the group")
         assert '<ul class="calkey" aria-label="What the colors mean">' in t, (
@@ -63004,7 +63021,7 @@ const aging=all.filter(e=>e.name==="Commission on Aging");
 ok(aging.length===2 && aging.every(e=>e.who==="study") && aging[0].kinds.join()==="study" && aging[1].kinds.join()==="other",
    "the Commission on Aging's cards read as "+JSON.stringify(aging.map(e=>({w:e.who,k:e.kinds}))));
 // ---- the boxes ----
-ok(C.CATS.join()==="hearing,exec,work,conf,floor,study" && C.defaults().cats.join()==="hearing,exec,work,conf,floor",
+ok(C.CATS.join()==="hearing,exec,work,conf,floor,study,date" && C.defaults().cats.join()==="hearing,exec,work,conf,floor,date",
    "the boxes, and the ones a new reader starts with: "+C.CATS+" / "+C.defaults().cats);
 // WHICH BOX A CARD ANSWERS TO: work sessions and study committees apart; a
 // study committee is Study Committee whatever it held; a kind the table does
@@ -63058,7 +63075,8 @@ ok(C.countLine({total:1,shown:0,seen:0},"this week")==="The one meeting this wee
 ok(C.countLine(C.tally(days["2026-03-11"].cards,F({})),"on "+C.dayWords("2026-03-11"))==="2 meetings on Wednesday, March 11.",
    "the Day view's count: "+C.countLine(C.tally(days["2026-03-11"].cards,F({})),"on "+C.dayWords("2026-03-11")));
 ok(C.narrowed(F({}))===0 && C.narrowed(ON)===1 && C.narrowed(F({cats:["hearing"],q:"x"}))===2
-   && C.narrowed(F({cats:["exec","hearing","work","floor","conf"]}))===0,
+   && C.narrowed(F({cats:["exec","hearing","work","floor","conf","date"]}))===0
+   && C.narrowed(F({cats:["exec","hearing","work","floor","conf"]}))===1,
    "how far the filters are from a new reader's");
 ok(C.sideOn(F({}))===0 && C.sideOn(F({cats:[],body:"H"}))===1 && C.sideOn(F({picks:["x"],q:"y"}))===2,
    "the side's own count takes in the boxes above the schedule");
@@ -63176,7 +63194,7 @@ ok(qs==="?week=2026-W11&day=2026-03-10&view=week&kinds=hearing,exec&chamber=hous
 ok(back && back.week==="2026-W11" && back.d==="2026-03-10" && back.v==="week" && back.cats.join()==="hearing,exec"
    && back.body==="H" && back.picks[0]==="Health, Human Services and Elderly Affairs" && back.q==="HB 1", "the query does not round-trip: "+JSON.stringify(back));
 ok(C.writeQuery(F({}),"2026-W11","")==="?week=2026-W11", "a new reader's filters are written into the address: "+C.writeQuery(F({}),"2026-W11",""));
-ok(C.writeQuery(ON,"2026-W11","")==="?week=2026-W11&kinds=hearing,exec,work,conf,floor,study"
+ok(C.writeQuery(ON,"2026-W11","")==="?week=2026-W11&kinds=hearing,exec,work,conf,floor,study,date"
    && C.writeQuery(F({cats:[]}),"2026-W11","")==="?week=2026-W11&kinds=", "the boxes in the address: "+C.writeQuery(ON,"2026-W11",""));
 ok(C.readQuery("?week=2026-W11&kinds=").cats.length===0 && C.readQuery("?week=2026-W11&kinds=study,study,nonsense").cats.join()==="study",
    "an empty or a doubled list of boxes read back wrong");
@@ -63188,11 +63206,11 @@ ok(C.readQuery("")===null && C.readQuery("?utm_source=x")===null && C.readQuery(
 ok(C.isWeek("2026-W01") && !C.isWeek("2026-W00") && C.isDay("2028-02-29") && !C.isDay("2026-02-29"), "weeks and days that are not");
 // ---- the address as it was written before 25 September ----
 const old=C.readHash("#d=2026-03-10&v=week&who=standing&what=hearing%2Cexec&b=H&c=Health%2C+Human+Services+and+Elderly+Affairs&q=HB+1");
-ok(old && old.d==="2026-03-10" && old.v==="week" && old.cats.join()==="hearing,exec" && old.body==="H"
+ok(old && old.d==="2026-03-10" && old.v==="week" && old.cats.join()==="hearing,exec,date" && old.body==="H"
    && old.picks[0]==="Health, Human Services and Elderly Affairs" && old.q==="HB 1", "an old address reads as "+JSON.stringify(old));
-ok(C.readHash("#d=2026-03-10&what=hearing").cats.join()==="hearing,floor"
-   && C.readHash("#d=2026-03-10&who=standing,study,floor").cats.join()==="hearing,exec,work,conf,floor,study"
-   && C.readHash("#d=2026-03-10&who=floor").cats.join()==="floor" && C.readHash("#d=2026-03-10").cats===undefined,
+ok(C.readHash("#d=2026-03-10&what=hearing").cats.join()==="hearing,floor,date"
+   && C.readHash("#d=2026-03-10&who=standing,study,floor").cats.join()==="hearing,exec,work,conf,floor,study,date"
+   && C.readHash("#d=2026-03-10&who=floor").cats.join()==="floor,date" && C.readHash("#d=2026-03-10").cats===undefined,
    "an old address's who and what do not come across as the boxes that answer them");
 ok(C.readHash("#results")===null, "the skip link's #results reads as a state");
 const bad=C.readHash("#d=2026-02-30&v=day");
@@ -63208,7 +63226,7 @@ ok(C.stepKey("2026-03-11","ArrowUp")==="2026-03-04" && C.stepKey("2026-03-11","H
 ok(C.relWord("2026-03-12","2026-03-11")==="tomorrow" && C.relWord("2026-03-25","2026-03-11")==="in 14 days"
    && C.relWord("2026-03-26","2026-03-11")==="" && C.relWord("2026-03-10","2026-03-11")==="", "the relative day words");
 if(fails.length){ console.log(fails.join("\n")); process.exit(1); }
-console.log("7 cards: the six boxes alone and together, picks and the search with Study Committee off, the list's days, the week's columns and entries, the Day view's steps, the clock, the grid's cells and dots, the preview, the query and the old hash");
+console.log("7 cards: the seven boxes alone and together, picks and the search with Study Committee off, the list's days, the week's columns and entries, the Day view's steps, the clock, the grid's cells and dots, the preview, the query and the old hash");
 console.log("OK");
 """
 
@@ -63532,7 +63550,7 @@ const CLOCK=new RegExp("^\\d{1,2}:\\d\\d"+NB+"(AM|PM)(–\\d{1,2}:\\d\\d"+NB+"(A
   ok((Q('td[aria-current="date"]',$("cmgrid"))||{getAttribute:()=>null}).getAttribute("data-d")==="2026-03-11", "today is not aria-current=date");
   ok(QA("tr.cmsel td",$("cmgrid")).map(t=>t.getAttribute("data-d")).join()===[0,1,2,3,4,5,6].map(i=>C.addDays("2026-03-09",i)).join(),
      "the band is not Monday, March 9 to Sunday, March 15");
-  ok(W.ticked()==="hearing,exec,work,conf,floor", "a new reader's boxes: "+W.ticked());
+  ok(W.ticked()==="hearing,exec,work,conf,floor,date", "a new reader's boxes: "+W.ticked());
   // STUDY COMMITTEES ARE OFF FOR A NEW READER: the page's own list, less the
   // Commission on Aging's two cards.
   const plain=statik.filter(k=>!/Aging/.test(k));
@@ -63660,7 +63678,7 @@ const CLOCK=new RegExp("^\\d{1,2}:\\d\\d"+NB+"(AM|PM)(–\\d{1,2}:\\d\\d"+NB+"(A
   ok(W.keys().some(k=>/2026-03-13\|Commission on Aging/.test(k)) && $("wkcount").textContent==="6 meetings this week.",
      "Study Committee ticked: "+$("wkcount").textContent+" "+W.keys());
   ok(QA(".cmdots i",Q('td[data-d="2026-03-13"]',$("cmgrid"))).map(i=>i.className).join()==="k-study", "a study committee's dot is not its colour");
-  ok(!$("calreset").hidden && W.addr()==="/calendar?week=2026-W11&kinds=hearing,exec,work,conf,floor,study"
+  ok(!$("calreset").hidden && W.addr()==="/calendar?week=2026-W11&kinds=hearing,exec,work,conf,floor,study,date"
      && W.G.history.length===hb, "a box is not in the address, or took a step of history: "+W.addr());
   await W.tick("study",false);
   ok(W.store.get("gr.calendar.showstudy")==="0" && W.keys().join()===plain.join() && $("calreset").hidden && W.addr()==="/calendar?week=2026-W11",
@@ -63669,7 +63687,7 @@ const CLOCK=new RegExp("^\\d{1,2}:\\d\\d"+NB+"(AM|PM)(–\\d{1,2}:\\d\\d"+NB+"(A
   ok(!W.keys().some(k=>/House Commerce/.test(k)) && W.keys().some(k=>/House Judiciary/.test(k)) && $("wkcount").textContent==="4 of 6 meetings shown. 1 study committee meeting is hidden.",
      "Executive Session unticked: "+$("wkcount").textContent+" "+W.keys()+" -- a committee that also heard bills stays");
   ok(!QA(".cmdots i",Q('td[data-d="2026-03-12"]',$("cmgrid"))).length, "the grid's dots do not follow the boxes");
-  ok(W.addr()==="/calendar?week=2026-W11&kinds=hearing,work,conf,floor", "the address: "+W.addr());
+  ok(W.addr()==="/calendar?week=2026-W11&kinds=hearing,work,conf,floor,date", "the address: "+W.addr());
   await W.tick("exec",true);
   await W.tick("floor",false);
   ok(!W.keys().some(k=>/House Session Day/.test(k)) && $("wkcount").textContent==="4 of 6 meetings shown. 1 study committee meeting is hidden.", "Session Day unticked: "+W.keys());
@@ -63693,7 +63711,7 @@ const CLOCK=new RegExp("^\\d{1,2}:\\d\\d"+NB+"(AM|PM)(–\\d{1,2}:\\d\\d"+NB+"(A
   ok(W.addr()==="/calendar?week=2026-W11&chamber=senate&committee=House+Judiciary", "the chamber in the address: "+W.addr());
   $("calreset").click(); await W.settle();
   ok(W.keys().join()===plain.join() && $("calreset").hidden && W.store.get("gr.calendar.showstudy")==="0"
-     && W.addr()==="/calendar?week=2026-W11" && W.ticked()==="hearing,exec,work,conf,floor" && $("pickhint").hidden
+     && W.addr()==="/calendar?week=2026-W11" && W.ticked()==="hearing,exec,work,conf,floor,date" && $("pickhint").hidden
      && Q('[data-body=""]',$("wkfilter")).getAttribute("aria-pressed")==="true",
      "Reset filters does not put a new reader's filters back: "+W.addr()+" "+W.ticked());
   ok(D.activeElement.getAttribute("data-view")==="list", "focus is not on the view switch after Reset filters");
@@ -63823,7 +63841,7 @@ const CLOCK=new RegExp("^\\d{1,2}:\\d\\d"+NB+"(AM|PM)(–\\d{1,2}:\\d\\d"+NB+"(A
   const prev2=W2.Q(".calhead .wknav a.wkprev"); prev2.focus(); prev2.click(); await W2.step();
   ok(W2.sel()==="2026-03-10" && W2.addr()==="/calendar?week=2026-W11", "the week before opens on "+W2.sel()+" at "+W2.addr());
   await W2.tick("hearing",false); await W2.tick("exec",false);
-  ok(W2.sel()==="2026-03-11" && W2.addr()==="/calendar?week=2026-W11&kinds=work,conf,floor",
+  ok(W2.sel()==="2026-03-11" && W2.addr()==="/calendar?week=2026-W11&kinds=work,conf,floor,date",
      "the list's mark did not follow the filters to the first day they show: "+W2.sel()+" at "+W2.addr());
   const R3=reload(W2,{today:[2026,3,18]}); await R3.run();
   ok(R3.sel()==="2026-03-11" && R3.addr()===W2.addr(), "a reload after a filter opened "+R3.sel()+" at "+R3.addr());
@@ -63831,7 +63849,7 @@ const CLOCK=new RegExp("^\\d{1,2}:\\d\\d"+NB+"(AM|PM)(–\\d{1,2}:\\d\\d"+NB+"(A
   ok(W2.sel()==="2026-03-10", "the mark did not come back with the boxes: "+W2.sel());
   W2.view("day").click(); await W2.settle();
   await W2.tick("hearing",false); await W2.tick("exec",false);
-  ok(W2.sel()==="2026-03-10" && W2.addr()==="/calendar?week=2026-W11&day=2026-03-10&view=day&kinds=work,conf,floor",
+  ok(W2.sel()==="2026-03-10" && W2.addr()==="/calendar?week=2026-W11&day=2026-03-10&view=day&kinds=work,conf,floor,date",
      "a filter moved the day the Day view was reading, or the address lost it: "+W2.sel()+" at "+W2.addr());
   const R4=reload(W2,{today:[2026,3,18]}); await R4.run();
   ok(R4.sel()==="2026-03-10" && R4.addr()===W2.addr(), "a reload of the Day view after a filter opened "+R4.sel()+" at "+R4.addr());
@@ -63924,10 +63942,10 @@ const CLOCK=new RegExp("^\\d{1,2}:\\d\\d"+NB+"(AM|PM)(–\\d{1,2}:\\d\\d"+NB+"(A
   W7.Q('[data-body="H"]',W7.$("wkfilter")).click(); await W7.settle();
   const before=W7.addr(), R=reload(W7);
   await R.run();
-  ok(before==="/calendar?week=2026-W12&day=2026-03-19&view=week&kinds=hearing,exec,work,conf,floor,study&chamber=house",
+  ok(before==="/calendar?week=2026-W12&day=2026-03-19&view=week&kinds=hearing,exec,work,conf,floor,study,date&chamber=house",
      "the address before the reload: "+before);
   ok(R.addr()===before && R.sel()==="2026-03-19" && R.view("week").getAttribute("aria-pressed")==="true"
-     && R.ticked()==="hearing,exec,work,conf,floor,study" && R.Q('[data-body="H"]',R.$("wkfilter")).getAttribute("aria-pressed")==="true"
+     && R.ticked()==="hearing,exec,work,conf,floor,study,date" && R.Q('[data-body="H"]',R.$("wkfilter")).getAttribute("aria-pressed")==="true"
      && R.keys().join()===W7.keys().join() && R.Q(".calhead h1").textContent==="The Week of March 16–20, 2026",
      "a reload does not open what was on the screen: "+R.addr()+" "+R.sel()+" "+R.keys());
   // And Back after a reload is the browser's own: the calendar reads it.
@@ -63935,21 +63953,21 @@ const CLOCK=new RegExp("^\\d{1,2}:\\d\\d"+NB+"(AM|PM)(–\\d{1,2}:\\d\\d"+NB+"(A
   // plain tab opens with it ticked, and the reset control can take it off.
   const R2=world("calendar.html","/calendar",{store:W7.store});
   await R2.run();
-  ok(R2.ticked()==="hearing,exec,work,conf,floor,study" && !R2.$("calreset").hidden && R2.$("wkcount").textContent==="6 meetings this week.",
+  ok(R2.ticked()==="hearing,exec,work,conf,floor,study,date" && !R2.$("calreset").hidden && R2.$("wkcount").textContent==="6 meetings this week.",
      "the Study Committee box is not remembered in this browser: "+R2.ticked());
   // ---- a link written before 25 September ----
   // In a week's own page's hash: it opens what it showed, and is written
   // into the query in place, as one entry of history.
   const W8=world("calendar/2026-W10.html","/calendar/2026-W10",{hash:"#d=2026-03-03&v=day&what=hearing"});
   await W8.run();
-  ok(W8.sel()==="2026-03-03" && W8.view("day").getAttribute("aria-pressed")==="true" && W8.ticked()==="hearing,floor"
+  ok(W8.sel()==="2026-03-03" && W8.view("day").getAttribute("aria-pressed")==="true" && W8.ticked()==="hearing,floor,date"
      && W8.keys().join()==="2026-03-03|House Commerce", "an old address does not open on its day, view and filter: "+W8.ticked()+" "+W8.keys());
-  ok(W8.addr()==="/calendar?week=2026-W10&view=day&kinds=hearing,floor" && W8.G.history.length===1,
+  ok(W8.addr()==="/calendar?week=2026-W10&view=day&kinds=hearing,floor,date" && W8.G.history.length===1,
      "an old address is not written into the query: "+W8.addr());
   // On the tab, naming another week and who was meeting.
   const W9=world("calendar.html","/calendar",{hash:"#d=2026-03-18&v=week&who=standing,floor"});
   await W9.run();
-  ok(W9.sel()==="2026-03-18" && W9.view("week").getAttribute("aria-pressed")==="true" && W9.ticked()==="hearing,exec,work,conf,floor"
+  ok(W9.sel()==="2026-03-18" && W9.view("week").getAttribute("aria-pressed")==="true" && W9.ticked()==="hearing,exec,work,conf,floor,date"
      && W9.keys().join()==="2026-03-18|House Judiciary,2026-03-18|Senate Finance"
      && W9.addr()==="/calendar?week=2026-W12&day=2026-03-18&view=week",
      "an old address on the tab: "+W9.addr()+" "+W9.keys());
@@ -63986,7 +64004,7 @@ const CLOCK=new RegExp("^\\d{1,2}:\\d\\d"+NB+"(AM|PM)(–\\d{1,2}:\\d\\d"+NB+"(A
   WA.G.history.back(); await WA.step();
   ok(WA.$("cmtitle").textContent==="April 2026" && WA.keys().join()===shown, "Back from the skip link drew the calendar again: "+WA.$("cmtitle").textContent);
   if(fails.length){ console.log(fails.join("\n")); process.exit(1); }
-  console.log("the tab, a week's own page, a phone and shared, old and reloaded addresses: 3 views, the six boxes and the side's filters, Back, reloading, the week named in the citation, canonical and skip link, focus on the arrows and after a redraw, the arrows kept in view after a key, 6 keys, the fold, the preview's timings and a day moved under a still pointer, and a month file that failed");
+  console.log("the tab, a week's own page, a phone and shared, old and reloaded addresses: 3 views, the seven boxes and the side's filters, Back, reloading, the week named in the citation, canonical and skip link, focus on the arrows and after a redraw, the arrows kept in view after a key, 6 keys, the fold, the preview's timings and a day moved under a still pointer, and a month file that failed");
   console.log("OK");
 })().catch(e=>{ console.log(fails.join("\n")); console.log("THREW "+e.stack); process.exit(2); });
 """
@@ -64549,10 +64567,14 @@ def _coming_up_without_study_committees():
         assert line and "See the full calendar" in line.group(1), (
             "the line under Coming up is not the full calendar: "
             + (line.group(1) if line else "no line"))
-        # A WEEK OF STUDY COMMITTEES ALONE is a week with nothing on the rail.
+        # A WEEK OF STUDY COMMITTEES ALONE is a week with no meeting on the
+        # rail. Drawn with no key dates (events=[]): the week of 21 September
+        # 2026 holds the Senate's filing period, which the rail shows as its
+        # own line (_coming_up_key_dates), and this is about meetings.
         with contextlib.redirect_stdout(io.StringIO()):
             empty = BP.calendar_html(tmp, today=monday, rows=[r for r in rows if r.get("study")
-                                                              or r["kind"] == "study committee"])
+                                                              or r["kind"] == "study committee"],
+                                     events=[])
         assert "calday" not in empty and "rest of this week" in empty \
             and "sits mostly from January to June" in empty, (
                 "a week of study committees alone still draws a day in Coming up: "
@@ -64570,6 +64592,433 @@ def _coming_up_without_study_committees():
     return "ok", ("a statutory committee and a docket's study committee off the rail, a "
                   "standing committee's interim study on it, next week counted without them, "
                   "and all three still on the Calendar's week")
+
+
+# ---- KEY DATES (24 October 2026) ------------------------------------------------
+#
+# The owner, 24 October 2026: "Could you move the webinar below the search
+# bar? The homepage searchbar should be phrased a bit better so folks know
+# what they should be searching for and where the searchbar can take you to.
+# Coming up should list major events like the election days, town meeting
+# days, organization day, etc and those dates should show up on the calendar
+# page too under a separate meeting type in the key. Statuses should list the
+# most relevant upcoming deadline like the deadline for committees to finish
+# interim study reports, filing periods, etc."
+#
+# key_dates.py holds the dates and says where each comes from; the five
+# checks below hold the promises: every date has its source and the days the
+# law fixes are its rule's; the status box names the deadline the rule picks;
+# Coming up lists the key dates as events, in date order; the Calendar shows
+# them on their days under a box of their own that counts no meeting; and the
+# webinar stands under the search.
+
+# The days the statutes fix, as the RSA text on this disk prints the rule
+# (key_dates.py read them on 24 October 2026): (section, words).
+KD_RSA_WORDS = (("39:1", "second Tuesday of March"),
+                ("669:1", "second Tuesday in March"),
+                ("40:13", "second Tuesday in March, the second Tuesday in April, or the second "
+                          "Tuesday in May"),
+                ("40:14", "the second Tuesday in March, the second Tuesday in April, or the "
+                          "second Tuesday in May"),
+                ("39:1-a", "second Tuesday of May"),
+                ("653:8", "second Tuesday in September of every even-numbered year"),
+                ("653:7", "first Tuesday following the first Monday in November of every "
+                          "even-numbered year"))
+
+
+def _rsa_sections(path, want):
+    """{section: (its heading, its text)} of the sections `want` names, read
+    from the database copy of the RSA (db/NH_RSA.psv), or None where it is not
+    on this disk. The text is the section's own, its tags taken out."""
+    import html as _h
+    p = Path(path)
+    if not p.is_file():
+        return None
+    out = {}
+    with p.open(encoding="utf-8", errors="replace") as fh:
+        for line in fh:
+            f = line.split("|")
+            if len(f) < 9:
+                continue
+            m = re.search(r"Section (\S+) ", f[6])
+            if m and m.group(1) in want and m.group(1) not in out:
+                text = _h.unescape(re.sub(r"\s+", " ", re.sub(r"<[^>]+>", " ", f[8])))
+                out[m.group(1)] = (f[6], text)
+    return out
+
+
+@check("frontend", "every key date names where it comes from, and a day the law fixes is its rule's "
+                   "on the years it is known for", needs=("key_dates", "legislative_year"))
+def _key_dates_sourced(KD, LY):
+    """No date in key_dates.py is typed from memory. Each is a dated row of
+    legislative_year's timeline -- which cites the House or Senate calendar or
+    journal that prints it, or the rule that fixes it -- or a day a statute
+    fixes, computed here by its rule and cited to the RSA.
+
+    Fails where a key date has no name, no known kind, no source line, or a
+    statute's day that cites no section of the RSA; where a name has no
+    Spanish (key_dates._names), so the Spanish home page would say it in
+    English; where a rule gives the wrong day in a year whose day is known --
+    town meeting on 11 March 2025, 10 March 2026 and 9 March 2027; Organization
+    Day on 4 December 2024 and 2 December 2026; the general election on 5
+    November 2024 and 3 November 2026; the state primary on 10 September 2024
+    and 8 September 2026, and none dated from 2028, when RSA 653:8 as this
+    disk prints it stops being the law; or where the list on 24 October 2026
+    leaves out a date the owner named. Where db/NH_RSA.psv is on this disk, each
+    statute key_dates.py computes from must still print its rule's words."""
+    from datetime import date
+    bad = []
+    known = ((KD.town_meeting_day(2025), date(2025, 3, 11)),
+             (KD.town_meeting_day(2026), date(2026, 3, 10)),
+             (KD.town_meeting_day(2027), date(2027, 3, 9)),
+             (KD.second_tuesday(2026, 4), date(2026, 4, 14)),
+             (KD.second_tuesday(2026, 5), date(2026, 5, 12)),
+             (LY.organization_day(2024), date(2024, 12, 4)),
+             (LY.organization_day(2026), date(2026, 12, 2)),
+             (LY.general_election(2024), date(2024, 11, 5)),
+             (LY.general_election(2026), date(2026, 11, 3)),
+             (LY.opening_day(2027), date(2027, 1, 6)),
+             (KD.state_primary(2024), date(2024, 9, 10)),
+             (KD.state_primary(2026), date(2026, 9, 8)),
+             (KD.state_primary(2027), None),
+             (KD.state_primary(2028), None))
+    for got, want in known:
+        if got != want:
+            bad.append(f"a rule gives {got}, where the day is {want}")
+    n = 0
+    for day in (date(2026, 3, 11), date(2026, 10, 24), date(2027, 2, 1)):
+        for e in KD.events(day):
+            n += 1
+            who = f"{e.name or '(no name)'} on {e.day}"
+            if not e.name or e.kind not in KD.KINDS or not re.fullmatch(r"\d{4}-\d\d-\d\d", e.day):
+                bad.append(f"{who}: a name, a kind of {KD.KINDS} and a day are wanted")
+            if e.until and e.until <= e.day:
+                bad.append(f"{who}: a period that ends {e.until}, before it begins")
+            if e.term and not re.search(r"\bSources?: ", e.src):
+                bad.append(f"{who}: a date of the {e.term} term names no document")
+            if not e.term and not re.search(r"RSA \d", e.src):
+                bad.append(f"{who}: a statute's day cites no section")
+            # A section is linked only where the statutes on this disk hold
+            # it (key_dates._law), and then at the Laws page's own address.
+            for href, sec in re.findall(r'<a href="([^"]+)">RSA ([^<,]+)', e.src):
+                import build_rsa
+                if href != build_rsa.href(sec):
+                    bad.append(f"{who}: RSA {sec} is linked to {href}, not {build_rsa.href(sec)}")
+            if not KD.named("es", e):
+                bad.append(f"{who}: no Spanish name in key_dates._names")
+    owner = {("General election", "2026-11-03"), ("State primary", "2026-09-08"),
+             ("Town meeting day", "2026-03-10"), ("Town meeting day", "2027-03-09"),
+             ("Town meeting day in towns that chose April", "2027-04-13"),
+             ("Town meeting day in towns that chose May", "2027-05-11"),
+             ("Organization Day", "2026-12-02"), ("The 2027 session opens", "2027-01-06"),
+             ("Crossover", "2026-03-26"), ("Interim study reports due", "2026-10-23"),
+             ("Last day to file bill requests", "2026-11-18"),
+             ("Last day to act on the other chamber's bills", "2026-05-14"),
+             ("Senators running again may file bill requests", "2026-09-21")}
+    have = {(e.name, e.day) for e in KD.events(date(2026, 10, 24))}
+    for name, day in sorted(owner - have):
+        bad.append(f"on 24 October 2026 the key dates leave out {name} on {day}")
+    kinds = {e.name: e.kind for e in KD.events(date(2026, 10, 24))}
+    for name, kind in (("General election", "election"), ("Organization Day", "session"),
+                       ("Veto day", "session"), ("Bill requests open to every member", "opens"),
+                       ("Interim study reports due", "deadline"),
+                       ("Senators running again may file bill requests", "period")):
+        if kinds.get(name) != kind:
+            bad.append(f"{name} is a {kinds.get(name)!r}, not a {kind!r}")
+    secs = _rsa_sections(Path("db") / "NH_RSA.psv", {s for s, _w in KD_RSA_WORDS})
+    said = "the statutes' text is not on this disk"
+    if secs is not None:
+        for sec, words in KD_RSA_WORDS:
+            if sec not in secs:
+                bad.append(f"RSA {sec} is not in db/NH_RSA.psv")
+            elif words.lower() not in secs[sec][1].lower():
+                bad.append(f"RSA {sec} no longer prints {words!r}: its rule is to be read again")
+        head = secs.get("653:8", ("", ""))[0]
+        until = re.search(r"effective until (\w+ \d+, \d{4})", head)
+        if until and until.group(1) != "January 1, 2028":
+            bad.append(f"RSA 653:8 as printed is in force until {until.group(1)}, and "
+                       "key_dates.PRIMARY_UNTIL says 1 January 2028")
+        said = f"{len(KD_RSA_WORDS)} statutes print their rule in db/NH_RSA.psv"
+    assert not bad, "; ".join(bad[:8])
+    return "ok", (f"{n} key dates over three days, each with its source and a Spanish name; "
+                  f"{len(known)} days the law fixes are their rule's; {said}")
+
+
+@check("frontend", "the status box names the next deadline by its rule, on fixed days, in both "
+                   "copies of the box and in Spanish", needs=("key_dates", "build_pages"))
+def _key_dates_deadline(KD, BP):
+    """The owner, 24 October 2026: "Statuses should list the most relevant
+    upcoming deadline like the deadline for committees to finish interim
+    study reports, filing periods, etc." key_dates.next_deadline's rule: the
+    nearest deadline on or after the day, a deadline being the last day of a
+    filing period or a one-day row of the schedule that is the last day for
+    something -- never a sitting, an election or a first day of filing.
+
+    Held on fixed days: the House's interim study reports on 20 and on 23
+    October 2026 (said with its chamber, which its name does not say); the
+    Senate's filing period, until its last day, on 15 September; the last day
+    to file bill requests on 24 October and on 1 November, past the election
+    and the first day of filing; the Senate's sign-off on 25 November, past
+    Organization Day; and none on 16 January 2027, when legislative_year
+    holds no later deadline, which the build then says. The line stands in
+    the box the server draws and in the script's copy, over the way to the
+    schedule, retiring the day after its date, and in Spanish on /es/."""
+    from datetime import date
+    bad = []
+    for day, want in ((date(2026, 9, 15), ("2026-09-25", "Senators running again may file bill requests", "last")),
+                      (date(2026, 10, 20), ("2026-10-23", "Interim study reports due", "")),
+                      (date(2026, 10, 23), ("2026-10-23", "Interim study reports due", "")),
+                      (date(2026, 10, 24), ("2026-11-18", "Last day to file bill requests", "")),
+                      (date(2026, 11, 1), ("2026-11-18", "Last day to file bill requests", "")),
+                      (date(2026, 11, 25), ("2026-12-18", "Senate sponsors sign off", "")),
+                      (date(2027, 1, 16), None)):
+        got = KD.next_deadline(KD.events(day), day)
+        got = got and (got[0], got[1].name, got[2])
+        if got != want:
+            bad.append(f"on {day} the status box would name {got}, not {want}")
+    S = {"phase": "out of session", "headline": "The session is over.", "note": "",
+         "updated": "2026-10-22", "milestones": []}
+    day = date(2026, 10, 24)
+    line = ('<p class="statenote statedue" data-until="2026-11-19"><b>Next deadline:</b> '
+            "Last day to file bill requests, Nov 18.</p>")
+    box, js = BP.state_box(S, "en", day), BP.home_js("en", day)
+    if line + BP.YEAR_LINK not in box:
+        bad.append(f"the built box does not end with the deadline over the schedule's link: {box[-300:]!a}")
+    if line + BP.YEAR_LINK not in js:
+        bad.append("HOME_JS's copy of the box does not carry the same deadline")
+    if "Interim study reports due (House), Oct 23." not in BP.state_box(S, "en", date(2026, 10, 20)):
+        bad.append("a House deadline whose name does not say so is not said with its chamber")
+    es = BP.state_box(S, "es", day)
+    if "<b>Próximo plazo:</b> Último día para presentar solicitudes de proyectos de ley, 18 nov.</p>" not in es:
+        bad.append(f"the Spanish box does not say the deadline in Spanish: {es[-320:]!a}")
+    late = date(2027, 1, 16)
+    if "statedue" in BP.state_box(S, "en", late) or not KD.no_deadline_line(KD.events(late), late):
+        bad.append("with no deadline ahead the box still names one, or the build does not say why")
+    assert not bad, "; ".join(bad)
+    return "ok", ("7 days, each its nearest deadline or none; both copies of the box, over the "
+                  "schedule's link, in English and Spanish")
+
+
+@check("frontend", "Coming up lists the key dates as events, in date order: in their days this "
+                   "week and the next few after it", needs=("key_dates", "build_pages"))
+def _coming_up_key_dates(KD, BP):
+    """The owner, 24 October 2026: "Coming up should list major events like
+    the election days, town meeting days, organization day, etc". A key date
+    of the rail's week stands first in its day, as a line of its own class
+    (kdrow) and never a meeting's card, leading to its day on the Calendar; a
+    day holding only a key date is one of the rail's days. The next four
+    after the rail's Sunday follow the week under their own heading, in date
+    order, each retiring the day after it (data-until), and HOME_JS keeps
+    them when it empties the week in the reader's clock. Drawn on Saturday 24
+    October 2026, when the rail is next week's, with nothing in it, and on
+    Monday 2 November, the election's week; in Spanish as well."""
+    import contextlib
+    import io
+    from datetime import date
+    bad = []
+    tmp = Path(tempfile.mkdtemp(prefix="gr-kd-rail-"))
+    row = {"term": "2025-2026", "bill": "HB1", "body": "H", "kind": "public hearing",
+           "date": "2026-11-03", "time": "10:00", "committee": "Commerce", "venue": "LOB 302"}
+    try:
+        with contextlib.redirect_stdout(io.StringIO()):
+            sat = BP.calendar_html(tmp, today=date(2026, 10, 24), rows=[])
+            mon = BP.calendar_html(tmp, today=date(2026, 11, 2), rows=[row])
+            es = BP.calendar_html(tmp, today=date(2026, 11, 2), rows=[row], lang="es")
+            none = BP.calendar_html(tmp, today=date(2026, 11, 2), rows=[row], events=[])
+    finally:
+        shutil.rmtree(tmp, ignore_errors=True)
+    later = re.findall(r'<li class="kdrow" data-kd="[a-z]+" data-until="([^"]+)"><time datetime="([^"]+)">'
+                       r'[^<]*</time> <a href="([^"]+)">([^<]*)</a>', sat)
+    if [x[3] for x in later] != ["General election", "Bill requests open to every member",
+                                 "Last day to file bill requests", "Organization Day"]:
+        bad.append(f"on 24 October the key dates after the week are {[x[3] for x in later]}")
+    days = [x[1] for x in later]
+    if days != sorted(days) or any(u <= d for u, d, _h, _n in later):
+        bad.append(f"the key dates after the week are not in date order, each until the day after: {later}")
+    if later and later[0][2] != "/calendar?week=2026-W45&amp;day=2026-11-03":
+        bad.append(f"the election leads to {later[0][2]}, not its day on the Calendar")
+    if "calday" in sat or sat.index('class="kdahead"') > sat.index('class="calmore calall"'):
+        bad.append("on an empty week the key dates are drawn as a day, or after the way to the calendar")
+    nov3 = re.search(r'<div class="calday" data-d="2026-11-03">(.*?)</div>', mon, re.S)
+    if not nov3 or not re.search(r'<p class="kdrow" data-kd="election"><a [^>]*>General election</a></p>'
+                                 r'<details class="calmeet"', nov3.group(1)):
+        bad.append("in the election's week the election is not first in its day, before the day's meeting")
+    if not re.search(r'<div class="calday" data-d="2026-11-04">.*?<p class="kdrow"', mon, re.S):
+        bad.append("a day holding only a key date is not one of the rail's days")
+    after = re.findall(r'<li class="kdrow"[^>]*><time datetime="([^"]+)"', mon)
+    if not after or min(after) <= "2026-11-08":
+        bad.append(f"the key dates after the week begin inside it: {after}")
+    if len(re.findall(r'<details class="calmeet"', mon)) != 1:
+        bad.append("a key date is drawn as a meeting's card in Coming up")
+    if "Elección general" not in es or "Próximas fechas clave" not in es:
+        bad.append("Coming up in Spanish does not name the key dates in Spanish")
+    if "kdrow" in none:
+        bad.append("events=[] still draws key dates")
+    js = BP.HOME_JS
+    if 'keys=cal.querySelector(".kdahead")' not in js or "keys.outerHTML" not in js:
+        bad.append("HOME_JS drops the key dates after the week when it empties the rail")
+    assert not bad, "; ".join(bad)
+    return "ok", ("on 24 October the four next key dates after an empty week, in order, each to "
+                  "its day; on 2 November the election first in its day and the next after Sunday; "
+                  "in Spanish too")
+
+
+@check("frontend", "the Calendar shows each key date on its day under Key Dates, a box of its own "
+                   "that counts no meeting", needs=("key_dates", "build_calendar", "build_pages"))
+def _calendar_key_dates(KD, BC, BP):
+    """The owner, 24 October 2026: "those dates should show up on the
+    calendar page too under a separate meeting type in the key". So the
+    Calendar's key and its row of boxes carry Key Dates, in its gold and
+    ticked for a new reader; each key date is a card on its day, before the
+    day's meetings, of its own class (calkd), opening on its source; a date a
+    year ahead gives its week a page, and one further off does not; a
+    Saturday holding a key date is listed as one holding a meeting is; and
+    the page's script reads a key date as an entry of the Key Dates box and
+    of nothing else -- not counted among the meetings, named in its day's
+    cell with a dot of its colour, its week entry opening its day, and a
+    week of key dates alone opening on the first of them."""
+    import contextlib
+    import io
+    from datetime import date, timedelta
+    bad = []
+    today = date(*CAL_TODAY)
+    weeks = BC.weeks_from(_cal_rows(), names={})
+    plain = BC.weeks_from(_cal_rows(), names={})
+    events = BC.key_date_days(weeks, today)
+    if BC.week_key(date(2026, 11, 3)) not in weeks:
+        bad.append("the election's week, past the last meeting, has no page")
+    far = today + timedelta(days=BC.KEY_AHEAD)
+    if any(d > far.isoformat() or d < BC.FROM for d in events):
+        bad.append(f"a key date outside {BC.FROM} to {far} is on the Calendar")
+    if not any(e.name == "Town meeting day" for e, _r in events.get("2026-03-10", [])):
+        bad.append("town meeting day, 10 March 2026, is not on its day")
+    BC.every_week(weeks, today)
+    BC.every_week(plain, today)
+    order, k = sorted(weeks), BC.week_key(date(2026, 3, 10))
+    root = Path(tempfile.mkdtemp(prefix="gr-kd-cal-"))
+    try:
+        site = root / "site"
+        site.mkdir()
+        shutil.copy(Path("src/pages/bills.html"), site / "bills.html")
+        with contextlib.redirect_stdout(io.StringIO()):
+            BC.week_page(site, "https://graniterecord.org", k, weeks, order, order.index(k),
+                         {}, {}, {}, [], today, set(), study=True, events=events)
+            BC.month_files(site, weeks, order, {}, {}, {}, today, events=events)
+        page = (site / "calendar" / f"{k}.html").read_text(encoding="utf-8")
+        data = site / "calendar" / "data"
+        mar = json.loads((data / "2026-03.json").read_text(encoding="utf-8"))
+        node = _cal_node()
+        out = ""
+        if node:
+            prog = root / "kd.js"
+            prog.write_text("globalThis.document={getElementById:function(){return null;}};\n"
+                            + _with_components(BC.WEEK_JS) + _CAL_KD_TEST, encoding="utf-8")
+            r = _run([node, str(prog), str(data / "2026-03.json"), str(data / "2026-11.json")],
+                     capture_output=True, text=True, timeout=120)
+            out = ((r.stdout or "") + (r.stderr or "")).strip()
+            if r.returncode or not out.endswith("OK"):
+                bad.append("the script: " + out[-900:])
+    finally:
+        shutil.rmtree(root, ignore_errors=True)
+    day = re.search(r'<div class="calday" data-d="2026-03-10">(.*?)</div>\s*(?=<div class="calday)', page, re.S)
+    if not day or not re.match(r'<h2 class="caldate">.*?</h2><details class="calkd" data-who="date" '
+                               r'data-kinds="date"', day.group(1), re.S):
+        bad.append("town meeting day's card is not first in its day on the week's page")
+    elif not re.search(r'<span class="chip calkind k-date">Key Date</span>.*?'
+                       r'(?:<a href="/laws/39#s1">)?RSA 39:1\b', day.group(1), re.S):
+        bad.append("the card does not wear the Key Date chip, or does not open on its statute")
+    if day and day.group(1).index('<details class="calkd"') > day.group(1).find('<details class="calmeet"'):
+        bad.append("the key date is not before the day's meetings")
+    if page.count('<details class="calmeet"') != _count_cards(plain, k):
+        bad.append("a key date changed how many meeting cards the week holds")
+    if not re.search(r'<label class="calcat k-date"><input type="checkbox" name="cat" value="date" '
+                     r'checked><span class="cbx" aria-hidden="true"></span>Key Dates</label>', page):
+        bad.append("the row of boxes has no Key Dates box, ticked")
+    if '<li><i class="k-date" aria-hidden="true"></i>Key Dates</li>' not in page:
+        bad.append("the key a reader without script is given has no Key Dates")
+    if '<details class="calkd"' not in mar["days"].get("2026-03-10", ""):
+        bad.append("the month file's 10 March has no key date, so the script's views would lose it")
+    sat = {"2026-03-21": [(KD.KeyDate("2026-03-21", "", "deadline", "A Saturday deadline", "",
+                                      "", "Source: a test.", "", ""), "")]}
+    facts = BC.week_facts(BC.week_key(date(2026, 3, 21)), weeks, today, sat)
+    if "2026-03-21" not in facts["days"]:
+        bad.append("a Saturday holding a key date is not listed in its week")
+    assert not bad, "; ".join(bad)
+    return "ok", ("town meeting day first in its day, under a ticked Key Dates box and in the key, "
+                  "counted as no meeting; the election's week has a page; "
+                  + (out.splitlines()[-2] if node and out else "node is not on PATH, so the script was not run"))
+
+
+def _count_cards(weeks, k):
+    """How many meeting cards a week's page draws for week `k`: one a key."""
+    return sum(len(day) for day in (weeks.get(k) or {}).values())
+
+
+_CAL_KD_TEST = r"""
+const C=globalThis.GRCAL, fs=require("fs"), fails=[];
+const ok=(c,m)=>{ if(!c) fails.push(m); };
+const days={};
+process.argv.slice(2).forEach(f=>{ const j=JSON.parse(fs.readFileSync(f,"utf8"));
+  Object.keys(j.days).forEach(d=>days[d]=C.parseDay(j.days[d])); });
+const F=(o)=>Object.assign(C.defaults(),o);
+const tue=days["2026-03-10"], kd=tue.cards.filter(C.isKD), mt=C.meetings(tue.cards);
+ok(C.CATS.indexOf("date")>=0 && C.defaults().cats.indexOf("date")>=0, "Key Dates is not a box, on for a new reader");
+ok(kd.length===1 && kd[0].name==="Town meeting day" && tue.cards[0]===kd[0], "10 March's key date is not read first: "+tue.cards.map(e=>e.name));
+ok(kd.length && C.catsOf(kd[0]).join()==="date", "a key date answers to "+(kd[0]&&C.catsOf(kd[0])));
+ok(C.tally(tue.cards,F({})).total===mt.length && C.countLine(C.tally(tue.cards,F({})),"on Tuesday")===mt.length+" meetings on Tuesday.",
+   "a key date is counted as a meeting: "+C.countLine(C.tally(tue.cards,F({})),"on Tuesday"));
+ok(kd.length && !C.matches(kd[0],F({cats:["hearing","exec","work","conf","floor"]})) && C.matches(kd[0],F({})),
+   "the Key Dates box does not show and hide the key dates");
+const cell=C.cellHtml("2026-03-10",{view:"2026-03",sel:"2026-03-11",focus:"2026-03-11",today:"2026-03-11",
+  first:"2025-01-01",last:"2027-12-31",days:days,f:F({})});
+ok(/Town meeting day/.test(cell) && /<i class="k-date"><\/i>/.test(cell) && /2 meetings/.test(cell),
+   "the grid's cell does not name the key date with its dot, or counts it: "+cell);
+const entry=kd.length?C.entryHtml(kd[0]):"";
+ok(/^<li class="wke wkkd"/.test(entry) && /data-open="2026-03-10\|town meeting day"/.test(entry),
+   "a key date's week entry does not wear its colour and open its day: "+entry);
+const nov=["2026-11-02","2026-11-03","2026-11-04","2026-11-05","2026-11-06"].reduce((o,d)=>(o[d]=days[d],o),{});
+ok(C.firstDay("2026-W45",nov,"2026-03-11","2025-01-01","2027-12-31",F({}))==="2026-11-03",
+   "a week of key dates alone does not open on the first of them: "+C.firstDay("2026-W45",nov,"2026-03-11","2025-01-01","2027-12-31",F({})));
+ok(days["2026-11-03"] && /class="calempty"/.test(days["2026-11-03"].tail),
+   "a day of a key date alone loses its line that no meeting is on it");
+console.log(fails.length?fails.join("\n"):"10 March's town meeting day and November's election week read as key dates, counted as no meeting\nOK");
+"""
+
+
+@check("frontend", "the webinar stands under the home page's search, in both languages and at every width",
+       needs=("build_pages",))
+def _webinar_under_search(BP):
+    """The owner, 24 October 2026: "Could you move the webinar below the
+    search bar?" On the page as written -- which is the order on a desktop,
+    and the order a screen reader hears -- the box follows the search and its
+    line of help and comes before the cards, in English and in Spanish; below
+    1180px, where each block is placed by its own order (app.css), it takes
+    the search's, and so stands after it. Drawn on a day it is still shown
+    (GRANITE_BUILD_DATE, 24 October 2026)."""
+    was = os.environ.get("GRANITE_BUILD_DATE")
+    os.environ["GRANITE_BUILD_DATE"] = "2026-10-24"
+    try:
+        pages = {lang: BP.home_body(lang, False, "", "", "", []) for lang in ("en", "es")}
+    finally:
+        if was is None:
+            os.environ.pop("GRANITE_BUILD_DATE", None)
+        else:
+            os.environ["GRANITE_BUILD_DATE"] = was
+    bad = []
+    for lang, body in pages.items():
+        at = [body.find(x) for x in ('class="searchbig"', 'id="hqhint"', '<aside class="webinar"',
+                                     '<div class="entry">')]
+        if -1 in at or at != sorted(at):
+            bad.append(f"{lang}: the search, its help, the webinar and the cards stand at {at}")
+    css = re.sub(r"/\*.*?\*/", "", Path("src/pages/app.css").read_text(encoding="utf-8"), flags=re.S)
+    orders = {}
+    for sel in ("searchbig", "hqhint", "webinar"):
+        m = re.search(r"\.hcols \." + sel + r"\b[^{]*\{order:(\d+)\}", css)
+        orders[sel] = int(m.group(1)) if m else None
+    if None in orders.values() or orders["webinar"] < orders["searchbig"] or orders["webinar"] < orders["hqhint"]:
+        bad.append(f"below 1180px the webinar is ordered before the search: {orders}")
+    assert not bad, "; ".join(bad)
+    return "ok", f"under the search and its help, before the cards, in English and Spanish; orders {orders}"
 
 
 @check("frontend", "a committee's Upcoming session says what a reader may do at a hearing, in the person's words, and the home page's Coming up no longer does")
