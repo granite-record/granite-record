@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.680
+# GRANITE_VERSION: 2026-09-04.681
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -85648,6 +85648,47 @@ def _topic_title_rules(TM):
         TM.ENABLED.update(saved)
     return "ok", ("CACR first; a commemoration only below the floor; the proposals inert "
                   "while off")
+
+
+@check("build", "the topic proposals the owner turned on reach the General Court's own labels "
+                "too: this term's housekeeping resolutions under Legislature, a study commission "
+                "under Study", needs=("build_site_v2", "topic_model"))
+def _proposals_reach_labelled_bills(B, TM):
+    """The owner's review of 24 October 2026 turned on three proposals
+    (topic_model.ENABLED). The preview built from it had them in every
+    archived term and not in 2025-2026: HR 1-4 and SR 5 of this term carry
+    the General Court's "Regular Meeting", which the site retires, and
+    build_site_v2.unify_vocabulary asked the housekeeping rule about a record
+    keyed by its number but not carrying it, so the rule, which reads the
+    number, never matched and the label was blanked. It fails if a labelled
+    bill of the current term is asked without its number again, on the real
+    titles of that day."""
+    if "housekeeping into Legislature" not in TM.ENABLED:
+        return "skip", "the housekeeping proposal is off"
+    bills = {"2025-2026": {
+        "HR1": {"title": "Adopting the rules of the 2024 session for the 2025-2026 biennium.",
+                "subject": "Regular Meeting"},
+        "SR5": {"title": "RESOLVED, that the Senate meet in Joint Convention with the House of "
+                         "Representatives for the purpose of electing a Secretary of State.",
+                "subject": "Regular Meeting"},
+        "HB291": {"title": "removing veterinarians from the requirements of adopting rules for "
+                           "prescribing opioids.", "subject": "Regular Meeting"},
+        "HB106": {"title": "establishing a commission to determine the monetary costs of climate "
+                           "damage to the state of New Hampshire and making an appropriation therefor.",
+                  "subject": "Environment - Conservation"}}}
+    import contextlib
+    import io
+    with contextlib.redirect_stdout(io.StringIO()):
+        B.unify_vocabulary(bills)
+    got = {b: r.get("subject") for b, r in bills["2025-2026"].items()}
+    want = {"HR1": "Legislature", "SR5": "Legislature", "HB291": "",
+            "HB106": "Study Committees and Commissions"}
+    if "study committees, wider" not in TM.ENABLED:
+        want.pop("HB106")
+        got.pop("HB106")
+    assert got == want, f"the proposals on this term's labelled bills: {got}, not {want}"
+    assert "bill" not in bills["2025-2026"]["HR1"], "the vocabulary step wrote a number into the record"
+    return "ok", "HR 1 and SR 5 under Legislature, a bill about rules not, HB 106 under Study"
 
 
 @check("build", "every bench kind can be drawn and saved", needs=("review",))
