@@ -36,6 +36,16 @@ binding = "DB"
 database_name = "graniterecord-reports"
 database_id = "1fb4afb6-62dc-455a-9357-0125bcf7577a"
 
+# EMAIL FOLLOWING ON THE LIVE SITE (the person, 23 October 2026: "Email
+# following should be enabled on the live site prior to the webinar"). The
+# Functions under functions/api/follow/ answer only where FOLLOW_DB is bound;
+# the sender (workers/follow/) mails nobody while they do not. Created by the
+# person, 11 October 2026; the same id as workers/follow/wrangler.toml's.
+[[env.production.d1_databases]]
+binding = "FOLLOW_DB"
+database_name = "graniterecord-follow"
+database_id = "c43becf3-b914-4d17-8548-4f066af4544a"
+
 # The site's names only. Every production deployment also answers at its own
 # <hash>.graniterecord.pages.dev address for good, and those are not the site.
 [env.production.vars]
