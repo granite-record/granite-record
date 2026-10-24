@@ -1,4 +1,4 @@
-/* GRANITE_VERSION: 2026-09-07.302 */
+/* GRANITE_VERSION: 2026-09-07.303 */
 /* ONE STYLESHEET FOR EVERY PAGE (23 October 2026). Every page of the site
    links this file, /app.css: the record pages shell.page() makes from
    bills.html, and the five build_pages.py writes -- the home page, Officials,
@@ -6938,6 +6938,23 @@ border-bottom:2px solid var(--ink-2);transform:rotate(-45deg);transition:transfo
 .rs-h a:hover{text-decoration-thickness:2px}
 .rs-text p{font:400 var(--t-ui)/1.65 var(--sans);color:var(--ink);margin:0 0 .625rem;max-width:var(--rs-meas)}
 .rs-text a{color:var(--pine)}
+/* A DEFINED TERM WHERE IT IS USED (the person, 24 October 2026): the word in
+   the text's own ink, underlined in dots as the site's term popovers are
+   (.termbtn), a link to its definition; build_rsa's DEFS_JS opens the
+   definition under it in the popovers' box (.termpop), held in .rs-art so it
+   scrolls with the text. The definition it links to is marked when reached,
+   as a section is. */
+.rs-art{position:relative}
+.rs-text a.rs-tm{color:inherit;text-decoration:underline dotted;text-decoration-thickness:1px;
+  text-underline-offset:.2em}
+.rs-text a.rs-tm:hover,.rs-text a.rs-tm[aria-describedby]{text-decoration-style:solid}
+.rs-dfn{scroll-margin-top:5rem}
+.rs-dfn:target{background:linear-gradient(var(--pine-soft),var(--pine-soft)) left top/3px 100% no-repeat;
+  padding-left:.875rem}
+.rs-dpop{max-width:min(26rem,calc(100vw - 2rem))}
+.rs-dpcite{display:block;font-weight:600;margin-bottom:.25rem}
+.rs-dptext{display:block}
+.rs-dphint{display:block;margin-top:.375rem;color:var(--ink-2)}
 .rs-gone,.rs-yr,.rs-st,.rs-note{color:var(--ink-2);font-size:var(--t-sm)}
 .rs-source{font:400 var(--t-sm)/1.55 var(--sans);color:var(--ink-2);margin:.5rem 0 0}
 .rs-repealed{font:400 var(--t-sm)/1.5 var(--sans);color:var(--ink-2);margin:.375rem 0;

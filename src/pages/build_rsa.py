@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-10-11.17
+# GRANITE_VERSION: 2026-10-11.18
 """
 The statutes (RSA) as pages: /laws, and one page a chapter at /laws/<chapter>.
 
@@ -31,10 +31,12 @@ A CHAPTER PAGE, top to bottom (RSA_PAGE.md §5):
 3. The sections in order, under the chapter's own inner headings, each an
    anchor (/laws/91-a#s4) carrying: its heading, a Pending tag where a bill
    still moving would change it, its text with every citation the table
-   holds linked to its own anchor, its source note, and four folds -- How it
-   has changed (the source note's laws, newest first, each the bill it was),
-   Also proposed by (every other bill whose own instructions name the
-   section, failed ones included), Cites, Cited by.
+   holds linked to its own anchor and the first use of each defined term
+   that applies to it marked (rsa.Defined, the person's ask of 24 October
+   2026), its source note, and four folds -- How it has changed (the source
+   note's laws, newest first, each the bill it was), Also proposed by (every
+   other bill whose own instructions name the section, failed ones
+   included), Cites, Cited by.
 4. A repealed section is one muted line, its anchor kept, so an old bill's
    link still lands on something true.
 
@@ -305,12 +307,20 @@ def folded(items, cls="rs-list"):
 
 # ------------------------------------------------------------------ text
 
-def linked_text(table, text, own):
+def linked_text(table, text, own, terms=None, wraps=None):
     """The section's text as paragraphs, every citation the table holds a
-    link to its own anchor, the rest as written; a repealed target says so."""
+    link to its own anchor, the rest as written; a repealed target says so.
+
+    `terms` is {paragraph: [(start, end, href)]}, a defined term's use, drawn
+    as a quiet link to its definition (rs-tm); `wraps` is {first paragraph:
+    (last paragraph, id, cite, scope words)}, a definition something on the
+    page points at, its paragraphs held in one rs-dfn with the id the uses
+    link to. DEFS_JS reads the definition from there, so its words are on
+    the page once, where the statute puts them."""
     out = []
-    for para in [p.strip() for p in (text or "").split("\n") if p.strip()]:
-        pieces, pos = [], 0
+    close_at = None
+    for li, para in enumerate(rsa.paragraphs(text)):
+        spans = []
         for c in rsa.cites(para):
             kind, target = table.resolve(c.chapter, c.section)
             if not kind or target == own:
@@ -318,16 +328,64 @@ def linked_text(table, text, own):
             # the span to link: from "RSA" for the head, the number alone in a list
             st = c.start if c.how == "rsa" else para.find(c.section, c.start)
             en = c.end
-            if st < pos or st < 0:
+            if spans and st < spans[-1][1] or st < 0:
                 continue
             gone = kind == "section" and table.sections[target].repealed
+            spans.append((st, en, f'<a href="{E(href(target))}">',
+                          "</a>" + (' <span class="rs-gone">(repealed)</span>' if gone else "")))
+        for st, en, to in (terms or {}).get(li, []):
+            if not any(st < b and a < en for a, b, _o, _c in spans):
+                spans.append((st, en, f'<a class="rs-tm" href="{E(to)}">', "</a>"))
+        pieces, pos = [], 0
+        for st, en, opening, closing in sorted(spans):
             pieces.append(E(para[pos:st]))
-            pieces.append(f'<a href="{E(href(target))}">{E(para[st:en])}</a>'
-                          + (' <span class="rs-gone">(repealed)</span>' if gone else ""))
+            pieces.append(opening + E(para[st:en]) + closing)
             pos = en
         pieces.append(E(para[pos:]))
-        out.append(f"<p>{''.join(pieces)}</p>")
+        p = f"<p>{''.join(pieces)}</p>"
+        w = (wraps or {}).get(li)
+        if w and close_at is None:
+            last, ident, cite, scope = w
+            p = (f'<div class="rs-dfn" id="{E(ident)}" data-cite="{E(cite)}"'
+                 + (f' data-for="{E(scope)}"' if scope else "") + f">{p}")
+            close_at = last
+        if close_at == li:
+            p += "</div>"
+            close_at = None
+        out.append(p)
+    if close_at is not None:
+        out.append("</div>")
     return "".join(out)
+
+
+# The words a definition's scope is said in, over its use: "Defined for this
+# chapter in RSA 153:1, III". A scope the reader names some other way ("RSA
+# 162-C:1 to 162-C:5") is said as "Defined in".
+SCOPE_WORDS = {"chapter": "this chapter", "subdivision": "this subdivision", "section": "this section",
+               "paragraph": "this paragraph", "subparagraph": "this subparagraph",
+               "article": "this article", "title": "this title"}
+
+
+def defined_terms(table, ch, path):
+    """({section: {paragraph: [(start, end, href)]}}, {section: wraps}) for a
+    chapter's page: each section's marks (rsa.Defined.marks) and the
+    definitions they point at, which are always on the same page, since a
+    definition is never marked outside its own chapter."""
+    d = table.defined()
+    marks, wraps = {}, collections.defaultdict(dict)
+    for a in table.chapters[ch]["sections"]:
+        if table.sections[a].repealed:
+            continue
+        got, _withheld = d.marks(a)
+        if not got:
+            continue
+        marks[a] = {li: [(st, en, f"{path}#{d.defs[i].anchor}") for st, en, i in ms]
+                    for li, ms in got.items()}
+        for ms in got.values():
+            for _st, _en, i in ms:
+                x = d.defs[i]
+                wraps[x.addr][x.para] = (x.shown, x.anchor, x.cite, SCOPE_WORDS.get(x.scope, ""))
+    return marks, wraps
 
 
 # ------------------------------------------------------------------ indexes
@@ -516,6 +574,7 @@ def chapter_page(tmpl, table, data, bills, ch, base):
     toc_items = []
     body = []
     sub = None
+    terms, wraps = defined_terms(table, ch, path)
     for a in secs:
         s = table.sections[a]
         if s.sub and s.sub != sub:
@@ -571,7 +630,7 @@ def chapter_page(tmpl, table, data, bills, ch, base):
         body.append(
             f'<section class="rs-sec" id="{E(anchor)}"><h3 class="rs-h"><a href="{E(path)}#{E(anchor)}">'
             f'{E(a)}</a> {E(s.heading)}</h3>{tag}'
-            f'<div class="rs-text" translate="no">{linked_text(table, s.text, a)}</div>'
+            f'<div class="rs-text" translate="no">{linked_text(table, s.text, a, terms.get(a), wraps.get(a))}</div>'
             + (f'<p class="rs-source">Source. {E(s.note)}</p>' if s.note else "")
             + (f'<div class="rs-folds">{folds}</div>' if folds else "") + "</section>")
     # THE SECTIONS IN A SIDEBAR (the person, 11 October 2026: "when you're in
@@ -589,7 +648,7 @@ def chapter_page(tmpl, table, data, bills, ch, base):
     return p.replace('<div id="results"></div>',
                      f'<div id="results"><div class="l-page rs-page">{head}'
                      f'<div class="rs-chap{" rs-notoc" if not toc else ""}">{toc}{art}</div></div>'
-                     f'{CHAPTER_JS}</div>', 1)
+                     f'{CHAPTER_JS}{DEFS_JS if terms else ""}</div>', 1)
 
 
 CHAPTER_JS = """<script>
@@ -614,6 +673,84 @@ CHAPTER_JS = """<script>
     var li=a.parentNode;if(li.offsetTop<box.scrollTop||li.offsetTop>box.scrollTop+box.clientHeight-40)
       box.scrollTop=li.offsetTop-box.clientHeight/3;});},{rootMargin:"-15% 0px -75% 0px"});
   [].forEach.call(document.querySelectorAll(".rs-sec[id],.rs-repealed[id]"),function(s){io.observe(s);});
+})();
+</script>"""
+
+
+# A DEFINED TERM'S DEFINITION OVER THE WORD (the person, 24 October 2026:
+# "definitions in the rsa pages show up as tooltips in sections that cite
+# them like 'dwelling unit' being defined in 153:1 and later referenced so
+# that you know which definition it's referring to"). The word is a link to
+# its definition (linked_text's rs-tm), so with no script it still goes
+# there. With it, the definition opens in a box under the word, as the
+# site's term popovers do (components.js, C9): a pointer held over it half a
+# second, or keyboard focus; on a phone the first tap opens it and a second
+# follows the link. It stays while the pointer moves onto it, and closes on
+# Escape, a press elsewhere or focus leaving (WCAG 1.4.13). The words are
+# read from the definition's own paragraphs on the page (rs-dfn), the first
+# 400 characters of them, and the box says which section defines the word
+# and for what: "Defined for this chapter in RSA 153:1, III". One box serves
+# every word, inside the chapter's text, so it scrolls with it.
+DEFS_JS = r"""<script>
+(function(){
+  var pop=null,cur=null,wait=0,shut=0,opened=0,touch=false,HOLD=500;
+  function target(a){var h=a.getAttribute("href")||"",i=h.indexOf("#");return i<0?null:document.getElementById(h.slice(i+1));}
+  function words(w){
+    var t=[].map.call(w.querySelectorAll("p"),function(p){return p.textContent;}).join(" ")
+      .replace(/^\s*(?:(?:[IVXLC]+(?:-[a-z]+)?|\d+|[A-H])\.\s*|\([0-9A-Za-z-]+\)\s*)+/,"");
+    return t.length>420?t.slice(0,t.lastIndexOf(" ",400))+"…":t;}
+  function hide(){if(!cur)return;pop.hidden=true;cur.removeAttribute("aria-describedby");cur=null;}
+  function line(cls,text){var s=document.createElement("span");s.className=cls;s.textContent=text;return s;}
+  function show(a){
+    var w=target(a),box=a.closest(".rs-art");if(!w||!box)return;
+    clearTimeout(shut);if(cur&&cur!==a)hide();
+    if(!pop){pop=document.createElement("div");pop.className="termpop rs-dpop";pop.id="rs-dpop";
+      pop.setAttribute("role","tooltip");
+      pop.addEventListener("pointerenter",function(){clearTimeout(shut);});
+      pop.addEventListener("pointerleave",function(e){if(e.pointerType==="mouse")shut=setTimeout(hide,250);});}
+    if(pop.parentNode!==box)box.appendChild(pop);
+    var f=w.getAttribute("data-for");
+    pop.textContent="";
+    pop.appendChild(line("rs-dpcite",(f?"Defined for "+f+" in ":"Defined in ")+w.getAttribute("data-cite")));
+    pop.appendChild(line("rs-dptext",words(w)));
+    if(touch)pop.appendChild(line("rs-dphint","Tap the word again to go to the definition."));
+    pop.style.left="0";pop.hidden=false;cur=a;opened=Date.now();a.setAttribute("aria-describedby","rs-dpop");
+    // Under the word, kept on the screen.
+    var r=a.getBoundingClientRect(),b=box.getBoundingClientRect(),vw=document.documentElement.clientWidth;
+    var x=r.left-b.left;pop.style.top=Math.round(r.bottom-b.top+6)+"px";pop.style.left=Math.round(x)+"px";
+    var p=pop.getBoundingClientRect();
+    if(p.right>vw-8)x-=p.right-(vw-8);
+    if(b.left+x<8)x=8-b.left;
+    pop.style.left=Math.round(x)+"px";
+  }
+  function term(e){return e.target.closest&&e.target.closest("a.rs-tm");}
+  document.addEventListener("pointerdown",function(e){touch=e.pointerType!=="mouse";},true);
+  document.addEventListener("keydown",function(e){touch=false;
+    if(e.key==="Escape"&&cur){var a=cur;hide();a.focus();}});
+  document.addEventListener("click",function(e){
+    var a=term(e);
+    // A tap opens the box; the next tap on the same word follows its link.
+    if(a&&touch&&target(a)&&(cur!==a||Date.now()-opened<700)){e.preventDefault();show(a);return;}
+    // A click goes to the definition, which the page marks (rs-dfn:target).
+    if(cur&&(a===cur||!(e.target.closest&&e.target.closest(".rs-dpop"))))hide();
+  });
+  document.addEventListener("pointerover",function(e){
+    var a=term(e);if(!a||e.pointerType!=="mouse")return;
+    clearTimeout(shut);clearTimeout(wait);
+    if(cur!==a)wait=setTimeout(function(){show(a);},HOLD);
+  });
+  document.addEventListener("pointerout",function(e){
+    var a=term(e);if(!a||e.pointerType!=="mouse"||(e.relatedTarget&&a.contains(e.relatedTarget)))return;
+    clearTimeout(wait);
+    if(cur===a&&document.activeElement!==a)shut=setTimeout(hide,250);
+  });
+  document.addEventListener("focusin",function(e){
+    var a=term(e);
+    if(a)show(a);else if(cur&&!(e.target.closest&&e.target.closest(".rs-dpop")))hide();
+  });
+  document.addEventListener("focusout",function(e){
+    if(cur&&e.target===cur&&!(e.relatedTarget&&pop.contains(e.relatedTarget)))shut=setTimeout(hide,250);
+  });
 })();
 </script>"""
 
@@ -950,10 +1087,20 @@ def main():
     out = site / "laws"
     out.mkdir(parents=True, exist_ok=True)
     chs = [c.upper() for c in a.only] if a.only else sorted(table.chapters, key=rsa.chap_key)
+    n_marks = n_marked = 0
     for ch in chs:
         chapter_file(out, ch).parent.mkdir(parents=True, exist_ok=True)
-        chapter_file(out, ch).write_text(
-            S.clean_links(chapter_page(tmpl, table, data, bills, ch, a.base)), encoding="utf-8")
+        page = S.clean_links(chapter_page(tmpl, table, data, bills, ch, a.base))
+        chapter_file(out, ch).write_text(page, encoding="utf-8")
+        n = page.count('<a class="rs-tm"')
+        n_marks, n_marked = n_marks + n, n_marked + bool(n)
+    # SAID EITHER WAY, as the Constitution tab is below: a table that defines
+    # terms and pages that mark none is a reader that has stopped reading.
+    d = table.defined()
+    print(f"build_rsa: {d.terms_found:,} defined terms in {d.sections_read:,} sections; "
+          f"{sum(len(x.terms) for x in d.defs):,} with a scope read, {sum(d.skipped.values()):,} left unmarked "
+          f"for a scope not read; {n_marks:,} marked uses on {n_marked:,} chapter pages"
+          + ("" if n_marks or not d.terms_found else " -- NO defined term marked on any page"))
     stale = out / "404.html"       # an earlier build's RSA 404, before chapter_file
     if not a.only and stale.is_file():
         stale.unlink()

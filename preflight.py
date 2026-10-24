@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.673
+# GRANITE_VERSION: 2026-09-04.674
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -37476,6 +37476,261 @@ def _rsa_pages(B, RSA, S):
         "HB 286, in 91-A:4's history, is listed again as another bill that proposed changes"
     return "ok", ("91-A:4 tagged pending by HB 100, linked to 91-A:5 and not to 91-A:99, history 2019 then "
                   "1967 and HB 286 not repeated; titled Chapter 91-A, its sections in the sidebar")
+
+
+# DEFINED TERMS, ON THE STATUTES' OWN WORDS. Each passage is the General
+# Court's table as it read on 24 October 2026, paragraph for paragraph (a
+# section is cut short where the rest says nothing to the case): RSA 153:1's
+# chapter-wide definitions and 153:27's for its subdivision, Mechanical
+# Licensing; 153:2, 153:5, 153:10-a and 153:28, which use them; RSA 540-C:1,
+# another chapter's "dwelling units"; and RSA 541-A:1's two dated versions of
+# "File", with 541-A:14-a's "an agency files".
+_DEF_PASSAGES = (
+    ("153:1", "Definitions.", (), (
+        "When appearing in this chapter:",
+        'II. "Building" means any structure, framework or housing, public or private, excluding single family '
+        "dwellings as defined in paragraph X and multi-unit dwellings as defined in paragraph VI, but including "
+        "tanks, receptacles and containers for the storage of commodities or other materials.",
+        'III. "Dwelling unit" means a single unit providing complete and independent living facilities for one '
+        "or more persons including permanent provisions for living, sleeping, eating, cooking, and sanitation.",
+        'VIII. "Owner" means a person with legal title to or a freehold interest in property, including any '
+        "trustee or a board of trustees of property. A lessee or mortgagee of property is not considered an owner.",
+        'X. "Single family dwelling" means any structure not defined in paragraph II which contains one dwelling '
+        "unit which is designed to be occupied for living purposes, and which is used by one, 2 or more families "
+        "exclusively as a home.")),
+    ("153:2", "Membership and Organization.", (), (
+        "There shall be a state advisory board of fire control consisting of 12 members appointed by the "
+        "governor with the advice and consent of the council.",)),
+    ("153:5", "State Fire Code;  Rules.", (), (
+        "III. The state fire code and associated rules shall not require automatic fire suppression or "
+        "sprinkler systems in detached one, or 2-family dwelling units in a structure used only for residential "
+        "purposes.",)),
+    ("153:10-a", "Automatic Fire Warning Devices and Carbon Monoxide Detection Devices in Dwellings.", (), (
+        "II-a. The owner of the rental unit shall be responsible for maintaining the automatic fire warning "
+        "device and carbon monoxide detection device in a suitable condition.",)),
+    ("153:27", "Definitions.", ("Mechanical Licensing",), (
+        "In this subdivision:",
+        'I. "Board" means the mechanical licensing board established in RSA 153:27-a.')),
+    ("153:28", "Rulemaking.", ("Mechanical Licensing",), (
+        "I. Notwithstanding RSA 21-G:9, the board, with an affirmative vote of at least 4 of the appointed board "
+        "members, in consultation with the office of professional licensure and certification and with the "
+        "approval of the executive director of the office of professional licensure and certification, shall "
+        "adopt rules, pursuant to under RSA 541-A, necessary for the proper implementation of the licensure "
+        "requirements established in this subdivision, which shall include the following:",)),
+    ("540-C:1", "Covered Units.", (), (
+        "This chapter shall apply to all dwelling units which are:",
+        "I. Rented for recreational or vacation use at least one month out of the year; and",
+        "II. Rented for residential purposes by persons who have no other residence, during part or all of the "
+        "non-recreational or vacation period.")),
+    ("541-A:1", "Definitions.", (), (
+        "In this chapter:",
+        "[Paragraph VI effective until January 1, 2027; see also paragraph VI set out below.]",
+        'VI. "File" means the actual receipt, by the director of legislative services, of a document required '
+        "to be submitted during a rulemaking process established by this chapter, under the terms and in the "
+        'format prescribed by the director. The term "file" shall also apply to any other response, submission, '
+        "or written explanation required during a rulemaking process established by this chapter.",
+        "[Paragraph VI effective January 1, 2027; see also paragraph VI set out above.]",
+        'VI. "File" means the actual receipt, by the director of the division of administrative rules for the '
+        "office of legislative services, of a document required to be submitted during a rulemaking process "
+        "established by this chapter, under the terms and in the format prescribed by the director. The term "
+        '"file" shall also apply to any other response, submission, or written explanation required during a '
+        "rulemaking process established by this chapter.")),
+    ("541-A:14-a", "Extension of Currently Effective Rules Pending Readoption.", (), (
+        "[Paragraph I effective until January 1, 2027; see also paragraph I set out below.]",
+        "I. If an agency files a notice pursuant to RSA 541-A:6 to readopt existing rules, with or without "
+        "amendments, the currently effective rules in the filing which would otherwise expire prior to the "
+        "completion of the readoption of the rules by the agency shall continue in effect until the proposed "
+        "rules are adopted and effective.")),
+)
+
+
+def _def_table(RSA, passages):
+    """An rsa.Table of `passages`, each row in the shape db/NH_RSA.psv holds
+    it: the chapter's and the subdivision's headings as <h2> in "rsa", the
+    text in "EntireRSA"'s <codesect>, a paragraph to a <br>."""
+    names = {"153": "STATE BOARD OF FIRE CONTROL", "540-C": "SEASONAL RENTAL UNITS",
+             "541-A": "ADMINISTRATIVE PROCEDURE ACT"}
+    rows = []
+    for n, (addr, heading, heads, paras) in enumerate(passages):
+        ch = addr.split(":")[0]
+        rows.append({"id": str(n), "TitleNo": "XII", "ChapterNo": ch, "SectionNo": addr.replace(":", "-"),
+                     "Title": "TITLE XII PUBLIC SAFETY AND WELFARE", "Chapter": f"CHAPTER {ch} {names[ch]}",
+                     "Section": f"Section {addr} {heading}", "SourceNote": "",
+                     "rsa": f"<center><h2>CHAPTER {ch}<br>{names[ch]}</h2></center>"
+                            + "".join(f"<center><h2>{h}</h2></center>" for h in heads),
+                     "EntireRSA": "<codesect> <br> " + " <br> ".join(paras) + "</codesect>",
+                     "titleNumber": "12", "url": f"XII\\{ch}\\{addr.replace(':', '-')}.htm"})
+    return RSA.Table(rows)
+
+
+# The page's script in a page made by hand: a definition, a word that links to
+# it, and a paragraph elsewhere; node drives it by keyboard, by touch and by
+# mouse, on a clock it holds.
+_DEFS_NODE = r"""
+let now = 1000, timers = [];
+const tick = ms => { now += ms; timers.forEach(t => { if (t.f && t.at <= now) { const f = t.f; t.f = null; f(); } }); };
+const on = {}, ids = {};
+function match(x, sel) {
+  return sel.split(",").some(s => { s = s.trim(); if (s === "p") return x.tagName === "p";
+    const m = /^(\w+)?\.([\w-]+)$/.exec(s);
+    return m && (!m[1] || x.tagName === m[1]) && (" " + (x.className || "") + " ").includes(" " + m[2] + " "); });
+}
+function node(tag, attrs, parent) {
+  const n = {tagName: tag, attrs: Object.assign({}, attrs || {}), children: [], parentNode: null, style: {},
+    hidden: false, _text: "", className: (attrs || {}).class || "",
+    getAttribute(k) { return k in this.attrs ? this.attrs[k] : null; },
+    setAttribute(k, v) { this.attrs[k] = String(v); if (k === "id") ids[v] = this; },
+    removeAttribute(k) { delete this.attrs[k]; },
+    appendChild(c) { if (c.parentNode) c.parentNode.children = c.parentNode.children.filter(x => x !== c);
+      c.parentNode = this; this.children.push(c); return c; },
+    addEventListener() {},
+    contains(x) { while (x) { if (x === this) return true; x = x.parentNode; } return false; },
+    closest(sel) { let x = this; while (x) { if (match(x, sel)) return x; x = x.parentNode; } return null; },
+    querySelectorAll(sel) { const out = []; const walk = y => y.children.forEach(c => { if (match(c, sel)) out.push(c); walk(c); });
+      walk(this); return out; },
+    getBoundingClientRect() { return this.rect || {left: 0, right: 0, top: 0, bottom: 0}; },
+    focus() { const was = doc.activeElement; doc.activeElement = this; if (was !== this) fire("focusin", {target: this}); }};
+  Object.defineProperty(n, "textContent", {get() { return n._text + n.children.map(c => c.textContent).join(""); },
+    set(v) { n._text = String(v); n.children = []; }});
+  Object.defineProperty(n, "id", {get() { return n.attrs.id; }, set(v) { n.setAttribute("id", v); }});
+  if (n.attrs.id) ids[n.attrs.id] = n;
+  if (parent) parent.appendChild(n);
+  return n;
+}
+const doc = {activeElement: null, documentElement: {clientWidth: 1200}, getElementById: k => ids[k] || null,
+  createElement: t => node(t), addEventListener(t, f) { (on[t] = on[t] || []).push(f); }};
+function fire(t, ev) { let no = false; (on[t] || []).forEach(f => f(Object.assign({preventDefault() { no = true; }}, ev))); return no; }
+const art = node("div", {class: "rs-art"}); art.rect = {left: 100, right: 800, top: 0, bottom: 5000};
+const dfn = node("div", {class: "rs-dfn", id: "s1_III", "data-cite": "RSA 153:1, III", "data-for": "this chapter"}, art);
+node("p", {}, dfn)._text = DEFINITION;
+const para = node("p", {}, art);
+const word = node("a", {class: "rs-tm", href: "/laws/153#s1_III"}, para); word._text = "dwelling units";
+word.rect = {left: 300, right: 400, top: 200, bottom: 220};
+const elsewhere = node("p", {}, art);
+doc.activeElement = elsewhere;
+global.document = doc; global.window = {};
+global.setTimeout = (f, ms) => timers.push({at: now + ms, f});
+global.clearTimeout = i => { if (i && timers[i - 1]) timers[i - 1].f = null; };
+global.Date = {now: () => now};
+new Function(SCRIPT)();
+const box = () => ids["rs-dpop"], out = {};
+fire("keydown", {key: "Tab"}); word.focus();
+out.focus = !!box() && !box().hidden; out.says = box() && box().textContent;
+out.described = word.getAttribute("aria-describedby"); out.role = box() && box().getAttribute("role");
+fire("keydown", {key: "Escape"});
+out.escape = box().hidden && doc.activeElement === word && !word.getAttribute("aria-describedby");
+doc.activeElement = elsewhere;
+fire("pointerdown", {pointerType: "touch", target: word});
+out.tap_stays = fire("click", {target: word}); out.tap_opens = !box().hidden;
+tick(1500); fire("pointerdown", {pointerType: "touch", target: word});
+out.second_tap_goes = !fire("click", {target: word});
+fire("pointerdown", {pointerType: "touch", target: elsewhere}); fire("click", {target: elsewhere});
+out.press_elsewhere = box().hidden;
+fire("pointerover", {pointerType: "mouse", target: word}); tick(200); out.hover_waits = box().hidden;
+tick(400); out.hover_opens = !box().hidden;
+fire("pointerout", {pointerType: "mouse", target: word, relatedTarget: elsewhere}); tick(300);
+out.leave_closes = box().hidden; out.in_text = box().parentNode === art;
+console.log(JSON.stringify(out));
+"""
+
+
+@check("build", "a statute page marks a defined term where the definition's own words apply it, and only "
+       "there: not outside its subdivision or chapter, not where two definitions could apply, not in its "
+       "own definition", needs=("build_rsa", "rsa", "shell"))
+def _rsa_defined_terms(B, RSA, S):
+    """The person, 24 October 2026: "Could you make it so that definitions in
+    the rsa pages show up as tooltips in sections that cite them like
+    'dwelling unit' being defined in 153:1 and later referenced so that you
+    know which definition it's referring to?"
+
+    A definition applies where its own words say (rsa.Defined), and accuracy
+    was asked for ahead of coverage, so this holds the reader to five things
+    on real passages: "dwelling units" in RSA 153:5 is marked with 153:1's
+    definition, which says it applies "in this chapter"; "board" in 153:28 is
+    marked with 153:27's, which applies "in this subdivision", and in 153:2,
+    outside the subdivision, is not marked at all; "dwelling units" in RSA
+    540-C:1, another chapter, is not marked; "files" in 541-A:14-a, which two
+    dated versions of 541-A:1, VI define, is not marked -- while with one
+    version it is, so it is the second definition that withholds it; and a
+    term is not marked inside its own definition. Then the page: the word a
+    quiet link to the definition's own paragraphs, which carry its citation
+    and scope once; and its script, by keyboard, by touch and by mouse."""
+    t = _def_table(RSA, _DEF_PASSAGES)
+    d = t.defined()
+
+    def got(addr):
+        marks, held = d.marks(addr)
+        paras = RSA.paragraphs(t.sections[addr].text)
+        return ({(li, paras[li][st:en].lower(), d.defs[i].cite, d.defs[i].scope)
+                 for li, ms in marks.items() for st, en, i in ms}, held)
+
+    m5, _ = got("153:5")
+    assert (0, "dwelling units", "RSA 153:1, III", "chapter") in m5, \
+        f"153:1's chapter-wide 'dwelling unit' is not marked in 153:5: {sorted(m5)}"
+    m28, _ = got("153:28")
+    assert (0, "board", "RSA 153:27, I", "subdivision") in m28, \
+        f"153:27's 'board' is not marked inside its own subdivision, in 153:28: {sorted(m28)}"
+    m2, _ = got("153:2")
+    assert not m2, f"153:27's 'board', defined for its subdivision only, is marked in 153:2: {sorted(m2)}"
+    m540, _ = got("540-C:1")
+    assert not m540, f"a definition in RSA 153 is marked in another chapter, RSA 540-C: {sorted(m540)}"
+    m14, held = got("541-A:14-a")
+    assert not m14 and held == {"files"}, \
+        f"'files', which two versions of 541-A:1, VI define, is marked or not counted: {sorted(m14)}, {held}"
+    one = _def_table(RSA, [p if p[0] != "541-A:1" else p[:3] + (p[3][:3],) for p in _DEF_PASSAGES])
+    alone = one.defined().marks("541-A:14-a")[0]
+    assert alone, "with one definition of 'File' its use in 541-A:14-a is not marked, so the ambiguity check proves nothing"
+    # NOT IN ITS OWN DEFINITION: "A lessee or mortgagee of property is not
+    # considered an owner" is 153:1, VIII's own sentence, while 153:10-a's
+    # "The owner of the rental unit" is a use of it.
+    m1, _ = got("153:1")
+    at = {p.split(".")[0]: li for li, p in enumerate(RSA.paragraphs(t.sections["153:1"].text))}
+    assert not any(li in (at["III"], at["VIII"]) for li, *_ in m1), \
+        f"a term is marked inside its own definition, 153:1, III or VIII: {sorted(m1)}"
+    assert (0, "owner", "RSA 153:1, VIII", "chapter") in got("153:10-a")[0], \
+        "153:1, VIII's 'owner' is not marked where 153:10-a uses it"
+    assert (at["X"], "dwelling unit", "RSA 153:1, III", "chapter") in m1 and \
+        not any(w == "single family dwelling" for li, w, *_ in m1 if li == at["X"]), \
+        f"paragraph X marks its own term, or not paragraph III's: {sorted(m1)}"
+    assert (at["II"], "single family dwellings", "RSA 153:1, X", "chapter") in m1, \
+        f"153:1, II's 'single family dwellings' is not marked with paragraph X: {sorted(m1)}"
+    # The page: a quiet link to the definition, whose paragraphs say once
+    # where and for what; the script only where something is marked.
+    root = Path(tempfile.mkdtemp(prefix="gr-rsadef-"))
+    try:
+        bills = B.Bills(root, "2025-2026")
+        page = B.chapter_page(S.template(Path("site")), t, {}, bills, "153", "https://graniterecord.org")
+        other = B.chapter_page(S.template(Path("site")), t, {}, bills, "540-C", "https://graniterecord.org")
+    finally:
+        shutil.rmtree(root, ignore_errors=True)
+    s5 = page[page.index('id="s5"'):]
+    assert '<a class="rs-tm" href="/laws/153#s1_III">dwelling units</a>' in s5, \
+        "153:5's 'dwelling units' is not a link to 153:1, III on the page"
+    assert '<div class="rs-dfn" id="s1_III" data-cite="RSA 153:1, III" data-for="this chapter">' in page, \
+        "153:1, III does not carry its id, citation and scope for the words that point at it"
+    assert page.count('class="rs-dfn"') == 4 and "</div>" in page[page.index('id="s1_III"'):page.index('id="s2"')], \
+        "the definitions the page points at are not each held once"
+    assert 'href="#' not in page and B.DEFS_JS in page and B.DEFS_JS not in other and "rs-tm" not in other, \
+        "the script is missing where a term is marked, or a page with none carries it or a mark"
+    node = shutil.which("node") or shutil.which("node.exe")
+    if not node:
+        return "ok", "five cases on real passages and the page; node is not here for the script"
+    script = B.DEFS_JS[len("<script>"):-len("</script>")]
+    definition = RSA.paragraphs(t.sections["153:1"].text)[at["III"]]
+    prog = (f"const SCRIPT = {json.dumps(script)};\nconst DEFINITION = {json.dumps(definition)};\n" + _DEFS_NODE)
+    r = _node_file(node, prog, capture_output=True, text=True, timeout=60)
+    assert r.returncode == 0, "the page's definitions script stopped: " + (r.stderr or "").strip()[-300:]
+    out = json.loads(r.stdout.strip().splitlines()[-1])
+    assert out["says"] == ('Defined for this chapter in RSA 153:1, III"Dwelling unit" means a single unit '
+                           "providing complete and independent living facilities for one or more persons "
+                           "including permanent provisions for living, sleeping, eating, cooking, and sanitation."), \
+        f"the box does not give the definition and where it is from: {out['says']!r}"
+    wrong = [k for k in ("focus", "escape", "tap_stays", "tap_opens", "second_tap_goes", "press_elsewhere",
+                         "hover_waits", "hover_opens", "leave_closes", "in_text") if not out[k]]
+    assert not wrong and out["described"] == "rs-dpop" and out["role"] == "tooltip", \
+        f"the definition box fails by keyboard, touch or mouse: {wrong}, {out}"
+    return "ok", ("153:5 marked from 153:1 and 153:28 from 153:27, not 153:2 or 540-C:1; 541-A:14-a's 'files' "
+                  "withheld for two definitions; no term in its own; the box by keyboard, tap and mouse")
 
 
 @check("build", "a docket line in plain words says what the record says, in the approved vote words, "
