@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-10-23.3
+# GRANITE_VERSION: 2026-10-23.4
 """
 The site in more than one language, and how a translation stays current.
 
@@ -106,7 +106,7 @@ GUIDE_PAGES = tuple(f"guides/{s}.html" for s in (
     "renew-drivers-license", "register-a-car", "real-id", "new-to-new-hampshire",
     "food-and-health-assistance", "file-for-unemployment", "heating-and-electric-help",
     "property-tax-abatement", "property-tax-relief", "public-records", "vital-records",
-    "tour-the-state-house"))
+    "tour-the-state-house", "town-warrant-article", "child-care-scholarship"))
 PAGES = {"es": ("index.html", "learn/glossary.html", "resources.html") + GUIDE_PAGES}
 
 _CATALOGS = {}

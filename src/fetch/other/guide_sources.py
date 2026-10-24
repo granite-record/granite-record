@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-10-11.6
+# GRANITE_VERSION: 2026-10-11.8
 """
 The official pages the how-to guides cite, onto this disk, to check them by.
 
@@ -161,6 +161,13 @@ SOURCES = {
         # linked from the pages above
         "https://www.nhes.nh.gov/resources/office-locations",
     ],
+    # The child care guide's, read in the PDFs the person printed and sent on
+    # 24 October 2026.
+    "child_care": [
+        "https://www.dhhs.nh.gov/programs-services/childcare-parenting-childbirth/child-development-and-head-start",
+        "https://www.dhhs.nh.gov/programs-services/childcare-parenting-childbirth/child-development-and-head-start/child-care",
+        "https://www.dhhs.nh.gov/fam_htm/html/901_application_process_fam.htm",
+    ],
     "run_for_office": [
         "https://www.sos.nh.gov/elections/running-office",
         "https://www.sos.nh.gov/elections/qualifications-office",
@@ -186,6 +193,10 @@ OTHER = {
     # Concord's, the example of how a city takes filings for its own offices.
     "federal_and_city": [
         "https://www.tsa.gov/real-id",
+        # The federal child care rules (the person, 24 October 2026: "you can
+        # cite federal sources"), read at eCFR that day.
+        "https://www.ecfr.gov/current/title-45/subtitle-A/subchapter-A/part-98/subpart-C/section-98.21",
+        "https://www.ecfr.gov/current/title-45/subtitle-A/subchapter-A/part-98/subpart-D/section-98.30",
         "https://concordnh.gov/1088/Filing-for-Office",
     ],
 }
