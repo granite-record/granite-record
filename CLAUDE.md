@@ -135,8 +135,11 @@ python3 src/hearings/probe_alignment.py --truth --candidate candidate_segments.j
 The candidate median is **0m 01s**, against 1m 27s for the clustering model and
 17m 05s for the schedule alone. **Nothing about
 timestamps goes on the site before that comparison has been run and the median
-has not regressed.** This matters more in an agentic loop, not less: it is the
-guard against tuning a pattern until the number looks right.
+has not regressed** -- on the proceedings both the old and the new results
+place, with the ones placed for the first time within a minute at the median
+(the person's decision, 24 October 2026; `livestreams.worse` keeps it). This
+matters more in an agentic loop, not less: it is the guard against tuning a
+pattern until the number looks right.
 
 **Silence is not success.** A build that finishes having published nothing; a
 fetch killed at fifteen minutes that looks like a hang; a step that prints one

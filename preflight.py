@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.672
+# GRANITE_VERSION: 2026-09-04.673
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -15833,9 +15833,12 @@ def _ls_nights(livestreams, build_manifest):
         n1 = st["videos"]["PFNEW000001"]
         assert n1.get("read") and not n1.get("carry") and "result" not in n1, \
             f"the reading was carried in the state rather than kept in the files: {n1}"
+        # The totals; each proceeding's error rides along (livestreams.worse).
+        tot = {k: {x: st["markers"]["probe"][k].get(x) for x in ("marked", "placed", "median")}
+               for k in ("before", "after")}
         assert st["markers"]["guard"] == "passed" and st["markers"]["read"] == 1 and \
-            st["markers"]["probe"]["after"] == st["markers"]["probe"]["before"] == {
-                "marked": 1, "placed": 1, "median": 1.0}, st["markers"]
+            tot["after"] == tot["before"] == {"marked": 1, "placed": 1, "median": 1.0}, \
+            st["markers"]
         kept = {p: (root / p).read_bytes() for p in ("candidate_segments.json",
                                                      "caption_spans.json")}
 
@@ -15872,6 +15875,68 @@ def _ls_nights(livestreams, build_manifest):
                       "new ones, not closed; committed index untouched")
     finally:
         shutil.rmtree(root, ignore_errors=True)
+
+
+@check("livestreams", "the timestamp guard compares like with like: the median on the hand-timed "
+       "proceedings both copies place, the newly placed within a minute, and none fewer placed",
+       needs=("livestreams", "probe_alignment"))
+def _timestamp_guard_like_with_like(L, PA):
+    """The person, 24 October 2026, choosing "option A": a re-read that placed
+    58 of the 63 hand-timed proceedings, where the copy in the bucket placed
+    44, was refused by cloud.py send-night for a median of 1.5s against
+    1.2s -- medians over two different sets, the 14 it newly placed (weak
+    markers, about 3s each) the cause. The guard (livestreams.worse, which
+    send-night and the night's own reading both use) now compares the
+    proceedings both place, holds the newly placed to a minute at the median,
+    since each is shown plainly as a stated boundary, and still refuses fewer
+    placed. A score without each proceeding's error (a probe from before) is
+    judged by the old rule.
+
+    It fails if probe_alignment's scoreboard stops giving each proceeding's
+    error by its key, or if worse() passes any of: the same proceedings
+    placed worse, the newly placed more than a minute off, fewer placed; or
+    refuses: more placed as well as before, the same file twice."""
+    marks = [{"video": "V1", "bill": "HB1", "kind": "public hearing", "obs": 100.0},
+             {"video": "V1", "bill": "HB2", "kind": "public hearing", "obs": 900.0},
+             {"video": "V2", "bill": "SB3", "kind": "executive session", "obs": 50.0}]
+    for m, got in zip(marks, (101.0, 903.5, None)):
+        m["cand"] = got
+    import contextlib
+    import io
+    with contextlib.redirect_stdout(io.StringIO()):
+        sc = PA.score(marks, "fixture", lambda m: m.get("cand"))
+    assert sc["each"] == {"V1|HB1|public hearing": 1.0, "V1|HB2|public hearing": 3.5}, sc
+    assert PA.mark_key(marks[2]) == "V2|SB3|executive session"
+
+    def s(**each):
+        e = {k: float(v) for k, v in each.items()}
+        xs = sorted(e.values())
+        return {"marked": 63, "placed": len(e), "median": xs[len(xs) // 2] if xs else None,
+                "each": e}
+
+    old = s(a=1.0, b=1.2, c=1.4)
+    bad = []
+    for name, before, after, want in (
+            ("more placed, the old ones as they were", old, s(a=1.0, b=1.2, c=1.4, d=3.0, e=4.0),
+             ""),
+            ("the same copy", old, old, ""),
+            ("the same proceedings placed worse", old, s(a=1.0, b=9.0, c=9.0, d=1.0),
+             "both copies place"),
+            ("the newly placed more than a minute off", old, s(a=1.0, b=1.2, c=1.4, d=480.0),
+             "for the first time"),
+            ("fewer placed", old, s(a=1.0, b=1.2), "places 2 of 63"),
+            ("a probe from before: the old rule", {"marked": 63, "placed": 44, "median": 1.2},
+             {"marked": 63, "placed": 58, "median": 1.5}, "median went")):
+        why = L.worse(before, after)
+        if (want and want not in why) or (not want and why):
+            bad.append(f"{name}: {why or 'passed'}")
+    p = L.paired(old, s(a=1.0, b=1.2, c=1.4, d=3.0, e=4.0))
+    if (p["both"], p["before"], p["after"], p["new"], p["new_median"]) != (3, 1.2, 1.2, 2, 4.0) \
+            or "on the 3 placed by both" not in L.paired_line(p):
+        bad.append(f"the like-with-like comparison reads {p}: {L.paired_line(p)!r}")
+    assert not bad, "; ".join(bad)
+    return "ok", ("each proceeding's error in the scoreboard; worse() holds the same proceedings, "
+                  "the newly placed within a minute, and no fewer placed")
 
 
 @check("livestreams", "yt-dlp's answers are read for what they mean",
@@ -53630,13 +53695,17 @@ def _ls_markers_guard(livestreams, nightly, probe_alignment, caption_span):
         L.probe = real_probe
 
         # The real probe, on a hand-timed proceeding on tonight's recording
-        # that the reading lands nearly eight minutes from: a worse median.
+        # that the reading lands nearly eight minutes from: placed for the
+        # first time, more than a minute off (livestreams.worse, like with
+        # like since 24 October 2026; a worse median before).
         _ls_markers_fixture(root)
         with open("review/ground_truth.csv", "a", encoding="utf-8") as fh:
             fh.write("PFNEW000001,HB1491,public hearing,480.0,,,2026-10-10\n")
-        mk = put_back(*night(), "median went")
-        assert mk["probe"]["before"] == {"marked": 2, "placed": 1, "median": 1.0} and \
-            mk["probe"]["after"]["placed"] == 2, mk["probe"]
+        mk = put_back(*night(), "for the first time")
+        got = mk["probe"]["before"]
+        assert {k: got.get(k) for k in ("marked", "placed", "median")} == {
+            "marked": 2, "placed": 1, "median": 1.0} and len(got.get("each") or {}) == 1 \
+            and mk["probe"]["after"]["placed"] == 2, mk["probe"]
         _ls_markers_fixture(root)
 
         # segment_markers failing is the step failing, with the files put back.

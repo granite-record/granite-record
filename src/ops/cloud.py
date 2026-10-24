@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-25.25
+# GRANITE_VERSION: 2026-09-25.26
 """
 The nightly's kit and the laptop's backup, in the project's private R2 bucket.
 
@@ -297,9 +297,11 @@ refuses, saying why and exiting 1, and sends nothing:
                                    timestamp probe (probe_alignment.py --truth,
                                    through livestreams.probe, in the working
                                    folder), the bucket's copy and the copy
-                                   sent, and a worse median or fewer of the
-                                   same hand-timed proceedings placed
-                                   (livestreams.worse) is refused, as the
+                                   sent, and a worse median on the hand-timed
+                                   proceedings both place, newly placed ones
+                                   more than a minute off at the median, or
+                                   fewer placed (livestreams.worse, like with
+                                   like since 24 October 2026) is refused, as the
                                    laptop's evening job refused it before 10
                                    October 2026 -- the night's own guard takes
                                    whatever kit/ holds as its baseline. A probe
@@ -3768,6 +3770,10 @@ def cmd_send_night(a, root):
             why, before, after = score_markers(root, old if old_reads else None, data)
             say(f"    timestamp probe, the bucket's copy: {probe_line(before)}")
             say(f"    timestamp probe, the copy sent:     {probe_line(after)}")
+            import livestreams
+            like = livestreams.paired_line(livestreams.paired(before, after))
+            if like:
+                say(f"    like with like: {like}")
             if why:
                 refused.append(f"{rel} from {src} scores worse than the bucket's: {why}. "
                                "Nothing about timestamps goes on the site that makes the "

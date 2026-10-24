@@ -142,7 +142,8 @@ python3 src/hearings/probe_alignment.py --truth --candidate candidate_segments.j
 ```
 
 is the gate every timestamp method has to pass. **Nothing about timestamps
-ships before that has been run and the median has not regressed.**
+ships before that has been run and the median has not regressed** on the
+proceedings both the old and the new results place (`livestreams.worse`).
 
 **Silence is not success.** A step that can produce nothing and still exit zero
 needs a guard that says so. This has bitten the project at least five times.

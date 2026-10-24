@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-05.65
+# GRANITE_VERSION: 2026-09-05.66
 """
 Measure the signals in a transcript. Build nothing, tune nothing.
 
@@ -1282,7 +1282,16 @@ def score(marks, label, get):
                    for b in (60, 300, 600, 900)},
         "over_ten_minutes": len(bad),
         "videos": len({m["video"] for m in marks if m.get("video")}),
+        # EACH PROCEEDING'S ERROR, by mark_key (the owner, 24 October 2026):
+        # what lets two candidate files be compared on the proceedings both
+        # place (livestreams.worse), not on medians over different sets.
+        "each": {mark_key(m): round(a, 1) for a, _s, m in pairs},
     }
+
+
+def mark_key(m):
+    """A hand-timed proceeding's name across runs: "video|bill|kind"."""
+    return f"{m.get('video')}|{m.get('bill')}|{m.get('kind')}"
 
 
 _SITE = {}

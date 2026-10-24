@@ -13,7 +13,8 @@ the docket never recorded.
 
 **Nothing about timestamps goes on the site until
 `python3 src/hearings/probe_alignment.py --truth --candidate candidate_segments.json`
-has been run and the median has not regressed.** Add a phrase to
+has been run and the median has not regressed** on the proceedings both the
+old and the new results place (`livestreams.worse`). Add a phrase to
 `tests/test_markers.py` only if it was actually spoken.
 
 Asks nobody. Does not belong here: downloading captions or audio

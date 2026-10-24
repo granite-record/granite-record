@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-25.16
+# GRANITE_VERSION: 2026-09-25.17
 """
 New livestreams, every night: the recordings the House and Senate channels
 finished since the last run, indexed and captioned, and read into the start
@@ -275,7 +275,9 @@ CLAUDE.md: nothing about timestamps goes on the site before
 and the median has not regressed. --markers keeps copies of both files before
 it reads, and after it reads it asks two things. Did any entry but tonight's
 recordings change? And does the probe, against the hand-timed proceedings,
-place as many as the copy did, with a median no worse? Either answer wrong,
+place as many as the copy did, with a median no worse on the proceedings both
+place, and the ones placed for the first time within a minute at the median
+(worse)? Either answer wrong,
 or a probe that would not run, and both files are put back as they came
 down: tonight's readings go nowhere, the recordings are asked for again on a
 later night (three times at most), the state says why, and the night's
@@ -2644,25 +2646,89 @@ def probe(candidate, cwd=None):
         if not marked:
             return None
         med = cand.get("median")
+        each = cand.get("each")
         return {"marked": marked, "placed": int(cand.get("placed") or 0),
-                "median": None if med is None else round(float(med), 3)}
+                "median": None if med is None else round(float(med), 3),
+                # Each proceeding's error, where the probe gives it (worse).
+                **({"each": {str(k): float(v) for k, v in each.items()}}
+                   if isinstance(each, dict) else {})}
     except (OSError, ValueError, TypeError):
         return None
     finally:
         shutil.rmtree(d, ignore_errors=True)
 
 
+# A proceeding placed for the first time is shown on the site as a stated
+# boundary, plainly, where before it was approximate or absent; as a group
+# they land within this many seconds of the hand-timed mark at the median.
+NEW_PLACED_MEDIAN = 60.0
+
+
+def _median(xs):
+    """The probe's own median (probe_alignment.score): the upper one."""
+    xs = sorted(xs)
+    return xs[len(xs) // 2] if xs else None
+
+
+def paired(before, after):
+    """The two scores on like terms, where both give each proceeding's error:
+    {"both": n placed by both, "before"/"after": their median over those,
+    "new": n placed by `after` alone, "new_median", "gone": n placed by
+    `before` alone}. None where either score lacks them."""
+    b, a = (before or {}).get("each"), (after or {}).get("each")
+    if not isinstance(b, dict) or not isinstance(a, dict):
+        return None
+    both = sorted(set(b) & set(a))
+    new = sorted(set(a) - set(b))
+    return {"both": len(both), "before": _median(b[k] for k in both),
+            "after": _median(a[k] for k in both), "new": len(new),
+            "new_median": _median(a[k] for k in new), "gone": len(set(b) - set(a))}
+
+
+def paired_line(p):
+    """The like-with-like comparison in a line, or "" without one."""
+    if not p:
+        return ""
+    out = (f"on the {p['both']} placed by both: median {p['before']}s before, "
+           f"{p['after']}s after" if p["both"] else "none placed by both")
+    if p["new"]:
+        out += f"; {p['new']} placed for the first time, median {p['new_median']}s"
+    if p["gone"]:
+        out += f"; {p['gone']} no longer placed"
+    return out
+
+
 def worse(before, after):
-    """Why `after` scores worse than `before`, or "": laptop_evening.py's
-    rule, which this replaces. A median that grew, or fewer of the same
-    hand-timed proceedings placed."""
-    if before.get("median") is not None and (after.get("median") is None
-                                             or after["median"] > before["median"]):
-        return (f"the timestamp probe's median went from {before['median']}s to "
-                f"{after.get('median')}s")
-    if after["marked"] == before["marked"] and after["placed"] < before["placed"]:
+    """Why `after` scores worse than `before`, or "".
+
+    LIKE WITH LIKE (the owner, 24 October 2026, "option A"). A median over
+    what each copy places compares two different sets: a re-read that placed
+    58 of 63 hand-timed proceedings where the bucket's copy placed 44 was
+    refused for a median of 1.5s against 1.2s, though the 14 it newly placed
+    were the cause. Where both scores give each proceeding's error (paired),
+    the copy is worse if the median grew on the proceedings both place, or if
+    the ones it places for the first time land more than NEW_PLACED_MEDIAN
+    from the hand-timed mark at the median -- each is shown plainly on the
+    site as a stated boundary. Without them (a probe from before), the rule
+    laptop_evening.py kept: a median that grew. Either way, fewer of the same
+    hand-timed proceedings placed is worse."""
+    if after.get("marked") == before.get("marked") and after["placed"] < before["placed"]:
         return (f"the timestamp probe places {after['placed']} of {after['marked']} "
                 f"hand-timed proceedings, where it placed {before['placed']}")
+    p = paired(before, after)
+    if p is None:
+        if before.get("median") is not None and (after.get("median") is None
+                                                 or after["median"] > before["median"]):
+            return (f"the timestamp probe's median went from {before['median']}s to "
+                    f"{after.get('median')}s")
+        return ""
+    if p["both"] and p["after"] > p["before"]:
+        return (f"on the {p['both']} hand-timed proceedings both copies place, the timestamp "
+                f"probe's median went from {p['before']}s to {p['after']}s")
+    if p["new"] and p["new_median"] > NEW_PLACED_MEDIAN:
+        return (f"the {p['new']} hand-timed proceedings it places for the first time land "
+                f"{p['new_median']}s from the hand-timed mark at the median, more than "
+                f"{NEW_PLACED_MEDIAN:.0f}s")
     return ""
 
 
