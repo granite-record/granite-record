@@ -1,4 +1,4 @@
-/* GRANITE_VERSION: 2026-09-07.311 */
+/* GRANITE_VERSION: 2026-09-07.312 */
 /* ONE STYLESHEET FOR EVERY PAGE (23 October 2026). Every page of the site
    links this file, /app.css: the record pages shell.page() makes from
    bills.html, and the five build_pages.py writes -- the home page, Officials,
@@ -7021,6 +7021,22 @@ border-bottom:2px solid var(--ink-2);transform:rotate(-45deg);transition:transfo
 .cline .mjumps{margin:0 0 var(--sp-4);display:flex}
 .cline .sspoke{margin-top:var(--sp-2)}
 .cline .svote .votewrap{margin-top:var(--sp-2)}
+/* A CARD'S VOTE, TOP TO FOOT (the owner, 24 October 2026): the motion, its
+   chip and count, who moved it, who spoke on each side and which vote they
+   urged, the ring, and last, small, the clerk's own words where they say
+   more than the head. The speakers sit in the motion's lines, so the ring
+   below them keeps its own air. */
+.cline .dvote .sspoke + .svote{margin-top:var(--sp-3)}
+.cline .dvote > .rcrec{margin:var(--sp-2) 0 0;font-size:var(--t-sm);color:var(--ink-2)}
+/* THE CLOSING LINE (the owner, 24 October 2026: "a line at the bottom of
+   every bill card ... that explains all of the votes that were held and what
+   that means for the bill"): the card's votes as the bill's history says
+   them, then what they mean, under a rule at the foot of the day's well, in
+   the history's serif. */
+.cline .dsum{margin:var(--sp-4) 0 0;padding-top:var(--sp-4);border-top:1px solid var(--rule);
+font:400 var(--t-ui)/1.6 var(--serif);color:var(--ink)}
+.cline .dsum .dsumlab{display:block;margin:0 0 var(--sp-1);font:600 var(--t-label)/1.4 var(--sans);
+letter-spacing:.04em;text-transform:uppercase;color:var(--ink-2)}
 /* THE DAY IN ORDER: its heading, the day's recordings, one player each, and
    the day's index, in one column held in view beside the cards as they
    scroll (the owner, 24 October 2026: "The header above the embedded video
