@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.687
+# GRANITE_VERSION: 2026-09-04.688
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -39585,6 +39585,30 @@ def _guide_counts(BC, G, RSA):
     counted = sum(1 for g in G.GUIDES for f in g.get("figures") or [] if not G.FIGURE.search(f["text"]))
     return "ok", (f"{counted} counts declared across the guides; COUNT finds what a law counts in and "
                   "passes over dates, times, phone and form numbers; each kind of resting place holds")
+
+
+@check("build", "a guide's plain-text words -- its title, lead, step titles and the labels of its "
+       "buttons and links -- carry no HTML entity or tag, which a page would print as typed",
+       needs=("guides",))
+def _guides_plain_text(G):
+    """THE TITLE THAT PRINTED "&rsquo;" (24 October 2026). A step's title is
+    plain text, escaped when the page is drawn, so "town&rsquo;s" in one showed
+    the entity itself to readers of the homelessness guide; the review PDF
+    caught it, and nothing here did. A guide's HTML is its glance, its steps'
+    words and notes and its closing sections; everything else is text, and
+    an apostrophe there is typed as one (\u2019)."""
+    bad = []
+    for g in G.GUIDES:
+        fields = ([("title", g["title"]), ("lead", g["blurb"])]
+                  + [("step title", s_["title"]) for s_ in g["steps"]]
+                  + [("button", label) for s_ in g["steps"] for label, _u in s_["actions"]]
+                  + [("source", label) for label, _u in g["sources"]]
+                  + [("see also", label) for label, _u in g["see"]])
+        bad += [f"{g['slug']} {what}: {v!r}" for what, v in fields
+                if re.search(r"&(?:[a-zA-Z]+|#\d+);|<[a-zA-Z/]", v)]
+    assert not bad, "markup in a guide's plain text, which the page prints as typed: " + "; ".join(bad)
+    n = sum(1 for g in G.GUIDES for _s in g["steps"])
+    return "ok", f"{len(G.GUIDES)} guides and {n} steps: every plain-text field is plain text"
 
 
 @check("build", "a how-to guide is published only when every claim in it is checked, says when, "

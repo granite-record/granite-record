@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-10-11.29
+# GRANITE_VERSION: 2026-10-11.30
 """
 The how-to guides: their words, their sources, and what each was checked
 against. Read by build_civics.py, which draws them on the Resources hub's
@@ -3444,8 +3444,8 @@ GUIDES += [CHILD_CARE]
 # Violence -- the statewide body of the crisis centers, whose site answers a
 # cloud session -- read on 24 October 2026, and from RSA 173-B, 633:3-a, 7:41-43
 # and 21-M:8-c and 8-h as the Laws pages print the statute table. The
-# Coalition is not a state agency (guide_sources.OTHER, the person's to
-# approve). The plan's first line governs this guide above all: a dead number
+# Coalition is not a state agency (guide_sources.OTHER), and the person
+# approved it as a source on 24 October 2026. The plan's first line governs this guide above all: a dead number
 # here sends someone in crisis nowhere, so every number printed is one the
 # Coalition's own page gives, and the claims carry the day it was read.
 # ---------------------------------------------------------------------------
@@ -3456,6 +3456,10 @@ NHCADSV_SAFETY = "https://www.nhcadsv.org/safety-planning1.html"
 NHCADSV_EXAMS = "https://www.nhcadsv.org/medicalforensic-exams.html"
 NHCADSV_LEGAL = "https://www.nhcadsv.org/legal-resources.html"
 NHCADSV_SERVICES = "https://www.nhcadsv.org/support-services--programs.html"
+# The court's and the Attorney General's own pages, read in the PDFs the person
+# printed and sent on 24 October 2026.
+COURTS_PROTECT = "https://www.courts.nh.gov/self-help/restraining-orders"
+DOJ_ACP = "https://www.doj.nh.gov/bureaus/office-victimwitness-assistance/address-confidentiality-program"
 
 VIOLENCE = guide(
     "domestic-violence-help", "How to Get Help After Domestic Violence, Sexual Assault or Stalking",
@@ -3486,8 +3490,9 @@ VIOLENCE = guide(
           "The crisis centers serve victims of domestic violence, sexual assault, stalking, "
           "child abuse and human trafficking, and their services are free and confidential and "
           "open to all. If no advocate speaks Spanish, they use an interpreter.</p>"
-          "<p>Outside New Hampshire, call the National Domestic Violence Hotline, 1-800-799-SAFE, "
-          "or RAINN for sexual assault, 1-800-656-HOPE.</p>",
+          "<p>For sexual assault or stalking, you can also call 1-800-277-5570. Outside New "
+          "Hampshire, call the National Domestic Violence Hotline, 1-800-799-SAFE, or RAINN for "
+          "sexual assault, 1-800-656-HOPE.</p>",
           actions=[("Find your local crisis center", NHCADSV_CENTERS)]),
      step("Make a safety plan",
           "<p>A safety plan is a practical plan for your own situation: how to avoid danger "
@@ -3505,17 +3510,24 @@ VIOLENCE = guide(
           "without a parent.</p>"
           "<ul><li>If you are in immediate danger, the court can make a <b>temporary order</b> "
           "without first telling the other person.</li>"
-          "<li>When the court is closed, the police can ask a judge for an emergency order by "
-          "phone, which lasts until the end of the court&rsquo;s next business day.</li>"
+          "<li>When the court is closed, go to or call the nearest police department; it does "
+          "not have to be your own town&rsquo;s. An officer can help you fill out the forms and "
+          "reach a judge by phone. An emergency order lasts only until the court&rsquo;s next "
+          "business day ends, so go to a circuit court before then to ask for an order that "
+          "lasts longer.</li>"
           "<li>The court holds a hearing within 30 days of the petition, or 10 days after the "
           "other person is served, whichever is later.</li></ul>"
           "<p>If someone is <b>stalking</b> you, you can ask the court for a stalking order the "
-          "same way. The DOVE Project gives free lawyers to qualifying survivors of domestic "
-          "violence at the final hearing; ask your crisis center.</p>"
+          "same way, whatever your relationship to them. Court staff cannot tell you which order "
+          "is best for you, but an advocate or legal aid can. The court&rsquo;s checklist for the "
+          "petition comes in Spanish and other languages. The DOVE Project gives free lawyers to "
+          "qualifying survivors of domestic violence at the final hearing; ask your crisis "
+          "center.</p>"
           "<p>When the police respond to abuse, they must help keep you safe: you can ask them "
           "to request an emergency order, to help you collect clothing, medication and other "
           "essentials, to take you to a safe place, and to get you an ambulance.</p>",
-          actions=[("Legal help, from the Coalition", NHCADSV_LEGAL)],
+          actions=[("Orders of protection (Judicial Branch)", COURTS_PROTECT),
+                   ("Legal help, from the Coalition", NHCADSV_LEGAL)],
           law=["RSA 173-B:1", "RSA 173-B:2", "RSA 173-B:3", "RSA 173-B:4", "RSA 173-B:10",
                "RSA 633:3-a"]),
      step("After a sexual assault: medical care",
@@ -3531,17 +3543,22 @@ VIOLENCE = guide(
           actions=[("What to expect at the hospital", NHCADSV_EXAMS)],
           law=["RSA 21-M:8-c"]),
      step("Other protections and help",
-          "<ul><li><b>Keeping your address private.</b> The Attorney General&rsquo;s Address "
-          "Confidentiality Program gives a victim of domestic violence, stalking or sexual "
-          "assault an address to use in place of their own on public records and for mail. "
-          "You apply to the Attorney General, and the certification lasts 4 years.</li>"
+          "<ul><li><b>Keeping a new address private.</b> If you have moved, or are about to move, "
+          "somewhere the person who harmed you does not know, the Attorney General&rsquo;s "
+          "Address Confidentiality Program gives you a substitute address to use for state and "
+          "local services, such as a driver&rsquo;s license or car registration, and forwards "
+          "your first-class mail. You do not need a restraining order, criminal charges or a "
+          "police report. Apply before you create any records at the new address, and with a "
+          "crisis center&rsquo;s help, as the law requires. Mail can be delayed by as much as 5 "
+          "to 7 days. A certification lasts 4 years.</li>"
           "<li><b>Costs of a crime.</b> The Victims&rsquo; Compensation Program helps victims of "
           "violent crime with costs that come from their injuries. Claims are generally filed "
           "within 2 years of the crime, and you can still qualify if no one is arrested or "
           "convicted.</li>"
           "<li><b>Free legal help</b> with housing, family law, benefits and more: 603 Legal "
           "Aid, 1-800-639-5290.</li></ul>",
-          actions=[("Services and programs, from the Coalition", NHCADSV_SERVICES)],
+          actions=[("Address Confidentiality Program (Attorney General)", DOJ_ACP),
+                   ("Services and programs, from the Coalition", NHCADSV_SERVICES)],
           law=["RSA 7:43", "RSA 21-M:8-h"])],
     [("New Hampshire Coalition Against Domestic and Sexual Violence", NHCADSV),
      ("Contact your local crisis center (the Coalition)", NHCADSV_CENTERS),
@@ -3549,6 +3566,8 @@ VIOLENCE = guide(
      ("Medical/forensic exams (the Coalition)", NHCADSV_EXAMS),
      ("Legal and other resources (the Coalition)", NHCADSV_LEGAL),
      ("Services and programs (the Coalition)", NHCADSV_SERVICES),
+     ("Orders of Protection and Restraining Orders (Judicial Branch)", COURTS_PROTECT),
+     ("Address Confidentiality Program (Attorney General)", DOJ_ACP),
      ("Protection of Persons from Domestic Violence, RSA 173-B", "/laws/173-b")],
     ["173-B"],
     [claim("A 24-hour helpline, 1-866-644-3574; the crisis centers serve victims of domestic "
@@ -3580,6 +3599,20 @@ VIOLENCE = guide(
            "police and courts and emergency shelter; the Victims' Compensation Program helps "
            "innocent victims of violent crime with expenses directly related to crime injuries.",
            NHCADSV_SERVICES, DV_READ),
+     claim("If the court is closed, go to or call the nearest police department, not "
+           "necessarily where you live; an officer helps fill out the forms and contacts a "
+           "judge by telephone; the order lasts until the close of the next business day the "
+           "court is open, and the plaintiff must go to a circuit court before then for a longer "
+           "order; a stalking order needs no special relationship; court staff cannot advise "
+           "which order is best; the checklist is in Spanish and other languages.",
+           COURTS_PROTECT, DV_READ),
+     claim("The ACP lets participants use a substitute address for state and local services "
+           "such as a driver's license or car registration, and forwards first class mail; for "
+           "victims who have left and live where the abuser does not know, who have not created "
+           "records with the new address; a restraining order, charges or a report are not "
+           "required; mail may be delayed by as much as 5 to 7 days; the law has applicants "
+           "consult one of the crisis centers; sexual assault and stalking line 1-800-277-5570.",
+           DOJ_ACP, DV_READ),
      claim("Proceedings may be brought where the plaintiff temporarily resides after leaving to "
            "avoid abuse.", "RSA 173-B:2", DV_READ),
      claim("Abuse is by a family or household member or a current or former sexual or intimate "
@@ -3617,6 +3650,7 @@ VIOLENCE = guide(
     see=[("How to vote", "/guides/how-to-vote.html"),
          ("How to apply for food or health assistance", "/guides/food-and-health-assistance.html")],
     figures=[fig("24-hour", NHCADSV, "A 24-hour helpline"),
+             fig("5 to 7 days", DOJ_ACP, "as much as 5 to 7 days"),
              fig("5 minutes", NHCADSV_CENTERS, "generally in about 5 minutes"),
              fig("72 hours", NHCADSV_EXAMS, "within 72 hours"),
              fig("30 days", "RSA 173-B:3", "within 30 days of the filing of a petition"),
@@ -3625,6 +3659,196 @@ VIOLENCE = guide(
              fig("2 years", "RSA 21-M:8-h", "within 2 years of the crime")])
 
 GUIDES += [VIOLENCE]
+
+
+# ---------------------------------------------------------------------------
+# HELP IF YOU ARE HOMELESS OR MAY LOSE YOUR HOME (the person, 24 October
+# 2026). From the Department of Health and Human Services' Homeless Services
+# page, the Judicial Branch's Landlord/Tenant page and the Department of
+# Education's page on homeless children and youth, read in the PDFs the person
+# printed and sent that day; from 211 New Hampshire and New Hampshire
+# Housing's pages, which answer a cloud session and were read the same day;
+# from RSA 165, 540 and 540-A as the Laws pages print them; and from the
+# federal McKinney-Vento Act, 42 U.S.C. 11432, at govinfo. No income limit is
+# printed: the voucher's is HUD's and changes (the plan: no eligibility
+# math), and the guide links New Hampshire Housing's page that states it.
+# ---------------------------------------------------------------------------
+HL_READ = "2026-10-24"
+NH211_HOME = "https://211nh.org/"
+DHHS_HOMELESS = "https://www.dhhs.nh.gov/programs-services/homeless-services"
+COURTS_LLT = "https://www.courts.nh.gov/our-courts/circuit-court/district-division/landlordtenant"
+DOE_EHCY = ("https://www.education.nh.gov/who-we-are/division-of-learner-support/"
+            "bureau-of-instructional-support/ehcy")
+NHH_APPLY = "https://www.nhhousing.org/rental-assistance/apply/"
+NHH_RENTERS = "https://www.nhhousing.org/resources/resources-for-renters/"
+USC_11432 = ("https://www.govinfo.gov/content/pkg/USCODE-2024-title42/html/"
+             "USCODE-2024-title42-chap119-subchapVI-partB-sec11432.htm")
+
+HOMELESS = guide(
+    "homelessness-help", "How to Get Help If You Are Homeless or May Lose Your Home",
+    "Where to find shelter and emergency help, what your town must do, your rights if you are "
+    "facing eviction, how to apply for a housing voucher, and your children's right to stay in "
+    "school.",
+    "Call 2-1-1, at any hour, to find shelter and housing help near you, or go to your town or "
+    "city welfare office, which must help a person there who is poor and unable to support "
+    "themselves. If you are facing eviction, your landlord can only make you leave through the "
+    "court, and free mediation and free legal aid can help. If you are leaving someone who "
+    "hurts you, call 1-866-644-3574.",
+    [box("Call 2-1-1, at any hour, for shelter and housing help near you."),
+     ask("What is happening?",
+         [("You have nowhere to stay",
+           "Call 2-1-1 for a shelter, and ask your town or city welfare office for help."),
+          ("You may be evicted",
+           "Only a court can make you leave. Answer the court papers, and get free legal help.")]),
+     box("Apply for a housing voucher, and ask your school&rsquo;s homeless liaison to keep your "
+         "children in school.")],
+    [step("Call 2-1-1, or your town’s welfare office",
+          "<p><b>2-1-1 New Hampshire</b> connects you with shelter, housing, food, utility and "
+          "other help where you are, 24 hours a day, every day of the year, by phone, email or "
+          "text. Dial 2-1-1, or call 1-866-444-4211. In an emergency, call 911; in a mental "
+          "health crisis, call 988.</p>"
+          "<p><b>Your town or city welfare office</b> must help a person who is poor and unable "
+          "to support themselves, under the written guidelines every town and city adopts: how "
+          "to apply, who is eligible, and how to appeal a decision. If you are only staying in a "
+          "town for now, it must still give you the temporary help that is reasonable and "
+          "necessary. If you are asked to prove where you live and have no lease or bill, a "
+          "signed statement from the welfare official, a police or fire official, an emergency "
+          "medical provider or a social services provider who knows you counts.</p>",
+          actions=[("2-1-1 New Hampshire", NH211_HOME)],
+          law=["RSA 165:1", "RSA 165:1-c"]),
+     step("Find a shelter",
+          "<p>The Department of Health and Human Services&rsquo; Bureau of Homeless Services "
+          "funds shelters and other homeless services through local agencies in all ten "
+          "counties. To find a bed, call 2-1-1 or your town&rsquo;s welfare office. Your local "
+          "Community Action Program can help too.</p>"
+          "<p>If you are leaving someone who hurts you, the crisis centers run emergency "
+          "shelters: call 1-866-644-3574, at any hour.</p>",
+          actions=[("Homeless services (Department of Health and Human Services)", DHHS_HOMELESS)]),
+     step("If you may be evicted",
+          "<p><b>Only a court can make you leave.</b> A landlord may not lock you out or shut "
+          "off your heat, water, electricity or other utilities to force you out.</p>"
+          "<ul><li><b>Before any court case,</b> you and your landlord can use the court&rsquo;s "
+          "free Eviction Diversion Program, where a mediator helps you try to reach an "
+          "agreement. Taking part is your choice, and you give up no rights.</li>"
+          "<li><b>If you are served court papers</b> (a Landlord/Tenant Writ), file an Appearance "
+          "form with the court by the <em>return date</em> on the writ to be heard. The return "
+          "date is not the hearing; the trial is usually about 10 days after you file. If you "
+          "do not file, or do not come to the hearing, the court issues a Notice of Default, and "
+          "no sooner than 5 business days later it can issue a Writ of Possession, which lets "
+          "the landlord take back the home.</li>"
+          "<li><b>If the case is only about unpaid rent,</b> it is dismissed if, before the "
+          "hearing, you pay all the rent you owe, $15, and the landlord&rsquo;s filing and "
+          "service costs. You can do this up to 3 times in a 12-month period.</li>"
+          "<li><b>If you lose,</b> you have 7 days from the Notice of Judgment to file a Notice "
+          "of Intent to Appeal, and you will have to pay rent each week while the appeal goes "
+          "on.</li></ul>"
+          "<p>Get free legal help as early as you can, from 603 Legal Aid or New Hampshire "
+          "Legal Assistance.</p>",
+          actions=[("Landlord and tenant cases (Judicial Branch)", COURTS_LLT)],
+          law=["RSA 540-A:3", "RSA 540:9"]),
+     step("Apply for a housing voucher",
+          "<p>With a <b>Housing Choice Voucher</b>, you pay part of your income toward rent and "
+          "utilities and New Hampshire Housing pays the rest to the landlord. You choose the "
+          "place, which must meet housing quality standards. It is for households with very low "
+          "incomes; New Hampshire Housing&rsquo;s page gives the limits.</p>"
+          "<p>The wait is long, 7 to 9 years for most applicants, but New Hampshire Housing "
+          "encourages anyone struggling to pay rent to apply and to mark every preference that "
+          "fits their household on the application. Apply online, or call 1-800-439-7247 to "
+          "have an application mailed. Some towns have their own housing authority with its own "
+          "programs: ask your town.</p>",
+          actions=[("Apply for a voucher (New Hampshire Housing)", NHH_APPLY),
+                   ("Resources for renters (New Hampshire Housing)", NHH_RENTERS)]),
+     step("Keep your children in school",
+          "<p>Under the federal McKinney-Vento Act, a child or youth without a fixed home can "
+          "stay in their <b>school of origin</b>, the school they went to before, where that is "
+          "in their best interest, or go to the local school where they are staying now. The "
+          "school must <b>enroll them right away</b>, even without school or health records, "
+          "proof of residency or other documents, and must provide or arrange transportation "
+          "to the school of origin.</p>"
+          "<p>Every school district has a <b>homeless liaison</b> whose job is to make sure "
+          "this happens. The Department of Education lists every liaison in the state, with "
+          "information on the rights of parents and of young people on their own.</p>",
+          actions=[("Homeless children and youth (Department of Education)", DOE_EHCY)])],
+    [("2-1-1 New Hampshire", NH211_HOME),
+     ("Homeless Services (Department of Health and Human Services)", DHHS_HOMELESS),
+     ("Landlord/Tenant, District Division (Judicial Branch)", COURTS_LLT),
+     ("Housing Choice Voucher: Apply (New Hampshire Housing)", NHH_APPLY),
+     ("Resources for Renters (New Hampshire Housing)", NHH_RENTERS),
+     ("Education for Homeless Children and Youth Program (Department of Education)", DOE_EHCY),
+     ("Education for homeless children and youths, 42 U.S.C. 11432 (federal)", USC_11432),
+     ("Aid to Assisted Persons, RSA 165", "/laws/165"),
+     ("Actions Against Tenants, RSA 540", "/laws/540"),
+     ("Prohibited Practices and Security Deposits, RSA 540-A", "/laws/540-a")],
+    ["165", "540", "540-A"],
+    [claim("211 NH connects residents to resources through trained Information and Referral "
+           "Specialists, available 24 hours, 365 days a year, by phone, email or text, for "
+           "housing, utilities, food, mental health and more; dial 211 or 1-866-444-4211; 911 "
+           "for emergencies; 988 for suicide and crisis help.", NH211_HOME, HL_READ),
+     claim("For housing and shelter resources, call NH 2-1-1 or contact your local city or "
+           "town welfare office; the Bureau of Homeless Services plans and funds homeless "
+           "services through contracted agencies across New Hampshire's ten counties, offered "
+           "locally through community partners.", DHHS_HOMELESS, HL_READ),
+     claim("For emergency shelter or housing, call 2-1-1, contact your local Community Action "
+           "Program, or contact town welfare; New Hampshire Housing encourages anyone "
+           "struggling to pay rent to apply and indicate preferences; wait about 7 to 9 years; "
+           "contact your town about a town housing authority; for eviction help, 603 Legal Aid "
+           "and New Hampshire Legal Assistance.", NHH_RENTERS, HL_READ),
+     claim("A qualified household pays a portion of adjusted income toward rent and utilities "
+           "and New Hampshire Housing pays the remainder to the landlord; the household selects "
+           "a unit meeting housing quality standards; for very low-income households, with "
+           "income limits on the page; apply online or call 1-800-439-7247 for a mailed "
+           "application; for most applicants an estimated wait of 7 to 9 years.",
+           NHH_APPLY, HL_READ),
+     claim("The Eviction Diversion Program: free mediation before a court case, voluntary, no "
+           "rights given up; a tenant files an Appearance by the return date on the "
+           "Landlord/Tenant Writ to be heard; the return date is not the hearing; trial within "
+           "about 10 days of an Appearance; failing to file or appear brings a Notice of "
+           "Default, and the Writ of Possession does not issue for at least 5 business days; "
+           "after judgment for the landlord, 7 days to file a Notice of Intent to Appeal, with "
+           "weekly rent paid during the appeal.", COURTS_LLT, HL_READ),
+     claim("The EHCY program addresses the challenges homeless children and youth face in "
+           "enrolling, attending and succeeding in school; the homeless liaison contact list "
+           "gives every liaison in the state; information on the educational rights of parents "
+           "and of unaccompanied youth.", DOE_EHCY, HL_READ),
+     claim("The local educational agency, in the child's best interest, continues the child in "
+           "the school of origin or enrolls the child where actually living; the school "
+           "immediately enrolls the child even without records, immunization records or proof "
+           "of residency; transportation to and from the school of origin is provided or "
+           "arranged; each agency has a liaison who ensures homeless children are identified "
+           "and enrolled.", USC_11432, HL_READ),
+     claim("A person in any town who is poor and unable to support themselves is relieved by "
+           "the town's overseers of public welfare; every town and city adopts written "
+           "guidelines on applying, eligibility and appeals; proof of residency includes an "
+           "attestation by the welfare official, a law enforcement or fire official, an EMS "
+           "provider or a social services provider with an existing relationship.",
+           "RSA 165:1", HL_READ),
+     claim("A person temporarily in a town that is not their residence is given reasonable and "
+           "necessary temporary assistance.", "RSA 165:1-c", HL_READ),
+     claim("No landlord may interrupt utility service or deny a tenant access to the premises "
+           "other than through proper judicial process.", "RSA 540-A:3", HL_READ),
+     claim("A possession action for nonpayment alone is dismissed if before the hearing the "
+           "tenant pays all rent due, other lawful charges, $15 liquidated damages and the "
+           "landlord's filing fee and service charges; not more than 3 times within a 12-month "
+           "period.", "RSA 540:9", HL_READ)]
+    + help_claims("legal_aid"),
+    more="<h2>Who Can Help</h2>"
+         "<p>2-1-1 New Hampshire, at any hour, and your town or city welfare office are the "
+         "places to start. For a housing voucher, call New Hampshire Housing at (603) 472-8623. "
+         "For help with an eviction or a denial of town assistance:</p>"
+         + helps("legal_aid"),
+    see=[("How to get help after domestic violence, sexual assault or stalking",
+          "/guides/domestic-violence-help.html"),
+         ("How to apply for food or health assistance", "/guides/food-and-health-assistance.html"),
+         ("How to get help with heating and electric bills", "/guides/heating-and-electric-help.html")],
+    figures=[fig("24 hours", NH211_HOME, "24 hours, 365 days"),
+             fig("$15", "RSA 540:9", "$15 liquidated damages"),
+             fig("12-month", "RSA 540:9", "within a 12-month period"),
+             fig("10 days", COURTS_LLT, "about 10 days"),
+             fig("5 business days", COURTS_LLT, "at least 5 business days"),
+             fig("7 days", COURTS_LLT, "7 days to file a Notice of Intent to Appeal"),
+             fig("7 to 9 years", NHH_APPLY, "wait of 7 to 9 years")])
+
+GUIDES += [HOMELESS]
 
 
 # ---------------------------------------------------------------------------
@@ -3700,6 +3924,9 @@ TASKS = [
              "The Child Care Scholarship: who it is for, how to apply, and choosing a provider."),
         task("domestic-violence-help", "Get help after domestic violence, sexual assault or stalking",
              "The 24-hour helpline, a safety plan, a protective order, and care after an assault."),
+        task("homelessness-help", "Get help if you are homeless or may lose your home",
+             "Shelter, your town&rsquo;s welfare office, your rights in an eviction, and a "
+             "housing voucher."),
         task("heating-and-electric-help", "Get help with heating and electric bills",
              "Fuel assistance, help with electric bills, weatherization, and what to do with no "
              "heat."),
@@ -3794,6 +4021,8 @@ WORDS = {
                                "child care assistance"),
     "domestic-violence-help": ("domestic violence", "sexual assault", "stalking", "abuse",
                                "restraining order", "protective order", "rape"),
+    "homelessness-help": ("homeless", "shelter", "eviction", "evicted", "housing voucher",
+                          "section 8", "town welfare", "rent"),
     "heating-and-electric-help": ("fuel assistance", "heating", "electric bill", "weatherization"),
     "property-tax-abatement": ("property tax", "abatement", "assessment"),
     "property-tax-relief": ("property tax", "tax relief", "low income"),

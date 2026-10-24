@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-10-11.9
+# GRANITE_VERSION: 2026-10-11.10
 """
 The official pages the how-to guides cite, onto this disk, to check them by.
 
@@ -168,6 +168,18 @@ SOURCES = {
         "https://www.dhhs.nh.gov/programs-services/childcare-parenting-childbirth/child-development-and-head-start/child-care",
         "https://www.dhhs.nh.gov/fam_htm/html/901_application_process_fam.htm",
     ],
+    # Read in the person's PDFs of 24 October 2026: the court's and the
+    # Attorney General's pages for the domestic violence guide, and the state
+    # pages the homelessness guide rests on.
+    "domestic_violence": [
+        "https://www.courts.nh.gov/self-help/restraining-orders",
+        "https://www.doj.nh.gov/bureaus/office-victimwitness-assistance/address-confidentiality-program",
+    ],
+    "homelessness": [
+        "https://www.dhhs.nh.gov/programs-services/homeless-services",
+        "https://www.courts.nh.gov/our-courts/circuit-court/district-division/landlordtenant",
+        "https://www.education.nh.gov/who-we-are/division-of-learner-support/bureau-of-instructional-support/ehcy",
+    ],
     "run_for_office": [
         "https://www.sos.nh.gov/elections/running-office",
         "https://www.sos.nh.gov/elections/qualifications-office",
@@ -192,8 +204,8 @@ OTHER = {
     # of Homeland Security's REAL ID address now sends a reader, and the City of
     # Concord's, the example of how a city takes filings for its own offices.
     # The guide to help after domestic and sexual violence (24 October 2026):
-    # the statewide coalition of the crisis centers, not a state agency, and
-    # so the person's to approve, which the session asked for that day.
+    # the statewide coalition of the crisis centers, not a state agency,
+    # approved as a source by the person that day.
     "domestic_violence": [
         "https://www.nhcadsv.org/",
         "https://www.nhcadsv.org/member-programs.html",
@@ -201,6 +213,16 @@ OTHER = {
         "https://www.nhcadsv.org/medicalforensic-exams.html",
         "https://www.nhcadsv.org/legal-resources.html",
         "https://www.nhcadsv.org/support-services--programs.html",
+    ],
+    # The homelessness guide (24 October 2026): 211 New Hampshire, which the
+    # Department of Health and Human Services sends readers to; New Hampshire
+    # Housing, the public housing finance authority, at its own .org address;
+    # and the federal law on homeless students' schooling.
+    "homelessness": [
+        "https://211nh.org/",
+        "https://www.nhhousing.org/rental-assistance/apply/",
+        "https://www.nhhousing.org/resources/resources-for-renters/",
+        "https://www.govinfo.gov/content/pkg/USCODE-2024-title42/html/USCODE-2024-title42-chap119-subchapVI-partB-sec11432.htm",
     ],
     "federal_and_city": [
         "https://www.tsa.gov/real-id",
