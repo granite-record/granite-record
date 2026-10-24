@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-16.9
+# GRANITE_VERSION: 2026-09-16.10
 """A topic for the 29,449 bills the General Court never gave one -- second model.
 
     python3 src/parse/topic_model.py --apply              # write topics_assigned.json
@@ -504,7 +504,14 @@ PROPOSALS = {
 }
 # THE ONE LINE. Add a key of PROPOSALS to turn it on, e.g.
 #     ENABLED = {"legislative organization"}
-ENABLED = set()
+#
+# THE OWNER'S REVIEW OF 24 OCTOBER 2026 turned three on: the wider study
+# template (133 bills, 81 of them Miscellaneous); the chamber's own business
+# folded into Legislature rather than a topic of its own (177 resolutions,
+# 13 of 2025-2026 with no topic at all); and resolutions to Congress or the
+# President as Federal and International Relations (42, all Miscellaneous),
+# rather than State Government. Petitions stay Miscellaneous: one term's 29.
+ENABLED = {"study committees, wider", "housekeeping into Legislature", "federal relations"}
 
 
 def proposal_for(rec, where):
