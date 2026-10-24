@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-10-11.28
+# GRANITE_VERSION: 2026-10-11.29
 """
 The how-to guides: their words, their sources, and what each was checked
 against. Read by build_civics.py, which draws them on the Resources hub's
@@ -3436,6 +3436,198 @@ GUIDES += [CHILD_CARE]
 
 
 # ---------------------------------------------------------------------------
+# HELP AFTER DOMESTIC VIOLENCE, SEXUAL ASSAULT OR STALKING (the person, 24
+# October 2026: "support services for things like sexual assault victims,
+# domestic violence victims, or the homeless"; homelessness is a guide of its
+# own, because a reader in crisis needs the one answer for their situation
+# first). From the New Hampshire Coalition Against Domestic and Sexual
+# Violence -- the statewide body of the crisis centers, whose site answers a
+# cloud session -- read on 24 October 2026, and from RSA 173-B, 633:3-a, 7:41-43
+# and 21-M:8-c and 8-h as the Laws pages print the statute table. The
+# Coalition is not a state agency (guide_sources.OTHER, the person's to
+# approve). The plan's first line governs this guide above all: a dead number
+# here sends someone in crisis nowhere, so every number printed is one the
+# Coalition's own page gives, and the claims carry the day it was read.
+# ---------------------------------------------------------------------------
+DV_READ = "2026-10-24"
+NHCADSV = "https://www.nhcadsv.org/"
+NHCADSV_CENTERS = "https://www.nhcadsv.org/member-programs.html"
+NHCADSV_SAFETY = "https://www.nhcadsv.org/safety-planning1.html"
+NHCADSV_EXAMS = "https://www.nhcadsv.org/medicalforensic-exams.html"
+NHCADSV_LEGAL = "https://www.nhcadsv.org/legal-resources.html"
+NHCADSV_SERVICES = "https://www.nhcadsv.org/support-services--programs.html"
+
+VIOLENCE = guide(
+    "domestic-violence-help", "How to Get Help After Domestic Violence, Sexual Assault or Stalking",
+    "Where to call, how to make a safety plan, how to ask a court for a protective order, and "
+    "what happens at the hospital after a sexual assault, with New Hampshire's free and "
+    "confidential crisis centers.",
+    "If you are in danger now, call 911. Otherwise, call New Hampshire&rsquo;s 24-hour "
+    "domestic and sexual violence helpline, <a href=\"tel:+18666443574\">1-866-644-3574</a>. It is free and "
+    "confidential, it is "
+    "open to everyone, and you do not need to be in crisis to call. An advocate from your local "
+    "crisis center can help you make a safety plan, find shelter, get medical care and ask a "
+    "court for a protective order, which costs nothing to file.",
+    [box("In danger now? Call 911."),
+     box("Call the 24-hour helpline, 1-866-644-3574. It is free and confidential."),
+     ask("What do you need?",
+         [("Protection from someone",
+           "Ask the circuit court for a protective order. There is no fee, and you need no lawyer."),
+          ("Care after a sexual assault",
+           "Go to a hospital. The exam is free, and you choose whether to report to the police.")])],
+    [step("Reach someone now",
+          "<p>In an emergency, call 911.</p>"
+          "<p>At any hour, call the statewide helpline, <b><a href=\"tel:+18666443574\">1-866-644-3574</a></b>. An "
+          "answering "
+          "service usually takes your first name and number, and an advocate from your local "
+          "crisis center calls you back, generally in about 5 minutes. The advocates listen, "
+          "explain your options and never pressure you. They can help with a safety plan, "
+          "shelter, support groups, money, medical care, legal referrals and other services. "
+          "The crisis centers serve victims of domestic violence, sexual assault, stalking, "
+          "child abuse and human trafficking, and their services are free and confidential and "
+          "open to all. If no advocate speaks Spanish, they use an interpreter.</p>"
+          "<p>Outside New Hampshire, call the National Domestic Violence Hotline, 1-800-799-SAFE, "
+          "or RAINN for sexual assault, 1-800-656-HOPE.</p>",
+          actions=[("Find your local crisis center", NHCADSV_CENTERS)]),
+     step("Make a safety plan",
+          "<p>A safety plan is a practical plan for your own situation: how to avoid danger "
+          "and what to do if you are in danger. It helps while you are still with someone who "
+          "is abusive, while you prepare to leave, and after you have left. Abusers may monitor "
+          "calls and texts or track where you are, so a plan covers your phone and other "
+          "technology too. Crisis center advocates help make or review a plan at any hour.</p>",
+          actions=[("Safety planning", NHCADSV_SAFETY)]),
+     step("Ask the court for a protective order",
+          "<p>If a family or household member, or a current or former partner, has abused you, "
+          "you can file a <b>domestic violence petition</b> at the circuit court where you or "
+          "they live, or where you are staying if you left home to get away. The clerk has the "
+          "forms. <b>There is no filing fee</b>, no fee to have the papers served, and you do "
+          "not need a lawyer. A minor can ask for an order against a partner or former partner "
+          "without a parent.</p>"
+          "<ul><li>If you are in immediate danger, the court can make a <b>temporary order</b> "
+          "without first telling the other person.</li>"
+          "<li>When the court is closed, the police can ask a judge for an emergency order by "
+          "phone, which lasts until the end of the court&rsquo;s next business day.</li>"
+          "<li>The court holds a hearing within 30 days of the petition, or 10 days after the "
+          "other person is served, whichever is later.</li></ul>"
+          "<p>If someone is <b>stalking</b> you, you can ask the court for a stalking order the "
+          "same way. The DOVE Project gives free lawyers to qualifying survivors of domestic "
+          "violence at the final hearing; ask your crisis center.</p>"
+          "<p>When the police respond to abuse, they must help keep you safe: you can ask them "
+          "to request an emergency order, to help you collect clothing, medication and other "
+          "essentials, to take you to a safe place, and to get you an ambulance.</p>",
+          actions=[("Legal help, from the Coalition", NHCADSV_LEGAL)],
+          law=["RSA 173-B:1", "RSA 173-B:2", "RSA 173-B:3", "RSA 173-B:4", "RSA 173-B:10",
+               "RSA 633:3-a"]),
+     step("After a sexual assault: medical care",
+          "<p>Going to a hospital is about your health and safety: you may have injuries you "
+          "cannot see, or have been exposed to an infection or to pregnancy. Emergency "
+          "contraception works best within 72 hours.</p>"
+          "<ul><li><b>The exam is free.</b> The bill is never sent to you or your family.</li>"
+          "<li><b>You choose whether to report</b> to the police, and you can have the exam "
+          "first and decide later. If you are under 18, the hospital staff must report it.</li>"
+          "<li><b>You choose what happens.</b> You can say no to any part of the exam, at any "
+          "time.</li>"
+          "<li>An advocate from the crisis center can be with you, for free.</li></ul>",
+          actions=[("What to expect at the hospital", NHCADSV_EXAMS)],
+          law=["RSA 21-M:8-c"]),
+     step("Other protections and help",
+          "<ul><li><b>Keeping your address private.</b> The Attorney General&rsquo;s Address "
+          "Confidentiality Program gives a victim of domestic violence, stalking or sexual "
+          "assault an address to use in place of their own on public records and for mail. "
+          "You apply to the Attorney General, and the certification lasts 4 years.</li>"
+          "<li><b>Costs of a crime.</b> The Victims&rsquo; Compensation Program helps victims of "
+          "violent crime with costs that come from their injuries. Claims are generally filed "
+          "within 2 years of the crime, and you can still qualify if no one is arrested or "
+          "convicted.</li>"
+          "<li><b>Free legal help</b> with housing, family law, benefits and more: 603 Legal "
+          "Aid, 1-800-639-5290.</li></ul>",
+          actions=[("Services and programs, from the Coalition", NHCADSV_SERVICES)],
+          law=["RSA 7:43", "RSA 21-M:8-h"])],
+    [("New Hampshire Coalition Against Domestic and Sexual Violence", NHCADSV),
+     ("Contact your local crisis center (the Coalition)", NHCADSV_CENTERS),
+     ("Safety planning (the Coalition)", NHCADSV_SAFETY),
+     ("Medical/forensic exams (the Coalition)", NHCADSV_EXAMS),
+     ("Legal and other resources (the Coalition)", NHCADSV_LEGAL),
+     ("Services and programs (the Coalition)", NHCADSV_SERVICES),
+     ("Protection of Persons from Domestic Violence, RSA 173-B", "/laws/173-b")],
+    ["173-B"],
+    [claim("A 24-hour helpline, 1-866-644-3574; the crisis centers serve victims of domestic "
+           "violence, sexual assault, stalking, child abuse and human trafficking; free and "
+           "confidential, open and affirming to all, no need to be in crisis; in an emergency "
+           "call 911; to report child abuse or neglect, DCYF at (800) 894-5533 in state or "
+           "(603) 271-6562.", NHCADSV, DV_READ),
+     claim("The statewide helpline is answered by a service that takes a first name and number "
+           "and has a local advocate call back, generally in about 5 minutes; advocates help "
+           "with safety planning, shelter, support groups, financial services, medical care, "
+           "legal referrals and social services, listen, share options and never pressure; an "
+           "interpreter where no advocate speaks Spanish; the National Domestic Violence "
+           "Hotline 1-800-799-SAFE and RAINN 1-800-656-HOPE outside NH.", NHCADSV_CENTERS, DV_READ),
+     claim("A safety plan is personalized to avoid dangerous situations, for while with the "
+           "abuser, preparing to leave and after; advocates help craft or review one 24/7; "
+           "abusers may monitor calls and texts and track location, so technology safety is "
+           "part of it.", NHCADSV_SAFETY, DV_READ),
+     claim("The exam is about health and safety: unseen injuries, infection, pregnancy; no charge "
+           "for the exam; it may be anonymous and the survivor chooses whether to report, except "
+           "that under 18 the staff must report; any part may be refused at any time; a crisis "
+           "center advocate is available free; emergency contraception is most effective "
+           "within 72 hours.", NHCADSV_EXAMS, DV_READ),
+     claim("The DOVE Project gives free legal representation to qualifying survivors of "
+           "domestic violence at final restraining order hearings, through the crisis center; "
+           "603 Legal Aid at 800-639-5290 or 603-224-3333, the single point of entry to free "
+           "legal services, including domestic violence, housing, family law and benefits.",
+           NHCADSV_LEGAL, DV_READ),
+     claim("Free and confidential crisis center services, including accompaniment to hospitals, "
+           "police and courts and emergency shelter; the Victims' Compensation Program helps "
+           "innocent victims of violent crime with expenses directly related to crime injuries.",
+           NHCADSV_SERVICES, DV_READ),
+     claim("Proceedings may be brought where the plaintiff temporarily resides after leaving to "
+           "avoid abuse.", "RSA 173-B:2", DV_READ),
+     claim("Abuse is by a family or household member or a current or former sexual or intimate "
+           "partner.", "RSA 173-B:1", DV_READ),
+     claim("A petition in the county or district where either party resides; a minor plaintiff "
+           "may get an order against a present or former intimate partner without a parent; no "
+           "filing fee or fee for service, and no counsel needed; clerks supply forms; a hearing "
+           "within 30 days of filing or 10 days of service, whichever is later.",
+           "RSA 173-B:3", DV_READ),
+     claim("Temporary orders on a showing of immediate and present danger, with or without notice "
+           "to the defendant; by telephone through a law enforcement officer, effective until "
+           "the close of the next regular court business day.", "RSA 173-B:4", DV_READ),
+     claim("Officers give notice that a victim may ask for help with safety, an emergency "
+           "telephonic order, retrieving toiletries, medication and clothing, being taken to a "
+           "safe place, and an ambulance.", "RSA 173-B:10", DV_READ),
+     claim("A victim of stalking may file a civil petition, with relief and procedures as under "
+           "RSA 173-B.", "RSA 633:3-a", DV_READ),
+     claim("Examinations of a victim of an alleged sexual offense are provided without charge; "
+           "the bill is not sent or given to the victim or family.", "RSA 21-M:8-c", DV_READ),
+     claim("A victim of domestic violence, stalking or sexual assault may apply to the attorney "
+           "general for a designated address; certified for 4 years.", "RSA 7:43", DV_READ),
+     claim("Personal injury from a felony or misdemeanor; claims within 2 years of the crime "
+           "unless good cause; not ineligible for failure to apprehend or convict.",
+           "RSA 21-M:8-h", DV_READ)]
+    + help_claims("legal_aid"),
+    more="<h2>Who Can Help</h2>"
+         "<p>Your local crisis center, through the 24-hour helpline at <a href=\"tel:+18666443574\">1-866-644-3574</a>, "
+         "is the "
+         "place to start for anything on this page. Its advocates can go with you to the "
+         "hospital, the police or the court.</p>"
+         "<p>If you think a child under 18 is being abused or neglected, New Hampshire law "
+         "requires you to report it right away to the Division for Children, Youth and Families: call "
+         "(800) 894-5533 in New Hampshire, or (603) 271-6562.</p>"
+         + helps("legal_aid"),
+    see=[("How to vote", "/guides/how-to-vote.html"),
+         ("How to apply for food or health assistance", "/guides/food-and-health-assistance.html")],
+    figures=[fig("24-hour", NHCADSV, "A 24-hour helpline"),
+             fig("5 minutes", NHCADSV_CENTERS, "generally in about 5 minutes"),
+             fig("72 hours", NHCADSV_EXAMS, "within 72 hours"),
+             fig("30 days", "RSA 173-B:3", "within 30 days of the filing of a petition"),
+             fig("10 days", "RSA 173-B:3", "within 10 days of service of process"),
+             fig("4 years", "RSA 7:43", "certified for 4 years"),
+             fig("2 years", "RSA 21-M:8-h", "within 2 years of the crime")])
+
+GUIDES += [VIOLENCE]
+
+
+# ---------------------------------------------------------------------------
 # THE GUIDES BY TASK (the person, 17 October 2026: "refine how the how to
 # guides are displayed on the main resources page and the homepage so it's
 # more intuitive for the general public"). A reader arrives with something to
@@ -3506,6 +3698,8 @@ TASKS = [
              "Your claim, the weekly claims that follow, and how to appeal."),
         task("child-care-scholarship", "Get help paying for child care",
              "The Child Care Scholarship: who it is for, how to apply, and choosing a provider."),
+        task("domestic-violence-help", "Get help after domestic violence, sexual assault or stalking",
+             "The 24-hour helpline, a safety plan, a protective order, and care after an assault."),
         task("heating-and-electric-help", "Get help with heating and electric bills",
              "Fuel assistance, help with electric bills, weatherization, and what to do with no "
              "heat."),
@@ -3598,6 +3792,8 @@ WORDS = {
     "file-for-unemployment": ("unemployment", "laid off", "lost my job", "benefits"),
     "child-care-scholarship": ("child care", "childcare", "daycare", "child care scholarship",
                                "child care assistance"),
+    "domestic-violence-help": ("domestic violence", "sexual assault", "stalking", "abuse",
+                               "restraining order", "protective order", "rape"),
     "heating-and-electric-help": ("fuel assistance", "heating", "electric bill", "weatherization"),
     "property-tax-abatement": ("property tax", "abatement", "assessment"),
     "property-tax-relief": ("property tax", "tax relief", "low income"),

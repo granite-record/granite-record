@@ -7877,6 +7877,267 @@
    "en": "Your town: {place}",
    "es": "Su municipio: {place}",
    "state": "draft"
+  },
+  "guide.domestic-violence-help.title": {
+   "en": "How to Get Help After Domestic Violence, Sexual Assault or Stalking",
+   "es": "Cómo obtener ayuda después de violencia doméstica, agresión sexual o acecho",
+   "state": "draft"
+  },
+  "guide.domestic-violence-help.lead": {
+   "en": "Where to call, how to make a safety plan, how to ask a court for a protective order, and what happens at the hospital after a sexual assault, with New Hampshire's free and confidential crisis centers.",
+   "es": "A dónde llamar, cómo hacer un plan de seguridad, cómo pedir a un tribunal una orden de protección y qué pasa en el hospital después de una agresión sexual, con los centros de crisis gratuitos y confidenciales de New Hampshire.",
+   "state": "draft"
+  },
+  "guide.domestic-violence-help.if-you-are-in-danger-now": {
+   "en": "If you are in danger now, call 911. Otherwise, call New Hampshire&rsquo;s 24-hour domestic and sexual violence helpline, <a href=\"tel:+18666443574\">1-866-644-3574</a>. It is free and confidential, it is open to everyone, and you do not need to be in crisis to call. An advocate from your local crisis center can help you make a safety plan, find shelter, get medical care and ask a court for a protective order, which costs nothing to file.",
+   "es": "Si está en peligro ahora, llame al 911. Si no, llame a la línea de ayuda de New Hampshire para la violencia doméstica y sexual, que atiende las 24 horas: <a href=\"tel:+18666443574\">1-866-644-3574</a>. Es gratuita y confidencial, está abierta a todos, y no necesita estar en crisis para llamar. Un consejero de su centro de crisis local puede ayudarle a hacer un plan de seguridad, encontrar refugio, recibir atención médica y pedir a un tribunal una orden de protección, que no cuesta nada presentar.",
+   "state": "draft",
+   "note": "advocate: 'consejero', as the Coalition's own Spanish page says 'consejera'; the proofreader may prefer 'defensor de víctimas' or a gender-neutral form. stalking: 'acecho'."
+  },
+  "guide.domestic-violence-help.in-danger-now-call-911": {
+   "en": "In danger now? Call 911.",
+   "es": "¿Está en peligro ahora? Llame al 911.",
+   "state": "draft"
+  },
+  "guide.domestic-violence-help.call-the-24-hour-helpline-1": {
+   "en": "Call the 24-hour helpline, 1-866-644-3574. It is free and confidential.",
+   "es": "Llame a la línea de ayuda de 24 horas, 1-866-644-3574. Es gratuita y confidencial.",
+   "state": "draft"
+  },
+  "guide.domestic-violence-help.what-do-you-need": {
+   "en": "What do you need?",
+   "es": "¿Qué necesita?",
+   "state": "draft"
+  },
+  "guide.domestic-violence-help.protection-from-someone": {
+   "en": "Protection from someone",
+   "es": "Protección contra alguien",
+   "state": "draft"
+  },
+  "guide.domestic-violence-help.ask-the-circuit-court-for-a": {
+   "en": "Ask the circuit court for a protective order. There is no fee, and you need no lawyer.",
+   "es": "Pida al tribunal de circuito una orden de protección. No hay cuota, y no necesita abogado.",
+   "state": "draft"
+  },
+  "guide.domestic-violence-help.care-after-a-sexual-assault": {
+   "en": "Care after a sexual assault",
+   "es": "Atención después de una agresión sexual",
+   "state": "draft"
+  },
+  "guide.domestic-violence-help.go-to-a-hospital-the-exam": {
+   "en": "Go to a hospital. The exam is free, and you choose whether to report to the police.",
+   "es": "Vaya a un hospital. El examen es gratuito, y usted decide si lo denuncia a la policía.",
+   "state": "draft"
+  },
+  "guide.domestic-violence-help.reach-someone-now": {
+   "en": "Reach someone now",
+   "es": "Comuníquese con alguien ahora",
+   "state": "draft"
+  },
+  "guide.domestic-violence-help.in-an-emergency-call-911": {
+   "en": "In an emergency, call 911.",
+   "es": "En una emergencia, llame al 911.",
+   "state": "draft"
+  },
+  "guide.domestic-violence-help.at-any-hour-call-the-statewide": {
+   "en": "At any hour, call the statewide helpline, <b><a href=\"tel:+18666443574\">1-866-644-3574</a></b>. An answering service usually takes your first name and number, and an advocate from your local crisis center calls you back, generally in about 5 minutes. The advocates listen, explain your options and never pressure you. They can help with a safety plan, shelter, support groups, money, medical care, legal referrals and other services. The crisis centers serve victims of domestic violence, sexual assault, stalking, child abuse and human trafficking, and their services are free and confidential and open to all. If no advocate speaks Spanish, they use an interpreter.",
+   "es": "A cualquier hora, llame a la línea de ayuda estatal, <b><a href=\"tel:+18666443574\">1-866-644-3574</a></b>. Por lo general, primero un servicio de contestación toma su primer nombre y su número, y un consejero de su centro de crisis local le devuelve la llamada, generalmente en unos 5 minutos. Los consejeros escuchan, le explican sus opciones y nunca lo presionan. Pueden ayudarle con un plan de seguridad, refugio, grupos de apoyo, dinero, atención médica, referidos legales y otros servicios. Los centros de crisis atienden a víctimas de violencia doméstica, agresión sexual, acecho, abuso infantil y trata de personas, y sus servicios son gratuitos, confidenciales y abiertos a todos. Si ningún consejero habla español, usan un intérprete.",
+   "state": "draft"
+  },
+  "guide.domestic-violence-help.outside-new-hampshire-call-the-national": {
+   "en": "Outside New Hampshire, call the National Domestic Violence Hotline, 1-800-799-SAFE, or RAINN for sexual assault, 1-800-656-HOPE.",
+   "es": "Fuera de New Hampshire, llame a la Línea Nacional sobre la Violencia Doméstica (National Domestic Violence Hotline), 1-800-799-SAFE, o a RAINN para agresión sexual, 1-800-656-HOPE.",
+   "state": "draft"
+  },
+  "guide.domestic-violence-help.find-your-local-crisis-center": {
+   "en": "Find your local crisis center",
+   "es": "Encuentre su centro de crisis local",
+   "state": "draft"
+  },
+  "guide.domestic-violence-help.make-a-safety-plan": {
+   "en": "Make a safety plan",
+   "es": "Haga un plan de seguridad",
+   "state": "draft"
+  },
+  "guide.domestic-violence-help.a-safety-plan-is-a-practical": {
+   "en": "A safety plan is a practical plan for your own situation: how to avoid danger and what to do if you are in danger. It helps while you are still with someone who is abusive, while you prepare to leave, and after you have left. Abusers may monitor calls and texts or track where you are, so a plan covers your phone and other technology too. Crisis center advocates help make or review a plan at any hour.",
+   "es": "Un plan de seguridad es un plan práctico para su propia situación: cómo evitar el peligro y qué hacer si está en peligro. Sirve mientras todavía está con alguien que lo maltrata, mientras se prepara para irse y después de haberse ido. Los agresores pueden vigilar llamadas y mensajes de texto o rastrear dónde está usted, así que un plan también cubre su teléfono y otra tecnología. Los consejeros de los centros de crisis ayudan a hacer o revisar un plan a cualquier hora.",
+   "state": "draft"
+  },
+  "guide.domestic-violence-help.safety-planning": {
+   "en": "Safety planning",
+   "es": "Plan de seguridad",
+   "state": "draft"
+  },
+  "guide.domestic-violence-help.ask-the-court-for-a-protective": {
+   "en": "Ask the court for a protective order",
+   "es": "Pida al tribunal una orden de protección",
+   "state": "draft"
+  },
+  "guide.domestic-violence-help.if-a-family-or-household-member": {
+   "en": "If a family or household member, or a current or former partner, has abused you, you can file a <b>domestic violence petition</b> at the circuit court where you or they live, or where you are staying if you left home to get away. The clerk has the forms. <b>There is no filing fee</b>, no fee to have the papers served, and you do not need a lawyer. A minor can ask for an order against a partner or former partner without a parent.",
+   "es": "Si un familiar o miembro de su hogar, o una pareja actual o anterior, lo ha maltratado, puede presentar una <b>petición por violencia doméstica</b> en el tribunal de circuito (circuit court) donde vive usted o donde vive esa persona, o donde se esté quedando si se fue de su casa para alejarse. El secretario del tribunal tiene los formularios. <b>No hay cuota de presentación</b>, ni cuota para entregar los documentos, y no necesita abogado. Un menor de edad puede pedir una orden contra una pareja o expareja sin uno de sus padres.",
+   "state": "draft"
+  },
+  "guide.domestic-violence-help.if-you-are-in-immediate-danger": {
+   "en": "If you are in immediate danger, the court can make a <b>temporary order</b> without first telling the other person.",
+   "es": "Si está en peligro inmediato, el tribunal puede dictar una <b>orden temporal</b> sin avisar primero a la otra persona.",
+   "state": "draft"
+  },
+  "guide.domestic-violence-help.when-the-court-is-closed-the": {
+   "en": "When the court is closed, the police can ask a judge for an emergency order by phone, which lasts until the end of the court&rsquo;s next business day.",
+   "es": "Cuando el tribunal está cerrado, la policía puede pedir a un juez una orden de emergencia por teléfono, que dura hasta el final del siguiente día hábil del tribunal.",
+   "state": "draft"
+  },
+  "guide.domestic-violence-help.the-court-holds-a-hearing-within": {
+   "en": "The court holds a hearing within 30 days of the petition, or 10 days after the other person is served, whichever is later.",
+   "es": "El tribunal celebra una audiencia dentro de los 30 días siguientes a la petición, o 10 días después de que se entreguen los documentos a la otra persona, lo que ocurra después.",
+   "state": "draft"
+  },
+  "guide.domestic-violence-help.if-someone-is-stalking-you-you": {
+   "en": "If someone is <b>stalking</b> you, you can ask the court for a stalking order the same way. The DOVE Project gives free lawyers to qualifying survivors of domestic violence at the final hearing; ask your crisis center.",
+   "es": "Si alguien lo está <b>acechando</b>, puede pedir al tribunal una orden contra el acecho de la misma manera. El Proyecto DOVE ofrece abogados gratuitos a sobrevivientes de violencia doméstica que reúnan los requisitos para la audiencia final; pregunte en su centro de crisis.",
+   "state": "draft"
+  },
+  "guide.domestic-violence-help.when-the-police-respond-to-abuse": {
+   "en": "When the police respond to abuse, they must help keep you safe: you can ask them to request an emergency order, to help you collect clothing, medication and other essentials, to take you to a safe place, and to get you an ambulance.",
+   "es": "Cuando la policía responde a un caso de maltrato, debe ayudar a protegerlo: puede pedirles que soliciten una orden de emergencia, que le ayuden a recoger ropa, medicamentos y otras cosas esenciales, que lo lleven a un lugar seguro y que le consigan una ambulancia.",
+   "state": "draft"
+  },
+  "guide.domestic-violence-help.legal-help-from-the-coalition": {
+   "en": "Legal help, from the Coalition",
+   "es": "Ayuda legal, de la Coalición",
+   "state": "draft"
+  },
+  "guide.domestic-violence-help.after-a-sexual-assault-medical-care": {
+   "en": "After a sexual assault: medical care",
+   "es": "Después de una agresión sexual: atención médica",
+   "state": "draft"
+  },
+  "guide.domestic-violence-help.going-to-a-hospital-is-about": {
+   "en": "Going to a hospital is about your health and safety: you may have injuries you cannot see, or have been exposed to an infection or to pregnancy. Emergency contraception works best within 72 hours.",
+   "es": "Ir a un hospital es por su salud y su seguridad: puede tener lesiones que no se ven, o haber estado expuesto a una infección o a un embarazo. La anticoncepción de emergencia funciona mejor dentro de las 72 horas.",
+   "state": "draft"
+  },
+  "guide.domestic-violence-help.the-exam-is-free-the-bill": {
+   "en": "<b>The exam is free.</b> The bill is never sent to you or your family.",
+   "es": "<b>El examen es gratuito.</b> La factura nunca se le envía a usted ni a su familia.",
+   "state": "draft"
+  },
+  "guide.domestic-violence-help.you-choose-whether-to-report-to": {
+   "en": "<b>You choose whether to report</b> to the police, and you can have the exam first and decide later. If you are under 18, the hospital staff must report it.",
+   "es": "<b>Usted decide si lo denuncia</b> a la policía, y puede hacerse el examen primero y decidir después. Si es menor de 18 años, el personal del hospital debe denunciarlo.",
+   "state": "draft"
+  },
+  "guide.domestic-violence-help.you-choose-what-happens-you-can": {
+   "en": "<b>You choose what happens.</b> You can say no to any part of the exam, at any time.",
+   "es": "<b>Usted decide lo que pasa.</b> Puede decir que no a cualquier parte del examen, en cualquier momento.",
+   "state": "draft"
+  },
+  "guide.domestic-violence-help.an-advocate-from-the-crisis-center": {
+   "en": "An advocate from the crisis center can be with you, for free.",
+   "es": "Un consejero del centro de crisis puede acompañarlo, gratis.",
+   "state": "draft"
+  },
+  "guide.domestic-violence-help.what-to-expect-at-the-hospital": {
+   "en": "What to expect at the hospital",
+   "es": "Qué esperar en el hospital",
+   "state": "draft"
+  },
+  "guide.domestic-violence-help.other-protections-and-help": {
+   "en": "Other protections and help",
+   "es": "Otras protecciones y ayuda",
+   "state": "draft"
+  },
+  "guide.domestic-violence-help.keeping-your-address-private-the": {
+   "en": "<b>Keeping your address private.</b> The Attorney General&rsquo;s Address Confidentiality Program gives a victim of domestic violence, stalking or sexual assault an address to use in place of their own on public records and for mail. You apply to the Attorney General, and the certification lasts 4 years.",
+   "es": "<b>Mantener privado su domicilio.</b> El Programa de Confidencialidad de Domicilio (Address Confidentiality Program) del Fiscal General da a una víctima de violencia doméstica, acecho o agresión sexual una dirección para usar en lugar de la suya en los registros públicos y para el correo. Se solicita al Fiscal General, y la certificación dura 4 años.",
+   "state": "draft"
+  },
+  "guide.domestic-violence-help.costs-of-a-crime-the-victims": {
+   "en": "<b>Costs of a crime.</b> The Victims&rsquo; Compensation Program helps victims of violent crime with costs that come from their injuries. Claims are generally filed within 2 years of the crime, and you can still qualify if no one is arrested or convicted.",
+   "es": "<b>Los costos de un delito.</b> El Programa de Compensación para Víctimas (Victims&rsquo; Compensation Program) ayuda a las víctimas de delitos violentos con los gastos que causan sus lesiones. Por lo general, las solicitudes se presentan dentro de los 2 años siguientes al delito, y puede reunir los requisitos aunque nadie sea arrestado ni condenado.",
+   "state": "draft"
+  },
+  "guide.domestic-violence-help.free-legal-help-with-housing-family": {
+   "en": "<b>Free legal help</b> with housing, family law, benefits and more: 603 Legal Aid, 1-800-639-5290.",
+   "es": "<b>Ayuda legal gratuita</b> con vivienda, derecho de familia, beneficios y más: 603 Legal Aid, 1-800-639-5290.",
+   "state": "draft"
+  },
+  "guide.domestic-violence-help.services-and-programs-from-the-coalition": {
+   "en": "Services and programs, from the Coalition",
+   "es": "Servicios y programas, de la Coalición",
+   "state": "draft"
+  },
+  "guide.domestic-violence-help.your-local-crisis-center-through-the": {
+   "en": "Your local crisis center, through the 24-hour helpline at <a href=\"tel:+18666443574\">1-866-644-3574</a>, is the place to start for anything on this page. Its advocates can go with you to the hospital, the police or the court.",
+   "es": "Su centro de crisis local, por medio de la línea de ayuda de 24 horas, <a href=\"tel:+18666443574\">1-866-644-3574</a>, es el lugar para empezar con cualquier cosa de esta página. Sus consejeros pueden acompañarlo al hospital, a la policía o al tribunal.",
+   "state": "draft"
+  },
+  "guide.domestic-violence-help.if-you-think-a-child-under": {
+   "en": "If you think a child under 18 is being abused or neglected, New Hampshire law requires you to report it right away to the Division for Children, Youth and Families: call (800) 894-5533 in New Hampshire, or (603) 271-6562.",
+   "es": "Si cree que un niño menor de 18 años sufre abuso o negligencia, la ley de New Hampshire le exige denunciarlo de inmediato a la División para Niños, Jóvenes y Familias (DCYF): llame al (800) 894-5533 dentro de New Hampshire, o al (603) 271-6562.",
+   "state": "draft"
+  },
+  "guide.domestic-violence-help.603-legal-aid": {
+   "en": "603 Legal Aid",
+   "es": "603 Legal Aid",
+   "state": "draft"
+  },
+  "guide.domestic-violence-help.how-to-vote": {
+   "en": "How to vote",
+   "es": "Cómo votar",
+   "state": "draft"
+  },
+  "guide.domestic-violence-help.how-to-apply-for-food-or": {
+   "en": "How to apply for food or health assistance",
+   "es": "Cómo solicitar ayuda para alimentos o salud",
+   "state": "draft"
+  },
+  "guide.domestic-violence-help.new-hampshire-coalition-against-domestic": {
+   "en": "New Hampshire Coalition Against Domestic and Sexual Violence",
+   "es": "Coalición de New Hampshire contra la Violencia Doméstica y Sexual (New Hampshire Coalition Against Domestic and Sexual Violence)",
+   "state": "draft"
+  },
+  "guide.domestic-violence-help.contact-your-local-crisis-center-the": {
+   "en": "Contact your local crisis center (the Coalition)",
+   "es": "Comuníquese con su centro de crisis local (la Coalición)",
+   "state": "draft"
+  },
+  "guide.domestic-violence-help.safety-planning-the-coalition": {
+   "en": "Safety planning (the Coalition)",
+   "es": "Plan de seguridad (la Coalición)",
+   "state": "draft"
+  },
+  "guide.domestic-violence-help.medical-forensic-exams-the-coalition": {
+   "en": "Medical/forensic exams (the Coalition)",
+   "es": "Exámenes médicos y forenses (la Coalición)",
+   "state": "draft"
+  },
+  "guide.domestic-violence-help.legal-and-other-resources-the-coalition": {
+   "en": "Legal and other resources (the Coalition)",
+   "es": "Recursos legales y otros (la Coalición)",
+   "state": "draft"
+  },
+  "guide.domestic-violence-help.services-and-programs-the-coalition": {
+   "en": "Services and programs (the Coalition)",
+   "es": "Servicios y programas (la Coalición)",
+   "state": "draft"
+  },
+  "guide.domestic-violence-help.protection-of-persons-from-domestic": {
+   "en": "Protection of Persons from Domestic Violence, RSA 173-B",
+   "es": "Protección de las personas contra la violencia doméstica, RSA 173-B",
+   "state": "draft"
+  },
+  "guide.task.domestic-violence-help.does": {
+   "en": "Get help after domestic violence, sexual assault or stalking",
+   "es": "Obtener ayuda después de violencia doméstica, agresión sexual o acecho",
+   "state": "draft"
+  },
+  "guide.task.domestic-violence-help.line": {
+   "en": "The 24-hour helpline, a safety plan, a protective order, and care after an assault.",
+   "es": "La línea de ayuda de 24 horas, un plan de seguridad, una orden de protección y atención después de una agresión.",
+   "state": "draft"
   }
  }
 }
