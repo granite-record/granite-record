@@ -1,4 +1,4 @@
-/* GRANITE_VERSION: 2026-09-07.305 */
+/* GRANITE_VERSION: 2026-09-07.306 */
 /* ONE STYLESHEET FOR EVERY PAGE (23 October 2026). Every page of the site
    links this file, /app.css: the record pages shell.page() makes from
    bills.html, and the five build_pages.py writes -- the home page, Officials,
@@ -7604,6 +7604,38 @@ padding:var(--sp-7) max(0px,calc(50% - 590px))}
      columns end here", which is better than leaving 340px of white looking
      like something failed to load. */:where(body.pg) #recent{border-top:1px solid var(--rule);padding-top:var(--sp-3)}
 }
+/* LATEST ACTIVITY, A MEETING AN ITEM (the person, 24 October 2026: "have
+   latest activity show things like recent meetings and all the bills from
+   that meeting are grouped together"; build_pages.recent_box). At every
+   width, so outside the block above. Each item is a committee's day or a
+   chamber's sitting, ruled off as the rows were: when it was, its name
+   leading into it with the kinds of sitting it held, then its bills, each
+   once, with what was done to it there and its title on one line under. The
+   colour bar down its edge is Coming up's (.calmix), a segment a kind. These
+   narrow the list's own rules (.actlist, above): the bills inside an item are
+   not rows of their own. */
+:where(body.pg) .latlist > li.latm{display:block;position:relative;
+padding:var(--sp-4) 0 var(--sp-4) calc(var(--sp-5) + 4px)}
+:where(body.pg) .latm .calmix{top:var(--sp-4);bottom:var(--sp-4);border-radius:2px}
+:where(body.pg) .latwhen{margin:0;font-size:var(--t-sm);color:var(--ink-2)}
+:where(body.pg) .lathead{margin:var(--sp-1) 0 0;line-height:1.4}
+:where(body.pg) .latname{font-weight:600;color:var(--pine)}
+:where(body.pg) .latkinds{color:var(--ink-2)}
+:where(body.pg) .latbills{list-style:none;margin:var(--sp-3) 0 0;padding:0}
+:where(body.pg) .latlist .latbills li{display:block;padding:var(--sp-2) 0;border:0;margin:0;
+line-height:1.6}
+:where(body.pg) .latbills .cbn{font-weight:600;font-variant-numeric:tabular-nums;
+margin-right:var(--sp-2)}
+/* An outcome is a chip in the site's words for it, and some of those are
+   long ("Does Not Recommend Future Legislation"): in a 250px column a chip
+   that kept its own box went under the number and took two lines of its own.
+   Here it runs on after the number as words do, and breaks where they do. */
+:where(body.pg) .latbills .chip{display:inline;white-space:normal;padding:0 var(--sp-3)}
+:where(body.pg) .latvote,:where(body.pg) .latdated{font-size:var(--t-sm);color:var(--ink-2);
+font-variant-numeric:tabular-nums}
+:where(body.pg) .latt{display:block;font-family:var(--serif);font-size:var(--t-sm);color:var(--ink-2);
+white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+:where(body.pg) .latmore{margin:var(--sp-1) 0 0;font-size:var(--t-sm)}
 /* THE ORDER ON ONE COLUMN, which is the person's, from 20 September:
    the hero, the bill search and its cards, then find your legislators, the
    status, what is coming up, the most recent floor sessions, and last the

@@ -1013,6 +1013,12 @@
    "es": "una reunión de un comité o subcomité para trabajar en el texto de un proyecto de ley; es abierta al público, pero el público solo es escuchado en la audiencia pública",
    "state": "draft"
   },
+  "home.dated": {
+   "en": "dated {date}",
+   "es": "con fecha del {date}",
+   "state": "draft",
+   "note": "Latest Activity: the day the docket dates a committee's vote, where it is not the day of the meeting it is listed under (\"con fecha del 22 oct.\")."
+  },
   "home.desc": {
    "en": "Every bill, vote, hearing and floor debate of the New Hampshire General Court, linked to the moment in the recording where it happened.",
    "es": "Cada proyecto de ley, votación, audiencia y debate de la Legislatura de New Hampshire, enlazado al momento de la grabación en que ocurrió.",
@@ -1034,6 +1040,12 @@
    "es": "Dónde está la Legislatura y qué viene",
    "state": "draft"
   },
+  "home.n_more": {
+   "en": "and {n} more",
+   "es": "y {n} más",
+   "state": "draft",
+   "note": "Latest Activity: the bills of a meeting past the three it lists."
+  },
   "home.recent": {
    "en": "Latest Activity",
    "es": "Actividad reciente",
@@ -1043,6 +1055,12 @@
    "en": "See all recent activity &rarr;",
    "es": "Ver toda la actividad reciente &rarr;",
    "state": "draft"
+  },
+  "home.retained": {
+   "en": "Retained",
+   "es": "Retenido",
+   "state": "draft",
+   "note": "A chip: the committee kept the bill into the next year (\"Retained in committee\")."
   },
   "home.right": {
    "en": "The latest session days, and what has just happened",
@@ -1070,6 +1088,11 @@
    "es": "Granite Record: el registro legislativo de New Hampshire",
    "state": "draft"
   },
+  "home.today": {
+   "en": "Today",
+   "es": "Hoy",
+   "state": "draft"
+  },
   "home.try": {
    "en": "Try a bill number, a subject, a legislator or a committee. Your town shows who represents you.",
    "es": "Pruebe con un número de proyecto de ley, un tema, un legislador o un comité. Su municipio le muestra quién lo representa.",
@@ -1078,6 +1101,11 @@
   "home.year_link": {
    "en": "NH Legislature Schedule",
    "es": "Calendario de la Legislatura de NH",
+   "state": "draft"
+  },
+  "home.yesterday": {
+   "en": "Yesterday",
+   "es": "Ayer",
    "state": "draft"
   },
   "kind.committee_of_conference": {
@@ -1179,6 +1207,38 @@
   "page.skip": {
    "en": "Skip to the content",
    "es": "Saltar al contenido",
+   "state": "draft"
+  },
+  "rec.inexpedient_to_legislate": {
+   "en": "Inexpedient to Legislate",
+   "es": "Inconveniente legislar",
+   "state": "draft",
+   "note": "A committee's recommendation, as a chip: that the bill be killed (ITL)."
+  },
+  "rec.interim_study": {
+   "en": "Interim Study",
+   "es": "Estudio provisional",
+   "state": "draft",
+   "note": "A committee's recommendation, as a chip: that the bill be studied after the session (IS)."
+  },
+  "rec.ought_to_pass": {
+   "en": "Ought to Pass",
+   "es": "Debe aprobarse",
+   "state": "draft"
+  },
+  "rec.ought_to_pass_with_amendment": {
+   "en": "Ought to Pass with Amendment",
+   "es": "Debe aprobarse con enmienda",
+   "state": "draft"
+  },
+  "rec.re_refer_to_committee": {
+   "en": "Re-refer to Committee",
+   "es": "Devolver al comité",
+   "state": "draft"
+  },
+  "rec.without_recommendation": {
+   "en": "Without Recommendation",
+   "es": "Sin recomendación",
    "state": "draft"
   },
   "search.go": {
@@ -1301,6 +1361,30 @@
    "es": "En espera del día de vetos",
    "state": "draft"
   },
+  "study.does_not_recommend_future_legislation": {
+   "en": "does not recommend future legislation",
+   "es": "no recomienda legislación futura",
+   "state": "draft",
+   "note": "Sentence case: a chip capitalises its first letter."
+  },
+  "study.interim_study_report": {
+   "en": "Interim study report",
+   "es": "informe del estudio provisional",
+   "state": "draft",
+   "note": "Sentence case: a chip capitalises its first letter."
+  },
+  "study.makes_no_recommendation": {
+   "en": "makes no recommendation",
+   "es": "no hace ninguna recomendación",
+   "state": "draft",
+   "note": "Sentence case: a chip capitalises its first letter."
+  },
+  "study.recommends_future_legislation": {
+   "en": "recommends future legislation",
+   "es": "recomienda legislación futura",
+   "state": "draft",
+   "note": "Sentence case: a chip capitalises its first letter."
+  },
   "theme.dark": {
    "en": "Dark",
    "es": "Tema oscuro",
@@ -1329,6 +1413,233 @@
   "theme.to_light": {
    "en": "Switch to the light theme",
    "es": "Cambiar al tema claro",
+   "state": "draft"
+  },
+  "vote.amendment_adopted": {
+   "en": "Amendment Adopted",
+   "es": "se adoptó la enmienda",
+   "state": "draft"
+  },
+  "vote.amendment_tabled": {
+   "en": "Amendment Tabled",
+   "es": "se dejó la enmienda sobre la mesa",
+   "state": "draft"
+  },
+  "vote.back_before_the_chamber": {
+   "en": "Back Before the {Chamber}",
+   "es": "de nuevo ante {Chamber}",
+   "state": "draft"
+  },
+  "vote.bill": {
+   "en": "Bill",
+   "es": "el proyecto de ley",
+   "state": "draft",
+   "note": "{Bill} in a vote's words, with its article, so a phrase need not agree with it: \"se aprobó el proyecto de ley\", \"se aprobó la resolución\"."
+  },
+  "vote.bill_became_law": {
+   "en": "{Bill} Became Law",
+   "es": "{Bill} pasó a ser ley",
+   "state": "draft"
+  },
+  "vote.bill_introduced": {
+   "en": "{Bill} Introduced",
+   "es": "se presentó {Bill}",
+   "state": "draft"
+  },
+  "vote.bill_killed": {
+   "en": "{Bill} Killed",
+   "es": "se rechazó {Bill}",
+   "state": "draft"
+  },
+  "vote.bill_passed": {
+   "en": "{Bill} Passed",
+   "es": "se aprobó {Bill}",
+   "state": "draft"
+  },
+  "vote.bill_passed_with_changes": {
+   "en": "{Bill} Passed with Changes",
+   "es": "se aprobó {Bill} con cambios",
+   "state": "draft"
+  },
+  "vote.bill_tabled": {
+   "en": "{Bill} Tabled",
+   "es": "se dejó {Bill} sobre la mesa",
+   "state": "draft"
+  },
+  "vote.bill_withdrawn": {
+   "en": "{Bill} Withdrawn",
+   "es": "se retiró {Bill}",
+   "state": "draft"
+  },
+  "vote.changes_accepted": {
+   "en": "Changes Accepted",
+   "es": "se aceptaron los cambios",
+   "state": "draft"
+  },
+  "vote.changes_rejected": {
+   "en": "Changes Rejected",
+   "es": "se rechazaron los cambios",
+   "state": "draft"
+  },
+  "vote.compromise_adopted": {
+   "en": "Compromise Adopted",
+   "es": "se adoptó el acuerdo",
+   "state": "draft"
+  },
+  "vote.conference_agreed": {
+   "en": "Conference Agreed",
+   "es": "se aceptó la conferencia",
+   "state": "draft"
+  },
+  "vote.conference_refused": {
+   "en": "Conference Refused",
+   "es": "se rechazó la conferencia",
+   "state": "draft"
+  },
+  "vote.conference_requested": {
+   "en": "Conference Requested",
+   "es": "se pidió una conferencia",
+   "state": "draft"
+  },
+  "vote.correction_adopted": {
+   "en": "Correction Adopted",
+   "es": "se adoptó la corrección",
+   "state": "draft"
+  },
+  "vote.debate_ended": {
+   "en": "Debate Ended",
+   "es": "se cerró el debate",
+   "state": "draft"
+  },
+  "vote.debate_limited": {
+   "en": "Debate Limited",
+   "es": "se limitó el debate",
+   "state": "draft"
+  },
+  "vote.earlier_vote_stands": {
+   "en": "Earlier Vote Stands",
+   "es": "se mantiene la votación anterior",
+   "state": "draft"
+  },
+  "vote.house": {
+   "en": "House",
+   "es": "la Cámara de Representantes",
+   "state": "draft",
+   "note": "{Chamber} in a vote's words, with its article."
+  },
+  "vote.measure": {
+   "en": "Measure",
+   "es": "la medida",
+   "state": "draft",
+   "note": "{Bill} for an address or another measure, with its article (see vote.bill)."
+  },
+  "vote.motion_failed": {
+   "en": "Motion Failed",
+   "es": "Moción rechazada",
+   "state": "draft",
+   "note": "A sitting's vote chip begins with this, then \": \" and what the vote did, in lower case, or this alone."
+  },
+  "vote.motion_passed": {
+   "en": "Motion Passed",
+   "es": "Moción aprobada",
+   "state": "draft",
+   "note": "A sitting's vote chip begins with this, then \": \" and what the vote did, in lower case (vote.bill_passed and the rest)."
+  },
+  "vote.motion_tabled": {
+   "en": "Motion Tabled",
+   "es": "se dejó la moción sobre la mesa",
+   "state": "draft"
+  },
+  "vote.no_agreement_bill_died": {
+   "en": "No Agreement; {Bill} Died",
+   "es": "sin acuerdo; {Bill} no prosperó",
+   "state": "draft"
+  },
+  "vote.not_introduced": {
+   "en": "Not Introduced",
+   "es": "no se presentó",
+   "state": "draft"
+  },
+  "vote.overridden_in_the_chamber": {
+   "en": "Overridden in the {Chamber}",
+   "es": "veto anulado en {Chamber}",
+   "state": "draft"
+  },
+  "vote.part_adopted": {
+   "en": "Part Adopted",
+   "es": "se adoptó la parte",
+   "state": "draft"
+  },
+  "vote.question_divided": {
+   "en": "Question Divided",
+   "es": "se dividió la cuestión",
+   "state": "draft"
+  },
+  "vote.referral_waived": {
+   "en": "Referral Waived",
+   "es": "se dispensó la remisión",
+   "state": "draft"
+  },
+  "vote.rejected": {
+   "en": "Rejected",
+   "es": "se rechazó",
+   "state": "draft"
+  },
+  "vote.rescheduled": {
+   "en": "Rescheduled",
+   "es": "se reprogramó",
+   "state": "draft"
+  },
+  "vote.resolution": {
+   "en": "Resolution",
+   "es": "la resolución",
+   "state": "draft",
+   "note": "{Bill} for a resolution, with its article (see vote.bill)."
+  },
+  "vote.resolution_adopted": {
+   "en": "Resolution Adopted",
+   "es": "se adoptó la resolución",
+   "state": "draft"
+  },
+  "vote.rules_suspended": {
+   "en": "Rules Suspended",
+   "es": "se suspendieron las reglas",
+   "state": "draft"
+  },
+  "vote.senate": {
+   "en": "Senate",
+   "es": "el Senado",
+   "state": "draft",
+   "note": "{Chamber} in a vote's words, with its article."
+  },
+  "vote.sent_back_to_committee": {
+   "en": "Sent Back to Committee",
+   "es": "se devolvió al comité",
+   "state": "draft"
+  },
+  "vote.sent_to_committee": {
+   "en": "Sent to {Committee}",
+   "es": "se envió a {Committee}",
+   "state": "draft"
+  },
+  "vote.sent_to_interim_study": {
+   "en": "Sent to Interim Study",
+   "es": "se envió a estudio provisional",
+   "state": "draft"
+  },
+  "vote.stays_on_the_table": {
+   "en": "Stays on the Table",
+   "es": "sigue sobre la mesa",
+   "state": "draft"
+  },
+  "vote.veto_sustained": {
+   "en": "Veto Sustained",
+   "es": "se mantuvo el veto",
+   "state": "draft"
+  },
+  "vote.vote_reopened": {
+   "en": "Vote Reopened",
+   "es": "se reabrió la votación",
    "state": "draft"
   },
   "web.go": {

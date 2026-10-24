@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.676
+# GRANITE_VERSION: 2026-09-04.677
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -62516,15 +62516,17 @@ def _spanish_home(i18n):
     for href, label in __import__("chrome").tab_words("es").items():
         assert f">{label}</a>" in nav, f"the Spanish header does not say {label!r}"
     assert ">Bills</a>" not in nav and ">Officials</a>" not in nav, "the Spanish header is English"
-    # The same data in both: the bills of Latest Activity and the meetings
-    # of Coming up, in the same order.
+    # The same data in both: the meetings and bills of Latest Activity and the
+    # meetings of Coming up, in the same order. Every link of the box, since
+    # it became a meeting an item (24 October 2026): its bills' links carry a
+    # class now, and a pattern for a bare <a href> found none in either.
     def bills(t):
         i = t.find('<div id="recent"')
-        return re.findall(r'<a href="([^"]+)">', t[i:t.find("</section>", i)]) if i >= 0 else []
+        return re.findall(r'href="([^"]+)"', t[i:t.find("</section>", i)]) if i >= 0 else []
     def meets(t):
         return re.findall(r'<details class="calmeet"[^>]*data-cmte="([^"]*)"[^>]*data-date="([^"]*)"', t)
-    assert bills(es)[:5] == bills(en)[:5], ("Latest Activity holds different bills in Spanish: "
-                                            f"{bills(es)[:5]} and {bills(en)[:5]}")
+    assert bills(en) and bills(es) == bills(en), ("Latest Activity holds different meetings or "
+                                                  f"bills in Spanish: {bills(es)} and {bills(en)}")
     assert meets(es) == meets(en), "Coming up holds different meetings in Spanish"
     # And a week that has meetings in it (the fixture's own week may have
     # none): Coming up drawn in both languages for 10 March 2026 out of the
@@ -66748,25 +66750,278 @@ def _latest_activity_links_the_bill(BP, B):
     """Latest activity's "SB 256-FN" led to the search list, bills.html#SB256
     (the survey of 7 October 2026), where any bill is a search away and a
     number another term shares opens on whichever the list shows first. Each
-    row now carries the year its bill is filed under, and both renderers --
-    the static list build_pages writes and HOME_JS, which redraws it --
-    link /bill/<year>/<bill>.html."""
+    row now carries the year its bill is filed under, and the box links
+    /bill/<year>/<bill>.html.
+
+    ONE RENDERER SINCE 24 OCTOBER 2026. The box had two -- the list
+    build_pages writes and HOME_JS, which drew it again from home.json's
+    `recent` -- and this held both to the bill's page. Since the box became a
+    meeting an item (_latest_activity_meetings), only build_pages draws it,
+    each bill through recent_href from home.json's `latest`, whose rows carry
+    the year; HOME_JS says its days again in the reader's clock and draws
+    nothing else, and this holds that it does not come back."""
     import inspect
+    import latest_activity as LA
     assert BP.recent_href({"bill": "SB256", "year": 2025, "n": "SB 256-FN"}) == \
         "bill/2025/sb256.html", BP.recent_href({"bill": "SB256", "year": 2025})
     assert BP.recent_href({"bill": "SB256"}) == "bills.html#SB256"
-    src = inspect.getsource(BP)
-    static = src[src.index("static_recent = (f'<h2>{say(lang, \"home.recent\", \"Latest Activity\")}</h2>'"):]
-    static = static[:static.index("recent_more(lang)")]
-    assert "recent_href(r)" in static and "bills.html#" not in static, (
-        "the static Latest activity still links the search list")
-    js = BP.HOME_JS[BP.HOME_JS.index('getElementById("recent")'):]
-    js = js[:js.index("</ul>")]
-    assert "bill/${r.year}/${String(r.bill).toLowerCase()}.html" in js and (
-        js.count("bills.html#") == 1), "HOME_JS's Latest activity still links the search list"
-    assert '"year": b.get("year") or ""' in inspect.getsource(B), (
-        "home.json's recent rows do not carry the year their bill is filed under")
-    return "ok", "SB 256-FN of 2025 leads to bill/2025/sb256.html, in both renderers"
+    static = inspect.getsource(BP.recent_box)
+    assert "recent_href(b)" in static and "bills.html#" not in static, (
+        "the static Latest activity does not link each bill through recent_href")
+    assert 'getElementById("recent").innerHTML' not in BP.HOME_JS and "H.recent" not in BP.HOME_JS, (
+        "HOME_JS draws Latest activity a second time, from home.json")
+    assert '"year": b.get("year") or ""' in inspect.getsource(LA.latest), (
+        "home.json's latest meetings do not carry the year each bill is filed under")
+    return "ok", "SB 256-FN of 2025 leads to bill/2025/sb256.html, from the one renderer"
+
+
+def _latest_rows():
+    """(proceedings rows, histories, bills) for _latest_activity_meetings: the
+    General Court's own rows of October 2026 for House Finance, Executive
+    Departments and Administration and Health and Human Services, and HB
+    396's at the House's sitting of 19 August, as proceedings.csv and
+    narratives.json hold them; with a study committee's meeting, a notice for
+    a withdrawn bill and a meeting still to come, none of which is activity."""
+    def p(bill, kind, date, time, cmte, venue):
+        return {"term": "2025-2026", "bill": bill, "body": "H", "kind": kind, "date": date,
+                "time": time, "committee": cmte, "venue": venue, "video_id": "", "source": "docket"}
+    eda = "Executive Departments and Administration"
+    hhs = "Health, Human Services and Elderly Affairs"
+    rows = [p("HB1710", "executive session", "2026-10-23", "10:00", "Finance", "GP 230"),
+            p("HB1004", "executive session", "2026-10-22", "10:30", eda, "GP 231"),
+            p("SB193", "executive session", "2026-10-22", "10:30", eda, "GP 231"),
+            p("HB1004", "full committee work session", "2026-10-15", "10:30", eda, "GP 231"),
+            p("SB193", "full committee work session", "2026-10-15", "10:30", eda, "GP 231"),
+            p("SB441", "executive session", "2026-10-15", "10:00", hhs, "GP 230"),
+            p("HB1763", "study committee", "2026-10-15", "", "", ""),
+            p("HB9998", "executive session", "2026-10-21", "10:00", "Finance", "GP 230"),
+            p("HB1004", "executive session", "2026-10-28", "10:00", eda, "GP 231")]
+
+    def ev(date, typ, raw, **kw):
+        return {"date": date, "type": typ, "body": "H", "cancelled": False, "raw": raw, **kw}
+    study = "Interim Study Report: {} for Future Legislation {} (Vote {};)"
+    histories = {"2025-2026": {
+        "HB1710": {"events": [
+            ev("2026-03-17", "exec", "Executive Session: 03/17/2026 10:00 am GP 230"),
+            ev("2026-03-17", "report", "Committee Report: Refer for Interim Study 03/17/2026 (Vote 25-0; CC)",
+               side="", committee="Finance", recommendation="Refer for Interim Study",
+               amendment="", report_date="03/17/2026", yeas="25", nays="0"),
+            ev("2026-10-23", "exec", "Executive Session: 10/23/2026 10:00 am GP 230"),
+            ev("2026-10-23", "interim_report", study.format("Not Recommended", "10/23/2026", "18-3"))]},
+        "HB1004": {"events": [
+            ev("2026-10-15", "worksession", "Full Committee Work Session: 10/15/2026 10:30 am GP 231"),
+            ev("2026-10-22", "exec", "Executive Session: 10/22/2026 10:30 am GP 231"),
+            ev("2026-10-22", "interim_report", study.format("Recommended", "10/22/2026", "10-4"))]},
+        "SB193": {"events": [
+            ev("2026-10-15", "worksession", "Full Committee Work Session: 10/15/2026 10:30 am GP 231"),
+            ev("2026-10-22", "exec", "Executive Session: 10/22/2026 10:30 am GP 231"),
+            ev("2026-10-22", "interim_report", study.format("Recommended", "10/22/2026", "9-5"))]},
+        # HHS met on the 15th and its report is dated the 22nd.
+        "SB441": {"events": [
+            ev("2026-10-15", "exec", "Executive Session: 10/15/2026 10:00 am GP 230"),
+            ev("2026-10-22", "interim_report", study.format("Not Recommended", "10/22/2026", "12-1"))]},
+        "HB9998": {"withdrawn": "2026-10-01", "events": []},
+        # A reconsideration carried between two failed overrides: the veto
+        # stood, and the last override's count is what the sitting did.
+        "HB396": {"events": [
+            {"date": "2026-08-19", "type": "veto_override", "body": "H", "cancelled": False,
+             "raw": "Veto Sustained 08/19/2026: RC 204-116 Lacking Necessary Two-Thirds Vote"},
+            ev("2026-08-19", "floor", "Reconsider HB 396 (Rep. Flanagan): MA RC 187-120 08/19/2026",
+               action="Reconsider HB 396", mover="Rep. Jack Flanagan", motion="MA",
+               vote_kind="RC", yeas="187", nays="120"),
+            {"date": "2026-08-19", "type": "veto_override", "body": "H", "cancelled": False,
+             "raw": "Veto Sustained 08/19/2026: RC 202-107 Lacking Necessary Two-Thirds Vote"}]}}}
+    titles = {"HB1710": "relative to procedures relating to child abduction.",
+              "HB1004": "exempting certain dwelling units from automatic sprinkler system requirements.",
+              "SB193": "requiring the head of each state agency to submit a strategic plan for "
+                       "program activities.",
+              "SB441": "relative to the financial responsibility for local assistance",
+              "HB396": "relative to the processing of cattle, swine, sheep, and goats"}
+    bills = {("2025-2026", b): {"year": 2026, "title": t} for b, t in titles.items()}
+    return rows, histories, bills
+
+
+@check("frontend", "Latest activity is a meeting an item: each bill once, an executive session "
+                   "and the report voted at it one entry, linked into the meeting, in English "
+                   "and in Spanish alike", needs=("build_pages", "latest_activity", "i18n"))
+def _latest_activity_meetings(BP, LA, i18n):
+    """The person, 24 October 2026: "On the latest activity bar on the
+    homepage, bills should not be repeated twice like they are right now for
+    both the bill executive sessions and the outcome of the executive session
+    listed as two separate meetings. Maybe have latest activity show things
+    like recent meetings and all the bills from that meeting are grouped
+    together and when you click it, it takes you to the committee page or a
+    house session day page scrolled down to that meeting?"
+
+    The box was the five newest docket events, and an executive session and
+    the report voted at it are two: that day it was HB 1710 twice and SB 193
+    twice. Now it is home.json's `latest` (latest_activity.latest): a
+    committee's day or a chamber's sitting an item, each bill once with what
+    was done to it there. Held here, on the General Court's own rows of
+    October 2026 (_latest_rows):
+
+      - the meetings, newest first, the sitting before a committee of its
+        day, and no study committee, notice of a withdrawn bill or meeting
+        still to come among them;
+      - no bill twice within a meeting, and HB 1710's executive session and
+        its interim study report one entry, saying the report and its vote;
+      - a report the docket dates after its meeting (HHS, met the 15th,
+        dated the 22nd) said with its own day; a sitting's bill said by the
+        motion that settled it (HB 396's last override, not the
+        reconsideration that carried between);
+      - drawn, each item's name leading into the meeting -- committee/<code>
+        .html#day-<date>, which app.js's showDay opens, or the sitting's page
+        -- each bill once, in English and in Spanish with the same meetings,
+        bills and links;
+      - HOME_JS's latWhen saying the days as latest_when does, in node;
+      - and the fixture's built home pages: the same box in both languages,
+        every link it holds leading to a page the builders wrote, a
+        committee's into a day that page's record holds."""
+    import contextlib
+    import datetime as _dt
+    import io
+    import components as C
+    rows, histories, bills = _latest_rows()
+    got = LA.latest(rows, histories, "2026-10-24", bills,
+                    motion_words=C.WORDBOOK["votes"]["motions"])
+    eda = "Executive Departments and Administration"
+    hhs = "Health, Human Services and Elderly Affairs"
+    said = [(m["date"], "floor" if m.get("floor") else m["committee"]) for m in got]
+    assert said == [("2026-10-23", "Finance"), ("2026-10-22", eda), ("2026-10-15", eda),
+                    ("2026-10-15", hhs), ("2026-08-19", "floor")], f"the meetings are {said}"
+    by = {(m["date"], m.get("committee") or "floor"): m for m in got}
+    for m in got:
+        ids = [b["bill"] for b in m["bills"]]
+        assert len(ids) == len(set(ids)) == m["n"], f"{m['date']} {m.get('committee')} lists {ids}"
+    fin = by[("2026-10-23", "Finance")]
+    assert [b["bill"] for b in fin["bills"]] == ["HB1710"] and fin["kinds"] == ["executive session"], fin
+    assert fin["bills"][0]["did"] == {"act": "study report", "said": "not", "yeas": 18, "nays": 3}, (
+        f"HB 1710's executive session and its report are not one entry: {fin['bills'][0]}")
+    assert [(b["bill"], b["did"]["said"], b["did"]["yeas"]) for b in by[("2026-10-22", eda)]["bills"]] \
+        == [("HB1004", "rec", 10), ("SB193", "rec", 9)], by[("2026-10-22", eda)]
+    assert all("did" not in b for b in by[("2026-10-15", eda)]["bills"]), (
+        "a work session is said to have voted")
+    assert by[("2026-10-15", hhs)]["bills"][0]["did"].get("dated") == "2026-10-22", (
+        f"HHS's report is not said with its own day: {by[('2026-10-15', hhs)]}")
+    fl = by[("2026-08-19", "floor")]["bills"][0]["did"]
+    assert (fl["mk"], fl["carried"], fl["yeas"], fl["nays"]) == ("override_first", False, 202, 107), fl
+
+    # ---- drawn -------------------------------------------------------------
+    codes = {("H", "finance"): "H34", ("H", eda.lower()): "H07", ("H", hhs.lower()): "H10"}
+    sits = {("H", "2026-08-19")}
+    day = _dt.date(2026, 10, 24)
+    with contextlib.redirect_stdout(io.StringIO()):
+        html = {lang: BP.recent_box({"latest": got}, lang, codes, sits, day) +
+                BP.recent_box({"latest": got[-1:]}, lang, codes, sits, day)
+                for lang in ("en", "es")}
+
+    def items(t):
+        return re.findall(r'<li class="latm".*?</ul>(?:<p class="latmore">.*?</p>)?</li>', t, re.S)
+    for lang, t in html.items():
+        its = items(t)
+        assert len(its) == BP.RECENT_SHOWN + 1, f"{lang}: {len(its)} meetings drawn"
+        for it in its:
+            nums = re.findall(r'class="cbn" href="[^"]+">([^<]+)<', it)
+            assert nums and len(nums) == len(set(nums)), f"{lang}: a meeting lists {nums}"
+        assert t.count(">HB 1710<") == 1, f"{lang}: HB 1710 is drawn {t.count('>HB 1710<')} times"
+    en = html["en"]
+    for want in ('<a class="latname" href="committee/H34.html#day-2026-10-23">House Finance</a>',
+                 '<a class="cbn" href="bill/2026/hb1710.html">HB 1710</a>',
+                 '<a class="latname" href="session/H/2026-08-19.html">House Session Day</a>',
+                 'Yesterday · 10:00 AM', C.vote_chip("override_first", False, "HB396"),
+                 "dated Oct 22"):
+        assert want in en, f"Latest activity does not draw {want!r}"
+    assert C.chip(C.title_words(C.WORDBOOK["study_report"]["said"]["not"]), "cstat s-done") in en, (
+        "HB 1710's report is not drawn in study_report.json's words, in the colour of a killing")
+    hrefs = {lang: re.findall(r'href="([^"]+)"', t) for lang, t in html.items()}
+    assert hrefs["es"] == hrefs["en"], "Spanish Latest activity holds other meetings, bills or links"
+    es = html["es"]
+    for want in ("Ayer · 10:00 a. m.", i18n.say_word("es", "kind", "Executive Session"),
+                 'lang="en">House Finance</a>', i18n.say_word("es", "vote", "Motion Failed")):
+        assert want in es, f"the Spanish box does not say {want!r}"
+
+    # ---- HOME_JS says the days as the build does, in the reader's clock ----
+    node = shutil.which("node") or shutil.which("node.exe")
+    ran = "node is not on PATH, so HOME_JS's latWhen was not run"
+    if node:
+        fd = re.search(r"\nconst fd=.*?;\n", BP.HOME_JS)
+        lw = re.search(r"\nconst latWhen=.*?\n\};\n", BP.HOME_JS, re.S)
+        assert fd and lw, "HOME_JS has no latWhen saying Latest activity's days"
+        cases = [("2026-10-24", "10:00"), ("2026-10-23", "13:30"), ("2026-10-23", ""),
+                 ("2026-10-22", "10:30")]
+        for lang in ("en", "es"):
+            words = i18n.words_js(lang, BP.HOME_JS) if lang != "en" else ""
+            prog = _components_js() + "\n" + (
+                f"globalThis.window=globalThis;window.GR_LANG={json.dumps(lang)};{words}\n"
+                + fd.group(0) + lw.group(0)
+                + f"process.stdout.write(JSON.stringify({json.dumps(cases)}.map(c=>"
+                "latWhen(c[0],c[1],new Date(2026,9,24)))));")
+            r = _node_file(node, prog, capture_output=True, text=True, timeout=60)
+            assert r.returncode == 0, "HOME_JS's latWhen would not run: " + (r.stderr or "")[-300:]
+            want = [BP.latest_when(d, t, day, lang) for d, t in cases]
+            assert json.loads(r.stdout) == want, (
+                f"{lang}: HOME_JS says {json.loads(r.stdout)} where the build says {want}")
+        ran = "HOME_JS says the days as the build does, in both languages"
+
+    # ---- the fixture's home pages ------------------------------------------
+    absent = [x for x in CHAIN_NEEDS if not _paths.locate(x).exists()]
+    if absent:
+        return "ok", f"{len(got)} meetings of October 2026 grouped and drawn; {ran}; no fixture site"
+    shared, _base, _ran, _days = _fixture_site_shared()
+    site = shared / "site"
+    H = json.loads((site / "home.json").read_text(encoding="utf-8"))
+    assert H.get("latest"), "the fixture's home.json holds no latest activity"
+
+    def box(t):
+        i = t.find('<div id="recent"')
+        return t[i:t.find("</section>", i)] if i >= 0 else ""
+    built = {lang: box((site / f).read_text(encoding="utf-8"))
+             for lang, f in (("en", "index.html"), ("es", "es/index.html"))}
+    links = {lang: re.findall(r'href="([^"]+)"', t) for lang, t in built.items()}
+    assert links["en"] and links["es"] == links["en"], (
+        f"the fixture's home pages hold different Latest activity: {links['en']} and {links['es']}")
+    assert len(items(built["en"])) == min(len(H["latest"]), BP.RECENT_SHOWN), (
+        "the fixture's box does not draw home.json's latest meetings")
+    bad = []
+    for h in links["en"]:
+        path, _h, frag = h.lstrip("/").partition("#")
+        path = path.split("?")[0]
+        f = site / (path if path.endswith(".html") else path + ".html")
+        if not f.is_file():
+            bad.append(f"{h} leads to no page")
+        elif frag:
+            rec = f.with_suffix(".json")
+            days = {s.get("date") for s in (json.loads(rec.read_text(encoding="utf-8")).get("sessions")
+                                            or [])} if rec.is_file() else set()
+            if not frag.startswith("day-") or frag[4:] not in days:
+                bad.append(f"{h}: {f.name}'s record holds no meeting of {frag[4:]}")
+    # AND EVERY COMMITTEE MEETING, BY THE CODES build_committees WROTE. The home
+    # page is built four steps before the committees (build_all), so it links
+    # a committee by committee_codes -- today's committees from data/, then
+    # last night's committees.json -- as Coming up's cards do, and the
+    # fixture has neither: its box names Commerce's meeting unlinked. Linked
+    # by the committees.json written since, each must lead into a day that
+    # committee's own record holds, which is what #day-<date> opens.
+    codes = BP.committee_codes(site)
+    for m in H["latest"]:
+        h = BP.latest_href(m, codes, set())
+        if m.get("floor") or not h:
+            continue
+        links["en"].append(h)
+        path, _h, frag = h.partition("#")
+        rec = site / path.replace(".html", ".json")
+        days = {s.get("date") for s in (json.loads(rec.read_text(encoding="utf-8")).get("sessions")
+                                        or [])} if rec.is_file() else set()
+        if not (site / path).is_file() or frag != f"day-{m['date']}" or m["date"] not in days:
+            bad.append(f"{m.get('committee')} of {m['date']} would lead to {h}, which holds no such day")
+    assert any("#day-" in h for h in links["en"]), (
+        "no committee meeting of the fixture's latest activity leads into its committee's page")
+    assert not bad, "; ".join(bad[:4])
+    kinds = Counter("a committee's day" if "#day-" in h else "a sitting" if "session/" in h
+                    else "a bill" if "bill/" in h else "the bill search" for h in links["en"])
+    return "ok", (f"{len(got)} meetings of October 2026 grouped, HB 1710 once with its report; "
+                  f"drawn alike in both languages; {ran}; the fixture's links all lead somewhere: "
+                  + ", ".join(f"{n} to {k}" for k, n in sorted(kinds.items())))
 
 
 @check("frontend", "a town page carries the district map in a tab of its own, second, framed on "
