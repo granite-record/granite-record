@@ -1,4 +1,4 @@
-/* GRANITE_VERSION: 2026-09-07.307 */
+/* GRANITE_VERSION: 2026-09-07.308 */
 /* ONE STYLESHEET FOR EVERY PAGE (23 October 2026). Every page of the site
    links this file, /app.css: the record pages shell.page() makes from
    bills.html, and the five build_pages.py writes -- the home page, Officials,
@@ -6915,25 +6915,87 @@ border-bottom:2px solid var(--ink-2);transform:rotate(-45deg);transition:transfo
 .cline .mjumps{margin:0 0 var(--sp-4);display:flex}
 .cline .sspoke{margin-top:var(--sp-2)}
 .cline .svote .votewrap{margin-top:var(--sp-2)}
-/* THE DAY IN ORDER: its heading in the margin and the day's recordings under
-   it, one player each, beside the cards; above them on a narrow screen. */
-.wday .w4m{min-width:0}
+/* THE DAY IN ORDER: its heading, the day's recordings, one player each, and
+   the day's index, in one column held in view beside the cards as they
+   scroll (the owner, 24 October 2026: "The header above the embedded video
+   player 'The Day in Order' should also remain on the sidebar as you scroll
+   down"); above the cards on a narrow screen. */
+.wday .w4m{min-width:0;margin:var(--sp-5) 0 0}
 .wday .w4m .player:first-child{margin-top:0}
 .wday .w4m .pbar{font-size:var(--t-sm)}
 .wday .w4m .pwho{flex:1 1 100%;color:var(--ink-2)}
 .wday .w4m .pwho b{color:var(--ink);font-weight:600}
-.wday .w4m .tolnote{margin-left:0}
 @media (min-width:60em){
-  /* The first row the heading's height and the second the rest: with both
-     auto, the cards' height was shared between the two rows and the player
-     stood at the foot of the day, 15,000px down (the look of 10 October). */
-  .w4.wday{grid-template-areas:"head body" "play body";grid-template-rows:auto 1fr}
-  .wday > .w4h{grid-area:head}
-  .wday > .w4m{grid-area:play;align-self:start;position:sticky;top:var(--sp-5);margin-top:var(--sp-5)}
-  .wday > .w4b{grid-area:body;grid-row:1 / span 2}
+  /* One column for all three, so the heading stays with the player: the
+     column is as tall as the screen at most, and the index takes what the
+     heading and the players leave, scrolling in itself under its own line.
+     The index is the box that scrolls, not its list: a <details> keeps what
+     it opens in a box of its own, so its list can never be a flex item to
+     shrink. The column scrolls too where two recordings leave the index too
+     little. */
+  .w4.wday{grid-template-areas:"side body"}
+  .wday > .wside{grid-area:side;align-self:start;position:sticky;top:var(--sp-5);min-width:0;
+    max-height:calc(100vh - 2 * var(--sp-5));display:flex;flex-direction:column;overflow-y:auto;
+    overscroll-behavior:contain}
+  .wday > .wside > *{flex:none}
+  .wday > .wside > .dayidx{flex:0 1 auto;min-height:12rem;overflow-y:auto;overscroll-behavior:contain}
+  .wday > .wside > .dayidx:has(> .difold:not([open])){min-height:0}
+  .difold > summary{position:sticky;top:0;z-index:1}
+  .wday > .w4b{grid-area:body}
 }
-@media (max-width:59.99em){.wday > .w4m{margin:0 0 var(--sp-5)}}
 .wday .cards .card{margin-bottom:var(--sp-5)}
+/* THE DAY'S INDEX (build_session_pages.day_index): the page's sections, and
+   under the Day in Order a line a bill -- its number and what the day did to
+   it, in the word and colour its card's chip has. A fold, shut as written;
+   app.js opens it on a wide screen. Each line is a link to its card, and the
+   one being read is marked as the cards scroll (aria-current). */
+.dayidx{margin:var(--sp-5) 0 0;min-width:0;font:400 var(--t-sm)/1.35 var(--sans);
+  border:1px solid var(--rule-2);border-radius:var(--r-out);background:var(--surface)}
+.difold > summary{list-style:none;cursor:pointer;display:flex;align-items:center;gap:var(--sp-3) var(--sp-4);
+  padding:var(--sp-3) var(--sp-5);min-height:2.75rem;box-sizing:border-box;background:var(--surface)}
+.difold > summary::-webkit-details-marker{display:none}
+.difold > summary:hover{background:var(--paper)}
+.difold > summary:focus-visible{outline:2px solid var(--pine);outline-offset:-2px}
+.difold[open] > summary{border-bottom:1px solid var(--rule)}
+.dilab{font-weight:600;color:var(--ink)}
+.dicount{color:var(--ink-2)}
+.dinow{display:none}
+.difold > summary .cmcaret{margin-left:auto;flex:none;width:.55rem;height:.55rem;
+  border-right:2px solid var(--ink-2);border-bottom:2px solid var(--ink-2);transform:rotate(-45deg);
+  transition:transform .15s}
+.difold[open] > summary .cmcaret{transform:rotate(45deg)}
+.dilist{list-style:none;margin:0;padding:var(--sp-2) 0}
+.dilist ol{list-style:none;margin:0 0 var(--sp-2);padding:0}
+.dilist a{display:flex;align-items:center;gap:var(--sp-3);padding:var(--sp-2) var(--sp-5);min-height:2rem;
+  box-sizing:border-box;color:var(--ink);text-decoration:none;border-left:3px solid transparent}
+.dilist > li > a{font-weight:600}
+.dibills a{padding-left:calc(var(--sp-5) + var(--sp-6))}
+.dinum{white-space:nowrap;font-variant-numeric:tabular-nums}
+.dibills .chip{margin-left:auto;padding:0 var(--sp-3)}
+.dilist a:hover{background:var(--wash)}
+.dilist > li > a:hover,.dibills a:hover .dinum{text-decoration:underline;text-underline-offset:.2em}
+.dilist a:focus-visible{outline:2px solid var(--pine);outline-offset:-2px}
+.dilist a[aria-current]{border-left-color:var(--pine);background:var(--pine-soft)}
+.wday .card,.w4s > .w4{scroll-margin-top:var(--sp-5)}
+@media (max-width:59.99em){
+  /* ON A PHONE the column is undone, so the index is a bar held at the top
+     of the screen while the cards scroll under it, naming the bill being
+     read; it opens over them, its list scrolling in itself, and choosing a
+     line shuts it (app.js). It takes one line above the cards until it is
+     asked for. */
+  .wday > .wside{display:contents}
+  .wday .w4m{margin-bottom:var(--sp-5)}
+  .wday > .wside > .dayidx{position:sticky;top:0;z-index:5;margin:0 0 var(--sp-5);overflow:hidden;
+    box-shadow:0 2px 6px var(--shadow)}
+  .dilist{max-height:min(60vh,28rem);overflow-y:auto;overscroll-behavior:contain}
+  .dinow{display:inline-block;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;
+    font-weight:600;color:var(--pine);font-variant-numeric:tabular-nums}
+  .dinow:empty{display:none}
+  .dinow:not(:empty) ~ .cmcaret{margin-left:0}
+  .dinow:not(:empty){margin-left:auto}
+  .wday .card,.w4s > .w4{scroll-margin-top:3.5rem}
+}
+@media print{.dayidx{display:none !important}.wday > .wside{position:static;max-height:none;overflow:visible}}
 /* POLISH 2 -- SESSION DAYS: END ----------------------------------------- */
 
 /* THE RELATED TAB (app.js renderRelated). Each row the sentence, at reading

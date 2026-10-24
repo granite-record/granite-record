@@ -1,4 +1,4 @@
-// GRANITE_VERSION: 2026-09-07.242
+// GRANITE_VERSION: 2026-09-07.244
 // esc, dateWords and dateSpan, clock, cmteLink and pchip are components.js's,
 // which every page loads before this file (the component plan's C1 and C2),
 // and so is WORDBOOK, the words of src/pages/words/ that the build writes into
@@ -9337,6 +9337,76 @@ function drawSessionVotes(){
   if(!votes.length)return;
   SESSV={votes:votes};
   drawSessionVotes();
+})();
+// THE DAY'S INDEX (build_session_pages.day_index; the owner, 24 October
+// 2026: "some sort of index on the left side below the video for each action
+// and bill so you can more quickly look for the bill you're trying to
+// find"). It is written shut. Beside the cards, on a wide screen, it is
+// opened here and stays open; on a phone it is a bar above the cards, held
+// at the top of the screen, that names the bill being read, opens when
+// pressed and shuts when a line is chosen or Escape is pressed. As the page
+// scrolls, the line of the card or section being read is marked
+// (aria-current) and kept in view inside the index -- by scrolling the
+// index, never the page. Without this the index is a fold of plain links.
+(function(){
+  var nav=document.getElementById("dayidx");
+  var fold=nav&&nav.querySelector?nav.querySelector("details"):null;
+  var list=fold&&fold.querySelector?fold.querySelector(".dilist"):null;
+  // Each line links its place by the page's own address and the place's id,
+  // "session/H/2026-03-11#HB1601": the page's <base href="/"> sends a bare
+  // "#HB1601" to the home page.
+  var as=nav&&nav.querySelectorAll?nav.querySelectorAll('a[href*="#"]'):[];
+  if(!fold||!list||!as.length)return;
+  var mq=window.matchMedia?window.matchMedia("(min-width:60em)"):null;
+  var wide=function(){return !!(mq&&mq.matches);};
+  if(wide())fold.open=true;
+  if(mq&&mq.addEventListener)mq.addEventListener("change",function(){fold.open=wide();});
+  var now=fold.querySelector(".dinow"),sum=fold.querySelector("summary");
+  var links={};
+  for(var i=0;i<as.length;i++)links[as[i].getAttribute("href").split("#")[1]]=as[i];
+  nav.addEventListener("click",function(e){
+    if(!wide()&&e.target&&e.target.closest&&e.target.closest("a"))fold.open=false;});
+  document.addEventListener("keydown",function(e){
+    if(e.key!=="Escape"||!fold.open||wide())return;
+    fold.open=false;
+    if(sum&&sum.focus)sum.focus();});
+  if(!("IntersectionObserver" in window))return;
+  // What is being read: the first card in the band near the top of the
+  // screen, or failing a card, the first section there. A later card of a
+  // bill taken up twice marks the bill's one line (data-at).
+  var seen=[],cur=null;
+  var targets=[].slice.call(document.querySelectorAll(".w4s > .w4[id], .wday .card[id]"));
+  var lineOf=function(el){return links[el.getAttribute("data-at")||el.id];};
+  var mark=function(){
+    var pick=null;
+    for(var j=0;j<targets.length&&!pick;j++)
+      if(seen.indexOf(targets[j])>=0&&targets[j].classList.contains("card"))pick=targets[j];
+    for(var k=0;k<targets.length&&!pick;k++)if(seen.indexOf(targets[k])>=0)pick=targets[k];
+    var a=pick&&lineOf(pick);
+    if(!a||a===cur)return;
+    if(cur)cur.removeAttribute("aria-current");
+    a.setAttribute("aria-current","location");cur=a;
+    if(now){var n=a.querySelector(".dinum");now.textContent=(n||a).textContent;}
+    keep();
+  };
+  // The box that scrolls is the index beside the cards, under its own line
+  // (the summary, held at its top), and the list on a phone.
+  var keep=function(){
+    if(!cur||!fold.open)return;
+    var box=list.scrollHeight>list.clientHeight+1?list:nav;
+    if(box.scrollHeight<=box.clientHeight+1)return;
+    var r=cur.getBoundingClientRect(),b=box.getBoundingClientRect();
+    var top=b.top+(box===nav&&sum?sum.offsetHeight:0);
+    if(r.top<top||r.bottom>b.bottom)box.scrollTop+=r.top-top-(b.bottom-top)/3;
+  };
+  fold.addEventListener("toggle",keep);
+  var io=new IntersectionObserver(function(es){
+    es.forEach(function(e){
+      var at=seen.indexOf(e.target);
+      if(e.isIntersecting&&at<0)seen.push(e.target);
+      else if(!e.isIntersecting&&at>=0)seen.splice(at,1);});
+    mark();},{rootMargin:"-15% 0px -75% 0px"});
+  targets.forEach(function(t){io.observe(t);});
 })();
 
 
