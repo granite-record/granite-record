@@ -1,4 +1,4 @@
-/* GRANITE_VERSION: 2026-09-07.302 */
+/* GRANITE_VERSION: 2026-09-07.303 */
 /* ONE STYLESHEET FOR EVERY PAGE (23 October 2026). Every page of the site
    links this file, /app.css: the record pages shell.page() makes from
    bills.html, and the five build_pages.py writes -- the home page, Officials,
@@ -4399,6 +4399,9 @@ text-transform:uppercase;color:var(--ink-2);margin:0 0 var(--sp-4);font-family:v
 
 /* the sections */
 .l-art{padding-top:1.75rem}
+/* THE GLOSSARY IN ANOTHER LANGUAGE (24 October 2026): the term as the
+   record prints it, and under it its name in the page's language. */
+.l-art .glsl{display:block;font-weight:400;color:var(--ink-2);margin-top:2px}
 .l-sec{border-top:1px solid var(--rule);padding:1.125rem 0 0;margin:0 0 1.75rem;scroll-margin-top:1rem}
 .l-sec:first-child{border-top:0;padding-top:0}
 .l-sech{font:600 var(--t-h3)/1.35 var(--serif);color:var(--ink);margin:0 0 .5rem;text-wrap:balance}

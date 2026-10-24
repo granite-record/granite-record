@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-10-23.1
+# GRANITE_VERSION: 2026-10-23.2
 """
 The site in more than one language, and how a translation stays current.
 
@@ -93,7 +93,7 @@ STATES = ("draft", "proofread")
 # address is its English one under /es/ (href). Only these are built in that
 # language; every other page is English to everybody, and a reader who chose
 # another language is told so on it (find.js, langNotice).
-PAGES = {"es": ("index.html",)}
+PAGES = {"es": ("index.html", "learn/glossary.html")}
 
 _CATALOGS = {}
 # What a build asked for and could not give: (lang, key, why). report() says
@@ -180,6 +180,55 @@ def word_key(group, en):
 def say_word(lang, group, en):
     """`en`, a word from a table of words, in `lang` (word_key)."""
     return say(lang, word_key(group, en), en) if lang != DEFAULT else en
+
+
+# THE GLOSSARY IN ANOTHER LANGUAGE (the owner, 24 October 2026: "The
+# glossary should also be translated into spanish if it hasn't been
+# already"). words/glossary.json is one table, read by the glossary page and
+# by the term pop-ups: each term's name in full and what it means, keyed by
+# the term ("ITL", "Public hearing"). Its translations are keyed by the term
+# and the field, gloss.<term>.name and gloss.<term>.says, and each keeps the
+# English it was made from, so an entry whose English changes is said in
+# English again, and named by preflight, until its translation catches up.
+def gloss_key(term, field):
+    """"gloss.itl.name", "gloss.public-hearing.says"."""
+    return f"gloss.{re.sub(r'[^a-z0-9]+', '-', term.lower()).strip('-')}.{field}"
+
+
+def gloss_entries():
+    """{term: {"name", "says", ...}} of words/glossary.json, its notes left out."""
+    d = json.loads((HERE / "words" / "glossary.json").read_text(encoding="utf-8"))
+    return {k: v for k, v in d.items() if not k.startswith("_")}
+
+
+def say_gloss(lang, term, field, en):
+    """A glossary entry's `field` ("name" or "says") in `lang`."""
+    return say(lang, gloss_key(term, field), en) if lang != DEFAULT else en
+
+
+def gloss_js(lang):
+    """A script that sets window.GR_GLOSS to each term's name and meaning in
+    `lang`, which the term pop-ups read (components.js). A term either of
+    whose words is missing or stale is left out, and its pop-up says the
+    English. Empty for English."""
+    if lang == DEFAULT:
+        return ""
+    out = {}
+    for term, e in gloss_entries().items():
+        got, need = {}, [f for f in ("name", "says") if e.get(f)]
+        for field in need:
+            key, en = gloss_key(term, field), e[field]
+            SAID.add((lang, key, en))
+            t = lookup(lang, key, en)
+            if t is None:
+                MISSES.add((lang, key, "stale" if catalog(lang).get("strings", {}).get(key)
+                            else "missing"))
+            else:
+                got[field] = t
+        if len(got) == len(need):
+            out[term] = got
+    body = json.dumps(out, ensure_ascii=False, separators=(",", ":"), sort_keys=True)
+    return "window.GR_GLOSS=" + body.replace("</", "<\\/") + ";"
 
 
 def report(out=print):
@@ -350,6 +399,10 @@ def code_words(root=None):
     for group, table in _word_tables():
         for en in table:
             add(word_key(group, en), en, f"words/{group}")
+    for term, e in gloss_entries().items():
+        for field in ("name", "says"):
+            if e.get(field):
+                add(gloss_key(term, field), e[field], "words/glossary.json")
     return words, problems
 
 

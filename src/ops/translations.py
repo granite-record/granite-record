@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-10-23.2
+# GRANITE_VERSION: 2026-10-23.3
 """
 The site's translations: what is translated, what has gone stale, and the
 proofreader's sheet out and back. src/pages/i18n.py says how a translation
@@ -55,7 +55,8 @@ AREAS = {"nav": "the header", "page": "the header", "theme": "Settings", "set": 
          "home": "the home page", "card": "the home page's cards",
          "web": "the home page's webinar box", "state": "the home page's status box",
          "fresh": "the home page, under the session days",
-         "sess": "the home page's session days", "cal": "Coming up (the week's meetings)",
+         "sess": "the home page's session days",
+         "gloss": "the Glossary page, and the pop-up on a term", "cal": "Coming up (the week's meetings)",
          "kind": "Coming up: a kind of meeting", "find": "the search box's results",
          "search": "the search box", "yt": "Settings: Your town", "foot": "the footer"}
 

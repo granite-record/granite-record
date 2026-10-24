@@ -1,4 +1,4 @@
-// GRANITE_VERSION: 2026-10-09.14
+// GRANITE_VERSION: 2026-10-09.15
 /* THE SITE'S COMPONENTS, IN THE BROWSER. Published as site/components.js and
    loaded by every page, in its head, before app.js, find.js and any page's
    own script, so each of them draws a person, a committee, a date or a time
@@ -534,7 +534,14 @@ function electLine(key,election,takesOffice,today){
       b.setAttribute("aria-describedby",id);
       var p=document.createElement("span");
       p.className="termpop";p.id=id;p.setAttribute("role","tooltip");p.hidden=true;
-      p.innerHTML="<b>"+esc(e.name||k)+"</b>"+(e.says?" &mdash; "+esc(e.says):"");
+      // IN ANOTHER LANGUAGE (the owner, 24 October 2026): the term as the
+      // record prints it, then its name and meaning in the page's language,
+      // where the shared words file gives them (i18n.gloss_js, GR_GLOSS).
+      var L=(typeof window!=="undefined"&&window.GR_GLOSS||{})[k];
+      p.innerHTML=L&&L.says
+        ?"<b lang=\"en\">"+esc(e.name||k)+"</b>"+(L.name&&L.name!==e.name?" ("+esc(L.name)+")":"")
+          +" &mdash; "+esc(L.says)
+        :"<b>"+esc(e.name||k)+"</b>"+(e.says?" &mdash; "+esc(e.says):"");
       // THE BRACKET STAYS WITH ITS WORD: a button is set as a box of its own,
       // and a phone broke "Ought to Pass (" from "OTP)" at it (the look of 10
       // October 2026). The mark either side comes into the word's span,

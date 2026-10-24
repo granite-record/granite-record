@@ -450,6 +450,569 @@
    "es": "Datos actualizados por última vez: {when}, hace {days} días",
    "state": "draft"
   },
+  "gloss.a.name": {
+   "en": "Appropriation",
+   "es": "Asignación de fondos",
+   "state": "draft"
+  },
+  "gloss.a.says": {
+   "en": "the bill spends state money: it contains an appropriation, marked by an A after its number",
+   "es": "el proyecto de ley gasta dinero del estado: contiene una asignación, indicada con una A después de su número",
+   "state": "draft"
+  },
+  "gloss.cacr.name": {
+   "en": "Constitutional Amendment Concurrent Resolution",
+   "es": "Resolución concurrente de enmienda constitucional",
+   "state": "draft"
+  },
+  "gloss.cacr.says": {
+   "en": "a proposed change to the state constitution, requiring a three-fifths vote in both chambers and a two-thirds majority of voters",
+   "es": "un cambio propuesto a la constitución del estado, que requiere tres quintos de los votos en ambas cámaras y una mayoría de dos tercios de los votantes",
+   "state": "draft"
+  },
+  "gloss.carried-over.name": {
+   "en": "Carried over",
+   "es": "Trasladado al segundo año",
+   "state": "draft"
+  },
+  "gloss.carried-over.says": {
+   "en": "a bill retained in the first year that survives into the second and keeps its number",
+   "es": "un proyecto de ley retenido en el primer año que sigue vivo en el segundo y conserva su número",
+   "state": "draft"
+  },
+  "gloss.cc.name": {
+   "en": "Consent Calendar",
+   "es": "Calendario de consenso",
+   "state": "draft"
+  },
+  "gloss.cc.says": {
+   "en": "the committee's recommendation, to pass, to kill or to send to interim study, adopted with the whole calendar in one vote, without floor debate",
+   "es": "la recomendación del comité —aprobar, descartar o enviar a estudio interino— adoptada con todo el calendario en una sola votación, sin debate en el pleno",
+   "state": "draft"
+  },
+  "gloss.chaptered.name": {
+   "en": "Chaptered law",
+   "es": "Ley con número de capítulo",
+   "state": "draft"
+  },
+  "gloss.chaptered.says": {
+   "en": "a bill that became law, numbered as a chapter of that year's session laws",
+   "es": "un proyecto de ley que se convirtió en ley, numerado como capítulo de las leyes de la sesión de ese año",
+   "state": "draft"
+  },
+  "gloss.committee-of-conference.name": {
+   "en": "Committee of conference",
+   "es": "Comité de conferencia",
+   "state": "draft"
+  },
+  "gloss.committee-of-conference.says": {
+   "en": "where the chambers will not agree on a bill, members of both try to write a version each will accept; both chambers must then adopt the report unchanged",
+   "es": "cuando las cámaras no se ponen de acuerdo sobre un proyecto de ley, miembros de ambas intentan redactar una versión que las dos acepten; después, ambas cámaras deben adoptar el informe sin cambios",
+   "state": "draft"
+  },
+  "gloss.concur.name": {
+   "en": "Concur",
+   "es": "Concurrir",
+   "state": "draft"
+  },
+  "gloss.concur.says": {
+   "en": "to agree to the other chamber's amendment; to nonconcur is to refuse it, after which a committee of conference may be asked for",
+   "es": "aceptar la enmienda de la otra cámara; no concurrir es rechazarla, tras lo cual se puede solicitar un comité de conferencia",
+   "state": "draft"
+  },
+  "gloss.crossover.name": {
+   "en": "Crossover",
+   "es": "Paso a la otra cámara",
+   "state": "draft",
+   "note": "The General Court's term of art; the record keeps 'Crossover'."
+  },
+  "gloss.crossover.says": {
+   "en": "a bill moving from the chamber that passed it to the other one; there is a deadline for it each year",
+   "es": "el paso de un proyecto de ley de la cámara que lo aprobó a la otra; cada año hay una fecha límite para ello",
+   "state": "draft"
+  },
+  "gloss.died.name": {
+   "en": "Died",
+   "es": "Murió",
+   "state": "draft"
+  },
+  "gloss.died.says": {
+   "en": "ended without becoming law, however it ended: killed, left on the table, out of time when the session ended, lost between the chambers, or a veto that stood",
+   "es": "terminó sin convertirse en ley, de cualquier manera: descartado, dejado sobre la mesa, sin tiempo al terminar la sesión, perdido entre las cámaras o con un veto que se mantuvo",
+   "state": "draft"
+  },
+  "gloss.docket.name": {
+   "en": "Docket",
+   "es": "Registro de trámites",
+   "state": "draft"
+  },
+  "gloss.docket.says": {
+   "en": "the General Court's running list of every action taken on a bill, in the order it was recorded",
+   "es": "la lista continua de la Legislatura con cada acción tomada sobre un proyecto de ley, en el orden en que se registró",
+   "state": "draft"
+  },
+  "gloss.dv.name": {
+   "en": "Division vote",
+   "es": "Votación por división",
+   "state": "draft"
+  },
+  "gloss.dv.says": {
+   "en": "a vote that is counted, with the totals recorded but not who voted which way",
+   "es": "una votación que se cuenta, con los totales registrados pero no cómo votó cada miembro",
+   "state": "draft"
+  },
+  "gloss.enrolled.name": {
+   "en": "Enrolled bill",
+   "es": "Proyecto de ley inscrito",
+   "state": "draft"
+  },
+  "gloss.enrolled.says": {
+   "en": "a bill both chambers have passed, given a final check of its text for errors before it is sent to the Governor",
+   "es": "un proyecto de ley que ambas cámaras han aprobado, al que se le hace una revisión final del texto en busca de errores antes de enviarlo al gobernador",
+   "state": "draft"
+  },
+  "gloss.executive-session.name": {
+   "en": "Executive session",
+   "es": "Sesión ejecutiva",
+   "state": "draft"
+  },
+  "gloss.executive-session.says": {
+   "en": "the committee meeting where it votes on what to recommend, usually days after the hearing; it cannot end the bill itself, because the recommendation goes to the floor",
+   "es": "la reunión en la que el comité vota qué recomendar, normalmente días después de la audiencia; no puede poner fin al proyecto de ley por sí sola, porque la recomendación pasa al pleno",
+   "state": "draft"
+  },
+  "gloss.floor-amendment.name": {
+   "en": "Floor amendment",
+   "es": "Enmienda en el pleno",
+   "state": "draft"
+  },
+  "gloss.floor-amendment.says": {
+   "en": "an amendment a member offers during floor debate, rather than one the committee recommends",
+   "es": "una enmienda que un miembro presenta durante el debate en el pleno, en lugar de una que recomienda el comité",
+   "state": "draft"
+  },
+  "gloss.floterial-district.name": {
+   "en": "Floterial district",
+   "es": "Distrito flotante",
+   "state": "draft",
+   "note": "No standard Spanish term; 'flotante' renders 'floterial'. The record keeps the English."
+  },
+  "gloss.floterial-district.says": {
+   "en": "a House district laid over two or more neighboring districts, electing a representative of its own; its voters also elect their own district's",
+   "es": "un distrito de la Cámara superpuesto a dos o más distritos vecinos, que elige a un representante propio; sus votantes también eligen al de su propio distrito",
+   "state": "draft"
+  },
+  "gloss.fn.name": {
+   "en": "Fiscal note",
+   "es": "Nota fiscal",
+   "state": "draft"
+  },
+  "gloss.fn.says": {
+   "en": "an estimate of what the bill would cost",
+   "es": "una estimación de lo que costaría el proyecto de ley",
+   "state": "draft"
+  },
+  "gloss.hb.name": {
+   "en": "House Bill",
+   "es": "Proyecto de ley de la Cámara",
+   "state": "draft"
+  },
+  "gloss.hb.says": {
+   "en": "a proposed change to New Hampshire law; begins in the House, must pass both chambers, goes to the Governor",
+   "es": "un cambio propuesto a la ley de New Hampshire; comienza en la Cámara de Representantes, debe aprobarse en ambas cámaras y pasa al gobernador",
+   "state": "draft"
+  },
+  "gloss.hcr.name": {
+   "en": "House Concurrent Resolution",
+   "es": "Resolución concurrente de la Cámara",
+   "state": "draft"
+  },
+  "gloss.hcr.says": {
+   "en": "similar to a House Resolution, but voted on by both chambers",
+   "es": "parecida a una resolución de la Cámara, pero votada por ambas cámaras",
+   "state": "draft"
+  },
+  "gloss.hj.name": {
+   "en": "House Journal",
+   "es": "Diario de la Cámara",
+   "state": "draft"
+  },
+  "gloss.hj.says": {
+   "en": "the chamber's own record of the day, cited by issue and sometimes page",
+   "es": "el registro oficial de la cámara sobre la jornada, citado por número y a veces por página",
+   "state": "draft"
+  },
+  "gloss.hr.name": {
+   "en": "House Resolution",
+   "es": "Resolución de la Cámara",
+   "state": "draft"
+  },
+  "gloss.hr.says": {
+   "en": "a formal, non-binding expression of opinion, policy preference, or internal rule; it does not go to the other chamber or the Governor and does not change any law",
+   "es": "una expresión formal y no vinculante de opinión, de preferencia de política o de una norma interna; no pasa a la otra cámara ni al gobernador y no cambia ninguna ley",
+   "state": "draft"
+  },
+  "gloss.indefinitely-postponed.name": {
+   "en": "Indefinitely postponed",
+   "es": "Aplazado indefinidamente",
+   "state": "draft"
+  },
+  "gloss.indefinitely-postponed.says": {
+   "en": "a vote that ends the bill for the term and, under the rules, bars the same subject from being taken up again before the term is out",
+   "es": "una votación que pone fin al proyecto de ley durante el período legislativo y, según las reglas, impide volver a tratar el mismo tema antes de que termine",
+   "state": "draft"
+  },
+  "gloss.is.name": {
+   "en": "Interim Study",
+   "es": "Estudio interino",
+   "state": "draft"
+  },
+  "gloss.is.says": {
+   "en": "a motion to have the committee study the subject after the session; the bill itself goes no further this term",
+   "es": "una moción para que el comité estudie el tema después de la sesión; el proyecto de ley en sí no avanza más en este período legislativo",
+   "state": "draft"
+  },
+  "gloss.itl.name": {
+   "en": "Inexpedient to Legislate",
+   "es": "Inoportuno legislar",
+   "state": "draft",
+   "note": "Literal rendering of the House's own phrase; the meaning line says what it does."
+  },
+  "gloss.itl.says": {
+   "en": "a motion to kill the bill",
+   "es": "una moción para descartar el proyecto de ley",
+   "state": "draft"
+  },
+  "gloss.laid-on-the-table.name": {
+   "en": "Laid on the table",
+   "es": "Dejado sobre la mesa",
+   "state": "draft"
+  },
+  "gloss.laid-on-the-table.says": {
+   "en": "set aside without a decision; it can be taken off the table later, and a bill still on the table when the term ends dies",
+   "es": "apartado sin una decisión; puede retomarse más adelante, y un proyecto de ley que sigue sobre la mesa al terminar el período legislativo muere",
+   "state": "draft"
+  },
+  "gloss.local.name": {
+   "en": "Local fiscal impact",
+   "es": "Impacto fiscal local",
+   "state": "draft"
+  },
+  "gloss.local.says": {
+   "en": "the bill may change what towns, cities, counties or school districts spend or collect, marked LOCAL after its number",
+   "es": "el proyecto de ley puede cambiar lo que gastan o recaudan los municipios, las ciudades, los condados o los distritos escolares, indicado con LOCAL después de su número",
+   "state": "draft"
+  },
+  "gloss.lsr.name": {
+   "en": "Legislative Service Request",
+   "es": "Solicitud de servicio legislativo",
+   "state": "draft"
+  },
+  "gloss.lsr.says": {
+   "en": "a legislator's request for a bill, filed with a title and an idea, mostly in the fall; attorneys at the Office of Legislative Services draft the text",
+   "es": "la solicitud de un legislador para un proyecto de ley, presentada con un título y una idea, sobre todo en otoño; los abogados de la Oficina de Servicios Legislativos redactan el texto",
+   "state": "draft"
+  },
+  "gloss.ma.name": {
+   "en": "Motion Adopted",
+   "es": "Moción aprobada",
+   "state": "draft"
+  },
+  "gloss.ma.says": {
+   "en": "the motion carried",
+   "es": "la moción prosperó",
+   "state": "draft"
+  },
+  "gloss.mf.name": {
+   "en": "Motion Failed",
+   "es": "Moción rechazada",
+   "state": "draft"
+  },
+  "gloss.mf.says": {
+   "en": "the motion failed",
+   "es": "la moción no prosperó",
+   "state": "draft"
+  },
+  "gloss.minority-report.name": {
+   "en": "Minority report",
+   "es": "Informe de minoría",
+   "state": "draft"
+  },
+  "gloss.minority-report.says": {
+   "en": "the written dissent of committee members who voted against the recommendation, printed beside the majority's report",
+   "es": "el disenso por escrito de los miembros del comité que votaron en contra de la recomendación, impreso junto al informe de la mayoría",
+   "state": "draft"
+  },
+  "gloss.organization-day.name": {
+   "en": "Organization Day",
+   "es": "Día de Organización",
+   "state": "draft"
+  },
+  "gloss.organization-day.says": {
+   "en": "the first Wednesday of December after an election, when the new legislature is sworn in and elects its presiding officers",
+   "es": "el primer miércoles de diciembre después de una elección, cuando la nueva Legislatura presta juramento y elige a sus autoridades",
+   "state": "draft"
+  },
+  "gloss.ot3rdg.name": {
+   "en": "Ordered to a third reading",
+   "es": "Enviado a tercera lectura",
+   "state": "draft"
+  },
+  "gloss.ot3rdg.says": {
+   "en": "passed to the last stage before the chamber's final vote on the bill",
+   "es": "aprobado hasta la última etapa antes de la votación final de la cámara sobre el proyecto de ley",
+   "state": "draft"
+  },
+  "gloss.otp.name": {
+   "en": "Ought to Pass",
+   "es": "Debe aprobarse",
+   "state": "draft"
+  },
+  "gloss.otp.says": {
+   "en": "a motion to pass the bill",
+   "es": "una moción para aprobar el proyecto de ley",
+   "state": "draft"
+  },
+  "gloss.otpa.name": {
+   "en": "Ought to Pass with Amendment",
+   "es": "Debe aprobarse con enmienda",
+   "state": "draft"
+  },
+  "gloss.otpa.says": {
+   "en": "a motion to pass the bill with the committee's amendment",
+   "es": "una moción para aprobar el proyecto de ley con la enmienda del comité",
+   "state": "draft"
+  },
+  "gloss.override.name": {
+   "en": "Override",
+   "es": "Anulación del veto",
+   "state": "draft"
+  },
+  "gloss.override.says": {
+   "en": "two thirds of each chamber, by roll call, passing a bill over the Governor's veto; the House counts the two thirds among the members voting",
+   "es": "dos tercios de cada cámara, en votación nominal, aprueban un proyecto de ley a pesar del veto del gobernador; la Cámara cuenta los dos tercios entre los miembros que votan",
+   "state": "draft"
+  },
+  "gloss.page.lead": {
+   "en": "The words and abbreviations of the New Hampshire General Court's record. The record is in English, so each term is given as it prints it, with its name and what it means in plain words.",
+   "es": "Las palabras y abreviaturas del registro de la Legislatura de New Hampshire. El registro está en inglés, así que cada término aparece tal como lo imprime, con su nombre y su significado en palabras sencillas.",
+   "state": "draft"
+  },
+  "gloss.page.title": {
+   "en": "Glossary",
+   "es": "Glosario",
+   "state": "draft"
+  },
+  "gloss.prime-sponsor.name": {
+   "en": "Prime sponsor",
+   "es": "Patrocinador principal",
+   "state": "draft"
+  },
+  "gloss.prime-sponsor.says": {
+   "en": "the member who files the bill and introduces it at the hearing; members who join it are cosponsors",
+   "es": "el miembro que presenta el proyecto de ley y lo expone en la audiencia; los miembros que se suman son copatrocinadores",
+   "state": "draft"
+  },
+  "gloss.public-hearing.name": {
+   "en": "Public hearing",
+   "es": "Audiencia pública",
+   "state": "draft"
+  },
+  "gloss.public-hearing.says": {
+   "en": "the committee meeting where the sponsor introduces the bill and anyone may speak for or against it, or sign in without speaking; the committee takes no decision at it",
+   "es": "la reunión del comité en la que el patrocinador presenta el proyecto de ley y cualquier persona puede hablar a favor o en contra, o registrar su posición sin hablar; el comité no toma ninguna decisión en ella",
+   "state": "draft"
+  },
+  "gloss.rc-calendar.name": {
+   "en": "Regular Calendar",
+   "es": "Calendario ordinario",
+   "state": "draft"
+  },
+  "gloss.rc-calendar.says": {
+   "en": "the bills a chamber takes up one at a time, open to debate, rather than together on the consent calendar",
+   "es": "los proyectos de ley que una cámara considera uno por uno, abiertos a debate, en lugar de juntos en el calendario de consenso",
+   "state": "draft"
+  },
+  "gloss.rc.name": {
+   "en": "Roll call",
+   "es": "Votación nominal",
+   "state": "draft"
+  },
+  "gloss.rc.says": {
+   "en": "each member recorded by name",
+   "es": "cada miembro queda registrado por su nombre",
+   "state": "draft"
+  },
+  "gloss.reconsider.name": {
+   "en": "Reconsideration",
+   "es": "Reconsideración",
+   "state": "draft"
+  },
+  "gloss.reconsider.says": {
+   "en": "a motion, made by a member who voted on the winning side, to take the same question again",
+   "es": "una moción, presentada por un miembro que votó con el lado ganador, para volver a votar la misma cuestión",
+   "state": "draft"
+  },
+  "gloss.rerefer.name": {
+   "en": "Re-referred",
+   "es": "Devuelto al comité",
+   "state": "draft"
+  },
+  "gloss.rerefer.says": {
+   "en": "sent back to the committee it came from for more work",
+   "es": "enviado de nuevo al comité del que provino para más trabajo",
+   "state": "draft"
+  },
+  "gloss.retain.name": {
+   "en": "Retain",
+   "es": "Retener",
+   "state": "draft"
+  },
+  "gloss.retain.says": {
+   "en": "a House committee keeps the bill through the fall of the first year and reports it in the second",
+   "es": "un comité de la Cámara conserva el proyecto de ley durante el otoño del primer año y lo informa en el segundo",
+   "state": "draft"
+  },
+  "gloss.rsa.name": {
+   "en": "Revised Statutes Annotated",
+   "es": "Estatutos Revisados Anotados",
+   "state": "draft"
+  },
+  "gloss.rsa.says": {
+   "en": "New Hampshire's laws in force, arranged by title and chapter; a bill changes the law by amending its sections",
+   "es": "las leyes vigentes de New Hampshire, ordenadas por título y capítulo; un proyecto de ley cambia la ley enmendando sus secciones",
+   "state": "draft"
+  },
+  "gloss.sb.name": {
+   "en": "Senate Bill",
+   "es": "Proyecto de ley del Senado",
+   "state": "draft"
+  },
+  "gloss.sb.says": {
+   "en": "begins in the Senate, otherwise the same as a House Bill",
+   "es": "comienza en el Senado; por lo demás, es igual que un proyecto de ley de la Cámara",
+   "state": "draft"
+  },
+  "gloss.scr.name": {
+   "en": "Senate Concurrent Resolution",
+   "es": "Resolución concurrente del Senado",
+   "state": "draft"
+  },
+  "gloss.scr.says": {
+   "en": "similar to a Senate Resolution, but voted on by both chambers",
+   "es": "parecida a una resolución del Senado, pero votada por ambas cámaras",
+   "state": "draft"
+  },
+  "gloss.second-committee.name": {
+   "en": "Second committee",
+   "es": "Segundo comité",
+   "state": "draft"
+  },
+  "gloss.second-committee.says": {
+   "en": "a bill that spends or raises money, sent on after the committee that heard it: in the House to Finance or to Ways and Means, in the Senate to Finance; such bills meet earlier deadlines in their first committee",
+   "es": "un proyecto de ley que gasta o recauda dinero se envía, después del comité que lo escuchó, en la Cámara a Finanzas o a Medios y Arbitrios (Ways and Means), y en el Senado a Finanzas; estos proyectos tienen plazos más tempranos en su primer comité",
+   "state": "draft"
+  },
+  "gloss.session-day.name": {
+   "en": "Session day",
+   "es": "Día de sesión",
+   "state": "draft"
+  },
+  "gloss.session-day.says": {
+   "en": "a day the full House or Senate sits to vote on bills",
+   "es": "un día en que la Cámara o el Senado en pleno se reúne para votar proyectos de ley",
+   "state": "draft"
+  },
+  "gloss.sj.name": {
+   "en": "Senate Journal",
+   "es": "Diario del Senado",
+   "state": "draft"
+  },
+  "gloss.sj.says": {
+   "en": "the chamber's own record of the day, cited by issue and sometimes page",
+   "es": "el registro oficial de la cámara sobre la jornada, citado por número y a veces por página",
+   "state": "draft"
+  },
+  "gloss.special-order.name": {
+   "en": "Special order",
+   "es": "Orden especial",
+   "state": "draft"
+  },
+  "gloss.special-order.says": {
+   "en": "a motion to take a bill up at a set time or place in the day's business, out of its turn on the calendar",
+   "es": "una moción para considerar un proyecto de ley a una hora o en un punto determinado del orden del día, fuera de su turno en el calendario",
+   "state": "draft"
+  },
+  "gloss.sr.name": {
+   "en": "Senate Resolution",
+   "es": "Resolución del Senado",
+   "state": "draft"
+  },
+  "gloss.sr.says": {
+   "en": "the Senate's own resolution: non-binding, and it does not go to the House or the Governor",
+   "es": "la resolución propia del Senado: no vinculante, y no pasa a la Cámara ni al gobernador",
+   "state": "draft"
+  },
+  "gloss.tabled.name": {
+   "en": "Tabled",
+   "es": "Sobre la mesa",
+   "state": "draft"
+  },
+  "gloss.tabled.says": {
+   "en": "laid on the table while the session still sits; a bill still there when the session ends has died on the table",
+   "es": "dejado sobre la mesa mientras la sesión continúa; un proyecto de ley que sigue allí cuando termina la sesión muere sobre la mesa",
+   "state": "draft"
+  },
+  "gloss.veto-day.name": {
+   "en": "Veto day",
+   "es": "Día de vetos",
+   "state": "draft"
+  },
+  "gloss.veto-day.says": {
+   "en": "the day a chamber meets to take up the Governor's vetoes; overriding one takes two thirds of each chamber, by roll call",
+   "es": "el día en que una cámara se reúne para considerar los vetos del gobernador; anular uno requiere dos tercios de cada cámara, en votación nominal",
+   "state": "draft"
+  },
+  "gloss.veto.name": {
+   "en": "Veto",
+   "es": "Veto",
+   "state": "draft"
+  },
+  "gloss.veto.says": {
+   "en": "the Governor's refusal to sign a bill; it stands unless two thirds of each chamber override it",
+   "es": "la negativa del gobernador a firmar un proyecto de ley; se mantiene a menos que dos tercios de cada cámara lo anulen",
+   "state": "draft"
+  },
+  "gloss.vv.name": {
+   "en": "Voice vote",
+   "es": "Votación a viva voz",
+   "state": "draft"
+  },
+  "gloss.vv.says": {
+   "en": "a vote by the sound of the members' voices, with no count and no names recorded",
+   "es": "una votación por el sonido de las voces de los miembros, sin conteo y sin registro de nombres",
+   "state": "draft"
+  },
+  "gloss.without-signature.name": {
+   "en": "Law without signature",
+   "es": "Ley sin firma",
+   "state": "draft"
+  },
+  "gloss.without-signature.says": {
+   "en": "a bill the Governor leaves unsigned for five days, Sundays excepted, becomes law without a signature, unless the legislature's adjournment prevents its return",
+   "es": "un proyecto de ley que el gobernador deja sin firmar durante cinco días, sin contar los domingos, se convierte en ley sin su firma, a menos que el receso de la Legislatura impida su devolución",
+   "state": "draft"
+  },
+  "gloss.work-session.name": {
+   "en": "Work session",
+   "es": "Sesión de trabajo",
+   "state": "draft"
+  },
+  "gloss.work-session.says": {
+   "en": "a committee or subcommittee meeting to work on a bill's text; open to the public, but the public is heard only at the public hearing",
+   "es": "una reunión de un comité o subcomité para trabajar en el texto de un proyecto de ley; es abierta al público, pero el público solo es escuchado en la audiencia pública",
+   "state": "draft"
+  },
   "home.desc": {
    "en": "Every bill, vote, hearing and floor debate of the New Hampshire General Court, linked to the moment in the recording where it happened.",
    "es": "Cada proyecto de ley, votación, audiencia y debate de la Legislatura de New Hampshire, enlazado al momento de la grabación en que ocurrió.",

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.673
+# GRANITE_VERSION: 2026-09-04.674
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -62068,6 +62068,74 @@ def _translations(i18n):
     return "ok", f"{len(words)} words in the code, every one current; " + "; ".join(said)
 
 
+@check("build", "the glossary is built in Spanish at /es/learn/glossary from the same entries, "
+                "each term as the record prints it with its Spanish name and meaning, and the "
+                "term pop-ups on a Spanish page say them too",
+       needs=("i18n", "build_civics", "chrome"))
+def _spanish_glossary(i18n, BC, chrome):
+    """The owner, 24 October 2026: "The glossary should also be translated
+    into spanish if it hasn't been already." words/glossary.json is one table,
+    read by the glossary page and by the term pop-ups, and its translations
+    are keyed by term and field (i18n.gloss_key), each with the English it
+    was made from, so an entry whose English changes is said in English again
+    until its Spanish catches up (_translations names it).
+
+    It fails if a glossary entry has no Spanish entry for its name or its
+    meaning; if the Spanish page loses a term, the record's English for it
+    (marked lang="en"), its Spanish name or meaning, its lang, its link to
+    the English page, or asks to be indexed while Spanish is not offered; if
+    the English page stops naming its Spanish twin, on <html> or in the
+    footer; if the Spanish footer's Glossary link goes to the English page;
+    or if the pop-ups stop reading the Spanish words (GR_GLOSS) the shared
+    words file carries."""
+    import html
+    entries = i18n.gloss_entries()
+    strings = i18n.catalog("es").get("strings", {})
+    absent = [i18n.gloss_key(t, f) for t, e in entries.items() for f in ("name", "says")
+              if e.get(f) and i18n.gloss_key(t, f) not in strings]
+    assert not absent, f"{len(absent)} glossary words have no Spanish entry: {absent[:4]}"
+    assert i18n.has("es", "learn/glossary.html"), "the glossary is not among the Spanish pages"
+    js = i18n.gloss_js("es")
+    assert js.startswith("window.GR_GLOSS=") and js.endswith(";"), js[:60]
+    gl = json.loads(js[len("window.GR_GLOSS="):-1])
+    assert set(gl) == set(entries), f"the pop-ups' Spanish lacks {sorted(set(entries) - set(gl))[:4]}"
+    assert gl["ITL"]["says"] == strings[i18n.gloss_key("ITL", "says")]["es"]
+    page = BC.glossary_page_lang("es", "https://graniterecord.org")
+    bad = []
+    if '<html lang="es" data-alt-en="/learn/glossary"' not in page:
+        bad.append("the Spanish page is not lang=es naming /learn/glossary")
+    if not i18n.offered("es") and '<meta name="robots" content="noindex">' not in page:
+        bad.append("the Spanish page asks to be indexed while Spanish is unlisted")
+    for term, e in entries.items():
+        if f'<b lang="en">{html.escape(e["name"], quote=True)}</b>' not in page:
+            bad.append(f"the Spanish page lacks {e['name']!r} as the record prints it")
+    itl_name = strings[i18n.gloss_key("ITL", "name")]["es"]
+    itl_says = strings[i18n.gloss_key("ITL", "says")]["es"]
+    if f'<span class="glsl">{html.escape(itl_name)}</span>' not in page \
+            or html.escape(itl_says[0].upper() + itl_says[1:]) not in page.replace("&rsquo;", "'"):
+        bad.append("the Spanish page lacks ITL's Spanish name or meaning")
+    if 'href="es/learn/glossary"' not in page and 'href="es/learn/glossary.html"' not in page:
+        bad.append("the Spanish footer's Glossary link is not the Spanish page")
+    # The English page names its twin, on <html> and in the footer.
+    en = ('<!DOCTYPE html><html lang="en"><head></head><body>'
+          + chrome.footer_html("en") + "</body></html>")
+    named = BC.name_versions("learn/glossary.html", en)
+    if '<html lang="en" data-alt-es="/es/learn/glossary"' not in named \
+            or 'href="/es/learn/glossary" hreflang="es"' not in named:
+        bad.append("the English glossary does not name its Spanish twin")
+    if 'href="learn/glossary.html"' not in chrome.footer_html("en"):
+        bad.append("the English footer's Glossary link moved")
+    beh = Path("src/pages/components.js").read_text(encoding="utf-8")
+    if "window.GR_GLOSS" not in beh or "L.says" not in beh:
+        bad.append("the term pop-ups do not read the Spanish words (GR_GLOSS)")
+    bp = Path("src/pages/build_pages.py").read_text(encoding="utf-8")
+    if "i18n.gloss_js(lang)" not in bp:
+        bad.append("the shared words file no longer carries the glossary's words")
+    assert not bad, "; ".join(bad)
+    return "ok", (f"{len(entries)} terms in Spanish, on /es/learn/glossary and in the pop-ups; "
+                  "the English page names its twin")
+
+
 @check("build", "the home page is built in Spanish at /es/ from the same data as the English, "
                 "unlisted until offered, and each names the other",
        needs=("i18n",))
@@ -67110,11 +67178,13 @@ def _frame_written_once():
         n += 1
         # A page in another language has chrome's frame in that language,
         # its footer leading to the versions the page names (i18n.py).
-        lm = re.match(r'<!DOCTYPE html><html lang="([a-z]+)"((?: data-alt-[a-z]+="[^"]*")*)', page)
+        # An English page with a twin (the glossary, 24 October 2026) names it
+        # in its footer as a page in another language does.
+        lm = re.search(r'<html lang="([a-z]+)"((?: data-alt-[a-z]+="[^"]*")*)', page[:600])
         lang = lm.group(1) if lm else "en"
         alts = dict(re.findall(r'data-alt-([a-z]+)="([^"]*)"', lm.group(2))) if lm else {}
         want_nav = nav if lang == "en" else plain(CH.nav(lang=lang))
-        want_foot = foot if lang == "en" else plain(CH.footer_html(lang, alts or None))
+        want_foot = foot if lang == "en" and not alts else plain(CH.footer_html(lang, alts or None))
         got = re.findall(r'<nav class="top".*?</nav>', page, re.S)
         if len(got) != 1 or plain(got[0]) != want_nav:
             bad.append(f"{rel}: its header is not chrome's")

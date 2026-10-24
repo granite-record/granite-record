@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.229
+# GRANITE_VERSION: 2026-09-04.230
 """
 Build the pages the navigation links to: legislators, town lookup, how it
 works, and about.
@@ -3259,7 +3259,9 @@ def front_end(out, has_mark):
     for lang in i18n.LANGS:
         if lang == i18n.DEFAULT:
             continue
-        body = (i18n.words_js(lang, *shared) + "\n").encode("utf-8")
+        # And the glossary's, which the term pop-ups on every page read
+        # (i18n.gloss_js; the owner, 24 October 2026).
+        body = (i18n.words_js(lang, *shared) + "\n" + i18n.gloss_js(lang) + "\n").encode("utf-8")
         dst = out / i18n.shared_words_path(lang).lstrip("/")
         dst.parent.mkdir(parents=True, exist_ok=True)
         if not dst.exists() or dst.read_bytes() != body:

@@ -26,6 +26,14 @@ A page holds three kinds of words, and each stays current its own way.
 Dates follow the language: "19 de febrero de 2026" and "1:30 p. m." on a
 Spanish page.
 
+**The glossary** (24 October 2026) is a table of the record's own words,
+`src/pages/words/glossary.json`, and its translations are entries like any
+other, keyed `gloss.<term>.name` and `gloss.<term>.says` ("gloss.itl.name").
+The Spanish page, `/es/learn/glossary`, gives each term as the record prints
+it, in English, with its Spanish name and meaning beside it, because that
+English is what a reader meets on a bill's page. The pop-up on a term says
+the same on a Spanish page, from the shared words file `/lang/es.js`.
+
 ## How a translation stays current
 
 The English stays in the code, where the page is written. Each piece of the

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-10-23.2
+# GRANITE_VERSION: 2026-10-23.3
 """
 The frame every page shares, written once: the head's fonts, icons, share
 card, theme script and stylesheet; the header and its sections; the footer;
@@ -328,7 +328,7 @@ def footer_html(lang="en", alt=None):
 <p class="fcolhead">{say(lang, "foot.record", "The record")}</p>
 <ul class="flinks">
 <li><a href="data.html">{say(lang, "foot.data", "Bulk data")}</a></li>
-<li><a href="learn/glossary.html">{say(lang, "foot.glossary", "Glossary")}</a></li>
+<li><a href="{i18n.href(lang, "learn/glossary.html").lstrip("/")}">{say(lang, "foot.glossary", "Glossary")}</a></li>
 <li><a class="out" href="{REPO}" target="_blank" rel="noopener">{say(lang, "foot.source", "Source on GitHub")}</a></li>
 </ul>
 </div>

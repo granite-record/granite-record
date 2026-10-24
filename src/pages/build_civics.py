@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-08.66
+# GRANITE_VERSION: 2026-09-08.67
 """
 The civics section: a hub and one page per topic, in order.
 
@@ -40,6 +40,7 @@ from collections import Counter
 
 import build_date
 import civics
+import i18n as I
 import components as C
 import constitution_tab as CT
 import guides as G
@@ -854,6 +855,69 @@ def glossary_secs():
             + (f' ({E(abbr)})' if abbr else "") + f'</th><td>{dashes(curly(says))}</td></tr>')
     return [(f"s-{L.lower()}", L, "<table><tbody>" + "".join(trs) + "</tbody></table>\n")
             for L, trs in sorted(by.items())]
+
+
+# THE GLOSSARY IN ANOTHER LANGUAGE (the owner, 24 October 2026: "The
+# glossary should also be translated into spanish"). The record stays in
+# English -- a bill page says "Inexpedient to Legislate", and so does the
+# docket -- so each row gives the term as the record prints it, then its name
+# and what it means in the page's language (i18n.say_gloss), A to Z by the
+# English, which is the word a reader has in front of them. Drawn in the
+# frame the home page is (build_pages.shell), which says the header, the
+# footer and Settings in that language, with the Learn pages' own styles.
+def glossary_page_lang(lang, base):
+    """The glossary page in `lang`, written at i18n.href(lang, GLOSSARY_PAGE)."""
+    import build_pages as BP
+    rows = []
+    for key, e in C.WORDBOOK["glossary"].items():
+        says = (e.get("says") or "").strip()
+        if not says:
+            raise SystemExit(f"glossary.json: {key} has nothing to say on the glossary page")
+        name_l = I.say_gloss(lang, key, "name", e["name"])
+        says_l = I.say_gloss(lang, key, "says", says)
+        says_l = says_l[0].upper() + says_l[1:] + ("" if says_l.endswith(".") else ".")
+        rows.append((e["name"].casefold(), key, e["name"], _gloss_abbr(key, e["name"]), name_l, says_l))
+    by = {}
+    for _sort, key, name, abbr, name_l, says_l in sorted(rows):
+        by.setdefault(name[0].upper(), []).append(
+            f'<tr id="t-{_slug(key)}"><th scope="row"><b lang="en">{E(name)}</b>'
+            + (f' ({E(abbr)})' if abbr else "")
+            + (f'<span class="glsl">{E(name_l)}</span>' if name_l != name else "")
+            + f'</th><td>{dashes(curly(says_l))}</td></tr>')
+    secs = "".join(section(f"s-{L.lower()}", L, "<table><tbody>" + "".join(trs) + "</tbody></table>\n")
+                   for L, trs in sorted(by.items()))
+    title = I.say(lang, "gloss.page.title", "Glossary")
+    lead = I.say(lang, "gloss.page.lead",
+                 "The words and abbreviations of the New Hampshire General Court's record. The "
+                 "record is in English, so each term is given as it prints it, with its name and "
+                 "what it means in plain words.")
+    body = (f'<div class="l-page"><header class="l-head"><h1>{E(title)}</h1>'
+            f'<p class="l-lead">{curly(lead)}</p></header>'
+            f'<div class="l-art">{secs}</div></div>')
+    return BP.shell(f"{E(title)} \u2014 Granite Record", GLOSSARY_PAGE, body, desc=lead,
+                    base=base, lang=lang)
+
+
+def name_versions(page, english):
+    """`english`, the page at GLOSSARY_PAGE in English, naming its versions in
+    the other languages: on <html> (data-alt-<code>, which the language
+    script reads), in the footer's link to each, and to a search engine
+    (hreflang) once every version is offered (i18n.offered)."""
+    alts = {c: S.canon(I.href(c, page)) for c in I.LANGS
+            if c != I.DEFAULT and I.has(c, page)}
+    for c, h in alts.items():
+        english = english.replace('<html lang="en"', f'<html lang="en" data-alt-{c}="{h}"', 1)
+        english = english.replace(f'href="{I.href(c, "index.html")}" hreflang="{c}"',
+                                  f'href="{h}" hreflang="{c}"', 1)
+    if alts and all(I.offered(c) for c in alts):
+        base = "https://graniterecord.org"
+        links = "".join(f'<link rel="alternate" hreflang="{c}" href="{base}{h}">'
+                        for c, h in {I.DEFAULT: S.canon(I.href(I.DEFAULT, page)), **alts}.items())
+        english = english.replace("</head>", links + "</head>", 1)
+    return english
+
+
+GLOSSARY_PAGE = "learn/glossary.html"
 
 
 def curly(text):
@@ -1877,9 +1941,18 @@ def main():
     page = learn_page(tmpl, slug=GLOSSARY_SLUG, title=GLOSSARY_TITLE,
                       lead=curly(GLOSSARY_DESC), description=GLOSSARY_DESC,
                       secs=glossary_secs(), foot=pager(None, topics), base=a.base)
+    page = name_versions(GLOSSARY_PAGE, page)
     (out / f"{GLOSSARY_SLUG}.html").write_text(S.clean_links(page), encoding="utf-8")
     urls.append(a.base + S.canon("/" + learn_href(GLOSSARY_SLUG)))
     print(f"  learn/{GLOSSARY_SLUG}.html: {len(C.WORDBOOK['glossary'])} terms")
+    # And in each other language the site is built in (i18n.PAGES).
+    for lang in I.LANGS:
+        if lang == I.DEFAULT or not I.has(lang, GLOSSARY_PAGE):
+            continue
+        dst = site / I.href(lang, GLOSSARY_PAGE).lstrip("/")
+        dst.parent.mkdir(parents=True, exist_ok=True)
+        dst.write_text(glossary_page_lang(lang, a.base), encoding="utf-8")
+        print(f"  {dst.relative_to(site).as_posix()}: the glossary in {lang}")
 
     # ---- the home page's guides (the guides themselves are written above) --
     home_guides(site, published)
