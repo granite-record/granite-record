@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-10-11.8
+# GRANITE_VERSION: 2026-10-11.9
 """
 The official pages the how-to guides cite, onto this disk, to check them by.
 
@@ -191,6 +191,17 @@ OTHER = {
     # the Transportation Security Administration's page, where the Department
     # of Homeland Security's REAL ID address now sends a reader, and the City of
     # Concord's, the example of how a city takes filings for its own offices.
+    # The guide to help after domestic and sexual violence (24 October 2026):
+    # the statewide coalition of the crisis centers, not a state agency, and
+    # so the person's to approve, which the session asked for that day.
+    "domestic_violence": [
+        "https://www.nhcadsv.org/",
+        "https://www.nhcadsv.org/member-programs.html",
+        "https://www.nhcadsv.org/safety-planning1.html",
+        "https://www.nhcadsv.org/medicalforensic-exams.html",
+        "https://www.nhcadsv.org/legal-resources.html",
+        "https://www.nhcadsv.org/support-services--programs.html",
+    ],
     "federal_and_city": [
         "https://www.tsa.gov/real-id",
         # The federal child care rules (the person, 24 October 2026: "you can
