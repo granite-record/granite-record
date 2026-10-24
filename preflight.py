@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.685
+# GRANITE_VERSION: 2026-09-04.686
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -29008,6 +29008,89 @@ def _journey_reads(build_site_v2):
                   "motion not to adopt, a reconsidered defeat, a kill at adjournment, a "
                   "conference report filed and a chaptered override, each as the docket "
                   "has it")
+
+
+@check("status", "a law's Law stop is dated by its chaptered text's own Effective Date lines before "
+                 "the docket's line, which can be another bill's, and by the docket's where the "
+                 "text has none it reads", needs=("build_site_v2",))
+def _law_stop_from_chaptered_text(build_site_v2):
+    """HB 1184 of 2026's page said its sections took effect on 1 January 2027
+    and 2028: its docket row is HB 1102's, overridden the same day, and its
+    chaptered text says section 3 on August 19, 2027 and the rest on October
+    18, 2026, as RSA 635:2-a's source note does (found 24 October 2026 by
+    the Laws pages, which read the text first: build_rsa, Bills.effect).
+    journey() reads the text's last lines first now, with the Laws pages'
+    reader (law_effect.chaptered_parts), and the docket's line where the
+    text has no such lines or one the reader does not read. Measured on the
+    laws of 2023-2024 and 2025-2026 that day: 1,223 of 1,273 read the same
+    either way, and 42 change, among them 19 dates the docket's line had
+    wrong and 9 laws that stated no date at all.
+
+    Held here: a record shaped like HB 1184's, a law in effect on one day,
+    a part that names a statute in the law's own words (HB 464 of 2025) and
+    one that names sections of the act beside it (HB 318 of 2024), and the
+    three cases where the docket's reading stays: no text, a text with no
+    such lines, and a line the reader does not read. And the build hands
+    journey() the bill's text."""
+    B = build_site_v2
+
+    def law(bid, raw, chapter, text):
+        ev = {"body": "H", "date": "2026-07-02", "raw": raw, "type": "governor", "cancelled": False}
+        steps = B.journey({"events": [ev]}, bid, [], chapter, "", "", text=text)[1]
+        st = [s for s in steps if s["body"] == "L"][-1]
+        return st["text"], st.get("effective", "")
+
+    bad = []
+
+    def want(got, expect, what):
+        if got != expect:
+            bad.append(f"{what}: {got!a}, not {expect!a}")
+
+    other = ("Signed by Governor Ayotte 07/02/2026; Chapter 339;eff.I. Sec 2 eff 1/1/27 II. Sec 3 "
+             "eff 1/1/27 III. Rem eff 1/1/28")
+    want(law("HB1184", other, "339", "x\nVETOED July 10, 2026 / Veto Overridden August 19, 2026.\n"
+             "Effective:\nI. Section 3 effective August 19, 2027\nII. Remainder effective "
+             "October 18, 2026"),
+         ("Chapter 339, in effect in parts: section 3 on Aug 19, 2027, the rest on Oct 18, 2026", ""),
+         "HB1184's own lines, not HB1102's")
+    one = "Signed by Governor Ayotte 05/14/2025; Chapter 17; eff. 07/13/2025"
+    want(law("HB140", one, "17", "17:2 Effective Date. This act shall take effect January 1, 2026.\n"
+             "Approved: May 14, 2025\nEffective Date: January 01, 2026"),
+         ("Chapter 17, in effect Jan 1, 2026", "2026-01-01"), "HB140's one day")
+    want(law("HB464", "Signed by Governor Ayotte 08/01/2025; Chapter 277", "277",
+             "x\nApproved: August 01, 2025\nEffective Date:\nI. Sections 9 & 10 effective December "
+             "31, 2025\nII. RSA 654:12 VI as inserted by section 5 effective February 1, 2026\nIII. "
+             "Remainder effective September 30, 2025"),
+         ("Chapter 277, in effect in parts: sections 9 and 10 on Dec 31, 2025, RSA 654:12 VI as "
+          "inserted by section 5 on Feb 1, 2026, the rest on Sep 30, 2025", ""), "HB464's statute part")
+    want(law("HB318", "Signed by Governor Sununu 08/01/2024; Chapter 317", "317",
+             "x\nApproved: August 01, 2024\n\nEffective Date:\n\nI. RSA 597:2-b, I-a & Sections "
+             "16-17 effective July 1, 2024\n\nII. Section 11 effective July 1, 2025\n\nIII. "
+             "Remainder effective January 1, 2025"),
+         ("Chapter 317, in effect in parts: RSA 597:2-b, I-a and sections 16 and 17 on Jul 1, 2024, "
+          "section 11 on Jul 1, 2025, the rest on Jan 1, 2025", ""), "HB318's statute and sections")
+    docket = "Signed by Governor Ayotte 07/02/2026; Chapter 205; eff. I. Sec 3 1/1/2027 II. Rem eff 8/1/2026"
+    kept = ("Chapter 205, in effect in parts: section 3 on Jan 1, 2027, the rest on Aug 1, 2026", "")
+    want(law("HB131", docket, "205", ""), kept, "no text: the docket's")
+    want(law("HB131", docket, "205", "3 Effective Date. This act shall take effect 60 days after its "
+             "passage."), kept, "a text with no Effective Date lines: the docket's")
+    want(law("HB131", docket, "205", "x\nEffective Date:\nI. Sec 20, except RSA 275:82 eff July 1, "
+             "2025\nII. RSA 275:82 eff July 1, 2026"), kept, "a line not read: the docket's")
+    want(law("HB131", docket, "205", "x\nEffective Date:\nI. Section 3 effective January 1, 2027"),
+         kept, "one part that is not the whole act: the docket's")
+    import build_rsa as BR
+    import law_effect as LE
+    want([BR.part_name(p_) for p_ in LE.chaptered_parts(
+        "x\nEffective Date:\nI. RSA 597:2-b, I-a & Sections 16-17 effective July 1, 2024\nII. "
+        "Remainder effective January 1, 2025")],
+         ["RSA 597:2-b and sections 16 and 17 of the act", "the rest"], "the Laws pages' HB318")
+    src = Path("src/pages/build_site_v2.py").read_text(encoding="utf-8")
+    if not re.search(r"journey\(narr, bid, rcs, chapter,.{0,300}?text=\(btext or \{\}\)\.get\(\"body\"",
+                     src, re.S):
+        bad.append("the build no longer hands journey() the bill's text")
+    assert not bad, "; ".join(bad)
+    return "ok", ("the chaptered text's lines first (HB 1184's own, not HB 1102's), the law's own "
+                  "words for a statute, and the docket's where the text has none it reads")
 
 
 @check("status", "a law's dates in effect are read part by part, and only where its lines "
