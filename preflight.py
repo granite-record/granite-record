@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.673
+# GRANITE_VERSION: 2026-09-04.674
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -33987,6 +33987,172 @@ def _session_bill_term(BSP, SD, shell):
         shutil.rmtree(root, ignore_errors=True)
 
 
+def _day_index_faults(page, where, own):
+    """What is wrong with one built session day's sidebar and index
+    (_session_day_index): [] where nothing is. `own` is the page's address,
+    "session/H/2026-03-06": every page carries <base href="/">, so the index
+    links a place on the page by it, and a bare "#hb1442" would go home."""
+    from html import unescape
+    bad = []
+    to = r'href="' + re.escape(own) + r'(?:\.html)?#([^"]+)"'
+    if "move this player" in page or 'class="tolnote"' in page:
+        bad.append(f"{where}: the sentence under the player is back")
+    m = re.search(r'<section class="w4 wday" id="order"><div class="wside">(.*?)</div><div class="w4b">',
+                  page, re.S)
+    if not m:
+        return bad + [f"{where}: the Day in Order has no sidebar holding its heading"]
+    side = m.group(1)
+    if not side.startswith('<h2 class="w4h">'):
+        bad.append(f"{where}: the sidebar does not open with the section's heading")
+    if 'class="player"' in page and 'class="player"' not in side:
+        bad.append(f"{where}: the day's player is not in the sidebar")
+    nav = re.search(r'<nav class="dayidx" id="dayidx" aria-label="On this page"><details class="difold">'
+                    r'<summary>.*?</summary><ol class="dilist">(.*)</ol></details></nav>$', side, re.S)
+    if not nav:
+        return bad + [f"{where}: the sidebar has no index, or it is not a labelled nav ending it"]
+    lst = nav.group(1)
+    ids = set(re.findall(r'\bid="([^"]+)"', page))
+    hrefs = re.findall(r'href="([^"]*)"', lst)
+    if len(re.findall(to, lst)) != len(hrefs):
+        bad.append(f"{where}: the index links somewhere other than a place on its own page: "
+                   + ", ".join(h for h in hrefs if not re.fullmatch(to[6:-1], h))[:200])
+    for href in re.findall(to, lst):
+        if href not in ids:
+            bad.append(f"{where}: the index links #{href}, which nothing on the page is")
+    # THE SECTIONS, each once, in the page's order and in its heading's words.
+    secs = [(i, unescape(h)) for i, h in re.findall(
+        r'<section class="w4(?: wday)?" id="([^"]+)">(?:<div class="wside">)?<h2 class="w4h">([^<]+)</h2>',
+        page)]
+    tops = [(i, unescape(h)) for i, h in re.findall(r'(?:^|</li>)<li><a ' + to + r'>([^<]+)</a>', lst)]
+    if tops != secs:
+        bad.append(f"{where}: the index's sections {tops} are not the page's {secs}")
+    # ONE LINE A BILL, in the order of the bills' first cards, each linking
+    # its first card and saying what one of its cards' vote chips says.
+    cards = re.findall(r'<article class="card[^"]*" id="([^"]+)"( data-at="[^"]+")? data-id="[^"]+">(.*?)</article>',
+                       page, re.S)
+    chips = {}
+    for cid, at, body in cards:
+        key = at[10:-1] if at else cid
+        chips[key] = chips.get(key, []) + [unescape(t) for t in re.findall(r'<span class="chip rcres (?:pass|fail)">([^<]+)</span>', body)]
+    firsts = [cid for cid, at, _b in cards if not at]
+    bills = re.search(r'<ol class="dibills">(.*?)</ol>', lst, re.S)
+    lines = re.findall(r'<li><a ' + to + r'><span class="dinum" translate="no">([^<]+)</span>'
+                       r'(?: <span class="chip dichip [^"]+">([^<]+)</span>)?</a></li>',
+                       bills.group(1) if bills else "")
+    if [a for a, _n, _w in lines] != firsts:
+        bad.append(f"{where}: the index's bills {[a for a, _n, _w in lines]} are not the cards' {firsts}")
+    for a, _n, w in lines:
+        said = set()
+        for t in chips.get(a, []):
+            tail = t.split(": ", 1)[1] if ": " in t else t
+            said |= {tail, tail.split(" ", 1)[-1]}
+        w = unescape(w or "")
+        if (w or said) and w not in said:
+            bad.append(f"{where}: #{a}'s line says {w!r}, which none of its card's chips "
+                       f"({chips.get(a)}) says")
+    return bad
+
+
+@check("session", "a session day's heading, player and index stand in a sidebar held beside the cards: "
+       "each section, then a line a bill in the day's order linking its card and saying its "
+       "card's outcome (the owner, 24 October 2026)",
+       needs=("build_session_pages", "session_days", "shell"))
+def _session_day_index(BSP, SD, shell):
+    """THE DAY'S INDEX (the owner, 24 October 2026: "On session day pages, it
+    would be nice to have some sort of index on the left side below the video
+    for each action and bill so you can more quickly look for the bill you're
+    trying to find. It could be something brief for each bill like just the
+    number and the vote outcome of whether it passed or not along with other
+    section titles like how the day began, excused for the day, unanimous
+    consent, and so on. The header above the embedded video player 'The Day
+    in Order' should also remain on the sidebar as you scroll down. You can
+    remove the sentence below the video player: 'the times on the cards move
+    this player'.")
+
+    On every session day the fixture's site builds, it fails if the Day in
+    Order's heading and player are not in one sidebar with the index; if the
+    index is not a labelled nav; if its sections are not the page's, in their
+    order and words; if it does not give one line a bill in the order of the
+    bills' first cards, each linking an id the page has; if a line's word is
+    not one a vote chip on that bill's cards says; or if the sentence under
+    the player is back. It fails if the stylesheet no longer holds the
+    sidebar in view on a wide screen, or app.js no longer opens the index
+    there and marks the line being read.
+
+    And on a day made here, where the record is known, it fails if a bill
+    whose Inexpedient to Legislate failed before its Ought to Pass carried,
+    and whose reconsideration then failed, is said other than "Passed"; if a
+    killed bill is said "Passed" (the motion passing is not the bill
+    passing); or if a bill tabled and later taken off the table and passed,
+    in two cards, has two lines, or its one line says other than its last
+    outcome of the day."""
+    absent = [x for x in CHAIN_NEEDS if not _paths.locate(x).exists()]
+    if absent:
+        return "skip", "not here: " + ", ".join(absent)
+    shared, _base, _ran, _days = _fixture_site_shared()
+    pages = sorted((shared / "site" / "session").glob("[HS]/*.html"))
+    bad, drawn, with_player = [], 0, 0
+    for p in pages:
+        text = p.read_text(encoding="utf-8")
+        if '<section class="w4 wday"' not in text:
+            continue
+        drawn += 1
+        with_player += 'class="player"' in text
+        rel = p.relative_to(shared / "site").as_posix()
+        bad += _day_index_faults(text, rel, rel[:-len(".html")])
+    assert drawn >= 3 and with_player, (
+        f"the fixture's site drew {drawn} days in order, {with_player} with a player: too few to hold")
+    css = Path("src/pages/app.css").read_text(encoding="utf-8")
+    wide = re.search(r"@media \(min-width:60em\)\{[^@]*?\.wday > \.wside\{[^}]*position:sticky", css)
+    if not wide:
+        bad.append("app.css no longer holds the sidebar (.wday > .wside) in view on a wide screen")
+    if not re.search(r"\.wday > \.wside\{display:contents\}", css):
+        bad.append("app.css no longer undoes the sidebar on a phone, so its index cannot be held "
+                   "at the top of the screen")
+    js = Path("src/pages/app.js").read_text(encoding="utf-8")
+    hook = js[js.find('getElementById("dayidx")'):][:3000]
+    if not hook or "fold.open=true" not in hook or 'setAttribute("aria-current","location")' not in hook:
+        bad.append("app.js no longer opens the day's index on a wide screen and marks the line being read")
+
+    # A DAY MADE HERE, where what the card should say is known.
+    def item(bill, seq, action, motion):
+        return SD.Item(bill, "2025-2026", {"type": "floor", "body": "H", "action": action,
+                                           "motion": motion, "vote_kind": "VV",
+                                           "raw": f"{action}: {motion}",
+                                           "cite_page": str(10 + seq)}, seq)
+
+    class Nobody:
+        def slug(self, body, name):
+            return None
+    day = SD.Day("H", "2026-03-11", [
+        item("HB1", 1, "Inexpedient to Legislate", "MF"), item("HB1", 2, "Ought to Pass", "MA"),
+        item("HB1", 3, "Reconsider", "MF"), item("HB2", 4, "Inexpedient to Legislate", "MA"),
+        item("HB3", 5, "Lay on the Table", "MA"), item("HB4", 6, "Interim Study", "MA"),
+        item("HB3", 7, "Remove from the Table", "MA"),
+        item("HB3", 8, "Ought to Pass with Amendment", "MA")])
+    told = {"attributions": [], "debates": [],
+            "unanimous_consent": [{"name": "Rep. Hill", "about": "the flood in Keene"}]}
+    page, _ = BSP.render(day, told, {}, {}, Nobody(), shell.E)
+    bad += _day_index_faults(page, "the day made here", "session/H/2026-03-11")
+    got = re.findall(r'<li><a href="session/H/2026-03-11\.html#([^"]+)"><span class="dinum" translate="no">([^<]+)</span> '
+                     r'<span class="chip dichip ([^"]+)">([^<]+)</span>', page)
+    want = [("HB1", "HB 1", "s-law", "Passed"), ("HB2", "HB 2", "s-done", "Killed"),
+            ("HB3", "HB 3", "pass", "Passed with Changes"),
+            ("HB4", "HB 4", "s-study", "Sent to Interim Study")]
+    if got != want:
+        bad.append(f"the day made here is indexed {got}, where it should be {want}")
+    if '<article class="card" id="HB3-2" data-at="HB3" data-id="HB3">' not in page:
+        bad.append("HB 3's second card of the day does not name its first (data-at)")
+    if '<li><a href="session/H/2026-03-11.html#consent-uc">Under Unanimous Consent</a></li>' \
+            not in page or \
+            'class="player"' in page:
+        bad.append("the day made here, with no recording, does not index its unanimous consent")
+    assert not bad, f"{len(bad)} faults in the session days' index: " + "; ".join(bad[:6])
+    return "ok", (f"{drawn} fixture days ({with_player} with a player) and one made here: heading, "
+                  "player and index in the sidebar, held in view; each section and a line a bill, "
+                  "each saying what its card says")
+
+
 @check("session", "a roll call the Journal put under a bill is the docket row's vote only where "
        "the row states its count and kind of question, and is drawn before the decision it "
        "preceded", needs=("session_days",))
@@ -41306,7 +41472,9 @@ def _session_unmarked_recess(SD, BSP, shell):
             "recess" not in cards["SB 19"], (
             "a row the docket says was done in recess, or one placed only by the "
             "journal it cites, is not described as the record has it")
-        tail = html.split("Also Printed in the Permanent Journal")
+        # By the section's heading: the day's index names the section too
+        # (24 October 2026).
+        tail = html.split('<h2 class="w4h">Also Printed in the Permanent Journal</h2>')
         assert len(tail) == 2 and "I rise in support" in tail[1], (
             "a debate printed on SB 389 that day is drawn under its recess row "
             "rather than among the debates on no motion of the day")

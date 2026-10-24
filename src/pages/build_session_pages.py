@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-19.47
+# GRANITE_VERSION: 2026-09-19.48
 """
 A page for every day the House sat.
 
@@ -1353,7 +1353,11 @@ def day_players(body, date, vids, esc):
     timestamps tie to that meeting and several clips can be opened at
     once"), for the recordings the day's bills were taken up in, each moved
     only by the times on its own bills' cards. None for the consent calendar
-    (v3)."""
+    (v3).
+
+    WITHOUT A LINE SAYING SO (the owner, 24 October 2026: "You can remove the
+    sentence below the video player: 'the times on the cards move this
+    player'"). The times on the cards still move it (moment_html)."""
     out = []
     for vid in vids:
         pid = f"s{date.replace('-', '')}_{re.sub(r'[^\w-]', '', vid)}"
@@ -1365,8 +1369,7 @@ def day_players(body, date, vids, esc):
                    f'<div class="pbar"><span class="pwho"><b>The {CHAMBER[body]}</b> &middot; '
                    f"{esc(words(date))} &middot; Session Day</span>"
                    f'<a href="https://www.youtube.com/watch?v={esc(vid)}" target="_blank" '
-                   'rel="noopener">On YouTube</a><span class="tolnote">the times on the cards '
-                   "move this player</span></div></div>")
+                   'rel="noopener">On YouTube</a></div></div>')
     return "".join(out)
 
 
@@ -1382,6 +1385,178 @@ def moment_html(m, date, esc):
         out += (f'<button type="button" class="jump" data-seek="{esc(pid)}|{int(m["end"])}">'
                 f"{hms(m['end'])} {word}</button>")
     return f'<span class="mjumps">{out}</span>'
+
+
+def motion_chip(it, bill, body):
+    """(the record's words for the motion, motions.classify's reading of
+    them, the chip saying what the vote did): one vote's chip as its card
+    draws it. vote_html draws the card's from this, and the day's index
+    (day_outcome) says each bill's outcome from it, so the two cannot
+    disagree. The chip is "" where the record names no motion, and
+    components.vote_chip's "" where the outcome is not on record."""
+    words_ = (it.action or "").strip()
+    k = MO.classify(words_, bill, body, C.WORDBOOK["votes"]["motions"])
+    chp = C.vote_chip(k["mk"], it.carried, bill, k["mf"]) if words_ else ""
+    return words_, k, chp
+
+
+# THE DAY'S INDEX (the owner, 24 October 2026: "On session day pages, it
+# would be nice to have some sort of index on the left side below the video
+# for each action and bill so you can more quickly look for the bill you're
+# trying to find. It could be something brief for each bill like just the
+# number and the vote outcome of whether it passed or not along with other
+# section titles like how the day began, excused for the day, unanimous
+# consent, and so on. The header above the embedded video player 'The Day in
+# Order' should also remain on the sidebar as you scroll down.")
+#
+# A BILL'S LINE SAYS WHAT ITS CARD SAYS, SHORTER. The word is the one after
+# the colon of a vote chip on the card ("Motion Passed: Bill Killed" is
+# "Killed"), with the measure's noun dropped from its front because the
+# number beside it already says which kind of measure it is; a chip with
+# nothing after the colon is said whole ("Motion Failed"). Never the
+# motion's own "Passed": a motion to kill the bill that carried is a bill
+# killed, and "HB 1 Passed" would say the opposite of what happened to it
+# (the reason the motion is the heading of every vote on the card, above).
+#
+# WHICH OF THE CARD'S VOTES. The day's last vote that decided something
+# about the bill and carried: the Ought to Pass that followed a failed
+# Inexpedient to Legislate, the tabling, the bill passed with changes after
+# its amendment was adopted. Not the motions about the debate or an
+# amendment (ASIDE), and not a reconsideration that failed, which left the
+# vote before it standing: 655 cards of the build of 24 October 2026 end on
+# one, and "Earlier Vote Stands" would have been their bills' line. Where
+# nothing carried, the last failed vote that says what its failing did
+# ("Veto Sustained", "Stays on the Table"); then the last vote of any kind,
+# which is "Earlier Vote Stands" where that is all the day did; and no word
+# at all where the card has no vote with an outcome on record. Measured on
+# that build: 51,819 lines on 1,595 days, every one a word of its card's.
+ASIDE = frozenset({
+    "table_amendment", "table_motion", "committee_amendment", "floor_amendment",
+    "amendment", "enrolled_amendment", "suspend_rules", "previous_question",
+    "limit_debate", "divide", "part", "uphold_ruling", "member_continue",
+    "print_debate", "reprimand", "unnamed", "waive_referral"})
+
+
+def chip_text(chp):
+    """A chip's words, out of its markup:
+    chip_text(C.vote_chip("itl", True, "HB1")) -> "Motion Passed: Bill Killed"."""
+    return _unescape(re.sub(r"<[^>]+>", "", chp or "")).strip()
+
+
+def outcome_word(chp, bill, carried):
+    """(word, classes) for a bill's line in the day's index, from one vote
+    chip as its card draws it (motion_chip). The word is the chip's after
+    its colon, the measure's noun dropped from its front; the colour the
+    one the page already gives that word -- the consent calendar's groups
+    (Passed, Killed, Sent to Interim Study, Sent Back to Committee, Adopted)
+    and a bill's own six (Tabled, Withdrawn, Became Law ...) -- and
+    otherwise the vote chip's own, green where the motion passed and red
+    where it failed."""
+    said = chip_text(chp)
+    if not said:
+        return "", ""
+    word = said.split(": ", 1)[1] if ": " in said else said
+    prefix = re.match(r"[A-Z]+", str(bill or "").upper())
+    noun = next((n for n, ps in C.WORDBOOK["votes"]["nouns"].items()
+                 if prefix and prefix.group(0) in ps), "")
+    if noun and word.startswith(noun + " "):
+        word = word[len(noun) + 1:]
+    cls = (CONSENT_CLASS.get(word) or C.WORDBOOK["chips"]["chip"].get(word)
+           or ("pass" if carried else "fail"))
+    return word, cls
+
+
+def day_outcome(items, bill, body):
+    """(word, classes, the chip it is said from) for a bill's line in the
+    day's index: every vote it had that day, across every card it has,
+    read as above (ASIDE). ("", "", "") where none has an outcome on
+    record."""
+    votes = []
+    for it in items:
+        _w, k, chp = motion_chip(it, bill, body)
+        if chp:
+            votes.append((k.get("mk") or "", it.carried, chp))
+    fate = [v for v in votes if v[0] not in ASIDE]
+    carried = [v for v in fate if v[1]]
+    stood = [v for v in fate if not v[1] and v[0] != "reconsider" and ": " in chip_text(v[2])]
+    got = (carried or stood or votes or [None])[-1]
+    if got is None:
+        return "", "", ""
+    word, cls = outcome_word(got[2], bill, got[1])
+    return word, cls, got[2]
+
+
+def card_anchor(bill, used):
+    """A card's id on the page, for the day's index and for a link from
+    anywhere: "HB1601", the bill as the card's data-id and the bill search's
+    "#HB1601" name it; "HB1601-2" for its second card that day (HB 1633 was
+    tabled and taken off the table either side of another bill's roll call
+    on 13 June 2024), and so on. `used` is the ids already given on the
+    page, and takes this one."""
+    base = re.sub(r"[^A-Z0-9]", "", str(bill or "").upper()) or "BILL"
+    a, n = base, 1
+    while a in used:
+        n += 1
+        a = f"{base}-{n}"
+    used.add(a)
+    return a
+
+
+def anchored(card, anchor, at=""):
+    """A card as components.bill_card drew it, with its id on the page (and
+    data-at, a later card's pointer to the bill's first) after its classes,
+    so it still opens as every card does."""
+    head, sep, rest = card.partition(' data-id="')
+    assert sep and head.startswith("<article ") and ">" not in head, (
+        f"a card that is not an article with its bill in data-id: {card[:60]}")
+    return f'{head} id="{anchor}"{at}{sep}{rest}'
+
+
+# Where render() writes the day's index once every section is known, and how
+# it reads a section's id and heading off what components.section wrote.
+DAY_INDEX = "<!--day-index-->"
+SECTION_HEAD = re.compile(r'<section class="w4" id="([^"]+)"><h2 class="w4h">([^<]*)</h2>')
+
+
+def _unescape(s):
+    import html as _html
+    return _html.unescape(s)
+
+
+def here(body, date, anchor):
+    """A link to a place on a session day's own page, by the page's address:
+    every page carries <base href="/">, so a bare "#HB1601" would go to the
+    home page. "session/H/2026-03-11.html#HB1601", which shell.clean_links
+    writes as the address the host serves the page at."""
+    return f"session/{body}/{date}.html#{anchor}"
+
+
+def day_index(parts, bills, esc, body="H", date=""):
+    """THE DAY'S INDEX, under the player (the owner, 24 October 2026; see
+    ASIDE, above): a nav landmark holding a fold, "On this page", of the
+    page's sections in their order, each a link to its heading, and under
+    the Day in Order one line a bill, in the day's order -- its number and
+    its outcome, a link to its card. `parts` is [(id, heading)], `bills`
+    [(card id, number, word, classes)], one a bill however many cards it
+    has; `body` and `date` name the page the links are on (here). Shut as
+    written: app.js opens it beside the cards on a wide screen, and on a
+    phone it stays one line above them until it is asked for (.dayidx)."""
+    lines = []
+    for sid, head in parts:
+        sub = ""
+        if sid == "order" and bills:
+            sub = '<ol class="dibills">' + "".join(
+                f'<li><a href="{esc(here(body, date, a))}"><span class="dinum" translate="no">'
+                f'{esc(n)}</span>' + (" " + C.chip(w, "dichip " + c) if w else "") + "</a></li>"
+                for a, n, w, c in bills) + "</ol>"
+        lines.append(f'<li><a href="{esc(here(body, date, sid))}">{esc(head)}</a>{sub}</li>')
+    n = len(bills)
+    count = f'<span class="dicount">{n} bill{"" if n == 1 else "s"}</span>' if n else ""
+    return ('<nav class="dayidx" id="dayidx" aria-label="On this page">'
+            '<details class="difold"><summary><span class="dilab">On this page</span>'
+            f'{count}<span class="dinow" aria-hidden="true"></span>'
+            '<span class="cmcaret" aria-hidden="true"></span></summary>'
+            f'<ol class="dilist">{"".join(lines)}</ol></details></nav>')
 
 
 def vote_html(it, bill, body, year, cards, members, esc, payloads, journal=None, key=None):
@@ -1404,8 +1579,7 @@ def vote_html(it, bill, body, year, cards, members, esc, payloads, journal=None,
     An appeal of a ruling on a bill is headed "Uphold the Ruling of the
     Chair", with what the chair ruled under it where the Journal says (the
     owner, 23 October 2026: no "Back the presiding officer")."""
-    words_ = (it.action or "").strip()
-    k = MO.classify(words_, bill, body, C.WORDBOOK["votes"]["motions"])
+    words_, k, chp = motion_chip(it, bill, body)
     head = (C.vote_head(k["mk"], words_, k["mf"]) if words_
             else "On a question the record does not name")
     if journal:
@@ -1418,7 +1592,6 @@ def vote_html(it, bill, body, year, cards, members, esc, payloads, journal=None,
             head += f'<span class="nbl">{esc(rul)}</span>'
     amds = amendment_numbers(words_)
     amd = f' <span class="ramd">{esc(", ".join(amds))}</span>' if amds else ""
-    chp = C.vote_chip(k["mk"], it.carried, bill, k["mf"]) if words_ else ""
     tally = f" <b>{it.yeas}\u2013{it.nays}</b>" if it.counted else ""
     how = f" on a {esc(it.kind_words)}" if it.kind_words else ""
     # BY THE JOURNAL'S OWN WORDS (the owner, 23 October 2026): a motion the
@@ -1484,17 +1657,29 @@ def render(day, narrative, titles, years, members, esc, chair=None, rec=None, ct
                                  and getattr(it, "added", "") != "rollcall"])
     term = (day.items[0].term if day.items else "") or getattr(members, "term", "")
 
+    # (id, heading) of each section, in the page's order, for the day's
+    # index (day_index), which is written once they are all known. Read off
+    # each section as components.section wrote it, so the index names a
+    # section in the words its heading has.
+    parts = []
+
+    def add(sec):
+        m = SECTION_HEAD.match(sec)
+        assert m, f"a section the day's index cannot name: {sec[:80]}"
+        parts.append((m.group(1), _unescape(m.group(2))))
+        S_.append(sec)
+
     began = opening_html(narrative, body, members, esc) + presiding_html(
         rec.get("presiding"), body, members, esc)
     if began:
-        S_.append(C.section("How the Day Began", began, "began"))
+        add(C.section("How the Day Began", began, "began"))
     exc = absences_html(narrative, body, members, esc)
     if exc:
-        S_.append(C.section("Excused for the Day", exc, "excused"))
+        add(C.section("Excused for the Day", exc, "excused"))
     cc = consent_html(cons, removed, titles, years, esc, calendar=calendar_vote(cons),
                       rows=rows, term=term, told={it.bill.upper() for it in seq_items})
     if cc:
-        S_.append(C.section("On the Consent Calendar", cc, "consent"))
+        add(C.section("On the Consent Calendar", cc, "consent"))
 
     recs = {(b.get("term"), b.get("bill")): b for b in rec.get("bills") or []}
     groups = speech_groups(seq_items)
@@ -1507,6 +1692,10 @@ def render(day, narrative, titles, years, members, esc, chair=None, rec=None, ct
     unsure = {g: ambiguous_tallies(its) for g, its in shared_out.items()}
     told, drawn, said_rec = set(), set(), set()
     cards, vids = [], []
+    # Each bill's line in the day's index: its first card's id, its number,
+    # and every vote it had that day, whichever card they are on.
+    used = {"order", "began", "excused", "consent", "nobill", "printed", "consent-uc"}
+    lines = {}
     for bill, items in runs(seq_items):
         term_ = items[0].term
         href = bill_href(term_, bill, years)
@@ -1583,7 +1772,15 @@ def render(day, narrative, titles, years, members, esc, chair=None, rec=None, ct
                        and row.get("topic_by") == "granite record") else (row.get("topic") or "")
         sponsor = ({"display_full": row.get("sponsor_label"), "slug": row.get("sponsor_slug") or "",
                     "party": row.get("sponsor_party") or ""} if row.get("sponsor_label") else None)
-        cards.append(C.bill_card({
+        # THE CARD'S OWN ID, which the day's index links and a reader can
+        # share ("#HB1601"); a bill's later card that day names its first in
+        # data-at, so the index marks the bill's one line while it is read.
+        anchor = card_anchor(bill, used)
+        line_ = lines.setdefault((term_, bill), {"a": anchor, "bill": bill, "year": year,
+                                                 "items": []})
+        line_["items"] += items
+        at = f' data-at="{esc(line_["a"])}"' if line_["a"] != anchor else ""
+        cards.append(anchored(C.bill_card({
             "id": bill, "href": href or "", "n": num, "year": year,
             "word": C.card_word(chip_w, row.get("passage")) if chip_w else "",
             "cls": (C.WORDBOOK["chips"]["chip"].get(chip_w)
@@ -1591,31 +1788,38 @@ def render(day, narrative, titles, years, members, esc, chair=None, rec=None, ct
             "title": titles.get((term_, bill)) or row.get("title") or "",
             "byline": C.bill_byline(sponsor, row.get("committees") or [], topic, term_, codes),
             "line": "".join(line), "rail": C.rail_html(row.get("rail") or [], chip_w == "Died"),
-            "open": None}))
+            "open": None}), anchor, at))
     if seq_items:
         heading = "The Day in Order" if day.ordered else f"What the {CHAMBER[body]} Did That Day"
         note = ("" if day.ordered else
                 '<p class="note">The record does not say what order these came in: the '
                 "journal page is cited on only a few of them, so they are listed by bill.</p>")
         play = day_players(body, day.date, vids, esc)
-        S_.append(f'<section class="w4 wday" id="order"><h2 class="w4h">{esc(heading)}</h2>'
+        parts.append(("order", heading))
+        # THE SIDEBAR (the owner, 24 October 2026): the heading, the day's
+        # player and the day's index in one column held in view beside the
+        # cards on a wide screen; the index is written in at DAY_INDEX once
+        # every section after this one is known.
+        S_.append(f'<section class="w4 wday" id="order"><div class="wside">'
+                  f'<h2 class="w4h">{esc(heading)}</h2>'
                   + (f'<div class="w4m">{play}</div>' if play else "")
+                  + DAY_INDEX + "</div>"
                   + f'<div class="w4b">{note}<div class="cards">{"".join(cards)}</div></div></section>')
 
     oth = others_html(getattr(day, "others", ()), body, members, esc, payloads,
                       day=day.date, term=term, years=years,
                       nobill=((ctx or {}).get("nobill") or {}).get(term) or {})
     if oth:
-        S_.append(C.section("Votes on No Bill", oth, "nobill"))
+        add(C.section("Votes on No Bill", oth, "nobill"))
     # Debates whose bill is not among the day's actions, or is there only for
     # what was done in the sitting's recess.
     seen = {base_bill(b) for b, its in runs(seq_items)
             if any(not it.entered for it in its)}
     loose = [d for k, d in debates.items() if k and k not in seen and d["speeches"]]
     if loose:
-        S_.append(C.section("Also Printed in the Permanent Journal",
-                            "".join(_debate_html(d, body, members, esc, head=True, chair=chair)
-                                    for d in loose), "printed"))
+        add(C.section("Also Printed in the Permanent Journal",
+                      "".join(_debate_html(d, body, members, esc, head=True, chair=chair)
+                              for d in loose), "printed"))
     uc = narrative.get("unanimous_consent") or []
     if uc:
         H = ['<p class="note">These belong to no bill. The House gives a member leave to '
@@ -1632,12 +1836,28 @@ def render(day, narrative, titles, years, members, esc, chair=None, rec=None, ct
                      + (f", on {esc(about)}." if about and
                         about != "addressed the House" else " addressed the House.")
                      + (f' An objection was made, and the House voted on whether the member '
-                        f'could go on: <a href="#{esc(vote[0])}">{esc(vote[1])}</a>.'
-                        if vote else "")
+                        f'could go on: <a href="{esc(here(body, day.date, vote[0]))}">'
+                        f'{esc(vote[1])}</a>.' if vote else "")
                      + "</li>")
         H.append("</ul>")
-        S_.append(C.section("Under Unanimous Consent", "".join(H), "consent-uc"))
-    return '<div class="w4s">' + "".join(S_) + "</div>", payloads
+        add(C.section("Under Unanimous Consent", "".join(H), "consent-uc"))
+    page = '<div class="w4s">' + "".join(S_) + "</div>"
+    if seq_items:
+        # One line a bill, in the order its first card stands in; the year
+        # beside a number only where two terms' bills of that number were
+        # both taken up that day (HR 1 of 2003-2004 and of 2005-2006, on 1
+        # December 2004).
+        def short(b):
+            return re.sub(r"^([A-Z]+)(\d)", r"\1 \2", b)
+        twice = collections.Counter(x["bill"] for x in lines.values())
+        bills = []
+        for x in lines.values():
+            word, cls, _chp = day_outcome(x["items"], x["bill"], body)
+            num = short(x["bill"]) + (f" ({x['year']})" if twice[x["bill"]] > 1
+                                      and x["year"] else "")
+            bills.append((x["a"], num, word, cls))
+        page = page.replace(DAY_INDEX, day_index(parts, bills, esc, body, day.date), 1)
+    return page, payloads
 
 
 def _debate_html(d, body, members, esc, head=False, chair=None):
