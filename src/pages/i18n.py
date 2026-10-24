@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-10-23.1
+# GRANITE_VERSION: 2026-10-23.2
 """
 The site in more than one language, and how a translation stays current.
 
@@ -285,12 +285,26 @@ def has(lang, page):
 # say_word() translates. Read from the source, not from a build, so a word on
 # a page the fixture never draws is held all the same.
 
-# The tables say_word() reads: (group, the words). meeting_kinds.json's names.
+# The tables say_word() reads: (group, the words). meeting_kinds.json's names;
+# and since 24 October 2026 what the home page's Latest Activity says a meeting
+# did to a bill, each in the words the site already says it in: a
+# committee's recommendation in committee_acts' (REC_WORDS, a committee
+# page's), an interim study report in study_report.json's, and a sitting's
+# motion in votes.json's chip words, with the nouns and chambers they are
+# filled with.
 def _word_tables():
     import json as _j
     mk = _j.loads((HERE / "words" / "meeting_kinds.json").read_text(encoding="utf-8"))
     kinds = sorted({w for w, _c in mk["kinds"].values()})
-    return [("kind", kinds)]
+    import committee_acts
+    recs = sorted(set(committee_acts.REC_WORDS.values()))
+    sr = _j.loads((HERE / "words" / "study_report.json").read_text(encoding="utf-8"))
+    study = sorted({sr["head"], *sr["said"].values()})
+    v = _j.loads((HERE / "words" / "votes.json").read_text(encoding="utf-8"))
+    votes = {v["passed"], v["failed"], *v["nouns"], "House", "Senate"}
+    for m in [*v["motions"].values(), v["consent"]]:
+        votes |= {m[k] for k in ("passed", "failed") if m.get(k)}
+    return [("kind", kinds), ("rec", recs), ("study", study), ("vote", sorted(votes))]
 
 
 def _say_calls(path):

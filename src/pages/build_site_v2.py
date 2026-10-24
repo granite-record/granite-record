@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-05.234
+# GRANITE_VERSION: 2026-09-05.235
 """
 Generate the faceted site from real General Court data.
 
@@ -12216,6 +12216,27 @@ def main():
                                  "venue": pr.get("venue")})
     upcoming.sort(key=lambda x: (x["date"], x["time"] or ""))
 
+    # LATEST ACTIVITY, A MEETING AN ITEM (the person, 24 October 2026: "bills
+    # should not be repeated twice like they are right now for both the bill
+    # executive sessions and the outcome of the executive session listed as
+    # two separate meetings"). `recent` above is a row a docket event, and an
+    # executive session and the report voted at it are two events, so each
+    # bill a committee voted on took two of the box's five rows. `latest` is
+    # the newest meetings -- a committee's day, a chamber's sitting -- each
+    # with its bills once and what was done to each there; latest_activity.py
+    # says how, and build_pages draws it.
+    import latest_activity as LA
+    latest = LA.latest(prows, narratives, today, {(b["term"], b["id"]): b for b in index},
+                       motion_words=_WORDBOOK["votes"]["motions"])
+    if latest:
+        print(f"  latest activity: {len(latest)} meetings, from {latest[-1]['date']} to "
+              f"{latest[0]['date']}, {sum(m['n'] for m in latest):,} bills taken up")
+    else:
+        # SILENCE IS NOT SUCCESS: the box would draw nothing, which looks like
+        # a General Court that has not met.
+        print("  WARNING: latest activity holds no meeting: no committee day or sitting "
+              "on or before today in proceedings.csv or narratives.json")
+
     # "Most contested" beats "most viewed": it is a fact about the record rather
     # than about traffic, and needs no analytics on a static site.
     contested = [without_rail(b) for b in sorted([b for b in index if b["nrc"] > 1],
@@ -12279,7 +12300,9 @@ def main():
         # and dropped whole days off the end without saying so. The cut is
         # still there because a fortnight in session is hundreds of rows, and
         # build_pages says how many did not fit.
-        "recent": actions[:12], "upcoming": upcoming[:80],
+        # `recent` is no longer drawn on the home page (`latest` is, 24
+        # October 2026); it is the docket's own newest lines, kept as they were.
+        "recent": actions[:12], "latest": latest, "upcoming": upcoming[:80],
         "contested": contested, "closest": closest[:6],
         "latest_session": latest_session,
         "latest_sessions": [latest_by_body[b] for b in ("H", "S")

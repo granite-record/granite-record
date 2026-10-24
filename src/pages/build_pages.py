@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.229
+# GRANITE_VERSION: 2026-09-04.230
 """
 Build the pages the navigation links to: legislators, town lookup, how it
 works, and about.
@@ -40,6 +40,10 @@ import i18n
 import shell as _shell
 from i18n import say
 from components import WORDBOOK, chip, clock, date_span, icon, pchip, until_attrs
+import components as _components
+# A committee's recommendation in the committee page's words (REC_WORDS), for
+# Latest Activity.
+import committee_acts as CA
 import seating
 import strip_js
 import json
@@ -306,7 +310,16 @@ REPO = chrome.REPO
 # Five is a glance; the twelve it showed before was most of a phone screen for
 # a list nobody reads to the end. The overflow goes to the bill search, which
 # sorts by most recent action and does it better than a table can.
-RECENT_SHOWN = 5
+# FOUR MEETINGS NOW, NOT FIVE DOCKET LINES (the person, 24 October 2026;
+# latest_activity.py), and THREE BILLS OF EACH, then "and N more", which
+# leads to the meeting: a House sitting takes up a hundred bills and a
+# committee's day twenty. Four, because that is what keeps the box the height
+# it was: drawn from the data of 24 October 2026 in the 248px rail of a
+# 1280px window, the five docket lines stood 1,258px tall, four meetings stand
+# 1,317 and five 1,645, their interim study reports' words wrapping in the
+# narrow column.
+RECENT_SHOWN = 4
+RECENT_BILLS = 3
 RECENT_MORE = ('<p class="actmore"><a class="morebtn" href="/bills?sort=recent">'
                'See all recent activity &rarr;</a></p>')
 
@@ -2581,28 +2594,206 @@ def state_box(S, lang="en"):
     return static_state
 
 
-def recent_box(H, lang="en"):
-    """Latest Activity as the server draws it: five rows of home.json's
-    recent, each a day, a bill and what happened -- the bill's title and the
-    history's line in the record's words -- and the way to the rest."""
+# ---- LATEST ACTIVITY, A MEETING AN ITEM -------------------------------------
+# The person, 24 October 2026: "bills should not be repeated twice like they
+# are right now for both the bill executive sessions and the outcome of the
+# executive session listed as two separate meetings. Maybe have latest
+# activity show things like recent meetings and all the bills from that
+# meeting are grouped together and when you click it, it takes you to the
+# committee page or a house session day page scrolled down to that meeting?"
+# home.json's `latest` is the meetings (latest_activity.py says why the box
+# repeated a bill, and how a meeting and what it did are read); this draws it.
+
+# WHAT A COMMITTEE RECOMMENDED, IN THE COLOUR OF WHAT IT MOVED, as a bill's
+# Reports tab colours the same recommendation (app.js RECCOLOUR): killing it
+# in the grey of a bill that died, interim study or another committee in the
+# orange of interim study, passing it in the green of a law. By the chips'
+# own kinds (chips.json), so the colours are the chips'. Without
+# Recommendation takes none.
+REC_KIND = {"OTP": "law", "OTPA": "law", "ITL": "done", "IS": "study", "RR": "study"}
+# An interim study report: recommending the subject for future legislation in
+# the orange of its mark on a committee's page (app.css .mrec), and not
+# recommending it, or making no recommendation, in the grey of the killing
+# the person called it (committee_acts, v8; .mkill).
+STUDY_KIND = {"rec": "study", "not": "done", "without": "done"}
+
+
+def _vote_chip_said(key, passed, bill, fill, lang="en"):
+    """components.vote_chip, the chip a sitting's page draws for the motion
+    (votes.json's words, coloured by whether the motion passed), in `lang`:
+    each of its words is votes.json's, translated by the table of them
+    (i18n.say_word, "vote"), and a place in them filled after."""
+    if lang == i18n.DEFAULT:
+        return _components.vote_chip(key, passed, bill, fill)
+    if passed is None:
+        return ""
+    v = WORDBOOK["votes"]
+    m = (v["consent"] if key == "consent" else v["motions"].get(key)) or {}
+    prefix = re.match(r"[A-Z]+", str(bill or "").upper())
+    noun = next((n for n, ps in v["nouns"].items() if prefix and prefix.group(0) in ps), "")
+    raw = m.get("passed" if passed else "failed") or ""
+    vals = {k: i18n.say_word(lang, "vote", x) for k, x in (fill or {}).items() if k == "Chamber"}
+    vals.update({k: x for k, x in (fill or {}).items() if k != "Chamber"})
+    if noun:
+        vals["Bill"] = i18n.say_word(lang, "vote", noun)
+    tail = "" if not raw or ("{Bill}" in raw and not noun) else i18n.fill(i18n.say_word(lang, "vote", raw), vals)
+    tail = "" if "{" in tail else tail
+    word = i18n.say_word(lang, "vote", v["passed"] if passed else v["failed"]) + (f": {tail}" if tail else "")
+    return chip(word, "rcres " + ("pass" if passed else "fail"))
+
+
+def did_html(did, bill, lang="en"):
+    """What a meeting did to a bill (latest_activity's `did`), as Latest
+    Activity draws it beside the bill's number: a chip in the words the site
+    already says it in, the vote, and the day the docket dates it where that
+    is not the meeting's. "" where the meeting did nothing to it that the
+    record dates (a hearing, a work session)."""
+    if not did:
+        return ""
     esc = _home_esc
-    static_recent = ""
-    if H.get("recent"):
-        # A LIST, NOT A TABLE. It was a two-column table with no header cell
-        # in it, which a screen reader announces as a table of five rows and
-        # two columns and then reads as a grid with nothing to say what a
-        # column is (the audit of 2 October 2026, M7). It is five things in a
-        # row: the day, and what happened. HOME_JS draws the same markup.
-        static_recent = (f'<h2>{say(lang, "home.recent", "Latest Activity")}</h2>'
-                         '<ul class="actlist">' + "".join(
-            f'<li><span class="actd">{esc(_shell.date_words(r.get("date") or "", "short", lang))}'
-            f'</span><span class="actb">'
-            f'<a href="{esc(recent_href(r))}">{esc(r.get("n"))}</a> '
-            f'{_record(r.get("title"), lang)}<br><span class="actw">'
-            f'{_record(r.get("what"), lang)}</span></span></li>'
-            for r in H["recent"][:RECENT_SHOWN]) + "</ul>"
-                         + recent_more(lang))
-    return static_recent
+    kinds = WORDBOOK["chips"]["kind"]
+    act, en = did.get("act"), lang == i18n.DEFAULT
+    if act == "floor":
+        out = _vote_chip_said(did.get("mk") or "", did.get("carried"), bill, did.get("mf"), lang)
+    elif act == "report":
+        code = did.get("code") or ""
+        if code in CA.REC_WORDS:
+            out = chip(i18n.say_word(lang, "rec", CA.REC_WORDS[code]),
+                       f"cstat {kinds.get(REC_KIND.get(code), '')}".strip())
+        else:
+            # A recommendation of no code the site knows: the docket's own
+            # words, as a bill's Reports tab chips them, in English.
+            out = (("" if en else '<span lang="en">')
+                   + chip(_components.title_words(did.get("recommendation") or ""), "cstat")
+                   + ("" if en else "</span>"))
+    elif act == "study report":
+        sr = WORDBOOK["study_report"]
+        phrase = sr["said"].get(did.get("said") or "") or sr["head"]
+        word = i18n.say_word(lang, "study", phrase)
+        word = _components.title_words(word) if en else word[:1].upper() + word[1:]
+        out = chip(word, f"cstat {kinds.get(STUDY_KIND.get(did.get('said') or ''), '')}".strip())
+    elif act == "retained":
+        out = chip(say(lang, "home.retained", "Retained"), f"cstat {kinds['active']}")
+    else:
+        return ""
+    if did.get("yeas") is not None and did.get("nays") is not None:
+        out += f' <span class="latvote">{did["yeas"]}–{did["nays"]}</span>'
+    if did.get("dated"):
+        out += (' <span class="latdated">'
+                + say(lang, "home.dated", "dated {date}",
+                      date=esc(_shell.date_words(did["dated"], "short", lang))) + "</span>")
+    return out
+
+
+def latest_when(date, time, today, lang="en"):
+    """When a meeting was, as Latest Activity says it: "Today · 10:00 AM" or
+    "Yesterday · 10:30 AM" -- the hour, where the day goes without saying --
+    and the day, "Oct 22", before that. HOME_JS's latWhen says the same in
+    the reader's own clock, which is the one that knows what today is."""
+    import datetime as _dt
+    try:
+        off = (today - _dt.date.fromisoformat(str(date)[:10])).days
+    except (TypeError, ValueError):
+        off = None
+    at = clock(time, lang) if time else ""
+    if off in (0, 1):
+        word = (say(lang, "home.today", "Today") if off == 0
+                else say(lang, "home.yesterday", "Yesterday"))
+        return word + (f" · {at}" if at else "")
+    return _shell.date_words(date or "", "short", lang)
+
+
+def latest_href(m, codes, sits):
+    """Where a meeting of Latest Activity leads: a committee's page at that
+    day's meeting (#day-<date>, which app.js's showDay opens on the Meetings
+    tab, as Coming up's cards lead), or the sitting's own page; None where
+    there is neither."""
+    if m.get("floor"):
+        key = (m.get("body"), m.get("date"))
+        return f"session/{key[0]}/{key[1]}.html" if key in (sits or ()) else None
+    code = (codes or {}).get(((m.get("body") or "").strip().upper(),
+                              (m.get("committee") or "").strip().lower()))
+    return f"committee/{code}.html#day-{m.get('date')}" if code else None
+
+
+def recent_box(H, lang="en", codes=None, sits=None, today=None):
+    """Latest Activity as the server draws it: the newest meetings of
+    home.json's `latest`, each a committee's day or a chamber's sitting, its
+    name leading to that meeting, with the bills it took up, each once, and
+    what was done to each there; and the way to the rest.
+
+    `codes` is committee_codes', by which Coming up's cards link a committee;
+    `sits` the sittings with a page (sitting_days); `today` the day "Today"
+    and "Yesterday" are said from, which HOME_JS says again in the reader's
+    own clock. THE ONE RENDERER: HOME_JS drew this box again from home.json
+    after the page loaded, and does not now (see HOME_JS)."""
+    import datetime as _dt
+    # Here rather than above: build_calendar imports this module.
+    import build_calendar as _BCal
+    import latest_activity as _LA
+    esc = _home_esc
+    meets = (H.get("latest") or [])[:RECENT_SHOWN]
+    if not meets:
+        return ""
+    today = today or build_date.today()
+    if isinstance(today, str):
+        today = _dt.date.fromisoformat(today[:10])
+    rec_attr = EN_ATTR if lang != i18n.DEFAULT else ""
+    items = []
+    for m in meets:
+        href = latest_href(m, codes, sits)
+        if m.get("floor"):
+            # A SITTING'S NAME SAYS WHAT IT IS ("House Session Day"), as its
+            # card on the Calendar says it, and no word says it again.
+            key = Meet(m.get("date") or "", m.get("body") or "",
+                       _BCal.FLOOR.get(m.get("body"), ""), "")
+            name, own = card_name(key, lang), False
+            kinds = []
+        else:
+            key = _LA.key_of(m)
+            name = card_name(key, lang)
+            own = lang != i18n.DEFAULT and name == card_name(key)
+            kinds = m.get("kinds") or []
+        bars = []
+        for k in (m.get("kinds") or []):
+            cls = MEET_KIND.get(str(k).strip().lower(), ("", ""))[1] or "k-other"
+            if cls not in bars:
+                bars.append(cls)
+        named = (f'<a class="latname" href="{esc(href)}"{EN_ATTR if own else ""}>{esc(name)}</a>'
+                 if href else f'<span class="latname"{EN_ATTR if own else ""}>{esc(name)}</span>')
+        # THE KINDS IN WORDS, AFTER THE NAME ("House Finance · Executive
+        # Session"), in the Calendar's words for them. Not as chips: in the
+        # 250px rail a chip a kind was a line a kind, and Coming up's cards
+        # leave theirs out there for the same reason. The bar down the item's
+        # edge is the colour; these are what it means.
+        said = ", ".join(kind_word(k, lang)[0] for k in kinds)
+        kinds_said = f'<span class="latkinds"> · {esc(said)}</span>' if said else ""
+        bills = m.get("bills") or []
+        lines = "".join(
+            f'<li><a class="cbn" href="{esc(recent_href(b))}">{esc(b.get("n"))}</a>'
+            + (f" {did_html(b.get('did'), b.get('bill'), lang)}" if b.get("did") else "")
+            + (f'<span class="latt"{rec_attr}>{esc(b.get("title"))}</span>' if b.get("title") else "")
+            + "</li>"
+            for b in bills[:RECENT_BILLS])
+        rest = max(int(m.get("n") or len(bills)) - min(len(bills), RECENT_BILLS), 0)
+        more = ""
+        if rest:
+            words = say(lang, "home.n_more", "and {n} more", n=f"{rest:,}")
+            more = (f'<p class="latmore"><a href="{esc(href)}">{words}</a></p>' if href
+                    else f'<p class="latmore">{words}</p>')
+        items.append(
+            f'<li class="latm" data-d="{esc(m.get("date"))}">'
+            f'<p class="latwhen" data-d="{esc(m.get("date"))}" data-t="{esc(m.get("time") or "")}">'
+            f'{esc(latest_when(m.get("date"), m.get("time"), today, lang))}</p>'
+            f'<p class="lathead"><span class="calmix" aria-hidden="true">'
+            + "".join(f'<i class="{c}"></i>' for c in bars) + "</span>"
+            + named + kinds_said + "</p>"
+            + (f'<ul class="latbills">{lines}</ul>' if lines else "")
+            + more + "</li>")
+    # A LIST, NOT A TABLE (the audit of 2 October 2026, M7), as it was: each
+    # item a meeting, and inside it the list of its bills.
+    return (f'<h2>{say(lang, "home.recent", "Latest Activity")}</h2>'
+            '<ul class="actlist latlist">' + "".join(items) + "</ul>" + recent_more(lang))
 
 
 def home_body(lang, has_lockup, static_state, static_up, static_recent, latest_days):
@@ -2711,6 +2902,22 @@ const fdo=d=>{if(!d)return"";const L=typeof window!=="undefined"&&window.GR_LANG
 // THE RECORD'S OWN WORDS on a page in another language are marked English
 // (i18n.py): a bill's title and the line of its history.
 const REC=window.GR_LANG&&window.GR_LANG!=="en"?' lang="en"':"";
+// LATEST ACTIVITY'S DAYS, IN THE READER'S CLOCK (24 October 2026). The box is
+// the build's, and a build stands for a day or more: a meeting it called
+// "Yesterday" is two days back by the next evening. Each meeting carries its
+// day and its hour, and this says them as build_pages.latest_when does --
+// "Today · 10:00 AM", "Yesterday · 10:30 AM", else the day -- from the day
+// the reader is in. Not from home.json, so it holds with the fetch failing.
+const latWhen=(d,t,now)=>{
+  const p=String(d||"").split("-").map(Number);
+  const off=Math.round((now-new Date(p[0],p[1]-1,p[2]))/86400000);
+  const at=t?clock(t,window.GR_LANG):"";
+  if(off===0||off===1)return (off===0?tr("home.today","Today"):tr("home.yesterday","Yesterday"))
+    +(at?" \\u00b7 "+at:"");
+  return fd(d);
+};
+document.querySelectorAll("#recent .latwhen[data-d]").forEach(el=>{
+  el.textContent=latWhen(el.dataset.d,el.dataset.t,new Date(new Date().setHours(0,0,0,0)));});
 // If the nightly build stops running, nobody should be reading month-old data
 // believing it is current. The banner degrades into saying so.
 // Anchored to the site root, not to the page. legislators.html is served at
@@ -2871,21 +3078,12 @@ fetch(DATA("home.json")).then(r=>r.json()).then(H=>{
     }
   })();
 
-  // FIVE, AND THEN THE DOOR. Twelve rows was most of a phone screen for a
-  // list nobody reads to the end, and the bill search can do the rest of the
-  // job better: it sorts by most recent action, and now takes that sort in
-  // its address. Kept in step with build_pages' static copy of this block --
-  // there are two renderers for it and the footer has already shown what
-  // happens when only one of them is changed.
-  document.getElementById("recent").innerHTML=`<h2>${tr("home.recent","Latest Activity")}</h2>
-    <ul class="actlist">${(H.recent||[]).slice(0,5).map(r=>
-      `<li><span class="actd">${fd(r.date)}</span>
-       <span class="actb"><a href="${esc(r.year?`bill/${r.year}/${String(r.bill).toLowerCase()}.html`
-         :`bills.html#${r.bill}`)}">${esc(r.n)}</a>
-       <span style="color:var(--ink-2)"${REC}>${esc(r.title)}</span><br>
-       <span class="actw"${REC}>${esc(r.what)}</span></span></li>`).join("")}
-    </ul>
-    <p class="actmore"><a class="morebtn" href="/bills?sort=recent">${tr("home.recent_more","See all recent activity &rarr;")}</a></p>`;
+  // #recent IS NOT TOUCHED HERE EITHER (24 October 2026). Latest Activity is
+  // drawn into the page by build_pages' recent_box, a meeting an item, with
+  // what was done to each bill in the site's words for it, which this script
+  // does not carry; drawn again here from home.json it would be the second
+  // renderer the calendar's comment above warns of. Its days are said again
+  // in the reader's own clock, below (latWhen), as Coming up's are.
 
   // Closest votes and most contested are computed and stored, but not shown.
   // Both invite a reading the site does not want to make, and the page is
@@ -3853,6 +4051,16 @@ Senate; and the state&rsquo;s other officials.</p>
     latest_days = [f"{b}/{v.get('date')}" for v in (H.get("latest_sessions") or [])
                    for b in ("S" if v.get("chamber") == "Senate" else "H",)
                    if (b, v.get("date")) in sits]
+    # LATEST ACTIVITY'S WAYS INTO EACH MEETING: a committee's page by the
+    # codes Coming up's cards link by, and a sitting's page where that step
+    # writes one (the same `sits`).
+    codes = committee_codes(out, data="data")
+    if H.get("latest"):
+        shown = H["latest"][:RECENT_SHOWN]
+        print(f"  latest activity: {len(shown)} meetings shown, "
+              f"{sum(1 for m in shown if latest_href(m, codes, sits))} of them linked")
+    else:
+        print("  WARNING: home.json holds no latest activity: the home page's box is empty")
 
 
     # THE GUIDES' ROW IS KEPT. build_civics fills the home page's guides slot
@@ -3871,7 +4079,7 @@ Senate; and the state&rsquo;s other officials.</p>
             continue
         home = home_body(lang, has_lockup, state_box(S, lang),
                          static_up if lang == i18n.DEFAULT else calendar_html(out, lang=lang),
-                         recent_box(H, lang), latest_days)
+                         recent_box(H, lang, codes, sits), latest_days)
         if lang == i18n.DEFAULT and kept:
             home = home.replace("<!-- guides --><!-- /guides -->", kept.group(0), 1)
         dest = (out / "index.html" if lang == i18n.DEFAULT
