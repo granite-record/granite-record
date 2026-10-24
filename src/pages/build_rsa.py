@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-10-11.20
+# GRANITE_VERSION: 2026-10-11.21
 """
 The statutes (RSA) as pages: /laws, and one page a chapter at /laws/<chapter>.
 
@@ -302,13 +302,11 @@ def chapter_pending(data, bills):
 # A part with no day -- "as section 21 provides", on another bill becoming
 # law or a federal approval -- is said as the law says it, and does not by
 # itself make a change pending.
-Part = collections.namedtuple("Part", "secs rest addr day how")
-Part.__doc__ = """One part of a law and when it takes effect: `secs` the
-act's own section numbers it covers, `rest` whether it is the remainder (or
-the whole act), `addr` a statute address it names instead ("RSA 654:12, VI
-as inserted by section 5"), `day` a datetime.date or None, `how` the words
-for a day that is not stated or was counted ("as section 21 of the act
-provides", "60 days after its passage, counted from ...")."""
+# The chaptered law's reader is law_effect.py's (24 October 2026), shared
+# with build_site_v2.py, whose bill pages date their Law stop by it too.
+from law_effect import (ARTICLE_44, DATE_WORDS, MONTH_NO, PROVIDED,  # noqa: E402,F401
+                        TRAILER_AT, TRAILER_PART, Part, act_sections,
+                        chaptered_parts, day_of, day_said, part_of)
 
 Effect = collections.namedtuple("Effect", "parts source awaiting")
 Effect.__doc__ = """When a passed bill takes effect: its parts (none where
@@ -320,111 +318,6 @@ Passed.__doc__ = """A bill passed and not yet in effect everywhere it changes
 the statutes: its effect, {address: the day the change there takes effect,
 or None where the record does not say which part makes it}, and the year of
 the session laws it is a chapter of ("" for a bill awaiting the Governor)."""
-
-MONTH_NO = {m[:3].lower(): i + 1 for i, m in enumerate(C.MONTHS)}
-DATE_WORDS = re.compile(r"\b(Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)[a-z]*\.?\s+(\d{1,2})[,.]?\s+(\d{4})\b",
-                        re.I)
-
-
-def day_of(m):
-    """A DATE_WORDS match as a datetime.date, or None."""
-    try:
-        return datetime.date(int(m.group(3)), MONTH_NO[m.group(1).lower()[:3]], int(m.group(2)))
-    except (KeyError, ValueError):
-        return None
-
-
-def day_said(words):
-    """The day `words` is and nothing else ("January 01, 2027.", "on
-    September 1, 2027", "at 12:01 a.m. on July 1, 2035", "12:01 a.m.
-    January 1, 2027", "July 1, 2027 at 12:01 a.m."), or None."""
-    w = re.sub(r"(?:\bat\s+)?\b\d{1,2}:\d\d\s*[ap]\.?\s*m\.?(?:\s+on\b)?", " ", (words or ""), flags=re.I)
-    w = re.sub(r"^\s*on\s+", "", w.strip(), flags=re.I)
-    m = DATE_WORDS.fullmatch(w.strip().rstrip(" ."))
-    return day_of(m) if m else None
-
-
-def act_sections(words):
-    """The act's own sections a part names -- "Section 3", "Sections 7-10",
-    "Sec 1,2,5,6,11,12", "Sections 3.4.5", "sections 1 to 2 and 5 to 6",
-    "Section 5 paragraph VI" (section 5) -- as a frozenset, or None where the
-    words are not plainly a list of them."""
-    m = re.match(r"\s*sec(?:tion)?s?\b\.?\s*(.*)$", words or "", re.I | re.S)
-    if not m:
-        return None
-    s = re.sub(r"\s+of\s+(?:this|the)\s+act\b.*$", "", m.group(1), flags=re.I)
-    s = re.sub(r",?\s*paragraphs?\s+[IVXL]+\b.*$", "", s, flags=re.I)
-    s = re.sub(r"\s*(?:-|–|\bto\b|\bthrough\b)\s*", "-", s.strip(" .,;"))
-    nums = set()
-    for p in re.split(r"\s*(?:,|\.|&|\+|\band\b)\s*|\s+", s):
-        if not p:
-            continue
-        r = re.fullmatch(r"(\d{1,3})(?:-(\d{1,3}))?", p)
-        if not r:
-            return None
-        a, b = int(r.group(1)), int(r.group(2) or r.group(1))
-        if b < a or b - a > 300:
-            return None
-        nums.update(range(a, b + 1))
-    return frozenset(nums) or None
-
-
-def part_of(words):
-    """A part's words as (secs, rest, addr): the remainder or the whole act,
-    a statute address it names, or the act's sections; None where the words
-    are none of them ("Sec 20, except RSA 275:82")."""
-    w = re.sub(r"\s+", " ", (words or "").strip(" .,;:"))
-    if re.fullmatch(r"(?:the )?(?:rem(?:ainder|\.)?|rest)(?: of (?:this|the) act)?|this act", w, re.I):
-        return frozenset(), True, ""
-    if re.match(r"RSA\b", w, re.I):
-        cs = list(rsa.cites(w))
-        if len(cs) == 1 and not re.search(r"\bexcept\b", w, re.I):
-            return frozenset(), False, rsa.addr_of(cs[0])
-        return None
-    s = act_sections(w)
-    return (s, False, "") if s else None
-
-
-# The chaptered law's own last lines: "Effective Date:" (or "Effective:"),
-# then one day or a line a part. The sentence saying it was enacted without
-# the Governor's signature carries the day of enactment, not of effect, and
-# is set aside first.
-TRAILER_AT = re.compile(r"\nEffective(?: Date)?:")
-ARTICLE_44 = re.compile(r"Enacted in accordance with Article 44[^\n]*", re.I)
-TRAILER_PART = re.compile(r"^(?:[IVXL]{1,5}\.\s*)?(?P<what>.+?)\s+(?:shall\s+take\s+effect|effectuve|effective|eff\.?)"
-                          r"\s+(?P<when>.+?)\s*\.?$", re.I)
-PROVIDED = re.compile(r"as\s+provided\s+(?:in|by)\s+sec(?:tion)?\.?\s*(\d{1,3})(?:\s*,?\s*paragraph\s+[IVXL]+)?"
-                      r"(?:\s+of\s+this\s+act)?\.?", re.I)
-
-
-def chaptered_parts(body):
-    """The parts the chaptered law's last lines give, or None where it has
-    none or a line this does not read -- then the next source is asked."""
-    at = None
-    for at in TRAILER_AT.finditer(body or ""):
-        pass
-    if not at:
-        return None
-    lines = [x.strip() for x in ARTICLE_44.sub("", body[at.end():]).split("\n") if x.strip()]
-    if not lines:
-        return None
-    if len(lines) == 1 and day_said(lines[0]):
-        return (Part(frozenset(), True, "", day_said(lines[0]), ""),)
-    parts = []
-    for x in lines:
-        m = TRAILER_PART.match(x)
-        what = part_of(m.group("what")) if m else None
-        if what is None:
-            return None
-        day, prov = day_said(m.group("when")), PROVIDED.fullmatch(m.group("when").strip())
-        if day:
-            parts.append(Part(*what, day, ""))
-        elif prov:
-            parts.append(Part(*what, None, f"as section {prov.group(1)} of the act provides"))
-        else:
-            return None
-    return tuple(parts)
-
 
 # The bill's page's own words for a law in effect in parts, written by
 # build_site_v2._j_effective_parts: each part's words, then "on Jan 1, 2027"
@@ -627,11 +520,12 @@ def effect_words(eff, today):
 def part_name(p):
     """A part as the line names it: "the rest", "RSA 654:12", "section 3 of
     the act", "sections 1, 2, 5 and 6 of the act", "sections 7 to 10 of the
-    act"."""
+    act", and a statute with the act's sections named beside it, "RSA
+    597:2-b and sections 16 and 17 of the act" (HB 318 of 2024)."""
     if p.rest:
         return "the rest"
     if p.addr:
-        return f"RSA {p.addr}"
+        return f"RSA {p.addr}" + (f" and {part_name(p._replace(addr=''))}" if p.secs else "")
     nums, runs = sorted(p.secs), []
     for n in nums:
         if runs and n == runs[-1][1] + 1:

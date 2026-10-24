@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-05.237
+# GRANITE_VERSION: 2026-09-05.238
 """
 Generate the faceted site from real General Court data.
 
@@ -65,6 +65,7 @@ import bill_order as BO
 import past_sponsors as PSP
 import text_sponsors as TS
 import topic_model as TM
+import law_effect as LE
 import unicodedata
 from collections import Counter, defaultdict, namedtuple
 from datetime import date as _date, timedelta as _td
@@ -5625,6 +5626,75 @@ def _j_effective_parts(*lines):
     return ", ".join(f"{w} {d}" for w, d in out)
 
 
+def _j_act_sections(secs):
+    """The act's sections a part of a chaptered law covers, in the words
+    _j_sections gives the docket's: {3} "section 3", {1, 2, 5} "sections 1, 2
+    and 5", {5, 6, 7, 8} "sections 5 to 8" -- a run of three or more is a
+    range, as the chaptered text writes "Sections 26, 27 through 33" (HB 282
+    of 2025); "" where there are none."""
+    nums, items, i = sorted(secs or ()), [], 0
+    while i < len(nums):
+        j = i
+        while j + 1 < len(nums) and nums[j + 1] == nums[j] + 1:
+            j += 1
+        items += [f"{nums[i]} to {nums[j]}"] if j - i >= 2 else [str(n) for n in nums[i:j + 1]]
+        i = j + 1
+    if not items:
+        return ""
+    if len(items) == 1 and " to " not in items[0]:
+        return f"section {items[0]}"
+    return "sections " + (", ".join(items[:-1]) + " and " + items[-1] if len(items) > 1
+                          else items[0])
+
+
+def _j_chaptered(body):
+    """When a law takes effect as its chaptered text says it, in the Law
+    step's words: (the one day, "") for the act as a whole, ("", "section 3 on
+    Aug 19, 2027, the rest on Oct 18, 2026") in parts, or None where the text
+    has no Effective Date lines or one law_effect does not read.
+
+    The same rules as the docket's parts (_j_effective_parts): one part that
+    is not the whole act is not enough to state, a part named twice states
+    none, and the rest comes last."""
+    parts = LE.chaptered_parts(body) if body else None
+    if not parts:
+        return None
+    if len(parts) == 1:
+        p = parts[0]
+        return (p.day.isoformat(), "") if p.rest and p.day else None
+    # A part that names a statute is said in the law's own words, its
+    # paragraph and where it was inserted with it -- "RSA 654:12 VI as
+    # inserted by section 5" (HB 464 of 2025), not "RSA 654:12" -- and the
+    # act's sections named beside it after it: "RSA 597:2-b, I-a and sections
+    # 16 and 17" (HB 318 of 2024). One line a part, in order.
+    lines = LE.trailer_lines(body) or []
+    out = []
+    for i, p in enumerate(parts):
+        if p.rest:
+            label = "the rest"
+        elif p.addr:
+            words = LE.part_words(lines[i]) if len(lines) == len(parts) else ""
+            m = LE.AND_SECTIONS.search(words)
+            label = ((words[:m.start()] if m else words) or f"RSA {p.addr}") + (
+                f" and {_j_act_sections(p.secs)}" if p.secs else "")
+        else:
+            label = _j_act_sections(p.secs)
+        if not label:
+            return None
+        if p.day:
+            when = "on " + _j_prose_date(p.day.isoformat())
+        else:
+            m = re.search(r"\bsection\s+(\d{1,3})\b", p.how or "")
+            if not m:
+                return None
+            when = f"as section {m.group(1)} provides"
+        out.append((label, when))
+    if len({w for w, _ in out}) != len(out):
+        return None
+    out.sort(key=lambda x: x[0] == "the rest")
+    return "", ", ".join(f"{w} {d}" for w, d in out)
+
+
 def _j_days(a, b):
     """Days from ISO date b to ISO date a; 0 where either is missing."""
     try:
@@ -5915,7 +5985,7 @@ def _j_untold(e, seg, evs):
 
 
 def journey(narr, bid, rcs=(), chapter="", law_line="", term="", db_effective="",
-            untold=None):
+            untold=None, text=""):
     """(the date it was introduced, [one dict a decision]) -- from the docket.
 
     Each decision carries its date, its body (H, S, the Governor G, the Law L
@@ -5926,6 +5996,10 @@ def journey(narr, bid, rcs=(), chapter="", law_line="", term="", db_effective=""
     `untold`, a set the caller passes, is filled with the id() of each line
     read from a docket row narrative.py tells nothing of (its type "other"):
     a decision the bill's history does not narrate (closing_stage).
+
+    `text` is the bill's text as its page shows it (bill_text_block's body):
+    a chaptered law's own Effective Date lines date its Law stop before the
+    docket's line does (_j_chaptered).
     """
     evs = [e for e in (narr or {}).get("events", []) if not e.get("cancelled")]
     intro = _j_introduced(evs, bid, term)
@@ -6360,27 +6434,42 @@ def journey(narr, bid, rcs=(), chapter="", law_line="", term="", db_effective=""
     if intro and first_day and intro > first_day:
         intro = ""
     if chapter:
-        eff = _j_effective(gov_raw, *gov_more, law_line)
-        # A LINE THAT CARRIES ANOTHER BILL'S CHAPTER CARRIES ITS EFFECTIVE DATE
-        # TOO. SB 28 of 2009 reads "Signed by the Governor on 05/15/09;
-        # Effective 07/07/09; Chapter 0028" -- SB 109's line, signed a week
-        # earlier, with the day of the signature changed: sixty days from 15
-        # May is 14 July, which is what SB 28's enrolled text prints
-        # ("Effective Date: July 14, 2009") and what the database holds. Once
-        # extract_chapters settled the chapter at 31 the rail read "Chapter
-        # 31, in effect 7 Jul 2009". `db_effective` is the database's date on
-        # a settled record whose docket number is not its chapter
-        # (chapters.json's database_effective), and it is taken only where
-        # the line states one date and the database another: a line that
-        # states none, or several, is left saying none.
-        if eff and db_effective and eff != db_effective:
-            eff = db_effective
-        # A law in effect on several dates says each, part by part, and its
-        # stop on the rail stays undated: there is no one day to draw. Every
-        # row that carries the governor's on is read, not the first seven:
-        # HB 2 of 2007 runs to part XVI, and its first eight parts were
-        # stated as though they were all of it.
-        parts = "" if eff else _j_effective_parts(gov_raw, *gov_all, law_line)
+        # THE LAW'S OWN WORDS FIRST (24 October 2026). The chaptered text ends
+        # with when it takes effect -- "Effective Date: January 01, 2027", or a
+        # line a part -- and the docket's line can be another bill's: HB 1184
+        # of 2026's governor row reads "I. Sec 2 eff 1/1/27 II. Sec 3 eff
+        # 1/1/27 III. Rem eff 1/1/28", which is HB 1102's, overridden the same
+        # day, and its page said so; its chaptered text says section 3 on
+        # August 19, 2027 and the rest on October 18, 2026, as RSA 635:2-a's
+        # source note does. The Laws pages read the text first for the same
+        # reason (build_rsa, Bills.effect), with the same reader (law_effect).
+        # The docket's line is read where the text has no such lines, as the
+        # archived terms' texts mostly have not.
+        told = _j_chaptered(text)
+        if told:
+            eff, parts = told
+        else:
+            eff = _j_effective(gov_raw, *gov_more, law_line)
+            # A LINE THAT CARRIES ANOTHER BILL'S CHAPTER CARRIES ITS EFFECTIVE DATE
+            # TOO. SB 28 of 2009 reads "Signed by the Governor on 05/15/09;
+            # Effective 07/07/09; Chapter 0028" -- SB 109's line, signed a week
+            # earlier, with the day of the signature changed: sixty days from 15
+            # May is 14 July, which is what SB 28's enrolled text prints
+            # ("Effective Date: July 14, 2009") and what the database holds. Once
+            # extract_chapters settled the chapter at 31 the rail read "Chapter
+            # 31, in effect 7 Jul 2009". `db_effective` is the database's date on
+            # a settled record whose docket number is not its chapter
+            # (chapters.json's database_effective), and it is taken only where
+            # the line states one date and the database another: a line that
+            # states none, or several, is left saying none.
+            if eff and db_effective and eff != db_effective:
+                eff = db_effective
+            # A law in effect on several dates says each, part by part, and its
+            # stop on the rail stays undated: there is no one day to draw. Every
+            # row that carries the governor's on is read, not the first seven:
+            # HB 2 of 2007 runs to part XVI, and its first eight parts were
+            # stated as though they were all of it.
+            parts = "" if eff else _j_effective_parts(gov_raw, *gov_all, law_line)
         # `effective` is the day the rail's Law stop is dated by (F13); the
         # line itself stays undated, so How it got here does not print the
         # day twice beside words that already say it.
@@ -10931,9 +11020,12 @@ def build_bills(out, bills, narratives, rollcalls, reports, sponsors,
         # it, so the list card, the bill's own rail and On the record are
         # one account. journey_disagrees() is the test that they are.
         untold = set()
+        # The bill's text, read here rather than with the rest of its record
+        # below: a law's own Effective Date lines date its Law stop.
+        btext = bill_text_block(P.per_term(bill_texts, term, current).get(bid), narr)
         intro, jsteps = journey(narr, bid, rcs, chapter, dl.get("line", ""), term,
                                 db_effective=dl.get("database_effective", ""),
-                                untold=untold)
+                                untold=untold, text=(btext or {}).get("body", ""))
         # THE VOTERS' LINE, where the docket has none to read it from: the
         # election and its outcome, from the CACR's ballot row. The rail's
         # Voters stop is dated from it like every other stop.
@@ -11062,7 +11154,6 @@ def build_bills(out, bills, narratives, rollcalls, reports, sponsors,
                 docs.append({"label": _lab, "url": _url, "kind": "record"})
 
         bill_amds = bill_amendments(narr, amend_texts, claims.get(term, {}))
-        btext = bill_text_block(P.per_term(bill_texts, term, current).get(bid), narr)
 
         rc_out = bill_rollcalls(bid, term, rcs, narr,
                                 votes_by_bill, legs, unnamed, in_office)
