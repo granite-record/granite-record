@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.686
+# GRANITE_VERSION: 2026-09-04.687
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -34599,6 +34599,308 @@ def _session_day_index(BSP, SD, shell):
                   "each saying what its card says")
 
 
+# A vote's parts on a session day's card, in the order the owner asked for
+# (24 October 2026): the head, the count's line, the mover, the speakers,
+# the ring, the notes, and the clerk's words.
+CARD_VOTE_ORDER = ("dvh", "dvr", "dvby", "sspoke", "svote", "swho", "rcrec")
+
+
+def _card_faults(page, where, BSP):
+    """What is out of place on a built session day's bill cards
+    (_session_card_order): [] where nothing is."""
+    bad = []
+    for card in re.findall(r'<article class="card[^"]*"[^>]*>.*?</article>', page, re.S):
+        cid = re.search(r'data-id="([^"]+)"', card).group(1)
+        rail, well = card.find('<span class="rail dated'), card.find('<div class="cline">')
+        if rail != -1 and (well == -1 or rail > well):
+            bad.append(f"{where} {cid}: the rail is drawn under the day's votes")
+        if "In the record:" in card:
+            bad.append(f"{where} {cid}: a bill's vote is still headed \"In the record\"")
+        for v in re.findall(r'<div class="dvote"[^>]*>(.*?)(?=<div class="dvote"|<p class="dsum"|'
+                            r'<details class="sdebate"|<p class="sspoke sother"|$)', card, re.S):
+            seen = re.findall(r'class="(' + "|".join(CARD_VOTE_ORDER) + r')"', v)
+            ranks = [CARD_VOTE_ORDER.index(c) for c in seen]
+            if ranks != sorted(ranks):
+                bad.append(f"{where} {cid}: a vote's parts come as {seen}")
+            for lab in re.findall(r'<p class="sspoke"><span class="slab">([^<]*)</span>', v):
+                if lab not in BSP.SPOKE.values():
+                    bad.append(f"{where} {cid}: speakers labelled {lab!r}, not by the vote they urged")
+            for said in re.findall(r'<p class="rcrec">([^<]*)', v):
+                if not said.startswith(BSP.CLERK_LABEL + " "):
+                    bad.append(f"{where} {cid}: the clerk's words are not labelled as theirs: {said!r}")
+    return bad
+
+
+@check("session", "a session day's card draws the rail above its votes, and each vote its head, "
+       "count, mover, who spoke on each side and which vote they urged, the ring, and last the "
+       "clerk's own words, only where they say more (the owner, 24 October 2026)",
+       needs=("build_session_pages", "session_days", "shell"))
+def _session_card_order(BSP, SD, shell):
+    """THE CARD, TOP TO FOOT (the owner, 24 October 2026): "The rail on the
+    session day pages should show above the votes as it would on a bill page
+    or card"; "spoke for the motion and spoke against the motion should show
+    above the vote chart as well, but below the motion. One thing that may
+    help for clarity is identifying which speaker supported the yes vote and
+    which supported the no vote, rather than solely saying they spoke for or
+    against the motion"; and, of "In the record: House Concurs with Senate
+    Amendment 2026-1622s", "currently it's somewhat redundant or in the wrong
+    place".
+
+    On every session day the fixture's site builds, and on a day made here
+    with members speaking on both sides of a roll call, it fails if a card's
+    rail is under its well of votes; if a vote's head, its count's line, its
+    mover, its speakers, its ring, its notes and the clerk's words come in
+    another order (CARD_VOTE_ORDER); if a side is labelled other than by the
+    vote it urged (build_session_pages.SPOKE); or if a bill's vote carries an
+    "In the record" line or a clerk's line not labelled as one. And on the
+    rule for the clerk's words (clerk_adds), over the clerk's own phrasings
+    of the build of 24 October 2026, it fails if they are kept where they say
+    only the head's motion in the clerk's spelling -- "House Concurs with
+    Senate Amendment 2026-1622s", "Laid on Table", "Lay HB1 on Table",
+    "Accedes to House Request for Committee of Conference" -- or dropped
+    where they say a day, a purpose, what was reconsidered, a step the head
+    does not name, or a member the card does not name as the mover."""
+    absent = [x for x in CHAIN_NEEDS if not _paths.locate(x).exists()]
+    if absent:
+        return "skip", "not here: " + ", ".join(absent)
+    shared, _base, _ran, _days = _fixture_site_shared()
+    bad, cards = [], 0
+    for p in sorted((shared / "site" / "session").glob("[HS]/*.html")):
+        text = p.read_text(encoding="utf-8")
+        cards += text.count('<article class="card')
+        bad += _card_faults(text, p.relative_to(shared / "site").as_posix(), BSP)
+    assert cards >= 3, f"the fixture's site drew {cards} cards on its session days: too few to hold"
+
+    def item(bill, seq, action, motion, kind="VV", y=None, n=None, mover=""):
+        return SD.Item(bill, "2025-2026", {"type": "floor", "body": "H", "action": action,
+                                           "motion": motion, "vote_kind": kind, "yeas": y,
+                                           "nays": n, "mover": mover,
+                                           "raw": f"{action}: {motion} {kind}",
+                                           "cite_page": str(10 + seq)}, seq)
+
+    class Nobody:
+        def slug(self, body, name):
+            return None
+    day = SD.Day("H", "2026-05-21", [
+        item("HB1", 1, "Inexpedient to Legislate", "MA", "RC", 200, 150),
+        item("HB2", 2, "House Concurs with Senate Amendment 2026-1622s", "MA", "DV", 205, 160),
+        item("HB3", 3, "Special Order to next order of business", "MA"),
+        item("HB5", 5, "Reconsider ITL", "MF", "DV", 100, 200)])
+    said = {"attributions": [
+        {"bill": "HB1", "side": "for", "names": ["Smith"], "tally": (200, 150),
+         "inline_motion": None, "moved_since": []},
+        {"bill": "HB1", "side": "against", "names": ["Jones"], "tally": (200, 150),
+         "inline_motion": None, "moved_since": []}]}
+    page, _ = BSP.render(day, said, {}, {}, Nobody(), shell.E)
+    bad += _card_faults(page, "the day made here", BSP)
+    hb1 = page.split('data-id="HB1"', 1)[1].split("</article>", 1)[0]
+    spoke = re.findall(r'<p class="sspoke"><span class="slab">([^<]+)</span>(.*?)</p>', hb1)
+    if [(lab, re.sub(r"<[^>]+>", "", who).strip()) for lab, who in spoke] != [
+            ("Spoke for the motion, urging a yes vote", "Rep. Smith"),
+            ("Spoke against the motion, urging a no vote", "Rep. Jones")] \
+            or not (hb1.index('class="dvr"') < hb1.index('class="sspoke"')
+                    < hb1.index('class="svote"')):
+        bad.append(f"HB 1's speakers are not between its count and its ring, each by the vote "
+                   f"they urged: {spoke}")
+    for bill, words in (("HB2", None), ("HB3", "Special Order to next order of business"),
+                        ("HB5", "Reconsider ITL")):
+        card = page.split(f'data-id="{bill}"', 1)[1].split("</article>", 1)[0]
+        got = re.findall(r'<p class="rcrec">([^<]*)</p>', card)
+        want = [f"{BSP.CLERK_LABEL} {words}"] if words else []
+        if got != want:
+            bad.append(f"{bill}'s clerk's words are {got}, where they should be {want}")
+    # The rule itself, over the clerk's own phrasings.
+    rule = (("House Concurs with Senate Amendment 2026-1622s", "", False), ("Concur", "", False),
+            ("Laid on Table", "", False), ("Lay HB1 on Table", "", False),
+            ("Accedes to House Request for Committee of Conference", "", False),
+            ("Refer to Interim Study", "", False), ("Ought to Pass W/Amendment", "", False),
+            ("Rereferred to Committee", "", False), ("Take from Table", "", False),
+            ("Special Order to 03/11/1993", "", True), ("Suspend Rules for hearing", "", True),
+            ("Reconsider ITL", "", True), ("Vacated from Committee and Laid on Table", "", True),
+            ("Reconsideration (Rep Vaillancourt)", "", True),
+            ("Reconsideration (Rep Vaillancourt)", "Rep. Vaillancourt", False))
+    for words, mover, keep in rule:
+        it = item("HB1", 1, words, "MA", mover=mover)
+        got = 'class="rcrec"' in BSP.vote_html(it, "HB1", "H", "", {}, Nobody(), shell.E, [])
+        if got != keep:
+            bad.append(f"the clerk's words {words!r}" + (f" moved by {mover}" if mover else "")
+                       + (" are dropped, and say more than the head" if keep
+                          else " are kept, and say nothing the head does not"))
+    css = Path("src/pages/app.css").read_text(encoding="utf-8")
+    if not re.search(r"\.cline \.dvote > \.rcrec\{[^}]*font-size:var\(--t-sm\)", css):
+        bad.append("app.css no longer sets the clerk's words small at the foot of the vote")
+    assert not bad, f"{len(bad)} faults on the session days' cards: " + "; ".join(bad[:6])
+    return "ok", (f"{cards} fixture cards and a day made here: rail above the votes; head, count, "
+                  "mover, speakers by the vote they urged, ring, then the clerk's words; the "
+                  f"clerk's words kept or dropped as the rule says on {len(rule)} of their phrasings")
+
+
+def _closing_text(card):
+    """A card's closing line as words, or None where it has none."""
+    import html as _html
+    m = re.search(r'<p class="dsum"><span class="dsumlab">In short</span>(.*?)</p>', card, re.S)
+    return _html.unescape(re.sub(r"<[^>]+>", "", m.group(1))) if m else None
+
+
+@check("session", "every bill card of a session day closes with its votes as the bill's history "
+       "says them and what they mean for the bill (the owner, 24 October 2026)",
+       needs=("build_session_pages", "session_days", "shell", "narrative"))
+def _session_closing_line(BSP, SD, shell, N):
+    """THE CLOSING LINE (the owner, 24 October 2026: "There should be a line
+    at the bottom of every bill card on session day pages that explains all
+    of the votes that were held and what that means for the bill, similar to
+    what is in the narrative summary tab for bills, but isolated to the
+    specific actions from that day").
+
+    On every session day the fixture's site builds it fails if a card has no
+    closing line, more than one, or one above any of its votes. On the days
+    preflight's real docket rows make (_DOCKET_CUT_1999: the House's of 1999
+    and 2006, the Senate's of 1999, 2000 and 2005), each told by
+    narrative.build as a bill's history tells it, it fails if a reading the
+    history makes of the day's floor votes -- "the House voted to pass it
+    with changes", "rejected a motion to send it back to committee" -- is
+    not the card's, or if the card does not say where HB 278 of 1999 and HB
+    317 of 2006 went next (Finance, Ways and Means) or the history's own note
+    on HB 1240's interim study. And on days made here, where the record is
+    known, it fails if a bill the second chamber passed unchanged is not said
+    to go to the Governor; one it changed, to go back to the first; one its
+    own chamber passed, to go to the other; one passed and referred the next
+    day, to that committee; if a concurrence is not said to send the bill to
+    the Governor; if a failed motion to take a bill off the table does not
+    leave it there; if a CACR that failed with more yeas than nays is not
+    said to have needed three fifths; or if a motion the record names only in
+    shorthand, or does not name, is said as anything but what the record
+    says."""
+    absent = [x for x in CHAIN_NEEDS if not _paths.locate(x).exists()]
+    if absent:
+        return "skip", "not here: " + ", ".join(absent)
+    shared, _base, _ran, _days = _fixture_site_shared()
+    bad, cards = [], 0
+    for p in sorted((shared / "site" / "session").glob("[HS]/*.html")):
+        text = p.read_text(encoding="utf-8")
+        for card in re.findall(r'<article class="card[^"]*"[^>]*>.*?</article>', text, re.S):
+            cards += 1
+            n = card.count('<p class="dsum">')
+            if n != 1 or card.rfind('<p class="dsum">') < card.rfind('<div class="dvote"'):
+                bad.append(f"{p.name}: a card with {n} closing lines, or one above a vote")
+            elif re.search(r"\{|\bNone\b", _closing_text(card) or ""):
+                bad.append(f"{p.name}: a closing line with a place left unfilled: {_closing_text(card)}")
+    assert cards >= 3, f"the fixture's site drew {cards} cards on its session days: too few to hold"
+
+    class Nobody:
+        def slug(self, body, name):
+            return None
+
+    # THE HISTORY'S OWN SENTENCES, from rows of the record.
+    terms = {"1999": "1999-2000", "2000": "1999-2000", "2005": "2005-2006", "2006": "2005-2006"}
+    narr, told = {}, {}
+    saved = (N.CORRECTIONS, N.TERM)
+    try:
+        for bill, lines in _DOCKET_CUT_1999.items():
+            term = terms[lines[0].split("|")[0]]
+            N.CORRECTIONS, N.TERM = [], term
+            rec = N.build(bill, _docket_rows(lines))
+            narr.setdefault(term, {})[bill] = rec["events"]
+            told[(term, bill)] = rec["stages"]
+    finally:
+        N.CORRECTIONS, N.TERM = saved
+    days = _sitting_fixture(SD, narr, {})
+    data = {t: {b: {"events": e} for b, e in bs.items()} for t, bs in narr.items()}
+    amds = {b: BSP.amendments_on_sittings(days, data, b)[0] for b in "HS"}
+    verbs = "|".join(re.escape(v) for v in sorted(set(N.RECOMMENDATION.values()), key=len,
+                                                  reverse=True))
+    lines, readings = {}, 0
+    for (body, date), day in sorted(days.items()):
+        page, _ = BSP.render(day, {}, {}, {}, Nobody(), shell.E,
+                             ctx={"data": data, "amendments": amds[body]})
+        when = N.fdate(f"{date[5:7]}/{date[8:]}/{date[:4]}")
+        chamber = {"H": "House", "S": "Senate"}[body]
+        for card in re.findall(r'<article class="card[^"]*"[^>]*>.*?</article>', page, re.S):
+            bill = re.search(r'data-id="([^"]+)"', card).group(1)
+            line = _closing_text(card) or ""
+            lines[(date, bill)] = line
+            term = next(t for t in narr if bill in narr[t])
+            for st in told.get((term, bill)) or ():
+                if not str(st.get("hand") or "").startswith(body):
+                    continue
+                for s in re.split(r"(?<=\.)\s+(?=[A-Z])", st.get("text") or ""):
+                    m = re.search(rf"the {chamber} (?:again )?(voted to|rejected a motion to) "
+                                  rf"({verbs})\b", s)
+                    if when in s and m:
+                        readings += 1
+                        if f"{m.group(1)} {m.group(2)}" not in line:
+                            bad.append(f"{bill} of {date}: the history says {s!r}, the card "
+                                       f"{line!r}")
+    assert readings >= 12, f"only {readings} of the history's readings were compared"
+    for key, end in ((("1999-03-18", "HB278"), "It goes to the House Finance committee, and the "
+                                               "House votes on it again once that committee reports."),
+                     (("2006-02-15", "HB317"), "It goes to the House Ways and Means committee, and the "
+                                               "House votes on it again once that committee reports."),
+                     (("2006-02-15", "HB1240"), N.NUANCE["interim study"])):
+        if not lines.get(key, "").endswith(end):
+            bad.append(f"{key[1]} of {key[0]} closes {lines.get(key)!r}, where it should end {end!r}")
+
+    # DAYS MADE HERE, where what each vote meant is known.
+    T = "2025-2026"
+
+    def item(bill, seq, action, motion, kind="VV", y=None, n=None, body="H", raw=None):
+        return SD.Item(bill, T, {"type": "floor", "body": body, "action": action,
+                                 "motion": motion, "vote_kind": kind, "yeas": y, "nays": n,
+                                 "raw": raw or f"{action}: {motion} {kind}",
+                                 "cite_page": str(10 + seq)}, seq)
+    rail = [["Ip", "2026-01-07"], ["Hp", "2026-03-05"], ["S-"], ["G-"], ["L-"]]
+    rows = {(T, b): {"passage": "Hp---", "rail": rail} for b in ("HB2", "HB10", "HB11", "HB13")}
+    rows[(T, "SB12")] = {"passage": "S----",
+                         "rail": [["Ip", "2026-01-07"], ["S-"], ["H-"], ["G-"], ["L-"]]}
+    rows[(T, "CACR6")] = {"passage": "H----",
+                          "rail": [["Ip", "2026-01-07"], ["H-"], ["S-"], ["V-"]]}
+    house = SD.Day("H", "2026-05-21", [
+        item("HB2", 1, "House Concurs with Senate Amendment 2026-1622s", "MA", "DV", 205, 160),
+        item("CACR6", 2, "Ought to Pass", "MF", "RC", 181, 156,
+             raw="Ought to Pass, Lacking Necessary Three-Fifths Vote: MF RC 181-156"),
+        item("HB7", 3, "Conf Comm Report", "MA"), item("HB8", 4, "03/05/2026", "MA"),
+        item("HB9", 5, "Ought to Pass", "MA")])
+    later = {T: {"HB9": {"events": [
+        {"type": "floor", "date": "2026-05-21", "body": "H", "action": "Ought to Pass",
+         "motion": "MA", "vote_kind": "VV", "raw": "Ought to Pass: MA VV 05/21/2026"},
+        {"type": "rereferred", "date": "2026-05-22", "body": "H", "raw": "Referred to Finance"}]}}}
+    senate = SD.Day("S", "2026-05-07", [
+        item("HB10", 1, "Ought to Pass", "MA", body="S",
+             raw="Ought to Pass, MA, VV; OT3rdg; 05/07/2026"),
+        item("HB11", 2, "Ought to Pass with Amendment 2026-1700s", "MA", body="S"),
+        item("SB12", 3, "Ought to Pass", "MA", "RC", 16, 8, body="S"),
+        item("HB13", 4, "Remove from Table", "MF", body="S")])
+    made = {}
+    for d in (house, senate):
+        page, _ = BSP.render(d, {}, {}, {}, Nobody(), shell.E, ctx={"rows": rows, "data": later})
+        for card in re.findall(r'<article class="card[^"]*"[^>]*>.*?</article>', page, re.S):
+            made[re.search(r'data-id="([^"]+)"', card).group(1)] = _closing_text(card)
+    want = {
+        "HB2": "The House voted to agree to the other chamber's changes on a division vote "
+               "205–160. Both chambers have passed it in the same form, so it goes to the Governor.",
+        "CACR6": "The House rejected a motion to pass it on a roll call 181–156, short of the "
+                 "three-fifths majority it needed.",
+        "HB7": "The House adopted “Conf Comm Report” on a voice vote.",
+        "HB8": "The House voted on a question the record does not name on a voice vote, and the "
+               "motion carried.",
+        "HB9": "The House voted to pass it on a voice vote. It goes to the House Finance "
+               "committee, and the House votes on it again once that committee reports.",
+        "HB10": "The Senate voted to pass it on a voice vote and ordered it to a third reading. "
+                "Both chambers have passed it in the same form, so it goes to the Governor.",
+        "HB11": "The Senate voted to pass it with changes on a voice vote. It goes back to the "
+                "House, which can accept or reject the Senate's changes.",
+        "SB12": "The Senate voted to pass it on a roll call 16–8. That sends it to the House.",
+        "HB13": "The Senate rejected a motion to take it off the table on a voice vote. It stays "
+                "on the table."}
+    for bill, line in want.items():
+        if made.get(bill) != line:
+            bad.append(f"{bill}'s closing line is {made.get(bill)!r}, where it should be {line!r}")
+    assert not bad, f"{len(bad)} faults in the cards' closing lines: " + "; ".join(bad[:5])
+    return "ok", (f"{cards} fixture cards each closed once; {readings} of the history's readings of "
+                  f"{len(lines)} days' cards made from rows of the record, each the card's; and "
+                  f"{len(want)} made days' meanings, each as the record settles it")
+
+
 @check("session", "a roll call the Journal put under a bill is the docket row's vote only where "
        "the row states its count and kind of question, and is drawn before the decision it "
        "preceded", needs=("session_days",))
@@ -35843,10 +36145,12 @@ def _session_speech_before_its_motion(N, JD, SD, BSP):
         shutil.rmtree(root, ignore_errors=True)
     txt = re.sub(r"\s+", " ", re.sub(r"<[^>]+>", " ", page))
     # Each side's names are their own paragraph (.sspoke), read to its end:
-    # what follows one is the next motion's card, whatever its words.
+    # what follows one is the next motion's card, whatever its words. The
+    # label says which vote the side urged (the owner, 24 October 2026).
     claimed = [(side, re.sub(r"\s+", " ", re.sub(r"<[^>]+>", " ", who)).strip())
                for side, who in re.findall(r'<p class="sspoke"><span class="slab">Spoke '
-                                           r'(for|against) the motion</span>(.*?)</p>', page)]
+                                           r'(for|against) the motion, urging a (?:yes|no) '
+                                           r'vote</span>(.*?)</p>', page)]
     assert claimed == [("against", "Rep. Kurk")], (
         f"HB 110's page of 10 February 1999 credits {claimed}: " + txt[:500])
     also = re.search(r"Also spoke during this bill (.*?) the record does not say", txt)
@@ -42150,8 +42454,10 @@ def _session_speeches_by_the_record(SD, BSP):
         # 2026, where the head says the approved words.
         part = html.split(f'data-motion="{action}"', 1)[1].split('<div class="dvote"', 1)[0]
         return {side: set(re.findall(r"Rep\. (\w+)", m.group(1)))
-                for side, m in (("for", re.search(r"Spoke for the motion</span>(.*?)</p>", part)),
-                                ("against", re.search(r"Spoke against the motion</span>(.*?)</p>", part)))
+                for side, m in (("for", re.search(r"Spoke for the motion, urging a yes "
+                                                  r"vote</span>(.*?)</p>", part)),
+                                ("against", re.search(r"Spoke against the motion, urging a no "
+                                                      r"vote</span>(.*?)</p>", part)))
                 if m}
 
     said = {"attributions": [
@@ -42559,11 +42865,14 @@ def _session_unmarked_recess(SD, BSP, shell):
         assert not re.search(r"Burt|Wright|Beaudoin|Spoke|spoke", cards["SB 389"]), (
             "SB 389's accession, done in recess with no debate, is drawn with the "
             f"speeches on its floor amendments: {cards['SB 389'][:300]!r}")
-        # The vote first, its count, the record's words and then who spoke
-        # on it (10 October 2026).
-        assert re.search(r"166\D119\s+on a roll call\s+In the record: Floor Amendment "
-                         r"#2013-2010h\(NT\).{0,80}?Spoke against the motion\s+Rep\. "
-                         r"William O'Brien\s*,\s*Rep\. Tucker\s+Ought to Pass", cards["SB 148"]) \
+        # The vote first, its count, then who spoke on it and which vote
+        # they urged, and the clerk's words last, under the ring (the owner,
+        # 24 October 2026: the speakers "below the motion" and above the
+        # chart; the record's words "redundant or in the wrong place").
+        assert re.search(r"166\D119\s+on a roll call\s+Spoke against the motion, urging a no "
+                         r"vote\s+Rep\. William O'Brien\s*,\s*Rep\. Tucker\s+In the clerk’s words: "
+                         r"Floor Amendment #2013-2010h\(NT\) \(Rep Butler\)\s+Ought to Pass",
+                         cards["SB 148"]) \
             and cards["SB 148"].count("O'Brien") == 1 \
             and "Also spoke" not in cards["SB 148"], (
             "SB 148's speakers were pushed off the roll call they spoke on by the "
