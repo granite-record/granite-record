@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-10-11.26
+# GRANITE_VERSION: 2026-10-11.27
 """
 The how-to guides: their words, their sources, and what each was checked
 against. Read by build_civics.py, which draws them on the Resources hub's
@@ -2485,9 +2485,10 @@ NEW_RESIDENT = guide(
           "application. Fees differ for each vehicle, so ask your clerk.</p>",
           actions=[("Find your town or city clerk", SOS_CLERKS)], law=["RSA 261:45, I"]),
      step("Register to vote",
-          "<p>There is no minimum time you must live here before registering. Register with your "
-          "town or city clerk, or at a session of the supervisors of the checklist, up to 6 to 13 "
-          "days before an election, or at your polling place on election day. Bring proof of your "
+          "<p>There is no minimum time you must live here before registering. You can register with "
+          "your town or city clerk, or at a session of the supervisors of the checklist, until "
+          "registration closes 6 to 13 days before an election, on a date your supervisors set. You "
+          "can also register at your polling place on election day. Bring proof of your "
           "identity, age, citizenship and domicile; How to Vote lists what counts.</p>"
           "<p>You do not need a New Hampshire driver&rsquo;s license to register or to vote.</p>",
           actions=[("Register to vote", SOS_REGISTER)], law=["RSA 654:27"]),
@@ -3133,6 +3134,303 @@ GUIDES += [TOUR]
 
 
 # ---------------------------------------------------------------------------
+# PUTTING AN ARTICLE ON THE WARRANT (the person, 24 October 2026: "Filing a
+# town warrant is a good one as well"). From RSA 39, 40:13 and 197 alone, read
+# on 24 October 2026 in this site's own Laws pages, which print the statute
+# table: no agency page is needed, because the law states the whole procedure.
+# A city, and a town whose charter replaced its meeting with a council, has no
+# warrant a petition reaches this way, and the guide says so and sends the
+# reader to the Learn page that explains them rather than to a charter it
+# cannot read. The deadlines are the law's; a town's own date for its meeting
+# is not, so the guide gives the rule and has the reader ask the clerk for the
+# day.
+# ---------------------------------------------------------------------------
+WARRANT_READ = "2026-10-24"
+
+WARRANT = guide(
+    "town-warrant-article", "How to Put an Article on Your Town Meeting Warrant",
+    "Petitioning your selectmen or school board to put a question before the voters at the annual "
+    "town or school district meeting: the signatures, the deadline, and what happens next.",
+    "Any registered voter can ask the voters of their town or school district to decide a question. "
+    "Write it as a warrant article, collect the signatures of 25 registered voters, or 2 percent of "
+    "them if that is fewer (never fewer than 10), and hand the petition to the selectmen or the "
+    "school board before the deadline. They must put it on the warrant for the annual meeting, "
+    "where the voters decide it.",
+    [box("Write the article: one question, stated clearly and without commentary."),
+     box("Collect the signatures of 25 registered voters, or 2 percent if fewer, never under 10."),
+     ask("Does your town or school district vote on its articles at the polls (SB 2)?",
+         [("No: a traditional meeting",
+           "Town: due by the fifth Tuesday before the meeting. School district: 30 days before "
+           "it."),
+          ("Yes: SB 2",
+           "The petition is due by the second Tuesday in January, for a March meeting.")]),
+     box("The selectmen or school board put it on the warrant, and the voters decide it.")],
+    [step("Check that this is the route for your town",
+          "<p>This guide is for a town that holds a town meeting and for a school district. In a "
+          "town, petition the <b>selectmen</b>; for the school district meeting, the <b>school "
+          "board</b>. A city, or a town whose charter replaced its meeting with a town council, "
+          "is governed by an elected council instead, and its charter sets its own rules; "
+          '<a href="/learn/city-and-town-government.html">Cities, Towns and Who Runs Them</a> '
+          "explains the difference.</p>"
+          "<p>Find out whether your town or school district holds a <b>traditional meeting</b>, "
+          "where the voters debate and vote on each article in the same room, or uses the "
+          "<b>official ballot</b> form called <b>SB 2</b>, where the articles are debated at a "
+          "deliberative session and voted on later at the polls. The deadline depends on it, so ask "
+          "your town clerk or the selectmen&rsquo;s office which your town uses and the date of "
+          "its meeting.</p>",
+          actions=[("Find your town or city clerk", SOS_CLERKS)],
+          law=["RSA 39:1", "RSA 40:13"]),
+     step("Write the article",
+          "<p>A warrant article states the subject the voters are asked to act on. The law "
+          "requires the intent and effect of each article to be stated clearly and without "
+          "commentary or ambiguity, and nothing done at a meeting is valid unless its subject is "
+          "stated in the warrant. Write one question, as you want it to appear, for example "
+          "&ldquo;To see if the town will vote to&hellip;&rdquo;.</p>"
+          "<p>The selectmen or the school board may make only minor changes to the wording, and "
+          "never ones that change what the article was meant to do. An article that would "
+          "abolish a planning board or zoning commission must also meet the petition rule in "
+          '<a href="/laws/673#s18">RSA 673:18, II</a>.</p>',
+          law=["RSA 39:2", "RSA 39:3", "RSA 39:3-c"]),
+     step("Collect the signatures",
+          "<p>The petition must be signed by <b>25 or more registered voters</b> of the town or "
+          "school district, or <b>2 percent</b> of its registered voters if that is fewer, and "
+          "never fewer than 10. For a town, the 2 percent is counted from the voters registered "
+          "before the last state general election.</p>"
+          "<p>You may name one signer as the <b>primary petitioner</b>. If you do not, the first "
+          "registered voter listed is the primary petitioner.</p>",
+          law=["RSA 39:3", "RSA 197:6"]),
+     step("Hand it in before the deadline",
+          "<p>Give the petition to the selectmen, or any one of them, for the town meeting, or to "
+          "the school board, or any one member, for the school district meeting. Keep a copy.</p>"
+          + table("When a petitioned article is due",
+                  ["Meeting", "Traditional meeting", "SB 2 (official ballot)"],
+                  [["Town", "By the fifth Tuesday before the annual meeting",
+                    "By the second Tuesday in January, for a meeting in March"],
+                   ["School district",
+                    "At least 30 days before the meeting, or by the second Tuesday in March if "
+                    "that is earlier",
+                    "By the second Tuesday in January, for a meeting in March"]])
+          + "<p>An SB 2 town or district that holds its meeting in April or May has the same "
+          "deadline a month or two later: the second Tuesday in February or in March. If the "
+          "article proposes a bond, the SB 2 deadline is the Friday before.</p>",
+          law=["RSA 39:3", "RSA 197:6", "RSA 40:13, II-a"]),
+     step("What happens next",
+          "<p>The selectmen or the school board must put the article in the warrant. In a town, "
+          "selectmen who refuse are guilty of a violation, and if they unreasonably refuse, a "
+          "Superior Court justice can order the article inserted on the written application of 25 "
+          "or more voters. The warrant is posted at least 14 days before the meeting.</p>"
+          "<p>At a <b>traditional meeting</b> the voters debate the article and can amend it "
+          "before they vote; where it asks for a sum of money, the meeting may vote more or less, "
+          "within the limits of the municipal budget law where the town has adopted it. "
+          "In an <b>SB 2</b> town or district it is debated at the first session, the "
+          "deliberative session, where it can be amended but not changed to remove its subject, "
+          "and every article then goes on the official ballot for the final vote.</p>",
+          law=["RSA 39:3-b", "RSA 39:9", "RSA 39:5", "RSA 197:7", "RSA 40:13, IV"])],
+    [("Time for Holding Town Meetings and Warning Thereof, RSA 39", "/laws/39"),
+     ("Government of Town Meeting, RSA 40", "/laws/40"),
+     ("School Meetings and Officers, RSA 197", "/laws/197"),
+     ("Town and city clerks (Secretary of State)", SOS_CLERKS)],
+    ["39", "40", "197"],
+    [claim("A town meets annually on the second Tuesday of March, or under RSA 40:13 if adopted.",
+           "RSA 39:1", WARRANT_READ),
+     claim("The subject of all business is distinctly stated in the warrant, its intent and "
+           "effect clearly and without commentary or ambiguity; nothing done is valid unless so "
+           "stated, except electing officers; a specific sum may be decreased or increased by the "
+           "town's vote, subject to RSA 32:18.", "RSA 39:2", WARRANT_READ),
+     claim("On the written application of 25 or more registered voters or 2 percent, whichever "
+           "is less, never fewer than 10, presented to the selectmen or one of them by the fifth "
+           "Tuesday before the annual meeting, the selectmen insert the petitioned article with "
+           "only minor textual changes that do not change its intended effect; registered voters "
+           "counted before the last state general election; a primary petitioner may be named, "
+           "else the first registered voter listed.", "RSA 39:3", WARRANT_READ),
+     claim("Selectmen who refuse to insert a petitioned article are guilty of a violation.",
+           "RSA 39:3-b", WARRANT_READ),
+     claim("A petitioned article abolishing a planning board or zoning commission must meet RSA "
+           "673:18, II.", "RSA 39:3-c", WARRANT_READ),
+     claim("The warrant is posted at least 14 days before the meeting.", "RSA 39:5", WARRANT_READ),
+     claim("The school board posts the warrant 14 days before the meeting.", "RSA 197:7",
+           WARRANT_READ),
+     claim("If the selectmen unreasonably refuse to insert an article, a superior court justice, "
+           "on the written application of 25 or more voters or 1/6 of them, may order it "
+           "inserted.", "RSA 39:9", WARRANT_READ),
+     claim("SB 2 subdivisions vote all issues by official ballot in two sessions; petitioned "
+           "articles under RSA 39:3 and 197:6 are due the second Tuesday in January, February or "
+           "March for meetings in March, April or May, the preceding Friday for a bond under "
+           "33:8-a; the first session debates and may amend articles but not eliminate their "
+           "subject; every article goes on the official ballot for a final vote.",
+           "RSA 40:13", WARRANT_READ),
+     claim("A school district petition of 25 or more voters or 2 percent, whichever is less, "
+           "never fewer than 10, presented to the school board or one of them not later than 30 "
+           "days before the meeting or the second Tuesday in March, whichever is earlier; minor "
+           "textual changes only; a primary petitioner.", "RSA 197:6", WARRANT_READ),
+     claim("The town and city clerks lookup lists each town's clerk.", SOS_CLERKS, CHECKED),
+     ours("Cities, Towns and Who Runs Them explains a city's council and a town council charter.",
+          "/learn/city-and-town-government.html", WARRANT_READ),
+     ours("Town Meeting and Local Government explains the traditional meeting and SB 2.",
+          "/learn/local-government.html", WARRANT_READ)],
+    more="<h2>Who Can Help</h2>"
+         "<p>Start with your town clerk or the selectmen&rsquo;s office, for the date of the "
+         "meeting and whether it uses SB 2. For the school district meeting, ask the school "
+         "board. The Secretary of State lists every town&rsquo;s clerk.</p>"
+         f'<p class="g-acts"><a class="g-btn" href="{SOS_CLERKS}" target="_blank" rel="noopener">'
+         "Find your town or city clerk</a></p>",
+    see=[("Town meeting and local government", "/learn/local-government.html"),
+         ("Cities, towns and who runs them", "/learn/city-and-town-government.html"),
+         ("How to vote", "/guides/how-to-vote.html")],
+    figures=[fig("30 days", "RSA 197:6", "not later than 30 days before the date prescribed for "
+                                         "the school district meeting"),
+             fig("14 days", "RSA 39:5", "at least 14 days before the day of meeting")])
+
+GUIDES += [WARRANT]
+
+
+# ---------------------------------------------------------------------------
+# HELP PAYING FOR CHILD CARE (the person, 24 October 2026, who named the child
+# care scholarship among the guides to add and allowed federal sources that
+# day). NOT YET PUBLISHABLE, ON PURPOSE. The program is the state's use of the
+# federal Child Care and Development Fund, so the floor every family can count
+# on is federal: 45 CFR 98, read on 24 October 2026 at eCFR, which answers a
+# cloud session. The Department of Health and Human Services' own pages --
+# who it serves in New Hampshire, the application, the provider rule -- refuse
+# a cloud session as every nh.gov page does, so the claims on them carry no
+# date until the person, who is reading them on the laptop, has. Until then
+# guide_ready holds the guide back and `build_civics.py --drafts` shows it.
+# No income limit, copayment amount or scholarship amount is printed: they are
+# the Department's and change (the plan: no eligibility math); the guide links
+# where the Department states them.
+# ---------------------------------------------------------------------------
+CC_READ = "2026-10-24"
+DHHS_CHILD_DEV = ("https://www.dhhs.nh.gov/programs-services/childcare-parenting-childbirth/"
+                  "child-development-and-head-start")
+DHHS_CC_PROVIDERS = DHHS_CHILD_DEV + "/child-care"
+DHHS_FAM_901 = "https://www.dhhs.nh.gov/fam_htm/html/901_application_process_fam.htm"
+DHHS_FAM_915 = "https://www.dhhs.nh.gov/fam_htm/html/915_program_criteria_fam.htm"
+_ECFR = "https://www.ecfr.gov/current/title-45/subtitle-A/subchapter-A/part-98/"
+CFR_ELIGIBLE = _ECFR + "subpart-C/section-98.20"
+CFR_REDETERMINE = _ECFR + "subpart-C/section-98.21"
+CFR_CHOICE = _ECFR + "subpart-D/section-98.30"
+CFR_HOMELESS = _ECFR + "subpart-F/section-98.51"
+
+CHILD_CARE = guide(
+    "child-care-scholarship", "How to Get Help Paying for Child Care",
+    "Applying for New Hampshire's Child Care Scholarship through the Department of Health and "
+    "Human Services, step by step: who it is for, how to apply, choosing a provider, and keeping "
+    "it.",
+    "New Hampshire&rsquo;s Child Care Scholarship helps families pay for child care while the "
+    "parents work, look for work, or go to school or job training. Apply to the Department of "
+    "Health and Human Services online at NH Easy, or on paper. The Department decides whether you "
+    "qualify and what share of the cost you pay; you choose the child care provider.",
+    [box("Check that the scholarship fits your family: a child under 13, and parents working, "
+         "looking for work, or in school or training."),
+     ask("How do you want to apply?",
+         [("Online", "Apply at NH Easy."),
+          ("On paper", "Fill in the Application for Assistance and send it to your District Office.")]),
+     box("Choose a provider the Department pays, and keep the scholarship at least 12 months.")],
+    [step("Check whether it fits your family",
+          "<p>Under the federal rules the program runs on, a child can be covered if they are "
+          "under 13 years old, or older and unable to care for themselves or under court "
+          "supervision where the state chooses to cover them, and lives with parents who are "
+          "working or attending job training or school. The state sets an income limit, which "
+          "federal law caps. The Department&rsquo;s program rules also count looking for work.</p>"
+          "<p>The Department publishes its income limits and its program rules.</p>",
+          actions=[("Child Development and Head Start", DHHS_CHILD_DEV),
+                   ("The program's rules", DHHS_FAM_915)]),
+     step("Apply online or on paper",
+          "<p><b>Online:</b> NH Easy, the Department&rsquo;s benefits site, takes applications "
+          "for child care assistance, and for SNAP, cash and Medicaid on the same "
+          "application.</p>"
+          "<p><b>On paper:</b> fill in the Application for Assistance (Form 800) and send it to "
+          "your District Office, or ask the office for one. To speak to someone, call "
+          "1-844-ASK-DHHS (1-844-275-3447).</p>",
+          actions=[("NH Easy", NHEASY), ("Paper applications", DHHS_APPLY),
+                   ("How applications are handled", DHHS_FAM_901)]),
+     step("Choose a child care provider",
+          "<p>You choose who cares for your child. Federal rules let you choose among child care "
+          "centers, family child care homes and, within the state&rsquo;s limits, care in your own "
+          "home. Relatives and religious providers are among the choices.</p>"
+          "<p>To be paid through the scholarship, a provider enrolls with the Department. Ask a "
+          "provider you are considering whether it is enrolled.</p>",
+          actions=[("Child care providers and the scholarship", DHHS_CC_PROVIDERS)]),
+     step("Keeping the scholarship",
+          "<p>Once you are approved, the federal rules keep your child eligible for at least 12 "
+          "months before the Department checks again. In that time the scholarship continues at "
+          "least at the same level even if your income goes up, as long as it stays under the "
+          "federal limit, and through temporary changes such as time off work for an illness or "
+          "to care for a family member, a break between seasonal jobs, a school break, fewer hours, or your child "
+          "turning 13. Your share of the cost cannot be raised in that time except as the rules "
+          "allow.</p>"
+          "<p>If you lose your job or leave your program, the scholarship continues for at "
+          "least three months so you can look for work or go back.</p>"),
+     step("If your family is homeless, or you disagree with a decision",
+          "<p><b>Families experiencing homelessness:</b> the state must let a child enroll "
+          "after a first decision on eligibility, while you gather the documents the "
+          "application asks for. Say so when you apply.</p>"
+          "<p><b>If you disagree with a decision,</b> you can ask for an administrative appeal "
+          "hearing, in writing, on the Department&rsquo;s appeal request form or in a letter. "
+          "Your Notice of Decision gives your deadline. You do not need a lawyer.</p>",
+          actions=[("Administrative appeals", DHHS_APPEALS)])],
+    [("Child Development and Head Start (Department of Health and Human Services)", DHHS_CHILD_DEV),
+     ("Child Care Scholarship providers (Department of Health and Human Services)", DHHS_CC_PROVIDERS),
+     ("Child Care Scholarship application process (Department of Health and Human Services)",
+      DHHS_FAM_901),
+     ("Child Care Scholarship program criteria (Department of Health and Human Services)",
+      DHHS_FAM_915),
+     ("Apply for Assistance (Department of Health and Human Services)", DHHS_APPLY),
+     ("Administrative Appeals (Department of Health and Human Services)", DHHS_APPEALS),
+     ("A child's eligibility, 45 CFR 98.20 (federal)", CFR_ELIGIBLE),
+     ("Eligibility determination, 45 CFR 98.21 (federal)", CFR_REDETERMINE),
+     ("Parental choice, 45 CFR 98.30 (federal)", CFR_CHOICE),
+     ("Children experiencing homelessness, 45 CFR 98.51 (federal)", CFR_HOMELESS)],
+    [],
+    # Federal law, read at eCFR on 24 October 2026.
+    [claim("A child is under 13, or at the Lead Agency's option under 19 and incapable of "
+           "self-care or under court supervision; income no more than 85 percent of the state "
+           "median; a parent working or attending a job training or educational program; the "
+           "Lead Agency may add conditions in its Plan.", CFR_ELIGIBLE, CC_READ),
+     claim("Eligibility is redetermined no sooner than 12 months after the last determination; "
+           "meanwhile the child receives services at least at the same level despite income "
+           "below 85 percent of the state median or a temporary change: an absence to care for "
+           "a family member or illness, a seasonal worker between seasons, a student break, "
+           "reduced hours, turning 13, a move within the state; on loss of work or of a program, "
+           "assistance continues at least three months; co-payments are not increased within "
+           "the 12-month period except as paragraph (b)(3) allows.", CFR_REDETERMINE, CC_READ),
+     claim("Parents choose a provider; certificates allow center-based, family and in-home "
+           "care, with any limits on in-home care in the Plan; information on the range of "
+           "options includes sectarian providers and relatives.", CFR_CHOICE, CC_READ),
+     claim("Procedures permit enrollment of children experiencing homelessness after an initial "
+           "eligibility determination while required documentation is obtained.",
+           CFR_HOMELESS, CC_READ),
+     # The Department's own pages, not yet read: no date until the person has.
+     claim("The Child Care Scholarship helps eligible families pay for child care; who it serves, "
+           "the income limits, how to apply.", DHHS_CHILD_DEV),
+     claim("A provider is paid through the scholarship once enrolled with the Department.",
+           DHHS_CC_PROVIDERS),
+     claim("Applications online at NH Easy, by phone or on paper at a District Office; the time "
+           "a decision takes.", DHHS_FAM_901),
+     claim("Parents working, looking for work, or in education or training; the program's "
+           "criteria.", DHHS_FAM_915),
+     # Read before, for the food and health guide.
+     claim("NH Easy takes applications for cash, SNAP, child care and Medicaid.", DHHS_MEDICAID,
+           READ),
+     claim("Print, complete and mail the Application for Assistance (Form 800) to the District "
+           "Office.", DHHS_APPLY, READ),
+     claim("Appeal in writing by form or letter; no attorney needed.", DHHS_APPEALS, READ)]
+    + help_claims("nheasy", "legal_aid"),
+    more="<h2>Who Can Help</h2>"
+         "<p>The Department&rsquo;s customer service center answers questions about applying, "
+         "and your local District Office can help in person.</p>"
+         f'<p class="g-acts"><a class="g-btn" href="{DHHS_OFFICES}" target="_blank" rel="noopener">'
+         "Find your District Office</a></p>"
+         + helps("nheasy", "legal_aid"),
+    see=[("How to apply for food or health assistance", "/guides/food-and-health-assistance.html"),
+         ("How to file for unemployment", "/guides/file-for-unemployment.html")],
+    figures=[fig("13 years", CFR_ELIGIBLE, "under 13"),
+             fig("12 months", CFR_REDETERMINE, "no sooner than 12 months")])
+
+GUIDES += [CHILD_CARE]
+
+
+# ---------------------------------------------------------------------------
 # THE GUIDES BY TASK (the person, 17 October 2026: "refine how the how to
 # guides are displayed on the main resources page and the homepage so it's
 # more intuitive for the general public"). A reader arrives with something to
@@ -3183,6 +3481,8 @@ TASKS = [
              "and where to go."),
         task("run-for-office", "Run for office",
              "Who files where and when, and what it takes, from governor to town offices."),
+        task("town-warrant-article", "Put an article on your town meeting warrant",
+             "Petition your selectmen or school board to put a question to the voters."),
     ]),
     ("Driving and Vehicles", [
         task("renew-drivers-license", "Renew your driver&rsquo;s license",
@@ -3199,6 +3499,8 @@ TASKS = [
              "SNAP and Medicaid, online at NH Easy or on paper."),
         task("file-for-unemployment", "File for unemployment",
              "Your claim, the weekly claims that follow, and how to appeal."),
+        task("child-care-scholarship", "Get help paying for child care",
+             "The Child Care Scholarship: who it is for, how to apply, and choosing a provider."),
         task("heating-and-electric-help", "Get help with heating and electric bills",
              "Fuel assistance, help with electric bills, weatherization, and what to do with no "
              "heat."),
@@ -3289,12 +3591,16 @@ WORDS = {
     "food-and-health-assistance": ("snap", "food stamps", "medicaid", "health insurance",
                                    "benefits", "nh easy"),
     "file-for-unemployment": ("unemployment", "laid off", "lost my job", "benefits"),
+    "child-care-scholarship": ("child care", "childcare", "daycare", "child care scholarship",
+                               "child care assistance"),
     "heating-and-electric-help": ("fuel assistance", "heating", "electric bill", "weatherization"),
     "property-tax-abatement": ("property tax", "abatement", "assessment"),
     "property-tax-relief": ("property tax", "tax relief", "low income"),
     "public-records": ("right to know", "91-a", "records request", "foia"),
     "vital-records": ("birth certificate", "death certificate", "marriage certificate",
                       "divorce certificate"),
+    "town-warrant-article": ("warrant article", "petitioned article", "town meeting",
+                             "school district meeting", "petition"),
     "tour-the-state-house": ("tour", "visit the state house", "field trip", "school trip",
                              "visitor center"),
 }
