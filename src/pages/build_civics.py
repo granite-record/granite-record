@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-08.68
+# GRANITE_VERSION: 2026-09-08.69
 """
 The civics section: a hub and one page per topic, in order.
 
@@ -1337,44 +1337,227 @@ def hub_learn(topics):
     return "".join(out)
 
 
+def guides_tab(lang, published=(), articles=()):
+    """The How-To Guides tab, in English or in `lang` (the person, 24 October
+    2026: guides.COMMON says why): a search that suggests guides as a reader
+    types what they need, in their own words; the most common errands; and
+    every guide under guides.TASKS' groups, each group folded shut and each
+    guide by its short headline ("How to vote") with its line under it. One
+    function for every language, so the English tab and the Spanish one can
+    never be laid out differently.
+
+    WITHOUT JAVASCRIPT the search is a form that asks the site's own search
+    (/search?q=), and every group opens when its heading is pressed, so nothing
+    on the tab needs the script. The suggestions read a list of the tab's
+    guides written into the page (GFIND_JS says how they are ranked)."""
+    en = lang == I.DEFAULT
+    here = {g["slug"]: g for g in published}
+    here.update({t["slug"]: t for t in articles})
+
+    def said(key, text, plain=False):
+        got = I.say_piece(lang, key, I.norm(text))
+        if got is not None:
+            return E(got) if plain else got
+        return f'<span lang="en">{E(text) if plain else text}</span>'
+
+    def href(slug):
+        return E(guide_href(slug) if en else I.href(lang, guide_href(slug)))
+
+    def bare(h):
+        return html.unescape(re.sub(r"<[^>]+>", "", h))
+
+    rows, listed = [], set()
+    for group, tasks in G.TASKS:
+        listed |= {t["slug"] for t in tasks}
+        gname = said(f"guide.group.{I.slug_words(group)}", group, plain=True)
+        for t in tasks:
+            if t["slug"] in here:
+                k = f"guide.task.{t['slug']}"
+                rows.append((group, gname, t["slug"], said(k + ".head", t["head"]),
+                             said(k + ".line", t["line"]), t))
+    for g in published:
+        if g["slug"] not in listed:
+            w = Words(lang, g["slug"])
+            rows.append((G.MORE, said("guide.group.more", G.MORE, plain=True), g["slug"],
+                         w.t(g["title"]), w.t(g["blurb"]), None))
+    if not rows:
+        return None
+
+    # THE SEARCH. A form first, so it works with no script at all.
+    find = ('<form class="g-find" role="search" action="/search" method="get">'
+            '<label for="gfind">' + I.say(lang, "guides.find_label", "What do you need to do?")
+            + '</label><div class="g-findbox"><input id="gfind" name="q" type="search" '
+            'autocomplete="off" spellcheck="false" aria-describedby="gfind-status" placeholder="'
+            + E(html.unescape(I.say(lang, "guides.find_hint",
+                                    "For example: renew my license")))
+            + '"><ul id="gfind-list" class="g-findlist" role="listbox" aria-label="'
+            + E(html.unescape(I.say(lang, "guides.find_list", "Suggested guides")))
+            + '" hidden></ul></div><p id="gfind-status" class="g-findstat" aria-live="polite">'
+            '</p></form>')
+    # MOST COMMON, by headline, as a row of short boxes.
+    by_slug = {r[2]: r for r in rows}
+    common = "".join(f'<li><a href="{href(s)}">{by_slug[s][3]}</a></li>'
+                     for s in G.COMMON if s in by_slug)
+    # EVERY GUIDE BY TOPIC, each group a <details> shut until opened.
+    topics, order = [], []
+    for r in rows:
+        if r[0] not in order:
+            order.append(r[0])
+    for group in order:
+        mine = [r for r in rows if r[0] == group]
+        lis = "".join(f'<li><a href="{href(r[2])}">{r[3]}</a><span>{dashes(r[4])}</span></li>'
+                      for r in mine)
+        topics.append(f'<details class="g-topic" id="g-{_slug(group)}"><summary>'
+                      f'<span class="g-tname">{mine[0][1]}</span> <span class="g-tn">'
+                      f'({len(mine)})</span></summary><ul class="g-list">{lis}</ul></details>')
+    # What the suggestions read: each guide's headline and line as shown, and
+    # every word it is known by, in English and, on another language's tab,
+    # in that language too, so a reader may type either.
+    data = []
+    for group, gname, slug, head, line, t in rows:
+        g = here.get(slug)
+        words = [group, bare(head), bare(line), " ".join(G.WORDS.get(slug, ()))]
+        if t:
+            words += [t["does"], t["head"], t["line"]]
+        if g is not None and "title" in g:
+            words += [g["title"], g.get("blurb", "")]
+        data.append({"h": href(slug).replace("&amp;", "&"), "t": bare(head), "l": bare(line),
+                     "k": bare(" ".join(words))})
+    strings = {
+        "one": html.unescape(I.say(lang, "guides.find_one", "1 guide matches")),
+        "many": html.unescape(I.say(lang, "guides.find_many", "{n} guides match")),
+        "none": html.unescape(I.say(lang, "guides.find_none",
+                                    "No guide matches. Press Enter to search the whole site.")),
+        "all": html.unescape(I.say(lang, "guides.find_all", "Search the whole site for “{q}”")),
+    }
+    blob = json.dumps({"s": strings, "g": data}, ensure_ascii=False).replace("</", "<\\/")
+    intro = ('<p class="r-intro">' + I.say(
+        lang, "guides.hub_intro", "Step-by-step help with things people do with the state, and with "
+        "taking part in the legislature. Each step-by-step guide links the official page that has the "
+        "final word, and says when it was last checked against it.") + "</p>")
+    return (intro + find
+            + hub_section("g-common", I.say(lang, "guides.common", "Most Common"),
+                          f'<ul class="g-common">{common}</ul>')
+            + hub_section("g-topics", I.say(lang, "guides.by_topic", "All Guides by Topic"),
+                          "".join(topics))
+            + f'<script type="application/json" id="gfind-data">{blob}</script>' + GFIND_JS)
+
+
+# THE GUIDE SEARCH'S SUGGESTIONS (guides_tab). A reader types what they need
+# in their own words -- "how to get updated driver's license" -- and the
+# guides are ranked by how many of the words that matter they share: the
+# little words (how, to, my, the; cómo, para, mi) are dropped, a word is cut
+# to its stem ("drivers", "renewing", "testifying"), a few words are read as
+# the word the guides use ("updated" as renew, "testimony" as testify), and a
+# word still being typed matches the start of one. A word in a guide's
+# headline counts three, in the words it is known by two, in its line one.
+# Arrow keys move through the suggestions, Enter opens one, or the first, or,
+# with none, asks the site's search; Escape closes them. The last suggestion
+# is always the site's search for what was typed.
+GFIND_JS = """<script>
+(function(){
+  var box=document.getElementById("gfind"), list=document.getElementById("gfind-list"),
+      stat=document.getElementById("gfind-status"), src=document.getElementById("gfind-data");
+  if(!box||!list||!src)return;
+  var D=JSON.parse(src.textContent), S=D.s, G=D.g, act=-1, opts=[];
+  var STOP={};
+  ("a an the to how do does i im my me can could get for of in on is it its what where when who "
+   +"and or with need want about your you be am are we our at from as by this that should "
+   +"como de del la el los las un una mi mis para que en y o con por se puedo quiero necesito "
+   +"sobre su sus al lo le hacer").split(" ").forEach(function(w){STOP[w]=1;});
+  var SYN={updat:"renew",renewal:"renew",expir:"renew",licence:"license",testimony:"testify",
+    testimoni:"testify",testif:"testify",dump:"transfer",garbage:"trash",rubbish:"trash",
+    homeles:"homeless",evict:"eviction",daycare:"child",childcare:"child",snap:"food",
+    rep:"representative",reps:"representative",sen:"senator"};
+  function norm(s){return String(s||"").toLowerCase().normalize("NFD")
+    .replace(/[\\u0300-\\u036f]/g,"").replace(/['\\u2019]/g,"").replace(/[^a-z0-9]+/g," ").trim();}
+  function stem(w){
+    if(SYN[w])return SYN[w];
+    if(w.length>5&&/ies$/.test(w))w=w.slice(0,-3)+"y";
+    else if(w.length>5&&/ing$/.test(w))w=w.slice(0,-3);
+    else if(w.length>4&&/ed$/.test(w))w=w.slice(0,-2);
+    else if(w.length>3&&/s$/.test(w)&&!/ss$/.test(w))w=w.slice(0,-1);
+    return SYN[w]||w;
+  }
+  function toks(s){var o=[];norm(s).split(" ").forEach(function(w){if(w&&!STOP[w])o.push(stem(w));});return o;}
+  G.forEach(function(g){
+    g.w={};
+    [[g.t,3],[g.k,2],[g.l,1]].forEach(function(p){
+      toks(p[0]).forEach(function(w){if(!(g.w[w]>=p[1]))g.w[w]=p[1];});
+    });
+  });
+  function score(g,q){
+    var s=0,hit=0;
+    q.forEach(function(w){
+      var best=g.w[w]||0;
+      if(!best&&w.length>=3){for(var k in g.w){if(k.indexOf(w)===0&&g.w[k]*0.8>best)best=g.w[k]*0.8;}}
+      if(best){s+=best;hit++;}
+    });
+    return hit?s+(hit===q.length?2:0):0;
+  }
+  function pick(i){
+    opts.forEach(function(li,k){li.setAttribute("aria-selected",k===i?"true":"false");});
+    act=i;
+    if(i>=0){box.setAttribute("aria-activedescendant",opts[i].id);opts[i].scrollIntoView({block:"nearest"});}
+    else box.removeAttribute("aria-activedescendant");
+  }
+  function close(){list.hidden=true;box.setAttribute("aria-expanded","false");pick(-1);}
+  function option(i,href,head,line,cls){
+    var li=document.createElement("li"),a=document.createElement("a"),b=document.createElement("b");
+    li.id="gfind-o"+i;li.setAttribute("role","option");li.setAttribute("aria-selected","false");
+    if(cls)li.className=cls;
+    a.href=href;a.tabIndex=-1;b.textContent=head;a.appendChild(b);
+    if(line){var sp=document.createElement("span");sp.textContent=line;a.appendChild(sp);}
+    li.appendChild(a);list.appendChild(li);return li;
+  }
+  var found=[];
+  function draw(){
+    var raw=box.value.trim();
+    list.innerHTML="";opts=[];act=-1;
+    if(!raw){close();stat.textContent="";return;}
+    var q=toks(raw);
+    found=G.map(function(g){return [q.length?score(g,q):0,g];})
+      .filter(function(x){return x[0]>0;})
+      .sort(function(a,b){return b[0]-a[0]||a[1].t.length-b[1].t.length;}).slice(0,6);
+    found.forEach(function(x,i){opts.push(option(i,x[1].h,x[1].t,x[1].l));});
+    opts.push(option(found.length,"/search?q="+encodeURIComponent(raw),
+      S.all.replace("{q}",raw),"","g-findall"));
+    list.hidden=false;box.setAttribute("aria-expanded","true");
+    stat.textContent=found.length?(found.length===1?S.one:S.many.replace("{n}",found.length)):S.none;
+  }
+  box.setAttribute("role","combobox");box.setAttribute("aria-autocomplete","list");
+  box.setAttribute("aria-controls","gfind-list");box.setAttribute("aria-expanded","false");
+  box.addEventListener("input",draw);
+  box.addEventListener("focus",function(){if(box.value.trim())draw();});
+  box.addEventListener("keydown",function(e){
+    if(e.key==="ArrowDown"||e.key==="ArrowUp"){
+      if(list.hidden)draw();
+      if(!opts.length)return;
+      e.preventDefault();
+      var n=opts.length,i=e.key==="ArrowDown"?(act+1)%n:(act<=0?n-1:act-1);
+      pick(i);
+    }else if(e.key==="Enter"){
+      var li=act>=0?opts[act]:(found.length?opts[0]:null);
+      if(li){e.preventDefault();location.href=li.querySelector("a").href;}
+    }else if(e.key==="Escape"){if(!list.hidden){e.preventDefault();close();}}
+  });
+  document.addEventListener("click",function(e){if(!e.target.closest||!e.target.closest(".g-findbox"))close();});
+})();
+</script>"""
+
+
 def hub_guides(published=(), articles=()):
-    """The guides that passed guides.py's checks, and the pages that became
-    guides (`articles`, civics.HOW_TO), listed BY TASK (the person, 17 October
-    2026: "refine how the how to guides are displayed ... so it's more
-    intuitive for the general public"): under each of guides.TASKS' groups,
-    each guide by the task it serves in a reader's words and one line, the
-    group's own heading in the margin as a Learn section's is. A guide's date
-    of checking is on its own page and the line above the groups says so,
-    rather than a date under every row, which a reader scanning for a task
-    reads past. A published guide no task names is listed under More Guides.
+    """The How-To Guides tab in English (guides_tab): the guides that passed
+    guides.py's checks, and the pages that became guides (`articles`,
+    civics.HOW_TO).
 
     WHILE THERE ARE NONE, THE TAB SAYS SO: the list of guides coming stays
     hidden until the first one exists (8 October 2026), and the tab is drawn
     anyway, because the person asked for a tab for each, and points to the
     other two."""
-    here = {g["slug"]: g for g in published}
-    here.update({t["slug"]: t for t in articles})
-    if here:
-        # The whole row is the link, the task over its line, so the target is
-        # the size of what a reader is choosing between.
-        def item(slug, does, line):
-            return (f'<li><a href="{E(guide_href(slug))}"><b>{does}</b>'
-                    f'<span>{dashes(line)}</span></a></li>')
-        secs, listed = [], set()
-        for group, tasks in G.TASKS:
-            lis = "".join(item(t["slug"], t["does"], t["line"]) for t in tasks if t["slug"] in here)
-            listed |= {t["slug"] for t in tasks}
-            if lis:
-                secs.append(hub_section("g-" + _slug(group), E(group), f'<ul class="r-tasks">{lis}</ul>'))
-        # A guide no task names, by its own title and line.
-        rest = "".join(item(g["slug"], E(g["title"]), E(g["blurb"]))
-                       for g in published if g["slug"] not in listed)
-        if rest:
-            secs.append(hub_section("g-more", G.MORE, f'<ul class="r-tasks">{rest}</ul>'))
-        return ('<p class="r-intro">Step-by-step help with things people do with the state, and '
-                'with taking part in the legislature. Each step-by-step guide links the official '
-                'page that has the final word, and says when it was last checked against it.</p>'
-                + "".join(secs))
+    tab = guides_tab(I.DEFAULT, published, articles)
+    if tab:
+        return tab
     return ('<p class="r-none">There are no how-to guides yet.</p>'
             '<p class="r-sub">Each guide will be listed here once it is written and checked '
             'against the official sources it cites.</p>'
@@ -1837,40 +2020,10 @@ def article_page_lang(t, lang, base, figures, names=None, con=None):
 
 
 def hub_guides_lang(lang, published=(), articles=()):
-    """The How-To Guides tab in `lang` (hub_guides): every guide by its task
-    in a reader's words and its line, under the tab's groups, each from the
-    catalog where it is current and in English, marked, where it is not."""
-    here = {g["slug"] for g in published} | {t["slug"] for t in articles}
-
-    def said(key, en, plain=False):
-        got = I.say_piece(lang, key, I.norm(en))
-        if got is not None:
-            return E(got) if plain else got
-        return f'<span lang="en">{E(en) if plain else en}</span>'
-
-    def item(slug, does, line):
-        return (f'<li><a href="{E(I.href(lang, guide_href(slug)))}"><b>{does}</b>'
-                f'<span>{dashes(line)}</span></a></li>')
-    secs, listed = [], set()
-    for group, tasks in G.TASKS:
-        lis = "".join(item(t["slug"], said(f"guide.task.{t['slug']}.does", t["does"]),
-                           said(f"guide.task.{t['slug']}.line", t["line"]))
-                      for t in tasks if t["slug"] in here)
-        listed |= {t["slug"] for t in tasks}
-        if lis:
-            secs.append(hub_section("g-" + _slug(group),
-                                    said(f"guide.group.{I.slug_words(group)}", group, plain=True),
-                                    f'<ul class="r-tasks">{lis}</ul>'))
-    rest = "".join(item(g["slug"], Words(lang, g["slug"]).t(g["title"]),
-                        Words(lang, g["slug"]).t(g["blurb"]))
-                   for g in published if g["slug"] not in listed)
-    if rest:
-        secs.append(hub_section("g-more", said("guide.group.more", G.MORE, plain=True),
-                                f'<ul class="r-tasks">{rest}</ul>'))
-    return ('<p class="r-intro">' + I.say(
-        lang, "guides.hub_intro", "Step-by-step help with things people do with the state, and with "
-        "taking part in the legislature. Each step-by-step guide links the official page that has the "
-        "final word, and says when it was last checked against it.") + "</p>" + "".join(secs))
+    """The How-To Guides tab in `lang`: guides_tab, the English tab's own
+    layout, each word from the catalog where it is current and in English,
+    marked, where it is not."""
+    return guides_tab(lang, published, articles) or ""
 
 
 def hub_page_lang(lang, base, published=(), articles=()):

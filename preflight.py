@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.688
+# GRANITE_VERSION: 2026-09-04.689
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -32652,11 +32652,30 @@ def _how_to_moved():
             f"guides/{s} still walks Learn's order"
         assert links_to(guides_pane, s), f"the How-To Guides tab does not list {s}"
         assert f'learn/{s}' not in learn_pane, f"the Learn tab still links {s} at its old address"
+    # THE TAB, COMPACT AND SEARCHABLE (the person, 24 October 2026, which
+    # replaced the rule of 17 October that the tab never say "How to"): a
+    # search that suggests guides, the most common errands, then every guide
+    # under its group, each group a <details> headed by the group's name and
+    # each guide by its "How to" headline.
     for group, _ts in G.TASKS:
         if any(links_to(guides_pane, t["slug"]) for t in _ts):
-            assert f">{group}</h3>" in guides_pane, f"the How-To tab does not head the group {group!r}"
-    assert 'class="r-tasks"' in guides_pane and "How to " not in re.sub(r"<[^>]+>", " ", guides_pane), \
-        "the How-To tab lists guides by their titles rather than by task"
+            assert re.search(rf'<summary><span class="g-tname">{re.escape(group)}</span>', guides_pane), \
+                f"the How-To tab does not fold the group {group!r} under its name"
+            for t in _ts:
+                if links_to(guides_pane, t["slug"]):
+                    assert f'>{t["head"]}</a>' in guides_pane, \
+                        f"the How-To tab does not list {t['slug']} by its headline {t['head']!r}"
+    assert 'id="gfind"' in guides_pane and 'action="/search"' in guides_pane, \
+        "the How-To tab has no guide search, or one that does nothing without its script"
+    blob = re.search(r'<script type="application/json" id="gfind-data">(.*?)</script>', guides_pane, re.S)
+    assert blob, "the guide search has no list of guides to suggest from"
+    found = {g["h"].lstrip("/").removesuffix(".html") for g in json.loads(blob.group(1).replace("<\\/", "</"))["g"]}
+    linked = {m for m in re.findall(r'<details class="g-topic".*?</details>', guides_pane, re.S)}
+    shown = set(re.findall(r'href="/?(guides/[a-z0-9-]+?)(?:\.html)?"', "".join(linked)))
+    assert shown and shown == found, f"the search suggests a different set of guides than the tab lists: {shown ^ found}"
+    common = guides_pane[guides_pane.index('id="g-common"'):guides_pane.index('id="g-topics"')]
+    assert all(links_to(common, c) for c in G.COMMON if links_to(guides_pane, c)), \
+        "a guide of guides.COMMON is listed but not among the most common"
     learn = BC.learn_topics(_civ.TOPICS)
     for p in sorted((site / "learn").glob("*.html")):
         t = p.read_text(encoding="utf-8")
@@ -39585,6 +39604,71 @@ def _guide_counts(BC, G, RSA):
     counted = sum(1 for g in G.GUIDES for f in g.get("figures") or [] if not G.FIGURE.search(f["text"]))
     return "ok", (f"{counted} counts declared across the guides; COUNT finds what a law counts in and "
                   "passes over dates, times, phone and form numbers; each kind of resting place holds")
+
+
+@check("frontend", "the How-To tab's search answers a reader's own words: \"how to get updated "
+       "driver's license\" suggests renewing a license first, and each of a dozen everyday asks its guide",
+       needs=("build_civics", "guides"))
+def _guide_search_words(BC, G):
+    """The person, 24 October 2026: "a searchbar that matches likely search
+    terms to a dropdown of suggested guides that is designed to work well with
+    user inquiries that might not be the direct title like how to get updated
+    driver's license". The tab's own script (build_civics.GFIND_JS) runs in
+    node against a few elements standing in for the page, over the tab's own
+    list of guides, and each ask below must bring its guide first: words a
+    reader types, none of them a guide's title."""
+    import shutil
+    import subprocess
+    import tempfile
+    if not shutil.which("node"):
+        return "skip", "node is not installed"
+    published = [g for g in G.GUIDES]
+    import civics
+    articles = [t for t in civics.TOPICS if t["slug"] in civics.HOW_TO]
+    tab = BC.guides_tab("en", published, articles)
+    blob = re.search(r'<script type="application/json" id="gfind-data">(.*?)</script>', tab, re.S).group(1)
+    js = BC.GFIND_JS.replace("<script>", "").replace("</script>", "")
+    asks = [("how to get updated driver's license", "renew-drivers-license"),
+            ("where do i vote", "how-to-vote"),
+            ("food stamps", "food-and-health-assistance"),
+            ("I want to testify on a bill", "submit-testimony"),
+            ("my landlord is evicting me", "homelessness-help"),
+            ("lost my job", "file-for-unemployment"),
+            ("dump hours", "trash-and-recycling"),
+            ("birth certificate", "vital-records"),
+            ("restraining order", "domestic-violence-help"),
+            ("who is my state rep", "your-representatives"),
+            ("power outage generator", "storms-and-emergencies"),
+            ("daycare help", "child-care-scholarship")]
+    harness = (
+        "var els={};function el(id){return els[id]||(els[id]={id:id,value:'',hidden:true,children:[],"
+        "attrs:{},handlers:{},setAttribute:function(k,v){this.attrs[k]=v;},removeAttribute:function(k){"
+        "delete this.attrs[k];},addEventListener:function(t,f){this.handlers[t]=f;},"
+        "appendChild:function(c){this.children.push(c);return c;},set innerHTML(v){this.children=[];},"
+        "querySelector:function(){return this.children[0];},scrollIntoView:function(){}});}"
+        "function mk(){return {children:[],attrs:{},setAttribute:function(k,v){this.attrs[k]=v;},"
+        "appendChild:function(c){this.children.push(c);return c;},querySelector:function(){"
+        "return this.children[0];},scrollIntoView:function(){}};}"
+        "var document={getElementById:function(id){var e=el(id);if(id==='gfind-data')e.textContent=DATA;"
+        "return e;},createElement:mk,addEventListener:function(){}};var location={};"
+        f"var DATA={json.dumps(blob.replace(chr(60) + chr(92) + '/', chr(60) + '/'))};"
+        + js +
+        ";var out=[];ASKS.forEach(function(q){var b=el('gfind');b.value=q[0];b.handlers.input();"
+        "var l=el('gfind-list').children;out.push([q[0],q[1],l.length?l[0].children[0].href:'']);});"
+        "console.log(JSON.stringify(out));")
+    with tempfile.NamedTemporaryFile("w", suffix=".js", delete=False, encoding="utf-8") as f:
+        f.write(f"var ASKS={json.dumps(asks)};" + harness)
+    try:
+        r = subprocess.run(["node", f.name], capture_output=True, text=True, encoding="utf-8",
+                           timeout=60)
+    finally:
+        os.unlink(f.name)
+    assert r.returncode == 0, f"the guide search's script failed in node: {r.stderr[-400:]}"
+    got = json.loads(r.stdout.strip().splitlines()[-1])
+    wrong = [f"{q!r} suggests {h or 'nothing'} first, not {want}" for q, want, h in got
+             if f"guides/{want}." not in h]
+    assert not wrong, "the guide search misses a reader's words: " + "; ".join(wrong)
+    return "ok", f"{len(asks)} everyday asks, each answered first by its guide"
 
 
 @check("build", "a guide's plain-text words -- its title, lead, step titles and the labels of its "
@@ -63871,9 +63955,10 @@ def _spanish_guides(i18n, G, BC, chrome, civics):
             for task in tasks:
                 if task["slug"] in slugs and f'href="/es/guides/{task["slug"]}"' not in hub:
                     bad.append(f"the hub does not link the Spanish {task['slug']}")
-                does = strings[f"guide.task.{task['slug']}.does"]["es"]
-                if does not in hub:
-                    bad.append(f"the hub lacks the task {does!r}")
+                # Each guide by its headline (guides.task's head, 24 October 2026).
+                head = strings[f"guide.task.{task['slug']}.head"]["es"]
+                if head not in hub:
+                    bad.append(f"the hub lacks the headline {head!r}")
         assert not i18n.MISSES, f"the hub fell back to English: {sorted(i18n.MISSES)[:4]}"
     finally:
         i18n.MISSES.clear()

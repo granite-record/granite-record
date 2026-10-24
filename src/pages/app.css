@@ -1,4 +1,4 @@
-/* GRANITE_VERSION: 2026-09-07.313 */
+/* GRANITE_VERSION: 2026-09-07.314 */
 /* ONE STYLESHEET FOR EVERY PAGE (23 October 2026). Every page of the site
    links this file, /app.css: the record pages shell.page() makes from
    bills.html, and the five build_pages.py writes -- the home page, Officials,
@@ -4779,6 +4779,52 @@ a.l-pgm{font-weight:600;text-decoration:underline;text-decoration-thickness:1px;
   text-decoration:underline;text-decoration-thickness:1px;text-underline-offset:3px}
 .r-tasks a:hover b{color:var(--ink)}
 .r-tasks span{display:block;margin-top:.3125rem;font:400 var(--t-ui)/1.5 var(--sans);color:var(--ink-2)}
+/* THE HOW-TO TAB, COMPACT AND SEARCHABLE (build_civics.guides_tab; the person,
+   24 October 2026). A search box that suggests guides as a reader types, the
+   most common errands as short boxes, then every guide under its topic, each
+   topic folded shut, a guide by its "How to" headline with its line under it. */
+.g-find{margin:0 0 1rem;max-width:40rem}
+.g-find label{display:block;font:600 var(--t-read)/1.3 var(--serif);color:var(--ink);margin:0 0 .5rem}
+.g-findbox{position:relative}
+.g-find input{width:100%;box-sizing:border-box;font:400 1rem/1.4 var(--sans);color:var(--ink);
+  background:var(--surface);border:1px solid var(--edge);border-radius:var(--r-out);
+  padding:.75rem .875rem;-webkit-appearance:none;appearance:none}
+.g-find input:focus{outline:2px solid var(--pine);outline-offset:1px;border-color:var(--pine)}
+.g-findlist{position:absolute;left:0;right:0;top:calc(100% + .25rem);z-index:30;list-style:none;
+  margin:0;padding:.25rem 0;background:var(--surface);border:1px solid var(--rule-2);
+  border-radius:var(--r-out);box-shadow:0 6px 18px var(--shadow);max-height:24rem;overflow:auto}
+.g-findlist a{display:block;padding:.5625rem .875rem;text-decoration:none;color:var(--ink)}
+.g-findlist b{display:block;font:600 var(--t-ui)/1.35 var(--sans);color:var(--pine)}
+.g-findlist span{display:block;margin-top:.125rem;font:400 var(--t-sm)/1.4 var(--sans);color:var(--ink-2)}
+.g-findlist [aria-selected="true"] a,.g-findlist a:hover{background:var(--wash)}
+.g-findlist [aria-selected="true"] b,.g-findlist a:hover b{color:var(--ink)}
+.g-findlist .g-findall{border-top:1px solid var(--rule)}
+.g-findlist .g-findall b{font-weight:400}
+.g-findstat{font:400 var(--t-sm)/1.4 var(--sans);color:var(--ink-2);margin:.375rem 0 0;min-height:1.25em}
+.g-common{list-style:none;margin:0;padding:0;display:grid;gap:.5rem .75rem;
+  grid-template-columns:repeat(auto-fill,minmax(min(100%,15rem),1fr))}
+.g-common a{display:flex;align-items:center;height:100%;box-sizing:border-box;min-height:2.75rem;
+  border:1px solid var(--rule-2);border-radius:var(--r-out);padding:.5625rem .875rem;
+  font:600 var(--t-ui)/1.35 var(--sans);color:var(--pine);text-decoration:none}
+.g-common a:hover{border-color:var(--pine);color:var(--ink)}
+.g-topic{border-top:1px solid var(--rule)}
+.g-topic:last-of-type{border-bottom:1px solid var(--rule)}
+.g-topic > summary{display:flex;align-items:baseline;gap:.5rem;cursor:pointer;list-style:none;
+  padding:.8125rem .25rem;min-height:1.5rem;font:600 var(--t-read)/1.3 var(--serif);color:var(--ink)}
+.g-topic > summary::-webkit-details-marker{display:none}
+.g-topic > summary::before{content:"\25B8";flex:none;width:1rem;color:var(--pine);
+  font:400 .875rem/1 var(--sans);transition:transform .15s}
+.g-topic[open] > summary::before{transform:rotate(90deg)}
+.g-topic > summary:hover .g-tname{color:var(--pine)}
+.g-topic > summary:focus-visible{outline:2px solid var(--pine);outline-offset:-2px}
+.g-tn{font:400 var(--t-sm)/1 var(--sans);color:var(--ink-2)}
+.g-list{list-style:none;margin:0 0 .875rem;padding:0 0 0 1.5rem}
+.g-list li{padding:.375rem 0}
+.g-list a{font:600 var(--t-ui)/1.4 var(--sans);color:var(--pine);text-decoration:underline;
+  text-decoration-thickness:1px;text-underline-offset:3px}
+.g-list a:hover{color:var(--ink)}
+.g-list span{display:block;margin-top:.125rem;font:400 var(--t-sm)/1.45 var(--sans);color:var(--ink-2)}
+@media (prefers-reduced-motion:reduce){.g-topic > summary::before{transition:none}}
 /* OTHER WAYS TO FOLLOW LEGISLATION (build_civics.follow_elsewhere): each
    site's name as the link, the line on what it offers, then its host. */
 .r-follow{margin-bottom:1.25rem}

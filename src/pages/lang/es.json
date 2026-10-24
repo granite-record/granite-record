@@ -8896,6 +8896,187 @@
    "en": "Your transfer station, what never goes in the trash, hazardous waste days and composting.",
    "es": "Su estación de transferencia, lo que nunca va a la basura, los días de desechos peligrosos y el compostaje.",
    "state": "draft"
+  },
+  "guide.task.your-representatives.head": {
+   "en": "How to find your representatives",
+   "es": "Cómo encontrar a sus representantes",
+   "state": "draft"
+  },
+  "guide.task.contact-your-legislators.head": {
+   "en": "How to contact your legislators",
+   "es": "Cómo comunicarse con sus legisladores",
+   "state": "draft"
+  },
+  "guide.task.attend-a-hearing.head": {
+   "en": "How to attend or speak at a hearing",
+   "es": "Cómo asistir o hablar en una audiencia",
+   "state": "draft"
+  },
+  "guide.task.submit-testimony.head": {
+   "en": "How to submit testimony on a bill",
+   "es": "Cómo enviar testimonio sobre un proyecto de ley",
+   "state": "draft"
+  },
+  "guide.task.testifying.head": {
+   "en": "How public hearings work",
+   "es": "Cómo funcionan las audiencias públicas",
+   "state": "draft"
+  },
+  "guide.task.read-a-bill.head": {
+   "en": "How to read a bill",
+   "es": "Cómo leer un proyecto de ley",
+   "state": "draft"
+  },
+  "guide.task.using-this-site.head": {
+   "en": "How to follow a bill on this site",
+   "es": "Cómo seguir un proyecto de ley en este sitio",
+   "state": "draft"
+  },
+  "guide.task.how-to-vote.head": {
+   "en": "How to vote",
+   "es": "Cómo votar",
+   "state": "draft"
+  },
+  "guide.task.run-for-office.head": {
+   "en": "How to run for office",
+   "es": "Cómo postularse a un cargo",
+   "state": "draft"
+  },
+  "guide.task.town-warrant-article.head": {
+   "en": "How to put an article on your town meeting warrant",
+   "es": "Cómo incluir un artículo en la convocatoria de la asamblea municipal",
+   "state": "draft"
+  },
+  "guide.task.renew-drivers-license.head": {
+   "en": "How to renew your driver&rsquo;s license",
+   "es": "Cómo renovar su licencia de conducir",
+   "state": "draft"
+  },
+  "guide.task.register-a-car.head": {
+   "en": "How to register a car",
+   "es": "Cómo registrar un vehículo",
+   "state": "draft"
+  },
+  "guide.task.real-id.head": {
+   "en": "How to get a REAL ID",
+   "es": "Cómo obtener una REAL ID",
+   "state": "draft"
+  },
+  "guide.task.new-to-new-hampshire.head": {
+   "en": "How to move to New Hampshire",
+   "es": "Cómo mudarse a New Hampshire",
+   "state": "draft"
+  },
+  "guide.task.food-and-health-assistance.head": {
+   "en": "How to apply for food or health assistance",
+   "es": "Cómo solicitar ayuda para alimentos o salud",
+   "state": "draft"
+  },
+  "guide.task.file-for-unemployment.head": {
+   "en": "How to file for unemployment",
+   "es": "Cómo solicitar beneficios por desempleo",
+   "state": "draft"
+  },
+  "guide.task.child-care-scholarship.head": {
+   "en": "How to get help paying for child care",
+   "es": "Cómo obtener ayuda para pagar el cuidado infantil",
+   "state": "draft"
+  },
+  "guide.task.domestic-violence-help.head": {
+   "en": "How to get help after domestic violence, sexual assault or stalking",
+   "es": "Cómo obtener ayuda después de violencia doméstica, agresión sexual o acecho",
+   "state": "draft"
+  },
+  "guide.task.homelessness-help.head": {
+   "en": "How to get help if you are homeless or may lose your home",
+   "es": "Cómo obtener ayuda si no tiene hogar o puede perder su vivienda",
+   "state": "draft"
+  },
+  "guide.task.storms-and-emergencies.head": {
+   "en": "How to prepare for storms, power outages and emergencies",
+   "es": "Cómo prepararse para tormentas, cortes de electricidad y emergencias",
+   "state": "draft"
+  },
+  "guide.task.heating-and-electric-help.head": {
+   "en": "How to get help with heating and electric bills",
+   "es": "Cómo obtener ayuda con las facturas de calefacción y electricidad",
+   "state": "draft"
+  },
+  "guide.task.property-tax-abatement.head": {
+   "en": "How to appeal your property tax assessment",
+   "es": "Cómo apelar el avalúo de su impuesto a la propiedad",
+   "state": "draft"
+  },
+  "guide.task.property-tax-relief.head": {
+   "en": "How to get property tax relief",
+   "es": "Cómo obtener un alivio del impuesto a la propiedad",
+   "state": "draft"
+  },
+  "guide.task.public-records.head": {
+   "en": "How to get a public record",
+   "es": "Cómo obtener un registro público",
+   "state": "draft"
+  },
+  "guide.task.vital-records.head": {
+   "en": "How to get a birth, death, marriage or divorce certificate",
+   "es": "Cómo obtener un acta de nacimiento, defunción, matrimonio o divorcio",
+   "state": "draft"
+  },
+  "guide.task.trash-and-recycling.head": {
+   "en": "How to get rid of trash, recycling and hazardous waste",
+   "es": "Cómo deshacerse de la basura, el reciclaje y los desechos peligrosos",
+   "state": "draft"
+  },
+  "guide.task.tour-the-state-house.head": {
+   "en": "How to tour the State House",
+   "es": "Cómo visitar el Capitolio",
+   "state": "draft"
+  },
+  "guides.find_label": {
+   "en": "What do you need to do?",
+   "es": "¿Qué necesita hacer?",
+   "state": "draft",
+   "note": "The guide search on the How-To tab. {n} and {q} are filled in by the page: keep them as they are. Most Common: 'Las más consultadas', the guides people most often need."
+  },
+  "guides.find_hint": {
+   "en": "For example: renew my license",
+   "es": "Por ejemplo: renovar mi licencia",
+   "state": "draft"
+  },
+  "guides.find_list": {
+   "en": "Suggested guides",
+   "es": "Guías sugeridas",
+   "state": "draft"
+  },
+  "guides.find_one": {
+   "en": "1 guide matches",
+   "es": "1 guía coincide",
+   "state": "draft"
+  },
+  "guides.find_many": {
+   "en": "{n} guides match",
+   "es": "{n} guías coinciden",
+   "state": "draft"
+  },
+  "guides.find_none": {
+   "en": "No guide matches. Press Enter to search the whole site.",
+   "es": "Ninguna guía coincide. Presione Intro para buscar en todo el sitio.",
+   "state": "draft"
+  },
+  "guides.find_all": {
+   "en": "Search the whole site for “{q}”",
+   "es": "Buscar “{q}” en todo el sitio",
+   "state": "draft"
+  },
+  "guides.common": {
+   "en": "Most Common",
+   "es": "Las más consultadas",
+   "state": "draft"
+  },
+  "guides.by_topic": {
+   "en": "All Guides by Topic",
+   "es": "Todas las guías por tema",
+   "state": "draft"
   }
  }
 }

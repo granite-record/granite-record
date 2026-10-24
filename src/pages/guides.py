@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-10-11.33
+# GRANITE_VERSION: 2026-10-11.34
 """
 The how-to guides: their words, their sources, and what each was checked
 against. Read by build_civics.py, which draws them on the Resources hub's
@@ -4166,10 +4166,31 @@ GUIDES += [TRASH]
 # a guide added without a line here -- is still listed, under More Guides,
 # rather than left off the tab.
 # ---------------------------------------------------------------------------
-def task(slug, does, line):
+def task(slug, does, line, head=None):
     """One entry of the How-To Guides tab: the guide's slug, the task in a
-    reader's words ("Renew your driver's license") and one line on it."""
-    return {"slug": slug, "does": does, "line": line}
+    reader's words ("Renew your driver's license"), one line on it, and the
+    short headline the tab lists it by ("How to renew your driver's
+    license"), which is "How to" and the task unless it is given."""
+    head = head or "How to " + does[:1].lower() + does[1:]
+    return {"slug": slug, "does": does, "line": line, "head": head}
+
+
+# THE HOW-TO TAB, COMPACT AND SEARCHABLE (the person, 24 October 2026: "a most
+# common questions for the essential guides, a searchbar that matches likely
+# search terms to a dropdown of suggested guides ... Then below the search and
+# top guides would be various dropdown topics like voting and elections as
+# they are categorized today, but made more compact with a simpler headline
+# like "How to Vote" "How to submit legislative testimony" ... I want to
+# expand the number of useful guides while avoiding making the menus a
+# nightmare to navigate"). Each task's head is that headline; the groups fold
+# shut; the search reads every guide's title, task, line, head and WORDS.
+# This replaces the rule of 17 October that the tab never say "How to".
+#
+# MOST COMMON, the tab's first list: chosen by judgment, as HOME's are -- the
+# site keeps no count of what is read -- the errands a member of the public
+# most often has with the state and the legislature. The person's to change.
+COMMON = ["how-to-vote", "renew-drivers-license", "register-a-car", "your-representatives",
+          "submit-testimony", "food-and-health-assistance"]
 
 
 TASKS = [
@@ -4180,17 +4201,21 @@ TASKS = [
         task("contact-your-legislators", "Contact your legislators",
              "Email or call the people who represent you, and write a message they can act on."),
         task("attend-a-hearing", "Attend or speak at a public hearing",
-             "Find a bill&rsquo;s hearing, go in person or watch it, and ask to speak."),
+             "Find a bill&rsquo;s hearing, go in person or watch it, and ask to speak.",
+             head="How to attend or speak at a hearing"),
         task("submit-testimony", "Send testimony online or in writing",
-             "Tell a committee where you stand on a bill without going to Concord."),
+             "Tell a committee where you stand on a bill without going to Concord.",
+             head="How to submit testimony on a bill"),
         task("testifying", "Learn how hearings work before you go",
              "The notices, signing in, speaking, written testimony and what follows a hearing, "
-             "in one place."),
+             "in one place.",
+             head="How public hearings work"),
         task("read-a-bill", "Read a bill",
              "What the parts of a bill are, and how its text shows what it changes."),
         task("using-this-site", "Use this site to follow a bill",
              "What each tab holds, how to follow a bill, and how to tell us when something is "
-             "wrong."),
+             "wrong.",
+             head="How to follow a bill on this site"),
     ]),
     ("Voting and Elections", [
         task("how-to-vote", "Vote",
@@ -4234,7 +4259,8 @@ TASKS = [
         task("property-tax-abatement", "Appeal your property tax assessment",
              "Ask your town for an abatement, and appeal if it says no."),
         task("property-tax-relief", "Get property tax relief on a low or moderate income",
-             "Who qualifies for the state&rsquo;s relief, and how to apply."),
+             "Who qualifies for the state&rsquo;s relief, and how to apply.",
+             head="How to get property tax relief"),
         task("public-records", "Get a public record",
              "Ask a town, school district, county or state agency for its records."),
         task("vital-records", "Get a birth, death, marriage or divorce certificate",
@@ -4301,18 +4327,21 @@ HOME = [
 # something else costs that reader a wrong first answer.
 WORDS = {
     "your-representatives": ("my representative", "my senator", "who represents me",
+                             "state representative",
                              "district", "legislator"),
     "contact-your-legislators": ("email my representative", "call my senator",
                                  "write my legislator", "contact"),
     "attend-a-hearing": ("testify", "public hearing", "speak on a bill", "attend"),
-    "submit-testimony": ("testify", "written testimony", "sign in", "support or oppose a bill"),
+    "submit-testimony": ("testify", "written testimony", "sign in", "support or oppose a bill",
+                         "testimony", "comment on a bill"),
     "testifying": ("testify", "hearing", "attend"),
     "read-a-bill": ("bill text", "amendment", "fiscal note"),
     "using-this-site": ("help", "follow a bill", "email updates", "report an error"),
     "how-to-vote": ("voting", "register to vote", "voter registration", "polling place",
-                    "absentee ballot"),
+                    "absentee ballot", "where do i vote", "election"),
     "run-for-office": ("candidate", "file for office", "declaration of candidacy"),
-    "renew-drivers-license": ("license", "drivers license", "renew my license", "dmv"),
+    "renew-drivers-license": ("license", "drivers license", "renew my license", "dmv",
+                              "update my license", "expired license"),
     "register-a-car": ("register my car", "car registration", "vehicle registration", "plates",
                        "dmv"),
     "real-id": ("real id", "license", "id"),
@@ -4320,7 +4349,7 @@ WORDS = {
                              "register my car", "register to vote"),
     "food-and-health-assistance": ("snap", "food stamps", "medicaid", "health insurance",
                                    "benefits", "nh easy"),
-    "file-for-unemployment": ("unemployment", "laid off", "lost my job", "benefits"),
+    "file-for-unemployment": ("unemployment", "laid off", "lost my job", "benefits", "jobless"),
     "child-care-scholarship": ("child care", "childcare", "daycare", "child care scholarship",
                                "child care assistance"),
     "domestic-violence-help": ("domestic violence", "sexual assault", "stalking", "abuse",
@@ -4533,7 +4562,8 @@ def task_words():
     for _group, tasks in TASKS:
         for t in tasks:
             out += [(f"guide.task.{t['slug']}.does", i18n.norm(t["does"]), "the How-To Guides tab"),
-                    (f"guide.task.{t['slug']}.line", i18n.norm(t["line"]), "the How-To Guides tab")]
+                    (f"guide.task.{t['slug']}.line", i18n.norm(t["line"]), "the How-To Guides tab"),
+                    (f"guide.task.{t['slug']}.head", i18n.norm(t["head"]), "the How-To Guides tab")]
     return out
 
 
