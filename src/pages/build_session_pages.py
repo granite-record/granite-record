@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-19.49
+# GRANITE_VERSION: 2026-09-19.50
 """
 A page for every day the House sat.
 
@@ -70,6 +70,7 @@ import build_date
 import committee_acts as CA
 import components as C
 import motions as MO
+import narrative as NR
 import session_days
 import spellings
 import journal_days
@@ -1466,23 +1467,34 @@ def outcome_word(chp, bill, carried):
     return word, cls
 
 
+def deciding(items, bill, body):
+    """(item, motions.classify's reading, chip) of the vote that says what
+    `items` did to the bill, read as above (ASIDE): the last that decided
+    something and carried, else the last failed one whose chip says what
+    its failing did, else the last with an outcome; None where none has an
+    outcome on record. The day's index reads it over all of a bill's cards
+    (day_outcome), a card's closing line over that card's (card_meaning)."""
+    votes = []
+    for it in items:
+        _w, k, chp = motion_chip(it, bill, body)
+        if chp:
+            votes.append((it, k, chp))
+    fate = [v for v in votes if (v[1].get("mk") or "") not in ASIDE]
+    carried = [v for v in fate if v[0].carried]
+    stood = [v for v in fate if not v[0].carried and (v[1].get("mk") or "") != "reconsider"
+             and ": " in chip_text(v[2])]
+    return (carried or stood or votes or [None])[-1]
+
+
 def day_outcome(items, bill, body):
     """(word, classes, the chip it is said from) for a bill's line in the
     day's index: every vote it had that day, across every card it has,
     read as above (ASIDE). ("", "", "") where none has an outcome on
     record."""
-    votes = []
-    for it in items:
-        _w, k, chp = motion_chip(it, bill, body)
-        if chp:
-            votes.append((k.get("mk") or "", it.carried, chp))
-    fate = [v for v in votes if v[0] not in ASIDE]
-    carried = [v for v in fate if v[1]]
-    stood = [v for v in fate if not v[1] and v[0] != "reconsider" and ": " in chip_text(v[2])]
-    got = (carried or stood or votes or [None])[-1]
+    got = deciding(items, bill, body)
     if got is None:
         return "", "", ""
-    word, cls = outcome_word(got[2], bill, got[1])
+    word, cls = outcome_word(got[2], bill, got[0].carried)
     return word, cls, got[2]
 
 
@@ -1559,7 +1571,726 @@ def day_index(parts, bills, esc, body="H", date=""):
             f'<ol class="dilist">{"".join(lines)}</ol></details></nav>')
 
 
-def vote_html(it, bill, body, year, cards, members, esc, payloads, journal=None, key=None):
+# WHO SPOKE, AND WHICH VOTE THEY URGED (the owner, 24 October 2026: "One
+# thing that may help for clarity is identifying which speaker supported the
+# yes vote and which supported the no vote, rather than solely saying they
+# spoke for or against the motion"). The journal records a member as speaking
+# in favor of the question before the House or against it, and that question
+# is the head straight above the names (THE MOTION IS THE HEADING), so a
+# member for it asked the House to vote yes on that head, and a member
+# against it to vote no: on an Inexpedient to Legislate, yes is to kill the
+# bill. The journal's own terms stay first, so the label still says what the
+# record says; the vote each side asked for follows, in words a reader cannot
+# take the wrong way round.
+SPOKE = {"for": "Spoke for the motion, urging a yes vote",
+         "against": "Spoke against the motion, urging a no vote"}
+
+
+# THE CLERK'S WORDS, AND ONLY WHERE THEY SAY MORE (the owner, 24 October
+# 2026: "I'm not sure what this section on the session page means, whether
+# that's the original phrasing or something else: 'In the record: House
+# Concurs with Senate Amendment 2026-1622s' but currently it's somewhat
+# redundant or in the wrong place"). It is the original phrasing: the
+# record's own words for the motion, which motions.classify keeps wherever
+# they differ from the approved head by more than case and an amendment
+# number (mrec), and which the card printed under every such head -- 28,724
+# times on the build of 24 October 2026, most of them the head's own motion
+# in the clerk's spelling: "Concur" under "Concur with the Amendment", "Laid
+# on Table" under "Lay on the Table", "Accedes to House Request for Committee
+# of Conference" under "Accede to the Request for a Committee of Conference".
+#
+# On a bill's card they are now kept only where a word of them says what
+# nothing else on the vote does -- a day ("Special Order to 03/11/1993"), a
+# purpose ("Suspend Rules for hearing"), what was reconsidered ("Reconsider
+# ITL"), a step the head does not name ("Vacated from Committee and Laid on
+# Table"), a member the card does not name as the mover -- and they go at the
+# foot of the motion, under its ring, labelled as whose words they are. The
+# words are compared with everything the vote's block says (clerk_adds), so
+# the rule is one rule and not a list of the clerk's phrasings. On that
+# build it keeps 13,422 of the 28,724 lines: most of them a day or a place
+# in the calendar a special order set (2,776), a rule suspended and what for
+# (1,363), an amendment's number in a form the head's number does not read
+# ("Ought to Pass with Amendment 1718s, NT"), and a member the card does not
+# name. The votes on no bill keep their "In the record" line as it was:
+# there it is the only place the roll-call file's question is given, and the
+# section's note says what it is.
+CLERK_LABEL = "In the clerk&rsquo;s words:"
+# One word, however the clerk spelled it: "Laid" is lay, "Req" request,
+# "Conf Comm" a committee of conference; "Take from Table" is the motion the
+# head calls "Remove from the Table (Take the bill back up)".
+_CLERK_SAME = {
+    "laid": "lay", "tabled": "table", "concurred": "concur", "acceded": "accede",
+    "referred": "refer", "rereferred": "rerefer", "recommitted": "recommit",
+    "requested": "request", "req": "request", "reqs": "request", "am": "amendment",
+    "amend": "amendment", "amended": "amendment", "amdt": "amendment", "amd": "amendment",
+    "comm": "committee", "cmte": "committee", "conf": "conference",
+    "reconsideration": "reconsider", "reconsidered": "reconsider",
+    "suspension": "suspend", "suspended": "suspend", "susp": "suspend",
+    "introduction": "introduce", "introduced": "introduce", "ordered": "order",
+    "take": "remove", "taken": "remove", "removed": "remove", "adopted": "adopt",
+    "adoption": "adopt", "passed": "pass", "passage": "pass", "vacated": "vacate",
+    "postponed": "postpone", "overridden": "override", "printed": "print",
+    "upheld": "uphold", "divided": "divide", "division": "divide", "withdrawn": "withdraw"}
+# Words that carry nothing of their own here: the little words, the members'
+# titles, and the chambers' names -- the page names its chamber, and a
+# concurrence's gloss already says whose changes it accepts.
+_CLERK_FILL = frozenset(
+    "a an and as at be by for from in into is it its of on or that the this to with "
+    "motion moved moves move rep reps sen sens representative representatives senator "
+    "senators house senate".split())
+# What a motion's own name implies and its head leaves unsaid: a
+# nonconcurrence is with the other chamber's amendment, an interim study is
+# a referral, and a refusal to accede refuses a request for a conference.
+_CLERK_IMPLIED = {"nonconcur_conference": {"amendment"}, "is": {"refer"},
+                  "refuse_accede": {"request", "committee", "conference"}}
+# How the vote was taken, which the count's line says.
+_CLERK_KIND = {"RC": {"rc", "roll", "call"}, "DV": {"dv", "div", "divide"},
+               "VV": {"vv", "voice"}}
+
+
+def _clerk_words(s):
+    """The words of `s` that say something, each in one form (_CLERK_SAME)."""
+    s = (s or "").lower()
+    s = re.sub(r"\bw/\s*", " with ", s)
+    s = re.sub(r"\bc\s*of\s*c\b|\bcofc\b", " committee conference ", s)
+    s = re.sub(r"\bnon[\s-]*concur", "nonconcur", s)
+    s = re.sub(r"\bre[\s-]*refer", "rerefer", s)
+    s = re.sub(r"\bre[\s-]*commit", "recommit", s)
+    out = set()
+    for w in re.findall(r"[a-z0-9]+", s):
+        w = _CLERK_SAME.get(w, w)
+        if len(w) > 3 and w.endswith("s") and not w.endswith("ss"):
+            w = _CLERK_SAME.get(w[:-1], w[:-1])
+        if w not in _CLERK_FILL:
+            out.add(w)
+    return out
+
+
+def clerk_adds(it, bill, k, head, amds=()):
+    """Whether the clerk's words for a vote (k["mrec"]) say anything its
+    block does not already (CLERK_LABEL): a word left once the head and its
+    gloss, the amendment numbers beside it, the bill's own number, the
+    member the block names as the mover, how the vote was taken, and what
+    the motion's name implies are taken out of them.
+
+        "House Concurs with Senate Amendment 2026-1622s" under "Concur with
+        the Amendment (Accept the other chamber's changes) 2026-1622s"  -> False
+        "Special Order to 03/11/1993" under "Special Order (Take the bill
+        up at a set time)"                                              -> True
+    """
+    words = AMENDMENT_NUMBER.sub(" ", k.get("mrec") or "")
+    said = _clerk_words(_unescape(re.sub(r"<[^>]+>", " ", head or "")))
+    spaced = re.sub(r"^([A-Z]+)(\d)", r"\1 \2", bill or "")
+    said |= _clerk_words(f"{bill} {spaced} fn local")
+    for a in amds or ():
+        said |= _clerk_words(a)
+    if it.mover:
+        said |= _clerk_words(it.mover)
+    if getattr(it, "wo", False):
+        said |= {"without", "objection"}
+    said |= _CLERK_KIND.get(it.kind, set()) | _CLERK_IMPLIED.get(k.get("mk") or "", set())
+    return bool(_clerk_words(words) - said)
+
+
+# THE CLOSING LINE (the owner, 24 October 2026: "There should be a line at
+# the bottom of every bill card on session day pages that explains all of the
+# votes that were held and what that means for the bill, similar to what is
+# in the narrative summary tab for bills, but isolated to the specific actions
+# from that day").
+#
+# ONE SENTENCE A VOTE, IN THE HISTORY'S OWN WORDS. A bill's How It Got Here is
+# narrative.py's: a sentence for each row of its docket (describe), and where
+# that sentence reads a motion it reads it by narrative.RECOMMENDATION -- Ought
+# to Pass is "voted to pass it", Inexpedient to Legislate "voted to kill it",
+# a failed one "rejected a motion to kill it" -- with the count as "on a roll
+# call 187–152" (narrative.VOTE_KIND). The card says each of its votes in
+# those words, from those tables, so the card and the history cannot tell one
+# vote two ways; an amendment and a veto are said as the history's sentences
+# for them say one. The day is the page's, so it is not repeated; nor is the
+# mover of a vote the card draws, whom its block names. The amendments the
+# day voted by voice or division, which no card draws, are said too -- they
+# are among "all of the votes that were held" -- with the history's "offered
+# by" (card_rows, row_said). preflight holds the line to the history on days
+# made from rows of the record (_session_closing_line); on the build of 24
+# October 2026, 41,264 of the 41,675 readings the bills' histories make of a
+# floor vote on a day with a card were said by its card in the same words,
+# and the rest were of votes no card draws (the consent calendar's) or of a
+# motion the card's head reads more closely than the history's opening words
+# do ("Lay Amendment on Table").
+#
+# WHERE THE HISTORY ONLY QUOTES THE CLERK, THE CARD READS THE MOTION. describe()
+# reads a motion only by how its words open, and quotes the rest: "the House
+# adopted “House Concurs with Senate Amendment 2026-1718s”", "failed “Remove
+# from Table”", "adopted “Lay HB1061 on Table”". The card has read those
+# already (motions.classify, its head), so a concurrence is said in the
+# history's own words for one (NARRATIVE_KEY: "agree to the other chamber's
+# changes"), a tabling in its words for a tabling, and a motion the history
+# has no words for in the plain words of its head's gloss (VOTE_SAID). A
+# motion no row of the vote words names -- the older days' shorthand, "Conf
+# Comm Report", "OT3rdg" -- is quoted as the history quotes it, and a question
+# the record does not name is said to be one: nothing is made up for either.
+#
+# THEN WHAT IT MEANS, AND ONLY WHAT THE RECORD SETTLES (card_meaning). The
+# vote that decided the card (deciding, the day's index's reading), and what
+# that vote does by the chambers' own rules: a bill its own chamber passes
+# goes to the other; one the second chamber changes goes back to the first;
+# one both have passed alike goes to the Governor -- or a CACR to the voters,
+# by the stops of its own rail -- and a passage the chamber follows with a
+# referral to a second committee goes there first (second_committee). Held to
+# what each bill's own history did next, on the build of 24 October 2026 the
+# sentence was so on 26,462 of the 26,505 cards that say where a bill went:
+# of the other 43, the chamber reconsidered or recalled the vote on a later
+# day on 23, the record holds nothing later at all on 14 (concurrent
+# resolutions the Senate never took up, most of them), and on 6 a step the
+# docket never entered came between (HB 1665 of 2022's referral to Finance)
+# or the Senate set the bill aside before its third reading. preflight's
+# days made here hold the rules. Where the history has a note for the
+# motion (narrative.NUANCE: a tabling, an interim study) the note is the
+# meaning. Whatever turns on what the other chamber does later is said as the
+# condition it is ("If the Senate agrees, ..."), or not at all: a
+# nonconcurrence, a kill, a re-referral, a special order are their own
+# sentence and nothing more.
+#
+# EACH SENTENCE IS ONE TEMPLATE WITH ITS PLACES NAMED (CLOSING), and each
+# phrase that fills a place comes from a table of its own, so the Spanish
+# session days, when there are some, can say them through i18n.say() with
+# the English beside each key ("session.close.voted", ...), as every other
+# translated sentence is said; nothing is pieced together from another
+# sentence's words.
+CLOSING = {
+    "voted": "The {chamber} voted to {verb}{how}.",
+    "rejected": "The {chamber} rejected a motion to {verb}{how}.",
+    "voted_third": "The {chamber} voted to {verb}{how} and ordered it to a third reading.",
+    "rejected_third": "The {chamber} rejected a motion to {verb}{how} and ordered it to a third "
+                      "reading.",
+    "rejected_short": "The {chamber} rejected a motion to {verb}{how}, short of the {needed} "
+                      "majority it needed.",
+    "open": "The {chamber} took up a motion to {verb}{how}; the record does not say "
+            "whether it carried.",
+    "pending": "The {chamber} adopted the motion that it ought to pass{amended}{how}{left}.",
+    "amd_adopted": "{who}{num}{by} was adopted{how}, changing the text of the bill.",
+    "amd_rejected": "{who}{num}{by} was rejected{how}.",
+    "amd_open": "{who}{num}{by} was taken up{how}; the record does not say how the vote went.",
+    "enrolled": "An enrolled bill amendment{num} was adopted{how}, to correct technical "
+                "errors found after passage.",
+    "overridden": "The {chamber} voted{tally} to override the governor's veto{how}, "
+                  "meeting the two thirds threshold.",
+    "sustained": "The {chamber} voted{tally} on overriding the governor's veto{how}, and the "
+                 "veto was sustained, failing to meet the two thirds threshold.",
+    "override_open": "The {chamber} voted{tally} on overriding the governor's veto{how}; the "
+                     "record does not say the outcome.",
+    "quoted_adopted": "The {chamber} adopted “{words}”{how}.",
+    "quoted_rejected": "The {chamber} rejected “{words}”{how}.",
+    "quoted_open": "The {chamber} took up “{words}”{how}; the record does not say how the "
+                   "vote went.",
+    "unnamed_adopted": "The {chamber} voted on a question the record does not name{how}, and "
+                       "the motion carried.",
+    "unnamed_rejected": "The {chamber} voted on a question the record does not name{how}, and "
+                        "the motion failed.",
+    "unnamed_open": "The {chamber} voted on a question the record does not name{how}.",
+    # What it means for the bill.
+    "to_other": "That sends it to the {other}.",
+    "back": "It goes back to the {origin}, which can accept or reject the {chamber}'s "
+            "changes.",
+    "agreed": "Both chambers have passed it in the same form, so it goes to {after}.",
+    "agreed_only": "Both chambers have passed it in the same form.",
+    "second": "It goes to the {chamber} {committee} committee, and the {chamber} votes on it "
+              "again once that committee reports.",
+    "second_other": "It goes to a second {chamber} committee, and the {chamber} votes on it "
+                    "again once that committee reports.",
+    "conference_asked": "If the {other} agrees, a committee of conference from both chambers "
+                        "will try to settle the differences.",
+    "conference_on": "A committee of conference from both chambers will try to settle the "
+                     "differences.",
+    "conference_report": "Once both chambers adopt the report, it goes to {after}.",
+    "back_before": "It is back before the {chamber}.",
+    "stays_tabled": "It stays on the table.",
+    "override_too": "The {other} must also override the veto for the bill to become law.",
+    "no_law": "The bill did not become law.",
+}
+# The places' words that are themselves a choice of words. An amendment no
+# report of the chamber names is one offered on the floor, as the history
+# calls it (narrative.whose_amendment: "any other is one offered on the
+# floor"), whatever the row's own word.
+CLOSING_WHO = {"committee_amendment": "The committee's amendment",
+               "floor_amendment": "A floor amendment", "amendment": "A floor amendment"}
+CLOSING_AFTER = {"G": "the Governor", "V": "the voters"}
+CLOSING_LEFT = {"third": ", but its third reading was left pending",
+                "finance": ", but its referral to the Finance committee was left pending"}
+
+# The history's own verb for a motion, by the card's reading of it: the row
+# of narrative.RECOMMENDATION that names the same motion. A key that is not
+# here has no words in the history but a quotation, and is said by VOTE_SAID.
+NARRATIVE_KEY = {
+    "otp": "ought to pass", "otp_finance": "ought to pass",
+    "otpa": "ought to pass with amendment", "otpa_finance": "ought to pass with amendment",
+    "itl": "inexpedient to legislate", "ought_not_to_pass": "ought not to pass",
+    "is": "interim study", "rerefer": "rerefer to committee",
+    "recommit": "rerefer to committee", "table": "lay on table",
+    "postpone": "indefinitely postpone", "adopt": "adopt", "concur": "concur",
+    "nonconcur": "nonconcur"}
+# A motion the history has no words for, said in the plain words of its
+# head's gloss (votes.json), as the history says a motion: "voted to ...",
+# "rejected a motion to ...". {committee} is the committee the motion names.
+VOTE_SAID = {
+    "untable": "take it off the table",
+    "reconsider": "reconsider an earlier vote",
+    "table_amendment": "lay the amendment on the table",
+    "table_motion": "lay the motion on the table",
+    "nonconcur_conference": "reject the other chamber's changes and ask for a committee of "
+                            "conference",
+    "request_conference": "ask for a committee of conference",
+    "accede": "agree to a committee of conference",
+    "refuse_accede": "refuse a committee of conference",
+    "conference_report": "adopt the committee of conference's report",
+    "special_order": "take it up at a set time",
+    "suspend_rules": "suspend its rules",
+    "previous_question": "end debate and vote",
+    "limit_debate": "limit debate",
+    "divide": "divide the question and vote on its parts separately",
+    "order_third_reading": "order it to a third reading",
+    "third_reading": "pass it at its third reading",
+    "final_passage": "give it final passage",
+    "introduce": "introduce it",
+    "introduce_adopt": "introduce and adopt it",
+    "withdraw": "withdraw it",
+    "vacate_referral": "move it to another committee",
+    "vacate_referral_to": "send it to the {committee} committee",
+    "refer": "send it to the {committee} committee",
+    "uphold_ruling": "uphold the ruling of the chair",
+    "member_continue": "let the member keep speaking",
+    "print_debate": "print the debate in the permanent journal",
+    "reprimand": "reprimand the member",
+}
+OTHER = {"H": "S", "S": "H"}
+# What the history's two notes say (narrative.NUANCE), by the motion.
+NUANCE_OF = {"table": "lay on table", "is": "interim study"}
+# The motions that pass a bill in a chamber; the card's chip says "Bill
+# Passed" for each.
+PASSES = frozenset({"otp", "otpa", "third_reading", "final_passage", "order_third_reading"})
+# Measures one chamber decides alone.
+ONE_CHAMBER = re.compile(r"^(?:HR|SR|SSHR|HA|HCO|HBI)\d", re.I)
+
+
+def _say(key, **vals):
+    """CLOSING[key] with its places filled (i18n.fill's rule, in English)."""
+    s = CLOSING[key]
+    for k, v in vals.items():
+        s = s.replace("{" + k + "}", str(v))
+    return s
+
+
+def said_how(it):
+    """How a vote was taken, as the history says it: " on a roll call
+    187–152", " on a division vote 181–148", " on a voice vote", or
+    " without objection" where the Journal says so (vote_html)."""
+    if getattr(it, "wo", False):
+        return " without objection"
+    vk = (NR.VOTE_KIND.get(it.kind) or (None,))[0]
+    if not vk:
+        return ""
+    return f" on a {vk}" + (f" {it.yeas}–{it.nays}" if it.counted else "")
+
+
+def vote_said(it, bill, body, left="", events=(), third=True):
+    """One vote of a card as its closing line says it (THE CLOSING LINE).
+    `left` is narrative.passage_left_pending's word for the day where the
+    chamber tabled the bill with its passage pending; `events` the bill's
+    history, which says whose an amendment is (whose); `third` false where
+    the card draws the third reading as a vote of its own."""
+    words_, k, _chp = motion_chip(it, bill, body)
+    mk = k.get("mk") or ""
+    chamber = CHAMBER[body]
+    how = said_how(it)
+    done = {True: "adopted", False: "rejected", None: "open"}[it.carried]
+    if it.veto:
+        tally = f" {it.yeas}–{it.nays}" if it.counted else ""
+        vk = (NR.VOTE_KIND.get(it.kind) or (None,))[0]
+        on = f" on a {vk}" if vk else ""
+        key = {True: "overridden", False: "sustained", None: "override_open"}[it.carried]
+        return _say(key, chamber=chamber, tally=tally, how=on)
+    if not words_ or mk == "unnamed":
+        return _say("unnamed_" + done, chamber=chamber, how=how)
+    if mk in CLOSING_WHO or mk == "enrolled_amendment":
+        amds = amendment_numbers(words_)
+        num = f" ({', '.join(amds)})" if amds else ""
+        if mk == "enrolled_amendment" and it.carried:
+            return _say("enrolled", num=num, how=how)
+        who = CLOSING_WHO.get(mk) or "An enrolled bill amendment"
+        if mk in ("amendment", "floor_amendment") and len(amds) == 1:
+            who = WHOSE_SAID.get(whose(amds[0], body, events), who)
+        return _say("amd_" + done, who=who, num=num, how=how, by="")
+    if left and it.carried and mk in ("otp", "otpa", "otp_finance", "otpa_finance"):
+        return _say("pending", chamber=chamber, how=how, left=CLOSING_LEFT.get(left, ""),
+                    amended=" with an amendment" if mk.startswith("otpa") else "")
+    verb = NR.RECOMMENDATION.get(NARRATIVE_KEY.get(mk, ""))
+    if not verb:
+        fill = k.get("mf") or {}
+        said = VOTE_SAID.get(f"{mk}_to" if mk == "vacate_referral" and fill.get("Committee")
+                             else mk)
+        verb = said.replace("{committee}", fill.get("Committee", "")) if said else None
+    if not verb and not mk:
+        # Words no row of the vote words names, which the history reads by
+        # how they open, as describe() reads every floor row: "Adopt" on a
+        # bill (HB 413, 2 March 1989), "Ought to Pass" on an HBI.
+        low = NR.split_mover(words_)[0].lower()
+        verb = next((v for r, v in NR.RECOMMENDATION.items() if low.startswith(r)), None)
+    if not verb:
+        return _say("quoted_" + done, chamber=chamber, words=words_, how=how)
+    needed = needed_words(it)
+    if needed:
+        return _say("rejected_short", chamber=chamber, verb=verb, how=how, needed=needed)
+    key = {True: "voted", False: "rejected", None: "open"}[it.carried]
+    # The Senate's line that orders the bill to its third reading as it
+    # passes it ("Ought to Pass: MA, VV; OT3rdg"), as the history tells the
+    # line (narrative.OT_RDG), where the card draws no third reading of its
+    # own.
+    if third and it.carried is not None and NR.OT_RDG.search(it.raw or ""):
+        key += "_third"
+    return _say(key, chamber=chamber, verb=verb, how=how)
+
+
+def whose(num, body, events):
+    """"committee" or "minority" where one of the bill's own reports in
+    `body` names amendment `num`, else None: the history's reading of whose
+    amendment a bare or a floor amendment row moves (narrative.
+    whose_amendment), from the same rows and with its own functions, so the
+    card calls an amendment what the history calls it."""
+    mine = NR.amend_keys(num)[:1]
+    if not mine:
+        return None
+    for e in events or ():
+        if (e.get("type") == "report" and not e.get("cancelled")
+                and (e.get("body") or "").strip().upper() == body
+                and any(NR.same_amendment(k, mine[0]) for k in NR.amend_keys(e.get("raw")))):
+            return "minority" if NR.report_side(e.get("side")) == "Minority" else "committee"
+    return None
+
+
+WHOSE_SAID = {"committee": "The committee's amendment",
+              "minority": "The committee minority's amendment"}
+
+
+def needed_words(it):
+    """"three-fifths" or "two-thirds" where a motion failed with more yeas
+    than nays because it needed that much, as its ring's threshold says
+    (Item.fifths, Item.need); "" otherwise. A CACR's 181–156 is no
+    majority's failure, and a reader who sees only the count would think
+    it carried."""
+    if it.carried is not False or not it.counted or it.yeas <= it.nays:
+        return ""
+    if it.fifths:
+        return "three-fifths"
+    tot = it.yeas + it.nays
+    if it.need and it.need == -(-tot * 2 // 3):
+        return "two-thirds"
+    if it.need and it.need == -(-tot * 3 // 5):
+        return "three-fifths"
+    return ""
+
+
+def row_said(e, body, events=()):
+    """An amendment the day voted by voice or division, which no card draws
+    (amendments_on_sittings), in the history's sentence for one: whose it
+    was (the docket's own word, or whose), its number, who offered it, and
+    how it went."""
+    v = amendment_vote(e)
+    if v is None:
+        return ""
+    kind = (e.get("amend_kind") or "").strip().lower()
+    num = (e.get("amendment") or "").strip()
+    if kind in ("amendment", "floor amendment", "flam") and num:
+        kind = {"committee": "committee amendment",
+                "minority": "minority amendment"}.get(whose(num, body, events), kind)
+    num = f" ({num})" if num else ""
+    vk = (NR.VOTE_KIND.get((e.get("vote_kind") or "").strip().upper().rstrip(".").replace(
+        "DIV", "DV")) or (None,))[0]
+    how = (f" on a {vk}" if vk else "") + (f" {v['yeas']}–{v['nays']}"
+                                          if vk and "yeas" in v else "")
+    # A vote on part of it says how that part went (session_days.
+    # amendment_carried says nothing of the whole for one).
+    result = (session_days.ADOPTED.get((e.get("motion") or "").strip().upper())
+              if e.get("part") else session_days.amendment_carried(e))
+    done = {True: "adopted", False: "rejected", None: "open"}[result]
+    if "enrolled" in kind:
+        return _say("enrolled", num=num, how=how) if done == "adopted" else ""
+    # In the history's own order of asking (narrative.describe).
+    who = ("The committee's amendment" if "committee" in kind
+           else "The committee minority's amendment" if kind == "minority amendment"
+           else "A floor amendment")
+    if e.get("part"):
+        of = "the floor amendment" if who == "A floor amendment" else who[0].lower() + who[1:]
+        who = ("The rest of " if e.get("part") == "rest" else "Part of ") + of
+    mover = NR.MOVER_VERB.sub("", (e.get("mover") or "").strip())
+    by = f", offered by {mover}," if mover else ""
+    return _say("amd_" + done, who=who, num=num, by=by, how=how)
+
+
+def changed_here(events, body, date, entry):
+    """"conference" where the bill's history has a committee of conference
+    by `date`; "changed" where the chamber changed the bill's text since it
+    came to it (AMENDED_ROW): an amendment of its own adopted -- not an
+    enrolled bill's correction -- by the bill's history or among the day's
+    votes (`entry`, day_record's, which holds the amendments voted by voice
+    or division that no card draws); else ""."""
+    live = [e for e in events or () if not e.get("cancelled")
+            and (e.get("date") or "")[:10] <= date]
+    if any(CONFERENCE_ROW.search(e.get("raw") or "") and e.get("type") != "hearing"
+           for e in live):
+        return "conference"
+    came = max(((e.get("date") or "")[:10] for e in live
+                if e.get("type") == "introduced" and (e.get("body") or "").upper() == body),
+               default="")
+    for e in live:
+        if (e.get("body") or "").upper() != body or (e.get("date") or "")[:10] < came:
+            continue
+        if e.get("type") == "amendment":
+            if ("enrolled" not in (e.get("amend_kind") or "").lower()
+                    and session_days.amendment_carried(e)):
+                return "changed"
+        elif e.get("type") in ("floor", "other") and any(
+                AMENDED_ROW.search(c) and not FAILED_CLAUSE.search(c)
+                and not re.search(r"\benroll", c, re.I)
+                for c in (e.get("raw") or "").split(";")):
+            return "changed"
+    if any(v.get("amendment_kind") and v.get("result") == "adopted"
+           and "enrolled" not in v["amendment_kind"].lower()
+           for v in (entry or {}).get("votes") or ()):
+        return "changed"
+    return ""
+
+
+# A PASSAGE THAT SENDS THE BILL TO A SECOND COMMITTEE IS NOT THE LAST WORD OF
+# ITS CHAMBER: "PASSED/ADOPTED; REF TO APPROP" (SB 105, 13 April 1989), "PASSED
+# & REFERRED TO APPROPRIATIONS VV" (HB 295, 23 February 1989), "Ought to Pass:
+# MA, VV; Refer to Finance Rule 4-5" and the House's own row, "Referred to
+# Finance 02/19/2026". The card's chip says "Bill Passed" for each, as the
+# vote words' row 1 does; the closing line says where the bill went, since the
+# chamber votes on it again once that committee reports (the vote words' row
+# 1a). Read clause by clause, so a motion to refer it that failed -- "REPS
+# WHEELER & BURLING MOVED TO SUSP RULES TO REF TO FINANCE, ML RC(174-181)" (HB
+# 211, 18 March 1997) -- refers nothing, and a referral the chamber waived is
+# none either (SECOND_COMMITTEE and WAIVED, which day_record reads, know
+# Finance and Ways and Means only; Appropriations was the House's second
+# committee into the 1990s).
+SECOND_REF = re.compile(r"\bref(?:er(?:red|s)?)?\.?\s+(?:it\s+)?(?:on\s+)?(?:to\s+)?(?:the\s+)?"
+                        r"(?:house\s+|senate\s+)?(?P<c>[A-Za-z][^;(]*)", re.I)
+SECOND_NAMED = re.compile(r"^(?:(?P<a>approp)|(?P<f>fin)|(?P<w>ways\s*(?:and|&)\s*means|w\s*&\s*m)"
+                          r")\w*", re.I)
+FAILED_CLAUSE = re.compile(r"\b(?:ML|MF|AF|AL|failed|fails|lost)\b", re.I)
+
+
+def _days_between(a, b):
+    """Days from ISO day `a` to ISO day `b`; a great many where either is
+    not one."""
+    try:
+        return (datetime.date.fromisoformat(b) - datetime.date.fromisoformat(a)).days
+    except ValueError:
+        return 10 ** 6
+
+
+def second_committee(items, events, body, date):
+    """"Finance", "Ways and Means" or "Appropriations" where the chamber sent
+    the bill on to that committee the day of these votes, "another" where
+    it sent it to a committee the record names in its shorthand ("PASSED
+    WITH AM AND REF TO EXEC DEPTS & ADMIN", HB 1313 of 25 January 1990, "...
+    REF TO ED&A", HB 357 of 4 January 1996), else "" (SECOND_REF). The
+    House's own row can be entered the next day ("Referred to Finance", HB
+    215, the day after its passage of 18 February 2015): a referral row of
+    the chamber's before anything else happens to the bill is the same
+    referral. A referral reconsidered the same day is none ("SEN BLAISDELL
+    MOVED TO RECONSIDER REF TO FIN, MA VV; 3RD READING MA VV", SB 708, 15
+    February 1994)."""
+    days = {date} | {it.entered for it in items if it.entered}
+    raws = [it.raw for it in items if it.carried]
+    mine = sorted((e for e in events or () if not e.get("cancelled")),
+                  key=lambda e: (e.get("date") or "")[:10])
+    for e in mine:
+        d = (e.get("date") or "")[:10]
+        if (e.get("body") or "").strip().upper() == body and e.get("type") in (
+                "rereferred", "floor", "other") and (d in days or NR.row_day(e.get("raw"), "") in days):
+            raws.append(e.get("raw") or "")
+    last = max(days)
+    after = [e for e in mine if (e.get("date") or "")[:10] > last]
+    if after and (after[0].get("body") or "").strip().upper() == body \
+            and after[0].get("type") == "rereferred" \
+            and _days_between(last, (after[0].get("date") or "")[:10]) <= 7:
+        raws.append(after[0].get("raw") or "")
+    for raw in raws:
+        if WAIVED.search(raw or "") or any(
+                re.search(r"reconsider\w*\s+(?:the\s+)?ref", c, re.I) and not FAILED_CLAUSE.search(c)
+                for c in (raw or "").split(";")):
+            return ""
+    for raw in raws:
+        for clause in (raw or "").split(";"):
+            m = SECOND_REF.search(clause)
+            if not m or FAILED_CLAUSE.search(clause) \
+                    or re.search(r"interim\s+study|\bstudy\b|reconsider", clause, re.I):
+                continue
+            n = SECOND_NAMED.match(m.group("c").strip())
+            if n:
+                return ("Appropriations" if n.group("a") else
+                        "Finance" if n.group("f") else "Ways and Means")
+            return "another"
+    return ""
+
+
+# A CHAMBER THAT CHANGED THE BILL SENDS IT BACK. The second chamber's
+# passage goes to the Governor only where that chamber changed nothing since
+# the bill came to it: no amendment of its own adopted (its rows, or a
+# floor line's clause -- "COMM AM, AA VV; PASSED W/AM & REF TO APPROP", SB 152
+# of 20 April 1989, which the House passed again on 9 May after
+# Appropriations, and the Senate concurred), no passage "with amendment".
+AMENDED_ROW = re.compile(r"\b(?:pass\w*|ought\s+to\s+pass|otp)\W*(?:adopted\W*)?(?:with|w/)\s*am"
+                         r"|\bOTP\s*/\s*AM?\b|\bOTPA\b"
+                         r"|\bam(?:end\w*)?\b[^;]{0,60}?\b(?:AA|adopted)\b", re.I)
+# And a committee of conference settles the text itself: once the bill's
+# history has one, a passage's meaning is the conference report's to say.
+CONFERENCE_ROW = re.compile(r"\bconf(?:erence)?\b|\bc\s*of\s*c\b", re.I)
+
+
+def card_meaning(items, bill, body, row, entry, events=(), date=""):
+    """What the card's votes mean for the bill, in one sentence, or "" where
+    the record does not settle it (THE CLOSING LINE)."""
+    got = deciding(items, bill, body)
+    if got is None:
+        return ""
+    it, k, _chp = got
+    mk = k.get("mk") or ""
+    chamber, other = CHAMBER[body], CHAMBER[OTHER[body]]
+    if it.veto:
+        if it.carried is None:
+            return ""
+        if it.law or it.overturned:
+            said = session_days._consequence(it.action, it.carried, it.law, it.overturned)
+            return (said[:1].upper() + said[1:] + ".") if said else ""
+        if not it.carried:
+            return _say("no_law")
+        return _say("override_too", other=other) if mk == "override_first" else ""
+    if not it.carried:
+        return _say("stays_tabled") if mk == "untable" else ""
+    if it.plain:
+        # Nothing is said of what this motion did to the bill (Item.plain):
+        # a roll call's question in the file's words, a passage left pending.
+        return ""
+    origin = (row.get("passage") or "")[:1] or (bill or "")[:1].upper()
+    stops = [str(s[0] if isinstance(s, (list, tuple)) else (s or {}).get("stop", ""))[:1]
+             for s in row.get("rail") or ()]
+    after = next((CLOSING_AFTER[s] for s in stops if s in CLOSING_AFTER), "")
+    two = not ONE_CHAMBER.match(bill or "") and origin in CHAMBER
+    if mk in PASSES or mk in ("otp_finance", "otpa_finance"):
+        committee = second_committee(items, events, body, date) or (
+            (k.get("mf") or {}).get("Committee") if mk.endswith("_finance") else "")
+        if committee == "another":
+            return _say("second_other", chamber=chamber)
+        if committee:
+            return _say("second", chamber=chamber, committee=committee)
+        if mk.endswith("_finance"):
+            return ""
+    if mk in PASSES:
+        # A PASSAGE AFTER A TABLING THE CARD NEVER UNDOES is not one the
+        # record settles: HB 50 was laid on the table 206-170 on 22 March
+        # 2023 and its Ought to Pass with Amendment is entered after it, and
+        # the bill died on the table.
+        on_table = False
+        for x in items:
+            if x is it:
+                break
+            xk = motion_chip(x, bill, body)[1].get("mk")
+            if x.carried and xk in ("table", "untable"):
+                on_table = xk == "table"
+        if not two or on_table:
+            return ""
+        if body == origin:
+            return _say("to_other", other=other)
+        was = changed_here(events, body, date, entry)
+        if was == "conference":
+            return ""
+        if mk == "otpa" or was == "changed" or any(
+                x.carried and motion_chip(x, bill, body)[1].get("mk") == "otpa" for x in items):
+            return _say("back", origin=CHAMBER[origin], chamber=chamber)
+        return _say("agreed", after=after) if after else _say("agreed_only")
+    if mk == "concur" and two:
+        return _say("agreed", after=after) if after else _say("agreed_only")
+    if mk in ("nonconcur_conference", "request_conference"):
+        return _say("conference_asked", other=other)
+    if mk == "accede":
+        return _say("conference_on")
+    if mk == "conference_report" and two and after:
+        return _say("conference_report", after=after)
+    if mk == "untable":
+        return _say("back_before", chamber=chamber)
+    if mk in NUANCE_OF:
+        return NR.NUANCE[NUANCE_OF[mk]]
+    return ""
+
+
+def card_rows(items, every, rows, bill, body):
+    """The day's amendment rows ([(seq, event)], amendments_on_sittings)
+    that fall among one card's votes: each goes before the first of the
+    bill's votes of the day (`every`, in the day's order) its docket enters
+    after it, as bill_votes places it, and so to the card that vote is on;
+    one entered after them all, to the bill's last card. A row whose
+    amendment the card already draws as a vote is not said twice."""
+    mine = {id(x) for x in items}
+    drawn = set()
+    for it in items:
+        if (motion_chip(it, bill, body)[1].get("mk") or "") in CLOSING_WHO:
+            drawn.update(amendment_numbers(it.action))
+    out = []
+    for seq, e in sorted(rows or (), key=lambda x: x[0]):
+        nxt = next((x for x in every if x.seq > seq), None)
+        here = id(nxt) in mine if nxt is not None else bool(every) and id(every[-1]) in mine
+        if here and (e.get("amendment") or "").strip() not in drawn:
+            out.append((seq, e))
+    return out
+
+
+def closing_html(items, bill, body, row, entry, esc, events=(), date="", rows=()):
+    """The card's closing line: each of its votes as the bill's history says
+    one, then what they mean for the bill (THE CLOSING LINE). `rows` are the
+    day's amendments the card does not draw that fall among its votes
+    ([(seq, event)], card_rows): "all of the votes that were held", in the
+    owner's words, are these too, each before the first of the card's votes
+    its docket enters after it, as the day's data puts them (bill_votes).
+    "" for a card with no vote."""
+    held = NR.passage_left_pending(
+        [((e.get("body") or "").strip().upper(),
+          NR.row_day(e.get("raw"), (e.get("date") or "")[:10]), e.get("raw") or "")
+         for e in events or () if not e.get("cancelled")])
+    order = [(it.seq, it) for it in items]
+    for seq, e in sorted(rows or (), key=lambda x: x[0]):
+        at = next((i for i, (s, _x) in enumerate(order) if s > seq), len(order))
+        order.insert(at, (seq, e))
+    third = not any(motion_chip(x, bill, body)[1].get("mk") in ("order_third_reading",
+                                                                 "third_reading")
+                    for x in items)
+    said = []
+    for _s, it in order:
+        if isinstance(it, dict):
+            s = row_said(it, body, events)
+        else:
+            day = NR.row_day(it.raw, it.entered or date)
+            s = vote_said(it, bill, body, left=held.get((body, day), "") if it.plain else "",
+                          events=events, third=third)
+        if s and s in said:
+            # THE SAME WORDS FOR A SECOND VOTE ARE A SECOND VOTE, said "again"
+            # as the history says one (narrative.told_again): the Senate that
+            # tabled a bill, took it off and tabled it again that day.
+            lead = f"The {CHAMBER[body]} "
+            s = (s.replace(lead, lead + "again ", 1) if s.startswith(lead)
+                 else NR.AGAIN_AMENDMENT.sub(r" was \1 again", s, count=1))
+        if s:
+            said.append(s)
+    if not said:
+        return ""
+    mean = card_meaning(items, bill, body, row or {}, entry or {}, events, date)
+    return (f'<p class="dsum"><span class="dsumlab">In short</span>'
+            f'{esc(" ".join(said + ([mean] if mean else [])))}</p>')
+
+
+def vote_html(it, bill, body, year, cards, members, esc, payloads, journal=None, key=None,
+              spoke="", notes=""):
     """One motion of the day on a bill, in the approved vote words (the
     person, 8 October 2026): the motion's own name with only OTP, OTPA, ITL
     and IS abbreviated and a plain gloss; the chip saying what the vote did,
@@ -1569,6 +2300,17 @@ def vote_html(it, bill, body, year, cards, members, esc, payloads, journal=None,
     roll call with its card on the bill's Votes tab, the Votes tab's own
     display, whose party rows show the members (v2: no new link) -- and the
     count stands in the HTML without it.
+
+    ON A BILL'S CARD, IN THE ORDER THE OWNER ASKED FOR (24 October 2026:
+    "spoke for the motion and spoke against the motion should show above the
+    vote chart as well, but below the motion"): the head, the chip and the
+    count, who moved it, then who spoke on each side (`spoke`, markup the
+    caller made), then the ring, then the notes about the vote (`notes`),
+    and last, small, the clerk's own words for the motion where they say
+    something the head does not (clerk_adds). The returned block is left
+    open, as it always was, for the caller to close. A vote on no bill, with
+    the Journal's passage (`journal`) or without, keeps its own order and
+    its "In the record" line under the count, as they were.
 
     `journal` is a vote on no bill's entry in journal_motions.json, where the
     Journal's words for it are shown (vote_passage): its head is then the
@@ -1602,10 +2344,17 @@ def vote_html(it, bill, body, year, cards, members, esc, payloads, journal=None,
     if it.mover:
         nm = it.mover.replace("Rep. ", "").replace("Sen. ", "")
         moved = f'<p class="dvby">Moved by {member_html(body, nm, members, esc)}.</p>'
-    rec = (f'<p class="rcrec">In the record: {esc(k["mrec"])}</p>'
-           if k.get("mrec") and words_ else "")
-    if journal and words_ and not rec:
-        rec = f'<p class="rcrec">In the record: {esc(words_)}</p>'
+    # A VOTE ON NO BILL, the Journal's passage beside it or not, keeps its
+    # record line and its order as they were (CLERK_LABEL).
+    on_none = bool(journal) or not bill
+    if on_none:
+        rec = (f'<p class="rcrec">In the record: {esc(k["mrec"])}</p>'
+               if k.get("mrec") and words_ else "")
+        if journal and words_ and not rec:
+            rec = f'<p class="rcrec">In the record: {esc(words_)}</p>'
+    else:
+        rec = (f'<p class="rcrec">{CLERK_LABEL} {esc(k["mrec"])}</p>'
+               if k.get("mrec") and words_ and clerk_adds(it, bill, k, head, amds) else "")
     ring = ""
     pl = vote_payload(it, k["mk"] if words_ else "")
     if pl:
@@ -1625,9 +2374,12 @@ def vote_html(it, bill, body, year, cards, members, esc, payloads, journal=None,
     # member Votes tab and the per-term list link straight to it.
     rid = rollcall_id(it.rc) if not bill else None
     anchor = f' id="rc-{esc(rid)}"' if rid else ""
-    return (f'<div class="dvote{" nbvote" if journal else ""}"{anchor} data-motion="{esc(words_)}">'
-            f'<p class="dvh">{head}{amd}</p>'
-            f'<p class="dvr">{chp}{tally}{how}</p>{moved}{rec}{ring}')
+    top = (f'<div class="dvote{" nbvote" if journal else ""}"{anchor} data-motion="{esc(words_)}">'
+           f'<p class="dvh">{head}{amd}</p>'
+           f'<p class="dvr">{chp}{tally}{how}</p>{moved}')
+    if on_none:
+        return top + rec + ring + spoke + notes
+    return top + spoke + ring + notes + rec
 
 
 def render(day, narrative, titles, years, members, esc, chair=None, rec=None, ctx=None):
@@ -1635,11 +2387,14 @@ def render(day, narrative, titles, years, members, esc, chair=None, rec=None, ct
     Began, Excused for the Day, On the Consent Calendar, The Day in Order,
     and what belongs to no bill -- each bill the chamber took up one by one
     as its CARD (the person's feedback of 9 October 2026, item 1 and v15),
-    saying what happened to it that day: the committee's recommendation and
-    every vote in order. `rec` is the day as data (day_record), `ctx` what
-    the run read once: the bills' index rows, meta.json's committee codes,
-    and each floor station's moment. `chair` heads a printed debate's turns
-    in the chair (_debate_html)."""
+    saying what happened to it that day: its rail, then the committee's
+    recommendation and every vote in order, and last a line saying what the
+    day's votes did and meant (the owner, 24 October 2026: closing_html).
+    `rec` is the day as data (day_record), `ctx` what the run read once: the
+    bills' index rows, meta.json's committee codes, each floor station's
+    moment, and each bill's history and the sitting's amendment rows, which
+    the closing lines read. `chair` heads a printed debate's turns in the
+    chair (_debate_html)."""
     rec = rec or {}
     ctx = ctx or {}
     rows = ctx.get("rows") or {}
@@ -1696,6 +2451,12 @@ def render(day, narrative, titles, years, members, esc, chair=None, rec=None, ct
     # and every vote it had that day, whichever card they are on.
     used = {"order", "began", "excused", "consent", "nobill", "printed", "consent-uc"}
     lines = {}
+    # Each bill's votes of the day in order, and the amendments the day voted
+    # by voice or division, for the cards' closing lines (card_rows).
+    of_bill = collections.defaultdict(list)
+    for it in seq_items:
+        of_bill[(it.term, it.bill)].append(it)
+    amd_rows = (ctx.get("amendments") or {}).get(day.date) or {}
     for bill, items in runs(seq_items):
         term_ = items[0].term
         href = bill_href(term_, bill, years)
@@ -1719,7 +2480,7 @@ def render(day, narrative, titles, years, members, esc, chair=None, rec=None, ct
                 vids.append(mm[0]["v"])
         cards_here = (cards_of.get(term_) or {}).get(bill) or {}
         for it in items:
-            block = vote_html(it, bill, body, year, cards_here, members, esc, payloads)
+            spoke, notes = "", ""
             # BUSINESS DONE IN RECESS is on the sitting the journal prints it
             # with (session_days.recess_sitting), and the bill's own history
             # keeps the day the docket entered it. Said here, so the two dates
@@ -1727,28 +2488,31 @@ def render(day, narrative, titles, years, members, esc, chair=None, rec=None, ct
             if it.entered:
                 where = ("Done in the recess of this session day" if it.recess
                          else "Printed in the journal with this session day")
-                block += (f'<p class="swho">{where}, and entered in the docket on '
+                notes += (f'<p class="swho">{where}, and entered in the docket on '
                           f"{esc(words(it.entered))}, the date the bill&rsquo;s own history "
                           "gives it.</p>")
             elif getattr(it, "added", "") == "rollcall":
                 # NO DEBATE AND NO SPEAKER FOR A VOTE THE DOCKET DOES NOT STATE.
-                block += ROLLCALL_ONLY
+                notes += ROLLCALL_ONLY
             else:
+                # WHO SPOKE, UNDER THE MOTION THEY SPOKE ON and above its ring
+                # (vote_html), each side saying which vote it urged (SPOKE).
+                # Which motion a speech belongs to is speakers_for's to decide.
                 grp = groups[id(it)]
                 mine, _rest = speakers_for(attrs, bill, it,
                                            sole=(len(shared_out[grp]) == 1),
                                            ambiguous=unsure.get(grp, frozenset()))
-                for side, label in (("for", "Spoke for the motion"),
-                                    ("against", "Spoke against the motion")):
+                for side in ("for", "against"):
                     who = mine[side]
                     if who:
-                        block += (f'<p class="sspoke"><span class="slab">{label}</span>'
+                        spoke += (f'<p class="sspoke"><span class="slab">{SPOKE[side]}</span>'
                                   + members_row(body, who, members, esc) + "</p>")
             if (getattr(it, "shared", 0) or 0) > 1:
-                block += (f'<p class="swho">One {esc(it.kind_words or "vote")} on {it.shared} '
+                notes += (f'<p class="swho">One {esc(it.kind_words or "vote")} on {it.shared} '
                           "bills: the same vote is drawn under each of them, and counted "
                           "once.</p>")
-            line.append(block + "</div>")
+            line.append(vote_html(it, bill, body, year, cards_here, members, esc, payloads,
+                                  spoke=spoke, notes=notes) + "</div>")
         # NAMED, BUT NOT TAKEN A SIDE FOR: the record does not tie the speech
         # to one of the day's motions, so no side is shown.
         grp = groups[id(items[0])]
@@ -1767,6 +2531,14 @@ def render(day, narrative, titles, years, members, esc, chair=None, rec=None, ct
         if d and d["speeches"] and own and id(d) not in drawn:
             drawn.add(id(d))
             line.append(_debate_html(d, body, members, esc, chair=chair))
+        # THE CLOSING LINE, last on the card (closing_html): what this card's
+        # votes did and what that means for the bill.
+        line.append(closing_html(
+            items, bill, body, row, recs.get((term_, bill)) or {}, esc,
+            events=(((ctx.get("data") or {}).get(term_) or {}).get(bill) or {}).get("events"),
+            date=day.date,
+            rows=card_rows(items, of_bill[(term_, bill)], amd_rows.get((term_, bill)),
+                           bill, body)))
         chip_w = row.get("chip") or ""
         topic = "" if (row.get("topic") == "Miscellaneous"
                        and row.get("topic_by") == "granite record") else (row.get("topic") or "")
@@ -1780,6 +2552,15 @@ def render(day, narrative, titles, years, members, esc, chair=None, rec=None, ct
                                                  "items": []})
         line_["items"] += items
         at = f' data-at="{esc(line_["a"])}"' if line_["a"] != anchor else ""
+        # THE RAIL ABOVE THE VOTES (the owner, 24 October 2026: "The rail on
+        # the session day pages should show above the votes as it would on a
+        # bill page or card"). A card elsewhere has a line of a few words, so
+        # its rail sits under the byline; a session day's line is the day's
+        # every vote, and the rail, drawn after it, fell to the foot of the
+        # card. components.bill_card draws its `notes` between the byline and
+        # the line, so the rail is handed in there and its own place, after
+        # the line, is left empty: the card is the same card, the rail is the
+        # same rail, and nothing else that draws a card changes.
         cards.append(anchored(C.bill_card({
             "id": bill, "href": href or "", "n": num, "year": year,
             "word": C.card_word(chip_w, row.get("passage")) if chip_w else "",
@@ -1787,7 +2568,8 @@ def render(day, narrative, titles, years, members, esc, chair=None, rec=None, ct
                     or C.WORDBOOK["chips"]["kind"].get(row.get("kind") or "", "")),
             "title": titles.get((term_, bill)) or row.get("title") or "",
             "byline": C.bill_byline(sponsor, row.get("committees") or [], topic, term_, codes),
-            "line": "".join(line), "rail": C.rail_html(row.get("rail") or [], chip_w == "Died"),
+            "notes": C.rail_html(row.get("rail") or [], chip_w == "Died"),
+            "line": "".join(line), "rail": "",
             "open": None}), anchor, at))
     if seq_items:
         heading = "The Day in Order" if day.ordered else f"What the {CHAMBER[body]} Did That Day"
@@ -2737,7 +3519,10 @@ def chamber(a, site, base, body, days):
     # station's moment, for the time its card plays the day's recording at.
     draw = {"rows": load_rows(site), "codes": load_codes(site),
             "moments": fr.get("moments") or {}, "cards": fr["cards"],
-            "nobill": fr.get("nobill") or {}}
+            "nobill": fr.get("nobill") or {},
+            # Each bill's history, and the amendments each sitting voted by
+            # voice or division, for its card's closing line (closing_html).
+            "data": data, "amendments": amendments}
     excused = 0
     order = mine[: a.limit] if a.limit else mine
     weeks = calendar_weeks(site)
