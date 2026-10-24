@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-18.39
+# GRANITE_VERSION: 2026-09-18.40
 """
 The General Court's week, one page per week.
 
@@ -125,6 +125,7 @@ import bill_order as BO
 import build_date
 import build_pages as BP
 import calendar_documents as CD
+import key_dates as KD
 import proceedings
 import shell as S
 import structured as LD
@@ -600,21 +601,33 @@ WEEK_JS = r"""
   // except the study and statutory committees, as the person asked on 25
   // September 2026: "each one is selected on by default aside from study
   // committees".
-  var CATS=["hearing","exec","work","conf","floor","study"];
-  var CAT_ON=["hearing","exec","work","conf","floor"];
+  // KEY DATES, THE SEVENTH BOX (the owner, 24 October 2026: "those dates
+  // should show up on the calendar page too under a separate meeting type in
+  // the key"), on for a new reader: the elections, town meeting days and the
+  // legislature's own dates (key_dates.py). A key date is an entry of the
+  // schedule like a card, and not a meeting: nothing that counts meetings
+  // counts it (isKD).
+  var CATS=["hearing","exec","work","conf","floor","study","date"];
+  var CAT_ON=["hearing","exec","work","conf","floor","date"];
   // A card's kinds are its bar's colours, and each answers to one box. A
   // kind the table does not name is one of the committee's other meetings,
   // which Work Session has always covered.
   var CAT_OF={hearing:"hearing",exec:"exec",meet:"work",other:"work",conf:"conf",
-              floor:"floor",study:"study"};
-  // The grid's dots in the order of the boxes.
-  var BAR_ORDER=["hearing","exec","meet","conf","floor","study","other"];
+              floor:"floor",study:"study",date:"date"};
+  // The grid's dots in the order of the boxes, a day's key date first, as
+  // its card is first in the day.
+  var BAR_ORDER=["date","hearing","exec","meet","conf","floor","study","other"];
   var VIEWS=["list","week","day"];
   // A CARD'S OPENING TAG, NEVER WRITTEN WHOLE HERE. The checks count cards,
   // links and the empty day's sentence in a built page's text, and this
   // script is in that text; spelling the tag out would count as a card.
-  var CARD='<details class="cal'+'meet"';
-  var CARD_TAG=new RegExp("^"+CARD+"[^>]*>"), CARDS=new RegExp(CARD+"[\\s\\S]*?</details>","g");
+  // A key date's card has a class of its own (build_pages.cal_days), and is
+  // read here as an entry like a meeting's.
+  var CARD='<details class="cal'+'meet"', KDCARD='<details class="cal'+'kd"';
+  var ANY='<details class="cal(?:meet|kd)"';
+  var CARD_TAG=new RegExp("^"+ANY+"[^>]*>"), CARDS=new RegExp(ANY+"[\\s\\S]*?</details>","g");
+  function isKD(e){ return e.who==="date"; }
+  function meetings(a){ return a.filter(function(e){ return !isKD(e); }); }
 
   function pad(n){ return (n<10?"0":"")+n; }
   function iso(y,m,d){
@@ -713,11 +726,15 @@ WEEK_JS = r"""
   }
   // A day as cal_days draws it: its heading, then its cards, then the close.
   // Cards never nest, so each one runs to the first </details> after it.
+  // `tail` is what follows the last card: on a day of key dates alone, the
+  // line that says no meeting is on it, which is true under any filter.
   function parseDay(html){
-    var i=html.indexOf(CARD);
+    var a=html.indexOf(CARD), b=html.indexOf(KDCARD), i=a<0?b:b<0?a:Math.min(a,b);
     return {head:i<0?html.replace(/<\/div>\s*$/,""):html.slice(0,i),
-            cards:(html.match(CARDS)||[]).map(parseCard)};
+            cards:(html.match(CARDS)||[]).map(parseCard),
+            tail:i<0?"":html.slice(html.lastIndexOf("</details>")+10).replace(/<\/div>\s*$/,"")};
   }
+  function kdHtml(vis){ return vis.filter(isKD).map(function(e){ return e.html; }).join(""); }
   function dayHtml(day,cards){
     return day.head+cards.map(function(e){ return e.html; }).join("")+"</div>";
   }
@@ -735,6 +752,7 @@ WEEK_JS = r"""
   // chamber's committee is each kind its items are, so a day of hearings and
   // then an executive session answers to both boxes.
   function catsOf(e){
+    if(isKD(e)) return ["date"];
     if(e.who==="floor") return ["floor"];
     if(e.who==="study") return ["study"];
     var out=[];
@@ -772,13 +790,14 @@ WEEK_JS = r"""
   // own button says when a phone folds it away.
   function sideOn(f){ return (!!f.body)+(!!f.picks.length)+(!!String(f.q||"").trim()); }
   // A CANCELLED MEETING IS SHOWN AND NOT COUNTED, as the week's lead counts:
-  // "22 sittings" of a week in which 21 met was a wrong number.
+  // "22 sittings" of a week in which 21 met was a wrong number. A KEY DATE
+  // IS NOT A MEETING, and is not counted at all.
   function tally(entries,f){
     var t={total:0,shown:0,seen:0,study:0};
     // What ticking Study Committee would add, where it is unticked.
     var g=f.cats.indexOf("study")<0
       ? {picks:f.picks,body:f.body,q:f.q,cats:f.cats.concat(["study"])} : null;
-    entries.forEach(function(e){
+    meetings(entries).forEach(function(e){
       var ok=matches(e,f);
       if(!e.cancelled) t.total++;
       if(ok){ t.seen++; if(!e.cancelled) t.shown++; }
@@ -870,7 +889,9 @@ WEEK_JS = r"""
           +(e.cancelled?'<span class="wkn">Cancelled</span>':n?'<span class="wkn">'+plural(n,"bill")+'</span>':"")
           +(said.length?'<span class="sr">, '+said.join(", ")+'</span>':"")
           +'</span>';
-    return '<li class="wke" data-date="'+esc(e.date)+'" data-cmte="'+esc(e.cmte)+'">'
+    // A key date's entry wears its colour (wkkd) and opens its day, where
+    // its card says what it is and where it comes from.
+    return '<li class="wke'+(isKD(e)?" wkkd":"")+'" data-date="'+esc(e.date)+'" data-cmte="'+esc(e.cmte)+'">'
       +(go?'<a class="wkgo" href="'+go[1]+'">'+inner+'</a>'
           :'<button type="button" class="wkgo" data-open="'+esc(e.date+"|"+e.cmte)+'">'+inner
             +'<span class="sr">: open it in the Day view</span></button>')+'</li>';
@@ -905,11 +926,14 @@ WEEK_JS = r"""
   // SITTING FIRST since study committees start hidden (25 September 2026): a
   // week whose Monday held only a study commission opened on a day that
   // showed nothing, in the Day view and in the grid.
+  // A KEY DATE IS NOT A SITTING: a week opens on its first sitting still,
+  // and on its first key date only where it holds no sitting at all.
   function firstDay(key,days,today,first,last,f){
     var mon=keyMonday(key);
     for(var i=0;i<7;i++){ if(addDays(mon,i)===today && today>=first && today<=last) return today; }
-    var live=function(e){ return !e.cancelled; },
-        tests=f?[function(e){ return live(e)&&matches(e,f); },live]:[live];
+    var live=function(e){ return !e.cancelled&&!isKD(e); },
+        kd=function(e){ return isKD(e)&&(!f||matches(e,f)); },
+        tests=f?[function(e){ return live(e)&&matches(e,f); },live,kd]:[live,kd];
     for(var t=0;t<tests.length;t++)
       for(var j=0;j<7;j++){
         var day=days[addDays(mon,j)];
@@ -995,6 +1019,9 @@ WEEK_JS = r"""
       s.cats=OLD_WHAT.filter(function(c){ return what.indexOf(c)>=0 && (!who||who.indexOf("standing")>=0); });
       if(!who||who.indexOf("floor")>=0) s.cats.push("floor");
       if(who&&who.indexOf("study")>=0) s.cats.push("study");
+      // Those filters could not hide a key date, which had no box then
+      // (24 October 2026), so the link shows them as it shows a new reader.
+      s.cats.push("date");
       any=true;
     }
     if(p.get("b")==="H"||p.get("b")==="S"){ s.body=p.get("b"); any=true; }
@@ -1016,7 +1043,8 @@ WEEK_JS = r"""
   // days, f}.
   function cellHtml(d,c){
     var on=d>=c.first&&d<=c.last, day=c.days[d],
-        vis=day?day.cards.filter(function(e){ return matches(e,c.f); }):[],
+        all=day?day.cards.filter(function(e){ return matches(e,c.f); }):[],
+        vis=meetings(all), kds=all.filter(isKD),
         live=vis.filter(function(e){ return !e.cancelled; }).length,
         cls=["cmday"], name=dateWords(d,"long");
     if(month(d)!==c.view) cls.push("cmout");
@@ -1028,7 +1056,10 @@ WEEK_JS = r"""
     else{
       name+=", "+(live?plural(live,"meeting"):"no meetings");
       if(vis.length>live) name+=", "+(vis.length-live)+" cancelled";
+      // The day's key dates by name: the dot alone says only that one is there.
+      kds.forEach(function(e){ name+=", "+e.name; });
     }
+    vis=all;
     return '<td role="gridcell" class="'+cls.join(" ")+'" data-d="'+d+'" tabindex="'
       +(d===c.focus?"0":"-1")+'" aria-selected="'+(d===c.sel)+'"'
       +(d===c.today?' aria-current="date"':"")+(on?"":' aria-disabled="true"')+'>'
@@ -1089,7 +1120,8 @@ WEEK_JS = r"""
     firstDay:firstDay, clock:clock,
     isDay:isDay, isWeek:isWeek, readQuery:readQuery, writeQuery:writeQuery, readHash:readHash,
     barsOf:barsOf, cellHtml:cellHtml, gridHtml:gridHtml,
-    peekHtml:peekHtml, stepKey:stepKey, CATS:CATS, CAT_ON:CAT_ON};
+    peekHtml:peekHtml, stepKey:stepKey, CATS:CATS, CAT_ON:CAT_ON,
+    isKD:isKD, meetings:meetings};
   G.GRCAL=CORE;
 
   // ==== THE PAGE ===================================================================
@@ -1388,12 +1420,16 @@ WEEK_JS = r"""
     // says so. Outside the live region, so the count is said without it.
     if(showst) showst.hidden=!(tl&&tl.study);
   }
+  // A day's key dates come first and are not meetings: a day of key dates
+  // alone keeps its own line that no meeting is on it, and a day whose
+  // meetings the filters hid says so under the key dates still shown.
   function listView(dates){
     return listDates(dates,DAYS,S).map(function(d){
-        var day=DAYS[d], vis=visible(d);
-        return day.cards.length&&!vis.length
-          ? day.head+'<p class="calempty">'+esc(emptyWords(day.cards,S))+'</p></div>'
-          : dayHtml(day,vis); }).join("")
+        var day=DAYS[d], vis=visible(d), mt=meetings(day.cards);
+        if(!day.cards.length) return dayHtml(day,vis);
+        if(!mt.length) return day.head+kdHtml(vis)+day.tail+"</div>";
+        return meetings(vis).length ? dayHtml(day,vis)
+          : day.head+kdHtml(vis)+'<p class="calempty">'+esc(emptyWords(mt,S))+'</p></div>'; }).join("")
       || '<p class="calempty">Nothing this week matches the filters.</p>';
   }
   // THE DAY, with the day either side under it as a pager in the week's
@@ -1407,8 +1443,12 @@ WEEK_JS = r"""
       +(n<=LAST?'<button type="button" class="wknext calstepb calstepn" data-step="1" data-to="'+n+'">'
         +'<span class="wkpw">Next Day &rsaquo;</span><span class="wkpd">'+esc(dayWords(n))+'</span></button>':"")
       +'</nav>';
+    var mt=meetings(day.cards);
+    if(day.cards.length && !mt.length) return day.head+kdHtml(vis)+day.tail+"</div>"+step;
     if(day.cards.length && !vis.length)
       return day.head+'<p class="calempty">Nothing on this day matches the filters.</p></div>'+step;
+    if(!meetings(vis).length)
+      return day.head+kdHtml(vis)+'<p class="calempty">'+esc(emptyWords(mt,S))+'</p></div>'+step;
     return dayHtml(day,vis)+step;
   }
   // THE WEEK: a column a day, Monday to Friday, beside the month as the list
@@ -1419,14 +1459,14 @@ WEEK_JS = r"""
     var cols=weekCols(dates,DAYS,S,SEL);
     return '<div class="wkweek"><ol class="wkdays" style="--cols:'+cols.length+'">'
       +cols.map(function(d){
-        var vis=visible(d);
+        var vis=visible(d), mt=meetings(((DAYS[d]||{}).cards)||[]);
         return '<li class="wkcol'+(d===SEL?" wksel":"")+(d<TODAY?" wkpast":"")+'"'
           +(d===TODAY?' aria-current="date"':"")+'><h2 class="wkdh"><button type="button" class="wkday" data-d="'+d+'">'
           +'<span class="wkdn">'+DAYNAME[weekday(d)]+'</span> '
           +'<span class="wkdd">'+dateWords(d,"short")+(d===TODAY?" · Today":"")+'</span>'
           +'<span class="sr">: open this day</span></button></h2>'
-          +(vis.length?'<ul class="wkes">'+vis.map(entryHtml).join("")+'</ul>'
-            :'<p class="wkempty">'+esc(emptyWords(((DAYS[d]||{}).cards)||[],S))+'</p>')
+          +(vis.length?'<ul class="wkes">'+vis.map(entryHtml).join("")+'</ul>':"")
+          +(meetings(vis).length?"":'<p class="wkempty">'+esc(emptyWords(mt,S))+'</p>')
           +'</li>'; }).join("")
       +'</ol></div>';
   }
@@ -1437,7 +1477,7 @@ WEEK_JS = r"""
   function focusMark(){
     var a=document.activeElement;
     if(!a||!view.contains(a)) return null;
-    var m=a.closest&&a.closest(".calmeet");
+    var m=a.closest&&a.closest(".calmeet,.calkd");
     if(m) return {card:cardKey(m)};
     var w=a.closest&&a.closest(".wke");
     if(w) return {entry:cardKey(w)};
@@ -1448,7 +1488,7 @@ WEEK_JS = r"""
   function refocus(k){
     if(!k) return;
     var t=null;
-    if(k.card) all(view,".calmeet").some(function(m){
+    if(k.card) all(view,".calmeet,.calkd").some(function(m){
       if(cardKey(m)===k.card){ t=m.querySelector("summary"); return true; } return false; });
     else if(k.entry) all(view,".wke").some(function(w){
       if(cardKey(w)===k.entry){ t=w.querySelector(".wkgo"); return true; } return false; });
@@ -1478,6 +1518,12 @@ WEEK_JS = r"""
       // the week are for scanning, so theirs stay shut until opened.
       m.open=o===undefined?S.v==="day":o;
       addToCalendar(m);
+    });
+    // A key date's card opens as a meeting's does; it is not offered for a
+    // reader's own calendar, being no sitting with a time.
+    all(view,".calkd").forEach(function(m){
+      var o=OPEN[S.v][cardKey(m)];
+      m.open=o===undefined?S.v==="day":o;
     });
     all(view,".calday[data-d]").forEach(function(el){
       var d=el.getAttribute("data-d"), r=el.querySelector(".cdrel");
@@ -1948,7 +1994,8 @@ WEEK_JS = r"""
 
   view.addEventListener("toggle",function(e){
     var m=e.target;
-    if(m&&m.classList&&m.classList.contains("calmeet")) OPEN[S.v][cardKey(m)]=m.open;
+    if(m&&m.classList&&(m.classList.contains("calmeet")||m.classList.contains("calkd")))
+      OPEN[S.v][cardKey(m)]=m.open;
   },true);
   view.addEventListener("click",function(e){
     var b=e.target.closest&&e.target.closest("button");
@@ -1961,7 +2008,7 @@ WEEK_JS = r"""
       // A week's entry with no page to lead to: its day, with it in full.
       var ck=b.getAttribute("data-open");
       S.v="day"; syncControls(); select(ck.split("|")[0],"view");
-      all(view,".calmeet").some(function(m){
+      all(view,".calmeet,.calkd").some(function(m){
         if(cardKey(m)!==ck) return false;
         var sm=m.querySelector("summary"); if(sm) sm.focus();
         if(m.scrollIntoView) m.scrollIntoView({block:"nearest"});
@@ -2131,6 +2178,29 @@ def weeks_from(rows, names=None):
                             and not x["time"] and not x["venue"]):
                         x["time"], x["venue"] = src[0]["time"], src[0]["venue"]
     return weeks
+
+
+# KEY DATES ON THE CALENDAR (the owner, 24 October 2026: "those dates should
+# show up on the calendar page too under a separate meeting type in the
+# key"). The elections, town meeting days and the legislature's own dates
+# and deadlines (key_dates.py, which says where each comes from), on their
+# days from FROM to KEY_AHEAD days after the build's: a year, so the next
+# town meeting day and the next session's first days are a few pages on,
+# and no week is written for a date further off than the record can say
+# anything about. A week holding one has a page like any other.
+KEY_AHEAD = 366
+
+
+def key_date_days(weeks, today, evs=None):
+    """{day: [(key date, role)]} of the Calendar's key dates, each day given
+    its place in `weeks` (an empty day where no meeting is on it), so that
+    every_week then spans them. One reading for main() and week_labels."""
+    hi = today + datetime.timedelta(days=KEY_AHEAD)
+    got = KD.days(KD.events(today) if evs is None else evs, FROM, hi.isoformat())
+    for d in got:
+        x = datetime.date.fromisoformat(d)
+        weeks[week_key(x)].setdefault(d, OrderedDict())
+    return got
 
 
 def every_week(weeks, today):
@@ -2308,15 +2378,21 @@ def day_words(d, today):
     return S.date_words(x, "day"), rel
 
 
-def week_facts(key, weeks, today):
+def week_facts(key, weeks, today, events=None):
     """What a week's page says about the week: its span, the days it lists,
     its cards and the lead sentence that counts them.
 
     One function, because two things say it: the week's own page, and the
     month files the Calendar page's script reads when a reader moves to
-    another week -- the heading and the lead it shows then are these."""
+    another week -- the heading and the lead it shows then are these.
+
+    `events` is key_date_days()'s: a Saturday or Sunday holding a key date is
+    listed as one holding a meeting is. A key date is not a meeting, so the
+    lead and the counts leave it out."""
     days_raw = weeks[key]
-    dated = [d for d in days_raw if days_raw[d]]
+    dated = sorted({d for d in days_raw if days_raw[d]}
+                   | {d for d in (events or {})
+                      if week_key(datetime.date.fromisoformat(d)) == key})
     first = monday(datetime.date.fromisoformat(min(dated) if dated
                                                else min(days_raw)))
     last = first + datetime.timedelta(days=6)
@@ -2402,12 +2478,20 @@ def week_facts(key, weeks, today):
 # last field is whether it starts ticked. A study or statutory committee is
 # Study Committee whatever kind of meeting it held, and a work session no
 # longer shares a box, or a colour, with one.
+#
+# KEY DATES, THE SEVENTH (the owner, 24 October 2026: "those dates should
+# show up on the calendar page too under a separate meeting type in the
+# key"): the elections, town meeting days and the legislature's own dates
+# and deadlines (key_dates.py), in a colour of their own, ticked for a new
+# reader. Not a kind of meeting, so no meeting is counted under it, and the
+# count line above the schedule counts meetings still.
 CATEGORIES = (("hearing", "k-hearing", True),
               ("exec", "k-exec", True),
               ("work", "k-meet", True),
               ("conf", "k-conf", True),
               ("floor", "k-floor", True),
-              ("study", "k-study", False))
+              ("study", "k-study", False),
+              ("date", "k-date", True))
 
 
 def cats_html():
@@ -2416,7 +2500,7 @@ def cats_html():
 
     A real checkbox in a label, laid over a box drawn in its colour (app.css,
     .calcat): the drawing is the key, the checkbox the filter. The key is
-    the same six names and colours, so the page reads the same either way.
+    the same seven names and colours, so the page reads the same either way.
     """
     names = dict(BP.MEET_LEGEND)
     assert [c for _v, c, _on in CATEGORIES] == [c for c, _w in BP.MEET_LEGEND], (
@@ -2555,8 +2639,9 @@ def week_labels(site, today=None):
     if not weeks:
         return {}
     today = today or build_date.today()
+    events = key_date_days(weeks, today)
     every_week(weeks, today)
-    return {k: week_facts(k, weeks, today)["label"] for k in weeks}
+    return {k: week_facts(k, weeks, today, events)["label"] for k in weeks}
 
 
 # ONE CALENDAR PAGE FOR SEARCH ENGINES (17 October 2026, the person's
@@ -2619,7 +2704,8 @@ def study_hidden(days, meets, draw):
 
 
 def week_page(site, base, key, weeks, order, at, titles, years, code, urls,
-              today, sessions=frozenset(), study=False, docs=None, picker=""):
+              today, sessions=frozenset(), study=False, docs=None, picker="",
+              events=None):
     """Write one week's page. `study` is whether the calendar holds the study
     and statutory committees' meetings from the database copy; the page's
     description claims them only then.
@@ -2633,8 +2719,11 @@ def week_page(site, base, key, weeks, order, at, titles, years, code, urls,
     come "from the General Court's own database, as copied on 8 September
     2026", and that nothing had refreshed the copy; the person asked on 25
     September 2026 for the explanation to go. The build still says which
-    copy it read, every run (main), so it is not silent about it."""
-    w = week_facts(key, weeks, today)
+    copy it read, every run (main), so it is not silent about it.
+
+    `events` is key_date_days()'s: each key date is a card on its day, before
+    the day's meetings, under the Key Dates box (24 October 2026)."""
+    w = week_facts(key, weeks, today, events)
     label, lead, days, meets, n = w["label"], w["lead"], w["days"], w["meets"], w["n"]
 
     # level=2: the h1 of this page is the week itself, so a day is the
@@ -2642,7 +2731,7 @@ def week_page(site, base, key, weeks, order, at, titles, years, code, urls,
     # and stay h3.
     body = study_hidden(days, meets, lambda one: BP.cal_days(
         one, meets, titles, years, code, lambda d: day_words(d, today), S.E,
-        level=2, sessions=sessions, docs=docs)[0])
+        level=2, sessions=sessions, docs=docs, events=events)[0])
 
     nav = pager_html(key, weeks, order, at, today)
     here = week_key(today)
@@ -2846,9 +2935,11 @@ DATA_DIR = ("calendar", "data")
 
 
 def month_files(site, weeks, order, titles, years, code, today,
-                sessions=frozenset(), docs=None):
+                sessions=frozenset(), docs=None, events=None):
     """Write calendar/data/<YYYY-MM>.json for every month the weeks in `order`
     touch, and calendar/data/committees.json; take out any other .json there.
+    `events` is key_date_days()'s: a day's key dates are in its HTML, as the
+    week page draws them.
 
     Returns (months written, cards written)."""
     out = Path(site).joinpath(*DATA_DIR)
@@ -2869,12 +2960,12 @@ def month_files(site, weeks, order, titles, years, code, today,
             # quiet Saturday says it is quiet, in the words the week page uses.
             html, _m = BP.cal_days({iso: in_order(day)}, day, titles, years, code,
                                    lambda dd: day_words(dd, today), S.E, level=2,
-                                   sessions=sessions, docs=docs)
+                                   sessions=sessions, docs=docs, events=events)
             days[iso] = html
             cards += len(day)
             if k in weeks and k not in wk:
                 if k not in facts:
-                    f = week_facts(k, weeks, today)
+                    f = week_facts(k, weeks, today, events)
                     # The pager's short name for it too, which Previous Week
                     # and Next Week say under them (WEEK_JS's shortOf).
                     facts[k] = {"label": f["label"], "lead": f["lead"], "short": f["short"]}
@@ -2949,6 +3040,15 @@ def main():
 
     today = build_date.today()
     here = week_key(today)
+    # THE KEY DATES, each on its day (key_date_days), before the weeks are
+    # filled in: a date past the last meeting gives its week a page.
+    events = key_date_days(weeks, today)
+    n_kd = sum(len(v) for v in events.values())
+    # SILENCE IS NOT SUCCESS: legislative_year and the statutes always give
+    # some, so none is a reading that failed.
+    assert n_kd, "no key dates from key_dates.events(); the Key Dates box would be empty"
+    print(f"  {n_kd} key dates on {len(events)} days, {FROM} to "
+          f"{today + datetime.timedelta(days=KEY_AHEAD)} (key_dates.py)")
     # Every week from the first to the last, the current one included, so the
     # arrows step one week at a time and every week has an address.
     empty = every_week(weeks, today)
@@ -2987,7 +3087,8 @@ def main():
     for i, key in enumerate(order):
         total += week_page(site, base, key, weeks, order, i,
                            titles, years, code, urls, today, sits,
-                           study=bool(study_rows), docs=docs, picker=picker)
+                           study=bool(study_rows), docs=docs, picker=picker,
+                           events=events)
     size = documents_files(site, base, cdocs, cd_out, urls)
     if size:
         print(f"  calendar/documents.json ({size:,} bytes) and calendar/documents.html, "
@@ -2997,7 +3098,7 @@ def main():
     # SILENCE IS NOT SUCCESS: a run that wrote weeks and no months is a
     # calendar whose grid shows nothing, so it says how many and stops if none.
     n_months, n_cards = month_files(site, weeks, order, titles, years, code,
-                                    today, sits, docs)
+                                    today, sits, docs, events)
     assert n_months, "no month files were written; the calendar's grid would be empty"
     print(f"  {n_months} month files -> calendar/data/ ({n_cards:,} cards, "
           "the same ones the week pages draw), and committees.json for the picker")

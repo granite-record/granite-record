@@ -4,7 +4,8 @@
     "'kinds' turns the schedule's word for a meeting, lower case, into what a reader sees and the class that colours it. THE COLOURS ARE THE GENERAL COURT'S OWN, because staff already read its schedule by them: blue a hearing, green a work session, orange an executive session, red a committee of conference (the legend fetch_schedule.py quotes). The floor, which that schedule does not colour, has one of its own. Until 24 September 2026 a hearing was gold and every work session, conference and floor sitting fell to the orange that means executive session there. A kind not named here keeps the neutral k-other rather than borrowing a colour that means something else.",
     "STUDY AND STATUTORY COMMITTEES HAVE THEIR OWN COLOUR, a raspberry, though the General Court's schedule greens them with the work sessions: the person asked on 25 September 2026 for the two not to be grouped, since the Calendar's colours are also its filter. app.css says why the colour is that one.",
     "The words are names, in title case like the boxes above the Calendar's schedule (the person, 25 September 2026). 'small' is the words a kind the table does not know keeps in lower case after its first word when it is set the same way ('Committee of Conference'): build_pages.kind_title and app.js's kindTitle. They are every chip's small words too: components.title_words writes a record's words in a chip's Title Case with them ('Inexpedient to Legislate', 'As Amended by the House'), and 'from' and 'with' were added for it on 9 October 2026 (the component plan's step 3), since the approved vote words keep them in lower case: 'Ought to Pass with Amendment', 'Remove from the Table'.",
-    "'legend' is the key, each colour once, in the order of the Calendar's row of boxes, which is the key and the filter above its schedule (build_calendar.CATEGORIES follows it). 'Work Session' also covers the chamber committees' other meetings, and 'Study Committee' the statutory ones, whose chips say which they are."
+    "'legend' is the key, each colour once, in the order of the Calendar's row of boxes, which is the key and the filter above its schedule (build_calendar.CATEGORIES follows it). 'Work Session' also covers the chamber committees' other meetings, and 'Study Committee' the statutory ones, whose chips say which they are.",
+    "'Key Dates' is in the key and is not a kind of meeting, so 'kinds' does not name it: the elections, town meeting days and the legislature's own dates and deadlines (key_dates.py), which the Calendar shows on their days under a box of their own, in a gold the six kinds do not use (the owner, 24 October 2026: \"those dates should show up on the calendar page too under a separate meeting type in the key\")."
   ],
   "kinds": {
     "public hearing": ["Public Hearing", "k-hearing"],
@@ -25,6 +26,7 @@
     ["k-meet", "Work Session"],
     ["k-conf", "Committee of Conference"],
     ["k-floor", "Session Day"],
-    ["k-study", "Study Committee"]
+    ["k-study", "Study Committee"],
+    ["k-date", "Key Dates"]
   ]
 }

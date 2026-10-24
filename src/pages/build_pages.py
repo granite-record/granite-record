@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.230
+# GRANITE_VERSION: 2026-09-04.232
 """
 Build the pages the navigation links to: legislators, town lookup, how it
 works, and about.
@@ -683,12 +683,25 @@ def home_week(week):
             for d, day in (week or {}).items()}
 
 
-def calendar_html(out, today=None, rows=None, lang="en"):
-    """What is left of this week, by day and then by meeting.
+def calendar_html(out, today=None, rows=None, lang="en", events=None):
+    """What is left of this week, by day and then by meeting, and the key
+    dates after it.
 
     `today` and `rows` are preflight's: it draws the rail for a fixed date out
     of rows it wrote, rather than out of the clock and proceedings.csv.
+    `events` is key_dates.events()'s list, worked out for `today` where it is
+    not given; [] draws the rail with none.
+
+    THE KEY DATES (the owner, 24 October 2026: "Coming up should list major
+    events like the election days, town meeting days, organization day,
+    etc"). Those of the rail's week stand in their days, first, each a line
+    in its own colour (key_dates.row_html); a day holding only a key date is
+    one of the rail's days. The next few after the rail's Sunday follow the
+    week, under their own heading, in date order (key_dates.ahead_html), so a
+    reader on 24 October sees the election of 3 November before it is this
+    week's.
     """
+    import key_dates as KD
     import datetime as _dt
     from collections import OrderedDict
     # build_calendar imports this module, so it is imported here, once both
@@ -725,8 +738,12 @@ def calendar_html(out, today=None, rows=None, lang="en"):
     monday = BC.monday(start)
     sunday = monday + _dt.timedelta(days=6)
     week = home_week(weeks.get(BC.week_key(start)))
-    dates = sorted(d for d in week
-                   if start.isoformat() <= d <= sunday.isoformat() and week[d])
+    evs = KD.events(today) if events is None else events
+    kds = KD.days(evs, start, sunday)
+    dates = sorted(d for d in set(week) | set(kds)
+                   if start.isoformat() <= d <= sunday.isoformat()
+                   and (week.get(d) or kds.get(d)))
+    later = KD.ahead_html(evs, sunday.isoformat(), today, lang)
     nxt = BC.week_key(sunday + _dt.timedelta(days=1))
     n_next = sum(len(v) for v in home_week(weeks.get(nxt)).values())
     # The week's name and its weekdays, as the Calendar's pager says them
@@ -766,9 +783,9 @@ def calendar_html(out, today=None, rows=None, lang="en"):
                               "January to June, and committees meet on bills from the fall "
                               "filing period onwards.")
         return (f'<section class="cal" data-mon="{monday.isoformat()}"><h2>{coming}</h2>'
-                f'{label}<p class="note">{esc(note)}</p>{more}</section>')
+                f'{label}<p class="note">{esc(note)}</p>{later}{more}</section>')
 
-    meets = {k: rs for d in dates for k, rs in week[d].items()}
+    meets = {k: rs for d in dates for k, rs in (week.get(d) or {}).items()}
     up = [r for rs in meets.values() for r in rs]
 
     # --- titles and years, from the term index, once per term ---------------
@@ -801,14 +818,15 @@ def calendar_html(out, today=None, rows=None, lang="en"):
 
     # A day's committees in the order they start, by the week page's own
     # ordering, so the two list them the same way round.
-    days = OrderedDict((d, BC.in_order(week[d])) for d in dates)
+    days = OrderedDict((d, BC.in_order(week.get(d) or {})) for d in dates)
 
     # A WEEK IN THE RAIL, NOT A FORTNIGHT: in session a fortnight is fourteen
     # days of committee cards down a 300px column, and it was asked on 19
     # September to be "a bit more consolidated ... so it isn't as long". A
     # week is the Calendar tab's own unit, and the rail is now that week.
     html = [f'<section class="cal" data-mon="{monday.isoformat()}"><h2>{coming}</h2>{label}']
-    body, missing = cal_days(days, meets, titles, years, code, when, esc, lang=lang)
+    body, missing = cal_days(days, meets, titles, years, code, when, esc, lang=lang,
+                             events=kds, kd_full=False)
     # THE WHOLE WEEK, IN A BOX OF ITS OWN HEIGHT. A week in session is forty
     # sittings -- the week of 26 January 2026 held 43 -- and drawn in full it
     # ran the left rail to about four times the height of the middle column. It
@@ -824,7 +842,7 @@ def calendar_html(out, today=None, rows=None, lang="en"):
     html.append('<div class="calscroll" role="region" tabindex="0" '
                 f'aria-label="{esc(say(lang, "cal.scroll", "Meetings from today to Sunday"))}">'
                 + body + "</div>")
-    html.append(more)
+    html.append(later + more)
     return "".join(html) + cal_notes(up, missing, esc)
 
 
@@ -884,14 +902,25 @@ def meeting_who(cmte, rows):
 
 
 def cal_days(days, meets, titles, years, code, when, esc, level=3,
-             sessions=None, docs=None, lang="en"):
+             sessions=None, docs=None, lang="en", events=None, kd_full=True):
     """The day blocks and their meeting cards, for any set of days.
 
     Split out of calendar_html on 18 September so the calendar PAGE draws the
     same cards from the same grouping. meeting_key already exists because two
     places counted meetings and disagreed; a second renderer drawing something
     that merely looked like these would be the same mistake in markup.
+
+    THE KEY DATES OF A DAY COME FIRST (the owner, 24 October 2026: "Coming
+    up should list major events like the election days, town meeting days,
+    organization day, etc and those dates should show up on the calendar
+    page too"). `events` is key_dates.days(): {day: [(key date, role)]}.
+    On the Calendar (`kd_full`) each is a card of its own class, which opens
+    on its sentence and source; in Coming up a line in its colour that leads
+    to that card. Neither is a meeting: a day holding only a key date still
+    says it has no meetings on the Calendar, and is not a calnone day.
     """
+    import key_dates as KD
+    events = events or {}
     # THE DAY'S HEADING LEVEL IS THE CALLER'S TO SAY. On the home page these
     # sit under "Coming up", an h2, so they are h3. On a week's own page the
     # h1 IS the week, and an h3 under it skips a level -- which is a depth,
@@ -916,13 +945,18 @@ def cal_days(days, meets, titles, years, code, when, esc, level=3,
         # Its own class, so the week's filter never hides a line that is true
         # under any filter, and the home rail's reader of `class="calday"`
         # never counts it.
-        html.append(f'<div class="calday{"" if keys else " calnone"}" '
+        kds = events.get(date) or []
+        html.append(f'<div class="calday{"" if keys or kds else " calnone"}" '
                     f'data-d="{esc(date)}"><{h} class="caldate">'
                     f'<span>{esc(label)}</span>'
                     f'<span class="cdrel">{esc(rel)}</span>'
                     + f"</{h}>")
+        html += [(KD.card_html if kd_full else KD.row_html)(e, role, date, lang)
+                 for e, role in kds]
         if not keys:
-            html.append(f'<p class="calempty">{say(lang, "cal.empty", "No meetings scheduled.")}</p></div>')
+            if kd_full or not kds:
+                html.append(f'<p class="calempty">{say(lang, "cal.empty", "No meetings scheduled.")}</p>')
+            html.append("</div>")
             continue
         for key in keys:
             # THE NAME THE CARD PRINTS, with its chamber: two committees of
@@ -2535,11 +2569,30 @@ def year_link(lang="en"):
             + say(lang, "home.year_link", "NH Legislature Schedule") + '</a></p>')
 
 
-def state_box(S, lang="en"):
+def deadline_line(lang="en", today=None, events=None):
+    """The status box's next deadline (key_dates.deadline_html), or "".
+
+    THE MOST RELEVANT UPCOMING DEADLINE (the owner, 24 October 2026:
+    "Statuses should list the most relevant upcoming deadline like the
+    deadline for committees to finish interim study reports, filing periods,
+    etc."): the nearest last day for something on the legislature's schedule,
+    or the last day of a filing period, on or after the build's day, by the
+    rule key_dates.next_deadline gives. Above the way to the schedule, which
+    is where it comes from. Both copies of the box carry it -- this one, and
+    HOME_JS's through home_js -- and it retires the day after its date in the
+    reader's clock (components.until_attrs)."""
+    import key_dates as KD
+    today = today or build_date.today()
+    return KD.deadline_html(KD.events(today) if events is None else events, today, lang)
+
+
+def state_box(S, lang="en", today=None, events=None):
     """The status box as the server draws it, from home.json's status, in
     `lang`: the phase, the last session day, the hand-kept headline and note
     (the person's own words, so in English on every page), the next
-    milestone, and the summary's date or the warning that it is stale."""
+    milestone, the summary's date or the warning that it is stale, and the
+    legislature's next deadline (deadline_line) over the way to its
+    schedule."""
     esc = _home_esc
 
     def fd(d):
@@ -2590,7 +2643,7 @@ def state_box(S, lang="en"):
                      f'data-updated="{esc(S.get("updated") or "")}">'
                      f'{say(lang, "state.updated", "Summary Updated:")} '
                      f'{fdy(S["updated"])}</p>' if S.get("updated") else ""))
-            + year_link(lang) + "</div>")
+            + deadline_line(lang, today, events) + year_link(lang) + "</div>")
     return static_state
 
 
@@ -2825,23 +2878,34 @@ def home_body(lang, has_lockup, static_state, static_up, static_recent, latest_d
 {home_h1}
 <p class="slogan">{say(lang, "home.slogan", "Public Records, Made Findable.")}</p>
 <p class="lead">{say(lang, "home.lead", "Keep up with New Hampshire legislation, find bills on the issues you care about, learn how the legislature works, and explore the record from 1989 to today.")}</p>
-{only}{home_webinar(lang=lang)}
-<!-- ONE BOX, THE HEADER'S FINDER (D13, the person, 8 October 2026: "one
+{only}<!-- ONE BOX, THE HEADER'S FINDER (D13, the person, 8 October 2026: "one
      search box like the header search: bills, legislators, towns, committees
      and the rest from the same box, with a dropdown of the top results (no
      separate legislator finder)"). find.js draws the top results into the
      box's own dropdown, the header panel's rows; Return takes the first, as
      in the header, and Search opens every result. Without script, Search
-     opens the bill search, as it did. -->
+     opens the bill search, as it did.
+     ITS WORDS SAY WHAT TO TYPE AND WHERE IT LEADS (the owner, 24 October
+     2026: "The homepage searchbar should be phrased a bit better so folks
+     know what they should be searching for and where the searchbar can take
+     you to"), and name only what it reaches: find.json's rows -- legislators
+     sitting and gone, committees, towns and their wards, the subjects bills
+     are filed under, the how-to guides and the Learn pages -- and the bills,
+     by number, and by the words of their titles on /search. It finds no
+     statute: the Laws page has its own search. -->
 <div class="searchbig" role="search">
-  <label for="hq" style="position:absolute;left:-9999px">{say(lang, "home.search_label", "Search bills, officials, towns and committees")}</label>
+  <label for="hq" style="position:absolute;left:-9999px">{say(lang, "home.search_label", "Search for a bill, a legislator, a committee, a town, a subject or a guide")}</label>
   <input id="hq" type="search" autocomplete="off" aria-controls="hqout"
-    aria-describedby="hqhint" placeholder="{esc(say(lang, "home.search_hint", "Name, town, subject or bill"))}">
+    aria-describedby="hqhint" placeholder="{esc(say(lang, "home.search_hint", "Bill number, topic, name or town"))}">
   <button id="hgo">{icon("search")}{say(lang, "search.go", "Search")}</button>
   <div class="findout hqdrop" id="hqout" role="region" aria-label="{esc(say(lang, "search.top", "Top results"))}" hidden></div>
 </div>
-<p class="hqhint" id="hqhint">{say(lang, "home.try", "Try a bill number, a subject, a legislator or a committee. Your town shows who represents you.")}</p>
+<p class="hqhint" id="hqhint">{say(lang, "home.try", "Try <b>HB 1</b>, <b>housing</b>, <b>Concord</b> or a legislator&rsquo;s name. It finds bills since 1989, legislators past and present, committees, towns and who represents them, subjects and how-to guides.")}</p>
 <p class="sr" id="hqsay" role="status"></p>
+<!-- THE WEBINAR UNDER THE SEARCH (the owner, 24 October 2026: "Could you
+     move the webinar below the search bar?"): the search is what the page
+     is for, and the box that retires on 11 November stands under it. -->
+{home_webinar(lang=lang)}
 <!-- EACH CARD WITH ITS SECTION'S DRAWING, the nav's own (Polish 1, 9 October
      2026): Bills, Officials, Laws and Resources since 17 October 2026
      (HOME_CARDS says why). -->
@@ -2872,11 +2936,12 @@ def home_body(lang, has_lockup, static_state, static_up, static_recent, latest_d
 <div id="notable" hidden></div>"""
 
 
-def home_js(lang="en"):
+def home_js(lang="en", today=None, events=None):
     """HOME_JS for the home page in `lang`. Its words are tr()'s, which the
     page's head carries; the status box's way to the legislature's year,
-    which the script carries as HTML, is put in `lang` here."""
-    return HOME_JS if lang == i18n.DEFAULT else HOME_JS.replace(YEAR_LINK, year_link(lang), 1)
+    which the script carries as HTML, is put in `lang` here, with the next
+    deadline above it (deadline_line), as the built box has them."""
+    return HOME_JS.replace(YEAR_LINK, deadline_line(lang, today, events) + year_link(lang), 1)
 
 
 HOME_JS = """
@@ -3053,10 +3118,12 @@ fetch(DATA("home.json")).then(r=>r.json()).then(H=>{
     }
     if(cal&&days.length&&!left){
       // The line under the rail stays: it is the way to the full calendar,
-      // which is the useful thing to offer under an empty week.
-      const more=cal.querySelector(".calall");
+      // which is the useful thing to offer under an empty week. So do the
+      // key dates after the week (key_dates.ahead_html, 24 October 2026),
+      // each of which hides itself once its day is over (data-until).
+      const more=cal.querySelector(".calall"), keys=cal.querySelector(".kdahead");
       cal.innerHTML=`<h2>${tr("cal.coming","Coming up")}</h2><p class="note">${tr("cal.none_else","Nothing else is scheduled this week.")}</p>`
-        +(more?more.outerHTML:"");
+        +(keys?keys.outerHTML:"")+(more?more.outerHTML:"");
     }
     // "Last updated N days ago" is the one line whose whole job is to say the
     // summary may be stale; it cannot be a number frozen at build time.
@@ -4042,7 +4109,15 @@ Senate; and the state&rsquo;s other officials.</p>
                    "officials.",
               wide=True, script=LEGFIND_JS + SEATING_JS), encoding="utf-8")
 
-    static_up = calendar_html(out)
+    # THE KEY DATES, worked out once for both languages and both of the
+    # boxes that show them: Coming up, and the status box's next deadline.
+    # SILENCE IS NOT SUCCESS: a box with no deadline says why, here.
+    import key_dates as KD
+    today_d = build_date.today()
+    kd_events = KD.events(today_d)
+    if KD.no_deadline_line(kd_events, today_d):
+        print(KD.no_deadline_line(kd_events, today_d))
+    static_up = calendar_html(out, today=today_d, events=kd_events)
 
     # WHICH OF THE DAYS "MOST RECENT FLOOR SESSIONS" NAMES HAVE A PAGE. The
     # block is drawn by the script from home.json, a chamber and a date each,
@@ -4079,8 +4154,9 @@ Senate; and the state&rsquo;s other officials.</p>
     for lang in i18n.LANGS:
         if not i18n.has(lang, "index.html"):
             continue
-        home = home_body(lang, has_lockup, state_box(S, lang),
-                         static_up if lang == i18n.DEFAULT else calendar_html(out, lang=lang),
+        home = home_body(lang, has_lockup, state_box(S, lang, today_d, kd_events),
+                         static_up if lang == i18n.DEFAULT
+                         else calendar_html(out, today=today_d, lang=lang, events=kd_events),
                          recent_box(H, lang, codes, sits), latest_days)
         if lang == i18n.DEFAULT and kept:
             home = home.replace("<!-- guides --><!-- /guides -->", kept.group(0), 1)
@@ -4096,12 +4172,13 @@ Senate; and the state&rsquo;s other officials.</p>
                   # wide=True makes it the 1180px the nav and every record page
                   # already use, so the stat grid and the three entry cards fill
                   # the width instead of stopping two thirds across.
-                  "index.html", home, script=home_js(lang), wide=True, lang=lang,
+                  "index.html", home, script=home_js(lang, today_d, kd_events), wide=True, lang=lang,
                   desc=say(lang, "home.desc", "Every bill, vote, hearing and floor debate of "
                            "the New Hampshire General Court, linked to the moment in the "
                            "recording where it happened.")),
             encoding="utf-8")
     i18n.report()
+    KD.unnamed()
 
     # learn.html belongs to build_civics.py now: it is the way into eleven
     # topic pages rather than one page of its own, and two builders writing
