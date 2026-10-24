@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-10-11.30
+# GRANITE_VERSION: 2026-10-11.31
 """
 The how-to guides: their words, their sources, and what each was checked
 against. Read by build_civics.py, which draws them on the Resources hub's
@@ -3852,6 +3852,157 @@ GUIDES += [HOMELESS]
 
 
 # ---------------------------------------------------------------------------
+# STORMS, POWER OUTAGES AND OTHER EMERGENCIES (the person, 24 October 2026).
+# From FEMA's Ready.gov pages on a supply kit, power outages and winter
+# weather, read on 24 October 2026 through the session's web reader (Ready.gov
+# refuses this machine's own requests but answered that), the National
+# Weather Service's page on winter watches and warnings, read directly, and
+# 211 New Hampshire. New Hampshire's own alert system, NH Alerts, is the
+# Department of Safety's, whose pages refuse a cloud session: its claim waits
+# for the person's printout, and the guide is held back until it is read.
+# Every safety instruction is the federal page's own, in plain words; none is
+# this site's advice.
+# ---------------------------------------------------------------------------
+WX_READ = "2026-10-24"
+NH_ALERTS = "https://www.desc.dos.nh.gov/resources/nh-alerts"
+READYNH = "https://www.readynh.gov/"
+READY_KIT = "https://www.ready.gov/kit"
+READY_POWER = "https://www.ready.gov/power-outages"
+READY_WINTER = "https://www.ready.gov/winter-weather"
+NWS_WINTER = "https://www.weather.gov/safety/winter-ww"
+
+WEATHER = guide(
+    "storms-and-emergencies", "How to Prepare for Storms, Power Outages and Other Emergencies",
+    "Getting New Hampshire's emergency alerts, keeping supplies at home and in the car, staying "
+    "safe in a power outage or winter storm, and where to find a warm place or help.",
+    "Sign up for NH Alerts, the state&rsquo;s free emergency alerts, and keep enough food, "
+    "water and supplies at home to last several days. In a storm or a power outage, never run "
+    "a generator, grill or camp stove indoors, and never heat your home with a gas stove or "
+    "oven: carbon monoxide can kill. If you need a warm place or other help, call 2-1-1. In an "
+    "emergency, call 911.",
+    [box("Sign up for NH Alerts, and learn what a watch and a warning mean."),
+     box("Keep supplies for several days at home, and a kit in your car."),
+     ask("Has the power gone out?",
+         [("Yes", "Keep the refrigerator and freezer closed. Use a generator only outdoors."),
+          ("You need a warm place", "Call 2-1-1, or ask your town about warming centers.")])],
+    [step("Get alerts",
+          "<p><b>NH Alerts</b> is New Hampshire&rsquo;s free emergency notification system. "
+          "Sign up to choose how you are reached, including text messages to your phone.</p>"
+          "<p>The National Weather Service&rsquo;s alerts tell you how serious a storm is:</p>"
+          "<ul><li><b>Advisory: be aware.</b> Winter weather is expected; be ready for "
+          "difficult driving.</li>"
+          "<li><b>Watch: be prepared.</b> A significant storm is possible.</li>"
+          "<li><b>Warning: take action.</b> Dangerous weather is coming or has begun. Under a "
+          "winter storm warning, find shelter right away and delay travel.</li></ul>"
+          "<p>A NOAA Weather Radio and the Emergency Alert System on radio and TV give alerts "
+          "too.</p>",
+          actions=[("Sign up for NH Alerts", NH_ALERTS),
+                   ("Watches and warnings (National Weather Service)", NWS_WINTER)]),
+     step("Keep supplies at home and in the car",
+          "<p>After an emergency you may need to manage on your own for several days. A basic "
+          "kit includes:</p>"
+          "<ul><li>water, one gallon per person per day, for several days;</li>"
+          "<li>at least a several-day supply of food that will not spoil, and a manual can "
+          "opener;</li>"
+          "<li>a flashlight, a battery-powered or hand-crank radio, and extra batteries;</li>"
+          "<li>a first aid kit and a whistle to signal for help;</li>"
+          "<li>a cell phone with chargers and a backup battery.</li></ul>"
+          "<p>Add what your household needs, such as medicines. Store it all in one or two "
+          "containers that are easy to carry, and replace anything that expires.</p>"
+          "<p>In the car, keep jumper cables, sand, a flashlight, warm clothes, blankets, "
+          "bottled water and snacks, and keep the gas tank full.</p>",
+          actions=[("Build a kit (Ready.gov)", READY_KIT)]),
+     step("In a power outage",
+          "<ul><li><b>Carbon monoxide can kill</b>, and you cannot see or smell it. Use a "
+          "generator, camp stove or grill only outdoors, at least 20 feet from windows, doors and "
+          "attached garages. Never heat your home with a gas stove or oven. Have carbon monoxide "
+          "detectors with battery backup on every level of your home.</li>"
+          "<li><b>Keep the refrigerator and freezer closed.</b> A refrigerator keeps food cold "
+          "for about 4 hours, and a full freezer for about 48 hours. Throw out food that has "
+          "been at 40 degrees or warmer for 2 hours or more: when in doubt, throw it out.</li>"
+          "<li><b>Plan ahead for medicines that need refrigeration</b> and for medical devices "
+          "that need power.</li>"
+          "<li><b>If it is very cold or very hot,</b> go to a place in your community with power. "
+          "Ask local officials which warming or cooling places are open.</li></ul>",
+          actions=[("Power outages (Ready.gov)", READY_POWER)]),
+     step("In a winter storm",
+          "<ul><li>Stay off the roads if you can. If you are trapped in your car, stay "
+          "inside it.</li>"
+          "<li>Avoid overexertion when shoveling or walking in snow, which can bring on a heart "
+          "attack.</li>"
+          "<li><b>Frostbite</b> causes loss of feeling and color in the face, fingers and toes. "
+          "Go to a warm room and soak in warm water; do not massage the skin or use a heating "
+          "pad.</li>"
+          "<li><b>Hypothermia</b>, a body temperature below 95 degrees, is an emergency. Go to a "
+          "warm room, warm the center of the body first, and keep dry and wrapped in warm "
+          "blankets, including the head and neck.</li></ul>",
+          actions=[("Winter weather (Ready.gov)", READY_WINTER)]),
+     step("If you need a warm place or other help",
+          "<p>Call <b>2-1-1</b>, at any hour, for shelters, warming places, utility help and "
+          "other services near you. In an emergency, call 911.</p>"
+          "<p>If you are running out of heating fuel or have no heat, call your community "
+          "action agency: fuel assistance can arrange an emergency delivery. The guide to help "
+          "with heating and electric bills has the agencies.</p>",
+          actions=[("2-1-1 New Hampshire", NH211_HOME)])],
+    [("NH Alerts (Department of Safety)", NH_ALERTS),
+     ("ReadyNH", READYNH),
+     ("Build a kit (Ready.gov, FEMA)", READY_KIT),
+     ("Power outages (Ready.gov, FEMA)", READY_POWER),
+     ("Winter weather (Ready.gov, FEMA)", READY_WINTER),
+     ("Winter weather watches, warnings and advisories (National Weather Service)", NWS_WINTER),
+     ("2-1-1 New Hampshire", NH211_HOME)],
+    [],
+    # NH Alerts and ReadyNH wait for the person's printouts.
+    [claim("NH Alerts is New Hampshire's free emergency notification system; registering lets "
+           "you choose how you are contacted, including text messages.", NH_ALERTS),
+     claim("ReadyNH is where to enroll in NH Alerts.", READYNH),
+     claim("After an emergency you may need to survive on your own for several days; a basic "
+           "kit: water, one gallon per person per day for several days; at least a several-day "
+           "supply of non-perishable food; a battery-powered or hand crank radio; a flashlight; "
+           "a first aid kit; extra batteries; a whistle; a manual can opener; a cell phone with "
+           "chargers and a backup battery; additional supplies such as medications; one or two "
+           "easy-to-carry containers; replace expired items.", READY_KIT, WX_READ),
+     claim("Keep freezers and refrigerators closed; generators, camp stoves or charcoal grills "
+           "outdoors and at least 20 feet away from windows, doors and attached garages; never "
+           "heat with a gas stovetop or oven; carbon monoxide is colorless and odorless and can "
+           "kill; carbon monoxide detectors with battery backup on every level; the refrigerator "
+           "keeps food cold for about 4 hours and a full freezer about 48 hours; throw away "
+           "food at 40 degrees or higher for 2 hours or more; when in doubt, throw it out; "
+           "plans for refrigerated medicines and power-dependent medical devices; check with "
+           "local officials about heating and cooling locations; go to a community location "
+           "with power if heat or cold is extreme.", READY_POWER, WX_READ),
+     claim("A Winter Storm Warning is issued when hazardous winter weather is imminent or "
+           "occurring; under a winter storm warning, find shelter right away; NOAA Weather Radio and the "
+           "Emergency Alert System give alerts; a car kit of jumper cables, sand, a flashlight, "
+           "warm clothes, blankets, bottled water and snacks, and a full tank; stay off roads, "
+           "and if trapped in a car stay inside; avoid overexertion shoveling and walking in "
+           "snow; frostbite: loss of feeling and color, go to a warm room, soak in warm water, "
+           "do not massage or use a heating pad; hypothermia: below 95 degrees is an emergency, "
+           "warm room, warm the center first, keep dry and wrapped including head and neck.",
+           READY_WINTER, WX_READ),
+     claim("Warnings: take action; a Winter Storm Warning for a significant winter weather "
+           "event, delay travel; Watches: be prepared, a Winter Storm Watch when conditions "
+           "favor a significant winter storm; Advisories: be aware, be prepared for winter "
+           "driving conditions.", NWS_WINTER, WX_READ),
+     claim("211 NH connects residents to resources 24 hours, 365 days a year, for housing, "
+           "utilities and more; 911 for emergencies.", NH211_HOME, WX_READ),
+     ours("The heating guide says fuel assistance can arrange an emergency fuel delivery "
+          "through the community action agency.", "/guides/heating-and-electric-help.html",
+          WX_READ)],
+    more="<h2>Who Can Help</h2>"
+         "<p>2-1-1 New Hampshire, at any hour, for shelters, warming places and other help near "
+         "you, and your town or city for local warming centers and storm information. In an "
+         "emergency, call 911.</p>",
+    see=[("How to get help with heating and electric bills", "/guides/heating-and-electric-help.html"),
+         ("How to get help if you are homeless or may lose your home", "/guides/homelessness-help.html")],
+    figures=[fig("4 hours", READY_POWER, "about 4 hours"),
+             fig("48 hours", READY_POWER, "about 48 hours"),
+             fig("2 hours", READY_POWER, "2 hours or more")])
+
+GUIDES += [WEATHER]
+
+
+# ---------------------------------------------------------------------------
 # THE GUIDES BY TASK (the person, 17 October 2026: "refine how the how to
 # guides are displayed on the main resources page and the homepage so it's
 # more intuitive for the general public"). A reader arrives with something to
@@ -3927,6 +4078,9 @@ TASKS = [
         task("homelessness-help", "Get help if you are homeless or may lose your home",
              "Shelter, your town&rsquo;s welfare office, your rights in an eviction, and a "
              "housing voucher."),
+        task("storms-and-emergencies", "Prepare for storms, power outages and emergencies",
+             "Emergency alerts, supplies, power outage and winter storm safety, and where to "
+             "find a warm place."),
         task("heating-and-electric-help", "Get help with heating and electric bills",
              "Fuel assistance, help with electric bills, weatherization, and what to do with no "
              "heat."),
@@ -4023,6 +4177,8 @@ WORDS = {
                                "restraining order", "protective order", "rape"),
     "homelessness-help": ("homeless", "shelter", "eviction", "evicted", "housing voucher",
                           "section 8", "town welfare", "rent"),
+    "storms-and-emergencies": ("storm", "power outage", "emergency", "nh alerts", "generator",
+                               "snow storm", "warming center", "emergency kit"),
     "heating-and-electric-help": ("fuel assistance", "heating", "electric bill", "weatherization"),
     "property-tax-abatement": ("property tax", "abatement", "assessment"),
     "property-tax-relief": ("property tax", "tax relief", "low income"),

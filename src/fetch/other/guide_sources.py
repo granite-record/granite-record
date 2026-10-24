@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-10-11.10
+# GRANITE_VERSION: 2026-10-11.11
 """
 The official pages the how-to guides cite, onto this disk, to check them by.
 
@@ -175,6 +175,10 @@ SOURCES = {
         "https://www.courts.nh.gov/self-help/restraining-orders",
         "https://www.doj.nh.gov/bureaus/office-victimwitness-assistance/address-confidentiality-program",
     ],
+    "emergencies": [
+        "https://www.desc.dos.nh.gov/resources/nh-alerts",
+        "https://www.readynh.gov/",
+    ],
     "homelessness": [
         "https://www.dhhs.nh.gov/programs-services/homeless-services",
         "https://www.courts.nh.gov/our-courts/circuit-court/district-division/landlordtenant",
@@ -218,6 +222,14 @@ OTHER = {
     # Department of Health and Human Services sends readers to; New Hampshire
     # Housing, the public housing finance authority, at its own .org address;
     # and the federal law on homeless students' schooling.
+    # The storms and emergencies guide (24 October 2026): FEMA's Ready.gov
+    # and the National Weather Service.
+    "emergencies": [
+        "https://www.ready.gov/kit",
+        "https://www.ready.gov/power-outages",
+        "https://www.ready.gov/winter-weather",
+        "https://www.weather.gov/safety/winter-ww",
+    ],
     "homelessness": [
         "https://211nh.org/",
         "https://www.nhhousing.org/rental-assistance/apply/",
