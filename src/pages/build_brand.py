@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-12.21
+# GRANITE_VERSION: 2026-09-12.22
 """
 Turn the drawn logo and icon into the files a site needs, once.
 
@@ -119,6 +119,20 @@ BBOX = (0.0, 0.0, 669.0, 736.0)
 ICON_SVG = "monogram.svg"
 ICON_PNG = "monogram.png"
 
+# THE LETTER, THICKENED FOR SMALL SIZES (the owner, 24 October 2026: "make the
+# favicon G a bit more bold at the top and bottom since the font makes it have
+# really thin sections there that don't read easily on a favicon scale ... I
+# like the style of that font of G, it just needs to be more readable at a
+# small scale"). Playfair Display's hairlines, the G's top and bottom arcs,
+# are thinner than a pixel at 16px and drew grey beside a solid stem. So the
+# letter is drawn with a pen around its own outline, in its own colour: an
+# ellipse ICON_PEN font units out on each side, across and up-and-down, so
+# the arcs gain most and the stems little and the letter stays the font's.
+# Chosen from four drawn at 16 to 64px: 4 by 14 still drew the arcs grey,
+# 12 by 12 thickened the stems as much as the arcs, and 8 by 34 gave the
+# arcs solid pixels at 16px with the letter's shape kept at 64.
+ICON_PEN = (8, 34)
+
 # What a fork puts in brand/ to draw its own icons, said once and printed by
 # need() and --check. The project's own are not in the repository.
 ORIGINALS = (
@@ -179,8 +193,59 @@ def icon_framing():
     return (minx / W, miny / H, (maxx - minx + 1) / W, (maxy - miny + 1) / H)
 
 
+def pen_path(d, k):
+    """`d` with every y divided by k: drawn under scale(1 k), a stroke's
+    round pen comes out k times taller than wide (ICON_PEN). The path's
+    commands must be absolute (M, L, H, V, Q, C, Z), as fontTools writes them."""
+    toks = re.findall(r"[A-Za-z]|-?\d*\.?\d+(?:[eE]-?\d+)?", d)
+    n_args = {"M": 2, "L": 2, "Q": 4, "C": 6, "H": 1, "V": 1, "Z": 0}
+    out, i, cmd = [], 0, None
+    while i < len(toks):
+        if toks[i].isalpha():
+            cmd = toks[i]
+            if cmd not in n_args:
+                sys.exit(f"brand/{ICON_SVG}'s path uses {cmd!r}; this reads absolute "
+                         "M, L, H, V, Q, C and Z only")
+            out.append(cmd)
+            i += 1
+            if cmd == "Z":
+                continue
+        n = n_args[cmd]
+        args = [float(x) for x in toks[i:i + n]]
+        i += n
+        if cmd == "V":
+            args = [args[0] / k]
+        elif cmd != "H":
+            args = [a / k if j % 2 else a for j, a in enumerate(args)]
+        out.append(" ".join(f"{a:.2f}" for a in args))
+    return " ".join(out)
+
+
+def thicken(im, ax, ay):
+    """A light letter on a dark tile, drawn with an elliptical pen ax pixels
+    out across and ay up and down (ICON_PEN): the lighter of the tile shifted
+    to every point of the ellipse, a row of the ellipse at a time."""
+    import math
+    from PIL import Image, ImageChops
+
+    def shifted(src, dx, dy):
+        out = Image.new(src.mode, src.size, src.getpixel((0, 0)))
+        out.paste(src, (dx, dy))
+        return out
+    across, cur = [im], im
+    for w in range(1, ax + 1):
+        cur = ImageChops.lighter(cur, ImageChops.lighter(shifted(im, w, 0), shifted(im, -w, 0)))
+        across.append(cur)
+    out = im
+    for dy in range(-ay, ay + 1):
+        w = int(round(ax * math.sqrt(max(0.0, 1 - (dy / ay) ** 2)))) if ay else ax
+        out = ImageChops.lighter(out, shifted(across[w], 0, dy))
+    return out
+
+
 def write_icon_svg(d, frame):
-    """The icon as an SVG: the drawn PNG's framing, the site's own colours."""
+    """The icon as an SVG: the drawn PNG's framing, the site's own colours,
+    the letter thickened by ICON_PEN."""
     fx, fy, fw, fh = frame
     S = 1000
     bx, by, bw, bh = BBOX
@@ -190,18 +255,25 @@ def write_icon_svg(d, frame):
     scale = (fh * S) / bh
     tx = fx * S + (fw * S - bw * scale) / 2 - bx * scale
     ty = fy * S - by * scale
+    ax, ay = ICON_PEN
+    k = ay / ax
     svg = (f'<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 {S} {S}">'
            f'<rect width="{S}" height="{S}" fill="#111514"/>'
-           f'<g transform="translate({tx:.2f} {ty:.2f}) scale({scale:.4f})">'
-           f'<path d="{d}" fill="#F4F5F3"/></g></svg>')
+           f'<g transform="translate({tx:.2f} {ty:.2f}) scale({scale:.4f}) scale(1 {k:.4f})">'
+           f'<path d="{pen_path(d, k)}" fill="#F4F5F3" stroke="#F4F5F3" '
+           f'stroke-width="{2 * ax}" stroke-linejoin="round"/></g></svg>')
     (OUT / "icon.svg").write_text(svg, encoding="utf-8")
     return (f"icon.svg  {len(svg):,} bytes, shape at "
             f"{fx*100:.1f}%,{fy*100:.1f}% {fw*100:.1f}x{fh*100:.1f}%")
 
 
-def write_pngs():
+def write_pngs(frame):
     from PIL import Image
     src = Image.open(need(BRAND / ICON_PNG)).convert("RGB")
+    # The same pen as the SVG's, in this PNG's pixels: the letter's height
+    # here (the measured frame) over its height in font units (BBOX).
+    per_unit = frame[3] * src.size[1] / BBOX[3]
+    src = thicken(src, round(ICON_PEN[0] * per_unit), round(ICON_PEN[1] * per_unit))
     said = []
     for n in (32, 180, 512):
         im = src.resize((n, n), Image.LANCZOS)
@@ -496,7 +568,7 @@ def main():
     d = path_data()
     frame = icon_framing()
     said = [write_icon_svg(d, frame)]
-    said.append(write_pngs())
+    said.append(write_pngs(frame))
     said.append(write_og_sections())
     said.append(write_lockup())
     said.append(write_licensed() or "licensed: brand/licensed/ does not hold "
