@@ -1,4 +1,4 @@
-// GRANITE_VERSION: 2026-09-16.37
+// GRANITE_VERSION: 2026-09-16.38
 /* FIND ANYTHING, FROM THE HEADER (16 September, asked for in these words:
    "a search icon in the header that lets you search for anything including
    legislators, committees, towns, and bills ... searching Litchfield would
@@ -1536,11 +1536,15 @@ function ytDraw(){
       +'<input id="ytq" type="search" autocomplete="off" placeholder="'+_fesc(tr("yt.box_hint","Town, or city and ward"))+'" aria-controls="ytout"></div>'
       +'<p class="sr" id="ytqsay" role="status"></p><div class="ytout" id="ytout"></div>'
       +'<details class="ytaddr" id="ytaddrbox"><summary>'+tr("yt.ward_unsure","Not sure what ward you&rsquo;re in? Enter your address to confirm.")+'</summary>'
-      // The browser's own address list is off here (autocomplete="off"), as
-      // the combobox pattern has it: two lists under one box, one drawn over
-      // the other.
+      // The browser offers the reader's saved address here (the owner, 24
+      // October 2026: "it's fine to enable address autofill if it's saved in
+      // their browser when they click on it"). The combobox pattern would
+      // keep it off, since its list can open over this one for a moment; what
+      // it fills is matched as if typed, and a street filled without its
+      // town (street-address is the street alone) is offered in each town
+      // that has it.
       +'<form id="ytaform" class="ytaform"><label for="ytaddr" class="ytlbl2">'+tr("yt.addr","Street address and town")+'</label>'
-      +'<div class="ytarow"><input id="ytaddr" type="text" autocomplete="off" placeholder="'+_fesc(tr("yt.addr_hint","12 Main Street, Concord"))+'"'
+      +'<div class="ytarow"><input id="ytaddr" name="street-address" type="text" autocomplete="street-address" placeholder="'+_fesc(tr("yt.addr_hint","12 Main Street, Concord"))+'"'
       +' role="combobox" aria-autocomplete="list" aria-expanded="false" aria-controls="ytalist">'
       +'<button type="submit" class="ytbtn2">'+tr("yt.look_up","Look up")+'</button></div>'
       +'<ul class="ytalist" id="ytalist" role="listbox" aria-label="'+_fesc(tr("yt.sugg","Suggested addresses"))+'" hidden></ul>'

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.682
+# GRANITE_VERSION: 2026-09-04.683
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -65911,6 +65911,56 @@ def _rsa_sections(path, want):
                 text = _h.unescape(re.sub(r"\s+", " ", re.sub(r"<[^>]+>", " ", f[8])))
                 out[m.group(1)] = (f[6], text)
     return out
+
+
+@check("frontend", "a key date links its statute only where the Laws pages built beside it have the "
+                   "section: the table in the build's own folder, as build_rsa is given it",
+       needs=("key_dates",))
+def _key_dates_link_built_laws(KD):
+    """The dry run of 24 October 2026 stopped at the link check: the
+    fixture's calendar linked RSA 39:1, 40:13, 653:8 and 669:1 to Laws pages
+    the fixture never built, because key_dates read the repository's statute
+    table (rsa.TABLE) while build_rsa built the fixture's pages from the
+    fixture's own (--db db). A machine with no table linked nothing and
+    passed, so only GitHub's machine, which holds the real one, could see
+    it. This proves the rule with no table needed: in a folder whose
+    db/NH_RSA.psv holds RSA 39:1, that section is a link to its Laws page and
+    RSA 40:13, which the table lacks, is plain words; in a folder whose table
+    lacks both, and in one with no table, neither is a link."""
+    import os
+    import build_rsa
+
+    def table(secs):
+        return "\n".join("|".join([
+            str(i), "III", s.split(":")[0], s.replace(":", "-"), "TITLE III TOWNS",
+            f"CHAPTER {s.split(':')[0]} X", f"Section {s} Heading.", "", "",
+            "<codesect>x</codesect>", "3", "u"]) for i, s in enumerate(secs))
+
+    here, got = os.getcwd(), {}
+    with tempfile.TemporaryDirectory() as a, tempfile.TemporaryDirectory() as b, \
+            tempfile.TemporaryDirectory() as c:
+        for d, secs in ((a, ["39:1", "669:1"]), (b, ["91-A:4"])):
+            (Path(d) / "db").mkdir()
+            (Path(d) / "db" / "NH_RSA.psv").write_text(table(secs), encoding="utf-8")
+        try:
+            for name, d in (("held", a), ("other", b), ("none", c)):
+                os.chdir(d)
+                got[name] = KD._law("39:1", "40:13, VII")
+        finally:
+            os.chdir(here)
+    want = f'<a href="{build_rsa.href("39:1")}">RSA 39:1</a>; RSA 40:13, VII'
+    assert got["held"] == want, (
+        f"with RSA 39:1 in the build's own table, the key date's statutes read {got['held']!r}, "
+        f"not {want!r}")
+    for name in ("other", "none"):
+        assert "<a " not in got[name], (
+            f"a build whose table lacks RSA 39:1 ({name}) links it: {got[name]!r}, to a Laws page "
+            "that build never wrote")
+    reader = Path(KD.__file__).read_text(encoding="utf-8").split("def _sections_on_disk", 1)[1]
+    assert "rsa.TABLE" not in reader.split("\ndef ", 1)[0], (
+        "key_dates reads rsa.TABLE again: the repository's table, whatever folder the build runs in")
+    return "ok", ("a statute's key date is a link where the build's own table holds the section, "
+                  "and plain words where it does not, or where there is no table")
 
 
 @check("frontend", "every key date names where it comes from, and a day the law fixes is its rule's "

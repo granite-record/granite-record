@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-10-24.1
+# GRANITE_VERSION: 2026-10-24.2
 """
 The key dates: the elections, town meeting day, and the legislature's own
 landmarks and deadlines, each with where it comes from. The home page's
@@ -145,20 +145,30 @@ def state_primary(year):
     return d if d < PRIMARY_UNTIL else None
 
 
-_SECTIONS = []
+_SECTIONS = {}
+
+# THE TABLE THE LAWS PAGES BESIDE THIS ONE ARE BUILT FROM: db/NH_RSA.psv in
+# the folder the build runs in. That is rsa.TABLE in a real build, which runs
+# from the repository, and the fixture's own two-chapter table where preflight
+# builds a site (build_rsa.py --db db). Read from rsa.TABLE whatever the
+# folder, the fixture's calendar linked RSA 39:1, 40:13, 653:8 and 669:1 on a
+# machine that holds the real table, to Laws pages its build never wrote, and
+# the dry run of 24 October 2026 stopped at the link check; here, with no
+# table, nothing was linked and the check passed.
+TABLE_HERE = Path("db") / "NH_RSA.psv"
 
 
 def _sections_on_disk():
-    """{"39:1", "39:1-A", ...}: the sections the database copy of the RSA on
-    this disk holds (rsa.TABLE), which is what the Laws pages are built from;
-    empty where it is not here. Read once a run, by each row's heading alone,
-    which is a second's reading where loading the whole table is not."""
-    if not _SECTIONS:
+    """{"39:1", "39:1-A", ...}: the sections of the statute table the Laws
+    pages are built from (TABLE_HERE), empty where it is not here. Read once
+    a run for each folder, by each row's heading alone, which is a second's
+    reading where loading the whole table is not."""
+    table = TABLE_HERE.resolve()
+    if table not in _SECTIONS:
         got = set()
         try:
-            import rsa
-            if Path(rsa.TABLE).is_file():
-                with open(rsa.TABLE, encoding="utf-8", errors="replace") as fh:
+            if table.is_file():
+                with open(table, encoding="utf-8", errors="replace") as fh:
                     for line in fh:
                         f = line.split("|", 7)
                         m = re.match(r"Section (\S+?) ", f[6]) if len(f) > 6 else None
@@ -166,16 +176,16 @@ def _sections_on_disk():
                             got.add(m.group(1).upper())
         except Exception:                                    # noqa: BLE001
             got = set()
-        _SECTIONS.append(got)
-    return _SECTIONS[0]
+        _SECTIONS[table] = got
+    return _SECTIONS[table]
 
 
 def _law(*addrs):
     """RSA citations, each a link to the site's own page of its section
     (build_rsa.href, which every address of a chapter's page asks) where the
-    statutes on this disk hold it, and plain words where they do not, so no
-    link leads to a page the build did not write (build_bill_pages.law_href
-    does the same)."""
+    table the Laws pages are built from holds it (TABLE_HERE), and plain
+    words where it does not, so no link leads to a page the build did not
+    write (build_bill_pages.law_href does the same)."""
     try:
         import build_rsa
         link = build_rsa.href
