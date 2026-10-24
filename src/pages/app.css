@@ -1,4 +1,4 @@
-/* GRANITE_VERSION: 2026-09-07.304 */
+/* GRANITE_VERSION: 2026-09-07.305 */
 /* ONE STYLESHEET FOR EVERY PAGE (23 October 2026). Every page of the site
    links this file, /app.css: the record pages shell.page() makes from
    bills.html, and the five build_pages.py writes -- the home page, Officials,
@@ -1761,6 +1761,21 @@ padding:var(--sp-4);min-height:44px;cursor:pointer;border-radius:var(--r-in)}
 color:var(--ink);background:var(--paper);border:1px solid var(--edge);border-radius:var(--r-in)}
 .ytares p{margin:var(--sp-3) 0}
 .ytares .ytrow{margin:0}
+/* THE ADDRESSES SUGGESTED AS THE BOX IS TYPED IN (24 October 2026; find.js
+   yaCombo): in the panel's flow under the box, so a phone scrolls it with the
+   panel rather than a list hung over it running off the screen. Each option
+   44px high. The one the arrow keys are on is marked by more than its
+   colour -- an outline, which forced colours keep. */
+.ytalist{list-style:none;margin:var(--sp-2) 0 0;padding:0;background:var(--paper);
+border:1px solid var(--edge);border-radius:var(--r-in);max-height:min(50vh,27rem);overflow-y:auto}
+.ytalist[hidden]{display:none}
+.ytaopt{display:flex;align-items:center;min-height:44px;padding:var(--sp-2) var(--sp-4);
+border-bottom:1px solid var(--rule);font-size:var(--t-ui);color:var(--ink);cursor:pointer;
+overflow-wrap:anywhere}
+.ytaopt:last-child{border-bottom:0}
+.ytaopt:hover{background:var(--wash)}
+.ytaopt[aria-selected=true]{background:var(--pine-soft);color:var(--pine);
+outline:2px solid var(--pine);outline-offset:-2px}
 .yt{border:1px solid var(--rule-2);border-left:4px solid var(--pine);border-radius:var(--r-in);
 background:var(--surface);padding:var(--sp-5) var(--sp-6);margin:var(--sp-6) 0}
 .yt[hidden]{display:none}

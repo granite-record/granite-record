@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.675
+# GRANITE_VERSION: 2026-09-04.676
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -32220,6 +32220,13 @@ def _built_site(here, root, brand=True, env=None):
         {"bills": {}, "enacted": {"91-A:4": [["1967", "251:1", ""]]}, "statute": {"404:1": ["91-A:4"]},
          "asof": {"laws_through": 2025}}), encoding="utf-8")
     _study_fixture(root)
+    # THE ADDRESS BOX'S STREETS (24 October 2026): a few of the fixture's two
+    # towns', in collected/nh_streets.json's shape, for build_addr_index.
+    (root / "collected").mkdir(exist_ok=True)
+    (root / "collected" / "nh_streets.json").write_text(json.dumps({"rows": [
+        ["Main St", "Raymond", "03077", "1-199 2-198"],
+        ["Epping St", "Raymond", "03077", "1-99 2-98"],
+        ["Portsmouth Ave", "Stratham", "03885", "1-299 2-298"]]}), encoding="utf-8")
     base = "https://graniterecord.org"
     steps = [
         # meta.json and the term files it names are the bill index; the
@@ -32250,6 +32257,8 @@ def _built_site(here, root, brand=True, env=None):
         ("build_study_committees.py", ["--site", "site", "--base", base],
          "site/study_committees.json"),
         ("build_town_pages.py", ["--site", "site", "--base", base], "site/town"),
+        # The address box's street files, after the town pages, as in build_all.
+        ("build_addr_index.py", ["--site", "site"], "site/addr/ma.json"),
         # The district map's data, after the town pages, as in build_all.
         ("build_district_map.py", ["--site", "site"], "site/district_map.json"),
         ("build_indexes.py", ["--site", "site", "--base", base],
@@ -32767,6 +32776,345 @@ def _your_town():
         f"find.js keeps something other than the place's slug and the language: {keeps}"
     return "ok", (f"{len(places)} places, each a built town page, naming "
             f"{len(people)} members who each have a page; find.js keeps only the slug")
+
+
+# THE ADDRESS BOX'S SUGGESTIONS (the person, 24 October 2026: "I'd like to
+# make some improvements to the address search so that it shows you a
+# dropdown of matching addresses around New Hampshire as you're typing with
+# the zip codes"). find.js's matcher over files read from disk: the real
+# ones for _addr_streets, the fixture's for _addr_suggest.
+_ADDR_FIND = r"""
+require("./stub.js");
+const fs = require("fs"), vm = require("vm");
+vm.runInThisContext(fs.readFileSync("./find.js", "utf8"), {filename: "find.js"});
+const F = vm.runInThisContext("({yaQuery, yaSuggest})");
+const out = {};
+for (const s of JSON.parse(fs.readFileSync("./queries.json", "utf8"))) {
+  const q = F.yaQuery(s);
+  let file = null;
+  try { file = JSON.parse(fs.readFileSync("./addr/" + q.key + ".json", "utf8")); } catch (e) {}
+  out[s] = {key: q && q.key, got: file ? F.yaSuggest(file, q, 8).map(c => c.label) : null};
+}
+process.stdout.write("\n@@" + JSON.stringify(out));
+"""
+
+# The address box itself: find.js's combobox in node, against dom_stub.js,
+# with elements that keep their attributes, a fetch that records what it was
+# asked and answers from the fixture's files (or 404s, or fails), and a
+# createElement that counts the script tags anything makes.
+_ADDR_COMBO = r"""
+require("./stub.js");
+const fs = require("fs"), vm = require("vm");
+const FILES = JSON.parse(fs.readFileSync("./files.json", "utf8"));
+const asked = [], scripts = [];
+let mode = "ok";
+globalThis.fetch = async u => {
+  asked.push(String(u));
+  if (mode === "down") throw new Error("offline");
+  const m = /^\/addr\/([a-z0-9]{2})\.json$/.exec(u), f = m && FILES[m[1]];
+  if (mode === "404" || !f) return {ok: false, status: 404, json: async () => { throw new Error("html"); }};
+  return {ok: true, status: 200, json: async () => JSON.parse(JSON.stringify(f))};
+};
+const create = document.createElement.bind(document);
+document.createElement = t => { if (String(t).toLowerCase() === "script") scripts.push(t); return create(t); };
+let F;
+try { vm.runInThisContext(fs.readFileSync("./find.js", "utf8"), {filename: "find.js"});
+      F = vm.runInThisContext("({yaCombo, yaFile, YA})"); }
+catch (e) { console.log("LOAD " + e.message); process.exit(1); }
+scripts.length = 0;
+function kept(id) {
+  const e = document.createElement("div"), at = {};
+  e.id = id;
+  e.setAttribute = (k, v) => { at[k] = String(v); };
+  e.getAttribute = k => (k in at ? at[k] : null);
+  e.removeAttribute = k => { delete at[k]; };
+  return e;
+}
+const inp = kept("ytaddr"), list = kept("ytalist"), say = kept("ytasay");
+list.hidden = true;
+const picked = [];
+F.yaCombo(inp, list, say, c => picked.push(c.label));
+const ticks = async () => { for (let i = 0; i < 20; i++) await new Promise(r => setImmediate(r)); };
+const key = k => { const e = {key: k, prevented: 0, stopped: 0, preventDefault() { this.prevented++; },
+  stopPropagation() { this.stopped++; }}; (inp._on.keydown || []).forEach(f => f(e)); return e; };
+const type = async v => { inp.value = v; inp.fire("input"); await ticks(); };
+const snap = () => ({expanded: inp.getAttribute("aria-expanded"), active: inp.getAttribute("aria-activedescendant"),
+  hidden: list.hidden, html: list.innerHTML, say: say.textContent, value: inp.value,
+  options: (list.innerHTML.match(/role="option"/g) || []).length});
+const forget = () => { for (const k of Object.keys(F.YA.files)) delete F.YA.files[k]; };
+const out = {};
+(async () => {
+  await type("107");
+  out.pending = {asked: asked.length, ...snap()};
+  await type("107 n main");
+  out.typed = snap();
+  const d1 = key("ArrowDown"); out.down1 = {...snap(), prevented: d1.prevented};
+  key("ArrowDown"); out.down2 = snap();
+  key("ArrowDown"); out.down3 = snap();
+  key("ArrowUp"); out.up = snap();
+  const en = key("Enter"); out.enter = {...snap(), prevented: en.prevented, picked: picked.slice()};
+  await type("107 north main st conc");
+  out.north = snap();
+  const e1 = key("Escape"); out.escape = {...snap(), stopped: e1.stopped};
+  const e2 = key("Escape"); out.escapeShut = {stopped: e2.stopped};
+  await type("107 n main"); inp.fire("blur"); out.blur = snap();
+  await type("107 n main"); key("Tab"); out.tab = snap();
+  await type("107 n main");
+  const ev = {target: {closest: () => ({getAttribute: () => "1"})}, stopped: 0, stopPropagation() { this.stopped++; }};
+  (list._on.click || []).forEach(f => f(ev));
+  out.click = {...snap(), stopped: ev.stopped, picked: picked.slice()};
+  const plain = key("Enter"); out.enterShut = {prevented: plain.prevented};
+  forget(); mode = "404"; await type("107 n main"); out.missing = snap();
+  forget(); mode = "down"; await type("50 battle st"); out.down = snap();
+  mode = "ok"; forget();
+  const before = asked.length;
+  out.bad = [await F.yaFile("a/"), await F.yaFile(".."), await F.yaFile("A1"), await F.yaFile("")];
+  out.badAsked = asked.length - before;
+  out.asked = asked; out.scripts = scripts.length;
+  process.stdout.write("\n@@" + JSON.stringify(out));
+})().catch(e => { console.log("RUN " + e.message); process.exit(1); });
+"""
+
+
+def _addr_node(script, files):
+    """Run one of the two harnesses in a folder of its own: find.js, the
+    stub, and `files` ({name: text}). Returns what it printed after @@."""
+    node = shutil.which("node") or shutil.which("node.exe")
+    root = Path(tempfile.mkdtemp())
+    try:
+        (root / "find.js").write_text(_paths.locate("src/pages/find.js").read_text(encoding="utf-8"),
+                                      encoding="utf-8")
+        (root / "stub.js").write_text(Path("tests/dom_stub.js").read_text(encoding="utf-8"),
+                                      encoding="utf-8")
+        for name, text in files.items():
+            (root / name).parent.mkdir(parents=True, exist_ok=True)
+            (root / name).write_text(text, encoding="utf-8")
+        (root / "go.js").write_text(script, encoding="utf-8")
+        r = _run([node, "go.js"], cwd=root, capture_output=True, text=True, timeout=120)
+        assert r.returncode == 0 and "@@" in (r.stdout or ""), (
+            "find.js's address box did not run under node: " + (r.stderr or r.stdout or "")[-400:])
+        return json.loads(r.stdout.rsplit("@@", 1)[1])
+    finally:
+        shutil.rmtree(root, ignore_errors=True)
+
+
+@check("frontend", "the address box's street files: their shape, New Hampshire's real streets "
+                   "with their ZIP codes, and find.js finding them as a reader types them")
+def _addr_streets():
+    """The files build_addr_index.py writes from collected/nh_streets.json,
+    which git carries, so this runs wherever the code does.
+
+    THE SHAPE. Every file is named by its key, two letters or digits, and
+    says so; its towns are a sorted list and every row names one of them; a
+    ZIP code is five digits; the house numbers are runs, low to high, each of
+    one parity; and every row is in the file because one of its forms -- its
+    name, or a form it carries -- begins with that file's key, which is the
+    rule find.js reads a file by. A few hundred files, none large: a phone
+    fetches one as its reader types.
+
+    REAL STREETS, each asked of the Census geocoder on 24 October 2026 and
+    matched where this says. 107 North Main Street is the State House, Concord, 03301 (Ward 4).
+    50 Battle Street is Webster on Concord's ZIP, 03303: the town is the
+    municipality's, not the post office's. Willow Street in Manchester is
+    03101 on its odd side and 03103 on its even, so 600 and 601 are offered
+    with different ZIP codes. 1050 State Route 118 is Dorchester, a road of
+    rural numbers. 100 Elm Street, Manchester, and 45 Lake Street, Nashua,
+    are ward cities; Hale's Location is an unorganized place, named with
+    what it is.
+
+    AND FIND.JS FINDS THEM, as typed: each query's first suggestion is the
+    one the Census matched, so the build's keys and the browser's matching
+    are held to each other on the real list.
+
+    WITHOUT THE LIST the step says so, removes any earlier files and writes
+    none, and a build goes on: the box then offers nothing and works as it
+    did before.
+    """
+    src = Path("collected/nh_streets.json")
+    node = shutil.which("node") or shutil.which("node.exe")
+    script = _paths.locate("build_addr_index.py")
+    if not (src.exists() and node and script.exists() and Path("tests/dom_stub.js").exists()):
+        return "skip", "collected/nh_streets.json, build_addr_index.py, dom_stub.js or node is not here"
+    root = Path(tempfile.mkdtemp())
+    try:
+        # Sealed, as the pipeline's steps are run here: the step asks no network.
+        r = _sealed_run([sys.executable, str(script), "--site", str(root / "site"), "--src", str(src)],
+                        capture_output=True, text=True, timeout=180)
+        assert r.returncode == 0, "build_addr_index.py failed: " + (r.stderr or r.stdout)[-300:]
+        addr = root / "site" / "addr"
+        files = sorted(addr.glob("*.json"))
+        assert 200 <= len(files) <= 700, (
+            f"{len(files)} files of street suggestions; about 350 were written on 24 October 2026, "
+            "and a count far from that is a key gone wrong")
+        sizes = sorted(p.stat().st_size for p in files)
+        assert sizes[-1] < 100_000 and sum(sizes) < 4_000_000, (
+            f"the largest file is {sizes[-1]:,} bytes and all {sum(sizes):,}: a phone fetches one "
+            "as its reader types")
+        import build_addr_index as BA
+        rows = {}
+        for p in files:
+            d = json.loads(p.read_text(encoding="utf-8"))
+            k = p.stem
+            assert re.fullmatch(r"[a-z0-9]{2}", k) and d["k"] == k, f"{p.name} says it is {d.get('k')!r}"
+            t = d["t"]
+            assert t == sorted(set(t)) and all(isinstance(x, str) and x for x in t), \
+                f"{p.name}: its towns are not a sorted list of names"
+            for row in d["r"]:
+                name, ti, zp, runs = row[:4]
+                forms = row[4] if len(row) > 4 else []
+                assert isinstance(name, str) and 0 <= ti < len(t), f"{p.name}: {row}"
+                assert re.fullmatch(r"(\d{5})?", zp), f"{p.name}: {name} has the ZIP {zp!r}"
+                assert len(runs) % 2 == 0 and all(
+                    runs[i] <= runs[i + 1] and runs[i] % 2 == runs[i + 1] % 2
+                    for i in range(0, len(runs), 2)), f"{p.name}: {name}'s numbers {runs}"
+                assert all(BA.key(f) == k for f in forms) and (
+                    BA.key(BA.norm(name).replace(" ", "")) == k or forms), (
+                    f"{p.name}: {name} is in a file none of its forms begins with")
+                rows.setdefault((name, t[ti], zp), []).append((k, runs))
+
+        def has(name, town, zp, n):
+            got = rows.get((name, town, zp))
+            assert got, f"{name}, {town} {zp} is in none of the files"
+            runs = got[0][1]
+            return any(runs[i] <= n <= runs[i + 1] and (n - runs[i]) % 2 == 0
+                       for i in range(0, len(runs), 2))
+        for name, town, zp, n in (("N Main St", "Concord", "03301", 107),
+                                  ("Battle St", "Webster", "03303", 50),
+                                  ("Willow St", "Manchester", "03101", 601),
+                                  ("Willow St", "Manchester", "03103", 600),
+                                  ("State Rte 118", "Dorchester", "03266", 1050),
+                                  ("Elm St", "Manchester", "03101", 100),
+                                  ("Lake St", "Nashua", "03060", 45)):
+            assert has(name, town, zp, n), f"{n} {name}, {town} {zp} is not in its street's numbers"
+        assert not has("Willow St", "Manchester", "03101", 600), \
+            "Willow Street's even side is 03103 and its odd 03101: the parity is not kept"
+        assert {k for k, _ in rows[("N Main St", "Concord", "03301")]} >= {"nm", "no", "ma"}, \
+            "N Main St is not in the files of n main, north main and main"
+        assert any(t == "Hale's Location" for _, t, _ in rows), \
+            "Hale's Location is not named with what it is"
+
+        want = {"107 north main st conc": "107 N Main St, Concord, NH 03301",
+                "107 n main st, concord": "107 N Main St, Concord, NH 03301",
+                "50 battle st": "50 Battle St, Webster, NH 03303",
+                "601 willow st manch": "601 Willow St, Manchester, NH 03101",
+                "600 willow st manch": "600 Willow St, Manchester, NH 03103",
+                "1050 route 118 dorch": "1050 State Rte 118, Dorchester, NH 03266",
+                "100 elm st manch": "100 Elm St, Manchester, NH 03101",
+                "45 lake st nash": "45 Lake St, Nashua, NH 03060",
+                "20 boulder ridge rd hale": "20 Boulder Ridge Rd, Hale's Location, NH 03860",
+                "bickford woods rd": "Bickford Woods Rd, Dorchester, NH 03266"}
+        shards = {f"addr/{p.name}": p.read_text(encoding="utf-8") for p in files}
+        got = _addr_node(_ADDR_FIND, {"queries.json": json.dumps(list(want)), **shards})
+        bad = [f"{q!r} first offers {(g['got'] or ['nothing'])[0]!r}, not {w!r}"
+               for q, w in want.items() for g in [got[q]] if not g["got"] or g["got"][0] != w]
+        assert not bad, "find.js does not offer what the Census matched: " + "; ".join(bad)
+
+        # Without the list: a warning, the earlier files gone, and the build goes on.
+        (root / "old" / "addr").mkdir(parents=True)
+        (root / "old" / "addr" / "zz.json").write_text("{}", encoding="utf-8")
+        r = _sealed_run([sys.executable, str(script), "--site", str(root / "old"),
+                         "--src", str(root / "none.json")], capture_output=True, text=True, timeout=60)
+        assert r.returncode == 0 and "WARNING" in r.stdout and not (root / "old" / "addr").exists(), (
+            "build_addr_index.py without its list did not warn, stop the build, or remove the "
+            "earlier files: " + (r.stdout + r.stderr)[-300:])
+    finally:
+        shutil.rmtree(root, ignore_errors=True)
+    assert '["build_addr_index.py", "--site", "site"]' in _paths.locate("build_all.py").read_text(
+        encoding="utf-8"), "build_all.py no longer runs build_addr_index.py"
+    return "ok", (f"{len(files)} files, the largest {sizes[-1] / 1e3:.0f} KB; {len(want)} real "
+                  "addresses each offered first as the Census matched it, parity choosing "
+                  "Willow Street's ZIP; without the list a warning and no files")
+
+
+@check("frontend", "the address box is a combobox, asks nothing but this site's own files while "
+                   "the reader types, and works as before when a file does not load")
+def _addr_suggest():
+    """find.js's yaCombo, run in node against dom_stub.js, over files
+    build_addr_index.shards() makes from a fixture of three streets.
+
+    THE COMBOBOX (WAI-ARIA's pattern, with a listbox). A house number alone
+    asks for nothing. "107 n main" opens the list: aria-expanded true and a
+    status line saying how many. ArrowDown and ArrowUp move through it,
+    wrapping, with aria-activedescendant naming the option and the option
+    aria-selected; Enter takes it, fills the box and closes the list, and so
+    does a tap, which goes no further than the list (the document's handler
+    took a tap on an option that had just been redrawn away as a tap outside
+    the panel, and shut it: the browser test of 24 October 2026). Escape
+    closes the list and stops there; with the list closed it is the panel's
+    again. Leaving the box, or Tab, closes it, and Enter with no option
+    chosen is the form's, as it was.
+
+    NOTHING BUT THIS SITE WHILE TYPING. Every request is /addr/<two letters
+    or digits>.json, a key of anything else asks nothing, and no script tag
+    is made -- the Census's JSONP is a script tag, and it is made only by
+    ytGeocode, which typing never reaches. The markup carries the roles and
+    the privacy line says where the address goes.
+
+    A FILE THAT DOES NOT LOAD -- a 404, the network down -- is no list and no
+    error, and Look up is the form's submit, which no suggestion gates.
+    """
+    js = _paths.locate("src/pages/find.js")
+    node = shutil.which("node") or shutil.which("node.exe")
+    if not (js.exists() and node and Path("tests/dom_stub.js").exists()):
+        return "skip", "find.js, dom_stub.js or node is not here"
+    import build_addr_index as BA
+    files = BA.shards([["N Main St", "Concord", "03301", "1-299 2-298"],
+                       ["N Main St", "Laconia", "03246", "601-1199 600-1444"],
+                       ["Battle St", "Webster", "03303", "1-1699 2-1698"]])
+    assert {"nm", "no", "ma", "ba"} <= set(files), f"the fixture's files are {sorted(files)}"
+    got = _addr_node(_ADDR_COMBO, {"files.json": json.dumps(files)})
+    p = got["pending"]
+    assert p["asked"] == 0 and p["expanded"] != "true", f"a house number alone asked for a file: {p}"
+    t = got["typed"]
+    assert t["expanded"] == "true" and not t["hidden"] and t["options"] == 2 \
+        and "107 N Main St, Concord, NH 03301" in t["html"] and t["say"] == "2 addresses suggested", (
+        f"typing 107 n main did not open a list of the two North Main Streets: {t}")
+    assert t["html"].index("Concord") < t["html"].index("Laconia"), \
+        "the number in range (Concord's 1-299) is not offered before the one out of it (Laconia's)"
+    seq = [got[k]["active"] for k in ("down1", "down2", "down3", "up")]
+    assert seq == ["ytalist-0", "ytalist-1", "ytalist-0", "ytalist-1"] and got["down1"]["prevented"], (
+        f"the arrow keys moved aria-activedescendant {seq}, not 0, 1, 0 (wrapping), 1")
+    assert 'id="ytalist-1" data-i="1" aria-selected="true"' in got["up"]["html"], \
+        "the option the arrow keys are on is not aria-selected"
+    e = got["enter"]
+    assert e["prevented"] and e["picked"] == ["107 N Main St, Laconia, NH 03246"] \
+        and e["value"] == e["picked"][0] and e["expanded"] == "false" and e["hidden"] \
+        and e["active"] is None, f"Enter on an option: {e}"
+    assert got["north"]["options"] == 1, f"107 north main st conc: {got['north']}"
+    assert got["escape"]["stopped"] == 1 and got["escape"]["hidden"] and got["escape"]["say"] == "" \
+        and got["escapeShut"]["stopped"] == 0, (
+        "Escape with the list open closes the list and stops there, and with it closed is the "
+        f"panel's: {got['escape']}, {got['escapeShut']}")
+    assert got["blur"]["hidden"] and got["tab"]["hidden"], "leaving the box, or Tab, left the list open"
+    c = got["click"]
+    assert c["stopped"] == 1 and c["picked"][-1] == "107 N Main St, Laconia, NH 03246" and c["hidden"], (
+        f"a tap on an option: {c} -- it must take the option and go no further, or the document "
+        "shuts the panel")
+    assert got["enterShut"]["prevented"] == 0, "Enter with no option chosen no longer submits the form"
+    for k in ("missing", "down"):
+        m = got[k]
+        assert m["expanded"] == "false" and m["options"] == 0 and m["hidden"], \
+            f"a file that does not load ({k}) still drew a list: {m}"
+    assert got["bad"] == [None] * 4 and got["badAsked"] == 0, \
+        "a key that is not two letters or digits asked for a file"
+    stray = [u for u in got["asked"] if not re.fullmatch(r"/addr/[a-z0-9]{2}\.json", u)]
+    assert not stray and got["scripts"] == 0, (
+        f"while the reader typed, find.js asked for {stray} and made {got['scripts']} script tags: "
+        "only this site's own files may be asked for until an address is chosen")
+    src = js.read_text(encoding="utf-8")
+    part = src[src.index("const YA={"):src.index("function ytRows(")]
+    assert not re.search(r"https?://", part), "the suggestions' code names another server"
+    assert part.count("fetch(") == 1 and 'fetch("/addr/"+k+".json")' in part, \
+        "the suggestions fetch something other than /addr/<key>.json"
+    draw = src[src.index("function ytDraw("):src.index("function ytLook(")]
+    for need in ('role="combobox"', 'aria-autocomplete="list"', 'aria-controls="ytalist"',
+                 'role="listbox"', 'id="ytasay" role="status"',
+                 'f.addEventListener("submit",e=>{e.preventDefault();ytLook(box,res);});'):
+        assert need in draw, f"the address box's markup or its form lost {need}"
+    assert "matched in your browser" in draw and "US Census Bureau" in draw, \
+        "the privacy line no longer says where the suggestions and the address go"
+    return "ok", ("a combobox by the arrow keys, Enter, Escape and a tap; only /addr/<key>.json "
+                  "asked while typing; a 404 or the network down is no list and no error")
 
 
 @check("build", "every builder runs end to end on a fixture site")

@@ -1357,6 +1357,11 @@
    "es": "un lugar",
    "state": "draft"
   },
+  "yt.add_number": {
+   "en": "Add your house number in front of the street, then press Look up.",
+   "es": "Escriba el número de su casa delante del nombre de la calle y luego pulse Buscar.",
+   "state": "draft"
+  },
   "yt.addr": {
    "en": "Street address and town",
    "es": "Dirección y municipio",
@@ -1365,6 +1370,11 @@
   "yt.addr_down": {
    "en": "The Census lookup did not answer. Choose your town from the list above, or try again in a minute.",
    "es": "El servicio de direcciones del Censo no respondió. Elija su municipio de la lista de arriba o vuelva a intentarlo en un minuto.",
+   "state": "draft"
+  },
+  "yt.addr_hint": {
+   "en": "12 Main Street, Concord",
+   "es": "12 Main Street, Concord",
    "state": "draft"
   },
   "yt.addr_in": {
@@ -1378,8 +1388,8 @@
    "state": "draft"
   },
   "yt.addr_privacy": {
-   "en": "The address goes from your browser to the US Census Bureau&rsquo;s address lookup and is not kept anywhere. Only the town or ward it finds is saved.",
-   "es": "La dirección va de su navegador al servicio de búsqueda de direcciones de la Oficina del Censo de EE. UU. y no se guarda en ningún lugar. Solo se guarda el municipio o el barrio electoral que encuentre.",
+   "en": "Suggestions come from this site&rsquo;s own list of New Hampshire streets and are matched in your browser, so this site sees only the first two letters of the street. The address you look up goes from your browser to the US Census Bureau&rsquo;s address lookup and is not kept anywhere. Only the town or ward it finds is saved.",
+   "es": "Las sugerencias vienen de la propia lista de calles de New Hampshire de este sitio y se comparan en su navegador, de modo que este sitio solo ve las dos primeras letras de la calle. La dirección que usted busque va de su navegador al servicio de búsqueda de direcciones de la Oficina del Censo de EE. UU. y no se guarda en ningún lugar. Solo se guarda el municipio o el barrio electoral que encuentre.",
    "state": "draft"
   },
   "yt.addr_state": {
@@ -1526,6 +1536,21 @@
   "yt.state_house": {
    "en": "State House {d}",
    "es": "Cámara de Representantes estatal: {d}",
+   "state": "draft"
+  },
+  "yt.sugg": {
+   "en": "Suggested addresses",
+   "es": "Direcciones sugeridas",
+   "state": "draft"
+  },
+  "yt.sugg_n": {
+   "en": "{n} addresses suggested",
+   "es": "{n} direcciones sugeridas",
+   "state": "draft"
+  },
+  "yt.sugg_one": {
+   "en": "1 address suggested",
+   "es": "1 dirección sugerida",
    "state": "draft"
   },
   "yt.title": {

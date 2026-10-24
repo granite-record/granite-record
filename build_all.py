@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-05.81
+# GRANITE_VERSION: 2026-09-05.82
 """
 Run the whole pipeline in the right order.
 
@@ -931,6 +931,20 @@ def plan(a):
                   "representatives and senator from the roster, and the "
                   "executive council, US House and Senate districts that were "
                   "in districts.json all along and had never been shown"),
+
+        # THE ADDRESS BOX'S SUGGESTIONS (the person, 24 October 2026: "a
+        # dropdown of matching addresses around New Hampshire as you're
+        # typing with the zip codes"), beside the Your town panel's other
+        # file, places.json. Reads collected/nh_streets.json, which git
+        # carries, so GitHub's machine has it; it is not in needs, because a
+        # build without it is a site whose box suggests nothing and works as
+        # before, and the step says so itself and removes any earlier files.
+        Step("the address box's street suggestions",
+             ["build_addr_index.py", "--site", "site"],
+             produces=["site/addr"],
+             note="New Hampshire's streets by town and ZIP code, from the Census "
+                  "Bureau's TIGER/Line files, in about 350 small files named by a "
+                  "street's first two letters, fetched as a reader types"),
 
         # AFTER the town pages, which will mount the map (Polish 3), and after
         # the district files and the roster it reads. Its geometry is

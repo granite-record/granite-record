@@ -1,4 +1,4 @@
-// GRANITE_VERSION: 2026-09-16.36
+// GRANITE_VERSION: 2026-09-16.37
 /* FIND ANYTHING, FROM THE HEADER (16 September, asked for in these words:
    "a search icon in the header that lets you search for anything including
    legislators, committees, towns, and bills ... searching Litchfield would
@@ -1086,7 +1086,11 @@ document.addEventListener("click",function(e){
    address lookup ("Not sure what ward you're in? Input your address to
    confirm.") asks the US Census Bureau's geocoder, the one outside service
    this page talks to, straight from the reader's browser; the address is
-   held in the box until the page is left and is written nowhere.
+   held in the box until the page is left and is written nowhere. The
+   addresses suggested as it is typed (24 October 2026) are this site's own
+   files, matched in the browser: this site is asked for the file of the
+   street's first two letters, and the Census for the one address chosen or
+   looked up, and for nothing while the reader types.
 
    EVERY FACT IS places.json's, which build_town_pages writes from the data
    the town's own page prints, so the header cannot name a different
@@ -1274,7 +1278,9 @@ function ytApply(){
    district (State Legislative Districts - Lower, "Merrimack 18"). A city
    ward is then the one ward of that town in that district. In 57 of the 61
    city districts that is one ward; where it is several, the reader is
-   asked which, and told where their ward is written. */
+   asked which, and told where their ward is written. It is asked when Look
+   up is pressed or a suggested address chosen (ytLook), and never as the
+   address is typed. */
 function ytGeocode(addr){
   return new Promise((ok,no)=>{
     const cb="grgeo"+Date.now().toString(36);
@@ -1308,6 +1314,201 @@ function ytFromCensus(d){
   return {wards:fit.length?fit:all,addr:m.matchedAddress,town:all[0].t};
 }
 
+/* THE ADDRESS, SUGGESTED AS IT IS TYPED (the person, 24 October 2026: "I'd
+   like to make some improvements to the address search so that it shows you
+   a dropdown of matching addresses around New Hampshire as you're typing
+   with the zip codes").
+
+   FROM THIS SITE'S OWN FILES, MATCHED HERE. The Census geocoder has no
+   type-ahead, and one from anybody else would send every key pressed to
+   another outside service. So the list is New Hampshire's streets, read from
+   the Census Bureau's TIGER/Line files (src/towns/parse_tiger_streets.py) and
+   cut by build_addr_index.py into files named by the street's first two
+   letters: typing "12 main st conc" asks this site for /addr/ma.json, once,
+   and the rest is matched in the browser. Nothing typed goes anywhere until
+   an address is chosen or Look up is pressed; then it goes to the Census, as
+   before. The file's address is built here from two letters or digits and
+   nothing else, so no other server is asked while the reader types
+   (preflight's _addr_suggest holds that).
+
+   WHAT IS OFFERED. Up to eight, as "12 Main St, Concord, NH 03301": the
+   house number as typed, first where it falls in a range the Census has for
+   that street and ZIP code -- its parity is what picks the ZIP where a street
+   is a ZIP boundary -- and then, once each, streets whose ranges do not reach
+   it, with the nearest range's ZIP. Without a house number, the streets
+   alone; choosing one puts it in the box with the cursor in front of it,
+   for the number, since the geocoder places a numbered address and nothing
+   less ("N Main St, Concord, NH 03301" matches nothing; asked 24 October
+   2026). Words after the street are its town ("main st conc"), then perhaps
+   NH and the ZIP code. A tie goes to the row the file has first: the
+   bigger town, and in it the longer street.
+
+   THE TOWN IS THE MUNICIPALITY the Census puts that side of the street in,
+   which is not always the post office's name for it: a Webster house on ZIP
+   03303 is offered as Webster, and the geocoder takes it so.
+
+   A COMBOBOX, WAI-ARIA's pattern with a listbox: the box says it controls
+   the list and whether it is open; the arrow keys move through the options,
+   aria-activedescendant naming the one they are on; Enter takes it; Escape
+   closes the list and only the list; a status line says how many there are.
+   Each option is 44px high, and the list is in the panel's flow, so a phone
+   scrolls it with the panel.
+
+   NOTHING DEPENDS ON IT. A file that does not load -- missing, the network
+   down, a site built without the list -- is no suggestions, and the box and
+   Look up work as they did before there were any. */
+const YA={files:{},timer:0,most:8};
+// What the Census's abbreviations stand for, for every word after the first:
+// "12 n main street" finds N Main St. The first word's are the build's
+// (build_addr_index.forms), because the first word is what names the file.
+const YA_ALT={st:["street","saint"],rd:["road"],ave:["avenue","av"],dr:["drive"],ln:["lane"],
+  cir:["circle"],ct:["court"],pl:["place"],ter:["terrace"],blvd:["boulevard"],
+  tpke:["turnpike","tpk","pike"],hwy:["highway"],trl:["trail"],pkwy:["parkway"],sq:["square"],
+  hts:["heights"],lndg:["landing"],xing:["crossing"],pt:["point"],rdg:["ridge"],vw:["view"],
+  ests:["estates"],byp:["bypass"],rte:["route","rt"],mt:["mount"],mtn:["mountain"],ft:["fort"],
+  exd:["extended","ext"],exn:["extension","ext"],ext:["extension"],
+  n:["north"],s:["south"],e:["east"],w:["west"],
+  ne:["northeast"],nw:["northwest"],se:["southeast"],sw:["southwest"]};
+// build_addr_index.norm, the same: lower case, no accents or apostrophes, and
+// anything not a letter or digit a space.
+const yaNorm=s=>String(s||"").toLowerCase().normalize("NFKD").replace(/[\u0300-\u036f]/g,"")
+  .replace(/['\u2019]/g,"").replace(/[^a-z0-9]+/g," ").trim();
+// The file a street is in: its first two letters or digits, spaces left out.
+const yaKey=s=>{const k=String(s).replace(/ /g,"").slice(0,2);return /^[a-z0-9]{2}$/.test(k)?k:"";};
+// "12 main st conc": the number as typed and as a number (none for
+// "264-98"), the words after it, and the file they are in.
+function yaQuery(raw){
+  raw=String(raw||"");
+  if(/^\s*\d+[a-z]?\s*$/i.test(raw))return null;
+  const m=/^\s*(\d+[a-z]?(?:[-\/]\d+[a-z]?)?)(?:\s*,\s*|\s+)(.*)$/i.exec(raw);
+  const num=m?m[1]:"",words=yaNorm(m?m[2]:raw);
+  if(!words)return null;
+  return {num,n:/^\d+[a-z]?$/i.test(num)?parseInt(num,10):null,t:words.split(" "),
+    key:yaKey(words),chars:words.replace(/ /g,"").length};
+}
+// A word typed against a word of a name: the word or what it abbreviates,
+// whole (2) or begun (1); 0 where it is neither.
+function yaWord(q,w){
+  const alt=YA_ALT[w]||[];
+  if(q===w||alt.indexOf(q)>=0)return 2;
+  return w.startsWith(q)||alt.some(a=>a.startsWith(q))?1:0;
+}
+// How the words typed fit a form of a street, then its town, then NH and
+// the ZIP code: {s: how well, left: the street's words not typed}, or null.
+function yaFit(qt,form,town,zip){
+  const ft=form.split(" ");
+  let i=0,j=0,s=0;
+  while(i<qt.length&&j<ft.length){const k=yaWord(qt[i],ft[j]);if(!k)break;s+=k;i++;j++;}
+  if(!i)return null;
+  const tt=yaNorm(town).split(" ");
+  for(let k=0;i<qt.length&&k<tt.length;k++,i++)if(!yaWord(qt[i],tt[k]))break;
+  for(;i<qt.length;i++){
+    const q=qt[i];
+    if(/^\d+$/.test(q)?!zip.startsWith(q):!["nh","new","hampshire"].some(w=>w.startsWith(q)))return null;
+  }
+  return {s,left:ft.length-j};
+}
+// The suggestions a file holds for a query, best first.
+function yaSuggest(file,q,most){
+  const out=[],towns=(file&&file.t)||[];
+  ((file&&file.r)||[]).forEach((r,ord)=>{
+    const town=towns[r[1]];
+    if(typeof town!=="string"||typeof r[0]!=="string")return;
+    let best=null;
+    [yaNorm(r[0])].concat(r[4]||[]).forEach((f,fi)=>{
+      if(yaKey(f)!==q.key)return;
+      const m=yaFit(q.t,f,town,r[2]||"");
+      if(m&&(!best||m.s>best.s||m.s===best.s&&m.left<best.left))best={s:m.s,left:m.left,alt:fi?1:0};
+    });
+    if(!best)return;
+    const runs=Array.isArray(r[3])?r[3]:[];
+    let gap=Infinity;
+    if(q.n!=null)for(let i=0;i+1<runs.length;i+=2){
+      const lo=runs[i],hi=runs[i+1],d=q.n<lo?lo-q.n:q.n>hi?q.n-hi:(q.n-lo)%2?1:0;
+      if(d<gap)gap=d;
+    }
+    out.push({name:r[0],town,zip:r[2]||"",s:best.s,alt:best.alt,ord,gap,in:gap===0?1:0});
+  });
+  let keep=out;
+  if(q.n!=null){
+    // A street in a town once, unless the number is in range for more than
+    // one of its ZIP codes; where it is in range for none, the nearest.
+    const by={};keep=[];
+    out.forEach(c=>{(by[c.name+"|"+c.town]=by[c.name+"|"+c.town]||[]).push(c);});
+    Object.keys(by).forEach(k=>{
+      const cs=by[k],hit=cs.filter(c=>c.in);
+      if(hit.length)keep.push(...hit);else keep.push(cs.reduce((a,b)=>b.gap<a.gap?b:a));
+    });
+  }
+  keep.sort((a,b)=>(b.in-a.in)||(b.s-a.s)||(a.alt-b.alt)||(a.ord-b.ord));
+  return keep.slice(0,most).map(c=>({label:(q.num?q.num+" ":"")+c.name+", "+c.town+", NH"+(c.zip?" "+c.zip:""),
+    num:q.num,name:c.name,town:c.town,zip:c.zip,inRange:!!c.in}));
+}
+// One file, fetched once a page, from this site and nowhere else; anything
+// but a file of rows is no file.
+function yaFile(k){
+  if(!/^[a-z0-9]{2}$/.test(k))return Promise.resolve(null);
+  if(!YA.files[k])YA.files[k]=fetch("/addr/"+k+".json").then(r=>r.ok?r.json():null)
+    .then(d=>d&&Array.isArray(d.r)&&Array.isArray(d.t)?d:null,()=>null);
+  return YA.files[k];
+}
+// The box, its list and its status line made a combobox; pick(choice) is
+// told what was chosen.
+function yaCombo(inp,list,say,pick){
+  const lid=list.id||"ytalist";
+  let rows=[],act=-1,seq=0;
+  const draw=()=>{
+    list.innerHTML=rows.map((r,i)=>`<li role="option" class="ytaopt" id="${lid}-${i}" data-i="${i}" aria-selected="${i===act}">${_fesc(r.label)}</li>`).join("");
+    list.hidden=!rows.length;
+    inp.setAttribute("aria-expanded",rows.length?"true":"false");
+    if(act>=0){inp.setAttribute("aria-activedescendant",`${lid}-${act}`);
+      const o=document.getElementById(`${lid}-${act}`);if(o&&o.scrollIntoView)o.scrollIntoView({block:"nearest"});}
+    else inp.removeAttribute("aria-activedescendant");
+  };
+  const shut=()=>{seq++;say.textContent="";if(rows.length||act>=0){rows=[];act=-1;draw();}};
+  const update=()=>{
+    const q=yaQuery(inp.value),my=++seq;
+    if(!q||!q.key){rows=[];act=-1;draw();say.textContent="";return;}
+    yaFile(q.key).then(d=>{
+      if(my!==seq)return;
+      rows=d&&q.chars>=3?yaSuggest(d,q,YA.most):[];act=-1;draw();
+      say.textContent=!rows.length?"":rows.length===1?tr("yt.sugg_one","1 address suggested")
+        :tr("yt.sugg_n","{n} addresses suggested",{n:rows.length});
+    });
+  };
+  const choose=i=>{
+    const r=rows[i];if(!r)return;
+    inp.value=r.label;shut();pick(r);
+  };
+  inp.addEventListener("input",()=>{clearTimeout(YA.timer);YA.timer=setTimeout(update,120);});
+  inp.addEventListener("keydown",e=>{
+    if(e.key==="ArrowDown"||e.key==="ArrowUp"){
+      e.preventDefault();
+      if(!rows.length){update();return;}
+      act=e.key==="ArrowDown"?(act+1)%rows.length:act<=0?rows.length-1:act-1;
+      draw();
+    }else if(e.key==="Enter"){
+      if(rows.length&&act>=0){e.preventDefault();choose(act);}else shut();
+    }else if(e.key==="Escape"){
+      // The list, and not the panel round it, whose own Escape is the document's.
+      if(rows.length){e.preventDefault();e.stopPropagation();shut();}
+    }else if(e.key==="Tab")shut();
+  });
+  inp.addEventListener("blur",shut);
+  // Pressing an option keeps the focus in the box, so the box is not left
+  // (and the list shut) before the click has landed.
+  list.addEventListener("mousedown",e=>e.preventDefault());
+  // And the click goes no further: choosing redraws the list, so the option
+  // pressed has left the page by the time the click reaches the document,
+  // whose handler takes a click on nothing in the panel as one outside it
+  // and shuts the panel (the browser test found it, 24 October 2026).
+  list.addEventListener("click",e=>{
+    const o=e.target&&e.target.closest&&e.target.closest("[data-i]");
+    if(!o)return;
+    e.stopPropagation();choose(+o.getAttribute("data-i"));
+  });
+}
+
 function ytRows(q){
   const n=_ynorm(q);if(!n||!YT.data)return [];
   const ps=YT.data.places;
@@ -1335,11 +1536,17 @@ function ytDraw(){
       +'<input id="ytq" type="search" autocomplete="off" placeholder="'+_fesc(tr("yt.box_hint","Town, or city and ward"))+'" aria-controls="ytout"></div>'
       +'<p class="sr" id="ytqsay" role="status"></p><div class="ytout" id="ytout"></div>'
       +'<details class="ytaddr" id="ytaddrbox"><summary>'+tr("yt.ward_unsure","Not sure what ward you&rsquo;re in? Enter your address to confirm.")+'</summary>'
+      // The browser's own address list is off here (autocomplete="off"), as
+      // the combobox pattern has it: two lists under one box, one drawn over
+      // the other.
       +'<form id="ytaform" class="ytaform"><label for="ytaddr" class="ytlbl2">'+tr("yt.addr","Street address and town")+'</label>'
-      +'<div class="ytarow"><input id="ytaddr" type="text" autocomplete="street-address" placeholder="12 Main Street, Concord">'
-      +'<button type="submit" class="ytbtn2">'+tr("yt.look_up","Look up")+'</button></div></form>'
+      +'<div class="ytarow"><input id="ytaddr" type="text" autocomplete="off" placeholder="'+_fesc(tr("yt.addr_hint","12 Main Street, Concord"))+'"'
+      +' role="combobox" aria-autocomplete="list" aria-expanded="false" aria-controls="ytalist">'
+      +'<button type="submit" class="ytbtn2">'+tr("yt.look_up","Look up")+'</button></div>'
+      +'<ul class="ytalist" id="ytalist" role="listbox" aria-label="'+_fesc(tr("yt.sugg","Suggested addresses"))+'" hidden></ul>'
+      +'<p class="sr" id="ytasay" role="status"></p></form>'
       +'<div class="ytares" id="ytares" role="status"></div>'
-      +'<p class="ytpriv">'+tr("yt.addr_privacy","The address goes from your browser to the US Census Bureau&rsquo;s address lookup and is not kept anywhere. Only the town or ward it finds is saved.")+'</p></details>'
+      +'<p class="ytpriv">'+tr("yt.addr_privacy","Suggestions come from this site&rsquo;s own list of New Hampshire streets and are matched in your browser, so this site sees only the first two letters of the street. The address you look up goes from your browser to the US Census Bureau&rsquo;s address lookup and is not kept anywhere. Only the town or ward it finds is saved.")+'</p></details>'
       +(p?'<p class="ytacts"><button type="button" class="ytbtn2 ytquiet" id="ytback">'+tr("yt.keep","Keep {place}",{place:_fesc(p.n)})+"</button></p>":"");
   }
   h+='<p class="ytpriv">'+tr("yt.privacy","Saved in this browser only. Nothing about it is sent to Granite Record.")+'</p>';
@@ -1360,23 +1567,35 @@ function ytDraw(){
     });
   }
   const f=out.querySelector("#ytaform");
-  if(f)f.addEventListener("submit",e=>{
-    e.preventDefault();
-    const a=out.querySelector("#ytaddr").value.trim(),res=out.querySelector("#ytares");
-    if(!a)return;
-    res.innerHTML='<p class="ytnote">'+tr("yt.looking","Looking it up&hellip;")+'</p>';
-    ytGeocode(a).then(d=>{
-      const r=ytFromCensus(d);
-      const said=r.addr?`<p class="ytnote">${tr("yt.matched","Matched: {addr}",{addr:_fesc(r.addr)})}</p>`:"";
-      if(r.pick){res.innerHTML=said+`<p>${tr("yt.addr_in","That address is in {place}.",{place:"<b>"+_fesc(r.pick.n)+"</b>"})}</p>`
-        +`<button type="button" class="ytbtn2" data-pick="${_fesc(r.pick.s)}">${tr("yt.make_mine","Make {place} my town",{place:_fesc(r.pick.n)})}</button>`;}
-      else if(r.wards){res.innerHTML=said+`<p>${tr("yt.addr_wards","That address is in {town}, in a district that holds more than one ward, so the lookup cannot say which. Your ward is on your voter registration, or the clerk can tell you.",{town:_fesc(r.town)})}</p>`
-        +r.wards.map(w=>`<button type="button" class="ytrow" data-pick="${_fesc(w.s)}">${_fesc(w.n)}</button>`).join("");}
-      else if(r.why==="state")res.innerHTML=said+"<p>"+tr("yt.addr_state","That address is not in New Hampshire.")+"</p>";
-      else if(r.why==="town")res.innerHTML=said+`<p>${tr("yt.addr_town","The lookup placed it in {place}, which this site has no page for. Choose your town from the list above.",{place:_fesc(r.name||tr("yt.a_place","a place"))})}</p>`;
-      else res.innerHTML="<p>"+tr("yt.addr_none","The Census lookup did not recognize that address. Try the street number, street and town, or choose your town from the list above.")+"</p>";
-    },()=>{res.innerHTML="<p>"+tr("yt.addr_down","The Census lookup did not answer. Choose your town from the list above, or try again in a minute.")+"</p>";});
+  if(!f)return;
+  const box=out.querySelector("#ytaddr"),res=out.querySelector("#ytares");
+  f.addEventListener("submit",e=>{e.preventDefault();ytLook(box,res);});
+  yaCombo(box,out.querySelector("#ytalist"),out.querySelector("#ytasay"),c=>{
+    if(c.num){ytLook(box,res);return;}
+    // A street with no number: it stays in the box, the cursor in front of
+    // it, for the number the geocoder needs.
+    box.value=" "+c.label;box.focus();
+    if(box.setSelectionRange)box.setSelectionRange(0,0);
+    res.innerHTML='<p class="ytnote">'+tr("yt.add_number","Add your house number in front of the street, then press Look up.")+"</p>";
   });
+}
+// Look up, as the box's button does it: the address to the Census, and what
+// it found said under the box.
+function ytLook(box,res){
+  const a=box.value.trim();
+  if(!a)return;
+  res.innerHTML='<p class="ytnote">'+tr("yt.looking","Looking it up&hellip;")+'</p>';
+  ytGeocode(a).then(d=>{
+    const r=ytFromCensus(d);
+    const said=r.addr?`<p class="ytnote">${tr("yt.matched","Matched: {addr}",{addr:_fesc(r.addr)})}</p>`:"";
+    if(r.pick){res.innerHTML=said+`<p>${tr("yt.addr_in","That address is in {place}.",{place:"<b>"+_fesc(r.pick.n)+"</b>"})}</p>`
+      +`<button type="button" class="ytbtn2" data-pick="${_fesc(r.pick.s)}">${tr("yt.make_mine","Make {place} my town",{place:_fesc(r.pick.n)})}</button>`;}
+    else if(r.wards){res.innerHTML=said+`<p>${tr("yt.addr_wards","That address is in {town}, in a district that holds more than one ward, so the lookup cannot say which. Your ward is on your voter registration, or the clerk can tell you.",{town:_fesc(r.town)})}</p>`
+      +r.wards.map(w=>`<button type="button" class="ytrow" data-pick="${_fesc(w.s)}">${_fesc(w.n)}</button>`).join("");}
+    else if(r.why==="state")res.innerHTML=said+"<p>"+tr("yt.addr_state","That address is not in New Hampshire.")+"</p>";
+    else if(r.why==="town")res.innerHTML=said+`<p>${tr("yt.addr_town","The lookup placed it in {place}, which this site has no page for. Choose your town from the list above.",{place:_fesc(r.name||tr("yt.a_place","a place"))})}</p>`;
+    else res.innerHTML="<p>"+tr("yt.addr_none","The Census lookup did not recognize that address. Try the street number, street and town, or choose your town from the list above.")+"</p>";
+  },()=>{res.innerHTML="<p>"+tr("yt.addr_down","The Census lookup did not answer. Choose your town from the list above, or try again in a minute.")+"</p>";});
 }
 /* THE LANGUAGE, A ROW OF SETTINGS (the person, 23 October 2026: "an option
    to select the language manually in the settings section or to
