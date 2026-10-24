@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-10-11.27
+# GRANITE_VERSION: 2026-10-11.28
 """
 The how-to guides: their words, their sources, and what each was checked
 against. Read by build_civics.py, which draws them on the Resources hub's
@@ -441,10 +441,10 @@ VOTING = guide(
           note="<b>This changed in 2026, and the courts are still involved.</b> What you may "
                "use as proof has changed more than once this year and may change again before "
                "the election. The Secretary of State's page is the official word: check it "
-               "before you go. On October 12, 2026 it said that after a court order of May 28, "
-               "2026, if you lack the documents to prove your citizenship you may again sign a "
-               "qualified voter affidavit instead. The affidavit covers citizenship and nothing "
-               "else: you still need proof of identity, age and domicile."),
+               "before you go. On October 24, 2026 it still said that if you lack the documents "
+               "to prove your citizenship, you may sign a qualified voter affidavit instead, as "
+               "a court order of May 28, 2026 allowed again. The affidavit covers citizenship and "
+               "nothing else: you still need proof of identity, age and domicile."),
      step("Vote",
           "<p>On election day, go to your polling place. Every voter must show proof of identity "
           "to get a ballot. If you have no approved photo ID, you can get one free, for voting "
@@ -508,6 +508,10 @@ VOTING = guide(
            "certified NH vital record for voter registration only; a free photo ID for voting "
            "from the DMV with a voucher from the clerk or Secretary of State; every voter shows "
            "proof of identity to get a ballot.", SOS_PROOF, CHECKED),
+     # Read again on 24 October 2026, in the person's PDF of the page that day.
+     claim("Citizenship only may be proven by a qualified voter affidavit, subject to the "
+           "penalties for voter fraud, by a citizen without some or all of the documents; no "
+           "affidavit for identity, age or domicile.", SOS_PROOF, "2026-10-24"),
      claim("May 28, 2026 order: the affidavit is back for citizenship only, not identity, age or "
            "domicile; proof of identity still needed for a ballot.", SOS_HB1569, CHECKED),
      claim("A voter presents proof of identity to the ballot clerk to receive a ballot.",
@@ -3287,106 +3291,120 @@ GUIDES += [WARRANT]
 # ---------------------------------------------------------------------------
 # HELP PAYING FOR CHILD CARE (the person, 24 October 2026, who named the child
 # care scholarship among the guides to add and allowed federal sources that
-# day). NOT YET PUBLISHABLE, ON PURPOSE. The program is the state's use of the
-# federal Child Care and Development Fund, so the floor every family can count
-# on is federal: 45 CFR 98, read on 24 October 2026 at eCFR, which answers a
-# cloud session. The Department of Health and Human Services' own pages --
-# who it serves in New Hampshire, the application, the provider rule -- refuse
-# a cloud session as every nh.gov page does, so the claims on them carry no
-# date until the person, who is reading them on the laptop, has. Until then
-# guide_ready holds the guide back and `build_civics.py --drafts` shows it.
-# No income limit, copayment amount or scholarship amount is printed: they are
-# the Department's and change (the plan: no eligibility math); the guide links
-# where the Department states them.
+# day). From the Department of Health and Human Services' Child Development
+# and Head Start page, whose Information for Families section is the program's
+# page for families, its Provider Enrollment page and its Family Assistance
+# Manual's section 901, each read on 24 October 2026 in the PDFs the person
+# printed and sent, since nh.gov refuses a cloud session; and from the federal
+# rules the program runs on, 45 CFR 98, read at eCFR the same day. The federal
+# rules add what the Department's pages do not say: what holds between one
+# year's eligibility and the next, and the parent's choice of provider. No
+# income limit, copayment or scholarship amount is printed: they are the
+# Department's and change (the plan: no eligibility math), and the guide
+# links where the Department states them.
 # ---------------------------------------------------------------------------
 CC_READ = "2026-10-24"
 DHHS_CHILD_DEV = ("https://www.dhhs.nh.gov/programs-services/childcare-parenting-childbirth/"
                   "child-development-and-head-start")
 DHHS_CC_PROVIDERS = DHHS_CHILD_DEV + "/child-care"
 DHHS_FAM_901 = "https://www.dhhs.nh.gov/fam_htm/html/901_application_process_fam.htm"
-DHHS_FAM_915 = "https://www.dhhs.nh.gov/fam_htm/html/915_program_criteria_fam.htm"
 _ECFR = "https://www.ecfr.gov/current/title-45/subtitle-A/subchapter-A/part-98/"
-CFR_ELIGIBLE = _ECFR + "subpart-C/section-98.20"
 CFR_REDETERMINE = _ECFR + "subpart-C/section-98.21"
 CFR_CHOICE = _ECFR + "subpart-D/section-98.30"
-CFR_HOMELESS = _ECFR + "subpart-F/section-98.51"
 
 CHILD_CARE = guide(
     "child-care-scholarship", "How to Get Help Paying for Child Care",
     "Applying for New Hampshire's Child Care Scholarship through the Department of Health and "
     "Human Services, step by step: who it is for, how to apply, choosing a provider, and keeping "
     "it.",
-    "New Hampshire&rsquo;s Child Care Scholarship helps families pay for child care while the "
-    "parents work, look for work, or go to school or job training. Apply to the Department of "
-    "Health and Human Services online at NH Easy, or on paper. The Department decides whether you "
-    "qualify and what share of the cost you pay; you choose the child care provider.",
-    [box("Check that the scholarship fits your family: a child under 13, and parents working, "
-         "looking for work, or in school or training."),
+    "New Hampshire&rsquo;s Child Care Scholarship helps eligible families pay for child care, "
+    "with payments made directly to the child care provider. It is for children under 13, or "
+    "under 18 with a disability, whose parents are working, looking for work or in a training "
+    "program. Apply to the Department of Health and Human Services online at NH Easy, or in "
+    "person or by mail on paper. The Department decides within 30 days, and you apply again "
+    "every year.",
+    [box("Check that it fits your family: a child under 13 (under 18 with a disability), and "
+         "parents working, looking for work, or in a training program."),
      ask("How do you want to apply?",
          [("Online", "Apply at NH Easy."),
-          ("On paper", "Fill in the Application for Assistance and send it to your District Office.")]),
-     box("Choose a provider the Department pays, and keep the scholarship at least 12 months.")],
+          ("On paper", "Apply in person or by mail at your District Office.")]),
+     box("The Department decides within 30 days. Choose a provider enrolled with it."),
+     box("Apply again every 12 months.")],
     [step("Check whether it fits your family",
-          "<p>Under the federal rules the program runs on, a child can be covered if they are "
-          "under 13 years old, or older and unable to care for themselves or under court "
-          "supervision where the state chooses to cover them, and lives with parents who are "
-          "working or attending job training or school. The state sets an income limit, which "
-          "federal law caps. The Department&rsquo;s program rules also count looking for work.</p>"
-          "<p>The Department publishes its income limits and its program rules.</p>",
-          actions=[("Child Development and Head Start", DHHS_CHILD_DEV),
-                   ("The program's rules", DHHS_FAM_915)]),
+          "<p>The scholarship pays part of the cost of child care, directly to the provider, for "
+          "eligible families. To be eligible:</p>"
+          "<ul><li>your child is under 13 years old, or under 18 years old with a "
+          "disability;</li>"
+          "<li>the parents are working, looking for work, or in a training program; and</li>"
+          "<li>your household&rsquo;s income is within the Department&rsquo;s current limits, "
+          "which it publishes each year, effective July 1.</li></ul>",
+          actions=[("The scholarship, for families", DHHS_CHILD_DEV)]),
      step("Apply online or on paper",
-          "<p><b>Online:</b> NH Easy, the Department&rsquo;s benefits site, takes applications "
-          "for child care assistance, and for SNAP, cash and Medicaid on the same "
-          "application.</p>"
-          "<p><b>On paper:</b> fill in the Application for Assistance (Form 800) and send it to "
-          "your District Office, or ask the office for one. To speak to someone, call "
-          "1-844-ASK-DHHS (1-844-275-3447).</p>",
-          actions=[("NH Easy", NHEASY), ("Paper applications", DHHS_APPLY),
-                   ("How applications are handled", DHHS_FAM_901)]),
+          "<p><b>Online:</b> apply at NH Easy, the Department&rsquo;s site for all its services, "
+          "child care among them.</p>"
+          "<p><b>On paper:</b> apply in person or by mail at a District Office, which can give "
+          "you the application.</p>"
+          "<p>To schedule a follow-up appointment, call 1-844-ASK-DHHS (1-844-275-3447). "
+          "Everyone has the right to apply, and to a decision within 30 days.</p>",
+          actions=[("NH Easy", NHEASY), ("Find your District Office", DHHS_OFFICES)]),
      step("Choose a child care provider",
           "<p>You choose who cares for your child. Federal rules let you choose among child care "
           "centers, family child care homes and, within the state&rsquo;s limits, care in your own "
           "home. Relatives and religious providers are among the choices.</p>"
-          "<p>To be paid through the scholarship, a provider enrolls with the Department. Ask a "
-          "provider you are considering whether it is enrolled.</p>",
-          actions=[("Child care providers and the scholarship", DHHS_CC_PROVIDERS)]),
+          "<p>The scholarship is paid to the provider, so the provider must be enrolled with the "
+          "Department to accept it. Ask a provider you are considering whether it is. The "
+          "Department&rsquo;s free Child Care Search, linked from the same page as the "
+          "scholarship, shows providers&rsquo; quality ratings, "
+          "licensing history and services, and Child Care Aware of New Hampshire helps families "
+          "find care for free: call 1-855-393-1731, extension 2531, weekdays 8 a.m. to 5 p.m.</p>",
+          actions=[("Providers and the scholarship", DHHS_CC_PROVIDERS)]),
      step("Keeping the scholarship",
-          "<p>Once you are approved, the federal rules keep your child eligible for at least 12 "
-          "months before the Department checks again. In that time the scholarship continues at "
-          "least at the same level even if your income goes up, as long as it stays under the "
-          "federal limit, and through temporary changes such as time off work for an illness or "
-          "to care for a family member, a break between seasonal jobs, a school break, fewer hours, or your child "
-          "turning 13. Your share of the cost cannot be raised in that time except as the rules "
-          "allow.</p>"
-          "<p>If you lose your job or leave your program, the scholarship continues for at "
-          "least three months so you can look for work or go back.</p>"),
+          "<p>Your eligibility is checked again every 12 months, and you reapply each year.</p>"
+          "<p>In between, federal rules keep the scholarship going at least at the same level "
+          "even if your income goes up, as long as it stays under the federal limit, and "
+          "through temporary changes such as time off work for an illness or to care for a "
+          "family member, a break between seasonal jobs, a school break, fewer hours, or your "
+          "child turning 13. Your share of the cost cannot be raised in that time except as the "
+          "rules allow. If you lose your job or leave your program, it continues for at least "
+          "three months so you can look for work or go back.</p>"),
      step("If your family is homeless, or you disagree with a decision",
-          "<p><b>Families experiencing homelessness:</b> the state must let a child enroll "
-          "after a first decision on eligibility, while you gather the documents the "
-          "application asks for. Say so when you apply.</p>"
+          "<p><b>Families experiencing homelessness</b> can be approved for child care within 7 "
+          "days of applying, once the child is linked to a provider enrolled with the "
+          "Department. The final decision still comes within 30 days. Say so when you "
+          "apply.</p>"
           "<p><b>If you disagree with a decision,</b> you can ask for an administrative appeal "
           "hearing, in writing, on the Department&rsquo;s appeal request form or in a letter. "
           "Your Notice of Decision gives your deadline. You do not need a lawyer.</p>",
           actions=[("Administrative appeals", DHHS_APPEALS)])],
     [("Child Development and Head Start (Department of Health and Human Services)", DHHS_CHILD_DEV),
-     ("Child Care Scholarship providers (Department of Health and Human Services)", DHHS_CC_PROVIDERS),
-     ("Child Care Scholarship application process (Department of Health and Human Services)",
-      DHHS_FAM_901),
-     ("Child Care Scholarship program criteria (Department of Health and Human Services)",
-      DHHS_FAM_915),
-     ("Apply for Assistance (Department of Health and Human Services)", DHHS_APPLY),
+     ("Child Care Scholarship Provider Enrollment and Web Billing (Department of Health and "
+      "Human Services)", DHHS_CC_PROVIDERS),
+     ("Accessing the NH Child Care Scholarship, Family Assistance Manual 901 (Department of "
+      "Health and Human Services)", DHHS_FAM_901),
      ("Administrative Appeals (Department of Health and Human Services)", DHHS_APPEALS),
-     ("A child's eligibility, 45 CFR 98.20 (federal)", CFR_ELIGIBLE),
      ("Eligibility determination, 45 CFR 98.21 (federal)", CFR_REDETERMINE),
-     ("Parental choice, 45 CFR 98.30 (federal)", CFR_CHOICE),
-     ("Children experiencing homelessness, 45 CFR 98.51 (federal)", CFR_HOMELESS)],
+     ("Parental choice, 45 CFR 98.30 (federal)", CFR_CHOICE)],
     [],
-    # Federal law, read at eCFR on 24 October 2026.
-    [claim("A child is under 13, or at the Lead Agency's option under 19 and incapable of "
-           "self-care or under court supervision; income no more than 85 percent of the state "
-           "median; a parent working or attending a job training or educational program; the "
-           "Lead Agency may add conditions in its Plan.", CFR_ELIGIBLE, CC_READ),
+    [claim("Information for Families: the NH CCSP provides funds for eligible families by direct "
+           "payments to qualified providers; children may be under 13 years old (or under 18 "
+           "years old if they have a disability); parents working, looking for work, or in a "
+           "training program, with household income meeting current requirements; eligibility "
+           "redetermined every 12 months and families reapply annually; Income Eligibility "
+           "Levels effective July 1; apply online at NH EASY, the one-stop-shop for all DHHS "
+           "services including child care; 1-844-ASK-DHHS (1-844-275-3447) to schedule a follow "
+           "up appointment; in-person or by mail with a paper application at District Offices; "
+           "Child Care Search, a free service, shows providers' quality rating, licensing history "
+           "and services; Child Care Aware of NH, 1-855-393-1731, ext. 2531, Monday to Friday "
+           "8:00 AM to 5:00 PM.", DHHS_CHILD_DEV, CC_READ),
+     claim("The program pays qualified providers directly; providers enroll to accept the "
+           "scholarship, whether licensed, license-exempt or licensed out of state.",
+           DHHS_CC_PROVIDERS, CC_READ),
+     claim("Any individual has the right to apply and to an eligibility decision within 30 "
+           "days; an application from any District Office, the DHHS website or by telephone, or "
+           "through NH EASY; an applicant experiencing homelessness is authorized for expedited "
+           "child care within 7 days of the date of application when the child is linked to a "
+           "DHHS enrolled provider, with a final decision within 30 days.", DHHS_FAM_901, CC_READ),
+     # Federal law, read at eCFR on 24 October 2026.
      claim("Eligibility is redetermined no sooner than 12 months after the last determination; "
            "meanwhile the child receives services at least at the same level despite income "
            "below 85 percent of the state median or a temporary change: an absence to care for "
@@ -3397,35 +3415,22 @@ CHILD_CARE = guide(
      claim("Parents choose a provider; certificates allow center-based, family and in-home "
            "care, with any limits on in-home care in the Plan; information on the range of "
            "options includes sectarian providers and relatives.", CFR_CHOICE, CC_READ),
-     claim("Procedures permit enrollment of children experiencing homelessness after an initial "
-           "eligibility determination while required documentation is obtained.",
-           CFR_HOMELESS, CC_READ),
-     # The Department's own pages, not yet read: no date until the person has.
-     claim("The Child Care Scholarship helps eligible families pay for child care; who it serves, "
-           "the income limits, how to apply.", DHHS_CHILD_DEV),
-     claim("A provider is paid through the scholarship once enrolled with the Department.",
-           DHHS_CC_PROVIDERS),
-     claim("Applications online at NH Easy, by phone or on paper at a District Office; the time "
-           "a decision takes.", DHHS_FAM_901),
-     claim("Parents working, looking for work, or in education or training; the program's "
-           "criteria.", DHHS_FAM_915),
      # Read before, for the food and health guide.
-     claim("NH Easy takes applications for cash, SNAP, child care and Medicaid.", DHHS_MEDICAID,
-           READ),
-     claim("Print, complete and mail the Application for Assistance (Form 800) to the District "
-           "Office.", DHHS_APPLY, READ),
      claim("Appeal in writing by form or letter; no attorney needed.", DHHS_APPEALS, READ)]
     + help_claims("nheasy", "legal_aid"),
     more="<h2>Who Can Help</h2>"
-         "<p>The Department&rsquo;s customer service center answers questions about applying, "
-         "and your local District Office can help in person.</p>"
-         f'<p class="g-acts"><a class="g-btn" href="{DHHS_OFFICES}" target="_blank" rel="noopener">'
-         "Find your District Office</a></p>"
+         "<p>For questions about the scholarship and your application, call the Department at "
+         "1-844-ASK-DHHS (1-844-275-3447), or ask your local District Office in person. For help "
+         "finding child care, call Child Care Aware of New Hampshire at 1-855-393-1731, "
+         "extension 2531.</p>"
          + helps("nheasy", "legal_aid"),
     see=[("How to apply for food or health assistance", "/guides/food-and-health-assistance.html"),
          ("How to file for unemployment", "/guides/file-for-unemployment.html")],
-    figures=[fig("13 years", CFR_ELIGIBLE, "under 13"),
-             fig("12 months", CFR_REDETERMINE, "no sooner than 12 months")])
+    figures=[fig("13 years", DHHS_CHILD_DEV, "under 13 years old"),
+             fig("18 years", DHHS_CHILD_DEV, "under 18 years old"),
+             fig("30 days", DHHS_FAM_901, "an eligibility decision within 30 days"),
+             fig("7 days", DHHS_FAM_901, "within 7 days of the date of application"),
+             fig("12 months", DHHS_CHILD_DEV, "redetermined every 12 months")])
 
 GUIDES += [CHILD_CARE]
 

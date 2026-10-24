@@ -1408,6 +1408,227 @@
    "es": "Sí",
    "state": "draft"
   },
+  "guide.child-care-scholarship.accessing-the-nh-child-care-scholarship": {
+   "en": "Accessing the NH Child Care Scholarship, Family Assistance Manual 901 (Department of Health and Human Services)",
+   "es": "Cómo acceder a la beca de cuidado infantil, Manual de Asistencia Familiar 901 (Departamento de Salud y Servicios Humanos)",
+   "state": "draft"
+  },
+  "guide.child-care-scholarship.administrative-appeals": {
+   "en": "Administrative appeals",
+   "es": "Apelaciones administrativas",
+   "state": "draft"
+  },
+  "guide.child-care-scholarship.administrative-appeals-department-of": {
+   "en": "Administrative Appeals (Department of Health and Human Services)",
+   "es": "Apelaciones administrativas (Departamento de Salud y Servicios Humanos)",
+   "state": "draft"
+  },
+  "guide.child-care-scholarship.apply-again-every-12-months": {
+   "en": "Apply again every 12 months.",
+   "es": "Vuelva a solicitarla cada 12 meses.",
+   "state": "draft"
+  },
+  "guide.child-care-scholarship.apply-at-nh-easy": {
+   "en": "Apply at NH Easy.",
+   "es": "Solicite en NH Easy.",
+   "state": "draft"
+  },
+  "guide.child-care-scholarship.apply-in-person-or-by-mail": {
+   "en": "Apply in person or by mail at your District Office.",
+   "es": "Solicite en persona o por correo en su oficina de distrito.",
+   "state": "draft"
+  },
+  "guide.child-care-scholarship.apply-online-or-on-paper": {
+   "en": "Apply online or on paper",
+   "es": "Solicite en línea o en papel",
+   "state": "draft"
+  },
+  "guide.child-care-scholarship.check-that-it-fits-your-family": {
+   "en": "Check that it fits your family: a child under 13 (under 18 with a disability), and parents working, looking for work, or in a training program.",
+   "es": "Confirme que corresponde a su familia: un niño menor de 13 años (menor de 18 con una discapacidad), y padres que trabajan, buscan trabajo o están en un programa de capacitación.",
+   "state": "draft"
+  },
+  "guide.child-care-scholarship.check-whether-it-fits-your-family": {
+   "en": "Check whether it fits your family",
+   "es": "Confirme si corresponde a su familia",
+   "state": "draft"
+  },
+  "guide.child-care-scholarship.child-care-scholarship-provider": {
+   "en": "Child Care Scholarship Provider Enrollment and Web Billing (Department of Health and Human Services)",
+   "es": "Inscripción de proveedores y facturación en línea de la beca de cuidado infantil (Departamento de Salud y Servicios Humanos)",
+   "state": "draft"
+  },
+  "guide.child-care-scholarship.child-development-and-head-start": {
+   "en": "Child Development and Head Start (Department of Health and Human Services)",
+   "es": "Desarrollo infantil y Head Start (Departamento de Salud y Servicios Humanos)",
+   "state": "draft"
+  },
+  "guide.child-care-scholarship.choose-a-child-care-provider": {
+   "en": "Choose a child care provider",
+   "es": "Elija un proveedor de cuidado infantil",
+   "state": "draft"
+  },
+  "guide.child-care-scholarship.eligibility-determination-45-cfr-98-21": {
+   "en": "Eligibility determination, 45 CFR 98.21 (federal)",
+   "es": "La determinación de elegibilidad, 45 CFR 98.21 (federal)",
+   "state": "draft"
+  },
+  "guide.child-care-scholarship.families-experiencing-homelessness-can": {
+   "en": "<b>Families experiencing homelessness</b> can be approved for child care within 7 days of applying, once the child is linked to a provider enrolled with the Department. The final decision still comes within 30 days. Say so when you apply.",
+   "es": "<b>Las familias sin hogar</b> pueden recibir la aprobación para el cuidado infantil en un plazo de 7 días desde la solicitud, una vez que el niño esté vinculado a un proveedor inscrito con el Departamento. La decisión final llega igualmente en un plazo de 30 días. Dígalo cuando solicite.",
+   "state": "draft"
+  },
+  "guide.child-care-scholarship.find-your-district-office": {
+   "en": "Find your District Office",
+   "es": "Busque su oficina de distrito",
+   "state": "draft"
+  },
+  "guide.child-care-scholarship.for-questions-about-the-scholarship-and": {
+   "en": "For questions about the scholarship and your application, call the Department at 1-844-ASK-DHHS (1-844-275-3447), or ask your local District Office in person. For help finding child care, call Child Care Aware of New Hampshire at 1-855-393-1731, extension 2531.",
+   "es": "Para preguntas sobre la beca y su solicitud, llame al Departamento al 1-844-ASK-DHHS (1-844-275-3447), o pregunte en persona en su oficina de distrito. Para ayuda para encontrar cuidado infantil, llame a Child Care Aware of New Hampshire al 1-855-393-1731, extensión 2531.",
+   "state": "draft"
+  },
+  "guide.child-care-scholarship.how-do-you-want-to-apply": {
+   "en": "How do you want to apply?",
+   "es": "¿Cómo quiere solicitar?",
+   "state": "draft"
+  },
+  "guide.child-care-scholarship.how-to-apply-for-food-or": {
+   "en": "How to apply for food or health assistance",
+   "es": "Cómo solicitar ayuda para alimentos o salud",
+   "state": "draft"
+  },
+  "guide.child-care-scholarship.how-to-file-for-unemployment": {
+   "en": "How to file for unemployment",
+   "es": "Cómo solicitar beneficios por desempleo",
+   "state": "draft"
+  },
+  "guide.child-care-scholarship.if-you-disagree-with-a-decision": {
+   "en": "<b>If you disagree with a decision,</b> you can ask for an administrative appeal hearing, in writing, on the Department&rsquo;s appeal request form or in a letter. Your Notice of Decision gives your deadline. You do not need a lawyer.",
+   "es": "<b>Si no está de acuerdo con una decisión,</b> puede pedir una audiencia de apelación administrativa, por escrito, en el formulario de solicitud de apelación del Departamento o en una carta. Su aviso de decisión (Notice of Decision) indica su plazo. No necesita un abogado.",
+   "state": "draft"
+  },
+  "guide.child-care-scholarship.if-your-family-is-homeless-or": {
+   "en": "If your family is homeless, or you disagree with a decision",
+   "es": "Si su familia no tiene hogar, o si no está de acuerdo con una decisión",
+   "state": "draft"
+  },
+  "guide.child-care-scholarship.in-between-federal-rules-keep-the": {
+   "en": "In between, federal rules keep the scholarship going at least at the same level even if your income goes up, as long as it stays under the federal limit, and through temporary changes such as time off work for an illness or to care for a family member, a break between seasonal jobs, a school break, fewer hours, or your child turning 13. Your share of the cost cannot be raised in that time except as the rules allow. If you lose your job or leave your program, it continues for at least three months so you can look for work or go back.",
+   "es": "Mientras tanto, las reglas federales mantienen la beca al menos al mismo nivel aunque sus ingresos aumenten, siempre que sigan por debajo del límite federal, y a pesar de cambios temporales como una ausencia del trabajo por enfermedad o para cuidar a un familiar, una pausa entre trabajos de temporada, unas vacaciones escolares, menos horas, o que su hijo cumpla 13 años. Su parte del costo no puede aumentar durante ese tiempo, salvo en los casos que permiten las reglas. Si pierde su trabajo o deja su programa, la beca continúa al menos tres meses para que pueda buscar trabajo o volver.",
+   "state": "draft"
+  },
+  "guide.child-care-scholarship.keeping-the-scholarship": {
+   "en": "Keeping the scholarship",
+   "es": "Cómo conservar la beca",
+   "state": "draft"
+  },
+  "guide.child-care-scholarship.lead": {
+   "en": "Applying for New Hampshire's Child Care Scholarship through the Department of Health and Human Services, step by step: who it is for, how to apply, choosing a provider, and keeping it.",
+   "es": "Cómo solicitar la beca de cuidado infantil de New Hampshire (Child Care Scholarship) por medio del Departamento de Salud y Servicios Humanos, paso a paso: para quién es, cómo solicitarla, cómo elegir un proveedor y cómo conservarla.",
+   "state": "draft"
+  },
+  "guide.child-care-scholarship.new-hampshires-child-care-scholarship": {
+   "en": "New Hampshire&rsquo;s Child Care Scholarship helps eligible families pay for child care, with payments made directly to the child care provider. It is for children under 13, or under 18 with a disability, whose parents are working, looking for work or in a training program. Apply to the Department of Health and Human Services online at NH Easy, or in person or by mail on paper. The Department decides within 30 days, and you apply again every year.",
+   "es": "La beca de cuidado infantil de New Hampshire (Child Care Scholarship) ayuda a las familias elegibles a pagar el cuidado infantil, con pagos que se hacen directamente al proveedor de cuidado infantil. Es para niños menores de 13 años, o menores de 18 con una discapacidad, cuyos padres trabajan, buscan trabajo o están en un programa de capacitación. Solicítela al Departamento de Salud y Servicios Humanos en línea en NH Easy, o en papel, en persona o por correo. El Departamento decide en un plazo de 30 días, y usted vuelve a solicitarla cada año.",
+   "state": "draft"
+  },
+  "guide.child-care-scholarship.nh-easy": {
+   "en": "NH Easy",
+   "es": "NH Easy",
+   "state": "draft"
+  },
+  "guide.child-care-scholarship.nh-easy-603-legal-aid": {
+   "en": "<a class=\"g-btn\" href=\"https://nheasy.nh.gov/#/\" target=\"_blank\" rel=\"noopener\">NH Easy</a> <a class=\"g-btn\" href=\"https://www.603legalaid.org/self-help-articles/\" target=\"_blank\" rel=\"noopener\">603 Legal Aid</a>",
+   "es": "<a class=\"g-btn\" href=\"https://nheasy.nh.gov/#/\" target=\"_blank\" rel=\"noopener\">NH Easy</a> <a class=\"g-btn\" href=\"https://www.603legalaid.org/self-help-articles/\" target=\"_blank\" rel=\"noopener\">603 Legal Aid</a>",
+   "state": "draft"
+  },
+  "guide.child-care-scholarship.on-paper": {
+   "en": "On paper",
+   "es": "En papel",
+   "state": "draft"
+  },
+  "guide.child-care-scholarship.on-paper-apply-in-person-or": {
+   "en": "<b>On paper:</b> apply in person or by mail at a District Office, which can give you the application.",
+   "es": "<b>En papel:</b> solicite en persona o por correo en una oficina de distrito, que puede darle la solicitud.",
+   "state": "draft"
+  },
+  "guide.child-care-scholarship.online": {
+   "en": "Online",
+   "es": "En línea",
+   "state": "draft"
+  },
+  "guide.child-care-scholarship.online-apply-at-nh-easy-the": {
+   "en": "<b>Online:</b> apply at NH Easy, the Department&rsquo;s site for all its services, child care among them.",
+   "es": "<b>En línea:</b> solicite en NH Easy, el sitio del Departamento para todos sus servicios, entre ellos el cuidado infantil.",
+   "state": "draft"
+  },
+  "guide.child-care-scholarship.parental-choice-45-cfr-98-30": {
+   "en": "Parental choice, 45 CFR 98.30 (federal)",
+   "es": "La elección de los padres, 45 CFR 98.30 (federal)",
+   "state": "draft"
+  },
+  "guide.child-care-scholarship.providers-and-the-scholarship": {
+   "en": "Providers and the scholarship",
+   "es": "Los proveedores y la beca",
+   "state": "draft"
+  },
+  "guide.child-care-scholarship.the-department-decides-within-30-days": {
+   "en": "The Department decides within 30 days. Choose a provider enrolled with it.",
+   "es": "El Departamento decide en un plazo de 30 días. Elija un proveedor inscrito con él.",
+   "state": "draft"
+  },
+  "guide.child-care-scholarship.the-parents-are-working-looking-for": {
+   "en": "the parents are working, looking for work, or in a training program; and",
+   "es": "los padres trabajan, buscan trabajo o están en un programa de capacitación; y",
+   "state": "draft"
+  },
+  "guide.child-care-scholarship.the-scholarship-for-families": {
+   "en": "The scholarship, for families",
+   "es": "La beca, para familias",
+   "state": "draft"
+  },
+  "guide.child-care-scholarship.the-scholarship-is-paid-to-the": {
+   "en": "The scholarship is paid to the provider, so the provider must be enrolled with the Department to accept it. Ask a provider you are considering whether it is. The Department&rsquo;s free Child Care Search, linked from the same page as the scholarship, shows providers&rsquo; quality ratings, licensing history and services, and Child Care Aware of New Hampshire helps families find care for free: call 1-855-393-1731, extension 2531, weekdays 8 a.m. to 5 p.m.",
+   "es": "La beca se paga al proveedor, así que el proveedor debe estar inscrito con el Departamento para aceptarla. Pregúntele a un proveedor que esté considerando si lo está. La búsqueda gratuita de cuidado infantil del Departamento (Child Care Search), enlazada desde la misma página que la beca, muestra la calificación de calidad, el historial de licencias y los servicios de cada proveedor, y Child Care Aware of New Hampshire ayuda gratis a las familias a encontrar cuidado: llame al 1-855-393-1731, extensión 2531, de lunes a viernes de 8 a. m. a 5 p. m.",
+   "state": "draft"
+  },
+  "guide.child-care-scholarship.the-scholarship-pays-part-of-the": {
+   "en": "The scholarship pays part of the cost of child care, directly to the provider, for eligible families. To be eligible:",
+   "es": "La beca paga parte del costo del cuidado infantil, directamente al proveedor, para las familias elegibles. Para ser elegible:",
+   "state": "draft"
+  },
+  "guide.child-care-scholarship.title": {
+   "en": "How to Get Help Paying for Child Care",
+   "es": "Cómo obtener ayuda para pagar el cuidado infantil",
+   "state": "draft",
+   "note": "Child Care Scholarship: 'beca de cuidado infantil', with the program's English name once, since the Department's pages and forms are in English."
+  },
+  "guide.child-care-scholarship.to-schedule-a-follow-up-appointment": {
+   "en": "To schedule a follow-up appointment, call 1-844-ASK-DHHS (1-844-275-3447). Everyone has the right to apply, and to a decision within 30 days.",
+   "es": "Para programar una cita de seguimiento, llame al 1-844-ASK-DHHS (1-844-275-3447). Toda persona tiene derecho a solicitar, y a una decisión en un plazo de 30 días.",
+   "state": "draft"
+  },
+  "guide.child-care-scholarship.you-choose-who-cares-for-your": {
+   "en": "You choose who cares for your child. Federal rules let you choose among child care centers, family child care homes and, within the state&rsquo;s limits, care in your own home. Relatives and religious providers are among the choices.",
+   "es": "Usted elige quién cuida a su hijo. Las reglas federales le permiten elegir entre centros de cuidado infantil, hogares de cuidado infantil familiar y, dentro de los límites del estado, el cuidado en su propia casa. Los familiares y los proveedores religiosos están entre las opciones.",
+   "state": "draft"
+  },
+  "guide.child-care-scholarship.your-child-is-under-13-years": {
+   "en": "your child is under 13 years old, or under 18 years old with a disability;",
+   "es": "su hijo tiene menos de 13 años, o menos de 18 años si tiene una discapacidad;",
+   "state": "draft"
+  },
+  "guide.child-care-scholarship.your-eligibility-is-checked-again-every": {
+   "en": "Your eligibility is checked again every 12 months, and you reapply each year.",
+   "es": "Su elegibilidad se revisa de nuevo cada 12 meses, y usted vuelve a solicitar cada año.",
+   "state": "draft"
+  },
+  "guide.child-care-scholarship.your-households-income-is-within-the": {
+   "en": "your household&rsquo;s income is within the Department&rsquo;s current limits, which it publishes each year, effective July 1.",
+   "es": "los ingresos de su hogar están dentro de los límites actuales del Departamento, que publica cada año, vigentes desde el 1 de julio.",
+   "state": "draft"
+  },
   "guide.contact-your-legislators.a-members-page-here-and-your": {
    "en": "A member&rsquo;s page here, and your town&rsquo;s page, give the email address the member lists with the General Court, which nearly every member does. This site does not repeat members&rsquo; phone numbers, because many are personal ones; the General Court&rsquo;s own member list carries the numbers they give it, and senators list an office in Concord. To write to every member of a committee at once, use the button on the committee&rsquo;s page.",
    "es": "La página de un miembro en este sitio, y la de su municipio, dan la dirección de correo electrónico que el miembro registra en la Legislatura, algo que casi todos hacen. Este sitio no repite los números de teléfono de los miembros, porque muchos son personales; la propia lista de miembros de la Legislatura incluye los números que le dan, y los senadores indican una oficina en Concord. Para escribir a todos los miembros de un comité a la vez, use el botón de la página del comité.",
@@ -2459,8 +2680,8 @@
    "state": "draft"
   },
   "guide.how-to-vote.this-changed-in-2026-and-the": {
-   "en": "<b>This changed in 2026, and the courts are still involved.</b> What you may use as proof has changed more than once this year and may change again before the election. The Secretary of State's page is the official word: check it before you go. On October 12, 2026 it said that after a court order of May 28, 2026, if you lack the documents to prove your citizenship you may again sign a qualified voter affidavit instead. The affidavit covers citizenship and nothing else: you still need proof of identity, age and domicile.",
-   "es": "<b>Esto cambió en 2026, y los tribunales siguen interviniendo.</b> Lo que puede usar como prueba ha cambiado más de una vez este año y puede volver a cambiar antes de la elección. La página de la Secretaría de Estado es la palabra oficial: consúltela antes de ir. El 12 de octubre de 2026 decía que, tras una orden judicial del 28 de mayo de 2026, si le faltan los documentos para probar su ciudadanía puede volver a firmar en su lugar una declaración jurada de votante calificado (qualified voter affidavit). La declaración jurada cubre la ciudadanía y nada más: sigue necesitando pruebas de identidad, edad y domicilio.",
+   "en": "<b>This changed in 2026, and the courts are still involved.</b> What you may use as proof has changed more than once this year and may change again before the election. The Secretary of State's page is the official word: check it before you go. On October 24, 2026 it still said that if you lack the documents to prove your citizenship, you may sign a qualified voter affidavit instead, as a court order of May 28, 2026 allowed again. The affidavit covers citizenship and nothing else: you still need proof of identity, age and domicile.",
+   "es": "<b>Esto cambió en 2026, y los tribunales siguen interviniendo.</b> Lo que puede usar como prueba ha cambiado más de una vez este año y puede volver a cambiar antes de la elección. La página de la Secretaría de Estado es la palabra oficial: consúltela antes de ir. El 24 de octubre de 2026 seguía diciendo que, si le faltan los documentos para probar su ciudadanía, puede firmar en su lugar una declaración jurada de votante calificado (qualified voter affidavit), como volvió a permitirlo una orden judicial del 28 de mayo de 2026. La declaración jurada cubre la ciudadanía y nada más: sigue necesitando pruebas de identidad, edad y domicilio.",
    "state": "draft"
   },
   "guide.how-to-vote.title": {
@@ -4803,6 +5024,16 @@
    "es": "Busque la audiencia de un proyecto de ley, vaya en persona o véala, y pida la palabra.",
    "state": "draft"
   },
+  "guide.task.child-care-scholarship.does": {
+   "en": "Get help paying for child care",
+   "es": "Obtener ayuda para pagar el cuidado infantil",
+   "state": "draft"
+  },
+  "guide.task.child-care-scholarship.line": {
+   "en": "The Child Care Scholarship: who it is for, how to apply, and choosing a provider.",
+   "es": "La beca de cuidado infantil: para quién es, cómo solicitarla y cómo elegir un proveedor.",
+   "state": "draft"
+  },
   "guide.task.contact-your-legislators.does": {
    "en": "Contact your legislators",
    "es": "Comunicarse con sus legisladores",
@@ -4971,6 +5202,16 @@
   "guide.task.tour-the-state-house.line": {
    "en": "Arrange a visit through the Visitor Center, bring a class, and know what to expect.",
    "es": "Organice una visita por medio del Centro de Visitantes, lleve a una clase, y sepa qué esperar.",
+   "state": "draft"
+  },
+  "guide.task.town-warrant-article.does": {
+   "en": "Put an article on your town meeting warrant",
+   "es": "Incluir un artículo en la convocatoria de la asamblea municipal",
+   "state": "draft"
+  },
+  "guide.task.town-warrant-article.line": {
+   "en": "Petition your selectmen or school board to put a question to the voters.",
+   "es": "Pida por petición a los concejales o a la junta escolar que sometan una pregunta a los votantes.",
    "state": "draft"
   },
   "guide.task.using-this-site.does": {
@@ -5586,6 +5827,228 @@
   "guide.tour-the-state-house.yes": {
    "en": "Yes",
    "es": "Sí",
+   "state": "draft"
+  },
+  "guide.town-warrant-article.a-warrant-article-states-the-subject": {
+   "en": "A warrant article states the subject the voters are asked to act on. The law requires the intent and effect of each article to be stated clearly and without commentary or ambiguity, and nothing done at a meeting is valid unless its subject is stated in the warrant. Write one question, as you want it to appear, for example &ldquo;To see if the town will vote to&hellip;&rdquo;.",
+   "es": "Un artículo de la convocatoria indica el asunto sobre el que se pide a los votantes que decidan. La ley exige que la intención y el efecto de cada artículo se expresen con claridad y sin comentarios ni ambigüedad, y nada de lo que se haga en una asamblea es válido si su asunto no figura en la convocatoria. Escriba una sola pregunta, tal como quiere que aparezca. Los artículos se escriben en inglés y suelen empezar así: &ldquo;<span lang=\"en\">To see if the town will vote to</span>&hellip;&rdquo; (para ver si el municipio votará a favor de&hellip;).",
+   "state": "draft"
+  },
+  "guide.town-warrant-article.an-sb-2-town-or-district": {
+   "en": "An SB 2 town or district that holds its meeting in April or May has the same deadline a month or two later: the second Tuesday in February or in March. If the article proposes a bond, the SB 2 deadline is the Friday before.",
+   "es": "Un municipio o distrito SB 2 que celebra su asamblea en abril o mayo tiene la misma fecha límite uno o dos meses después: el segundo martes de febrero o de marzo. Si el artículo propone un bono, la fecha límite SB 2 es el viernes anterior.",
+   "state": "draft"
+  },
+  "guide.town-warrant-article.any-registered-voter-can-ask-the": {
+   "en": "Any registered voter can ask the voters of their town or school district to decide a question. Write it as a warrant article, collect the signatures of 25 registered voters, or 2 percent of them if that is fewer (never fewer than 10), and hand the petition to the selectmen or the school board before the deadline. They must put it on the warrant for the annual meeting, where the voters decide it.",
+   "es": "Cualquier votante inscrito puede pedir a los votantes de su municipio o distrito escolar que decidan una pregunta. Escríbala como un artículo de la convocatoria (<span lang=\"en\">warrant</span>), reúna las firmas de 25 votantes inscritos, o del 2 por ciento de ellos si esa cifra es menor (nunca menos de 10), y entregue la petición a los concejales o a la junta escolar antes de la fecha límite. Ellos deben incluirla en la convocatoria de la asamblea anual, donde los votantes la deciden.",
+   "state": "draft",
+   "note": "warrant: 'convocatoria', with the English once. Town meeting: 'asamblea municipal', as the calendar's entries say it."
+  },
+  "guide.town-warrant-article.at-a-traditional-meeting-the-voters": {
+   "en": "At a <b>traditional meeting</b> the voters debate the article and can amend it before they vote; where it asks for a sum of money, the meeting may vote more or less, within the limits of the municipal budget law where the town has adopted it. In an <b>SB 2</b> town or district it is debated at the first session, the deliberative session, where it can be amended but not changed to remove its subject, and every article then goes on the official ballot for the final vote.",
+   "es": "En una <b>asamblea tradicional</b>, los votantes debaten el artículo y pueden enmendarlo antes de votar; cuando pide una suma de dinero, la asamblea puede votar más o menos, dentro de los límites de la ley de presupuesto municipal donde el municipio la haya adoptado. En un municipio o distrito <b>SB 2</b>, se debate en la primera sesión, la sesión deliberativa, donde puede enmendarse pero no cambiarse para quitarle su asunto, y luego todos los artículos van a la boleta oficial para la votación final.",
+   "state": "draft"
+  },
+  "guide.town-warrant-article.at-least-30-days-before-the": {
+   "en": "At least 30 days before the meeting, or by the second Tuesday in March if that is earlier",
+   "es": "Al menos 30 días antes de la asamblea, o a más tardar el segundo martes de marzo si esa fecha es anterior",
+   "state": "draft"
+  },
+  "guide.town-warrant-article.by-the-fifth-tuesday-before-the": {
+   "en": "By the fifth Tuesday before the annual meeting",
+   "es": "A más tardar el quinto martes antes de la asamblea anual",
+   "state": "draft"
+  },
+  "guide.town-warrant-article.by-the-second-tuesday-in-january": {
+   "en": "By the second Tuesday in January, for a meeting in March",
+   "es": "A más tardar el segundo martes de enero, para una asamblea en marzo",
+   "state": "draft"
+  },
+  "guide.town-warrant-article.check-that-this-is-the-route": {
+   "en": "Check that this is the route for your town",
+   "es": "Confirme que esta es la vía para su municipio",
+   "state": "draft"
+  },
+  "guide.town-warrant-article.cities-towns-and-who-runs-them": {
+   "en": "Cities, towns and who runs them",
+   "es": "Ciudades, municipios y quién los gobierna (en inglés)",
+   "state": "draft"
+  },
+  "guide.town-warrant-article.collect-the-signatures": {
+   "en": "Collect the signatures",
+   "es": "Reúna las firmas",
+   "state": "draft"
+  },
+  "guide.town-warrant-article.collect-the-signatures-of-25-registered": {
+   "en": "Collect the signatures of 25 registered voters, or 2 percent if fewer, never under 10.",
+   "es": "Reúna las firmas de 25 votantes inscritos, o del 2 por ciento si es menor, nunca menos de 10.",
+   "state": "draft"
+  },
+  "guide.town-warrant-article.does-your-town-or-school-district": {
+   "en": "Does your town or school district vote on its articles at the polls (SB 2)?",
+   "es": "¿Su municipio o distrito escolar vota sus artículos en las urnas (SB 2)?",
+   "state": "draft"
+  },
+  "guide.town-warrant-article.find-out-whether-your-town-or": {
+   "en": "Find out whether your town or school district holds a <b>traditional meeting</b>, where the voters debate and vote on each article in the same room, or uses the <b>official ballot</b> form called <b>SB 2</b>, where the articles are debated at a deliberative session and voted on later at the polls. The deadline depends on it, so ask your town clerk or the selectmen&rsquo;s office which your town uses and the date of its meeting.",
+   "es": "Averigüe si su municipio o distrito escolar celebra una <b>asamblea tradicional</b>, en la que los votantes debaten y votan cada artículo en la misma sala, o usa la forma de <b>boleta oficial</b> llamada <b>SB 2</b>, en la que los artículos se debaten en una sesión deliberativa y se votan después en las urnas. La fecha límite depende de ello, así que pregunte al secretario de su municipio o a la oficina de los concejales cuál usa su municipio y la fecha de su asamblea.",
+   "state": "draft"
+  },
+  "guide.town-warrant-article.find-your-town-or-city-clerk": {
+   "en": "Find your town or city clerk",
+   "es": "Encuentre al secretario de su municipio o ciudad",
+   "state": "draft"
+  },
+  "guide.town-warrant-article.give-the-petition-to-the-selectmen": {
+   "en": "Give the petition to the selectmen, or any one of them, for the town meeting, or to the school board, or any one member, for the school district meeting. Keep a copy.",
+   "es": "Entregue la petición a los concejales, o a cualquiera de ellos, para la asamblea municipal, o a la junta escolar, o a cualquiera de sus miembros, para la asamblea del distrito escolar. Guarde una copia.",
+   "state": "draft"
+  },
+  "guide.town-warrant-article.government-of-town-meeting-rsa-40": {
+   "en": "Government of Town Meeting, RSA 40",
+   "es": "Funcionamiento de la asamblea municipal, RSA 40",
+   "state": "draft"
+  },
+  "guide.town-warrant-article.hand-it-in-before-the-deadline": {
+   "en": "Hand it in before the deadline",
+   "es": "Entréguela antes de la fecha límite",
+   "state": "draft"
+  },
+  "guide.town-warrant-article.how-to-vote": {
+   "en": "How to vote",
+   "es": "Cómo votar",
+   "state": "draft"
+  },
+  "guide.town-warrant-article.lead": {
+   "en": "Petitioning your selectmen or school board to put a question before the voters at the annual town or school district meeting: the signatures, the deadline, and what happens next.",
+   "es": "Cómo pedir por petición a los concejales de su municipio (selectmen) o a la junta escolar que sometan una pregunta a los votantes en la asamblea anual del municipio o del distrito escolar: las firmas, la fecha límite y lo que sigue.",
+   "state": "draft"
+  },
+  "guide.town-warrant-article.meeting": {
+   "en": "Meeting",
+   "es": "Asamblea",
+   "state": "draft"
+  },
+  "guide.town-warrant-article.no-a-traditional-meeting": {
+   "en": "No: a traditional meeting",
+   "es": "No: una asamblea tradicional",
+   "state": "draft"
+  },
+  "guide.town-warrant-article.sb-2-official-ballot": {
+   "en": "SB 2 (official ballot)",
+   "es": "SB 2 (boleta oficial)",
+   "state": "draft"
+  },
+  "guide.town-warrant-article.school-district": {
+   "en": "School district",
+   "es": "Distrito escolar",
+   "state": "draft"
+  },
+  "guide.town-warrant-article.school-meetings-and-officers-rsa-197": {
+   "en": "School Meetings and Officers, RSA 197",
+   "es": "Asambleas y funcionarios escolares, RSA 197",
+   "state": "draft"
+  },
+  "guide.town-warrant-article.start-with-your-town-clerk-or": {
+   "en": "Start with your town clerk or the selectmen&rsquo;s office, for the date of the meeting and whether it uses SB 2. For the school district meeting, ask the school board. The Secretary of State lists every town&rsquo;s clerk.",
+   "es": "Empiece por el secretario de su municipio o la oficina de los concejales, para la fecha de la asamblea y para saber si usa SB 2. Para la asamblea del distrito escolar, pregunte a la junta escolar. La Secretaría de Estado tiene la lista de los secretarios de todos los municipios.",
+   "state": "draft"
+  },
+  "guide.town-warrant-article.the-petition-is-due-by-the": {
+   "en": "The petition is due by the second Tuesday in January, for a March meeting.",
+   "es": "La petición vence el segundo martes de enero, para una asamblea en marzo.",
+   "state": "draft"
+  },
+  "guide.town-warrant-article.the-petition-must-be-signed-by": {
+   "en": "The petition must be signed by <b>25 or more registered voters</b> of the town or school district, or <b>2 percent</b> of its registered voters if that is fewer, and never fewer than 10. For a town, the 2 percent is counted from the voters registered before the last state general election.",
+   "es": "La petición debe estar firmada por <b>25 o más votantes inscritos</b> del municipio o distrito escolar, o por el <b>2 por ciento</b> de sus votantes inscritos si esa cifra es menor, y nunca por menos de 10. En un municipio, el 2 por ciento se calcula con los votantes inscritos antes de la última elección general del estado.",
+   "state": "draft"
+  },
+  "guide.town-warrant-article.the-selectmen-or-school-board-put": {
+   "en": "The selectmen or school board put it on the warrant, and the voters decide it.",
+   "es": "Los concejales o la junta escolar la incluyen en la convocatoria, y los votantes la deciden.",
+   "state": "draft"
+  },
+  "guide.town-warrant-article.the-selectmen-or-the-school-board": {
+   "en": "The selectmen or the school board may make only minor changes to the wording, and never ones that change what the article was meant to do. An article that would abolish a planning board or zoning commission must also meet the petition rule in <a href=\"/laws/673#s18\">RSA 673:18, II</a>.",
+   "es": "Los concejales o la junta escolar solo pueden hacer cambios menores a la redacción, y nunca cambios que alteren lo que el artículo pretendía hacer. Un artículo que eliminaría una junta de planificación o una comisión de zonificación también debe cumplir la regla de petición de <a href=\"/laws/673#s18\">RSA 673:18, II</a>.",
+   "state": "draft"
+  },
+  "guide.town-warrant-article.the-selectmen-or-the-school-board-2": {
+   "en": "The selectmen or the school board must put the article in the warrant. In a town, selectmen who refuse are guilty of a violation, and if they unreasonably refuse, a Superior Court justice can order the article inserted on the written application of 25 or more voters. The warrant is posted at least 14 days before the meeting.",
+   "es": "Los concejales o la junta escolar deben incluir el artículo en la convocatoria. En un municipio, los concejales que se nieguen cometen una infracción (<span lang=\"en\">violation</span>), y si se niegan sin razón, un juez del Tribunal Superior puede ordenar que se incluya el artículo a solicitud por escrito de 25 o más votantes. La convocatoria se publica al menos 14 días antes de la asamblea.",
+   "state": "draft"
+  },
+  "guide.town-warrant-article.this-guide-is-for-a-town": {
+   "en": "This guide is for a town that holds a town meeting and for a school district. In a town, petition the <b>selectmen</b>; for the school district meeting, the <b>school board</b>. A city, or a town whose charter replaced its meeting with a town council, is governed by an elected council instead, and its charter sets its own rules; <a href=\"/learn/city-and-town-government.html\">Cities, Towns and Who Runs Them</a> explains the difference.",
+   "es": "Esta guía es para un municipio que celebra una asamblea municipal y para un distrito escolar. En un municipio, dirija la petición a los <b>concejales</b> (<span lang=\"en\">selectmen</span>); para la asamblea del distrito escolar, a la <b>junta escolar</b>. Una ciudad, o un municipio cuya carta orgánica reemplazó la asamblea por un concejo municipal, se rige en cambio por un concejo electo, y su carta orgánica fija sus propias reglas; <a href=\"/learn/city-and-town-government.html\">Cities, Towns and Who Runs Them</a> (en inglés) explica la diferencia.",
+   "state": "draft",
+   "note": "selectmen: 'concejales' (los selectmen), with the English once; the proofreader may prefer 'junta de selectmen' or 'regidores'."
+  },
+  "guide.town-warrant-article.time-for-holding-town-meetings-and": {
+   "en": "Time for Holding Town Meetings and Warning Thereof, RSA 39",
+   "es": "Fecha de las asambleas municipales y su convocatoria, RSA 39",
+   "state": "draft"
+  },
+  "guide.town-warrant-article.title": {
+   "en": "How to Put an Article on Your Town Meeting Warrant",
+   "es": "Cómo incluir un artículo en la convocatoria de la asamblea municipal",
+   "state": "draft"
+  },
+  "guide.town-warrant-article.town": {
+   "en": "Town",
+   "es": "Municipio",
+   "state": "draft"
+  },
+  "guide.town-warrant-article.town-and-city-clerks-secretary-of": {
+   "en": "Town and city clerks (Secretary of State)",
+   "es": "Secretarios de municipios y ciudades (Secretaría de Estado)",
+   "state": "draft"
+  },
+  "guide.town-warrant-article.town-due-by-the-fifth-tuesday": {
+   "en": "Town: due by the fifth Tuesday before the meeting. School district: 30 days before it.",
+   "es": "Municipio: a más tardar el quinto martes antes de la asamblea. Distrito escolar: 30 días antes de ella.",
+   "state": "draft"
+  },
+  "guide.town-warrant-article.town-meeting-and-local-government": {
+   "en": "Town meeting and local government",
+   "es": "La asamblea municipal y el gobierno local (en inglés)",
+   "state": "draft"
+  },
+  "guide.town-warrant-article.traditional-meeting": {
+   "en": "Traditional meeting",
+   "es": "Asamblea tradicional",
+   "state": "draft"
+  },
+  "guide.town-warrant-article.what-happens-next": {
+   "en": "What happens next",
+   "es": "Lo que sigue",
+   "state": "draft"
+  },
+  "guide.town-warrant-article.when-a-petitioned-article-is-due": {
+   "en": "When a petitioned article is due",
+   "es": "Cuándo vence un artículo por petición",
+   "state": "draft"
+  },
+  "guide.town-warrant-article.write-the-article": {
+   "en": "Write the article",
+   "es": "Escriba el artículo",
+   "state": "draft"
+  },
+  "guide.town-warrant-article.write-the-article-one-question-stated": {
+   "en": "Write the article: one question, stated clearly and without commentary.",
+   "es": "Escriba el artículo: una sola pregunta, expresada con claridad y sin comentarios.",
+   "state": "draft"
+  },
+  "guide.town-warrant-article.yes-sb-2": {
+   "en": "Yes: SB 2",
+   "es": "Sí: SB 2",
+   "state": "draft"
+  },
+  "guide.town-warrant-article.you-may-name-one-signer-as": {
+   "en": "You may name one signer as the <b>primary petitioner</b>. If you do not, the first registered voter listed is the primary petitioner.",
+   "es": "Puede designar a uno de los firmantes como el <b>peticionario principal</b>. Si no lo hace, el peticionario principal es el primer votante inscrito de la lista.",
    "state": "draft"
   },
   "guide.using-this-site.a-bill-still-moving-through-the": {
@@ -7413,484 +7876,6 @@
   "yt.yours": {
    "en": "Your town: {place}",
    "es": "Su municipio: {place}",
-   "state": "draft"
-  },
-  "guide.town-warrant-article.title": {
-   "en": "How to Put an Article on Your Town Meeting Warrant",
-   "es": "Cómo incluir un artículo en la convocatoria de la asamblea municipal",
-   "state": "draft"
-  },
-  "guide.town-warrant-article.lead": {
-   "en": "Petitioning your selectmen or school board to put a question before the voters at the annual town or school district meeting: the signatures, the deadline, and what happens next.",
-   "es": "Cómo pedir por petición a los concejales de su municipio (selectmen) o a la junta escolar que sometan una pregunta a los votantes en la asamblea anual del municipio o del distrito escolar: las firmas, la fecha límite y lo que sigue.",
-   "state": "draft"
-  },
-  "guide.town-warrant-article.any-registered-voter-can-ask-the": {
-   "en": "Any registered voter can ask the voters of their town or school district to decide a question. Write it as a warrant article, collect the signatures of 25 registered voters, or 2 percent of them if that is fewer (never fewer than 10), and hand the petition to the selectmen or the school board before the deadline. They must put it on the warrant for the annual meeting, where the voters decide it.",
-   "es": "Cualquier votante inscrito puede pedir a los votantes de su municipio o distrito escolar que decidan una pregunta. Escríbala como un artículo de la convocatoria (<span lang=\"en\">warrant</span>), reúna las firmas de 25 votantes inscritos, o del 2 por ciento de ellos si esa cifra es menor (nunca menos de 10), y entregue la petición a los concejales o a la junta escolar antes de la fecha límite. Ellos deben incluirla en la convocatoria de la asamblea anual, donde los votantes la deciden.",
-   "state": "draft",
-   "note": "warrant: 'convocatoria', with the English once. Town meeting: 'asamblea municipal', as the calendar's entries say it."
-  },
-  "guide.town-warrant-article.write-the-article-one-question-stated": {
-   "en": "Write the article: one question, stated clearly and without commentary.",
-   "es": "Escriba el artículo: una sola pregunta, expresada con claridad y sin comentarios.",
-   "state": "draft"
-  },
-  "guide.town-warrant-article.collect-the-signatures-of-25-registered": {
-   "en": "Collect the signatures of 25 registered voters, or 2 percent if fewer, never under 10.",
-   "es": "Reúna las firmas de 25 votantes inscritos, o del 2 por ciento si es menor, nunca menos de 10.",
-   "state": "draft"
-  },
-  "guide.town-warrant-article.does-your-town-or-school-district": {
-   "en": "Does your town or school district vote on its articles at the polls (SB 2)?",
-   "es": "¿Su municipio o distrito escolar vota sus artículos en las urnas (SB 2)?",
-   "state": "draft"
-  },
-  "guide.town-warrant-article.no-a-traditional-meeting": {
-   "en": "No: a traditional meeting",
-   "es": "No: una asamblea tradicional",
-   "state": "draft"
-  },
-  "guide.town-warrant-article.town-due-by-the-fifth-tuesday": {
-   "en": "Town: due by the fifth Tuesday before the meeting. School district: 30 days before it.",
-   "es": "Municipio: a más tardar el quinto martes antes de la asamblea. Distrito escolar: 30 días antes de ella.",
-   "state": "draft"
-  },
-  "guide.town-warrant-article.yes-sb-2": {
-   "en": "Yes: SB 2",
-   "es": "Sí: SB 2",
-   "state": "draft"
-  },
-  "guide.town-warrant-article.the-petition-is-due-by-the": {
-   "en": "The petition is due by the second Tuesday in January, for a March meeting.",
-   "es": "La petición vence el segundo martes de enero, para una asamblea en marzo.",
-   "state": "draft"
-  },
-  "guide.town-warrant-article.the-selectmen-or-school-board-put": {
-   "en": "The selectmen or school board put it on the warrant, and the voters decide it.",
-   "es": "Los concejales o la junta escolar la incluyen en la convocatoria, y los votantes la deciden.",
-   "state": "draft"
-  },
-  "guide.town-warrant-article.check-that-this-is-the-route": {
-   "en": "Check that this is the route for your town",
-   "es": "Confirme que esta es la vía para su municipio",
-   "state": "draft"
-  },
-  "guide.town-warrant-article.this-guide-is-for-a-town": {
-   "en": "This guide is for a town that holds a town meeting and for a school district. In a town, petition the <b>selectmen</b>; for the school district meeting, the <b>school board</b>. A city, or a town whose charter replaced its meeting with a town council, is governed by an elected council instead, and its charter sets its own rules; <a href=\"/learn/city-and-town-government.html\">Cities, Towns and Who Runs Them</a> explains the difference.",
-   "es": "Esta guía es para un municipio que celebra una asamblea municipal y para un distrito escolar. En un municipio, dirija la petición a los <b>concejales</b> (<span lang=\"en\">selectmen</span>); para la asamblea del distrito escolar, a la <b>junta escolar</b>. Una ciudad, o un municipio cuya carta orgánica reemplazó la asamblea por un concejo municipal, se rige en cambio por un concejo electo, y su carta orgánica fija sus propias reglas; <a href=\"/learn/city-and-town-government.html\">Cities, Towns and Who Runs Them</a> (en inglés) explica la diferencia.",
-   "state": "draft",
-   "note": "selectmen: 'concejales' (los selectmen), with the English once; the proofreader may prefer 'junta de selectmen' or 'regidores'."
-  },
-  "guide.town-warrant-article.find-out-whether-your-town-or": {
-   "en": "Find out whether your town or school district holds a <b>traditional meeting</b>, where the voters debate and vote on each article in the same room, or uses the <b>official ballot</b> form called <b>SB 2</b>, where the articles are debated at a deliberative session and voted on later at the polls. The deadline depends on it, so ask your town clerk or the selectmen&rsquo;s office which your town uses and the date of its meeting.",
-   "es": "Averigüe si su municipio o distrito escolar celebra una <b>asamblea tradicional</b>, en la que los votantes debaten y votan cada artículo en la misma sala, o usa la forma de <b>boleta oficial</b> llamada <b>SB 2</b>, en la que los artículos se debaten en una sesión deliberativa y se votan después en las urnas. La fecha límite depende de ello, así que pregunte al secretario de su municipio o a la oficina de los concejales cuál usa su municipio y la fecha de su asamblea.",
-   "state": "draft"
-  },
-  "guide.town-warrant-article.find-your-town-or-city-clerk": {
-   "en": "Find your town or city clerk",
-   "es": "Encuentre al secretario de su municipio o ciudad",
-   "state": "draft"
-  },
-  "guide.town-warrant-article.write-the-article": {
-   "en": "Write the article",
-   "es": "Escriba el artículo",
-   "state": "draft"
-  },
-  "guide.town-warrant-article.a-warrant-article-states-the-subject": {
-   "en": "A warrant article states the subject the voters are asked to act on. The law requires the intent and effect of each article to be stated clearly and without commentary or ambiguity, and nothing done at a meeting is valid unless its subject is stated in the warrant. Write one question, as you want it to appear, for example &ldquo;To see if the town will vote to&hellip;&rdquo;.",
-   "es": "Un artículo de la convocatoria indica el asunto sobre el que se pide a los votantes que decidan. La ley exige que la intención y el efecto de cada artículo se expresen con claridad y sin comentarios ni ambigüedad, y nada de lo que se haga en una asamblea es válido si su asunto no figura en la convocatoria. Escriba una sola pregunta, tal como quiere que aparezca. Los artículos se escriben en inglés y suelen empezar así: &ldquo;<span lang=\"en\">To see if the town will vote to</span>&hellip;&rdquo; (para ver si el municipio votará a favor de&hellip;).",
-   "state": "draft"
-  },
-  "guide.town-warrant-article.the-selectmen-or-the-school-board": {
-   "en": "The selectmen or the school board may make only minor changes to the wording, and never ones that change what the article was meant to do. An article that would abolish a planning board or zoning commission must also meet the petition rule in <a href=\"/laws/673#s18\">RSA 673:18, II</a>.",
-   "es": "Los concejales o la junta escolar solo pueden hacer cambios menores a la redacción, y nunca cambios que alteren lo que el artículo pretendía hacer. Un artículo que eliminaría una junta de planificación o una comisión de zonificación también debe cumplir la regla de petición de <a href=\"/laws/673#s18\">RSA 673:18, II</a>.",
-   "state": "draft"
-  },
-  "guide.town-warrant-article.collect-the-signatures": {
-   "en": "Collect the signatures",
-   "es": "Reúna las firmas",
-   "state": "draft"
-  },
-  "guide.town-warrant-article.the-petition-must-be-signed-by": {
-   "en": "The petition must be signed by <b>25 or more registered voters</b> of the town or school district, or <b>2 percent</b> of its registered voters if that is fewer, and never fewer than 10. For a town, the 2 percent is counted from the voters registered before the last state general election.",
-   "es": "La petición debe estar firmada por <b>25 o más votantes inscritos</b> del municipio o distrito escolar, o por el <b>2 por ciento</b> de sus votantes inscritos si esa cifra es menor, y nunca por menos de 10. En un municipio, el 2 por ciento se calcula con los votantes inscritos antes de la última elección general del estado.",
-   "state": "draft"
-  },
-  "guide.town-warrant-article.you-may-name-one-signer-as": {
-   "en": "You may name one signer as the <b>primary petitioner</b>. If you do not, the first registered voter listed is the primary petitioner.",
-   "es": "Puede designar a uno de los firmantes como el <b>peticionario principal</b>. Si no lo hace, el peticionario principal es el primer votante inscrito de la lista.",
-   "state": "draft"
-  },
-  "guide.town-warrant-article.hand-it-in-before-the-deadline": {
-   "en": "Hand it in before the deadline",
-   "es": "Entréguela antes de la fecha límite",
-   "state": "draft"
-  },
-  "guide.town-warrant-article.give-the-petition-to-the-selectmen": {
-   "en": "Give the petition to the selectmen, or any one of them, for the town meeting, or to the school board, or any one member, for the school district meeting. Keep a copy.",
-   "es": "Entregue la petición a los concejales, o a cualquiera de ellos, para la asamblea municipal, o a la junta escolar, o a cualquiera de sus miembros, para la asamblea del distrito escolar. Guarde una copia.",
-   "state": "draft"
-  },
-  "guide.town-warrant-article.when-a-petitioned-article-is-due": {
-   "en": "When a petitioned article is due",
-   "es": "Cuándo vence un artículo por petición",
-   "state": "draft"
-  },
-  "guide.town-warrant-article.meeting": {
-   "en": "Meeting",
-   "es": "Asamblea",
-   "state": "draft"
-  },
-  "guide.town-warrant-article.traditional-meeting": {
-   "en": "Traditional meeting",
-   "es": "Asamblea tradicional",
-   "state": "draft"
-  },
-  "guide.town-warrant-article.sb-2-official-ballot": {
-   "en": "SB 2 (official ballot)",
-   "es": "SB 2 (boleta oficial)",
-   "state": "draft"
-  },
-  "guide.town-warrant-article.town": {
-   "en": "Town",
-   "es": "Municipio",
-   "state": "draft"
-  },
-  "guide.town-warrant-article.by-the-fifth-tuesday-before-the": {
-   "en": "By the fifth Tuesday before the annual meeting",
-   "es": "A más tardar el quinto martes antes de la asamblea anual",
-   "state": "draft"
-  },
-  "guide.town-warrant-article.by-the-second-tuesday-in-january": {
-   "en": "By the second Tuesday in January, for a meeting in March",
-   "es": "A más tardar el segundo martes de enero, para una asamblea en marzo",
-   "state": "draft"
-  },
-  "guide.town-warrant-article.school-district": {
-   "en": "School district",
-   "es": "Distrito escolar",
-   "state": "draft"
-  },
-  "guide.town-warrant-article.at-least-30-days-before-the": {
-   "en": "At least 30 days before the meeting, or by the second Tuesday in March if that is earlier",
-   "es": "Al menos 30 días antes de la asamblea, o a más tardar el segundo martes de marzo si esa fecha es anterior",
-   "state": "draft"
-  },
-  "guide.town-warrant-article.an-sb-2-town-or-district": {
-   "en": "An SB 2 town or district that holds its meeting in April or May has the same deadline a month or two later: the second Tuesday in February or in March. If the article proposes a bond, the SB 2 deadline is the Friday before.",
-   "es": "Un municipio o distrito SB 2 que celebra su asamblea en abril o mayo tiene la misma fecha límite uno o dos meses después: el segundo martes de febrero o de marzo. Si el artículo propone un bono, la fecha límite SB 2 es el viernes anterior.",
-   "state": "draft"
-  },
-  "guide.town-warrant-article.what-happens-next": {
-   "en": "What happens next",
-   "es": "Lo que sigue",
-   "state": "draft"
-  },
-  "guide.town-warrant-article.the-selectmen-or-the-school-board-2": {
-   "en": "The selectmen or the school board must put the article in the warrant. In a town, selectmen who refuse are guilty of a violation, and if they unreasonably refuse, a Superior Court justice can order the article inserted on the written application of 25 or more voters. The warrant is posted at least 14 days before the meeting.",
-   "es": "Los concejales o la junta escolar deben incluir el artículo en la convocatoria. En un municipio, los concejales que se nieguen cometen una infracción (<span lang=\"en\">violation</span>), y si se niegan sin razón, un juez del Tribunal Superior puede ordenar que se incluya el artículo a solicitud por escrito de 25 o más votantes. La convocatoria se publica al menos 14 días antes de la asamblea.",
-   "state": "draft"
-  },
-  "guide.town-warrant-article.at-a-traditional-meeting-the-voters": {
-   "en": "At a <b>traditional meeting</b> the voters debate the article and can amend it before they vote; where it asks for a sum of money, the meeting may vote more or less, within the limits of the municipal budget law where the town has adopted it. In an <b>SB 2</b> town or district it is debated at the first session, the deliberative session, where it can be amended but not changed to remove its subject, and every article then goes on the official ballot for the final vote.",
-   "es": "En una <b>asamblea tradicional</b>, los votantes debaten el artículo y pueden enmendarlo antes de votar; cuando pide una suma de dinero, la asamblea puede votar más o menos, dentro de los límites de la ley de presupuesto municipal donde el municipio la haya adoptado. En un municipio o distrito <b>SB 2</b>, se debate en la primera sesión, la sesión deliberativa, donde puede enmendarse pero no cambiarse para quitarle su asunto, y luego todos los artículos van a la boleta oficial para la votación final.",
-   "state": "draft"
-  },
-  "guide.town-warrant-article.start-with-your-town-clerk-or": {
-   "en": "Start with your town clerk or the selectmen&rsquo;s office, for the date of the meeting and whether it uses SB 2. For the school district meeting, ask the school board. The Secretary of State lists every town&rsquo;s clerk.",
-   "es": "Empiece por el secretario de su municipio o la oficina de los concejales, para la fecha de la asamblea y para saber si usa SB 2. Para la asamblea del distrito escolar, pregunte a la junta escolar. La Secretaría de Estado tiene la lista de los secretarios de todos los municipios.",
-   "state": "draft"
-  },
-  "guide.town-warrant-article.town-meeting-and-local-government": {
-   "en": "Town meeting and local government",
-   "es": "La asamblea municipal y el gobierno local (en inglés)",
-   "state": "draft"
-  },
-  "guide.town-warrant-article.cities-towns-and-who-runs-them": {
-   "en": "Cities, towns and who runs them",
-   "es": "Ciudades, municipios y quién los gobierna (en inglés)",
-   "state": "draft"
-  },
-  "guide.town-warrant-article.how-to-vote": {
-   "en": "How to vote",
-   "es": "Cómo votar",
-   "state": "draft"
-  },
-  "guide.town-warrant-article.time-for-holding-town-meetings-and": {
-   "en": "Time for Holding Town Meetings and Warning Thereof, RSA 39",
-   "es": "Fecha de las asambleas municipales y su convocatoria, RSA 39",
-   "state": "draft"
-  },
-  "guide.town-warrant-article.government-of-town-meeting-rsa-40": {
-   "en": "Government of Town Meeting, RSA 40",
-   "es": "Funcionamiento de la asamblea municipal, RSA 40",
-   "state": "draft"
-  },
-  "guide.town-warrant-article.school-meetings-and-officers-rsa-197": {
-   "en": "School Meetings and Officers, RSA 197",
-   "es": "Asambleas y funcionarios escolares, RSA 197",
-   "state": "draft"
-  },
-  "guide.town-warrant-article.town-and-city-clerks-secretary-of": {
-   "en": "Town and city clerks (Secretary of State)",
-   "es": "Secretarios de municipios y ciudades (Secretaría de Estado)",
-   "state": "draft"
-  },
-  "guide.task.town-warrant-article.does": {
-   "en": "Put an article on your town meeting warrant",
-   "es": "Incluir un artículo en la convocatoria de la asamblea municipal",
-   "state": "draft"
-  },
-  "guide.task.town-warrant-article.line": {
-   "en": "Petition your selectmen or school board to put a question to the voters.",
-   "es": "Pida por petición a los concejales o a la junta escolar que sometan una pregunta a los votantes.",
-   "state": "draft"
-  },
-  "guide.child-care-scholarship.title": {
-   "en": "How to Get Help Paying for Child Care",
-   "es": "Cómo obtener ayuda para pagar el cuidado infantil",
-   "state": "draft",
-   "note": "Child Care Scholarship: 'beca de cuidado infantil', with the program's English name once, since the Department's pages and forms are in English."
-  },
-  "guide.child-care-scholarship.lead": {
-   "en": "Applying for New Hampshire's Child Care Scholarship through the Department of Health and Human Services, step by step: who it is for, how to apply, choosing a provider, and keeping it.",
-   "es": "Cómo solicitar la beca de cuidado infantil de New Hampshire (Child Care Scholarship) por medio del Departamento de Salud y Servicios Humanos, paso a paso: para quién es, cómo solicitarla, cómo elegir un proveedor y cómo conservarla.",
-   "state": "draft"
-  },
-  "guide.child-care-scholarship.new-hampshires-child-care-scholarship": {
-   "en": "New Hampshire&rsquo;s Child Care Scholarship helps families pay for child care while the parents work, look for work, or go to school or job training. Apply to the Department of Health and Human Services online at NH Easy, or on paper. The Department decides whether you qualify and what share of the cost you pay; you choose the child care provider.",
-   "es": "La beca de cuidado infantil de New Hampshire (Child Care Scholarship) ayuda a las familias a pagar el cuidado infantil mientras los padres trabajan, buscan trabajo, o van a la escuela o a una capacitación laboral. Solicítela al Departamento de Salud y Servicios Humanos en línea en NH Easy, o en papel. El Departamento decide si usted reúne los requisitos y qué parte del costo paga usted; usted elige al proveedor de cuidado infantil.",
-   "state": "draft"
-  },
-  "guide.child-care-scholarship.check-that-the-scholarship-fits-your": {
-   "en": "Check that the scholarship fits your family: a child under 13, and parents working, looking for work, or in school or training.",
-   "es": "Confirme que la beca corresponde a su familia: un niño menor de 13 años, y padres que trabajan, buscan trabajo, o estudian o se capacitan.",
-   "state": "draft"
-  },
-  "guide.child-care-scholarship.how-do-you-want-to-apply": {
-   "en": "How do you want to apply?",
-   "es": "¿Cómo quiere solicitar?",
-   "state": "draft"
-  },
-  "guide.child-care-scholarship.online": {
-   "en": "Online",
-   "es": "En línea",
-   "state": "draft"
-  },
-  "guide.child-care-scholarship.apply-at-nh-easy": {
-   "en": "Apply at NH Easy.",
-   "es": "Solicite en NH Easy.",
-   "state": "draft"
-  },
-  "guide.child-care-scholarship.on-paper": {
-   "en": "On paper",
-   "es": "En papel",
-   "state": "draft"
-  },
-  "guide.child-care-scholarship.fill-in-the-application-for-assistance": {
-   "en": "Fill in the Application for Assistance and send it to your District Office.",
-   "es": "Llene la solicitud Application for Assistance y envíela a su oficina de distrito.",
-   "state": "draft"
-  },
-  "guide.child-care-scholarship.choose-a-provider-the-department-pays": {
-   "en": "Choose a provider the Department pays, and keep the scholarship at least 12 months.",
-   "es": "Elija un proveedor al que pague el Departamento, y conserve la beca al menos 12 meses.",
-   "state": "draft"
-  },
-  "guide.child-care-scholarship.check-whether-it-fits-your-family": {
-   "en": "Check whether it fits your family",
-   "es": "Confirme si corresponde a su familia",
-   "state": "draft"
-  },
-  "guide.child-care-scholarship.under-the-federal-rules-the-program": {
-   "en": "Under the federal rules the program runs on, a child can be covered if they are under 13 years old, or older and unable to care for themselves or under court supervision where the state chooses to cover them, and lives with parents who are working or attending job training or school. The state sets an income limit, which federal law caps. The Department&rsquo;s program rules also count looking for work.",
-   "es": "Según las reglas federales con las que funciona el programa, un niño puede estar cubierto si tiene menos de 13 años, o si es mayor y no puede cuidarse solo o está bajo supervisión judicial cuando el estado decide cubrirlo, y vive con padres que trabajan o asisten a una capacitación laboral o a la escuela. El estado fija un límite de ingresos, que la ley federal limita. Las reglas del programa del Departamento también cuentan la búsqueda de trabajo.",
-   "state": "draft"
-  },
-  "guide.child-care-scholarship.the-department-publishes-its-income": {
-   "en": "The Department publishes its income limits and its program rules.",
-   "es": "El Departamento publica sus límites de ingresos y las reglas de su programa.",
-   "state": "draft"
-  },
-  "guide.child-care-scholarship.child-development-and-head-start": {
-   "en": "Child Development and Head Start",
-   "es": "Desarrollo infantil y Head Start",
-   "state": "draft"
-  },
-  "guide.child-care-scholarship.the-program-s-rules": {
-   "en": "The program's rules",
-   "es": "Las reglas del programa",
-   "state": "draft"
-  },
-  "guide.child-care-scholarship.apply-online-or-on-paper": {
-   "en": "Apply online or on paper",
-   "es": "Solicite en línea o en papel",
-   "state": "draft"
-  },
-  "guide.child-care-scholarship.online-nh-easy-the-departments-benefits": {
-   "en": "<b>Online:</b> NH Easy, the Department&rsquo;s benefits site, takes applications for child care assistance, and for SNAP, cash and Medicaid on the same application.",
-   "es": "<b>En línea:</b> NH Easy, el sitio de beneficios del Departamento, acepta solicitudes de ayuda para el cuidado infantil, y también para SNAP, ayuda en efectivo y Medicaid en la misma solicitud.",
-   "state": "draft"
-  },
-  "guide.child-care-scholarship.on-paper-fill-in-the-application": {
-   "en": "<b>On paper:</b> fill in the Application for Assistance (Form 800) and send it to your District Office, or ask the office for one. To speak to someone, call 1-844-ASK-DHHS (1-844-275-3447).",
-   "es": "<b>En papel:</b> llene la solicitud Application for Assistance (formulario 800) y envíela a su oficina de distrito, o pídale una a la oficina. Para hablar con alguien, llame al 1-844-ASK-DHHS (1-844-275-3447).",
-   "state": "draft"
-  },
-  "guide.child-care-scholarship.nh-easy": {
-   "en": "NH Easy",
-   "es": "NH Easy",
-   "state": "draft"
-  },
-  "guide.child-care-scholarship.paper-applications": {
-   "en": "Paper applications",
-   "es": "Solicitudes en papel",
-   "state": "draft"
-  },
-  "guide.child-care-scholarship.how-applications-are-handled": {
-   "en": "How applications are handled",
-   "es": "Cómo se tramitan las solicitudes",
-   "state": "draft"
-  },
-  "guide.child-care-scholarship.choose-a-child-care-provider": {
-   "en": "Choose a child care provider",
-   "es": "Elija un proveedor de cuidado infantil",
-   "state": "draft"
-  },
-  "guide.child-care-scholarship.you-choose-who-cares-for-your": {
-   "en": "You choose who cares for your child. Federal rules let you choose among child care centers, family child care homes and, within the state&rsquo;s limits, care in your own home. Relatives and religious providers are among the choices.",
-   "es": "Usted elige quién cuida a su hijo. Las reglas federales le permiten elegir entre centros de cuidado infantil, hogares de cuidado infantil familiar y, dentro de los límites del estado, el cuidado en su propia casa. Los familiares y los proveedores religiosos están entre las opciones.",
-   "state": "draft"
-  },
-  "guide.child-care-scholarship.to-be-paid-through-the-scholarship": {
-   "en": "To be paid through the scholarship, a provider enrolls with the Department. Ask a provider you are considering whether it is enrolled.",
-   "es": "Para recibir pagos por medio de la beca, un proveedor se inscribe con el Departamento. Pregúntele a un proveedor que esté considerando si está inscrito.",
-   "state": "draft"
-  },
-  "guide.child-care-scholarship.child-care-providers-and-the-scholarship": {
-   "en": "Child care providers and the scholarship",
-   "es": "Los proveedores de cuidado infantil y la beca",
-   "state": "draft"
-  },
-  "guide.child-care-scholarship.keeping-the-scholarship": {
-   "en": "Keeping the scholarship",
-   "es": "Cómo conservar la beca",
-   "state": "draft"
-  },
-  "guide.child-care-scholarship.once-you-are-approved-the-federal": {
-   "en": "Once you are approved, the federal rules keep your child eligible for at least 12 months before the Department checks again. In that time the scholarship continues at least at the same level even if your income goes up, as long as it stays under the federal limit, and through temporary changes such as time off work for an illness or to care for a family member, a break between seasonal jobs, a school break, fewer hours, or your child turning 13. Your share of the cost cannot be raised in that time except as the rules allow.",
-   "es": "Una vez aprobada, las reglas federales mantienen a su hijo elegible por al menos 12 meses antes de que el Departamento lo revise de nuevo. Durante ese tiempo, la beca continúa al menos al mismo nivel aunque sus ingresos aumenten, siempre que sigan por debajo del límite federal, y a pesar de cambios temporales como una ausencia del trabajo por enfermedad o para cuidar a un familiar, una pausa entre trabajos de temporada, unas vacaciones escolares, menos horas, o que su hijo cumpla 13 años. Su parte del costo no puede aumentar durante ese tiempo, salvo en los casos que permiten las reglas.",
-   "state": "draft"
-  },
-  "guide.child-care-scholarship.if-you-lose-your-job-or": {
-   "en": "If you lose your job or leave your program, the scholarship continues for at least three months so you can look for work or go back.",
-   "es": "Si pierde su trabajo o deja su programa, la beca continúa al menos tres meses para que pueda buscar trabajo o volver.",
-   "state": "draft"
-  },
-  "guide.child-care-scholarship.if-your-family-is-homeless-or": {
-   "en": "If your family is homeless, or you disagree with a decision",
-   "es": "Si su familia no tiene hogar, o si no está de acuerdo con una decisión",
-   "state": "draft"
-  },
-  "guide.child-care-scholarship.families-experiencing-homelessness-the": {
-   "en": "<b>Families experiencing homelessness:</b> the state must let a child enroll after a first decision on eligibility, while you gather the documents the application asks for. Say so when you apply.",
-   "es": "<b>Familias sin hogar:</b> el estado debe permitir que un niño se inscriba después de una primera decisión sobre su elegibilidad, mientras usted reúne los documentos que pide la solicitud. Dígalo cuando solicite.",
-   "state": "draft"
-  },
-  "guide.child-care-scholarship.if-you-disagree-with-a-decision": {
-   "en": "<b>If you disagree with a decision,</b> you can ask for an administrative appeal hearing, in writing, on the Department&rsquo;s appeal request form or in a letter. Your Notice of Decision gives your deadline. You do not need a lawyer.",
-   "es": "<b>Si no está de acuerdo con una decisión,</b> puede pedir una audiencia de apelación administrativa, por escrito, en el formulario de solicitud de apelación del Departamento o en una carta. Su aviso de decisión (Notice of Decision) indica su plazo. No necesita un abogado.",
-   "state": "draft"
-  },
-  "guide.child-care-scholarship.administrative-appeals": {
-   "en": "Administrative appeals",
-   "es": "Apelaciones administrativas",
-   "state": "draft"
-  },
-  "guide.child-care-scholarship.the-departments-customer-service-center": {
-   "en": "The Department&rsquo;s customer service center answers questions about applying, and your local District Office can help in person.",
-   "es": "El centro de atención al cliente del Departamento responde preguntas sobre cómo solicitar, y su oficina de distrito puede ayudarle en persona.",
-   "state": "draft"
-  },
-  "guide.child-care-scholarship.find-your-district-office": {
-   "en": "Find your District Office",
-   "es": "Busque su oficina de distrito",
-   "state": "draft"
-  },
-  "guide.child-care-scholarship.nh-easy-603-legal-aid": {
-   "en": "<a class=\"g-btn\" href=\"https://nheasy.nh.gov/#/\" target=\"_blank\" rel=\"noopener\">NH Easy</a> <a class=\"g-btn\" href=\"https://www.603legalaid.org/self-help-articles/\" target=\"_blank\" rel=\"noopener\">603 Legal Aid</a>",
-   "es": "<a class=\"g-btn\" href=\"https://nheasy.nh.gov/#/\" target=\"_blank\" rel=\"noopener\">NH Easy</a> <a class=\"g-btn\" href=\"https://www.603legalaid.org/self-help-articles/\" target=\"_blank\" rel=\"noopener\">603 Legal Aid</a>",
-   "state": "draft"
-  },
-  "guide.child-care-scholarship.how-to-apply-for-food-or": {
-   "en": "How to apply for food or health assistance",
-   "es": "Cómo solicitar ayuda para alimentos o salud",
-   "state": "draft"
-  },
-  "guide.child-care-scholarship.how-to-file-for-unemployment": {
-   "en": "How to file for unemployment",
-   "es": "Cómo solicitar beneficios por desempleo",
-   "state": "draft"
-  },
-  "guide.child-care-scholarship.child-development-and-head-start-2": {
-   "en": "Child Development and Head Start (Department of Health and Human Services)",
-   "es": "Desarrollo infantil y Head Start (Departamento de Salud y Servicios Humanos)",
-   "state": "draft"
-  },
-  "guide.child-care-scholarship.child-care-scholarship-providers": {
-   "en": "Child Care Scholarship providers (Department of Health and Human Services)",
-   "es": "Proveedores de la beca de cuidado infantil (Departamento de Salud y Servicios Humanos)",
-   "state": "draft"
-  },
-  "guide.child-care-scholarship.child-care-scholarship-application": {
-   "en": "Child Care Scholarship application process (Department of Health and Human Services)",
-   "es": "Proceso de solicitud de la beca de cuidado infantil (Departamento de Salud y Servicios Humanos)",
-   "state": "draft"
-  },
-  "guide.child-care-scholarship.child-care-scholarship-program-criteria": {
-   "en": "Child Care Scholarship program criteria (Department of Health and Human Services)",
-   "es": "Criterios del programa de la beca de cuidado infantil (Departamento de Salud y Servicios Humanos)",
-   "state": "draft"
-  },
-  "guide.child-care-scholarship.apply-for-assistance-department-of": {
-   "en": "Apply for Assistance (Department of Health and Human Services)",
-   "es": "Solicitar ayuda (Departamento de Salud y Servicios Humanos)",
-   "state": "draft"
-  },
-  "guide.child-care-scholarship.administrative-appeals-department-of": {
-   "en": "Administrative Appeals (Department of Health and Human Services)",
-   "es": "Apelaciones administrativas (Departamento de Salud y Servicios Humanos)",
-   "state": "draft"
-  },
-  "guide.child-care-scholarship.a-child-s-eligibility-45-cfr": {
-   "en": "A child's eligibility, 45 CFR 98.20 (federal)",
-   "es": "La elegibilidad de un niño, 45 CFR 98.20 (federal)",
-   "state": "draft"
-  },
-  "guide.child-care-scholarship.eligibility-determination-45-cfr-98-21": {
-   "en": "Eligibility determination, 45 CFR 98.21 (federal)",
-   "es": "La determinación de elegibilidad, 45 CFR 98.21 (federal)",
-   "state": "draft"
-  },
-  "guide.child-care-scholarship.parental-choice-45-cfr-98-30": {
-   "en": "Parental choice, 45 CFR 98.30 (federal)",
-   "es": "La elección de los padres, 45 CFR 98.30 (federal)",
-   "state": "draft"
-  },
-  "guide.child-care-scholarship.children-experiencing-homelessness-45": {
-   "en": "Children experiencing homelessness, 45 CFR 98.51 (federal)",
-   "es": "Niños sin hogar, 45 CFR 98.51 (federal)",
-   "state": "draft"
-  },
-  "guide.task.child-care-scholarship.does": {
-   "en": "Get help paying for child care",
-   "es": "Obtener ayuda para pagar el cuidado infantil",
-   "state": "draft"
-  },
-  "guide.task.child-care-scholarship.line": {
-   "en": "The Child Care Scholarship: who it is for, how to apply, and choosing a provider.",
-   "es": "La beca de cuidado infantil: para quién es, cómo solicitarla y cómo elegir un proveedor.",
    "state": "draft"
   }
  }
