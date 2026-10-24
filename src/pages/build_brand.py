@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-12.20
+# GRANITE_VERSION: 2026-09-12.21
 """
 Turn the drawn logo and icon into the files a site needs, once.
 
@@ -59,8 +59,10 @@ WHAT IS DERIVED, AND WHY EACH ONE
   favicon.ico       for the bare /favicon.ico a browser asks for anyway, in
                     the three sizes that file format is actually used at.
   og.png            1200x630 for a shared link's card, the black-on-white
-                    lockup padded onto white so the card is seamless rather
-                    than a black block inside a white border.
+                    lockup on white so the card is seamless rather than a
+                    black block inside a white border, with the site's slogan
+                    under it as a section card names its kind (since 24
+                    October 2026; chrome.SLOGAN).
   og-<kind>.png     the same card per kind of page -- bill, legislator,
                     committee, learn, town -- with the kind named under the
                     lockup, so a shared bill and a shared legislator do not
@@ -236,26 +238,15 @@ def write_pngs():
     return "pngs     " + ", ".join(said)
 
 
-def write_og():
-    """1200x630, the shape a link card is cropped to."""
-    from PIL import Image
-    src = Image.open(need(BRAND / "logo-on-white.png")).convert("RGB")
-    W, H = 1200, 630
-    card = Image.new("RGB", (W, H), (255, 255, 255))
-    # Fit inside 88% of the card so nothing is against an edge.
-    sw, sh = src.size
-    k = min(W * 0.88 / sw, H * 0.88 / sh)
-    im = src.resize((int(sw * k), int(sh * k)), Image.LANCZOS)
-    card.paste(im, ((W - im.width) // 2, (H - im.height) // 2))
-    card.save(OUT / "og.png", optimize=True)
-    return f"og.png    {W}x{H}, logo at {im.width}x{im.height}"
-
-
 # ONE CARD PER KIND OF PAGE, rather than one card for everything or one for
 # each record. The drawing og.png carries, a little smaller, with the kind of
 # page named under it in the site's small capitals, so a shared bill and a
 # shared legislator do not unfurl identically.
 OG_SECTIONS = {
+    # THE LOGO CARD TOO, every page's that names no kind (the owner, 24
+    # October 2026: the slogan "into link previews when the site is shared"):
+    # chrome.SLOGAN in the same small capitals, without its full stop.
+    "og.png": "NEW HAMPSHIRE GOVERNMENT, IN ONE PLACE",
     "og-bill.png": "BILLS  \u00b7  VOTES  \u00b7  HEARINGS",
     "og-legislator.png": "LEGISLATORS  \u00b7  VOTING RECORDS",
     "og-committee.png": "COMMITTEES  \u00b7  HEARINGS",
@@ -271,17 +262,18 @@ LABEL_FONTS = ("C:/Windows/Fonts/arialbd.ttf",
 
 
 def write_og_sections():
-    """og-<kind>.png, 1200x630: the logo above, the kind of page below."""
+    """og.png and og-<kind>.png, 1200x630: the logo above, the slogan or the
+    kind of page below."""
     from PIL import Image
     grey = Image.open(need(BRAND / "logo-on-white.png")).convert("L")
     box = grey.point(lambda v: 255 - v).getbbox()
     src = Image.open(BRAND / "logo-on-white.png").convert("RGB").crop(box)
     _section_cards(src, OUT)
-    return "section cards: " + ", ".join(OG_SECTIONS)
+    return "link cards: " + ", ".join(OG_SECTIONS)
 
 
 def _section_cards(src, out):
-    """Draw every og-<kind>.png from one ink-on-white logo into out."""
+    """Draw og.png and every og-<kind>.png from one ink-on-white logo into out."""
     import os
     from PIL import Image, ImageDraw, ImageFont
     font_path = next((f for f in LABEL_FONTS if os.path.exists(f)), None)
@@ -457,20 +449,15 @@ def write_licensed():
     im.putalpha(a)
     im.save(LICENSED_OUT / "lockup.png", optimize=True)
     # The link cards want ink on white, so the one-line lockup's alpha is
-    # painted black onto a white card.
+    # painted black onto a white card: og.png with the slogan under it, and
+    # each kind's card with its kind (OG_SECTIONS).
     aw = _ink(wide)
     ink = Image.new("RGB", aw.size, (255, 255, 255))
     ink.paste((0, 0, 0), (0, 0), aw)
-    W, H = 1200, 630
-    card = Image.new("RGB", (W, H), (255, 255, 255))
-    k = min(W * 0.84 / ink.width, H * 0.70 / ink.height)
-    big = ink.resize((int(ink.width * k), int(ink.height * k)), Image.LANCZOS)
-    card.paste(big, ((W - big.width) // 2, (H - big.height) // 2))
-    card.save(LICENSED_OUT / "og.png", optimize=True)
     _section_cards(ink, LICENSED_OUT)
-    return (f"licensed: lockup.png {a.width}x{a.height} (stacked), og.png and "
-            f"{len(OG_SECTIONS)} section cards (one line), {mark} "
-            "-> assets/licensed/")
+    return (f"licensed: lockup.png {a.width}x{a.height} (stacked), "
+            f"{len(OG_SECTIONS)} link cards (one line: og.png's slogan, each kind's "
+            f"name), {mark} -> assets/licensed/")
 
 MANIFEST = """{
   "name": "Granite Record",
@@ -510,7 +497,6 @@ def main():
     frame = icon_framing()
     said = [write_icon_svg(d, frame)]
     said.append(write_pngs())
-    said.append(write_og())
     said.append(write_og_sections())
     said.append(write_lockup())
     said.append(write_licensed() or "licensed: brand/licensed/ does not hold "

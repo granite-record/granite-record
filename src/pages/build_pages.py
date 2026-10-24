@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.232
+# GRANITE_VERSION: 2026-09-04.233
 """
 Build the pages the navigation links to: legislators, town lookup, how it
 works, and about.
@@ -2876,7 +2876,7 @@ def home_body(lang, has_lockup, static_state, static_up, static_recent, latest_d
     return f"""<div class="hcols {HOME_COLUMN_OPTIONS[HOME_COLUMNS]}">
 <div class="hmid">
 {home_h1}
-<p class="slogan">{say(lang, "home.slogan", "Public Records, Made Findable.")}</p>
+<p class="slogan">{say(lang, "home.slogan", "New Hampshire government, in one place.")}</p>
 <p class="lead">{say(lang, "home.lead", "Keep up with New Hampshire legislation, find bills on the issues you care about, learn how the legislature works, and explore the record from 1989 to today.")}</p>
 {only}<!-- ONE BOX, THE HEADER'S FINDER (D13, the person, 8 October 2026: "one
      search box like the header search: bills, legislators, towns, committees
@@ -4164,7 +4164,7 @@ Senate; and the state&rsquo;s other officials.</p>
                 else out / i18n.href(lang, "index.html").strip("/") / "index.html")
         dest.parent.mkdir(parents=True, exist_ok=True)
         dest.write_text(
-            shell(say(lang, "home.title", "Granite Record — the New Hampshire legislative record"),
+            shell(say(lang, "home.title", "Granite Record — New Hampshire government, in one place"),
                   # THE FULL PAGE WIDTH, which is what "offset to the left"
                   # was. .wrap is 820px aligned to the nav's own gutter, so on a
                   # 1440px screen the home page was an 820px column with 360px of

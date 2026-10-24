@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.683
+# GRANITE_VERSION: 2026-09-04.684
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -62854,6 +62854,40 @@ def _translations(i18n):
         for m in [m for m in i18n.SAID if m[0] == "zz"]:
             i18n.SAID.discard(m)
     return "ok", f"{len(words)} words in the code, every one current; " + "; ".join(said)
+
+
+@check("frontend", "the slogan is one line everywhere: under the home page's logo, in its title, on "
+                   "the logo card a shared link unfurls into and in that card's description",
+       needs=("i18n",))
+def _slogan_one_line(i18n):
+    """The owner, 24 October 2026, changing the slogan from "Public Records,
+    Made Findable." to "New Hampshire government, in one place." on the site
+    and "into link previews when the site is shared on social media". It is
+    in four places now, so they are held to chrome.SLOGAN: the home page's
+    line under the logo and its title, as the code asks the catalog for them
+    (i18n.code_words, so in English the words the page says); the alt text
+    of the logo card a page with no card of its own names (chrome.card); and
+    the line build_brand.py draws on that card, og.png, in small capitals
+    without the full stop. The card itself is drawn on the laptop from the
+    private originals, so what is checked here is the line it is told to
+    draw: a card drawn before 24 October 2026 has none until build_brand.py
+    is run again there."""
+    import chrome
+    import build_brand as BB
+    words, problems = i18n.code_words()
+    assert not problems, "; ".join(problems[:4])
+    slogan, bare = chrome.SLOGAN, chrome.SLOGAN.rstrip(".")
+    want = {"home.slogan": slogan, "home.title": f"Granite Record — {bare}"}
+    bad = [f"{k} says {words.get(k, {}).get('en')!r}, not {v!r}"
+           for k, v in want.items() if words.get(k, {}).get("en") != v]
+    img, alt = chrome.card("index.html")
+    if (img, alt) != ("og.png", f"Granite Record: {bare}"):
+        bad.append(f"the logo card is {img} described as {alt!r}")
+    if BB.OG_SECTIONS.get("og.png") != bare.upper():
+        bad.append(f"build_brand draws og.png's line as {BB.OG_SECTIONS.get('og.png')!r}, "
+                   f"not {bare.upper()!r}")
+    assert not bad, "the slogan is not one line: " + "; ".join(bad)
+    return "ok", f"{slogan!r} under the logo, in the title, on the logo card and in its description"
 
 
 @check("build", "the glossary is built in Spanish at /es/learn/glossary from the same entries, "

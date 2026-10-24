@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-07.32
+# GRANITE_VERSION: 2026-09-07.33
 """
 The page every record's own address is: bills.html, with one record open.
 
@@ -606,12 +606,12 @@ def page(t, *, path, title, description, base, globals=None, noscript="",
     out = t.replace(NEEDS["viewport"], head, 1)
     # EACH KIND OF PAGE ITS OWN CARD (build_brand.py draws them): a shared bill
     # and a shared legislator unfurled identically. A page that names none gets
-    # the plain logo card.
+    # the logo card, whose alt text says its line (chrome.card).
     img = f"{base}/{og_image or 'og.png'}"
     out = out.replace(NEEDS["og_image"], f'<meta property="og:image" content="{img}">', 1)
     out = out.replace(NEEDS["tw_image"], f'<meta name="twitter:image" content="{img}">', 1)
     out = out.replace(NEEDS["og_alt"], f'<meta property="og:image:alt" content="'
-                      f'{E(og_alt or BRAND)}">', 1)
+                      f'{E(og_alt or (BRAND if og_image else chrome.card()[1]))}">', 1)
     # ONE TITLE PER PAGE. head starts with the viewport meta and adds a
     # <title> after it, so the template's own title survived the substitution
     # and every one of the 34,152 generated pages carried two of them -- the

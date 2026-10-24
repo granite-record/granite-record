@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-10-23.4
+# GRANITE_VERSION: 2026-10-23.5
 """
 The frame every page shares, written once: the head's fonts, icons, share
 card, theme script and stylesheet; the header and its sections; the footer;
@@ -99,10 +99,18 @@ FONTS = ('<link rel="preconnect" href="https://fonts.googleapis.com">\n'
          '&family=Source+Serif+4:opsz,wght@8..60,400;8..60,600&family=Playfair+Display:wght@600'
          '&family=IBM+Plex+Mono:wght@500&display=swap" rel="stylesheet">')
 
+# THE SITE'S SLOGAN (the owner, 24 October 2026, in place of "Public
+# Records, Made Findable."): the home page's line under the logo, the home
+# page's title and so the headline of a shared link to it, and the line the
+# logo card carries under the drawing (build_brand.OG_SECTIONS["og.png"]).
+# The home page asks the catalog for it in its own words, so preflight holds
+# each of those to this one (_slogan_one_line).
+SLOGAN = "New Hampshire government, in one place."
+
 # THE CARD A SHARED LINK UNFURLS INTO, by kind of page (build_brand.py draws
-# them); the plain logo card for every page not named here. shell.page()
-# puts each record's own kind's card in place of the template's, which is the
-# bills section's.
+# them); the logo card, the slogan under the drawing, for every page not named
+# here. shell.page() puts each record's own kind's card in place of the
+# template's, which is the bills section's.
 CARDS = {"officials.html": ("og-legislator.png", "legislators and their voting records"),
          "bills.html": ("og-bill.png", "bills, votes and hearings")}
 
@@ -392,8 +400,8 @@ SLOTS = ("head", "nav", "footer", "scripts")
 
 def card(page=""):
     """(image file, its alt text) of the card a link to `page` unfurls into."""
-    img, what = CARDS.get(page, ("og.png", ""))
-    return img, (f"Granite Record: {what}" if what else "Granite Record")
+    img, what = CARDS.get(page, ("og.png", SLOGAN.rstrip(".")))
+    return img, f"Granite Record: {what}"
 
 
 def head(page="", lang="en", scripts=()):
