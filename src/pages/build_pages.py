@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.233
+# GRANITE_VERSION: 2026-09-04.234
 """
 Build the pages the navigation links to: legislators, town lookup, how it
 works, and about.
@@ -2872,11 +2872,20 @@ def home_body(lang, has_lockup, static_state, static_up, static_recent, latest_d
     # THE GUIDES' SLOT is the English page's: build_civics fills it with
     # guides, and the guides are in English.
     guides = "<!-- guides --><!-- /guides -->" if lang == i18n.DEFAULT else ""
+    # THE SLOGAN BREAKS AT ITS COMMA (the owner, 24 October 2026: "the line
+    # split should be at the comma if possible"). Balanced, it broke after
+    # "New Hampshire". Each half is one unit (.sl), so a line too narrow for
+    # the whole puts "in one place." on the second line, and a half breaks
+    # within itself only on a screen too narrow for it. The Spanish breaks
+    # at its comma the same way.
+    slogan = say(lang, "home.slogan", "New Hampshire government, in one place.")
+    head, comma, tail = slogan.partition(", ")
+    slogan = f'<span class="sl">{head},</span> <span class="sl">{tail}</span>' if comma else slogan
     # The columns' treatment, HOME_COLUMN_OPTIONS[HOME_COLUMNS]: one class.
     return f"""<div class="hcols {HOME_COLUMN_OPTIONS[HOME_COLUMNS]}">
 <div class="hmid">
 {home_h1}
-<p class="slogan">{say(lang, "home.slogan", "New Hampshire government, in one place.")}</p>
+<p class="slogan">{slogan}</p>
 <p class="lead">{say(lang, "home.lead", "Keep up with New Hampshire legislation, find bills on the issues you care about, learn how the legislature works, and explore the record from 1989 to today.")}</p>
 {only}<!-- ONE BOX, THE HEADER'S FINDER (D13, the person, 8 October 2026: "one
      search box like the header search: bills, legislators, towns, committees

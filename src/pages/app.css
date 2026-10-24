@@ -1,4 +1,4 @@
-/* GRANITE_VERSION: 2026-09-07.310 */
+/* GRANITE_VERSION: 2026-09-07.311 */
 /* ONE STYLESHEET FOR EVERY PAGE (23 October 2026). Every page of the site
    links this file, /app.css: the record pages shell.page() makes from
    bills.html, and the five build_pages.py writes -- the home page, Officials,
@@ -8528,6 +8528,9 @@ font-family:var(--sans);letter-spacing:0;text-transform:none}
 :where(body.pg) .slogan{font-family:var(--serif);font-size:1.75rem;font-weight:700;line-height:1.15;
 text-wrap:balance}
 @media (max-width:45em){:where(body.pg) .slogan{font-size:1.5rem}}
+/* Each half of the slogan is one unit, so it breaks at its comma (build_pages,
+   home_body). */
+:where(body.pg) .slogan .sl{display:inline-block}
 /* The rebuild line under the latest session days, clear of the player. */
 :where(body.pg) .hright .fresh{margin-top:var(--sp-5)}
 /* ==== /HUBS, PAGES ======================================================== */
