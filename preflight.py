@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.674
+# GRANITE_VERSION: 2026-09-04.675
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -61102,7 +61102,9 @@ def _drawn_pages():
 # Follow, Report a problem, Share and Play. A drawing is decoration beside a
 # word: hidden from a screen reader, and never a control's only name.
 
-_ICON_CONTROLS = ("a", "button", "summary")
+# A label is a control's visible name, its words beside the drawing: the
+# footer's "Language · Idioma" over its list (24 October 2026).
+_ICON_CONTROLS = ("a", "button", "summary", "label")
 _VOID_TAGS = {"area", "base", "br", "col", "embed", "hr", "img", "input", "link", "meta",
               "param", "source", "track", "wbr"}
 
@@ -62121,7 +62123,7 @@ def _spanish_glossary(i18n, BC, chrome):
           + chrome.footer_html("en") + "</body></html>")
     named = BC.name_versions("learn/glossary.html", en)
     if '<html lang="en" data-alt-es="/es/learn/glossary"' not in named \
-            or 'href="/es/learn/glossary" hreflang="es"' not in named:
+            or 'lang="es" data-href="/es/learn/glossary"' not in named:
         bad.append("the English glossary does not name its Spanish twin")
     if 'href="learn/glossary.html"' not in chrome.footer_html("en"):
         bad.append("the English footer's Glossary link moved")

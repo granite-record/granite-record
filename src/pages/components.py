@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-10-09.12
+# GRANITE_VERSION: 2026-10-09.13
 """
 The site's components, in Python: what the builders draw a person, a
 committee, a chip, a date and a time with, and the words they say.
@@ -418,6 +418,10 @@ ICONS = {
     "search": '<circle cx="10.5" cy="10.5" r="6.25" stroke-width="2"/><path d="M15.25 15.25l5 5" stroke-width="2"/>',
     "close": '<path d="M6 6l12 12M18 6L6 18" stroke-width="2"/>',
     "play": '<path fill="currentColor" stroke="none" d="M8 5.5v13l10.5-6.5z"/>',
+    # the footer's language choice (24 October 2026)
+    "globe": ('<circle cx="12" cy="12" r="8.75"/><path d="M3.25 12h17.5"/>'
+              '<path d="M12 3.25c2.4 2.4 3.6 5.3 3.6 8.75s-1.2 6.35-3.6 8.75c-2.4-2.4-3.6-5.3-3.6-8.75'
+              's1.2-6.35 3.6-8.75z"/>'),
 }
 
 

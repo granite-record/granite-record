@@ -1,4 +1,4 @@
-/* GRANITE_VERSION: 2026-09-07.303 */
+/* GRANITE_VERSION: 2026-09-07.304 */
 /* ONE STYLESHEET FOR EVERY PAGE (23 October 2026). Every page of the site
    links this file, /app.css: the record pages shell.page() makes from
    bills.html, and the five build_pages.py writes -- the home page, Officials,
@@ -1697,7 +1697,20 @@ min-height:44px;width:100%}
    (find.js, langNotice); and the Spanish home page's word on what is in
    Spanish so far. */
 footer .footlang{display:none;margin:var(--sp-5) 0 0;font-size:var(--t-sm)}
-html.langs footer .footlang{display:block}
+html.langs footer .footlang{display:flex;align-items:center;flex-wrap:wrap;gap:var(--sp-3)}
+/* A list to choose from (24 October 2026): the globe and the word, and the
+   select drawn as the site's other selects are, with its own arrow. */
+footer .footlangl{display:inline-flex;align-items:center;gap:var(--sp-2);color:var(--ink-2)}
+footer .footlangl .icon{width:1.125rem;height:1.125rem}
+footer .footlang select{font:inherit;font-size:var(--t-ui);color:var(--ink);background:var(--surface);
+border:1px solid var(--edge);border-radius:var(--r-in);min-height:44px;cursor:pointer;
+padding:var(--sp-2) 2.25rem var(--sp-2) var(--sp-3);-webkit-appearance:none;appearance:none;
+background-image:linear-gradient(45deg,transparent 50%,currentColor 50%),
+linear-gradient(135deg,currentColor 50%,transparent 50%);
+background-position:calc(100% - 1.125rem) 55%,calc(100% - .8125rem) 55%;
+background-size:.3125rem .3125rem;background-repeat:no-repeat}
+footer .footlang select:hover{border-color:var(--ink)}
+footer .footlang select:focus-visible{outline:2px solid var(--pine);outline-offset:2px}
 .langbar{display:flex;align-items:center;gap:var(--sp-4);flex-wrap:wrap;margin:0 0 var(--sp-6);
 padding:var(--sp-3) var(--sp-5);background:var(--wash);border:1px solid var(--rule);
 border-radius:var(--r-in);font-size:var(--t-sm);color:var(--ink)}

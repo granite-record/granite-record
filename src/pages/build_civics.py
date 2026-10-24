@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-08.67
+# GRANITE_VERSION: 2026-09-08.68
 """
 The civics section: a hub and one page per topic, in order.
 
@@ -907,8 +907,8 @@ def name_versions(page, english):
             if c != I.DEFAULT and I.has(c, page)}
     for c, h in alts.items():
         english = english.replace('<html lang="en"', f'<html lang="en" data-alt-{c}="{h}"', 1)
-        english = english.replace(f'href="{I.href(c, "index.html")}" hreflang="{c}"',
-                                  f'href="{h}" hreflang="{c}"', 1)
+        english = english.replace(f'lang="{c}" data-href="{I.href(c, "index.html")}"',
+                                  f'lang="{c}" data-href="{h}"', 1)
     if alts and all(I.offered(c) for c in alts):
         base = "https://graniterecord.org"
         links = "".join(f'<link rel="alternate" hreflang="{c}" href="{base}{h}">'

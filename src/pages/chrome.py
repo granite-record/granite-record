@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-10-23.3
+# GRANITE_VERSION: 2026-10-23.4
 """
 The frame every page shares, written once: the head's fonts, icons, share
 card, theme script and stylesheet; the header and its sections; the footer;
@@ -136,9 +136,11 @@ _BRAND = """<link rel="icon" href="/icon.svg" type="image/svg+xml">
 # sent has asked for it. A language not yet offered to everyone moves nobody
 # until the reader has opened one of its pages (gr-lang-seen), which is how
 # the person and the proofreader try it. html.langs shows the language
-# control and the footer's link. A link marked data-setlang makes its
-# language the reader's choice as it is followed. The comments are here and
-# not in the script, which is on every one of 34,000 pages.
+# control and the footer's list. A link marked data-setlang makes its
+# language the reader's choice as it is followed; so does a language chosen
+# in the footer's list (data-footlang, 24 October 2026), which then goes to
+# this page in that language, or that language's home page. The comments are
+# here and not in the script, which is on every one of 34,000 pages.
 LANG_HEAD = """<script>
 (function(){
   var r=document.documentElement,K="gr-lang",here=r.lang||"en",OFFER=__OFFER__,LANGS=__LANGS__;
@@ -148,6 +150,12 @@ LANG_HEAD = """<script>
     var a=e.target&&e.target.closest&&e.target.closest("[data-setlang]");
     if(a)try{localStorage.setItem(K,a.getAttribute("data-setlang"));}catch(x){}
   },true);
+  document.addEventListener("change",function(e){
+    var s=e.target;if(!s||!s.hasAttribute||!s.hasAttribute("data-footlang"))return;
+    var o=s.options[s.selectedIndex];if(!o||o.value===here)return;
+    try{localStorage.setItem(K,o.value);}catch(x){}
+    location.href=o.getAttribute("data-href");
+  });
   if(OFFER.length<2&&here==="en"&&get("gr-lang-seen")!=="1")return;
   window.GR_NOTICE=__NOTICE__;
   var ls=navigator.languages&&navigator.languages.length?navigator.languages:[navigator.language||""];
@@ -300,21 +308,32 @@ FOOT_JS = (
 # In either language (footer_html), and FOOTER is the English, which every
 # English page carries.
 #
-# THE LANGUAGE LINE, under the columns: the other language, in its own
+# THE LANGUAGE LINE, under the columns: every language, each in its own
 # words, for a reader who does not read this one. It is hidden until
 # LANG_HEAD finds the language offered to this reader (html.langs), and on a
 # Spanish page it leads to the page's English and back.
+#
+# A LIST TO CHOOSE FROM (the owner, 24 October 2026: "make the footer
+# language change look more interactive like a dropdown to select
+# language"): a globe, "Language · Idioma" in every language the site has,
+# and a select holding each language by its own name, this page's chosen.
+# Choosing one goes to this page in it (data-href), or to that language's
+# home page where this page has no version in it, and makes it the reader's
+# choice, as Settings' list does (LANG_HEAD).
 def footer_html(lang="en", alt=None):
     """The footer in `lang`. `alt` is {code: address} of this page in the
     other languages; a page that has no other is offered the other
     language's home page."""
-    others = []
+    opts = []
     for code in i18n.LANGS:
-        if code == lang:
-            continue
-        to = (alt or {}).get(code) or i18n.href(code, "index.html")
-        others.append(f'<a href="{to}" hreflang="{code}" lang="{code}" '
-                      f'data-setlang="{code}">{i18n.NAMES[code]}</a>')
+        to = ("" if code == lang
+              else (alt or {}).get(code) or i18n.href(code, "index.html"))
+        opts.append(f'<option value="{code}" lang="{code}" data-href="{to}"'
+                    f'{" selected" if code == lang else ""}>{i18n.NAMES[code]}</option>')
+    # "Language" in this page's words, then in each other language's.
+    said = [say(lang, "set.lang", "Language")]
+    said += [w for w in (say(c, "set.lang", "Language") for c in i18n.LANGS if c != lang)
+             if w not in said]
     return f"""<footer><div class="in">
 <div class="fcols">
 <div class="fcol">
@@ -340,7 +359,8 @@ def footer_html(lang="en", alt=None):
 <a href="mailto:contact@graniterecord.org">contact@graniterecord.org</a></p>
 </div>
 </div>
-<p class="footlang">{" ".join(others)}</p>
+<div class="footlang"><label class="footlangl" for="footlang">{icon("globe")}<span>{" · ".join(said)}</span></label>
+<select id="footlang" data-footlang>{"".join(opts)}</select></div>
 <p class="footdata"><span id="built"></span><span class="lic">{say(lang, "foot.licence", "Open source (MIT License)")}</span></p>
 </div></footer>"""
 
