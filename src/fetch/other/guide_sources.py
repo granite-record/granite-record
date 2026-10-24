@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-10-11.11
+# GRANITE_VERSION: 2026-10-11.12
 """
 The official pages the how-to guides cite, onto this disk, to check them by.
 
@@ -175,6 +175,9 @@ SOURCES = {
         "https://www.courts.nh.gov/self-help/restraining-orders",
         "https://www.doj.nh.gov/bureaus/office-victimwitness-assistance/address-confidentiality-program",
     ],
+    "trash": [
+        "https://www.des.nh.gov/sites/g/files/ehbemt341/files/documents/hhw-collection-contacts.pdf",
+    ],
     "emergencies": [
         "https://www.desc.dos.nh.gov/resources/nh-alerts",
         "https://www.readynh.gov/",
@@ -224,6 +227,11 @@ OTHER = {
     # and the federal law on homeless students' schooling.
     # The storms and emergencies guide (24 October 2026): FEMA's Ready.gov
     # and the National Weather Service.
+    # The trash and recycling guide (24 October 2026): the EPA.
+    "trash": [
+        "https://www.epa.gov/hw/household-hazardous-waste-hhw",
+        "https://www.epa.gov/recycle/composting-home",
+    ],
     "emergencies": [
         "https://www.ready.gov/kit",
         "https://www.ready.gov/power-outages",

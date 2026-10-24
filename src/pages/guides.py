@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-10-11.32
+# GRANITE_VERSION: 2026-10-11.33
 """
 The how-to guides: their words, their sources, and what each was checked
 against. Read by build_civics.py, which draws them on the Resources hub's
@@ -4021,6 +4021,133 @@ GUIDES += [WEATHER]
 
 
 # ---------------------------------------------------------------------------
+# TRASH, RECYCLING, YARD WASTE AND HAZARDOUS WASTE (the person, 24 October
+# 2026: "proper disposal of trash, recycling, compost, large items, and
+# hazardous materials (Hazardous materials day) which varies by town and
+# local transfer stations"). What varies by town is the town's to say, so the
+# guide gives the state's rules -- RSA 149-M as the Laws pages print it: what
+# a town must provide, what it may require, and what may never go in the
+# trash anywhere in the state -- and sends the reader to the town for the
+# rest. The EPA's pages on household hazardous waste and composting at home,
+# read on 24 October 2026, give the safe handling. The Department of
+# Environmental Services' list of collection days refuses a cloud session:
+# its claim waits for the person's printout, and the guide is held back until
+# it is read.
+# ---------------------------------------------------------------------------
+TR_READ = "2026-10-24"
+DES_HHW = ("https://www.des.nh.gov/sites/g/files/ehbemt341/files/documents/"
+           "hhw-collection-contacts.pdf")
+EPA_HHW = "https://www.epa.gov/hw/household-hazardous-waste-hhw"
+EPA_COMPOST = "https://www.epa.gov/recycle/composting-home"
+
+TRASH = guide(
+    "trash-and-recycling", "How to Get Rid of Trash, Recycling, Yard Waste and Hazardous Waste",
+    "Your town's transfer station or trash pickup, what may never go in the trash in New "
+    "Hampshire, household hazardous waste collection days, and composting at home.",
+    "Trash and recycling are your town&rsquo;s to run: every town must provide a place for its "
+    "residents&rsquo; trash, or arrange for one, and sets its own rules, fees and recycling. "
+    "Some things may not go in the trash anywhere in New Hampshire: electronics, wet-cell and "
+    "lithium-ion batteries, products containing mercury, and leaves and yard waste. Paint, "
+    "pesticides, cleaners and other hazardous household products go to a household hazardous "
+    "waste collection.",
+    [box("Ask your town how it takes trash and recycling: a transfer station, pickup, bags or "
+         "stickers."),
+     ask("Is it something special?",
+         [("Electronics, batteries, mercury, yard waste",
+           "Never in the trash. Ask your transfer station where it goes."),
+          ("Paint, cleaners, pesticides, oil",
+           "Keep it for a household hazardous waste collection.")]),
+     box("Compost food scraps and yard trim at home, or in a town program.")],
+    [step("Learn your town’s rules",
+          "<p>Every town must either run a solid waste facility, often called the transfer "
+          "station or the dump, or make sure its residents can use one elsewhere. The town "
+          "sets the rules: what must be separated for recycling, how trash is collected, what "
+          "it costs, and whether you must use special bags or stickers, which the town sells "
+          "at a reasonable price. A town may fine people who break its rules.</p>"
+          "<p>Your town or city office, its website or the transfer station can tell you the "
+          "hours, what it takes and how, including anything large.</p>",
+          law=["RSA 149-M:17"]),
+     step("Never put these in the trash",
+          "<p>State law forbids putting these in a landfill or incinerator anywhere in New "
+          "Hampshire:</p>"
+          "<ul><li><b>Electronics:</b> computers and monitors, printers, televisions and other "
+          "screens, cell phones, copiers and fax machines.</li>"
+          "<li><b>Wet-cell and lithium-ion batteries.</b></li>"
+          "<li><b>Products that contain mercury</b>, such as mercury fever thermometers. Keep "
+          "them separate from your trash, for recycling or hazardous waste disposal.</li>"
+          "<li><b>Leaves and yard waste.</b></li></ul>"
+          "<p>Towns and transfer stations must make information available on recycling "
+          "batteries and electronics and on where mercury products are accepted, and should "
+          "offer recycling for batteries and electronics where they can. Ask at yours.</p>",
+          law=["RSA 149-M:4", "RSA 149-M:27", "RSA 149-M:51", "RSA 149-M:58"]),
+     step("Hazardous products: keep them for a collection day",
+          "<p>Leftover products that can catch fire, react, explode, corrode or poison, such as "
+          "paints, cleaners, oils, batteries and pesticides, are <b>household hazardous "
+          "waste</b>. Do not pour them down the drain, on the ground or into a storm drain, and "
+          "check before putting any out with the trash.</p>"
+          "<ul><li>Keep them in their original containers with the labels on, and never mix "
+          "them.</li>"
+          "<li>If a container is corroding, call your fire department for instructions.</li>"
+          "<li>Take them to a household hazardous waste collection. The Department of "
+          "Environmental Services lists each town&rsquo;s contact for its collection.</li>"
+          "<li>Some garages accept used motor oil for recycling.</li></ul>",
+          actions=[("Collection day contacts by town (Department of Environmental Services)",
+                    DES_HHW),
+                   ("Household hazardous waste (EPA)", EPA_HHW)]),
+     step("Compost at home",
+          "<p>You can compost food scraps from your kitchen with leaves and other yard "
+          "trim. Mix &ldquo;greens&rdquo;, such as fruit and vegetable scraps, coffee "
+          "grounds and grass clippings, with &ldquo;browns&rdquo;, such as dry leaves, twigs, "
+          "shredded paper and cardboard. Leave out meat, fish, bones, dairy, fats and oils, "
+          "which attract animals, and pet waste. If you have no room, look for a town or "
+          "community composting program that collects food scraps or takes them at a "
+          "drop-off.</p>",
+          actions=[("Composting at home (EPA)", EPA_COMPOST)])],
+    [("Collection event contacts, 2026-2027 (Department of Environmental Services)", DES_HHW),
+     ("Household Hazardous Waste (EPA)", EPA_HHW),
+     ("Composting at Home (EPA)", EPA_COMPOST),
+     ("Solid Waste Management, RSA 149-M", "/laws/149-m")],
+    ["149-M"],
+    [claim("The Department's list of household hazardous waste collection event contacts, by "
+           "town.", DES_HHW),
+     claim("Each town shall provide a facility or assure access to another approved solid "
+           "waste facility for its residents; bylaws on its facility, reasonable rates, "
+           "separation and collection of refuse; designated bags or containers or disposal "
+           "stickers sold at a reasonable price; civil penalties for violating the bylaws.",
+           "RSA 149-M:17", TR_READ),
+     claim("No person shall dispose of wet-cell batteries, lithium-ion batteries or electronic "
+           "devices in a landfill or incinerator; municipalities and facilities make educational "
+           "materials available on recycling them and should provide recycling where possible; "
+           "no leaf or yard waste in a landfill or incinerator.", "RSA 149-M:27", TR_READ),
+     claim("Electronic device means computer, computer monitor, computer peripheral, printer, "
+           "television, wireless telephones, copiers, fax machines and video display device.",
+           "RSA 149-M:4", TR_READ),
+     claim("No person shall knowingly dispose of mercury-added products in landfills, transfer "
+           "stations or incinerators; every person separates them for recycling or disposal as "
+           "hazardous waste; facilities give customers information about collection programs.",
+           "RSA 149-M:58", TR_READ),
+     claim("A mercury fever thermometer is a mercury-added product.", "RSA 149-M:51", TR_READ),
+     claim("Leftover products that can catch fire, react or explode, or are corrosive or toxic, "
+           "such as paints, cleaners, oils, batteries and pesticides; improper disposal includes "
+           "pouring down the drain, on the ground, into storm sewers, or in some cases out with "
+           "the regular trash; keep in original containers, never remove labels, never mix; corroding "
+           "containers: call the fire department; designated collection days; some garages "
+           "accept used motor oil.", EPA_HHW, TR_READ),
+     claim("Compost food scraps with dry leaves and yard trim; greens such as fruit and "
+           "vegetable scraps, coffee grounds and grass clippings; browns such as dry leaves, "
+           "twigs, shredded paper and cardboard; avoid meat, fish, bones, dairy, fats and oils, "
+           "which can attract animals, and pet waste; a municipal or community program may "
+           "collect food scraps or offer a drop-off.", EPA_COMPOST, TR_READ)],
+    more="<h2>Who Can Help</h2>"
+         "<p>Your town or city office, and your transfer station, for the local rules, hours "
+         "and fees and the date of the next household hazardous waste collection.</p>",
+    see=[("How to prepare for storms, power outages and other emergencies",
+          "/guides/storms-and-emergencies.html")])
+
+GUIDES += [TRASH]
+
+
+# ---------------------------------------------------------------------------
 # THE GUIDES BY TASK (the person, 17 October 2026: "refine how the how to
 # guides are displayed on the main resources page and the homepage so it's
 # more intuitive for the general public"). A reader arrives with something to
@@ -4113,6 +4240,11 @@ TASKS = [
         task("vital-records", "Get a birth, death, marriage or divorce certificate",
              "From your town or city clerk or the state: who may ask and what to bring."),
     ]),
+    ("Around Your Town", [
+        task("trash-and-recycling", "Get rid of trash, recycling and hazardous waste",
+             "Your transfer station, what never goes in the trash, hazardous waste days and "
+             "composting."),
+    ]),
     ("Visiting the State House", [
         task("tour-the-state-house", "Tour the State House",
              "Arrange a visit through the Visitor Center, bring a class, and know what to expect."),
@@ -4197,6 +4329,8 @@ WORDS = {
                           "section 8", "town welfare", "rent"),
     "storms-and-emergencies": ("storm", "power outage", "emergency", "nh alerts", "generator",
                                "snow storm", "warming center", "emergency kit"),
+    "trash-and-recycling": ("trash", "recycling", "dump", "transfer station", "hazardous waste",
+                            "compost", "electronics recycling", "paint disposal"),
     "heating-and-electric-help": ("fuel assistance", "heating", "electric bill", "weatherization"),
     "property-tax-abatement": ("property tax", "abatement", "assessment"),
     "property-tax-relief": ("property tax", "tax relief", "low income"),
