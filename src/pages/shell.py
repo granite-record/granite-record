@@ -67,6 +67,10 @@ NEEDS = {
     "og_image": '<meta property="og:image" content="https://graniterecord.org/og-bill.png">',
     "og_alt": '<meta property="og:image:alt" content="Granite Record: bills, votes and hearings">',
     "tw_image": '<meta name="twitter:image" content="https://graniterecord.org/og-bill.png">',
+    # The bill search's row and the frame of its filter column, written shut
+    # on a page that is not a list of bills (page(), NOT A LIST OF BILLS).
+    "searchrow": '<div class="searchrow" role="search" aria-label="Search bills">',
+    "shell": '<div class="shell">',
 }
 
 # Every element app.js binds to on load.
@@ -612,6 +616,18 @@ def page(t, *, path, title, description, base, globals=None, noscript="",
     out = out.replace(NEEDS["tw_image"], f'<meta name="twitter:image" content="{img}">', 1)
     out = out.replace(NEEDS["og_alt"], f'<meta property="og:image:alt" content="'
                       f'{E(og_alt or (BRAND if og_image else chrome.card()[1]))}">', 1)
+    # NOT A LIST OF BILLS, FROM THE FIRST PAINT (the phone audit of 25 October
+    # 2026). app.js takes the bill search's row and its filter column down the
+    # moment it runs (WHAT THIS PAGE IS), but a phone paints the page before
+    # it has revalidated and compiled the script, and the row and "Filter by
+    # topic..." stood there for that moment on every visit. A page whose
+    # record is in its HTML, and a member's or a committee's, is written
+    # without them; a bill's own page keeps the box and loses the filters.
+    g = globals or {}
+    if g.get("GR_STATIC") or g.get("GR_STANDALONE"):
+        out = out.replace(NEEDS["shell"], '<div class="shell nofacets">', 1)
+        if not g.get("GR_BILL"):
+            out = out.replace(NEEDS["searchrow"], NEEDS["searchrow"][:-1] + " hidden>", 1)
     # ONE TITLE PER PAGE. head starts with the viewport meta and adds a
     # <title> after it, so the template's own title survived the substitution
     # and every one of the 34,152 generated pages carried two of them -- the

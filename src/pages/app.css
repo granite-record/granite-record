@@ -1971,8 +1971,9 @@ color:var(--pine);margin:0 0 var(--sp-3)}
    a member's and a committee's page say to a reader that runs no scripts --
    most AI crawlers, a text browser, scripts turned off (shell.page's static).
    Hidden once the head's inline script has set html.js, so a reader with
-   scripts sees only the page app.js draws, never this painted first. */
-html.js .static-rec{display:none}
+   scripts sees only the page app.js draws, never this painted first -- unless
+   that page could not load, when app.js shows this instead (plainRecord). */
+html.js .static-rec:not(.shown){display:none}
 .static-rec{max-width:70ch;margin:0 0 var(--sp-8);font:400 var(--t-ui)/1.55 var(--sans);color:var(--ink)}
 .static-rec .sx-name{font:600 var(--t-lead)/1.3 var(--sans);color:var(--ink-2);margin:0}
 .static-rec .sx-title{font:400 1.5rem/1.3 var(--serif);margin:var(--sp-2) 0 var(--sp-5)}
