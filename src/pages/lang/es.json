@@ -2124,14 +2124,29 @@
    "es": "Aid to the Permanently and Totally Disabled (Departamento de Salud y Servicios Humanos)",
    "state": "draft"
   },
+  "guide.disability-help.any-new-hampshire-resident-with-a": {
+   "en": "Any New Hampshire resident with a disability may qualify, whether looking for a first job or wanting to keep working after a disability. Its help includes career counseling, job training, help finding a job, and assistive technology. To apply, fill in the online referral form on its page.",
+   "es": "Cualquier residente de New Hampshire con una discapacidad puede reunir los requisitos, ya sea que busque su primer empleo o quiera seguir trabajando después de una discapacidad. Su ayuda incluye orientación profesional, capacitación laboral, ayuda para encontrar empleo y tecnología de asistencia. Para presentar una solicitud, llene el formulario de remisión en línea de su página.",
+   "state": "draft"
+  },
   "guide.disability-help.apply-as-soon-as-you-can": {
-   "en": "Apply as soon as you can: online, by calling 1-800-772-1213, or at a local office. Social Security&rsquo;s pages say what to have ready.",
-   "es": "Solicítelos lo antes posible: en línea, llamando al 1-800-772-1213 o en una oficina local. Las páginas del Seguro Social dicen qué debe tener a mano.",
+   "en": "Apply as soon as you can, online on Social Security&rsquo;s Apply page, or call 1-800-772-1213 for an appointment.",
+   "es": "Solicítelos lo antes posible, en línea en la página de solicitudes del Seguro Social, o llame al 1-800-772-1213 para pedir una cita.",
+   "state": "draft"
+  },
+  "guide.disability-help.apply-for-benefits-social-security": {
+   "en": "Apply for benefits (Social Security)",
+   "es": "Solicitar beneficios (Seguro Social)",
    "state": "draft"
   },
   "guide.disability-help.apply-for-either-through-nh-easy": {
-   "en": "Apply for either through NH Easy, or at a Department of Health and Human Services District Office.",
-   "es": "Solicite cualquiera de los dos a través de NH Easy, o en una oficina de distrito del Departamento de Salud y Servicios Humanos.",
+   "en": "Apply for either through NH Easy, or at a Department of Health and Human Services District Office, where a worker helps you through the application interview.",
+   "es": "Solicite cualquiera de los dos a través de NH Easy, o en una oficina de distrito del Departamento de Salud y Servicios Humanos, donde un empleado le ayuda con la entrevista de solicitud.",
+   "state": "draft"
+  },
+  "guide.disability-help.apply-for-social-security-benefits": {
+   "en": "Apply for Social Security Benefits (Social Security Administration)",
+   "es": "Solicitar beneficios del Seguro Social (Administración del Seguro Social)",
    "state": "draft"
   },
   "guide.disability-help.apply-for-vocational-rehabilitation": {
@@ -2182,16 +2197,6 @@
   "guide.disability-help.developmental-services-department-of": {
    "en": "Developmental Services (Department of Health and Human Services)",
    "es": "Servicios del desarrollo (Departamento de Salud y Servicios Humanos)",
-   "state": "draft"
-  },
-  "guide.disability-help.disability-benefits-social-security": {
-   "en": "Disability benefits (Social Security)",
-   "es": "Beneficios por discapacidad (Seguro Social)",
-   "state": "draft"
-  },
-  "guide.disability-help.disability-benefits-social-security-2": {
-   "en": "Disability Benefits (Social Security Administration)",
-   "es": "Beneficios por discapacidad (Administración del Seguro Social)",
    "state": "draft"
   },
   "guide.disability-help.for-a-child-from-birth-up": {
@@ -2319,9 +2324,9 @@
    "es": "<b>SSDI</b> (Seguro Social por Incapacidad) es para quienes han trabajado lo suficiente, y pagado impuestos del Seguro Social, para estar asegurados. Los beneficios empiezan después de un período de espera de 5 meses de discapacidad. Después de 24 meses de beneficios por discapacidad, recibe Medicare automáticamente.",
    "state": "draft"
   },
-  "guide.disability-help.ssi-social-security": {
-   "en": "SSI (Social Security)",
-   "es": "SSI (Seguro Social)",
+  "guide.disability-help.ssi-also-counts-what-you-own": {
+   "en": "SSI also counts what you own, such as money in the bank and vehicles, up to a limit. Social Security&rsquo;s Who Can Get SSI page gives the income and resource limits.",
+   "es": "El SSI también cuenta lo que usted posee, como el dinero en el banco y los vehículos, hasta un límite. La página del Seguro Social sobre quién puede recibir el SSI da los límites de ingresos y de recursos.",
    "state": "draft"
   },
   "guide.disability-help.ssi-supplemental-security-income-is-for": {
@@ -2329,14 +2334,9 @@
    "es": "<b>SSI</b> (Seguridad de Ingreso Suplementario) es para personas con discapacidad, ciegas o de 65 años o más, cuyos ingresos y ahorros están por debajo de sus límites.",
    "state": "draft"
   },
-  "guide.disability-help.supplemental-security-income-social": {
-   "en": "Supplemental Security Income (Social Security Administration)",
-   "es": "Seguridad de Ingreso Suplementario (Administración del Seguro Social)",
-   "state": "draft"
-  },
   "guide.disability-help.the-department-of-educations-bureau-of": {
-   "en": "The Department of Education&rsquo;s <b>Bureau of Vocational Rehabilitation</b> helps people with disabilities prepare for, find and keep a job, under the federal vocational rehabilitation program. Its independent living program helps people with disabilities, and older people who are blind, live more independently. Its page says how to apply.",
-   "es": "La <b>Oficina de Rehabilitación Vocacional</b> (Bureau of Vocational Rehabilitation) del Departamento de Educación ayuda a las personas con discapacidad a prepararse para un empleo, conseguirlo y conservarlo, dentro del programa federal de rehabilitación vocacional. Su programa de vida independiente ayuda a las personas con discapacidad, y a las personas mayores ciegas, a vivir con más independencia. Su página explica cómo presentar una solicitud.",
+   "en": "The Department of Education&rsquo;s <b>Bureau of Vocational Rehabilitation</b> helps people with disabilities prepare for, find and keep a job, under the federal vocational rehabilitation program. Its independent living program helps people with disabilities, and older people who are blind, live more independently.",
+   "es": "La <b>Oficina de Rehabilitación Vocacional</b> (Bureau of Vocational Rehabilitation) del Departamento de Educación ayuda a las personas con discapacidad a prepararse para un empleo, conseguirlo y conservarlo, dentro del programa federal de rehabilitación vocacional. Su programa de vida independiente ayuda a las personas con discapacidad, y a las personas mayores ciegas, a vivir con más independencia.",
    "state": "draft"
   },
   "guide.disability-help.the-state-you-can-ask-for": {
@@ -2367,6 +2367,16 @@
   "guide.disability-help.what-do-you-need": {
    "en": "What do you need?",
    "es": "¿Qué necesita?",
+   "state": "draft"
+  },
+  "guide.disability-help.who-can-get-ssi-social-security": {
+   "en": "Who can get SSI (Social Security)",
+   "es": "Quién puede recibir el SSI (Seguro Social)",
+   "state": "draft"
+  },
+  "guide.disability-help.who-can-get-ssi-social-security-2": {
+   "en": "Who Can Get SSI (Social Security Administration)",
+   "es": "Quién puede recibir el SSI (Administración del Seguro Social)",
    "state": "draft"
   },
   "guide.disability-help.who-is-entitled-to-disability-benefits": {
@@ -4447,18 +4457,18 @@
    "state": "draft"
   },
   "guide.medicare-and-social-security.a-my-social-security-account-lets": {
-   "en": "A <b>my Social Security</b> account lets you see your benefits and make changes online, as Social Security&rsquo;s page lists. Once you have your Medicare card, you can also make a Medicare account on Medicare.gov with your Medicare Number.",
-   "es": "Una cuenta <b>my Social Security</b> le permite ver sus beneficios y hacer cambios en línea, como lo indica la página del Seguro Social. Cuando tenga su tarjeta de Medicare, también puede crear una cuenta de Medicare en Medicare.gov con su número de Medicare.",
+   "en": "A <b>my Social Security</b> account lets you change your address or direct deposit, print proof of your benefits or a tax form, request a replacement Social Security card, and see your Social Security Statement and earnings record, without a call or a visit. You create it through Login.gov or ID.me, with an email address, a government-issued photo ID and a phone. Once you have your Medicare card, you can also make a Medicare account on Medicare.gov with your Medicare Number.",
+   "es": "Una cuenta <b>my Social Security</b> le permite cambiar su dirección o su depósito directo, imprimir una prueba de sus beneficios o un formulario de impuestos, pedir una tarjeta de Seguro Social de reemplazo y ver su Estado de Cuenta del Seguro Social y su historial de ganancias, sin llamar ni ir a una oficina. Se crea a través de Login.gov o ID.me, con una dirección de correo electrónico, una identificación con foto emitida por el gobierno y un teléfono. Cuando tenga su tarjeta de Medicare, también puede crear una cuenta de Medicare en Medicare.gov con su número de Medicare.",
    "state": "draft"
   },
-  "guide.medicare-and-social-security.apply-for-retirement-benefits-social": {
-   "en": "Apply for retirement benefits (Social Security)",
-   "es": "Solicitar los beneficios de jubilación (Seguro Social)",
+  "guide.medicare-and-social-security.apply-for-benefits-social-security": {
+   "en": "Apply for benefits (Social Security)",
+   "es": "Solicitar beneficios (Seguro Social)",
    "state": "draft"
   },
-  "guide.medicare-and-social-security.apply-for-retirement-benefits-social-2": {
-   "en": "Apply for Retirement Benefits (Social Security Administration)",
-   "es": "Solicitar los beneficios de jubilación (Administración del Seguro Social)",
+  "guide.medicare-and-social-security.apply-for-social-security-benefits": {
+   "en": "Apply for Social Security Benefits (Social Security Administration)",
+   "es": "Solicitar beneficios del Seguro Social (Administración del Seguro Social)",
    "state": "draft"
   },
   "guide.medicare-and-social-security.apply-for-social-security-retirement": {
@@ -4582,8 +4592,8 @@
    "state": "draft"
   },
   "guide.medicare-and-social-security.medicare-part-a-and-part-b": {
-   "en": "Medicare Part A and Part B are signed up for through the Social Security Administration, not through Medicare. The easiest way is online, with a my Social Security account. You can also call Social Security at 1-800-772-1213 or visit a local office.",
-   "es": "La inscripción en la Parte A y la Parte B de Medicare se hace a través de la Administración del Seguro Social, no a través de Medicare. La forma más fácil es en línea, con una cuenta my Social Security. También puede llamar al Seguro Social al 1-800-772-1213 o ir a una oficina local.",
+   "en": "Medicare Part A and Part B are signed up for through the Social Security Administration, not through Medicare. The easiest way is online, with a my Social Security account, if you are 65 or older. You can also call Social Security at 1-800-772-1213, Monday through Friday, 8 a.m. to 7 p.m. (TTY 1-800-325-0778), and make an appointment. If a job&rsquo;s group health plan covers you, you can delay Part B.",
+   "es": "La inscripción en la Parte A y la Parte B de Medicare se hace a través de la Administración del Seguro Social, no a través de Medicare. La forma más fácil es en línea, con una cuenta my Social Security, si tiene 65 años o más. También puede llamar al Seguro Social al 1-800-772-1213, de lunes a viernes, de 8 a.m. a 7 p.m. (TTY 1-800-325-0778), y pedir una cita. Si lo cubre el plan de salud colectivo de un empleo, puede aplazar la Parte B.",
    "state": "draft"
   },
   "guide.medicare-and-social-security.medicare-savings-programs-are-run-by": {
@@ -4671,6 +4681,11 @@
    "es": "Cómo inscribirse en Medicare y el Seguro Social, y obtener ayuda con los costos",
    "state": "draft"
   },
+  "guide.medicare-and-social-security.under-65-you-may-get-medicare": {
+   "en": "Under 65, you may get Medicare if you receive Social Security disability benefits or have permanent kidney failure. SSI alone does not qualify you.",
+   "es": "Si tiene menos de 65 años, puede recibir Medicare si recibe beneficios por discapacidad del Seguro Social o tiene insuficiencia renal permanente. El SSI por sí solo no le permite reunir los requisitos.",
+   "state": "draft"
+  },
   "guide.medicare-and-social-security.when-am-i-entitled-to-old": {
    "en": "When am I entitled to old-age benefits?, 20 CFR 404.310 (federal)",
    "es": "¿Cuándo tengo derecho a los beneficios por vejez?, 20 CFR 404.310 (federal)",
@@ -4707,8 +4722,8 @@
    "state": "draft"
   },
   "guide.medicare-and-social-security.you-can-get-retirement-benefits-from": {
-   "en": "You can get retirement benefits from age 62 if you have worked long enough to qualify, and you must apply for them: they do not start on their own. Apply online, by phone or at a local office. Social Security&rsquo;s page says how far ahead you can apply and what to have ready.",
-   "es": "Puede recibir beneficios de jubilación desde los 62 años si ha trabajado lo suficiente para reunir los requisitos, y tiene que solicitarlos: no empiezan por sí solos. Solicítelos en línea, por teléfono o en una oficina local. La página del Seguro Social dice con cuánta anticipación puede solicitarlos y qué debe tener a mano.",
+   "en": "You can get retirement benefits from age 62 if you have worked and paid Social Security taxes for at least 10 years, and you must apply for them: they do not start on their own. Apply online on Social Security&rsquo;s Apply page, which also lets you enroll in Medicare, or call 1-800-772-1213.",
+   "es": "Puede recibir beneficios de jubilación desde los 62 años si ha trabajado y pagado impuestos del Seguro Social durante al menos 10 años, y tiene que solicitarlos: no empiezan por sí solos. Solicítelos en línea en la página de solicitudes del Seguro Social, que también le permite inscribirse en Medicare, o llame al 1-800-772-1213.",
    "state": "draft"
   },
   "guide.medicare-and-social-security.you-sign-up-for-medicare-through": {
@@ -4916,14 +4931,9 @@
    "es": "Un niño menor de 16 años (Departamento de Estado)",
    "state": "draft"
   },
-  "guide.passport.a-child-under-16-u-s": {
-   "en": "A Child Under 16 (U.S. Department of State)",
-   "es": "Un niño menor de 16 años (Departamento de Estado de EE. UU.)",
-   "state": "draft"
-  },
   "guide.passport.a-first-passport-a-passport-for": {
-   "en": "A first passport, a passport for a child under 16, and one for anyone who cannot renew are applied for in person. Fill out Form DS-11 on the State Department&rsquo;s site and print it, but <b>do not sign it</b>: you sign it in front of the acceptance agent, under oath.",
-   "es": "El primer pasaporte, el pasaporte de un niño menor de 16 años y el de quien no puede renovarlo se solicitan en persona. Llene el formulario DS-11 en el sitio del Departamento de Estado e imprímalo, pero <b>no lo firme</b>: lo firma delante del agente de aceptación, bajo juramento.",
+   "en": "A first passport, a passport for a child under 16, and one for anyone who cannot renew are applied for in person. Fill out Form DS-11 with the State Department&rsquo;s form filler and print it on one side of the paper, but <b>do not sign it</b>: you sign it in front of the acceptance agent, under oath.",
+   "es": "El primer pasaporte, el pasaporte de un niño menor de 16 años y el de quien no puede renovarlo se solicitan en persona. Llene el formulario DS-11 con la herramienta para llenar formularios del Departamento de Estado e imprímalo por un solo lado del papel, pero <b>no lo firme</b>: lo firma delante del agente de aceptación, bajo juramento.",
    "state": "draft"
   },
   "guide.passport.a-passport-for-a-child-under": {
@@ -4932,18 +4942,18 @@
    "state": "draft"
   },
   "guide.passport.a-photo-id-such-as-a": {
-   "en": "<b>A photo ID</b>, such as a driver&rsquo;s license.",
-   "es": "<b>Una identificación con foto</b>, como una licencia de conducir.",
+   "en": "<b>A photo ID</b>, such as a driver&rsquo;s license. If it is from another state, bring a second photo ID.",
+   "es": "<b>Una identificación con foto</b>, como una licencia de conducir. Si es de otro estado, lleve una segunda identificación con foto.",
    "state": "draft"
   },
   "guide.passport.a-photo-that-meets-the-state": {
-   "en": "<b>A photo</b> that meets the State Department&rsquo;s rules. Many post offices take one for a fee.",
-   "es": "<b>Una foto</b> que cumpla las reglas del Departamento de Estado. Muchas oficinas postales la toman por una cuota.",
+   "en": "<b>A photo</b> that meets the State Department&rsquo;s rules. Do not staple it to the form. Many post offices take one for a fee.",
+   "es": "<b>Una foto</b> que cumpla las reglas del Departamento de Estado. No la engrape al formulario. Muchas oficinas postales la toman por una cuota.",
    "state": "draft"
   },
   "guide.passport.a-photocopy-of-the-front-and": {
-   "en": "<b>A photocopy of the front and back</b> of both the citizenship document and the ID.",
-   "es": "<b>Una fotocopia del frente y del reverso</b> del documento de ciudadanía y de la identificación.",
+   "en": "<b>A photocopy of the front and back</b> of both the citizenship document and the ID, on one side of plain letter-size paper.",
+   "es": "<b>Una fotocopia del frente y del reverso</b> del documento de ciudadanía y de la identificación, por un solo lado de papel tamaño carta.",
    "state": "draft"
   },
   "guide.passport.a-renewal-is-never-done-in": {
@@ -4956,19 +4966,24 @@
    "es": "El pasaporte de EE. UU. lo expide el Departamento de Estado de EE. UU., no New Hampshire. Si es su primer pasaporte, si tiene menos de 16 años o si no puede renovarlo, lo solicita en persona con el formulario DS-11 en un centro de aceptación, como una oficina postal, con cita. Lleve una prueba de ciudadanía de EE. UU., como un acta de nacimiento certificada, una identificación con foto, una fotocopia de cada una y una foto. Si su último pasaporte se expidió por 10 años, dentro de los últimos 15 años, por lo general puede renovarlo por correo o en línea.",
    "state": "draft"
   },
+  "guide.passport.apply-for-a-child-s-passport": {
+   "en": "Apply for a Child's Passport Under 16 (U.S. Department of State)",
+   "es": "Solicitar el pasaporte de un niño menor de 16 años (Departamento de Estado de EE. UU.)",
+   "state": "draft"
+  },
+  "guide.passport.apply-for-an-adult-passport-state": {
+   "en": "Apply for an adult passport (State Department)",
+   "es": "Solicitar un pasaporte de adulto (Departamento de Estado)",
+   "state": "draft"
+  },
+  "guide.passport.apply-for-your-adult-passport-u": {
+   "en": "Apply for Your Adult Passport (U.S. Department of State)",
+   "es": "Solicitar su pasaporte de adulto (Departamento de Estado de EE. UU.)",
+   "state": "draft"
+  },
   "guide.passport.apply-in-person-on-form-ds": {
    "en": "Apply in person on Form DS-11, at a post office or another acceptance facility.",
    "es": "Solicítelo en persona con el formulario DS-11, en una oficina postal u otro centro de aceptación.",
-   "state": "draft"
-  },
-  "guide.passport.apply-in-person-state-department": {
-   "en": "Apply in person (State Department)",
-   "es": "Solicitarlo en persona (Departamento de Estado)",
-   "state": "draft"
-  },
-  "guide.passport.apply-in-person-u-s-department": {
-   "en": "Apply in Person (U.S. Department of State)",
-   "es": "Solicitarlo en persona (Departamento de Estado de EE. UU.)",
    "state": "draft"
   },
   "guide.passport.applying-in-person-gather-proof-of": {
@@ -4981,11 +4996,6 @@
    "es": "Reservar en una oficina postal (USPS)",
    "state": "draft"
   },
-  "guide.passport.check-the-state-departments-current": {
-   "en": "Check the State Department&rsquo;s current processing times before you apply, and pay for expedited service if you need it sooner. If your trip abroad is very soon, you may be able to get an appointment at a passport agency, and New Hampshire has one: the National Passport Center in Portsmouth, which takes appointments only. Its page says how soon you must be traveling to qualify.",
-   "es": "Antes de presentar la solicitud, consulte los tiempos de tramitación vigentes del Departamento de Estado, y pague el servicio acelerado si lo necesita antes. Si su viaje al extranjero es muy pronto, quizá pueda obtener una cita en una agencia de pasaportes, y New Hampshire tiene una: el National Passport Center (Centro Nacional de Pasaportes) en Portsmouth, que atiende solo con cita. Su página dice qué tan pronto debe viajar para reunir los requisitos.",
-   "state": "draft"
-  },
   "guide.passport.check-whether-you-can-renew-instead": {
    "en": "Check whether you can renew instead",
    "es": "Vea si puede renovarlo en lugar de solicitar uno nuevo",
@@ -4996,6 +5006,11 @@
    "es": "La presentación de la solicitud de pasaporte, 22 CFR 51.21 (federal)",
    "state": "draft"
   },
+  "guide.passport.fees-and-how-to-apply-state": {
+   "en": "Fees and how to apply (State Department)",
+   "es": "Cuotas y cómo solicitarlo (Departamento de Estado)",
+   "state": "draft"
+  },
   "guide.passport.fill-out-form-ds-11-and": {
    "en": "Fill out Form DS-11, and do not sign it yet",
    "es": "Llene el formulario DS-11, y no lo firme todavía",
@@ -5004,6 +5019,16 @@
   "guide.passport.gather-your-documents-and-a-photo": {
    "en": "Gather your documents and a photo",
    "es": "Reúna sus documentos y una foto",
+   "state": "draft"
+  },
+  "guide.passport.get-your-passport-fast-state-department": {
+   "en": "Get your passport fast (State Department)",
+   "es": "Obtener su pasaporte rápido (Departamento de Estado)",
+   "state": "draft"
+  },
+  "guide.passport.get-your-passport-fast-u-s": {
+   "en": "Get Your Passport Fast (U.S. Department of State)",
+   "es": "Obtener su pasaporte rápido (Departamento de Estado de EE. UU.)",
    "state": "draft"
   },
   "guide.passport.have-you-had-a-u-s": {
@@ -5021,9 +5046,19 @@
    "es": "Cómo obtener una REAL ID",
    "state": "draft"
   },
+  "guide.passport.if-one-parent-cannot-come-that": {
+   "en": "If one parent cannot come, that parent signs the Statement of Consent, Form DS-3053, before a notary, and you bring it, with a photocopy of the ID they showed the notary, within 90 days of its signing. If you alone have custody, bring proof instead, such as a court order granting it, a birth certificate or adoption decree naming only you, or the other parent&rsquo;s death certificate. A child&rsquo;s passport is valid for 5 years; an adult&rsquo;s, for 10.",
+   "es": "Si uno de los padres no puede ir, ese padre o madre firma la Declaración de Consentimiento, formulario DS-3053, ante un notario, y usted la lleva, con una fotocopia de la identificación que mostró al notario, dentro de los 90 días de su firma. Si solo usted tiene la custodia, lleve una prueba en su lugar, como una orden judicial que se la otorgue, un acta de nacimiento o un decreto de adopción que lo nombre solo a usted, o el acta de defunción del otro padre o madre. El pasaporte de un niño vale por 5 años; el de un adulto, por 10.",
+   "state": "draft"
+  },
   "guide.passport.if-you-have-no-birth-certificate": {
-   "en": "If you have no birth certificate that meets the rules, the State Department accepts other early records of your birth instead, such as hospital, baptismal, medical or school records. Its apply-in-person page says what to bring.",
-   "es": "Si no tiene un acta de nacimiento que cumpla las reglas, el Departamento de Estado acepta en su lugar otros registros tempranos de su nacimiento, como registros del hospital, de bautismo, médicos o escolares. Su página para solicitarlo en persona dice qué llevar.",
+   "en": "If you have no birth certificate that meets the rules, the State Department accepts other early records of your birth instead, such as hospital, baptismal, medical or school records. Its adult passport page says what to bring.",
+   "es": "Si no tiene un acta de nacimiento que cumpla las reglas, el Departamento de Estado acepta en su lugar otros registros tempranos de su nacimiento, como registros del hospital, de bautismo, médicos o escolares. Su página del pasaporte de adulto dice qué llevar.",
+   "state": "draft"
+  },
+  "guide.passport.if-you-travel-abroad-in-less": {
+   "en": "If you travel abroad in less than 3 weeks, make an appointment at a passport agency or center once you are within 14 days of your trip, or 28 days if you need a foreign visa. New Hampshire has one: the <b>National Passport Center in Portsmouth</b>. Appointments are free, through the State Department&rsquo;s online appointment system; if you have already applied, call 1-877-487-2778. Anyone who asks you to pay for an appointment is not the State Department.",
+   "es": "Si viaja al extranjero en menos de 3 semanas, pida una cita en una agencia o centro de pasaportes cuando falten 14 días o menos para su viaje, o 28 días si necesita una visa extranjera. New Hampshire tiene uno: el <b>Centro Nacional de Pasaportes en Portsmouth</b> (National Passport Center). Las citas son gratuitas, a través del sistema de citas en línea del Departamento de Estado; si ya presentó la solicitud, llame al 1-877-487-2778. Quien le pida pagar por una cita no es el Departamento de Estado.",
    "state": "draft"
   },
   "guide.passport.if-you-travel-soon": {
@@ -5046,14 +5081,19 @@
    "es": "Pida una cita, y firme el formulario solo cuando el agente se lo pida.",
    "state": "draft"
   },
+  "guide.passport.make-an-appointment-at-a-passport": {
+   "en": "Make an appointment at a passport agency",
+   "es": "Pedir una cita en una agencia de pasaportes",
+   "state": "draft"
+  },
+  "guide.passport.make-an-appointment-at-a-passport-2": {
+   "en": "Make an Appointment at a Passport Agency (U.S. Department of State)",
+   "es": "Pedir una cita en una agencia de pasaportes (Departamento de Estado de EE. UU.)",
+   "state": "draft"
+  },
   "guide.passport.minors-22-cfr-51-28-federal": {
    "en": "Minors, 22 CFR 51.28 (federal)",
    "es": "Los menores, 22 CFR 51.28 (federal)",
-   "state": "draft"
-  },
-  "guide.passport.national-passport-center-u-s-department": {
-   "en": "National Passport Center (U.S. Department of State)",
-   "es": "Centro Nacional de Pasaportes (Departamento de Estado de EE. UU.)",
    "state": "draft"
   },
   "guide.passport.no-or-it-is-for-a": {
@@ -5064,16 +5104,6 @@
   "guide.passport.passport-agents-and-acceptance-agents-22": {
    "en": "Passport agents and acceptance agents, 22 CFR 51.22 (federal)",
    "es": "Los agentes de pasaportes y los agentes de aceptación, 22 CFR 51.22 (federal)",
-   "state": "draft"
-  },
-  "guide.passport.passport-fees-state-department": {
-   "en": "Passport fees (State Department)",
-   "es": "Cuotas del pasaporte (Departamento de Estado)",
-   "state": "draft"
-  },
-  "guide.passport.passport-fees-u-s-department-of": {
-   "en": "Passport Fees (U.S. Department of State)",
-   "es": "Cuotas del pasaporte (Departamento de Estado de EE. UU.)",
    "state": "draft"
   },
   "guide.passport.passports-u-s-postal-service": {
@@ -5091,44 +5121,34 @@
    "es": "Las personas nacidas en Estados Unidos, 22 CFR 51.42 (federal)",
    "state": "draft"
   },
-  "guide.passport.processing-times-state-department": {
-   "en": "Processing times (State Department)",
-   "es": "Tiempos de tramitación (Departamento de Estado)",
-   "state": "draft"
-  },
-  "guide.passport.processing-times-u-s-department-of": {
-   "en": "Processing Times (U.S. Department of State)",
-   "es": "Tiempos de tramitación (Departamento de Estado de EE. UU.)",
-   "state": "draft"
-  },
   "guide.passport.proof-of-u-s-citizenship-if": {
-   "en": "<b>Proof of U.S. citizenship.</b> If you were born in the United States, this is generally a certified birth certificate showing your full name, the date and place of your birth and your parents&rsquo; full names, with the registrar&rsquo;s signature and seal. If you were born in New Hampshire, your town or city clerk can issue one (the guide linked at the end of this page says how).",
-   "es": "<b>Prueba de ciudadanía de EE. UU.</b> Si nació en Estados Unidos, por lo general es un acta de nacimiento certificada que muestre su nombre completo, la fecha y el lugar de su nacimiento y los nombres completos de sus padres, con la firma y el sello del registrador. Si nació en New Hampshire, el secretario de su municipio o ciudad puede expedirla (la guía enlazada al final de esta página dice cómo).",
+   "en": "<b>Proof of U.S. citizenship.</b> If you were born in the United States, this is generally a certified birth certificate showing your full name, the date and place of your birth and your parents&rsquo; full names, with the registrar&rsquo;s signature and seal. If you were born in New Hampshire, your town or city clerk can issue one (the guide linked at the end of this page says how). It must be on paper: a digital or mobile birth certificate is not accepted. A full-validity U.S. passport, a Consular Report of Birth Abroad, or a certificate of naturalization or citizenship also proves it.",
+   "es": "<b>Prueba de ciudadanía de EE. UU.</b> Si nació en Estados Unidos, por lo general es un acta de nacimiento certificada que muestre su nombre completo, la fecha y el lugar de su nacimiento y los nombres completos de sus padres, con la firma y el sello del registrador. Si nació en New Hampshire, el secretario de su municipio o ciudad puede expedirla (la guía enlazada al final de esta página dice cómo). Tiene que ser en papel: no se acepta un acta de nacimiento digital o en el celular. También la prueban un pasaporte de EE. UU. de validez completa, un Informe Consular de Nacimiento en el Extranjero o un certificado de naturalización o de ciudadanía.",
    "state": "draft"
   },
-  "guide.passport.renew-a-passport-state-department": {
-   "en": "Renew a passport (State Department)",
-   "es": "Renovar un pasaporte (Departamento de Estado)",
+  "guide.passport.renew-online-state-department": {
+   "en": "Renew online (State Department)",
+   "es": "Renovar en línea (Departamento de Estado)",
    "state": "draft"
   },
-  "guide.passport.renew-a-passport-u-s-department": {
-   "en": "Renew a Passport (U.S. Department of State)",
-   "es": "Renovar un pasaporte (Departamento de Estado de EE. UU.)",
+  "guide.passport.renew-your-passport-online-u-s": {
+   "en": "Renew Your Passport Online (U.S. Department of State)",
+   "es": "Renovar su pasaporte en línea (Departamento de Estado de EE. UU.)",
+   "state": "draft"
+  },
+  "guide.passport.routine-processing-takes-4-to-6": {
+   "en": "Routine processing takes 4 to 6 weeks, and expedited service, for an extra fee, 2 to 3 weeks. Neither counts the mail, which can add up to 2 weeks each way; you can pay for faster shipping both ways. The State Department&rsquo;s page has the current times.",
+   "es": "El trámite ordinario tarda de 4 a 6 semanas, y el servicio acelerado, por una cuota adicional, de 2 a 3 semanas. Ninguno cuenta el correo, que puede sumar hasta 2 semanas en cada sentido; puede pagar por un envío más rápido de ida y de vuelta. La página del Departamento de Estado tiene los plazos vigentes.",
    "state": "draft"
   },
   "guide.passport.the-child-goes-to-the-appointment": {
-   "en": "The child goes to the appointment. Both parents or guardians sign the application, whether it is the child&rsquo;s first passport or not. If only one can come, that parent brings a signed and notarized statement of consent from the other, or proof of sole custody, such as a court order or a birth certificate that names only that parent. A child&rsquo;s passport is valid for 5 years; an adult&rsquo;s, for 10.",
-   "es": "El niño va a la cita. Ambos padres o tutores firman la solicitud, sea o no el primer pasaporte del niño. Si solo uno puede ir, ese padre o madre lleva una declaración de consentimiento del otro, firmada y notariada, o una prueba de custodia exclusiva, como una orden judicial o un acta de nacimiento que nombre solo a ese padre o madre. El pasaporte de un niño vale por 5 años; el de un adulto, por 10.",
-   "state": "draft"
-  },
-  "guide.passport.the-national-passport-center-portsmouth": {
-   "en": "The National Passport Center, Portsmouth",
-   "es": "El Centro Nacional de Pasaportes, Portsmouth",
+   "en": "The child goes to the appointment, with both parents or guardians. A child&rsquo;s passport cannot be renewed: you apply in person each time. Bring the child&rsquo;s proof of citizenship, which, if it is a U.S. birth certificate, also shows who the parents are, and each parent&rsquo;s photo ID, with photocopies.",
+   "es": "El niño va a la cita, con ambos padres o tutores. El pasaporte de un niño no se puede renovar: se solicita en persona cada vez. Lleve la prueba de ciudadanía del niño, que, si es un acta de nacimiento de EE. UU., también muestra quiénes son los padres, y la identificación con foto de cada padre o madre, con fotocopias.",
    "state": "draft"
   },
   "guide.passport.thousands-of-post-offices-accept-first": {
-   "en": "Thousands of post offices accept first-time applications, by appointment: book online, at a post office&rsquo;s self-service kiosk, or at the counter. Some offer limited walk-in hours. The clerks of some courts accept applications too. The State Department&rsquo;s search finds every acceptance facility near you.",
-   "es": "Miles de oficinas postales aceptan solicitudes de primera vez, con cita: resérvela en línea, en el quiosco de autoservicio de una oficina postal o en el mostrador. Algunas ofrecen un horario limitado sin cita. Los secretarios de algunos tribunales también aceptan solicitudes. El buscador del Departamento de Estado encuentra todos los centros de aceptación cercanos.",
+   "en": "Thousands of post offices accept first-time applications, by appointment: book online, at a post office&rsquo;s self-service kiosk, or at the counter. Some offer limited walk-in hours. Libraries, local government offices and the clerks of some courts accept applications too; ask the facility whether you need an appointment.",
+   "es": "Miles de oficinas postales aceptan solicitudes de primera vez, con cita: resérvela en línea, en el quiosco de autoservicio de una oficina postal o en el mostrador. Algunas ofrecen un horario limitado sin cita. Las bibliotecas, las oficinas del gobierno local y los secretarios de algunos tribunales también aceptan solicitudes; pregunte en el centro si necesita una cita.",
    "state": "draft"
   },
   "guide.passport.title": {
@@ -5136,19 +5156,14 @@
    "es": "Cómo obtener un pasaporte de EE. UU.",
    "state": "draft"
   },
+  "guide.passport.unpaid-child-support-over-the-state": {
+   "en": "Unpaid child support over the State Department&rsquo;s limit, or seriously delinquent federal tax debt, will delay or stop an application: settle it first.",
+   "es": "Una deuda de manutención de hijos por encima del límite del Departamento de Estado, o una deuda de impuestos federales gravemente atrasada, retrasará o detendrá la solicitud: arréglela primero.",
+   "state": "draft"
+  },
   "guide.passport.validity-of-passports-22-cfr-51": {
    "en": "Validity of passports, 22 CFR 51.4 (federal)",
    "es": "La validez de los pasaportes, 22 CFR 51.4 (federal)",
-   "state": "draft"
-  },
-  "guide.passport.where-to-apply-state-department": {
-   "en": "Where to apply (State Department)",
-   "es": "Dónde presentar la solicitud (Departamento de Estado)",
-   "state": "draft"
-  },
-  "guide.passport.where-to-apply-u-s-department": {
-   "en": "Where to Apply (U.S. Department of State)",
-   "es": "Dónde presentar la solicitud (Departamento de Estado de EE. UU.)",
    "state": "draft"
   },
   "guide.passport.yes": {
@@ -5157,8 +5172,13 @@
    "state": "draft"
   },
   "guide.passport.you-can-renew-by-mail-if": {
-   "en": "You can renew by mail if all of these are true: your most recent passport was issued for 10 years, when you were 16 or older; it was issued no more than 15 years ago; and you can send it in with your application. The State Department&rsquo;s renewal page has the form, and says when you can renew online instead.",
-   "es": "Puede renovarlo por correo si se cumple todo esto: su pasaporte más reciente se expidió por 10 años, cuando usted tenía 16 años o más; se expidió hace no más de 15 años; y puede enviarlo junto con su solicitud. La página de renovación del Departamento de Estado tiene el formulario y dice cuándo puede renovarlo en línea.",
+   "en": "You can renew by mail if all of these are true: your most recent passport was issued for 10 years, when you were 16 or older; it was issued no more than 15 years ago; and you can send it in with your application.",
+   "es": "Puede renovarlo por correo si se cumple todo esto: su pasaporte más reciente se expidió por 10 años, cuando usted tenía 16 años o más; se expidió hace no más de 15 años; y puede enviarlo junto con su solicitud.",
+   "state": "draft"
+  },
+  "guide.passport.you-can-renew-online-instead-if": {
+   "en": "You can <b>renew online</b> instead if that passport was valid for 10 years and expires within a year or expired less than 5 years ago; you are 25 or older; you are not changing your name or sex; you are not traveling for at least 6 weeks, since an online renewal cannot be expedited; you are in the United States when you apply; and you have the passport, undamaged. You pay by card, and you keep the old passport, which is canceled once you apply. Renew only at the State Department&rsquo;s own site: others that offer to do it for you charge extra and put your information at risk.",
+   "es": "En cambio, puede <b>renovarlo en línea</b> si ese pasaporte valía por 10 años y vence dentro de un año o venció hace menos de 5 años; tiene 25 años o más; no cambia su nombre ni su sexo; no viajará durante al menos 6 semanas, ya que una renovación en línea no se puede acelerar; está en Estados Unidos cuando presenta la solicitud; y tiene el pasaporte, sin daños. Paga con tarjeta, y se queda con el pasaporte anterior, que se cancela en cuanto presenta la solicitud. Renuévelo solo en el sitio del propio Departamento de Estado: otros que ofrecen hacerlo por usted cobran de más y ponen en riesgo su información.",
    "state": "draft"
   },
   "guide.passport.you-can-usually-renew-by-mail": {
@@ -5167,8 +5187,8 @@
    "state": "draft"
   },
   "guide.passport.you-pay-two-separate-fees-the": {
-   "en": "You pay two separate fees. The State Department&rsquo;s fee goes in with your application, by check or money order payable to &ldquo;U.S. Department of State&rdquo;, not by card. The facility&rsquo;s own acceptance fee is paid there, and a post office takes cards. The State Department&rsquo;s fees page has the current amounts.",
-   "es": "Usted paga dos cuotas por separado. La cuota del Departamento de Estado se envía con su solicitud, con cheque o giro postal a nombre de &ldquo;U.S. Department of State&rdquo;, no con tarjeta. La cuota de aceptación del centro se paga allí, y una oficina postal acepta tarjetas. La página de cuotas del Departamento de Estado tiene los montos vigentes.",
+   "en": "You pay two separate fees. The State Department&rsquo;s fee goes in with your application, by check or money order payable to &ldquo;U.S. Department of State&rdquo;, with your name and date of birth in the memo line, not by card. The facility&rsquo;s own acceptance fee is paid there, and a post office takes cards. The State Department&rsquo;s adult passport page lists the current amounts.",
+   "es": "Usted paga dos cuotas por separado. La cuota del Departamento de Estado se envía con su solicitud, con cheque o giro postal a nombre de &ldquo;U.S. Department of State&rdquo;, con su nombre y fecha de nacimiento en la línea del concepto, no con tarjeta. La cuota de aceptación del centro se paga allí, y una oficina postal acepta tarjetas. La página del pasaporte de adulto del Departamento de Estado indica los montos vigentes.",
    "state": "draft"
   },
   "guide.property-tax-abatement.603-legal-aid-lawyer-referral-service": {
@@ -9561,8 +9581,8 @@
    "state": "draft"
   },
   "guide.who-to-contact.if-you-cannot-get-an-answer": {
-   "en": "If you cannot get an answer, the <b>Governor&rsquo;s office</b> takes requests for help from residents, and your <b>Executive Councilor</b>, one of five elected by district, helps residents with state agencies.",
-   "es": "Si no obtiene respuesta, la <b>oficina del Gobernador</b> recibe pedidos de ayuda de los residentes, y su <b>consejero ejecutivo</b> (Executive Councilor), uno de los cinco elegidos por distrito, ayuda a los residentes con las agencias estatales.",
+   "en": "If you cannot get an answer, the <b>Governor&rsquo;s office</b> takes requests for help from residents, and your <b>Executive Councilor</b>, one of five elected by district every two years, serves, in the Council&rsquo;s own words, as an advocate for the people and their eyes and ears in Concord. The Council&rsquo;s office is at (603) 271-3632.",
+   "es": "Si no obtiene respuesta, la <b>oficina del Gobernador</b> recibe pedidos de ayuda de los residentes, y su <b>consejero ejecutivo</b> (Executive Councilor), uno de los cinco elegidos por distrito cada dos años, es, en palabras del propio Consejo, un defensor de la gente y sus ojos y oídos en Concord. La oficina del Consejo atiende en el (603) 271-3632.",
    "state": "draft"
   },
   "guide.who-to-contact.lead": {

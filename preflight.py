@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.702
+# GRANITE_VERSION: 2026-09-04.703
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -63958,6 +63958,50 @@ def _guide_record_passed(BC, BR):
     assert "HB 2" in passed and "HB 1" not in passed, "the passed bill is not under Passed, not yet in effect"
     assert "SB 9" in since and "HB 2" not in since, "a law not yet in effect is listed as having changed it"
     return "ok", "pending, passed and not yet in effect, and past laws each under their own words"
+
+
+@check("build", "every Laws link a guide makes is in lower case, as the Laws pages' addresses "
+                "are and as the check that holds a guide back reads them",
+       needs=("guides", "build_civics"))
+def _guide_laws_lower(G, BC):
+    """The printouts of 25 October 2026: the disability guide's sources named
+    /laws/171-A and /laws/200-C. guide_ready reads a guide's Laws links with
+    LAWS_LINK, which takes lower case only, so it read chapters "171-" and
+    "200-", found neither in the statute table, and would have held the
+    guide back on a night with every claim checked. Every Laws page's address
+    is lower case; every guide's links, in its steps and its sources, must be
+    too."""
+    bad = []
+    for g in G.GUIDES:
+        hrefs = [u for _l, u in g["sources"]] + [u for s_ in g["steps"] for _l, u in s_["actions"]]
+        hrefs += re.findall(r'href="(/laws/[^"]*)"', G.text(g))
+        bad += [f'{g["slug"]}: {u}' for u in hrefs
+                if u.startswith("/laws/") and u.split("#")[0] != u.split("#")[0].lower()]
+        laws = set(BC.LAWS_LINK.findall(G.text(g) + " ".join(f'href="{u}"' for _l, u in g["sources"])))
+        bad += [f'{g["slug"]}: reads chapter {c!r}' for c in laws if c.endswith("-")]
+    assert not bad, "a guide links a Laws page out of lower case: " + "; ".join(bad[:5])
+    return "ok", f"{len(G.GUIDES)} guides, every Laws link lower case"
+
+
+@check("code", "guide_sources names each of its lists once, so no list of pages silently "
+               "replaces another")
+def _guide_sources_keys():
+    """25 October 2026: SOURCES named "medicare_and_disability" twice, and a
+    dict literal keeps only the later, so the Department of Health and Human
+    Services' and the Department of Education's pages in the first were in no
+    list, and every guide citing them would have been held back as citing a
+    page nobody reads. Read off the file's own syntax, since the loaded dict
+    has already lost the evidence."""
+    import ast
+    path = Path("src/fetch/other/guide_sources.py")
+    tree = ast.parse(path.read_text(encoding="utf-8"))
+    twice = []
+    for node in ast.walk(tree):
+        if isinstance(node, ast.Dict):
+            keys = [k.value for k in node.keys if isinstance(k, ast.Constant)]
+            twice += sorted({k for k in keys if keys.count(k) > 1})
+    assert not twice, f"{path} names a list twice: {', '.join(twice)}"
+    return "ok", "every list in guide_sources named once"
 
 
 @check("build", "the Officials page is built in Spanish at /es/officials: its own words, its "
