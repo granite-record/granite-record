@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-08.72
+# GRANITE_VERSION: 2026-09-08.73
 """
 The civics section: a hub and one page per topic, in order.
 
@@ -238,7 +238,37 @@ def _cacr_hurdle(idx, every_narr, term):
     return out
 
 
-def org_day(today):
+def _cacr_hurdle_lang(idx, every_narr, term, lang):
+    """_cacr_hurdle in `lang` (the Learn pages in Spanish, 25 October 2026):
+    the same counts, by the same tests, in the catalog's words."""
+    all_cacrs = [r for r in idx if (r.get("id") or "").startswith("CACR")]
+    if not all_cacrs:
+        return ""
+    through = [r for r in all_cacrs if (r.get("status") or "").startswith("Passed both chambers")]
+    first = min((r.get("term") or "" for r in all_cacrs), default="").split("-")[0]
+    out = (I.say(lang, "learn.cacr.since", "Of the {n} CACRs filed since {year},", n=f"{len(all_cacrs):,}",
+                 year=first) + " "
+           + (I.say(lang, "learn.cacr.through_one", "one passed both chambers.") if len(through) == 1
+              else I.say(lang, "learn.cacr.through", "{n} passed both chambers.", n=f"{len(through):,}")
+              if through else I.say(lang, "learn.cacr.none_through", "none passed both chambers.")))
+    out += " " + I.say(lang, "learn.cacr.counted", "Three fifths is counted against the members in "
+                       "office rather than against those voting, so a member who does not vote "
+                       "counts against it, and a CACR can win even three fifths of those voting and "
+                       "still fail.")
+    narr = every_narr.get(term, {})
+    short = [r for r in all_cacrs if r.get("term") == term
+             and _fell_short(narr.get(r.get("id")), r.get("status"))]
+    if short:
+        out += " " + (I.say(lang, "learn.cacr.short_one", "In the {term} term, one CACR won a majority "
+                            "of those voting in the House and still fell short.",
+                            term=term.replace("-", "&ndash;")) if len(short) == 1 else
+                      I.say(lang, "learn.cacr.short", "In the {term} term, {n} CACRs won a majority of "
+                            "those voting in the House and still fell short.",
+                            term=term.replace("-", "&ndash;"), n=f"{len(short):,}"))
+    return out
+
+
+def org_day(today, lang=I.DEFAULT):
     """"The next is December 2, 2026, for the legislature elected on November
     3." -- the next Organization Day on or after `today`, and the election
     before it (the person, approved 17 October 2026: the General Court page
@@ -251,6 +281,9 @@ def org_day(today):
     vote = datetime.date(y, 11, 2)
     while vote.weekday() != 1:
         vote += datetime.timedelta(days=1)
+    if lang != I.DEFAULT:
+        return I.say(lang, "learn.org_day", "The next is {day}, for the legislature elected on "
+                     "{vote}.", day=C.date_words(od, "full", lang), vote=C.date_words(vote, "full", lang))
     return (f"The next is {S.date_words(od, 'full')}, for the legislature elected on "
             f"{S.date_words(vote, 'full')}.")
 
@@ -375,6 +408,115 @@ def _cacr_parts(cacrs, narr, term):
         items.append((f"{n_(by[s])} {'is' if by[s] == 1 else 'are'} listed as “{s}”",
                       f"Listed as “{s}”", by[s], ""))
     return head, lead, [(s, by[s]) for s in voters], items
+
+
+_MONTHS_ES = {"January": "enero", "February": "febrero", "March": "marzo", "April": "abril",
+              "May": "mayo", "June": "junio", "July": "julio", "August": "agosto",
+              "September": "septiembre", "October": "octubre", "November": "noviembre",
+              "December": "diciembre"}
+
+
+def _voters_lang(label, lang):
+    """A CACR status that reached the voters, as the table's row says it in
+    `lang`: "Passed both chambers, goes to the voters in November 2026" and
+    the rest (build_site_v2.TO_THE_VOTERS, RATIFIED, NOT_RATIFIED)."""
+    m = re.match(r"Passed both chambers, (goes|went) to the voters(?: in (\w+) (\d{4}))?$", label)
+    if m:
+        when = (I.say(lang, "learn.cacr.at_election", "at the state general election in {when}",
+                      when=f"{_MONTHS_ES.get(m.group(2), m.group(2))} de {m.group(3)}"
+                      if lang == "es" else f"{m.group(2)} {m.group(3)}") if m.group(2) else "")
+        verb = (I.say(lang, "learn.cacr.goes", "Passed both chambers; goes to the voters")
+                if m.group(1) == "goes" else
+                I.say(lang, "learn.cacr.went", "Passed both chambers; went to the voters"))
+        return verb + (" " + when if when else "")
+    if label == "Passed both chambers, ratified by the voters":
+        return I.say(lang, "learn.cacr.ratified", "Passed both chambers; ratified by the voters")
+    if label == "Passed both chambers, not ratified by the voters":
+        return I.say(lang, "learn.cacr.not_ratified", "Passed both chambers; not ratified by the voters")
+    return f'<span lang="en">{label}</span>'
+
+
+def _cacr_parts_lang(cacrs, narr, term, lang):
+    """_cacr_parts' table rows and lead in `lang`: (lead, rows), each row
+    (label, n, tail, needs) as _cacr_table draws it, every CACR of the term
+    in exactly one, by the same tests as the English."""
+    shown = term.replace("-", "&ndash;")
+    short = [r for r in cacrs if _fell_short(narr.get(r.get("id")), r.get("status"))]
+    rest = [r for r in cacrs if all(r is not s for s in short)]
+    by = Counter(r.get("status") or "" for r in rest)
+    voters = sorted(s for s in by if s.startswith("Passed both chambers"))
+    nv = sum(by[s] for s in voters)
+    head = (I.say(lang, "learn.cacr.filed_one", "The {term} term filed <b>1 CACR</b>.", term=shown)
+            if len(cacrs) == 1 else
+            I.say(lang, "learn.cacr.filed", "The {term} term filed <b>{n} CACRs</b>.", term=shown,
+                  n=f"{len(cacrs):,}"))
+    if not nv:
+        lead = I.say(lang, "learn.cacr.none", "None passed both chambers.")
+    elif nv == 1:
+        lead = I.say(lang, "learn.cacr.passed_one", "One passed both chambers.")
+    else:
+        lead = I.say(lang, "learn.cacr.passed", "{n} passed both chambers.", n=f"{nv:,}")
+    rows = [(_voters_lang(st, lang), by[st], "", False) for st in voters]
+    if by["Killed"]:
+        rows.append((I.say(lang, "learn.cacr.killed", "Killed outright"), by["Killed"], "", False))
+    if short:
+        sen = sum(1 for r in short if (r.get("passage") or "")[:2] == "Sp")
+        tail = ""
+        if sen:
+            tail = (I.say(lang, "learn.cacr.of_them_senate", "{n} of them after passing the Senate",
+                          n=f"{sen:,}") if len(short) > 1 else
+                    I.say(lang, "learn.cacr.after_senate", "after passing the Senate"))
+        rows.append((I.say(lang, "learn.cacr.fell_short", "Fell short of three fifths on the House floor"),
+                     len(short), tail, True))
+    failed = [r for r in rest if r.get("status") == "Failed to pass"]
+    if failed:
+        rows.append((I.say(lang, "learn.cacr.failed", "Failed a floor vote"), len(failed), "", False))
+    if by["Died on the table"]:
+        rows.append((I.say(lang, "learn.cacr.table", "Died on the table"), by["Died on the table"],
+                     "", False))
+    ended = [r for r in rest if r.get("status") == "Died when the session ended"]
+    if ended:
+        after = Counter((r.get("passage") or "")[:1] for r in ended
+                        if (r.get("passage") or "")[1:2] == "p")
+        tail = ""
+        if sum(after.values()):
+            where = (" " + I.say(lang, "learn.or", "or") + " ").join(
+                (I.say(lang, "learn.the_senate", "the Senate") if c == "S"
+                 else I.say(lang, "learn.the_house", "the House")) for c in sorted(after))
+            tail = (I.say(lang, "learn.cacr.of_them_after", "{n} of them after passing {where}",
+                          n=f"{sum(after.values()):,}", where=where) if len(ended) > 1 else
+                    I.say(lang, "learn.cacr.after", "after passing {where}", where=where))
+        rows.append((I.say(lang, "learn.cacr.ended", "Died when the session ended"), len(ended), tail,
+                     False))
+    done = {"Killed", "Failed to pass", "Died on the table", "Died when the session ended", *voters}
+    for st in sorted(st for st in by if st not in done):
+        rows.append((I.say(lang, "learn.cacr.listed", "Listed as {status}",
+                           status=f'<span lang="en">“{st}”</span>'), by[st], "", False))
+    return f"{head} {lead}", rows
+
+
+def _cacr_lang(cacrs, narr, term, lang):
+    """(cacr_lead, cacr_table) in `lang`."""
+    shown = term.replace("-", "&ndash;")
+    if not cacrs:
+        none = I.say(lang, "learn.cacr.no_cacrs", "The {term} term filed no CACRs.", term=shown)
+        return none, ""
+    lead, rows = _cacr_parts_lang(cacrs, narr, term, lang)
+    assert sum(n for _, n, _, _ in rows) == len(cacrs), "the CACR table does not add up to the term"
+    trs = "".join(
+        f'<tr{" class=\"needs\"" if needs else ""}><th scope="row" class="is-text">{label}'
+        + (f'<span class="l-sub">{tail}</span>' if tail else "")
+        + f'</th><td class="l-num">{n:,}</td></tr>' for label, n, tail, needs in rows)
+    table = ('<div class="l-tablewrap"><table class="l-table"><caption>'
+             + (I.say(lang, "learn.cacr.caption_one", "The one CACR of the {term} term", term=shown)
+                if len(cacrs) == 1 else
+                I.say(lang, "learn.cacr.caption", "The {n} CACRs of the {term} term", n=f"{len(cacrs):,}",
+                      term=shown))
+             + '</caption><thead><tr><th scope="col">'
+             + I.say(lang, "learn.cacr.became", "What became of them") + "</th>"
+             '<th scope="col" class="l-num">CACR</th></tr></thead>'
+             f"<tbody>{trs}</tbody></table></div>")
+    return lead, table
 
 
 def _cacr_record(cacrs, narr, term):
@@ -718,6 +860,65 @@ def record_figures(site, root=Path(".")):
          (pending_n, "c-rest", "still awaiting the override vote")])
     figures["fig_seats"] = civics.seats_figure(seats, sitting, len(senate), senate_sitting)
     figures["fig_term"] = civics.term_figure(term)
+
+    # THE FIGURES WITH WORDS IN THEM, IN EACH OTHER LANGUAGE (the Learn pages
+    # in Spanish, 25 October 2026): the same counts, drawn again in the
+    # catalog's words and kept beside the English as name@lang, which
+    # figures_lang puts in the English one's place. The English above is
+    # drawn by its own lines, untouched, so an English page cannot change by
+    # a word for this.
+    def drawn(lang):
+        f = figures
+
+        n_ = lambda k: f"{k:,}"  # noqa: E731
+        return {
+            "org_day": org_day(build_date.today(), lang),
+            "veto_pending": ("" if not pending else " " + (
+                I.say(lang, "learn.veto.pending_one", "One is still awaiting its override vote.")
+                if pending == 1 else
+                I.say(lang, "learn.veto.pending", "{n} are still awaiting their override votes.",
+                    n=n_(pending)))),
+            "cacr_hurdle": _cacr_hurdle_lang(idx, every_narr, term, lang),
+            "cacr_lead": _cacr_lang(cacrs, every_narr.get(term, {}), term, lang)[0],
+            "cacr_table": _cacr_lang(cacrs, every_narr.get(term, {}), term, lang)[1],
+            "fig_ends": civics.bar(
+                I.say(lang, "learn.ends.caption", "The {n} bills and resolutions of the {term} term",
+                    n=n_(len(cur)), term=shown),
+                I.say(lang, "learn.ends.label", "How the {n} bills and resolutions of the {term} term ended",
+                    n=n_(len(cur)), term=term),
+                [(status["Killed"], "c-died", I.say(lang, "learn.ends.killed", "killed (ITL)")),
+                 (status["Signed into law"], "c-law", I.say(lang, "learn.ends.signed", "signed into law")),
+                 (status["Referred for interim study"], "c-study",
+                  I.say(lang, "learn.ends.study", "sent for interim study")),
+                 (status["Died on the table"], "c-table", I.say(lang, "learn.ends.table", "died on the table")),
+                 (status["Died when the session ended"], "c-end",
+                  I.say(lang, "learn.ends.session", "died when the session ended")),
+                 (rest, "c-rest", I.say(lang, "learn.ends.rest", "every other outcome"), False)]),
+            "fig_rollcalls": civics.bar(
+                I.say(lang, "learn.rc.caption", "The {n} bills in this record", n=n_(f["all_bills"])),
+                I.say(lang, "learn.rc.label", "Bills with and without a recorded roll call"),
+                [(f["all_rollcall"], "c-rc", I.say(lang, "learn.rc.with", "with at least one recorded roll call")),
+                 (no_rc - f["pre_rollcall_bills"], "c-none",
+                  I.say(lang, "learn.rc.none", "<b>{n}</b> with none (the gray and the hatched)", n=n_(no_rc)),
+                  False),
+                 (f["pre_rollcall_bills"], "c-old",
+                  '<span class="l-sub">' + I.say(lang, "learn.rc.old", "of those from before {year}, where "
+                                               "this record&rsquo;s roll calls begin", year=rc_first)
+                  + "</span>")]),
+            "fig_vetoes": civics.bar(
+                I.say(lang, "learn.veto.caption", "The {n} vetoed bills across the {terms} terms on this site",
+                    n=n_(len(vetoed)), terms=f["terms"]),
+                I.say(lang, "learn.veto.label", "What became of the {n} vetoed bills", n=n_(len(vetoed))),
+                [(stood, "c-died", I.say(lang, "learn.veto.stood", "the veto stood")),
+                 (f["veto_overridden"], "c-law",
+                  I.say(lang, "learn.veto.overridden", "overridden, and the bill became law")),
+                 (pending_n, "c-rest", I.say(lang, "learn.veto.awaiting", "still awaiting the override vote"))]),
+            "fig_seats": civics.seats_figure(seats, sitting, len(senate), senate_sitting, lang),
+            "fig_term": civics.term_figure(term, lang),
+        }
+    for lang in I.LANGS:
+        if lang != I.DEFAULT:
+            figures.update({f"{k}@{lang}": v for k, v in drawn(lang).items()})
     # THE WORKED EXAMPLE on the finding-your-representatives page, drawn from
     # the map rather than typed: the diagram, and every fact the prose beside
     # it names. civics.reps_example stops the build if the example town stops
@@ -2148,6 +2349,9 @@ def figures_lang(figures, lang, dist):
     if lang == I.DEFAULT:
         return figures
     out = dict(figures)
+    # The figures record_figures drew again in this language (name@lang).
+    for k in [k for k in figures if k.endswith(f"@{lang}")]:
+        out[k[:-len(lang) - 1]] = figures[k]
     out["follow_email"] = (
         I.say(lang, "guides.follow_email_live", "A feed needs no account and no email address. "
               "Updates can also come by email: sign up in the same <b>Follow</b> control, and the "

@@ -213,7 +213,10 @@
     "cita",
     "citas"
    ],
-   "basis": "The catalog"
+   "basis": "The catalog",
+   "except": {
+    "learn.governor-and-council.its-approval-is-required-for-a": "An appointment to office (nombramiento), not a scheduled visit."
+   }
   },
   {
    "en": [
@@ -375,6 +378,19 @@
     "presupuesto por defecto"
    ],
    "basis": "The town warrant guide"
+  },
+  {
+   "en": [
+    "interim study",
+    "Interim Study",
+    "Interim study"
+   ],
+   "es": [
+    "estudio interino",
+    "Estudio interino",
+    "estudios interinos"
+   ],
+   "basis": "The glossary (gloss.is): two entries said estudio interino and three estudio provisional on 25 October 2026"
   }
  ]
 }

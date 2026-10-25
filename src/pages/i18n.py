@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-10-23.11
+# GRANITE_VERSION: 2026-10-23.12
 """
 The site in more than one language, and how a translation stays current.
 
@@ -117,7 +117,8 @@ GUIDE_PAGES = tuple(f"guides/{s}.html" for s in (
 # that draw a chart or a timeline follow once the figure is drawn in Spanish.
 LEARN_PAGES = tuple(f"learn/{s}.html" for s in (
     "the-courts", "state-agencies", "administrative-rules", "local-government",
-    "county-government", "city-and-town-government"))
+    "county-government", "city-and-town-government",
+    "general-court", "how-a-bill-becomes-law", "governor-and-council", "the-constitution"))
 PAGES = {"es": ("index.html", "learn/glossary.html", "resources.html") + GUIDE_PAGES + LEARN_PAGES}
 
 _CATALOGS = {}
