@@ -101,6 +101,90 @@ where it publishes one (Medicare's *Ayuda Adicional*, the Postal Service's
 *oficina postal*); ordinary words follow the list even where one agency
 phrases them differently. The file's `_about` says how a term is matched.
 
+## The standard, for Spanish and every language after it
+
+Spanish is the first translation, and the person decided on 25 October 2026
+that it sets the standard for the ones after it. A new language is a catalog,
+`src/pages/lang/<code>.json`, and a term list, `terms.<code>.json`, held to
+the same checks. These rules come from a review of all 2,900 Spanish entries
+that day. Each one records a kind of mistake the review found, so look for
+the same mistakes in any language.
+
+**Who it is written for.** A New Hampshire resident who reads the language
+more easily than English. Plain words, in the tone of a public notice that
+respects its reader. Use the formal address where the language has one
+(*usted*). Use the variety New Hampshire's speakers use: for Spanish, US
+Spanish ("Enter", not "Intro"; *renta no pagada*, not *renta impagada*).
+
+**Meaning comes before fluency.** Check every number, date, deadline,
+negation, *must* and *may*, *at least* and *no more than*, digit by digit
+against the English. The review's worst findings were all of this kind:
+
+- *By March 1* includes March 1. *Antes del 1 de marzo* does not, so the
+  reader was told a deadline a day early. Write the language's "no later
+  than": *a más tardar el 1 de marzo*, *a más tardar a las 5 p. m.*
+- *Within 60 days* is *en un plazo de 60 días*. *Dentro de 60 días* can read
+  as "60 days from now".
+- *Is due* is a filing deadline, not an expiry. *Vence* says the petition
+  lapses.
+- *Nominate* is not *appoint*. The Governor *propone*, and the Council
+  confirms.
+- *Adjournment* is not a *recess*. The pocket-veto rule depends on the
+  legislature having *levantado sus sesiones*.
+- *Shall* is a duty: *deberá adoptar*, not *adoptará*.
+- A temperature carries its unit, Fahrenheit first with the conversion
+  beside it: *40 grados Fahrenheit (4 °C)*. A bare *40 grados* reads as
+  Celsius, and that reader keeps food the English says to throw away.
+- *Their* in a sentence about someone else is *de esa persona*. Under
+  *usted*, *su* reads as the reader's own.
+- Nothing is added. *The articles are written in English* may be true, but
+  if the English does not say it, the translation does not either.
+
+**The record stays in English.** A bill's title and text, a committee's name,
+an official form or document, a person's or a place's name. Mark each one
+`<span lang="en">`. The first time a reader meets one, put the meaning beside
+it in brackets. A program or an office follows the agency's own translation
+where the agency publishes one. Otherwise the English name stays, with a
+gloss, because the English is what the reader will see on the form and hear
+on the phone. Never translate a quotation of the law.
+
+**One word for each term.** Write the term list before the pages, not after.
+Each choice records where it came from. When two pages disagree, change the
+list first and bring every page with it. The review found 53 inconsistencies,
+and each was a term that had no entry yet. *Statute* was *ley* on one page
+and *estatuto* on another; *Inexpedient to Legislate* had two renderings; the
+Schedule and the Calendar shared one name.
+
+**Grammar the English does not show.**
+- Write headings in sentence case. Steps in a list take the same form all the
+  way down: all infinitives, or all commands.
+- Use no serial comma where the language uses none.
+- Keep agreement with the noun actually meant ("one of these" before a list
+  of masculine nouns).
+- Use the subjunctive where the language needs it (*alguien que necesite*).
+
+**Nobody's gender is assumed.** The English says *them*, so the translation
+does not choose *él* or *la editora*. Where the language must mark gender,
+name the role (*quien edita el sitio*, *ese padre o madre*).
+
+**Markup is untouchable.** Tags, link addresses, `{placeholders}` and
+`[[figures]]` stay exactly as in the English. Do not add a link the English
+does not have, such as a `tel:` link. Preflight checks the placeholders;
+compare the tags by eye.
+
+**How a language is reviewed.**
+1. A first draft is written to the term list.
+2. A full review against this section reads every entry beside its English,
+   for meaning, then clarity, consistency, grammar and tone. Each finding is
+   written as the entry corrected.
+3. A native speaker who knows the subject proofreads.
+
+Only that person moves an entry from draft to proofread. A machine's draft or
+review never does.
+
+**Asking a reader.** The footer's *report a translation error* button is on
+every translated page. It is often how a mistake no reviewer saw gets found.
+
 ## Draft and proofread
 
 Every entry is a **draft** until the proofreader passes it, and then it is

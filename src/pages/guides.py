@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-10-11.37
+# GRANITE_VERSION: 2026-10-11.38
 """
 The how-to guides: their words, their sources, and what each was checked
 against. Read by build_civics.py, which draws them on the Resources hub's
@@ -4702,6 +4702,170 @@ GUIDES += [DISABILITY]
 
 
 # ---------------------------------------------------------------------------
+# WHO TO CONTACT, AND FOR WHAT (the person, 25 October 2026: "explaining what
+# you might contact different elected officials for, like contacting state
+# reps about legislation or state agencies, contacting city councilors about
+# things like sidewalk issues, school board, federal delegation for
+# assistance with federal programs"). A routing guide: it names no official,
+# because the people change and My Town names them, and sends a reader to
+# the office whose job the problem is. Read on 25 October 2026: the statutes
+# in this build's table; the federal Privacy Act at govinfo; the casework
+# pages of a New Hampshire senator and representative, which say what such
+# an office does; USA.gov and the two chambers' finders. The Governor's and
+# the Executive Council's pages refuse this machine, so their claims wait
+# for the person's printouts.
+# ---------------------------------------------------------------------------
+WC_READ = "2026-10-25"
+WC_STATE_READ = None                 # the person's printouts of the nh.gov pages
+SENATE_CONTACT = "https://www.senate.gov/senators/senators-contact.htm"
+HOUSE_FIND = "https://www.house.gov/representatives/find-your-representative"
+CASEWORK_SENATE = "https://www.hassan.senate.gov/services/help-with-a-federal-agency"
+CASEWORK_HOUSE = "https://goodlander.house.gov/services/help-federal-agency/"
+PRIVACY_ACT = ("https://www.govinfo.gov/content/pkg/USCODE-2024-title5/html/"
+               "USCODE-2024-title5-partI-chap5-subchapII-sec552a.htm")
+USA_OFFICIALS = "https://www.usa.gov/elected-officials"
+COUNCIL_ABOUT = "https://www.council.nh.gov/about-us"
+COUNCIL_CONTACT = "https://www.council.nh.gov/contact-us"
+GOVERNOR_CONTACT = "https://www.governor.nh.gov/contact-governor-ayotte"
+
+WHO_TO_CONTACT = guide(
+    "who-to-contact", "Who to Contact About an Issue: Town, School, State or Federal",
+    "Which office to contact about a problem or a law, from potholes and sidewalks to a state "
+    "program or a federal agency, and how to find the people who hold it.",
+    "Start with whoever runs the thing. Roads, sidewalks, trash and local rules are your town or "
+    "city&rsquo;s: its departments, then the selectboard or city council. Schools are the school "
+    "board&rsquo;s. A state program is the state agency&rsquo;s that runs it, and a state law or "
+    "bill is your state representatives&rsquo; and senator&rsquo;s. A problem with a federal "
+    "agency, such as Social Security, veterans&rsquo; benefits or a passport, is what your U.S. "
+    "senators&rsquo; and representative&rsquo;s offices help with.",
+    [ask("What is it about?",
+         [("A road, a sidewalk, trash, a local rule", "Your town or city: the department, then "
+           "the selectboard or city council."),
+          ("A school", "The school, then the superintendent and the school board."),
+          ("A state program or a state law", "The state agency for a program; your state "
+           "representatives and senator for a law or a bill."),
+          ("A federal agency or a federal law", "Your U.S. senators and U.S. representative.")]),
+     box("Not sure? Ask any of them: an office that cannot help usually knows who can.")],
+    [step("Find who represents you",
+          "<p>Choose your town to see everyone who represents it, from your state representatives "
+          "to your members of Congress, each with a page here.</p>"
+          '<div class="yt" data-yt="reps" hidden></div>',
+          actions=[("Find your town", "/officials.html#my-town")]),
+     step("Your town or city: roads, sidewalks, trash and local rules",
+          "<p>Most everyday problems are local. Your town or city maintains its own roads and "
+          "repairs its sidewalks, and runs or arranges trash and recycling. In a town the "
+          "<b>selectboard</b> manages the town&rsquo;s business and may regulate the use of its "
+          "roads and sidewalks; in a city the <b>city council</b> holds those powers, with the "
+          "mayor or city manager running the departments.</p>"
+          "<p>Start with the department that handles it, such as public works for a pothole or a "
+          "broken sidewalk. If that does not settle it, contact the selectboard or your city "
+          "councilor. A change to the town&rsquo;s budget or rules may go to town meeting.</p>",
+          actions=[("How towns and cities are run", "/learn/city-and-town-government.html")],
+          law=["RSA 41:8", "RSA 41:11", "RSA 47:1", "RSA 231:3", "RSA 231:113"]),
+     step("Schools",
+          "<p>A question about your child starts with the teacher and the principal. A district "
+          "policy, a budget or a decision of the district is for the superintendent and the "
+          "<b>school board</b>, the district&rsquo;s governing body, which provides its "
+          "schools.</p>",
+          actions=[("Town meeting and local government", "/learn/local-government.html")],
+          law=["RSA 189:1"]),
+     step("A state program or agency",
+          "<p>Start with the agency that runs the program: the Division of Motor Vehicles for a "
+          "license, the Department of Health and Human Services for SNAP or Medicaid, and so on. "
+          "Each guide here links the agency&rsquo;s page.</p>"
+          "<p>If you cannot get an answer, the <b>Governor&rsquo;s office</b> takes requests for "
+          "help from residents, and your <b>Executive Councilor</b>, one of five elected by "
+          "district, helps residents with state agencies.</p>",
+          actions=[("Contact the Governor's office", GOVERNOR_CONTACT),
+                   ("The Executive Council", COUNCIL_CONTACT)]),
+     step("A state law or a bill",
+          "<p>Your <b>state representatives and state senator</b> vote on the bills that make and "
+          "change New Hampshire&rsquo;s laws. Contact them about a bill, or to ask for a new law. "
+          "You can also tell the committee that hears a bill where you stand.</p>",
+          actions=[("How to contact your legislators", "/guides/contact-your-legislators.html"),
+                   ("How to submit testimony on a bill", "/guides/submit-testimony.html")]),
+     step("A federal agency or a federal law",
+          "<p>Your two <b>U.S. senators</b> and your <b>U.S. representative</b> each have staff in "
+          "New Hampshire who help residents with federal agencies: Social Security, veterans&rsquo; "
+          "benefits, passports, the IRS, immigration and others. They cannot promise an outcome, "
+          "but they can ask the agency for a fair and timely answer.</p>"
+          "<p>Before they can look into your case, you sign a <b>privacy release</b>, because "
+          "federal law lets an agency share your records only with your written consent. Each "
+          "office&rsquo;s website has its form. Contact them too about a federal law or bill.</p>",
+          actions=[("Find your U.S. senators", SENATE_CONTACT),
+                   ("Find your U.S. representative", HOUSE_FIND)]),
+     step("The county",
+          "<p>Your county runs the county jail and the county nursing home, among other things. "
+          "Its commissioners run it day to day, and its budget is set by the state "
+          "representatives elected from the county.</p>",
+          actions=[("How county government works", "/learn/county-government.html")])],
+    [("Find and contact elected officials (USA.gov)", USA_OFFICIALS),
+     ("Contact your senators (U.S. Senate)", SENATE_CONTACT),
+     ("Find your representative (U.S. House of Representatives)", HOUSE_FIND),
+     ("Help with a federal agency (a U.S. senator's office)", CASEWORK_SENATE),
+     ("Help with a federal agency (a U.S. representative's office)", CASEWORK_HOUSE),
+     ("The Privacy Act, 5 U.S.C. 552a (federal)", PRIVACY_ACT),
+     ("About the Executive Council (Executive Council)", COUNCIL_ABOUT),
+     ("Contact the Executive Council (Executive Council)", COUNCIL_CONTACT),
+     ("Contact the Governor (Office of the Governor)", GOVERNOR_CONTACT),
+     ("Town officers, RSA 41", "/laws/41"),
+     ("City councils, RSA 47", "/laws/47"),
+     ("Highways and sidewalks, RSA 231", "/laws/231"),
+     ("School boards, RSA 189", "/laws/189")],
+    ["41", "47", "189", "231"],
+    [# The statutes, as this build's table prints them.
+     claim("The selectmen shall manage the prudential affairs of the town.", "RSA 41:8", WC_READ),
+     claim("The selectmen may regulate the use of all public highways, sidewalks, and commons in "
+           "their towns.", "RSA 41:11", WC_READ),
+     claim("All the powers vested by law in towns shall be exercised by the city councils.",
+           "RSA 47:1", WC_READ),
+     claim("All class V highways shall be constructed, reconstructed, and maintained by the city or "
+           "town in which they are located.", "RSA 231:3", WC_READ),
+     claim("Sidewalks shall be maintained, repaired and reconstructed by the city or town in which "
+           "they are located, under the selectmen or the mayor and aldermen.", "RSA 231:113",
+           WC_READ),
+     claim("The school board of every district shall provide standard schools.", "RSA 189:1",
+           WC_READ),
+     # Federal, read on 25 October 2026.
+     claim("No agency shall disclose any record to any person except pursuant to a written request "
+           "by, or with the prior written consent of, the individual to whom the record pertains, "
+           "with exceptions.", PRIVACY_ACT, WC_READ),
+     claim("Help with any issue involving a federal agency: veterans benefits, citizenship, housing, "
+           "small business, IRS/taxes, passports, Social Security; cannot guarantee a favorable "
+           "outcome but will seek a fair and timely response; judicial or state matters are "
+           "directed elsewhere; the Privacy Act requires written authorization, a signed privacy "
+           "release form, before the office looks into a case.", CASEWORK_SENATE, WC_READ),
+     claim("If you can't get an answer from a federal agency, or feel treated unfairly, the office "
+           "may be able to help; it cannot guarantee a favorable outcome; written authorization "
+           "under the Privacy Act; include claim numbers.", CASEWORK_HOUSE, WC_READ),
+     claim("Contact information for U.S. senators, state by state.", SENATE_CONTACT, WC_READ),
+     claim("Find your U.S. representative.", HOUSE_FIND, WC_READ),
+     claim("Get the names and contact information for the people who represent you on the federal, "
+           "state, and local levels.", USA_OFFICIALS, WC_READ),
+     # This site's own pages.
+     ours("My Town shows everyone who represents a town, from the House to the US House, each with "
+          "a page.", "/officials.html", WC_READ),
+     ours("How a town's selectboard and a city's council and mayor or manager run them.",
+          "/learn/city-and-town-government.html", WC_READ),
+     ours("Local government is the city or town, the school district and the county; the school "
+          "board is a school district's governing body.",
+          "/learn/local-government.html", WC_READ),
+     ours("A county keeps a jail (RSA 30-B:1) and runs nursing homes; three commissioners; the "
+          "county convention of the county's state representatives sets its budget.",
+          "/learn/county-government.html", WC_READ),
+     # The Governor's and the Council's own pages, from the person's printouts.
+     claim("The Governor's office takes requests for assistance from residents.", GOVERNOR_CONTACT,
+           WC_STATE_READ),
+     claim("Executive Councilors help residents with state agencies; five councilors elected by "
+           "district.", COUNCIL_ABOUT, WC_STATE_READ),
+     claim("How to contact each councilor and the Council's office.", COUNCIL_CONTACT, WC_STATE_READ)],
+    see=[("How to find your representatives", "/guides/your-representatives.html"),
+         ("How to contact your legislators", "/guides/contact-your-legislators.html")])
+
+GUIDES += [WHO_TO_CONTACT]
+
+
+# ---------------------------------------------------------------------------
 # THE GUIDES BY TASK (the person, 17 October 2026: "refine how the how to
 # guides are displayed on the main resources page and the homepage so it's
 # more intuitive for the general public"). A reader arrives with something to
@@ -4754,6 +4918,10 @@ TASKS = [
         task("your-representatives", "Find your representatives",
              "Who represents your town in the House and the Senate, and what the district "
              "numbers mean."),
+        task("who-to-contact", "Find out who to contact about an issue",
+             "Your town for roads and sidewalks, the school board, a state agency, your "
+             "legislators, or your members of Congress.",
+             head="How to know who to contact"),
         task("contact-your-legislators", "Contact your legislators",
              "Email or call the people who represent you, and write a message they can act on."),
         task("attend-a-hearing", "Attend or speak at a public hearing",
@@ -4893,6 +5061,9 @@ WORDS = {
     "your-representatives": ("my representative", "my senator", "who represents me",
                              "state representative",
                              "district", "legislator"),
+    "who-to-contact": ("who do i contact", "complaint", "pothole", "sidewalk", "city council",
+                       "selectboard", "school board", "congressman", "senator", "federal agency",
+                       "casework", "help with a state agency", "constituent services"),
     "contact-your-legislators": ("email my representative", "call my senator",
                                  "write my legislator", "contact"),
     "attend-a-hearing": ("testify", "public hearing", "speak on a bill", "attend"),

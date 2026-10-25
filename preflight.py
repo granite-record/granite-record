@@ -64091,7 +64091,8 @@ def _spanish_guides(i18n, G, BC, chrome, civics):
     is unlisted, lacks its Spanish title, the line saying its outside pages
     are in English, or the footer's button for a mistake in the translation;
     if a link to another guide Spanish has goes to the English one, or an
-    outside page's button is not marked as English; if the hub lacks a task
+    outside page's button is not marked as English; if a link to a page in
+    Spanish still says "(en inglés)"; if the hub lacks a task
     or links its English guide; if an English page does not name its twin;
     if In the Record keeps an English sentence or leaves a chapter's name
     unmarked; or if Using This Site's shorthand stops being the glossary's
@@ -64133,6 +64134,14 @@ def _spanish_guides(i18n, G, BC, chrome, civics):
                 bad.append(f"{slug}: its <h1> is not its Spanish title {es_title!r}")
             if strings["guides.lang_note"]["es"] not in page:
                 bad.append(f"{slug}: no line saying the pages it links are in English")
+            # A link lang_links sent to a Spanish page, still called English
+            # (the review of 25 October 2026 found four, left from before the
+            # Learn pages they link were translated).
+            for m in re.finditer(r'<a [^>]*href="(/es/[^"]*)"[^>]*>((?:(?!</a>).)*)</a>(\s*\(en inglés\))?',
+                                 page, re.S):
+                if "(en inglés)" in m.group(2) or m.group(3):
+                    bad.append(f"{slug}: its link to {m.group(1)} says (en inglés), and that page is in "
+                               "Spanish")
             if "data-trreport hidden" not in page:
                 bad.append(f"{slug}: no button for a mistake in the translation")
             for other in slugs:
