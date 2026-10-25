@@ -1917,7 +1917,7 @@ function matchScore(b,gs){
 const RXSHARE=Object.create(null);
 const shareRx=alt=>RXSHARE[alt]||(RXSHARE[alt]=new RegExp(altRx(alt).source,"g"));
 // Worked out once for each bill and each reading of a search, as fit() is:
-// /bills sorts again for every hundred cards scrolled to and every card
+// /bills sorts again for every page of cards scrolled to and every card
 // opened, and on All terms "education" lists 4,042 bills.
 function titleShare(b,gs){
   const of=gs._share||(gs._share=new Map());
@@ -2948,7 +2948,31 @@ function ensureTerm(t){
   });
 }
 
-need("meta.json")
+// WHAT THIS PAGE IS, decided before anything is asked for (the phone audit
+// of 25 October 2026). About 3,800 pages carry their whole record in the
+// HTML and are built with GR_STATIC -- the towns, the laws, the guides, the
+// Calendar, the session days, the directories -- and each downloaded the
+// bill index it never reads, 2 MB, with the bill search's controls standing
+// on screen until it came ("Loading…", and on a phone "Filter by topic…")
+// and then taken down, so the page jumped. Now they ask for nothing, and the
+// controls go the moment this script runs (and shell.page writes them shut
+// for the moment before it does). A bill's, a member's and a committee's own
+// page still needs the index, and takes the list's controls down before
+// asking for it too. Every page built from this template that is not a list
+// of bills loses the search row; a bill's own page keeps the box --
+// GR_STANDALONE is on bill pages too, and there the next bill is a
+// plausible next thought rather than a change of subject.
+if(window.GR_STATIC||window.GR_STANDALONE){
+  if(!window.GR_BILL)hideBillSearch();
+  staticChromeDown();
+}
+// A law's page can be followed by email (build_rsa's GR_LAW), and only by
+// email: the box is drawn only where the sign-up answers, so the live site
+// shows no Follow with nothing in it before email goes live.
+if(window.GR_STATIC){
+  if(window.GR_LAW)fetch("/api/follow/count",{cache:"no-store"})
+    .then(r=>{if(r.ok)mountFollow("law","",String(window.GR_LAW));}).catch(()=>{});
+}else need("meta.json")
  .then(m=>{
    META=m;
    const first=wantedTerm(m);
@@ -3014,7 +3038,7 @@ need("meta.json")
    // THE PERSON'S WORDS SINCE 9 OCTOBER 2026, both of them shorter: "Bill
    // number or key words" in bills.html, and this for the phone's cards.
    // The commas are explained on Using this site.
-   if(matchMedia("(max-width:45em)").matches)
+   if(!window.GR_BILL&&matchMedia("(max-width:45em)").matches)
      $("#q").placeholder="Bill number or a few words";
    // The button next to it does the same job on the focused view, so it waits
    // for the same data.
@@ -3065,38 +3089,14 @@ need("meta.json")
      sortBy=psort; sortChosen=true;
      const so=$("#sort"); if(so)so.value=psort;
    }
-   // WHAT THIS PAGE IS, decided before anything is drawn.
-   //
-   // These three used to sit after render(), which meant a member's page
-   // built the whole 2,234-bill list into #results and then threw it away --
-   // 300KB of DOM nobody saw -- and the committees index, whose listing is
-   // already in the HTML it was served, had that listing replaced by the bill
-   // search and showed nothing at all.
-   //
-   // Focus is not taken either: a reader who opened a member's page did not
-   // ask to be put in the search box.
-   // Every page built from this template that is not a bill or a list of
-   // them: the towns, the members, the committees and the civics pages.
-   // A bill's own page is the exception and keeps the box -- GR_STANDALONE
-   // is on bill pages too, and there the next bill is a plausible next
-   // thought rather than a change of subject.
-   if(!window.GR_BILL&&(window.GR_STATIC||window.GR_STANDALONE))
-     hideBillSearch();
-   if(window.GR_STATIC){
-     // The content is in the HTML. Take the chrome down and leave it alone.
-     staticChromeDown();
-     // A law's page can be followed by email (build_rsa's GR_LAW), and only
-     // by email: the box is drawn only where the sign-up answers, so the live
-     // site shows no Follow with nothing in it before email goes live.
-     if(window.GR_LAW)fetch("/api/follow/count",{cache:"no-store"})
-       .then(r=>{if(r.ok)mountFollow("law","",String(window.GR_LAW));}).catch(()=>{});
-     return;
-   }
-   // A bill's own page is one bill, so the controls that filter and sort a
-   // LIST have nothing to act on. They were left up, with the count reading
-   // "2,234 of 2,234 bills in the 2025-2026 term" above a single bill --
-   // which at 360px was the whole first screen.
-   if(window.GR_BILL)hideListControls();
+   // A RECORD'S OWN PAGE IS NOT THE LIST, decided before anything is drawn.
+   // This used to sit after render(), which meant a member's page built the
+   // whole 2,234-bill list into #results and then threw it away -- 300KB of
+   // DOM nobody saw. The list's controls are already down (WHAT THIS PAGE
+   // IS, above): the count read "2,234 of 2,234 bills in the 2025-2026 term"
+   // above a single bill, which at 360px was the whole first screen. Focus
+   // is not taken either: a reader who opened a member's page did not ask
+   // to be put in the search box.
    // A record's own page gets the report box. Only its own page: the record
    // and the address must agree for the report to be accepted, and a card
    // expanded in the search list is not at its own address.
@@ -3152,25 +3152,16 @@ need("meta.json")
      openBill(id);
    }
  }).catch(e=>{
-   /* THE ERROR WENT WHERE THE RECORD WAS. This handler wrote into #results
-      whatever page it was on, and the GR_STATIC exit above it sits INSIDE the
-      .then chain -- so a rejected fetch never reached it and fell straight
-      through to here. One 404 or one dropped connection on idx/2025-2026.json
-      and a reader on Alton's town page, or on "Every bill of 2019-2020", had
-      the officials or all 1,983 of that term's bills replaced by "Could not
-      load the data ... run build_site_v2.py": instructions for a developer,
-      about a file that page never needed, standing where the record had been.
-      357 pages are built with GR_STATIC -- every town and ward, the directory
-      listings, the civics pages, the committees index and the exports page --
-      and every one of them carries its whole record in the HTML the reader
-      already has.
-      So a static page gets the same teardown it gets on success and keeps
-      what it was served. It says nothing about the failure because nothing on
-      it came out of the file that failed; the bill search, and the bill,
-      member and committee pages, whose content really does come from it,
-      still get the message below. GR_BILL is never set on a GR_STATIC page,
-      so the search row can go unconditionally here. */
-   if(window.GR_STATIC){hideBillSearch();staticChromeDown();return;}
+   /* THE ERROR WENT WHERE THE RECORD WAS. One 404 or one dropped connection
+      on idx/2025-2026.json put "Could not load the data ... run
+      build_site_v2.py" -- instructions for a developer, about a file the
+      reader never asked for -- where the record had been. A page built with
+      GR_STATIC never asks for it now (WHAT THIS PAGE IS, above), and a
+      bill's, a member's or a committee's page, whose record is in its HTML
+      too (shell.page's static), shows that record with one plain line
+      (plainRecord, the phone audit of 25 October 2026). The bill search,
+      which has no record without the index, still says what failed. */
+   if(window.GR_STANDALONE)return plainRecord();
    $("#results").innerHTML=`<div class="empty"><b>Could not load the data.</b><br><br>
      <code>${esc(e.message||e)}</code><br><br>
      If that mentions a status code, the file is missing from this folder — run
@@ -3357,21 +3348,38 @@ function renderFacets(){
   const held=focusKey();
   fx.innerHTML=h;
   fx.scrollTop=keep;
-  // THE COUNT HAS TO BE VISIBLE WITH THE PANEL SHUT. A reader who filtered by
-  // topic, scrolled, and came back to a closed panel would otherwise have no
-  // way of knowing why the list is short. Same badge the groups carry.
-  const ftb=document.getElementById("ftoggle");
-  if(ftb){
-    ftb.hidden=false;
-    const on=Object.values(sel).reduce((n,s)=>n+s.size,0);
-    const bd=ftb.querySelector(".badge");
-    if(bd){bd.textContent=on?String(on):"";bd.hidden=!on;}
-  }
+  facetBadge();
   [...fx.querySelectorAll(".fbody")].forEach((el,i)=>{
     if(innerKeep[i]!==undefined)el.scrollTop=innerKeep[i];
   });
   refocus(held);
 }
+// THE COUNT HAS TO BE VISIBLE WITH THE PANEL SHUT. A reader who filtered by
+// topic, scrolled, and came back to a closed panel would otherwise have no
+// way of knowing why the list is short. Same badge the groups carry.
+function facetBadge(){
+  const ftb=document.getElementById("ftoggle");
+  if(!ftb)return;
+  ftb.hidden=false;
+  const on=Object.values(sel).reduce((n,s)=>n+s.size,0);
+  const bd=ftb.querySelector(".badge");
+  if(bd){bd.textContent=on?String(on):"";bd.hidden=!on;}
+}
+// THE PANEL IS DRAWN ONLY WHERE IT CAN BE SEEN (the phone audit of 25
+// October 2026). render() rebuilt it on every letter typed, counting every
+// bill of the term once for each group, behind a button nobody had pressed:
+// below 60em the panel is shut until its button opens it (app.css, 5d), and
+// it is hidden beside one bill and on a page that is not the list. Shut, the
+// list redraws its button's badge alone; the button opening it, or a window
+// widened past 60em, draws the panel as it stands.
+const FACETS_NARROW=typeof matchMedia==="function"?matchMedia("(max-width:59.9375em)"):null;
+function facetsShut(){
+  const sh=document.querySelector(".shell"), c=sh?sh.classList:null;
+  return !c||c.contains("focused")||c.contains("nofacets")
+    ||(!!FACETS_NARROW&&FACETS_NARROW.matches&&!c.contains("fopen"));
+}
+if(FACETS_NARROW&&FACETS_NARROW.addEventListener)
+  FACETS_NARROW.addEventListener("change",()=>{if(!facetsShut())renderFacets();});
 
 function simpleDonut(rc,bid,i,what){
   // A division vote is counted but anonymous. Same ring, same colours, same
@@ -6545,7 +6553,7 @@ function jumpToTab(){
 // controls that key matches, for the few that share one.
 //
 // "Show more" is left out on purpose: what a reader wants after pressing it
-// is the first of the rows it brought, not the next "Show more" a hundred
+// is the first of the rows it brought, not the next "Show more" a page of
 // rows down. Its own handlers put focus there. The browser does not: the
 // redraw replaces the whole list, so its starting point is the top of it.
 function focusKey(a){
@@ -7391,13 +7399,15 @@ function prevailed(x,rc){
 // with the Votes tab's own ring: a session day (drawSessionVotes) and a
 // member's Votes tab (voteRing). The record is inside the bill's page, or
 // beside it for the few too large to inline (gr-data). {key: record|null}.
+// `then` is told which record came, so a session day redraws that bill's
+// rings and not all forty (drawSessionVotes).
 const BILL_RECS={};
 function billRecord(key,then){
   if(CMP.own(BILL_RECS,key))return;
   BILL_RECS[key]=null;
   const [yr,id]=key.split("/");
   const url=DATA(`bill/${yr}/${String(id).toLowerCase()}`);
-  const got=d=>{BILL_RECS[key]=d;then();};
+  const got=d=>{BILL_RECS[key]=d;then(key);};
   fetch(url).then(r=>r.ok?r:fetch(url+".html")).then(r=>r.ok?r.text():Promise.reject(new Error("HTTP "+r.status)))
     .then(html=>{
       const doc=new DOMParser().parseFromString(html,"text/html");
@@ -7418,7 +7428,7 @@ function nobillRecord(key,then){
   if(CMP.own(BILL_RECS,key))return;
   BILL_RECS[key]=null;
   fetch(DATA(`${key}.json`)).then(r=>r.ok?r.json():null)
-    .then(d=>{if(d){BILL_RECS[key]=d;then();}}).catch(()=>{});
+    .then(d=>{if(d){BILL_RECS[key]=d;then(key);}}).catch(()=>{});
 }
 
 // HOW EVERYONE VOTED, under a member's vote (option A, 23 October 2026: "so
@@ -8497,19 +8507,28 @@ function hideBillSearch(){
   if(row)row.hidden=true;
 }
 
-/* AND ON A PAGE WHOSE RECORD IS ALREADY IN THE HTML, the whole of the search
-   goes. A town page, a directory listing, a civics page: the app's only job
-   there is to take down the rail, the counter and the two pickers that
-   belong to a list of bills it is not going to draw.
-   A function rather than six lines inside the .then, because it is needed in
-   two places now -- when the index arrives and when it does not. Nothing in
-   it reads the index, which is the reason it can be called from the catch. */
+/* AND ON A PAGE THAT IS NOT A LIST OF BILLS, the whole of the search goes. A
+   town page, a directory listing, a civics page, and a bill's, a member's or
+   a committee's own page: the app's job there is to take down the rail, the
+   counter and the two pickers that belong to a list it is not going to draw.
+   Nothing in it reads the index, so it runs before the index is asked for
+   (WHAT THIS PAGE IS). */
 function staticChromeDown(){
   const fac=$("#facets"); if(fac){fac.innerHTML="";fac.hidden=true;}
   const sh=document.querySelector(".shell"); if(sh)sh.classList.add("nofacets");
   const c=$("#count"); if(c)c.textContent="";
   hideListControls();
   scrollStops();
+}
+/* A RECORD'S OWN PAGE THAT COULD NOT LOAD shows the record it was served
+   (shell.page's static, hidden under html.js until now) under one plain line,
+   where it showed a developer's error (the phone audit of 25 October 2026). */
+function plainRecord(){
+  const rec=document.getElementById("static-rec"), el=$("#results");
+  const line=`<p class="src">Part of this page did not load, so here is its record in
+    plain form. Reload the page to try again.</p>`;
+  if(rec){rec.classList.add("shown");rec.innerHTML=line+rec.innerHTML;if(el)el.innerHTML="";}
+  else if(el)el.innerHTML=line;
 }
 // A BOX THAT SCROLLS SIDEWAYS IS A TAB STOP WHILE IT SCROLLS, AND ONLY THEN.
 // The exports page's coverage table is 420px in a 336px box on a phone, and a
@@ -8628,14 +8647,10 @@ function openPage(kind,ref){
   // Or the tab its own address names.
   const tabs_=kind==="member"?MEMBER_TABS:COMMITTEE_TABS;
   if(tabs_[tabFromPath()])PAGE_TAB=tabs_[tabFromPath()];
-  // The search chrome belongs to the search. Left up, the facet panel offered
-  // filters for a list that is not on screen and the counter read "2,234 of
-  // 2,234 bills" beside one member's name.
-  const fac=$("#facets"); if(fac){fac.innerHTML="";fac.hidden=true;}
-  const sh=document.querySelector(".shell"); if(sh)sh.classList.add("nofacets");
-  const c=$("#count"); if(c)c.textContent="";
-  const sy=$("#synhint"); if(sy)sy.textContent="";
-  hideListControls();
+  // The search chrome belongs to the search, and is down before the index
+  // is asked for (staticChromeDown, from WHAT THIS PAGE IS). Left up, the
+  // facet panel offered filters for a list that is not on screen and the
+  // counter read "2,234 of 2,234 bills" beside one member's name.
   const url=DATA(kind==="member"?`legislators/${ref}.json`
                                 :`committee/${ref}.json`);
   const el=$("#results");
@@ -8665,27 +8680,31 @@ function openPage(kind,ref){
         .catch(()=>{});
     }
   })
-    .catch(e=>{if(el)el.innerHTML=`<div class="empty"><b>This page's record did
-      not load.</b><br><br><code>${esc(e.message||e)}</code><br><br>
-      The file it wanted is <code>${esc(url)}</code>.</div>`;});
+    .catch(plainRecord);
 }
 
-// A HUNDRED AT A TIME. render() drew the first 400 matches and told the
+// TWENTY-FIVE AT A TIME. render() drew the first 400 matches and told the
 // reader to narrow the search to see the rest, which is the site asking a
 // person to do its work: the 2025-2026 term alone matches 2,234 bills with no
 // filters at all, and 400 cards is a slow first paint for a list nobody has
-// scrolled yet.
+// scrolled yet. Then a hundred, which every letter typed drew again: about a
+// second a letter on a mid-range phone (the phone audit of 25 October 2026;
+// "housing" typed at a phone's pace, CPU slowed four times, held the page
+// 6.5 seconds, and 2.2 with twenty-five cards and the shut filter panel left
+// alone). Twenty-five cards are about 9,000px on a phone, ten screens, and
+// 7,000px on a desktop (measured on the preview the same day); the observer
+// below brings the next twenty-five before the reader reaches the end.
 //
 // This stays ONE renderer, which is the rule here -- render(true) draws the
 // same list one page longer rather than a second function appending to it.
 // The observer at the bottom of the list is what calls it.
 // PAGE_SIZE, not PAGE: PAGE is already the member-or-committee page
 // object declared above, and shadowing it emptied every legislator page.
-const PAGE_SIZE = 100;
+const PAGE_SIZE = 25;
 let SHOWN = PAGE_SIZE;
 
 function render(more){
-  // Any change to the result set starts again at the first hundred. Every
+  // Any change to the result set starts again at the first page. Every
   // existing caller passes nothing, so only the observer extends.
   if(!more)SHOWN=PAGE_SIZE;
   // Page scroll only. The facet panel restores itself inside renderFacets,
@@ -8734,7 +8753,7 @@ function render(more){
   // person said always, and their explainer says what a request is, not how
   // many there are.
   // WRITTEN ONLY WHEN IT SAYS SOMETHING NEW. The count is a live region, and
-  // render() runs for far more than a new list -- each hundred rows the
+  // render() runs for far more than a new list -- each page of rows the
   // reader scrolls to, a card opened, a tab in a card, the Sort. While the
   // count was empty with nothing narrowing the list, writing "" over "" was
   // no change at all; a sentence written over the same sentence replaces its
@@ -8838,7 +8857,7 @@ function render(more){
   syncCards(rows.filter(b=>openCards.has(b.id)).map(b=>b.id));
   if(fb){focusActions(fb.id);placeActions();}else{dropFocusActions();addressList();}
   showSelectedTab($("#results"));
-  renderFacets();
+  if(facetsShut())facetBadge();else renderFacets();
   refocus(held);
   if(window.scrollY!==_y)window.scrollTo(0,_y);
 }
@@ -9191,6 +9210,7 @@ document.addEventListener("click",e=>{
     const sh=document.querySelector(".shell");
     const open=sh.classList.toggle("fopen");
     ftb.setAttribute("aria-expanded",open?"true":"false");
+    if(open)renderFacets();
     return;}
   const un=e.target.dataset.unpick;
   if(un){sel.sponsor.delete(un);render();return;}
@@ -9508,13 +9528,18 @@ document.addEventListener("keydown",e=>{
 //
 // Nothing here is required for the page to be true: the count, which side
 // prevailed and what it did to the bill are all in the HTML already.
+// ONE BILL'S RINGS WHEN ITS RECORD COMES (the phone audit of 25 October
+// 2026): a day of 29 bills redrew all 40 rings as each record arrived, and a
+// mid-range phone froze for seconds. `only` is the bill whose record came;
+// with none, every ring is drawn.
 let SESSV=null;        // {votes: payload}; the bills' records are BILL_RECS
-function drawSessionVotes(){
+function drawSessionVotes(only){
   if(!SESSV)return;
   const slots=document.querySelectorAll(".svote[data-vote]");
   for(const slot of slots){
-    const n=parseInt(slot.getAttribute("data-vote"),10), v=SESSV.votes[n];
     const key=slot.getAttribute("data-bill"), card=slot.getAttribute("data-card");
+    if(only&&key!==only)continue;
+    const n=parseInt(slot.getAttribute("data-vote"),10), v=SESSV.votes[n];
     let html="";
     try{
       if(key&&card!=null){

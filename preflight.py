@@ -19021,6 +19021,11 @@ def _class_collisions():
         # and counts, the Filter button, the Bill Type filter's letters
         # beside a name (a title's number on /laws), and Clear as a link
         "qline", "qbox", "qhint", "facets", "ftoggle", "fhead", "badge", "c", "tname", "tcode", "link",
+        # bills.html's search row and the frame round the filters and the
+        # list, which shell.page writes shut on a page that is not a list of
+        # bills, so a phone never paints them there (the phone audit of 25
+        # October 2026)
+        "searchrow", "shell",
     }
     here = Path(".")
     # The components draw on both sides by design: components.js with the
@@ -33858,7 +33863,8 @@ def _chain():
                     if not trs or any(t != "th" or 'scope="row"' not in a for t, a in trs):
                         headless.append(f"{rel}: a term of the coverage table does not head its row")
             if 'class="searchrow"' in page:
-                assert re.search(r'<div class="searchrow" role="search" aria-label="[^"]+">', page), (
+                assert re.search(r'<div class="searchrow" role="search" aria-label="[^"]+"(?: hidden)?>',
+                                 page), (
                     f"{rel}: the bill search row is not a named search landmark")
             if 'id="facets"' in page:
                 assert re.search(r'<aside class="facets" id="facets" aria-label="[^"]+">', page), (
@@ -50082,9 +50088,11 @@ const look = () => {
     s.sel.status.add("Died"); s.render(); out.cacrDied = look();
     clear();
     const so = $("#sort"); so.value = "status"; so.fire("change"); out.byStatus = look();
-    // A page further down the list, and then narrowed by a status and by a
-    // type: each heading's number is the whole result's, every time.
-    s.more(); out.byStatusMore = look();
+    // The list drawn to its end a page at a time, and then narrowed by a
+    // status and by a type: each heading's number is the whole result's,
+    // every time.
+    for (let i = 0; i < 10; i++) s.more();
+    out.byStatusMore = look();
     s.sel.status.add("Passed"); s.render(); out.byStatusPassed = look();
     s.sel.status.clear(); s.sel.type.add("HB"); s.render(); out.byStatusHB = look();
     clear();
@@ -50310,12 +50318,12 @@ def _status_heads_full_totals():
     was counted over the cards on screen, so the first hundred of the
     2025-2026 term (one In Progress, then Passed) headed its 686 "Passed 99".
     Run in node over _search_groups_fixture with 130 more laws, 150 bills in
-    the term: the first hundred drawn are headed In Progress 4 and Passed
-    136, a page further every category is headed with the same numbers, and
-    each is the Status filter's own count for it; and narrowed, by Passed
-    ticked and by HB, each heading is still the sidebar's number. A heading
-    of a thousand or more carries its separator, as the filter's count
-    does."""
+    the term: the first page drawn (PAGE_SIZE cards, 25 since the phone audit
+    of 25 October 2026) is headed In Progress 4 and Passed 136, the list
+    drawn to its end every category with the same numbers, and each is the
+    Status filter's own count for it; and narrowed, by Passed ticked and by
+    HB, each heading is still the sidebar's number. A heading of a thousand
+    or more carries its separator, as the filter's count does."""
     fx = _search_groups_fixture(passed=130)
     got = _node_app(_SEARCH_GROUPS_HARNESS, {"fixture.json": json.dumps(fx)})
     if got is None:
@@ -50324,15 +50332,21 @@ def _status_heads_full_totals():
     bad = []
     side = {v: c for v, _l, c in got["byStatus"]["status"]}
     first = [tuple(h) for h in got["byStatus"]["heads"]]
-    if first != [("In Progress", 4), ("Passed", 136)] or len(got["byStatus"]["cards"]) != 100:
-        bad.append(f"the first hundred of 150 are headed {first} over "
+    js = Path("src/pages/app.js").read_text(encoding="utf-8")
+    page = re.search(r"^const PAGE_SIZE = (\d+);", js, re.M)
+    n = int(page.group(1)) if page else 0
+    assert 4 < n < 150, f"the list's page is {n} cards; this fixture needs between 5 and 149"
+    if first != [("In Progress", 4), ("Passed", 136)] or len(got["byStatus"]["cards"]) != n:
+        bad.append(f"the first {n} of 150 are headed {first} over "
                    f"{len(got['byStatus']['cards'])} cards, not In Progress 4 and Passed 136 "
-                   "over 100: a heading counts the cards drawn, not the list")
+                   f"over {n}: a heading counts the cards drawn, not the list")
+    if len(got["byStatusMore"]["cards"]) != 150:
+        bad.append(f"Show more ten times drew {len(got['byStatusMore']['cards'])} of 150 cards")
     more = [tuple(h) for h in got["byStatusMore"]["heads"]]
     want = [("In Progress", 4), ("Passed", 136), ("Tabled", 1), ("Interim Study", 1),
             ("Died", 6), ("Withdrawn", 1), ("Vetoed", 1)]
     if more != want:
-        bad.append(f"a page further the list is headed {more}, not {want}")
+        bad.append(f"drawn to its end the list is headed {more}, not {want}")
     differ = [(h, c, side.get(h)) for h, c in more if side.get(h) != c]
     if differ:
         bad.append(f"a heading and the Status filter disagree (heading, its number, the "
@@ -50345,12 +50359,11 @@ def _status_heads_full_totals():
             bad.append(f"with {what} the headings {heads} are not the filter's numbers: {wrong}")
     if [tuple(h) for h in got["byStatusPassed"]["heads"]] != [("Passed", 136)]:
         bad.append(f"Passed ticked is headed {got['byStatusPassed']['heads']}, not Passed 136")
-    js = Path("src/pages/app.js").read_text(encoding="utf-8")
     if not re.search(r"<span>\$\{\(grpN\[grpOf\(b\)\]\|\|0\)\.toLocaleString\(\)\}</span>", js):
         bad.append("a heading's number is not written with toLocaleString: \"Passed 12873\" "
                    "beside the filter's \"12,873\" on All Terms")
     assert not bad, "; ".join(bad)
-    return "ok", ("the first hundred of 150 are headed In Progress 4 and Passed 136, the whole "
+    return "ok", (f"the first {n} of 150 are headed In Progress 4 and Passed 136, the whole "
                   "list each category by the filter's own number, narrowed or not")
 
 
@@ -51435,9 +51448,11 @@ def _review_of_audit_fixes(BP):
     finally:
         shutil.rmtree(root, ignore_errors=True)
 
-    if got["more"] != {"card": 100, "others": 0}:
-        bad.append(f"\"show 100 more\" on the list leaves focus on {got['more']}, not on the "
-                   "header of the first card it brought, the 101st")
+    size = re.search(r"^const PAGE_SIZE = (\d+);", js.read_text(encoding="utf-8"), re.M)
+    size = int(size.group(1)) if size else None
+    if got["more"] != {"card": size, "others": 0}:
+        bad.append(f"\"show {size} more\" on the list leaves focus on {got['more']}, not on the "
+                   f"header of the first card it brought, card {size} counted from 0")
     if got["observer"] != {"card": None, "others": 0}:
         bad.append("the list growing as it is scrolled moves the keyboard, which nobody asked "
                    f"for: {got['observer']}")
@@ -63241,6 +63256,127 @@ def _drawn_pages():
                   "part of themselves")
 
 
+# The harness of _no_index_off_the_list: app.js loaded as one kind of page,
+# process.argv[2] -- "static" (a town, a law, a session day), "member",
+# "bill", or "bills" (the bill search) -- with every request refused, so a
+# record's page meets the failure its catch is for. What the page had done
+# when it made its first request, and when it was done, as JSON.
+_NO_INDEX_HARNESS = r"""
+require("./stub.js");
+const fs = require("fs");
+const kind = process.argv[2];
+if (kind === "static") window.GR_STATIC = true;
+if (kind === "member") { window.GR_MEMBER = "smith-1"; window.GR_STANDALONE = true; }
+if (kind === "bill") { window.GR_BILL = "2026/HB1"; window.GR_STANDALONE = true; }
+const classes = el => { const c = new Set(); el.classList = {add: x => c.add(x), remove: x => c.delete(x),
+  contains: x => c.has(x), toggle: (x, on) => { const v = on === undefined ? !c.has(x) : !!on;
+    v ? c.add(x) : c.delete(x); return v; }, list: () => [...c].sort()}; return el; };
+const row = classes(document.querySelector(".searchrow")), shell = classes(document.querySelector(".shell"));
+const rec = classes(document.getElementById("static-rec"));
+rec.innerHTML = "<h1>The record</h1>";
+const state = () => ({row: !!row.hidden, year: !!document.querySelector("#year").hidden,
+  shell: shell.classList.list(), rec: rec.classList.list(), recHtml: rec.innerHTML,
+  results: document.querySelector("#results").innerHTML});
+const asked = [];
+let first = null;
+globalThis.fetch = async u => { asked.push(new URL(u, "https://x").pathname); if (!first) first = state();
+  return {ok: false, status: 404, statusText: "Not Found", json: async () => { throw new Error("404"); },
+          text: async () => ""}; };
+const ticks = async n => { for (let i = 0; i < n; i++) await new Promise(r => setImmediate(r)); };
+(async () => {
+  try { (0, eval)(fs.readFileSync("./page.js", "utf8")); }
+  catch (e) { console.log("LOAD " + e.constructor.name + ": " + e.message); process.exit(1); }
+  const loaded = state();
+  await ticks(40);
+  process.stdout.write("\n@@" + JSON.stringify({asked, first, loaded, end: state()}));
+})().catch(e => { console.log("RUN " + e.message); process.exit(1); });
+"""
+
+
+@check("frontend", "a page that is not a list of bills asks for no bill index it does not read, "
+                   "takes the search's controls down before asking for anything, and shows its "
+                   "own record if what it asked for does not come")
+def _no_index_off_the_list():
+    """The phone audit of 25 October 2026 (M7). About 3,800 pages carry
+    their record in their HTML and are built with GR_STATIC -- the towns,
+    the laws, the guides, the Calendar, the session days -- and each
+    downloaded the 2 MB bill index it never reads, with the bill search's
+    controls ("Loading...", and on a phone "Filter by topic...") on screen
+    until it came, then taken down, so the page jumped. A bill's, a
+    member's and a committee's own page took the list's controls down only
+    once the index came, and if it did not come put a developer's error
+    ("run build_site_v2.py") where the record had been.
+
+    Run in node as each kind of page, with every request refused: a static
+    page asks for nothing at all and has the row and the filter column down
+    the moment the script has run; a member's page has them down before its
+    first request and, refused, shows the record its HTML carries under one
+    plain line, with no error where it was; a bill's page keeps its search
+    box, has the list's pickers and filter column down before its first
+    request, and shows its record the same way; and the bill search itself
+    keeps all of it. And the HTML: shell.page writes the row hidden and the
+    shell without its filter column on a page built with GR_STATIC and on a
+    member's page, the column alone on a bill's, so a phone that paints
+    before the script has run never shows them; and app.css shows the
+    record when app.js marks it shown."""
+    runs = {k: _node_app(_NO_INDEX_HARNESS, args=(k,)) for k in ("static", "member", "bill", "bills")}
+    if any(v is None for v in runs.values()):
+        return "skip", "app.js, dom_stub.js or node is not here"
+    bad = []
+    st = runs["static"]
+    if st["asked"]:
+        bad.append(f"a static page asked for {st['asked']}")
+    if not st["loaded"]["row"] or "nofacets" not in st["loaded"]["shell"]:
+        bad.append(f"a static page's search row and filter column are up once its script has run: "
+                   f"{st['loaded']}")
+    for k in ("member", "bill"):
+        g = runs[k]
+        f, end = g["first"] or {}, g["end"]
+        if not g["asked"] or not f:
+            bad.append(f"a {k}'s page asked for nothing")
+            continue
+        if f["row"] is not (k == "member") or not f["year"] or "nofacets" not in f["shell"]:
+            bad.append(f"a {k}'s page made its first request with the search's controls as {f}")
+        if "shown" not in end["rec"] or not end["recHtml"].startswith('<p class="src">') \
+                or "The record" not in end["recHtml"]:
+            bad.append(f"a {k}'s page that could not load does not show its record under one "
+                       f"line: {end['rec']} {end['recHtml'][:120]!r}")
+        if re.search(r"build_site_v2|http\.server|<code>|Could not load", end["results"] + end["recHtml"]):
+            bad.append(f"a {k}'s page that could not load shows a developer's error: "
+                       f"{end['results'][:120]!r}")
+    b = runs["bills"]
+    if b["first"]["row"] or b["first"]["year"] or "nofacets" in b["end"]["shell"]:
+        bad.append(f"the bill search took its own controls down: {b['first']} {b['end']['shell']}")
+    if "/meta.json" not in b["asked"]:
+        bad.append(f"the bill search asked for {b['asked']}, not meta.json")
+    try:
+        import shell as S
+    except ImportError:
+        S = None
+    if S and Path("src/pages/bills.html").exists():
+        tpl = S.template()
+        kw = dict(path="/x.html", base="https://graniterecord.org", title="X", description="X.")
+        pages = {"static": S.page(tpl, globals={"GR_STATIC": True}, **kw),
+                 "member": S.page(tpl, globals={"GR_MEMBER": "x", "GR_STANDALONE": True}, **kw),
+                 "bill": S.page(tpl, globals={"GR_BILL": "2026/HB1", "GR_STANDALONE": True}, **kw),
+                 "no globals": S.page(tpl, **kw)}
+        for k, html in pages.items():
+            hid = re.search(r'<div class="searchrow" role="search" aria-label="[^"]+" hidden>', html)
+            nof = '<div class="shell nofacets">' in html
+            want = (k in ("static", "member"), k != "no globals")
+            if (bool(hid), nof) != want:
+                bad.append(f"shell.page writes a {k} page's search row hidden={bool(hid)} and its "
+                           f"filter column away={nof}, not {want}")
+    css = Path("src/pages/app.css").read_text(encoding="utf-8")
+    if "html.js .static-rec:not(.shown){display:none}" not in css:
+        bad.append("app.css does not show a record's plain HTML when app.js marks it shown")
+    assert not bad, "; ".join(bad)
+    return "ok", ("a static page asks for nothing and has the search down at once; a member's "
+                  "and a bill's page take the list's controls down before asking, and show their "
+                  "own record under one line when refused; the bill search keeps its controls; "
+                  "shell.page writes them down in the HTML")
+
+
 # ---- the icons (Polish 1, the person, 9 October 2026) ------------------------------
 #
 # "Is there any way you can get the icons for the nav and homepage items among
@@ -65470,6 +65606,86 @@ def _nobill_ring_on_session_day():
     return "ok", f"{len(found)} roll calls on no bill on the fixture's session days, each from its card"
 
 
+# The harness of _session_rings_one_bill: a session day of two bills, HB1
+# with two roll calls and HB2 with one, whose records are held back until the
+# harness lets each come. A raw string: the record's markup carries a slash.
+_SESSION_RINGS_HARNESS = r"""
+require("./stub.js");
+const fs = require("fs");
+window.GR_STATIC = true;
+const slots = [["HB1", 0, 0], ["HB1", 1, 1], ["HB2", 2, 0]].map(([b, n, c]) => {
+  const at = {"data-vote": String(n), "data-bill": "2026/" + b, "data-card": String(c)};
+  const s = {b, n, reads: 0, writes: 0, _h: "", getAttribute: k => (k in at ? at[k] : null)};
+  Object.defineProperty(s, "innerHTML", {get() { s.reads++; return s._h; },
+                                         set(v) { s.writes++; s._h = String(v); }});
+  return s; });
+document.querySelectorAll = q => (q === ".svote[data-vote]" ? slots : []);
+const count = {yeas: 2, nays: 1, passed: true};
+document.getElementById("sessvotes").textContent = JSON.stringify([count, count, count]);
+const card = () => Object.assign({tally: {R: {Yea: 2}, D: {Nay: 1}}, members: [
+  {n: "A", p: "R", v: "Yea"}, {n: "B", p: "R", v: "Yea"}, {n: "C", p: "D", v: "Nay"}]}, count);
+const recs = {"/bill/2026/hb1": {rollcalls: [card(), card()]}, "/bill/2026/hb2": {rollcalls: [card()]}};
+const asked = [], release = {};
+globalThis.fetch = u => { const path = new URL(u).pathname; asked.push(path);
+  return new Promise(ok => { release[path] = () => ok({ok: true, status: 200, text: async () =>
+    '<script type="application/json" id="gr-data">' + JSON.stringify(recs[path]) + "</script>"}); }); };
+globalThis.DOMParser = class { parseFromString(h) {
+  const m = /id="gr-data">([\s\S]*?)<\/script>/.exec(h);
+  return {getElementById: id => (id === "gr-data" && m ? {textContent: m[1]} : null),
+          querySelector: () => null}; } };
+const ticks = async n => { for (let i = 0; i < n; i++) await new Promise(r => setImmediate(r)); };
+const seen = () => slots.map(s => { const o = [s.b, s.reads, s.writes]; s.reads = s.writes = 0; return o; });
+(async () => {
+  try { (0, eval)(fs.readFileSync("./page.js", "utf8")); }
+  catch (e) { console.log("LOAD " + e.constructor.name + ": " + e.message); process.exit(1); }
+  const out = {asked: asked.slice(), first: seen()};
+  release["/bill/2026/hb2"](); await ticks(20); out.hb2 = seen();
+  release["/bill/2026/hb1"](); await ticks(20); out.hb1 = seen();
+  out.rings = slots.map(s => /data-seg="/.test(s._h));
+  process.stdout.write("\n@@" + JSON.stringify(out));
+})().catch(e => { console.log("RUN " + e.message); process.exit(1); });
+"""
+
+
+@check("frontend", "a session day draws a bill's rings again when that bill's record comes, "
+                   "and leaves every other bill's alone")
+def _session_rings_one_bill():
+    """The phone audit of 25 October 2026 (M7): a session day of 29 bills
+    fetched each bill's record to draw its roll calls with the Votes tab's
+    own ring, and redrew all 40 rings each time one arrived -- reading back
+    and rewriting every ring for every record, which froze a mid-range phone
+    for seconds (23.8 s of the main thread's long tasks on the House's 11
+    March 2026, with the CPU slowed four times; 7.2 s since). billRecord tells
+    its callback which record came, and drawSessionVotes draws that bill's
+    rings alone.
+
+    Run in node over a day of two bills, HB1 with two roll calls and HB2
+    with one, their records held back: on load every ring is drawn from the
+    counts and each record asked for once; when HB2's comes only HB2's ring
+    is read or written, and drawn from its members; when HB1's comes, only
+    HB1's two."""
+    got = _node_app(_SESSION_RINGS_HARNESS)
+    if got is None:
+        return "skip", "app.js, dom_stub.js or node is not here"
+    bad = []
+    if sorted(got["asked"]) != ["/bill/2026/hb1", "/bill/2026/hb2"]:
+        bad.append(f"the day asked for {got['asked']}, not each bill's record once")
+    if any(w != 1 for _b, _r, w in got["first"]):
+        bad.append(f"on load not every ring was drawn once from its counts: {got['first']}")
+    for came, rows in (("HB2", got["hb2"]), ("HB1", got["hb1"])):
+        other = [r for r in rows if r[0] != came and (r[1] or r[2])]
+        own = [r for r in rows if r[0] == came and not r[2]]
+        if other:
+            bad.append(f"{came}'s record coming redrew another bill's ring: {other}")
+        if own:
+            bad.append(f"{came}'s record coming did not redraw its own ring: {own}")
+    if got["rings"] != [True, True, True]:
+        bad.append(f"the rings are not drawn from the records' members: {got['rings']}")
+    assert not bad, "; ".join(bad)
+    return "ok", ("a record coming redraws its own bill's rings and reads no other's; every "
+                  "ring drawn from the counts first and from its record after")
+
+
 @check("frontend", "every link that leaves the site carries the outside-link mark, says it opens a "
                    "new tab, and opens one, whoever wrote it")
 def _outside_links():
@@ -65776,6 +65992,80 @@ process.stdout.write(JSON.stringify(out));""")
     return "ok", ("Status open at the start, Bill Type folded; a narrowed long list's options with "
                   "bills first and a ticked zero in its place among the zeros; Status in its "
                   "fixed order; the Filters button and its panel below 960px")
+
+
+# The harness of _filters_drawn_when_seen, after _HEARD_PRELUDE: the bill
+# search on a phone (the 60em query matching), its filter panel's writes
+# counted, through typing with the panel shut and open and the window widened.
+_FILTERS_SEEN_HARNESS = r"""
+const mq = {matches: true, heard: [], addEventListener(t, f) { this.heard.push(f); }};
+globalThis.matchMedia = q => (/59\.9375em/.test(q) ? mq : {matches: false, addEventListener() {}});
+const cl = new Set();
+document.querySelector(".shell").classList = {add: x => cl.add(x), remove: x => cl.delete(x),
+  contains: x => cl.has(x), toggle: (x, on) => { const v = on === undefined ? !cl.has(x) : !!on;
+    v ? cl.add(x) : cl.delete(x); return v; }};
+let drawn = 0, fh = "";
+const fx = {scrollTop: 0, hidden: false, querySelectorAll: () => [],
+  get innerHTML() { return fh; }, set innerHTML(v) { drawn++; fh = String(v); }};
+const find = document.querySelector;
+document.querySelector = q => (q === "#facets" ? fx : find.call(document, q));
+const ftb = document.getElementById("ftoggle"), badge = {textContent: "", hidden: true};
+ftb.querySelector = q => (q === ".badge" ? badge : null);
+load("render, IDX, sel, PAGE_SIZE, setMeta:(m)=>{META=m;}, setTerm:(t)=>{term=t;}");
+s.setMeta({terms: ["2025-2026"], committee_codes: {}, topics: ["Housing"]});
+s.setTerm("2025-2026");
+s.IDX.length = 0;
+for (let i = 1; i <= 120; i++) s.IDX.push({id: "HB" + i, n: "HB " + i, title: "a bill", status: "Passed",
+  kind: "active", committees: ["House Finance"], committee: "House Finance", topic: "Housing",
+  sponsor: "", term: "2025-2026", year: "2025", hayT: "hb" + i + " a bill", hayC: "house finance"});
+const out = {size: s.PAGE_SIZE};
+const toggle = () => click(q => (q === "#ftoggle" ? ftb : null));
+const step = (name, f) => { const was = drawn; f(); out[name] = {drawn: drawn - was, badge: badge.textContent}; };
+step("shut", () => { s.sel.topic.add("Housing"); s.render(); });
+out.cards = (document.querySelector("#results").innerHTML.match(/<article class="card/g) || []).length;
+step("opened", toggle);
+step("typedOpen", () => s.render());
+step("closed", toggle);
+step("typedShut", () => s.render());
+step("widened", () => { mq.matches = false; mq.heard.forEach(f => f({matches: false})); });
+step("typedWide", () => s.render());
+process.stdout.write("\n@@" + JSON.stringify(out));
+"""
+
+
+@check("frontend", "the bill search draws its filter panel only where it can be seen, and a "
+                   "page of 25 to 50 cards at a time")
+def _filters_drawn_when_seen():
+    """The phone audit of 25 October 2026 (S8): the bill list lagged about a
+    second a letter on a phone, because render() drew a hundred cards and,
+    behind a Filters button nobody had pressed, the whole filter panel --
+    every bill of the term counted again for each group -- on every letter.
+    Typing "housing" at a phone's pace with the CPU slowed four times held
+    the page 6.5 seconds; 2.2 since.
+
+    Run in node with the 60em query matching, as on a phone: typing with the
+    panel shut draws only the Filters button's badge; the button opening it
+    draws the panel as it stands, and typing then draws it again; shut again,
+    typing leaves it; the window widened past 60em draws it, and typing then
+    does too. And the list draws PAGE_SIZE cards, between 25 and 50."""
+    got = _node_app(_HEARD_PRELUDE + _FILTERS_SEEN_HARNESS)
+    if got is None:
+        return "skip", "app.js, dom_stub.js or node is not here"
+    want = {"shut": 0, "opened": 1, "typedOpen": 1, "closed": 0, "typedShut": 0,
+            "widened": 1, "typedWide": 1}
+    drew = {k: got[k]["drawn"] for k in want}
+    bad = []
+    if drew != want:
+        bad.append(f"the filter panel was drawn {drew} times, not {want}")
+    if got["shut"]["badge"] != "1":
+        bad.append(f"with the panel shut the Filters button's badge says {got['shut']['badge']!r}, "
+                   "not the 1 filter ticked")
+    if not 25 <= (got["size"] or 0) <= 50 or got["cards"] != got["size"]:
+        bad.append(f"the list's page is {got['size']} cards and {got['cards']} were drawn, "
+                   "not one page of 25 to 50")
+    assert not bad, "; ".join(bad)
+    return "ok", (f"the panel drawn only open or wide, the badge kept with it shut; "
+                  f"{got['size']} cards a page")
 
 
 @check("frontend", "the Calendar page is a month, filters and three views over a week that reads whole without script")

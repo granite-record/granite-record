@@ -545,12 +545,15 @@ function findBillsLoad(){
   return FBILLS.loading;
 }
 
-/* EVERY TERM'S BILLS, for /search only. The other eighteen indexes, about
-   2.2 MB over the wire between them where the current term's is 135 KB, so
-   the panel never asks for them: /search does, once a reader has searched
-   for something, and after the current term, whose answer it shows first.
-   With each goes that term's sidx file, what its bills' analyses and texts
-   are about (build_search_index.py prints what they weigh).
+/* EVERY TERM'S BILLS, for /search only. The other eighteen indexes and
+   their sidx files, what each term's bills' analyses and texts are about,
+   are 36 requests and about 6.2 MB over the wire between them -- the whole
+   of /search with a word in it is about 6.7 MB of data in 41 (measured on
+   the preview, 25 October 2026; this said 2.2 MB) -- where the current
+   term's index is about 240 KB, so the panel never asks for them: /search
+   does, once a reader has searched for something, and after the current
+   term, whose answer it shows first (the person, 24 September: every term
+   in the full results).
    The rows are every file's, concatenated, as app.js's IDX holds them when
    /bills is opened on "All terms" -- so "All 412 bills" here is the count
    /bills?q=...&term=all then shows. If any term cannot be had, none of them
