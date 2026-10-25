@@ -803,8 +803,16 @@ def calendar_html(out, today=None, rows=None, lang="en", events=None):
         # business resumes rather than just "nothing", because the General
         # Court is a part-time legislature and this is what the page says for
         # half the year.
-        note = (say(lang, "cal.none_next", "Nothing is scheduled next week yet.") if ahead
-                else say(lang, "cal.none_left", "Nothing is scheduled for the rest of this week."))
+        # WHAT IS NOT SCHEDULED, NOT "NOTHING" (the audit of 25 October 2026,
+        # M8). The rail leaves the special study committees to the Calendar
+        # (home_week), and "Nothing is scheduled next week yet" stood over a
+        # week of 26 October 2026 for which the Calendar held seventeen of
+        # theirs. It says what the rail holds and does not: the chambers' own
+        # meetings.
+        note = (say(lang, "cal.none_next", "No House or Senate committee meetings are "
+                    "scheduled next week.") if ahead
+                else say(lang, "cal.none_left", "No House or Senate committee meetings are "
+                         "scheduled for the rest of this week."))
         if not n_next:
             # MOSTLY (the survey of 7 October 2026): both chambers sat until veto
             # day, 19 August, in 2026, and into the autumn in most years.
@@ -2943,12 +2951,50 @@ def recent_box(H, lang="en", codes=None, sits=None, today=None):
             '<div class="latcal">' + "".join(html) + "</div>" + recent_more(lang))
 
 
-def home_body(lang, has_lockup, static_state, static_up, static_recent, latest_days):
+def session_line(H, lang="en", sits=None):
+    """The latest sitting of each chamber, as one line under the status box:
+    "Aug 19, 2026 — House · Senate recordings", each chamber the way to its
+    day's page, which opens on the recording.
+
+    ONE LINE, NOT TWO PLAYERS (the audit of 25 October 2026, M8). Two large
+    black players for the sittings of 19 August were the heaviest thing on
+    the home page's first screen, under a date written as no other date on
+    the site is ("August 19th, 2026"); the day's page has the recording and
+    everything said and voted on around it. Chambers that last sat on
+    different days take a line each, the newest first. A sitting with no
+    page here (`sits`, sitting_days()) leads to its recording on YouTube, so
+    neither chamber's is lost. "" where home.json names none."""
+    esc = _home_esc
+    by_day = {}
+    for v in H.get("latest_sessions") or []:
+        if v.get("date") and v.get("video_id"):
+            by_day.setdefault(v["date"], []).append(v)
+    lines = []
+    for d in sorted(by_day, reverse=True):
+        links = []
+        for v in by_day[d]:
+            b = "S" if v.get("chamber") == "Senate" else "H"
+            href = (f"session/{b}/{d}.html" if (b, d) in (sits or ())
+                    else f"https://www.youtube.com/watch?v={v['video_id']}")
+            name = (say(lang, "home.senate", "Senate") if b == "S"
+                    else say(lang, "home.house", "House"))
+            links.append(f'<a href="{esc(href)}">{name}</a>')
+        day = esc(_shell.date_words(d, "medium", lang))
+        lines.append('<p class="sessline">' + (
+            say(lang, "home.recordings", "{date} — {chambers} recordings",
+                date=day, chambers=" · ".join(links)) if len(links) > 1
+            else say(lang, "home.recording", "{date} — {chamber} recording",
+                     date=day, chamber=links[0])) + "</p>")
+    return "".join(lines)
+
+
+def home_body(lang, has_lockup, static_state, static_up, static_recent, static_sessions):
     """The home page's <main>, in `lang`: the hero, the search box, the cards
-    and the guides' slot in the middle; the status and the latest session
-    days on the left; Coming up, the rebuild line and Latest Activity on the
-    right (the owner, 24 October 2026). The parts drawn from data are passed
-    in, drawn in `lang`."""
+    and the guides' slot in the middle; the status and the line to the latest
+    sittings' recordings (session_line) on the left; Coming up, the rebuild
+    line's slot (a warning only: HOME_JS) and Latest Activity on the right
+    (the owner, 24 October 2026). The parts drawn from data are passed in,
+    drawn in `lang`."""
     esc = _home_esc
     # THREE COLUMNS, AND THE MIDDLE ONE IS WRITTEN FIRST. The order here is
     # the order a screen reader hears and the order the Tab key takes; the
@@ -3023,7 +3069,7 @@ def home_body(lang, has_lockup, static_state, static_up, static_recent, latest_d
 </div>
 <section class="hside hleft" aria-label="{esc(say(lang, "home.left", "Where the General Court is, and its latest session days"))}">
 <div id="state">{static_state}</div>
-<div id="session" data-days="{esc(" ".join(latest_days))}"></div>
+<div id="session">{static_sessions}</div>
 </section>
 <!-- WHAT IS COMING UP OVER WHAT HAS JUST HAPPENED (the owner, 24 October
      2026: "if the coming up and latest activity sections are going to use
@@ -3032,11 +3078,12 @@ def home_body(lang, has_lockup, static_state, static_up, static_recent, latest_d
      which shows you what's coming up and what just happened more
      continuously"). The two are one format now, a day and its meetings'
      cards, so the right column reads forward and back from the present: the
-     week ahead, then the rebuild line, which dates what follows it (the pair
-     settled on 19 September), then the latest meetings. The latest session
-     days, with the status, are on the left. Below 1180px the same order: the
-     hero, the search and the cards, the status, the recordings, Coming Up,
-     the rebuild line and Latest Activity. -->
+     week ahead, then the rebuild line -- drawn only to warn that the data
+     is stale or a step failed, the footer saying when it was rebuilt (25
+     October 2026) -- then the latest meetings. The line to the latest
+     sittings' recordings, with the status, is on the left. Below 1180px the
+     same order: the hero, the search and the cards, the status, the
+     recordings' line, Coming Up, the rebuild line and Latest Activity. -->
 <section class="hside hright" aria-label="{esc(say(lang, "home.right", "What is coming up, and what has just happened"))}">
 <div id="upcoming">{static_up}</div>
 <div id="fresh" class="fresh"></div>
@@ -3065,15 +3112,6 @@ HOME_JS = """
 // where it is not set.
 const fd=d=>dateWords(d||"","short",window.GR_LANG);
 const fdy=d=>dateWords(d||"","medium",window.GR_LANG);
-// THE FLOOR SESSION'S OWN TITLE, "House Session (August 19th, 2026)": the
-// person's pattern (7 October 2026, F3), the month in full and the day as an
-// ordinal, the one date on the site that is not dateWords()'s. 11th, 12th and
-// 13th are the exceptions to 1st, 2nd and 3rd.
-const ordinal=n=>n+((n%100>=11&&n%100<=13)?"th":({1:"st",2:"nd",3:"rd"}[n%10]||"th"));
-const fdo=d=>{if(!d)return"";const L=typeof window!=="undefined"&&window.GR_LANG;
-  if(L&&L!=="en")return dateWords(d,"full",L);
-  const[y,m,dd]=d.split("-").map(Number);
-  return DW_MONTHS[m-1]+" "+ordinal(dd)+", "+y;};
 // THE RECORD'S OWN WORDS on a page in another language are marked English
 // (i18n.py): a bill's title and the line of its history.
 const REC=window.GR_LANG&&window.GR_LANG!=="en"?' lang="en"':"";
@@ -3094,7 +3132,11 @@ document.querySelectorAll("#recent .calday[data-d]").forEach(el=>{
   const rel=el.querySelector(".cdrel");
   if(rel)rel.textContent=latRel(el.dataset.d,new Date(new Date().setHours(0,0,0,0)));});
 // If the nightly build stops running, nobody should be reading month-old data
-// believing it is current. The banner degrades into saying so.
+// believing it is current. THIS LINE SPEAKS ONLY THEN (the audit of 25 October
+// 2026, M8: "Data rebuilt" stood under Coming up and again in the footer).
+// The footer says when every page's data was rebuilt (chrome.FOOT_JS); this
+// says it again only as a warning -- three days old or more, or a step of the
+// build failed -- which the footer's date alone does not give.
 // Anchored to the site root, not to the page. legislators.html is served at
 // /legislators, and a legislators/ folder of per-member data sits beside it --
 // so /legislators can be redirected to /legislators/, and a relative
@@ -3105,15 +3147,16 @@ fetch(DATA("build.json")).then(r=>r.json()).then(B=>{
   const el=document.getElementById("fresh"); if(!el||!B.finished)return;
   const days=Math.floor((Date.now()-new Date(B.finished))/86400000);
   const failed=(B.steps||[]).filter(s=>s.status==="failed").map(s=>s.step);
+  if(days<3&&!failed.length)return;
   const when=new Date(B.finished).toLocaleString(window.GR_LOCALE||"en-US",
     {month:"short",day:"numeric",hour:"numeric",minute:"2-digit"});
-  let cls="ok", msg=tr("fresh.rebuilt","Data rebuilt {when}",{when});
-  if(days>=3){cls="stale";msg=tr("fresh.stale","Data last rebuilt {when} — {days} days ago",{when,days});}
-  if(failed.length){cls="stale";
+  let msg=days>=3?tr("fresh.stale","Data last rebuilt {when} — {days} days ago",{when,days})
+    :tr("fresh.rebuilt","Data rebuilt {when}",{when});
+  if(failed.length)
     msg+=". "+(failed.length>1
       ?tr("fresh.failed_n","{n} build steps failed, so some sections may be incomplete.",{n:failed.length})
-      :tr("fresh.failed_1","1 build step failed, so some sections may be incomplete."));}
-  el.className="fresh "+cls;
+      :tr("fresh.failed_1","1 build step failed, so some sections may be incomplete."));
+  el.className="fresh stale";
   el.innerHTML=`<span class="fdot"></span>${esc(msg)}`;
 }).catch(()=>{});
 
@@ -3232,7 +3275,9 @@ fetch(DATA("home.json")).then(r=>r.json()).then(H=>{
       // The line under the rail stays: it is the way to the full calendar,
       // which is the useful thing to offer under an empty week.
       const more=cal.querySelector(".calall");
-      cal.innerHTML=`<h2>${tr("cal.coming","Coming up")}</h2><p class="note">${tr("cal.none_else","Nothing else is scheduled this week.")}</p>`
+      // In calendar_html's words for an empty week: the rail holds the
+      // chambers' own meetings, not the study committees.
+      cal.innerHTML=`<h2>${tr("cal.coming","Coming up")}</h2><p class="note">${tr("cal.none_else","No more House or Senate committee meetings are scheduled this week.")}</p>`
         +(more?more.outerHTML:"");
     }
     // "Last updated N days ago" is the one line whose whole job is to say the
@@ -3287,55 +3332,9 @@ fetch(DATA("home.json")).then(r=>r.json()).then(H=>{
         <span style="color:var(--ink-2)">${esc(b.title)}</span></td></tr>`).join("")}
        </tbody></table>`:""}`;
 
-  // Both chambers. They sit on different days, so showing one hides the other.
-  const ls=(H.latest_sessions&&H.latest_sessions.length)
-    ? H.latest_sessions : (H.latest_session?[H.latest_session]:[]);
-  // THE DATE LEADS TO THE DAY, where the sitting has a page. data-days is
-  // written when the site is built and names the sittings of these dates
-  // that build_session_pages.py writes ("H/2026-08-19"); a date not on it
-  // stays text. Nothing on this page led to a sitting's page before (the
-  // audit of 2 October 2026, B3).
-  const sess=document.getElementById("session");
-  const built=(sess.dataset.days||"").split(" ");
-  const dayLink=v=>{
-    const key=(v.chamber==="Senate"?"S":"H")+"/"+v.date;
-    return built.includes(key)?`<a href="/session/${esc(key)}">${fdo(v.date)}</a>`:fdo(v.date);
-  };
-  // "House Session (August 19th, 2026)", with the date the way to that
-  // sitting's page where one is built. In another language each chamber's
-  // words are tr()'s; a chamber the record names otherwise keeps its name.
-  const sessName=v=>v.chamber==="House"?tr("sess.house","House Session")
-    :v.chamber==="Senate"?tr("sess.senate","Senate Session"):`${esc(v.chamber||"")} Session`;
-  const sessRec=v=>v.chamber==="Senate"
-    ?tr("sess.rec_senate","Recording of the Senate floor session, {date}",{date:fdy(v.date)})
-    :tr("sess.rec_house","Recording of the House floor session, {date}",{date:fdy(v.date)});
-  const sessPlay=v=>v.chamber==="Senate"
-    ?tr("sess.play_senate","Play the Senate floor session of {date}",{date:fd(v.date)})
-    :tr("sess.play_house","Play the House floor session of {date}",{date:fd(v.date)});
-  sess.innerHTML=ls.length
-    ?`<h2>${tr("sess.recent","Recent Session Days")}</h2><div class="twoup">${ls.map(v=>
-      `<div><p class="sesstitle"><b>${sessName(v)}</b>
-        (${dayLink(v)})</p>
-        <div class="player"><button type="button" class="pstub" data-embed="${esc(v.video_id)}"
-          data-title="${esc(sessRec(v))}"
-          aria-label="${esc(sessPlay(v))}">
-          <span>${icon("play")}</span><span>${tr("sess.play","Play")}</span></button></div></div>`).join("")}</div>`
-    :"";
-});
-document.addEventListener("click",e=>{
-  const st=e.target.closest("[data-embed]");
-  if(!st)return;
-  // The button is replaced by the player, so the player takes the focus the
-  // button had; left on nothing, the next Tab press started from the top of
-  // the page (the audit of 2 October 2026, S1). app.js does the same.
-  const box=st.parentNode, had=document.activeElement===st;
-  // Titled for the chamber and the day, so the two players on this page are
-  // not both "Floor session" to a screen reader (M18).
-  st.outerHTML=`<iframe allow="autoplay" allowfullscreen
-    src="https://www.youtube-nocookie.com/embed/${st.dataset.embed}?autoplay=1"
-    title="${esc(st.dataset.title||tr("sess.floor","Floor session"))}"></iframe>`;
-  const frame=had&&box&&box.querySelector("iframe");
-  if(frame)frame.focus({preventScroll:true});
+  // #session IS NOT TOUCHED HERE (25 October 2026). The latest sittings
+  // are one line the build writes (build_pages.session_line), where two
+  // players were drawn from home.json.
 });
 // ONE BOX, THE HEADER'S FINDER (D13): find.js's findDraw, given this box's
 // ids, draws the header panel's rows into the box's dropdown -- the same
@@ -4261,15 +4260,10 @@ def main():
         print(KD.no_deadline_line(kd_events, today_d))
     static_up = calendar_html(out, today=today_d, events=kd_events)
 
-    # WHICH OF THE DAYS "MOST RECENT FLOOR SESSIONS" NAMES HAVE A PAGE. The
-    # block is drawn by the script from home.json, a chamber and a date each,
-    # and the date leads to that sitting's page where one is built: asked of
-    # the step that builds them (sitting_days), and handed to the script on
-    # the block itself.
+    # WHICH SITTINGS HAVE A PAGE: the line to the latest sittings'
+    # recordings (session_line) leads to a sitting's page where one is
+    # built, asked of the step that builds them (sitting_days).
     sits = sitting_days()
-    latest_days = [f"{b}/{v.get('date')}" for v in (H.get("latest_sessions") or [])
-                   for b in ("S" if v.get("chamber") == "Senate" else "H",)
-                   if (b, v.get("date")) in sits]
     # LATEST ACTIVITY'S WAYS INTO EACH MEETING: a committee's page by the
     # codes Coming up's cards link by, and a sitting's page where that step
     # writes one (the same `sits`).
@@ -4299,7 +4293,7 @@ def main():
         home = home_body(lang, has_lockup, state_box(S, lang, today_d, kd_events),
                          static_up if lang == i18n.DEFAULT
                          else calendar_html(out, today=today_d, lang=lang, events=kd_events),
-                         recent_box(H, lang, codes, sits), latest_days)
+                         recent_box(H, lang, codes, sits), session_line(H, lang, sits))
         if lang == i18n.DEFAULT and kept:
             home = home.replace("<!-- guides --><!-- /guides -->", kept.group(0), 1)
         dest = (out / "index.html" if lang == i18n.DEFAULT

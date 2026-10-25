@@ -96,8 +96,9 @@ def esc(s):
 #
 # What keeps its own style, because it follows somebody else's: a
 # citation's date (shell.cite_day, MLA's "24 Sept. 2026"), a feed's RFC 822
-# date, the docket's own lines as the clerk wrote them, and the home page's
-# floor session titles ("August 19th, 2026"), which the person chose.
+# date, and the docket's own lines as the clerk wrote them. (The home page's
+# floor session titles, "August 19th, 2026", were one until 25 October 2026,
+# when the audit's M8 replaced them with a line in date_words' medium form.)
 MONTHS = ("January", "February", "March", "April", "May", "June", "July",
           "August", "September", "October", "November", "December")
 WEEKDAYS = ("Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday")
