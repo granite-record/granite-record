@@ -1585,6 +1585,32 @@ def day_index(parts, bills, esc, body="H", date=""):
 SPOKE = {"for": "Spoke for the motion, urging a yes vote",
          "against": "Spoke against the motion, urging a no vote"}
 
+# THE MOVER WHO WAS THE ONLY SPEAKER, IN ONE LINE (the audit of 25 October
+# 2026, S2): "Moved by Rep. John Hunt (R - Ches 14), who spoke for it, urging
+# a yes vote." The card said "Moved by Rep. John Hunt (R - Ches 14)." and
+# then, under "Spoke for the motion, urging a yes vote", the same member
+# again -- on 21 May 2026 for nine bills in a row. Only where the mover is
+# the one member named on the motion, on its side; any other speaker keeps
+# the rows and their labels (SPOKE), the mover among them.
+MOVER_SPOKE = "who spoke for it, urging a yes vote"
+
+
+def mover_alone(it, mine, body, members):
+    """Whether the motion's mover is the one member who spoke on it, and for
+    it: `mine` is speakers_for's {"for": [...], "against": [...]}. One member
+    by the roster where the names resolve (Members.slug: the docket's "Rep.
+    Hunt" and the journal's "J. Hunt" are one member where the roster takes
+    both to one slug), and by the same words where neither does; a name only
+    one of them resolves is not taken for the other."""
+    if not it.mover or mine["against"] or len(mine["for"]) != 1:
+        return False
+    a = re.sub(r"^(?:Rep|Sen)\.\s+", "", it.mover).strip()
+    b = re.sub(r"^(?:Rep|Sen)\.\s+", "", mine["for"][0]).strip()
+    sa, sb = members.slug(body, a), members.slug(body, b)
+    if sa or sb:
+        return sa == sb
+    return a.lower() == b.lower()
+
 
 # THE CLERK'S WORDS, AND ONLY WHERE THEY SAY MORE (the owner, 24 October
 # 2026: "I'm not sure what this section on the session page means, whether
@@ -2290,7 +2316,7 @@ def closing_html(items, bill, body, row, entry, esc, events=(), date="", rows=()
 
 
 def vote_html(it, bill, body, year, cards, members, esc, payloads, journal=None, key=None,
-              spoke="", notes=""):
+              spoke="", notes="", mover_spoke=False):
     """One motion of the day on a bill, in the approved vote words (the
     person, 8 October 2026): the motion's own name with only OTP, OTPA, ITL
     and IS abbreviated and a plain gloss; the chip saying what the vote did,
@@ -2343,7 +2369,10 @@ def vote_html(it, bill, body, year, cards, members, esc, payloads, journal=None,
     moved = ""
     if it.mover:
         nm = it.mover.replace("Rep. ", "").replace("Sen. ", "")
-        moved = f'<p class="dvby">Moved by {member_html(body, nm, members, esc)}.</p>'
+        # `mover_spoke`: the mover was the one member who spoke on it, for
+        # it (mover_alone), and the caller has drawn no row of speakers.
+        moved = (f'<p class="dvby">Moved by {member_html(body, nm, members, esc)}'
+                 + (f", {MOVER_SPOKE}" if mover_spoke else "") + ".</p>")
     # A VOTE ON NO BILL, the Journal's passage beside it or not, keeps its
     # record line and its order as they were (CLERK_LABEL).
     on_none = bool(journal) or not bill
@@ -2480,7 +2509,7 @@ def render(day, narrative, titles, years, members, esc, chair=None, rec=None, ct
                 vids.append(mm[0]["v"])
         cards_here = (cards_of.get(term_) or {}).get(bill) or {}
         for it in items:
-            spoke, notes = "", ""
+            spoke, notes, alone = "", "", False
             # BUSINESS DONE IN RECESS is on the sitting the journal prints it
             # with (session_days.recess_sitting), and the bill's own history
             # keeps the day the docket entered it. Said here, so the two dates
@@ -2502,9 +2531,11 @@ def render(day, narrative, titles, years, members, esc, chair=None, rec=None, ct
                 mine, _rest = speakers_for(attrs, bill, it,
                                            sole=(len(shared_out[grp]) == 1),
                                            ambiguous=unsure.get(grp, frozenset()))
+                # The mover as the one speaker is said in the mover's line.
+                alone = mover_alone(it, mine, body, members)
                 for side in ("for", "against"):
                     who = mine[side]
-                    if who:
+                    if who and not alone:
                         spoke += (f'<p class="sspoke"><span class="slab">{SPOKE[side]}</span>'
                                   + members_row(body, who, members, esc) + "</p>")
             if (getattr(it, "shared", 0) or 0) > 1:
@@ -2512,7 +2543,7 @@ def render(day, narrative, titles, years, members, esc, chair=None, rec=None, ct
                           "bills: the same vote is drawn under each of them, and counted "
                           "once.</p>")
             line.append(vote_html(it, bill, body, year, cards_here, members, esc, payloads,
-                                  spoke=spoke, notes=notes) + "</div>")
+                                  spoke=spoke, notes=notes, mover_spoke=alone) + "</div>")
         # NAMED, BUT NOT TAKEN A SIDE FOR: the record does not tie the speech
         # to one of the day's motions, so no side is shown.
         grp = groups[id(items[0])]

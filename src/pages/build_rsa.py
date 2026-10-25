@@ -1101,7 +1101,11 @@ def chapter_page(tmpl, table, data, bills, ch, base):
                nav_current="laws.html", cite=False,
                jsonld=LD.statute_chapter(ch, name, base, S.canon(path), official,
                                          bool(info.get("repealed"))))
-    lead = (f"The text as the General Court's table holds it. {as_of(latest)} "
+    # "as the General Court's table holds it" went (the audit of 25 October
+    # 2026, S7): it said where the text came from twice, before the line
+    # that says so -- "Taken from the General Court's database on ..." -- and
+    # the link to the official text.
+    lead = (f"{as_of(latest)} "
             f'<a href="{E(official)}" rel="noopener">The official text on gc.nh.gov</a>.')
     tl, tn = title_label(info["title_no"], info["title"])
     crumb = f"{tl}: {tn}" if tn else tl
@@ -1603,19 +1607,27 @@ def taken_on(db):
     return C.date_words(d, "full")
 
 
-def as_of(latest):
+def as_of(latest, today=None):
     """The lead's sentences on how current the text is.
 
     IN THE PERSON'S WORDS (approved 17 October 2026): "Includes changes
     through 2025; 2026 laws not yet included." It said the table held the
     text "through the laws of 2025", which left a reader to work out that a
-    law of 2026 was not in it."""
+    law of 2026 was not in it.
+
+    AND ONLY ONCE THERE CAN BE SUCH LAWS (the audit of 25 October 2026, S7):
+    the next year's laws are said not to be included from the January its
+    session opens, `today` being build_date.today() unless a caller states
+    it. In October 2026, with the table through 2026, the page said "2027
+    laws not yet included" of a session that had not begun."""
     taken = (f" Taken from the General Court's database on {E(TABLE_TAKEN)}."
              if TABLE_TAKEN else "")
     y = str(latest or "")
     if not y.isdigit():
         return taken.strip()
-    return f"Includes changes through {E(y)}; {int(y) + 1} laws not yet included.{taken}"
+    today = today or build_date.today()
+    later = f"; {int(y) + 1} laws not yet included" if today.year > int(y) else ""
+    return f"Includes changes through {E(y)}{later}.{taken}"
 
 
 def landing_page(tmpl, table, data, base, topics, pending, con=None):
@@ -1654,7 +1666,7 @@ def landing_page(tmpl, table, data, base, topics, pending, con=None):
                sr_title="", nav_current="laws.html", cite=False)
     latest = data.get("asof", {}).get("laws_through") or ""
     rsa_lead = ('The Revised Statutes '
-                'Annotated (RSA), chapter by chapter, as the General Court\'s table holds them: '
+                'Annotated (RSA), chapter by chapter: '
                 f'each section with the bills that changed it and the bills that would. {as_of(latest)}')
     head_lead = ("The state Constitution, and the statutes the General Court passes under it, the "
                  "Revised Statutes Annotated (RSA)." if con else rsa_lead)

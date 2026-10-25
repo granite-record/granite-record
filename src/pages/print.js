@@ -667,7 +667,7 @@ function how(d,W){
   return sec("","How It Got Here",`<table class="ps-how">${st.map(s=>{
     const day=s.date||(s.body==="L"&&law?law.date:"");
     return `<tr><th scope="row">${esc(W.body[s.body]||s.body)}</th><td class="ps-d">${
-      day?esc(dateWords(day)):""}</td><td>${W.tally(esc(s.text||""))}</td></tr>`;}).join("")}</table>`);
+      day?esc(dateWords(day)):""}</td><td>${W.tally(esc(s.shown||s.text||""))}</td></tr>`;}).join("")}</table>`);
 }
 
 function story(d,W){

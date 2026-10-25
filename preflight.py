@@ -21590,9 +21590,13 @@ def _search_work():
         f"{one['fits']:,} times for {n} bills: each bill is to be asked once, "
         "and its answer kept (app.js, recall)")
     three = d["three words"]
-    assert "Without one word" in three["says"] and "On their own" in three["says"], (
+    # Each word on its own as a sentence, "'voting' alone matches 4 bills"
+    # (the audit of 25 October 2026, S7), not "On their own: voting (4)".
+    assert "Without one word" in three["says"] and re.search(
+            r"alone matches [\d,]+ bills?\b", three["says"]) \
+        and "On their own" not in three["says"], (
         "a search of three words that lists nothing no longer offers its "
-        f"parts: {three['says'][:200]!r}")
+        f"parts, each as a sentence: {three['says'][:200]!r}")
     assert d["a title"]["count"].split(" ")[0] not in ("", "0"), (
         "a bill's whole title, pasted, does not find the bill: "
         f"{d['a title']['count']!r}")
@@ -28184,9 +28188,130 @@ def _station_not_named(build_site_v2, segment_markers):
             assert want in named, f"the not-named sitting does not say {want!r}"
         assert "ongoing work" not in named and "not identified" not in named, (
             "the not-named sitting still says the matching is unfinished")
-        assert "Not yet matched" in other and "not named" not in other, (   # trimmed 22 October 2026
+        # One button since 25 October 2026 (S2): "Play from 00:05:00 ·
+        # scheduled 10:00 AM (exact moment not found)".
+        assert "(exact moment not found)" in other and "not named" not in other, (
             "a sitting whose bill is named lost the words for an opening not found")
     return "ok", "marked only where its recording never names it and no start is drawn; drawn with the new words"
+
+
+@check("frontend", "a bill's recording cards say each thing once: two recordings in one line, "
+       "an unfound moment in one button, a floor card's start, vote and motion in the Votes tab's "
+       "words", needs=("build_site_v2",))
+def _recording_cards_once(build_site_v2):
+    """The audit of 25 October 2026 (S2), on HB 131 of 2026's Hearings tab,
+    in the owner's words. A day with two recordings was 108 words; it is
+    "Two recordings that day; the record doesn't say which covers this bill:
+    Recording 1 · Recording 2". A sitting whose moment was not found said
+    "start time not identified yet" in its button and again under it, and a
+    note said it a third time; it is one button, "Play from the start ·
+    scheduled 10:00 AM (exact moment not found)". A floor card is "Play from
+    05:13:45 · vote at 05:23:18 · Open on YouTube": no "window opens" jump,
+    no "timed to the second", and the motion as the Votes tab names it, not
+    the clerk's "OTPA". Only the words changed: Play opens where it did, and
+    an inferred opening still carries "approximate".
+
+    The stations are build_site_v2's own, made from the rows as
+    proceedings.csv and the floor index hold them; the page is app.js in
+    node."""
+    B = build_site_v2
+
+    def sitting(**kw):
+        return dict({"bill": "HB131", "body": "H", "committee": "Education Policy and Administration",
+                     "proceeding": "executive session", "sched_date": "2025-03-12",
+                     "sched_time": "10:00", "venue": "LOB 205-207", "video_id": "73sLapY1jRw",
+                     "predicted_offset": 69, "candidate_ids": ""}, **kw)
+
+    def floor(**kw):
+        return dict({"date": "2026-01-07", "body": "H", "video_id": "itJRViVSJqk",
+                     "motions": ["OTPA"], "tallies": ["190-149"], "kind": "floor debate",
+                     "debate_end": 19398.0, "window_start": 18769.0, "precise": True,
+                     "whole_video": False, "title": "", "time": "", "venue": ""}, **kw)
+    said = {"itJRViVSJqk": {"HB131": [{"start": 18825.0, "end": None, "how": "number",
+                                       "what": "floor debate", "said": "x"}]}}
+    weak = {"itJRViVSJqk": {"HB131": [{"start": 18825.0, "end": None, "what": "",
+                                       "how": "title read, then the sponsor welcomed (weak marker)"}]}}
+    sts = {
+        "two": B.station_for_proceeding(sitting(proceeding="subcommittee work session",
+                                                sched_date="2025-03-03", video_id="",
+                                                candidate_ids="IIea0XVXPOQ | sm2z5yQ-XKQ"),
+                                        "HB131", {}, {}),
+        "start": B.station_for_proceeding(sitting(), "HB131", {}, {}),
+        "later": B.station_for_proceeding(sitting(sched_time="09:35", predicted_offset=1288,
+                                                  video_id="FL8-GWBu5wk"), "HB131", {}, {}),
+        "vote": B.station_for_floor(floor(), "HB131", said),
+        "weak": B.station_for_floor(floor(), "HB131", weak),
+        "chair": B.station_for_floor(floor(motions=["Ought to Pass with Amendment # 2026-1396s"],
+                                           tallies=[], precise=False, debate_end=None,
+                                           window_start=None, body="S", video_id="Pa_qxMZlvQ0"),
+                                     "HB131", {"Pa_qxMZlvQ0": {"HB131": [
+                                         {"start": 1477.8, "end": 1857.0, "how": "number",
+                                          "what": "floor debate", "said": "x"}]}}),
+        "day": B.station_for_floor(floor(motions=["House Concurs with Senate Amendment 2026-1396s"],
+                                         tallies=[], precise=False, debate_end=None,
+                                         window_start=None, video_id="n7W5L0CAVE4"), "HB131", {}),
+    }
+    states = {k: s["state"] for k, s in sts.items()}
+    assert states == {"two": "candidates", "start": "approximate", "later": "approximate",
+                      "vote": "floor_precise", "weak": "floor_precise", "chair": "floor_stated",
+                      "day": "floor_dated"}, f"the stations are not the ones drawn here: {states}"
+    assert sts["vote"].get("mks") == [{"mk": "otpa"}], (
+        f"the floor station carries {sts['vote'].get('mks')!r} for the clerk's OTPA, not its key")
+    keys = list(sts)
+    html_ = _app_js("[" + ", ".join(f"scope.renderHearings({{id:'HB131', n:'HB 131'}}, "
+                                    f"{{stations:[{json.dumps(sts[k])}]}})" for k in keys) + "]",
+                    names=("renderHearings",))
+    if html_ is None:
+        return "skip", "node, app.js or the stub is not here"
+    page = {k: re.sub(r"\s+", " ", h) for k, h in zip(keys, html_)}
+    # A tag is a space, but not inside a bracket: "(OTPA, ...)" is marked
+    # for its popover.
+    text = {k: re.sub(r"\(\s+", "(", re.sub(r"\s+([,)])", r"\1", re.sub(r"\s+", " ", re.sub(
+                r"<[^>]+>", " ", h)))).replace("&rsquo;", "’").strip()
+            for k, h in page.items()}
+    bad = []
+
+    def need(k, *words):
+        for w in words:
+            if w not in text[k]:
+                bad.append(f"{k}: no {w!r} in {text[k][:200]!r}")
+
+    def never(k, *words):
+        for w in words:
+            if w in text[k]:
+                bad.append(f"{k}: still says {w!r}")
+    need("two", "Two recordings that day; the record doesn’t say which covers this bill: "
+                "Recording 1 · Recording 2")
+    box = re.search(r'<div class="vbox">(.*?)</div>', page["two"], re.S)
+    words = len(re.sub(r"<[^>]+>", " ", box.group(1)).split()) if box else 0
+    if not 0 < words <= 20:
+        bad.append(f"two: {words} words")
+    # The clock's no-break space is a space here (\s above).
+    need("start", "Play from the start · scheduled 10:00 AM (exact moment not found)")
+    need("later", "Play from 00:16:28 · scheduled 9:35 AM (exact moment not found)")
+    for k in ("start", "later", "day"):
+        never(k, "not identified", "Not yet matched", "automatic pass")
+        if 'class="tolnote"' in page[k] or 'class="note"' in page[k]:
+            bad.append(f"{k}: says it again under the button")
+    if 'data-embed="73sLapY1jRw|0|' not in page["start"] or \
+            'data-embed="FL8-GWBu5wk|988|' not in page["later"]:
+        bad.append("an unfound moment's Play no longer opens where it did")
+    need("vote", "Play from 05:13:45", "vote at 05:23:18", "Open on YouTube",
+         "Motion: Ought to Pass with Amendment (OTPA, Pass the bill with changes)")
+    never("vote", "window opens", "timed to the second", "Motions: OTPA", "approximate",
+          "where the clerk takes it up")
+    if 'data-embed="itJRViVSJqk|18825|' not in page["vote"]:
+        bad.append("the floor card's Play no longer opens at the clerk's opening")
+    need("weak", "Play from 05:13:45", "vote at 05:23:18", "approximate")
+    need("chair", "Play from 00:24:37", "ends at 00:30:57",
+         "Motion: Ought to Pass with Amendment (OTPA, Pass the bill with changes) 2026-1396s")
+    never("chair", "no roll call on this one", "approximate")
+    need("day", "Play from the start (exact moment not found)")
+    never("day", "moment not identified", "nothing to point at")
+    assert not bad, "; ".join(bad[:6])
+    return "ok", ("HB 131 of 2026's cards: two recordings in one line, an unfound moment in one "
+                  "button, the floor's start, vote and motion in the Votes tab's words, "
+                  "approximate where the opening is inferred, Play where it was")
 
 
 @check("markers", "a marker naming no proceeding serves one sitting of the bill, the first "
@@ -29234,6 +29359,55 @@ def _effective_parts_read(build_site_v2):
     return "ok", ("parts to XII, spaced ranges, \"Sec I\" and a row read whole are read; a "
                   "part not read, a row read twice, a typed year, a glued numeral and the "
                   "Article 44 day state none")
+
+
+@check("status", "a law in effect in many stages is one line on its page and on its rail, and "
+                 "the Laws pages still read every part", needs=("build_site_v2", "build_rsa"))
+def _law_in_stages_shown(build_site_v2, build_rsa):
+    """The audit of 25 October 2026 (S7): HB 282 of 2025's Law stop was 117
+    words of section numbers in How it got here and in the rail's label. It
+    reads "Chapter 142, in effect in stages from Jul 1, 2025 to Jul 1, 2034"
+    now (law_in_stages, the step's `shown`), and only what is displayed
+    changed: the step's `text` keeps every part, which build_rsa reads to
+    say when each section of a statute changes. Two parts, and a part dated
+    only "as section 3 provides", stay as they were. Fails if the long line
+    comes back on the page or the rail, or if the Laws pages lose a part."""
+    B = build_site_v2
+    hb282 = ("Signed by Governor Ayotte 06/27/2025; Chapter 142; I. Sec 4 8 9 & 43 eff 1/1/26. "
+             "II. Sec 2 10 18 & 44 eff 7/1/26. III. Sec 3 11 19 40 & 45 eff 7/1/27. IV. Sec 12 "
+             "20 & 46 eff 7/1/28. V. Sec 13 21 & 47 eff 7/1/29. VI. Sec 14 22 & 48 eff 7/1/30. "
+             "VII. Sec 15 23 & 49 eff 7/1/31. VIII. Sec 16 24 & 50 eff 7/1/32. IX. Sec 17 25 27 "
+             "& 51 eff 7/1/33. X. Sec 26 27 - 33 35 - 38 & 52 eff 7/1/34. XI. Sec 1 eff "
+             "8/26/25. XII. Rem eff 7/1/25.")
+    ev = {"body": "H", "date": "2025-06-27", "raw": hb282, "type": "governor", "cancelled": False}
+    steps = B.journey({"events": [ev]}, "HB282", [], "142", hb282[:200], "")[1]
+    law = [s for s in steps if s["body"] == "L"][-1]
+    want = "Chapter 142, in effect in stages from Jul 1, 2025 to Jul 1, 2034"
+    assert law.get("shown") == want, f"HB 282 of 2025's Law step is shown as {law.get('shown')!r}"
+    assert law["text"].startswith("Chapter 142, in effect in parts: sections 4, 8, 9 and 43 on Jan 1, "
+                                  "2026,") and law["text"].endswith("the rest on Jul 1, 2025"), (
+        f"the Law step's own words changed, and the Laws pages read them: {law['text'][:120]!r}")
+    parts = build_rsa.journey_parts({"journey": {"steps": steps}})
+    assert parts and len(parts) == 12, (
+        f"the Laws pages read {len(parts or ())} parts of HB 282's law, not its twelve")
+    rail = B._journey_rail("2025-01-08", steps, "Hpppp", "HB282")
+    said = [s["say"] for s in rail if s["stop"] == "Law"]
+    assert said == [want], f"the rail's Law stop says {said!r}"
+    for chapter, parts_, expect in (
+            ("118", "section 1 on Jul 1, 2008, the rest on Jun 3, 2008", ""),
+            ("281", "sections 1 and 2 as section 3 provides, sections 4 and 5 on Jul 1, 2009, "
+                    "section 6 on Jan 1, 2010, the rest on Jun 3, 2008", ""),
+            ("38", "RSA 193:13/ I-X on Jul 1, 2021, sections 3 to 5 and 8 to 10 on Jul 1, 2020, "
+                   "sections 6 and 7 on Jun 30, 2020, the rest on Jul 29, 2020",
+             "Chapter 38, in effect in stages from Jun 30, 2020 to Jul 1, 2021")):
+        got = B.law_in_stages(chapter, parts_)
+        assert got == expect, f"Chapter {chapter}'s parts are shown as {got!r}, not {expect!r}"
+    for name in ("src/pages/app.js", "src/pages/print.js"):
+        src = Path(name).read_text(encoding="utf-8")
+        assert "esc(s.shown||s.text||\"\")" in src, (
+            f"{name} draws How It Got Here from the step's full text, not the line it is shown as")
+    return "ok", (f"HB 282 of 2025: \"{want}\" on the page and the rail, its twelve parts still "
+                  "the Laws pages'; two parts, and a part with no day, as they were")
 
 
 @check("status", "an amendment offered before it was adopted keeps its outcome",
@@ -34757,6 +34931,68 @@ def _session_card_order(BSP, SD, shell):
     return "ok", (f"{cards} fixture cards and a day made here: rail above the votes; head, count, "
                   "mover, speakers by the vote they urged, ring, then the clerk's words; the "
                   f"clerk's words kept or dropped as the rule says on {len(rule)} of their phrasings")
+
+
+@check("session", "a mover who was the motion's one speaker is said in one line, and any other "
+       "speaker keeps the rows", needs=("build_session_pages", "session_days", "shell"))
+def _mover_spoke_once(BSP, SD, shell):
+    """The audit of 25 October 2026 (S2): a card said "Moved by Rep. John
+    Hunt (R - Ches 14)." and under it "Spoke for the motion, urging a yes
+    vote: Rep. John Hunt (R - Ches 14)" -- the same member twice, on nine
+    bills of 21 May 2026. Where the mover is the one member named on the
+    motion, and on its side, the card says "Moved by Rep. John Hunt (R -
+    Ches 14), who spoke for it, urging a yes vote." and draws no row; where
+    anyone else spoke, the rows stand with their labels (SPOKE), the mover
+    among them, as the owner chose on 24 October. A mover who spoke against
+    their own motion, or a name only the mover's or the speaker's resolves,
+    is never folded into the line."""
+    def item(bill, seq, mover):
+        return SD.Item(bill, "2025-2026", {"type": "floor", "body": "H",
+                                           "action": "House Concurs with Senate Amendment 2026-1718s",
+                                           "motion": "MA", "vote_kind": "VV", "mover": mover,
+                                           "raw": "x", "cite_page": str(10 + seq)}, seq)
+
+    class Roster:
+        # Hunt and J. Hunt are one member; Smith is nobody the roster knows.
+        def slug(self, body, name):
+            return "john-hunt-ches-14" if name in ("Hunt", "J. Hunt") else None
+    day = SD.Day("H", "2026-05-21", [item("HB1207", 1, "Rep. Hunt"), item("HB1236", 2, "Rep. Hunt"),
+                                     item("HB1491", 3, "Rep. Hunt"), item("HB1348", 4, "Rep. Smith"),
+                                     item("HB1500", 5, "Rep. Hunt")])
+
+    def said(bill, side, names):
+        return {"bill": bill, "side": side, "names": names, "tally": None,
+                "inline_motion": None, "moved_since": []}
+    attrs = [said("HB1207", "for", ["J. Hunt"]),
+             said("HB1236", "for", ["Hunt", "Roy"]),
+             said("HB1491", "against", ["Hunt"]),
+             said("HB1348", "for", ["Smith"]),
+             said("HB1500", "for", ["Smith"])]
+    page, _ = BSP.render(day, {"attributions": attrs}, {}, {}, Roster(), shell.E)
+
+    def card(bill):
+        c = page.split(f'data-id="{bill}"', 1)[1].split("</article>", 1)[0]
+        by = re.search(r'<p class="dvby">(.*?)</p>', c, re.S)
+        rows = re.findall(r'<p class="sspoke"><span class="slab">([^<]+)</span>', c)
+        return re.sub(r"<[^>]+>", "", by.group(1)) if by else "", rows
+    tail = ", " + BSP.MOVER_SPOKE + "."
+    bad = []
+    by, rows = card("HB1207")
+    if not by.endswith(tail) or rows:
+        bad.append(f"HB 1207, moved by its one speaker: {by!r} over {rows}")
+    for bill, why in (("HB1236", "another member spoke too"),
+                      ("HB1491", "the mover spoke against it"),
+                      ("HB1500", "another member spoke, and the mover did not")):
+        by, rows = card(bill)
+        if by.endswith(tail) or not rows or not all(r in BSP.SPOKE.values() for r in rows):
+            bad.append(f"{bill}, where {why}: {by!r} over {rows}")
+    by, rows = card("HB1348")
+    if not by.endswith(tail) or rows:
+        bad.append(f"HB 1348, moved by its one speaker whom no roster names: {by!r} over {rows}")
+    bad += _card_faults(page, "the day made here", BSP)
+    assert not bad, "; ".join(bad)
+    return "ok", ("the mover as the one speaker for it in the mover's line; another speaker, a "
+                  "speech against, or a different member keeps the labelled rows")
 
 
 def _closing_text(card):
@@ -40418,6 +40654,57 @@ def _follow_email_words(FC, BF, PA):
                   f"{sum(bool(c['meeting']) for c in cases)} meetings set, as the email words them")
 
 
+@check("frontend", "a room reads one way everywhere: the Calendar, a committee's meetings and its "
+       "Meets In say \"Granite Place 231\" as the email and a bill's Hearings tab do",
+       needs=("plain_action",))
+def _rooms_in_words(PA):
+    """The audit of 25 October 2026 (S7): the Calendar and a committee's
+    upcoming meetings printed the clerk's "GP 231" and the database's "GP
+    Room 230", and a committee's head "Meets In GP Room 230", where a bill's
+    Hearings tab said "Granite Place 232" and the email "Granite Place 231".
+    One rule: plain_action.place in Python (build_pages' Calendar, the
+    email) and app.js's roomWords in the browser (calendarBlock, the
+    committee's head, the Hearings tab), held here to the same answers --
+    plain_action's own cases and the database's "GP Room 230" -- and read off
+    the fixture's built Calendar."""
+    hall = "Representatives' Hall, State House"
+    cases = {"GP 231": "Granite Place 231", "LOB 305": "Legislative Office Building 305",
+             "Room 100, SH": "Room 100, State House", "SH 122-123": "State House 122-123",
+             "GP231": "Granite Place 231", "LOBO 202-204": "Legislative Office Building 202-204",
+             "LOB": "Legislative Office Building", "SH Reps Hall": hall, "Reps Hall": hall,
+             "Representatives' Hall, SH": hall, "SL Map Room": "SL Map Room", "302-304": "302-304",
+             "GP Room 230": "Granite Place 230", "SH Room 100": "State House 100",
+             "LOB 205-207": "Legislative Office Building 205-207",
+             "NH Hospital Association, 125 Airport Rd, Concord, NH":
+                 "NH Hospital Association, 125 Airport Rd, Concord, NH",
+             "DNCR, 172 Pembroke Road, Concord": "DNCR, 172 Pembroke Road, Concord", "": ""}
+    bad = [f"plain_action.place({raw!r}) is {PA.place(raw)!r}" for raw, want in cases.items()
+           if PA.place(raw) != want]
+    got = _app_js(f"{json.dumps(list(cases))}.map(scope.roomWords)", names=("roomWords",))
+    if got is not None:
+        bad += [f"roomWords({raw!r}) is {g!r}" for raw, g in zip(cases, got) if g != cases[raw]]
+    app = Path("src/pages/app.js").read_text(encoding="utf-8")
+    for need, where in (('<span class="calwhere">${esc(roomWords(venue))}</span>', "a meeting's room"),
+                        ('<span class="calwhere">${esc(roomWords(q[2]))}</span>', "a slot's room"),
+                        ('["Meets In",esc(roomWords(c.room))]', "a committee's Meets In"),
+                        ('` &middot; ${esc(roomWords(rooms[0]))}`', "a committee's meeting")):
+        if need not in app:
+            bad.append(f"app.js draws {where} in the clerk's words")
+    pages = Path("src/pages/build_pages.py").read_text(encoding="utf-8")
+    if pages.count('<span class="calwhere">{esc(PA.place(') != 2:
+        bad.append("build_pages' Calendar draws a room in the clerk's words")
+    shared = _fixture_site_shared()[0]
+    cal = shared / "site" / "calendar.html"
+    if cal.exists():
+        raw = re.findall(r'<span class="calwhere">([^<]*)</span>', cal.read_text(encoding="utf-8"))
+        left = [r for r in raw if re.match(r"(?:LOBO?|SH|GP) ?(?:Room )?\d", r)]
+        if left:
+            bad.append(f"the fixture's Calendar says {left[:3]}")
+    assert not bad, "; ".join(bad[:6])
+    return "ok", (f"{len(cases)} rooms read alike by plain_action.place and roomWords; the Calendar, "
+                  "a committee's meetings and Meets In draw them in words")
+
+
 @check("build", "About and the Data page describe email updates only once production binds the "
        "follow database, in the person's approved words", needs=("shell", "build_pages", "build_exports"))
 def _follow_privacy_gated(S, BP, BE):
@@ -40510,6 +40797,43 @@ def _statutes_weekly(NI, B):
         "the kit does not carry the statute table as the night's, required"
     return "ok", ("94 of 100 refused, columns moved refused, 99 of 100 installed; "
                   "the pages say the table was taken on October 18, 2026")
+
+
+@check("build", "a Laws page says where its text is from once, and names next year's laws as "
+       "not yet included only from the January that session opens", needs=("build_rsa",))
+def _statute_lead_once(B):
+    """The audit of 25 October 2026 (S7): a chapter's page opened "The text as
+    the General Court's table holds it. Includes changes through 2026; 2027
+    laws not yet included. Taken from the General Court's database on ...":
+    where the text is from said twice, and, in October 2026, the laws of a
+    session that would not open until January. The lead says how current
+    the text is, when it was taken and where the official text is; next
+    year's laws are said not to be in it from 1 January of that year."""
+    import datetime as _dt
+    saved = B.TABLE_TAKEN
+    try:
+        B.TABLE_TAKEN = ""
+        for latest, day, want in (
+                ("2026", _dt.date(2026, 10, 25), "Includes changes through 2026."),
+                ("2026", _dt.date(2026, 12, 31), "Includes changes through 2026."),
+                ("2026", _dt.date(2027, 1, 1),
+                 "Includes changes through 2026; 2027 laws not yet included."),
+                ("2025", _dt.date(2026, 10, 25),
+                 "Includes changes through 2025; 2026 laws not yet included.")):
+            got = B.as_of(latest, today=day)
+            assert got == want, f"with the table through {latest}, on {day}, the lead says {got!r}"
+        B.TABLE_TAKEN = "October 18, 2026"
+        assert B.as_of("2026", today=_dt.date(2026, 10, 25)) == (
+            "Includes changes through 2026. Taken from the General Court's database on "
+            "October 18, 2026."), B.as_of("2026", today=_dt.date(2026, 10, 25))
+    finally:
+        B.TABLE_TAKEN = saved
+    src = Path(B.__file__).read_text(encoding="utf-8")
+    for gone in ("The text as the General Court's table holds it", "as the General Court\\'s table "
+                 "holds them"):
+        assert gone not in src, f"build_rsa still says {gone!r}"
+    return "ok", ("next year's laws named only from its January; the table's source said once, "
+                  "by the day it was taken")
 
 
 @check("build", "related bills: a sentence says which way the text went, and the judged sample's "
@@ -61325,7 +61649,9 @@ def _calendar_chambers():
                     f"{c['link']!r}, {c['items']} bills listed -- a conference is both "
                     "chambers', one bill's, and no committee's page")
         sb14 = conf["Committee of conference on SB 14"]
-        assert sb14.get("time") == "12:00" and sb14.get("venue") == "SH 100" \
+        # The room in words since 25 October 2026 (S7): the clerk's "SH 100" is
+        # "State House 100" on the card and in the entry it adds to a calendar.
+        assert sb14.get("time") == "12:00" and sb14.get("venue") == "State House 100" \
             and "(2 bills)" not in sb14["html"], f"SB 14's conference card: {sb14}"
         hb1709 = conf["Committee of conference on HB 1709"]
         assert '<span class="calcount">1 bill</span>' in hb1709["html"] \
@@ -64963,7 +65289,11 @@ def _weak_marker_approximate(B):
             f"a floor start found by {how!r} is drawn start_stated={st.get('start_stated')}")
     app = _paths.locate("src/pages/app.js").read_text(encoding="utf-8")
     for need, why in (('s.start_stated ? "" : " approximate"', "the bill page's player"),
-                      ('s.start_stated===false?"about ":""', "the floor player"),
+                      # "approximate", one word, on a floor card too since
+                      # 25 October 2026 (S2), where it said "about where the
+                      # clerk takes it up".
+                      ('const floorApprox=s=>s.debate_start==null||s.start_stated===false;',
+                       "the floor player"),
                       ('&&!i.inferred', "the committee page's line")):
         assert need in app, f"app.js: {why} no longer says an inferred start is one ({need})"
     cm = _paths.locate("src/pages/build_committees.py").read_text(encoding="utf-8")
@@ -68047,6 +68377,39 @@ def _executive_branch_renamed():
                   "Article 67; #statewide opens it at load and on a hashchange, #towns My Town")
 
 
+@check("frontend", "the Executive Branch tab says the legislature elects two of its officers "
+                   "once, in its note, in English and in Spanish", needs=("officials_tabs",))
+def _joint_ballot_once(OT):
+    """The audit of 25 October 2026 (S7): the tab's note says the Secretary of
+    State and the State Treasurer are elected by joint ballot, and each of
+    their cards said it again from corrections/officials.json ("elected by a
+    joint session"). The cards leave that sentence out (JOINT_SAID), in the
+    translation too, and keep the rest of what the file says of the office;
+    the file itself is the person's and is not changed. Fails if a card says
+    it again, if the note goes, or if a card loses its other sentences."""
+    off = OT.read_officials()
+    if not (off.get("secretary_of_state") or {}).get("about"):
+        return "skip", "corrections/officials.json has no Secretary of State to read"
+    said = {}
+    for lang, joint, kept in (("en", r"\bjoint\b", "oversees all state elections"),
+                              ("es", r"\bconjunta\b", "supervisa todas las elecciones")):
+        text = re.sub(r"\s+", " ", re.sub(r"<[^>]+>", " ", OT.executive(off, lang=lang)))
+        n = len(re.findall(joint, text, re.I))
+        assert n == 1, f"the Executive Branch tab ({lang}) says how the two are elected {n} times"
+        note = re.search(r'<p class="ofwhy">(.*?)</p>', OT.executive(off, lang=lang), re.S)
+        assert note and re.search(joint, note.group(1), re.I), (
+            f"the tab's note ({lang}) no longer says how the legislature elects them")
+        assert kept in text, f"the Secretary of State's card ({lang}) lost what the office does"
+        said[lang] = n
+    # A card with nothing of the kind keeps every sentence, and a sentence
+    # the pattern finds is the only one left out.
+    rec = {"about": ["One. The Secretary is elected by a joint session of the House and Senate. Two."]}
+    assert OT.abouts("en", rec, OT.JOINT_SAID) == "One. Two.", OT.abouts("en", rec, OT.JOINT_SAID)
+    assert OT.abouts("en", rec) == "One. The Secretary is elected by a joint session of the House " \
+                                   "and Senate. Two."
+    return "ok", "joint ballot said once, in the note, in English and Spanish; the cards keep the rest"
+
+
 @check("frontend", "the Executive Branch's department heads and the Judicial Branch's justices "
                    "are corrections/officials.json's, each with the page it was read from and "
                    "the day it was read")
@@ -69465,6 +69828,30 @@ def _officers_on_the_page(B, BLP, BSP, OF):
     return "ok", ("\"Senator Sharon Carson (R - SD14)\", President of the Senate; "
                   "\"Representative James Spillane (R - Rock 2)\"; the Deputy Speaker named "
                   "on his presiding ballot and in the chair")
+
+
+@check("frontend", "a member's page says the figures follow the term only beside a term picker")
+def _term_line_with_picker():
+    """The audit of 25 October 2026 (S7): a member of one term has no term
+    picker, and their page still said "The figures, bills and votes follow
+    the term." -- of a control that was not there. app.js in node draws a
+    member page with one term and with two: the line only with the picker."""
+    m = {"id": "905", "name": "Spillane, James", "chamber": "H", "seat": "3024", "district": "2",
+         "county": "Rockingham", "display_full": "Rep. James Spillane (R - Rock 2)",
+         "towns": ["Deerfield"], "bills": [], "votes": []}
+    got = _app_js("[1, 2].map(n => (scope.setPage({kind: 'member', data: " + json.dumps(m)
+                  + ", terms: ['2025-2026', '2023-2024'].slice(0, n), term: '2025-2026'}), "
+                  "scope.renderMember(" + json.dumps(m) + ")))",
+                  names=("renderMember", "setPage: x => (PAGE = x)"))
+    if got is None:
+        return "skip", "node, app.js or the stub is not here"
+    one, two = got
+    line = "follow the term"
+    assert line not in one and '<select data-pf="term">' not in one, (
+        "a member of one term is told the figures follow a term picker the page does not draw")
+    assert line in two and '<select data-pf="term">' in two, (
+        "a member of two terms lost the picker or the line beside it")
+    return "ok", "the line beside the picker, and neither on a page of one term"
 
 
 @check("frontend", "Latest activity on the home page links each bill to its own page",
@@ -88320,6 +88707,8 @@ def _speakers_against_journal(root, jroot):
     tal = re.compile(r"<b>(?P<y>\d+)\u2013(?P<n>\d+)</b> on a (?P<k>roll call|division)")
     spk = re.compile(r'<p class="sspoke(?: sother)?"><span class="slab">([^<]+)</span>(.*?)</p>',
                      re.S)
+    mover_spoke = re.compile(r'<p class="dvby">Moved by (.*?), who spoke for it, urging a yes '
+                             r'vote\.</p>', re.S)
 
     def names_of(h):
         h = re.sub(r'<span class="snote">.*?</span>', "", h, flags=re.S)
@@ -88347,6 +88736,13 @@ def _speakers_against_journal(root, jroot):
                 t = tal.search(mo)
                 sides = {("for" if " for " in s.group(1) else "against"): names_of(s.group(2))
                          for s in spk.finditer(mo) if not s.group(1).startswith("Also")}
+                # The mover who was the one speaker, said in the mover's line
+                # (build_session_pages.MOVER_SPOKE, 25 October 2026): a
+                # speaker for the motion, as a row of one would have named.
+                ms = mover_spoke.search(mo)
+                if ms:
+                    sides.setdefault("for", []).extend(
+                        names_of(re.sub(r"\s*\([^)]*\)\s*$", "", re.sub(r"<[^>]+>", "", ms.group(1)))))
                 out.append({"bill": bill, "rc": bool(t) and t.group("k") == "roll call",
                             "count": (int(t.group("y")), int(t.group("n"))) if t else None,
                             "sides": sides, "also": also,
