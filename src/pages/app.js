@@ -34,8 +34,6 @@ const citeSource=lab=>CITE_OF[(String(lab).match(/^([A-Z]{2})\b/)||[])[1]]||"";
 
 const PARTY_NAME={R:"Republican",D:"Democrat",I:"Independent",L:"Libertarian",
   X:"Party not on file"};
-const PARTY_COLOR={R:"var(--rep)",D:"var(--dem)",I:"var(--ind)",L:"var(--ind)",
-  X:"var(--ink-2)"};
 // Where a party sits in a vote's legend and full record: Republicans, then
 // Democrats, then anyone else by letter, and within a party yes before no.
 // The split inside a caucus is what those two rows are compared for, so they
@@ -3558,10 +3556,13 @@ function donut(bid,i,rc){
   // A check beside every group on the side that prevailed. Which side won is
   // the first thing anyone wants from a vote, and it should not have to be
   // worked out by comparing two numbers against a threshold.
+  // THE SWATCH IS THE SIDE'S COLOUR, the ring's and a division's legend's, and
+  // the party is in words beside it: red, blue and purple keys under a ring of
+  // green and salmon keyed nothing in it (the audit of 25 October 2026, S1).
   const legend=rows.map(s=>{
     const winner=(s.side==="Yea")===won;
     return `<button type="button" class="lrow ${chosen===s.key?'sel':''}" aria-pressed="${chosen===s.key}" data-seg="${key}|${s.key}">
-    <span class="sw" style="background:${PARTY_COLOR[s.p]||"var(--ink-2)"}"></span>
+    <span class="sw" style="background:var(--${s.side==="Yea"?"yes":"no"})"></span>
     <span>${PARTY_NAME[s.p]||s.p} — ${s.side==="Yea"?"Yes":"No"}${
       winner?`<span class="won" title="this side prevailed">\u2713</span>`:""}</span>
     <span class="c">${s.n}</span></button>`;}).join("");
@@ -3660,12 +3661,15 @@ function fullRecord(bid,i,rc){
   const y=col("Yea"),n=col("Nay"),tot=(rc.members||[]).length;
   // One pair of columns per party, Republicans first, then Democrats, then
   // anyone else: a party's yea and nay sit side by side, so its split is read
-  // across one row rather than hunted for in two lists 400 names long.
+  // across one row rather than hunted for in two lists 400 names long. Headed
+  // Yes and No, as the legend above them is: "Republican Yea" under
+  // "Republican — Yes" was two words for one side (the audit of 25 October
+  // 2026, S1).
   const parties=[...new Set((rc.members||[]).filter(m=>m.v==="Yea"||m.v==="Nay")
     .map(m=>m.p||"X"))].sort(byParty);
   const pair=p=>{const py=col("Yea",p),pn=col("Nay",p),nm=PARTY_NAME[p]||p;
-    return `<div class="full"><div><h3>${nm} Yea — ${py.length}</h3>${grid(py)}</div>
-    <div><h3>${nm} Nay — ${pn.length}</h3>${grid(pn)}</div></div>`;};
+    return `<div class="full"><div><h3>${nm} Yes — ${py.length}</h3>${grid(py)}</div>
+    <div><h3>${nm} No — ${pn.length}</h3>${grid(pn)}</div></div>`;};
   return `<button type="button" class="discl" aria-expanded="true" data-full="${k}">Hide full voting record</button>
     ${parties.map(pair).join("")}
     ${OTHER.map(sect).join("")}
@@ -4327,17 +4331,24 @@ function sittingLink(body,iso,text,bill){
   return has?`<a href="session/${esc(body)}/${esc(iso)}${at?"#"+at:""}">${text}</a>`:text;
 }
 
+// What a voice or a division vote's card says of it, under its head.
+const NO_NAMES="No record of how each member voted.";
 function renderVotes(b,d){
   // NOTHING ABOVE THE VOTES. This tab opened, in turn, by explaining the roll
   // call file and the presiding officer's tie-breaking vote; then with one
   // line saying that roll calls record individual legislators where voice and
   // division votes do not; then with the bill's own count of how many of its
   // floor votes went unrecorded. All three are gone, and the last two for the
-  // same reason: every card below now says what its own vote was, in the
-  // words the person wrote -- "There is no count and no record of how
-  // individual members voted" on a voice vote, the count but not the members
-  // on a division. A reader who wants to know how many were unrecorded can
-  // count the cards that say so, and each one says it where they are looking.
+  // same reason: every card below now says what its own vote was. A reader
+  // who wants to know how many were unrecorded can count the cards that say
+  // so, and each one says it where they are looking.
+  //
+  // IN ONE LINE (the audit of 25 October 2026, S1). Each such card said it in
+  // two sentences -- "Decided on a voice vote. There is no count and no record
+  // of how individual members voted", and a division's count but not its
+  // members -- under a head that already names the kind of vote, beside a ring
+  // that already is the count or with no ring at all. What the head and the
+  // ring do not say is the line: "No record of how each member voted."
   //
   // d.vote_note is still built and still published in the record; it is only
   // no longer drawn here. build_site_v2.vote_note_for and narrative.py are
@@ -4351,17 +4362,14 @@ function renderVotes(b,d){
     }else if(vk==="DV"&&rc.yeas!=null){
       // A division vote is counted but anonymous. Chart the split; there is no
       // member list to show, and saying so is the point.
-      body=simpleDonut(rc,b.id,i)+`<p class="note" style="margin-top:11px">Decided on a
-        division vote. There is a total count of how many legislators voted for
-        each side, but no record of how individual members voted.</p>`;
+      body=simpleDonut(rc,b.id,i)+`<p class="note" style="margin-top:11px">${NO_NAMES}</p>`;
     }else if(rc.wo){
       // BY THE JOURNAL'S OWN WORDS (the owner, 23 October 2026): a motion the
       // Journal says was carried "without objection" was put to no vote.
       body=`<p class="note" style="margin-top:6px">Adopted without objection: no member
         objected, so no vote was taken and nobody was counted.</p>`;
     }else{
-      body=`<p class="note" style="margin-top:6px">Decided on a voice vote. There is
-        no count and no record of how individual members voted.</p>`;
+      body=`<p class="note" style="margin-top:6px">${NO_NAMES}</p>`;
     }
     // THE APPROVED VOTE WORDS (the person, 8 October 2026; votes.json): the
     // motion's own name with only OTP, OTPA, ITL and IS abbreviated and a
@@ -5941,7 +5949,7 @@ let reportBuild=null;       // site/build.json's "finished", fetched once, on fi
 
 function reportBox(kind,ref){
   return `<details class="report" data-rkind="${esc(kind)}" data-rref="${esc(ref)}">
-  <summary>${icon("report")}Report a problem</summary>
+  <summary>${icon("report")}<span>Report<span class="rpw"> a problem</span></span></summary>
   <form class="reportform" novalidate>
     <p class="reportwhat">Tell us what is wrong and we will check it against the official record.
     Nothing here identifies you, which also means we cannot reply: for an answer, write to
@@ -7481,8 +7489,13 @@ function voteRing(r,i){
 // dead at 600 with a line saying so and no way to see the 481 after it.
 const VOTES_SHOWN=200;
 
-// A bill number as a reader types it, "HB 1442" or "hb1442", for the search.
-const billFold=s=>String(s||"").toUpperCase().replace(/[^A-Z0-9]/g,"");
+// A bill number as a reader types it, "HB 1442" or "hb1442", for the search,
+// and as the bill's own page titles it, "HB 282-FN": pasted from that page it
+// found none of a member's 591 votes (the audit of 25 October 2026, S1). FN,
+// A and LOCAL (SUFFIX_TERM) say what a bill carries and are no part of the
+// number a vote is filed under.
+const billFold=s=>String(s||"").toUpperCase().replace(/(?:-(?:FN|A|LOCAL|L))+\s*$/,"")
+  .replace(/[^A-Z0-9]/g,"");
 
 function renderMemberVotes(m){
   const v=memberVotes(m);
@@ -7514,7 +7527,9 @@ function renderMemberVotes(m){
   // bill number, matched against the number, the title and the question.
   const q=(PAGE.vfilter||"").toLowerCase(), sd=PAGE.vside||"";
   const find=String(PAGE.vq||"").trim(), fold=billFold(find), low=find.toLowerCase();
-  const hit=r=>!find||(fold&&billFold(r.x.b)===fold)
+  // A number alone is that number of any kind of bill: "282" finds HB 282.
+  const bare=/^\d+$/.test(fold);
+  const hit=r=>!find||(fold&&(bare?billFold(r.x.b).replace(/^[A-Z]+/,""):billFold(r.x.b))===fold)
     ||[r.b&&r.b.title,r.x.q,r.rc&&r.rc.q,r.rc&&r.rc.w].some(s=>String(s||"").toLowerCase().includes(low));
   const rows=all.filter(r=>(!q||String(r.x.v||"").toLowerCase()===q)
     &&(!sd||(r.side!==null&&(sd==="won")===r.side))&&hit(r));

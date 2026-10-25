@@ -4522,6 +4522,10 @@ text-transform:uppercase;color:var(--ink-2);margin:0 0 var(--sp-4);font-family:v
 .l-head .pageacts > details > summary:hover{background:var(--wash)}
 .l-head .pageacts > details[open] > summary{border-color:var(--ink)}
 .l-head .pageacts .citebody{left:0;right:auto}
+/* The same row under a town's line and under the Calendar's headings (the
+   audit of 25 October 2026, S9), where it stood alone over the heading. */
+:is(.officials,.calhead,.cdpage) > .pageacts{justify-content:flex-start;margin:0 0 var(--sp-7)}
+:is(.officials,.calhead,.cdpage) > .pageacts .citebody{left:0;right:auto}
 .l-otp > summary{cursor:pointer;list-style:none;display:flex;align-items:center;border-radius:var(--r-in)}
 .l-otp > summary::-webkit-details-marker{display:none}
 .l-otp > summary::before{content:"";width:1.125rem;height:1.125rem;background:var(--ink-2);
@@ -6303,8 +6307,16 @@ text-decoration-color:var(--rule-2);text-underline-offset:3px}
      The clamp needs display:-webkit-box, and inside this table cell the
      computed display came back flow-root with the clamp inert -- the rule
      applied, the box did not. Two lines at 1.35 is 2.7em, which is a number
-     this can be asked for directly and which every engine honours. */
-  display:block;max-height:2.7em;overflow:hidden}
+     this can be asked for directly and which every engine honours.
+     A CUT TITLE SHOWS AS CUT (the audit of 25 October 2026, S9): it stopped
+     at the end of its second line, mid-phrase and with no "...", as if that
+     were all of it. The box keeps the top of a third line where there is one
+     and fades it out, so the words can be seen going on; a title of one or
+     two lines ends above the fade and is drawn whole, as it was (54 of the
+     191 shown on one member's tab are two lines exactly). */
+  display:block;max-height:3.5em;overflow:hidden;
+  -webkit-mask-image:linear-gradient(#000 2.7em,transparent 3.5em);
+  mask-image:linear-gradient(#000 2.7em,transparent 3.5em)}
 .votes .vq{display:block;color:var(--ink-2);font-size:var(--t-sm);margin-top:var(--sp-2)}
 /* The record's own word for the motion, in brackets after the plain one,
    takes the line's --ink-2 and no opacity: `opacity:.8` on it was 4.14:1 on
@@ -6575,9 +6587,20 @@ table.dpdl{border-collapse:collapse;width:100%;font-family:var(--sans);font-size
 
 /* WHAT'S COVERED. Nineteen terms by five columns, on a phone as well. It
    scrolls sideways inside its own box rather than pushing the page wide,
-   which is the one place this file allows that. */
+   which is the one place this file allows that. Its ground, and the edge
+   that says it goes on, are the rule under it. */
 .covwrap{overflow-x:auto;margin:var(--sp-6) 0 0;border:1px solid var(--rule-2);
-  border-radius:var(--r-out);background:var(--surface)}
+  border-radius:var(--r-out)}
+/* THE EDGE THAT SAYS A TABLE GOES ON (the audit of 25 October 2026, S9): on a
+   phone /data's coverage table is 606px in a 364px box, cut off at its edge
+   with nothing to say the rest is there. The Officials strip's edge (.oftabs)
+   in the box's own ground: a shadow at whichever end has more. */
+.covwrap{background:
+  linear-gradient(to right,var(--surface) 30%,transparent) 0 0/2rem 100% no-repeat local,
+  linear-gradient(to left,var(--surface) 30%,transparent) 100% 0/2rem 100% no-repeat local,
+  linear-gradient(to right,var(--shadow),transparent) 0 0/1rem 100% no-repeat scroll,
+  linear-gradient(to left,var(--shadow),transparent) 100% 0/1rem 100% no-repeat scroll,
+  var(--surface)}
 /* width AND min-width. On its own the min-width let the table sit at
    420px inside a 900px box, which is the same empty-box complaint this file
    has been answering all week; the min-width is what makes it scroll rather
@@ -6711,6 +6734,18 @@ text-underline-offset:.2em}
    chip keeps its own size (the one person chip). */
 .cmeta{display:flex;flex-wrap:wrap;align-items:center;gap:var(--sp-2) var(--sp-3)}
 .cmeta .cdot{color:var(--ink-2)}
+/* THE DOT GOES WITH THE ITEM AFTER IT (the audit of 25 October 2026, S9).
+   Each dot was an item of its own in this wrapping row, so a line broke
+   after it as readily as before it: on /bills at 390px, 142 of 267 ended a
+   line, the committee they led to on the next. It is drawn at the head of
+   the item after it now, and wraps with it. The topic is bare text, with no
+   element to draw on, so the dot before it, always the row's last element,
+   gives up its own box and its "·" joins the topic's text in one item. The
+   dots stay in the markup for a page read without this stylesheet. */
+.cmeta > .cdot{display:none}
+.cmeta > .cdot:last-child{display:contents}
+.cmeta > .cdot + *::before{content:"\00b7\00a0";content:"\00b7\00a0" / "";
+display:inline-block;color:var(--ink-2)}
 /* WHAT HAPPENED HERE: the line a member's, a committee's and a session day's
    card carries for this meeting or this day, in a quiet well with a rule in
    the accent down its left, under the byline and above the rail. */
@@ -6932,6 +6967,10 @@ border-radius:var(--r-in);background:var(--surface);font-size:var(--t-ui)}
   .racts .pageacts > *,.racts #reportbox > *{min-width:0;max-width:none}
   .racts :is(.pcite,.follow,.report) > summary,.racts .pshare{width:100%;justify-content:center;
   min-height:2.75rem;white-space:normal;text-align:center}
+  /* "Report", not "Report a problem", in half a phone's row, where the three
+     words broke over two lines inside the button (the audit of 25 October
+     2026, S9). The flag beside it is the same. */
+  .racts .report .rpw{display:none}
   .racts .sharestate{grid-column:1 / -1;max-width:none}
 }
 

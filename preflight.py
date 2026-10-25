@@ -19264,6 +19264,41 @@ def _cite_up_and_copied():
                   "or not; the clipboard copies, or the form is selected and it says so")
 
 
+@check("build", "Cite this page sits under a town's line, as a guide's does, not alone above the "
+                "town's name", needs=("build_town_pages",))
+def _cite_under_a_towns_line(B):
+    """The audit of 25 October 2026 (S9), approved by the owner: on town and
+    calendar pages a lone "Cite this page" sat above the title. Above a
+    record's heading it is one of a row of actions; on a town's page there is
+    no row, only the button over the name. It goes under the lede, set to the
+    left with its pane, as a guide's does, and is written once, naming the
+    page as shell.page named it. (The Calendar's weeks and its list of
+    documents: _calendar_documents, which builds them.)"""
+    import shell as S
+    if not Path("src/pages/bills.html").exists():
+        return "skip", "bills.html is not here"
+    dist = {"house": [{"county": "Grafton", "district": "11"}], "senate": "5"}
+    page = B.build("Lyme", "0", {"0": {}}, dist, [], {}, "https://x.test", S.template())
+    at = {k: page.find(v) for k, v in (
+        ("results", '<div id="results">'), ("h1", '<h1 class="offtitle">Lyme</h1>'),
+        ("lede", '<p class="lead twnlede">'), ("row", '<div class="pageacts" id="pageacts">'),
+        ("tabs", 'class="twntabs'))}
+    assert min(at.values()) >= 0, f"the town page lost a part this reads: {at}"
+    assert page.count('class="pcite"') == 1, "Cite this page is drawn twice, or not at all"
+    assert at["results"] < at["h1"] < at["lede"] < at["row"] < at["tabs"], (
+        f"Cite this page is not under the town's line and above its tabs: {at}")
+    row = page[at["row"]:at["tabs"]]
+    assert "https://x.test/town/lyme" in row and "Who represents Lyme, New Hampshire" in row, (
+        "the citation does not name the town's page as shell.page named it")
+    # Whole selectors: the list inside :is() has commas of its own.
+    css = {" ".join(sel.split()) for _, sel, body, _ in _css_rules(
+        Path("src/pages/app.css").read_text(encoding="utf-8"))
+        if "justify-content:flex-start" in body.replace(" ", "")}
+    assert ":is(.officials,.calhead,.cdpage) > .pageacts" in css, (
+        "the row under a town's or the Calendar's line is not set to the left, under the words")
+    return "ok", "once, under the town's line and above its tabs, to the left, naming the page"
+
+
 @check("frontend", "the search panel's way out leads to a page the build writes")
 def _find_all_results():
     """find.js's last row is on all 49,000 pages, and it points at one page.
@@ -26785,6 +26820,77 @@ def _scrollstop_tables():
     assert not bad, "; ".join(bad[:3])
     return "ok", (f"{len(tables)} table(s) in a box that scrolls for it, each laid out as a "
                   "table: " + ", ".join(f"table.{c}" for c in sorted(tables)))
+
+
+@check("frontend", "a table cut off on a phone shows its edge, a byline's dot wraps with what it leads "
+                   "to, a cut vote title fades out, and Report a problem fits half a phone's row")
+def _small_visual_s9():
+    """The audit of 25 October 2026 (S9), approved by the owner, each a rule
+    a browser reads right and nothing here measured:
+
+    - Wide tables on /learn/by-the-numbers (723px in a 364px box) and /data
+      (606px) were cut at the box's edge on a phone with nothing to say there
+      was more. Both boxes have the officials strip's edge (.oftabs): covers
+      that scroll with the table over shadows that stay with the box, in the
+      box's own ground. And the box is what scrolls, so its table is laid out
+      as a table, or the phone's rule makes the table scroll inside the box
+      and the box's edge never moves.
+    - A byline's separator dot was an item of its own in a wrapping row, and
+      142 of 267 on /bills at 390px ended a line. It is drawn at the head of
+      the item after it, and the dot before the topic, bare text with no box
+      to draw on, gives its own box up so its dot joins the topic's text.
+    - A vote title on a member's Votes tab, cut at two lines, stopped
+      mid-phrase as though that were all of it. Two lines are drawn whole,
+      and the top of a third fades out below them.
+    - "Report a problem" broke over two lines in half a phone's row of
+      actions: there it says "Report".
+    """
+    css_p, js_p = Path("src/pages/app.css"), Path("src/pages/app.js")
+    if not (css_p.exists() and js_p.exists()):
+        return "skip", "app.css or app.js is not there"
+    rules = _css_rules(css_p.read_text(encoding="utf-8"))
+
+    def decl(selector, phone=False):
+        """The declarations of every rule naming `selector`, later ones last."""
+        got = {}
+        for at, sel, body, _ in rules:
+            if selector in {" ".join(s.split()) for s in sel.split(",")} and \
+                    bool(phone) == any("max-width:45em" in a.replace(" ", "") for a in at):
+                got.update(_css_decls(body))
+        return got
+    bad = []
+    # The edge.
+    for box in (".l-tablewrap", ".covwrap"):
+        bg = decl(box).get("background", "")
+        if not (bg.count(" local") == 2 and bg.count(" scroll") == 2 and "var(--shadow)" in bg
+                and bg.count("var(--surface)") == 3):
+            bad.append(f"{box} has no edge that says its table goes on, in its own ground: {bg[:120]!r}")
+    if decl(":where(.l-tablewrap) > table").get("display") != "table":
+        bad.append("a table in .l-tablewrap is not laid out as a table, so on a phone it scrolls "
+                   "inside the box and the box's edge never moves")
+    # The dot.
+    if decl(".cmeta > .cdot").get("display") != "none" or \
+            decl(".cmeta > .cdot:last-child").get("display") != "contents":
+        bad.append("a byline's dot is still an item of its own, which a line can end on")
+    dot = decl(".cmeta > .cdot + *::before")
+    if not dot.get("content", "").startswith('"\\00b7') or dot.get("display") != "inline-block":
+        bad.append(f"the item after a byline's dot does not draw it at its head: {dot}")
+    # The fade.
+    vt = decl(".votes .vt")
+    fade = re.fullmatch(r"linear-gradient\(#000 2\.7em,\s*transparent ([\d.]+em)\)",
+                        vt.get("mask-image", ""))
+    if not fade or vt.get("max-height") != fade.group(1) or vt.get("overflow") != "hidden" \
+            or vt.get("-webkit-mask-image") != vt.get("mask-image"):
+        bad.append("a vote title cut at two lines does not fade out below them, or fades "
+                   f"a title of two lines: {vt}")
+    # Report.
+    if '<summary>${icon("report")}<span>Report<span class="rpw"> a problem</span></span></summary>' \
+            not in js_p.read_text(encoding="utf-8") or \
+            decl(".racts .report .rpw", phone=True).get("display") != "none":
+        bad.append("Report a problem is not \"Report\" in half a phone's row of actions")
+    assert not bad, "; ".join(bad[:5])
+    return "ok", ("two scrolling boxes with their edge, tables laid out as tables; a byline's dot "
+                  "with what it leads to; a cut title faded below two whole lines; Report on a phone")
 
 
 # ============================================================= code: pipeline ==
@@ -49120,10 +49226,22 @@ def _calendar_documents():
             assert "cdjump" not in head and "as PDFs" not in head \
                 and "appears once a day" not in head and " sittings on " not in head, (
                 f"{f}: the week's heading still carries the summary or the link down: {head[:300]}")
+            # CITE THIS PAGE UNDER THE WEEK'S LINE (the audit of 25 October
+            # 2026, S9), once, not alone above the heading; naming the week
+            # at the address both copies of this week name as theirs.
+            cite = head.find('<div class="pageacts" id="pageacts">')
+            assert t.count('class="pcite"') == 1 and \
+                head.find('<p class="src">') < cite < head.find('<nav class="wknav"'), (
+                f"{f}: Cite this page is not under the week's line, once, above its arrows")
+            canon = re.search(r'<link rel="canonical" href="([^"]+)"', t).group(1)
+            assert canon in head[cite:], f"{f}: the citation does not name the week at {canon}"
         lp = (site / "calendar" / "documents.html").read_text(encoding="utf-8")
         assert body in lp and f'<link rel="canonical" href="{base}/calendar/documents">' in lp \
             and "<h1>Calendars and journals of the General Court</h1>" in lp, (
             "the list page was not written with its body, its heading and its own address")
+        assert lp.count('class="pcite"') == 1 and lp.find(lead) < lp.find(
+            '<div class="pageacts" id="pageacts">') < lp.find(body), (
+            "the list page's Cite this page is not under its line, once")
         bare = (root / "bare")
         bare.mkdir()
         shutil.copy(Path("src/pages/bills.html"), bare / "bills.html")
@@ -51104,6 +51222,110 @@ def _member_votes_prevailing_side(V):
     return "ok", ("prevailing by the outcome, no party's side, the bill page's words, filters and "
                   "search, and the bill page's ring, party rows and all, under every roll call, "
                   "on a bill or on none")
+
+
+# The Votes tabs' words and keys (the audit of 25 October 2026, S1), in node:
+# a member's Find box, a ring's legend, the full record and a card with no
+# names.
+_VOTES_WORDS_HARNESS = r"""
+require("./stub.js");
+const fs = require("fs");
+globalThis.fetch = async () => ({ok: true, status: 200, json: async () => ({H: [], S: []}),
+  text: async () => "{}"});
+let s;
+try { s = (0, eval)(fs.readFileSync("./page.js", "utf8")
+  + "; ({renderMemberVotes, renderVotes, donut, fullRecord, fullOpen,"
+  + "   setRCX: v => { RCX = v; }, setPage: p => { PAGE = p; },"
+  + "   setMeta: m => { META = Object.assign(META || {}, m); }})"); }
+catch (e) { console.log("LOAD " + e.constructor.name + ": " + e.message); process.exit(1); }
+const fx = JSON.parse(fs.readFileSync("./fx.json", "utf8"));
+const out = {find: {}};
+try {
+  s.setRCX({});
+  s.setMeta({terms: ["2025-2026"]});
+  for (const q of fx.finds) {
+    s.setPage({kind: "member", terms: ["2025-2026"], term: "2025-2026", data: fx.member,
+               vfilter: "", vside: "", vq: q, vopen: {}, vshow: 0});
+    out.find[q] = (s.renderMemberVotes(fx.member).match(/<td class="d"/g) || []).length;
+  }
+  out.ring = s.donut("HB1", 0, fx.card);
+  s.fullOpen.add("HB1|0");
+  out.full = s.fullRecord("HB1", 0, fx.card);
+  out.cards = s.renderVotes({id: "HB1"}, {rollcalls: fx.unnamed});
+} catch (e) { out.threw = e.constructor.name + ": " + e.message + " " + (e.stack || "").split("\n")[1]; }
+process.stdout.write("\n@@" + JSON.stringify(out));
+"""
+
+
+@check("frontend", "a member's Votes tab finds a bill by its page's own number (\"HB 282-FN\") or the "
+                   "number alone; a ring's legend keys each side in the side's colour; the full "
+                   "record says Yes and No; a voice or division vote says it has no names in one line")
+def _votes_words_and_keys():
+    """The audit of 25 October 2026 (S1), approved by the owner:
+
+    - On a legislator's Votes tab, typing "HB 282-FN" -- the bill page's own
+      title -- or a bare "282" gave "0 of 591". A suffix (FN, A, LOCAL, L, in
+      any run) is no part of the number a vote is filed under, and a number
+      alone finds that number of any kind of bill, and not a number it is
+      the start or the end of. Words are still words: "local" is not taken
+      for a suffix.
+    - The full voting record said "Republican Yea" under a legend that says
+      "Republican -- Yes": Yes and No throughout.
+    - The ring is green (Yes) and salmon (No), and the legend's swatches were
+      the parties' red, blue and purple, keying nothing in the ring. Each row's
+      swatch is its side's colour, as a division's legend is, and the party
+      stays in words.
+    - "Decided on a voice vote. There is no count and no record of how
+      individual members voted", or a division's two sentences, on every such
+      card under a head that names the kind of vote: one line, "No record of
+      how each member voted."
+    """
+    vote = lambda n, b, q="": {"k": f"2026-H-{n}", "d": f"3/{n}/2026", "b": b, "y": "2026",
+                               "q": q, "v": "Yea"}
+    member = {"party_code": "D", "service": [{"b": "H"}],
+              "votes": [vote(1, "HB282"), vote(2, "SB282"), vote(3, "HB2820"), vote(4, "HB28"),
+                        vote(5, "HB1282", "Local option")]}
+    finds = {"HB 282-FN": 1, "hb 282-fn-a-local": 1, "HB 282-L": 1, "HB 282": 1, "SB282": 1,
+             "282": 2, "28": 1, "HB 28": 1, "local": 1, "HB 999-FN": 0}
+    m = lambda i, p, v: {"n": f"Rep. M{i} ({p})", "s": f"m{i}", "p": p, "v": v}
+    card = {"yeas": 3, "nays": 4, "passed": False, "body": "H", "date": "2026-03-01",
+            "tally": {"R": {"Yea": 2, "Nay": 1}, "D": {"Nay": 3}, "I": {"Yea": 1}},
+            "members": [m(1, "R", "Yea"), m(2, "R", "Yea"), m(3, "R", "Nay"), m(4, "D", "Nay"),
+                        m(5, "D", "Nay"), m(6, "D", "Nay"), m(7, "I", "Yea")]}
+    unnamed = [{"question": "Ought to Pass", "date": "2026-03-01", "body": "H", "vote_kind": "VV",
+                "passed": True},
+               {"question": "Ought to Pass", "date": "2026-03-02", "body": "H", "vote_kind": "DV",
+                "yeas": 200, "nays": 150, "passed": True},
+               {"question": "Ought to Pass", "date": "2026-03-03", "body": "S", "vote_kind": "DV",
+                "passed": False}]
+    got = _node_app(_VOTES_WORDS_HARNESS, {"fx.json": json.dumps(
+        {"member": member, "finds": list(finds), "card": card, "unnamed": unnamed})})
+    if got is None:
+        return "skip", "app.js, dom_stub.js or node is not here"
+    assert "threw" not in got, f"the Votes tabs threw {got['threw']}"
+    bad = [f"Find {q!r} lists {got['find'].get(q)} of the member's votes, not {n}"
+           for q, n in finds.items() if got["find"].get(q) != n]
+    rows = re.findall(r'<span class="sw" style="background:([^"]*)"></span>\s*<span>([^<]*?) — (Yes|No)',
+                      got["ring"])
+    if len(rows) != 4:
+        bad.append(f"the ring's legend has {len(rows)} party rows, not 4: {rows}")
+    for bg, party, side in rows:
+        if bg != f"var(--{side.lower()})":
+            bad.append(f"{party} — {side} is keyed {bg}, not the ring's colour for {side}")
+    if {r[1] for r in rows} != {"Republican", "Democrat", "Independent"}:
+        bad.append(f"the legend no longer names the parties in words: {rows}")
+    heads = re.findall(r"<h3>([^<]*)</h3>", got["full"])
+    if [h for h in heads if re.search(r"\b(?:Yea|Nay)\b", h)] or \
+            "Republican Yes — 2" not in heads or "Democrat No — 3" not in heads:
+        bad.append(f"the full record's columns are not headed Yes and No: {heads}")
+    notes = re.findall(r'<p class="note"[^>]*>([^<]*)</p>', got["cards"])
+    if notes.count("No record of how each member voted.") != 3 or \
+            re.search(r"Decided on a|individual members|total count", got["cards"]):
+        bad.append(f"a voice or division vote's card does not say it has no names in the one "
+                   f"line: {notes}")
+    assert not bad, "; ".join(bad[:6])
+    return "ok", (f"{len(finds)} searches find what they name, suffix or none; four legend rows "
+                  "keyed by side; Yes and No in the full record; one line on three unnamed votes")
 
 
 # A member's Votes tab with a vote on no bill the Journal describes (rc.w),
@@ -67283,11 +67505,14 @@ function world(page,pathname,o){
   // link, and the citation under the page.
   const head=W.doc.createElement("head"); W.doc.documentElement.appendChild(head);
   head.innerHTML=(text.match(/<link rel="canonical"[^>]*>|<meta (?:name|property)="[^"]*"[^>]*>|<script type="application\/ld\+json">[\s\S]*?<\/script>/g)||[]).join("");
-  W.doc.body.innerHTML=(text.match(/<a class="skip"[^>]*>[^<]*<\/a>/)||[""])[0]+text.slice(a,s)
-    // Cite this page: the row above the heading since 25 September (Follow's
-    // row), the section at the foot before it.
-    +(text.match(/<div class="pageacts"[^>]*><details class="pcite">[\s\S]*?<\/details><\/div>/)
-      ||text.match(/<section class="citewrap">[\s\S]*?<\/section>/)||[""])[0];
+  const res=text.slice(a,s);
+  W.doc.body.innerHTML=(text.match(/<a class="skip"[^>]*>[^<]*<\/a>/)||[""])[0]+res
+    // Cite this page: under the week's heading since 25 October 2026, so in
+    // the slice above; before, the row above the heading (Follow's row), and
+    // before that the section at the foot.
+    +(res.includes('class="pageacts"')?"":
+      (text.match(/<div class="pageacts"[^>]*><details class="pcite">[\s\S]*?<\/details><\/div>/)
+      ||text.match(/<section class="citewrap">[\s\S]*?<\/section>/)||[""])[0]);
   W.run=async()=>{ runPage(W,text,SITE,s,text.slice(s+8,e));
     await W.settle(); W.advance(700); await W.settle(); };
   const D=W.doc;
@@ -75096,7 +75321,10 @@ const setNav = v => Object.defineProperty(globalThis, "navigator",
 const fail = [];
 // THE BOX, AS IT WAS, behind its drawing.
 const box = reportBox("bill", "2026/HB1442");
-if (!box.includes("<summary>" + want.report + "Report a problem</summary>"))
+// " a problem" in a span of its own, which a phone's row of buttons leaves out,
+// inside the one the words are, so the button's gap does not part them.
+if (!box.includes("<summary>" + want.report
+    + '<span>Report<span class="rpw"> a problem</span></span></summary>'))
   fail.push("the report's button is not its drawing and its words");
 for (const part of want.form) if (!box.includes(part)) fail.push("the report's form lost " + part);
 const kinds = (box.match(/<option value="[a-z]+">/g) || []).map(s => s.slice(15, -2));
@@ -75620,11 +75848,12 @@ def _about_reports():
     follow = " ".join(src[src.index("\nABOUT_FOLLOW = {"):src.index("\n}\n", src.index("\nABOUT_FOLLOW = {"))].split())
     about = about + " " + follow
     # Its drawing comes first since Polish 1 (9 October 2026): the label is
-    # the words after it.
-    m = re.search(r'<summary>(?:\$\{icon\("report"\)\})?(Report a problem[^<]*)</summary>',
-                  app.read_text(encoding="utf-8"))
+    # the words after it, " a problem" in a span a phone's row leaves out
+    # (25 October 2026), read here as the words a wider page shows.
+    m = re.search(r'<summary>(?:\$\{icon\("report"\)\})?((?:<span>)?Report\b(?:[^<]|</?span\b[^>]*>)*)'
+                  r'</summary>', app.read_text(encoding="utf-8"))
     assert m, "app.js no longer labels the report box"
-    label = " ".join(m.group(1).split())
+    label = " ".join(re.sub(r"<[^>]+>", "", m.group(1)).split())
     assert f"<i>{label}</i>" in detail, (
         f"the Data page's Privacy in Detail does not name the box as the page labels it, <i>{label}</i>")
     named = re.findall(r"<i>(Report\b[^<]*)</i>", about)

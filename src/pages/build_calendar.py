@@ -2760,6 +2760,11 @@ def week_page(site, base, key, weeks, order, at, titles, years, code, urls,
              '<div class="calhead">'
              f'<h1>The Week of {S.E(label)}</h1>'
              f'<p class="src">{lead}</p>'
+             # CITE THIS PAGE UNDER THE LINE, as a guide's is (the audit of 25
+             # October 2026, S9), not alone above the week's name, where
+             # shell.page sets it. Named and addressed as page() would; the
+             # script renames it with the week (rename, in WEEK_JS).
+             + S.cite_block(path, f"The Week of {label}", base, S.BUILT)
              # NO LINK DOWN TO THE CALENDARS & JOURNALS (F11): the section is
              # the last block of the schedule's column, where a reader finds it.
              + f'<nav class="wknav" aria-label="Other weeks">{"".join(nav)}</nav>'
@@ -2801,7 +2806,7 @@ def week_page(site, base, key, weeks, order, at, titles, years, code, urls,
                       og_title=f"The Week of {label}",
                       globals={"GR_STATIC": True}, noscript="",
                       skip_label="Skip to the week", sr_title="", og_type="website",
-                      nav_current="calendar.html",
+                      nav_current="calendar.html", cite=False,
                       jsonld=LD.listing(f"The Week of {label}",
                                         f"The General Court's business, {label}.",
                                         base, S.canon(path)))
@@ -2897,11 +2902,13 @@ def documents_files(site, base, cdocs, left_out, urls):
                   description=description, og_title=heading,
                   globals={"GR_STATIC": True}, noscript="",
                   skip_label="Skip to the list", sr_title="", og_type="website",
-                  nav_current="calendar.html",
+                  nav_current="calendar.html", cite=False,
                   jsonld=LD.listing(heading, description, base, S.canon(path)))
+    # Cite this page under the line, as on the weeks (week_page).
     html = html.replace('<div id="results"></div>',
                         '<div id="results"><div class="clist dirlist cdpage">'
-                        f'<h1>{S.E(heading)}</h1><p class="src">{lead}</p>{body}</div></div>'
+                        f'<h1>{S.E(heading)}</h1><p class="src">{lead}</p>'
+                        f'{S.cite_block(path, heading, base, S.BUILT)}{body}</div></div>'
                         f"<script>{lean_js(CD.LIST_JS)}</script>", 1)
     assert '<div class="clist dirlist cdpage">' in html, f"{path}: the template has no results slot"
     list_f.write_text(S.clean_links(html), encoding="utf-8")
