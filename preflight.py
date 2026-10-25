@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.694
+# GRANITE_VERSION: 2026-09-04.695
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -93885,6 +93885,70 @@ def _town_sources_floors(TS):
                        "applies corrections/place_corrections.json")
     assert not bad, "\n  ".join(bad)
     return "ok", "; ".join(held) + f"; all {len(fixed)} polling place corrections applied"
+
+
+@check("frontend", "a town page's Town Services tab: the office where two sources agree on its "
+                   "street, with both named, and the town's libraries",
+       needs=("build_town_pages",))
+def _town_services_tab(T):
+    """The town directory's first phase on the page (the person, 24 October
+    2026: "the address of city hall ... That would exist on town pages").
+    The tab's cards, drawn from the two readers' files as they are written:
+
+      - an office whose street two sources agree on is drawn there, "Where it
+        is", with a map and with the sources named and dated under it;
+      - a city's is "City hall", a town's "Town office";
+      - an office with only a box for its mail says so, and draws no street;
+      - the libraries, a branch said to be one, and a town with none says
+        so rather than drawing nothing;
+      - and an unincorporated place, which NHDOT does not list and which has
+        no office, has no tab at all.
+
+    And the panel is on every town page, named City Services in a city."""
+    off = {"mailing": "5 School St, Bristol, NH 03222", "phone": "603-744-3354",
+           "website": "https://www.bristolnh.gov"}
+    hall = {"street": "5 School St", "place": "Bristol", "zip": "03222",
+            "from": [{"source": "nhdot", "on": "2025-09-02"},
+                     {"source": "sos_list", "on": "2026-09-20"}]}
+    libs = {"libraries": [{"name": "Minot-Sleeper Library", "street": "35 Pleasant Street",
+                           "city": "Bristol", "phone": "603-744-3352", "kind": "central"}]}
+    got = "".join(T.services_sections("Bristol", "bristol", off, hall, libs))
+    for want in ('<h3 class="twnh">Town office</h3>', "5 School St, Bristol, NH 03222",
+                 '<span class="offseat">Where it is</span>',
+                 'href="https://www.openstreetmap.org/search?query=5%20School%20St%2C%20Bristol%2C%20NH%2003222"',
+                 "directory (September 2025) and the Secretary of State&#x27;s list of town and city "
+                 "clerks (September 2026) both give this address",
+                 '<h3 class="twnh">Library</h3>', "Minot-Sleeper Library",
+                 "Public Libraries Survey for fiscal year 2024"):
+        assert want in got.replace("Secretary of State's", "Secretary of State&#x27;s"), (
+            f"the Town Services tab does not draw {want!r}")
+    assert "Mailing address" not in got, "the office's own street is said again as its mailing address"
+    city = "".join(T.services_sections("Concord", "concord", {"mailing": "41 Green St, Concord, NH 03301"},
+                                       {}, {"libraries": [
+                                           {"name": "Concord Public Library", "street": "45 Green Street",
+                                            "city": "Concord", "phone": "", "kind": "central"},
+                                           {"name": "Penacook Branch Library", "street": "3 Merrimack Street",
+                                            "city": "Penacook", "phone": "", "kind": "branch"}]}))
+    assert '<h3 class="twnh">City hall</h3>' in city and '<h3 class="twnh">Libraries</h3>' in city \
+        and "Branch library, 3 Merrimack Street, Penacook" in city, (
+            "a city's office is not City hall, or its branch is not said to be one")
+    boxed = "".join(T.services_sections("Acworth", "acworth",
+                                        {"mailing": "PO Box 37, Acworth, NH 03601",
+                                         "phone": "603-835-6879"}, {"street": ""}, {}))
+    assert "Library" not in "".join(T.services_sections("Acworth", "acworth", {"phone": "1"}, None, None)), (
+        "a libraries file that was not loaded is drawn as a town with no library")
+    assert "Mailing address" in boxed and "Where it is" not in boxed and \
+        "No street address for the office is on file that two sources agree on" in boxed and \
+        "No public library is listed in Acworth" in boxed, (
+            "a town with a box for its mail draws a street, or does not say it has none")
+    assert T.services_sections("Hale's Location", "hale-s-location", {}, None, None) == [], (
+        "an unincorporated place has a Town Services tab")
+    import inspect
+    src = inspect.getsource(T.build)
+    assert '("services", "City Services" if slug(town, "0") in CITIES else "Town Services"' in src, (
+        "the Town Services tab is not one of a town page's panels")
+    return "ok", ("an office drawn where two sources agree, named and dated, a city's City hall, a "
+                  "boxed office said to be one, libraries and none, and no tab where there is no town")
 
 
 @check("files", "the town directory's readers: a library is placed by its census block, and a "
