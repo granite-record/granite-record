@@ -892,8 +892,9 @@ export function digestEmail({ origin, frequency, date, sections: given, manage, 
       text.push(`  ${when}: ${what}${r.committee ? `, ${r.committee}` : ""}${r.venue ? `, ${r.venue}` : ""}.` +
         (others.length ? ` For ${andList(others.map(([l]) => l))}.` : ""));
       // A public hearing a chamber's form serves: the form, and what to
-      // choose on it, as a daily's testimony block says it.
-      const form = /^public hearing$/i.test(r.what || "") && r.date >= date && TESTIFY_FORMS[chamberOf(r.committee)];
+      // choose on it, as a daily's testimony block says it. The Senate's is
+      // "hearing", the House's "public hearing" (sender.js PUBLIC_HEARING).
+      const form = /^(public )?hearing$/i.test(r.what || "") && r.date >= date && TESTIFY_FORMS[chamberOf(r.committee)];
       const bills = r.labels.map((l, i) => [l, r.urls[i]])
         .filter(([l]) => /^(?:HB|SB|HCR|SCR|HJR|SJR|HR|SR|CACR)\b/.test(l));
       const or = parts => andList(parts).replace(/ and ([^,]+)$/, " or $1");
