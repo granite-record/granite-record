@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.22
+# GRANITE_VERSION: 2026-09-04.23
 """
 An address for every sitting legislator, and the sitemap entries for them.
 

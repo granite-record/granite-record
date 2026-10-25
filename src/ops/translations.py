@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-10-23.5
+# GRANITE_VERSION: 2026-10-23.6
 """
 The site's translations: what is translated, what has gone stale, and the
 proofreader's sheet out and back. src/pages/i18n.py says how a translation

@@ -1,4 +1,4 @@
-// GRANITE_VERSION: 2026-10-09.9
+// GRANITE_VERSION: 2026-10-09.10
 /* THE DISTRICT MAP (map v1), as a module a page mounts:
 
      <link rel="stylesheet" href="/map.css">

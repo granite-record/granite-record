@@ -1,4 +1,4 @@
-// GRANITE_VERSION: 2026-10-09.7
+// GRANITE_VERSION: 2026-10-09.8
 /* A BILL'S PRINT SHEET. A reference sheet of one bill's record for paper,
    composed in the reader's browser from the record the page already holds,
    beside a short menu of settings, and printed with the browser's own dialog

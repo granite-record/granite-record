@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-10-11.21
+# GRANITE_VERSION: 2026-10-11.22
 """
 The statutes (RSA) as pages: /laws, and one page a chapter at /laws/<chapter>.
 

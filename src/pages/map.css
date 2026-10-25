@@ -1,4 +1,4 @@
-/* GRANITE_VERSION: 2026-10-09.2 */
+/* GRANITE_VERSION: 2026-10-09.3 */
 /* THE DISTRICT MAP (map v1): the stylesheet map.js draws against. A page that
    mounts the map links /map.css and /map.js and nothing else; every rule here
    is under .gm, the class mount() gives its element, so nothing here reaches

@@ -1,4 +1,4 @@
-/* GRANITE_VERSION: 2026-09-07.319 */
+/* GRANITE_VERSION: 2026-09-07.320 */
 /* ONE STYLESHEET FOR EVERY PAGE (23 October 2026). Every page of the site
    links this file, /app.css: the record pages shell.page() makes from
    bills.html, and the five build_pages.py writes -- the home page, Officials,
@@ -4595,6 +4595,9 @@ text-transform:uppercase;color:var(--ink-2);margin:0 0 var(--sp-4);font-family:v
   linear-gradient(to right,var(--shadow),transparent) 0 0/1rem 100% no-repeat scroll,
   linear-gradient(to left,var(--shadow),transparent) 100% 0/1rem 100% no-repeat scroll,
   var(--surface)}
+/* The box scrolls, not the table: the phone rule that makes a bare table
+   scroll inside itself would otherwise leave this box's edge standing still */
+:where(.l-tablewrap) > table{display:table}
 .l-table{border-collapse:collapse;width:100%;font:400 var(--t-ui)/1.5 var(--sans);color:var(--ink)}
 .l-table caption{text-align:left;font:600 var(--t-h3)/1.3 var(--serif);padding:.75rem 1rem .5rem;caption-side:top}
 .l-table th{font:600 var(--t-label)/1.3 var(--sans);letter-spacing:.07em;text-transform:uppercase;color:var(--ink-2);
