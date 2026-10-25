@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-10-17.7
+# GRANITE_VERSION: 2026-10-17.8
 """
 The legislature's year: a two-year term as a timeline, with this term's dates
 where the chambers' own calendars print them, and the usual pattern where
@@ -82,11 +82,12 @@ import i18n as I
 # THE PAGE'S ADDRESS AND NAME, in one place: civics.TOPICS gives the topic
 # this slug, and build_pages' status box links to it.
 SLUG = "legislative-year"
-TITLE = "NH Legislature Schedule"   # the person, 22 October 2026, as the home box says it
+TITLE = "NH Legislative Schedule"   # the person, 22 October 2026, as the home box says it
 HREF = f"learn/{SLUG}.html"
 # The words of the home status box's link, alone (the person, 22 October
-# 2026: "just say 'NH Legislature Schedule'").
-HOME_LINK = "NH Legislature Schedule"
+# 2026: "just say 'NH Legislature Schedule'"; and 25 October 2026: "NH
+# Legislature Schedule should be NH Legislative Schedule").
+HOME_LINK = "NH Legislative Schedule"
 # The timeline's You Are Here, the anchor the page's own links go to.
 HERE_ID = "now"
 

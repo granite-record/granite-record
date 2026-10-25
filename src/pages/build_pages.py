@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.238
+# GRANITE_VERSION: 2026-09-04.239
 """
 Build the pages the navigation links to: legislators, town lookup, how it
 works, and about.
@@ -2720,7 +2720,7 @@ def year_link(lang="en"):
     if lang == i18n.DEFAULT:
         return YEAR_LINK
     return (f'<p class="statenote stateyear"><a href="{i18n.href(lang, _year.HREF)}">'
-            + say(lang, "home.year_link", "NH Legislature Schedule") + '</a></p>')
+            + say(lang, "home.year_link", "NH Legislative Schedule") + '</a></p>')
 
 
 def deadline_line(lang="en", today=None, events=None):
@@ -2793,10 +2793,13 @@ def state_box(S, lang="en", today=None, events=None):
                f'data-updated="{esc(S.get("updated") or "")}">'
                + say(lang, "state.stale", "This summary was last updated {n} days ago and "
                      "may be out of date.", n=S["stale_days"]) + '</p>' if stale
-               else (f'<p class="statemeta upd" style="margin-top:8px" '
-                     f'data-updated="{esc(S.get("updated") or "")}">'
-                     f'{say(lang, "state.updated", "Summary Updated:")} '
-                     f'{fdy(S["updated"])}</p>' if S.get("updated") else ""))
+               # NO "SUMMARY UPDATED" LINE (the person, 25 October 2026: "the
+               # summary updated line can also be removed"). The date stays,
+               # hidden, so that the reader's clock can still turn it into the
+               # stale warning above once the summary is 45 days old.
+               else (f'<p class="statemeta upd" hidden '
+                     f'data-updated="{esc(S.get("updated") or "")}"></p>'
+                     if S.get("updated") else ""))
             + deadline_line(lang, today, events) + year_link(lang) + "</div>")
     return static_state
 
@@ -3319,9 +3322,7 @@ fetch(DATA("home.json")).then(r=>r.json()).then(H=>{
         ${esc(ms.note||"")}</p>`:""}
       ${stale?`<p class="statenote stalewarn" style="color:var(--st-veto)"
         data-updated="${esc(S.updated||"")}">${tr("state.stale","This summary was last updated {n} days ago and may be out of date.",{n:S.stale_days})}</p>`
-        :(S.updated?`<p class="statemeta upd" style="margin-top:8px"
-          data-updated="${esc(S.updated)}">${tr("state.updated","Summary Updated:")}
-          ${fdy(S.updated)}</p>`:"")}
+        :(S.updated?`<p class="statemeta upd" hidden data-updated="${esc(S.updated)}"></p>`:"")}
     """ + YEAR_LINK + """</div>`;
   // NO "WHO HOLDS OFFICE" HERE (23 October 2026). The Governor and the
   // Council were drawn under the calendar from home.json's composition,
@@ -3414,21 +3415,23 @@ fetch(DATA("home.json")).then(r=>r.json()).then(H=>{
         +(more?more.outerHTML:"");
     }
     // "Last updated N days ago" is the one line whose whole job is to say the
-    // summary may be stale; it cannot be a number frozen at build time.
+    // summary may be stale; it cannot be a number frozen at build time. A
+    // fresh summary says nothing about its date (the person, 25 October
+    // 2026), so the line shows only as the warning.
     const up=document.querySelector(".statebox .upd,.statebox .stalewarn");
     if(up&&up.dataset.updated){
       const p=up.dataset.updated.split("-").map(Number);
       const age=Math.round((now-new Date(p[0],p[1]-1,p[2]))/86400000);
-      const nice=dateWords(up.dataset.updated,"medium",window.GR_LANG);
       if(age>45){
         up.className="statenote stalewarn";
         up.style.color="var(--st-veto)";
+        up.hidden=false;
         up.textContent=tr("state.stale","This summary was last updated {n} days ago and may be out of date.",{n:age});
       }else{
         up.className="statemeta upd";
         up.style.color="";
-        up.style.marginTop="8px";
-        up.textContent=tr("state.updated","Summary Updated:")+" "+nice;
+        up.hidden=true;
+        up.textContent="";
       }
     }
   })();

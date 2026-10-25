@@ -9,7 +9,7 @@
 # Lines are "key: value". Milestones are "milestone: DATE | LABEL | NOTE".
 # Anything after # is ignored. Delete a line to drop it from the page.
 
-updated: 2026-10-22
+updated: 2026-10-25
 
 # One of: in session, between sessions, out of session, veto day pending
 phase: out of session
@@ -23,9 +23,7 @@ phase: out of session
 # Delete the line in December, when the next term brings its own session days.
 session_over: 2026-08-19
 
-headline: The House and Senate have finished the 2026 session.
-
-note: The House and Senate last met on August 19, to vote on vetoes. Some committees are studying held-over bills this fall.
+note: The 2026 session ended Aug 19 (veto day). Committees are meeting this fall on bills sent to interim study.
 
 # Off the page since 14 September, at the person's word: the box says no "Next:" line.
 # Remove the "# " to show one again.

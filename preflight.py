@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.705
+# GRANITE_VERSION: 2026-09-04.706
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -49521,13 +49521,46 @@ def _status_box_parity():
     # apart, and a line removed from both is not drift.
     for what, needle_py, needle_js in (
             ("the last floor session", 'S["last_session"]', "S.last_session"),
-            ("the summary's date", 'S["updated"]', "S.updated"),
+            # The date is kept hidden for the stale warning since the person
+            # asked for no "Summary Updated" line (25 October 2026).
+            ("the summary's date", 'data-updated="{esc(S.get("updated")', 'data-updated="${esc(S.updated'),
             ("the stale warning", "stale_days", "S.stale_days")):
         assert needle_js in js, f"HOME_JS no longer draws {what}"
         assert needle_py in py, f"the server-rendered status box lost {what}"
     assert "fdy(S.last_session)" in js and 'fdy(S["last_session"])' in py, \
         "the two copies write the last floor session's date differently"
     return "ok", "floor session, hearings, date and stale warning in both copies"
+
+
+@check("frontend", "the home status box says no 'Summary Updated' line, keeps the summary's date "
+                   "for the stale warning, and leads to the NH Legislative Schedule",
+       needs=("build_pages",))
+def _state_box_trimmed(B):
+    """The person, 25 October 2026: "The homepage status can be trimmed down
+    and the summary updated line can also be removed", and "NH Legislature
+    Schedule should be NH Legislative Schedule". A fresh summary's box carries
+    its date only hidden, for the reader's clock; a summary 45 days old still
+    says so, in the server's copy and the script's."""
+    fresh = {"phase": "out of session", "note": "A note.", "updated": "2026-10-25",
+             "stale_days": 0, "last_session": "2026-08-19", "milestones": []}
+    old = dict(fresh, stale_days=60)
+    box = B.state_box(fresh)
+    assert "Summary Updated" not in box, f"the fresh box still says its date: {box[-400:]!a}"
+    assert re.search(r'<p class="statemeta upd" hidden data-updated="2026-10-25"></p>', box), (
+        f"the fresh box lost the hidden date the stale warning is worked out from: {box[-400:]!a}")
+    stale = B.state_box(old)
+    assert "may be out of date" in stale and 'data-updated="2026-10-25"' in stale, (
+        f"a summary 60 days old no longer says it may be out of date: {stale[-400:]!a}")
+    js = B.home_js()
+    assert "Summary Updated" not in js, "HOME_JS still writes 'Summary Updated'"
+    clock = js[js.find("const up=document.querySelector"):][:900]
+    assert "up.hidden=false" in clock and "up.hidden=true" in clock and "state.stale" in clock, (
+        f"the reader's clock no longer shows the warning and hides the fresh line: {clock!a}")
+    for words in (box, js):
+        assert ">NH Legislative Schedule</a>" in words and "Legislature Schedule" not in words, (
+            "the way to the schedule is not called the NH Legislative Schedule")
+    return "ok", ("no 'Summary Updated' in either copy; the date kept hidden; a 60-day-old "
+                  "summary warned; the link reads NH Legislative Schedule")
 
 
 # ---- THE LEGISLATURE'S YEAR (17 October 2026) ---------------------------------

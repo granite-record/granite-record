@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-07.34
+# GRANITE_VERSION: 2026-09-07.35
 """
 The page every record's own address is: bills.html, with one record open.
 
