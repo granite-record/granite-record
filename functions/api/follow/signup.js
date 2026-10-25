@@ -56,9 +56,9 @@ const TURNSTILE = "https://challenges.cloudflare.com/turnstile/v0/siteverify";
 // things, one confirmation email each: 1,000 holds that with room. It still
 // bounds abuse once Turnstile, the rate rule and the three waiting requests
 // an inbox may have let a request through: a day at the ceiling is 2% of
-// Resend Pro's 50,000 emails a month (the plan the person chose; its figures
-// as remembered, to check on Resend's pricing page), so a flood shows in the
-// log as signup.day-full long before it can spend the month.
+// Resend Pro's 50,000 emails a month (the plan the person chose; no daily
+// limit, by resend.com/pricing, read 25 October 2026), so a flood shows in
+// the log as signup.day-full long before it can spend the month.
 // SIGNUP_DAILY_CEILING still overrides it, either way.
 const DAILY_CEILING = 1000;
 

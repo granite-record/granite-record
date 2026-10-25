@@ -2,10 +2,13 @@
 /*
  * POST /api/report -- a reader says something on a page is wrong.
  *
- * THE ONLY THING ON THIS SITE THAT RUNS. Every byte a reader receives is
- * still a file on a CDN; this is write-only, is on no page's critical path,
- * and if it is down the box on the page falls back to an email link. That is
- * why it is acceptable on a site that is static on purpose.
+ * ONE OF TWO THINGS ON THIS SITE THAT RUN. The other is email following
+ * (functions/api/follow/ and the sender in workers/follow/), live on
+ * graniterecord.org since 23 October 2026, which only a reader who asks for
+ * updates reaches. Every page a reader receives is still a file on a CDN;
+ * this is write-only, is on no page's critical path, and if it is down the
+ * box on the page falls back to an email link. That is why it is acceptable
+ * on a site that is static on purpose.
  *
  * WHAT IS STORED, AND WHAT IS NOT. The record the page was showing, the page's
  * own path, which tab was open (one of the tabs the pages render), what kind of

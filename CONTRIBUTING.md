@@ -73,6 +73,36 @@ as *How a change is proven* below says, and the night after it lands
 publishes it. Releases are batched on purpose: fewer, complete updates rather
 than one per fix.
 
+### Undoing a bad publish
+
+**Put the last good build back first, then fix.** In Cloudflare's dashboard:
+Workers & Pages → `graniterecord` → Deployments → *All deployments*; on the
+last good Production deployment, the ⋯ menu → **Rollback to this
+deployment**, and confirm. It is instant, and any production deployment that
+built can be chosen; a preview cannot. Wrangler has no rollback command
+(`npx wrangler pages deployment list --project-name=graniterecord
+--environment=production` lists the ids); the API's `POST
+/accounts/<account>/pages/projects/graniterecord/deployments/<id>/rollback`
+does what the button does. (Cloudflare's *Rollbacks* page and Wrangler's
+Pages commands, read 25 October 2026.)
+
+**A rollback lasts until the next night publishes**, at 08:17 UTC:
+
+- The night compares its build with what graniterecord.org serves. After a
+  rollback production serves an older build, so the night's build counts as
+  new and is sent for production.
+- It waits for your approval when its code is not the code of the build
+  production serves (that build's `build.json` names its commit; one with
+  none waits too) -- unless a dry run of the same commit came back clean
+  within 48 hours, and then it may go out on its own. So revert the bad
+  change on `main` before 08:17 UTC, and do not approve a night that would
+  publish it again: the day's data can bring a bad build back as surely as
+  code.
+- Re-running or approving an older night's publish job is no way back: the
+  publish job refuses a night older than the newest night fit for
+  production ("NOT DEPLOYED: a newer night ... has built a site fit for
+  production since this one").
+
 ## Getting set up
 
 ```bash

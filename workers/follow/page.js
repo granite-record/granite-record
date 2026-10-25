@@ -238,8 +238,8 @@ export function message(status, title, ...paragraphs) {
 // at once. Two copies do not, and the reader is told so rather than told
 // "for good": D1 keeps point-in-time backups (Time Travel) that cannot be
 // turned off and age out by themselves, and the mail service keeps a copy of
-// each email it has sent for its own retention period. README.md has the
-// figures to check on the day.
+// each email it has sent for its own retention period. README.md, "The
+// plan's limits", has both figures as Cloudflare and Resend publish them.
 export const DELETES = "Deletes your address and everything you follow from our " +
   "database, at once, and nothing more is sent.";
 export const AFTERWARDS = "Two copies age out on their own rather than at once: the " +

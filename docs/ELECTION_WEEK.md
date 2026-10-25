@@ -93,11 +93,14 @@ nothing about members-elect until then, which is true.
    first (and `set GRANITE_BUILD_DATE=` after).
 4. `python3 preflight.py` must end `0 failed`. Commit `records/sources/2026-*`,
    `collected/election_2026.json` and `corrections/members_elect.json`
-   together, to `dev`, then merge to `main` and approve the next night.
+   together, to `dev`.
 
-Until `"recount_deadline"` is entered, every race is drawn "Result not final"
-and nobody is named: the Members-Elect tab lists every district that way.
-That is the intended first state.
+**The results go to `main` only together with the recount deadline (Friday
+6 November, 5 p.m.) and the recount list, below, in one merge; if that merge
+cannot be approved by the night of 9–10 November, members-elect is left off
+for the webinar.** Until `"recount_deadline"` is entered every race is drawn
+"Result not final" and nobody is named, which is why the results do not go
+out alone.
 
 ## The recount deadline: Friday 6 November, 5 p.m.
 
@@ -182,6 +185,27 @@ re-elected needs nothing.
                 "takes_office": "2027-01-03"}}
 ```
 
+## Before 2 December: freeze 2025–2026
+
+After the turn, 2025–2026 is built every night from its frozen inputs and
+nothing else, and the New term run stops before asking anything if they are
+not the files installed. So, on the laptop (`src/lib/freeze_term.py`, *WHEN,
+AND WHO*):
+
+1. Straight after the late-November database download, which is yours to
+   start: `python3 src/lib/freeze_term.py --views`, then
+   `python3 src/ops/cloud.py seed-kit --only "db/term/*/*"`.
+2. Before Organization Day, while the installed roster is still 2025–2026's:
+
+   ```
+   python3 src/lib/freeze_term.py --session
+   python3 src/lib/freeze_term.py --check
+   python3 src/ops/cloud.py seed-kit --only "frozen/**" Docket_2025-2026.txt verification_manifest_2025-2026.csv
+   ```
+
+   If `--session` says it wrote a `records/rollcalls/` copy, commit it and
+   merge it to `main` before the switch night.
+
 ## 2 December, Organization Day
 
 The members-elect retire by themselves: the step removes
@@ -194,6 +218,10 @@ gap: members who lost are listed as serving. A scheduled night installs the
 new roster once the General Court publishes it, and the New term run turns
 the term when its files do (rehearse both first with
 `python3 tests/rehearse_turn.py --copy <a folder outside the repository> --guards`).
+On the switch night -- the first scheduled night that refuses the files as a
+new term -- freeze once more first: `python3 src/ops/cloud.py pull`, then
+`--session`, `--check` and the same seed-kit, then the nightly by hand with
+New term ticked.
 Check Officials, Legislators, every morning from 3 December until the new
 members are there.
 
