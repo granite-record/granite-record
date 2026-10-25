@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-08.60
+# GRANITE_VERSION: 2026-09-08.61
 """
 The topics of the civics section: their order, their names, and their prose.
 
@@ -1194,7 +1194,7 @@ Speaker and the Senate President. [[org_day]] Bill
 numbers are unique across the whole term, so there is only ever one HB 84 in
 2025&ndash;2026, and there will be another in the next term. That is why every
 address on this site carries the year.
-<a href="learn/legislative-year.html">The Legislature's Year</a> lays a term out
+<a href="learn/legislative-year.html">NH Legislative Schedule</a> lays a term out
 date by date.</p>
 <p>Most bills are either passed or killed in the year they are filed. Two
 things can happen to the rest, and they are not the same thing, though they
