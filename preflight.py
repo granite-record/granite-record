@@ -68732,7 +68732,9 @@ def _coming_up_without_study_committees():
     without the study committees; a week of study committees alone is an
     empty week on the rail, which says no House or Senate committee meeting
     is scheduled rather than that nothing is (the audit of 25 October 2026,
-    M8); and the Calendar's own week still holds them all.
+    M8), and whose chip and sentence name the same week when HOME_JS reads a
+    weekend's build on a weekday (the preview check of the same day); and
+    the Calendar's own week still holds them all.
     """
     import contextlib
     import datetime as _dt
@@ -68810,6 +68812,79 @@ def _coming_up_without_study_committees():
         assert ('tr("cal.none_else","No more House or Senate committee meetings are scheduled '
                 'this week.")' in BP.HOME_JS and "Nothing else is scheduled" not in BP.HOME_JS), (
                     "HOME_JS's empty rest of the week says other words than the built rail's")
+        # AND ITS SENTENCE NAMES THE WEEK THE CHIP DOES, IN THE READER'S CLOCK
+        # (the preview check of 25 October 2026). The preview, built on Sunday
+        # 25 October with no House or Senate meeting in the week of the 26th,
+        # read from the Monday on as "This Week" over "No House or Senate
+        # committee meetings are scheduled next week.": HOME_JS renamed the
+        # chip from data-mon and could not reach the sentence. That rail is
+        # built here, in both languages, and HOME_JS's block run on it in
+        # node for a reader on the Sunday, the Monday, the Wednesday and the
+        # Friday: the chip and the note must read as a build made on the
+        # reader's own day draws them.
+        import html as _html
+        import i18n
+        node = shutil.which("node") or shutil.which("node.exe")
+        blk = re.search(r"\(function\(\)\{\s*const now=new Date\(\);.*?\n  \}\)\(\);",
+                        BP.HOME_JS, re.S)
+        assert blk, "HOME_JS has no block saying Coming up's week in the reader's clock"
+
+        def rail(t):
+            """(data-mon, the chip, the note's first sentence, the note) of a
+            built empty rail, as text; the sentence None where it is not an
+            element of its own."""
+            mon = re.search(r'<section class="cal" data-mon="([^"]+)"', t)
+            chip = re.search(r'<p class="calwk"><span class="chip">([^<]+)</span>', t)
+            note = re.search(r'<p class="note">(.*?)</p>', t, re.S)
+            assert mon and chip and note, f"an empty Coming up has no week, chip or note: {t[:300]}"
+            first = re.search(r'<span class="calnomeet">([^<]*)</span>', note.group(1))
+            text = lambda h: " ".join(_html.unescape(re.sub(r"<[^>]+>", "", h)).split())
+            return (mon.group(1), _html.unescape(chip.group(1)),
+                    _html.unescape(first.group(1)) if first else None, text(note.group(1)))
+
+        built = _dt.date(2026, 10, 25)
+        ran = 0
+        for lang in ("en", "es"):
+            with contextlib.redirect_stdout(io.StringIO()):
+                page = BP.calendar_html(tmp, today=built, rows=[], events=[], lang=lang)
+            mon, chip, first, note = rail(page)
+            assert first and note.startswith(first), (
+                f"{lang}: an empty Coming up's sentence on its week is not an element of its "
+                f"own, so HOME_JS cannot say it again with the chip: {page[:400]}")
+            if not node:
+                continue
+            words = i18n.words_js(lang, BP.HOME_JS) if lang != "en" else ""
+            for reader in (built + _dt.timedelta(days=k) for k in (0, 1, 3, 5)):
+                with contextlib.redirect_stdout(io.StringIO()):
+                    want = rail(BP.calendar_html(tmp, today=reader, rows=[], events=[], lang=lang))
+                prog = _components_js() + "\n" + (
+                    "const R=Date;class D extends R{constructor(...a){a.length?super(...a)"
+                    f":super({reader.year},{reader.month - 1},{reader.day},15,30);}}"
+                    "static now(){return new D().getTime();}}globalThis.Date=D;"
+                    f"globalThis.window=globalThis;window.GR_LANG={json.dumps(lang)};{words}\n"
+                    # components.js has a chip() of its own: the stub's names are its own.
+                    f"const stubChip={{textContent:{json.dumps(chip)}}},"
+                    f"stubNone={{textContent:{json.dumps(first)}}};"
+                    f"const stubCal={{innerHTML:'',dataset:{{mon:{json.dumps(mon)}}},"
+                    "querySelector(s){return s==='.calwk .chip'?stubChip"
+                    ":s==='.calnomeet'?stubNone:null;}};"
+                    "globalThis.document={querySelectorAll(){return [];},"
+                    "querySelector(s){return s==='.cal'?stubCal:null;}};\n"
+                    + blk.group(0) + "\n"
+                    "process.stdout.write(JSON.stringify({chip:stubChip.textContent,"
+                    "none:stubNone.textContent,cal:stubCal.innerHTML}));")
+                r = _node_file(node, prog, capture_output=True, text=True, timeout=60)
+                assert r.returncode == 0, ("HOME_JS's Coming up block would not run on an empty "
+                                           "rail: " + (r.stderr or "")[-300:])
+                got = json.loads(r.stdout)
+                seen = (mon, got["chip"], got["none"], got["none"] + note[len(first):])
+                assert seen == want, (
+                    f"{lang}: Coming up built empty on {built:%a %d %b} and read on "
+                    f"{reader:%a %d %b} shows {seen[1]!r} over {seen[3]!r}; built that day it "
+                    f"is {want[1]!r} over {want[3]!r}")
+                assert got["cal"] == "", (
+                    f"{lang}: HOME_JS redrew an empty Coming up read on {reader:%a %d %b}")
+                ran += 1
     finally:
         shutil.rmtree(tmp, ignore_errors=True)
     # They stay on the Calendar: the week it draws holds all three of this week's.
@@ -68820,9 +68895,14 @@ def _coming_up_without_study_committees():
     assert BP.home_week(week) and all(
         BP.meeting_who(k.name, rs) != "study" for day in BP.home_week(week).values()
         for k, rs in day.items()), "home_week keeps a study committee"
+    # SILENCE IS NOT SUCCESS: a reader's day that never ran would pass above.
+    assert ran in (0, 8), f"HOME_JS ran on {ran} of the 8 readers' days of an empty rail"
     return "ok", ("a statutory committee and a docket's study committee off the rail, a "
                   "standing committee's interim study on it, next week counted without them, "
-                  "and all three still on the Calendar's week")
+                  "and all three still on the Calendar's week; "
+                  + (f"an empty rail's chip and sentence agree in the reader's clock, {ran} "
+                     "readers' days in two languages" if ran else
+                     "node is not on PATH, so the empty rail was not read in the reader's clock"))
 
 
 # ---- KEY DATES (24 October 2026) ------------------------------------------------
@@ -69512,16 +69592,23 @@ def _home_says_each_once(BP, chrome):
     one = {"latest_sessions": [{"date": "2026-08-19", "video_id": "vH", "chamber": "House"},
                                {"date": "2026-08-19", "video_id": "vS", "chamber": "Senate"}]}
     sits = {("H", "2026-08-19"), ("S", "2026-08-19")}
+    # WHAT FOLLOWS THE DASH IS HELD TOGETHER (the preview check of 25 October
+    # 2026): at 1180px and up the left rail's 258px broke the line before
+    # "recordings" and left it alone on a second row, in Spanish before
+    # "Cámara · Senado". In .sesswhat, an inline block in app.css, a line
+    # too long for the rail breaks after the dash, and one that fits is one row.
     got = BP.session_line(one, "en", sits)
-    want = ('<p class="sessline">Aug 19, 2026 — <a href="session/H/2026-08-19.html">House</a> · '
-            '<a href="session/S/2026-08-19.html">Senate</a> recordings</p>')
+    want = ('<p class="sessline">Aug 19, 2026 — <span class="sesswhat">'
+            '<a href="session/H/2026-08-19.html">House</a> · '
+            '<a href="session/S/2026-08-19.html">Senate</a> recordings</span></p>')
     assert got == want, f"both chambers' sitting of 19 August reads {got!r}, not {want!r}"
     apart = {"latest_sessions": [{"date": "2026-06-04", "video_id": "vH", "chamber": "House"},
                                  {"date": "2026-06-11", "video_id": "vS", "chamber": "Senate"}]}
     got = BP.session_line(apart, "en", {("H", "2026-06-04")})
-    want = ('<p class="sessline">Jun 11, 2026 — <a href="https://www.youtube.com/watch?v=vS">'
-            'Senate</a> recording</p><p class="sessline">Jun 4, 2026 — '
-            '<a href="session/H/2026-06-04.html">House</a> recording</p>')
+    want = ('<p class="sessline">Jun 11, 2026 — <span class="sesswhat">'
+            '<a href="https://www.youtube.com/watch?v=vS">Senate</a> recording</span></p>'
+            '<p class="sessline">Jun 4, 2026 — <span class="sesswhat">'
+            '<a href="session/H/2026-06-04.html">House</a> recording</span></p>')
     assert got == want, (f"chambers that sat on different days, one without a page, read "
                          f"{got!r}, not {want!r}")
     assert BP.session_line({}, "en", sits) == "" and BP.session_line(
@@ -69533,6 +69620,34 @@ def _home_says_each_once(BP, chrome):
             f"the Spanish line does not lead to the same days under a Spanish date: {es!r}")
     assert "recording" not in es and ">House<" not in es and ">Senate<" not in es, (
         f"the Spanish line says English words: {es!r}")
+    # The Spanish in its own order, "grabaciones: Cámara · Senado", held
+    # together after the dash just the same, and its words unchanged.
+    held = re.fullmatch(r'<p class="sessline">([^<]*) — <span class="sesswhat">(.*)</span></p>', es)
+    assert held and held.group(1) == day and re.sub(r"<[^>]+>", "", held.group(2)) == (
+        "grabaciones: Cámara · Senado"), (
+            f"the Spanish line does not keep what follows its dash together: {es!r}")
+    # Held together as an inline block, which moves to the next row whole and
+    # wraps inside itself only where a row of its own cannot hold it -- and
+    # never by nowrap, which at a reader's larger default font size (24px,
+    # Chrome's "Very large") ran "Senado" past the left rail's card and
+    # across the webinar card at 1920px, and off a 320px phone with the page
+    # pushed sideways (the review of the same day, measured on the preview).
+    # Nowrap on the line itself would hold the block too, so neither may.
+    rules = _css_rules(Path("src/pages/app.css").read_text(encoding="utf-8"))
+    mine = [(at, [" ".join(s.split()) for s in sel.split(",")], dict(_css_decls(body)), n)
+            for at, sel, body, n in rules if re.search(r"\.(sessline|sesswhat)\b", sel)]
+    block = [n for at, sels, d, n in mine if not at and d.get("display") == "inline-block"
+             and ":where(body.pg) .sessline .sesswhat" in sels]
+    assert block, ("app.css does not hold .sessline's .sesswhat together as an inline block "
+                   "(:where(body.pg) .sessline .sesswhat{display:inline-block}), so the line to "
+                   "the latest sittings can leave its last word alone on a row")
+    held = [f"line {n}" for at, sels, d, n in mine
+            if d.get("white-space") in ("nowrap", "pre") or "nowrap" in (
+                d.get("text-wrap", ""), d.get("text-wrap-mode", ""))]
+    assert not held, (f"app.css holds the line to the latest sittings on one row ({', '.join(held)}): "
+                      "at a larger default font size it runs out of its card and off a phone. "
+                      "The inline block keeps it together where it fits and lets it wrap where "
+                      "it does not")
 
     # HOME_JS: no player, no title of its own for a sitting, #session left alone.
     js = BP.HOME_JS
@@ -69575,8 +69690,9 @@ def _home_says_each_once(BP, chrome):
     assert got["failed"]["cls"] == "fresh stale" and "1 build step failed" in got["failed"]["html"], (
         f"a build with a failed step does not warn: {got['failed']}")
     return "ok", ("the sittings of one day one line, of two days two, each to its page or its "
-                  "recording, in English and Spanish; no player; the rebuild line silent when "
-                  "fresh, a warning when five days old or a step failed")
+                  "recording, in English and Spanish, held together after the dash; no player; "
+                  "the rebuild line silent when fresh, a warning when five days old or a step "
+                  "failed")
 
 
 @check("frontend", "the home page's one search box is the header's finder, its top results in a "
