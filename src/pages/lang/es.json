@@ -21,6 +21,11 @@
    "es": "Comité de conferencia sobre {bill}",
    "state": "draft"
   },
+  "cal.days_ago": {
+   "en": "{n} days ago",
+   "es": "hace {n} días",
+   "state": "draft"
+  },
   "cal.empty": {
    "en": "No meetings scheduled.",
    "es": "No hay reuniones programadas.",
@@ -56,19 +61,14 @@
    "es": "Último día para votar los proyectos de ley de la otra cámara",
    "state": "draft"
   },
-  "cal.kd.ahead": {
-   "en": "Key dates ahead",
-   "es": "Próximas fechas clave",
-   "state": "draft"
-  },
   "cal.kd.both": {
    "en": "Both chambers",
    "es": "Ambas cámaras",
    "state": "draft"
   },
   "cal.kd.chip": {
-   "en": "Key Date",
-   "es": "Fecha clave",
+   "en": "Important Date",
+   "es": "Fecha importante",
    "state": "draft"
   },
   "cal.kd.crossover": {
@@ -300,6 +300,11 @@
   "cal.tomorrow": {
    "en": "tomorrow",
    "es": "mañana",
+   "state": "draft"
+  },
+  "cal.yesterday": {
+   "en": "yesterday",
+   "es": "ayer",
    "state": "draft"
   },
   "card.bills": {
@@ -8794,15 +8799,15 @@
    "state": "draft"
   },
   "home.left": {
-   "en": "Where the General Court is, and what is coming up",
-   "es": "Dónde está la Legislatura y qué viene",
+   "en": "Where the General Court is, and its latest session days",
+   "es": "Dónde está la Legislatura y sus últimos días de sesión",
    "state": "draft"
   },
   "home.n_more": {
    "en": "and {n} more",
    "es": "y {n} más",
    "state": "draft",
-   "note": "Latest Activity: the bills of a meeting past the three it lists."
+   "note": "Latest Activity: the bills of a meeting past the forty its card lists when it opens."
   },
   "home.recent": {
    "en": "Latest Activity",
@@ -8821,8 +8826,8 @@
    "note": "A chip: the committee kept the bill into the next year (\"Retained in committee\")."
   },
   "home.right": {
-   "en": "The latest session days, and what has just happened",
-   "es": "Los últimos días de sesión y lo que acaba de pasar",
+   "en": "What is coming up, and what has just happened",
+   "es": "Lo que viene y lo que acaba de pasar",
    "state": "draft"
   },
   "home.search_hint": {
@@ -8846,11 +8851,6 @@
    "es": "Granite Record: el gobierno de New Hampshire, en un solo lugar",
    "state": "draft"
   },
-  "home.today": {
-   "en": "Today",
-   "es": "Hoy",
-   "state": "draft"
-  },
   "home.try": {
    "en": "Try <b>HB 1</b>, <b>housing</b>, <b>Concord</b> or a legislator&rsquo;s name. It finds bills since 1989, legislators past and present, committees, towns and who represents them, subjects and how-to guides.",
    "es": "Pruebe con <b>HB 1</b>, <b>housing</b>, <b>Concord</b> o el nombre de un legislador. Encuentra proyectos de ley desde 1989, legisladores actuales y anteriores, comités, municipios y quién los representa, temas y guías prácticas.",
@@ -8859,11 +8859,6 @@
   "home.year_link": {
    "en": "NH Legislature Schedule",
    "es": "Calendario de la Legislatura de NH",
-   "state": "draft"
-  },
-  "home.yesterday": {
-   "en": "Yesterday",
-   "es": "Ayer",
    "state": "draft"
   },
   "hub.follow.citizen-in-a-republic.line": {
