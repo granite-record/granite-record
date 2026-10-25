@@ -1,4 +1,4 @@
-// GRANITE_VERSION: 2026-10-09.8
+// GRANITE_VERSION: 2026-10-09.9
 /* THE DISTRICT MAP (map v1), as a module a page mounts:
 
      <link rel="stylesheet" href="/map.css">
@@ -88,17 +88,34 @@
 "use strict";
 const NS="http://www.w3.org/2000/svg";
 const esc=s=>String(s==null?"":s).replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+/* THE MAP'S WORDS IN THE PAGE'S LANGUAGE (the Officials page in Spanish, 25
+   October 2026). The site's tr() (components.js) where the page has it, and
+   the English, with {name} filled, where it does not: a harness that runs
+   this file alone. Read at each call, so this file may load before or after
+   components.js. Every word below is said through it; English pages draw
+   exactly what they drew. */
+const tr=(k,en,v)=>{const g=globalThis.tr;
+  return typeof g==="function"?g(k,en,v):v?String(en).replace(/\{([a-z_][a-z0-9_]*)\}/g,
+    (m,n)=>Object.prototype.hasOwnProperty.call(v,n)?v[n]:m):en;};
 const CC={BE:"Belknap",CA:"Carroll",CH:"Cheshire",CO:"Coos",GR:"Grafton",HI:"Hillsborough",ME:"Merrimack",RO:"Rockingham",ST:"Strafford",SU:"Sullivan"};
-const NOUN={R:"Republican",D:"Democrat",I:"Independent"};
-const PARTY={R:"Republican",D:"Democratic",I:"Independent"};
-const NAME={base:"State House district",float:"Floterial district",senate:"State Senate district",
-  exec:"Executive Council district",cong:"US House district",county:"",towns:""};
-const LAYERS=[["base","State House"],["senate","State Senate"],["exec","Executive Council"],
-  ["cong","US House"],["county","Counties"],["towns","Towns"]];
-const LAYER_WORDS={base:"State House districts",senate:"State Senate districts",exec:"Executive Council districts",
-  cong:"US House districts",county:"counties",towns:"towns"};
+// "2 Democrats", "1 Republican": the count and its noun together, so a
+// language whose plural is not an added "s" says its own.
+const NOUN={R:[n=>tr("map.r_one","{n} Republican",{n}),n=>tr("map.r_many","{n} Republicans",{n})],
+  D:[n=>tr("map.d_one","{n} Democrat",{n}),n=>tr("map.d_many","{n} Democrats",{n})],
+  I:[n=>tr("map.i_one","{n} Independent",{n}),n=>tr("map.i_many","{n} Independents",{n})]};
+const PARTY={R:tr("map.party_r","Republican"),D:tr("map.party_d","Democratic"),I:tr("map.party_i","Independent")};
+const NAME={base:tr("map.name_base","State House district"),float:tr("map.name_float","Floterial district"),
+  senate:tr("map.name_senate","State Senate district"),exec:tr("map.name_exec","Executive Council district"),
+  cong:tr("map.name_cong","US House district"),county:"",towns:""};
+const LAYERS=[["base",tr("map.ly_base","State House")],["senate",tr("map.ly_senate","State Senate")],
+  ["exec",tr("map.ly_exec","Executive Council")],["cong",tr("map.ly_cong","US House")],
+  ["county",tr("map.ly_county","Counties")],["towns",tr("map.ly_towns","Towns")]];
+const LAYER_WORDS={base:tr("map.lw_base","State House districts"),senate:tr("map.lw_senate","State Senate districts"),
+  exec:tr("map.lw_exec","Executive Council districts"),cong:tr("map.lw_cong","US House districts"),
+  county:tr("map.lw_county","counties"),towns:tr("map.lw_towns","towns")};
 /* THE LABEL TOGGLE: its three modes, in the order drawn, and the default. */
-const LABELS=[["names","Town names"],["numbers","District numbers"],["none","No labels"]];
+const LABELS=[["names",tr("map.lb_names","Town names")],["numbers",tr("map.lb_numbers","District numbers")],
+  ["none",tr("map.lb_none","No labels")]];
 const DEFAULT_LABELS="names";
 const TINTED={base:1,senate:1,exec:1,cong:1};
 /* The unincorporated places (grants, locations, purchases), by the record's
@@ -108,22 +125,22 @@ const slugOf=(t,w)=>{const s=t.toLowerCase().replace(/[^a-z0-9]+/g,"-").replace(
 const letterOf=p=>String(p||"X")[0].toUpperCase();
 /* "Ward 4"; "Wards 1, 3–6" */
 function wardWords(ws){
-  const n=ws.map(Number).sort((a,b)=>a-b);if(n.length===1)return "Ward "+n[0];
+  const n=ws.map(Number).sort((a,b)=>a-b);if(n.length===1)return tr("map.ward","Ward {n}",{n:n[0]});
   const runs=[];n.forEach(x=>{const r=runs[runs.length-1];if(r&&x===r[1]+1)r[1]=x;else runs.push([x,x]);});
-  return "Wards "+runs.map(([a,b])=>a===b?String(a):b===a+1?a+", "+b:a+"–"+b).join(", ");
+  return tr("map.wards","Wards {list}",{list:runs.map(([a,b])=>a===b?String(a):b===a+1?a+", "+b:a+"–"+b).join(", ")});
 }
 function label(lk,fid){
   if(lk==="base"||lk==="float")return `${CC[fid.slice(0,2)]} ${fid.slice(2)}`;
-  if(lk==="county")return `${fid} County`;
+  if(lk==="county")return tr("map.county","{name} County",{name:fid});
   return fid;
 }
 /* The chosen district's tag on the map (round two's words). */
 function tagWords(lk,fid){
   if(lk==="base")return label(lk,fid);
-  if(lk==="float")return "Floterial "+label(lk,fid);
-  if(lk==="senate")return "Senate District "+fid;
-  if(lk==="exec")return "Council District "+fid;
-  if(lk==="cong")return "US House District "+fid;
+  if(lk==="float")return tr("map.floterial","Floterial {name}",{name:label(lk,fid)});
+  if(lk==="senate")return tr("map.tag_senate","Senate District {n}",{n:fid});
+  if(lk==="exec")return tr("map.tag_exec","Council District {n}",{n:fid});
+  if(lk==="cong")return tr("map.tag_cong","US House District {n}",{n:fid});
   return "";
 }
 /* A district's number as the numbers mode draws it: the number alone (a
@@ -426,14 +443,14 @@ function fillOf(M,lk,fid){const f=M.T.fill[lk];return f?(f[fid]||""):null;}
 /* "Hillsborough 21 elects 2 Democrats" in a title, never by colour alone */
 function countWords(ms){
   const c={};ms.forEach(m=>{c[m.p]=(c[m.p]||0)+1;});
-  return Object.keys(c).sort((a,b)=>"RDI".indexOf(a)-"RDI".indexOf(b)).map(p=>`${c[p]} ${NOUN[p]||p}${c[p]===1?"":"s"}`).join(", ");
+  return Object.keys(c).sort((a,b)=>"RDI".indexOf(a)-"RDI".indexOf(b)).map(p=>NOUN[p]?NOUN[p][c[p]===1?0:1](c[p]):`${c[p]} ${p}${c[p]===1?"":"s"}`).join(", ");
 }
 /* One person, as the site's chip draws them (.mchip, app.css): the party
    and seat kept as one unit; a councillor or a representative in Congress
    links to their own site, in a new tab (D20). */
 function chip(m){
   const p=esc(letterOf(m.p));
-  if(m.u)return `<span class="mchip p-${p}" translate="no"><a class="gmout" href="${esc(m.u)}" target="_blank" rel="noopener">${esc(m.n)} <span class="mtag">(${p})</span><span class="gmvh" translate="yes"> (opens in a new tab)</span></a></span>`;
+  if(m.u)return `<span class="mchip p-${p}" translate="no"><a class="gmout" href="${esc(m.u)}" target="_blank" rel="noopener">${esc(m.n)} <span class="mtag">(${p})</span><span class="gmvh" translate="yes"> ${tr("map.new_tab","(opens in a new tab)")}</span></a></span>`;
   const full=String(m.n||""),tag=full.match(/^(.*\S)\s+(\([^()]*\))$/);
   const who=tag?`${esc(tag[1])} <span class="mtag">${esc(tag[2])}</span>`:esc(full);
   return `<span class="mchip p-${p}" translate="no">${m.s?`<a href="/legislator/${esc(m.s)}.html">${who}</a>`:who}</span>`;
@@ -444,7 +461,7 @@ function wardsText(list){
   const by={};list.forEach(([t,w])=>(by[t]=by[t]||[]).push(w));
   return Object.entries(by).map(([t,ws])=>{
     if(ws.length===1&&ws[0]==="0")return `<a href="/town/${slugOf(t)}.html">${esc(t)}</a>`;
-    return `${esc(t)} (`+ws.sort((a,b)=>a-b).map(w=>`<a href="/town/${slugOf(t,w)}.html">Ward ${esc(w)}</a>`).join(", ")+")";
+    return `${esc(t)} (`+ws.sort((a,b)=>a-b).map(w=>`<a href="/town/${slugOf(t,w)}.html">${tr("map.ward","Ward {n}",{n:esc(w)})}</a>`).join(", ")+")";
   }).join("; ");
 }
 
@@ -456,7 +473,7 @@ function el(tag,attrs){const e=document.createElementNS(NS,tag);for(const a in a
 function mount(root,opts){
   opts=Object.assign({layer:"base",layers:null,labels:DEFAULT_LABELS,flo:false,controls:true,panel:true,list:true,
     legend:true,note:true,zoom:true,frame:null,dim:false,ward:null,town:null,pick:null,data:"/district_map.json",
-    prompt:"Choose a district on the map, or type a town in the box above."},opts||{});
+    prompt:tr("map.prompt","Choose a district on the map, or type a town in the box above.")},opts||{});
   const layersShown=LAYERS.filter(([v])=>!opts.layers||opts.layers.includes(v));
   if(!layersShown.some(([v])=>v===opts.layer))opts.layer=layersShown[0][0];
   if(!LABELS.some(([v])=>v===opts.labels))opts.labels=DEFAULT_LABELS;
@@ -469,18 +486,18 @@ function mount(root,opts){
     `<label><input type="radio" name="${id}${name}" value="${v}"${v===on?" checked":""}><span>${esc(t)}</span></label>`).join("")}</div>`;
   root.innerHTML=
     (opts.controls?`<div class="gmctl">
-      <div class="gmrow">${layersShown.length>1?seg("ly","Kind of district",layersShown,opts.layer):""}
-      <label class="gmflo"><input type="checkbox" class="gmfloin"${opts.flo?" checked":""}> Floterial districts</label></div>
-      <div class="gmrow gmlabrow"><span class="gmlabhead" id="${id}lab" aria-hidden="true">Labels</span>${seg("lb","Labels on the map",LABELS,opts.labels)}</div>
+      <div class="gmrow">${layersShown.length>1?seg("ly",tr("map.kind","Kind of district"),layersShown,opts.layer):""}
+      <label class="gmflo"><input type="checkbox" class="gmfloin"${opts.flo?" checked":""}> ${tr("map.flo_toggle","Floterial districts")}</label></div>
+      <div class="gmrow gmlabrow"><span class="gmlabhead" id="${id}lab" aria-hidden="true">${tr("map.labels","Labels")}</span>${seg("lb",tr("map.labels_on","Labels on the map"),LABELS,opts.labels)}</div>
     </div>`:"")+
     `<div class="gmstage">`+
-    (opts.legend?`<div class="gmkey"><div class="gmleg" role="list" aria-label="What the colors mean"></div>${opts.note?`<p class="gmnote gmexplain"></p>`:""}</div>`:"")+
+    (opts.legend?`<div class="gmkey"><div class="gmleg" role="list" aria-label="${tr("map.legend","What the colors mean")}"></div>${opts.note?`<p class="gmnote gmexplain"></p>`:""}</div>`:"")+
     `<div class="gmbox">
-      <div class="gmwrap" tabindex="0" role="group" aria-label="The map. Arrow keys move it; plus and minus zoom in and out."><svg class="gmsvg" role="img" aria-label="Map of New Hampshire"></svg></div>
-      ${opts.zoom?`<div class="gmzoom"><button type="button" class="zo" aria-label="Zoom out">&minus;</button><button type="button" class="zi" aria-label="Zoom in">+</button><button type="button" class="zf" aria-label="Fit the whole map">Fit</button></div>`:""}
-      <p class="gmcredit">Boundaries: NH GRANIT, University of New Hampshire (2022). Not for legal use.</p>
+      <div class="gmwrap" tabindex="0" role="group" aria-label="${tr("map.keys","The map. Arrow keys move it; plus and minus zoom in and out.")}"><svg class="gmsvg" role="img" aria-label="${tr("map.of_nh","Map of New Hampshire")}"></svg></div>
+      ${opts.zoom?`<div class="gmzoom"><button type="button" class="zo" aria-label="${tr("map.zoom_out","Zoom out")}">&minus;</button><button type="button" class="zi" aria-label="${tr("map.zoom_in","Zoom in")}">+</button><button type="button" class="zf" aria-label="${tr("map.fit_all","Fit the whole map")}">${tr("map.fit","Fit")}</button></div>`:""}
+      <p class="gmcredit">${tr("map.credit","Boundaries: NH GRANIT, University of New Hampshire (2022). Not for legal use.")}</p>
     </div>${opts.panel?`<div class="gmpanel" role="status" aria-live="polite"><p class="quiet">${esc(opts.prompt)}</p></div>`:""}</div>`+
-    (opts.list?`<details class="gmlist"><summary>Every district, as a list</summary><div class="gmlistbody"></div></details>`:"");
+    (opts.list?`<details class="gmlist"><summary>${tr("map.as_list","Every district, as a list")}</summary><div class="gmlistbody"></div></details>`:"");
   const svg=root.querySelector("svg"),wrap=root.querySelector(".gmwrap"),panel=root.querySelector(".gmpanel");
   let M=null,layer=opts.layer,mode=opts.labels,picked=null,townPicked=null,zoom=1,vb=null,last=null;
   const api={root,ready:null,select,pickTown,clear,setLayer,setLabels,zoomOn,
@@ -505,7 +522,7 @@ function mount(root,opts){
     root.dataset.ready="1";
     return api;}).catch(e=>{
       const box=root.querySelector(".gmbox");
-      if(box)box.insertAdjacentHTML("afterbegin",`<p class="gmfail">The map could not be loaded. Every town's districts are on its own page, listed in <a href="/directory/towns.html">every town and ward</a>.</p>`);
+      if(box)box.insertAdjacentHTML("afterbegin",`<p class="gmfail">${tr("map.failed","The map could not be loaded. Every town's districts are on its own page, listed in <a href=\"/directory/towns.html\">every town and ward</a>.")}</p>`);
       throw e;});
 
   /* what a page may keep in its address, or remember */
@@ -542,8 +559,10 @@ function mount(root,opts){
     svg.textContent="";
     const lk=layer;
     root.classList.toggle("tinted",!!TINTED[lk]);
-    svg.setAttribute("aria-label",`Map of New Hampshire's ${LAYER_WORDS[lk]}`+(TINTED[lk]?", each colored by the party of who represents it":"")+
-      (opts.list?". Every one is listed below the map.":"."));
+    svg.setAttribute("aria-label",(TINTED[lk]
+      ?tr("map.aria_tinted","Map of New Hampshire's {what}, each colored by the party of who represents it",{what:LAYER_WORDS[lk]})
+      :tr("map.aria","Map of New Hampshire's {what}",{what:LAYER_WORDS[lk]}))+
+      (opts.list?". "+tr("map.aria_list","Every one is listed below the map."):"."));
     svg.appendChild(defs());
     const fills=el("g",{});
     Object.keys(M.T.layers[lk].f).forEach(fid=>{
@@ -553,7 +572,7 @@ function mount(root,opts){
       if(cls==="vac")p.setAttribute("fill",`url(#${id}vac)`);
       if(cls==="mix")p.setAttribute("fill",`url(#${id}mix-${ps})`);
       const t=el("title",{}),ms=sitting(M,lk,fid),seats=seatsOf(M,lk,fid);
-      t.textContent=(NAME[lk]?NAME[lk]+" ":"")+label(lk,fid)+(TINTED[lk]?": "+(ms.length?countWords(ms):"vacant")+(seats>ms.length&&ms.length?`, ${seats-ms.length} vacant`:""):"");
+      t.textContent=(NAME[lk]?NAME[lk]+" ":"")+label(lk,fid)+(TINTED[lk]?": "+(ms.length?countWords(ms):tr("map.vacant_l","vacant"))+(seats>ms.length&&ms.length?", "+tr("map.n_vacant","{n} vacant",{n:seats-ms.length}):""):"");
       p.appendChild(t);fills.appendChild(p);});
     svg.appendChild(fills);
     if(lk!=="towns")svg.appendChild(el("path",{class:"under",d:meshD(M,"towns")}));
@@ -596,24 +615,25 @@ function mount(root,opts){
     if(!TINTED[layer]){
       box.innerHTML="";
       say(layer==="county"
-        ?"<b>Counties are not colored by party.</b> Each elects eight officers of its own (three commissioners, a sheriff, an attorney, a treasurer and two registers), several of them on both parties&rsquo; tickets, so no one official&rsquo;s party could stand for a county. Choose one to see its State House delegation."
-        :"<b>Towns are not colored.</b> This layer is for finding a place: choose a town to see every district it votes in.");
+        ?tr("map.county_note","<b>Counties are not colored by party.</b> Each elects eight officers of its own (three commissioners, a sheriff, an attorney, a treasurer and two registers), several of them on both parties&rsquo; tickets, so no one official&rsquo;s party could stand for a county. Choose one to see its State House delegation.")
+        :tr("map.towns_note","<b>Towns are not colored.</b> This layer is for finding a place: choose a town to see every district it votes in."));
       return;}
     const s=present(),k=(cls,txt)=>`<span class="k" role="listitem"><span class="sw ${cls}" aria-hidden="true"></span>${txt}</span>`;
     let h=k("p-R",PARTY.R)+k("p-D",PARTY.D);
     if(s.has("I"))h+=k("p-I",PARTY.I);
-    if(s.has("mix"))h+=k("mix","Members of both parties");
+    if(s.has("mix"))h+=k("mix",tr("map.mix","Members of both parties"));
     // "Vacant", the person's word (8 October, midday). The hatch is drawn
     // only where every seat is vacant; a district with one seat of two filled
     // takes its sitting member's colour, and its panel says "2 seats · 1 vacant".
-    if(s.has("vac"))h+=k("vac","Vacant");
-    if(layer==="base"&&floOn())h+=`<span class="k" role="listitem"><span class="sw frame p-R" aria-hidden="true"></span><span class="sw frame p-D" aria-hidden="true"></span>Floterial district, framed in its members&rsquo; party</span>`;
+    if(s.has("vac"))h+=k("vac",tr("map.vacant","Vacant"));
+    if(layer==="base"&&floOn())h+=`<span class="k" role="listitem"><span class="sw frame p-R" aria-hidden="true"></span><span class="sw frame p-D" aria-hidden="true"></span>${tr("map.flo_legend","Floterial district, framed in its members&rsquo; party")}</span>`;
     box.innerHTML=h;
     let e="";
-    if(s.has("mix"))e+="<b>Both colors means members of both parties</b>, drawn evenly whatever the count. ";
-    if(layer==="base")e+="A floterial district (neighboring districts that elect extra members together) is "+(floOn()?"framed in its members&rsquo; party. ":"outlined when you choose a district or turn on Floterial districts. ");
-    if(mode==="names")e+="A district&rsquo;s name and number show when you choose it. ";
-    e+="Color shows who represents a district, not how many people live there.";
+    if(s.has("mix"))e+=tr("map.ex_mix","<b>Both colors means members of both parties</b>, drawn evenly whatever the count.")+" ";
+    if(layer==="base")e+=(floOn()?tr("map.ex_flo_on","A floterial district (neighboring districts that elect extra members together) is framed in its members&rsquo; party.")
+      :tr("map.ex_flo_off","A floterial district (neighboring districts that elect extra members together) is outlined when you choose a district or turn on Floterial districts."))+" ";
+    if(mode==="names")e+=tr("map.ex_names","A district&rsquo;s name and number show when you choose it.")+" ";
+    e+=tr("map.ex_color","Color shows who represents a district, not how many people live there.");
     say(e);
   }
   function select(lk,fid,say=true){
@@ -658,28 +678,33 @@ function mount(root,opts){
   }
   function seatLine(lk,fid){
     const ms=sitting(M,lk,fid),seats=seatsOf(M,lk,fid),E=elected(lk,fid);
-    return `<div class="pk">${seats} seat${seats===1?"":"s"}${seats>ms.length?` &middot; ${seats-ms.length} vacant`:""}</div>`+
+    return `<div class="pk">${seats===1?tr("map.seat_one","{n} seat",{n:seats}):tr("map.seats","{n} seats",{n:seats})}${seats>ms.length?" "+tr("map.dot_vacant","&middot; {n} vacant",{n:seats-ms.length}):""}</div>`+
       (E?electNow(E.takes_office,null):"")+
-      (ms.length?`<div class="chips">${ms.map(chip).join("")}</div>`:`<p class="quiet">Every seat is vacant.</p>`)+
-      (E?electBlock([["",E.races[lk+"|"+fid]]],E.election,E.takes_office,null):"");
+      (ms.length?`<div class="chips">${ms.map(chip).join("")}</div>`:`<p class="quiet">${tr("map.all_vacant","Every seat is vacant.")}</p>`)+
+      (E?electBlock([["",E.races[lk+"|"+fid]]],E.election,E.takes_office,null,globalThis.GR_LANG):"");
   }
   function describe(lk,fid){
     const tw=M.tw[lk+"|"+fid]||[];
     let h=`<h4>${esc(NAME[lk]?NAME[lk]+" ":"")}${esc(label(lk,fid))}</h4>`;
     if(lk==="base"||lk==="senate"||lk==="float")h+=seatLine(lk,fid);
     if(lk==="base"&&M.flo[fid]){const f=M.flo[fid];
-      h+=`<div class="flobox"><p>Also elects, with its neighbors, <b>floterial district ${esc(label("float",f))}</b>:</p>${seatLine("float",f)}</div>`;}
-    if(lk==="exec")h+=`<div class="pk">Executive councilor</div><div class="chips">${sitting(M,lk,fid).map(chip).join("")}</div>`;
-    if(lk==="cong")h+=`<div class="pk">US representative</div><div class="chips">${sitting(M,lk,fid).map(chip).join("")}</div>`;
+      h+=`<div class="flobox"><p>${tr("map.also_elects","Also elects, with its neighbors, <b>floterial district {name}</b>:",{name:esc(label("float",f))})}</p>${seatLine("float",f)}</div>`;}
+    if(lk==="exec")h+=`<div class="pk">${tr("map.councilor","Executive councilor")}</div><div class="chips">${sitting(M,lk,fid).map(chip).join("")}</div>`;
+    if(lk==="cong")h+=`<div class="pk">${tr("map.us_rep","US representative")}</div><div class="chips">${sitting(M,lk,fid).map(chip).join("")}</div>`;
     if(lk==="county"){const n=Object.keys(M.T.who).filter(k=>/^(base|float)\|/.test(k)&&CC[k.split("|")[1].slice(0,2)]===fid).reduce((a,k)=>a+M.T.who[k].length,0);
-      h+=`<div class="pk">House delegation &middot; ${n}</div><p class="quiet">The county&rsquo;s state representatives also sit as its county convention, which raises county taxes and makes its appropriations.</p>`;}
+      h+=`<div class="pk">${tr("map.delegation","House delegation &middot; {n}",{n})}</div><p class="quiet">${tr("map.convention","The county&rsquo;s state representatives also sit as its county convention, which raises county taxes and makes its appropriations.")}</p>`;}
     if(lk==="towns")h+=townSummary(fid);
-    else h+=`<div class="pk">Towns and wards</div><p class="towns">${wardsText(tw)}</p>`;
+    else h+=`<div class="pk">${tr("map.towns_wards","Towns and wards")}</div><p class="towns">${wardsText(tw)}</p>`;
     return h;
   }
   function townSummary(t){
-    return Object.entries(M.T.places[t].w).map(([w,[b,f,s,c,g]])=>
-      `<div class="pk">${esc(t)}${w!=="0"?" Ward "+esc(w):""}</div><p>State House ${esc(label("base",b))}${f?`, and floterial ${esc(label("float",f))}`:""}; State Senate ${esc(s)}; Executive Council ${esc(c)}; US House ${esc(g)}. <a href="/town/${slugOf(t,w)}.html">Who represents ${esc(t)}${w!=="0"?" Ward "+esc(w):""}</a></p>`).join("");
+    return Object.entries(M.T.places[t].w).map(([w,[b,f,s,c,g]])=>{
+      const place=esc(t)+(w!=="0"?" "+tr("map.ward","Ward {n}",{n:esc(w)}):"");
+      return `<div class="pk">${place}</div><p>${f
+        ?tr("map.sum_flo","State House {base}, and floterial {flo}; State Senate {s}; Executive Council {c}; US House {g}.",
+            {base:esc(label("base",b)),flo:esc(label("float",f)),s:esc(s),c:esc(c),g:esc(g)})
+        :tr("map.sum","State House {base}; State Senate {s}; Executive Council {c}; US House {g}.",
+            {base:esc(label("base",b)),s:esc(s),c:esc(c),g:esc(g)})} <a href="/town/${slugOf(t,w)}.html">${tr("map.who_reps","Who represents {place}",{place})}</a></p>`;}).join("");
   }
   /* Choose a town: the district holding it in this layer is chosen, the town
      outlined and named first, and the map zoomed to it. Switching layers
@@ -844,8 +869,9 @@ function mount(root,opts){
         const isF=f0[0]==="~",f=f0.replace("~",""),l2=isF?"float":lk;
         const tw=M.tw[l2+"|"+f]||[],ms=sitting(M,l2,f),seats=seatsOf(M,l2,f);
         const who=ms.length?ms.map(m=>esc(m.n.replace(/\s+\([^()]*\)$/,""))+` (${esc(letterOf(m.p))})`).join(", "):"";
-        const vac=(TINTED[l2]||l2==="float")&&seats>ms.length?` (${seats-ms.length} of ${seats} vacant)`:"";
-        return `<li><button type="button" class="gmpick" data-l="${l2}" data-f="${esc(f)}">${isF?"Floterial ":""}${esc(label(l2,f))}</button>${who?": "+who:""}${vac}. <span class="quiet">${tw.length} town${tw.length===1?"":"s"} and wards</span></li>`;}).join("");
+        const vac=(TINTED[l2]||l2==="float")&&seats>ms.length?" ("+tr("map.of_vacant","{n} of {m} vacant",{n:seats-ms.length,m:seats})+")":"";
+        const nm=isF?tr("map.floterial","Floterial {name}",{name:esc(label(l2,f))}):esc(label(l2,f));
+        return `<li><button type="button" class="gmpick" data-l="${l2}" data-f="${esc(f)}">${nm}</button>${who?": "+who:""}${vac}. <span class="quiet">${tw.length===1?tr("map.n_town","{n} town and wards",{n:1}):tr("map.n_towns","{n} towns and wards",{n:tw.length})}</span></li>`;}).join("");
       return g?`<details class="cgrp"><summary>${esc(g)} &middot; ${groups[g].length}</summary><ul>${items}</ul></details>`:`<ul>${items}</ul>`;}).join("");
   }
   return api;

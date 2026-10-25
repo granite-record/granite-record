@@ -155,7 +155,13 @@
     "yt.state_house": "The state House of Representatives, which this label calls the State House; not the building.",
     "yt.county_conv": "The members of the state House of Representatives, not the building.",
     "yt.seat_house": "The state House of Representatives, the seat on the Your Town card; not the building.",
-    "off.state_house": "The state House of Representatives, the Members-Elect tab's heading for its races; not the building."
+    "off.state_house": "The state House of Representatives, the Members-Elect tab's heading for its races; not the building.",
+    "map.county_note": "The district map's State House: the state House of Representatives and its districts, not the building.",
+    "map.lw_base": "The district map's State House: the state House of Representatives and its districts, not the building.",
+    "map.ly_base": "The district map's State House: the state House of Representatives and its districts, not the building.",
+    "map.name_base": "The district map's State House: the state House of Representatives and its districts, not the building.",
+    "map.sum": "The district map's State House: the state House of Representatives and its districts, not the building.",
+    "map.sum_flo": "The district map's State House: the state House of Representatives and its districts, not the building."
    }
   },
   {
@@ -563,6 +569,19 @@
     "Board of Tax and Land Appeals"
    ],
    "basis": "The Spanish review of 25 October 2026: nine entries said Tierras and one Terrenos; the board hears appeals about land as property, terrenos. The English name stays beside it where a reader must find or write to the board."
+  },
+  {
+   "en": [
+    "Find your town",
+    "Find Your Town"
+   ],
+   "es": [
+    "Busque su municipio"
+   ],
+   "skip": [
+    "Find your town or city clerk"
+   ],
+   "basis": "The Officials page in Spanish, 25 October 2026: the Your Town card and the who-to-contact guide said Busque, two other entries Encuentre; the card's heading is redrawn on the Officials page, so the two showed side by side."
   }
  ]
 }

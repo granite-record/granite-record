@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-10-23.15
+# GRANITE_VERSION: 2026-10-23.16
 """
 The site in more than one language, and how a translation stays current.
 
@@ -474,7 +474,10 @@ def words_js(lang, *scripts):
 # writes them, for each language, to site/lang/<code>.js, which a page in
 # that language loads in its head. A page's own scripts' words are in the
 # page (page_words).
-SHARED_SCRIPTS = ("components.js", "find.js")
+# map.js too since 25 October 2026: the district map, on the Officials page
+# and the town pages, says its words through tr() (the Officials page in
+# Spanish), and loads as a file of its own on every page that draws a map.
+SHARED_SCRIPTS = ("components.js", "find.js", "map.js")
 # The pages a script links to by address, whose address in a language a
 # page in it tells its scripts (page_words, window.GR_HREFS).
 SCRIPT_LINKS = ("officials.html",)

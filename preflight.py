@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.698
+# GRANITE_VERSION: 2026-09-04.699
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -63940,8 +63940,9 @@ def _spanish_officials(i18n, BP, OT, seating):
     /officials, which names it; asks not to be indexed while Spanish is
     unlisted; has its Spanish title and tabs; falls back to English nowhere
     (no <span lang="en"> the tabs mark a miss with); and its own links to
-    the page stay on /es/officials. Then every key the page, its tabs and
-    its finder and seat scripts ask for has current Spanish, so a word the
+    the page stay on /es/officials. Then every key the page, its tabs, its
+    finder and seat scripts and the district map (map.js, in the shared
+    words file) ask for has current Spanish, so a word the
     fixture's data does not reach is held too; the vacancy sentence asked
     for in Spanish is VACANCY_NOTE's own English; the Members-Elect tab and a
     county's convention line, which the fixture's data does not draw, are
@@ -63979,7 +63980,7 @@ def _spanish_officials(i18n, BP, OT, seating):
     # only some of them.
     words, problems = i18n.code_words()
     assert not problems, problems[:3]
-    prefixes = ("of.", "off.", "roster.", "comp.", "seat.", "lf.", "sc.", "party.")
+    prefixes = ("of.", "off.", "roster.", "comp.", "seat.", "lf.", "sc.", "party.", "map.")
     asked = [k for k in words if k.startswith(prefixes)]
     stale = [k for k in asked if i18n.lookup("es", k, words[k]["en"]) is None]
     if stale:
@@ -64012,6 +64013,14 @@ def _spanish_officials(i18n, BP, OT, seating):
         bad.append("the House chart's divisions are not in Spanish")
     if '"officials.html":"/es/officials"' not in i18n.page_words("es"):
         bad.append("a Spanish page does not tell its scripts where /es/officials is")
+    # The district map (map.js, the Officials page's and the town pages') says
+    # its words through tr(), and a Spanish page carries them in the shared
+    # words file it loads.
+    if "map.js" not in i18n.SHARED_SCRIPTS:
+        bad.append("map.js is not one of i18n.SHARED_SCRIPTS, so a Spanish page has no map words")
+    shared_words = (shared / "site" / i18n.shared_words_path("es").lstrip("/"))
+    if shared_words.is_file() and '"map.prompt":' not in shared_words.read_text(encoding="utf-8"):
+        bad.append("the built /lang/es.js carries none of the map's words")
     assert not bad, "; ".join(bad[:6])
     return "ok", (f"/es/officials built from the same files as /officials; {len(asked)} words of "
                   f"the page and its scripts and {len(OT.data_words())} of the officials file, "

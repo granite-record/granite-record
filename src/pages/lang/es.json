@@ -1776,7 +1776,7 @@
   },
   "guide.contact-your-legislators.find-your-town": {
    "en": "Find your town",
-   "es": "Encuentre su municipio",
+   "es": "Busque su municipio",
    "state": "draft"
   },
   "guide.contact-your-legislators.finding-your-representatives": {
@@ -7825,7 +7825,7 @@
   },
   "guide.town-warrant-article.find-your-town-or-city-clerk": {
    "en": "Find your town or city clerk",
-   "es": "Encuentre al secretario de su municipio o ciudad",
+   "es": "Busque al secretario de su municipio o ciudad",
    "state": "draft"
   },
   "guide.town-warrant-article.give-the-petition-to-the-selectmen": {
@@ -12886,6 +12886,421 @@
    "es": "{n} barrios electorales",
    "state": "draft"
   },
+  "map.all_vacant": {
+   "en": "Every seat is vacant.",
+   "es": "Todos los escaños están vacantes.",
+   "state": "draft"
+  },
+  "map.also_elects": {
+   "en": "Also elects, with its neighbors, <b>floterial district {name}</b>:",
+   "es": "También elige, junto con sus vecinos, el <b>distrito flotante {name}</b>:",
+   "state": "draft"
+  },
+  "map.aria": {
+   "en": "Map of New Hampshire's {what}",
+   "es": "Mapa de los {what} de New Hampshire",
+   "state": "draft"
+  },
+  "map.aria_list": {
+   "en": "Every one is listed below the map.",
+   "es": "Todos aparecen en una lista debajo del mapa.",
+   "state": "draft"
+  },
+  "map.aria_tinted": {
+   "en": "Map of New Hampshire's {what}, each colored by the party of who represents it",
+   "es": "Mapa de los {what} de New Hampshire, cada uno coloreado según el partido de quien lo representa",
+   "state": "draft"
+  },
+  "map.as_list": {
+   "en": "Every district, as a list",
+   "es": "Todos los distritos, en una lista",
+   "state": "draft"
+  },
+  "map.convention": {
+   "en": "The county&rsquo;s state representatives also sit as its county convention, which raises county taxes and makes its appropriations.",
+   "es": "Los representantes estatales del condado también forman su convención del condado, que fija los impuestos del condado y aprueba sus asignaciones de fondos.",
+   "state": "draft"
+  },
+  "map.councilor": {
+   "en": "Executive councilor",
+   "es": "Consejero(a) ejecutivo(a)",
+   "state": "draft"
+  },
+  "map.county": {
+   "en": "{name} County",
+   "es": "Condado de {name}",
+   "state": "draft"
+  },
+  "map.county_note": {
+   "en": "<b>Counties are not colored by party.</b> Each elects eight officers of its own (three commissioners, a sheriff, an attorney, a treasurer and two registers), several of them on both parties&rsquo; tickets, so no one official&rsquo;s party could stand for a county. Choose one to see its State House delegation.",
+   "es": "<b>Los condados no se colorean por partido.</b> Cada uno elige a ocho funcionarios propios (tres comisionados, un sheriff, un fiscal, un tesorero y dos registradores), varios de ellos en las boletas de ambos partidos, así que el partido de un solo funcionario no podría representar a un condado. Elija uno para ver su delegación en la Cámara de Representantes estatal.",
+   "state": "draft"
+  },
+  "map.credit": {
+   "en": "Boundaries: NH GRANIT, University of New Hampshire (2022). Not for legal use.",
+   "es": "Límites: NH GRANIT, Universidad de New Hampshire (2022). No apto para uso legal.",
+   "state": "draft"
+  },
+  "map.d_many": {
+   "en": "{n} Democrats",
+   "es": "{n} demócratas",
+   "state": "draft"
+  },
+  "map.d_one": {
+   "en": "{n} Democrat",
+   "es": "{n} demócrata",
+   "state": "draft"
+  },
+  "map.delegation": {
+   "en": "House delegation &middot; {n}",
+   "es": "Delegación en la Cámara estatal &middot; {n}",
+   "state": "draft"
+  },
+  "map.dot_vacant": {
+   "en": "&middot; {n} vacant",
+   "es": "&middot; {n} vacantes",
+   "state": "draft"
+  },
+  "map.ex_color": {
+   "en": "Color shows who represents a district, not how many people live there.",
+   "es": "El color muestra quién representa a un distrito, no cuántas personas viven en él.",
+   "state": "draft"
+  },
+  "map.ex_flo_off": {
+   "en": "A floterial district (neighboring districts that elect extra members together) is outlined when you choose a district or turn on Floterial districts.",
+   "es": "Un distrito flotante (distritos vecinos que eligen juntos a miembros adicionales) se resalta cuando usted elige un distrito o activa Distritos flotantes.",
+   "state": "draft"
+  },
+  "map.ex_flo_on": {
+   "en": "A floterial district (neighboring districts that elect extra members together) is framed in its members&rsquo; party.",
+   "es": "Un distrito flotante (distritos vecinos que eligen juntos a miembros adicionales) aparece enmarcado con el partido de sus miembros.",
+   "state": "draft"
+  },
+  "map.ex_mix": {
+   "en": "<b>Both colors means members of both parties</b>, drawn evenly whatever the count.",
+   "es": "<b>Dos colores significan miembros de ambos partidos</b>, dibujados por igual sea cual sea la cantidad.",
+   "state": "draft"
+  },
+  "map.ex_names": {
+   "en": "A district&rsquo;s name and number show when you choose it.",
+   "es": "El nombre y el número de un distrito aparecen cuando usted lo elige.",
+   "state": "draft"
+  },
+  "map.failed": {
+   "en": "The map could not be loaded. Every town's districts are on its own page, listed in <a href=\"/directory/towns.html\">every town and ward</a>.",
+   "es": "No se pudo cargar el mapa. Los distritos de cada municipio están en su propia página, en la lista de <a href=\"/directory/towns.html\">todos los municipios y barrios electorales</a>.",
+   "state": "draft"
+  },
+  "map.fit": {
+   "en": "Fit",
+   "es": "Ajustar",
+   "state": "draft"
+  },
+  "map.fit_all": {
+   "en": "Fit the whole map",
+   "es": "Ver todo el mapa",
+   "state": "draft"
+  },
+  "map.flo_legend": {
+   "en": "Floterial district, framed in its members&rsquo; party",
+   "es": "Distrito flotante, enmarcado con el partido de sus miembros",
+   "state": "draft"
+  },
+  "map.flo_toggle": {
+   "en": "Floterial districts",
+   "es": "Distritos flotantes",
+   "state": "draft"
+  },
+  "map.floterial": {
+   "en": "Floterial {name}",
+   "es": "{name} (flotante)",
+   "state": "draft"
+  },
+  "map.i_many": {
+   "en": "{n} Independents",
+   "es": "{n} independientes",
+   "state": "draft"
+  },
+  "map.i_one": {
+   "en": "{n} Independent",
+   "es": "{n} independiente",
+   "state": "draft"
+  },
+  "map.keys": {
+   "en": "The map. Arrow keys move it; plus and minus zoom in and out.",
+   "es": "El mapa. Las flechas del teclado lo mueven; las teclas más y menos acercan y alejan.",
+   "state": "draft"
+  },
+  "map.kind": {
+   "en": "Kind of district",
+   "es": "Tipo de distrito",
+   "state": "draft"
+  },
+  "map.labels": {
+   "en": "Labels",
+   "es": "Etiquetas",
+   "state": "draft"
+  },
+  "map.labels_on": {
+   "en": "Labels on the map",
+   "es": "Etiquetas del mapa",
+   "state": "draft"
+  },
+  "map.lb_names": {
+   "en": "Town names",
+   "es": "Nombres de municipios",
+   "state": "draft"
+  },
+  "map.lb_none": {
+   "en": "No labels",
+   "es": "Sin etiquetas",
+   "state": "draft"
+  },
+  "map.lb_numbers": {
+   "en": "District numbers",
+   "es": "Números de distrito",
+   "state": "draft"
+  },
+  "map.legend": {
+   "en": "What the colors mean",
+   "es": "Qué significan los colores",
+   "state": "draft"
+  },
+  "map.lw_base": {
+   "en": "State House districts",
+   "es": "distritos de la Cámara de Representantes estatal",
+   "state": "draft"
+  },
+  "map.lw_cong": {
+   "en": "US House districts",
+   "es": "distritos de la Cámara de Representantes de EE. UU.",
+   "state": "draft"
+  },
+  "map.lw_county": {
+   "en": "counties",
+   "es": "condados",
+   "state": "draft"
+  },
+  "map.lw_exec": {
+   "en": "Executive Council districts",
+   "es": "distritos del Consejo Ejecutivo",
+   "state": "draft"
+  },
+  "map.lw_senate": {
+   "en": "State Senate districts",
+   "es": "distritos del Senado estatal",
+   "state": "draft"
+  },
+  "map.lw_towns": {
+   "en": "towns",
+   "es": "municipios",
+   "state": "draft"
+  },
+  "map.ly_base": {
+   "en": "State House",
+   "es": "Cámara estatal",
+   "state": "draft"
+  },
+  "map.ly_cong": {
+   "en": "US House",
+   "es": "Cámara de EE. UU.",
+   "state": "draft"
+  },
+  "map.ly_county": {
+   "en": "Counties",
+   "es": "Condados",
+   "state": "draft"
+  },
+  "map.ly_exec": {
+   "en": "Executive Council",
+   "es": "Consejo Ejecutivo",
+   "state": "draft"
+  },
+  "map.ly_senate": {
+   "en": "State Senate",
+   "es": "Senado estatal",
+   "state": "draft"
+  },
+  "map.ly_towns": {
+   "en": "Towns",
+   "es": "Municipios",
+   "state": "draft"
+  },
+  "map.mix": {
+   "en": "Members of both parties",
+   "es": "Miembros de ambos partidos",
+   "state": "draft"
+  },
+  "map.n_town": {
+   "en": "{n} town and wards",
+   "es": "{n} municipio y barrios electorales",
+   "state": "draft"
+  },
+  "map.n_towns": {
+   "en": "{n} towns and wards",
+   "es": "{n} municipios y barrios electorales",
+   "state": "draft"
+  },
+  "map.n_vacant": {
+   "en": "{n} vacant",
+   "es": "{n} vacantes",
+   "state": "draft"
+  },
+  "map.name_base": {
+   "en": "State House district",
+   "es": "Distrito de la Cámara de Representantes estatal",
+   "state": "draft"
+  },
+  "map.name_cong": {
+   "en": "US House district",
+   "es": "Distrito de la Cámara de Representantes de EE. UU.",
+   "state": "draft"
+  },
+  "map.name_exec": {
+   "en": "Executive Council district",
+   "es": "Distrito del Consejo Ejecutivo",
+   "state": "draft"
+  },
+  "map.name_float": {
+   "en": "Floterial district",
+   "es": "Distrito flotante",
+   "state": "draft"
+  },
+  "map.name_senate": {
+   "en": "State Senate district",
+   "es": "Distrito del Senado estatal",
+   "state": "draft"
+  },
+  "map.new_tab": {
+   "en": "(opens in a new tab)",
+   "es": "(se abre en una pestaña nueva)",
+   "state": "draft"
+  },
+  "map.of_nh": {
+   "en": "Map of New Hampshire",
+   "es": "Mapa de New Hampshire",
+   "state": "draft"
+  },
+  "map.of_vacant": {
+   "en": "{n} of {m} vacant",
+   "es": "{n} de {m} vacantes",
+   "state": "draft"
+  },
+  "map.party_d": {
+   "en": "Democratic",
+   "es": "Demócrata",
+   "state": "draft"
+  },
+  "map.party_i": {
+   "en": "Independent",
+   "es": "Independiente",
+   "state": "draft"
+  },
+  "map.party_r": {
+   "en": "Republican",
+   "es": "Republicano",
+   "state": "draft"
+  },
+  "map.prompt": {
+   "en": "Choose a district on the map, or type a town in the box above.",
+   "es": "Elija un distrito en el mapa, o escriba un municipio en el cuadro de arriba.",
+   "state": "draft"
+  },
+  "map.r_many": {
+   "en": "{n} Republicans",
+   "es": "{n} republicanos",
+   "state": "draft"
+  },
+  "map.r_one": {
+   "en": "{n} Republican",
+   "es": "{n} republicano",
+   "state": "draft"
+  },
+  "map.seat_one": {
+   "en": "{n} seat",
+   "es": "{n} escaño",
+   "state": "draft"
+  },
+  "map.seats": {
+   "en": "{n} seats",
+   "es": "{n} escaños",
+   "state": "draft"
+  },
+  "map.sum": {
+   "en": "State House {base}; State Senate {s}; Executive Council {c}; US House {g}.",
+   "es": "Cámara de Representantes estatal: {base}; Senado estatal: {s}; Consejo Ejecutivo: {c}; Cámara de Representantes de EE. UU.: {g}.",
+   "state": "draft"
+  },
+  "map.sum_flo": {
+   "en": "State House {base}, and floterial {flo}; State Senate {s}; Executive Council {c}; US House {g}.",
+   "es": "Cámara de Representantes estatal: {base}, y distrito flotante {flo}; Senado estatal: {s}; Consejo Ejecutivo: {c}; Cámara de Representantes de EE. UU.: {g}.",
+   "state": "draft"
+  },
+  "map.tag_cong": {
+   "en": "US House District {n}",
+   "es": "Distrito {n} de la Cámara de EE. UU.",
+   "state": "draft"
+  },
+  "map.tag_exec": {
+   "en": "Council District {n}",
+   "es": "Distrito {n} del Consejo",
+   "state": "draft"
+  },
+  "map.tag_senate": {
+   "en": "Senate District {n}",
+   "es": "Distrito {n} del Senado",
+   "state": "draft"
+  },
+  "map.towns_note": {
+   "en": "<b>Towns are not colored.</b> This layer is for finding a place: choose a town to see every district it votes in.",
+   "es": "<b>Los municipios no se colorean.</b> Esta capa sirve para encontrar un lugar: elija un municipio para ver todos los distritos en los que vota.",
+   "state": "draft"
+  },
+  "map.towns_wards": {
+   "en": "Towns and wards",
+   "es": "Municipios y barrios electorales",
+   "state": "draft"
+  },
+  "map.us_rep": {
+   "en": "US representative",
+   "es": "Representante en el Congreso de EE. UU.",
+   "state": "draft"
+  },
+  "map.vacant": {
+   "en": "Vacant",
+   "es": "Vacante",
+   "state": "draft"
+  },
+  "map.vacant_l": {
+   "en": "vacant",
+   "es": "vacante",
+   "state": "draft"
+  },
+  "map.ward": {
+   "en": "Ward {n}",
+   "es": "Barrio electoral {n}",
+   "state": "draft"
+  },
+  "map.wards": {
+   "en": "Wards {list}",
+   "es": "Barrios electorales {list}",
+   "state": "draft"
+  },
+  "map.who_reps": {
+   "en": "Who represents {place}",
+   "es": "Quién representa a {place}",
+   "state": "draft"
+  },
+  "map.zoom_in": {
+   "en": "Zoom in",
+   "es": "Acercar",
+   "state": "draft"
+  },
+  "map.zoom_out": {
+   "en": "Zoom out",
+   "es": "Alejar",
+   "state": "draft"
+  },
   "nav.bills": {
    "en": "Bills",
    "es": "Proyectos de ley",
@@ -12944,7 +13359,7 @@
   },
   "of.find": {
    "en": "Find Your Town",
-   "es": "Encuentre su municipio",
+   "es": "Busque su municipio",
    "state": "draft"
   },
   "of.find_how": {
@@ -13379,7 +13794,7 @@
   },
   "off.find_town": {
    "en": "Find your town",
-   "es": "Encuentre su municipio",
+   "es": "Busque su municipio",
    "state": "draft"
   },
   "off.governor": {
