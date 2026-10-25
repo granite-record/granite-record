@@ -18946,7 +18946,7 @@ def _class_collisions():
         "cal", "calbills", "calbody", "calcmte", "calcount", "caldate",
         "calday", "calmeet", "calmix", "calslot", "caltime", "calwhere",
         "cdrel",
-        # the recording player, on a bill's Videos tab and the home page
+        # the recording player, on a bill's Videos tab
         "player", "pstub",
         # A COMMITTEE'S MEETING, as a fold: app.js's meetingHtml for a
         # committee's Meetings tab, and build_full_sessions' day_section for
@@ -24308,11 +24308,13 @@ def _audit_minor(BSP, seating, BP):
     if got["title"] != "Recording of House Finance, May 5, 2026" or \
             got["undated"] != "Recording of House Finance":
         bad.append(f"a player is named {got['title']!r} and, undated, {got['undated']!r}")
-    for src, what in ((js, "app.js"), (BP.HOME_JS, "the home page")):
-        if 'title="Hearing recording"' in src or 'title="Floor session"' in src:
-            bad.append(f"{what} still gives every player one title")
-        if "dataset.title" not in src:
-            bad.append(f"{what}'s player does not take its title from the button it replaces")
+    # The home page drew two players until 25 October 2026 (the audit's
+    # M8): its latest sittings are a line to their days' pages now
+    # (_home_says_each_once).
+    if 'title="Hearing recording"' in js or 'title="Floor session"' in js:
+        bad.append("app.js still gives every player one title")
+    if "dataset.title" not in js:
+        bad.append("app.js's player does not take its title from the button it replaces")
 
     # M20
     # Since 10 October 2026 a member the name can mean is the person chip
@@ -33640,15 +33642,17 @@ def _chain():
                 order = re.findall(r'class="(wkprev|wknext)"', navs[0]) if navs else None
                 assert len(navs) == 2 and order == sorted(order, reverse=True), (
                     f"session/{b}/{d}: its nav reads {order}")
-        handed = re.search(r'<div id="session" data-days="([^"]*)">', homepage)
-        assert handed, "the home page's floor sessions block carries no data-days"
-        for key in handed.group(1).split():
-            b, d = key.split("/")
+        # THE LINE TO THE LATEST SITTINGS' RECORDINGS (build_pages.session_line,
+        # 25 October 2026) leads to the days' pages, and to no day without one.
+        handed = re.search(r'<div id="session">(.*?)</div>', homepage, re.S)
+        assert handed, "the home page has no line to its latest sittings"
+        linked = re.findall(r'href="/?session/([HS])/(\d{4}-\d\d-\d\d)"', handed.group(1))
+        for b, d in linked:
             assert d in on_disk.get(b, []), (
-                f"the home page links the sitting {key}, which has no page")
-        assert handed.group(1), (
-            "the home page links none of the days its floor sessions block names, "
-            "though the fixture's newest recorded sitting has a page")
+                f"the home page links the sitting {b}/{d}, which has no page")
+        assert linked, (
+            "the home page's line to its latest sittings links none of their days, "
+            "though the fixture's newest recorded sitting has a page: " + handed.group(1)[:200])
         # EVERY LANDMARK HAS A NAME, AND EVERY TABLE A HEADER CELL (the audit
         # of 2 October 2026, M6 and M7). A Learn article carries three navs
         # and a week of the Calendar four, and the one on every page had no
@@ -50995,8 +50999,9 @@ def _review_of_audit_fixes(BP):
     handlers put it on the first card, or the first vote, they brought.
 
     Play, and a long analysis. Each is a click that moves focus: to the
-    player that replaces Play where Play had it, on a bill and on the home
-    page; to the start of the text "Show more" opened. Clicked here.
+    player that replaces Play where Play had it, on a bill (the home page
+    drew players too, until 25 October 2026); to the start of the text
+    "Show more" opened. Clicked here.
 
     The seat map. Its focus listeners sat on the <svg>, which made the chart
     itself a Tab stop, and leaving a seat emptied the note under the chart
@@ -51098,10 +51103,6 @@ def _review_of_audit_fixes(BP):
         (root / "page.js").write_text(_with_components(js.read_text(encoding="utf-8")), encoding="utf-8")
         (root / "stub.js").write_text(stub.read_text(encoding="utf-8"), encoding="utf-8")
         (root / "seat.js").write_text(_seat_script(BP), encoding="utf-8")
-        home = re.search(r'document\.addEventListener\("click",e=>\{\s*const st=e\.target\.closest\('
-                         r'"\[data-embed\]"\);.*?\n\}\);', BP.HOME_JS, re.S)
-        assert home, "the home page's script has no handler that turns Play into the player"
-        (root / "home.js").write_text(home.group(0), encoding="utf-8")
         (root / "go.js").write_text(_HEARD_PRELUDE + _REVIEW_HARNESS, encoding="utf-8")
         r = _run([node, "go.js"], cwd=root, capture_output=True, text=True, timeout=60)
         assert r.returncode == 0 and "@@" in (r.stdout or ""), (
@@ -51125,8 +51126,6 @@ def _review_of_audit_fixes(BP):
     if got["play"] != {"hadFocus": 1, "elsewhere": 0, "title": True}:
         bad.append(f"the player that replaces Play on a bill takes focus only where Play had "
                    f"it, and is named for its sitting: {got['play']}")
-    if got["homePlay"] != {"hadFocus": 1, "elsewhere": 0, "title": True}:
-        bad.append(f"the home page's player takes focus only where Play had it: {got['homePlay']}")
     if got["stops"] != {"wide": "0", "fits": None, "after": [None, "0"], "resize": True}:
         bad.append("a box marked data-scrollstop is a Tab stop exactly while its content is "
                    f"wider than it is: {got['stops']}")
@@ -51250,23 +51249,6 @@ wide.clientWidth = 900; fits.clientWidth = 336;
 out.stops.after = [wide.a.tabindex ?? null, fits.a.tabindex ?? null];
 out.stops.resize = (heard.window.resize || []).length === before + 1;
 document.querySelectorAll = all;
-
-// PLAY, on the home page: its own handler, alone.
-(() => {
-  const mine = [];
-  const esc = x => String(x);
-  const doc = {activeElement: null, addEventListener: (t, f) => mine.push(f)};
-  new Function("document", "esc", fs.readFileSync("./home.js", "utf8"))(doc, esc);
-  const run = had => { let n = 0;
-    const frame = {focus() { n++; }};
-    const st = {dataset: {embed: "vid", title: "Recording of the House floor session"},
-      parentNode: {querySelector: q => q === "iframe" ? frame : null}};
-    doc.activeElement = had ? st : {};
-    mine.forEach(f => f({target: {closest: q => q === "[data-embed]" ? st : null}}));
-    return {n, title: /title="Recording of the House floor session"/.test(st.outerHTML || "")}; };
-  const a = run(true), b = run(false);
-  out.homePlay = {hadFocus: a.n, elsewhere: b.n, title: a.title};
-})();
 
 // THE SEAT MAP, in a page of four seats.
 (() => {
@@ -63703,12 +63685,11 @@ _DATE_EXEMPT = {
     "build_feeds.py": ("def rfc822",),
     "app.js": ("function citeDay", "CITE_MONTHS"),
     # The moment the data was rebuilt, in the reader's own clock and zone,
-    # which only the browser has: month first, as dateWords writes a day. And
-    # the home page's floor-session titles, "August 19th, 2026" (F3), the
-    # person's own exception.
+    # which only the browser has: month first, as dateWords writes a day.
+    # (The home page's floor-session titles, "August 19th, 2026", were the
+    # other exception until 25 October 2026: the audit's M8 retired them.)
     # In the page's locale since 23 October 2026 (window.GR_LOCALE, i18n.py).
     "chrome.py": ('.toLocaleDateString(window.GR_LOCALE||"en-US",{year:"numeric",month:"long",day:"numeric"})',),
-    "build_pages.py": ('return DW_MONTHS[m-1]+" "+ordinal(dd)',),
     # A month and its year ("October 2026") over the month's grid: not a day.
     "build_calendar.py": ('monthWords(m){ return MONTH[',),
 }
@@ -64904,6 +64885,13 @@ def _spanish_home(i18n):
     assert bills(en) and bills(es) == bills(en), ("Latest Activity holds different meetings or "
                                                   f"bills in Spanish: {bills(es)} and {bills(en)}")
     assert meets(es) == meets(en), "Coming up holds different meetings in Spanish"
+    # The line to the latest sittings' recordings (session_line, 25 October
+    # 2026): the same days' pages from both.
+    def sittings(t):
+        m = re.search(r'<div id="session">(.*?)</div>', t, re.S)
+        return re.findall(r'href="([^"]+)"', m.group(1)) if m else None
+    assert sittings(en) and sittings(es) == sittings(en), (
+        f"the latest sittings lead elsewhere in Spanish: {sittings(es)} and {sittings(en)}")
     # And a week that has meetings in it (the fixture's own week may have
     # none): Coming up drawn in both languages for 10 March 2026 out of the
     # calendar checks' rows -- the same cards, bills and times, in Spanish
@@ -67235,7 +67223,9 @@ def _coming_up_without_study_committees():
     work session on a bill held for interim study, this week and next. The
     rail holds the standing committee alone and counts next week's sittings
     without the study committees; a week of study committees alone is an
-    empty week on the rail; and the Calendar's own week still holds them all.
+    empty week on the rail, which says no House or Senate committee meeting
+    is scheduled rather than that nothing is (the audit of 25 October 2026,
+    M8); and the Calendar's own week still holds them all.
     """
     import contextlib
     import datetime as _dt
@@ -67294,6 +67284,25 @@ def _coming_up_without_study_committees():
             and "sits mostly from January to June" in empty, (
                 "a week of study committees alone still draws a day in Coming up: "
                 + empty[:300])
+        # AND IT DOES NOT SAY "NOTHING" (the audit of 25 October 2026, M8):
+        # the study committees are meeting, on the Calendar. It says what the
+        # rail holds and does not -- the chambers' own meetings -- this week,
+        # from a Saturday next week, and in the reader's clock (HOME_JS).
+        with contextlib.redirect_stdout(io.StringIO()):
+            sat = BP.calendar_html(tmp, today=_dt.date(2026, 9, 26),
+                                   rows=[r for r in rows if r.get("study")
+                                         or r["kind"] == "study committee"], events=[])
+        said = {"this week": empty, "next week": sat}
+        want = {"this week": "No House or Senate committee meetings are scheduled for the "
+                             "rest of this week.",
+                "next week": "No House or Senate committee meetings are scheduled next week."}
+        for k, page_ in said.items():
+            assert "Nothing" not in page_ and want[k] in page_, (
+                f"a {k} of study committees alone does not say that no House or Senate "
+                f"committee meeting is scheduled: {page_[:300]}")
+        assert ('tr("cal.none_else","No more House or Senate committee meetings are scheduled '
+                'this week.")' in BP.HOME_JS and "Nothing else is scheduled" not in BP.HOME_JS), (
+                    "HOME_JS's empty rest of the week says other words than the built rail's")
     finally:
         shutil.rmtree(tmp, ignore_errors=True)
     # They stay on the Calendar: the week it draws holds all three of this week's.
@@ -67768,7 +67777,7 @@ def _webinar_under_search(BP):
     was = os.environ.get("GRANITE_BUILD_DATE")
     os.environ["GRANITE_BUILD_DATE"] = "2026-10-24"
     try:
-        pages = {lang: BP.home_body(lang, False, "", "", "", []) for lang in ("en", "es")}
+        pages = {lang: BP.home_body(lang, False, "", "", "", "") for lang in ("en", "es")}
     finally:
         if was is None:
             os.environ.pop("GRANITE_BUILD_DATE", None)
@@ -67970,47 +67979,97 @@ def _testify_box_senate():
                   "chamber has heard it; an ended bill and an earlier term as before")
 
 
-@check("frontend", "each floor session on the home page is titled \"House Session (August 19th, 2026)\"")
-def _floor_session_titles():
-    """The person's pattern (7 October 2026, F3): the chamber, "Session", and
-    the day in brackets with the month in full and the day as an ordinal.
-    HOME_JS's own ordinal and date functions are run in node over the days
-    whose endings differ -- 1st, 2nd, 3rd, 4th, 11th, 12th, 13th, 21st, 22nd,
-    23rd, 31st -- and the block that draws the two players is held to the
-    pattern, the date still the way to the sitting's page where one is built."""
-    import build_pages as BP
+@check("frontend", "the home page says each thing once: its latest sittings are one line to their "
+                   "days' pages, \"Aug 19, 2026 — House · Senate recordings\", in both languages, "
+                   "and the rebuild line under Coming up speaks only to warn",
+       needs=("build_pages", "chrome"))
+def _home_says_each_once(BP, chrome):
+    """The audit of 25 October 2026, M8, the home page being the webinar's
+    first screen. Two large black players for the sittings of 19 August were
+    the heaviest thing on it, under titles dated "August 19th, 2026", a style
+    used nowhere else on the site (the person's F3 of 7 October, retired with
+    the players); and "Data rebuilt ..." stood under Coming up and again in
+    the footer.
+
+    session_line, drawn from home.json's latest_sessions: both chambers on
+    one day are one line, "Aug 19, 2026 — House · Senate recordings", each
+    name the way to its day's page, which opens on the recording; chambers on
+    different days a line each, the newest first, in the singular; a sitting
+    with no page leads to its recording rather than to nothing; no sitting is
+    no line; and the Spanish page says it in Spanish, its date in Spanish
+    form, its links the same. HOME_JS draws no player and leaves #session
+    alone. Its rebuild block is run in node against build.json as a fresh, a
+    stale and a failed build leave it: the fresh one leaves the line empty --
+    the footer says when (chrome.FOOT_JS) -- and the other two warn."""
+    import components as C
+    one = {"latest_sessions": [{"date": "2026-08-19", "video_id": "vH", "chamber": "House"},
+                               {"date": "2026-08-19", "video_id": "vS", "chamber": "Senate"}]}
+    sits = {("H", "2026-08-19"), ("S", "2026-08-19")}
+    got = BP.session_line(one, "en", sits)
+    want = ('<p class="sessline">Aug 19, 2026 — <a href="session/H/2026-08-19.html">House</a> · '
+            '<a href="session/S/2026-08-19.html">Senate</a> recordings</p>')
+    assert got == want, f"both chambers' sitting of 19 August reads {got!r}, not {want!r}"
+    apart = {"latest_sessions": [{"date": "2026-06-04", "video_id": "vH", "chamber": "House"},
+                                 {"date": "2026-06-11", "video_id": "vS", "chamber": "Senate"}]}
+    got = BP.session_line(apart, "en", {("H", "2026-06-04")})
+    want = ('<p class="sessline">Jun 11, 2026 — <a href="https://www.youtube.com/watch?v=vS">'
+            'Senate</a> recording</p><p class="sessline">Jun 4, 2026 — '
+            '<a href="session/H/2026-06-04.html">House</a> recording</p>')
+    assert got == want, (f"chambers that sat on different days, one without a page, read "
+                         f"{got!r}, not {want!r}")
+    assert BP.session_line({}, "en", sits) == "" and BP.session_line(
+        {"latest_sessions": []}, "en") == "", "no sitting on record still draws a line"
+    es = BP.session_line(one, "es", sits)
+    day = C.date_words("2026-08-19", "medium", "es")
+    assert day in es and 'href="session/H/2026-08-19.html"' in es \
+        and 'href="session/S/2026-08-19.html"' in es, (
+            f"the Spanish line does not lead to the same days under a Spanish date: {es!r}")
+    assert "recording" not in es and ">House<" not in es and ">Senate<" not in es, (
+        f"the Spanish line says English words: {es!r}")
+
+    # HOME_JS: no player, no title of its own for a sitting, #session left alone.
     js = BP.HOME_JS
-    o = re.search(r"const ordinal=.*?;\n", js)
-    f = re.search(r"const fdo=.*?;};\n", js, re.S)
-    assert o and f, "HOME_JS has no ordinal() or fdo() for the floor sessions' titles"
-    # The chamber's title is sessName's (23 October 2026), which keeps the
-    # English pattern and gives a page in another language its own words.
-    assert '`${esc(v.chamber||"")} Session`' in js and "<b>${sessName(v)}</b>" in js \
-        and 'tr("sess.house","House Session")' in js and "(${dayLink(v)})" in js \
-        and "fdo(v.date)" in js, (
-            "the floor session's title is not \"<chamber> Session (<day>)\" with the day "
-            "the link to the sitting")
-    cases = {"2026-08-19": "August 19th, 2026", "2026-01-01": "January 1st, 2026",
-             "2026-03-02": "March 2nd, 2026", "2026-05-03": "May 3rd, 2026",
-             "2026-06-04": "June 4th, 2026", "2025-02-11": "February 11th, 2025",
-             "2025-04-12": "April 12th, 2025", "2025-06-13": "June 13th, 2025",
-             "2026-01-21": "January 21st, 2026", "2026-05-22": "May 22nd, 2026",
-             "2026-04-23": "April 23rd, 2026", "2026-03-31": "March 31st, 2026"}
+    left = [w for w in ("data-embed", "pstub", 'getElementById("session")', "ordinal(",
+                        'tr("sess.', "youtube") if w in js]
+    assert not left, f"HOME_JS still draws the sittings' players: {left}"
+    # The footer keeps the day the data was rebuilt, on every page.
+    assert 'getElementById("built")' in chrome.FOOT_JS and "Data rebuilt" in chrome.FOOT_JS, (
+        "the footer no longer says when the data was rebuilt")
+
+    # THE REBUILD LINE, RUN: a fresh build says nothing here, a stale or a
+    # failed one warns.
+    m = re.search(r'fetch\(DATA\("build\.json"\)\).*?\}\)\.catch\(\(\)=>\{\}\);', js, re.S)
+    assert m, "HOME_JS has no block reading build.json"
     node = shutil.which("node") or shutil.which("node.exe")
     if not node:
-        return "ok", "the block names the pattern; node is not here to run fdo()"
-    # fdo takes the month's name from components.js's list (DW_MONTHS), which
-    # the home page loads in its head, before its own script.
-    prog = (_components_js() + "\n" + o.group(0) + f.group(0)
-            + "process.stdout.write(JSON.stringify(" + json.dumps(list(cases))
-            + ".map(fdo)));")
+        return "ok", "the line to the sittings drawn in both languages; node is not here to run the rebuild line"
+    prog = _components_js() + "\n" + (
+        "globalThis.window=globalThis;const DATA=f=>f;let B=null;"
+        "const el={className:'fresh',innerHTML:''};"
+        "globalThis.document={getElementById:id=>id==='fresh'?el:null};"
+        "globalThis.fetch=()=>Promise.resolve({json:()=>B});"
+        "const day=864e5,now=Date.now();"
+        "const run=async b=>{B=b;el.className='fresh';el.innerHTML='';"
+        "await (" + m.group(0)[:-1] + ");return {cls:el.className,html:el.innerHTML};};"
+        "(async()=>{const out={};"
+        "out.fresh=await run({finished:new Date(now-3600e3).toISOString(),steps:[{step:'a',status:'ok'}]});"
+        "out.stale=await run({finished:new Date(now-5*day).toISOString(),steps:[]});"
+        "out.failed=await run({finished:new Date(now-3600e3).toISOString(),"
+        "steps:[{step:'a',status:'failed'}]});"
+        "process.stdout.write(JSON.stringify(out));})();")
     r = _node_file(node, prog, capture_output=True, text=True, timeout=60)
-    assert r.returncode == 0, "fdo() would not run: " + (r.stderr or "")[-300:]
-    got = dict(zip(cases, json.loads(r.stdout)))
-    bad = {d: g for d, g in got.items() if g != cases[d]}
-    assert not bad, f"the session titles' days read {bad}"
-    return "ok", (f"{len(cases)} days written as the person's pattern, "
-                  "\"House Session (August 19th, 2026)\"")
+    assert r.returncode == 0, "the rebuild line would not run: " + (r.stderr or "")[-300:]
+    got = json.loads(r.stdout)
+    assert got["fresh"] == {"cls": "fresh", "html": ""}, (
+        f"a fresh build still says when it was rebuilt under Coming up, beside the footer: "
+        f"{got['fresh']}")
+    assert got["stale"]["cls"] == "fresh stale" and "5 days ago" in got["stale"]["html"], (
+        f"a build five days old does not warn: {got['stale']}")
+    assert got["failed"]["cls"] == "fresh stale" and "1 build step failed" in got["failed"]["html"], (
+        f"a build with a failed step does not warn: {got['failed']}")
+    return "ok", ("the sittings of one day one line, of two days two, each to its page or its "
+                  "recording, in English and Spanish; no player; the rebuild line silent when "
+                  "fresh, a warning when five days old or a step failed")
 
 
 @check("frontend", "the home page's one search box is the header's finder, its top results in a "

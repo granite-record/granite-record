@@ -237,18 +237,18 @@
    "state": "draft"
   },
   "cal.none_else": {
-   "en": "Nothing else is scheduled this week.",
-   "es": "No hay nada más programado para esta semana.",
+   "en": "No more House or Senate committee meetings are scheduled this week.",
+   "es": "No hay más reuniones de comités de la Cámara ni del Senado programadas para esta semana.",
    "state": "draft"
   },
   "cal.none_left": {
-   "en": "Nothing is scheduled for the rest of this week.",
-   "es": "No hay nada programado para el resto de esta semana.",
+   "en": "No House or Senate committee meetings are scheduled for the rest of this week.",
+   "es": "No hay reuniones de comités de la Cámara ni del Senado programadas para el resto de esta semana.",
    "state": "draft"
   },
   "cal.none_next": {
-   "en": "Nothing is scheduled next week yet.",
-   "es": "Todavía no hay nada programado para la próxima semana.",
+   "en": "No House or Senate committee meetings are scheduled next week.",
+   "es": "No hay reuniones de comités de la Cámara ni del Senado programadas para la próxima semana.",
    "state": "draft"
   },
   "cal.on_page": {
@@ -10007,6 +10007,11 @@
    "es": "Cada proyecto de ley, votación, audiencia y debate en el pleno de la Legislatura de New Hampshire, enlazado al momento de la grabación en que ocurrió.",
    "state": "draft"
   },
+  "home.house": {
+   "en": "House",
+   "es": "Cámara",
+   "state": "draft"
+  },
   "home.lang_note": {
    "en": "This page is in Spanish. The rest of the site is in English for now, and so is what the record itself says: bill titles, committee names, each bill&rsquo;s history and the subjects the search knows.",
    "es": "Esta página está en español. El resto del sitio está en inglés por ahora, igual que lo que dice el propio registro: los títulos de los proyectos de ley, los nombres de los comités, el historial de cada proyecto y los temas que reconoce la búsqueda.",
@@ -10039,6 +10044,16 @@
    "es": "Ver toda la actividad reciente &rarr;",
    "state": "draft"
   },
+  "home.recording": {
+   "en": "{date} — {chamber} recording",
+   "es": "{date} — grabación: {chamber}",
+   "state": "draft"
+  },
+  "home.recordings": {
+   "en": "{date} — {chambers} recordings",
+   "es": "{date} — grabaciones: {chambers}",
+   "state": "draft"
+  },
   "home.retained": {
    "en": "Retained",
    "es": "Retenido",
@@ -10058,6 +10073,11 @@
   "home.search_label": {
    "en": "Search for a bill, a legislator, a committee, a town, a subject or a guide",
    "es": "Busque un proyecto de ley, un legislador, un comité, un municipio, un tema o una guía",
+   "state": "draft"
+  },
+  "home.senate": {
+   "en": "Senate",
+   "es": "Senado",
    "state": "draft"
   },
   "home.slogan": {
@@ -15282,51 +15302,6 @@
   "seat.who": {
    "en": "{name} — seat {plate}",
    "es": "{name} — escaño {plate}",
-   "state": "draft"
-  },
-  "sess.floor": {
-   "en": "Floor session",
-   "es": "Sesión plenaria",
-   "state": "draft"
-  },
-  "sess.house": {
-   "en": "House Session",
-   "es": "Sesión de la Cámara",
-   "state": "draft"
-  },
-  "sess.play": {
-   "en": "Play",
-   "es": "Reproducir",
-   "state": "draft"
-  },
-  "sess.play_house": {
-   "en": "Play the House floor session of {date}",
-   "es": "Reproducir la sesión plenaria de la Cámara del {date}",
-   "state": "draft"
-  },
-  "sess.play_senate": {
-   "en": "Play the Senate floor session of {date}",
-   "es": "Reproducir la sesión plenaria del Senado del {date}",
-   "state": "draft"
-  },
-  "sess.rec_house": {
-   "en": "Recording of the House floor session, {date}",
-   "es": "Grabación de la sesión plenaria de la Cámara, {date}",
-   "state": "draft"
-  },
-  "sess.rec_senate": {
-   "en": "Recording of the Senate floor session, {date}",
-   "es": "Grabación de la sesión plenaria del Senado, {date}",
-   "state": "draft"
-  },
-  "sess.recent": {
-   "en": "Recent Session Days",
-   "es": "Días de sesión recientes",
-   "state": "draft"
-  },
-  "sess.senate": {
-   "en": "Senate Session",
-   "es": "Sesión del Senado",
    "state": "draft"
   },
   "set.label": {
