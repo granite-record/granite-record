@@ -72,10 +72,12 @@ const PER_EMAIL = 200;
 // A pause "until I turn it back on" is kept as this date (schema.sql).
 export const PAUSED_FOR_GOOD = "9999-12-31";
 
-// D1's limit on statements one Worker invocation may run. 50 on the Workers
-// Free plan and 1,000 on Workers Paid, as remembered when this was written:
-// check Cloudflare's D1 limits page on the day and set D1_QUERIES_PER_RUN to
-// match (README.md). The most one reader costs is PER_READER: taking the
+// D1's limit on queries one Worker invocation may run: 50 on the Workers Free
+// plan and 1,000 on Workers Paid, by Cloudflare's D1 limits page
+// (developers.cloudflare.com/d1/platform/limits/, read 25 October 2026).
+// That page counts a db.batch() as one; this counts each statement in it, the
+// safe side. D1_QUERIES_PER_RUN sets the figure a run keeps to (README.md,
+// "The plan's limits"). The most one reader costs is PER_READER: taking the
 // row, reading its follows, and then the cursor and the ended follows, or the
 // address's deletion when its last follow ends. RESERVE is the sends rows.
 export const D1_QUERIES = 50;

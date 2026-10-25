@@ -33,9 +33,9 @@ counts into `STATE.md`, which is generated and is the copy to believe.
 | [`records/`](records/README.md) | official lists and documents as published: every past session's roll calls, the district lists, the Secretary of State's documents |
 | [`collected/`](collected/README.md) | what was gathered from outside sources and git keeps: the YouTube channels' video indexes, the towns' clerks and officials, the county officers |
 | [`generated/`](generated/README.md) | what is computed ahead of time and kept: careers, places, the topic model's settings, the timestamp scores |
-| `functions/`, `workers/` | the Cloudflare code: the report box's endpoint, and Workers deployed on their own |
+| `functions/`, `workers/` | the Cloudflare code: the endpoints of the report box and of email following, and the Workers deployed on their own (the email sender, the night's timer) |
 | `watchers/`, `tests/` | the General Court fetch lane, and the tests and their fixtures |
-| [`docs/`](docs/ELECTION_WEEK.md) | what to do, and when, through a stretch of the calendar that needs a person: election week, to 7 January 2027 |
+| `docs/` | what a person does, and when: [election week](docs/ELECTION_WEEK.md) to 7 January 2027, the [webinar's demo path](docs/DEMO_PATH.md), and [translating](docs/TRANSLATING.md) |
 | `assets/`, `reports/`, `data/unh/` | one file each that git keeps where the rest is not: the web app manifest, the report box's database schema, and a survey of the University of New Hampshire's scanned journals |
 
 The root holds what something outside the repository runs by name
@@ -396,8 +396,6 @@ Honest list, not a roadmap.
 - **`proceedings.csv` reaches all nineteen terms**, but what is behind it is
   uneven: a term whose docket came from the database dump has no recordings to
   match against, because the House streamed nothing before May 2020.
-- **Email following is built and not yet live.** It runs on the preview and
-  waits on a test; RSS is live.
 
 ---
 

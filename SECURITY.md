@@ -14,8 +14,8 @@ enough to read in an afternoon.
 
 **graniterecord.org is files on a CDN.** Every page a reader asks for was built
 ahead of time by the scripts in this repository. There is no application
-server, no database behind the pages, no login, no session, no cookie set by
-this site, and no user-supplied string that reaches a query.
+server, no database any page waits on, no login, no session and no cookie set
+by this site.
 
 What arrives is not quite byte-for-byte what the build produced, which is worth
 knowing before you go looking for the difference. The pages link Public Sans,
@@ -27,19 +27,28 @@ request, which is why a contact address on the page only resolves once a
 Cloudflare script has run. Those two are dashboard switches rather than
 anything this repository emits, and `src/checks/check_live.py` reports both.
 
-**In this project's own code there is exactly one exception**, and its own
-header says so: `functions/api/report.js`, the endpoint behind the "report a
-problem" box on bill, member and committee pages, and behind the box on a page
-in another language that reports a mistake in its translation (since 24
-October 2026; it takes a report only from a page the site built in that
-language). It is write-only, it is on no page's critical path, and when it is
-down the box falls back to an email link.
-If you are looking for something to attack, it is this. (`workers/` is
-where a Cloudflare Worker deployed on its own would go; it holds none.)
+**In this project's own code there are three exceptions**, and each says so
+in its own header or README:
 
-It has been red-teamed once, and the seven real defects that turned up are
-listed in the file's header — knowing what was already wrong is more useful
-than a claim that nothing is.
+- `functions/api/report.js`, the endpoint behind the "report a problem" box
+  on bill, member and committee pages, and behind the box on a page in
+  another language that reports a mistake in its translation (since 24
+  October 2026; it takes a report only from a page the site built in that
+  language). It is write-only, it is on no page's critical path, and when it
+  is down the box falls back to an email link. It has been red-teamed once,
+  and the seven real defects that turned up are listed in the file's header
+  — knowing what was already wrong is more useful than a claim that nothing
+  is.
+- **Email following**, live on graniterecord.org since 23 October 2026: the
+  endpoints under `functions/api/follow/` (sign up, confirm, manage,
+  unsubscribe, the count, the mail provider's bounce webhook) and the sender
+  Worker in `workers/follow/`, on one database. It is the only code here
+  that keeps a reader's email address, and it keeps it sealed;
+  `workers/follow/README.md` says how, and what each endpoint answers.
+- `workers/night-timer/`, a Worker with no address that starts the nightly
+  build on GitHub at its hour. It answers no request and stores nothing.
+
+If you are looking for something to attack, it is the first two.
 
 ## Things that look like bugs and are not
 
@@ -54,6 +63,10 @@ Worth saying in advance, so you do not spend an evening on them:
   been reached. Each makes the box on the page offer the reader the email
   address instead of thanking them, and each tells a sender only that storage
   is down or that the day is full.
+- **A well-formed `POST /api/follow/signup` answers `202` whatever the
+  address**, and in the same time: the confirmation is sent after the answer,
+  so neither the answer nor its timing says whether an address is already
+  signed up.
 - **The database credentials for the General Court's SQL host are public.** The
   General Court publishes them at gc.nh.gov/downloads. They are not ours and
   they are not a leak.
@@ -73,6 +86,9 @@ Worth saying in advance, so you do not spend an evening on them:
 - Anything that de-anonymises a reader — of the site, or of a submitted report.
   The report schema has no column for an address, a cookie, a session or a
   name, and `about.html` promises that. A way around it is a real finding.
+- Anything that reads a follower's address or what they follow, sends mail
+  to an address that never confirmed, or lets one reader's link change
+  another reader's follows.
 - A way to get the project's fetching to hammer the General Court. Their
   firewall has blocked this address twice already, and the cost of a third
   block falls on a Clerk's office as much as on us. Every script that asks

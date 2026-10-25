@@ -68,25 +68,27 @@ FEEDBACK_URL = "https://forms.gle/PYw9c3xgpDDwvX7E9"
 # A run is one Worker invocation, and two limits bound it; the sender stops
 # taking readers before it would pass either, and the next hour's run carries
 # on. The account is on Workers Paid (the person, 11 October 2026); the
-# figures below are that plan's as remembered -- check Cloudflare's limits
-# pages on the day (README.md) -- with room left under each.
+# figures below are that plan's as Cloudflare publishes them (README.md, "The
+# plan's limits", read 25 October 2026), with room left under each.
 #
-# SEND_LIMIT: emails a run. Every email is a request out of the Worker (Paid
-# allows a thousand, Free fifty), and the sender also reads up to nine
-# changes files.
+# SEND_LIMIT: emails a run. Every email is a subrequest, and so is each
+# changes file read (up to eleven) and each D1 query: Paid allows 10,000 an
+# invocation, Free 50 (developers.cloudflare.com/workers/platform/limits/).
 SEND_LIMIT = "200"
 # D1_QUERIES_PER_RUN: database statements a run, counted one by one, a
-# batch's included (D1 allows a thousand an invocation on Paid, fifty on
-# Free). A reader costs at most five, so a run serves about 180 readers.
+# batch's included (D1 allows 1,000 queries an invocation on Paid, 50 on
+# Free, and counts a batch as one: developers.cloudflare.com/d1/platform/
+# limits/). A reader costs at most five, so a run serves about 180 readers.
 # Resend is on Pro since 15 October 2026: 50,000 emails a month, no daily
-# cap. SEND_LIMIT (200) and the twelve runs from 8:00 to 20:00 serve about
+# limit (resend.com/pricing). SEND_LIMIT (200) and the twelve runs from 8:00 to 20:00 serve about
 # 2,400 readers a day; the tighter ceiling is Pro's month, about 1,650 emails
 # a day with the confirmations, before the cron goes every quarter hour or
 # the sends go through Resend's batch endpoint.
 D1_QUERIES_PER_RUN = "900"
 # Milliseconds between emails: at most five a second, half the team's
-# limit, which Resend's dashboard shows as 10 requests a second on Pro (the
-# person, 22 October 2026), so the confirmations the site sends meanwhile
+# limit of 10 requests a second, the same on every plan
+# (resend.com/docs/api-reference/rate-limit; the dashboard showed it on 22
+# October 2026), so the confirmations the site sends meanwhile
 # have the other half. A 429 is waited out once (mail.js) and then stops
 # the run.
 SEND_GAP_MS = "200"

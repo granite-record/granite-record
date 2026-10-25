@@ -67647,6 +67647,60 @@ def _webinar_under_search(BP):
     return "ok", f"under the search and its help, before the cards, in English and Spanish; orders {orders}"
 
 
+# The kinds of address docs/DEMO_PATH.md may stop at: each a page the site
+# builds (_demo_path). A stop of another kind is added here once it has been
+# opened on the preview.
+DEMO_ADDRESSES = (r"/", r"/search\?q=[^#\s]+", r"/bills\?[^#\s]+",
+                  r"/bill/\d{4}/[a-z]{2,5}\d+(?:/(?P<billtab>[a-z]+))?",
+                  r"/committee/[A-Za-z0-9-]+", r"/legislator/[a-z0-9-]+",
+                  r"/laws/[0-9a-z-]+(?:#s[0-9a-z-]+)?", r"/town/[a-z0-9-]+(?:#(?P<towntab>[a-z]+))?",
+                  r"/guides/(?P<guide>[a-z0-9-]+)", r"/calendar/\d{4}-W\d{2}")
+
+
+@check("frontend", "the webinar's demo path is a draft of ten to twelve stops, each a kind of "
+       "address the site builds, its tab or guide one the site still has", needs=("civics", "guides"))
+def _demo_path(CV, G):
+    """The audit of 25 October 2026 (C7): the 10 November webinar had a deck
+    of screenshots and no written path through the site to show alongside it.
+    docs/DEMO_PATH.md is that path, a draft for the owner's approval, each
+    stop opened on the dry-run preview at 390px when it was written. What can
+    break it before the day without anyone opening a page is a tab or a guide
+    renamed under it, so each stop is held to the code that makes it: a bill's
+    tab to app.js's BILL_TABS, a town's tab to build_town_pages.py's panels, a
+    guide to the ones the site writes (civics.HOW_TO, guides.GUIDES), and
+    every stop to a kind of address the site builds (DEMO_ADDRESSES)."""
+    doc = _paths.ROOT / "docs" / "DEMO_PATH.md"
+    if not doc.is_file():
+        return "skip", "no docs/DEMO_PATH.md here"
+    text = doc.read_text(encoding="utf-8")
+    assert "draft for the owner's approval" in " ".join(text.split()), \
+        "docs/DEMO_PATH.md no longer says it is a draft for the owner's approval"
+    stops = re.findall(r"(?m)^(\d+)\. `(/[^`]*)`", text)
+    assert 10 <= len(stops) <= 12 and [int(n) for n, _ in stops] == list(range(1, len(stops) + 1)), \
+        f"the demo path has {len(stops)} stops, numbered {[n for n, _ in stops]}: ten to twelve, in order"
+    app = (_paths.ROOT / "src/pages/app.js").read_text(encoding="utf-8")
+    tabs = re.search(r"const BILL_TABS=\{([^}]*)\}", app)
+    assert tabs, "app.js no longer says BILL_TABS where this check reads it"
+    bill_tabs = set(re.findall(r"(\w+):", tabs.group(1)))
+    town = (_paths.ROOT / "src/pages/build_town_pages.py").read_text(encoding="utf-8")
+    guides = set(CV.HOW_TO) | {g["slug"] for g in G.GUIDES}
+    bad = []
+    for n, addr in stops:
+        m = next((m for m in (re.fullmatch(p, addr) for p in DEMO_ADDRESSES) if m), None)
+        if not m:
+            bad.append(f"{n}. {addr}: not a kind of address DEMO_ADDRESSES knows")
+            continue
+        got = m.groupdict()
+        if got.get("billtab") and got["billtab"] not in bill_tabs:
+            bad.append(f"{n}. {addr}: app.js has no bill tab {got['billtab']!r}")
+        if got.get("towntab") and f'("{got["towntab"]}", "' not in town:
+            bad.append(f"{n}. {addr}: a town page has no tab {got['towntab']!r}")
+        if got.get("guide") and got["guide"] not in guides:
+            bad.append(f"{n}. {addr}: the site writes no guide {got['guide']!r}")
+    assert not bad, "docs/DEMO_PATH.md: " + "; ".join(bad)
+    return "ok", f"{len(stops)} stops, each a kind of page the site builds"
+
+
 @check("frontend", "a committee's Upcoming session says what a reader may do at a hearing, in the person's words, and the home page's Coming up no longer does")
 def _hearing_note_wording():
     """"Anyone may attend a public hearing and ask to speak. You can also sign
@@ -72672,6 +72726,57 @@ def _follow_email():
                   "the Follow pane asks before it offers email")
 
 
+# What the public documents said of email following before it went live, and
+# must not say once production binds its database (_follow_documents_live).
+FOLLOW_NOT_LIVE_WORDS = {
+    "README.md": ("not yet live",),
+    "SECURITY.md": ("exactly one exception", "it holds none"),
+    "functions/api/report.js": ("THE ONLY THING ON THIS SITE THAT RUNS",),
+    "workers/follow/README.md": ("Before go-live", ", at go-live", "has not been tried"),
+    "wrangler.toml": ("at go-live and not before",),
+}
+
+
+@check("build", "once production binds the follow database, the public documents say email "
+       "following is live, and SECURITY.md names every endpoint and Worker", needs=("shell",))
+def _follow_documents_live(S):
+    """The audit of 25 October 2026 (C2). Email following went live on 23
+    October 2026, when the root wrangler.toml bound FOLLOW_DB for production
+    (shell.follow_live), and two days later README.md still listed it as
+    "built and not yet live", SECURITY.md called report.js "exactly one
+    exception" and said workers/ held no Worker, report.js's header called
+    itself "THE ONLY THING ON THIS SITE THAT RUNS", and workers/follow/README.md
+    read as a checklist for a go-live already done. The code switched, and
+    nothing held the words to it. Now, while production binds the database,
+    none of those documents says what they said before it
+    (FOLLOW_NOT_LIVE_WORDS); and whether or not it does, SECURITY.md -- the
+    page that tells a researcher what the surface is -- names every endpoint
+    under functions/api/ and every Worker folder under workers/, so the next
+    one cannot be added without saying so there."""
+    live = S.follow_live(_paths.ROOT / "wrangler.toml")
+    said = []
+    for name, words in FOLLOW_NOT_LIVE_WORDS.items():
+        p = _paths.ROOT / name
+        if live and p.is_file():
+            text = " ".join(p.read_text(encoding="utf-8").split())
+            said += [f"{name}: \"{w}\"" for w in words if w in text]
+    assert not said, ("production binds FOLLOW_DB, so email following is live, and these still say "
+                      "it is not: " + "; ".join(said))
+    sec = (_paths.ROOT / "SECURITY.md").read_text(encoding="utf-8")
+    api, workers = _paths.ROOT / "functions" / "api", _paths.ROOT / "workers"
+    surface = []
+    if api.is_dir():
+        surface += sorted(f"functions/api/{p.name}/" if p.is_dir() else f"functions/api/{p.name}"
+                          for p in api.iterdir() if p.is_dir() or p.suffix == ".js")
+    if workers.is_dir():
+        surface += sorted(f"workers/{p.name}/" for p in workers.iterdir() if p.is_dir())
+    assert surface, "no endpoint under functions/api/ and no Worker under workers/ was found"
+    unnamed = [x for x in surface if f"`{x}`" not in sec]
+    assert not unnamed, "SECURITY.md does not name what the site runs: " + ", ".join(unnamed)
+    return "ok", (f"email following {'live, and said so' if live else 'not live yet'}; SECURITY.md "
+                  f"names all {len(surface)}: {', '.join(surface)}")
+
+
 def _tap_failures(out):
     """[(test's name, the first line of what it said)] for every test that
     failed in node's TAP output, at any depth: a test whose only failure is a
@@ -72875,6 +72980,82 @@ def _follow_test_send():
         + ", ".join(repr(c) for c in cases if c not in passed) + ": " + out.strip()[-400:])
     return "ok", ("production's sender has no address and no TEST_SEND; the preview's has both and "
                   f"no token in the file; run() names nothing of the test path; {len(cases)} cases pass")
+
+
+# THE PLANS' LIMITS, AS CLOUDFLARE AND RESEND PUBLISH THEM (read 25 October
+# 2026): D1's queries per Worker invocation and the Workers subrequests per
+# invocation on Workers Paid (developers.cloudflare.com/d1/platform/limits/,
+# /workers/platform/limits/), and Resend's API requests a second per team, the
+# same on every plan (resend.com/docs/api-reference/rate-limit).
+# workers/follow/README.md's "The plan's limits" gives the same figures.
+FOLLOW_PLAN_LIMITS = {"D1 queries per Worker invocation": 1000,
+                      "Subrequests per invocation": 10000,
+                      "Resend's API rate": 10}
+
+
+@check("build", "the email sender's run stays under the plan limits Cloudflare and Resend publish, "
+       "and no limit in the email code is one remembered")
+def _follow_plan_limits():
+    """The audit of 25 October 2026 (C6). The sender's run budget rested on
+    figures the code called "as remembered" -- D1's queries and the
+    subrequests a Worker invocation may make, Resend's rate and caps, D1 Time
+    Travel's window -- with a note to check them "on the day". Read on 25
+    October, one had moved: Workers Paid allows 10,000 subrequests an
+    invocation, not 1,000. The published figures are now in
+    workers/follow/README.md's table, with their pages and the day read
+    (FOLLOW_PLAN_LIMITS holds the three a run spends), and this holds three
+    things: no file of the email code or of docs/ calls a limit remembered;
+    the README's table gives the figures above; and each sender's settings
+    keep under them -- D1_QUERIES_PER_RUN under D1's queries, every email,
+    every changes file a run reads (NIGHTS_READ and current.json) and every D1
+    query under the subrequests, and SEND_GAP_MS at half of Resend's rate or
+    less, so the confirmations keep the other half."""
+    toml_path, js_path = Path("workers/follow/wrangler.toml"), Path("workers/follow/sender.js")
+    readme = Path("workers/follow/README.md")
+    if not (toml_path.is_file() and js_path.is_file() and readme.is_file()):
+        return "skip", "no workers/follow here"
+    remembered = []
+    for top in ("workers", "functions", "docs"):
+        for p in sorted(Path(top).rglob("*")):
+            if p.suffix in (".js", ".md", ".toml") and p.is_file():
+                text = " ".join(p.read_text(encoding="utf-8").split())
+                if re.search(r"as remembered|remembered, not checked", text):
+                    remembered.append(p.as_posix())
+    assert not remembered, ("these call a plan's limit remembered: read Cloudflare's and Resend's "
+                            "pages and give the published figure, its page and the day read: "
+                            + ", ".join(remembered))
+    rows = {}
+    for line in readme.read_text(encoding="utf-8").splitlines():
+        cells = [c.strip() for c in line.strip().strip("|").split("|")]
+        for label in FOLLOW_PLAN_LIMITS:
+            if len(cells) >= 3 and cells[0].startswith(label):
+                n = re.match(r"([\d,]+)", cells[2])
+                rows[label] = int(n.group(1).replace(",", "")) if n else None
+    assert rows == FOLLOW_PLAN_LIMITS, (
+        f"workers/follow/README.md's table of the plan's limits gives {rows}, and the published "
+        f"figures are {FOLLOW_PLAN_LIMITS}: read the pages again and change both")
+    import tomllib
+    conf = tomllib.loads(toml_path.read_text(encoding="utf-8"))
+    nights = re.search(r"export const NIGHTS_READ = (\d+);", js_path.read_text(encoding="utf-8"))
+    assert nights, "sender.js no longer says NIGHTS_READ where this check reads it"
+    files = int(nights.group(1)) + 1                  # the nights' files and current.json
+    over = []
+    for env, v in [("production", conf.get("vars", {}))] + \
+            [(n, e.get("vars", {})) for n, e in conf.get("env", {}).items()]:
+        try:
+            send, queries, gap = (int(v[k]) for k in ("SEND_LIMIT", "D1_QUERIES_PER_RUN", "SEND_GAP_MS"))
+        except (KeyError, ValueError):
+            over.append(f"{env}: SEND_LIMIT, D1_QUERIES_PER_RUN or SEND_GAP_MS is not a number")
+            continue
+        if queries >= FOLLOW_PLAN_LIMITS["D1 queries per Worker invocation"]:
+            over.append(f"{env}: D1_QUERIES_PER_RUN {queries} is not under D1's queries an invocation")
+        if send + files + queries >= FOLLOW_PLAN_LIMITS["Subrequests per invocation"]:
+            over.append(f"{env}: {send} emails, {files} files and {queries} queries pass the subrequests")
+        if gap * FOLLOW_PLAN_LIMITS["Resend's API rate"] < 2000:
+            over.append(f"{env}: SEND_GAP_MS {gap} sends faster than half of Resend's rate")
+    assert not over, "; ".join(over)
+    return "ok", (f"no limit remembered; the README's figures are the published ones; each sender's "
+                  f"run stays under {FOLLOW_PLAN_LIMITS}")
 
 
 @check("workflows", "the night's timer starts nightly.yml on main with a scheduled night's boxes at "
@@ -76980,6 +77161,46 @@ def _nightly_dry_run_apart(NI, CL):
                   "when no newer night built a site fit for production")
 
 
+@check("build", "CONTRIBUTING.md says how to undo a bad publish, and what the next night does, "
+       "in the night's own hour, proof window and refusal", needs=("nightly",))
+def _rollback_written(NI):
+    """The audit of 25 October 2026 (C1): nothing written said how to put the
+    previous build back on Cloudflare Pages after a bad publish, or that the
+    next night undoes a rollback by itself -- production then serves an older
+    build, so the night's counts as new and is sent again, and it goes out
+    unasked when a dry run proved its commit. CONTRIBUTING.md's "Undoing a
+    bad publish" says both, and quotes the night's hour (the timer's cron and
+    the workflow's), the dry run's proof window (DRY_PROVEN_HOURS) and the
+    publish job's refusal of an older night (newer_fit). Each is held here to
+    the code, so that a change to any of them changes the section too."""
+    text = (_paths.ROOT / "CONTRIBUTING.md").read_text(encoding="utf-8")
+    at = text.find("### Undoing a bad publish")
+    assert at >= 0, "CONTRIBUTING.md has no \"### Undoing a bad publish\" section"
+    end = text.find("\n## ", at)
+    sec = " ".join(text[at:end if end > 0 else len(text)].split())
+    assert "Rollback to this deployment" in sec, \
+        "the section no longer names Cloudflare's \"Rollback to this deployment\""
+    crons = set()
+    for path in ("workers/night-timer/wrangler.toml", ".github/workflows/nightly.yml"):
+        p = _paths.ROOT / path
+        if p.is_file():
+            crons |= set(re.findall(r'"(\d{1,2}) (\d{1,2}) \* \* \*"', p.read_text(encoding="utf-8")))
+    assert len(crons) == 1, f"the timer and the workflow do not agree on one hour: {sorted(crons)}"
+    (minute, hour), = crons
+    said = f"{int(hour):02d}:{int(minute):02d} UTC"
+    assert said in sec, f"the section does not give the night's hour as {said}"
+    assert f"within {NI.DRY_PROVEN_HOURS} hours" in sec, \
+        f"the section does not give the dry run's proof window as {NI.DRY_PROVEN_HOURS} hours"
+    src = Path(NI.__file__).read_text(encoding="utf-8")
+    quoted = re.search(r'\("(NOT DEPLOYED: a newer night) \.\.\. (has built a site fit for '
+                       r'production since this)', sec)
+    assert quoted, "the section no longer quotes the publish job's refusal of an older night"
+    gone = [q for q in quoted.groups() if q not in src]
+    assert not gone, f"nightly.py no longer says what the section quotes: {gone}"
+    return "ok", (f"Cloudflare's rollback, the night at {said}, the {NI.DRY_PROVEN_HOURS}-hour "
+                  "proof and the refusal of an older night, as the code has them")
+
+
 @check("build", "the night keeps the first-seen ledger its build left exactly where it writes the "
        "census -- a real night the gates accept, a New term run once its deploy lands -- and "
        "its verdict says when the changes files went by the record's dates or were not written",
@@ -77698,6 +77919,51 @@ def _freeze_term(FT, P):
                   "the roll-call copies, refuses another term's rows, lost ones and a roster of "
                   "strangers, and keeps the term's roster over one that turned; ready() "
                   "reads the record by its rows, so a database night's seventh column is not stale")
+
+
+@check("build", "docs/ELECTION_WEEK.md freezes the term before Organization Day with freeze_term.py's "
+       "own commands, and sends the results out only with the recount deadline", needs=("freeze_term",))
+def _election_week_freeze(FT):
+    """The audit of 25 October 2026 (C3). docs/ELECTION_WEEK.md, the person's
+    list for election week to 7 January, went from the members-elect straight
+    to Organization Day and the New term run, and never said to freeze
+    2025-2026 first -- without which the New term run refuses to start
+    (freeze_term.ready) and, after the turn, the finished term has nothing to
+    be built from. And it said to merge the election results on their own,
+    which draws every race "Result not final", where the person's decision is
+    one merge with the recount deadline and the recount list, or none before
+    the webinar. Its freeze section comes before Organization Day, gives that
+    day as freeze_term.py's docstring does, and every freeze_term.py and
+    seed-kit command in it is one the docstring gives, so neither can move
+    without the other; and the results' line names the deadline the recount
+    section's heading gives."""
+    doc = _paths.ROOT / "docs" / "ELECTION_WEEK.md"
+    if not doc.is_file():
+        return "skip", "no docs/ELECTION_WEEK.md here"
+    text = doc.read_text(encoding="utf-8")
+    head = re.search(r"(?m)^## Before (\d{1,2} \w+): freeze ", text)
+    org = text.find("\n## 2 December, Organization Day")
+    assert head and 0 < head.start() < org, \
+        "ELECTION_WEEK.md has no \"## Before <day>: freeze\" section ahead of Organization Day"
+    day = re.search(r"Before Organization Day \((\d{1,2} \w+) \d{4}\)", FT.__doc__ or "")
+    assert day and day.group(1) == head.group(1), \
+        f"the freeze is due before {head.group(1)}, and freeze_term.py says {day and day.group(1)}"
+    section = text[head.start():org]
+    doc_flat = " ".join((FT.__doc__ or "").split())
+    commands = re.findall(r"python3 src/(?:lib/freeze_term|ops/cloud)\.py [^`\n]+", section)
+    assert len(commands) >= 4, f"the freeze section names {len(commands)} commands: {commands}"
+    unknown = [c for c in commands if " ".join(c.split()) not in doc_flat]
+    assert not unknown, "freeze_term.py's docstring gives none of these: " + "; ".join(unknown)
+    flat = " ".join(text.split())
+    deadline = re.search(r"## The recount deadline: (\w+ \d{1,2} \w+), (\d{1,2} [ap]\.m\.)", flat)
+    assert deadline, "ELECTION_WEEK.md's recount section no longer gives the deadline in its heading"
+    rule = re.search(r"The results go to `main` only together with the recount deadline \((\w+) "
+                     r"(\d{1,2} \w+), (\d{1,2} [ap]\.m\.)\) and the recount list", flat)
+    assert rule and (f"{rule.group(1)} {rule.group(2)}", rule.group(3)) == deadline.groups(), (
+        "ELECTION_WEEK.md no longer says the results go to main only with the recount deadline "
+        f"and list, at the deadline its recount section gives ({deadline.groups()})")
+    return "ok", (f"frozen before {head.group(1)} with {len(commands)} of freeze_term.py's commands; "
+                  f"results with the deadline of {deadline.group(1)}, {deadline.group(2)}")
 
 
 @check("build", "a finished term is built from its frozen inputs before the session's pass, "

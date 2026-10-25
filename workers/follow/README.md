@@ -9,6 +9,13 @@ address.
 The record itself refreshes once a night, so an update reports what changed
 up to last night's build. Nothing here implies real time.
 
+**Live on graniterecord.org since 23 October 2026**, when the root
+`wrangler.toml` bound `FOLLOW_DB` for production, as it does for previews.
+That binding is the one switch: the Functions answer only where it is bound,
+the sender mails nobody while they do not, the Follow pane offers email only
+where `/api/follow/count` answers, and `shell.follow_live()` reads it for
+what the About and Data pages and the guides say of email.
+
 ## What is here
 
 | File | What it does |
@@ -72,6 +79,9 @@ And under `functions/api/follow/`, Pages Functions on the site's own origin:
 
 Every Function answers 404 until the `FOLLOW_DB` binding exists on the
 deployment, so a deployment without the database has no follow endpoints.
+They import this folder by a relative path out of `functions/`, which Pages'
+bundler follows: the preview's `/api/follow/count` answered 200 on 25
+October 2026.
 
 ## How a reader's data is kept
 
@@ -113,9 +123,10 @@ deployment, so a deployment without the database has no follow endpoints.
   subscriber, its follows and its waiting requests from the database at once.
   Two copies are not deleted at once, and the pages say so rather than "for
   good": **D1's Time Travel** keeps point-in-time backups that cannot be
-  turned off (30 days on Workers Paid, 7 on Free, as remembered -- check on
-  the day; the pages say "at most 30 days"), and **Resend** keeps each email
-  it has sent -- recipient and content -- for its plan's retention period. A
+  turned off (30 days on Workers Paid, 7 on Free; the pages say "at most 30
+  days"), and **Resend** keeps each email it has sent -- recipient and
+  content -- for its plan's data retention (30 days on every plan but
+  Enterprise). Both figures are in *The plan's limits*, below. A
   Time Travel restore would bring back every address deleted since its point
   in time, so a restore of this database is never a routine repair. A record
   that concludes gets one last update saying how it ended, and its follow
@@ -138,7 +149,7 @@ well when a `*.test.js` is missing from `index.js`.
 ## Who deploys it
 
 A person, by hand, never `publish` or the nightly. The Functions deploy with
-the site once the root `wrangler.toml` binds `FOLLOW_DB`; the sender deploys
+the site, which binds `FOLLOW_DB` in both environments; the sender deploys
 on its own:
 
     npx wrangler deploy --config workers/follow/wrangler.toml
@@ -199,8 +210,8 @@ on its own:
    the Data page promises the emails do not track opens or clicks, and click
    tracking would send every manage and confirm link through Resend's own
    redirect. And the team's API rate limit, which `SEND_GAP_MS` in
-   `workers/follow/wrangler.toml` keeps to half of: 10 requests a second on
-   Pro, as the dashboard showed on 22 October 2026.
+   `workers/follow/wrangler.toml` keeps to half of: 10 requests a second,
+   the same on every plan (item 6).
 
 3. **Turnstile.** A widget for the site's names (and the preview's). Its site
    key is public and goes in the front end; its secret is `TURNSTILE_SECRET`.
@@ -255,34 +266,32 @@ on its own:
    derived from `FOLLOW_ADDRESS_KEY`, so a new address key also changes
    every reader's links.
 
-6. **The plan's limits**, from Cloudflare's and Resend's own pages on the
-   day, because the figures here are remembered, not checked: D1's
-   statements per Worker invocation (50 on Workers Free, 1,000 on Paid) goes
-   in `D1_QUERIES_PER_RUN`, the subrequests per invocation bound
-   `SEND_LIMIT`, and Resend's daily cap (100 on its free plan) is shared by
-   confirmations and updates. D1 Time Travel's window and Resend's retention
-   of sent emails are what the About page and the pages' "at most 30 days"
-   must agree with.
+6. **The plan's limits**, as Cloudflare and Resend publish them, read on 25
+   October 2026 (the account is on Workers Paid, and Resend Pro since 15
+   October):
 
-### The root `wrangler.toml`, at go-live
+   | Limit | Free | Workers Paid, Resend Pro | What here keeps to it |
+   |---|---|---|---|
+   | D1 queries per Worker invocation (a `db.batch()` counts as one) | 50 | 1,000 | `D1_QUERIES_PER_RUN`, 900, counting a batch's every statement |
+   | Subrequests per invocation (each `fetch()`, and each call to D1) | 50 | 10,000 | `SEND_LIMIT`, 200 emails a run, with up to eleven changes files and the run's D1 queries |
+   | D1 Time Travel, the backups that cannot be turned off | 7 days | 30 days | the pages' "at most 30 days" |
+   | Resend's emails | 100 a day, 3,000 a month | 50,000 a month, no daily limit | shared by confirmations (`SIGNUP_DAILY_CEILING`) and updates |
+   | Resend's API rate, per team, the same on every plan | 10 a second | 10 a second | `SEND_GAP_MS`, 200: half of it |
+   | Resend's data retention (emails and logs) | 30 days | 30 days | the Data page's "for a limited time" |
 
-The Functions need the database bound on the Pages project, production and
-preview each stating their own, as the reports database is:
+   From <https://developers.cloudflare.com/d1/platform/limits/>,
+   <https://developers.cloudflare.com/workers/platform/limits/>,
+   <https://resend.com/pricing> and
+   <https://resend.com/docs/api-reference/rate-limit>. A plan that changes is
+   a row to read again.
 
-```toml
-[[env.production.d1_databases]]
-binding = "FOLLOW_DB"
-database_name = "graniterecord-follow"
-database_id = "<from wrangler d1 create>"
+### The root `wrangler.toml`
 
-[[env.preview.d1_databases]]
-binding = "FOLLOW_DB"
-database_name = "graniterecord-follow-preview"
-database_id = "<from wrangler d1 create>"
-```
-
-and, in each environment's `vars`, `MAIL_FROM` and `FEEDBACK_URL` as the
-sender has them. The site's names come from `REPORT_ORIGINS`, which each
+The Pages project binds the database as it binds the reports database,
+production and preview each stating their own `[[env.<name>.d1_databases]]`
+with `binding = "FOLLOW_DB"`, and sets `MAIL_FROM` and `FEEDBACK_URL` in each
+environment's `vars` as the sender has them. A fork puts its own database
+ids there. The site's names come from `REPORT_ORIGINS`, which each
 environment already sets; `FOLLOW_ORIGINS` overrides it for following alone.
 `SIGNUP_DAILY_CEILING` (default 1,000, enough for a webinar's sign-ups;
 `signup.js` says why) caps confirmation emails a day.
@@ -391,33 +400,25 @@ a query is still a look, and the person's line is that nobody looks.
 `preflight_checks_to_add.md` (in the assistant's scratchpad) has the check
 that no tracked file runs one.
 
-## Before go-live: the person's decisions
+## What the pages promise
 
-These need the person, not code:
+Settled before go-live, and what a change here must keep true:
 
-- **Resend's dashboard shows each email.** Every email goes to Resend with
-  its recipient and its content -- what the reader follows, by name -- and
-  Resend's Emails view keeps both for its plan's retention period, readable
-  by anyone logged into that account, links included. Sealing the database
-  cannot reach that copy. Either the About page says plainly that the mail
-  service holds each email for a limited time, or the Resend login is kept
-  out of day-to-day use, or both; the About draft's "nobody here ... sees
-  what you follow" should not go up as it is.
-- **The About page's words for deleting** must match the pages': deleted
-  from our database at once; the database's backups age out within at most
-  30 days; the mail service's copies of sent emails age out on its schedule.
+- **Resend holds a copy of each email**, its recipient and its content --
+  what the reader follows, by name -- for its plan's data retention,
+  readable by anyone logged into that account. Sealing the database cannot
+  reach that copy, and the Data page says so: the mail service keeps its own
+  copies for a limited time.
+- **Deleting is said one way** on the manage and unsubscribe pages and the
+  page after (`page.js`, `DELETES` and `AFTERWARDS`): deleted from our
+  database at once; the database's backups age out within at most 30 days;
+  the mail service's copies of sent emails age out on its schedule. The
+  Data page says the same more briefly: both copies are kept "for a limited
+  time".
 - **One link per reader**, as FOLLOW.md designed it: every email carries the
   same manage link until the reader asks for a new one, so a forwarded email
   opens the reader's manage page (their follow list, never their address)
   until they do. The manage page says so.
-
-### One thing to check on the first preview deploy
-
-The Functions import this folder by a relative path out of `functions/`.
-Whether Pages' bundler follows such an import has not been tried. If it does
-not, copy every `.js` here but `sender.js` into a folder under `functions/`
-whose files export no `onRequest` handler (`functions/_follow/`), point the
-imports there, and have preflight hold the copies byte-identical to these.
 
 ## The front end's side
 
