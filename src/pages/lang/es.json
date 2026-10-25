@@ -348,6 +348,61 @@
    "es": "Guías prácticas, cómo funciona la Legislatura y fuentes oficiales",
    "state": "draft"
   },
+  "comp.county_district": {
+   "en": "{county} District {district}",
+   "es": "{county}, distrito {district}",
+   "state": "draft"
+  },
+  "comp.filled": {
+   "en": "{sitting} of {seats} seats filled",
+   "es": "{sitting} de {seats} escaños ocupados",
+   "state": "draft"
+  },
+  "comp.filled_vacant": {
+   "en": "{sitting} of {seats} seats filled, {vacant} vacant",
+   "es": "{sitting} de {seats} escaños ocupados, {vacant} vacantes",
+   "state": "draft"
+  },
+  "comp.house": {
+   "en": "House",
+   "es": "Cámara",
+   "state": "draft"
+  },
+  "comp.n_seats": {
+   "en": "— {n} seats",
+   "es": "— {n} escaños",
+   "state": "draft"
+  },
+  "comp.note": {
+   "en": "A bill passes with a majority of the members voting. Passing a constitutional amendment takes three fifths of the members in office: {three} of the {sitting} on the current roster. A veto override needs {two}.",
+   "es": "Un proyecto de ley se aprueba con la mayoría de los miembros que votan. Aprobar una enmienda constitucional requiere tres quintos de los miembros en funciones: {three} de los {sitting} de la lista actual. Anular un veto requiere {two}.",
+   "state": "draft"
+  },
+  "comp.senate": {
+   "en": "Senate",
+   "es": "Senado",
+   "state": "draft"
+  },
+  "comp.two_thirds": {
+   "en": "two thirds of those voting, so it moves with turnout",
+   "es": "dos tercios de los votos emitidos, así que cambia según cuántos voten",
+   "state": "draft"
+  },
+  "comp.vacancy_note": {
+   "en": "Seats fall vacant during a term when members resign or die. A House seat is filled by special election only if the town or city asks the Governor and Executive Council to call one, so some stay vacant until the next general election. A Senate seat is filled as the state constitution provides.",
+   "es": "Los escaños quedan vacantes durante un período cuando un miembro renuncia o fallece. Un escaño de la Cámara se cubre mediante una elección especial solo si el municipio o la ciudad pide al Gobernador y al Consejo Ejecutivo que la convoquen, así que algunos quedan vacantes hasta la siguiente elección general. Un escaño del Senado se cubre según lo dispone la constitución del estado.",
+   "state": "draft"
+  },
+  "comp.vacant": {
+   "en": "Vacant",
+   "es": "Vacantes",
+   "state": "draft"
+  },
+  "comp.vacant_seats": {
+   "en": "{n} vacant House seats across {d} districts",
+   "es": "{n} escaños vacantes de la Cámara en {d} distritos",
+   "state": "draft"
+  },
   "elect.elected": {
    "en": "Elected {day}",
    "es": "Elegidos el {day}",
@@ -12741,6 +12796,96 @@
    "es": "se mantuvo el veto",
    "state": "draft"
   },
+  "lf.and": {
+   "en": "{a} and {b}",
+   "es": "{a} y {b}",
+   "state": "draft"
+  },
+  "lf.count": {
+   "en": "{t} towns and cities, {m} sitting members",
+   "es": "{t} municipios y ciudades, {m} miembros en funciones",
+   "state": "draft"
+  },
+  "lf.house": {
+   "en": "House",
+   "es": "Cámara",
+   "state": "draft"
+  },
+  "lf.match": {
+   "en": "{what} match",
+   "es": "Coinciden: {what}",
+   "state": "draft"
+  },
+  "lf.matches": {
+   "en": "{what} matches",
+   "es": "Coincide: {what}",
+   "state": "draft"
+  },
+  "lf.members": {
+   "en": "Members",
+   "es": "Miembros",
+   "state": "draft"
+  },
+  "lf.more": {
+   "en": "and {n} more members &mdash; type another letter or two.",
+   "es": "y {n} miembros más &mdash; escriba una o dos letras más.",
+   "state": "draft"
+  },
+  "lf.n_member": {
+   "en": "{n} member",
+   "es": "{n} miembro",
+   "state": "draft"
+  },
+  "lf.n_members": {
+   "en": "{n} members",
+   "es": "{n} miembros",
+   "state": "draft"
+  },
+  "lf.n_town": {
+   "en": "{n} town",
+   "es": "{n} municipio",
+   "state": "draft"
+  },
+  "lf.n_towns": {
+   "en": "{n} towns",
+   "es": "{n} municipios",
+   "state": "draft"
+  },
+  "lf.none": {
+   "en": "Nothing matches that. Towns and wards, member names, counties, parties and committees are all searched.",
+   "es": "Nada coincide con eso. Se buscan municipios y barrios electorales, nombres de miembros, condados, partidos y comités.",
+   "state": "draft"
+  },
+  "lf.not_on_file": {
+   "en": "Not on file",
+   "es": "Sin registro",
+   "state": "draft"
+  },
+  "lf.nothing": {
+   "en": "Nothing matches that.",
+   "es": "Nada coincide con eso.",
+   "state": "draft"
+  },
+  "lf.senate": {
+   "en": "Senate",
+   "es": "Senado",
+   "state": "draft"
+  },
+  "lf.towns": {
+   "en": "Towns",
+   "es": "Municipios",
+   "state": "draft"
+  },
+  "lf.ward": {
+   "en": "Ward {w}",
+   "es": "Barrio electoral {w}",
+   "state": "draft"
+  },
+  "lf.wards": {
+   "en": "{n} wards",
+   "es": "{n} barrios electorales",
+   "state": "draft"
+  },
   "nav.bills": {
    "en": "Bills",
    "es": "Proyectos de ley",
@@ -12792,9 +12937,769 @@
    "es": "Esta página todavía no está en español.",
    "state": "draft"
   },
+  "of.desc": {
+   "en": "Who represents your town, from the State House to Congress; every member of the New Hampshire House and Senate, with their district, their party, the bills they sponsored and every recorded vote they cast; and the state's and counties' elected officials.",
+   "es": "Quién representa a su municipio, desde el Capitolio estatal hasta el Congreso; cada miembro de la Cámara de Representantes y el Senado de New Hampshire, con su distrito, su partido, los proyectos de ley que patrocinó y cada voto registrado que emitió; y los funcionarios electos del estado y de los condados.",
+   "state": "draft"
+  },
+  "of.find": {
+   "en": "Find Your Town",
+   "es": "Encuentre su municipio",
+   "state": "draft"
+  },
+  "of.find_how": {
+   "en": "Type a town to see who represents it, or a name, county,\nparty or committee to find a member.",
+   "es": "Escriba un municipio para ver quién lo representa, o un nombre, un condado, un partido o un comité para encontrar a un miembro.",
+   "state": "draft"
+  },
+  "of.find_label": {
+   "en": "Your town, or a legislator&rsquo;s name",
+   "es": "Su municipio, o el nombre de un legislador",
+   "state": "draft"
+  },
+  "of.find_ph": {
+   "en": "Your town or a legislator",
+   "es": "Su municipio o un legislador",
+   "state": "draft"
+  },
+  "of.lead": {
+   "en": "Everyone who represents your town, from your select board to\nCongress; the {n} sitting members of the New Hampshire House and\nSenate; and the state&rsquo;s other officials.",
+   "es": "Todas las personas que representan a su municipio, desde la junta de concejales hasta el Congreso; los {n} miembros en funciones de la Cámara de Representantes y el Senado de New Hampshire; y los demás funcionarios del estado.",
+   "state": "draft"
+  },
+  "of.loading": {
+   "en": "Loading&hellip;",
+   "es": "Cargando&hellip;",
+   "state": "draft"
+  },
+  "of.map": {
+   "en": "The Map",
+   "es": "El mapa",
+   "state": "draft"
+  },
+  "of.map_how": {
+   "en": "Choose a district to see who represents it. Zoom in for\na city&rsquo;s wards.",
+   "es": "Elija un distrito para ver quién lo representa. Acerque el mapa para ver los barrios electorales de una ciudad.",
+   "state": "draft"
+  },
+  "of.map_noscript": {
+   "en": "The map needs JavaScript. Every town&rsquo;s districts\nare on its own page, listed in <a href=\"/directory/towns.html\">every town and\nward</a>.",
+   "es": "El mapa necesita JavaScript. Los distritos de cada municipio están en su propia página, en la lista de <a href=\"/directory/towns.html\">todos los municipios y barrios electorales</a>.",
+   "state": "draft"
+  },
+  "of.page_title": {
+   "en": "Officials | Granite Record",
+   "es": "Funcionarios | Granite Record",
+   "state": "draft"
+  },
+  "of.tab.counties": {
+   "en": "County Officials",
+   "es": "Funcionarios del condado",
+   "state": "draft"
+  },
+  "of.tab.elect": {
+   "en": "Members-Elect",
+   "es": "Miembros electos",
+   "state": "draft"
+  },
+  "of.tab.executive": {
+   "en": "Executive Branch",
+   "es": "Poder Ejecutivo",
+   "state": "draft"
+  },
+  "of.tab.federal": {
+   "en": "Federal Delegation",
+   "es": "Delegación federal",
+   "state": "draft"
+  },
+  "of.tab.judicial": {
+   "en": "Judicial Branch",
+   "es": "Poder Judicial",
+   "state": "draft"
+  },
+  "of.tab.legislators": {
+   "en": "Legislators",
+   "es": "Legisladores",
+   "state": "draft"
+  },
+  "of.tab.town": {
+   "en": "My Town",
+   "es": "Mi municipio",
+   "state": "draft"
+  },
+  "of.title": {
+   "en": "Officials",
+   "es": "Funcionarios",
+   "state": "draft"
+  },
+  "of.who_holds": {
+   "en": "Who holds the seats",
+   "es": "Quién ocupa los escaños",
+   "state": "draft"
+  },
+  "off.about.as-chief-election-official-the-secretary-of-state": {
+   "en": "As chief election official, the Secretary of State oversees all state elections. The office also keeps the state's corporations, securities, archives and vital records. The Secretary is elected by a joint session of the House and Senate.",
+   "es": "Como máximo responsable de las elecciones, el Secretario de Estado supervisa todas las elecciones del estado. La oficina también lleva los registros del estado de corporaciones, valores, archivos y registros vitales. El Secretario es elegido en una sesión conjunta de la Cámara y el Senado.",
+   "state": "draft"
+  },
+  "off.about.as-the-head-of-state-government-the-governor": {
+   "en": "As the head of state government, the Governor signs or vetoes legislation passed in the General Court, oversees state agencies, and proposes the state budget for legislative approval.",
+   "es": "Como jefe del gobierno del estado, el Gobernador firma o veta las leyes aprobadas por la Legislatura, supervisa las agencias del estado y propone el presupuesto estatal para que la Legislatura lo apruebe.",
+   "state": "draft"
+  },
+  "off.about.chief-justice-gordon-j-macdonald-resigned-on-september": {
+   "en": "Chief Justice Gordon J. MacDonald resigned on September 15, 2026, the Judicial Branch announced that day, and the court's page names its four associate justices.",
+   "es": "El presidente del tribunal, Gordon J. MacDonald, renunció el 15 de septiembre de 2026, según anunció ese día el Poder Judicial, y la página del tribunal nombra a sus cuatro jueces asociados.",
+   "state": "draft"
+  },
+  "off.about.each-commissioner-represents-a-district-in-carroll-and": {
+   "en": "Each commissioner represents a district (in Carroll and Sullivan the whole county votes for each one). In eight counties their terms are staggered, so two of the three seats are on the ballot at each general election; Hillsborough and Strafford elect all three every two years. The other officers serve two-year terms, except in Rockingham and Coos, where they serve four.",
+   "es": "Cada comisionado representa a un distrito (en Carroll y Sullivan todo el condado vota por cada uno). En ocho condados sus períodos son escalonados, así que dos de los tres cargos están en la boleta en cada elección general; Hillsborough y Strafford eligen a los tres cada dos años. Los demás funcionarios cumplen períodos de dos años, salvo en Rockingham y Coos, donde son de cuatro.",
+   "state": "draft"
+  },
+  "off.about.each-of-new-hampshire-s-ten-counties-elects": {
+   "en": "Each of New Hampshire's ten counties elects three county commissioners, a sheriff, a county attorney, a county treasurer, a register of deeds and a register of probate.",
+   "es": "Cada uno de los diez condados de New Hampshire elige a tres comisionados del condado, un sheriff, un fiscal del condado, un tesorero del condado, un registrador de escrituras y un registrador de testamentos.",
+   "state": "draft"
+  },
+  "off.about.five-councilors-elected-from-five-districts-the-executive": {
+   "en": "Five councilors, elected from five districts. The Executive Council approves state contracts over $10,000, judicial and agency nominations, and pardons.",
+   "es": "Cinco consejeros, elegidos en cinco distritos. El Consejo Ejecutivo aprueba los contratos del estado de más de $10,000, las propuestas de nombramiento de jueces y de jefes de agencias, y los indultos.",
+   "state": "draft"
+  },
+  "off.about.new-hampshire-elects-two-members-of-the-us": {
+   "en": "New Hampshire elects two members of the US House, one from each congressional district.",
+   "es": "New Hampshire elige a dos miembros de la Cámara de Representantes de EE. UU., uno por cada distrito del Congreso.",
+   "state": "draft"
+  },
+  "off.about.new-hampshire-s-courts-are-the-supreme-court": {
+   "en": "New Hampshire's courts are the Supreme Court, the Superior Court and the Circuit Court. The Governor nominates their judges, and the Executive Council confirms them.",
+   "es": "Los tribunales de New Hampshire son el Tribunal Supremo, el Tribunal Superior y el Tribunal de Circuito. El Gobernador propone a sus jueces, y el Consejo Ejecutivo los confirma.",
+   "state": "draft"
+  },
+  "off.about.the-attorney-general-heads-the-department-of-justice": {
+   "en": "The Attorney General heads the Department of Justice, above.",
+   "es": "El Fiscal General dirige el Departamento de Justicia, arriba.",
+   "state": "draft"
+  },
+  "off.about.the-attorney-general-is-the-state-s-chief": {
+   "en": "The Attorney General is the State's chief legal officer and chief law enforcement officer, and heads the Department of Justice.",
+   "es": "El Fiscal General es el principal funcionario jurídico del estado y su principal autoridad policial, y dirige el Departamento de Justicia.",
+   "state": "draft"
+  },
+  "off.about.the-circuit-court-holds-the-district-probate-and": {
+   "en": "The Circuit Court holds the District, Probate and Family Divisions.",
+   "es": "El Tribunal de Circuito comprende las divisiones de Distrito, Testamentaria y de Familia.",
+   "state": "draft"
+  },
+  "off.about.the-state-s-highest-court": {
+   "en": "The state's highest court.",
+   "es": "El tribunal más alto del estado.",
+   "state": "draft"
+  },
+  "off.about.the-state-treasurer-oversees-the-state-s-finances": {
+   "en": "The State Treasurer oversees the state's finances, including investments and debt management. Part 2, Article 67 of the New Hampshire Constitution establishes the office, and the Treasurer is elected by a joint session of the Senate and the House.",
+   "es": "El Tesorero del Estado supervisa las finanzas del estado, incluidas las inversiones y la gestión de la deuda. La Parte 2, Artículo 67, de la Constitución de New Hampshire establece el cargo, y el Tesorero es elegido en una sesión conjunta del Senado y la Cámara.",
+   "state": "draft"
+  },
+  "off.about.two-senators-elected-by-the-whole-state-so": {
+   "en": "Two senators, elected by the whole state, so both represent every town.",
+   "es": "Dos senadores, elegidos por todo el estado, así que ambos representan a todos los municipios.",
+   "state": "draft"
+  },
+  "off.about.when-an-office-falls-vacant-between-elections-the": {
+   "en": "When an office falls vacant between elections, the county convention -- the county's state representatives -- fills it; a register of probate's vacancy is filled differently.",
+   "es": "Cuando un cargo queda vacante entre elecciones, lo cubre la convención del condado (los representantes estatales del condado); la vacante de un registrador de testamentos se cubre de otra manera.",
+   "state": "draft"
+  },
+  "off.ag": {
+   "en": "Attorney General",
+   "es": "Fiscal General",
+   "state": "draft"
+  },
+  "off.agency_list": {
+   "en": "the state’s list of agencies",
+   "es": "la lista de agencias del estado",
+   "state": "draft"
+  },
+  "off.announcement": {
+   "en": "the Judicial Branch’s announcement",
+   "es": "el anuncio del Poder Judicial",
+   "state": "draft"
+  },
+  "off.ballot_on": {
+   "en": "Most of these seats are on the ballot on {day}.",
+   "es": "La mayoría de estos cargos están en la boleta el {day}.",
+   "state": "draft"
+  },
+  "off.ballot_was": {
+   "en": "Most of these seats were on the ballot on {day}; this is the roster read before it.",
+   "es": "La mayoría de estos cargos estuvieron en la boleta el {day}; esta es la lista leída antes de esa elección.",
+   "state": "draft"
+  },
+  "off.bio": {
+   "en": "Biography",
+   "es": "Biografía",
+   "state": "draft"
+  },
+  "off.by_county_link": {
+   "en": "by county in Legislators",
+   "es": "por condado en Legisladores",
+   "state": "draft"
+  },
+  "off.chosen": {
+   "en": "The Secretary of State and the State Treasurer are elected by the legislature, the House and Senate together, by joint ballot (New Hampshire Constitution, Part Second, Article 67).",
+   "es": "El Secretario de Estado y el Tesorero del Estado son elegidos por la Legislatura, la Cámara y el Senado juntos, en votación conjunta (Constitución de New Hampshire, Parte Segunda, Artículo 67).",
+   "state": "draft"
+  },
+  "off.circuit": {
+   "en": "Circuit Court",
+   "es": "Tribunal de Circuito",
+   "state": "draft"
+  },
+  "off.commissioner_d": {
+   "en": "Commissioner, District {d}",
+   "es": "Comisionado(a), distrito {d}",
+   "state": "draft"
+  },
+  "off.conv": {
+   "en": "Its county convention is the county&rsquo;s {n} sitting state representatives, listed {listed}.",
+   "es": "Su convención del condado son los {n} representantes estatales en funciones del condado, que aparecen {listed}.",
+   "state": "draft"
+  },
+  "off.conv_one": {
+   "en": "Its county convention is the county&rsquo;s {n} sitting state representative, listed {listed}.",
+   "es": "Su convención del condado es el {n} representante estatal en funciones del condado, que aparece {listed}.",
+   "state": "draft"
+  },
+  "off.council": {
+   "en": "Executive Council",
+   "es": "Consejo Ejecutivo",
+   "state": "draft"
+  },
+  "off.county.belknap-county": {
+   "en": "Belknap County",
+   "es": "Condado de Belknap",
+   "state": "draft"
+  },
+  "off.county.carroll-county": {
+   "en": "Carroll County",
+   "es": "Condado de Carroll",
+   "state": "draft"
+  },
+  "off.county.cheshire-county": {
+   "en": "Cheshire County",
+   "es": "Condado de Cheshire",
+   "state": "draft"
+  },
+  "off.county.coos-county": {
+   "en": "Coos County",
+   "es": "Condado de Coos",
+   "state": "draft"
+  },
+  "off.county.grafton-county": {
+   "en": "Grafton County",
+   "es": "Condado de Grafton",
+   "state": "draft"
+  },
+  "off.county.hillsborough-county": {
+   "en": "Hillsborough County",
+   "es": "Condado de Hillsborough",
+   "state": "draft"
+  },
+  "off.county.merrimack-county": {
+   "en": "Merrimack County",
+   "es": "Condado de Merrimack",
+   "state": "draft"
+  },
+  "off.county.rockingham-county": {
+   "en": "Rockingham County",
+   "es": "Condado de Rockingham",
+   "state": "draft"
+  },
+  "off.county.strafford-county": {
+   "en": "Strafford County",
+   "es": "Condado de Strafford",
+   "state": "draft"
+  },
+  "off.county.sullivan-county": {
+   "en": "Sullivan County",
+   "es": "Condado de Sullivan",
+   "state": "draft"
+  },
+  "off.county_name": {
+   "en": "{name} County",
+   "es": "Condado de {name}",
+   "state": "draft"
+  },
+  "off.court.circuit-court": {
+   "en": "Circuit Court",
+   "es": "Tribunal de Circuito",
+   "state": "draft"
+  },
+  "off.court.superior-court": {
+   "en": "Superior Court",
+   "es": "Tribunal Superior",
+   "state": "draft"
+  },
+  "off.court.supreme-court": {
+   "en": "Supreme Court",
+   "es": "Tribunal Supremo",
+   "state": "draft"
+  },
+  "off.court_page": {
+   "en": "the court’s own page",
+   "es": "la página del propio tribunal",
+   "state": "draft"
+  },
+  "off.dept.administrative-services": {
+   "en": "Administrative Services",
+   "es": "Servicios Administrativos (Administrative Services)",
+   "state": "draft"
+  },
+  "off.dept.agriculture-markets-and-food": {
+   "en": "Agriculture, Markets, and Food",
+   "es": "Agricultura, Mercados y Alimentos (Agriculture, Markets, and Food)",
+   "state": "draft"
+  },
+  "off.dept.banking": {
+   "en": "Banking",
+   "es": "Banca (Banking)",
+   "state": "draft"
+  },
+  "off.dept.business-and-economic-affairs": {
+   "en": "Business and Economic Affairs",
+   "es": "Asuntos Comerciales y Económicos (Business and Economic Affairs)",
+   "state": "draft"
+  },
+  "off.dept.corrections": {
+   "en": "Corrections",
+   "es": "Correccionales (Corrections)",
+   "state": "draft"
+  },
+  "off.dept.education": {
+   "en": "Education",
+   "es": "Educación (Education)",
+   "state": "draft"
+  },
+  "off.dept.employment-security": {
+   "en": "Employment Security",
+   "es": "Seguridad del Empleo (Employment Security)",
+   "state": "draft"
+  },
+  "off.dept.energy": {
+   "en": "Energy",
+   "es": "Energía (Energy)",
+   "state": "draft"
+  },
+  "off.dept.environmental-services": {
+   "en": "Environmental Services",
+   "es": "Servicios Ambientales (Environmental Services)",
+   "state": "draft"
+  },
+  "off.dept.health-and-human-services": {
+   "en": "Health and Human Services",
+   "es": "Salud y Servicios Humanos (Health and Human Services)",
+   "state": "draft"
+  },
+  "off.dept.insurance": {
+   "en": "Insurance",
+   "es": "Seguros (Insurance)",
+   "state": "draft"
+  },
+  "off.dept.labor": {
+   "en": "Labor",
+   "es": "Trabajo (Labor)",
+   "state": "draft"
+  },
+  "off.dept.military-affairs-and-veterans-services": {
+   "en": "Military Affairs and Veterans Services",
+   "es": "Asuntos Militares y Servicios para Veteranos (Military Affairs and Veterans Services)",
+   "state": "draft"
+  },
+  "off.dept.natural-and-cultural-resources": {
+   "en": "Natural and Cultural Resources",
+   "es": "Recursos Naturales y Culturales (Natural and Cultural Resources)",
+   "state": "draft"
+  },
+  "off.dept.revenue-administration": {
+   "en": "Revenue Administration",
+   "es": "Administración de Ingresos (Revenue Administration)",
+   "state": "draft"
+  },
+  "off.dept.safety": {
+   "en": "Safety",
+   "es": "Seguridad (Safety)",
+   "state": "draft"
+  },
+  "off.dept.transportation": {
+   "en": "Transportation",
+   "es": "Transporte (Transportation)",
+   "state": "draft"
+  },
+  "off.dept_heads": {
+   "en": "Department Heads",
+   "es": "Jefes de departamento",
+   "state": "draft"
+  },
+  "off.dept_listed": {
+   "en": "; the departments are those on {listed}",
+   "es": "; los departamentos son los de {listed}",
+   "state": "draft"
+  },
+  "off.dept_src": {
+   "en": "each department&rsquo;s own site, linked from its name",
+   "es": "el sitio de cada departamento, enlazado desde su nombre",
+   "state": "draft"
+  },
+  "off.depts_read": {
+   "en": ". The department heads were read from each department&rsquo;s own site on {day}",
+   "es": ". Los jefes de departamento se leyeron del sitio de cada departamento el {day}",
+   "state": "draft"
+  },
+  "off.district": {
+   "en": "District {d}",
+   "es": "Distrito {d}",
+   "state": "draft"
+  },
+  "off.elect_intro": {
+   "en": "Elected {day}, by {by}. They take office on {takes}; until then the {tab} lists who holds each seat.",
+   "es": "Elegidos el {day}, según {by}. Asumen el cargo el {takes}; hasta entonces, la {tab} muestra quién ocupa cada escaño.",
+   "state": "draft"
+  },
+  "off.exec_checked": {
+   "en": "; the Governor and the Council checked {day}",
+   "es": "; el Gobernador y el Consejo se verificaron el {day}",
+   "state": "draft"
+  },
+  "off.fed_checked": {
+   "en": "Kept by hand, each name with the page it was read from; checked {day}.",
+   "es": "Se mantiene a mano, cada nombre con la página de la que se leyó; verificado el {day}.",
+   "state": "draft"
+  },
+  "off.find_town": {
+   "en": "Find your town",
+   "es": "Encuentre su municipio",
+   "state": "draft"
+  },
+  "off.governor": {
+   "en": "Governor",
+   "es": "Gobernador",
+   "state": "draft"
+  },
+  "off.in_washington": {
+   "en": "in Washington",
+   "es": "en Washington",
+   "state": "draft"
+  },
+  "off.judges_on": {
+   "en": "Its judges are listed on {judges}.",
+   "es": "Sus jueces aparecen en {judges}.",
+   "state": "draft"
+  },
+  "off.judicial_kept": {
+   "en": "Kept by hand, each name with the Judicial Branch&rsquo;s page it was read from.",
+   "es": "Se mantiene a mano, cada nombre con la página del Poder Judicial de la que se leyó.",
+   "state": "draft"
+  },
+  "off.judicial_read": {
+   "en": "Kept by hand, each name with the Judicial Branch&rsquo;s page it was read from; read {day}.",
+   "es": "Se mantiene a mano, cada nombre con la página del Poder Judicial de la que se leyó; leído el {day}.",
+   "state": "draft"
+  },
+  "off.kept": {
+   "en": "Kept by hand, each name with the page it was read from",
+   "es": "Se mantiene a mano, cada nombre con la página de la que se leyó",
+   "state": "draft"
+  },
+  "off.leg_tab": {
+   "en": "Legislators tab",
+   "es": "pestaña Legisladores",
+   "state": "draft"
+  },
+  "off.office.commissioner": {
+   "en": "Commissioner",
+   "es": "Comisionado(a)",
+   "state": "draft"
+  },
+  "off.office.county-attorney": {
+   "en": "County Attorney",
+   "es": "Fiscal del condado",
+   "state": "draft"
+  },
+  "off.office.county-commissioner-district-1": {
+   "en": "County Commissioner, District 1",
+   "es": "Comisionado(a) del condado, distrito 1",
+   "state": "draft"
+  },
+  "off.office.county-commissioner-district-2": {
+   "en": "County Commissioner, District 2",
+   "es": "Comisionado(a) del condado, distrito 2",
+   "state": "draft"
+  },
+  "off.office.county-commissioner-district-3": {
+   "en": "County Commissioner, District 3",
+   "es": "Comisionado(a) del condado, distrito 3",
+   "state": "draft"
+  },
+  "off.office.county-treasurer": {
+   "en": "County Treasurer",
+   "es": "Tesorero(a) del condado",
+   "state": "draft"
+  },
+  "off.office.register-of-deeds": {
+   "en": "Register of Deeds",
+   "es": "Registrador(a) de escrituras",
+   "state": "draft"
+  },
+  "off.office.register-of-probate": {
+   "en": "Register of Probate",
+   "es": "Registrador(a) de testamentos",
+   "state": "draft"
+  },
+  "off.office.sheriff": {
+   "en": "Sheriff",
+   "es": "Sheriff",
+   "state": "draft"
+  },
+  "off.presiding": {
+   "en": "Presiding Officers",
+   "es": "Presidencia de las cámaras",
+   "state": "draft"
+  },
+  "off.presiding_why": {
+   "en": "The Speaker presides over the House, and the Deputy Speaker sometimes in the Speaker&rsquo;s place; the Senate President presides over the Senate.",
+   "es": "El presidente de la Cámara (Speaker) preside la Cámara de Representantes, y el vicepresidente a veces lo hace en su lugar; el presidente del Senado preside el Senado.",
+   "state": "draft"
+  },
+  "off.read_on": {
+   "en": "; read {day}",
+   "es": "; leído el {day}",
+   "state": "draft"
+  },
+  "off.role.deputy": {
+   "en": "Deputy Speaker",
+   "es": "Vicepresidente de la Cámara",
+   "state": "draft"
+  },
+  "off.role.president": {
+   "en": "Senate President",
+   "es": "Presidente del Senado",
+   "state": "draft"
+  },
+  "off.role.speaker": {
+   "en": "Speaker",
+   "es": "Presidente de la Cámara",
+   "state": "draft"
+  },
+  "off.roster_src": {
+   "en": "Kept by hand, read from the Secretary of State&rsquo;s county roster for 2025&ndash;2026, dated {day}",
+   "es": "Se mantiene a mano, leído de la lista de funcionarios de los condados de la Secretaría de Estado para 2025&ndash;2026, con fecha del {day}",
+   "state": "draft"
+  },
+  "off.seat_one": {
+   "en": "{n} seat",
+   "es": "{n} escaño",
+   "state": "draft"
+  },
+  "off.seats": {
+   "en": "{n} seats",
+   "es": "{n} escaños",
+   "state": "draft"
+  },
+  "off.sos": {
+   "en": "Secretary of State",
+   "es": "Secretaría de Estado",
+   "state": "draft"
+  },
+  "off.sos_count": {
+   "en": "the Secretary of State&rsquo;s count",
+   "es": "el conteo de la Secretaría de Estado",
+   "state": "draft"
+  },
+  "off.source": {
+   "en": "Source: {source}",
+   "es": "Fuente: {source}",
+   "state": "draft"
+  },
+  "off.src_and": {
+   "en": "{src}, and {told}",
+   "es": "{src}, y {told}",
+   "state": "draft"
+  },
+  "off.state_house": {
+   "en": "State House",
+   "es": "Cámara de Representantes estatal",
+   "state": "draft"
+  },
+  "off.state_senate": {
+   "en": "State Senate",
+   "es": "Senado estatal",
+   "state": "draft"
+  },
+  "off.superior": {
+   "en": "Superior Court",
+   "es": "Tribunal Superior",
+   "state": "draft"
+  },
+  "off.supreme": {
+   "en": "Supreme Court",
+   "es": "Tribunal Supremo",
+   "state": "draft"
+  },
+  "off.takes_office": {
+   "en": "{who} takes office {day}.",
+   "es": "{who} asume el cargo el {day}.",
+   "state": "draft"
+  },
+  "off.th_dept": {
+   "en": "Department",
+   "es": "Departamento",
+   "state": "draft"
+  },
+  "off.th_head": {
+   "en": "Head",
+   "es": "Jefe",
+   "state": "draft"
+  },
+  "off.three_read": {
+   "en": ". The Secretary of State, the State Treasurer and the Attorney General were read on {day}",
+   "es": ". El Secretario de Estado, el Tesorero del Estado y el Fiscal General se leyeron el {day}",
+   "state": "draft"
+  },
+  "off.title.adjutant-general": {
+   "en": "Adjutant General",
+   "es": "Ayudante General (Adjutant General)",
+   "state": "draft"
+  },
+  "off.title.associate-justice": {
+   "en": "Associate Justice",
+   "es": "Juez asociado(a)",
+   "state": "draft"
+  },
+  "off.title.bank-commissioner": {
+   "en": "Bank Commissioner",
+   "es": "Comisionado(a) de Banca",
+   "state": "draft"
+  },
+  "off.title.chief-justice": {
+   "en": "Chief Justice",
+   "es": "Presidente del tribunal",
+   "state": "draft"
+  },
+  "off.title.commissioner": {
+   "en": "Commissioner",
+   "es": "Comisionado(a)",
+   "state": "draft"
+  },
+  "off.title.insurance-commissioner": {
+   "en": "Insurance Commissioner",
+   "es": "Comisionado(a) de Seguros",
+   "state": "draft"
+  },
+  "off.title.interim-commissioner": {
+   "en": "Interim Commissioner",
+   "es": "Comisionado(a) interino(a)",
+   "state": "draft"
+  },
+  "off.title.justice": {
+   "en": "Justice",
+   "es": "Juez",
+   "state": "draft"
+  },
+  "off.title.senior-associate-justice": {
+   "en": "Senior Associate Justice",
+   "es": "Juez asociado(a) de mayor antigüedad",
+   "state": "draft"
+  },
+  "off.title.senior-justice-active-status": {
+   "en": "Senior Justice, active status",
+   "es": "Juez sénior, en servicio activo",
+   "state": "draft"
+  },
+  "off.title.senior-justices-active-status": {
+   "en": "Senior Justices, active status",
+   "es": "Jueces sénior, en servicio activo",
+   "state": "draft"
+  },
+  "off.treasurer": {
+   "en": "State Treasurer",
+   "es": "Tesorería del Estado",
+   "state": "draft"
+  },
+  "off.us_house": {
+   "en": "US House",
+   "es": "Cámara de Representantes de EE. UU.",
+   "state": "draft"
+  },
+  "off.us_house_why": {
+   "en": "New Hampshire elects two members of the US House, one from each congressional district. Which is yours?",
+   "es": "New Hampshire elige a dos miembros de la Cámara de Representantes de EE. UU., uno por cada distrito del Congreso. ¿Cuál es el suyo?",
+   "state": "draft"
+  },
+  "off.us_senate": {
+   "en": "US Senate",
+   "es": "Senado de EE. UU.",
+   "state": "draft"
+  },
+  "off.which_district": {
+   "en": "Which district is yours?",
+   "es": "¿Cuál es su distrito?",
+   "state": "draft"
+  },
   "page.skip": {
    "en": "Skip to the content",
    "es": "Saltar al contenido",
+   "state": "draft"
+  },
+  "party.d": {
+   "en": "Democrat",
+   "es": "Demócrata",
+   "state": "draft"
+  },
+  "party.dem": {
+   "en": "Democratic",
+   "es": "Demócrata",
+   "state": "draft"
+  },
+  "party.ds": {
+   "en": "Democrats",
+   "es": "Demócratas",
+   "state": "draft"
+  },
+  "party.i": {
+   "en": "Independent",
+   "es": "Independiente",
+   "state": "draft"
+  },
+  "party.is": {
+   "en": "Independents",
+   "es": "Independientes",
+   "state": "draft"
+  },
+  "party.l": {
+   "en": "Libertarian",
+   "es": "Libertario",
+   "state": "draft"
+  },
+  "party.ls": {
+   "en": "Libertarians",
+   "es": "Libertarios",
+   "state": "draft"
+  },
+  "party.none": {
+   "en": "Party not on file",
+   "es": "Partido no registrado",
+   "state": "draft"
+  },
+  "party.r": {
+   "en": "Republican",
+   "es": "Republicano",
+   "state": "draft"
+  },
+  "party.rs": {
+   "en": "Republicans",
+   "es": "Republicanos",
    "state": "draft"
   },
   "rec.inexpedient_to_legislate": {
@@ -12959,6 +13864,116 @@
    "es": "Todo el estado",
    "state": "draft"
   },
+  "roster.all": {
+   "en": "All {n} sitting members, by surname, each chamber on\nits own.",
+   "es": "Los {n} miembros en funciones, por apellido, cada cámara por separado.",
+   "state": "draft"
+  },
+  "roster.arrange": {
+   "en": "How to arrange the roster",
+   "es": "Cómo ordenar la lista de miembros",
+   "state": "draft"
+  },
+  "roster.by_county": {
+   "en": "By county",
+   "es": "Por condado",
+   "state": "draft"
+  },
+  "roster.by_last": {
+   "en": "By last name",
+   "es": "Por apellido",
+   "state": "draft"
+  },
+  "roster.by_seat": {
+   "en": "By seat",
+   "es": "Por escaño",
+   "state": "draft"
+  },
+  "roster.filled": {
+   "en": "{seated} of the 400 seats are filled.",
+   "es": "{seated} de los 400 escaños están ocupados.",
+   "state": "draft"
+  },
+  "roster.filled_vacant": {
+   "en": "{seated} of the 400 seats are filled and {vacant} are vacant.",
+   "es": "{seated} de los 400 escaños están ocupados y {vacant} están vacantes.",
+   "state": "draft"
+  },
+  "roster.find": {
+   "en": "Find",
+   "es": "Buscar",
+   "state": "draft"
+  },
+  "roster.find_ph": {
+   "en": "Name, county or seat",
+   "es": "Nombre, condado o escaño",
+   "state": "draft"
+  },
+  "roster.fit": {
+   "en": "Fit",
+   "es": "Ajustar",
+   "state": "draft"
+  },
+  "roster.go": {
+   "en": "Go to a seat",
+   "es": "Ir a un escaño",
+   "state": "draft"
+  },
+  "roster.hint": {
+   "en": "Scroll or pinch to zoom, drag to move about the floor.",
+   "es": "Desplace o pellizque para acercar; arrastre para moverse por el salón.",
+   "state": "draft"
+  },
+  "roster.rostrum": {
+   "en": "The Speaker&rsquo;s chair is on the rostrum rather than on the floor, so\n{empty} of the places drawn below are empty.",
+   "es": "La silla del presidente de la Cámara (Speaker) está en el estrado y no en el piso del salón, así que {empty} de los lugares dibujados abajo están vacíos.",
+   "state": "draft"
+  },
+  "roster.seat_about": {
+   "en": "Every representative has a numbered seat in Representatives\nHall, and it is the number on their license plate. Tap a seat to see who is in\nit; tapping does not leave the page, and the name it gives you is the link. This is a diagram of the\nfive divisions, not a drawing of the room: it is faithful to which division a\nseat is in and to the seat&rsquo;s number, and not to the true distances.",
+   "es": "Cada representante tiene un escaño numerado en Representatives Hall (el salón de sesiones de la Cámara), y ese es el número de su placa de vehículo. Toque un escaño para ver quién lo ocupa; tocarlo no lo saca de la página, y el nombre que aparece es el enlace. Este es un diagrama de las cinco divisiones, no un dibujo del salón: refleja en qué división está cada escaño y su número, pero no las distancias reales.",
+   "state": "draft"
+  },
+  "roster.seat_number": {
+   "en": "Seat number&hellip;",
+   "es": "Número de escaño&hellip;",
+   "state": "draft"
+  },
+  "roster.senate": {
+   "en": "The Senate",
+   "es": "El Senado",
+   "state": "draft"
+  },
+  "roster.senate_about": {
+   "en": "The Senate has no seating chart: its 24 members are elected\nfrom numbered districts and the chamber does not assign numbered seats the way\nthe House does.",
+   "es": "El Senado no tiene un plano de asientos: sus 24 miembros se eligen en distritos numerados, y la cámara no asigna escaños numerados como lo hace la Cámara de Representantes.",
+   "state": "draft"
+  },
+  "roster.where": {
+   "en": "Where they sit",
+   "es": "Dónde se sientan",
+   "state": "draft"
+  },
+  "roster.zoom_in": {
+   "en": "Show the seats larger",
+   "es": "Mostrar los escaños más grandes",
+   "state": "draft"
+  },
+  "roster.zoom_out": {
+   "en": "Show more of the floor",
+   "es": "Mostrar más del salón",
+   "state": "draft"
+  },
+  "sc.seat": {
+   "en": "seat {plate}",
+   "es": "escaño {plate}",
+   "state": "draft"
+  },
+  "sc.shown": {
+   "en": "{n} of {m} representatives",
+   "es": "{n} de {m} representantes",
+   "state": "draft"
+  },
   "search.go": {
    "en": "Search",
    "es": "Buscar",
@@ -12967,6 +13982,61 @@
   "search.top": {
    "en": "Top results",
    "es": "Mejores resultados",
+   "state": "draft"
+  },
+  "seat.division": {
+   "en": "Division {d}",
+   "es": "División {d}",
+   "state": "draft"
+  },
+  "seat.division_n": {
+   "en": "Division {d} &mdash; {n}",
+   "es": "División {d} &mdash; {n}",
+   "state": "draft"
+  },
+  "seat.label": {
+   "en": "{title}: 400 seats in five divisions",
+   "es": "{title}: 400 escaños en cinco divisiones",
+   "state": "draft"
+  },
+  "seat.none": {
+   "en": "No seat on file",
+   "es": "Sin escaño registrado",
+   "state": "draft"
+  },
+  "seat.rostrum": {
+   "en": "The rostrum",
+   "es": "El estrado",
+   "state": "draft"
+  },
+  "seat.speaker": {
+   "en": "Speaker",
+   "es": "Speaker",
+   "state": "draft"
+  },
+  "seat.speaker_chair": {
+   "en": "The Speaker’s chair",
+   "es": "La silla del presidente de la Cámara",
+   "state": "draft"
+  },
+  "seat.speaker_who": {
+   "en": "{name} — Speaker, on the rostrum",
+   "es": "{name} — presidente de la Cámara (Speaker), en el estrado",
+   "state": "draft"
+  },
+  "seat.title": {
+   "en": "New Hampshire House seating",
+   "es": "Escaños de la Cámara de Representantes de New Hampshire",
+   "state": "draft"
+  },
+  "seat.vacant": {
+   "en": "Vacant — seat {plate}",
+   "es": "Vacante — escaño {plate}",
+   "state": "draft"
+  },
+  "seat.who": {
+   "en": "{name} — seat {plate}",
+   "es": "{name} — escaño {plate}",
    "state": "draft"
   },
   "sess.floor": {
@@ -14548,8 +15618,8 @@
    "state": "draft"
   },
   "yt.county_officials": {
-   "en": "The county&rsquo;s own officials are under <a href=\"/officials#counties\">County Officials</a>.",
-   "es": "Los funcionarios propios del condado están en <a href=\"/officials#counties\">County Officials</a> (funcionarios del condado).",
+   "en": "The county&rsquo;s own officials are under <a href=\"{href}\">County Officials</a>.",
+   "es": "Los funcionarios propios del condado están en <a href=\"{href}\">Funcionarios del condado</a>.",
    "state": "draft"
   },
   "yt.district": {

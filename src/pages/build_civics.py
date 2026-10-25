@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-08.74
+# GRANITE_VERSION: 2026-09-08.75
 """
 The civics section: a hub and one page per topic, in order.
 
@@ -2234,21 +2234,9 @@ def guide_page(tmpl, g, base, record, draft_why=""):
 # ---------------------------------------------------------------------------
 def lang_links(html_, lang):
     """`html_` with every link to a page `lang` has (i18n.has) sent to that
-    page in `lang`; every other link left as it is, to the English page."""
-    if lang == I.DEFAULT:
-        return html_
-
-    def one(m):
-        h = m.group(1)
-        if re.match(r"[a-z][a-z0-9+.-]*:|//|#", h):
-            return m.group(0)
-        path, _, frag = h.partition("#")
-        p = path.lstrip("/")
-        page = p if p.endswith(".html") else (f"{p}.html" if p else "index.html")
-        if p.startswith(f"{lang}/") or not I.has(lang, page):
-            return m.group(0)
-        return f'href="{I.href(lang, page)}' + (f"#{frag}" if frag else "") + '"'
-    return re.sub(r'href="([^"]*)"', one, html_)
+    page in `lang`; every other link left as it is, to the English page.
+    i18n.lang_links, which the Officials page uses too."""
+    return I.lang_links(html_, lang)
 
 
 def lang_sections(english, translated, where):

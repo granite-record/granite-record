@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-10-23.14
+# GRANITE_VERSION: 2026-10-23.15
 """
 The site in more than one language, and how a translation stays current.
 
@@ -120,7 +120,11 @@ LEARN_PAGES = tuple(f"learn/{s}.html" for s in (
     "county-government", "city-and-town-government",
     "general-court", "how-a-bill-becomes-law", "governor-and-council", "the-constitution",
     "legislative-year"))
-PAGES = {"es": ("index.html", "learn/glossary.html", "resources.html") + GUIDE_PAGES + LEARN_PAGES}
+# THE OFFICIALS PAGE (the person, 25 October 2026: "Start on the Officials
+# page and My Town in Spanish"): its own words, its tabs' and the words of
+# corrections/officials.json that the tabs say (officials_tabs.data_words).
+PAGES = {"es": ("index.html", "learn/glossary.html", "resources.html", "officials.html")
+         + GUIDE_PAGES + LEARN_PAGES}
 
 _CATALOGS = {}
 # What a build asked for and could not give: (lang, key, why). report() says
@@ -471,6 +475,9 @@ def words_js(lang, *scripts):
 # that language loads in its head. A page's own scripts' words are in the
 # page (page_words).
 SHARED_SCRIPTS = ("components.js", "find.js")
+# The pages a script links to by address, whose address in a language a
+# page in it tells its scripts (page_words, window.GR_HREFS).
+SCRIPT_LINKS = ("officials.html",)
 
 
 def shared_words_path(lang):
@@ -484,7 +491,16 @@ def page_words(lang, *scripts):
     file of the shared scripts' words. Empty for English."""
     if lang == DEFAULT:
         return ""
+    # Where a script's link to one of SCRIPT_LINKS goes in this language
+    # (find.js's Your Town card links the Officials page): the page in
+    # `lang` where it has one, so a script never sends a reader from a
+    # Spanish page to the English page of something Spanish has.
+    # At the address the host serves: /es/officials, not /es/officials.html.
+    hrefs = json.dumps({p: re.sub(r"\.html$", "", href(lang, p))
+                        for p in SCRIPT_LINKS if has(lang, p)},
+                       separators=(",", ":"))
     return (f'<script>window.GR_LANG="{lang}";window.GR_LOCALE="{LOCALE.get(lang, lang)}";'
+            f'window.GR_HREFS={hrefs};'
             f'{words_js(lang, *scripts)}</script>\n'
             f'<script src="{shared_words_path(lang)}"></script>')
 
@@ -503,6 +519,28 @@ def href(lang, page):
 def has(lang, page):
     """Whether `page` (an English path) is built in `lang`."""
     return lang == DEFAULT or page in PAGES.get(lang, ())
+
+
+def lang_links(html_, lang):
+    """`html_` with every link to a page `lang` has sent to that page in
+    `lang`; every other link left as it is, to the English page. One
+    function for every builder of a translated page (build_civics' guides
+    and Learn pages, build_pages' Officials page), so they cannot come to
+    disagree about where a link goes."""
+    if lang == DEFAULT:
+        return html_
+
+    def one(m):
+        h = m.group(1)
+        if re.match(r"[a-z][a-z0-9+.-]*:|//|#", h):
+            return m.group(0)
+        path, _, frag = h.partition("#")
+        p = path.lstrip("/")
+        page = p if p.endswith(".html") else (f"{p}.html" if p else "index.html")
+        if p.startswith(f"{lang}/") or not has(lang, page):
+            return m.group(0)
+        return f'href="{href(lang, page)}' + (f"#{frag}" if frag else "") + '"'
+    return re.sub(r'href="([^"]*)"', one, html_)
 
 
 # ---- WHAT THE CODE SAYS, READ FROM THE SOURCE --------------------------------
@@ -607,6 +645,13 @@ def code_words(root=None):
     if any(has(c, "resources.html") for c in LANGS if c != DEFAULT):
         import build_civics
         for key, en, where in build_civics.hub_words():
+            add(key, en, where)
+    # The Officials page's tabs say the person's own words from
+    # corrections/officials.json -- what an office is, a title, a
+    # department's name -- where a language has the page.
+    if any(has(c, "officials.html") for c in LANGS if c != DEFAULT):
+        import officials_tabs
+        for key, en, where in officials_tabs.data_words():
             add(key, en, where)
     # The legislature's schedule (the Learn pages in Spanish, 25 October
     # 2026): its seasons' and steps' words are legislative_year's data.

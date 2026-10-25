@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.235
+# GRANITE_VERSION: 2026-09-04.236
 """
 Build the pages the navigation links to: legislators, town lookup, how it
 works, and about.
@@ -622,7 +622,24 @@ VACANCY_NOTE = ("Seats fall vacant during a term when members resign or die. "
                 "Senate seat is filled as the state constitution provides.")
 
 
-def seat_columns(house, row):
+def party_word(name, lang="en", plural=False):
+    """A party's name as the roster spells it ("Republican", "Democrat"), in
+    `lang`, singular or plural; a name not here, as it came."""
+    one = {"Republican": say(lang, "party.r", "Republican"),
+           "Democrat": say(lang, "party.d", "Democrat"),
+           "Democratic": say(lang, "party.dem", "Democratic"),
+           "Independent": say(lang, "party.i", "Independent"),
+           "Libertarian": say(lang, "party.l", "Libertarian"),
+           "Party not on file": say(lang, "party.none", "Party not on file")}
+    many = {"Republican": say(lang, "party.rs", "Republicans"),
+            "Democrat": say(lang, "party.ds", "Democrats"),
+            "Democratic": say(lang, "party.ds", "Democrats"),
+            "Independent": say(lang, "party.is", "Independents"),
+            "Libertarian": say(lang, "party.ls", "Libertarians")}
+    return (many if plural else one).get(name, one.get(name, name) if plural else name)
+
+
+def seat_columns(house, row, lang="en"):
     """The House by seat, one column per division, as markup; `house` the
     members in seat order and `row(m)` the row that draws one.
 
@@ -660,13 +677,14 @@ def seat_columns(house, row):
     def block(heading, ms, cls="sdiv"):
         return (f'<section class="{cls}"><h3>{heading}</h3><ol class="seatlist">'
                 + "".join(row(m) for m in ms) + "</ol></section>")
-    return ((block("The rostrum", rostrum, "sdiv srost") if rostrum else "")
+    return ((block(say(lang, "seat.rostrum", "The rostrum"), rostrum, "sdiv srost")
+             if rostrum else "")
             + ('<div class="seatdivs">' + "".join(
-                block(f"Division {d} &mdash; {len(ms)}", ms)
+                block(say(lang, "seat.division_n", "Division {d} &mdash; {n}", d=d, n=len(ms)), ms)
                 for d, ms in sorted(divs.items(),
                                     key=lambda kv: (across.get(kv[0], len(across)), kv[0])))
                + "</div>" if divs else "")
-            + (block("No seat on file", unseated) if unseated else ""))
+            + (block(say(lang, "seat.none", "No seat on file"), unseated) if unseated else ""))
 
 
 def home_week(week):
@@ -1617,11 +1635,12 @@ SEATING_JS = """
       a.textContent=c.getAttribute("data-name");
       note.appendChild(a);
       note.appendChild(document.createTextNode(
-        " — seat "+plate(c.getAttribute("data-seat"))));
+        " — "+tr("sc.seat","seat {plate}",{plate:plate(c.getAttribute("data-seat"))})));
       return;
     }
     var shown=rows.filter(function(r){return !r.hidden;}).length;
-    note.textContent=shown===rows.length?"":shown+" of "+rows.length+" representatives";
+    note.textContent=shown===rows.length?""
+      :tr("sc.shown","{n} of {m} representatives",{n:shown,m:rows.length});
   }
   function centre(c){
     if(!wrap||!c.getBoundingClientRect)return;
@@ -2337,6 +2356,11 @@ const SHOW=12;            // matches at once: a screen of them, not a scroll
 const MIN=2;              // letters before the list appears
 
 let TOWNS=[], MEM=[], picked=null;
+// A party as the page's language says it, so a reader can find the members
+// of one by typing its name in that language too (the Officials page in
+// Spanish, 25 October 2026). In English these are the words already searched.
+const PW={R:tr("party.r","Republican"),D:tr("party.d","Democrat"),
+          I:tr("party.i","Independent"),L:tr("party.l","Libertarian")};
 
 function slugOf(s){return String(s).toLowerCase().replace(/[^a-z0-9]+/g,"-")
   .replace(/^-|-$/g,"");}
@@ -2360,10 +2384,10 @@ function townRow(t){
   if(t.wards.length>1)
     return `<button type="button" class="lmrow${picked===t.town?" sel":""}"
       data-town="${esc(t.town)}"><b>${esc(t.town)}</b>
-      <span class="wct">${t.wards.length} wards</span></button>`
+      <span class="wct">${tr("lf.wards","{n} wards",{n:t.wards.length})}</span></button>`
       + (picked===t.town ? `<div class="wards">` + t.wards.map(w=>
           `<a class="wbtn" href="town/${esc(t.slug)}-ward-${esc(w)}.html"
-            >Ward ${esc(w)}</a>`).join("") + `</div>` : "");
+            >${tr("lf.ward","Ward {w}",{w:esc(w)})}</a>`).join("") + `</div>` : "");
   return `<a class="lmrow" href="town/${esc(t.slug)}.html"
     ><b>${esc(t.town)}</b></a>`;
 }
@@ -2386,20 +2410,21 @@ function render(){
     : [];
   const parts=[];
   if(towns.length){
-    if(mem.length)parts.push('<p class="lmhead">Towns</p>');
+    if(mem.length)parts.push('<p class="lmhead">'+tr("lf.towns","Towns")+'</p>');
     parts.push(towns.map(([,t])=>townRow(t)).join(""));
   }
   if(mem.length){
-    parts.push('<p class="lmhead">Members</p>');
+    parts.push('<p class="lmhead">'+tr("lf.members","Members")+'</p>');
     parts.push(mem.slice(0,SHOW).map(([,m])=>
       `<a class="lmrow" href="legislator/${esc(m.slug)}.html">`
       +`<b>${esc(m.display)}</b>`
       +chip(m.p,"pt-"+m.p)
       +`<span class="lmwhere">${esc(m.where)}</span>`
-      +`<span class="lmwhat">${m.chamber==="S"?"Senate":"House"}</span></a>`)
+      +`<span class="lmwhat">${m.chamber==="S"?tr("lf.senate","Senate"):tr("lf.house","House")}</span></a>`)
       .join(""));
-    if(mem.length>SHOW)parts.push(`<p class="lmnone">and ${mem.length-SHOW}`
-      +` more members &mdash; type another letter or two.</p>`);
+    if(mem.length>SHOW)parts.push('<p class="lmnone">'
+      +tr("lf.more","and {n} more members &mdash; type another letter or two.",{n:mem.length-SHOW})
+      +'</p>');
   }
   // No apostrophe in these sentences on purpose: this is JavaScript inside a
   // Python string, where a backslash belongs to whichever one reads it
@@ -2412,8 +2437,7 @@ function render(){
   if(tw&&tw!==window.__grTown){window.__grTown=tw;
     dispatchEvent(new CustomEvent("grtown",{detail:tw}));}
   out.innerHTML=parts.length?parts.join("")
-    :'<p class="lmnone">Nothing matches that. Towns and wards, member names, '
-     +'counties, parties and committees are all searched.</p>';
+    :'<p class="lmnone">'+tr("lf.none","Nothing matches that. Towns and wards, member names, counties, parties and committees are all searched.")+'</p>';
   /* WHAT THE LIST NOW HOLDS, SAID. It is redrawn at every letter and nothing
      told a screen reader that it had changed (the audit of 2 October 2026,
      S4). One line the eye does not see, role="status": how many towns and
@@ -2421,11 +2445,15 @@ function render(){
      is empty, when the list is every town and is not an answer to anything. */
   const say=document.getElementById("lsay");
   if(say){
-    const said=[towns.length?towns.length+(towns.length===1?" town":" towns"):"",
-                mem.length?mem.length+(mem.length===1?" member":" members"):""]
+    const said=[towns.length?(towns.length===1?tr("lf.n_town","{n} town",{n:1})
+                                 :tr("lf.n_towns","{n} towns",{n:towns.length})):"",
+                mem.length?(mem.length===1?tr("lf.n_member","{n} member",{n:1})
+                             :tr("lf.n_members","{n} members",{n:mem.length})):""]
       .filter(Boolean);
-    const text=!n?"":!said.length?"Nothing matches that."
-      :said.join(" and ")+(towns.length+mem.length===1?" matches":" match");
+    const what=said.length===2?tr("lf.and","{a} and {b}",{a:said[0],b:said[1]}):said[0];
+    const text=!n?"":!said.length?tr("lf.nothing","Nothing matches that.")
+      :towns.length+mem.length===1?tr("lf.matches","{what} matches",{what:what})
+      :tr("lf.match","{what} match",{what:what});
     if(say.textContent!==text)say.textContent=text;
   }
   /* The chips into view, and no further than the row they belong to. */
@@ -2448,7 +2476,8 @@ function roster(){
   const html=["Senate","House"].filter(ch=>by[ch]).map(ch=>{
     const counties=Object.keys(by[ch]).sort();
     const total=counties.reduce((n,c)=>n+by[ch][c].length,0);
-    return `<h2>${ch} &mdash; ${total}</h2>`+counties.map(c=>{
+    const chName=ch==="Senate"?tr("lf.senate","Senate"):tr("lf.house","House");
+    return `<h2>${chName} &mdash; ${total}</h2>`+counties.map(c=>{
       // By district number, then by name. Alphabetical order inside a county
       // scattered the members of one district across the list, when the
       // district is the thing a reader is looking for: it is what a town
@@ -2456,7 +2485,7 @@ function roster(){
       const ms=by[ch][c].slice().sort((a,b)=>
         (parseInt(a.district,10)||0)-(parseInt(b.district,10)||0)
         ||a.sortname.localeCompare(b.sortname));
-      return `<details class="cgrp"><summary><span>${esc(c)}</span>`
+      return `<details class="cgrp"><summary><span>${c==="Not on file"?tr("lf.not_on_file","Not on file"):esc(c)}</span>`
         +`<span class="ccount">${ms.length}</span>`
         +`<span class="caret">&#9656;</span></summary><div class="grid">`
         // THE SAME CHIP AS THE OTHER TWO VIEWS (pchip in Python), which the
@@ -2493,11 +2522,11 @@ Promise.all([fetch(DATA("districts.json")).then(r=>r.json()).catch(()=>({})),
      where:[m.county,m.district_label].filter(Boolean).join(" "),
      hay:[m.name,m.party,m.county,"district "+m.district,m.district_label,
           m.title||"",(m.committees||[]).join(" "),
-          (m.towns||[]).join(" ")].join(" ").toLowerCase()}));
+          (m.towns||[]).join(" "),PW[(m.party||"X")[0].toUpperCase()]||""].join(" ").toLowerCase()}));
    const box=document.getElementById("lq");
    box.disabled=false;
    document.getElementById("lcount").textContent=
-     TOWNS.length+" towns and cities, "+MEM.length+" sitting members";
+     tr("lf.count","{t} towns and cities, {m} sitting members",{t:TOWNS.length,m:MEM.length});
    roster();
    /* ?town= and ?q= arrive from the home page's finder. Both fill the one
       field: a town that is warded cannot be resolved to a page without
@@ -3772,7 +3801,7 @@ def main():
     # script's copy above gives. The data page still counts, which is where
     # counting belongs.
 
-    def static_bar(ch):
+    def static_bar(ch, lang="en"):
         """The party composition of one chamber, with its thresholds.
 
         Built here rather than in the page's JavaScript because it now lives on
@@ -3784,21 +3813,22 @@ def main():
         if not x:
             return ""
         tot = x.get("seats") or 1
+        vac = say(lang, "comp.vacant", "Vacant")
         segs = "".join(
             f'<span class="pseg seg-{esc(pp["code"])}" '
             f'style="width:{100 * pp["n"] / tot:.4f}%" '
-            f'title="{esc(pp["name"])}: {pp["n"]}"></span>'
+            f'title="{esc(party_word(pp["name"], lang))}: {pp["n"]}"></span>'
             for pp in x.get("parties", []))
         if x.get("vacant"):
             segs += (f'<span class="pseg seg-V" '
                      f'style="width:{100 * x["vacant"] / tot:.4f}%" '
-                     f'title="Vacant: {x["vacant"]}"></span>')
+                     f'title="{vac}: {x["vacant"]}"></span>')
         legend = "".join(
             f'<span><span class="pdot seg-{esc(pp["code"])}"></span>'
-            f'{esc(pp["name"])} <b>{pp["n"]}</b></span>'
+            f'{esc(party_word(pp["name"], lang))} <b>{pp["n"]}</b></span>'
             for pp in x.get("parties", []))
         if x.get("vacant"):
-            legend += (f'<span><span class="pdot seg-V"></span>Vacant '
+            legend += (f'<span><span class="pdot seg-V"></span>{vac} '
                        f'<b>{x["vacant"]}</b></span>')
         note = ""
         if x.get("majority"):
@@ -3807,20 +3837,32 @@ def main():
             # a majority of the 400 seats, which decides nothing. Three fifths
             # is of the members in office, counted from the roster, and the
             # sentence says which count it is.
-            note = (f'<p class="statemeta" style="margin:6px 0 0">A bill passes '
-                    f'with a majority of the members voting. Passing a '
-                    f'constitutional amendment takes three fifths of the '
-                    f'members in office: {x.get("three_fifths", "")} of the '
-                    f'{x["sitting"]} on the current roster. A veto override '
-                    f'needs {esc(x.get("two_thirds_note", ""))}.</p>')
-        return (f'<div class="comp"><div class="compline"><b>{esc(x["chamber"])}</b>'
-                f'<span class="statemeta">{x["sitting"]} of {x["seats"]} seats '
-                f'filled{f", {x['vacant']} vacant" if x.get("vacant") else ""}</span>'
+            tt = x.get("two_thirds_note", "")
+            if lang != i18n.DEFAULT and tt == "two thirds of those voting, so it moves with turnout":
+                tt = say(lang, "comp.two_thirds", "two thirds of those voting, so it moves with "
+                         "turnout")
+            note = ('<p class="statemeta" style="margin:6px 0 0">'
+                    + say(lang, "comp.note", "A bill passes with a majority of the members "
+                          "voting. Passing a constitutional amendment takes three fifths of the "
+                          "members in office: {three} of the {sitting} on the current roster. A "
+                          "veto override needs {two}.", three=x.get("three_fifths", ""),
+                          sitting=x["sitting"], two=esc(tt))
+                    + "</p>")
+        chamber = {"House": say(lang, "comp.house", "House"),
+                   "Senate": say(lang, "comp.senate", "Senate")}.get(x["chamber"], x["chamber"])
+        filled = (say(lang, "comp.filled_vacant", "{sitting} of {seats} seats filled, {vacant} "
+                      "vacant", sitting=x["sitting"], seats=x["seats"], vacant=x["vacant"])
+                  if x.get("vacant") else
+                  say(lang, "comp.filled", "{sitting} of {seats} seats filled",
+                      sitting=x["sitting"], seats=x["seats"]))
+        return (f'<div class="comp"><div class="compline"><b>{esc(chamber)}</b>'
+                f'<span class="statemeta">{filled}</span>'
                 f'</div><div class="pbar2">{segs}</div>'
                 f'<div class="plegend">{legend}</div>{note}</div>')
 
-    vacancies = ""
-    if C.get("vacancies"):
+    def vacancies_box(lang="en"):
+        if not C.get("vacancies"):
+            return ""
         v = C["vacancies"]
         # HOW A SEAT IS FILLED, FROM THE STATUTE (the person, 7 October 2026,
         # F7). The sentence said every vacancy is filled by special election,
@@ -3829,16 +3871,27 @@ def main():
         # agreed in private/FRONTEND_FEEDBACK.md. And "District" takes its
         # capital, as a district's name does everywhere else on the site
         # ("Grafton District 6", F6).
-        vacancies = (
-            f'<details class="vac"><summary>{sum(x["vacant"] for x in v)} vacant '
-            f'House seats across {len(v)} districts</summary>'
-            f'<p class="note" style="margin-top:8px">{VACANCY_NOTE}</p>'
+        # VACANCY_NOTE's words, said in the page's language; preflight's
+        # _spanish_officials holds the two the same.
+        note = say(
+            lang, "comp.vacancy_note", "Seats fall vacant during a term when members resign or "
+            "die. A House seat is filled by special election only if the town or city asks the "
+            "Governor and Executive Council to call one, so some stay vacant until the next "
+            "general election. A Senate seat is filled as the state constitution provides.")
+        return (
+            '<details class="vac"><summary>'
+            + say(lang, "comp.vacant_seats", "{n} vacant House seats across {d} districts",
+                  n=sum(x["vacant"] for x in v), d=len(v))
+            + f'</summary><p class="note" style="margin-top:8px">{note}</p>'
             '<div class="grid">' + "".join(
-                f'<div class="mem">{esc(x["county"])} District {esc(x["district"])}'
-                f'{f" — {x['vacant']} seats" if x["vacant"] > 1 else ""}</div>'
+                '<div class="mem">'
+                + say(lang, "comp.county_district", "{county} District {district}",
+                      county=esc(x["county"]), district=esc(x["district"]))
+                + (" " + say(lang, "comp.n_seats", "— {n} seats", n=x["vacant"])
+                   if x["vacant"] > 1 else "") + "</div>"
                 for x in v) + "</div></details>")
 
-    def roster_section(legs):
+    def roster_section(legs, lang="en"):
         """The roster, three ways, and the House floor as a chart.
 
         Asked for on 18 September: "on the legislators page, there would be
@@ -3945,10 +3998,6 @@ def main():
         # the alphabetical view is broken up by party, each column A to Z by
         # last name and then by first name -- Alissandra Murray before Megan
         # Murray. The largest party first, so the majority leads.
-        PARTY_PLURAL = {"Republican": "Republicans", "Democrat": "Democrats",
-                        "Democratic": "Democrats", "Independent": "Independents",
-                        "Libertarian": "Libertarians"}
-
         def alpha_block(ms, heading):
             groups = {}
             for m in ms:
@@ -3958,30 +4007,35 @@ def main():
                 # Surname, then given name: the seat order it once fell back on
                 # put Michael Aron above Judy Aron and three Smiths out of order.
                 pm = sorted(pm, key=lambda m: (surname(m), given(m)))
-                name = PARTY_PLURAL.get(party, party) if len(pm) != 1 else party
+                name = party_word(party, lang, plural=len(pm) != 1)
                 cols.append(f'<section class="pcol"><h3>{esc(name)} &mdash; {len(pm)}</h3>'
                             '<ol class="seatlist rlist">'
                             + "".join(li(m, "") for m in pm) + "</ol></section>")
             return (f'<h2>{heading} &mdash; {len(ms)}</h2>'
                     '<div class="partycols">' + "".join(cols) + "</div>")
-        by_last = alpha_block(S, "Senate") + alpha_block(H, "House")
+        by_last = (alpha_block(S, say(lang, "comp.senate", "Senate"))
+                   + alpha_block(H, say(lang, "comp.house", "House")))
         by_seat_rows = seat_columns(
-            H, lambda m: li(m, seating.plate(m["seat"]) if m.get("seat") else ""))
-        senate_rows = "".join(li(m, f'District {m.get("district")}') for m in S)
+            H, lambda m: li(m, seating.plate(m["seat"]) if m.get("seat") else ""), lang)
+        senate_rows = "".join(li(m, say(lang, "off.district", "District {d}", d=m.get("district")))
+                              for m in S)
 
+        seats_said = (say(lang, "roster.filled_vacant", "{seated} of the 400 seats are filled and "
+                          "{vacant} are vacant.", seated=seated, vacant=vacant) if vacant else
+                      say(lang, "roster.filled", "{seated} of the 400 seats are filled.",
+                          seated=seated))
         return f"""<section class="roster" id="roster">
-<div class="rtabs" role="tablist" aria-label="How to arrange the roster">
+<div class="rtabs" role="tablist" aria-label="{say(lang, "roster.arrange", "How to arrange the roster")}">
   <button type="button" role="tab" id="tab-last" data-pane="pane-last"
-    aria-controls="pane-last" aria-selected="true">By last name</button>
+    aria-controls="pane-last" aria-selected="true">{say(lang, "roster.by_last", "By last name")}</button>
   <button type="button" role="tab" id="tab-county" data-pane="pane-county"
-    aria-controls="pane-county" aria-selected="false">By county</button>
+    aria-controls="pane-county" aria-selected="false">{say(lang, "roster.by_county", "By county")}</button>
   <button type="button" role="tab" id="tab-seat" data-pane="pane-seat"
-    aria-controls="pane-seat" aria-selected="false">By seat</button>
+    aria-controls="pane-seat" aria-selected="false">{say(lang, "roster.by_seat", "By seat")}</button>
 </div>
 
 <div class="rpane" id="pane-last" role="tabpanel" aria-labelledby="tab-last">
-<p class="src">All {len(legs)} sitting members, by surname, each chamber on
-its own.</p>
+<p class="src">{say(lang, "roster.all", "All {n} sitting members, by surname, each chamber on\nits own.", n=len(legs))}</p>
 {by_last}
 </div>
 
@@ -3990,39 +4044,32 @@ its own.</p>
 </div>
 
 <div class="rpane" id="pane-seat" role="tabpanel" aria-labelledby="tab-seat">
-<h2>Where they sit</h2>
-<p class="src">Every representative has a numbered seat in Representatives
-Hall, and it is the number on their license plate. Tap a seat to see who is in
-it; tapping does not leave the page, and the name it gives you is the link. This is a diagram of the
-five divisions, not a drawing of the room: it is faithful to which division a
-seat is in and to the seat&rsquo;s number, and not to the true distances.
-{seated} of the 400 seats are filled{f" and {vacant} are vacant" if vacant else ""}.
-The Speaker&rsquo;s chair is on the rostrum rather than on the floor, so
-{empty_places} of the places drawn below are empty.</p>
+<h2>{say(lang, "roster.where", "Where they sit")}</h2>
+<p class="src">{say(lang, "roster.seat_about", "Every representative has a numbered seat in Representatives\nHall, and it is the number on their license plate. Tap a seat to see who is in\nit; tapping does not leave the page, and the name it gives you is the link. This is a diagram of the\nfive divisions, not a drawing of the room: it is faithful to which division a\nseat is in and to the seat&rsquo;s number, and not to the true distances.")}
+{seats_said}
+{say(lang, "roster.rostrum", "The Speaker&rsquo;s chair is on the rostrum rather than on the floor, so\n{empty} of the places drawn below are empty.", empty=empty_places)}</p>
 <div class="seatctl">
-  <label for="sgo">Go to a seat</label>
-  <select id="sgo"><option value="">Seat number&hellip;</option>{opts}</select>
-  <label for="sq">Find</label>
+  <label for="sgo">{say(lang, "roster.go", "Go to a seat")}</label>
+  <select id="sgo"><option value="">{say(lang, "roster.seat_number", "Seat number&hellip;")}</option>{opts}</select>
+  <label for="sq">{say(lang, "roster.find", "Find")}</label>
   <input id="sq" type="search" autocomplete="off"
-    placeholder="Name, county or seat">
+    placeholder="{say(lang, "roster.find_ph", "Name, county or seat")}">
 </div>
 <div class="seatbar">
-  <p class="seathint">Scroll or pinch to zoom, drag to move about the floor.</p>
+  <p class="seathint">{say(lang, "roster.hint", "Scroll or pinch to zoom, drag to move about the floor.")}</p>
   <div class="seatzoom">
-    <button type="button" id="szout" aria-label="Show more of the floor">&minus;</button>
-    <button type="button" id="szin" aria-label="Show the seats larger">+</button>
-    <button type="button" id="szfit">Fit</button>
+    <button type="button" id="szout" aria-label="{say(lang, "roster.zoom_out", "Show more of the floor")}">&minus;</button>
+    <button type="button" id="szin" aria-label="{say(lang, "roster.zoom_in", "Show the seats larger")}">+</button>
+    <button type="button" id="szfit">{say(lang, "roster.fit", "Fit")}</button>
   </div>
 </div>
 <div class="seatstage">
-  <div class="seatwrap">{seating.svg(by_seat)}</div>
+  <div class="seatwrap">{seating.svg(by_seat, lang=lang)}</div>
   <p class="seatnote" id="seatnote" role="status" aria-live="polite"></p>
 </div>
 <div class="seatcols" id="seatlist">{by_seat_rows}</div>
-<h2>The Senate</h2>
-<p class="src">The Senate has no seating chart: its 24 members are elected
-from numbered districts and the chamber does not assign numbered seats the way
-the House does.</p>
+<h2>{say(lang, "roster.senate", "The Senate")}</h2>
+<p class="src">{say(lang, "roster.senate_about", "The Senate has no seating chart: its 24 members are elected\nfrom numbered districts and the chamber does not assign numbered seats the way\nthe House does.")}</p>
 <ol class="seatlist senate">{senate_rows}</ol>
 </div>
 </section>"""
@@ -4116,79 +4163,93 @@ the House does.</p>
     elect = members_elect(out)
     elect_attrs = (f" data-elect{until_attrs(elect['takes_office'], today)}"
                    if elect else "")
-    of_panes = [
-        ("my-town", "My Town", None, f"""<div class="yt ytcard" data-yt="seats" hidden></div>
+    # THE OLD ADDRESS GOES. /legislators is a 301 to /officials (decision
+    # 127, MOVED). A legislators.html left in the folder by an earlier build
+    # would be published beside the redirect, so it goes.
+    old_page = out / "legislators.html"
+    if old_page.exists():
+        old_page.unlink()
+        print("  legislators.html: removed; /legislators redirects to /officials")
+    def officials_html(lang):
+        """The Officials page in `lang`."""
+        of_panes = [
+            ("my-town", say(lang, "of.tab.town", "My Town"), None, f"""<div class="yt ytcard" data-yt="seats" hidden></div>
 <section class="ofpart" aria-labelledby="of-find">
-<h3 id="of-find">Find Your Town</h3>
-<p class="src fill">Type a town to see who represents it, or a name, county,
-party or committee to find a member.</p>
+<h3 id="of-find">{say(lang, "of.find", "Find Your Town")}</h3>
+<p class="src fill">{say(lang, "of.find_how", "Type a town to see who represents it, or a name, county,\nparty or committee to find a member.")}</p>
 <div class="lfind">
-  <label for="lq" class="sr">Your town, or a legislator&rsquo;s name</label>
+  <label for="lq" class="sr">{say(lang, "of.find_label", "Your town, or a legislator&rsquo;s name")}</label>
   <input id="lq" type="search" autocomplete="off"
-    placeholder="Your town or a legislator" disabled>
-  <p class="count" id="lcount">Loading&hellip;</p>
+    placeholder="{say(lang, "of.find_ph", "Your town or a legislator")}" disabled>
+  <p class="count" id="lcount">{say(lang, "of.loading", "Loading&hellip;")}</p>
   <p class="sr" id="lsay" role="status"></p>
   <div class="lmatch" id="lmatch"></div>
 </div>
 </section>
 <section class="ofpart ofmap" aria-labelledby="of-map">
-<h3 id="of-map">The Map</h3>
-<p class="src fill">Choose a district to see who represents it. Zoom in for
-a city&rsquo;s wards.</p>
+<h3 id="of-map">{say(lang, "of.map", "The Map")}</h3>
+<p class="src fill">{say(lang, "of.map_how", "Choose a district to see who represents it. Zoom in for\na city&rsquo;s wards.")}</p>
 <div class="ofmapbox" id="ofmap"></div>
-<noscript><p class="note">The map needs JavaScript. Every town&rsquo;s districts
-are on its own page, listed in <a href="/directory/towns.html">every town and
-ward</a>.</p></noscript>
+<noscript><p class="note">{say(lang, "of.map_noscript", "The map needs JavaScript. Every town&rsquo;s districts\nare on its own page, listed in <a href=\"/directory/towns.html\">every town and\nward</a>.")}</p></noscript>
 </section>"""),
-        ("legislators", "Legislators", len(legs),
-         OT.presiding(officers, legs, today) + roster_section(legs)
-         + (('<div class="comp-wrap"><h2>Who holds the seats</h2>' + static_bar("S")
-             + static_bar("H") + vacancies + "</div>") if C else "")),
-        ("federal", "Federal Delegation", OT.count(off, "federal"), OT.federal(off)),
-        ("executive", "Executive Branch", OT.count(off, "executive"),
-         OT.executive(off, member_pages.__contains__)),
-        ("judicial", "Judicial Branch", OT.count(off, "judicial"), OT.judicial(off)),
-        # #counties, not #county: the roster's By county button is tab-county.
-        ("counties", "County Officials", OT.count(off, "county"), OT.county(off, legs)),
-        # "Members-Elect (N)", N the winners the file names: a race not
-        # final counts none, and a tab of none says no number, as any tab.
-        ("members-elect", "Members-Elect", OT.elect_count(elect),
-         OT.members_elect(elect, today)),
-    ]
-    of_panes = [p for p in of_panes if p[3]]
-    of_tabs = "".join(
-        f'<button type="button" role="tab" id="tab-{pid}" data-pane="{pid}" '
-        f'aria-controls="{pid}" aria-selected="{"true" if i == 0 else "false"}" '
-        f'tabindex="{0 if i == 0 else -1}"{elect_attrs if pid == "members-elect" else ""}>{name}'
-        + (f' <span class="ofn">({n:,})</span>' if n else "") + "</button>"
-        for i, (pid, name, n, _h) in enumerate(of_panes))
-    of_body = "".join(
-        f'<div class="twnpane" id="{pid}" role="tabpanel" aria-labelledby="tab-{pid}"'
-        f'{elect_attrs if pid == "members-elect" else ""}>'
-        f'<h2 class="twnph">{name}</h2>{inner}</div>'
-        for pid, name, _n, inner in of_panes)
-    leg_body = f"""<h1>Officials</h1>
-<p class="lead">Everyone who represents your town, from your select board to
-Congress; the {len(legs)} sitting members of the New Hampshire House and
-Senate; and the state&rsquo;s other officials.</p>
-<div class="twntabs oftabs" role="tablist" aria-label="Officials" hidden>{of_tabs}</div>
+            ("legislators", say(lang, "of.tab.legislators", "Legislators"), len(legs),
+             OT.presiding(officers, legs, today, lang) + roster_section(legs, lang)
+             + (('<div class="comp-wrap"><h2>' + say(lang, "of.who_holds", "Who holds the seats")
+                 + "</h2>" + static_bar("S", lang) + static_bar("H", lang) + vacancies_box(lang)
+                 + "</div>") if C else "")),
+            ("federal", say(lang, "of.tab.federal", "Federal Delegation"),
+             OT.count(off, "federal"), OT.federal(off, lang)),
+            ("executive", say(lang, "of.tab.executive", "Executive Branch"),
+             OT.count(off, "executive"), OT.executive(off, member_pages.__contains__, lang)),
+            ("judicial", say(lang, "of.tab.judicial", "Judicial Branch"),
+             OT.count(off, "judicial"), OT.judicial(off, lang)),
+            # #counties, not #county: the roster's By county button is tab-county.
+            ("counties", say(lang, "of.tab.counties", "County Officials"),
+             OT.count(off, "county"), OT.county(off, legs, None, lang)),
+            # "Members-Elect (N)", N the winners the file names: a race not
+            # final counts none, and a tab of none says no number, as any tab.
+            ("members-elect", say(lang, "of.tab.elect", "Members-Elect"), OT.elect_count(elect),
+             OT.members_elect(elect, today, lang)),
+        ]
+        of_panes = [p for p in of_panes if p[3]]
+        of_tabs = "".join(
+            f'<button type="button" role="tab" id="tab-{pid}" data-pane="{pid}" '
+            f'aria-controls="{pid}" aria-selected="{"true" if i == 0 else "false"}" '
+            f'tabindex="{0 if i == 0 else -1}"{elect_attrs if pid == "members-elect" else ""}>{name}'
+            + (f' <span class="ofn">({n:,})</span>' if n else "") + "</button>"
+            for i, (pid, name, n, _h) in enumerate(of_panes))
+        of_body = "".join(
+            f'<div class="twnpane" id="{pid}" role="tabpanel" aria-labelledby="tab-{pid}"'
+            f'{elect_attrs if pid == "members-elect" else ""}>'
+            f'<h2 class="twnph">{name}</h2>{inner}</div>'
+            for pid, name, _n, inner in of_panes)
+        leg_body = f"""<h1>{say(lang, "of.title", "Officials")}</h1>
+<p class="lead">{say(lang, "of.lead", "Everyone who represents your town, from your select board to\nCongress; the {n} sitting members of the New Hampshire House and\nSenate; and the state&rsquo;s other officials.", n=len(legs))}</p>
+<div class="twntabs oftabs" role="tablist" aria-label="{say(lang, "of.title", "Officials")}" hidden>{of_tabs}</div>
 {of_body}
 {OFFICIALS_HASH_JS}{TOWN_TABS_JS}{OFFICIALS_MAP_JS}"""
-    # THE PAGE IS OFFICIALS NOW, at /officials (decision 127); /legislators
-    # is a 301 to it (MOVED). A legislators.html left in the folder by an
-    # earlier build would be published beside the redirect, so it goes.
-    old_page = out / "legislators.html"
-    if old_page.exists():
-        old_page.unlink()
-        print("  legislators.html: removed; /legislators redirects to /officials")
-    (out / "officials.html").write_text(
-        shell("Officials | Granite Record", "officials.html", leg_body,
-              desc="Who represents your town, from the State House to Congress; "
-                   "every member of the New Hampshire House and Senate, with their "
-                   "district, their party, the bills they sponsored and every "
-                   "recorded vote they cast; and the state's and counties' elected "
-                   "officials.",
-              wide=True, script=LEGFIND_JS + SEATING_JS), encoding="utf-8")
+        return shell(say(lang, "of.page_title", "Officials | Granite Record"), "officials.html",
+                     i18n.lang_links(leg_body, lang),
+                     desc=say(lang, "of.desc", "Who represents your town, from the State House to "
+                              "Congress; every member of the New Hampshire House and Senate, with "
+                              "their district, their party, the bills they sponsored and every "
+                              "recorded vote they cast; and the state's and counties' elected "
+                              "officials."),
+                     wide=True, script=LEGFIND_JS + SEATING_JS, lang=lang)
+
+    # THE PAGE IN EACH LANGUAGE IT HAS (i18n.PAGES; the person, 25 October
+    # 2026: "Start on the Officials page and My Town in Spanish"), from the
+    # same files: the English at /officials, the Spanish at /es/officials.
+    # A name, a party letter, a phone number is the record's in both; what the
+    # site says is in the page's language, and a link to a page the language
+    # has goes to that page (i18n.lang_links).
+    for lang in i18n.LANGS:
+        if not i18n.has(lang, "officials.html"):
+            continue
+        dest = out / ("officials.html" if lang == i18n.DEFAULT
+                      else i18n.href(lang, "officials.html").lstrip("/"))
+        dest.parent.mkdir(parents=True, exist_ok=True)
+        dest.write_text(officials_html(lang), encoding="utf-8")
 
     # THE KEY DATES, worked out once for both languages and both of the
     # boxes that show them: Coming up, and the status box's next deadline.

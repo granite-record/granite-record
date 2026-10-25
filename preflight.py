@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.697
+# GRANITE_VERSION: 2026-09-04.698
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -63920,6 +63920,102 @@ def _spanish_glossary(i18n, BC, chrome):
     assert not bad, "; ".join(bad)
     return "ok", (f"{len(entries)} terms in Spanish, on /es/learn/glossary and in the pop-ups; "
                   "the English page names its twin")
+
+
+@check("build", "the Officials page is built in Spanish at /es/officials: its own words, its "
+                "tabs', the person's officials file's and its scripts', every one current, "
+                "and its links to itself stay in Spanish",
+       needs=("i18n", "build_pages", "officials_tabs", "seating"))
+def _spanish_officials(i18n, BP, OT, seating):
+    """The person, 25 October 2026: "Start on the Officials page and My Town
+    in Spanish". build_pages draws the page once for each language that has
+    it (officials_html), its tabs in officials_tabs with a `lang`, the House
+    chart in seating.svg with one, and every word the site says through
+    say() or, in its scripts, tr(); the words of corrections/officials.json
+    the tabs say (what an office is, a title, a department's name) are
+    catalog entries keyed by their own first words (officials_tabs.
+    data_words), never written into the person's file.
+
+    Read off the fixture's built pages: the Spanish page is lang=es naming
+    /officials, which names it; asks not to be indexed while Spanish is
+    unlisted; has its Spanish title and tabs; falls back to English nowhere
+    (no <span lang="en"> the tabs mark a miss with); and its own links to
+    the page stay on /es/officials. Then every key the page, its tabs and
+    its finder and seat scripts ask for has current Spanish, so a word the
+    fixture's data does not reach is held too; the vacancy sentence asked
+    for in Spanish is VACANCY_NOTE's own English; the Members-Elect tab and a
+    county's convention line, which the fixture's data does not draw, are
+    drawn in Spanish here with nothing English left; and a Spanish page tells
+    find.js where the Spanish Officials page is (window.GR_HREFS), so the
+    Your Town card's County Officials link does not leave the language."""
+    import html as _h
+    assert i18n.has("es", "officials.html"), "i18n.PAGES does not name officials.html for Spanish"
+    shared, _base, _ran, _days = _fixture_site_shared()
+    en = (shared / "site" / "officials.html").read_text(encoding="utf-8")
+    es_path = shared / "site" / "es" / "officials.html"
+    assert es_path.is_file(), "the fixture's build wrote no es/officials.html"
+    es = es_path.read_text(encoding="utf-8")
+    strings = i18n.catalog("es")["strings"]
+    bad = []
+    if not es.startswith('<!DOCTYPE html><html lang="es" data-alt-en="/officials"'):
+        bad.append("the Spanish page is not lang=es naming /officials")
+    if 'data-alt-es="/es/officials"' not in en:
+        bad.append("the English page does not name /es/officials")
+    if not i18n.offered("es") and '<meta name="robots" content="noindex">' not in es:
+        bad.append("the Spanish page asks to be indexed while Spanish is unlisted")
+    main = es[es.index("<main"):es.index("</main>")]
+    if f"<h1>{strings['of.title']['es']}</h1>" not in main:
+        bad.append("its <h1> is not the catalog's of.title")
+    for key in ("of.tab.town", "of.tab.legislators", "of.tab.executive", "of.tab.judicial",
+                "of.tab.counties", "of.tab.federal"):
+        if not re.search(r'role="tab"[^>]*>' + re.escape(strings[key]["es"]), main):
+            bad.append(f"no tab labelled {strings[key]['es']!r} ({key})")
+    if '<span lang="en">' in main:
+        bad.append("a tab says something in English: " + main[main.index('<span lang="en">'):][:80])
+    own = re.findall(r'href="([^"]*officials[^"]*)"', main)
+    if not own or any(not h.startswith("/es/officials") for h in own):
+        bad.append(f"its links to the Officials page leave Spanish: {sorted(set(own))[:4]}")
+    # Every word the page asks for, current -- the fixture's data reaches
+    # only some of them.
+    words, problems = i18n.code_words()
+    assert not problems, problems[:3]
+    prefixes = ("of.", "off.", "roster.", "comp.", "seat.", "lf.", "sc.", "party.")
+    asked = [k for k in words if k.startswith(prefixes)]
+    stale = [k for k in asked if i18n.lookup("es", k, words[k]["en"]) is None]
+    if stale:
+        bad.append(f"{len(stale)} of the page's words have no current Spanish: {stale[:5]}")
+    for key, en_, _w in OT.data_words():
+        if i18n.lookup("es", key, en_) is None:
+            bad.append(f"the officials file's {en_[:40]!r} has no current Spanish ({key})")
+    if words.get("comp.vacancy_note", {}).get("en") != BP.VACANCY_NOTE:
+        bad.append("the vacancy sentence asked for in Spanish is not VACANCY_NOTE's English")
+    for k, en_ in i18n.tr_calls(BP.LEGFIND_JS + BP.SEATING_JS):
+        if i18n.lookup("es", k, en_) is None:
+            bad.append(f"the finder or the seat chart says {en_[:40]!r} in English ({k})")
+    # What the fixture does not draw: Members-Elect, and a convention line.
+    elect = {"election": "2026-11-03", "takes_office": "2026-12-02",
+             "sources": ["https://www.sos.nh.gov/x"],
+             "races": {"S|9": {"seats": 1, "elected": [{"n": "A. Winner", "p": "D"}]},
+                       "H|Merrimack|4": {"seats": 2, "elected": [{"n": "B. Winner", "p": "R"}],
+                                         "not_final": 1}}}
+    me = OT.members_elect(elect, "2026-11-20", "es")
+    off = {"county": {"counties": {"Merrimack": {"name": "Merrimack County", "commissioners": {
+        "1": {"name": "C. Persona", "party": "R"}}}}}}
+    co = OT.county(off, [{"chamber": "H", "county": "Merrimack"}] * 3, "2026-10-20", "es")
+    drawn = _h.unescape(re.sub(r"<[^>]+>", " ", me + co))
+    for word in ("District", "seats", "County", "Elected", "take office", "Legislators tab",
+                 "Commissioner", "convention is", "State Senate", "State House"):
+        if re.search(r"\b" + re.escape(word) + r"\b", drawn):
+            bad.append(f"the Spanish Members-Elect or County tab says {word!r}")
+    svg = seating.svg({}, lang="es")
+    if "Division " in svg or "División 1" not in svg:
+        bad.append("the House chart's divisions are not in Spanish")
+    if '"officials.html":"/es/officials"' not in i18n.page_words("es"):
+        bad.append("a Spanish page does not tell its scripts where /es/officials is")
+    assert not bad, "; ".join(bad[:6])
+    return "ok", (f"/es/officials built from the same files as /officials; {len(asked)} words of "
+                  f"the page and its scripts and {len(OT.data_words())} of the officials file, "
+                  "every one current; Members-Elect and the county lines drawn in Spanish")
 
 
 @check("build", "the Learn pages i18n.PAGES names are built in Spanish at /es/learn/, piece by "

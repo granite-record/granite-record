@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-18.14
+# GRANITE_VERSION: 2026-09-18.15
 """
 Where every seat on the New Hampshire House floor goes, as a diagram.
 
@@ -640,7 +640,7 @@ def check():
     return 0
 
 
-def svg(by_seat=None, title="New Hampshire House seating"):
+def svg(by_seat=None, title=None, lang="en"):
     """The chart. by_seat maps a seat number to a dict with name/party/slug.
 
     Every seat is drawn whether or not somebody holds it, because an empty
@@ -657,12 +657,17 @@ def svg(by_seat=None, title="New Hampshire House seating"):
     of them the stop and moves among them with the arrow keys. With no script
     the chart takes no stop at all, and the list under it has every member.
     """
+    # IN ANOTHER LANGUAGE (the Officials page in Spanish, 25 October 2026):
+    # every word the chart says is the page's language's; English as it was.
+    import i18n as I
+    if title is None:
+        title = I.say(lang, "seat.title", "New Hampshire House seating")
     by_seat = by_seat or {}
     pos = layout()
     paths = label_paths()
     w, h = extent()
     out = [f'<svg viewBox="0 0 {w:.0f} {h:.0f}" class="seatmap" role="group" '
-           f'aria-label="{title}: 400 seats in five divisions">',
+           f'aria-label="{I.say(lang, "seat.label", "{title}: 400 seats in five divisions", title=title)}">',
            f"<title>{title}</title>"]
 
     # The captions ride an arc just outside each block, so they curve with it
@@ -674,8 +679,9 @@ def svg(by_seat=None, title="New Hampshire House seating"):
     out.append("</defs>")
     for d in LEFT_TO_RIGHT:
         out.append(f'<text class="divlabel"><textPath href="#divarc{d}" '
-                   f'startOffset="50%" text-anchor="middle">Division {d}'
-                   f"</textPath></text>")
+                   f'startOffset="50%" text-anchor="middle">'
+                   + I.say(lang, "seat.division", "Division {d}", d=d)
+                   + "</textPath></text>")
 
     for seat in all_seats():
         x, y = pos[seat]
@@ -687,8 +693,9 @@ def svg(by_seat=None, title="New Hampshire House seating"):
         if m:
             attrs += (f' data-slug="{m.get("slug", "")}"'
                       f' data-name="{m.get("name", "")}" tabindex="-1" role="button"')
-        label = (f'{m.get("name")} — seat {plate(seat)}' if m
-                 else f'Vacant — seat {plate(seat)}')
+        label = (I.say(lang, "seat.who", "{name} — seat {plate}", name=m.get("name"),
+                       plate=plate(seat)) if m
+                 else I.say(lang, "seat.vacant", "Vacant — seat {plate}", plate=plate(seat)))
         out.append(
             f'<circle class="{cls} p-{party}" cx="{x:.1f}" cy="{y:.1f}" '
             f'r="{SEAT_R}" {attrs}><title>{label}</title></circle>')
@@ -707,14 +714,14 @@ def svg(by_seat=None, title="New Hampshire House seating"):
         at = (f' data-seat="{SPEAKER_SEAT}" data-div="6" data-n="2"'
               f' data-slug="{sp.get("slug", "")}" data-name="{sp.get("name", "")}"'
               f' tabindex="-1" role="button"')
-    inner = (f'{sp["name"]} — Speaker, on the rostrum' if sp
-             else "The Speaker’s chair")
+    inner = (I.say(lang, "seat.speaker_who", "{name} — Speaker, on the rostrum", name=sp["name"])
+             if sp else I.say(lang, "seat.speaker_chair", "The Speaker’s chair"))
     out.append(
         f'<g class="rostrumgrp"{at}>'
         f'<circle class="seat rostrum p-{(sp or {}).get("party_code", "")}'
         f'{"" if sp else " vacant"}" cx="{sx:.1f}" cy="{sy:.1f}" r="{SEAT_R}"></circle>'
         f'<text class="rostrumtext" x="{sx:.0f}" y="{sy - SPEAKER_UP:.0f}" '
-        f'text-anchor="middle">Speaker</text>'
+        f'text-anchor="middle">{I.say(lang, "seat.speaker", "Speaker")}</text>'
         f'<title>{inner}</title></g>')
     out.append("</svg>")
     return "".join(out)

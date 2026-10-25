@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-10-10.6
+# GRANITE_VERSION: 2026-10-10.7
 """
 The Officials page's tabs that are not the legislators' (Polish 3, the
 person's feedback of 9 October 2026, item 4, and the decisions of that day):
@@ -59,12 +59,96 @@ import html as _html
 import re
 
 import build_date
+import i18n as I
 
 from components import date_words, elect_race, pchip, until_attrs
 from build_town_pages import tel, maillink, weblink
-from build_members_elect import KEY_RE, race_order
+from build_members_elect import KEY_RE, race_order, read_officials
 
 E = lambda s: _html.escape(str(s or ""), quote=True)  # noqa: E731
+
+
+# THE TABS IN ANOTHER LANGUAGE (the person, 25 October 2026: "Start on the
+# Officials page and My Town in Spanish"). Every function takes `lang`, last
+# and "en" unless given, and English is drawn exactly as it was. The page's
+# own words are I.say() calls. The file's own words -- what an office is
+# ("about"), a title, an office, a department's or a court's or a county's
+# name -- are the person's, in corrections/officials.json, which nothing here
+# writes; their translations are catalog entries keyed off.<group>.<their
+# first words> and keeping the English they were made from (data_words), so a
+# sentence the person edits is said in English, marked so, until its
+# translation catches up. A person's name is never translated.
+def data_key(group, en):
+    """The catalog key of one of the file's own words or sentences."""
+    return f"off.{group}.{I.slug_words(en, n=8, cap=60)}"
+
+
+def said(lang, group, en):
+    """One of the file's own words or sentences, in `lang`, as markup: the
+    English escaped as it always was; its translation; or, where it has none
+    current, the English marked as English."""
+    en = str(en or "")
+    if lang == I.DEFAULT or not en:
+        return E(en)
+    got = I.say_piece(lang, data_key(group, en), en)
+    return E(got) if got is not None else f'<span lang="en">{E(en)}</span>'
+
+
+def said_text(lang, group, en):
+    """The same as plain text, for a heading or a label that is escaped
+    where it is put: the English where there is no translation (the miss is
+    kept for preflight all the same)."""
+    en = str(en or "")
+    if lang == I.DEFAULT or not en:
+        return en
+    got = I.say_piece(lang, data_key(group, en), en)
+    return en if got is None else got
+
+
+def data_words(off=None):
+    """[(key, English, where)] of every word and sentence of the file's own
+    that a tab says, for i18n.code_words: the list a translation answers."""
+    if off is None:
+        off = read_officials()
+    out = []
+
+    def add(group, en, where):
+        if isinstance(en, str) and en.strip():
+            out.append((data_key(group, en), en, f"the officials file, {where}"))
+    for k in ("governor", "council", "us_senate", "us_house", "secretary_of_state", "treasurer",
+              "attorney_general", "department_heads", "county"):
+        for p in (off.get(k) or {}).get("about") or []:
+            add("about", p, f"{k}.about")
+    j = off.get("judicial") or {}
+    for p in j.get("about") or []:
+        add("about", p, "judicial.about")
+    sc, su, cc = (j.get("supreme_court") or {}, j.get("superior_court") or {},
+                  j.get("circuit_court") or {})
+    for p in sc.get("about") or []:
+        add("about", p, "judicial.supreme_court.about")
+    add("about", (sc.get("chief") or {}).get("text"), "judicial.supreme_court.chief")
+    add("about", cc.get("about"), "judicial.circuit_court.about")
+    for c in (sc, su, cc):
+        add("court", c.get("name"), "judicial")
+    for r in [*(sc.get("justices") or []), *(su.get("justices") or [])]:
+        add("title", r.get("title"), "judicial justices")
+    for r in su.get("justices") or []:
+        t = (r.get("title") or "Justice").strip()
+        if t not in ("Justice", "Chief Justice"):
+            add("title", re.sub(r"Justice", "Justices", t, count=1), "judicial superior_court")
+    for r in (off.get("department_heads") or {}).get("departments") or []:
+        if (r.get("name") or "").strip():
+            add("dept", r.get("department"), "department_heads")
+            add("title", r.get("title"), "department_heads")
+    for _k, t in COUNTY_OFFICES:
+        add("office", t, "officials_tabs.COUNTY_OFFICES")
+    add("office", "Commissioner", "officials_tabs.county")
+    for name, c in ((off.get("county") or {}).get("counties") or {}).items():
+        add("county", (c or {}).get("name"), f"county.counties.{name}")
+        for r in [*((c or {}).get("commissioners") or {}).values(),
+                  *[(c or {}).get(k) or {} for k, _t in COUNTY_OFFICES]]:
+            add("office", (r or {}).get("office"), f"county.counties.{name}")
+    return out
 
 # A party a source states, as its letter; anything else is no party.
 ONE_PARTY = re.compile(r"^[RDIL]$")
@@ -100,9 +184,11 @@ def phone(num):
     return tel(num).replace(' class="offtel"', "", 1)
 
 
-def how(rec, dc_word="in Washington"):
+def how(rec, dc_word=None, lang="en"):
     """How to reach one official: the phone, the Washington phone, the
     email and their own site, each a line, as many as the record holds."""
+    if dc_word is None:
+        dc_word = I.say(lang, "off.in_washington", "in Washington")
     out = []
     if rec.get("phone"):
         out.append(f"<li>{phone(rec['phone'])}</li>")
@@ -116,7 +202,7 @@ def how(rec, dc_word="in Washington"):
     return f'<ul class="ofhow">{"".join(out)}</ul>' if out else ""
 
 
-def who(rec, seat=""):
+def who(rec, seat="", lang="en"):
     """One official: the chip, the seat under it, then how to reach them,
     and who takes the office next where the record names a successor."""
     name = (rec.get("name") or "").strip()
@@ -124,10 +210,10 @@ def who(rec, seat=""):
         return ""
     return (f'<li class="ofwho">{person(name, rec.get("party"))}'
             + (f'<span class="ofseat">{E(seat)}</span>' if seat else "")
-            + how(rec) + successor(rec) + "</li>")
+            + how(rec, lang=lang) + successor(rec, lang) + "</li>")
 
 
-def successor(rec):
+def successor(rec, lang="en"):
     """ONE LINE UNDER A HOLDER WHOSE SUCCESSOR IS NOT IN OFFICE YET (the
     person's approval of 23 October 2026): "B. Successor (D) takes office
     January 7, 2027." -- in words true of an office won at the polls and of
@@ -148,19 +234,21 @@ def successor(rec):
     party = str(e.get("party") or "").strip().upper() if rec.get("party") else ""
     said = f"{name} ({party})" if ONE_PARTY.match(party) or BOTH.match(party) else name
     takes = e.get("takes_office")
-    return (f'<span class="ofseat"{until_attrs(takes, None)}>{E(said)} takes office '
-            f'{E(date_words(takes, "full"))}.</span>')
+    return (f'<span class="ofseat"{until_attrs(takes, None)}>'
+            + I.say(lang, "off.takes_office", "{who} takes office {day}.", who=E(said),
+                    day=E(date_words(takes, "full", lang)))
+            + "</span>")
 
 
-def section(sid, title, people, why="", source=""):
+def section(sid, title, people, why="", source="", lang="en"):
     """One office: its heading in the margin, the people, what the office
     is, and where the names were read."""
     if not people:
         return ""
-    return framed(sid, title, f'<ul class="ofwhos">{"".join(people)}</ul>', why, source)
+    return framed(sid, title, f'<ul class="ofwhos">{"".join(people)}</ul>', why, source, lang)
 
 
-def framed(sid, title, inner, why="", source=""):
+def framed(sid, title, inner, why="", source="", lang="en"):
     """A section's frame around markup of its own: the heading in the
     margin, then the markup, what it is and where it was read. A compact
     table or list of names goes in the same frame as an office's chips, so
@@ -171,7 +259,8 @@ def framed(sid, title, inner, why="", source=""):
             f'<h3 class="ofsech" id="of-{sid}">{E(title)}</h3><div class="ofsecb">'
             + inner
             + (f'<p class="ofwhy">{why}</p>' if why else "")
-            + (f'<p class="ofsrc">Source: {source}</p>' if source else "")
+            + (f'<p class="ofsrc">{I.say(lang, "off.source", "Source: {source}", source=source)}</p>'
+               if source else "")
             + "</div></section>")
 
 
@@ -187,28 +276,42 @@ def source_link(url):
 FIND_TOWN = '<a href="officials.html#my-town">Find your town</a>.'
 
 
-def federal(off):
+def find_town(lang="en"):
+    """FIND_TOWN in `lang`."""
+    return ('<a href="officials.html#my-town">' + I.say(lang, "off.find_town", "Find your town")
+            + "</a>.")
+
+
+def abouts(lang, rec):
+    """What an office is, the record's "about" sentences, in `lang`."""
+    return " ".join(said(lang, "about", p) for p in rec.get("about") or [])
+
+
+def federal(off, lang="en"):
     """US Senate, then US House, each member with the party and how to
     reach them, and the page the names were read from."""
     us = off.get("us_senate") or {}
     uh = off.get("us_house") or {}
-    sen = [who(s) for s in us.get("seats") or []]
-    house = [who(r, f"District {d}") for d, r in sorted((uh.get("districts") or {}).items(),
-                                                         key=lambda kv: int(kv[0]))]
+    sen = [who(s, lang=lang) for s in us.get("seats") or []]
+    house = [who(r, I.say(lang, "off.district", "District {d}", d=d), lang)
+             for d, r in sorted((uh.get("districts") or {}).items(), key=lambda kv: int(kv[0]))]
     parts = [
-        section("us-senate", "US Senate", [p for p in sen if p],
-                E(" ".join(us.get("about") or [])), source_link(us.get("source"))),
-        section("us-house", "US House", [p for p in house if p],
-                "New Hampshire elects two members of the US House, one from each "
-                "congressional district. Which is yours? " + FIND_TOWN,
-                source_link(uh.get("source")) or source_link(uh.get("official_url"))),
+        section("us-senate", I.say(lang, "off.us_senate", "US Senate"), [p for p in sen if p],
+                abouts(lang, us), source_link(us.get("source")), lang),
+        section("us-house", I.say(lang, "off.us_house", "US House"), [p for p in house if p],
+                I.say(lang, "off.us_house_why", "New Hampshire elects two members of the US "
+                      "House, one from each congressional district. Which is yours?")
+                + " " + find_town(lang),
+                source_link(uh.get("source")) or source_link(uh.get("official_url")), lang),
     ]
     body = "".join(parts)
     if not body:
         return ""
     checked = off.get("_checked")
-    return body + (f'<p class="ofsrcs">Kept by hand, each name with the page it was read '
-                   f"from; checked {E(_long(checked))}.</p>" if checked else "")
+    return body + ('<p class="ofsrcs">'
+                   + I.say(lang, "off.fed_checked", "Kept by hand, each name with the page it was "
+                           "read from; checked {day}.", day=E(_long(checked, lang)))
+                   + "</p>" if checked else "")
 
 
 # TWO OF THE BRANCH'S OFFICERS ARE CHOSEN BY THE LEGISLATURE (17 October
@@ -224,31 +327,36 @@ CHOSEN_BY_LEGISLATURE = ("The Secretary of State and the State Treasurer are ele
                          "(New Hampshire Constitution, Part Second, Article 67).")
 
 
-def executive(off, has_page=None):
+def executive(off, has_page=None, lang="en"):
     """The Executive Branch tab (named Statewide Officials until 17 October
     2026): the line on the two officers the legislature chooses, the
     Governor, the Executive Council, the Secretary of State, the State
     Treasurer and the Attorney General, and then the heads of the executive
     departments. `has_page` says whether the site has a page for a member's
     address, for a department head the site already draws (see head())."""
-    body = statewide(off)
-    depts = departments(off, has_page)
+    body = statewide(off, lang)
+    depts = departments(off, has_page, lang)
     if not body and not depts:
         return ""
-    line = "Kept by hand, each name with the page it was read from"
+    line = I.say(lang, "off.kept", "Kept by hand, each name with the page it was read from")
     if off.get("_checked") and body:
-        line += f"; the Governor and the Council checked {E(_long(off['_checked']))}"
+        line += I.say(lang, "off.exec_checked", "; the Governor and the Council checked {day}",
+                      day=E(_long(off["_checked"], lang)))
     read = {(off.get(k) or {}).get("read") for k in ("secretary_of_state", "treasurer",
                                                      "attorney_general")
             if (off.get(k) or {}).get("name")} - {None}
     if len(read) == 1:
-        line += (". The Secretary of State, the State Treasurer and the Attorney General "
-                 f"were read on {E(_long(next(iter(read))))}")
+        line += I.say(lang, "off.three_read", ". The Secretary of State, the State Treasurer and "
+                      "the Attorney General were read on {day}",
+                      day=E(_long(next(iter(read)), lang)))
     dh = off.get("department_heads") or {}
     if depts and dh.get("read"):
-        line += (". The department heads were read from each department&rsquo;s own site "
-                 f"on {E(_long(dh['read']))}")
-    return (f'<div class="ofintro"><p class="ofwhy">{E(CHOSEN_BY_LEGISLATURE)}</p></div>'
+        line += I.say(lang, "off.depts_read", ". The department heads were read from each "
+                      "department&rsquo;s own site on {day}", day=E(_long(dh["read"], lang)))
+    chosen = I.say(lang, "off.chosen", "The Secretary of State and the State Treasurer are "
+                   "elected by the legislature, the House and Senate together, by joint ballot "
+                   "(New Hampshire Constitution, Part Second, Article 67).")
+    return (f'<div class="ofintro"><p class="ofwhy">{E(chosen)}</p></div>'
             + body + depts + f'<p class="ofsrcs">{line}.</p>')
 
 
@@ -266,7 +374,7 @@ def head(rec, has_page=None):
     return f'<span class="ofname">{E(name)}</span>'
 
 
-def departments(off, has_page=None):
+def departments(off, has_page=None, lang="en"):
     """THE DEPARTMENT HEADS, COMPACTLY (17 October 2026): a table of each
     executive department, linked to its own site, beside its head and the
     head's title, from officials.json's department_heads. A record with no
@@ -277,36 +385,45 @@ def departments(off, has_page=None):
     for r in dh.get("departments") or []:
         if not (r.get("name") or "").strip():
             continue
-        dept = weblink(r.get("official_url"), r.get("department")) or E(r.get("department"))
+        dname = said_text(lang, "dept", r.get("department"))
+        dept = weblink(r.get("official_url"), dname) or E(dname)
         rows.append(f'<tr><td>{dept}</td><td>{head(r, has_page)}'
-                    f'<span class="ofk">{E(r.get("title"))}</span></td></tr>')
+                    f'<span class="ofk">{said(lang, "title", r.get("title"))}</span></td></tr>')
     if not rows:
         return ""
-    table = ('<table class="ofdepts"><thead><tr><th scope="col">Department</th>'
-             '<th scope="col">Head</th></tr></thead><tbody>' + "".join(rows) + "</tbody></table>")
-    listed = weblink(dh.get("official_url"), "the state’s list of agencies")
-    return framed("departments", "Department Heads", table,
-                  E(" ".join(dh.get("about") or [])),
-                  "each department&rsquo;s own site, linked from its name"
-                  + (f"; the departments are those on {listed}" if listed else ""))
+    table = ('<table class="ofdepts"><thead><tr><th scope="col">'
+             + I.say(lang, "off.th_dept", "Department") + '</th><th scope="col">'
+             + I.say(lang, "off.th_head", "Head") + "</th></tr></thead><tbody>"
+             + "".join(rows) + "</tbody></table>")
+    listed = weblink(dh.get("official_url"),
+                     I.say(lang, "off.agency_list", "the state’s list of agencies"))
+    return framed("departments", I.say(lang, "off.dept_heads", "Department Heads"), table,
+                  abouts(lang, dh),
+                  I.say(lang, "off.dept_src", "each department&rsquo;s own site, linked from its "
+                        "name")
+                  + (I.say(lang, "off.dept_listed", "; the departments are those on {listed}",
+                           listed=listed) if listed else ""), lang)
 
 
-def statewide(off):
+def statewide(off, lang="en"):
     """The Governor, the Executive Council, the Secretary of State, the
     State Treasurer and the Attorney General: the Executive Branch tab's
     offices, before its department heads."""
     g = off.get("governor") or {}
     c = off.get("council") or {}
-    parts = [section("governor", "Governor", [who(g)] if g.get("name") else [],
-                     E(" ".join(g.get("about") or [])))]
-    council = [who(r, f"District {d}") for d, r in sorted((c.get("districts") or {}).items(),
-                                                          key=lambda kv: int(kv[0]))]
-    parts.append(section("council", "Executive Council", [p for p in council if p],
-                         E(" ".join(c.get("about") or [])) + " Which district is yours? "
-                         + FIND_TOWN, source_link(c.get("source"))))
-    for key, title in (("secretary_of_state", "Secretary of State"),
-                       ("treasurer", "State Treasurer"),
-                       ("attorney_general", "Attorney General")):
+    parts = [section("governor", I.say(lang, "off.governor", "Governor"),
+                     [who(g, lang=lang)] if g.get("name") else [], abouts(lang, g), "", lang)]
+    council = [who(r, I.say(lang, "off.district", "District {d}", d=d), lang)
+               for d, r in sorted((c.get("districts") or {}).items(), key=lambda kv: int(kv[0]))]
+    parts.append(section("council", I.say(lang, "off.council", "Executive Council"),
+                         [p for p in council if p],
+                         abouts(lang, c) + " "
+                         + I.say(lang, "off.which_district", "Which district is yours?") + " "
+                         + find_town(lang), source_link(c.get("source")), lang))
+    titles = {"secretary_of_state": I.say(lang, "off.sos", "Secretary of State"),
+              "treasurer": I.say(lang, "off.treasurer", "State Treasurer"),
+              "attorney_general": I.say(lang, "off.ag", "Attorney General")}
+    for key, title in titles.items():
         r = off.get(key) or {}
         if not r.get("name"):
             continue
@@ -315,12 +432,12 @@ def statewide(off):
         # office's site, already under the name.
         src = r.get("source") if r.get("source") and r.get("source") != r.get("official_url") \
             else ""
-        parts.append(section(key.replace("_", "-"), title, [who(r)],
-                             E(" ".join(r.get("about") or [])), source_link(src)))
+        parts.append(section(key.replace("_", "-"), title, [who(r, lang=lang)],
+                             abouts(lang, r), source_link(src), lang))
     return "".join(parts)
 
 
-def judicial(off):
+def judicial(off, lang="en"):
     """THE JUDICIAL BRANCH TAB, THIN (17 October 2026): the Supreme Court's
     justices, each on the neutral chip with their title and their page on
     the Judicial Branch's site, as the Executive Branch draws its officers;
@@ -338,17 +455,22 @@ def judicial(off):
         name = (r.get("name") or "").strip()
         if not name:
             continue
-        bio = weblink(r.get("official_url"), "Biography")
-        people.append(f'<li class="ofwho">{person(name)}<span class="ofseat">{E(r.get("title"))}</span>'
+        bio = weblink(r.get("official_url"), I.say(lang, "off.bio", "Biography"))
+        people.append(f'<li class="ofwho">{person(name)}<span class="ofseat">'
+                      f'{said(lang, "title", r.get("title"))}</span>'
                       + (f'<ul class="ofhow"><li>{bio}</li></ul>' if bio else "") + "</li>")
     chief = sc.get("chief") or {}
-    why = " ".join([E(" ".join(sc.get("about") or [])), E(chief.get("text"))]).strip()
+    why = " ".join([abouts(lang, sc), said(lang, "about", chief.get("text"))]).strip()
     # A label's apostrophe as the character: weblink escapes its label.
-    told = weblink(chief.get("source"), "the Judicial Branch’s announcement") \
+    told = weblink(chief.get("source"), I.say(lang, "off.announcement",
+                                              "the Judicial Branch’s announcement")) \
         if chief.get("text") else ""
     src = source_link(sc.get("source"))
-    parts.append(section("supreme-court", sc.get("name") or "Supreme Court", people, why,
-                         src + (f", and {told}" if src and told else told)))
+    parts.append(section("supreme-court",
+                         said_text(lang, "court", sc.get("name"))
+                         or I.say(lang, "off.supreme", "Supreme Court"), people, why,
+                         (I.say(lang, "off.src_and", "{src}, and {told}", src=src, told=told)
+                          if src and told else src + told), lang))
     # The Superior Court: the justices, the chief marked, then each other
     # title the page lists (its senior justices on active status) under a
     # line of its own.
@@ -359,27 +481,38 @@ def judicial(off):
             continue
         title = (r.get("title") or "Justice").strip()
         key = "Justice" if title in ("Justice", "Chief Justice") else title
-        mark = f' <span class="ofk">{E(title)}</span>' if title == "Chief Justice" else ""
+        mark = f' <span class="ofk">{said(lang, "title", title)}</span>' \
+            if title == "Chief Justice" else ""
         groups.setdefault(key, []).append(f'<li><span class="ofname">{E(name)}</span>{mark}</li>')
     inner = ""
     for key, rows in groups.items():
         if key != "Justice":
-            inner += f'<p class="ofsub">{E(re.sub(r"Justice", "Justices", key, count=1))}</p>'
+            inner += (f'<p class="ofsub">'
+                      f'{said(lang, "title", re.sub(r"Justice", "Justices", key, count=1))}</p>')
         inner += f'<ul class="ofnames">{"".join(rows)}</ul>'
-    parts.append(framed("superior-court", su.get("name") or "Superior Court", inner, "",
-                        source_link(su.get("source"))))
-    judges = weblink(cc.get("judges_url"), "the court’s own page")
+    parts.append(framed("superior-court",
+                        said_text(lang, "court", su.get("name"))
+                        or I.say(lang, "off.superior", "Superior Court"), inner, "",
+                        source_link(su.get("source")), lang))
+    judges = weblink(cc.get("judges_url"), I.say(lang, "off.court_page", "the court’s own page"))
     if judges:
-        parts.append(framed("circuit-court", cc.get("name") or "Circuit Court",
-                            f'<p class="ofline">{E(cc.get("about"))} Its judges are listed on '
-                            f"{judges}.</p>"))
+        parts.append(framed("circuit-court",
+                            said_text(lang, "court", cc.get("name"))
+                            or I.say(lang, "off.circuit", "Circuit Court"),
+                            f'<p class="ofline">{said(lang, "about", cc.get("about"))} '
+                            + I.say(lang, "off.judges_on", "Its judges are listed on {judges}.",
+                                    judges=judges) + "</p>", "", "", lang))
     body = "".join(parts)
     if not body:
         return ""
-    about = "".join(f'<p class="ofwhy">{E(p)}</p>' for p in j.get("about") or [])
+    about = "".join(f'<p class="ofwhy">{said(lang, "about", p)}</p>' for p in j.get("about") or [])
     return ((f'<div class="ofintro">{about}</div>' if about else "") + body
-            + '<p class="ofsrcs">Kept by hand, each name with the Judicial Branch&rsquo;s page it '
-            + (f"was read from; read {E(_long(j['read']))}." if j.get("read") else "was read from.")
+            + '<p class="ofsrcs">'
+            + (I.say(lang, "off.judicial_read", "Kept by hand, each name with the Judicial "
+                     "Branch&rsquo;s page it was read from; read {day}.",
+                     day=E(_long(j["read"], lang))) if j.get("read") else
+               I.say(lang, "off.judicial_kept", "Kept by hand, each name with the Judicial "
+                     "Branch&rsquo;s page it was read from."))
             + "</p>")
 
 
@@ -392,15 +525,17 @@ def judicial(off):
 ROSTER_ELECTION = datetime.date(2026, 11, 3)
 
 
-def ballot_line(today):
+def ballot_line(today, lang="en"):
     """The sentence under the county roster about its election."""
-    on = date_words(ROSTER_ELECTION, "full")
+    on = date_words(ROSTER_ELECTION, "full", lang)
     if today <= ROSTER_ELECTION:
-        return f"Most of these seats are on the ballot on {on}."
-    return f"Most of these seats were on the ballot on {on}; this is the roster read before it."
+        return I.say(lang, "off.ballot_on", "Most of these seats are on the ballot on {day}.",
+                     day=on)
+    return I.say(lang, "off.ballot_was", "Most of these seats were on the ballot on {day}; "
+                 "this is the roster read before it.", day=on)
 
 
-def county(off, legs, today=None):
+def county(off, legs, today=None, lang="en"):
     """Each county's elected officers: its three commissioners, then its
     sheriff, county attorney, treasurer and two registers; and its county
     convention, the county's state representatives, counted from the roster."""
@@ -414,34 +549,46 @@ def county(off, legs, today=None):
             reps[m["county"]] = reps.get(m["county"], 0) + 1
     # The file writes a dash as two hyphens, as a plain-text file does; the
     # page sets it as the site's dash.
-    about = "".join(f'<p class="ofwhy">{E(p).replace(" -- ", "&thinsp;&mdash;&thinsp;")}</p>'
+    about = "".join(f'<p class="ofwhy">'
+                    f'{said(lang, "about", p).replace(" -- ", "&thinsp;&mdash;&thinsp;")}</p>'
                     for p in co.get("about") or [])
     parts = []
     for name in sorted(counties):
         c = counties[name] or {}
-        people = [who(r, f"Commissioner, District {d}" if d.isdigit() else
-                      r.get("office") or "Commissioner")
+        people = [who(r, I.say(lang, "off.commissioner_d", "Commissioner, District {d}", d=d)
+                      if d.isdigit() else said_text(lang, "office", r.get("office") or "Commissioner"),
+                      lang)
                   for d, r in sorted((c.get("commissioners") or {}).items(),
                                      key=lambda kv: (not kv[0].isdigit(), kv[0].zfill(3)))]
         for key, title in COUNTY_OFFICES:
             r = c.get(key)
             if r and r.get("name"):
                 # The neutral roles carry no party, whatever a file says.
-                people.append(who({**r, "party": ""}, r.get("office") or title))
+                people.append(who({**r, "party": ""},
+                                  said_text(lang, "office", r.get("office") or title), lang))
         people = [p for p in people if p]
         n = reps.get(name, 0)
-        conv = (f'Its county convention is the county&rsquo;s {n} sitting state '
-                f'representative{"" if n == 1 else "s"}, listed '
-                f'<a href="officials.html#legislators">by county in Legislators</a>.'
+        listed = ('<a href="officials.html#legislators">'
+                  + I.say(lang, "off.by_county_link", "by county in Legislators") + "</a>")
+        conv = ((I.say(lang, "off.conv_one", "Its county convention is the county&rsquo;s {n} "
+                       "sitting state representative, listed {listed}.", n=n, listed=listed)
+                 if n == 1 else
+                 I.say(lang, "off.conv", "Its county convention is the county&rsquo;s {n} sitting "
+                       "state representatives, listed {listed}.", n=n, listed=listed))
                 if n else "")
+        title = (said_text(lang, "county", c.get("name")) if c.get("name")
+                 else I.say(lang, "off.county_name", "{name} County", name=name))
         parts.append(section("county-" + re.sub(r"[^a-z]+", "-", name.lower()).strip("-"),
-                             c.get("name") or f"{name} County", people, conv))
+                             title, people, conv, "", lang))
     src = ""
     if co.get("as_of"):
-        src = (f'<p class="ofsrcs">Kept by hand, read from the Secretary of State&rsquo;s '
-               f'county roster for 2025&ndash;2026, dated {E(_long(co["as_of"]))}'
-               + (f"; read {E(_long(co['read']))}" if co.get("read") else "")
-               + ". " + ballot_line(build_date.today() if today is None else today) + "</p>")
+        src = ('<p class="ofsrcs">'
+               + I.say(lang, "off.roster_src", "Kept by hand, read from the Secretary of "
+                       "State&rsquo;s county roster for 2025&ndash;2026, dated {day}",
+                       day=E(_long(co["as_of"], lang)))
+               + (I.say(lang, "off.read_on", "; read {day}", day=E(_long(co["read"], lang)))
+                  if co.get("read") else "")
+               + ". " + ballot_line(build_date.today() if today is None else today, lang) + "</p>")
     return (f'<div class="ofintro">{about}</div>' if about else "") + "".join(parts) + src
 
 
@@ -480,13 +627,16 @@ ROLE = {"Speaker of the House": "Speaker", "Deputy Speaker of the House": "Deput
         "President of the Senate": "Senate President"}
 
 
-def presiding(officers, legs, today):
+def presiding(officers, legs, today, lang="en"):
     """The presiding officers serving on the build's day, each the member's
     own chip with the office as its role: the Speaker, the Deputy Speaker and
     the Senate President, from site/officers.json (read off the journals),
     never typed. A member it names who is not on today's roster is left out
     rather than drawn without a page."""
     by_id = {str(m.get("id")): m for m in legs}
+    roles = {"Speaker": I.say(lang, "off.role.speaker", "Speaker"),
+             "Deputy Speaker": I.say(lang, "off.role.deputy", "Deputy Speaker"),
+             "Senate President": I.say(lang, "off.role.president", "Senate President")}
     rows = []
     for o in officers or []:
         role = ROLE.get(o.get("office"))
@@ -494,19 +644,21 @@ def presiding(officers, legs, today):
             continue
         m = by_id.get(str(o.get("id")))
         if m and (o.get("b") or "") == (m.get("chamber") or ""):
-            rows.append((list(ROLE).index(o["office"]), pchip({**m, "role": role})))
+            rows.append((list(ROLE).index(o["office"]), pchip({**m, "role": roles[role]})))
     if not rows:
         return ""
     rows.sort()
     return ('<section class="ofpres" aria-labelledby="of-presiding">'
-            '<h3 id="of-presiding">Presiding Officers</h3>'
-            '<div class="ofchips">' + "".join(c for _i, c in rows) + "</div>"
-            '<p class="ofwhy">The Speaker presides over the House, and the Deputy Speaker '
-            "sometimes in the Speaker&rsquo;s place; the Senate President presides over "
-            "the Senate.</p></section>")
+            '<h3 id="of-presiding">' + I.say(lang, "off.presiding", "Presiding Officers")
+            + '</h3><div class="ofchips">' + "".join(c for _i, c in rows) + "</div>"
+            '<p class="ofwhy">'
+            + I.say(lang, "off.presiding_why", "The Speaker presides over the House, and the "
+                    "Deputy Speaker sometimes in the Speaker&rsquo;s place; the Senate President "
+                    "presides over the Senate.")
+            + "</p></section>")
 
 
-def members_elect(elect, today):
+def members_elect(elect, today, lang="en"):
     """THE MEMBERS-ELECT TAB (the person's decisions of 16 October 2026):
     who November's election sent to the General Court, for the weeks before
     they sit -- the approved sentence, then the Senate, then the House by
@@ -527,18 +679,24 @@ def members_elect(elect, today):
     election, takes = elect.get("election"), elect.get("takes_office")
     src = next((s for s in elect.get("sources") or []
                 if re.fullmatch(r"https?://\S+", str(s or ""))), "")
-    by = (f'<a href="{E(src)}" rel="noopener">the Secretary of State&rsquo;s count</a>' if src
-          else "the Secretary of State&rsquo;s count")
-    intro = (f'<div class="ofintro"><p class="ofwhy">Elected {E(date_words(election, "full"))}, '
-             f'by {by}. They take office on {E(date_words(takes, "full"))}; until then the '
-             '<a href="officials.html#legislators">Legislators tab</a> lists who holds each '
-             'seat.</p></div>')
+    count_words = I.say(lang, "off.sos_count", "the Secretary of State&rsquo;s count")
+    by = (f'<a href="{E(src)}" rel="noopener">{count_words}</a>' if src else count_words)
+    tab = ('<a href="officials.html#legislators">'
+           + I.say(lang, "off.leg_tab", "Legislators tab") + "</a>")
+    intro = ('<div class="ofintro"><p class="ofwhy">'
+             + I.say(lang, "off.elect_intro", "Elected {day}, by {by}. They take office on "
+                     "{takes}; until then the {tab} lists who holds each seat.",
+                     day=E(date_words(election, "full", lang)), by=by,
+                     takes=E(date_words(takes, "full", lang)), tab=tab)
+             + "</p></div>")
 
     def row(n, r):
         seats = r.get("seats") or 0
-        return (f'<li class="elrow"><span class="elseat">District {E(n)} <small>{seats} '
-                f'seat{"" if seats == 1 else "s"}</small></span>'
-                f'<div class="elwho">{elect_race(r)}</div></li>')
+        return ('<li class="elrow"><span class="elseat">'
+                + I.say(lang, "off.district", "District {d}", d=E(n)) + " <small>"
+                + (I.say(lang, "off.seat_one", "{n} seat", n=seats) if seats == 1 else
+                   I.say(lang, "off.seats", "{n} seats", n=seats))
+                + f'</small></span><div class="elwho">{elect_race(r, lang)}</div></li>')
     senate, house = [], {}
     for k in sorted(races, key=race_order):
         m = KEY_RE.match(k)
@@ -549,13 +707,16 @@ def members_elect(elect, today):
     parts = [intro]
     if senate:
         parts.append('<section class="ofsec" aria-labelledby="of-elect-senate">'
-                     '<h3 class="ofsech" id="of-elect-senate">State Senate</h3>'
+                     '<h3 class="ofsech" id="of-elect-senate">'
+                     + I.say(lang, "off.state_senate", "State Senate") + '</h3>'
                      f'<div class="ofsecb"><ul class="elrows">{"".join(senate)}</ul></div></section>')
     if house:
         parts.append('<section class="ofsec" aria-labelledby="of-elect-house">'
-                     '<h3 class="ofsech" id="of-elect-house">State House</h3><div class="ofsecb">'
-                     + "".join(f'<h4 class="elcounty">{E(c)} County</h4>'
-                               f'<ul class="elrows">{"".join(rows)}</ul>'
+                     '<h3 class="ofsech" id="of-elect-house">'
+                     + I.say(lang, "off.state_house", "State House") + '</h3><div class="ofsecb">'
+                     + "".join('<h4 class="elcounty">'
+                               + I.say(lang, "off.county_name", "{name} County", name=E(c))
+                               + f'</h4><ul class="elrows">{"".join(rows)}</ul>'
                                for c, rows in house.items())
                      + "</div></section>")
     return f'<div class="elpane" data-elect{until_attrs(takes, today)}>' + "".join(parts) + "</div>"
@@ -567,7 +728,7 @@ def elect_count(elect):
     return sum(len(r.get("elected") or []) for r in ((elect or {}).get("races") or {}).values())
 
 
-def _long(iso):
+def _long(iso, lang="en"):
     """"September 9, 2026", the site's long date."""
     import components
-    return components.date_words(str(iso or "")[:10], "full")
+    return components.date_words(str(iso or "")[:10], "full", lang)

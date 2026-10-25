@@ -154,7 +154,8 @@
     "reps.own": "The state House of Representatives, which this label calls the State House; not the building.",
     "yt.state_house": "The state House of Representatives, which this label calls the State House; not the building.",
     "yt.county_conv": "The members of the state House of Representatives, not the building.",
-    "yt.seat_house": "The state House of Representatives, the seat on the Your Town card; not the building."
+    "yt.seat_house": "The state House of Representatives, the seat on the Your Town card; not the building.",
+    "off.state_house": "The state House of Representatives, the Members-Elect tab's heading for its races; not the building."
    }
   },
   {
