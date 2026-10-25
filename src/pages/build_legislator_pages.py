@@ -44,6 +44,8 @@ import shell as S
 import structured as LD
 from build_members_elect import for_pages as members_elect
 from components import elect_line
+# A town page's slug and address, from the builder that writes them.
+from build_town_pages import slug as town_slug, town_path
 
 E = S.E
 
@@ -193,14 +195,33 @@ def elected_pages(elect):
     return out
 
 
-def static_record(m, rec, elected=""):
+def town_pages(site):
+    """{slug: address} of every town page build_town_pages writes: one for
+    each town and ward site/districts.json holds."""
+    f = site / "districts.json"
+    d = json.loads(f.read_text(encoding="utf-8")) if f.is_file() else {}
+    return {town_slug(t, w): town_path(t, w) for t, wards in d.items() for w in wards}
+
+
+def towns_linked(towns, pages):
+    """{town: address} for each of a member's towns that has a page (the
+    audit of 25 October 2026, S6). The roster writes a ward "Concord Ward
+    3", which is its page's slug in words; a place it spells otherwise than
+    the district maps ("Atk. & Gilmanton Academy Gt") has no page by that
+    name, and is left as words rather than linked to a page that is not
+    there."""
+    return {t: pages[town_slug(t, "0")] for t in towns if town_slug(t, "0") in pages}
+
+
+def static_record(m, rec, elected="", places=None):
     """THE MEMBER'S RECORD IN THE PAGE ITSELF, for a reader with no
     JavaScript (the SEO review of 12 October 2026; shell.page's static).
     It replaced a <noscript> line saying the page needs JavaScript. m is the
     roster's row, rec the member's own JSON (legislators/<id>.json), which
     the page app.js draws reads too. `elected` is the member-elect's line
     (components.elect_line) where the member is one, under the heading,
-    which is left as it is until they take office."""
+    which is left as it is until they take office. `places` is towns_linked's
+    {town: address}, each town in it a link to its page."""
     rec = rec or {}
     yrs = _served_years(m) if m.get("former") else ""
     titled = heading(m).startswith("Former ")
@@ -217,7 +238,9 @@ def static_record(m, rec, elected=""):
     facts = []
     towns = m.get("towns") or []
     if towns and not m.get("former"):
-        facts.append(f"<b>Represents:</b> {E(', '.join(towns))}")
+        places = places or {}
+        facts.append("<b>Represents:</b> " + ", ".join(
+            f'<a href="{E(places[t])}">{E(t)}</a>' if t in places else E(t) for t in towns))
     if m.get("committees") and not m.get("former"):
         facts.append(f"<b>Committees:</b> {E(', '.join(m['committees']))}")
     c = rec.get("counts") or {}
@@ -289,6 +312,7 @@ def main():
     elected = elected_pages(elect)
     today = build_date.today().isoformat()
     n_elected = 0
+    pages = town_pages(site)
 
     def own(m):
         """The member's own JSON, which app.js draws their page from."""
@@ -326,6 +350,11 @@ def main():
         line = elect_line(race, elect["election"], elect["takes_office"], today) if race else ""
         also = ({"GR_ELECT": {"id": mid, "key": race, "election": elect["election"],
                               "takes_office": elect["takes_office"]}} if race else {})
+        # Their towns' pages, for the line app.js draws under the name and
+        # the static record alike; a former member's page names no towns.
+        places = {} if m.get("former") else towns_linked(m.get("towns") or [], pages)
+        if places:
+            also["GR_TOWNS"] = places
         (out / f"{slug}.html").write_text(S.clean_links(S.page(
             t, path=path, base=a.base,
             title=f"{who} | Granite Record",
@@ -345,7 +374,7 @@ def main():
             # sitting member is.
             globals={"GR_MEMBER": str(m.get("id", "")), "GR_STANDALONE": True,
                      **({"GR_FORMER": True} if m.get("former") else {}), **also},
-            static=static_record(m, own(m), line), skip_label="Skip to this member",
+            static=static_record(m, own(m), line, places), skip_label="Skip to this member",
             # Without this the template's marker stays on Bills, and all 406
             # member pages told a screen reader they were Bills.
             nav_current="officials.html",

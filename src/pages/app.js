@@ -7591,9 +7591,14 @@ function renderMemberHead(m){
   const tagp=/\(([A-Z])[A-Za-z]* - [^()]*\)\s*$/.exec(String(m.display_full||m.display||""));
   const code=String(m.party_code||m.party||(tagp?tagp[1]:"")).toUpperCase().slice(0,1);
   const towns=m.towns||[];
+  // EACH TOWN TO ITS PAGE, WHERE IT HAS ONE (the audit of 25 October 2026,
+  // S6): GR_TOWNS is {town: address} from build_legislator_pages.towns_linked,
+  // and a place the roster spells otherwise than the district maps stays words.
+  const tp=window.GR_TOWNS||{};
+  const place=t=>tp[t]?`<a href="${esc(tp[t])}">${esc(t)}</a>`:esc(t);
   const line=[m.office?`<b>${esc(m.office)}</b>`:"",esc(PARTY_WORD[code]||m.party||""),
     // The seat's number held to its name: "Senate District" over "14" at 768px.
-    esc(seatName(m)).replace(/ (?=\S+$)/,"&nbsp;"),former?"":joinList(towns.map(esc),"and")]
+    esc(seatName(m)).replace(/ (?=\S+$)/,"&nbsp;"),former?"":joinList(towns.map(place),"and")]
     .filter(Boolean)
     // Each dot holds to the words before it, so a wrapped line never opens on
     // one (a phone, 10 October 2026: "· Senate District 14").
@@ -7617,7 +7622,10 @@ function renderMemberHead(m){
   else if(yrs)facts.push(["On Record",esc(yrs)]);
   // OFFICIALS, where Legislators was (decision 127, 8 October 2026: the
   // Legislators page is the Officials page, and /legislators 301s to it).
+  // A MEMBER WHO HAS LEFT, THROUGH THE LIST OF THOSE WHO HAVE (the audit of
+  // 25 October 2026, S6): Officials lists only sitting members.
   const head=recordHead({trail:[["Officials","officials.html"],
+      ...(former?[["Former Legislators","directory/former-legislators"]]:[]),
       [(former?"Former ":"")+(m.chamber==="S"?"Senator":"Representative"),""]],
     title:esc(fullTitle(named)),line,facts,rail:"",actions:"",kind:`member rh-p${code||"X"}`});
   const note=former?`<p class="rnote">${!/^(Rep|Sen)\. /.test(plain)?`Former member${
