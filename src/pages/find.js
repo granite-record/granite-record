@@ -1248,7 +1248,7 @@ function ytSlots(p){
     else if(k==="county")body=p.co?`<p>${tr("yt.county_conv","{place} is in {county} County, so its county convention is the State House members elected from {county} County &mdash; yours among them.",{place:_fesc(p.n),county:_fesc(p.co)})}</p>`
       +ytPeople({m:(p.m||[]).filter(s=>!/-sd-\d+$/.test(s))})
       +`<p>${tr("yt.county_officials","The county&rsquo;s own officials are under <a href=\"{href}\">County Officials</a>.",{href:((window.GR_HREFS||{})["officials.html"]||"/officials")+"#counties"})}</p>`:"";
-    else if(k==="town")body=`<p>${p.c?tr("yt.is_city","{town} is a city. Who runs it is on the City Officials tab of {link}.",{town:_fesc(p.t),link}):tr("yt.is_town","{town} is a town. Who runs it is on the Town Officials tab of {link}.",{town:_fesc(p.t),link})}</p>`;
+    else if(k==="town")body=`<p>${p.c?tr("yt.is_city","{town} is a city. Who runs it is on the Officials tab of {link}.",{town:_fesc(p.t),link}):tr("yt.is_town","{town} is a town. Who runs it is on the Officials tab of {link}.",{town:_fesc(p.t),link})}</p>`;
     if(!body){el.hidden=true;return;}
     el.innerHTML=`<p class="ythead2">${tr("yt.in_town","In your town: {place}",{place:_fesc(p.n)})}</p>`+body
       +`<p class="ytmeta"><button type="button" class="ytopen link">${tr("yt.change_town","Change your town")}</button></p>`;

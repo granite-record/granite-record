@@ -70185,8 +70185,14 @@ def _town_page_map():
         {"county": "Strafford", "district": "14", "floterial": False}]}))
     assert 'data-town="Dover" data-ward="4" data-pick="ST14"' in got, (
         f"map_section does not choose the ward's own district: {got[:300]}")
-    return "ok", (f"{len(pages)} town pages, each with the District Map second, the map told its "
-                  "town and ward and mounted after the tabs; Dover Ward 4 opens on Strafford 14")
+    # No box of instructions between the heading and the map (the audit of 25
+    # October 2026: on a phone the map began 470 to 540px below its heading).
+    assert got.startswith('<section class="twnsec twnwide"><h3 class="twnh">The Map</h3>'
+                          '<div class="twnmap" id="twnmap"'), (
+        f"something stands between the Map tab's heading and the map: {got[:200]}")
+    return "ok", (f"{len(pages)} town pages, each with the Map second, the map told its "
+                  "town and ward and mounted after the tabs, straight under its heading; Dover "
+                  "Ward 4 opens on Strafford 14")
 
 
 @check("frontend", "an official's chip on a town page says the party in letters, as a "
@@ -94791,48 +94797,70 @@ def _town_sources_floors(TS):
     return "ok", "; ".join(held) + f"; all {len(fixed)} polling place corrections applied"
 
 
-@check("frontend", "a town page's Town Services tab: the office where two sources agree on its "
-                   "street, with both named, the town's libraries and its transfer stations",
+@check("frontend", "a town page's Services tab: the office where two sources agree on its "
+                   "street, the town's libraries and its transfer stations, each card's sources "
+                   "and their age in one small line",
        needs=("build_town_pages",))
 def _town_services_tab(T):
     """The town directory's first phase on the page (the person, 24 October
     2026: "the address of city hall ... That would exist on town pages").
     The tab's cards, drawn from the two readers' files as they are written:
 
-      - an office whose street two sources agree on is drawn there, "Where it
-        is", with a map and with the sources named and dated under it;
+      - an office whose street two sources agree on is drawn there, with a
+        map, unlabelled -- it is under "Town office" -- and the sources named
+        and dated under it;
       - a city's is "City hall", a town's "Town office";
-      - an office with only a box for its mail says so, and draws no street;
+      - an office with only a box for its mail draws it as its mailing
+        address, and no street;
       - the libraries, a branch said to be one, and a town with none says
         so rather than drawing nothing;
       - the transfer stations (25 October 2026), each opening its page at
         DES, with a map and who holds its permit where that is not the town
         itself, the list and its day under them and the town's own website
-        for the hours; a shared station in the town its name names, said to
-        be so; and no card at all where DES lists none, since DES lists as
-        closed some stations that run;
+        for the hours (the town office where it has none); a shared station
+        drawn in the town it is in, under its permit holder; and no card at
+        all where DES lists none, since DES lists as closed some stations
+        that run;
       - and an unincorporated place, which NHDOT does not list and which has
         no office, has no tab at all.
 
-    And the panel is on every town page, named City Services in a city."""
+    EACH CARD'S SOURCES IN ONE SMALL LINE (the audit of 25 October 2026: the
+    grey boxes of sourcing were 41 to 45 per cent of the tab): "NH DOT
+    directory, Sep 2025 · Secretary of State, Sep 2026", "IMLS library
+    survey, FY2024", "NH DES permit list, read Oct 25, 2026 · hours on the
+    town's website" -- every source still named with its age, no box, and
+    no "No street address ... two sources agree on" or "Where it is".
+
+    And the panel is on every town page, named Services in a town and a
+    city alike."""
     off = {"mailing": "5 School St, Bristol, NH 03222", "phone": "603-744-3354",
-           "website": "https://www.bristolnh.gov"}
+           "website": "https://www.bristolnh.gov", "as_of": "2025-09-02"}
     hall = {"street": "5 School St", "place": "Bristol", "zip": "03222",
             "from": [{"source": "nhdot", "on": "2025-09-02"},
                      {"source": "sos_list", "on": "2026-09-20"}]}
     libs = {"libraries": [{"name": "Minot-Sleeper Library", "street": "35 Pleasant Street",
-                           "city": "Bristol", "phone": "603-744-3352", "kind": "central"}]}
+                           "city": "Bristol", "phone": "603-744-3352", "kind": "central"}],
+            "survey": "FY2024"}
     got = "".join(T.services_sections("Bristol", "bristol", off, hall, libs))
-    for want in ('<h3 class="twnh">Town office</h3>', "5 School St, Bristol, NH 03222",
-                 '<span class="offseat">Where it is</span>',
+    for want in ('<h3 class="twnh">Town office</h3>',
+                 '<span class="offwho">5 School St, Bristol, NH 03222</span>',
                  'href="https://www.openstreetmap.org/search?query=5%20School%20St%2C%20Bristol%2C%20NH%2003222"',
-                 "directory (September 2025) and the Secretary of State&#x27;s list of town and city "
-                 "clerks (September 2026) both give this address",
+                 '<p class="twnsrc">NH DOT directory, Sep 2025 &middot; Secretary of State, Sep 2026</p>',
                  '<h3 class="twnh">Library</h3>', "Minot-Sleeper Library",
-                 "Public Libraries Survey for fiscal year 2024"):
-        assert want in got.replace("Secretary of State's", "Secretary of State&#x27;s"), (
-            f"the Town Services tab does not draw {want!r}")
+                 '<p class="twnsrc">IMLS library survey, FY2024</p>'):
+        assert want in got, f"the Services tab does not draw {want!r}"
     assert "Mailing address" not in got, "the office's own street is said again as its mailing address"
+    # The survey and the town's site, ordered after NHDOT, each with its month;
+    # and of three that agree on a street the newest two, which are what draws it.
+    said = T.office_sources("Lyme", {"as_of": "2025-09-02"}, [
+        {"source": "granit_cai", "on": "2014-09-30"},
+        {"source": "town_site", "on": "2026-10-20", "url": "https://www.lymenh.gov/"}])
+    assert said == ["NH DOT directory, Sep 2025", "Lyme's website, Oct 2026",
+                    "NH GRANIT survey, Sep 2014"], f"the office's sources read {said}"
+    said = T.office_sources("Lyme", {}, [{"source": "granit_cai", "on": "2014-09-30"}]
+                            + hall["from"])
+    assert said == ["NH DOT directory, Sep 2025", "Secretary of State, Sep 2026"], (
+        f"three sources agreeing on a street read {said}, not the newest two")
     city = "".join(T.services_sections("Concord", "concord", {"mailing": "41 Green St, Concord, NH 03301"},
                                        {}, {"libraries": [
                                            {"name": "Concord Public Library", "street": "45 Green Street",
@@ -94844,15 +94872,18 @@ def _town_services_tab(T):
             "a city's office is not City hall, or its branch is not said to be one")
     boxed = "".join(T.services_sections("Acworth", "acworth",
                                         {"mailing": "PO Box 37, Acworth, NH 03601",
-                                         "phone": "603-835-6879"}, {"street": ""}, {}))
+                                         "phone": "603-835-6879", "as_of": "2025-09-02"},
+                                        {"street": ""}, {}))
     assert "Library" not in "".join(T.services_sections("Acworth", "acworth", {"phone": "1"}, None, None)), (
         "a libraries file that was not loaded is drawn as a town with no library")
-    assert "Mailing address" in boxed and "Where it is" not in boxed and \
-        "No street address for the office is on file that two sources agree on" in boxed and \
-        "No public library is listed in Acworth" in boxed, (
-            "a town with a box for its mail draws a street, or does not say it has none")
+    assert "PO Box 37, Acworth, NH 03601<span class=\"offseat\">Mailing address</span>" in boxed and \
+        "offmap" not in boxed and '<p class="twnsrc">NH DOT directory, Sep 2025</p>' in boxed and \
+        '<p class="twnsrc">No public library is listed in Acworth &middot; IMLS library survey, ' \
+        'FY2024</p>' in boxed, (
+            "a town with a box for its mail draws a street, does not name the directory and its "
+            "month, or does not say it has no library and where that is from")
     assert T.services_sections("Hale's Location", "hale-s-location", {}, None, None) == [], (
-        "an unincorporated place has a Town Services tab")
+        "an unincorporated place has a Services tab")
     # ---- the transfer stations ------------------------------------------------
     page = ("https://onestop.des.nh.gov/ords/r/apex_whs/nhdesbasicsearch/"
             "solid-waste-facility?p60_swf_lid=0001234")
@@ -94866,10 +94897,9 @@ def _town_services_tab(T):
                  f'<a href="{T.E(page)}" target="_blank" rel="noopener">Acworth Transfer Station</a>',
                  "222 Beryl Mountain Rd, Acworth",
                  "query=222%20Beryl%20Mountain%20Rd%2C%20Acworth%2C%20NH",
-                 "From the Department of Environmental Services' list of permitted solid waste "
-                 "facilities, as this site read it on October 25, 2026: the one it lists in Acworth "
-                 "as operating and publicly owned.",
-                 "Hours, stickers and what it takes are on the town's own website: <a "):
+                 '<p class="twnsrc">NH DES permit list, read Oct 25, 2026 &middot; hours on '
+                 '<a href="https://acworthnh.gov" target="_blank" rel="noopener">the town&#x27;s '
+                 'website</a></p>'):
         assert want in acw, f"the transfer station card does not draw {want!r}"
     assert "Permit holder" not in acw, "a town's own station is said to be the town's permit"
     berlin = "".join(T.services_sections("Berlin", "berlin", {"phone": "1"}, None, None, {
@@ -94881,32 +94911,97 @@ def _town_services_tab(T):
              "page": page, "permittee": "City of Berlin", "named": False}]}))
     assert '<h3 class="twnh">Transfer stations</h3>' in berlin and \
         "100 West Milan Rd (Route 110), Berlin<br>Permit holder: Androscoggin Valley Regional " \
-        "Refuse Disposal District" in berlin and "each one it lists in Berlin" in berlin and \
-        "on the city's own website." in berlin, (
-            "two stations, a district's permit, or a city's website are not said so")
+        "Refuse Disposal District" in berlin and \
+        '<p class="twnsrc">NH DES permit list, read Oct 25, 2026 &middot; hours from city hall</p>' \
+        in berlin, ("two stations, a district's permit, or a city with no website's hall are not "
+                    "said so")
     jackson = "".join(T.services_sections("Jackson", "jackson", {"phone": "1"}, None, None, {
         "read_on": "2026-10-25", "stations": [
             {"name": "Bartlett Jackson Harts Location Transfer Station",
              "street": "102 Transfer Station Rd", "also": "", "place": "Bartlett", "page": page,
              "permittee": "Town of Bartlett", "named": True}]}))
-    assert "Bartlett Jackson Harts Location Transfer Station in Bartlett, whose name includes Jackson" \
-        in jackson and "Permit holder: Town of Bartlett" in jackson and \
-        "the one it lists in Jackson" not in jackson, (
-            "a shared station in a town its name names is not said to be so")
+    assert "Bartlett Jackson Harts Location Transfer Station</a><span class=\"offseat\">102 Transfer " \
+        "Station Rd, Bartlett<br>Permit holder: Town of Bartlett" in jackson and \
+        "hours from the town office" in jackson, (
+            "a shared station is not drawn in the town it is in, under its permit holder")
     for none in ({}, None, {"read_on": "2026-10-25", "stations": []}):
         assert "Transfer station" not in "".join(T.services_sections(
             "Holderness", "holderness", {"phone": "1"}, None, {}, none)), (
                 f"a town DES lists no station in draws a transfer station card ({none!r})")
+    # One small line a card, and no box: every card above ends in its line.
+    drawn = [got, city, boxed, acw, berlin, jackson]
+    cards = [c for h in drawn for c in re.findall(r'<section class="twnsec[^"]*">.*?</section>', h)]
+    loose = [c[:90] for c in cards if 'class="note"' in c or c.count('class="twnsrc"') != 1
+             or not re.search(r'<p class="twnsrc">[^<]*(?:<a [^>]+>[^<]*</a>)?</p></section>$', c)]
+    assert cards and not loose, f"a Services card has a grey box, or not one source line at its end: {loose}"
     import inspect
     src = inspect.getsource(T.build)
-    assert '("services", "City Services" if slug(town, "0") in CITIES else "Town Services"' in src, (
-        "the Town Services tab is not one of a town page's panels")
+    assert '("services", "Services",' in src, "the Services tab is not one of a town page's panels"
     assert 'off["_stations"].get(slug(town, "0"), {})' in src, (
-        "the transfer stations are not given to the Town Services tab")
-    return "ok", ("an office drawn where two sources agree, named and dated, a city's City hall, a "
-                  "boxed office said to be one, libraries and none, the transfer stations with their "
-                  "page, map and permit holder, a shared one said to be, none drawn where DES lists "
-                  "none, and no tab where there is no town")
+        "the transfer stations are not given to the Services tab")
+    return "ok", ("an office drawn where two sources agree, a city's City hall, a boxed office as "
+                  "its mailing address, libraries and none, the transfer stations with their page, "
+                  "map and permit holder, none drawn where DES lists none, and no tab where there is "
+                  "no town; every card's sources and their age in one small line, no box")
+
+
+@check("frontend", "a town office's mailing address never ends in a \"PO Box\" with no number, "
+                   "on the Officials tab or the Services tab, and is not the street said twice",
+       needs=("build_town_pages",))
+def _town_mailing_box(T):
+    """NHDOT's directory prints thirteen towns' mailing line as a street and
+    the bare words "PO Box" -- Bethlehem's "2155 Main St, PO Box", Hanover's
+    "41 South Main St, PO Box" -- and the office cards drew it so (the audit
+    of 25 October 2026). mailing_line drops a "PO Box" no number follows,
+    and a comma left at the end, on both tabs; a box with its number is
+    kept. And on the Services tab a mailing line that is the street NHDOT's
+    own line agreed with (collected/town_halls.json's `from`) is not drawn
+    again under the street in another spelling -- Hanover's "41 South Main
+    St" under "41 S Main St" -- while one with a box is.
+
+    Read on the files in git as well as on these cases: every office in
+    collected/town_officials.json, drawn on both tabs, ends in no bare box."""
+    for raw, want in (("2155 Main St, PO Box", "2155 Main St"),
+                      ("84 South Main St, P.O. Box ", "84 South Main St"),
+                      ("780 Rte 63, PO Box 55,", "780 Rte 63, PO Box 55"),
+                      ("297 Mayhew Turnpike,", "297 Mayhew Turnpike"),
+                      ("PO Box 37, Acworth, NH 03601", "PO Box 37, Acworth, NH 03601"),
+                      ("PO Box", ""), ("", "")):
+        assert T.mailing_line(raw) == want, f"{raw!r} is drawn {T.mailing_line(raw)!r}, not {want!r}"
+    off = {"mailing": "41 South Main St, PO Box", "phone": "603-643-0742", "as_of": "2025-09-02"}
+    agreed = {"street": "41 S Main St", "place": "Hanover", "zip": "03755",
+              "from": [{"source": "granit_cai", "on": "2014-09-30"},
+                       {"source": "nhdot", "on": "2025-09-02", "said": off["mailing"]}]}
+    tab = "".join(T.officials_sections("Hanover", "hanover", off))
+    assert '41 South Main St<span class="offseat">Mailing address</span>' in tab, (
+        f"the Officials tab's office card draws {off['mailing']!r} with its bare box")
+    svc = "".join(T.services_sections("Hanover", "hanover", off, agreed, None, None))
+    assert "41 S Main St, Hanover, NH 03755" in svc and "Mailing address" not in svc, (
+        "the Services tab draws NHDOT's line again under the street it agreed with")
+    boxed = dict(off, mailing="780 Rte 63, PO Box 55,")
+    svc = "".join(T.services_sections("Westmoreland", "westmoreland", boxed,
+                                      dict(agreed, street="780 NH Rte 63", place="Westmoreland",
+                                           zip="03467"), None, None))
+    assert '780 Rte 63, PO Box 55<span class="offseat">Mailing address</span>' in svc, (
+        "a mailing line with a box number under the street is not drawn")
+    # ---- the files in git -----------------------------------------------------
+    def load(name):
+        p = Path("collected") / name
+        return {k: v for k, v in json.loads(p.read_text(encoding="utf-8")).items()
+                if not k.startswith("_")} if p.exists() else None
+    offices, halls = load("town_officials.json"), load("town_halls.json")
+    if offices is None or halls is None:
+        return "ok", "the cases (collected/town_officials.json or town_halls.json is not here)"
+    bare = re.compile(r"P\.?\s*O\.?\s*Box\s*,?\s*<|,\s*<span class=\"offseat\">", re.I)
+    raw = [k for k, v in offices.items() if T.BARE_BOX.search(v.get("mailing") or "")]
+    bad = [k for k, v in sorted(offices.items())
+           if bare.search("".join(T.officials_sections(v.get("municipality") or k, k, v))
+                          + "".join(T.services_sections(v.get("municipality") or k, k, v,
+                                                        halls.get(k), None, None)))]
+    assert not bad, f"offices drawn with a bare box or a trailing comma: {bad[:8]}"
+    return "ok", (f"a bare box and a trailing comma dropped, a box with its number kept; "
+                  f"{len(offices)} offices in git drawn on both tabs, {len(raw)} of whose lines "
+                  "end in a bare box, none drawn with one")
 
 
 @check("files", "the town directory's readers: a library is placed by its census block, and a "
@@ -96122,10 +96217,13 @@ def _town_board_drawn(B):
         "_councils": {"dover": council}}, "https://x.test", tmpl))
     if "Robert Carrier" in dover or "Dennis Shanahan" not in dover:
         bad.append("Dover's page names the directory's mayor, not its own")
-    if "listed the mayor and council when this site read it on September 20, " \
-            "2026" not in dover or "Dover’s own website" not in dover:
-        bad.append("Dover's own council does not say where it was read, and "
-                   "when, or the sources line does not credit the city")
+    # The card credits the city's website, with its day; the Sources line
+    # under the tabs no longer says it again (the audit of 25 October 2026:
+    # it names only what no card names).
+    if "As Dover's website listed the mayor and council when this site read it on "\
+            "September 20, 2026" not in dover:
+        bad.append("Dover's own council does not say whose website it was read "
+                   "from, and when")
     dseats = re.findall(r'<span class="offseat">([^<]*)</span>', dover)
     if "Mayor" not in dseats or "Ward 1" not in dseats:
         bad.append(f"the council's seats are not the city page's: {dseats}")
@@ -96209,6 +96307,8 @@ def _town_tabs(B, BP):
              for t in ("Lyme", "Bean's Grant", "Nowhere")}
     # The District Map is every place's second tab (Polish 3): every town and
     # ward is on the map.
+    LABELS = {"representatives": "Representatives", "map": "Map", "officials": "Officials",
+              "vote": "Vote", "services": "Services"}
     want = {"Lyme": ["representatives", "map", "officials", "vote"],
             "Bean's Grant": ["representatives", "map", "vote"],
             "Nowhere": ["representatives", "map"]}
@@ -96226,6 +96326,12 @@ def _town_tabs(B, BP):
         ids = [t[0] for t in tabs]
         if ids != want[town]:
             bad.append(f"{town}: tabs {ids}, not {want[town]}")
+        # ONE WORD A TAB (the audit of 25 October 2026: "How / to / Vote" on
+        # a phone): the page names the town, so a city's are these too.
+        names = re.findall(r'role="tab" id="tab-(\w+)"[^>]*>([^<]*)</button>', bars[0])
+        if any(LABELS[t] != n for t, n in names):
+            bad.append(f"{town}: the tabs read {[n for _t, n in names]}, not "
+                       f"{[LABELS[t] for t, _n in names]}")
         for i, (tid, pane, ctl, sel, ti) in enumerate(tabs):
             first = i == 0
             if not tid == pane == ctl or (sel == "true") != first \
@@ -96257,6 +96363,9 @@ def _town_tabs(B, BP):
             "City website" not in concord.partition('id="vote"')[2]:
         bad.append("How to vote calls a city's website the town's, or a "
                    "town's the city's")
+    if 'id="tab-officials" data-pane="officials" aria-controls="officials" aria-selected="false" ' \
+            'tabindex="-1">Officials</button>' not in concord:
+        bad.append("a city's Officials tab is not named Officials")
 
     css = Path("src/pages/app.css").read_text(encoding="utf-8")
     strip = re.search(r"\.twntabs\{[^}]*\}", css)
@@ -96264,6 +96373,19 @@ def _town_tabs(B, BP):
     if not strip or "overflow-x:auto" not in strip.group(0):
         bad.append("the tab strip does not scroll inside itself, so tabs can "
                    "widen a 360px page")
+    # EACH TAB ON ONE LINE, THE STRIP'S EDGE SAYING IT GOES ON (the audit of
+    # 25 October 2026): the Officials page's rules, every strip's now, and
+    # no phone rule that shares the width out and wraps the words.
+    tab = re.search(r"\.twntabs \[role=tab\]\{[^}]*\}", css)
+    if not tab or "white-space:nowrap" not in tab.group(0):
+        bad.append("a tab's label can wrap: .twntabs [role=tab] has no white-space:nowrap")
+    if re.search(r"\.twntabs \[role=tab\]\{flex:1", css):
+        bad.append("a phone rule shares the strip's width out among the tabs, which wraps them")
+    if not re.search(r"@media \(max-width:63\.9375em\)\{\s*\.twntabs \[role=tab\]\{flex:0 0 auto[^}]*\}"
+                     r"\s*\.twntabs\{background:[^}]*var\(--shadow\)", css):
+        bad.append("below 1024px the strip's tabs are not kept whole with its edge's shadow")
+    if re.search(r"\.oftabs(?: \[role=tab\])?\{(?:white-space|flex|background)", css):
+        bad.append("the Officials page's strip has rules of its own again beside .twntabs's")
     if not grid or "minmax(0,1fr)" not in grid.group(0):
         bad.append("the panels' grid track can grow past the page")
     if not re.search(r"\.twntabs\[hidden\]\{display:none\}", css) or \
@@ -96347,6 +96469,52 @@ process.stdout.write(JSON.stringify(out));
                   "no town government; #vote opens its tab and a click writes "
                   "the town's own address and the tab, without a history entry"
                   + ("" if node else " (node absent: script not run)"))
+
+
+@check("build", "a town page's State House and Senate cards say how many of a district's seats "
+                "are vacant, in the map's word, and never that no member is matched",
+       needs=("build_town_pages",))
+def _town_seats_vacant(B):
+    """The audit of 25 October 2026: a district with nobody sitting said "No
+    sitting member is matched to this district", which reads as the site
+    failing, and Gilford's four-seat district listed its three members and
+    nothing about the fourth. Each card now ends a district's members with
+    "1 seat vacant" or "N seats vacant", the word the district map's legend
+    and panel use, as a row of the list; a full district says nothing of
+    the kind. Read off representatives_sections, on a four-seat district
+    with three members, a floterial with nobody, a full one and an empty
+    Senate seat."""
+    def rep(name, chamber, district):
+        return {"name": name, "display_full": f"Rep. {name}", "party": "Republican",
+                "slug": name.lower().replace(" ", "-"), "chamber": chamber, "county": "Belknap",
+                "district": district, "email": "", "phone": ""}
+    legs = [rep(n, "H", "5") for n in ("Ann One", "Bo Two", "Cy Three")] + [rep("Di Four", "H", "6")]
+    dist = {"senate": 7, "house": [
+        {"county": "Belknap", "district": 5, "floterial": False, "seats": 4},
+        {"county": "Belknap", "district": 6, "floterial": False, "seats": 1},
+        {"county": "Belknap", "district": 8, "floterial": True, "seats": 2}]}
+    got = "".join(B.representatives_sections(dist, legs, {}))
+    parts = re.split(r'<h4 class="twnsub">', got.split('<h3 class="twnh">State Senate', 1)[0])[1:]
+    senate = got.split('<h3 class="twnh">State Senate', 1)[1].split("</section>", 1)[0]
+    row = '<li class="offrow"><span class="offwho">{}</span></li>'
+    bad = []
+    if len(parts) != 3:
+        bad.append(f"the State House card has {len(parts)} districts, not 3")
+    else:
+        five, six, eight = parts
+        if five.count('class="mchip') != 3 or not five.endswith(row.format("1 seat vacant") + "</ul>"):
+            bad.append("Belknap 5's three members of four are not followed by \"1 seat vacant\"")
+        if "vacant" in six:
+            bad.append("a full district is said to have a seat vacant")
+        if row.format("2 seats vacant") not in eight or "No sitting" in eight:
+            bad.append("a floterial with nobody in its two seats does not say \"2 seats vacant\"")
+    if row.format("1 seat vacant") not in senate:
+        bad.append("a Senate seat with nobody in it does not say \"1 seat vacant\"")
+    if "matched" in got:
+        bad.append("a card still says that no member is matched to a district")
+    assert not bad, "; ".join(bad)
+    return "ok", ("3 of 4 seats and \"1 seat vacant\", a full district quiet, \"2 seats vacant\" "
+                  "on an empty floterial and \"1 seat vacant\" on an empty Senate seat")
 
 
 def _officials_read(P, pdf):
@@ -98358,7 +98526,7 @@ def _elect_map_panel():
                   "the file outside its data-elect, and none drawn without it")
 
 
-@check("build", "members-elect: the approved words where the pages draw them -- the map's note in "
+@check("build", "members-elect: the approved words where the pages draw them -- the map's words in "
                 "both copies, \"Serving now\" over the sitting members on a town page's State House "
                 "and Senate cards and in the My Town card, and the Officials tab's label and "
                 "sentence")
@@ -98366,17 +98534,20 @@ def _elect_pages_words():
     """The person's words of 16 October 2026, read where the fixture's pages
     and find.js draw them rather than from the source that writes them.
 
-    THE MAP'S NOTE, BOTH COPIES, WITH THE FILE AND WITHOUT: every town page's
-    District Map tab and the Officials page's map say "Each district coloured
-    by the party of its sitting members", and neither says "the members it
-    elected" -- the old words, which from the day after an election read as
-    the people just elected. They are the one change a page shows with no
-    file, so they are read in both builds.
+    THE MAP'S WORDS, WITH THE FILE AND WITHOUT: neither a town page's Map tab
+    nor the Officials page's map says "the members it elected" -- the old
+    words, which from the day after an election read as the people just
+    elected. The note that replaced them, "Each district colored by the
+    party of its sitting members", went from the Officials page on 22
+    October 2026 and from the town pages, with the box it was in, on 25
+    October (the audit: the map began 470 to 540px below its heading on a
+    phone); the Officials page says "Choose a district to see who represents
+    it." They are read in both builds.
 
     "SERVING NOW" WHEREVER A BLOCK IS DRAWN BESIDE THE SITTING MEMBERS: on
     every town page's Representatives tab, the State House card and the
     State Senate card each draw, for every district, "Serving now", then who
-    sits (or that nobody is matched), then the block -- as many of each as
+    sits (and any seat vacant), then the block -- as many of each as
     there are blocks, and at least one; and so does each House and Senate
     seat of the My Town card (find.js, in node) for a place whose races the
     file holds.
@@ -98396,7 +98567,6 @@ def _elect_pages_words():
 
     def text(h):
         return " ".join(_h.unescape(re.sub(r"<[^>]+>", "", h)).replace("’", "'").split())
-    note = "Each district colored by the party of its sitting members"
     towns = sorted((ws / "town").glob("*.html"))
     if not towns:
         bad.append("the fixture built no town page")
@@ -98404,14 +98574,17 @@ def _elect_pages_words():
         for f in [site / "officials.html", *sorted((site / "town").glob("*.html"))]:
             t = text(f.read_text(encoding="utf-8"))
             # The Officials map's note is "Choose a district to see who
-            # represents it" since the trims of 22 October 2026; a town's keeps
-            # the approved words.
-            said = ("Choose a district to see who represents it." if f.name == "officials.html"
-                    else note + ".")
-            end = ""
-            if said not in t or "members it elected" in t:
-                bad.append(f"{f.relative_to(site.parent).as_posix()} does not say \"{said}\" "
-                           "in its map's note, or still says \"the members it elected\"")
+            # represents it" since the trims of 22 October 2026; a town's map
+            # has no box over it since the audit of 25 October 2026 -- its
+            # legend says what the colours are -- and neither says "the
+            # members it elected".
+            name = f.relative_to(site.parent).as_posix()
+            if f.name == "officials.html" and "Choose a district to see who represents it." not in t:
+                bad.append(f"{name} does not say \"Choose a district to see who represents it.\"")
+            if f.name != "officials.html" and "Choose a kind of district" in t:
+                bad.append(f"{name} still draws the box of instructions over its map")
+            if "members it elected" in t:
+                bad.append(f"{name} still says \"the members it elected\"")
     sec = re.compile(r'<section class="twnsec[^"]*"><h3 class="twnh">(State House|State Senate[^<]*)'
                      r"</h3>(.*?)</section>", re.S)
     town_order = _elect_order(r'<ul class="offlist">.*?</ul>|<p class="note">[^<]*</p>')
@@ -98466,7 +98639,7 @@ def _elect_pages_words():
         bad.append(f"the Officials tab says {text(pane.group(1)) if pane else None!r}, not "
                    f"{said!r}")
     assert not bad, "; ".join(bad[:8])
-    return "ok", (f"the map's note in both copies on {len(towns) + 1} pages, with the file and "
+    return "ok", (f"the map's words, without the old ones, on {len(towns) + 1} pages, with the file and "
                   f"without; \"Serving now\" before who sits and the block on {len(towns)} town "
                   f"pages' House and Senate cards"
                   + (f" and {seats} seats of the My Town card" if card is not None else "")
@@ -98585,6 +98758,93 @@ def _map_label_toggle():
         "setLabels() went none, numbers, bogus -> "
         f"{out['afterNone']}, {out['afterNumbers']}, {out['afterBogus']}")
     return "ok", "Town names, District numbers, No labels: one radio group, town names chosen"
+
+
+# map.js mounted in node on the map's data built from the tracked files, as
+# _elect_map_panels mounts it: the legend and the line under it on State House
+# with "Floterial districts" off, then on, then on State Senate.
+_MAP_LEGEND_JS = r"""
+require("./stub.js");
+globalThis.CSS = { escape: s => String(s) };
+document.createElementNS = (ns, t) => document.createElement(t);
+const fs = require("fs");
+const G = require("./map.js");
+function held() {
+  const e = document.createElement("div"), q = {};
+  e.querySelector = sel => (q[sel] = q[sel] || held());
+  e.style.setProperty = () => {};
+  return e;
+}
+(async () => {
+  const T = JSON.parse(fs.readFileSync("./data.json", "utf8"));
+  globalThis.fetch = async () => ({ ok: true, status: 200, json: async () => T });
+  const root = held();
+  const api = G.mount(root, { labels: "none", zoom: false, layers: ["base", "senate", "exec", "cong"] });
+  await api.ready;
+  const say = () => [root.querySelector(".gmleg").innerHTML, root.querySelector(".gmexplain").innerHTML];
+  const out = { off: say() };
+  root.querySelector(".gmfloin").checked = true; api.setLabels("none"); out.on = say();
+  api.setLayer("senate"); out.senate = say();
+  process.stdout.write("\n@@" + JSON.stringify(out));
+})().catch(e => { console.error(String(e && e.stack || e)); process.exit(1); });
+"""
+
+
+@check("frontend", "the district map is its legend and no paragraph under it, but for what a "
+                   "floterial district is while they are drawn, and its four kinds of district "
+                   "are two by two on a phone")
+def _map_legend_words():
+    """The audit of 25 October 2026: on a phone the map began 470 to 540px
+    below its heading, after a box of instructions, the controls, the legend
+    and a 72-word paragraph under it -- what two colours mean, what a
+    floterial district is, that a name shows when chosen, that colour is not
+    population. The legend stays and the paragraph goes, but for its one
+    sentence on floterial districts, said only while "Floterial districts"
+    is ticked and the frames it explains are drawn.
+
+    map.js mounted in node on the map's data built from the tracked files
+    (_map_data): the legend names the parties with nothing under it; ticked,
+    the legend's frame and the floterial sentence; on State Senate, nothing
+    under the legend again. And map.css lays the four kinds of district out
+    two by two below 600px, not three and one."""
+    css = Path("src/pages/map.css").read_text(encoding="utf-8")
+    phone = re.search(r"@media \(max-width:37\.5em\)\{(.*?)\n\}", css, re.S)
+    assert phone and re.search(r"\.gm \.gmseg:has\(> label:nth-child\(4\):last-child\)"
+                               r"\{grid-template-columns:repeat\(2,1fr\)\}", phone.group(1)), (
+        "map.css does not lay four kinds of district out two by two on a phone")
+    if not shutil.which("node"):
+        return "skip", "node is not installed (map.css read: four kinds two by two on a phone)"
+    data = _map_data()
+    if data is None:
+        return "skip", "the geometry, the district files or the officials file is not here"
+    root = Path(tempfile.mkdtemp(prefix="gr-maplegend-"))
+    try:
+        (root / "stub.js").write_text(Path("tests/dom_stub.js").read_text(encoding="utf-8"),
+                                      encoding="utf-8")
+        (root / "map.js").write_text(_with_components(
+            Path("src/pages/map.js").read_text(encoding="utf-8")), encoding="utf-8")
+        (root / "data.json").write_text(json.dumps(data), encoding="utf-8")
+        (root / "go.js").write_text(_MAP_LEGEND_JS, encoding="utf-8")
+        r = _run(["node", "go.js"], cwd=root, capture_output=True, text=True, encoding="utf-8",
+                 timeout=120)
+        assert r.returncode == 0 and "@@" in (r.stdout or ""), (
+            "map.js would not draw its legend in node: " + (r.stderr or r.stdout or "")[-300:])
+        out = json.loads(r.stdout.rsplit("@@", 1)[1])
+    finally:
+        shutil.rmtree(root, ignore_errors=True)
+    flo = ("A floterial district (neighboring districts that elect extra members together) is "
+           "framed in its members&rsquo; party.")
+    bad = []
+    for when, (leg, under) in out.items():
+        if 'class="sw p-R"' not in leg or 'class="sw p-D"' not in leg:
+            bad.append(f"{when}: the legend does not name both parties")
+        if under != (flo if when == "on" else ""):
+            bad.append(f"{when}: under the legend is {under[:120]!r}")
+    if "Floterial district, framed" not in out["on"][0] or "Floterial district, framed" in out["off"][0]:
+        bad.append("the legend's floterial frame is not drawn only while they are")
+    assert not bad, "; ".join(bad)
+    return "ok", ("the legend alone on State House and State Senate; the floterial sentence and "
+                  "frame only while ticked; four kinds two by two on a phone")
 
 
 @check("frontend", "the district map's labels never overlap, in any of its three modes (the "

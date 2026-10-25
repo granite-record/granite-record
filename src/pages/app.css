@@ -1597,11 +1597,14 @@ line-height:1.1}
    The strip is the legislators page's (.rtabs): underlined, not boxed,
    because it sits directly on what it switches. It scrolls inside itself
    rather than letting the page scroll sideways, so a sixth tab on a 360px
-   phone costs the strip a swipe and never the page its width; below 480px
-   the tabs share the width and a two-word label may wrap to two lines first.
-   The underline is an inset shadow and not a border pulled down over the
-   strip's rule, because a scrolling strip clips anything that hangs out of
-   it. Written `hidden` and shown by the script: without JavaScript every
+   phone costs the strip a swipe and never the page its width.
+   EACH TAB ON ONE LINE, AND THE STRIP'S EDGE SAYING IT GOES ON (the audit of
+   25 October 2026): below 480px the tabs shared the width and wrapped, "How /
+   to / Vote" in three lines, with "Town Services" cut at the edge. These are
+   the Officials page's rules, which drew its strip so, moved here for every
+   strip. The underline is an inset shadow and not a border pulled down over
+   the strip's rule, because a scrolling strip clips anything that hangs out
+   of it. Written `hidden` and shown by the script: without JavaScript every
    panel is on the page under its own heading and a strip of buttons that did
    nothing would only be in the way. */
 .twntabs{display:flex;border-bottom:1px solid var(--rule);
@@ -1610,12 +1613,22 @@ line-height:1.1}
 .twntabs [role=tab]{flex:0 1 auto;background:none;border:0;cursor:pointer;
   font:inherit;font-size:var(--t-ui);font-weight:600;line-height:1.25;
   color:var(--ink-2);padding:var(--sp-3) var(--sp-7);min-height:44px;
-  text-align:center}
+  text-align:center;white-space:nowrap}
 .twntabs [role=tab]:hover{color:var(--ink)}
 .twntabs [role=tab][aria-selected=true]{color:var(--ink);
   box-shadow:inset 0 -2px 0 var(--pine)}
 .twntabs [role=tab]:focus-visible{outline:2px solid var(--pine);outline-offset:-2px}
-@media (max-width:30em){.twntabs [role=tab]{flex:1 1 auto;padding:var(--sp-3) var(--sp-4)}}
+/* Below 1024px the strip scrolls, closer, its edge saying so ("Seven tabs
+   scroll on a tablet and a phone, with the kit's edge shadow"): a shadow at
+   whichever end has more, made by the strip's own background. */
+@media (max-width:63.9375em){
+  .twntabs [role=tab]{flex:0 0 auto;padding:var(--sp-3) var(--sp-5)}
+  .twntabs{background:
+    linear-gradient(to right,var(--paper) 30%,transparent) 0 0/2rem 100% no-repeat local,
+    linear-gradient(to left,var(--paper) 30%,transparent) 100% 0/2rem 100% no-repeat local,
+    linear-gradient(to right,var(--shadow),transparent) 0 0/1rem 100% no-repeat scroll,
+    linear-gradient(to left,var(--shadow),transparent) 100% 0/1rem 100% no-repeat scroll}
+}
 .twnpane[hidden]{display:none}
 /* A panel's own heading, which is the page's outline with or without the
    script. Without it, each panel is a part of one long page and says which;
@@ -4374,6 +4387,10 @@ color:var(--ink-2);font-variant-numeric:tabular-nums}
    column of prose in a wide box reads as a box that failed to fill. */
 .twnsec .note{max-width:none}
 .twnsec .note:last-child{margin-bottom:0}
+/* A Services card's sources and their age, in one small line under its rows
+   (the audit of 25 October 2026: the grey boxes of sourcing were 41 to 45
+   per cent of the tab). */
+.twnsrc{font-size:var(--t-sm);line-height:1.5;color:var(--ink-2);margin:var(--sp-3) 0 0}
 .officials .srcs{margin-top:var(--sp-9);border-top:1px solid var(--rule);
   padding-top:var(--sp-5);font-size:var(--t-sm);color:var(--ink-2);line-height:1.6}
 /* ONE LEFT EDGE, 16 September. DESIGN.md has asked for this since it was
@@ -8491,24 +8508,10 @@ font-weight:600;font-variant-numeric:tabular-nums;color:var(--ink-2)}
 /* THE OFFICIALS PAGE'S TABS (officials_tabs.py, build_pages.py; the
    approved drawing, private/design/polish/proto/officials.html; Executive
    Branch and Judicial Branch since 17 October 2026). The strip is the town
-   pages' (.twntabs), with each tab on one line and its count quieter; on a
-   phone the strip scrolls rather than wrapping "Executive Branch (26)" into
-   three lines a word each. */
-:where(body.pg) .oftabs [role=tab]{white-space:nowrap}
+   pages' (.twntabs), each tab on one line and scrolling below 1024px with
+   its edge shadow -- rules that were this page's until 25 October 2026 and
+   are every strip's now -- and its count quieter. */
 :where(body.pg) .oftabs .ofn{font-weight:400;color:var(--ink-2)}
-/* Below 1024px the strip scrolls, closer, its edge saying so, as the drawing
-   has it on a tablet and a phone ("Seven tabs scroll on a tablet and a
-   phone, with the kit's edge shadow"). */
-@media (max-width:63.9375em){
-  :where(body.pg) .oftabs [role=tab]{flex:0 0 auto;padding:var(--sp-3) var(--sp-5)}
-  /* The edge that says the strip goes on, as the kit draws it: a shadow at
-     whichever end has more, made by the strip's own background. */
-  :where(body.pg) .oftabs{background:
-    linear-gradient(to right,var(--paper) 30%,transparent) 0 0/2rem 100% no-repeat local,
-    linear-gradient(to left,var(--paper) 30%,transparent) 100% 0/2rem 100% no-repeat local,
-    linear-gradient(to right,var(--shadow),transparent) 0 0/1rem 100% no-repeat scroll,
-    linear-gradient(to left,var(--shadow),transparent) 100% 0/1rem 100% no-repeat scroll}
-}
 /* My Town: the finder, then the map, each under its own heading. */
 :where(body.pg) .ofpart{margin:0 0 var(--sp-10)}
 :where(body.pg) .ofpart > h3,:where(body.pg) .ofpres > h3{font-family:var(--serif);

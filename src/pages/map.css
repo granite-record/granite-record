@@ -198,6 +198,11 @@
     font-size:var(--gm-sm);display:flex;align-items:center;justify-content:center;min-height:44px}
   .gm .gmseg label:nth-child(3n+1){border-left:0}
   .gm .gmseg label:nth-child(-n+3){border-top:0}
+  /* Four kinds of district two by two, not three and one (the audit of 25
+     October 2026); the third's and fourth's rules are the second row's. */
+  .gm .gmseg:has(> label:nth-child(4):last-child){grid-template-columns:repeat(2,1fr)}
+  .gm .gmseg:has(> label:nth-child(4):last-child) > label:nth-child(3){border-left:0;border-top:1px solid var(--rule)}
+  .gm .gmseg:has(> label:nth-child(4):last-child) > label:nth-child(4){border-left:1px solid var(--rule)}
   .gm .gmwrap{height:var(--gmhp,64vh)}
   .gm .gmpanel{min-height:0}
 }
