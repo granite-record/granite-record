@@ -3593,7 +3593,10 @@ def chamber(a, site, base, body, days):
                                    "in the order the journal records them."),
                       og_title=label, globals={"GR_STATIC": True}, noscript="",
                       skip_label="Skip to the session day", sr_title="",
-                      og_type="article", nav_current="calendar.html",
+                      # COMMITTEES, WHERE ITS TRAIL BEGINS (the person, 10
+                      # October 2026; the audit of 25 October 2026, S6): the
+                      # header lit Calendar over a trail that said Committees.
+                      og_type="article", nav_current="committees.html",
                       jsonld=LD.listing(label, lead, base, S.canon(path)), cite=False)
         payload = json.dumps(payloads, separators=(",", ":"))
         head = day_head(day, narrative, rec, jurl=jurl, label=label, path=path, base=base)

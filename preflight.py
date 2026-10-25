@@ -32606,6 +32606,41 @@ def _how_to_tasks(G, civics, BC, BP):
                   "Learn and redirected; the hub opens on How-To Guides")
 
 
+@check("build", "a city's own address goes to the Officials page's town box, and /guides to the "
+       "Resources hub: each town the House map divides into wards, in both spellings, and no town "
+       "with a page of its own", needs=("build_pages", "parse_districts", "build_town_pages"))
+def _city_addresses(BP, PD, BT):
+    """The audit of 25 October 2026, M4 and S6: /town/concord, /town/manchester
+    and the other cities' own addresses answered 404, because a city's pages
+    are its wards' (/town/concord-ward-3); and /guides, the folder every guide
+    is in, did the same. build_pages.WARDED_CITIES is held here to
+    records/districts/house.txt, so a map that divides another town into
+    wards, or makes one whole, fails here rather than leaving an address dead
+    or a town's own page behind a redirect -- Berlin, a city in one district,
+    has one at /town/berlin."""
+    src = Path("records/districts/house.txt")
+    if not src.exists():
+        return "skip", "no records/districts/house.txt here"
+    towns = [p for d in PD.parse_house(src).values() for p in d["towns"]]
+    warded = sorted({t for t, w in towns if w != "0"})
+    whole = {BT.slug(t, "0") for t, w in towns if w == "0"}
+    assert warded and list(BP.WARDED_CITIES) == warded, (
+        f"build_pages.WARDED_CITIES is {list(BP.WARDED_CITIES)}; the House map divides "
+        f"{warded} into wards")
+    red = BP.REDIRECTS
+    for c in warded:
+        for x in ("", ".html"):
+            assert f"\n/town/{BT.slug(c, '0')}{x} /officials?town={c} 301\n" in red, (
+                f"/town/{BT.slug(c, '0')}{x} does not 301 to /officials?town={c}")
+    over = sorted(s for s in (ln.split()[0] for ln in red.splitlines() if ln.startswith("/town/"))
+                  if s[len("/town/"):].removesuffix(".html") in whole)
+    assert not over, f"a redirect stands over a town's own page: {over}"
+    for x in ("", ".html"):
+        assert f"\n/guides{x} /resources 301\n" in red, f"/guides{x} does not 301 to /resources"
+    return "ok", (f"{len(warded)} cities' own addresses, both spellings, to the Officials page's "
+                  "town box; /guides to the Resources hub; no town's own page redirected")
+
+
 @check("frontend", "the Resources hub opens on How-To Guides grouped by task; the three moved pages are "
        "at /guides/ with How-To marked; Learn walks only its own pages and links the guides; other "
        "ways to follow legislation are listed official first, then independent sites alphabetically")
@@ -33655,6 +33690,83 @@ def _chain():
                       f"({named} of {len(members)} members have one)")
     finally:
         shutil.rmtree(root, ignore_errors=True)
+
+
+@check("frontend", "the signposts agree on the built site: the header lights the section a page's "
+       "trail begins at, a session day's Committees among them; About's What You Can Do Here links "
+       "pages and sections the build writes; a member's towns link their pages; no redirect stands "
+       "over a page")
+def _signposts_agree():
+    """The audit of 25 October 2026, S6 ("one place for each thing"), read
+    off the fixture's built site. A session day lit Calendar in the header
+    while its trail said Committees (the person chose Committees on 10
+    October); About's five lines of what a reader can do here named no page
+    to do it on; a member's towns were words beside a page for each; and a
+    rule of build_pages.MOVED over a page the build writes would hide one or
+    the other, as /town/berlin would."""
+    absent = [x for x in CHAIN_NEEDS if not _paths.locate(x).exists()]
+    if absent:
+        return "skip", "not here: " + ", ".join(absent)
+    import build_pages as BP
+    shared, _base, _ran, _days = _fixture_site_shared()
+    site = shared / "site"
+
+    def norm(href):
+        return re.sub(r"\.html$", "", re.split(r"[?#]", href)[0].lstrip("/"))
+    trails, bad = 0, []
+    for f in sorted(site.rglob("*.html")):
+        page = INLINE_BODY.sub(r"\1", f.read_text(encoding="utf-8", errors="replace"))
+        first = re.search(r'<nav class="rtrail"[^>]*><ol><li><a href="([^"]*)"', page)
+        if not first:
+            continue
+        trails += 1
+        lit = re.search(r'<a href="([^"]*)" aria-current="page"', page)
+        if not lit or norm(lit.group(1)) != norm(first.group(1)):
+            bad.append(f"{f.relative_to(site).as_posix()}: the trail begins at {first.group(1)} and "
+                       f"the header lights {lit.group(1) if lit else 'nothing'}")
+    assert trails and any(p.parts[-3] == "session" for p in site.glob("session/*/*.html")), (
+        "the fixture has no page with a trail, or no session day")
+    assert not bad, f"{len(bad)} pages: " + "; ".join(bad[:4])
+
+    about = (site / "about.html").read_text(encoding="utf-8")
+    at = about.index("<h2>What You Can Do Here</h2>")
+    can = about[at:about.index("</ul>", at)]
+    lines = re.findall(r"<li>(.*?)</li>", can, re.S)
+    assert len(lines) == 5 and all(re.match(r'<a href="[^"]+">', x) for x in lines), (
+        f"About's What You Can Do Here is not five lines that each open on a link: {lines}")
+    rules = _redirect_rules(site)
+    for href in re.findall(r'<a href="([^"]+)"', can):
+        path, _, frag = href.partition("#")
+        path = "/" + path.split("?")[0].lstrip("/")
+        assert _served(site, path, rules), f"About links {href}, and nothing is served at {path}"
+        if frag:
+            assert f'id="{frag}"' in (site / (path.lstrip("/") + ".html")).read_text(encoding="utf-8"), (
+                f"About links {href}, and {path} has no section #{frag}")
+
+    towns, linked = {p.stem for p in (site / "town").glob("*.html")}, 0
+    for f in sorted((site / "legislator").glob("*.html")):
+        page = f.read_text(encoding="utf-8")
+        said = re.search(r"<b>Represents:</b> (.*?)</li>", page)
+        if not said or "window.GR_FORMER" in page:
+            continue
+        plain = [t.strip() for t in re.sub(r"<a [^>]*>[^<]*</a>", "", said.group(1)).split(",")]
+        assert not [t for t in plain if re.sub(r"[^a-z0-9]+", "-", t.lower()).strip("-") in towns], (
+            f"{f.name}: a town with a page is not linked: {said.group(1)}")
+        for href, name in re.findall(r'<a href="([^"]+)">([^<]+)</a>', said.group(1)):
+            assert norm(href).removeprefix("town/") in towns and f'"{name}": "{href}"' in page, (
+                f"{f.name}: {name} links {href}, which is no town page or not the page's GR_TOWNS")
+            linked += 1
+    assert linked, "no member's page on the fixture links a town"
+
+    over = []
+    for old, _new in BP.MOVED:
+        p = old.lstrip("/")
+        if (site / p).is_file() or (site / (p + ".html")).is_file() or (site / p / "index.html").is_file():
+            over.append(old)
+    assert not over, f"a redirect stands over a page the build writes: {over}"
+    return "ok", (f"{trails} pages' trails begin where the header is lit; About's five lines link "
+                  f"what they describe; {linked} towns linked on the members' pages; none of "
+                  f"{len(BP.MOVED)} redirects over a page")
 
 
 # The modules on the build's path that ask the clock what day it is and are
@@ -69465,6 +69577,58 @@ def _officers_on_the_page(B, BLP, BSP, OF):
     return "ok", ("\"Senator Sharon Carson (R - SD14)\", President of the Senate; "
                   "\"Representative James Spillane (R - Rock 2)\"; the Deputy Speaker named "
                   "on his presiding ballot and in the chair")
+
+
+@check("frontend", "a member who has left is led up through the list of those who have, and a "
+                   "sitting member's towns each link their page where one is written",
+       needs=("build_legislator_pages",))
+def _member_signposts(BLP):
+    """The audit of 25 October 2026, S6: a former member's trail led to
+    Officials, which lists only sitting members, and now goes through
+    /directory/former-legislators (build_indexes.former_page); and the towns
+    under a member's name were words beside a page for each of them.
+    towns_linked links a town by its page's slug and leaves a place the
+    roster spells otherwise than the district maps -- "Atk. & Gilmanton
+    Academy Gt" beside the map's "Atk. & Gil. Academy Grant" -- as words."""
+    assert '"/directory/former-legislators.html"' in Path("src/pages/build_indexes.py").read_text(
+        encoding="utf-8"), "build_indexes no longer writes /directory/former-legislators"
+    site = Path(tempfile.mkdtemp(prefix="gr-towns-"))
+    try:
+        (site / "districts.json").write_text(json.dumps(
+            {"Concord": {"3": {}, "4": {}}, "Berlin": {"0": {}},
+             "Atk. & Gil. Academy Grant": {"0": {}}}), encoding="utf-8")
+        pages = BLP.town_pages(site)
+    finally:
+        shutil.rmtree(site, ignore_errors=True)
+    towns = ["Berlin", "Concord Ward 3", "Atk. & Gilmanton Academy Gt"]
+    places = BLP.towns_linked(towns, pages)
+    assert places == {"Berlin": "/town/berlin", "Concord Ward 3": "/town/concord-ward-3"}, places
+    sitting = {"id": "9", "chamber": "H", "district": "15", "county": "Merrimack",
+               "display_full": "Rep. Ann Doe (D - Merr 15)", "towns": towns}
+    rec = BLP.static_record(sitting, {}, "", places)
+    assert ('<b>Represents:</b> <a href="/town/berlin">Berlin</a>, <a href="/town/concord-ward-3">'
+            'Concord Ward 3</a>, Atk. &amp; Gilmanton Academy Gt</li>') in rec, rec[:400]
+    gone = {"id": "1", "former": True, "chamber": "H",
+            "display_full": "Rep. Michael Gunski (R - Hills 6)"}
+    got = _app_js("[(window.GR_TOWNS=" + json.dumps(places) + ", scope.renderMemberHead("
+                  + json.dumps(sitting) + ")), scope.renderMemberHead(" + json.dumps(gone) + "), "
+                  "(delete window.GR_TOWNS, scope.renderMemberHead(" + json.dumps(sitting) + "))]",
+                  names=("renderMemberHead",))
+    if got is None:
+        return "ok", "the towns are linked in Python; node is not here to draw the head"
+    here, left, bare = got
+    trail = lambda h: re.search(r'<nav class="rtrail"[^>]*><ol>(.*?)</ol>', h).group(1)
+    assert trail(left) == ('<li><a href="officials.html">Officials</a></li><li><a href="directory/'
+                           'former-legislators">Former Legislators</a></li><li aria-current="page">'
+                           'Former Representative</li>'), trail(left)
+    assert "former-legislators" not in trail(here), trail(here)
+    assert ('<a href="/town/berlin">Berlin</a>, <a href="/town/concord-ward-3">Concord Ward 3</a> '
+            'and Atk. &amp; Gilmanton Academy Gt</p>') in here, re.sub(r"\s+", " ", here)[:500]
+    assert "/town/" not in bare and "Berlin, Concord Ward 3 and Atk." in bare, (
+        "with no GR_TOWNS the towns are not left as words")
+    return "ok", ("a former member's trail is Officials, Former Legislators, Former Representative; "
+                  "a sitting member's towns link /town/berlin and /town/concord-ward-3, and a "
+                  "place spelled otherwise stays words")
 
 
 @check("frontend", "Latest activity on the home page links each bill to its own page",

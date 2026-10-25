@@ -266,8 +266,21 @@ COMMITTEE_TAB_SLUGS = ("sessions",)
 # at /guides/<slug> now (civics.HOW_TO), and its /learn/ address, which
 # search engines have indexed and bookmarks hold, answers with a 301 to it,
 # in both spellings for the reason above.
+# AND A CITY'S OWN ADDRESS (the audit of 25 October 2026, M4). A city's
+# pages are its wards', /town/concord-ward-3, so /town/concord -- the address
+# a reader types and a search engine guesses -- answered 404. Each goes to the
+# Officials page's town box with the city in it, which offers its wards
+# (?town= is read there). Berlin, the thirteenth city, is one district whole,
+# so /town/berlin is its own page and is not here: preflight holds this list
+# to the towns the House map divides into wards.
+WARDED_CITIES = ("Claremont", "Concord", "Dover", "Franklin", "Keene", "Laconia",
+                 "Lebanon", "Manchester", "Nashua", "Portsmouth", "Rochester", "Somersworth")
 MOVED =(("/learn", "/resources"), ("/learn.html", "/resources"),
          *((f"/learn/{s}{x}", f"/guides/{s}") for s in _civics.HOW_TO for x in ("", ".html")),
+         # /guides holds the guides and was never a page: the hub opens on them.
+         ("/guides", "/resources"), ("/guides.html", "/resources"),
+         *((f"/town/{c.lower()}{x}", f"/officials?town={c}")
+           for c in WARDED_CITIES for x in ("", ".html")),
          ("/legislators", "/officials"), ("/legislators.html", "/officials"),
          # Sen. John Barnes Jr.'s page, named from "Barnes, Jr., John" as
          # "Jr. Barnes John" until build_site_v2.person_name put the suffix
@@ -1414,7 +1427,8 @@ not exist in: every bill since 1989 has a page of its own, for example
 # detail" fold under the section that now carries that name. "The Logo" and
 # the artist's words are as they were. The repository's address is REPO's,
 # put in below, so the footer, the Data page and this page cannot point at two
-# places.
+# places. Each line of What You Can Do Here links the page that does it (the
+# audit of 25 October 2026, S6), its words unchanged.
 ABOUT = """
 <h1>About Granite Record</h1>
 <p class="lead">Granite Record is a free, independent and searchable record of the New Hampshire
@@ -1451,10 +1465,10 @@ without whom this project would not be possible.</p>
 
 <h2>What You Can Do Here</h2>
 <ul>
-<li>Search for bills in plain language, or by number, sponsor or committee.</li>
-<li>Open a hearing's recording at the moment a bill was taken up.</li>
-<li>Prepare to testify, with a bill's hearings, reports and text in one place.</li>
-<li>Research how a bill, or an issue, has changed over the years.</li>
+<li><a href="bills.html">Search for bills</a> in plain language, or by number, sponsor or committee.</li>
+<li><a href="guides/using-this-site#s-what-a-timestamp-claims">Open a hearing's recording</a> at the moment a bill was taken up.</li>
+<li><a href="guides/testifying">Prepare to testify</a>, with a bill's hearings, reports and text in one place.</li>
+<li><a href="bills.html?term=all">Research how a bill, or an issue, has changed</a> over the years.</li>
 <li>__FOLLOW_BULLET__</li>
 </ul>
 
@@ -1540,13 +1554,15 @@ added scenes from the Monadnock Region, New Hampshire and beyond.</p>
 # info"). shell.follow_live() decides which; the first of each pair is the
 # text of 9 October, unchanged.
 ABOUT_FOLLOW = {
-    False: ("Follow a bill's progress, and find your legislators and how to reach them.",
+    False: ('<a href="guides/using-this-site#s-following-a-bill">Follow a bill\'s progress</a>, '
+            'and <a href="officials.html">find your legislators and how to reach them</a>.',
             """<p>Granite Record doesn't track you. There are no accounts and no advertising,
 nothing about what you read is tied to you, and reports sent through the
 <i>Report a problem</i> button are deleted after a week.
 <a href="data.html#privacy">Privacy in detail</a> is on the Data page.</p>"""),
-    True: ("Follow a bill, legislator, committee or topic by feed or by email, and find "
-           "your legislators and how to reach them.",
+    True: ('<a href="guides/using-this-site#s-following-a-bill">Follow a bill, legislator, '
+           'committee or topic</a> by feed or by email, and <a href="officials.html">find '
+           'your legislators and how to reach them</a>.',
            """<p>Granite Record doesn't track you. There are no accounts and no advertising,
 and nothing about what you read is tied to you. If you sign up for email updates,
 your address is used only to send them. It is stored encrypted, never shared or
