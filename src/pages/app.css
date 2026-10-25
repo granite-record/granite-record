@@ -1,4 +1,4 @@
-/* GRANITE_VERSION: 2026-09-07.313 */
+/* GRANITE_VERSION: 2026-09-07.314 */
 /* ONE STYLESHEET FOR EVERY PAGE (23 October 2026). Every page of the site
    links this file, /app.css: the record pages shell.page() makes from
    bills.html, and the five build_pages.py writes -- the home page, Officials,
@@ -7789,6 +7789,13 @@ padding:var(--sp-7) max(0px,calc(50% - 590px))}
    loses the margin that pushed it to the right of a wider card. */
 :where(body.pg) .hside .calmeet > summary .calcount{margin-left:0}
 :where(body.pg) .hside .calmeet > summary .caltime{margin-right:var(--sp-2)}
+/* A BILL OVER ITS TITLE, IN THE RAILS (24 October 2026). Beside an 88px column
+   for its number, a bill's title and, in Latest Activity, what was done to it
+   had some 130px of a 300px rail and broke a word a line; stacked, as a phone
+   has them, each has the card's width. Coming up's cards and Latest
+   Activity's alike, since they are one format. */
+:where(body.pg) .hside .calbills li{flex-direction:column;gap:var(--sp-1)}
+:where(body.pg) .hside .calbills .cbn{flex:none}
 /* The link out, under the days. */
 :where(body.pg) .hside .calall{margin:var(--sp-5) 0 0;font-size:var(--t-ui)}
 :where(body.pg) .hside .calall a{color:var(--pine);font-weight:600}
@@ -7808,7 +7815,8 @@ padding:var(--sp-7) max(0px,calc(50% - 590px))}
 :where(body.pg) .hside .cal{margin-top:0}
 /* Stacked, not side by side. .twoup's own floor is minmax(280px,1fr),
      which in a 290px column is one column anyway -- this says so rather
-     than relying on it, because the ask was explicit. */:where(body.pg) .hright .twoup{grid-template-columns:1fr}
+     than relying on it, because the ask was explicit. In the left column
+     since 24 October 2026, the same width. */:where(body.pg) .hside .twoup{grid-template-columns:1fr}
 /* Three numbers across a 482px column rather than two, which needs one
      step down the type scale: 20px puts "2,303,047" at 110px, and 134px of
      basis carries it with its padding. The middle column is the widest of
@@ -7820,38 +7828,30 @@ padding:var(--sp-7) max(0px,calc(50% - 590px))}
      columns end here", which is better than leaving 340px of white looking
      like something failed to load. */:where(body.pg) #recent{border-top:1px solid var(--rule);padding-top:var(--sp-3)}
 }
-/* LATEST ACTIVITY, A MEETING AN ITEM (the person, 24 October 2026: "have
-   latest activity show things like recent meetings and all the bills from
-   that meeting are grouped together"; build_pages.recent_box). At every
-   width, so outside the block above. Each item is a committee's day or a
-   chamber's sitting, ruled off as the rows were: when it was, its name
-   leading into it with the kinds of sitting it held, then its bills, each
-   once, with what was done to it there and its title on one line under. The
-   colour bar down its edge is Coming up's (.calmix), a segment a kind. These
-   narrow the list's own rules (.actlist, above): the bills inside an item are
-   not rows of their own. */
-:where(body.pg) .latlist > li.latm{display:block;position:relative;
-padding:var(--sp-4) 0 var(--sp-4) calc(var(--sp-5) + 4px)}
-:where(body.pg) .latm .calmix{top:var(--sp-4);bottom:var(--sp-4);border-radius:2px}
-:where(body.pg) .latwhen{margin:0;font-size:var(--t-sm);color:var(--ink-2)}
-:where(body.pg) .lathead{margin:var(--sp-1) 0 0;line-height:1.4}
-:where(body.pg) .latname{font-weight:600;color:var(--pine)}
-:where(body.pg) .latkinds{color:var(--ink-2)}
-:where(body.pg) .latbills{list-style:none;margin:var(--sp-3) 0 0;padding:0}
-:where(body.pg) .latlist .latbills li{display:block;padding:var(--sp-2) 0;border:0;margin:0;
-line-height:1.6}
-:where(body.pg) .latbills .cbn{font-weight:600;font-variant-numeric:tabular-nums;
-margin-right:var(--sp-2)}
-/* An outcome is a chip in the site's words for it, and some of those are
-   long ("Does Not Recommend Future Legislation"): in a 250px column a chip
-   that kept its own box went under the number and took two lines of its own.
-   Here it runs on after the number as words do, and breaks where they do. */
-:where(body.pg) .latbills .chip{display:inline;white-space:normal;padding:0 var(--sp-3)}
+/* LATEST ACTIVITY IN COMING UP'S FORMAT (the owner, 24 October 2026: "I meant
+   for latest activity that it could be formatted similarly to the coming up
+   page just listing past events with the ability to click it for a dropdown
+   to list all the bills from that session"; build_pages.recent_box). Its
+   days and cards are Coming up's (.calday, .calmeet), so they take Coming
+   up's rules; these are what a past meeting adds inside its card: the kinds
+   it held, in words, and under each bill's title what was done to it there.
+   At every width, so outside the block above. */
+:where(body.pg) .latcal > .calday:first-child > .caldate{margin-top:var(--sp-4)}
+:where(body.pg) .latkinds{margin:var(--sp-4) 0 0;font-size:var(--t-sm);color:var(--ink-2)}
+:where(body.pg) .latt{display:block}
+:where(body.pg) .latdid{display:block;margin-top:var(--sp-2)}
+/* AN OUTCOME IS ONE BOX THAT WRAPS INSIDE ITSELF. It is a chip in the site's
+   words for it, and some of those are long ("Does Not Recommend Future
+   Legislation"): run on inline after the number, as it was, a chip too long
+   for the rail tore across two lines, border and all (the owner, 24 October
+   2026: "The status outcome cards that are split between lines aren't
+   displaying properly"). On its own line under the title it keeps its box
+   and wraps within it. */
+:where(body.pg) .latdid .chip{white-space:normal;max-width:100%;text-align:left;
+vertical-align:top;margin-right:var(--sp-2)}
 :where(body.pg) .latvote,:where(body.pg) .latdated{font-size:var(--t-sm);color:var(--ink-2);
-font-variant-numeric:tabular-nums}
-:where(body.pg) .latt{display:block;font-family:var(--serif);font-size:var(--t-sm);color:var(--ink-2);
-white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-:where(body.pg) .latmore{margin:var(--sp-1) 0 0;font-size:var(--t-sm)}
+font-variant-numeric:tabular-nums;white-space:nowrap}
+:where(body.pg) .latmore{margin:var(--sp-3) 0 0;font-size:var(--t-sm);color:var(--ink-2)}
 /* THE ORDER ON ONE COLUMN, which is the person's, from 20 September:
    the hero, the bill search and its cards, then find your legislators, the
    status, what is coming up, the most recent floor sessions, and last the
@@ -7890,13 +7890,16 @@ white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
   :where(body.pg) .hcols .entry{order:5}
   /* The common questions under the cards, as on a desktop (build_civics.home_guides). */
   :where(body.pg) .hcols .hguides{order:6}
-  /* Then where the General Court is, and what it is about to do. */
+  /* Then where the General Court is, with its latest session days. */
   :where(body.pg) .hcols #state{order:7}
-  :where(body.pg) .hcols #upcoming{order:8}
-  /* Then what it has just done. */
-  :where(body.pg) .hcols #session{order:9}
-  /* And last, the rebuild line with the latest activity under it, which is
-     the pair settled on 19 September and is kept together here. */
+  :where(body.pg) .hcols #session{order:8}
+  /* Then what it is about to do and what it has just done, read on as the
+     right column of a desktop reads (the owner, 24 October 2026: "stacked
+     on top of each other ... which shows you what's coming up and what
+     just happened more continuously"). */
+  :where(body.pg) .hcols #upcoming{order:9}
+  /* And the rebuild line with the latest activity under it, which is the
+     pair settled on 19 September and is kept together here. */
   :where(body.pg) .hcols .fresh{order:10}
   :where(body.pg) .hcols .hrecent{order:11}
   /* display:contents leaves the children without the wrapper's own spacing,
@@ -8548,24 +8551,6 @@ border-radius:var(--r-in);box-shadow:0 10px 26px var(--shadow);max-height:min(60
    Saturday a reader cannot take next week's meetings for the week gone. */
 :where(body.pg) .calwk{display:flex;flex-wrap:wrap;align-items:center;gap:var(--sp-2) var(--sp-4);
 margin:0 0 var(--sp-4);font-size:var(--t-ui);color:var(--ink-2)}
-/* COMING UP'S KEY DATES (key_dates.row_html and ahead_html; the owner, 24
-   October 2026: "Coming up should list major events like the election
-   days, town meeting days, organization day, etc"). An event, not a
-   meeting: a line on the Key Dates gold's tint with its bar, not a card that
-   opens, leading to its day on the Calendar. In the week's days, first in
-   its day; after the week, the next few under their own heading. */
-:where(body.pg) .kdrow{margin:0 0 var(--sp-3);padding:var(--sp-3) var(--sp-5);
-background:var(--cal-date-bg);border-left:4px solid var(--cal-date);border-radius:var(--r-in);
-font-size:var(--t-ui);line-height:1.45}
-:where(body.pg) .kdrow[hidden]{display:none}
-:where(body.pg) .kdrow a{color:var(--pine);font-weight:600}
-:where(body.pg) .kdrow time{display:block;font-size:var(--t-sm);color:var(--ink-2);
-font-variant-numeric:tabular-nums}
-:where(body.pg) .kdwho{font-size:var(--t-sm);color:var(--ink-2);white-space:nowrap}
-:where(body.pg) .kdahead{margin:var(--sp-6) 0 0}
-:where(body.pg) .kdh{font-size:var(--t-ui);font-weight:600;color:var(--ink-2);margin:0 0 var(--sp-3);
-font-family:var(--sans);letter-spacing:0;text-transform:none}
-:where(body.pg) .kdlist{list-style:none;margin:0;padding:0}
 /* THE NEXT DEADLINE, in the status box over the way to the schedule it
    comes from (build_pages.deadline_line). It hides itself the day after. */
 :where(body.pg) .statedue[hidden]{display:none}
@@ -8577,7 +8562,7 @@ text-wrap:balance}
 /* Each half of the slogan is one unit, so it breaks at its comma (build_pages,
    home_body). */
 :where(body.pg) .slogan .sl{display:inline-block}
-/* The rebuild line under the latest session days, clear of the player. */
+/* The rebuild line under Coming up, over the latest activity it dates. */
 :where(body.pg) .hright .fresh{margin-top:var(--sp-5)}
 /* ==== /HUBS, PAGES ======================================================== */
 

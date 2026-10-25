@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.234
+# GRANITE_VERSION: 2026-09-04.235
 """
 Build the pages the navigation links to: legislators, town lookup, how it
 works, and about.
@@ -318,8 +318,15 @@ REPO = chrome.REPO
 # 1280px window, the five docket lines stood 1,258px tall, four meetings stand
 # 1,317 and five 1,645, their interim study reports' words wrapping in the
 # narrow column.
+# AND EVERY BILL OF EACH, IN A CARD THAT OPENS (the owner, the same evening:
+# "formatted similarly to the coming up page ... with the ability to click it
+# for a dropdown to list all the bills from that session"). A card shut is two
+# lines, so four meetings stand shorter than before; open, it lists every bill
+# the meeting took up, up to RECENT_BILLS -- which latest_activity keeps in
+# home.json for the meetings shown, and eight for the rest -- and "and N
+# more" past that, which only a House sitting reaches.
 RECENT_SHOWN = 4
-RECENT_BILLS = 3
+RECENT_BILLS = 40
 RECENT_MORE = ('<p class="actmore"><a class="morebtn" href="/bills?sort=recent">'
                'See all recent activity &rarr;</a></p>')
 
@@ -694,12 +701,17 @@ def calendar_html(out, today=None, rows=None, lang="en", events=None):
 
     THE KEY DATES (the owner, 24 October 2026: "Coming up should list major
     events like the election days, town meeting days, organization day,
-    etc"). Those of the rail's week stand in their days, first, each a line
-    in its own colour (key_dates.row_html); a day holding only a key date is
-    one of the rail's days. The next few after the rail's Sunday follow the
-    week, under their own heading, in date order (key_dates.ahead_html), so a
-    reader on 24 October sees the election of 3 November before it is this
-    week's.
+    etc"), NOW CALLED IMPORTANT DATES, AND ONLY THE WEEK'S (the owner, the
+    same evening: "those events would show up under the coming up section
+    when they are within that week's days, but not ones that are months
+    out ... The key dates should display within the other coming up
+    sessions in the same format, just color coded with the same scheme used
+    on the calendar page"). Those of the rail's week stand first in their
+    days, each the card the Calendar draws for it (key_dates.card_html), in
+    its gold, opening on its sentence and source; a day holding only one is
+    one of the rail's days. None after the week: the list of the next four
+    that followed it, out to December on 24 October, is gone, and a date
+    comes into the rail with its week, as a meeting does.
     """
     import key_dates as KD
     import datetime as _dt
@@ -743,7 +755,6 @@ def calendar_html(out, today=None, rows=None, lang="en", events=None):
     dates = sorted(d for d in set(week) | set(kds)
                    if start.isoformat() <= d <= sunday.isoformat()
                    and (week.get(d) or kds.get(d)))
-    later = KD.ahead_html(evs, sunday.isoformat(), today, lang)
     nxt = BC.week_key(sunday + _dt.timedelta(days=1))
     n_next = sum(len(v) for v in home_week(weeks.get(nxt)).values())
     # The week's name and its weekdays, as the Calendar's pager says them
@@ -783,7 +794,7 @@ def calendar_html(out, today=None, rows=None, lang="en", events=None):
                               "January to June, and committees meet on bills from the fall "
                               "filing period onwards.")
         return (f'<section class="cal" data-mon="{monday.isoformat()}"><h2>{coming}</h2>'
-                f'{label}<p class="note">{esc(note)}</p>{later}{more}</section>')
+                f'{label}<p class="note">{esc(note)}</p>{more}</section>')
 
     meets = {k: rs for d in dates for k, rs in (week.get(d) or {}).items()}
     up = [r for rs in meets.values() for r in rs]
@@ -842,7 +853,7 @@ def calendar_html(out, today=None, rows=None, lang="en", events=None):
     html.append('<div class="calscroll" role="region" tabindex="0" '
                 f'aria-label="{esc(say(lang, "cal.scroll", "Meetings from today to Sunday"))}">'
                 + body + "</div>")
-    html.append(later + more)
+    html.append(more)
     return "".join(html) + cal_notes(up, missing, esc)
 
 
@@ -914,10 +925,12 @@ def cal_days(days, meets, titles, years, code, when, esc, level=3,
     up should list major events like the election days, town meeting days,
     organization day, etc and those dates should show up on the calendar
     page too"). `events` is key_dates.days(): {day: [(key date, role)]}.
-    On the Calendar (`kd_full`) each is a card of its own class, which opens
-    on its sentence and source; in Coming up a line in its colour that leads
-    to that card. Neither is a meeting: a day holding only a key date still
-    says it has no meetings on the Calendar, and is not a calnone day.
+    Each is a card of its own class, which opens on its sentence and source,
+    on the Calendar and in Coming up alike (the owner, 24 October 2026: "in
+    the same format, just color coded"); it was a plain line in Coming up
+    until that evening. Neither is a meeting: a day holding only a key date
+    still says it has no meetings on the Calendar (`kd_full`), and is not a
+    calnone day.
     """
     import key_dates as KD
     events = events or {}
@@ -951,8 +964,7 @@ def cal_days(days, meets, titles, years, code, when, esc, level=3,
                     f'<span>{esc(label)}</span>'
                     f'<span class="cdrel">{esc(rel)}</span>'
                     + f"</{h}>")
-        html += [(KD.card_html if kd_full else KD.row_html)(e, role, date, lang)
-                 for e, role in kds]
+        html += [KD.card_html(e, role, date, lang) for e, role in kds]
         if not keys:
             if kd_full or not kds:
                 html.append(f'<p class="calempty">{say(lang, "cal.empty", "No meetings scheduled.")}</p>')
@@ -2738,22 +2750,24 @@ def did_html(did, bill, lang="en"):
     return out
 
 
-def latest_when(date, time, today, lang="en"):
-    """When a meeting was, as Latest Activity says it: "Today · 10:00 AM" or
-    "Yesterday · 10:30 AM" -- the hour, where the day goes without saying --
-    and the day, "Oct 22", before that. HOME_JS's latWhen says the same in
-    the reader's own clock, which is the one that knows what today is."""
+def past_rel(date, today, lang="en"):
+    """How long ago a day of Latest Activity was, beside its date as Coming
+    up says how far off its days are: "today", "yesterday", "3 days ago",
+    and nothing past a fortnight or for a day not yet past. HOME_JS's latRel
+    says the same in the reader's own clock, which is the one that knows what
+    today is."""
     import datetime as _dt
     try:
         off = (today - _dt.date.fromisoformat(str(date)[:10])).days
     except (TypeError, ValueError):
-        off = None
-    at = clock(time, lang) if time else ""
-    if off in (0, 1):
-        word = (say(lang, "home.today", "Today") if off == 0
-                else say(lang, "home.yesterday", "Yesterday"))
-        return word + (f" · {at}" if at else "")
-    return _shell.date_words(date or "", "short", lang)
+        return ""
+    if off == 0:
+        return say(lang, "cal.today", "today")
+    if off == 1:
+        return say(lang, "cal.yesterday", "yesterday")
+    if 1 < off <= 14:
+        return say(lang, "cal.days_ago", "{n} days ago", n=off)
+    return ""
 
 
 def latest_href(m, codes, sits):
@@ -2769,21 +2783,113 @@ def latest_href(m, codes, sits):
     return f"committee/{code}.html#day-{m.get('date')}" if code else None
 
 
-def recent_box(H, lang="en", codes=None, sits=None, today=None):
-    """Latest Activity as the server draws it: the newest meetings of
-    home.json's `latest`, each a committee's day or a chamber's sitting, its
-    name leading to that meeting, with the bills it took up, each once, and
-    what was done to each there; and the way to the rest.
-
-    `codes` is committee_codes', by which Coming up's cards link a committee;
-    `sits` the sittings with a page (sitting_days); `today` the day "Today"
-    and "Yesterday" are said from, which HOME_JS says again in the reader's
-    own clock. THE ONE RENDERER: HOME_JS drew this box again from home.json
-    after the page loaded, and does not now (see HOME_JS)."""
-    import datetime as _dt
+def latest_card(m, lang, codes, sits, esc):
+    """One meeting of Latest Activity, as Coming up draws a meeting
+    (cal_days): a card with its colour bar, its name, its hours and how many
+    bills it took up, which opens on those bills -- each with its title and
+    what was done to it there, in the site's words and colour for it
+    (did_html) -- and the way into the meeting: the committee's page at that
+    day, or the sitting's own page."""
     # Here rather than above: build_calendar imports this module.
     import build_calendar as _BCal
     import latest_activity as _LA
+    rec_attr = EN_ATTR if lang != i18n.DEFAULT else ""
+    href = latest_href(m, codes, sits)
+    if m.get("floor"):
+        # A SITTING'S NAME SAYS WHAT IT IS ("House Session Day"), as its card
+        # on the Calendar says it, and no word says it again.
+        key = Meet(m.get("date") or "", m.get("body") or "",
+                   _BCal.FLOOR.get(m.get("body"), ""), "")
+        name, own, kinds = card_name(key, lang), False, []
+    else:
+        key = _LA.key_of(m)
+        name = card_name(key, lang)
+        own = lang != i18n.DEFAULT and name == card_name(key)
+        kinds = m.get("kinds") or []
+    bars = []
+    for k in (m.get("kinds") or []):
+        cls = MEET_KIND.get(str(k).strip().lower(), ("", ""))[1] or "k-other"
+        if cls not in bars:
+            bars.append(cls)
+    bills = m.get("bills") or []
+    n = int(m.get("n") or len(bills))
+    time = clock_span(m["time"], m.get("last") or m["time"], lang) if m.get("time") else ""
+    count = (say(lang, "cal.one_bill", "1 bill") if n == 1
+             else say(lang, "cal.n_bills", "{n} bills", n=n))
+    # THE SUMMARY IS COMING UP'S: the bar, the name, the hours with the count
+    # beside them, the kinds as chips (which the rail hides, its bar being the
+    # colour), and the caret.
+    head = ('<span class="calmix" aria-hidden="true">'
+            + "".join(f'<i class="{c}"></i>' for c in bars) + "</span>"
+            + f'<span class="calcmte"{EN_ATTR if own else ""}>{esc(name)}</span>'
+            + (f'<span class="caltime">{esc(time)}</span>' if time else "")
+            + ('<span class="calcount">' + (f"({count})" if time else count) + "</span>"
+               if n else "")
+            + "".join(chip(kind_word(k, lang)[0], f"calkind {kind_word(k, lang)[1]}")
+                      for k in kinds)
+            + '<span class="caret"></span>')
+    body = []
+    # The kinds in words, at the top of what opens: the rail hides the chips.
+    if kinds:
+        body.append('<p class="latkinds">'
+                    + esc(", ".join(kind_word(k, lang)[0] for k in kinds)) + "</p>")
+    # EVERY BILL IT TOOK UP (the owner, 24 October 2026: "the ability to click
+    # it for a dropdown to list all the bills from that session"), as many as
+    # home.json keeps for a meeting the page shows (RECENT_BILLS), each once,
+    # its title and then what was done to it, on a line of its own so that a
+    # long outcome is one box that wraps inside itself rather than a chip torn
+    # across two lines ("The status outcome cards that are split between lines
+    # aren't displaying properly").
+    if bills:
+        body.append('<ul class="calbills">' + "".join(
+            f'<li><a class="cbn" href="{esc(recent_href(b))}">{esc(b.get("n"))}</a>'
+            '<span class="cbt">'
+            + (f'<span class="latt"{rec_attr}>{esc(b.get("title"))}</span>'
+               if b.get("title") else "")
+            + (f'<span class="latdid">{did_html(b.get("did"), b.get("bill"), lang)}</span>'
+               if b.get("did") else "")
+            + "</span></li>" for b in bills) + "</ul>")
+    rest = max(n - len(bills), 0)
+    if rest:
+        body.append('<p class="latmore">'
+                    + say(lang, "home.n_more", "and {n} more", n=f"{rest:,}") + "</p>")
+    # INTO THE MEETING, in Coming up's words for the same link.
+    if href:
+        if m.get("floor"):
+            chamber = "House" if m.get("body") == "H" else "Senate"
+            words = (f"What the {chamber} did that day" if lang == i18n.DEFAULT
+                     else say(lang, "cal.house_did", "What the House did that day")
+                     if chamber == "House"
+                     else say(lang, "cal.senate_did", "What the Senate did that day"))
+        else:
+            words = say(lang, "cal.on_page", "This meeting on the {name} page",
+                        name=esc(card_name(key)))
+        body.append(f'<p class="calmore"><a href="{esc(href)}">{words}</a></p>')
+    return (f'<details class="calmeet latm" data-date="{esc(m.get("date"))}"'
+            f' data-kinds="{esc(" ".join(b[2:] for b in bars))}"><summary>{head}</summary>'
+            f'<div class="calbody">{"".join(body)}</div></details>')
+
+
+def recent_box(H, lang="en", codes=None, sits=None, today=None):
+    """Latest Activity as the server draws it, IN COMING UP'S FORMAT (the
+    owner, 24 October 2026: "I meant for latest activity that it could be
+    formatted similarly to the coming up page just listing past events with
+    the ability to click it for a dropdown to list all the bills from that
+    session"): the newest meetings of home.json's `latest` under their days,
+    newest first, each day headed as Coming up heads one -- its date and how
+    long ago it was -- and each meeting a card as Coming up draws one
+    (latest_card); and the way to the rest.
+
+    `codes` is committee_codes', by which Coming up's cards link a committee;
+    `sits` the sittings with a page (sitting_days); `today` the day "today"
+    and "yesterday" are said from, which HOME_JS says again in the reader's
+    own clock (latRel). THE ONE RENDERER: HOME_JS drew this box again from
+    home.json after the page loaded, and does not now (see HOME_JS).
+
+    ITS DAYS ARE NOT COMING UP'S. They are .calday blocks, as Coming up's
+    are, and HOME_JS removes every Coming up day that has passed: it asks
+    only within .cal, Coming up's section, and this box is not in one."""
+    import datetime as _dt
     esc = _home_esc
     meets = (H.get("latest") or [])[:RECENT_SHOWN]
     if not meets:
@@ -2791,69 +2897,29 @@ def recent_box(H, lang="en", codes=None, sits=None, today=None):
     today = today or build_date.today()
     if isinstance(today, str):
         today = _dt.date.fromisoformat(today[:10])
-    rec_attr = EN_ATTR if lang != i18n.DEFAULT else ""
-    items = []
+    days = {}
     for m in meets:
-        href = latest_href(m, codes, sits)
-        if m.get("floor"):
-            # A SITTING'S NAME SAYS WHAT IT IS ("House Session Day"), as its
-            # card on the Calendar says it, and no word says it again.
-            key = Meet(m.get("date") or "", m.get("body") or "",
-                       _BCal.FLOOR.get(m.get("body"), ""), "")
-            name, own = card_name(key, lang), False
-            kinds = []
-        else:
-            key = _LA.key_of(m)
-            name = card_name(key, lang)
-            own = lang != i18n.DEFAULT and name == card_name(key)
-            kinds = m.get("kinds") or []
-        bars = []
-        for k in (m.get("kinds") or []):
-            cls = MEET_KIND.get(str(k).strip().lower(), ("", ""))[1] or "k-other"
-            if cls not in bars:
-                bars.append(cls)
-        named = (f'<a class="latname" href="{esc(href)}"{EN_ATTR if own else ""}>{esc(name)}</a>'
-                 if href else f'<span class="latname"{EN_ATTR if own else ""}>{esc(name)}</span>')
-        # THE KINDS IN WORDS, AFTER THE NAME ("House Finance · Executive
-        # Session"), in the Calendar's words for them. Not as chips: in the
-        # 250px rail a chip a kind was a line a kind, and Coming up's cards
-        # leave theirs out there for the same reason. The bar down the item's
-        # edge is the colour; these are what it means.
-        said = ", ".join(kind_word(k, lang)[0] for k in kinds)
-        kinds_said = f'<span class="latkinds"> · {esc(said)}</span>' if said else ""
-        bills = m.get("bills") or []
-        lines = "".join(
-            f'<li><a class="cbn" href="{esc(recent_href(b))}">{esc(b.get("n"))}</a>'
-            + (f" {did_html(b.get('did'), b.get('bill'), lang)}" if b.get("did") else "")
-            + (f'<span class="latt"{rec_attr}>{esc(b.get("title"))}</span>' if b.get("title") else "")
-            + "</li>"
-            for b in bills[:RECENT_BILLS])
-        rest = max(int(m.get("n") or len(bills)) - min(len(bills), RECENT_BILLS), 0)
-        more = ""
-        if rest:
-            words = say(lang, "home.n_more", "and {n} more", n=f"{rest:,}")
-            more = (f'<p class="latmore"><a href="{esc(href)}">{words}</a></p>' if href
-                    else f'<p class="latmore">{words}</p>')
-        items.append(
-            f'<li class="latm" data-d="{esc(m.get("date"))}">'
-            f'<p class="latwhen" data-d="{esc(m.get("date"))}" data-t="{esc(m.get("time") or "")}">'
-            f'{esc(latest_when(m.get("date"), m.get("time"), today, lang))}</p>'
-            f'<p class="lathead"><span class="calmix" aria-hidden="true">'
-            + "".join(f'<i class="{c}"></i>' for c in bars) + "</span>"
-            + named + kinds_said + "</p>"
-            + (f'<ul class="latbills">{lines}</ul>' if lines else "")
-            + more + "</li>")
-    # A LIST, NOT A TABLE (the audit of 2 October 2026, M7), as it was: each
-    # item a meeting, and inside it the list of its bills.
+        days.setdefault(m.get("date") or "", []).append(m)
+    html = []
+    for d, ms in days.items():
+        try:
+            label = _shell.date_words(_dt.date.fromisoformat(d), "wkd", lang)
+        except ValueError:
+            label = d
+        html.append(f'<div class="calday" data-d="{esc(d)}"><h3 class="caldate">'
+                    f'<span>{esc(label)}</span>'
+                    f'<span class="cdrel">{esc(past_rel(d, today, lang))}</span></h3>'
+                    + "".join(latest_card(m, lang, codes, sits, esc) for m in ms) + "</div>")
     return (f'<h2>{say(lang, "home.recent", "Latest Activity")}</h2>'
-            '<ul class="actlist latlist">' + "".join(items) + "</ul>" + recent_more(lang))
+            '<div class="latcal">' + "".join(html) + "</div>" + recent_more(lang))
 
 
 def home_body(lang, has_lockup, static_state, static_up, static_recent, latest_days):
     """The home page's <main>, in `lang`: the hero, the search box, the cards
-    and the guides' slot in the middle; the status and Coming up on the
-    left; the session days, the rebuild line and Latest Activity on the
-    right. The parts drawn from data are passed in, drawn in `lang`."""
+    and the guides' slot in the middle; the status and the latest session
+    days on the left; Coming up, the rebuild line and Latest Activity on the
+    right (the owner, 24 October 2026). The parts drawn from data are passed
+    in, drawn in `lang`."""
     esc = _home_esc
     # THREE COLUMNS, AND THE MIDDLE ONE IS WRITTEN FIRST. The order here is
     # the order a screen reader hears and the order the Tab key takes; the
@@ -2926,19 +2992,25 @@ def home_body(lang, has_lockup, static_state, static_up, static_recent, latest_d
      checks; empty while build_civics.HOME_GUIDES is off. -->
 {guides}
 </div>
-<section class="hside hleft" aria-label="{esc(say(lang, "home.left", "Where the General Court is, and what is coming up"))}">
+<section class="hside hleft" aria-label="{esc(say(lang, "home.left", "Where the General Court is, and its latest session days"))}">
 <div id="state">{static_state}</div>
-<div id="upcoming">{static_up}</div>
-</section>
-<section class="hside hright" aria-label="{esc(say(lang, "home.right", "The latest session days, and what has just happened"))}">
 <div id="session" data-days="{esc(" ".join(latest_days))}"></div>
+</section>
+<!-- WHAT IS COMING UP OVER WHAT HAS JUST HAPPENED (the owner, 24 October
+     2026: "if the coming up and latest activity sections are going to use
+     similar formats, we could swap the recent session days section with
+     coming up so they're stacked on top of each other on the right side
+     which shows you what's coming up and what just happened more
+     continuously"). The two are one format now, a day and its meetings'
+     cards, so the right column reads forward and back from the present: the
+     week ahead, then the rebuild line, which dates what follows it (the pair
+     settled on 19 September), then the latest meetings. The latest session
+     days, with the status, are on the left. Below 1180px the same order: the
+     hero, the search and the cards, the status, the recordings, Coming Up,
+     the rebuild line and Latest Activity. -->
+<section class="hside hright" aria-label="{esc(say(lang, "home.right", "What is coming up, and what has just happened"))}">
+<div id="upcoming">{static_up}</div>
 <div id="fresh" class="fresh"></div>
-<!-- LATEST ACTIVITY UNDER THE RIGHT COLUMN (the person, 9 October 2026, item
-     3), under the latest session days and the rebuild line, so the middle
-     column ends with the three cards. The finder that held the top of this
-     column is the search box's now (D13). Below 1180px the order is as it
-     was: the hero, the search and the cards, the status, Coming Up, the
-     recordings, then the rebuild line and Latest Activity. -->
 <div id="recent" class="hrecent">{static_recent}</div>
 </section>
 </div>
@@ -2977,21 +3049,21 @@ const fdo=d=>{if(!d)return"";const L=typeof window!=="undefined"&&window.GR_LANG
 // (i18n.py): a bill's title and the line of its history.
 const REC=window.GR_LANG&&window.GR_LANG!=="en"?' lang="en"':"";
 // LATEST ACTIVITY'S DAYS, IN THE READER'S CLOCK (24 October 2026). The box is
-// the build's, and a build stands for a day or more: a meeting it called
-// "Yesterday" is two days back by the next evening. Each meeting carries its
-// day and its hour, and this says them as build_pages.latest_when does --
-// "Today · 10:00 AM", "Yesterday · 10:30 AM", else the day -- from the day
-// the reader is in. Not from home.json, so it holds with the fetch failing.
-const latWhen=(d,t,now)=>{
+// the build's, and a build stands for a day or more: a day it called
+// "yesterday" is two days back by the next evening. Each day carries its date,
+// and this says how long ago it was as build_pages.past_rel does -- "today",
+// "yesterday", "3 days ago", nothing past a fortnight -- from the day the
+// reader is in, as Coming up's days say "tomorrow". Not from home.json, so it
+// holds with the fetch failing.
+const latRel=(d,now)=>{
   const p=String(d||"").split("-").map(Number);
   const off=Math.round((now-new Date(p[0],p[1]-1,p[2]))/86400000);
-  const at=t?clock(t,window.GR_LANG):"";
-  if(off===0||off===1)return (off===0?tr("home.today","Today"):tr("home.yesterday","Yesterday"))
-    +(at?" \\u00b7 "+at:"");
-  return fd(d);
+  return off===0?tr("cal.today","today"):off===1?tr("cal.yesterday","yesterday")
+    :off>1&&off<=14?tr("cal.days_ago","{n} days ago",{n:off}):"";
 };
-document.querySelectorAll("#recent .latwhen[data-d]").forEach(el=>{
-  el.textContent=latWhen(el.dataset.d,el.dataset.t,new Date(new Date().setHours(0,0,0,0)));});
+document.querySelectorAll("#recent .calday[data-d]").forEach(el=>{
+  const rel=el.querySelector(".cdrel");
+  if(rel)rel.textContent=latRel(el.dataset.d,new Date(new Date().setHours(0,0,0,0)));});
 // If the nightly build stops running, nobody should be reading month-old data
 // believing it is current. The banner degrades into saying so.
 // Anchored to the site root, not to the page. legislators.html is served at
@@ -3101,7 +3173,9 @@ fetch(DATA("home.json")).then(r=>r.json()).then(H=>{
     const now=new Date(); now.setHours(0,0,0,0);
     const dow=now.getDay(),ahead=dow===6||dow===0;
     const from=ahead?(dow===6?2:1):0,to=ahead?from+6:(7-dow)%7;
-    const days=[...document.querySelectorAll(".calday[data-d]")];
+    // COMING UP'S OWN DAYS: Latest Activity's are days of the same class,
+    // all of them past, and this would take every one of them away.
+    const days=[...document.querySelectorAll(".cal .calday[data-d]")];
     let left=0;
     days.forEach(d=>{
       const p=d.dataset.d.split("-").map(Number);
@@ -3127,12 +3201,10 @@ fetch(DATA("home.json")).then(r=>r.json()).then(H=>{
     }
     if(cal&&days.length&&!left){
       // The line under the rail stays: it is the way to the full calendar,
-      // which is the useful thing to offer under an empty week. So do the
-      // key dates after the week (key_dates.ahead_html, 24 October 2026),
-      // each of which hides itself once its day is over (data-until).
-      const more=cal.querySelector(".calall"), keys=cal.querySelector(".kdahead");
+      // which is the useful thing to offer under an empty week.
+      const more=cal.querySelector(".calall");
       cal.innerHTML=`<h2>${tr("cal.coming","Coming up")}</h2><p class="note">${tr("cal.none_else","Nothing else is scheduled this week.")}</p>`
-        +(keys?keys.outerHTML:"")+(more?more.outerHTML:"");
+        +(more?more.outerHTML:"");
     }
     // "Last updated N days ago" is the one line whose whole job is to say the
     // summary may be stale; it cannot be a number frozen at build time.

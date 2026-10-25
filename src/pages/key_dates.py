@@ -1,10 +1,18 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-10-24.2
+# GRANITE_VERSION: 2026-10-24.3
 """
 The key dates: the elections, town meeting day, and the legislature's own
 landmarks and deadlines, each with where it comes from. The home page's
-Coming up lists them beside the week's meetings, its status box names the
-next deadline, and the Calendar shows each on its day under Key Dates.
+Coming up shows those of its week as cards among the week's meetings, its
+status box names the next deadline, and the Calendar shows each on its day
+under Important Dates.
+
+THEIR NAME ON THE PAGE IS IMPORTANT DATES (the owner, 24 October 2026: "Key
+Dates doesn't sound like the right phrase for that category, maybe something
+like House Deadlines, but that doesn't encompass things like elections, so
+feel free to workshop that name"): a name that holds a deadline, an election,
+Organization Day and town meeting alike. The code keeps "key date" for them,
+and the category its key, "date".
 
     import key_dates as KD
     KD.events(today)                   # every key date, in date order
@@ -483,12 +491,13 @@ def _attr(s):
 
 
 def card_html(e, role, day, lang="en"):
-    """A key date on the Calendar, as a card among the day's meetings: its
-    name, the Key Date chip in its colour and whose date it is, opening on
-    the schedule page's sentence and source. Its own class, never a
-    meeting's (calmeet): WEEK_JS reads it as an entry of the Key Dates box,
-    and nothing that counts meetings counts it. `day` is the day it is drawn
-    on: its first or last for a filing period."""
+    """A key date as a card among the day's meetings, on the Calendar and
+    in the home page's Coming up alike: its name, the Important Date chip in
+    its colour and whose date it is, opening on the schedule page's sentence
+    and source. Its own class, never a meeting's (calmeet): WEEK_JS reads it
+    as an entry of the Important Dates box, and nothing that counts meetings
+    counts it. `day` is the day it is drawn on: its first or last for a
+    filing period."""
     from components import chip
     nm = name(lang, e, role)
     body = "H S" if e.who in ("", "HS") else e.who
@@ -497,46 +506,11 @@ def card_html(e, role, day, lang="en"):
             f' data-kd="{_attr(e.kind)}" data-date="{_attr(day)}"'
             f' data-cmte="{_attr(nm.lower())}" data-body="{_attr(body)}"><summary>'
             f'<span class="calcmte">{_esc(nm)}</span>'
-            + chip(say(lang, "cal.kd.chip", "Key Date"), "calkind k-date")
+            + chip(say(lang, "cal.kd.chip", "Important Date"), "calkind k-date")
             + (f'<span class="calwho">{_esc(who)}</span>' if who else "")
             + '<span class="caret"></span></summary><div class="calbody">'
             f'<p class="calnote">{e.what}</p><p class="kdsrc">{e.src}</p>'
             "</div></details>")
-
-
-def row_html(e, role, day, lang="en"):
-    """A key date in the home page's Coming up, inside its day: the name,
-    leading to the day on the Calendar where its card says more, and whose
-    date it is. A line of its own colour, not a card that opens: an event,
-    not a meeting."""
-    who = who_word(lang, e.who)
-    return (f'<p class="kdrow" data-kd="{_attr(e.kind)}">'
-            f'<a href="{_attr(calendar_href(day))}">{_esc(name(lang, e, role))}</a>'
-            + (f' <span class="kdwho">{_esc(who)}</span>' if who else "") + "</p>")
-
-
-AHEAD = 4
-
-
-def ahead_html(evs, after, today, lang="en", n=AHEAD):
-    """Coming up's next key dates after its week, in date order, each until
-    its day is over (components.until_attrs), so a page read days after it
-    was built drops a date that has gone."""
-    from components import date_words, until_attrs
-    rows = ahead(evs, after, n)
-    if not rows:
-        return ""
-    items = []
-    for d, e, role in rows:
-        who = who_word(lang, e.who)
-        gone = (_day(d) + timedelta(days=1)).isoformat()
-        items.append(f'<li class="kdrow" data-kd="{_attr(e.kind)}"{until_attrs(gone, today)}>'
-                     f'<time datetime="{d}">{_esc(date_words(d, "wkd", lang))}</time> '
-                     f'<a href="{_attr(calendar_href(d))}">{_esc(name(lang, e, role))}</a>'
-                     + (f' <span class="kdwho">{_esc(who)}</span>' if who else "") + "</li>")
-    return ('<div class="kdahead"><h3 class="kdh">'
-            + say(lang, "cal.kd.ahead", "Key dates ahead")
-            + '</h3><ol class="kdlist">' + "".join(items) + "</ol></div>")
 
 
 def deadline_html(evs, today, lang="en"):
