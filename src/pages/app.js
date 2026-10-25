@@ -4177,10 +4177,29 @@ const gcSource=d=>d.docket_url?`<a href="${esc(d.docket_url)}" target="_blank" r
 // hearing is scheduled (the Senate's guidance, civics.SRC_SENATE_TESTIFY),
 // and in practice until midnight at the end of the hearing's day (the
 // editor's account, an observed() claim in guides.py). Neither form can be
-// opened at a bill, so the box links to the form of the chamber whose
+// opened at a bill, so the control links to the form of the chamber whose
 // hearing is next.
-// A bill of an earlier term has no box. The term turns on 1 December of an
-// even year, the eve of Organization Day.
+// A BUTTON IN THE ROW, NOT A BOX ON THE SUMMARY (the person, 25 October
+// 2026: "The testify option should also be a button when it's active in the
+// same format as the print, share, and follow buttons instead of on the
+// summary page, and it will be greyed out when the deadline has passed or
+// hasn't yet opened and will tell you which one it is when you click on it
+// instead of linking you to the submission page with the instructions. When
+// it's active, the testify button could maybe be colored in so it's a more
+// clear indicator as to when it's live, and it should say when testimony
+// submissions close if it's scheduled."). Follow's form: a <details> whose
+// <summary> is the button and whose pane opens under it; mountTestify puts
+// it in the row. While a hearing is ahead the button is filled in pine and
+// says the hearing's day, "Testify until Jan 13" -- the day the sign-in
+// takes positions until, and in practice until midnight at its end, which
+// the pane says as practice -- and the pane holds what the box held: the
+// hearing, the chamber's form and what to choose on it, in the same words.
+// Otherwise the button is greyed, and its pane says which it is, passed or
+// not opened yet, in the box's sentences, with no form and no steps. Grey
+// is a colour and nothing more, so the button's own words tell a screen
+// reader that it is not open.
+// A bill of an earlier term has no control. The term turns on 1 December of
+// an even year, the eve of Organization Day.
 const TESTIFY_FORMS={H:["House","https://gc.nh.gov/house/committees/remotetestimony/"],
   S:["Senate","https://gc.nh.gov/remotecommittee/senate.aspx"]};
 function sittingTerm(now){
@@ -4190,11 +4209,11 @@ function sittingTerm(now){
 }
 // WHAT TO CHOOSE ON THE FORM (the person, 22 October 2026, asking the emails
 // for "instructions on how to select the bill"): neither form opens at a
-// bill, so the box says what to pick, in the order the Senate's guidance
+// bill, so the pane says what to pick, in the order the Senate's guidance
 // gives -- the hearing's day, then the committee, then the bill -- which the
 // House's form asks for too. workers/follow/mail.js testifyWords says it the
 // same way in the emails.
-function testifyBox(d,b){
+function testifyButton(d,b){
   if(!d||!d.term)return "";
   const now=new Date();
   if(d.term!==sittingTerm(now))return "";
@@ -4207,9 +4226,13 @@ function testifyBox(d,b){
   const next=heard.filter(s=>s.when>=today).sort((a,b)=>a.when.localeCompare(b.when))[0];
   const rail=((d.journey||{}).rail)||[];
   const ended=!!rail.length&&/^[px]$/.test(rail[rail.length-1].mark||"");
+  // The words beside the drawing are in a span of their own, as Report's
+  // are, so the button's gap does not part them.
+  const button=(cls,words)=>`<details class="testify ${cls}"><summary>${icon("testify")}<span>${words}</span></summary>`;
   if(next&&TESTIFY_FORMS[next.body]){
     const [house,url]=TESTIFY_FORMS[next.body];
-    return section("Testify on This Bill",`<div class="tbox">
+    return button("tlive",`Testify<span class="tuntil"> until ${esc(dateWords(next.when,"short"))}</span>`)
+      +`<div class="testifypane">
       <p>The ${esc(house)} public hearing is <b>${esc(dateWords(next.when,"long"))}</b>${
         next.committee?`, before ${esc(next.committee)}`:""}. Until then, anyone may sign
       in online to ${next.body==="S"?"register support, opposition or a neutral position"
@@ -4221,7 +4244,7 @@ function testifyBox(d,b){
       then the committee${next.committee?`, ${esc(next.committee)}`:""}; then the bill${
         b&&b.n?`, ${esc(b.n)}`:""}. In practice the online sign-in stays open until midnight
       at the end of the hearing&rsquo;s day.${next.body==="S"?" The page that confirms your sign-in says how to send"
-        +" written testimony.":""}</p></div>`,"testify");
+        +" written testimony.":""}</p></div></details>`;
   }
   const last=heard.sort((a,b)=>b.when.localeCompare(a.when))[0];
   // "The other chamber" only while one chamber alone has heard it: CACR 13
@@ -4232,8 +4255,31 @@ function testifyBox(d,b){
       esc(dateWords(last.when))}.`
       +(ended||!one?"":" It opens again if the bill is scheduled for a hearing in the other chamber.")
     :"Online testimony has not opened yet: it opens once a public hearing is scheduled.";
-  return section("Testify on This Bill",`<div class="tbox off" aria-disabled="true">
-    <p>${why}</p><p><span class="tgo">Online testimony</span></p></div>`,"testify");
+  return button("toff",`Testify<span class="sr">${last?", not open: its hearing has passed":", not open yet"}</span>`)
+    +`<div class="testifypane"><p>${why}</p></div></details>`;
+}
+// IN THE ROW AFTER FOLLOW (25 October 2026), or after Cite where a bill has
+// none (a bill whose story has ended has no feed): Follow and Testify are the two ways
+// to take part in what the bill does next, and Print, Share and Report a
+// problem are about this page. Drawn once the bill's record has come, since
+// what it says is the record's, and drawn again only when that changes, so
+// a pane the reader opened is not shut under them by the next redraw.
+const TESTIFY_DRAWN=new WeakMap();
+function mountTestify(b,d){
+  const acts=document.getElementById("pageacts");
+  if(!acts)return;
+  const html=b&&d&&!d._error?testifyButton(d,b):"";
+  const had=acts.querySelector(".testifyin");
+  if(had&&TESTIFY_DRAWN.get(had)===html)return;
+  if(had)had.remove();
+  if(!html)return;
+  const box=document.createElement("div");
+  // The open one stands out on a phone too: a row of its own (app.css).
+  box.className=html.includes('class="testify tlive"')?"testifyin tliverow":"testifyin";
+  box.innerHTML=html;
+  TESTIFY_DRAWN.set(box,html);
+  const after=acts.querySelector("#followbox")||acts.querySelector(".pcite");
+  acts.insertBefore(box,after&&after.parentNode===acts?after.nextSibling:acts.firstChild);
 }
 function renderSummary(b,d,rsa){
   const S=[];
@@ -4246,8 +4292,6 @@ function renderSummary(b,d,rsa){
   if(an)S.push(section("Official Legislative Analysis",
     `<div class="anbox" data-an="1"><div class="antext" translate="no">${rsa?rsa(esc(an)):esc(an)}</div></div>
      <p class="src">Source: ${gcSource(d)}</p>${rsaLine(d)}`,"analysis"));
-  const tb=testifyBox(d,b);
-  if(tb)S.push(tb);
   const jl=journeyList(b,d);
   if(jl)S.push(section("How It Got Here",jl+(an?"":`<p class="src">Source: ${gcSource(d)}</p>${rsaLine(d)}`),"journey"));
   else if(!an&&(d.docket_url||rsaChapters(d).length||(d.constitution||[]).length))
@@ -5981,8 +6025,10 @@ function shareBox(){
 // Follow, Print (a bill's), Share and Report a problem, in that order, each
 // the quiet action button. shell.py writes the row (#pageacts) with Cite in
 // it; Follow goes in after Cite (mountFollow), and Print, Share and Report a
-// problem after Follow, here. The row is moved into the head each time the
-// head is drawn (placeActions) and out of the way before the record is drawn
+// problem after Follow, here; a bill of the sitting term has Testify between
+// Follow and Print (mountTestify, 25 October 2026). The row is moved into
+// the head each time the head is drawn (placeActions) and out of the way
+// before the record is drawn
 // again (parkActions), so it is one row a page, whatever is open in it or
 // typed into it. A page from an older build, with no row, keeps the old
 // arrangement below the record.
@@ -6038,6 +6084,9 @@ function focusActions(id){
     res.before(row);
     mountFollow(feed?"bill":"",feed?feed.getAttribute("href"):"",`${y}/${id}`);
     mountReport("bill",`${y}/${id}`);
+    // Testify too, for a bill of the sitting term, as render() draws it on
+    // the bill's own page (the person, 25 October 2026).
+    mountTestify(IDX.find(x=>x.id===id)||{id,n:id},detail[dkey(id)]);
     placeActions();
   }).catch(()=>{if(focusActs===id)focusActs=null;});
 }
@@ -6305,8 +6354,9 @@ document.addEventListener("toggle",e=>{
     const box=d.closest("#followbox,.followbox");
     if(box)followMail(box);
   }
-  if(d.open&&d.classList&&(d.classList.contains("follow")||d.classList.contains("pcite")))
-    paneInView(d.querySelector(".followpane,.citebody"));
+  if(d.open&&d.classList&&(d.classList.contains("follow")||d.classList.contains("pcite")
+      ||d.classList.contains("testify")))
+    paneInView(d.querySelector(".followpane,.citebody,.testifypane"));
   // The feed opened under the email box lengthens the pane in the same way.
   if(d.open&&d.classList&&d.classList.contains("followalt"))
     paneInView(d.closest(".followpane"));
@@ -8884,7 +8934,8 @@ function render(more){
     }
   }
   syncCards(rows.filter(b=>openCards.has(b.id)).map(b=>b.id));
-  if(fb){focusActions(fb.id);placeActions();}else{dropFocusActions();addressList();}
+  if(fb){focusActions(fb.id);placeActions();mountTestify(fb,detail[dkey(fb.id)]);}
+  else{dropFocusActions();addressList();}
   showSelectedTab($("#results"));
   if(facetsShut())facetBadge();else renderFacets();
   refocus(held);

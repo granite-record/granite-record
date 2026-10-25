@@ -1533,7 +1533,7 @@ line-height:1.1}
   nav.top,.skip,.calskip,.searchrow,.ftoggle,.backto,.pageacts,.findpanel,
   .findscrim,details.report,.pshare,.sharestate,.player iframe,.fbk,
   .ytcard .ytgo,.ytpanel .ytaform button[type=submit],.followmail .followsend,
-  .followmail .followfreq,.webinar,.tbox,.trrep,.trpill,.trbox{display:none !important}
+  .followmail .followfreq,.webinar,.testify,.trrep,.trpill,.trbox{display:none !important}
   /* A STATUTE ON PAPER IS THE STATUTE (the polish of 12 October 2026): a
      chapter page prints its sections in one column, without the sidebar
      that lists them; the Laws landing its directory, without the filters
@@ -3136,21 +3136,6 @@ align-items:baseline;flex-wrap:wrap}
 .stg .note{margin:var(--sp-4) 0 0}
 .story > .stg + .stg{margin-top:var(--sp-6)}
 .anbox{max-width:var(--measure);margin:0 0 var(--sp-7)}
-/* TESTIFY ON THIS BILL (app.js testifyBox, 22 October 2026): the chamber's
-   online sign-in as the one button, while a public hearing is ahead; the
-   same box greyed, with why, while none is. Not printed. */
-.tbox{max-width:var(--measure);margin:0 0 var(--sp-7);padding:var(--sp-5) var(--sp-6);
-border:1px solid var(--rule);border-left:3px solid var(--pine);border-radius:var(--r-in);
-background:var(--surface);font-size:var(--t-ui);line-height:1.55}
-.tbox p{margin:0 0 var(--sp-5)}
-.tbox p:last-child{margin:0}
-.tbox .tgo{display:inline-block;background:var(--pine);color:var(--on-pine);font-weight:600;
-text-decoration:none;border-radius:var(--r-in);padding:var(--sp-4) var(--sp-6)}
-.tbox .tgo:hover,.tbox .tgo:focus-visible{text-decoration:underline}
-.tbox .tsteps{color:var(--ink-2)}
-.tbox.off{border-left-color:var(--rule-2);background:var(--paper)}
-.tbox.off p:first-child{color:var(--ink-2)}
-.tbox.off .tgo{background:var(--wash);color:var(--ink-2);cursor:not-allowed}
 /* The fiscal note. A table in the bill's PDF, a single column of lines by
    the time the text extraction is done with it, and a table again here.
    Figures right-aligned and tabular so the columns line up; a spanning row is
@@ -3824,11 +3809,11 @@ color:var(--ink-2);font-weight:600;margin-right:var(--sp-3)}
 .pageacts{position:relative}
 /* Hidden while a bill's own page shows the list (app.js parkActions). */
 .pageacts[hidden]{display:none}
-.follow{position:relative}
+.follow,.testify{position:relative}
 .lsrfollow{display:none;padding:0 var(--sp-6) var(--sp-5)}
 .followok .lsrfollow{display:block}
 .lsrfollow .followpane{position:static;margin-top:var(--sp-4);width:auto;max-width:none}
-.pageacts .follow{position:static}
+.pageacts .follow,.pageacts .testify{position:static}
 /* THE QUIET ACTION BUTTON (Polish 1, the person, 9 October 2026: "a visual
    polish of the report button so it matches the style of the print, testify,
    cite this page, and follow icons and add a share button alongside the
@@ -3837,7 +3822,7 @@ color:var(--ink-2);font-weight:600;margin-right:var(--sp-3)}
    outline, its drawing in the second ink before the word; the wash on hover
    and the ink's outline while open. Cite this page and Follow above a page's
    heading, Report a problem and Share at its foot -- one button four times. */
-.follow > summary,.pcite > summary,.report > summary,.pshare{cursor:pointer;list-style:none;
+.follow > summary,.pcite > summary,.report > summary,.testify > summary,.pshare{cursor:pointer;list-style:none;
   display:inline-flex;align-items:center;gap:var(--sp-4);min-height:2.5rem;padding:0 .875rem;
   font:500 var(--t-ui)/1.2 var(--sans);color:var(--ink);background:var(--surface);
   border:1px solid var(--edge);border-radius:var(--r-in);max-width:100%;text-align:left}
@@ -3848,13 +3833,35 @@ color:var(--ink-2);font-weight:600;margin-right:var(--sp-3)}
    only where the column is narrower than they are. */
 #reportbox > .report{max-width:100%}
 .follow > summary::-webkit-details-marker,.pcite > summary::-webkit-details-marker,
-.report > summary::-webkit-details-marker{display:none}
-:is(.follow,.pcite,.report) > summary .icon,.pshare .icon{color:var(--ink-2)}
+.report > summary::-webkit-details-marker,.testify > summary::-webkit-details-marker{display:none}
+:is(.follow,.pcite,.report,.testify) > summary .icon,.pshare .icon{color:var(--ink-2)}
 .follow > summary:hover,.pcite > summary:hover,.report > summary:hover,.pshare:hover{background:var(--wash)}
-.follow[open] > summary,.pcite[open] > summary,.report[open] > summary{border-color:var(--ink)}
+.follow[open] > summary,.pcite[open] > summary,.report[open] > summary,.testify[open] > summary{border-color:var(--ink)}
 @media (max-width:45em){
-  .follow > summary,.pcite > summary,.report > summary,.pshare{min-height:2.75rem}
+  .follow > summary,.pcite > summary,.report > summary,.testify > summary,.pshare{min-height:2.75rem}
 }
+/* TESTIFY, THE SAME BUTTON, FILLED WHILE TESTIMONY IS OPEN (app.js
+   testifyButton; the person, 25 October 2026: "When it's active, the
+   testify button could maybe be colored in so it's a more clear indicator
+   as to when it's live"). Live, it is pine, the colour of what can be pressed, with
+   --on-pine's ink on it: the pair the Summary's box drew its button in,
+   9.09:1 in the light palette and 8.38:1 in the dark. Shut, it is greyed as
+   that box's shut button was, the second ink on the wash (6.07:1 light,
+   5.74:1 dark), its outline still the control's --edge, since it still
+   opens. Under the pointer the words underline, as the box's button did,
+   and the ground stays as it is, so the filled one never empties. */
+.testify.tlive > summary{background:var(--pine);color:var(--on-pine);border-color:var(--pine)}
+.testify.tlive > summary .icon{color:var(--on-pine)}
+.testify.toff > summary{background:var(--wash);color:var(--ink-2)}
+.testify > summary:hover{text-decoration:underline;text-underline-offset:3px}
+.testify.tlive > summary:hover{background:var(--pine)}
+.testify.toff > summary:hover{background:var(--wash)}
+.testifypane p{margin:0 0 var(--sp-4)}
+.testifypane p:last-child{margin:0}
+.testify .tgo{display:inline-block;background:var(--pine);color:var(--on-pine);font-weight:600;
+text-decoration:none;border-radius:var(--r-in);padding:var(--sp-4) var(--sp-6)}
+.testify .tgo:hover,.testify .tgo:focus-visible{text-decoration:underline}
+.testify .tsteps{color:var(--ink-2)}
 /* REPORT AND SHARE, SIDE BY SIDE under the record. The report's form opens
    under its button across the column, as it always has, and Share follows
    it there while it is open; the button pressed does not move. Share's line
@@ -3862,7 +3869,7 @@ color:var(--ink-2);font-weight:600;margin-right:var(--sp-3)}
 #reportbox{display:flex;flex-wrap:wrap;align-items:center;gap:var(--sp-4) var(--sp-5);margin-top:var(--sp-5)}
 #reportbox > .report[open]{flex:1 1 100%}
 .sharestate{font-size:var(--t-sm);color:var(--ink-2);overflow-wrap:anywhere;min-width:0}
-.followpane,.citebody{position:absolute;right:0;top:calc(100% + 6px);z-index:20;
+.followpane,.citebody,.testifypane{position:absolute;right:0;top:calc(100% + 6px);z-index:20;
   width:min(36rem,calc(100vw - 28px));padding:var(--sp-5) var(--sp-5);border:1px solid var(--rule-2);
   border-radius:var(--r-in);background:var(--surface);font-size:var(--t-ui)}
 .followpane p{margin:0 0 var(--sp-4)}
@@ -6939,7 +6946,7 @@ color:var(--ink-2);margin:0 0 var(--sp-2)}
 .racts .pageacts{display:flex;flex-direction:column;align-items:stretch;gap:var(--sp-3);margin:0}
 .racts .pageacts > *{margin:0}
 .racts #reportbox{display:contents}
-.racts :is(.pcite,.follow,.report) > summary,.racts .pshare{width:100%;justify-content:flex-start;white-space:nowrap}
+.racts :is(.pcite,.follow,.report,.testify) > summary,.racts .pshare{width:100%;justify-content:flex-start;white-space:nowrap}
 .racts .sharestate:empty{display:none}
 .racts .sharestate{max-width:16rem}
 .racts .report{position:static}
@@ -6968,13 +6975,21 @@ border-radius:var(--r-in);background:var(--surface);font-size:var(--t-ui)}
      line each and Report a problem half one at the right. */
   .racts .pageacts{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:var(--sp-2)}
   .racts .pageacts > *,.racts #reportbox > *{min-width:0;max-width:none}
-  .racts :is(.pcite,.follow,.report) > summary,.racts .pshare{width:100%;justify-content:center;
+  .racts :is(.pcite,.follow,.report,.testify) > summary,.racts .pshare{width:100%;justify-content:center;
   min-height:2.75rem;white-space:normal;text-align:center}
   /* "Report", not "Report a problem", in half a phone's row, where the three
      words broke over two lines inside the button (the audit of 25 October
      2026, S9). The flag beside it is the same. */
   .racts .report .rpw{display:none}
   .racts .sharestate{grid-column:1 / -1;max-width:none}
+  /* TESTIFY, WHILE IT IS OPEN, A ROW OF ITS OWN (the person, 25 October
+     2026). "Testify until Jan 13" is 194px at the browser's 16px and half a
+     390px phone's row is 181px, so in half a row it broke over two lines;
+     across the row it is one, the filled button the row's widest, and the
+     day stays on it. A bill with a hearing ahead is still moving and so has
+     Follow before it (shell.still_moving), which keeps the row two to a
+     line around it: Cite and Follow, Testify, Print and Share, Report. */
+  .racts .pageacts > .tliverow{grid-column:1 / -1}
 }
 
 /* THE TABS HANG FROM THE HEAD'S FOOT (the kit's part 9): a strip on a 2px

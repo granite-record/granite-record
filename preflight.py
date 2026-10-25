@@ -69236,7 +69236,7 @@ def _hearing_note_wording():
     sign-in registers a position, and the page confirming it says how to send
     written testimony (the Senate's guidance, guides.TESTIMONY's record). A
     Senate committee's note, and a Senate hearing's item in the feed, say
-    so, in the words of the bill page's Testify box; and the feed takes the
+    so, in the words of the bill page's Testify pane; and the feed takes the
     note from build_pages rather than typing it."""
     import contextlib
     import datetime as _dt
@@ -69295,7 +69295,7 @@ def _hearing_note_wording():
                   f"says it, {drew}")
 
 
-@check("frontend", "a bill's Testify box counts the Senate's hearings, and says testimony opens again "
+@check("frontend", "a bill's Testify button counts the Senate's hearings, and says testimony opens again "
        "only while one chamber has heard it")
 def _testify_box_senate():
     """The audit of 25 October 2026 (M2): the House's hearings are "public
@@ -69303,18 +69303,20 @@ def _testify_box_senate():
     House's word alone. SB 406 of 2026, heard by Senate Finance on 13 January,
     said testimony "has not opened yet"; CACR 13, heard in both chambers, that
     it "opens again" in the other; HB 282 named its House hearing of January
-    and not the Senate's of 23 April. testifyBox is drawn in node for a bill
-    of the sitting term (sittingTerm's own answer, so this holds in any year),
-    its hearings either side of every possible today. A bill whose rail has
-    ended keeps the box it had (the owner decides that), and a bill of an
-    earlier term has none. workers/follow reads the Senate's word too; its
-    case is tests/follow/mail.test.js's."""
+    and not the Senate's of 23 April. The box became the Testify button in
+    the record head's row the same day (the person, 25 October 2026), and
+    testifyButton holds to all of it: it is drawn in node for a bill of the
+    sitting term (sittingTerm's own answer, so this holds in any year), its
+    hearings either side of every possible today. A bill whose rail has ended
+    keeps the words it had (the owner decides that), and a bill of an earlier
+    term has none. workers/follow reads the Senate's word too; its case is
+    tests/follow/mail.test.js's."""
     got = _app_js("""(() => {
   const term = scope.sittingTerm(new Date());
   const st = (what, when, body, committee) => ({what, when, body, committee});
   const moving = {rail: [{stop: "Introduced", mark: "p"}, {stop: "Law", mark: ""}]};
   const box = (stations, journey = moving, t = term) =>
-    scope.testifyBox({term: t, stations, journey}, {n: "SB 406"});
+    scope.testifyButton({term: t, stations, journey}, {n: "SB 406"});
   return {
     senate: box([st("hearing", "2000-01-13", "S", "Finance")]),
     both: box([st("public hearing", "2000-01-21", "H", "Judiciary"),
@@ -69325,7 +69327,7 @@ def _testify_box_senate():
     ended: box([st("hearing", "2000-01-13", "S", "Finance")], {rail: [{mark: "p"}, {mark: "x"}]}),
     old: box([st("hearing", "2999-01-13", "S", "Finance")], moving, "1999-2000"),
   };
-})()""", names=("testifyBox", "sittingTerm"))
+})()""", names=("testifyButton", "sittingTerm"))
     if got is None:
         return "skip", "node, app.js or dom_stub.js is not here"
     said = {k: " ".join(re.sub(r"<[^>]+>", " ", v).split()) for k, v in got.items()}
@@ -69337,14 +69339,214 @@ def _testify_box_senate():
     assert "its last public hearing was Apr 23, 2000" in said["both"] and "opens again" not in said["both"], (
         f"a bill heard in both chambers is told: {said['both']!r}")
     assert "The Senate public hearing is" in said["ahead"] and "gc.nh.gov/remotecommittee/senate.aspx" in got["ahead"] \
-        and 'class="tbox off"' not in got["ahead"], (
+        and 'class="testify tlive"' in got["ahead"], (
             f"a Senate hearing still to come does not open the Senate's form: {said['ahead']!r}")
     assert "has not opened yet" in said["none"], f"a bill with no hearing is told: {said['none']!r}"
     assert "has passed" in said["ended"] and "opens again" not in said["ended"], (
         f"a bill whose rail has ended is told: {said['ended']!r}")
-    assert got["old"] == "", "a bill of an earlier term has a Testify box"
+    assert got["old"] == "", "a bill of an earlier term has a Testify button"
     return "ok", ("a Senate hearing is a public hearing, past or ahead; \"opens again\" only while one "
                   "chamber has heard it; an ended bill and an earlier term as before")
+
+
+@check("frontend", "Testify is a button in a bill's row, as Follow is: filled and dated while a hearing "
+                   "is ahead, with the form and its steps in its pane; greyed, saying which and linking "
+                   "nothing, while none is; none for an earlier term; and not on the Summary")
+def _testify_in_the_row():
+    """The person, 25 October 2026: "The testify option should also be a
+    button when it's active in the same format as the print, share, and follow
+    buttons instead of on the summary page, and it will be greyed out when the
+    deadline has passed or hasn't yet opened and will tell you which one it is
+    when you click on it instead of linking you to the submission page with
+    the instructions. When it's active, the testify button could maybe be
+    colored in so it's a more clear indicator as to when it's live, and it
+    should say when testimony submissions close if it's scheduled."
+
+    Drawn in node against dom_stub.js, for a bill of the sitting term
+    (sittingTerm's own answer, so this holds in any year):
+
+    LIVE, a Senate hearing ahead: a <details class="testify tlive"> whose
+    summary is the testify drawing and "Testify until Jan 13" -- the hearing's
+    day, short -- and whose pane holds the hearing's day and committee, the
+    Senate's form, what to choose on it and the closing said as practice,
+    in the person's words of 22 October 2026. PASSED and NOT OPENED: the
+    greyed button (testify toff), its summary saying in words that it is not
+    open, so a screen reader hears it, and its pane the sentence that says
+    which, with no link and no steps. An EARLIER TERM: nothing. THE SUMMARY
+    (renderSummary) carries no Testify section, for a bill whose hearing is
+    ahead. Each button is held to _icons_named's rules: one drawing, hidden,
+    in a summary with words of its own.
+
+    MOUNTED IN THE ROW (mountTestify), against a row that holds Cite and
+    Follow: after Follow, or after Cite where there is no Follow; the open one
+    marked to take a row of its own on a phone; drawn once, and left alone
+    by a redraw that says the same, so a pane the reader opened stays open;
+    and taken away for a record that did not load. render() mounts it on a
+    bill's own page and focusActions on a bill opened from the search.
+
+    THE COLOURS: the filled button is --on-pine on --pine and the greyed one
+    --ink-2 on --wash, each at least 4.5:1 in both palettes; the row is left
+    off the printed sheet, Testify with it; and on a phone the open one spans
+    the row, where "Testify until Jan 13" is one line."""
+    import components as C
+    got = _app_js("""(() => {
+  const term = scope.sittingTerm(new Date());
+  const st = (what, when, body, committee) => ({what, when, body, committee});
+  const moving = {rail: [{stop: "Introduced", mark: "p"}, {stop: "Law", mark: ""}]};
+  const bill = (stations, t = term) => ({term: t, stations, journey: moving});
+  const live = bill([st("hearing", "2999-01-13", "S", "Finance")]);
+  const passed = bill([st("hearing", "2000-01-13", "S", "Finance")]);
+  const none = bill([]);
+  const b = {id: "SB406", n: "SB 406-FN-A"};
+  // A row as shell.py writes it and mountFollow fills it: Cite, then Follow.
+  const row = (withFollow) => {
+    const kids = [];
+    const node = (cls, id) => ({className: cls, id: id || "", get parentNode() { return acts; },
+      get nextSibling() { return kids[kids.indexOf(this) + 1] || null; }});
+    const acts = {
+      kids,
+      querySelector(sel) {
+        if (sel === "#followbox") return kids.find(k => k.id === "followbox") || null;
+        if (sel === ".pcite") return kids.find(k => k.className === "pcite") || null;
+        if (sel === ".testifyin") return kids.find(k => /\\btestifyin\\b/.test(k.className || "")) || null;
+        return null;
+      },
+      insertBefore(n, ref) { const i = ref ? kids.indexOf(ref) : kids.length; kids.splice(i < 0 ? kids.length : i, 0, n); },
+      get firstChild() { return kids[0] || null; },
+    };
+    kids.push(node("pcite"));
+    if (withFollow) kids.push(node("followin", "followbox"));
+    kids.push(node("", "reportbox"));
+    return acts;
+  };
+  const mount = (acts, bb, d) => {
+    const was = document.getElementById;
+    document.getElementById = id => id === "pageacts" ? acts : was(id);
+    try { scope.mountTestify(bb, d); } finally { document.getElementById = was; }
+    acts.kids.forEach(k => { if (k.remove && !k._rm) { const kk = k; k.remove = () => {
+      kk._rm = true; acts.kids.splice(acts.kids.indexOf(kk), 1); }; } });
+    return acts.kids.map(k => k.id || k.className);
+  };
+  const withF = row(true), noF = row(false), again = row(true);
+  const placed = mount(withF, b, live);
+  const plain = mount(noF, b, passed);
+  const first = mount(again, b, live);
+  const drawn = again.kids.find(k => /testifyin/.test(k.className));
+  const second = mount(again, b, live);
+  const kept = again.kids.find(k => /testifyin/.test(k.className)) === drawn;
+  const broken = mount(again, b, {term: term, stations: [], _error: "404"});
+  const earlier = mount(row(true), b, bill([st("hearing", "2999-01-13", "S", "Finance")], "1999-2000"));
+  return {
+    live: scope.testifyButton(live, b),
+    passed: scope.testifyButton(passed, b),
+    none: scope.testifyButton(none, b),
+    old: scope.testifyButton(bill([st("hearing", "2999-01-13", "S", "Finance")], "1999-2000"), b),
+    summary: scope.renderSummary(b, Object.assign({}, live, {billtext: {analysis: "This bill does a thing."}})),
+    placed, plain, first, second, kept, broken, earlier,
+    liveClass: drawn ? drawn.className : "",
+    passedClass: (noF.kids.find(k => /testifyin/.test(k.className)) || {}).className || "",
+    short: scope.dateWords("2999-01-13", "short"),
+  };
+})()""", names=("testifyButton", "sittingTerm", "renderSummary", "mountTestify", "dateWords"))
+    if got is None:
+        return "skip", "node, app.js or dom_stub.js is not here"
+    flat = lambda h: " ".join(re.sub(r"<[^>]+>", " ", h).replace("&rsquo;", "’").split())
+    live, passed, none = got["live"], got["passed"], got["none"]
+    summ = lambda h: (re.search(r"<summary>(.*?)</summary>", h, re.S) or [None, ""])[1]
+    pane = lambda h: (re.search(r'<div class="testifypane">(.*?)</div></details>', h, re.S) or [None, ""])[1]
+    # LIVE
+    assert live.startswith('<details class="testify tlive"><summary>'), f"the live control is {live[:120]!r}"
+    assert summ(live) == (C.icon("testify") + '<span>Testify<span class="tuntil"> until '
+                          + got["short"] + "</span></span>"), (
+        f"the live button does not say when it closes, \"Testify until {got['short']}\": {summ(live)!r}")
+    lp = flat(pane(live))
+    for part in ("The Senate public hearing is", "January 13, 2999", ", before Finance.",
+                 "Until then, anyone may sign in online to register support, opposition or a neutral "
+                 "position, or come and ask to speak.",
+                 "Senate online testimony",
+                 "On the form, choose the hearing’s date,", "then the committee, Finance; then the bill, "
+                 "SB 406-FN-A.",
+                 "In practice the online sign-in stays open until midnight at the end of the hearing’s day.",
+                 "The page that confirms your sign-in says how to send written testimony."):
+        assert part in lp, f"the live pane lost {part!r}: {lp!r}"
+    assert 'href="https://gc.nh.gov/remotecommittee/senate.aspx"' in pane(live), "the live pane has no form"
+    # PASSED AND NOT OPENED: greyed, saying which, linking nothing
+    for name, h, said, heard in (
+            ("passed", passed, "Online testimony for this bill has passed: its public hearing was Jan 13, 2000. "
+             "It opens again if the bill is scheduled for a hearing in the other chamber.",
+             "Testify, not open: its hearing has passed"),
+            ("not opened", none, "Online testimony has not opened yet: it opens once a public hearing "
+             "is scheduled.", "Testify, not open yet")):
+        assert h.startswith('<details class="testify toff"><summary>'), f"the {name} control is {h[:120]!r}"
+        assert re.sub(r"<[^>]+>", "", summ(h)) == heard and '<span class="sr">' in summ(h), (
+            f"the {name} button does not say in words that it is not open: {summ(h)!r}")
+        assert flat(pane(h)) == said, f"the {name} pane says {flat(pane(h))!r}"
+        assert "<a " not in h and "gc.nh.gov" not in h and "On the form" not in h and "tgo" not in h, (
+            f"the {name} pane still links the form or gives the steps: {h!r}")
+    assert got["old"] == "", "a bill of an earlier term has a Testify button"
+    # NOT ON THE SUMMARY
+    s = got["summary"]
+    assert "Official Legislative Analysis" in s, "the Summary was not drawn"
+    assert "Testify" not in s and 'id="testify"' not in s and "tbox" not in s and "testify" not in s, (
+        "the Summary still carries a Testify section")
+    # THE RULES FOR A DRAWING
+    for name, h in (("live", live), ("passed", passed), ("not opened", none)):
+        found = _icons_in(h)
+        assert len(found) == 1, f"the {name} Testify button carries {len(found)} drawings"
+        attrs, text, ctl = found[0]
+        assert attrs.get("aria-hidden") == "true" and not text and ctl and ctl[0] == "summary" \
+            and re.search(r"\w", ctl[2]), f"the {name} Testify button's drawing breaks _icons_named's rules"
+    # IN THE ROW
+    assert got["placed"] == ["pcite", "followbox", "testifyin tliverow", "reportbox"], (
+        f"with Follow, the row reads {got['placed']}")
+    assert got["plain"] == ["pcite", "testifyin", "reportbox"], f"without Follow, the row reads {got['plain']}"
+    assert got["liveClass"] == "testifyin tliverow" and got["passedClass"] == "testifyin", (
+        f"the open one is not marked for a phone's row of its own: {got['liveClass']!r}, {got['passedClass']!r}")
+    assert got["first"] == got["second"] and got["kept"], (
+        "a redraw that says the same drew Testify again, which shuts a pane the reader opened")
+    assert got["broken"] == ["pcite", "followbox", "reportbox"], (
+        f"a record that did not load keeps a Testify button: {got['broken']}")
+    assert got["earlier"] == ["pcite", "followbox", "reportbox"], (
+        f"a bill of an earlier term is given a Testify button in its row: {got['earlier']}")
+    js = re.sub(r"//[^\n]*", "", Path("src/pages/app.js").read_text(encoding="utf-8"))
+    assert re.search(r"if\(fb\)\{focusActions\(fb\.id\);placeActions\(\);mountTestify\(fb,detail\[dkey\(fb\.id\)\]\);\}", js), \
+        "render() no longer mounts Testify on a bill's own page"
+    fa = js[js.index("function focusActions("):js.index("function parkActions(")]
+    assert "mountTestify(" in fa and fa.index("mountReport(") < fa.index("mountTestify(") < fa.index("placeActions();"), \
+        "a bill opened from the search no longer gets Testify in its row"
+    assert "function testifyBox(" not in js, "app.js still draws the Summary's Testify box"
+    # THE COLOURS, THE SHEET AND THE PHONE
+    text = Path("src/pages/app.css").read_text(encoding="utf-8")
+    pal = _css_palette(text)
+    rules = {}
+    for ctx, sel, body, _ in _css_rules(text):
+        for one in _css_selectors(sel):
+            rules.setdefault((ctx, one), {}).update(dict(_css_decls(body)))
+    filled = rules.get(((), ".testify.tlive > summary"), {})
+    grey = rules.get(((), ".testify.toff > summary"), {})
+    assert filled.get("background") == "var(--pine)" and filled.get("color") == "var(--on-pine)", (
+        f"the open Testify button is not filled in pine: {filled}")
+    assert grey.get("background") == "var(--wash)" and grey.get("color") == "var(--ink-2)", (
+        f"the shut Testify button is not greyed: {grey}")
+    ratios = []
+    for ink, ground in (("--on-pine", "--pine"), ("--ink-2", "--wash")):
+        for scheme in ("light", "dark"):
+            r = _css_ratio(_css_token_colour(ink, pal[scheme]), _css_token_colour(ground, pal[scheme]))
+            assert r >= 4.5, f"{ink} on {ground} is {r:.2f}:1 in the {scheme} palette, under 4.5:1"
+            ratios.append(f"{r:.2f}")
+    phone = [ctx for (ctx, sel), d in rules.items()
+             if sel == ".racts .pageacts > .tliverow" and d.get("grid-column", "").replace(" ", "") == "1/-1"]
+    assert any("45em" in " ".join(c) for c in phone), "on a phone the open Testify button does not take a row of its own"
+    quiet = [sel for (ctx, sel) in rules if not ctx and sel.startswith(".testify > summary")]
+    assert ".testify > summary" in quiet, "Testify is not drawn as the quiet action button"
+    hidden = re.search(r"([^{}]+)\{display:none !important\}",
+                       text[text.index("nav.top,.skip,.calskip"):]).group(1)
+    assert ".testify" in {x.strip() for x in hidden.split(",")} and ".pageacts" in hidden, \
+        "the Testify button is printed"
+    return "ok", (f"open: \"Testify until {got['short']}\", filled, the form and its steps in its pane; passed "
+                  f"and not opened: greyed, said in words, no link; none for an earlier term or on the "
+                  f"Summary; after Follow, or Cite, in the row; on-pine on pine {ratios[0]} and {ratios[1]}:1, "
+                  f"ink-2 on wash {ratios[2]} and {ratios[3]}:1")
 
 
 @check("frontend", "the home page says each thing once: its latest sittings are one line to their "
@@ -69496,22 +69698,26 @@ def _home_finder_suggests_towns():
                   "no finder of towns beside it")
 
 
-@check("frontend", "Follow's and Cite's panes, opened below the fold, are brought into view")
+@check("frontend", "Follow's, Cite's and Testify's panes, opened below the fold, are brought into view")
 def _panes_into_view():
     """The webinar's phone check (16 October 2026): on a phone with the action
     row near the foot of the screen, Follow's pane opened at y=842 of 812 and
-    the press seemed to do nothing. app.js's toggle listener now hands both
+    the press seemed to do nothing. app.js's toggle listener now hands the
     record panes to paneInView, which moves the window only when some of the
-    pane is out of sight, and again when the email box lengthens Follow's."""
+    pane is out of sight, and again when the email box lengthens Follow's.
+    Testify's pane joined them when it came into the row (the person, 25
+    October 2026): live, it is the tallest of the three on a phone, 380px
+    at 390px wide."""
     js = Path("src/pages/app.js").read_text(encoding="utf-8").replace("\r\n", "\n")
     assert "function paneInView(p){" in js and "if(h&&(r.bottom>h||r.top<0))" in js, (
         "app.js has no paneInView, or it moves the window when the pane is already in sight")
-    assert 'd.classList.contains("follow")||d.classList.contains("pcite")' in js \
-        and 'paneInView(d.querySelector(".followpane,.citebody"));' in js, (
-            "opening Follow or Cite no longer brings its pane into view")
+    flat = re.sub(r"\s+", "", js)
+    assert 'd.classList.contains("follow")||d.classList.contains("pcite")||d.classList.contains("testify")' in flat \
+        and 'paneInView(d.querySelector(".followpane,.citebody,.testifypane"));' in flat, (
+            "opening Follow, Cite or Testify no longer brings its pane into view")
     assert 'paneInView(box.querySelector(".followpane"));' in js, (
         "the email box lengthens Follow's pane past the fold and nothing brings it back")
-    return "ok", "both panes, on opening, and Follow's again when its email box arrives"
+    return "ok", "the three panes, on opening, and Follow's again when its email box arrives"
 
 
 def _officials_now(path=None, today=None):

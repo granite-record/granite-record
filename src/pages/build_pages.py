@@ -1272,8 +1272,9 @@ HEARING_NOTE = ("Anyone may attend a public hearing and ask to speak. You can "
 # takes a position and no testimony, and the page that confirms the sign-in
 # says how to send it (the Senate's Public Guidance for Committee Meetings,
 # which guides.TESTIMONY cites). So a Senate hearing's note says that, in the
-# words the bill page's Testify box and the emails use for the same form
-# (app.js testifyBox, mail.js testifyWords, 22 October 2026).
+# words the bill page's Testify pane and the emails use for the same form
+# (app.js testifyButton, the Summary's box until 25 October 2026; mail.js
+# testifyWords, 22 October 2026).
 HEARING_NOTE_SENATE = ("Anyone may attend a public hearing and ask to speak. You can "
                        "also sign in online to register a position. The page that "
                        "confirms your sign-in says how to send written testimony.")
