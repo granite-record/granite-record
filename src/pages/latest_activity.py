@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-10-24.2
+# GRANITE_VERSION: 2026-10-24.3
 """
 What the home page's Latest Activity holds: the latest meetings, each with
 the bills it took up and what was done to each there.
@@ -78,6 +78,14 @@ LIMIT = 12
 # visit to the home page.
 BILLS_KEPT = 8
 
+# A BILL'S TITLE, KEPT TO THIS MANY CHARACTERS, AND CUT AT A WORD (the owner's
+# review of the new box, 24 October 2026). home.json is fetched by every
+# visit, so a long title is cut; drawn whole in a card that opens, a title cut
+# at exactly 110 read "... in businesses owned by a sitting president or t".
+# It ends at the last whole word inside the limit now, with an ellipsis.
+TITLE_KEPT = 110
+DANGLING = frozenset({"a", "an", "and", "as", "at", "by", "for", "from", "in", "of", "on",
+                      "or", "the", "to", "with"})
 # What a committee's meeting is not, for this box (above).
 STUDY_KINDS = ("study committee", "statutory committee")
 NOT_HELD = ("cancelled",)
@@ -94,6 +102,22 @@ PROCEDURAL = frozenset({
     "suspend_rules", "previous_question", "limit_debate", "divide", "part",
     "uphold_ruling", "member_continue", "print_debate", "reprimand", "unnamed",
     "waive_referral", ""})
+
+
+def short_title(title, n=TITLE_KEPT):
+    """`title` as Latest Activity keeps it: whole up to `n` characters, and
+    past that cut at the last whole word inside `n`, with an ellipsis."""
+    t = " ".join((title or "").split())
+    if len(t) <= n:
+        return t
+    head = t[:n + 1]
+    cut = head.rsplit(" ", 1)[0] if " " in head else t[:n]
+    # Nor on a word that leads into what was cut: "president or..." reads as
+    # a sentence stopped, "president..." as one shortened.
+    words = cut.split(" ")
+    while len(words) > 1 and words[-1].lower().strip(",;:-") in DANGLING:
+        words.pop()
+    return " ".join(words).rstrip(" ,;:-") + "\u2026"
 
 
 def spaced(bill):
@@ -281,7 +305,7 @@ def latest(rows, histories, today, bills=None, limit=LIMIT, kept=BILLS_KEPT,
     def bill_row(term, bill, did):
         b = bills.get((term, bill)) or {}
         row = {"bill": bill, "term": term, "year": b.get("year") or "",
-               "n": spaced(bill), "title": (b.get("title") or "")[:110]}
+               "n": spaced(bill), "title": short_title(b.get("title"))}
         if did:
             row["did"] = did
         return row
