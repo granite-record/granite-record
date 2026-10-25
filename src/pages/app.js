@@ -8507,6 +8507,9 @@ document.addEventListener("change",e=>{
 // The term and sort dropdowns order and filter a list of bills. On a page
 // showing one member or one committee there is no such list, and a control
 // that does nothing is worse than no control.
+// A bill's own page is written this way already (shell.py's BILL_ROW, the
+// preview check of 25 October 2026), so that its first paint is what this
+// leaves: a control this takes down wants writing down there too.
 function hideListControls(){
   ["#year","#sort"].forEach(sel=>{
     const el=$(sel); if(!el)return;

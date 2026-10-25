@@ -64013,7 +64013,10 @@ def _no_index_off_the_list():
     keeps all of it. And the HTML: shell.page writes the row hidden and the
     shell without its filter column on a page built with GR_STATIC and on a
     member's page, the column alone on a bill's, so a phone that paints
-    before the script has run never shows them; and app.css shows the
+    before the script has run never shows them; on a bill's, the term
+    picker, the Sort and the count beside the box down as app.js leaves
+    them, so the page does not jump when it runs (the preview check of 25
+    October 2026), and on the bill search none of it; and app.css shows the
     record when app.js marks it shown."""
     runs = {k: _node_app(_NO_INDEX_HARNESS, args=(k,)) for k in ("static", "member", "bill", "bills")}
     if any(v is None for v in runs.values()):
@@ -64068,6 +64071,40 @@ def _no_index_off_the_list():
             if (bool(hid), nof) != want:
                 bad.append(f"shell.page writes a {k} page's search row hidden={bool(hid)} and its "
                            f"filter column away={nof}, not {want}")
+        # A BILL'S OWN PAGE, WRITTEN AS app.js LEAVES IT (the preview check of
+        # 25 October 2026): it keeps the box, and its term picker, Sort and
+        # "Loading..." stood on a phone's first paint until app.js took them
+        # down, and the page jumped 94px. Written down: the pickers and their
+        # labels hidden, the count empty -- not only .qhint hidden, which
+        # app.css's display:flex overrides -- and the box in hideListControls'
+        # own words. The bill search, with no globals, keeps every one as
+        # bills.html has it.
+        def controls(html):
+            def down(start):
+                m = re.search(re.escape(start) + r"[^>]*>", html)
+                return bool(m and re.search(r"\shidden(?=[\s>=])", m.group(0)))
+            n = re.search(r'<span id="count"[^>]*>(.*?)</span>', html, re.S)
+            q = re.search(r'<input id="q"[^>]*?\splaceholder="([^"]*)"', html)
+            return {"term label": down('<label for="year"'), "term": down('<select id="year"'),
+                    "hint row": down('<div class="qhint"'), "sort label": down('<label for="sort"'),
+                    "sort": down('<select id="sort"'), "count": n and n.group(1),
+                    "box": q and q.group(1)}
+        js = Path("src/pages/app.js")
+        words = re.search(r'function hideListControls\(\)\{.*?q\.placeholder="([^"]+)"',
+                          js.read_text(encoding="utf-8") if js.exists() else "", re.S)
+        wants = {"term label": True, "term": True, "hint row": True, "sort label": True,
+                 "sort": True, "count": "", "box": words and words.group(1)}
+        bill = controls(pages["bill"])
+        if not words:
+            bad.append("app.js's hideListControls no longer gives the box a record page's words")
+        elif bill != wants:
+            bad.append("shell.page writes a bill's own page with the list's controls up, which "
+                       "app.js then takes down and the page jumps: "
+                       + ", ".join(f"{k} {bill[k]!r} not {v!r}" for k, v in wants.items()
+                                   if bill[k] != v))
+        if controls(pages["no globals"]) != controls(tpl):
+            bad.append(f"shell.page changed the bill search's own controls: "
+                       f"{controls(pages['no globals'])}, where bills.html has {controls(tpl)}")
     css = Path("src/pages/app.css").read_text(encoding="utf-8")
     if "html.js .static-rec:not(.shown){display:none}" not in css:
         bad.append("app.css does not show a record's plain HTML when app.js marks it shown")
@@ -64075,7 +64112,7 @@ def _no_index_off_the_list():
     return "ok", ("a static page asks for nothing and has the search down at once; a member's "
                   "and a bill's page take the list's controls down before asking, and show their "
                   "own record under one line when refused; the bill search keeps its controls; "
-                  "shell.page writes them down in the HTML")
+                  "shell.page writes them down in the HTML, a bill's pickers and count with them")
 
 
 # ---- the icons (Polish 1, the person, 9 October 2026) ------------------------------

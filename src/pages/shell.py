@@ -71,6 +71,44 @@ NEEDS = {
     # on a page that is not a list of bills (page(), NOT A LIST OF BILLS).
     "searchrow": '<div class="searchrow" role="search" aria-label="Search bills">',
     "shell": '<div class="shell">',
+    # And the list's own controls in that row, written down on a bill's own
+    # page, which keeps the box and nothing else of it (BILL_ROW below, and
+    # page(), NOT A LIST OF BILLS). The opening of each tag rather than all of
+    # it where that is enough, so an attribute added to one later does not
+    # take its substitution with it.
+    "year_label": '<label for="year" ',
+    "year": '<select id="year" ',
+    "qhint": '<div class="qhint">',
+    "sort_label": '<label for="sort" ',
+    "sort": '<select id="sort">',
+    "count": '<span id="count" role="status" aria-live="polite" aria-atomic="true">Loading…</span>',
+    "placeholder": 'placeholder="Bill number or key words"',
+}
+
+# A BILL'S OWN PAGE, WRITTEN AS app.js LEAVES IT (the preview check of 25
+# October 2026). The term picker, the Sort and the count's "Loading…" stood
+# on a phone's first paint of every bill page until app.js ran and took them
+# down (staticChromeDown, hideListControls), and the page jumped 94px when it
+# did. Each is written here the way that leaves it -- the pickers and their
+# labels hidden, the count empty, the box's words the record page's -- so
+# the script changes nothing a reader has seen. Nothing on a bill's page
+# brings them back: a search from it goes to /bills, with its words.
+#
+# THE COUNT IS EMPTIED, NOT HIDDEN. .qhint is display:flex in app.css, which
+# beats the browser's own [hidden] rule, so its hidden below hides nothing;
+# it is written because app.js sets it, so that the HTML and the script agree
+# and any rule that one day honours it changes both at once. "Loading…" goes
+# because the count is empty, as it does under app.js.
+BILL_ROW = {
+    "year_label": '<label for="year" hidden ',
+    "year": '<select id="year" hidden ',
+    "qhint": '<div class="qhint" hidden>',
+    "sort_label": '<label for="sort" hidden ',
+    "sort": '<select id="sort" hidden>',
+    "count": NEEDS["count"].replace("Loading…", ""),
+    # hideListControls' words for the box on a record's page, the person's
+    # (9 October 2026); preflight holds the two to the same words.
+    "placeholder": 'placeholder="Bill number or title words"',
 }
 
 # Every element app.js binds to on load.
@@ -622,12 +660,16 @@ def page(t, *, path, title, description, base, globals=None, noscript="",
     # it has revalidated and compiled the script, and the row and "Filter by
     # topic..." stood there for that moment on every visit. A page whose
     # record is in its HTML, and a member's or a committee's, is written
-    # without them; a bill's own page keeps the box and loses the filters.
+    # without them; a bill's own page keeps the box and loses the filters,
+    # and the list's pickers and count beside the box (BILL_ROW).
     g = globals or {}
     if g.get("GR_STATIC") or g.get("GR_STANDALONE"):
         out = out.replace(NEEDS["shell"], '<div class="shell nofacets">', 1)
         if not g.get("GR_BILL"):
             out = out.replace(NEEDS["searchrow"], NEEDS["searchrow"][:-1] + " hidden>", 1)
+        else:
+            for k, down in BILL_ROW.items():
+                out = out.replace(NEEDS[k], down, 1)
     # ONE TITLE PER PAGE. head starts with the viewport meta and adds a
     # <title> after it, so the template's own title survived the substitution
     # and every one of the 34,152 generated pages carried two of them -- the
