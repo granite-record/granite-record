@@ -16756,8 +16756,8 @@
    "state": "draft"
   },
   "yt.addr_privacy": {
-   "en": "Suggestions come from this site&rsquo;s own list of New Hampshire streets and are matched in your browser, so this site sees only the first two letters of the street. The address you look up goes from your browser to the US Census Bureau&rsquo;s address lookup and is not kept anywhere. Only the town or ward it finds is saved.",
-   "es": "Las sugerencias vienen de la propia lista de calles de New Hampshire de este sitio y se comparan en su navegador, de modo que este sitio solo ve las dos primeras letras de la calle. La dirección que usted busque va de su navegador al servicio de búsqueda de direcciones de la Oficina del Censo de EE. UU. y no se guarda en ningún lugar. Solo se guarda el municipio o el barrio electoral que encuentre ese servicio.",
+   "en": "Suggestions come from this site&rsquo;s own list of New Hampshire streets and are matched in your browser, so this site sees only the first two letters of the street. The address you look up goes from your browser to the US Census Bureau&rsquo;s address lookup and never reaches this site. Only the town or ward it finds is saved.",
+   "es": "Las sugerencias vienen de la propia lista de calles de New Hampshire de este sitio y se comparan en su navegador, de modo que este sitio solo ve las dos primeras letras de la calle. La dirección que usted busque va de su navegador al servicio de búsqueda de direcciones de la Oficina del Censo de EE. UU. y nunca llega a este sitio. Solo se guarda el municipio o el barrio electoral que encuentre ese servicio.",
    "state": "draft"
   },
   "yt.addr_state": {

@@ -669,6 +669,15 @@ numbers and organizations. Check the recording before quoting anything.</p>
 </details>
 """
 
+# TWO PARAGRAPHS FOR WHAT CAME AFTER IT (the person, 25 October 2026: "I
+# approve the privacy text update"). The address box in Your town (find.js,
+# 24 October) and the Spanish pages' box for a mistake in the translation
+# (components.js, 24 October) each send something somewhere, and this section
+# said neither. Each says what find.js and report.js do: the street's first
+# two letters to this site and the address from the browser to the Census
+# Bureau, which this site never receives; and a report of the kind
+# "translation", stored and deleted with the others. The translation is put
+# among the reports so the count of things a reader sends stays true.
 PRIVACY = """
 <p>Page views are counted: how many there are, and which pages. That is
 Cloudflare Web Analytics, which runs on the pages this site is served from.
@@ -687,6 +696,14 @@ from Google Fonts, so Google sees a request for them when a page opens. Video
 is embedded from
 YouTube&rsquo;s no-cookie address, which still means YouTube sees a request
 when a player is opened &mdash; a player only loads if you press play.</p>
+<p>The <i>Your town</i> panel can find your town or ward from a street
+address. While you type one, it asks this site for its list of New Hampshire
+streets that begin with the street&rsquo;s first two letters and matches the
+rest in your browser, so this site sees only those two letters. When you press
+<i>Look up</i> or choose a suggested address, your browser sends the address to
+the US Census Bureau&rsquo;s address lookup: the Census Bureau sees it, and
+this site does not. Only the town or ward it finds is saved, and only in your
+browser.</p>
 <p>__FEEDBACK_OPENS__, through the form
 linked in the footer. That is a Google form, and what you put in it goes to
 Google and to us.</p>
@@ -698,6 +715,14 @@ were reading. Nothing in it identifies you &mdash; no IP address, no cookie, no
 email address &mdash; which is also why we cannot reply to one. It is read only
 to check the page against the official record and fix what is wrong, and it is
 deleted after a week.</p>
+<p>A page in Spanish takes one more kind of report, of a mistake in its
+translation, from <i lang="es">¿Ve un error de traducción? Avísenos</i> at the
+foot of the page or from the button that appears when you select some of its
+words. It holds the page&rsquo;s address, what you wrote and, unless you untick
+them, the words you had selected, with the time it arrived and which build of
+the site you were reading. As with any other report, nothing in it identifies
+you; it is read only to correct the translation, and it is deleted after a
+week.</p>
 __EMAIL__"""
 
 # WHAT THE DATA PAGE SAYS OF EMAIL, BEFORE AND AFTER IT GOES LIVE (the
