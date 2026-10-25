@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-10-11.43
+# GRANITE_VERSION: 2026-10-11.45
 """
 The how-to guides: their words, their sources, and what each was checked
 against. Read by build_civics.py, which draws them on the Resources hub's
@@ -4415,7 +4415,7 @@ GUIDES += [PASSPORT]
 # ---------------------------------------------------------------------------
 MC_READ = "2026-10-25"
 SSA_PAGES_READ = "2026-10-25"        # the person's printouts of ssa.gov
-DHHS_MSP_READ = None                 # the person's printout, still to come
+DHHS_MSP_READ = "2026-10-25"         # the person's printout
 MEDICARE_START = ("https://www.medicare.gov/basics/get-started-with-medicare/sign-up/"
                   "when-does-medicare-coverage-start")
 MEDICARE_AUTO = ("https://www.medicare.gov/basics/get-started-with-medicare/sign-up/"
@@ -4500,9 +4500,13 @@ MEDICARE = guide(
           "<p><b>Medicare Savings Programs</b> are run by the state. Depending on your income "
           "and savings, they pay your Part B premium, and the most generous one also pays your "
           "deductibles, coinsurance and copayments, so that Medicare providers may not bill you "
-          "for covered care. In New Hampshire, apply to the Department of Health and Human "
-          "Services through NH Easy, under Medicare beneficiary assistance. Medicare advises "
-          "applying even if you do not think you qualify.</p>"
+          "for covered care. In New Hampshire they are the <b>Medicare Beneficiaries Savings "
+          "Program</b>, also called the Buy-In program: QMB, SLMB and, for people with "
+          "disabilities who work, QDWI. Your home and vehicles do not count against its limits. "
+          "Apply to the Department of Health and Human Services through NH Easy, under Medicare "
+          "beneficiary assistance; its Customer Service Center answers at 1-844-ASK-DHHS "
+          "(1-844-275-3447), Monday through Friday, 8 a.m. to 4 p.m. Medicare advises applying "
+          "even if you do not think you qualify.</p>"
           "<p><b>Extra Help</b> is a federal program that pays part of your drug plan&rsquo;s "
           "costs. You get it automatically if you have Medicaid, a Medicare Savings Program or "
           "SSI. Otherwise apply through Social Security; applying for Extra Help also starts an "
@@ -4588,8 +4592,16 @@ MEDICARE = guide(
            "forms; get your Social Security Statement; review earnings; create it through "
            "Login.gov or ID.me, with an email address, a government-issued photo ID and a phone "
            "number or a device with a camera.", SSA_ACCOUNT, SSA_PAGES_READ),
-     claim("The Medicare Savings Programs in New Hampshire, and how to apply.", DHHS_MSP,
-           DHHS_MSP_READ)]
+     claim("The Medicare Beneficiaries Savings Program assists low-income elderly or disabled "
+           "individuals who are eligible for Medicare; also referred to as the Buy-In program; "
+           "QMB helps pay the Part A and Part B premiums, premium penalties for late enrollment, "
+           "deductibles and coinsurance; SLMB or SLMB135 help pay the Part B premium and late "
+           "penalties; QDWI pays the Part A premium of disabled working individuals who have "
+           "lost Medicare due to earnings; a current resident of NH, no length of time; we do "
+           "not count the home you are living in, vehicles or burial plots; to find out if you "
+           "are eligible, visit NH EASY; DHHS Customer Service Center 1-844-ASK-DHHS "
+           "(1-844-275-3447), Monday through Friday, 8:00 a.m. to 4:00 p.m.; administrative "
+           "appeal hearing.", DHHS_MSP, DHHS_MSP_READ)]
     + help_claims("adrc", "nheasy", "legal_aid"),
     more="<h2>Who Can Help</h2>"
          "<p>Medicare answers at 1-800-MEDICARE (1-800-633-4227), 24 hours a day (TTY "
@@ -4832,11 +4844,11 @@ GUIDES += [DISABILITY]
 # in this build's table; the federal Privacy Act at govinfo; the casework
 # pages of a New Hampshire senator and representative, which say what such
 # an office does; USA.gov and the two chambers' finders. The Governor's and
-# the Executive Council's pages refuse this machine, so their claims wait
-# for the person's printouts.
+# the Executive Council's pages refuse this machine; their claims rest on the
+# person's printouts of 25 October 2026. The guide names no councilor: My
+# Town does.
 # ---------------------------------------------------------------------------
 WC_READ = "2026-10-25"
-WC_STATE_READ = None                 # the person's printouts still to come
 WC_PRINT_READ = "2026-10-25"         # the person's printouts, sent 25 October 2026
 SENATE_CONTACT = "https://www.senate.gov/senators/senators-contact.htm"
 HOUSE_FIND = "https://www.house.gov/representatives/find-your-representative"
@@ -4895,7 +4907,8 @@ WHO_TO_CONTACT = guide(
           "license, the Department of Health and Human Services for SNAP or Medicaid, and so on. "
           "Each guide here links the agency&rsquo;s page.</p>"
           "<p>If you cannot get an answer, the <b>Governor&rsquo;s office</b> takes requests for "
-          "help from residents, and your <b>Executive Councilor</b>, one of five elected by "
+          "help from residents: call its Constituent Services at (603) 271-7676, or choose "
+          "Request Assistance on its contact page. Your <b>Executive Councilor</b>, one of five elected by "
           "district every two years, serves, in the Council&rsquo;s own words, as an advocate "
           "for the people and their eyes and ears in Concord. The Council&rsquo;s office is at "
           "(603) 271-3632.</p>",
@@ -4977,15 +4990,19 @@ WHO_TO_CONTACT = guide(
           "county convention of the county's state representatives sets its budget.",
           "/learn/county-government.html", WC_READ),
      # The Governor's and the Council's own pages, from the person's printouts.
-     claim("The Governor's office takes requests for assistance from residents.", GOVERNOR_CONTACT,
-           WC_STATE_READ),
+     claim("Contact Governor Ayotte: Office of the Governor, State House, 107 North Main Street, "
+           "Concord; (603) 271-2121; open Monday - Friday, 8:30 AM - 4:30 PM; Constituent "
+           "Services: (603) 271-7676; select the option that best fits the reason for "
+           "contacting us: Share My Opinion, Request Assistance, and others.", GOVERNOR_CONTACT,
+           WC_PRINT_READ),
      claim("Each of the five Executive Councilors represents one fifth of the population; "
            "Councilors are elected every two years, concurrently with the Governor; the candidate "
            "must live in the district; Executive Councilors are the constituent's eyes and ears "
            "in Concord; Councilors are elected every two years to serve as advocates for the "
            "people; 107 North Main Street, State House, Room 207, (603) 271-3632.",
            COUNCIL_ABOUT, WC_PRINT_READ),
-     claim("How to contact each councilor and the Council's office.", COUNCIL_CONTACT, WC_STATE_READ)],
+     claim("New Hampshire Executive Council: gcweb@nh.gov, (603) 271-3632; Contact Councilor "
+           "links for each of the five councilors.", COUNCIL_CONTACT, WC_PRINT_READ)],
     see=[("How to find your representatives", "/guides/your-representatives.html"),
          ("How to contact your legislators", "/guides/contact-your-legislators.html")])
 
@@ -5721,7 +5738,7 @@ HOME = [
 # something else costs that reader a wrong first answer.
 WORDS = {
     "your-representatives": ("my representative", "my senator", "who represents me",
-                             "state representative",
+                             "who is my state rep", "state representative",
                              "district", "legislator"),
     "who-to-contact": ("who do i contact", "complaint", "pothole", "sidewalk", "city council",
                        "selectboard", "school board", "congressman", "senator", "federal agency",
