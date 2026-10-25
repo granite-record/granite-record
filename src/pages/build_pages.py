@@ -825,18 +825,25 @@ def calendar_html(out, today=None, rows=None, lang="en", events=None):
         # week of 26 October 2026 for which the Calendar held seventeen of
         # theirs. It says what the rail holds and does not: the chambers' own
         # meetings.
+        # ITS FIRST SENTENCE IS AN ELEMENT OF ITS OWN (the preview check of 25
+        # October 2026), .calnomeet, because it names the same week as the
+        # chip above it and HOME_JS says both again in the reader's clock. A
+        # rail built on a Sunday read on the Monday had "This Week" over
+        # "... scheduled next week.": the script renamed the chip and could
+        # not reach the sentence, which was one string with the season's.
         note = (say(lang, "cal.none_next", "No House or Senate committee meetings are "
                     "scheduled next week.") if ahead
                 else say(lang, "cal.none_left", "No House or Senate committee meetings are "
                          "scheduled for the rest of this week."))
+        note = f'<span class="calnomeet">{esc(note)}</span>'
         if not n_next:
             # MOSTLY (the survey of 7 October 2026): both chambers sat until veto
             # day, 19 August, in 2026, and into the autumn in most years.
-            note += " " + say(lang, "cal.season", "The General Court sits mostly from "
-                              "January to June, and committees meet on bills from the fall "
-                              "filing period onwards.")
+            note += " " + esc(say(lang, "cal.season", "The General Court sits mostly from "
+                                  "January to June, and committees meet on bills from the fall "
+                                  "filing period onwards."))
         return (f'<section class="cal" data-mon="{monday.isoformat()}"><h2>{coming}</h2>'
-                f'{label}<p class="note">{esc(note)}</p>{more}</section>')
+                f'{label}<p class="note">{note}</p>{more}</section>')
 
     meets = {k: rs for d in dates for k, rs in (week.get(d) or {}).items()}
     up = [r for rs in meets.values() for r in rs]
@@ -3078,11 +3085,24 @@ def session_line(H, lang="en", sits=None):
                     else say(lang, "home.house", "House"))
             links.append(f'<a href="{esc(href)}">{name}</a>')
         day = esc(_shell.date_words(d, "medium", lang))
-        lines.append('<p class="sessline">' + (
-            say(lang, "home.recordings", "{date} — {chambers} recordings",
-                date=day, chambers=" · ".join(links)) if len(links) > 1
-            else say(lang, "home.recording", "{date} — {chamber} recording",
-                     date=day, chamber=links[0])) + "</p>")
+        said = (say(lang, "home.recordings", "{date} — {chambers} recordings",
+                    date=day, chambers=" · ".join(links)) if len(links) > 1
+                else say(lang, "home.recording", "{date} — {chamber} recording",
+                         date=day, chamber=links[0]))
+        # IT BREAKS AFTER THE DASH, IF IT BREAKS (the preview check of 25
+        # October 2026). The left rail's text is 258px wide from 1180px up,
+        # and "Aug 19, 2026 — House · Senate recordings" needs about 325, so
+        # the browser broke at the last space that fit and left "recordings"
+        # alone on a second row (the Spanish, before "Cámara · Senado"). What
+        # follows the dash is held together (.sesswhat, app.css), so a line
+        # too long for its rail reads "Aug 19, 2026 —" over "House · Senate
+        # recordings", and one that fits, on a phone or at 1024, is still one
+        # row. Split on the words as said, so the Spanish keeps its own
+        # order; the date holds no dash, so the first one is the template's.
+        head, dash, rest = said.partition(" — ")
+        if dash:
+            said = f'{head}{dash}<span class="sesswhat">{rest}</span>'
+        lines.append(f'<p class="sessline">{said}</p>')
     return "".join(lines)
 
 
@@ -3366,8 +3386,20 @@ fetch(DATA("home.json")).then(r=>r.json()).then(H=>{
       const off=Math.round((new Date(p[0],p[1]-1,p[2])-now)/86400000);
       // The rail's Monday against the reader's: this week's is 0 to 6 days
       // back, next week's 1 to 7 days on.
-      if(off<=0&&off>-7)name.textContent=tr("cal.this_week","This Week");
-      else if(off>0&&off<=7)name.textContent=tr("cal.next_week","Next Week");
+      // AND AN EMPTY RAIL'S SENTENCE WITH IT (the preview check of 25
+      // October 2026): built on a Sunday and read on the Monday, the chip
+      // said This Week and the note under it "... scheduled next week.", in
+      // calendar_html's words for the day it was built. The sentence names
+      // the same week as the chip, so it is said again with it, in the same
+      // words; the season's sentence after it does not change with the day.
+      const none=cal.querySelector(".calnomeet");
+      if(off<=0&&off>-7){
+        name.textContent=tr("cal.this_week","This Week");
+        if(none)none.textContent=tr("cal.none_left","No House or Senate committee meetings are scheduled for the rest of this week.");
+      }else if(off>0&&off<=7){
+        name.textContent=tr("cal.next_week","Next Week");
+        if(none)none.textContent=tr("cal.none_next","No House or Senate committee meetings are scheduled next week.");
+      }
     }
     if(cal&&days.length&&!left){
       // The line under the rail stays: it is the way to the full calendar,
