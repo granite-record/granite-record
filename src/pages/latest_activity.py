@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-10-24.1
+# GRANITE_VERSION: 2026-10-24.2
 """
 What the home page's Latest Activity holds: the latest meetings, each with
 the bills it took up and what was done to each there.
@@ -69,9 +69,13 @@ import proceedings as P
 # (build_pages.RECENT_SHOWN); the rest are there for a page that is read a day
 # or two after it was built, and for a check.
 LIMIT = 12
-# Bills kept for each meeting. The page shows fewer and "and N more", which
-# counts from `n`, every bill the meeting took up. A House sitting takes up a
-# hundred and more, and home.json is fetched by every visit to the home page.
+# Bills kept for each meeting the page does not show, against a page read a
+# day or two after its build. A meeting it shows keeps every bill, up to
+# build_pages.RECENT_BILLS, since its card opens on all of them (the owner,
+# 24 October 2026: "the ability to click it for a dropdown to list all the
+# bills from that session"); "and N more" counts from `n` past that. A House
+# sitting takes up a hundred and more, and home.json is fetched by every
+# visit to the home page.
 BILLS_KEPT = 8
 
 # What a committee's meeting is not, for this box (above).
@@ -216,7 +220,8 @@ def latest(rows, histories, today, bills=None, limit=LIMIT, kept=BILLS_KEPT,
          kinds of sitting, in the day's order], "time", "last" (the first and
          last slots, "HH:MM"; absent on a sitting), "n": every bill it took
          up, "bills": [{"bill", "term", "year", "n", "title", "did"?}] the
-         first `kept` of them}
+         first `kept` of them, or build_pages.RECENT_BILLS for each of the
+         first RECENT_SHOWN, the meetings the home page shows}
 
     `rows` is proceedings.csv's (proceedings.load), `histories`
     narratives.json's {term: {bill: history}}, `today` "YYYY-MM-DD", `bills`
@@ -281,6 +286,10 @@ def latest(rows, histories, today, bills=None, limit=LIMIT, kept=BILLS_KEPT,
             row["did"] = did
         return row
 
+    def cap(i):
+        """How many bills the i-th meeting keeps (BILLS_KEPT)."""
+        return max(kept, BP.RECENT_BILLS) if i < BP.RECENT_SHOWN else kept
+
     out = []
     for item in chosen:
         kind, key = item
@@ -298,7 +307,7 @@ def latest(rows, histories, today, bills=None, limit=LIMIT, kept=BILLS_KEPT,
             # (meeting_kinds.json), whose colour its bar takes.
             out.append({"date": date, "floor": True, "body": body, "kinds": ["floor debate"],
                         "n": len(got),
-                        "bills": [bill_row(t, b, d) for _c, t, b, d in got[:kept]]})
+                        "bills": [bill_row(t, b, d) for _c, t, b, d in got[:cap(len(out))]]})
             continue
         rs = sorted(meets[item], key=lambda r: (r["time"] or "~", r["what"], BO.bill_key(r["bill"])))
         code = _code(key.name, key.chamber)
@@ -315,7 +324,7 @@ def latest(rows, histories, today, bills=None, limit=LIMIT, kept=BILLS_KEPT,
         got.sort(key=lambda g: g[2] is None)
         slots = sorted(r["time"] for r in rs if r["time"])
         m = {"date": key.date, "body": key.chamber, "committee": key.name, "kinds": kinds,
-             "n": len(got), "bills": [bill_row(t, b, d) for t, b, d in got[:kept]]}
+             "n": len(got), "bills": [bill_row(t, b, d) for t, b, d in got[:cap(len(out))]]}
         if slots:
             m["time"], m["last"] = slots[0], slots[-1]
         out.append(m)

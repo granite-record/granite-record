@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-18.40
+# GRANITE_VERSION: 2026-09-18.41
 """
 The General Court's week, one page per week.
 
@@ -2722,7 +2722,7 @@ def week_page(site, base, key, weeks, order, at, titles, years, code, urls,
     copy it read, every run (main), so it is not silent about it.
 
     `events` is key_date_days()'s: each key date is a card on its day, before
-    the day's meetings, under the Key Dates box (24 October 2026)."""
+    the day's meetings, under the Important Dates box (24 October 2026; Key Dates until that evening)."""
     w = week_facts(key, weeks, today, events)
     label, lead, days, meets, n = w["label"], w["lead"], w["days"], w["meets"], w["n"]
 
@@ -3046,7 +3046,7 @@ def main():
     n_kd = sum(len(v) for v in events.values())
     # SILENCE IS NOT SUCCESS: legislative_year and the statutes always give
     # some, so none is a reading that failed.
-    assert n_kd, "no key dates from key_dates.events(); the Key Dates box would be empty"
+    assert n_kd, "no key dates from key_dates.events(); the Important Dates box would be empty"
     print(f"  {n_kd} key dates on {len(events)} days, {FROM} to "
           f"{today + datetime.timedelta(days=KEY_AHEAD)} (key_dates.py)")
     # Every week from the first to the last, the current one included, so the

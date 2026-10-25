@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.690
+# GRANITE_VERSION: 2026-09-04.691
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -33436,7 +33436,11 @@ def _chain():
         wk_end = built + _td(days=6 - built.weekday())
         homepage = (root / "site" / "index.html").read_text(encoding="utf-8",
                                                             errors="replace")
-        rail = re.findall(r'class="calday" data-d="([^"]+)"', homepage)
+        # COMING UP'S OWN DAYS, in its own section: Latest Activity's days are
+        # .calday blocks too since 24 October 2026, and every one is past.
+        cal_at = homepage.find('<section class="cal"')
+        coming = homepage[cal_at:homepage.find("</section>", cal_at)] if cal_at >= 0 else ""
+        rail = re.findall(r'class="calday" data-d="([^"]+)"', coming)
         stray = [d for d in rail if not built.isoformat() <= d <= wk_end.isoformat()]
         assert not stray, (
             f"the built home page's Coming up shows {stray}, outside the week "
@@ -59853,7 +59857,7 @@ def _meet_kind_colours():
     names = [w for _c, w in BP.MEET_LEGEND]
     assert names == ["Public Hearing", "Executive Session", "Work Session",
                      "Committee of Conference", "Session Day", "Study Committee",
-                     "Key Dates"], (
+                     "Important Dates"], (
         f"the key's names are {names}: one per kind, work sessions and study "
         "committees apart, and the key dates last, in title case")
 
@@ -66548,8 +66552,10 @@ def _coming_up_is_this_week():
                       "own week was not run")
     m = re.search(r"\(function\(\)\{\s*const now=new Date\(\);.*?\n  \}\)\(\);",
                   BP.HOME_JS, re.S)
-    assert m and ".calday[data-d]" in m.group(0), (
-        "HOME_JS has no block reading .calday[data-d] in the reader's clock")
+    # COMING UP'S OWN DAYS: Latest Activity's are .calday blocks too, all past,
+    # and this block would retire every one of them (24 October 2026).
+    assert m and ".cal .calday[data-d]" in m.group(0), (
+        "HOME_JS has no block reading Coming up's own .calday[data-d] in the reader's clock")
     span = [(_dt.date(2026, 9, 20) + _dt.timedelta(days=k)).isoformat()
             for k in range(16)]
     for reader, days, want_kept in (
@@ -66569,7 +66575,7 @@ def _coming_up_is_this_week():
             f"const days={json.dumps(days)}.map(mk);"
             "const calall={outerHTML:'<p class=\"calmore calall\">NEXT</p>'};"
             "const cal={innerHTML:'',querySelector(s){return s==='.calall'?calall:null;}};"
-            "globalThis.document={querySelectorAll(s){return s==='.calday[data-d]'?days:[];},"
+            "globalThis.document={querySelectorAll(s){return s==='.cal .calday[data-d]'?days:[];},"
             "querySelector(s){return s==='.cal'?cal:null;}};\n"
             + m.group(0) + "\n"
             "process.stdout.write(JSON.stringify({kept:days.filter(e=>!e.gone)"
@@ -67058,19 +67064,25 @@ def _key_dates_deadline(KD, BP):
                   "schedule's link, in English and Spanish")
 
 
-@check("frontend", "Coming up lists the key dates as events, in date order: in their days this "
-                   "week and the next few after it", needs=("key_dates", "build_pages"))
+@check("frontend", "Coming up shows the important dates of its own week, each the Calendar's card "
+                   "first in its day, and none after the week", needs=("key_dates", "build_pages"))
 def _coming_up_key_dates(KD, BP):
     """The owner, 24 October 2026: "Coming up should list major events like
-    the election days, town meeting days, organization day, etc". A key date
-    of the rail's week stands first in its day, as a line of its own class
-    (kdrow) and never a meeting's card, leading to its day on the Calendar; a
-    day holding only a key date is one of the rail's days. The next four
-    after the rail's Sunday follow the week under their own heading, in date
-    order, each retiring the day after it (data-until), and HOME_JS keeps
-    them when it empties the week in the reader's clock. Drawn on Saturday 24
-    October 2026, when the rail is next week's, with nothing in it, and on
-    Monday 2 November, the election's week; in Spanish as well."""
+    the election days, town meeting days, organization day, etc"; and that
+    evening, of what was built: "I more meant that those events would show up
+    under the coming up section when they are within that week's days, but
+    not ones that are months out ... The key dates should display within the
+    other coming up sessions in the same format, just color coded with the
+    same scheme used on the calendar page". So a key date of the rail's week
+    stands first in its day as the card the Calendar draws for it
+    (key_dates.card_html: details.calkd, the Important Date chip, opening on
+    its sentence and source), never a meeting's card; a day holding only a
+    key date is one of the rail's days; and nothing follows the week -- the
+    list of the next four, which ran to December on 24 October, is gone.
+    HOME_JS asks only Coming up's own section for the days it retires, since
+    Latest Activity's days are of the same class and all past. Drawn on
+    Saturday 24 October 2026, when the rail is next week's, with nothing in
+    it, and on Monday 2 November, the election's week; in Spanish as well."""
     import contextlib
     import io
     from datetime import date
@@ -67086,53 +67098,52 @@ def _coming_up_key_dates(KD, BP):
             none = BP.calendar_html(tmp, today=date(2026, 11, 2), rows=[row], events=[])
     finally:
         shutil.rmtree(tmp, ignore_errors=True)
-    later = re.findall(r'<li class="kdrow" data-kd="[a-z]+" data-until="([^"]+)"><time datetime="([^"]+)">'
-                       r'[^<]*</time> <a href="([^"]+)">([^<]*)</a>', sat)
-    if [x[3] for x in later] != ["General election", "Bill requests open to every member",
-                                 "Last day to file bill requests", "Organization Day"]:
-        bad.append(f"on 24 October the key dates after the week are {[x[3] for x in later]}")
-    days = [x[1] for x in later]
-    if days != sorted(days) or any(u <= d for u, d, _h, _n in later):
-        bad.append(f"the key dates after the week are not in date order, each until the day after: {later}")
-    if later and later[0][2] != "/calendar?week=2026-W45&amp;day=2026-11-03":
-        bad.append(f"the election leads to {later[0][2]}, not its day on the Calendar")
-    if "calday" in sat or sat.index('class="kdahead"') > sat.index('class="calmore calall"'):
-        bad.append("on an empty week the key dates are drawn as a day, or after the way to the calendar")
-    nov3 = re.search(r'<div class="calday" data-d="2026-11-03">(.*?)</div>', mon, re.S)
-    if not nov3 or not re.search(r'<p class="kdrow" data-kd="election"><a [^>]*>General election</a></p>'
-                                 r'<details class="calmeet"', nov3.group(1)):
-        bad.append("in the election's week the election is not first in its day, before the day's meeting")
-    if not re.search(r'<div class="calday" data-d="2026-11-04">.*?<p class="kdrow"', mon, re.S):
+    if "calkd" in sat or "calday" in sat or "kdahead" in sat or "General election" in sat:
+        bad.append("on 24 October, with the election in the week after the rail's, the rail "
+                   "shows a key date")
+    if 'class="calmore calall"' not in sat:
+        bad.append("the empty week has lost its way to the calendar")
+    nov3 = re.search(r'<div class="calday" data-d="2026-11-03">(.*?)</div>\s*(?=<div class="calday|</div>)',
+                     mon, re.S)
+    if not nov3 or not re.search(r'</h3><details class="calkd" data-who="date" data-kinds="date"'
+                                 r' data-kd="election"[^>]*><summary><span class="calcmte">General '
+                                 r'election</span><span class="chip calkind k-date">Important Date</span>'
+                                 r'.*?</details><details class="calmeet"', nov3.group(1), re.S):
+        bad.append("in the election's week the election is not first in its day, as the Calendar's "
+                   "card with the Important Date chip, before the day's meeting")
+    if not re.search(r'<div class="calday" data-d="2026-11-04">.*?<details class="calkd"', mon, re.S):
         bad.append("a day holding only a key date is not one of the rail's days")
-    after = re.findall(r'<li class="kdrow"[^>]*><time datetime="([^"]+)"', mon)
-    if not after or min(after) <= "2026-11-08":
-        bad.append(f"the key dates after the week begin inside it: {after}")
+    if "2026-11-18" in mon or "Last day to file bill requests" in mon:
+        bad.append("a key date after the rail's Sunday is in the rail")
     if len(re.findall(r'<details class="calmeet"', mon)) != 1:
         bad.append("a key date is drawn as a meeting's card in Coming up")
-    if "Elección general" not in es or "Próximas fechas clave" not in es:
-        bad.append("Coming up in Spanish does not name the key dates in Spanish")
-    if "kdrow" in none:
+    if "kdrow" in mon or "kdahead" in mon:
+        bad.append("Coming up still draws the old key-date lines or the list after the week")
+    if "Elección general" not in es or "Fecha importante" not in es:
+        bad.append("Coming up in Spanish does not name the key date and its chip in Spanish")
+    if "calkd" in none:
         bad.append("events=[] still draws key dates")
     js = BP.HOME_JS
-    if 'keys=cal.querySelector(".kdahead")' not in js or "keys.outerHTML" not in js:
-        bad.append("HOME_JS drops the key dates after the week when it empties the rail")
+    if 'document.querySelectorAll(".cal .calday[data-d]")' not in js or ".kdahead" in js:
+        bad.append("HOME_JS retires days outside Coming up, or still keeps the list after the week")
     assert not bad, "; ".join(bad)
-    return "ok", ("on 24 October the four next key dates after an empty week, in order, each to "
-                  "its day; on 2 November the election first in its day and the next after Sunday; "
-                  "in Spanish too")
+    return "ok", ("on 24 October no key date in an empty next week; on 2 November the election's "
+                  "card first in its day and the next day's alone, none after Sunday; in Spanish "
+                  "too")
 
 
-@check("frontend", "the Calendar shows each key date on its day under Key Dates, a box of its own "
+@check("frontend", "the Calendar shows each key date on its day under Important Dates, a box of its own "
                    "that counts no meeting", needs=("key_dates", "build_calendar", "build_pages"))
 def _calendar_key_dates(KD, BC, BP):
     """The owner, 24 October 2026: "those dates should show up on the
     calendar page too under a separate meeting type in the key". So the
-    Calendar's key and its row of boxes carry Key Dates, in its gold and
+    Calendar's key and its row of boxes carry Important Dates (Key Dates
+    until the owner renamed them that evening), in its gold and
     ticked for a new reader; each key date is a card on its day, before the
     day's meetings, of its own class (calkd), opening on its source; a date a
     year ahead gives its week a page, and one further off does not; a
     Saturday holding a key date is listed as one holding a meeting is; and
-    the page's script reads a key date as an entry of the Key Dates box and
+    the page's script reads a key date as an entry of the Important Dates box and
     of nothing else -- not counted among the meetings, named in its day's
     cell with a dot of its colour, its week entry opening its day, and a
     week of key dates alone opening on the first of them."""
@@ -67183,18 +67194,18 @@ def _calendar_key_dates(KD, BC, BP):
     if not day or not re.match(r'<h2 class="caldate">.*?</h2><details class="calkd" data-who="date" '
                                r'data-kinds="date"', day.group(1), re.S):
         bad.append("town meeting day's card is not first in its day on the week's page")
-    elif not re.search(r'<span class="chip calkind k-date">Key Date</span>.*?'
+    elif not re.search(r'<span class="chip calkind k-date">Important Date</span>.*?'
                        r'(?:<a href="/laws/39#s1">)?RSA 39:1\b', day.group(1), re.S):
-        bad.append("the card does not wear the Key Date chip, or does not open on its statute")
+        bad.append("the card does not wear the Important Date chip, or does not open on its statute")
     if day and day.group(1).index('<details class="calkd"') > day.group(1).find('<details class="calmeet"'):
         bad.append("the key date is not before the day's meetings")
     if page.count('<details class="calmeet"') != _count_cards(plain, k):
         bad.append("a key date changed how many meeting cards the week holds")
     if not re.search(r'<label class="calcat k-date"><input type="checkbox" name="cat" value="date" '
-                     r'checked><span class="cbx" aria-hidden="true"></span>Key Dates</label>', page):
-        bad.append("the row of boxes has no Key Dates box, ticked")
-    if '<li><i class="k-date" aria-hidden="true"></i>Key Dates</li>' not in page:
-        bad.append("the key a reader without script is given has no Key Dates")
+                     r'checked><span class="cbx" aria-hidden="true"></span>Important Dates</label>', page):
+        bad.append("the row of boxes has no Important Dates box, ticked")
+    if '<li><i class="k-date" aria-hidden="true"></i>Important Dates</li>' not in page:
+        bad.append("the key a reader without script is given has no Important Dates")
     if '<details class="calkd"' not in mar["days"].get("2026-03-10", ""):
         bad.append("the month file's 10 March has no key date, so the script's views would lose it")
     sat = {"2026-03-21": [(KD.KeyDate("2026-03-21", "", "deadline", "A Saturday deadline", "",
@@ -67203,7 +67214,7 @@ def _calendar_key_dates(KD, BC, BP):
     if "2026-03-21" not in facts["days"]:
         bad.append("a Saturday holding a key date is not listed in its week")
     assert not bad, "; ".join(bad)
-    return "ok", ("town meeting day first in its day, under a ticked Key Dates box and in the key, "
+    return "ok", ("town meeting day first in its day, under a ticked Important Dates box and in the key, "
                   "counted as no meeting; the election's week has a page; "
                   + (out.splitlines()[-2] if node and out else "node is not on PATH, so the script was not run"))
 
@@ -67221,13 +67232,13 @@ process.argv.slice(2).forEach(f=>{ const j=JSON.parse(fs.readFileSync(f,"utf8"))
   Object.keys(j.days).forEach(d=>days[d]=C.parseDay(j.days[d])); });
 const F=(o)=>Object.assign(C.defaults(),o);
 const tue=days["2026-03-10"], kd=tue.cards.filter(C.isKD), mt=C.meetings(tue.cards);
-ok(C.CATS.indexOf("date")>=0 && C.defaults().cats.indexOf("date")>=0, "Key Dates is not a box, on for a new reader");
+ok(C.CATS.indexOf("date")>=0 && C.defaults().cats.indexOf("date")>=0, "Important Dates is not a box, on for a new reader");
 ok(kd.length===1 && kd[0].name==="Town meeting day" && tue.cards[0]===kd[0], "10 March's key date is not read first: "+tue.cards.map(e=>e.name));
 ok(kd.length && C.catsOf(kd[0]).join()==="date", "a key date answers to "+(kd[0]&&C.catsOf(kd[0])));
 ok(C.tally(tue.cards,F({})).total===mt.length && C.countLine(C.tally(tue.cards,F({})),"on Tuesday")===mt.length+" meetings on Tuesday.",
    "a key date is counted as a meeting: "+C.countLine(C.tally(tue.cards,F({})),"on Tuesday"));
 ok(kd.length && !C.matches(kd[0],F({cats:["hearing","exec","work","conf","floor"]})) && C.matches(kd[0],F({})),
-   "the Key Dates box does not show and hide the key dates");
+   "the Important Dates box does not show and hide the key dates");
 const cell=C.cellHtml("2026-03-10",{view:"2026-03",sel:"2026-03-11",focus:"2026-03-11",today:"2026-03-11",
   first:"2025-01-01",last:"2027-12-31",days:days,f:F({})});
 ok(/Town meeting day/.test(cell) && /<i class="k-date"><\/i>/.test(cell) && /2 meetings/.test(cell),
@@ -69121,7 +69132,7 @@ def _latest_activity_links_the_bill(BP, B):
     assert BP.recent_href({"bill": "SB256", "year": 2025, "n": "SB 256-FN"}) == \
         "bill/2025/sb256.html", BP.recent_href({"bill": "SB256", "year": 2025})
     assert BP.recent_href({"bill": "SB256"}) == "bills.html#SB256"
-    static = inspect.getsource(BP.recent_box)
+    static = inspect.getsource(BP.recent_box) + inspect.getsource(BP.latest_card)
     assert "recent_href(b)" in static and "bills.html#" not in static, (
         "the static Latest activity does not link each bill through recent_href")
     assert 'getElementById("recent").innerHTML' not in BP.HOME_JS and "H.recent" not in BP.HOME_JS, (
@@ -69197,9 +69208,10 @@ def _latest_rows():
     return rows, histories, bills
 
 
-@check("frontend", "Latest activity is a meeting an item: each bill once, an executive session "
-                   "and the report voted at it one entry, linked into the meeting, in English "
-                   "and in Spanish alike", needs=("build_pages", "latest_activity", "i18n"))
+@check("frontend", "Latest activity is a meeting an item, drawn as Coming up draws one: each "
+                   "bill once, an executive session and the report voted at it one entry, "
+                   "linked into the meeting, in English and in Spanish alike",
+       needs=("build_pages", "latest_activity", "i18n"))
 def _latest_activity_meetings(BP, LA, i18n):
     """The person, 24 October 2026: "On the latest activity bar on the
     homepage, bills should not be repeated twice like they are right now for
@@ -69225,11 +69237,20 @@ def _latest_activity_meetings(BP, LA, i18n):
         dated the 22nd) said with its own day; a sitting's bill said by the
         motion that settled it (HB 396's last override, not the
         reconsideration that carried between);
-      - drawn, each item's name leading into the meeting -- committee/<code>
-        .html#day-<date>, which app.js's showDay opens, or the sitting's page
-        -- each bill once, in English and in Spanish with the same meetings,
-        bills and links;
-      - HOME_JS's latWhen saying the days as latest_when does, in node;
+      - drawn IN COMING UP'S FORMAT (the owner, that evening: "formatted
+        similarly to the coming up page just listing past events with the
+        ability to click it for a dropdown to list all the bills from that
+        session"): under each day, headed with its date and how long ago it
+        was, each meeting a card (details.calmeet) whose summary names it
+        with its hours and count, opening on every bill it took up -- each
+        once, with what was done to it on a line of its own -- and the way
+        into the meeting: committee/<code>.html#day-<date>, which app.js's
+        showDay opens, or the sitting's page; in English and in Spanish with
+        the same meetings, bills and links;
+      - the meetings the page shows keeping every bill (RECENT_BILLS), the
+        rest BILLS_KEPT;
+      - HOME_JS's latRel saying how long ago each day was as past_rel does,
+        in node;
       - and the fixture's built home pages: the same box in both languages,
         every link it holds leading to a page the builders wrote, a
         committee's into a day that page's record holds."""
@@ -69272,7 +69293,7 @@ def _latest_activity_meetings(BP, LA, i18n):
                 for lang in ("en", "es")}
 
     def items(t):
-        return re.findall(r'<li class="latm".*?</ul>(?:<p class="latmore">.*?</p>)?</li>', t, re.S)
+        return re.findall(r'<details class="calmeet latm".*?</details>', t, re.S)
     for lang, t in html.items():
         its = items(t)
         assert len(its) == BP.RECENT_SHOWN + 1, f"{lang}: {len(its)} meetings drawn"
@@ -69281,40 +69302,69 @@ def _latest_activity_meetings(BP, LA, i18n):
             assert nums and len(nums) == len(set(nums)), f"{lang}: a meeting lists {nums}"
         assert t.count(">HB 1710<") == 1, f"{lang}: HB 1710 is drawn {t.count('>HB 1710<')} times"
     en = html["en"]
-    for want in ('<a class="latname" href="committee/H34.html#day-2026-10-23">House Finance</a>',
+    for want in ('<span class="calcmte">House Finance</span><span class="caltime">10:00 AM</span>'
+                 '<span class="calcount">(1 bill)</span>',
+                 '<a href="committee/H34.html#day-2026-10-23">This meeting on the House Finance '
+                 'page</a>',
                  '<a class="cbn" href="bill/2026/hb1710.html">HB 1710</a>',
-                 '<a class="latname" href="session/H/2026-08-19.html">House Session Day</a>',
-                 'Yesterday · 10:00 AM', C.vote_chip("override_first", False, "HB396"),
+                 '<span class="calcmte">House Session Day</span>',
+                 '<a href="session/H/2026-08-19.html">What the House did that day</a>',
+                 '<div class="calday" data-d="2026-10-23"><h3 class="caldate"><span>Fri, Oct 23'
+                 '</span><span class="cdrel">yesterday</span></h3>',
+                 '<p class="latkinds">Executive Session</p>',
+                 '<span class="latdid">' + C.vote_chip("override_first", False, "HB396"),
                  "dated Oct 22"):
         assert want in en, f"Latest activity does not draw {want!r}"
+    assert en.count('<div class="calday" data-d="2026-10-15">') == 1 and re.search(
+        r'<div class="calday" data-d="2026-10-15">(?:(?!<div class="calday).)*?'
+        r'<details class="calmeet latm".*?<details class="calmeet latm"', en, re.S), (
+        "two meetings of one day are not two cards under the one day")
+    assert "latwhen" not in en and "latlist" not in en, "the old Latest activity is drawn"
     assert C.chip(C.title_words(C.WORDBOOK["study_report"]["said"]["not"]), "cstat s-done") in en, (
         "HB 1710's report is not drawn in study_report.json's words, in the colour of a killing")
     hrefs = {lang: re.findall(r'href="([^"]+)"', t) for lang, t in html.items()}
     assert hrefs["es"] == hrefs["en"], "Spanish Latest activity holds other meetings, bills or links"
     es = html["es"]
-    for want in ("Ayer · 10:00 a. m.", i18n.say_word("es", "kind", "Executive Session"),
-                 'lang="en">House Finance</a>', i18n.say_word("es", "vote", "Motion Failed")):
+    for want in ('<span class="cdrel">ayer</span>', "10:00 a. m.",
+                 i18n.say_word("es", "kind", "Executive Session"),
+                 'lang="en">House Finance</span>', i18n.say_word("es", "vote", "Motion Failed")):
         assert want in es, f"the Spanish box does not say {want!r}"
+
+    # ---- the meetings the page shows keep every bill -----------------------
+    many = [dict(m, n=60, bills=[{"bill": f"HB{i}", "term": "2025-2026", "year": 2026,
+                                   "n": f"HB {i}", "title": ""} for i in range(1, 61)])
+            for m in got[:1]]
+    with contextlib.redirect_stdout(io.StringIO()):
+        lots = BP.recent_box({"latest": many}, "en", codes, sits, day)
+    assert lots.count('class="cbn"') == 60 and '<p class="latmore">' not in lots, (
+        "a meeting's card does not list every bill it is given")
+    capped = [dict(m, n=60, bills=m["bills"][:BP.RECENT_BILLS]) for m in many]
+    with contextlib.redirect_stdout(io.StringIO()):
+        lots = BP.recent_box({"latest": capped}, "en", codes, sits, day)
+    assert '<p class="latmore">and 20 more</p>' in lots, "past RECENT_BILLS the card does not say how many more"
+    import inspect
+    assert "cap(len(out))" in inspect.getsource(LA.latest) and BP.RECENT_BILLS >= 40, (
+        "home.json does not keep every bill of the meetings the page shows")
 
     # ---- HOME_JS says the days as the build does, in the reader's clock ----
     node = shutil.which("node") or shutil.which("node.exe")
-    ran = "node is not on PATH, so HOME_JS's latWhen was not run"
+    ran = "node is not on PATH, so HOME_JS's latRel was not run"
     if node:
-        fd = re.search(r"\nconst fd=.*?;\n", BP.HOME_JS)
-        lw = re.search(r"\nconst latWhen=.*?\n\};\n", BP.HOME_JS, re.S)
-        assert fd and lw, "HOME_JS has no latWhen saying Latest activity's days"
-        cases = [("2026-10-24", "10:00"), ("2026-10-23", "13:30"), ("2026-10-23", ""),
-                 ("2026-10-22", "10:30")]
+        lw = re.search(r"\nconst latRel=.*?\n\};\n", BP.HOME_JS, re.S)
+        assert lw, "HOME_JS has no latRel saying how long ago Latest activity's days were"
+        assert 'querySelectorAll("#recent .calday[data-d]")' in BP.HOME_JS, (
+            "HOME_JS does not say Latest activity's days again in the reader's clock")
+        cases = ["2026-10-24", "2026-10-23", "2026-10-21", "2026-10-10", "2026-10-02"]
         for lang in ("en", "es"):
             words = i18n.words_js(lang, BP.HOME_JS) if lang != "en" else ""
             prog = _components_js() + "\n" + (
                 f"globalThis.window=globalThis;window.GR_LANG={json.dumps(lang)};{words}\n"
-                + fd.group(0) + lw.group(0)
+                + lw.group(0)
                 + f"process.stdout.write(JSON.stringify({json.dumps(cases)}.map(c=>"
-                "latWhen(c[0],c[1],new Date(2026,9,24)))));")
+                "latRel(c,new Date(2026,9,24)))));")
             r = _node_file(node, prog, capture_output=True, text=True, timeout=60)
-            assert r.returncode == 0, "HOME_JS's latWhen would not run: " + (r.stderr or "")[-300:]
-            want = [BP.latest_when(d, t, day, lang) for d, t in cases]
+            assert r.returncode == 0, "HOME_JS's latRel would not run: " + (r.stderr or "")[-300:]
+            want = [BP.past_rel(d, day, lang) for d in cases]
             assert json.loads(r.stdout) == want, (
                 f"{lang}: HOME_JS says {json.loads(r.stdout)} where the build says {want}")
         ran = "HOME_JS says the days as the build does, in both languages"
