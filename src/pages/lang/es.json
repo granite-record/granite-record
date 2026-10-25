@@ -1339,8 +1339,8 @@
    "state": "draft"
   },
   "guide.attend-a-hearing.go-in-person-to-the-building": {
-   "en": "<b>go in person</b>, to the building and room the notice names. Testifying and Attending explains the buildings;",
-   "es": "<b>ir en persona</b>, al edificio y la sala que indica el aviso. Testificar y asistir explica los edificios;",
+   "en": "<b>go in person</b>, to the building and room the notice names. How Public Hearings Work explains the buildings;",
+   "es": "<b>ir en persona</b>, al edificio y la sala que indica el aviso. Cómo funcionan las audiencias públicas explica los edificios;",
    "state": "draft"
   },
   "guide.attend-a-hearing.go-to-the-room-and-ask": {
@@ -1356,6 +1356,16 @@
   "guide.attend-a-hearing.how-a-bill-becomes-law": {
    "en": "How a bill becomes law",
    "es": "Cómo un proyecto se convierte en ley",
+   "state": "draft"
+  },
+  "guide.attend-a-hearing.how-public-hearings-work": {
+   "en": "How public hearings work",
+   "es": "Cómo funcionan las audiencias públicas",
+   "state": "draft"
+  },
+  "guide.attend-a-hearing.how-public-hearings-work-2": {
+   "en": "How Public Hearings Work",
+   "es": "Cómo funcionan las audiencias públicas",
    "state": "draft"
   },
   "guide.attend-a-hearing.how-to-contact-your-legislators": {
@@ -1431,16 +1441,6 @@
   "guide.attend-a-hearing.submit-testimony": {
    "en": "Submit testimony",
    "es": "Presentar testimonio",
-   "state": "draft"
-  },
-  "guide.attend-a-hearing.testifying-and-attending": {
-   "en": "Testifying and attending",
-   "es": "Testificar y asistir",
-   "state": "draft"
-  },
-  "guide.attend-a-hearing.testifying-and-attending-2": {
-   "en": "Testifying and Attending",
-   "es": "Testificar y asistir",
    "state": "draft"
   },
   "guide.attend-a-hearing.the-buildings": {
@@ -7387,6 +7387,16 @@
    "es": "Inscripción en la Cámara",
    "state": "draft"
   },
+  "guide.submit-testimony.how-public-hearings-work": {
+   "en": "How public hearings work",
+   "es": "Cómo funcionan las audiencias públicas",
+   "state": "draft"
+  },
+  "guide.submit-testimony.how-public-hearings-work-2": {
+   "en": "How Public Hearings Work",
+   "es": "Cómo funcionan las audiencias públicas",
+   "state": "draft"
+  },
   "guide.submit-testimony.how-to-attend-and-speak-at": {
    "en": "How to attend and speak at a public hearing",
    "es": "Cómo asistir y hablar en una audiencia pública",
@@ -7450,16 +7460,6 @@
   "guide.submit-testimony.start-with-the-bills-number-hb": {
    "en": "Start with the bill&rsquo;s number, HB or SB and then the number, and say whether you support or oppose it. Then say why in a few specific sentences: what the bill would do to you, your family, your work or your town. If you write for an organization, say so.",
    "es": "Empiece con el número del proyecto de ley, HB o SB y luego el número, y diga si lo apoya o se opone a él. Luego explique por qué en unas pocas oraciones concretas: lo que el proyecto le haría a usted, a su familia, a su trabajo o a su municipio. Si escribe en nombre de una organización, dígalo.",
-   "state": "draft"
-  },
-  "guide.submit-testimony.testifying-and-attending": {
-   "en": "Testifying and attending",
-   "es": "Testificar y asistir",
-   "state": "draft"
-  },
-  "guide.submit-testimony.testifying-and-attending-2": {
-   "en": "Testifying and Attending",
-   "es": "Testificar y asistir",
    "state": "draft"
   },
   "guide.submit-testimony.the-house-and-the-senate-both": {
@@ -8313,8 +8313,8 @@
    "state": "draft"
   },
   "guide.testifying.title": {
-   "en": "Testifying and Attending",
-   "es": "Testificar y asistir",
+   "en": "How Public Hearings Work",
+   "es": "Cómo funcionan las audiencias públicas",
    "state": "draft"
   },
   "guide.testifying.what-happens-after-the-hearing": {
@@ -10241,16 +10241,6 @@
    "es": "{n} páginas breves sobre las partes del gobierno estatal y local, cada una enlazada a donde puede verlas en acción en el registro.",
    "state": "draft"
   },
-  "hub.learn.laws_line": {
-   "en": "Every chapter of the state&rsquo;s laws, searchable by number or subject, each section with the bills that changed it and the bills that would.",
-   "es": "Cada capítulo de las leyes del estado, con búsqueda por número o por tema, y en cada sección los proyectos de ley que la cambiaron y los que la cambiarían.",
-   "state": "draft"
-  },
-  "hub.learn.laws_title": {
-   "en": "Laws (RSA)",
-   "es": "Leyes (RSA)",
-   "state": "draft"
-  },
   "hub.learn.legislative-year.blurb": {
    "en": "When the House and Senate sit, and the deadlines a bill must meet.",
    "es": "Cuándo sesionan la Cámara y el Senado, y los plazos que debe cumplir un proyecto de ley.",
@@ -10309,16 +10299,6 @@
   "hub.learn.state-agencies.title": {
    "en": "State Agencies",
    "es": "Las agencias estatales",
-   "state": "draft"
-  },
-  "hub.learn.taking_part": {
-   "en": "Taking Part",
-   "es": "Participar",
-   "state": "draft"
-  },
-  "hub.learn.taking_part_intro": {
-   "en": "Finding who represents you, speaking on a bill and following one are How-To Guides now, step by step, with the rest of the guides.",
-   "es": "Saber quién lo representa, opinar sobre un proyecto de ley y seguir uno son ahora guías prácticas, paso a paso, junto con las demás guías.",
    "state": "draft"
   },
   "hub.learn.the-constitution.blurb": {
@@ -12282,8 +12262,8 @@
    "state": "draft"
   },
   "learn.how-a-bill-becomes-law.a-public-hearing-and-an-executive": {
-   "en": "A public hearing and an executive session are different meetings, and they are the two most often confused. A <b>public hearing</b> is where anyone may speak, and the committee takes no decision at it. An <b>executive session</b> is where the committee votes on what to recommend, usually days later and usually covering several bills at once. A committee cannot end a bill there: the rules of both chambers require it to report every bill it is given, with no recommendation if it cannot agree on one, and the full chamber decides. See <a href=\"guides/testifying.html\">Testifying and attending</a> for what happens at each, and <a href=\"learn/governor-and-council.html\">The Governor and the Executive Council</a> for the last stage.",
-   "es": "Una audiencia pública y una sesión ejecutiva son reuniones distintas, y son las dos que más a menudo se confunden. Una <b>audiencia pública</b> es donde cualquier persona puede hablar, y el comité no toma ninguna decisión en ella. Una <b>sesión ejecutiva</b> es donde el comité vota qué recomendar, por lo general días después y por lo general sobre varios proyectos de ley a la vez. Un comité no puede acabar allí con un proyecto de ley: el reglamento de ambas cámaras le exige informar sobre cada proyecto de ley que recibe, sin recomendación si no logra ponerse de acuerdo en una, y la cámara en pleno decide. Vea <a href=\"guides/testifying.html\">Testificar y asistir</a> para saber qué ocurre en cada una, y <a href=\"learn/governor-and-council.html\">El Gobernador y el Consejo Ejecutivo</a> para la última etapa.",
+   "en": "A public hearing and an executive session are different meetings, and they are the two most often confused. A <b>public hearing</b> is where anyone may speak, and the committee takes no decision at it. An <b>executive session</b> is where the committee votes on what to recommend, usually days later and usually covering several bills at once. A committee cannot end a bill there: the rules of both chambers require it to report every bill it is given, with no recommendation if it cannot agree on one, and the full chamber decides. See <a href=\"guides/testifying.html\">How public hearings work</a> for what happens at each, and <a href=\"learn/governor-and-council.html\">The Governor and the Executive Council</a> for the last stage.",
+   "es": "Una audiencia pública y una sesión ejecutiva son reuniones distintas, y son las dos que más a menudo se confunden. Una <b>audiencia pública</b> es donde cualquier persona puede hablar, y el comité no toma ninguna decisión en ella. Una <b>sesión ejecutiva</b> es donde el comité vota qué recomendar, por lo general días después y por lo general sobre varios proyectos de ley a la vez. Un comité no puede acabar allí con un proyecto de ley: el reglamento de ambas cámaras le exige informar sobre cada proyecto de ley que recibe, sin recomendación si no logra ponerse de acuerdo en una, y la cámara en pleno decide. Vea <a href=\"guides/testifying.html\">Cómo funcionan las audiencias públicas</a> para saber qué ocurre en cada una, y <a href=\"learn/governor-and-council.html\">El Gobernador y el Consejo Ejecutivo</a> para la última etapa.",
    "state": "draft"
   },
   "learn.how-a-bill-becomes-law.a-second-committee-a-second-public": {

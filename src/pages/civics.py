@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-08.59
+# GRANITE_VERSION: 2026-09-08.60
 """
 The topics of the civics section: their order, their names, and their prose.
 
@@ -1291,7 +1291,7 @@ usually covering several bills at once. A committee cannot end a bill there:
 the rules of both chambers require it to report every bill it is given, with
 no recommendation if it cannot agree on one, and the full chamber decides.
 See
-<a href="guides/testifying.html">Testifying and attending</a> for what happens
+<a href="guides/testifying.html">How public hearings work</a> for what happens
 at each, and
 <a href="learn/governor-and-council.html">The Governor and the Executive
 Council</a> for the last stage.</p>
@@ -2827,7 +2827,7 @@ TOPICS = [
           [SRC_RSA, SRC_NHMA, SRC_SOS],
           BODY_TOWNS_HOLDS),
 
-    topic("testifying", "Testifying and Attending", PART,
+    topic("testifying", "How Public Hearings Work", PART,
           "The most open part of the process and the least known. Anyone may "
           "speak on any bill, and you do not need to be invited.",
           BODY_TESTIFYING,

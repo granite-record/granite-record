@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-08.78
+# GRANITE_VERSION: 2026-09-08.79
 """
 The civics section: a hub and one page per topic, in order.
 
@@ -1431,9 +1431,8 @@ OTP_JS = """<script>
 #
 # THE LEGISLATURE'S YEAR, WHERE TESTIFYING STOOD (17 October 2026).
 # Testifying and Attending is a how-to guide now (civics.HOW_TO), so Learn's
-# third card is the page that lays the course of a bill on the calendar, and
-# the guides that tell a reader what they can do are named at the foot of
-# the tab, under Taking Part.
+# third card is the page that lays the course of a bill on the calendar; the
+# guides that tell a reader what they can do are on the How-To Guides tab.
 START = [("how-a-bill-becomes-law",
           "The course a bill runs, and the stages it can die at."),
          ("general-court",
@@ -1572,18 +1571,10 @@ HUB_FIXED = {
     "hub.learn.start": "Start Here",
     "hub.learn.by_topic": "By Topic",
     "hub.learn.reference": "Reference",
-    "hub.learn.taking_part": "Taking Part",
-    "hub.learn.taking_part_intro": ("Finding who represents you, speaking on a bill and following "
-                                    "one are How-To Guides now, step by step, with the rest of the "
-                                    "guides."),
     "hub.learn.numbers_title": NUMBERS_TITLE,
     "hub.learn.numbers_line": curly(NUMBERS_WHAT[0].upper() + NUMBERS_WHAT[1:]) + ".",
     "hub.learn.glossary_title": GLOSSARY_TITLE,
     "hub.learn.glossary_line": "The record&rsquo;s words and abbreviations, A to Z.",
-    "hub.learn.laws_title": "Laws (RSA)",
-    "hub.learn.laws_line": ("Every chapter of the state&rsquo;s laws, searchable by number or "
-                            "subject, each section with the bills that changed it and the bills "
-                            "that would."),
     "hub.learn.in_english": ("The Learn pages are in English; their names and descriptions are "
                              "given here in this page&rsquo;s language."),
     "hub.learn.some_english": ("A page marked &ldquo;in English&rdquo; is not translated yet; its "
@@ -1659,10 +1650,9 @@ def hub_words():
 def hub_learn(topics, lang=I.DEFAULT):
     """The Learn tab, in English or in `lang` (24 October 2026, the person's
     second pass on the hub's look): Start Here as three cards; each of
-    civics.GROUPS, and the pages that became How-To Guides, folded shut under
-    its badge; then the reference pages -- The Record in Numbers, the
-    Glossary and the Laws -- as cards of their own, since they are looked
-    things up in rather than read in order."""
+    civics.GROUPS folded shut under its badge; then the reference pages --
+    The Record in Numbers and the Glossary -- as cards of their own, since
+    they are looked things up in rather than read in order."""
     by_slug = {t["slug"]: t for t in topics}
     n = len(topics)
 
@@ -1700,23 +1690,6 @@ def hub_learn(topics, lang=I.DEFAULT):
             folds.append(fold("s-" + _slug(group), group, _tw(lang, k + ".name", E(group)), len(mine),
                               f'<p class="r-intro">{_tw(lang, k + ".note", E(note))}</p>'
                               f'<ul class="r-topics">{lis}</ul>'))
-    # TAKING PART, ON THE HOW-TO GUIDES TAB NOW (17 October 2026: Learn
-    # "should focus more on educational content while still linking to those
-    # other guides when applicable"). The three pages that moved are named
-    # here by their headline, with the tab that holds the rest.
-    moved = [(t, G.task_of(t["slug"])[1]) for t in how_to_topics(civics.TOPICS)
-             if G.task_of(t["slug"])[1]]
-    if moved:
-        folds.append(fold(
-            "taking-part", "Taking Part", _hf(lang, "hub.learn.taking_part"), len(moved),
-            # No link to the tab in the line: the strip is above it, and the
-            # tab's count is of the pages its panel links.
-            f'<p class="r-intro">{_hf(lang, "hub.learn.taking_part_intro")}</p>'
-            '<ul class="r-topics">' + "".join(
-                f'<li><a href="{E(guide_href(t["slug"]))}">'
-                f'{_tw(lang, "guide.task." + t["slug"] + ".head", task["head"])}</a>'
-                f'<p>{_tw(lang, "guide.task." + t["slug"] + ".line", task["line"])}</p></li>'
-                for t, task in moved) + "</ul>"))
     out.append(hub_section("s-topics", _hf(lang, "hub.learn.by_topic"), "".join(folds)))
     # NOT ONE OF THE NUMBERED PAGES. The topics are short explanations meant
     # to be read in order; these are looked things up in, for a different
@@ -1725,12 +1698,11 @@ def hub_learn(topics, lang=I.DEFAULT):
             _hf(lang, "hub.learn.numbers_line")),
            (learn_href(GLOSSARY_SLUG), GLOSSARY_TITLE, _hf(lang, "hub.learn.glossary_title"),
             _hf(lang, "hub.learn.glossary_line"))]
-    # THE STATUTES, the next layer after the constitution (RSA_PAGE.md §10),
-    # where build_rsa.py will write them: only where the statute table is on
-    # this disk, so the hub never links a page a night did not build.
-    if Path("db/NH_RSA.psv").is_file():
-        ref.append(("/laws", "Laws (RSA)", _hf(lang, "hub.learn.laws_title"),
-                    _hf(lang, "hub.learn.laws_line")))
+    # NO TAKING PART, NO LAWS CARD (the hub audit, 25 October 2026): the tab's
+    # count was of seventeen links, four of them repeats -- the three guides
+    # Taking Part named, which the How-To Guides tab lists, and the Laws, which
+    # the header names on every page. Learn's pages still name the guides that
+    # do what they explain (civics.GUIDES_FOR).
     out.append(hub_section("reference", _hf(lang, "hub.learn.reference"), cards(ref)))
     return "".join(out)
 

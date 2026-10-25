@@ -1,4 +1,4 @@
-/* GRANITE_VERSION: 2026-09-07.318 */
+/* GRANITE_VERSION: 2026-09-07.319 */
 /* ONE STYLESHEET FOR EVERY PAGE (23 October 2026). Every page of the site
    links this file, /app.css: the record pages shell.page() makes from
    bills.html, and the five build_pages.py writes -- the home page, Officials,
@@ -4563,8 +4563,17 @@ text-transform:uppercase;color:var(--ink-2);margin:0 0 var(--sp-4);font-family:v
 /* contain:inline-size: the box takes the width the page gives it and its
    table scrolls inside it, rather than the table's least width (808px
    for the amendments sent to the voters) widening the page at 768px */
-.l-tablewrap{overflow-x:auto;border:1px solid var(--rule-2);border-radius:var(--r-in);background:var(--surface);
+.l-tablewrap{overflow-x:auto;border:1px solid var(--rule-2);border-radius:var(--r-in);
   margin:1rem 0 .75rem;max-width:var(--l-meas);position:relative;contain:inline-size}
+/* A table wider than its box says it scrolls, as the Officials tabs do: a
+   shadow at whichever end has more, made by the box's own background, gone
+   at an end the table has reached (the hub audit, 25 October 2026). */
+.l-tablewrap{background:
+  linear-gradient(to right,var(--surface) 30%,transparent) 0 0/2rem 100% no-repeat local,
+  linear-gradient(to left,var(--surface) 30%,transparent) 100% 0/2rem 100% no-repeat local,
+  linear-gradient(to right,var(--shadow),transparent) 0 0/1rem 100% no-repeat scroll,
+  linear-gradient(to left,var(--shadow),transparent) 100% 0/1rem 100% no-repeat scroll,
+  var(--surface)}
 .l-table{border-collapse:collapse;width:100%;font:400 var(--t-ui)/1.5 var(--sans);color:var(--ink)}
 .l-table caption{text-align:left;font:600 var(--t-h3)/1.3 var(--serif);padding:.75rem 1rem .5rem;caption-side:top}
 .l-table th{font:600 var(--t-label)/1.3 var(--sans);letter-spacing:.07em;text-transform:uppercase;color:var(--ink-2);

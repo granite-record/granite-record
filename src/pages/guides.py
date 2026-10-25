@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-10-11.41
+# GRANITE_VERSION: 2026-10-11.42
 """
 The how-to guides: their words, their sources, and what each was checked
 against. Read by build_civics.py, which draws them on the Resources hub's
@@ -1520,8 +1520,8 @@ HEARING = guide(
      step("Decide how to take part",
           "<p>Legislative committee meetings, executive sessions included, are open to the "
           "public, with narrow exceptions in the law, and anyone may record them. You can:</p><ul>"
-          "<li><b>go in person</b>, to the building and room the notice names. Testifying and "
-          "Attending explains the buildings;</li>"
+          "<li><b>go in person</b>, to the building and room the notice names. How Public "
+          "Hearings Work explains the buildings;</li>"
           "<li><b>watch</b>: the House and the Senate live stream their standing "
           "committees&rsquo; hearings, and a bill&rsquo;s page here links the recording where "
           "there is one; or</li>"
@@ -1558,7 +1558,7 @@ HEARING = guide(
       "Calendars No. 20 (2025) and No. 3 (2026), House Journal No. 2 (2025) and Senate Journals "
       "No. 1 (2022 and 2024): open them from the Calendar's Calendars & Journals", DOCS),
      civics.SRC_SENATE_GUIDANCE,
-     ("Testifying and Attending", "/guides/testifying.html"),
+     ("How Public Hearings Work", "/guides/testifying.html"),
      ("Right-to-Know Law, RSA 91-A", "/laws/91-a"),
      (OBSERVED, "")],
     ["91-A"],
@@ -1598,7 +1598,7 @@ HEARING = guide(
      # Only what that page says that this guide does not source itself: how
      # each chamber takes a request to speak is the record's and the
      # practice's below, which the page draws from here (SAID, 23 October 2026).
-     ours("Testifying and Attending explains the buildings the notices name, and that the most "
+     ours("How Public Hearings Work explains the buildings the notices name, and that the most "
           "useful testimony is concrete.", "/guides/testifying.html", READ),
      ours("A bill that passes is referred to a committee of the second chamber, which holds its own "
           "public hearing.", "/learn/how-a-bill-becomes-law.html", READ),
@@ -1660,7 +1660,7 @@ HEARING = guide(
               "summarizes the testimony.", "Senate committee hearing reports (CandH_Reports), " + DB,
               REPORTS, ["Who supports the bill", "Who opposes the bill", "Who is neutral on the bill",
                         "Summary of testimony presented in support"], READ)],
-    see=[("Testifying and attending", "/guides/testifying.html"),
+    see=[("How public hearings work", "/guides/testifying.html"),
          ("How to submit testimony online or in writing", "/guides/submit-testimony.html"),
          ("How to contact your legislators", "/guides/contact-your-legislators.html"),
          ("Using this site", "/guides/using-this-site.html")],
@@ -1729,7 +1729,7 @@ TESTIMONY = guide(
      civics.SRC_SENATE_GUIDANCE,
      civics.SRC_TESTIFY,
      civics.SRC_SENATE_TESTIFY,
-     ("Testifying and Attending", "/guides/testifying.html"),
+     ("How Public Hearings Work", "/guides/testifying.html"),
      (OBSERVED, "")],
     [],
     [ours("A bill's page lists each hearing with the committee, day and time.",
@@ -1740,7 +1740,7 @@ TESTIMONY = guide(
             "House Calendar No. 8, January 17, 2025, p. 1", HC8,
             "submit testimony online for bills coming up for a public hearing using our House Sign-in "
             "Form and Online Testimony Submission on the General Court website", READ),
-     ours("Testifying and Attending links the House online testimony sign-in; a sign-in for or "
+     ours("How Public Hearings Work links the House online testimony sign-in; a sign-in for or "
           "against is part of the record and counted; specific testimony is the most useful; this "
           "site publishes the counts, not names or written testimony.", "/guides/testifying.html", READ),
      record("Each sign-in records a hearing date, a committee and a bill; name, town and state; who "
@@ -1796,7 +1796,7 @@ TESTIMONY = guide(
                 "both close at midnight at the end of the day of the hearing.", READ),
        observed("Written testimony may be brought on paper, one printed copy for each committee "
                 "member, which they take and pass around; paper copies are optional.", READ)],
-    see=[("Testifying and attending", "/guides/testifying.html"),
+    see=[("How public hearings work", "/guides/testifying.html"),
          ("How to attend and speak at a public hearing", "/guides/attend-a-hearing.html"),
          ("How to contact your legislators", "/guides/contact-your-legislators.html"),
          ("Using this site", "/guides/using-this-site.html"),
