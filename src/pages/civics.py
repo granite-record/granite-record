@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-08.58
+# GRANITE_VERSION: 2026-09-08.59
 """
 The topics of the civics section: their order, their names, and their prose.
 
@@ -2404,6 +2404,7 @@ testimony are not published here.</p>""")
 
 BODY_REPS = """
 <h2>House and Senate Districts</h2>
+<div class="yt" data-yt="reps" hidden></div>
 <p>New Hampshire is divided into [[house_districts]] House districts and
 [[senate_districts]] Senate districts. Every resident lives in one Senate
 district and in at least one House district, set by the town or ward they live
@@ -2424,8 +2425,6 @@ show a floterial district plainly.</p>
 <p>Who holds each of those seats today is on <a href="[[reps_town_url]]">
 [[reps_town]]'s own page</a>, and every other town and ward has one like
 it.</p>
-
-<div class="yt" data-yt="reps" hidden></div>
 
 <h2>What the District Numbering Means</h2>
 <p>A House district is written as a county and a number: Rockingham 13,
@@ -2638,8 +2637,10 @@ SRC_RSA = ("New Hampshire Revised Statutes Annotated", RSA)
 # and its member of Congress, and the directory lists every town. A link
 # to our own pages cannot rot without us noticing, because preflight
 # resolves every internal link the builders write.
+# My Town since the audit before the November webinar (25 October 2026):
+# the finder and the map, and everyone who represents the town, on one tab.
 SRC_FIND_MEMBER = ("Find your legislators, by town",
-                   "/directory")
+                   "/officials.html#my-town")
 SRC_TESTIFY = ("House online testimony sign-in",
                GC + "/house/committees/remotetestimony/")
 # The Senate's own sign-in form. The person supplied the address on 17

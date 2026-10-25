@@ -9846,6 +9846,11 @@
    "es": "Proyectos de ley que están ahora ante la Legislatura y que la cambiarían:",
    "state": "draft"
   },
+  "guides.rec_passed": {
+   "en": "Passed, not yet in effect:",
+   "es": "Aprobados, todavía no en vigor:",
+   "state": "draft"
+  },
   "guides.rec_since": {
    "en": "Laws that changed it since {year}, newest first:",
    "es": "Leyes que la cambiaron desde {year}, de la más reciente a la más antigua:",
@@ -15703,8 +15708,7 @@
   "web.what": {
    "en": "How Granite Record works, and how to use it to keep up with Concord this session. Hosted by Alice Wade. All are welcome to join, ask questions and say which features they would like most.",
    "es": "Cómo funciona Granite Record y cómo usarlo para seguir lo que pasa en Concord esta sesión. Lo presenta Alice Wade. Todos son bienvenidos a participar, hacer preguntas y decir qué funciones les gustaría más.",
-   "state": "draft",
-   "note": "Adds \"en inglés\": the webinar is held in English."
+   "state": "draft"
   },
   "web.when": {
    "en": "Free webinar &middot; Tuesday, November 10, 6:30 p.m.",

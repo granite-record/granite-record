@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-08.76
+# GRANITE_VERSION: 2026-09-08.77
 """
 The civics section: a hub and one page per topic, in order.
 
@@ -2037,26 +2037,37 @@ def guide_record(g, data, bills, chapters, lang=I.DEFAULT):
     import build_rsa as BR
     rows = []
     pend = BR.chapter_pending(data, bills)
+    # PASSED IS NOT PENDING (the audit before the November webinar, 25
+    # October 2026: guides listed laws already passed under "Bills now before
+    # the General Court"). chapter_pending holds both, as the Laws page's
+    # Pending does; a guide says them apart, the passed ones under the Laws
+    # page's own words, "Passed, not yet in effect", and out of the laws that
+    # changed the chapter, which they have not yet done.
+    passing = set(bills.passing(data))
     for ch in g["laws"]:
         if ch not in chapters:
             continue
         name = BR.chapter_label(ch, chapters[ch]["name"])
-        now = pend.get(ch, [])
+        now = [k for k in pend.get(ch, []) if k not in passing]
+        passed = [k for k in pend.get(ch, []) if k in passing]
         recent = {}
         for addr, hist in data.get("enacted", {}).items():
             if addr == ch or addr.startswith(ch + ":"):
                 for y, _law, b in hist:
-                    if b and str(y).isdigit() and int(y) >= RECENT_FROM:
+                    if b and b not in passing and str(y).isdigit() and int(y) >= RECENT_FROM:
                         recent[b] = int(y)
         past = sorted(recent, key=lambda k: (-recent[k], BR.bill_order(k)))[:RECENT_SHOWN]
         bits = [f'<h3 class="g-ch"><a href="{E(BR.chapter_path(ch))}">{E(name)}</a></h3>']
         if now:
             bits.append('<p class="g-what">Bills now before the General Court that would change it:</p>'
                         + BR.folded([bills.chip(k) for k in now]))
+        if passed:
+            bits.append('<p class="g-what">Passed, not yet in effect:</p>'
+                        + BR.folded([bills.chip(k) for k in passed]))
         if past:
             bits.append(f'<p class="g-what">Laws that changed it since {RECENT_FROM}, newest first:</p>'
                         + BR.folded([bills.chip(k) for k in past]))
-        if not now and not past:
+        if not now and not passed and not past:
             bits.append(f'<p class="g-what">No bill has changed it since {RECENT_FROM}, and none now '
                         'before the General Court would.</p>')
         rows.append("".join(bits))
@@ -2077,9 +2088,11 @@ def _record_lang(english, lang):
                   year=RECENT_FROM)
     none = I.say(lang, "guides.rec_none", "No bill has changed it since {year}, and none now "
                  "before the General Court would.", year=RECENT_FROM)
+    passed = I.say(lang, "guides.rec_passed", "Passed, not yet in effect:")
     out = english.replace(
         '<p class="g-what">Bills now before the General Court that would change it:</p>',
         f'<p class="g-what">{now}</p>').replace(
+        '<p class="g-what">Passed, not yet in effect:</p>', f'<p class="g-what">{passed}</p>').replace(
         f'<p class="g-what">Laws that changed it since {RECENT_FROM}, newest first:</p>',
         f'<p class="g-what">{since}</p>').replace(
         f'<p class="g-what">No bill has changed it since {RECENT_FROM}, and none now before the '

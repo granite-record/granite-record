@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.700
+# GRANITE_VERSION: 2026-09-04.701
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -63922,6 +63922,44 @@ def _spanish_glossary(i18n, BC, chrome):
                   "the English page names its twin")
 
 
+@check("build", "a guide's In the Record says a bill passed and not yet in effect apart from the "
+                "bills still before the General Court, and not among the laws that changed the "
+                "chapter", needs=("build_civics", "build_rsa"))
+def _guide_record_passed(BC, BR):
+    """The audit before the November webinar (25 October 2026): eight guides
+    listed laws already passed under "Bills now before the General Court that
+    would change it", because build_rsa.chapter_pending holds both, as the
+    Laws page's Pending does. guide_record says them apart: a bill still before
+    the General Court under that heading, a bill passed and not yet in effect
+    under the Laws page's own words, "Passed, not yet in effect", and that bill
+    out of "Laws that changed it since", which it has not yet done. Held on a
+    stub of three bills: one pending, one passed with a part still to come,
+    one law of 2024."""
+    from types import SimpleNamespace as NS
+
+    class Bills:
+        def pending(self, k):
+            return k == "2025-2026/HB 1"
+
+        def passing(self, data):
+            return {"2025-2026/HB 2": NS(effect=NS(parts=[1], awaiting=False), addrs=["654:1"])}
+
+        def chip(self, k, *a, **kw):
+            return f"<li>{k}</li>"
+    data = {"bills": {"2025-2026": {"HB 1": {"changes": ["654:2"]}}},
+            "enacted": {"654:1": [["2026", "1:1", "2025-2026/HB 2"],
+                                  ["2024", "5:1", "2023-2024/SB 9"]]}}
+    got = BC.guide_record({"laws": ["654"]}, data, Bills(), {"654": {"name": "Voters"}})
+    parts = re.split(r'<p class="g-what">', got)
+    now = next((p for p in parts if p.startswith("Bills now before")), "")
+    passed = next((p for p in parts if p.startswith("Passed, not yet in effect:")), "")
+    since = next((p for p in parts if p.startswith("Laws that changed it since")), "")
+    assert "HB 1" in now and "HB 2" not in now, f"the pending list is not the pending bill: {now[:120]}"
+    assert "HB 2" in passed and "HB 1" not in passed, "the passed bill is not under Passed, not yet in effect"
+    assert "SB 9" in since and "HB 2" not in since, "a law not yet in effect is listed as having changed it"
+    return "ok", "pending, passed and not yet in effect, and past laws each under their own words"
+
+
 @check("build", "the Officials page is built in Spanish at /es/officials: its own words, its "
                 "tabs', the person's officials file's and its scripts', every one current, "
                 "and its links to itself stay in Spanish",
@@ -64289,17 +64327,18 @@ def _spanish_guides(i18n, G, BC, chrome, civics):
     rec = ('<h3 class="g-ch"><a href="/laws/654">Chapter 654: Voters and Checklists</a></h3>'
            '<p class="g-what">Bills now before the General Court that would change it:</p>'
            '<ul class="rs-list"><li>HB 1</li></ul>'
+           '<p class="g-what">Passed, not yet in effect:</p><ul class="rs-list"><li>HB 4</li></ul>'
            f'<p class="g-what">Laws that changed it since {BC.RECENT_FROM}, newest first:</p>'
            '<ul class="rs-list"><li>HB 2</li></ul><details class="rs-more"><summary>Show all 9'
            '</summary><ul class="rs-list"><li>HB 3</li></ul></details>'
            f'<p class="g-what">No bill has changed it since {BC.RECENT_FROM}, and none now before the '
            'General Court would.</p>')
     got = BC._record_lang(rec, "es")
-    for english in ("Bills now before", "Laws that changed", "No bill has changed", "Show all",
-                    ">Chapter "):
+    for english in ("Bills now before", "Passed, not yet", "Laws that changed", "No bill has changed",
+                    "Show all", ">Chapter "):
         if english in got:
             bad.append(f"In the Record keeps {english!r} in English")
-    if '<span lang="en">Voters and Checklists</span>' not in got or got.count('lang="en"') != 4:
+    if '<span lang="en">Voters and Checklists</span>' not in got or got.count('lang="en"') != 5:
         bad.append("In the Record does not mark the record's own words as English")
     # The shorthand table: the glossary's words, in either language.
     if civics.shorthand_table("en") != civics.SHORTHAND_TABLE:
