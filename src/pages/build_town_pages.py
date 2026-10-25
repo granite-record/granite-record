@@ -1412,14 +1412,19 @@ def build(town, ward, wards, dist, legs, off, base, tmpl, elect=None):
     if town_off and any(f.get("source") == "granit_cai" for f in
                         ((off.get("_halls") or {}).get(slug(town, "0")) or {}).get("from") or []):
         srcs.append("NH GRANIT")
+    path = town_file(town, ward)
+    og_title = f"Who represents {label}, New Hampshire"
+    # CITE THIS PAGE UNDER THE LINE, as a guide's is (the audit of 25 October
+    # 2026, S9): shell.page set it alone above the town's name, a button over
+    # the heading with nothing beside it. Named as page() would name it.
     body = [f'<h1 class="offtitle">{E(label)}</h1>',
             ward_picker(town, ward, wards),
             answer_line(dist),
+            S.cite_block(path, og_title, base, S.BUILT),
             tabbed(label, panels),
             '<p class="srcs">Sources: ' + ", ".join(srcs[:-1])
             + (", and " if len(srcs) > 2 else " and ") + srcs[-1] + '</p>']
 
-    path = town_file(town, ward)
     desc = (f"Who represents {label}: state representatives, state senator, "
             "executive councilor, US representative, US senators and the "
             "governor, with how to reach each of them.")
@@ -1427,11 +1432,11 @@ def build(town, ward, wards, dist, legs, off, base, tmpl, elect=None):
                # The state in the title a search result shows (the SEO review,
                # 12 October 2026): "Who represents Stark" could be anywhere.
                title=S.title_of(f"Who represents {label}, NH"),
-               og_title=f"Who represents {label}, New Hampshire",
+               og_title=og_title,
                og_image="og-town.png", og_alt="Granite Record: who represents your town",
                description=desc, globals={"GR_STATIC": True},
                noscript="", skip_label="Skip to the page", sr_title="",
-               nav_current="officials.html")
+               nav_current="officials.html", cite=False)
     return p.replace('<div id="results"></div>',
                      '<div id="results"><div class="officials">'
                      + "".join(body) + "</div>" + TABS_JS
