@@ -7831,24 +7831,9 @@
    "es": "Aprenda",
    "state": "draft"
   },
-  "guides.hub_learn_line": {
-   "en": "How each part of state and local government works.",
-   "es": "Cómo funciona cada parte del gobierno estatal y local.",
-   "state": "draft"
-  },
-  "guides.hub_more": {
-   "en": "More Resources",
-   "es": "Más recursos",
-   "state": "draft"
-  },
   "guides.hub_sources": {
    "en": "Official Sources",
    "es": "Fuentes oficiales",
-   "state": "draft"
-  },
-  "guides.hub_sources_line": {
-   "en": "The state&rsquo;s own sites, where its records and services are.",
-   "es": "Los sitios del propio estado, donde están sus registros y servicios.",
    "state": "draft"
   },
   "guides.in_english": {
@@ -8029,6 +8014,416 @@
   "home.yesterday": {
    "en": "Yesterday",
    "es": "Ayer",
+   "state": "draft"
+  },
+  "hub.follow.citizen-in-a-republic.line": {
+   "en": "Reporting on the State House, with a briefing page for each bill, a tracker of bills being drafted, and a search of written testimony to the House.",
+   "es": "Periodismo sobre el Capitolio estatal, con una página informativa para cada proyecto de ley, un seguimiento de los proyectos en redacción y una búsqueda de los testimonios escritos presentados a la Cámara.",
+   "state": "draft"
+  },
+  "hub.follow.citizens-count.line": {
+   "en": "Plain-language summaries of New Hampshire bills, legislators&rsquo; voting records and candidates&rsquo; positions, from the Live Free or Die Alliance, a nonprofit.",
+   "es": "Resúmenes en lenguaje sencillo de los proyectos de ley de New Hampshire, el historial de votaciones de los legisladores y las posturas de los candidatos, de la Live Free or Die Alliance, una organización sin fines de lucro.",
+   "state": "draft"
+  },
+  "hub.follow.fastdemocracy.line": {
+   "en": "Bill tracking with a daily or weekly email when the bills you follow move, free; paid plans add real-time alerts.",
+   "es": "Seguimiento de proyectos de ley con un correo diario o semanal cuando avanzan los que usted sigue, gratis; los planes de pago añaden alertas en tiempo real.",
+   "state": "draft"
+  },
+  "hub.follow.granite-docket.line": {
+   "en": "A guide to New Hampshire&rsquo;s public records, among them bills, committees and roll calls, free to read.",
+   "es": "Una guía de los registros públicos de New Hampshire, entre ellos proyectos de ley, comités y votaciones nominales, de lectura gratuita.",
+   "state": "draft"
+  },
+  "hub.follow.heading": {
+   "en": "Other Ways to Follow New Hampshire Legislation",
+   "es": "Otras formas de seguir la legislación de New Hampshire",
+   "state": "draft"
+  },
+  "hub.follow.independent": {
+   "en": "And from independent sites, run apart from the General Court and from Granite Record, in alphabetical order:",
+   "es": "Y de sitios independientes, ajenos a la Legislatura y a Granite Record, en orden alfabético:",
+   "state": "draft"
+  },
+  "hub.follow.legiscan.line": {
+   "en": "Every bill in the fifty state legislatures and Congress, with bill tracking for registered users.",
+   "es": "Cada proyecto de ley de las cincuenta legislaturas estatales y del Congreso, con seguimiento para los usuarios registrados.",
+   "state": "draft"
+  },
+  "hub.follow.official": {
+   "en": "From the legislature itself:",
+   "es": "De la propia Legislatura:",
+   "state": "draft"
+  },
+  "hub.follow.the-general-court.line": {
+   "en": "The legislature&rsquo;s own site, which publishes every bill, the House and Senate calendars and journals, and each chamber&rsquo;s pages.",
+   "es": "El sitio de la propia Legislatura, que publica cada proyecto de ley, los calendarios y diarios de sesiones de la Cámara y del Senado, y las páginas de cada cámara.",
+   "state": "draft"
+  },
+  "hub.learn.administrative-rules.blurb": {
+   "en": "A statute says what shall happen; the rules say how, and the agency writes them. This is the least visible part of the process and one of the most consequential.",
+   "es": "Un estatuto dice qué debe ocurrir; las reglas dicen cómo, y las redacta la agencia. Es la parte menos visible del proceso y una de las de mayores consecuencias.",
+   "state": "draft"
+  },
+  "hub.learn.administrative-rules.title": {
+   "en": "Administrative Rules",
+   "es": "Las reglas administrativas",
+   "state": "draft"
+  },
+  "hub.learn.by_topic": {
+   "en": "By Topic",
+   "es": "Por tema",
+   "state": "draft"
+  },
+  "hub.learn.city-and-town-government.blurb": {
+   "en": "A town meeting and a selectboard, or a council and a mayor, or a council and a manager.",
+   "es": "Una asamblea municipal y una junta de concejales, o un concejo y un alcalde, o un concejo y un administrador.",
+   "state": "draft"
+  },
+  "hub.learn.city-and-town-government.title": {
+   "en": "Cities, Towns and Who Runs Them",
+   "es": "Ciudades, municipios y quién los gobierna",
+   "state": "draft"
+  },
+  "hub.learn.county-government.blurb": {
+   "en": "Ten counties, and the body that sets each one&#x27;s budget is the state representatives you already elected, meeting under a second name.",
+   "es": "Diez condados, y el órgano que fija el presupuesto de cada uno son los mismos representantes estatales que usted ya eligió, reunidos bajo otro nombre.",
+   "state": "draft"
+  },
+  "hub.learn.county-government.title": {
+   "en": "County Government",
+   "es": "El gobierno del condado",
+   "state": "draft"
+  },
+  "hub.learn.general-court.blurb": {
+   "en": "400 representatives and 24 senators, paid $200 for the two-year term. The largest state legislature in the country.",
+   "es": "400 representantes y 24 senadores, a quienes se les pagan $200 por el periodo de dos años. Es la legislatura estatal más grande del país.",
+   "state": "draft"
+  },
+  "hub.learn.general-court.title": {
+   "en": "The General Court",
+   "es": "La Legislatura (General Court)",
+   "state": "draft"
+  },
+  "hub.learn.general-court.why": {
+   "en": "The 400 representatives and 24 senators, and how a two-year term is shaped.",
+   "es": "Los 400 representantes y 24 senadores, y cómo se organiza un periodo de dos años.",
+   "state": "draft"
+  },
+  "hub.learn.glossary_line": {
+   "en": "The record&rsquo;s words and abbreviations, A to Z.",
+   "es": "Las palabras y abreviaturas del registro, de la A a la Z.",
+   "state": "draft"
+  },
+  "hub.learn.glossary_title": {
+   "en": "Glossary",
+   "es": "Glosario",
+   "state": "draft"
+  },
+  "hub.learn.governor-and-council.blurb": {
+   "en": "The Governor signs or vetoes. The Council -- five members, elected by district -- approves contracts, nominations and pardons.",
+   "es": "El Gobernador firma o veta. El Consejo &mdash; cinco miembros elegidos por distrito &mdash; aprueba contratos, nombramientos e indultos.",
+   "state": "draft"
+  },
+  "hub.learn.governor-and-council.title": {
+   "en": "The Governor and the Executive Council",
+   "es": "El Gobernador y el Consejo Ejecutivo",
+   "state": "draft"
+  },
+  "hub.learn.group.how-the-state-works.name": {
+   "en": "How the State Works",
+   "es": "Cómo funciona el Estado",
+   "state": "draft"
+  },
+  "hub.learn.group.how-the-state-works.note": {
+   "en": "The institutions, in the order they act on a bill.",
+   "es": "Las instituciones, en el orden en que actúan sobre un proyecto de ley.",
+   "state": "draft"
+  },
+  "hub.learn.group.how-to-take-part.name": {
+   "en": "How to Take Part",
+   "es": "Cómo participar",
+   "state": "draft"
+  },
+  "hub.learn.group.how-to-take-part.note": {
+   "en": "The mechanics, which are more open than most people expect.",
+   "es": "El funcionamiento, que es más abierto de lo que la mayoría espera.",
+   "state": "draft"
+  },
+  "hub.learn.how-a-bill-becomes-law.blurb": {
+   "en": "From an idea filed in the fall to a law that takes effect, and the several places along the way where a bill can stop.",
+   "es": "Desde una idea presentada en el otoño hasta una ley que entra en vigor, y los varios puntos del camino donde un proyecto de ley puede detenerse.",
+   "state": "draft"
+  },
+  "hub.learn.how-a-bill-becomes-law.title": {
+   "en": "How a Bill Becomes Law",
+   "es": "Cómo un proyecto de ley se convierte en ley",
+   "state": "draft"
+  },
+  "hub.learn.how-a-bill-becomes-law.why": {
+   "en": "The course a bill runs, and the stages it can die at.",
+   "es": "El recorrido de un proyecto de ley y las etapas en las que puede morir.",
+   "state": "draft"
+  },
+  "hub.learn.in_english": {
+   "en": "The Learn pages are in English; their names and descriptions are given here in this page&rsquo;s language.",
+   "es": "Las páginas de Aprenda están en inglés; aquí se dan sus nombres y descripciones en el idioma de esta página.",
+   "state": "draft"
+  },
+  "hub.learn.intro": {
+   "en": "{n} short pages on the parts of state and local government, each one linked to where you can watch it happening in the record.",
+   "es": "{n} páginas breves sobre las partes del gobierno estatal y local, cada una enlazada a donde puede verlas en acción en el registro.",
+   "state": "draft"
+  },
+  "hub.learn.laws_line": {
+   "en": "Every chapter of the state&rsquo;s laws, searchable by number or subject, each section with the bills that changed it and the bills that would.",
+   "es": "Cada capítulo de las leyes del estado, con búsqueda por número o por tema, y en cada sección los proyectos de ley que la cambiaron y los que la cambiarían.",
+   "state": "draft"
+  },
+  "hub.learn.laws_title": {
+   "en": "Laws (RSA)",
+   "es": "Leyes (RSA)",
+   "state": "draft"
+  },
+  "hub.learn.legislative-year.blurb": {
+   "en": "When the House and Senate sit, and the deadlines a bill must meet.",
+   "es": "Cuándo sesionan la Cámara y el Senado, y los plazos que debe cumplir un proyecto de ley.",
+   "state": "draft"
+  },
+  "hub.learn.legislative-year.title": {
+   "en": "NH Legislature Schedule",
+   "es": "Calendario de la Legislatura de NH",
+   "state": "draft"
+  },
+  "hub.learn.legislative-year.why": {
+   "en": "When bills are filed, when the House and Senate sit, and the deadlines between.",
+   "es": "Cuándo se presentan los proyectos de ley, cuándo sesionan la Cámara y el Senado, y los plazos intermedios.",
+   "state": "draft"
+  },
+  "hub.learn.local-government.blurb": {
+   "en": "Where warrant articles, default budgets and “SB 2 towns” come from.",
+   "es": "De dónde vienen los artículos de la convocatoria, los presupuestos por defecto y los “municipios SB 2”.",
+   "state": "draft"
+  },
+  "hub.learn.local-government.title": {
+   "en": "Town Meeting and Local Government",
+   "es": "La asamblea municipal y el gobierno local",
+   "state": "draft"
+  },
+  "hub.learn.numbers_line": {
+   "en": "How bills end, committees&rsquo; workloads and passage rates, amendments, hearings, attendance, vetoes, the closest votes and the amendments sent to the voters.",
+   "es": "Cómo terminan los proyectos de ley, la carga de trabajo y la tasa de aprobación de los comités, las enmiendas, las audiencias, la asistencia, los vetos, las votaciones más reñidas y las enmiendas sometidas a los votantes.",
+   "state": "draft"
+  },
+  "hub.learn.numbers_title": {
+   "en": "The Record in Numbers",
+   "es": "El registro en cifras",
+   "state": "draft"
+  },
+  "hub.learn.reference": {
+   "en": "Reference",
+   "es": "Consulta",
+   "state": "draft"
+  },
+  "hub.learn.start": {
+   "en": "Start Here",
+   "es": "Para empezar",
+   "state": "draft"
+  },
+  "hub.learn.state-agencies.blurb": {
+   "en": "Who actually carries out what the legislature passes, and how a commissioner gets the job.",
+   "es": "Quién lleva a cabo en realidad lo que aprueba la Legislatura, y cómo un comisionado obtiene el cargo.",
+   "state": "draft"
+  },
+  "hub.learn.state-agencies.title": {
+   "en": "State Agencies",
+   "es": "Las agencias estatales",
+   "state": "draft"
+  },
+  "hub.learn.taking_part": {
+   "en": "Taking Part",
+   "es": "Participar",
+   "state": "draft"
+  },
+  "hub.learn.taking_part_intro": {
+   "en": "Finding who represents you, speaking on a bill and following one are How-To Guides now, step by step, with the rest of the guides.",
+   "es": "Saber quién lo representa, opinar sobre un proyecto de ley y seguir uno son ahora guías prácticas, paso a paso, junto con las demás guías.",
+   "state": "draft"
+  },
+  "hub.learn.the-constitution.blurb": {
+   "en": "One of the oldest still in force, and it is not amended the way statutes are: a CACR needs three fifths of both chambers and then the voters.",
+   "es": "Una de las más antiguas aún vigentes, y no se enmienda como los estatutos: una CACR necesita tres quintos de ambas cámaras y después a los votantes.",
+   "state": "draft"
+  },
+  "hub.learn.the-constitution.title": {
+   "en": "The Constitution",
+   "es": "La Constitución",
+   "state": "draft"
+  },
+  "hub.learn.the-courts.blurb": {
+   "en": "Supreme, Superior and Circuit; how judges are appointed and how long they serve; and where the legislature and the courts meet.",
+   "es": "El Tribunal Supremo, el Superior y el de Circuito; cómo se nombra a los jueces y cuánto tiempo sirven; y dónde se encuentran la Legislatura y los tribunales.",
+   "state": "draft"
+  },
+  "hub.learn.the-courts.title": {
+   "en": "The Courts",
+   "es": "Los tribunales",
+   "state": "draft"
+  },
+  "hub.src.administrative-rules-rsa-541-a.name": {
+   "en": "Administrative rules, RSA 541-A",
+   "es": "Reglas administrativas, RSA 541-A",
+   "state": "draft"
+  },
+  "hub.src.by_branch": {
+   "en": "By Branch",
+   "es": "Por poder del Estado",
+   "state": "draft"
+  },
+  "hub.src.close": {
+   "en": "Every page here ends with its sources. If something is wrong, <a href=\"mailto:contact@graniterecord.org\">tell us</a> &mdash; that address exists for this.",
+   "es": "Cada página de este sitio termina con sus fuentes. Si algo está mal, <a href=\"mailto:contact@graniterecord.org\">díganoslo</a> &mdash; para eso existe esa dirección.",
+   "state": "draft"
+  },
+  "hub.src.county-government-county-by-county.name": {
+   "en": "County government, county by county",
+   "es": "El gobierno de cada condado",
+   "state": "draft"
+  },
+  "hub.src.county-government-county-by-county.what": {
+   "en": "New Hampshire Association of Counties, a membership body",
+   "es": "New Hampshire Association of Counties, una asociación de miembros",
+   "state": "draft"
+  },
+  "hub.src.group.elections-and-the-constitution": {
+   "en": "Elections and the Constitution",
+   "es": "Elecciones y la Constitución",
+   "state": "draft"
+  },
+  "hub.src.group.the-courts": {
+   "en": "The Courts",
+   "es": "Los tribunales",
+   "state": "draft"
+  },
+  "hub.src.group.the-general-court": {
+   "en": "The General Court",
+   "es": "La Legislatura (General Court)",
+   "state": "draft"
+  },
+  "hub.src.group.the-governor-and-state-agencies": {
+   "en": "The Governor and State Agencies",
+   "es": "El Gobernador y las agencias estatales",
+   "state": "draft"
+  },
+  "hub.src.group.towns-and-counties": {
+   "en": "Towns and Counties",
+   "es": "Municipios y condados",
+   "state": "draft"
+  },
+  "hub.src.guidance-for-towns-and-cities.name": {
+   "en": "Guidance for towns and cities",
+   "es": "Orientación para municipios y ciudades",
+   "state": "draft"
+  },
+  "hub.src.guidance-for-towns-and-cities.what": {
+   "en": "New Hampshire Municipal Association, a membership body",
+   "es": "New Hampshire Municipal Association, una asociación de miembros",
+   "state": "draft"
+  },
+  "hub.src.house-calendars-and-journals.name": {
+   "en": "House calendars and journals",
+   "es": "Calendarios y diarios de sesiones de la Cámara",
+   "state": "draft"
+  },
+  "hub.src.house-meeting-schedule.name": {
+   "en": "House meeting schedule",
+   "es": "Horario de reuniones de la Cámara",
+   "state": "draft"
+  },
+  "hub.src.house-online-testimony-sign-in.name": {
+   "en": "House online testimony sign-in",
+   "es": "Registro en línea de la Cámara para dar testimonio",
+   "state": "draft"
+  },
+  "hub.src.house-rules.name": {
+   "en": "House Rules",
+   "es": "Reglamento de la Cámara",
+   "state": "draft"
+  },
+  "hub.src.in_english": {
+   "en": "The official sites are in English.",
+   "es": "Los sitios oficiales están en inglés.",
+   "state": "draft"
+  },
+  "hub.src.intro": {
+   "en": "The sites the Learn pages cite as their sources. Each opens in a new tab.",
+   "es": "Los sitios que las páginas de Aprenda citan como fuentes. Cada uno se abre en una pestaña nueva.",
+   "state": "draft"
+  },
+  "hub.src.joint-legislative-committee-on.name": {
+   "en": "Joint Legislative Committee on Administrative Rules",
+   "es": "Comité Legislativo Conjunto de Reglas Administrativas",
+   "state": "draft"
+  },
+  "hub.src.new-hampshire-department-of-justice.name": {
+   "en": "New Hampshire Department of Justice",
+   "es": "Departamento de Justicia de New Hampshire",
+   "state": "draft"
+  },
+  "hub.src.new-hampshire-judicial-branch.name": {
+   "en": "New Hampshire Judicial Branch",
+   "es": "Poder Judicial de New Hampshire",
+   "state": "draft"
+  },
+  "hub.src.new-hampshire-revised-statutes-annotated.name": {
+   "en": "New Hampshire Revised Statutes Annotated",
+   "es": "Estatutos Revisados Anotados de New Hampshire (RSA)",
+   "state": "draft"
+  },
+  "hub.src.secretary-of-state.name": {
+   "en": "Secretary of State",
+   "es": "Secretaría de Estado",
+   "state": "draft"
+  },
+  "hub.src.senate-calendars-and-journals.name": {
+   "en": "Senate calendars and journals",
+   "es": "Calendarios y diarios de sesiones del Senado",
+   "state": "draft"
+  },
+  "hub.src.senate-meeting-schedule.name": {
+   "en": "Senate meeting schedule",
+   "es": "Horario de reuniones del Senado",
+   "state": "draft"
+  },
+  "hub.src.senate-online-sign-in.name": {
+   "en": "Senate online sign-in",
+   "es": "Registro en línea del Senado",
+   "state": "draft"
+  },
+  "hub.src.senate-rules.name": {
+   "en": "Senate Rules",
+   "es": "Reglamento del Senado",
+   "state": "draft"
+  },
+  "hub.src.state-agencies-a-to-z.name": {
+   "en": "State agencies, A to Z",
+   "es": "Agencias estatales, de la A a la Z",
+   "state": "draft"
+  },
+  "hub.src.the-executive-council.name": {
+   "en": "The Executive Council",
+   "es": "El Consejo Ejecutivo",
+   "state": "draft"
+  },
+  "hub.src.the-governor-s-office.name": {
+   "en": "The Governor&#x27;s office",
+   "es": "La oficina del Gobernador",
+   "state": "draft"
+  },
+  "hub.src.the-new-hampshire-constitution.name": {
+   "en": "The New Hampshire Constitution",
+   "es": "La Constitución de New Hampshire",
    "state": "draft"
   },
   "kind.committee_of_conference": {

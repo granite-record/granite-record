@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-08.70
+# GRANITE_VERSION: 2026-09-08.71
 """
 The civics section: a hub and one page per topic, in order.
 
@@ -1293,7 +1293,7 @@ def hub_section(sid, heading, content):
 CARD_ICON = {
     "how-to-vote": "ballot", "renew-drivers-license": "idcard", "register-a-car": "car",
     "your-representatives": "person", "submit-testimony": "testify",
-    "new-to-new-hampshire": "map", "food-and-health-assistance": "heart",
+    "new-to-new-hampshire": "box", "food-and-health-assistance": "heart",
     "how-a-bill-becomes-law": "bill", "general-court": "capitol", "legislative-year": "calendar",
 }
 # Each topic's picture, by the name the tab heads it with.
@@ -1301,13 +1301,13 @@ TOPIC_ICON = {
     # the How-To Guides tab (guides.TASKS)
     "Take Part in the Legislature": "testify", "Voting and Elections": "ballot",
     "Driving and Vehicles": "car", "Help and Benefits": "heart", "Property and Records": "house",
-    "Around Your Town": "pin", "Visiting the State House": "capitol", G.MORE: "book",
+    "Around Your Town": "pin", "Visiting the State House": "capitol", G.MORE: "grid",
     # the Learn tab (civics.GROUPS, and what follows them)
     "How the State Works": "columns", "How to Take Part": "testify", "Taking Part": "testify",
-    "Start Here": "book", NUMBERS_TITLE: "chart", GLOSSARY_TITLE: "book", "Laws (RSA)": "law",
+    "Start Here": "signpost", NUMBERS_TITLE: "chart", GLOSSARY_TITLE: "book", "Laws (RSA)": "law",
     # the Official Sources tab (official_sources' groups)
     "The General Court": "capitol", "The Governor and State Agencies": "columns",
-    "The Courts": "law", "Elections and the Constitution": "ballot", "Towns and Counties": "map",
+    "The Courts": "gavel", "Elections and the Constitution": "ballot", "Towns and Counties": "map",
     "Other Ways to Follow New Hampshire Legislation": "follow",
 }
 
@@ -1339,32 +1339,137 @@ def cards(items):
         for h, n, t, line in items) + "</ul>")
 
 
-def hub_learn(topics):
-    """The Learn tab (24 October 2026, the person's second pass on the hub's
-    look): Start Here as three cards; each of civics.GROUPS, and the pages
-    that became How-To Guides, folded shut under its badge; then the
-    reference pages -- The Record in Numbers, the Glossary and the Laws -- as
-    cards of their own, since they are looked things up in rather than read
-    in order."""
+# THE LEARN AND OFFICIAL SOURCES TABS IN EVERY LANGUAGE (the person, 25
+# October 2026: "Go ahead with the spanish versions of the learn and sources
+# tabs"). The tabs' own words -- a heading, a line, a topic's title and
+# description, a source's label -- are written once, here and in civics.py,
+# and said in the page's language from the catalog (hub_words lists every one
+# for i18n.code_words); the names of the sites and of the trackers are their
+# own and stay as they are. The Learn pages and the official sites are in
+# English, and each tab says so once at its top.
+FOLLOW_HEADING = "Other Ways to Follow New Hampshire Legislation"
+
+
+HUB_FIXED = {
+    "hub.learn.intro": ("{n} short pages on the parts of state and local government, each one "
+                        "linked to where you can watch it happening in the record."),
+    "hub.learn.start": "Start Here",
+    "hub.learn.by_topic": "By Topic",
+    "hub.learn.reference": "Reference",
+    "hub.learn.taking_part": "Taking Part",
+    "hub.learn.taking_part_intro": ("Finding who represents you, speaking on a bill and following "
+                                    "one are How-To Guides now, step by step, with the rest of the "
+                                    "guides."),
+    "hub.learn.numbers_title": NUMBERS_TITLE,
+    "hub.learn.numbers_line": curly(NUMBERS_WHAT[0].upper() + NUMBERS_WHAT[1:]) + ".",
+    "hub.learn.glossary_title": GLOSSARY_TITLE,
+    "hub.learn.glossary_line": "The record&rsquo;s words and abbreviations, A to Z.",
+    "hub.learn.laws_title": "Laws (RSA)",
+    "hub.learn.laws_line": ("Every chapter of the state&rsquo;s laws, searchable by number or "
+                            "subject, each section with the bills that changed it and the bills "
+                            "that would."),
+    "hub.learn.in_english": ("The Learn pages are in English; their names and descriptions are "
+                             "given here in this page&rsquo;s language."),
+    "hub.src.intro": "The sites the Learn pages cite as their sources. Each opens in a new tab.",
+    "hub.src.by_branch": "By Branch",
+    "hub.src.in_english": "The official sites are in English.",
+    "hub.src.close": ('Every page here ends with its sources. If something is wrong, '
+                      '<a href="mailto:contact@graniterecord.org">tell us</a> &mdash; that address '
+                      'exists for this.'),
+    "hub.follow.heading": FOLLOW_HEADING,
+    "hub.follow.official": "From the legislature itself:",
+    "hub.follow.independent": ("And from independent sites, run apart from the General Court and "
+                               "from Granite Record, in alphabetical order:"),
+}
+
+
+def _tw(lang, key, en):
+    """`en`, the tabs' own words, in `lang`: the English for English, the
+    catalog's where it is current, and the English marked as English where it
+    is not."""
+    if lang == I.DEFAULT:
+        return en
+    got = I.say_piece(lang, key, I.norm(en))
+    return got if got is not None else f'<span lang="en">{en}</span>'
+
+
+def _hf(lang, key):
+    return _tw(lang, key, HUB_FIXED[key])
+
+
+def _src_label(label):
+    """A source's label as the tab shows it: its name, and what it is where
+    the label says so in brackets ("Guidance for towns and cities (New
+    Hampshire Municipal Association, a membership body)")."""
+    m = re.match(r"^(.*?) \((.*)\)$", label)
+    return (E(m.group(1)), E(html.unescape(m.group(2)))) if m else (E(label), None)
+
+
+def hub_words():
+    """[(key, English, where)] of every word the Learn and Official Sources
+    tabs say in their own words, for i18n.code_words: HUB_FIXED, each Learn
+    page's title and description, the groups and their notes, Start Here's
+    lines, the source groups and labels, and the trackers' lines."""
+    where = "the Resources hub"
+    out = [(k, I.norm(v), where) for k, v in HUB_FIXED.items()]
+    for t in learn_topics(civics.TOPICS):
+        out += [(f"hub.learn.{t['slug']}.title", I.norm(E(t["title"])), where),
+                (f"hub.learn.{t['slug']}.blurb", I.norm(E(t["blurb"])), where)]
+    for group, note in civics.GROUPS:
+        k = f"hub.learn.group.{I.slug_words(group)}"
+        out += [(k + ".name", I.norm(E(group)), where), (k + ".note", I.norm(E(note)), where)]
+    out += [(f"hub.learn.{slug}.why", I.norm(E(why)), where) for slug, why in START]
+    for group, srcs in civics.SOURCE_GROUPS:
+        out.append((f"hub.src.group.{I.slug_words(group)}", I.norm(E(group)), where))
+        for label, _u in srcs:
+            name, what = _src_label(label)
+            k = f"hub.src.{I.slug_words(html.unescape(name))}"
+            out.append((k + ".name", I.norm(name), where))
+            if what:
+                out.append((k + ".what", I.norm(what), where))
+    for name, _u, line in civics.FOLLOW_OFFICIAL + civics.FOLLOW_INDEPENDENT:
+        out.append((f"hub.follow.{I.slug_words(name)}.line", I.norm(line), where))
+    seen, uniq = set(), []
+    for row in out:
+        if row[0] not in seen:
+            seen.add(row[0])
+            uniq.append(row)
+    return uniq
+
+
+def hub_learn(topics, lang=I.DEFAULT):
+    """The Learn tab, in English or in `lang` (24 October 2026, the person's
+    second pass on the hub's look): Start Here as three cards; each of
+    civics.GROUPS, and the pages that became How-To Guides, folded shut under
+    its badge; then the reference pages -- The Record in Numbers, the
+    Glossary and the Laws -- as cards of their own, since they are looked
+    things up in rather than read in order."""
     by_slug = {t["slug"]: t for t in topics}
     n = len(topics)
-    start = cards([(learn_href(slug), CARD_ICON.get(slug, "Start Here"), E(by_slug[slug]["title"]),
-                    E(why))
+
+    def title(slug):
+        return _tw(lang, f"hub.learn.{slug}.title", E(by_slug[slug]["title"]))
+    start = cards([(learn_href(slug), CARD_ICON.get(slug, "Start Here"), title(slug),
+                    _tw(lang, f"hub.learn.{slug}.why", E(why)))
                    for slug, why in START if slug in by_slug])
     started = {slug for slug, _ in START}
-    out = [f'<p class="r-intro">{NUMBER_WORD.get(n, n)} short pages on the parts of state '
-           'and local government, each one linked to where you can watch it happening in '
-           'the record.</p>',
-           hub_section("start", "Start Here", start)]
+    count = NUMBER_WORD.get(n, n) if lang == I.DEFAULT else str(n)
+    out = [f'<p class="r-intro">{_hf(lang, "hub.learn.intro").replace("{n}", str(count))}</p>']
+    if lang != I.DEFAULT:
+        out.append(f'<p class="langnote">{_hf(lang, "hub.learn.in_english")}</p>')
+    out.append(hub_section("start", _hf(lang, "hub.learn.start"), start))
     folds = []
     for group, note in civics.GROUPS:
         mine = [t for t in topics if t["group"] == group and t["slug"] not in started]
+        k = f"hub.learn.group.{I.slug_words(group)}"
         lis = "".join(
-            f'<li><a href="{E(learn_href(t["slug"]))}">{E(t["title"])}</a>'
-            f'<p>{dashes(E(t["blurb"]))}</p></li>' for t in mine)
+            f'<li><a href="{E(learn_href(t["slug"]))}">{title(t["slug"])}</a>'
+            f'<p>{dashes(_tw(lang, "hub.learn." + t["slug"] + ".blurb", E(t["blurb"])))}</p></li>'
+            for t in mine)
         if lis:
-            folds.append(fold("s-" + _slug(group), group, E(group), len(mine),
-                              f'<p class="r-intro">{E(note)}</p><ul class="r-topics">{lis}</ul>'))
+            folds.append(fold("s-" + _slug(group), group, _tw(lang, k + ".name", E(group)), len(mine),
+                              f'<p class="r-intro">{_tw(lang, k + ".note", E(note))}</p>'
+                              f'<ul class="r-topics">{lis}</ul>'))
     # TAKING PART, ON THE HOW-TO GUIDES TAB NOW (17 October 2026: Learn
     # "should focus more on educational content while still linking to those
     # other guides when applicable"). The three pages that moved are named
@@ -1373,30 +1478,30 @@ def hub_learn(topics):
              if G.task_of(t["slug"])[1]]
     if moved:
         folds.append(fold(
-            "taking-part", "Taking Part", "Taking Part", len(moved),
+            "taking-part", "Taking Part", _hf(lang, "hub.learn.taking_part"), len(moved),
             # No link to the tab in the line: the strip is above it, and the
             # tab's count is of the pages its panel links.
-            '<p class="r-intro">Finding who represents you, speaking on a bill and following one '
-            'are How-To Guides now, step by step, with the rest of the guides.</p>'
+            f'<p class="r-intro">{_hf(lang, "hub.learn.taking_part_intro")}</p>'
             '<ul class="r-topics">' + "".join(
-                f'<li><a href="{E(guide_href(t["slug"]))}">{task["head"]}</a>'
-                f'<p>{task["line"]}</p></li>' for t, task in moved) + "</ul>"))
-    out.append(hub_section("s-topics", "By Topic", "".join(folds)))
+                f'<li><a href="{E(guide_href(t["slug"]))}">'
+                f'{_tw(lang, "guide.task." + t["slug"] + ".head", task["head"])}</a>'
+                f'<p>{_tw(lang, "guide.task." + t["slug"] + ".line", task["line"])}</p></li>'
+                for t, task in moved) + "</ul>"))
+    out.append(hub_section("s-topics", _hf(lang, "hub.learn.by_topic"), "".join(folds)))
     # NOT ONE OF THE NUMBERED PAGES. The topics are short explanations meant
     # to be read in order; these are looked things up in, for a different
     # reader, so they sit after them as cards of their own.
-    ref = [(learn_href(NUMBERS_SLUG), NUMBERS_TITLE, NUMBERS_TITLE,
-            curly(NUMBERS_WHAT[0].upper() + NUMBERS_WHAT[1:]) + "."),
-           (learn_href(GLOSSARY_SLUG), GLOSSARY_TITLE, GLOSSARY_TITLE,
-            "The record&rsquo;s words and abbreviations, A to Z.")]
+    ref = [(learn_href(NUMBERS_SLUG), NUMBERS_TITLE, _hf(lang, "hub.learn.numbers_title"),
+            _hf(lang, "hub.learn.numbers_line")),
+           (learn_href(GLOSSARY_SLUG), GLOSSARY_TITLE, _hf(lang, "hub.learn.glossary_title"),
+            _hf(lang, "hub.learn.glossary_line"))]
     # THE STATUTES, the next layer after the constitution (RSA_PAGE.md §10),
     # where build_rsa.py will write them: only where the statute table is on
     # this disk, so the hub never links a page a night did not build.
     if Path("db/NH_RSA.psv").is_file():
-        ref.append(("/laws", "Laws (RSA)", "Laws (RSA)",
-                    "Every chapter of the state&rsquo;s laws, searchable by number or subject, "
-                    "each section with the bills that changed it and the bills that would."))
-    out.append(hub_section("reference", "Reference", cards(ref)))
+        ref.append(("/laws", "Laws (RSA)", _hf(lang, "hub.learn.laws_title"),
+                    _hf(lang, "hub.learn.laws_line")))
+    out.append(hub_section("reference", _hf(lang, "hub.learn.reference"), cards(ref)))
     return "".join(out)
 
 
@@ -2089,33 +2194,22 @@ def hub_guides_lang(lang, published=(), articles=()):
     return guides_tab(lang, published, articles) or ""
 
 
-def hub_page_lang(lang, base, published=(), articles=()):
-    """The Resources hub in `lang`, at i18n.href(lang, HUB_PAGE): its
-    How-To Guides in that language (hub_guides_lang), and the way to Learn
-    and the Official Sources, which are in English and say so."""
+def hub_page_lang(lang, base, published=(), articles=(), topics=None, groups=None):
+    """The Resources hub in `lang`, at i18n.href(lang, HUB_PAGE): the English
+    hub's three tabs in that language (hub_tabs, 25 October 2026), each link
+    to a page `lang` has sent there, and the rest to the English page."""
     import build_pages as BP
+    topics = learn_topics(civics.TOPICS) if topics is None else topics
+    groups = official_sources(numbers_results(Path("."))) if groups is None else groups
     title = I.say(lang, "guides.hub", "Resources")
     lead = I.say(lang, "guides.hub_lead", "How to get things done with New Hampshire&rsquo;s state "
                  "and local government, how it works, and where to find what it publishes itself.")
-    en = I.say(lang, "guides.in_english", "in English")
-    goto = ('<ul class="r-goto">'
-            f'<li><a href="{HUB}#learn" hreflang="en"><b>'
-            + I.say(lang, "guides.hub_learn", "Learn") + f' ({en})</b><span>'
-            + I.say(lang, "guides.hub_learn_line", "How each part of state and local government works.")
-            + f'</span></a></li><li><a href="{HUB}#sources" hreflang="en"><b>'
-            + I.say(lang, "guides.hub_sources", "Official Sources") + f' ({en})</b><span>'
-            + I.say(lang, "guides.hub_sources_line", "The state&rsquo;s own sites, where its records and "
-                    "services are.") + "</span></a></li></ul>")
-    guides = I.say(lang, "guides.hub_guides", "How-To Guides")
     body = ('<div class="l-page r-hub"><header class="l-head r-head">'
             f'<h1>{title}</h1><p class="l-lead">{lead}</p><p class="langnote">' + I.say(
                 lang, "guides.hub_lang_note", "This page is in Spanish, and so are the guides it "
                 "lists. The official pages they link to, and the record itself, are in English.")
             + '</p></header>'
-            f'<div class="r-sheet" id="guides"><h2 class="twnph">{guides}</h2>'
-            + lang_links(hub_guides_lang(lang, published, articles), lang) + '</div>'
-            '<div class="r-sheet" id="more"><h2 class="twnph">'
-            + I.say(lang, "guides.hub_more", "More Resources") + f"</h2>{goto}</div></div>")
+            + lang_links(hub_tabs(lang, topics, groups, published, articles), lang))
     return BP.shell(f"{title} — Granite Record", HUB_PAGE, body,
                     desc=html.unescape(re.sub(r"<[^>]+>", "", lead)), base=base, lang=lang)
 
@@ -2282,10 +2376,9 @@ def build_guides(site, tmpl, base, drafts=False):
     return published, urls
 
 
-FOLLOW_HEADING = "Other Ways to Follow New Hampshire Legislation"
 
 
-def follow_elsewhere():
+def follow_elsewhere(lang=I.DEFAULT):
     """OTHER WAYS TO FOLLOW NEW HAMPSHIRE LEGISLATION (the person, 17 October
     2026), at the foot of the Official Sources tab: the General Court's own
     site first, then the independent trackers civics.FOLLOW_INDEPENDENT
@@ -2304,6 +2397,7 @@ def follow_elsewhere():
     stops: the same rule as the guides' sign-in links."""
     def li(name, url, line):
         host = re.sub(r"^https?://(?:www\.)?([^/]+).*$", r"\1", url)
+        line = _tw(lang, f"hub.follow.{I.slug_words(name)}.line", line)
         return (f'<li><a href="{E(url)}" target="_blank" rel="noopener">{E(name)}</a>'
                 f'<span class="r-fline">{dashes(line)}</span><span class="l-dmeta">{E(host)}</span></li>')
     court = [u for _n, u, _l in civics.FOLLOW_OFFICIAL + civics.FOLLOW_INDEPENDENT
@@ -2318,42 +2412,52 @@ def follow_elsewhere():
                          "the only order that ranks none of them: " + ", ".join(names))
     n = len(civics.FOLLOW_OFFICIAL) + len(civics.FOLLOW_INDEPENDENT)
     return fold(
-        "follow-elsewhere", FOLLOW_HEADING, FOLLOW_HEADING, n,
-        '<p class="r-intro">From the legislature itself:</p>'
+        "follow-elsewhere", FOLLOW_HEADING, _hf(lang, "hub.follow.heading"), n,
+        f'<p class="r-intro">{_hf(lang, "hub.follow.official")}</p>'
         '<ul class="r-srcs r-follow">' + "".join(li(*r) for r in civics.FOLLOW_OFFICIAL) + "</ul>"
-        '<p class="r-intro">And from independent sites, run apart from the General Court and from '
-        'Granite Record, in alphabetical order:</p>'
+        f'<p class="r-intro">{_hf(lang, "hub.follow.independent")}</p>'
         '<ul class="r-srcs r-follow">' + "".join(li(*r) for r in civics.FOLLOW_INDEPENDENT) + "</ul>")
 
 
-def hub_sources(groups):
-    """The Official Sources tab: each group of official_sources folded shut
-    under its badge, as the other two tabs' topics are (24 October 2026), and
-    the other ways to follow legislation last, folded the same way."""
+def hub_sources(groups, lang=I.DEFAULT):
+    """The Official Sources tab, in English or in `lang`: each group of
+    official_sources folded shut under its badge, as the other two tabs'
+    topics are (24 October 2026), and the other ways to follow legislation
+    last, folded the same way. A source's name and what it is are the tab's
+    own words; a host, and a results page The Record in Numbers adds, are
+    left as they are."""
+    labels = {u: label for _g, srcs in civics.SOURCE_GROUPS for label, u in srcs}
+
+    def row(name, u, meta):
+        if u in labels:
+            en_name, what = _src_label(labels[u])
+            k = f"hub.src.{I.slug_words(html.unescape(en_name))}"
+            name = _tw(lang, k + ".name", en_name)
+            if what:
+                meta = _tw(lang, k + ".what", what)
+        return (f'<li><a href="{E(u)}" target="_blank" rel="noopener">{name}</a>'
+                f'<span class="l-dmeta">{meta}</span></li>')
     folds = "".join(fold(
-        "src-" + _slug(group), group, E(group), len(rows),
-        '<ul class="r-srcs">' + "".join(
-            f'<li><a href="{E(u)}" target="_blank" rel="noopener">{name}</a>'
-            f'<span class="l-dmeta">{meta}</span></li>' for name, u, meta in rows) + "</ul>")
+        "src-" + _slug(group), group, _tw(lang, f"hub.src.group.{I.slug_words(group)}", E(group)),
+        len(rows), '<ul class="r-srcs">' + "".join(row(*r) for r in rows) + "</ul>")
         for group, rows in groups)
-    return ('<p class="r-intro">The sites the Learn pages cite as their sources. Each opens in '
-            'a new tab.</p>' + hub_section("src-all", "By Branch", folds + follow_elsewhere())
-            + '<p class="r-close">Every page here ends with its sources. If something is wrong, '
-            '<a href="mailto:contact@graniterecord.org">tell us</a> &mdash; that address exists '
-            'for this.</p>')
+    note = (f'<p class="langnote">{_hf(lang, "hub.src.in_english")}</p>'
+            if lang != I.DEFAULT else "")
+    return (f'<p class="r-intro">{_hf(lang, "hub.src.intro")}</p>' + note
+            + hub_section("src-all", _hf(lang, "hub.src.by_branch"), folds + follow_elsewhere(lang))
+            + f'<p class="r-close">{_hf(lang, "hub.src.close")}</p>')
 
 
-def hub_page(tmpl, base, topics, groups, published=(), articles=()):
-    """The Resources hub: a list head (its title and one line; no trail and no
-    Cite this page, which a hub does not carry), then the three tabs.
+def hub_tabs(lang, topics, groups, published=(), articles=()):
+    """The Resources hub's three tabs in `lang`, the strip and the panels.
 
     THE TOWN PAGES' TABS, THE SAME PATTERN AND THE SAME SCRIPT
     (build_town_pages.TABS_JS): a role=tablist of buttons with a roving
     tabindex, panels with role=tabpanel, each panel's id its address, so
     /resources#sources opens Official Sources. WITHOUT JAVASCRIPT EVERY PANEL
     IS SHOWN, in order, each under its own heading, and the strip is not: it is
-    written hidden and the script shows it.
-    """
+    written hidden and the script shows it. One function for every language
+    (25 October 2026), so the Spanish hub has the English one's three tabs."""
     import build_town_pages
     # THE PAGES THE PANEL LINKS, COUNTED OFF THE PANEL (16 October 2026). This
     # was len(topics) + 1 -- the topics and By the Numbers, when those were
@@ -2361,23 +2465,35 @@ def hub_page(tmpl, base, topics, groups, published=(), articles=()):
     # tab read "Learn (14)" over a panel of sixteen links whose first line
     # says "Thirteen short pages" (the webinar's phone check). Counted from
     # what is drawn, each page once, it cannot fall behind the panel again.
-    learn = hub_learn(topics)
+    learn = hub_learn(topics, lang)
     n_learn = len(set(re.findall(r'<a href="([^"]+)"', learn)))
     n_src = sum(len(rows) for _, rows in groups)
-    panels = [("guides", "How-To Guides", len(published) + len(articles),
-               hub_guides(published, articles)),
+    guides = hub_guides(published, articles) if lang == I.DEFAULT else hub_guides_lang(
+        lang, published, articles)
+    panels = [("guides", "How-To Guides", len(published) + len(articles), guides),
               ("learn", "Learn", n_learn, learn),
-              ("sources", "Official Sources", n_src, hub_sources(groups))]
+              ("sources", "Official Sources", n_src, hub_sources(groups, lang))]
     assert [p[:2] for p in panels] == list(HUB_TABS), "the hub's panels and HUB_TABS disagree"
-    strip = ('<div class="twntabs r-tabs" role="tablist" aria-label="Resources" hidden>'
+    names = {"guides": I.say(lang, "guides.hub_guides", "How-To Guides"),
+             "learn": I.say(lang, "guides.hub_learn", "Learn"),
+             "sources": I.say(lang, "guides.hub_sources", "Official Sources")}
+    strip = ('<div class="twntabs r-tabs" role="tablist" aria-label="'
+             + E(html.unescape(I.say(lang, "guides.hub", "Resources"))) + '" hidden>'
              + "".join(
                  f'<button type="button" role="tab" id="tab-{pid}" data-pane="{pid}" '
                  f'aria-controls="{pid}" aria-selected="{"true" if k == 0 else "false"}" '
-                 f'tabindex="{0 if k == 0 else -1}">{E(name)} <span class="r-n">({count})</span></button>'
-                 for k, (pid, name, count, _) in enumerate(panels)) + "</div>")
+                 f'tabindex="{0 if k == 0 else -1}">{names[pid]} <span class="r-n">({count})</span></button>'
+                 for k, (pid, _name, count, _) in enumerate(panels)) + "</div>")
     panes = "".join(
         f'<div class="twnpane r-sheet" id="{pid}" role="tabpanel" aria-labelledby="tab-{pid}">'
-        f'<h2 class="twnph">{E(name)}</h2>{body}</div>' for pid, name, _, body in panels)
+        f'<h2 class="twnph">{names[pid]}</h2>{body}</div>' for pid, _name, _, body in panels)
+    return strip + panes + "</div>" + build_town_pages.TABS_JS + LAND_JS
+
+
+def hub_page(tmpl, base, topics, groups, published=(), articles=()):
+    """The Resources hub: a list head (its title and one line; no trail and no
+    Cite this page, which a hub does not carry), then the three tabs
+    (hub_tabs)."""
     p = S.page(tmpl, path="/" + HUB_PAGE, base=base,
                title="Resources | Granite Record", og_title="Resources",
                og_type="website", og_image="og-learn.png", og_alt=OG_ALT,
@@ -2393,7 +2509,7 @@ def hub_page(tmpl, base, topics, groups, published=(), articles=()):
         '<header class="l-head r-head"><h1>Resources</h1>'
         '<p class="l-lead">How to get things done with New Hampshire&rsquo;s state and local '
         'government, how it works, and where to find what it publishes itself.</p></header>'
-        + strip + panes + "</div>" + build_town_pages.TABS_JS + LAND_JS + "</div>", 1)
+        + hub_tabs(I.DEFAULT, topics, groups, published, articles) + "</div>", 1)
 
 
 # AN ADDRESS NAMING A TAB LANDS ON THE STRIP. The browser's own jump to a
@@ -2561,7 +2677,8 @@ def main():
     groups = official_sources(numbers_results(Path(".")))
     hub = hub_page(tmpl, a.base, learn, groups, published, articles)
     # Its How-To Guides in each other language the hub is in (i18n.PAGES).
-    langs = write_lang(site, HUB_PAGE, lambda lang: hub_page_lang(lang, a.base, published, articles))
+    langs = write_lang(site, HUB_PAGE, lambda lang: hub_page_lang(lang, a.base, published, articles,
+                                                                  learn, groups))
     if langs:
         hub = name_versions(HUB_PAGE, hub)
         print(f"  {HUB_PAGE}: its How-To Guides in {', '.join(langs)} too")

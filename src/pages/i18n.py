@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-10-23.8
+# GRANITE_VERSION: 2026-10-23.9
 """
 The site in more than one language, and how a translation stays current.
 
@@ -591,6 +591,12 @@ def code_words(root=None):
     import guides
     for key, en, where in guides.translated_words():
         add(key, en, where)
+    # The Resources hub's Learn and Official Sources tabs (25 October 2026),
+    # whose words are the hub's data, where a language has the hub.
+    if any(has(c, "resources.html") for c in LANGS if c != DEFAULT):
+        import build_civics
+        for key, en, where in build_civics.hub_words():
+            add(key, en, where)
     return words, problems
 
 
