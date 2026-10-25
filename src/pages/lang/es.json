@@ -4607,9 +4607,9 @@
    "state": "draft"
   },
   "guide.medicare-and-social-security.medicare-savings-programs-are-run-by": {
-   "en": "<b>Medicare Savings Programs</b> are run by the state. Depending on your income and savings, they pay your Part B premium, and the most generous one also pays your deductibles, coinsurance and copayments, so that Medicare providers may not bill you for covered care. In New Hampshire, apply to the Department of Health and Human Services through NH Easy, under Medicare beneficiary assistance. Medicare advises applying even if you do not think you qualify.",
-   "es": "Los <b>Programas de Ahorros de Medicare</b> los administra el estado. Según sus ingresos y ahorros, pagan su prima de la Parte B, y el más amplio también paga sus deducibles, coseguros y copagos, de modo que los proveedores de Medicare no pueden cobrarle por la atención cubierta. En New Hampshire, solicítelos al Departamento de Salud y Servicios Humanos a través de NH Easy, en la ayuda para beneficiarios de Medicare (Medicare beneficiary assistance). Medicare aconseja solicitarlos aunque no crea que reúne los requisitos.",
-   "state": "draft"
+   "en": "<b>Medicare Savings Programs</b> are run by the state. Depending on your income and savings, they pay your Part B premium, and the most generous one also pays your deductibles, coinsurance and copayments, so that Medicare providers may not bill you for covered care. In New Hampshire they are the <b>Medicare Beneficiaries Savings Program</b>, also called the Buy-In program: QMB, SLMB and, for people with disabilities who work, QDWI. Your home and vehicles do not count against its limits. Apply to the Department of Health and Human Services through NH Easy, under Medicare beneficiary assistance; its Customer Service Center answers at 1-844-ASK-DHHS (1-844-275-3447), Monday through Friday, 8 a.m. to 4 p.m. Medicare advises applying even if you do not think you qualify.",
+   "state": "draft",
+   "es": "Los <b>Programas de Ahorros de Medicare</b> los administra el estado. Según sus ingresos y ahorros, pagan su prima de la Parte B, y el más amplio también paga sus deducibles, coseguros y copagos, de modo que los proveedores de Medicare no pueden cobrarle por la atención cubierta. En New Hampshire se llaman <b>Programa de Ahorros para Beneficiarios de Medicare</b> (Medicare Beneficiaries Savings Program), también conocido como programa Buy-In: QMB, SLMB y, para personas con discapacidad que trabajan, QDWI. Su vivienda y sus vehículos no cuentan para sus límites. Solicítelo al Departamento de Salud y Servicios Humanos a través de NH Easy, en la ayuda para beneficiarios de Medicare (Medicare beneficiary assistance); su Centro de Servicio al Cliente atiende en el 1-844-ASK-DHHS (1-844-275-3447), de lunes a viernes, de 8 a.m. a 4 p.m. Medicare aconseja solicitarlo aunque no crea que reúne los requisitos."
   },
   "guide.medicare-and-social-security.medicare-savings-programs-medicare": {
    "en": "Medicare Savings Programs (Medicare)",
@@ -9591,9 +9591,9 @@
    "state": "draft"
   },
   "guide.who-to-contact.if-you-cannot-get-an-answer": {
-   "en": "If you cannot get an answer, the <b>Governor&rsquo;s office</b> takes requests for help from residents, and your <b>Executive Councilor</b>, one of five elected by district every two years, serves, in the Council&rsquo;s own words, as an advocate for the people and their eyes and ears in Concord. The Council&rsquo;s office is at (603) 271-3632.",
-   "es": "Si no obtiene respuesta, la <b>oficina del Gobernador</b> recibe pedidos de ayuda de los residentes, y su <b>consejero ejecutivo</b> (Executive Councilor), uno de los cinco elegidos por distrito cada dos años, es, en palabras del propio Consejo, un defensor de la gente y sus ojos y oídos en Concord. La oficina del Consejo atiende en el (603) 271-3632.",
-   "state": "draft"
+   "en": "If you cannot get an answer, the <b>Governor&rsquo;s office</b> takes requests for help from residents: call its Constituent Services at (603) 271-7676, or choose Request Assistance on its contact page. Your <b>Executive Councilor</b>, one of five elected by district every two years, serves, in the Council&rsquo;s own words, as an advocate for the people and their eyes and ears in Concord. The Council&rsquo;s office is at (603) 271-3632.",
+   "state": "draft",
+   "es": "Si no obtiene respuesta, la <b>oficina del Gobernador</b> recibe pedidos de ayuda de los residentes: llame a su oficina de Servicios al Ciudadano (Constituent Services) al (603) 271-7676, o elija Request Assistance en su página de contacto. Su <b>consejero ejecutivo</b> (Executive Councilor), uno de los cinco elegidos por distrito cada dos años, es, en palabras del propio Consejo, un defensor de la gente y sus ojos y oídos en Concord. La oficina del Consejo atiende en el (603) 271-3632."
   },
   "guide.who-to-contact.lead": {
    "en": "Which office to contact about a problem or a law, from potholes and sidewalks to a state program or a federal agency, and how to find the people who hold it.",
