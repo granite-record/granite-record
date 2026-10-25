@@ -60,7 +60,10 @@ const FKIND={legislator:tr("find.kind.legislator","Legislator"),committee:tr("fi
   // The how-to guides and the Learn pages, from their own pages (12 October 2026).
   // A GUIDE IS A "Guide" (17 October 2026): the kind of thing it is in one
   // word, as "Town" and "Subject" are; the hub's tab keeps its full name.
-  guide:tr("find.kind.guide","Guide"),learn:tr("find.kind.learn","Learn")};
+  guide:tr("find.kind.guide","Guide"),learn:tr("find.kind.learn","Learn"),
+  // A city's ward is a Ward, and the city a Town above its wards (find.json,
+  // 25 October 2026); a statute asked for by its number is a Law (findLaw).
+  ward:tr("find.kind.ward","Ward"),law:tr("find.kind.law","Law")};
 const _fesc=s=>String(s==null?"":s).replace(/[&<>"]/g,c=>(
   {"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
 /* A COMMITTEE IS NAMED WITH ITS CHAMBER (the person, 16 October 2026:
@@ -208,6 +211,48 @@ function findBillNumber(num,limit){
   return {state:"ready",top:exact.concat(starts).slice(0,limit==null?5:limit)};
 }
 
+/* A LAW ASKED FOR BY ITS NUMBER (the audit of 25 October 2026, M3: "RSA
+   91-A" was answered "No matching results.", and "91-A" offered HB 91 and
+   SB 91 and not the Right-to-Know Law). A statute is asked for as "RSA
+   91-A", "RSA 91-A:4", "chapter 91", a section on its own, "91-A:4", or a
+   lettered chapter on its own, "91-A"; a bare number is a number, not a law.
+   The chapter and section are read as app.js's RSA_SHAPE reads them, so
+   "rsa 91-a:4" is the same section here and in the bill search's statute
+   filter. Only a search of that shape reads laws/chapters.json, the Laws
+   page's own list of every chapter, fetched once; a chapter it holds is one
+   row, a Law, first, linked to its page or to the section's anchor on it,
+   at the address build_rsa.chapter_path gives (/laws/91-a#s4; RSA 404's
+   with its slash: FLAW_FOLDERS is build_rsa.FOLDER_CHAPTERS, which preflight
+   holds it to). find.json does not grow by a row. */
+const FLAW_SHAPE=/^\s*(?:(rsa|chapter)\s*)?(\d{1,3}(?:-[a-z]{1,2})?)(?:\s*:\s*([0-9]{1,4}(?:\.[0-9]{1,2})?(?:-[a-z0-9]{1,4})?))?\s*$/i;
+const FLAW_FOLDERS=["404"];
+function findLaw(q){
+  const m=FLAW_SHAPE.exec(String(q||""));
+  if(!m||(!m[1]&&!m[3]&&!m[2].includes("-")))return null;
+  return {ch:m[2].toUpperCase(),sec:m[3]?m[3].toLowerCase():""};
+}
+const FLAWS={ch:null,loading:null,failed:false,redraw:false};
+function findLawsLoad(){
+  if(FLAWS.ch||FLAWS.failed)return Promise.resolve(!!FLAWS.ch);
+  if(!FLAWS.loading)FLAWS.loading=_fjson("laws/chapters.json")
+    .then(j=>{FLAWS.ch=j&&typeof j==="object"?j:{};return true;})
+    .catch(()=>{FLAWS.failed=true;return false;});
+  return FLAWS.loading;
+}
+// The row for `q` -- [kind, name, line, address] as find.json's are -- or
+// null where `q` names no chapter the Laws pages have, and {loading:true}
+// until their list is here (the caller fetches it: findLawsLoad).
+function findLawRow(q){
+  const L=findLaw(q);
+  if(!L)return null;
+  if(!FLAWS.ch)return FLAWS.failed?null:{loading:true};
+  const c=FLAWS.ch[L.ch];
+  if(!Array.isArray(c))return null;
+  const slug=L.ch.toLowerCase();
+  return ["law",`RSA ${L.ch}${L.sec?":"+L.sec:""}`,String(c[0]||""),
+    "/laws/"+slug+(FLAW_FOLDERS.includes(slug)?"/":"")+(L.sec?"#s"+L.sec:""),""];
+}
+
 // A former member's row is named "Former Rep. Suzanne Vail", and the word
 // Former is ours, not part of her name. Ranking against the whole string
 // would put all 1,785 of them at the top the moment somebody typed "for",
@@ -255,10 +300,17 @@ const _fisword=(name,w)=>new RegExp("(^|[^\\p{L}\\p{N}])"
    their titles and lines, while a bill number typed still opens the bill
    first (findDraw puts that bill above every row, and /search puts the
    bills first for a number). Its title alone is what a row shows and what
-   _frank and the length order read. */
-const _fnamed=r=>r&&r[0]==="guide"?`${_fbare(r[1])} ${r[4]||""}`:_fbare(r&&r[1]);
+   _frank and the length order read.
+   AND A PAGE'S IS ITS TITLE AND THE WORDS IT IS ASKED FOR BY (the audit of
+   25 October 2026, M3): the Officials page is "my senator" and "who is my
+   state rep", each of its tabs of officials is the names of the people on
+   it -- "ayotte", "shaheen" -- and the Laws page is "rsa" (find.json, from
+   build_indexes.find_index). The words are read as a title is said (A
+   TITLE AS IT IS SAID, below), so "my senator" in a row's words is the
+   "my sen." a reader's "my senator" becomes. */
+const _fnamed=r=>r&&(r[0]==="guide"||r[0]==="page")?`${_fbare(r[1])} ${r[4]||""}`:_fbare(r&&r[1]);
 function _fwhole(r,s){
-  const name=_fnamed(r).toLowerCase();
+  const name=_ftitled(_fnamed(r).toLowerCase());
   const words=_fwords(s);
   return words.length>0&&words.every(w=>_fisword(name,w));
 }
@@ -276,7 +328,7 @@ function _fwhole(r,s){
    typed that are not a whole word of the name, and findMatch orders by it
    before anything else. */
 function _fpart(r,s){
-  let name=_fnamed(r).toLowerCase();
+  let name=_ftitled(_fnamed(r).toLowerCase());
   // THE SEAT COUNTS ONLY WHEN A NUMBER IS TYPED. "(R - Merr 5)" made "merr"
   // a whole word of every Merrimack County representative, and forty of them
   // pushed the town of Merrimack out of the header's eight rows while a
@@ -293,10 +345,23 @@ function _fpart(r,s){
    "senator" is not in it. The four ways a title is typed are read as the one
    way a row prints it, so "senator carson", "sen carson" and "sen. carson"
    are the same search; "representative" and "rep" likewise. Whole words
-   only: "senate" and "representation" are left alone. */
+   only: "senate" and "representation" are left alone.
+   A ROW'S OWN WORDS ARE READ THE SAME WAY (25 October 2026). The guide to
+   your representatives is found by "my senator" and "state representative",
+   and the Officials page by "my rep" -- words a row carries as a reader says
+   them -- and a reader's "my senator" became "my sen.", which no row had:
+   "my senator" and "who is my state rep" found nothing, and "my rep" only
+   members whose names begin "My" (the audit's M3). findMatch reads each
+   row through this too, once (_fhay). */
 const FTITLE={senator:"sen.",sen:"sen.",representative:"rep.",rep:"rep."};
 const _ftitled=s=>s.split(/\s+/).map(w=>
   Object.prototype.hasOwnProperty.call(FTITLE,w)?FTITLE[w]:w).join(" ");
+const FHAY=new WeakMap();
+function _fhay(r){
+  let h=FHAY.get(r);
+  if(h===undefined){h=_ftitled(`${r[1]} ${r[2]} ${r[4]||""}`.toLowerCase());FHAY.set(r,h);}
+  return h;
+}
 
 // `limit` is the panel's eight by default. /search passes Infinity: it is a
 // page and not a dropdown, so it shows everything that matched -- which is the
@@ -320,8 +385,11 @@ function findMatch(q,limit){
   const words=s.split(/\s+/);
   const edge=_fedge(s);
   const hit=[];
+  // A statute asked for by its number leads, as one row (findLawRow).
+  const law=findLawRow(q);
+  const lead=law&&!law.loading?[law]:[];
   for(const r of FIND.rows){
-    const hay=`${r[1]} ${r[2]} ${r[4]||""}`.toLowerCase();
+    const hay=_fhay(r);
     if(!words.every(w=>_fhas(hay,w)))continue;
     const name=_fbare(r[1]).toLowerCase();
     const rank=_frank(r,s,edge);
@@ -345,7 +413,7 @@ function findMatch(q,limit){
     hit.push([_fpart(r,s),learn,rank,gone,gone?-(r[5]||0):0,name.length,r]);
   }
   hit.sort((a,b)=>a[0]-b[0]||a[1]-b[1]||a[2]-b[2]||a[3]-b[3]||a[4]-b[4]||a[5]-b[5]);
-  return hit.slice(0,limit||8).map(x=>x[6]);
+  return lead.concat(hit.slice(0,(limit||8)-lead.length).map(x=>x[6]));
 }
 
 /* DID YOU MEAN. Only when nothing at all was found, because that is the only
@@ -469,7 +537,7 @@ function _fmark(text,q){
    and /search, which reads this file too, loads the other terms' indexes
    through findBillsLoadAll below. */
 const FBILLS={rows:null,file:null,term:"",terms:[],api:null,loading:null,
-  failed:false,redraw:false};
+  failed:false,redraw:false,requests:null};
 /* THE BILLS' OWN TEXT (1 October). The bill search reads each bill's topic,
    the drafters' analysis and its text as well as its title, from
    sidx/<term>.json (app.js, "THE BILLS' OWN WORDS"; build_search_index.py
@@ -529,6 +597,8 @@ function findBillsLoad(){
     _fjson("meta.json").then(m=>{
       FBILLS.terms=((m&&m.terms)||[]).slice();
       FBILLS.term=FBILLS.terms[0]||"";
+      // Next session's bill requests, which no term holds (FREQ, below).
+      FBILLS.requests=(m&&m.requests)||null;
       if(!FBILLS.term)throw new Error("meta.json names no term");
       return _fjson("idx/"+encodeURIComponent(FBILLS.term)+".json");
     })
@@ -577,6 +647,33 @@ function findBillsLoadAll(){
   return FALL.loading;
 }
 
+/* NEXT SESSION'S BILL REQUESTS, for /search only (the audit of 25 October
+   2026, S5: "LSR 2027-0002" was answered that nothing matched, and the 2027
+   requests -- three of them on data centers, which the search's bills did
+   not mention -- were reached only by switching the bill search's term
+   menu). meta.json names their list, which app.js keeps out
+   of every term and every term's count on purpose (inTermOf: a request is
+   no term's, and not a bill yet), so /search counts them apart, with the
+   same matcher, and says so on one line under the bills -- never as bills,
+   and never in the bills' count. Fetched once a reader has searched, as
+   the earlier terms are. */
+const FREQ={rows:null,term:"",label:"",year:"",loading:null,failed:false};
+function findRequestsLoad(){
+  if(FREQ.rows||FREQ.failed)return Promise.resolve(!!FREQ.rows);
+  if(!FREQ.loading)FREQ.loading=findBillsLoad().then(ok=>{
+    const R=FBILLS.requests;
+    if(!ok||!R||!R.term)throw new Error("meta.json names no requests");
+    FREQ.term=String(R.term);FREQ.label=String(R.label||"");
+    FREQ.year=String(R.year||FREQ.term.slice(0,4));
+    return Promise.all([_fjson("idx/"+encodeURIComponent(FREQ.term)+".json"),_ftext(FREQ.term)]);
+  }).then(([rows])=>{
+    if(!Array.isArray(rows))throw new Error("the requests' index holds no list");
+    FREQ.rows=_fprep(rows);
+    return true;
+  }).catch(()=>{FREQ.failed=true;return false;});
+  return FREQ.loading;
+}
+
 /* What /bills?q= lists for this, in the order it lists them: {state:"ready",
    n, term, top} once the index is here; {state:"loading"} or
    {state:"failed"} until then; and null for a search with nothing in it to
@@ -604,13 +701,21 @@ function findBillsLoadAll(){
 function findBills(q,limit,allTerms){
   const s=(q||"").trim();
   if(!s)return null;
-  const src=allTerms?FALL:FBILLS;
+  // allTerms "requests": next session's requests, counted apart (FREQ).
+  const src=allTerms==="requests"?FREQ:allTerms?FALL:FBILLS;
   if(!src.rows)return {state:src.failed?"failed":"loading"};
   const A=FBILLS.api,ids=A.billNumbers(s);
+  // A STATUTE AFTER "RSA" IS THE STATUTE FILTER, as /bills reads it (app.js,
+  // matches(): "RSA 91-A:4" lists the bills that change it, not the bills
+  // that print those words, wherever the index says what bills change).
+  // /search said "None" to "RSA 91-A" over the bills /bills then listed.
+  // They are ordered as /bills orders them, by best match of the words.
+  const law=!ids&&/^\s*rsa\b/i.test(s)&&src.rows.some(b=>b.rsa)?findLaw(s):null;
+  const rq=law?law.ch+(law.sec?":"+law.sec:""):"";
   let gs=null,words="";
   if(!ids){
     gs=A.queryGroups(s);
-    if(!gs.length)return null;
+    if(!gs.length&&!rq)return null;
     // In a term where the search lists nothing, a two-letter word is read
     // as the start of one ("special ed"). app.js's groupsFor() does the
     // same, over the same bills.
@@ -621,6 +726,10 @@ function findBills(q,limit,allTerms){
   for(const b of src.rows){
     let sc=0,loose=0;
     if(ids){if(!ids.includes(String(b.id).toUpperCase()))continue;}
+    else if(rq){
+      if(!(b.rsa||[]).includes(rq))continue;
+      if(A.matchScore){sc=A.matchScore(b,gs);loose=A.looseness(b,gs);}
+    }
     else if(A.matchScore){
       sc=A.matchScore(b,gs);
       if(!sc)continue;
@@ -649,8 +758,8 @@ function findBills(q,limit,allTerms){
   // Why each row shown is listed, where its title does not have the word.
   const why=new Map();
   if(gs&&A.whyListed)for(const b of top){const y=A.whyListed(b,gs);if(y)why.set(b,y);}
-  return {state:"ready",n:hit.length,term:FBILLS.term,every:!!allTerms,
-          terms:allTerms?FALL.terms:[FBILLS.term],numbers:!!ids,why,top};
+  return {state:"ready",n:hit.length,term:src===FREQ?FREQ.term:FBILLS.term,every:allTerms===true,
+          terms:allTerms===true?FALL.terms:[FBILLS.term],numbers:!!ids,why,top};
 }
 
 /* A SEARCH THAT LISTS NO BILL, OFFERED AS THE WORD IT SOUNDS LIKE (app.js,
@@ -764,6 +873,15 @@ function findDraw(q,ids){
     findSay("",ids);return;}
   const num=findBill(s);
   const rows=findMatch(s);
+  // A statute's number: the Laws pages' list of chapters, once, and the
+  // panel drawn again with its row when it is here (findLawRow).
+  const law=findLawRow(s);
+  if(law&&law.loading&&!FLAWS.redraw){
+    FLAWS.redraw=true;
+    findLawsLoad().then(()=>{
+      const box=document.getElementById(ids.box);
+      if(box)findDraw(box.value,ids);});
+  }
   // THE ONE LINE THAT LEAVES THE PANEL, and it leads to two different places.
   // A bill number is a bill, so it goes to the bill search, which is the page
   // that answers it. Anything else goes to /search, which reads this same
@@ -810,7 +928,8 @@ function findDraw(q,ids){
   // leads with the bills and Gunski follows, and "bail" leads with the bail
   // bills and Rep. Bailey follows. Return takes the first row, so for a
   // subject word it opens the bill search on it.
-  const named=rows.filter(r=>!_fgone(r)&&_fwhole(r,s));
+  // A Law row is the answer to the number typed, and leads (findLawRow).
+  const named=rows.filter(r=>r[0]==="law"||(!_fgone(r)&&_fwhole(r,s)));
   const list=named.map(row).join("")+bills
     +rows.filter(r=>!named.includes(r)).map(row).join("");
   // "No matching results." -- the person's words -- only when nothing here
@@ -818,9 +937,9 @@ function findDraw(q,ids){
   // ("voting" was offered "zoning" over 141 bills). Its guesses are a name
   // close to what was typed and, since 1 October, the word of the bills
   // that a misspelt one sounds like (findOffers). While the bills are being
-  // counted, neither: it is not known.
+  // counted, or a statute's chapter looked up, neither: it is not known.
   let tail="";
-  if(!rows.length&&!num&&(!B||(counted&&!B.n)||B.state==="failed")){
+  if(!rows.length&&!num&&!(law&&law.loading)&&(!B||(counted&&!B.n)||B.state==="failed")){
     const none=!B||counted?tr("find.none","No matching results."):"";
     const offer=findOffers(s,false);
     if(offer.wait&&!FWORDS.redraw){

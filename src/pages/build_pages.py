@@ -2098,14 +2098,22 @@ const GROUPS=[
   // when it is found it is what the reader came to do; the Learn pages, which
   // this page listed nowhere before, go with the site's other pages, after
   // the bills.
+  // A STATUTE ASKED FOR BY ITS NUMBER, FIRST (the audit of 25 October 2026,
+  // M3): find.js's one Law row, "RSA 91-A" (findLawRow).
+  {t:"Laws",                k:r=>r[0]==="law"},
   {t:"How-To Guides",       k:r=>r[0]==="guide"},
   {t:"Senators",            k:r=>r[0]==="legislator"&&/^Senate/.test(r[2])},
   {t:"Representatives",     k:r=>r[0]==="legislator"},
   // A committee that no longer sits goes with the people who have left, below
   // the ones that do (find.js, _fgone).
   {t:"Committees",          k:r=>r[0]==="committee"&&!r[5]},
-  {t:"Towns and wards",     k:r=>r[0]==="town"},
+  // A city above its wards, each ward a Ward (find.json, 25 October 2026).
+  {t:"Towns and wards",     k:r=>r[0]==="town"||r[0]==="ward"},
   {t:"Subjects",            k:r=>r[0]==="topic"},
+  // THE OFFICIALS PAGE AND ITS TABS, before the bills where a name of theirs
+  // was typed (the audit of 25 October 2026, M3): "my senator" is the page,
+  // "ayotte" its Executive Branch, "shaheen" its Federal Delegation.
+  {t:"Officials",           k:r=>r[0]==="page"&&/^[/]?officials([#?]|$)/.test(r[3])},
   // Their own group, after the bills (AFTER): find.js, _fstudy (18 October 2026).
   {t:"Statutory and study committees",k:r=>r[0]==="statutory"||r[0]==="study"},
   {t:"Former senators",     k:r=>r[0]==="former"&&/^Senate/.test(r[2])},
@@ -2148,7 +2156,46 @@ const WHAT_ALL="In the bill search, with filters for committee, sponsor and "
    across terms a number alone names up to nineteen bills, and for a number
    every one of them is listed rather than the first five: SB 412 is in
    fourteen terms, and the 2000 bill is the twelfth of them. */
-const bills=(q,B,C,counting)=>{
+/* NEXT SESSION'S REQUESTS, ON ONE LINE OF THEIR OWN (the audit of 25
+   October 2026, S5): how many of them match, as the line above says how many
+   of the bills are this term's, and the bill search opened on their list.
+   Not a group and not in the bills' count: requests are not bills yet, and
+   no term's (find.js, FREQ). R is findBills(q,0,"requests"). */
+const asked=(q,R)=>R&&R.state==="ready"&&R.n
+  ?`<a class="fbills" href="/bills?q=${_fenc(q)}&amp;term=${_fenc(R.term)}">
+    <span class="fl1"><span class="fname">${R.n===1?"1 bill request"
+      :`${R.n.toLocaleString()} bill requests`} for ${esc(FREQ.year)}</span></span>
+    <span class="fwhat">Not bills yet: listed in the bill search under
+      ${esc(FREQ.label||"its bill requests")}.</span></a>`:"";
+/* A MEMBER'S BILLS WHERE THEIR NAME LISTS NONE (the audit of 25 October 2026,
+   M3). A name finds the person and never their bills (app.js, A NAME IS NOT
+   WHAT A BILL IS ABOUT), so "daryl abbas" was told "no bill in any of the
+   19 terms" under Sen. Abbas, whom the index names as sponsor or co-sponsor
+   of 182 (the preview's, 25 October 2026). Where the search finds a
+   member by a whole word of their name and no bill, the bills' place is one
+   link: theirs, the Sponsor filter on All terms, with the name the bills
+   give their sponsor -- the prime sponsor's of a bill whose sponsor_slug is
+   the member's page, or their own name where they only co-sponsored, which
+   the index spells as the member's (every one of the 328 sitting members
+   with a bill, on 25 October 2026). A member no bill names keeps the line
+   that says so. {who, name} for the first such member in `rows`, or null. */
+const memberBills=(rows,s)=>{
+  const pool=FALL.rows||FBILLS.file||[];
+  for(const m of rows){
+    if((m[0]!=="legislator"&&m[0]!=="former")||!_fwhole(m,s))continue;
+    const slug=String(m[3]||"").replace(/^[/]?legislator[/]/,"").replace(/[.]html$/,"");
+    const who=_fbare(m[1]).replace(/[ ]*[(][^()]*[)]$/,"");
+    const own=who.replace(/^(Rep|Sen)[.] /,"");
+    const b=pool.find(x=>x.sponsor_slug===slug);
+    const name=b?b.sponsor:pool.some(x=>(x.cosp||[]).includes(own))?own:"";
+    if(name)return {who,name};
+  }
+  return null;
+};
+const theirs=M=>`<a class="fbills" href="/bills?sponsor=${_fenc(M.name)}&amp;term=all">
+    <span class="fl1"><span class="fname">${esc(M.who)}&rsquo;s bills</span></span>
+    <span class="fwhat">Every bill they sponsored or co-sponsored, in the bill search.</span></a>`;
+const bills=(q,B,C,counting,R,mem)=>{
   const counted=B&&B.state==="ready";
   const every=counted&&B.every;
   const what=every?WHAT_ALL:counting?"Counting the earlier terms&hellip;":WHAT;
@@ -2160,14 +2207,15 @@ const bills=(q,B,C,counting)=>{
         the ${esc(C.term)} term</span></span>
       <span class="fwhat">The current term, where the bill search starts.</span></a>`:"";
   const top=B&&B.top?(B.numbers?B.top:B.top.slice(0,5)):[];
-  const body=counted&&B.n
+  const body=(counted&&B.n
     ?findBillsAll(B,q,what)+now+top.map(b=>findBillRow(b,q,every,B.why.get(b))).join("")
+    :counted&&mem?theirs(mem)
     :counted
     ?`<a href="/bills?q=${_fenc(q)}">
       <span class="fl1"><span class="fname">Search every bill for
         &ldquo;${esc(q)}&rdquo;</span></span>
       <span class="fwhat">${none} ${counting?what:WHAT}</span></a>`
-    :findBillsAll(B,q,WHAT);
+    :findBillsAll(B,q,WHAT))+asked(q,R);
   return `<section class="resgrp"><h2>Bills${counted&&B.n
     ?` <span class="resn">${B.n.toLocaleString()}</span>`:""}</h2>
     <div class="findout resout">${body}</div></section>`;
@@ -2176,7 +2224,7 @@ const bills=(q,B,C,counting)=>{
 // this site's own pages.
 const AFTER=new Set(["Statutory and study committees","Former senators","Former representatives",
   "Former members","Learn","Pages on this site"]);
-let waiting=false,waitingAll=false,waitingWords=false;
+let waiting=false,waitingAll=false,waitingWords=false,waitingLaw=false,waitingReq=false;
 
 function draw(q){
   const s=(q||"").trim();
@@ -2189,8 +2237,20 @@ function draw(q){
     return;
   }
   const rows=findMatch(s,Infinity);
+  // A statute's number: the Laws pages' list of chapters, then drawn again.
+  const law=findLawRow(s);
+  if(law&&law.loading&&!waitingLaw){
+    waitingLaw=true;
+    findLawsLoad().then(()=>draw(box.value));
+  }
   const C=findBills(s,40);
   const A=findBills(s,40,true);
+  // Next session's requests, counted apart (find.js, FREQ).
+  const R=findBills(s,0,"requests");
+  if(R&&R.state==="loading"&&!waitingReq){
+    waitingReq=true;
+    findRequestsLoad().then(()=>draw(box.value));
+  }
   if(C&&C.state==="loading"&&!waiting){
     waiting=true;
     findBillsLoad().then(()=>draw(box.value));
@@ -2207,6 +2267,10 @@ function draw(q){
     :`in the ${B.term} term`;
   const noBill=nB===null?"":B.every?`no bill in any of the ${B.terms.length} terms`
     :`no bill ${term}`;
+  // A member found by a whole word of their name, where no bill is: the
+  // bills' place is their bills (theirs), and the lead says no "no bill".
+  const mem=nB===0?memberBills(rows,s):null;
+  const nR=R&&R.state==="ready"?R.n:0;
   head.innerHTML=`Results for &ldquo;${esc(s)}&rdquo;`;
   // The answer first. "0 matches on this site, and the bills" is a sentence
   // nobody would write, and "nothing matches" above 30 bills is false.
@@ -2219,12 +2283,13 @@ function draw(q){
   lead.textContent=(!rows.length
     ?(nB?`${some} ${nB===1?"matches":"match"}. No legislator, committee, `
         +"town or subject on this site does."
-      :nB===0&&!counting?"Nothing on this site matches that: no legislator, "
+      :nB===0&&!counting&&!nR?"Nothing on this site matches that: no legislator, "
         +`committee, town or subject, and ${noBill}.`
       :nB===0?`No legislator, committee, town or subject on this site matches `
         +`that, and ${noBill}.`
       :"No legislator, committee, town or subject on this site matches that.")
     :nB?`${here}, and ${some.charAt(0).toLowerCase()+some.slice(1)}.`
+    :nB===0&&mem?`${here}.`
     :nB===0?`${here}, and ${noBill}.`
     :`${here}, and the bills.`)
     +(counting?" Counting the earlier terms…":"");
@@ -2235,27 +2300,27 @@ function draw(q){
   // A BILL NUMBER LEADS WITH THE BILLS, whatever else has its words (17
   // October 2026): a guide found by its own words is never put above a bill
   // whose number was typed.
-  const named=!findBill(s)&&rows.some(r=>r[0]!=="former"&&_fwhole(r,s));
+  const named=!findBill(s)&&rows.some(r=>r[0]==="law"||(r[0]!=="former"&&_fwhole(r,s)));
   const left=rows.slice();
-  let html=named?"":bills(s,B,C,counting),placed=!named;
+  let html=named?"":bills(s,B,C,counting,R,mem),placed=!named;
   for(const g of GROUPS){
     const mine=[];
     for(let i=left.length-1;i>=0;i--)
       if(g.k(left[i]))mine.unshift(left.splice(i,1)[0]);
     if(!mine.length)continue;
-    if(!placed&&AFTER.has(g.t)){html+=bills(s,B,C,counting);placed=true;}
+    if(!placed&&AFTER.has(g.t)){html+=bills(s,B,C,counting,R,mem);placed=true;}
     html+=`<section class="resgrp"><h2>${esc(g.t)}
       <span class="resn">${mine.length}</span></h2>
       <div class="findout resout">${mine.map(r=>row(r,s)).join("")}</div></section>`;
   }
-  if(!placed)html+=bills(s,B,C,counting);
+  if(!placed)html+=bills(s,B,C,counting,R,mem);
   // Only when something close exists, and only when no bill matched either
   // ("voting" was offered "zoning" over 141 bills). find.js's findOffers
   // gives a name close to what was typed and the word of the bills that a
   // misspelt one sounds like ("medicade", "firarms"), and nothing rather
   // than reaching: a word any bill has used is never offered as another.
   // Not while the earlier terms are still being counted either.
-  if(!rows.length&&!nB&&!(B&&B.state==="loading")&&!counting){
+  if(!rows.length&&!nB&&!nR&&!(B&&B.state==="loading")&&!counting){
     const offer=findOffers(s,!!(B&&B.every));
     if(offer.wait&&!waitingWords){
       waitingWords=true;
@@ -2397,11 +2462,15 @@ function slugOf(s){return String(s).toLowerCase().replace(/[^a-z0-9]+/g,"-")
 
 /* RANKED, NOT JUST FILTERED. Somebody typing "Dover" was shown Andover first
    and their own town second, under a town they do not live in. Three tiers:
-   the exact name, then names that BEGIN with what was typed, then names that
-   merely contain it. Nothing is dropped -- "Hampton" lists Hampton, Hampton
-   Falls and New Hampton, and all three are real answers. */
+   the exact name, then names that BEGIN with what was typed, then names with
+   a word that begins with it. "Hampton" lists Hampton, Hampton Falls, New
+   Hampton and North Hampton, and all four are real answers.
+   FROM THE START OF A WORD (the audit of 25 October 2026, M4): the third tier
+   was any name that held the letters, so "Dover" still listed Andover, and
+   "ham" Durham. A member's name and record are still searched anywhere in
+   them (render(), m.hay). */
 function tier(hay,n){const s=hay.toLowerCase();
-  return s===n?0:s.startsWith(n)?1:s.includes(n)?2:3;}
+  return s===n?0:s.startsWith(n)?1:(" "+s.replace(/-/g," ")).includes(" "+n)?2:3;}
 
 function townRow(t){
   // ONE ROW PER TOWN, and the row says one thing: the name. The live list
@@ -2564,6 +2633,11 @@ Promise.all([fetch(DATA("districts.json")).then(r=>r.json()).catch(()=>({})),
    const pr=new URLSearchParams(location.search);
    const pre=(pr.get("town")||pr.get("q")||"").trim();
    if(pre)box.value=pre;
+   /* A CITY NAMED IN THE ADDRESS OPENS ITS WARDS: the site search's one row
+      for a city, "Concord, 10 wards", leads here (find.json, 25 October
+      2026), and the reader came for a ward. */
+   const city=TOWNS.find(t=>t.wards.length>1&&t.town.toLowerCase()===pre.toLowerCase());
+   if(city)picked=city.town;
    render();
    box.focus();
    box.addEventListener("input",()=>{picked=null;render();});

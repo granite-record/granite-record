@@ -2481,7 +2481,22 @@ function emptyResult(){
   // the count line pass it bare and were always right; this one doubled it.
   return `<div class="empty">No bills match${words.length?" all of that":""}
     ${esc(termPhrase())}.${gs.cut?` ${CUTNOTE}.`:""}<span id="offers">${OFFERS.html
-    }</span><br><br>Try removing a filter, or a different term.</div>`;
+    }</span>${requestOffer()}<br><br>Try removing a filter, or a different term.</div>`;
+}
+/* A REQUEST'S NUMBER, OFFERED ITS LIST (the audit of 25 October 2026, S5:
+   "LSR 2027-0002" pasted into the bill search listed nothing, and next
+   session's requests were reached only by the term menu). A search that
+   reads as a request's number -- "LSR ...", or the requests' own year and a
+   number, "2027-0002" -- is offered their list, by its own name, with the
+   search kept. Requests stay out of every term's list and count (inTermOf);
+   this is one line where none of the term's bills matched. */
+function requestOffer(){
+  const R=META&&META.requests;
+  if(!R||!R.term||term===R.term)return "";
+  const m=/^\s*(?:lsr(?![a-z])|(\d{4})\s*-\s*\d)/i.exec(query);
+  if(!m||(m[1]&&m[1]!==reqYear()))return "";
+  return `<br><br>Looking for a bill request? <button class="link" data-term="${esc(R.term)}">${
+    esc(R.label||reqYear()+" Bill Requests")}</button>.`;
 }
 // Said wherever a search was longer than is read (queryGroups, MAXWORDS).
 const CUTNOTE="Only the first twelve words of a search are read";
@@ -9307,7 +9322,10 @@ document.addEventListener("click",e=>{
     }
     render();return;}
   const jt=e.target.closest("[data-term]");
-  if(jt){term=jt.dataset.term;$("#year").value=term;forgetCardState();render();return;}
+  // Its bills fetched first where they are not here yet: a request's
+  // number is offered next session's requests (requestOffer), which no
+  // search has loaded.
+  if(jt){term=jt.dataset.term;$("#year").value=term;forgetCardState();ensureTerm(term).then(render);return;}
   // A part of a search that found nothing, offered on its own. Chosen from
   // the keyboard (a click with no pointer behind it), the focus goes to the
   // search box, which now holds the word: drawing the list again takes the

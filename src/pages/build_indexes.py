@@ -49,8 +49,10 @@ from urllib.parse import quote_plus
 
 import bill_order as BO
 import guides as G
+import officials_tabs as OT
 import shell as S
 import structured as LD
+from build_members_elect import read_officials
 
 # THE KINDS RUN IN THE SITE'S ORDER, bill_order's: House bills, House
 # resolutions, House concurrent resolutions, CACRs, then the Senate's, then the
@@ -338,6 +340,67 @@ def sessions_pages(site, base, urls):
     return out
 
 
+# THE OFFICIALS PAGE'S TABS IN THE SEARCH, ONE ROW EACH (the audit of 25
+# October 2026, M3: the Governor, the US Senators and the councilors were not
+# found). Each is its tab's name, a line saying what it holds, its address on
+# /officials, and the offices it draws as the words it is asked for by; the
+# names of the people on it are added from the file the page is built from
+# (officials_rows). Offices and names only: a department's name would put the
+# Executive Branch above the bills for "health" or "education", and the bare
+# "House" and "Senate" the federal tab above every search for the state's.
+OFFICIAL_TABS = (
+    ("federal", "Federal Delegation", "Officials · New Hampshire's US Senators and Representatives",
+     "Congress Congressional US Senator US Senators US Representative US Representatives"),
+    ("executive", "Executive Branch", "Officials · The Governor, the Executive Council and the "
+     "department heads",
+     "Governor Executive Council Councilor Councilors Councillor Secretary of State "
+     "State Treasurer Attorney General Department Heads Commissioner Commissioners"),
+    ("judicial", "Judicial Branch", "Officials · The justices of the Supreme Court and the "
+     "Superior Court", "Supreme Court Superior Court Circuit Court Courts Justice Justices "
+     "Judge Judges"),
+    ("counties", "County Officials", "Officials · Each county's commissioners, sheriff, county "
+     "attorney, treasurer and registers",
+     "County Commissioner County Commissioners Sheriff Sheriffs County Attorney Treasurer "
+     "Register of Deeds Register of Probate"),
+)
+
+
+def officials_rows(off):
+    """find.json's four rows for the Officials page's tabs of officials, from
+    `off`, corrections/officials.json as build_members_elect.read_officials
+    gives it on the build's day -- the people each tab draws (officials_tabs)
+    -- with each person's name among its words, so "ayotte" finds the
+    Executive Branch and "shaheen" the Federal Delegation. A tab the file
+    names nobody on is left out, as the page leaves out its panel."""
+    def at(d, *keys):
+        """d[k1][k2]..., {} where any step is missing."""
+        for k in keys:
+            d = d.get(k) if isinstance(d, dict) else None
+        return d or {}
+
+    def names(recs):
+        return [str(r.get("name") or "").strip() for r in recs
+                if isinstance(r, dict) and str(r.get("name") or "").strip()]
+    people = {
+        "federal": names(list(at(off, "us_senate").get("seats") or [])
+                         + list(at(off, "us_house", "districts").values())),
+        "executive": names([off.get("governor")] + list(at(off, "council", "districts").values())
+                           + [off.get(k) for k in ("secretary_of_state", "treasurer",
+                                                   "attorney_general")]
+                           + list(at(off, "department_heads").get("departments") or [])),
+        "judicial": names(list(at(off, "judicial", "supreme_court").get("justices") or [])
+                          + list(at(off, "judicial", "superior_court").get("justices") or [])),
+        "counties": names([r for c in at(off, "county", "counties").values()
+                           for r in list(at(c, "commissioners").values())
+                           + [at(c, k) for k, _t in OT.COUNTY_OFFICES]]),
+    }
+    # A county's name is a word of its tab too ("hillsborough sheriff").
+    counties = names(at(off, "county", "counties").values())
+    return [["page", name, what, S.canon("officials.html") + "#" + tab,
+             " · ".join([words, *(counties if tab == "counties" else []), *people[tab]])]
+            for tab, name, what, words in OFFICIAL_TABS if people[tab]]
+
+
 def find_index(site, legs, towns):
     """site/find.json: everything the header search can answer instantly.
 
@@ -435,13 +498,23 @@ def find_index(site, legs, towns):
         stem = re.sub(r"[^a-z0-9]+", "-", town.lower()).strip("-")
         wards = sorted({s.get("ward") or "0" for s in seats},
                        key=lambda w: int(w) if str(w).isdigit() else 0)
+        where = (county + " County" if county else "") or "New Hampshire"
+        # A CITY, ONCE, ABOVE ITS WARDS (the audit of 25 October 2026, M4:
+        # "Concord" listed ten rows each called a Town, Concord, Ward 1 to
+        # Concord, Ward 10). A city has no page of its own, only its wards',
+        # so its one row opens the Officials page's town finder on it, which
+        # lists its wards; each ward's row is a Ward.
+        warded = [w for w in wards if w not in ("", "0") and f"{stem}-ward-{w}" in pages]
+        if stem not in pages and len(warded) > 1:
+            rows.append(["town", town, f"{len(warded)} wards · {where}",
+                         S.canon("officials.html") + "?town=" + quote_plus(town), county])
         for w in wards:
             slug = f"{stem}-ward-{w}" if w and w != "0" else stem
             if slug not in pages:
                 continue
-            rows.append(["town", town if w in ("", "0") else f"{town}, Ward {w}",
-                         (county + " County" if county else "") or "New Hampshire",
-                         S.canon(f"town/{slug}.html"), county])
+            rows.append(["town" if w in ("", "0") else "ward",
+                         town if w in ("", "0") else f"{town}, Ward {w}",
+                         where, S.canon(f"town/{slug}.html"), county])
     # The people who appear in the record and hold no seat now. Named the way
     # the person asked for on 18 September -- "Former Rep. David Smith" rather
     # than "Rep. David Smith" with "former" in a box beside it -- and never
@@ -496,19 +569,35 @@ def find_index(site, legs, towns):
             words = G.search_words(p.stem) if kind == "guide" else ""
             rows.append([kind, name, _h.unescape(dsc.group(1)) if dsc else "",
                          S.canon(f"{folder}/{p.name}"), words])
-    for name, path, what in (
-            ("Bill search", "bills.html", "Every bill since 1989"),
-            ("Officials", "officials.html", "Who represents your town, and the sitting roster"),
-            ("Committees", "committees.html", "Every committee and what it did"),
+    # A PAGE'S WORDS, after its line: what a reader types for it, read as
+    # part of its name (find.js, _fnamed), so that these lead the bills. The
+    # Officials page is what a reader asking for their own member types (the
+    # audit of 25 October 2026, M3: "my senator" and "who is my state rep"
+    # found nothing, and "my rep" members whose names begin "My"); the Laws
+    # and the Calendar, in the header, were not in the search at all.
+    for name, path, what, words in (
+            ("Bill search", "bills.html", "Every bill since 1989", ""),
+            ("Officials", "officials.html", "Who represents your town, and the sitting roster",
+             "my senator · my representative · my rep · state rep · who is my"),
+            ("Laws", "laws.html", "New Hampshire's statutes, the RSAs, chapter by chapter",
+             "RSA statutes"),
+            ("Calendar", "calendar.html", "Hearings and sessions, day by day", ""),
+            ("Committees", "committees.html", "Every committee and what it did", ""),
             # The chambers' session days, beside the committees as on their
             # page (build_full_sessions.py, 10 October 2026).
-            ("House Session Days", "session/house.html", "Every day the whole House sat, term by term"),
-            ("Senate Session Days", "session/senate.html", "Every day the whole Senate sat, term by term"),
-            ("Resources", "resources.html", "How New Hampshire's government works"),
-            ("The data, as tables", "data.html", "Every table as CSV"),
-            ("The whole record, as lists", "directory.html", "Plain lists of every page"),
-            ("About this site", "about.html", "How it is made, and by whom")):
-        rows.append(["page", name, what, S.canon(path), ""])
+            ("House Session Days", "session/house.html", "Every day the whole House sat, term by term", ""),
+            ("Senate Session Days", "session/senate.html", "Every day the whole Senate sat, term by term", ""),
+            ("Resources", "resources.html", "How New Hampshire's government works", ""),
+            ("The data, as tables", "data.html", "Every table as CSV", ""),
+            ("The whole record, as lists", "directory.html", "Plain lists of every page", ""),
+            ("About this site", "about.html", "How it is made, and by whom", "")):
+        rows.append(["page", name, what, S.canon(path), words])
+    # The tabs of officials, from the file the Officials page reads, through
+    # its one reader; without the file, none (the page draws no such tab).
+    try:
+        rows += officials_rows(read_officials())
+    except (OSError, ValueError):
+        pass
     (site / "find.json").write_text(json.dumps(rows, separators=(",", ":")),
                                     encoding="utf-8")
     return rows

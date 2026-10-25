@@ -19313,10 +19313,15 @@ def _find_all_results():
 # a number and is not one -- and one bill from another term filed in the same
 # index, which /bills leaves out and so must the panel.
 def _find_bills_fixture():
+    # The sponsor's member page, as the index carries it (sponsor_slug): what
+    # /search reads to link a member's bills where their name lists none.
+    slugs = {"Daryl Abbas": "daryl-abbas-sd-22", "Jodi Nelson": "jodi-nelson",
+             "Glenn Bailey": "glenn-bailey-straf-2"}
+
     def bill(bid, year, title, sponsor, committee, topic="Other"):
         kind = re.match(r"[A-Z]+", bid).group(0)
         return {"id": bid, "n": f"{kind} {bid[len(kind):]}", "year": year,
-                "title": title, "sponsor": sponsor,
+                "title": title, "sponsor": sponsor, "sponsor_slug": slugs.get(sponsor, ""),
                 "sponsor_label": f"Rep. {sponsor} (R)", "committee": committee,
                 "committees": [committee], "topic": topic, "kind": "active",
                 "status": "Introduced", "term": "2025-2026",
@@ -20071,10 +20076,16 @@ def _find_bills(BP):
         f"taking the offer leaves the box holding {after.get('q')!r} and lists "
         f"{after.get('ids')}: it should empty the box and list Sen. Abbas's four "
         "bills through the Sponsor filter")
-    ab = P["search"]["abbas"]["html"]
-    assert "/legislator/daryl-abbas-sd-22" in ab and "None in any of the 2 terms" in ab, (
-        "/search?q=abbas does not list the senator, or lists bills he sponsored: "
-        "a name finds the person, and the Sponsor filter their bills")
+    # And where the name lists no bill, /search says no "no bill in any of the
+    # terms" under the member it found: the bills' place is one link to his
+    # bills, the Sponsor filter on All terms (the audit of 25 October 2026, M3).
+    ab, abl = P["search"]["abbas"]["html"], P["search"]["abbas"]["lead"]
+    assert "/legislator/daryl-abbas-sd-22" in ab and "None in any of" not in ab \
+        and "no bill" not in abl and ab.count("/bills?") == 1 \
+        and 'href="/bills?sponsor=Daryl%20Abbas&amp;term=all"' in ab \
+        and "Sen. Daryl Abbas&rsquo;s bills" in ab, (
+        "/search?q=abbas does not list the senator with one link to his bills in the bills' "
+        f"place, or lists bills he sponsored, or says no bill matched: {abl!r} {ab[-400:]!r}")
 
     # The panel is this term's; the other term's index is /search's alone.
     assert "/idx/2023-2024.json" not in P["askedPanel"], (
@@ -20164,6 +20175,303 @@ def _find_bills(BP):
                   f"(firearms {na['firearms']}); bills lead where no name is "
                   "a whole word of what was typed; a name lists no bill by its "
                   "sponsor, and /bills offers the Sponsor filter for it")
+
+
+# THE FIXTURE FOR _find_laws_and_requests: _find_bills_fixture's, with what a
+# statute's number and a request's are read against -- the Laws pages' list
+# of chapters, two bills that say they change RSA 91-A (one this term, one
+# the term before), and three of next session's requests, two on data
+# centers, in a list of their own that meta.json names.
+def _find_more_fixture():
+    fx = _find_bills_fixture()
+    for b in fx["/idx/2025-2026.json"]:
+        if b["id"] == "HB300":
+            b["rsa"] = ["91-A", "91-A:4"]
+    for b in fx["/idx/2023-2024.json"]:
+        if b["id"] == "SB5":
+            b["rsa"] = ["91-A", "91-A:2"]
+    fx["/laws/chapters.json"] = {
+        "91-A": ["Access to Governmental Records and Meetings", "VI", 9, False, [], [], 1],
+        "404": ["Dog Licensing", "XXX", 3, False, [], [], 0],
+        "540": ["Actions Against Tenants", "LV", 20, False, [], [], 0]}
+
+    def request(num, title):
+        return {"id": f"LSR2027{num}", "n": f"LSR 2027-{num}", "year": 2027, "title": title,
+                "sponsor": "Jodi Nelson", "sponsor_label": "Rep. Jodi Nelson (R)",
+                "sponsor_slug": "jodi-nelson", "body": "HB", "committee": "", "committees": [],
+                "topic": "", "kind": "", "status": "Filed as a request", "term": "2027-requests",
+                "lsr": True, "votedays": [], "last_action": ""}
+    fx["/idx/2027-requests.json"] = [
+        request("0002", "establishing a temporary moratorium on data centers."),
+        request("0003", "relative to school bus inspections."),
+        request("0091", "relative to the siting of data centers.")]
+    fx["/meta.json"]["requests"] = {"term": "2027-requests", "label": "2027 Bill Requests",
+                                    "year": 2027, "n": 3}
+    return fx
+
+
+_FIND_MORE_QUERIES = {
+    # The header's panel: each way a statute is asked for, a chapter in a
+    # folder, a bare number, a chapter the Laws pages do not have, a time.
+    "panel": ["RSA 91-A", "rsa 91-a:4", "91-A", "91-A:4", "chapter 91-a", "RSA 404:5",
+              "91", "RSA 999", "6:30"],
+    "search": ["RSA 91-A", "data centers", "LSR 2027-0002", "firearms", "xyzzy"],
+    # /bills: a request's number three ways, a year that is not the
+    # requests', a statute, nothing, and words a request has.
+    "app": ["LSR 2027-0002", "2027-0002", "LSR20270002", "2026-0002", "RSA 91-A",
+            "xyzzy", "data centers"]}
+
+# The header's panel and /search, as _FIND_BILLS_PANEL runs them.
+_FIND_MORE_PANEL = r"""
+require("./stub.js");
+""" + _FIND_BILLS_FETCH + r"""
+const vm = require("vm");
+const script = (f) => vm.runInThisContext(fs.readFileSync(f, "utf8"), {filename: f});
+document.head.appendChild = (s) => {
+  if (/\/billmatch\.js$/.test(String(s.src))) { script("./billmatch.js"); if (s.onload) s.onload(); }
+  else if (s.onerror) s.onerror();
+};
+let ready = null;
+document.addEventListener = (t, f) => { if (t === "DOMContentLoaded") ready = f; };
+const byId = document.getElementById.bind(document);
+let asked = 0;
+document.getElementById = (id) => id === "findbtn" && !asked++ ? null : byId(id);
+let F;
+try { script("./find.js");
+      F = vm.runInThisContext("({FIND, findDraw, findMatch, findBills, findBillsLoad, findLawsLoad})"); }
+catch (e) { console.log("LOAD " + e.message); process.exit(1); }
+F.FIND.rows = FIX["/find.json"];
+const panel = document.getElementById("findout");
+const draw = (s) => { F.findDraw(s); return panel.innerHTML; };
+(async () => {
+  const res = {panel: {}, first: {}, search: {}, all: {}, req: {}};
+  draw("firearms"); await F.findBillsLoad(); await ticks(10);
+  res.idle = ASKED.filter(p => p.startsWith("/laws/") || p.includes("requests"));
+  for (const s of Q.panel) {
+    draw(s); await F.findLawsLoad(); await ticks(10);
+    res.panel[s] = draw(s); res.first[s] = F.findMatch(s, 50)[0] || null;
+  }
+  res.askedPanel = ASKED.slice();
+  script("./search.js");
+  location.search = "?q=" + encodeURIComponent(Q.search[0]);
+  ready(); await ticks(40);
+  const box = document.getElementById("resq"), lead = document.getElementById("reslead"),
+        out = document.getElementById("resout");
+  for (const s of Q.search) {
+    if (s !== Q.search[0]) { box.value = s; box.fire("input"); await ticks(40); }
+    res.search[s] = {lead: lead.textContent, html: out.innerHTML};
+  }
+  for (const s of Q.search) {
+    const A = F.findBills(s, 40, true), R = F.findBills(s, 0, "requests");
+    res.all[s] = A && A.state === "ready" ? A.n : A;
+    res.req[s] = R && R.state === "ready" ? R.n : R;
+  }
+  console.log(JSON.stringify(res));
+})().catch(e => { console.log("RUN " + e.message); process.exit(1); });
+"""
+
+# /bills: app.js as bills.html loads it, typed into; "all" opens it on All
+# terms, "req" on the requests, as /search's links do.
+_FIND_MORE_APP = r"""
+require("./stub.js");
+""" + _FIND_BILLS_FETCH + r"""
+if (MODE === "all") location.search = "?term=all";
+if (MODE === "req") location.search = "?term=2027-requests";
+const box = document.querySelector("#q"); box.disabled = true;
+const DOCON = {};
+document.addEventListener = (t, f) => { (DOCON[t] = DOCON[t] || []).push(f); };
+let scope;
+try { scope = (0, eval)(fs.readFileSync("./app.js", "utf8") + ";({getTerm: () => term})"); }
+catch (e) { console.log("LOAD " + e.message); process.exit(1); }
+const cards = (html) => [...html.matchAll(/<article class="card[^"]*" data-id="([^"]+)"/g)].map(m => m[1]);
+(async () => {
+  for (let i = 0; i < 400 && box.disabled !== false; i++) await ticks(1);
+  if (box.disabled !== false) { console.log("app.js never finished loading the fixture"); process.exit(1); }
+  const settle = () => ticks(30);
+  const out = {term: scope.getTerm(), q: {}};
+  for (const s of Q.app) {
+    box.value = s; box.fire("input"); await settle();
+    const html = document.querySelector("#results").innerHTML;
+    out.q[s] = {count: document.querySelector("#count").textContent, html, ids: cards(html)};
+  }
+  // The offer taken: its button, clicked, opens the requests on the search typed.
+  const offer = /data-term="([^"]+)"/.exec(out.q[Q.app[0]].html);
+  if (offer && MODE === "") {
+    box.value = Q.app[0]; box.fire("input"); await settle();
+    const target = {dataset: {term: offer[1]}, closest: (sel) => sel === "[data-term]" ? target : null};
+    for (const f of DOCON.click || [])
+      try { f({target, detail: 1, button: 0, preventDefault() {}, stopPropagation() {}}); } catch (e) {}
+    await settle();
+    out.taken = {term: scope.getTerm(), q: box.value,
+                 ids: cards(document.querySelector("#results").innerHTML)};
+  }
+  console.log(JSON.stringify(out));
+})().catch(e => { console.log("RUN " + e.message); process.exit(1); });
+"""
+
+
+@check("frontend", "the search reads a statute's number as the law: one Law row first, from the "
+       "Laws pages' list, for RSA 91-A, 91-A:4, chapter 91-A and 91-A, and none for a bare "
+       "number; the bills that change it counted as /bills counts them", needs=("build_pages",))
+def _find_laws(BP):
+    """The audit of 25 October 2026, M3: "RSA 91-A" was answered "No
+    matching results.", and "91-A" offered HB 91 and SB 91 and not the
+    Right-to-Know Law. find.js reads a statute asked for by its number --
+    "RSA n", a section "n:m", "chapter n", a lettered chapter "n-A" -- and
+    only then fetches laws/chapters.json, the Laws pages' own list, which
+    find.json does not grow by; a chapter it holds is one Law row, first,
+    at build_rsa.chapter_path's address (RSA 404's with its slash). And a
+    statute after "RSA" is the bill search's statute filter, so the panel
+    and /search count the bills that say they change it, as /bills lists
+    them -- /search said "None" over the bills its own link then opened.
+    Run over _find_bills' fixture term and the term before, with two bills
+    that change RSA 91-A, through find.js and /search's script as a page
+    without app.js runs them, and app.js as /bills runs it on All terms."""
+    if not shutil.which("node"):
+        return "skip", "node is not installed"
+    need = [Path(f) for f in ("src/pages/app.js", "src/pages/find.js", "tests/dom_stub.js")]
+    if not all(f.exists() for f in need):
+        return "skip", "app.js, find.js or dom_stub.js not in this directory"
+    P, AA = _find_more_run(BP, ("panel", ""), ("app", "all"))
+    assert not P["idle"], f"a search that names no statute fetched {P['idle']}"
+    bad = []
+    want = {"RSA 91-A": ("RSA 91-A", "/laws/91-a"), "rsa 91-a:4": ("RSA 91-A:4", "/laws/91-a#s4"),
+            "91-A": ("RSA 91-A", "/laws/91-a"), "91-A:4": ("RSA 91-A:4", "/laws/91-a#s4"),
+            "chapter 91-a": ("RSA 91-A", "/laws/91-a"), "RSA 404:5": ("RSA 404:5", "/laws/404/#s5")}
+    for q, (name, href) in want.items():
+        r = P["first"].get(q) or []
+        h = P["panel"].get(q, "")
+        if r[:2] != ["law", name] or r[3:4] != [href]:
+            bad.append(f"{q!r}: the first row is {r[:4]}, not the Law {name} at {href}")
+        elif r[2] != "Access to Governmental Records and Meetings" and "404" not in q:
+            bad.append(f"{q!r}: the Law row's line is {r[2]!r}, not the chapter's name")
+        got = re.search(r'<a [^>]*href="([^"]+)"', h)
+        if not got or got.group(1) != href or ">Law<" not in h:
+            bad.append(f"{q!r}: the panel does not lead with the Law row: {h[:200]!r}")
+    for q in ("91", "RSA 999", "6:30"):
+        if (P["first"].get(q) or [""])[0] == "law" or ">Law<" in P["panel"].get(q, ""):
+            bad.append(f"{q!r} is offered a Law: a bare number, or a chapter the Laws pages do "
+                       "not have, is none")
+    if P["askedPanel"].count("/laws/chapters.json") != 1:
+        bad.append(f"laws/chapters.json was asked for {P['askedPanel'].count('/laws/chapters.json')} "
+                   "times, not once")
+    assert not bad, "; ".join(bad[:4])
+    # The bills that change it: one this term, two in all; the panel's and
+    # /search's counts are /bills' (on All terms, /search's address).
+    h = P["panel"]["RSA 91-A"]
+    assert "1 bill found for &ldquo;RSA 91-A&rdquo;" in h and "/bill/2026/hb300" in h \
+        and h.find("/laws/91-a") < h.find("/bills?q=RSA"), (
+        f"the panel does not count this term's bill that changes RSA 91-A under the Law: {h[:500]!r}")
+    m = re.match(r"([\d,]+) matching|([\d,]+) of", AA["q"]["RSA 91-A"]["count"])
+    assert P["all"]["RSA 91-A"] == 2 and AA["q"]["RSA 91-A"]["ids"][:2] == ["HB300", "SB5"], (
+        f"/search counts {P['all']['RSA 91-A']} bills that change RSA 91-A in every term, and "
+        f"/bills on All terms lists {AA['q']['RSA 91-A']['ids']} ({AA['q']['RSA 91-A']['count']!r})")
+    s = P["search"]["RSA 91-A"]
+    assert 0 <= s["html"].find("<h2>Laws") < s["html"].find("<h2>Bills") \
+        and "All 2 bills found for &ldquo;RSA 91-A&rdquo;" in s["html"] \
+        and "None in" not in s["html"] and not s["lead"].startswith("No"), (
+        f"/search?q=RSA 91-A does not lead with the Law and count the bills that change it: "
+        f"{s['lead']!r} {s['html'][:400]!r}")
+    js = BP.SEARCH_JS
+    assert js.index('{t:"Laws",') < js.index('{t:"How-To Guides",'), "/search does not list the Law first"
+    return "ok", ("RSA 91-A, rsa 91-a:4, 91-A, 91-A:4, chapter 91-a and RSA 404:5 lead with their "
+                  "Law; 91, RSA 999 and 6:30 with none; the bills that change it counted alike "
+                  "by the panel, /search and /bills")
+
+
+def _find_more_run(BP, *runs):
+    """_find_more_fixture through _FIND_MORE_PANEL and _FIND_MORE_APP: each of
+    `runs` is (side, mode), side "panel" or "app"; their JSON, in order."""
+    app = Path("src/pages/app.js").read_text(encoding="utf-8")
+    try:
+        matcher = BP.bill_matcher_js(app)
+    except SystemExit as e:
+        raise AssertionError(f"build_pages cannot cut the matcher out of app.js: {e}")
+    m = re.search(r"<script>(.*?)</script>", BP.SEARCH_JS, re.S)
+    assert m, "build_pages.SEARCH_JS carries no <script>"
+    root = Path(tempfile.mkdtemp())
+    try:
+        files = {"stub.js": Path("tests/dom_stub.js").read_text(encoding="utf-8"),
+                 "app.js": _with_components(app), "billmatch.js": matcher,
+                 "find.js": _with_components(Path("src/pages/find.js").read_text(encoding="utf-8")),
+                 "search.js": m.group(1), "fixture.json": json.dumps(_find_more_fixture()),
+                 "queries.json": json.dumps(_FIND_MORE_QUERIES),
+                 "panel.js": _FIND_MORE_PANEL, "app_side.js": _FIND_MORE_APP}
+        for name, text in files.items():
+            (root / name).write_text(text, encoding="utf-8")
+        got = []
+        for side, mode in runs:
+            r = _run(["node", "panel.js" if side == "panel" else "app_side.js", mode], cwd=root,
+                     capture_output=True, text=True, timeout=90)
+            said = (r.stdout + r.stderr).strip()
+            assert r.returncode == 0 and said and said.splitlines()[-1].startswith("{"), (
+                f"node {side} {mode}: " + (said.splitlines() or ["no output"])[-1][:300])
+            got.append(json.loads(said.splitlines()[-1]))
+        return got
+    finally:
+        shutil.rmtree(root, ignore_errors=True)
+
+
+@check("frontend", "next session's bill requests are found from /search on one line of their "
+       "own, counted as /bills counts them on their list, and /bills offers that list for a "
+       "request's number", needs=("build_pages",))
+def _find_requests(BP):
+    """The audit of 25 October 2026, S5: "LSR 2027-0002" pasted into the
+    home page's box was answered that nothing matched, and the 2027 requests
+    -- three on data centers, which nothing the search said mentioned --
+    opened only after switching the bill search's term menu. Requests are
+    kept out of every term and every term's count on
+    purpose (app.js, inTermOf), so they get no group and no place in the
+    bills' count: /search says on one line, under the bills, how many of them
+    match, linked to /bills opened on their list with the search kept, and
+    /bills' empty answer, where what was typed reads as a request's number
+    -- "LSR ...", or the requests' own year and a number -- offers that list
+    by its name, and taking it lists the request. Not for the words of a
+    search that lists bills, nor a number of another year."""
+    if not shutil.which("node"):
+        return "skip", "node is not installed"
+    need = [Path(f) for f in ("src/pages/app.js", "src/pages/find.js", "tests/dom_stub.js")]
+    if not all(f.exists() for f in need):
+        return "skip", "app.js, find.js or dom_stub.js not in this directory"
+    P, A, R = _find_more_run(BP, ("panel", ""), ("app", ""), ("app", "req"))
+    s = P["search"]
+    line = ('<a class="fbills" href="/bills?q=data%20centers&amp;term=2027-requests">')
+    assert P["req"]["data centers"] == 2 and line in s["data centers"]["html"] \
+        and "2 bill requests for 2027" in s["data centers"]["html"] \
+        and "Nothing on this site matches" not in s["data centers"]["lead"], (
+        f"/search?q=data centers does not say that 2 requests for 2027 match, linked to their "
+        f"list: {P['req']['data centers']} {s['data centers']['lead']!r} "
+        f"{s['data centers']['html'][-500:]!r}")
+    assert P["req"]["LSR 2027-0002"] == 1 and "1 bill request for 2027" in s["LSR 2027-0002"]["html"], (
+        f"/search?q=LSR 2027-0002 counts {P['req']['LSR 2027-0002']} requests")
+    for q in ("firearms", "xyzzy"):
+        assert "bill request" not in s[q]["html"] and P["req"][q] == 0, (
+            f"/search?q={q} says something about requests, which none match")
+    assert "<h2>Bill requests" not in "".join(v["html"] for v in s.values()), (
+        "/search draws the requests as a group of their own")
+    # /bills on the requests' list counts what /search said.
+    assert R["term"] == "2027-requests" \
+        and sorted(R["q"]["data centers"]["ids"]) == ["LSR20270002", "LSR20270091"] \
+        and R["q"]["LSR 2027-0002"]["ids"] == ["LSR20270002"], (
+        f"/bills on the 2027 requests lists {R['q']['data centers']['ids']} for 'data centers' and "
+        f"{R['q']['LSR 2027-0002']['ids']} for 'LSR 2027-0002'")
+    bad = []
+    for q in ("LSR 2027-0002", "2027-0002", "LSR20270002"):
+        h = A["q"][q]["html"]
+        if A["q"][q]["ids"] or '<button class="link" data-term="2027-requests">2027 Bill Requests</button>' not in h:
+            bad.append(f"/bills does not offer the 2027 Bill Requests for {q!r}: {h[-300:]!r}")
+    for q in ("2026-0002", "xyzzy", "RSA 91-A"):
+        if 'data-term="2027-requests"' in A["q"][q]["html"]:
+            bad.append(f"/bills offers the requests for {q!r}, which is no request's number")
+    assert not bad, "; ".join(bad)
+    tk = A.get("taken") or {}
+    assert tk.get("term") == "2027-requests" and tk.get("q") == "LSR 2027-0002" \
+        and tk.get("ids") == ["LSR20270002"], (
+        f"taking the offer leaves /bills on {tk.get('term')!r} with {tk.get('q')!r}, listing "
+        f"{tk.get('ids')}: it should open the requests on the search typed, and list LSR 2027-0002")
+    return "ok", ("'data centers' and 'LSR 2027-0002' counted on /search's one line as /bills "
+                  "lists them on the requests' list; /bills offers that list for three forms of "
+                  "a request's number, and taking it lists the request")
 
 
 # THE FIXTURE FOR _best_match_words: thirty-seven real bills, their titles,
@@ -21754,6 +22062,149 @@ def _find_guides(G, civics, BP):
     assert 'G.search_words(p.stem) if kind == "guide"' in bi, "find.json no longer carries a guide's task words"
     return "ok", (f"{len(cases)} searches: guides found by their task and plain words, labelled Guide, "
                   "above the Learn pages, and under a bill whose number was typed")
+
+
+# The site search over find.json as build_indexes writes it (25 October 2026):
+# find.js's findMatch, _fwhole and findKind over the rows, for each case.
+_FIND_PAGES_JS = r"""
+require("./stub.js");
+const fs = require("fs"), vm = require("vm");
+globalThis.fetch = async () => ({ ok: false, status: 404, json: async () => { throw new Error("404"); } });
+globalThis.chip = (t, cls) => `<span class="${cls}">${t}</span>`;
+vm.runInThisContext(fs.readFileSync("./find.js", "utf8"), { filename: "find.js" });
+const F = vm.runInThisContext("({FIND, findMatch, findKind, _fwhole})");
+const go = JSON.parse(fs.readFileSync("./go.json", "utf8"));
+F.FIND.rows = go.rows;
+const out = {};
+for (const q of go.cases)
+  out[q] = F.findMatch(q, Infinity).map(r => ({name: r[1], href: r[3], kind: F.findKind(r),
+                                               whole: F._fwhole(r, q)}));
+console.log(JSON.stringify(out));
+"""
+
+
+@check("frontend", "the site search finds the Officials page by a reader's words for their own "
+       "member, each tab of officials by its people's names, the Laws and the Calendar, and a "
+       "city once, above its wards", needs=("build_indexes", "guides", "civics", "build_civics"))
+def _find_pages_officials(BI, G, civics, BC):
+    """The audit of 25 October 2026, M3 and M4. The header's search presents
+    itself as searching everything, and "laws" and "calendar" did not offer
+    those sections; the Governor, the US Senators and the councilors were
+    not found; "my senator" and "who is my state rep" found nothing and "my
+    rep" offered representatives whose names begin "My"; and "Concord"
+    listed ten rows each called a Town, Concord, Ward 1 to Concord, Ward 10.
+
+    So find_index writes, without growing find.json by more than these: the
+    Laws and the Calendar among the pages; the Officials page with the words
+    a reader asks for their member by; a row for each tab of officials, its
+    words the offices it draws and the names of the people on it, read from
+    corrections/officials.json through its one reader as the page reads
+    them; and for a city with no page of its own one row, "Concord", "10
+    wards", opening the Officials page's town finder on it, with each ward a
+    Ward. find.js reads a page's words as part of its name, and a title in
+    them as a reader's title is read ("my senator" is "my sen."), so each of
+    these leads the bills. Here: find_index over a small site, and find.js
+    over what it writes, with the guide to finding your representatives
+    beside it, whose words "my senator" also found nothing."""
+    if shutil.which("node") is None:
+        return "skip", "node is not installed"
+    from build_members_elect import read_officials
+    try:
+        off = read_officials()
+    except (OSError, ValueError):
+        return "skip", "corrections/officials.json is not here"
+    site = Path(tempfile.mkdtemp())
+    try:
+        (site / "town").mkdir()
+        for stem in ("concord-ward-1", "concord-ward-2", "concord-ward-3", "andover", "hill"):
+            (site / "town" / f"{stem}.html").write_text("<p>", encoding="utf-8")
+        towns = {"Concord": [{"county": "Merrimack", "ward": str(w)} for w in (1, 2, 3)],
+                 "Andover": [{"county": "Merrimack", "ward": ""}],
+                 "Hill": [{"county": "Merrimack", "ward": ""}]}
+        legs = [{"display_full": "Rep. Myles England (D - Straf 12)", "chamber": "H",
+                 "district_label": "Straf 12", "party": "Democrat", "slug": "myles-england-straf-12",
+                 "last": "England", "first": "Myles", "county": "Strafford"},
+                {"display_full": "Sen. Sharon Carson (R - SD14)", "chamber": "S",
+                 "district_label": "SD14", "party": "Republican", "slug": "sharon-carson-sd-14",
+                 "last": "Carson", "first": "Sharon", "county": "Rockingham"}]
+        rows = BI.find_index(site, legs, towns)
+    finally:
+        shutil.rmtree(site, ignore_errors=True)
+    t = next(t for t in civics.TOPICS if t["slug"] == "your-representatives")
+    rows.append(["guide", t["title"], t["blurb"], "/" + BC.article_href(t["slug"])[:-5],
+                 G.search_words(t["slug"])])
+    # What find.json now holds: the city once, its wards each a Ward.
+    town = [(r[0], r[1], r[2], r[3]) for r in rows if r[0] in ("town", "ward")]
+    at = [i for i, r in enumerate(town) if r[1] == "Concord"]
+    assert at and town[at[0]:at[0] + 2] == [
+            ("town", "Concord", "3 wards · Merrimack County", "officials?town=Concord"),
+            ("ward", "Concord, Ward 1", "Merrimack County", "town/concord-ward-1")] \
+        and ("town", "Andover", "Merrimack County", "town/andover") in town \
+        and not [r for r in town if r[0] == "town" and ", Ward " in r[1]], (
+        f"find.json's towns and wards are {town}: a city with no page of its own is one Town row "
+        "opening the Officials page's finder on it, above its wards, each a Ward")
+    pages = {r[1]: r for r in rows if r[0] == "page"}
+    tabs = {"Federal Delegation": "officials#federal", "Executive Branch": "officials#executive",
+            "Judicial Branch": "officials#judicial", "County Officials": "officials#counties"}
+    assert {n: pages.get(n, [None] * 4)[3] for n in tabs} == tabs \
+        and pages.get("Laws", [None] * 4)[3] == "laws" \
+        and pages.get("Calendar", [None] * 4)[3] == "calendar", (
+        "find.json does not carry the Laws, the Calendar and the Officials page's four tabs of "
+        f"officials: {sorted(pages)}")
+    # A name each tab draws, read from the hand file, not typed here.
+    def last(rec):
+        return str((rec or {}).get("name") or "").split()[-1].lower()
+    gov = last(off.get("governor"))
+    senator = last(((off.get("us_senate") or {}).get("seats") or [{}])[0])
+    councilor = last(next(iter(((off.get("council") or {}).get("districts") or {}).values()), {}))
+    justice = last((((off.get("judicial") or {}).get("supreme_court") or {}).get("justices") or [{}])[0])
+    assert gov and senator and councilor and justice, (
+        "corrections/officials.json names no Governor, US Senator, councilor or justice to search for")
+    want = {"my rep": "Officials", "my senator": "Officials", "who is my state rep": "Officials",
+            "my representative": "Officials", gov: "Executive Branch",
+            "governor": "Executive Branch", "executive council": "Executive Branch",
+            councilor: "Executive Branch", senator: "Federal Delegation",
+            "us senator": "Federal Delegation", justice: "Judicial Branch",
+            "supreme court": "Judicial Branch", "sheriff": "County Officials",
+            "laws": "Laws", "calendar": "Calendar", "concord": "Concord"}
+    root = Path(tempfile.mkdtemp())
+    try:
+        (root / "stub.js").write_text(Path("tests/dom_stub.js").read_text(encoding="utf-8"), encoding="utf-8")
+        (root / "find.js").write_text(Path("src/pages/find.js").read_text(encoding="utf-8"), encoding="utf-8")
+        (root / "go.json").write_text(json.dumps({"rows": rows, "cases": list(want)}), encoding="utf-8")
+        (root / "go.js").write_text(_FIND_PAGES_JS, encoding="utf-8")
+        r = _run(["node", "go.js"], cwd=root, capture_output=True, text=True, timeout=60)
+        said = (r.stdout + r.stderr).strip()
+        last_line = (said.splitlines() or ["no output"])[-1]
+        assert r.returncode == 0 and last_line.startswith("{"), "node go.js: " + last_line[:300]
+        got = json.loads(last_line)
+    finally:
+        shutil.rmtree(root, ignore_errors=True)
+    bad = []
+    for q, name in want.items():
+        found = got.get(q) or []
+        hit = next((i for i, x in enumerate(found) if x["name"] == name), None)
+        if hit is None:
+            bad.append(f"{q!r} does not find {name}")
+        elif not found[hit]["whole"]:
+            bad.append(f"{q!r} finds {name} only by part of a word, so the bills go above it")
+        elif [x for x in found[:hit] if not x["whole"] or x["kind"] in ("Legislator", "Former Member")]:
+            bad.append(f"{q!r} lists {[x['name'] for x in found[:hit]]} above {name}")
+    my = [x["name"] for x in got["my rep"]]
+    if "Rep. Myles England (D - Straf 12)" in my[:my.index("Officials") if "Officials" in my else None]:
+        bad.append(f"'my rep' prefers a member whose name begins My: {my}")
+    for q in ("my senator", "my representative"):
+        if "Finding Your Representatives" not in [x["name"] for x in got[q] if x["whole"]]:
+            bad.append(f"{q!r} does not find the guide to finding your representatives by its words")
+    con = got["concord"]
+    if con[0]["href"] != "officials?town=Concord" or con[0]["kind"] != "Town" \
+            or [x["kind"] for x in con[1:4]] != ["Ward"] * 3:
+        bad.append(f"'concord' lists {[(x['name'], x['kind']) for x in con[:4]]}: the city, then "
+                   "its wards, each a Ward")
+    assert not bad, "; ".join(bad[:5])
+    return "ok", (f"{len(want)} searches: the Officials page by 'my rep' and 'who is my state rep', "
+                  f"its tabs by '{gov}', '{senator}', '{councilor}' and '{justice}', the Laws, the "
+                  "Calendar, and Concord once above its wards, each a Ward")
 
 
 @check("frontend", "the search names a committee with its chamber, House Housing Committee, so "
@@ -68735,8 +69186,10 @@ def _home_finder_suggests_towns():
     assert 'const FIND_IDS={out:"findout",box:"findq",clear:"findclear",say:"findsay"};' in fj \
         and "function findDraw(q,ids){\n  ids=ids||FIND_IDS;" in fj \
         and "function findSay(html,ids){" in fj, "find.js's findDraw does not take the ids it draws into"
+    # Three redraws: the bills counted, the words the bills use, and (25
+    # October 2026) a statute's chapter looked up -- each into the box that asked.
     redraws = fj[fj.index("function findDraw(q,ids){"):fj.index("function findSay(")]
-    assert "findDraw(box.value);" not in redraws and redraws.count("findDraw(box.value,ids);") == 2, (
+    assert "findDraw(box.value);" not in redraws and redraws.count("findDraw(box.value,ids);") == 3, (
         "a redraw find.js asks for draws into the header's panel whichever box asked")
     css = (site / "app.css").read_text(encoding="utf-8")
     assert ":where(body.pg) .hqdrop{position:absolute;top:calc(100% + var(--sp-2))" in css \
@@ -68917,6 +69370,78 @@ def _legislators_page_tabs():
                   "town pages' script and drawn by the same rules as a town's; My Town "
                   "the finder over its 260px window and the map under it; the officials as "
                   "person chips")
+
+
+# The Officials page's town finder (build_pages.LEGFIND_JS) in node against
+# dom_stub.js, over a few towns and no members: opened as /officials?town=X,
+# then typed into.
+_TOWN_FINDER_JS = r"""
+require("./stub.js");
+const fs = require("fs");
+const D = {"Andover": {"0": {}}, "Dover": {"1": {}, "2": {}}, "Concord": {"1": {}, "2": {}, "3": {}},
+           "Durham": {"0": {}}, "Hampton": {"0": {}}, "New Hampton": {"0": {}}};
+globalThis.fetch = async (u) => ({ok: true, status: 200,
+  json: async () => String(u).endsWith("districts.json") ? D : []});
+globalThis.dispatchEvent = () => {};
+globalThis.CustomEvent = globalThis.CustomEvent || class { constructor(t, o) { this.detail = o && o.detail; } };
+location.search = process.argv[2] || "";
+const box = document.getElementById("lq"), out = document.getElementById("lmatch");
+const ticks = async (n) => { for (let i = 0; i < n; i++) await new Promise(r => setImmediate(r)); };
+(0, eval)(fs.readFileSync("./finder.js", "utf8"));
+(async () => {
+  await ticks(20);
+  const res = {opened: out.innerHTML, typed: {}};
+  for (const q of ["dover", "hampton", "ham", "concord"]) {
+    box.value = q; box.fire("input"); res.typed[q] = out.innerHTML;
+  }
+  console.log(JSON.stringify(res));
+})().catch(e => { console.log("RUN " + e.message); process.exit(1); });
+"""
+
+
+@check("frontend", "the Officials page's town finder matches a town from the start of a word, so "
+       "Dover is not Andover, and a city named in its address opens its wards",
+       needs=("build_pages",))
+def _town_finder_words(BP):
+    """The audit of 25 October 2026, M4: the town finder listed any town
+    whose name held the letters typed, so "Dover" still listed Andover, and
+    "ham" Durham. It matches from the start of a word now -- "Hampton" still
+    lists Hampton and New Hampton, and "ham" them and not Durham -- and a
+    city named in the address,
+    /officials?town=Concord, which the site search's one row for a city opens
+    (find.json), arrives with its wards open, since a ward is what the reader
+    came for. LEGFIND_JS, run in node over six towns."""
+    if not shutil.which("node"):
+        return "skip", "node is not installed"
+    m = re.search(r"<script>(.*?)</script>", BP.LEGFIND_JS, re.S)
+    assert m, "build_pages.LEGFIND_JS carries no <script>"
+    root = Path(tempfile.mkdtemp())
+    try:
+        (root / "stub.js").write_text(Path("tests/dom_stub.js").read_text(encoding="utf-8"), encoding="utf-8")
+        (root / "finder.js").write_text(_with_components(m.group(1)), encoding="utf-8")
+        (root / "go.js").write_text(_TOWN_FINDER_JS, encoding="utf-8")
+        got = {}
+        for name, arg in (("town", "?town=Concord"), ("none", "")):
+            r = _run(["node", "go.js", arg], cwd=root, capture_output=True, text=True, timeout=60)
+            said = (r.stdout + r.stderr).strip()
+            last = (said.splitlines() or ["no output"])[-1]
+            assert r.returncode == 0 and last.startswith("{"), f"node go.js {arg}: {last[:300]}"
+            got[name] = json.loads(last)
+    finally:
+        shutil.rmtree(root, ignore_errors=True)
+    towns = lambda h: re.findall(r"<b>([^<]+)</b>", h)  # noqa: E731
+    t = got["none"]["typed"]
+    assert towns(t["dover"]) == ["Dover"] and "Durham" not in towns(t["ham"]) \
+        and towns(t["hampton"]) == ["Hampton", "New Hampton"], (
+        f"the town finder lists {towns(t['dover'])} for 'dover', {towns(t['ham'])} for 'ham' and "
+        f"{towns(t['hampton'])} for 'hampton': a town is matched from the start of a word")
+    opened = got["town"]["opened"]
+    assert all(f'href="town/concord-ward-{w}.html"' in opened for w in (1, 2, 3)) \
+        and "town/concord-ward-" not in got["none"]["typed"]["concord"], (
+        "/officials?town=Concord does not arrive with Concord's wards open, or a city typed "
+        f"opens them unasked: {opened[:300]!r}")
+    return "ok", ("'dover' lists Dover alone, 'hampton' Hampton and New Hampton, 'ham' not Durham; "
+                  "/officials?town=Concord opens its wards")
 
 
 @check("frontend", "the Statewide Officials tab is Executive Branch, /officials#statewide still "
@@ -105862,8 +106387,10 @@ def _chapter_addresses_one_rule(BR, BSV, G, BP, RSA):
     the Laws section's on a guide's page, a law's follow address
     (build_feeds), the app's two (rsaHref, changedLine), and the not-found
     page's script that lower-cases a typed citation. The Python ones ask
-    build_rsa.chapter_path; the two scripts, which cannot, carry
-    FOLDER_CHAPTERS as a list held to it here. And every file of the
+    build_rsa.chapter_path; the scripts, which cannot, carry
+    FOLDER_CHAPTERS as a list held to it here -- since 25 October 2026 the
+    site search's too (find.js's Law row, which _find_laws runs for RSA
+    404:5). And every file of the
     fixture site, whose statute table carries RSA 404, is read for an
     address of it without the slash, so a writer added later is caught by
     what it writes rather than by its name."""
@@ -105883,7 +106410,10 @@ def _chapter_addresses_one_rule(BR, BSV, G, BP, RSA):
     assert (G.law_href("RSA 404:1, I"), G.law_href("RSA 91-A:4")) == ("/laws/404/#s1", "/laws/91-a#s4"), (
         f"a guide links RSA 404:1 at {G.law_href('RSA 404:1, I')}")
     js = Path("src/pages/app.js").read_text(encoding="utf-8")
+    # And the site search's Law row (find.js, findLawRow; 25 October 2026).
+    fjs = Path("src/pages/find.js").read_text(encoding="utf-8")
     for where, text, pat in (("app.js", js, r"const LAW_FOLDERS=(\[[^\]]*\]);"),
+                             ("find.js", fjs, r"const FLAW_FOLDERS=(\[[^\]]*\]);"),
                              ("build_pages.NOT_FOUND", BP.NOT_FOUND, r"var FOLDERS=(\[[^\]]*\]);")):
         m = re.search(pat, text)
         assert m and tuple(json.loads(m.group(1))) == tuple(BR.FOLDER_CHAPTERS), (
