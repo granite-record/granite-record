@@ -137,9 +137,11 @@ permissions:
 # run's id, and never waits here. Still open: a dry run started while a real
 # run of main holds gc-night and the scheduled night waits behind it cancels
 # that night, which the dead-man's switch then reports. preflight holds this
-# line beside DRY_RUN.
+# line beside DRY_RUN. The box is ticked only when it is true or "true" (THE
+# TIMER'S BOXES ARE STRINGS: "false" is a string, and a string is truthy, so
+# the timer's first real night waited here, in line with the dry runs).
 concurrency:
-  group: ${{ ((github.event_name != 'schedule' && inputs.dry_run) || github.ref != 'refs/heads/main') && 'dry-runs' || github.run_id }}
+  group: ${{ (github.ref != 'refs/heads/main' || (github.event_name != 'schedule' && (inputs.dry_run == true || inputs.dry_run == 'true'))) && 'dry-runs' || github.run_id }}
   cancel-in-progress: false
 
 env:
@@ -163,7 +165,10 @@ env:
   # waiting night unapprovable. nightly.py and cloud.py read the ref too
   # (GITHUB_REF), so an edit to this line does not reopen that. A scheduled
   # night is always main's, and it and a run by hand of main are as before.
-  DRY_RUN: ${{ (github.event_name != 'schedule' && inputs.dry_run) || github.ref != 'refs/heads/main' }}
+  # The branch first, and the box ticked only when it is true or "true": a
+  # run through GitHub's API -- the timer's -- carries "false", a string, and
+  # `"false" || <a branch other than main>` was "false" (25 October 2026).
+  DRY_RUN: ${{ github.ref != 'refs/heads/main' || (github.event_name != 'schedule' && (inputs.dry_run == true || inputs.dry_run == 'true')) }}
   PREVIEW: ${{ github.event_name == 'schedule' || inputs.preview }}
   # Only ever from the box, on a run by hand: never on a scheduled night.
   NEW_TERM: ${{ github.event_name == 'workflow_dispatch' && inputs.new_term }}
@@ -241,6 +246,9 @@ jobs:
     outputs:
       built: ${{ steps.night.outputs.built }}
       publishable: ${{ steps.night.outputs.publishable }}
+      # The run's own DRY_RUN, for the publish job, whose if cannot read env
+      # (THE TIMER'S BOXES ARE STRINGS, at the publish job).
+      dry_run: ${{ env.DRY_RUN }}
       # THE GATE (6 October 2026; nightly.py says what it is): "false" when the
       # night would publish without approval, "true" when it would wait for
       # it. In shadow nothing reads it yet: every night still waits in
@@ -620,10 +628,20 @@ jobs:
   # here is what lets later nights keep what it accepted. A run of a branch
   # other than main is a dry run whatever its boxes say, and this job never
   # runs for one (a job's if cannot read env, so it names the ref itself).
+  #
+  # THE TIMER'S BOXES ARE STRINGS, AT THIS LINE (25 October 2026). The timer
+  # starts the night through GitHub's API, which carries every box as a
+  # string, and its first night (run 129) built a site fit for production
+  # whose publish job was skipped: this line asked `inputs.dry_run == false`,
+  # and "false" is not false. The run's title read the box as false, and so
+  # did DRY_RUN ("false" is a string, and && returns it), so nothing else
+  # noticed; nothing waited for approval, and GitHub's own run stood down for
+  # the timer's. So the job asks the night for the run's DRY_RUN, which reads
+  # the same whichever way the box arrives.
   publish:
     name: publish to production
     needs: night
-    if: needs.night.outputs.publishable == 'true' && github.ref == 'refs/heads/main' && (github.event_name == 'schedule' || inputs.dry_run == false)
+    if: needs.night.outputs.publishable == 'true' && needs.night.outputs.dry_run == 'false' && github.ref == 'refs/heads/main'
     runs-on: windows-2022
     timeout-minutes: 60
     environment:
