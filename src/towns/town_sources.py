@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-10-23.1
+# GRANITE_VERSION: 2026-10-23.2
 """
 Where each municipal official a town page shows comes from, how old the copy
 on this disk is, and when it is due to be read again.
@@ -34,6 +34,14 @@ THE THREE SOURCES, and the date each copy carries in its own file (SOURCES):
   town_sites  the towns' and cities' own websites: collected/town_boards.json,
               each board's and council's `read_on`, the moment its page was
               saved
+
+AND THE TOWN DIRECTORY'S SOURCES (24 October 2026), the facts of the Town
+Services tab rather than officials, held to the same rule:
+
+  imls_pls    the Institute of Museum and Library Services' Public
+              Libraries Survey: collected/libraries.json, each town's
+              `read_on`, the day the survey was saved. A survey comes out
+              once a year, so only MAX_AGE makes a copy due.
 
 A copy is as old as its oldest row. The county officers are not here: the site
 draws them from corrections/officials.json, a person's file, which preflight's
@@ -168,6 +176,21 @@ SOURCES = {
                   "meeting and city election, then run src/towns/parse_town_sites.py and "
                   "src/towns/town_boards.py"),
     },
+    "imls_pls": {
+        "name": "the Institute of Museum and Library Services' Public Libraries Survey",
+        "url": "https://www.imls.gov/research-evaluation/surveys/public-libraries-survey-pls",
+        "file": "collected/libraries.json",
+        "writer": "src/towns/parse_libraries.py",
+        "fetch": ("src/fetch/other/town_directory.py --source imls census_blocks (federal "
+                  "files any machine can reach), read through src/towns/parse_libraries.py"),
+        "fields": ("the Town Services tab's Library card: each public library in the town, "
+                   "its address and phone",),
+        "page_says": "its survey's year: \"from the Public Libraries Survey, fiscal year 2024\"",
+        "events": (),
+        "again": ("find the newest survey's CSV on {url}, point SOURCES['imls'] in "
+                  "src/fetch/other/town_directory.py and SURVEY, OUTLETS and FISCAL_YEAR in "
+                  "src/towns/parse_libraries.py at it, then run the two"),
+    },
 }
 
 # A day a person looked for a newer copy of a source and found none, and what
@@ -190,6 +213,9 @@ FLOORS = {
                  "polling_place": 200},
     "nhdot": {"municipalities": 230, "offices": 1300, "website": 220},
     "town_sites": {"boards": 55, "councils": 8},
+    # Measured on 24 October 2026: 229 libraries in 207 towns, every one of the
+    # survey's New Hampshire outlets placed by its census block.
+    "imls_pls": {"towns": 200, "libraries": 220},
 }
 
 
@@ -307,7 +333,8 @@ def rows(key, data):
     return [v for k, v in data.items() if isinstance(v, dict) and not k.startswith("_")]
 
 
-DATE_FIELD = {"sos_list": "read_on", "nhdot": "as_of", "town_sites": "read_on"}
+DATE_FIELD = {"sos_list": "read_on", "nhdot": "as_of", "town_sites": "read_on",
+              "imls_pls": "read_on"}
 
 
 def copy_date(key, data):
@@ -337,6 +364,8 @@ def counts(key, data):
         return {"municipalities": len(rs),
                 "offices": sum(len(r.get("officials") or []) for r in rs),
                 "website": sum(1 for r in rs if r.get("website"))}
+    if key == "imls_pls":
+        return {"towns": len(rs), "libraries": sum(len(r.get("libraries") or []) for r in rs)}
     d = data if isinstance(data, dict) else {}
     return {"boards": len(d.get("boards") or {}), "councils": len(d.get("councils") or {})}
 

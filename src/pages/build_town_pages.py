@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-09.40
+# GRANITE_VERSION: 2026-09-09.41
 """
 A page per town and ward: everyone who represents the people who live there.
 
@@ -61,6 +61,7 @@ import argparse
 import datetime
 import json
 import re
+import urllib.parse
 
 import build_date
 import components as C
@@ -684,6 +685,119 @@ def town_officials_block(town, key, town_off, site_on_page=None, board=None,
                                       board, loc, council))
 
 
+# ---- THE TOWN SERVICES TAB --------------------------------------------------
+# The person, 24 October 2026: "gather more useful information for the town
+# pages like the address of city hall, directories for the public schools in
+# that town's district, transfer station addresses and hours if possible ...
+# That would exist on town pages and would display in things like the guides
+# if you have your town selected." The plan's first phase is here: where the
+# town office is and how to reach it, and the town's public libraries. Each
+# card says where its facts come from and how old they are, as the officials'
+# cards do. The schools, the transfer station and the tax rate come later, as
+# cards of this tab.
+MONTHS = ("January", "February", "March", "April", "May", "June", "July", "August",
+          "September", "October", "November", "December")
+OSM_SEARCH = "https://www.openstreetmap.org/search?query="
+LIBRARY_SURVEY = ("the Public Libraries Survey for fiscal year 2024, by the Institute of "
+                  "Museum and Library Services")
+
+
+def month_year(iso):
+    """"2025-09-02" as "September 2025"; "" for anything else."""
+    m = re.match(r"^(\d{4})-(\d\d)", iso or "")
+    return f"{MONTHS[int(m.group(2)) - 1]} {m.group(1)}" if m else ""
+
+
+def address_sources(town, said):
+    """The sentence under the town office's address: which sources give it
+    (collected/town_halls.json's `from`, two or more), each with its date --
+    the reason it is drawn at all (parse_town_halls: two that agree, or no
+    address)."""
+    names = []
+    for f in said:
+        src, on = f.get("source"), f.get("on") or ""
+        if src == "nhdot":
+            names.append(f"{NHDOT_SHORT} ({month_year(on)})")
+        elif src == "sos_list":
+            names.append(f"the Secretary of State's list of town and city clerks "
+                         f"({month_year(on)})")
+        elif src == "granit_cai":
+            names.append("NH GRANIT's 2014 survey of public buildings")
+        elif src == "town_site":
+            names.append(f"{E(town)}'s own website, as this site read it on {long_date(on)}")
+    if len(names) < 2:
+        return ""
+    joined = (", ".join(names[:-1]) + " and " + names[-1]) if len(names) > 2 \
+        else " and ".join(names)
+    return (f"{joined[:1].upper()}{joined[1:]} "
+            f"{'all' if len(names) > 2 else 'both'} give this address.")
+
+
+def maplink(line):
+    """The address on OpenStreetMap, in a new tab: a link a reader follows,
+    and nothing asked of anybody until they do."""
+    return (f'<a class="offmap" href="{E(OSM_SEARCH + urllib.parse.quote(line))}" '
+            'target="_blank" rel="noopener">Map</a>')
+
+
+def services_sections(town, key, town_off, hall=None, libraries=None):
+    """The Town Services tab's cards, for the town `key` names (a city's wards
+    share it): its office and its libraries. [] for a place NHDOT does not
+    list -- an unincorporated place has no town office -- so the tab is not
+    drawn there (tabbed: a panel with nothing in it has no tab).
+
+    `libraries` is the town's entry in collected/libraries.json, {} where the
+    file holds none for it -- which the card says -- and None where the file
+    was not loaded, when the card is not drawn at all: a missing file is not
+    a town with no library."""
+    if not town_off:
+        return []
+    city = key in CITIES
+    out = []
+    # ---- the town office ---------------------------------------------------
+    hall = hall or {}
+    rows, how = [], []
+    if town_off.get("phone"):
+        how.append(tel(town_off["phone"]))
+    site = weblink(town_off.get("website"))
+    if site:
+        how.append(site)
+    line = ""
+    if hall.get("street"):
+        line = f'{hall["street"]}, {hall["place"]}, NH {hall["zip"]}'
+        rows.append(off_row(E(line), how + [maplink(line)], "Where it is"))
+    mailing = town_off.get("mailing") or ""
+    if mailing and not (hall.get("street") and mailing.lower().startswith(
+            hall["street"].lower())):
+        rows.append(off_row(E(mailing), [] if line else how, "Mailing address"))
+    elif not line and how:
+        rows.append(off_row(E(town), how, "Contact"))
+    if rows:
+        said = address_sources(town, hall.get("from") or []) if line else ""
+        out.append(card("City hall" if city else "Town office", (
+            '<ul class="offlist">' + "".join(rows) + "</ul>"
+            + note(said or ("No street address for the office is on file that two sources "
+                            "agree on; the mailing address is NHDOT's.")))))
+    # ---- the libraries -----------------------------------------------------
+    if libraries is None:
+        return out
+    libs = libraries.get("libraries") or []
+    if libs:
+        rows = []
+        for lib in libs:
+            where_ = f'{lib["street"]}, {lib["city"]}'
+            seat = (f"Branch library, {where_}" if lib.get("kind") == "branch" else where_)
+            rows.append(off_row(E(lib["name"]), [tel(lib["phone"])] if lib.get("phone") else [],
+                                E(seat)))
+        out.append(card("Libraries" if len(libs) > 1 else "Library", (
+            '<ul class="offlist">' + "".join(rows) + "</ul>"
+            + note(f"From {LIBRARY_SURVEY}."))))
+    else:
+        out.append(card("Library", note(f"No public library is listed in {E(town)} in "
+                                        f"{LIBRARY_SURVEY}.")))
+    return out
+
+
 def clerk_row(loc, seat="Town or city clerk"):
     """The town or city clerk, from the Secretary of State's list. Under the
     Town officials tab's "Town clerk" heading the seat is not said again."""
@@ -1213,13 +1327,29 @@ def build(town, ward, wards, dist, legs, off, base, tmpl, elect=None):
               ("map", "District Map", map_section(town, ward, dist)),
               ("officials", "City Officials" if slug(town, "0") in CITIES
                else "Town Officials", officials),
-              ("vote", "How to Vote", vote_sections(town, loc, town_off))]
+              ("vote", "How to Vote", vote_sections(town, loc, town_off)),
+              # THE TOWN SERVICES TAB (24 October 2026): services_sections,
+              # where its files are loaded; without them the office is the
+              # Town Officials tab's card already, and the tab is not drawn.
+              ("services", "City Services" if slug(town, "0") in CITIES else "Town Services",
+               services_sections(
+                   town, slug(town, "0"), town_off,
+                   (off.get("_halls") or {}).get(slug(town, "0")),
+                   None if off.get("_libraries") is None
+                   else off["_libraries"].get(slug(town, "0"), {}))
+               if (off.get("_halls") is not None or off.get("_libraries") is not None)
+               else [])]
 
     srcs = ["NH General Court", "Secretary of State"]
     if (board or council) and officials:
         srcs.append(f"{E(town)}&rsquo;s own website")
     if town_off.get("officials") and officials:
         srcs.append(NHDOT)
+    if town_off and (off.get("_libraries") or {}).get(slug(town, "0")):
+        srcs.append("the Institute of Museum and Library Services")
+    if town_off and any(f.get("source") == "granit_cai" for f in
+                        ((off.get("_halls") or {}).get(slug(town, "0")) or {}).get("from") or []):
+        srcs.append("NH GRANIT")
     body = [f'<h1 class="offtitle">{E(label)}</h1>',
             ward_picker(town, ward, wards),
             answer_line(dist),
@@ -1469,6 +1599,10 @@ def main():
     ap.add_argument("--boards", default="collected/town_boards.json",
                     help="select boards read off towns' own websites, "
                          "written by town_boards.py")
+    ap.add_argument("--halls", default="collected/town_halls.json",
+                    help="each town office's street address, written by parse_town_halls.py")
+    ap.add_argument("--libraries", default="collected/libraries.json",
+                    help="each town's public libraries, written by parse_libraries.py")
     a = ap.parse_args()
 
     site = Path(a.site)
@@ -1527,6 +1661,27 @@ def main():
     else:
         print(f"  town officials: {offices} is not on disk, so the "
               "\"who runs\" section is not drawn")
+    # THE TOWN SERVICES TAB'S FILES (24 October 2026), on the same contract:
+    # absent, the card is not drawn rather than drawn empty.
+    for opt, slot, what in ((a.halls, "_halls", "town offices' street addresses"),
+                            (a.libraries, "_libraries", "public libraries")):
+        f = Path(opt)
+        if not f.exists():
+            print(f"  {what}: {f} is not on disk, so the Town Services tab goes without them")
+            continue
+        try:
+            data = json.loads(f.read_text(encoding="utf-8"))
+        except ValueError as e:
+            print(f"  {what}: {f} did not parse ({e}); skipped")
+            continue
+        off[slot] = {k: v for k, v in data.items() if not k.startswith("_")}
+        if slot == "_halls":
+            n = sum(1 for v in off[slot].values() if v.get("street"))
+            print(f"  town offices: {n} of {len(off[slot])} with a street address two "
+                  f"sources agree on, from {f}")
+        else:
+            n = sum(len(v.get("libraries") or []) for v in off[slot].values())
+            print(f"  libraries: {n} in {len(off[slot])} towns, from {f}")
     # A town's own select board, where its website lists all of it and is
     # current. Absent, every board is the directory's -- which is dated and
     # says so, so the page is still true, only older.
