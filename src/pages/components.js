@@ -1,4 +1,4 @@
-// GRANITE_VERSION: 2026-10-09.20
+// GRANITE_VERSION: 2026-10-09.21
 /* THE SITE'S COMPONENTS, IN THE BROWSER. Published as site/components.js and
    loaded by every page, in its head, before app.js, find.js and any page's
    own script, so each of them draws a person, a committee, a date or a time
@@ -274,7 +274,9 @@ var ICONS={
   gavel:'<path d="M9.4 7.25 12.25 4.4l6.35 6.35-2.85 2.85z"/><path d="M12.6 10.4 4.75 18.25"/><path d="M13 20.75h7.5"/>',
   box:'<path d="M3.75 8.25 12 4.25l8.25 4v9.5L12 21.75l-8.25-4z"/><path d="M3.75 8.25 12 12.25l8.25-4M12 12.25v9.5"/><path d="M7.9 6.25l8.25 4"/>',
   signpost:'<path d="M12 3.25v17.5M8.75 20.75h6.5"/><path d="M12 5.25h6.5l2 2-2 2H12"/><path d="M12 11.25H5.5l-2 2 2 2H12"/>',
-  grid:'<rect x="4" y="4" width="6.5" height="6.5" rx="1"/><rect x="13.5" y="4" width="6.5" height="6.5" rx="1"/><rect x="4" y="13.5" width="6.5" height="6.5" rx="1"/><rect x="13.5" y="13.5" width="6.5" height="6.5" rx="1"/>'
+  grid:'<rect x="4" y="4" width="6.5" height="6.5" rx="1"/><rect x="13.5" y="4" width="6.5" height="6.5" rx="1"/><rect x="4" y="13.5" width="6.5" height="6.5" rx="1"/><rect x="13.5" y="13.5" width="6.5" height="6.5" rx="1"/>',
+  // The outdoors: fishing, hunting and boating (25 October 2026).
+  tree:'<path d="M12 3.25 7 9.75h2.75L5.5 15.25h13l-4.25-5.5H17z"/><path d="M12 15.25v5.5M9.25 20.75h5.5"/>'
 };
 function icon(name){
   var inner=typeof name==="string"&&Object.prototype.hasOwnProperty.call(ICONS,name)?ICONS[name]:null;

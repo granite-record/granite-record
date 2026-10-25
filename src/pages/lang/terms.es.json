@@ -582,6 +582,79 @@
     "Find your town or city clerk"
    ],
    "basis": "The Officials page in Spanish, 25 October 2026: the Your Town card and the who-to-contact guide said Busque, two other entries Encuentre; the card's heading is redrawn on the Officials page, so the two showed side by side."
+  },
+  {
+   "en": [
+    "Fish and Game"
+   ],
+   "es": [
+    "Pesca y Caza",
+    "Fish and Game"
+   ],
+   "basis": "The fishing, hunting and boating guides, 25 October 2026: the agency publishes no Spanish name; Departamento de Pesca y Caza (Fish and Game) at first mention, Pesca y Caza after."
+  },
+  {
+   "en": [
+    "fishing license",
+    "fishing licenses"
+   ],
+   "es": [
+    "licencia de pesca",
+    "licencias de pesca"
+   ],
+   "basis": "The fishing, hunting and boating guides, 25 October 2026",
+   "skip": [
+    "hunting and fishing license"
+   ]
+  },
+  {
+   "en": [
+    "hunting license",
+    "hunting licenses"
+   ],
+   "es": [
+    "licencia de caza",
+    "licencias de caza"
+   ],
+   "basis": "The fishing, hunting and boating guides, 25 October 2026"
+  },
+  {
+   "en": [
+    "hunter education"
+   ],
+   "es": [
+    "educación para cazadores"
+   ],
+   "basis": "The fishing, hunting and boating guides, 25 October 2026"
+  },
+  {
+   "en": [
+    "safe boater education certificate",
+    "safe boater certificate"
+   ],
+   "es": [
+    "certificado de educación para la navegación segura",
+    "certificado de navegación segura"
+   ],
+   "basis": "The fishing, hunting and boating guides, 25 October 2026"
+  },
+  {
+   "en": [
+    "boat fee decal"
+   ],
+   "es": [
+    "calcomanía de la cuota de embarcación"
+   ],
+   "basis": "The fishing, hunting and boating guides, 25 October 2026: fee is cuota on every page."
+  },
+  {
+   "en": [
+    "Marine Patrol"
+   ],
+   "es": [
+    "Patrulla Marina"
+   ],
+   "basis": "The fishing, hunting and boating guides, 25 October 2026: with the English beside it at first mention."
   }
  ]
 }

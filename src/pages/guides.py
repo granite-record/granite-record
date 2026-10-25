@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-10-11.38
+# GRANITE_VERSION: 2026-10-11.39
 """
 The how-to guides: their words, their sources, and what each was checked
 against. Read by build_civics.py, which draws them on the Resources hub's
@@ -4866,6 +4866,473 @@ GUIDES += [WHO_TO_CONTACT]
 
 
 # ---------------------------------------------------------------------------
+# FISHING, HUNTING AND BOATING (the person, 25 October 2026: "adding things
+# like how to get a fishing license, hunting license, boat license, etc would
+# be a good fit"). Three guides, resting first on the statutes, read that day
+# on this site's own Laws pages (RSA 207, 208, 211, 214, 270, 270-D, 270-E and
+# 72-A); then on Fish and Game's online license system (nhfishandgame.com, a
+# state system at a .com address, which answers this machine) and the U.S.
+# Fish and Wildlife Service's Duck Stamp page, both read the same day. Fish
+# and Game's, Marine Patrol's and the DMV's own pages refuse this machine, so
+# their claims wait for the person's printouts and hold the guides back
+# until then. Hunting and fishing fees are set by Fish and Game (RSA 214:8,
+# II; RSA 206:10, I), not by statute, so neither guide prints one: they link
+# the fee page. The boating fees the law sets (RSA 270-D:17, 270-E:5) are
+# printed, each a fig() held to its section's words.
+# ---------------------------------------------------------------------------
+OUT_READ = "2026-10-25"
+OUT_STATE_READ = None                # the person's printouts of the nh.gov pages
+NHFG_LICENSE = "https://www.nhfishandgame.com/"
+FG_REQUIREMENTS = "https://www.wildlife.nh.gov/licenses-and-permits/nh-license-requirements"
+FG_FEES = "https://www.wildlife.nh.gov/fishing-new-hampshire/licenses-and-permits"
+FG_FREE_DAYS = "https://www.wildlife.nh.gov/fishing-new-hampshire/free-fishing-days-new-hampshire"
+FG_MARINE = "https://www.wildlife.nh.gov/saltwater-fisheries-new-hampshire/marine-licenses-and-permits"
+FG_SENIOR = "https://www.wildlife.nh.gov/licenses-and-permits/senior-and-milestone-licenses"
+FG_HUNTER_ED = ("https://www.wildlife.nh.gov/hunting-nh/hunter-education/"
+                "hunter-education-frequently-asked-questions")
+FG_HIP = ("https://www.wildlife.nh.gov/licenses-and-permits/"
+          "national-migratory-bird-harvest-information-program-hip")
+DUCK_STAMP = "https://www.fws.gov/service/buy-duck-stamp-or-e-stamp"
+MP_BOATING_FAQ = ("https://www.nhsp.dos.nh.gov/our-services/field-operations-bureau/marine-patrol/"
+                  "boating-education/boating-education-faqs")
+MP_TEMPORARY = ("https://www.nhsp.dos.nh.gov/our-services/field-operations-bureau/marine-patrol/"
+                "boating-education/14-day-temporary-safe-boating")
+DMV_BOATS = "https://www.dmv.nh.gov/vehicles-boats-and-titles/boat-registrations"
+DMV_BOAT_AGENTS = ("https://www.dmv.nh.gov/vehicles-boats-or-titles/boat-registrations/"
+                   "authorized-boat-agents")
+
+# What the license system's own page says, read on 25 October 2026.
+NHFG_SAYS = claim(
+    "Licenses run on calendar year (except temporary types), expiring on December 31st; must be "
+    "purchased by the licensee, who enters residency proof; no refunds or exchanges; sportspersons "
+    "without a prior hunting or archery license (or NH safety certificate) in the system cannot buy "
+    "their hunting or archery license online and must buy it at a traditional license agent, "
+    "showing the prior license or certificate; a license must be printed and signed by the "
+    "applicant, except that for fishing licenses (not hunting) an image on a smart phone is "
+    "sufficient if a photo ID can be presented; residents 68 and over born 1948 or later buy "
+    "discounted senior licenses; those born 1947 or earlier obtain a permanent Milestone license "
+    "from Fish and Game in Concord or select agents; HIP permit and deer and turkey registration "
+    "online.", NHFG_LICENSE, OUT_READ)
+
+FISHING = guide(
+    "fishing-license", "How to Get a Fishing License",
+    "Who needs a New Hampshire fishing license and who does not, the free fishing days, saltwater "
+    "fishing, and how to buy a license online or from an agent.",
+    "Anyone 16 or older needs a license to fish in New Hampshire, in fresh water or salt water, "
+    "except on the free fishing days Fish and Game sets each year. Buy it online from Fish and Game "
+    "or from a license agent. Every license ends on December 31.",
+    [ask("Are you under 16?",
+         [("Yes", "You may fish without a license."),
+          ("No", "You need a license, unless it is a free fishing day.")]),
+     ask("Where will you fish?",
+         [("Lakes, ponds, rivers and streams", "A freshwater fishing license."),
+          ("The coast and tidal waters", "A recreational saltwater license.")])],
+    [step("Check whether you need one",
+          "<p>To fish in New Hampshire you need a license, and you carry it while you fish. You "
+          "do <b>not</b> need one:</p>"
+          "<ul><li>if you are under 16;</li>"
+          "<li>if you are a New Hampshire resident fishing on your own land;</li>"
+          "<li>on a <b>free fishing day</b>. The law lets Fish and Game set 2 days a year when "
+          "anyone may fish by angling without a license; its page gives the dates. Anyone in a "
+          "fishing tournament still needs a license that day.</li></ul>"
+          "<p>A New Hampshire resident who is legally blind may get a fishing license free, and "
+          "it lasts for life.</p>",
+          actions=[("Free fishing days", FG_FREE_DAYS)],
+          law=["RSA 214:1", "RSA 214:2", "RSA 214:1-e"]),
+     step("Choose your license",
+          "<p><b>Resident or nonresident.</b> You are a resident for a license if you live in "
+          "New Hampshire and claim residence in no other state for any purpose. A nonresident "
+          "full-time student at a school or college in New Hampshire pays the resident fee.</p>"
+          "<p><b>Fresh water.</b> A resident fishing license, or a one-day license. A "
+          "nonresident can buy a season license or a one-day, 3-day or 7-day license. A combined "
+          "hunting and fishing license is sold too.</p>"
+          "<p><b>Salt water.</b> Fishing for saltwater fish in coastal and tidal waters takes a "
+          "recreational saltwater license, unless you are fishing from a licensed charter or party "
+          "boat. Digging clams takes a separate license, sold to residents only, and taking "
+          "lobsters or crabs another.</p>"
+          "<p><b>Lower-cost and free licenses.</b> Residents 68 or older can buy a discounted "
+          "senior license; residents born in 1947 or earlier get a permanent Milestone license "
+          "from Fish and Game in Concord or select agents. A resident veteran who is totally and "
+          "permanently disabled from service gets a permanent license, with a one-time $10 "
+          "administrative fee. A resident on active duty stationed outside the state can get a "
+          "free license to use while home on leave.</p>"
+          "<p>Fish and Game sets the fees; its license page lists each license and its "
+          "price.</p>",
+          actions=[("License fees and requirements", FG_FEES),
+                   ("Saltwater licenses", FG_MARINE),
+                   ("Senior and Milestone licenses", FG_SENIOR)],
+          law=["RSA 207:1", "RSA 214:5-b", "RSA 214:9", "RSA 211:64-b", "RSA 211:18",
+               "RSA 214:7-a", "RSA 214:13", "RSA 214:3", "RSA 214:8"]),
+     step("Buy it online or from an agent",
+          "<p>Buy your license on Fish and Game&rsquo;s online license system or from a license "
+          "agent. You buy it yourself, as the person who will use it, and give proof of where you "
+          "live. Fish and Game cannot refund a license or exchange it.</p>"
+          "<p>Print your license and sign it, or keep an image of it on your phone: for a fishing "
+          "license, that is enough if you can also show a photo ID. Carry it while you fish, and "
+          "show it when asked.</p>"
+          "<p>Every license ends on <b>December 31</b> of the year you bought it, and cannot be "
+          "passed to anyone else.</p>",
+          actions=[("Buy a license online", NHFG_LICENSE)],
+          law=["RSA 214:1", "RSA 214:36"]),
+     step("Before you go",
+          "<p>Seasons, limits and the waters with special rules are Fish and Game&rsquo;s to set. "
+          "Check its rules for the water you plan to fish.</p>",
+          actions=[("License requirements", FG_REQUIREMENTS)])],
+    [("Buy a license online (NH Fish and Game)", NHFG_LICENSE),
+     ("License fees and requirements (NH Fish and Game)", FG_FEES),
+     ("NH license requirements (NH Fish and Game)", FG_REQUIREMENTS),
+     ("Free fishing days (NH Fish and Game)", FG_FREE_DAYS),
+     ("Marine licenses and permits (NH Fish and Game)", FG_MARINE),
+     ("Senior and Milestone licenses (NH Fish and Game)", FG_SENIOR),
+     ("Fish and game licenses, RSA 214", "/laws/214"),
+     ("Marine fisheries, RSA 211", "/laws/211")],
+    ["207", "211", "214"],
+    [claim("No person shall fish without first procuring a proper and valid license, and the "
+           "licensee shall carry it when so engaged, subject to inspection on demand.", "RSA 214:1",
+           OUT_READ),
+     claim("RSA 214:1 shall not apply to resident land owners while upon their own land or to "
+           "persons under 16 years of age while fishing; fishing licenses may be issued without "
+           "charge to resident legally blind persons, effective for the remainder of the "
+           "person's life.", "RSA 214:2", OUT_READ),
+     claim("The executive director may adopt rules establishing 2 days per year on which persons "
+           "may fish by angling only without a license, except that anglers in a fishing "
+           "tournament on either day shall possess a valid fishing license.", "RSA 214:1-e",
+           OUT_READ),
+     claim("Resident: a resident of the state as defined in RSA 21:6, except that no person shall "
+           "be deemed a resident who claims residence in any other state for any purpose.",
+           "RSA 207:1", OUT_READ),
+     claim("A nonresident full-time student in this state may purchase a nonresident student "
+           "license for hunting or fishing at the fee charged to a resident.", "RSA 214:5-b",
+           OUT_READ),
+     claim("Resident fishing license; one-day resident fishing license; resident hunting and "
+           "fishing license; nonresident fishing license; 7-day, 3-day and one-day nonresident "
+           "fishing licenses; recreational saltwater license for finfish from coastal and "
+           "estuarine waters, persons on a licensed for-hire vessel exempt.", "RSA 214:9",
+           OUT_READ),
+     claim("No person shall take clams for such person's own use unless the person is a resident "
+           "of the state and has been duly licensed.", "RSA 211:64-b", OUT_READ),
+     claim("No person shall take lobsters and crabs without first procuring a valid and proper "
+           "license.", "RSA 211:18", OUT_READ),
+     claim("Any resident 68 years of age or over may apply each year for a special license to "
+           "fish and hunt, at no more than 50 percent of the regular resident fee.", "RSA 214:7-a",
+           OUT_READ),
+     claim("A resident totally and permanently disabled from service-connected disability, "
+           "discharged other than dishonorably, is issued a perpetual special veteran's license; "
+           "a $10 administrative fee shall be charged once.", "RSA 214:13", OUT_READ),
+     claim("A resident on regular active duty permanently stationed outside the state may acquire "
+           "at no charge a special license to hunt and fish while on leave or furlough.",
+           "RSA 214:3", OUT_READ),
+     claim("All licenses shall expire on December 31 next following their issuance, and shall not "
+           "be transferable.", "RSA 214:36", OUT_READ),
+     claim("The executive director shall set fees for the various license types described in "
+           "RSA 214:9.", "RSA 214:8", OUT_READ),
+     NHFG_SAYS,
+     # Fish and Game's own pages, from the person's printouts.
+     claim("The free fishing days and their dates; tournament anglers still need a license.",
+           FG_FREE_DAYS, OUT_STATE_READ),
+     claim("Each license type and its fee.", FG_FEES, OUT_STATE_READ),
+     claim("Who needs a license in New Hampshire, by age and residency.", FG_REQUIREMENTS,
+           OUT_STATE_READ),
+     claim("The recreational saltwater license and the other marine licenses.", FG_MARINE,
+           OUT_STATE_READ),
+     claim("Senior licenses for residents 68 and older, and the Milestone license.", FG_SENIOR,
+           OUT_STATE_READ)],
+    see=[("How to get a hunting license", "/guides/hunting-license.html"),
+         ("Boating: your certificate and registration", "/guides/boating.html")],
+    figures=[fig("2 days", "RSA 214:1-e", "establishing 2 days per year"),
+             fig("3-day", "RSA 214:9", "3-day nonresident fishing license"),
+             fig("7-day", "RSA 214:9", "7-day nonresident fishing license"),
+             fig("$10", "RSA 214:13", "A $10 administrative fee shall be charged once")])
+
+GUIDES += [FISHING]
+
+HUNTING = guide(
+    "hunting-license", "How to Get a Hunting License",
+    "Hunter education, the apprentice license, licenses for turkey, pheasant and waterfowl, and how "
+    "to buy a New Hampshire hunting license.",
+    "To buy a hunting license you need a hunter education certificate, or proof that you have held "
+    "a hunting license before. A first-time hunter takes the course first, or buys an apprentice "
+    "license once and hunts beside a licensed adult. Turkey, pheasant and waterfowl each need a "
+    "license on top of it, and every license ends on December 31.",
+    [ask("Have you held a hunting license before?",
+         [("Yes", "Show that license to buy a new one."),
+          ("No", "Take hunter education, or buy an apprentice license once.")]),
+     box("Then buy any extra license your hunt needs: archery, turkey, pheasant or waterfowl.")],
+    [step("Take hunter education, or show a past license",
+          "<p>No hunting license is sold without one of these:</p>"
+          "<ul><li>a certificate from a <b>hunter education</b> course in New Hampshire;</li>"
+          "<li>proof you completed an equivalent course in another state, province or "
+          "country;</li>"
+          "<li>proof you have held a hunting license before, here or elsewhere.</li></ul>"
+          "<p>To hunt with a bow you need the same for <b>bow hunter education</b>: an archery "
+          "license and a hunting license do not stand in for each other. Fish and Game&rsquo;s "
+          "page lists the courses and how to sign up.</p>",
+          actions=[("Hunter education", FG_HUNTER_ED)],
+          law=["RSA 214:23-a"]),
+     step("Or start with an apprentice license",
+          "<p>If you have not taken the course, you may buy an <b>apprentice hunting "
+          "license</b>, once in your lifetime. You may hunt with it only beside a licensed hunter "
+          "who is 18 or older, who answers for what you do. It is not valid for moose, and it "
+          "does not count as a past license when you buy your next one.</p>",
+          law=["RSA 214:6-a"]),
+     step("Hunters under 16",
+          "<p>A hunter under 16 may hunt only with a properly licensed person 18 or older, and "
+          "needs no license of their own while hunting with that person.</p>",
+          law=["RSA 207:2-a", "RSA 214:2"]),
+     step("Choose your licenses",
+          "<p>Start with a resident or nonresident <b>hunting license</b>, or a combined hunting "
+          "and fishing license. You are a resident for a license if you live in New Hampshire and "
+          "claim residence in no other state for any purpose.</p>"
+          "<p>Add what your hunt needs:</p>"
+          "<ul><li>an <b>archery license</b> to hunt with a bow;</li>"
+          "<li>a <b>turkey</b> license or permit to hunt wild turkey;</li>"
+          "<li>a <b>pheasant</b> license to hunt pheasant;</li>"
+          "<li>for ducks and geese, a state <b>waterfowl</b> license, the federal <b>Duck "
+          "Stamp</b>, and a free <b>HIP</b> permit. A Duck Stamp is sold at most post offices, "
+          "and you sign it for it to be valid.</li></ul>"
+          "<p>Residents 68 or older can buy discounted senior licenses, and a resident veteran "
+          "totally and permanently disabled from service gets a permanent license, with a "
+          "one-time $10 administrative fee. Fish and Game sets the other fees; its license page "
+          "lists them.</p>",
+          actions=[("License fees and requirements", FG_FEES),
+                   ("The HIP permit", FG_HIP),
+                   ("Buy a Duck Stamp", DUCK_STAMP)],
+          law=["RSA 207:1", "RSA 214:9", "RSA 208:5", "RSA 214:1-b", "RSA 214:1-c",
+               "RSA 214:1-d", "RSA 214:7-a", "RSA 214:13"]),
+     step("Buy it, print it and sign it",
+          "<p>If you have bought a hunting license from New Hampshire before, you can buy online. "
+          "A first-time buyer cannot: go to a license agent with your hunter education certificate "
+          "or your past license.</p>"
+          "<p>A hunting license must be printed and signed to be valid. Carry it while you hunt. "
+          "It ends on <b>December 31</b>, and Fish and Game cannot refund it.</p>",
+          actions=[("Buy a license online", NHFG_LICENSE)],
+          law=["RSA 214:8", "RSA 214:1", "RSA 214:36"]),
+     step("In the field",
+          "<p>The law recommends that anyone hunting with a firearm or a bow, except for "
+          "waterfowl, wear a hat, vest or other clothing in <b>hunter orange</b> that can be seen "
+          "from all sides.</p>"
+          "<p>A deer you take must be <b>registered</b>; you can do it online, as you can a "
+          "turkey.</p>",
+          actions=[("Register a deer or turkey", NHFG_LICENSE)],
+          law=["RSA 207:38-b", "RSA 208:15-g"])],
+    [("Buy a license online (NH Fish and Game)", NHFG_LICENSE),
+     ("License fees and requirements (NH Fish and Game)", FG_FEES),
+     ("NH license requirements (NH Fish and Game)", FG_REQUIREMENTS),
+     ("Hunter education questions (NH Fish and Game)", FG_HUNTER_ED),
+     ("The HIP permit (NH Fish and Game)", FG_HIP),
+     ("Senior and Milestone licenses (NH Fish and Game)", FG_SENIOR),
+     ("Buy a Duck Stamp (U.S. Fish and Wildlife Service)", DUCK_STAMP),
+     ("Fish and game licenses, RSA 214", "/laws/214"),
+     ("Hunting, RSA 207 and 208", "/laws/207")],
+    ["207", "208", "214"],
+    [claim("No hunting license shall be issued unless the applicant presents a certificate of "
+           "completion from a basic hunter education program, proof of an equivalent program in "
+           "any state, province or country, or proof of a previous hunting license; the same for "
+           "an archery license and bow hunter education; neither license is proof of the "
+           "other.", "RSA 214:23-a", OUT_READ),
+     claim("An apprentice hunting license allows hunting only when accompanied by a properly "
+           "licensed person 18 years of age or over, who is accountable; not valid for moose; not "
+           "proof of a previous license; may be purchased only once in the lifetime of the "
+           "hunter.", "RSA 214:6-a", OUT_READ),
+     claim("No minor under 16 shall hunt using a firearm, bow and arrow, air rifle, or crossbow "
+           "except when accompanied by a person at least 18 years of age who is properly "
+           "licensed.", "RSA 207:2-a", OUT_READ),
+     claim("RSA 214:1 shall not apply to persons under 16 years of age while hunting when "
+           "accompanied by a licensee 18 years of age or over.", "RSA 214:2", OUT_READ),
+     claim("Resident: a resident of the state as defined in RSA 21:6, except that no person shall "
+           "be deemed a resident who claims residence in any other state for any purpose.",
+           "RSA 207:1", OUT_READ),
+     claim("Resident and nonresident hunting licenses; resident and nonresident hunting and "
+           "fishing licenses; pheasant, wild turkey and migratory waterfowl licenses.",
+           "RSA 214:9", OUT_READ),
+     claim("Archery licenses for residents and nonresidents; the licensee may hunt wildlife with "
+           "bow and arrow.", "RSA 208:5", OUT_READ),
+     claim("No person shall hunt pheasants without, in addition to the hunting license, a "
+           "pheasant license.", "RSA 214:1-b", OUT_READ),
+     claim("No person shall hunt wild turkey without, in addition to the hunting license, a "
+           "permit or license.", "RSA 214:1-c", OUT_READ),
+     claim("No person shall hunt migratory waterfowl without, in addition to the hunting license "
+           "and the federal duck stamp, a state migratory waterfowl license.", "RSA 214:1-d",
+           OUT_READ),
+     claim("Any resident 68 years of age or over may apply each year for a special license to "
+           "fish and hunt, at no more than 50 percent of the regular resident fee.", "RSA 214:7-a",
+           OUT_READ),
+     claim("A resident totally and permanently disabled from service-connected disability, "
+           "discharged other than dishonorably, is issued a perpetual special veteran's license; "
+           "a $10 administrative fee shall be charged once.", "RSA 214:13", OUT_READ),
+     claim("The license, to be valid, shall be countersigned by the licensee; the executive "
+           "director shall set fees.", "RSA 214:8", OUT_READ),
+     claim("No person shall hunt without first procuring a proper and valid license, and the "
+           "licensee shall carry it when so engaged.", "RSA 214:1", OUT_READ),
+     claim("All licenses shall expire on December 31 next following their issuance, and shall not "
+           "be transferable.", "RSA 214:36", OUT_READ),
+     claim("Any person hunting with a firearm or bow and arrow, except a person legally hunting "
+           "waterfowl, should wear a hat, vest or other suitable clothing of hunter orange "
+           "visible from all sides.", "RSA 207:38-b", OUT_READ),
+     claim("No person shall possess any deer which has not been legally registered.",
+           "RSA 208:15-g", OUT_READ),
+     NHFG_SAYS,
+     claim("A physical Federal Duck Stamp is sold at most U.S. Post Offices, participating "
+           "retailers, select refuges and online; to be valid for hunting you must sign your "
+           "physical stamp upon receipt.", DUCK_STAMP, OUT_READ),
+     # Fish and Game's own pages, from the person's printouts.
+     claim("How to take hunter education and get a certificate.", FG_HUNTER_ED, OUT_STATE_READ),
+     claim("Each license type and its fee.", FG_FEES, OUT_STATE_READ),
+     claim("Who needs a license in New Hampshire, by age and residency.", FG_REQUIREMENTS,
+           OUT_STATE_READ),
+     claim("The HIP permit for migratory bird hunters, free.", FG_HIP, OUT_STATE_READ),
+     claim("Senior licenses for residents 68 and older, and the Milestone license.", FG_SENIOR,
+           OUT_STATE_READ)],
+    see=[("How to get a fishing license", "/guides/fishing-license.html"),
+         ("Boating: your certificate and registration", "/guides/boating.html")],
+    figures=[fig("$10", "RSA 214:13", "A $10 administrative fee shall be charged once")])
+
+GUIDES += [HUNTING]
+
+BOATING = guide(
+    "boating", "Boating: Your Safe Boater Certificate and Boat Registration",
+    "Who needs New Hampshire's safe boater education certificate, how to get it, and how to "
+    "register a boat each year.",
+    "To run a boat with a motor of more than 25 horsepower you need a <b>safe boater education "
+    "certificate</b>, which lasts for life and costs $10. A boat with a motor, and a sailboat 12 "
+    "feet or longer, must also be <b>registered</b> every year, at the DMV or a boat agent; every "
+    "registration ends on December 31.",
+    [ask("Does your boat have a motor of more than 25 horsepower?",
+         [("Yes", "You need a safe boater education certificate to run it."),
+          ("No", "No certificate is needed.")]),
+     ask("Does it need registering?",
+         [("A boat with any motor, or a sailboat 12 feet or longer", "Yes, every year."),
+          ("A rowboat or canoe with no motor, or a sailboat under 12 feet", "No.")])],
+    [step("Get your safe boater education certificate",
+          "<p>You need the certificate to operate a boat with a motor of more than 25 horsepower "
+          "on New Hampshire&rsquo;s public waters. To get it, pass a safe boater education course "
+          "approved by the state, or an equivalency exam. Adults may take the exam online; anyone "
+          "under 18 takes a supervised exam.</p>"
+          "<p>It is issued from age 16, and if you pass at 15 you receive it when you turn 16. It "
+          "lasts for life. The state charges $10 for it, and all the fees you can be charged for "
+          "it, the course included, may not exceed $50.</p>"
+          "<p>A certificate from another state, the U.S. Coast Guard Auxiliary, the U.S. Power "
+          "Squadron, or an approved Canadian card counts instead.</p>"
+          "<p>Carry it, or a copy or a photo of the front and back on your phone, while you "
+          "operate, and show it to a Marine Patrol officer who asks.</p>",
+          actions=[("Boating education", MP_BOATING_FAQ)],
+          law=["RSA 270-D:10", "RSA 270-D:13", "RSA 270-D:15", "RSA 270-D:17", "RSA 270-D:11"]),
+     step("Visiting or renting: a temporary certificate",
+          "<p>If you are 16 or older and do not have a certificate, a boat dealer or rental "
+          "business approved by the state can give you a short exam and a <b>temporary "
+          "certificate</b>, good for up to 14 days and for New Hampshire&rsquo;s waters only. It "
+          "costs $10, and you can get one in each calendar year.</p>",
+          actions=[("The temporary certificate", MP_TEMPORARY)],
+          law=["RSA 270-D:14", "RSA 270-D:17"]),
+     step("Young boaters",
+          "<p>A person under 16 may operate a boat with a motor of more than 25 horsepower only "
+          "with a person 18 or older aboard who holds a safe boater certificate. A personal "
+          "watercraft (the law calls it a ski craft) may be operated only by someone 16 or older. "
+          "A child 12 or under must wear a Coast Guard approved life jacket on the deck of a boat "
+          "that is underway, unless the boat has the side rails the law describes.</p>",
+          law=["RSA 270:30", "RSA 270:74", "RSA 270:30-a"]),
+     step("Register your boat every year",
+          "<p>Every boat on New Hampshire&rsquo;s waters must be registered and display a "
+          "<b>boat fee decal</b>, except a sailboat under 12 feet, a rowboat or canoe moved by "
+          "oars, paddles or sail with no motor, and a boat registered elsewhere that is here for "
+          "not more than 30 consecutive days.</p>"
+          "<p>Register at the DMV or with an authorized boat agent. The registration fee is set by "
+          "the boat&rsquo;s length: $24 up to 16 feet, $34 up to 21 feet, $52 up to 30 feet, $72 "
+          "up to 45 feet, and $92 over that. An agent who is not a DMV employee adds $5. The "
+          "boat fee decal and the boat fee, which depends on the kind of boat, its length and its "
+          "age, are paid with it; the DMV can tell you the total for your boat.</p>"
+          "<p>Keep the registration certificate aboard. Display the number on each side of the "
+          "front half of the boat, in block letters at least 3 inches high in a contrasting "
+          "color. Every registration ends on <b>December 31</b>. If you sell the boat, or it is "
+          "destroyed or abandoned, tell the DMV in writing within 15 days.</p>",
+          actions=[("Boat registration (DMV)", DMV_BOATS),
+                   ("Authorized boat agents", DMV_BOAT_AGENTS),
+                   ("The boat fee table, RSA 72-A:3", "/laws/72-a#s3")],
+          law=["RSA 270-E:3", "RSA 270-E:4", "RSA 270-E:5", "RSA 270-E:5-a", "RSA 72-A:3",
+               "RSA 270-E:8", "RSA 270-E:10"])],
+    [("Boating education (NH State Police, Marine Patrol)", MP_BOATING_FAQ),
+     ("The 14-day temporary certificate (NH State Police, Marine Patrol)", MP_TEMPORARY),
+     ("Boat registrations (NH DMV)", DMV_BOATS),
+     ("Authorized boat agents (NH DMV)", DMV_BOAT_AGENTS),
+     ("Boating safety education, RSA 270-D", "/laws/270-d"),
+     ("Boat registration, RSA 270-E", "/laws/270-e"),
+     ("The boat fee, RSA 72-A", "/laws/72-a"),
+     ("Boating, RSA 270", "/laws/270")],
+    ["72-A", "270", "270-D", "270-E"],
+    [claim("No person shall operate a motorized vessel with any type of power motor in excess of "
+           "25 horsepower on the public waters of this state without first obtaining a "
+           "certificate of boating safety education.", "RSA 270-D:10", OUT_READ),
+     claim("The certificate is issued to a person 16 years of age or older who passes an approved "
+           "course, with an online examination if 18 or older or a proctored examination if "
+           "under 18, or an equivalency examination; valid for the lifetime of the person; a "
+           "person who passes after reaching the age of 15 is issued it upon attaining 16.",
+           "RSA 270-D:13", OUT_READ),
+     claim("A certificate is not required of a person holding a certificate from any state that "
+           "meets these requirements, from the U.S. Coast Guard Auxiliary, the U.S. Power "
+           "Squadron, or an approved Canadian certificate.", "RSA 270-D:15", OUT_READ),
+     claim("The department shall charge a fee of $10 for issuing a safe boater education "
+           "certificate; the fee for a temporary certificate shall be $10; the total of all fees "
+           "shall not exceed $50.", "RSA 270-D:17", OUT_READ),
+     claim("The certificate shall be a physical original or copy, an electronic copy, or a "
+           "photograph of the front and back, possessed while operating and presented on demand "
+           "of a marine patrol officer.", "RSA 270-D:11", OUT_READ),
+     claim("A temporary certificate is issued to a person 16 or older who passes a temporary "
+           "examination, valid for up to 14 days on New Hampshire waters only; no more than one "
+           "in any calendar year; dealers and renters approved by the commissioner may give "
+           "it.", "RSA 270-D:14", OUT_READ),
+     claim("No person under 16 years of age shall operate a motorized vessel having power in "
+           "excess of 25 horsepower unless accompanied by a person 18 years of age or older who "
+           "has a valid safe boater education certificate.", "RSA 270:30", OUT_READ),
+     claim("No person shall operate a ski craft on any lake, pond, or river unless the person is "
+           "16 years of age or older.", "RSA 270:74", OUT_READ),
+     claim("No child 12 years of age or under shall operate, control, or be transported on the "
+           "deck of a boat which is underway unless wearing a Coast Guard approved personal "
+           "flotation device, with an exception for boats with continuous side rails.",
+           "RSA 270:30-a", OUT_READ),
+     claim("No person shall put, place, or operate a vessel on any waters of the state unless it "
+           "is registered; the certificate shall be kept upon the vessel; registrations expire on "
+           "December 31; the commissioner may authorize agents.", "RSA 270-E:3", OUT_READ),
+     claim("Exempt: sailboats under 12 feet in length, rowboats and canoes powered by sail, oars, "
+           "paddles, or other human power, any vessel with a motor not exempt; vessels registered "
+           "in another state temporarily using these waters for not more than 30 consecutive "
+           "days.", "RSA 270-E:4", OUT_READ),
+     claim("Registration fees by length: up to and including 16 feet $24; 16.1 to 21 feet $34; "
+           "21.1 to 30 feet $52; 30.1 to 45 feet $72; 45.1 feet and over $92; $5 for each "
+           "registration processed by an authorized agent who is not an employee of the "
+           "department.", "RSA 270-E:5", OUT_READ),
+     claim("No person shall operate a vessel unless it displays a boat fee decal.",
+           "RSA 270-E:5-a", OUT_READ),
+     claim("The boat fee by kind, length and age of the boat.", "RSA 72-A:3", OUT_READ),
+     claim("Numbers on each side of the forward half of the vessel, not less than 3 inches in "
+           "height, with block letters of contrasting color.", "RSA 270-E:8", OUT_READ),
+     claim("The owner shall furnish written notice of the transfer, destruction or abandonment of "
+           "a vessel within 15 days.", "RSA 270-E:10", OUT_READ),
+     # Marine Patrol's and the DMV's own pages, from the person's printouts.
+     claim("How to take a safe boater education course or exam.", MP_BOATING_FAQ, OUT_STATE_READ),
+     claim("The 14-day temporary certificate, from boat dealers and rental agents.", MP_TEMPORARY,
+           OUT_STATE_READ),
+     claim("How to register a boat, what to bring, and the DMV's number for the fee.", DMV_BOATS,
+           OUT_STATE_READ),
+     claim("The agents authorized to register boats.", DMV_BOAT_AGENTS, OUT_STATE_READ)],
+    see=[("How to get a fishing license", "/guides/fishing-license.html"),
+         ("How to register a car", "/guides/register-a-car.html")],
+    figures=[fig("age 16", "RSA 270-D:13", "a person 16 years of age or older"),
+             fig("$10", "RSA 270-D:17", "a fee of $10 for issuing a safe boater education certificate"),
+             fig("$50", "RSA 270-D:17", "shall not exceed $50"),
+             fig("14 days", "RSA 270-D:14", "valid for up to 14 days"),
+             fig("30 consecutive days", "RSA 270-E:4", "not more than 30 consecutive days"),
+             fig("15 days", "RSA 270-E:10", "within 15 days"),
+             fig("$24", "RSA 270-E:5", "Up to and including 16 feet $24"),
+             fig("$34", "RSA 270-E:5", "16.1 feet to 21 feet $34"),
+             fig("$52", "RSA 270-E:5", "21.1 feet to 30 feet $52"),
+             fig("$72", "RSA 270-E:5", "30.1 feet to 45 feet $72"),
+             fig("$92", "RSA 270-E:5", "45.1 feet and over $92"),
+             fig("$5", "RSA 270-E:5", "there shall be $5 collected for each registration")])
+
+GUIDES += [BOATING]
+
+
+# ---------------------------------------------------------------------------
 # THE GUIDES BY TASK (the person, 17 October 2026: "refine how the how to
 # guides are displayed on the main resources page and the homepage so it's
 # more intuitive for the general public"). A reader arrives with something to
@@ -4998,6 +5465,16 @@ TASKS = [
              "A first passport or a renewal, what to bring to a post office, and a child&rsquo;s "
              "passport."),
     ]),
+    ("Outdoors and Recreation", [
+        task("fishing-license", "Get a fishing license",
+             "Who needs one, the free fishing days, saltwater fishing, and buying one online."),
+        task("hunting-license", "Get a hunting license",
+             "Hunter education, the apprentice license, and licenses for turkey, pheasant and "
+             "waterfowl."),
+        task("boating", "Get a boater certificate and register a boat",
+             "The safe boater education certificate, the temporary one, and registering a boat "
+             "each year.", head="How to get a boater certificate and register a boat"),
+    ]),
     ("Around Your Town", [
         task("trash-and-recycling", "Get rid of trash, recycling and hazardous waste",
              "Your transfer station, what never goes in the trash, hazardous waste days and "
@@ -5106,6 +5583,12 @@ WORDS = {
     "public-records": ("right to know", "91-a", "records request", "foia"),
     "vital-records": ("birth certificate", "death certificate", "marriage certificate",
                       "divorce certificate"),
+    "fishing-license": ("fishing license", "fishing", "fish", "free fishing day",
+                        "saltwater license", "fish and game"),
+    "hunting-license": ("hunting license", "hunting", "hunter education", "hunter safety",
+                        "deer", "turkey", "duck stamp", "archery", "fish and game"),
+    "boating": ("boat registration", "boating license", "boat license", "boater certificate",
+                "safe boater", "boating safety", "jet ski", "marine patrol"),
     "passport": ("passport", "renew my passport", "passport card", "travel abroad",
                  "ds-11", "ds-82", "international travel"),
     "town-warrant-article": ("warrant article", "petitioned article", "town meeting",

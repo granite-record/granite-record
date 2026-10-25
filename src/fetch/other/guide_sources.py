@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-10-11.14
+# GRANITE_VERSION: 2026-10-11.15
 """
 The official pages the how-to guides cite, onto this disk, to check them by.
 
@@ -205,6 +205,20 @@ SOURCES = {
         "https://www.council.nh.gov/contact-us",
         "https://www.governor.nh.gov/contact-governor-ayotte",
     ],
+    # Fishing, hunting and boating (25 October 2026), for the person's printouts.
+    "outdoors": [
+        "https://www.wildlife.nh.gov/licenses-and-permits/nh-license-requirements",
+        "https://www.wildlife.nh.gov/fishing-new-hampshire/licenses-and-permits",
+        "https://www.wildlife.nh.gov/fishing-new-hampshire/free-fishing-days-new-hampshire",
+        "https://www.wildlife.nh.gov/saltwater-fisheries-new-hampshire/marine-licenses-and-permits",
+        "https://www.wildlife.nh.gov/licenses-and-permits/senior-and-milestone-licenses",
+        "https://www.wildlife.nh.gov/hunting-nh/hunter-education/hunter-education-frequently-asked-questions",
+        "https://www.wildlife.nh.gov/licenses-and-permits/national-migratory-bird-harvest-information-program-hip",
+        "https://www.nhsp.dos.nh.gov/our-services/field-operations-bureau/marine-patrol/boating-education/boating-education-faqs",
+        "https://www.nhsp.dos.nh.gov/our-services/field-operations-bureau/marine-patrol/boating-education/14-day-temporary-safe-boating",
+        "https://www.dmv.nh.gov/vehicles-boats-and-titles/boat-registrations",
+        "https://www.dmv.nh.gov/vehicles-boats-or-titles/boat-registrations/authorized-boat-agents",
+    ],
 }
 
 # NOT STATE AGENCIES, AND NEVER FETCHED. Where a guide sends a reader for help
@@ -318,6 +332,14 @@ OTHER = {
         "https://www.hassan.senate.gov/services/help-with-a-federal-agency",
         "https://goodlander.house.gov/services/help-federal-agency/",
         "https://www.govinfo.gov/content/pkg/USCODE-2024-title5/html/USCODE-2024-title5-partI-chap5-subchapII-sec552a.htm",
+    ],
+    # Fishing, hunting and boating (25 October 2026). Fish and Game's online
+    # license system is the state's own, at a .com address rather than nh.gov
+    # (its footer: nh.gov, 11 Hazen Drive, Concord), so it is listed here for the
+    # person to confirm; and the federal Duck Stamp page.
+    "outdoors": [
+        "https://www.nhfishandgame.com/",
+        "https://www.fws.gov/service/buy-duck-stamp-or-e-stamp",
     ],
 }
 
