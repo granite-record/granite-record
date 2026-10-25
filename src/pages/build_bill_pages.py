@@ -102,7 +102,7 @@ def describe(b):
     n = b.get("n") or b["id"]
     yr = str(b.get("year") or "")
     lead = f"{n} ({yr})" if yr else n
-    st = (b.get("status") or "").strip().rstrip(".")
+    st = status_shown(b).strip().rstrip(".")
     tail = f" {st}." if st else ""
     subject = clean_title(b.get("title") or "")
     room = S.DESC_ROOM - len(lead) - len(tail) - 2
@@ -119,6 +119,18 @@ def _day(iso):
 
 
 CHAMBER = {"H": "House", "S": "Senate"}
+
+
+def status_shown(b):
+    """A bill's status as its page says it: "Died when the session ended"
+    where the chip says Died and the record keeps the stage the bill stood at
+    -- "In committee", "Committee report filed" -- as app.js's statusShown
+    does (the audit of 25 October 2026, S4: HB 520 of 2017 read "Died" over
+    "Status: In committee"). The record itself is unchanged."""
+    s = str(b.get("status") or "")
+    if b.get("chip") == "Died" and s.lower() in ("in committee", "committee report filed"):
+        return "Died when the session ended"
+    return s
 
 
 def static_record(b, d, data_url=None):
@@ -148,7 +160,7 @@ def static_record(b, d, data_url=None):
         out.append(f'<p class="sx-title" translate="no">{E(clean_title(title))}</p>')
     facts = []
     if b.get("status"):
-        facts.append(f"<b>Status:</b> {E(b['status'])}")
+        facts.append(f"<b>Status:</b> {E(status_shown(b))}")
     if b.get("term"):
         facts.append(f"<b>Term:</b> {E(b['term'])}")
     for ch, key in (("House", "house_committee"), ("Senate", "senate_committee")):

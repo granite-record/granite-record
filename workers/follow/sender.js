@@ -168,7 +168,11 @@ const STOPPED = {
 // public hearing still to come says "open" on any day, so that a test shows
 // the block wherever a followed bill has one ahead, not only on the three
 // mornings a real email says it.
-const PUBLIC_HEARING = /^public hearing$/i;
+//
+// The House calls its hearings "public hearing" and the Senate "hearing"
+// (the audit of 25 October 2026, M2): both are the one meeting that takes
+// testimony, and this read the House's alone.
+const PUBLIC_HEARING = /^(public )?hearing$/i;
 export function testifyFor(kind, upcoming, items, frequency, today, ahead = false) {
   if (kind !== "bill") return null;
   const next = (upcoming || [])

@@ -27923,20 +27923,29 @@ def _stream_start(build_site_v2, about_figures):
         f"a conference sitting WITH a recording no longer offers it: {rec}")
 
     # THE PAGE. Both no-recording states draw no player and no YouTube link,
-    # and the prestream box names the month the constant does.
+    # and the tab names the month the constant does -- ONCE, above its
+    # sittings, however many came before it (the audit of 25 October 2026,
+    # S4: it was a box on every one), and not at all where none did.
     stations = [B.station_for_floor(conference("1995-04-01"), "HB1", {}),
+                B.station_for_proceeding(sitting("1995-03-01"), "HB1", {}, {}),
                 B.station_for_proceeding(sitting("2021-01-06"), "HB1", {}, {})]
-    html_ = _app_js("scope.renderHearings({id:'HB1', n:'HB 1'}, {stations:"
-                    + json.dumps(stations) + "})")
-    if html_ is None:
+    drawn = _app_js("[scope.renderHearings({id:'HB1', n:'HB 1'}, {stations:"
+                    + json.dumps(stations) + "}), scope.renderHearings({id:'HB1', n:'HB 1'}, {stations:"
+                    + json.dumps(stations[-1:]) + "})]")
+    if drawn is None:
         return "ok", (f"one constant, {AF.STREAM_START}"
                       + (", the channels' first day" if first else "")
                       + "; no-recording sittings take the committee states (node not here, page not drawn)")
+    html_, later = drawn
     assert "youtube.com" not in html_ and "data-embed" not in html_, (
         "a sitting with no recording is drawn with a player or a YouTube link")
-    assert AF.STREAM_START_WORDS in html_, (
-        f"the prestream box does not name {AF.STREAM_START_WORDS!r}, the month "
-        "about_figures.STREAM_START_WORDS says the channels begin")
+    assert html_.count(AF.STREAM_START_WORDS) == 1 and \
+        html_.index(AF.STREAM_START_WORDS) < html_.index('class="stn'), (
+            f"the Hearings tab does not name {AF.STREAM_START_WORDS!r}, the month "
+            "about_figures.STREAM_START_WORDS says the channels begin, once above its sittings "
+            f"({html_.count(AF.STREAM_START_WORDS)} times)")
+    assert AF.STREAM_START_WORDS not in later, (
+        "a Hearings tab with no sitting before the channels says when they begin")
     for bad in ("No recording exists", "livestreamed"):
         assert bad not in html_, f"the page still says {bad!r}, which the House Calendars contradict"
     return "ok", (f"one constant, {AF.STREAM_START}"
@@ -34256,6 +34265,12 @@ def _sitting_links(BSP):
     stays text; and a member's row reads its chamber out of the vote's key
     and its day out of the m/d/yyyy the roll call file carries.
 
+    AT THE BILL, WITH NO ".html" (the audit of 25 October 2026, M1): the
+    date opened the day's top, and HB 282 was some 36,700px below it on a
+    phone. A vote on a bill links the bill's card, "#HB282", the id
+    build_session_pages.card_anchor gives it (held to it here), and the
+    address is the page's own, not the one a redirect turns it into.
+
     And the builder's half, without a build: the days a page is written for
     are the days up to today and no later; the list of them is written a
     chamber at a time and the other chamber's is kept (a writer run on a
@@ -34324,6 +34339,9 @@ catch (e) { console.log("LOAD " + e.constructor.name + ": " + e.message); proces
     date: "2026-05-21", body: "H", vote_kind: "VV", passed: true}]});
   out.row = s.voteRow({x: {d: "5/14/2026", b: "", q: "Adopt", v: "Yea", k: "2026-S-7",
     y: "2026"}, rc: null, b: null, mark: null, ch: ""});
+  out.rowBill = s.voteRow({x: {d: "5/14/2026", b: "HB1442", q: "Adopt", v: "Yea", k: "2026-S-7",
+    y: "2026"}, rc: null, b: null, mark: null, ch: ""});
+  out.anchor = s.sittingLink("H", "2026-05-21", "x", "cacr 13");
   out.rowOff = s.voteRow({x: {d: "5/15/2026", b: "", q: "Adopt", v: "Yea", k: "2026-S-8",
     y: "2026"}, rc: null, b: null, mark: null, ch: ""});
   process.stdout.write("\\n@@" + JSON.stringify(out));
@@ -34339,20 +34357,32 @@ catch (e) { console.log("LOAD " + e.constructor.name + ": " + e.message); proces
         "before the list of sittings has landed a date is drawn as a link: " + got["early"])
     assert got["asked"] == 1, (
         f"session/days.json was asked for {got['asked']} times by three dates, not once")
-    assert got["link"] == '<a href="session/H/2026-05-21.html">May 21, 2026</a>', (
+    assert got["link"] == '<a href="session/H/2026-05-21">May 21, 2026</a>', (
         "a day the House sat, with a page, is drawn as: " + got["link"])
     for k in ("other", "absent", "none"):
         assert "<a" not in got[k], (
             f"a date with no sitting page behind it is a link ({k}): {got[k]}")
     assert got["iso"] == ["2026-08-19", "2025-12-03", "", ""] and got["ch"] == ["H", "S", ""], (
         f"a member's vote reads as day {got['iso']} and chamber {got['ch']}")
-    assert '<a href="session/H/2026-05-21.html">May 21, 2026</a>' in got["rc"], (
-        "a roll call on a bill does not link its day to the sitting")
-    assert '<a href="session/S/2026-05-14.html">May 14, 2026</a>' in got["row"], (
-        "a row of a member's votes does not link its day to the sitting")
+    # The card's id as the sitting page gives it, from the builder itself.
+    assert BSP.card_anchor("HB1", set()) == "HB1" and BSP.card_anchor("cacr 13", set()) == "CACR13", (
+        "build_session_pages.card_anchor no longer gives a card the bill's number upper-cased "
+        "with anything else dropped, which app.js's sittingLink writes after the #")
+    assert '<a href="session/H/2026-05-21#HB1">May 21, 2026</a>' in got["rc"], (
+        "a roll call on a bill does not link its day to the bill on the sitting's page")
+    assert '<a href="session/S/2026-05-14">May 14, 2026</a>' in got["row"], (
+        "a row of a member's votes on no bill does not link its day to the sitting")
+    assert '<a href="session/S/2026-05-14#HB1442">May 14, 2026</a>' in got["rowBill"], (
+        "a row of a member's votes on a bill does not link its day to the bill on the sitting's page")
+    assert got["anchor"] == '<a href="session/H/2026-05-21#CACR13">x</a>', (
+        "a bill's number is not written as the card's id after the #: " + got["anchor"])
+    sat = re.findall(r'href="(session/[^"]*)"', got["rc"] + got["row"] + got["rowBill"])
+    assert sat and not [h for h in sat if ".html" in h], (
+        f"a vote's date links the sitting's .html, which costs a redirect: {sat}")
     assert "session/" not in got["rowOff"] and "May 15, 2026" in got["rowOff"], (
         "a row of a member's votes links a day with no sitting page")
-    return "ok", ("a date is a link to session/<body>/<date> where days.json lists the "
+    return "ok", ("a date is a link to session/<body>/<date>, at the bill's card where the "
+                  "vote is on one, where days.json lists the "
                   "day, text otherwise, and the list is asked once; pages are built up to "
                   "today, the list is merged a chamber at a time, and a page leads up to "
                   "its list and to its week only where the calendar has it")
@@ -50350,7 +50380,9 @@ def _nobill_votes_shown(VP):
             raise AssertionError("; ".join(bad))
         return "skip", "app.js, dom_stub.js or node is not here; the pages hold"
     assert "threw" not in got, f"the Votes tab threw {got['threw']}"
-    link = ('<a class="nbwa" href="session/H/2026-03-05.html#rc-2026-H-5"><span class="nbw">Whether '
+    # The sitting's own address, with no ".html" to redirect (the audit of
+    # 25 October 2026, M1, as for the date beside it).
+    link = ('<a class="nbwa" href="session/H/2026-03-05#rc-2026-H-5"><span class="nbw">Whether '
             'Rep. Nelson could go on with remarks on the war in Iran</span></a>')
     if link not in got["all"]:
         bad.append("the member tab's vote on no bill does not say what it was about, linked to "
@@ -67774,6 +67806,58 @@ def _hearing_note_wording():
                   f"says it, {drew}")
 
 
+@check("frontend", "a bill's Testify box counts the Senate's hearings, and says testimony opens again "
+       "only while one chamber has heard it")
+def _testify_box_senate():
+    """The audit of 25 October 2026 (M2): the House's hearings are "public
+    hearing" and the Senate's "hearing", and app.js's testifyBox read the
+    House's word alone. SB 406 of 2026, heard by Senate Finance on 13 January,
+    said testimony "has not opened yet"; CACR 13, heard in both chambers, that
+    it "opens again" in the other; HB 282 named its House hearing of January
+    and not the Senate's of 23 April. testifyBox is drawn in node for a bill
+    of the sitting term (sittingTerm's own answer, so this holds in any year),
+    its hearings either side of every possible today. A bill whose rail has
+    ended keeps the box it had (the owner decides that), and a bill of an
+    earlier term has none. workers/follow reads the Senate's word too; its
+    case is tests/follow/mail.test.js's."""
+    got = _app_js("""(() => {
+  const term = scope.sittingTerm(new Date());
+  const st = (what, when, body, committee) => ({what, when, body, committee});
+  const moving = {rail: [{stop: "Introduced", mark: "p"}, {stop: "Law", mark: ""}]};
+  const box = (stations, journey = moving, t = term) =>
+    scope.testifyBox({term: t, stations, journey}, {n: "SB 406"});
+  return {
+    senate: box([st("hearing", "2000-01-13", "S", "Finance")]),
+    both: box([st("public hearing", "2000-01-21", "H", "Judiciary"),
+               st("hearing", "2000-04-23", "S", "Judiciary")]),
+    ahead: box([st("public hearing", "2000-01-21", "H", "Judiciary"),
+                st("hearing", "2999-04-23", "S", "Judiciary")]),
+    none: box([st("executive session", "2000-01-21", "H", "Judiciary")]),
+    ended: box([st("hearing", "2000-01-13", "S", "Finance")], {rail: [{mark: "p"}, {mark: "x"}]}),
+    old: box([st("hearing", "2999-01-13", "S", "Finance")], moving, "1999-2000"),
+  };
+})()""", names=("testifyBox", "sittingTerm"))
+    if got is None:
+        return "skip", "node, app.js or dom_stub.js is not here"
+    said = {k: " ".join(re.sub(r"<[^>]+>", " ", v).split()) for k, v in got.items()}
+    assert "has not opened yet" not in said["senate"] and \
+        "its public hearing was Jan 13, 2000" in said["senate"], (
+            f"a bill heard only by a Senate committee is told: {said['senate']!r}")
+    assert "opens again" in said["senate"], (
+        f"a bill heard in one chamber is no longer told testimony opens again in the other: {said['senate']!r}")
+    assert "its last public hearing was Apr 23, 2000" in said["both"] and "opens again" not in said["both"], (
+        f"a bill heard in both chambers is told: {said['both']!r}")
+    assert "The Senate public hearing is" in said["ahead"] and "gc.nh.gov/remotecommittee/senate.aspx" in got["ahead"] \
+        and 'class="tbox off"' not in got["ahead"], (
+            f"a Senate hearing still to come does not open the Senate's form: {said['ahead']!r}")
+    assert "has not opened yet" in said["none"], f"a bill with no hearing is told: {said['none']!r}"
+    assert "has passed" in said["ended"] and "opens again" not in said["ended"], (
+        f"a bill whose rail has ended is told: {said['ended']!r}")
+    assert got["old"] == "", "a bill of an earlier term has a Testify box"
+    return "ok", ("a Senate hearing is a public hearing, past or ahead; \"opens again\" only while one "
+                  "chamber has heard it; an ended bill and an earlier term as before")
+
+
 @check("frontend", "each floor session on the home page is titled \"House Session (August 19th, 2026)\"")
 def _floor_session_titles():
     """The person's pattern (7 October 2026, F3): the chamber, "Session", and
@@ -70177,6 +70261,46 @@ def _on_the_record_rows():
         "2025-0123" not in head + summary, (
             f"the bill's head or summary still carries {[h for h in heads if h in ('Introduced', 'LSR')]}")
     return "ok", f"the head holds {', '.join(heads)}, and no Introduced or LSR row"
+
+
+@check("frontend", "a bill whose session has ended is not shown as still in committee",
+       needs=("build_bill_pages",))
+def _dead_bill_status_shown(BBP):
+    """The audit of 25 October 2026 (S4): HB 520 of 2017 showed the chip
+    "Died" over "Status: In committee". Once a session has ended the chip says
+    Died (build_site_v2.chip_word), and the record keeps the stage the bill
+    stood at where the record does not settle how it ended. The page says
+    that stage -- "In committee", "Committee report filed" -- as "Died when
+    the session ended", the build's words for the same end on the bills
+    beside it, and the record is unchanged. billHead is drawn in node; the
+    page without scripts (static_record) and the sentence a search engine
+    shows (describe) say it the same way."""
+    def bill(status, chip):
+        return {"id": "HB520", "n": "HB 520", "term": "2017-2018", "year": 2017,
+                "status": status, "chip": chip}
+    cases = [bill("In committee", "Died"), bill("Committee report filed", "Died"),
+             bill("Killed", "Died"), bill("In committee", "In committee")]
+    got = _app_js("[" + ",".join("scope.billHead(" + json.dumps(b) + ", null)" for b in cases) + "]",
+                  names=("billHead",))
+    drew = "node is not here to draw billHead"
+    if got is not None:
+        rows = [dict(re.findall(r"<dt>([^<]*)</dt>\s*<dd>(.*?)</dd>", h, re.S)) for h in got]
+        status = [" ".join(re.sub(r"<[^>]+>", " ", r.get("Status", "")).split()) for r in rows]
+        assert status == ["Died when the session ended", "Died when the session ended", "Killed", ""], (
+            f"the head's Status reads {status} for In committee and Committee report filed under Died, "
+            "Killed under Died, and In committee while the session sits")
+        drew = "the head says it"
+    plain = [BBP.static_record(b, {}) for b in cases]
+    assert "<b>Status:</b> Died when the session ended" in plain[0] and \
+        "<b>Status:</b> Died when the session ended" in plain[1] and "In committee" not in plain[0], (
+            "the page without scripts still says a dead bill is in committee")
+    assert "<b>Status:</b> In committee" in plain[3] and "<b>Status:</b> Killed" in plain[2], (
+        "the page without scripts changed a status it should keep")
+    assert BBP.describe(cases[0]).endswith("Died when the session ended.") and \
+        BBP.describe(cases[3]).endswith("In committee."), (
+            f"the search engine's sentence reads {BBP.describe(cases[0])!r}")
+    return "ok", (f"In committee and Committee report filed under Died read \"Died when the session "
+                   f"ended\"; {drew}, as do the page without scripts and its description")
 
 
 @check("frontend", "a bill's trail ends on its number, and its term opens the search on that term")
@@ -74132,7 +74256,8 @@ def _about_data_claims(build_pages, about_figures, build_site_v2):
     Three halves. The pages are filled and rendered on fixtures and read for
     the sentences that were wrong; what the pages document is checked against
     what the code emits -- every passage character, every how_placed value;
-    and the note is drawn in node for the terms either side of each boundary.
+    and the note is drawn in node for the terms either side of each boundary,
+    with the tabs that now say each boundary instead of it (25 October 2026).
     """
     BP, AF, B = build_pages, about_figures, build_site_v2
     here = Path(".").resolve()
@@ -74236,45 +74361,67 @@ def _about_data_claims(build_pages, about_figures, build_site_v2):
             "proceedings.csv no longer says a floor_stated debate opens on the clerk's reading")
 
         # ---- the bill pages' archived note, either side of each boundary ---
-        def rec(term, reports, votes, text):
-            return {"term": term, "sponsors": [{"name": "A Sponsor"}],
+        # WHAT IS MISSING, AND NOTHING ELSE (the audit of 25 October 2026,
+        # S4). About This Record said where the record's boundaries fall and
+        # what was here: 79 words on HB 200 of 1997, whose Votes tab said
+        # "No roll call votes on this bill" under a Summary that said the
+        # House killed it on a roll call 286-57. Each boundary is said once,
+        # on the tab where the reader asks, and the note names only a gap: a
+        # boundary is never one, and a record with none has no note.
+        def rec(term, reports, votes, text, sponsors=True):
+            return {"term": term, "sponsors": [{"name": "A Sponsor"}] if sponsors else [],
                     "billtext": {"body": "Be it Enacted..."} if text else None,
                     "archived": {"docket": True, "committee": True, "hearings": True,
-                                 "sponsors": True, "reports": reports, "votes": votes,
+                                 "sponsors": sponsors, "reports": reports, "votes": votes,
                                  "video": False}}
-        notes = _app_js("[" + ",".join(
+        dock = {"body": "H", "committee": "Municipal and County Government", "date": "1991-02-06",
+                "side": "Majority", "vote_yeas": 19, "vote_nays": 0,
+                "recommendation": "Inexpedient to Legislate"}
+        drawn = _app_js("[" + ",".join(
             "scope.archivedNote(" + json.dumps(x) + ")" for x in (
                 rec("1991-1992", False, False, True), rec("1997-1998", True, False, False),
-                rec("2005-2006", False, True, True))) + "]")
-        if notes is None:
+                rec("2005-2006", False, True, True), rec("1995-1996", False, False, True, False),
+                rec("2017-2018", True, True, True))) + ","
+            "scope.renderVotes({id: 'HB200'}, {term: '1997-1998', rollcalls: []}),"
+            "scope.renderVotes({id: 'HB200'}, {term: '2005-2006', rollcalls: []}),"
+            "scope.renderReports({id: 'HB200'}, {term: '1991-1992', docket_reports: ["
+            + json.dumps(dock) + "]}, s => s),"
+            "scope.renderBillText({id: 'HB200'}, {term: '1997-1998'}, s => s)]",
+            names=("archivedNote", "renderVotes", "renderReports", "renderBillText"))
+        if drawn is None:
             return "ok", "About and Data pages and the manifest clean (node not here, the archived note not drawn)"
-        n1991, n1997, n2005 = (" ".join(n.split()) for n in notes)
-        assert "Not yet fetched" not in n1991 and "1997" in n1991, (
-            "a 1991 bill is told its written reports are not yet fetched, though the "
-            f"online calendars that print them begin in 1997: {n1991[:200]!r}")
-        assert "The House committees' written reports begin" in n1991 and "its vote." not in n1991, (
-            "a 1991 bill is told written reports begin in 1997 for every committee, or that the "
-            "docket gives each committee's vote, when the reports are the House's and the "
-            f"docket gives no vote on a Senate report of that term: {n1991[:300]!r}")
-        assert "close to complete" not in n1991, (
-            "a 1991 bill, with no written report, named vote or recording, is told its record "
-            "is close to complete")
-        assert "What a current term adds" not in n1991, (
-            "a bill that carries its own text is told its text is elsewhere")
-        assert "where the record starts" not in n1991 and "roll-call files" in n1991, (
-            "the before-1999 note does not name the roll-call files as what begins in 1999")
-        assert "the Documents tab links to it" in n1997, (
-            "a bill with no text of its own is no longer told where its text is")
-        # Not the files' names, nor this site's own word for an old term
-        # (the language sweep of 17 October 2026).
-        for n in (n1991, n1997, n2005):
-            assert "RollCall" not in n and "archived" not in n and "fetched" not in n, (
-                f"the archived note speaks the site's own language: {n[:200]!r}")
+        n1991, n1997, n2005, n1995, n2017, v1997, v2005, r1991, t1997 = (
+            " ".join(re.sub(r"<[^>]+>", " ", n).split()) for n in drawn)
+        assert not n1991 and not n1997 and not n2017, (
+            "a record with nothing missing still carries About This Record, which says what the "
+            f"tabs beside it show: {[n[:120] for n in (n1991, n1997, n2017) if n]}")
+        assert "the sponsors" in n1995 and "roll calls" not in n1995 and "written reports" not in n1995, (
+            "a 1995 bill without its sponsors is not told they are missing, or is told the roll "
+            f"calls or written reports its term never had are missing: {n1995[:300]!r}")
         assert "the House committees' written reports" in n2005, (
             "a 2005 bill with no written report is no longer told the House's reports are a gap")
+        # Not the files' names, nor this site's own word for an old term
+        # (the language sweep of 17 October 2026).
+        for n in (n1995, n2005, v1997):
+            assert "RollCall" not in n and "archived" not in n and "fetched" not in n, (
+                f"the archived note speaks the site's own language: {n[:200]!r}")
+        # The roll calls' boundary, on the Votes tab: what begins in 1999 is
+        # the named votes this site lists, not the votes -- the printed
+        # journals of 1997 name who voted -- and the docket's tallies are on
+        # the Summary.
+        assert "Named roll calls here begin in 1999" in v1997 and "How It Got Here" in v1997 \
+            and "Journals name who voted" in v1997 and "No roll call votes" not in v1997, (
+                f"a 1997 bill's empty Votes tab reads: {v1997!r}")
+        assert v2005 == "No roll call votes on this bill.", f"a 2005 bill's empty Votes tab reads: {v2005!r}"
+        # The written reports' boundary, on the report: the House's, from 1997.
+        assert "begin in 1997" in r1991 and "Not yet fetched" not in r1991, (
+            f"a 1991 House committee's report is not told its written report begins in 1997: {r1991[-300:]!r}")
+        assert "The Documents tab links to it" in t1997, (
+            "a bill with no text of its own is no longer told where its text is")
         return "ok", ("About and Data pages and the manifest free of the 23 September sentences; "
                       f"{len(used)} passage marks and {len(states)} how_placed values documented; "
-                      "the archived note right either side of 1997 and 1999")
+                      "About This Record names only what is missing, and each boundary is said on "
+                      "its tab: the roll calls' on Votes, the written reports' on Reports")
     finally:
         shutil.rmtree(root, ignore_errors=True)
 

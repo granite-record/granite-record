@@ -456,6 +456,27 @@ test("a bill's testimony is told when its hearing is set, the day before it and 
     date: "2026-10-14", time: "10:00", committee: "House Example Committee", venue: "Legislative Office Building 305" });
 });
 
+// The audit of 25 October 2026 (M2): the Senate calls its hearings "hearing",
+// the House "public hearing", and the emails read the House's word alone, so a
+// Senate hearing told no follower that testimony was open.
+test("a Senate hearing takes testimony as a House public hearing does, in the daily and the week ahead", () => {
+  const senate = rows => rows.map(r => r.what === "public hearing"
+    ? { ...r, what: "hearing", committee: "Senate Example Committee" } : r);
+  const current = { ...CURRENT, upcoming: new Map([...CURRENT.upcoming].map(([k, rows]) => [k, senate(rows)])) };
+  const up = current.upcoming.get("bill:2026/HB9903");
+  assert.deepEqual(testifyFor("bill", up, [], "daily", "2026-10-14"), { phase: "day", chamber: "S",
+    date: "2026-10-14", time: "10:00", committee: "Senate Example Committee", venue: "Legislative Office Building 305" });
+  assert.equal(testifyFor("bill", up, [{ meeting: { what: "hearing", date: "2026-10-14" } }], "daily",
+    "2026-10-10")?.phase, "open", "the night a Senate hearing was set");
+  const sections = collect({ follows: FOLLOWS, nights: NIGHTS.filter(n => n.date > "2026-10-02"), cursor: {},
+    current, frequency: "weekly", today: TODAY });
+  const weekly = digestEmail({ origin: SITE, frequency: "weekly", date: TODAY, sections,
+    names: pageNames(current), ...LINKS });
+  const ahead = weekly.html.slice(weekly.html.indexOf(">Coming up<"));
+  assert.ok(ahead.includes(TESTIFY_FORMS.S[1]), "the Senate form beside the Senate hearing");
+  assert.match(visible(ahead), /On the form, choose Wednesday, October 14, then the Senate Example Committee, then HB 9903/);
+});
+
 // A daily on the day before and the day of the hearing, with nothing else new.
 function onDay(today) {
   const follows = [{ ...parseKey("bill:2026/HB9903"), fh: "x" }];

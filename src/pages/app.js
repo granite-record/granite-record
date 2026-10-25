@@ -3833,58 +3833,22 @@ function archivedNote(d){
   // The bill's own list is asked first.
   const hasSp=c.sponsors||(d.sponsors||[]).length>0;
 
-  // WHERE THE ROLL CALL RECORD STARTS, which is not where this site's
-  // fetching has got to. RollCallHistory.txt and RollCallSummary.txt are the
-  // General Court's own files of named votes and both begin with the 1999
-  // session, so for the five terms 1989-1998 there is nothing to fetch.
+  // WHAT IS MISSING, AND NOTHING ELSE (the audit of 25 October 2026, S4).
+  // This note also said where the record's boundaries fall -- the named roll
+  // calls in 1999, the House's written reports in 1997 -- and what was here,
+  // which the tabs beside it show: 79 words on HB 200 of 1997, whose
+  // Summary had just said the House killed it "on a roll call 286-57" while
+  // its Votes tab said there were none. Each boundary is said once, where
+  // the reader asks: the roll calls' on the Votes tab (renderVotes), the
+  // written reports' on each report the Reports tab draws (renderReports),
+  // the recordings' at the top of the Hearings tab (renderHearings), the
+  // bill's own text on the Bill Text tab (renderBillText). And a boundary is
+  // not a gap: the roll calls of a term before 1999 are not listed below as
+  // missing, nor the written reports of one before 1997.
   //
-  // It said this in one place -- the !c.docket branch below -- and that branch
-  // renders on no page at all while narratives.json covers all nineteen terms,
-  // so the sentence reached zero readers. Meanwhile the has-docket branch
-  // correctly refuses to list the roll calls as a gap before 1999 and then
-  // said nothing about them, leaving 8,525 bills of 1989-1998 to read the
-  // silence as a backlog. Both branches use it now; neither owns it.
-  //
-  // The !c.docket branch is NOT dead code and must not be removed with it: it
-  // is the state every backfill term passes through, between landing in
-  // data/bills.json and having its docket narrated.
-  //
-  // THE FILES START IN 1999, NOT THE VOTES. The House Journal of 1997 prints
-  // its roll calls name by name, so "that is where the record starts" was
-  // false for every one of those 8,525 pages. What begins in 1999 is the
-  // General Court's roll-call files, and the sentence now says so.
-  const before1999=(!c.votes&&y&&y<1999)?` No roll call from before 1999 is
-    listed by name here: the General Court's roll-call files, which every named
-    vote on this site is read from, begin with the 1999 session. The docket gives the tallies it recorded, and
-    the printed journals name who voted which way.`:"";
-
-  // WHERE THE WRITTEN REPORTS START, which is the same kind of boundary. The
-  // House's written committee reports on this site are read from its
-  // calendars, and the General Court's online calendars begin in 1997, so the
-  // 6,676 bills of 1989-1996 were told the reports were "not yet fetched" --
-  // a backlog that no fetch could clear. For those terms the docket's report
-  // lines are the record of what each committee recommended, and the page
-  // already shows them.
-  //
-  // THE HOUSE'S REPORTS, NOT EVERYONE'S. Every written report on an archived
-  // bill came from a House Calendar; the Senate's are read from the
-  // database, which holds 2025-2026 alone. And the docket's report lines
-  // (a COMM, COMMITTEE, MAJ or MIN REPORT that is not a conference's or an
-  // adoption) carry "(VOTE n-n)" on 93 to 96 per cent of the House's in each
-  // term of 1989-1996, but on none of the Senate's 3,601 of 1989-1994 --
-  // the one that does is a House report filed under S -- and on 510 of
-  // 1995-1996's 1,085. So "and its vote" was false of most Senate committees
-  // these pages name, and "the House committee's vote" would leave out the
-  // Senate's where the docket has it.
-  const before1997=(!c.reports&&y&&y<1997)?` The House committees' written
-    reports begin here with 1997, the first year of the General Court's online
-    calendars, which print them; the Senate committees' begin with 2025. For
-    this term the page gives each committee's recommendation as the docket
-    records it, and the committee's vote wherever the docket gives one.`:"";
-  // A bill that carries its own text does not need telling the text is
-  // elsewhere: 94 to 98 per cent of every archived term's bills have it.
-  const hasText=!!(((d.billtext||{}).body||"").trim());
-
+  // The !c.docket branch is NOT dead code: it is the state every backfill
+  // term passes through, between landing in data/bills.json and having its
+  // docket narrated.
   if(!c.docket){
     // WHAT IS HERE, THEN WHAT IS NOT. This branch told every bill of
     // 1999-2016 that "the recorded votes ... have not been fetched yet" --
@@ -3905,45 +3869,21 @@ function archivedNote(d){
     if(!c.votes&&y>=1999)gaps.push("the roll calls");
     if(!c.hearings)gaps.push("its hearings");
     return P(`This bill is from an earlier term. Here: ${and(have)}. Not on
-      this site yet for its term: ${and(gaps)}.${before1997}${before1999}`);
+      this site yet for its term: ${and(gaps)}.`);
   }
 
-  // Has a docket. What is missing beyond it is what the reader needs told.
+  // Has a docket. What is missing beyond it is what the reader needs told,
+  // and where nothing is, there is no note. The written reports are the
+  // House committees': no archived term has a Senate committee's.
   const gaps=[];
   if(!hasSp)gaps.push("the sponsors");
   if(!c.reports&&y>=1997)gaps.push("the House committees' written reports");
   if(!c.votes&&y>=1999)gaps.push("the roll calls naming individual members");
   if(!c.video&&y>=2019)gaps.push("a recording of any hearing");
-  // Both returns carry it, not just the one with gaps. A pre-1999 term whose
-  // sponsors and reports have landed reaches the first of these, and "the
-  // recorded votes are all here" is false for every term before 1999 --
-  // which is the same wrong claim in the other direction.
-  //
-  // WHAT IS HERE, NAMED FROM THE FLAGS. This said "the docket, the sponsors
-  // and the committee reports are all here" whenever nothing was missing,
-  // which a term before 1997 now reaches with no written report on it at all.
-  //
-  // "CLOSE TO COMPLETE" ONLY WHERE IT IS. A term of 1989-1996 reaches here
-  // with no written report, no named vote and no recording, and was told its
-  // record was close to complete; it is told what is here instead. And the
-  // written reports are the House committees': no archived term has a
-  // Senate committee's.
-  if(!gaps.length){
-    const have=["the docket", "the sponsors"];
-    if(c.reports)have.push("the House committees' written reports");
-    if(c.votes)have.push("the recorded votes");
-    const lead=(c.reports&&c.votes)
-      ?`This bill is from an earlier term, and its record here is close to
-      complete: ${and(have)} are all here.`
-      :`This bill is from an earlier term, and ${and(have)} are here.`;
-    return P(`${lead}${hasText?"":` The bill's own text is not on this
-      page; the Documents tab links to it.`}${
-      before1997}${before1999}`);
-  }
+  if(!gaps.length)return "";
   return P(`This bill is from an earlier term, and its docket is here: every
     action the General Court recorded, and the committee's recommendation and
-    the vote on it. Not on this site yet for its term: ${and(gaps)}.${
-    before1997}${before1999}`);
+    the vote on it. Not on this site yet for its term: ${and(gaps)}.`);
 }
 
 // ===================================================== the bill's own facts ==
@@ -4226,7 +4166,11 @@ function testifyBox(d,b){
   const now=new Date();
   if(d.term!==sittingTerm(now))return "";
   const today=`${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,"0")}-${String(now.getDate()).padStart(2,"0")}`;
-  const heard=(d.stations||[]).filter(s=>/^public hearing$/i.test(s.what||"")&&s.when);
+  // EACH CHAMBER'S WORD (the audit of 25 October 2026, M2): the House's
+  // hearings are "public hearing" and the Senate's "hearing", and the box
+  // read the House's alone -- SB 406 of 2026, heard on 13 January, said
+  // testimony had not opened. workers/follow reads both the same way.
+  const heard=(d.stations||[]).filter(s=>/^(public )?hearing$/i.test(s.what||"")&&s.when);
   const next=heard.filter(s=>s.when>=today).sort((a,b)=>a.when.localeCompare(b.when))[0];
   const rail=((d.journey||{}).rail)||[];
   const ended=!!rail.length&&/^[px]$/.test(rail[rail.length-1].mark||"");
@@ -4247,9 +4191,13 @@ function testifyBox(d,b){
         +" written testimony.":""}</p></div>`,"testify");
   }
   const last=heard.sort((a,b)=>b.when.localeCompare(a.when))[0];
+  // "The other chamber" only while one chamber alone has heard it: CACR 13
+  // of 2026, heard in both, was told it opens again in the other.
+  const one=new Set(heard.map(s=>s.body)).size===1;
   const why=last
-    ?`Online testimony for this bill has passed: its public hearing was ${esc(dateWords(last.when))}.`
-      +(ended?"":" It opens again if the bill is scheduled for a hearing in the other chamber.")
+    ?`Online testimony for this bill has passed: its ${heard.length>1?"last ":""}public hearing was ${
+      esc(dateWords(last.when))}.`
+      +(ended||!one?"":" It opens again if the bill is scheduled for a hearing in the other chamber.")
     :"Online testimony has not opened yet: it opens once a public hearing is scheduled.";
   return section("Testify on This Bill",`<div class="tbox off" aria-disabled="true">
     <p>${why}</p><p><span class="tgo">Online testimony</span></p></div>`,"testify");
@@ -4336,10 +4284,17 @@ function needSittings(){
 }
 // `text` as a link to that chamber's sitting of `iso` (2026-05-21), or as it
 // came where the sitting has no page. `text` is already escaped.
-function sittingLink(body,iso,text){
+//
+// AT THE BILL (the audit of 25 October 2026, M1): a vote's date opened the
+// day's top, and HB 282 was some 36,700px below it on a phone. `bill` is the
+// card's id on the page, as build_session_pages.card_anchor gives it --
+// "HB282", the number upper-cased with anything else dropped -- and the
+// address carries no ".html", which cost a redirect.
+function sittingLink(body,iso,text,bill){
   needSittings();
   const has=SITDAYS&&SITDAYS[body]&&SITDAYS[body].has(String(iso||""));
-  return has?`<a href="session/${esc(body)}/${esc(iso)}.html">${text}</a>`:text;
+  const at=String(bill||"").toUpperCase().replace(/[^A-Z0-9]/g,"");
+  return has?`<a href="session/${esc(body)}/${esc(iso)}${at?"#"+at:""}">${text}</a>`:text;
 }
 
 function renderVotes(b,d){
@@ -4389,7 +4344,7 @@ function renderVotes(b,d){
     return `<section class="rc">
       <div class="rchead"><h2 class="rcq">${voteHead(rc.mk,rc.question,rc.mf)}${
         rc.amendment?` <span class="ramd">${esc(rc.amendment)}</span>`:""}</h2>
-      <span class="rcd">${sittingLink(rc.body==="H"?"H":"S",rc.date,dateWords(rc.date))} · ${
+      <span class="rcd">${sittingLink(rc.body==="H"?"H":"S",rc.date,dateWords(rc.date),b.id)} · ${
         rc.body==="H"?"House":"Senate"}${rc.wo?" · Without Objection":
           AVK[vk]?` · ${termMark(vk,AVK[vk])}`:""}</span>
       ${voteChip(rc.mk||"",rc.passed,b.id,rc.mf)}</div>
@@ -4399,6 +4354,18 @@ function renderVotes(b,d){
       ${rc.threshold_note?`<p class="note" style="margin:6px 0 0">${esc(rc.threshold_note)}</p>`:""}
       ${rc.outcome_conflict?`<p class="note" style="margin:6px 0 0">${esc(rc.outcome_conflict)}</p>`:""}
       ${body}</section>`;}).join("")
+    // BEFORE 1999 THE TAB SAYS WHY IT IS EMPTY (the audit of 25 October
+    // 2026, S4): HB 200 of 1997's Summary said the House killed it "on a roll
+    // call 286-57" and this tab "No roll call votes on this bill". The named
+    // votes this site reads -- the General Court's roll-call files -- begin
+    // with the 1999 session; the docket's tallies are in How It Got Here.
+    // Said here, where the question is asked, and no longer in About This
+    // Record (archivedNote). "Here", because the votes did not begin then:
+    // the printed journals of 1997 name who voted, the Senate's its own.
+    :termStartOf(d)&&termStartOf(d)<1999
+      ?`<p class="note">Named roll calls here begin in 1999. The tallies the
+        docket recorded are in How It Got Here; the printed House and Senate
+        Journals name who voted.</p>`
     :`<p class="note">No roll call votes on this bill.</p>`)+ballotCard(d);
 }
 
@@ -4651,7 +4618,18 @@ function renderHearings(b,d){
   // -- and the seek handler resolves a pid with querySelector, which returns
   // the first match. Pressing a timestamp under the second player moved the
   // first. 238 stations.
-  return (d.stations||[]).length?d.stations.map((s,si)=>{
+  //
+  // WHERE THIS SITE'S RECORDINGS BEGIN, ONCE (the audit of 25 October 2026,
+  // S4), at the top of the tab, where it was a box on every sitting before
+  // then. Not where recording began: the House Calendars of 2013-2019
+  // announce hearings streamed live, and none of those is on either YouTube
+  // channel, so "no recording exists" and "not livestreamed before 2020" are
+  // both claims the record contradicts. The month is
+  // about_figures.STREAM_START_WORDS, and preflight holds the two together.
+  const pre=(d.stations||[]).some(s=>s.state==="prestream")
+    ?`<p class="note">Recordings here begin in May 2020, with the General
+      Court&rsquo;s YouTube channels.</p>`:"";
+  return (d.stations||[]).length?pre+d.stations.map((s,si)=>{
     let inner;
     // Whether this station ends up pointing at a moment. It was a list of
     // state strings kept in a second place, which is how "stated" came to be
@@ -4921,15 +4899,9 @@ function renderHearings(b,d){
       ${s.docket_heard.map(x=>esc(dateWords(x,"full"))).join(" and ")}`:""}. This is the date the Senate
       committee&rsquo;s hearing report gives, and the report is below as the
       Senate filed it. No recording is linked to it.</p></div>`;
-    // WHERE THIS SITE'S RECORDINGS BEGIN, not where recording began. The
-    // House Calendars of 2013-2019 announce hearings streamed live, and none
-    // of those is on either YouTube channel, so "no recording exists" and
-    // "not livestreamed before 2020" were both claims the record contradicts.
-    // The month is about_figures.STREAM_START_WORDS, and preflight holds the
-    // two to each other.
-    else if(s.state==="prestream")inner=`<div class="vbox"><p><b>No recording to link.</b>
-      The General Court&rsquo;s YouTube channels, where this site finds its recordings, begin in May 2020, and this ${
-      /^floor/i.test(s.what||"")?"session day":"meeting"} was earlier.</p></div>`;
+    // Before the channels: the tab's own note says so once, above (`pre`),
+    // and the sitting draws no box of its own.
+    else if(s.state==="prestream")inner="";
     // Defensive: if a proceeding carries a video id but an unrecognised state,
     // still offer the recording. Saying "no recording" when one is right there
     // is the worst possible failure -- it hides working data and looks like the
@@ -6861,6 +6833,19 @@ const billNumberTerms=n=>esc(n).replace(/-(FN|A|LOCAL|L)(?=-|$)/g,
   (_m,k)=>"-"+termMark(SUFFIX_TERM[k],k));
 // "2025-2026" as a term is written in words: "2025–2026".
 const termDash=t=>String(t||"").replace("-","\u2013");
+// A STAGE IS NOT WHERE A DEAD BILL STANDS (the audit of 25 October 2026, S4).
+// HB 520 of 2017 showed "Died" over "Status: In committee": once its session
+// has ended the chip says Died (build_site_v2.chip_word), and the record keeps
+// the stage it stood at, which the build leaves where the record does not
+// settle how it ended (ended_with_the_term). The page says that stage as the
+// end it was -- in the words the build gives the same end on the bills beside
+// it -- and changes nothing in the record. build_bill_pages.static_record
+// says it the same way to a reader without scripts.
+function statusShown(b){
+  const s=String((b&&b.status)||"");
+  return chipOf(b)==="Died"&&/^(in committee|committee report filed)$/i.test(s)
+    ?"Died when the session ended":s;
+}
 // THE BILL'S HEAD (option E and the record head, C6): the trail -- Bills,
 // the term, the kind of measure -- the number with its year and the full
 // chip, the title as its one line, up to six facts (the prime sponsor as the
@@ -6879,7 +6864,7 @@ function billHead(b,d){
   const law=((((d||{}).journey||{}).rail)||[]).find(x=>x.stop==="Law"&&x.mark==="p"&&x.date);
   const topic=cardTopic(b)||(d&&!(d.subject==="Miscellaneous"&&d.subject_source==="granite record")
     ?(d.subject||""):"");
-  const status=String(b.status||"");
+  const status=statusShown(b);
   const facts=[];
   if(sp)facts.push(["Prime Sponsor",pchip(Object.assign({},sp,{prime:false,role:""}))]);
   if(cmtes.length)facts.push([cmtes.length>1?"Committees":"Committee",
@@ -7520,7 +7505,7 @@ function nobillWords(x,rc){
   const b=voteChamber(x), iso=voteIso(x);
   const has=SITDAYS&&SITDAYS[b]&&SITDAYS[b].has(String(iso||""));
   const w=`<span class="nbw">${esc(rc.w)}</span>`;
-  return has?`<a class="nbwa" href="session/${esc(b)}/${esc(iso)}.html#rc-${esc(String(x.k||""))}">${w}</a>`:w;
+  return has?`<a class="nbwa" href="session/${esc(b)}/${esc(iso)}#rc-${esc(String(x.k||""))}">${w}</a>`:w;
 }
 
 // One row. data-l carries the column's name so the same markup can stack into
@@ -7548,7 +7533,7 @@ function voteRow(r){
   const said=named?voteChip(rc.mk,!!rc.p,x.b||"",rc.mf):"";
   return `<tr>
     <td class="d" data-l="Date">${sittingLink(voteChamber(x),voteIso(x),
-      esc(voteIso(x)?dateWords(voteIso(x)):x.d||""))}${
+      esc(voteIso(x)?dateWords(voteIso(x)):x.d||""),x.b)}${
       r.ch?`<span class="vch">${
       esc(CHAMBER_SHORT[r.ch]||r.ch)}</span>`:""}</td>
     <td class="b" data-l="On">${x.b&&x.y
