@@ -35203,9 +35203,14 @@ def _sitting_links(BSP):
 require("./stub.js");
 const fs = require("fs");
 const asked = [];
+// 2026-05-20 has a page too, so that a roll call the file dates then and the
+// 21st's page draws (2026-H-4) tests the date's own guard: its date is the
+// 20th bare, never "#rc-" at a page that lacks it (the preview check of 25
+// October 2026: 2009-H-89 is filed 8 April 2009 and drawn on 26 March, and
+// both days have pages).
 globalThis.fetch = async u => { asked.push(String(u)); return {ok: true, status: 200,
   json: async () => String(u).endsWith("session/days.json")
-    ? {H: ["2026-05-21"], S: ["2026-05-14"],
+    ? {H: ["2026-05-20", "2026-05-21"], S: ["2026-05-14"],
        rc: {H: {"2026-H-1": "2026-05-21", "2026-H-4": "2026-05-21", "2026-H-5": "2026-05-21",
                 "2026-H-6": "2026-05-22"}, S: {}}} : [], text: async () => "[]"}; };
 let s;
@@ -35237,9 +35242,9 @@ catch (e) { console.log("LOAD " + e.constructor.name + ": " + e.message); proces
     y: "2026"}, rc: null, b: null, mark: null, ch: ""});
   // NO ANCHOR NO PAGE HAS: a vote filed under a rule's code, which the day
   // draws at its own id, with the Journal's words and without; a vote on no
-  // bill the day draws on a bill's card (no rc- id), one it draws on the next
-  // day, one listed at a day with no page, and one on a bill the day draws
-  // as a vote of its own.
+  // bill the day draws on a bill's card (no rc- id), one the next day's page
+  // draws though the file's day has a page of its own, one listed at a day
+  // with no page, and one on a bill the day draws as a vote of its own.
   const w = (k, d, b, y, words) => s.voteRow({x: {d, b, q: "Adopt", v: "Yea", k, y},
     rc: words === null ? null : {y: 216, n: 164, p: 1, pr: 1, q: "", w: words},
     b: null, mark: null, ch: ""});
@@ -35305,9 +35310,16 @@ catch (e) { console.log("LOAD " + e.constructor.name + ": " + e.message); proces
             '<span class="nbw">Lay on the Table</span>' not in rows["onCard"]:
         bad.append("a vote on no bill the day draws on a bill's card links an rc- id the page "
                    f"does not carry: {links['onCard']}")
-    if links["moved"] != ["session/H/2026-05-21#rc-2026-H-4"] or "session/" in dates["moved"]:
-        bad.append("a vote on no bill the day after draws is not linked at that day, or its "
-                   f"date links a day with no page: {links['moved']}, {dates['moved']}")
+    # The date links its own day bare, and the words the day that draws it:
+    # "#rc-" on the date only where the date's own page carries the id. The
+    # 20th has a page, so a date that skipped that test would link
+    # session/H/2026-05-20#rc-2026-H-4, an id that page lacks (2009-H-89 on
+    # 8 April 2009, the preview check of 25 October 2026).
+    if links["moved"] != ["session/H/2026-05-21#rc-2026-H-4"] or \
+            dates["moved"] != '<a href="session/H/2026-05-20">May 20, 2026</a>':
+        bad.append("a vote on no bill the file dates the 20th and the 21st's page draws is not "
+                   "linked at the 21st, or its date is not the 20th's page bare: "
+                   f"{links['moved']}, {dates['moved']}")
     if links["stale"] or "#rc-" in rows["stale"]:
         bad.append(f"a vote listed at a day with no page links it: {links['stale']}")
     if not dates["plain"].startswith('<a href="session/H/2026-05-21#rc-2026-H-5">'):
