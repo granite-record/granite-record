@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.694
+# GRANITE_VERSION: 2026-09-04.695
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -86086,9 +86086,12 @@ def _workflows_gate(NI):
 # which every step inherits, and which nightly.py and cloud.py read themselves
 # -- from the Dry run box on a run by hand, and, since the person's decision of
 # 7 October 2026, from the ref: every run of a branch other than main is one.
-DRY_RUN_ENV = ("  DRY_RUN: ${{ (github.event_name != 'schedule' && inputs.dry_run) "
-               "|| github.ref != 'refs/heads/main' }}")
+DRY_RUN_ENV = ("  DRY_RUN: ${{ github.ref != 'refs/heads/main' || (github.event_name != "
+               "'schedule' && (inputs.dry_run == true || inputs.dry_run == 'true')) }}")
 MAIN_REF = "refs/heads/main"
+# The night job hands the publish job its DRY_RUN (THE TIMER'S BOXES ARE
+# STRINGS, nightly.yml's publish job).
+NIGHT_DRY_OUTPUT = "      dry_run: ${{ env.DRY_RUN }}"
 # ... and so preflight inherits it too, when the night runs it first on
 # GitHub's machine. The workflow's words for its own run, which no check's
 # fixture may take for its own: main() takes them out before any check runs.
@@ -86129,6 +86132,10 @@ WF_RUNS = {
          False, "nightly (by hand, new term)"),
         ("workflow_dispatch", MAIN_REF, dict(_HAND, fetch=True, new_term=True), True,
          "nightly (by hand, new term: refused, its page says which boxes)"),
+        # The night's timer (workers/night-timer): the scheduled night's boxes
+        # and its own, through GitHub's API (25 October 2026).
+        ("workflow_dispatch", MAIN_REF, dict(_HAND, dry_run=False, fetch=True, timer=True), False,
+         "nightly (scheduled, by the timer)"),
     ],
     # The weekly has no Dry run box: only its branch makes a run of it a dry run.
     "weekly.yml": [
@@ -86472,23 +86479,35 @@ def _workflows_dry_run(NI, CL):
                     f"nightly.yml: job {j} sends the site for production on a dry run"
     assert ups == 1, f"nightly.yml sends the site for production from {ups} steps, not one"
     cond = re.search(r"^    if:\s*(.+)$", "\n".join(_wf_code(jobs.get("publish") or [])), re.M)
-    assert cond and "inputs.dry_run == false" in cond.group(1) and \
-        f"github.ref == '{MAIN_REF}'" in cond.group(1), \
-        "nightly.yml's publish job can run for a dry run, or for a run of a branch other than main"
+    assert cond and "needs.night.outputs.dry_run == 'false'" in cond.group(1) and \
+        f"github.ref == '{MAIN_REF}'" in cond.group(1) and "inputs." not in cond.group(1), \
+        ("nightly.yml's publish job can run for a dry run, or for a run of a branch other than "
+         "main, or reads a box itself, which the timer's run carries as a string")
+    assert NIGHT_DRY_OUTPUT in _wf_code(jobs.get("night") or []), \
+        f"nightly.yml's night job does not hand the publish job its DRY_RUN ({NIGHT_DRY_OUTPUT.strip()})"
 
     # Each kind of run, as GitHub evaluates the lines.
     dry_line, title = _wf_value(lines, "DRY_RUN"), _wf_value(lines, "run-name")
     wrong = []
     for event, ref, boxes, dry, want in WF_RUNS["nightly.yml"]:
-        ctx = _wf_run_ctx(event, ref, boxes)
-        said = _gh_render(dry_line, ctx)
-        runs = bool(_gh_eval(cond.group(1), dict(ctx, **{
-            "needs.night.outputs.publishable": "true"})))
-        named = _gh_render(title or "", ctx)
-        if said != ("true" if dry else "false") or runs == dry or named != want:
-            wrong.append(f"{event} of {ref} with {boxes or 'no boxes'}: DRY_RUN={said}, the "
-                         f"publish job {'runs' if runs else 'does not run'}, titled {named!r} "
-                         f"(want DRY_RUN={str(dry).lower()} and {want!r})")
+        # THE TIMER'S BOXES ARE STRINGS (25 October 2026): a run started
+        # through GitHub's API -- the timer's -- carries each box as "true" or
+        # "false" at the publish job's line, where the run's title read them
+        # as booleans. Every run by hand is read both ways, and must do the
+        # same both ways; its title is held to the booleans, as GitHub writes it.
+        typed = [boxes] + ([{k: str(v).lower() for k, v in boxes.items()}]
+                           if event == "workflow_dispatch" else [])
+        for bx in typed:
+            ctx = _wf_run_ctx(event, ref, bx)
+            said = _gh_render(dry_line, ctx)
+            runs = bool(_gh_eval(cond.group(1), dict(ctx, **{
+                "needs.night.outputs.publishable": "true",
+                "needs.night.outputs.dry_run": said})))
+            named = _gh_render(title or "", ctx) if bx is boxes else want
+            if said != ("true" if dry else "false") or runs == dry or named != want:
+                wrong.append(f"{event} of {ref} with {bx or 'no boxes'}: DRY_RUN={said}, the "
+                             f"publish job {'runs' if runs else 'does not run'}, titled "
+                             f"{named!r} (want DRY_RUN={str(dry).lower()} and {want!r})")
     assert not wrong, "nightly.yml, as GitHub would read it: " + "; ".join(wrong)
 
     # A DRY RUN'S PREVIEW IS ITS OWN (the review of 7 October 2026): the night
@@ -86518,7 +86537,8 @@ def _workflows_dry_run(NI, CL):
         assert _gh_render(dry_line, ctx) == "true", (ref, _gh_render(dry_line, ctx))
     case = _wf_run_ctx("workflow_dispatch", "refs/heads/Main", dict(_HAND, dry_run=False))
     assert _gh_render(dry_line, case) == "false" and \
-        _gh_eval(cond.group(1), dict(case, **{"needs.night.outputs.publishable": "true"})), \
+        _gh_eval(cond.group(1), dict(case, **{"needs.night.outputs.publishable": "true",
+                                              "needs.night.outputs.dry_run": "false"})), \
         ("GitHub's expressions now tell refs/heads/Main from main, and this check's account of "
          "why nightly.py's step output and the Healthchecks steps' own test are needed is stale")
     saved = {k: os.environ.get(k) for k in ("GITHUB_ACTIONS", NI.DRY_ENV, NI.REF_ENV)}
@@ -86820,13 +86840,20 @@ def _workflows_dry_runs_wait():
         dry_line = _wf_value(lines, "DRY_RUN")
         wrong = []
         for event, ref, boxes, dry, _title in WF_RUNS[name]:
-            ctx = _wf_run_ctx(event, ref, boxes)
-            ids = {_gh_render(group, dict(ctx, **{"github.run_id": rid})) for rid in ("101", "102")}
-            said = _gh_render(dry_line, ctx) == "true"
-            if dry != said or (dry and ids != {DRY_RUNS_GROUP}) or \
-                    (not dry and (len(ids) != 2 or DRY_RUNS_GROUP in ids or "gc-night" in ids)):
-                wrong.append(f"{event} of {ref} with {boxes or 'no boxes'}: waits in "
-                             f"{sorted(ids)}, and is {'a' if dry else 'not a'} dry run")
+            # Each run by hand with its boxes as booleans, and as the strings a
+            # run through GitHub's API carries (THE TIMER'S BOXES ARE STRINGS,
+            # nightly.yml's publish job, 25 October 2026).
+            for bx in [boxes] + ([{k: (str(v).lower() if isinstance(v, bool) else v)
+                                   for k, v in boxes.items()}]
+                                 if event == "workflow_dispatch" and boxes else []):
+                ctx = _wf_run_ctx(event, ref, bx)
+                ids = {_gh_render(group, dict(ctx, **{"github.run_id": rid}))
+                       for rid in ("101", "102")}
+                said = _gh_render(dry_line, ctx) == "true"
+                if dry != said or (dry and ids != {DRY_RUNS_GROUP}) or \
+                        (not dry and (len(ids) != 2 or DRY_RUNS_GROUP in ids or "gc-night" in ids)):
+                    wrong.append(f"{event} of {ref} with {bx or 'no boxes'}: waits in "
+                                 f"{sorted(ids)}, and is {'a' if dry else 'not a'} dry run")
         assert not wrong, f"{name}: " + "; ".join(wrong)
         held.append(name)
     return "ok", (f"{', '.join(held)}: every dry run waits in {DRY_RUNS_GROUP!r}, one at a time, "
