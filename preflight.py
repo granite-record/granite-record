@@ -69377,17 +69377,32 @@ def _testify_in_the_row():
     ahead. Each button is held to _icons_named's rules: one drawing, hidden,
     in a summary with words of its own.
 
+    The review of 25 October 2026 found what the checks let through. A
+    hearing TODAY is still live, New Hampshire's today, worked out here as
+    app.js must: "Testify until Jan 13" is most read on the 13th. The day is
+    CONCORD'S, not the reader's: with node's own clock in Los Angeles, 11:30
+    p.m. on 13 January there is 2:30 a.m. on the 14th in Concord and shut;
+    in London, 1 a.m. on the 14th is 8 p.m. on the 13th in Concord and live;
+    and the term turns by Concord's day too. A bill that ENDED WITHOUT A
+    HEARING (HR 2 of 2025, adopted the day it came in) is not told testimony
+    "opens once a public hearing is scheduled": it did not open.
+
     MOUNTED IN THE ROW (mountTestify), against a row that holds Cite and
     Follow: after Follow, or after Cite where there is no Follow; the open one
     marked to take a row of its own on a phone; drawn once, and left alone
     by a redraw that says the same, so a pane the reader opened stays open;
-    and taken away for a record that did not load. render() mounts it on a
-    bill's own page and focusActions on a bill opened from the search.
+    drawn again, ONCE, when what it says changes (live, then passed, leaves
+    one button, the greyed one); and taken away for a record that did not
+    load. render() mounts it on a bill's own page and focusActions on a bill
+    opened from the search, which the next check runs.
 
-    THE COLOURS: the filled button is --on-pine on --pine and the greyed one
-    --ink-2 on --wash, each at least 4.5:1 in both palettes; the row is left
-    off the printed sheet, Testify with it; and on a phone the open one spans
-    the row, where "Testify until Jan 13" is one line."""
+    THE COLOURS: the filled button is --on-pine on --pine, its drawing too,
+    and the greyed one --ink-2 on --wash, each at least 4.5:1 in both
+    palettes; open, the filled one has a ring of --ink outside it on the
+    page's --paper, at least 3:1, as the others' outline turns to the ink
+    (its own pine outline did not change); the row is left off the printed
+    sheet, Testify with it; and on a phone the open one spans the row, where
+    "Testify until Jan 13" is one line."""
     import components as C
     got = _app_js("""(() => {
   const term = scope.sittingTerm(new Date());
@@ -69397,7 +69412,21 @@ def _testify_in_the_row():
   const live = bill([st("hearing", "2999-01-13", "S", "Finance")]);
   const passed = bill([st("hearing", "2000-01-13", "S", "Finance")]);
   const none = bill([]);
+  const ended = {term, stations: [], journey: {rail: [{stop: "Introduced", mark: "p"}, {stop: "House", mark: "p"}]}};
   const b = {id: "SB406", n: "SB 406-FN-A"};
+  // New Hampshire's day, worked out here rather than asked of app.js.
+  const nh = Object.fromEntries(new Intl.DateTimeFormat("en-US", {timeZone: "America/New_York",
+    year: "numeric", month: "2-digit", day: "2-digit"}).formatToParts(new Date()).map(x => [x.type, x.value]));
+  const today = `${nh.year}-${nh.month}-${nh.day}`;
+  // The reader's clock somewhere else: node takes TZ as it changes.
+  const sb406 = {term: "2025-2026", stations: [st("hearing", "2026-01-13", "S", "Finance")], journey: moving};
+  const at = (tz, iso) => {
+    const was = process.env.TZ;
+    process.env.TZ = tz;
+    try { return {html: scope.testifyButton(sb406, b, new Date(iso)), term: scope.sittingTerm(new Date(iso)),
+                  local: new Date(iso).getDate()}; }
+    finally { if (was === undefined) delete process.env.TZ; else process.env.TZ = was; }
+  };
   // A row as shell.py writes it and mountFollow fills it: Cite, then Follow.
   const row = (withFollow) => {
     const kids = [];
@@ -69436,10 +69465,22 @@ def _testify_in_the_row():
   const kept = again.kids.find(k => /testifyin/.test(k.className)) === drawn;
   const broken = mount(again, b, {term: term, stations: [], _error: "404"});
   const earlier = mount(row(true), b, bill([st("hearing", "2999-01-13", "S", "Finance")], "1999-2000"));
+  // The words change under a reader: live, then the hearing passes.
+  const swap = row(true);
+  mount(swap, b, live);
+  const swapped = mount(swap, b, passed);
+  const swappedHtml = swap.kids.filter(k => /testifyin/.test(k.className)).map(k => k.innerHTML).join("");
   return {
     live: scope.testifyButton(live, b),
     passed: scope.testifyButton(passed, b),
     none: scope.testifyButton(none, b),
+    ended: scope.testifyButton(ended, b),
+    today: scope.testifyButton(bill([st("hearing", today, "S", "Finance")]), b),
+    todayShort: scope.dateWords(today, "short"),
+    la: at("America/Los_Angeles", "2026-01-14T07:30:00Z"),
+    london: at("Europe/London", "2026-01-14T01:00:00Z"),
+    turn: at("Europe/London", "2026-12-01T03:00:00Z"),
+    swapped, swappedHtml,
     old: scope.testifyButton(bill([st("hearing", "2999-01-13", "S", "Finance")], "1999-2000"), b),
     summary: scope.renderSummary(b, Object.assign({}, live, {billtext: {analysis: "This bill does a thing."}})),
     placed, plain, first, second, kept, broken, earlier,
@@ -69460,6 +69501,21 @@ def _testify_in_the_row():
                           + got["short"] + "</span></span>"), (
         f"the live button does not say when it closes, \"Testify until {got['short']}\": {summ(live)!r}")
     lp = flat(pane(live))
+    # TODAY, AND CONCORD'S DAY
+    assert got["today"].startswith('<details class="testify tlive">') \
+        and f" until {got['todayShort']}</span>" in summ(got["today"]), (
+            f"a hearing today, {got['todayShort']} in New Hampshire, is not live: {got['today'][:200]!r}")
+    la, london = got["la"], got["london"]
+    assert la["local"] == 13 and la["html"].startswith('<details class="testify toff">') \
+        and "its public hearing was Jan 13, 2026." in flat(la["html"]), (
+            "at 11:30 p.m. on 13 January in Los Angeles, 2:30 a.m. on the 14th in Concord, SB 406's Testify "
+            f"is not shut: {la['html'][:200]!r}")
+    assert london["local"] == 14 and london["html"].startswith('<details class="testify tlive">') \
+        and " until Jan 13</span>" in summ(london["html"]), (
+            "at 1 a.m. on 14 January in London, 8 p.m. on the 13th in Concord, SB 406's Testify is not live: "
+            f"{london['html'][:200]!r}")
+    assert got["turn"]["term"] == "2025-2026" and got["turn"]["local"] == 1, (
+        f"at 3 a.m. on 1 December in London, still 30 November in Concord, the sitting term is {got['turn']['term']}")
     for part in ("The Senate public hearing is", "January 13, 2999", ", before Finance.",
                  "Until then, anyone may sign in online to register support, opposition or a neutral "
                  "position, or come and ask to speak.",
@@ -69476,7 +69532,9 @@ def _testify_in_the_row():
              "It opens again if the bill is scheduled for a hearing in the other chamber.",
              "Testify, not open: its hearing has passed"),
             ("not opened", none, "Online testimony has not opened yet: it opens once a public hearing "
-             "is scheduled.", "Testify, not open yet")):
+             "is scheduled.", "Testify, not open yet"),
+            ("ended without a hearing", got["ended"], "Online testimony did not open for this bill: it had no "
+             "public hearing.", "Testify, not open: no hearing was held")):
         assert h.startswith('<details class="testify toff"><summary>'), f"the {name} control is {h[:120]!r}"
         assert re.sub(r"<[^>]+>", "", summ(h)) == heard and '<span class="sr">' in summ(h), (
             f"the {name} button does not say in words that it is not open: {summ(h)!r}")
@@ -69504,6 +69562,9 @@ def _testify_in_the_row():
         f"the open one is not marked for a phone's row of its own: {got['liveClass']!r}, {got['passedClass']!r}")
     assert got["first"] == got["second"] and got["kept"], (
         "a redraw that says the same drew Testify again, which shuts a pane the reader opened")
+    assert got["swapped"] == ["pcite", "followbox", "testifyin", "reportbox"] \
+        and got["swappedHtml"].startswith('<details class="testify toff">'), (
+            f"live, then passed, leaves the row {got['swapped']}, not one greyed Testify")
     assert got["broken"] == ["pcite", "followbox", "reportbox"], (
         f"a record that did not load keeps a Testify button: {got['broken']}")
     assert got["earlier"] == ["pcite", "followbox", "reportbox"], (
@@ -69528,12 +69589,24 @@ def _testify_in_the_row():
         f"the open Testify button is not filled in pine: {filled}")
     assert grey.get("background") == "var(--wash)" and grey.get("color") == "var(--ink-2)", (
         f"the shut Testify button is not greyed: {grey}")
+    drawing = rules.get(((), ".testify.tlive > summary .icon"), {})
+    assert drawing.get("color") == "var(--on-pine)", (
+        f"the filled Testify button's drawing is not --on-pine, so it is the second ink on pine: {drawing}")
+    ring = rules.get(((), ".testify.tlive[open] > summary"), {}).get("box-shadow", "")
+    widths = [int(w) for w in re.findall(r"(\d+)px", ring)]
+    assert re.fullmatch(r"0 0 0 \d+px var\(--paper\),\s*0 0 0 \d+px var\(--ink\)", ring) \
+        and widths[1] > widths[0], (
+            f"the filled Testify button, open, has no ring of the ink outside it: {ring!r}")
     ratios = []
     for ink, ground in (("--on-pine", "--pine"), ("--ink-2", "--wash")):
         for scheme in ("light", "dark"):
             r = _css_ratio(_css_token_colour(ink, pal[scheme]), _css_token_colour(ground, pal[scheme]))
             assert r >= 4.5, f"{ink} on {ground} is {r:.2f}:1 in the {scheme} palette, under 4.5:1"
             ratios.append(f"{r:.2f}")
+    for scheme in ("light", "dark"):
+        r = _css_ratio(_css_token_colour("--ink", pal[scheme]), _css_token_colour("--paper", pal[scheme]))
+        assert r >= 3, f"the open ring, --ink on --paper, is {r:.2f}:1 in the {scheme} palette, under 3:1"
+        ratios.append(f"{r:.2f}")
     phone = [ctx for (ctx, sel), d in rules.items()
              if sel == ".racts .pageacts > .tliverow" and d.get("grid-column", "").replace(" ", "") == "1/-1"]
     assert any("45em" in " ".join(c) for c in phone), "on a phone the open Testify button does not take a row of its own"
@@ -69546,7 +69619,129 @@ def _testify_in_the_row():
     return "ok", (f"open: \"Testify until {got['short']}\", filled, the form and its steps in its pane; passed "
                   f"and not opened: greyed, said in words, no link; none for an earlier term or on the "
                   f"Summary; after Follow, or Cite, in the row; on-pine on pine {ratios[0]} and {ratios[1]}:1, "
-                  f"ink-2 on wash {ratios[2]} and {ratios[3]}:1")
+                  f"ink-2 on wash {ratios[2]} and {ratios[3]}:1, the open ring {ratios[4]} and {ratios[5]}:1; "
+                  f"live on the hearing's day, by Concord's clock; an ended bill unheard told so")
+
+
+@check("frontend", "a bill opened from the search gets one Testify, its own term's, which a redraw leaves "
+                   "open and which goes with the row when the list comes back")
+def _testify_from_the_search():
+    """The review of 25 October 2026. focusActions draws a bill's row when it
+    is opened from the search: it fetches the bill's own page for Cite and the
+    feed, mounts Follow, Print, Share and Report, and Testify. Its Testify was
+    looked up by number alone, so on /bills?term=2023-2024, then 2025-2026 and
+    HB 104, the heading read "HB 104-FN" and the pane "then the bill, HB 104",
+    the earlier term's label; the next redraw, with the right row, drew the
+    button again and shut the pane a reader had opened. The check that held
+    it read only that focusActions' text named mountTestify, and a call that
+    passed no record, which takes Testify off every bill opened from the
+    search, got through it.
+
+    So focusActions is run in node, against a page of nodes that answer
+    getElementById and querySelector as a browser does for these, a fetch
+    that answers at once with the bill's page, and an index holding HB 104 in
+    the sitting term and in the one before it, the earlier first, with the
+    sitting term's record already loaded (the usual case: the record comes
+    before the page focusActions asks for). It must draw ONE Testify, live,
+    after Follow, saying the sitting term's "HB 104-FN"; render()'s redraw,
+    with the right row or with the earlier term's (render's own fallback
+    finds by number), must leave that same button, so an open pane stays
+    open; and dropFocusActions, the list coming back, must take the row away
+    with Testify in it, leaving none on the page."""
+    got = _app_js("""(() => {
+  const N = (tag) => {
+    const n = {tagName: tag, id: "", className: "", dataset: {}, hidden: false, children: [], parentNode: null,
+      _html: "",
+      get innerHTML() { return this._html; }, set innerHTML(v) { this._html = String(v); },
+      get firstChild() { return this.children[0] || null; },
+      get nextSibling() { const p = this.parentNode; return p ? p.children[p.children.indexOf(this) + 1] || null : null; },
+      classList: {add(c) { n.className = (n.className + " " + c).trim(); },
+                  remove(c) { n.className = n.className.split(/\\s+/).filter(x => x !== c).join(" "); },
+                  contains(c) { return n.className.split(/\\s+/).includes(c); }},
+      insertBefore(c, ref) { c.remove(); c.parentNode = this;
+        const i = ref ? this.children.indexOf(ref) : -1;
+        if (i < 0) this.children.push(c); else this.children.splice(i, 0, c); return c; },
+      appendChild(c) { return this.insertBefore(c, null); },
+      remove() { const p = this.parentNode; if (p) { p.children.splice(p.children.indexOf(this), 1); this.parentNode = null; } },
+      before(c) { this.parentNode.insertBefore(c, this); },
+      all() { return this.children.flatMap(c => [c, ...c.all()]); },
+      querySelector(sel) { return this.querySelectorAll(sel)[0] || null; },
+      querySelectorAll(sel) {
+        const m = /^([#.])([\\w-]+)$/.exec(sel);
+        if (!m) return [];
+        return this.all().filter(x => m[1] === "#" ? x.id === m[2] : x.className.split(/\\s+/).includes(m[2]));
+      },
+      getAttribute() { return null; }, setAttribute() {},
+    };
+    return n;
+  };
+  const body = N("body"), results = N("div");
+  results.id = "results";
+  body.appendChild(results);
+  document.getElementById = id => body.all().find(x => x.id === id) || null;
+  document.querySelector = sel => body.querySelector(sel);
+  document.querySelectorAll = sel => body.querySelectorAll(sel);
+  document.createElement = tag => N(tag);
+  document.importNode = n => n;
+  // The bill's own page as shell.py writes its row: Cite, and the feed.
+  globalThis.DOMParser = class { parseFromString() {
+    const acts = N("div"), cite = N("details");
+    acts.id = "pageacts"; acts.className = "pageacts"; cite.className = "pcite";
+    acts.appendChild(cite);
+    return {getElementById: id => id === "pageacts" ? acts : null,
+            querySelector: sel => /rss/.test(sel) ? {getAttribute: () => "/feeds/bill.xml"} : null};
+  } };
+  // A fetch that answers at once, so the row is drawn before this returns.
+  const now = v => (v && v.now) ? v : {now: true, then(f) { return now(f(v)); }, catch() { return this; }};
+  const asked = [];
+  globalThis.fetch = url => { asked.push(url); return now({ok: true, text: () => "<html></html>"}); };
+  const sitting = scope.sittingTerm(new Date());
+  const first = +sitting.slice(0, 4), before = `${first - 2}-${first - 1}`;
+  const older = {id: "HB104", n: "HB 104", term: before, year: first - 2, title: "the earlier one"};
+  const ours = {id: "HB104", n: "HB 104-FN", term: sitting, year: first, title: "this one"};
+  scope.IDX.length = 0;
+  scope.IDX.push(older, ours);
+  scope.setTerm(sitting);
+  scope.setFocused("HB104");
+  const moving = {rail: [{stop: "Introduced", mark: "p"}, {stop: "Law", mark: ""}]};
+  const d = {term: sitting, journey: moving,
+             stations: [{what: "public hearing", when: "2999-01-13", body: "H", committee: "Housing"}]};
+  scope.detail[scope.dkey("HB104")] = d;
+  scope.focusActions("HB104");
+  const row = document.getElementById("pageacts");
+  const kids = row ? row.children.map(k => k.id || k.className) : [];
+  const drawn = body.querySelectorAll(".testifyin");
+  const one = drawn[0] || null;
+  scope.mountTestify(ours, d);
+  const keptRight = body.querySelectorAll(".testifyin")[0] === one;
+  scope.mountTestify(older, d);
+  const keptOlder = body.querySelectorAll(".testifyin")[0] === one;
+  const afterRedraw = body.querySelectorAll(".testifyin").length;
+  scope.dropFocusActions();
+  return {asked, kids, count: drawn.length, html: one ? one.innerHTML : "", cls: one ? one.className : "",
+          keptRight, keptOlder, afterRedraw,
+          rowLeft: !!document.getElementById("pageacts"), left: body.querySelectorAll(".testifyin").length};
+})()""", names=("focusActions", "dropFocusActions", "mountTestify", "sittingTerm", "IDX", "detail", "dkey",
+                 "setTerm:(t)=>{term=t;}", "setFocused:(x)=>{focused=x;}"))
+    if got is None:
+        return "skip", "node, app.js or dom_stub.js is not here"
+    said = " ".join(re.sub(r"<[^>]+>", " ", got["html"]).split())
+    assert got["asked"] and got["asked"][0].endswith(".html"), (
+        f"focusActions did not ask for the bill's own page: {got['asked']}")
+    assert got["count"] == 1, f"a bill opened from the search has {got['count']} Testify buttons in its row"
+    assert got["kids"] == ["pcite", "followbox", "testifyin tliverow", "reportbox"], (
+        f"the row of a bill opened from the search reads {got['kids']}")
+    assert got["html"].startswith('<details class="testify tlive">'), (
+        f"the Testify of a bill opened from the search, its hearing ahead, is not live: {got['html'][:160]!r}")
+    assert "then the bill, HB 104-FN." in said and "then the bill, HB 104." not in said, (
+        f"the Testify of the sitting term's HB 104 names another term's bill: {said!r}")
+    assert got["keptRight"] and got["keptOlder"] and got["afterRedraw"] == 1, (
+        "a redraw drew Testify again in the row of a bill opened from the search, which shuts a pane the "
+        f"reader opened (kept with the right row: {got['keptRight']}, with the earlier term's: {got['keptOlder']})")
+    assert not got["rowLeft"] and got["left"] == 0, (
+        f"the list came back and left {got['left']} Testify on the page (the row: {got['rowLeft']})")
+    return "ok", ("one live Testify after Follow, \"then the bill, HB 104-FN\" with 2023's HB 104 first in the "
+                  "index; a redraw with either row leaves it; gone with the row")
 
 
 @check("frontend", "the home page says each thing once: its latest sittings are one line to their "

@@ -4202,8 +4202,25 @@ const gcSource=d=>d.docket_url?`<a href="${esc(d.docket_url)}" target="_blank" r
 // an even year, the eve of Organization Day.
 const TESTIFY_FORMS={H:["House","https://gc.nh.gov/house/committees/remotetestimony/"],
   S:["Senate","https://gc.nh.gov/remotecommittee/senate.aspx"]};
+// NEW HAMPSHIRE'S DAY, NOT THE READER'S (the review of 25 October 2026). The
+// button names the hearing's day in Concord, and it was live or shut by the
+// reader's own clock: in Los Angeles at 11:30 p.m. on 13 January, 2:30 a.m.
+// on the 14th in Concord, SB 406 still read "Testify until Jan 13", and in
+// London at 1 a.m. on the 14th, 8 p.m. on the 13th in Concord, it read shut.
+// The term turns by Concord's day too. The IANA zone carries the daylight-saving rule, as workers/follow's
+// nhClock does; a browser without it falls back to its own day.
+const NH_DAY=(()=>{try{return new Intl.DateTimeFormat("en-US",{timeZone:"America/New_York",
+  year:"numeric",month:"2-digit",day:"2-digit"});}catch(e){return null;}})();
+function nhDay(now){
+  try{
+    const p={};
+    NH_DAY.formatToParts(now).forEach(x=>{p[x.type]=x.value;});
+    if(p.year&&p.month&&p.day)return `${p.year}-${p.month}-${p.day}`;
+  }catch(e){}
+  return `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,"0")}-${String(now.getDate()).padStart(2,"0")}`;
+}
 function sittingTerm(now){
-  const y=now.getFullYear(), m=now.getMonth()+1;
+  const day=nhDay(now), y=+day.slice(0,4), m=+day.slice(5,7);
   const first=y%2?y:(m===12?y+1:y-1);
   return `${first}-${first+1}`;
 }
@@ -4213,11 +4230,10 @@ function sittingTerm(now){
 // gives -- the hearing's day, then the committee, then the bill -- which the
 // House's form asks for too. workers/follow/mail.js testifyWords says it the
 // same way in the emails.
-function testifyButton(d,b){
+function testifyButton(d,b,now=new Date()){
   if(!d||!d.term)return "";
-  const now=new Date();
   if(d.term!==sittingTerm(now))return "";
-  const today=`${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,"0")}-${String(now.getDate()).padStart(2,"0")}`;
+  const today=nhDay(now);
   // EACH CHAMBER'S WORD (the audit of 25 October 2026, M2): the House's
   // hearings are "public hearing" and the Senate's "hearing", and the box
   // read the House's alone -- SB 406 of 2026, heard on 13 January, said
@@ -4250,12 +4266,22 @@ function testifyButton(d,b){
   // "The other chamber" only while one chamber alone has heard it: CACR 13
   // of 2026, heard in both, was told it opens again in the other.
   const one=new Set(heard.map(s=>s.body)).size===1;
+  // ENDED WITHOUT A HEARING (the review of 25 October 2026): HR 2 of 2025,
+  // adopted by the House the day it was introduced, and HB 1786 of 2026,
+  // whose hearing was cancelled and which died on the table, were never
+  // heard, and the pane told their readers testimony "opens once a public
+  // hearing is scheduled", which will not happen. It did not open, and the
+  // pane says so. The button stays, greyed, since every bill of the sitting
+  // term has one (the person, 22 October 2026: "Bills that are from the
+  // current year should have the testimony box but greyed out").
   const why=last
     ?`Online testimony for this bill has passed: its ${heard.length>1?"last ":""}public hearing was ${
       esc(dateWords(last.when))}.`
       +(ended||!one?"":" It opens again if the bill is scheduled for a hearing in the other chamber.")
+    :ended?"Online testimony did not open for this bill: it had no public hearing."
     :"Online testimony has not opened yet: it opens once a public hearing is scheduled.";
-  return button("toff",`Testify<span class="sr">${last?", not open: its hearing has passed":", not open yet"}</span>`)
+  const shut=last?", not open: its hearing has passed":ended?", not open: no hearing was held":", not open yet";
+  return button("toff",`Testify<span class="sr">${shut}</span>`)
     +`<div class="testifypane"><p>${why}</p></div></details>`;
 }
 // IN THE ROW AFTER FOLLOW (25 October 2026), or after Cite where a bill has
@@ -4264,10 +4290,17 @@ function testifyButton(d,b){
 // problem are about this page. Drawn once the bill's record has come, since
 // what it says is the record's, and drawn again only when that changes, so
 // a pane the reader opened is not shut under them by the next redraw.
+// THE ROW OF THE RECORD'S OWN TERM (the review of 25 October 2026): a bill
+// number is unique only within its term, and focusActions found HB 104's row
+// with no term, so the 2025-2026 bill opened from the search said "then the
+// bill, HB 104", the 2023-2024 bill's label, and the next redraw, with the
+// right one, drew the button again and shut the pane. The label is the
+// row's of the record's term, as Print takes it, whatever row a caller has.
 const TESTIFY_DRAWN=new WeakMap();
 function mountTestify(b,d){
   const acts=document.getElementById("pageacts");
   if(!acts)return;
+  if(b&&d&&d.term)b=IDX.find(x=>x.id===b.id&&x.term===d.term)||b;
   const html=b&&d&&!d._error?testifyButton(d,b):"";
   const had=acts.querySelector(".testifyin");
   if(had&&TESTIFY_DRAWN.get(had)===html)return;
@@ -6085,8 +6118,10 @@ function focusActions(id){
     mountFollow(feed?"bill":"",feed?feed.getAttribute("href"):"",`${y}/${id}`);
     mountReport("bill",`${y}/${id}`);
     // Testify too, for a bill of the sitting term, as render() draws it on
-    // the bill's own page (the person, 25 October 2026).
-    mountTestify(IDX.find(x=>x.id===id)||{id,n:id},detail[dkey(id)]);
+    // the bill's own page (the person, 25 October 2026); the row within the
+    // term, as yearOf finds it, since HB 104 is a bill of every term.
+    mountTestify(IDX.find(x=>x.id===id&&(!term||x.term===term))||IDX.find(x=>x.id===id)||{id,n:id},
+      detail[dkey(id)]);
     placeActions();
   }).catch(()=>{if(focusActs===id)focusActs=null;});
 }

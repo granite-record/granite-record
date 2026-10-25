@@ -3856,6 +3856,14 @@ color:var(--ink-2);font-weight:600;margin-right:var(--sp-3)}
 .testify > summary:hover{text-decoration:underline;text-underline-offset:3px}
 .testify.tlive > summary:hover{background:var(--pine)}
 .testify.toff > summary:hover{background:var(--wash)}
+/* THE FILLED ONE OPEN (the review of 25 October 2026). The others' outline
+   turns to the ink while their pane is open, the only thing that ties a pane
+   hanging from the row's foot to the button that opened it, and the rule
+   above kept the filled one's pine; the ink as its outline would be 1.8:1
+   against the pine and barely show. So a ring of the ink stands outside it,
+   the page's paper between: 13.47:1 on the paper light, 14.20:1 dark, and
+   one pixel of ink, unlike the focus ring's two of pine. */
+.testify.tlive[open] > summary{box-shadow:0 0 0 2px var(--paper),0 0 0 3px var(--ink)}
 .testifypane p{margin:0 0 var(--sp-4)}
 .testifypane p:last-child{margin:0}
 .testify .tgo{display:inline-block;background:var(--pine);color:var(--on-pine);font-weight:600;
