@@ -1,4 +1,4 @@
-// GRANITE_VERSION: 2026-10-09.19
+// GRANITE_VERSION: 2026-10-09.20
 /* THE SITE'S COMPONENTS, IN THE BROWSER. Published as site/components.js and
    loaded by every page, in its head, before app.js, find.js and any page's
    own script, so each of them draws a person, a committee, a date or a time
@@ -481,9 +481,9 @@ function untilAttrs(until,today){
 // and untilAttrs; handed no day, as the browser's scripts hand it, the
 // behaviour below judges it by the reader's clock.
 function electNow(takesOffice,today){
-  return `<p class="elnow" data-elect${untilAttrs(takesOffice,today)}>Serving now</p>`;
+  return `<p class="elnow" data-elect${untilAttrs(takesOffice,today)}>${tr("elect.serving","Serving now")}</p>`;
 }
-function electRace(race){
+function electRace(race,lang){
   const r=race||{}, won=r.elected||[];
   const chips=won.map(e=>{
     const p=String(e.p||"");
@@ -493,16 +493,17 @@ function electRace(race){
   });
   const left=(r.seats||0)-won.length-(r.not_final||0);
   return (chips.length?'<ul class="ellist">'+chips.join("")+"</ul>":"")
-    +(r.not_final?'<p class="elnf"><b>Result not final</b>'
-      +(r.recount?" &mdash; a recount was requested":"")+"</p>":"")
-    +(left>0?`<p class="elnone">No member-elect on file for ${left} seat${left===1?"":"s"}.</p>`:"");
+    +(r.not_final?'<p class="elnf"><b>'+tr("elect.not_final","Result not final")+"</b>"
+      +(r.recount?" "+tr("elect.recount","&mdash; a recount was requested"):"")+"</p>":"")
+    +(left>0?'<p class="elnone">'+(left===1?tr("elect.none_one","No member-elect on file for {n} seat.",{n:left})
+      :tr("elect.none","No member-elect on file for {n} seats.",{n:left}))+"</p>":"");
 }
-function electBlock(races,election,takesOffice,today){
+function electBlock(races,election,takesOffice,today,lang){
   const body=(races||[]).map(([label,race])=>
-    (label?`<p class="elwhere">${esc(label)}</p>`:"")+electRace(race)).join("");
+    (label?`<p class="elwhere">${esc(label)}</p>`:"")+electRace(race,lang)).join("");
   return `<div class="elect" data-elect${untilAttrs(takesOffice,today)}>`+
-    `<p class="elhead"><b>Elected ${esc(dateWords(election,"full"))}</b> `+
-    `<span>Takes office ${esc(dateWords(takesOffice,"full"))}.</span></p>${body}</div>`;
+    `<p class="elhead"><b>${tr("elect.elected","Elected {day}",{day:esc(dateWords(election,"full",lang))})}</b> `+
+    `<span>${tr("elect.takes","Takes office {day}.",{day:esc(dateWords(takesOffice,"full",lang))})}</span></p>${body}</div>`;
 }
 function electLine(key,election,takesOffice,today){
   const m=/^(?:H\|([^|]+)\|([0-9]+)|S\|([0-9]+))$/.exec(key==null?"":String(key));

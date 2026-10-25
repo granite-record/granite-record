@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-08.57
+# GRANITE_VERSION: 2026-09-08.58
 """
 The topics of the civics section: their order, their names, and their prose.
 
@@ -600,63 +600,90 @@ STUDY_SVG = ('<svg viewBox="0 0 12 12" aria-hidden="true"><path d="M1.6 7.1c1.1-
              'stroke-linecap="round"/></svg>')
 
 
-def seats_figure(house, house_sitting, senate, senate_sitting):
+def seats_figure(house, house_sitting, senate, senate_sitting, lang="en"):
     """THE TWO CHAMBERS AS SQUARES, one a seat, a vacant seat hollow: the
     page's "400 representatives and 24 senators" and In the Record's vacancies,
-    counted from the district map and the roster."""
+    counted from the district map and the roster. Its words in `lang` (the
+    Learn pages in Spanish, 25 October 2026)."""
     hv, sv = max(house - house_sitting, 0), max(senate - senate_sitting, 0)
 
     def group(name, n, vacant):
         dots = "<i></i>" * (n - vacant) + '<i class="is-v"></i>' * vacant
-        return (f'<div class="l-sg"><p class="l-sgh"><b>{name}</b>{n:,} seats</p>'
+        return (f'<div class="l-sg"><p class="l-sgh"><b>{name}</b>'
+                + I.say(lang, "reps.n_seats", "{n} seats", n=f"{n:,}") + "</p>"
                 f'<div class="l-dots" aria-hidden="true">{dots}</div></div>')
-    where = " and ".join(x for x in (f"{hv:,} in the House" if hv else "",
-                                      f"{sv:,} in the Senate" if sv else "") if x)
-    label = (f"The House has {house:,} seats"
-             + (f", {hv:,} of them vacant as the record stands" if hv else "")
-             + f"; the Senate has {senate:,}"
-             + (f", {sv:,} of them vacant" if sv else "") + ".")
-    cap = ('<i class="l-key is-me" aria-hidden="true"></i>One square, one seat.'
-           + (f' <i class="l-key" aria-hidden="true"></i>A hollow square is a vacant seat: '
-              f"{where} as the record stands." if where else ""))
+    where = (" " + I.say(lang, "learn.and", "and") + " ").join(x for x in (
+        I.say(lang, "learn.seats.in_house", "{n} in the House", n=f"{hv:,}") if hv else "",
+        I.say(lang, "learn.seats.in_senate", "{n} in the Senate", n=f"{sv:,}") if sv else "") if x)
+    label = (I.say(lang, "learn.seats.house_has", "The House has {n} seats", n=f"{house:,}")
+             + ((I.say(lang, "learn.seats.vacant_record_one", ", {n} of them vacant as the record "
+                       "stands", n=f"{hv:,}") if hv == 1 else
+                 I.say(lang, "learn.seats.vacant_record", ", {n} of them vacant as the record stands",
+                       n=f"{hv:,}")) if hv else "")
+             + I.say(lang, "learn.seats.senate_has", "; the Senate has {n}", n=f"{senate:,}")
+             + ((I.say(lang, "learn.seats.vacant_one", ", {n} of them vacant", n=f"{sv:,}") if sv == 1
+                 else I.say(lang, "learn.seats.vacant", ", {n} of them vacant", n=f"{sv:,}")) if sv else "")
+             + ".")
+    cap = ('<i class="l-key is-me" aria-hidden="true"></i>'
+           + I.say(lang, "learn.seats.one_square", "One square, one seat.")
+           + (' <i class="l-key" aria-hidden="true"></i>'
+              + I.say(lang, "learn.seats.hollow", "A hollow square is a vacant seat: {where} as the "
+                      "record stands.", where=where) if where else ""))
     return (f'<figure class="l-fig l-seats" role="img" aria-label="{label}">'
-            + group("House", house, hv) + group("Senate", senate, sv)
+            + group(I.say(lang, "learn.seats.house", "House"), house, hv)
+            + group(I.say(lang, "learn.seats.senate", "Senate"), senate, sv)
             + f"<figcaption>{cap}</figcaption></figure>")
 
 
-def term_figure(term):
+def term_figure(term, lang="en"):
     """TWO WAYS A BILL OUTLASTS ITS FIRST YEAR, through the term: the two
     paragraphs' facts in the order a term runs, retained against interim study,
     with the rail's orange mark for interim study. The years are the current
-    term's, as the page's own example of a term is."""
+    term's, as the page's own example of a term is. Its words in `lang` (the
+    Learn pages in Spanish, 25 October 2026)."""
     a, b = (term.split("-") + [""])[:2]
-    nxt = (f"{int(b) + 1}&ndash;{int(b) + 2}" if b.isdigit() else "the next term")
-    first, second, then = (f"First year ({a})", f"Second year ({b})", f"The next term ({nxt})")
+    nxt = (f"{int(b) + 1}&ndash;{int(b) + 2}" if b.isdigit()
+           else I.say(lang, "learn.term.next_term", "the next term"))
+    first = I.say(lang, "learn.term.first", "First year ({year})", year=a)
+    second = I.say(lang, "learn.term.second", "Second year ({year})", year=b)
+    then = I.say(lang, "learn.term.then", "The next term ({years})", years=nxt)
 
     def box(cls, glyph, head, words, go=False):
         g = f'<span class="l-g {glyph}" aria-hidden="true">{GLYPH_OF[glyph]}</span>' if glyph else ""
         return (f'<span class="l-tbox {cls}{" is-go" if go else ""}"><b>{g}{head}</b>{words}</span>')
     none = '<td data-l="{}" class="is-none">&mdash;</td>'
     return wide(
-        '<figure class="l-fig l-term" role="group" aria-label="Retained or sent to interim study, '
-        'through a two-year term"><div class="l-tablewrap l-stack"><table class="l-table">'
-        "<caption>Two ways a bill outlasts its first year</caption>"
-        f'<thead><tr><th scope="col">Which</th><th scope="col">{first}</th>'
+        '<figure class="l-fig l-term" role="group" aria-label="'
+        + I.say(lang, "learn.term.label", "Retained or sent to interim study, through a two-year term")
+        + '"><div class="l-tablewrap l-stack"><table class="l-table"><caption>'
+        + I.say(lang, "learn.term.caption", "Two ways a bill outlasts its first year") + "</caption>"
+        '<thead><tr><th scope="col">' + I.say(lang, "learn.term.which", "Which") + "</th>"
+        f'<th scope="col">{first}</th>'
         f'<th scope="col">{second}</th><th scope="col">{then}</th></tr></thead><tbody>'
-        '<tr><th scope="row" class="is-text">Retained<span class="l-sub">first year only</span></th>'
-        f'<td data-l="{first}">' + box("is-keep", "", "Kept by the committee",
-                                       "for more work, and studied over the fall.", True) + "</td>"
-        f'<td data-l="{second}">' + box("is-keep", "is-p", "Reported and voted on",
-                                        "like any other bill. It keeps its number, and shows here "
-                                        "as carried over.") + "</td>"
+        '<tr><th scope="row" class="is-text">' + I.say(lang, "learn.term.retained", "Retained")
+        + '<span class="l-sub">' + I.say(lang, "learn.term.first_only", "first year only")
+        + "</span></th>"
+        f'<td data-l="{first}">' + box("is-keep", "", I.say(lang, "learn.term.kept", "Kept by the committee"),
+                                       I.say(lang, "learn.term.kept_words",
+                                             "for more work, and studied over the fall."), True) + "</td>"
+        f'<td data-l="{second}">' + box("is-keep", "is-p",
+                                        I.say(lang, "learn.term.reported", "Reported and voted on"),
+                                        I.say(lang, "learn.term.reported_words",
+                                              "like any other bill. It keeps its number, and shows "
+                                              "here as carried over.")) + "</td>"
         + none.format(then) + "</tr>"
-        '<tr><th scope="row" class="is-text">Interim study<span class="l-sub">second year only</span></th>'
+        '<tr><th scope="row" class="is-text">' + I.say(lang, "learn.term.study", "Interim study")
+        + '<span class="l-sub">' + I.say(lang, "learn.term.second_only", "second year only")
+        + "</span></th>"
         + none.format(first)
-        + f'<td data-l="{second}">' + box("is-study", "is-study", "Studied over the fall",
-                                          "The committee may report on it, but the bill itself dies "
-                                          "with the term.", True) + "</td>"
-        f'<td data-l="{then}">' + box("is-new", "", "Filed again",
-                                      "To come back it has to be a new bill, with a new number.")
+        + f'<td data-l="{second}">' + box("is-study", "is-study",
+                                          I.say(lang, "learn.term.studied", "Studied over the fall"),
+                                          I.say(lang, "learn.term.studied_words",
+                                                "The committee may report on it, but the bill itself "
+                                                "dies with the term."), True) + "</td>"
+        f'<td data-l="{then}">' + box("is-new", "", I.say(lang, "learn.term.filed", "Filed again"),
+                                      I.say(lang, "learn.term.filed_words",
+                                            "To come back it has to be a new bill, with a new number."))
         + "</td></tr></tbody></table></div></figure>")
 
 

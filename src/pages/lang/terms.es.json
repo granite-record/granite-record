@@ -153,7 +153,8 @@
     "reps.floterial": "The state House of Representatives, which this label calls the State House; not the building.",
     "reps.own": "The state House of Representatives, which this label calls the State House; not the building.",
     "yt.state_house": "The state House of Representatives, which this label calls the State House; not the building.",
-    "yt.county_conv": "The members of the state House of Representatives, not the building."
+    "yt.county_conv": "The members of the state House of Representatives, not the building.",
+    "yt.seat_house": "The state House of Representatives, the seat on the Your Town card; not the building."
    }
   },
   {
@@ -213,7 +214,10 @@
     "cita",
     "citas"
    ],
-   "basis": "The catalog"
+   "basis": "The catalog",
+   "except": {
+    "learn.governor-and-council.its-approval-is-required-for-a": "An appointment to office (nombramiento), not a scheduled visit."
+   }
   },
   {
    "en": [
@@ -375,6 +379,64 @@
     "presupuesto por defecto"
    ],
    "basis": "The town warrant guide"
+  },
+  {
+   "en": [
+    "interim study",
+    "Interim Study",
+    "Interim study"
+   ],
+   "es": [
+    "estudio interino",
+    "Estudio interino",
+    "estudios interinos"
+   ],
+   "basis": "The glossary (gloss.is): two entries said estudio interino and three estudio provisional on 25 October 2026"
+  },
+  {
+   "en": [
+    "Organization Day"
+   ],
+   "es": [
+    "Día de Organización"
+   ],
+   "basis": "The glossary and the calendar's kinds of meeting"
+  },
+  {
+   "en": [
+    "crossover",
+    "Crossover"
+   ],
+   "es": [
+    "paso a la otra cámara",
+    "Paso a la otra cámara"
+   ],
+   "basis": "The glossary (gloss.crossover)"
+  },
+  {
+   "en": [
+    "committee of conference",
+    "Committee of conference",
+    "committees of conference"
+   ],
+   "es": [
+    "comité de conferencia",
+    "Comité de conferencia",
+    "comités de conferencia"
+   ],
+   "basis": "The glossary"
+  },
+  {
+   "en": [
+    "veto day",
+    "Veto day",
+    "Veto Day"
+   ],
+   "es": [
+    "día de vetos",
+    "Día de vetos"
+   ],
+   "basis": "The glossary and the calendar"
   }
  ]
 }

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.695
+# GRANITE_VERSION: 2026-09-04.696
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -64029,9 +64029,48 @@ def _spanish_learn(i18n, G, BC, chrome, civics):
         es = BC.probate_vote(rs, day, "es")
         if "the voters" in es or link not in es:
             bad.append(f"the register of probate sentence is not in Spanish: {es!r}")
+    # The figures with words in them, drawn again in Spanish (record_figures'
+    # name@lang), take the English one's place on a Spanish page, and say
+    # none of the English's words.
+    got = BC.figures_lang({"fig_ends": "English", "fig_ends@es": "Español", "bills": "7"}, "es", {})
+    if got.get("fig_ends") != "Español":
+        bad.append("figures_lang does not put a figure drawn in Spanish in the English one's place")
+    drawn = {"seats": civics.seats_figure(400, 390, 24, 23, "es"),
+             "term": civics.term_figure("2025-2026", "es"),
+             "org day": BC.org_day(_dt.date(2026, 10, 25), "es")}
+    cacrs = [{"id": "CACR1", "status": "Killed"}, {"id": "CACR2", "status": "Died on the table"},
+             {"id": "CACR3", "status": "Passed both chambers, goes to the voters in November 2026"}]
+    drawn["CACR lead"], drawn["CACR table"] = BC._cacr_lang(cacrs, {}, "2025-2026", "es")
+    for name, html_ in drawn.items():
+        for english in ("seats", "vacant", "First year", "Retained", "The next is", "filed",
+                        "passed both chambers", "Killed", "Died on the table", "goes to the voters",
+                        "November"):
+            text = re.sub(r"<[^>]+>", " ", re.sub(r'<span lang="en">.*?</span>', "", html_))
+            if re.search(rf"\b{english}\b", text):
+                bad.append(f"the {name} figure in Spanish says {english!r}")
+    if "noviembre de 2026" not in drawn["CACR table"]:
+        bad.append("the CACR table's election month is not in Spanish")
+    # The legislature's schedule, its seasons, steps, pattern and labels in
+    # Spanish (legislative_year.figures' lang), on a day inside the entered
+    # term and on one in a term only its skeleton draws.
+    import legislative_year as LY
+    before = set(i18n.MISSES)
+    for day in (_dt.date(2026, 3, 1), _dt.date(2027, 3, 1)):
+        year = LY.figures(day, Path("."), "es")
+        text = re.sub(r"<[^>]+>", " ", re.sub(r'<span lang="en">.*?</span>', "", "".join(year.values())))
+        for english in ("You are here", "Usually", "Coming up", "Sources:", "Source:", "This week",
+                        "dates,", "all past", "to come", "The First Year", "Organization Day",
+                        "Crossover", "In session"):
+            if english in text:
+                bad.append(f"the schedule in Spanish on {day} says {english!r}")
+    fell = sorted(set(i18n.MISSES) - before)
+    i18n.MISSES.clear()
+    i18n.MISSES.update(before)
+    if fell:
+        bad.append(f"the schedule in Spanish fell back to English: {fell[:4]}")
     assert not bad, f"{len(bad)} faults: " + "; ".join(bad[:8])
     return "ok", (f"{len(slugs)} of {len(learn)} Learn pages in Spanish, each naming its English page "
-                  "and named by it; the hub marks the rest as English")
+                  "and named by it, its figures drawn in Spanish; the hub marks the rest as English")
 
 
 @check("build", "the how-to guides are built in Spanish at /es/guides/, piece by piece from the "

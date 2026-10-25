@@ -348,6 +348,41 @@
    "es": "Guías prácticas, cómo funciona la Legislatura y fuentes oficiales",
    "state": "draft"
   },
+  "elect.elected": {
+   "en": "Elected {day}",
+   "es": "Elegidos el {day}",
+   "state": "draft"
+  },
+  "elect.none": {
+   "en": "No member-elect on file for {n} seats.",
+   "es": "No hay miembros electos registrados para {n} escaños.",
+   "state": "draft"
+  },
+  "elect.none_one": {
+   "en": "No member-elect on file for {n} seat.",
+   "es": "No hay miembro electo registrado para {n} escaño.",
+   "state": "draft"
+  },
+  "elect.not_final": {
+   "en": "Result not final",
+   "es": "Resultado no definitivo",
+   "state": "draft"
+  },
+  "elect.recount": {
+   "en": "&mdash; a recount was requested",
+   "es": "&mdash; se pidió un recuento",
+   "state": "draft"
+  },
+  "elect.serving": {
+   "en": "Serving now",
+   "es": "En funciones ahora",
+   "state": "draft"
+  },
+  "elect.takes": {
+   "en": "Takes office {day}.",
+   "es": "Asume el cargo el {day}.",
+   "state": "draft"
+  },
   "find.all_terms": {
    "en": "In all {n} terms, {span}.",
    "es": "En los {n} períodos legislativos, {span}.",
@@ -9576,6 +9611,166 @@
    "es": "Las {n} páginas",
    "state": "draft"
   },
+  "learn.and": {
+   "en": "and",
+   "es": "y",
+   "state": "draft"
+  },
+  "learn.cacr.after": {
+   "en": "after passing {where}",
+   "es": "después de pasar {where}",
+   "state": "draft"
+  },
+  "learn.cacr.after_senate": {
+   "en": "after passing the Senate",
+   "es": "después de pasar el Senado",
+   "state": "draft"
+  },
+  "learn.cacr.at_election": {
+   "en": "at the state general election in {when}",
+   "es": "en la elección general estatal de {when}",
+   "state": "draft"
+  },
+  "learn.cacr.became": {
+   "en": "What became of them",
+   "es": "Qué pasó con ellas",
+   "state": "draft"
+  },
+  "learn.cacr.caption": {
+   "en": "The {n} CACRs of the {term} term",
+   "es": "Las {n} CACR del período {term}",
+   "state": "draft"
+  },
+  "learn.cacr.caption_one": {
+   "en": "The one CACR of the {term} term",
+   "es": "La única CACR del período {term}",
+   "state": "draft"
+  },
+  "learn.cacr.counted": {
+   "en": "Three fifths is counted against the members in office rather than against those voting, so a member who does not vote counts against it, and a CACR can win even three fifths of those voting and still fail.",
+   "es": "Los tres quintos se cuentan sobre los miembros en funciones y no sobre quienes votan, así que un miembro que no vota cuenta en contra, y una CACR puede obtener incluso tres quintos de quienes votan y aun así fracasar.",
+   "state": "draft"
+  },
+  "learn.cacr.ended": {
+   "en": "Died when the session ended",
+   "es": "Murió al terminar la sesión",
+   "state": "draft"
+  },
+  "learn.cacr.failed": {
+   "en": "Failed a floor vote",
+   "es": "Perdió una votación en el pleno",
+   "state": "draft"
+  },
+  "learn.cacr.fell_short": {
+   "en": "Fell short of three fifths on the House floor",
+   "es": "No alcanzó los tres quintos en el pleno de la Cámara",
+   "state": "draft"
+  },
+  "learn.cacr.filed": {
+   "en": "The {term} term filed <b>{n} CACRs</b>.",
+   "es": "En el período {term} se presentaron <b>{n} CACR</b>.",
+   "state": "draft"
+  },
+  "learn.cacr.filed_one": {
+   "en": "The {term} term filed <b>1 CACR</b>.",
+   "es": "En el período {term} se presentó <b>1 CACR</b>.",
+   "state": "draft"
+  },
+  "learn.cacr.goes": {
+   "en": "Passed both chambers; goes to the voters",
+   "es": "Pasó ambas cámaras; va a los votantes",
+   "state": "draft"
+  },
+  "learn.cacr.killed": {
+   "en": "Killed outright",
+   "es": "Rechazada de plano",
+   "state": "draft"
+  },
+  "learn.cacr.listed": {
+   "en": "Listed as {status}",
+   "es": "Figura como {status}",
+   "state": "draft"
+  },
+  "learn.cacr.no_cacrs": {
+   "en": "The {term} term filed no CACRs.",
+   "es": "En el período {term} no se presentó ninguna CACR.",
+   "state": "draft"
+  },
+  "learn.cacr.none": {
+   "en": "None passed both chambers.",
+   "es": "Ninguna pasó ambas cámaras.",
+   "state": "draft"
+  },
+  "learn.cacr.none_through": {
+   "en": "none passed both chambers.",
+   "es": "ninguna pasó ambas cámaras.",
+   "state": "draft"
+  },
+  "learn.cacr.not_ratified": {
+   "en": "Passed both chambers; not ratified by the voters",
+   "es": "Pasó ambas cámaras; no ratificada por los votantes",
+   "state": "draft"
+  },
+  "learn.cacr.of_them_after": {
+   "en": "{n} of them after passing {where}",
+   "es": "{n} de ellas después de pasar {where}",
+   "state": "draft"
+  },
+  "learn.cacr.of_them_senate": {
+   "en": "{n} of them after passing the Senate",
+   "es": "{n} de ellas después de pasar el Senado",
+   "state": "draft"
+  },
+  "learn.cacr.passed": {
+   "en": "{n} passed both chambers.",
+   "es": "{n} pasaron ambas cámaras.",
+   "state": "draft"
+  },
+  "learn.cacr.passed_one": {
+   "en": "One passed both chambers.",
+   "es": "Una pasó ambas cámaras.",
+   "state": "draft"
+  },
+  "learn.cacr.ratified": {
+   "en": "Passed both chambers; ratified by the voters",
+   "es": "Pasó ambas cámaras; ratificada por los votantes",
+   "state": "draft"
+  },
+  "learn.cacr.short": {
+   "en": "In the {term} term, {n} CACRs won a majority of those voting in the House and still fell short.",
+   "es": "En el período {term}, {n} CACR obtuvieron la mayoría de quienes votaron en la Cámara y aun así no alcanzaron lo necesario.",
+   "state": "draft"
+  },
+  "learn.cacr.short_one": {
+   "en": "In the {term} term, one CACR won a majority of those voting in the House and still fell short.",
+   "es": "En el período {term}, una CACR obtuvo la mayoría de quienes votaron en la Cámara y aun así no alcanzó lo necesario.",
+   "state": "draft"
+  },
+  "learn.cacr.since": {
+   "en": "Of the {n} CACRs filed since {year},",
+   "es": "De las {n} CACR presentadas desde {year},",
+   "state": "draft"
+  },
+  "learn.cacr.table": {
+   "en": "Died on the table",
+   "es": "Murió sobre la mesa",
+   "state": "draft"
+  },
+  "learn.cacr.through": {
+   "en": "{n} passed both chambers.",
+   "es": "{n} pasaron ambas cámaras.",
+   "state": "draft"
+  },
+  "learn.cacr.through_one": {
+   "en": "one passed both chambers.",
+   "es": "una pasó ambas cámaras.",
+   "state": "draft"
+  },
+  "learn.cacr.went": {
+   "en": "Passed both chambers; went to the voters",
+   "es": "Pasó ambas cámaras; fue a los votantes",
+   "state": "draft"
+  },
   "learn.city-and-town-government.25-registered-voters-or-2-percent": {
    "en": "25 registered voters, or 2 percent of them, whichever is less and never fewer than 10. (RSA 49-B:3)",
    "es": "25 votantes inscritos, o el 2 por ciento de ellos, lo que sea menor y nunca menos de 10. (RSA 49-B:3)",
@@ -10361,9 +10556,1079 @@
    "es": "La encontrará con dos nombres. Los estatutos dicen convención; los legisladores, el personal del condado y los documentos del presupuesto del condado suelen decir <b>delegación</b> (delegation). Son el mismo órgano, y el propio estatuto usa ambas palabras en una sola oración: RSA 24:9-a encarga al presidente de la delegación del condado fijar la hora y el lugar de la primera reunión de la convención del condado.",
    "state": "draft"
   },
+  "learn.ends.caption": {
+   "en": "The {n} bills and resolutions of the {term} term",
+   "es": "Los {n} proyectos de ley y resoluciones del período {term}",
+   "state": "draft"
+  },
+  "learn.ends.killed": {
+   "en": "killed (ITL)",
+   "es": "rechazados (ITL)",
+   "state": "draft"
+  },
+  "learn.ends.label": {
+   "en": "How the {n} bills and resolutions of the {term} term ended",
+   "es": "Cómo terminaron los {n} proyectos de ley y resoluciones del período {term}",
+   "state": "draft"
+  },
+  "learn.ends.rest": {
+   "en": "every other outcome",
+   "es": "todos los demás resultados",
+   "state": "draft"
+  },
+  "learn.ends.session": {
+   "en": "died when the session ended",
+   "es": "murieron al terminar la sesión",
+   "state": "draft"
+  },
+  "learn.ends.signed": {
+   "en": "signed into law",
+   "es": "firmados como ley",
+   "state": "draft"
+  },
+  "learn.ends.study": {
+   "en": "sent for interim study",
+   "es": "enviados a estudio interino",
+   "state": "draft"
+  },
+  "learn.ends.table": {
+   "en": "died on the table",
+   "es": "murieron sobre la mesa",
+   "state": "draft"
+  },
+  "learn.general-court.a-term-is-two-years": {
+   "en": "A Term Is Two Years",
+   "es": "Un período dura dos años",
+   "state": "draft"
+  },
+  "learn.general-court.bills-and-resolutions-are-not-the": {
+   "en": "Bills and Resolutions Are Not the Same Thing",
+   "es": "Los proyectos de ley y las resoluciones no son lo mismo",
+   "state": "draft"
+  },
+  "learn.general-court.cacr": {
+   "en": "CACR",
+   "es": "CACR",
+   "state": "draft"
+  },
+  "learn.general-court.constitutional-amendment-concurrent": {
+   "en": "<b>Constitutional Amendment Concurrent Resolution:</b> a proposed change to the state constitution, requiring a three-fifths vote in both chambers and a two-thirds majority of voters. See <a href=\"learn/the-constitution.html\">The Constitution</a>.",
+   "es": "<b>Resolución concurrente de enmienda constitucional</b> (Constitutional Amendment Concurrent Resolution): un cambio propuesto a la constitución del estado, que requiere el voto de tres quintos en ambas cámaras y una mayoría de dos tercios de los votantes. Vea <a href=\"learn/the-constitution.html\">La Constitución</a>.",
+   "state": "draft"
+  },
+  "learn.general-court.every-bill-gets-a-public-hearing": {
+   "en": "Every Bill Gets a Public Hearing",
+   "es": "Cada proyecto de ley tiene una audiencia pública",
+   "state": "draft"
+  },
+  "learn.general-court.every-bill-is-referred-to-a": {
+   "en": "Every bill is referred to a committee chosen by subject, and the committee holds the public hearing, votes on a recommendation in an executive session, and writes a report explaining its reasoning. If the committee is split on what action to recommend, there are separate reports from the majority and the minority. The full chamber is not bound by those recommendations, but [[follows_committee]]% of the bills it decided in the [[term]] term went the way its committee recommended.",
+   "es": "Cada proyecto de ley se envía a un comité elegido según el tema, y el comité celebra la audiencia pública, vota una recomendación en una sesión ejecutiva y redacta un informe que explica su razonamiento. Si el comité está dividido sobre qué acción recomendar, hay informes separados de la mayoría y de la minoría. La cámara en pleno no está obligada por esas recomendaciones, pero el [[follows_committee]]% de los proyectos de ley que decidió en el período [[term]] siguió lo que su comité recomendó.",
+   "state": "draft"
+  },
+  "learn.general-court.every-committee-who-sits-on-it": {
+   "en": "<a href=\"committees.html\">Every committee</a>, who sits on it, and what it did on each day it met. <a href=\"officials.html\">Every member</a>, with how they voted.",
+   "es": "<a href=\"committees.html\">Cada comité</a>, quiénes lo integran y qué hizo cada día que se reunió. <a href=\"officials.html\">Cada miembro</a>, con cómo votó.",
+   "state": "draft"
+  },
+  "learn.general-court.find-your-legislators-by-town": {
+   "en": "Find your legislators, by town",
+   "es": "Encuentre a sus legisladores, por municipio",
+   "state": "draft"
+  },
+  "learn.general-court.hb": {
+   "en": "HB",
+   "es": "HB",
+   "state": "draft"
+  },
+  "learn.general-court.hcr-scr": {
+   "en": "<b>HCR</b> / <b>SCR</b>",
+   "es": "<b>HCR</b> / <b>SCR</b>",
+   "state": "draft"
+  },
+  "learn.general-court.hold-the-bill-in-the-committee": {
+   "en": "Hold the bill in the committee: first year only, and it returns in the second",
+   "es": "Mantener el proyecto de ley en el comité: solo en el primer año, y vuelve en el segundo",
+   "state": "draft"
+  },
+  "learn.general-court.house-bill-a-proposed-change-to": {
+   "en": "<b>House Bill:</b> a proposed change to New Hampshire law. Begins in the House, must pass both chambers, goes to the Governor.",
+   "es": "<b>House Bill</b> (proyecto de ley de la Cámara): un cambio propuesto a la ley de New Hampshire. Empieza en la Cámara, debe ser aprobado por ambas cámaras y pasa al Gobernador.",
+   "state": "draft"
+  },
+  "learn.general-court.house-or-senate-resolution-a-formal": {
+   "en": "<b>House or Senate Resolution:</b> a formal, non-binding expression of opinion, policy preference, or internal rule. It does not go to the other chamber or the Governor and does not change any law.",
+   "es": "<b>Resolución de la Cámara o del Senado</b> (House or Senate Resolution): una expresión formal y no vinculante de una opinión, una preferencia de política o una regla interna. No pasa a la otra cámara ni al Gobernador, y no cambia ninguna ley.",
+   "state": "draft"
+  },
+  "learn.general-court.house-rules": {
+   "en": "House Rules",
+   "es": "Reglamento de la Cámara",
+   "state": "draft"
+  },
+  "learn.general-court.house-senate-concurrent-resolution": {
+   "en": "<b>House/Senate Concurrent Resolution:</b> similar to an HR or SR, but voted on by both chambers.",
+   "es": "<b>Resolución concurrente de la Cámara o del Senado</b> (House/Senate Concurrent Resolution): parecida a una HR o SR, pero la votan ambas cámaras.",
+   "state": "draft"
+  },
+  "learn.general-court.how-committees-work": {
+   "en": "How Committees Work",
+   "es": "Cómo funcionan los comités",
+   "state": "draft"
+  },
+  "learn.general-court.hr-sr": {
+   "en": "<b>HR</b> / <b>SR</b>",
+   "es": "<b>HR</b> / <b>SR</b>",
+   "state": "draft"
+  },
+  "learn.general-court.in-the-record": {
+   "en": "In the Record",
+   "es": "En el registro",
+   "state": "draft"
+  },
+  "learn.general-court.in-the-term-members-filed-bills": {
+   "en": "In the [[term]] term, members filed <b>[[bills]] bills and resolutions</b>: [[hb]] House bills, [[sb]] Senate bills, [[cacr]] constitutional amendments and [[resolutions]] resolutions.",
+   "es": "En el período [[term]], los miembros presentaron <b>[[bills]] proyectos de ley y resoluciones</b>: [[hb]] proyectos de ley de la Cámara, [[sb]] proyectos de ley del Senado, [[cacr]] enmiendas constitucionales y [[resolutions]] resoluciones.",
+   "state": "draft"
+  },
+  "learn.general-court.inexpedient-to-legislate": {
+   "en": "Inexpedient to Legislate",
+   "es": "Inoportuno legislar (Inexpedient to Legislate)",
+   "state": "draft"
+  },
+  "learn.general-court.interim-study": {
+   "en": "Interim Study",
+   "es": "Estudio interino (Interim Study)",
+   "state": "draft"
+  },
+  "learn.general-court.interim-study-happens-in-the-second": {
+   "en": "<b>Interim study</b> happens in the second year only, and it ends the bill. The committee studies it over the fall and may report on it, but the bill itself dies with the term. To come back it has to be filed again in the next term, where it will be a new bill with a new number &mdash; so a bill sent to interim study is not waiting to be taken up again, whatever the name suggests.",
+   "es": "El <b>estudio interino</b> (interim study) ocurre solo en el segundo año, y pone fin al proyecto de ley. El comité lo estudia durante el otoño y puede informar sobre él, pero el proyecto en sí muere con el período. Para volver tiene que presentarse de nuevo en el período siguiente, donde será un proyecto nuevo con un número nuevo &mdash; así que un proyecto enviado a estudio interino no está esperando a que se retome, por mucho que el nombre lo sugiera.",
+   "state": "draft"
+  },
+  "learn.general-court.is": {
+   "en": "IS",
+   "es": "IS",
+   "state": "draft"
+  },
+  "learn.general-court.itl": {
+   "en": "ITL",
+   "es": "ITL",
+   "state": "draft"
+  },
+  "learn.general-court.kill-the-bill": {
+   "en": "Kill the bill",
+   "es": "Rechazar el proyecto de ley",
+   "state": "draft"
+  },
+  "learn.general-court.lead": {
+   "en": "400 representatives and 24 senators, paid $200 for the two-year term. The largest state legislature in the country.",
+   "es": "400 representantes y 24 senadores, a quienes se les pagan $200 por el período de dos años. Es la legislatura estatal más grande del país.",
+   "state": "draft"
+  },
+  "learn.general-court.members-are-paid-200-for-the": {
+   "en": "Members are paid <b>$200 for the two-year term</b> plus mileage &mdash; one payment, in January of the first year, less withholding. It is often quoted as $100 a year, which is the same money divided by two. Almost none have staff. Most have other jobs, and the session is arranged around that: the House meets on a small number of full days, and committee work fills the rest.",
+   "es": "A los miembros se les pagan <b>$200 por el período de dos años</b> más el millaje &mdash; un solo pago, en enero del primer año, menos las retenciones. Suele citarse como $100 al año, que es el mismo dinero dividido entre dos. Casi ninguno tiene personal. La mayoría tiene otro trabajo, y la sesión se organiza en torno a eso: la Cámara se reúne en pocos días completos, y el trabajo de los comités ocupa el resto.",
+   "state": "draft"
+  },
+  "learn.general-court.most-bills-are-either-passed-or": {
+   "en": "Most bills are either passed or killed in the year they are filed. Two things can happen to the rest, and they are not the same thing, though they are easily confused because both leave a bill unfinished at the end of a year.",
+   "es": "La mayoría de los proyectos de ley se aprueban o se rechazan en el año en que se presentan. Al resto le pueden pasar dos cosas, y no son lo mismo, aunque se confunden fácilmente porque ambas dejan un proyecto sin terminar al final de un año.",
+   "state": "draft"
+  },
+  "learn.general-court.new-hampshire-s-legislature-is-called": {
+   "en": "New Hampshire's legislature is called the <b>General Court</b>, the name the state constitution gives it. It is made up of [[house_seats]] representatives and [[senate_districts]] senators. It is the largest state legislature in the country: the last redistricting drew House districts to <b>3,444 residents a seat</b>.",
+   "es": "La legislatura de New Hampshire se llama <b>General Court</b>, el nombre que le da la constitución del estado; en este sitio la llamamos la Legislatura. Está formada por [[house_seats]] representantes y [[senate_districts]] senadores. Es la legislatura estatal más grande del país: la última redistribución de distritos trazó los distritos de la Cámara a razón de <b>3,444 residentes por escaño</b>.",
+   "state": "draft"
+  },
+  "learn.general-court.otp": {
+   "en": "OTP",
+   "es": "OTP",
+   "state": "draft"
+  },
+  "learn.general-court.otpa": {
+   "en": "OTPA",
+   "es": "OTPA",
+   "state": "draft"
+  },
+  "learn.general-court.ought-to-pass": {
+   "en": "Ought to Pass",
+   "es": "Debe aprobarse (Ought to Pass)",
+   "state": "draft"
+  },
+  "learn.general-court.ought-to-pass-with-amendment": {
+   "en": "Ought to Pass with Amendment",
+   "es": "Debe aprobarse con enmienda (Ought to Pass with Amendment)",
+   "state": "draft"
+  },
+  "learn.general-court.pass-the-bill": {
+   "en": "Pass the bill",
+   "es": "Aprobar el proyecto de ley",
+   "state": "draft"
+  },
+  "learn.general-court.pass-the-bill-with-changes": {
+   "en": "Pass the bill with changes",
+   "es": "Aprobar el proyecto de ley con cambios",
+   "state": "draft"
+  },
+  "learn.general-court.retain": {
+   "en": "Retain",
+   "es": "Retener (Retain)",
+   "state": "draft"
+  },
+  "learn.general-court.retaining-happens-in-the-first-year": {
+   "en": "<b>Retaining</b> happens in the first year only. A committee keeps the bill for more work, studies it over the fall, and reports it to the chamber in the second year, where it is voted on like any other bill. A retained bill survives into the second year and keeps its number. Those show as <b>carried over</b> here, and they are the ones people most often fail to find, because they search the current year for a bill filed in the previous one.",
+   "es": "<b>Retener</b> (retaining) ocurre solo en el primer año. Un comité se queda con el proyecto de ley para trabajarlo más, lo estudia durante el otoño y lo informa a su cámara en el segundo año, donde se vota como cualquier otro proyecto. Un proyecto retenido sobrevive al segundo año y conserva su número. Aquí aparecen como <b>trasladados al segundo año</b> (carried over), y son los que la gente más a menudo no logra encontrar, porque buscan en el año en curso un proyecto presentado el año anterior.",
+   "state": "draft"
+  },
+  "learn.general-court.sb": {
+   "en": "SB",
+   "es": "SB",
+   "state": "draft"
+  },
+  "learn.general-court.senate-bill-begins-in-the-senate": {
+   "en": "<b>Senate Bill:</b> begins in the Senate, otherwise the same as a House Bill.",
+   "es": "<b>Senate Bill</b> (proyecto de ley del Senado): empieza en el Senado; por lo demás, es igual que un House Bill.",
+   "state": "draft"
+  },
+  "learn.general-court.senate-rules": {
+   "en": "Senate Rules",
+   "es": "Reglamento del Senado",
+   "state": "draft"
+  },
+  "learn.general-court.the-bill-goes-no-further-this": {
+   "en": "The bill goes no further this term; the study committee may recommend new legislation",
+   "es": "El proyecto de ley no avanza más en este período; el comité de estudio puede recomendar una nueva legislación",
+   "state": "draft"
+  },
+  "learn.general-court.the-general-court-sits-in-two": {
+   "en": "The General Court sits in two-year terms beginning in odd years. A term begins on <b>Organization Day</b>, the first Wednesday of December after the November election, when the newly elected members are sworn in and elect the Speaker and the Senate President. [[org_day]] Bill numbers are unique across the whole term, so there is only ever one HB 84 in 2025&ndash;2026, and there will be another in the next term. That is why every address on this site carries the year. <a href=\"learn/legislative-year.html\">The Legislature's Year</a> lays a term out date by date.",
+   "es": "La Legislatura sesiona en períodos de dos años que empiezan en años impares. Un período empieza el <b>Día de Organización</b> (Organization Day), el primer miércoles de diciembre después de la elección de noviembre, cuando los miembros recién elegidos prestan juramento y eligen al presidente de la Cámara (Speaker) y al presidente del Senado (Senate President). [[org_day]] Los números de los proyectos de ley son únicos en todo el período, así que solo hay un HB 84 en 2025&ndash;2026, y habrá otro en el período siguiente. Por eso cada dirección de este sitio lleva el año. <a href=\"learn/legislative-year.html\">Calendario de la Legislatura de NH</a> presenta un período fecha por fecha.",
+   "state": "draft"
+  },
+  "learn.general-court.the-house-is-seats-and-sitting": {
+   "en": "The House is <b>[[house_seats]] seats and [[house_sitting]] sitting members</b> as the record stands, with [[house_vacant]] vacant. The record shows that moving: roll calls of the [[term]] term were taken with as many as [[seated_most]] members seated and as few as [[seated_fewest]].",
+   "es": "La Cámara tiene <b>[[house_seats]] escaños y [[house_sitting]] miembros en funciones</b> según el registro, con [[house_vacant]] vacantes. El registro muestra que esto cambia: las votaciones nominales del período [[term]] se hicieron con hasta [[seated_most]] miembros en funciones y con tan pocos como [[seated_fewest]].",
+   "state": "draft"
+  },
+  "learn.general-court.the-house-s-is-the-number": {
+   "en": "The House's [[house_seats]] is the number of seats, not the number of members. Seats fall vacant and are filled at special elections through the term, so the working size of the House moves.",
+   "es": "Los [[house_seats]] de la Cámara son el número de escaños, no el número de miembros. Los escaños quedan vacantes y se cubren en elecciones especiales a lo largo del período, así que el tamaño real de la Cámara cambia.",
+   "state": "draft"
+  },
+  "learn.general-court.the-kinds-of-measure": {
+   "en": "The kinds of measure",
+   "es": "Los tipos de medida",
+   "state": "draft"
+  },
+  "learn.general-court.the-largest-state-legislature": {
+   "en": "The Largest State Legislature",
+   "es": "La legislatura estatal más grande",
+   "state": "draft"
+  },
+  "learn.general-court.the-motion": {
+   "en": "The motion",
+   "es": "La moción",
+   "state": "draft"
+  },
+  "learn.general-court.the-motions-a-committee-most-often": {
+   "en": "The motions a committee most often recommends are these:",
+   "es": "Las mociones que un comité recomienda con más frecuencia son estas:",
+   "state": "draft"
+  },
+  "learn.general-court.the-motions-a-committee-most-often-2": {
+   "en": "The motions a committee most often recommends",
+   "es": "Las mociones que un comité recomienda con más frecuencia",
+   "state": "draft"
+  },
+  "learn.general-court.the-new-hampshire-constitution": {
+   "en": "The New Hampshire Constitution",
+   "es": "La Constitución de New Hampshire",
+   "state": "draft"
+  },
+  "learn.general-court.there-are-house-districts-and-senate": {
+   "en": "There are <b>[[house_districts]] House districts and [[senate_districts]] Senate districts</b>. [[floterial]] of those House districts are floterial districts: each is laid over two or more neighboring districts and elects a representative of its own, whom their voters elect as well as their own district's &mdash; see <a href=\"guides/your-representatives.html\">Finding your representatives</a>.",
+   "es": "Hay <b>[[house_districts]] distritos de la Cámara y [[senate_districts]] distritos del Senado</b>. [[floterial]] de esos distritos de la Cámara son distritos flotantes (floterial): cada uno se superpone a dos o más distritos vecinos y elige a un representante propio, al que los votantes de esos distritos eligen además del de su propio distrito &mdash; vea <a href=\"guides/your-representatives.html\">Cómo encontrar a sus representantes</a>.",
+   "state": "draft"
+  },
+  "learn.general-court.this-is-unusual-in-most-states": {
+   "en": "This is unusual. In most states a committee chair can decline to hear a bill and it dies without anyone speaking on it. In New Hampshire every bill introduced is referred to a committee and given a public hearing that anyone may attend and speak at.",
+   "es": "Esto es poco común. En la mayoría de los estados, el presidente de un comité puede negarse a escuchar un proyecto de ley, y este muere sin que nadie hable sobre él. En New Hampshire, cada proyecto de ley que se presenta se envía a un comité y recibe una audiencia pública a la que cualquier persona puede asistir y en la que puede hablar.",
+   "state": "draft"
+  },
+  "learn.general-court.title": {
+   "en": "The General Court",
+   "es": "La Legislatura (General Court)",
+   "state": "draft"
+  },
+  "learn.general-court.what-it-does": {
+   "en": "What it does",
+   "es": "Qué hace",
+   "state": "draft"
+  },
+  "learn.general-court.which-chamber-a-measure-starts-in": {
+   "en": "Which chamber a measure starts in follows from its prime sponsor: a representative's bill begins in the House, a senator's in the Senate.",
+   "es": "La cámara en la que empieza una medida depende de su patrocinador principal: el proyecto de un representante empieza en la Cámara, el de un senador en el Senado.",
+   "state": "draft"
+  },
+  "learn.general-court.written": {
+   "en": "Written",
+   "es": "Como aparece",
+   "state": "draft"
+  },
+  "learn.governor-and-council.a-bill-has-passed-both-chambers": {
+   "en": "A bill has passed both chambers",
+   "es": "Un proyecto de ley ha sido aprobado por ambas cámaras",
+   "state": "draft"
+  },
+  "learn.governor-and-council.a-commissioner-or-a-judge": {
+   "en": "a commissioner, or a judge.",
+   "es": "a un comisionado o a un juez.",
+   "state": "draft"
+  },
+  "learn.governor-and-council.a-veto-is-not-always-the": {
+   "en": "A Veto Is Not Always the End",
+   "es": "Un veto no siempre es el final",
+   "state": "draft"
+  },
+  "learn.governor-and-council.across-the-terms-on-this-site": {
+   "en": "Across the [[terms]] terms on this site there are <b>[[vetoed]] vetoed bills</b>. In <b>[[veto_failed]]</b> the veto stood. In <b>[[veto_overridden]]</b> it was overridden and the bill became law over the Governor's objection.[[veto_pending]]",
+   "es": "En los [[terms]] períodos que tiene este sitio hay <b>[[vetoed]] proyectos de ley vetados</b>. En <b>[[veto_failed]]</b> el veto se mantuvo. En <b>[[veto_overridden]]</b> fue anulado y el proyecto de ley se convirtió en ley a pesar de la objeción del Gobernador.[[veto_pending]]",
+   "state": "draft"
+  },
+  "learn.governor-and-council.five-councilors-each-elected-by-district": {
+   "en": "Five councilors, each elected by district, meeting with the Governor. Almost no state has anything like it, and not many people can describe what it does.",
+   "es": "Cinco consejeros, cada uno elegido por distrito, que se reúnen con el Gobernador. Casi ningún estado tiene algo parecido, y no mucha gente sabe describir lo que hace.",
+   "state": "draft"
+  },
+  "learn.governor-and-council.five-days-pass": {
+   "en": "Five days pass",
+   "es": "Pasan cinco días",
+   "state": "draft"
+  },
+  "learn.governor-and-council.it-becomes-law": {
+   "en": "It becomes law.",
+   "es": "Se convierte en ley.",
+   "state": "draft"
+  },
+  "learn.governor-and-council.it-becomes-law-without-a-signature": {
+   "en": "It becomes law without a signature,",
+   "es": "Se convierte en ley sin firma,",
+   "state": "draft"
+  },
+  "learn.governor-and-council.its-approval-is-required-for-a": {
+   "en": "Its approval is required for a great deal of what the executive branch does: state contracts above a threshold, the appointment of commissioners and judges, and pardons. A commissioner nominated by the Governor takes office only when the Council confirms them, and a Governor who has the legislature and not the Council cannot simply proceed.",
+   "es": "Su aprobación es necesaria para gran parte de lo que hace el poder ejecutivo: los contratos del estado por encima de cierto monto, el nombramiento de comisionados y jueces, y los indultos. Un comisionado propuesto por el Gobernador asume el cargo solo cuando el Consejo lo confirma, y un Gobernador que cuenta con la Legislatura pero no con el Consejo no puede simplemente seguir adelante.",
+   "state": "draft"
+  },
+  "learn.governor-and-council.lead": {
+   "en": "The Governor signs or vetoes. The Council -- five members, elected by district -- approves contracts, nominations and pardons.",
+   "es": "El Gobernador firma o veta. El Consejo &mdash; cinco miembros elegidos por distrito &mdash; aprueba contratos, nombramientos e indultos.",
+   "state": "draft"
+  },
+  "learn.governor-and-council.not-overridden-the-veto-stands": {
+   "en": "<b>Not overridden:</b> the veto stands.",
+   "es": "<b>Veto no anulado:</b> el veto se mantiene.",
+   "state": "draft"
+  },
+  "learn.governor-and-council.only-when-the-council-confirms-them": {
+   "en": "only when the Council confirms them.",
+   "es": "solo cuando el Consejo la confirma.",
+   "state": "draft"
+  },
+  "learn.governor-and-council.or": {
+   "en": "Or",
+   "es": "O",
+   "state": "draft"
+  },
+  "learn.governor-and-council.overridden-it-becomes-law-over-the": {
+   "en": "<b>Overridden:</b> it becomes law over the Governor&rsquo;s objection.",
+   "es": "<b>Veto anulado:</b> se convierte en ley a pesar de la objeción del Gobernador.",
+   "state": "draft"
+  },
+  "learn.governor-and-council.starting-with-the-chamber-the-bill": {
+   "en": "Starting with the chamber the bill came from.",
+   "es": "Empezando por la cámara de la que vino el proyecto de ley.",
+   "state": "draft"
+  },
+  "learn.governor-and-council.sundays-excepted": {
+   "en": "Sundays excepted.",
+   "es": "Sin contar los domingos.",
+   "state": "draft"
+  },
+  "learn.governor-and-council.the-council-is-genuinely-debated": {
+   "en": "The Council is genuinely debated. Supporters say it is a check on executive power that no single elected officer should be without. Critics say it gives five people a veto over routine administration and slows work that has already been authorized. Both are arguments about the same fact.",
+   "es": "El Consejo es objeto de un debate real. Sus defensores dicen que es un control del poder ejecutivo del que ningún cargo electo debería prescindir. Sus críticos dicen que da a cinco personas un veto sobre la administración ordinaria y retrasa trabajo que ya estaba autorizado. Ambos argumentos tratan del mismo hecho.",
+   "state": "draft"
+  },
+  "learn.governor-and-council.the-executive-council": {
+   "en": "The Executive Council",
+   "es": "El Consejo Ejecutivo",
+   "state": "draft"
+  },
+  "learn.governor-and-council.the-executive-council-confirms": {
+   "en": "The Executive Council confirms",
+   "es": "El Consejo Ejecutivo confirma",
+   "state": "draft"
+  },
+  "learn.governor-and-council.the-governor": {
+   "en": "The Governor",
+   "es": "El Gobernador",
+   "state": "draft"
+  },
+  "learn.governor-and-council.the-governor-does-nothing": {
+   "en": "The Governor does nothing",
+   "es": "El Gobernador no hace nada",
+   "state": "draft"
+  },
+  "learn.governor-and-council.the-governor-is-elected-for-two": {
+   "en": "The Governor is elected for two years, at the same election as the whole legislature. When a bill has passed both chambers the Governor may sign it, veto it, or do nothing, in which case it becomes law without a signature after five days, Sundays excepted &mdash; unless the legislature's adjournment prevents the Governor from returning it, and then it does not become law at all. Part Second, Article 44 of the state constitution sets both.",
+   "es": "El Gobernador se elige por dos años, en la misma elección que toda la Legislatura. Cuando un proyecto de ley ha sido aprobado por ambas cámaras, el Gobernador puede firmarlo, vetarlo o no hacer nada; en ese caso se convierte en ley sin firma al cabo de cinco días, sin contar los domingos &mdash; salvo que el receso de la Legislatura impida al Gobernador devolverlo, y entonces no se convierte en ley en absoluto. La Parte Segunda, Artículo 44, de la constitución del estado establece ambas cosas.",
+   "state": "draft"
+  },
+  "learn.governor-and-council.the-governor-nominates": {
+   "en": "The Governor nominates",
+   "es": "El Gobernador propone",
+   "state": "draft"
+  },
+  "learn.governor-and-council.the-governor-s-office": {
+   "en": "The Governor's office",
+   "es": "La oficina del Gobernador",
+   "state": "draft"
+  },
+  "learn.governor-and-council.the-governor-signs-it": {
+   "en": "The Governor signs it",
+   "es": "El Gobernador lo firma",
+   "state": "draft"
+  },
+  "learn.governor-and-council.the-governor-vetoes-it": {
+   "en": "The Governor vetoes it",
+   "es": "El Gobernador lo veta",
+   "state": "draft"
+  },
+  "learn.governor-and-council.the-legislature-can-override-a-veto": {
+   "en": "The legislature can override a veto, but it takes two thirds of each chamber, by roll call, starting with the chamber the bill came from. The constitution says two thirds \"of that house\", and the House counts that among the members voting. That is a high bar and most attempts fail.",
+   "es": "La Legislatura puede anular un veto (override), pero hacen falta dos tercios de cada cámara, en votación nominal, empezando por la cámara de la que vino el proyecto de ley. La constitución dice dos tercios &ldquo;de esa cámara&rdquo;, y la Cámara los cuenta entre los miembros que votan. Es una exigencia alta, y la mayoría de los intentos fracasan.",
+   "state": "draft"
+  },
+  "learn.governor-and-council.the-legislature-may-override": {
+   "en": "The legislature may override",
+   "es": "La Legislatura puede anular el veto",
+   "state": "draft"
+  },
+  "learn.governor-and-council.the-new-hampshire-constitution": {
+   "en": "The New Hampshire Constitution",
+   "es": "La Constitución de New Hampshire",
+   "state": "draft"
+  },
+  "learn.governor-and-council.the-new-hampshire-governor-serves-as": {
+   "en": "The New Hampshire governor serves as the state's head of government and supreme executive magistrate, responsible for enforcing state laws, proposing the biennial state budget, and commanding the New Hampshire National Guard.",
+   "es": "El gobernador de New Hampshire es el jefe de gobierno del estado y su máximo magistrado ejecutivo: hace cumplir las leyes del estado, propone el presupuesto bienal del estado y está al mando de la Guardia Nacional de New Hampshire.",
+   "state": "draft"
+  },
+  "learn.governor-and-council.the-nominee-takes-office": {
+   "en": "The nominee takes office",
+   "es": "La persona propuesta asume el cargo",
+   "state": "draft"
+  },
+  "learn.governor-and-council.this-site-indexes-the-legislature-and": {
+   "en": "This site indexes the legislature, and it holds almost nothing about the Executive Council: no agendas, no contract votes, no nominations. What it does hold is the legislative half &mdash; the vetoes and the override votes, on each bill's own page: <a href=\"bill/2026/hb349.html\">HB 349</a>, whose veto stood, and <a href=\"bill/2026/hb2026.html\">HB 2026</a>, whose veto was overridden. For the Council's own record, go to the Council.",
+   "es": "Este sitio recoge la Legislatura, y no tiene casi nada sobre el Consejo Ejecutivo: ni órdenes del día, ni votaciones de contratos, ni nombramientos. Lo que sí tiene es la mitad legislativa &mdash; los vetos y las votaciones para anularlos, en la página de cada proyecto de ley: <a href=\"bill/2026/hb349.html\">HB 349</a>, cuyo veto se mantuvo, y <a href=\"bill/2026/hb2026.html\">HB 2026</a>, cuyo veto fue anulado. Para el registro propio del Consejo, consulte al Consejo.",
+   "state": "draft"
+  },
+  "learn.governor-and-council.title": {
+   "en": "The Governor and the Executive Council",
+   "es": "El Gobernador y el Consejo Ejecutivo",
+   "state": "draft"
+  },
+  "learn.governor-and-council.two-thirds-of-each-chamber-by": {
+   "en": "Two thirds of each chamber, by roll call",
+   "es": "Dos tercios de cada cámara, en votación nominal",
+   "state": "draft"
+  },
+  "learn.governor-and-council.unless-the-legislatures-adjournment": {
+   "en": "unless the legislature&rsquo;s adjournment prevents its return: then it does not become law at all.",
+   "es": "salvo que el receso de la Legislatura impida devolverlo: entonces no se convierte en ley en absoluto.",
+   "state": "draft"
+  },
+  "learn.governor-and-council.when-the-governor-vetoes-a-bill": {
+   "en": "When the Governor vetoes a bill, the reasons are set out in a message entered in the journal of the chamber the bill came from. Those messages are printed in the House and Senate calendars, and this site carries [[veto_messages]] of the [[vetoed]].",
+   "es": "Cuando el Gobernador veta un proyecto de ley, las razones constan en un mensaje que se registra en el diario de sesiones de la cámara de la que vino el proyecto. Esos mensajes se publican en los calendarios de la Cámara y del Senado, y este sitio tiene [[veto_messages]] de los [[vetoed]].",
+   "state": "draft"
+  },
+  "learn.how-a-bill-becomes-law.a-bill-is-a-proposed-change": {
+   "en": "A bill is a proposed change to New Hampshire law. It becomes law when both chambers have passed it in identical form and the Governor has signed it. A bill the Governor does not sign can still become law, either without a signature or over a veto.",
+   "es": "Un proyecto de ley es una propuesta de cambio a la ley de New Hampshire. Se convierte en ley cuando ambas cámaras lo han aprobado en una forma idéntica y el Gobernador lo ha firmado. Un proyecto de ley que el Gobernador no firma puede convertirse en ley de todos modos, sin firma o por encima de un veto.",
+   "state": "draft"
+  },
+  "learn.how-a-bill-becomes-law.a-bill-left-unsigned-for-five": {
+   "en": "A bill left unsigned for five days, Sundays excepted, becomes law without a signature, unless the legislature's adjournment prevents its return.",
+   "es": "Un proyecto de ley que queda sin firmar durante cinco días, sin contar los domingos, se convierte en ley sin firma, salvo que el receso de la Legislatura impida su devolución.",
+   "state": "draft"
+  },
+  "learn.how-a-bill-becomes-law.a-chamber-can-put-a-question": {
+   "en": "A chamber can put a question three ways. A <b>voice vote</b> records only which side sounded louder. A <b>division</b> records the count but not who voted which way. A <b>roll call</b> records every member by name. In the House one is taken when a member moves for it and the required number of other members second the motion. A vote to override a veto is always a roll call, because the constitution requires one.",
+   "es": "Una cámara puede someter una cuestión a votación de tres maneras. Una <b>votación a viva voz</b> registra solo qué lado sonó más fuerte. Una <b>votación por división</b> registra el conteo, pero no quién votó en cada sentido. Una <b>votación nominal</b> registra a cada miembro por su nombre. En la Cámara se hace una cuando un miembro la pide y el número requerido de otros miembros apoya la moción. Una votación para anular un veto es siempre nominal, porque la constitución lo exige.",
+   "state": "draft"
+  },
+  "learn.how-a-bill-becomes-law.a-committee-decides-in-executive-session": {
+   "en": "A committee decides in executive session whether to send a bill to the consent calendar, and in both chambers that decision must be unanimous. It is a separate vote from the committee's recommendation: a recommendation carried on a divided vote can still go to the consent calendar, and this site&rsquo;s record holds thousands of House reports marked that way, among them reports carried 15&ndash;3. The calendar is then decided in a single vote, without floor debate. What that vote adopts is the committee's recommendation on each bill, which for some of them is to kill it. A bill can be taken off first, and one that comes off is debated and voted on by itself at the end of the regular calendar. Taking one off has needed ten members in the House since January 2023, and two senators in the Senate since April 2026; before that, one member's request was enough in either chamber.",
+   "es": "Un comité decide en sesión ejecutiva si envía un proyecto de ley al calendario de consenso, y en ambas cámaras esa decisión tiene que ser unánime. Es una votación aparte de la recomendación del comité: una recomendación aprobada en una votación dividida puede ir de todos modos al calendario de consenso, y el registro de este sitio tiene miles de informes de la Cámara marcados así, entre ellos informes aprobados 15&ndash;3. Después el calendario se decide en una sola votación, sin debate en el pleno. Lo que esa votación adopta es la recomendación del comité sobre cada proyecto de ley, que para algunos es rechazarlo. Un proyecto de ley se puede sacar antes, y el que sale se debate y se vota por separado al final del calendario ordinario. Sacar uno requiere diez miembros en la Cámara desde enero de 2023, y dos senadores en el Senado desde abril de 2026; antes, bastaba la petición de un solo miembro en cualquiera de las dos cámaras.",
+   "state": "draft"
+  },
+  "learn.how-a-bill-becomes-law.a-final-check-of-the-text": {
+   "en": "A final check of the text for errors before it is sent.",
+   "es": "Una revisión final del texto en busca de errores antes de enviarlo.",
+   "state": "draft"
+  },
+  "learn.how-a-bill-becomes-law.a-house-session-day-in-order": {
+   "en": "A House Session Day, in Order",
+   "es": "Un día de sesión de la Cámara, en orden",
+   "state": "draft"
+  },
+  "learn.how-a-bill-becomes-law.a-legislative-service-request-or-lsr": {
+   "en": "A Legislative Service Request, or LSR: a title and an idea, filed in the fall. Attorneys at the Office of Legislative Services draft the text.",
+   "es": "Una solicitud de servicio legislativo (Legislative Service Request, o LSR): un título y una idea, presentados en el otoño. Los abogados de la Oficina de Servicios Legislativos redactan el texto.",
+   "state": "draft"
+  },
+  "learn.how-a-bill-becomes-law.a-motion-to-reprimand-or-censure": {
+   "en": "A motion to reprimand or censure a member can be brought up at any point in the day. So a vote you are waiting for has no set time: the calendar tells you only where in the day's order its bill falls.",
+   "es": "Una moción para amonestar o censurar a un miembro puede presentarse en cualquier momento del día. Así que una votación que usted espera no tiene hora fija: el calendario solo le dice en qué lugar del orden del día cae su proyecto de ley.",
+   "state": "draft"
+  },
+  "learn.how-a-bill-becomes-law.a-public-hearing-and-an-executive": {
+   "en": "A public hearing and an executive session are different meetings, and they are the two most often confused. A <b>public hearing</b> is where anyone may speak, and the committee takes no decision at it. An <b>executive session</b> is where the committee votes on what to recommend, usually days later and usually covering several bills at once. A committee cannot end a bill there: the rules of both chambers require it to report every bill it is given, with no recommendation if it cannot agree on one, and the full chamber decides. See <a href=\"guides/testifying.html\">Testifying and attending</a> for what happens at each, and <a href=\"learn/governor-and-council.html\">The Governor and the Executive Council</a> for the last stage.",
+   "es": "Una audiencia pública y una sesión ejecutiva son reuniones distintas, y son las dos que más a menudo se confunden. Una <b>audiencia pública</b> es donde cualquier persona puede hablar, y el comité no toma ninguna decisión en ella. Una <b>sesión ejecutiva</b> es donde el comité vota qué recomendar, por lo general días después y por lo general sobre varios proyectos de ley a la vez. Un comité no puede acabar allí con un proyecto de ley: el reglamento de ambas cámaras le exige informar sobre cada proyecto de ley que recibe, sin recomendación si no logra ponerse de acuerdo en una, y la cámara en pleno decide. Vea <a href=\"guides/testifying.html\">Testificar y asistir</a> para saber qué ocurre en cada una, y <a href=\"learn/governor-and-council.html\">El Gobernador y el Consejo Ejecutivo</a> para la última etapa.",
+   "state": "draft"
+  },
+  "learn.how-a-bill-becomes-law.a-second-committee-a-second-public": {
+   "en": "A second committee, a second public hearing. Missing the first chamber's does not cost you this one.",
+   "es": "Un segundo comité, una segunda audiencia pública. Haberse perdido la de la primera cámara no le cuesta esta.",
+   "state": "draft"
+  },
+  "learn.how-a-bill-becomes-law.a-town-or-agency-answering-a": {
+   "en": "A town or agency answering a right-to-know request may charge for the copies. The question was whether it may also charge for the staff time spent finding and reviewing the records. Supporters said small towns without full-time staff absorb real cost for requests that can run to thousands of pages. Opponents said a fee that tracks staff time can be set high enough to price an ordinary resident out of oversight.",
+   "es": "Un municipio o una agencia que responde a una solicitud según el Derecho a Saber (right-to-know) puede cobrar por las copias. La cuestión era si también puede cobrar por el tiempo que el personal dedica a buscar y revisar los registros. Quienes lo apoyaban dijeron que los municipios pequeños sin personal de tiempo completo asumen un costo real por solicitudes que pueden llegar a miles de páginas. Quienes se oponían dijeron que una cuota que sigue el tiempo del personal puede fijarse tan alta que deje a un residente común fuera de la vigilancia de su gobierno.",
+   "state": "draft"
+  },
+  "learn.how-a-bill-becomes-law.across-the-bills-in-this-record": {
+   "en": "Across the [[all_bills]] bills in this record, <b>[[all_rollcall]] have at least one recorded roll call and [[all_no_rollcall]] have none</b>. Of those, [[pre_rollcall_bills]] are from before [[rollcall_first_year]], where this record's roll calls begin: roll calls were taken then too, and printed in the journals, but this site does not hold them. For most of the rest there is no answer to \"how did my representative vote\", because the bill was decided by voice vote or division and no record of names was made.",
+   "es": "De los [[all_bills]] proyectos de ley de este registro, <b>[[all_rollcall]] tienen al menos una votación nominal registrada y [[all_no_rollcall]] no tienen ninguna</b>. De estos, [[pre_rollcall_bills]] son de antes de [[rollcall_first_year]], cuando empiezan las votaciones nominales de este registro: entonces también se hacían votaciones nominales, y se imprimían en los diarios de sesiones, pero este sitio no las tiene. Para la mayoría de los demás no hay respuesta a &ldquo;cómo votó mi representante&rdquo;, porque el proyecto de ley se decidió a viva voz o por división y no se registraron nombres.",
+   "state": "draft"
+  },
+  "learn.how-a-bill-becomes-law.adjournment-followed-by-unanimous": {
+   "en": "<b>Adjournment</b>, followed by <b>unanimous consent speeches</b>: any member may speak on something that matters to them, a constituent's story or a holiday, in remarks meant to be non-partisan. No vote is usually taken, unless a member objects to a speaker continuing; then the House votes on whether the member may go on, as it did a few times in 2026.",
+   "es": "<b>El receso</b>, seguido de los <b>discursos por consentimiento unánime</b> (unanimous consent speeches): cualquier miembro puede hablar de algo que le importa, la historia de un elector o una festividad, en palabras que se pretenden no partidistas. Por lo general no se vota, salvo que un miembro se oponga a que un orador siga; entonces la Cámara vota si el miembro puede continuar, como ocurrió algunas veces en 2026.",
+   "state": "draft"
+  },
+  "learn.how-a-bill-becomes-law.amending-the-constitution": {
+   "en": "Amending the constitution",
+   "es": "Enmendar la constitución",
+   "state": "draft"
+  },
+  "learn.how-a-bill-becomes-law.august-2026-231-to-88-with": {
+   "en": "August 2026: 231 to 88, with 384 members in office",
+   "es": "Agosto de 2026: 231 a 88, con 384 miembros en funciones",
+   "state": "draft"
+  },
+  "learn.how-a-bill-becomes-law.authority": {
+   "en": "Authority",
+   "es": "Fundamento",
+   "state": "draft"
+  },
+  "learn.how-a-bill-becomes-law.before-it-is-a-bill": {
+   "en": "Before It Is a Bill",
+   "es": "Antes de ser un proyecto de ley",
+   "state": "draft"
+  },
+  "learn.how-a-bill-becomes-law.both-are-offered-as-examples-of": {
+   "en": "Both are offered as examples of the process and not as settled questions. The site takes no position on either. The arguments above are summarized from what was said for and against, and the recordings are there so you can check whether that summary is fair.",
+   "es": "Ambos se ofrecen como ejemplos del proceso y no como cuestiones resueltas. El sitio no toma posición sobre ninguno. Los argumentos de arriba resumen lo que se dijo a favor y en contra, y las grabaciones están ahí para que usted compruebe si ese resumen es justo.",
+   "state": "draft"
+  },
+  "learn.how-a-bill-becomes-law.both-went-through-both-chambers-and": {
+   "en": "Both went through both chambers, and on each the closest roll call in the House did not split cleanly along party lines: a majority of Republicans voted one way and a majority of Democrats the other, but a substantial minority of each party voted against its own side.",
+   "es": "Ambos pasaron por las dos cámaras, y en cada uno la votación nominal más reñida de la Cámara no se dividió limpiamente por partidos: la mayoría de los republicanos votó en un sentido y la mayoría de los demócratas en el otro, pero una minoría considerable de cada partido votó contra su propio lado.",
+   "state": "draft"
+  },
+  "learn.how-a-bill-becomes-law.can-die-here": {
+   "en": "Can die here",
+   "es": "Puede morir aquí",
+   "state": "draft"
+  },
+  "learn.how-a-bill-becomes-law.carried-over-into-the-second-year": {
+   "en": "<b>Carried over</b> into the second year: <a href=\"bill/2026/hb649.html\">HB 649</a>, on the maintenance obligations of motor vehicle operators, which passed in the second year and became law.",
+   "es": "<b>Trasladado</b> al segundo año: <a href=\"bill/2026/hb649.html\">HB 649</a>, sobre las obligaciones de mantenimiento de los conductores de vehículos motorizados, que se aprobó en el segundo año y se convirtió en ley.",
+   "state": "draft"
+  },
+  "learn.how-a-bill-becomes-law.committee-of-conference": {
+   "en": "Committee of conference",
+   "es": "Comité de conferencia",
+   "state": "draft"
+  },
+  "learn.how-a-bill-becomes-law.counted-against": {
+   "en": "Counted against",
+   "es": "Se cuenta sobre",
+   "state": "draft"
+  },
+  "learn.how-a-bill-becomes-law.crossover": {
+   "en": "crossover",
+   "es": "paso a la otra cámara (crossover)",
+   "state": "draft"
+  },
+  "learn.how-a-bill-becomes-law.division": {
+   "en": "Division",
+   "es": "Votación por división",
+   "state": "draft"
+  },
+  "learn.how-a-bill-becomes-law.each-members-name": {
+   "en": "Each member&rsquo;s name",
+   "es": "El nombre de cada miembro",
+   "state": "draft"
+  },
+  "learn.how-a-bill-becomes-law.enrollment": {
+   "en": "Enrollment",
+   "es": "Inscripción (enrollment)",
+   "state": "draft"
+  },
+  "learn.how-a-bill-becomes-law.every-member-in-office-240-when": {
+   "en": "every member in office: 240 when all 400 House seats are filled",
+   "es": "todos los miembros en funciones: 240 cuando los 400 escaños de la Cámara están ocupados",
+   "state": "draft"
+  },
+  "learn.how-a-bill-becomes-law.example": {
+   "en": "Example",
+   "es": "Ejemplo",
+   "state": "draft"
+  },
+  "learn.how-a-bill-becomes-law.executive-session": {
+   "en": "Executive session",
+   "es": "Sesión ejecutiva",
+   "state": "draft"
+  },
+  "learn.how-a-bill-becomes-law.filed-as-a-request": {
+   "en": "Filed as a request",
+   "es": "Presentado como solicitud",
+   "state": "draft"
+  },
+  "learn.how-a-bill-becomes-law.floor-vote": {
+   "en": "Floor vote",
+   "es": "Votación en el pleno",
+   "state": "draft"
+  },
+  "learn.how-a-bill-becomes-law.follow-the-two-worked-examples-through": {
+   "en": "Follow the two worked examples through the record: <a href=\"bill/2024/hb1002.html\">HB 1002 (2024)</a> and <a href=\"bill/2024/hb1215.html\">HB 1215 (2024)</a>, with each hearing, each committee vote, each floor vote, and the recording of each.",
+   "es": "Siga los dos ejemplos por el registro: <a href=\"bill/2024/hb1002.html\">HB 1002 (2024)</a> y <a href=\"bill/2024/hb1215.html\">HB 1215 (2024)</a>, con cada audiencia, cada votación del comité, cada votación en el pleno y la grabación de cada una.",
+   "state": "draft"
+  },
+  "learn.how-a-bill-becomes-law.hb-1002-2024-what-a-public": {
+   "en": "HB 1002 (2024): What a Public Record May Cost",
+   "es": "HB 1002 (2024): cuánto puede costar un registro público",
+   "state": "draft"
+  },
+  "learn.how-a-bill-becomes-law.hb-1215-2024-a-bill-that": {
+   "en": "HB 1215 (2024): A Bill That Went to a Committee of Conference",
+   "es": "HB 1215 (2024): un proyecto de ley que fue a un comité de conferencia",
+   "state": "draft"
+  },
+  "learn.how-a-bill-becomes-law.house-calendars-and-journals": {
+   "en": "House calendars and journals",
+   "es": "Calendarios y diarios de sesiones de la Cámara",
+   "state": "draft"
+  },
+  "learn.how-a-bill-becomes-law.house-rules": {
+   "en": "House Rules",
+   "es": "Reglamento de la Cámara",
+   "state": "draft"
+  },
+  "learn.how-a-bill-becomes-law.how-a-chamber-votes-and-what": {
+   "en": "How a Chamber Votes, and What Is Recorded",
+   "es": "Cómo vota una cámara, y qué queda registrado",
+   "state": "draft"
+  },
+  "learn.how-a-bill-becomes-law.how-most-bills-end": {
+   "en": "How Most Bills End",
+   "es": "Cómo termina la mayoría de los proyectos de ley",
+   "state": "draft"
+  },
+  "learn.how-a-bill-becomes-law.if-this-chamber-changes-the-bill": {
+   "en": "If this chamber changes the bill, the first must agree to the change.",
+   "es": "Si esta cámara cambia el proyecto de ley, la primera tiene que aceptar el cambio.",
+   "state": "draft"
+  },
+  "learn.how-a-bill-becomes-law.in-the-record": {
+   "en": "In the Record",
+   "es": "En el registro",
+   "state": "draft"
+  },
+  "learn.how-a-bill-becomes-law.introduced-and-referred": {
+   "en": "Introduced and referred",
+   "es": "Presentado y remitido",
+   "state": "draft"
+  },
+  "learn.how-a-bill-becomes-law.it-gets-a-number-and-goes": {
+   "en": "It gets a number and goes to a committee chosen by subject.",
+   "es": "Recibe un número y va a un comité elegido según el tema.",
+   "state": "draft"
+  },
+  "learn.how-a-bill-becomes-law.it-has-to-clear-the-same": {
+   "en": "It has to clear the same course twice, once in each chamber, and it can stop at any point on it. Most do.",
+   "es": "Tiene que superar el mismo recorrido dos veces, una en cada cámara, y puede detenerse en cualquier punto. La mayoría se detiene.",
+   "state": "draft"
+  },
+  "learn.how-a-bill-becomes-law.it-shows-how-little-a-first": {
+   "en": "It shows how little a first vote settles. The House Judiciary Committee heard it on January 17, 2024 and split 12&ndash;8 for passing it with an amendment, and on February 1 the House agreed, <b>193 to 179</b>: 63 Republicans for and 125 against, 128 Democrats for and 53 against. A week later the House voted 195 to 183 to reopen that vote, and sent the bill back to the committee, which now split 11&ndash;9 for referring it to interim study, a recommendation that would have ended it for the term. The House refused, 105 to 266, adopted an amendment offered from the floor rather than by the committee, 345 to 24, and passed the bill 268 to 106. The Senate passed it on a voice vote, and Governor Sununu signed it into law on June 14, 2024. Five of its proceedings are on video: the House hearing, both House executive sessions, the work session between them, and the Senate hearing.",
+   "es": "Muestra lo poco que resuelve una primera votación. El Comité Judicial de la Cámara (House Judiciary Committee) lo escuchó en audiencia el 17 de enero de 2024 y se dividió 12&ndash;8 a favor de aprobarlo con una enmienda, y el 1 de febrero la Cámara estuvo de acuerdo, <b>193 a 179</b>: 63 republicanos a favor y 125 en contra, 128 demócratas a favor y 53 en contra. Una semana después la Cámara votó 195 a 183 reabrir esa votación, y devolvió el proyecto de ley al comité, que ahora se dividió 11&ndash;9 a favor de enviarlo a estudio interino, una recomendación que lo habría terminado para el período. La Cámara se negó, 105 a 266, adoptó una enmienda propuesta desde el pleno y no por el comité, 345 a 24, y aprobó el proyecto de ley 268 a 106. El Senado lo aprobó a viva voz, y el Gobernador Sununu lo firmó como ley el 14 de junio de 2024. Cinco de sus procedimientos están en video: la audiencia de la Cámara, las dos sesiones ejecutivas de la Cámara, la sesión de trabajo entre ellas y la audiencia del Senado.",
+   "state": "draft"
+  },
+  "learn.how-a-bill-becomes-law.killed-hb-66-on-what-counts": {
+   "en": "<b>Killed:</b> <a href=\"bill/2025/hb66.html\">HB 66</a>, on what counts as material a public body must disclose under the right-to-know law. Two roll calls before it died.",
+   "es": "<b>Rechazado:</b> <a href=\"bill/2025/hb66.html\">HB 66</a>, sobre qué cuenta como material que un organismo público debe divulgar según la ley del Derecho a Saber. Dos votaciones nominales antes de morir.",
+   "state": "draft"
+  },
+  "learn.how-a-bill-becomes-law.lead": {
+   "en": "From an idea filed in the fall to a law that takes effect, and the several places along the way where a bill can stop.",
+   "es": "Desde una idea presentada en el otoño hasta una ley que entra en vigor, y los varios puntos del camino donde un proyecto de ley puede detenerse.",
+   "state": "draft"
+  },
+  "learn.how-a-bill-becomes-law.no": {
+   "en": "No",
+   "es": "No",
+   "state": "draft"
+  },
+  "learn.how-a-bill-becomes-law.observed-practice-reported-by-the-site": {
+   "en": "Observed practice, reported by the site's editor, October 2026",
+   "es": "Práctica observada, según la editora del sitio, octubre de 2026",
+   "state": "draft"
+  },
+  "learn.how-a-bill-becomes-law.of-the-bills-and-resolutions-filed": {
+   "en": "Of the [[bills]] bills and resolutions filed in the [[term]] term, <b>[[killed]] were killed</b> on a motion of Inexpedient to Legislate, written <b>ITL</b>, and <b>[[signed]] were signed into law</b>. Among the rest, [[study]] were sent for interim study (the committee studies the subject after the session, and the bill goes no further), [[tabled]] died on the table (set aside by a vote and never taken up again), and [[session_end]] died when the session ended without a final vote. Dying is the ordinary outcome, not a failure of the bill or its sponsor.",
+   "es": "De los [[bills]] proyectos de ley y resoluciones presentados en el período [[term]], <b>[[killed]] fueron rechazados</b> mediante una moción de Inexpedient to Legislate (inoportuno legislar), escrita <b>ITL</b>, y <b>[[signed]] fueron firmados como ley</b>. Entre los demás, [[study]] se enviaron a estudio interino (el comité estudia el tema después de la sesión, y el proyecto de ley no avanza más), [[tabled]] murieron sobre la mesa (apartados mediante una votación y nunca retomados), y [[session_end]] murieron al terminar la sesión sin una votación final. Morir es el resultado ordinario, no un fracaso del proyecto de ley ni de su patrocinador.",
+   "state": "draft"
+  },
+  "learn.how-a-bill-becomes-law.of-the-bills-that-became-law": {
+   "en": "Of the [[law]] bills that became law in the [[term]] term, [[law_no_rollcall]] did so without a roll call on the floor of either chamber.",
+   "es": "De los [[law]] proyectos de ley que se convirtieron en ley en el período [[term]], [[law_no_rollcall]] lo hicieron sin una votación nominal en el pleno de ninguna de las dos cámaras.",
+   "state": "draft"
+  },
+  "learn.how-a-bill-becomes-law.of-the-bills-with-a-narrative": {
+   "en": "Of the [[narrated]] bills with a narrative in the [[term]] term, <b>[[both_chambers]] reached both chambers</b> and <b>[[conference]] went to a committee of conference</b>. [[law]] became law: [[signed]] signed, [[unsigned]] without a signature, and [[overridden]] over a veto.",
+   "es": "De los [[narrated]] proyectos de ley con un relato en el período [[term]], <b>[[both_chambers]] llegaron a ambas cámaras</b> y <b>[[conference]] fueron a un comité de conferencia</b>. [[law]] se convirtieron en ley: [[signed]] firmados, [[unsigned]] sin firma y [[overridden]] por encima de un veto.",
+   "state": "draft"
+  },
+  "learn.how-a-bill-becomes-law.override": {
+   "en": "Override",
+   "es": "Anulación del veto (override)",
+   "state": "draft"
+  },
+  "learn.how-a-bill-becomes-law.overriding-a-veto": {
+   "en": "Overriding a veto",
+   "es": "Anular un veto",
+   "state": "draft"
+  },
+  "learn.how-a-bill-becomes-law.overriding-a-veto-takes-two-thirds": {
+   "en": "Overriding a veto takes two thirds of each chamber, by roll call, under Part Second, Article 44 of the state constitution. The article says two thirds \"of that house\", and the House counts it among the members voting rather than against its whole membership: in August 2026 it overrode a veto 231 to 88 when 384 members were in office. Amending the constitution takes three fifths of the members of each chamber, and then two thirds of those voting on the question at the election, under Part Second, Article 100. The chambers count that three fifths against every member in office rather than against those present &mdash; 240 when all 400 House seats are filled &mdash; so a measure can win a clear majority of those voting and fail anyway.",
+   "es": "Anular un veto requiere dos tercios de cada cámara, por votación nominal, según la Parte Segunda, Artículo 44, de la constitución del estado. El artículo dice dos tercios &ldquo;de esa cámara&rdquo;, y la Cámara los cuenta entre los miembros que votan y no sobre el total de sus miembros: en agosto de 2026 anuló un veto por 231 a 88 cuando había 384 miembros en funciones. Enmendar la constitución requiere tres quintos de los miembros de cada cámara, y después dos tercios de quienes voten sobre la cuestión en la elección, según la Parte Segunda, Artículo 100. Las cámaras cuentan esos tres quintos sobre todos los miembros en funciones y no sobre los presentes &mdash; 240 cuando los 400 escaños de la Cámara están ocupados &mdash;, así que una medida puede ganar una clara mayoría de quienes votan y fracasar de todos modos.",
+   "state": "draft"
+  },
+  "learn.how-a-bill-becomes-law.part-second-article-100": {
+   "en": "Part Second, Article 100",
+   "es": "Parte Segunda, Artículo 100",
+   "state": "draft"
+  },
+  "learn.how-a-bill-becomes-law.part-second-article-44": {
+   "en": "Part Second, Article 44",
+   "es": "Parte Segunda, Artículo 44",
+   "state": "draft"
+  },
+  "learn.how-a-bill-becomes-law.public-hearing": {
+   "en": "Public hearing",
+   "es": "Audiencia pública",
+   "state": "draft"
+  },
+  "learn.how-a-bill-becomes-law.referred-again": {
+   "en": "Referred again",
+   "es": "Remitido de nuevo",
+   "state": "draft"
+  },
+  "learn.how-a-bill-becomes-law.roll-call": {
+   "en": "Roll call",
+   "es": "Votación nominal",
+   "state": "draft"
+  },
+  "learn.how-a-bill-becomes-law.senate-rules": {
+   "en": "Senate Rules",
+   "es": "Reglamento del Senado",
+   "state": "draft"
+  },
+  "learn.how-a-bill-becomes-law.signed-into-law-hb-2-the": {
+   "en": "<b>Signed into law:</b> <a href=\"bill/2025/hb2.html\">HB 2</a>, the budget trailer bill, which carries the statutory changes the state budget needs, with [[hb2_rollcalls]] recorded votes. The letters after its number say it has a fiscal note (FN), an appropriation (A) and a local fiscal impact (LOCAL).",
+   "es": "<b>Firmado como ley:</b> <a href=\"bill/2025/hb2.html\">HB 2</a>, el proyecto de ley complementario del presupuesto (budget trailer bill), que lleva los cambios a las leyes que el presupuesto del estado necesita, con [[hb2_rollcalls]] votaciones registradas. Las letras después de su número dicen que tiene una nota fiscal (FN), una asignación de fondos (A) y un impacto fiscal local (LOCAL).",
+   "state": "draft"
+  },
+  "learn.how-a-bill-becomes-law.signed-vetoed-or-left-unsigned": {
+   "en": "Signed, vetoed, or left unsigned",
+   "es": "Firmado, vetado o dejado sin firmar",
+   "state": "draft"
+  },
+  "learn.how-a-bill-becomes-law.the-bills-taken-off-the-consent": {
+   "en": "<b>The bills taken off the consent calendar</b>, each debated and voted on by itself.",
+   "es": "<b>Los proyectos de ley sacados del calendario de consenso</b>, cada uno debatido y votado por separado.",
+   "state": "draft"
+  },
+  "learn.how-a-bill-becomes-law.the-committee-votes-on-what-to": {
+   "en": "The committee votes on what to recommend. A separate meeting from the hearing, often days later. It cannot end the bill itself: the recommendation goes to the floor.",
+   "es": "El comité vota qué recomendar. Es una reunión aparte de la audiencia, a menudo días después. No puede acabar con el proyecto de ley por sí mismo: la recomendación va al pleno.",
+   "state": "draft"
+  },
+  "learn.how-a-bill-becomes-law.the-consent-calendar": {
+   "en": "The Consent Calendar",
+   "es": "El calendario de consenso (Consent Calendar)",
+   "state": "draft"
+  },
+  "learn.how-a-bill-becomes-law.the-consent-calendar-first-the-bills": {
+   "en": "<b>The consent calendar</b>, first. The bills taken off it are announced, and the rest are decided in one vote.",
+   "es": "<b>El calendario de consenso</b>, primero. Se anuncian los proyectos de ley que se sacaron de él, y los demás se deciden en una sola votación.",
+   "state": "draft"
+  },
+  "learn.how-a-bill-becomes-law.the-count": {
+   "en": "The count",
+   "es": "El conteo",
+   "state": "draft"
+  },
+  "learn.how-a-bill-becomes-law.the-course-of-a-bill": {
+   "en": "The Course of a Bill",
+   "es": "El recorrido de un proyecto de ley",
+   "state": "draft"
+  },
+  "learn.how-a-bill-becomes-law.the-first-chamber": {
+   "en": "The First Chamber",
+   "es": "La primera cámara",
+   "state": "draft"
+  },
+  "learn.how-a-bill-becomes-law.the-full-chamber-decides-and-is": {
+   "en": "The full chamber decides, and is not bound by the committee's recommendation.",
+   "es": "La cámara en pleno decide, y no está obligada por la recomendación del comité.",
+   "state": "draft"
+  },
+  "learn.how-a-bill-becomes-law.the-governor": {
+   "en": "The Governor",
+   "es": "El Gobernador",
+   "state": "draft"
+  },
+  "learn.how-a-bill-becomes-law.the-house-does-not-schedule-its": {
+   "en": "<b>The House does not schedule its votes to a time.</b> Its calendar lists the bills for the day grouped by the committee that reported them, or on some days, such as a veto day, in order by number, and that is the order they are taken up in unless the House votes to take one up at a set point in the day, which is called making it a special order. In practice a session day runs like this:",
+   "es": "<b>La Cámara no fija sus votaciones a una hora.</b> Su calendario enumera los proyectos de ley del día agrupados por el comité que informó sobre ellos o, algunos días, como un día de vetos, en orden por número, y ese es el orden en que se tratan, salvo que la Cámara vote tratar uno en un momento fijo del día, lo que se llama convertirlo en una orden especial (special order). En la práctica, un día de sesión transcurre así:",
+   "state": "draft"
+  },
+  "learn.how-a-bill-becomes-law.the-longer-road-at-the-end": {
+   "en": "The longer road at the end of the course. It went to a Special Committee on Housing, then to a second chamber that changed it. On the motion to accept that change the House divided <b>172 to 180</b>, and the bill went to a <b>committee of conference</b>. It dealt with how long an approved development keeps the rules it was approved under, and where a building code dispute may be appealed: local control of what gets built against the time and cost of getting anything built. Six of its proceedings are on video, the conference among them. The House then rejected the conference report <b>102 to 261</b>, and the bill did not become law.",
+   "es": "El camino más largo al final del recorrido. Pasó por un Comité Especial de Vivienda (Special Committee on Housing) y después por una segunda cámara que lo cambió. En la moción para aceptar ese cambio la Cámara se dividió <b>172 a 180</b>, y el proyecto de ley fue a un <b>comité de conferencia</b>. Trataba de cuánto tiempo un proyecto de urbanización aprobado conserva las reglas con las que se aprobó, y de dónde se puede apelar una disputa sobre el código de construcción: el control local de lo que se construye frente al tiempo y el costo de construir cualquier cosa. Seis de sus procedimientos están en video, la conferencia entre ellos. Después la Cámara rechazó el informe de la conferencia <b>102 a 261</b>, y el proyecto de ley no se convirtió en ley.",
+   "state": "draft"
+  },
+  "learn.how-a-bill-becomes-law.the-members-voting": {
+   "en": "the members voting",
+   "es": "los miembros que votan",
+   "state": "draft"
+  },
+  "learn.how-a-bill-becomes-law.the-new-hampshire-constitution": {
+   "en": "The New Hampshire Constitution",
+   "es": "La Constitución de New Hampshire",
+   "state": "draft"
+  },
+  "learn.how-a-bill-becomes-law.the-regular-calendar-committee-by": {
+   "en": "<b>The regular calendar</b>, committee by committee, sometimes broken by a lunch recess, with the rest of it after lunch.",
+   "es": "<b>El calendario ordinario</b>, comité por comité, a veces interrumpido por un receso para almorzar, con el resto después del almuerzo.",
+   "state": "draft"
+  },
+  "learn.how-a-bill-becomes-law.the-second-chamber": {
+   "en": "The Second Chamber",
+   "es": "La segunda cámara",
+   "state": "draft"
+  },
+  "learn.how-a-bill-becomes-law.the-second-committee-votes-on-its": {
+   "en": "The second committee votes on its own recommendation, which goes to that chamber's floor.",
+   "es": "El segundo comité vota su propia recomendación, que va al pleno de esa cámara.",
+   "state": "draft"
+  },
+  "learn.how-a-bill-becomes-law.the-sponsor-introduces-it-then-anyone": {
+   "en": "The sponsor introduces it, then anyone may speak for or against, or sign in without speaking.",
+   "es": "El patrocinador lo presenta; después cualquier persona puede hablar a favor o en contra, o inscribirse sin hablar.",
+   "state": "draft"
+  },
+  "learn.how-a-bill-becomes-law.the-whole-course-repeats-moving-between": {
+   "en": "The whole course repeats. Moving between chambers is called crossover, and there is a deadline for it.",
+   "es": "Todo el recorrido se repite. Al cambio de una cámara a la otra se le llama paso a la otra cámara (crossover), y tiene un plazo.",
+   "state": "draft"
+  },
+  "learn.how-a-bill-becomes-law.then-two-thirds-of-those-voting": {
+   "en": "then two thirds of those voting on the question, at the election",
+   "es": "después, dos tercios de quienes voten sobre la cuestión, en la elección",
+   "state": "draft"
+  },
+  "learn.how-a-bill-becomes-law.three-fifths-of-the-members-of": {
+   "en": "three fifths of the members of each chamber",
+   "es": "tres quintos de los miembros de cada cámara",
+   "state": "draft"
+  },
+  "learn.how-a-bill-becomes-law.title": {
+   "en": "How a Bill Becomes Law",
+   "es": "Cómo un proyecto de ley se convierte en ley",
+   "state": "draft"
+  },
+  "learn.how-a-bill-becomes-law.two-bills-followed-all-the-way": {
+   "en": "Two Bills, Followed All the Way",
+   "es": "Dos proyectos de ley, seguidos de principio a fin",
+   "state": "draft"
+  },
+  "learn.how-a-bill-becomes-law.two-meetings-often-confused": {
+   "en": "Two Meetings Often Confused",
+   "es": "Dos reuniones que a menudo se confunden",
+   "state": "draft"
+  },
+  "learn.how-a-bill-becomes-law.two-thirds-of-each-chamber-by": {
+   "en": "Two thirds of each chamber, by roll call, or the veto stands. The House counts the two thirds among the members voting.",
+   "es": "Dos tercios de cada cámara, por votación nominal, o el veto se mantiene. La Cámara cuenta los dos tercios entre los miembros que votan.",
+   "state": "draft"
+  },
+  "learn.how-a-bill-becomes-law.two-thirds-of-each-chamber-by-2": {
+   "en": "two thirds of each chamber, by roll call",
+   "es": "dos tercios de cada cámara, por votación nominal",
+   "state": "draft"
+  },
+  "learn.how-a-bill-becomes-law.vetoed-and-overridden-anyway-hb-2026": {
+   "en": "<b>Vetoed, and overridden anyway:</b> <a href=\"bill/2026/hb2026.html\">HB 2026</a>, on the ten-year transportation plan.",
+   "es": "<b>Vetado, y anulado el veto de todos modos:</b> <a href=\"bill/2026/hb2026.html\">HB 2026</a>, sobre el plan de transporte a diez años.",
+   "state": "draft"
+  },
+  "learn.how-a-bill-becomes-law.vetoed-and-the-override-failed-hb": {
+   "en": "<b>Vetoed, and the override failed:</b> <a href=\"bill/2026/hb349.html\">HB 349</a>, on whether optometrists may perform ophthalmic laser procedures. It passed both chambers and was vetoed, and the override fell at 145 to 206 where two thirds of those voting was needed.",
+   "es": "<b>Vetado, y la anulación del veto fracasó:</b> <a href=\"bill/2026/hb349.html\">HB 349</a>, sobre si los optometristas pueden realizar procedimientos oftálmicos con láser. Pasó ambas cámaras y fue vetado, y la anulación del veto cayó por 145 a 206, cuando se necesitaban dos tercios de quienes votaban.",
+   "state": "draft"
+  },
+  "learn.how-a-bill-becomes-law.voice-vote": {
+   "en": "Voice vote",
+   "es": "Votación a viva voz",
+   "state": "draft"
+  },
+  "learn.how-a-bill-becomes-law.votes-that-need-more-than-a": {
+   "en": "Votes That Need More Than a Majority",
+   "es": "Votaciones que necesitan más que una mayoría",
+   "state": "draft"
+  },
+  "learn.how-a-bill-becomes-law.way": {
+   "en": "Way",
+   "es": "Manera",
+   "state": "draft"
+  },
+  "learn.how-a-bill-becomes-law.what-a-bill-is": {
+   "en": "What a Bill Is",
+   "es": "Qué es un proyecto de ley",
+   "state": "draft"
+  },
+  "learn.how-a-bill-becomes-law.what-each-way-of-voting-records": {
+   "en": "What each way of voting records",
+   "es": "Qué registra cada manera de votar",
+   "state": "draft"
+  },
+  "learn.how-a-bill-becomes-law.where-it-will-not-agree-members": {
+   "en": "Where it will not agree: members of both chambers try to write a version each will accept. Both chambers must then adopt the report unchanged.",
+   "es": "Si no lo acepta: miembros de ambas cámaras intentan redactar una versión que cada una acepte. Después ambas cámaras tienen que adoptar el informe sin cambios.",
+   "state": "draft"
+  },
+  "learn.how-a-bill-becomes-law.which-side-sounded-louder": {
+   "en": "Which side sounded louder",
+   "es": "Qué lado sonó más fuerte",
+   "state": "draft"
+  },
+  "learn.how-a-bill-becomes-law.which-side-won": {
+   "en": "Which side won",
+   "es": "Qué lado ganó",
+   "state": "draft"
+  },
+  "learn.how-a-bill-becomes-law.yes": {
+   "en": "Yes",
+   "es": "Sí",
+   "state": "draft"
+  },
+  "learn.how-a-bill-becomes-law.you-may-speak-here": {
+   "en": "You may speak here",
+   "es": "Aquí puede hablar usted",
+   "state": "draft"
+  },
   "learn.lang_note": {
    "en": "This page is in Spanish. The official pages it links to, and the record itself, are in English.",
    "es": "Esta página está en español. Las páginas oficiales que enlaza, y el propio registro, están en inglés.",
+   "state": "draft"
+  },
+  "learn.legislative-year.house-calendars-and-journals": {
+   "en": "House calendars and journals",
+   "es": "Calendarios y diarios de sesiones de la Cámara",
+   "state": "draft"
+  },
+  "learn.legislative-year.house-rules": {
+   "en": "House Rules",
+   "es": "Reglamento de la Cámara",
+   "state": "draft"
+  },
+  "learn.legislative-year.in-the-record": {
+   "en": "In the Record",
+   "es": "En el registro",
+   "state": "draft"
+  },
+  "learn.legislative-year.lead": {
+   "en": "When the House and Senate sit, and the deadlines a bill must meet.",
+   "es": "Cuándo sesionan la Cámara y el Senado, y los plazos que debe cumplir un proyecto de ley.",
+   "state": "draft"
+  },
+  "learn.legislative-year.right-now": {
+   "en": "Right Now",
+   "es": "Ahora mismo",
+   "state": "draft"
+  },
+  "learn.legislative-year.senate-calendars-and-journals": {
+   "en": "Senate calendars and journals",
+   "es": "Calendarios y diarios de sesiones del Senado",
+   "state": "draft"
+  },
+  "learn.legislative-year.senate-rules": {
+   "en": "Senate Rules",
+   "es": "Reglamento del Senado",
+   "state": "draft"
+  },
+  "learn.legislative-year.the-calendar-for-this-week-s": {
+   "en": "<a href=\"calendar.html\">The Calendar</a> for this week's hearings and sessions; the days each chamber sat, <a href=\"session/house.html\">the House's</a> and <a href=\"session/senate.html\">the Senate's</a>; and how a bill moves, in <a href=\"learn/how-a-bill-becomes-law.html\">How a Bill Becomes Law</a>.",
+   "es": "<a href=\"calendar.html\">El Calendario</a> para las audiencias y sesiones de esta semana; los días en que sesionó cada cámara, <a href=\"session/house.html\">los de la Cámara</a> y <a href=\"session/senate.html\">los del Senado</a>; y cómo avanza un proyecto de ley, en <a href=\"learn/how-a-bill-becomes-law.html\">Cómo un proyecto de ley se convierte en ley</a>.",
+   "state": "draft"
+  },
+  "learn.legislative-year.the-full-schedule": {
+   "en": "The Full Schedule",
+   "es": "El calendario completo",
+   "state": "draft"
+  },
+  "learn.legislative-year.the-legislature-is-elected-for-two": {
+   "en": "The legislature is elected for two years, and each year is one session: it opens in January, runs through the deadlines below and ends by June. A new term begins on <b>Organization Day</b>, the first Wednesday of December after the November election.",
+   "es": "La Legislatura se elige por dos años, y cada año es una sesión: comienza en enero, avanza por los plazos que se indican abajo y termina a más tardar en junio. Un nuevo período comienza el <b>Día de Organización</b> (Organization Day), el primer miércoles de diciembre después de la elección de noviembre.",
+   "state": "draft"
+  },
+  "learn.legislative-year.the-new-hampshire-constitution": {
+   "en": "The New Hampshire Constitution",
+   "es": "La Constitución de New Hampshire",
+   "state": "draft"
+  },
+  "learn.legislative-year.the-term-at-a-glance": {
+   "en": "The Term at a Glance",
+   "es": "El período de un vistazo",
+   "state": "draft"
+  },
+  "learn.legislative-year.title": {
+   "en": "NH Legislature Schedule",
+   "es": "Calendario de la Legislatura de NH",
+   "state": "draft"
+  },
+  "learn.legislative-year.what-the-deadlines-mean-crossover": {
+   "en": "What the deadlines mean -- crossover, interim study, a committee of conference -- is in <a href=\"learn/glossary.html\">the Glossary</a>.",
+   "es": "Qué significan los plazos &mdash; el paso a la otra cámara (crossover), el estudio interino, un comité de conferencia &mdash; está en <a href=\"learn/glossary.html\">el Glosario</a>.",
    "state": "draft"
   },
   "learn.local-government.a-town-or-district-adopts-sb": {
@@ -10551,6 +11816,16 @@
    "es": "Tema siguiente",
    "state": "draft"
   },
+  "learn.or": {
+   "en": "or",
+   "es": "o",
+   "state": "draft"
+  },
+  "learn.org_day": {
+   "en": "The next is {day}, for the legislature elected on {vote}.",
+   "es": "El próximo es el {day}, para la Legislatura elegida el {vote}.",
+   "state": "draft"
+  },
   "learn.other": {
    "en": "Other topics",
    "es": "Otros temas",
@@ -10589,6 +11864,91 @@
   "learn.probate.sent": {
    "en": "In 2026 the legislature sent the question to the voters again, as {link}.",
    "es": "En 2026 la Legislatura volvió a someter la pregunta a los votantes, como {link}.",
+   "state": "draft"
+  },
+  "learn.rc.caption": {
+   "en": "The {n} bills in this record",
+   "es": "Los {n} proyectos de ley de este registro",
+   "state": "draft"
+  },
+  "learn.rc.label": {
+   "en": "Bills with and without a recorded roll call",
+   "es": "Proyectos de ley con y sin una votación nominal registrada",
+   "state": "draft"
+  },
+  "learn.rc.none": {
+   "en": "<b>{n}</b> with none (the gray and the hatched)",
+   "es": "<b>{n}</b> sin ninguna (los grises y los rayados)",
+   "state": "draft"
+  },
+  "learn.rc.old": {
+   "en": "of those from before {year}, where this record&rsquo;s roll calls begin",
+   "es": "de ellos, de antes de {year}, cuando empiezan las votaciones nominales de este registro",
+   "state": "draft"
+  },
+  "learn.rc.with": {
+   "en": "with at least one recorded roll call",
+   "es": "con al menos una votación nominal registrada",
+   "state": "draft"
+  },
+  "learn.seats.hollow": {
+   "en": "A hollow square is a vacant seat: {where} as the record stands.",
+   "es": "Un cuadro vacío es un escaño vacante: {where} según el registro.",
+   "state": "draft"
+  },
+  "learn.seats.house": {
+   "en": "House",
+   "es": "Cámara",
+   "state": "draft"
+  },
+  "learn.seats.house_has": {
+   "en": "The House has {n} seats",
+   "es": "La Cámara tiene {n} escaños",
+   "state": "draft"
+  },
+  "learn.seats.in_house": {
+   "en": "{n} in the House",
+   "es": "{n} en la Cámara",
+   "state": "draft"
+  },
+  "learn.seats.in_senate": {
+   "en": "{n} in the Senate",
+   "es": "{n} en el Senado",
+   "state": "draft"
+  },
+  "learn.seats.one_square": {
+   "en": "One square, one seat.",
+   "es": "Un cuadro, un escaño.",
+   "state": "draft"
+  },
+  "learn.seats.senate": {
+   "en": "Senate",
+   "es": "Senado",
+   "state": "draft"
+  },
+  "learn.seats.senate_has": {
+   "en": "; the Senate has {n}",
+   "es": "; el Senado tiene {n}",
+   "state": "draft"
+  },
+  "learn.seats.vacant": {
+   "en": ", {n} of them vacant",
+   "es": ", {n} de ellos vacantes",
+   "state": "draft"
+  },
+  "learn.seats.vacant_one": {
+   "en": ", {n} of them vacant",
+   "es": ", {n} de ellos vacante",
+   "state": "draft"
+  },
+  "learn.seats.vacant_record": {
+   "en": ", {n} of them vacant as the record stands",
+   "es": ", {n} de ellos vacantes según el registro",
+   "state": "draft"
+  },
+  "learn.seats.vacant_record_one": {
+   "en": ", {n} of them vacant as the record stands",
+   "es": ", {n} de ellos vacante según el registro",
    "state": "draft"
   },
   "learn.state-agencies.a-department-is-usually-among-the": {
@@ -10711,6 +12071,246 @@
    "es": "Dónde se aplican los estatutos",
    "state": "draft"
   },
+  "learn.term.caption": {
+   "en": "Two ways a bill outlasts its first year",
+   "es": "Dos maneras en que un proyecto de ley sobrevive a su primer año",
+   "state": "draft"
+  },
+  "learn.term.filed": {
+   "en": "Filed again",
+   "es": "Se presenta de nuevo",
+   "state": "draft"
+  },
+  "learn.term.filed_words": {
+   "en": "To come back it has to be a new bill, with a new number.",
+   "es": "Para volver tiene que ser un proyecto de ley nuevo, con un número nuevo.",
+   "state": "draft"
+  },
+  "learn.term.first": {
+   "en": "First year ({year})",
+   "es": "Primer año ({year})",
+   "state": "draft"
+  },
+  "learn.term.first_only": {
+   "en": "first year only",
+   "es": "solo el primer año",
+   "state": "draft"
+  },
+  "learn.term.kept": {
+   "en": "Kept by the committee",
+   "es": "El comité lo retiene",
+   "state": "draft"
+  },
+  "learn.term.kept_words": {
+   "en": "for more work, and studied over the fall.",
+   "es": "para trabajarlo más, y se estudia durante el otoño.",
+   "state": "draft"
+  },
+  "learn.term.label": {
+   "en": "Retained or sent to interim study, through a two-year term",
+   "es": "Retenido o enviado a estudio interino, a lo largo de un período de dos años",
+   "state": "draft"
+  },
+  "learn.term.next_term": {
+   "en": "the next term",
+   "es": "el período siguiente",
+   "state": "draft"
+  },
+  "learn.term.reported": {
+   "en": "Reported and voted on",
+   "es": "Se informa y se vota",
+   "state": "draft"
+  },
+  "learn.term.reported_words": {
+   "en": "like any other bill. It keeps its number, and shows here as carried over.",
+   "es": "como cualquier otro proyecto de ley. Conserva su número, y aquí aparece como trasladado.",
+   "state": "draft"
+  },
+  "learn.term.retained": {
+   "en": "Retained",
+   "es": "Retenido",
+   "state": "draft"
+  },
+  "learn.term.second": {
+   "en": "Second year ({year})",
+   "es": "Segundo año ({year})",
+   "state": "draft"
+  },
+  "learn.term.second_only": {
+   "en": "second year only",
+   "es": "solo el segundo año",
+   "state": "draft"
+  },
+  "learn.term.studied": {
+   "en": "Studied over the fall",
+   "es": "Se estudia durante el otoño",
+   "state": "draft"
+  },
+  "learn.term.studied_words": {
+   "en": "The committee may report on it, but the bill itself dies with the term.",
+   "es": "El comité puede presentar un informe sobre él, pero el proyecto mismo muere con el período.",
+   "state": "draft"
+  },
+  "learn.term.study": {
+   "en": "Interim study",
+   "es": "Estudio interino",
+   "state": "draft"
+  },
+  "learn.term.then": {
+   "en": "The next term ({years})",
+   "es": "El período siguiente ({years})",
+   "state": "draft"
+  },
+  "learn.term.which": {
+   "en": "Which",
+   "es": "Cuál",
+   "state": "draft"
+  },
+  "learn.the-constitution.a-constitutional-amendment-concurrent": {
+   "en": "A Constitutional Amendment Concurrent Resolution, which may start in the House or the Senate. Statutes change by bill; the constitution does not.",
+   "es": "Una resolución concurrente de enmienda constitucional, que puede empezar en la Cámara o en el Senado. Los estatutos cambian mediante proyectos de ley; la constitución no.",
+   "state": "draft"
+  },
+  "learn.the-constitution.a-statute-changes-when-a-bill": {
+   "en": "A statute changes when a bill passes both chambers and the Governor signs it. The constitution does not. A change starts as a <b>CACR</b> &mdash; a Constitutional Amendment Concurrent Resolution &mdash; and it has to clear three thresholds, none of which involves the Governor.",
+   "es": "Un estatuto cambia cuando un proyecto de ley es aprobado por ambas cámaras y el Gobernador lo firma. La constitución no. Un cambio empieza como una <b>CACR</b> &mdash; una resolución concurrente de enmienda constitucional (Constitutional Amendment Concurrent Resolution) &mdash; y tiene que superar tres umbrales, en ninguno de los cuales interviene el Gobernador.",
+   "state": "draft"
+  },
+  "learn.the-constitution.a-threshold-in-amber-the-share": {
+   "en": "<i class=\"l-capsw\" aria-hidden=\"true\"></i>A threshold, in amber: the share of votes the step needs.",
+   "es": "<i class=\"l-capsw\" aria-hidden=\"true\"></i>Un umbral, en ámbar: la proporción de votos que necesita el paso.",
+   "state": "draft"
+  },
+  "learn.the-constitution.at-the-next-general-election": {
+   "en": "At the next general election",
+   "es": "En la siguiente elección general",
+   "state": "draft"
+  },
+  "learn.the-constitution.filed-as-a-cacr": {
+   "en": "Filed as a CACR",
+   "es": "Se presenta como una CACR",
+   "state": "draft"
+  },
+  "learn.the-constitution.how-it-starts": {
+   "en": "How It Starts",
+   "es": "Cómo empieza",
+   "state": "draft"
+  },
+  "learn.the-constitution.in-the-record": {
+   "en": "In the Record",
+   "es": "En el registro",
+   "state": "draft"
+  },
+  "learn.the-constitution.in-two-parts": {
+   "en": "In Two Parts",
+   "es": "En dos partes",
+   "state": "draft"
+  },
+  "learn.the-constitution.it-is-not-amended-the-way": {
+   "en": "It Is Not Amended the Way Statutes Are",
+   "es": "No se enmienda como los estatutos",
+   "state": "draft"
+  },
+  "learn.the-constitution.lead": {
+   "en": "One of the oldest still in force, and it is not amended the way statutes are: a CACR needs three fifths of both chambers and then the voters.",
+   "es": "Una de las más antiguas aún vigentes, y no se enmienda como los estatutos: una CACR necesita tres quintos de ambas cámaras y después a los votantes.",
+   "state": "draft"
+  },
+  "learn.the-constitution.new-hampshire-s-constitution-took-effect": {
+   "en": "New Hampshire's constitution took effect in 1784 and is among the oldest still in force anywhere. It is in two parts. <b>Part First</b> is the Bill of Rights &mdash; forty-four articles on what the state may not do. <b>Part Second</b> is the Form of Government: the House, the Senate, the Governor, the Council, the courts, and how each is chosen. The whole text, article by article, is on <a href=\"/laws#constitution\">the Laws page</a>.",
+   "es": "La constitución de New Hampshire entró en vigor en 1784 y está entre las más antiguas aún vigentes en cualquier lugar. Tiene dos partes. La <b>Parte Primera</b> es la Declaración de Derechos (Bill of Rights) &mdash; cuarenta y cuatro artículos sobre lo que el estado no puede hacer. La <b>Parte Segunda</b> es la Forma de Gobierno: la Cámara, el Senado, el Gobernador, el Consejo, los tribunales, y cómo se elige cada uno. El texto completo, artículo por artículo, está en <a href=\"/laws#constitution\">la página de Leyes</a>.",
+   "state": "draft"
+  },
+  "learn.the-constitution.no-signature-and-no-veto-at": {
+   "en": "No signature and no veto, at any point in this course.",
+   "es": "Ni firma ni veto, en ningún momento de este recorrido.",
+   "state": "draft"
+  },
+  "learn.the-constitution.not-three-fifths-of-those-voting": {
+   "en": "Not three fifths of those voting: an absent member counts against it, a vacant seat does not. In 2012 the House carried CACR 26 with 239 votes, when 397 members were in office: three fifths of 397 is 238.2, so 239 was enough, where 240 would have been needed with every seat filled.",
+   "es": "No tres quintos de los que votan: un miembro ausente cuenta en contra, un escaño vacante no. En 2012 la Cámara aprobó la CACR 26 con 239 votos, cuando había 397 miembros en funciones: tres quintos de 397 son 238.2, así que 239 bastaron, cuando con todos los escaños ocupados habrían hecho falta 240.",
+   "state": "draft"
+  },
+  "learn.the-constitution.past-amendments-and-their-vote-shares": {
+   "en": "Past amendments and their vote shares (Ballotpedia, a third party)",
+   "es": "Enmiendas anteriores y sus porcentajes de votos (Ballotpedia, un tercero)",
+   "state": "draft"
+  },
+  "learn.the-constitution.put-to-the-people-where-it": {
+   "en": "Put to the people, where it takes effect only if two thirds of those voting on the question approve it.",
+   "es": "Se somete al pueblo, y entra en vigor solo si la aprueban dos tercios de quienes votan sobre la pregunta.",
+   "state": "draft"
+  },
+  "learn.the-constitution.secretary-of-state": {
+   "en": "Secretary of State",
+   "es": "Secretaría de Estado",
+   "state": "draft"
+  },
+  "learn.the-constitution.the-first-chamber": {
+   "en": "The First Chamber",
+   "es": "La primera cámara",
+   "state": "draft"
+  },
+  "learn.the-constitution.the-governor-has-no-part": {
+   "en": "The Governor has no part",
+   "es": "El Gobernador no interviene",
+   "state": "draft"
+  },
+  "learn.the-constitution.the-new-hampshire-constitution": {
+   "en": "The New Hampshire Constitution",
+   "es": "La Constitución de New Hampshire",
+   "state": "draft"
+  },
+  "learn.the-constitution.the-same-threshold-again": {
+   "en": "The same threshold again",
+   "es": "El mismo umbral otra vez",
+   "state": "draft"
+  },
+  "learn.the-constitution.the-second-chamber": {
+   "en": "The Second Chamber",
+   "es": "La segunda cámara",
+   "state": "draft"
+  },
+  "learn.the-constitution.the-voters": {
+   "en": "The Voters",
+   "es": "Los votantes",
+   "state": "draft"
+  },
+  "learn.the-constitution.they-sit-in-the-bill-list": {
+   "en": "They sit in <a href=\"bills.html\">the bill list</a> beside ordinary bills. A CACR that shows \"Passed one chamber\" has a much longer way to go than a bill with the same words beside it.",
+   "es": "Están en <a href=\"bills.html\">la lista de proyectos de ley</a> junto a los proyectos de ley ordinarios. Una CACR que muestra &ldquo;Passed one chamber&rdquo; (aprobada por una cámara) tiene mucho más camino por delante que un proyecto de ley con las mismas palabras al lado.",
+   "state": "draft"
+  },
+  "learn.the-constitution.three-fifths-of-its-members": {
+   "en": "Three fifths of its members",
+   "es": "Tres quintos de sus miembros",
+   "state": "draft"
+  },
+  "learn.the-constitution.three-fifths-of-the-members-in": {
+   "en": "Three fifths of the members in office",
+   "es": "Tres quintos de los miembros en funciones",
+   "state": "draft"
+  },
+  "learn.the-constitution.three-fifths-of-the-other-chamber": {
+   "en": "Three fifths of the other chamber's members in office, on the same terms: 240 when all 400 House seats are filled, and 15 of a full Senate of 24.",
+   "es": "Tres quintos de los miembros en funciones de la otra cámara, en las mismas condiciones: 240 cuando los 400 escaños de la Cámara están ocupados, y 15 de un Senado completo de 24.",
+   "state": "draft"
+  },
+  "learn.the-constitution.title": {
+   "en": "The Constitution",
+   "es": "La Constitución",
+   "state": "draft"
+  },
+  "learn.the-constitution.two-thirds-of-those-voting-on": {
+   "en": "Two thirds of those voting on it",
+   "es": "Dos tercios de quienes votan sobre ella",
+   "state": "draft"
+  },
+  "learn.the-constitution.why-almost-none-get-through": {
+   "en": "Why Almost None Get Through",
+   "es": "Por qué casi ninguna sale adelante",
+   "state": "draft"
+  },
   "learn.the-courts.how-a-judge-gets-the-job": {
    "en": "How a Judge Gets the Job",
    "es": "Cómo un juez obtiene el cargo",
@@ -10816,6 +12416,51 @@
    "es": "Dónde se encuentran los tribunales y la Legislatura",
    "state": "draft"
   },
+  "learn.the_house": {
+   "en": "the House",
+   "es": "la Cámara",
+   "state": "draft"
+  },
+  "learn.the_senate": {
+   "en": "the Senate",
+   "es": "el Senado",
+   "state": "draft"
+  },
+  "learn.veto.awaiting": {
+   "en": "still awaiting the override vote",
+   "es": "todavía en espera de la votación para anular el veto",
+   "state": "draft"
+  },
+  "learn.veto.caption": {
+   "en": "The {n} vetoed bills across the {terms} terms on this site",
+   "es": "Los {n} proyectos de ley vetados en los {terms} períodos de este sitio",
+   "state": "draft"
+  },
+  "learn.veto.label": {
+   "en": "What became of the {n} vetoed bills",
+   "es": "Qué pasó con los {n} proyectos de ley vetados",
+   "state": "draft"
+  },
+  "learn.veto.overridden": {
+   "en": "overridden, and the bill became law",
+   "es": "se anuló el veto, y el proyecto se convirtió en ley",
+   "state": "draft"
+  },
+  "learn.veto.pending": {
+   "en": "{n} are still awaiting their override votes.",
+   "es": "{n} todavía están en espera de sus votaciones para anular el veto.",
+   "state": "draft"
+  },
+  "learn.veto.pending_one": {
+   "en": "One is still awaiting its override vote.",
+   "es": "Uno todavía está en espera de su votación para anular el veto.",
+   "state": "draft"
+  },
+  "learn.veto.stood": {
+   "en": "the veto stood",
+   "es": "se mantuvo el veto",
+   "state": "draft"
+  },
   "nav.bills": {
    "en": "Bills",
    "es": "Proyectos de ley",
@@ -10880,7 +12525,7 @@
   },
   "rec.interim_study": {
    "en": "Interim Study",
-   "es": "Estudio provisional",
+   "es": "Estudio interino",
    "state": "draft",
    "note": "A committee's recommendation, as a chip: that the bill be studied after the session (IS)."
   },
@@ -11177,7 +12822,7 @@
   },
   "study.interim_study_report": {
    "en": "Interim study report",
-   "es": "informe del estudio provisional",
+   "es": "informe del estudio interino",
    "state": "draft",
    "note": "Sentence case: a chip capitalises its first letter."
   },
@@ -11522,7 +13167,7 @@
   },
   "vote.sent_to_interim_study": {
    "en": "Sent to Interim Study",
-   "es": "se envió a estudio provisional",
+   "es": "se envió a estudio interino",
    "state": "draft"
   },
   "vote.stays_on_the_table": {
@@ -11559,6 +13204,946 @@
   "web.when": {
    "en": "Free webinar &middot; Tuesday, November 10, 6:30 p.m.",
    "es": "Seminario web gratuito &middot; martes 10 de noviembre, 6:30 p. m.",
+   "state": "draft"
+  },
+  "year.a-bill-is-introduced-when-it": {
+   "en": "A bill is introduced when it is read in and sent to a committee.",
+   "es": "Un proyecto de ley se presenta cuando se le da lectura y se envía a un comité.",
+   "state": "draft"
+  },
+  "year.a-request-for-a-bill-is": {
+   "en": "A request for a bill is a Legislative Service Request, or LSR. Members seeking re-election may file theirs before the election.",
+   "es": "La solicitud de un proyecto de ley es una solicitud de servicio legislativo (Legislative Service Request, LSR). Los miembros que buscan la reelección pueden presentar las suyas antes de la elección.",
+   "state": "draft"
+  },
+  "year.after-the-session": {
+   "en": "After the Session",
+   "es": "Después de la sesión",
+   "state": "draft"
+  },
+  "year.between-sessions-the-y2-session-opens": {
+   "en": "Between sessions. The {y2} session opens in January.",
+   "es": "Entre sesiones. La sesión de {y2} comienza en enero.",
+   "state": "draft"
+  },
+  "year.between-the-sessions": {
+   "en": "Between the Sessions",
+   "es": "Entre las sesiones",
+   "state": "draft"
+  },
+  "year.bill-requests-open-to-every": {
+   "en": "Bill requests open to every representative",
+   "es": "Solicitudes de proyectos de ley abiertas a todos los representantes",
+   "state": "draft"
+  },
+  "year.bill-requests-open-to-every-member": {
+   "en": "Bill requests open to every member",
+   "es": "Solicitudes de proyectos de ley abiertas a todos los miembros",
+   "state": "draft"
+  },
+  "year.bills-are-introduced-in-january-cross": {
+   "en": "Bills are introduced in January, cross to the other chamber in late March or April, and are finished by the end of June.",
+   "es": "Los proyectos de ley se presentan en enero, pasan a la otra cámara a finales de marzo o en abril, y se terminan a finales de junio.",
+   "state": "draft"
+  },
+  "year.bills-go-to-the-governor": {
+   "en": "Bills go to the Governor",
+   "es": "Los proyectos de ley van al Gobernador",
+   "state": "draft"
+  },
+  "year.bills-to-the-governor": {
+   "en": "Bills to the Governor",
+   "es": "Proyectos de ley al Gobernador",
+   "state": "draft"
+  },
+  "year.both-chambers-meet-to-take-up": {
+   "en": "Both chambers meet to take up the Governor's vetoes. Overriding one takes two thirds of each chamber.",
+   "es": "Ambas cámaras se reúnen para tratar los vetos del Gobernador. Anular uno requiere dos tercios de cada cámara.",
+   "state": "draft"
+  },
+  "year.both-chambers-vote-on-the-conference": {
+   "en": "Both chambers vote on the conference versions. It is the session's last deadline.",
+   "es": "Ambas cámaras votan las versiones de conferencia. Es el último plazo de la sesión.",
+   "state": "draft"
+  },
+  "year.by-law-rsa-653-7-the": {
+   "en": "By law (RSA 653:7), the Tuesday after the first Monday of November.",
+   "es": "Por ley (RSA 653:7), el martes después del primer lunes de noviembre. ",
+   "state": "draft"
+  },
+  "year.by-rule-the-first-wednesday-after": {
+   "en": "By rule, the first Wednesday after the first Tuesday of January.",
+   "es": "Por regla, el primer miércoles después del primer martes de enero. ",
+   "state": "draft"
+  },
+  "year.by-rule-the-first-wednesday-of": {
+   "en": "By rule, the first Wednesday of December.",
+   "es": "Por regla, el primer miércoles de diciembre. ",
+   "state": "draft"
+  },
+  "year.committee-deadlines-first-chamber": {
+   "en": "Committee deadlines, first chamber",
+   "es": "Plazos de los comités, primera cámara",
+   "state": "draft"
+  },
+  "year.committee-deadlines-second-chamber": {
+   "en": "Committee deadlines, second chamber",
+   "es": "Plazos de los comités, segunda cámara",
+   "state": "draft"
+  },
+  "year.committees-of-conference": {
+   "en": "Committees of conference",
+   "es": "Comités de conferencia",
+   "state": "draft"
+  },
+  "year.committees-report-on-each-bill-and": {
+   "en": "Committees report on each bill, and the chamber votes on the report a week later, in steps. Bills going on to a second committee go first.",
+   "es": "Los comités presentan su informe sobre cada proyecto de ley, y la cámara vota el informe una semana después, por etapas. Los proyectos que pasan a un segundo comité van primero.",
+   "state": "draft"
+  },
+  "year.committees-study-the-subjects-of-the": {
+   "en": "Committees study the subjects of the bills sent to interim study. The bills themselves go no further; a report may recommend a new bill next term.",
+   "es": "Los comités estudian los temas de los proyectos de ley enviados a estudio interino. Los proyectos mismos no avanzan más; un informe puede recomendar un nuevo proyecto de ley el próximo período.",
+   "state": "draft"
+  },
+  "year.convening-day-the-chambers-begin-taking": {
+   "en": "Convening day: the chambers begin taking up the new bills.",
+   "es": "Día de apertura: las cámaras empiezan a tratar los nuevos proyectos de ley.",
+   "state": "draft"
+  },
+  "year.crossover": {
+   "en": "Crossover",
+   "es": "Paso a la otra cámara",
+   "state": "draft"
+  },
+  "year.crossover-in-the-house": {
+   "en": "Crossover in the House",
+   "es": "Paso a la otra cámara, en la Cámara",
+   "state": "draft"
+  },
+  "year.crossover-in-the-senate": {
+   "en": "Crossover in the Senate",
+   "es": "Paso a la otra cámara, en el Senado",
+   "state": "draft"
+  },
+  "year.december": {
+   "en": "December",
+   "es": "Diciembre",
+   "state": "draft"
+  },
+  "year.december-2024-to-june-2025": {
+   "en": "December 2024 to June 2025",
+   "es": "De diciembre de 2024 a junio de 2025",
+   "state": "draft"
+  },
+  "year.december-2026-to-january-2027": {
+   "en": "December 2026 to January 2027",
+   "es": "De diciembre de 2026 a enero de 2027",
+   "state": "draft"
+  },
+  "year.each-bill-both-chambers-passed-goes": {
+   "en": "Each bill both chambers passed goes to the Governor, who signs it, vetoes it, or leaves it to become law without a signature.",
+   "es": "Cada proyecto de ley que aprobaron ambas cámaras va al Gobernador, quien lo firma, lo veta o deja que se convierta en ley sin su firma.",
+   "state": "draft"
+  },
+  "year.each-chamber-s-last-vote-on": {
+   "en": "Each chamber's last vote on the bills that crossed to it.",
+   "es": "La última votación de cada cámara sobre los proyectos que le llegaron de la otra.",
+   "state": "draft"
+  },
+  "year.each-sponsor-approves-the-drafted-text": {
+   "en": "Each sponsor approves the drafted text of their bill before it is introduced.",
+   "es": "Cada patrocinador aprueba el texto redactado de su proyecto de ley antes de que se presente.",
+   "state": "draft"
+  },
+  "year.each-sponsor-approves-the-drafted-text-2": {
+   "en": "Each sponsor approves the drafted text of their bill.",
+   "es": "Cada patrocinador aprueba el texto redactado de su proyecto de ley.",
+   "state": "draft"
+  },
+  "year.every-seat-in-both-chambers-is": {
+   "en": "Every seat in both chambers is on the ballot, and filing for the next term's bills opens the next day.",
+   "es": "Todos los escaños de ambas cámaras están en la boleta, y al día siguiente se abre la presentación de solicitudes para los proyectos del próximo período.",
+   "state": "draft"
+  },
+  "year.fall-2024": {
+   "en": "Fall 2024",
+   "es": "Otoño de 2024",
+   "state": "draft"
+  },
+  "year.filing-opens-to-all-members-the": {
+   "en": "Filing opens to all members the day after the election and closes in late November.",
+   "es": "La presentación se abre a todos los miembros el día después de la elección y se cierra a finales de noviembre.",
+   "state": "draft"
+  },
+  "year.filing-opens-to-all-members-the-2": {
+   "en": "Filing opens to all members the day after the election.",
+   "es": "La presentación se abre a todos los miembros el día después de la elección.",
+   "state": "draft"
+  },
+  "year.first-year": {
+   "en": "First year",
+   "es": "Primer año",
+   "state": "draft"
+  },
+  "year.general-election": {
+   "en": "General election",
+   "es": "Elección general",
+   "state": "draft"
+  },
+  "year.house-bill-requests-for-2026": {
+   "en": "House bill requests for 2026",
+   "es": "Solicitudes de proyectos de ley de la Cámara para 2026",
+   "state": "draft"
+  },
+  "year.house-committees-report-the-bills-they": {
+   "en": "House committees report the bills they kept over the fall, for a vote in the second session. It is also the House sponsors' last day to sign off on 2026's requests.",
+   "es": "Los comités de la Cámara presentan su informe sobre los proyectos que retuvieron durante el otoño, para votarlos en la segunda sesión. También es el último día para que los patrocinadores de la Cámara aprueben la redacción de las solicitudes de 2026.",
+   "state": "draft"
+  },
+  "year.house-committees-work-on-the-bills": {
+   "en": "House committees work on the bills they retained, members file requests for next year's bills, and each chamber meets for a veto day.",
+   "es": "Los comités de la Cámara trabajan en los proyectos que retuvieron, los miembros presentan solicitudes para los proyectos del año siguiente, y cada cámara se reúne para un Día de vetos.",
+   "state": "draft"
+  },
+  "year.house-members-running-again-may-file": {
+   "en": "House members running again may file bill requests",
+   "es": "Los representantes que buscan la reelección pueden solicitar proyectos de ley",
+   "state": "draft"
+  },
+  "year.house-sponsors-sign-off": {
+   "en": "House sponsors sign off",
+   "es": "Los patrocinadores de la Cámara aprueban la redacción de sus proyectos",
+   "state": "draft"
+  },
+  "year.in-session": {
+   "en": "In session",
+   "es": "En sesión",
+   "state": "draft"
+  },
+  "year.in-session-the-y1-session": {
+   "en": "In session: the {y1} session.",
+   "es": "En sesión: la sesión de {y1}.",
+   "state": "draft"
+  },
+  "year.in-session-the-y2-session": {
+   "en": "In session: the {y2} session.",
+   "es": "En sesión: la sesión de {y2}.",
+   "state": "draft"
+  },
+  "year.interim-study": {
+   "en": "Interim study",
+   "es": "Estudio interino",
+   "state": "draft"
+  },
+  "year.interim-study-reports-due": {
+   "en": "Interim study reports due",
+   "es": "Vencen los informes de estudio interino",
+   "state": "draft"
+  },
+  "year.january-to-june": {
+   "en": "January to June",
+   "es": "De enero a junio",
+   "state": "draft"
+  },
+  "year.january-to-june-2026": {
+   "en": "January to June 2026",
+   "es": "De enero a junio de 2026",
+   "state": "draft"
+  },
+  "year.july-and-august": {
+   "en": "July and August",
+   "es": "Julio y agosto",
+   "state": "draft"
+  },
+  "year.july-to-october": {
+   "en": "July to October",
+   "es": "De julio a octubre",
+   "state": "draft"
+  },
+  "year.last-day-to-act-on-committee": {
+   "en": "Last day to act on committee of conference reports",
+   "es": "Último día para votar los informes de los comités de conferencia",
+   "state": "draft"
+  },
+  "year.last-day-to-act-on-the": {
+   "en": "Last day to act on the other chamber's bills",
+   "es": "Último día para votar los proyectos de ley de la otra cámara",
+   "state": "draft"
+  },
+  "year.last-day-to-file-bill-requests": {
+   "en": "Last day to file bill requests",
+   "es": "Último día para presentar solicitudes de proyectos de ley",
+   "state": "draft"
+  },
+  "year.last-day-to-form-committees-of": {
+   "en": "Last day to form committees of conference",
+   "es": "Último día para formar comités de conferencia",
+   "state": "draft"
+  },
+  "year.last-day-to-introduce-house-bills": {
+   "en": "Last day to introduce House bills",
+   "es": "Último día para presentar proyectos de ley de la Cámara",
+   "state": "draft"
+  },
+  "year.last-day-to-request-a-senate": {
+   "en": "Last day to request a Senate bill",
+   "es": "Último día para solicitar un proyecto de ley del Senado",
+   "state": "draft"
+  },
+  "year.last-day-to-sign-their-reports": {
+   "en": "Last day to sign their reports",
+   "es": "Último día para firmar sus informes",
+   "state": "draft"
+  },
+  "year.november": {
+   "en": "November",
+   "es": "Noviembre",
+   "state": "draft"
+  },
+  "year.organization-day": {
+   "en": "Organization Day",
+   "es": "Día de Organización",
+   "state": "draft"
+  },
+  "year.out-of-session-until-the-new": {
+   "en": "Out of session until the new legislature takes office on Organization Day, December 2.",
+   "es": "Fuera de sesión hasta que la nueva Legislatura asuma el cargo el Día de Organización, el 2 de diciembre.",
+   "state": "draft"
+  },
+  "year.report-every-house-bill": {
+   "en": "Report every House bill",
+   "es": "Informar todos los proyectos de la Cámara",
+   "state": "draft"
+  },
+  "year.report-every-remaining-house-bill-and": {
+   "en": "Report every remaining House bill, and the list of those retained",
+   "es": "Informar todos los proyectos de la Cámara que quedan, y la lista de los retenidos",
+   "state": "draft"
+  },
+  "year.report-every-remaining-senate-bill": {
+   "en": "Report every remaining Senate bill",
+   "es": "Informar todos los proyectos del Senado que quedan",
+   "state": "draft"
+  },
+  "year.report-every-senate-bill": {
+   "en": "Report every Senate bill",
+   "es": "Informar todos los proyectos del Senado",
+   "state": "draft"
+  },
+  "year.report-house-bills-going-to-a": {
+   "en": "Report House bills going to a second committee",
+   "es": "Informar los proyectos de la Cámara que pasan a un segundo comité",
+   "state": "draft"
+  },
+  "year.report-senate-bills-going-to-a": {
+   "en": "Report Senate bills going to a second committee",
+   "es": "Informar los proyectos del Senado que pasan a un segundo comité",
+   "state": "draft"
+  },
+  "year.report-the-other-house-bills": {
+   "en": "Report the other House bills",
+   "es": "Informar los demás proyectos de la Cámara",
+   "state": "draft"
+  },
+  "year.report-the-other-house-bills-except": {
+   "en": "Report the other House bills, except budget bills",
+   "es": "Informar los demás proyectos de la Cámara, salvo los del presupuesto",
+   "state": "draft"
+  },
+  "year.representatives-last-day-to-file": {
+   "en": "Representatives' last day to file requests for 2027's bills, and the last day for senators' drafting requests.",
+   "es": "El último día para que los representantes presenten solicitudes para los proyectos de ley de 2027, y el último día para las solicitudes de redacción de los senadores.",
+   "state": "draft"
+  },
+  "year.retained-bills-new-requests-veto-day": {
+   "en": "Retained bills, new requests, veto day",
+   "es": "Proyectos retenidos, nuevas solicitudes, Día de vetos",
+   "state": "draft"
+  },
+  "year.retained-bills-reported": {
+   "en": "Retained bills reported",
+   "es": "Informes sobre los proyectos de ley retenidos",
+   "state": "draft"
+  },
+  "year.second-year": {
+   "en": "Second year",
+   "es": "Segundo año",
+   "state": "draft"
+  },
+  "year.senate-bill-requests-for-2026": {
+   "en": "Senate bill requests for 2026",
+   "es": "Solicitudes de proyectos de ley del Senado para 2026",
+   "state": "draft"
+  },
+  "year.senate-committees-act-on-house-bills": {
+   "en": "Senate committees act on House bills with a fiscal impact",
+   "es": "Los comités del Senado actúan sobre los proyectos de la Cámara con impacto fiscal",
+   "state": "draft"
+  },
+  "year.senate-committees-act-on-senate-bills": {
+   "en": "Senate committees act on Senate bills with a fiscal impact",
+   "es": "Los comités del Senado actúan sobre los proyectos del Senado con impacto fiscal",
+   "state": "draft"
+  },
+  "year.senate-sponsors-sign-off": {
+   "en": "Senate sponsors sign off",
+   "es": "Los patrocinadores del Senado aprueban la redacción de sus proyectos",
+   "state": "draft"
+  },
+  "year.senators-approve-the-drafted-text-of": {
+   "en": "Senators approve the drafted text of their bills.",
+   "es": "Los senadores aprueban el texto redactado de sus proyectos de ley.",
+   "state": "draft"
+  },
+  "year.senators-requests-must-reach-the-office": {
+   "en": "Senators' requests must reach the Office of Legislative Services, which drafts the bills, by this day.",
+   "es": "Las solicitudes de los senadores deben llegar a más tardar este día a la Oficina de Servicios Legislativos (Office of Legislative Services), que redacta los proyectos de ley.",
+   "state": "draft"
+  },
+  "year.senators-running-again-may-file-bill": {
+   "en": "Senators running again may file bill requests",
+   "es": "Los senadores que buscan la reelección pueden solicitar proyectos de ley",
+   "state": "draft"
+  },
+  "year.september-to-december": {
+   "en": "September to December",
+   "es": "De septiembre a diciembre",
+   "state": "draft"
+  },
+  "year.sk.conference": {
+   "en": "Last day to act on committee of conference reports",
+   "es": "Último día para actuar sobre los informes del comité de conferencia",
+   "state": "draft"
+  },
+  "year.sk.conference_what": {
+   "en": "Both chambers vote on the conference versions. It is the session's last deadline.",
+   "es": "Ambas cámaras votan las versiones de conferencia. Es el último plazo de la sesión.",
+   "state": "draft"
+  },
+  "year.sk.conference_when": {
+   "en": "June",
+   "es": "en junio",
+   "state": "draft"
+  },
+  "year.sk.convening": {
+   "en": "Convening day: the chambers begin taking up the new bills.",
+   "es": "Día de apertura: las cámaras empiezan a ocuparse de los nuevos proyectos de ley.",
+   "state": "draft"
+  },
+  "year.sk.crossover": {
+   "en": "Crossover",
+   "es": "Paso a la otra cámara",
+   "state": "draft"
+  },
+  "year.sk.crossover_what": {
+   "en": "The last day for each chamber to act on its own bills. What passes goes to the other chamber.",
+   "es": "El último día para que cada cámara actúe sobre sus propios proyectos de ley. Lo que se aprueba pasa a la otra cámara.",
+   "state": "draft"
+  },
+  "year.sk.crossover_when": {
+   "en": "late March or April",
+   "es": "a finales de marzo o en abril",
+   "state": "draft"
+  },
+  "year.sk.election": {
+   "en": "General election",
+   "es": "Elección general",
+   "state": "draft"
+  },
+  "year.sk.election_what": {
+   "en": "Voters choose all 400 representatives and 24 senators for the next term.",
+   "es": "Los votantes eligen a los 400 representantes y a los 24 senadores del período siguiente.",
+   "state": "draft"
+  },
+  "year.sk.first_stands": {
+   "en": "The {y1} session runs from January to about June.",
+   "es": "La sesión de {y1} va de enero hasta más o menos junio.",
+   "state": "draft"
+  },
+  "year.sk.first_when": {
+   "en": "December {a} through {b}",
+   "es": "De diciembre de {a} a {b}",
+   "state": "draft"
+  },
+  "year.sk.first_year": {
+   "en": "The First Year",
+   "es": "El primer año",
+   "state": "draft"
+  },
+  "year.sk.governor": {
+   "en": "Each bill both chambers passed goes to the Governor, who signs it, vetoes it, or leaves it to become law without a signature.",
+   "es": "Cada proyecto de ley que aprobaron ambas cámaras va al Gobernador, que lo firma, lo veta o deja que se convierta en ley sin su firma.",
+   "state": "draft"
+  },
+  "year.sk.in_fall": {
+   "en": "in the fall",
+   "es": "en el otoño",
+   "state": "draft"
+  },
+  "year.sk.late_summer": {
+   "en": "late summer or fall",
+   "es": "a finales del verano o en el otoño",
+   "state": "draft"
+  },
+  "year.sk.next": {
+   "en": "The Next Term Begins",
+   "es": "Empieza el período siguiente",
+   "state": "draft"
+  },
+  "year.sk.next_first": {
+   "en": "The new term's first session begins.",
+   "es": "Empieza la primera sesión del nuevo período.",
+   "state": "draft"
+  },
+  "year.sk.next_opens": {
+   "en": "The {year} session opens",
+   "es": "Se abre la sesión de {year}",
+   "state": "draft"
+  },
+  "year.sk.next_stands": {
+   "en": "The {next} term has begun. Its first session opens in January.",
+   "es": "Empezó el período {next}. Su primera sesión se abre en enero.",
+   "state": "draft"
+  },
+  "year.sk.next_sworn": {
+   "en": "The members elected in November are sworn in, and the {next} term begins.",
+   "es": "Los miembros elegidos en noviembre prestan juramento, y empieza el período {next}.",
+   "state": "draft"
+  },
+  "year.sk.next_when": {
+   "en": "December {b} to January {c}",
+   "es": "De diciembre de {b} a enero de {c}",
+   "state": "draft"
+  },
+  "year.sk.opens": {
+   "en": "The session opens",
+   "es": "Se abre la sesión",
+   "state": "draft"
+  },
+  "year.sk.org": {
+   "en": "Organization Day",
+   "es": "Día de Organización",
+   "state": "draft"
+  },
+  "year.sk.second_first": {
+   "en": "The second session's first day.",
+   "es": "El primer día de la segunda sesión.",
+   "state": "draft"
+  },
+  "year.sk.second_stands": {
+   "en": "The {y2} session runs from January to about June.",
+   "es": "La sesión de {y2} va de enero hasta más o menos junio.",
+   "state": "draft"
+  },
+  "year.sk.second_when": {
+   "en": "{b}, until Organization Day",
+   "es": "{b}, hasta el Día de Organización",
+   "state": "draft"
+  },
+  "year.sk.second_year": {
+   "en": "The Second Year",
+   "es": "El segundo año",
+   "state": "draft"
+  },
+  "year.sk.study": {
+   "en": "Interim study",
+   "es": "Estudio interino",
+   "state": "draft"
+  },
+  "year.sk.study_what": {
+   "en": "Committees study the subjects of the bills sent to interim study. The bills themselves go no further; a report may recommend a new bill next term.",
+   "es": "Los comités estudian los temas de los proyectos de ley enviados a estudio interino. Los proyectos mismos no avanzan más; un informe puede recomendar un proyecto nuevo en el período siguiente.",
+   "state": "draft"
+  },
+  "year.sk.summer": {
+   "en": "summer",
+   "es": "en verano",
+   "state": "draft"
+  },
+  "year.sk.summer_fall": {
+   "en": "summer and fall",
+   "es": "en verano y otoño",
+   "state": "draft"
+  },
+  "year.sk.sworn": {
+   "en": "The new members are sworn in, the House elects its Speaker and the Senate its President, and the term begins.",
+   "es": "Los nuevos miembros prestan juramento, la Cámara elige a su presidente (Speaker) y el Senado al suyo, y empieza el período.",
+   "state": "draft"
+  },
+  "year.sk.to_governor": {
+   "en": "Bills go to the Governor",
+   "es": "Los proyectos de ley van al Gobernador",
+   "state": "draft"
+  },
+  "year.sk.veto_day": {
+   "en": "Veto day",
+   "es": "Día de vetos",
+   "state": "draft"
+  },
+  "year.sk.veto_two": {
+   "en": "Both chambers meet to take up the Governor's vetoes. Overriding one takes two thirds of each chamber.",
+   "es": "Ambas cámaras se reúnen para ocuparse de los vetos del Gobernador. Anular uno requiere dos tercios de cada cámara.",
+   "state": "draft"
+  },
+  "year.sk.veto_what": {
+   "en": "Each chamber meets to take up the Governor's vetoes.",
+   "es": "Cada cámara se reúne para ocuparse de los vetos del Gobernador.",
+   "state": "draft"
+  },
+  "year.summer": {
+   "en": "summer",
+   "es": "en verano",
+   "state": "draft"
+  },
+  "year.summer-and-fall": {
+   "en": "summer and fall",
+   "es": "en verano y otoño",
+   "state": "draft"
+  },
+  "year.summer-and-fall-2025": {
+   "en": "Summer and fall 2025",
+   "es": "Verano y otoño de 2025",
+   "state": "draft"
+  },
+  "year.summer-and-fall-2026": {
+   "en": "Summer and fall 2026",
+   "es": "Verano y otoño de 2026",
+   "state": "draft"
+  },
+  "year.the-2027-session-opens": {
+   "en": "The 2027 session opens",
+   "es": "Comienza la sesión de 2027",
+   "state": "draft"
+  },
+  "year.the-chambers-meet-for-veto-day": {
+   "en": "The chambers meet for veto day, and committees study the bills sent to interim study.",
+   "es": "Las cámaras se reúnen para el Día de vetos, y los comités estudian los proyectos enviados a estudio interino.",
+   "state": "draft"
+  },
+  "year.the-election": {
+   "en": "The Election",
+   "es": "La elección",
+   "state": "draft"
+  },
+  "year.the-election-2": {
+   "en": "The election",
+   "es": "La elección",
+   "state": "draft"
+  },
+  "year.the-first-requests-for-the-next": {
+   "en": "The first requests for the next term's bills.",
+   "es": "Las primeras solicitudes para los proyectos de ley del próximo período.",
+   "state": "draft"
+  },
+  "year.the-first-session": {
+   "en": "The First Session",
+   "es": "La primera sesión",
+   "state": "draft"
+  },
+  "year.the-governor-signs-or-vetoes-the": {
+   "en": "The Governor signs or vetoes the last of the year's bills.",
+   "es": "El Gobernador firma o veta los últimos proyectos de ley del año.",
+   "state": "draft"
+  },
+  "year.the-house-acts-on-those-bills": {
+   "en": "The House acts on those bills",
+   "es": "La Cámara vota esos proyectos",
+   "state": "draft"
+  },
+  "year.the-house-meets-to-take-up": {
+   "en": "The House meets to take up the Governor's vetoes.",
+   "es": "La Cámara se reúne para tratar los vetos del Gobernador.",
+   "state": "draft"
+  },
+  "year.the-last-day-for-each-chamber": {
+   "en": "The last day for each chamber to act on its own bills. What passes goes to the other chamber.",
+   "es": "El último día para que cada cámara actúe sobre sus propios proyectos de ley. Lo que aprueba pasa a la otra cámara.",
+   "state": "draft"
+  },
+  "year.the-last-day-for-house-committees": {
+   "en": "The last day for House committees to file their reports on the bills sent to interim study.",
+   "es": "El último día para que los comités de la Cámara presenten sus informes sobre los proyectos de ley enviados a estudio interino.",
+   "state": "draft"
+  },
+  "year.the-last-day-for-the-house": {
+   "en": "The last day for the House to act on its own bills. Those it passes go to the Senate; those a committee retained wait for the second year.",
+   "es": "El último día para que la Cámara actúe sobre sus propios proyectos de ley. Los que aprueba pasan al Senado; los que un comité retuvo esperan al segundo año.",
+   "state": "draft"
+  },
+  "year.the-last-day-for-the-senate": {
+   "en": "The last day for the Senate to act on its own bills. Those it passes go to the House.",
+   "es": "El último día para que el Senado actúe sobre sus propios proyectos de ley. Los que aprueba pasan a la Cámara.",
+   "state": "draft"
+  },
+  "year.the-members-elected-in-november-are": {
+   "en": "The members elected in November are sworn in, and the {next} term begins.",
+   "es": "Los miembros elegidos en noviembre prestan juramento, y comienza el período {next}.",
+   "state": "draft"
+  },
+  "year.the-new-legislature-is-sworn-in": {
+   "en": "The new legislature is sworn in, and the next term begins.",
+   "es": "La nueva Legislatura presta juramento, y comienza el próximo período.",
+   "state": "draft"
+  },
+  "year.the-new-members-are-sworn-in": {
+   "en": "The new members are sworn in, the House elects its Speaker and the Senate its President, and the term begins.",
+   "es": "Los nuevos miembros prestan juramento, la Cámara elige a su presidente (Speaker) y el Senado al suyo, y comienza el período.",
+   "state": "draft"
+  },
+  "year.the-new-term-s-first-session": {
+   "en": "The new term's first session begins.",
+   "es": "Comienza la primera sesión del nuevo período.",
+   "state": "draft"
+  },
+  "year.the-new-term-s-house-bills": {
+   "en": "The new term's House bills are introduced and sent to committees.",
+   "es": "Los proyectos de ley de la Cámara del nuevo período se presentan y se envían a los comités.",
+   "state": "draft"
+  },
+  "year.the-next-term-begins": {
+   "en": "The Next Term Begins",
+   "es": "Comienza el próximo período",
+   "state": "draft"
+  },
+  "year.the-next-term-has-begun-its": {
+   "en": "The {next} term has begun. Its first session opens in January.",
+   "es": "El período {next} ha comenzado. Su primera sesión comienza en enero.",
+   "state": "draft"
+  },
+  "year.the-same-steps-again-for-the": {
+   "en": "The same steps again, for the bills that crossed.",
+   "es": "Los mismos pasos otra vez, para los proyectos que pasaron a la otra cámara.",
+   "state": "draft"
+  },
+  "year.the-second-session": {
+   "en": "The Second Session",
+   "es": "La segunda sesión",
+   "state": "draft"
+  },
+  "year.the-second-session-s-first-day": {
+   "en": "The second session's first day.",
+   "es": "El primer día de la segunda sesión.",
+   "state": "draft"
+  },
+  "year.the-second-year-s-new-house": {
+   "en": "The second year's new House bills are introduced and sent to committees.",
+   "es": "Los nuevos proyectos de ley de la Cámara del segundo año se presentan y se envían a los comités.",
+   "state": "draft"
+  },
+  "year.the-senate-meets-to-take-up": {
+   "en": "The Senate meets to take up the Governor's vetoes.",
+   "es": "El Senado se reúne para tratar los vetos del Gobernador.",
+   "state": "draft"
+  },
+  "year.the-senate-s-window-for-the": {
+   "en": "The Senate's window for the same.",
+   "es": "El plazo del Senado para lo mismo.",
+   "state": "draft"
+  },
+  "year.the-session-opens": {
+   "en": "The session opens",
+   "es": "Comienza la sesión",
+   "state": "draft"
+  },
+  "year.the-term-term-has-not-begun": {
+   "en": "The {term} term has not begun: its members are being elected.",
+   "es": "El período {term} no ha comenzado: se están eligiendo sus miembros.",
+   "state": "draft"
+  },
+  "year.the-window-for-representatives-requests": {
+   "en": "The window for representatives' requests for the second session's bills.",
+   "es": "El plazo para las solicitudes de los representantes para los proyectos de la segunda sesión.",
+   "state": "draft"
+  },
+  "year.the-window-for-senators-requests-for": {
+   "en": "The window for senators' requests for the second session's bills.",
+   "es": "El plazo para las solicitudes de los senadores para los proyectos de la segunda sesión.",
+   "state": "draft"
+  },
+  "year.ui.after_org": {
+   "en": "after Organization Day, which began the {term} term",
+   "es": "después del Día de Organización, que dio inicio al período {term}",
+   "state": "draft"
+  },
+  "year.ui.all_past": {
+   "en": "all past",
+   "es": "todas pasadas",
+   "state": "draft"
+  },
+  "year.ui.begun": {
+   "en": "The {cur} term has begun. Its deadlines are added here once the chambers&rsquo; calendars print them; until then the dates below are the {term} term&rsquo;s.",
+   "es": "Empezó el período {cur}. Sus plazos se agregan aquí cuando los calendarios de las cámaras los publican; hasta entonces, las fechas de abajo son las del período {term}.",
+   "state": "draft"
+  },
+  "year.ui.both": {
+   "en": "Both chambers",
+   "es": "Ambas cámaras",
+   "state": "draft"
+  },
+  "year.ui.built": {
+   "en": "The day this page was built.",
+   "es": "El día en que se generó esta página.",
+   "state": "draft"
+  },
+  "year.ui.caption": {
+   "en": "Each date is from the House or Senate calendar or journal named under it; <b>Usually</b> marks a step with no one date. Open a season to read its dates.",
+   "es": "Cada fecha viene del calendario o del diario de sesiones de la Cámara o del Senado que se nombra debajo; <b>Por lo general</b> marca un paso sin una fecha fija. Abra una temporada para leer sus fechas.",
+   "state": "draft"
+  },
+  "year.ui.coming": {
+   "en": "Coming up:",
+   "es": "Próximamente:",
+   "state": "draft"
+  },
+  "year.ui.dates": {
+   "en": "{n} dates, {state}",
+   "es": "{n} fechas, {state}",
+   "state": "draft"
+  },
+  "year.ui.here": {
+   "en": "You are here",
+   "es": "Usted está aquí",
+   "state": "draft"
+  },
+  "year.ui.here_day": {
+   "en": "You are here: {day}.",
+   "es": "Usted está aquí: {day}.",
+   "state": "draft"
+  },
+  "year.ui.here_lc": {
+   "en": "you are here",
+   "es": "usted está aquí",
+   "state": "draft"
+  },
+  "year.ui.house": {
+   "en": "House",
+   "es": "Cámara",
+   "state": "draft"
+  },
+  "year.ui.in_first": {
+   "en": "in the first year of the {term} term",
+   "es": "en el primer año del período {term}",
+   "state": "draft"
+  },
+  "year.ui.in_second": {
+   "en": "in the second year of the {term} term",
+   "es": "en el segundo año del período {term}",
+   "state": "draft"
+  },
+  "year.ui.label": {
+   "en": "The {term} term, date by date",
+   "es": "El período {term}, fecha por fecha",
+   "state": "draft"
+  },
+  "year.ui.not_begun": {
+   "en": "The {term} term has not begun.",
+   "es": "El período {term} todavía no ha empezado.",
+   "state": "draft"
+  },
+  "year.ui.one_date": {
+   "en": "1 date, {state}",
+   "es": "1 fecha, {state}",
+   "state": "draft"
+  },
+  "year.ui.senate": {
+   "en": "Senate",
+   "es": "Senado",
+   "state": "draft"
+  },
+  "year.ui.shape": {
+   "en": "The usual shape of a two-year term",
+   "es": "La forma habitual de un período de dos años",
+   "state": "draft"
+  },
+  "year.ui.shape_cap": {
+   "en": "<b>You are here: {day}</b>, {where}. The usual pattern; this term&rsquo;s dates are below.",
+   "es": "<b>Usted está aquí: {day}</b>, {where}. Es el patrón habitual; las fechas de este período están más abajo.",
+   "state": "draft"
+  },
+  "year.ui.skeleton": {
+   "en": "No calendar of the {term} term has been read for this page yet, so its dates are the ones the constitution and the election law fix, each with the calendar that quotes the rule, and the rest of the term is described as it usually falls. A season that is over is folded shut: open it to read its dates.",
+   "es": "Todavía no se ha leído para esta página ningún calendario del período {term}, así que sus fechas son las que fijan la constitución y la ley electoral, cada una con el calendario que cita la regla, y el resto del período se describe como suele transcurrir. Una temporada que ya terminó aparece cerrada: ábrala para leer sus fechas.",
+   "state": "draft"
+  },
+  "year.ui.source": {
+   "en": "Source:",
+   "es": "Fuente:",
+   "state": "draft"
+  },
+  "year.ui.sources": {
+   "en": "Sources:",
+   "es": "Fuentes:",
+   "state": "draft"
+  },
+  "year.ui.status": {
+   "en": "the session status on the home page",
+   "es": "el estado de la sesión en la página de inicio",
+   "state": "draft"
+  },
+  "year.ui.the_first": {
+   "en": "the first year",
+   "es": "el primer año",
+   "state": "draft"
+  },
+  "year.ui.the_second": {
+   "en": "the second year",
+   "es": "el segundo año",
+   "state": "draft"
+  },
+  "year.ui.this_week": {
+   "en": "This week&rsquo;s hearings and sessions are on <a href=\"calendar.html\">the Calendar</a>.",
+   "es": "Las audiencias y sesiones de esta semana están en <a href=\"calendar.html\">el Calendario</a>.",
+   "state": "draft"
+  },
+  "year.ui.to_come": {
+   "en": "to come",
+   "es": "por venir",
+   "state": "draft"
+  },
+  "year.ui.usually": {
+   "en": "Usually",
+   "es": "Por lo general",
+   "state": "draft"
+  },
+  "year.usually-a-shorter-session-with-crossover": {
+   "en": "Usually a shorter session, with crossover again in late March or April.",
+   "es": "Por lo general una sesión más corta, otra vez con el paso a la otra cámara a finales de marzo o en abril.",
+   "state": "draft"
+  },
+  "year.veto-day": {
+   "en": "Veto day",
+   "es": "Día de vetos",
+   "state": "draft"
+  },
+  "year.veto-day-and-interim-study": {
+   "en": "Veto day and interim study",
+   "es": "Día de vetos y estudio interino",
+   "state": "draft"
+  },
+  "year.veto-day-in-the-house": {
+   "en": "Veto day in the House",
+   "es": "Día de vetos en la Cámara",
+   "state": "draft"
+  },
+  "year.veto-day-in-the-senate": {
+   "en": "Veto day in the Senate",
+   "es": "Día de vetos en el Senado",
+   "state": "draft"
+  },
+  "year.voters-choose-all-400-representatives": {
+   "en": "Voters choose all 400 representatives and 24 senators for the two-year term.",
+   "es": "Los votantes eligen a los 400 representantes y 24 senadores para el período de dos años.",
+   "state": "draft"
+  },
+  "year.voters-choose-all-400-representatives-2": {
+   "en": "Voters choose all 400 representatives and 24 senators for the next term.",
+   "es": "Los votantes eligen a los 400 representantes y 24 senadores para el próximo período.",
+   "state": "draft"
+  },
+  "year.where-one-chamber-will-not-accept": {
+   "en": "Where one chamber will not accept the other's changes to a bill, members of both try to write a version each will pass.",
+   "es": "Cuando una cámara no acepta los cambios de la otra a un proyecto de ley, miembros de ambas intentan redactar una versión que las dos aprueben.",
    "state": "draft"
   },
   "yt.a_place": {
@@ -11672,6 +14257,11 @@
    "es": "Consejo Ejecutivo, distrito {d}",
    "state": "draft"
   },
+  "yt.county": {
+   "en": "{county} County",
+   "es": "Condado de {county}",
+   "state": "draft"
+  },
   "yt.county_conv": {
    "en": "{place} is in {county} County, so its county convention is the State House members elected from {county} County &mdash; yours among them.",
    "es": "{place} está en el condado de {county}, así que su convención del condado son los representantes estatales elegidos en el condado de {county}, entre ellos los suyos.",
@@ -11682,9 +14272,24 @@
    "es": "Los funcionarios propios del condado están en <a href=\"/officials#counties\">County Officials</a> (funcionarios del condado).",
    "state": "draft"
   },
+  "yt.district": {
+   "en": "District {d}",
+   "es": "Distrito {d}",
+   "state": "draft"
+  },
   "yt.every_seat": {
    "en": "Every seat, with how to reach each person, is on {link}.",
    "es": "Cada escaño, con cómo comunicarse con cada persona, está en {link}.",
+   "state": "draft"
+  },
+  "yt.find_town": {
+   "en": "Find Your Town",
+   "es": "Busque su municipio",
+   "state": "draft"
+  },
+  "yt.floterial": {
+   "en": "floterial",
+   "es": "flotante",
    "state": "draft"
   },
   "yt.for_town": {
@@ -11727,6 +14332,11 @@
    "es": "Cargando…",
    "state": "draft"
   },
+  "yt.look_another": {
+   "en": "Look Up Another Town",
+   "es": "Buscar otro municipio",
+   "state": "draft"
+  },
   "yt.look_up": {
    "en": "Look up",
    "es": "Buscar",
@@ -11762,6 +14372,11 @@
    "es": "La lista de municipios no se cargó. Vuelva a intentarlo en un momento.",
    "state": "draft"
   },
+  "yt.no_member": {
+   "en": "No sitting member on file.",
+   "es": "No hay ningún miembro en funciones registrado.",
+   "state": "draft"
+  },
   "yt.no_place": {
    "en": "No town or ward by that name.",
    "es": "No hay ningún municipio ni barrio electoral con ese nombre.",
@@ -11772,9 +14387,24 @@
    "es": "La lista de la Secretaría de Estado no tiene un lugar de votación registrado para {place}. El secretario municipal se lo puede decir.",
    "state": "draft"
   },
+  "yt.no_senator": {
+   "en": "No sitting senator on file.",
+   "es": "No hay ningún senador en funciones registrado.",
+   "state": "draft"
+  },
+  "yt.not_on_file": {
+   "en": "Not on file.",
+   "es": "No registrado.",
+   "state": "draft"
+  },
   "yt.one_place": {
    "en": "1 place",
    "es": "1 lugar",
+   "state": "draft"
+  },
+  "yt.page_go": {
+   "en": "{place}&rsquo;s page &rarr;",
+   "es": "La página de {place} &rarr;",
    "state": "draft"
   },
   "yt.page_of": {
@@ -11795,6 +14425,26 @@
   "yt.reps_in": {
    "en": "{place} is represented in {districts}.",
    "es": "{place} está representado en {districts}.",
+   "state": "draft"
+  },
+  "yt.seat_council": {
+   "en": "Executive Council",
+   "es": "Consejo Ejecutivo",
+   "state": "draft"
+  },
+  "yt.seat_house": {
+   "en": "State House",
+   "es": "Cámara de Representantes estatal",
+   "state": "draft"
+  },
+  "yt.seat_senate": {
+   "en": "State Senate",
+   "es": "Senado estatal",
+   "state": "draft"
+  },
+  "yt.seat_us_house": {
+   "en": "US House",
+   "es": "Cámara de Representantes de EE. UU.",
    "state": "draft"
   },
   "yt.senate_d": {
@@ -11843,6 +14493,11 @@
    "es": "Usar {place}, el municipio de esta página",
    "state": "draft"
   },
+  "yt.votes_at": {
+   "en": "votes at {place}",
+   "es": "vota en {place}",
+   "state": "draft"
+  },
   "yt.voting": {
    "en": "Voting",
    "es": "Votación",
@@ -11871,6 +14526,11 @@
   "yt.your_senator": {
    "en": "Your senator",
    "es": "Su senador",
+   "state": "draft"
+  },
+  "yt.your_town": {
+   "en": "Your Town",
+   "es": "Su municipio",
    "state": "draft"
   },
   "yt.yours": {

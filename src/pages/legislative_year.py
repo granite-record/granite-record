@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-10-17.6
+# GRANITE_VERSION: 2026-10-17.7
 """
 The legislature's year: a two-year term as a timeline, with this term's dates
 where the chambers' own calendars print them, and the usual pattern where
@@ -76,6 +76,8 @@ import html
 import re
 from collections import namedtuple
 from datetime import date, timedelta
+
+import i18n as I
 
 # THE PAGE'S ADDRESS AND NAME, in one place: civics.TOPICS gives the topic
 # this slug, and build_pages' status box links to it.
@@ -416,6 +418,8 @@ PATTERN = (
     )),
 )
 MONTH_LETTERS = "JFMAMJJASOND"
+# The months' first letters in another language, for the bar's axis.
+MONTH_LETTERS_LANG = {"es": "EFMAMJJASOND"}
 WHO = {"H": "House", "S": "Senate", "HS": "Both chambers", "": ""}
 RULE_WORDS = {"org": "By rule, the first Wednesday of December. ",
               "open": "By rule, the first Wednesday after the first Tuesday of January. ",
@@ -500,9 +504,10 @@ RULE_CITES = {"org": ("hc1-2025", "Organize on the first Wednesday in December")
               "election": ("hc1-2026", "Last day prior to the General Election for incumbents running")}
 
 
-def skeleton(term):
+def skeleton(term, lang=I.DEFAULT):
     """The seasons of a term TERMS does not hold, from the rules and the
-    usual pattern alone."""
+    usual pattern alone, in `lang` (the Learn pages in Spanish, 25 October
+    2026): each of its words is the catalog's, the years filled in after."""
     a, b = (int(x) for x in term.split("-"))
 
     def ruled(rule, day, who, name, what):
@@ -511,46 +516,69 @@ def skeleton(term):
 
     org0, org1 = organization_day(a - 1).isoformat(), organization_day(b).isoformat()
     open_a, open_b, open_next = (opening_day(y).isoformat() for y in (a, b, b + 1))
-    crossover = Step("", "", "HS", "Crossover",
-                     "The last day for each chamber to act on its own bills. What passes goes to "
-                     "the other chamber.", when="late March or April")
-    conference = Step("", "", "HS", "Last day to act on committee of conference reports",
-                      "Both chambers vote on the conference versions. It is the session's last "
-                      "deadline.", when="June")
+    org_name = I.say(lang, "year.sk.org", "Organization Day")
+    opens = I.say(lang, "year.sk.opens", "The session opens")
+    governor = I.say(lang, "year.sk.governor", "Each bill both chambers passed goes to the Governor, "
+                     "who signs it, vetoes it, or leaves it to become law without a signature.")
+    to_governor = I.say(lang, "year.sk.to_governor", "Bills go to the Governor")
+    veto_day = I.say(lang, "year.sk.veto_day", "Veto day")
+    summer = I.say(lang, "year.sk.summer", "summer")
+    crossover = Step("", "", "HS", I.say(lang, "year.sk.crossover", "Crossover"),
+                     I.say(lang, "year.sk.crossover_what", "The last day for each chamber to act on its "
+                           "own bills. What passes goes to the other chamber."),
+                     when=I.say(lang, "year.sk.crossover_when", "late March or April"))
+    conference = Step("", "", "HS", I.say(lang, "year.sk.conference", "Last day to act on committee "
+                                          "of conference reports"),
+                      I.say(lang, "year.sk.conference_what", "Both chambers vote on the conference "
+                            "versions. It is the session's last deadline."),
+                      when=I.say(lang, "year.sk.conference_when", "June"))
+    sworn = I.say(lang, "year.sk.sworn", "The new members are sworn in, the House elects its Speaker "
+                  "and the Senate its President, and the term begins.")
     return [
-        Season("The First Year", f"December {a - 1} through {a}", org0,
-               "The {y1} session runs from January to about June.", [
-            ruled("org", org0, "HS", "Organization Day",
-                  "The new members are sworn in, the House elects its Speaker and the Senate its "
-                  "President, and the term begins."),
-            ruled("open", open_a, "HS", "The session opens",
-                  "Convening day: the chambers begin taking up the new bills."),
+        Season(I.say(lang, "year.sk.first_year", "The First Year"),
+               I.say(lang, "year.sk.first_when", "December {a} through {b}", a=a - 1, b=a), org0,
+               I.say(lang, "year.sk.first_stands", "The {y1} session runs from January to about June."), [
+            ruled("org", org0, "HS", org_name, sworn),
+            ruled("open", open_a, "HS", opens,
+                  I.say(lang, "year.sk.convening", "Convening day: the chambers begin taking up the "
+                        "new bills.")),
             crossover, conference,
-            Step("", "", "", "Bills go to the Governor", GOVERNOR, when="summer"),
-            Step("", "", "HS", "Veto day", "Each chamber meets to take up the Governor's vetoes.",
-                 when="in the fall"),
+            Step("", "", "", to_governor, governor, when=summer),
+            Step("", "", "HS", veto_day,
+                 I.say(lang, "year.sk.veto_what", "Each chamber meets to take up the Governor's vetoes."),
+                 when=I.say(lang, "year.sk.in_fall", "in the fall")),
         ]),
-        Season("The Second Year", f"{b}, until Organization Day", open_b,
-               "The {y2} session runs from January to about June.", [
-            ruled("open", open_b, "HS", "The session opens", "The second session's first day."),
+        Season(I.say(lang, "year.sk.second_year", "The Second Year"),
+               I.say(lang, "year.sk.second_when", "{b}, until Organization Day", b=b), open_b,
+               I.say(lang, "year.sk.second_stands", "The {y2} session runs from January to about June."), [
+            ruled("open", open_b, "HS", opens,
+                  I.say(lang, "year.sk.second_first", "The second session's first day.")),
             crossover, conference,
-            Step("", "", "", "Bills go to the Governor", GOVERNOR, when="summer"),
-            Step("", "", "HS", "Veto day",
-                 "Both chambers meet to take up the Governor's vetoes. Overriding one takes two "
-                 "thirds of each chamber.", when="late summer or fall"),
-            Step("", "", "HS", "Interim study",
-                 "Committees study the subjects of the bills sent to interim study. The bills "
-                 "themselves go no further; a report may recommend a new bill next term.",
-                 when="summer and fall"),
-            ruled("election", general_election(b).isoformat(), "", "General election",
-                  "Voters choose all 400 representatives and 24 senators for the next term."),
+            Step("", "", "", to_governor, governor, when=summer),
+            Step("", "", "HS", veto_day,
+                 I.say(lang, "year.sk.veto_two", "Both chambers meet to take up the Governor's vetoes. "
+                       "Overriding one takes two thirds of each chamber."),
+                 when=I.say(lang, "year.sk.late_summer", "late summer or fall")),
+            Step("", "", "HS", I.say(lang, "year.sk.study", "Interim study"),
+                 I.say(lang, "year.sk.study_what", "Committees study the subjects of the bills sent to "
+                       "interim study. The bills themselves go no further; a report may recommend a "
+                       "new bill next term."),
+                 when=I.say(lang, "year.sk.summer_fall", "summer and fall")),
+            ruled("election", general_election(b).isoformat(), "",
+                  I.say(lang, "year.sk.election", "General election"),
+                  I.say(lang, "year.sk.election_what", "Voters choose all 400 representatives and 24 "
+                        "senators for the next term.")),
         ]),
-        Season("The Next Term Begins", f"December {b} to January {b + 1}", org1,
-               "The {next} term has begun. Its first session opens in January.", [
-            ruled("org", org1, "HS", "Organization Day",
-                  "The members elected in November are sworn in, and the {next} term begins."),
-            ruled("open", open_next, "HS", f"The {b + 1} session opens",
-                  "The new term's first session begins."),
+        Season(I.say(lang, "year.sk.next", "The Next Term Begins"),
+               I.say(lang, "year.sk.next_when", "December {b} to January {c}", b=b, c=b + 1), org1,
+               I.say(lang, "year.sk.next_stands", "The {next} term has begun. Its first session opens "
+                     "in January."), [
+            ruled("org", org1, "HS", org_name,
+                  I.say(lang, "year.sk.next_sworn", "The members elected in November are sworn in, and "
+                        "the {next} term begins.")),
+            ruled("open", open_next, "HS",
+                  I.say(lang, "year.sk.next_opens", "The {year} session opens", year=b + 1),
+                  I.say(lang, "year.sk.next_first", "The new term's first session begins.")),
         ]),
     ]
 
@@ -566,9 +594,85 @@ def entered(term):
     return term in TERMS
 
 
-def seasons_of(term):
-    """The term's seasons: TERMS's where it is entered, else its skeleton."""
-    return TERMS[term] if entered(term) else skeleton(term)
+def seasons_of(term, lang=I.DEFAULT):
+    """The term's seasons: TERMS's where it is entered, else its skeleton,
+    their words in `lang`."""
+    if not entered(term):
+        return skeleton(term, lang)
+    if lang == I.DEFAULT:
+        return TERMS[term]
+    return [_season_in(se, lang) for se in TERMS[term]]
+
+
+# THE SCHEDULE'S OWN WORDS IN ANOTHER LANGUAGE (the Learn pages in Spanish,
+# 25 October 2026). TERMS's words -- a season's name and when it falls, a
+# step's name and sentence, a deadline it gathers -- and PATTERN's and
+# RULE_WORDS' are data, each keyed year.<its first words> (year_words), and
+# i18n.code_words asks a catalog for them where the language has this page.
+# The words a calendar prints beside a date (a step's cites) are the
+# record's, and are not among them.
+def _data_words():
+    """Every word TERMS, PATTERN and RULE_WORDS say, in reading order, once."""
+    seen = []
+
+    def add(x):
+        if x and x not in seen:
+            seen.append(x)
+    for term in sorted(TERMS):
+        for se in TERMS[term]:
+            add(se.name), add(se.when), add(se.stands)
+            for st in se.steps:
+                add(st.name), add(st.what), add(st.when)
+                for _day_, _who, name, _c in st.subs:
+                    add(name)
+    for label, segs in PATTERN:
+        add(label)
+        for _a, _b, _cls, when, what, more in segs:
+            add(when), add(what), add(more)
+    for v in RULE_WORDS.values():
+        add(v)
+    return seen
+
+
+_KEYS = {}
+
+
+def year_words():
+    """[(key, English, where)] of the schedule's data words (_data_words),
+    each under year.<a slug of its first words>, numbered where two begin
+    alike."""
+    out, used = [], {}
+    for en in _data_words():
+        base = "year." + I.slug_words(I.norm(en))
+        key, n = base, 2
+        while used.get(key, en) != en:
+            key, n = f"{base}-{n}", n + 1
+        used[key] = en
+        out.append((key, I.norm(en), f"learn/{SLUG}: the schedule"))
+    return out
+
+
+def _w(lang, en):
+    """One of the schedule's data words in `lang`: the catalog's where it is
+    current, else the English, the miss kept for the build to say."""
+    if lang == I.DEFAULT or not en:
+        return en
+    if not _KEYS:
+        _KEYS.update({e: k for k, e, _w_ in year_words()})
+    key = _KEYS.get(I.norm(en))
+    got = I.say_piece(lang, key, I.norm(en)) if key else None
+    if got is None:
+        I.MISSES.add((lang, key or f"(no key for {en[:40]!r})", "missing"))
+        return en
+    return got
+
+
+def _season_in(se, lang):
+    return se._replace(name=_w(lang, se.name), when=_w(lang, se.when), stands=_w(lang, se.stands),
+                       steps=[st._replace(name=_w(lang, st.name), what=_w(lang, st.what),
+                                          when=_w(lang, st.when),
+                                          subs=tuple((d, who, _w(lang, n), c) for d, who, n, c in st.subs))
+                              for st in se.steps])
 
 
 def checked_terms(today=None):
@@ -742,14 +846,16 @@ def _addresses(root):
     return {(d.set, d.date, d.number[0]): d.url for d in docs if d.date and d.number[0]}
 
 
-def _words(iso, form="full"):
+def _words(iso, form="full", lang=I.DEFAULT):
     import components
-    return components.date_words(iso, form)
+    return components.date_words(iso, form) if lang == I.DEFAULT else components.date_words(
+        iso, form, lang)
 
 
-def _span(a, b, form="full"):
+def _span(a, b, form="full", lang=I.DEFAULT):
     import components
-    return components.date_span(a, b, form)
+    return components.date_span(a, b, form) if lang == I.DEFAULT else components.date_span(
+        a, b, form, lang)
 
 
 def doc_label(doc):
@@ -757,8 +863,10 @@ def doc_label(doc):
     return f"{ONE[d.set]} {d.number}, {_words(d.day)}"
 
 
-def cite_html(docs, links):
-    """The documents a step cites, as the line under it."""
+def cite_html(docs, links, lang=I.DEFAULT):
+    """The documents a step cites, as the line under it. In another language
+    a document's name is the record's, marked as English, and its date in
+    the language."""
     out, seen = [], []
     for doc in docs:
         if doc in seen:
@@ -766,16 +874,26 @@ def cite_html(docs, links):
         seen.append(doc)
         d = DOCS[doc]
         if d.set == "status":
-            out.append('<a href="/#state">the session status on the home page</a>')
+            out.append('<a href="/#state">' + I.say(lang, "year.ui.status", "the session status on "
+                                                     "the home page") + "</a>")
             continue
         url = links.get((d.set, d.day, d.number))
-        out.append(f'<a href="{T(url)}" target="_blank" rel="noopener">{T(doc_label(doc))}</a>'
-                   if url else T(doc_label(doc)))
-    return ("Source: " if len(out) == 1 else "Sources: ") + "; ".join(out) + "."
+        label = (T(doc_label(doc)) if lang == I.DEFAULT else
+                 f'<span lang="en">{T(ONE[d.set])} {d.number}</span>, {T(_words(d.day, "full", lang))}')
+        out.append(f'<a href="{T(url)}" target="_blank" rel="noopener"'
+                   + ("" if lang == I.DEFAULT else ' hreflang="en"') + f">{label}</a>"
+                   if url else label)
+    return ((I.say(lang, "year.ui.source", "Source:") if len(out) == 1 else
+             I.say(lang, "year.ui.sources", "Sources:")) + " " + "; ".join(out) + ".")
 
 
-def _who(who):
-    return f'<span class="l-tlwho">{WHO[who]}</span>' if who else ""
+def _who(who, lang=I.DEFAULT):
+    if not who:
+        return ""
+    name = (WHO[who] if lang == I.DEFAULT else
+            {"H": I.say(lang, "year.ui.house", "House"), "S": I.say(lang, "year.ui.senate", "Senate"),
+             "HS": I.say(lang, "year.ui.both", "Both chambers")}[who])
+    return f'<span class="l-tlwho">{name}</span>'
 
 
 def _cited_ok(term, st, bad):
@@ -785,36 +903,44 @@ def _cited_ok(term, st, bad):
     return not any(k in bad for k in keys)
 
 
-def _step_html(st, today, links, term, ok=True):
+def _step_html(st, today, links, term, ok=True, lang=I.DEFAULT):
     """One row: the date, then what it is and whose, a sentence, the
-    deadlines it gathers, and the documents it comes from."""
+    deadlines it gathers, and the documents it comes from. `st`'s words are
+    already in `lang` (seasons_of)."""
     dated = bool(st.day) and ok
     past = dated and _day(st.until or st.day) < today
     cls = (["l-tlstep"] + (["is-key"] if st.key else []) + (["is-past"] if past else [])
            + ([] if dated else ["is-usual"]))
     if dated:
-        shown = _span(st.day, st.until, "medium") if st.until else _words(st.day, "medium")
+        shown = (_span(st.day, st.until, "medium", lang) if st.until
+                 else _words(st.day, "medium", lang))
         when = f'<time datetime="{st.day}">{T(shown)}</time>'
     else:
-        when = f'<span class="l-tlus">Usually</span> {T(st.when)}'
+        when = ('<span class="l-tlus">' + I.say(lang, "year.ui.usually", "Usually")
+                + f"</span> {T(st.when)}")
     what = T(st.what).replace("{next}", _dash(_next(term)))
-    body = [f'<p class="l-tln"><b>{T(st.name)}</b>{_who(st.who)}</p>', f'<p class="l-tlw">{what}</p>']
+    body = [f'<p class="l-tln"><b>{T(st.name)}</b>{_who(st.who, lang)}</p>',
+            f'<p class="l-tlw">{what}</p>']
     if st.subs and dated:
         body.append('<ol class="l-tlsub">' + "".join(
-            f'<li><time datetime="{day}">{T(_words(day, "short"))}</time>'
-            f'<span>{T(name)}{_who(who)}</span></li>' for day, who, name, _c in st.subs) + "</ol>")
+            f'<li><time datetime="{day}">{T(_words(day, "short", lang))}</time>'
+            f'<span>{T(name)}{_who(who, lang)}</span></li>' for day, who, name, _c in st.subs) + "</ol>")
     docs = [doc for doc, _d, _w in st.cites] + [doc for _d, _w, _n, cs in st.subs for doc, _x in cs]
     if dated and docs:
-        body.append(f'<p class="l-tls">{RULE_WORDS.get(st.rule, "")}{cite_html(docs, links)}</p>')
+        rule = _w(lang, RULE_WORDS.get(st.rule, ""))
+        if lang != I.DEFAULT and rule:
+            rule = rule.rstrip() + " "      # the catalog keeps a piece's words without the space
+        body.append(f'<p class="l-tls">{rule}{cite_html(docs, links, lang)}</p>')
     return (f'<li class="{" ".join(cls)}"><p class="l-tld">{when}</p>'
             f'<div class="l-tlb">{"".join(body)}</div></li>')
 
 
-def _here_html(today):
+def _here_html(today, lang=I.DEFAULT):
     return (f'<li class="l-tlstep l-tlnow" id="{HERE_ID}"><p class="l-tld">'
-            f'<time datetime="{today.isoformat()}">{T(_words(today, "medium"))}</time></p>'
-            '<div class="l-tlb"><p class="l-tln"><b>You are here</b></p>'
-            '<p class="l-tlw">The day this page was built.</p></div></li>')
+            f'<time datetime="{today.isoformat()}">{T(_words(today, "medium", lang))}</time></p>'
+            '<div class="l-tlb"><p class="l-tln"><b>' + I.say(lang, "year.ui.here", "You are here")
+            + '</b></p><p class="l-tlw">' + I.say(lang, "year.ui.built", "The day this page was built.")
+            + "</p></div></li>")
 
 
 def _where(seasons, today):
@@ -826,11 +952,11 @@ def _where(seasons, today):
     return k
 
 
-def timeline(term, today, links, bad=None):
+def timeline(term, today, links, bad=None, lang=I.DEFAULT):
     """The term, season by season: an ordered list of seasons each holding an
     ordered list of steps, with You Are Here among them. A season wholly past
     is folded shut; the one the day falls in, and those to come, are open."""
-    seasons = seasons_of(term)
+    seasons = seasons_of(term, lang)
     bad = bad or {}
     here = _where(seasons, today)
     out = []
@@ -844,35 +970,56 @@ def timeline(term, today, links, bad=None):
                 continue
             at = (st.day if ok else "") or prev
             if i == here and not placed and _day(at) > today:
-                rows.append(_here_html(today))
+                rows.append(_here_html(today, lang))
                 placed = True
-            rows.append(_step_html(st, today, links, term, ok))
+            rows.append(_step_html(st, today, links, term, ok, lang))
             prev = at
         if i == here and not placed:
-            rows.append(_here_html(today))
+            rows.append(_here_html(today, lang))
         n = sum(1 for st in s.steps if st.day)
-        state = "all past" if past else "you are here" if i == here else "to come"
+        if lang == I.DEFAULT:
+            state = "all past" if past else "you are here" if i == here else "to come"
+            count = f'{n} date{"" if n == 1 else "s"}, {state}'
+        else:
+            state = (I.say(lang, "year.ui.all_past", "all past") if past else
+                     I.say(lang, "year.ui.here_lc", "you are here") if i == here else
+                     I.say(lang, "year.ui.to_come", "to come"))
+            count = (I.say(lang, "year.ui.one_date", "1 date, {state}", state=state) if n == 1 else
+                     I.say(lang, "year.ui.dates", "{n} dates, {state}", n=n, state=state))
         out.append(
             f'<li class="l-tlseason{" is-past" if past else ""}{" is-here" if i == here else ""}">'
             f'<details{" open" if i == max(here, 0) else ""}><summary>'
             f'<h3 class="l-tlh">{T(s.name)}</h3>'
-            f'<span class="l-tlwhen">{T(s.when)} &middot; {n} date{"" if n == 1 else "s"}, '
-            f'{state}</span></summary>'
+            f'<span class="l-tlwhen">{T(s.when)} &middot; {count}</span></summary>'
             f'<ol class="l-tlsteps">{"".join(rows)}</ol></details></li>')
     if here < 0:
-        out.insert(0, f'<li class="l-tlseason is-here"><ol class="l-tlsteps">{_here_html(today)}</ol></li>')
+        out.insert(0, f'<li class="l-tlseason is-here"><ol class="l-tlsteps">{_here_html(today, lang)}'
+                   "</ol></li>")
     # SHORTER (the person, 22 October 2026: "significantly simplified and
     # streamlined"): only the season the day falls in is open.
-    caption = (T(SKELETON_CAPTION.format(term=term)).replace(term, _dash(term))
-               if not entered(term) else
-               'Each date is from the House or Senate calendar or journal named under it; '
-               '<b>Usually</b> marks a step with no one date. Open a season to read its dates.')
-    return (f'<figure class="l-fig l-tl" role="group" aria-label="The {_dash(term)} term, date by date">'
+    if lang == I.DEFAULT:
+        caption = (T(SKELETON_CAPTION.format(term=term)).replace(term, _dash(term))
+                   if not entered(term) else
+                   'Each date is from the House or Senate calendar or journal named under it; '
+                   '<b>Usually</b> marks a step with no one date. Open a season to read its dates.')
+        label = f"The {_dash(term)} term, date by date"
+    else:
+        caption = (I.say(lang, "year.ui.skeleton", "No calendar of the {term} term has been read for "
+                         "this page yet, so its dates are the ones the constitution and the election "
+                         "law fix, each with the calendar that quotes the rule, and the rest of the "
+                         "term is described as it usually falls. A season that is over is folded "
+                         "shut: open it to read its dates.", term=_dash(term))
+                   if not entered(term) else
+                   I.say(lang, "year.ui.caption", "Each date is from the House or Senate calendar or "
+                         "journal named under it; <b>Usually</b> marks a step with no one date. Open "
+                         "a season to read its dates."))
+        label = I.say(lang, "year.ui.label", "The {term} term, date by date", term=_dash(term))
+    return (f'<figure class="l-fig l-tl" role="group" aria-label="{label}">'
             f'<ol class="l-tlseasons">{"".join(out)}</ol>'
             f'<figcaption class="l-cap">{caption}</figcaption></figure>')
 
 
-def shape(today):
+def shape(today, lang=I.DEFAULT):
     """The usual pattern of a term, a year to a bar, with the day the page
     was built pinned on its own year. The years named are the odd year and
     the even year around that day, as a term's first and second."""
@@ -888,27 +1035,47 @@ def shape(today):
             jan1 = date(year, 1, 1)
             pos = 100 * ((today - jan1).days + 0.5) / (date(year + 1, 1, 1) - jan1).days
             side = " is-r" if pos > 70 else " is-l" if pos < 30 else ""
-            pin = f'<span class="l-yrpin{side}" style="left:{pos:.2f}%"><span>You are here</span></span>'
+            pin = (f'<span class="l-yrpin{side}" style="left:{pos:.2f}%"><span>'
+                   + I.say(lang, "year.ui.here", "You are here") + "</span></span>")
         key = "".join(
-            f'<li><span class="l-sw {cls}" aria-hidden="true"></span><span><b>{T(when)}:</b> '
-            f'{T(what)}.</span></li>'
+            f'<li><span class="l-sw {cls}" aria-hidden="true"></span><span><b>{T(_w(lang, when))}:</b> '
+            f'{T(_w(lang, what))}.</span></li>'
             for _a, _b, cls, when, what, more in segs)
+        the_year = (f"the {T(label.lower())}" if lang == I.DEFAULT else
+                    I.say(lang, "year.ui.the_first", "the first year") if k == 0 else
+                    I.say(lang, "year.ui.the_second", "the second year"))
         out.append(
             f'<div class="l-yrrow{" is-now" if pin else ""}"><p class="l-yrh"><b>{year}</b> '
-            f'the {T(label.lower())}</p>'
+            f'{the_year}</p>'
             f'<div class="l-yrbar"><div class="l-barb" aria-hidden="true">{bars}</div>{pin}</div>'
             '<ol class="l-yrmon" aria-hidden="true">'
-            + "".join(f"<li>{m}</li>" for m in MONTH_LETTERS) + "</ol>"
+            + "".join(f"<li>{m}</li>" for m in (MONTH_LETTERS if lang == I.DEFAULT else
+                                                MONTH_LETTERS_LANG.get(lang, MONTH_LETTERS))) + "</ol>"
             f'<ul class="l-barkey">{key}</ul></div>')
+    if lang == I.DEFAULT:
+        if y % 2 == 0 and today >= organization_day(y):
+            where = (f"after Organization Day, which began the {_dash(_next(term))} term")
+        else:
+            where = (f"in the {'first' if y == years[0] else 'second'} year of the "
+                     f"{_dash(term)} term")
+        return (f'<figure class="l-fig l-yr" role="group" aria-label="The usual shape of a two-year term">'
+                + "".join(out)
+                + f'<figcaption class="l-cap"><b>You are here: {T(_words(today))}</b>, {where}. '
+                'The usual pattern; this term&rsquo;s dates are below.</figcaption></figure>')
     if y % 2 == 0 and today >= organization_day(y):
-        where = (f"after Organization Day, which began the {_dash(_next(term))} term")
+        where = I.say(lang, "year.ui.after_org", "after Organization Day, which began the {term} term",
+                      term=_dash(_next(term)))
+    elif y == years[0]:
+        where = I.say(lang, "year.ui.in_first", "in the first year of the {term} term", term=_dash(term))
     else:
-        where = (f"in the {'first' if y == years[0] else 'second'} year of the "
-                 f"{_dash(term)} term")
-    return (f'<figure class="l-fig l-yr" role="group" aria-label="The usual shape of a two-year term">'
-            + "".join(out)
-            + f'<figcaption class="l-cap"><b>You are here: {T(_words(today))}</b>, {where}. '
-            'The usual pattern; this term&rsquo;s dates are below.</figcaption></figure>')
+        where = I.say(lang, "year.ui.in_second", "in the second year of the {term} term", term=_dash(term))
+    return ('<figure class="l-fig l-yr" role="group" aria-label="'
+            + I.say(lang, "year.ui.shape", "The usual shape of a two-year term") + '">'
+            + "".join(out) + '<figcaption class="l-cap">'
+            + I.say(lang, "year.ui.shape_cap", "<b>You are here: {day}</b>, {where}. The usual "
+                    "pattern; this term&rsquo;s dates are below.", day=T(_words(today, "full", lang)),
+                    where=where)
+            + "</figcaption></figure>")
 
 
 # The dates Right Now lists (22 October 2026: the next eight, each with its
@@ -919,38 +1086,49 @@ SOON = 8
 # SHORT (the person, 22 October 2026: "shorten the Right Now sentence"): each
 # season's line says only where the legislature is, and Coming up says what
 # is next.
-def now_html(term, today, here, bad=None):
+def now_html(term, today, here, bad=None, lang=I.DEFAULT):
     """Where Things Stand: the season the day falls in, the last landmark to
     have passed, and the next three dated steps. `here` is the page's own
     address, which an anchor needs under the template's <base href="/">."""
-    seasons = seasons_of(term)
+    seasons = seasons_of(term, lang)
     a, b = term.split("-")
     cur = term_of(today)
     words = {"term": _dash(term), "y1": a, "y2": b, "next": _dash(_next(term))}
     bad = bad or {}
     i = _where(seasons, today)
-    out = [f'<p class="l-yrhere"><b>You are here: {T(_words(today))}.</b> ']
+    if lang == I.DEFAULT:
+        out = [f'<p class="l-yrhere"><b>You are here: {T(_words(today))}.</b> ']
+    else:
+        out = ['<p class="l-yrhere"><b>' + I.say(lang, "year.ui.here_day", "You are here: {day}.",
+                                                 day=T(_words(today, "full", lang))) + "</b> "]
     if cur != term:
-        out.append(f"The {_dash(cur)} term has begun. Its deadlines are added here once the "
-                   f"chambers&rsquo; calendars print them; until then the dates below are the "
-                   f"{_dash(term)} term&rsquo;s.</p>")
+        out.append((f"The {_dash(cur)} term has begun. Its deadlines are added here once the "
+                    f"chambers&rsquo; calendars print them; until then the dates below are the "
+                    f"{_dash(term)} term&rsquo;s." if lang == I.DEFAULT else
+                    I.say(lang, "year.ui.begun", "The {cur} term has begun. Its deadlines are added "
+                          "here once the chambers&rsquo; calendars print them; until then the dates "
+                          "below are the {term} term&rsquo;s.", cur=_dash(cur), term=_dash(term)))
+                   + "</p>")
     elif i < 0:
-        out.append(f"The {_dash(term)} term has not begun.</p>")
+        out.append((f"The {_dash(term)} term has not begun." if lang == I.DEFAULT else
+                    I.say(lang, "year.ui.not_begun", "The {term} term has not begun.",
+                          term=_dash(term))) + "</p>")
     else:
         out.append(seasons[i].stands.format(**words).replace("'", "&rsquo;") + "</p>")
     steps = [st for s in seasons for st in s.steps if st.day and _cited_ok(term, st, bad)]
     soon = [st for st in steps if _day(st.until or st.day) >= today][:SOON]
     if soon:
-        out.append('<p class="l-yrnext">Coming up:</p><ol class="l-yrsoon">' + "".join(
+        out.append('<p class="l-yrnext">' + I.say(lang, "year.ui.coming", "Coming up:")
+                   + '</p><ol class="l-yrsoon">' + "".join(
             f'<li><time datetime="{st.day}">'
-            f'{T(_span(st.day, st.until) if st.until else _words(st.day))}</time>'
-            f'<span>{T(st.name)}{_who(st.who)}</span></li>' for st in soon) + "</ol>")
-    out.append('<p>This week&rsquo;s hearings and sessions are on '
-               '<a href="calendar.html">the Calendar</a>.</p>')
+            f'{T(_span(st.day, st.until, "full", lang) if st.until else _words(st.day, "full", lang))}'
+            f'</time><span>{T(st.name)}{_who(st.who, lang)}</span></li>' for st in soon) + "</ol>")
+    out.append("<p>" + I.say(lang, "year.ui.this_week", "This week&rsquo;s hearings and sessions are "
+                             'on <a href="calendar.html">the Calendar</a>.') + "</p>")
     return "".join(out)
 
 
-def figures(today, root=Path(".")):
+def figures(today, root=Path("."), lang=I.DEFAULT):
     """The page's figures, for build_civics to fill civics.BODY_YEAR with:
     year_now (Where Things Stand), year_shape (the usual pattern), year_dates
     (the term, date by date) and year_term (whose dates those are). Says what
@@ -962,6 +1140,11 @@ def figures(today, root=Path(".")):
     links = _addresses(root)
     problems, _checked, _absent = verify(root, terms=[term])
     bad = {key: why for key, why in problems if key.startswith(term + " |")}
+    if lang != I.DEFAULT:
+        return {"year_now": now_html(term, today, shell.canon("/" + HREF), bad, lang),
+                "year_shape": civics.wide(shape(today, lang)),
+                "year_dates": civics.wide(timeline(term, today, links, bad, lang)),
+                "year_term": _dash(term)}
     for key, why in bad.items():
         print(f"  learn/{SLUG}.html LEAVES OUT a date its document does not print: {key}: {why}")
     if cur != term:
