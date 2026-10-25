@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.692
+# GRANITE_VERSION: 2026-09-04.693
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -69444,6 +69444,12 @@ def _latest_activity_meetings(BP, LA, i18n):
         "a work session is said to have voted")
     assert by[("2026-10-15", hhs)]["bills"][0]["did"].get("dated") == "2026-10-22", (
         f"HHS's report is not said with its own day: {by[('2026-10-15', hhs)]}")
+    long = ("prohibiting investments by the New Hampshire retirement system in businesses "
+            "owned by a sitting president or the president's family members")
+    cut = LA.short_title(long)
+    assert len(cut) <= LA.TITLE_KEPT + 1 and cut.endswith("\u2026") and long.startswith(cut[:-1]) \
+        and long[len(cut) - 1] == " ", f"a long title is cut mid-word: {cut!r}"
+    assert LA.short_title("relative to child abduction.") == "relative to child abduction."
     fl = by[("2026-08-19", "floor")]["bills"][0]["did"]
     assert (fl["mk"], fl["carried"], fl["yeas"], fl["nays"]) == ("override_first", False, 202, 107), fl
 
