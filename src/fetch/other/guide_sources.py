@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-10-11.15
+# GRANITE_VERSION: 2026-10-11.16
 """
 The official pages the how-to guides cite, onto this disk, to check them by.
 
@@ -205,7 +205,7 @@ SOURCES = {
         "https://www.council.nh.gov/contact-us",
         "https://www.governor.nh.gov/contact-governor-ayotte",
     ],
-    # Fishing, hunting and boating (25 October 2026), for the person's printouts.
+    # Fishing, hunting and boating: printed by the person, 25 October 2026.
     "outdoors": [
         "https://www.wildlife.nh.gov/licenses-and-permits/nh-license-requirements",
         "https://www.wildlife.nh.gov/fishing-new-hampshire/licenses-and-permits",
@@ -217,7 +217,7 @@ SOURCES = {
         "https://www.nhsp.dos.nh.gov/our-services/field-operations-bureau/marine-patrol/boating-education/boating-education-faqs",
         "https://www.nhsp.dos.nh.gov/our-services/field-operations-bureau/marine-patrol/boating-education/14-day-temporary-safe-boating",
         "https://www.dmv.nh.gov/vehicles-boats-and-titles/boat-registrations",
-        "https://www.dmv.nh.gov/vehicles-boats-or-titles/boat-registrations/authorized-boat-agents",
+        "https://www.wildlife.nh.gov/saltwater-fisheries-new-hampshire/saltwater-fishing-faqs",
     ],
 }
 

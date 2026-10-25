@@ -1523,16 +1523,6 @@
    "es": "Un bote de remos o una canoa sin motor, o un velero de menos de 12 pies",
    "state": "draft"
   },
-  "guide.boating.authorized-boat-agents": {
-   "en": "Authorized boat agents",
-   "es": "Agentes de embarcaciones autorizados",
-   "state": "draft"
-  },
-  "guide.boating.authorized-boat-agents-nh-dmv": {
-   "en": "Authorized boat agents (NH DMV)",
-   "es": "Agentes de embarcaciones autorizados (DMV de NH)",
-   "state": "draft"
-  },
   "guide.boating.boat-registration-dmv": {
    "en": "Boat registration (DMV)",
    "es": "Registro de embarcaciones (DMV)",
@@ -1604,8 +1594,8 @@
    "state": "draft"
   },
   "guide.boating.if-you-are-16-or-older": {
-   "en": "If you are 16 or older and do not have a certificate, a boat dealer or rental business approved by the state can give you a short exam and a <b>temporary certificate</b>, good for up to 14 days and for New Hampshire&rsquo;s waters only. It costs $10, and you can get one in each calendar year.",
-   "es": "Si tiene 16 años o más y no tiene certificado, un vendedor o alquilador de embarcaciones aprobado por el estado puede hacerle un examen breve y darle un <b>certificado temporal</b>, válido hasta por 14 días y solo en las aguas de New Hampshire. Cuesta $10, y puede obtener uno en cada año calendario.",
+   "en": "If you are 16 or older and do not have a certificate, a boat dealer or rental business approved by the state can give you a short exam and a <b>temporary certificate</b>, good for up to 14 days and for New Hampshire&rsquo;s waters only. Bring a photo ID to the exam. It costs $10, and you can get no more than one in a calendar year; it is meant as a short-term answer, not a substitute for the course.",
+   "es": "Si tiene 16 años o más y no tiene certificado, un vendedor o alquilador de embarcaciones aprobado por el estado puede hacerle un examen breve y darle un <b>certificado temporal</b>, válido hasta por 14 días y solo en las aguas de New Hampshire. Lleve una identificación con foto al examen. Cuesta $10, y no puede obtener más de uno en un año calendario; es una solución a corto plazo, no un sustituto del curso.",
    "state": "draft"
   },
   "guide.boating.it-is-issued-from-age-16": {
@@ -1638,9 +1628,9 @@
    "es": "No necesita certificado.",
    "state": "draft"
   },
-  "guide.boating.register-at-the-dmv-or-with": {
-   "en": "Register at the DMV or with an authorized boat agent. The registration fee is set by the boat&rsquo;s length: $24 up to 16 feet, $34 up to 21 feet, $52 up to 30 feet, $72 up to 45 feet, and $92 over that. An agent who is not a DMV employee adds $5. The boat fee decal and the boat fee, which depends on the kind of boat, its length and its age, are paid with it; the DMV can tell you the total for your boat.",
-   "es": "Regístrela en el DMV o con un agente de embarcaciones autorizado. La cuota de registro depende del largo de la embarcación: $24 hasta 16 pies, $34 hasta 21 pies, $52 hasta 30 pies, $72 hasta 45 pies y $92 si es más larga. Un agente que no sea empleado del DMV cobra $5 más. La calcomanía de la cuota de embarcación y la cuota de embarcación, que depende del tipo de embarcación, su largo y su antigüedad, se pagan junto con el registro; el DMV puede decirle el total para su embarcación.",
+  "guide.boating.register-by-mail-or-the-drop": {
+   "en": "Register by mail or the drop box at the DMV in Concord, or with an authorized boat agent. Bring the registration application, proof you own the boat (a bill of sale signed by you and the seller), your driver&rsquo;s license and the fees. The registration fee is set by the boat&rsquo;s length: $24 up to 16 feet, $34 up to 21 feet, $52 up to 30 feet, $72 up to 45 feet, and $92 over that. An agent who is not a DMV employee adds $5. The boat fee decal and the boat fee, which depends on the kind of boat, its length and its age, are paid with it; the DMV&rsquo;s boat registration office, (603) 227-4030, can tell you the total for your boat. The DMV mails a renewal notice before the registration ends.",
+   "es": "Regístrela por correo o en el buzón del DMV en Concord, o con un agente de embarcaciones autorizado. Lleve la solicitud de registro, prueba de que la embarcación es suya (un contrato de compraventa firmado por usted y el vendedor), su licencia de conducir y las cuotas. La cuota de registro depende del largo de la embarcación: $24 hasta 16 pies, $34 hasta 21 pies, $52 hasta 30 pies, $72 hasta 45 pies y $92 si es más larga. Un agente que no sea empleado del DMV cobra $5 más. La calcomanía de la cuota de embarcación y la cuota de embarcación, que depende del tipo de embarcación, su largo y su antigüedad, se pagan junto con el registro; la oficina de registro de embarcaciones del DMV, (603) 227-4030, puede decirle el total para su embarcación. El DMV envía por correo un aviso de renovación antes de que venza el registro.",
    "state": "draft"
   },
   "guide.boating.register-your-boat-every-year": {
@@ -2921,8 +2911,8 @@
    "state": "draft"
   },
   "guide.fishing-license.lower-cost-and-free-licenses-residents": {
-   "en": "<b>Lower-cost and free licenses.</b> Residents 68 or older can buy a discounted senior license; residents born in 1947 or earlier get a permanent Milestone license from Fish and Game in Concord or select agents. A resident veteran who is totally and permanently disabled from service gets a permanent license, with a one-time $10 administrative fee. A resident on active duty stationed outside the state can get a free license to use while home on leave.",
-   "es": "<b>Licencias más baratas y gratuitas.</b> Los residentes de 68 años o más pueden comprar una licencia con descuento para personas mayores; los residentes nacidos en 1947 o antes obtienen una licencia permanente Milestone en la sede de Pesca y Caza en Concord o con ciertos agentes. Un veterano residente con una discapacidad total y permanente por su servicio obtiene una licencia permanente, con una cuota administrativa única de $10. Un residente en servicio activo destinado fuera del estado puede obtener una licencia gratuita para usarla mientras está de permiso en casa.",
+   "en": "<b>Lower-cost and free licenses.</b> Residents 68 or older can buy a discounted senior license; residents born in 1947 or earlier get a free, permanent Milestone license from Fish and Game in Concord, its regional offices or select agents. A resident veteran who is totally and permanently disabled from service gets a permanent license, with a one-time $10 administrative fee. A resident on active duty stationed outside the state can get a free license to use while home on leave.",
+   "es": "<b>Licencias más baratas y gratuitas.</b> Los residentes de 68 años o más pueden comprar una licencia con descuento para personas mayores; los residentes nacidos en 1947 o antes obtienen una licencia Milestone gratuita y permanente en la sede de Pesca y Caza en Concord, en sus oficinas regionales o con ciertos agentes. Un veterano residente con una discapacidad total y permanente por su servicio obtiene una licencia permanente, con una cuota administrativa única de $10. Un residente en servicio activo destinado fuera del estado puede obtener una licencia gratuita para usarla mientras está de permiso en casa.",
    "state": "draft"
   },
   "guide.fishing-license.marine-fisheries-rsa-211": {
@@ -2946,8 +2936,8 @@
    "state": "draft"
   },
   "guide.fishing-license.on-a-free-fishing-day-the": {
-   "en": "on a <b>free fishing day</b>. The law lets Fish and Game set 2 days a year when anyone may fish by angling without a license; its page gives the dates. Anyone in a fishing tournament still needs a license that day.",
-   "es": "en un <b>día de pesca gratuita</b>. La ley permite que Pesca y Caza fije 2 días al año en los que cualquier persona puede pescar con caña o sedal sin licencia; su página indica las fechas. Quien participe en un torneo de pesca sigue necesitando licencia ese día.",
+   "en": "on a <b>free fishing day</b>. The law lets Fish and Game set 2 days a year when anyone may fish by angling without a license: the first Saturday in June and the third Saturday in January, in fresh water or salt water. Season dates, limits and the other rules still apply, and anyone in a fishing tournament still needs a license that day.",
+   "es": "en un <b>día de pesca gratuita</b>. La ley permite que Pesca y Caza fije 2 días al año en los que cualquier persona puede pescar con caña o sedal sin licencia: el primer sábado de junio y el tercer sábado de enero, en agua dulce o salada. Siguen vigentes las temporadas, los límites y las demás reglas, y quien participe en un torneo de pesca sigue necesitando licencia ese día.",
    "state": "draft"
   },
   "guide.fishing-license.print-your-license-and-sign-it": {
@@ -2956,13 +2946,18 @@
    "state": "draft"
   },
   "guide.fishing-license.resident-or-nonresident-you-are-a": {
-   "en": "<b>Resident or nonresident.</b> You are a resident for a license if you live in New Hampshire and claim residence in no other state for any purpose. A nonresident full-time student at a school or college in New Hampshire pays the resident fee.",
-   "es": "<b>Residente o no residente.</b> Para la licencia, usted es residente si vive en New Hampshire y no declara residencia en ningún otro estado para ningún fin. Un estudiante no residente de tiempo completo en una escuela o universidad de New Hampshire paga la cuota de residente.",
+   "en": "<b>Resident or nonresident.</b> You are a resident for a license if you hold a New Hampshire driver&rsquo;s license or non-driver photo ID and claim residence in no other state for any purpose. A nonresident full-time student at a school or college in New Hampshire pays the resident fee.",
+   "es": "<b>Residente o no residente.</b> Para la licencia, usted es residente si tiene una licencia de conducir o una identificación con foto para no conductores de New Hampshire y no declara residencia en ningún otro estado para ningún fin. Un estudiante no residente de tiempo completo en una escuela o universidad de New Hampshire paga la cuota de residente.",
    "state": "draft"
   },
   "guide.fishing-license.salt-water-fishing-for-saltwater-fish": {
-   "en": "<b>Salt water.</b> Fishing for saltwater fish in coastal and tidal waters takes a recreational saltwater license, unless you are fishing from a licensed charter or party boat. Digging clams takes a separate license, sold to residents only, and taking lobsters or crabs another.",
-   "es": "<b>Agua salada.</b> Pescar peces de agua salada en aguas costeras y de marea requiere una licencia recreativa de agua salada, salvo que pesque desde un barco de alquiler o de excursión con licencia. Sacar almejas requiere una licencia aparte, que se vende solo a residentes, y sacar langostas o cangrejos, otra.",
+   "en": "<b>Salt water.</b> Fishing for saltwater fish in coastal and tidal waters takes a recreational saltwater license, unless you are fishing from a licensed charter or party boat. Anglers 68 or older need it too. It also lets you fish Massachusetts&rsquo; coastal waters and the whole Maine coast. Digging clams takes a separate license, sold to residents only, and taking lobsters or crabs another.",
+   "es": "<b>Agua salada.</b> Pescar peces de agua salada en aguas costeras y de marea requiere una licencia recreativa de agua salada, salvo que pesque desde un barco de alquiler o de excursión con licencia. Los pescadores de 68 años o más también la necesitan. Además, le permite pescar en las aguas costeras de Massachusetts y en toda la costa de Maine. Sacar almejas requiere una licencia aparte, que se vende solo a residentes, y sacar langostas o cangrejos, otra.",
+   "state": "draft"
+  },
+  "guide.fishing-license.saltwater-fishing-questions-nh-fish-and": {
+   "en": "Saltwater fishing questions (NH Fish and Game)",
+   "es": "Preguntas sobre la pesca en agua salada (NH Fish and Game)",
    "state": "draft"
   },
   "guide.fishing-license.saltwater-licenses": {
@@ -4111,6 +4106,11 @@
    "es": "El secretario de su municipio o ciudad es la persona a quien preguntar sobre cómo inscribirse y votar donde vive: qué llevar, el plazo y las boletas de voto en ausencia. La Secretaría de Estado considera a los funcionarios electorales locales y estatales la fuente de confianza de los votantes para la información electoral.",
    "state": "draft"
   },
+  "guide.hunting-license.a-bear-license-to-hunt-bear": {
+   "en": "a <b>bear</b> license to hunt bear;",
+   "es": "una licencia de <b>oso</b> para cazar oso;",
+   "state": "draft"
+  },
   "guide.hunting-license.a-certificate-from-a-hunter-education": {
    "en": "a certificate from a <b>hunter education</b> course in New Hampshire;",
    "es": "un certificado de un curso de <b>educación para cazadores</b> en New Hampshire;",
@@ -4122,13 +4122,18 @@
    "state": "draft"
   },
   "guide.hunting-license.a-hunter-under-16-may-hunt": {
-   "en": "A hunter under 16 may hunt only with a properly licensed person 18 or older, and needs no license of their own while hunting with that person.",
-   "es": "Un cazador menor de 16 años solo puede cazar acompañado de una persona de 18 años o más con la licencia correspondiente, y no necesita licencia propia mientras caza con esa persona.",
+   "en": "A hunter under 16 may hunt only with a properly licensed person 18 or older, and needs no general hunting license while hunting with that person. A young hunter must still buy some special licenses: for turkey, bear, a special archery deer, or the Unit M and Unit L deer permits; and a nonresident under 16 a muzzleloader license.",
+   "es": "Un cazador menor de 16 años solo puede cazar acompañado de una persona de 18 años o más con la licencia correspondiente, y no necesita una licencia de caza general mientras caza con esa persona. Aun así, un cazador joven debe comprar algunas licencias especiales: para pavo, oso, un venado especial con arco, o los permisos de venado de las Unidades M y L; y un no residente menor de 16 años, una licencia de avancarga (muzzleloader).",
    "state": "draft"
   },
   "guide.hunting-license.a-hunting-license-must-be-printed": {
    "en": "A hunting license must be printed and signed to be valid. Carry it while you hunt. It ends on <b>December 31</b>, and Fish and Game cannot refund it.",
    "es": "Una licencia de caza debe imprimirse y firmarse para ser válida. Llévela mientras caza. Vence el <b>31 de diciembre</b>, y Pesca y Caza no puede reembolsarla.",
+   "state": "draft"
+  },
+  "guide.hunting-license.a-muzzleloader-license-for-the": {
+   "en": "a <b>muzzleloader</b> license for the muzzleloader deer season;",
+   "es": "una licencia de <b>avancarga</b> (muzzleloader) para la temporada de venado con arma de avancarga;",
    "state": "draft"
   },
   "guide.hunting-license.a-pheasant-license-to-hunt-pheasant": {
@@ -4191,9 +4196,14 @@
    "es": "Licencias de pesca y caza, RSA 214",
    "state": "draft"
   },
+  "guide.hunting-license.for-any-migratory-bird-such-as": {
+   "en": "for any migratory bird, such as ducks, geese, woodcock, snipe or coot, a free <b>HIP</b> permit number if you are 16 or older.",
+   "es": "para cualquier ave migratoria, como patos, gansos, becadas, agachadizas o fochas, un número de permiso <b>HIP</b> gratuito si tiene 16 años o más.",
+   "state": "draft"
+  },
   "guide.hunting-license.for-ducks-and-geese-a-state": {
-   "en": "for ducks and geese, a state <b>waterfowl</b> license, the federal <b>Duck Stamp</b>, and a free <b>HIP</b> permit. A Duck Stamp is sold at most post offices, and you sign it for it to be valid.",
-   "es": "para patos y gansos, una licencia estatal de <b>aves acuáticas</b>, el <b>Duck Stamp</b> federal (sello federal para cazar aves acuáticas) y un permiso <b>HIP</b> gratuito. El Duck Stamp se vende en la mayoría de las oficinas postales, y debe firmarlo para que sea válido.",
+   "en": "for ducks and geese, a state <b>waterfowl</b> license and the federal <b>Duck Stamp</b>. A Duck Stamp is sold at most post offices, and you sign it for it to be valid;",
+   "es": "para patos y gansos, una licencia estatal de <b>aves acuáticas</b> y el <b>Duck Stamp</b> federal (sello federal para cazar aves acuáticas). El Duck Stamp se vende en la mayoría de las oficinas postales, y debe firmarlo para que sea válido;",
    "state": "draft"
   },
   "guide.hunting-license.have-you-held-a-hunting-license": {
@@ -4307,8 +4317,8 @@
    "state": "draft"
   },
   "guide.hunting-license.start-with-a-resident-or-nonresident": {
-   "en": "Start with a resident or nonresident <b>hunting license</b>, or a combined hunting and fishing license. You are a resident for a license if you live in New Hampshire and claim residence in no other state for any purpose.",
-   "es": "Empiece con una <b>licencia de caza</b> de residente o de no residente, o con una licencia combinada de caza y pesca. Para la licencia, usted es residente si vive en New Hampshire y no declara residencia en ningún otro estado para ningún fin.",
+   "en": "Start with a resident or nonresident <b>hunting license</b>, or a combined hunting and fishing license. You are a resident for a license if you hold a New Hampshire driver&rsquo;s license or non-driver photo ID and claim residence in no other state for any purpose.",
+   "es": "Empiece con una <b>licencia de caza</b> de residente o de no residente, o con una licencia combinada de caza y pesca. Para la licencia, usted es residente si tiene una licencia de conducir o una identificación con foto para no conductores de New Hampshire y no declara residencia en ningún otro estado para ningún fin.",
    "state": "draft"
   },
   "guide.hunting-license.take-hunter-education-or-buy-an": {
@@ -4352,8 +4362,8 @@
    "state": "draft"
   },
   "guide.hunting-license.to-hunt-with-a-bow-you": {
-   "en": "To hunt with a bow you need the same for <b>bow hunter education</b>: an archery license and a hunting license do not stand in for each other. Fish and Game&rsquo;s page lists the courses and how to sign up.",
-   "es": "Para cazar con arco necesita lo mismo para la <b>educación para cazadores con arco</b>: una licencia de arco y una licencia de caza no sustituyen la una a la otra. La página del Departamento de Pesca y Caza (Fish and Game) muestra los cursos y cómo inscribirse.",
+   "en": "To hunt with a bow you need the same for <b>bow hunter education</b>: an archery license and a hunting license do not stand in for each other. You must be at least 12 to get the certificate, and the online course ends with an in-person field day. Fish and Game&rsquo;s page lists the courses and how to sign up.",
+   "es": "Para cazar con arco necesita lo mismo para la <b>educación para cazadores con arco</b>: una licencia de arco y una licencia de caza no sustituyen la una a la otra. Debe tener al menos 12 años para obtener el certificado, y el curso en línea termina con un día de práctica presencial. La página del Departamento de Pesca y Caza (Fish and Game) muestra los cursos y cómo inscribirse.",
    "state": "draft"
   },
   "guide.hunting-license.yes": {
