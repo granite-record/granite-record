@@ -1,0 +1,4959 @@
+{
+ "_about": {
+  "source": "the Department of Environmental Services' map layer of solid waste facilities (gis.des.nh.gov, Core_GIS_Datasets/DES_Data_Public, layer 12) and each facility's page on DES's OneStop",
+  "url": "https://www.des.nh.gov/waste/solid-waste",
+  "kept": "the facilities the layer lists as operating, of the classes C/S/T and C/S/T - LIMITED PUBLIC TS, whose page gives their owner type as PUBLIC; each in the town DES files it under, and in each town a shared one's name names",
+  "licence": "state public records",
+  "writer": "src/towns/parse_transfer_stations.py"
+ },
+ "acworth": {
+  "read_on": "2026-10-25",
+  "stations": [
+   {
+    "name": "Acworth Transfer Station",
+    "street": "222 Beryl Mountain Rd",
+    "also": "",
+    "place": "Acworth",
+    "kind": "transfer",
+    "permit": "DES-SW-PN-13-010",
+    "des_id": "0000263",
+    "page": "https://onestop.des.nh.gov/ords/r/apex_whs/nhdesbasicsearch/solid-waste-facility?p60_swf_lid=0000263",
+    "permittee": "Town of Acworth",
+    "operator": "Town of Acworth",
+    "owner_type": "public",
+    "service_type": "limited",
+    "lat": 43.1796,
+    "lon": -72.2964,
+    "read_on": "2026-10-25",
+    "raw": {
+     "name": "ACWORTH TRANSFER STATION",
+     "street": "222 BERYL MOUNTAIN RD",
+     "also": "",
+     "city": "ACWORTH",
+     "permittee": "TOWN OF ACWORTH"
+    },
+    "named": false
+   }
+  ]
+ },
+ "alexandria": {
+  "read_on": "2026-10-25",
+  "stations": [
+   {
+    "name": "Alexandria Transfer Station",
+    "street": "29 Smith River Rd",
+    "also": "Old Route 104",
+    "place": "Alexandria",
+    "kind": "transfer",
+    "permit": "DES-SW-90-034",
+    "des_id": "0000266",
+    "page": "https://onestop.des.nh.gov/ords/r/apex_whs/nhdesbasicsearch/solid-waste-facility?p60_swf_lid=0000266",
+    "permittee": "Town of Alexandria",
+    "operator": "Town of Alexandria",
+    "owner_type": "public",
+    "service_type": "limited",
+    "lat": 43.56401,
+    "lon": -71.7803,
+    "read_on": "2026-10-25",
+    "raw": {
+     "name": "ALEXANDRIA TRANSFER STATION",
+     "street": "29 SMITH RIVER RD",
+     "also": "OLD ROUTE 104",
+     "city": "ALEXANDRIA",
+     "permittee": "TOWN OF ALEXANDRIA"
+    },
+    "named": false
+   },
+   {
+    "name": "Alexandria Transfer Station, Town of",
+    "street": "1880 Cass Mill Rd",
+    "also": "",
+    "place": "Alexandria",
+    "kind": "transfer",
+    "permit": "DES-SW-PN-23-007",
+    "des_id": "0003165",
+    "page": "https://onestop.des.nh.gov/ords/r/apex_whs/nhdesbasicsearch/solid-waste-facility?p60_swf_lid=0003165",
+    "permittee": "Town of Alexandria",
+    "operator": "Town of Alexandria",
+    "owner_type": "public",
+    "service_type": "limited",
+    "lat": 43.5607,
+    "lon": -71.7944,
+    "read_on": "2026-10-25",
+    "raw": {
+     "name": "ALEXANDRIA TRANSFER STATION, TOWN OF",
+     "street": "1880 CASS MILL RD",
+     "also": "",
+     "city": "ALEXANDRIA",
+     "permittee": "TOWN OF ALEXANDRIA"
+    },
+    "named": false
+   }
+  ]
+ },
+ "allenstown": {
+  "read_on": "2026-10-25",
+  "stations": [
+   {
+    "name": "Allenstown Municipal Transfer Station",
+    "street": "161 Granite St",
+    "also": "",
+    "place": "Allenstown",
+    "kind": "transfer",
+    "permit": "DES-SW-90-018",
+    "des_id": "0000602",
+    "page": "https://onestop.des.nh.gov/ords/r/apex_whs/nhdesbasicsearch/solid-waste-facility?p60_swf_lid=0000602",
+    "permittee": "Town of Allenstown",
+    "operator": "Town of Allenstown",
+    "owner_type": "public",
+    "service_type": "limited",
+    "lat": 43.125008,
+    "lon": -71.43236,
+    "read_on": "2026-10-25",
+    "raw": {
+     "name": "ALLENSTOWN MUNICIPAL TRANSFER STATION",
+     "street": "161 GRANITE ST",
+     "also": "",
+     "city": "ALLENSTOWN",
+     "permittee": "TOWN OF ALLENSTOWN"
+    },
+    "named": false
+   }
+  ]
+ },
+ "alstead": {
+  "read_on": "2026-10-25",
+  "stations": [
+   {
+    "name": "Alstead Recycling & Transfer Station",
+    "street": "168 High St",
+    "also": "",
+    "place": "Alstead",
+    "kind": "transfer",
+    "permit": "DES-SW-PN-18-002",
+    "des_id": "0003034",
+    "page": "https://onestop.des.nh.gov/ords/r/apex_whs/nhdesbasicsearch/solid-waste-facility?p60_swf_lid=0003034",
+    "permittee": "Town of Alstead",
+    "operator": "Town of Alstead",
+    "owner_type": "public",
+    "service_type": "limited",
+    "lat": 43.156994,
+    "lon": -72.37001,
+    "read_on": "2026-10-25",
+    "raw": {
+     "name": "ALSTEAD RECYCLING & TRANSFER STATION",
+     "street": "168 HIGH ST",
+     "also": "",
+     "city": "ALSTEAD",
+     "permittee": "TOWN OF ALSTEAD"
+    },
+    "named": false
+   }
+  ]
+ },
+ "alton": {
+  "read_on": "2026-10-25",
+  "stations": [
+   {
+    "name": "Hurd Hill Road Municipal Transfer Station",
+    "street": "71 Hurd Hill Rd",
+    "also": "",
+    "place": "Alton",
+    "kind": "transfer",
+    "permit": "DES-SW-91-009",
+    "des_id": "0000268",
+    "page": "https://onestop.des.nh.gov/ords/r/apex_whs/nhdesbasicsearch/solid-waste-facility?p60_swf_lid=0000268",
+    "permittee": "Town of Alton",
+    "operator": "Town of Alton",
+    "owner_type": "public",
+    "service_type": "limited",
+    "lat": 43.508138,
+    "lon": -71.22528,
+    "read_on": "2026-10-25",
+    "raw": {
+     "name": "HURD HILL ROAD MUNICIPAL TRANSFER STATION",
+     "street": "71 HURD HILL RD",
+     "also": "",
+     "city": "ALTON",
+     "permittee": "TOWN OF ALTON"
+    },
+    "named": false
+   }
+  ]
+ },
+ "amherst": {
+  "read_on": "2026-10-25",
+  "stations": [
+   {
+    "name": "Amherst Transfer Station",
+    "street": "260 Rte 101",
+    "also": "",
+    "place": "Amherst",
+    "kind": "transfer",
+    "permit": "DES-SW-PN-04-005",
+    "des_id": "0000605",
+    "page": "https://onestop.des.nh.gov/ords/r/apex_whs/nhdesbasicsearch/solid-waste-facility?p60_swf_lid=0000605",
+    "permittee": "Town of Amherst",
+    "operator": "Town of Amherst",
+    "owner_type": "public",
+    "service_type": "limited",
+    "lat": 42.89106,
+    "lon": -71.61108,
+    "read_on": "2026-10-25",
+    "raw": {
+     "name": "AMHERST TRANSFER STATION",
+     "street": "260 RTE 101",
+     "also": "",
+     "city": "AMHERST",
+     "permittee": "TOWN OF AMHERST"
+    },
+    "named": false
+   }
+  ]
+ },
+ "andover": {
+  "read_on": "2026-10-25",
+  "stations": [
+   {
+    "name": "Andover Transfer Station",
+    "street": "640 Main St",
+    "also": "Route 11",
+    "place": "Andover",
+    "kind": "transfer",
+    "permit": "DES-SW-87-034",
+    "des_id": "0000272",
+    "page": "https://onestop.des.nh.gov/ords/r/apex_whs/nhdesbasicsearch/solid-waste-facility?p60_swf_lid=0000272",
+    "permittee": "Town of Andover",
+    "operator": "Town of Andover",
+    "owner_type": "public",
+    "service_type": "limited",
+    "lat": 43.436627,
+    "lon": -71.86369,
+    "read_on": "2026-10-25",
+    "raw": {
+     "name": "ANDOVER TRANSFER STATION",
+     "street": "640 MAIN ST",
+     "also": "ROUTE 11",
+     "city": "ANDOVER",
+     "permittee": "TOWN OF ANDOVER"
+    },
+    "named": false
+   }
+  ]
+ },
+ "antrim": {
+  "read_on": "2026-10-25",
+  "stations": [
+   {
+    "name": "Antrim Transfer and Recycling Center",
+    "street": "62 Goodell Rd",
+    "also": "",
+    "place": "Antrim",
+    "kind": "transfer",
+    "permit": "DES-SW-LP-92-504",
+    "des_id": "0000273",
+    "page": "https://onestop.des.nh.gov/ords/r/apex_whs/nhdesbasicsearch/solid-waste-facility?p60_swf_lid=0000273",
+    "permittee": "Town of Antrim",
+    "operator": "Town of Antrim",
+    "owner_type": "public",
+    "service_type": "limited",
+    "lat": 43.048026,
+    "lon": -71.93289,
+    "read_on": "2026-10-25",
+    "raw": {
+     "name": "ANTRIM TRANSFER AND RECYCLING CENTER",
+     "street": "62 GOODELL RD",
+     "also": "",
+     "city": "ANTRIM",
+     "permittee": "TOWN OF ANTRIM"
+    },
+    "named": false
+   }
+  ]
+ },
+ "ashland": {
+  "read_on": "2026-10-25",
+  "stations": [
+   {
+    "name": "Ashland Transfer Station & Recycling Center",
+    "street": "96 Collins St",
+    "also": "",
+    "place": "Ashland",
+    "kind": "transfer",
+    "permit": "DES-SW-LP-95-506",
+    "des_id": "0000276",
+    "page": "https://onestop.des.nh.gov/ords/r/apex_whs/nhdesbasicsearch/solid-waste-facility?p60_swf_lid=0000276",
+    "permittee": "Town of Ashland",
+    "operator": "Town of Ashland",
+    "owner_type": "public",
+    "service_type": "limited",
+    "lat": 43.693129,
+    "lon": -71.64161,
+    "read_on": "2026-10-25",
+    "raw": {
+     "name": "ASHLAND TRANSFER STATION & RECYCLING CENTER",
+     "street": "96 COLLINS ST",
+     "also": "",
+     "city": "ASHLAND",
+     "permittee": "TOWN OF ASHLAND"
+    },
+    "named": false
+   }
+  ]
+ },
+ "atkinson": {
+  "read_on": "2026-10-25",
+  "stations": [
+   {
+    "name": "Atkinson Recycling Center",
+    "street": "71 Woodlock Park Ln",
+    "also": "",
+    "place": "Atkinson",
+    "kind": "transfer",
+    "permit": "DES-SW-PN-05-005",
+    "des_id": "0000604",
+    "page": "https://onestop.des.nh.gov/ords/r/apex_whs/nhdesbasicsearch/solid-waste-facility?p60_swf_lid=0000604",
+    "permittee": "Town of Atkinson",
+    "operator": "Town of Atkinson",
+    "owner_type": "public",
+    "service_type": "limited",
+    "lat": 42.83826,
+    "lon": -71.17483,
+    "read_on": "2026-10-25",
+    "raw": {
+     "name": "ATKINSON RECYCLING CENTER",
+     "street": "71 WOODLOCK PARK LN",
+     "also": "",
+     "city": "ATKINSON",
+     "permittee": "TOWN OF ATKINSON"
+    },
+    "named": false
+   }
+  ]
+ },
+ "barrington": {
+  "read_on": "2026-10-25",
+  "stations": [
+   {
+    "name": "Barrington Transfer Station",
+    "street": "224 Smoke St",
+    "also": "",
+    "place": "Barrington",
+    "kind": "transfer",
+    "permit": "DES-SW-PN-07-001",
+    "des_id": "0000606",
+    "page": "https://onestop.des.nh.gov/ords/r/apex_whs/nhdesbasicsearch/solid-waste-facility?p60_swf_lid=0000606",
+    "permittee": "Town of Barrington",
+    "operator": "Town of Barrington",
+    "owner_type": "public",
+    "service_type": "limited",
+    "lat": 43.229917,
+    "lon": -71.01979,
+    "read_on": "2026-10-25",
+    "raw": {
+     "name": "BARRINGTON TRANSFER STATION",
+     "street": "224 SMOKE ST",
+     "also": "",
+     "city": "BARRINGTON",
+     "permittee": "TOWN OF BARRINGTON"
+    },
+    "named": false
+   }
+  ]
+ },
+ "bartlett": {
+  "read_on": "2026-10-25",
+  "stations": [
+   {
+    "name": "Bartlett Jackson Harts Location Transfer Station",
+    "street": "102 Transfer Station Rd",
+    "also": "",
+    "place": "Bartlett",
+    "kind": "transfer",
+    "permit": "DES-SW-90-033",
+    "des_id": "0000392",
+    "page": "https://onestop.des.nh.gov/ords/r/apex_whs/nhdesbasicsearch/solid-waste-facility?p60_swf_lid=0000392",
+    "permittee": "Towns of Bartlett, Jackson & Harts Location",
+    "operator": "Towns of Bartlett & Jackson",
+    "owner_type": "public",
+    "service_type": "limited",
+    "lat": 44.136771,
+    "lon": -71.19383,
+    "read_on": "2026-10-25",
+    "raw": {
+     "name": "BARTLETT JACKSON HARTS LOCATION TRANSFER STATION",
+     "street": "102 TRANSFER STATION RD",
+     "also": "",
+     "city": "BARTLETT",
+     "permittee": "TOWNS OF BARTLETT, JACKSON & HARTS LOCATION"
+    },
+    "named": false
+   }
+  ]
+ },
+ "bedford": {
+  "read_on": "2026-10-25",
+  "stations": [
+   {
+    "name": "Bedford Transfer Station",
+    "street": "77 Chubbuck Rd",
+    "also": "",
+    "place": "Bedford",
+    "kind": "transfer",
+    "permit": "DES-SW-LP-94-504",
+    "des_id": "0000284",
+    "page": "https://onestop.des.nh.gov/ords/r/apex_whs/nhdesbasicsearch/solid-waste-facility?p60_swf_lid=0000284",
+    "permittee": "Town of Bedford",
+    "operator": "Town of Bedford",
+    "owner_type": "public",
+    "service_type": "limited",
+    "lat": 42.954939,
+    "lon": -71.5472,
+    "read_on": "2026-10-25",
+    "raw": {
+     "name": "BEDFORD TRANSFER STATION",
+     "street": "77 CHUBBUCK RD",
+     "also": "",
+     "city": "BEDFORD",
+     "permittee": "TOWN OF BEDFORD"
+    },
+    "named": false
+   }
+  ]
+ },
+ "bennington": {
+  "read_on": "2026-10-25",
+  "stations": [
+   {
+    "name": "Bennington Transfer Station",
+    "street": "200 North Bennington Rd",
+    "also": "",
+    "place": "Bennington",
+    "kind": "transfer",
+    "permit": "DES-SW-LP-92-508",
+    "des_id": "0000280",
+    "page": "https://onestop.des.nh.gov/ords/r/apex_whs/nhdesbasicsearch/solid-waste-facility?p60_swf_lid=0000280",
+    "permittee": "Town of Bennington",
+    "operator": "Town of Bennington",
+    "owner_type": "public",
+    "service_type": "limited",
+    "lat": 43.030108,
+    "lon": -71.9114,
+    "read_on": "2026-10-25",
+    "raw": {
+     "name": "BENNINGTON TRANSFER STATION",
+     "street": "200 NORTH BENNINGTON RD",
+     "also": "",
+     "city": "BENNINGTON",
+     "permittee": "TOWN OF BENNINGTON"
+    },
+    "named": false
+   }
+  ]
+ },
+ "berlin": {
+  "read_on": "2026-10-25",
+  "stations": [
+   {
+    "name": "AVRRDD Recycling Center and Transfer Station",
+    "street": "100 West Milan Rd",
+    "also": "Route 110",
+    "place": "Berlin",
+    "kind": "transfer",
+    "permit": "DES-SW-91-011",
+    "des_id": "0000290",
+    "page": "https://onestop.des.nh.gov/ords/r/apex_whs/nhdesbasicsearch/solid-waste-facility?p60_swf_lid=0000290",
+    "permittee": "Androscoggin Valley Regional Refuse Disposal District",
+    "operator": "Androscoggin Valley Regional Refuse Disposal District",
+    "owner_type": "public",
+    "service_type": "unlimited",
+    "lat": 44.511612,
+    "lon": -71.23971,
+    "read_on": "2026-10-25",
+    "raw": {
+     "name": "AVRRDD RECYCLING CENTER AND TRANSFER STATION",
+     "street": "100 WEST MILAN RD",
+     "also": "ROUTE 110",
+     "city": "BERLIN",
+     "permittee": "ANDROSCOGGIN VALLEY REGIONAL REFUSE DISPOSAL DISTRICT"
+    },
+    "named": false
+   }
+  ]
+ },
+ "boscawen": {
+  "read_on": "2026-10-25",
+  "stations": [
+   {
+    "name": "Boscawen Transfer Station",
+    "street": "36 Marlboro Road",
+    "also": "",
+    "place": "Boscawen",
+    "kind": "transfer",
+    "permit": "DES-SW-89-017",
+    "des_id": "0000293",
+    "page": "https://onestop.des.nh.gov/ords/r/apex_whs/nhdesbasicsearch/solid-waste-facility?p60_swf_lid=0000293",
+    "permittee": "Town of Boscawen",
+    "operator": "Town of Boscawen",
+    "owner_type": "public",
+    "service_type": "limited",
+    "lat": 43.3147,
+    "lon": -71.6419,
+    "read_on": "2026-10-25",
+    "raw": {
+     "name": "BOSCAWEN TRANSFER STATION",
+     "street": "36 MARLBORO ROAD",
+     "also": "",
+     "city": "BOSCAWEN",
+     "permittee": "TOWN OF BOSCAWEN"
+    },
+    "named": false
+   }
+  ]
+ },
+ "brentwood": {
+  "read_on": "2026-10-25",
+  "stations": [
+   {
+    "name": "Brentwood Recycling Center",
+    "street": "207 Middle Rd",
+    "also": "",
+    "place": "Brentwood",
+    "kind": "transfer",
+    "permit": "DES-SW-PN-00-005",
+    "des_id": "0000579",
+    "page": "https://onestop.des.nh.gov/ords/r/apex_whs/nhdesbasicsearch/solid-waste-facility?p60_swf_lid=0000579",
+    "permittee": "Town of Brentwood",
+    "operator": "Town of Brentwood",
+    "owner_type": "public",
+    "service_type": "limited",
+    "lat": 42.991329,
+    "lon": -71.04126,
+    "read_on": "2026-10-25",
+    "raw": {
+     "name": "BRENTWOOD RECYCLING CENTER",
+     "street": "207 MIDDLE RD",
+     "also": "",
+     "city": "BRENTWOOD",
+     "permittee": "TOWN OF BRENTWOOD"
+    },
+    "named": false
+   }
+  ]
+ },
+ "bristol": {
+  "read_on": "2026-10-25",
+  "stations": [
+   {
+    "name": "Town of Bristol Transfer Station",
+    "street": "100 Ayers Island Rd",
+    "also": "",
+    "place": "Bristol",
+    "kind": "limited public",
+    "permit": "DES-SW-PN-25-006",
+    "des_id": "0003191",
+    "page": "https://onestop.des.nh.gov/ords/r/apex_whs/nhdesbasicsearch/solid-waste-facility?p60_swf_lid=0003191",
+    "permittee": "Town of Bristol",
+    "operator": "Town of Bristol",
+    "owner_type": "public",
+    "service_type": "limited",
+    "lat": 43.59,
+    "lon": -71.71,
+    "read_on": "2026-10-25",
+    "raw": {
+     "name": "TOWN OF BRISTOL TRANSFER STATION",
+     "street": "100 AYERS ISLAND RD",
+     "also": "",
+     "city": "BRISTOL",
+     "permittee": "TOWN OF BRISTOL"
+    },
+    "named": false
+   }
+  ]
+ },
+ "brookline": {
+  "read_on": "2026-10-25",
+  "stations": [
+   {
+    "name": "Brookline Transfer Station",
+    "street": "38 North Mason Rd",
+    "also": "",
+    "place": "Brookline",
+    "kind": "transfer",
+    "permit": "DES-SW-PN-98-001",
+    "des_id": "0000309",
+    "page": "https://onestop.des.nh.gov/ords/r/apex_whs/nhdesbasicsearch/solid-waste-facility?p60_swf_lid=0000309",
+    "permittee": "Town of Brookline",
+    "operator": "Town of Brookline",
+    "owner_type": "public",
+    "service_type": "limited",
+    "lat": 42.762809,
+    "lon": -71.68674,
+    "read_on": "2026-10-25",
+    "raw": {
+     "name": "BROOKLINE TRANSFER STATION",
+     "street": "38 NORTH MASON RD",
+     "also": "",
+     "city": "BROOKLINE",
+     "permittee": "TOWN OF BROOKLINE"
+    },
+    "named": false
+   }
+  ]
+ },
+ "campton": {
+  "read_on": "2026-10-25",
+  "stations": [
+   {
+    "name": "Campton Thornton Transfer Station & Recycling Center",
+    "street": "1629 Route 175",
+    "also": "",
+    "place": "Thornton",
+    "kind": "transfer",
+    "permit": "DES-SW-LP-94-505",
+    "des_id": "0000538",
+    "page": "https://onestop.des.nh.gov/ords/r/apex_whs/nhdesbasicsearch/solid-waste-facility?p60_swf_lid=0000538",
+    "permittee": "Town of Thornton",
+    "operator": "Town of Thornton",
+    "owner_type": "public",
+    "service_type": "limited",
+    "lat": 43.87893,
+    "lon": -71.6554,
+    "read_on": "2026-10-25",
+    "raw": {
+     "name": "CAMPTON THORNTON TRANSFER STATION & RECYCLING CENTER",
+     "street": "1629 ROUTE 175",
+     "also": "",
+     "city": "THORNTON",
+     "permittee": "TOWN OF THORNTON"
+    },
+    "named": true
+   }
+  ]
+ },
+ "canaan": {
+  "read_on": "2026-10-25",
+  "stations": [
+   {
+    "name": "Canaan Transfer Station",
+    "street": "124 Transfer Station Rd",
+    "also": "Off Route 118",
+    "place": "Canaan",
+    "kind": "transfer",
+    "permit": "DES-SW-89-023",
+    "des_id": "0000311",
+    "page": "https://onestop.des.nh.gov/ords/r/apex_whs/nhdesbasicsearch/solid-waste-facility?p60_swf_lid=0000311",
+    "permittee": "Town of Canaan",
+    "operator": "Town of Canaan",
+    "owner_type": "public",
+    "service_type": "limited",
+    "lat": 43.646619,
+    "lon": -71.99754,
+    "read_on": "2026-10-25",
+    "raw": {
+     "name": "CANAAN TRANSFER STATION",
+     "street": "124 TRANSFER STATION RD",
+     "also": "OFF ROUTE 118",
+     "city": "CANAAN",
+     "permittee": "TOWN OF CANAAN"
+    },
+    "named": false
+   }
+  ]
+ },
+ "candia": {
+  "read_on": "2026-10-25",
+  "stations": [
+   {
+    "name": "Candia Recycling Center",
+    "street": "29 Deer Run Rd",
+    "also": "",
+    "place": "Candia",
+    "kind": "transfer",
+    "permit": "DES-SW-PN-08-007",
+    "des_id": "0002888",
+    "page": "https://onestop.des.nh.gov/ords/r/apex_whs/nhdesbasicsearch/solid-waste-facility?p60_swf_lid=0002888",
+    "permittee": "Town of Candia",
+    "operator": "Town of Candia",
+    "owner_type": "public",
+    "service_type": "limited",
+    "lat": 43.05915,
+    "lon": -71.2525,
+    "read_on": "2026-10-25",
+    "raw": {
+     "name": "CANDIA RECYCLING CENTER",
+     "street": "29 DEER RUN RD",
+     "also": "",
+     "city": "CANDIA",
+     "permittee": "TOWN OF CANDIA"
+    },
+    "named": false
+   }
+  ]
+ },
+ "canterbury": {
+  "read_on": "2026-10-25",
+  "stations": [
+   {
+    "name": "Canterbury Transfer Station & Recycling Center",
+    "street": "83 Baptist Rd",
+    "also": "",
+    "place": "Canterbury",
+    "kind": "transfer",
+    "permit": "DES-SW-PN-00-004",
+    "des_id": "0000575",
+    "page": "https://onestop.des.nh.gov/ords/r/apex_whs/nhdesbasicsearch/solid-waste-facility?p60_swf_lid=0000575",
+    "permittee": "Town of Canterbury",
+    "operator": "Town of Canterbury",
+    "owner_type": "public",
+    "service_type": "limited",
+    "lat": 43.337741,
+    "lon": -71.54958,
+    "read_on": "2026-10-25",
+    "raw": {
+     "name": "CANTERBURY TRANSFER STATION & RECYCLING CENTER",
+     "street": "83 BAPTIST RD",
+     "also": "",
+     "city": "CANTERBURY",
+     "permittee": "TOWN OF CANTERBURY"
+    },
+    "named": false
+   }
+  ]
+ },
+ "carroll": {
+  "read_on": "2026-10-25",
+  "stations": [
+   {
+    "name": "BWPOA Facility",
+    "street": "2096 Route 302 East",
+    "also": "",
+    "place": "Carroll",
+    "kind": "transfer",
+    "permit": "DES-SW-PN-24-006",
+    "des_id": "0003167",
+    "page": "https://onestop.des.nh.gov/ords/r/apex_whs/nhdesbasicsearch/solid-waste-facility?p60_swf_lid=0003167",
+    "permittee": "Bretton Woods Property Owners Association",
+    "operator": "Bretton Woods Property Owners Association",
+    "owner_type": "public",
+    "service_type": "limited",
+    "lat": 44.26681,
+    "lon": -71.4654,
+    "read_on": "2026-10-25",
+    "raw": {
+     "name": "BWPOA FACILITY",
+     "street": "2096 ROUTE 302 EAST",
+     "also": "",
+     "city": "CARROLL",
+     "permittee": "BRETTON WOODS PROPERTY OWNERS ASSOCIATION"
+    },
+    "named": false
+   },
+   {
+    "name": "William Dowling Transfer Station",
+    "street": "240 New Straw Rd",
+    "also": "",
+    "place": "Carroll",
+    "kind": "transfer",
+    "permit": "DES-SW-PN-04-003",
+    "des_id": "0002849",
+    "page": "https://onestop.des.nh.gov/ords/r/apex_whs/nhdesbasicsearch/solid-waste-facility?p60_swf_lid=0002849",
+    "permittee": "Town of Carroll",
+    "operator": "Town of Carroll",
+    "owner_type": "public",
+    "service_type": "limited",
+    "lat": 44.305638,
+    "lon": -71.5559,
+    "read_on": "2026-10-25",
+    "raw": {
+     "name": "WILLIAM DOWLING TRANSFER STATION",
+     "street": "240 NEW STRAW RD",
+     "also": "",
+     "city": "CARROLL",
+     "permittee": "TOWN OF CARROLL"
+    },
+    "named": false
+   }
+  ]
+ },
+ "charlestown": {
+  "read_on": "2026-10-25",
+  "stations": [
+   {
+    "name": "Charlestown Transfer Station",
+    "street": "18 Fling Rd",
+    "also": "",
+    "place": "Charlestown",
+    "kind": "transfer",
+    "permit": "DPHS-SW-84-009",
+    "des_id": "0000317",
+    "page": "https://onestop.des.nh.gov/ords/r/apex_whs/nhdesbasicsearch/solid-waste-facility?p60_swf_lid=0000317",
+    "permittee": "Town of Charlestown",
+    "operator": "Town of Charlestown",
+    "owner_type": "public",
+    "service_type": "limited",
+    "lat": 43.246225,
+    "lon": -72.42326,
+    "read_on": "2026-10-25",
+    "raw": {
+     "name": "CHARLESTOWN TRANSFER STATION",
+     "street": "18 FLING RD",
+     "also": "",
+     "city": "CHARLESTOWN",
+     "permittee": "TOWN OF CHARLESTOWN"
+    },
+    "named": false
+   }
+  ]
+ },
+ "chester": {
+  "read_on": "2026-10-25",
+  "stations": [
+   {
+    "name": "Chester Transfer Station & Recycling Facility",
+    "street": "50 Dump Road",
+    "also": "Route 102",
+    "place": "Chester",
+    "kind": "transfer",
+    "permit": "DES-SW-LP-96-506",
+    "des_id": "0000318",
+    "page": "https://onestop.des.nh.gov/ords/r/apex_whs/nhdesbasicsearch/solid-waste-facility?p60_swf_lid=0000318",
+    "permittee": "Town of Chester",
+    "operator": "Town of Chester",
+    "owner_type": "public",
+    "service_type": "limited",
+    "lat": 42.989,
+    "lon": -71.206,
+    "read_on": "2026-10-25",
+    "raw": {
+     "name": "CHESTER TRANSFER STATION & RECYCLING FACILITY",
+     "street": "50 DUMP ROAD",
+     "also": "ROUTE 102",
+     "city": "CHESTER",
+     "permittee": "TOWN OF CHESTER"
+    },
+    "named": false
+   }
+  ]
+ },
+ "chesterfield": {
+  "read_on": "2026-10-25",
+  "stations": [
+   {
+    "name": "Chesterfield Transfer & Recycling Facility",
+    "street": "33 Old Brattleboro Road",
+    "also": "",
+    "place": "Chesterfield",
+    "kind": "transfer",
+    "permit": "DES-SW-PN-04-007",
+    "des_id": "0002847",
+    "page": "https://onestop.des.nh.gov/ords/r/apex_whs/nhdesbasicsearch/solid-waste-facility?p60_swf_lid=0002847",
+    "permittee": "Town of Chesterfield",
+    "operator": "Town of Chesterfield",
+    "owner_type": "public",
+    "service_type": "limited",
+    "lat": 42.82196,
+    "lon": -72.53744,
+    "read_on": "2026-10-25",
+    "raw": {
+     "name": "CHESTERFIELD TRANSFER & RECYCLING FACILITY",
+     "street": "33 OLD BRATTLEBORO ROAD",
+     "also": "",
+     "city": "CHESTERFIELD",
+     "permittee": "TOWN OF CHESTERFIELD"
+    },
+    "named": false
+   }
+  ]
+ },
+ "claremont": {
+  "read_on": "2026-10-25",
+  "stations": [
+   {
+    "name": "Claremont Transfer Station",
+    "street": "875 Washington St",
+    "also": "",
+    "place": "Claremont",
+    "kind": "transfer",
+    "permit": "DES-SW-PN-12-004",
+    "des_id": "0002879",
+    "page": "https://onestop.des.nh.gov/ords/r/apex_whs/nhdesbasicsearch/solid-waste-facility?p60_swf_lid=0002879",
+    "permittee": "City of Claremont",
+    "operator": "City of Claremont",
+    "owner_type": "public",
+    "service_type": "limited",
+    "lat": 43.365973,
+    "lon": -72.27232,
+    "read_on": "2026-10-25",
+    "raw": {
+     "name": "CLAREMONT TRANSFER STATION",
+     "street": "875 WASHINGTON ST",
+     "also": "",
+     "city": "CLAREMONT",
+     "permittee": "CITY OF CLAREMONT"
+    },
+    "named": false
+   }
+  ]
+ },
+ "colebrook": {
+  "read_on": "2026-10-25",
+  "stations": [
+   {
+    "name": "Colebrook Transfer Station",
+    "street": "21 Transfer St",
+    "also": "",
+    "place": "Colebrook",
+    "kind": "transfer",
+    "permit": "DES-SW-LP-93-505",
+    "des_id": "0000321",
+    "page": "https://onestop.des.nh.gov/ords/r/apex_whs/nhdesbasicsearch/solid-waste-facility?p60_swf_lid=0000321",
+    "permittee": "Town of Colebrook",
+    "operator": "Town of Colebrook",
+    "owner_type": "public",
+    "service_type": "limited",
+    "lat": 44.895472,
+    "lon": -71.502,
+    "read_on": "2026-10-25",
+    "raw": {
+     "name": "COLEBROOK TRANSFER STATION",
+     "street": "21 TRANSFER ST",
+     "also": "",
+     "city": "COLEBROOK",
+     "permittee": "TOWN OF COLEBROOK"
+    },
+    "named": false
+   }
+  ]
+ },
+ "concord": {
+  "read_on": "2026-10-25",
+  "stations": [
+   {
+    "name": "Concord Transfer Station & Recycling Facility",
+    "street": "77 Old Turnpike Rd",
+    "also": "",
+    "place": "Concord",
+    "kind": "transfer",
+    "permit": "DES-SW-89-020",
+    "des_id": "0000301",
+    "page": "https://onestop.des.nh.gov/ords/r/apex_whs/nhdesbasicsearch/solid-waste-facility?p60_swf_lid=0000301",
+    "permittee": "City of Concord",
+    "operator": "Casella Waste Management of Massachusetts",
+    "owner_type": "public",
+    "service_type": "limited",
+    "lat": 43.19966,
+    "lon": -71.51737,
+    "read_on": "2026-10-25",
+    "raw": {
+     "name": "CONCORD TRANSFER STATION & RECYCLING FACILITY",
+     "street": "77 OLD TURNPIKE RD",
+     "also": "",
+     "city": "CONCORD",
+     "permittee": "CITY OF CONCORD"
+    },
+    "named": false
+   }
+  ]
+ },
+ "conway": {
+  "read_on": "2026-10-25",
+  "stations": [
+   {
+    "name": "Conway Transfer Station & Recycling Center",
+    "street": "755 East Conway Rd",
+    "also": "",
+    "place": "Conway",
+    "kind": "transfer",
+    "permit": "DES-SW-89-025",
+    "des_id": "0000509",
+    "page": "https://onestop.des.nh.gov/ords/r/apex_whs/nhdesbasicsearch/solid-waste-facility?p60_swf_lid=0000509",
+    "permittee": "Town of Conway",
+    "operator": "Town of Conway",
+    "owner_type": "public",
+    "service_type": "limited",
+    "lat": 44.009562,
+    "lon": -71.05768,
+    "read_on": "2026-10-25",
+    "raw": {
+     "name": "CONWAY TRANSFER STATION & RECYCLING CENTER",
+     "street": "755 EAST CONWAY RD",
+     "also": "",
+     "city": "CONWAY",
+     "permittee": "TOWN OF CONWAY"
+    },
+    "named": false
+   }
+  ]
+ },
+ "croydon": {
+  "read_on": "2026-10-25",
+  "stations": [
+   {
+    "name": "Croydon Transfer Station",
+    "street": "Sawyer Meadow Rd",
+    "also": "",
+    "place": "Croydon",
+    "kind": "transfer",
+    "permit": "DES-SW-PN-02-003",
+    "des_id": "0000612",
+    "page": "https://onestop.des.nh.gov/ords/r/apex_whs/nhdesbasicsearch/solid-waste-facility?p60_swf_lid=0000612",
+    "permittee": "Town of Croydon",
+    "operator": "Town of Croydon",
+    "owner_type": "public",
+    "service_type": "limited",
+    "lat": 43.457379,
+    "lon": -72.15485,
+    "read_on": "2026-10-25",
+    "raw": {
+     "name": "CROYDON TRANSFER STATION",
+     "street": "SAWYER MEADOW RD",
+     "also": "",
+     "city": "CROYDON",
+     "permittee": "TOWN OF CROYDON"
+    },
+    "named": false
+   }
+  ]
+ },
+ "dalton": {
+  "read_on": "2026-10-25",
+  "stations": [
+   {
+    "name": "Dalton Transfer Station",
+    "street": "184 Whitefield Rd",
+    "also": "",
+    "place": "Dalton",
+    "kind": "transfer",
+    "permit": "DES-SW-LP-97-503",
+    "des_id": "0000322",
+    "page": "https://onestop.des.nh.gov/ords/r/apex_whs/nhdesbasicsearch/solid-waste-facility?p60_swf_lid=0000322",
+    "permittee": "Town of Dalton",
+    "operator": "Town of Dalton",
+    "owner_type": "public",
+    "service_type": "limited",
+    "lat": 44.43116,
+    "lon": -71.65998,
+    "read_on": "2026-10-25",
+    "raw": {
+     "name": "DALTON TRANSFER STATION",
+     "street": "184 WHITEFIELD RD",
+     "also": "",
+     "city": "DALTON",
+     "permittee": "TOWN OF DALTON"
+    },
+    "named": false
+   }
+  ]
+ },
+ "danbury": {
+  "read_on": "2026-10-25",
+  "stations": [
+   {
+    "name": "Danbury Transfer Station",
+    "street": "18 Pine Drive",
+    "also": "",
+    "place": "Danbury",
+    "kind": "transfer",
+    "permit": "DPHS-SW-85-002",
+    "des_id": "0000324",
+    "page": "https://onestop.des.nh.gov/ords/r/apex_whs/nhdesbasicsearch/solid-waste-facility?p60_swf_lid=0000324",
+    "permittee": "Town of Danbury",
+    "operator": "Town of Danbury",
+    "owner_type": "public",
+    "service_type": "limited",
+    "lat": 43.528435,
+    "lon": -71.86019,
+    "read_on": "2026-10-25",
+    "raw": {
+     "name": "DANBURY TRANSFER STATION",
+     "street": "18 PINE DRIVE",
+     "also": "",
+     "city": "DANBURY",
+     "permittee": "TOWN OF DANBURY"
+    },
+    "named": false
+   }
+  ]
+ },
+ "deerfield": {
+  "read_on": "2026-10-25",
+  "stations": [
+   {
+    "name": "Deerfield Transfer Station",
+    "street": "51 Brown St",
+    "also": "",
+    "place": "Deerfield",
+    "kind": "transfer",
+    "permit": "DES-SW-LP-94-500",
+    "des_id": "0000325",
+    "page": "https://onestop.des.nh.gov/ords/r/apex_whs/nhdesbasicsearch/solid-waste-facility?p60_swf_lid=0000325",
+    "permittee": "Town of Deerfield",
+    "operator": "Town of Deerfield",
+    "owner_type": "public",
+    "service_type": "limited",
+    "lat": 43.092266,
+    "lon": -71.22145,
+    "read_on": "2026-10-25",
+    "raw": {
+     "name": "DEERFIELD TRANSFER STATION",
+     "street": "51 BROWN ST",
+     "also": "",
+     "city": "DEERFIELD",
+     "permittee": "TOWN OF DEERFIELD"
+    },
+    "named": false
+   }
+  ]
+ },
+ "derry": {
+  "read_on": "2026-10-25",
+  "stations": [
+   {
+    "name": "Derry Transfer Station",
+    "street": "40 Transfer Ln",
+    "also": "",
+    "place": "Derry",
+    "kind": "transfer",
+    "permit": "DES-SW-90-005",
+    "des_id": "0000326",
+    "page": "https://onestop.des.nh.gov/ords/r/apex_whs/nhdesbasicsearch/solid-waste-facility?p60_swf_lid=0000326",
+    "permittee": "Town of Derry",
+    "operator": "Town of Derry",
+    "owner_type": "public",
+    "service_type": "limited",
+    "lat": 42.867429,
+    "lon": -71.33359,
+    "read_on": "2026-10-25",
+    "raw": {
+     "name": "DERRY TRANSFER STATION",
+     "street": "40 TRANSFER LN",
+     "also": "",
+     "city": "DERRY",
+     "permittee": "TOWN OF DERRY"
+    },
+    "named": false
+   }
+  ]
+ },
+ "dublin": {
+  "read_on": "2026-10-25",
+  "stations": [
+   {
+    "name": "Dublin Transfer Station",
+    "street": "176 Cobb Meadow Rd",
+    "also": "",
+    "place": "Dublin",
+    "kind": "transfer",
+    "permit": "DES-SW-PN-20-002",
+    "des_id": "0003128",
+    "page": "https://onestop.des.nh.gov/ords/r/apex_whs/nhdesbasicsearch/solid-waste-facility?p60_swf_lid=0003128",
+    "permittee": "Town of Dublin",
+    "operator": "Town of Dublin",
+    "owner_type": "public",
+    "service_type": "limited",
+    "lat": 42.912524,
+    "lon": -72.03321,
+    "read_on": "2026-10-25",
+    "raw": {
+     "name": "DUBLIN TRANSFER STATION",
+     "street": "176 COBB MEADOW RD",
+     "also": "",
+     "city": "DUBLIN",
+     "permittee": "TOWN OF DUBLIN"
+    },
+    "named": false
+   }
+  ]
+ },
+ "dunbarton": {
+  "read_on": "2026-10-25",
+  "stations": [
+   {
+    "name": "Dunbarton Transfer Station",
+    "street": "131 Concord Stage Rd",
+    "also": "",
+    "place": "Dunbarton",
+    "kind": "transfer",
+    "permit": "DES-SW-TP-91-002",
+    "des_id": "0000336",
+    "page": "https://onestop.des.nh.gov/ords/r/apex_whs/nhdesbasicsearch/solid-waste-facility?p60_swf_lid=0000336",
+    "permittee": "Town of Dunbarton",
+    "operator": "Town of Dunbarton",
+    "owner_type": "public",
+    "service_type": "limited",
+    "lat": 43.14582,
+    "lon": -71.65537,
+    "read_on": "2026-10-25",
+    "raw": {
+     "name": "DUNBARTON TRANSFER STATION",
+     "street": "131 CONCORD STAGE RD",
+     "also": "",
+     "city": "DUNBARTON",
+     "permittee": "TOWN OF DUNBARTON"
+    },
+    "named": false
+   }
+  ]
+ },
+ "durham": {
+  "read_on": "2026-10-25",
+  "stations": [
+   {
+    "name": "Raymond A. Laroche Sr. Transfer Station and Recycling Center",
+    "street": "100 Durham Point Rd",
+    "also": "",
+    "place": "Durham",
+    "kind": "transfer",
+    "permit": "DES-SW-90-008",
+    "des_id": "0000338",
+    "page": "https://onestop.des.nh.gov/ords/r/apex_whs/nhdesbasicsearch/solid-waste-facility?p60_swf_lid=0000338",
+    "permittee": "Town of Durham",
+    "operator": "Town of Durham",
+    "owner_type": "public",
+    "service_type": "limited",
+    "lat": 43.12466,
+    "lon": -70.901,
+    "read_on": "2026-10-25",
+    "raw": {
+     "name": "RAYMOND A. LAROCHE SR. TRANSFER STATION AND RECYCLING CENTER",
+     "street": "100 DURHAM POINT RD",
+     "also": "",
+     "city": "DURHAM",
+     "permittee": "TOWN OF DURHAM"
+    },
+    "named": false
+   }
+  ]
+ },
+ "effingham": {
+  "read_on": "2026-10-25",
+  "stations": [
+   {
+    "name": "Effingham Transfer Station",
+    "street": "53 Snow Rd",
+    "also": "",
+    "place": "Effingham",
+    "kind": "transfer",
+    "permit": "DES-SW-LP-93-509",
+    "des_id": "0000344",
+    "page": "https://onestop.des.nh.gov/ords/r/apex_whs/nhdesbasicsearch/solid-waste-facility?p60_swf_lid=0000344",
+    "permittee": "Town of Effingham",
+    "operator": "Town of Effingham",
+    "owner_type": "public",
+    "service_type": "limited",
+    "lat": 43.741189,
+    "lon": -71.0032,
+    "read_on": "2026-10-25",
+    "raw": {
+     "name": "EFFINGHAM TRANSFER STATION",
+     "street": "53 SNOW RD",
+     "also": "",
+     "city": "EFFINGHAM",
+     "permittee": "TOWN OF EFFINGHAM"
+    },
+    "named": false
+   }
+  ]
+ },
+ "enfield": {
+  "read_on": "2026-10-25",
+  "stations": [
+   {
+    "name": "Enfield Transfer Station & Recycling Center",
+    "street": "39 Lockehaven Rd",
+    "also": "",
+    "place": "Enfield",
+    "kind": "transfer",
+    "permit": "DES-SW-PN-00-009",
+    "des_id": "0000343",
+    "page": "https://onestop.des.nh.gov/ords/r/apex_whs/nhdesbasicsearch/solid-waste-facility?p60_swf_lid=0000343",
+    "permittee": "Town of Enfield",
+    "operator": "Town of Enfield",
+    "owner_type": "public",
+    "service_type": "limited",
+    "lat": 43.621565,
+    "lon": -72.11497,
+    "read_on": "2026-10-25",
+    "raw": {
+     "name": "ENFIELD TRANSFER STATION & RECYCLING CENTER",
+     "street": "39 LOCKEHAVEN RD",
+     "also": "",
+     "city": "ENFIELD",
+     "permittee": "TOWN OF ENFIELD"
+    },
+    "named": false
+   }
+  ]
+ },
+ "epping": {
+  "read_on": "2026-10-25",
+  "stations": [
+   {
+    "name": "Epping Transfer Station",
+    "street": "135 Coffin Road",
+    "also": "",
+    "place": "Epping",
+    "kind": "transfer",
+    "permit": "DES-SW-PN-08-010",
+    "des_id": "0002890",
+    "page": "https://onestop.des.nh.gov/ords/r/apex_whs/nhdesbasicsearch/solid-waste-facility?p60_swf_lid=0002890",
+    "permittee": "Town of Epping",
+    "operator": "Town of Epping",
+    "owner_type": "public",
+    "service_type": "limited",
+    "lat": 43.049192,
+    "lon": -71.04572,
+    "read_on": "2026-10-25",
+    "raw": {
+     "name": "EPPING TRANSFER STATION",
+     "street": "135 COFFIN ROAD",
+     "also": "",
+     "city": "EPPING",
+     "permittee": "TOWN OF EPPING"
+    },
+    "named": false
+   }
+  ]
+ },
+ "errol": {
+  "read_on": "2026-10-25",
+  "stations": [
+   {
+    "name": "Errol Transfer Station",
+    "street": "593 Colebrook Rd",
+    "also": "",
+    "place": "Errol",
+    "kind": "transfer",
+    "permit": "DES-SW-LP-92-505",
+    "des_id": "0000347",
+    "page": "https://onestop.des.nh.gov/ords/r/apex_whs/nhdesbasicsearch/solid-waste-facility?p60_swf_lid=0000347",
+    "permittee": "Town of Errol",
+    "operator": "Town of Errol",
+    "owner_type": "public",
+    "service_type": "limited",
+    "lat": 44.788855,
+    "lon": -71.1602,
+    "read_on": "2026-10-25",
+    "raw": {
+     "name": "ERROL TRANSFER STATION",
+     "street": "593 COLEBROOK RD",
+     "also": "",
+     "city": "ERROL",
+     "permittee": "TOWN OF ERROL"
+    },
+    "named": false
+   }
+  ]
+ },
+ "exeter": {
+  "read_on": "2026-10-25",
+  "stations": [
+   {
+    "name": "Exeter Transfer Station",
+    "street": "9 Cross Rd",
+    "also": "",
+    "place": "Exeter",
+    "kind": "transfer",
+    "permit": "DES-SW-LP-93-506",
+    "des_id": "0000348",
+    "page": "https://onestop.des.nh.gov/ords/r/apex_whs/nhdesbasicsearch/solid-waste-facility?p60_swf_lid=0000348",
+    "permittee": "Town of Exeter",
+    "operator": "Town of Exeter",
+    "owner_type": "public",
+    "service_type": "limited",
+    "lat": 42.961485,
+    "lon": -71.00008,
+    "read_on": "2026-10-25",
+    "raw": {
+     "name": "EXETER TRANSFER STATION",
+     "street": "9 CROSS RD",
+     "also": "",
+     "city": "EXETER",
+     "permittee": "TOWN OF EXETER"
+    },
+    "named": false
+   }
+  ]
+ },
+ "farmington": {
+  "read_on": "2026-10-25",
+  "stations": [
+   {
+    "name": "Farmington Transfer Station",
+    "street": "37 Cocheco Rd",
+    "also": "",
+    "place": "Farmington",
+    "kind": "transfer",
+    "permit": "DES-SW-PN-10-007",
+    "des_id": "0002927",
+    "page": "https://onestop.des.nh.gov/ords/r/apex_whs/nhdesbasicsearch/solid-waste-facility?p60_swf_lid=0002927",
+    "permittee": "Town of Farmington",
+    "operator": "Town of Farmington",
+    "owner_type": "public",
+    "service_type": "limited",
+    "lat": 43.375431,
+    "lon": -71.04,
+    "read_on": "2026-10-25",
+    "raw": {
+     "name": "FARMINGTON TRANSFER STATION",
+     "street": "37 COCHECO RD",
+     "also": "",
+     "city": "FARMINGTON",
+     "permittee": "TOWN OF FARMINGTON"
+    },
+    "named": false
+   }
+  ]
+ },
+ "fitzwilliam": {
+  "read_on": "2026-10-25",
+  "stations": [
+   {
+    "name": "Fitzwilliam Transfer Station",
+    "street": "249 Route 12 North",
+    "also": "",
+    "place": "Fitzwilliam",
+    "kind": "transfer",
+    "permit": "DES-SW-PN-00-003",
+    "des_id": "0000574",
+    "page": "https://onestop.des.nh.gov/ords/r/apex_whs/nhdesbasicsearch/solid-waste-facility?p60_swf_lid=0000574",
+    "permittee": "Town of Fitzwilliam",
+    "operator": "Town of Fitzwilliam",
+    "owner_type": "public",
+    "service_type": "limited",
+    "lat": 42.7958,
+    "lon": -72.15196,
+    "read_on": "2026-10-25",
+    "raw": {
+     "name": "FITZWILLIAM TRANSFER STATION",
+     "street": "249 ROUTE 12 NORTH",
+     "also": "",
+     "city": "FITZWILLIAM",
+     "permittee": "TOWN OF FITZWILLIAM"
+    },
+    "named": false
+   }
+  ]
+ },
+ "francestown": {
+  "read_on": "2026-10-25",
+  "stations": [
+   {
+    "name": "Francestown Transfer Station",
+    "street": "248 Todd Rd",
+    "also": "",
+    "place": "Francestown",
+    "kind": "transfer",
+    "permit": "DES-SW-PN-06-001",
+    "des_id": "0000614",
+    "page": "https://onestop.des.nh.gov/ords/r/apex_whs/nhdesbasicsearch/solid-waste-facility?p60_swf_lid=0000614",
+    "permittee": "Town of Francestown",
+    "operator": "Town of Francestown",
+    "owner_type": "public",
+    "service_type": "limited",
+    "lat": 43.000754,
+    "lon": -71.81646,
+    "read_on": "2026-10-25",
+    "raw": {
+     "name": "FRANCESTOWN TRANSFER STATION",
+     "street": "248 TODD RD",
+     "also": "",
+     "city": "FRANCESTOWN",
+     "permittee": "TOWN OF FRANCESTOWN"
+    },
+    "named": false
+   }
+  ]
+ },
+ "franconia": {
+  "read_on": "2026-10-25",
+  "stations": [
+   {
+    "name": "Tri-Town Transfer Station",
+    "street": "840 Easton Road",
+    "also": "Route 116",
+    "place": "Franconia",
+    "kind": "transfer",
+    "permit": "DES-SW-PN-99-002",
+    "des_id": "0000601",
+    "page": "https://onestop.des.nh.gov/ords/r/apex_whs/nhdesbasicsearch/solid-waste-facility?p60_swf_lid=0000601",
+    "permittee": "Town of Franconia",
+    "operator": "Town of Franconia",
+    "owner_type": "public",
+    "service_type": "limited",
+    "lat": 44.206,
+    "lon": -71.753,
+    "read_on": "2026-10-25",
+    "raw": {
+     "name": "TRI-TOWN TRANSFER STATION",
+     "street": "840 EASTON ROAD",
+     "also": "ROUTE 116",
+     "city": "FRANCONIA",
+     "permittee": "TOWN OF FRANCONIA"
+    },
+    "named": false
+   }
+  ]
+ },
+ "franklin": {
+  "read_on": "2026-10-25",
+  "stations": [
+   {
+    "name": "Franklin Transfer Station",
+    "street": "75 Punch Brook Rd",
+    "also": "",
+    "place": "Franklin",
+    "kind": "transfer",
+    "permit": "DPHS-SW-84-002",
+    "des_id": "0000352",
+    "page": "https://onestop.des.nh.gov/ords/r/apex_whs/nhdesbasicsearch/solid-waste-facility?p60_swf_lid=0000352",
+    "permittee": "City of Franklin",
+    "operator": "City of Franklin",
+    "owner_type": "public",
+    "service_type": "limited",
+    "lat": 43.414,
+    "lon": -71.665,
+    "read_on": "2026-10-25",
+    "raw": {
+     "name": "FRANKLIN TRANSFER STATION",
+     "street": "75 PUNCH BROOK RD",
+     "also": "",
+     "city": "FRANKLIN",
+     "permittee": "CITY OF FRANKLIN"
+    },
+    "named": false
+   }
+  ]
+ },
+ "freedom": {
+  "read_on": "2026-10-25",
+  "stations": [
+   {
+    "name": "Town of Freedom Transfer Station & Mandatory Recycling Center",
+    "street": "134 Bennett Rd",
+    "also": "",
+    "place": "Freedom",
+    "kind": "transfer",
+    "permit": "DES-SW-PN-23-012",
+    "des_id": "0003169",
+    "page": "https://onestop.des.nh.gov/ords/r/apex_whs/nhdesbasicsearch/solid-waste-facility?p60_swf_lid=0003169",
+    "permittee": "Town of Freedom",
+    "operator": "Town of Freedom",
+    "owner_type": "public",
+    "service_type": "limited",
+    "lat": 43.82107,
+    "lon": -71.08643,
+    "read_on": "2026-10-25",
+    "raw": {
+     "name": "TOWN OF FREEDOM TRANSFER STATION & MANDATORY RECYCLING CENTER",
+     "street": "134 BENNETT RD",
+     "also": "",
+     "city": "FREEDOM",
+     "permittee": "TOWN OF FREEDOM"
+    },
+    "named": false
+   }
+  ]
+ },
+ "gilford": {
+  "read_on": "2026-10-25",
+  "stations": [
+   {
+    "name": "Gilford Foam Recycling Center",
+    "street": "100 Recycle Way",
+    "also": "",
+    "place": "Gilford",
+    "kind": "transfer",
+    "permit": "DES-SW-PN-22-002",
+    "des_id": "0003143",
+    "page": "https://onestop.des.nh.gov/ords/r/apex_whs/nhdesbasicsearch/solid-waste-facility?p60_swf_lid=0003143",
+    "permittee": "Town of Gilford",
+    "operator": "Town of Gilford",
+    "owner_type": "public",
+    "service_type": "limited",
+    "lat": 43.57866,
+    "lon": -71.42156,
+    "read_on": "2026-10-25",
+    "raw": {
+     "name": "GILFORD FOAM RECYCLING CENTER",
+     "street": "100 RECYCLE WAY",
+     "also": "",
+     "city": "GILFORD",
+     "permittee": "TOWN OF GILFORD"
+    },
+    "named": false
+   },
+   {
+    "name": "Gilford Solid Waste Center",
+    "street": "100 Recycle Way",
+    "also": "",
+    "place": "Gilford",
+    "kind": "transfer",
+    "permit": "DES-SW-PN-18-006",
+    "des_id": "0003117",
+    "page": "https://onestop.des.nh.gov/ords/r/apex_whs/nhdesbasicsearch/solid-waste-facility?p60_swf_lid=0003117",
+    "permittee": "Town of Gilford",
+    "operator": "Town of Gilford",
+    "owner_type": "public",
+    "service_type": "limited",
+    "lat": 43.61241,
+    "lon": -71.42176,
+    "read_on": "2026-10-25",
+    "raw": {
+     "name": "GILFORD SOLID WASTE CENTER",
+     "street": "100 RECYCLE WAY",
+     "also": "",
+     "city": "GILFORD",
+     "permittee": "TOWN OF GILFORD"
+    },
+    "named": false
+   }
+  ]
+ },
+ "gilmanton": {
+  "read_on": "2026-10-25",
+  "stations": [
+   {
+    "name": "Gilmanton Transfer Station & Recycling Center",
+    "street": "284 Province Rd",
+    "also": "Route 107",
+    "place": "Gilmanton",
+    "kind": "transfer",
+    "permit": "DES-SW-PN-00-011",
+    "des_id": "0000355",
+    "page": "https://onestop.des.nh.gov/ords/r/apex_whs/nhdesbasicsearch/solid-waste-facility?p60_swf_lid=0000355",
+    "permittee": "Town of Gilmanton",
+    "operator": "Town of Gilmanton",
+    "owner_type": "public",
+    "service_type": "limited",
+    "lat": 43.4388,
+    "lon": -71.41868,
+    "read_on": "2026-10-25",
+    "raw": {
+     "name": "GILMANTON TRANSFER STATION & RECYCLING CENTER",
+     "street": "284 PROVINCE RD",
+     "also": "ROUTE 107",
+     "city": "GILMANTON",
+     "permittee": "TOWN OF GILMANTON"
+    },
+    "named": false
+   }
+  ]
+ },
+ "gilsum": {
+  "read_on": "2026-10-25",
+  "stations": [
+   {
+    "name": "Gilsum Transfer Station",
+    "street": "Lounder Rd",
+    "also": "",
+    "place": "Gilsum",
+    "kind": "transfer",
+    "permit": "DES-SW-PN-08-005",
+    "des_id": "0000616",
+    "page": "https://onestop.des.nh.gov/ords/r/apex_whs/nhdesbasicsearch/solid-waste-facility?p60_swf_lid=0000616",
+    "permittee": "Town of Gilsum",
+    "operator": "Gilsum Transfer Station",
+    "owner_type": "public",
+    "service_type": "limited",
+    "lat": 43.045351,
+    "lon": -72.29595,
+    "read_on": "2026-10-25",
+    "raw": {
+     "name": "GILSUM TRANSFER STATION",
+     "street": "LOUNDER RD",
+     "also": "",
+     "city": "GILSUM",
+     "permittee": "TOWN OF GILSUM"
+    },
+    "named": false
+   }
+  ]
+ },
+ "goffstown": {
+  "read_on": "2026-10-25",
+  "stations": [
+   {
+    "name": "Goffstown Transfer Station",
+    "street": "404 Elm St",
+    "also": "",
+    "place": "Goffstown",
+    "kind": "transfer",
+    "permit": "DES-SW-LP-93-502",
+    "des_id": "0000359",
+    "page": "https://onestop.des.nh.gov/ords/r/apex_whs/nhdesbasicsearch/solid-waste-facility?p60_swf_lid=0000359",
+    "permittee": "Town of Goffstown",
+    "operator": "Goffstown Transfer Station",
+    "owner_type": "public",
+    "service_type": "limited",
+    "lat": 43.02029,
+    "lon": -71.55628,
+    "read_on": "2026-10-25",
+    "raw": {
+     "name": "GOFFSTOWN TRANSFER STATION",
+     "street": "404 ELM ST",
+     "also": "",
+     "city": "GOFFSTOWN",
+     "permittee": "TOWN OF GOFFSTOWN"
+    },
+    "named": false
+   }
+  ]
+ },
+ "gorham": {
+  "read_on": "2026-10-25",
+  "stations": [
+   {
+    "name": "Gorham Public Works Transfer Station",
+    "street": "24 Main St",
+    "also": "",
+    "place": "Gorham",
+    "kind": "transfer",
+    "permit": "DES-SW-PN-98-002",
+    "des_id": "0000363",
+    "page": "https://onestop.des.nh.gov/ords/r/apex_whs/nhdesbasicsearch/solid-waste-facility?p60_swf_lid=0000363",
+    "permittee": "Town of Gorham",
+    "operator": "Town of Gorham",
+    "owner_type": "public",
+    "service_type": "limited",
+    "lat": 44.387516,
+    "lon": -71.1686,
+    "read_on": "2026-10-25",
+    "raw": {
+     "name": "GORHAM PUBLIC WORKS TRANSFER STATION",
+     "street": "24 MAIN ST",
+     "also": "",
+     "city": "GORHAM",
+     "permittee": "TOWN OF GORHAM"
+    },
+    "named": false
+   }
+  ]
+ },
+ "grafton": {
+  "read_on": "2026-10-25",
+  "stations": [
+   {
+    "name": "Grafton Transfer Station",
+    "street": "54 Public Works Rd",
+    "also": "",
+    "place": "Grafton",
+    "kind": "transfer",
+    "permit": "DES-SW-TP-97-015",
+    "des_id": "0000365",
+    "page": "https://onestop.des.nh.gov/ords/r/apex_whs/nhdesbasicsearch/solid-waste-facility?p60_swf_lid=0000365",
+    "permittee": "Town of Grafton",
+    "operator": "Town of Grafton",
+    "owner_type": "public",
+    "service_type": "limited",
+    "lat": 43.57061,
+    "lon": -71.96981,
+    "read_on": "2026-10-25",
+    "raw": {
+     "name": "GRAFTON TRANSFER STATION",
+     "street": "54 PUBLIC WORKS RD",
+     "also": "",
+     "city": "GRAFTON",
+     "permittee": "TOWN OF GRAFTON"
+    },
+    "named": false
+   }
+  ]
+ },
+ "grantham": {
+  "read_on": "2026-10-25",
+  "stations": [
+   {
+    "name": "Town of Grantham Transfer Station",
+    "street": "1150 Route 114",
+    "also": "",
+    "place": "Grantham",
+    "kind": "limited public",
+    "permit": "DES-SW-PN-25-005",
+    "des_id": "0003203",
+    "page": "https://onestop.des.nh.gov/ords/r/apex_whs/nhdesbasicsearch/solid-waste-facility?p60_swf_lid=0003203",
+    "permittee": "Town of Grantham",
+    "operator": "Town of Grantham",
+    "owner_type": "public",
+    "service_type": "limited",
+    "lat": 43.49355,
+    "lon": -72.10222,
+    "read_on": "2026-10-25",
+    "raw": {
+     "name": "TOWN OF GRANTHAM TRANSFER STATION",
+     "street": "1150 ROUTE 114",
+     "also": "",
+     "city": "GRANTHAM",
+     "permittee": "TOWN OF GRANTHAM"
+    },
+    "named": false
+   }
+  ]
+ },
+ "greenfield": {
+  "read_on": "2026-10-25",
+  "stations": [
+   {
+    "name": "Greenfield Transfer Station & Recycling Facility",
+    "street": "29 DPW Road",
+    "also": "",
+    "place": "Greenfield",
+    "kind": "transfer",
+    "permit": "DES-SW-PN-00-010",
+    "des_id": "0000581",
+    "page": "https://onestop.des.nh.gov/ords/r/apex_whs/nhdesbasicsearch/solid-waste-facility?p60_swf_lid=0000581",
+    "permittee": "Town of Greenfield",
+    "operator": "Town of Greenfield",
+    "owner_type": "public",
+    "service_type": "limited",
+    "lat": 42.968837,
+    "lon": -71.88922,
+    "read_on": "2026-10-25",
+    "raw": {
+     "name": "GREENFIELD TRANSFER STATION & RECYCLING FACILITY",
+     "street": "29 DPW ROAD",
+     "also": "",
+     "city": "GREENFIELD",
+     "permittee": "TOWN OF GREENFIELD"
+    },
+    "named": false
+   }
+  ]
+ },
+ "greenland": {
+  "read_on": "2026-10-25",
+  "stations": [
+   {
+    "name": "Greenland Transfer Station & Recycling Facility",
+    "street": "44 Cemetery Ln",
+    "also": "",
+    "place": "Greenland",
+    "kind": "transfer",
+    "permit": "DES-SW-PN-07-006",
+    "des_id": "0000617",
+    "page": "https://onestop.des.nh.gov/ords/r/apex_whs/nhdesbasicsearch/solid-waste-facility?p60_swf_lid=0000617",
+    "permittee": "Town of Greenland",
+    "operator": "Town of Greenland",
+    "owner_type": "public",
+    "service_type": "limited",
+    "lat": 43.033713,
+    "lon": -70.83641,
+    "read_on": "2026-10-25",
+    "raw": {
+     "name": "GREENLAND TRANSFER STATION & RECYCLING FACILITY",
+     "street": "44 CEMETERY LN",
+     "also": "",
+     "city": "GREENLAND",
+     "permittee": "TOWN OF GREENLAND"
+    },
+    "named": false
+   }
+  ]
+ },
+ "groton": {
+  "read_on": "2026-10-25",
+  "stations": [
+   {
+    "name": "Groton Transfer Station",
+    "street": "677 North Groton Rd",
+    "also": "",
+    "place": "Groton",
+    "kind": "transfer",
+    "permit": "DES-SW-LP-92-509",
+    "des_id": "0000368",
+    "page": "https://onestop.des.nh.gov/ords/r/apex_whs/nhdesbasicsearch/solid-waste-facility?p60_swf_lid=0000368",
+    "permittee": "Town of Groton",
+    "operator": "Groton Transfer Station",
+    "owner_type": "public",
+    "service_type": "limited",
+    "lat": 43.74029,
+    "lon": -71.85279,
+    "read_on": "2026-10-25",
+    "raw": {
+     "name": "GROTON TRANSFER STATION",
+     "street": "677 NORTH GROTON RD",
+     "also": "",
+     "city": "GROTON",
+     "permittee": "TOWN OF GROTON"
+    },
+    "named": false
+   }
+  ]
+ },
+ "hampstead": {
+  "read_on": "2026-10-25",
+  "stations": [
+   {
+    "name": "Kent Farm Facility",
+    "street": "311 Kent Farm Rd",
+    "also": "",
+    "place": "Hampstead",
+    "kind": "transfer",
+    "permit": "DES-SW-PN-08-001",
+    "des_id": "0002889",
+    "page": "https://onestop.des.nh.gov/ords/r/apex_whs/nhdesbasicsearch/solid-waste-facility?p60_swf_lid=0002889",
+    "permittee": "Town of Hampstead",
+    "operator": "Town of Hampstead",
+    "owner_type": "public",
+    "service_type": "limited",
+    "lat": 42.90365,
+    "lon": -71.18801,
+    "read_on": "2026-10-25",
+    "raw": {
+     "name": "KENT FARM FACILITY ",
+     "street": "311 KENT FARM RD",
+     "also": "",
+     "city": "HAMPSTEAD",
+     "permittee": "TOWN OF HAMPSTEAD"
+    },
+    "named": false
+   }
+  ]
+ },
+ "hampton": {
+  "read_on": "2026-10-25",
+  "stations": [
+   {
+    "name": "Hampton Transfer Station",
+    "street": "80 Public Works Way",
+    "also": "",
+    "place": "Hampton",
+    "kind": "transfer",
+    "permit": "DES-SW-SP-94-003",
+    "des_id": "0000371",
+    "page": "https://onestop.des.nh.gov/ords/r/apex_whs/nhdesbasicsearch/solid-waste-facility?p60_swf_lid=0000371",
+    "permittee": "Town of Hampton",
+    "operator": "Town of Hampton",
+    "owner_type": "public",
+    "service_type": "limited",
+    "lat": 42.925117,
+    "lon": -70.81842,
+    "read_on": "2026-10-25",
+    "raw": {
+     "name": "HAMPTON TRANSFER STATION",
+     "street": "80 PUBLIC WORKS WAY",
+     "also": "",
+     "city": "HAMPTON",
+     "permittee": "TOWN OF HAMPTON"
+    },
+    "named": false
+   }
+  ]
+ },
+ "hampton-falls": {
+  "read_on": "2026-10-25",
+  "stations": [
+   {
+    "name": "Hampton Falls Brush Dump",
+    "street": "11 Parsonage Road",
+    "also": "",
+    "place": "Hampton Falls",
+    "kind": "transfer",
+    "permit": "DES-SW-PN-22-003",
+    "des_id": "0003145",
+    "page": "https://onestop.des.nh.gov/ords/r/apex_whs/nhdesbasicsearch/solid-waste-facility?p60_swf_lid=0003145",
+    "permittee": "Town of Hampton Falls",
+    "operator": "Town of Hampton Falls",
+    "owner_type": "public",
+    "service_type": "limited",
+    "lat": 42.92311,
+    "lon": -70.8832,
+    "read_on": "2026-10-25",
+    "raw": {
+     "name": "HAMPTON FALLS BRUSH DUMP",
+     "street": "11 PARSONAGE ROAD",
+     "also": "",
+     "city": "HAMPTON FALLS",
+     "permittee": "TOWN OF HAMPTON FALLS"
+    },
+    "named": false
+   }
+  ]
+ },
+ "hancock": {
+  "read_on": "2026-10-25",
+  "stations": [
+   {
+    "name": "Hancock Transfer Station",
+    "street": "44 Bennington Rd",
+    "also": "",
+    "place": "Hancock",
+    "kind": "transfer",
+    "permit": "DES-SW-PN-24-009",
+    "des_id": "0003192",
+    "page": "https://onestop.des.nh.gov/ords/r/apex_whs/nhdesbasicsearch/solid-waste-facility?p60_swf_lid=0003192",
+    "permittee": "Town of Hancock",
+    "operator": "Town of Hancock",
+    "owner_type": "public",
+    "service_type": "limited",
+    "lat": 42.980392,
+    "lon": -71.98062,
+    "read_on": "2026-10-25",
+    "raw": {
+     "name": "HANCOCK TRANSFER STATION",
+     "street": "44 BENNINGTON RD",
+     "also": "",
+     "city": "HANCOCK",
+     "permittee": "TOWN OF HANCOCK"
+    },
+    "named": false
+   }
+  ]
+ },
+ "harrisville": {
+  "read_on": "2026-10-25",
+  "stations": [
+   {
+    "name": "Harrisville Recycling & Transfer Center",
+    "street": "66 Willard Hill Rd",
+    "also": "",
+    "place": "Harrisville",
+    "kind": "transfer",
+    "permit": "DES-SW-PN-07-015",
+    "des_id": "0000375",
+    "page": "https://onestop.des.nh.gov/ords/r/apex_whs/nhdesbasicsearch/solid-waste-facility?p60_swf_lid=0000375",
+    "permittee": "Town of Harrisville",
+    "operator": "Town of Harrisville",
+    "owner_type": "public",
+    "service_type": "limited",
+    "lat": 42.93416,
+    "lon": -72.09562,
+    "read_on": "2026-10-25",
+    "raw": {
+     "name": "HARRISVILLE RECYCLING & TRANSFER CENTER",
+     "street": "66 WILLARD HILL RD",
+     "also": "",
+     "city": "HARRISVILLE",
+     "permittee": "TOWN OF HARRISVILLE"
+    },
+    "named": false
+   }
+  ]
+ },
+ "hart-s-location": {
+  "read_on": "2026-10-25",
+  "stations": [
+   {
+    "name": "Bartlett Jackson Harts Location Transfer Station",
+    "street": "102 Transfer Station Rd",
+    "also": "",
+    "place": "Bartlett",
+    "kind": "transfer",
+    "permit": "DES-SW-90-033",
+    "des_id": "0000392",
+    "page": "https://onestop.des.nh.gov/ords/r/apex_whs/nhdesbasicsearch/solid-waste-facility?p60_swf_lid=0000392",
+    "permittee": "Towns of Bartlett, Jackson & Harts Location",
+    "operator": "Towns of Bartlett & Jackson",
+    "owner_type": "public",
+    "service_type": "limited",
+    "lat": 44.136771,
+    "lon": -71.19383,
+    "read_on": "2026-10-25",
+    "raw": {
+     "name": "BARTLETT JACKSON HARTS LOCATION TRANSFER STATION",
+     "street": "102 TRANSFER STATION RD",
+     "also": "",
+     "city": "BARTLETT",
+     "permittee": "TOWNS OF BARTLETT, JACKSON & HARTS LOCATION"
+    },
+    "named": true
+   }
+  ]
+ },
+ "henniker": {
+  "read_on": "2026-10-25",
+  "stations": [
+   {
+    "name": "Henniker Transfer Station",
+    "street": "1393 Weare Rd",
+    "also": "",
+    "place": "Henniker",
+    "kind": "limited public",
+    "permit": "DES-SW-PN-25-001",
+    "des_id": "0003194",
+    "page": "https://onestop.des.nh.gov/ords/r/apex_whs/nhdesbasicsearch/solid-waste-facility?p60_swf_lid=0003194",
+    "permittee": "Town of Henniker",
+    "operator": "Town of Henniker",
+    "owner_type": "public",
+    "service_type": "limited",
+    "lat": 43.161179,
+    "lon": -71.77558,
+    "read_on": "2026-10-25",
+    "raw": {
+     "name": "HENNIKER TRANSFER STATION",
+     "street": "1393 WEARE RD",
+     "also": "",
+     "city": "HENNIKER",
+     "permittee": "TOWN OF HENNIKER"
+    },
+    "named": false
+   }
+  ]
+ },
+ "hill": {
+  "read_on": "2026-10-25",
+  "stations": [
+   {
+    "name": "Hill Transfer Station",
+    "street": "357 NH Rt 3A",
+    "also": "North of Village",
+    "place": "Hill",
+    "kind": "transfer",
+    "permit": "DES-SW-PN-07-010",
+    "des_id": "0000618",
+    "page": "https://onestop.des.nh.gov/ords/r/apex_whs/nhdesbasicsearch/solid-waste-facility?p60_swf_lid=0000618",
+    "permittee": "Town of Hill",
+    "operator": "Town of Hill",
+    "owner_type": "public",
+    "service_type": "limited",
+    "lat": 43.530406,
+    "lon": -71.72531,
+    "read_on": "2026-10-25",
+    "raw": {
+     "name": "HILL TRANSFER STATION",
+     "street": "357 NH RT 3A",
+     "also": "NORTH OF VILLAGE",
+     "city": "HILL",
+     "permittee": "TOWN OF HILL"
+    },
+    "named": false
+   }
+  ]
+ },
+ "hillsborough": {
+  "read_on": "2026-10-25",
+  "stations": [
+   {
+    "name": "Hillsborough Transfer Station",
+    "street": "44 Municipal Dr",
+    "also": "",
+    "place": "Hillsborough",
+    "kind": "transfer",
+    "permit": "DES-SW-PN-25-004",
+    "des_id": "0003196",
+    "page": "https://onestop.des.nh.gov/ords/r/apex_whs/nhdesbasicsearch/solid-waste-facility?p60_swf_lid=0003196",
+    "permittee": "Town of Hillsborough",
+    "operator": "Town of Hillsborough",
+    "owner_type": "public",
+    "service_type": "limited",
+    "lat": 43.11457,
+    "lon": -71.90593,
+    "read_on": "2026-10-25",
+    "raw": {
+     "name": "HILLSBOROUGH TRANSFER STATION",
+     "street": "44 MUNICIPAL DR",
+     "also": "",
+     "city": "HILLSBOROUGH",
+     "permittee": "TOWN OF HILLSBOROUGH"
+    },
+    "named": false
+   }
+  ]
+ },
+ "hinsdale": {
+  "read_on": "2026-10-25",
+  "stations": [
+   {
+    "name": "Hinsdale Transfer Station & Recycling Center",
+    "street": "214 Northfield Rd",
+    "also": "",
+    "place": "Hinsdale",
+    "kind": "transfer",
+    "permit": "DES-SW-PN-01-004",
+    "des_id": "0000380",
+    "page": "https://onestop.des.nh.gov/ords/r/apex_whs/nhdesbasicsearch/solid-waste-facility?p60_swf_lid=0000380",
+    "permittee": "Town of Hinsdale",
+    "operator": "Town of Hinsdale",
+    "owner_type": "public",
+    "service_type": "limited",
+    "lat": 42.772797,
+    "lon": -72.48321,
+    "read_on": "2026-10-25",
+    "raw": {
+     "name": "HINSDALE TRANSFER STATION & RECYCLING CENTER",
+     "street": "214 NORTHFIELD RD",
+     "also": "",
+     "city": "HINSDALE",
+     "permittee": "TOWN OF HINSDALE"
+    },
+    "named": false
+   }
+  ]
+ },
+ "hollis": {
+  "read_on": "2026-10-25",
+  "stations": [
+   {
+    "name": "Hollis Stump Dump",
+    "street": "275 Depot Rd",
+    "also": "",
+    "place": "Hollis",
+    "kind": "transfer",
+    "permit": "DES-SW-PN-07-017",
+    "des_id": "0002883",
+    "page": "https://onestop.des.nh.gov/ords/r/apex_whs/nhdesbasicsearch/solid-waste-facility?p60_swf_lid=0002883",
+    "permittee": "Town of Hollis",
+    "operator": "Town of Hollis",
+    "owner_type": "public",
+    "service_type": "limited",
+    "lat": 42.71673,
+    "lon": -71.55483,
+    "read_on": "2026-10-25",
+    "raw": {
+     "name": "HOLLIS STUMP DUMP",
+     "street": "275 DEPOT RD",
+     "also": "",
+     "city": "HOLLIS",
+     "permittee": "TOWN OF HOLLIS"
+    },
+    "named": false
+   },
+   {
+    "name": "Rocky Pond Transfer Station",
+    "street": "10 Rocky Pond Rd",
+    "also": "",
+    "place": "Hollis",
+    "kind": "transfer",
+    "permit": "DES-SW-PN-07-014",
+    "des_id": "0000620",
+    "page": "https://onestop.des.nh.gov/ords/r/apex_whs/nhdesbasicsearch/solid-waste-facility?p60_swf_lid=0000620",
+    "permittee": "Town of Hollis",
+    "operator": "Town of Hollis",
+    "owner_type": "public",
+    "service_type": "limited",
+    "lat": 42.743585,
+    "lon": -71.60173,
+    "read_on": "2026-10-25",
+    "raw": {
+     "name": "ROCKY POND TRANSFER STATION",
+     "street": "10 ROCKY POND RD",
+     "also": "",
+     "city": "HOLLIS",
+     "permittee": "TOWN OF HOLLIS"
+    },
+    "named": false
+   }
+  ]
+ },
+ "hooksett": {
+  "read_on": "2026-10-25",
+  "stations": [
+   {
+    "name": "Hooksett Transfer Station & Recycling Center",
+    "street": "210 West River Rd",
+    "also": "NH Route 3A",
+    "place": "Hooksett",
+    "kind": "transfer",
+    "permit": "DPHS-SW-85-013",
+    "des_id": "0000383",
+    "page": "https://onestop.des.nh.gov/ords/r/apex_whs/nhdesbasicsearch/solid-waste-facility?p60_swf_lid=0000383",
+    "permittee": "Town of Hooksett",
+    "operator": "Town of Hooksett",
+    "owner_type": "public",
+    "service_type": "limited",
+    "lat": 43.063133,
+    "lon": -71.46675,
+    "read_on": "2026-10-25",
+    "raw": {
+     "name": "HOOKSETT TRANSFER STATION & RECYCLING CENTER",
+     "street": "210 WEST RIVER RD",
+     "also": "NH ROUTE 3A",
+     "city": "HOOKSETT",
+     "permittee": "TOWN OF HOOKSETT"
+    },
+    "named": false
+   }
+  ]
+ },
+ "jackson": {
+  "read_on": "2026-10-25",
+  "stations": [
+   {
+    "name": "Bartlett Jackson Harts Location Transfer Station",
+    "street": "102 Transfer Station Rd",
+    "also": "",
+    "place": "Bartlett",
+    "kind": "transfer",
+    "permit": "DES-SW-90-033",
+    "des_id": "0000392",
+    "page": "https://onestop.des.nh.gov/ords/r/apex_whs/nhdesbasicsearch/solid-waste-facility?p60_swf_lid=0000392",
+    "permittee": "Towns of Bartlett, Jackson & Harts Location",
+    "operator": "Towns of Bartlett & Jackson",
+    "owner_type": "public",
+    "service_type": "limited",
+    "lat": 44.136771,
+    "lon": -71.19383,
+    "read_on": "2026-10-25",
+    "raw": {
+     "name": "BARTLETT JACKSON HARTS LOCATION TRANSFER STATION",
+     "street": "102 TRANSFER STATION RD",
+     "also": "",
+     "city": "BARTLETT",
+     "permittee": "TOWNS OF BARTLETT, JACKSON & HARTS LOCATION"
+    },
+    "named": true
+   }
+  ]
+ },
+ "jaffrey": {
+  "read_on": "2026-10-25",
+  "stations": [
+   {
+    "name": "Jaffrey Transfer Station",
+    "street": "110 Old Sharon Rd",
+    "also": "",
+    "place": "Jaffrey",
+    "kind": "transfer",
+    "permit": "DES-SW-LP-92-003",
+    "des_id": "0000394",
+    "page": "https://onestop.des.nh.gov/ords/r/apex_whs/nhdesbasicsearch/solid-waste-facility?p60_swf_lid=0000394",
+    "permittee": "Town of Jaffrey",
+    "operator": "Town of Jaffrey",
+    "owner_type": "public",
+    "service_type": "limited",
+    "lat": 42.815924,
+    "lon": -71.99436,
+    "read_on": "2026-10-25",
+    "raw": {
+     "name": "JAFFREY TRANSFER STATION",
+     "street": "110 OLD SHARON RD",
+     "also": "",
+     "city": "JAFFREY",
+     "permittee": "TOWN OF JAFFREY"
+    },
+    "named": false
+   }
+  ]
+ },
+ "jefferson": {
+  "read_on": "2026-10-25",
+  "stations": [
+   {
+    "name": "Jefferson Transfer Station",
+    "street": "77 Bailey Road",
+    "also": "",
+    "place": "Jefferson",
+    "kind": "transfer",
+    "permit": "DES-SW-PN-10-006",
+    "des_id": "0000397",
+    "page": "https://onestop.des.nh.gov/ords/r/apex_whs/nhdesbasicsearch/solid-waste-facility?p60_swf_lid=0000397",
+    "permittee": "Town of Jefferson",
+    "operator": "Town of Jefferson",
+    "owner_type": "public",
+    "service_type": "limited",
+    "lat": 44.417489,
+    "lon": -71.4876,
+    "read_on": "2026-10-25",
+    "raw": {
+     "name": "JEFFERSON TRANSFER STATION",
+     "street": "77 BAILEY ROAD",
+     "also": "",
+     "city": "JEFFERSON",
+     "permittee": "TOWN OF JEFFERSON"
+    },
+    "named": false
+   }
+  ]
+ },
+ "keene": {
+  "read_on": "2026-10-25",
+  "stations": [
+   {
+    "name": "Keene Solid Waste Recycling & Transfer Facility",
+    "street": "55 Old Summit Rd",
+    "also": "",
+    "place": "Keene",
+    "kind": "transfer",
+    "permit": "DES-SW-SP-92-002",
+    "des_id": "0000093",
+    "page": "https://onestop.des.nh.gov/ords/r/apex_whs/nhdesbasicsearch/solid-waste-facility?p60_swf_lid=0000093",
+    "permittee": "City of Keene",
+    "operator": "City of Keene",
+    "owner_type": "public",
+    "service_type": "limited",
+    "lat": 42.97956,
+    "lon": -72.35374,
+    "read_on": "2026-10-25",
+    "raw": {
+     "name": "KEENE SOLID WASTE RECYCLING & TRANSFER FACILITY",
+     "street": "55 OLD SUMMIT RD",
+     "also": "",
+     "city": "KEENE",
+     "permittee": "CITY OF KEENE"
+    },
+    "named": false
+   }
+  ]
+ },
+ "laconia": {
+  "read_on": "2026-10-25",
+  "stations": [
+   {
+    "name": "Laconia Transfer Station",
+    "street": "385 Meredith Center Rd",
+    "also": "",
+    "place": "Laconia",
+    "kind": "transfer",
+    "permit": "DES-SW-SP-07-001",
+    "des_id": "0000401",
+    "page": "https://onestop.des.nh.gov/ords/r/apex_whs/nhdesbasicsearch/solid-waste-facility?p60_swf_lid=0000401",
+    "permittee": "City of Laconia",
+    "operator": "City of Laconia",
+    "owner_type": "public",
+    "service_type": "unlimited",
+    "lat": 43.572694,
+    "lon": -71.50016,
+    "read_on": "2026-10-25",
+    "raw": {
+     "name": "LACONIA TRANSFER STATION",
+     "street": "385 MEREDITH CENTER RD",
+     "also": "",
+     "city": "LACONIA",
+     "permittee": "CITY OF LACONIA"
+    },
+    "named": false
+   }
+  ]
+ },
+ "lancaster": {
+  "read_on": "2026-10-25",
+  "stations": [
+   {
+    "name": "Lancaster Transfer Station & Recycling Center",
+    "street": "121 Water St",
+    "also": "",
+    "place": "Lancaster",
+    "kind": "transfer",
+    "permit": "DES-SW-PN-06-004",
+    "des_id": "0000403",
+    "page": "https://onestop.des.nh.gov/ords/r/apex_whs/nhdesbasicsearch/solid-waste-facility?p60_swf_lid=0000403",
+    "permittee": "Town of Lancaster",
+    "operator": "Town of Lancaster",
+    "owner_type": "public",
+    "service_type": "limited",
+    "lat": 44.487074,
+    "lon": -71.58638,
+    "read_on": "2026-10-25",
+    "raw": {
+     "name": "LANCASTER TRANSFER STATION & RECYCLING CENTER",
+     "street": "121 WATER ST",
+     "also": "",
+     "city": "LANCASTER",
+     "permittee": "TOWN OF LANCASTER"
+    },
+    "named": false
+   }
+  ]
+ },
+ "lebanon": {
+  "read_on": "2026-10-25",
+  "stations": [
+   {
+    "name": "Lebanon Transfer Station & Recycling Center",
+    "street": "370 Plainfield Rd",
+    "also": "Rte 12A",
+    "place": "Lebanon",
+    "kind": "transfer",
+    "permit": "DES-SW-SP-10-002",
+    "des_id": "0000622",
+    "page": "https://onestop.des.nh.gov/ords/r/apex_whs/nhdesbasicsearch/solid-waste-facility?p60_swf_lid=0000622",
+    "permittee": "City of Lebanon",
+    "operator": "City of Lebanon",
+    "owner_type": "public",
+    "service_type": "unlimited",
+    "lat": 43.61301,
+    "lon": -72.32777,
+    "read_on": "2026-10-25",
+    "raw": {
+     "name": "LEBANON TRANSFER STATION & RECYCLING CENTER",
+     "street": "370 PLAINFIELD RD",
+     "also": "RTE 12A",
+     "city": "LEBANON",
+     "permittee": "CITY OF LEBANON"
+    },
+    "named": false
+   }
+  ]
+ },
+ "lempster": {
+  "read_on": "2026-10-25",
+  "stations": [
+   {
+    "name": "Lempster Transfer Station & Recycling Center",
+    "street": "118 Lovejoy Rd",
+    "also": "",
+    "place": "Lempster",
+    "kind": "transfer",
+    "permit": "DES-SW-PN-02-006",
+    "des_id": "0002811",
+    "page": "https://onestop.des.nh.gov/ords/r/apex_whs/nhdesbasicsearch/solid-waste-facility?p60_swf_lid=0002811",
+    "permittee": "Town of Lempster",
+    "operator": "Town of Lempster",
+    "owner_type": "public",
+    "service_type": "limited",
+    "lat": 43.208617,
+    "lon": -72.20394,
+    "read_on": "2026-10-25",
+    "raw": {
+     "name": "LEMPSTER TRANSFER STATION & RECYCLING CENTER",
+     "street": "118 LOVEJOY RD",
+     "also": "",
+     "city": "LEMPSTER",
+     "permittee": "TOWN OF LEMPSTER"
+    },
+    "named": false
+   }
+  ]
+ },
+ "lincoln": {
+  "read_on": "2026-10-25",
+  "stations": [
+   {
+    "name": "Lincoln Woodstock Recycling Center",
+    "street": "63 Recycle Rd",
+    "also": "Route 112",
+    "place": "Lincoln",
+    "kind": "transfer",
+    "permit": "DES-SW-PN-99-003",
+    "des_id": "0000413",
+    "page": "https://onestop.des.nh.gov/ords/r/apex_whs/nhdesbasicsearch/solid-waste-facility?p60_swf_lid=0000413",
+    "permittee": "Town of Lincoln",
+    "operator": "Town of Lincoln",
+    "owner_type": "public",
+    "service_type": "limited",
+    "lat": 44.038909,
+    "lon": -71.67227,
+    "read_on": "2026-10-25",
+    "raw": {
+     "name": "LINCOLN WOODSTOCK RECYCLING CENTER",
+     "street": "63 RECYCLE RD",
+     "also": "ROUTE 112",
+     "city": "LINCOLN",
+     "permittee": "TOWN OF LINCOLN"
+    },
+    "named": false
+   }
+  ]
+ },
+ "lisbon": {
+  "read_on": "2026-10-25",
+  "stations": [
+   {
+    "name": "Lisbon Transfer Station & Recycling Center",
+    "street": "35 Ecology Dr",
+    "also": "",
+    "place": "Lisbon",
+    "kind": "transfer",
+    "permit": "DES-SW-PN-00-007",
+    "des_id": "0000580",
+    "page": "https://onestop.des.nh.gov/ords/r/apex_whs/nhdesbasicsearch/solid-waste-facility?p60_swf_lid=0000580",
+    "permittee": "Town of Lisbon",
+    "operator": "Town of Lisbon",
+    "owner_type": "public",
+    "service_type": "limited",
+    "lat": 44.20475,
+    "lon": -71.92414,
+    "read_on": "2026-10-25",
+    "raw": {
+     "name": "LISBON TRANSFER STATION & RECYCLING CENTER",
+     "street": "35 ECOLOGY DR",
+     "also": "",
+     "city": "LISBON",
+     "permittee": "TOWN OF LISBON"
+    },
+    "named": false
+   }
+  ]
+ },
+ "litchfield": {
+  "read_on": "2026-10-25",
+  "stations": [
+   {
+    "name": "Litchfield Recycling Center",
+    "street": "151 Hillcrest Rd",
+    "also": "",
+    "place": "Litchfield",
+    "kind": "transfer",
+    "permit": "DES-SW-PN-09-001",
+    "des_id": "0000634",
+    "page": "https://onestop.des.nh.gov/ords/r/apex_whs/nhdesbasicsearch/solid-waste-facility?p60_swf_lid=0000634",
+    "permittee": "Town of Litchfield",
+    "operator": "Town of Litchfield",
+    "owner_type": "public",
+    "service_type": "limited",
+    "lat": 42.862252,
+    "lon": -71.47019,
+    "read_on": "2026-10-25",
+    "raw": {
+     "name": "LITCHFIELD RECYCLING CENTER",
+     "street": "151 HILLCREST RD",
+     "also": "",
+     "city": "LITCHFIELD",
+     "permittee": "TOWN OF LITCHFIELD"
+    },
+    "named": false
+   }
+  ]
+ },
+ "littleton": {
+  "read_on": "2026-10-25",
+  "stations": [
+   {
+    "name": "Littleton Transfer Station",
+    "street": "1213 Mt Eustis Rd",
+    "also": "",
+    "place": "Littleton",
+    "kind": "transfer",
+    "permit": "DES-SW-LP-92-502",
+    "des_id": "0000584",
+    "page": "https://onestop.des.nh.gov/ords/r/apex_whs/nhdesbasicsearch/solid-waste-facility?p60_swf_lid=0000584",
+    "permittee": "Town of Littleton",
+    "operator": "Town of Littleton",
+    "owner_type": "public",
+    "service_type": "limited",
+    "lat": 44.283556,
+    "lon": -71.80037,
+    "read_on": "2026-10-25",
+    "raw": {
+     "name": "LITTLETON TRANSFER STATION",
+     "street": "1213 MT EUSTIS RD",
+     "also": "",
+     "city": "LITTLETON",
+     "permittee": "TOWN OF LITTLETON"
+    },
+    "named": false
+   }
+  ]
+ },
+ "londonderry": {
+  "read_on": "2026-10-25",
+  "stations": [
+   {
+    "name": "Londonderry Drop Off Center",
+    "street": "13 Recovery Way",
+    "also": "",
+    "place": "Londonderry",
+    "kind": "transfer",
+    "permit": "DES-SW-PN-07-012",
+    "des_id": "0002878",
+    "page": "https://onestop.des.nh.gov/ords/r/apex_whs/nhdesbasicsearch/solid-waste-facility?p60_swf_lid=0002878",
+    "permittee": "Town of Londonderry",
+    "operator": "Town of Londonderry",
+    "owner_type": "public",
+    "service_type": "limited",
+    "lat": 42.832233,
+    "lon": -71.41676,
+    "read_on": "2026-10-25",
+    "raw": {
+     "name": "LONDONDERRY DROP OFF CENTER",
+     "street": "13 RECOVERY WAY",
+     "also": "",
+     "city": "LONDONDERRY",
+     "permittee": "TOWN OF LONDONDERRY"
+    },
+    "named": false
+   }
+  ]
+ },
+ "lyme": {
+  "read_on": "2026-10-25",
+  "stations": [
+   {
+    "name": "Lyme Transfer Station",
+    "street": "26 High St",
+    "also": "",
+    "place": "Lyme",
+    "kind": "transfer",
+    "permit": "DES-SW-PN-08-002",
+    "des_id": "0000623",
+    "page": "https://onestop.des.nh.gov/ords/r/apex_whs/nhdesbasicsearch/solid-waste-facility?p60_swf_lid=0000623",
+    "permittee": "Town of Lyme",
+    "operator": "Town of Lyme",
+    "owner_type": "public",
+    "service_type": "limited",
+    "lat": 43.81269,
+    "lon": -72.14996,
+    "read_on": "2026-10-25",
+    "raw": {
+     "name": "LYME TRANSFER STATION",
+     "street": "26 HIGH ST",
+     "also": "",
+     "city": "LYME",
+     "permittee": "TOWN OF LYME"
+    },
+    "named": false
+   }
+  ]
+ },
+ "madbury": {
+  "read_on": "2026-10-25",
+  "stations": [
+   {
+    "name": "Madbury Transfer Station",
+    "street": "25 Pudding Hill Rd",
+    "also": "",
+    "place": "Madbury",
+    "kind": "transfer",
+    "permit": "DES-SW-PN-07-009",
+    "des_id": "0002877",
+    "page": "https://onestop.des.nh.gov/ords/r/apex_whs/nhdesbasicsearch/solid-waste-facility?p60_swf_lid=0002877",
+    "permittee": "Town of Madbury",
+    "operator": "Town of Madbury",
+    "owner_type": "public",
+    "service_type": "limited",
+    "lat": 43.169149,
+    "lon": -70.9181,
+    "read_on": "2026-10-25",
+    "raw": {
+     "name": "MADBURY TRANSFER STATION",
+     "street": "25 PUDDING HILL RD",
+     "also": "",
+     "city": "MADBURY",
+     "permittee": "TOWN OF MADBURY"
+    },
+    "named": false
+   }
+  ]
+ },
+ "madison": {
+  "read_on": "2026-10-25",
+  "stations": [
+   {
+    "name": "Madison Transfer Station",
+    "street": "219 Boulder Rd",
+    "also": "",
+    "place": "Madison",
+    "kind": "transfer",
+    "permit": "DES-SW-TP-97-028",
+    "des_id": "0000576",
+    "page": "https://onestop.des.nh.gov/ords/r/apex_whs/nhdesbasicsearch/solid-waste-facility?p60_swf_lid=0000576",
+    "permittee": "Town of Madison",
+    "operator": "Town of Madison",
+    "owner_type": "public",
+    "service_type": "limited",
+    "lat": 43.926083,
+    "lon": -71.155,
+    "read_on": "2026-10-25",
+    "raw": {
+     "name": "MADISON TRANSFER STATION",
+     "street": "219 BOULDER RD",
+     "also": "",
+     "city": "MADISON",
+     "permittee": "TOWN OF MADISON"
+    },
+    "named": false
+   }
+  ]
+ },
+ "manchester": {
+  "read_on": "2026-10-25",
+  "stations": [
+   {
+    "name": "Manchester Drop Off Facility",
+    "street": "500 Dunbarton Rd",
+    "also": "",
+    "place": "Manchester",
+    "kind": "transfer",
+    "permit": "DES-SW-LP-96-505",
+    "des_id": "0000431",
+    "page": "https://onestop.des.nh.gov/ords/r/apex_whs/nhdesbasicsearch/solid-waste-facility?p60_swf_lid=0000431",
+    "permittee": "City of Manchester",
+    "operator": "City of Manchester",
+    "owner_type": "public",
+    "service_type": "limited",
+    "lat": 43.016145,
+    "lon": -71.4903,
+    "read_on": "2026-10-25",
+    "raw": {
+     "name": "MANCHESTER DROP OFF FACILITY",
+     "street": "500 DUNBARTON RD",
+     "also": "",
+     "city": "MANCHESTER",
+     "permittee": "CITY OF MANCHESTER"
+    },
+    "named": false
+   }
+  ]
+ },
+ "marlow": {
+  "read_on": "2026-10-25",
+  "stations": [
+   {
+    "name": "Marlow Transfer Station",
+    "street": "875 NH Route 10",
+    "also": "",
+    "place": "Marlow",
+    "kind": "transfer",
+    "permit": "DES-SW-LP-92-002",
+    "des_id": "0000442",
+    "page": "https://onestop.des.nh.gov/ords/r/apex_whs/nhdesbasicsearch/solid-waste-facility?p60_swf_lid=0000442",
+    "permittee": "Town of Marlow",
+    "operator": "Town of Marlow",
+    "owner_type": "public",
+    "service_type": "limited",
+    "lat": 43.128204,
+    "lon": -72.19878,
+    "read_on": "2026-10-25",
+    "raw": {
+     "name": "MARLOW TRANSFER STATION",
+     "street": "875 NH ROUTE 10",
+     "also": "",
+     "city": "MARLOW",
+     "permittee": "TOWN OF MARLOW"
+    },
+    "named": false
+   }
+  ]
+ },
+ "meredith": {
+  "read_on": "2026-10-25",
+  "stations": [
+   {
+    "name": "Meredith Transfer Station",
+    "street": "17 Jenness Hill Rd",
+    "also": "",
+    "place": "Meredith",
+    "kind": "transfer",
+    "permit": "DES-SW-87-040",
+    "des_id": "0000447",
+    "page": "https://onestop.des.nh.gov/ords/r/apex_whs/nhdesbasicsearch/solid-waste-facility?p60_swf_lid=0000447",
+    "permittee": "Town of Meredith",
+    "operator": "Town of Meredith",
+    "owner_type": "public",
+    "service_type": "limited",
+    "lat": 43.66958,
+    "lon": -71.5046,
+    "read_on": "2026-10-25",
+    "raw": {
+     "name": "MEREDITH TRANSFER STATION",
+     "street": "17 JENNESS HILL RD",
+     "also": "",
+     "city": "MEREDITH",
+     "permittee": "TOWN OF MEREDITH"
+    },
+    "named": false
+   }
+  ]
+ },
+ "merrimack": {
+  "read_on": "2026-10-25",
+  "stations": [
+   {
+    "name": "Merrimack Transfer Station & Recycling Facility",
+    "street": "1 Fearon Rd",
+    "also": "",
+    "place": "Merrimack",
+    "kind": "transfer",
+    "permit": "DES-SW-SP-03-005",
+    "des_id": "0000449",
+    "page": "https://onestop.des.nh.gov/ords/r/apex_whs/nhdesbasicsearch/solid-waste-facility?p60_swf_lid=0000449",
+    "permittee": "Town of Merrimack",
+    "operator": "Town of Merrimack",
+    "owner_type": "public",
+    "service_type": "limited",
+    "lat": 42.898625,
+    "lon": -71.54175,
+    "read_on": "2026-10-25",
+    "raw": {
+     "name": "MERRIMACK TRANSFER STATION & RECYCLING FACILITY",
+     "street": "1 FEARON RD",
+     "also": "",
+     "city": "MERRIMACK",
+     "permittee": "TOWN OF MERRIMACK"
+    },
+    "named": false
+   }
+  ]
+ },
+ "milford": {
+  "read_on": "2026-10-25",
+  "stations": [
+   {
+    "name": "Milford Transfer Station & Recycling Facility",
+    "street": "76 North River Rd",
+    "also": "",
+    "place": "Milford",
+    "kind": "transfer",
+    "permit": "DES-SW-90-032",
+    "des_id": "0000451",
+    "page": "https://onestop.des.nh.gov/ords/r/apex_whs/nhdesbasicsearch/solid-waste-facility?p60_swf_lid=0000451",
+    "permittee": "Town of Milford",
+    "operator": "Town of Milford",
+    "owner_type": "public",
+    "service_type": "limited",
+    "lat": 42.842502,
+    "lon": -71.66396,
+    "read_on": "2026-10-25",
+    "raw": {
+     "name": "MILFORD TRANSFER STATION & RECYCLING FACILITY",
+     "street": "76 NORTH RIVER RD",
+     "also": "",
+     "city": "MILFORD",
+     "permittee": "TOWN OF MILFORD"
+    },
+    "named": false
+   }
+  ]
+ },
+ "milton": {
+  "read_on": "2026-10-25",
+  "stations": [
+   {
+    "name": "Town of Milton Transfer Station/Recycling Center",
+    "street": "803 White Mountain Hwy",
+    "also": "Route 125",
+    "place": "Milton",
+    "kind": "transfer",
+    "permit": "DES-SW-LP-94-506",
+    "des_id": "0000452",
+    "page": "https://onestop.des.nh.gov/ords/r/apex_whs/nhdesbasicsearch/solid-waste-facility?p60_swf_lid=0000452",
+    "permittee": "Town of Milton",
+    "operator": "Town of Milton",
+    "owner_type": "public",
+    "service_type": "limited",
+    "lat": 43.434552,
+    "lon": -70.99166,
+    "read_on": "2026-10-25",
+    "raw": {
+     "name": "TOWN OF MILTON TRANSFER STATION/RECYCLING CENTER",
+     "street": "803 WHITE MOUNTAIN HWY",
+     "also": "ROUTE 125",
+     "city": "MILTON",
+     "permittee": "TOWN OF MILTON"
+    },
+    "named": false
+   }
+  ]
+ },
+ "mont-vernon": {
+  "read_on": "2026-10-25",
+  "stations": [
+   {
+    "name": "Mont Vernon Transfer Station",
+    "street": "15 Weston Hill Rd",
+    "also": "",
+    "place": "Mont Vernon",
+    "kind": "transfer",
+    "permit": "DES-SW-PN-08-009",
+    "des_id": "0000624",
+    "page": "https://onestop.des.nh.gov/ords/r/apex_whs/nhdesbasicsearch/solid-waste-facility?p60_swf_lid=0000624",
+    "permittee": "Town of Mont Vernon",
+    "operator": "Town of Mont Vernon",
+    "owner_type": "public",
+    "service_type": "limited",
+    "lat": 42.899841,
+    "lon": -71.66808,
+    "read_on": "2026-10-25",
+    "raw": {
+     "name": "MONT VERNON TRANSFER STATION",
+     "street": "15 WESTON HILL RD",
+     "also": "",
+     "city": "MONT VERNON",
+     "permittee": "TOWN OF MONT VERNON"
+    },
+    "named": false
+   }
+  ]
+ },
+ "moultonborough": {
+  "read_on": "2026-10-25",
+  "stations": [
+   {
+    "name": "Moultonborough Resource Recovery Park Waste Management Facility",
+    "street": "253 Holland St",
+    "also": "",
+    "place": "Moultonborough",
+    "kind": "transfer",
+    "permit": "DES-SW-PN-18-004",
+    "des_id": "0003116",
+    "page": "https://onestop.des.nh.gov/ords/r/apex_whs/nhdesbasicsearch/solid-waste-facility?p60_swf_lid=0003116",
+    "permittee": "Town of Moultonborough",
+    "operator": "Town of Moultonborough",
+    "owner_type": "public",
+    "service_type": "limited",
+    "lat": 43.768999,
+    "lon": -71.40699,
+    "read_on": "2026-10-25",
+    "raw": {
+     "name": "MOULTONBOROUGH RESOURCE RECOVERY PARK WASTE MANAGEMENT FACILITY",
+     "street": "253 HOLLAND ST",
+     "also": "",
+     "city": "MOULTONBOROUGH",
+     "permittee": "TOWN OF MOULTONBOROUGH"
+    },
+    "named": false
+   }
+  ]
+ },
+ "nashua": {
+  "read_on": "2026-10-25",
+  "stations": [
+   {
+    "name": "Nashua HHW/Small Quantity Generator Waste Collection Facility",
+    "street": "6 Riverside St",
+    "also": "",
+    "place": "Nashua",
+    "kind": "transfer",
+    "permit": "DES-SW-SP-96-001",
+    "des_id": "0002895",
+    "page": "https://onestop.des.nh.gov/ords/r/apex_whs/nhdesbasicsearch/solid-waste-facility?p60_swf_lid=0002895",
+    "permittee": "City of Nashua",
+    "operator": "City of Nashua",
+    "owner_type": "public",
+    "service_type": "limited",
+    "lat": 42.74781,
+    "lon": -71.50085,
+    "read_on": "2026-10-25",
+    "raw": {
+     "name": "NASHUA HHW/SMALL QUANTITY GENERATOR WASTE COLLECTION FACILITY",
+     "street": "6 RIVERSIDE ST",
+     "also": "",
+     "city": "NASHUA",
+     "permittee": "CITY OF NASHUA"
+    },
+    "named": false
+   },
+   {
+    "name": "Nashua Transfer Station",
+    "street": "840 W Hollis St",
+    "also": "",
+    "place": "Nashua",
+    "kind": "transfer",
+    "permit": "DES-SW-SP-95-002",
+    "des_id": "0000640",
+    "page": "https://onestop.des.nh.gov/ords/r/apex_whs/nhdesbasicsearch/solid-waste-facility?p60_swf_lid=0000640",
+    "permittee": "City of Nashua",
+    "operator": "City of Nashua",
+    "owner_type": "public",
+    "service_type": "limited",
+    "lat": 42.7322,
+    "lon": -71.5224,
+    "read_on": "2026-10-25",
+    "raw": {
+     "name": "NASHUA TRANSFER STATION",
+     "street": "840 W HOLLIS ST",
+     "also": "",
+     "city": "NASHUA",
+     "permittee": "CITY OF NASHUA"
+    },
+    "named": false
+   }
+  ]
+ },
+ "new-boston": {
+  "read_on": "2026-10-25",
+  "stations": [
+   {
+    "name": "New Boston Transfer Station/Recycling Center",
+    "street": "412 Old Coach Rd",
+    "also": "",
+    "place": "New Boston",
+    "kind": "transfer",
+    "permit": "DES-SW-PN-24-005",
+    "des_id": "0003179",
+    "page": "https://onestop.des.nh.gov/ords/r/apex_whs/nhdesbasicsearch/solid-waste-facility?p60_swf_lid=0003179",
+    "permittee": "Town of New Boston",
+    "operator": "Town of New Boston",
+    "owner_type": "public",
+    "service_type": "limited",
+    "lat": 42.96375,
+    "lon": -71.73359,
+    "read_on": "2026-10-25",
+    "raw": {
+     "name": "NEW BOSTON TRANSFER STATION/RECYCLING CENTER",
+     "street": "412 OLD COACH RD",
+     "also": "",
+     "city": "NEW BOSTON",
+     "permittee": "TOWN OF NEW BOSTON"
+    },
+    "named": false
+   }
+  ]
+ },
+ "new-durham": {
+  "read_on": "2026-10-25",
+  "stations": [
+   {
+    "name": "New Durham Transfer Station",
+    "street": "56 Tash Rd",
+    "also": "",
+    "place": "New Durham",
+    "kind": "transfer",
+    "permit": "DES-SW-89-010",
+    "des_id": "0000461",
+    "page": "https://onestop.des.nh.gov/ords/r/apex_whs/nhdesbasicsearch/solid-waste-facility?p60_swf_lid=0000461",
+    "permittee": "Town of New Durham",
+    "operator": "Town of New Durham",
+    "owner_type": "public",
+    "service_type": "limited",
+    "lat": 43.422495,
+    "lon": -71.14559,
+    "read_on": "2026-10-25",
+    "raw": {
+     "name": "NEW DURHAM TRANSFER STATION",
+     "street": "56 TASH RD",
+     "also": "",
+     "city": "NEW DURHAM",
+     "permittee": "TOWN OF NEW DURHAM"
+    },
+    "named": false
+   }
+  ]
+ },
+ "new-hampton": {
+  "read_on": "2026-10-25",
+  "stations": [
+   {
+    "name": "New Hampton Recycle Center",
+    "street": "26 Route 132 North",
+    "also": "",
+    "place": "New Hampton",
+    "kind": "limited public",
+    "permit": "DES-SW-PN-26-003",
+    "des_id": "0003207",
+    "page": "https://onestop.des.nh.gov/ords/r/apex_whs/nhdesbasicsearch/solid-waste-facility?p60_swf_lid=0003207",
+    "permittee": "Town of New Hampton",
+    "operator": "Town of New Hampton",
+    "owner_type": "public",
+    "service_type": "limited",
+    "lat": 43.620021,
+    "lon": -71.63642,
+    "read_on": "2026-10-25",
+    "raw": {
+     "name": "NEW HAMPTON RECYCLE CENTER",
+     "street": "26 ROUTE 132 NORTH",
+     "also": "",
+     "city": "NEW HAMPTON",
+     "permittee": "TOWN OF NEW HAMPTON"
+    },
+    "named": false
+   }
+  ]
+ },
+ "new-ipswich": {
+  "read_on": "2026-10-25",
+  "stations": [
+   {
+    "name": "New Ipswich Recycling Center",
+    "street": "1381 Turnpike Rd",
+    "also": "Route 124",
+    "place": "New Ipswich",
+    "kind": "transfer",
+    "permit": "DES-SW-PN-03-005",
+    "des_id": "0000466",
+    "page": "https://onestop.des.nh.gov/ords/r/apex_whs/nhdesbasicsearch/solid-waste-facility?p60_swf_lid=0000466",
+    "permittee": "Town of New Ipswich",
+    "operator": "Town of New Ipswich",
+    "owner_type": "public",
+    "service_type": "limited",
+    "lat": 42.783602,
+    "lon": -71.9123,
+    "read_on": "2026-10-25",
+    "raw": {
+     "name": "NEW IPSWICH RECYCLING CENTER",
+     "street": "1381 TURNPIKE RD",
+     "also": "ROUTE 124",
+     "city": "NEW IPSWICH",
+     "permittee": "TOWN OF NEW IPSWICH"
+    },
+    "named": false
+   }
+  ]
+ },
+ "new-london": {
+  "read_on": "2026-10-25",
+  "stations": [
+   {
+    "name": "Brush and Metal Disposal Area",
+    "street": "74 Old Dump Rd",
+    "also": "",
+    "place": "New London",
+    "kind": "transfer",
+    "permit": "DES-SW-PN-16-002",
+    "des_id": "0003017",
+    "page": "https://onestop.des.nh.gov/ords/r/apex_whs/nhdesbasicsearch/solid-waste-facility?p60_swf_lid=0003017",
+    "permittee": "Town of New London",
+    "operator": "Town of New London",
+    "owner_type": "public",
+    "service_type": "limited",
+    "lat": 43.4346,
+    "lon": -71.9977,
+    "read_on": "2026-10-25",
+    "raw": {
+     "name": "BRUSH AND METAL DISPOSAL AREA",
+     "street": "74 OLD DUMP RD",
+     "also": "",
+     "city": "NEW LONDON",
+     "permittee": "TOWN OF NEW LONDON"
+    },
+    "named": false
+   }
+  ]
+ },
+ "newbury": {
+  "read_on": "2026-10-25",
+  "stations": [
+   {
+    "name": "Newbury Transfer Station",
+    "street": "201 Old Post Rd",
+    "also": "",
+    "place": "Newbury",
+    "kind": "transfer",
+    "permit": "DES-SW-PN-02-007",
+    "des_id": "0000625",
+    "page": "https://onestop.des.nh.gov/ords/r/apex_whs/nhdesbasicsearch/solid-waste-facility?p60_swf_lid=0000625",
+    "permittee": "Town of Newbury",
+    "operator": "Town of Newbury",
+    "owner_type": "public",
+    "service_type": "limited",
+    "lat": 43.312945,
+    "lon": -72.01719,
+    "read_on": "2026-10-25",
+    "raw": {
+     "name": "NEWBURY TRANSFER STATION",
+     "street": "201 OLD POST RD",
+     "also": "",
+     "city": "NEWBURY",
+     "permittee": "TOWN OF NEWBURY"
+    },
+    "named": false
+   }
+  ]
+ },
+ "newington": {
+  "read_on": "2026-10-25",
+  "stations": [
+   {
+    "name": "Newington Transfer Station",
+    "street": "295 Little Bay Rd",
+    "also": "",
+    "place": "Newington",
+    "kind": "transfer",
+    "permit": "DES-SW-PN-08-008",
+    "des_id": "0000637",
+    "page": "https://onestop.des.nh.gov/ords/r/apex_whs/nhdesbasicsearch/solid-waste-facility?p60_swf_lid=0000637",
+    "permittee": "Town of Newington",
+    "operator": "Town of Newington",
+    "owner_type": "public",
+    "service_type": "limited",
+    "lat": 43.09878,
+    "lon": -70.83597,
+    "read_on": "2026-10-25",
+    "raw": {
+     "name": "NEWINGTON TRANSFER STATION",
+     "street": "295 LITTLE BAY RD",
+     "also": "",
+     "city": "NEWINGTON",
+     "permittee": "TOWN OF NEWINGTON"
+    },
+    "named": false
+   }
+  ]
+ },
+ "newmarket": {
+  "read_on": "2026-10-25",
+  "stations": [
+   {
+    "name": "Newmarket Transfer Station",
+    "street": "345 Ash Swamp Rd",
+    "also": "",
+    "place": "Newmarket",
+    "kind": "transfer",
+    "permit": "DES-SW-PN-03-003",
+    "des_id": "0000626",
+    "page": "https://onestop.des.nh.gov/ords/r/apex_whs/nhdesbasicsearch/solid-waste-facility?p60_swf_lid=0000626",
+    "permittee": "Town of Newmarket",
+    "operator": "Town of Newmarket",
+    "owner_type": "public",
+    "service_type": "limited",
+    "lat": 43.074141,
+    "lon": -70.98556,
+    "read_on": "2026-10-25",
+    "raw": {
+     "name": "NEWMARKET TRANSFER STATION",
+     "street": "345 ASH SWAMP RD",
+     "also": "",
+     "city": "NEWMARKET",
+     "permittee": "TOWN OF NEWMARKET"
+    },
+    "named": false
+   }
+  ]
+ },
+ "newton": {
+  "read_on": "2026-10-25",
+  "stations": [
+   {
+    "name": "Newton Recycling Center",
+    "street": "4 Dugway Rd",
+    "also": "",
+    "place": "Newton",
+    "kind": "transfer",
+    "permit": "DES-SW-90-012",
+    "des_id": "0000478",
+    "page": "https://onestop.des.nh.gov/ords/r/apex_whs/nhdesbasicsearch/solid-waste-facility?p60_swf_lid=0000478",
+    "permittee": "Town of Newton",
+    "operator": "Town of Newton",
+    "owner_type": "public",
+    "service_type": "limited",
+    "lat": 42.874895,
+    "lon": -71.01133,
+    "read_on": "2026-10-25",
+    "raw": {
+     "name": "NEWTON RECYCLING CENTER",
+     "street": "4 DUGWAY RD",
+     "also": "",
+     "city": "NEWTON",
+     "permittee": "TOWN OF NEWTON"
+    },
+    "named": false
+   }
+  ]
+ },
+ "north-hampton": {
+  "read_on": "2026-10-25",
+  "stations": [
+   {
+    "name": "North Hampton Recycling",
+    "street": "14 Cherry Rd",
+    "also": "",
+    "place": "North Hampton",
+    "kind": "transfer",
+    "permit": "DPHS-SW-84-003",
+    "des_id": "0000479",
+    "page": "https://onestop.des.nh.gov/ords/r/apex_whs/nhdesbasicsearch/solid-waste-facility?p60_swf_lid=0000479",
+    "permittee": "Town of North Hampton",
+    "operator": "Town of North Hampton",
+    "owner_type": "public",
+    "service_type": "limited",
+    "lat": 42.990886,
+    "lon": -70.84215,
+    "read_on": "2026-10-25",
+    "raw": {
+     "name": "NORTH HAMPTON RECYCLING",
+     "street": "14 CHERRY RD",
+     "also": "",
+     "city": "NORTH HAMPTON",
+     "permittee": "TOWN OF NORTH HAMPTON"
+    },
+    "named": false
+   }
+  ]
+ },
+ "northumberland": {
+  "read_on": "2026-10-25",
+  "stations": [
+   {
+    "name": "Northumberland Transfer Station/Recycling Station",
+    "street": "159 Brown Rd",
+    "also": "",
+    "place": "Northumberland",
+    "kind": "transfer",
+    "permit": "DES-SW-PN-20-003",
+    "des_id": "0003130",
+    "page": "https://onestop.des.nh.gov/ords/r/apex_whs/nhdesbasicsearch/solid-waste-facility?p60_swf_lid=0003130",
+    "permittee": "Town of Northumberland",
+    "operator": "Town of Northumberland",
+    "owner_type": "public",
+    "service_type": "limited",
+    "lat": 44.60295,
+    "lon": -71.54005,
+    "read_on": "2026-10-25",
+    "raw": {
+     "name": "NORTHUMBERLAND TRANSFER STATION/RECYCLING STATION",
+     "street": "159 BROWN RD",
+     "also": "",
+     "city": "NORTHUMBERLAND",
+     "permittee": "TOWN OF NORTHUMBERLAND"
+    },
+    "named": false
+   }
+  ]
+ },
+ "northwood": {
+  "read_on": "2026-10-25",
+  "stations": [
+   {
+    "name": "Northwood Transfer Station",
+    "street": "2 Town Works Way",
+    "also": "",
+    "place": "Northwood",
+    "kind": "transfer",
+    "permit": "DES-SW-PN-01-005",
+    "des_id": "0000636",
+    "page": "https://onestop.des.nh.gov/ords/r/apex_whs/nhdesbasicsearch/solid-waste-facility?p60_swf_lid=0000636",
+    "permittee": "Town of Northwood",
+    "operator": "Town of Northwood",
+    "owner_type": "public",
+    "service_type": "limited",
+    "lat": 43.249553,
+    "lon": -70.90035,
+    "read_on": "2026-10-25",
+    "raw": {
+     "name": "NORTHWOOD TRANSFER STATION",
+     "street": "2 TOWN WORKS WAY",
+     "also": "",
+     "city": "NORTHWOOD",
+     "permittee": "TOWN OF NORTHWOOD"
+    },
+    "named": false
+   }
+  ]
+ },
+ "nottingham": {
+  "read_on": "2026-10-25",
+  "stations": [
+   {
+    "name": "Nottingham Recycling Center",
+    "street": "11 Freeman Hall Rd",
+    "also": "",
+    "place": "Nottingham",
+    "kind": "transfer",
+    "permit": "DES-SW-PN-01-003",
+    "des_id": "0000487",
+    "page": "https://onestop.des.nh.gov/ords/r/apex_whs/nhdesbasicsearch/solid-waste-facility?p60_swf_lid=0000487",
+    "permittee": "Town of Nottingham",
+    "operator": "Town of Nottingham",
+    "owner_type": "public",
+    "service_type": "limited",
+    "lat": 43.156046,
+    "lon": -71.1123,
+    "read_on": "2026-10-25",
+    "raw": {
+     "name": "NOTTINGHAM RECYCLING CENTER",
+     "street": "11 FREEMAN HALL RD",
+     "also": "",
+     "city": "NOTTINGHAM",
+     "permittee": "TOWN OF NOTTINGHAM"
+    },
+    "named": false
+   }
+  ]
+ },
+ "orford": {
+  "read_on": "2026-10-25",
+  "stations": [
+   {
+    "name": "Orford Recycling Center",
+    "street": "Town Shed Rd",
+    "also": "",
+    "place": "Orford",
+    "kind": "transfer",
+    "permit": "DES-SW-PN-03-001",
+    "des_id": "0000627",
+    "page": "https://onestop.des.nh.gov/ords/r/apex_whs/nhdesbasicsearch/solid-waste-facility?p60_swf_lid=0000627",
+    "permittee": "Town of Orford",
+    "operator": "Town of Orford",
+    "owner_type": "public",
+    "service_type": "limited",
+    "lat": 43.890282,
+    "lon": -72.12004,
+    "read_on": "2026-10-25",
+    "raw": {
+     "name": "ORFORD RECYCLING CENTER",
+     "street": "TOWN SHED RD",
+     "also": "",
+     "city": "ORFORD",
+     "permittee": "TOWN OF ORFORD"
+    },
+    "named": false
+   }
+  ]
+ },
+ "ossipee": {
+  "read_on": "2026-10-25",
+  "stations": [
+   {
+    "name": "Ossipee Transfer Station",
+    "street": "41 Chickville Rd",
+    "also": "",
+    "place": "Ossipee",
+    "kind": "transfer",
+    "permit": "DES-SW-PN-24-001",
+    "des_id": "0003180",
+    "page": "https://onestop.des.nh.gov/ords/r/apex_whs/nhdesbasicsearch/solid-waste-facility?p60_swf_lid=0003180",
+    "permittee": "Town of Ossipee",
+    "operator": "Town of Ossipee",
+    "owner_type": "public",
+    "service_type": "limited",
+    "lat": 43.73614,
+    "lon": -71.1533,
+    "read_on": "2026-10-25",
+    "raw": {
+     "name": "OSSIPEE TRANSFER STATION",
+     "street": "41 CHICKVILLE RD",
+     "also": "",
+     "city": "OSSIPEE",
+     "permittee": "TOWN OF OSSIPEE"
+    },
+    "named": false
+   }
+  ]
+ },
+ "pelham": {
+  "read_on": "2026-10-25",
+  "stations": [
+   {
+    "name": "Pelham Transfer Station & Recycling Center",
+    "street": "74 Newcomb Field Parkway",
+    "also": "Rte 111A",
+    "place": "Pelham",
+    "kind": "transfer",
+    "permit": "DES-SW-PN-00-008",
+    "des_id": "0000585",
+    "page": "https://onestop.des.nh.gov/ords/r/apex_whs/nhdesbasicsearch/solid-waste-facility?p60_swf_lid=0000585",
+    "permittee": "Town of Pelham",
+    "operator": "Town of Pelham",
+    "owner_type": "public",
+    "service_type": "limited",
+    "lat": 42.745045,
+    "lon": -71.31627,
+    "read_on": "2026-10-25",
+    "raw": {
+     "name": "PELHAM TRANSFER STATION & RECYCLING CENTER",
+     "street": "74 NEWCOMB FIELD PARKWAY",
+     "also": "RTE 111A",
+     "city": "PELHAM",
+     "permittee": "TOWN OF PELHAM"
+    },
+    "named": false
+   }
+  ]
+ },
+ "pembroke": {
+  "read_on": "2026-10-25",
+  "stations": [
+   {
+    "name": "Pembroke Transfer Station & Recycling Facility",
+    "street": "8 Exchange St",
+    "also": "",
+    "place": "Pembroke",
+    "kind": "transfer",
+    "permit": "DES-SW-PN-09-002",
+    "des_id": "0000638",
+    "page": "https://onestop.des.nh.gov/ords/r/apex_whs/nhdesbasicsearch/solid-waste-facility?p60_swf_lid=0000638",
+    "permittee": "Town of Pembroke",
+    "operator": "Town of Pembroke",
+    "owner_type": "public",
+    "service_type": "limited",
+    "lat": 43.130886,
+    "lon": -71.45782,
+    "read_on": "2026-10-25",
+    "raw": {
+     "name": "PEMBROKE TRANSFER STATION & RECYCLING FACILITY",
+     "street": "8 EXCHANGE ST",
+     "also": "",
+     "city": "PEMBROKE",
+     "permittee": "TOWN OF PEMBROKE"
+    },
+    "named": false
+   }
+  ]
+ },
+ "peterborough": {
+  "read_on": "2026-10-25",
+  "stations": [
+   {
+    "name": "Peterborough John Isham Recycling Center",
+    "street": "1 Sanitation Ln",
+    "also": "",
+    "place": "Peterborough",
+    "kind": "transfer",
+    "permit": "DES-SW-PN-24-007",
+    "des_id": "0003184",
+    "page": "https://onestop.des.nh.gov/ords/r/apex_whs/nhdesbasicsearch/solid-waste-facility?p60_swf_lid=0003184",
+    "permittee": "Town of Peterborough",
+    "operator": "Town of Peterborough",
+    "owner_type": "public",
+    "service_type": "limited",
+    "lat": 42.926521,
+    "lon": -71.94194,
+    "read_on": "2026-10-25",
+    "raw": {
+     "name": "PETERBOROUGH JOHN ISHAM RECYCLING CENTER",
+     "street": "1 SANITATION LN",
+     "also": "",
+     "city": "PETERBOROUGH",
+     "permittee": "TOWN OF PETERBOROUGH"
+    },
+    "named": false
+   }
+  ]
+ },
+ "piermont": {
+  "read_on": "2026-10-25",
+  "stations": [
+   {
+    "name": "Piermont Transfer Station & Recycling Center",
+    "street": "21 Bedford Rd",
+    "also": "",
+    "place": "Piermont",
+    "kind": "transfer",
+    "permit": "DES-SW-LP-95-502",
+    "des_id": "0000396",
+    "page": "https://onestop.des.nh.gov/ords/r/apex_whs/nhdesbasicsearch/solid-waste-facility?p60_swf_lid=0000396",
+    "permittee": "Town of Piermont",
+    "operator": "Town of Piermont",
+    "owner_type": "public",
+    "service_type": "limited",
+    "lat": 43.96667,
+    "lon": -72.07825,
+    "read_on": "2026-10-25",
+    "raw": {
+     "name": "PIERMONT TRANSFER STATION & RECYCLING CENTER",
+     "street": "21 BEDFORD RD",
+     "also": "",
+     "city": "PIERMONT",
+     "permittee": "TOWN OF PIERMONT"
+    },
+    "named": false
+   }
+  ]
+ },
+ "pittsburg": {
+  "read_on": "2026-10-25",
+  "stations": [
+   {
+    "name": "Pittsburg Transfer Station",
+    "street": "257 Back Lake Rd",
+    "also": "",
+    "place": "Pittsburg",
+    "kind": "limited public",
+    "permit": "DES-SW-PN-26-004",
+    "des_id": "0003208",
+    "page": "https://onestop.des.nh.gov/ords/r/apex_whs/nhdesbasicsearch/solid-waste-facility?p60_swf_lid=0003208",
+    "permittee": "Town of Pittsburg",
+    "operator": "Town of Pittsburg",
+    "owner_type": "public",
+    "service_type": "limited",
+    "lat": 45.069075,
+    "lon": -71.37108,
+    "read_on": "2026-10-25",
+    "raw": {
+     "name": "PITTSBURG TRANSFER STATION",
+     "street": "257 BACK LAKE RD",
+     "also": "",
+     "city": "PITTSBURG",
+     "permittee": "TOWN OF PITTSBURG"
+    },
+    "named": false
+   }
+  ]
+ },
+ "pittsfield": {
+  "read_on": "2026-10-25",
+  "stations": [
+   {
+    "name": "BCEP Solid Waste District",
+    "street": "115 Laconia Rd",
+    "also": "",
+    "place": "Pittsfield",
+    "kind": "transfer",
+    "permit": "DES-SW-PN-00-001",
+    "des_id": "0000206",
+    "page": "https://onestop.des.nh.gov/ords/r/apex_whs/nhdesbasicsearch/solid-waste-facility?p60_swf_lid=0000206",
+    "permittee": "BCEP Solid Waste District",
+    "operator": "BCEP Solid Waste District",
+    "owner_type": "public",
+    "service_type": "limited",
+    "lat": 43.323452,
+    "lon": -71.31455,
+    "read_on": "2026-10-25",
+    "raw": {
+     "name": "BCEP SOLID WASTE DISTRICT",
+     "street": "115 LACONIA RD",
+     "also": "",
+     "city": "PITTSFIELD",
+     "permittee": "BCEP SOLID WASTE DISTRICT"
+    },
+    "named": false
+   }
+  ]
+ },
+ "plaistow": {
+  "read_on": "2026-10-25",
+  "stations": [
+   {
+    "name": "Plaistow Transfer Station",
+    "street": "37 Old County Rd",
+    "also": "",
+    "place": "Plaistow",
+    "kind": "transfer",
+    "permit": "DES-SW-PN-07-011",
+    "des_id": "0000628",
+    "page": "https://onestop.des.nh.gov/ords/r/apex_whs/nhdesbasicsearch/solid-waste-facility?p60_swf_lid=0000628",
+    "permittee": "Town of Plaistow",
+    "operator": "Town of Plaistow",
+    "owner_type": "public",
+    "service_type": "limited",
+    "lat": 42.857139,
+    "lon": -71.09926,
+    "read_on": "2026-10-25",
+    "raw": {
+     "name": "PLAISTOW TRANSFER STATION",
+     "street": "37 OLD COUNTY RD",
+     "also": "",
+     "city": "PLAISTOW",
+     "permittee": "TOWN OF PLAISTOW"
+    },
+    "named": false
+   }
+  ]
+ },
+ "plymouth": {
+  "read_on": "2026-10-25",
+  "stations": [
+   {
+    "name": "Plymouth Recycling Facility",
+    "street": "56 Beech Hill Rd",
+    "also": "",
+    "place": "Plymouth",
+    "kind": "transfer",
+    "permit": "DES-SW-LP-97-502",
+    "des_id": "0000492",
+    "page": "https://onestop.des.nh.gov/ords/r/apex_whs/nhdesbasicsearch/solid-waste-facility?p60_swf_lid=0000492",
+    "permittee": "Town of Plymouth",
+    "operator": "Town of Plymouth",
+    "owner_type": "public",
+    "service_type": "limited",
+    "lat": 43.77814,
+    "lon": -71.70188,
+    "read_on": "2026-10-25",
+    "raw": {
+     "name": "PLYMOUTH RECYCLING FACILITY",
+     "street": "56 BEECH HILL RD",
+     "also": "",
+     "city": "PLYMOUTH",
+     "permittee": "TOWN OF PLYMOUTH"
+    },
+    "named": false
+   }
+  ]
+ },
+ "raymond": {
+  "read_on": "2026-10-25",
+  "stations": [
+   {
+    "name": "Town of Raymond Transfer Station",
+    "street": "104 Prescott Rd",
+    "also": "",
+    "place": "Raymond",
+    "kind": "transfer",
+    "permit": "DES-SW-SP-05-001",
+    "des_id": "0000639",
+    "page": "https://onestop.des.nh.gov/ords/r/apex_whs/nhdesbasicsearch/solid-waste-facility?p60_swf_lid=0000639",
+    "permittee": "Town of Raymond",
+    "operator": "Casella Waste Management of Massachusetts, Inc.",
+    "owner_type": "public",
+    "service_type": "unlimited",
+    "lat": 43.013134,
+    "lon": -71.16041,
+    "read_on": "2026-10-25",
+    "raw": {
+     "name": "TOWN OF RAYMOND TRANSFER STATION",
+     "street": "104 PRESCOTT RD",
+     "also": "",
+     "city": "RAYMOND",
+     "permittee": "TOWN OF RAYMOND"
+    },
+    "named": false
+   }
+  ]
+ },
+ "rindge": {
+  "read_on": "2026-10-25",
+  "stations": [
+   {
+    "name": "Rindge Transfer Station",
+    "street": "113 Main St",
+    "also": "",
+    "place": "Rindge",
+    "kind": "transfer",
+    "permit": "DES-SW-PN-24-002",
+    "des_id": "0003181",
+    "page": "https://onestop.des.nh.gov/ords/r/apex_whs/nhdesbasicsearch/solid-waste-facility?p60_swf_lid=0003181",
+    "permittee": "Town of Rindge",
+    "operator": "Town of Rindge",
+    "owner_type": "public",
+    "service_type": "limited",
+    "lat": 42.75367,
+    "lon": -72.01194,
+    "read_on": "2026-10-25",
+    "raw": {
+     "name": "RINDGE TRANSFER STATION",
+     "street": "113 MAIN ST",
+     "also": "",
+     "city": "RINDGE",
+     "permittee": "TOWN OF RINDGE"
+    },
+    "named": false
+   }
+  ]
+ },
+ "rollinsford": {
+  "read_on": "2026-10-25",
+  "stations": [
+   {
+    "name": "Rollinsford Transfer Station & Recycling Center",
+    "street": "37 Jessie Doe Rd",
+    "also": "",
+    "place": "Rollinsford",
+    "kind": "transfer",
+    "permit": "DES-SW-LP-92-507",
+    "des_id": "0000511",
+    "page": "https://onestop.des.nh.gov/ords/r/apex_whs/nhdesbasicsearch/solid-waste-facility?p60_swf_lid=0000511",
+    "permittee": "Town of Rollinsford",
+    "operator": "Town of Rollinsford",
+    "owner_type": "public",
+    "service_type": "limited",
+    "lat": 43.23624,
+    "lon": -70.82923,
+    "read_on": "2026-10-25",
+    "raw": {
+     "name": "ROLLINSFORD TRANSFER STATION & RECYCLING CENTER",
+     "street": "37 JESSIE DOE RD",
+     "also": "",
+     "city": "ROLLINSFORD",
+     "permittee": "TOWN OF ROLLINSFORD"
+    },
+    "named": false
+   }
+  ]
+ },
+ "rumney": {
+  "read_on": "2026-10-25",
+  "stations": [
+   {
+    "name": "Rumney Transfer Station",
+    "street": "1363 Buffalo Rd",
+    "also": "",
+    "place": "Rumney",
+    "kind": "transfer",
+    "permit": "DES-SW-PN-12-007",
+    "des_id": "0000513",
+    "page": "https://onestop.des.nh.gov/ords/r/apex_whs/nhdesbasicsearch/solid-waste-facility?p60_swf_lid=0000513",
+    "permittee": "Town of Rumney",
+    "operator": "Town of Rumney",
+    "owner_type": "public",
+    "service_type": "limited",
+    "lat": 43.809903,
+    "lon": -71.85508,
+    "read_on": "2026-10-25",
+    "raw": {
+     "name": "RUMNEY TRANSFER STATION",
+     "street": "1363 BUFFALO RD",
+     "also": "",
+     "city": "RUMNEY",
+     "permittee": "TOWN OF RUMNEY"
+    },
+    "named": false
+   }
+  ]
+ },
+ "rye": {
+  "read_on": "2026-10-25",
+  "stations": [
+   {
+    "name": "Rye Transfer Station",
+    "street": "309 Grove Rd",
+    "also": "",
+    "place": "Rye",
+    "kind": "transfer",
+    "permit": "DPHS-SW-85-010",
+    "des_id": "0000514",
+    "page": "https://onestop.des.nh.gov/ords/r/apex_whs/nhdesbasicsearch/solid-waste-facility?p60_swf_lid=0000514",
+    "permittee": "Town of Rye",
+    "operator": "Town of Rye",
+    "owner_type": "public",
+    "service_type": "limited",
+    "lat": 43.00191,
+    "lon": -70.79046,
+    "read_on": "2026-10-25",
+    "raw": {
+     "name": "RYE TRANSFER STATION",
+     "street": "309 GROVE RD",
+     "also": "",
+     "city": "RYE",
+     "permittee": "TOWN OF RYE"
+    },
+    "named": false
+   }
+  ]
+ },
+ "salem": {
+  "read_on": "2026-10-25",
+  "stations": [
+   {
+    "name": "Salem Transfer Station",
+    "street": "101-129 Shannon Rd",
+    "also": "",
+    "place": "Salem",
+    "kind": "transfer",
+    "permit": "DES-SW-LP-95-002",
+    "des_id": "0000599",
+    "page": "https://onestop.des.nh.gov/ords/r/apex_whs/nhdesbasicsearch/solid-waste-facility?p60_swf_lid=0000599",
+    "permittee": "Town of Salem",
+    "operator": "Town of Salem",
+    "owner_type": "public",
+    "service_type": "limited",
+    "lat": 42.81583,
+    "lon": -71.1943,
+    "read_on": "2026-10-25",
+    "raw": {
+     "name": "SALEM TRANSFER STATION",
+     "street": "101-129 SHANNON RD",
+     "also": "",
+     "city": "SALEM",
+     "permittee": "TOWN OF SALEM"
+    },
+    "named": false
+   }
+  ]
+ },
+ "salisbury": {
+  "read_on": "2026-10-25",
+  "stations": [
+   {
+    "name": "Salisbury Solid Waste Transfer Station",
+    "street": "334 Warner Rd",
+    "also": "",
+    "place": "Salisbury",
+    "kind": "transfer",
+    "permit": "DES-SW-89-030",
+    "des_id": "0000517",
+    "page": "https://onestop.des.nh.gov/ords/r/apex_whs/nhdesbasicsearch/solid-waste-facility?p60_swf_lid=0000517",
+    "permittee": "Town of Salisbury",
+    "operator": "Town of Salisbury",
+    "owner_type": "public",
+    "service_type": "limited",
+    "lat": 43.362194,
+    "lon": -71.76711,
+    "read_on": "2026-10-25",
+    "raw": {
+     "name": "SALISBURY SOLID WASTE TRANSFER STATION",
+     "street": "334 WARNER RD",
+     "also": "",
+     "city": "SALISBURY",
+     "permittee": "TOWN OF SALISBURY"
+    },
+    "named": false
+   }
+  ]
+ },
+ "sanbornton": {
+  "read_on": "2026-10-25",
+  "stations": [
+   {
+    "name": "Sanbornton Transfer Station and Recycling Center",
+    "street": "184 Shaw Hill Road",
+    "also": "",
+    "place": "Sanbornton",
+    "kind": "transfer",
+    "permit": "DES-SW-PN-18-005",
+    "des_id": "0003115",
+    "page": "https://onestop.des.nh.gov/ords/r/apex_whs/nhdesbasicsearch/solid-waste-facility?p60_swf_lid=0003115",
+    "permittee": "Town of Sanbornton",
+    "operator": "Town of Sanbornton",
+    "owner_type": "public",
+    "service_type": "limited",
+    "lat": 43.50059,
+    "lon": -71.65773,
+    "read_on": "2026-10-25",
+    "raw": {
+     "name": "SANBORNTON TRANSFER STATION AND RECYCLING CENTER",
+     "street": "184 SHAW HILL ROAD",
+     "also": "",
+     "city": "SANBORNTON",
+     "permittee": "TOWN OF SANBORNTON"
+    },
+    "named": false
+   }
+  ]
+ },
+ "sandown": {
+  "read_on": "2026-10-25",
+  "stations": [
+   {
+    "name": "Sandown Transfer Station",
+    "street": "26 Depot Rd",
+    "also": "",
+    "place": "Sandown",
+    "kind": "transfer",
+    "permit": "DES-SW-PN-07-005",
+    "des_id": "0002872",
+    "page": "https://onestop.des.nh.gov/ords/r/apex_whs/nhdesbasicsearch/solid-waste-facility?p60_swf_lid=0002872",
+    "permittee": "Town of Sandown",
+    "operator": "Town of Sandown",
+    "owner_type": "public",
+    "service_type": "limited",
+    "lat": 42.9294,
+    "lon": -71.18,
+    "read_on": "2026-10-25",
+    "raw": {
+     "name": "SANDOWN TRANSFER STATION",
+     "street": "26 DEPOT RD",
+     "also": "",
+     "city": "SANDOWN",
+     "permittee": "TOWN OF SANDOWN"
+    },
+    "named": false
+   }
+  ]
+ },
+ "sandwich": {
+  "read_on": "2026-10-25",
+  "stations": [
+   {
+    "name": "Sandwich Transfer Station",
+    "street": "465 Holderness Rd",
+    "also": "",
+    "place": "Sandwich",
+    "kind": "limited public",
+    "permit": "DES-SW-PN-25-003",
+    "des_id": "0003198",
+    "page": "https://onestop.des.nh.gov/ords/r/apex_whs/nhdesbasicsearch/solid-waste-facility?p60_swf_lid=0003198",
+    "permittee": "Town of Sandwich",
+    "operator": "Town of Sandwich",
+    "owner_type": "public",
+    "service_type": "limited",
+    "lat": 43.81215,
+    "lon": -71.50049,
+    "read_on": "2026-10-25",
+    "raw": {
+     "name": "SANDWICH TRANSFER STATION",
+     "street": "465 HOLDERNESS RD",
+     "also": "",
+     "city": "SANDWICH",
+     "permittee": "TOWN OF SANDWICH"
+    },
+    "named": false
+   }
+  ]
+ },
+ "seabrook": {
+  "read_on": "2026-10-25",
+  "stations": [
+   {
+    "name": "Seabrook Transfer Station",
+    "street": "70 Rocks Rd",
+    "also": "",
+    "place": "Seabrook",
+    "kind": "transfer",
+    "permit": "DES-SW-87-012",
+    "des_id": "0000521",
+    "page": "https://onestop.des.nh.gov/ords/r/apex_whs/nhdesbasicsearch/solid-waste-facility?p60_swf_lid=0000521",
+    "permittee": "Town of Seabrook",
+    "operator": "Town of Seabrook",
+    "owner_type": "public",
+    "service_type": "limited",
+    "lat": 42.896054,
+    "lon": -70.86256,
+    "read_on": "2026-10-25",
+    "raw": {
+     "name": "SEABROOK TRANSFER STATION",
+     "street": "70 ROCKS RD",
+     "also": "",
+     "city": "SEABROOK",
+     "permittee": "TOWN OF SEABROOK"
+    },
+    "named": false
+   }
+  ]
+ },
+ "shelburne": {
+  "read_on": "2026-10-25",
+  "stations": [
+   {
+    "name": "Shelburne Solid Waste Management Facility",
+    "street": "11 Landfill Dr",
+    "also": "",
+    "place": "Shelburne",
+    "kind": "transfer",
+    "permit": "DES-SW-LP-94-501",
+    "des_id": "0000524",
+    "page": "https://onestop.des.nh.gov/ords/r/apex_whs/nhdesbasicsearch/solid-waste-facility?p60_swf_lid=0000524",
+    "permittee": "Town of Shelburne",
+    "operator": "Town of Shelburne",
+    "owner_type": "public",
+    "service_type": "limited",
+    "lat": 44.393162,
+    "lon": -71.04587,
+    "read_on": "2026-10-25",
+    "raw": {
+     "name": "SHELBURNE SOLID WASTE MANAGEMENT FACILITY",
+     "street": "11 LANDFILL DR",
+     "also": "",
+     "city": "SHELBURNE",
+     "permittee": "TOWN OF SHELBURNE"
+    },
+    "named": false
+   }
+  ]
+ },
+ "somersworth": {
+  "read_on": "2026-10-25",
+  "stations": [
+   {
+    "name": "Somersworth Public Works Facility",
+    "street": "18 Lilac Ln",
+    "also": "",
+    "place": "Somersworth",
+    "kind": "transfer",
+    "permit": "DES-SW-PN-09-006",
+    "des_id": "0002898",
+    "page": "https://onestop.des.nh.gov/ords/r/apex_whs/nhdesbasicsearch/solid-waste-facility?p60_swf_lid=0002898",
+    "permittee": "City of Somersworth",
+    "operator": "City of Somersworth",
+    "owner_type": "public",
+    "service_type": "limited",
+    "lat": 43.245934,
+    "lon": -70.8881,
+    "read_on": "2026-10-25",
+    "raw": {
+     "name": "SOMERSWORTH PUBLIC WORKS FACILITY",
+     "street": "18 LILAC LN",
+     "also": "",
+     "city": "SOMERSWORTH",
+     "permittee": "CITY OF SOMERSWORTH"
+    },
+    "named": false
+   }
+  ]
+ },
+ "stark": {
+  "read_on": "2026-10-25",
+  "stations": [
+   {
+    "name": "Town of Stark, NH Transfer Station and Recycling Center",
+    "street": "47 Recycle Rd",
+    "also": "",
+    "place": "Stark",
+    "kind": "limited public",
+    "permit": "DES-SW-PN-25-002",
+    "des_id": "0003178",
+    "page": "https://onestop.des.nh.gov/ords/r/apex_whs/nhdesbasicsearch/solid-waste-facility?p60_swf_lid=0003178",
+    "permittee": "Town of Stark",
+    "operator": "Town of Stark",
+    "owner_type": "public",
+    "service_type": "limited",
+    "lat": 44.62787,
+    "lon": -71.44843,
+    "read_on": "2026-10-25",
+    "raw": {
+     "name": "TOWN OF STARK, NH TRANSFER STATION AND RECYCLING CENTER",
+     "street": "47 RECYCLE RD",
+     "also": "",
+     "city": "STARK",
+     "permittee": "TOWN OF STARK"
+    },
+    "named": false
+   }
+  ]
+ },
+ "stewartstown": {
+  "read_on": "2026-10-25",
+  "stations": [
+   {
+    "name": "Coos County Recycling Center",
+    "street": "County Farm Rd",
+    "also": "",
+    "place": "Stewartstown",
+    "kind": "transfer",
+    "permit": "DES-SW-LP-92-500",
+    "des_id": "0000528",
+    "page": "https://onestop.des.nh.gov/ords/r/apex_whs/nhdesbasicsearch/solid-waste-facility?p60_swf_lid=0000528",
+    "permittee": "Coos County",
+    "operator": "Coos County",
+    "owner_type": "public",
+    "service_type": "limited",
+    "lat": 44.98794,
+    "lon": -71.53263,
+    "read_on": "2026-10-25",
+    "raw": {
+     "name": "COOS COUNTY RECYCLING CENTER",
+     "street": "COUNTY FARM RD",
+     "also": "",
+     "city": "STEWARTSTOWN",
+     "permittee": "COOS COUNTY"
+    },
+    "named": false
+   },
+   {
+    "name": "Stewartstown Transfer Station",
+    "street": "Back Pond Rd",
+    "also": "Route 3",
+    "place": "Stewartstown",
+    "kind": "transfer",
+    "permit": "DES-SW-90-025",
+    "des_id": "0000527",
+    "page": "https://onestop.des.nh.gov/ords/r/apex_whs/nhdesbasicsearch/solid-waste-facility?p60_swf_lid=0000527",
+    "permittee": "Coos County",
+    "operator": "Town of Stewartstown",
+    "owner_type": "public",
+    "service_type": "limited",
+    "lat": 44.990658,
+    "lon": -71.51461,
+    "read_on": "2026-10-25",
+    "raw": {
+     "name": "STEWARTSTOWN TRANSFER STATION",
+     "street": "BACK POND RD",
+     "also": "ROUTE 3",
+     "city": "STEWARTSTOWN",
+     "permittee": "COOS COUNTY"
+    },
+    "named": false
+   }
+  ]
+ },
+ "stoddard": {
+  "read_on": "2026-10-25",
+  "stations": [
+   {
+    "name": "Stoddard Transfer Station",
+    "street": "1208 Rte 123 North",
+    "also": "",
+    "place": "Stoddard",
+    "kind": "transfer",
+    "permit": "DES-SW-PN-07-008",
+    "des_id": "0000529",
+    "page": "https://onestop.des.nh.gov/ords/r/apex_whs/nhdesbasicsearch/solid-waste-facility?p60_swf_lid=0000529",
+    "permittee": "Town of Stoddard",
+    "operator": "Town of Stoddard",
+    "owner_type": "public",
+    "service_type": "limited",
+    "lat": 43.078993,
+    "lon": -72.10289,
+    "read_on": "2026-10-25",
+    "raw": {
+     "name": "STODDARD TRANSFER STATION",
+     "street": "1208 RTE 123 NORTH",
+     "also": "",
+     "city": "STODDARD",
+     "permittee": "TOWN OF STODDARD"
+    },
+    "named": false
+   }
+  ]
+ },
+ "strafford": {
+  "read_on": "2026-10-25",
+  "stations": [
+   {
+    "name": "Strafford Transfer Station",
+    "street": "114 Ricky Nelson Rd",
+    "also": "",
+    "place": "Strafford",
+    "kind": "transfer",
+    "permit": "DES-SW-PN-02-004",
+    "des_id": "0000629",
+    "page": "https://onestop.des.nh.gov/ords/r/apex_whs/nhdesbasicsearch/solid-waste-facility?p60_swf_lid=0000629",
+    "permittee": "Town of Strafford",
+    "operator": "Town of Strafford",
+    "owner_type": "public",
+    "service_type": "limited",
+    "lat": 43.241439,
+    "lon": -71.12665,
+    "read_on": "2026-10-25",
+    "raw": {
+     "name": "STRAFFORD TRANSFER STATION",
+     "street": "114 RICKY NELSON RD",
+     "also": "",
+     "city": "STRAFFORD",
+     "permittee": "TOWN OF STRAFFORD"
+    },
+    "named": false
+   }
+  ]
+ },
+ "stratford": {
+  "read_on": "2026-10-25",
+  "stations": [
+   {
+    "name": "Stratford Recycling Center",
+    "street": "1405 US Route 3",
+    "also": "",
+    "place": "Stratford",
+    "kind": "transfer",
+    "permit": "DES-SW-PN-99-001",
+    "des_id": "0000531",
+    "page": "https://onestop.des.nh.gov/ords/r/apex_whs/nhdesbasicsearch/solid-waste-facility?p60_swf_lid=0000531",
+    "permittee": "Town of Stratford",
+    "operator": "Stratford Transfer Station",
+    "owner_type": "public",
+    "service_type": "limited",
+    "lat": 44.72068,
+    "lon": -71.60134,
+    "read_on": "2026-10-25",
+    "raw": {
+     "name": "STRATFORD RECYCLING CENTER",
+     "street": "1405 US ROUTE 3",
+     "also": "",
+     "city": "STRATFORD",
+     "permittee": "TOWN OF STRATFORD"
+    },
+    "named": false
+   }
+  ]
+ },
+ "sunapee": {
+  "read_on": "2026-10-25",
+  "stations": [
+   {
+    "name": "Sunapee Transfer Station & Recycling Center",
+    "street": "89 Avery Rd",
+    "also": "",
+    "place": "Sunapee",
+    "kind": "transfer",
+    "permit": "DES-SW-PN-14-005",
+    "des_id": "0000534",
+    "page": "https://onestop.des.nh.gov/ords/r/apex_whs/nhdesbasicsearch/solid-waste-facility?p60_swf_lid=0000534",
+    "permittee": "Town of Sunapee",
+    "operator": "Town of Sunapee",
+    "owner_type": "public",
+    "service_type": "limited",
+    "lat": 43.39919,
+    "lon": -72.09334,
+    "read_on": "2026-10-25",
+    "raw": {
+     "name": "SUNAPEE TRANSFER STATION & RECYCLING CENTER",
+     "street": "89 AVERY RD",
+     "also": "",
+     "city": "SUNAPEE",
+     "permittee": "TOWN OF SUNAPEE"
+    },
+    "named": false
+   }
+  ]
+ },
+ "sutton": {
+  "read_on": "2026-10-25",
+  "stations": [
+   {
+    "name": "Sutton Solid Waste Facility",
+    "street": "705 Rte 114",
+    "also": "",
+    "place": "Sutton",
+    "kind": "transfer",
+    "permit": "DES-SW-PN-01-006",
+    "des_id": "0000535",
+    "page": "https://onestop.des.nh.gov/ords/r/apex_whs/nhdesbasicsearch/solid-waste-facility?p60_swf_lid=0000535",
+    "permittee": "Town of Sutton",
+    "operator": "Town of Sutton",
+    "owner_type": "public",
+    "service_type": "limited",
+    "lat": 43.323505,
+    "lon": -71.94419,
+    "read_on": "2026-10-25",
+    "raw": {
+     "name": "SUTTON SOLID WASTE FACILITY",
+     "street": "705 RTE 114",
+     "also": "",
+     "city": "SUTTON",
+     "permittee": "TOWN OF SUTTON"
+    },
+    "named": false
+   }
+  ]
+ },
+ "swanzey": {
+  "read_on": "2026-10-25",
+  "stations": [
+   {
+    "name": "Swanzey Solid Waste Processing Facility",
+    "street": "97 Pine St",
+    "also": "",
+    "place": "Swanzey",
+    "kind": "transfer",
+    "permit": "DES-SW-PN-07-002",
+    "des_id": "0000630",
+    "page": "https://onestop.des.nh.gov/ords/r/apex_whs/nhdesbasicsearch/solid-waste-facility?p60_swf_lid=0000630",
+    "permittee": "Town of Swanzey",
+    "operator": "Town of Swanzey",
+    "owner_type": "public",
+    "service_type": "limited",
+    "lat": 42.877342,
+    "lon": -72.32163,
+    "read_on": "2026-10-25",
+    "raw": {
+     "name": "SWANZEY SOLID WASTE PROCESSING FACILITY",
+     "street": "97 PINE ST",
+     "also": "",
+     "city": "SWANZEY",
+     "permittee": "TOWN OF SWANZEY"
+    },
+    "named": false
+   }
+  ]
+ },
+ "thornton": {
+  "read_on": "2026-10-25",
+  "stations": [
+   {
+    "name": "Campton Thornton Transfer Station & Recycling Center",
+    "street": "1629 Route 175",
+    "also": "",
+    "place": "Thornton",
+    "kind": "transfer",
+    "permit": "DES-SW-LP-94-505",
+    "des_id": "0000538",
+    "page": "https://onestop.des.nh.gov/ords/r/apex_whs/nhdesbasicsearch/solid-waste-facility?p60_swf_lid=0000538",
+    "permittee": "Town of Thornton",
+    "operator": "Town of Thornton",
+    "owner_type": "public",
+    "service_type": "limited",
+    "lat": 43.87893,
+    "lon": -71.6554,
+    "read_on": "2026-10-25",
+    "raw": {
+     "name": "CAMPTON THORNTON TRANSFER STATION & RECYCLING CENTER",
+     "street": "1629 ROUTE 175",
+     "also": "",
+     "city": "THORNTON",
+     "permittee": "TOWN OF THORNTON"
+    },
+    "named": false
+   }
+  ]
+ },
+ "tilton": {
+  "read_on": "2026-10-25",
+  "stations": [
+   {
+    "name": "Tilton Recycling Center",
+    "street": "581 West Main St",
+    "also": "",
+    "place": "Tilton",
+    "kind": "transfer",
+    "permit": "DES-SW-PN-01-009",
+    "des_id": "0002750",
+    "page": "https://onestop.des.nh.gov/ords/r/apex_whs/nhdesbasicsearch/solid-waste-facility?p60_swf_lid=0002750",
+    "permittee": "Town of Tilton",
+    "operator": "Town of Tilton",
+    "owner_type": "public",
+    "service_type": "limited",
+    "lat": 43.446293,
+    "lon": -71.61605,
+    "read_on": "2026-10-25",
+    "raw": {
+     "name": "TILTON RECYCLING CENTER",
+     "street": "581 WEST MAIN ST",
+     "also": "",
+     "city": "TILTON",
+     "permittee": "TOWN OF TILTON"
+    },
+    "named": false
+   }
+  ]
+ },
+ "troy": {
+  "read_on": "2026-10-25",
+  "stations": [
+   {
+    "name": "Troy Recycling Center",
+    "street": "60 Quarry Rd",
+    "also": "",
+    "place": "Troy",
+    "kind": "transfer",
+    "permit": "DES-SW-PN-99-005",
+    "des_id": "0000540",
+    "page": "https://onestop.des.nh.gov/ords/r/apex_whs/nhdesbasicsearch/solid-waste-facility?p60_swf_lid=0000540",
+    "permittee": "Town of Troy",
+    "operator": "Town of Troy",
+    "owner_type": "public",
+    "service_type": "limited",
+    "lat": 42.81983,
+    "lon": -72.17036,
+    "read_on": "2026-10-25",
+    "raw": {
+     "name": "TROY RECYCLING CENTER",
+     "street": "60 QUARRY RD",
+     "also": "",
+     "city": "TROY",
+     "permittee": "TOWN OF TROY"
+    },
+    "named": false
+   }
+  ]
+ },
+ "tuftonboro": {
+  "read_on": "2026-10-25",
+  "stations": [
+   {
+    "name": "Town of Tuftonboro Transfer Station",
+    "street": "20 Sargents Crossing Rd",
+    "also": "",
+    "place": "Tuftonboro",
+    "kind": "transfer",
+    "permit": "DES-SW-PN-23-013",
+    "des_id": "0003171",
+    "page": "https://onestop.des.nh.gov/ords/r/apex_whs/nhdesbasicsearch/solid-waste-facility?p60_swf_lid=0003171",
+    "permittee": "Town of Tuftonboro",
+    "operator": "Town of Tuftonboro",
+    "owner_type": "public",
+    "service_type": "limited",
+    "lat": 43.7,
+    "lon": -71.25367,
+    "read_on": "2026-10-25",
+    "raw": {
+     "name": "TOWN OF TUFTONBORO TRANSFER STATION",
+     "street": "20 SARGENTS CROSSING RD",
+     "also": "",
+     "city": "TUFTONBORO",
+     "permittee": "TOWN OF TUFTONBORO"
+    },
+    "named": false
+   }
+  ]
+ },
+ "unity": {
+  "read_on": "2026-10-25",
+  "stations": [
+   {
+    "name": "Unity Transfer Station & Recycling Center",
+    "street": "164 Mica Mine Rd",
+    "also": "",
+    "place": "Unity",
+    "kind": "transfer",
+    "permit": "DES-SW-PN-08-006",
+    "des_id": "0000542",
+    "page": "https://onestop.des.nh.gov/ords/r/apex_whs/nhdesbasicsearch/solid-waste-facility?p60_swf_lid=0000542",
+    "permittee": "Town of Unity",
+    "operator": "Town of Unity",
+    "owner_type": "public",
+    "service_type": "limited",
+    "lat": 43.305033,
+    "lon": -72.25945,
+    "read_on": "2026-10-25",
+    "raw": {
+     "name": "UNITY TRANSFER STATION & RECYCLING CENTER",
+     "street": "164 MICA MINE RD",
+     "also": "",
+     "city": "UNITY",
+     "permittee": "TOWN OF UNITY"
+    },
+    "named": false
+   }
+  ]
+ },
+ "wakefield": {
+  "read_on": "2026-10-25",
+  "stations": [
+   {
+    "name": "Wakefield Transfer Station",
+    "street": "330 Rines Rd",
+    "also": "",
+    "place": "Wakefield",
+    "kind": "transfer",
+    "permit": "DES-SW-PN-99-006",
+    "des_id": "0000546",
+    "page": "https://onestop.des.nh.gov/ords/r/apex_whs/nhdesbasicsearch/solid-waste-facility?p60_swf_lid=0000546",
+    "permittee": "Town of Wakefield",
+    "operator": "Town of Wakefield",
+    "owner_type": "public",
+    "service_type": "limited",
+    "lat": 43.541903,
+    "lon": -71.02851,
+    "read_on": "2026-10-25",
+    "raw": {
+     "name": "WAKEFIELD TRANSFER STATION",
+     "street": "330 RINES RD",
+     "also": "",
+     "city": "WAKEFIELD",
+     "permittee": "TOWN OF WAKEFIELD"
+    },
+    "named": false
+   }
+  ]
+ },
+ "walpole": {
+  "read_on": "2026-10-25",
+  "stations": [
+   {
+    "name": "Walpole Recycling & Transfer Station",
+    "street": "207 Whitcomb Road",
+    "also": "Drewsville",
+    "place": "Walpole",
+    "kind": "transfer",
+    "permit": "DES-SW-LP-92-501",
+    "des_id": "0000548",
+    "page": "https://onestop.des.nh.gov/ords/r/apex_whs/nhdesbasicsearch/solid-waste-facility?p60_swf_lid=0000548",
+    "permittee": "Town of Walpole",
+    "operator": "Town of Walpole",
+    "owner_type": "public",
+    "service_type": "limited",
+    "lat": 43.127218,
+    "lon": -72.40519,
+    "read_on": "2026-10-25",
+    "raw": {
+     "name": "WALPOLE RECYCLING & TRANSFER STATION",
+     "street": "207 WHITCOMB ROAD",
+     "also": "DREWSVILLE",
+     "city": "WALPOLE",
+     "permittee": "TOWN OF WALPOLE"
+    },
+    "named": false
+   }
+  ]
+ },
+ "warner": {
+  "read_on": "2026-10-25",
+  "stations": [
+   {
+    "name": "Warner Transfer & Recycling Station",
+    "street": "188 Route 103 W",
+    "also": "",
+    "place": "Warner",
+    "kind": "transfer",
+    "permit": "DES-SW-89-021",
+    "des_id": "0000551",
+    "page": "https://onestop.des.nh.gov/ords/r/apex_whs/nhdesbasicsearch/solid-waste-facility?p60_swf_lid=0000551",
+    "permittee": "Town of Warner",
+    "operator": "Town of Warner",
+    "owner_type": "public",
+    "service_type": "limited",
+    "lat": 43.291187,
+    "lon": -71.848,
+    "read_on": "2026-10-25",
+    "raw": {
+     "name": "WARNER TRANSFER & RECYCLING STATION",
+     "street": "188 ROUTE 103 W",
+     "also": "",
+     "city": "WARNER",
+     "permittee": "TOWN OF WARNER"
+    },
+    "named": false
+   }
+  ]
+ },
+ "warren": {
+  "read_on": "2026-10-25",
+  "stations": [
+   {
+    "name": "Warren Transfer Station",
+    "street": "176 Pine Hill Rd",
+    "also": "Lot 44",
+    "place": "Warren",
+    "kind": "transfer",
+    "permit": "DES-SW-TP-95-038",
+    "des_id": "0000552",
+    "page": "https://onestop.des.nh.gov/ords/r/apex_whs/nhdesbasicsearch/solid-waste-facility?p60_swf_lid=0000552",
+    "permittee": "Town of Warren",
+    "operator": "Town of Warren",
+    "owner_type": "public",
+    "service_type": "limited",
+    "lat": 43.942443,
+    "lon": -71.89746,
+    "read_on": "2026-10-25",
+    "raw": {
+     "name": "WARREN TRANSFER STATION",
+     "street": "176 PINE HILL RD",
+     "also": "LOT 44",
+     "city": "WARREN",
+     "permittee": "TOWN OF WARREN"
+    },
+    "named": false
+   }
+  ]
+ },
+ "washington": {
+  "read_on": "2026-10-25",
+  "stations": [
+   {
+    "name": "Washington Transfer Station & Recycling Center",
+    "street": "961 S Main St",
+    "also": "",
+    "place": "Washington",
+    "kind": "transfer",
+    "permit": "DES-SW-LP-96-508",
+    "des_id": "0000553",
+    "page": "https://onestop.des.nh.gov/ords/r/apex_whs/nhdesbasicsearch/solid-waste-facility?p60_swf_lid=0000553",
+    "permittee": "Town of Washington",
+    "operator": "Town of Washington",
+    "owner_type": "public",
+    "service_type": "limited",
+    "lat": 43.15631,
+    "lon": -72.07432,
+    "read_on": "2026-10-25",
+    "raw": {
+     "name": "WASHINGTON TRANSFER STATION & RECYCLING CENTER",
+     "street": "961 S MAIN ST",
+     "also": "",
+     "city": "WASHINGTON",
+     "permittee": "TOWN OF WASHINGTON"
+    },
+    "named": false
+   }
+  ]
+ },
+ "weare": {
+  "read_on": "2026-10-25",
+  "stations": [
+   {
+    "name": "Weare Transfer Station & Recycling Center",
+    "street": "225 Merrill Rd",
+    "also": "",
+    "place": "Weare",
+    "kind": "transfer",
+    "permit": "DES-SW-89-015",
+    "des_id": "0000560",
+    "page": "https://onestop.des.nh.gov/ords/r/apex_whs/nhdesbasicsearch/solid-waste-facility?p60_swf_lid=0000560",
+    "permittee": "Town of Weare",
+    "operator": "Town of Weare",
+    "owner_type": "public",
+    "service_type": "limited",
+    "lat": 43.120445,
+    "lon": -71.70813,
+    "read_on": "2026-10-25",
+    "raw": {
+     "name": "WEARE TRANSFER STATION & RECYCLING CENTER",
+     "street": "225 MERRILL RD",
+     "also": "",
+     "city": "WEARE",
+     "permittee": "TOWN OF WEARE"
+    },
+    "named": false
+   }
+  ]
+ },
+ "wentworth": {
+  "read_on": "2026-10-25",
+  "stations": [
+   {
+    "name": "Wentworth Transfer Station",
+    "street": "18 Turner Rd",
+    "also": "",
+    "place": "Wentworth",
+    "kind": "transfer",
+    "permit": "DES-SW-PN-03-006",
+    "des_id": "0000632",
+    "page": "https://onestop.des.nh.gov/ords/r/apex_whs/nhdesbasicsearch/solid-waste-facility?p60_swf_lid=0000632",
+    "permittee": "Town of Wentworth",
+    "operator": "Town of Wentworth",
+    "owner_type": "public",
+    "service_type": "limited",
+    "lat": 43.848116,
+    "lon": -71.90988,
+    "read_on": "2026-10-25",
+    "raw": {
+     "name": "WENTWORTH TRANSFER STATION",
+     "street": "18 TURNER RD",
+     "also": "",
+     "city": "WENTWORTH",
+     "permittee": "TOWN OF WENTWORTH"
+    },
+    "named": false
+   }
+  ]
+ },
+ "westmoreland": {
+  "read_on": "2026-10-25",
+  "stations": [
+   {
+    "name": "Westmoreland Recycling Center",
+    "street": "403 London Cross Rd",
+    "also": "",
+    "place": "Westmoreland",
+    "kind": "transfer",
+    "permit": "DES-SW-PN-01-010",
+    "des_id": "0000633",
+    "page": "https://onestop.des.nh.gov/ords/r/apex_whs/nhdesbasicsearch/solid-waste-facility?p60_swf_lid=0000633",
+    "permittee": "Town of Westmoreland",
+    "operator": "Town of Westmoreland",
+    "owner_type": "public",
+    "service_type": "limited",
+    "lat": 42.991235,
+    "lon": -72.38024,
+    "read_on": "2026-10-25",
+    "raw": {
+     "name": "WESTMORELAND RECYCLING CENTER",
+     "street": "403 LONDON CROSS RD",
+     "also": "",
+     "city": "WESTMORELAND",
+     "permittee": "TOWN OF WESTMORELAND"
+    },
+    "named": false
+   }
+  ]
+ },
+ "whitefield": {
+  "read_on": "2026-10-25",
+  "stations": [
+   {
+    "name": "Whitefield Transfer Station & Recycling Center",
+    "street": "187 Hazen Rd",
+    "also": "",
+    "place": "Whitefield",
+    "kind": "transfer",
+    "permit": "DES-SW-LP-93-503",
+    "des_id": "0000561",
+    "page": "https://onestop.des.nh.gov/ords/r/apex_whs/nhdesbasicsearch/solid-waste-facility?p60_swf_lid=0000561",
+    "permittee": "Town of Whitefield",
+    "operator": "Town of Whitefield",
+    "owner_type": "public",
+    "service_type": "limited",
+    "lat": 44.37098,
+    "lon": -71.56634,
+    "read_on": "2026-10-25",
+    "raw": {
+     "name": "WHITEFIELD TRANSFER STATION & RECYCLING CENTER",
+     "street": "187 HAZEN RD",
+     "also": "",
+     "city": "WHITEFIELD",
+     "permittee": "TOWN OF WHITEFIELD"
+    },
+    "named": false
+   }
+  ]
+ },
+ "wilton": {
+  "read_on": "2026-10-25",
+  "stations": [
+   {
+    "name": "Wilton Recycling Center",
+    "street": "291 Gibbons Hwy",
+    "also": "Rte 101",
+    "place": "Wilton",
+    "kind": "transfer",
+    "permit": "DES-SW-PN-11-001",
+    "des_id": "0000565",
+    "page": "https://onestop.des.nh.gov/ords/r/apex_whs/nhdesbasicsearch/solid-waste-facility?p60_swf_lid=0000565",
+    "permittee": "Town of Wilton",
+    "operator": "Town of Wilton",
+    "owner_type": "public",
+    "service_type": "limited",
+    "lat": 42.837376,
+    "lon": -71.75042,
+    "read_on": "2026-10-25",
+    "raw": {
+     "name": "WILTON RECYCLING CENTER",
+     "street": "291 GIBBONS HWY",
+     "also": "RTE 101",
+     "city": "WILTON",
+     "permittee": "TOWN OF WILTON"
+    },
+    "named": false
+   }
+  ]
+ },
+ "winchester": {
+  "read_on": "2026-10-25",
+  "stations": [
+   {
+    "name": "Winchester Transfer Station & Recycling Facility",
+    "street": "105 Forest Lake Rd",
+    "also": "",
+    "place": "Winchester",
+    "kind": "transfer",
+    "permit": "DES-SW-LP-96-507",
+    "des_id": "0000567",
+    "page": "https://onestop.des.nh.gov/ords/r/apex_whs/nhdesbasicsearch/solid-waste-facility?p60_swf_lid=0000567",
+    "permittee": "Town of Winchester",
+    "operator": "Town of Winchester",
+    "owner_type": "public",
+    "service_type": "limited",
+    "lat": 42.775039,
+    "lon": -72.36865,
+    "read_on": "2026-10-25",
+    "raw": {
+     "name": "WINCHESTER TRANSFER STATION & RECYCLING FACILITY",
+     "street": "105 FOREST LAKE RD",
+     "also": "",
+     "city": "WINCHESTER",
+     "permittee": "TOWN OF WINCHESTER"
+    },
+    "named": false
+   }
+  ]
+ },
+ "windham": {
+  "read_on": "2026-10-25",
+  "stations": [
+   {
+    "name": "Windham Transfer Station & Recycling Center",
+    "street": "2 Ledge Rd",
+    "also": "",
+    "place": "Windham",
+    "kind": "transfer",
+    "permit": "DES-SW-90-019",
+    "des_id": "0000570",
+    "page": "https://onestop.des.nh.gov/ords/r/apex_whs/nhdesbasicsearch/solid-waste-facility?p60_swf_lid=0000570",
+    "permittee": "Town of Windham",
+    "operator": "Town of Windham",
+    "owner_type": "public",
+    "service_type": "limited",
+    "lat": 42.80124,
+    "lon": -71.3142,
+    "read_on": "2026-10-25",
+    "raw": {
+     "name": "WINDHAM TRANSFER STATION & RECYCLING CENTER",
+     "street": "2 LEDGE RD",
+     "also": "",
+     "city": "WINDHAM",
+     "permittee": "TOWN OF WINDHAM"
+    },
+    "named": false
+   }
+  ]
+ },
+ "wolfeboro": {
+  "read_on": "2026-10-25",
+  "stations": [
+   {
+    "name": "Wolfeboro Transfer Station & Recycling Center",
+    "street": "400 Beach Pond Rd",
+    "also": "",
+    "place": "Wolfeboro",
+    "kind": "limited public",
+    "permit": "DES-SW-PN-26-001",
+    "des_id": "0003206",
+    "page": "https://onestop.des.nh.gov/ords/r/apex_whs/nhdesbasicsearch/solid-waste-facility?p60_swf_lid=0003206",
+    "permittee": "Town of Wolfeboro",
+    "operator": "Town of Wolfeboro",
+    "owner_type": "public",
+    "service_type": "limited",
+    "lat": 43.63372,
+    "lon": -71.2049,
+    "read_on": "2026-10-25",
+    "raw": {
+     "name": "WOLFEBORO TRANSFER STATION & RECYCLING CENTER",
+     "street": "400 BEACH POND RD",
+     "also": "",
+     "city": "WOLFEBORO",
+     "permittee": "TOWN OF WOLFEBORO"
+    },
+    "named": false
+   }
+  ]
+ },
+ "woodstock": {
+  "read_on": "2026-10-25",
+  "stations": [
+   {
+    "name": "Lincoln Woodstock Recycling Center",
+    "street": "63 Recycle Rd",
+    "also": "Route 112",
+    "place": "Lincoln",
+    "kind": "transfer",
+    "permit": "DES-SW-PN-99-003",
+    "des_id": "0000413",
+    "page": "https://onestop.des.nh.gov/ords/r/apex_whs/nhdesbasicsearch/solid-waste-facility?p60_swf_lid=0000413",
+    "permittee": "Town of Lincoln",
+    "operator": "Town of Lincoln",
+    "owner_type": "public",
+    "service_type": "limited",
+    "lat": 44.038909,
+    "lon": -71.67227,
+    "read_on": "2026-10-25",
+    "raw": {
+     "name": "LINCOLN WOODSTOCK RECYCLING CENTER",
+     "street": "63 RECYCLE RD",
+     "also": "ROUTE 112",
+     "city": "LINCOLN",
+     "permittee": "TOWN OF LINCOLN"
+    },
+    "named": true
+   }
+  ]
+ }
+}

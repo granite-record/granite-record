@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-10-23.2
+# GRANITE_VERSION: 2026-10-23.3
 """
 Where each municipal official a town page shows comes from, how old the copy
 on this disk is, and when it is due to be read again.
@@ -42,6 +42,12 @@ Services tab rather than officials, held to the same rule:
               Libraries Survey: collected/libraries.json, each town's
               `read_on`, the day the survey was saved. A survey comes out
               once a year, so only MAX_AGE makes a copy due.
+  des_swf     the Department of Environmental Services' list of permitted
+              solid waste facilities, its map layer and each facility's page:
+              collected/transfer_stations.json, each town's `read_on`, the
+              earliest day its stations were read. Permits change on no
+              calendar (a town that moves its station files for a new one),
+              so only MAX_AGE makes a copy due.
 
 A copy is as old as its oldest row. The county officers are not here: the site
 draws them from corrections/officials.json, a person's file, which preflight's
@@ -191,6 +197,24 @@ SOURCES = {
                   "src/fetch/other/town_directory.py and SURVEY, OUTLETS and FISCAL_YEAR in "
                   "src/towns/parse_libraries.py at it, then run the two"),
     },
+    "des_swf": {
+        "name": "the Department of Environmental Services' list of permitted solid waste "
+                "facilities",
+        "url": "https://www.des.nh.gov/waste/solid-waste",
+        "file": "collected/transfer_stations.json",
+        "writer": "src/towns/parse_transfer_stations.py",
+        "fetch": ("src/fetch/other/town_directory.py --source des_solid_waste des_facility_pages "
+                  "--again (DES's map layer, then each operating facility's OneStop page, three "
+                  "seconds apart; both answer a cloud machine), read through "
+                  "src/towns/parse_transfer_stations.py"),
+        "fields": ("the Town Services tab's Transfer station card: each publicly owned "
+                   "collection, storage and transfer site DES lists as operating in the town, "
+                   "its street and who holds its permit",),
+        "page_says": "the day: \"as this site read it on October 25, 2026\"",
+        "events": (),
+        "again": ("run src/fetch/other/town_directory.py --source des_solid_waste "
+                  "des_facility_pages --again, then src/towns/parse_transfer_stations.py"),
+    },
 }
 
 # A day a person looked for a newer copy of a source and found none, and what
@@ -216,6 +240,10 @@ FLOORS = {
     # Measured on 24 October 2026: 229 libraries in 207 towns, every one of the
     # survey's New Hampshire outlets placed by its census block.
     "imls_pls": {"towns": 200, "libraries": 220},
+    # Measured on 25 October 2026: 162 publicly owned stations of the 213
+    # operating collection, storage and transfer sites, in 156 towns, and four
+    # more towns a shared station's name names: 160 towns in the file.
+    "des_swf": {"towns": 150, "stations": 150},
 }
 
 
@@ -334,7 +362,7 @@ def rows(key, data):
 
 
 DATE_FIELD = {"sos_list": "read_on", "nhdot": "as_of", "town_sites": "read_on",
-              "imls_pls": "read_on"}
+              "imls_pls": "read_on", "des_swf": "read_on"}
 
 
 def copy_date(key, data):
@@ -366,6 +394,9 @@ def counts(key, data):
                 "website": sum(1 for r in rs if r.get("website"))}
     if key == "imls_pls":
         return {"towns": len(rs), "libraries": sum(len(r.get("libraries") or []) for r in rs)}
+    if key == "des_swf":
+        own = [x for r in rs for x in r.get("stations") or [] if not x.get("named")]
+        return {"towns": len(rs), "stations": len(own)}
     d = data if isinstance(data, dict) else {}
     return {"boards": len(d.get("boards") or {}), "councils": len(d.get("councils") or {})}
 

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-09.41
+# GRANITE_VERSION: 2026-09-09.42
 """
 A page per town and ward: everyone who represents the people who live there.
 
@@ -693,13 +693,16 @@ def town_officials_block(town, key, town_off, site_on_page=None, board=None,
 # if you have your town selected." The plan's first phase is here: where the
 # town office is and how to reach it, and the town's public libraries. Each
 # card says where its facts come from and how old they are, as the officials'
-# cards do. The schools, the transfer station and the tax rate come later, as
-# cards of this tab.
+# cards do. The transfer stations followed on 25 October 2026 (the person, the
+# evening before: "Are you able to retrieve the other info like the transfer
+# stations so those cards can be included?"); the schools and the tax rate come
+# later, as cards of this tab.
 MONTHS = ("January", "February", "March", "April", "May", "June", "July", "August",
           "September", "October", "November", "December")
 OSM_SEARCH = "https://www.openstreetmap.org/search?query="
 LIBRARY_SURVEY = ("the Public Libraries Survey for fiscal year 2024, by the Institute of "
                   "Museum and Library Services")
+DES_LIST = "the Department of Environmental Services' list of permitted solid waste facilities"
 
 
 def month_year(iso):
@@ -740,16 +743,69 @@ def maplink(line):
             'target="_blank" rel="noopener">Map</a>')
 
 
-def services_sections(town, key, town_off, hall=None, libraries=None):
+def station_row(town, s):
+    """One transfer station of collected/transfer_stations.json: its name,
+    which opens its page at DES -- the record it is drawn from -- its street
+    and town, and who holds its permit where that is not the town itself and
+    not the station's own name (a district's, a county's, the neighbouring
+    town's whose station this town's name is on)."""
+    street = s.get("street") or ""
+    line = ", ".join(x for x in (street + (f' ({s["also"]})' if s.get("also") else ""),
+                                 s.get("place") or "") if x)
+    seat = E(line)
+    holder = s.get("permittee") or ""
+    if holder and holder.lower() != (s.get("name") or "").lower() and not re.fullmatch(
+            rf"(?:town|city) of {re.escape(town)}", holder, re.I):
+        seat += "<br>" + E(f"Permit holder: {holder}")
+    where_ = ", ".join(x for x in (street or s.get("name") or "", s.get("place") or "") if x)
+    who = (f'<a href="{E(s["page"])}" target="_blank" rel="noopener">{E(s["name"])}</a>'
+           if s.get("page") else E(s["name"]))
+    return off_row(who, [maplink(f"{where_}, NH")], seat)
+
+
+def stations_card(town, city, entry, site=""):
+    """The transfer station card: what DES's list holds in the town -- the
+    stations it lists as operating and publicly owned, and a shared one whose
+    name includes the town -- each a row (station_row), and under them where
+    they come from, the day the list was read, and that hours, stickers and
+    what each takes are the town's to say. "" where the list holds none: DES
+    lists some stations as closed that run (Holderness's, Loudon's), so a
+    town with none listed is not said to have none."""
+    rows = (entry or {}).get("stations") or []
+    if not rows:
+        return ""
+    own = [s for s in rows if not s.get("named")]
+    named = [s for s in rows if s.get("named")]
+    said = (f"From {DES_LIST}, as this site read it on {long_date(entry.get('read_on') or '')}"
+            if long_date(entry.get("read_on") or "") else f"From {DES_LIST}")
+    held = []
+    if own:
+        held.append(f"{'each one' if len(own) > 1 else 'the one'} it lists in {E(town)} as "
+                    "operating and publicly owned")
+    for s in named:
+        held.append(f"{E(s['name'])} in {E(s.get('place') or '')}, whose name includes "
+                    f"{E(town)}")
+    whose = "city's" if city else "town's"
+    hours = (f"Hours, stickers and what {'each' if len(rows) > 1 else 'it'} takes are on the "
+             f"{whose} own website" + (f": {site}." if site else "."))
+    return card("Transfer stations" if len(rows) > 1 else "Transfer station", (
+        '<ul class="offlist">' + "".join(station_row(town, s) for s in rows) + "</ul>"
+        + note(f"{said}: " + "; and ".join(held) + ". " + hours)))
+
+
+def services_sections(town, key, town_off, hall=None, libraries=None, stations=None):
     """The Town Services tab's cards, for the town `key` names (a city's wards
-    share it): its office and its libraries. [] for a place NHDOT does not
-    list -- an unincorporated place has no town office -- so the tab is not
-    drawn there (tabbed: a panel with nothing in it has no tab).
+    share it): its office, its libraries and its transfer stations. [] for a
+    place NHDOT does not list -- an unincorporated place has no town office --
+    so the tab is not drawn there (tabbed: a panel with nothing in it has no
+    tab).
 
     `libraries` is the town's entry in collected/libraries.json, {} where the
     file holds none for it -- which the card says -- and None where the file
     was not loaded, when the card is not drawn at all: a missing file is not
-    a town with no library."""
+    a town with no library. `stations` is its entry in
+    collected/transfer_stations.json, on the same terms, except that a town
+    the file holds none for draws no card (stations_card)."""
     if not town_off:
         return []
     city = key in CITIES
@@ -779,9 +835,7 @@ def services_sections(town, key, town_off, hall=None, libraries=None):
             + note(said or ("No street address for the office is on file that two sources "
                             "agree on; the mailing address is NHDOT's.")))))
     # ---- the libraries -----------------------------------------------------
-    if libraries is None:
-        return out
-    libs = libraries.get("libraries") or []
+    libs = (libraries or {}).get("libraries") or []
     if libs:
         rows = []
         for lib in libs:
@@ -792,9 +846,13 @@ def services_sections(town, key, town_off, hall=None, libraries=None):
         out.append(card("Libraries" if len(libs) > 1 else "Library", (
             '<ul class="offlist">' + "".join(rows) + "</ul>"
             + note(f"From {LIBRARY_SURVEY}."))))
-    else:
+    elif libraries is not None:
         out.append(card("Library", note(f"No public library is listed in {E(town)} in "
                                         f"{LIBRARY_SURVEY}.")))
+    # ---- the transfer stations ---------------------------------------------
+    trash = stations_card(town, city, stations, site) if stations else ""
+    if trash:
+        out.append(trash)
     return out
 
 
@@ -1336,8 +1394,10 @@ def build(town, ward, wards, dist, legs, off, base, tmpl, elect=None):
                    town, slug(town, "0"), town_off,
                    (off.get("_halls") or {}).get(slug(town, "0")),
                    None if off.get("_libraries") is None
-                   else off["_libraries"].get(slug(town, "0"), {}))
-               if (off.get("_halls") is not None or off.get("_libraries") is not None)
+                   else off["_libraries"].get(slug(town, "0"), {}),
+                   None if off.get("_stations") is None
+                   else off["_stations"].get(slug(town, "0"), {}))
+               if any(off.get(k) is not None for k in ("_halls", "_libraries", "_stations"))
                else [])]
 
     srcs = ["NH General Court", "Secretary of State"]
@@ -1347,6 +1407,8 @@ def build(town, ward, wards, dist, legs, off, base, tmpl, elect=None):
         srcs.append(NHDOT)
     if town_off and (off.get("_libraries") or {}).get(slug(town, "0")):
         srcs.append("the Institute of Museum and Library Services")
+    if town_off and ((off.get("_stations") or {}).get(slug(town, "0")) or {}).get("stations"):
+        srcs.append("the Department of Environmental Services")
     if town_off and any(f.get("source") == "granit_cai" for f in
                         ((off.get("_halls") or {}).get(slug(town, "0")) or {}).get("from") or []):
         srcs.append("NH GRANIT")
@@ -1603,6 +1665,9 @@ def main():
                     help="each town office's street address, written by parse_town_halls.py")
     ap.add_argument("--libraries", default="collected/libraries.json",
                     help="each town's public libraries, written by parse_libraries.py")
+    ap.add_argument("--stations", default="collected/transfer_stations.json",
+                    help="each town's public transfer stations, written by "
+                         "parse_transfer_stations.py")
     a = ap.parse_args()
 
     site = Path(a.site)
@@ -1664,7 +1729,8 @@ def main():
     # THE TOWN SERVICES TAB'S FILES (24 October 2026), on the same contract:
     # absent, the card is not drawn rather than drawn empty.
     for opt, slot, what in ((a.halls, "_halls", "town offices' street addresses"),
-                            (a.libraries, "_libraries", "public libraries")):
+                            (a.libraries, "_libraries", "public libraries"),
+                            (a.stations, "_stations", "transfer stations")):
         f = Path(opt)
         if not f.exists():
             print(f"  {what}: {f} is not on disk, so the Town Services tab goes without them")
@@ -1679,9 +1745,12 @@ def main():
             n = sum(1 for v in off[slot].values() if v.get("street"))
             print(f"  town offices: {n} of {len(off[slot])} with a street address two "
                   f"sources agree on, from {f}")
-        else:
+        elif slot == "_libraries":
             n = sum(len(v.get("libraries") or []) for v in off[slot].values())
             print(f"  libraries: {n} in {len(off[slot])} towns, from {f}")
+        else:
+            n = sum(len(v.get("stations") or []) for v in off[slot].values())
+            print(f"  transfer stations: {n} listings in {len(off[slot])} towns, from {f}")
     # A town's own select board, where its website lists all of it and is
     # current. Absent, every board is the directory's -- which is dated and
     # says so, so the page is still true, only older.

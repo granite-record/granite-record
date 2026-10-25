@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.696
+# GRANITE_VERSION: 2026-09-04.697
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -93927,7 +93927,7 @@ def _town_sources_floors(TS):
 
 
 @check("frontend", "a town page's Town Services tab: the office where two sources agree on its "
-                   "street, with both named, and the town's libraries",
+                   "street, with both named, the town's libraries and its transfer stations",
        needs=("build_town_pages",))
 def _town_services_tab(T):
     """The town directory's first phase on the page (the person, 24 October
@@ -93940,6 +93940,12 @@ def _town_services_tab(T):
       - an office with only a box for its mail says so, and draws no street;
       - the libraries, a branch said to be one, and a town with none says
         so rather than drawing nothing;
+      - the transfer stations (25 October 2026), each opening its page at
+        DES, with a map and who holds its permit where that is not the town
+        itself, the list and its day under them and the town's own website
+        for the hours; a shared station in the town its name names, said to
+        be so; and no card at all where DES lists none, since DES lists as
+        closed some stations that run;
       - and an unincorporated place, which NHDOT does not list and which has
         no office, has no tab at all.
 
@@ -93982,12 +93988,60 @@ def _town_services_tab(T):
             "a town with a box for its mail draws a street, or does not say it has none")
     assert T.services_sections("Hale's Location", "hale-s-location", {}, None, None) == [], (
         "an unincorporated place has a Town Services tab")
+    # ---- the transfer stations ------------------------------------------------
+    page = ("https://onestop.des.nh.gov/ords/r/apex_whs/nhdesbasicsearch/"
+            "solid-waste-facility?p60_swf_lid=0001234")
+    one = {"read_on": "2026-10-25", "stations": [
+        {"name": "Acworth Transfer Station", "street": "222 Beryl Mountain Rd", "also": "",
+         "place": "Acworth", "page": page, "permittee": "Town of Acworth", "named": False}]}
+    acw = "".join(T.services_sections("Acworth", "acworth", {"phone": "603-835-6879",
+                                                             "website": "acworthnh.gov"},
+                                      None, None, one))
+    for want in ('<h3 class="twnh">Transfer station</h3>',
+                 f'<a href="{T.E(page)}" target="_blank" rel="noopener">Acworth Transfer Station</a>',
+                 "222 Beryl Mountain Rd, Acworth",
+                 "query=222%20Beryl%20Mountain%20Rd%2C%20Acworth%2C%20NH",
+                 "From the Department of Environmental Services' list of permitted solid waste "
+                 "facilities, as this site read it on October 25, 2026: the one it lists in Acworth "
+                 "as operating and publicly owned.",
+                 "Hours, stickers and what it takes are on the town's own website: <a "):
+        assert want in acw, f"the transfer station card does not draw {want!r}"
+    assert "Permit holder" not in acw, "a town's own station is said to be the town's permit"
+    berlin = "".join(T.services_sections("Berlin", "berlin", {"phone": "1"}, None, None, {
+        "read_on": "2026-10-25", "stations": [
+            {"name": "AVRRDD Recycling Center and Transfer Station", "street": "100 West Milan Rd",
+             "also": "Route 110", "place": "Berlin", "page": page, "named": False,
+             "permittee": "Androscoggin Valley Regional Refuse Disposal District"},
+            {"name": "Berlin Drop Off", "street": "1 Main St", "also": "", "place": "Berlin",
+             "page": page, "permittee": "City of Berlin", "named": False}]}))
+    assert '<h3 class="twnh">Transfer stations</h3>' in berlin and \
+        "100 West Milan Rd (Route 110), Berlin<br>Permit holder: Androscoggin Valley Regional " \
+        "Refuse Disposal District" in berlin and "each one it lists in Berlin" in berlin and \
+        "on the city's own website." in berlin, (
+            "two stations, a district's permit, or a city's website are not said so")
+    jackson = "".join(T.services_sections("Jackson", "jackson", {"phone": "1"}, None, None, {
+        "read_on": "2026-10-25", "stations": [
+            {"name": "Bartlett Jackson Harts Location Transfer Station",
+             "street": "102 Transfer Station Rd", "also": "", "place": "Bartlett", "page": page,
+             "permittee": "Town of Bartlett", "named": True}]}))
+    assert "Bartlett Jackson Harts Location Transfer Station in Bartlett, whose name includes Jackson" \
+        in jackson and "Permit holder: Town of Bartlett" in jackson and \
+        "the one it lists in Jackson" not in jackson, (
+            "a shared station in a town its name names is not said to be so")
+    for none in ({}, None, {"read_on": "2026-10-25", "stations": []}):
+        assert "Transfer station" not in "".join(T.services_sections(
+            "Holderness", "holderness", {"phone": "1"}, None, {}, none)), (
+                f"a town DES lists no station in draws a transfer station card ({none!r})")
     import inspect
     src = inspect.getsource(T.build)
     assert '("services", "City Services" if slug(town, "0") in CITIES else "Town Services"' in src, (
         "the Town Services tab is not one of a town page's panels")
+    assert 'off["_stations"].get(slug(town, "0"), {})' in src, (
+        "the transfer stations are not given to the Town Services tab")
     return "ok", ("an office drawn where two sources agree, named and dated, a city's City hall, a "
-                  "boxed office said to be one, libraries and none, and no tab where there is no town")
+                  "boxed office said to be one, libraries and none, the transfer stations with their "
+                  "page, map and permit holder, a shared one said to be, none drawn where DES lists "
+                  "none, and no tab where there is no town")
 
 
 @check("files", "the town directory's readers: a library is placed by its census block, and a "
@@ -94099,6 +94153,108 @@ def _town_directory_readers(L, H):
     assert not bad, f"a street drawn without two dated sources, or its place and ZIP: {bad[:6]}"
     return "ok", (f"{n_lib} libraries in {len(libs) - 1} towns; {len(drawn)} of {len(rows)} town "
                   "offices with a street two sources agree on; the hand-read cases hold")
+
+
+@check("files", "the transfer station reader: a station is one DES lists as operating and as "
+                "publicly owned on its own page, never one a name makes look like a town's",
+       needs=("parse_transfer_stations", "town_sources"))
+def _transfer_station_reader(W, TS):
+    """The Town Services tab's transfer station card (the person, 24 October
+    2026: "Are you able to retrieve the other info like the transfer stations
+    so those cards can be included?"), held to what its reader was written
+    against: the pages read on 25 October 2026.
+
+    THE OWNER IS DES'S FIELD, NOT THE NAME. Auburn's "Municipal Solid Waste
+    and Citizen Drop Off Facility" is Waste Management of New Hampshire's,
+    and "Raymond A. LaRoche Sr. Transfer Station and Recycling Center" is the
+    Town of Durham's: the page's owner type says which, and a name is never
+    read for it. Nor a business's class (scrap metal, asbestos, a hauler's
+    truck transfer station), nor a page that is another facility's.
+
+    A SHARED STATION IS IN EACH TOWN ITS NAME IS MADE OF: Campton Thornton's
+    in Campton too, Bartlett Jackson Harts Location's in Hart's Location,
+    whose apostrophe DES does not write. Raymond, in Durham's station's name,
+    is a person's name there: the rest of it is not towns. And the names
+    are written for the page with their acronyms and small words kept as
+    they should be; and the file in git is over its floor, every station
+    carrying its permit, its day and its page at DES."""
+    cases = {"TOWN OF MILTON TRANSFER STATION/RECYCLING CENTER":
+             "Town of Milton Transfer Station/Recycling Center",
+             "BCEP SOLID WASTE DISTRICT": "BCEP Solid Waste District",
+             "TRI-TOWN TRANSFER STATION": "Tri-Town Transfer Station",
+             "ASHLAND TRANSFER STATION & RECYCLING CENTER":
+             "Ashland Transfer Station & Recycling Center",
+             "29 DPW ROAD": "29 DPW Road", "357 NH RT 3A": "357 NH Rt 3A",
+             "NORTH OF VILLAGE": "North of Village",
+             "ALLENSTOWN TRANSFER STATION (CASELLA WASTE SERVICES)":
+             "Allenstown Transfer Station (Casella Waste Services)"}
+    for raw, want in cases.items():
+        assert W.facility_case(raw) == want, f"{raw!r} is written {W.facility_case(raw)!r}"
+    towns = {t: ["0"] for t in ("CAMPTON", "THORNTON", "RAYMOND", "DURHAM", "BARTLETT", "JACKSON",
+                                "HART'S LOCATION", "STARK", "NEW BOSTON", "AUBURN", "ANTRIM")}
+    for name, want in (("CAMPTON THORNTON TRANSFER STATION & RECYCLING CENTER", ["CAMPTON", "THORNTON"]),
+                       ("BARTLETT JACKSON HARTS LOCATION TRANSFER STATION",
+                        ["BARTLETT", "JACKSON", "HART'S LOCATION"]),
+                       ("RAYMOND A. LAROCHE SR. TRANSFER STATION AND RECYCLING CENTER", []),
+                       ("TOWN OF STARK, NH TRANSFER STATION AND RECYCLING CENTER", []),
+                       ("NEW BOSTON TRANSFER STATION/RECYCLING CENTER", [])):
+        assert W.named_towns(name, towns) == want, f"{name!r} names {W.named_towns(name, towns)}"
+    items = W.page_items('<input type="hidden" id="P60_OWNER_TYPE" name="P60_OWNER_TYPE" '
+                         'data-type="VARCHAR2" value="PUBLIC"><input type="hidden" '
+                         'id="P60_FACILITY_STREET_ADDRESS" name="P60_FACILITY_STREET_ADDRESS" '
+                         'data-type="VARCHAR2" value="100 DURHAM POINT RD&lt;br&gt;DURHAM">')
+    assert items == {"P60_OWNER_TYPE": "PUBLIC",
+                     "P60_FACILITY_STREET_ADDRESS": "100 DURHAM POINT RD\nDURHAM"}, items
+
+    def rec(lid, name, city, permit, kind="C/S/T", status="OPERATING"):
+        return {"SWF_TYPE": kind, "SWF_STATUS": status, "SWF_NAME": name, "SWF_CITY": city,
+                "SWF_PERMIT": permit, "SWF_ADD_1": "1 MAIN ST", "SWF_ADD_2": "", "SWF_LAT": 43.0,
+                "SWF_LONG": -71.0, "ONESTOP_LINK": "https://onestop.des.nh.gov/ords/r/apex_whs/"
+                f"nhdesbasicsearch/solid-waste-facility?p60_swf_lid={lid}"}
+
+    def page(lid, permit, city, owner, holder):
+        return {"P60_FACILITY_ID": lid, "P60_PERMIT_NUMBER": permit, "P60_FACILITY_STATUS": "OPERATING",
+                "P60_OWNER_TYPE": owner, "P60_PERMITTEE_NAME": holder,
+                "P60_FACILITY_STREET_ADDRESS": f"1 MAIN ST\n{city}"}
+    records = [rec("0000338", "RAYMOND A. LAROCHE SR. TRANSFER STATION AND RECYCLING CENTER", "DURHAM", "P1"),
+               rec("0000001", "MUNICIPAL SOLID WASTE AND CITIZEN DROP OFF FACILITY", "AUBURN", "P2"),
+               rec("0000002", "N N M RECYCLING, LLC", "ANTRIM", "P3", kind="C/S/T \u2013 SCRAP METAL"),
+               rec("0000003", "CAMPTON THORNTON TRANSFER STATION & RECYCLING CENTER", "THORNTON", "P4"),
+               rec("0000004", "STARK TRANSFER STATION", "STARK", "P5", status="NOT OPERATING"),
+               rec("0000005", "JACKSON TRANSFER STATION", "JACKSON", "P6"),
+               rec("0000006", "NEW BOSTON TRANSFER STATION", "NEW BOSTON", "P7")]
+    pages = {"0000338": page("0000338", "P1", "DURHAM", "PUBLIC", "TOWN OF DURHAM"),
+             "0000001": page("0000001", "P2", "AUBURN", "PRIVATE", "WASTE MANAGEMENT OF NEW HAMPSHIRE, INC."),
+             "0000002": page("0000002", "P3", "ANTRIM", "PRIVATE", "N N M RECYCLING, LLC"),
+             "0000003": page("0000003", "P4", "THORNTON", "PUBLIC", "TOWN OF THORNTON"),
+             "0000004": page("0000004", "P5", "STARK", "PUBLIC", "TOWN OF STARK"),
+             "0000005": page("0000005", "P-OTHER", "JACKSON", "PUBLIC", "TOWN OF JACKSON")}
+    data, left = W.build(records, pages, towns, "2026-10-25", {})
+    assert sorted(data) == ["campton", "durham", "thornton"], (
+        f"the stations kept are {sorted(data)}; left out {left}")
+    assert data["durham"]["stations"][0]["permittee"] == "Town of Durham" and \
+        data["durham"]["stations"][0]["owner_type"] == "public", data["durham"]
+    assert [x["named"] for x in data["campton"]["stations"]] == [True] and \
+        [x["named"] for x in data["thornton"]["stations"]] == [False], (
+            "a shared station is not in its own town and in the town its name names")
+    reasons = " | ".join(f"{k}: {v}" for k, v in sorted(left.items()))
+    for want in ("owned private: ['MUNICIPAL SOLID WASTE AND CITIZEN DROP OFF FACILITY",
+                 "a business's class", "another permit's", "not on disk"):
+        assert want in reasons, f"the report does not say {want!r}: {reasons}"
+    # ---- the file in git ------------------------------------------------------
+    got = json.loads(Path("collected/transfer_stations.json").read_text(encoding="utf-8"))
+    short = TS.short_of("des_swf", got)
+    assert not short, "; ".join(short)
+    rows = [x for k, v in got.items() if not k.startswith("_") for x in v["stations"]]
+    bad = [x["name"] for x in rows
+           if x.get("owner_type") != "public" or x.get("kind") not in W.KINDS.values()
+           or not (x.get("permit") and x.get("read_on")
+                   and str(x.get("page") or "").startswith("https://onestop.des.nh.gov/"))]
+    assert not bad, f"a station kept that is not public, or without its permit, day or page: {bad[:6]}"
+    n = TS.counts("des_swf", got)
+    return "ok", (f"{n['stations']} stations in {n['towns']} towns, each DES's public one with its "
+                  "permit, day and page; the owner read off the page, never the name, and the shared "
+                  "names in each of their towns")
 
 
 @check("files", "each source of a town page's officials carries its copy's date in its own file, "
