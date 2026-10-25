@@ -137,9 +137,9 @@ permissions:
 # run's id, and never waits here. Still open: a dry run started while a real
 # run of main holds gc-night and the scheduled night waits behind it cancels
 # that night, which the dead-man's switch then reports. preflight holds this
-# line beside DRY_RUN. The box is ticked only when it is true or "true" (THE
-# TIMER'S BOXES ARE STRINGS: "false" is a string, and a string is truthy, so
-# the timer's first real night waited here, in line with the dry runs).
+# line beside DRY_RUN. The box is ticked only when it is true or "true", so
+# the line reads the same whether GitHub hands the box over as a boolean or
+# as a string (A BOX MAY ARRIVE AS A STRING, at DRY_RUN).
 concurrency:
   group: ${{ (github.ref != 'refs/heads/main' || (github.event_name != 'schedule' && (inputs.dry_run == true || inputs.dry_run == 'true'))) && 'dry-runs' || github.run_id }}
   cancel-in-progress: false
@@ -165,9 +165,12 @@ env:
   # waiting night unapprovable. nightly.py and cloud.py read the ref too
   # (GITHUB_REF), so an edit to this line does not reopen that. A scheduled
   # night is always main's, and it and a run by hand of main are as before.
-  # The branch first, and the box ticked only when it is true or "true": a
-  # run through GitHub's API -- the timer's -- carries "false", a string, and
-  # `"false" || <a branch other than main>` was "false" (25 October 2026).
+  # A BOX MAY ARRIVE AS A STRING (25 October 2026). The branch first, and the
+  # box ticked only when it is true or "true": read as `(... && inputs.dry_run)
+  # || <not main>`, a box handed over as the string "false" would make a run
+  # of dev "false", since a string is truthy and || returns it. GitHub hands
+  # the boxes over as booleans today -- the timer's run is titled "(scheduled,
+  # by the timer)", which needs !inputs.dry_run -- but nothing promises it.
   DRY_RUN: ${{ github.ref != 'refs/heads/main' || (github.event_name != 'schedule' && (inputs.dry_run == true || inputs.dry_run == 'true')) }}
   PREVIEW: ${{ github.event_name == 'schedule' || inputs.preview }}
   # Only ever from the box, on a run by hand: never on a scheduled night.
@@ -247,7 +250,7 @@ jobs:
       built: ${{ steps.night.outputs.built }}
       publishable: ${{ steps.night.outputs.publishable }}
       # The run's own DRY_RUN, for the publish job, whose if cannot read env
-      # (THE TIMER'S BOXES ARE STRINGS, at the publish job).
+      # (A RUN THE SCHEDULE DID NOT START COULD NOT PUBLISH, at that job).
       dry_run: ${{ env.DRY_RUN }}
       # THE GATE (6 October 2026; nightly.py says what it is): "false" when the
       # night would publish without approval, "true" when it would wait for
@@ -629,19 +632,25 @@ jobs:
   # other than main is a dry run whatever its boxes say, and this job never
   # runs for one (a job's if cannot read env, so it names the ref itself).
   #
-  # THE TIMER'S BOXES ARE STRINGS, AT THIS LINE (25 October 2026). The timer
-  # starts the night through GitHub's API, which carries every box as a
-  # string, and its first night (run 129) built a site fit for production
-  # whose publish job was skipped: this line asked `inputs.dry_run == false`,
-  # and "false" is not false. The run's title read the box as false, and so
-  # did DRY_RUN ("false" is a string, and && returns it), so nothing else
-  # noticed; nothing waited for approval, and GitHub's own run stood down for
-  # the timer's. So the job asks the night for the run's DRY_RUN, which reads
-  # the same whichever way the box arrives.
+  # A RUN THE SCHEDULE DID NOT START COULD NOT PUBLISH (25 October 2026).
+  # "started" (has the timer started tonight's night, above) runs only for a
+  # scheduled run and is skipped for every other: the timer's, and every run
+  # by hand. A job whose if names no status function is skipped when any job
+  # before it, however far back, was skipped; the night carries !cancelled()
+  # for that reason, and this job did not. So from 23 October only a scheduled
+  # run's night could be published: the timer's first night (run 129) and a
+  # run by hand the next morning (run 132) each built a site fit for
+  # production, and neither publish job ran, and nothing waited for approval.
+  # So this job says !cancelled() and asks for the night's own success, and
+  # preflight holds every job after one that can be skipped to a status
+  # function. A first fix (fda95b9) blamed the timer's boxes, read as strings;
+  # wrong -- the run's title shows GitHub read them as booleans -- and
+  # harmless: what it changed stays, the job asking the night for the run's
+  # DRY_RUN rather than reading a box itself.
   publish:
     name: publish to production
     needs: night
-    if: needs.night.outputs.publishable == 'true' && needs.night.outputs.dry_run == 'false' && github.ref == 'refs/heads/main'
+    if: ${{ !cancelled() && needs.night.result == 'success' && needs.night.outputs.publishable == 'true' && needs.night.outputs.dry_run == 'false' && github.ref == 'refs/heads/main' }}
     runs-on: windows-2022
     timeout-minutes: 60
     environment:
