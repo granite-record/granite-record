@@ -282,9 +282,32 @@ def find_town(lang="en"):
             + "</a>.")
 
 
-def abouts(lang, rec):
-    """What an office is, the record's "about" sentences, in `lang`."""
-    return " ".join(said(lang, "about", p) for p in rec.get("about") or [])
+def abouts(lang, rec, drop=None):
+    """What an office is, the record's "about" sentences, in `lang`, less
+    any sentence `drop` (a pattern) finds in the words shown: the English, or
+    its translation, which is looked up by the whole English as it always
+    was, so a translation stays current."""
+    out = []
+    for p in rec.get("about") or []:
+        if drop is None:
+            out.append(said(lang, "about", p))
+            continue
+        got = said_text(lang, "about", p)
+        kept = " ".join(s for s in re.split(r"(?<=[.!?])\s+", got) if not drop.search(s))
+        if not kept:
+            continue
+        out.append(E(kept) if lang == I.DEFAULT or got != p else f'<span lang="en">{E(kept)}</span>')
+    return " ".join(out)
+
+
+# JOINT BALLOT, SAID ONCE (the audit of 25 October 2026, S7). The Executive
+# Branch tab opens with how the legislature elects the Secretary of State and
+# the State Treasurer (CHOSEN_BY_LEGISLATURE), and each of their cards said
+# it again from the hand-kept file -- "The Secretary is elected by a joint
+# session of the House and Senate." The cards leave out the sentence that
+# says it, in English and in the translation alike; the file is the
+# person's, and keeps it.
+JOINT_SAID = re.compile(r"\bjoint session\b|\bsesi[oó]n conjunta\b", re.I)
 
 
 def federal(off, lang="en"):
@@ -433,7 +456,8 @@ def statewide(off, lang="en"):
         src = r.get("source") if r.get("source") and r.get("source") != r.get("official_url") \
             else ""
         parts.append(section(key.replace("_", "-"), title, [who(r, lang=lang)],
-                             abouts(lang, r), source_link(src), lang))
+                             abouts(lang, r, JOINT_SAID if key != "attorney_general" else None),
+                             source_link(src), lang))
     return "".join(parts)
 
 

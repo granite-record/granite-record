@@ -2462,8 +2462,13 @@ function emptyResult(){
       // A name's own line stands alone: "On their own: senator (6)" beside
       // the offer for Sen. Carson was a list of guesses at a search that is
       // already answered.
+      // A word on its own as a sentence (the audit of 25 October 2026, S7):
+      // "'2027' alone matches 4 bills", where "On their own: 2027 (4)" left
+      // a reader to work out what the number in brackets counted.
       OFFERS.html=who||`${did}${fewer.length?`<br><br>Without one word: ${offer(fewer)}`:""}${
-        parts.length?`<br><br>On their own: ${offer(parts)}`:""}`;
+        parts.length?`<br><br>${parts.map(([w,n])=>`&lsquo;<button class="link" data-q="${
+          esc(w)}">${esc(w)}</button>&rsquo; alone matches ${n.toLocaleString()} bill${
+          n===1?"":"s"}`).join(" &middot; ")}`:""}`;
       const at=document.getElementById("offers");
       if(at)at.innerHTML=OFFERS.html;
     };
@@ -3981,8 +3986,10 @@ const JCLASS={s:"istudy",t:"ontable",f:"ifuture"};
 // A line's words, with the bill it names linked where it names one: the next
 // term's bill an interim study report's clerk wrote down (s.link, a bill/
 // address on this site). Only the first place the name stands is linked.
+// `shown` where the build condensed the line (a law in effect in many stages,
+// build_site_v2.law_in_stages); `text` keeps every part for the Laws pages.
 function jText(s){
-  const t=esc(s.text||""), l=s.link;
+  const t=esc(s.shown||s.text||""), l=s.link;
   if(!l||!l.text||!l.href||!/^bill\/\d{4}\/[a-z0-9]+\.html$/.test(l.href))return t;
   const at=t.indexOf(esc(l.text));
   return at<0?t:t.slice(0,at)+billMention(l.text,l.href)+t.slice(at+esc(l.text).length);
@@ -4610,8 +4617,49 @@ const NOT_NAMED=`The recording&rsquo;s captions never name this bill, by
 // A ROOM AS THE DOCUMENTS TAB SAYS IT (the person, approved 17 October 2026):
 // "Legislative Office Building 210-211" for the clerk's "LOB 210-211", with
 // plain_action.BUILDINGS' three buildings.
-const ROOM_BUILDINGS={LOB:"Legislative Office Building",SH:"State House",GP:"Granite Place"};
-const roomWords=v=>String(v||"").replace(/^(LOB|SH|GP)\s*(?=\d)/,(m,k)=>ROOM_BUILDINGS[k]+" ");
+//
+// THE SAME WORDS AS plain_action.place, AND EVERYWHERE A ROOM IS SHOWN (the
+// audit of 25 October 2026, S7): the Calendar, a committee's meetings,
+// those ahead and those held, and its Meets In said the clerk's "GP 231"
+// and the database's "GP Room 230" where a bill's Hearings tab said
+// "Granite Place 232". One rule,
+// in the browser and in build_pages' Calendar alike -- the room together
+// ("GP231"), the Office Building with a letter too many ("LOBO 202-204"), a
+// building alone, "Room 100, SH", the House chamber -- and preflight holds it
+// to plain_action.place's own cases. "GP Room 230" is "Granite Place 230",
+// the room the docket calls "GP 230", so one room reads one way.
+const ROOM_BUILDINGS={LOB:"Legislative Office Building",LOBO:"Legislative Office Building",
+  SH:"State House",GP:"Granite Place"};
+const roomWords=v=>{
+  const t=String(v||"").split(/\s+/).filter(Boolean).join(" ");
+  if(/^(?:SH,?\s+)?(?:Reps|Representatives)'?\s+Hall(?:,?\s*SH)?$/i.test(t))
+    return "Representatives' Hall, State House";
+  if(/^(?:LOBO|LOB|SH|GP)$/.test(t))return ROOM_BUILDINGS[t];
+  return t.replace(/\bRoom\s+(\w[\w .\-]*?)\s*,\s*([A-Z]{2,3})\b/gi,
+      (m,r,k)=>`Room ${r.trim()}, ${ROOM_BUILDINGS[k.toUpperCase()]&&k.toUpperCase()!=="LOBO"
+        ?ROOM_BUILDINGS[k.toUpperCase()]:k}`)
+    .replace(/\b(LOBO|LOB|SH|GP) ?(?:Room )?([0-9][0-9A-Za-z\-]*)\b(?!:)/g,
+      (m,k,n)=>`${ROOM_BUILDINGS[k]} ${n}`);
+};
+// "approximate", the one word an inferred moment carries (CLAUDE.md,
+// Timestamps), on a floor card: where the clerk was not heard to open the
+// bill -- a weak marker's start, or no start at all and Play opening shortly
+// before the vote.
+const floorApprox=s=>s.debate_start==null||s.start_stated===false;
+// A floor appearance's motions IN THE VOTES TAB'S WORDS (S2): "Ought to Pass
+// with Amendment (OTPA, Pass the bill with changes)" for the record's "OTPA",
+// by the key build_site_v2.motion_keys read each one with (motions.classify,
+// as a roll call's head on the Votes tab), or the record's own words where it
+// names no motion the words have. An amendment's number the record's words
+// carry goes beside the head, as it does on the Votes tab (.ramd).
+function motionsLine(s){
+  const said=(s.motions||[]).map((m,i)=>{const k=(s.mks||[])[i]||{};
+    const amd=k.mk?(String(m).match(/\b(?:19|20)\d\d-\d{3,4}[a-z]\b/gi)||[]):[];
+    return voteHead(k.mk||"",m,k.mf)+(amd.length?` <span class="ramd">${esc(amd.join(", "))}</span>`:"");});
+  return said.length?`<div class="pbar" style="border-top:none">
+          <span style="color:var(--ink-2)">${said.length===1?"Motion":"Motions"}: ${
+            said.join(" · ")}</span></div>`:"";
+}
 function renderHearings(b,d){
   // si, because the pid was built from the video and the timestamp, so two
   // proceedings on the same recording resolving to the same second shared one
@@ -4644,6 +4692,9 @@ function renderHearings(b,d){
     // we can say where in it the bill is. Pinning down start times is ongoing
     // work; sending somebody to YouTube in the meantime is a worse answer than
     // handing them the tape and saying so.
+    // `note` is the one word or phrase under the button, or "" for none: a
+    // card says each thing once (the audit of 25 October 2026, S2), so what
+    // Play already says is not said again beside it.
     const player=(from,stub,note)=>{
       const pid=`${esc(s.video_id)}_${si}_${Math.max(0,Math.floor(from))}`;
       return `<div class="player" data-player="${pid}">
@@ -4653,8 +4704,15 @@ function renderHearings(b,d){
         <div class="pbar">
           <a href="https://www.youtube.com/watch?v=${esc(s.video_id)}&t=${
              Math.max(0,Math.floor(from))}s"
-             target="_blank" rel="noopener">Open on YouTube</a>
-          <span class="tolnote">${note}</span></div></div>`;};
+             target="_blank" rel="noopener">Open on YouTube</a>${
+          note?`
+          <span class="tolnote">${note}</span>`:""}</div></div>`;};
+    // WHERE NO MOMENT WAS FOUND, ONE BUTTON (S2): where Play starts, the
+    // time the meeting was set for if there is one, and that the bill's own
+    // moment was not found -- said once, where it used to be said in the
+    // button, again under it and a third time in a note.
+    const unfound=from=>`${from>0?`Play from ${hms(from)}`:"Play from the start"}${
+      s.time?` · scheduled ${esc(clock(s.time))}`:""} (exact moment not found)`;
     // "stated" is "located" with the boundary in the chair's own words. It
     // was its own state string and matched no branch here, so the best data
     // this site has -- 3,829 proceedings, a median of one second -- fell
@@ -4715,15 +4773,12 @@ function renderHearings(b,d){
         +`<p class="note" style="margin-top:8px">${NOT_NAMED} Hearings run
         behind, so the bill is usually after the scheduled time rather than
         before it.</p>`;
-      else inner=player(from,
-        `Play the recording from ${hms(from)} \u2014 scheduled for ${
-          esc(s.time||"this day")}, start time not identified yet`,
-        "start time not identified yet")
-        +`<p class="note" style="margin-top:8px">Not yet matched to the moment
-        the bill came up. Hearings usually run late, so look after the
-        scheduled time.${
-        s.candidate?` An automatic pass suggested ${hms(s.candidate)}, but not
-        confidently enough to publish as fact.`:""}</p>`;
+      // "Play from the start · scheduled 10:00 AM (exact moment not found)":
+      // the owner's words of 25 October 2026 (S2). It was "start time not
+      // identified yet" in the button and again under it, a note saying it a
+      // third time, and an automatic pass's suggestion the page itself said
+      // was not good enough to publish.
+      else inner=player(from,unfound(from),"");
     }
     // else if, not if. Opening a second chain here meant every station that
     // matched the FIRST chain -- located, stated, approximate -- fell through
@@ -4741,8 +4796,7 @@ function renderHearings(b,d){
           bill only</span></button>
         <div class="pbar">
           <a href="https://www.youtube.com/watch?v=${esc(s.video_id)}"
-             target="_blank" rel="noopener">Open on YouTube</a>
-          <span class="tolnote">entire recording is this bill</span></div>
+             target="_blank" rel="noopener">Open on YouTube</a></div>
         ${s.title?`<div class="pbar" style="border-top:none">
           <span style="color:var(--ink-2)">${esc(s.title)}</span></div>`:""}</div>`;
     }
@@ -4793,18 +4847,15 @@ function renderHearings(b,d){
       // one-recording case at all: build_manifest writes this column only
       // where more than one recording of the committee exists that day, and
       // a lone recording is simply matched.
-      const n=["","one","two","three","four","five"][ids.length]||ids.length;
-      inner=`<div class="vbox"><p><b>This committee was recorded that day.
-        Which of its recordings is this meeting has not been established.</b>
-        There are ${n} recordings of it for that day, nothing in the record
-        says which one took this bill up, and this site will not pick one.
-        They are all here: ${links}</p>
-        <p style="margin-top:8px">A committee can sit in divisions that stream
-        separately, and a scheduled time can fall inside more than one
-        recording; in neither case does the record say which one the bill was
-        taken up in. The day, the committee and the recordings are all on
-        record. Which goes with which is not, and a guess here would read as
-        a fact.</p></div>`;
+      //
+      // ONE SENTENCE (the owner's words, 25 October 2026, S2): "Two
+      // recordings that day; the record doesn't say which covers this bill:
+      // Recording 1 · Recording 2". It was 108 words saying the same thing
+      // three ways, and why the record cannot say -- divisions that stream
+      // separately, a time inside two streams -- is this comment's, above.
+      const n=["","One","Two","Three","Four","Five"][ids.length]||ids.length;
+      inner=`<div class="vbox"><p>${n} recordings that day; the record doesn&rsquo;t
+        say which covers this bill: ${links}</p></div>`;
     }
     else if(s.state==="floor_precise"||s.state==="floor_stated"){
       // A roll call closes the item, so its timestamp is the END of the
@@ -4814,19 +4865,18 @@ function renderHearings(b,d){
       // minutes of the wrong debate before the right one starts.
       //
       // So the player opens shortly before the vote, which is certainly this
-      // bill, and the window is offered as a jump for anyone who wants the
-      // whole span. Ten minutes covers all but the longest floor debates, and
-      // it never runs back past the window.
+      // bill. Ten minutes covers all but the longest floor debates, and it
+      // never runs back past the window. (The window was offered as a jump
+      // of its own until 25 October 2026, S2.)
       // Where the clerk actually opened it, if that was found. The window is
       // the previous bill's roll call and can be half an hour of other
       // business earlier, so it is only a fallback -- and ten minutes before
       // the vote is a worse fallback still, just a less wrong one.
       // floor_stated has a start the clerk read (the committee report) and an
       // end the chair said (the result), and no roll call at all. Everything
-      // below is the same except what may be claimed about the end: "timed
-      // to the second" is true of a roll call clock and false
-      // of a caption line, and the difference is the whole point of the
-      // wording on this site.
+      // below is the same except what the end is called: "vote at" is the
+      // roll call's clock, and a caption line the chair spoke is where the
+      // item "ends at", not a vote's time.
       placed=true;
       const voted=s.state==="floor_precise";
       // Guard on the field, not the coerced value. `||0` turned a missing
@@ -4843,51 +4893,39 @@ function renderHearings(b,d){
         ? Math.max(Math.floor(s.debate_start),0)
         : Math.max(ws,Math.floor(s.debate_end)-600);
       const pid=`${esc(s.video_id)}_${si}_f${Math.floor(s.debate_end)}`;
+      // "Play from 05:13:45 · vote at 05:23:18 · Open on YouTube" (the
+      // owner, 25 October 2026, S2): where Play starts, the vote, and the
+      // recording on YouTube, with "approximate" where the opening is not one
+      // the clerk was heard to read (floorApprox). The window's own jump went,
+      // and "timed to the second" with it: the vote's time is the claim, and
+      // the page shows it plainly as every stated time is shown. The motions
+      // in the Votes tab's words (motionsLine).
       inner=`<div class="player" data-player="${pid}">
         <button type="button" class="pstub"${rec} data-embed="${esc(s.video_id)}|${from}|${pid}">
-          <span>${icon("play")}</span><span>${s.debate_start!=null
-            ? `Play from ${hms(from)}, ${s.start_stated===false?"about ":""}where the clerk takes it up`
-            : `Play the floor session from ${hms(from)}`} — debate on
-          this bill ends at ${hms(s.debate_end)}</span></button>
+          <span>${icon("play")}</span><span>Play from ${hms(from)}</span></button>
         <div class="pbar">
-          ${ws!=null&&ws<from?`<button class="jump" data-seek="${pid}|${ws}">${
-            hms(ws)} window opens</button>`:""}
-          <button class="jump" data-seek="${pid}|${Math.floor(s.debate_end)}">
-            ${hms(s.debate_end)} ${voted?"the vote":"ends"}</button>
+          <button class="jump" data-seek="${pid}|${Math.floor(s.debate_end)}">${
+            voted?"vote at":"ends at"} ${hms(s.debate_end)}</button>
           <a href="https://www.youtube.com/watch?v=${esc(s.video_id)}&t=${from}s"
-             target="_blank" rel="noopener">Open on YouTube</a>
-          <span class="tolnote">${voted
-            ? (s.debate_start!=null
-               ? "the clerk takes it up here; the vote is timed to the second"
-               : "vote timed to the second")
-            : "the chair opens and closes it; no roll call on this one"
-            }</span></div>
-        ${(s.motions||[]).length?`<div class="pbar" style="border-top:none">
-          <span style="color:var(--ink-2)">Motions: ${s.motions.map(esc).join(" · ")}</span>
-          </div>`:""}</div>`;
+             target="_blank" rel="noopener">Open on YouTube</a>${
+          floorApprox(s)?`
+          <span class="tolnote">approximate</span>`:""}</div>${motionsLine(s)}</div>`;
     }
     // A voice or division vote leaves no roll call to time the end, but the
     // clerk still opened the item and segment_markers still heard it. 393 of
     // these carried debate_start and were being told they had no moment. Its
     // own arm rather than the branch above, which dereferences debate_end in
     // three places and would print "ends at 00:00:00".
+    // Said once (S2): where Play starts, and "approximate" where a weak
+    // marker found it (build_site_v2.weak_marker). It said where the clerk
+    // takes it up in the button and again under it, and a note said a third
+    // time that there is no end to point at.
     else if(s.state==="floor_dated"&&s.debate_start!=null){
       placed=true;
       const from=Math.max(Math.floor(s.debate_start),0);
-      // "about" where a weak marker found it (build_site_v2.weak_marker).
-      const near=s.start_stated===false?"about ":"";
-      inner=player(from,
-        `Play from ${hms(from)}, ${near}where the clerk takes it up`,
-        `the clerk takes it up ${near}here; no roll call to time the end`)
-        +`<p class="note" style="margin-top:8px">A voice or division vote leaves
-        no timestamp for the end, so this points at the opening only.</p>`;
+      inner=player(from,`Play from ${hms(from)}`,floorApprox(s)?"approximate":"");
     }
-    else if(s.state==="floor_dated")inner=player(0,
-      "Play the floor session \u2014 this bill was taken up that day",
-      "moment not identified")
-      +`<p class="note" style="margin-top:8px">A voice or division vote leaves no
-      timestamp in the record, so there is nothing to point at within the
-      session day. The whole session is here.</p>`;
+    else if(s.state==="floor_dated")inner=player(0,unfound(0),"");
     // A HEARING DATED BY THE SENATE COMMITTEE'S OWN REPORT, where the docket
     // has no Senate hearing of the bill that day (report_station, in
     // build_site_v2). Shown, as the person decided on 24 September, and saying
@@ -4910,11 +4948,7 @@ function renderHearings(b,d){
       "Play the recording \u2014 the bill is not named in it",
       "bill not named in the captions")
       +`<p class="note" style="margin-top:8px">${NOT_NAMED}</p>`;
-    else if(s.video_id)inner=player(0,
-      "Play the recording \u2014 the moment was not identified",
-      "moment not identified")
-      +`<p class="note" style="margin-top:8px">This proceeding has a recording but
-      no timestamp yet. That work is ongoing.</p>`;
+    else if(s.video_id)inner=player(0,unfound(0),"");
     else inner=`<div class="vbox"><p>No recording matched to this proceeding.</p></div>`;
     // Was a second list of state strings, which never gained "stated" or
     // "floor_stated" -- so the site's best-evidenced proceedings wore the
@@ -7691,9 +7725,13 @@ function renderMember(m){
               ()=>renderMemberVotes(m)][PAGE_TAB]||(()=>"");
   // The term under the head, because it governs the figures and every tab,
   // and the figures above the tabs, because they are about the member rather
-  // than about any one tab.
-  return renderMemberHead(m) + `<div class="mterm">${termControl()}<p class="src">The figures, bills and
-    votes follow the term.</p></div>` + termGlance(m,pageTerm())
+  // than about any one tab. The line saying so is said only beside the
+  // picker it is about (the audit of 25 October 2026, S7): a member of one
+  // term has none, and the line spoke of a control that was not there. The
+  // box stays, for the rule it draws between the head and the figures.
+  const picker=termControl();
+  return renderMemberHead(m) + `<div class="mterm">${picker}${picker?`<p class="src">The figures,
+    bills and votes follow the term.</p>`:""}</div>` + termGlance(m,pageTerm())
     + tabStrip(tabs) + pagePane(body());
 }
 
@@ -7961,7 +7999,7 @@ function meetingHtml(s,open,out){
     <summary><span class="calmix" aria-hidden="true">${bars.map(c=>`<i class="${c}"></i>`).join("")}</span>
       <span class="cmwhen"><b>${esc(dateWords(s.date,"long"))}</b>${span?` <span class="cmtime">${esc(span)}</span>`:""}</span>
       <span class="cmcount">${nBills(oc.length)}${s.ahead?" scheduled":v?` &middot; <b>${v} voted on</b>`:" &middot; no votes"}${
-        rooms.length===1?` &middot; ${esc(rooms[0])}`:""}</span>
+        rooms.length===1?` &middot; ${esc(roomWords(rooms[0]))}`:""}</span>
       <span class="cmkinds">${kindChips(kinds)}</span><span class="cmcaret" aria-hidden="true"></span></summary>
     <div class="cmbody"><p class="cmsaid">${meetingSentence(Object.assign({},s,{outcomes:oc}))}</p>
       <div class="cmlay"><div class="cmplay">${meetingPlayers(s,items)}</div>
@@ -8175,7 +8213,7 @@ function calendarBlock(rows,heading){
         +kinds.map(k2=>{const [w,c]=kindWord(k2);
           return chip(w,`calkind ${c}`);}).join("")
         +`<span class="calcount">${nb} bill${nb===1?"":"s"}</span>`
-        +(venue?`<span class="calwhere">${esc(venue)}</span>`:"")
+        +(venue?`<span class="calwhere">${esc(roomWords(venue))}</span>`:"")
         +`<span class="caret"></span></summary>`
         +`<div class="calbody">`);
       const oneSlot=byslot.size===1;
@@ -8186,7 +8224,7 @@ function calendarBlock(rows,heading){
           out.push(`<p class="calslot">`
             +(q[0]?`<span class="caltime">${esc(clock(q[0]))}</span>`:"")
             +chip(w,`calkind ${c}`)
-            +(q[2]&&!venue?`<span class="calwhere">${esc(q[2])}</span>`:"")
+            +(q[2]&&!venue?`<span class="calwhere">${esc(roomWords(q[2]))}</span>`:"")
             +`</p>`);
         }
         out.push(`<ul class="calbills">`);
@@ -8266,7 +8304,7 @@ function renderCommitteeHead(c){
   const chairO=(c.officers||[]).find(o=>/^chair$/i.test(String(o.role||"").trim()));
   const chairM=chairO&&chairO.slug&&members.find(x=>x.slug===chairO.slug);
   const chair=chairO?personLink(chairM||{label:chairO.label||chairO.name,slug:chairO.slug||""}):"";
-  const facts=[["Meets In",esc(c.room||"")],["Phone",c.phone?`<a href="tel:${
+  const facts=[["Meets In",esc(roomWords(c.room))],["Phone",c.phone?`<a href="tel:${
       esc(String(c.phone).replace(/[^\d+]/g,""))}">${esc(c.phone)}</a>`:""],
     ["Committee Aide",esc(c.aide||"")],["Researcher",esc(c.researcher||"")]];
   const met=(c.sessions||[]).filter(s=>!s.ahead).map(s=>s.date).sort().pop();

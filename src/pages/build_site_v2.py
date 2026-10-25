@@ -2592,6 +2592,22 @@ def fold_conference_notices(rows):
     return out
 
 
+def motion_keys(motions, bid, body):
+    """[{"mk": key, "mf"?: fill}] for each of a floor appearance's motions,
+    in their order: the key and the fill of the approved vote words
+    (motions.classify, as a roll call on the Votes tab has them), so the
+    Hearings tab names a motion as the Votes tab does -- "Ought to Pass with
+    Amendment (OTPA, Pass the bill with changes)" where the floor index has
+    the clerk's "OTPA" (the audit of 25 October 2026, S2). A key of "" is
+    a motion the words do not name, and the page then shows the record's."""
+    words = _WORDBOOK["votes"]["motions"]
+    out = []
+    for m in motions or []:
+        k = MO.classify(m, bid, body, words)
+        out.append({"mk": k["mk"], **({"mf": k["mf"]} if k.get("mf") else {})})
+    return out
+
+
 def station_for_floor(f, bid, marks):
     """One floor appearance as a station.
 
@@ -2674,6 +2690,10 @@ def station_for_floor(f, bid, marks):
         "state": "floor_precise" if precise else "floor_dated",
         "candidate": None,
     }
+    # Each motion's key in the approved vote words, so the Hearings tab
+    # names it as the Votes tab does (motion_keys).
+    if st["motions"]:
+        st["mks"] = motion_keys(st["motions"], bid, f.get("body") or "")
     # The clerk reads a committee report to open every bill, and
     # segment_markers.py finds it. That is the START of the debate --
     # exact, and from the clerk's own words. Without it the player fell
@@ -4969,6 +4989,42 @@ J_MARK = {"passed": "p", "adopted": "p", "concurred": "p", "conf_adopted": "p",
 J_PASSING = {"passed", "adopted", "referred"}
 
 
+# A LAW IN EFFECT IN STAGES, IN ONE LINE (the audit of 25 October 2026, S7).
+# HB 282 of 2025's Law stop was 117 words of section numbers -- twelve parts,
+# "sections 4, 8, 9 and 43 on Jan 1, 2026, sections 2, 10, 18 and 44 on Jul
+# 1, 2026, ..." -- in How it got here and in the rail's label alike. Where a
+# law takes effect in three parts or more and every part has its day, the
+# page says "Chapter 142, in effect in stages from Jul 1, 2025 to Jul 1,
+# 2034"; which section takes effect when is the chaptered text's own last
+# section, on the Bill Text tab. Two parts read as a line and are left as
+# they are ("section 3 on Jan 1, 2027, the rest on Aug 1, 2026"), and so is
+# a part dated only "as section 3 provides": the span would leave it out.
+STAGES_FROM = 3
+_STAGE_END = re.compile(r"\s+(?:on\s+(?P<mon>" + "|".join(J_MON) + r")\s+(?P<day>\d{1,2}),\s+"
+                        r"(?P<year>\d{4})|as\s+section\s+\d{1,3}\s+provides)(?:,\s*|\s*$)")
+
+
+def law_in_stages(chapter, parts):
+    """"Chapter 142, in effect in stages from Jul 1, 2025 to Jul 1, 2034" for
+    a law's parts as the Law step states them (_j_effective_parts,
+    _j_chaptered), or "" where they are fewer than STAGES_FROM, any part has
+    no day of its own, or the words do not read as parts to their end."""
+    days, pos = [], 0
+    for m in _STAGE_END.finditer(parts or ""):
+        if not m.group("mon"):
+            return ""
+        try:
+            days.append(_date(int(m.group("year")), J_MON.index(m.group("mon")) + 1,
+                              int(m.group("day"))))
+        except ValueError:
+            return ""
+        pos = m.end()
+    if len(days) < STAGES_FROM or pos != len(parts) or min(days) == max(days):
+        return ""
+    return (f"Chapter {chapter}, in effect in stages from "
+            f"{_j_prose_date(min(days).isoformat())} to {_j_prose_date(max(days).isoformat())}")
+
+
 def _j_prose_date(iso, year=True):
     """"2026-01-11" -> "Jan 11, 2026", or "Jan 11" without the year:
     shell.date_words, month first like every date the site writes."""
@@ -6473,11 +6529,18 @@ def journey(narr, bid, rcs=(), chapter="", law_line="", term="", db_effective=""
         # `effective` is the day the rail's Law stop is dated by (F13); the
         # line itself stays undated, so How it got here does not print the
         # day twice beside words that already say it.
-        steps.append({"date": "", "body": "L", "act": "law",
-                      "text": f"Chapter {chapter}" + (
-                          f", in effect {_j_prose_date(eff)}" if eff else
-                          f", in effect in parts: {parts}" if parts else ""),
-                      "short": f"Chapter {chapter}", "effective": eff or ""})
+        law_step = {"date": "", "body": "L", "act": "law",
+                    "text": f"Chapter {chapter}" + (
+                        f", in effect {_j_prose_date(eff)}" if eff else
+                        f", in effect in parts: {parts}" if parts else ""),
+                    "short": f"Chapter {chapter}", "effective": eff or ""}
+        # `shown`, where the parts are too many to read as a line (law_in_stages):
+        # what How it got here and the rail say. `text` keeps every part,
+        # because the Laws pages read it (build_rsa.journey_parts).
+        staged = law_in_stages(chapter, parts) if parts and not eff else ""
+        if staged:
+            law_step["shown"] = staged
+        steps.append(law_step)
     for e in evs:
         m = REFERENDUM.search(e.get("raw") or "")
         if m:
@@ -6978,7 +7041,7 @@ def _journey_rail(intro, steps, rail, bid, status=""):
                   "say": g["text"] if g and gm in ("p", "x") else RAIL_SAY.get(gm, "")})
     stops.append({"stop": "Law", "mark": lm, "date": law_day(lm, law, stops, steps),
                   "short": law["short"] if law and lm == "p" else "",
-                  "say": (law["text"] if law and lm == "p"
+                  "say": ((law.get("shown") or law["text"]) if law and lm == "p"
                           else "Did not become law" if lm == "x"
                           else RAIL_SAY.get(lm, ""))})
     return stops

@@ -514,17 +514,22 @@ def plain(raw, bill="", body="", next_line=""):
 # and the House chamber three ways ("SH Reps Hall", "SH Representatives
 # Hall", "Reps Hall"), which the docket elsewhere writes "Representatives'
 # Hall, SH". Each is the room it plainly is.
-_PLACE_BLDG = re.compile(r"\b(LOBO|LOB|SH|GP) ?([0-9][0-9A-Za-z\-]*)\b(?!:)")
+#
+# AND THE DATABASE'S "GP Room 230" (the audit of 25 October 2026, S7), which
+# the Calendar and a committee's Meets In print beside the docket's "GP 230"
+# for the same room: "Granite Place 230", as the docket's is. app.js's
+# roomWords is this rule in the browser, held to it by preflight.
+_PLACE_BLDG = re.compile(r"\b(LOBO|LOB|SH|GP) ?(?:Room )?([0-9][0-9A-Za-z\-]*)\b(?!:)")
 _PLACE_ALONE = re.compile(r"^(LOBO|LOB|SH|GP)$")
 _REPS_HALL = re.compile(r"^(?:SH,?\s+)?(?:Reps|Representatives)'?\s+Hall(?:,?\s*SH)?$", re.I)
 _PLACE_BUILDINGS = dict(BUILDINGS, LOBO=BUILDINGS["LOB"])
 
 
 def place(raw):
-    """A meeting's room in the words the calendar uses: "GP 231" and "GP231"
-    are "Granite Place 231", "Room 100, SH" is "Room 100, State House", "SH
-    Reps Hall" is "Representatives' Hall, State House". Anything else comes
-    back as it was, spaces made single."""
+    """A meeting's room in the words the calendar uses: "GP 231", "GP231" and
+    "GP Room 231" are "Granite Place 231", "Room 100, SH" is "Room 100, State
+    House", "SH Reps Hall" is "Representatives' Hall, State House". Anything
+    else comes back as it was, spaces made single."""
     t = " ".join(str(raw or "").split())
     if _REPS_HALL.match(t):
         return "Representatives' Hall, State House"

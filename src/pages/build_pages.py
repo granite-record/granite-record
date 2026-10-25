@@ -44,6 +44,9 @@ import components as _components
 # A committee's recommendation in the committee page's words (REC_WORDS), for
 # Latest Activity.
 import committee_acts as CA
+# A room in the words the rest of the site uses ("Granite Place 231" for the
+# clerk's "GP 231"), for the Calendar's cards: plain_action.place.
+import plain_action as PA
 import seating
 import strip_js
 import json
@@ -1102,7 +1105,7 @@ def cal_days(days, meets, titles, years, code, when, esc, level=3,
                         f' data-date="{esc(_d)}"'
                         + (f' data-time="{esc(slots[0])}"' if slots else "")
                         + (f' data-last="{esc(slots[-1])}"' if slots else "")
-                        + (f' data-venue="{esc(venue)}"' if venue else "")
+                        + (f' data-venue="{esc(PA.place(venue))}"' if venue else "")
                         + (' data-study=""' if study else "")
                         + (' data-cancelled=""' if cancelled else "")
                         # WHO AND WHAT, for the Calendar page's filters: whose
@@ -1139,8 +1142,11 @@ def cal_days(days, meets, titles, years, code, when, esc, level=3,
             for k in ([] if key.name.strip().lower() in FLOOR_CARD else kinds):
                 word, kcls = kind_word(k, lang)
                 html.append(chip(word, f"calkind {kcls}"))
+            # THE ROOM IN WORDS (the audit of 25 October 2026, S7): "Granite
+            # Place 231" for the clerk's "GP 231", as app.js's calendarBlock
+            # says it (roomWords) and a bill's Hearings tab always has.
             if venue:
-                html.append(f'<span class="calwhere">{esc(venue)}</span>')
+                html.append(f'<span class="calwhere">{esc(PA.place(venue))}</span>')
             html.append('<span class="caret"></span></summary>'
                         '<div class="calbody">')
             one = len(slotted) == 1
@@ -1150,7 +1156,7 @@ def cal_days(days, meets, titles, years, code, when, esc, level=3,
                     html.append('<p class="calslot">'
                                 + (f'<span class="caltime">{esc(clock(tm, lang))}</span>' if tm else "")
                                 + chip(word, f"calkind {kcls}")
-                                + (f'<span class="calwhere">{esc(vn)}</span>'
+                                + (f'<span class="calwhere">{esc(PA.place(vn))}</span>'
                                    if vn and not venue else "") + "</p>")
                 # A ROW WITH NO BILL is a study or statutory committee's
                 # meeting: it says what kind of meeting and what set the
