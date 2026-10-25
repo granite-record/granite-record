@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-10-23.12
+# GRANITE_VERSION: 2026-10-23.13
 """
 The site in more than one language, and how a translation stays current.
 
@@ -118,7 +118,8 @@ GUIDE_PAGES = tuple(f"guides/{s}.html" for s in (
 LEARN_PAGES = tuple(f"learn/{s}.html" for s in (
     "the-courts", "state-agencies", "administrative-rules", "local-government",
     "county-government", "city-and-town-government",
-    "general-court", "how-a-bill-becomes-law", "governor-and-council", "the-constitution"))
+    "general-court", "how-a-bill-becomes-law", "governor-and-council", "the-constitution",
+    "legislative-year"))
 PAGES = {"es": ("index.html", "learn/glossary.html", "resources.html") + GUIDE_PAGES + LEARN_PAGES}
 
 _CATALOGS = {}
@@ -606,6 +607,12 @@ def code_words(root=None):
     if any(has(c, "resources.html") for c in LANGS if c != DEFAULT):
         import build_civics
         for key, en, where in build_civics.hub_words():
+            add(key, en, where)
+    # The legislature's schedule (the Learn pages in Spanish, 25 October
+    # 2026): its seasons' and steps' words are legislative_year's data.
+    if any(has(c, "learn/legislative-year.html") for c in LANGS if c != DEFAULT):
+        import legislative_year
+        for key, en, where in legislative_year.year_words():
             add(key, en, where)
     return words, problems
 

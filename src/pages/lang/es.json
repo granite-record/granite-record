@@ -11423,7 +11423,7 @@
   },
   "learn.how-a-bill-becomes-law.the-whole-course-repeats-moving-between": {
    "en": "The whole course repeats. Moving between chambers is called crossover, and there is a deadline for it.",
-   "es": "Todo el recorrido se repite. El paso de una cámara a otra se llama crossover, y tiene un plazo.",
+   "es": "Todo el recorrido se repite. Al cambio de una cámara a la otra se le llama paso a la otra cámara (crossover), y tiene un plazo.",
    "state": "draft"
   },
   "learn.how-a-bill-becomes-law.then-two-thirds-of-those-voting": {
@@ -11524,6 +11524,76 @@
   "learn.lang_note": {
    "en": "This page is in Spanish. The official pages it links to, and the record itself, are in English.",
    "es": "Esta página está en español. Las páginas oficiales que enlaza, y el propio registro, están en inglés.",
+   "state": "draft"
+  },
+  "learn.legislative-year.house-calendars-and-journals": {
+   "en": "House calendars and journals",
+   "es": "Calendarios y diarios de sesiones de la Cámara",
+   "state": "draft"
+  },
+  "learn.legislative-year.house-rules": {
+   "en": "House Rules",
+   "es": "Reglamento de la Cámara",
+   "state": "draft"
+  },
+  "learn.legislative-year.in-the-record": {
+   "en": "In the Record",
+   "es": "En el registro",
+   "state": "draft"
+  },
+  "learn.legislative-year.lead": {
+   "en": "When the House and Senate sit, and the deadlines a bill must meet.",
+   "es": "Cuándo sesionan la Cámara y el Senado, y los plazos que debe cumplir un proyecto de ley.",
+   "state": "draft"
+  },
+  "learn.legislative-year.right-now": {
+   "en": "Right Now",
+   "es": "Ahora mismo",
+   "state": "draft"
+  },
+  "learn.legislative-year.senate-calendars-and-journals": {
+   "en": "Senate calendars and journals",
+   "es": "Calendarios y diarios de sesiones del Senado",
+   "state": "draft"
+  },
+  "learn.legislative-year.senate-rules": {
+   "en": "Senate Rules",
+   "es": "Reglamento del Senado",
+   "state": "draft"
+  },
+  "learn.legislative-year.the-calendar-for-this-week-s": {
+   "en": "<a href=\"calendar.html\">The Calendar</a> for this week's hearings and sessions; the days each chamber sat, <a href=\"session/house.html\">the House's</a> and <a href=\"session/senate.html\">the Senate's</a>; and how a bill moves, in <a href=\"learn/how-a-bill-becomes-law.html\">How a Bill Becomes Law</a>.",
+   "es": "<a href=\"calendar.html\">El Calendario</a> para las audiencias y sesiones de esta semana; los días en que sesionó cada cámara, <a href=\"session/house.html\">los de la Cámara</a> y <a href=\"session/senate.html\">los del Senado</a>; y cómo avanza un proyecto de ley, en <a href=\"learn/how-a-bill-becomes-law.html\">Cómo un proyecto de ley se convierte en ley</a>.",
+   "state": "draft"
+  },
+  "learn.legislative-year.the-full-schedule": {
+   "en": "The Full Schedule",
+   "es": "El calendario completo",
+   "state": "draft"
+  },
+  "learn.legislative-year.the-legislature-is-elected-for-two": {
+   "en": "The legislature is elected for two years, and each year is one session: it opens in January, runs through the deadlines below and ends by June. A new term begins on <b>Organization Day</b>, the first Wednesday of December after the November election.",
+   "es": "La Legislatura se elige por dos años, y cada año es una sesión: comienza en enero, avanza por los plazos que se indican abajo y termina a más tardar en junio. Un nuevo período comienza el <b>Día de Organización</b> (Organization Day), el primer miércoles de diciembre después de la elección de noviembre.",
+   "state": "draft"
+  },
+  "learn.legislative-year.the-new-hampshire-constitution": {
+   "en": "The New Hampshire Constitution",
+   "es": "La Constitución de New Hampshire",
+   "state": "draft"
+  },
+  "learn.legislative-year.the-term-at-a-glance": {
+   "en": "The Term at a Glance",
+   "es": "El período de un vistazo",
+   "state": "draft"
+  },
+  "learn.legislative-year.title": {
+   "en": "NH Legislature Schedule",
+   "es": "Calendario de la Legislatura de NH",
+   "state": "draft"
+  },
+  "learn.legislative-year.what-the-deadlines-mean-crossover": {
+   "en": "What the deadlines mean -- crossover, interim study, a committee of conference -- is in <a href=\"learn/glossary.html\">the Glossary</a>.",
+   "es": "Qué significan los plazos &mdash; el paso a la otra cámara (crossover), el estudio interino, un comité de conferencia &mdash; está en <a href=\"learn/glossary.html\">el Glosario</a>.",
    "state": "draft"
   },
   "learn.local-government.a-town-or-district-adopts-sb": {
@@ -13099,6 +13169,946 @@
   "web.when": {
    "en": "Free webinar &middot; Tuesday, November 10, 6:30 p.m.",
    "es": "Seminario web gratuito &middot; martes 10 de noviembre, 6:30 p. m.",
+   "state": "draft"
+  },
+  "year.a-bill-is-introduced-when-it": {
+   "en": "A bill is introduced when it is read in and sent to a committee.",
+   "es": "Un proyecto de ley se presenta cuando se le da lectura y se envía a un comité.",
+   "state": "draft"
+  },
+  "year.a-request-for-a-bill-is": {
+   "en": "A request for a bill is a Legislative Service Request, or LSR. Members seeking re-election may file theirs before the election.",
+   "es": "La solicitud de un proyecto de ley es una solicitud de servicio legislativo (Legislative Service Request, LSR). Los miembros que buscan la reelección pueden presentar las suyas antes de la elección.",
+   "state": "draft"
+  },
+  "year.after-the-session": {
+   "en": "After the Session",
+   "es": "Después de la sesión",
+   "state": "draft"
+  },
+  "year.between-sessions-the-y2-session-opens": {
+   "en": "Between sessions. The {y2} session opens in January.",
+   "es": "Entre sesiones. La sesión de {y2} comienza en enero.",
+   "state": "draft"
+  },
+  "year.between-the-sessions": {
+   "en": "Between the Sessions",
+   "es": "Entre las sesiones",
+   "state": "draft"
+  },
+  "year.bill-requests-open-to-every": {
+   "en": "Bill requests open to every representative",
+   "es": "Solicitudes de proyectos de ley abiertas a todos los representantes",
+   "state": "draft"
+  },
+  "year.bill-requests-open-to-every-member": {
+   "en": "Bill requests open to every member",
+   "es": "Solicitudes de proyectos de ley abiertas a todos los miembros",
+   "state": "draft"
+  },
+  "year.bills-are-introduced-in-january-cross": {
+   "en": "Bills are introduced in January, cross to the other chamber in late March or April, and are finished by the end of June.",
+   "es": "Los proyectos de ley se presentan en enero, pasan a la otra cámara a finales de marzo o en abril, y se terminan a finales de junio.",
+   "state": "draft"
+  },
+  "year.bills-go-to-the-governor": {
+   "en": "Bills go to the Governor",
+   "es": "Los proyectos de ley van al Gobernador",
+   "state": "draft"
+  },
+  "year.bills-to-the-governor": {
+   "en": "Bills to the Governor",
+   "es": "Proyectos de ley al Gobernador",
+   "state": "draft"
+  },
+  "year.both-chambers-meet-to-take-up": {
+   "en": "Both chambers meet to take up the Governor's vetoes. Overriding one takes two thirds of each chamber.",
+   "es": "Ambas cámaras se reúnen para tratar los vetos del Gobernador. Anular uno requiere dos tercios de cada cámara.",
+   "state": "draft"
+  },
+  "year.both-chambers-vote-on-the-conference": {
+   "en": "Both chambers vote on the conference versions. It is the session's last deadline.",
+   "es": "Ambas cámaras votan las versiones de conferencia. Es el último plazo de la sesión.",
+   "state": "draft"
+  },
+  "year.by-law-rsa-653-7-the": {
+   "en": "By law (RSA 653:7), the Tuesday after the first Monday of November.",
+   "es": "Por ley (RSA 653:7), el martes después del primer lunes de noviembre. ",
+   "state": "draft"
+  },
+  "year.by-rule-the-first-wednesday-after": {
+   "en": "By rule, the first Wednesday after the first Tuesday of January.",
+   "es": "Por regla, el primer miércoles después del primer martes de enero. ",
+   "state": "draft"
+  },
+  "year.by-rule-the-first-wednesday-of": {
+   "en": "By rule, the first Wednesday of December.",
+   "es": "Por regla, el primer miércoles de diciembre. ",
+   "state": "draft"
+  },
+  "year.committee-deadlines-first-chamber": {
+   "en": "Committee deadlines, first chamber",
+   "es": "Plazos de los comités, primera cámara",
+   "state": "draft"
+  },
+  "year.committee-deadlines-second-chamber": {
+   "en": "Committee deadlines, second chamber",
+   "es": "Plazos de los comités, segunda cámara",
+   "state": "draft"
+  },
+  "year.committees-of-conference": {
+   "en": "Committees of conference",
+   "es": "Comités de conferencia",
+   "state": "draft"
+  },
+  "year.committees-report-on-each-bill-and": {
+   "en": "Committees report on each bill, and the chamber votes on the report a week later, in steps. Bills going on to a second committee go first.",
+   "es": "Los comités presentan su informe sobre cada proyecto de ley, y la cámara vota el informe una semana después, por etapas. Los proyectos que pasan a un segundo comité van primero.",
+   "state": "draft"
+  },
+  "year.committees-study-the-subjects-of-the": {
+   "en": "Committees study the subjects of the bills sent to interim study. The bills themselves go no further; a report may recommend a new bill next term.",
+   "es": "Los comités estudian los temas de los proyectos de ley enviados a estudio interino. Los proyectos mismos no avanzan más; un informe puede recomendar un nuevo proyecto de ley el próximo período.",
+   "state": "draft"
+  },
+  "year.convening-day-the-chambers-begin-taking": {
+   "en": "Convening day: the chambers begin taking up the new bills.",
+   "es": "Día de apertura: las cámaras empiezan a tratar los nuevos proyectos de ley.",
+   "state": "draft"
+  },
+  "year.crossover": {
+   "en": "Crossover",
+   "es": "Paso a la otra cámara",
+   "state": "draft"
+  },
+  "year.crossover-in-the-house": {
+   "en": "Crossover in the House",
+   "es": "Paso a la otra cámara, en la Cámara",
+   "state": "draft"
+  },
+  "year.crossover-in-the-senate": {
+   "en": "Crossover in the Senate",
+   "es": "Paso a la otra cámara, en el Senado",
+   "state": "draft"
+  },
+  "year.december": {
+   "en": "December",
+   "es": "Diciembre",
+   "state": "draft"
+  },
+  "year.december-2024-to-june-2025": {
+   "en": "December 2024 to June 2025",
+   "es": "De diciembre de 2024 a junio de 2025",
+   "state": "draft"
+  },
+  "year.december-2026-to-january-2027": {
+   "en": "December 2026 to January 2027",
+   "es": "De diciembre de 2026 a enero de 2027",
+   "state": "draft"
+  },
+  "year.each-bill-both-chambers-passed-goes": {
+   "en": "Each bill both chambers passed goes to the Governor, who signs it, vetoes it, or leaves it to become law without a signature.",
+   "es": "Cada proyecto de ley que aprobaron ambas cámaras va al Gobernador, quien lo firma, lo veta o deja que se convierta en ley sin su firma.",
+   "state": "draft"
+  },
+  "year.each-chamber-s-last-vote-on": {
+   "en": "Each chamber's last vote on the bills that crossed to it.",
+   "es": "La última votación de cada cámara sobre los proyectos que le llegaron de la otra.",
+   "state": "draft"
+  },
+  "year.each-sponsor-approves-the-drafted-text": {
+   "en": "Each sponsor approves the drafted text of their bill before it is introduced.",
+   "es": "Cada patrocinador aprueba el texto redactado de su proyecto de ley antes de que se presente.",
+   "state": "draft"
+  },
+  "year.each-sponsor-approves-the-drafted-text-2": {
+   "en": "Each sponsor approves the drafted text of their bill.",
+   "es": "Cada patrocinador aprueba el texto redactado de su proyecto de ley.",
+   "state": "draft"
+  },
+  "year.every-seat-in-both-chambers-is": {
+   "en": "Every seat in both chambers is on the ballot, and filing for the next term's bills opens the next day.",
+   "es": "Todos los escaños de ambas cámaras están en la boleta, y al día siguiente se abre la presentación de solicitudes para los proyectos del próximo período.",
+   "state": "draft"
+  },
+  "year.fall-2024": {
+   "en": "Fall 2024",
+   "es": "Otoño de 2024",
+   "state": "draft"
+  },
+  "year.filing-opens-to-all-members-the": {
+   "en": "Filing opens to all members the day after the election and closes in late November.",
+   "es": "La presentación se abre a todos los miembros el día después de la elección y se cierra a finales de noviembre.",
+   "state": "draft"
+  },
+  "year.filing-opens-to-all-members-the-2": {
+   "en": "Filing opens to all members the day after the election.",
+   "es": "La presentación se abre a todos los miembros el día después de la elección.",
+   "state": "draft"
+  },
+  "year.first-year": {
+   "en": "First year",
+   "es": "Primer año",
+   "state": "draft"
+  },
+  "year.general-election": {
+   "en": "General election",
+   "es": "Elección general",
+   "state": "draft"
+  },
+  "year.house-bill-requests-for-2026": {
+   "en": "House bill requests for 2026",
+   "es": "Solicitudes de proyectos de ley de la Cámara para 2026",
+   "state": "draft"
+  },
+  "year.house-committees-report-the-bills-they": {
+   "en": "House committees report the bills they kept over the fall, for a vote in the second session. It is also the House sponsors' last day to sign off on 2026's requests.",
+   "es": "Los comités de la Cámara presentan su informe sobre los proyectos que retuvieron durante el otoño, para votarlos en la segunda sesión. También es el último día para que los patrocinadores de la Cámara aprueben la redacción de las solicitudes de 2026.",
+   "state": "draft"
+  },
+  "year.house-committees-work-on-the-bills": {
+   "en": "House committees work on the bills they retained, members file requests for next year's bills, and each chamber meets for a veto day.",
+   "es": "Los comités de la Cámara trabajan en los proyectos que retuvieron, los miembros presentan solicitudes para los proyectos del año siguiente, y cada cámara se reúne para un Día de vetos.",
+   "state": "draft"
+  },
+  "year.house-members-running-again-may-file": {
+   "en": "House members running again may file bill requests",
+   "es": "Los representantes que buscan la reelección pueden solicitar proyectos de ley",
+   "state": "draft"
+  },
+  "year.house-sponsors-sign-off": {
+   "en": "House sponsors sign off",
+   "es": "Los patrocinadores de la Cámara aprueban la redacción de sus proyectos",
+   "state": "draft"
+  },
+  "year.in-session": {
+   "en": "In session",
+   "es": "En sesión",
+   "state": "draft"
+  },
+  "year.in-session-the-y1-session": {
+   "en": "In session: the {y1} session.",
+   "es": "En sesión: la sesión de {y1}.",
+   "state": "draft"
+  },
+  "year.in-session-the-y2-session": {
+   "en": "In session: the {y2} session.",
+   "es": "En sesión: la sesión de {y2}.",
+   "state": "draft"
+  },
+  "year.interim-study": {
+   "en": "Interim study",
+   "es": "Estudio interino",
+   "state": "draft"
+  },
+  "year.interim-study-reports-due": {
+   "en": "Interim study reports due",
+   "es": "Vencen los informes de estudio interino",
+   "state": "draft"
+  },
+  "year.january-to-june": {
+   "en": "January to June",
+   "es": "De enero a junio",
+   "state": "draft"
+  },
+  "year.january-to-june-2026": {
+   "en": "January to June 2026",
+   "es": "De enero a junio de 2026",
+   "state": "draft"
+  },
+  "year.july-and-august": {
+   "en": "July and August",
+   "es": "Julio y agosto",
+   "state": "draft"
+  },
+  "year.july-to-october": {
+   "en": "July to October",
+   "es": "De julio a octubre",
+   "state": "draft"
+  },
+  "year.last-day-to-act-on-committee": {
+   "en": "Last day to act on committee of conference reports",
+   "es": "Último día para votar los informes de los comités de conferencia",
+   "state": "draft"
+  },
+  "year.last-day-to-act-on-the": {
+   "en": "Last day to act on the other chamber's bills",
+   "es": "Último día para votar los proyectos de ley de la otra cámara",
+   "state": "draft"
+  },
+  "year.last-day-to-file-bill-requests": {
+   "en": "Last day to file bill requests",
+   "es": "Último día para presentar solicitudes de proyectos de ley",
+   "state": "draft"
+  },
+  "year.last-day-to-form-committees-of": {
+   "en": "Last day to form committees of conference",
+   "es": "Último día para formar comités de conferencia",
+   "state": "draft"
+  },
+  "year.last-day-to-introduce-house-bills": {
+   "en": "Last day to introduce House bills",
+   "es": "Último día para presentar proyectos de ley de la Cámara",
+   "state": "draft"
+  },
+  "year.last-day-to-request-a-senate": {
+   "en": "Last day to request a Senate bill",
+   "es": "Último día para solicitar un proyecto de ley del Senado",
+   "state": "draft"
+  },
+  "year.last-day-to-sign-their-reports": {
+   "en": "Last day to sign their reports",
+   "es": "Último día para firmar sus informes",
+   "state": "draft"
+  },
+  "year.november": {
+   "en": "November",
+   "es": "Noviembre",
+   "state": "draft"
+  },
+  "year.organization-day": {
+   "en": "Organization Day",
+   "es": "Día de Organización",
+   "state": "draft"
+  },
+  "year.out-of-session-until-the-new": {
+   "en": "Out of session until the new legislature takes office on Organization Day, December 2.",
+   "es": "Fuera de sesión hasta que la nueva Legislatura asuma el cargo el Día de Organización, el 2 de diciembre.",
+   "state": "draft"
+  },
+  "year.report-every-house-bill": {
+   "en": "Report every House bill",
+   "es": "Informar todos los proyectos de la Cámara",
+   "state": "draft"
+  },
+  "year.report-every-remaining-house-bill-and": {
+   "en": "Report every remaining House bill, and the list of those retained",
+   "es": "Informar todos los proyectos de la Cámara que quedan, y la lista de los retenidos",
+   "state": "draft"
+  },
+  "year.report-every-remaining-senate-bill": {
+   "en": "Report every remaining Senate bill",
+   "es": "Informar todos los proyectos del Senado que quedan",
+   "state": "draft"
+  },
+  "year.report-every-senate-bill": {
+   "en": "Report every Senate bill",
+   "es": "Informar todos los proyectos del Senado",
+   "state": "draft"
+  },
+  "year.report-house-bills-going-to-a": {
+   "en": "Report House bills going to a second committee",
+   "es": "Informar los proyectos de la Cámara que pasan a un segundo comité",
+   "state": "draft"
+  },
+  "year.report-senate-bills-going-to-a": {
+   "en": "Report Senate bills going to a second committee",
+   "es": "Informar los proyectos del Senado que pasan a un segundo comité",
+   "state": "draft"
+  },
+  "year.report-the-other-house-bills": {
+   "en": "Report the other House bills",
+   "es": "Informar los demás proyectos de la Cámara",
+   "state": "draft"
+  },
+  "year.report-the-other-house-bills-except": {
+   "en": "Report the other House bills, except budget bills",
+   "es": "Informar los demás proyectos de la Cámara, salvo los del presupuesto",
+   "state": "draft"
+  },
+  "year.representatives-last-day-to-file": {
+   "en": "Representatives' last day to file requests for 2027's bills, and the last day for senators' drafting requests.",
+   "es": "El último día para que los representantes presenten solicitudes para los proyectos de ley de 2027, y el último día para las solicitudes de redacción de los senadores.",
+   "state": "draft"
+  },
+  "year.retained-bills-new-requests-veto-day": {
+   "en": "Retained bills, new requests, veto day",
+   "es": "Proyectos retenidos, nuevas solicitudes, Día de vetos",
+   "state": "draft"
+  },
+  "year.retained-bills-reported": {
+   "en": "Retained bills reported",
+   "es": "Informes sobre los proyectos de ley retenidos",
+   "state": "draft"
+  },
+  "year.second-year": {
+   "en": "Second year",
+   "es": "Segundo año",
+   "state": "draft"
+  },
+  "year.senate-bill-requests-for-2026": {
+   "en": "Senate bill requests for 2026",
+   "es": "Solicitudes de proyectos de ley del Senado para 2026",
+   "state": "draft"
+  },
+  "year.senate-committees-act-on-house-bills": {
+   "en": "Senate committees act on House bills with a fiscal impact",
+   "es": "Los comités del Senado actúan sobre los proyectos de la Cámara con impacto fiscal",
+   "state": "draft"
+  },
+  "year.senate-committees-act-on-senate-bills": {
+   "en": "Senate committees act on Senate bills with a fiscal impact",
+   "es": "Los comités del Senado actúan sobre los proyectos del Senado con impacto fiscal",
+   "state": "draft"
+  },
+  "year.senate-sponsors-sign-off": {
+   "en": "Senate sponsors sign off",
+   "es": "Los patrocinadores del Senado aprueban la redacción de sus proyectos",
+   "state": "draft"
+  },
+  "year.senators-approve-the-drafted-text-of": {
+   "en": "Senators approve the drafted text of their bills.",
+   "es": "Los senadores aprueban el texto redactado de sus proyectos de ley.",
+   "state": "draft"
+  },
+  "year.senators-requests-must-reach-the-office": {
+   "en": "Senators' requests must reach the Office of Legislative Services, which drafts the bills, by this day.",
+   "es": "Las solicitudes de los senadores deben llegar a más tardar este día a la Oficina de Servicios Legislativos (Office of Legislative Services), que redacta los proyectos de ley.",
+   "state": "draft"
+  },
+  "year.senators-running-again-may-file-bill": {
+   "en": "Senators running again may file bill requests",
+   "es": "Los senadores que buscan la reelección pueden solicitar proyectos de ley",
+   "state": "draft"
+  },
+  "year.september-to-december": {
+   "en": "September to December",
+   "es": "De septiembre a diciembre",
+   "state": "draft"
+  },
+  "year.sk.conference": {
+   "en": "Last day to act on committee of conference reports",
+   "es": "Último día para actuar sobre los informes del comité de conferencia",
+   "state": "draft"
+  },
+  "year.sk.conference_what": {
+   "en": "Both chambers vote on the conference versions. It is the session's last deadline.",
+   "es": "Ambas cámaras votan las versiones de conferencia. Es el último plazo de la sesión.",
+   "state": "draft"
+  },
+  "year.sk.conference_when": {
+   "en": "June",
+   "es": "en junio",
+   "state": "draft"
+  },
+  "year.sk.convening": {
+   "en": "Convening day: the chambers begin taking up the new bills.",
+   "es": "Día de apertura: las cámaras empiezan a ocuparse de los nuevos proyectos de ley.",
+   "state": "draft"
+  },
+  "year.sk.crossover": {
+   "en": "Crossover",
+   "es": "Paso a la otra cámara",
+   "state": "draft"
+  },
+  "year.sk.crossover_what": {
+   "en": "The last day for each chamber to act on its own bills. What passes goes to the other chamber.",
+   "es": "El último día para que cada cámara actúe sobre sus propios proyectos de ley. Lo que se aprueba pasa a la otra cámara.",
+   "state": "draft"
+  },
+  "year.sk.crossover_when": {
+   "en": "late March or April",
+   "es": "a finales de marzo o en abril",
+   "state": "draft"
+  },
+  "year.sk.election": {
+   "en": "General election",
+   "es": "Elección general",
+   "state": "draft"
+  },
+  "year.sk.election_what": {
+   "en": "Voters choose all 400 representatives and 24 senators for the next term.",
+   "es": "Los votantes eligen a los 400 representantes y a los 24 senadores del período siguiente.",
+   "state": "draft"
+  },
+  "year.sk.first_stands": {
+   "en": "The {y1} session runs from January to about June.",
+   "es": "La sesión de {y1} va de enero hasta más o menos junio.",
+   "state": "draft"
+  },
+  "year.sk.first_when": {
+   "en": "December {a} through {b}",
+   "es": "De diciembre de {a} a {b}",
+   "state": "draft"
+  },
+  "year.sk.first_year": {
+   "en": "The First Year",
+   "es": "El primer año",
+   "state": "draft"
+  },
+  "year.sk.governor": {
+   "en": "Each bill both chambers passed goes to the Governor, who signs it, vetoes it, or leaves it to become law without a signature.",
+   "es": "Cada proyecto de ley que aprobaron ambas cámaras va al Gobernador, que lo firma, lo veta o deja que se convierta en ley sin su firma.",
+   "state": "draft"
+  },
+  "year.sk.in_fall": {
+   "en": "in the fall",
+   "es": "en el otoño",
+   "state": "draft"
+  },
+  "year.sk.late_summer": {
+   "en": "late summer or fall",
+   "es": "a finales del verano o en el otoño",
+   "state": "draft"
+  },
+  "year.sk.next": {
+   "en": "The Next Term Begins",
+   "es": "Empieza el período siguiente",
+   "state": "draft"
+  },
+  "year.sk.next_first": {
+   "en": "The new term's first session begins.",
+   "es": "Empieza la primera sesión del nuevo período.",
+   "state": "draft"
+  },
+  "year.sk.next_opens": {
+   "en": "The {year} session opens",
+   "es": "Se abre la sesión de {year}",
+   "state": "draft"
+  },
+  "year.sk.next_stands": {
+   "en": "The {next} term has begun. Its first session opens in January.",
+   "es": "Empezó el período {next}. Su primera sesión se abre en enero.",
+   "state": "draft"
+  },
+  "year.sk.next_sworn": {
+   "en": "The members elected in November are sworn in, and the {next} term begins.",
+   "es": "Los miembros elegidos en noviembre prestan juramento, y empieza el período {next}.",
+   "state": "draft"
+  },
+  "year.sk.next_when": {
+   "en": "December {b} to January {c}",
+   "es": "De diciembre de {b} a enero de {c}",
+   "state": "draft"
+  },
+  "year.sk.opens": {
+   "en": "The session opens",
+   "es": "Se abre la sesión",
+   "state": "draft"
+  },
+  "year.sk.org": {
+   "en": "Organization Day",
+   "es": "Día de Organización",
+   "state": "draft"
+  },
+  "year.sk.second_first": {
+   "en": "The second session's first day.",
+   "es": "El primer día de la segunda sesión.",
+   "state": "draft"
+  },
+  "year.sk.second_stands": {
+   "en": "The {y2} session runs from January to about June.",
+   "es": "La sesión de {y2} va de enero hasta más o menos junio.",
+   "state": "draft"
+  },
+  "year.sk.second_when": {
+   "en": "{b}, until Organization Day",
+   "es": "{b}, hasta el Día de Organización",
+   "state": "draft"
+  },
+  "year.sk.second_year": {
+   "en": "The Second Year",
+   "es": "El segundo año",
+   "state": "draft"
+  },
+  "year.sk.study": {
+   "en": "Interim study",
+   "es": "Estudio interino",
+   "state": "draft"
+  },
+  "year.sk.study_what": {
+   "en": "Committees study the subjects of the bills sent to interim study. The bills themselves go no further; a report may recommend a new bill next term.",
+   "es": "Los comités estudian los temas de los proyectos de ley enviados a estudio interino. Los proyectos mismos no avanzan más; un informe puede recomendar un proyecto nuevo en el período siguiente.",
+   "state": "draft"
+  },
+  "year.sk.summer": {
+   "en": "summer",
+   "es": "en verano",
+   "state": "draft"
+  },
+  "year.sk.summer_fall": {
+   "en": "summer and fall",
+   "es": "en verano y otoño",
+   "state": "draft"
+  },
+  "year.sk.sworn": {
+   "en": "The new members are sworn in, the House elects its Speaker and the Senate its President, and the term begins.",
+   "es": "Los nuevos miembros prestan juramento, la Cámara elige a su presidente (Speaker) y el Senado al suyo, y empieza el período.",
+   "state": "draft"
+  },
+  "year.sk.to_governor": {
+   "en": "Bills go to the Governor",
+   "es": "Los proyectos de ley van al Gobernador",
+   "state": "draft"
+  },
+  "year.sk.veto_day": {
+   "en": "Veto day",
+   "es": "Día de vetos",
+   "state": "draft"
+  },
+  "year.sk.veto_two": {
+   "en": "Both chambers meet to take up the Governor's vetoes. Overriding one takes two thirds of each chamber.",
+   "es": "Ambas cámaras se reúnen para ocuparse de los vetos del Gobernador. Anular uno requiere dos tercios de cada cámara.",
+   "state": "draft"
+  },
+  "year.sk.veto_what": {
+   "en": "Each chamber meets to take up the Governor's vetoes.",
+   "es": "Cada cámara se reúne para ocuparse de los vetos del Gobernador.",
+   "state": "draft"
+  },
+  "year.summer": {
+   "en": "summer",
+   "es": "en verano",
+   "state": "draft"
+  },
+  "year.summer-and-fall": {
+   "en": "summer and fall",
+   "es": "en verano y otoño",
+   "state": "draft"
+  },
+  "year.summer-and-fall-2025": {
+   "en": "Summer and fall 2025",
+   "es": "Verano y otoño de 2025",
+   "state": "draft"
+  },
+  "year.summer-and-fall-2026": {
+   "en": "Summer and fall 2026",
+   "es": "Verano y otoño de 2026",
+   "state": "draft"
+  },
+  "year.the-2027-session-opens": {
+   "en": "The 2027 session opens",
+   "es": "Comienza la sesión de 2027",
+   "state": "draft"
+  },
+  "year.the-chambers-meet-for-veto-day": {
+   "en": "The chambers meet for veto day, and committees study the bills sent to interim study.",
+   "es": "Las cámaras se reúnen para el Día de vetos, y los comités estudian los proyectos enviados a estudio interino.",
+   "state": "draft"
+  },
+  "year.the-election": {
+   "en": "The Election",
+   "es": "La elección",
+   "state": "draft"
+  },
+  "year.the-election-2": {
+   "en": "The election",
+   "es": "La elección",
+   "state": "draft"
+  },
+  "year.the-first-requests-for-the-next": {
+   "en": "The first requests for the next term's bills.",
+   "es": "Las primeras solicitudes para los proyectos de ley del próximo período.",
+   "state": "draft"
+  },
+  "year.the-first-session": {
+   "en": "The First Session",
+   "es": "La primera sesión",
+   "state": "draft"
+  },
+  "year.the-governor-signs-or-vetoes-the": {
+   "en": "The Governor signs or vetoes the last of the year's bills.",
+   "es": "El Gobernador firma o veta los últimos proyectos de ley del año.",
+   "state": "draft"
+  },
+  "year.the-house-acts-on-those-bills": {
+   "en": "The House acts on those bills",
+   "es": "La Cámara vota esos proyectos",
+   "state": "draft"
+  },
+  "year.the-house-meets-to-take-up": {
+   "en": "The House meets to take up the Governor's vetoes.",
+   "es": "La Cámara se reúne para tratar los vetos del Gobernador.",
+   "state": "draft"
+  },
+  "year.the-last-day-for-each-chamber": {
+   "en": "The last day for each chamber to act on its own bills. What passes goes to the other chamber.",
+   "es": "El último día para que cada cámara actúe sobre sus propios proyectos de ley. Lo que aprueba pasa a la otra cámara.",
+   "state": "draft"
+  },
+  "year.the-last-day-for-house-committees": {
+   "en": "The last day for House committees to file their reports on the bills sent to interim study.",
+   "es": "El último día para que los comités de la Cámara presenten sus informes sobre los proyectos de ley enviados a estudio interino.",
+   "state": "draft"
+  },
+  "year.the-last-day-for-the-house": {
+   "en": "The last day for the House to act on its own bills. Those it passes go to the Senate; those a committee retained wait for the second year.",
+   "es": "El último día para que la Cámara actúe sobre sus propios proyectos de ley. Los que aprueba pasan al Senado; los que un comité retuvo esperan al segundo año.",
+   "state": "draft"
+  },
+  "year.the-last-day-for-the-senate": {
+   "en": "The last day for the Senate to act on its own bills. Those it passes go to the House.",
+   "es": "El último día para que el Senado actúe sobre sus propios proyectos de ley. Los que aprueba pasan a la Cámara.",
+   "state": "draft"
+  },
+  "year.the-members-elected-in-november-are": {
+   "en": "The members elected in November are sworn in, and the {next} term begins.",
+   "es": "Los miembros elegidos en noviembre prestan juramento, y comienza el período {next}.",
+   "state": "draft"
+  },
+  "year.the-new-legislature-is-sworn-in": {
+   "en": "The new legislature is sworn in, and the next term begins.",
+   "es": "La nueva Legislatura presta juramento, y comienza el próximo período.",
+   "state": "draft"
+  },
+  "year.the-new-members-are-sworn-in": {
+   "en": "The new members are sworn in, the House elects its Speaker and the Senate its President, and the term begins.",
+   "es": "Los nuevos miembros prestan juramento, la Cámara elige a su presidente (Speaker) y el Senado al suyo, y comienza el período.",
+   "state": "draft"
+  },
+  "year.the-new-term-s-first-session": {
+   "en": "The new term's first session begins.",
+   "es": "Comienza la primera sesión del nuevo período.",
+   "state": "draft"
+  },
+  "year.the-new-term-s-house-bills": {
+   "en": "The new term's House bills are introduced and sent to committees.",
+   "es": "Los proyectos de ley de la Cámara del nuevo período se presentan y se envían a los comités.",
+   "state": "draft"
+  },
+  "year.the-next-term-begins": {
+   "en": "The Next Term Begins",
+   "es": "Comienza el próximo período",
+   "state": "draft"
+  },
+  "year.the-next-term-has-begun-its": {
+   "en": "The {next} term has begun. Its first session opens in January.",
+   "es": "El período {next} ha comenzado. Su primera sesión comienza en enero.",
+   "state": "draft"
+  },
+  "year.the-same-steps-again-for-the": {
+   "en": "The same steps again, for the bills that crossed.",
+   "es": "Los mismos pasos otra vez, para los proyectos que pasaron a la otra cámara.",
+   "state": "draft"
+  },
+  "year.the-second-session": {
+   "en": "The Second Session",
+   "es": "La segunda sesión",
+   "state": "draft"
+  },
+  "year.the-second-session-s-first-day": {
+   "en": "The second session's first day.",
+   "es": "El primer día de la segunda sesión.",
+   "state": "draft"
+  },
+  "year.the-second-year-s-new-house": {
+   "en": "The second year's new House bills are introduced and sent to committees.",
+   "es": "Los nuevos proyectos de ley de la Cámara del segundo año se presentan y se envían a los comités.",
+   "state": "draft"
+  },
+  "year.the-senate-meets-to-take-up": {
+   "en": "The Senate meets to take up the Governor's vetoes.",
+   "es": "El Senado se reúne para tratar los vetos del Gobernador.",
+   "state": "draft"
+  },
+  "year.the-senate-s-window-for-the": {
+   "en": "The Senate's window for the same.",
+   "es": "El plazo del Senado para lo mismo.",
+   "state": "draft"
+  },
+  "year.the-session-opens": {
+   "en": "The session opens",
+   "es": "Comienza la sesión",
+   "state": "draft"
+  },
+  "year.the-term-term-has-not-begun": {
+   "en": "The {term} term has not begun: its members are being elected.",
+   "es": "El período {term} no ha comenzado: se están eligiendo sus miembros.",
+   "state": "draft"
+  },
+  "year.the-window-for-representatives-requests": {
+   "en": "The window for representatives' requests for the second session's bills.",
+   "es": "El plazo para las solicitudes de los representantes para los proyectos de la segunda sesión.",
+   "state": "draft"
+  },
+  "year.the-window-for-senators-requests-for": {
+   "en": "The window for senators' requests for the second session's bills.",
+   "es": "El plazo para las solicitudes de los senadores para los proyectos de la segunda sesión.",
+   "state": "draft"
+  },
+  "year.ui.after_org": {
+   "en": "after Organization Day, which began the {term} term",
+   "es": "después del Día de Organización, que dio inicio al período {term}",
+   "state": "draft"
+  },
+  "year.ui.all_past": {
+   "en": "all past",
+   "es": "todas pasadas",
+   "state": "draft"
+  },
+  "year.ui.begun": {
+   "en": "The {cur} term has begun. Its deadlines are added here once the chambers&rsquo; calendars print them; until then the dates below are the {term} term&rsquo;s.",
+   "es": "Empezó el período {cur}. Sus plazos se agregan aquí cuando los calendarios de las cámaras los publican; hasta entonces, las fechas de abajo son las del período {term}.",
+   "state": "draft"
+  },
+  "year.ui.both": {
+   "en": "Both chambers",
+   "es": "Ambas cámaras",
+   "state": "draft"
+  },
+  "year.ui.built": {
+   "en": "The day this page was built.",
+   "es": "El día en que se generó esta página.",
+   "state": "draft"
+  },
+  "year.ui.caption": {
+   "en": "Each date is from the House or Senate calendar or journal named under it; <b>Usually</b> marks a step with no one date. Open a season to read its dates.",
+   "es": "Cada fecha viene del calendario o del diario de sesiones de la Cámara o del Senado que se nombra debajo; <b>Por lo general</b> marca un paso sin una fecha fija. Abra una temporada para leer sus fechas.",
+   "state": "draft"
+  },
+  "year.ui.coming": {
+   "en": "Coming up:",
+   "es": "Próximamente:",
+   "state": "draft"
+  },
+  "year.ui.dates": {
+   "en": "{n} dates, {state}",
+   "es": "{n} fechas, {state}",
+   "state": "draft"
+  },
+  "year.ui.here": {
+   "en": "You are here",
+   "es": "Usted está aquí",
+   "state": "draft"
+  },
+  "year.ui.here_day": {
+   "en": "You are here: {day}.",
+   "es": "Usted está aquí: {day}.",
+   "state": "draft"
+  },
+  "year.ui.here_lc": {
+   "en": "you are here",
+   "es": "usted está aquí",
+   "state": "draft"
+  },
+  "year.ui.house": {
+   "en": "House",
+   "es": "Cámara",
+   "state": "draft"
+  },
+  "year.ui.in_first": {
+   "en": "in the first year of the {term} term",
+   "es": "en el primer año del período {term}",
+   "state": "draft"
+  },
+  "year.ui.in_second": {
+   "en": "in the second year of the {term} term",
+   "es": "en el segundo año del período {term}",
+   "state": "draft"
+  },
+  "year.ui.label": {
+   "en": "The {term} term, date by date",
+   "es": "El período {term}, fecha por fecha",
+   "state": "draft"
+  },
+  "year.ui.not_begun": {
+   "en": "The {term} term has not begun.",
+   "es": "El período {term} todavía no ha empezado.",
+   "state": "draft"
+  },
+  "year.ui.one_date": {
+   "en": "1 date, {state}",
+   "es": "1 fecha, {state}",
+   "state": "draft"
+  },
+  "year.ui.senate": {
+   "en": "Senate",
+   "es": "Senado",
+   "state": "draft"
+  },
+  "year.ui.shape": {
+   "en": "The usual shape of a two-year term",
+   "es": "La forma habitual de un período de dos años",
+   "state": "draft"
+  },
+  "year.ui.shape_cap": {
+   "en": "<b>You are here: {day}</b>, {where}. The usual pattern; this term&rsquo;s dates are below.",
+   "es": "<b>Usted está aquí: {day}</b>, {where}. Es el patrón habitual; las fechas de este período están más abajo.",
+   "state": "draft"
+  },
+  "year.ui.skeleton": {
+   "en": "No calendar of the {term} term has been read for this page yet, so its dates are the ones the constitution and the election law fix, each with the calendar that quotes the rule, and the rest of the term is described as it usually falls. A season that is over is folded shut: open it to read its dates.",
+   "es": "Todavía no se ha leído para esta página ningún calendario del período {term}, así que sus fechas son las que fijan la constitución y la ley electoral, cada una con el calendario que cita la regla, y el resto del período se describe como suele transcurrir. Una temporada que ya terminó aparece cerrada: ábrala para leer sus fechas.",
+   "state": "draft"
+  },
+  "year.ui.source": {
+   "en": "Source:",
+   "es": "Fuente:",
+   "state": "draft"
+  },
+  "year.ui.sources": {
+   "en": "Sources:",
+   "es": "Fuentes:",
+   "state": "draft"
+  },
+  "year.ui.status": {
+   "en": "the session status on the home page",
+   "es": "el estado de la sesión en la página de inicio",
+   "state": "draft"
+  },
+  "year.ui.the_first": {
+   "en": "the first year",
+   "es": "el primer año",
+   "state": "draft"
+  },
+  "year.ui.the_second": {
+   "en": "the second year",
+   "es": "el segundo año",
+   "state": "draft"
+  },
+  "year.ui.this_week": {
+   "en": "This week&rsquo;s hearings and sessions are on <a href=\"calendar.html\">the Calendar</a>.",
+   "es": "Las audiencias y sesiones de esta semana están en <a href=\"calendar.html\">el Calendario</a>.",
+   "state": "draft"
+  },
+  "year.ui.to_come": {
+   "en": "to come",
+   "es": "por venir",
+   "state": "draft"
+  },
+  "year.ui.usually": {
+   "en": "Usually",
+   "es": "Por lo general",
+   "state": "draft"
+  },
+  "year.usually-a-shorter-session-with-crossover": {
+   "en": "Usually a shorter session, with crossover again in late March or April.",
+   "es": "Por lo general una sesión más corta, otra vez con el paso a la otra cámara a finales de marzo o en abril.",
+   "state": "draft"
+  },
+  "year.veto-day": {
+   "en": "Veto day",
+   "es": "Día de vetos",
+   "state": "draft"
+  },
+  "year.veto-day-and-interim-study": {
+   "en": "Veto day and interim study",
+   "es": "Día de vetos y estudio interino",
+   "state": "draft"
+  },
+  "year.veto-day-in-the-house": {
+   "en": "Veto day in the House",
+   "es": "Día de vetos en la Cámara",
+   "state": "draft"
+  },
+  "year.veto-day-in-the-senate": {
+   "en": "Veto day in the Senate",
+   "es": "Día de vetos en el Senado",
+   "state": "draft"
+  },
+  "year.voters-choose-all-400-representatives": {
+   "en": "Voters choose all 400 representatives and 24 senators for the two-year term.",
+   "es": "Los votantes eligen a los 400 representantes y 24 senadores para el período de dos años.",
+   "state": "draft"
+  },
+  "year.voters-choose-all-400-representatives-2": {
+   "en": "Voters choose all 400 representatives and 24 senators for the next term.",
+   "es": "Los votantes eligen a los 400 representantes y 24 senadores para el próximo período.",
+   "state": "draft"
+  },
+  "year.where-one-chamber-will-not-accept": {
+   "en": "Where one chamber will not accept the other's changes to a bill, members of both try to write a version each will pass.",
+   "es": "Cuando una cámara no acepta los cambios de la otra a un proyecto de ley, miembros de ambas intentan redactar una versión que las dos aprueben.",
    "state": "draft"
   },
   "yt.a_place": {

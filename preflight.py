@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.693
+# GRANITE_VERSION: 2026-09-04.694
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -64050,6 +64050,24 @@ def _spanish_learn(i18n, G, BC, chrome, civics):
                 bad.append(f"the {name} figure in Spanish says {english!r}")
     if "noviembre de 2026" not in drawn["CACR table"]:
         bad.append("the CACR table's election month is not in Spanish")
+    # The legislature's schedule, its seasons, steps, pattern and labels in
+    # Spanish (legislative_year.figures' lang), on a day inside the entered
+    # term and on one in a term only its skeleton draws.
+    import legislative_year as LY
+    before = set(i18n.MISSES)
+    for day in (_dt.date(2026, 3, 1), _dt.date(2027, 3, 1)):
+        year = LY.figures(day, Path("."), "es")
+        text = re.sub(r"<[^>]+>", " ", re.sub(r'<span lang="en">.*?</span>', "", "".join(year.values())))
+        for english in ("You are here", "Usually", "Coming up", "Sources:", "Source:", "This week",
+                        "dates,", "all past", "to come", "The First Year", "Organization Day",
+                        "Crossover", "In session"):
+            if english in text:
+                bad.append(f"the schedule in Spanish on {day} says {english!r}")
+    fell = sorted(set(i18n.MISSES) - before)
+    i18n.MISSES.clear()
+    i18n.MISSES.update(before)
+    if fell:
+        bad.append(f"the schedule in Spanish fell back to English: {fell[:4]}")
     assert not bad, f"{len(bad)} faults: " + "; ".join(bad[:8])
     return "ok", (f"{len(slugs)} of {len(learn)} Learn pages in Spanish, each naming its English page "
                   "and named by it, its figures drawn in Spanish; the hub marks the rest as English")

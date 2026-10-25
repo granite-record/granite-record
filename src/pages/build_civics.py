@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-08.73
+# GRANITE_VERSION: 2026-09-08.74
 """
 The civics section: a hub and one page per topic, in order.
 
@@ -936,6 +936,11 @@ def record_figures(site, root=Path(".")):
     # build_date's, as org_day's is, so a build that states its date draws
     # You Are Here on that date.
     figures.update(legislative_year.figures(build_date.today(), Path(root)))
+    # And in each other language that has the schedule's page, as name@lang.
+    for lang in I.LANGS:
+        if lang != I.DEFAULT and I.has(lang, legislative_year.HREF):
+            figures.update({f"{k}@{lang}": v for k, v in legislative_year.figures(
+                build_date.today(), Path(root), lang).items()})
     return {k: (f"{v:,}" if isinstance(v, int) else v) for k, v in figures.items()}
 
 
