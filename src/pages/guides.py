@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-10-11.43
+# GRANITE_VERSION: 2026-10-11.44
 """
 The how-to guides: their words, their sources, and what each was checked
 against. Read by build_civics.py, which draws them on the Resources hub's
@@ -5721,7 +5721,7 @@ HOME = [
 # something else costs that reader a wrong first answer.
 WORDS = {
     "your-representatives": ("my representative", "my senator", "who represents me",
-                             "state representative",
+                             "who is my state rep", "state representative",
                              "district", "legislator"),
     "who-to-contact": ("who do i contact", "complaint", "pothole", "sidewalk", "city council",
                        "selectboard", "school board", "congressman", "senator", "federal agency",

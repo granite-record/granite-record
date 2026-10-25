@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.705
+# GRANITE_VERSION: 2026-09-04.706
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -22196,6 +22196,7 @@ def _find_pages_officials(BI, G, civics, BC):
     assert gov and senator and councilor and justice, (
         "corrections/officials.json names no Governor, US Senator, councilor or justice to search for")
     want = {"my rep": "Officials", "my senator": "Officials", "who is my state rep": "Officials",
+            "who is my rep": "Officials", "who is my senator": "Officials",
             "my representative": "Officials", gov: "Executive Branch",
             "governor": "Executive Branch", "executive council": "Executive Branch",
             councilor: "Executive Branch", senator: "Federal Delegation",
@@ -22228,7 +22229,11 @@ def _find_pages_officials(BI, G, civics, BC):
     my = [x["name"] for x in got["my rep"]]
     if "Rep. Myles England (D - Straf 12)" in my[:my.index("Officials") if "Officials" in my else None]:
         bad.append(f"'my rep' prefers a member whose name begins My: {my}")
-    for q in ("my senator", "my representative"):
+    # "who is my state rep" lost the guide (the preview check of 25 October
+    # 2026): every word typed must start a word of the row, and none of its
+    # words began "is" until WORDS took the question as a reader asks it.
+    for q in ("my senator", "my representative", "who is my state rep", "who is my rep",
+              "who is my senator"):
         if "Finding Your Representatives" not in [x["name"] for x in got[q] if x["whole"]]:
             bad.append(f"{q!r} does not find the guide to finding your representatives by its words")
     con = got["concord"]
