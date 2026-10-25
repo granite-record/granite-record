@@ -2824,9 +2824,10 @@ def up_links(body, date, weeks):
     return out
 
 
-def write_days_index(site, body, dates):
-    """site/session/days.json: {"H": [dates], "S": [dates]}, this chamber's
-    list replaced and the other's kept.
+def write_days_index(site, body, dates, rollcalls=None):
+    """site/session/days.json: {"H": [dates], "S": [dates], "rc": {"H":
+    {roll call: date}, "S": {...}}}, this chamber's list and roll calls
+    replaced and the other's kept.
 
     WHAT app.js ASKS BEFORE IT LINKS A DATE. A roll call on a bill and a row
     of a member's votes name a day and a chamber, and the sitting's page is
@@ -2834,17 +2835,39 @@ def write_days_index(site, body, dates):
     there are, written by the step that writes them, so a date is linked only
     to a page that was built. Each run writes one chamber; the other's list
     is the other run's, and is left as it was.
+
+    AND WHICH ROLL CALLS A PAGE DRAWS UNDER THEIR OWN ID (the preview check
+    of 25 October 2026): `rollcalls`, {"2025-H-1": "2025-01-08"}, each
+    "rc-<key>" a page carries (rollcall_ids) and the day of that page. A
+    member's Votes tab linked "#rc-<key>" for every vote on no bill the
+    Journal describes, and the page draws some of those on a bill's card,
+    with no such id, or on another day than the roll-call file's: 2022-H-4
+    and -5, under HB 50 on 5 January 2022, opened that day at its top.
     """
     f = site / "session" / "days.json"
     try:
         had = json.loads(f.read_text(encoding="utf-8"))
     except (ValueError, OSError):
         had = {}
+    rc = had.get("rc") if isinstance(had.get("rc"), dict) else {}
+    rc = {k: v for k, v in rc.items() if k in CHAMBER and isinstance(v, dict)}
     had = {k: v for k, v in had.items() if k in CHAMBER and isinstance(v, list)}
     had[body] = sorted(dates)
+    rc[body] = dict(sorted((rollcalls or {}).items()))
+    had["rc"] = rc
     f.write_text(json.dumps(had, separators=(",", ":"), sort_keys=True),
                  encoding="utf-8")
     return f
+
+
+# The id a page gives a roll call it draws on no bill (vote_html), read back
+# off the page as it was drawn, so the list says what the page carries.
+RC_ID = re.compile(r' id="rc-(\d{4}-[HS]-\d+)"')
+
+
+def rollcall_ids(html):
+    """["2025-H-1", ...]: each roll call `html` carries an "rc-<key>" id for."""
+    return RC_ID.findall(html or "")
 
 
 # ------------------------------------------------------- the day as data --
@@ -3540,6 +3563,7 @@ def chamber(a, site, base, body, days):
 
     urls, wrote, with_narr, linked, unlinked = [], 0, 0, 0, 0
     records = collections.defaultdict(list)
+    drawn = {}                   # roll call -> the day whose page gives it "rc-<key>"
     ctx = {"members": members, "numbers": load_numbers(site), "years": years,
            "amendments": amendments, "cards": fr["cards"], "presided": fr["presiding"],
            "offices": published_officers(site), "acts": acts_of, "floor": floor,
@@ -3608,6 +3632,8 @@ def chamber(a, site, base, body, days):
         records[members.term].append(rec)
         block, payloads = render(day, narrative, titles, years, members, S.E,
                                  chair=chair if tenures else None, rec=rec, ctx=draw)
+        for rid in rollcall_ids(block):
+            drawn.setdefault(rid, str(date))
         label = f"The {CHAMBER[body]}, {words(date)}"
         lead = _lead(day, narrative, date, body)
         prev_ = order[n - 1][1] if n > 0 else ""
@@ -3649,7 +3675,7 @@ def chamber(a, site, base, body, days):
     # written.
     if not a.limit:
         prune(out_dir, {k[1] for k in mine}, a.prune)
-        write_days_index(site, body, [k[1] for k in mine])
+        write_days_index(site, body, [k[1] for k in mine], drawn)
         # SILENCE IS NOT SUCCESS: a day drawn and not written as data would
         # be a day missing from the chamber's list with nothing to say so.
         n_rec = sum(len(v) for v in records.values())
