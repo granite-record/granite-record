@@ -18,7 +18,7 @@ stylesheet, linked by every page: a new component's rules go anywhere in it
 and reach the record pages and the five pages `build_pages.py` writes alike. The district map is a module of its own: `map.js` and `map.css`,
 which `build_district_map.py` copies (`map.js` without its comments) beside `/district_map.json`, the one
 file the map draws, and which a page mounts with `GRMap.mount()`: the
-Officials page's My Town tab and every town page's District Map tab.
+Officials page's My Town tab and every town page's Map tab.
 
 The hubs (Polish 3, 10 October 2026). The Officials page, `/officials`
 (`/legislators` answers with a 301 to it), is `build_pages.py`'s, in six

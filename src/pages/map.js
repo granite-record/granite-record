@@ -628,13 +628,11 @@ function mount(root,opts){
     if(s.has("vac"))h+=k("vac",tr("map.vacant","Vacant"));
     if(layer==="base"&&floOn())h+=`<span class="k" role="listitem"><span class="sw frame p-R" aria-hidden="true"></span><span class="sw frame p-D" aria-hidden="true"></span>${tr("map.flo_legend","Floterial district, framed in its members&rsquo; party")}</span>`;
     box.innerHTML=h;
-    let e="";
-    if(s.has("mix"))e+=tr("map.ex_mix","<b>Both colors means members of both parties</b>, drawn evenly whatever the count.")+" ";
-    if(layer==="base")e+=(floOn()?tr("map.ex_flo_on","A floterial district (neighboring districts that elect extra members together) is framed in its members&rsquo; party.")
-      :tr("map.ex_flo_off","A floterial district (neighboring districts that elect extra members together) is outlined when you choose a district or turn on Floterial districts."))+" ";
-    if(mode==="names")e+=tr("map.ex_names","A district&rsquo;s name and number show when you choose it.")+" ";
-    e+=tr("map.ex_color","Color shows who represents a district, not how many people live there.");
-    say(e);
+    // THE LEGEND, AND ONE SENTENCE ONLY WHILE IT IS NEEDED (the audit of 25
+    // October 2026): on a phone a 72-word paragraph under the legend put the
+    // map 470 to 540px below its heading. What a floterial district is stays,
+    // while "Floterial districts" is ticked and the frames are drawn.
+    say(layer==="base"&&floOn()?tr("map.ex_flo_on","A floterial district (neighboring districts that elect extra members together) is framed in its members&rsquo; party."):"");
   }
   function select(lk,fid,say=true){
     if(!M||!M.T.layers[lk]||!M.T.layers[lk].f[fid])return;

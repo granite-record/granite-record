@@ -13706,29 +13706,9 @@
    "es": "&middot; {n} vacantes",
    "state": "draft"
   },
-  "map.ex_color": {
-   "en": "Color shows who represents a district, not how many people live there.",
-   "es": "El color muestra quién representa a un distrito, no cuántas personas viven en él.",
-   "state": "draft"
-  },
-  "map.ex_flo_off": {
-   "en": "A floterial district (neighboring districts that elect extra members together) is outlined when you choose a district or turn on Floterial districts.",
-   "es": "Un distrito flotante (distritos vecinos que eligen juntos a miembros adicionales) se resalta cuando usted elige un distrito o activa Distritos flotantes.",
-   "state": "draft"
-  },
   "map.ex_flo_on": {
    "en": "A floterial district (neighboring districts that elect extra members together) is framed in its members&rsquo; party.",
    "es": "Un distrito flotante (distritos vecinos que eligen juntos a miembros adicionales) aparece enmarcado con el partido de sus miembros.",
-   "state": "draft"
-  },
-  "map.ex_mix": {
-   "en": "<b>Both colors means members of both parties</b>, drawn evenly whatever the count.",
-   "es": "<b>Dos colores significan miembros de ambos partidos</b>, dibujados por igual sea cual sea la cantidad.",
-   "state": "draft"
-  },
-  "map.ex_names": {
-   "en": "A district&rsquo;s name and number show when you choose it.",
-   "es": "El nombre y el número de un distrito aparecen cuando usted lo elige.",
    "state": "draft"
   },
   "map.failed": {
@@ -16817,13 +16797,13 @@
    "state": "draft"
   },
   "yt.is_city": {
-   "en": "{town} is a city. Who runs it is on the City Officials tab of {link}.",
-   "es": "{town} es una ciudad. Las autoridades que la gobiernan aparecen en la pestaña City Officials (funcionarios de la ciudad) de {link}.",
+   "en": "{town} is a city. Who runs it is on the Officials tab of {link}.",
+   "es": "{town} es una ciudad. Las autoridades que la gobiernan aparecen en la pestaña Officials (funcionarios) de {link}.",
    "state": "draft"
   },
   "yt.is_town": {
-   "en": "{town} is a town. Who runs it is on the Town Officials tab of {link}.",
-   "es": "{town} es un municipio. Las autoridades que lo gobiernan aparecen en la pestaña Town Officials (funcionarios del municipio) de {link}.",
+   "en": "{town} is a town. Who runs it is on the Officials tab of {link}.",
+   "es": "{town} es un municipio. Las autoridades que lo gobiernan aparecen en la pestaña Officials (funcionarios) de {link}.",
    "state": "draft"
   },
   "yt.keep": {
