@@ -348,6 +348,41 @@
    "es": "Guías prácticas, cómo funciona la Legislatura y fuentes oficiales",
    "state": "draft"
   },
+  "elect.elected": {
+   "en": "Elected {day}",
+   "es": "Elegidos el {day}",
+   "state": "draft"
+  },
+  "elect.none": {
+   "en": "No member-elect on file for {n} seats.",
+   "es": "No hay miembros electos registrados para {n} escaños.",
+   "state": "draft"
+  },
+  "elect.none_one": {
+   "en": "No member-elect on file for {n} seat.",
+   "es": "No hay miembro electo registrado para {n} escaño.",
+   "state": "draft"
+  },
+  "elect.not_final": {
+   "en": "Result not final",
+   "es": "Resultado no definitivo",
+   "state": "draft"
+  },
+  "elect.recount": {
+   "en": "&mdash; a recount was requested",
+   "es": "&mdash; se pidió un recuento",
+   "state": "draft"
+  },
+  "elect.serving": {
+   "en": "Serving now",
+   "es": "En funciones ahora",
+   "state": "draft"
+  },
+  "elect.takes": {
+   "en": "Takes office {day}.",
+   "es": "Asume el cargo el {day}.",
+   "state": "draft"
+  },
   "find.all_terms": {
    "en": "In all {n} terms, {span}.",
    "es": "En los {n} períodos legislativos, {span}.",
@@ -14222,6 +14257,11 @@
    "es": "Consejo Ejecutivo, distrito {d}",
    "state": "draft"
   },
+  "yt.county": {
+   "en": "{county} County",
+   "es": "Condado de {county}",
+   "state": "draft"
+  },
   "yt.county_conv": {
    "en": "{place} is in {county} County, so its county convention is the State House members elected from {county} County &mdash; yours among them.",
    "es": "{place} está en el condado de {county}, así que su convención del condado son los representantes estatales elegidos en el condado de {county}, entre ellos los suyos.",
@@ -14232,9 +14272,24 @@
    "es": "Los funcionarios propios del condado están en <a href=\"/officials#counties\">County Officials</a> (funcionarios del condado).",
    "state": "draft"
   },
+  "yt.district": {
+   "en": "District {d}",
+   "es": "Distrito {d}",
+   "state": "draft"
+  },
   "yt.every_seat": {
    "en": "Every seat, with how to reach each person, is on {link}.",
    "es": "Cada escaño, con cómo comunicarse con cada persona, está en {link}.",
+   "state": "draft"
+  },
+  "yt.find_town": {
+   "en": "Find Your Town",
+   "es": "Busque su municipio",
+   "state": "draft"
+  },
+  "yt.floterial": {
+   "en": "floterial",
+   "es": "flotante",
    "state": "draft"
   },
   "yt.for_town": {
@@ -14277,6 +14332,11 @@
    "es": "Cargando…",
    "state": "draft"
   },
+  "yt.look_another": {
+   "en": "Look Up Another Town",
+   "es": "Buscar otro municipio",
+   "state": "draft"
+  },
   "yt.look_up": {
    "en": "Look up",
    "es": "Buscar",
@@ -14312,6 +14372,11 @@
    "es": "La lista de municipios no se cargó. Vuelva a intentarlo en un momento.",
    "state": "draft"
   },
+  "yt.no_member": {
+   "en": "No sitting member on file.",
+   "es": "No hay ningún miembro en funciones registrado.",
+   "state": "draft"
+  },
   "yt.no_place": {
    "en": "No town or ward by that name.",
    "es": "No hay ningún municipio ni barrio electoral con ese nombre.",
@@ -14322,9 +14387,24 @@
    "es": "La lista de la Secretaría de Estado no tiene un lugar de votación registrado para {place}. El secretario municipal se lo puede decir.",
    "state": "draft"
   },
+  "yt.no_senator": {
+   "en": "No sitting senator on file.",
+   "es": "No hay ningún senador en funciones registrado.",
+   "state": "draft"
+  },
+  "yt.not_on_file": {
+   "en": "Not on file.",
+   "es": "No registrado.",
+   "state": "draft"
+  },
   "yt.one_place": {
    "en": "1 place",
    "es": "1 lugar",
+   "state": "draft"
+  },
+  "yt.page_go": {
+   "en": "{place}&rsquo;s page &rarr;",
+   "es": "La página de {place} &rarr;",
    "state": "draft"
   },
   "yt.page_of": {
@@ -14345,6 +14425,26 @@
   "yt.reps_in": {
    "en": "{place} is represented in {districts}.",
    "es": "{place} está representado en {districts}.",
+   "state": "draft"
+  },
+  "yt.seat_council": {
+   "en": "Executive Council",
+   "es": "Consejo Ejecutivo",
+   "state": "draft"
+  },
+  "yt.seat_house": {
+   "en": "State House",
+   "es": "Cámara de Representantes estatal",
+   "state": "draft"
+  },
+  "yt.seat_senate": {
+   "en": "State Senate",
+   "es": "Senado estatal",
+   "state": "draft"
+  },
+  "yt.seat_us_house": {
+   "en": "US House",
+   "es": "Cámara de Representantes de EE. UU.",
    "state": "draft"
   },
   "yt.senate_d": {
@@ -14393,6 +14493,11 @@
    "es": "Usar {place}, el municipio de esta página",
    "state": "draft"
   },
+  "yt.votes_at": {
+   "en": "votes at {place}",
+   "es": "vota en {place}",
+   "state": "draft"
+  },
   "yt.voting": {
    "en": "Voting",
    "es": "Votación",
@@ -14421,6 +14526,11 @@
   "yt.your_senator": {
    "en": "Your senator",
    "es": "Su senador",
+   "state": "draft"
+  },
+  "yt.your_town": {
+   "en": "Your Town",
+   "es": "Su municipio",
    "state": "draft"
   },
   "yt.yours": {

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-10-09.15
+# GRANITE_VERSION: 2026-10-09.16
 """
 The site's components, in Python: what the builders draw a person, a
 committee, a chip, a date and a time with, and the words they say.
@@ -796,15 +796,18 @@ def until_attrs(until, today):
 ELECT_KEY = re.compile(r"H\|([^|]+)\|([0-9]+)|S\|([0-9]+)")
 
 
-def elect_now(takes_office, today):
+def elect_now(takes_office, today, lang="en"):
     """"Serving now", the label over the sitting members wherever a
     members-elect block is drawn beside them, so that two lists of people
     under one district say which is which. It names nobody, and retires
-    with the block."""
-    return f'<p class="elnow" data-elect{until_attrs(takes_office, today)}>Serving now</p>'
+    with the block. Its words in `lang` (the Your Town card in Spanish, 25
+    October 2026), as components.js's tr gives them."""
+    import i18n
+    return (f'<p class="elnow" data-elect{until_attrs(takes_office, today)}>'
+            + i18n.say(lang, "elect.serving", "Serving now") + "</p>")
 
 
-def elect_race(race):
+def elect_race(race, lang="en"):
     """One race of site/members_elect.json as the pages draw it, under
     whatever heading the page gives it: each member-elect in the site's one
     person chip, with their party's letters -- a cross-nomination ("R/D")
@@ -815,6 +818,7 @@ def elect_race(race):
     recount deadline has passed and so the normal state of the first days;
     then the seats with nobody on file, held ones among them. A race with
     no seats to speak of draws nothing."""
+    import i18n
     r = race or {}
     won = r.get("elected") or []
     chips = []
@@ -826,25 +830,33 @@ def elect_race(race):
             "slug": e.get("s") if e.get("id") and e.get("s") else ""}) + "</li>")
     left = (r.get("seats") or 0) - len(won) - (r.get("not_final") or 0)
     return (('<ul class="ellist">' + "".join(chips) + "</ul>" if chips else "")
-            + ('<p class="elnf"><b>Result not final</b>'
-               + (" &mdash; a recount was requested" if r.get("recount") else "") + "</p>"
+            + ('<p class="elnf"><b>' + i18n.say(lang, "elect.not_final", "Result not final") + "</b>"
+               + (" " + i18n.say(lang, "elect.recount", "&mdash; a recount was requested")
+                  if r.get("recount") else "") + "</p>"
                if r.get("not_final") else "")
-            + (f'<p class="elnone">No member-elect on file for {left} seat'
-               + ("" if left == 1 else "s") + ".</p>" if left > 0 else ""))
+            + ('<p class="elnone">'
+               + (i18n.say(lang, "elect.none_one", "No member-elect on file for {n} seat.", n=left)
+                  if left == 1 else
+                  i18n.say(lang, "elect.none", "No member-elect on file for {n} seats.", n=left))
+               + "</p>" if left > 0 else ""))
 
 
-def elect_block(races, election, takes_office, today):
+def elect_block(races, election, takes_office, today, lang="en"):
     """The members-elect block: "Elected November 3, 2026" and "Takes office
     December 2, 2026." over each race in `races` -- [[label, race], ...],
     the label "" where the block sits under its district's own heading, as
     on a town page, and the district's name where one block holds two, as
     the My Town card's House seat can. The dates are the file's own
     election and takes_office."""
-    body = "".join((f'<p class="elwhere">{esc(label)}</p>' if label else "") + elect_race(race)
+    import i18n
+    body = "".join((f'<p class="elwhere">{esc(label)}</p>' if label else "") + elect_race(race, lang)
                    for label, race in races or [])
     return (f'<div class="elect" data-elect{until_attrs(takes_office, today)}>'
-            f'<p class="elhead"><b>Elected {esc(date_words(election, "full"))}</b> '
-            f'<span>Takes office {esc(date_words(takes_office, "full"))}.</span></p>{body}</div>')
+            '<p class="elhead"><b>' + i18n.say(lang, "elect.elected", "Elected {day}",
+                                              day=esc(date_words(election, "full", lang)))
+            + "</b> <span>" + i18n.say(lang, "elect.takes", "Takes office {day}.",
+                                       day=esc(date_words(takes_office, "full", lang)))
+            + f"</span></p>{body}</div>")
 
 
 def elect_line(key, election, takes_office, today):
