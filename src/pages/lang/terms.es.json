@@ -475,6 +475,83 @@
     "Consejero ejecutivo"
    ],
    "basis": "The catalog (the run-for-office guide)"
+  },
+  {
+   "en": [
+    "statute",
+    "statutes"
+   ],
+   "es": [
+    "ley",
+    "leyes",
+    "Ley",
+    "Leyes"
+   ],
+   "skip": [
+    "Revised Statutes Annotated",
+    "Revised Statutes"
+   ],
+   "basis": "The Spanish review of 25 October 2026: estatuto reads as bylaws to many readers; the courts and local-government pages said ley, the rules pages estatuto. The RSA keeps its own name."
+  },
+  {
+   "en": [
+    "Inexpedient to Legislate",
+    "inexpedient to legislate"
+   ],
+   "es": [
+    "Inoportuno legislar",
+    "inoportuno legislar"
+   ],
+   "basis": "The Spanish review of 25 October 2026: the bill page said Inconveniente legislar, the Learn page and the glossary Inoportuno legislar."
+  },
+  {
+   "en": [
+    "winter storm",
+    "winter storms"
+   ],
+   "es": [
+    "tormenta de invierno",
+    "tormentas de invierno"
+   ],
+   "basis": "The Spanish review of 25 October 2026: the voting guide said tormenta invernal, the storms guide tormenta de invierno."
+  },
+  {
+   "en": [
+    "nominate",
+    "nominates",
+    "nominated",
+    "nominating"
+   ],
+   "es": [
+    "propone",
+    "proponer",
+    "propuesto",
+    "propuesta",
+    "propuestos",
+    "propuestas",
+    "propuso"
+   ],
+   "basis": "The Spanish review of 25 October 2026: nombrar is to appoint, which the Governor does not do alone; the Council confirms."
+  },
+  {
+   "en": [
+    "NH Legislature Schedule"
+   ],
+   "es": [
+    "Cronograma de la Legislatura de NH"
+   ],
+   "basis": "The Spanish review of 25 October 2026: the Schedule and the Calendar were both called Calendario."
+  },
+  {
+   "en": [
+    "enrolled bill",
+    "Enrolled bill"
+   ],
+   "es": [
+    "versión final",
+    "Versión final"
+   ],
+   "basis": "The Spanish review of 25 October 2026: inscripción already meant sign-in, candidate filing and voter registration."
   }
  ]
 }
