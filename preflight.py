@@ -69456,7 +69456,7 @@ def _home_says_each_once(BP, chrome):
     # WHAT FOLLOWS THE DASH IS HELD TOGETHER (the preview check of 25 October
     # 2026): at 1180px and up the left rail's 258px broke the line before
     # "recordings" and left it alone on a second row, in Spanish before
-    # "Cámara · Senado". In .sesswhat, which app.css keeps on one row, a line
+    # "Cámara · Senado". In .sesswhat, an inline block in app.css, a line
     # too long for the rail breaks after the dash, and one that fits is one row.
     got = BP.session_line(one, "en", sits)
     want = ('<p class="sessline">Aug 19, 2026 — <span class="sesswhat">'
@@ -69487,12 +69487,28 @@ def _home_says_each_once(BP, chrome):
     assert held and held.group(1) == day and re.sub(r"<[^>]+>", "", held.group(2)) == (
         "grabaciones: Cámara · Senado"), (
             f"the Spanish line does not keep what follows its dash together: {es!r}")
-    css = re.sub(r"/\*.*?\*/", "", Path("src/pages/app.css").read_text(encoding="utf-8"), flags=re.S)
-    rule = re.search(r":where\(body\.pg\) \.sessline \.sesswhat\{([^}]*)\}", css)
-    assert rule and "white-space:nowrap" in rule.group(1) and (
-        css[:rule.start()].count("{") == css[:rule.start()].count("}")), (
-            "app.css does not keep .sessline's .sesswhat on one row at every width, so the "
-            "line to the latest sittings can leave its last word alone on a row")
+    # Held together as an inline block, which moves to the next row whole and
+    # wraps inside itself only where a row of its own cannot hold it -- and
+    # never by nowrap, which at a reader's larger default font size (24px,
+    # Chrome's "Very large") ran "Senado" past the left rail's card and
+    # across the webinar card at 1920px, and off a 320px phone with the page
+    # pushed sideways (the review of the same day, measured on the preview).
+    # Nowrap on the line itself would hold the block too, so neither may.
+    rules = _css_rules(Path("src/pages/app.css").read_text(encoding="utf-8"))
+    mine = [(at, [" ".join(s.split()) for s in sel.split(",")], dict(_css_decls(body)), n)
+            for at, sel, body, n in rules if re.search(r"\.(sessline|sesswhat)\b", sel)]
+    block = [n for at, sels, d, n in mine if not at and d.get("display") == "inline-block"
+             and ":where(body.pg) .sessline .sesswhat" in sels]
+    assert block, ("app.css does not hold .sessline's .sesswhat together as an inline block "
+                   "(:where(body.pg) .sessline .sesswhat{display:inline-block}), so the line to "
+                   "the latest sittings can leave its last word alone on a row")
+    held = [f"line {n}" for at, sels, d, n in mine
+            if d.get("white-space") in ("nowrap", "pre") or "nowrap" in (
+                d.get("text-wrap", ""), d.get("text-wrap-mode", ""))]
+    assert not held, (f"app.css holds the line to the latest sittings on one row ({', '.join(held)}): "
+                      "at a larger default font size it runs out of its card and off a phone. "
+                      "The inline block keeps it together where it fits and lets it wrap where "
+                      "it does not")
 
     # HOME_JS: no player, no title of its own for a sitting, #session left alone.
     js = BP.HOME_JS

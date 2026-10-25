@@ -7755,10 +7755,15 @@ padding:var(--sp-6) var(--sp-6);margin:0;background:var(--surface);max-width:548
 :where(body.pg) #session{margin-top:0}
 :where(body.pg) .sessline{font-size:var(--t-ui);color:var(--ink-2);margin:var(--sp-5) 0 0;line-height:1.6}
 /* One line where it fits, and where it does not -- the 258px of the left
-   rail from 1180px up -- two that each read whole: the date and its dash,
-   then the chambers and the word "recordings", which a plain paragraph left
-   alone on the second row (the preview check of 25 October 2026). */
-:where(body.pg) .sessline .sesswhat{white-space:nowrap}
+   rail from 1180px up -- the date and its dash, then the chambers and the
+   word "recordings", which a plain paragraph left alone on the second row
+   (the preview check of 25 October 2026). An inline block, not nowrap: it
+   moves to the next row whole, and only where even a row of its own cannot
+   hold it -- a reader's larger default font size -- does it wrap inside
+   itself. Held by nowrap it ran past its card and across the webinar card
+   in the middle column at 24px, and off a 320px phone (the review of the
+   same day), as a vote's result once ran out of its chip (_chip_nowrap). */
+:where(body.pg) .sessline .sesswhat{display:inline-block}
 :where(body.pg) details.vac{margin-top:var(--sp-4)}
 :where(body.pg) details.vac summary{cursor:pointer;font-size:var(--t-ui);color:var(--pine)}
 :where(body.pg) .comp{margin:0 0 var(--sp-7)}

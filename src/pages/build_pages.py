@@ -3057,7 +3057,8 @@ def recent_box(H, lang="en", codes=None, sits=None, today=None):
 
 
 def session_line(H, lang="en", sits=None):
-    """The latest sitting of each chamber, as one line under the status box:
+    """The latest sitting of each chamber, as one line under the status box
+    where it fits, and broken after its dash where it does not:
     "Aug 19, 2026 — House · Senate recordings", each chamber the way to its
     day's page, which opens on the recording.
 
@@ -3094,11 +3095,13 @@ def session_line(H, lang="en", sits=None):
         # and "Aug 19, 2026 — House · Senate recordings" needs about 325, so
         # the browser broke at the last space that fit and left "recordings"
         # alone on a second row (the Spanish, before "Cámara · Senado"). What
-        # follows the dash is held together (.sesswhat, app.css), so a line
-        # too long for its rail reads "Aug 19, 2026 —" over "House · Senate
-        # recordings", and one that fits, on a phone or at 1024, is still one
-        # row. Split on the words as said, so the Spanish keeps its own
-        # order; the date holds no dash, so the first one is the template's.
+        # follows the dash is held together (.sesswhat, an inline block in
+        # app.css), so a line too long for its rail reads "Aug 19, 2026 —"
+        # over "House · Senate recordings", and one that fits, on a phone or
+        # at 1024, is still one row; at a reader's larger default font size,
+        # where even a row of its own cannot hold it, it still wraps. Split on
+        # the words as said, so the Spanish keeps its own order; the date
+        # holds no dash, so the first one is the template's.
         head, dash, rest = said.partition(" — ")
         if dash:
             said = f'{head}{dash}<span class="sesswhat">{rest}</span>'
