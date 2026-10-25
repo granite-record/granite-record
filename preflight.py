@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.691
+# GRANITE_VERSION: 2026-09-04.692
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -63768,6 +63768,58 @@ def _translations(i18n):
     return "ok", f"{len(words)} words in the code, every one current; " + "; ".join(said)
 
 
+@check("frontend", "the Spanish says one thing one way: every entry whose English uses a term on "
+                   "the term list uses that term's Spanish, on every page", needs=("i18n",))
+def _translation_terms(i18n):
+    """The person, 25 October 2026: "it's important to use consistent
+    translations across different pages so that it's easier to follow and
+    more uniform phrasing rather than describing it differently on each
+    page", and, the same day, "Build the term list". lang/terms.es.json gives
+    each English term its one Spanish rendering; i18n.term_faults finds every
+    entry that renders a listed term otherwise, and every exception that
+    names an entry gone from the catalog. The rule is held on a list and a
+    catalog made for the purpose too, so a matcher that stopped matching
+    could not pass for a catalog with nothing wrong."""
+    import json as _json
+    said = []
+    for lang in i18n.LANGS:
+        if lang == i18n.DEFAULT or not i18n.terms_path(lang).is_file():
+            continue
+        terms = _json.loads(i18n.terms_path(lang).read_text(encoding="utf-8"))["terms"]
+        bad = [t["en"][0] for t in terms if not t.get("en") or not t.get(lang) or not t.get("basis")]
+        assert not bad, f"terms.{lang}.json: a term with no English, no {lang} or no basis: {bad}"
+        faults = i18n.term_faults(lang)
+        assert not faults, (f"{len(faults)} entries render a listed term otherwise (lang/terms.{lang}"
+                            ".json gives the words; translations.py --set brings an entry along): "
+                            + "; ".join(faults[:5]) + (f" (+{len(faults) - 5} more)"
+                                                       if len(faults) > 5 else ""))
+        said.append(f"{lang}: {len(terms)} terms")
+    # The rule on a list and a catalog of its own.
+    real_path, real_cat = i18n.terms_path, i18n._CATALOGS.get("zz")
+    tmp = Path(tempfile.mkdtemp()) / "terms.zz.json"
+    tmp.write_text(_json.dumps({"terms": [
+        {"en": ["hearing", "hearings"], "zz": ["audiencia", "audiencias"], "basis": "test",
+         "skip": ["hard of hearing"], "except": {"t.gone": "an entry the catalog has lost"}}]}),
+        encoding="utf-8")
+    i18n._CATALOGS["zz"] = {"offered": False, "strings": {
+        "t.ok": {"en": "The <b>hearing</b> is at 10", "zz": "La audiencia es a las 10", "state": "draft"},
+        "t.bad": {"en": "Two hearings today", "zz": "Dos vistas hoy", "state": "draft"},
+        "t.skip": {"en": "For the hard of hearing", "zz": "Para personas sordas", "state": "draft"},
+        "t.word": {"en": "Hearingly", "zz": "Nada", "state": "draft"}}}
+    try:
+        i18n.terms_path = lambda lang: tmp
+        got = i18n.term_faults("zz")
+    finally:
+        i18n.terms_path = real_path
+        if real_cat is None:
+            i18n._CATALOGS.pop("zz", None)
+        else:
+            i18n._CATALOGS["zz"] = real_cat
+    assert len(got) == 2 and any(g.startswith("t.bad ") for g in got) and any("t.gone" in g for g in got), (
+        f"term_faults on its own test list found {got}, not the one wrong entry and the lost exception")
+    return "ok", "; ".join(said) + ", every entry using a listed term renders it the listed way"
+
+
 @check("frontend", "the slogan is one line everywhere: under the home page's logo, in its title, on "
                    "the logo card a shared link unfurls into and in that card's description",
        needs=("i18n",))
@@ -63868,6 +63920,118 @@ def _spanish_glossary(i18n, BC, chrome):
     assert not bad, "; ".join(bad)
     return "ok", (f"{len(entries)} terms in Spanish, on /es/learn/glossary and in the pop-ups; "
                   "the English page names its twin")
+
+
+@check("build", "the Learn pages i18n.PAGES names are built in Spanish at /es/learn/, piece by "
+                "piece from the catalog, each naming its English page and each English page "
+                "naming it, and the hub's Learn tab marks the ones still in English",
+       needs=("i18n", "guides", "build_civics", "chrome", "civics"))
+def _spanish_learn(i18n, G, BC, chrome, civics):
+    """The person, 25 October 2026: "start on the Learn pages". A Learn page
+    i18n.PAGES names is drawn in Spanish from the same civics.py words as the
+    English (build_civics.learn_page_lang), keyed learn.<slug>.*, its figures
+    filled after; the Resources bar over it marks Learn, its pager and The
+    Pages name the topics as the hub's Learn tab does, and the hub's tab
+    marks "in English" each page not yet translated.
+
+    It fails if PAGES names a Learn page that is not one; if a Spanish page
+    falls back to English anywhere; if one is not lang=es naming its English
+    page, asks to be indexed while Spanish is unlisted, lacks its Spanish
+    title, its line on what is in English or the button for a mistake in the
+    translation; if it links the English page of a topic Spanish has; if its
+    bar does not mark Learn, or its pager is English; if an English page does
+    not name its twin; if the hub links an English Learn page without saying
+    so, or a Spanish one with it; or if the register of probate sentence
+    changes its English or keeps it in Spanish."""
+    import html as _h
+    base = "https://graniterecord.org"
+    strings = i18n.catalog("es")["strings"]
+    slugs = G.learn_translated("es")
+    learn = BC.learn_topics(civics.TOPICS)
+    named = [p for p in i18n.PAGES["es"] if p.startswith("learn/") and p != BC.GLOSSARY_PAGE]
+    unknown = sorted(p for p in named if not G.learn_topic(p[len("learn/"):-len(".html")]))
+    assert not unknown, f"i18n.PAGES names Learn pages there are none of: {unknown}"
+    bad, misses = [], set(i18n.MISSES)
+    try:
+        i18n.MISSES.clear()
+        for slug in slugs:
+            t = G.learn_topic(slug)
+            body = G.reused(G.topic_body(t)) + (t.get("holds") or "")
+            figures = {k: "7" for k in re.findall(r"\[\[(\w+)\]\]", body)}
+            page = BC.learn_page_lang(t, "es", base, figures, learn,
+                                      open_={g["slug"] for g in G.GUIDES} | set(civics.HOW_TO))
+            if not page.startswith(f'<!DOCTYPE html><html lang="es" data-alt-en="/learn/{slug}"'):
+                bad.append(f"{slug}: not lang=es naming /learn/{slug}")
+            if not i18n.offered("es") and '<meta name="robots" content="noindex">' not in page:
+                bad.append(f"{slug}: asks to be indexed while Spanish is unlisted")
+            es_title = strings[f"learn.{slug}.title"]["es"]
+            if f"<h1>{_h.escape(es_title, quote=True)}</h1>" not in page:
+                bad.append(f"{slug}: its <h1> is not its Spanish title {es_title!r}")
+            if strings["learn.lang_note"]["es"] not in page:
+                bad.append(f"{slug}: no line saying what on it is in English")
+            if "data-trreport hidden" not in page:
+                bad.append(f"{slug}: no button for a mistake in the translation")
+            if 'href="/es/resources#learn" aria-current="true"' not in page:
+                bad.append(f"{slug}: its Resources bar does not mark Learn")
+            for word in ("Previous Topic", "Next Topic", "All Topics", "The Pages"):
+                if f">{word}<" in page:
+                    bad.append(f"{slug}: its pager says {word!r} in English")
+            for other in slugs:
+                if re.search(rf'(?<![\w-])href="/?learn/{re.escape(other)}(?:\.html)?(?:#[^"]*)?"',
+                             page):
+                    bad.append(f"{slug}: links the English {other} where its Spanish is built")
+            if "[[" in page:
+                bad.append(f"{slug}: an unfilled figure")
+            en = ('<!DOCTYPE html><html lang="en"><head></head><body>'
+                  + chrome.footer_html("en") + "</body></html>")
+            twin = BC.name_versions(f"learn/{slug}.html", en)
+            if f'<html lang="en" data-alt-es="/es/learn/{slug}"' not in twin \
+                    or f'lang="es" data-href="/es/learn/{slug}"' not in twin:
+                bad.append(f"{slug}: the English page does not name its Spanish twin")
+        fell = sorted(i18n.MISSES)
+        assert not fell, (f"{len(fell)} pieces of the Spanish Learn pages fell back to English: "
+                          + "; ".join(f"{k} ({why})" for _l, k, why in fell[:6]))
+        # The hub's Learn tab: a Spanish page by its Spanish link, an English
+        # one marked as English.
+        hub = BC.hub_page_lang("es", base, G.GUIDES, BC.how_to_topics(civics.TOPICS))
+        tag = f'<span class="r-en">({strings["guides.in_english"]["es"]})</span>'
+        for t in learn:
+            s_ = t["slug"]
+            m = re.search(rf'<a href="(/es/)?learn/{re.escape(s_)}(?:\.html)?"[^>]*>(.*?)</a>', hub, re.S)
+            if not m:
+                bad.append(f"the hub's Learn tab does not link {s_}")
+            elif s_ in slugs and (not m.group(1) or tag in m.group(2)):
+                bad.append(f"the hub links {s_} as English where its Spanish is built")
+            elif s_ not in slugs and (m.group(1) or tag not in m.group(2)):
+                bad.append(f"the hub links {s_}, still English, without saying so")
+    finally:
+        i18n.MISSES.clear()
+        i18n.MISSES.update(misses)
+    # The register of probate sentence: its English as it was, its Spanish not English.
+    import datetime as _dt
+    rows = [{"term": BC.PROBATE_CACR[0], "bill": BC.PROBATE_CACR[1], "election": "2026-11-03"}]
+    link = '<a href="bill/2026/cacr13.html">CACR 13 (2026)</a>'
+    lead = f"In 2026 the legislature sent the question to the voters again, as {link}"
+    want = {(None, "2026-10-25"): lead + ".",
+            ((None, None), "2026-10-25"): f"{lead}, at the general election of November 3, 2026.",
+            ((None, None), "2026-11-10"): (f"{lead}. The vote was on November 3, 2026; the Secretary "
+                                           "of State&rsquo;s count is not on the site yet."),
+            ((700, 300), "2026-11-10"): (f"{lead}, and on November 3, 2026 the voters ratified it: "
+                                         "70.0% voted yes, where two thirds was needed."),
+            ((600, 400), "2026-11-10"): (f"{lead}, and on November 3, 2026 it did not reach the two "
+                                         "thirds it needed: 60.0% of those voting on it voted yes.")}
+    for (count, today), english in want.items():
+        rs = None if count is None else [dict(rows[0], yes=count[0], no=count[1])]
+        day = _dt.date.fromisoformat(today)
+        got = BC.probate_vote(rs, day)
+        if got != english:
+            bad.append(f"the register of probate sentence's English changed: {got!r}")
+        es = BC.probate_vote(rs, day, "es")
+        if "the voters" in es or link not in es:
+            bad.append(f"the register of probate sentence is not in Spanish: {es!r}")
+    assert not bad, f"{len(bad)} faults: " + "; ".join(bad[:8])
+    return "ok", (f"{len(slugs)} of {len(learn)} Learn pages in Spanish, each naming its English page "
+                  "and named by it; the hub marks the rest as English")
 
 
 @check("build", "the how-to guides are built in Spanish at /es/guides/, piece by piece from the "

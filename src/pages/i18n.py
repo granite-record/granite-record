@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-10-23.10
+# GRANITE_VERSION: 2026-10-23.11
 """
 The site in more than one language, and how a translation stays current.
 
@@ -110,7 +110,15 @@ GUIDE_PAGES = tuple(f"guides/{s}.html" for s in (
     "domestic-violence-help", "homelessness-help",
     "storms-and-emergencies", "trash-and-recycling", "passport",
     "medicare-and-social-security", "disability-help"))
-PAGES = {"es": ("index.html", "learn/glossary.html", "resources.html") + GUIDE_PAGES}
+# THE LEARN PAGES (the person, 25 October 2026: "start on the Learn pages"),
+# each named here as its Spanish is written, keyed learn.<slug>.* (guides.
+# page_words). One not named is English to everybody and the hub links the
+# English page. The pages whose figures are only numbers came first; those
+# that draw a chart or a timeline follow once the figure is drawn in Spanish.
+LEARN_PAGES = tuple(f"learn/{s}.html" for s in (
+    "the-courts", "state-agencies", "administrative-rules", "local-government",
+    "county-government", "city-and-town-government"))
+PAGES = {"es": ("index.html", "learn/glossary.html", "resources.html") + GUIDE_PAGES + LEARN_PAGES}
 
 _CATALOGS = {}
 # What a build asked for and could not give: (lang, key, why). report() says
@@ -624,3 +632,58 @@ def check(lang, root=None):
     for key in sorted(set(strings) - set(words)):
         problems.append(f"{key} is in lang/{lang}.json and no code asks for it")
     return problems
+
+
+# ONE SPANISH WORD FOR EACH ENGLISH TERM (the person, 25 October 2026: "use
+# consistent translations across different pages so that it's easier to
+# follow"). lang/terms.<code>.json lists the terms; its _about says how a
+# term is matched and how a choice is made. A language with no such file has
+# no terms to keep.
+def terms_path(lang):
+    return LANG_DIR / f"terms.{lang}.json"
+
+
+def _plain(s):
+    """Text as a reader sees it: tags gone, entities read, curly quotes kept."""
+    import html as _html
+    return _html.unescape(re.sub(r"<[^>]+>", " ", s or ""))
+
+
+def _form_rx(forms):
+    """Whole-word matching for any of `forms`: case kept for a form with a
+    capital letter, ignored for one without."""
+    parts = []
+    for f in sorted(forms, key=len, reverse=True):
+        body = re.escape(f).replace(r"\ ", r"\s+")
+        body = body if any(c.isupper() for c in f) else "(?i:" + body + ")"
+        parts.append(r"(?<![\w’'-])" + body + r"(?![\w-])")
+    return re.compile("|".join(parts))
+
+
+def term_faults(lang):
+    """Every catalog entry whose English uses a listed term and whose `lang`
+    words use none of its forms, as sentences, and every exception that
+    names an entry the catalog no longer has. Empty when all is well, or
+    when the language has no term list."""
+    p = terms_path(lang)
+    if not p.is_file():
+        return []
+    terms = json.loads(p.read_text(encoding="utf-8"))["terms"]
+    strings = catalog(lang).get("strings", {})
+    faults = []
+    for t in terms:
+        en_rx, own = _form_rx(t["en"]), _form_rx(t[lang])
+        excepted = t.get("except") or {}
+        for key in sorted(excepted):
+            if key not in strings:
+                faults.append(f"the term {t['en'][0]!r} excepts {key}, which is not in the catalog")
+        for key, e in sorted(strings.items()):
+            if key in excepted or not e.get(lang):
+                continue
+            en = _plain(e.get("en"))
+            for s in t.get("skip") or ():
+                en = en.replace(s, " ")
+            if en_rx.search(en) and not own.search(_plain(e[lang])):
+                faults.append(f"{key} says {en_rx.search(en).group(0)!r} and its {lang} has no "
+                              f"{t[lang][0]!r}: {e[lang][:120]!r}")
+    return faults

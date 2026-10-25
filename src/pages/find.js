@@ -1,4 +1,4 @@
-// GRANITE_VERSION: 2026-09-16.38
+// GRANITE_VERSION: 2026-09-16.39
 /* FIND ANYTHING, FROM THE HEADER (16 September, asked for in these words:
    "a search icon in the header that lets you search for anything including
    legislators, committees, towns, and bills ... searching Litchfield would
@@ -1228,23 +1228,25 @@ function ytSlots(p){
       if(!p){el.hidden=true;el.innerHTML="";return;}
       el.innerHTML=ytSeats(p);el.hidden=false;return;
     }
+    // In the page's language (tr; the Learn pages in Spanish, 25 October
+    // 2026), the place's and the people's names as the record has them.
     if(!p){
-      el.innerHTML=`<p class="ythead2">For your town</p><p>Choose your town or ward to see this for where you live.</p>`
-        +'<button type="button" class="ytopen">Choose your town</button>';
+      el.innerHTML=`<p class="ythead2">${tr("yt.for_town","For your town")}</p><p>${tr("yt.choose_see","Choose your town or ward to see this for where you live.")}</p>`
+        +`<button type="button" class="ytopen">${tr("yt.choose","Choose your town")}</button>`;
       el.hidden=false;return;
     }
-    const link=`<a href="${_fesc(p.u)}">${_fesc(p.n)}&rsquo;s page</a>`;
+    const link=`<a href="${_fesc(p.u)}">${tr("yt.page_of","{place}&rsquo;s page",{place:_fesc(p.n)})}</a>`;
     let body="";
-    if(k==="reps")body=`<p>${_fesc(p.n)} is represented in ${ytDistricts(p).map(_fesc).join("; ")}.</p>`
-      +ytPeople(p)+`<p>Every seat, with how to reach each person, is on ${link}.</p>`;
-    else if(k==="vote")body=ytVote(p)+`<p>More on ${link}.</p>`;
-    else if(k==="county")body=p.co?`<p>${_fesc(p.n)} is in ${_fesc(p.co)} County, so its county convention is the State House members elected from ${_fesc(p.co)} County &mdash; yours among them.</p>`
+    if(k==="reps")body=`<p>${tr("yt.reps_in","{place} is represented in {districts}.",{place:_fesc(p.n),districts:ytDistricts(p).map(_fesc).join("; ")})}</p>`
+      +ytPeople(p)+`<p>${tr("yt.every_seat","Every seat, with how to reach each person, is on {link}.",{link})}</p>`;
+    else if(k==="vote")body=ytVote(p)+`<p>${tr("yt.more_on","More on {link}.",{link})}</p>`;
+    else if(k==="county")body=p.co?`<p>${tr("yt.county_conv","{place} is in {county} County, so its county convention is the State House members elected from {county} County &mdash; yours among them.",{place:_fesc(p.n),county:_fesc(p.co)})}</p>`
       +ytPeople({m:(p.m||[]).filter(s=>!/-sd-\d+$/.test(s))})
-      +`<p>The county&rsquo;s own officials are under <a href="/officials#counties">County Officials</a>.</p>`:"";
-    else if(k==="town")body=`<p>${_fesc(p.t)} is ${p.c?"a city":"a town"}. Who runs it is on the ${p.c?"City":"Town"} Officials tab of <a href="${_fesc(p.u)}">${_fesc(p.n)}&rsquo;s page</a>.</p>`;
+      +`<p>${tr("yt.county_officials","The county&rsquo;s own officials are under <a href=\"/officials#counties\">County Officials</a>.")}</p>`:"";
+    else if(k==="town")body=`<p>${p.c?tr("yt.is_city","{town} is a city. Who runs it is on the City Officials tab of {link}.",{town:_fesc(p.t),link}):tr("yt.is_town","{town} is a town. Who runs it is on the Town Officials tab of {link}.",{town:_fesc(p.t),link})}</p>`;
     if(!body){el.hidden=true;return;}
-    el.innerHTML=`<p class="ythead2">In your town: ${_fesc(p.n)}</p>`+body
-      +'<p class="ytmeta"><button type="button" class="ytopen link">Change your town</button></p>';
+    el.innerHTML=`<p class="ythead2">${tr("yt.in_town","In your town: {place}",{place:_fesc(p.n)})}</p>`+body
+      +`<p class="ytmeta"><button type="button" class="ytopen link">${tr("yt.change_town","Change your town")}</button></p>`;
     el.hidden=false;
   });
 }

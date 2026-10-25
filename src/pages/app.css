@@ -1,4 +1,4 @@
-/* GRANITE_VERSION: 2026-09-07.316 */
+/* GRANITE_VERSION: 2026-09-07.317 */
 /* ONE STYLESHEET FOR EVERY PAGE (23 October 2026). Every page of the site
    links this file, /app.css: the record pages shell.page() makes from
    bills.html, and the five build_pages.py writes -- the home page, Officials,
@@ -1802,6 +1802,8 @@ border-radius:var(--r-in);font-size:var(--t-sm);color:var(--ink)}
 .langbar .langx{margin-left:auto;background:none;border:0;color:var(--ink-2);cursor:pointer;
 min-width:44px;min-height:44px;font:inherit}
 .langnote{margin:var(--sp-3) 0 0;font-size:var(--t-sm);color:var(--ink-2)}
+/* A Learn page not yet in the page's language, named on the hub's Learn tab (25 October 2026). */
+.r-en{margin-left:.3em;font-weight:400;font-size:var(--t-sm);color:var(--ink-2);white-space:nowrap}
 .ytpanel .findin{max-width:40rem}
 .ytarow .ytbtn2{white-space:nowrap;flex:0 0 auto}
 .yttop{display:flex;align-items:baseline;justify-content:space-between;gap:var(--sp-4)}

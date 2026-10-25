@@ -85,6 +85,22 @@ So when somebody changes the English:
 A translation can therefore lag an edit, visibly, but it can never go on
 saying something the English page no longer says.
 
+## One Spanish word for each English term
+
+`src/pages/lang/terms.es.json` (25 October 2026) gives each recurring
+English term its one Spanish rendering: *hearing* is *audiencia*, *town or
+city clerk* is *el secretario de su municipio o ciudad*, *eligible* and
+*qualify* are *reunir los requisitos*, *fee* is *cuota*, on every page.
+`python3 preflight.py --code` fails on any entry whose English uses a listed
+term and whose Spanish does not use its rendering, and names the entry.
+
+To change a term, change it in the list first; preflight then names every
+entry to bring along, and `python3 src/ops/translations.py --set` brings each one back to
+draft. A program's or an office's name follows the agency's own Spanish
+where it publishes one (Medicare's *Ayuda Adicional*, the Postal Service's
+*oficina postal*); ordinary words follow the list even where one agency
+phrases them differently. The file's `_about` says how a term is matched.
+
 ## Draft and proofread
 
 Every entry is a **draft** until the proofreader passes it, and then it is

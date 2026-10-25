@@ -1,0 +1,380 @@
+{
+ "_about": [
+  "ONE SPANISH WORD FOR EACH ENGLISH TERM (the person, 25 October 2026: 'it's important to use consistent translations across different pages so that it's easier to follow and more uniform phrasing rather than describing it differently on each page'; the term list approved the same day).",
+  "Each term gives the English forms it is found by ('en') and the Spanish forms that render it ('es'); the first Spanish form is the rendering, the rest are the same words inflected or abbreviated. Every entry in es.json whose English uses the term must use one of the Spanish forms, and preflight names any that does not (i18n.term_faults). A form is matched as whole words, ignoring case unless it has a capital letter; markup and entities are read as the reader sees them.",
+  "'skip' lists English phrases that contain the term but are something else (State House is a building, not the House), and 'except' lists entries that use the English in another sense, each with the reason. An exception whose entry no longer exists is itself a fault, so the list cannot rot.",
+  "HOW A CHOICE IS MADE. A program's or an office's name follows the agency's own Spanish where it publishes one (Medicare, the Postal Service); where it publishes none, the English name stays with a Spanish gloss. Ordinary words (apply, eligible, fee, appointment) follow this list on every page, even where one agency phrases it differently. 'basis' says where each choice came from.",
+  "TO CHANGE A TERM, change it here first: preflight then names every entry to bring along, and src/ops/translations.py --set brings each one, back to draft for the proofreader."
+ ],
+ "terms": [
+  {
+   "en": [
+    "General Court"
+   ],
+   "es": [
+    "Legislatura",
+    "General Court"
+   ],
+   "basis": "The catalog's choice of 23 October 2026: 'Corte General' reads as a court of law. The English name is kept once, in the footer, and where a page names it."
+  },
+  {
+   "en": [
+    "Executive Council"
+   ],
+   "es": [
+    "Consejo Ejecutivo"
+   ],
+   "basis": "The catalog"
+  },
+  {
+   "en": [
+    "Secretary of State"
+   ],
+   "es": [
+    "Secretaría de Estado",
+    "Secretario de Estado",
+    "Secretaria de Estado"
+   ],
+   "basis": "The catalog; the office is the Secretaría, its holder the Secretario or Secretaria."
+  },
+  {
+   "en": [
+    "Department of Health and Human Services"
+   ],
+   "es": [
+    "Departamento de Salud y Servicios Humanos"
+   ],
+   "basis": "The catalog"
+  },
+  {
+   "en": [
+    "District Office",
+    "District Offices"
+   ],
+   "es": [
+    "oficina de distrito",
+    "oficinas de distrito"
+   ],
+   "basis": "The catalog"
+  },
+  {
+   "en": [
+    "hearing",
+    "hearings"
+   ],
+   "es": [
+    "audiencia",
+    "audiencias"
+   ],
+   "skip": [
+    "hard of hearing",
+    "Hard of Hearing"
+   ],
+   "basis": "The catalog",
+   "except": {
+    "guide.using-this-site.hearings": "Names the bill page's Hearings tab, which is in English until the bill page is translated."
+   }
+  },
+  {
+   "en": [
+    "testimony"
+   ],
+   "es": [
+    "testimonio",
+    "testimonios"
+   ],
+   "basis": "The catalog",
+   "skip": [
+    "Online Testimony Submission"
+   ]
+  },
+  {
+   "en": [
+    "committee",
+    "committees",
+    "Committee",
+    "Committees"
+   ],
+   "es": [
+    "comité",
+    "comités"
+   ],
+   "basis": "The catalog",
+   "skip": [
+    "{Committee}"
+   ]
+  },
+  {
+   "en": [
+    "town or city clerk",
+    "town or city clerks",
+    "town or city clerk’s"
+   ],
+   "es": [
+    "secretario de su municipio o ciudad",
+    "secretarios de municipios y ciudades",
+    "secretario de su municipio o de su ciudad"
+   ],
+   "basis": "The catalog, 27 of 29 entries on 25 October 2026"
+  },
+  {
+   "en": [
+    "selectmen",
+    "selectboard",
+    "board of selectmen"
+   ],
+   "es": [
+    "concejales"
+   ],
+   "basis": "The catalog: la junta de concejales"
+  },
+  {
+   "en": [
+    "town meeting",
+    "town meetings"
+   ],
+   "es": [
+    "asamblea municipal",
+    "asambleas municipales",
+    "asamblea del municipio"
+   ],
+   "basis": "The catalog"
+  },
+  {
+   "en": [
+    "State House"
+   ],
+   "es": [
+    "Capitolio",
+    "State House"
+   ],
+   "basis": "The catalog: el Capitolio, with State House beside it where a reader needs the building's name",
+   "except": {
+    "reps.floterial": "The state House of Representatives, which this label calls the State House; not the building.",
+    "reps.own": "The state House of Representatives, which this label calls the State House; not the building.",
+    "yt.state_house": "The state House of Representatives, which this label calls the State House; not the building.",
+    "yt.county_conv": "The members of the state House of Representatives, not the building."
+   }
+  },
+  {
+   "en": [
+    "transfer station",
+    "transfer stations"
+   ],
+   "es": [
+    "estación de transferencia",
+    "estaciones de transferencia"
+   ],
+   "basis": "The catalog"
+  },
+  {
+   "en": [
+    "eligible",
+    "qualify",
+    "qualifies",
+    "qualified"
+   ],
+   "es": [
+    "reunir los requisitos",
+    "reúne los requisitos",
+    "reúnen los requisitos",
+    "reúna los requisitos",
+    "reúnan los requisitos",
+    "reunía los requisitos",
+    "reúne sus requisitos",
+    "reúnen sus requisitos",
+    "cumplir los requisitos",
+    "cumple los requisitos",
+    "cumplen los requisitos",
+    "cumplen sus requisitos"
+   ],
+   "basis": "The person's term list, 25 October 2026: reunir los requisitos on every page, Medicare's calificar included",
+   "skip": [
+    "qualified voter affidavit"
+   ]
+  },
+  {
+   "en": [
+    "fee",
+    "fees"
+   ],
+   "es": [
+    "cuota",
+    "cuotas"
+   ],
+   "basis": "The person's term list, 25 October 2026: cuota, not cargo or tarifa"
+  },
+  {
+   "en": [
+    "appointment",
+    "appointments"
+   ],
+   "es": [
+    "cita",
+    "citas"
+   ],
+   "basis": "The catalog"
+  },
+  {
+   "en": [
+    "birth certificate",
+    "birth certificates"
+   ],
+   "es": [
+    "acta de nacimiento",
+    "actas de nacimiento"
+   ],
+   "basis": "The catalog"
+  },
+  {
+   "en": [
+    "driver’s license",
+    "driver's license",
+    "driver’s licenses",
+    "driver's licenses"
+   ],
+   "es": [
+    "licencia de conducir",
+    "licencias de conducir"
+   ],
+   "basis": "The catalog"
+  },
+  {
+   "en": [
+    "photo ID"
+   ],
+   "es": [
+    "identificación con foto",
+    "identificaciones con foto",
+    "identificación del gobierno con foto",
+    "identificación vigente del gobierno con foto",
+    "identificación federal con foto"
+   ],
+   "basis": "The catalog"
+  },
+  {
+   "en": [
+    "post office",
+    "post offices",
+    "Post Office"
+   ],
+   "es": [
+    "oficina postal",
+    "oficinas postales"
+   ],
+   "basis": "The Postal Service's own Spanish, es.usps.com, read 25 October 2026"
+  },
+  {
+   "en": [
+    "Social Security Administration"
+   ],
+   "es": [
+    "Administración del Seguro Social"
+   ],
+   "basis": "USA.gov's and Medicare's Spanish"
+  },
+  {
+   "en": [
+    "Medicare Savings Program",
+    "Medicare Savings Programs"
+   ],
+   "es": [
+    "Programa de Ahorros de Medicare",
+    "Programas de Ahorros de Medicare"
+   ],
+   "basis": "es.medicare.gov, read 25 October 2026"
+  },
+  {
+   "en": [
+    "Extra Help"
+   ],
+   "es": [
+    "Ayuda Adicional"
+   ],
+   "basis": "es.medicare.gov, read 25 October 2026"
+  },
+  {
+   "en": [
+    "Initial Enrollment Period"
+   ],
+   "es": [
+    "Período de Inscripción Inicial"
+   ],
+   "basis": "es.medicare.gov"
+  },
+  {
+   "en": [
+    "General Enrollment Period"
+   ],
+   "es": [
+    "Período de Inscripción General"
+   ],
+   "basis": "es.medicare.gov"
+  },
+  {
+   "en": [
+    "roll call",
+    "roll calls",
+    "roll-call"
+   ],
+   "es": [
+    "votación nominal",
+    "votaciones nominales"
+   ],
+   "basis": "The catalog"
+  },
+  {
+   "en": [
+    "village district",
+    "village districts"
+   ],
+   "es": [
+    "distrito de aldea",
+    "distritos de aldea"
+   ],
+   "basis": "The person's term list, 25 October 2026: the Learn pages' first drafts said both distrito de villa and distrito de aldea"
+  },
+  {
+   "en": [
+    "board of aldermen",
+    "aldermen"
+   ],
+   "es": [
+    "junta de concejales municipales",
+    "concejales municipales"
+   ],
+   "basis": "The person's term list, 25 October 2026: kept apart from the selectmen's junta de concejales, with the English beside it"
+  },
+  {
+   "en": [
+    "town manager",
+    "city manager"
+   ],
+   "es": [
+    "administrador municipal",
+    "administradores municipales"
+   ],
+   "basis": "The Learn pages, 25 October 2026"
+  },
+  {
+   "en": [
+    "deliberative session",
+    "deliberative sessions"
+   ],
+   "es": [
+    "sesión deliberativa",
+    "sesiones deliberativas"
+   ],
+   "basis": "The town warrant guide"
+  },
+  {
+   "en": [
+    "default budget"
+   ],
+   "es": [
+    "presupuesto por defecto"
+   ],
+   "basis": "The town warrant guide"
+  }
+ ]
+}

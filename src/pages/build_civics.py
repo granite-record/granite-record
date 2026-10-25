@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-08.71
+# GRANITE_VERSION: 2026-09-08.72
 """
 The civics section: a hub and one page per topic, in order.
 
@@ -258,7 +258,7 @@ def org_day(today):
 PROBATE_CACR = ("2025-2026", "CACR13")
 
 
-def probate_vote(rows, today):
+def probate_vote(rows, today, lang=I.DEFAULT):
     """The register of probate paragraph's last sentence (civics.py,
     [[probate_vote]]), in the tense the build's day gives it: CACR 13's
     election ahead, past with its count not on the site yet, or past with the
@@ -268,26 +268,35 @@ def probate_vote(rows, today):
     question went to the voters "at the November 2026 general election" and
     would have gone on saying so after the vote; a reminder failing preflight
     from 4 November was what was to catch it, on the eve of a release freeze.
-    Nothing here is a result the file does not hold."""
+    Nothing here is a result the file does not hold.
+
+    In another language (the Learn pages in Spanish, 25 October 2026) each
+    sentence is the catalog's, the bill's name the record's own."""
     link = '<a href="bill/2026/cacr13.html">CACR 13 (2026)</a>'
-    lead = f"In 2026 the legislature sent the question to the voters again, as {link}"
     row = next((r for r in rows or () if (r.get("term"), r.get("bill")) == PROBATE_CACR), None)
     try:
         day = datetime.date.fromisoformat((row or {}).get("election") or "")
     except ValueError:
-        return lead + "."
-    on = S.date_words(day, "full")
+        return I.say(lang, "learn.probate.sent", "In 2026 the legislature sent the question to the "
+                     "voters again, as {link}.", link=link)
+    on = S.date_words(day, "full") if lang == I.DEFAULT else C.date_words(day, "full", lang)
     y, n = row.get("yes"), row.get("no")
     if y is None or n is None or y + n <= 0:
         if today <= day:
-            return f"{lead}, at the general election of {on}."
-        return (f"{lead}. The vote was on {on}; the Secretary of State&rsquo;s count is not "
-                "on the site yet.")
+            return I.say(lang, "learn.probate.ahead", "In 2026 the legislature sent the question to "
+                         "the voters again, as {link}, at the general election of {on}.",
+                         link=link, on=on)
+        return I.say(lang, "learn.probate.counting", "In 2026 the legislature sent the question to "
+                     "the voters again, as {link}. The vote was on {on}; the Secretary of "
+                     "State&rsquo;s count is not on the site yet.", link=link, on=on)
     share = f"{100 * y / (y + n):.1f}%"
     if 3 * y >= 2 * (y + n):
-        return f"{lead}, and on {on} the voters ratified it: {share} voted yes, where two thirds was needed."
-    return (f"{lead}, and on {on} it did not reach the two thirds it needed: {share} of "
-            "those voting on it voted yes.")
+        return I.say(lang, "learn.probate.ratified", "In 2026 the legislature sent the question to "
+                     "the voters again, as {link}, and on {on} the voters ratified it: {share} "
+                     "voted yes, where two thirds was needed.", link=link, on=on, share=share)
+    return I.say(lang, "learn.probate.failed", "In 2026 the legislature sent the question to the "
+                 "voters again, as {link}, and on {on} it did not reach the two thirds it needed: "
+                 "{share} of those voting on it voted yes.", link=link, on=on, share=share)
 
 
 def _voters_verb(label, n):
@@ -1370,6 +1379,9 @@ HUB_FIXED = {
                             "that would."),
     "hub.learn.in_english": ("The Learn pages are in English; their names and descriptions are "
                              "given here in this page&rsquo;s language."),
+    "hub.learn.some_english": ("A page marked &ldquo;in English&rdquo; is not translated yet; its "
+                               "name and description are given here in this page&rsquo;s "
+                               "language."),
     "hub.src.intro": "The sites the Learn pages cite as their sources. Each opens in a new tab.",
     "hub.src.by_branch": "By Branch",
     "hub.src.in_english": "The official sites are in English.",
@@ -1447,16 +1459,27 @@ def hub_learn(topics, lang=I.DEFAULT):
     by_slug = {t["slug"]: t for t in topics}
     n = len(topics)
 
+    # A LEARN PAGE NOT YET IN THE LANGUAGE SAYS SO (25 October 2026): the
+    # pages are translated a few at a time, and the link to one still in
+    # English goes to the English page (lang_links), so its name carries
+    # "in English" and the note above the list says what that means.
+    done = set(G.learn_translated(lang)) if lang != I.DEFAULT else set()
+    english = "" if lang == I.DEFAULT else (
+        '<span class="r-en">(' + I.say(lang, "guides.in_english", "in English") + ")</span>")
+
     def title(slug):
-        return _tw(lang, f"hub.learn.{slug}.title", E(by_slug[slug]["title"]))
+        return (_tw(lang, f"hub.learn.{slug}.title", E(by_slug[slug]["title"]))
+                + ("" if lang == I.DEFAULT or slug in done else english))
     start = cards([(learn_href(slug), CARD_ICON.get(slug, "Start Here"), title(slug),
                     _tw(lang, f"hub.learn.{slug}.why", E(why)))
                    for slug, why in START if slug in by_slug])
     started = {slug for slug, _ in START}
     count = NUMBER_WORD.get(n, n) if lang == I.DEFAULT else str(n)
     out = [f'<p class="r-intro">{_hf(lang, "hub.learn.intro").replace("{n}", str(count))}</p>']
-    if lang != I.DEFAULT:
+    if lang != I.DEFAULT and not done & set(by_slug):
         out.append(f'<p class="langnote">{_hf(lang, "hub.learn.in_english")}</p>')
+    elif lang != I.DEFAULT and set(by_slug) - done:
+        out.append(f'<p class="langnote">{_hf(lang, "hub.learn.some_english")}</p>')
     out.append(hub_section("start", _hf(lang, "hub.learn.start"), start))
     folds = []
     for group, note in civics.GROUPS:
@@ -2034,19 +2057,18 @@ def lang_sections(english, translated, where):
     return [(eid, h, c) for (eid, _h, _c), (_sid, h, c) in zip(en, out)]
 
 
-def lang_hub_bar(lang):
-    """The Resources bar over a guide in `lang`: the hub, and How-To Guides
-    marked, in that language; Learn and the Official Sources are English
-    pages, and say so."""
+def lang_hub_bar(lang, current="guides"):
+    """The Resources bar over a page in `lang`: the hub and its three tabs in
+    that language, the one the page belongs to (`current`) marked. All three
+    tabs are in the language since 25 October 2026 (hub_tabs), so none is
+    sent to the English hub."""
     hub = I.href(lang, HUB_PAGE)
-    en = I.say(lang, "guides.in_english", "in English")
-    tabs = (f'<a class="l-hubtab" href="{hub}#guides" aria-current="true">'
-            + I.say(lang, "guides.hub_guides", "How-To Guides") + "</a>"
-            + f'<a class="l-hubtab" href="{HUB}#learn" hreflang="en">'
-            + I.say(lang, "guides.hub_learn", "Learn") + f'<span class="l-hubin">&nbsp;({en})</span></a>'
-            + f'<a class="l-hubtab" href="{HUB}#sources" hreflang="en">'
-            + I.say(lang, "guides.hub_sources", "Official Sources")
-            + f'<span class="l-hubin">&nbsp;({en})</span></a>')
+    tabs = "".join(
+        f'<a class="l-hubtab" href="{hub}#{tab}"' + (' aria-current="true"' if tab == current else "")
+        + f">{name}</a>"
+        for tab, name in (("guides", I.say(lang, "guides.hub_guides", "How-To Guides")),
+                          ("learn", I.say(lang, "guides.hub_learn", "Learn")),
+                          ("sources", I.say(lang, "guides.hub_sources", "Official Sources"))))
     name = I.say(lang, "guides.hub", "Resources")
     return (f'<nav class="l-hub" aria-label="{E(name)}"><p class="l-hubname">'
             f'<a href="{hub}">{name}</a></p><div class="l-hubtabs">{tabs}</div></nav>')
@@ -2137,6 +2159,10 @@ def figures_lang(figures, lang, dist):
         out["hearing_video_since"] = I.say(lang, "guides.video_since", ", nearly every one since {year}",
                                            year=figures["hearing_video_from"])
     out["built_on"] = C.date_words(build_date.today(), "full", lang)
+    if "probate_vote" in figures:
+        out["probate_vote"] = probate_vote(
+            _load(Path(".") / "corrections" / "ballot_results.json", {}).get("rows"),
+            build_date.today(), lang)
     if dist:
         got = civics.reps_example(dist, lang=lang)
         out.update({k: (f"{v:,}" if isinstance(v, int) else v) for k, v in got.items()})
@@ -2178,6 +2204,111 @@ def article_page_lang(t, lang, base, figures, names=None, con=None):
     article = lang_links("".join(section(*s_) for s_ in secs), lang) + foot
     out = BP.shell(f"{E(html.unescape(re.sub(r'<[^>]+>', '', title)))} — Granite Record", page,
                    '<div class="l-page">' + lang_hub_bar(lang) + head_
+                   + f'<div class="l-art">{article}</div></div>{OTP_JS}',
+                   desc=html.unescape(re.sub(r"<[^>]+>", "", w.t(t["blurb"], attr=True))),
+                   base=base, lang=lang)
+    if "[[" in out:
+        raise SystemExit(f"{I.href(lang, page)} would publish an unfilled figure: "
+                         + out[out.index("[["):out.index("[[") + 40])
+    return out
+
+
+def _still_english(lang, slug):
+    """" (in English)" after a Learn page's name where `lang` has no version
+    of it yet, as the hub's Learn tab marks one; "" where it has."""
+    if lang == I.DEFAULT or slug in G.learn_translated(lang):
+        return ""
+    return '<span class="r-en">(' + I.say(lang, "guides.in_english", "in English") + ")</span>"
+
+
+def pager_lang(i, topics, lang):
+    """pager, in `lang`: Previous Topic and Next Topic with each one's title
+    as the hub's Learn tab gives it, and All Topics back to that tab."""
+    hub = I.href(lang, HUB_PAGE)
+
+    def side(k, cls, word):
+        if k is None or not 0 <= k < len(topics):
+            return f'<span class="{cls}"></span>'
+        t = topics[k]
+        name = (_tw(lang, f"hub.learn.{t['slug']}.title", I.norm(E(t["title"])))
+                + _still_english(lang, t["slug"]))
+        return (f'<a class="{cls}" href="{E(learn_href(t["slug"]))}"><span class="l-pgw">{word}</span>'
+                f'<span class="l-pgd">{name}</span></a>')
+    return (f'<nav class="l-pager" aria-label="{E(I.say(lang, "learn.other", "Other topics"))}">'
+            + side(None if i is None else i - 1, "l-pgp", I.say(lang, "learn.prev", "Previous Topic"))
+            + f'<a class="l-pgm" href="{hub}#learn">' + I.say(lang, "learn.all", "All Topics") + "</a>"
+            + side(None if i is None else i + 1, "l-pgn", I.say(lang, "learn.next", "Next Topic"))
+            + "</nav>")
+
+
+def all_topics_lang(topics, here, lang):
+    """all_topics, in `lang`: the pages in the hub's two groups, each by the
+    name the hub's Learn tab gives it, the one open marked."""
+    groups = []
+    for group, _note in civics.GROUPS:
+        lis = "".join(
+            f'<li><span aria-current="page">'
+            f'{_tw(lang, "hub.learn." + t["slug"] + ".title", I.norm(E(t["title"])))}</span></li>'
+            if t["slug"] == here else
+            f'<li><a href="{E(learn_href(t["slug"]))}">'
+            f'{_tw(lang, "hub.learn." + t["slug"] + ".title", I.norm(E(t["title"])))}'
+            f'{_still_english(lang, t["slug"])}</a></li>'
+            for t in topics if t["group"] == group)
+        if lis:
+            name = _tw(lang, f"hub.learn.group.{I.slug_words(group)}.name", I.norm(E(group)))
+            groups.append(f'<div><h3>{name}</h3><ol>{lis}</ol></div>')
+    label = I.say(lang, "learn.pages_label", "The pages of this section")
+    return ("all-topics", I.say(lang, "learn.all_pages", "The {n} Pages", n=len(topics)),
+            f'<nav class="l-all" aria-label="{E(label)}">{"".join(groups)}</nav>')
+
+
+def learn_page_lang(t, lang, base, figures, topics, open_=(), names=None, con=None):
+    """One of Learn's own pages in `lang`, at i18n.href(lang, its page) (the
+    person, 25 October 2026: "start on the Learn pages"): its words piece by
+    piece (Words, keyed learn.<slug>.*), the paragraphs guides.SAID writes
+    once among them, its figures filled in after in the language's forms
+    (figures_lang), the guides that do what it explains by the How-To tab's
+    words, and the pager and The Pages as the hub's Learn tab names them.
+    The record's own words in it -- a bill's number in a link -- are as the
+    record has them."""
+    import build_pages as BP
+    page = learn_href(t["slug"])
+    w = Words(lang, t["slug"])
+    english = G.reused(G.topic_body(t))
+    body = w.h(english).replace(G.SHORTHAND_SLOT, civics.shorthand_table(lang))
+    body = fill(body, figures)
+    if names is not None:
+        body = suffixed(body, names)
+    if con is not None:
+        body = CT.link_citations(body, con)
+    secs = lang_sections(english, body, I.href(lang, page))
+    if t.get("holds"):
+        sid, h, c = secs[-1]
+        secs[-1] = (sid, h, c + f'<p class="l-note">{fill(w.h(t["holds"]), figures)}</p>')
+    lis = "".join(
+        f'<li><a href="{E(guide_href(s_))}">'
+        f'{_tw(lang, "guide.task." + s_ + ".does", I.norm(G.task_of(s_)[1]["does"]))}</a></li>'
+        for s_ in civics.GUIDES_FOR.get(t["slug"], ()) if s_ in open_ and G.task_of(s_)[1])
+    if lis:
+        secs.append(("how-to-guides", I.say(lang, "guides.hub_guides", "How-To Guides"),
+                     f'<ul class="l-guides">{lis}</ul>'))
+    if t["sources"]:
+        secs.append(("sources", I.say(lang, "guides.sources", "Where This Comes From"),
+                     lang_sources(t["sources"], w)))
+    after = all_topics_lang(topics, t["slug"], lang)
+    title = w.t(t["title"])
+    lead = dashes(w.t(t["blurb"])) if t["blurb"] else ""
+    head_ = (f'<header class="l-head"><h1>{title}</h1>'
+             + (f'<p class="l-lead">{lead}</p>' if lead else "")
+             + '<p class="langnote">' + I.say(
+                 lang, "learn.lang_note", "This page is in Spanish. The official pages it links "
+                 "to, and the record itself, are in English.") + "</p>"
+             + lang_otp(secs + [after], page, lang) + "</header>")
+    i = next((k for k, x in enumerate(topics) if x["slug"] == t["slug"]), None)
+    article = lang_links("".join(section(*s_) for s_ in secs) + pager_lang(i, topics, lang)
+                         + section(*after), lang)
+    out = BP.shell(f"{E(html.unescape(re.sub(r'<[^>]+>', '', title)))} — Granite Record", page,
+                   '<div class="l-page">' + lang_hub_bar(lang, "learn") + head_
                    + f'<div class="l-art">{article}</div></div>{OTP_JS}',
                    desc=html.unescape(re.sub(r"<[^>]+>", "", w.t(t["blurb"], attr=True))),
                    base=base, lang=lang)
@@ -2625,6 +2756,12 @@ def main():
                           lead=dashes(E(t["blurb"])) if t["blurb"] else "",
                           description=t["blurb"], secs=secs, foot=pager(i, learn),
                           base=a.base, after=all_topics(learn, t["slug"]))
+        # AND IN EACH OTHER LANGUAGE IT IS IN (i18n.PAGES; the person, 25
+        # October 2026: "start on the Learn pages"), its figures in that
+        # language's forms.
+        if write_lang(site, learn_href(t["slug"]), lambda lang: learn_page_lang(
+                t, lang, a.base, figures_lang(figures, lang, dist), learn, open_, names, con)):
+            page = name_versions(learn_href(t["slug"]), page)
         (out / f"{t['slug']}.html").write_text(S.clean_links(page), encoding="utf-8")
         urls.append(a.base + S.canon("/" + learn_href(t["slug"])))
     print(f"  {len(learn)} Learn pages; {len(articles)} pages that became guides, at /guides/: "

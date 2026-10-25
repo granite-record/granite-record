@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-10-11.36
+# GRANITE_VERSION: 2026-10-11.37
 """
 The how-to guides: their words, their sources, and what each was checked
 against. Read by build_civics.py, which draws them on the Resources hub's
@@ -5026,6 +5026,14 @@ def topic_of(slug):
     return next((t for t in civics.TOPICS if t["slug"] == slug and slug in civics.HOW_TO), None)
 
 
+def learn_topic(slug):
+    """civics.py's page `slug`, one of Learn's own pages (not civics.HOW_TO),
+    or None. Its words are translated as a guide's are (the person, 25
+    October 2026: "start on the Learn pages"), keyed learn.<slug>.*."""
+    return next((t for t in civics.TOPICS if t["slug"] == slug and slug not in civics.HOW_TO),
+                None)
+
+
 def topic_body(t):
     """A page of civics.py's as it is translated: its shorthand table, which
     is drawn from the glossary in the page's language, left as a slot."""
@@ -5039,7 +5047,7 @@ def wording(slug):
     True where they are a page's HTML, which is translated piece by piece.
     The record's own words (In the Record's bills and chapters) and the
     law's references ("RSA 654:7, I") are not in it."""
-    t = topic_of(slug)
+    t = topic_of(slug) or learn_topic(slug)
     if t:
         out = [("title", t["title"], False), ("lead", t["blurb"], False),
                ("page", reused(topic_body(t)), True)]
@@ -5094,6 +5102,8 @@ def page_words(slug):
     page's begin alike, or under its shared key (_shared)."""
     import i18n
     shared, keys, used, out = _shared(), {}, {}, []
+    pre = "learn" if learn_topic(slug) else "guide"
+    folder = "learn" if pre == "learn" else "guides"
     for where, words, is_html in wording(slug):
         if not words:
             continue
@@ -5103,17 +5113,17 @@ def page_words(slug):
             if not en or en in keys:
                 continue
             if where in ("title", "lead") and not is_html:
-                key = f"guide.{slug}.{where}"
+                key = f"{pre}.{slug}.{where}"
             elif en in shared:
                 key = shared[en]
             else:
-                base = f"guide.{slug}.{i18n.slug_words(en)}"
+                base = f"{pre}.{slug}.{i18n.slug_words(en)}"
                 key, n = base, 2
                 while used.get(key, en) != en:
                     key, n = f"{base}-{n}", n + 1
             used[key] = en
             keys[en] = key
-            out.append((key, en, f"guides/{slug}: {where}"))
+            out.append((key, en, f"{folder}/{slug}: {where}"))
     return out
 
 
@@ -5145,6 +5155,14 @@ def translated(lang):
             if p.startswith("guides/")]
 
 
+def learn_translated(lang):
+    """The slugs of the Learn pages `lang` has (i18n.PAGES), in its order:
+    civics.py's own pages, not the glossary, which is keyed by term."""
+    import i18n
+    return [p[len("learn/"):-len(".html")] for p in i18n.PAGES.get(lang, ())
+            if p.startswith("learn/") and learn_topic(p[len("learn/"):-len(".html")])]
+
+
 def translated_words():
     """Every piece of every guide a language other than English has, and the
     How-To Guides tab's words where one has the hub: what i18n.code_words
@@ -5152,7 +5170,7 @@ def translated_words():
     import i18n
     out, seen = [], set()
     langs = [c for c in i18n.LANGS if c != i18n.DEFAULT]
-    slugs = list(dict.fromkeys(s for c in langs for s in translated(c)))
+    slugs = list(dict.fromkeys(s for c in langs for s in translated(c) + learn_translated(c)))
     rows = [r for s in slugs for r in page_words(s)]
     if any(i18n.has(c, "resources.html") for c in langs):
         rows += task_words()

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-10-23.4
+# GRANITE_VERSION: 2026-10-23.5
 """
 The site's translations: what is translated, what has gone stale, and the
 proofreader's sheet out and back. src/pages/i18n.py says how a translation
@@ -64,6 +64,9 @@ AREAS = {"nav": "the header", "page": "the header", "theme": "Settings", "set": 
          # around them.
          "guide": "the how-to guides (the page is the key's second part)",
          "guides": "the how-to guides, around the guide's own words",
+         # The Learn pages (25 October 2026), keyed as the guides are, and
+         # what Learn's pages say around their own words.
+         "learn": "the Learn pages (the page is the key's second part)",
          "reps": "Finding Your Representatives: the worked example",
          "trrep": "the box for reporting a mistake in the translation"}
 
