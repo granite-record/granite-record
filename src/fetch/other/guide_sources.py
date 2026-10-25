@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-10-11.12
+# GRANITE_VERSION: 2026-10-11.13
 """
 The official pages the how-to guides cite, onto this disk, to check them by.
 
@@ -191,6 +191,14 @@ SOURCES = {
         "https://www.sos.nh.gov/elections/running-office",
         "https://www.sos.nh.gov/elections/qualifications-office",
     ],
+    # The Medicare and disability guides (25 October 2026), from the
+    # person's printouts.
+    "medicare_and_disability": [
+        "https://www.dhhs.nh.gov/programs-services/medicaid/nh-medicaid-medical-assistance-eligibility/medicare-beneficiaries",
+        "https://www.dhhs.nh.gov/programs-services/disability-care/aid-permanently-totally-disabled",
+        "https://www.dhhs.nh.gov/programs-services/disability-care/developmental-services",
+        "https://www.education.nh.gov/who-we-are/deputy-commissioner/bureau-vocational-rehabilitation/programs-and-services/vocational-rehabilitation-services",
+    ],
 }
 
 # NOT STATE AGENCIES, AND NEVER FETCHED. Where a guide sends a reader for help
@@ -251,6 +259,48 @@ OTHER = {
         "https://www.ecfr.gov/current/title-45/subtitle-A/subchapter-A/part-98/subpart-C/section-98.21",
         "https://www.ecfr.gov/current/title-45/subtitle-A/subchapter-A/part-98/subpart-D/section-98.30",
         "https://concordnh.gov/1088/Filing-for-Office",
+    ],
+    # The passport guide (25 October 2026): the Department of State's pages,
+    # from the person's printouts, as travel.state.gov refuses a cloud
+    # session; the Postal Service's page and the federal rules, read that day.
+    "passport": [
+        "https://travel.state.gov/content/travel/en/passports/need-passport/apply-in-person.html",
+        "https://travel.state.gov/content/travel/en/passports/have-passport/renew.html",
+        "https://travel.state.gov/en/passports/apply/child/under-16.html",
+        "https://travel.state.gov/content/travel/en/passports/how-apply/fees.html",
+        "https://travel.state.gov/content/travel/en/passports/how-apply/processing-times.html",
+        "https://travel.state.gov/content/travel/en/passports/how-apply/where-to-apply.html",
+        "https://travel.state.gov/en/passports/apply/get-fast/make-appointment/national-passport-center.html",
+        "https://www.usps.com/international/passports.htm",
+        "https://www.ecfr.gov/current/title-22/chapter-I/subchapter-F/part-51/subpart-A/section-51.4",
+        "https://www.ecfr.gov/current/title-22/chapter-I/subchapter-F/part-51/subpart-B/section-51.21",
+        "https://www.ecfr.gov/current/title-22/chapter-I/subchapter-F/part-51/subpart-B/section-51.22",
+        "https://www.ecfr.gov/current/title-22/chapter-I/subchapter-F/part-51/subpart-B/section-51.28",
+        "https://www.ecfr.gov/current/title-22/chapter-I/subchapter-F/part-51/subpart-C/section-51.42",
+    ],
+    # The Medicare and Social Security guide and the disability guide (25
+    # October 2026): medicare.gov and USA.gov, read that day; the federal
+    # rules at eCFR, read that day; Social Security's pages, from the
+    # person's printouts.
+    "medicare_and_disability": [
+        "https://www.medicare.gov/basics/get-started-with-medicare/sign-up/when-does-medicare-coverage-start",
+        "https://www.medicare.gov/basics/get-started-with-medicare/sign-up/how-do-i-sign-up-for-medicare",
+        "https://www.medicare.gov/basics/get-started-with-medicare/sign-up/ready-to-sign-up-for-part-a-part-b",
+        "https://www.medicare.gov/basics/get-started-with-medicare/get-more-coverage/joining-a-plan",
+        "https://www.medicare.gov/basics/costs/help/medicare-savings-programs",
+        "https://www.medicare.gov/basics/costs/help/drug-costs",
+        "https://www.medicare.gov/talk-to-someone",
+        "https://www.usa.gov/agencies/social-security-administration",
+        "https://www.ssa.gov/benefits/retirement/apply.html",
+        "https://www.ssa.gov/medicare/sign-up",
+        "https://www.ssa.gov/myaccount/",
+        "https://www.ssa.gov/benefits/disability/",
+        "https://www.ssa.gov/ssi",
+        "https://www.ecfr.gov/current/title-20/section-404.310",
+        "https://www.ecfr.gov/current/title-20/section-404.315",
+        "https://www.ecfr.gov/current/title-20/section-404.909",
+        "https://www.ecfr.gov/current/title-20/section-404.1505",
+        "https://www.ecfr.gov/current/title-20/section-416.202",
     ],
 }
 

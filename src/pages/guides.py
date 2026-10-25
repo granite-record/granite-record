@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-10-11.35
+# GRANITE_VERSION: 2026-10-11.36
 """
 The how-to guides: their words, their sources, and what each was checked
 against. Read by build_civics.py, which draws them on the Resources hub's
@@ -4153,6 +4153,555 @@ GUIDES += [TRASH]
 
 
 # ---------------------------------------------------------------------------
+# A U.S. PASSPORT (the person, 25 October 2026: "go ahead with the passport
+# guide"; federal sources allowed, 24 October 2026). A passport is federal:
+# the Department of State issues it and New Hampshire has no part, so the
+# guide rests on the federal rules (22 CFR part 51, read at eCFR on 25 October
+# 2026, current to 22 October) and on the Postal Service's passport page, read
+# the same day, and sends a reader to the State Department's own pages for
+# the forms, fees and processing times, which change. travel.state.gov
+# refuses this machine, so its claims wait for the person's printouts. No fee
+# is printed: a dollar amount rests on a statute, and none of New Hampshire's
+# sets these (FIGURE above).
+# ---------------------------------------------------------------------------
+PP_READ = "2026-10-25"
+PP_STATE_READ = None                 # the person's printouts of travel.state.gov
+STATE_IN_PERSON = "https://travel.state.gov/content/travel/en/passports/need-passport/apply-in-person.html"
+STATE_RENEW = "https://travel.state.gov/content/travel/en/passports/have-passport/renew.html"
+STATE_CHILD = "https://travel.state.gov/en/passports/apply/child/under-16.html"
+STATE_FEES = "https://travel.state.gov/content/travel/en/passports/how-apply/fees.html"
+STATE_TIMES = "https://travel.state.gov/content/travel/en/passports/how-apply/processing-times.html"
+STATE_NPC = ("https://travel.state.gov/en/passports/apply/get-fast/make-appointment/"
+             "national-passport-center.html")
+STATE_WHERE = "https://travel.state.gov/content/travel/en/passports/how-apply/where-to-apply.html"
+USPS_PASSPORTS = "https://www.usps.com/international/passports.htm"
+_CFR22 = "https://www.ecfr.gov/current/title-22/chapter-I/subchapter-F/part-51/subpart-B/"
+CFR_PP_EXECUTE = _CFR22 + "section-51.21"
+CFR_PP_AGENTS = _CFR22 + "section-51.22"
+CFR_PP_MINORS = _CFR22 + "section-51.28"
+CFR_PP_BIRTH = _CFR22.replace("subpart-B", "subpart-C") + "section-51.42"
+CFR_PP_VALID = ("https://www.ecfr.gov/current/title-22/chapter-I/subchapter-F/part-51/"
+                "subpart-A/section-51.4")
+
+PASSPORT = guide(
+    "passport", "How to Get a U.S. Passport",
+    "Getting a first U.S. passport or renewing one from New Hampshire, step by step: whether you "
+    "can renew by mail, what to bring to a post office, a child's passport, and what to do if "
+    "you travel soon.",
+    "A U.S. passport comes from the U.S. Department of State, not from New Hampshire. If it is "
+    "your first passport, if you are under 16, or if you cannot renew, you apply in person on "
+    "Form DS-11 at an acceptance facility, such as a post office, by appointment. Bring proof of "
+    "U.S. citizenship, such as a certified birth certificate, a photo ID, a photocopy of each, "
+    "and a photo. If your last passport was issued for 10 years, within the last 15 years, you "
+    "can usually renew by mail or online instead.",
+    [ask("Have you had a U.S. passport issued for 10 years, within the last 15 years?",
+         [("Yes", "You can usually renew by mail or online. You cannot renew in person."),
+          ("No, or it is for a child under 16",
+           "Apply in person on Form DS-11, at a post office or another acceptance facility.")]),
+     box("Gather proof of citizenship, a photo ID, a photocopy of each, and a photo."),
+     box("Make an appointment. Sign the form only when the agent asks you to."),
+     box("Pay two fees: one to the Department of State, one to the facility.")],
+    [step("Check whether you can renew instead",
+          "<p>You can renew by mail if all of these are true: your most recent passport was "
+          "issued for 10 years, when you were 16 or older; it was issued no more than 15 years "
+          "ago; and you can send it in with your application. The State Department&rsquo;s "
+          "renewal page has the form, and says when you can renew online instead.</p>"
+          "<p>A renewal is never done in person at a post office. If you cannot renew, apply in "
+          "person as a first-time applicant would, as the steps below describe.</p>",
+          actions=[("Renew a passport (State Department)", STATE_RENEW)]),
+     step("Fill out Form DS-11, and do not sign it yet",
+          "<p>A first passport, a passport for a child under 16, and one for anyone who cannot "
+          "renew are applied for in person. Fill out Form DS-11 on the State Department&rsquo;s "
+          "site and print it, but <b>do not sign it</b>: you sign it in front of the acceptance "
+          "agent, under oath.</p>",
+          actions=[("Apply in person (State Department)", STATE_IN_PERSON)]),
+     step("Gather your documents and a photo",
+          "<ul><li><b>Proof of U.S. citizenship.</b> If you were born in the United States, this "
+          "is generally a certified birth certificate showing your full name, the date and place "
+          "of your birth and your parents&rsquo; full names, with the registrar&rsquo;s signature "
+          "and seal. If you were born in New Hampshire, your town or city clerk can issue one "
+          "(the guide linked at the end of this page says how).</li>"
+          "<li><b>A photo ID</b>, such as a driver&rsquo;s license.</li>"
+          "<li><b>A photocopy of the front and back</b> of both the citizenship document and the "
+          "ID.</li>"
+          "<li><b>A photo</b> that meets the State Department&rsquo;s rules. Many post offices "
+          "take one for a fee.</li></ul>"
+          "<p>If you have no birth certificate that meets the rules, the State Department accepts "
+          "other early records of your birth instead, such as hospital, baptismal, medical or "
+          "school records. Its apply-in-person page says what to bring.</p>"),
+     step("Make an appointment and apply",
+          "<p>Thousands of post offices accept first-time applications, by appointment: book "
+          "online, at a post office&rsquo;s self-service kiosk, or at the counter. Some offer "
+          "limited walk-in hours. The clerks of some courts accept applications too. The State "
+          "Department&rsquo;s search finds every acceptance facility near you.</p>"
+          "<p>You pay two separate fees. The State Department&rsquo;s fee goes in with your "
+          "application, by check or money order payable to &ldquo;U.S. Department of "
+          "State&rdquo;, not by card. The facility&rsquo;s own acceptance fee is paid there, and "
+          "a post office takes cards. The State Department&rsquo;s fees page has the current "
+          "amounts.</p>",
+          actions=[("Book at a post office (USPS)", USPS_PASSPORTS),
+                   ("Where to apply (State Department)", STATE_WHERE),
+                   ("Passport fees (State Department)", STATE_FEES)]),
+     step("A passport for a child under 16",
+          "<p>The child goes to the appointment. Both parents or guardians sign the application, "
+          "whether it is the child&rsquo;s first passport or not. If only one can come, that "
+          "parent brings a signed and notarized statement of consent from the other, or proof of "
+          "sole custody, such as a court order or a birth certificate that names only that "
+          "parent. A child&rsquo;s passport is valid for 5 years; an adult&rsquo;s, for 10.</p>",
+          actions=[("A child under 16 (State Department)", STATE_CHILD)]),
+     step("If you travel soon",
+          "<p>Check the State Department&rsquo;s current processing times before you apply, and "
+          "pay for expedited service if you need it sooner. If your trip abroad is very soon, "
+          "you may be able to get an appointment at a passport agency, and New Hampshire has "
+          "one: the National Passport Center in Portsmouth, which takes appointments only. Its "
+          "page says how soon you must be traveling to qualify.</p>",
+          actions=[("Processing times (State Department)", STATE_TIMES),
+                   ("The National Passport Center, Portsmouth", STATE_NPC)])],
+    [("Apply in Person (U.S. Department of State)", STATE_IN_PERSON),
+     ("Renew a Passport (U.S. Department of State)", STATE_RENEW),
+     ("A Child Under 16 (U.S. Department of State)", STATE_CHILD),
+     ("Passport Fees (U.S. Department of State)", STATE_FEES),
+     ("Processing Times (U.S. Department of State)", STATE_TIMES),
+     ("Where to Apply (U.S. Department of State)", STATE_WHERE),
+     ("National Passport Center (U.S. Department of State)", STATE_NPC),
+     ("Passports (U.S. Postal Service)", USPS_PASSPORTS),
+     ("Execution of passport application, 22 CFR 51.21 (federal)", CFR_PP_EXECUTE),
+     ("Passport agents and acceptance agents, 22 CFR 51.22 (federal)", CFR_PP_AGENTS),
+     ("Minors, 22 CFR 51.28 (federal)", CFR_PP_MINORS),
+     ("Persons born in the United States, 22 CFR 51.42 (federal)", CFR_PP_BIRTH),
+     ("Validity of passports, 22 CFR 51.4 (federal)", CFR_PP_VALID)],
+    [],
+    [# Federal rules, read at eCFR on 25 October 2026.
+     claim("Apply in person: a minor, a person never issued a passport, one not issued a 10-year "
+           "passport within 15 years, or anyone not eligible to apply by mail; verify by oath or "
+           "affirmation before the agent and sign; provide photographs; pay the fees. By mail: "
+           "a person previously issued a passport valid for 10 years, the most recent issued at "
+           "16 years of age or older, applying not more than 15 years after its issue date, "
+           "submitting it with the application; on-line on the conditions in (b)(2).",
+           CFR_PP_EXECUTE, PP_READ),
+     claim("Passport acceptance agents include an employee of the clerk of a federal or state "
+           "court of record and a postal employee at a post office selected to accept "
+           "applications.", CFR_PP_AGENTS, PP_READ),
+     claim("A minor under 16 appears in person; both parents or each legal guardian execute the "
+           "application, first or renewal; or one, with a notarized statement of consent from "
+           "the other or evidence of sole parentage or custody: a birth certificate naming only "
+           "the applying parent, a death certificate, an adoption decree, or a court order "
+           "granting sole legal custody.", CFR_PP_MINORS, PP_READ),
+     claim("A birth certificate showing the full name, place and date of birth and the full name "
+           "of the parents, signed by the official custodian of birth records with the seal, "
+           "filed within one year of birth; otherwise secondary evidence: hospital birth "
+           "certificates, baptismal certificates, medical and school records, and others.",
+           CFR_PP_BIRTH, PP_READ),
+     claim("A passport issued at 16 years of age or older is valid for 10 years (ten years) from "
+           "the date of issue; under 16 years of age, for 5 years.", CFR_PP_VALID, PP_READ),
+     # The Postal Service's page, read on 25 October 2026.
+     claim("Thousands of Post Offices accept first-time passport applications; you must renew by "
+           "mail or online, you cannot renew in person; appointments by the online scheduler, a "
+           "lobby self-service kiosk or the retail counter, with limited walk-in hours at select "
+           "locations; bring the unsigned application, proof of identity and of citizenship with "
+           "a photocopy of the front and back of each, and a photo, which many Post Offices take "
+           "for a fee; DO NOT SIGN YOUR APPLICATION, a Postal employee must witness your "
+           "signature; State Department fees are mailed with the application, payable to U.S. "
+           "Department of State, not by credit or debit card; the acceptance fee is paid at the "
+           "Post Office, by check, money order, debit or credit card.", USPS_PASSPORTS, PP_READ),
+     # The State Department's own pages, from the person's printouts.
+     claim("Form DS-11; apply in person for a first passport or when you cannot renew; do not "
+           "sign the form until the acceptance agent asks; proof of citizenship, ID, "
+           "photocopies, a photo, two fees.", STATE_IN_PERSON, PP_STATE_READ),
+     claim("Who can renew by mail and who can renew online, and the form.", STATE_RENEW,
+           PP_STATE_READ),
+     claim("A child under 16 appears in person, with both parents or guardians or the consent "
+           "form.", STATE_CHILD, PP_STATE_READ),
+     claim("The application fee and the acceptance fee are paid separately; expedited service "
+           "costs extra.", STATE_FEES, PP_STATE_READ),
+     claim("Current routine and expedited processing times.", STATE_TIMES, PP_STATE_READ),
+     claim("Acceptance facilities: post offices, clerks of court, public libraries and others; "
+           "search by ZIP code.", STATE_WHERE, PP_STATE_READ),
+     claim("The National Passport Center, Portsmouth, NH: international travel within 14 "
+           "calendar days, or within 28 calendar days if a foreign visa is needed; by "
+           "appointment only.", STATE_NPC, PP_STATE_READ)],
+    see=[("How to get a birth, death, marriage or divorce certificate", "/guides/vital-records.html"),
+         ("How to get a REAL ID", "/guides/real-id.html")],
+    figures=[fig("10 years", CFR_PP_VALID, "valid for 10 years"),
+             fig("15 years", CFR_PP_EXECUTE, "within 15 years"),
+             fig("5 years", CFR_PP_VALID, "for 5 years")])
+
+GUIDES += [PASSPORT]
+
+
+# ---------------------------------------------------------------------------
+# MEDICARE AND SOCIAL SECURITY (the person, 25 October 2026: "medicare and
+# social security guides"; first asked for as "how to get help with managing
+# your social security, medicare, or medicaid"). Both are federal; signing up
+# for Medicare is done through Social Security, and the help with its costs
+# -- the Medicare Savings Programs -- is the state's, under RSA 167:4-g (2026,
+# 279:3, in force 5 September 2026). Read on 25 October 2026: medicare.gov's
+# pages, which answer a cloud session, the Social Security Administration's
+# entry at USA.gov for its number, and the federal rules at eCFR. ssa.gov
+# refuses this machine, so its pages wait for the person's printouts, as does
+# the Department of Health and Human Services' page on the savings programs.
+# Medicaid itself is the food and health guide's.
+# ---------------------------------------------------------------------------
+MC_READ = "2026-10-25"
+SSA_PAGES_READ = None                # the person's printouts of ssa.gov
+MEDICARE_START = ("https://www.medicare.gov/basics/get-started-with-medicare/sign-up/"
+                  "when-does-medicare-coverage-start")
+MEDICARE_AUTO = ("https://www.medicare.gov/basics/get-started-with-medicare/sign-up/"
+                 "how-do-i-sign-up-for-medicare")
+MEDICARE_SIGNUP = ("https://www.medicare.gov/basics/get-started-with-medicare/sign-up/"
+                   "ready-to-sign-up-for-part-a-part-b")
+MEDICARE_PLANS = ("https://www.medicare.gov/basics/get-started-with-medicare/get-more-coverage/"
+                  "joining-a-plan")
+MEDICARE_MSP = "https://www.medicare.gov/basics/costs/help/medicare-savings-programs"
+MEDICARE_EXTRA = "https://www.medicare.gov/basics/costs/help/drug-costs"
+MEDICARE_CONTACT = "https://www.medicare.gov/talk-to-someone"
+USA_SSA = "https://www.usa.gov/agencies/social-security-administration"
+SSA_RETIRE = "https://www.ssa.gov/benefits/retirement/apply.html"
+SSA_MEDICARE = "https://www.ssa.gov/medicare/sign-up"
+SSA_ACCOUNT = "https://www.ssa.gov/myaccount/"
+DHHS_MSP = ("https://www.dhhs.nh.gov/programs-services/medicaid/"
+            "nh-medicaid-medical-assistance-eligibility/medicare-beneficiaries")
+CFR_OLD_AGE = "https://www.ecfr.gov/current/title-20/section-404.310"
+
+MEDICARE = guide(
+    "medicare-and-social-security",
+    "How to Sign Up for Medicare and Social Security, and Get Help With the Costs",
+    "When and how to sign up for Medicare, applying for Social Security retirement benefits, "
+    "choosing your coverage, and the state and federal programs that help pay Medicare's costs, "
+    "with free counseling in New Hampshire.",
+    "You sign up for Medicare through Social Security, generally in the 7 months around your "
+    "65th birthday. If you already get Social Security benefits, you are usually enrolled "
+    "automatically. Social Security retirement benefits can start as early as age 62. If paying "
+    "for Medicare is hard, the state&rsquo;s Medicare Savings Programs and the federal Extra Help "
+    "program can pay some of the costs: apply even if you are not sure you qualify. New "
+    "Hampshire&rsquo;s Aging and Disability Resource Centers give free, one-on-one help.",
+    [ask("Do you already get Social Security benefits?",
+         [("Yes", "You are usually enrolled in Medicare automatically. Watch for your card."),
+          ("No", "Sign up through Social Security in the 7 months around your 65th birthday.")]),
+     box("Choose Original Medicare or a Medicare Advantage Plan, and a drug plan. Review it every "
+         "fall, October 15 to December 7."),
+     box("If the costs are hard to pay, apply for a Medicare Savings Program and Extra Help.")],
+    [step("Know when to sign up for Medicare",
+          "<p>Your first chance is your Initial Enrollment Period: 7 months, starting 3 months "
+          "before the month you turn 65 and ending 3 months after it. Coverage always starts on "
+          "the first of a month, and signing up before your birthday month means it starts "
+          "sooner.</p>"
+          "<p><b>You are enrolled automatically</b> in Part A (hospital insurance) and Part B "
+          "(medical insurance) if you start getting Social Security benefits at least 4 months "
+          "before you turn 65, or after you have received disability benefits for 24 months. "
+          "Your Medicare card comes in the mail.</p>"
+          "<p><b>If you miss your first chance,</b> you may have to wait for the General "
+          "Enrollment Period, January 1 to March 31, and pay a monthly late enrollment penalty "
+          "for as long as you have Part B. Some situations, such as losing coverage through a "
+          "job, open a Special Enrollment Period without the penalty.</p>",
+          actions=[("When coverage starts (Medicare)", MEDICARE_START),
+                   ("Do I get Medicare automatically? (Medicare)", MEDICARE_AUTO)]),
+     step("Sign up through Social Security",
+          "<p>Medicare Part A and Part B are signed up for through the Social Security "
+          "Administration, not through Medicare. The easiest way is online, with a my Social "
+          "Security account. You can also call Social Security at 1-800-772-1213 or visit a "
+          "local office.</p>"
+          "<p>If you already have Part A and are adding Part B because you are losing coverage "
+          "through a job, your employer fills out form CMS-L564, which you send to your local "
+          "Social Security office.</p>",
+          actions=[("Sign up for Medicare (Medicare)", MEDICARE_SIGNUP),
+                   ("Sign up for Medicare (Social Security)", SSA_MEDICARE)]),
+     step("Apply for Social Security retirement benefits",
+          "<p>You can get retirement benefits from age 62 if you have worked long enough to "
+          "qualify, and you must apply for them: they do not start on their own. Apply online, "
+          "by phone or at a local office. Social Security&rsquo;s page says how far ahead you "
+          "can apply and what to have ready.</p>",
+          actions=[("Apply for retirement benefits (Social Security)", SSA_RETIRE)]),
+     step("Choose your coverage, and review it every fall",
+          "<p>With Part A and Part B, you choose between Original Medicare, which you can pair "
+          "with a separate drug plan, and a Medicare Advantage Plan, which needs both Part A "
+          "and Part B. Each fall, from <b>October 15 to December 7</b>, you can join, switch or "
+          "drop a plan, and the change starts January 1.</p>"
+          "<p>For free help comparing plans, call your Aging and Disability Resource "
+          "Center (below), or 1-800-MEDICARE (1-800-633-4227), any hour of any day.</p>",
+          actions=[("Joining a plan (Medicare)", MEDICARE_PLANS)]),
+     step("Get help paying the costs",
+          "<p><b>Medicare Savings Programs</b> are run by the state. Depending on your income "
+          "and savings, they pay your Part B premium, and the most generous one also pays your "
+          "deductibles, coinsurance and copayments, so that Medicare providers may not bill you "
+          "for covered care. In New Hampshire, apply to the Department of Health and Human "
+          "Services through NH Easy, under Medicare beneficiary assistance. Medicare advises "
+          "applying even if you do not think you qualify.</p>"
+          "<p><b>Extra Help</b> is a federal program that pays part of your drug plan&rsquo;s "
+          "costs. You get it automatically if you have Medicaid, a Medicare Savings Program or "
+          "SSI. Otherwise apply through Social Security; applying for Extra Help also starts an "
+          "application for a Medicare Savings Program, unless you say not to.</p>",
+          actions=[("NH Easy", NHEASY),
+                   ("Medicare Savings Programs (NH Department of Health and Human Services)", DHHS_MSP),
+                   ("Extra Help (Medicare)", MEDICARE_EXTRA)],
+          law=["RSA 167:4-g"]),
+     step("Manage your benefits online",
+          "<p>A <b>my Social Security</b> account lets you see your benefits and make changes "
+          "online, as Social Security&rsquo;s page lists. Once you have your Medicare card, you "
+          "can also make a Medicare account on Medicare.gov with your Medicare Number.</p>",
+          actions=[("my Social Security", SSA_ACCOUNT)])],
+    [("When Does Medicare Coverage Start? (Medicare)", MEDICARE_START),
+     ("How Do I Sign Up for Medicare? (Medicare)", MEDICARE_AUTO),
+     ("Ready to Sign Up for Part A and Part B (Medicare)", MEDICARE_SIGNUP),
+     ("Joining a Plan (Medicare)", MEDICARE_PLANS),
+     ("Medicare Savings Programs (Medicare)", MEDICARE_MSP),
+     ("Help With Drug Costs (Medicare)", MEDICARE_EXTRA),
+     ("Contact Medicare (Medicare)", MEDICARE_CONTACT),
+     ("Social Security Administration (USA.gov)", USA_SSA),
+     ("Apply for Retirement Benefits (Social Security Administration)", SSA_RETIRE),
+     ("Sign Up for Medicare (Social Security Administration)", SSA_MEDICARE),
+     ("my Social Security (Social Security Administration)", SSA_ACCOUNT),
+     ("Medicare Beneficiaries Savings Program (Department of Health and Human Services)", DHHS_MSP),
+     ("When am I entitled to old-age benefits?, 20 CFR 404.310 (federal)", CFR_OLD_AGE),
+     ("Public Assistance to Blind, Aged, or Disabled Persons, RSA 167", "/laws/167")],
+    ["167"],
+    [# medicare.gov, read on 25 October 2026.
+     claim("Initial Enrollment Period: 7 months, starting 3 months before you turn 65 and ending "
+           "3 months after the month you turn 65; coverage always starts on the first of the "
+           "month; sign up before the month you turn 65 and Part B starts the month you turn "
+           "65, later and it starts the next month; General Enrollment Period January 1-March "
+           "31, coverage the month after; a monthly late enrollment penalty for as long as you "
+           "have Part B; Special Enrollment Periods in certain situations.", MEDICARE_START,
+           MC_READ),
+     claim("Automatic Part A and Part B at 65 if you start getting Social Security benefits at "
+           "least 4 months before you turn 65; automatically after getting disability benefits "
+           "for 24 months; a welcome package with the Medicare card in the mail.",
+           MEDICARE_AUTO, MC_READ),
+     claim("To sign up for Part A and/or Part B, contact the Social Security Administration; "
+           "apply online, the easiest and fastest way, with a my Social Security account; adding "
+           "Part B on losing job-based coverage, the employer fills out form CMS-L564, sent to "
+           "the local Social Security office; the Medicare Number to create a Medicare account "
+           "on Medicare.gov.", MEDICARE_SIGNUP, MC_READ),
+     claim("Original Medicare with a drug plan, or a Medicare Advantage Plan, which needs both "
+           "Part A and Part B; Open Enrollment Period October 15-December 7: join, drop or "
+           "switch, coverage January 1.", MEDICARE_PLANS, MC_READ),
+     claim("Medicare Savings Programs are run by your state and pay Part A and Part B premiums, "
+           "and with QMB deductibles, coinsurance and copayments, which Medicare providers are "
+           "not allowed to bill; apply through your state; even if you don't think you qualify, "
+           "you should still apply.", MEDICARE_MSP, MC_READ),
+     claim("Extra Help pays Medicare drug coverage costs; automatic with full-benefit Medicaid, "
+           "a Medicare Savings Program or SSI; otherwise apply; Social Security sends "
+           "information to your state to initiate an MSP application unless you tell them "
+           "not to.", MEDICARE_EXTRA, MC_READ),
+     claim("1-800-MEDICARE (1-800-633-4227), 24 hours a day, 7 days a week; TTY 1-877-486-2048; "
+           "contact SSA to sign up for Part A and Part B; contact your state for Medicare "
+           "Savings Programs; SHIPs give free counseling.", MEDICARE_CONTACT, MC_READ),
+     claim("Social Security Administration, toll-free number 1-800-772-1213.", USA_SSA, MC_READ),
+     claim("Entitled to old-age benefits if at least 62 years old, fully insured, and you "
+           "apply.", CFR_OLD_AGE, MC_READ),
+     claim("The department shall administer the Medicare savings program as described in 42 "
+           "U.S.C. section 1396a(a)(10)(E).", "RSA 167:4-g", MC_READ),
+     # Social Security's and the Department's own pages, from the person's printouts.
+     claim("Apply for retirement benefits online, by phone or at an office, and how far ahead.",
+           SSA_RETIRE, SSA_PAGES_READ),
+     claim("Sign up for Medicare online, by phone or at an office.", SSA_MEDICARE,
+           SSA_PAGES_READ),
+     claim("What a my Social Security account lets you do.", SSA_ACCOUNT, SSA_PAGES_READ),
+     claim("The Medicare Savings Programs in New Hampshire, and how to apply.", DHHS_MSP,
+           SSA_PAGES_READ)]
+    + help_claims("adrc", "nheasy", "legal_aid"),
+    more="<h2>Who Can Help</h2>"
+         "<p>Medicare answers at 1-800-MEDICARE (1-800-633-4227), 24 hours a day (TTY "
+         "1-877-486-2048), and Social Security at 1-800-772-1213.</p>"
+         + helps("adrc", "nheasy", "legal_aid"),
+    see=[("How to apply for food or health assistance (Medicaid)",
+          "/guides/food-and-health-assistance.html"),
+         ("How to get disability benefits and services", "/guides/disability-help.html")],
+    figures=[fig("7 months", MEDICARE_START, "7 months"),
+             fig("3 months", MEDICARE_START, "3 months before you turn 65"),
+             fig("4 months", MEDICARE_AUTO, "at least 4 months before you turn 65"),
+             fig("24 months", MEDICARE_AUTO, "disability benefits for 24 months"),
+             fig("age 62", CFR_OLD_AGE, "at least 62 years old"),
+             fig("24 hours", MEDICARE_CONTACT, "24 hours a day")])
+
+GUIDES += [MEDICARE]
+
+
+# ---------------------------------------------------------------------------
+# DISABILITY BENEFITS AND SERVICES (the person, 25 October 2026: "disability
+# assistance"). Five doors, each with its own rules: Social Security's two
+# programs (federal), the state's cash assistance and Medicaid for workers
+# (RSA 167:6, VI and IX), the area agencies for developmental disabilities
+# (RSA 171-A), and vocational rehabilitation (RSA 200-C). The statutes are
+# read in this build's table; the federal rules at eCFR on 25 October 2026.
+# The agencies' own pages -- ssa.gov, the Department of Health and Human
+# Services' and the Department of Education's -- refuse this machine and wait
+# for the person's printouts. The Disability Rights Center and Granite State
+# Independent Living are not state agencies and wait for the person's word.
+# ---------------------------------------------------------------------------
+DIS_READ = "2026-10-25"
+DIS_PAGES_READ = None                # the person's printouts
+SSA_DISABILITY = "https://www.ssa.gov/benefits/disability/"
+SSA_SSI = "https://www.ssa.gov/ssi"
+DHHS_APTD = ("https://www.dhhs.nh.gov/programs-services/disability-care/"
+             "aid-permanently-totally-disabled")
+DHHS_DEV = "https://www.dhhs.nh.gov/programs-services/disability-care/developmental-services"
+NHVR = ("https://www.education.nh.gov/who-we-are/deputy-commissioner/"
+        "bureau-vocational-rehabilitation/programs-and-services/vocational-rehabilitation-services")
+CFR_DISABLED = "https://www.ecfr.gov/current/title-20/section-404.1505"
+CFR_SSDI = "https://www.ecfr.gov/current/title-20/section-404.315"
+CFR_SSI = "https://www.ecfr.gov/current/title-20/section-416.202"
+CFR_RECONSIDER = "https://www.ecfr.gov/current/title-20/section-404.909"
+
+DISABILITY = guide(
+    "disability-help", "How to Get Disability Benefits and Services",
+    "The help available in New Hampshire to a person with a disability, and how to apply: "
+    "Social Security's disability benefits, the state's cash and medical assistance, services "
+    "for developmental disabilities, and help getting or keeping a job.",
+    "Social Security pays two kinds of disability benefits: SSDI, if you have worked and paid "
+    "Social Security taxes, and SSI, if your income and savings are limited. Apply as soon as "
+    "a condition keeps you from working. New Hampshire adds cash and medical assistance for "
+    "adults with a long-term disability, Medicaid for people with disabilities who work, "
+    "services through a regional area agency for a developmental disability, and vocational "
+    "rehabilitation to help you get or keep a job. Free help with any of it is a phone call "
+    "away.",
+    [ask("What do you need?",
+         [("Income, because you cannot work",
+           "Apply to Social Security for SSDI or SSI, and to the state for cash assistance."),
+          ("Health coverage while you work", "Ask the state about Medicaid for workers (MEAD)."),
+          ("Services for a developmental disability", "Apply to your region&rsquo;s area agency."),
+          ("Help getting or keeping a job", "Apply for vocational rehabilitation.")]),
+     box("If you are turned down, read the notice: it says how to appeal, and by when.")],
+    [step("Apply to Social Security for SSDI or SSI",
+          "<p>Social Security counts you as disabled if a medical condition keeps you from doing "
+          "any substantial work and is expected to last at least 12 months or to result in "
+          "death. It runs two programs:</p>"
+          "<ul><li><b>SSDI</b> (Social Security Disability Insurance) is for people who have "
+          "worked long enough, and paid Social Security taxes, to be insured. Benefits begin "
+          "after a waiting period of 5 months of disability. After 24 months of disability "
+          "benefits, you get Medicare automatically.</li>"
+          "<li><b>SSI</b> (Supplemental Security Income) is for people who are disabled, blind "
+          "or 65 or older, and whose income and savings are under its limits.</li></ul>"
+          "<p>Apply as soon as you can: online, by calling 1-800-772-1213, or at a local "
+          "office. Social Security&rsquo;s pages say what to have ready.</p>",
+          actions=[("Disability benefits (Social Security)", SSA_DISABILITY),
+                   ("SSI (Social Security)", SSA_SSI)]),
+     step("Apply to the state for cash and medical assistance",
+          "<p>New Hampshire&rsquo;s <b>Aid to the Permanently and Totally Disabled</b> (APTD) "
+          "gives cash assistance to residents between the ages of 18 and 64 who are disabled "
+          "as Social Security defines it, except that the condition must be expected to last "
+          "at least 48 months. Anyone who receives it also qualifies for medical assistance "
+          "(Medicaid). You must also apply for any federal benefits you may be entitled to, "
+          "such as SSI, and pursue their appeals.</p>"
+          "<p><b>Medicaid for Employed Adults with Disabilities</b> (MEAD) gives medical "
+          "assistance to working people with a disability between 18 and 64; a similar program, "
+          "MOAD, is for those 65 and older. You must be working when you enroll.</p>"
+          "<p>Apply for either through NH Easy, or at a Department of Health and Human Services "
+          "District Office.</p>",
+          actions=[("NH Easy", NHEASY), ("APTD (Department of Health and Human Services)", DHHS_APTD)],
+          law=["RSA 167:6"]),
+     step("Services for a developmental disability: your area agency",
+          "<p>For a developmental disability or an acquired brain disorder, the state&rsquo;s "
+          "services come through ten regional <b>area agencies</b>. Apply to the one for where "
+          "you live. It arranges an evaluation, and makes its first recommendations within 21 "
+          "days of your application. Its services include service coordination, help living in "
+          "the community, and employment and day services.</p>"
+          "<p>For a child from birth up to age 3 with a developmental delay, or at risk of one, "
+          "the area agencies also run Family Centered Early Supports and Services.</p>",
+          actions=[("Developmental services and the area agencies (Department of Health and "
+                    "Human Services)", DHHS_DEV)],
+          law=["RSA 171-A:6", "RSA 171-A:18", "RSA 171-A:18-a"]),
+     step("Help getting or keeping a job: vocational rehabilitation",
+          "<p>The Department of Education&rsquo;s <b>Bureau of Vocational Rehabilitation</b> "
+          "helps people with disabilities prepare for, find and keep a job, under the federal "
+          "vocational rehabilitation program. Its independent living program helps people with "
+          "disabilities, and older people who are blind, live more independently. Its page says "
+          "how to apply.</p>",
+          actions=[("Vocational Rehabilitation (Department of Education)", NHVR)],
+          law=["RSA 200-C:1", "RSA 200-C:24"]),
+     step("If you are turned down",
+          "<p><b>Social Security:</b> you can ask it to reconsider, in writing, within 60 days "
+          "after you receive its decision. The notice says how.</p>"
+          "<p><b>The state:</b> you can ask for an administrative appeal hearing, in writing, on "
+          "the Department&rsquo;s form or in a letter. Your notice gives your deadline. You do "
+          "not need a lawyer, and free legal aid can help with benefits appeals (below).</p>",
+          actions=[("Administrative appeals (Department of Health and Human Services)",
+                    DHHS_APPEALS)])],
+    [("Disability Benefits (Social Security Administration)", SSA_DISABILITY),
+     ("Supplemental Security Income (Social Security Administration)", SSA_SSI),
+     ("Aid to the Permanently and Totally Disabled (Department of Health and Human Services)",
+      DHHS_APTD),
+     ("Developmental Services (Department of Health and Human Services)", DHHS_DEV),
+     ("Vocational Rehabilitation Services (Department of Education)", NHVR),
+     ("Administrative Appeals (Department of Health and Human Services)", DHHS_APPEALS),
+     ("Basic definition of disability, 20 CFR 404.1505 (federal)", CFR_DISABLED),
+     ("Who is entitled to disability benefits?, 20 CFR 404.315 (federal)", CFR_SSDI),
+     ("Who may get SSI benefits, 20 CFR 416.202 (federal)", CFR_SSI),
+     ("How to request reconsideration, 20 CFR 404.909 (federal)", CFR_RECONSIDER),
+     ("Public Assistance to Blind, Aged, or Disabled Persons, RSA 167", "/laws/167"),
+     ("Services for the Developmentally Disabled, RSA 171-A", "/laws/171-A"),
+     ("Vocational Rehabilitation, RSA 200-C", "/laws/200-C")],
+    ["167", "171-A", "200-C"],
+    [# The federal rules, read at eCFR on 25 October 2026.
+     claim("Disability is the inability to do any substantial gainful activity by reason of a "
+           "medically determinable impairment which can be expected to result in death or has "
+           "lasted or can be expected to last for a continuous period of not less than 12 "
+           "months.", CFR_DISABLED, DIS_READ),
+     claim("Entitled to disability benefits if insured for disability, you apply, you have a "
+           "disability, and you have been disabled for 5 full consecutive months (the 5-month "
+           "waiting period) or no waiting period is required.", CFR_SSDI, DIS_READ),
+     claim("Eligible for SSI if aged 65 or older, blind or disabled, a resident and citizen or "
+           "qualified noncitizen, with no more income or resources than permitted.",
+           CFR_SSI, DIS_READ),
+     claim("Reconsideration on a written request within 60 days after the date you receive "
+           "notice of the initial determination.", CFR_RECONSIDER, DIS_READ),
+     claim("Automatic Part A and Part B after getting disability benefits for 24 months.",
+           MEDICARE_AUTO, DIS_READ),
+     claim("Social Security Administration, toll-free number 1-800-772-1213.", USA_SSA, DIS_READ),
+     # The statutes, as this build's table prints them.
+     claim("APTD: between the ages of 18 and 64 years of age inclusive, a resident, disabled as "
+           "defined in the Social Security Act, except that the minimum required duration of "
+           "the impairment shall be 48 months; eligibility conditioned on applying for federal "
+           "cash benefits and pursuing all appeals; categorically needy for medical assistance "
+           "if receiving it (VII); MEAD: a person with a disability between 18 and 64 years of "
+           "age, employed at the time of enrollment (IX); MOAD, 65 and older (IX-a).",
+           "RSA 167:6", DIS_READ),
+     claim("A person seeking service applies to the area agency in his or her geographic region; "
+           "a comprehensive screening evaluation; preliminary recommendations within 21 days "
+           "after application for service.", "RSA 171-A:6", DIS_READ),
+     claim("Area agency programs include diagnosis and evaluation, service coordination, "
+           "community living arrangements, employment and day services.", "RSA 171-A:18",
+           DIS_READ),
+     claim("Family-centered early supports and services for children birth up to age 3 with an "
+           "established condition, developmental delays, or at risk of substantial delays.",
+           "RSA 171-A:18-a", DIS_READ),
+     claim("The bureau of vocational rehabilitation of the department of education, under the "
+           "federal vocational rehabilitation program.", "RSA 200-C:1", DIS_READ),
+     claim("An independent living program within the bureau, to assist eligible persons with "
+           "disabilities in increasing their independence, including services to the elderly "
+           "blind.", "RSA 200-C:24", DIS_READ),
+     # Read before, for the food and health guide.
+     claim("Appeal in writing by form or letter; no attorney needed.", DHHS_APPEALS, READ),
+     # The agencies' own pages, from the person's printouts.
+     claim("SSDI and SSI, and how to apply online, by phone or at an office.", SSA_DISABILITY,
+           DIS_PAGES_READ),
+     claim("SSI: limited income and resources; disabled, blind or 65 or older; how to apply.",
+           SSA_SSI, DIS_PAGES_READ),
+     claim("APTD: who is eligible and how to apply.", DHHS_APTD, DIS_PAGES_READ),
+     claim("The area agencies, the regions they serve, and how to apply.", DHHS_DEV,
+           DIS_PAGES_READ),
+     claim("Vocational rehabilitation: who is eligible and how to apply.", NHVR, DIS_PAGES_READ)]
+    + help_claims("adrc", "nheasy", "legal_aid"),
+    more="<h2>Who Can Help</h2>"
+         "<p>Social Security answers at 1-800-772-1213. For help with the state&rsquo;s "
+         "programs, and with finding your way among all of them:</p>"
+         + helps("adrc", "nheasy", "legal_aid"),
+    see=[("How to sign up for Medicare and Social Security, and get help with the costs",
+          "/guides/medicare-and-social-security.html"),
+         ("How to apply for food or health assistance", "/guides/food-and-health-assistance.html")],
+    figures=[fig("12 months", CFR_DISABLED, "not less than 12 months"),
+             fig("5 months", CFR_SSDI, "5 full consecutive months"),
+             fig("24 months", MEDICARE_AUTO, "disability benefits for 24 months"),
+             fig("48 months", "RSA 167:6", "the minimum required duration of the impairment "
+                 "shall be 48 months"),
+             fig("21 days", "RSA 171-A:6", "within 21 days after application for service"),
+             fig("age 3", "RSA 171-A:18-a", "birth up to age 3"),
+             fig("60 days", CFR_RECONSIDER, "within 60 days")])
+
+GUIDES += [DISABILITY]
+
+
+# ---------------------------------------------------------------------------
 # THE GUIDES BY TASK (the person, 17 October 2026: "refine how the how to
 # guides are displayed on the main resources page and the homepage so it's
 # more intuitive for the general public"). A reader arrives with something to
@@ -4261,6 +4810,11 @@ TASKS = [
         task("heating-and-electric-help", "Get help with heating and electric bills",
              "Fuel assistance, help with electric bills, weatherization, and what to do with no "
              "heat."),
+        task("medicare-and-social-security", "Sign up for Medicare and Social Security",
+             "When to sign up, choosing coverage, and help paying Medicare&rsquo;s costs."),
+        task("disability-help", "Get disability benefits and services",
+             "SSDI and SSI, the state&rsquo;s cash and medical assistance, area agencies and "
+             "vocational rehabilitation."),
     ]),
     ("Property and Records", [
         task("property-tax-abatement", "Appeal your property tax assessment",
@@ -4272,6 +4826,9 @@ TASKS = [
              "Ask a town, school district, county or state agency for its records."),
         task("vital-records", "Get a birth, death, marriage or divorce certificate",
              "From your town or city clerk or the state: who may ask and what to bring."),
+        task("passport", "Get a U.S. passport",
+             "A first passport or a renewal, what to bring to a post office, and a child&rsquo;s "
+             "passport."),
     ]),
     ("Around Your Town", [
         task("trash-and-recycling", "Get rid of trash, recycling and hazardous waste",
@@ -4368,11 +4925,18 @@ WORDS = {
     "trash-and-recycling": ("trash", "recycling", "dump", "transfer station", "hazardous waste",
                             "compost", "electronics recycling", "paint disposal"),
     "heating-and-electric-help": ("fuel assistance", "heating", "electric bill", "weatherization"),
+    "medicare-and-social-security": ("medicare", "social security", "retirement", "turning 65",
+                                     "medicare savings program", "extra help", "part b",
+                                     "open enrollment", "medicaid"),
+    "disability-help": ("disability", "ssdi", "ssi", "disabled", "aptd", "mead",
+                        "vocational rehabilitation", "area agency", "developmental disability"),
     "property-tax-abatement": ("property tax", "abatement", "assessment"),
     "property-tax-relief": ("property tax", "tax relief", "low income"),
     "public-records": ("right to know", "91-a", "records request", "foia"),
     "vital-records": ("birth certificate", "death certificate", "marriage certificate",
                       "divorce certificate"),
+    "passport": ("passport", "renew my passport", "passport card", "travel abroad",
+                 "ds-11", "ds-82", "international travel"),
     "town-warrant-article": ("warrant article", "petitioned article", "town meeting",
                              "school district meeting", "petition"),
     "tour-the-state-house": ("tour", "visit the state house", "field trip", "school trip",

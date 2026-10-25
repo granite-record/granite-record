@@ -1774,6 +1774,276 @@
    "es": "Usted tiene un senador estatal y uno o más representantes estatales, según el municipio o el barrio electoral donde vive. Encuéntrelos aquí por su municipio: la página de cada miembro da la dirección de correo electrónico que registra en la Legislatura. Diga dónde vive, mencione el proyecto de ley por su número, diga cómo quiere que voten y envíe su mensaje antes de la votación.",
    "state": "draft"
   },
+  "guide.disability-help.administrative-appeals-department-of": {
+   "en": "Administrative appeals (Department of Health and Human Services)",
+   "es": "Apelaciones administrativas (Departamento de Salud y Servicios Humanos)",
+   "state": "draft"
+  },
+  "guide.disability-help.administrative-appeals-department-of-2": {
+   "en": "Administrative Appeals (Department of Health and Human Services)",
+   "es": "Apelaciones administrativas (Departamento de Salud y Servicios Humanos)",
+   "state": "draft"
+  },
+  "guide.disability-help.aid-to-the-permanently-and-totally": {
+   "en": "Aid to the Permanently and Totally Disabled (Department of Health and Human Services)",
+   "es": "Aid to the Permanently and Totally Disabled (Departamento de Salud y Servicios Humanos)",
+   "state": "draft"
+  },
+  "guide.disability-help.apply-as-soon-as-you-can": {
+   "en": "Apply as soon as you can: online, by calling 1-800-772-1213, or at a local office. Social Security&rsquo;s pages say what to have ready.",
+   "es": "Solicítelos lo antes posible: en línea, llamando al 1-800-772-1213 o en una oficina local. Las páginas del Seguro Social dicen qué debe tener a mano.",
+   "state": "draft"
+  },
+  "guide.disability-help.apply-for-either-through-nh-easy": {
+   "en": "Apply for either through NH Easy, or at a Department of Health and Human Services District Office.",
+   "es": "Solicite cualquiera de los dos a través de NH Easy, o en una oficina de distrito del Departamento de Salud y Servicios Humanos.",
+   "state": "draft"
+  },
+  "guide.disability-help.apply-for-vocational-rehabilitation": {
+   "en": "Apply for vocational rehabilitation.",
+   "es": "Solicite la rehabilitación vocacional.",
+   "state": "draft"
+  },
+  "guide.disability-help.apply-to-social-security-for-ssdi": {
+   "en": "Apply to Social Security for SSDI or SSI, and to the state for cash assistance.",
+   "es": "Solicite SSDI o SSI al Seguro Social, y ayuda en efectivo al estado.",
+   "state": "draft"
+  },
+  "guide.disability-help.apply-to-social-security-for-ssdi-2": {
+   "en": "Apply to Social Security for SSDI or SSI",
+   "es": "Solicite SSDI o SSI al Seguro Social",
+   "state": "draft"
+  },
+  "guide.disability-help.apply-to-the-state-for-cash": {
+   "en": "Apply to the state for cash and medical assistance",
+   "es": "Solicite al estado ayuda en efectivo y médica",
+   "state": "draft"
+  },
+  "guide.disability-help.apply-to-your-regions-area-agency": {
+   "en": "Apply to your region&rsquo;s area agency.",
+   "es": "Solicítelos a la agencia regional (area agency) de su región.",
+   "state": "draft"
+  },
+  "guide.disability-help.aptd-department-of-health-and-human": {
+   "en": "APTD (Department of Health and Human Services)",
+   "es": "APTD (Departamento de Salud y Servicios Humanos)",
+   "state": "draft"
+  },
+  "guide.disability-help.ask-the-state-about-medicaid-for": {
+   "en": "Ask the state about Medicaid for workers (MEAD).",
+   "es": "Pregunte al estado por Medicaid para trabajadores (MEAD).",
+   "state": "draft"
+  },
+  "guide.disability-help.basic-definition-of-disability-20-cfr": {
+   "en": "Basic definition of disability, 20 CFR 404.1505 (federal)",
+   "es": "La definición básica de discapacidad, 20 CFR 404.1505 (federal)",
+   "state": "draft"
+  },
+  "guide.disability-help.developmental-services-and-the-area": {
+   "en": "Developmental services and the area agencies (Department of Health and Human Services)",
+   "es": "Servicios del desarrollo y las agencias regionales (Departamento de Salud y Servicios Humanos)",
+   "state": "draft"
+  },
+  "guide.disability-help.developmental-services-department-of": {
+   "en": "Developmental Services (Department of Health and Human Services)",
+   "es": "Servicios del desarrollo (Departamento de Salud y Servicios Humanos)",
+   "state": "draft"
+  },
+  "guide.disability-help.disability-benefits-social-security": {
+   "en": "Disability benefits (Social Security)",
+   "es": "Beneficios por discapacidad (Seguro Social)",
+   "state": "draft"
+  },
+  "guide.disability-help.disability-benefits-social-security-2": {
+   "en": "Disability Benefits (Social Security Administration)",
+   "es": "Beneficios por discapacidad (Administración del Seguro Social)",
+   "state": "draft"
+  },
+  "guide.disability-help.for-a-child-from-birth-up": {
+   "en": "For a child from birth up to age 3 with a developmental delay, or at risk of one, the area agencies also run Family Centered Early Supports and Services.",
+   "es": "Para un niño desde el nacimiento hasta los 3 años con un retraso del desarrollo, o en riesgo de tenerlo, las agencias regionales también ofrecen Family Centered Early Supports and Services (apoyos y servicios tempranos centrados en la familia).",
+   "state": "draft"
+  },
+  "guide.disability-help.for-a-developmental-disability-or-an": {
+   "en": "For a developmental disability or an acquired brain disorder, the state&rsquo;s services come through ten regional <b>area agencies</b>. Apply to the one for where you live. It arranges an evaluation, and makes its first recommendations within 21 days of your application. Its services include service coordination, help living in the community, and employment and day services.",
+   "es": "Para una discapacidad del desarrollo o una lesión cerebral adquirida, los servicios del estado llegan a través de diez <b>agencias regionales</b> (area agencies). Presente su solicitud a la de donde usted vive. Esta organiza una evaluación, y hace sus primeras recomendaciones dentro de 21 días desde su solicitud. Sus servicios incluyen la coordinación de servicios, ayuda para vivir en la comunidad, y servicios de empleo y de día.",
+   "state": "draft"
+  },
+  "guide.disability-help.health-coverage-while-you-work": {
+   "en": "Health coverage while you work",
+   "es": "Cobertura de salud mientras trabaja",
+   "state": "draft"
+  },
+  "guide.disability-help.help-getting-or-keeping-a-job": {
+   "en": "Help getting or keeping a job",
+   "es": "Ayuda para conseguir o conservar un empleo",
+   "state": "draft"
+  },
+  "guide.disability-help.help-getting-or-keeping-a-job-2": {
+   "en": "Help getting or keeping a job: vocational rehabilitation",
+   "es": "Ayuda para conseguir o conservar un empleo: la rehabilitación vocacional",
+   "state": "draft"
+  },
+  "guide.disability-help.how-to-apply-for-food-or": {
+   "en": "How to apply for food or health assistance",
+   "es": "Cómo solicitar ayuda para alimentos o salud",
+   "state": "draft"
+  },
+  "guide.disability-help.how-to-request-reconsideration-20-cfr": {
+   "en": "How to request reconsideration, 20 CFR 404.909 (federal)",
+   "es": "Cómo pedir la reconsideración, 20 CFR 404.909 (federal)",
+   "state": "draft"
+  },
+  "guide.disability-help.how-to-sign-up-for-medicare": {
+   "en": "How to sign up for Medicare and Social Security, and get help with the costs",
+   "es": "Cómo inscribirse en Medicare y el Seguro Social, y obtener ayuda con los costos",
+   "state": "draft"
+  },
+  "guide.disability-help.if-you-are-turned-down": {
+   "en": "If you are turned down",
+   "es": "Si se lo niegan",
+   "state": "draft"
+  },
+  "guide.disability-help.if-you-are-turned-down-read": {
+   "en": "If you are turned down, read the notice: it says how to appeal, and by when.",
+   "es": "Si se lo niegan, lea el aviso: dice cómo apelar y hasta cuándo.",
+   "state": "draft"
+  },
+  "guide.disability-help.income-because-you-cannot-work": {
+   "en": "Income, because you cannot work",
+   "es": "Ingresos, porque no puede trabajar",
+   "state": "draft"
+  },
+  "guide.disability-help.lead": {
+   "en": "The help available in New Hampshire to a person with a disability, and how to apply: Social Security's disability benefits, the state's cash and medical assistance, services for developmental disabilities, and help getting or keeping a job.",
+   "es": "La ayuda que existe en New Hampshire para una persona con discapacidad, y cómo solicitarla: los beneficios por discapacidad del Seguro Social, la ayuda estatal en efectivo y médica, los servicios para discapacidades del desarrollo y la ayuda para conseguir o conservar un empleo.",
+   "state": "draft"
+  },
+  "guide.disability-help.medicaid-for-employed-adults-with": {
+   "en": "<b>Medicaid for Employed Adults with Disabilities</b> (MEAD) gives medical assistance to working people with a disability between 18 and 64; a similar program, MOAD, is for those 65 and older. You must be working when you enroll.",
+   "es": "<b>Medicaid for Employed Adults with Disabilities</b> (MEAD, Medicaid para adultos empleados con discapacidades) da asistencia médica a personas con discapacidad que trabajan, de entre 18 y 64 años; un programa parecido, MOAD, es para quienes tienen 65 años o más. Debe estar trabajando al inscribirse.",
+   "state": "draft"
+  },
+  "guide.disability-help.new-hampshires-aid-to-the-permanently": {
+   "en": "New Hampshire&rsquo;s <b>Aid to the Permanently and Totally Disabled</b> (APTD) gives cash assistance to residents between the ages of 18 and 64 who are disabled as Social Security defines it, except that the condition must be expected to last at least 48 months. Anyone who receives it also qualifies for medical assistance (Medicaid). You must also apply for any federal benefits you may be entitled to, such as SSI, and pursue their appeals.",
+   "es": "La <b>Aid to the Permanently and Totally Disabled</b> (APTD, ayuda para personas con discapacidad permanente y total) de New Hampshire da ayuda en efectivo a los residentes de entre 18 y 64 años que tienen una discapacidad según la define el Seguro Social, salvo que se debe esperar que la condición dure al menos 48 meses. Quien la recibe también califica para la asistencia médica (Medicaid). También debe solicitar todos los beneficios federales a los que pueda tener derecho, como SSI, y seguir sus apelaciones.",
+   "state": "draft"
+  },
+  "guide.disability-help.nh-easy": {
+   "en": "NH Easy",
+   "es": "NH Easy",
+   "state": "draft"
+  },
+  "guide.disability-help.nh-easy-603-legal-aid": {
+   "en": "<a class=\"g-btn\" href=\"https://nheasy.nh.gov/#/\" target=\"_blank\" rel=\"noopener\">NH Easy</a> <a class=\"g-btn\" href=\"https://www.603legalaid.org/self-help-articles/\" target=\"_blank\" rel=\"noopener\">603 Legal Aid</a>",
+   "es": "<a class=\"g-btn\" href=\"https://nheasy.nh.gov/#/\" target=\"_blank\" rel=\"noopener\">NH Easy</a> <a class=\"g-btn\" href=\"https://www.603legalaid.org/self-help-articles/\" target=\"_blank\" rel=\"noopener\">603 Legal Aid</a>",
+   "state": "draft"
+  },
+  "guide.disability-help.public-assistance-to-blind-aged-or": {
+   "en": "Public Assistance to Blind, Aged, or Disabled Persons, RSA 167",
+   "es": "Asistencia pública a personas ciegas, mayores o con discapacidad, RSA 167",
+   "state": "draft"
+  },
+  "guide.disability-help.services-for-a-developmental-disability": {
+   "en": "Services for a developmental disability",
+   "es": "Servicios para una discapacidad del desarrollo",
+   "state": "draft"
+  },
+  "guide.disability-help.services-for-a-developmental-disability-2": {
+   "en": "Services for a developmental disability: your area agency",
+   "es": "Servicios para una discapacidad del desarrollo: su agencia regional",
+   "state": "draft"
+  },
+  "guide.disability-help.services-for-the-developmentally": {
+   "en": "Services for the Developmentally Disabled, RSA 171-A",
+   "es": "Servicios para personas con discapacidades del desarrollo, RSA 171-A",
+   "state": "draft"
+  },
+  "guide.disability-help.social-security-answers-at-1-800": {
+   "en": "Social Security answers at 1-800-772-1213. For help with the state&rsquo;s programs, and with finding your way among all of them:",
+   "es": "El Seguro Social atiende en el 1-800-772-1213. Para ayuda con los programas del estado, y para orientarse entre todos ellos:",
+   "state": "draft"
+  },
+  "guide.disability-help.social-security-counts-you-as-disabled": {
+   "en": "Social Security counts you as disabled if a medical condition keeps you from doing any substantial work and is expected to last at least 12 months or to result in death. It runs two programs:",
+   "es": "El Seguro Social lo considera discapacitado si una condición médica le impide hacer cualquier trabajo sustancial y se espera que dure al menos 12 meses o que cause la muerte. Tiene dos programas:",
+   "state": "draft"
+  },
+  "guide.disability-help.social-security-pays-two-kinds-of": {
+   "en": "Social Security pays two kinds of disability benefits: SSDI, if you have worked and paid Social Security taxes, and SSI, if your income and savings are limited. Apply as soon as a condition keeps you from working. New Hampshire adds cash and medical assistance for adults with a long-term disability, Medicaid for people with disabilities who work, services through a regional area agency for a developmental disability, and vocational rehabilitation to help you get or keep a job. Free help with any of it is a phone call away.",
+   "es": "El Seguro Social paga dos tipos de beneficios por discapacidad: SSDI, si usted ha trabajado y pagado impuestos del Seguro Social, y SSI, si sus ingresos y ahorros son limitados. Solicítelos en cuanto una condición le impida trabajar. New Hampshire agrega ayuda en efectivo y médica para adultos con una discapacidad prolongada, Medicaid para personas con discapacidad que trabajan, servicios a través de una agencia regional (area agency) para una discapacidad del desarrollo, y rehabilitación vocacional para ayudarle a conseguir o conservar un empleo. La ayuda gratuita con todo esto está a una llamada.",
+   "state": "draft"
+  },
+  "guide.disability-help.social-security-you-can-ask-it": {
+   "en": "<b>Social Security:</b> you can ask it to reconsider, in writing, within 60 days after you receive its decision. The notice says how.",
+   "es": "<b>El Seguro Social:</b> puede pedirle que reconsidere su decisión, por escrito, dentro de 60 días después de recibirla. El aviso dice cómo.",
+   "state": "draft"
+  },
+  "guide.disability-help.ssdi-social-security-disability": {
+   "en": "<b>SSDI</b> (Social Security Disability Insurance) is for people who have worked long enough, and paid Social Security taxes, to be insured. Benefits begin after a waiting period of 5 months of disability. After 24 months of disability benefits, you get Medicare automatically.",
+   "es": "<b>SSDI</b> (Seguro Social por Incapacidad) es para quienes han trabajado lo suficiente, y pagado impuestos del Seguro Social, para estar asegurados. Los beneficios empiezan después de un período de espera de 5 meses de discapacidad. Después de 24 meses de beneficios por discapacidad, recibe Medicare automáticamente.",
+   "state": "draft"
+  },
+  "guide.disability-help.ssi-social-security": {
+   "en": "SSI (Social Security)",
+   "es": "SSI (Seguro Social)",
+   "state": "draft"
+  },
+  "guide.disability-help.ssi-supplemental-security-income-is-for": {
+   "en": "<b>SSI</b> (Supplemental Security Income) is for people who are disabled, blind or 65 or older, and whose income and savings are under its limits.",
+   "es": "<b>SSI</b> (Seguridad de Ingreso Suplementario) es para personas con discapacidad, ciegas o de 65 años o más, cuyos ingresos y ahorros están por debajo de sus límites.",
+   "state": "draft"
+  },
+  "guide.disability-help.supplemental-security-income-social": {
+   "en": "Supplemental Security Income (Social Security Administration)",
+   "es": "Seguridad de Ingreso Suplementario (Administración del Seguro Social)",
+   "state": "draft"
+  },
+  "guide.disability-help.the-department-of-educations-bureau-of": {
+   "en": "The Department of Education&rsquo;s <b>Bureau of Vocational Rehabilitation</b> helps people with disabilities prepare for, find and keep a job, under the federal vocational rehabilitation program. Its independent living program helps people with disabilities, and older people who are blind, live more independently. Its page says how to apply.",
+   "es": "La <b>Oficina de Rehabilitación Vocacional</b> (Bureau of Vocational Rehabilitation) del Departamento de Educación ayuda a las personas con discapacidades a prepararse para un empleo, conseguirlo y conservarlo, dentro del programa federal de rehabilitación vocacional. Su programa de vida independiente ayuda a las personas con discapacidades, y a las personas mayores ciegas, a vivir con más independencia. Su página dice cómo solicitarla.",
+   "state": "draft"
+  },
+  "guide.disability-help.the-state-you-can-ask-for": {
+   "en": "<b>The state:</b> you can ask for an administrative appeal hearing, in writing, on the Department&rsquo;s form or in a letter. Your notice gives your deadline. You do not need a lawyer, and free legal aid can help with benefits appeals (below).",
+   "es": "<b>El estado:</b> puede pedir una audiencia de apelación administrativa, por escrito, en el formulario del Departamento o en una carta. Su aviso le indica el plazo. No necesita un abogado, y la ayuda legal gratuita puede ayudarle con las apelaciones de beneficios (abajo).",
+   "state": "draft"
+  },
+  "guide.disability-help.title": {
+   "en": "How to Get Disability Benefits and Services",
+   "es": "Cómo obtener beneficios y servicios por discapacidad",
+   "state": "draft"
+  },
+  "guide.disability-help.vocational-rehabilitation-department-of": {
+   "en": "Vocational Rehabilitation (Department of Education)",
+   "es": "Rehabilitación vocacional (Departamento de Educación)",
+   "state": "draft"
+  },
+  "guide.disability-help.vocational-rehabilitation-rsa-200-c": {
+   "en": "Vocational Rehabilitation, RSA 200-C",
+   "es": "Rehabilitación vocacional, RSA 200-C",
+   "state": "draft"
+  },
+  "guide.disability-help.vocational-rehabilitation-services": {
+   "en": "Vocational Rehabilitation Services (Department of Education)",
+   "es": "Servicios de rehabilitación vocacional (Departamento de Educación)",
+   "state": "draft"
+  },
+  "guide.disability-help.what-do-you-need": {
+   "en": "What do you need?",
+   "es": "¿Qué necesita?",
+   "state": "draft"
+  },
+  "guide.disability-help.who-is-entitled-to-disability-benefits": {
+   "en": "Who is entitled to disability benefits?, 20 CFR 404.315 (federal)",
+   "es": "¿Quién tiene derecho a los beneficios por discapacidad?, 20 CFR 404.315 (federal)",
+   "state": "draft"
+  },
+  "guide.disability-help.who-may-get-ssi-benefits-20": {
+   "en": "Who may get SSI benefits, 20 CFR 416.202 (federal)",
+   "es": "Quién puede recibir los beneficios de SSI, 20 CFR 416.202 (federal)",
+   "state": "draft"
+  },
   "guide.domestic-violence-help.603-legal-aid": {
    "en": "603 Legal Aid",
    "es": "603 Legal Aid",
@@ -3301,6 +3571,281 @@
    "es": "El secretario de su municipio o ciudad es la persona a quien preguntar sobre cómo inscribirse y votar donde vive: qué llevar, el plazo y las boletas de voto en ausencia. La Secretaría de Estado considera a los funcionarios electorales locales y estatales la fuente de confianza de los votantes para la información electoral.",
    "state": "draft"
   },
+  "guide.medicare-and-social-security.a-my-social-security-account-lets": {
+   "en": "A <b>my Social Security</b> account lets you see your benefits and make changes online, as Social Security&rsquo;s page lists. Once you have your Medicare card, you can also make a Medicare account on Medicare.gov with your Medicare Number.",
+   "es": "Una cuenta <b>my Social Security</b> le permite ver sus beneficios y hacer cambios en línea, como lo indica la página del Seguro Social. Cuando tenga su tarjeta de Medicare, también puede crear una cuenta de Medicare en Medicare.gov con su número de Medicare.",
+   "state": "draft"
+  },
+  "guide.medicare-and-social-security.apply-for-retirement-benefits-social": {
+   "en": "Apply for retirement benefits (Social Security)",
+   "es": "Solicitar los beneficios de jubilación (Seguro Social)",
+   "state": "draft"
+  },
+  "guide.medicare-and-social-security.apply-for-retirement-benefits-social-2": {
+   "en": "Apply for Retirement Benefits (Social Security Administration)",
+   "es": "Solicitar los beneficios de jubilación (Administración del Seguro Social)",
+   "state": "draft"
+  },
+  "guide.medicare-and-social-security.apply-for-social-security-retirement": {
+   "en": "Apply for Social Security retirement benefits",
+   "es": "Solicite los beneficios de jubilación del Seguro Social",
+   "state": "draft"
+  },
+  "guide.medicare-and-social-security.choose-original-medicare-or-a-medicare": {
+   "en": "Choose Original Medicare or a Medicare Advantage Plan, and a drug plan. Review it every fall, October 15 to December 7.",
+   "es": "Elija Medicare Original o un Plan Medicare Advantage, y un plan de medicamentos. Revíselo cada otoño, del 15 de octubre al 7 de diciembre.",
+   "state": "draft"
+  },
+  "guide.medicare-and-social-security.choose-your-coverage-and-review-it": {
+   "en": "Choose your coverage, and review it every fall",
+   "es": "Elija su cobertura, y revísela cada otoño",
+   "state": "draft"
+  },
+  "guide.medicare-and-social-security.contact-medicare-medicare": {
+   "en": "Contact Medicare (Medicare)",
+   "es": "Comuníquese con Medicare (Medicare)",
+   "state": "draft"
+  },
+  "guide.medicare-and-social-security.do-i-get-medicare-automatically-medicare": {
+   "en": "Do I get Medicare automatically? (Medicare)",
+   "es": "¿Recibo Medicare automáticamente? (Medicare)",
+   "state": "draft"
+  },
+  "guide.medicare-and-social-security.do-you-already-get-social-security": {
+   "en": "Do you already get Social Security benefits?",
+   "es": "¿Ya recibe beneficios del Seguro Social?",
+   "state": "draft"
+  },
+  "guide.medicare-and-social-security.extra-help-is-a-federal-program": {
+   "en": "<b>Extra Help</b> is a federal program that pays part of your drug plan&rsquo;s costs. You get it automatically if you have Medicaid, a Medicare Savings Program or SSI. Otherwise apply through Social Security; applying for Extra Help also starts an application for a Medicare Savings Program, unless you say not to.",
+   "es": "La <b>Ayuda Adicional</b> es un programa federal que paga parte de los costos de su plan de medicamentos. La recibe automáticamente si tiene Medicaid, un Programa de Ahorros de Medicare o SSI. Si no, solicítela a través del Seguro Social; al solicitar la Ayuda Adicional también se inicia una solicitud para un Programa de Ahorros de Medicare, a menos que usted diga que no.",
+   "state": "draft"
+  },
+  "guide.medicare-and-social-security.extra-help-medicare": {
+   "en": "Extra Help (Medicare)",
+   "es": "Ayuda Adicional (Medicare)",
+   "state": "draft"
+  },
+  "guide.medicare-and-social-security.for-free-help-comparing-plans-call": {
+   "en": "For free help comparing plans, call your Aging and Disability Resource Center (below), or 1-800-MEDICARE (1-800-633-4227), any hour of any day.",
+   "es": "Para recibir ayuda gratuita al comparar planes, llame a su Aging and Disability Resource Center (abajo), o al 1-800-MEDICARE (1-800-633-4227), a cualquier hora, cualquier día.",
+   "state": "draft"
+  },
+  "guide.medicare-and-social-security.get-help-paying-the-costs": {
+   "en": "Get help paying the costs",
+   "es": "Obtenga ayuda para pagar los costos",
+   "state": "draft"
+  },
+  "guide.medicare-and-social-security.help-with-drug-costs-medicare": {
+   "en": "Help With Drug Costs (Medicare)",
+   "es": "Ayuda con los costos de los medicamentos (Medicare)",
+   "state": "draft"
+  },
+  "guide.medicare-and-social-security.how-do-i-sign-up-for": {
+   "en": "How Do I Sign Up for Medicare? (Medicare)",
+   "es": "¿Cómo me inscribo en Medicare? (Medicare)",
+   "state": "draft"
+  },
+  "guide.medicare-and-social-security.how-to-apply-for-food-or": {
+   "en": "How to apply for food or health assistance (Medicaid)",
+   "es": "Cómo solicitar ayuda para alimentos o salud (Medicaid)",
+   "state": "draft"
+  },
+  "guide.medicare-and-social-security.how-to-get-disability-benefits-and": {
+   "en": "How to get disability benefits and services",
+   "es": "Cómo obtener beneficios y servicios por discapacidad",
+   "state": "draft"
+  },
+  "guide.medicare-and-social-security.if-the-costs-are-hard-to": {
+   "en": "If the costs are hard to pay, apply for a Medicare Savings Program and Extra Help.",
+   "es": "Si le cuesta pagar los costos, solicite un Programa de Ahorros de Medicare y la Ayuda Adicional.",
+   "state": "draft"
+  },
+  "guide.medicare-and-social-security.if-you-already-have-part-a": {
+   "en": "If you already have Part A and are adding Part B because you are losing coverage through a job, your employer fills out form CMS-L564, which you send to your local Social Security office.",
+   "es": "Si ya tiene la Parte A y va a agregar la Parte B porque pierde la cobertura de un empleo, su empleador llena el formulario CMS-L564, que usted envía a su oficina local del Seguro Social.",
+   "state": "draft"
+  },
+  "guide.medicare-and-social-security.if-you-miss-your-first-chance": {
+   "en": "<b>If you miss your first chance,</b> you may have to wait for the General Enrollment Period, January 1 to March 31, and pay a monthly late enrollment penalty for as long as you have Part B. Some situations, such as losing coverage through a job, open a Special Enrollment Period without the penalty.",
+   "es": "<b>Si pierde su primera oportunidad,</b> quizá tenga que esperar al Período de Inscripción General, del 1 de enero al 31 de marzo, y pagar una multa mensual por inscripción tardía mientras tenga la Parte B. Algunas situaciones, como perder la cobertura de un empleo, abren un Período de Inscripción Especial sin la multa.",
+   "state": "draft"
+  },
+  "guide.medicare-and-social-security.joining-a-plan-medicare": {
+   "en": "Joining a plan (Medicare)",
+   "es": "Inscribirse en un plan (Medicare)",
+   "state": "draft"
+  },
+  "guide.medicare-and-social-security.joining-a-plan-medicare-2": {
+   "en": "Joining a Plan (Medicare)",
+   "es": "Inscribirse en un plan (Medicare)",
+   "state": "draft"
+  },
+  "guide.medicare-and-social-security.know-when-to-sign-up-for": {
+   "en": "Know when to sign up for Medicare",
+   "es": "Sepa cuándo inscribirse en Medicare",
+   "state": "draft"
+  },
+  "guide.medicare-and-social-security.lead": {
+   "en": "When and how to sign up for Medicare, applying for Social Security retirement benefits, choosing your coverage, and the state and federal programs that help pay Medicare's costs, with free counseling in New Hampshire.",
+   "es": "Cuándo y cómo inscribirse en Medicare, cómo solicitar los beneficios de jubilación del Seguro Social, cómo elegir su cobertura, y los programas estatales y federales que ayudan a pagar los costos de Medicare, con orientación gratuita en New Hampshire.",
+   "state": "draft"
+  },
+  "guide.medicare-and-social-security.manage-your-benefits-online": {
+   "en": "Manage your benefits online",
+   "es": "Maneje sus beneficios en línea",
+   "state": "draft"
+  },
+  "guide.medicare-and-social-security.medicare-answers-at-1-800-medicare": {
+   "en": "Medicare answers at 1-800-MEDICARE (1-800-633-4227), 24 hours a day (TTY 1-877-486-2048), and Social Security at 1-800-772-1213.",
+   "es": "Medicare atiende en el 1-800-MEDICARE (1-800-633-4227), las 24 horas del día (TTY 1-877-486-2048), y el Seguro Social en el 1-800-772-1213.",
+   "state": "draft"
+  },
+  "guide.medicare-and-social-security.medicare-beneficiaries-savings-program": {
+   "en": "Medicare Beneficiaries Savings Program (Department of Health and Human Services)",
+   "es": "Programa de Ahorros para Beneficiarios de Medicare (Departamento de Salud y Servicios Humanos)",
+   "state": "draft"
+  },
+  "guide.medicare-and-social-security.medicare-part-a-and-part-b": {
+   "en": "Medicare Part A and Part B are signed up for through the Social Security Administration, not through Medicare. The easiest way is online, with a my Social Security account. You can also call Social Security at 1-800-772-1213 or visit a local office.",
+   "es": "La inscripción en la Parte A y la Parte B de Medicare se hace a través de la Administración del Seguro Social, no a través de Medicare. La forma más fácil es en línea, con una cuenta my Social Security. También puede llamar al Seguro Social al 1-800-772-1213 o ir a una oficina local.",
+   "state": "draft"
+  },
+  "guide.medicare-and-social-security.medicare-savings-programs-are-run-by": {
+   "en": "<b>Medicare Savings Programs</b> are run by the state. Depending on your income and savings, they pay your Part B premium, and the most generous one also pays your deductibles, coinsurance and copayments, so that Medicare providers may not bill you for covered care. In New Hampshire, apply to the Department of Health and Human Services through NH Easy, under Medicare beneficiary assistance. Medicare advises applying even if you do not think you qualify.",
+   "es": "Los <b>Programas de Ahorros de Medicare</b> los administra el estado. Según sus ingresos y ahorros, pagan su prima de la Parte B, y el más amplio también paga sus deducibles, coseguros y copagos, de modo que los proveedores de Medicare no pueden cobrarle por la atención cubierta. En New Hampshire, solicítelos al Departamento de Salud y Servicios Humanos a través de NH Easy, en la ayuda para beneficiarios de Medicare (Medicare beneficiary assistance). Medicare aconseja solicitarlos aunque no crea que califica.",
+   "state": "draft"
+  },
+  "guide.medicare-and-social-security.medicare-savings-programs-medicare": {
+   "en": "Medicare Savings Programs (Medicare)",
+   "es": "Programas de Ahorros de Medicare (Medicare)",
+   "state": "draft"
+  },
+  "guide.medicare-and-social-security.medicare-savings-programs-nh-department": {
+   "en": "Medicare Savings Programs (NH Department of Health and Human Services)",
+   "es": "Programas de Ahorros de Medicare (Departamento de Salud y Servicios Humanos de NH)",
+   "state": "draft"
+  },
+  "guide.medicare-and-social-security.my-social-security": {
+   "en": "my Social Security",
+   "es": "my Social Security",
+   "state": "draft"
+  },
+  "guide.medicare-and-social-security.my-social-security-social-security": {
+   "en": "my Social Security (Social Security Administration)",
+   "es": "my Social Security (Administración del Seguro Social)",
+   "state": "draft"
+  },
+  "guide.medicare-and-social-security.nh-easy": {
+   "en": "NH Easy",
+   "es": "NH Easy",
+   "state": "draft"
+  },
+  "guide.medicare-and-social-security.nh-easy-603-legal-aid": {
+   "en": "<a class=\"g-btn\" href=\"https://nheasy.nh.gov/#/\" target=\"_blank\" rel=\"noopener\">NH Easy</a> <a class=\"g-btn\" href=\"https://www.603legalaid.org/self-help-articles/\" target=\"_blank\" rel=\"noopener\">603 Legal Aid</a>",
+   "es": "<a class=\"g-btn\" href=\"https://nheasy.nh.gov/#/\" target=\"_blank\" rel=\"noopener\">NH Easy</a> <a class=\"g-btn\" href=\"https://www.603legalaid.org/self-help-articles/\" target=\"_blank\" rel=\"noopener\">603 Legal Aid</a>",
+   "state": "draft"
+  },
+  "guide.medicare-and-social-security.no": {
+   "en": "No",
+   "es": "No",
+   "state": "draft"
+  },
+  "guide.medicare-and-social-security.public-assistance-to-blind-aged-or": {
+   "en": "Public Assistance to Blind, Aged, or Disabled Persons, RSA 167",
+   "es": "Asistencia pública a personas ciegas, mayores o con discapacidad, RSA 167",
+   "state": "draft"
+  },
+  "guide.medicare-and-social-security.ready-to-sign-up-for-part": {
+   "en": "Ready to Sign Up for Part A and Part B (Medicare)",
+   "es": "Listo para inscribirse en la Parte A y la Parte B (Medicare)",
+   "state": "draft"
+  },
+  "guide.medicare-and-social-security.sign-up-for-medicare-medicare": {
+   "en": "Sign up for Medicare (Medicare)",
+   "es": "Inscribirse en Medicare (Medicare)",
+   "state": "draft"
+  },
+  "guide.medicare-and-social-security.sign-up-for-medicare-social-security": {
+   "en": "Sign up for Medicare (Social Security)",
+   "es": "Inscribirse en Medicare (Seguro Social)",
+   "state": "draft"
+  },
+  "guide.medicare-and-social-security.sign-up-for-medicare-social-security-2": {
+   "en": "Sign Up for Medicare (Social Security Administration)",
+   "es": "Inscribirse en Medicare (Administración del Seguro Social)",
+   "state": "draft"
+  },
+  "guide.medicare-and-social-security.sign-up-through-social-security": {
+   "en": "Sign up through Social Security",
+   "es": "Inscríbase a través del Seguro Social",
+   "state": "draft"
+  },
+  "guide.medicare-and-social-security.sign-up-through-social-security-in": {
+   "en": "Sign up through Social Security in the 7 months around your 65th birthday.",
+   "es": "Inscríbase a través del Seguro Social en los 7 meses alrededor de su cumpleaños número 65.",
+   "state": "draft"
+  },
+  "guide.medicare-and-social-security.social-security-administration-usa-gov": {
+   "en": "Social Security Administration (USA.gov)",
+   "es": "Administración del Seguro Social (USA.gov)",
+   "state": "draft"
+  },
+  "guide.medicare-and-social-security.title": {
+   "en": "How to Sign Up for Medicare and Social Security, and Get Help With the Costs",
+   "es": "Cómo inscribirse en Medicare y el Seguro Social, y obtener ayuda con los costos",
+   "state": "draft"
+  },
+  "guide.medicare-and-social-security.when-am-i-entitled-to-old": {
+   "en": "When am I entitled to old-age benefits?, 20 CFR 404.310 (federal)",
+   "es": "¿Cuándo tengo derecho a los beneficios por vejez?, 20 CFR 404.310 (federal)",
+   "state": "draft"
+  },
+  "guide.medicare-and-social-security.when-coverage-starts-medicare": {
+   "en": "When coverage starts (Medicare)",
+   "es": "Cuándo empieza la cobertura (Medicare)",
+   "state": "draft"
+  },
+  "guide.medicare-and-social-security.when-does-medicare-coverage-start": {
+   "en": "When Does Medicare Coverage Start? (Medicare)",
+   "es": "¿Cuándo comienza la cobertura de Medicare? (Medicare)",
+   "state": "draft"
+  },
+  "guide.medicare-and-social-security.with-part-a-and-part-b": {
+   "en": "With Part A and Part B, you choose between Original Medicare, which you can pair with a separate drug plan, and a Medicare Advantage Plan, which needs both Part A and Part B. Each fall, from <b>October 15 to December 7</b>, you can join, switch or drop a plan, and the change starts January 1.",
+   "es": "Con la Parte A y la Parte B, usted elige entre Medicare Original, que puede combinar con un plan de medicamentos aparte, y un Plan Medicare Advantage, que requiere la Parte A y la Parte B. Cada otoño, del <b>15 de octubre al 7 de diciembre</b>, puede inscribirse en un plan, cambiarlo o dejarlo, y el cambio empieza el 1 de enero.",
+   "state": "draft"
+  },
+  "guide.medicare-and-social-security.yes": {
+   "en": "Yes",
+   "es": "Sí",
+   "state": "draft"
+  },
+  "guide.medicare-and-social-security.you-are-enrolled-automatically-in-part": {
+   "en": "<b>You are enrolled automatically</b> in Part A (hospital insurance) and Part B (medical insurance) if you start getting Social Security benefits at least 4 months before you turn 65, or after you have received disability benefits for 24 months. Your Medicare card comes in the mail.",
+   "es": "<b>Queda inscrito automáticamente</b> en la Parte A (seguro de hospital) y la Parte B (seguro médico) si empieza a recibir beneficios del Seguro Social al menos 4 meses antes de cumplir 65 años, o después de haber recibido beneficios por discapacidad durante 24 meses. Su tarjeta de Medicare le llega por correo.",
+   "state": "draft"
+  },
+  "guide.medicare-and-social-security.you-are-usually-enrolled-in-medicare": {
+   "en": "You are usually enrolled in Medicare automatically. Watch for your card.",
+   "es": "Por lo general queda inscrito en Medicare automáticamente. Esté atento a su tarjeta.",
+   "state": "draft"
+  },
+  "guide.medicare-and-social-security.you-can-get-retirement-benefits-from": {
+   "en": "You can get retirement benefits from age 62 if you have worked long enough to qualify, and you must apply for them: they do not start on their own. Apply online, by phone or at a local office. Social Security&rsquo;s page says how far ahead you can apply and what to have ready.",
+   "es": "Puede recibir beneficios de jubilación desde los 62 años si ha trabajado lo suficiente para calificar, y tiene que solicitarlos: no empiezan por sí solos. Solicítelos en línea, por teléfono o en una oficina local. La página del Seguro Social dice con cuánta anticipación puede solicitarlos y qué debe tener a mano.",
+   "state": "draft"
+  },
+  "guide.medicare-and-social-security.you-sign-up-for-medicare-through": {
+   "en": "You sign up for Medicare through Social Security, generally in the 7 months around your 65th birthday. If you already get Social Security benefits, you are usually enrolled automatically. Social Security retirement benefits can start as early as age 62. If paying for Medicare is hard, the state&rsquo;s Medicare Savings Programs and the federal Extra Help program can pay some of the costs: apply even if you are not sure you qualify. New Hampshire&rsquo;s Aging and Disability Resource Centers give free, one-on-one help.",
+   "es": "Usted se inscribe en Medicare a través del Seguro Social, generalmente en los 7 meses alrededor de su cumpleaños número 65. Si ya recibe beneficios del Seguro Social, por lo general queda inscrito automáticamente. Los beneficios de jubilación del Seguro Social pueden empezar desde los 62 años. Si le cuesta pagar Medicare, los Programas de Ahorros de Medicare del estado y el programa federal de Ayuda Adicional pueden pagar parte de los costos: solicítelos aunque no esté seguro de calificar. Los Aging and Disability Resource Centers (centros de recursos para el envejecimiento y la discapacidad) de New Hampshire ofrecen ayuda gratuita y personal.",
+   "state": "draft"
+  },
+  "guide.medicare-and-social-security.your-first-chance-is-your-initial": {
+   "en": "Your first chance is your Initial Enrollment Period: 7 months, starting 3 months before the month you turn 65 and ending 3 months after it. Coverage always starts on the first of a month, and signing up before your birthday month means it starts sooner.",
+   "es": "Su primera oportunidad es su Período de Inscripción Inicial: 7 meses, que empiezan 3 meses antes del mes en que cumple 65 años y terminan 3 meses después. La cobertura siempre empieza el primer día de un mes, y si se inscribe antes del mes de su cumpleaños, empieza antes.",
+   "state": "draft"
+  },
   "guide.new-to-new-hampshire.certificates-of-title-and-registration": {
    "en": "Certificates of Title and Registration of Vehicles, RSA 261",
    "es": "Certificados de título y registro de vehículos, RSA 261",
@@ -3489,6 +4034,266 @@
   "guide.new-to-new-hampshire.your-town-or-city-clerk-handles": {
    "en": "Your town or city clerk handles both your vehicle registration and your voter registration. The Division of Motor Vehicles answers licensing questions at 603-227-4000.",
    "es": "El secretario de su municipio o ciudad se ocupa tanto del registro de su vehículo como de su inscripción como votante. La División de Vehículos Motorizados responde preguntas sobre licencias en el 603-227-4000.",
+   "state": "draft"
+  },
+  "guide.passport.a-child-under-16-state-department": {
+   "en": "A child under 16 (State Department)",
+   "es": "Un niño menor de 16 años (Departamento de Estado)",
+   "state": "draft"
+  },
+  "guide.passport.a-child-under-16-u-s": {
+   "en": "A Child Under 16 (U.S. Department of State)",
+   "es": "Un niño menor de 16 años (Departamento de Estado de EE. UU.)",
+   "state": "draft"
+  },
+  "guide.passport.a-first-passport-a-passport-for": {
+   "en": "A first passport, a passport for a child under 16, and one for anyone who cannot renew are applied for in person. Fill out Form DS-11 on the State Department&rsquo;s site and print it, but <b>do not sign it</b>: you sign it in front of the acceptance agent, under oath.",
+   "es": "El primer pasaporte, el pasaporte de un niño menor de 16 años y el de quien no puede renovarlo se solicitan en persona. Llene el Formulario DS-11 en el sitio del Departamento de Estado e imprímalo, pero <b>no lo firme</b>: lo firma delante del agente de aceptación, bajo juramento.",
+   "state": "draft"
+  },
+  "guide.passport.a-passport-for-a-child-under": {
+   "en": "A passport for a child under 16",
+   "es": "El pasaporte de un niño menor de 16 años",
+   "state": "draft"
+  },
+  "guide.passport.a-photo-id-such-as-a": {
+   "en": "<b>A photo ID</b>, such as a driver&rsquo;s license.",
+   "es": "<b>Una identificación con foto</b>, como una licencia de conducir.",
+   "state": "draft"
+  },
+  "guide.passport.a-photo-that-meets-the-state": {
+   "en": "<b>A photo</b> that meets the State Department&rsquo;s rules. Many post offices take one for a fee.",
+   "es": "<b>Una foto</b> que cumpla las reglas del Departamento de Estado. Muchas oficinas postales la toman por una cuota.",
+   "state": "draft"
+  },
+  "guide.passport.a-photocopy-of-the-front-and": {
+   "en": "<b>A photocopy of the front and back</b> of both the citizenship document and the ID.",
+   "es": "<b>Una fotocopia del frente y del reverso</b> del documento de ciudadanía y de la identificación.",
+   "state": "draft"
+  },
+  "guide.passport.a-renewal-is-never-done-in": {
+   "en": "A renewal is never done in person at a post office. If you cannot renew, apply in person as a first-time applicant would, as the steps below describe.",
+   "es": "Una renovación nunca se hace en persona en una oficina postal. Si no puede renovarlo, solicítelo en persona como lo haría quien lo pide por primera vez, según los pasos siguientes.",
+   "state": "draft"
+  },
+  "guide.passport.a-u-s-passport-comes-from": {
+   "en": "A U.S. passport comes from the U.S. Department of State, not from New Hampshire. If it is your first passport, if you are under 16, or if you cannot renew, you apply in person on Form DS-11 at an acceptance facility, such as a post office, by appointment. Bring proof of U.S. citizenship, such as a certified birth certificate, a photo ID, a photocopy of each, and a photo. If your last passport was issued for 10 years, within the last 15 years, you can usually renew by mail or online instead.",
+   "es": "El pasaporte de EE. UU. lo expide el Departamento de Estado de EE. UU., no New Hampshire. Si es su primer pasaporte, si tiene menos de 16 años o si no puede renovarlo, lo solicita en persona con el Formulario DS-11 en un centro de aceptación, como una oficina postal, con cita. Lleve una prueba de ciudadanía de EE. UU., como un acta de nacimiento certificada, una identificación con foto, una fotocopia de cada una y una foto. Si su último pasaporte se expidió por 10 años, dentro de los últimos 15 años, por lo general puede renovarlo por correo o en línea.",
+   "state": "draft"
+  },
+  "guide.passport.apply-in-person-on-form-ds": {
+   "en": "Apply in person on Form DS-11, at a post office or another acceptance facility.",
+   "es": "Solicítelo en persona con el Formulario DS-11, en una oficina postal u otro centro de aceptación.",
+   "state": "draft"
+  },
+  "guide.passport.apply-in-person-state-department": {
+   "en": "Apply in person (State Department)",
+   "es": "Solicitarlo en persona (Departamento de Estado)",
+   "state": "draft"
+  },
+  "guide.passport.apply-in-person-u-s-department": {
+   "en": "Apply in Person (U.S. Department of State)",
+   "es": "Solicitarlo en persona (Departamento de Estado de EE. UU.)",
+   "state": "draft"
+  },
+  "guide.passport.book-at-a-post-office-usps": {
+   "en": "Book at a post office (USPS)",
+   "es": "Reservar en una oficina postal (USPS)",
+   "state": "draft"
+  },
+  "guide.passport.check-the-state-departments-current": {
+   "en": "Check the State Department&rsquo;s current processing times before you apply, and pay for expedited service if you need it sooner. If your trip abroad is very soon, you may be able to get an appointment at a passport agency, and New Hampshire has one: the National Passport Center in Portsmouth, which takes appointments only. Its page says how soon you must be traveling to qualify.",
+   "es": "Antes de presentar la solicitud, consulte los tiempos de tramitación vigentes del Departamento de Estado, y pague el servicio acelerado si lo necesita antes. Si su viaje al extranjero es muy pronto, quizá pueda obtener una cita en una agencia de pasaportes, y New Hampshire tiene una: el National Passport Center (Centro Nacional de Pasaportes) en Portsmouth, que atiende solo con cita. Su página dice con cuánta anticipación debe ser su viaje para calificar.",
+   "state": "draft"
+  },
+  "guide.passport.check-whether-you-can-renew-instead": {
+   "en": "Check whether you can renew instead",
+   "es": "Vea si puede renovarlo en lugar de solicitar uno nuevo",
+   "state": "draft"
+  },
+  "guide.passport.execution-of-passport-application-22-cfr": {
+   "en": "Execution of passport application, 22 CFR 51.21 (federal)",
+   "es": "La presentación de la solicitud de pasaporte, 22 CFR 51.21 (federal)",
+   "state": "draft"
+  },
+  "guide.passport.fill-out-form-ds-11-and": {
+   "en": "Fill out Form DS-11, and do not sign it yet",
+   "es": "Llene el Formulario DS-11, y no lo firme todavía",
+   "state": "draft"
+  },
+  "guide.passport.gather-proof-of-citizenship-a-photo": {
+   "en": "Gather proof of citizenship, a photo ID, a photocopy of each, and a photo.",
+   "es": "Reúna la prueba de ciudadanía, una identificación con foto, una fotocopia de cada una y una foto.",
+   "state": "draft"
+  },
+  "guide.passport.gather-your-documents-and-a-photo": {
+   "en": "Gather your documents and a photo",
+   "es": "Reúna sus documentos y una foto",
+   "state": "draft"
+  },
+  "guide.passport.have-you-had-a-u-s": {
+   "en": "Have you had a U.S. passport issued for 10 years, within the last 15 years?",
+   "es": "¿Ha tenido un pasaporte de EE. UU. expedido por 10 años, dentro de los últimos 15 años?",
+   "state": "draft"
+  },
+  "guide.passport.how-to-get-a-birth-death": {
+   "en": "How to get a birth, death, marriage or divorce certificate",
+   "es": "Cómo obtener un acta de nacimiento, defunción, matrimonio o divorcio",
+   "state": "draft"
+  },
+  "guide.passport.how-to-get-a-real-id": {
+   "en": "How to get a REAL ID",
+   "es": "Cómo obtener una REAL ID",
+   "state": "draft"
+  },
+  "guide.passport.if-you-have-no-birth-certificate": {
+   "en": "If you have no birth certificate that meets the rules, the State Department accepts other early records of your birth instead, such as hospital, baptismal, medical or school records. Its apply-in-person page says what to bring.",
+   "es": "Si no tiene un acta de nacimiento que cumpla las reglas, el Departamento de Estado acepta en su lugar otros registros tempranos de su nacimiento, como registros del hospital, de bautismo, médicos o escolares. Su página para solicitarlo en persona dice qué llevar.",
+   "state": "draft"
+  },
+  "guide.passport.if-you-travel-soon": {
+   "en": "If you travel soon",
+   "es": "Si viaja pronto",
+   "state": "draft"
+  },
+  "guide.passport.lead": {
+   "en": "Getting a first U.S. passport or renewing one from New Hampshire, step by step: whether you can renew by mail, what to bring to a post office, a child's passport, and what to do if you travel soon.",
+   "es": "Cómo obtener un primer pasaporte de EE. UU. o renovarlo desde New Hampshire, paso a paso: si puede renovarlo por correo, qué llevar a una oficina postal, el pasaporte de un niño y qué hacer si viaja pronto.",
+   "state": "draft"
+  },
+  "guide.passport.make-an-appointment-and-apply": {
+   "en": "Make an appointment and apply",
+   "es": "Pida una cita y presente la solicitud",
+   "state": "draft"
+  },
+  "guide.passport.make-an-appointment-sign-the-form": {
+   "en": "Make an appointment. Sign the form only when the agent asks you to.",
+   "es": "Pida una cita. Firme el formulario solo cuando el agente se lo pida.",
+   "state": "draft"
+  },
+  "guide.passport.minors-22-cfr-51-28-federal": {
+   "en": "Minors, 22 CFR 51.28 (federal)",
+   "es": "Los menores, 22 CFR 51.28 (federal)",
+   "state": "draft"
+  },
+  "guide.passport.national-passport-center-u-s-department": {
+   "en": "National Passport Center (U.S. Department of State)",
+   "es": "Centro Nacional de Pasaportes (Departamento de Estado de EE. UU.)",
+   "state": "draft"
+  },
+  "guide.passport.no-or-it-is-for-a": {
+   "en": "No, or it is for a child under 16",
+   "es": "No, o es para un niño menor de 16 años",
+   "state": "draft"
+  },
+  "guide.passport.passport-agents-and-acceptance-agents-22": {
+   "en": "Passport agents and acceptance agents, 22 CFR 51.22 (federal)",
+   "es": "Los agentes de pasaportes y los agentes de aceptación, 22 CFR 51.22 (federal)",
+   "state": "draft"
+  },
+  "guide.passport.passport-fees-state-department": {
+   "en": "Passport fees (State Department)",
+   "es": "Cuotas del pasaporte (Departamento de Estado)",
+   "state": "draft"
+  },
+  "guide.passport.passport-fees-u-s-department-of": {
+   "en": "Passport Fees (U.S. Department of State)",
+   "es": "Cuotas del pasaporte (Departamento de Estado de EE. UU.)",
+   "state": "draft"
+  },
+  "guide.passport.passports-u-s-postal-service": {
+   "en": "Passports (U.S. Postal Service)",
+   "es": "Pasaportes (Servicio Postal de EE. UU.)",
+   "state": "draft"
+  },
+  "guide.passport.pay-two-fees-one-to-the": {
+   "en": "Pay two fees: one to the Department of State, one to the facility.",
+   "es": "Pague dos cuotas: una al Departamento de Estado y otra al centro de aceptación.",
+   "state": "draft"
+  },
+  "guide.passport.persons-born-in-the-united-states": {
+   "en": "Persons born in the United States, 22 CFR 51.42 (federal)",
+   "es": "Las personas nacidas en Estados Unidos, 22 CFR 51.42 (federal)",
+   "state": "draft"
+  },
+  "guide.passport.processing-times-state-department": {
+   "en": "Processing times (State Department)",
+   "es": "Tiempos de tramitación (Departamento de Estado)",
+   "state": "draft"
+  },
+  "guide.passport.processing-times-u-s-department-of": {
+   "en": "Processing Times (U.S. Department of State)",
+   "es": "Tiempos de tramitación (Departamento de Estado de EE. UU.)",
+   "state": "draft"
+  },
+  "guide.passport.proof-of-u-s-citizenship-if": {
+   "en": "<b>Proof of U.S. citizenship.</b> If you were born in the United States, this is generally a certified birth certificate showing your full name, the date and place of your birth and your parents&rsquo; full names, with the registrar&rsquo;s signature and seal. If you were born in New Hampshire, your town or city clerk can issue one (the guide linked at the end of this page says how).",
+   "es": "<b>Prueba de ciudadanía de EE. UU.</b> Si nació en Estados Unidos, por lo general es un acta de nacimiento certificada que muestre su nombre completo, la fecha y el lugar de su nacimiento y los nombres completos de sus padres, con la firma y el sello del registrador. Si nació en New Hampshire, el secretario de su municipio o ciudad puede expedirla (la guía enlazada al final de esta página dice cómo).",
+   "state": "draft"
+  },
+  "guide.passport.renew-a-passport-state-department": {
+   "en": "Renew a passport (State Department)",
+   "es": "Renovar un pasaporte (Departamento de Estado)",
+   "state": "draft"
+  },
+  "guide.passport.renew-a-passport-u-s-department": {
+   "en": "Renew a Passport (U.S. Department of State)",
+   "es": "Renovar un pasaporte (Departamento de Estado de EE. UU.)",
+   "state": "draft"
+  },
+  "guide.passport.the-child-goes-to-the-appointment": {
+   "en": "The child goes to the appointment. Both parents or guardians sign the application, whether it is the child&rsquo;s first passport or not. If only one can come, that parent brings a signed and notarized statement of consent from the other, or proof of sole custody, such as a court order or a birth certificate that names only that parent. A child&rsquo;s passport is valid for 5 years; an adult&rsquo;s, for 10.",
+   "es": "El niño va a la cita. Ambos padres o tutores firman la solicitud, sea o no el primer pasaporte del niño. Si solo uno puede ir, ese padre lleva una declaración de consentimiento del otro, firmada y notariada, o una prueba de custodia exclusiva, como una orden judicial o un acta de nacimiento que nombre solo a ese padre. El pasaporte de un niño vale por 5 años; el de un adulto, por 10.",
+   "state": "draft"
+  },
+  "guide.passport.the-national-passport-center-portsmouth": {
+   "en": "The National Passport Center, Portsmouth",
+   "es": "El Centro Nacional de Pasaportes, Portsmouth",
+   "state": "draft"
+  },
+  "guide.passport.thousands-of-post-offices-accept-first": {
+   "en": "Thousands of post offices accept first-time applications, by appointment: book online, at a post office&rsquo;s self-service kiosk, or at the counter. Some offer limited walk-in hours. The clerks of some courts accept applications too. The State Department&rsquo;s search finds every acceptance facility near you.",
+   "es": "Miles de oficinas postales aceptan solicitudes de primera vez, con cita: resérvela en línea, en el quiosco de autoservicio de una oficina postal o en el mostrador. Algunas ofrecen un horario limitado sin cita. Los secretarios de algunos tribunales también aceptan solicitudes. El buscador del Departamento de Estado encuentra todos los centros de aceptación cercanos.",
+   "state": "draft"
+  },
+  "guide.passport.title": {
+   "en": "How to Get a U.S. Passport",
+   "es": "Cómo obtener un pasaporte de EE. UU.",
+   "state": "draft"
+  },
+  "guide.passport.validity-of-passports-22-cfr-51": {
+   "en": "Validity of passports, 22 CFR 51.4 (federal)",
+   "es": "La validez de los pasaportes, 22 CFR 51.4 (federal)",
+   "state": "draft"
+  },
+  "guide.passport.where-to-apply-state-department": {
+   "en": "Where to apply (State Department)",
+   "es": "Dónde presentar la solicitud (Departamento de Estado)",
+   "state": "draft"
+  },
+  "guide.passport.where-to-apply-u-s-department": {
+   "en": "Where to Apply (U.S. Department of State)",
+   "es": "Dónde presentar la solicitud (Departamento de Estado de EE. UU.)",
+   "state": "draft"
+  },
+  "guide.passport.yes": {
+   "en": "Yes",
+   "es": "Sí",
+   "state": "draft"
+  },
+  "guide.passport.you-can-renew-by-mail-if": {
+   "en": "You can renew by mail if all of these are true: your most recent passport was issued for 10 years, when you were 16 or older; it was issued no more than 15 years ago; and you can send it in with your application. The State Department&rsquo;s renewal page has the form, and says when you can renew online instead.",
+   "es": "Puede renovarlo por correo si se cumple todo esto: su pasaporte más reciente se expidió por 10 años, cuando usted tenía 16 años o más; se expidió hace no más de 15 años; y puede enviarlo junto con su solicitud. La página de renovación del Departamento de Estado tiene el formulario y dice cuándo puede renovarlo en línea.",
+   "state": "draft"
+  },
+  "guide.passport.you-can-usually-renew-by-mail": {
+   "en": "You can usually renew by mail or online. You cannot renew in person.",
+   "es": "Por lo general puede renovarlo por correo o en línea. No se puede renovar en persona.",
+   "state": "draft"
+  },
+  "guide.passport.you-pay-two-separate-fees-the": {
+   "en": "You pay two separate fees. The State Department&rsquo;s fee goes in with your application, by check or money order payable to &ldquo;U.S. Department of State&rdquo;, not by card. The facility&rsquo;s own acceptance fee is paid there, and a post office takes cards. The State Department&rsquo;s fees page has the current amounts.",
+   "es": "Usted paga dos cuotas por separado. La cuota del Departamento de Estado se envía con su solicitud, con cheque o giro postal a nombre de &ldquo;U.S. Department of State&rdquo;, no con tarjeta. La cuota de aceptación del centro se paga allí, y una oficina postal acepta tarjetas. La página de cuotas del Departamento de Estado tiene los montos vigentes.",
    "state": "draft"
   },
   "guide.property-tax-abatement.603-legal-aid-lawyer-referral-service": {
@@ -5852,6 +6657,21 @@
    "es": "Escriba o llame a quienes lo representan, y escriba un mensaje que puedan tomar en cuenta.",
    "state": "draft"
   },
+  "guide.task.disability-help.does": {
+   "en": "Get disability benefits and services",
+   "es": "Obtener beneficios y servicios por discapacidad",
+   "state": "draft"
+  },
+  "guide.task.disability-help.head": {
+   "en": "How to get disability benefits and services",
+   "es": "Cómo obtener beneficios y servicios por discapacidad",
+   "state": "draft"
+  },
+  "guide.task.disability-help.line": {
+   "en": "SSDI and SSI, the state&rsquo;s cash and medical assistance, area agencies and vocational rehabilitation.",
+   "es": "SSDI y SSI, la ayuda estatal en efectivo y médica, las agencias regionales y la rehabilitación vocacional.",
+   "state": "draft"
+  },
   "guide.task.domestic-violence-help.does": {
    "en": "Get help after domestic violence, sexual assault or stalking",
    "es": "Obtener ayuda después de violencia doméstica, agresión sexual o acecho",
@@ -5942,6 +6762,21 @@
    "es": "Compruebe que está inscrito, inscríbase si no lo está, y sepa qué llevar y adónde ir.",
    "state": "draft"
   },
+  "guide.task.medicare-and-social-security.does": {
+   "en": "Sign up for Medicare and Social Security",
+   "es": "Inscribirse en Medicare y el Seguro Social",
+   "state": "draft"
+  },
+  "guide.task.medicare-and-social-security.head": {
+   "en": "How to sign up for Medicare and Social Security",
+   "es": "Cómo inscribirse en Medicare y el Seguro Social",
+   "state": "draft"
+  },
+  "guide.task.medicare-and-social-security.line": {
+   "en": "When to sign up, choosing coverage, and help paying Medicare&rsquo;s costs.",
+   "es": "Cuándo inscribirse, cómo elegir la cobertura y ayuda para pagar los costos de Medicare.",
+   "state": "draft"
+  },
   "guide.task.new-to-new-hampshire.does": {
    "en": "Move to New Hampshire",
    "es": "Mudarse a New Hampshire",
@@ -5955,6 +6790,21 @@
   "guide.task.new-to-new-hampshire.line": {
    "en": "Your license, your vehicle&rsquo;s registration and registering to vote.",
    "es": "Su licencia, el registro de su vehículo y cómo inscribirse para votar.",
+   "state": "draft"
+  },
+  "guide.task.passport.does": {
+   "en": "Get a U.S. passport",
+   "es": "Obtener un pasaporte de EE. UU.",
+   "state": "draft"
+  },
+  "guide.task.passport.head": {
+   "en": "How to get a U.S. passport",
+   "es": "Cómo obtener un pasaporte de EE. UU.",
+   "state": "draft"
+  },
+  "guide.task.passport.line": {
+   "en": "A first passport or a renewal, what to bring to a post office, and a child&rsquo;s passport.",
+   "es": "Un primer pasaporte o una renovación, qué llevar a una oficina postal y el pasaporte de un niño.",
    "state": "draft"
   },
   "guide.task.property-tax-abatement.does": {
