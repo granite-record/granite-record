@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.695
+# GRANITE_VERSION: 2026-09-04.696
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -86089,8 +86089,8 @@ def _workflows_gate(NI):
 DRY_RUN_ENV = ("  DRY_RUN: ${{ github.ref != 'refs/heads/main' || (github.event_name != "
                "'schedule' && (inputs.dry_run == true || inputs.dry_run == 'true')) }}")
 MAIN_REF = "refs/heads/main"
-# The night job hands the publish job its DRY_RUN (THE TIMER'S BOXES ARE
-# STRINGS, nightly.yml's publish job).
+# The night job hands the publish job its DRY_RUN (nightly.yml: A RUN THE
+# SCHEDULE DID NOT START COULD NOT PUBLISH).
 NIGHT_DRY_OUTPUT = "      dry_run: ${{ env.DRY_RUN }}"
 # ... and so preflight inherits it too, when the night runs it first on
 # GitHub's machine. The workflow's words for its own run, which no check's
@@ -86262,9 +86262,11 @@ def _gh_eval(expr, ctx):
         if kind == "name":
             if peek() == ("op", "("):
                 take()
-                if take() != ("op", ")") or val not in ("always", "success", "failure"):
+                if take() != ("op", ")") or val not in ("always", "success", "failure",
+                                                        "cancelled"):
                     raise ValueError(f"{val}(...) in {expr!r}, which this does not evaluate")
-                return ctx.get(f"{val}()", True)
+                # Reached, and not cancelled, unless `ctx` says otherwise.
+                return ctx.get(f"{val}()", val != "cancelled")
             return ctx.get(val)
         raise ValueError(f"{val!r} where a value belongs in {expr!r}")
     v = either()
@@ -86490,18 +86492,17 @@ def _workflows_dry_run(NI, CL):
     dry_line, title = _wf_value(lines, "DRY_RUN"), _wf_value(lines, "run-name")
     wrong = []
     for event, ref, boxes, dry, want in WF_RUNS["nightly.yml"]:
-        # THE TIMER'S BOXES ARE STRINGS (25 October 2026): a run started
-        # through GitHub's API -- the timer's -- carries each box as "true" or
-        # "false" at the publish job's line, where the run's title read them
-        # as booleans. Every run by hand is read both ways, and must do the
-        # same both ways; its title is held to the booleans, as GitHub writes it.
+        # A BOX MAY ARRIVE AS A STRING (nightly.yml, 25 October 2026): every
+        # run by hand is read with its boxes as booleans, as GitHub hands them
+        # over today, and as the strings "true" and "false", and must do the
+        # same both ways; its title is held to the booleans.
         typed = [boxes] + ([{k: str(v).lower() for k, v in boxes.items()}]
                            if event == "workflow_dispatch" else [])
         for bx in typed:
             ctx = _wf_run_ctx(event, ref, bx)
             said = _gh_render(dry_line, ctx)
             runs = bool(_gh_eval(cond.group(1), dict(ctx, **{
-                "needs.night.outputs.publishable": "true",
+                "needs.night.outputs.publishable": "true", "needs.night.result": "success",
                 "needs.night.outputs.dry_run": said})))
             named = _gh_render(title or "", ctx) if bx is boxes else want
             if said != ("true" if dry else "false") or runs == dry or named != want:
@@ -86538,6 +86539,7 @@ def _workflows_dry_run(NI, CL):
     case = _wf_run_ctx("workflow_dispatch", "refs/heads/Main", dict(_HAND, dry_run=False))
     assert _gh_render(dry_line, case) == "false" and \
         _gh_eval(cond.group(1), dict(case, **{"needs.night.outputs.publishable": "true",
+                                              "needs.night.result": "success",
                                               "needs.night.outputs.dry_run": "false"})), \
         ("GitHub's expressions now tell refs/heads/Main from main, and this check's account of "
          "why nightly.py's step output and the Healthchecks steps' own test are needed is stale")
@@ -86840,9 +86842,8 @@ def _workflows_dry_runs_wait():
         dry_line = _wf_value(lines, "DRY_RUN")
         wrong = []
         for event, ref, boxes, dry, _title in WF_RUNS[name]:
-            # Each run by hand with its boxes as booleans, and as the strings a
-            # run through GitHub's API carries (THE TIMER'S BOXES ARE STRINGS,
-            # nightly.yml's publish job, 25 October 2026).
+            # Each run by hand with its boxes as booleans, and as strings
+            # (nightly.yml: A BOX MAY ARRIVE AS A STRING, 25 October 2026).
             for bx in [boxes] + ([{k: (str(v).lower() if isinstance(v, bool) else v)
                                    for k, v in boxes.items()}]
                                  if event == "workflow_dispatch" and boxes else []):
@@ -86858,6 +86859,54 @@ def _workflows_dry_runs_wait():
         held.append(name)
     return "ok", (f"{', '.join(held)}: every dry run waits in {DRY_RUNS_GROUP!r}, one at a time, "
                   "before gc-night, and every other run in a group of its own")
+
+
+def _wf_job_heads(job_lines):
+    """(the jobs a job needs, its if as written or ""), from its own lines."""
+    code = _wf_code(job_lines)
+    need = next((m.group(1) for ln in code for m in [re.match(r"^    needs:\s*(.+?)\s*$", ln)] if m), "")
+    cond = next((m.group(1) for ln in code for m in [re.match(r"^    if:\s*(.+?)\s*$", ln)] if m), "")
+    return [x.strip() for x in need.strip("[]").split(",") if x.strip()], cond
+
+
+@check("workflows", "a job after one that can be skipped says always() or !cancelled() in its if, "
+                    "so a skipped job before it does not skip it too")
+def _workflows_skipped_ancestors():
+    """A RUN THE SCHEDULE DID NOT START COULD NOT PUBLISH (25 October 2026).
+    nightly.yml's "started" runs only for a scheduled run and is skipped for
+    every other: the timer's, and every run by hand. GitHub skips a job whose
+    if names no status function when any job before it, however far back, was
+    skipped. The night said !cancelled(); the publish job, two jobs after
+    "started", did not, so from 23 October only a scheduled run's night could
+    be published, and the timer's first night (run 129) and a run by hand
+    (run 132) built sites fit for production that nothing published.
+
+    So in every workflow, a job with a job that has an if anywhere before it
+    says always() or !cancelled() in its own if. Run on nightly.yml as it
+    stood, this fails on the publish job."""
+    if not WORKFLOW_DIR.exists():
+        return "skip", "no .github/workflows here"
+    bad, held = [], []
+    for f in sorted(WORKFLOW_DIR.glob("*.yml")):
+        heads = {j: _wf_job_heads(jl) for j, jl in _wf_jobs(f.read_text(encoding="utf-8")).items()}
+
+        def before(j, seen):
+            for n in heads.get(j, ([], ""))[0]:
+                if n not in seen:
+                    seen.add(n)
+                    before(n, seen)
+            return seen
+        for j, (_need, cond) in heads.items():
+            skippable = sorted(a for a in before(j, set()) if heads.get(a, ([], ""))[1])
+            if skippable and not re.search(r"always\(\)|!\s*cancelled\(\)", cond):
+                bad.append(f"{f.name}: job {j} comes after {', '.join(skippable)}, which can be "
+                           f"skipped, and its if ({cond or 'none'}) names no always() or "
+                           "!cancelled(): a skipped job before it would skip it too")
+            elif skippable:
+                held.append(f"{f.name}:{j}")
+    assert not bad, "\n  ".join(bad)
+    return "ok", (f"{len(held)} jobs after one that can be skipped, each with a status function: "
+                  + ", ".join(held))
 
 
 PULLED_NIGHTLY = re.compile(r"^logs/nightly-\d{4}-\d\d-\d\d\.log$")
