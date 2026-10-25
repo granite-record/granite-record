@@ -1061,6 +1061,13 @@ first, which is whether the page was built.
   (`sittingLink`). It asks `site/session/days.json`, the list of the pages
   `build_session_pages.py` wrote, written by that step a chamber at a time
   with the other chamber's list kept. A date not on the list stays text.
+  The same file's `rc` names, for each chamber, the roll calls a page draws
+  under their own id, `#rc-<key>`, and the day of that page, read off the
+  pages as they were written (`rollcall_ids`). A page gives that id only to a
+  roll call it draws on no bill, and may draw one the roll-call file files
+  under no bill on a bill's card instead, so a member's Votes tab links
+  `#rc-<key>` only where `rc` names it (since 25 October 2026); a vote filed
+  under a rule's code ("HRULE64") gets no `#HRULE64`, which no card is.
 - *The directory.* `/directory/sessions-house` and `/directory/sessions-senate`
   list every day by year (`build_indexes.sessions_pages`).
 - *The line up.* Each sitting leads to its chamber's list, and to its week on

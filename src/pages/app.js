@@ -4306,14 +4306,29 @@ function renderSummary(b,d,rsa){
 // on it stays text, because a vote can be on record for a day the sittings
 // do not hold and a link to nothing is worse than no link. Asked for once,
 // when the first vote is drawn, and the view is drawn again when it lands.
-let SITDAYS=null;       // null while unasked, {} while asked, {H:Set,S:Set}
+//
+// AND THE ROLL CALLS EACH PAGE DRAWS UNDER THEIR OWN ANCHOR (the preview
+// check of 25 October 2026): `rc`, {H: {"2025-H-1": "2025-01-08"}, S: {...}},
+// read by the same step off the pages it wrote. A page gives "#rc-<key>" only
+// to a roll call it draws on no bill, and it may draw one the roll-call file
+// files under no bill on a bill's card instead (the House's 2022-H-4 and -5,
+// under HB 50 on 5 January 2022), or on a day other than the file's; a link
+// to "#rc-<key>" made without asking opened those days at their top.
+let SITDAYS=null;       // null while unasked, {} while asked, {H:Set,S:Set,rc}
 function needSittings(){
   if(SITDAYS)return;
   SITDAYS={};
   fetch(DATA("session/days.json"))
     .then(r=>r.ok?r.json():Promise.reject(new Error("HTTP "+r.status)))
-    .then(j=>{SITDAYS={H:new Set(j.H||[]),S:new Set(j.S||[])};repaint();})
+    .then(j=>{SITDAYS={H:new Set(j.H||[]),S:new Set(j.S||[]),rc:j.rc||{}};repaint();})
     .catch(()=>{});    // the dates stay text, which is what they were
+}
+// The day whose page draws roll call `k` ("2025-H-1") of chamber `body` under
+// its own anchor, "#rc-2025-H-1", or "" where no page does.
+function rollcallDay(body,k){
+  const m=SITDAYS&&SITDAYS.rc&&SITDAYS.rc[body];
+  const d=m&&k&&Object.prototype.hasOwnProperty.call(m,k)?String(m[k]):"";
+  return d&&SITDAYS[body]&&SITDAYS[body].has(d)?d:"";
 }
 // `text` as a link to that chamber's sitting of `iso` (2026-05-21), or as it
 // came where the sitting has no page. `text` is already escaped.
@@ -4323,11 +4338,19 @@ function needSittings(){
 // card's id on the page, as build_session_pages.card_anchor gives it --
 // "HB282", the number upper-cased with anything else dropped -- and the
 // address carries no ".html", which cost a redirect.
-function sittingLink(body,iso,text,bill){
+//
+// AT THE ROLL CALL, WHERE THE PAGE DRAWS IT ON ITS OWN (the preview check of
+// 25 October 2026): `k`, the roll call's key, leads to "#rc-<key>" where
+// that day's page draws it under that id (rollcallDay), before the bill's
+// card. The caller passes no `bill` for a vote on a rule or a code
+// ("HRULE64", "HR", "LATE"): no card has that id, and the House's Rule 64
+// vote of 8 January 2025 opened its day at the top.
+function sittingLink(body,iso,text,bill,k){
   needSittings();
   const has=SITDAYS&&SITDAYS[body]&&SITDAYS[body].has(String(iso||""));
-  const at=String(bill||"").toUpperCase().replace(/[^A-Z0-9]/g,"");
-  return has?`<a href="session/${esc(body)}/${esc(iso)}${at?"#"+at:""}">${text}</a>`:text;
+  const at=k&&has&&rollcallDay(body,k)===String(iso)?"rc-"+String(k)
+    : String(bill||"").toUpperCase().replace(/[^A-Z0-9]/g,"");
+  return has?`<a href="session/${esc(body)}/${esc(iso)}${at?"#"+esc(at):""}">${text}</a>`:text;
 }
 
 // What a voice or a division vote's card says of it, under its head.
@@ -7573,12 +7596,18 @@ function renderMemberVotes(m){
 
 // A vote on no bill in a few words (rc.w, build_site_v2.write_rollcall_index
 // from journal_motions.json), linked to the roll call's own anchor on its
-// sitting's page, "#rc-2026-H-290", where the day is one the site draws.
+// sitting's page, "#rc-2026-H-290", where a page draws it under that id.
+//
+// WHERE THE PAGE SAYS, NOT WHERE rc.w IMPLIES (the preview check of 25
+// October 2026): the words come from the Journal and the anchor from the
+// session page, which drew 2022-H-4 and -5 on HB 50's card with no rc- id,
+// so their links opened 5 January 2022 at its top. rollcallDay asks the
+// list the session pages were written with, and gives the day the page
+// draws it on, which the file's own date may not be.
 function nobillWords(x,rc){
-  const b=voteChamber(x), iso=voteIso(x);
-  const has=SITDAYS&&SITDAYS[b]&&SITDAYS[b].has(String(iso||""));
+  const b=voteChamber(x), k=String(x.k||""), day=rollcallDay(b,k);
   const w=`<span class="nbw">${esc(rc.w)}</span>`;
-  return has?`<a class="nbwa" href="session/${esc(b)}/${esc(iso)}#rc-${esc(String(x.k||""))}">${w}</a>`:w;
+  return day?`<a class="nbwa" href="session/${esc(b)}/${esc(day)}#rc-${esc(k)}">${w}</a>`:w;
 }
 
 // One row. data-l carries the column's name so the same markup can stack into
@@ -7606,20 +7635,28 @@ function voteRow(r){
   const said=named?voteChip(rc.mk,!!rc.p,x.b||"",rc.mf):"";
   return `<tr>
     <td class="d" data-l="Date">${sittingLink(voteChamber(x),voteIso(x),
-      esc(voteIso(x)?dateWords(voteIso(x)):x.d||""),x.b)}${
+      esc(voteIso(x)?dateWords(voteIso(x)):x.d||""),
+      // A bill's card only for a bill (`y`, its year): "HRULE64" or "HR" is
+      // a rule or a code the roll-call file files a vote under, and no card
+      // has it for an id (the preview check of 25 October 2026).
+      x.y?x.b:"",x.k)}${
       r.ch?`<span class="vch">${
       esc(CHAMBER_SHORT[r.ch]||r.ch)}</span>`:""}</td>
     <td class="b" data-l="On">${x.b&&x.y
       // A MENTION, components.bill_mention: the number as the link.
       ? billMention((b&&b.n)||x.b,`bill/${String(x.y)}/${String(x.b).toLowerCase()}.html`)
-      : x.b ? esc(x.b)
       // A procedural vote -- a call of the roll, a rules suspension -- is
       // recorded against no bill. It used to render an empty cell wrapped in
       // a link to /bill//.html. WHAT IT WAS ABOUT, where the Journal says
       // (rc.w, 23 October 2026): the session day's own summary or kind of
       // question, linked to the roll call on that day's page, where the
-      // Journal's words are quoted with their page.
+      // Journal's words are quoted with their page. Before the code a vote
+      // is filed under, where it has no bill: the House's two votes on Rule
+      // 64 of 8 January 2025 said "HRULE64", where the Journal says "Adopt a
+      // floor amendment to House Rule 64" (the preview check of 25 October
+      // 2026).
       : rc&&rc.w ? nobillWords(x,rc)
+      : x.b ? esc(x.b)
       : `<span class="none">no bill</span>`}${
       b&&b.title?`<span class="vt" translate="no">${esc(b.title)}</span>`:""}
       <span class="vq">${question}</span></td>

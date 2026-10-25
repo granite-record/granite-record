@@ -34333,9 +34333,13 @@ def _chain():
         on_disk = {b: sorted(p.stem for p in (sess / b).glob("*.html")) for b in ("H", "S")}
         assert all(on_disk.values()), f"the chain built no sitting pages for a chamber: {on_disk}"
         listed = json.loads((sess / "days.json").read_text(encoding="utf-8"))
-        assert listed == on_disk, (
+        assert {b: listed.get(b) for b in ("H", "S")} == on_disk, (
             f"session/days.json lists {listed} and the pages on disk are {on_disk}: "
             "app.js links a vote's date to the days this file names")
+        # And its roll calls are the "rc-<key>" ids those pages carry, each at
+        # its own page (the preview check of 25 October 2026): app.js links
+        # "#rc-<key>" only where this says a page draws one.
+        ids_on_disk = {"H": {}, "S": {}}
         hub = (root / "site" / "directory.html").read_text(encoding="utf-8")
         weeks = {p.stem for p in (root / "site" / "calendar").glob("*-W*.html")}
         n_up = 0
@@ -34348,6 +34352,8 @@ def _chain():
                 f"the directory does not link the list of {name} session days")
             for d in on_disk[b]:
                 day = (sess / b / f"{d}.html").read_text(encoding="utf-8")
+                for rid in re.findall(r'\bid="rc-([^"]+)"', day):
+                    ids_on_disk[b].setdefault(rid, d)
                 # THE RECORD HEAD'S TRAIL (C6, 10 October 2026), where the
                 # line above the heading was; the week on the Calendar is in
                 # the line between the previous and next days.
@@ -34378,6 +34384,10 @@ def _chain():
                 order = re.findall(r'class="(wkprev|wknext)"', navs[0]) if navs else None
                 assert len(navs) == 2 and order == sorted(order, reverse=True), (
                     f"session/{b}/{d}: its nav reads {order}")
+        assert listed.get("rc") == ids_on_disk, (
+            f"session/days.json names the roll calls {listed.get('rc')} and the pages carry "
+            f"rc- ids for {ids_on_disk}: a member's Votes tab links \"#rc-<key>\" where this "
+            "file says a page draws one")
         # THE LINE TO THE LATEST SITTINGS' RECORDINGS (build_pages.session_line,
         # 25 October 2026) leads to the days' pages, and to no day without one.
         handed = re.search(r'<div id="session">(.*?)</div>', homepage, re.S)
@@ -35124,6 +35134,22 @@ def _sitting_links(BSP):
     build_session_pages.card_anchor gives it (held to it here), and the
     address is the page's own, not the one a redirect turns it into.
 
+    NO ANCHOR NO PAGE HAS (the preview check of 25 October 2026): the House's
+    two votes on Rule 64 of 8 January 2025 are filed under "HRULE64" with no
+    bill, and their dates linked "#HRULE64", which no card is; their row
+    said "HRULE64" where the Journal says what they were, and the link to
+    their own "#rc-<key>" went only to a vote filed under nothing. And
+    "#rc-<key>" was linked wherever the Journal described a vote, though a
+    page gives that id only to a roll call it draws on no bill: 2022-H-4 and
+    -5 are drawn on HB 50's card on 5 January 2022, and their links opened
+    the day at its top. Held here: a vote on a code links its day bare, or at
+    "#rc-<key>" where days.json's `rc` says that day's page carries it, and
+    says the Journal's words before the code; a vote the Journal describes
+    links its words only where `rc` names a page for it, and at that page's
+    day where the file dates it on another; and the builder lists each
+    chamber's roll calls with its days, the other chamber's kept, read off
+    the ids the pages carry (rollcall_ids).
+
     And the builder's half, without a build: the days a page is written for
     are the days up to today and no later; the list of them is written a
     chamber at a time and the other chamber's is kept (a writer run on a
@@ -35145,15 +35171,25 @@ def _sitting_links(BSP):
     root = Path(tempfile.mkdtemp())
     try:
         (root / "session").mkdir()
-        BSP.write_days_index(root, "S", ["2026-05-14"])
-        BSP.write_days_index(root, "H", ["2026-05-21", "2025-01-08"])
-        BSP.write_days_index(root, "S", ["2026-05-14", "2026-06-04"])
+        BSP.write_days_index(root, "S", ["2026-05-14"], {"2026-S-9": "2026-05-14"})
+        BSP.write_days_index(root, "H", ["2026-05-21", "2025-01-08"],
+                             {"2025-H-2": "2025-01-08", "2025-H-1": "2025-01-08"})
+        BSP.write_days_index(root, "S", ["2026-05-14", "2026-06-04"], {"2026-S-12": "2026-06-04"})
         got = json.loads((root / "session" / "days.json").read_text(encoding="utf-8"))
         assert got == {"H": ["2025-01-08", "2026-05-21"],
-                       "S": ["2026-05-14", "2026-06-04"]}, (
+                       "S": ["2026-05-14", "2026-06-04"],
+                       "rc": {"H": {"2025-H-1": "2025-01-08", "2025-H-2": "2025-01-08"},
+                              "S": {"2026-S-12": "2026-06-04"}}}, (
             f"session/days.json, written a chamber at a time, holds {got}")
     finally:
         shutil.rmtree(root, ignore_errors=True)
+    # The ids read off a page are the roll calls it anchors, not the links to
+    # one, nor a Journal-only vote's "jv-".
+    page_ids = BSP.rollcall_ids('<div class="dvote nbvote" id="rc-2025-H-1" data-motion="x">'
+                                '<a href="#rc-2025-H-9">x</a><div class="dvote" id="jv-2026-03-06-H-d1">'
+                                '<div class="dvote" id="rc-2025-H-2" data-motion="">')
+    assert page_ids == ["2025-H-1", "2025-H-2"], (
+        f"build_session_pages.rollcall_ids reads {page_ids} off a page anchoring 2025-H-1 and -2")
 
     js, stub = Path("src/pages/app.js"), Path("tests/dom_stub.js")
     node = shutil.which("node") or shutil.which("node.exe")
@@ -35167,9 +35203,16 @@ def _sitting_links(BSP):
 require("./stub.js");
 const fs = require("fs");
 const asked = [];
+// 2026-05-20 has a page too, so that a roll call the file dates then and the
+// 21st's page draws (2026-H-4) tests the date's own guard: its date is the
+// 20th bare, never "#rc-" at a page that lacks it (the preview check of 25
+// October 2026: 2009-H-89 is filed 8 April 2009 and drawn on 26 March, and
+// both days have pages).
 globalThis.fetch = async u => { asked.push(String(u)); return {ok: true, status: 200,
   json: async () => String(u).endsWith("session/days.json")
-    ? {H: ["2026-05-21"], S: ["2026-05-14"]} : [], text: async () => "[]"}; };
+    ? {H: ["2026-05-20", "2026-05-21"], S: ["2026-05-14"],
+       rc: {H: {"2026-H-1": "2026-05-21", "2026-H-4": "2026-05-21", "2026-H-5": "2026-05-21",
+                "2026-H-6": "2026-05-22"}, S: {}}} : [], text: async () => "[]"}; };
 let s;
 try { s = (0, eval)(fs.readFileSync("./page.js", "utf8")
   + "; ({sittingLink, voteIso, voteChamber, renderVotes, voteRow})"); }
@@ -35197,6 +35240,20 @@ catch (e) { console.log("LOAD " + e.constructor.name + ": " + e.message); proces
   out.anchor = s.sittingLink("H", "2026-05-21", "x", "cacr 13");
   out.rowOff = s.voteRow({x: {d: "5/15/2026", b: "", q: "Adopt", v: "Yea", k: "2026-S-8",
     y: "2026"}, rc: null, b: null, mark: null, ch: ""});
+  // NO ANCHOR NO PAGE HAS: a vote filed under a rule's code, which the day
+  // draws at its own id, with the Journal's words and without; a vote on no
+  // bill the day draws on a bill's card (no rc- id), one the next day's page
+  // draws though the file's day has a page of its own, one listed at a day
+  // with no page, and one on a bill the day draws as a vote of its own.
+  const w = (k, d, b, y, words) => s.voteRow({x: {d, b, q: "Adopt", v: "Yea", k, y},
+    rc: words === null ? null : {y: 216, n: 164, p: 1, pr: 1, q: "", w: words},
+    b: null, mark: null, ch: ""});
+  out.rule = w("2026-H-1", "5/21/2026", "HRULE64", "", "Adopt a floor amendment to House Rule 64");
+  out.code = w("2026-H-2", "5/21/2026", "HR", "", null);
+  out.onCard = w("2026-H-3", "5/21/2026", "", "", "Lay on the Table");
+  out.moved = w("2026-H-4", "5/20/2026", "", "", "Reconsider");
+  out.stale = w("2026-H-6", "5/21/2026", "", "", "Recess");
+  out.plain = w("2026-H-5", "5/21/2026", "SB457", "2026", null);
   process.stdout.write("\\n@@" + JSON.stringify(out));
 })();
 """, encoding="utf-8")
@@ -35234,9 +35291,45 @@ catch (e) { console.log("LOAD " + e.constructor.name + ": " + e.message); proces
         f"a vote's date links the sitting's .html, which costs a redirect: {sat}")
     assert "session/" not in got["rowOff"] and "May 15, 2026" in got["rowOff"], (
         "a row of a member's votes links a day with no sitting page")
-    return "ok", ("a date is a link to session/<body>/<date>, at the bill's card where the "
-                  "vote is on one, where days.json lists the "
-                  "day, text otherwise, and the list is asked once; pages are built up to "
+    # NO ANCHOR NO PAGE HAS.
+    rows = {k: got[k] for k in ("rule", "code", "onCard", "moved", "stale", "plain")}
+    dates = {k: re.search(r'<td class="d"[^>]*>(.*?)</td>', v, re.S).group(1) for k, v in rows.items()}
+    links = {k: re.findall(r'<a class="nbwa" href="([^"]*)"', v) for k, v in rows.items()}
+    bad = []
+    if not dates["rule"].startswith('<a href="session/H/2026-05-21#rc-2026-H-1">May 21, 2026</a>'):
+        bad.append(f"a vote on House Rule 64 the day draws at rc-2026-H-1 dates as {dates['rule']}")
+    if not dates["code"].startswith('<a href="session/H/2026-05-21">May 21, 2026</a>'):
+        bad.append(f"a vote filed under the code HR dates as {dates['code']}, not the bare day")
+    if re.search(r"#(HRULE64|HR)\b", rows["rule"] + rows["code"]):
+        bad.append("a vote filed under a rule's code links its code as a card's id")
+    if links["rule"] != ["session/H/2026-05-21#rc-2026-H-1"] or \
+            "Adopt a floor amendment to House Rule 64</span>" not in rows["rule"]:
+        bad.append("a vote on House Rule 64 the Journal describes does not say so, linked to its "
+                   f"roll call: {links['rule']}")
+    if links["onCard"] or "#rc-" in rows["onCard"] or \
+            '<span class="nbw">Lay on the Table</span>' not in rows["onCard"]:
+        bad.append("a vote on no bill the day draws on a bill's card links an rc- id the page "
+                   f"does not carry: {links['onCard']}")
+    # The date links its own day bare, and the words the day that draws it:
+    # "#rc-" on the date only where the date's own page carries the id. The
+    # 20th has a page, so a date that skipped that test would link
+    # session/H/2026-05-20#rc-2026-H-4, an id that page lacks (2009-H-89 on
+    # 8 April 2009, the preview check of 25 October 2026).
+    if links["moved"] != ["session/H/2026-05-21#rc-2026-H-4"] or \
+            dates["moved"] != '<a href="session/H/2026-05-20">May 20, 2026</a>':
+        bad.append("a vote on no bill the file dates the 20th and the 21st's page draws is not "
+                   "linked at the 21st, or its date is not the 20th's page bare: "
+                   f"{links['moved']}, {dates['moved']}")
+    if links["stale"] or "#rc-" in rows["stale"]:
+        bad.append(f"a vote listed at a day with no page links it: {links['stale']}")
+    if not dates["plain"].startswith('<a href="session/H/2026-05-21#rc-2026-H-5">'):
+        bad.append("a vote on a bill the day draws as a vote of its own does not date at it: "
+                   + dates["plain"])
+    assert not bad, "; ".join(bad)
+    return "ok", ("a date is a link to session/<body>/<date> where days.json lists the day, "
+                  "text otherwise, at the bill's card where the vote is on one and at the roll "
+                  "call's own id where days.json says a page carries it, never at a code or an "
+                  "id the page lacks; the list is asked once; pages are built up to "
                   "today, the list is merged a chamber at a time, and a page leads up to "
                   "its list and to its week only where the calendar has it")
 
@@ -51374,7 +51467,8 @@ try {
     tally: {R: {Yea: 2}, D: {Nay: 1}}, members: [m("R", "Yea"), m("R", "Yea"), m("D", "Nay")]});
   out.ringShort = s.donut("HB1", 1, {yeas: 214, nays: 119, passed: true,
     tally: {R: {Yea: 1}}, members: [m("R", "Yea")]});
-  s.setSit({H: new Set(["2026-03-05"]), S: new Set()});
+  // The day's page carries the roll call's own id (days.json's `rc`).
+  s.setSit({H: new Set(["2026-03-05"]), S: new Set(), rc: {H: {"2026-H-5": "2026-03-05"}}});
   page({}); out.all = s.renderMemberVotes(fx.member);
   page({vq: "the war in Iran"}); out.found = s.renderMemberVotes(fx.member);
   s.setSit({H: new Set(), S: new Set()});
@@ -51489,6 +51583,14 @@ def _nobill_votes_shown(VP):
                    "question")
     if "2026-H-312" in lst or 'id="rc-2026-H-312"' in day:
         bad.append("the roll call that divided HB 1442 is still listed as a vote on no bill")
+    # WHAT THE MEMBER TAB ASKS BEFORE IT LINKS "#rc-" (the preview check of 25
+    # October 2026): the days' list names the roll call the day anchors, at
+    # its day, and not the one it draws on HB 1442's card.
+    rc_listed = (json.loads((site / "session" / "days.json").read_text(encoding="utf-8"))
+                 .get("rc") or {}).get("H") or {}
+    if rc_listed.get("2026-H-311") != "2026-03-06" or "2026-H-312" in rc_listed:
+        bad.append(f"session/days.json's House roll calls are {rc_listed}, not 2026-H-311 at "
+                   "2026-03-06 and never the roll call drawn on HB 1442's card")
     bill_p = site / "bill" / "2026" / "hb1442.html"
     bill_html = bill_p.read_text(encoding="utf-8") if bill_p.exists() else ""
     if not re.search(r'"question": "Previous Question".{0,400}"vote_kind": "DV"', bill_html, re.S) \
