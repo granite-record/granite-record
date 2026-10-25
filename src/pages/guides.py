@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-10-11.42
+# GRANITE_VERSION: 2026-10-11.43
 """
 The how-to guides: their words, their sources, and what each was checked
 against. Read by build_civics.py, which draws them on the Resources hub's
@@ -4171,20 +4171,19 @@ GUIDES += [TRASH]
 # 2026, current to 22 October) and on the Postal Service's passport page, read
 # the same day, and sends a reader to the State Department's own pages for
 # the forms, fees and processing times, which change. travel.state.gov
-# refuses this machine, so its claims wait for the person's printouts. No fee
-# is printed: a dollar amount rests on a statute, and none of New Hampshire's
-# sets these (FIGURE above).
+# refuses this machine; its pages are the person's printouts of 25 October
+# 2026, at the addresses the printouts show -- the State Department had moved
+# them since the guide was drafted, so its links are the printouts' now. No
+# fee is printed: a dollar amount rests on a statute, and none of New
+# Hampshire's sets these (FIGURE above).
 # ---------------------------------------------------------------------------
 PP_READ = "2026-10-25"
-PP_STATE_READ = None                 # the person's printouts of travel.state.gov
-STATE_IN_PERSON = "https://travel.state.gov/content/travel/en/passports/need-passport/apply-in-person.html"
-STATE_RENEW = "https://travel.state.gov/content/travel/en/passports/have-passport/renew.html"
+PP_STATE_READ = "2026-10-25"         # the person's printouts of travel.state.gov
+STATE_ADULT = "https://travel.state.gov/en/passports/apply/adults.html"
+STATE_ONLINE = "https://travel.state.gov/en/passports/renew-replace/online.html"
 STATE_CHILD = "https://travel.state.gov/en/passports/apply/child/under-16.html"
-STATE_FEES = "https://travel.state.gov/content/travel/en/passports/how-apply/fees.html"
-STATE_TIMES = "https://travel.state.gov/content/travel/en/passports/how-apply/processing-times.html"
-STATE_NPC = ("https://travel.state.gov/en/passports/apply/get-fast/make-appointment/"
-             "national-passport-center.html")
-STATE_WHERE = "https://travel.state.gov/content/travel/en/passports/how-apply/where-to-apply.html"
+STATE_FAST = "https://travel.state.gov/en/passports/apply/get-fast.html"
+STATE_APPOINT = "https://travel.state.gov/en/passports/apply/get-fast/make-appointment.html"
 USPS_PASSPORTS = "https://www.usps.com/international/passports.htm"
 _CFR22 = "https://www.ecfr.gov/current/title-22/chapter-I/subchapter-F/part-51/subpart-B/"
 CFR_PP_EXECUTE = _CFR22 + "section-51.21"
@@ -4216,66 +4215,88 @@ PASSPORT = guide(
     [step("Check whether you can renew instead",
           "<p>You can renew by mail if all of these are true: your most recent passport was "
           "issued for 10 years, when you were 16 or older; it was issued no more than 15 years "
-          "ago; and you can send it in with your application. The State Department&rsquo;s "
-          "renewal page has the form, and says when you can renew online instead.</p>"
+          "ago; and you can send it in with your application.</p>"
+          "<p>You can <b>renew online</b> instead if that passport was valid for 10 years and "
+          "expires within a year or expired less than 5 years ago; you are 25 or older; you are "
+          "not changing your name or sex; you are not traveling for at least 6 weeks, since an "
+          "online renewal cannot be expedited; you are in the United States when you apply; and "
+          "you have the passport, undamaged. You pay by card, and you keep the old passport, "
+          "which is canceled once you apply. Renew only at the State Department&rsquo;s own "
+          "site: others that offer to do it for you charge extra and put your information at "
+          "risk.</p>"
           "<p>A renewal is never done in person at a post office. If you cannot renew, apply in "
           "person as a first-time applicant would, as the steps below describe.</p>",
-          actions=[("Renew a passport (State Department)", STATE_RENEW)]),
+          actions=[("Renew online (State Department)", STATE_ONLINE)]),
      step("Fill out Form DS-11, and do not sign it yet",
           "<p>A first passport, a passport for a child under 16, and one for anyone who cannot "
-          "renew are applied for in person. Fill out Form DS-11 on the State Department&rsquo;s "
-          "site and print it, but <b>do not sign it</b>: you sign it in front of the acceptance "
-          "agent, under oath.</p>",
-          actions=[("Apply in person (State Department)", STATE_IN_PERSON)]),
+          "renew are applied for in person. Fill out Form DS-11 with the State "
+          "Department&rsquo;s form filler and print it on one side of the paper, but <b>do not "
+          "sign it</b>: you sign it in front of the acceptance agent, under oath.</p>",
+          actions=[("Apply for an adult passport (State Department)", STATE_ADULT)]),
      step("Gather your documents and a photo",
           "<ul><li><b>Proof of U.S. citizenship.</b> If you were born in the United States, this "
           "is generally a certified birth certificate showing your full name, the date and place "
           "of your birth and your parents&rsquo; full names, with the registrar&rsquo;s signature "
           "and seal. If you were born in New Hampshire, your town or city clerk can issue one "
-          "(the guide linked at the end of this page says how).</li>"
-          "<li><b>A photo ID</b>, such as a driver&rsquo;s license.</li>"
+          "(the guide linked at the end of this page says how). It must be on paper: a "
+          "digital or mobile birth certificate is not accepted. A full-validity U.S. passport, "
+          "a Consular Report of Birth Abroad, or a certificate of naturalization or citizenship "
+          "also proves it.</li>"
+          "<li><b>A photo ID</b>, such as a driver&rsquo;s license. If it is from another state, "
+          "bring a second photo ID.</li>"
           "<li><b>A photocopy of the front and back</b> of both the citizenship document and the "
-          "ID.</li>"
-          "<li><b>A photo</b> that meets the State Department&rsquo;s rules. Many post offices "
-          "take one for a fee.</li></ul>"
+          "ID, on one side of plain letter-size paper.</li>"
+          "<li><b>A photo</b> that meets the State Department&rsquo;s rules. Do not staple it to "
+          "the form. Many post offices take one for a fee.</li></ul>"
           "<p>If you have no birth certificate that meets the rules, the State Department accepts "
           "other early records of your birth instead, such as hospital, baptismal, medical or "
-          "school records. Its apply-in-person page says what to bring.</p>"),
+          "school records. Its adult passport page says what to bring.</p>"
+          "<p>Unpaid child support over the State Department&rsquo;s limit, or seriously "
+          "delinquent federal tax debt, will delay or stop an application: settle it "
+          "first.</p>"),
      step("Make an appointment and apply",
           "<p>Thousands of post offices accept first-time applications, by appointment: book "
           "online, at a post office&rsquo;s self-service kiosk, or at the counter. Some offer "
-          "limited walk-in hours. The clerks of some courts accept applications too. The State "
-          "Department&rsquo;s search finds every acceptance facility near you.</p>"
+          "limited walk-in hours. Libraries, local government offices and the clerks of some "
+          "courts accept applications too; ask the facility whether you need an "
+          "appointment.</p>"
           "<p>You pay two separate fees. The State Department&rsquo;s fee goes in with your "
           "application, by check or money order payable to &ldquo;U.S. Department of "
-          "State&rdquo;, not by card. The facility&rsquo;s own acceptance fee is paid there, and "
-          "a post office takes cards. The State Department&rsquo;s fees page has the current "
-          "amounts.</p>",
+          "State&rdquo;, with your name and date of birth in the memo line, not by card. The "
+          "facility&rsquo;s own acceptance fee is paid there, and a post office takes cards. "
+          "The State Department&rsquo;s adult passport page lists the current amounts.</p>",
           actions=[("Book at a post office (USPS)", USPS_PASSPORTS),
-                   ("Where to apply (State Department)", STATE_WHERE),
-                   ("Passport fees (State Department)", STATE_FEES)]),
+                   ("Fees and how to apply (State Department)", STATE_ADULT)]),
      step("A passport for a child under 16",
-          "<p>The child goes to the appointment. Both parents or guardians sign the application, "
-          "whether it is the child&rsquo;s first passport or not. If only one can come, that "
-          "parent brings a signed and notarized statement of consent from the other, or proof of "
-          "sole custody, such as a court order or a birth certificate that names only that "
-          "parent. A child&rsquo;s passport is valid for 5 years; an adult&rsquo;s, for 10.</p>",
+          "<p>The child goes to the appointment, with both parents or guardians. A child&rsquo;s "
+          "passport cannot be renewed: you apply in person each time. Bring the child&rsquo;s "
+          "proof of citizenship, which, if it is a U.S. birth certificate, also shows who the "
+          "parents are, and each parent&rsquo;s photo ID, with photocopies.</p>"
+          "<p>If one parent cannot come, that parent signs the Statement of Consent, Form "
+          "DS-3053, before a notary, and you bring it, with a photocopy of the ID they showed "
+          "the notary, within 90 days of its signing. If you alone have custody, bring proof "
+          "instead, such as a court order granting it, a birth certificate or adoption decree "
+          "naming only you, or the other parent&rsquo;s death certificate. A child&rsquo;s "
+          "passport is valid for 5 years; an adult&rsquo;s, for 10.</p>",
           actions=[("A child under 16 (State Department)", STATE_CHILD)]),
      step("If you travel soon",
-          "<p>Check the State Department&rsquo;s current processing times before you apply, and "
-          "pay for expedited service if you need it sooner. If your trip abroad is very soon, "
-          "you may be able to get an appointment at a passport agency, and New Hampshire has "
-          "one: the National Passport Center in Portsmouth, which takes appointments only. Its "
-          "page says how soon you must be traveling to qualify.</p>",
-          actions=[("Processing times (State Department)", STATE_TIMES),
-                   ("The National Passport Center, Portsmouth", STATE_NPC)])],
-    [("Apply in Person (U.S. Department of State)", STATE_IN_PERSON),
-     ("Renew a Passport (U.S. Department of State)", STATE_RENEW),
-     ("A Child Under 16 (U.S. Department of State)", STATE_CHILD),
-     ("Passport Fees (U.S. Department of State)", STATE_FEES),
-     ("Processing Times (U.S. Department of State)", STATE_TIMES),
-     ("Where to Apply (U.S. Department of State)", STATE_WHERE),
-     ("National Passport Center (U.S. Department of State)", STATE_NPC),
+          "<p>Routine processing takes 4 to 6 weeks, and expedited service, for an extra fee, 2 "
+          "to 3 weeks. Neither counts the mail, which can add up to 2 weeks each way; you can "
+          "pay for faster shipping both ways. The State Department&rsquo;s page has the current "
+          "times.</p>"
+          "<p>If you travel abroad in less than 3 weeks, make an appointment at a passport "
+          "agency or center once you are within 14 days of your trip, or 28 days if you need a "
+          "foreign visa. New Hampshire has one: the <b>National Passport Center in "
+          "Portsmouth</b>. Appointments are free, through the State Department&rsquo;s online "
+          "appointment system; if you have already applied, call 1-877-487-2778. Anyone who "
+          "asks you to pay for an appointment is not the State Department.</p>",
+          actions=[("Get your passport fast (State Department)", STATE_FAST),
+                   ("Make an appointment at a passport agency", STATE_APPOINT)])],
+    [("Apply for Your Adult Passport (U.S. Department of State)", STATE_ADULT),
+     ("Renew Your Passport Online (U.S. Department of State)", STATE_ONLINE),
+     ("Apply for a Child's Passport Under 16 (U.S. Department of State)", STATE_CHILD),
+     ("Get Your Passport Fast (U.S. Department of State)", STATE_FAST),
+     ("Make an Appointment at a Passport Agency (U.S. Department of State)", STATE_APPOINT),
      ("Passports (U.S. Postal Service)", USPS_PASSPORTS),
      ("Execution of passport application, 22 CFR 51.21 (federal)", CFR_PP_EXECUTE),
      ("Passport agents and acceptance agents, 22 CFR 51.22 (federal)", CFR_PP_AGENTS),
@@ -4316,27 +4337,63 @@ PASSPORT = guide(
            "signature; State Department fees are mailed with the application, payable to U.S. "
            "Department of State, not by credit or debit card; the acceptance fee is paid at the "
            "Post Office, by check, money order, debit or credit card.", USPS_PASSPORTS, PP_READ),
-     # The State Department's own pages, from the person's printouts.
-     claim("Form DS-11; apply in person for a first passport or when you cannot renew; do not "
-           "sign the form until the acceptance agent asks; proof of citizenship, ID, "
-           "photocopies, a photo, two fees.", STATE_IN_PERSON, PP_STATE_READ),
-     claim("Who can renew by mail and who can renew online, and the form.", STATE_RENEW,
-           PP_STATE_READ),
-     claim("A child under 16 appears in person, with both parents or guardians or the consent "
-           "form.", STATE_CHILD, PP_STATE_READ),
-     claim("The application fee and the acceptance fee are paid separately; expedited service "
-           "costs extra.", STATE_FEES, PP_STATE_READ),
-     claim("Current routine and expedited processing times.", STATE_TIMES, PP_STATE_READ),
-     claim("Acceptance facilities: post offices, clerks of court, public libraries and others; "
-           "search by ZIP code.", STATE_WHERE, PP_STATE_READ),
-     claim("The National Passport Center, Portsmouth, NH: international travel within 14 "
-           "calendar days, or within 28 calendar days if a foreign visa is needed; by "
-           "appointment only.", STATE_NPC, PP_STATE_READ)],
+     # The State Department's own pages, from the person's printouts of 25
+     # October 2026, at the addresses they show.
+     claim("First-time adults and those who do not qualify for renewal must apply in person at "
+           "an acceptance facility; Form Filler, print on single-sided paper; do not sign your "
+           "form until asked to do so by a passport acceptance agent; evidence of U.S. "
+           "citizenship: a U.S. birth certificate, a full validity, undamaged U.S. passport, a "
+           "Consular Report of Birth Abroad, or a Certificate of Naturalization or Citizenship; "
+           "we do not accept digital evidence such as a mobile or electronic birth certificate; "
+           "a physical photo ID, the most common a driver's license; if your ID is from a "
+           "different state, bring a second photo ID; photocopies on 8.5 by 11 inch paper, a "
+           "single side; do not attach or staple your photo; if you owe over $2500 in "
+           "child support or have seriously delinquent tax debt, your application "
+           "will be delayed or denied; 2 fees, the application fee to the U.S. Department of "
+           "State by check or money order with the applicant's name and date of birth in the "
+           "memo, the acceptance fee to the facility; acceptance facilities such as a post "
+           "office, library, or local government office, check with the facility to see if you "
+           "need to make an appointment.", STATE_ADULT, PP_STATE_READ),
+     claim("Renew online if: the passport is (or was) valid for 10 years, expiring within 1 "
+           "year or expired less than 5 years ago; you are age 25 or older; not changing your "
+           "name or sex; not traveling for at least 6 weeks, online renewals cannot be "
+           "expedited; located in a U.S. state or territory; you have your passport, not "
+           "damaged, not reported lost or stolen; credit or debit card; we will cancel the "
+           "passport you are renewing; do not mail it, keep it; the only official place to "
+           "renew online is opr.travel.state.gov, other websites may be fraudulent and charge "
+           "extra fees.", STATE_ONLINE, PP_STATE_READ),
+     claim("Both parents or guardians must be present with the child applying in person; you "
+           "cannot renew a child's passport, you must apply in-person each time; valid for 5 "
+           "years; a U.S. birth certificate shows citizenship and relationship; both parents' "
+           "photo IDs and photocopies; if 1 parent cannot go, they sign Statement of Consent "
+           "Form DS-3053 before a certified notary public, with a photocopy of the photo ID "
+           "presented to the notary, submitted within 90 days after it is notarized; sole "
+           "custody: a court order granting sole custody, a certified birth certificate or "
+           "adoption decree listing you as the only parent, or the deceased parent's death "
+           "certificate.", STATE_CHILD, PP_STATE_READ),
+     claim("Routine service takes 4-6 weeks and expedited 2-3 weeks, for a fee, neither "
+           "including mailing times, which may add 2 weeks; faster shipping both ways for a "
+           "fee; urgent: traveling in less than 2-3 weeks, make an appointment at a passport "
+           "agency or center when you are within 14 calendar days of your international travel "
+           "date, or 28 days if you need a foreign visa.", STATE_FAST, PP_STATE_READ),
+     claim("Passport agencies and centers accept appointments for urgent travel abroad in the "
+           "next 14 days or a foreign visa in the next 28 days; we do not charge a fee to make "
+           "appointments; the Online Passport Appointment System; if you already applied, dial "
+           "877-487-2778; National Passport Center, Portsmouth, NH.", STATE_APPOINT,
+           PP_STATE_READ)],
     see=[("How to get a birth, death, marriage or divorce certificate", "/guides/vital-records.html"),
          ("How to get a REAL ID", "/guides/real-id.html")],
     figures=[fig("10 years", CFR_PP_VALID, "valid for 10 years"),
              fig("15 years", CFR_PP_EXECUTE, "within 15 years"),
-             fig("5 years", CFR_PP_VALID, "for 5 years")])
+             fig("5 years", CFR_PP_VALID, "for 5 years"),
+             fig("6 weeks", STATE_ONLINE, "not traveling for at least 6 weeks"),
+             fig("90 days", STATE_CHILD, "within 90 days after it is notarized"),
+             fig("4 to 6 weeks", STATE_FAST, "Routine service takes 4-6 weeks"),
+             fig("2 to 3 weeks", STATE_FAST, "expedited 2-3 weeks"),
+             fig("2 weeks", STATE_FAST, "may add 2 weeks"),
+             fig("3 weeks", STATE_FAST, "traveling in less than 2-3 weeks"),
+             fig("14 days", STATE_APPOINT, "urgent travel abroad in the next 14 days"),
+             fig("28 days", STATE_APPOINT, "a foreign visa in the next 28 days")])
 
 GUIDES += [PASSPORT]
 
@@ -4350,12 +4407,15 @@ GUIDES += [PASSPORT]
 # 279:3, in force 5 September 2026). Read on 25 October 2026: medicare.gov's
 # pages, which answer a cloud session, the Social Security Administration's
 # entry at USA.gov for its number, and the federal rules at eCFR. ssa.gov
-# refuses this machine, so its pages wait for the person's printouts, as does
-# the Department of Health and Human Services' page on the savings programs.
+# refuses this machine; its pages are the person's printouts of 25 October
+# 2026 (the my Social Security page printed without its address; its title
+# and words are that page's). The Department of Health and Human Services'
+# page on the savings programs still waits for a printout.
 # Medicaid itself is the food and health guide's.
 # ---------------------------------------------------------------------------
 MC_READ = "2026-10-25"
-SSA_PAGES_READ = None                # the person's printouts of ssa.gov
+SSA_PAGES_READ = "2026-10-25"        # the person's printouts of ssa.gov
+DHHS_MSP_READ = None                 # the person's printout, still to come
 MEDICARE_START = ("https://www.medicare.gov/basics/get-started-with-medicare/sign-up/"
                   "when-does-medicare-coverage-start")
 MEDICARE_AUTO = ("https://www.medicare.gov/basics/get-started-with-medicare/sign-up/"
@@ -4368,7 +4428,7 @@ MEDICARE_MSP = "https://www.medicare.gov/basics/costs/help/medicare-savings-prog
 MEDICARE_EXTRA = "https://www.medicare.gov/basics/costs/help/drug-costs"
 MEDICARE_CONTACT = "https://www.medicare.gov/talk-to-someone"
 USA_SSA = "https://www.usa.gov/agencies/social-security-administration"
-SSA_RETIRE = "https://www.ssa.gov/benefits/retirement/apply.html"
+SSA_APPLY = "https://www.ssa.gov/apply"
 SSA_MEDICARE = "https://www.ssa.gov/medicare/sign-up"
 SSA_ACCOUNT = "https://www.ssa.gov/myaccount/"
 DHHS_MSP = ("https://www.dhhs.nh.gov/programs-services/medicaid/"
@@ -4411,19 +4471,23 @@ MEDICARE = guide(
      step("Sign up through Social Security",
           "<p>Medicare Part A and Part B are signed up for through the Social Security "
           "Administration, not through Medicare. The easiest way is online, with a my Social "
-          "Security account. You can also call Social Security at 1-800-772-1213 or visit a "
-          "local office.</p>"
+          "Security account, if you are 65 or older. You can also call Social Security at "
+          "1-800-772-1213, Monday through Friday, 8 a.m. to 7 p.m. (TTY 1-800-325-0778), and "
+          "make an appointment. If a job&rsquo;s group health plan covers you, you can delay "
+          "Part B.</p>"
+          "<p>Under 65, you may get Medicare if you receive Social Security disability "
+          "benefits or have permanent kidney failure. SSI alone does not qualify you.</p>"
           "<p>If you already have Part A and are adding Part B because you are losing coverage "
           "through a job, your employer fills out form CMS-L564, which you send to your local "
           "Social Security office.</p>",
           actions=[("Sign up for Medicare (Medicare)", MEDICARE_SIGNUP),
                    ("Sign up for Medicare (Social Security)", SSA_MEDICARE)]),
      step("Apply for Social Security retirement benefits",
-          "<p>You can get retirement benefits from age 62 if you have worked long enough to "
-          "qualify, and you must apply for them: they do not start on their own. Apply online, "
-          "by phone or at a local office. Social Security&rsquo;s page says how far ahead you "
-          "can apply and what to have ready.</p>",
-          actions=[("Apply for retirement benefits (Social Security)", SSA_RETIRE)]),
+          "<p>You can get retirement benefits from age 62 if you have worked and paid Social "
+          "Security taxes for at least 10 years, and you must apply for them: they do not "
+          "start on their own. Apply online on Social Security&rsquo;s Apply page, which also "
+          "lets you enroll in Medicare, or call 1-800-772-1213.</p>",
+          actions=[("Apply for benefits (Social Security)", SSA_APPLY)]),
      step("Choose your coverage, and review it every fall",
           "<p>With Part A and Part B, you choose between Original Medicare, which you can pair "
           "with a separate drug plan, and a Medicare Advantage Plan, which needs both Part A "
@@ -4448,9 +4512,12 @@ MEDICARE = guide(
                    ("Extra Help (Medicare)", MEDICARE_EXTRA)],
           law=["RSA 167:4-g"]),
      step("Manage your benefits online",
-          "<p>A <b>my Social Security</b> account lets you see your benefits and make changes "
-          "online, as Social Security&rsquo;s page lists. Once you have your Medicare card, you "
-          "can also make a Medicare account on Medicare.gov with your Medicare Number.</p>",
+          "<p>A <b>my Social Security</b> account lets you change your address or direct "
+          "deposit, print proof of your benefits or a tax form, request a replacement Social "
+          "Security card, and see your Social Security Statement and earnings record, without "
+          "a call or a visit. You create it through Login.gov or ID.me, with an email address, "
+          "a government-issued photo ID and a phone. Once you have your Medicare card, you can "
+          "also make a Medicare account on Medicare.gov with your Medicare Number.</p>",
           actions=[("my Social Security", SSA_ACCOUNT)])],
     [("When Does Medicare Coverage Start? (Medicare)", MEDICARE_START),
      ("How Do I Sign Up for Medicare? (Medicare)", MEDICARE_AUTO),
@@ -4460,7 +4527,7 @@ MEDICARE = guide(
      ("Help With Drug Costs (Medicare)", MEDICARE_EXTRA),
      ("Contact Medicare (Medicare)", MEDICARE_CONTACT),
      ("Social Security Administration (USA.gov)", USA_SSA),
-     ("Apply for Retirement Benefits (Social Security Administration)", SSA_RETIRE),
+     ("Apply for Social Security Benefits (Social Security Administration)", SSA_APPLY),
      ("Sign Up for Medicare (Social Security Administration)", SSA_MEDICARE),
      ("my Social Security (Social Security Administration)", SSA_ACCOUNT),
      ("Medicare Beneficiaries Savings Program (Department of Health and Human Services)", DHHS_MSP),
@@ -4504,13 +4571,25 @@ MEDICARE = guide(
      claim("The department shall administer the Medicare savings program as described in 42 "
            "U.S.C. section 1396a(a)(10)(E).", "RSA 167:4-g", MC_READ),
      # Social Security's and the Department's own pages, from the person's printouts.
-     claim("Apply for retirement benefits online, by phone or at an office, and how far ahead.",
-           SSA_RETIRE, SSA_PAGES_READ),
-     claim("Sign up for Medicare online, by phone or at an office.", SSA_MEDICARE,
-           SSA_PAGES_READ),
-     claim("What a my Social Security account lets you do.", SSA_ACCOUNT, SSA_PAGES_READ),
+     claim("Retirement benefits: you're at least 62 years old; you've worked and paid Social "
+           "Security taxes for at least 10 years; you may also enroll in Medicare if you are "
+           "eligible. Disability benefits: a medical condition that will last at least one "
+           "year or result in death; you worked and paid Social Security taxes long enough. "
+           "SSI for Disability and SSI for Age 65+: little or no income or assets.",
+           SSA_APPLY, SSA_PAGES_READ),
+     claim("You'll sign up for Medicare Part A and Part B through Social Security; under 65, "
+           "eligible with permanent kidney failure or if you receive Disability benefits; SSI "
+           "does not qualify you for Medicare on its own; if you're 65 or older, you can enroll "
+           "online; you can delay Part B if you're already covered through an employer group "
+           "health plan; make an appointment: call 800-772-1213, Monday through Friday, 8 a.m. "
+           "to 7 p.m.; TTY 800-325-0778.", SSA_MEDICARE, SSA_PAGES_READ),
+     claim("With a personal my Social Security account: request a replacement Social Security "
+           "Number card; change your address or direct deposit; print proof of benefits or tax "
+           "forms; get your Social Security Statement; review earnings; create it through "
+           "Login.gov or ID.me, with an email address, a government-issued photo ID and a phone "
+           "number or a device with a camera.", SSA_ACCOUNT, SSA_PAGES_READ),
      claim("The Medicare Savings Programs in New Hampshire, and how to apply.", DHHS_MSP,
-           SSA_PAGES_READ)]
+           DHHS_MSP_READ)]
     + help_claims("adrc", "nheasy", "legal_aid"),
     more="<h2>Who Can Help</h2>"
          "<p>Medicare answers at 1-800-MEDICARE (1-800-633-4227), 24 hours a day (TTY "
@@ -4524,6 +4603,7 @@ MEDICARE = guide(
              fig("4 months", MEDICARE_AUTO, "at least 4 months before you turn 65"),
              fig("24 months", MEDICARE_AUTO, "disability benefits for 24 months"),
              fig("age 62", CFR_OLD_AGE, "at least 62 years old"),
+             fig("10 years", SSA_APPLY, "for at least 10 years"),
              fig("24 hours", MEDICARE_CONTACT, "24 hours a day")])
 
 GUIDES += [MEDICARE]
@@ -4542,9 +4622,8 @@ GUIDES += [MEDICARE]
 # Independent Living are not state agencies and wait for the person's word.
 # ---------------------------------------------------------------------------
 DIS_READ = "2026-10-25"
-DIS_PAGES_READ = None                # the person's printouts
-SSA_DISABILITY = "https://www.ssa.gov/benefits/disability/"
-SSA_SSI = "https://www.ssa.gov/ssi"
+DIS_PRINT_READ = "2026-10-25"        # the person's printouts, sent 25 October 2026
+SSA_SSI = "https://www.ssa.gov/ssi/eligibility"
 DHHS_APTD = ("https://www.dhhs.nh.gov/programs-services/disability-care/"
              "aid-permanently-totally-disabled")
 DHHS_DEV = "https://www.dhhs.nh.gov/programs-services/disability-care/developmental-services"
@@ -4584,10 +4663,13 @@ DISABILITY = guide(
           "benefits, you get Medicare automatically.</li>"
           "<li><b>SSI</b> (Supplemental Security Income) is for people who are disabled, blind "
           "or 65 or older, and whose income and savings are under its limits.</li></ul>"
-          "<p>Apply as soon as you can: online, by calling 1-800-772-1213, or at a local "
-          "office. Social Security&rsquo;s pages say what to have ready.</p>",
-          actions=[("Disability benefits (Social Security)", SSA_DISABILITY),
-                   ("SSI (Social Security)", SSA_SSI)]),
+          "<p>SSI also counts what you own, such as money in the bank and vehicles, up to a "
+          "limit. Social Security&rsquo;s Who Can Get SSI page gives the income and resource "
+          "limits.</p>"
+          "<p>Apply as soon as you can, online on Social Security&rsquo;s Apply page, or call "
+          "1-800-772-1213 for an appointment.</p>",
+          actions=[("Apply for benefits (Social Security)", SSA_APPLY),
+                   ("Who can get SSI (Social Security)", SSA_SSI)]),
      step("Apply to the state for cash and medical assistance",
           "<p>New Hampshire&rsquo;s <b>Aid to the Permanently and Totally Disabled</b> (APTD) "
           "gives cash assistance to residents between the ages of 18 and 64 who are disabled "
@@ -4599,7 +4681,7 @@ DISABILITY = guide(
           "assistance to working people with a disability between 18 and 64; a similar program, "
           "MOAD, is for those 65 and older. You must be working when you enroll.</p>"
           "<p>Apply for either through NH Easy, or at a Department of Health and Human Services "
-          "District Office.</p>",
+          "District Office, where a worker helps you through the application interview.</p>",
           actions=[("NH Easy", NHEASY), ("APTD (Department of Health and Human Services)", DHHS_APTD)],
           law=["RSA 167:6"]),
      step("Services for a developmental disability: your area agency",
@@ -4617,8 +4699,11 @@ DISABILITY = guide(
           "<p>The Department of Education&rsquo;s <b>Bureau of Vocational Rehabilitation</b> "
           "helps people with disabilities prepare for, find and keep a job, under the federal "
           "vocational rehabilitation program. Its independent living program helps people with "
-          "disabilities, and older people who are blind, live more independently. Its page says "
-          "how to apply.</p>",
+          "disabilities, and older people who are blind, live more independently.</p>"
+          "<p>Any New Hampshire resident with a disability may qualify, whether looking for a "
+          "first job or wanting to keep working after a disability. Its help includes career "
+          "counseling, job training, help finding a job, and assistive technology. To apply, "
+          "fill in the online referral form on its page.</p>",
           actions=[("Vocational Rehabilitation (Department of Education)", NHVR)],
           law=["RSA 200-C:1", "RSA 200-C:24"]),
      step("If you are turned down",
@@ -4629,8 +4714,8 @@ DISABILITY = guide(
           "not need a lawyer, and free legal aid can help with benefits appeals (below).</p>",
           actions=[("Administrative appeals (Department of Health and Human Services)",
                     DHHS_APPEALS)])],
-    [("Disability Benefits (Social Security Administration)", SSA_DISABILITY),
-     ("Supplemental Security Income (Social Security Administration)", SSA_SSI),
+    [("Apply for Social Security Benefits (Social Security Administration)", SSA_APPLY),
+     ("Who Can Get SSI (Social Security Administration)", SSA_SSI),
      ("Aid to the Permanently and Totally Disabled (Department of Health and Human Services)",
       DHHS_APTD),
      ("Developmental Services (Department of Health and Human Services)", DHHS_DEV),
@@ -4641,8 +4726,8 @@ DISABILITY = guide(
      ("Who may get SSI benefits, 20 CFR 416.202 (federal)", CFR_SSI),
      ("How to request reconsideration, 20 CFR 404.909 (federal)", CFR_RECONSIDER),
      ("Public Assistance to Blind, Aged, or Disabled Persons, RSA 167", "/laws/167"),
-     ("Services for the Developmentally Disabled, RSA 171-A", "/laws/171-A"),
-     ("Vocational Rehabilitation, RSA 200-C", "/laws/200-C")],
+     ("Services for the Developmentally Disabled, RSA 171-A", "/laws/171-a"),
+     ("Vocational Rehabilitation, RSA 200-C", "/laws/200-c")],
     ["167", "171-A", "200-C"],
     [# The federal rules, read at eCFR on 25 October 2026.
      claim("Disability is the inability to do any substantial gainful activity by reason of a "
@@ -4685,14 +4770,37 @@ DISABILITY = guide(
      # Read before, for the food and health guide.
      claim("Appeal in writing by form or letter; no attorney needed.", DHHS_APPEALS, READ),
      # The agencies' own pages, from the person's printouts.
-     claim("SSDI and SSI, and how to apply online, by phone or at an office.", SSA_DISABILITY,
-           DIS_PAGES_READ),
-     claim("SSI: limited income and resources; disabled, blind or 65 or older; how to apply.",
-           SSA_SSI, DIS_PAGES_READ),
-     claim("APTD: who is eligible and how to apply.", DHHS_APTD, DIS_PAGES_READ),
-     claim("The area agencies, the regions they serve, and how to apply.", DHHS_DEV,
-           DIS_PAGES_READ),
-     claim("Vocational rehabilitation: who is eligible and how to apply.", NHVR, DIS_PAGES_READ)]
+     claim("Disability benefits: you have a medical condition that will last at least one "
+           "year or result in death; your condition makes it hard or impossible to work; you "
+           "worked and paid Social Security taxes long enough. SSI for Disability: you're "
+           "blind or have a disability; little or no income or assets.", SSA_APPLY,
+           DIS_PRINT_READ),
+     claim("Adults and children might be eligible for SSI if they have little or no income, "
+           "little or no resources, and a disability, blindness, or are age 65 or older; "
+           "common resources are vehicles and money in bank accounts, with limits for "
+           "individuals and couples; if you're age 64 or younger, a disability that affects "
+           "your ability to work for a year or more, or will result in death.", SSA_SSI,
+           DIS_PRINT_READ),
+     claim("Aid to the Permanently and Totally Disabled (APTD) is cash assistance for individuals "
+           "who are between the ages of 18 and 64 and who are physically or mentally disabled; "
+           "if you are eligible for cash assistance, you are also eligible for medical "
+           "assistance; you must apply for all potential kinds of income, such as Social "
+           "Security Benefits (including SSI); a medical condition that stops you from working "
+           "and that is expected to last for at least 48 months or result in death; to apply, "
+           "visit a DHHS District Office and speak with a DHHS worker; you may request an "
+           "Administrative Appeals hearing.", DHHS_APTD, DIS_PRINT_READ),
+     claim("The Bureau of Developmental Services supports individuals of all ages with "
+           "developmental disabilities or acquired brain disorders; ten (10) designated "
+           "non-profit area agencies that represent specific geographic regions of NH; supports "
+           "include service coordination, day and vocational services, personal care, community "
+           "support, Early Supports and Services, assistive technology and respite; BDS, "
+           "(603) 271-5034.", DHHS_DEV, DIS_PRINT_READ),
+     claim("If you're a New Hampshire resident with a disability, you may qualify for vocational "
+           "rehabilitation (VR) services from VR New Hampshire: career counseling, educational "
+           "guidance, job training, job search assistance, help securing assistive technology; "
+           "for people seeking employment for the first time and those who want to continue "
+           "working after acquiring a disability; to apply, complete the online referral form; "
+           "(603) 271-3494.", NHVR, DIS_PRINT_READ)]
     + help_claims("adrc", "nheasy", "legal_aid"),
     more="<h2>Who Can Help</h2>"
          "<p>Social Security answers at 1-800-772-1213. For help with the state&rsquo;s "
@@ -4728,7 +4836,8 @@ GUIDES += [DISABILITY]
 # for the person's printouts.
 # ---------------------------------------------------------------------------
 WC_READ = "2026-10-25"
-WC_STATE_READ = None                 # the person's printouts of the nh.gov pages
+WC_STATE_READ = None                 # the person's printouts still to come
+WC_PRINT_READ = "2026-10-25"         # the person's printouts, sent 25 October 2026
 SENATE_CONTACT = "https://www.senate.gov/senators/senators-contact.htm"
 HOUSE_FIND = "https://www.house.gov/representatives/find-your-representative"
 CASEWORK_SENATE = "https://www.hassan.senate.gov/services/help-with-a-federal-agency"
@@ -4787,7 +4896,9 @@ WHO_TO_CONTACT = guide(
           "Each guide here links the agency&rsquo;s page.</p>"
           "<p>If you cannot get an answer, the <b>Governor&rsquo;s office</b> takes requests for "
           "help from residents, and your <b>Executive Councilor</b>, one of five elected by "
-          "district, helps residents with state agencies.</p>",
+          "district every two years, serves, in the Council&rsquo;s own words, as an advocate "
+          "for the people and their eyes and ears in Concord. The Council&rsquo;s office is at "
+          "(603) 271-3632.</p>",
           actions=[("Contact the Governor's office", GOVERNOR_CONTACT),
                    ("The Executive Council", COUNCIL_CONTACT)]),
      step("A state law or a bill",
@@ -4868,8 +4979,12 @@ WHO_TO_CONTACT = guide(
      # The Governor's and the Council's own pages, from the person's printouts.
      claim("The Governor's office takes requests for assistance from residents.", GOVERNOR_CONTACT,
            WC_STATE_READ),
-     claim("Executive Councilors help residents with state agencies; five councilors elected by "
-           "district.", COUNCIL_ABOUT, WC_STATE_READ),
+     claim("Each of the five Executive Councilors represents one fifth of the population; "
+           "Councilors are elected every two years, concurrently with the Governor; the candidate "
+           "must live in the district; Executive Councilors are the constituent's eyes and ears "
+           "in Concord; Councilors are elected every two years to serve as advocates for the "
+           "people; 107 North Main Street, State House, Room 207, (603) 271-3632.",
+           COUNCIL_ABOUT, WC_PRINT_READ),
      claim("How to contact each councilor and the Council's office.", COUNCIL_CONTACT, WC_STATE_READ)],
     see=[("How to find your representatives", "/guides/your-representatives.html"),
          ("How to contact your legislators", "/guides/contact-your-legislators.html")])

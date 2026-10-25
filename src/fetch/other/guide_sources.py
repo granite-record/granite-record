@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-10-11.16
+# GRANITE_VERSION: 2026-10-11.17
 """
 The official pages the how-to guides cite, onto this disk, to check them by.
 
@@ -192,8 +192,9 @@ SOURCES = {
         "https://www.sos.nh.gov/elections/qualifications-office",
     ],
     # The Medicare and disability guides (25 October 2026), from the
-    # person's printouts.
-    "medicare_and_disability": [
+    # person's printouts. Its own key: under "medicare_and_disability", the
+    # name of the list below, the later list replaced this one.
+    "medicare_and_disability_state": [
         "https://www.dhhs.nh.gov/programs-services/medicaid/nh-medicaid-medical-assistance-eligibility/medicare-beneficiaries",
         "https://www.dhhs.nh.gov/programs-services/disability-care/aid-permanently-totally-disabled",
         "https://www.dhhs.nh.gov/programs-services/disability-care/developmental-services",
@@ -284,13 +285,11 @@ OTHER = {
     # from the person's printouts, as travel.state.gov refuses a cloud
     # session; the Postal Service's page and the federal rules, read that day.
     "passport": [
-        "https://travel.state.gov/content/travel/en/passports/need-passport/apply-in-person.html",
-        "https://travel.state.gov/content/travel/en/passports/have-passport/renew.html",
+        "https://travel.state.gov/en/passports/apply/adults.html",
+        "https://travel.state.gov/en/passports/renew-replace/online.html",
         "https://travel.state.gov/en/passports/apply/child/under-16.html",
-        "https://travel.state.gov/content/travel/en/passports/how-apply/fees.html",
-        "https://travel.state.gov/content/travel/en/passports/how-apply/processing-times.html",
-        "https://travel.state.gov/content/travel/en/passports/how-apply/where-to-apply.html",
-        "https://travel.state.gov/en/passports/apply/get-fast/make-appointment/national-passport-center.html",
+        "https://travel.state.gov/en/passports/apply/get-fast.html",
+        "https://travel.state.gov/en/passports/apply/get-fast/make-appointment.html",
         "https://www.usps.com/international/passports.htm",
         "https://www.ecfr.gov/current/title-22/chapter-I/subchapter-F/part-51/subpart-A/section-51.4",
         "https://www.ecfr.gov/current/title-22/chapter-I/subchapter-F/part-51/subpart-B/section-51.21",
@@ -311,11 +310,10 @@ OTHER = {
         "https://www.medicare.gov/basics/costs/help/drug-costs",
         "https://www.medicare.gov/talk-to-someone",
         "https://www.usa.gov/agencies/social-security-administration",
-        "https://www.ssa.gov/benefits/retirement/apply.html",
+        "https://www.ssa.gov/apply",
         "https://www.ssa.gov/medicare/sign-up",
         "https://www.ssa.gov/myaccount/",
-        "https://www.ssa.gov/benefits/disability/",
-        "https://www.ssa.gov/ssi",
+        "https://www.ssa.gov/ssi/eligibility",
         "https://www.ecfr.gov/current/title-20/section-404.310",
         "https://www.ecfr.gov/current/title-20/section-404.315",
         "https://www.ecfr.gov/current/title-20/section-404.909",
