@@ -1679,7 +1679,13 @@ function ytDraw(){
       +'<ul class="ytalist" id="ytalist" role="listbox" aria-label="'+_fesc(tr("yt.sugg","Suggested addresses"))+'" hidden></ul>'
       +'<p class="sr" id="ytasay" role="status"></p></form>'
       +'<div class="ytares" id="ytares" role="status"></div>'
-      +'<p class="ytpriv">'+tr("yt.addr_privacy","Suggestions come from this site&rsquo;s own list of New Hampshire streets and are matched in your browser, so this site sees only the first two letters of the street. The address you look up goes from your browser to the US Census Bureau&rsquo;s address lookup and is not kept anywhere. Only the town or ward it finds is saved.")+'</p></details>'
+      // WHAT THIS SITE CAN SAY OF THE ADDRESS (the person, 25 October 2026:
+      // "I approve the privacy text update"). It said the address "is not
+      // kept anywhere", which is a claim about the Census Bureau's servers
+      // that nobody here can know; what is known is that ytGeocode's script
+      // tag goes from the browser to the Census and nothing here receives it.
+      // The Data page's Privacy in Detail says the same at more length.
+      +'<p class="ytpriv">'+tr("yt.addr_privacy","Suggestions come from this site&rsquo;s own list of New Hampshire streets and are matched in your browser, so this site sees only the first two letters of the street. The address you look up goes from your browser to the US Census Bureau&rsquo;s address lookup and never reaches this site. Only the town or ward it finds is saved.")+'</p></details>'
       +(p?'<p class="ytacts"><button type="button" class="ytbtn2 ytquiet" id="ytback">'+tr("yt.keep","Keep {place}",{place:_fesc(p.n)})+"</button></p>":"");
   }
   h+='<p class="ytpriv">'+tr("yt.privacy","Saved in this browser only. Nothing about it is sent to Granite Record.")+'</p>';

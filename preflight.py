@@ -34013,8 +34013,38 @@ def _addr_suggest():
         assert need in draw, f"the address box's markup or its form lost {need}"
     assert "matched in your browser" in draw and "US Census Bureau" in draw, \
         "the privacy line no longer says where the suggestions and the address go"
+    # WHAT THIS SITE CAN KNOW OF THE ADDRESS (the person, 25 October 2026: "I
+    # approve the privacy text update"). The line said the address "is not
+    # kept anywhere", a claim about the Census Bureau's servers nobody here
+    # can know. It says what ytGeocode does -- the address goes from the
+    # browser to the Census and never reaches this site -- in English and in
+    # its Spanish, and the Data page's Privacy in Detail, which said nothing
+    # of the address box, says where the street's two letters and the
+    # address go.
+    line = re.search(r'tr\("yt\.addr_privacy","([^"]*)"\)', draw)
+    assert line, "the address box has no privacy line"
+    assert "never reaches this site" in line.group(1) and "kept anywhere" not in line.group(1), (
+        "the privacy line does not say the address never reaches this site, or claims again that "
+        f"it is not kept anywhere: {line.group(1)!r}")
+    import i18n
+    es = i18n.catalog("es")["strings"]["yt.addr_privacy"]["es"]
+    assert "nunca llega a este sitio" in es and "ningún lugar" not in es, (
+        f"the privacy line's Spanish does not say what the English now says: {es!r}")
+    assert "geocoding.geo.census.gov/" in src and 'fetch("/addr/"+k+".json")' in part, (
+        "the address no longer goes to the Census's geocoder, or the street list is no longer this "
+        "site's own: the words below describe what it did")
+    import build_exports as BE
+    detail = " ".join(BE.PRIVACY.split())
+    for need in ("<i>Your town</i>", "first two letters", "so this site sees only those two letters",
+                 "your browser sends the address to the US Census Bureau&rsquo;s address lookup",
+                 "this site does not", "only in your browser"):
+        assert need in detail, (
+            f"the Data page's Privacy in Detail does not say of the address box {need!r}")
+    assert "kept anywhere" not in detail, "the Data page claims what the Census Bureau keeps"
     return "ok", ("a combobox by the arrow keys, Enter, Escape and a tap; only /addr/<key>.json "
-                  "asked while typing; a 404 or the network down is no list and no error")
+                  "asked while typing; a 404 or the network down is no list and no error; and the "
+                  "privacy line, its Spanish and the Data page say the address goes to the Census "
+                  "and never to this site")
 
 
 @check("build", "every builder runs end to end on a fixture site")
@@ -75941,8 +75971,29 @@ def _about_reports():
         assert said and f"deleted after {said}" in text, (
             f"compile_reports deletes a report after {k.group(1)} days; {page} does not "
             f"say \"deleted after {said or k.group(1) + ' days'}\"")
+    # AND THE BOX FOR A MISTAKE IN THE TRANSLATION (the person, 25 October
+    # 2026: "I approve the privacy text update"). A page in Spanish sends a
+    # report of its own kind from components.js to the same /api/report, so
+    # report.js stores it with the others and compile_reports deletes it with
+    # them. The detail had not said so. It names the box as the footer labels
+    # it, in Spanish, and says what the report holds and how long it is kept.
+    import i18n
+    trlabel = i18n.catalog("es")["strings"]["foot.tr_report"]["es"]
+    comp = Path("src/pages/components.js").read_text(encoding="utf-8")
+    trbox = comp[comp.index("// A MISTAKE IN A TRANSLATION"):]
+    assert 'fetch("/api/report"' in trbox and 'record:"translation:"+url' in trbox, (
+        "the translation's box no longer posts to /api/report, so it is not kept and deleted as a report is")
+    trpara = next((p for p in re.findall(r"<p>(.*?)</p>", detail) if "translation" in p), "")
+    assert f'<i lang="es">{trlabel}</i>' in trpara, (
+        "the Data page's Privacy in Detail does not name the translation's box as a page in Spanish "
+        f"labels it, <i lang=\"es\">{trlabel}</i>")
+    for need in ("the page&rsquo;s address", "what you wrote", "the words you had selected",
+                 "nothing in it identifies you", f"deleted after {said}"):
+        assert need in trpara, (
+            f"the Data page's Privacy in Detail does not say of a translation report {need!r}")
     return "ok", (f"the box named as it is labelled, and deleted after {said}, as the compiler "
-                  "does, on About and in the Data page's Privacy in Detail")
+                  "does, on About and in the Data page's Privacy in Detail; and the translation's "
+                  "box named in Spanish, what it sends and that it goes the same way")
 
 
 # Sentences the About page, the Data page and manifest.json carried on 23
