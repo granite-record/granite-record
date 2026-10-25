@@ -1,0 +1,7228 @@
+{
+ "_about": {
+  "rule": "a street address shown only where two sources agree on its number and street",
+  "sources": {
+   "nhdot": "NHDOT's directory of city and town officials (collected/town_officials.json)",
+   "sos_list": "the Secretary of State's list of town and city clerks (collected/town_clerks.json)",
+   "granit_cai": "NH GRANIT's Community Anchor Institutions layer, as of 2014-09-30: https://ftp.granit.unh.edu/GRANIT_Data/Vector_Data/Cultural_Society_and_Demographic/d-communityanchorinstitutions/; not for legal use, no access constraints",
+   "town_site": "the town's own website, as saved in town_sites/"
+  },
+  "writer": "src/towns/parse_town_halls.py"
+ },
+ "acworth": {
+  "street": "",
+  "place": "",
+  "zip": "",
+  "from": [],
+  "survey": {
+   "kind": "Town Office",
+   "street": "13 Town Hall Rd",
+   "place": "Acworth",
+   "zip": "03601",
+   "lat": 43.219104,
+   "lon": -72.294404,
+   "surveyed": "2014-09-30",
+   "agrees": false,
+   "raw": {
+    "name": "Acworth - Town Office",
+    "address": "13 Town Hall Rd, Acworth, NH 03601"
+   }
+  }
+ },
+ "albany": {
+  "street": "1972 NH Rte 16",
+  "place": "Albany",
+  "zip": "03818",
+  "from": [
+   {
+    "source": "granit_cai",
+    "on": "2014-09-30"
+   },
+   {
+    "source": "sos_list",
+    "on": "2026-09-20",
+    "said": "1972 NH Route 16 Albany 03818"
+   }
+  ],
+  "survey": {
+   "kind": "Town Offices",
+   "street": "1972 NH Rte 16",
+   "place": "Albany",
+   "zip": "03818",
+   "lat": 43.960459,
+   "lon": -71.19312,
+   "surveyed": "2014-09-30",
+   "agrees": true,
+   "raw": {
+    "name": "Albany - Town Offices",
+    "address": "1972 NH Rte 16 Rte, Albany, NH 03818"
+   }
+  }
+ },
+ "alexandria": {
+  "street": "47 Washburn Rd A",
+  "place": "Alexandria",
+  "zip": "03222",
+  "from": [
+   {
+    "source": "nhdot",
+    "on": "2025-09-02",
+    "said": "47 Washburn Rd A, Alexandria, NH 03222"
+   },
+   {
+    "source": "sos_list",
+    "on": "2026-09-20",
+    "said": "47 Washburn Road A Alexandria 03222"
+   },
+   {
+    "source": "granit_cai",
+    "on": "2014-09-30"
+   }
+  ],
+  "survey": {
+   "kind": "Town Hall",
+   "street": "47 Washburn Rd",
+   "place": "Alexandria",
+   "zip": "03222",
+   "lat": 43.611541,
+   "lon": -71.797437,
+   "surveyed": "2014-09-30",
+   "agrees": true,
+   "raw": {
+    "name": "Alexandria - Town Hall",
+    "address": "47 Washburn Rd, Alexandria, NH 03222"
+   }
+  }
+ },
+ "allenstown": {
+  "street": "16 School St",
+  "place": "Allenstown",
+  "zip": "03275",
+  "from": [
+   {
+    "source": "nhdot",
+    "on": "2025-09-02",
+    "said": "16 School St, Allenstown, NH 03275"
+   },
+   {
+    "source": "sos_list",
+    "on": "2026-09-20",
+    "said": "16 School Street Allenstown 03275"
+   },
+   {
+    "source": "granit_cai",
+    "on": "2014-09-30"
+   }
+  ],
+  "survey": {
+   "kind": "Town Offices",
+   "street": "16 School St",
+   "place": "Allenstown",
+   "zip": "03275",
+   "lat": 43.127404,
+   "lon": -71.451304,
+   "surveyed": "2014-09-30",
+   "agrees": true,
+   "raw": {
+    "name": "Allenstown - Town Offices",
+    "address": "16 School St, Allenstown, NH 03275"
+   }
+  }
+ },
+ "alstead": {
+  "street": "15 Mechanic St",
+  "place": "Alstead",
+  "zip": "03602",
+  "from": [
+   {
+    "source": "granit_cai",
+    "on": "2014-09-30"
+   },
+   {
+    "source": "nhdot",
+    "on": "2025-09-02",
+    "said": "15 Mechanic St, Alstead, NH 03602"
+   }
+  ],
+  "survey": {
+   "kind": "Town Offices",
+   "street": "15 Mechanic St",
+   "place": "Alstead",
+   "zip": "03602",
+   "lat": 43.149457,
+   "lon": -72.360191,
+   "surveyed": "2014-09-30",
+   "agrees": true,
+   "raw": {
+    "name": "Alstead - Town Offices",
+    "address": "15 Mechanic St, Alstead, NH 03602"
+   }
+  }
+ },
+ "alton": {
+  "street": "1 Monument Sq",
+  "place": "Alton",
+  "zip": "03809",
+  "from": [
+   {
+    "source": "granit_cai",
+    "on": "2014-09-30"
+   },
+   {
+    "source": "nhdot",
+    "on": "2025-09-02",
+    "said": "PO Box 659, 1 Monument Sq, Alton ,NH 03809"
+   }
+  ],
+  "survey": {
+   "kind": "Town Hall",
+   "street": "1 Monument Sq",
+   "place": "Alton",
+   "zip": "03809",
+   "lat": 43.456284,
+   "lon": -71.220536,
+   "surveyed": "2014-09-30",
+   "agrees": true,
+   "raw": {
+    "name": "Alton - Town Hall",
+    "address": "1 Monument Sq, Alton, NH 03809"
+   }
+  }
+ },
+ "amherst": {
+  "street": "2 Main St",
+  "place": "Amherst",
+  "zip": "03031",
+  "from": [
+   {
+    "source": "nhdot",
+    "on": "2025-09-02",
+    "said": "2 Main St, Amherst, NH 03031"
+   },
+   {
+    "source": "sos_list",
+    "on": "2026-09-20",
+    "said": "2 Main St Amherst 03031"
+   },
+   {
+    "source": "granit_cai",
+    "on": "2014-09-30"
+   }
+  ],
+  "survey": {
+   "kind": "Town Hall",
+   "street": "2 Main St",
+   "place": "Amherst",
+   "zip": "03031",
+   "lat": 42.864508,
+   "lon": -71.623938,
+   "surveyed": "2014-09-30",
+   "agrees": true,
+   "raw": {
+    "name": "Amherst - Town Hall",
+    "address": "2 Main St, Amherst, NH 03031"
+   }
+  }
+ },
+ "andover": {
+  "street": "",
+  "place": "",
+  "zip": "",
+  "from": [],
+  "survey": {
+   "kind": "Town Hall",
+   "street": "31 School St",
+   "place": "Andover",
+   "zip": "03216",
+   "lat": 43.436206,
+   "lon": -71.82071,
+   "surveyed": "2014-09-30",
+   "agrees": false,
+   "raw": {
+    "name": "Andover - Town Hall",
+    "address": "31 School St, Andover, NH 03216"
+   }
+  }
+ },
+ "antrim": {
+  "street": "66 Main St",
+  "place": "Antrim",
+  "zip": "03440",
+  "from": [
+   {
+    "source": "granit_cai",
+    "on": "2014-09-30"
+   },
+   {
+    "source": "nhdot",
+    "on": "2025-09-02",
+    "said": "PO Box 517, 66 Main St, Antrim, NH 03440"
+   }
+  ],
+  "survey": {
+   "kind": "Town Offices",
+   "street": "66 Main St",
+   "place": "Antrim",
+   "zip": "03440",
+   "lat": 43.029946,
+   "lon": -71.938294,
+   "surveyed": "2014-09-30",
+   "agrees": true,
+   "raw": {
+    "name": "Antrim - Town Offices",
+    "address": "66 Main St, Antrim, NH 03440"
+   }
+  }
+ },
+ "ashland": {
+  "street": "20 Highland St",
+  "place": "Ashland",
+  "zip": "03217",
+  "from": [
+   {
+    "source": "granit_cai",
+    "on": "2014-09-30"
+   },
+   {
+    "source": "nhdot",
+    "on": "2025-09-02",
+    "said": "20 Highland St, PO Box 517, Ashland,NH 03217"
+   }
+  ],
+  "survey": {
+   "kind": "Town Hall",
+   "street": "20 Highland St",
+   "place": "Ashland",
+   "zip": "03217",
+   "lat": 43.695576,
+   "lon": -71.63127,
+   "surveyed": "2014-09-30",
+   "agrees": true,
+   "raw": {
+    "name": "Ashland - Town Hall",
+    "address": "20 Highland St, Ashland, NH 03217"
+   }
+  }
+ },
+ "atkinson": {
+  "street": "19 Academy Ave",
+  "place": "Atkinson",
+  "zip": "03811",
+  "from": [
+   {
+    "source": "nhdot",
+    "on": "2025-09-02",
+    "said": "19 Academy Ave, Atkinson, NH 03811"
+   },
+   {
+    "source": "sos_list",
+    "on": "2026-09-20",
+    "said": "19 Academy Ave Atkinson 03811"
+   }
+  ],
+  "survey": {
+   "kind": "Town Hall",
+   "street": "21 Academy Ave",
+   "place": "Atkinson",
+   "zip": "03811",
+   "lat": 42.840253,
+   "lon": -71.144996,
+   "surveyed": "2014-09-30",
+   "agrees": false,
+   "raw": {
+    "name": "Atkinson -  Town Hall",
+    "address": "21 Academy Ave, Atkinson, NH 03811"
+   }
+  }
+ },
+ "auburn": {
+  "street": "47 Chester Rd",
+  "place": "Auburn",
+  "zip": "03032",
+  "from": [
+   {
+    "source": "nhdot",
+    "on": "2025-09-02",
+    "said": "47 Chester Rd, PO Box 309, Auburn, NH 03032"
+   },
+   {
+    "source": "sos_list",
+    "on": "2026-09-20",
+    "said": "47 Chester Rd Auburn 03032"
+   },
+   {
+    "source": "granit_cai",
+    "on": "2014-09-30"
+   }
+  ],
+  "survey": {
+   "kind": "Town Hall",
+   "street": "47 Chester Rd",
+   "place": "Auburn",
+   "zip": "03032",
+   "lat": 43.001877,
+   "lon": -71.345747,
+   "surveyed": "2014-09-30",
+   "agrees": true,
+   "raw": {
+    "name": "Auburn - Town Hall",
+    "address": "47 Chester Rd, Auburn, NH 03032"
+   }
+  }
+ },
+ "barnstead": {
+  "street": "108 S Barnstead Rd",
+  "place": "Barnstead",
+  "zip": "03218",
+  "from": [
+   {
+    "source": "granit_cai",
+    "on": "2014-09-30"
+   },
+   {
+    "source": "nhdot",
+    "on": "2025-09-02",
+    "said": "108 S Barnstead Rd,"
+   }
+  ],
+  "survey": {
+   "kind": "Town Hall",
+   "street": "108 S Barnstead Rd",
+   "place": "Barnstead",
+   "zip": "03218",
+   "lat": 43.339759,
+   "lon": -71.259389,
+   "surveyed": "2014-09-30",
+   "agrees": true,
+   "raw": {
+    "name": "Barnstead - Town Hall",
+    "address": "108S Barnstead Rd, Barnstead, NH 03218"
+   }
+  }
+ },
+ "barrington": {
+  "street": "",
+  "place": "",
+  "zip": "",
+  "from": [],
+  "survey": {
+   "kind": "Town Hall",
+   "street": "333 Calef Hwy",
+   "place": "Barrington",
+   "zip": "03825",
+   "lat": 43.219689,
+   "lon": -71.038085,
+   "surveyed": "2014-09-30",
+   "agrees": false,
+   "raw": {
+    "name": "Barrington - Town Hall",
+    "address": "333 Calef Hwy, Barrington, NH 03825"
+   }
+  }
+ },
+ "bartlett": {
+  "street": "56 Town Hall Rd",
+  "place": "Bartlett",
+  "zip": "03812",
+  "from": [
+   {
+    "source": "nhdot",
+    "on": "2025-09-02",
+    "said": "56 Town Hall Rd, Bartlett, NH 03812"
+   },
+   {
+    "source": "sos_list",
+    "on": "2026-09-20",
+    "said": "56 Town Hall Road Bartlett 03845"
+   },
+   {
+    "source": "granit_cai",
+    "on": "2014-09-30"
+   }
+  ],
+  "survey": {
+   "kind": "Town Offices",
+   "street": "56 Town Hall Rd",
+   "place": "Intervale",
+   "zip": "03845",
+   "lat": 44.102215,
+   "lon": -71.147721,
+   "surveyed": "2014-09-30",
+   "agrees": true,
+   "raw": {
+    "name": "Bartlett - Town Offices",
+    "address": "56 Town Hall Rd, Intervale, NH 03845"
+   }
+  }
+ },
+ "bath": {
+  "street": "",
+  "place": "",
+  "zip": "",
+  "from": [],
+  "survey": {
+   "kind": "Town Offices",
+   "street": "4 W Bath Rd",
+   "place": "Bath",
+   "zip": "03740",
+   "lat": 44.167451,
+   "lon": -71.965703,
+   "surveyed": "2014-09-30",
+   "agrees": false,
+   "raw": {
+    "name": "Bath - Town Offices",
+    "address": "4W Bath Rd, Bath, NH 03740"
+   }
+  }
+ },
+ "bedford": {
+  "street": "24 N Amherst Rd",
+  "place": "Bedford",
+  "zip": "03110",
+  "from": [
+   {
+    "source": "nhdot",
+    "on": "2025-09-02",
+    "said": "24 N Amherst Rd, Bedford, NH 03110"
+   },
+   {
+    "source": "sos_list",
+    "on": "2026-09-20",
+    "said": "24 North Amherst Rd Bedford 03110"
+   },
+   {
+    "source": "granit_cai",
+    "on": "2014-09-30"
+   }
+  ],
+  "survey": {
+   "kind": "Town Offices",
+   "street": "24 N Amherst Rd",
+   "place": "Bedford",
+   "zip": "03110",
+   "lat": 42.942884,
+   "lon": -71.522323,
+   "surveyed": "2014-09-30",
+   "agrees": true,
+   "raw": {
+    "name": "Bedford - Town Offices",
+    "address": "24N Amherst Rd, Bedford, NH 03110"
+   }
+  }
+ },
+ "belmont": {
+  "street": "143 Main St",
+  "place": "Belmont",
+  "zip": "03220",
+  "from": [
+   {
+    "source": "granit_cai",
+    "on": "2014-09-30"
+   },
+   {
+    "source": "nhdot",
+    "on": "2025-09-02",
+    "said": "143 Main St, PO Box 310,"
+   }
+  ],
+  "survey": {
+   "kind": "Town Hall",
+   "street": "143 Main St",
+   "place": "Belmont",
+   "zip": "03220",
+   "lat": 43.442981,
+   "lon": -71.481702,
+   "surveyed": "2014-09-30",
+   "agrees": true,
+   "raw": {
+    "name": "Belmont - Town Hall",
+    "address": "143 Main St, Belmont, NH 03220"
+   }
+  }
+ },
+ "bennington": {
+  "street": "7 School St Unit 101",
+  "place": "Bennington",
+  "zip": "03442",
+  "from": [
+   {
+    "source": "nhdot",
+    "on": "2025-09-02",
+    "said": "7 School St Unit 101, Bennington, NH 03442"
+   },
+   {
+    "source": "sos_list",
+    "on": "2026-09-20",
+    "said": "7 School Street 101 Bennington 03442"
+   },
+   {
+    "source": "granit_cai",
+    "on": "2014-09-30"
+   }
+  ],
+  "survey": {
+   "kind": "Town Offices",
+   "street": "7 School St",
+   "place": "Bennington",
+   "zip": "03442",
+   "lat": 43.001392,
+   "lon": -71.924644,
+   "surveyed": "2014-09-30",
+   "agrees": true,
+   "raw": {
+    "name": "Bennington - Town Offices",
+    "address": "7 School St, Bennington, NH 03442"
+   }
+  }
+ },
+ "benton": {
+  "street": "",
+  "place": "",
+  "zip": "",
+  "from": [],
+  "survey": {
+   "kind": "Town Office",
+   "street": "547 Bradley Hill Rd",
+   "place": "Benton",
+   "zip": "03585",
+   "lat": 44.102852,
+   "lon": -71.899188,
+   "surveyed": "2014-09-30",
+   "agrees": false,
+   "raw": {
+    "name": "Benton - Town Office",
+    "address": "547 Bradley Hill Rd, Benton, NH 03585"
+   }
+  }
+ },
+ "berlin": {
+  "street": "168 Main St",
+  "place": "Berlin",
+  "zip": "03570",
+  "from": [
+   {
+    "source": "nhdot",
+    "on": "2025-09-02",
+    "said": "168 Main St, Berlin, NH 03570"
+   },
+   {
+    "source": "sos_list",
+    "on": "2026-09-20",
+    "said": "168 Main Street Berlin 03570"
+   },
+   {
+    "source": "granit_cai",
+    "on": "2014-09-30"
+   }
+  ],
+  "survey": {
+   "kind": "City Hall",
+   "street": "168 Main St",
+   "place": "Berlin",
+   "zip": "03570",
+   "lat": 44.470067,
+   "lon": -71.180024,
+   "surveyed": "2014-09-30",
+   "agrees": true,
+   "raw": {
+    "name": "Berlin - City Hall",
+    "address": "168 Main St, Berlin, NH 03570"
+   }
+  }
+ },
+ "bethlehem": {
+  "street": "2155 Main St",
+  "place": "Bethlehem",
+  "zip": "03574",
+  "from": [
+   {
+    "source": "granit_cai",
+    "on": "2014-09-30"
+   },
+   {
+    "source": "nhdot",
+    "on": "2025-09-02",
+    "said": "2155 Main St, PO Box"
+   }
+  ],
+  "survey": {
+   "kind": "Town Offices",
+   "street": "2155 Main St",
+   "place": "Bethlehem",
+   "zip": "03574",
+   "lat": 44.280622,
+   "lon": -71.686659,
+   "surveyed": "2014-09-30",
+   "agrees": true,
+   "raw": {
+    "name": "Bethlehem - Town Offices",
+    "address": "2155 Main St, Bethlehem, NH 03574"
+   }
+  }
+ },
+ "boscawen": {
+  "street": "116 N Main St",
+  "place": "Boscawen",
+  "zip": "03303",
+  "from": [
+   {
+    "source": "nhdot",
+    "on": "2025-09-02",
+    "said": "116 N Main St, Boscawen, NH 03303"
+   },
+   {
+    "source": "sos_list",
+    "on": "2026-09-20",
+    "said": "116 N Main Street Boscawen 03303"
+   },
+   {
+    "source": "granit_cai",
+    "on": "2014-09-30"
+   }
+  ],
+  "survey": {
+   "kind": "Municipal Offices",
+   "street": "116 N Main St",
+   "place": "Boscawen",
+   "zip": "03303",
+   "lat": 43.2893,
+   "lon": -71.603503,
+   "surveyed": "2014-09-30",
+   "agrees": true,
+   "raw": {
+    "name": "Boscawen - Municipal Offices",
+    "address": "116N Main St, Boscawen, NH 03303"
+   }
+  }
+ },
+ "bow": {
+  "street": "10 Grandview Rd",
+  "place": "Bow",
+  "zip": "03304",
+  "from": [
+   {
+    "source": "nhdot",
+    "on": "2025-09-02",
+    "said": "10 Grandview Rd, Bow, NH 03304"
+   },
+   {
+    "source": "sos_list",
+    "on": "2026-09-20",
+    "said": "10 Grandview Road Bow 03304"
+   },
+   {
+    "source": "granit_cai",
+    "on": "2014-09-30"
+   }
+  ],
+  "survey": {
+   "kind": "Town Offices",
+   "street": "10 Grandview Rd",
+   "place": "Bow",
+   "zip": "03304",
+   "lat": 43.166162,
+   "lon": -71.530815,
+   "surveyed": "2014-09-30",
+   "agrees": true,
+   "raw": {
+    "name": "Bow - Town Offices",
+    "address": "10 Grandview Rd, Bow, NH 03304"
+   }
+  }
+ },
+ "bradford": {
+  "street": "",
+  "place": "",
+  "zip": "",
+  "from": [],
+  "survey": {
+   "kind": "Town Office",
+   "street": "75 W Main St",
+   "place": "Bradford",
+   "zip": "03221",
+   "lat": 43.269324,
+   "lon": -71.960568,
+   "surveyed": "2014-09-30",
+   "agrees": false,
+   "raw": {
+    "name": "Bradford - Town Office",
+    "address": "75W Main St, Bradford, NH 03221"
+   }
+  }
+ },
+ "brentwood": {
+  "street": "1 Dalton Rd",
+  "place": "Brentwood",
+  "zip": "03833",
+  "from": [
+   {
+    "source": "nhdot",
+    "on": "2025-09-02",
+    "said": "1 Dalton Rd, Brentwood, NH 03833"
+   },
+   {
+    "source": "sos_list",
+    "on": "2026-09-20",
+    "said": "1 Dalton Road Brentwood 03833"
+   },
+   {
+    "source": "granit_cai",
+    "on": "2014-09-30"
+   }
+  ],
+  "survey": {
+   "kind": "Town Hall",
+   "street": "1 Dalton Rd",
+   "place": "Brentwood",
+   "zip": "03833",
+   "lat": 42.98305,
+   "lon": -71.068273,
+   "surveyed": "2014-09-30",
+   "agrees": true,
+   "raw": {
+    "name": "Brentwood -  Town Hall",
+    "address": "1 Dalton Rd, Brentwood, NH 03833"
+   }
+  }
+ },
+ "bridgewater": {
+  "street": "297 Mayhew Tpke",
+  "place": "Bridgewater",
+  "zip": "03222",
+  "from": [
+   {
+    "source": "granit_cai",
+    "on": "2014-09-30"
+   },
+   {
+    "source": "nhdot",
+    "on": "2025-09-02",
+    "said": "297 Mayhew Turnpike,"
+   }
+  ],
+  "survey": {
+   "kind": "Town Hall",
+   "street": "297 Mayhew Tpke",
+   "place": "Bridgewater",
+   "zip": "03222",
+   "lat": 43.641108,
+   "lon": -71.735916,
+   "surveyed": "2014-09-30",
+   "agrees": true,
+   "raw": {
+    "name": "Bridgewater - Town Hall",
+    "address": "297 Mayhew Tpke, Bridgewater, NH 03222"
+   }
+  }
+ },
+ "bristol": {
+  "street": "5 School St",
+  "place": "Bristol",
+  "zip": "03222",
+  "from": [
+   {
+    "source": "nhdot",
+    "on": "2025-09-02",
+    "said": "5 School St, Bristol, NH 03222"
+   },
+   {
+    "source": "sos_list",
+    "on": "2026-09-20",
+    "said": "5 School St Bristol 03222"
+   }
+  ],
+  "survey": {
+   "kind": "Town Hall",
+   "street": "230 Lake St",
+   "place": "Bristol",
+   "zip": "03222",
+   "lat": 43.594895,
+   "lon": -71.743772,
+   "surveyed": "2014-09-30",
+   "agrees": false,
+   "raw": {
+    "name": "Bristol - Town Hall",
+    "address": "230 Lake St, Bristol, NH 03222"
+   }
+  }
+ },
+ "brookfield": {
+  "street": "267 Wentworth Rd",
+  "place": "Brookfield",
+  "zip": "03872",
+  "from": [
+   {
+    "source": "granit_cai",
+    "on": "2014-09-30"
+   },
+   {
+    "source": "nhdot",
+    "on": "2025-09-02",
+    "said": "267 Wentworth Rd, Brookfield, NH 03872"
+   }
+  ],
+  "survey": {
+   "kind": "Town Hall",
+   "street": "267 Wentworth Rd",
+   "place": "Brookfield",
+   "zip": "03872",
+   "lat": 43.560047,
+   "lon": -71.067138,
+   "surveyed": "2014-09-30",
+   "agrees": true,
+   "raw": {
+    "name": "Brookfield - Town Hall",
+    "address": "267 Wentworth Rd, Brookfield, NH 03872"
+   }
+  }
+ },
+ "brookline": {
+  "street": "1 Main St",
+  "place": "Brookline",
+  "zip": "03033",
+  "from": [
+   {
+    "source": "granit_cai",
+    "on": "2014-09-30"
+   },
+   {
+    "source": "nhdot",
+    "on": "2025-09-02",
+    "said": "1 Main St, PO Box 360,"
+   }
+  ],
+  "survey": {
+   "kind": "Town Hall",
+   "street": "1 Main St",
+   "place": "Brookline",
+   "zip": "03033",
+   "lat": 42.733286,
+   "lon": -71.663198,
+   "surveyed": "2014-09-30",
+   "agrees": true,
+   "raw": {
+    "name": "Brookline - Town Hall",
+    "address": "1 Main St, Brookline, NH 03033"
+   }
+  }
+ },
+ "campton": {
+  "street": "",
+  "place": "",
+  "zip": "",
+  "from": [],
+  "survey": {
+   "kind": "Town Office",
+   "street": "1307 NH Rte 175",
+   "place": "Campton",
+   "zip": "03223",
+   "lat": 43.86321,
+   "lon": -71.634821,
+   "surveyed": "2014-09-30",
+   "agrees": false,
+   "raw": {
+    "name": "Campton - Town Office",
+    "address": "1307 NH Rte 175 Rte, Campton, NH 03223"
+   }
+  }
+ },
+ "canaan": {
+  "street": "1169 US Rte 4",
+  "place": "Canaan",
+  "zip": "03741",
+  "from": [
+   {
+    "source": "granit_cai",
+    "on": "2014-09-30"
+   },
+   {
+    "source": "nhdot",
+    "on": "2025-09-02",
+    "said": "1169 US Route 4, PO Box"
+   }
+  ],
+  "survey": {
+   "kind": "Town Office",
+   "street": "1169 US Rte 4",
+   "place": "Canaan",
+   "zip": "03741",
+   "lat": 43.646586,
+   "lon": -72.012364,
+   "surveyed": "2014-09-30",
+   "agrees": true,
+   "raw": {
+    "name": "Canaan - Town Office",
+    "address": "1169 US Rte 4 Rte, Canaan, NH 03741"
+   }
+  }
+ },
+ "candia": {
+  "street": "74 High St",
+  "place": "Candia",
+  "zip": "03034",
+  "from": [
+   {
+    "source": "nhdot",
+    "on": "2025-09-02",
+    "said": "74 High St, Candia, NH 03034"
+   },
+   {
+    "source": "sos_list",
+    "on": "2026-09-20",
+    "said": "74 High Street Candia 03034"
+   },
+   {
+    "source": "granit_cai",
+    "on": "2014-09-30"
+   }
+  ],
+  "survey": {
+   "kind": "Town Hall",
+   "street": "74 High St",
+   "place": "Candia",
+   "zip": "03034",
+   "lat": 43.061385,
+   "lon": -71.29013,
+   "surveyed": "2014-09-30",
+   "agrees": true,
+   "raw": {
+    "name": "Candia - Town Hall",
+    "address": "74 High St, Candia, NH 03034"
+   }
+  }
+ },
+ "canterbury": {
+  "street": "10 Hackleboro Rd",
+  "place": "Canterbury",
+  "zip": "03224",
+  "from": [
+   {
+    "source": "granit_cai",
+    "on": "2014-09-30"
+   },
+   {
+    "source": "nhdot",
+    "on": "2025-09-02",
+    "said": "10 Hackleboro Rd, PO Box 500, Canterbury, NH"
+   }
+  ],
+  "survey": {
+   "kind": "Town Hall",
+   "street": "10 Hackleboro Rd",
+   "place": "Canterbury",
+   "zip": "03224",
+   "lat": 43.337653,
+   "lon": -71.565404,
+   "surveyed": "2014-09-30",
+   "agrees": true,
+   "raw": {
+    "name": "Canterbury - Town Hall",
+    "address": "10 Hackleboro Rd, Canterbury, NH 03224"
+   }
+  }
+ },
+ "carroll": {
+  "street": "",
+  "place": "",
+  "zip": "",
+  "from": [],
+  "survey": {
+   "kind": "Town Hall",
+   "street": "92 School St",
+   "place": "Carroll",
+   "zip": "03595",
+   "lat": 44.272487,
+   "lon": -71.542991,
+   "surveyed": "2014-09-30",
+   "agrees": false,
+   "raw": {
+    "name": "Carroll - Town Hall",
+    "address": "92 School St, Carroll, NH 03595"
+   }
+  }
+ },
+ "center-harbor": {
+  "street": "36 Main St",
+  "place": "Center Harbor",
+  "zip": "03226",
+  "from": [
+   {
+    "source": "granit_cai",
+    "on": "2014-09-30"
+   },
+   {
+    "source": "nhdot",
+    "on": "2025-09-02",
+    "said": "36 Main St, PO Box 140, Center Harbor, NH 03226"
+   }
+  ],
+  "survey": {
+   "kind": "Town Hall",
+   "street": "36 Main St",
+   "place": "Center Harbor",
+   "zip": "03226",
+   "lat": 43.708435,
+   "lon": -71.463315,
+   "surveyed": "2014-09-30",
+   "agrees": true,
+   "raw": {
+    "name": "Center Harbor - Town Hall",
+    "address": "36 Main St, Center Harbor, NH 03226"
+   }
+  }
+ },
+ "charlestown": {
+  "street": "",
+  "place": "",
+  "zip": "",
+  "from": [],
+  "survey": {
+   "kind": "Town Office",
+   "street": "216 Main St",
+   "place": "Charlestown",
+   "zip": "03603",
+   "lat": 43.234925,
+   "lon": -72.424664,
+   "surveyed": "2014-09-30",
+   "agrees": false,
+   "raw": {
+    "name": "Charlestown - Town Office",
+    "address": "216 Main St, Charlestown, NH 03603"
+   }
+  }
+ },
+ "chatham": {
+  "street": "1071 Main Rd",
+  "place": "Chatham",
+  "zip": "03813",
+  "from": [
+   {
+    "source": "nhdot",
+    "on": "2025-09-02",
+    "said": "1071 Main Rd, Chatham, NH 03813"
+   },
+   {
+    "source": "sos_list",
+    "on": "2026-09-20",
+    "said": "1071 Main Road Chatham 03813"
+   }
+  ],
+  "survey": {
+   "kind": "Town Hall",
+   "street": "1681 Main Rd",
+   "place": "Chatham",
+   "zip": "03813",
+   "lat": 44.164254,
+   "lon": -71.010949,
+   "surveyed": "2014-09-30",
+   "agrees": false,
+   "raw": {
+    "name": "Chatham - Town Hall",
+    "address": "1681 Main Rd, Chatham, NH 03813"
+   }
+  }
+ },
+ "chester": {
+  "street": "84 Chester St",
+  "place": "Chester",
+  "zip": "03036",
+  "from": [
+   {
+    "source": "nhdot",
+    "on": "2025-09-02",
+    "said": "84 Chester St, Chester, NH 03036"
+   },
+   {
+    "source": "sos_list",
+    "on": "2026-09-20",
+    "said": "84 Chester Street Chester 03036"
+   },
+   {
+    "source": "granit_cai",
+    "on": "2014-09-30"
+   }
+  ],
+  "survey": {
+   "kind": "Town Hall",
+   "street": "84 Chester St",
+   "place": "Chester",
+   "zip": "03036",
+   "lat": 42.960857,
+   "lon": -71.263152,
+   "surveyed": "2014-09-30",
+   "agrees": true,
+   "raw": {
+    "name": "Chester - Town Hall",
+    "address": "84 Chester St, Chester, NH 03036"
+   }
+  }
+ },
+ "chesterfield": {
+  "street": "490 NH Rte 63",
+  "place": "Chesterfield",
+  "zip": "03443",
+  "from": [
+   {
+    "source": "granit_cai",
+    "on": "2014-09-30"
+   },
+   {
+    "source": "nhdot",
+    "on": "2025-09-02",
+    "said": "490 Route 63, Chesterfield, NH 03443"
+   }
+  ],
+  "survey": {
+   "kind": "Town Offices",
+   "street": "490 NH Rte 63",
+   "place": "Chesterfield",
+   "zip": "03443",
+   "lat": 42.885176,
+   "lon": -72.470821,
+   "surveyed": "2014-09-30",
+   "agrees": true,
+   "raw": {
+    "name": "Chesterfield - Town Offices",
+    "address": "490 NH Rte 63 Rte, Chesterfield, NH 03443"
+   }
+  }
+ },
+ "chichester": {
+  "street": "54 Main St",
+  "place": "Chicester",
+  "zip": "03258",
+  "from": [
+   {
+    "source": "nhdot",
+    "on": "2025-09-02",
+    "said": "54 Main St, Chicester, NH 03258"
+   },
+   {
+    "source": "sos_list",
+    "on": "2026-09-20",
+    "said": "54 Main Street Chichester 03258"
+   },
+   {
+    "source": "granit_cai",
+    "on": "2014-09-30"
+   }
+  ],
+  "survey": {
+   "kind": "Town Offices",
+   "street": "54 Main St",
+   "place": "Chichester",
+   "zip": "03258",
+   "lat": 43.248891,
+   "lon": -71.398287,
+   "surveyed": "2014-09-30",
+   "agrees": true,
+   "raw": {
+    "name": "Chichester - Town Offices",
+    "address": "54 Main St, Chichester, NH 03258"
+   }
+  }
+ },
+ "claremont": {
+  "street": "58 Opera House Sq",
+  "place": "Claremont",
+  "zip": "03743",
+  "from": [
+   {
+    "source": "nhdot",
+    "on": "2025-09-02",
+    "said": "58 Opera House Sq,"
+   },
+   {
+    "source": "sos_list",
+    "on": "2026-09-20",
+    "said": "58 Opera House Sq Claremont 03743"
+   },
+   {
+    "source": "granit_cai",
+    "on": "2014-09-30"
+   }
+  ],
+  "survey": {
+   "kind": "City Hall",
+   "street": "58 Opera House Sq",
+   "place": "Claremont",
+   "zip": "03743",
+   "lat": 43.37259,
+   "lon": -72.337407,
+   "surveyed": "2014-09-30",
+   "agrees": true,
+   "raw": {
+    "name": "Claremont - City Hall",
+    "address": "58 Opera House Sq, Claremont, NH 03743"
+   }
+  }
+ },
+ "clarksville": {
+  "street": "408 NH Route 145",
+  "place": "Clarksville",
+  "zip": "03592",
+  "from": [
+   {
+    "source": "nhdot",
+    "on": "2025-09-02",
+    "said": "408 NH Route 145, Clarksville, NH 03592"
+   },
+   {
+    "source": "sos_list",
+    "on": "2026-09-20",
+    "said": "408 NH Route 145 Clarksville 03592"
+   },
+   {
+    "source": "granit_cai",
+    "on": "2014-09-30"
+   }
+  ],
+  "survey": {
+   "kind": "Town Hall",
+   "street": "408 NH Rte 145",
+   "place": "Clarksville",
+   "zip": "03592",
+   "lat": 45.017528,
+   "lon": -71.413621,
+   "surveyed": "2014-09-30",
+   "agrees": true,
+   "raw": {
+    "name": "Clarksville - Town Hall",
+    "address": "408 NH Rte 145 Rte, Clarksville, NH 03592"
+   }
+  }
+ },
+ "colebrook": {
+  "street": "17 Bridge St",
+  "place": "Colebrook",
+  "zip": "03576",
+  "from": [
+   {
+    "source": "nhdot",
+    "on": "2025-09-02",
+    "said": "17 Bridge St, Colebrook, NH 03576"
+   },
+   {
+    "source": "sos_list",
+    "on": "2026-09-20",
+    "said": "17 Bridge Street Colebrook 03576"
+   },
+   {
+    "source": "granit_cai",
+    "on": "2014-09-30"
+   }
+  ],
+  "survey": {
+   "kind": "Town Offices",
+   "street": "17 Bridge St",
+   "place": "Colebrook",
+   "zip": "03576",
+   "lat": 44.894823,
+   "lon": -71.497733,
+   "surveyed": "2014-09-30",
+   "agrees": true,
+   "raw": {
+    "name": "Colebrook - Town Offices",
+    "address": "17 Bridge St, Colebrook, NH 03576"
+   }
+  }
+ },
+ "columbia": {
+  "street": "",
+  "place": "",
+  "zip": "",
+  "from": [],
+  "survey": {
+   "kind": "Town Offices",
+   "street": "1679 US Rte 3",
+   "place": "Columbia",
+   "zip": "03576",
+   "lat": 44.865456,
+   "lon": -71.535059,
+   "surveyed": "2014-09-30",
+   "agrees": false,
+   "raw": {
+    "name": "Columbia - Town Offices",
+    "address": "1679 US Rte 3 Rte, Columbia, NH 03576"
+   }
+  }
+ },
+ "concord": {
+  "street": "41 Green St",
+  "place": "Concord",
+  "zip": "03301",
+  "from": [
+   {
+    "source": "nhdot",
+    "on": "2025-09-02",
+    "said": "41 Green St, Concord, NH 03301"
+   },
+   {
+    "source": "sos_list",
+    "on": "2026-09-20",
+    "said": "41 Green St Concord 03301"
+   },
+   {
+    "source": "granit_cai",
+    "on": "2014-09-30"
+   }
+  ],
+  "survey": {
+   "kind": "City Hall",
+   "street": "41 Green St",
+   "place": "Concord",
+   "zip": "03301",
+   "lat": 43.206231,
+   "lon": -71.540147,
+   "surveyed": "2014-09-30",
+   "agrees": true,
+   "raw": {
+    "name": "Concord - City Hall",
+    "address": "41 Green St, Concord, NH 03301"
+   }
+  }
+ },
+ "conway": {
+  "street": "",
+  "place": "",
+  "zip": "",
+  "from": [],
+  "survey": {
+   "kind": "Town Offices",
+   "street": "1634 E Main St",
+   "place": "Conway",
+   "zip": "03813",
+   "lat": 43.995603,
+   "lon": -71.060617,
+   "surveyed": "2014-09-30",
+   "agrees": false,
+   "raw": {
+    "name": "Conway - Town Offices",
+    "address": "1634E Main St, Conway, NH 03813"
+   }
+  }
+ },
+ "cornish": {
+  "street": "488 Townhouse Rd",
+  "place": "Cornish",
+  "zip": "03745",
+  "from": [
+   {
+    "source": "granit_cai",
+    "on": "2014-09-30"
+   },
+   {
+    "source": "nhdot",
+    "on": "2025-09-02",
+    "said": "488 Town House Rd, Cornish, NH 03745"
+   }
+  ],
+  "survey": {
+   "kind": "Town Office",
+   "street": "488 Townhouse Rd",
+   "place": "Cornish",
+   "zip": "03745",
+   "lat": 43.467917,
+   "lon": -72.349768,
+   "surveyed": "2014-09-30",
+   "agrees": true,
+   "raw": {
+    "name": "Cornish - Town Office",
+    "address": "488 Townhouse Rd, Cornish, NH 03745"
+   }
+  }
+ },
+ "croydon": {
+  "street": "879 NH Route 10",
+  "place": "Croydon",
+  "zip": "03773",
+  "from": [
+   {
+    "source": "nhdot",
+    "on": "2025-09-02",
+    "said": "879 NH Route 10, Croydon, NH 03773"
+   },
+   {
+    "source": "sos_list",
+    "on": "2026-09-20",
+    "said": "879 NH Rt 10 Croydon 03773"
+   },
+   {
+    "source": "granit_cai",
+    "on": "2014-09-30"
+   }
+  ],
+  "survey": {
+   "kind": "Town Office",
+   "street": "879 NH Rte 10",
+   "place": "Croydon",
+   "zip": "03773",
+   "lat": 43.453849,
+   "lon": -72.159565,
+   "surveyed": "2014-09-30",
+   "agrees": true,
+   "raw": {
+    "name": "Croydon - Town Office",
+    "address": "879 NH Rte 10 Rte, Croydon, NH 03773"
+   }
+  }
+ },
+ "dalton": {
+  "street": "756 Dalton Rd",
+  "place": "Dalton",
+  "zip": "03598",
+  "from": [
+   {
+    "source": "nhdot",
+    "on": "2025-09-02",
+    "said": "756 Dalton Rd, Dalton, NH 03598"
+   },
+   {
+    "source": "sos_list",
+    "on": "2026-09-20",
+    "said": "756 Dalton Road Dalton 03598"
+   },
+   {
+    "source": "granit_cai",
+    "on": "2014-09-30"
+   }
+  ],
+  "survey": {
+   "kind": "Town Hall",
+   "street": "756 Dalton Rd",
+   "place": "Dalton",
+   "zip": "03598",
+   "lat": 44.4159,
+   "lon": -71.694529,
+   "surveyed": "2014-09-30",
+   "agrees": true,
+   "raw": {
+    "name": "Dalton - Town Hall",
+    "address": "756 Dalton Rd, Dalton, NH 03598"
+   }
+  }
+ },
+ "danbury": {
+  "street": "23 High St",
+  "place": "Danbury",
+  "zip": "03230",
+  "from": [
+   {
+    "source": "nhdot",
+    "on": "2025-09-02",
+    "said": "23 High St, Danbury, NH 03230"
+   },
+   {
+    "source": "sos_list",
+    "on": "2026-09-20",
+    "said": "23 High Street Danbury 03230"
+   },
+   {
+    "source": "granit_cai",
+    "on": "2014-09-30"
+   }
+  ],
+  "survey": {
+   "kind": "Town Hall",
+   "street": "23 High St",
+   "place": "Danbury",
+   "zip": "03230",
+   "lat": 43.526256,
+   "lon": -71.864795,
+   "surveyed": "2014-09-30",
+   "agrees": true,
+   "raw": {
+    "name": "Danbury - Town Hall",
+    "address": "23 High St, Danbury, NH 03230"
+   }
+  }
+ },
+ "danville": {
+  "street": "210 Main St",
+  "place": "Danville",
+  "zip": "03819",
+  "from": [
+   {
+    "source": "nhdot",
+    "on": "2025-09-02",
+    "said": "210 Main St, Danville, NH 03819"
+   },
+   {
+    "source": "sos_list",
+    "on": "2026-09-20",
+    "said": "210 Main Street Danville 03819"
+   },
+   {
+    "source": "granit_cai",
+    "on": "2014-09-30"
+   }
+  ],
+  "survey": {
+   "kind": "Town Hall",
+   "street": "210 Main St",
+   "place": "Danville",
+   "zip": "03819",
+   "lat": 42.915273,
+   "lon": -71.122846,
+   "surveyed": "2014-09-30",
+   "agrees": true,
+   "raw": {
+    "name": "Danville - Town Hall",
+    "address": "210 Main St, Danville, NH 03819"
+   }
+  }
+ },
+ "deerfield": {
+  "street": "8 Raymond Rd",
+  "place": "Deerfield",
+  "zip": "03037",
+  "from": [
+   {
+    "source": "granit_cai",
+    "on": "2014-09-30"
+   },
+   {
+    "source": "nhdot",
+    "on": "2025-09-02",
+    "said": "8 Raymond Rd, PO Box"
+   }
+  ],
+  "survey": {
+   "kind": "Town Offices",
+   "street": "8 Raymond Rd",
+   "place": "Deerfield",
+   "zip": "03037",
+   "lat": 43.131006,
+   "lon": -71.238955,
+   "surveyed": "2014-09-30",
+   "agrees": true,
+   "raw": {
+    "name": "Deerfield - Town Offices",
+    "address": "8 Raymond Rd, Deerfield, NH 03037"
+   }
+  }
+ },
+ "deering": {
+  "street": "762 Deering Center Rd",
+  "place": "Deering",
+  "zip": "03244",
+  "from": [
+   {
+    "source": "nhdot",
+    "on": "2025-09-02",
+    "said": "762 Deering Center Rd,"
+   },
+   {
+    "source": "sos_list",
+    "on": "2026-09-20",
+    "said": "762 Deering Center Road Deering 03244"
+   },
+   {
+    "source": "granit_cai",
+    "on": "2014-09-30"
+   }
+  ],
+  "survey": {
+   "kind": "Town Hall",
+   "street": "762 Deering Center Rd",
+   "place": "Deering",
+   "zip": "03244",
+   "lat": 43.074163,
+   "lon": -71.846146,
+   "surveyed": "2014-09-30",
+   "agrees": true,
+   "raw": {
+    "name": "Deering - Town Hall",
+    "address": "762 Deering Center Rd, Deering, NH 03244"
+   }
+  }
+ },
+ "derry": {
+  "street": "14 Manning St",
+  "place": "Derry",
+  "zip": "03038",
+  "from": [
+   {
+    "source": "nhdot",
+    "on": "2025-09-02",
+    "said": "14 Manning St, Derry, NH 03038"
+   },
+   {
+    "source": "sos_list",
+    "on": "2026-09-20",
+    "said": "14 Manning Street Derry 03038"
+   },
+   {
+    "source": "granit_cai",
+    "on": "2014-09-30"
+   }
+  ],
+  "survey": {
+   "kind": "Town Hall",
+   "street": "14 Manning St",
+   "place": "Derry",
+   "zip": "03038",
+   "lat": 42.882289,
+   "lon": -71.32374,
+   "surveyed": "2014-09-30",
+   "agrees": true,
+   "raw": {
+    "name": "Derry - Town Hall",
+    "address": "14 Manning St, Derry, NH 03038"
+   }
+  }
+ },
+ "dorchester": {
+  "street": "1021 NH Rte 118",
+  "place": "Dorchester",
+  "zip": "03266",
+  "from": [
+   {
+    "source": "granit_cai",
+    "on": "2014-09-30"
+   },
+   {
+    "source": "sos_list",
+    "on": "2026-09-20",
+    "said": "1021 NH Rte 118 Dorchester 03266"
+   }
+  ],
+  "survey": {
+   "kind": "Town Office",
+   "street": "1021 NH Rte 118",
+   "place": "Dorchester",
+   "zip": "03266",
+   "lat": 43.795585,
+   "lon": -71.915417,
+   "surveyed": "2014-09-30",
+   "agrees": true,
+   "raw": {
+    "name": "Dorchester - Town Office",
+    "address": "1021 NH Rte 118 Rte, Dorchester, NH 03266"
+   }
+  }
+ },
+ "dover": {
+  "street": "288 Central Ave",
+  "place": "Dover",
+  "zip": "03820",
+  "from": [
+   {
+    "source": "nhdot",
+    "on": "2025-09-02",
+    "said": "288 Central Ave, Dover, NH 03820"
+   },
+   {
+    "source": "sos_list",
+    "on": "2026-09-20",
+    "said": "288 Central Ave Dover 03820"
+   },
+   {
+    "source": "granit_cai",
+    "on": "2014-09-30"
+   }
+  ],
+  "survey": {
+   "kind": "City Hall",
+   "street": "288 Central Ave",
+   "place": "Dover",
+   "zip": "03820",
+   "lat": 43.193725,
+   "lon": -70.874763,
+   "surveyed": "2014-09-30",
+   "agrees": true,
+   "raw": {
+    "name": "Dover - City Hall",
+    "address": "288 Central Ave, Dover, NH 03820"
+   }
+  }
+ },
+ "dublin": {
+  "street": "1120 Main St",
+  "place": "Dublin",
+  "zip": "03444",
+  "from": [
+   {
+    "source": "granit_cai",
+    "on": "2014-09-30"
+   },
+   {
+    "source": "nhdot",
+    "on": "2025-09-02",
+    "said": "1120 Main St, PO Box 277, Dublin, NH 03444"
+   }
+  ],
+  "survey": {
+   "kind": "Town Offices",
+   "street": "1120 Main St",
+   "place": "Dublin",
+   "zip": "03444",
+   "lat": 42.905792,
+   "lon": -72.060784,
+   "surveyed": "2014-09-30",
+   "agrees": true,
+   "raw": {
+    "name": "Dublin - Town Offices",
+    "address": "1120 Main St, Dublin, NH 03444"
+   }
+  }
+ },
+ "dummer": {
+  "street": "75 Hill Rd",
+  "place": "Dummer",
+  "zip": "03588",
+  "from": [
+   {
+    "source": "nhdot",
+    "on": "2025-09-02",
+    "said": "75 Hill Rd, Dummer, NH 03588"
+   },
+   {
+    "source": "sos_list",
+    "on": "2026-09-20",
+    "said": "75 Hill Road Dummer 03588"
+   },
+   {
+    "source": "granit_cai",
+    "on": "2014-09-30"
+   }
+  ],
+  "survey": {
+   "kind": "Town Hall",
+   "street": "75 Hill Rd",
+   "place": "Dummer",
+   "zip": "03588",
+   "lat": 44.609634,
+   "lon": -71.202032,
+   "surveyed": "2014-09-30",
+   "agrees": true,
+   "raw": {
+    "name": "Dummer - Town Hall",
+    "address": "75 Hill Rd, Dummer, NH 03588"
+   }
+  }
+ },
+ "dunbarton": {
+  "street": "1011 School St",
+  "place": "Dunbarton",
+  "zip": "03046",
+  "from": [
+   {
+    "source": "nhdot",
+    "on": "2025-09-02",
+    "said": "1011 School St, Dunbarton, NH 03046"
+   },
+   {
+    "source": "sos_list",
+    "on": "2026-09-20",
+    "said": "1011 School Street Dunbarton 03046"
+   },
+   {
+    "source": "granit_cai",
+    "on": "2014-09-30"
+   }
+  ],
+  "survey": {
+   "kind": "Town Offices",
+   "street": "1011 School St",
+   "place": "Dunbarton",
+   "zip": "03046",
+   "lat": 43.103445,
+   "lon": -71.61665,
+   "surveyed": "2014-09-30",
+   "agrees": true,
+   "raw": {
+    "name": "Dunbarton - Town Offices",
+    "address": "1011 School St, Dunbarton, NH 03046"
+   }
+  }
+ },
+ "durham": {
+  "street": "8 Newmarket Rd",
+  "place": "Durham",
+  "zip": "03824",
+  "from": [
+   {
+    "source": "nhdot",
+    "on": "2025-09-02",
+    "said": "8 Newmarket Rd, Durham, NH 03824"
+   },
+   {
+    "source": "sos_list",
+    "on": "2026-09-20",
+    "said": "8 Newmarket Road Durham 03824"
+   }
+  ],
+  "survey": {
+   "kind": "Town Hall",
+   "street": "15 Newmarket Rd",
+   "place": "Durham",
+   "zip": "03824",
+   "lat": 43.132575,
+   "lon": -70.919782,
+   "surveyed": "2014-09-30",
+   "agrees": false,
+   "raw": {
+    "name": "Durham - Town Hall",
+    "address": "15 Newmarket Rd, Durham, NH 03824"
+   }
+  }
+ },
+ "east-kingston": {
+  "street": "24 Depot Rd",
+  "place": "East Kingston",
+  "zip": "03827",
+  "from": [
+   {
+    "source": "granit_cai",
+    "on": "2014-09-30"
+   },
+   {
+    "source": "nhdot",
+    "on": "2025-09-02",
+    "said": "24 Depot Rd, East Kingston, NH 03827"
+   }
+  ],
+  "survey": {
+   "kind": "Town Offices",
+   "street": "24 Depot Rd",
+   "place": "East Kingston",
+   "zip": "03827",
+   "lat": 42.924763,
+   "lon": -71.011744,
+   "surveyed": "2014-09-30",
+   "agrees": true,
+   "raw": {
+    "name": "East Kingston - Town Offices",
+    "address": "24 Depot Rd, East Kingston, NH 03827"
+   }
+  }
+ },
+ "easton": {
+  "street": "1060 Easton Valley Rd",
+  "place": "Easton",
+  "zip": "03580",
+  "from": [
+   {
+    "source": "nhdot",
+    "on": "2025-09-02",
+    "said": "1060 Easton Valley Rd, Easton, NH 03580"
+   },
+   {
+    "source": "sos_list",
+    "on": "2026-09-20",
+    "said": "1060 Easton Valley Road Easton 03580"
+   },
+   {
+    "source": "granit_cai",
+    "on": "2014-09-30"
+   }
+  ],
+  "survey": {
+   "kind": "Town Hall",
+   "street": "1060 Easton Valley Rd",
+   "place": "Easton",
+   "zip": "03580",
+   "lat": 44.147669,
+   "lon": -71.789358,
+   "surveyed": "2014-09-30",
+   "agrees": true,
+   "raw": {
+    "name": "Easton - Town Hall",
+    "address": "1060 Easton Valley Rd, Easton, NH 03580"
+   }
+  }
+ },
+ "eaton": {
+  "street": "83 Brownfield Rd",
+  "place": "Eaton",
+  "zip": "03832",
+  "from": [
+   {
+    "source": "granit_cai",
+    "on": "2014-09-30"
+   },
+   {
+    "source": "nhdot",
+    "on": "2025-09-02",
+    "said": "83 Brownfield Rd, PO Box"
+   }
+  ],
+  "survey": {
+   "kind": "Town Hall",
+   "street": "83 Brownfield Rd",
+   "place": "Eaton",
+   "zip": "03832",
+   "lat": 43.913161,
+   "lon": -71.066634,
+   "surveyed": "2014-09-30",
+   "agrees": true,
+   "raw": {
+    "name": "Eaton - Town Hall",
+    "address": "83 Brownfield Rd, Eaton, NH 03832"
+   }
+  }
+ },
+ "effingham": {
+  "street": "68 School St",
+  "place": "Effingham",
+  "zip": "03882",
+  "from": [
+   {
+    "source": "nhdot",
+    "on": "2025-09-02",
+    "said": "68 School St, Effingham, NH 03882"
+   },
+   {
+    "source": "sos_list",
+    "on": "2026-09-20",
+    "said": "68 School Street Effingham 03882"
+   },
+   {
+    "source": "granit_cai",
+    "on": "2014-09-30"
+   }
+  ],
+  "survey": {
+   "kind": "Municipal Offices",
+   "street": "68 School St",
+   "place": "Effingham",
+   "zip": "03814",
+   "lat": 43.794779,
+   "lon": -71.046444,
+   "surveyed": "2014-09-30",
+   "agrees": true,
+   "raw": {
+    "name": "Effingham - Municipal Offices",
+    "address": "68 School St, Effingham, NH 03814"
+   }
+  }
+ },
+ "ellsworth": {
+  "street": "3 Ellsworth Pond Rd",
+  "place": "Ellsworth",
+  "zip": "03223",
+  "from": [
+   {
+    "source": "nhdot",
+    "on": "2025-09-02",
+    "said": "3 Ellsworth Pond Rd, Ellsworth, NH 03223"
+   },
+   {
+    "source": "sos_list",
+    "on": "2026-09-20",
+    "said": "3 Ellsworth Pond Rd Ellsworth 03223"
+   },
+   {
+    "source": "granit_cai",
+    "on": "2014-09-30"
+   }
+  ],
+  "survey": {
+   "kind": "Town Hall",
+   "street": "3 Ellsworth Pond Rd",
+   "place": "Ellsworth",
+   "zip": "03223",
+   "lat": 43.874098,
+   "lon": -71.737209,
+   "surveyed": "2014-09-30",
+   "agrees": true,
+   "raw": {
+    "name": "Ellsworth - Town Hall",
+    "address": "3 Ellsworth Pond Rd, Ellsworth, NH 03223"
+   }
+  }
+ },
+ "enfield": {
+  "street": "23 Main St",
+  "place": "Enfield",
+  "zip": "03748",
+  "from": [
+   {
+    "source": "granit_cai",
+    "on": "2014-09-30"
+   },
+   {
+    "source": "nhdot",
+    "on": "2025-09-02",
+    "said": "23 Main St, Enfield, NH 03748"
+   }
+  ],
+  "survey": {
+   "kind": "Town Office",
+   "street": "23 Main St",
+   "place": "Enfield",
+   "zip": "03748",
+   "lat": 43.642884,
+   "lon": -72.144243,
+   "surveyed": "2014-09-30",
+   "agrees": true,
+   "raw": {
+    "name": "Enfield - Town Office",
+    "address": "23 Main St, Enfield, NH 03748"
+   }
+  }
+ },
+ "epping": {
+  "street": "157 Main St",
+  "place": "Epping",
+  "zip": "03042",
+  "from": [
+   {
+    "source": "nhdot",
+    "on": "2025-09-02",
+    "said": "157 Main St, Epping, NH 03042"
+   },
+   {
+    "source": "sos_list",
+    "on": "2026-09-20",
+    "said": "157 Main St Epping 03042"
+   },
+   {
+    "source": "granit_cai",
+    "on": "2014-09-30"
+   }
+  ],
+  "survey": {
+   "kind": "Town Hall",
+   "street": "157 Main St",
+   "place": "Epping",
+   "zip": "03042",
+   "lat": 43.039293,
+   "lon": -71.072985,
+   "surveyed": "2014-09-30",
+   "agrees": true,
+   "raw": {
+    "name": "Epping - Town Hall",
+    "address": "157 Main St, Epping, NH 03042"
+   }
+  }
+ },
+ "epsom": {
+  "street": "1598 Dover Rd",
+  "place": "Epsom",
+  "zip": "03234",
+  "from": [
+   {
+    "source": "nhdot",
+    "on": "2025-09-02",
+    "said": "1598 Dover Rd, Epsom, NH 03234"
+   },
+   {
+    "source": "sos_list",
+    "on": "2026-09-20",
+    "said": "1598 Dover Road Epsom 03234"
+   }
+  ],
+  "survey": {
+   "kind": "Town Offices",
+   "street": "27 Black Hall Rd",
+   "place": "Epsom",
+   "zip": "03234",
+   "lat": 43.223384,
+   "lon": -71.346057,
+   "surveyed": "2014-09-30",
+   "agrees": false,
+   "raw": {
+    "name": "Epsom - Town Offices",
+    "address": "27 Black Hall Rd, Epsom, NH 03234"
+   }
+  }
+ },
+ "errol": {
+  "street": "33 Main St",
+  "place": "Errol",
+  "zip": "03579",
+  "from": [
+   {
+    "source": "granit_cai",
+    "on": "2014-09-30"
+   },
+   {
+    "source": "nhdot",
+    "on": "2025-09-02",
+    "said": "33 Main St, Errol, NH 03579"
+   }
+  ],
+  "survey": {
+   "kind": "Town Hall",
+   "street": "33 Main St",
+   "place": "Errol",
+   "zip": "03579",
+   "lat": 44.781068,
+   "lon": -71.136711,
+   "surveyed": "2014-09-30",
+   "agrees": true,
+   "raw": {
+    "name": "Errol - Town Hall",
+    "address": "33 Main St, Errol, NH 03579"
+   }
+  }
+ },
+ "exeter": {
+  "street": "10 Front St",
+  "place": "Exeter",
+  "zip": "03833",
+  "from": [
+   {
+    "source": "nhdot",
+    "on": "2025-09-02",
+    "said": "10 Front St, Exeter, NH 03833"
+   },
+   {
+    "source": "sos_list",
+    "on": "2026-09-20",
+    "said": "10 Front Street Exeter 03833"
+   },
+   {
+    "source": "granit_cai",
+    "on": "2014-09-30"
+   }
+  ],
+  "survey": {
+   "kind": "Town Offices",
+   "street": "10 Front St",
+   "place": "Exeter",
+   "zip": "03833",
+   "lat": 42.98086,
+   "lon": -70.946241,
+   "surveyed": "2014-09-30",
+   "agrees": true,
+   "raw": {
+    "name": "Exeter -  Town Offices",
+    "address": "10 Front St, Exeter, NH 03833"
+   }
+  }
+ },
+ "farmington": {
+  "street": "356 Main St",
+  "place": "Farmington",
+  "zip": "03835",
+  "from": [
+   {
+    "source": "nhdot",
+    "on": "2025-09-02",
+    "said": "356 Main St, Farmington, NH 03835"
+   },
+   {
+    "source": "sos_list",
+    "on": "2026-09-20",
+    "said": "356 Main Street Farmington 03835"
+   },
+   {
+    "source": "granit_cai",
+    "on": "2014-09-30"
+   }
+  ],
+  "survey": {
+   "kind": "Town Hall",
+   "street": "356 Main St",
+   "place": "Farmington",
+   "zip": "03835",
+   "lat": 43.387359,
+   "lon": -71.062827,
+   "surveyed": "2014-09-30",
+   "agrees": true,
+   "raw": {
+    "name": "Farmington - Town Hall",
+    "address": "356 Main St, Farmington, NH 03835"
+   }
+  }
+ },
+ "fitzwilliam": {
+  "street": "",
+  "place": "",
+  "zip": "",
+  "from": [],
+  "survey": {
+   "kind": "Town Hall",
+   "street": "13 Templeton Tpke",
+   "place": "Fitzwilliam",
+   "zip": "03447",
+   "lat": 42.779537,
+   "lon": -72.14481,
+   "surveyed": "2014-09-30",
+   "agrees": false,
+   "raw": {
+    "name": "Fitzwilliam - Town Hall",
+    "address": "13 Templeton Tpke, Fitzwilliam, NH 03447"
+   }
+  }
+ },
+ "francestown": {
+  "street": "27 Main St",
+  "place": "Francestown",
+  "zip": "03043",
+  "from": [
+   {
+    "source": "nhdot",
+    "on": "2025-09-02",
+    "said": "27 Main St, PO Box 5, Francestown, NH 03043"
+   },
+   {
+    "source": "sos_list",
+    "on": "2026-09-20",
+    "said": "27 Main Street Francestown 03043"
+   },
+   {
+    "source": "granit_cai",
+    "on": "2014-09-30"
+   }
+  ],
+  "survey": {
+   "kind": "Town Offices",
+   "street": "27 Main St",
+   "place": "Francestown",
+   "zip": "03043",
+   "lat": 42.988301,
+   "lon": -71.813521,
+   "surveyed": "2014-09-30",
+   "agrees": true,
+   "raw": {
+    "name": "Francestown - Town Offices",
+    "address": "27 Main St, Francestown, NH 03043"
+   }
+  }
+ },
+ "franconia": {
+  "street": "421 Main St",
+  "place": "Franconia",
+  "zip": "03580",
+  "from": [
+   {
+    "source": "granit_cai",
+    "on": "2014-09-30"
+   },
+   {
+    "source": "nhdot",
+    "on": "2025-09-02",
+    "said": "421 Main St, PO Box 900,"
+   }
+  ],
+  "survey": {
+   "kind": "Town Hall",
+   "street": "421 Main St",
+   "place": "Franconia",
+   "zip": "03580",
+   "lat": 44.227032,
+   "lon": -71.746002,
+   "surveyed": "2014-09-30",
+   "agrees": true,
+   "raw": {
+    "name": "Franconia - Town Hall",
+    "address": "421 Main St, Franconia, NH 03580"
+   }
+  }
+ },
+ "franklin": {
+  "street": "316 Central St",
+  "place": "Franklin",
+  "zip": "03235",
+  "from": [
+   {
+    "source": "nhdot",
+    "on": "2025-09-02",
+    "said": "316 Central St, Franklin, NH 03235"
+   },
+   {
+    "source": "sos_list",
+    "on": "2026-09-20",
+    "said": "316 Central Street Franklin 03235"
+   },
+   {
+    "source": "granit_cai",
+    "on": "2014-09-30"
+   }
+  ],
+  "survey": {
+   "kind": "City Hall",
+   "street": "316 Central St",
+   "place": "Franklin",
+   "zip": "03235",
+   "lat": 43.444635,
+   "lon": -71.647004,
+   "surveyed": "2014-09-30",
+   "agrees": true,
+   "raw": {
+    "name": "Franklin - City Hall",
+    "address": "316 Central St, Franklin, NH 03235"
+   }
+  }
+ },
+ "freedom": {
+  "street": "",
+  "place": "",
+  "zip": "",
+  "from": [],
+  "survey": {
+   "kind": "Town Hall",
+   "street": "38 Old Portland Rd",
+   "place": "Freedom",
+   "zip": "03836",
+   "lat": 43.813297,
+   "lon": -71.033787,
+   "surveyed": "2014-09-30",
+   "agrees": false,
+   "raw": {
+    "name": "Freedom - Town Hall",
+    "address": "38 Old Portland Rd, Freedom, NH 03836"
+   }
+  }
+ },
+ "fremont": {
+  "street": "295 Main St",
+  "place": "Fremont",
+  "zip": "03044",
+  "from": [
+   {
+    "source": "granit_cai",
+    "on": "2014-09-30"
+   },
+   {
+    "source": "nhdot",
+    "on": "2025-09-02",
+    "said": "295 Main St, PO Box 120,"
+   }
+  ],
+  "survey": {
+   "kind": "Town Hall",
+   "street": "295 Main St",
+   "place": "Fremont",
+   "zip": "03044",
+   "lat": 42.989802,
+   "lon": -71.141065,
+   "surveyed": "2014-09-30",
+   "agrees": true,
+   "raw": {
+    "name": "Fremont - Town Hall",
+    "address": "295 Main St, Fremont, NH 03044"
+   }
+  }
+ },
+ "gilford": {
+  "street": "47 Cherry Valley Rd",
+  "place": "Gilford",
+  "zip": "03249",
+  "from": [
+   {
+    "source": "nhdot",
+    "on": "2025-09-02",
+    "said": "47 Cherry Valley Rd, Gilford, NH 03249"
+   },
+   {
+    "source": "sos_list",
+    "on": "2026-09-20",
+    "said": "47 Cherry Valley Rd Gilford 03249"
+   },
+   {
+    "source": "granit_cai",
+    "on": "2014-09-30"
+   }
+  ],
+  "survey": {
+   "kind": "Town Hall",
+   "street": "47 Cherry Valley Rd",
+   "place": "Gilford",
+   "zip": "03246",
+   "lat": 43.550629,
+   "lon": -71.404315,
+   "surveyed": "2014-09-30",
+   "agrees": true,
+   "raw": {
+    "name": "Gilford - Town Hall",
+    "address": "47 Cherry Valley Rd, Gilford, NH 03246"
+   }
+  }
+ },
+ "gilmanton": {
+  "street": "503 Province Rd",
+  "place": "Gilmanton",
+  "zip": "03237",
+  "from": [
+   {
+    "source": "granit_cai",
+    "on": "2014-09-30"
+   },
+   {
+    "source": "nhdot",
+    "on": "2025-09-02",
+    "said": "503 Province Rd, PO Box 550, Gilmanton, NH"
+   }
+  ],
+  "survey": {
+   "kind": "Town Hall",
+   "street": "503 Province Rd",
+   "place": "Gilmanton",
+   "zip": "03237",
+   "lat": 43.425084,
+   "lon": -71.413564,
+   "surveyed": "2014-09-30",
+   "agrees": true,
+   "raw": {
+    "name": "Gilmanton - Town Hall",
+    "address": "503 Province Rd, Gilmanton, NH 03237"
+   }
+  }
+ },
+ "gilsum": {
+  "street": "650 Route 10",
+  "place": "Gilsum",
+  "zip": "03448",
+  "from": [
+   {
+    "source": "nhdot",
+    "on": "2025-09-02",
+    "said": "650 Route 10, PO Box 36,"
+   },
+   {
+    "source": "sos_list",
+    "on": "2026-09-20",
+    "said": "650 NH Route 10 Gilsum 03448"
+   }
+  ],
+  "survey": {
+   "kind": "Town Offices",
+   "street": "849 NH Rte 10",
+   "place": "Gilsum",
+   "zip": "03448",
+   "lat": 43.048534,
+   "lon": -72.257242,
+   "surveyed": "2014-09-30",
+   "agrees": false,
+   "raw": {
+    "name": "Gilsum - Town Offices",
+    "address": "849 NH Rte 10 Rte, Gilsum, NH 03448"
+   }
+  }
+ },
+ "goffstown": {
+  "street": "16 Main St",
+  "place": "Goffstown",
+  "zip": "03045",
+  "from": [
+   {
+    "source": "nhdot",
+    "on": "2025-09-02",
+    "said": "16 Main St, Goffstown, NH 03045"
+   },
+   {
+    "source": "sos_list",
+    "on": "2026-09-20",
+    "said": "16 Main Street Goffstown 03045"
+   },
+   {
+    "source": "granit_cai",
+    "on": "2014-09-30"
+   }
+  ],
+  "survey": {
+   "kind": "Town Hall",
+   "street": "16 Main St",
+   "place": "Goffstown",
+   "zip": "03045",
+   "lat": 43.01911,
+   "lon": -71.600225,
+   "surveyed": "2014-09-30",
+   "agrees": true,
+   "raw": {
+    "name": "Goffstown - Town Hall",
+    "address": "16 Main St, Goffstown, NH 03045"
+   }
+  }
+ },
+ "gorham": {
+  "street": "20 Park St",
+  "place": "Gorham",
+  "zip": "03581",
+  "from": [
+   {
+    "source": "nhdot",
+    "on": "2025-09-02",
+    "said": "20 Park St, Gorham, NH 03581"
+   },
+   {
+    "source": "sos_list",
+    "on": "2026-09-20",
+    "said": "20 Park Street Gorham 03581"
+   },
+   {
+    "source": "granit_cai",
+    "on": "2014-09-30"
+   }
+  ],
+  "survey": {
+   "kind": "Town Hall",
+   "street": "20 Park St",
+   "place": "Gorham",
+   "zip": "03581",
+   "lat": 44.387836,
+   "lon": -71.176009,
+   "surveyed": "2014-09-30",
+   "agrees": true,
+   "raw": {
+    "name": "Gorham - Town Hall",
+    "address": "20 Park St, Gorham, NH 03581"
+   }
+  }
+ },
+ "goshen": {
+  "street": "54 Mill Village Rd",
+  "place": "Goshen",
+  "zip": "03752",
+  "from": [
+   {
+    "source": "granit_cai",
+    "on": "2014-09-30"
+   },
+   {
+    "source": "nhdot",
+    "on": "2025-09-02",
+    "said": "54 Mill Village Rd N, Goshen, NH 03752"
+   }
+  ],
+  "survey": {
+   "kind": "Town Office",
+   "street": "54 Mill Village Rd",
+   "place": "Goshen",
+   "zip": "03752",
+   "lat": 43.301648,
+   "lon": -72.148656,
+   "surveyed": "2014-09-30",
+   "agrees": true,
+   "raw": {
+    "name": "Goshen - Town Office",
+    "address": "54 Mill Village Rd, Goshen, NH 03752"
+   }
+  }
+ },
+ "grafton": {
+  "street": "",
+  "place": "",
+  "zip": "",
+  "from": [],
+  "survey": {
+   "kind": "Town Office",
+   "street": "7 Library Rd",
+   "place": "Grafton",
+   "zip": "03240",
+   "lat": 43.561975,
+   "lon": -71.949818,
+   "surveyed": "2014-09-30",
+   "agrees": false,
+   "raw": {
+    "name": "Grafton - Town Office",
+    "address": "7 Library Rd, Grafton, NH 03240"
+   }
+  }
+ },
+ "grantham": {
+  "street": "300 NH Rte 10 S",
+  "place": "Grantham",
+  "zip": "03753",
+  "from": [
+   {
+    "source": "granit_cai",
+    "on": "2014-09-30"
+   },
+   {
+    "source": "nhdot",
+    "on": "2025-09-02",
+    "said": "300 Route 10 South Grantham, NH 03753"
+   }
+  ],
+  "survey": {
+   "kind": "Town Office",
+   "street": "300 NH Rte 10 S",
+   "place": "Grantham",
+   "zip": "03753",
+   "lat": 43.491516,
+   "lon": -72.138222,
+   "surveyed": "2014-09-30",
+   "agrees": true,
+   "raw": {
+    "name": "Grantham - Town Office",
+    "address": "300 NH Rte 10 RteS, Grantham, NH 03753"
+   }
+  }
+ },
+ "greenfield": {
+  "street": "7 Sawmill Rd",
+  "place": "Greenfield",
+  "zip": "03047",
+  "from": [
+   {
+    "source": "granit_cai",
+    "on": "2014-09-30"
+   },
+   {
+    "source": "nhdot",
+    "on": "2025-09-02",
+    "said": "7 Sawmill Rd, Greenfield, NH 03047"
+   }
+  ],
+  "survey": {
+   "kind": "Town Offices",
+   "street": "7 Sawmill Rd",
+   "place": "Greenfield",
+   "zip": "03047",
+   "lat": 42.950983,
+   "lon": -71.872843,
+   "surveyed": "2014-09-30",
+   "agrees": true,
+   "raw": {
+    "name": "Greenfield - Town Offices",
+    "address": "7 Sawmill Rd, Greenfield, NH 03047"
+   }
+  }
+ },
+ "greenland": {
+  "street": "11 Town Square",
+  "place": "Greenland",
+  "zip": "03840",
+  "from": [
+   {
+    "source": "nhdot",
+    "on": "2025-09-02",
+    "said": "11 Town Square, PO Box"
+   },
+   {
+    "source": "sos_list",
+    "on": "2026-09-20",
+    "said": "11 Town Square Greenland 03840"
+   }
+  ],
+  "survey": {
+   "kind": "Town Office",
+   "street": "575 Portsmouth Ave",
+   "place": "Greenland",
+   "zip": "03840",
+   "lat": 43.036164,
+   "lon": -70.83841,
+   "surveyed": "2014-09-30",
+   "agrees": false,
+   "raw": {
+    "name": "Greenland - Town Office",
+    "address": "575 Portsmouth Ave, Greenland, NH 03840"
+   }
+  }
+ },
+ "greenville": {
+  "street": "46 Main St",
+  "place": "Greenville",
+  "zip": "03048",
+  "from": [
+   {
+    "source": "nhdot",
+    "on": "2025-09-02",
+    "said": "46 Main St, PO Box 343,"
+   },
+   {
+    "source": "sos_list",
+    "on": "2026-09-20",
+    "said": "46 Main St Greenville 03048"
+   },
+   {
+    "source": "granit_cai",
+    "on": "2014-09-30"
+   }
+  ],
+  "survey": {
+   "kind": "Town Office",
+   "street": "46 Main St",
+   "place": "Greenville",
+   "zip": "03048",
+   "lat": 42.767487,
+   "lon": -71.81195,
+   "surveyed": "2014-09-30",
+   "agrees": true,
+   "raw": {
+    "name": "Greenville - Town Office",
+    "address": "46 Main St, Greenville, NH 03048"
+   }
+  }
+ },
+ "groton": {
+  "street": "754 North Groton Rd",
+  "place": "Groton",
+  "zip": "03241",
+  "from": [
+   {
+    "source": "nhdot",
+    "on": "2025-09-02",
+    "said": "754 North Groton Rd, Groton, NH 03241"
+   },
+   {
+    "source": "sos_list",
+    "on": "2026-09-20",
+    "said": "754 North Groton Road Groton 03241"
+   },
+   {
+    "source": "granit_cai",
+    "on": "2014-09-30"
+   }
+  ],
+  "survey": {
+   "kind": "Town Offices",
+   "street": "754 N Groton Rd",
+   "place": "Groton",
+   "zip": "03241",
+   "lat": 43.745148,
+   "lon": -71.855279,
+   "surveyed": "2014-09-30",
+   "agrees": true,
+   "raw": {
+    "name": "Groton - Town Offices",
+    "address": "754N Groton Rd, Groton, NH 03241"
+   }
+  }
+ },
+ "hampstead": {
+  "street": "11 Main St",
+  "place": "Hampstead",
+  "zip": "03841",
+  "from": [
+   {
+    "source": "granit_cai",
+    "on": "2014-09-30"
+   },
+   {
+    "source": "nhdot",
+    "on": "2025-09-02",
+    "said": "11 Main St, Hampstead, NH 03841"
+   }
+  ],
+  "survey": {
+   "kind": "Town Hall",
+   "street": "11 Main St",
+   "place": "Hampstead",
+   "zip": "03841",
+   "lat": 42.875628,
+   "lon": -71.180804,
+   "surveyed": "2014-09-30",
+   "agrees": true,
+   "raw": {
+    "name": "Hampstead - Town Hall",
+    "address": "11 Main St, Hampstead, NH 03841"
+   }
+  }
+ },
+ "hampton": {
+  "street": "100 Winnacunnet Rd",
+  "place": "Hampton",
+  "zip": "03842",
+  "from": [
+   {
+    "source": "nhdot",
+    "on": "2025-09-02",
+    "said": "100 Winnacunnet Rd,"
+   },
+   {
+    "source": "sos_list",
+    "on": "2026-09-20",
+    "said": "100 Winnacunnet Road Hampton 03842"
+   },
+   {
+    "source": "granit_cai",
+    "on": "2014-09-30"
+   }
+  ],
+  "survey": {
+   "kind": "Town Hall",
+   "street": "100 Winnacunnet Rd",
+   "place": "Hampton",
+   "zip": "03842",
+   "lat": 42.937935,
+   "lon": -70.834566,
+   "surveyed": "2014-09-30",
+   "agrees": true,
+   "raw": {
+    "name": "Hampton - Town Hall",
+    "address": "100 Winnacunnet Rd, Hampton, NH 03842"
+   }
+  }
+ },
+ "hampton-falls": {
+  "street": "1 Drinkwater Rd",
+  "place": "Hampton Falls",
+  "zip": "03844",
+  "from": [
+   {
+    "source": "nhdot",
+    "on": "2025-09-02",
+    "said": "1 Drinkwater Rd, Hampton Falls, NH"
+   },
+   {
+    "source": "sos_list",
+    "on": "2026-09-20",
+    "said": "1 Drinkwater Road Hampton Falls 03844"
+   },
+   {
+    "source": "granit_cai",
+    "on": "2014-09-30"
+   }
+  ],
+  "survey": {
+   "kind": "Town Hall",
+   "street": "1 Drinkwater Rd",
+   "place": "Hampton Falls",
+   "zip": "03844",
+   "lat": 42.921591,
+   "lon": -70.874226,
+   "surveyed": "2014-09-30",
+   "agrees": true,
+   "raw": {
+    "name": "Hampton Falls - Town Hall",
+    "address": "1 Drinkwater Rd, Hampton Falls, NH 03844"
+   }
+  }
+ },
+ "hancock": {
+  "street": "50 Main St",
+  "place": "Hancock",
+  "zip": "03449",
+  "from": [
+   {
+    "source": "granit_cai",
+    "on": "2014-09-30"
+   },
+   {
+    "source": "nhdot",
+    "on": "2025-09-02",
+    "said": "50 Main St, Hancock, NH 03449"
+   }
+  ],
+  "survey": {
+   "kind": "Town Offices",
+   "street": "50 Main St",
+   "place": "Hancock",
+   "zip": "03449",
+   "lat": 42.972322,
+   "lon": -71.984862,
+   "surveyed": "2014-09-30",
+   "agrees": true,
+   "raw": {
+    "name": "Hancock - Town Offices",
+    "address": "50 Main St, Hancock, NH 03449"
+   }
+  }
+ },
+ "hanover": {
+  "street": "41 S Main St",
+  "place": "Hanover",
+  "zip": "03755",
+  "from": [
+   {
+    "source": "granit_cai",
+    "on": "2014-09-30"
+   },
+   {
+    "source": "nhdot",
+    "on": "2025-09-02",
+    "said": "41 South Main St, PO Box"
+   }
+  ],
+  "survey": {
+   "kind": "Town Office",
+   "street": "41 S Main St",
+   "place": "Hanover",
+   "zip": "03755",
+   "lat": 43.701146,
+   "lon": -72.289689,
+   "surveyed": "2014-09-30",
+   "agrees": true,
+   "raw": {
+    "name": "Hanover - Town Office",
+    "address": "41S Main St, Hanover, NH 03755"
+   }
+  }
+ },
+ "harrisville": {
+  "street": "705 Chesham Rd",
+  "place": "Harrisville",
+  "zip": "03450",
+  "from": [
+   {
+    "source": "granit_cai",
+    "on": "2014-09-30"
+   },
+   {
+    "source": "nhdot",
+    "on": "2025-09-02",
+    "said": "705 Chesham Rd,"
+   }
+  ],
+  "survey": {
+   "kind": "Town Office",
+   "street": "705 Chesham Rd",
+   "place": "Harrisville",
+   "zip": "03450",
+   "lat": 42.940098,
+   "lon": -72.109871,
+   "surveyed": "2014-09-30",
+   "agrees": true,
+   "raw": {
+    "name": "Harrisville -Town Office",
+    "address": "705 Chesham Rd, Harrisville, NH 03450"
+   }
+  }
+ },
+ "hart-s-location": {
+  "street": "",
+  "place": "",
+  "zip": "",
+  "from": [],
+  "survey": {
+   "kind": "Town Hall",
+   "street": "979 US Rte 302",
+   "place": "Hart's Location",
+   "zip": "03812",
+   "lat": 44.124091,
+   "lon": -71.357589,
+   "surveyed": "2014-09-30",
+   "agrees": false,
+   "raw": {
+    "name": "Hart's Location - Town Hall",
+    "address": "979 US Rte 302 Rte, Hart's Location, NH 03812"
+   }
+  }
+ },
+ "haverhill": {
+  "street": "2975 Dartmouth College Hwy",
+  "place": "N Haverhill",
+  "zip": "03774",
+  "from": [
+   {
+    "source": "nhdot",
+    "on": "2025-09-02",
+    "said": "2975 Dartmouth College Hwy, N Haverhill, NH"
+   },
+   {
+    "source": "sos_list",
+    "on": "2026-09-20",
+    "said": "2975 Dartmouth College Hwy Haverhill 03774"
+   },
+   {
+    "source": "granit_cai",
+    "on": "2014-09-30"
+   }
+  ],
+  "survey": {
+   "kind": "Town Offices",
+   "street": "2975 Dartmouth College Hwy",
+   "place": "North Haverhill",
+   "zip": "03774",
+   "lat": 44.096166,
+   "lon": -72.025812,
+   "surveyed": "2014-09-30",
+   "agrees": true,
+   "raw": {
+    "name": "Haverhill - Town Offices",
+    "address": "2975 Dartmouth College Hwy, North Haverhill, NH 03774"
+   }
+  }
+ },
+ "hebron": {
+  "street": "",
+  "place": "",
+  "zip": "",
+  "from": [],
+  "survey": {
+   "kind": "Town Hall",
+   "street": "10 Church Ln",
+   "place": "Hebron",
+   "zip": "03241",
+   "lat": 43.694484,
+   "lon": -71.80588,
+   "surveyed": "2014-09-30",
+   "agrees": false,
+   "raw": {
+    "name": "Hebron - Town Hall",
+    "address": "10 Church Ln, Hebron, NH 03241"
+   }
+  }
+ },
+ "henniker": {
+  "street": "18 Depot Hill Rd",
+  "place": "Henniker",
+  "zip": "03242",
+  "from": [
+   {
+    "source": "nhdot",
+    "on": "2025-09-02",
+    "said": "18 Depot Hill Rd, Henniker, NH 03242"
+   },
+   {
+    "source": "sos_list",
+    "on": "2026-09-20",
+    "said": "18 Depot Hill Road Henniker 03242"
+   },
+   {
+    "source": "granit_cai",
+    "on": "2014-09-30"
+   }
+  ],
+  "survey": {
+   "kind": "Town Hall",
+   "street": "18 Depot Hill Rd",
+   "place": "Henniker",
+   "zip": "03242",
+   "lat": 43.175333,
+   "lon": -71.821913,
+   "surveyed": "2014-09-30",
+   "agrees": true,
+   "raw": {
+    "name": "Henniker - Town Hall",
+    "address": "18 Depot Hill Rd, Henniker, NH 03242"
+   }
+  }
+ },
+ "hill": {
+  "street": "30 Crescent St",
+  "place": "Hill",
+  "zip": "03243",
+  "from": [
+   {
+    "source": "granit_cai",
+    "on": "2014-09-30"
+   },
+   {
+    "source": "sos_list",
+    "on": "2026-09-20",
+    "said": "30 Crescent Street #2 Hill 03243"
+   }
+  ],
+  "survey": {
+   "kind": "Town Municipal Building",
+   "street": "30 Crescent St",
+   "place": "Hill",
+   "zip": "03243",
+   "lat": 43.521853,
+   "lon": -71.700762,
+   "surveyed": "2014-09-30",
+   "agrees": true,
+   "raw": {
+    "name": "Hill - Town Municipal Building",
+    "address": "30 Crescent St, Hill, NH 03243"
+   }
+  }
+ },
+ "hillsborough": {
+  "street": "27 School St",
+  "place": "Hillsborough",
+  "zip": "03244",
+  "from": [
+   {
+    "source": "granit_cai",
+    "on": "2014-09-30"
+   },
+   {
+    "source": "nhdot",
+    "on": "2025-09-02",
+    "said": "27 School St, PO Box 7, Hillsborough, NH 03244"
+   }
+  ],
+  "survey": {
+   "kind": "Town Offices",
+   "street": "27 School St",
+   "place": "Hillsborough",
+   "zip": "03244",
+   "lat": 43.116437,
+   "lon": -71.895954,
+   "surveyed": "2014-09-30",
+   "agrees": true,
+   "raw": {
+    "name": "Hillsborough - Town Offices",
+    "address": "27 School St, Hillsborough, NH 03244"
+   }
+  }
+ },
+ "hinsdale": {
+  "street": "11 Main St",
+  "place": "Hinsdale",
+  "zip": "03451",
+  "from": [
+   {
+    "source": "granit_cai",
+    "on": "2014-09-30"
+   },
+   {
+    "source": "nhdot",
+    "on": "2025-09-02",
+    "said": "11 Main St, PO Box 31, Hinsdale, NH 03451"
+   }
+  ],
+  "survey": {
+   "kind": "Town Offices",
+   "street": "11 Main St",
+   "place": "Hinsdale",
+   "zip": "03451",
+   "lat": 42.786713,
+   "lon": -72.481119,
+   "surveyed": "2014-09-30",
+   "agrees": true,
+   "raw": {
+    "name": "Hinsdale - Town Offices",
+    "address": "11 Main St, Hinsdale, NH 03451"
+   }
+  }
+ },
+ "holderness": {
+  "street": "1089 US Rte 3",
+  "place": "Holderness",
+  "zip": "03245",
+  "from": [
+   {
+    "source": "granit_cai",
+    "on": "2014-09-30"
+   },
+   {
+    "source": "nhdot",
+    "on": "2025-09-02",
+    "said": "1089 US Rt 3, PO Box 203, Holderness, NH"
+   }
+  ],
+  "survey": {
+   "kind": "Town Hall",
+   "street": "1089 US Rte 3",
+   "place": "Holderness",
+   "zip": "03245",
+   "lat": 43.725271,
+   "lon": -71.605657,
+   "surveyed": "2014-09-30",
+   "agrees": true,
+   "raw": {
+    "name": "Holderness - Town Hall",
+    "address": "1089 US Rte 3 Rte, Holderness, NH 03245"
+   }
+  }
+ },
+ "hollis": {
+  "street": "7 Monument Sq",
+  "place": "Hollis",
+  "zip": "03049",
+  "from": [
+   {
+    "source": "granit_cai",
+    "on": "2014-09-30"
+   },
+   {
+    "source": "nhdot",
+    "on": "2025-09-02",
+    "said": "7 Monument Squ, Hollis, NH 03049"
+   }
+  ],
+  "survey": {
+   "kind": "Town Hall",
+   "street": "7 Monument Sq",
+   "place": "Hollis",
+   "zip": "03049",
+   "lat": 42.739355,
+   "lon": -71.587716,
+   "surveyed": "2014-09-30",
+   "agrees": true,
+   "raw": {
+    "name": "Hollis - Town Hall",
+    "address": "7 Monument Sq, Hollis, NH 03049"
+   }
+  }
+ },
+ "hooksett": {
+  "street": "35 Main St",
+  "place": "Hooksett",
+  "zip": "03106",
+  "from": [
+   {
+    "source": "nhdot",
+    "on": "2025-09-02",
+    "said": "35 Main St, Hooksett, NH 03106"
+   },
+   {
+    "source": "sos_list",
+    "on": "2026-09-20",
+    "said": "35 Main Street Hooksett 03106"
+   },
+   {
+    "source": "granit_cai",
+    "on": "2014-09-30"
+   }
+  ],
+  "survey": {
+   "kind": "Town Hall",
+   "street": "35 Main St",
+   "place": "Hooksett",
+   "zip": "03106",
+   "lat": 43.09068,
+   "lon": -71.463171,
+   "surveyed": "2014-09-30",
+   "agrees": true,
+   "raw": {
+    "name": "Hooksett - Town Hall",
+    "address": "35 Main St, Hooksett, NH 03106"
+   }
+  }
+ },
+ "hopkinton": {
+  "street": "330 Main St",
+  "place": "Hopkinton",
+  "zip": "03229",
+  "from": [
+   {
+    "source": "nhdot",
+    "on": "2025-09-02",
+    "said": "330 Main St, Hopkinton, NH 03229"
+   },
+   {
+    "source": "sos_list",
+    "on": "2026-09-20",
+    "said": "330 Main St Hopkinton 03229"
+   },
+   {
+    "source": "granit_cai",
+    "on": "2014-09-30"
+   }
+  ],
+  "survey": {
+   "kind": "Town Offices",
+   "street": "330 Main St",
+   "place": "Hopkinton",
+   "zip": "03229",
+   "lat": 43.222229,
+   "lon": -71.711462,
+   "surveyed": "2014-09-30",
+   "agrees": true,
+   "raw": {
+    "name": "Hopkinton - Town Offices",
+    "address": "330 Main St, Hopkinton, NH 03229"
+   }
+  }
+ },
+ "hudson": {
+  "street": "12 School St",
+  "place": "Hudson",
+  "zip": "03051",
+  "from": [
+   {
+    "source": "nhdot",
+    "on": "2025-09-02",
+    "said": "12 School St, Hudson, NH 03051"
+   },
+   {
+    "source": "sos_list",
+    "on": "2026-09-20",
+    "said": "12 School Street Hudson 03051"
+   },
+   {
+    "source": "granit_cai",
+    "on": "2014-09-30"
+   }
+  ],
+  "survey": {
+   "kind": "Town Hall",
+   "street": "12 School St",
+   "place": "Hudson",
+   "zip": "03051",
+   "lat": 42.764475,
+   "lon": -71.439214,
+   "surveyed": "2014-09-30",
+   "agrees": true,
+   "raw": {
+    "name": "Hudson - Town Hall",
+    "address": "12 School St, Hudson, NH 03051"
+   }
+  }
+ },
+ "jackson": {
+  "street": "54 Main St",
+  "place": "Jackson",
+  "zip": "03846",
+  "from": [
+   {
+    "source": "granit_cai",
+    "on": "2014-09-30"
+   },
+   {
+    "source": "nhdot",
+    "on": "2025-09-02",
+    "said": "54 Main St, PO Box 268,"
+   }
+  ],
+  "survey": {
+   "kind": "Town Offices",
+   "street": "54 Main St",
+   "place": "Jackson",
+   "zip": "03846",
+   "lat": 44.14225,
+   "lon": -71.182656,
+   "surveyed": "2014-09-30",
+   "agrees": true,
+   "raw": {
+    "name": "Jackson - Town Offices",
+    "address": "54 Main St, Jackson, NH 03846"
+   }
+  }
+ },
+ "jaffrey": {
+  "street": "10 Goodnow St",
+  "place": "Jaffrey",
+  "zip": "03452",
+  "from": [
+   {
+    "source": "granit_cai",
+    "on": "2014-09-30"
+   },
+   {
+    "source": "nhdot",
+    "on": "2025-09-02",
+    "said": "10 Goodnow St, Jaffrey, NH 03452"
+   }
+  ],
+  "survey": {
+   "kind": "Town Offices",
+   "street": "10 Goodnow St",
+   "place": "Jaffrey",
+   "zip": "03452",
+   "lat": 42.815876,
+   "lon": -72.02367,
+   "surveyed": "2014-09-30",
+   "agrees": true,
+   "raw": {
+    "name": "Jaffrey - Town Offices",
+    "address": "10 Goodnow St, Jaffrey, NH 03452"
+   }
+  }
+ },
+ "jefferson": {
+  "street": "",
+  "place": "",
+  "zip": "",
+  "from": [],
+  "survey": {
+   "kind": "Town Office",
+   "street": "698 Presidential Hwy",
+   "place": "Jefferson",
+   "zip": "03583",
+   "lat": 44.421692,
+   "lon": -71.479668,
+   "surveyed": "2014-09-30",
+   "agrees": false,
+   "raw": {
+    "name": "Jefferson - Town Office",
+    "address": "698 Presidential Hwy, Jefferson, NH 03583"
+   }
+  }
+ },
+ "keene": {
+  "street": "3 Washington St",
+  "place": "Keene",
+  "zip": "03431",
+  "from": [
+   {
+    "source": "nhdot",
+    "on": "2025-09-02",
+    "said": "3 Washington St, Keene, NH 03431"
+   },
+   {
+    "source": "sos_list",
+    "on": "2026-09-20",
+    "said": "3 Washington Street Keene 03431"
+   },
+   {
+    "source": "granit_cai",
+    "on": "2014-09-30"
+   }
+  ],
+  "survey": {
+   "kind": "City Hall",
+   "street": "3 Washington St",
+   "place": "Keene",
+   "zip": "03431",
+   "lat": 42.93438,
+   "lon": -72.277805,
+   "surveyed": "2014-09-30",
+   "agrees": true,
+   "raw": {
+    "name": "City of Keene - City Hall",
+    "address": "3 Washington St, Keene, NH 03431"
+   }
+  }
+ },
+ "kensington": {
+  "street": "95 Amesbury Rd",
+  "place": "Kensington",
+  "zip": "03833",
+  "from": [
+   {
+    "source": "nhdot",
+    "on": "2025-09-02",
+    "said": "95 Amesbury Rd, Kensington, NH 03833"
+   },
+   {
+    "source": "sos_list",
+    "on": "2026-09-20",
+    "said": "95 Amesbury Rd Kensington 03833"
+   },
+   {
+    "source": "granit_cai",
+    "on": "2014-09-30"
+   }
+  ],
+  "survey": {
+   "kind": "Town Hall",
+   "street": "95 Amesbury Rd",
+   "place": "Kensington",
+   "zip": "03833",
+   "lat": 42.931636,
+   "lon": -70.945362,
+   "surveyed": "2014-09-30",
+   "agrees": true,
+   "raw": {
+    "name": "Kensington - Town Hall",
+    "address": "95 Amesbury Rd, Kensington, NH 03833"
+   }
+  }
+ },
+ "kingston": {
+  "street": "163 Main St",
+  "place": "Kingston",
+  "zip": "03848",
+  "from": [
+   {
+    "source": "nhdot",
+    "on": "2025-09-02",
+    "said": "163 Main St, Kingston, NH 03848"
+   },
+   {
+    "source": "sos_list",
+    "on": "2026-09-20",
+    "said": "163 Main Street Kingston 03848"
+   }
+  ],
+  "survey": {
+   "kind": "Town Hall",
+   "street": "167 Main St",
+   "place": "Kingston",
+   "zip": "03848",
+   "lat": 42.935667,
+   "lon": -71.053262,
+   "surveyed": "2014-09-30",
+   "agrees": false,
+   "raw": {
+    "name": "Kingston - Town Hall",
+    "address": "167 Main St, Kingston, NH 03848"
+   }
+  }
+ },
+ "laconia": {
+  "street": "45 Beacon St E",
+  "place": "Laconia",
+  "zip": "03246",
+  "from": [
+   {
+    "source": "granit_cai",
+    "on": "2014-09-30"
+   },
+   {
+    "source": "nhdot",
+    "on": "2025-09-02",
+    "said": "45 Beacon St E, Laconia, NH 03246"
+   }
+  ],
+  "survey": {
+   "kind": "City Hall",
+   "street": "45 Beacon St E",
+   "place": "Laconia",
+   "zip": "03246",
+   "lat": 43.528271,
+   "lon": -71.468539,
+   "surveyed": "2014-09-30",
+   "agrees": true,
+   "raw": {
+    "name": "Laconia - City Hall",
+    "address": "45 Beacon StE, Laconia, NH 03246"
+   }
+  }
+ },
+ "lancaster": {
+  "street": "25 Main St",
+  "place": "Laconia",
+  "zip": "03584",
+  "from": [
+   {
+    "source": "nhdot",
+    "on": "2025-09-02",
+    "said": "25 Main St, Laconia, NH 03584"
+   },
+   {
+    "source": "sos_list",
+    "on": "2026-09-20",
+    "said": "25 Main Street Lancaster 03584"
+   },
+   {
+    "source": "granit_cai",
+    "on": "2014-09-30"
+   }
+  ],
+  "survey": {
+   "kind": "Town Hall",
+   "street": "25 Main St",
+   "place": "Lancaster",
+   "zip": "03584",
+   "lat": 44.487452,
+   "lon": -71.569319,
+   "surveyed": "2014-09-30",
+   "agrees": true,
+   "raw": {
+    "name": "Lancaster - Town Hall",
+    "address": "25 Main St, Lancaster, NH 03584"
+   }
+  }
+ },
+ "landaff": {
+  "street": "12 Center Hill Rd",
+  "place": "Landaff",
+  "zip": "03585",
+  "from": [
+   {
+    "source": "nhdot",
+    "on": "2025-09-02",
+    "said": "12 Center Hill Rd, Landaff, NH 03585"
+   },
+   {
+    "source": "sos_list",
+    "on": "2026-09-20",
+    "said": "12 Center Hill Road Landaff 03585"
+   },
+   {
+    "source": "granit_cai",
+    "on": "2014-09-30"
+   }
+  ],
+  "survey": {
+   "kind": "Town Hall",
+   "street": "12 Center Hill Rd",
+   "place": "Landaff",
+   "zip": "03585",
+   "lat": 44.174844,
+   "lon": -71.887882,
+   "surveyed": "2014-09-30",
+   "agrees": true,
+   "raw": {
+    "name": "Landaff - Town Hall",
+    "address": "12 Center Hill Rd, Landaff, NH 03585"
+   }
+  }
+ },
+ "langdon": {
+  "street": "122 NH Rte 12A",
+  "place": "Langdon",
+  "zip": "03602",
+  "from": [
+   {
+    "source": "granit_cai",
+    "on": "2014-09-30"
+   },
+   {
+    "source": "nhdot",
+    "on": "2025-09-02",
+    "said": "122 Rte 12 A, Langdon, NH 03602"
+   },
+   {
+    "source": "sos_list",
+    "on": "2026-09-20",
+    "said": "122 NH Route 12A 1 Langdon 03602"
+   }
+  ],
+  "survey": {
+   "kind": "Town Offices",
+   "street": "122 NH Rte 12A",
+   "place": "Langdon",
+   "zip": "03602",
+   "lat": 43.162346,
+   "lon": -72.380019,
+   "surveyed": "2014-09-30",
+   "agrees": true,
+   "raw": {
+    "name": "Langdon - Town Offices",
+    "address": "122 NH Rte 12A Rte, Langdon, NH 03602"
+   }
+  }
+ },
+ "lebanon": {
+  "street": "51 N Park St",
+  "place": "Lebanon",
+  "zip": "03766",
+  "from": [
+   {
+    "source": "nhdot",
+    "on": "2025-09-02",
+    "said": "51 N Park St, Lebanon, NH 03766"
+   },
+   {
+    "source": "sos_list",
+    "on": "2026-09-20",
+    "said": "51 North Park Street Level 2 Lebanon 03766"
+   },
+   {
+    "source": "granit_cai",
+    "on": "2014-09-30"
+   }
+  ],
+  "survey": {
+   "kind": "City Hall",
+   "street": "51 N Park St",
+   "place": "Lebanon",
+   "zip": "03766",
+   "lat": 43.643012,
+   "lon": -72.251749,
+   "surveyed": "2014-09-30",
+   "agrees": true,
+   "raw": {
+    "name": "Lebanon - City Hall",
+    "address": "51N Park St, Lebanon, NH 03766"
+   }
+  }
+ },
+ "lee": {
+  "street": "249 Calef Hwy",
+  "place": "Lee",
+  "zip": "03861",
+  "from": [
+   {
+    "source": "nhdot",
+    "on": "2025-09-02",
+    "said": "249 Calef Hwy, Lee, NH 03861"
+   },
+   {
+    "source": "sos_list",
+    "on": "2026-09-20",
+    "said": "249 Calef Highway Lee 03861"
+   }
+  ],
+  "survey": {
+   "kind": "Town Hall",
+   "street": "7 Mast Rd",
+   "place": "Lee",
+   "zip": "03861",
+   "lat": 43.123057,
+   "lon": -71.010928,
+   "surveyed": "2014-09-30",
+   "agrees": false,
+   "raw": {
+    "name": "Lee - Town Hall",
+    "address": "7 Mast Rd, Lee, NH 03861"
+   }
+  }
+ },
+ "lempster": {
+  "street": "856 NH Route 10",
+  "place": "Lempster",
+  "zip": "03605",
+  "from": [
+   {
+    "source": "nhdot",
+    "on": "2025-09-02",
+    "said": "856 NH Route 10, Lempster, NH 03605"
+   },
+   {
+    "source": "sos_list",
+    "on": "2026-09-20",
+    "said": "856 NH Route 10 Lempster 03605"
+   }
+  ],
+  "survey": {
+   "kind": "Town Office",
+   "street": "865 NH Rte 10",
+   "place": "Lempster",
+   "zip": "03605",
+   "lat": 43.225552,
+   "lon": -72.177921,
+   "surveyed": "2014-09-30",
+   "agrees": false,
+   "raw": {
+    "name": "Lempster - Town Office",
+    "address": "865 NH Rte 10 Rte, Lempster, NH 03605"
+   }
+  }
+ },
+ "lincoln": {
+  "street": "148 Main St",
+  "place": "Lincoln",
+  "zip": "03251",
+  "from": [
+   {
+    "source": "granit_cai",
+    "on": "2014-09-30"
+   },
+   {
+    "source": "nhdot",
+    "on": "2025-09-02",
+    "said": "148 Main St, PO Box 25, Lincoln, NH 03251"
+   }
+  ],
+  "survey": {
+   "kind": "Town Hall",
+   "street": "148 Main St",
+   "place": "Lincoln",
+   "zip": "03251",
+   "lat": 44.044419,
+   "lon": -71.668062,
+   "surveyed": "2014-09-30",
+   "agrees": true,
+   "raw": {
+    "name": "Lincoln - Town Hall",
+    "address": "148 Main St, Lincoln, NH 03251"
+   }
+  }
+ },
+ "lisbon": {
+  "street": "153 S. Main St",
+  "place": "Lisbon",
+  "zip": "03585",
+  "from": [
+   {
+    "source": "nhdot",
+    "on": "2025-09-02",
+    "said": "153 S. Main St, Lisbon, NH 03585"
+   },
+   {
+    "source": "sos_list",
+    "on": "2026-09-20",
+    "said": "153 South Main Street Lisbon 03585"
+   }
+  ],
+  "survey": {
+   "kind": "Town Hall",
+   "street": "46 School St",
+   "place": "Lisbon",
+   "zip": "03585",
+   "lat": 44.214886,
+   "lon": -71.91146,
+   "surveyed": "2014-09-30",
+   "agrees": false,
+   "raw": {
+    "name": "Lisbon - Town Hall",
+    "address": "46 School St, Lisbon, NH 03585"
+   }
+  }
+ },
+ "litchfield": {
+  "street": "2 Liberty Way",
+  "place": "Ste 1",
+  "zip": "03052",
+  "from": [
+   {
+    "source": "nhdot",
+    "on": "2025-09-02",
+    "said": "2 Liberty Way, Ste 1, Litchfield, NH 03052"
+   },
+   {
+    "source": "sos_list",
+    "on": "2026-09-20",
+    "said": "2 Liberty Way Litchfield 03052"
+   },
+   {
+    "source": "granit_cai",
+    "on": "2014-09-30"
+   }
+  ],
+  "survey": {
+   "kind": "Town Hall",
+   "street": "2 Liberty Way",
+   "place": "Litchfield",
+   "zip": "03052",
+   "lat": 42.85655,
+   "lon": -71.460594,
+   "surveyed": "2014-09-30",
+   "agrees": true,
+   "raw": {
+    "name": "Litchfield - Town Hall",
+    "address": "2 Liberty Way, Litchfield, NH 03052"
+   }
+  }
+ },
+ "littleton": {
+  "street": "125 Main St",
+  "place": "Ste 200",
+  "zip": "03561",
+  "from": [
+   {
+    "source": "nhdot",
+    "on": "2025-09-02",
+    "said": "125 Main St, Ste 200, Littleton, NH 03561"
+   },
+   {
+    "source": "sos_list",
+    "on": "2026-09-20",
+    "said": "125 Main St, Suite 202 Littleton 03561"
+   },
+   {
+    "source": "granit_cai",
+    "on": "2014-09-30"
+   }
+  ],
+  "survey": {
+   "kind": "Town Office",
+   "street": "125 Main St",
+   "place": "Littleton",
+   "zip": "03561",
+   "lat": 44.307114,
+   "lon": -71.775428,
+   "surveyed": "2014-09-30",
+   "agrees": true,
+   "raw": {
+    "name": "Littleton - Town Office",
+    "address": "125 Main St, Littleton, NH 03561"
+   }
+  }
+ },
+ "londonderry": {
+  "street": "268B Mammoth Rd",
+  "place": "Londonderry",
+  "zip": "03053",
+  "from": [
+   {
+    "source": "nhdot",
+    "on": "2025-09-02",
+    "said": "268B Mammoth Rd, Londonderry, NH 03053"
+   },
+   {
+    "source": "sos_list",
+    "on": "2026-09-20",
+    "said": "268B Mammoth Rd Londonderry 03053"
+   },
+   {
+    "source": "granit_cai",
+    "on": "2014-09-30"
+   }
+  ],
+  "survey": {
+   "kind": "Town Offices",
+   "street": "268 Mammoth Rd",
+   "place": "Londonderry",
+   "zip": "03053",
+   "lat": 42.865663,
+   "lon": -71.348121,
+   "surveyed": "2014-09-30",
+   "agrees": true,
+   "raw": {
+    "name": "Londonderry - Town Offices",
+    "address": "268 Mammoth Rd, Londonderry, NH 03053"
+   }
+  }
+ },
+ "loudon": {
+  "street": "55 South Village Rd",
+  "place": "Loudon",
+  "zip": "03307",
+  "from": [
+   {
+    "source": "nhdot",
+    "on": "2025-09-02",
+    "said": "55 South Village Rd, Loudon, NH 03307"
+   },
+   {
+    "source": "sos_list",
+    "on": "2026-09-20",
+    "said": "55 South Village Rd Loudon 03307"
+   }
+  ],
+  "survey": {
+   "kind": "Town Offices",
+   "street": "29 South Village Rd",
+   "place": "Loudon",
+   "zip": "03307",
+   "lat": 43.285084,
+   "lon": -71.466567,
+   "surveyed": "2014-09-30",
+   "agrees": false,
+   "raw": {
+    "name": "Loudon - Town Offices",
+    "address": "29 S Village Rd, Loudon, NH 03307"
+   }
+  }
+ },
+ "lyman": {
+  "street": "65 Parker Hill Rd",
+  "place": "Lyman",
+  "zip": "03585",
+  "from": [
+   {
+    "source": "nhdot",
+    "on": "2025-09-02",
+    "said": "65 Parker Hill Rd, Lyman, NH 03585"
+   },
+   {
+    "source": "sos_list",
+    "on": "2026-09-20",
+    "said": "65 Parker Hill Road Lyman 03585"
+   },
+   {
+    "source": "granit_cai",
+    "on": "2014-09-30"
+   }
+  ],
+  "survey": {
+   "kind": "Town Hall",
+   "street": "65 Parker Hill Rd",
+   "place": "Lyman",
+   "zip": "03585",
+   "lat": 44.267826,
+   "lon": -71.936811,
+   "surveyed": "2014-09-30",
+   "agrees": true,
+   "raw": {
+    "name": "Lyman - Town Hall",
+    "address": "65 Parker Hill Rd, Lyman, NH 03585"
+   }
+  }
+ },
+ "lyme": {
+  "street": "1 High St",
+  "place": "Lyme",
+  "zip": "03768",
+  "from": [
+   {
+    "source": "granit_cai",
+    "on": "2014-09-30"
+   },
+   {
+    "source": "nhdot",
+    "on": "2025-09-02",
+    "said": "1 High St, PO Box 126, Lyme, NH 03768"
+   }
+  ],
+  "survey": {
+   "kind": "Town Office",
+   "street": "1 High St",
+   "place": "Lyme",
+   "zip": "03768",
+   "lat": 43.815282,
+   "lon": -72.149398,
+   "surveyed": "2014-09-30",
+   "agrees": true,
+   "raw": {
+    "name": "Lyme - Town Office",
+    "address": "1 High St, Lyme, NH 03768"
+   }
+  }
+ },
+ "lyndeborough": {
+  "street": "9 Citizens' Hall Rd",
+  "place": "Lyndeborough",
+  "zip": "03082",
+  "from": [
+   {
+    "source": "nhdot",
+    "on": "2025-09-02",
+    "said": "9 Citizens' Hall Rd, Lyndeborough, NH 03082"
+   },
+   {
+    "source": "sos_list",
+    "on": "2026-09-20",
+    "said": "9 Citizens Hall Road Lyndeborough 03082"
+   },
+   {
+    "source": "granit_cai",
+    "on": "2014-09-30"
+   }
+  ],
+  "survey": {
+   "kind": "Town Hall",
+   "street": "9 Citizens Hall Rd",
+   "place": "Lyndeborough",
+   "zip": "03082",
+   "lat": 42.879111,
+   "lon": -71.783917,
+   "surveyed": "2014-09-30",
+   "agrees": true,
+   "raw": {
+    "name": "Lyndeborough - Town Hall",
+    "address": "9 Citizens Hall Rd, Lyndeborough, NH 03082"
+   }
+  }
+ },
+ "madbury": {
+  "street": "13 Town Hall Rd",
+  "place": "Madbury",
+  "zip": "03823",
+  "from": [
+   {
+    "source": "nhdot",
+    "on": "2025-09-02",
+    "said": "13 Town Hall Rd, Madbury, NH 03823"
+   },
+   {
+    "source": "sos_list",
+    "on": "2026-09-20",
+    "said": "13 Town Hall Rd Madbury 03823"
+   },
+   {
+    "source": "granit_cai",
+    "on": "2014-09-30"
+   }
+  ],
+  "survey": {
+   "kind": "Town Hall",
+   "street": "13 Town Hall Rd",
+   "place": "Madbury",
+   "zip": "03823",
+   "lat": 43.167438,
+   "lon": -70.942326,
+   "surveyed": "2014-09-30",
+   "agrees": true,
+   "raw": {
+    "name": "Madbury - Town Hall",
+    "address": "13 Town Hall Rd, Madbury, NH 03823"
+   }
+  }
+ },
+ "madison": {
+  "street": "1923 Village Rd",
+  "place": "Madison",
+  "zip": "03849",
+  "from": [
+   {
+    "source": "granit_cai",
+    "on": "2014-09-30"
+   },
+   {
+    "source": "nhdot",
+    "on": "2025-09-02",
+    "said": "1923 Village Rd, PO Box"
+   }
+  ],
+  "survey": {
+   "kind": "Town Hall",
+   "street": "1923 Village Rd",
+   "place": "Madison",
+   "zip": "03849",
+   "lat": 43.89476,
+   "lon": -71.156551,
+   "surveyed": "2014-09-30",
+   "agrees": true,
+   "raw": {
+    "name": "Madison - Town Hall",
+    "address": "1923 Village Rd, Madison, NH 03849"
+   }
+  }
+ },
+ "manchester": {
+  "street": "1 City Hall Plaza",
+  "place": "Manchester",
+  "zip": "03101",
+  "from": [
+   {
+    "source": "nhdot",
+    "on": "2025-09-02",
+    "said": "1 City Hall Plaza, Manchester, NH 03101"
+   },
+   {
+    "source": "sos_list",
+    "on": "2026-09-20",
+    "said": "1 City Hall Plaza Manchester 03101"
+   },
+   {
+    "source": "granit_cai",
+    "on": "2014-09-30"
+   }
+  ],
+  "survey": {
+   "kind": "City Hall",
+   "street": "1 City Hall Plz",
+   "place": "Manchester",
+   "zip": "03101",
+   "lat": 42.990968,
+   "lon": -71.463394,
+   "surveyed": "2014-09-30",
+   "agrees": true,
+   "raw": {
+    "name": "Manchester - City Hall",
+    "address": "1 City Hall Plz, Manchester, NH 03101"
+   }
+  }
+ },
+ "marlborough": {
+  "street": "236 Main St",
+  "place": "Marlborough",
+  "zip": "03455",
+  "from": [
+   {
+    "source": "nhdot",
+    "on": "2025-09-02",
+    "said": "236 Main St, PO Box 487, Marlborough, NH 03455"
+   },
+   {
+    "source": "sos_list",
+    "on": "2026-09-20",
+    "said": "236 Main St Marlborough 03455"
+   },
+   {
+    "source": "granit_cai",
+    "on": "2014-09-30"
+   }
+  ],
+  "survey": {
+   "kind": "Town Offices",
+   "street": "236 Main St",
+   "place": "Marlborough",
+   "zip": "03455",
+   "lat": 42.904692,
+   "lon": -72.203042,
+   "surveyed": "2014-09-30",
+   "agrees": true,
+   "raw": {
+    "name": "Marlborough - Town Offices",
+    "address": "236 Main St, Marlborough, NH 03455"
+   }
+  }
+ },
+ "marlow": {
+  "street": "167 NH Route 123",
+  "place": "Marlow",
+  "zip": "03456",
+  "from": [
+   {
+    "source": "nhdot",
+    "on": "2025-09-02",
+    "said": "167 NH Route 123, Marlow, NH 03456"
+   },
+   {
+    "source": "sos_list",
+    "on": "2026-09-20",
+    "said": "167 NH Rt 123 Marlow 03456"
+   },
+   {
+    "source": "granit_cai",
+    "on": "2014-09-30"
+   }
+  ],
+  "survey": {
+   "kind": "Town Hall",
+   "street": "167 NH Rte 123",
+   "place": "Marlow",
+   "zip": "03456",
+   "lat": 43.116456,
+   "lon": -72.199171,
+   "surveyed": "2014-09-30",
+   "agrees": true,
+   "raw": {
+    "name": "Marlow - Town Hall",
+    "address": "167 NH Rte 123 Rte, Marlow, NH 03456"
+   }
+  }
+ },
+ "mason": {
+  "street": "16 Darling Hill Rd",
+  "place": "Mason",
+  "zip": "03048",
+  "from": [
+   {
+    "source": "nhdot",
+    "on": "2025-09-02",
+    "said": "16 Darling Hill Rd, Mason, NH 03048"
+   },
+   {
+    "source": "sos_list",
+    "on": "2026-09-20",
+    "said": "16 Darling Hill Rd Mason 03048"
+   },
+   {
+    "source": "granit_cai",
+    "on": "2014-09-30"
+   }
+  ],
+  "survey": {
+   "kind": "Town Office",
+   "street": "16 Darling Hill Rd",
+   "place": "Mason",
+   "zip": "03048",
+   "lat": 42.743783,
+   "lon": -71.767949,
+   "surveyed": "2014-09-30",
+   "agrees": true,
+   "raw": {
+    "name": "Mason - Town Office",
+    "address": "16 Darling Hill Rd, Mason, NH 03048"
+   }
+  }
+ },
+ "meredith": {
+  "street": "41 Main St",
+  "place": "Meredith",
+  "zip": "03253",
+  "from": [
+   {
+    "source": "nhdot",
+    "on": "2025-09-02",
+    "said": "41 Main St, Meredith, NH 03253"
+   },
+   {
+    "source": "sos_list",
+    "on": "2026-09-20",
+    "said": "41 Main Street Meredith 03253"
+   },
+   {
+    "source": "granit_cai",
+    "on": "2014-09-30"
+   }
+  ],
+  "survey": {
+   "kind": "Town Hall",
+   "street": "41 Main St",
+   "place": "Meredith",
+   "zip": "03253",
+   "lat": 43.656861,
+   "lon": -71.501287,
+   "surveyed": "2014-09-30",
+   "agrees": true,
+   "raw": {
+    "name": "Meredith - Town Hall",
+    "address": "41 Main St, Meredith, NH 03253"
+   }
+  }
+ },
+ "merrimack": {
+  "street": "6 Baboosic Lake Rd",
+  "place": "Merrimack",
+  "zip": "03054",
+  "from": [
+   {
+    "source": "nhdot",
+    "on": "2025-09-02",
+    "said": "6 Baboosic Lake Rd, Merrimack, NH 03054"
+   },
+   {
+    "source": "sos_list",
+    "on": "2026-09-20",
+    "said": "6 Baboosic Lake Road Merrimack 03054"
+   },
+   {
+    "source": "granit_cai",
+    "on": "2014-09-30"
+   }
+  ],
+  "survey": {
+   "kind": "Town Hall",
+   "street": "6 Baboosic Lake Rd",
+   "place": "Merrimack",
+   "zip": "03054",
+   "lat": 42.866543,
+   "lon": -71.494775,
+   "surveyed": "2014-09-30",
+   "agrees": true,
+   "raw": {
+    "name": "Merrimack - Town Hall",
+    "address": "6 Baboosic Lake Rd, Merrimack, NH 03054"
+   }
+  }
+ },
+ "middleton": {
+  "street": "182 Kings Hwy",
+  "place": "Middleton",
+  "zip": "03887",
+  "from": [
+   {
+    "source": "nhdot",
+    "on": "2025-09-02",
+    "said": "182 Kings Hwy, Middleton, NH 03887"
+   },
+   {
+    "source": "sos_list",
+    "on": "2026-09-20",
+    "said": "182 Kings Highway Middleton 03887"
+   },
+   {
+    "source": "granit_cai",
+    "on": "2014-09-30"
+   }
+  ],
+  "survey": {
+   "kind": "Town Hall",
+   "street": "182 Kings Hwy",
+   "place": "Middleton",
+   "zip": "03887",
+   "lat": 43.478381,
+   "lon": -71.070298,
+   "surveyed": "2014-09-30",
+   "agrees": true,
+   "raw": {
+    "name": "Middleton - Town Hall",
+    "address": "182 Kings Hwy, Middleton, NH 03887"
+   }
+  }
+ },
+ "milan": {
+  "street": "20 Bridge St",
+  "place": "Milan",
+  "zip": "03588",
+  "from": [
+   {
+    "source": "granit_cai",
+    "on": "2014-09-30"
+   },
+   {
+    "source": "nhdot",
+    "on": "2025-09-02",
+    "said": "20 Bridge St, Milan, NH 03588"
+   }
+  ],
+  "survey": {
+   "kind": "Town Offices",
+   "street": "20 Bridge St",
+   "place": "Milan",
+   "zip": "03588",
+   "lat": 44.573106,
+   "lon": -71.1834,
+   "surveyed": "2014-09-30",
+   "agrees": true,
+   "raw": {
+    "name": "Milan - Town Offices",
+    "address": "20 Bridge St, Milan, NH 03588"
+   }
+  }
+ },
+ "milford": {
+  "street": "1 Union Squ",
+  "place": "Milford",
+  "zip": "02055",
+  "from": [
+   {
+    "source": "nhdot",
+    "on": "2025-09-02",
+    "said": "1 Union Squ, Milford, NH 02055"
+   },
+   {
+    "source": "sos_list",
+    "on": "2026-09-20",
+    "said": "1 Union Square Milford 03055"
+   },
+   {
+    "source": "granit_cai",
+    "on": "2014-09-30"
+   }
+  ],
+  "survey": {
+   "kind": "Town Hall",
+   "street": "1 Union Sq",
+   "place": "Milford",
+   "zip": "03055",
+   "lat": 42.835622,
+   "lon": -71.648852,
+   "surveyed": "2014-09-30",
+   "agrees": true,
+   "raw": {
+    "name": "Milford - Town Hall",
+    "address": "1 Union Sq, Milford, NH 03055"
+   }
+  }
+ },
+ "milton": {
+  "street": "",
+  "place": "",
+  "zip": "",
+  "from": [],
+  "survey": {
+   "kind": "Town Hall",
+   "street": "424 White Mountain Hwy",
+   "place": "Milton",
+   "zip": "03851",
+   "lat": 43.405584,
+   "lon": -70.989185,
+   "surveyed": "2014-09-30",
+   "agrees": false,
+   "raw": {
+    "name": "Milton - Town Hall",
+    "address": "424 White Mountain Hwy, Milton, NH 03851"
+   }
+  }
+ },
+ "monroe": {
+  "street": "",
+  "place": "",
+  "zip": "",
+  "from": [],
+  "survey": {
+   "kind": "Town Hall",
+   "street": "50 Main St",
+   "place": "Monroe",
+   "zip": "03771",
+   "lat": 44.261399,
+   "lon": -72.054798,
+   "surveyed": "2014-09-30",
+   "agrees": false,
+   "raw": {
+    "name": "Monroe - Town Hall",
+    "address": "50 Main St, Monroe, NH 03771"
+   }
+  }
+ },
+ "mont-vernon": {
+  "street": "",
+  "place": "",
+  "zip": "",
+  "from": [],
+  "survey": {
+   "kind": "Town Hall",
+   "street": "1 S Main St",
+   "place": "Mont Vernon",
+   "zip": "03057",
+   "lat": 42.89289,
+   "lon": -71.67389,
+   "surveyed": "2014-09-30",
+   "agrees": false,
+   "raw": {
+    "name": "Mont Vernon - Town Hall",
+    "address": "1S Main St, Mont Vernon, NH 03057"
+   }
+  }
+ },
+ "moultonborough": {
+  "street": "6 Holland St",
+  "place": "Moultonborough",
+  "zip": "03254",
+  "from": [
+   {
+    "source": "granit_cai",
+    "on": "2014-09-30"
+   },
+   {
+    "source": "nhdot",
+    "on": "2025-09-02",
+    "said": "6 Holland St, PO Box 139, Moultonborough, NH"
+   }
+  ],
+  "survey": {
+   "kind": "Town Hall",
+   "street": "6 Holland St",
+   "place": "Moultonborough",
+   "zip": "03254",
+   "lat": 43.756343,
+   "lon": -71.395325,
+   "surveyed": "2014-09-30",
+   "agrees": true,
+   "raw": {
+    "name": "Moultonborough - Town Hall",
+    "address": "6 Holland St, Moultonborough, NH 03254"
+   }
+  }
+ },
+ "nashua": {
+  "street": "229 Main St",
+  "place": "Nashua",
+  "zip": "03060",
+  "from": [
+   {
+    "source": "nhdot",
+    "on": "2025-09-02",
+    "said": "229 Main St, Nashua, NH 03060"
+   },
+   {
+    "source": "sos_list",
+    "on": "2026-09-20",
+    "said": "229 Main Street Nashua 03060"
+   },
+   {
+    "source": "granit_cai",
+    "on": "2014-09-30"
+   }
+  ],
+  "survey": {
+   "kind": "City Hall",
+   "street": "229 Main St",
+   "place": "Nashua",
+   "zip": "03060",
+   "lat": 42.758181,
+   "lon": -71.464602,
+   "surveyed": "2014-09-30",
+   "agrees": true,
+   "raw": {
+    "name": "Nashua - City Hall",
+    "address": "229 Main St, Nashua, NH 03060"
+   }
+  }
+ },
+ "nelson": {
+  "street": "7 Nelson Common Rd",
+  "place": "Nelson",
+  "zip": "03457",
+  "from": [
+   {
+    "source": "nhdot",
+    "on": "2025-09-02",
+    "said": "7 Nelson Common Rd, Nelson, NH 03457"
+   },
+   {
+    "source": "sos_list",
+    "on": "2026-09-20",
+    "said": "7 Nelson Common Rd Nelson 03457"
+   },
+   {
+    "source": "granit_cai",
+    "on": "2014-09-30"
+   }
+  ],
+  "survey": {
+   "kind": "Town Office",
+   "street": "7 Nelson Common Rd",
+   "place": "Nelson",
+   "zip": "03457",
+   "lat": 42.989506,
+   "lon": -72.127244,
+   "surveyed": "2014-09-30",
+   "agrees": true,
+   "raw": {
+    "name": "Nelson - Town Office",
+    "address": "7 Nelson Common Rd, Nelson, NH 03457"
+   }
+  }
+ },
+ "new-boston": {
+  "street": "",
+  "place": "",
+  "zip": "",
+  "from": [],
+  "survey": {
+   "kind": "Town Offices",
+   "street": "7 Meetinghouse Hill Rd",
+   "place": "New Boston",
+   "zip": "03070",
+   "lat": 42.976289,
+   "lon": -71.690451,
+   "surveyed": "2014-09-30",
+   "agrees": false,
+   "raw": {
+    "name": "New Boston - Town Offices",
+    "address": "7 Meetinghouse Hill Rd, New Boston, NH 03070"
+   }
+  }
+ },
+ "new-castle": {
+  "street": "49 Main St",
+  "place": "New Castle",
+  "zip": "03854",
+  "from": [
+   {
+    "source": "granit_cai",
+    "on": "2014-09-30"
+   },
+   {
+    "source": "nhdot",
+    "on": "2025-09-02",
+    "said": "49 Main St, PO Box 367,"
+   }
+  ],
+  "survey": {
+   "kind": "Town Hall",
+   "street": "49 Main St",
+   "place": "New Castle",
+   "zip": "03854",
+   "lat": 43.071267,
+   "lon": -70.716363,
+   "surveyed": "2014-09-30",
+   "agrees": true,
+   "raw": {
+    "name": "New Castle - Town Hall",
+    "address": "49 Main St, New Castle, NH 03854"
+   }
+  }
+ },
+ "new-durham": {
+  "street": "4 Main St",
+  "place": "New Durham",
+  "zip": "03855",
+  "from": [
+   {
+    "source": "granit_cai",
+    "on": "2014-09-30"
+   },
+   {
+    "source": "nhdot",
+    "on": "2025-09-02",
+    "said": "4 Main St, PO Box 207, New Durham, NH 03855"
+   }
+  ],
+  "survey": {
+   "kind": "Town Hall",
+   "street": "4 Main St",
+   "place": "New Durham",
+   "zip": "03855",
+   "lat": 43.434612,
+   "lon": -71.163897,
+   "surveyed": "2014-09-30",
+   "agrees": true,
+   "raw": {
+    "name": "New Durham - Town Hall",
+    "address": "4 Main St, New Durham, NH 03855"
+   }
+  }
+ },
+ "new-hampton": {
+  "street": "6 Pinnacle Hill Rd",
+  "place": "New Hampton",
+  "zip": "03256",
+  "from": [
+   {
+    "source": "granit_cai",
+    "on": "2014-09-30"
+   },
+   {
+    "source": "nhdot",
+    "on": "2025-09-02",
+    "said": "6 Pinnacle Hill Rd, New Hapmton, NH 03256"
+   }
+  ],
+  "survey": {
+   "kind": "Town Office",
+   "street": "6 Pinnacle Hill Rd",
+   "place": "New Hampton",
+   "zip": "03256",
+   "lat": 43.6066,
+   "lon": -71.647188,
+   "surveyed": "2014-09-30",
+   "agrees": true,
+   "raw": {
+    "name": "New Hampton - Town Office",
+    "address": "6 Pinnacle Hill Rd, New Hampton, NH 03256"
+   }
+  }
+ },
+ "new-ipswich": {
+  "street": "661 Turnpike Rd",
+  "place": "New Ipswich",
+  "zip": "03071",
+  "from": [
+   {
+    "source": "nhdot",
+    "on": "2025-09-02",
+    "said": "661 Turnpike Rd, New Ipswich, NH 03071"
+   },
+   {
+    "source": "sos_list",
+    "on": "2026-09-20",
+    "said": "661 Turnpike Road New Ipswich 03071"
+   },
+   {
+    "source": "granit_cai",
+    "on": "2014-09-30"
+   }
+  ],
+  "survey": {
+   "kind": "Town Office",
+   "street": "661 Turnpike Rd",
+   "place": "New Ipswich",
+   "zip": "03071",
+   "lat": 42.759035,
+   "lon": -71.859472,
+   "surveyed": "2014-09-30",
+   "agrees": true,
+   "raw": {
+    "name": "New Ipswich - Town Office",
+    "address": "661 Turnpike Rd, New Ipswich, NH 03071"
+   }
+  }
+ },
+ "new-london": {
+  "street": "375 Main St",
+  "place": "New London",
+  "zip": "03257",
+  "from": [
+   {
+    "source": "nhdot",
+    "on": "2025-09-02",
+    "said": "375 Main St, New London, NH 03257"
+   },
+   {
+    "source": "sos_list",
+    "on": "2026-09-20",
+    "said": "375 Main Street New London 03257"
+   },
+   {
+    "source": "granit_cai",
+    "on": "2014-09-30"
+   }
+  ],
+  "survey": {
+   "kind": "Town Office",
+   "street": "375 Main St",
+   "place": "New London",
+   "zip": "03257",
+   "lat": 43.413874,
+   "lon": -71.982492,
+   "surveyed": "2014-09-30",
+   "agrees": true,
+   "raw": {
+    "name": "New London - Town Office",
+    "address": "375 Main St, New London, NH 03257"
+   }
+  }
+ },
+ "newbury": {
+  "street": "",
+  "place": "",
+  "zip": "",
+  "from": [],
+  "survey": {
+   "kind": "Town Office",
+   "street": "937 NH Rte 103",
+   "place": "Newbury",
+   "zip": "03255",
+   "lat": 43.320822,
+   "lon": -72.035485,
+   "surveyed": "2014-09-30",
+   "agrees": false,
+   "raw": {
+    "name": "Newbury - Town Office",
+    "address": "937 NH Rte 103 Rte, Newbury, NH 03255"
+   }
+  }
+ },
+ "newfields": {
+  "street": "65 Main St",
+  "place": "Newfilds",
+  "zip": "03856",
+  "from": [
+   {
+    "source": "nhdot",
+    "on": "2025-09-02",
+    "said": "65 Main St, Newfilds, NH 03856"
+   },
+   {
+    "source": "sos_list",
+    "on": "2026-09-20",
+    "said": "65 Main Street Newfields 03856"
+   }
+  ]
+ },
+ "newington": {
+  "street": "205 Nimble Hill Rd",
+  "place": "Newington",
+  "zip": "03801",
+  "from": [
+   {
+    "source": "nhdot",
+    "on": "2025-09-02",
+    "said": "205 Nimble Hill Rd, Newington, NH 03801"
+   },
+   {
+    "source": "sos_list",
+    "on": "2026-09-20",
+    "said": "205 Nimble Hill Rd Newington 03801"
+   },
+   {
+    "source": "granit_cai",
+    "on": "2014-09-30"
+   }
+  ],
+  "survey": {
+   "kind": "Town Hall",
+   "street": "205 Nimble Hill Rd",
+   "place": "Newington",
+   "zip": "03801",
+   "lat": 43.105206,
+   "lon": -70.830615,
+   "surveyed": "2014-09-30",
+   "agrees": true,
+   "raw": {
+    "name": "Newington - Town Hall",
+    "address": "205 Nimble Hill Rd, Newington, NH 03801"
+   }
+  }
+ },
+ "newmarket": {
+  "street": "186 Main St",
+  "place": "Newmarket",
+  "zip": "03857",
+  "from": [
+   {
+    "source": "nhdot",
+    "on": "2025-09-02",
+    "said": "186 Main St, Newmarket, NH 03857"
+   },
+   {
+    "source": "sos_list",
+    "on": "2026-09-20",
+    "said": "186 Main St Newmarket 03857"
+   },
+   {
+    "source": "granit_cai",
+    "on": "2014-09-30"
+   }
+  ],
+  "survey": {
+   "kind": "Town Hall",
+   "street": "186 Main St",
+   "place": "Newmarket",
+   "zip": "03857",
+   "lat": 43.077296,
+   "lon": -70.939692,
+   "surveyed": "2014-09-30",
+   "agrees": true,
+   "raw": {
+    "name": "Newmarket - Town Hall",
+    "address": "186 Main St, Newmarket, NH 03857"
+   }
+  }
+ },
+ "newport": {
+  "street": "15 Sunapee St",
+  "place": "Newport",
+  "zip": "03773",
+  "from": [
+   {
+    "source": "nhdot",
+    "on": "2025-09-02",
+    "said": "15 Sunapee St, Newport, NH 03773"
+   },
+   {
+    "source": "sos_list",
+    "on": "2026-09-20",
+    "said": "15 Sunapee Street Newport 03773"
+   },
+   {
+    "source": "granit_cai",
+    "on": "2014-09-30"
+   }
+  ],
+  "survey": {
+   "kind": "Town Office",
+   "street": "15 Sunapee St",
+   "place": "Newport",
+   "zip": "03773",
+   "lat": 43.364991,
+   "lon": -72.172173,
+   "surveyed": "2014-09-30",
+   "agrees": true,
+   "raw": {
+    "name": "Newport - Town Office",
+    "address": "15 Sunapee St, Newport, NH 03773"
+   }
+  }
+ },
+ "newton": {
+  "street": "2 Town Hall Rd",
+  "place": "Newton",
+  "zip": "03858",
+  "from": [
+   {
+    "source": "nhdot",
+    "on": "2025-09-02",
+    "said": "2 Town Hall Rd, Newton, NH 03858"
+   },
+   {
+    "source": "sos_list",
+    "on": "2026-09-20",
+    "said": "2 Town Hall Road Newton 03858"
+   },
+   {
+    "source": "granit_cai",
+    "on": "2014-09-30"
+   }
+  ],
+  "survey": {
+   "kind": "Town Hall",
+   "street": "2 Town Hall Rd",
+   "place": "Newton",
+   "zip": "03858",
+   "lat": 42.868504,
+   "lon": -71.034834,
+   "surveyed": "2014-09-30",
+   "agrees": true,
+   "raw": {
+    "name": "Newton - Town Hall",
+    "address": "2 Town Hall Rd, Newton, NH 03858"
+   }
+  }
+ },
+ "north-hampton": {
+  "street": "237A Atlantic Ave",
+  "place": "North Hampton",
+  "zip": "03862",
+  "from": [
+   {
+    "source": "nhdot",
+    "on": "2025-09-02",
+    "said": "237A Atlantic Ave, North Hampton, NH 03862"
+   },
+   {
+    "source": "sos_list",
+    "on": "2026-09-20",
+    "said": "237 Atlantic Avenue North Hampton 03862"
+   }
+  ],
+  "survey": {
+   "kind": "Town Hall",
+   "street": "233 Atlantic Ave",
+   "place": "North Hampton",
+   "zip": "03862",
+   "lat": 42.973515,
+   "lon": -70.829931,
+   "surveyed": "2014-09-30",
+   "agrees": false,
+   "raw": {
+    "name": "North Hampton - Town Hall",
+    "address": "233 Atlantic Ave, North Hampton, NH 03862"
+   }
+  }
+ },
+ "northfield": {
+  "street": "21 Summer St",
+  "place": "Northfield",
+  "zip": "03276",
+  "from": [
+   {
+    "source": "nhdot",
+    "on": "2025-09-02",
+    "said": "21 Summer St, Northfield, NH 03276"
+   },
+   {
+    "source": "sos_list",
+    "on": "2026-09-20",
+    "said": "21 Summer Street Northfield 03276"
+   },
+   {
+    "source": "granit_cai",
+    "on": "2014-09-30"
+   }
+  ],
+  "survey": {
+   "kind": "Town Hall",
+   "street": "21 Summer St",
+   "place": "Northfield",
+   "zip": "03276",
+   "lat": 43.438837,
+   "lon": -71.586374,
+   "surveyed": "2014-09-30",
+   "agrees": true,
+   "raw": {
+    "name": "Northfield - Town Hall",
+    "address": "21 Summer St, Northfield, NH 03276"
+   }
+  }
+ },
+ "northumberland": {
+  "street": "19 Main St",
+  "place": "Groveton",
+  "zip": "03582",
+  "from": [
+   {
+    "source": "nhdot",
+    "on": "2025-09-02",
+    "said": "19 Main St, Groveton, NH 03582"
+   },
+   {
+    "source": "sos_list",
+    "on": "2026-09-20",
+    "said": "19 Main Street Northumberland 03582"
+   }
+  ],
+  "survey": {
+   "kind": "Town Hall",
+   "street": "3 State St",
+   "place": "Northumberland",
+   "zip": "03582",
+   "lat": 44.598773,
+   "lon": -71.511341,
+   "surveyed": "2014-09-30",
+   "agrees": false,
+   "raw": {
+    "name": "Northumberland - Town Hall",
+    "address": "3 State St, Northumberland, NH 03582"
+   }
+  }
+ },
+ "northwood": {
+  "street": "818 1st NH Turnpike",
+  "place": "Northwood",
+  "zip": "03261",
+  "from": [
+   {
+    "source": "nhdot",
+    "on": "2025-09-02",
+    "said": "818 1st NH Turnpike, Northwood, NH 03261"
+   },
+   {
+    "source": "sos_list",
+    "on": "2026-09-20",
+    "said": "818 First NH Tpke Northwood 03261"
+   },
+   {
+    "source": "granit_cai",
+    "on": "2014-09-30"
+   }
+  ],
+  "survey": {
+   "kind": "Town Hall",
+   "street": "818 First New Hampshire Tpke",
+   "place": "Northwood",
+   "zip": "03261",
+   "lat": 43.216012,
+   "lon": -71.202763,
+   "surveyed": "2014-09-30",
+   "agrees": true,
+   "raw": {
+    "name": "Northwood - Town Hall",
+    "address": "818 First New Hampshire Tpke, Northwood, NH 03261"
+   }
+  }
+ },
+ "nottingham": {
+  "street": "139 Stage Rd",
+  "place": "Nottingham",
+  "zip": "03290",
+  "from": [
+   {
+    "source": "granit_cai",
+    "on": "2014-09-30"
+   },
+   {
+    "source": "nhdot",
+    "on": "2025-09-02",
+    "said": "139 Stage Rd, Nottingham, NH 03290"
+   }
+  ],
+  "survey": {
+   "kind": "Town Hall",
+   "street": "139 Stage Rd",
+   "place": "Nottingham",
+   "zip": "03290",
+   "lat": 43.119739,
+   "lon": -71.102356,
+   "surveyed": "2014-09-30",
+   "agrees": true,
+   "raw": {
+    "name": "Nottingham - Town Hall",
+    "address": "139 Stage Rd, Nottingham, NH 03290"
+   }
+  }
+ },
+ "orange": {
+  "street": "8 Town House Rd",
+  "place": "Orange",
+  "zip": "03741",
+  "from": [
+   {
+    "source": "granit_cai",
+    "on": "2014-09-30"
+   },
+   {
+    "source": "nhdot",
+    "on": "2025-09-02",
+    "said": "8 Town House Rd, PO Box"
+   }
+  ],
+  "survey": {
+   "kind": "Town Office",
+   "street": "8 Town House Rd",
+   "place": "Orange",
+   "zip": "03741",
+   "lat": 43.655015,
+   "lon": -71.964873,
+   "surveyed": "2014-09-30",
+   "agrees": true,
+   "raw": {
+    "name": "Orange - Town Office",
+    "address": "8 Town House Rd, Orange, NH 03741"
+   }
+  }
+ },
+ "orford": {
+  "street": "2529 Rte 25A",
+  "place": "Orford",
+  "zip": "03777",
+  "from": [
+   {
+    "source": "nhdot",
+    "on": "2025-09-02",
+    "said": "2529 Rte 25A, Orford, NH 03777"
+   },
+   {
+    "source": "sos_list",
+    "on": "2026-09-20",
+    "said": "2529 Route 25A Orford 03777"
+   },
+   {
+    "source": "granit_cai",
+    "on": "2014-09-30"
+   }
+  ],
+  "survey": {
+   "kind": "Town Office",
+   "street": "2529 NH Rte 25A",
+   "place": "Orford",
+   "zip": "03777",
+   "lat": 43.882179,
+   "lon": -72.102389,
+   "surveyed": "2014-09-30",
+   "agrees": true,
+   "raw": {
+    "name": "Orford - Town Office",
+    "address": "2529 NH Rte 25A Rte, Orford, NH 03777"
+   }
+  }
+ },
+ "ossipee": {
+  "street": "55 Main St",
+  "place": "Ossipee",
+  "zip": "03864",
+  "from": [
+   {
+    "source": "granit_cai",
+    "on": "2014-09-30"
+   },
+   {
+    "source": "nhdot",
+    "on": "2025-09-02",
+    "said": "55 Main St, PO Box 67,"
+   }
+  ],
+  "survey": {
+   "kind": "Town Hall",
+   "street": "55 Main St",
+   "place": "Ossipee",
+   "zip": "03864",
+   "lat": 43.752894,
+   "lon": -71.150926,
+   "surveyed": "2014-09-30",
+   "agrees": true,
+   "raw": {
+    "name": "Ossipee - Town Hall",
+    "address": "55 Main St, Ossipee, NH 03864"
+   }
+  }
+ },
+ "pelham": {
+  "street": "6 Village Green",
+  "place": "Pelham",
+  "zip": "03076",
+  "from": [
+   {
+    "source": "nhdot",
+    "on": "2025-09-02",
+    "said": "6 Village Green, Pelham, NH 03076"
+   },
+   {
+    "source": "sos_list",
+    "on": "2026-09-20",
+    "said": "6 Village Green Pelham 03076"
+   },
+   {
+    "source": "granit_cai",
+    "on": "2014-09-30"
+   }
+  ],
+  "survey": {
+   "kind": "Town Hall",
+   "street": "6 Village Grn",
+   "place": "Pelham",
+   "zip": "03076",
+   "lat": 42.732295,
+   "lon": -71.324697,
+   "surveyed": "2014-09-30",
+   "agrees": true,
+   "raw": {
+    "name": "Pelham - Town Hall",
+    "address": "6 Village Grn, Pelham, NH 03076"
+   }
+  }
+ },
+ "pembroke": {
+  "street": "311 Pembroke St",
+  "place": "Pembroke",
+  "zip": "03275",
+  "from": [
+   {
+    "source": "nhdot",
+    "on": "2025-09-02",
+    "said": "311 Pembroke St, Pembroke, NH 03275"
+   },
+   {
+    "source": "sos_list",
+    "on": "2026-09-20",
+    "said": "311 Pembroke Street Pembroke 03275"
+   },
+   {
+    "source": "granit_cai",
+    "on": "2014-09-30"
+   }
+  ],
+  "survey": {
+   "kind": "Town Office",
+   "street": "311 Pembroke St",
+   "place": "Pembroke",
+   "zip": "03275",
+   "lat": 43.15001,
+   "lon": -71.460183,
+   "surveyed": "2014-09-30",
+   "agrees": true,
+   "raw": {
+    "name": "Pembroke - Town Office",
+    "address": "311 Pembroke St, Pembroke, NH 03275"
+   }
+  }
+ },
+ "peterborough": {
+  "street": "1 Grove St",
+  "place": "Peterborough",
+  "zip": "03458",
+  "from": [
+   {
+    "source": "nhdot",
+    "on": "2025-09-02",
+    "said": "1 Grove St, Peterborough, NH 03458"
+   },
+   {
+    "source": "sos_list",
+    "on": "2026-09-20",
+    "said": "1 Grove St Peterborough 03458"
+   },
+   {
+    "source": "granit_cai",
+    "on": "2014-09-30"
+   }
+  ],
+  "survey": {
+   "kind": "Town Offices",
+   "street": "1 Grove St",
+   "place": "Peterborough",
+   "zip": "03458",
+   "lat": 42.877436,
+   "lon": -71.950578,
+   "surveyed": "2014-09-30",
+   "agrees": true,
+   "raw": {
+    "name": "Peterborough - Town Offices",
+    "address": "1 Grove St, Peterborough, NH 03458"
+   }
+  }
+ },
+ "piermont": {
+  "street": "130 Rte 10",
+  "place": "Piermont",
+  "zip": "03779",
+  "from": [
+   {
+    "source": "nhdot",
+    "on": "2025-09-02",
+    "said": "130 Rte 10, Piermont, NH 03779"
+   },
+   {
+    "source": "sos_list",
+    "on": "2026-09-20",
+    "said": "130 Route 10 Piermont 03779"
+   },
+   {
+    "source": "granit_cai",
+    "on": "2014-09-30"
+   }
+  ],
+  "survey": {
+   "kind": "Town Office",
+   "street": "130 NH Rte 10",
+   "place": "Piermont",
+   "zip": "03779",
+   "lat": 43.968352,
+   "lon": -72.080384,
+   "surveyed": "2014-09-30",
+   "agrees": true,
+   "raw": {
+    "name": "Piermont - Town Office",
+    "address": "130 NH Rte 10 Rte, Piermont, NH 03779"
+   }
+  }
+ },
+ "pittsburg": {
+  "street": "1526 Main St",
+  "place": "Pittsburg",
+  "zip": "03592",
+  "from": [
+   {
+    "source": "nhdot",
+    "on": "2025-09-02",
+    "said": "1526 Main St, Pittsburg, NH 03592"
+   },
+   {
+    "source": "sos_list",
+    "on": "2026-09-20",
+    "said": "1526 Main Street Pittsburg 03592"
+   },
+   {
+    "source": "granit_cai",
+    "on": "2014-09-30"
+   }
+  ],
+  "survey": {
+   "kind": "Town Hall",
+   "street": "1526 Main St",
+   "place": "Pittsburg",
+   "zip": "03592",
+   "lat": 45.052718,
+   "lon": -71.395926,
+   "surveyed": "2014-09-30",
+   "agrees": true,
+   "raw": {
+    "name": "Pittsburg - Town Hall",
+    "address": "1526 Main St, Pittsburg, NH 03592"
+   }
+  }
+ },
+ "pittsfield": {
+  "street": "85 Main St",
+  "place": "Pittsfield",
+  "zip": "03263",
+  "from": [
+   {
+    "source": "nhdot",
+    "on": "2025-09-02",
+    "said": "85 Main St, Pittsfield, NH 03263"
+   },
+   {
+    "source": "sos_list",
+    "on": "2026-09-20",
+    "said": "85 Main Street Pittsfield 03263"
+   },
+   {
+    "source": "granit_cai",
+    "on": "2014-09-30"
+   }
+  ],
+  "survey": {
+   "kind": "Town Offices",
+   "street": "85 Main St",
+   "place": "Pittsfield",
+   "zip": "03275",
+   "lat": 43.302337,
+   "lon": -71.324727,
+   "surveyed": "2014-09-30",
+   "agrees": true,
+   "raw": {
+    "name": "Pittsfield - Town Offices",
+    "address": "85 Main St, Pittsfield, NH 03275"
+   }
+  }
+ },
+ "plainfield": {
+  "street": "110 Main St",
+  "place": "Plainfield",
+  "zip": "03781",
+  "from": [
+   {
+    "source": "granit_cai",
+    "on": "2014-09-30"
+   },
+   {
+    "source": "nhdot",
+    "on": "2025-09-02",
+    "said": "110 Main St, Plainfield, NH 03781"
+   }
+  ],
+  "survey": {
+   "kind": "Town Office",
+   "street": "110 Main St",
+   "place": "Plainfield",
+   "zip": "03781",
+   "lat": 43.548299,
+   "lon": -72.260842,
+   "surveyed": "2014-09-30",
+   "agrees": true,
+   "raw": {
+    "name": "Plainfield - Town Office",
+    "address": "110 Main St, Plainfield, NH 03781"
+   }
+  }
+ },
+ "plaistow": {
+  "street": "145 Main St",
+  "place": "Plaistow",
+  "zip": "03865",
+  "from": [
+   {
+    "source": "nhdot",
+    "on": "2025-09-02",
+    "said": "145 Main St, Plaistow, NH 03865"
+   },
+   {
+    "source": "sos_list",
+    "on": "2026-09-20",
+    "said": "145 Main Street Ste 2 Plaistow 03865"
+   },
+   {
+    "source": "granit_cai",
+    "on": "2014-09-30"
+   }
+  ],
+  "survey": {
+   "kind": "Town Hall",
+   "street": "145 Main St",
+   "place": "Plaistow",
+   "zip": "03865",
+   "lat": 42.837307,
+   "lon": -71.09508,
+   "surveyed": "2014-09-30",
+   "agrees": true,
+   "raw": {
+    "name": "Plaistow - Town Hall",
+    "address": "145 Main St, Plaistow, NH 03865"
+   }
+  }
+ },
+ "plymouth": {
+  "street": "6 Post Office Squ",
+  "place": "Plymouth",
+  "zip": "03264",
+  "from": [
+   {
+    "source": "nhdot",
+    "on": "2025-09-02",
+    "said": "6 Post Office Squ, Plymouth, NH 03264"
+   },
+   {
+    "source": "sos_list",
+    "on": "2026-09-20",
+    "said": "6 Post Office Square Plymouth 03264"
+   },
+   {
+    "source": "granit_cai",
+    "on": "2014-09-30"
+   }
+  ],
+  "survey": {
+   "kind": "Town Hall",
+   "street": "6 Post Office Sq",
+   "place": "Plymouth",
+   "zip": "03264",
+   "lat": 43.758268,
+   "lon": -71.688451,
+   "surveyed": "2014-09-30",
+   "agrees": true,
+   "raw": {
+    "name": "Plymouth - Town Hall",
+    "address": "6 Post Office Sq, Plymouth, NH 03264"
+   }
+  }
+ },
+ "portsmouth": {
+  "street": "1 Junkins Ave",
+  "place": "Portsmouth",
+  "zip": "03801",
+  "from": [
+   {
+    "source": "nhdot",
+    "on": "2025-09-02",
+    "said": "1 Junkins Ave, Portsmouth, NH 03801"
+   },
+   {
+    "source": "sos_list",
+    "on": "2026-09-20",
+    "said": "1 Junkins Avenue Portsmouth 03801"
+   },
+   {
+    "source": "granit_cai",
+    "on": "2014-09-30"
+   }
+  ],
+  "survey": {
+   "kind": "City Hall",
+   "street": "1 Junkins Ave",
+   "place": "Portsmouth",
+   "zip": "03801",
+   "lat": 43.071067,
+   "lon": -70.753831,
+   "surveyed": "2014-09-30",
+   "agrees": true,
+   "raw": {
+    "name": "Portsmouth - City Hall",
+    "address": "1 Junkins Ave, Portsmouth, NH 03801"
+   }
+  }
+ },
+ "randolph": {
+  "street": "130 Durand Rd",
+  "place": "Randolph",
+  "zip": "03593",
+  "from": [
+   {
+    "source": "nhdot",
+    "on": "2025-09-02",
+    "said": "130 Durand Rd, Randolph, NH 03593"
+   },
+   {
+    "source": "sos_list",
+    "on": "2026-09-20",
+    "said": "130 Durand Road Randolph 03593"
+   },
+   {
+    "source": "granit_cai",
+    "on": "2014-09-30"
+   }
+  ],
+  "survey": {
+   "kind": "Town Hall",
+   "street": "130 Durand Rd",
+   "place": "Randolph",
+   "zip": "03593",
+   "lat": 44.375265,
+   "lon": -71.282089,
+   "surveyed": "2014-09-30",
+   "agrees": true,
+   "raw": {
+    "name": "Randolph - Town Hall",
+    "address": "130 Durand Rd, Randolph, NH 03593"
+   }
+  }
+ },
+ "raymond": {
+  "street": "4 Epping St",
+  "place": "Raymond",
+  "zip": "03077",
+  "from": [
+   {
+    "source": "nhdot",
+    "on": "2025-09-02",
+    "said": "4 Epping St, Raymond, NH 03077"
+   },
+   {
+    "source": "sos_list",
+    "on": "2026-09-20",
+    "said": "4 Epping Street Raymond 03077"
+   },
+   {
+    "source": "granit_cai",
+    "on": "2014-09-30"
+   }
+  ],
+  "survey": {
+   "kind": "Town Offices",
+   "street": "4 Epping St",
+   "place": "Raymond",
+   "zip": "03077",
+   "lat": 43.036775,
+   "lon": -71.183296,
+   "surveyed": "2014-09-30",
+   "agrees": true,
+   "raw": {
+    "name": "Raymond - Town Offices",
+    "address": "4 Epping St, Raymond, NH 03077"
+   }
+  }
+ },
+ "richmond": {
+  "street": "105 Old Homestead Highway",
+  "place": "Richmond",
+  "zip": "03470",
+  "from": [
+   {
+    "source": "nhdot",
+    "on": "2025-09-02",
+    "said": "105 Old Homestead Highway, Richmond, NH"
+   },
+   {
+    "source": "sos_list",
+    "on": "2026-09-20",
+    "said": "105 Old Homestead Hwy Richmond 03470"
+   }
+  ],
+  "survey": {
+   "kind": "Town Hall",
+   "street": "105 Old Hwy",
+   "place": "Richmond",
+   "zip": "03470",
+   "lat": 42.762529,
+   "lon": -72.268638,
+   "surveyed": "2014-09-30",
+   "agrees": false,
+   "raw": {
+    "name": "Richmond - Town Hall",
+    "address": "105 Old Hwy, Richmond, NH 03470"
+   }
+  }
+ },
+ "rindge": {
+  "street": "30 Payson Hill Rd",
+  "place": "Rindge",
+  "zip": "03461",
+  "from": [
+   {
+    "source": "nhdot",
+    "on": "2025-09-02",
+    "said": "30 Payson Hill Rd, Rindge, NH 03461"
+   },
+   {
+    "source": "sos_list",
+    "on": "2026-09-20",
+    "said": "30 Payson Hill Road Rindge 03461"
+   },
+   {
+    "source": "granit_cai",
+    "on": "2014-09-30"
+   }
+  ],
+  "survey": {
+   "kind": "Town Offices",
+   "street": "30 Payson Hill Rd",
+   "place": "Rindge",
+   "zip": "03461",
+   "lat": 42.75183,
+   "lon": -72.00966,
+   "surveyed": "2014-09-30",
+   "agrees": true,
+   "raw": {
+    "name": "Rindge - Town Offices",
+    "address": "30 Payson Hill Rd, Rindge, NH 03461"
+   }
+  }
+ },
+ "rochester": {
+  "street": "31 Wakefield St",
+  "place": "Rochester",
+  "zip": "03867",
+  "from": [
+   {
+    "source": "granit_cai",
+    "on": "2014-09-30"
+   },
+   {
+    "source": "nhdot",
+    "on": "2025-09-02",
+    "said": "31 Wakefield St, Rochester, NH 03867"
+   }
+  ],
+  "survey": {
+   "kind": "City Hall",
+   "street": "31 Wakefield St",
+   "place": "Rochester",
+   "zip": "03867",
+   "lat": 43.30536,
+   "lon": -70.975826,
+   "surveyed": "2014-09-30",
+   "agrees": true,
+   "raw": {
+    "name": "Rochester - City Hall",
+    "address": "31 Wakefield St, Rochester, NH 03867"
+   }
+  }
+ },
+ "rollinsford": {
+  "street": "667 Main St",
+  "place": "Rollinsford",
+  "zip": "03869",
+  "from": [
+   {
+    "source": "granit_cai",
+    "on": "2014-09-30"
+   },
+   {
+    "source": "nhdot",
+    "on": "2025-09-02",
+    "said": "667 Main St, PO Box 309,"
+   }
+  ],
+  "survey": {
+   "kind": "Town Hall",
+   "street": "667 Main St",
+   "place": "Rollinsford",
+   "zip": "03869",
+   "lat": 43.235646,
+   "lon": -70.821061,
+   "surveyed": "2014-09-30",
+   "agrees": true,
+   "raw": {
+    "name": "Rollinsford - Town Hall",
+    "address": "667 Main St, Rollinsford, NH 03869"
+   }
+  }
+ },
+ "roxbury": {
+  "street": "3 Middletown Rd",
+  "place": "Roxbury",
+  "zip": "03431",
+  "from": [
+   {
+    "source": "granit_cai",
+    "on": "2014-09-30"
+   },
+   {
+    "source": "nhdot",
+    "on": "2025-09-02",
+    "said": "3 Middletown Rd, Roxbury, NH 03431"
+   }
+  ],
+  "survey": {
+   "kind": "Town Office",
+   "street": "3 Middletown Rd",
+   "place": "Roxbury",
+   "zip": "03431",
+   "lat": 42.933936,
+   "lon": -72.239647,
+   "surveyed": "2014-09-30",
+   "agrees": true,
+   "raw": {
+    "name": "Roxbury - Town Office",
+    "address": "3 Middletown Rd, Roxbury, NH 03431"
+   }
+  }
+ },
+ "rumney": {
+  "street": "79 Depot St",
+  "place": "Rumney",
+  "zip": "03266",
+  "from": [
+   {
+    "source": "granit_cai",
+    "on": "2014-09-30"
+   },
+   {
+    "source": "nhdot",
+    "on": "2025-09-02",
+    "said": "79 Depot St, PO Box 220,"
+   }
+  ],
+  "survey": {
+   "kind": "Town Offices",
+   "street": "79 Depot St",
+   "place": "Rumney",
+   "zip": "03266",
+   "lat": 43.79554,
+   "lon": -71.820167,
+   "surveyed": "2014-09-30",
+   "agrees": true,
+   "raw": {
+    "name": "Rumney - Town Offices",
+    "address": "79 Depot St, Rumney, NH 03266"
+   }
+  }
+ },
+ "rye": {
+  "street": "10 Central Rd",
+  "place": "Rye",
+  "zip": "03870",
+  "from": [
+   {
+    "source": "granit_cai",
+    "on": "2014-09-30"
+   },
+   {
+    "source": "nhdot",
+    "on": "2025-09-02",
+    "said": "10 Central Rd, Rye, NH 03870"
+   }
+  ],
+  "survey": {
+   "kind": "Town Hall",
+   "street": "10 Central Rd",
+   "place": "Rye",
+   "zip": "03870",
+   "lat": 43.010471,
+   "lon": -70.773512,
+   "surveyed": "2014-09-30",
+   "agrees": true,
+   "raw": {
+    "name": "Rye - Town Hall",
+    "address": "10 Central Rd, Rye, NH 03870"
+   }
+  }
+ },
+ "salem": {
+  "street": "33 Geremonty Dr",
+  "place": "Salem",
+  "zip": "03079",
+  "from": [
+   {
+    "source": "nhdot",
+    "on": "2025-09-02",
+    "said": "33 Geremonty Dr, Salem, NH 03079"
+   },
+   {
+    "source": "sos_list",
+    "on": "2026-09-20",
+    "said": "33 Geremonty Dr Salem 03079"
+   },
+   {
+    "source": "granit_cai",
+    "on": "2014-09-30"
+   }
+  ],
+  "survey": {
+   "kind": "Town Hall",
+   "street": "33 Geremonty Dr",
+   "place": "Salem",
+   "zip": "03079",
+   "lat": 42.780648,
+   "lon": -71.209431,
+   "surveyed": "2014-09-30",
+   "agrees": true,
+   "raw": {
+    "name": "Salem - Town Hall",
+    "address": "33 Geremonty Dr, Salem, NH 03079"
+   }
+  }
+ },
+ "salisbury": {
+  "street": "9 Old Coach Rd",
+  "place": "Salisbury",
+  "zip": "03268",
+  "from": [
+   {
+    "source": "granit_cai",
+    "on": "2014-09-30"
+   },
+   {
+    "source": "nhdot",
+    "on": "2025-09-02",
+    "said": "9 Old Coach Rd, PO Box"
+   }
+  ],
+  "survey": {
+   "kind": "Town Office",
+   "street": "9 Old Coach Rd",
+   "place": "Salisbury",
+   "zip": "03268",
+   "lat": 43.379685,
+   "lon": -71.714272,
+   "surveyed": "2014-09-30",
+   "agrees": true,
+   "raw": {
+    "name": "Salisbury - Town Office",
+    "address": "9 Old Coach Rd, Salisbury, NH 03268"
+   }
+  }
+ },
+ "sanbornton": {
+  "street": "",
+  "place": "",
+  "zip": "",
+  "from": [],
+  "survey": {
+   "kind": "Town Offices",
+   "street": "573 Sanborn Rd",
+   "place": "Sanbornton",
+   "zip": "03269",
+   "lat": 43.492936,
+   "lon": -71.585715,
+   "surveyed": "2014-09-30",
+   "agrees": false,
+   "raw": {
+    "name": "Sanbornton - Town Offices",
+    "address": "573 Sanborn Rd, Sanbornton, NH 03269"
+   }
+  }
+ },
+ "sandown": {
+  "street": "320 Main St",
+  "place": "Sandown",
+  "zip": "03873",
+  "from": [
+   {
+    "source": "granit_cai",
+    "on": "2014-09-30"
+   },
+   {
+    "source": "nhdot",
+    "on": "2025-09-02",
+    "said": "320 Main St, PO Box"
+   }
+  ],
+  "survey": {
+   "kind": "Town Hall",
+   "street": "320 Main St",
+   "place": "Sandown",
+   "zip": "03873",
+   "lat": 42.92644,
+   "lon": -71.187395,
+   "surveyed": "2014-09-30",
+   "agrees": true,
+   "raw": {
+    "name": "Sandown - Town Hall",
+    "address": "320 Main St, Sandown, NH 03873"
+   }
+  }
+ },
+ "sandwich": {
+  "street": "",
+  "place": "",
+  "zip": "",
+  "from": [],
+  "survey": {
+   "kind": "Town Hall",
+   "street": "68 Maple St",
+   "place": "Sandwich",
+   "zip": "03227",
+   "lat": 43.807217,
+   "lon": -71.437566,
+   "surveyed": "2014-09-30",
+   "agrees": false,
+   "raw": {
+    "name": "Sandwich - Town Hall",
+    "address": "68 Maple St, Sandwich, NH 03227"
+   }
+  }
+ },
+ "seabrook": {
+  "street": "99 Lafayette Rd",
+  "place": "Seabrook",
+  "zip": "03874",
+  "from": [
+   {
+    "source": "nhdot",
+    "on": "2025-09-02",
+    "said": "99 Lafayette Rd, Seabrook, NH 03874"
+   },
+   {
+    "source": "sos_list",
+    "on": "2026-09-20",
+    "said": "99 Lafayette Rd Seabrook 03874"
+   },
+   {
+    "source": "granit_cai",
+    "on": "2014-09-30"
+   }
+  ],
+  "survey": {
+   "kind": "Town Office",
+   "street": "99 Lafayette Rd",
+   "place": "Seabrook",
+   "zip": "03874",
+   "lat": 42.875937,
+   "lon": -70.870947,
+   "surveyed": "2014-09-30",
+   "agrees": true,
+   "raw": {
+    "name": "Seabrook - Town Office",
+    "address": "99 Lafayette Rd, Seabrook, NH 03874"
+   }
+  }
+ },
+ "sharon": {
+  "street": "432 NH Rte 123",
+  "place": "Sharon",
+  "zip": "03458",
+  "from": [
+   {
+    "source": "nhdot",
+    "on": "2025-09-02",
+    "said": "432 NH Rte 123, Sharon, NH 03458"
+   },
+   {
+    "source": "sos_list",
+    "on": "2026-09-20",
+    "said": "432 NH Rte 123 Sharon 03458"
+   },
+   {
+    "source": "granit_cai",
+    "on": "2014-09-30"
+   }
+  ],
+  "survey": {
+   "kind": "Meeting House",
+   "street": "432 NH Rte 123",
+   "place": "Sharon",
+   "zip": "03458",
+   "lat": 42.815309,
+   "lon": -71.915741,
+   "surveyed": "2014-09-30",
+   "agrees": true,
+   "raw": {
+    "name": "Sharon - Meeting House",
+    "address": "432 NH Rte 123 Rte, Sharon, NH 03458"
+   }
+  }
+ },
+ "shelburne": {
+  "street": "74 Village Rd",
+  "place": "Shelburne",
+  "zip": "03581",
+  "from": [
+   {
+    "source": "nhdot",
+    "on": "2025-09-02",
+    "said": "74 Village Rd, Shelburne, NH 03581"
+   },
+   {
+    "source": "sos_list",
+    "on": "2026-09-20",
+    "said": "74 Village Road Shelburne 03581"
+   },
+   {
+    "source": "granit_cai",
+    "on": "2014-09-30"
+   }
+  ],
+  "survey": {
+   "kind": "Town Hall",
+   "street": "74 Village Rd",
+   "place": "Shelburne",
+   "zip": "03581",
+   "lat": 44.399414,
+   "lon": -71.07445,
+   "surveyed": "2014-09-30",
+   "agrees": true,
+   "raw": {
+    "name": "Shelburne - Town Hall",
+    "address": "74 Village Rd, Shelburne, NH 03581"
+   }
+  }
+ },
+ "somersworth": {
+  "street": "1 Government Way",
+  "place": "Somersworth",
+  "zip": "03878",
+  "from": [
+   {
+    "source": "nhdot",
+    "on": "2025-09-02",
+    "said": "1 Government Way, Somersworth, NH 03878"
+   },
+   {
+    "source": "sos_list",
+    "on": "2026-09-20",
+    "said": "1 Government Way Somersworth 03878"
+   },
+   {
+    "source": "granit_cai",
+    "on": "2014-09-30"
+   }
+  ],
+  "survey": {
+   "kind": "City Hall",
+   "street": "1 Government Way",
+   "place": "Somersworth",
+   "zip": "03878",
+   "lat": 43.262311,
+   "lon": -70.864763,
+   "surveyed": "2014-09-30",
+   "agrees": true,
+   "raw": {
+    "name": "Somersworth - City Hall",
+    "address": "1 Government Way, Somersworth, NH 03878"
+   }
+  }
+ },
+ "south-hampton": {
+  "street": "3 Hilldale Ave",
+  "place": "South Hampton",
+  "zip": "03827",
+  "from": [
+   {
+    "source": "nhdot",
+    "on": "2025-09-02",
+    "said": "3 Hilldale Ave, South Hampton, NH 03827"
+   },
+   {
+    "source": "sos_list",
+    "on": "2026-09-20",
+    "said": "3 Hilldale Ave South Hampton 03827"
+   },
+   {
+    "source": "granit_cai",
+    "on": "2014-09-30"
+   }
+  ],
+  "survey": {
+   "kind": "Town Hall",
+   "street": "3 Hilldale Ave",
+   "place": "South Hampton",
+   "zip": "03827",
+   "lat": 42.880861,
+   "lon": -70.963547,
+   "surveyed": "2014-09-30",
+   "agrees": true,
+   "raw": {
+    "name": "South Hampton - Town Hall",
+    "address": "3 Hilldale Ave, South Hampton, NH 03827"
+   }
+  }
+ },
+ "springfield": {
+  "street": "2750 Main St",
+  "place": "Springfield",
+  "zip": "03284",
+  "from": [
+   {
+    "source": "granit_cai",
+    "on": "2014-09-30"
+   },
+   {
+    "source": "nhdot",
+    "on": "2025-09-02",
+    "said": "2750 Main St, PO Box 22,"
+   }
+  ],
+  "survey": {
+   "kind": "Town Office",
+   "street": "2750 Main St",
+   "place": "Springfield",
+   "zip": "03284",
+   "lat": 43.492898,
+   "lon": -72.047404,
+   "surveyed": "2014-09-30",
+   "agrees": true,
+   "raw": {
+    "name": "Springfield - Town Office",
+    "address": "2750 Main St, Springfield, NH 03284"
+   }
+  }
+ },
+ "stark": {
+  "street": "1189 Stark Hwy",
+  "place": "Stark",
+  "zip": "03582",
+  "from": [
+   {
+    "source": "nhdot",
+    "on": "2025-09-02",
+    "said": "1189 Stark Hwy, Stark, NH 03582"
+   },
+   {
+    "source": "sos_list",
+    "on": "2026-09-20",
+    "said": "1189 Stark Highway Stark 03582"
+   },
+   {
+    "source": "granit_cai",
+    "on": "2014-09-30"
+   }
+  ],
+  "survey": {
+   "kind": "Town Hall",
+   "street": "1189 Stark Hwy",
+   "place": "Stark",
+   "zip": "03582",
+   "lat": 44.600142,
+   "lon": -71.407604,
+   "surveyed": "2014-09-30",
+   "agrees": true,
+   "raw": {
+    "name": "Stark - Town Hall",
+    "address": "1189 Stark Hwy, Stark, NH 03582"
+   }
+  }
+ },
+ "stewartstown": {
+  "street": "888 Washington St",
+  "place": "Stewartstown",
+  "zip": "03597",
+  "from": [
+   {
+    "source": "granit_cai",
+    "on": "2014-09-30"
+   },
+   {
+    "source": "sos_list",
+    "on": "2026-09-20",
+    "said": "888 Washington St Stewartstown 03597"
+   }
+  ],
+  "survey": {
+   "kind": "Town Offices",
+   "street": "888 Washington St",
+   "place": "Stewartstown",
+   "zip": "03597",
+   "lat": 44.99546,
+   "lon": -71.531134,
+   "surveyed": "2014-09-30",
+   "agrees": true,
+   "raw": {
+    "name": "Stewartstown - Town Offices",
+    "address": "888 Washington St, Stewartstown, NH 03597"
+   }
+  }
+ },
+ "stoddard": {
+  "street": "1450 Rte 123 North",
+  "place": "Stoddard",
+  "zip": "03464",
+  "from": [
+   {
+    "source": "nhdot",
+    "on": "2025-09-02",
+    "said": "1450 Rte 123 North, Stoddard, NH 03464"
+   },
+   {
+    "source": "sos_list",
+    "on": "2026-09-20",
+    "said": "1450 Route 123 N Stoddard 03464"
+   },
+   {
+    "source": "granit_cai",
+    "on": "2014-09-30"
+   }
+  ],
+  "survey": {
+   "kind": "Town Office",
+   "street": "1450 NH Rte 123 N",
+   "place": "Stoddard",
+   "zip": "03464",
+   "lat": 43.079274,
+   "lon": -72.111819,
+   "surveyed": "2014-09-30",
+   "agrees": true,
+   "raw": {
+    "name": "Stoddard - Town Office",
+    "address": "1450 NH Rte 123 RteN, Stoddard, NH 03464"
+   }
+  }
+ },
+ "strafford": {
+  "street": "12 Mountain View Dr",
+  "place": "Strafford",
+  "zip": "03884",
+  "from": [
+   {
+    "source": "granit_cai",
+    "on": "2014-09-30"
+   },
+   {
+    "source": "nhdot",
+    "on": "2025-09-02",
+    "said": "12 Mountain View Dr, Strafford, NH 03884"
+   }
+  ],
+  "survey": {
+   "kind": "Town Hall",
+   "street": "12 Mountain View Dr",
+   "place": "Strafford",
+   "zip": "03884",
+   "lat": 43.274962,
+   "lon": -71.130394,
+   "surveyed": "2014-09-30",
+   "agrees": true,
+   "raw": {
+    "name": "Strafford - Town Hall",
+    "address": "12 Mountain View Dr, Strafford, NH 03884"
+   }
+  }
+ },
+ "stratford": {
+  "street": "",
+  "place": "",
+  "zip": "",
+  "from": []
+ },
+ "stratham": {
+  "street": "10 Bunker Hill Ave",
+  "place": "Stratham",
+  "zip": "03885",
+  "from": [
+   {
+    "source": "nhdot",
+    "on": "2025-09-02",
+    "said": "10 Bunker Hill Ave, Stratham, NH 03885"
+   },
+   {
+    "source": "sos_list",
+    "on": "2026-09-20",
+    "said": "10 Bunker Hill Ave Stratham 03885"
+   },
+   {
+    "source": "granit_cai",
+    "on": "2014-09-30"
+   }
+  ],
+  "survey": {
+   "kind": "Town Hall",
+   "street": "10 Bunker Hill Ave",
+   "place": "Stratham",
+   "zip": "03885",
+   "lat": 43.011231,
+   "lon": -70.915722,
+   "surveyed": "2014-09-30",
+   "agrees": true,
+   "raw": {
+    "name": "Stratham - Town Hall / EOC",
+    "address": "10 Bunker Hill Ave, Stratham, NH 03885"
+   }
+  }
+ },
+ "sugar-hill": {
+  "street": "",
+  "place": "",
+  "zip": "",
+  "from": [],
+  "survey": {
+   "kind": "Town Offices",
+   "street": "1411 NH Rte 117",
+   "place": "Sugar Hill",
+   "zip": "03586",
+   "lat": 44.214156,
+   "lon": -71.798961,
+   "surveyed": "2014-09-30",
+   "agrees": false,
+   "raw": {
+    "name": "Sugar Hill - Town Offices",
+    "address": "1411 NH Rte 117 Rte, Sugar Hill, NH 03586"
+   }
+  }
+ },
+ "sullivan": {
+  "street": "452 Centre St",
+  "place": "Sullivan",
+  "zip": "03445",
+  "from": [
+   {
+    "source": "granit_cai",
+    "on": "2014-09-30"
+   },
+   {
+    "source": "nhdot",
+    "on": "2025-09-02",
+    "said": "452 Centre St, PO Box 110, Sullivan, NH 03445"
+   }
+  ],
+  "survey": {
+   "kind": "Town Office",
+   "street": "452 Centre St",
+   "place": "Sullivan",
+   "zip": "03445",
+   "lat": 43.013069,
+   "lon": -72.218652,
+   "surveyed": "2014-09-30",
+   "agrees": true,
+   "raw": {
+    "name": "Sullivan - Town Office",
+    "address": "452 Centre St, Sullivan, NH 03445"
+   }
+  }
+ },
+ "sunapee": {
+  "street": "23 Edgemont Rd",
+  "place": "Sunapee",
+  "zip": "03782",
+  "from": [
+   {
+    "source": "granit_cai",
+    "on": "2014-09-30"
+   },
+   {
+    "source": "nhdot",
+    "on": "2025-09-02",
+    "said": "23 Edgemont Rd, Sunapee, NH 03782"
+   }
+  ],
+  "survey": {
+   "kind": "Town Office",
+   "street": "23 Edgemont Rd",
+   "place": "Sunapee",
+   "zip": "03782",
+   "lat": 43.385667,
+   "lon": -72.086279,
+   "surveyed": "2014-09-30",
+   "agrees": true,
+   "raw": {
+    "name": "Sunapee - Town Office",
+    "address": "23 Edgemont Rd, Sunapee, NH 03782"
+   }
+  }
+ },
+ "surry": {
+  "street": "1 Village Rd",
+  "place": "Surry",
+  "zip": "03431",
+  "from": [
+   {
+    "source": "granit_cai",
+    "on": "2014-09-30"
+   },
+   {
+    "source": "nhdot",
+    "on": "2025-09-02",
+    "said": "1 Village Rd, Surry, NH 03431"
+   }
+  ],
+  "survey": {
+   "kind": "Town Offices",
+   "street": "1 Village Rd",
+   "place": "Surry",
+   "zip": "03431",
+   "lat": 43.019759,
+   "lon": -72.321899,
+   "surveyed": "2014-09-30",
+   "agrees": true,
+   "raw": {
+    "name": "Surry - Town Offices",
+    "address": "1 Village Rd, Surry, NH 03431"
+   }
+  }
+ },
+ "sutton": {
+  "street": "93 Main St",
+  "place": "Sutton Mills",
+  "zip": "03321",
+  "from": [
+   {
+    "source": "nhdot",
+    "on": "2025-09-02",
+    "said": "93 Main St, Sutton Mills, NH 03321"
+   },
+   {
+    "source": "sos_list",
+    "on": "2026-09-20",
+    "said": "93 Main Street Sutton 03221"
+   },
+   {
+    "source": "granit_cai",
+    "on": "2014-09-30"
+   }
+  ],
+  "survey": {
+   "kind": "Town Office",
+   "street": "93 Main St",
+   "place": "North Sutton",
+   "zip": "03260",
+   "lat": 43.334166,
+   "lon": -71.953138,
+   "surveyed": "2014-09-30",
+   "agrees": true,
+   "raw": {
+    "name": "Sutton - Town Office",
+    "address": "93 Main St, North Sutton, NH 03260"
+   }
+  }
+ },
+ "swanzey": {
+  "street": "620 Old Homestead Hwy",
+  "place": "East Swanzey",
+  "zip": "03446",
+  "from": [
+   {
+    "source": "granit_cai",
+    "on": "2014-09-30"
+   },
+   {
+    "source": "nhdot",
+    "on": "2025-09-02",
+    "said": "620 Old Homestead Hwy,"
+   }
+  ],
+  "survey": {
+   "kind": "Town Hall",
+   "street": "620 Old Homestead Hwy",
+   "place": "East Swanzey",
+   "zip": "03446",
+   "lat": 42.872831,
+   "lon": -72.28107,
+   "surveyed": "2014-09-30",
+   "agrees": true,
+   "raw": {
+    "name": "Swanzey - Town Hall",
+    "address": "620 Old Homestead Hwy, East Swanzey, NH 03446"
+   }
+  }
+ },
+ "tamworth": {
+  "street": "84 Main St",
+  "place": "Tamworth",
+  "zip": "03886",
+  "from": [
+   {
+    "source": "nhdot",
+    "on": "2025-09-02",
+    "said": "84 Main St, Tamworth, NH 03886"
+   },
+   {
+    "source": "sos_list",
+    "on": "2026-09-20",
+    "said": "84 Main Street Tamworth 03886"
+   },
+   {
+    "source": "granit_cai",
+    "on": "2014-09-30"
+   }
+  ],
+  "survey": {
+   "kind": "Town Hall",
+   "street": "84 Main St",
+   "place": "Tamworth",
+   "zip": "03886",
+   "lat": 43.860174,
+   "lon": -71.265554,
+   "surveyed": "2014-09-30",
+   "agrees": true,
+   "raw": {
+    "name": "Tamworth - Town Hall",
+    "address": "84 Main St, Tamworth, NH 03886"
+   }
+  }
+ },
+ "temple": {
+  "street": "",
+  "place": "",
+  "zip": "",
+  "from": [],
+  "survey": {
+   "kind": "Town Offices",
+   "street": "9 Main St",
+   "place": "Temple",
+   "zip": "03084",
+   "lat": 42.81443,
+   "lon": -71.850065,
+   "surveyed": "2014-09-30",
+   "agrees": false,
+   "raw": {
+    "name": "Temple - Town Offices",
+    "address": "9 Main St, Temple, NH 03084"
+   }
+  }
+ },
+ "thornton": {
+  "street": "16 Merrill Access Rd",
+  "place": "Thornton",
+  "zip": "03285",
+  "from": [
+   {
+    "source": "nhdot",
+    "on": "2025-09-02",
+    "said": "16 Merrill Access Rd, Thornton, NH 03285"
+   },
+   {
+    "source": "sos_list",
+    "on": "2026-09-20",
+    "said": "16 Merrill Access Rd. Thornton 03285"
+   },
+   {
+    "source": "granit_cai",
+    "on": "2014-09-30"
+   }
+  ],
+  "survey": {
+   "kind": "Town Offices",
+   "street": "16 Merrill Access Rd",
+   "place": "Thornton",
+   "zip": "03285",
+   "lat": 43.918254,
+   "lon": -71.686387,
+   "surveyed": "2014-09-30",
+   "agrees": true,
+   "raw": {
+    "name": "Thornton - Town Offices",
+    "address": "16 Merrill Access Rd, Thornton, NH 03285"
+   }
+  }
+ },
+ "tilton": {
+  "street": "257 Main St",
+  "place": "Tilton",
+  "zip": "03276",
+  "from": [
+   {
+    "source": "nhdot",
+    "on": "2025-09-02",
+    "said": "257 Main St, Tilton, NH 03276"
+   },
+   {
+    "source": "sos_list",
+    "on": "2026-09-20",
+    "said": "257 Main St Tilton 03276"
+   },
+   {
+    "source": "granit_cai",
+    "on": "2014-09-30"
+   }
+  ],
+  "survey": {
+   "kind": "Town Hall",
+   "street": "257 Main St",
+   "place": "Tilton",
+   "zip": "03276",
+   "lat": 43.442502,
+   "lon": -71.58848,
+   "surveyed": "2014-09-30",
+   "agrees": true,
+   "raw": {
+    "name": "Tilton - Town Hall",
+    "address": "257 Main St, Tilton, NH 03276"
+   }
+  }
+ },
+ "troy": {
+  "street": "16 Central Sq",
+  "place": "Troy",
+  "zip": "03465",
+  "from": [
+   {
+    "source": "granit_cai",
+    "on": "2014-09-30"
+   },
+   {
+    "source": "nhdot",
+    "on": "2025-09-02",
+    "said": "16 Central Squ, Troy, NH 03465"
+   }
+  ],
+  "survey": {
+   "kind": "Town Hall",
+   "street": "16 Central Sq",
+   "place": "Troy",
+   "zip": "03465",
+   "lat": 42.827131,
+   "lon": -72.182767,
+   "surveyed": "2014-09-30",
+   "agrees": true,
+   "raw": {
+    "name": "Troy - Town Hall",
+    "address": "16 Central Sq, Troy, NH 03465"
+   }
+  }
+ },
+ "tuftonboro": {
+  "street": "240 Middle Rd",
+  "place": "Tuftonboro",
+  "zip": "03816",
+  "from": [
+   {
+    "source": "granit_cai",
+    "on": "2014-09-30"
+   },
+   {
+    "source": "nhdot",
+    "on": "2025-09-02",
+    "said": "240 Middle Rd, PO Box 98, Center Tuftonboro,"
+   }
+  ],
+  "survey": {
+   "kind": "Town Hall",
+   "street": "240 Middle Rd",
+   "place": "Tuftonboro",
+   "zip": "03816",
+   "lat": 43.669231,
+   "lon": -71.258592,
+   "surveyed": "2014-09-30",
+   "agrees": true,
+   "raw": {
+    "name": "Tuftonboro - Town Hall",
+    "address": "240 Middle Rd, Tuftonboro, NH 03816"
+   }
+  }
+ },
+ "unity": {
+  "street": "13 Center Rd #3",
+  "place": "Unity",
+  "zip": "03603",
+  "from": [
+   {
+    "source": "nhdot",
+    "on": "2025-09-02",
+    "said": "13 Center Rd #3, Unity, NH 03603"
+   },
+   {
+    "source": "sos_list",
+    "on": "2026-09-20",
+    "said": "13 Center Road 1 Unity 03603"
+   },
+   {
+    "source": "granit_cai",
+    "on": "2014-09-30"
+   }
+  ],
+  "survey": {
+   "kind": "Town Office",
+   "street": "13 Center Rd",
+   "place": "Unity",
+   "zip": "03603",
+   "lat": 43.292514,
+   "lon": -72.259555,
+   "surveyed": "2014-09-30",
+   "agrees": true,
+   "raw": {
+    "name": "Unity - Town Office",
+    "address": "13 Center Rd, Unity, NH 03603"
+   }
+  }
+ },
+ "wakefield": {
+  "street": "2 High St",
+  "place": "Sanbornville",
+  "zip": "03872",
+  "from": [
+   {
+    "source": "nhdot",
+    "on": "2025-09-02",
+    "said": "2 High St, Sanbornville, NH 03872"
+   },
+   {
+    "source": "sos_list",
+    "on": "2026-09-20",
+    "said": "2 High St Wakefield 03872"
+   },
+   {
+    "source": "granit_cai",
+    "on": "2014-09-30"
+   }
+  ],
+  "survey": {
+   "kind": "Town Hall",
+   "street": "2 High St",
+   "place": "Wakefield",
+   "zip": "03872",
+   "lat": 43.554033,
+   "lon": -71.030259,
+   "surveyed": "2014-09-30",
+   "agrees": true,
+   "raw": {
+    "name": "Wakefield - Town Hall",
+    "address": "2 High St, Wakefield, NH 03872"
+   }
+  }
+ },
+ "walpole": {
+  "street": "34 Elm St",
+  "place": "Walpole",
+  "zip": "03608",
+  "from": [
+   {
+    "source": "granit_cai",
+    "on": "2014-09-30"
+   },
+   {
+    "source": "nhdot",
+    "on": "2025-09-02",
+    "said": "34 Elm St, PO Box 756,"
+   }
+  ],
+  "survey": {
+   "kind": "Town Office",
+   "street": "34 Elm St",
+   "place": "Walpole",
+   "zip": "03608",
+   "lat": 43.079146,
+   "lon": -72.428454,
+   "surveyed": "2014-09-30",
+   "agrees": true,
+   "raw": {
+    "name": "Walpole - Town Office",
+    "address": "34 Elm St, Walpole, NH 03608"
+   }
+  }
+ },
+ "warner": {
+  "street": "",
+  "place": "",
+  "zip": "",
+  "from": [],
+  "survey": {
+   "kind": "Town Office",
+   "street": "5 East Main St",
+   "place": "Warner",
+   "zip": "03278",
+   "lat": 43.280953,
+   "lon": -71.815943,
+   "surveyed": "2014-09-30",
+   "agrees": false,
+   "raw": {
+    "name": "Warner - Town Office",
+    "address": "5 East Main St, Warner, NH 03278"
+   }
+  }
+ },
+ "warren": {
+  "street": "",
+  "place": "",
+  "zip": "",
+  "from": []
+ },
+ "washington": {
+  "street": "7 Halfmoon Pond Rd",
+  "place": "Washington",
+  "zip": "03280",
+  "from": [
+   {
+    "source": "nhdot",
+    "on": "2025-09-02",
+    "said": "7 Halfmoon Pond Rd, Washington, NH 03280"
+   },
+   {
+    "source": "sos_list",
+    "on": "2026-09-20",
+    "said": "7 Halfmoon Pond Rd Washington 03280"
+   },
+   {
+    "source": "granit_cai",
+    "on": "2014-09-30"
+   }
+  ],
+  "survey": {
+   "kind": "Town Office",
+   "street": "7 Halfmoon Pond Rd",
+   "place": "Washington",
+   "zip": "03280",
+   "lat": 43.176593,
+   "lon": -72.096208,
+   "surveyed": "2014-09-30",
+   "agrees": true,
+   "raw": {
+    "name": "Washington - Town Office",
+    "address": "7 Halfmoon Pond Rd, Washington, NH 03280"
+   }
+  }
+ },
+ "waterville-valley": {
+  "street": "",
+  "place": "",
+  "zip": "",
+  "from": [],
+  "survey": {
+   "kind": "Town Offices",
+   "street": "14 Tac Ln",
+   "place": "Waterville Valley",
+   "zip": "03215",
+   "lat": 43.945026,
+   "lon": -71.510131,
+   "surveyed": "2014-09-30",
+   "agrees": false,
+   "raw": {
+    "name": "Waterville Valley - Town Offices",
+    "address": "14 Tac Ln, Waterville Valley, NH 03215"
+   }
+  }
+ },
+ "weare": {
+  "street": "15 Flanders Memorial Rd",
+  "place": "Weare",
+  "zip": "03281",
+  "from": [
+   {
+    "source": "nhdot",
+    "on": "2025-09-02",
+    "said": "15 Flanders Memorial Rd,"
+   },
+   {
+    "source": "sos_list",
+    "on": "2026-09-20",
+    "said": "15 Flanders Memorial Rd Weare 03281"
+   },
+   {
+    "source": "granit_cai",
+    "on": "2014-09-30"
+   }
+  ],
+  "survey": {
+   "kind": "Town Offices",
+   "street": "15 Flanders Memorial Rd",
+   "place": "Weare",
+   "zip": "03281",
+   "lat": 43.094211,
+   "lon": -71.731049,
+   "surveyed": "2014-09-30",
+   "agrees": true,
+   "raw": {
+    "name": "Weare - Town Offices",
+    "address": "15 Flanders Memorial Rd, Weare, NH 03281"
+   }
+  }
+ },
+ "webster": {
+  "street": "945 Battle St",
+  "place": "Webster",
+  "zip": "03303",
+  "from": [
+   {
+    "source": "nhdot",
+    "on": "2025-09-02",
+    "said": "945 Battle St, Webster, NH 03303"
+   },
+   {
+    "source": "sos_list",
+    "on": "2026-09-20",
+    "said": "945 Battle St Webster 03303"
+   },
+   {
+    "source": "granit_cai",
+    "on": "2014-09-30"
+   }
+  ],
+  "survey": {
+   "kind": "Town Office",
+   "street": "945 Battle St",
+   "place": "Webster",
+   "zip": "03303",
+   "lat": 43.313531,
+   "lon": -71.720034,
+   "surveyed": "2014-09-30",
+   "agrees": true,
+   "raw": {
+    "name": "Webster - Town Office",
+    "address": "945 Battle St, Webster, NH 03303"
+   }
+  }
+ },
+ "wentworth": {
+  "street": "",
+  "place": "",
+  "zip": "",
+  "from": []
+ },
+ "westmoreland": {
+  "street": "780 NH Rte 63",
+  "place": "Westmoreland",
+  "zip": "03467",
+  "from": [
+   {
+    "source": "granit_cai",
+    "on": "2014-09-30"
+   },
+   {
+    "source": "nhdot",
+    "on": "2025-09-02",
+    "said": "780 Rte 63, PO Box 55,"
+   }
+  ],
+  "survey": {
+   "kind": "Town Offices",
+   "street": "780 NH Rte 63",
+   "place": "Westmoreland",
+   "zip": "03467",
+   "lat": 42.961919,
+   "lon": -72.442763,
+   "surveyed": "2014-09-30",
+   "agrees": true,
+   "raw": {
+    "name": "Westmoreland - Town Offices",
+    "address": "780 NH Rte 63 Rte, Westmoreland, NH 03467"
+   }
+  }
+ },
+ "whitefield": {
+  "street": "56 Littleton Rd",
+  "place": "Whitefield",
+  "zip": "03598",
+  "from": [
+   {
+    "source": "nhdot",
+    "on": "2025-09-02",
+    "said": "56 Littleton Rd, Whitefield, NH 03598"
+   },
+   {
+    "source": "sos_list",
+    "on": "2026-09-20",
+    "said": "56 Littleton Road Whitefield 03598"
+   }
+  ],
+  "survey": {
+   "kind": "Town Offices",
+   "street": "38 King Sq",
+   "place": "Whitefield",
+   "zip": "03598",
+   "lat": 44.372997,
+   "lon": -71.611907,
+   "surveyed": "2014-09-30",
+   "agrees": false,
+   "raw": {
+    "name": "Whitefield - Town Offices",
+    "address": "38 King Sq, Whitefield, NH 03598"
+   }
+  }
+ },
+ "wilmot": {
+  "street": "",
+  "place": "",
+  "zip": "",
+  "from": [],
+  "survey": {
+   "kind": "Town Office",
+   "street": "9 Kearsarge Valley Rd",
+   "place": "Wilmot",
+   "zip": "03287",
+   "lat": 43.415156,
+   "lon": -71.901158,
+   "surveyed": "2014-09-30",
+   "agrees": false,
+   "raw": {
+    "name": "Wilmot - Town Office",
+    "address": "9 Kearsarge Valley Rd, Wilmot, NH 03287"
+   }
+  }
+ },
+ "wilton": {
+  "street": "42 Main St",
+  "place": "Wilton",
+  "zip": "03076",
+  "from": [
+   {
+    "source": "granit_cai",
+    "on": "2014-09-30"
+   },
+   {
+    "source": "nhdot",
+    "on": "2025-09-02",
+    "said": "42 Main St, Wilton, NH 03086"
+   }
+  ],
+  "survey": {
+   "kind": "Town Hall",
+   "street": "42 Main St",
+   "place": "Wilton",
+   "zip": "03076",
+   "lat": 42.843698,
+   "lon": -71.737639,
+   "surveyed": "2014-09-30",
+   "agrees": true,
+   "raw": {
+    "name": "Wilton - Town Hall",
+    "address": "42 Main St, Wilton, NH 03076"
+   }
+  }
+ },
+ "winchester": {
+  "street": "1 Richmond Rd",
+  "place": "Winchester",
+  "zip": "03470",
+  "from": [
+   {
+    "source": "granit_cai",
+    "on": "2014-09-30"
+   },
+   {
+    "source": "nhdot",
+    "on": "2025-09-02",
+    "said": "1 Richmond Rd, Winchester, NH 03470"
+   }
+  ],
+  "survey": {
+   "kind": "Town Offices",
+   "street": "1 Richmond Rd",
+   "place": "Winchester",
+   "zip": "03470",
+   "lat": 42.772929,
+   "lon": -72.383376,
+   "surveyed": "2014-09-30",
+   "agrees": true,
+   "raw": {
+    "name": "Winchester - Town Offices",
+    "address": "1 Richmond Rd, Winchester, NH 03470"
+   }
+  }
+ },
+ "windham": {
+  "street": "3 North Lowell Rd",
+  "place": "Windham",
+  "zip": "03087",
+  "from": [
+   {
+    "source": "nhdot",
+    "on": "2025-09-02",
+    "said": "3 North Lowell Rd, Windham, NH 03087"
+   },
+   {
+    "source": "sos_list",
+    "on": "2026-09-20",
+    "said": "3 North Lowell Road Windham 03087"
+   },
+   {
+    "source": "granit_cai",
+    "on": "2014-09-30"
+   }
+  ],
+  "survey": {
+   "kind": "Town Hall",
+   "street": "3 N Lowell Rd",
+   "place": "Windham",
+   "zip": "03087",
+   "lat": 42.805951,
+   "lon": -71.29957,
+   "surveyed": "2014-09-30",
+   "agrees": true,
+   "raw": {
+    "name": "Windham - Town Hall",
+    "address": "3N Lowell Rd, Windham, NH 03087"
+   }
+  }
+ },
+ "windsor": {
+  "street": "14 White Pond Rd",
+  "place": "Windsor",
+  "zip": "03244",
+  "from": [
+   {
+    "source": "nhdot",
+    "on": "2025-09-02",
+    "said": "14 White Pond Rd, Windsor, NH 03244"
+   },
+   {
+    "source": "sos_list",
+    "on": "2026-09-20",
+    "said": "14 White Pond Road Windsor 03244"
+   },
+   {
+    "source": "granit_cai",
+    "on": "2014-09-30"
+   }
+  ],
+  "survey": {
+   "kind": "Town Offices",
+   "street": "14 White Pond Rd",
+   "place": "Windsor",
+   "zip": "03244",
+   "lat": 43.125819,
+   "lon": -72.020824,
+   "surveyed": "2014-09-30",
+   "agrees": true,
+   "raw": {
+    "name": "Windsor - Town Offices",
+    "address": "14 White Pond Rd, Windsor, NH 03244"
+   }
+  }
+ },
+ "wolfeboro": {
+  "street": "84 South Main St",
+  "place": "Wolfeboro",
+  "zip": "03894",
+  "from": [
+   {
+    "source": "nhdot",
+    "on": "2025-09-02",
+    "said": "84 South Main St, PO Box"
+   },
+   {
+    "source": "sos_list",
+    "on": "2026-09-20",
+    "said": "84 South Main Street PO Box 1207 Wolfeboro 03894"
+   },
+   {
+    "source": "granit_cai",
+    "on": "2014-09-30"
+   }
+  ],
+  "survey": {
+   "kind": "Town Hall",
+   "street": "84 S Main St",
+   "place": "Wolfeboro",
+   "zip": "03894",
+   "lat": 43.584892,
+   "lon": -71.209654,
+   "surveyed": "2014-09-30",
+   "agrees": true,
+   "raw": {
+    "name": "Wolfeboro - Town Hall",
+    "address": "84S Main St, Wolfeboro, NH 03894"
+   }
+  }
+ },
+ "woodstock": {
+  "street": "165 Lost River Rd",
+  "place": "Woodstock",
+  "zip": "03262",
+  "from": [
+   {
+    "source": "granit_cai",
+    "on": "2014-09-30"
+   },
+   {
+    "source": "nhdot",
+    "on": "2025-09-02",
+    "said": "165 Lost River Rd, PO Box 156, Woodstock, NH"
+   }
+  ],
+  "survey": {
+   "kind": "Town Hall",
+   "street": "165 Lost River Rd",
+   "place": "Woodstock",
+   "zip": "03262",
+   "lat": 44.032175,
+   "lon": -71.697177,
+   "surveyed": "2014-09-30",
+   "agrees": true,
+   "raw": {
+    "name": "Woodstock - Town Hall",
+    "address": "165 Lost River Rd, Woodstock, NH 03262"
+   }
+  }
+ }
+}

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.693
+# GRANITE_VERSION: 2026-09-04.694
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -93885,6 +93885,117 @@ def _town_sources_floors(TS):
                        "applies corrections/place_corrections.json")
     assert not bad, "\n  ".join(bad)
     return "ok", "; ".join(held) + f"; all {len(fixed)} polling place corrections applied"
+
+
+@check("files", "the town directory's readers: a library is placed by its census block, and a "
+                "town office's street is drawn only where two sources agree on it",
+       needs=("parse_libraries", "parse_town_halls"))
+def _town_directory_readers(L, H):
+    """The town directory's first phase (the person, 24 October 2026: "the
+    address of city hall ... That would exist on town pages"), held to what
+    its two readers were written against.
+
+    A LIBRARY IS IN ITS BLOCK'S TOWN. The survey's postal city is not the
+    town for 26 of New Hampshire's 229 libraries (Penacook's is in Concord,
+    North Conway's in Conway, Woodsville's in Haverhill), so parse_libraries
+    places each by its census block and the Census's 2020 names, written as
+    the site writes a town's: "Alton town" is Alton, "Hale's location"
+    Hale's Location.
+
+    A TOWN OFFICE'S STREET ONLY WHERE TWO SOURCES AGREE. Every disagreement
+    between NH GRANIT's 2014 survey and NHDOT's directory was read by hand
+    when parse_town_halls was written, and the cases here are those: the
+    same address spelled two ways agrees ("1 City Hall Plz" and "1 City Hall
+    Plaza", "488 Townhouse Rd" and "488 Town House Rd", "818 First New
+    Hampshire Tpke" and "818 1st NH Turnpike", "268" and "268B"); an office
+    that has moved (Durham's from 15 to 8 Newmarket Rd) and a number typed
+    twice two ways (Lempster's 865 and 856) do not. The survey's own names
+    for a town's buildings ("Harrisville -Town Office", "Stratham - Town
+    Hall / EOC", "City of Keene - City Hall", the village "West Milan") are
+    read as its towns'. And the files in git: every library placed, every
+    street drawn carrying two sources with their days, and neither under its
+    floor."""
+    # ---- libraries ---------------------------------------------------------
+    assert L.phone("6038352150") == "603-835-2150" and L.phone("-3") == "", "a phone"
+    import tempfile as _tf
+    tmp = Path(_tf.mkdtemp(prefix="gr-towndir-"))
+    try:
+        names = tmp / "names.txt"
+        names.write_text("STATE|STATEFP|COUNTYFP|COUNTYNAME|COUSUBFP|COUSUBNS|COUSUBNAME|CLASSFP|FUNCSTAT\n"
+                         "NH|33|001|Belknap County|01060|00873530|Alton town|T1|A\n"
+                         "NH|33|007|Coos County|04280|00873542|Berlin city|C5|A\n"
+                         "NH|33|003|Carroll County|32820|00873600|Hale's location|Z1|F\n"
+                         "NH|33|009|Grafton County|00000|00000000|County subdivisions not defined|Z9|F\n",
+                         encoding="utf-8")
+        was = L.NAMES
+        L.NAMES = names
+        try:
+            got = L.subdivision_names()
+        finally:
+            L.NAMES = was
+    finally:
+        shutil.rmtree(tmp, ignore_errors=True)
+    assert got == {("001", "01060"): "Alton", ("007", "04280"): "Berlin",
+                   ("003", "32820"): "Hale's Location"}, f"the Census names read as {got}"
+    towns = {"CONCORD": ["1"], "CONWAY": ["0"]}
+    rows = [{"CENBLOCK": "330130001001000", "LIBNAME": "PENACOOK BRANCH LIBRARY",
+             "ADDRESS": "76 MAIN STREET", "CITY": "PENACOOK", "ZIP": "03303", "PHONE": "6037536740",
+             "C_OUT_TY": "BR", "LATITUDE": "43.28", "LONGITUD": "-71.6", "FSCSKEY": "NH0167",
+             "FSCS_SEQ": "004"}]
+    data, unplaced, _n = L.build(rows, {"330130001001000": ("013", "14200")},
+                                 {("013", "14200"): "Concord"}, towns, "2026-10-24")
+    assert not unplaced and list(data) == ["concord"] and \
+        data["concord"]["libraries"][0]["name"] == "Penacook Branch Library" and \
+        data["concord"]["libraries"][0]["kind"] == "branch", (
+            f"Penacook's library is not placed in Concord by its block: {data}, {unplaced}")
+
+    # ---- town offices ------------------------------------------------------
+    agree = [("1 City Hall Plaza, Manchester, NH 03101", "1", "cityhallplz"),
+             ("488 Town House Rd, Cornish, NH 03745", "488", "townhouserd"),
+             ("818 1st NH Turnpike, Northwood, NH 03261", "818", "1stnhtpke"),
+             ("268B Mammoth Rd Londonderry 03053", "268", "mammothrd"),
+             ("130 NH Route 10 Piermont 03779", "130", "rte10")]
+    for text, number, street in agree:
+        assert H.carries(text, number, street), f"{text!r} does not carry {number} {street}"
+    for text, number, street in (("8 Newmarket Road Durham 03824", "15", "newmarketrd"),
+                                 ("856 NH Route 10 Lempster 03605", "865", "rte10")):
+        assert not H.carries(text, number, street), f"{text!r} is taken to carry {number} {street}"
+    assert H.street_in("PO Box 37 Acworth 03601") is None, "a box's number is read as a street"
+    assert H.street_in("93 Main Street Sutton 03221") == ("93", "mainst")
+    survey_row = {"BLDGNBR": "130", "PREDIR": "", "STREETNAME": "NH Rte 10", "STREETTYPE": "Rte",
+                  "SUFFDIR": ""}
+    assert H.street_of(survey_row) == ("130 NH Rte 10", "130", "rte10"), H.street_of(survey_row)
+    loud = {"BLDGNBR": "29", "PREDIR": "S", "STREETNAME": "South Village", "STREETTYPE": "Rd",
+            "SUFFDIR": ""}
+    assert H.street_of(loud)[0] == "29 South Village Rd", H.street_of(loud)
+    assert H.mailing_parts("84 South Main St, PO Box") == ("84 South Main St", "", "")
+    assert H.mailing_parts("4 Signature Dr (off Rte 125), Barrington, NH 03825") == \
+        ("4 Signature Dr", "Barrington", "03825")
+    names = {"HARRISVILLE": ["0"], "STRATHAM": ["0"], "KEENE": ["0"], "MILAN": ["0"]}
+    rows = [{"CAICAT": "6", "ANCHORNAME": n} for n in
+            ("Harrisville -Town Office", "Stratham - Town Hall / EOC", "City of Keene - City Hall",
+             "West Milan - Town Hall", "Keene - Old Town Hall")]
+    found, unmatched = H.survey_offices(rows, names)
+    assert sorted(found) == ["harrisville", "keene", "milan", "stratham"] and not unmatched, (
+        f"the survey's own names for a town's office: {sorted(found)}, {unmatched}")
+
+    # ---- the files in git ----------------------------------------------------
+    libs = json.loads(Path("collected/libraries.json").read_text(encoding="utf-8"))
+    n_lib = sum(len(v["libraries"]) for k, v in libs.items() if not k.startswith("_"))
+    assert n_lib >= 220 and all(v.get("read_on") for k, v in libs.items() if not k.startswith("_")), (
+        f"collected/libraries.json holds {n_lib} libraries, or a town without its day")
+    halls = json.loads(Path("collected/town_halls.json").read_text(encoding="utf-8"))
+    rows = {k: v for k, v in halls.items() if not k.startswith("_")}
+    drawn = {k: v for k, v in rows.items() if v["street"]}
+    assert len(rows) >= 230 and len(drawn) >= H.FLOOR_FOUND, (
+        f"collected/town_halls.json: {len(rows)} towns, {len(drawn)} with a street, "
+        f"under {H.FLOOR_FOUND}")
+    bad = [k for k, v in drawn.items()
+           if len({f["source"] for f in v["from"]}) < 2 or not all(f.get("on") for f in v["from"])
+           or not (v["place"] and v["zip"])]
+    assert not bad, f"a street drawn without two dated sources, or its place and ZIP: {bad[:6]}"
+    return "ok", (f"{n_lib} libraries in {len(libs) - 1} towns; {len(drawn)} of {len(rows)} town "
+                  "offices with a street two sources agree on; the hand-read cases hold")
 
 
 @check("files", "each source of a town page's officials carries its copy's date in its own file, "

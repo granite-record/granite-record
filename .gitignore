@@ -274,6 +274,10 @@ town_sites/
 # re-fetchable by src/fetch/other/tiger_streets.py. What was read from them is
 # collected/nh_streets.json, which is tracked.
 records/sources/tiger/
+# The town directory's sources (src/fetch/other/town_directory.py): the IMLS
+# library survey, the Census block assignments and GRANIT's 2014 survey, as
+# fetched. Re-fetchable; the parsers' collected/ files are what git holds.
+records/sources/directory/
 
 # THE LICENSED LOGO (24 September 2026). Debra Caplan's drawing, the lockups
 # made from it and every file build_brand.py derives from them are licensed

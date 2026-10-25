@@ -1,0 +1,5144 @@
+{
+ "_about": {
+  "source": "the Institute of Museum and Library Services' Public Libraries Survey, fiscal year 2024, its outlet file (CSV/pls_fy24_outlet_pud24i.csv)",
+  "url": "https://www.imls.gov/research-evaluation/surveys/public-libraries-survey-pls",
+  "placed_by": "each library's census block, in the Census Bureau's 2020 block assignment file for New Hampshire (county subdivisions)",
+  "licence": "federal data, public domain",
+  "writer": "src/towns/parse_libraries.py"
+ },
+ "acworth": {
+  "read_on": "2026-10-25",
+  "survey": "FY2024",
+  "libraries": [
+   {
+    "name": "Acworth Silsby Public Library",
+    "street": "5 Lynn Hill Road",
+    "city": "Acworth",
+    "zip": "03601",
+    "phone": "603-835-2150",
+    "kind": "central",
+    "lat": 43.217812,
+    "lon": -72.292709,
+    "imls": "NH0237-002",
+    "block": "330199756002060",
+    "raw": {
+     "name": "ACWORTH SILSBY PUBLIC LIBRARY",
+     "address": "5 LYNN HILL ROAD",
+     "city": "ACWORTH"
+    }
+   }
+  ]
+ },
+ "allenstown": {
+  "read_on": "2026-10-25",
+  "survey": "FY2024",
+  "libraries": [
+   {
+    "name": "Allenstown Public Library",
+    "street": "59 Main Street",
+    "city": "Allenstown",
+    "zip": "03275",
+    "phone": "603-485-7651",
+    "kind": "central",
+    "lat": 43.128132,
+    "lon": -71.454506,
+    "imls": "NH0155-002",
+    "block": "330130031003006",
+    "raw": {
+     "name": "ALLENSTOWN PUBLIC LIBRARY",
+     "address": "59 MAIN STREET",
+     "city": "ALLENSTOWN"
+    }
+   }
+  ]
+ },
+ "alstead": {
+  "read_on": "2026-10-25",
+  "survey": "FY2024",
+  "libraries": [
+   {
+    "name": "Shedd-Porter Memorial Library",
+    "street": "2 Main St",
+    "city": "Alstead",
+    "zip": "03602",
+    "phone": "603-835-6661",
+    "kind": "central",
+    "lat": 43.148972,
+    "lon": -72.361351,
+    "imls": "NH0165-002",
+    "block": "330059701003020",
+    "raw": {
+     "name": "SHEDD-PORTER MEMORIAL LIBRARY",
+     "address": "2 MAIN ST",
+     "city": "ALSTEAD"
+    }
+   }
+  ]
+ },
+ "alton": {
+  "read_on": "2026-10-25",
+  "survey": "FY2024",
+  "libraries": [
+   {
+    "name": "Gilman Library",
+    "street": "100 Main Street",
+    "city": "Alton",
+    "zip": "03809",
+    "phone": "603-875-2550",
+    "kind": "central",
+    "lat": 43.45504,
+    "lon": -71.21978,
+    "imls": "NH0174-002",
+    "block": "330019665021035",
+    "raw": {
+     "name": "GILMAN LIBRARY",
+     "address": "100 MAIN STREET",
+     "city": "ALTON"
+    }
+   }
+  ]
+ },
+ "amherst": {
+  "read_on": "2026-10-25",
+  "survey": "FY2024",
+  "libraries": [
+   {
+    "name": "Amherst Town Library",
+    "street": "14 Main Street",
+    "city": "Amherst",
+    "zip": "03031",
+    "phone": "603-673-2288",
+    "kind": "central",
+    "lat": 42.862698,
+    "lon": -71.627708,
+    "imls": "NH0184-002",
+    "block": "330110151003013",
+    "raw": {
+     "name": "AMHERST TOWN LIBRARY",
+     "address": "14 MAIN STREET",
+     "city": "AMHERST"
+    }
+   }
+  ]
+ },
+ "andover": {
+  "read_on": "2026-10-25",
+  "survey": "FY2024",
+  "libraries": [
+   {
+    "name": "Andover Public Library",
+    "street": "11 School Street",
+    "city": "Andover",
+    "zip": "03216",
+    "phone": "603-735-5333",
+    "kind": "central",
+    "lat": 43.43645,
+    "lon": -71.821087,
+    "imls": "NH0196-004",
+    "block": "330130425002031",
+    "raw": {
+     "name": "ANDOVER PUBLIC LIBRARY",
+     "address": "11 SCHOOL STREET",
+     "city": "ANDOVER"
+    }
+   },
+   {
+    "name": "William Adams Bachelder Library",
+    "street": "12 Chase Hill Road",
+    "city": "East Andover",
+    "zip": "03231",
+    "phone": "603-735-5076",
+    "kind": "central",
+    "lat": 43.459084,
+    "lon": -71.746696,
+    "imls": "NH0254-002",
+    "block": "330130425002008",
+    "raw": {
+     "name": "WILLIAM ADAMS BACHELDER LIBRARY",
+     "address": "12 CHASE HILL ROAD",
+     "city": "EAST ANDOVER"
+    }
+   }
+  ]
+ },
+ "antrim": {
+  "read_on": "2026-10-25",
+  "survey": "FY2024",
+  "libraries": [
+   {
+    "name": "James A. Tuttle Library",
+    "street": "45 Main Street",
+    "city": "Antrim",
+    "zip": "03440",
+    "phone": "603-588-6786",
+    "kind": "central",
+    "lat": 43.028076,
+    "lon": -71.937866,
+    "imls": "NH0215-002",
+    "block": "330110250001004",
+    "raw": {
+     "name": "JAMES A. TUTTLE LIBRARY",
+     "address": "45 MAIN STREET",
+     "city": "ANTRIM"
+    }
+   }
+  ]
+ },
+ "ashland": {
+  "read_on": "2026-10-25",
+  "survey": "FY2024",
+  "libraries": [
+   {
+    "name": "Ashland Town Library",
+    "street": "41 Main Street",
+    "city": "Ashland",
+    "zip": "03217",
+    "phone": "603-968-7928",
+    "kind": "central",
+    "lat": 43.695148,
+    "lon": -71.631264,
+    "imls": "NH0240-002",
+    "block": "330099611011016",
+    "raw": {
+     "name": "ASHLAND TOWN LIBRARY",
+     "address": "41 MAIN STREET",
+     "city": "ASHLAND"
+    }
+   }
+  ]
+ },
+ "atkinson": {
+  "read_on": "2026-10-25",
+  "survey": "FY2024",
+  "libraries": [
+   {
+    "name": "Kimball Library",
+    "street": "5 Academy Avenue",
+    "city": "Atkinson",
+    "zip": "03811",
+    "phone": "603-362-5234",
+    "kind": "central",
+    "lat": 42.838783,
+    "lon": -71.150635,
+    "imls": "NH0012-002",
+    "block": "330151031002003",
+    "raw": {
+     "name": "KIMBALL LIBRARY",
+     "address": "5 ACADEMY AVENUE",
+     "city": "ATKINSON"
+    }
+   }
+  ]
+ },
+ "auburn": {
+  "read_on": "2026-10-25",
+  "survey": "FY2024",
+  "libraries": [
+   {
+    "name": "Griffin Free Public Library",
+    "street": "22 Hooksett Road",
+    "city": "Auburn",
+    "zip": "03032",
+    "phone": "603-483-5374",
+    "kind": "central",
+    "lat": 43.005943,
+    "lon": -71.34861,
+    "imls": "NH0023-002",
+    "block": "330150040002047",
+    "raw": {
+     "name": "GRIFFIN FREE PUBLIC LIBRARY",
+     "address": "22 HOOKSETT ROAD",
+     "city": "AUBURN"
+    }
+   }
+  ]
+ },
+ "barnstead": {
+  "read_on": "2026-10-25",
+  "survey": "FY2024",
+  "libraries": [
+   {
+    "name": "Oscar Foss Memorial Library",
+    "street": "111 South Barnstead Road",
+    "city": "Center Barnstead",
+    "zip": "03225",
+    "phone": "603-269-3900",
+    "kind": "central",
+    "lat": 43.339615,
+    "lon": -71.259697,
+    "imls": "NH0034-002",
+    "block": "330019657002015",
+    "raw": {
+     "name": "OSCAR FOSS MEMORIAL LIBRARY",
+     "address": "111 SOUTH BARNSTEAD ROAD",
+     "city": "CENTER BARNSTEAD"
+    }
+   }
+  ]
+ },
+ "barrington": {
+  "read_on": "2026-10-25",
+  "survey": "FY2024",
+  "libraries": [
+   {
+    "name": "Barrington Public Library",
+    "street": "105 Ramsdell Lane",
+    "city": "Barrington",
+    "zip": "03825",
+    "phone": "603-664-9715",
+    "kind": "central",
+    "lat": 43.219349,
+    "lon": -71.035538,
+    "imls": "NH0045-002",
+    "block": "330170850021024",
+    "raw": {
+     "name": "BARRINGTON PUBLIC LIBRARY",
+     "address": "105 RAMSDELL LANE",
+     "city": "BARRINGTON"
+    }
+   }
+  ]
+ },
+ "bartlett": {
+  "read_on": "2026-10-25",
+  "survey": "FY2024",
+  "libraries": [
+   {
+    "name": "Bartlett Public Library",
+    "street": "1313 US Rte 302",
+    "city": "Bartlett",
+    "zip": "03812",
+    "phone": "603-374-2755",
+    "kind": "central",
+    "lat": 44.078155,
+    "lon": -71.2798,
+    "imls": "NH0056-002",
+    "block": "330039551022062",
+    "raw": {
+     "name": "BARTLETT PUBLIC LIBRARY",
+     "address": "1313 US RTE 302",
+     "city": "BARTLETT"
+    }
+   }
+  ]
+ },
+ "bath": {
+  "read_on": "2026-10-25",
+  "survey": "FY2024",
+  "libraries": [
+   {
+    "name": "Bath Public Library",
+    "street": "4 West Bath Road",
+    "city": "Bath",
+    "zip": "03740",
+    "phone": "603-747-3372",
+    "kind": "central",
+    "lat": 44.167183,
+    "lon": -71.965942,
+    "imls": "NH0067-002",
+    "block": "330099603005046",
+    "raw": {
+     "name": "BATH PUBLIC LIBRARY",
+     "address": "4 WEST BATH ROAD",
+     "city": "BATH"
+    }
+   }
+  ]
+ },
+ "bedford": {
+  "read_on": "2026-10-25",
+  "survey": "FY2024",
+  "libraries": [
+   {
+    "name": "Bedford Public Library",
+    "street": "3 Meetinghouse Road",
+    "city": "Bedford",
+    "zip": "03110",
+    "phone": "603-472-2300",
+    "kind": "central",
+    "lat": 42.946407,
+    "lon": -71.515877,
+    "imls": "NH0078-002",
+    "block": "330110029024022",
+    "raw": {
+     "name": "BEDFORD PUBLIC LIBRARY",
+     "address": "3 MEETINGHOUSE ROAD",
+     "city": "BEDFORD"
+    }
+   }
+  ]
+ },
+ "belmont": {
+  "read_on": "2026-10-25",
+  "survey": "FY2024",
+  "libraries": [
+   {
+    "name": "Belmont Public Library",
+    "street": "146 Main Street",
+    "city": "Belmont",
+    "zip": "03220",
+    "phone": "603-267-8331",
+    "kind": "central",
+    "lat": 43.443134,
+    "lon": -71.48204,
+    "imls": "NH0088-002",
+    "block": "330019658022016",
+    "raw": {
+     "name": "BELMONT PUBLIC LIBRARY",
+     "address": "146 MAIN STREET",
+     "city": "BELMONT"
+    }
+   }
+  ]
+ },
+ "bennington": {
+  "read_on": "2026-10-25",
+  "survey": "FY2024",
+  "libraries": [
+   {
+    "name": "G.e.p. Dodge Library",
+    "street": "2 Main Street",
+    "city": "Bennington",
+    "zip": "03442",
+    "phone": "603-588-6585",
+    "kind": "central",
+    "lat": 43.001076,
+    "lon": -71.923248,
+    "imls": "NH0099-002",
+    "block": "330110215002038",
+    "raw": {
+     "name": "G.E.P. DODGE LIBRARY",
+     "address": "2 MAIN STREET",
+     "city": "BENNINGTON"
+    }
+   }
+  ]
+ },
+ "berlin": {
+  "read_on": "2026-10-25",
+  "survey": "FY2024",
+  "libraries": [
+   {
+    "name": "Berlin Public Library",
+    "street": "270 Main Street",
+    "city": "Berlin",
+    "zip": "03570",
+    "phone": "603-752-5210",
+    "kind": "central",
+    "lat": 44.471523,
+    "lon": -71.178291,
+    "imls": "NH0110-002",
+    "block": "330079506003011",
+    "raw": {
+     "name": "BERLIN PUBLIC LIBRARY",
+     "address": "270 MAIN STREET",
+     "city": "BERLIN"
+    }
+   }
+  ]
+ },
+ "bethlehem": {
+  "read_on": "2026-10-25",
+  "survey": "FY2024",
+  "libraries": [
+   {
+    "name": "Bethlehem Public Library",
+    "street": "2245 Main Street",
+    "city": "Bethlehem",
+    "zip": "03574",
+    "phone": "603-869-2409",
+    "kind": "central",
+    "lat": 44.280712,
+    "lon": -71.682434,
+    "imls": "NH0121-003",
+    "block": "330099602002057",
+    "raw": {
+     "name": "BETHLEHEM PUBLIC LIBRARY",
+     "address": "2245 MAIN STREET",
+     "city": "BETHLEHEM"
+    }
+   }
+  ]
+ },
+ "boscawen": {
+  "read_on": "2026-10-25",
+  "survey": "FY2024",
+  "libraries": [
+   {
+    "name": "Boscawen Public Library",
+    "street": "116 North Main St",
+    "city": "Boscawen",
+    "zip": "03303",
+    "phone": "603-753-8576",
+    "kind": "central",
+    "lat": 43.289154,
+    "lon": -71.604301,
+    "imls": "NH0131-005",
+    "block": "330130380003013",
+    "raw": {
+     "name": "BOSCAWEN PUBLIC LIBRARY",
+     "address": "116 NORTH MAIN ST",
+     "city": "BOSCAWEN"
+    }
+   }
+  ]
+ },
+ "bow": {
+  "read_on": "2026-10-25",
+  "survey": "FY2024",
+  "libraries": [
+   {
+    "name": "Baker Free Library",
+    "street": "509 South Street",
+    "city": "Bow",
+    "zip": "03304",
+    "phone": "603-224-7113",
+    "kind": "central",
+    "lat": 43.171616,
+    "lon": -71.534615,
+    "imls": "NH0142-002",
+    "block": "330130310022000",
+    "raw": {
+     "name": "BAKER FREE LIBRARY",
+     "address": "509 SOUTH STREET",
+     "city": "BOW"
+    }
+   }
+  ]
+ },
+ "bradford": {
+  "read_on": "2026-10-25",
+  "survey": "FY2024",
+  "libraries": [
+   {
+    "name": "Brown Memorial Library",
+    "street": "78 West Main Street",
+    "city": "Bradford",
+    "zip": "03221",
+    "phone": "603-938-5562",
+    "kind": "central",
+    "lat": 43.269562,
+    "lon": -71.960304,
+    "imls": "NH0150-002",
+    "block": "330130405011011",
+    "raw": {
+     "name": "BROWN MEMORIAL LIBRARY",
+     "address": "78 WEST MAIN STREET",
+     "city": "BRADFORD"
+    }
+   }
+  ]
+ },
+ "brentwood": {
+  "read_on": "2026-10-25",
+  "survey": "FY2024",
+  "libraries": [
+   {
+    "name": "Mary E. Bartlett Library",
+    "street": "22 Dalton Road",
+    "city": "Brentwood",
+    "zip": "03833",
+    "phone": "603-642-3355",
+    "kind": "central",
+    "lat": 42.9809,
+    "lon": -71.072708,
+    "imls": "NH0151-002",
+    "block": "330150600001031",
+    "raw": {
+     "name": "MARY E. BARTLETT LIBRARY",
+     "address": "22 DALTON ROAD",
+     "city": "BRENTWOOD"
+    }
+   }
+  ]
+ },
+ "bristol": {
+  "read_on": "2026-10-25",
+  "survey": "FY2024",
+  "libraries": [
+   {
+    "name": "Minot-Sleeper Library",
+    "street": "35 Pleasant Street",
+    "city": "Bristol",
+    "zip": "03222",
+    "phone": "603-744-3352",
+    "kind": "central",
+    "lat": 43.591007,
+    "lon": -71.737884,
+    "imls": "NH0153-002",
+    "block": "330099612011002",
+    "raw": {
+     "name": "MINOT-SLEEPER LIBRARY",
+     "address": "35 PLEASANT STREET",
+     "city": "BRISTOL"
+    }
+   }
+  ]
+ },
+ "brookline": {
+  "read_on": "2026-10-25",
+  "survey": "FY2024",
+  "libraries": [
+   {
+    "name": "Brookline Public Library",
+    "street": "16 Main Street",
+    "city": "Brookline",
+    "zip": "03033",
+    "phone": "603-673-3330",
+    "kind": "central",
+    "lat": 42.732807,
+    "lon": -71.659576,
+    "imls": "NH0154-002",
+    "block": "330110180021002",
+    "raw": {
+     "name": "BROOKLINE PUBLIC LIBRARY",
+     "address": "16 MAIN STREET",
+     "city": "BROOKLINE"
+    }
+   }
+  ]
+ },
+ "campton": {
+  "read_on": "2026-10-25",
+  "survey": "FY2024",
+  "libraries": [
+   {
+    "name": "Campton Public Library",
+    "street": "1110 NH Route 175",
+    "city": "Campton",
+    "zip": "03223",
+    "phone": "603-726-4877",
+    "kind": "central",
+    "lat": 43.851292,
+    "lon": -71.635033,
+    "imls": "NH0231-002",
+    "block": "330099608012000",
+    "raw": {
+     "name": "CAMPTON PUBLIC LIBRARY",
+     "address": "1110 NH ROUTE 175",
+     "city": "CAMPTON"
+    }
+   }
+  ]
+ },
+ "canaan": {
+  "read_on": "2026-10-25",
+  "survey": "FY2024",
+  "libraries": [
+   {
+    "name": "Canaan Town Library",
+    "street": "1173 U.S. Rt 4",
+    "city": "Canaan",
+    "zip": "03741",
+    "phone": "603-523-9650",
+    "kind": "central",
+    "lat": 43.646481,
+    "lon": -72.012071,
+    "imls": "NH0156-002",
+    "block": "330099614002021",
+    "raw": {
+     "name": "CANAAN TOWN LIBRARY",
+     "address": "1173 U.S. RT 4",
+     "city": "CANAAN"
+    }
+   }
+  ]
+ },
+ "candia": {
+  "read_on": "2026-10-25",
+  "survey": "FY2024",
+  "libraries": [
+   {
+    "name": "Smyth Public Library",
+    "street": "55 High Street",
+    "city": "Candia",
+    "zip": "03034",
+    "phone": "603-483-8245",
+    "kind": "central",
+    "lat": 43.061821,
+    "lon": -71.289932,
+    "imls": "NH0157-002",
+    "block": "330150500002018",
+    "raw": {
+     "name": "SMYTH PUBLIC LIBRARY",
+     "address": "55 HIGH STREET",
+     "city": "CANDIA"
+    }
+   }
+  ]
+ },
+ "canterbury": {
+  "read_on": "2026-10-25",
+  "survey": "FY2024",
+  "libraries": [
+   {
+    "name": "Elkins Library",
+    "street": "9 Center Road",
+    "city": "Canterbury",
+    "zip": "03224",
+    "phone": "603-783-4386",
+    "kind": "central",
+    "lat": 43.338259,
+    "lon": -71.564997,
+    "imls": "NH0158-002",
+    "block": "330130370001044",
+    "raw": {
+     "name": "ELKINS LIBRARY",
+     "address": "9 CENTER ROAD",
+     "city": "CANTERBURY"
+    }
+   }
+  ]
+ },
+ "carroll": {
+  "read_on": "2026-10-25",
+  "survey": "FY2024",
+  "libraries": [
+   {
+    "name": "Twin Mountain Public Library",
+    "street": "92 School Street",
+    "city": "Twin Mountain",
+    "zip": "03595",
+    "phone": "603-846-5818",
+    "kind": "central",
+    "lat": 44.272481,
+    "lon": -71.543025,
+    "imls": "NH0159-002",
+    "block": "330079510002159",
+    "raw": {
+     "name": "TWIN MOUNTAIN PUBLIC LIBRARY",
+     "address": "92 SCHOOL STREET",
+     "city": "TWIN MOUNTAIN"
+    }
+   }
+  ]
+ },
+ "center-harbor": {
+  "read_on": "2026-10-25",
+  "survey": "FY2024",
+  "libraries": [
+   {
+    "name": "James E. Nichols Memorial Library",
+    "street": "35 Plymouth Street",
+    "city": "Center Harbor",
+    "zip": "03226",
+    "phone": "603-253-6950",
+    "kind": "central",
+    "lat": 43.708988,
+    "lon": -71.463074,
+    "imls": "NH0160-002",
+    "block": "330019651001015",
+    "raw": {
+     "name": "JAMES E. NICHOLS MEMORIAL LIBRARY",
+     "address": "35 PLYMOUTH STREET",
+     "city": "CENTER HARBOR"
+    }
+   }
+  ]
+ },
+ "charlestown": {
+  "read_on": "2026-10-25",
+  "survey": "FY2024",
+  "libraries": [
+   {
+    "name": "Silsby Free Public Library",
+    "street": "226 Main Street",
+    "city": "Charlestown",
+    "zip": "03603",
+    "phone": "603-826-7793",
+    "kind": "central",
+    "lat": 43.234787,
+    "lon": -72.424263,
+    "imls": "NH0161-002",
+    "block": "330199757004025",
+    "raw": {
+     "name": "SILSBY FREE PUBLIC LIBRARY",
+     "address": "226 MAIN STREET",
+     "city": "CHARLESTOWN"
+    }
+   }
+  ]
+ },
+ "chester": {
+  "read_on": "2026-10-25",
+  "survey": "FY2024",
+  "libraries": [
+   {
+    "name": "Chester Public Library",
+    "street": "3 Chester Street",
+    "city": "Chester",
+    "zip": "03036",
+    "phone": "603-887-3404",
+    "kind": "central",
+    "lat": 42.957657,
+    "lon": -71.257469,
+    "imls": "NH0241-002",
+    "block": "330150510002030",
+    "raw": {
+     "name": "CHESTER PUBLIC LIBRARY",
+     "address": "3 CHESTER STREET",
+     "city": "CHESTER"
+    }
+   }
+  ]
+ },
+ "chesterfield": {
+  "read_on": "2026-10-25",
+  "survey": "FY2024",
+  "libraries": [
+   {
+    "name": "Chesterfield Public Library",
+    "street": "524 Route 63",
+    "city": "Chesterfield",
+    "zip": "03443",
+    "phone": "603-363-4621",
+    "kind": "central",
+    "lat": 42.887989,
+    "lon": -72.47052,
+    "imls": "NH0162-002",
+    "block": "330059715002036",
+    "raw": {
+     "name": "CHESTERFIELD PUBLIC LIBRARY",
+     "address": "524 ROUTE 63",
+     "city": "CHESTERFIELD"
+    }
+   }
+  ]
+ },
+ "chichester": {
+  "read_on": "2026-10-25",
+  "survey": "FY2024",
+  "libraries": [
+   {
+    "name": "Chichester Town Library",
+    "street": "161 Main Street",
+    "city": "Chichester",
+    "zip": "03258",
+    "phone": "603-798-5613",
+    "kind": "central",
+    "lat": 43.252106,
+    "lon": -71.385552,
+    "imls": "NH0163-002",
+    "block": "330130330001017",
+    "raw": {
+     "name": "CHICHESTER TOWN LIBRARY",
+     "address": "161 MAIN STREET",
+     "city": "CHICHESTER"
+    }
+   }
+  ]
+ },
+ "claremont": {
+  "read_on": "2026-10-25",
+  "survey": "FY2024",
+  "libraries": [
+   {
+    "name": "Fiske Free Library",
+    "street": "108 Broad Street",
+    "city": "Claremont",
+    "zip": "03743",
+    "phone": "603-542-7017",
+    "kind": "central",
+    "lat": 43.371902,
+    "lon": -72.336601,
+    "imls": "NH0164-002",
+    "block": "330199759022004",
+    "raw": {
+     "name": "FISKE FREE LIBRARY",
+     "address": "108 BROAD STREET",
+     "city": "CLAREMONT"
+    }
+   }
+  ]
+ },
+ "colebrook": {
+  "read_on": "2026-10-25",
+  "survey": "FY2024",
+  "libraries": [
+   {
+    "name": "Colebrook Public Library",
+    "street": "126 Main St.",
+    "city": "Colebrook",
+    "zip": "03576",
+    "phone": "603-237-4808",
+    "kind": "central",
+    "lat": 44.894932,
+    "lon": -71.496201,
+    "imls": "NH0166-002",
+    "block": "330079502002007",
+    "raw": {
+     "name": "COLEBROOK PUBLIC LIBRARY",
+     "address": "126 MAIN ST.",
+     "city": "COLEBROOK"
+    }
+   }
+  ]
+ },
+ "concord": {
+  "read_on": "2026-10-25",
+  "survey": "FY2024",
+  "libraries": [
+   {
+    "name": "Concord Public Library",
+    "street": "45 Green Street",
+    "city": "Concord",
+    "zip": "03301",
+    "phone": "603-225-8670",
+    "kind": "central",
+    "lat": 43.206776,
+    "lon": -71.539993,
+    "imls": "NH0167-005",
+    "block": "330130323001013",
+    "raw": {
+     "name": "CONCORD PUBLIC LIBRARY",
+     "address": "45 GREEN STREET",
+     "city": "CONCORD"
+    }
+   },
+   {
+    "name": "Heights Branch Library",
+    "street": "14 Cantebury Road",
+    "city": "Concord",
+    "zip": "03301",
+    "phone": "603-230-4932",
+    "kind": "branch",
+    "lat": 43.215107,
+    "lon": -71.505646,
+    "imls": "NH0167-006",
+    "block": "330130329003010",
+    "raw": {
+     "name": "HEIGHTS BRANCH LIBRARY",
+     "address": "14 CANTEBURY ROAD",
+     "city": "CONCORD"
+    }
+   },
+   {
+    "name": "Penacook Branch Library",
+    "street": "3 Merrimack Street",
+    "city": "Penacook",
+    "zip": "03303",
+    "phone": "603-753-4441",
+    "kind": "branch",
+    "lat": 43.2808,
+    "lon": -71.599724,
+    "imls": "NH0167-004",
+    "block": "330130327061028",
+    "raw": {
+     "name": "PENACOOK BRANCH LIBRARY",
+     "address": "3 MERRIMACK STREET",
+     "city": "PENACOOK"
+    }
+   }
+  ]
+ },
+ "conway": {
+  "read_on": "2026-10-25",
+  "survey": "FY2024",
+  "libraries": [
+   {
+    "name": "Conway Public Library",
+    "street": "15 Greenwood Avenue",
+    "city": "Conway",
+    "zip": "03818",
+    "phone": "603-447-5552",
+    "kind": "central",
+    "lat": 43.978226,
+    "lon": -71.117333,
+    "imls": "NH0168-002",
+    "block": "330039554013007",
+    "raw": {
+     "name": "CONWAY PUBLIC LIBRARY",
+     "address": "15 GREENWOOD AVENUE",
+     "city": "CONWAY"
+    }
+   },
+   {
+    "name": "Pope Memorial Library",
+    "street": "2719 White Mountain Highway",
+    "city": "North Conway",
+    "zip": "03860",
+    "phone": "603-356-2961",
+    "kind": "central",
+    "lat": 44.053738,
+    "lon": -71.128426,
+    "imls": "NH0169-002",
+    "block": "330039553012020",
+    "raw": {
+     "name": "POPE MEMORIAL LIBRARY",
+     "address": "2719 WHITE MOUNTAIN HIGHWAY",
+     "city": "NORTH CONWAY"
+    }
+   }
+  ]
+ },
+ "cornish": {
+  "read_on": "2026-10-25",
+  "survey": "FY2024",
+  "libraries": [
+   {
+    "name": "George H. Stowell Free Library",
+    "street": "24 School Street",
+    "city": "Cornish Flat",
+    "zip": "03746",
+    "phone": "603-543-3644",
+    "kind": "central",
+    "lat": 43.497177,
+    "lon": -72.278091,
+    "imls": "NH0170-002",
+    "block": "330199751001065",
+    "raw": {
+     "name": "GEORGE H. STOWELL FREE LIBRARY",
+     "address": "24 SCHOOL STREET",
+     "city": "CORNISH FLAT"
+    }
+   }
+  ]
+ },
+ "dalton": {
+  "read_on": "2026-10-25",
+  "survey": "FY2024",
+  "libraries": [
+   {
+    "name": "Dalton Public Library",
+    "street": "756 Dalton Road",
+    "city": "Dalton",
+    "zip": "03598",
+    "phone": "603-837-2751",
+    "kind": "central",
+    "lat": 44.416056,
+    "lon": -71.693092,
+    "imls": "NH0171-002",
+    "block": "330079511003021",
+    "raw": {
+     "name": "DALTON PUBLIC LIBRARY",
+     "address": "756 DALTON ROAD",
+     "city": "DALTON"
+    }
+   }
+  ]
+ },
+ "danbury": {
+  "read_on": "2026-10-25",
+  "survey": "FY2024",
+  "libraries": [
+   {
+    "name": "George Gamble Library",
+    "street": "29 Route 104",
+    "city": "Danbury",
+    "zip": "03230",
+    "phone": "603-768-3765",
+    "kind": "central",
+    "lat": 43.525047,
+    "lon": -71.860077,
+    "imls": "NH0242-002",
+    "block": "330130415002028",
+    "raw": {
+     "name": "GEORGE GAMBLE LIBRARY",
+     "address": "29 ROUTE 104",
+     "city": "DANBURY"
+    }
+   }
+  ]
+ },
+ "danville": {
+  "read_on": "2026-10-25",
+  "survey": "FY2024",
+  "libraries": [
+   {
+    "name": "Colby Memorial Library",
+    "street": "7 Colby Road",
+    "city": "Danville",
+    "zip": "03819",
+    "phone": "603-382-6733",
+    "kind": "central",
+    "lat": 42.913086,
+    "lon": -71.124519,
+    "imls": "NH0172-002",
+    "block": "330150530001018",
+    "raw": {
+     "name": "COLBY MEMORIAL LIBRARY",
+     "address": "7 COLBY ROAD",
+     "city": "DANVILLE"
+    }
+   }
+  ]
+ },
+ "deerfield": {
+  "read_on": "2026-10-25",
+  "survey": "FY2024",
+  "libraries": [
+   {
+    "name": "Philbrick-James Library",
+    "street": "4 Church Street",
+    "city": "Deerfield",
+    "zip": "03037",
+    "phone": "603-463-7187",
+    "kind": "central",
+    "lat": 43.132961,
+    "lon": -71.24192,
+    "imls": "NH0173-002",
+    "block": "330150560003016",
+    "raw": {
+     "name": "PHILBRICK-JAMES LIBRARY",
+     "address": "4 CHURCH STREET",
+     "city": "DEERFIELD"
+    }
+   }
+  ]
+ },
+ "deering": {
+  "read_on": "2026-10-25",
+  "survey": "FY2024",
+  "libraries": [
+   {
+    "name": "Deering Public Library",
+    "street": "762 Deering Center Road",
+    "city": "Deering",
+    "zip": "03244",
+    "phone": "603-464-5136",
+    "kind": "central",
+    "lat": 43.074543,
+    "lon": -71.846527,
+    "imls": "NH0175-002",
+    "block": "330110215003016",
+    "raw": {
+     "name": "DEERING PUBLIC LIBRARY",
+     "address": "762 DEERING CENTER ROAD",
+     "city": "DEERING"
+    }
+   }
+  ]
+ },
+ "derry": {
+  "read_on": "2026-10-25",
+  "survey": "FY2024",
+  "libraries": [
+   {
+    "name": "Derry Public Library",
+    "street": "64 East Broadway",
+    "city": "Derry",
+    "zip": "03038",
+    "phone": "603-432-6140",
+    "kind": "central",
+    "lat": 42.88308,
+    "lon": -71.322189,
+    "imls": "NH0176-002",
+    "block": "330150034003014",
+    "raw": {
+     "name": "DERRY PUBLIC LIBRARY",
+     "address": "64 EAST BROADWAY",
+     "city": "DERRY"
+    }
+   },
+   {
+    "name": "Taylor Library",
+    "street": "49 East Derry Road",
+    "city": "East Derry",
+    "zip": "03041",
+    "phone": "603-432-7186",
+    "kind": "central",
+    "lat": 42.894264,
+    "lon": -71.294182,
+    "imls": "NH0177-002",
+    "block": "330150036013002",
+    "raw": {
+     "name": "TAYLOR LIBRARY",
+     "address": "49 EAST DERRY ROAD",
+     "city": "EAST DERRY"
+    }
+   }
+  ]
+ },
+ "dover": {
+  "read_on": "2026-10-25",
+  "survey": "FY2024",
+  "libraries": [
+   {
+    "name": "Dover Public Library",
+    "street": "73 Locust Street",
+    "city": "Dover",
+    "zip": "03820",
+    "phone": "603-516-6050",
+    "kind": "central",
+    "lat": 43.192913,
+    "lon": -70.875542,
+    "imls": "NH0179-002",
+    "block": "330170813001031",
+    "raw": {
+     "name": "DOVER PUBLIC LIBRARY",
+     "address": "73 LOCUST STREET",
+     "city": "DOVER"
+    }
+   }
+  ]
+ },
+ "dublin": {
+  "read_on": "2026-10-25",
+  "survey": "FY2024",
+  "libraries": [
+   {
+    "name": "Dublin Public Library",
+    "street": "1114 Main Street",
+    "city": "Dublin",
+    "zip": "03444",
+    "phone": "603-563-8658",
+    "kind": "central",
+    "lat": 42.905853,
+    "lon": -72.061424,
+    "imls": "NH0180-002",
+    "block": "330059704012032",
+    "raw": {
+     "name": "DUBLIN PUBLIC LIBRARY",
+     "address": "1114 MAIN STREET",
+     "city": "DUBLIN"
+    }
+   }
+  ]
+ },
+ "dummer": {
+  "read_on": "2026-10-25",
+  "survey": "FY2024",
+  "libraries": [
+   {
+    "name": "Dummer Public Library",
+    "street": "67 Hill Road",
+    "city": "Dummer",
+    "zip": "03588",
+    "phone": "603-449-0995",
+    "kind": "central",
+    "lat": 44.608688,
+    "lon": -71.20237,
+    "imls": "NH0230-002",
+    "block": "330079503001279",
+    "raw": {
+     "name": "DUMMER PUBLIC LIBRARY",
+     "address": "67 HILL ROAD",
+     "city": "DUMMER"
+    }
+   }
+  ]
+ },
+ "dunbarton": {
+  "read_on": "2026-10-25",
+  "survey": "FY2024",
+  "libraries": [
+   {
+    "name": "Dunbarton Public Library",
+    "street": "1004 School Street",
+    "city": "Dunbarton",
+    "zip": "03046",
+    "phone": "603-774-3546",
+    "kind": "central",
+    "lat": 43.102863,
+    "lon": -71.615967,
+    "imls": "NH0181-002",
+    "block": "330130300002003",
+    "raw": {
+     "name": "DUNBARTON PUBLIC LIBRARY",
+     "address": "1004 SCHOOL STREET",
+     "city": "DUNBARTON"
+    }
+   }
+  ]
+ },
+ "durham": {
+  "read_on": "2026-10-25",
+  "survey": "FY2024",
+  "libraries": [
+   {
+    "name": "Durham Public Library",
+    "street": "49 Madbury Road",
+    "city": "Durham",
+    "zip": "03824",
+    "phone": "603-868-6699",
+    "kind": "central",
+    "lat": 43.140202,
+    "lon": -70.92643,
+    "imls": "NH0182-002",
+    "block": "330170802041024",
+    "raw": {
+     "name": "DURHAM PUBLIC LIBRARY",
+     "address": "49 MADBURY ROAD",
+     "city": "DURHAM"
+    }
+   }
+  ]
+ },
+ "east-kingston": {
+  "read_on": "2026-10-25",
+  "survey": "FY2024",
+  "libraries": [
+   {
+    "name": "East Kingston Public Library",
+    "street": "47 Maplevale Road",
+    "city": "East Kingston",
+    "zip": "03827",
+    "phone": "603-642-8333",
+    "kind": "central",
+    "lat": 42.924343,
+    "lon": -71.009392,
+    "imls": "NH0183-002",
+    "block": "330150620001024",
+    "raw": {
+     "name": "EAST KINGSTON PUBLIC LIBRARY",
+     "address": "47 MAPLEVALE ROAD",
+     "city": "EAST KINGSTON"
+    }
+   }
+  ]
+ },
+ "effingham": {
+  "read_on": "2026-10-25",
+  "survey": "FY2024",
+  "libraries": [
+   {
+    "name": "Effingham Public Library",
+    "street": "30 Town House Road",
+    "city": "Effingham",
+    "zip": "03882",
+    "phone": "603-539-1537",
+    "kind": "central",
+    "lat": 43.739376,
+    "lon": -71.011513,
+    "imls": "NH0186-002",
+    "block": "330039558011007",
+    "raw": {
+     "name": "EFFINGHAM PUBLIC LIBRARY",
+     "address": "30 TOWN HOUSE ROAD",
+     "city": "EFFINGHAM"
+    }
+   }
+  ]
+ },
+ "enfield": {
+  "read_on": "2026-10-25",
+  "survey": "FY2024",
+  "libraries": [
+   {
+    "name": "Enfield Public Library",
+    "street": "23 Main Street",
+    "city": "Enfield",
+    "zip": "03748",
+    "phone": "603-632-7145",
+    "kind": "central",
+    "lat": 43.642998,
+    "lon": -72.144348,
+    "imls": "NH0187-002",
+    "block": "330099615001010",
+    "raw": {
+     "name": "ENFIELD PUBLIC LIBRARY",
+     "address": "23 MAIN STREET",
+     "city": "ENFIELD"
+    }
+   }
+  ]
+ },
+ "epping": {
+  "read_on": "2026-10-25",
+  "survey": "FY2024",
+  "libraries": [
+   {
+    "name": "Harvey-Mitchell Memorial Library",
+    "street": "151 Main Street",
+    "city": "Epping",
+    "zip": "03042",
+    "phone": "603-734-4587",
+    "kind": "central",
+    "lat": 43.039036,
+    "lon": -71.073273,
+    "imls": "NH0188-002",
+    "block": "330150590003047",
+    "raw": {
+     "name": "HARVEY-MITCHELL MEMORIAL LIBRARY",
+     "address": "151 MAIN STREET",
+     "city": "EPPING"
+    }
+   }
+  ]
+ },
+ "epsom": {
+  "read_on": "2026-10-25",
+  "survey": "FY2024",
+  "libraries": [
+   {
+    "name": "Epsom Public Library",
+    "street": "1606 Dover Road",
+    "city": "Epsom",
+    "zip": "03234",
+    "phone": "603-736-9920",
+    "kind": "central",
+    "lat": 43.223011,
+    "lon": -71.333542,
+    "imls": "NH0189-002",
+    "block": "330130340001030",
+    "raw": {
+     "name": "EPSOM PUBLIC LIBRARY",
+     "address": "1606 DOVER ROAD",
+     "city": "EPSOM"
+    }
+   }
+  ]
+ },
+ "errol": {
+  "read_on": "2026-10-25",
+  "survey": "FY2024",
+  "libraries": [
+   {
+    "name": "Errol Public Library",
+    "street": "67 Main Street",
+    "city": "Errol",
+    "zip": "03579",
+    "phone": "603-482-7720",
+    "kind": "central",
+    "lat": 44.780373,
+    "lon": -71.135574,
+    "imls": "NH0190-002",
+    "block": "330079503001091",
+    "raw": {
+     "name": "ERROL PUBLIC LIBRARY",
+     "address": "67 MAIN STREET",
+     "city": "ERROL"
+    }
+   }
+  ]
+ },
+ "exeter": {
+  "read_on": "2026-10-25",
+  "survey": "FY2024",
+  "libraries": [
+   {
+    "name": "Exeter Public Library",
+    "street": "4 Chestnut Street",
+    "city": "Exeter",
+    "zip": "03833",
+    "phone": "603-772-3101",
+    "kind": "central",
+    "lat": 42.982227,
+    "lon": -70.94445,
+    "imls": "NH0191-002",
+    "block": "330151064001016",
+    "raw": {
+     "name": "EXETER PUBLIC LIBRARY",
+     "address": "4 CHESTNUT STREET",
+     "city": "EXETER"
+    }
+   }
+  ]
+ },
+ "farmington": {
+  "read_on": "2026-10-25",
+  "survey": "FY2024",
+  "libraries": [
+   {
+    "name": "Goodwin Library",
+    "street": "422 Main St.",
+    "city": "Farmington",
+    "zip": "03835",
+    "phone": "603-755-2944",
+    "kind": "central",
+    "lat": 43.389249,
+    "lon": -71.065159,
+    "imls": "NH0192-002",
+    "block": "330170870013012",
+    "raw": {
+     "name": "GOODWIN LIBRARY",
+     "address": "422 MAIN ST.",
+     "city": "FARMINGTON"
+    }
+   }
+  ]
+ },
+ "fitzwilliam": {
+  "read_on": "2026-10-25",
+  "survey": "FY2024",
+  "libraries": [
+   {
+    "name": "Fitzwilliam Town Library",
+    "street": "11 Templeton Turnpike",
+    "city": "Fitzwilliam",
+    "zip": "03447",
+    "phone": "603-585-6503",
+    "kind": "central",
+    "lat": 42.77993,
+    "lon": -72.144928,
+    "imls": "NH0193-002",
+    "block": "330059707002001",
+    "raw": {
+     "name": "FITZWILLIAM TOWN LIBRARY",
+     "address": "11 TEMPLETON TURNPIKE",
+     "city": "FITZWILLIAM"
+    }
+   }
+  ]
+ },
+ "francestown": {
+  "read_on": "2026-10-25",
+  "survey": "FY2024",
+  "libraries": [
+   {
+    "name": "George Holmes Bixby Memorial Library",
+    "street": "52 Main Street",
+    "city": "Francestown",
+    "zip": "03043",
+    "phone": "603-547-2730",
+    "kind": "central",
+    "lat": 42.989208,
+    "lon": -71.813904,
+    "imls": "NH0194-002",
+    "block": "330110215001035",
+    "raw": {
+     "name": "GEORGE HOLMES BIXBY MEMORIAL LIBRARY",
+     "address": "52 MAIN STREET",
+     "city": "FRANCESTOWN"
+    }
+   }
+  ]
+ },
+ "franconia": {
+  "read_on": "2026-10-25",
+  "survey": "FY2024",
+  "libraries": [
+   {
+    "name": "Abbie Greenleaf Library",
+    "street": "439 Main Street",
+    "city": "Franconia",
+    "zip": "03580",
+    "phone": "603-823-8424",
+    "kind": "central",
+    "lat": 44.226479,
+    "lon": -71.745117,
+    "imls": "NH0195-002",
+    "block": "330099602003024",
+    "raw": {
+     "name": "ABBIE GREENLEAF LIBRARY",
+     "address": "439 MAIN STREET",
+     "city": "FRANCONIA"
+    }
+   }
+  ]
+ },
+ "franklin": {
+  "read_on": "2026-10-25",
+  "survey": "FY2024",
+  "libraries": [
+   {
+    "name": "Franklin Public Library",
+    "street": "310 Central Street",
+    "city": "Franklin",
+    "zip": "03235",
+    "phone": "603-934-2911",
+    "kind": "central",
+    "lat": 43.44437,
+    "lon": -71.647247,
+    "imls": "NH0197-002",
+    "block": "330130430012002",
+    "raw": {
+     "name": "FRANKLIN PUBLIC LIBRARY",
+     "address": "310 CENTRAL STREET",
+     "city": "FRANKLIN"
+    }
+   }
+  ]
+ },
+ "freedom": {
+  "read_on": "2026-10-25",
+  "survey": "FY2024",
+  "libraries": [
+   {
+    "name": "Freedom Public Library",
+    "street": "38 Old Portland Road",
+    "city": "Freedom",
+    "zip": "03836",
+    "phone": "603-539-5176",
+    "kind": "central",
+    "lat": 43.812698,
+    "lon": -71.033035,
+    "imls": "NH0198-002",
+    "block": "330039558021006",
+    "raw": {
+     "name": "FREEDOM PUBLIC LIBRARY",
+     "address": "38 OLD PORTLAND ROAD",
+     "city": "FREEDOM"
+    }
+   }
+  ]
+ },
+ "fremont": {
+  "read_on": "2026-10-25",
+  "survey": "FY2024",
+  "libraries": [
+   {
+    "name": "Fremont Public Library",
+    "street": "7 Jackie Bernier Drive",
+    "city": "Fremont",
+    "zip": "03044",
+    "phone": "603-895-9543",
+    "kind": "central",
+    "lat": 42.979824,
+    "lon": -71.122246,
+    "imls": "NH0199-002",
+    "block": "330150540001012",
+    "raw": {
+     "name": "FREMONT PUBLIC LIBRARY",
+     "address": "7 JACKIE BERNIER DRIVE",
+     "city": "FREMONT"
+    }
+   }
+  ]
+ },
+ "gilford": {
+  "read_on": "2026-10-25",
+  "survey": "FY2024",
+  "libraries": [
+   {
+    "name": "Gilford Public Library",
+    "street": "31 Potter Hill Road",
+    "city": "Gilford",
+    "zip": "03249",
+    "phone": "603-524-6042",
+    "kind": "central",
+    "lat": 43.548977,
+    "lon": -71.40377,
+    "imls": "NH0200-002",
+    "block": "330019664042000",
+    "raw": {
+     "name": "GILFORD PUBLIC LIBRARY",
+     "address": "31 POTTER HILL ROAD",
+     "city": "GILFORD"
+    }
+   }
+  ]
+ },
+ "gilmanton": {
+  "read_on": "2026-10-25",
+  "survey": "FY2024",
+  "libraries": [
+   {
+    "name": "Gilmanton Corner Public Library",
+    "street": "509 Province Road",
+    "city": "Gilmanton",
+    "zip": "03237",
+    "phone": "603-267-6200",
+    "kind": "central",
+    "lat": 43.424559,
+    "lon": -71.413782,
+    "imls": "NH0202-002",
+    "block": "330019656002014",
+    "raw": {
+     "name": "GILMANTON CORNER PUBLIC LIBRARY",
+     "address": "509 PROVINCE ROAD",
+     "city": "GILMANTON"
+    }
+   },
+   {
+    "name": "Gilmanton Iron Works Library",
+    "street": "10 Elm Street",
+    "city": "Gilmanton Iron Works",
+    "zip": "03837",
+    "phone": "603-364-7734",
+    "kind": "central",
+    "lat": 43.417252,
+    "lon": -71.296463,
+    "imls": "NH0251-001",
+    "block": "330019656003036",
+    "raw": {
+     "name": "GILMANTON IRON WORKS LIBRARY",
+     "address": "10 ELM STREET",
+     "city": "GILMANTON IRON WORKS"
+    }
+   },
+   {
+    "name": "Gilmanton Year-Round Library Association",
+    "street": "1385 NH Route 140",
+    "city": "Gilmanton",
+    "zip": "03837",
+    "phone": "603-364-2400",
+    "kind": "central",
+    "lat": 43.424335,
+    "lon": -71.331337,
+    "imls": "NH0256-001",
+    "block": "330019656003005",
+    "raw": {
+     "name": "GILMANTON YEAR-ROUND LIBRARY ASSOCIATION",
+     "address": "1385 NH ROUTE 140",
+     "city": "GILMANTON"
+    }
+   }
+  ]
+ },
+ "gilsum": {
+  "read_on": "2026-10-25",
+  "survey": "FY2024",
+  "libraries": [
+   {
+    "name": "Gilsum Public Library",
+    "street": "650 Route 10",
+    "city": "Gilsum",
+    "zip": "03448",
+    "phone": "603-357-0320",
+    "kind": "central",
+    "lat": 43.048279,
+    "lon": -72.257225,
+    "imls": "NH0244-002",
+    "block": "330059701001021",
+    "raw": {
+     "name": "GILSUM PUBLIC LIBRARY",
+     "address": "650 ROUTE 10",
+     "city": "GILSUM"
+    }
+   }
+  ]
+ },
+ "goffstown": {
+  "read_on": "2026-10-25",
+  "survey": "FY2024",
+  "libraries": [
+   {
+    "name": "Goffstown Public Library",
+    "street": "2 High Street",
+    "city": "Goffstown",
+    "zip": "03045",
+    "phone": "603-497-2102",
+    "kind": "central",
+    "lat": 43.020622,
+    "lon": -71.600281,
+    "imls": "NH0204-002",
+    "block": "330110027022005",
+    "raw": {
+     "name": "GOFFSTOWN PUBLIC LIBRARY",
+     "address": "2 HIGH STREET",
+     "city": "GOFFSTOWN"
+    }
+   }
+  ]
+ },
+ "gorham": {
+  "read_on": "2026-10-25",
+  "survey": "FY2024",
+  "libraries": [
+   {
+    "name": "Gorham Public Library",
+    "street": "35 Railroad Street",
+    "city": "Gorham",
+    "zip": "03581",
+    "phone": "603-466-2525",
+    "kind": "central",
+    "lat": 44.387749,
+    "lon": -71.176819,
+    "imls": "NH0205-002",
+    "block": "330079509002002",
+    "raw": {
+     "name": "GORHAM PUBLIC LIBRARY",
+     "address": "35 RAILROAD STREET",
+     "city": "GORHAM"
+    }
+   }
+  ]
+ },
+ "goshen": {
+  "read_on": "2026-10-25",
+  "survey": "FY2024",
+  "libraries": [
+   {
+    "name": "Olive G. Pettis Library",
+    "street": "36 Mill Village Road",
+    "city": "Goshen",
+    "zip": "03752",
+    "phone": "603-863-6921",
+    "kind": "central",
+    "lat": 43.300228,
+    "lon": -72.147705,
+    "imls": "NH0206-002",
+    "block": "330199755002012",
+    "raw": {
+     "name": "OLIVE G. PETTIS LIBRARY",
+     "address": "36 MILL VILLAGE ROAD",
+     "city": "GOSHEN"
+    }
+   }
+  ]
+ },
+ "grafton": {
+  "read_on": "2026-10-25",
+  "survey": "FY2024",
+  "libraries": [
+   {
+    "name": "Grafton Public Library",
+    "street": "47 Library Road",
+    "city": "Grafton",
+    "zip": "03240",
+    "phone": "603-523-7865",
+    "kind": "central",
+    "lat": 43.560623,
+    "lon": -71.945999,
+    "imls": "NH0207-002",
+    "block": "330099613002017",
+    "raw": {
+     "name": "GRAFTON PUBLIC LIBRARY",
+     "address": "47 LIBRARY ROAD",
+     "city": "GRAFTON"
+    }
+   }
+  ]
+ },
+ "grantham": {
+  "read_on": "2026-10-25",
+  "survey": "FY2024",
+  "libraries": [
+   {
+    "name": "Dunbar Free Library",
+    "street": "401 Route 10 South",
+    "city": "Grantham",
+    "zip": "03753",
+    "phone": "603-863-2172",
+    "kind": "central",
+    "lat": 43.488659,
+    "lon": -72.137032,
+    "imls": "NH0208-002",
+    "block": "330199752002005",
+    "raw": {
+     "name": "DUNBAR FREE LIBRARY",
+     "address": "401 ROUTE 10 SOUTH",
+     "city": "GRANTHAM"
+    }
+   }
+  ]
+ },
+ "greenfield": {
+  "read_on": "2026-10-25",
+  "survey": "FY2024",
+  "libraries": [
+   {
+    "name": "Stephenson Memorial Library",
+    "street": "761 Forest Road",
+    "city": "Greenfield",
+    "zip": "03047",
+    "phone": "603-547-2790",
+    "kind": "central",
+    "lat": 42.950371,
+    "lon": -71.870773,
+    "imls": "NH0209-002",
+    "block": "330110220001031",
+    "raw": {
+     "name": "STEPHENSON MEMORIAL LIBRARY",
+     "address": "761 FOREST ROAD",
+     "city": "GREENFIELD"
+    }
+   }
+  ]
+ },
+ "greenland": {
+  "read_on": "2026-10-25",
+  "survey": "FY2024",
+  "libraries": [
+   {
+    "name": "Weeks Public Library",
+    "street": "36 Post Road",
+    "city": "Greenland",
+    "zip": "03840",
+    "phone": "603-436-8548",
+    "kind": "central",
+    "lat": 43.035351,
+    "lon": -70.832596,
+    "imls": "NH0210-002",
+    "block": "330151075002006",
+    "raw": {
+     "name": "WEEKS PUBLIC LIBRARY",
+     "address": "36 POST ROAD",
+     "city": "GREENLAND"
+    }
+   }
+  ]
+ },
+ "greenville": {
+  "read_on": "2026-10-25",
+  "survey": "FY2024",
+  "libraries": [
+   {
+    "name": "Chamberlin Free Public Library",
+    "street": "46 Main Street",
+    "city": "Greenville",
+    "zip": "03048",
+    "phone": "603-878-1105",
+    "kind": "central",
+    "lat": 42.767449,
+    "lon": -71.812057,
+    "imls": "NH0211-002",
+    "block": "330110185012020",
+    "raw": {
+     "name": "CHAMBERLIN FREE PUBLIC LIBRARY",
+     "address": "46 MAIN STREET",
+     "city": "GREENVILLE"
+    }
+   }
+  ]
+ },
+ "hampstead": {
+  "read_on": "2026-10-25",
+  "survey": "FY2024",
+  "libraries": [
+   {
+    "name": "Hampstead Public Library",
+    "street": "9 Mary E. Clark Drive",
+    "city": "Hampstead",
+    "zip": "03841",
+    "phone": "603-329-6411",
+    "kind": "central",
+    "lat": 42.861492,
+    "lon": -71.174805,
+    "imls": "NH0213-002",
+    "block": "330151041021014",
+    "raw": {
+     "name": "HAMPSTEAD PUBLIC LIBRARY",
+     "address": "9 MARY E. CLARK DRIVE",
+     "city": "HAMPSTEAD"
+    }
+   }
+  ]
+ },
+ "hampton": {
+  "read_on": "2026-10-25",
+  "survey": "FY2024",
+  "libraries": [
+   {
+    "name": "Lane Memorial Library",
+    "street": "2 Academy Avenue",
+    "city": "Hampton",
+    "zip": "03842",
+    "phone": "603-926-3368",
+    "kind": "central",
+    "lat": 42.937943,
+    "lon": -70.833542,
+    "imls": "NH0214-002",
+    "block": "330150650092002",
+    "raw": {
+     "name": "LANE MEMORIAL LIBRARY",
+     "address": "2 ACADEMY AVENUE",
+     "city": "HAMPTON"
+    }
+   }
+  ]
+ },
+ "hampton-falls": {
+  "read_on": "2026-10-25",
+  "survey": "FY2024",
+  "libraries": [
+   {
+    "name": "Hampton Falls Free Library",
+    "street": "7 Drinkwater Road",
+    "city": "Hampton Falls",
+    "zip": "03844",
+    "phone": "603-926-3682",
+    "kind": "central",
+    "lat": 42.920483,
+    "lon": -70.87532,
+    "imls": "NH0216-002",
+    "block": "330150640001049",
+    "raw": {
+     "name": "HAMPTON FALLS FREE LIBRARY",
+     "address": "7 DRINKWATER ROAD",
+     "city": "HAMPTON FALLS"
+    }
+   }
+  ]
+ },
+ "hancock": {
+  "read_on": "2026-10-25",
+  "survey": "FY2024",
+  "libraries": [
+   {
+    "name": "Hancock Town Library",
+    "street": "25 Main Street",
+    "city": "Hancock",
+    "zip": "03449",
+    "phone": "603-525-4411",
+    "kind": "central",
+    "lat": 42.973045,
+    "lon": -71.982269,
+    "imls": "NH0217-002",
+    "block": "330110240001024",
+    "raw": {
+     "name": "HANCOCK TOWN LIBRARY",
+     "address": "25 MAIN STREET",
+     "city": "HANCOCK"
+    }
+   }
+  ]
+ },
+ "hanover": {
+  "read_on": "2026-10-25",
+  "survey": "FY2024",
+  "libraries": [
+   {
+    "name": "Hanover Town Library",
+    "street": "130 Etna Road",
+    "city": "Etna",
+    "zip": "03750",
+    "phone": "603-643-3116",
+    "kind": "central",
+    "lat": 43.694557,
+    "lon": -72.217766,
+    "imls": "NH0243-002",
+    "block": "330099616011030",
+    "raw": {
+     "name": "HANOVER TOWN LIBRARY",
+     "address": "130 ETNA ROAD",
+     "city": "ETNA"
+    }
+   },
+   {
+    "name": "Howe Library",
+    "street": "13 South Street",
+    "city": "Hanover",
+    "zip": "03755",
+    "phone": "603-643-4120",
+    "kind": "central",
+    "lat": 43.699905,
+    "lon": -72.286957,
+    "imls": "NH0218-002",
+    "block": "330099616042007",
+    "raw": {
+     "name": "HOWE LIBRARY",
+     "address": "13 SOUTH STREET",
+     "city": "HANOVER"
+    }
+   }
+  ]
+ },
+ "harrisville": {
+  "read_on": "2026-10-25",
+  "survey": "FY2024",
+  "libraries": [
+   {
+    "name": "Harrisville Public Library",
+    "street": "7 Canal Street",
+    "city": "Harrisville",
+    "zip": "03450",
+    "phone": "603-827-2918",
+    "kind": "central",
+    "lat": 42.946056,
+    "lon": -72.095886,
+    "imls": "NH0219-002",
+    "block": "330059704011012",
+    "raw": {
+     "name": "HARRISVILLE PUBLIC LIBRARY",
+     "address": "7 CANAL STREET",
+     "city": "HARRISVILLE"
+    }
+   }
+  ]
+ },
+ "haverhill": {
+  "read_on": "2026-10-25",
+  "survey": "FY2024",
+  "libraries": [
+   {
+    "name": "Haverhill Library Association",
+    "street": "67 Court Street",
+    "city": "Haverhill",
+    "zip": "03765",
+    "phone": "603-989-5578",
+    "kind": "central",
+    "lat": 44.033657,
+    "lon": -72.061356,
+    "imls": "NH0223-002",
+    "block": "330099606001066",
+    "raw": {
+     "name": "HAVERHILL LIBRARY ASSOCIATION",
+     "address": "67 COURT STREET",
+     "city": "HAVERHILL"
+    }
+   },
+   {
+    "name": "Patten-North Haverhill Library",
+    "street": "2885 Dartmouth College Highway",
+    "city": "North Haverhill",
+    "zip": "03774",
+    "phone": "603-787-2542",
+    "kind": "central",
+    "lat": 44.093483,
+    "lon": -72.025551,
+    "imls": "NH0221-002",
+    "block": "330099606003038",
+    "raw": {
+     "name": "PATTEN-NORTH HAVERHILL LIBRARY",
+     "address": "2885 DARTMOUTH COLLEGE HIGHWAY",
+     "city": "NORTH HAVERHILL"
+    }
+   },
+   {
+    "name": "Woodsville Free Public Library",
+    "street": "14 School Lane",
+    "city": "Woodsville",
+    "zip": "03785",
+    "phone": "603-747-3483",
+    "kind": "central",
+    "lat": 44.150341,
+    "lon": -72.036652,
+    "imls": "NH0220-002",
+    "block": "330099606003019",
+    "raw": {
+     "name": "WOODSVILLE FREE PUBLIC LIBRARY",
+     "address": "14 SCHOOL LANE",
+     "city": "WOODSVILLE"
+    }
+   }
+  ]
+ },
+ "hebron": {
+  "read_on": "2026-10-25",
+  "survey": "FY2024",
+  "libraries": [
+   {
+    "name": "Hebron Public Library",
+    "street": "8 Church Lane",
+    "city": "Hebron",
+    "zip": "03241",
+    "phone": "603-744-7998",
+    "kind": "central",
+    "lat": 43.694359,
+    "lon": -71.805092,
+    "imls": "NH0224-001",
+    "block": "330099609004040",
+    "raw": {
+     "name": "HEBRON PUBLIC LIBRARY",
+     "address": "8 CHURCH LANE",
+     "city": "HEBRON"
+    }
+   }
+  ]
+ },
+ "henniker": {
+  "read_on": "2026-10-25",
+  "survey": "FY2024",
+  "libraries": [
+   {
+    "name": "Tucker Free Library",
+    "street": "31 Western Avenue",
+    "city": "Henniker",
+    "zip": "03242",
+    "phone": "603-428-3471",
+    "kind": "central",
+    "lat": 43.179657,
+    "lon": -71.823593,
+    "imls": "NH0003-002",
+    "block": "330130400002010",
+    "raw": {
+     "name": "TUCKER FREE LIBRARY",
+     "address": "31 WESTERN AVENUE",
+     "city": "HENNIKER"
+    }
+   }
+  ]
+ },
+ "hill": {
+  "read_on": "2026-10-25",
+  "survey": "FY2024",
+  "libraries": [
+   {
+    "name": "Hill Public Library",
+    "street": "30 Crescent Street",
+    "city": "Hill",
+    "zip": "03243",
+    "phone": "603-934-9712",
+    "kind": "central",
+    "lat": 43.522381,
+    "lon": -71.701294,
+    "imls": "NH0004-002",
+    "block": "330130415001012",
+    "raw": {
+     "name": "HILL PUBLIC LIBRARY",
+     "address": "30 CRESCENT STREET",
+     "city": "HILL"
+    }
+   }
+  ]
+ },
+ "hillsborough": {
+  "read_on": "2026-10-25",
+  "survey": "FY2024",
+  "libraries": [
+   {
+    "name": "Fuller Public Library",
+    "street": "29 School Street",
+    "city": "Hillsborough",
+    "zip": "03244",
+    "phone": "603-464-3595",
+    "kind": "central",
+    "lat": 43.116242,
+    "lon": -71.896011,
+    "imls": "NH0005-002",
+    "block": "330110255021008",
+    "raw": {
+     "name": "FULLER PUBLIC LIBRARY",
+     "address": "29 SCHOOL STREET",
+     "city": "HILLSBOROUGH"
+    }
+   }
+  ]
+ },
+ "hinsdale": {
+  "read_on": "2026-10-25",
+  "survey": "FY2024",
+  "libraries": [
+   {
+    "name": "Hinsdale Public Library",
+    "street": "122 Brattleboro Road",
+    "city": "Hinsdale",
+    "zip": "03451",
+    "phone": "603-336-5713",
+    "kind": "central",
+    "lat": 42.785137,
+    "lon": -72.497101,
+    "imls": "NH0006-002",
+    "block": "330059716002036",
+    "raw": {
+     "name": "HINSDALE PUBLIC LIBRARY",
+     "address": "122 BRATTLEBORO ROAD",
+     "city": "HINSDALE"
+    }
+   }
+  ]
+ },
+ "holderness": {
+  "read_on": "2026-10-25",
+  "survey": "FY2024",
+  "libraries": [
+   {
+    "name": "Holderness Library",
+    "street": "866 US Route 3",
+    "city": "Holderness",
+    "zip": "03245",
+    "phone": "603-968-7066",
+    "kind": "central",
+    "lat": 43.731251,
+    "lon": -71.587547,
+    "imls": "NH0007-002",
+    "block": "330099611021017",
+    "raw": {
+     "name": "HOLDERNESS LIBRARY",
+     "address": "866 US ROUTE 3",
+     "city": "HOLDERNESS"
+    }
+   }
+  ]
+ },
+ "hollis": {
+  "read_on": "2026-10-25",
+  "survey": "FY2024",
+  "libraries": [
+   {
+    "name": "Hollis Social Library",
+    "street": "2 Monument Square",
+    "city": "Hollis",
+    "zip": "03049",
+    "phone": "603-465-7721",
+    "kind": "central",
+    "lat": 42.739723,
+    "lon": -71.589279,
+    "imls": "NH0008-002",
+    "block": "330110171012007",
+    "raw": {
+     "name": "HOLLIS SOCIAL LIBRARY",
+     "address": "2 MONUMENT SQUARE",
+     "city": "HOLLIS"
+    }
+   }
+  ]
+ },
+ "hooksett": {
+  "read_on": "2026-10-25",
+  "survey": "FY2024",
+  "libraries": [
+   {
+    "name": "Hooksett Public Library",
+    "street": "31 Mount Saint Mary's Way",
+    "city": "Hooksett",
+    "zip": "03106",
+    "phone": "603-485-6092",
+    "kind": "central",
+    "lat": 43.094418,
+    "lon": -71.45121,
+    "imls": "NH0009-002",
+    "block": "330130442004018",
+    "raw": {
+     "name": "HOOKSETT PUBLIC LIBRARY",
+     "address": "31 MOUNT SAINT MARY'S WAY",
+     "city": "HOOKSETT"
+    }
+   }
+  ]
+ },
+ "hopkinton": {
+  "read_on": "2026-10-25",
+  "survey": "FY2024",
+  "libraries": [
+   {
+    "name": "Hopkinton Town Library",
+    "street": "61 Houston Drive",
+    "city": "Contoocook",
+    "zip": "03229",
+    "phone": "603-746-3663",
+    "kind": "central",
+    "lat": 43.223855,
+    "lon": -71.720912,
+    "imls": "NH0010-005",
+    "block": "330130390002017",
+    "raw": {
+     "name": "HOPKINTON TOWN LIBRARY",
+     "address": "61 HOUSTON DRIVE",
+     "city": "CONTOOCOOK"
+    }
+   }
+  ]
+ },
+ "hudson": {
+  "read_on": "2026-10-25",
+  "survey": "FY2024",
+  "libraries": [
+   {
+    "name": "George H. And Ella M. Rodgers Memorial Library",
+    "street": "194 Derry Road",
+    "city": "Hudson",
+    "zip": "03051",
+    "phone": "603-886-6030",
+    "kind": "central",
+    "lat": 42.791061,
+    "lon": -71.438728,
+    "imls": "NH0011-005",
+    "block": "330110121012001",
+    "raw": {
+     "name": "GEORGE H. AND ELLA M. RODGERS MEMORIAL LIBRARY",
+     "address": "194 DERRY ROAD",
+     "city": "HUDSON"
+    }
+   }
+  ]
+ },
+ "jackson": {
+  "read_on": "2026-10-25",
+  "survey": "FY2024",
+  "libraries": [
+   {
+    "name": "Jackson Public Library",
+    "street": "52 Main Street",
+    "city": "Jackson",
+    "zip": "03846",
+    "phone": "603-383-9731",
+    "kind": "central",
+    "lat": 44.142389,
+    "lon": -71.183279,
+    "imls": "NH0013-002",
+    "block": "330039551011033",
+    "raw": {
+     "name": "JACKSON PUBLIC LIBRARY",
+     "address": "52 MAIN STREET",
+     "city": "JACKSON"
+    }
+   }
+  ]
+ },
+ "jaffrey": {
+  "read_on": "2026-10-25",
+  "survey": "FY2024",
+  "libraries": [
+   {
+    "name": "Jaffrey Public Library",
+    "street": "38 Main Street",
+    "city": "Jaffrey",
+    "zip": "03452",
+    "phone": "603-532-7301",
+    "kind": "central",
+    "lat": 42.815533,
+    "lon": -72.024849,
+    "imls": "NH0014-002",
+    "block": "330059705004019",
+    "raw": {
+     "name": "JAFFREY PUBLIC LIBRARY",
+     "address": "38 MAIN STREET",
+     "city": "JAFFREY"
+    }
+   }
+  ]
+ },
+ "jefferson": {
+  "read_on": "2026-10-25",
+  "survey": "FY2024",
+  "libraries": [
+   {
+    "name": "Marc A. Hurzeler, M.d. Library",
+    "street": "178 Meadows Road",
+    "city": "Jefferson",
+    "zip": "03583",
+    "phone": "603-586-7791",
+    "kind": "central",
+    "lat": 44.407435,
+    "lon": -71.473337,
+    "imls": "NH0015-002",
+    "block": "330079510001025",
+    "raw": {
+     "name": "MARC A. HURZELER, M.D. LIBRARY",
+     "address": "178 MEADOWS ROAD",
+     "city": "JEFFERSON"
+    }
+   }
+  ]
+ },
+ "keene": {
+  "read_on": "2026-10-25",
+  "survey": "FY2024",
+  "libraries": [
+   {
+    "name": "Keene Public Library",
+    "street": "60 Winter Street",
+    "city": "Keene",
+    "zip": "03431",
+    "phone": "603-352-0157",
+    "kind": "central",
+    "lat": 42.933998,
+    "lon": -72.281433,
+    "imls": "NH0016-002",
+    "block": "330059713003020",
+    "raw": {
+     "name": "KEENE PUBLIC LIBRARY",
+     "address": "60 WINTER STREET",
+     "city": "KEENE"
+    }
+   }
+  ]
+ },
+ "kensington": {
+  "read_on": "2026-10-25",
+  "survey": "FY2024",
+  "libraries": [
+   {
+    "name": "Kensington Social & Public Library",
+    "street": "126 Amesbury Road",
+    "city": "Kensington",
+    "zip": "03833",
+    "phone": "603-772-5022",
+    "kind": "central",
+    "lat": 42.928089,
+    "lon": -70.943527,
+    "imls": "NH0017-002",
+    "block": "330150625002019",
+    "raw": {
+     "name": "KENSINGTON SOCIAL & PUBLIC LIBRARY",
+     "address": "126 AMESBURY ROAD",
+     "city": "KENSINGTON"
+    }
+   }
+  ]
+ },
+ "kingston": {
+  "read_on": "2026-10-25",
+  "survey": "FY2024",
+  "libraries": [
+   {
+    "name": "Kingston Community Library",
+    "street": "2 Library Lane",
+    "city": "Kingston",
+    "zip": "03848",
+    "phone": "603-642-3521",
+    "kind": "central",
+    "lat": 42.947815,
+    "lon": -71.058876,
+    "imls": "NH0018-002",
+    "block": "330151051004012",
+    "raw": {
+     "name": "KINGSTON COMMUNITY LIBRARY",
+     "address": "2 LIBRARY LANE",
+     "city": "KINGSTON"
+    }
+   }
+  ]
+ },
+ "laconia": {
+  "read_on": "2026-10-25",
+  "survey": "FY2024",
+  "libraries": [
+   {
+    "name": "Laconia Public Library",
+    "street": "695 Main Street",
+    "city": "Laconia",
+    "zip": "03246",
+    "phone": "603-524-4775",
+    "kind": "central",
+    "lat": 43.529507,
+    "lon": -71.471115,
+    "imls": "NH0019-005",
+    "block": "330019661001026",
+    "raw": {
+     "name": "LACONIA PUBLIC LIBRARY",
+     "address": "695 MAIN STREET",
+     "city": "LACONIA"
+    }
+   },
+   {
+    "name": "Goss Reading Room",
+    "street": "188 Elm Street",
+    "city": "Laconia",
+    "zip": "03246",
+    "phone": "",
+    "kind": "branch",
+    "lat": 43.549625,
+    "lon": -71.4664,
+    "imls": "NH0019-004",
+    "block": "330019661002006",
+    "raw": {
+     "name": "GOSS READING ROOM",
+     "address": "188 ELM STREET",
+     "city": "LACONIA"
+    }
+   }
+  ]
+ },
+ "lancaster": {
+  "read_on": "2026-10-25",
+  "survey": "FY2024",
+  "libraries": [
+   {
+    "name": "William D. Weeks Memorial Library",
+    "street": "128 Main Street",
+    "city": "Lancaster",
+    "zip": "03584",
+    "phone": "603-788-3352",
+    "kind": "central",
+    "lat": 44.491314,
+    "lon": -71.570198,
+    "imls": "NH0020-002",
+    "block": "330079505002015",
+    "raw": {
+     "name": "WILLIAM D. WEEKS MEMORIAL LIBRARY",
+     "address": "128 MAIN STREET",
+     "city": "LANCASTER"
+    }
+   }
+  ]
+ },
+ "lebanon": {
+  "read_on": "2026-10-25",
+  "survey": "FY2024",
+  "libraries": [
+   {
+    "name": "Lebanon Public Library",
+    "street": "9 East Park Street",
+    "city": "Lebanon",
+    "zip": "03766",
+    "phone": "603-448-2459",
+    "kind": "central",
+    "lat": 43.642426,
+    "lon": -72.250565,
+    "imls": "NH0021-003",
+    "block": "330099618022004",
+    "raw": {
+     "name": "LEBANON PUBLIC LIBRARY",
+     "address": "9 EAST PARK STREET",
+     "city": "LEBANON"
+    }
+   },
+   {
+    "name": "Kilton Public Library",
+    "street": "80 Main Street",
+    "city": "West Lebanon",
+    "zip": "03784",
+    "phone": "603-298-8544",
+    "kind": "branch",
+    "lat": 43.647846,
+    "lon": -72.309662,
+    "imls": "NH0021-002",
+    "block": "330099617021017",
+    "raw": {
+     "name": "KILTON PUBLIC LIBRARY",
+     "address": "80 MAIN STREET",
+     "city": "WEST LEBANON"
+    }
+   }
+  ]
+ },
+ "lee": {
+  "read_on": "2026-10-25",
+  "survey": "FY2024",
+  "libraries": [
+   {
+    "name": "Lee Public Library",
+    "street": "9 Mast Road",
+    "city": "Lee",
+    "zip": "03861",
+    "phone": "603-659-2626",
+    "kind": "central",
+    "lat": 43.123043,
+    "lon": -71.010742,
+    "imls": "NH0022-002",
+    "block": "330170805003006",
+    "raw": {
+     "name": "LEE PUBLIC LIBRARY",
+     "address": "9 MAST ROAD",
+     "city": "LEE"
+    }
+   }
+  ]
+ },
+ "lempster": {
+  "read_on": "2026-10-25",
+  "survey": "FY2024",
+  "libraries": [
+   {
+    "name": "Miner Memorial Library",
+    "street": "3 2nd New Hampshire Turnpike",
+    "city": "Lempster",
+    "zip": "03605",
+    "phone": "603-863-0051",
+    "kind": "central",
+    "lat": 43.225613,
+    "lon": -72.178272,
+    "imls": "NH0024-002",
+    "block": "330199755001047",
+    "raw": {
+     "name": "MINER MEMORIAL LIBRARY",
+     "address": "3 2ND NEW HAMPSHIRE TURNPIKE",
+     "city": "LEMPSTER"
+    }
+   }
+  ]
+ },
+ "lincoln": {
+  "read_on": "2026-10-25",
+  "survey": "FY2024",
+  "libraries": [
+   {
+    "name": "Lincoln Public Library",
+    "street": "22 Church Street",
+    "city": "Lincoln",
+    "zip": "03251",
+    "phone": "603-745-8159",
+    "kind": "central",
+    "lat": 44.045231,
+    "lon": -71.669792,
+    "imls": "NH0025-002",
+    "block": "330099604021007",
+    "raw": {
+     "name": "LINCOLN PUBLIC LIBRARY",
+     "address": "22 CHURCH STREET",
+     "city": "LINCOLN"
+    }
+   }
+  ]
+ },
+ "lisbon": {
+  "read_on": "2026-10-25",
+  "survey": "FY2024",
+  "libraries": [
+   {
+    "name": "Lisbon Public Library",
+    "street": "45 School Street",
+    "city": "Lisbon",
+    "zip": "03585",
+    "phone": "603-838-6615",
+    "kind": "central",
+    "lat": 44.214741,
+    "lon": -71.911484,
+    "imls": "NH0026-002",
+    "block": "330099603002034",
+    "raw": {
+     "name": "LISBON PUBLIC LIBRARY",
+     "address": "45 SCHOOL STREET",
+     "city": "LISBON"
+    }
+   }
+  ]
+ },
+ "litchfield": {
+  "read_on": "2026-10-25",
+  "survey": "FY2024",
+  "libraries": [
+   {
+    "name": "Aaron Cutler Memorial Library",
+    "street": "269 Charles Bancroft Highway",
+    "city": "Litchfield",
+    "zip": "03052",
+    "phone": "603-424-4044",
+    "kind": "central",
+    "lat": 42.844719,
+    "lon": -71.479706,
+    "imls": "NH0027-002",
+    "block": "330110131022016",
+    "raw": {
+     "name": "AARON CUTLER MEMORIAL LIBRARY",
+     "address": "269 CHARLES BANCROFT HIGHWAY",
+     "city": "LITCHFIELD"
+    }
+   }
+  ]
+ },
+ "littleton": {
+  "read_on": "2026-10-25",
+  "survey": "FY2024",
+  "libraries": [
+   {
+    "name": "Littleton Public Library",
+    "street": "92 Main Street",
+    "city": "Littleton",
+    "zip": "03561",
+    "phone": "603-444-5741",
+    "kind": "central",
+    "lat": 44.306862,
+    "lon": -71.773621,
+    "imls": "NH0028-002",
+    "block": "330099601022006",
+    "raw": {
+     "name": "LITTLETON PUBLIC LIBRARY",
+     "address": "92 MAIN STREET",
+     "city": "LITTLETON"
+    }
+   }
+  ]
+ },
+ "londonderry": {
+  "read_on": "2026-10-25",
+  "survey": "FY2024",
+  "libraries": [
+   {
+    "name": "Leach Library",
+    "street": "276 Mammoth Road",
+    "city": "Londonderry",
+    "zip": "03053",
+    "phone": "603-432-1132",
+    "kind": "central",
+    "lat": 42.867119,
+    "lon": -71.375064,
+    "imls": "NH0029-002",
+    "block": "330150037012018",
+    "raw": {
+     "name": "LEACH LIBRARY",
+     "address": "276 MAMMOTH ROAD",
+     "city": "LONDONDERRY"
+    }
+   }
+  ]
+ },
+ "loudon": {
+  "read_on": "2026-10-25",
+  "survey": "FY2024",
+  "libraries": [
+   {
+    "name": "Maxfield Public Library",
+    "street": "8 Route 129",
+    "city": "Loudon",
+    "zip": "03307",
+    "phone": "603-798-5153",
+    "kind": "central",
+    "lat": 43.286293,
+    "lon": -71.467178,
+    "imls": "NH0030-002",
+    "block": "330130360003006",
+    "raw": {
+     "name": "MAXFIELD PUBLIC LIBRARY",
+     "address": "8 ROUTE 129",
+     "city": "LOUDON"
+    }
+   }
+  ]
+ },
+ "lyme": {
+  "read_on": "2026-10-25",
+  "survey": "FY2024",
+  "libraries": [
+   {
+    "name": "Converse Free Library",
+    "street": "38 Union Street",
+    "city": "Lyme",
+    "zip": "03768",
+    "phone": "603-795-4622",
+    "kind": "central",
+    "lat": 43.810349,
+    "lon": -72.159431,
+    "imls": "NH0031-002",
+    "block": "330099609002010",
+    "raw": {
+     "name": "CONVERSE FREE LIBRARY",
+     "address": "38 UNION STREET",
+     "city": "LYME"
+    }
+   }
+  ]
+ },
+ "lyndeborough": {
+  "read_on": "2026-10-25",
+  "survey": "FY2024",
+  "libraries": [
+   {
+    "name": "J.a. Tarbell Library",
+    "street": "136 Forest Road",
+    "city": "Lyndeborough",
+    "zip": "03082",
+    "phone": "603-654-6790",
+    "kind": "central",
+    "lat": 42.878696,
+    "lon": -71.782638,
+    "imls": "NH0032-002",
+    "block": "330110195011052",
+    "raw": {
+     "name": "J.A. TARBELL LIBRARY",
+     "address": "136 FOREST ROAD",
+     "city": "LYNDEBOROUGH"
+    }
+   }
+  ]
+ },
+ "madbury": {
+  "read_on": "2026-10-25",
+  "survey": "FY2024",
+  "libraries": [
+   {
+    "name": "Madbury Public Library",
+    "street": "11 Town Hall Road",
+    "city": "Madbury",
+    "zip": "03823",
+    "phone": "603-743-1400",
+    "kind": "central",
+    "lat": 43.167046,
+    "lon": -70.94085,
+    "imls": "NH0253-001",
+    "block": "330170805001012",
+    "raw": {
+     "name": "MADBURY PUBLIC LIBRARY",
+     "address": "11 TOWN HALL ROAD",
+     "city": "MADBURY"
+    }
+   }
+  ]
+ },
+ "madison": {
+  "read_on": "2026-10-25",
+  "survey": "FY2024",
+  "libraries": [
+   {
+    "name": "Madison Library",
+    "street": "1895 Village Road",
+    "city": "Madison",
+    "zip": "03849",
+    "phone": "603-367-8545",
+    "kind": "central",
+    "lat": 43.893576,
+    "lon": -71.157051,
+    "imls": "NH0033-002",
+    "block": "330039555001041",
+    "raw": {
+     "name": "MADISON LIBRARY",
+     "address": "1895 VILLAGE ROAD",
+     "city": "MADISON"
+    }
+   }
+  ]
+ },
+ "manchester": {
+  "read_on": "2026-10-25",
+  "survey": "FY2024",
+  "libraries": [
+   {
+    "name": "Manchester City Library",
+    "street": "405 Pine Street",
+    "city": "Manchester",
+    "zip": "03104",
+    "phone": "603-624-6550",
+    "kind": "central",
+    "lat": 42.992252,
+    "lon": -71.459312,
+    "imls": "NH0035-006",
+    "block": "330110014001008",
+    "raw": {
+     "name": "MANCHESTER CITY LIBRARY",
+     "address": "405 PINE STREET",
+     "city": "MANCHESTER"
+    }
+   },
+   {
+    "name": "West Side Community Library",
+    "street": "76 North Main Street",
+    "city": "Manchester",
+    "zip": "03102",
+    "phone": "603-624-6560",
+    "kind": "branch",
+    "lat": 42.985493,
+    "lon": -71.474014,
+    "imls": "NH0035-004",
+    "block": "330110020002000",
+    "raw": {
+     "name": "WEST SIDE COMMUNITY LIBRARY",
+     "address": "76 NORTH MAIN STREET",
+     "city": "MANCHESTER"
+    }
+   }
+  ]
+ },
+ "marlborough": {
+  "read_on": "2026-10-25",
+  "survey": "FY2024",
+  "libraries": [
+   {
+    "name": "Frost Free Library",
+    "street": "28 Jaffrey Road",
+    "city": "Marlborough",
+    "zip": "03455",
+    "phone": "603-876-4479",
+    "kind": "central",
+    "lat": 42.900837,
+    "lon": -72.206085,
+    "imls": "NH0036-002",
+    "block": "330059708001008",
+    "raw": {
+     "name": "FROST FREE LIBRARY",
+     "address": "28 JAFFREY ROAD",
+     "city": "MARLBOROUGH"
+    }
+   }
+  ]
+ },
+ "marlow": {
+  "read_on": "2026-10-25",
+  "survey": "FY2024",
+  "libraries": [
+   {
+    "name": "Marlow Town Library",
+    "street": "12 Church Street",
+    "city": "Marlow",
+    "zip": "03456",
+    "phone": "603-446-3466",
+    "kind": "central",
+    "lat": 43.11646,
+    "lon": -72.199255,
+    "imls": "NH0037-002",
+    "block": "330059701004016",
+    "raw": {
+     "name": "MARLOW TOWN LIBRARY",
+     "address": "12 CHURCH STREET",
+     "city": "MARLOW"
+    }
+   }
+  ]
+ },
+ "mason": {
+  "read_on": "2026-10-25",
+  "survey": "FY2024",
+  "libraries": [
+   {
+    "name": "Mason Public Library",
+    "street": "16 Darling Hill Road",
+    "city": "Mason",
+    "zip": "03048",
+    "phone": "603-878-3867",
+    "kind": "central",
+    "lat": 42.744152,
+    "lon": -71.768898,
+    "imls": "NH0038-002",
+    "block": "330110185021024",
+    "raw": {
+     "name": "MASON PUBLIC LIBRARY",
+     "address": "16 DARLING HILL ROAD",
+     "city": "MASON"
+    }
+   }
+  ]
+ },
+ "meredith": {
+  "read_on": "2026-10-25",
+  "survey": "FY2024",
+  "libraries": [
+   {
+    "name": "Meredith Public Library",
+    "street": "91 Main Street",
+    "city": "Meredith",
+    "zip": "03253",
+    "phone": "603-279-4303",
+    "kind": "central",
+    "lat": 43.655258,
+    "lon": -71.50016,
+    "imls": "NH0039-002",
+    "block": "330019653003010",
+    "raw": {
+     "name": "MEREDITH PUBLIC LIBRARY",
+     "address": "91 MAIN STREET",
+     "city": "MEREDITH"
+    }
+   }
+  ]
+ },
+ "merrimack": {
+  "read_on": "2026-10-25",
+  "survey": "FY2024",
+  "libraries": [
+   {
+    "name": "Merrimack Public Library",
+    "street": "470 Daniel Webster Highway",
+    "city": "Merrimack",
+    "zip": "03054",
+    "phone": "603-424-5021",
+    "kind": "central",
+    "lat": 42.86739,
+    "lon": -71.493515,
+    "imls": "NH0040-002",
+    "block": "330110141012036",
+    "raw": {
+     "name": "MERRIMACK PUBLIC LIBRARY",
+     "address": "470 DANIEL WEBSTER HIGHWAY",
+     "city": "MERRIMACK"
+    }
+   }
+  ]
+ },
+ "milan": {
+  "read_on": "2026-10-25",
+  "survey": "FY2024",
+  "libraries": [
+   {
+    "name": "Milan Public Library",
+    "street": "20 Bridge Street",
+    "city": "Milan",
+    "zip": "03588",
+    "phone": "603-449-7307",
+    "kind": "central",
+    "lat": 44.573395,
+    "lon": -71.183372,
+    "imls": "NH0041-002",
+    "block": "330079503002034",
+    "raw": {
+     "name": "MILAN PUBLIC LIBRARY",
+     "address": "20 BRIDGE STREET",
+     "city": "MILAN"
+    }
+   }
+  ]
+ },
+ "milford": {
+  "read_on": "2026-10-25",
+  "survey": "FY2024",
+  "libraries": [
+   {
+    "name": "William Y. Wadleigh Memorial Library",
+    "street": "49 Nashua Street",
+    "city": "Milford",
+    "zip": "03055",
+    "phone": "603-249-0645",
+    "kind": "central",
+    "lat": 42.835506,
+    "lon": -71.647881,
+    "imls": "NH0042-002",
+    "block": "330110162032000",
+    "raw": {
+     "name": "WILLIAM Y. WADLEIGH MEMORIAL LIBRARY",
+     "address": "49 NASHUA STREET",
+     "city": "MILFORD"
+    }
+   }
+  ]
+ },
+ "milton": {
+  "read_on": "2026-10-25",
+  "survey": "FY2024",
+  "libraries": [
+   {
+    "name": "Milton Free Public Library",
+    "street": "13 Main Street",
+    "city": "Milton Mills",
+    "zip": "03852",
+    "phone": "603-473-8535",
+    "kind": "central",
+    "lat": 43.499664,
+    "lon": -70.964653,
+    "imls": "NH0044-002",
+    "block": "330170880001011",
+    "raw": {
+     "name": "MILTON FREE PUBLIC LIBRARY",
+     "address": "13 MAIN STREET",
+     "city": "MILTON MILLS"
+    }
+   },
+   {
+    "name": "Nute Library",
+    "street": "22 Elm Street",
+    "city": "Milton",
+    "zip": "03851",
+    "phone": "603-652-7829",
+    "kind": "central",
+    "lat": 43.407761,
+    "lon": -70.990723,
+    "imls": "NH0043-002",
+    "block": "330170880003035",
+    "raw": {
+     "name": "NUTE LIBRARY",
+     "address": "22 ELM STREET",
+     "city": "MILTON"
+    }
+   }
+  ]
+ },
+ "monroe": {
+  "read_on": "2026-10-25",
+  "survey": "FY2024",
+  "libraries": [
+   {
+    "name": "Monroe Public Library",
+    "street": "19 Plains Road",
+    "city": "Monroe",
+    "zip": "03771",
+    "phone": "603-638-4736",
+    "kind": "central",
+    "lat": 44.260128,
+    "lon": -72.052795,
+    "imls": "NH0046-002",
+    "block": "330099603003075",
+    "raw": {
+     "name": "MONROE PUBLIC LIBRARY",
+     "address": "19 PLAINS ROAD",
+     "city": "MONROE"
+    }
+   }
+  ]
+ },
+ "mont-vernon": {
+  "read_on": "2026-10-25",
+  "survey": "FY2024",
+  "libraries": [
+   {
+    "name": "Daland Memorial Library",
+    "street": "5 North Main Street",
+    "city": "Mont Vernon",
+    "zip": "03057",
+    "phone": "603-673-7888",
+    "kind": "central",
+    "lat": 42.895069,
+    "lon": -71.674423,
+    "imls": "NH0047-002",
+    "block": "330110195021011",
+    "raw": {
+     "name": "DALAND MEMORIAL LIBRARY",
+     "address": "5 NORTH MAIN STREET",
+     "city": "MONT VERNON"
+    }
+   }
+  ]
+ },
+ "moultonborough": {
+  "read_on": "2026-10-25",
+  "survey": "FY2024",
+  "libraries": [
+   {
+    "name": "Moultonborough Public Library",
+    "street": "4 Holland Street",
+    "city": "Moultonborough",
+    "zip": "03254",
+    "phone": "603-476-8895",
+    "kind": "central",
+    "lat": 43.755291,
+    "lon": -71.39621,
+    "imls": "NH0048-002",
+    "block": "330039563023011",
+    "raw": {
+     "name": "MOULTONBOROUGH PUBLIC LIBRARY",
+     "address": "4 HOLLAND STREET",
+     "city": "MOULTONBOROUGH"
+    }
+   }
+  ]
+ },
+ "nashua": {
+  "read_on": "2026-10-25",
+  "survey": "FY2024",
+  "libraries": [
+   {
+    "name": "Nashua Public Library",
+    "street": "2 Court Street",
+    "city": "Nashua",
+    "zip": "03060",
+    "phone": "603-589-4600",
+    "kind": "central",
+    "lat": 42.762878,
+    "lon": -71.464867,
+    "imls": "NH0049-007",
+    "block": "330110106001012",
+    "raw": {
+     "name": "NASHUA PUBLIC LIBRARY",
+     "address": "2 COURT STREET",
+     "city": "NASHUA"
+    }
+   }
+  ]
+ },
+ "nelson": {
+  "read_on": "2026-10-25",
+  "survey": "FY2024",
+  "libraries": [
+   {
+    "name": "Olivia Rodham Memorial Library",
+    "street": "1 Nelson Common Road",
+    "city": "Nelson",
+    "zip": "03457",
+    "phone": "603-847-3214",
+    "kind": "central",
+    "lat": 42.989616,
+    "lon": -72.12738,
+    "imls": "NH0050-002",
+    "block": "330059704022008",
+    "raw": {
+     "name": "OLIVIA RODHAM MEMORIAL LIBRARY",
+     "address": "1 NELSON COMMON ROAD",
+     "city": "NELSON"
+    }
+   }
+  ]
+ },
+ "new-boston": {
+  "read_on": "2026-10-25",
+  "survey": "FY2024",
+  "libraries": [
+   {
+    "name": "Whipple Free Library",
+    "street": "67 Mont Vernon Rd",
+    "city": "New Boston",
+    "zip": "03070",
+    "phone": "603-487-3391",
+    "kind": "central",
+    "lat": 42.970785,
+    "lon": -71.694403,
+    "imls": "NH0051-002",
+    "block": "330110200001016",
+    "raw": {
+     "name": "WHIPPLE FREE LIBRARY",
+     "address": "67 MONT VERNON RD",
+     "city": "NEW BOSTON"
+    }
+   }
+  ]
+ },
+ "new-castle": {
+  "read_on": "2026-10-25",
+  "survey": "FY2024",
+  "libraries": [
+   {
+    "name": "New Castle Public Library",
+    "street": "301 Wentworth Road",
+    "city": "New Castle",
+    "zip": "03854",
+    "phone": "603-431-6773",
+    "kind": "central",
+    "lat": 43.064728,
+    "lon": -70.71682,
+    "imls": "NH0053-002",
+    "block": "330150697003017",
+    "raw": {
+     "name": "NEW CASTLE PUBLIC LIBRARY",
+     "address": "301 WENTWORTH ROAD",
+     "city": "NEW CASTLE"
+    }
+   }
+  ]
+ },
+ "new-durham": {
+  "read_on": "2026-10-25",
+  "survey": "FY2024",
+  "libraries": [
+   {
+    "name": "New Durham Public Library",
+    "street": "2 Old Bay Road",
+    "city": "New Durham",
+    "zip": "03855",
+    "phone": "603-859-2201",
+    "kind": "central",
+    "lat": 43.434839,
+    "lon": -71.16326,
+    "imls": "NH0054-002",
+    "block": "330170885003010",
+    "raw": {
+     "name": "NEW DURHAM PUBLIC LIBRARY",
+     "address": "2 OLD BAY ROAD",
+     "city": "NEW DURHAM"
+    }
+   }
+  ]
+ },
+ "new-hampton": {
+  "read_on": "2026-10-25",
+  "survey": "FY2024",
+  "libraries": [
+   {
+    "name": "Gordon-Nash Library",
+    "street": "69 Main Street",
+    "city": "New Hampton",
+    "zip": "03256",
+    "phone": "603-744-8061",
+    "kind": "central",
+    "lat": 43.60553,
+    "lon": -71.652397,
+    "imls": "NH0057-002",
+    "block": "330019651003058",
+    "raw": {
+     "name": "GORDON-NASH LIBRARY",
+     "address": "69 MAIN STREET",
+     "city": "NEW HAMPTON"
+    }
+   }
+  ]
+ },
+ "new-ipswich": {
+  "read_on": "2026-10-25",
+  "survey": "FY2024",
+  "libraries": [
+   {
+    "name": "New Ipswich Library",
+    "street": "6 Main Street",
+    "city": "New Ipswich",
+    "zip": "03071",
+    "phone": "603-878-4644",
+    "kind": "central",
+    "lat": 42.757275,
+    "lon": -71.854156,
+    "imls": "NH0059-002",
+    "block": "330110225022049",
+    "raw": {
+     "name": "NEW IPSWICH LIBRARY",
+     "address": "6 MAIN STREET",
+     "city": "NEW IPSWICH"
+    }
+   }
+  ]
+ },
+ "new-london": {
+  "read_on": "2026-10-25",
+  "survey": "FY2024",
+  "libraries": [
+   {
+    "name": "Tracy Memorial Library",
+    "street": "304 Main Street",
+    "city": "New London",
+    "zip": "03257",
+    "phone": "603-526-4656",
+    "kind": "central",
+    "lat": 43.414524,
+    "lon": -71.985306,
+    "imls": "NH0060-002",
+    "block": "330130410022011",
+    "raw": {
+     "name": "TRACY MEMORIAL LIBRARY",
+     "address": "304 MAIN STREET",
+     "city": "NEW LONDON"
+    }
+   }
+  ]
+ },
+ "newbury": {
+  "read_on": "2026-10-25",
+  "survey": "FY2024",
+  "libraries": [
+   {
+    "name": "Newbury Public Library",
+    "street": "933 Route 103",
+    "city": "Newbury",
+    "zip": "03255",
+    "phone": "603-763-5803",
+    "kind": "central",
+    "lat": 43.320571,
+    "lon": -72.035631,
+    "imls": "NH0052-002",
+    "block": "330130405022038",
+    "raw": {
+     "name": "NEWBURY PUBLIC LIBRARY",
+     "address": "933 ROUTE 103",
+     "city": "NEWBURY"
+    }
+   }
+  ]
+ },
+ "newfields": {
+  "read_on": "2026-10-25",
+  "survey": "FY2024",
+  "libraries": [
+   {
+    "name": "Paul Memorial Library",
+    "street": "76 Main Street",
+    "city": "Newfields",
+    "zip": "03856",
+    "phone": "603-778-8169",
+    "kind": "central",
+    "lat": 43.036209,
+    "lon": -70.941719,
+    "imls": "NH0055-002",
+    "block": "330150675051010",
+    "raw": {
+     "name": "PAUL MEMORIAL LIBRARY",
+     "address": "76 MAIN STREET",
+     "city": "NEWFIELDS"
+    }
+   }
+  ]
+ },
+ "newington": {
+  "read_on": "2026-10-25",
+  "survey": "FY2024",
+  "libraries": [
+   {
+    "name": "Langdon Library",
+    "street": "328 Nimble Hill Road",
+    "city": "Newington",
+    "zip": "03801",
+    "phone": "603-436-5154",
+    "kind": "central",
+    "lat": 43.098003,
+    "lon": -70.832538,
+    "imls": "NH0058-002",
+    "block": "330151075001037",
+    "raw": {
+     "name": "LANGDON LIBRARY",
+     "address": "328 NIMBLE HILL ROAD",
+     "city": "NEWINGTON"
+    }
+   }
+  ]
+ },
+ "newmarket": {
+  "read_on": "2026-10-25",
+  "survey": "FY2024",
+  "libraries": [
+   {
+    "name": "Newmarket Public Library",
+    "street": "1 Elm Street",
+    "city": "Newmarket",
+    "zip": "03857",
+    "phone": "603-659-5311",
+    "kind": "central",
+    "lat": 43.081418,
+    "lon": -70.935639,
+    "imls": "NH0061-002",
+    "block": "330150675022001",
+    "raw": {
+     "name": "NEWMARKET PUBLIC LIBRARY",
+     "address": "1 ELM STREET",
+     "city": "NEWMARKET"
+    }
+   }
+  ]
+ },
+ "newport": {
+  "read_on": "2026-10-25",
+  "survey": "FY2024",
+  "libraries": [
+   {
+    "name": "Richards Free Library",
+    "street": "58 North Main Street",
+    "city": "Newport",
+    "zip": "03773",
+    "phone": "603-863-3430",
+    "kind": "central",
+    "lat": 43.366821,
+    "lon": -72.175263,
+    "imls": "NH0062-002",
+    "block": "330199754013018",
+    "raw": {
+     "name": "RICHARDS FREE LIBRARY",
+     "address": "58 NORTH MAIN STREET",
+     "city": "NEWPORT"
+    }
+   }
+  ]
+ },
+ "newton": {
+  "read_on": "2026-10-25",
+  "survey": "FY2024",
+  "libraries": [
+   {
+    "name": "Gale Library",
+    "street": "16 South Main Street",
+    "city": "Newton",
+    "zip": "03858",
+    "phone": "603-382-4691",
+    "kind": "central",
+    "lat": 42.867409,
+    "lon": -71.036415,
+    "imls": "NH0063-002",
+    "block": "330151021001010",
+    "raw": {
+     "name": "GALE LIBRARY",
+     "address": "16 SOUTH MAIN STREET",
+     "city": "NEWTON"
+    }
+   }
+  ]
+ },
+ "north-hampton": {
+  "read_on": "2026-10-25",
+  "survey": "FY2024",
+  "libraries": [
+   {
+    "name": "North Hampton Public Library",
+    "street": "239 Atlantic Avenue",
+    "city": "North Hampton",
+    "zip": "03862",
+    "phone": "603-964-6326",
+    "kind": "central",
+    "lat": 42.973209,
+    "lon": -70.831367,
+    "imls": "NH0064-002",
+    "block": "330150660003037",
+    "raw": {
+     "name": "NORTH HAMPTON PUBLIC LIBRARY",
+     "address": "239 ATLANTIC AVENUE",
+     "city": "NORTH HAMPTON"
+    }
+   }
+  ]
+ },
+ "northfield": {
+  "read_on": "2026-10-25",
+  "survey": "FY2024",
+  "libraries": [
+   {
+    "name": "Hall Memorial Library",
+    "street": "18 Park Street",
+    "city": "Northfield",
+    "zip": "03276",
+    "phone": "603-286-8971",
+    "kind": "central",
+    "lat": 43.442348,
+    "lon": -71.59285,
+    "imls": "NH0124-002",
+    "block": "330130440003017",
+    "raw": {
+     "name": "HALL MEMORIAL LIBRARY",
+     "address": "18 PARK STREET",
+     "city": "NORTHFIELD"
+    }
+   }
+  ]
+ },
+ "northumberland": {
+  "read_on": "2026-10-25",
+  "survey": "FY2024",
+  "libraries": [
+   {
+    "name": "Northumberland Public Library",
+    "street": "31 State Street",
+    "city": "Groveton",
+    "zip": "03582",
+    "phone": "603-636-2066",
+    "kind": "central",
+    "lat": 44.598911,
+    "lon": -71.513947,
+    "imls": "NH0065-002",
+    "block": "330079504002024",
+    "raw": {
+     "name": "NORTHUMBERLAND PUBLIC LIBRARY",
+     "address": "31 STATE STREET",
+     "city": "GROVETON"
+    }
+   }
+  ]
+ },
+ "northwood": {
+  "read_on": "2026-10-25",
+  "survey": "FY2024",
+  "libraries": [
+   {
+    "name": "Chesley Memorial Library",
+    "street": "8 Mountain Avenue",
+    "city": "Northwood",
+    "zip": "03261",
+    "phone": "603-942-5472",
+    "kind": "central",
+    "lat": 43.193562,
+    "lon": -71.149513,
+    "imls": "NH0066-005",
+    "block": "330150570001023",
+    "raw": {
+     "name": "CHESLEY MEMORIAL LIBRARY",
+     "address": "8 MOUNTAIN AVENUE",
+     "city": "NORTHWOOD"
+    }
+   }
+  ]
+ },
+ "nottingham": {
+  "read_on": "2026-10-25",
+  "survey": "FY2024",
+  "libraries": [
+   {
+    "name": "Blaisdell Memorial Library",
+    "street": "129 Stage Road",
+    "city": "Nottingham",
+    "zip": "03290",
+    "phone": "603-679-8484",
+    "kind": "central",
+    "lat": 43.116833,
+    "lon": -71.10202,
+    "imls": "NH0068-002",
+    "block": "330150580003049",
+    "raw": {
+     "name": "BLAISDELL MEMORIAL LIBRARY",
+     "address": "129 STAGE ROAD",
+     "city": "NOTTINGHAM"
+    }
+   }
+  ]
+ },
+ "orford": {
+  "read_on": "2026-10-25",
+  "survey": "FY2024",
+  "libraries": [
+   {
+    "name": "Orford Free Library",
+    "street": "2539 Route 25A",
+    "city": "Orford",
+    "zip": "03777",
+    "phone": "603-353-9166",
+    "kind": "central",
+    "lat": 43.882198,
+    "lon": -72.102127,
+    "imls": "NH0071-002",
+    "block": "330099607002028",
+    "raw": {
+     "name": "ORFORD FREE LIBRARY",
+     "address": "2539 ROUTE 25A",
+     "city": "ORFORD"
+    }
+   },
+   {
+    "name": "Orford Social Library",
+    "street": "573 NH Rt. 10",
+    "city": "Orford",
+    "zip": "03777",
+    "phone": "603-353-9756",
+    "kind": "central",
+    "lat": 43.905078,
+    "lon": -72.137422,
+    "imls": "NH0249-001",
+    "block": "330099607002025",
+    "raw": {
+     "name": "ORFORD SOCIAL LIBRARY",
+     "address": "573 NH RT. 10",
+     "city": "ORFORD"
+    }
+   }
+  ]
+ },
+ "ossipee": {
+  "read_on": "2026-10-25",
+  "survey": "FY2024",
+  "libraries": [
+   {
+    "name": "Ossipee Public Library",
+    "street": "74 Main Street",
+    "city": "Center Ossipee",
+    "zip": "03814",
+    "phone": "603-539-6390",
+    "kind": "central",
+    "lat": 43.754147,
+    "lon": -71.152092,
+    "imls": "NH0072-002",
+    "block": "330039559022002",
+    "raw": {
+     "name": "OSSIPEE PUBLIC LIBRARY",
+     "address": "74 MAIN STREET",
+     "city": "CENTER OSSIPEE"
+    }
+   }
+  ]
+ },
+ "pelham": {
+  "read_on": "2026-10-25",
+  "survey": "FY2024",
+  "libraries": [
+   {
+    "name": "Pelham Public Library",
+    "street": "24 Village Green",
+    "city": "Pelham",
+    "zip": "03076",
+    "phone": "603-635-7581",
+    "kind": "central",
+    "lat": 42.732014,
+    "lon": -71.326172,
+    "imls": "NH0073-002",
+    "block": "330112002011003",
+    "raw": {
+     "name": "PELHAM PUBLIC LIBRARY",
+     "address": "24 VILLAGE GREEN",
+     "city": "PELHAM"
+    }
+   }
+  ]
+ },
+ "pembroke": {
+  "read_on": "2026-10-25",
+  "survey": "FY2024",
+  "libraries": [
+   {
+    "name": "Pembroke Town Library",
+    "street": "313 Pembroke Street",
+    "city": "Pembroke",
+    "zip": "03275",
+    "phone": "603-485-7851",
+    "kind": "central",
+    "lat": 43.15014,
+    "lon": -71.460747,
+    "imls": "NH0074-002",
+    "block": "330130032011017",
+    "raw": {
+     "name": "PEMBROKE TOWN LIBRARY",
+     "address": "313 PEMBROKE STREET",
+     "city": "PEMBROKE"
+    }
+   }
+  ]
+ },
+ "peterborough": {
+  "read_on": "2026-10-25",
+  "survey": "FY2024",
+  "libraries": [
+   {
+    "name": "Peterborough Town Library",
+    "street": "2 Concord Street",
+    "city": "Peterborough",
+    "zip": "03458",
+    "phone": "603-924-8040",
+    "kind": "central",
+    "lat": 42.87775,
+    "lon": -71.947914,
+    "imls": "NH0075-002",
+    "block": "330110230013000",
+    "raw": {
+     "name": "PETERBOROUGH TOWN LIBRARY",
+     "address": "2 CONCORD STREET",
+     "city": "PETERBOROUGH"
+    }
+   }
+  ]
+ },
+ "piermont": {
+  "read_on": "2026-10-25",
+  "survey": "FY2024",
+  "libraries": [
+   {
+    "name": "Piermont Public Library",
+    "street": "130 Route 10",
+    "city": "Piermont",
+    "zip": "03779",
+    "phone": "603-272-4967",
+    "kind": "central",
+    "lat": 43.968517,
+    "lon": -72.080455,
+    "imls": "NH0076-002",
+    "block": "330099607003024",
+    "raw": {
+     "name": "PIERMONT PUBLIC LIBRARY",
+     "address": "130 ROUTE 10",
+     "city": "PIERMONT"
+    }
+   }
+  ]
+ },
+ "pittsburg": {
+  "read_on": "2026-10-25",
+  "survey": "FY2024",
+  "libraries": [
+   {
+    "name": "Bremer Pond Memorial Library",
+    "street": "12 School Street",
+    "city": "Pittsburg",
+    "zip": "03592",
+    "phone": "603-538-7032",
+    "kind": "central",
+    "lat": 45.052082,
+    "lon": -71.390701,
+    "imls": "NH0077-002",
+    "block": "330079501002056",
+    "raw": {
+     "name": "BREMER POND MEMORIAL LIBRARY",
+     "address": "12 SCHOOL STREET",
+     "city": "PITTSBURG"
+    }
+   }
+  ]
+ },
+ "pittsfield": {
+  "read_on": "2026-10-25",
+  "survey": "FY2024",
+  "libraries": [
+   {
+    "name": "Josiah Carpenter Library",
+    "street": "41 Main Street",
+    "city": "Pittsfield",
+    "zip": "03263",
+    "phone": "603-435-8406",
+    "kind": "central",
+    "lat": 43.304775,
+    "lon": -71.327522,
+    "imls": "NH0079-002",
+    "block": "330130350002006",
+    "raw": {
+     "name": "JOSIAH CARPENTER LIBRARY",
+     "address": "41 MAIN STREET",
+     "city": "PITTSFIELD"
+    }
+   }
+  ]
+ },
+ "plainfield": {
+  "read_on": "2026-10-25",
+  "survey": "FY2024",
+  "libraries": [
+   {
+    "name": "Philip Read Memorial Library",
+    "street": "1088 Route 12A",
+    "city": "Plainfield",
+    "zip": "03781",
+    "phone": "603-675-6866",
+    "kind": "central",
+    "lat": 43.535355,
+    "lon": -72.355682,
+    "imls": "NH0080-002",
+    "block": "330199751003019",
+    "raw": {
+     "name": "PHILIP READ MEMORIAL LIBRARY",
+     "address": "1088 ROUTE 12A",
+     "city": "PLAINFIELD"
+    }
+   },
+   {
+    "name": "Meriden Library",
+    "street": "22 Bean Road",
+    "city": "Meriden",
+    "zip": "03770",
+    "phone": "603-469-3252",
+    "kind": "branch",
+    "lat": 43.543255,
+    "lon": -72.251663,
+    "imls": "NH0080-003",
+    "block": "330199751002023",
+    "raw": {
+     "name": "MERIDEN LIBRARY",
+     "address": "22 BEAN ROAD",
+     "city": "MERIDEN"
+    }
+   }
+  ]
+ },
+ "plaistow": {
+  "read_on": "2026-10-25",
+  "survey": "FY2024",
+  "libraries": [
+   {
+    "name": "Plaistow Public Library",
+    "street": "85 Main Street",
+    "city": "Plaistow",
+    "zip": "03865",
+    "phone": "603-382-6011",
+    "kind": "central",
+    "lat": 42.828438,
+    "lon": -71.092987,
+    "imls": "NH0082-002",
+    "block": "330151011011000",
+    "raw": {
+     "name": "PLAISTOW PUBLIC LIBRARY",
+     "address": "85 MAIN STREET",
+     "city": "PLAISTOW"
+    }
+   }
+  ]
+ },
+ "plymouth": {
+  "read_on": "2026-10-25",
+  "survey": "FY2024",
+  "libraries": [
+   {
+    "name": "Pease Public Library",
+    "street": "1 Russell Street",
+    "city": "Plymouth",
+    "zip": "03264",
+    "phone": "603-536-2616",
+    "kind": "central",
+    "lat": 43.757,
+    "lon": -71.689064,
+    "imls": "NH0083-002",
+    "block": "330099610021000",
+    "raw": {
+     "name": "PEASE PUBLIC LIBRARY",
+     "address": "1 RUSSELL STREET",
+     "city": "PLYMOUTH"
+    }
+   }
+  ]
+ },
+ "portsmouth": {
+  "read_on": "2026-10-25",
+  "survey": "FY2024",
+  "libraries": [
+   {
+    "name": "Portsmouth Public Library",
+    "street": "175 Parrott Avenue",
+    "city": "Portsmouth",
+    "zip": "03801",
+    "phone": "603-427-1540",
+    "kind": "central",
+    "lat": 43.071499,
+    "lon": -70.759529,
+    "imls": "NH0084-002",
+    "block": "330150691004002",
+    "raw": {
+     "name": "PORTSMOUTH PUBLIC LIBRARY",
+     "address": "175 PARROTT AVENUE",
+     "city": "PORTSMOUTH"
+    }
+   }
+  ]
+ },
+ "randolph": {
+  "read_on": "2026-10-25",
+  "survey": "FY2024",
+  "libraries": [
+   {
+    "name": "Randolph Public Library",
+    "street": "130 Durand Road",
+    "city": "Randolph",
+    "zip": "03593",
+    "phone": "603-466-5408",
+    "kind": "central",
+    "lat": 44.375262,
+    "lon": -71.282246,
+    "imls": "NH0247-002",
+    "block": "330079510002045",
+    "raw": {
+     "name": "RANDOLPH PUBLIC LIBRARY",
+     "address": "130 DURAND ROAD",
+     "city": "RANDOLPH"
+    }
+   }
+  ]
+ },
+ "raymond": {
+  "read_on": "2026-10-25",
+  "survey": "FY2024",
+  "libraries": [
+   {
+    "name": "Dudley-Tucker Library",
+    "street": "6 Epping Street",
+    "city": "Raymond",
+    "zip": "03077",
+    "phone": "603-895-7056",
+    "kind": "central",
+    "lat": 43.036738,
+    "lon": -71.182744,
+    "imls": "NH0085-002",
+    "block": "330150550021008",
+    "raw": {
+     "name": "DUDLEY-TUCKER LIBRARY",
+     "address": "6 EPPING STREET",
+     "city": "RAYMOND"
+    }
+   }
+  ]
+ },
+ "richmond": {
+  "read_on": "2026-10-25",
+  "survey": "FY2024",
+  "libraries": [
+   {
+    "name": "Richmond Public Library",
+    "street": "19 Winchester Road",
+    "city": "Richmond",
+    "zip": "03470",
+    "phone": "603-239-6164",
+    "kind": "central",
+    "lat": 42.754643,
+    "lon": -72.273621,
+    "imls": "NH0086-002",
+    "block": "330059707004053",
+    "raw": {
+     "name": "RICHMOND PUBLIC LIBRARY",
+     "address": "19 WINCHESTER ROAD",
+     "city": "RICHMOND"
+    }
+   }
+  ]
+ },
+ "rindge": {
+  "read_on": "2026-10-25",
+  "survey": "FY2024",
+  "libraries": [
+   {
+    "name": "Ingalls Memorial Library",
+    "street": "203 Main Street",
+    "city": "Rindge",
+    "zip": "03461",
+    "phone": "603-899-3303",
+    "kind": "central",
+    "lat": 42.748444,
+    "lon": -72.008995,
+    "imls": "NH0087-002",
+    "block": "330059706003010",
+    "raw": {
+     "name": "INGALLS MEMORIAL LIBRARY",
+     "address": "203 MAIN STREET",
+     "city": "RINDGE"
+    }
+   }
+  ]
+ },
+ "rochester": {
+  "read_on": "2026-10-25",
+  "survey": "FY2024",
+  "libraries": [
+   {
+    "name": "East Rochester Public Library",
+    "street": "935 Portland Street",
+    "city": "East Rochester",
+    "zip": "03868",
+    "phone": "603-332-8013",
+    "kind": "central",
+    "lat": 43.334466,
+    "lon": -70.939956,
+    "imls": "NH0090-003",
+    "block": "330170842021000",
+    "raw": {
+     "name": "EAST ROCHESTER PUBLIC LIBRARY",
+     "address": "935 PORTLAND STREET",
+     "city": "EAST ROCHESTER"
+    }
+   },
+   {
+    "name": "Rochester Public Library",
+    "street": "65 South Main Street",
+    "city": "Rochester",
+    "zip": "03867",
+    "phone": "603-332-1428",
+    "kind": "central",
+    "lat": 43.302483,
+    "lon": -70.974312,
+    "imls": "NH0089-002",
+    "block": "330170843013009",
+    "raw": {
+     "name": "ROCHESTER PUBLIC LIBRARY",
+     "address": "65 SOUTH MAIN STREET",
+     "city": "ROCHESTER"
+    }
+   }
+  ]
+ },
+ "rollinsford": {
+  "read_on": "2026-10-25",
+  "survey": "FY2024",
+  "libraries": [
+   {
+    "name": "Rollinsford Public Library",
+    "street": "3 Front Street",
+    "city": "Rollinsford",
+    "zip": "03869",
+    "phone": "603-516-2665",
+    "kind": "central",
+    "lat": 43.235359,
+    "lon": -70.817947,
+    "imls": "NH0255-001",
+    "block": "330170820001011",
+    "raw": {
+     "name": "ROLLINSFORD PUBLIC LIBRARY",
+     "address": "3 FRONT STREET",
+     "city": "ROLLINSFORD"
+    }
+   }
+  ]
+ },
+ "rumney": {
+  "read_on": "2026-10-25",
+  "survey": "FY2024",
+  "libraries": [
+   {
+    "name": "Byron G. Merrill Library",
+    "street": "10 Buffalo Road",
+    "city": "Rumney",
+    "zip": "03266",
+    "phone": "603-786-9520",
+    "kind": "central",
+    "lat": 43.804579,
+    "lon": -71.813358,
+    "imls": "NH0091-002",
+    "block": "330099608022038",
+    "raw": {
+     "name": "BYRON G. MERRILL LIBRARY",
+     "address": "10 BUFFALO ROAD",
+     "city": "RUMNEY"
+    }
+   }
+  ]
+ },
+ "rye": {
+  "read_on": "2026-10-25",
+  "survey": "FY2024",
+  "libraries": [
+   {
+    "name": "Rye Public Library",
+    "street": "581 Washington Road",
+    "city": "Rye",
+    "zip": "03870",
+    "phone": "603-964-8401",
+    "kind": "central",
+    "lat": 43.011463,
+    "lon": -70.773323,
+    "imls": "NH0092-002",
+    "block": "330150710012006",
+    "raw": {
+     "name": "RYE PUBLIC LIBRARY",
+     "address": "581 WASHINGTON ROAD",
+     "city": "RYE"
+    }
+   }
+  ]
+ },
+ "salem": {
+  "read_on": "2026-10-25",
+  "survey": "FY2024",
+  "libraries": [
+   {
+    "name": "Kelley Library",
+    "street": "234 Main Street",
+    "city": "Salem",
+    "zip": "03079",
+    "phone": "603-898-7064",
+    "kind": "central",
+    "lat": 42.784622,
+    "lon": -71.211357,
+    "imls": "NH0093-002",
+    "block": "330151004013001",
+    "raw": {
+     "name": "KELLEY LIBRARY",
+     "address": "234 MAIN STREET",
+     "city": "SALEM"
+    }
+   }
+  ]
+ },
+ "salisbury": {
+  "read_on": "2026-10-25",
+  "survey": "FY2024",
+  "libraries": [
+   {
+    "name": "Salisbury Free Library",
+    "street": "641 Old Turnpike Road",
+    "city": "Salisbury",
+    "zip": "03268",
+    "phone": "603-648-2278",
+    "kind": "central",
+    "lat": 43.39105,
+    "lon": -71.74542,
+    "imls": "NH0094-002",
+    "block": "330130425003020",
+    "raw": {
+     "name": "SALISBURY FREE LIBRARY",
+     "address": "641 OLD TURNPIKE ROAD",
+     "city": "SALISBURY"
+    }
+   }
+  ]
+ },
+ "sanbornton": {
+  "read_on": "2026-10-25",
+  "survey": "FY2024",
+  "libraries": [
+   {
+    "name": "Sanbornton Public Library",
+    "street": "27 Meetinghouse Hill Road",
+    "city": "Sanbornton",
+    "zip": "03269",
+    "phone": "603-286-8288",
+    "kind": "central",
+    "lat": 43.494366,
+    "lon": -71.583946,
+    "imls": "NH0095-002",
+    "block": "330019654002060",
+    "raw": {
+     "name": "SANBORNTON PUBLIC LIBRARY",
+     "address": "27 MEETINGHOUSE HILL ROAD",
+     "city": "SANBORNTON"
+    }
+   }
+  ]
+ },
+ "sandown": {
+  "read_on": "2026-10-25",
+  "survey": "FY2024",
+  "libraries": [
+   {
+    "name": "Sandown Public Library",
+    "street": "305 Main Street",
+    "city": "Sandown",
+    "zip": "03873",
+    "phone": "603-887-3428",
+    "kind": "central",
+    "lat": 42.924702,
+    "lon": -71.186706,
+    "imls": "NH0096-002",
+    "block": "330150520002043",
+    "raw": {
+     "name": "SANDOWN PUBLIC LIBRARY",
+     "address": "305 MAIN STREET",
+     "city": "SANDOWN"
+    }
+   }
+  ]
+ },
+ "sandwich": {
+  "read_on": "2026-10-25",
+  "survey": "FY2024",
+  "libraries": [
+   {
+    "name": "Samuel H. Wentworth Library",
+    "street": "35 Main Street",
+    "city": "Center Sandwich",
+    "zip": "03227",
+    "phone": "603-284-6665",
+    "kind": "central",
+    "lat": 43.805492,
+    "lon": -71.436852,
+    "imls": "NH0097-002",
+    "block": "330039556012097",
+    "raw": {
+     "name": "SAMUEL H. WENTWORTH LIBRARY",
+     "address": "35 MAIN STREET",
+     "city": "CENTER SANDWICH"
+    }
+   }
+  ]
+ },
+ "seabrook": {
+  "read_on": "2026-10-25",
+  "survey": "FY2024",
+  "libraries": [
+   {
+    "name": "Seabrook Library",
+    "street": "25 Liberty Lane",
+    "city": "Seabrook",
+    "zip": "03874",
+    "phone": "603-474-2044",
+    "kind": "central",
+    "lat": 42.884026,
+    "lon": -70.861313,
+    "imls": "NH0098-002",
+    "block": "330150630033002",
+    "raw": {
+     "name": "SEABROOK LIBRARY",
+     "address": "25 LIBERTY LANE",
+     "city": "SEABROOK"
+    }
+   }
+  ]
+ },
+ "shelburne": {
+  "read_on": "2026-10-25",
+  "survey": "FY2024",
+  "libraries": [
+   {
+    "name": "Shelburne Public Library",
+    "street": "74 Village Road",
+    "city": "Shelburne",
+    "zip": "03581",
+    "phone": "603-466-2262",
+    "kind": "central",
+    "lat": 44.399609,
+    "lon": -71.074318,
+    "imls": "NH0246-002",
+    "block": "330079509001099",
+    "raw": {
+     "name": "SHELBURNE PUBLIC LIBRARY",
+     "address": "74 VILLAGE ROAD",
+     "city": "SHELBURNE"
+    }
+   }
+  ]
+ },
+ "somersworth": {
+  "read_on": "2026-10-25",
+  "survey": "FY2024",
+  "libraries": [
+   {
+    "name": "Somersworth Public Library",
+    "street": "25 Main Street",
+    "city": "Somersworth",
+    "zip": "03878",
+    "phone": "603-692-4587",
+    "kind": "central",
+    "lat": 43.263161,
+    "lon": -70.863663,
+    "imls": "NH0101-002",
+    "block": "330170830012001",
+    "raw": {
+     "name": "SOMERSWORTH PUBLIC LIBRARY",
+     "address": "25 MAIN STREET",
+     "city": "SOMERSWORTH"
+    }
+   }
+  ]
+ },
+ "south-hampton": {
+  "read_on": "2026-10-25",
+  "survey": "FY2024",
+  "libraries": [
+   {
+    "name": "South Hampton Free Public Library",
+    "street": "3-1 Hilldale Avenue",
+    "city": "South Hampton",
+    "zip": "03827",
+    "phone": "603-394-7319",
+    "kind": "central",
+    "lat": 42.881042,
+    "lon": -70.963173,
+    "imls": "NH0102-002",
+    "block": "330150625001020",
+    "raw": {
+     "name": "SOUTH HAMPTON FREE PUBLIC LIBRARY",
+     "address": "3-1 HILLDALE AVENUE",
+     "city": "SOUTH HAMPTON"
+    }
+   }
+  ]
+ },
+ "springfield": {
+  "read_on": "2026-10-25",
+  "survey": "FY2024",
+  "libraries": [
+   {
+    "name": "Libbie A. Cass Memorial Library",
+    "street": "2748 Main Street",
+    "city": "Springfield",
+    "zip": "03284",
+    "phone": "603-763-4381",
+    "kind": "central",
+    "lat": 43.492926,
+    "lon": -72.04744,
+    "imls": "NH0103-002",
+    "block": "330199752001035",
+    "raw": {
+     "name": "LIBBIE A. CASS MEMORIAL LIBRARY",
+     "address": "2748 MAIN STREET",
+     "city": "SPRINGFIELD"
+    }
+   }
+  ]
+ },
+ "stoddard": {
+  "read_on": "2026-10-25",
+  "survey": "FY2024",
+  "libraries": [
+   {
+    "name": "Davis Public Library",
+    "street": "1391 Route 123 North",
+    "city": "Stoddard",
+    "zip": "03464",
+    "phone": "603-446-6251",
+    "kind": "central",
+    "lat": 43.079021,
+    "lon": -72.109284,
+    "imls": "NH0106-002",
+    "block": "330059704021045",
+    "raw": {
+     "name": "DAVIS PUBLIC LIBRARY",
+     "address": "1391 ROUTE 123 NORTH",
+     "city": "STODDARD"
+    }
+   }
+  ]
+ },
+ "strafford": {
+  "read_on": "2026-10-25",
+  "survey": "FY2024",
+  "libraries": [
+   {
+    "name": "Hill Library",
+    "street": "1151 Parker Mountain Road",
+    "city": "Strafford",
+    "zip": "03884",
+    "phone": "603-664-2800",
+    "kind": "central",
+    "lat": 43.270622,
+    "lon": -71.126091,
+    "imls": "NH0107-002",
+    "block": "330170860001029",
+    "raw": {
+     "name": "HILL LIBRARY",
+     "address": "1151 PARKER MOUNTAIN ROAD",
+     "city": "STRAFFORD"
+    }
+   }
+  ]
+ },
+ "stratford": {
+  "read_on": "2026-10-25",
+  "survey": "FY2024",
+  "libraries": [
+   {
+    "name": "Stratford Public Library",
+    "street": "74 Main Street",
+    "city": "Stratford",
+    "zip": "03590",
+    "phone": "603-922-9016",
+    "kind": "central",
+    "lat": 44.751617,
+    "lon": -71.629395,
+    "imls": "NH0111-002",
+    "block": "330079504004037",
+    "raw": {
+     "name": "STRATFORD PUBLIC LIBRARY",
+     "address": "74 MAIN STREET",
+     "city": "STRATFORD"
+    }
+   }
+  ]
+ },
+ "stratham": {
+  "read_on": "2026-10-25",
+  "survey": "FY2024",
+  "libraries": [
+   {
+    "name": "Wiggin Memorial Library",
+    "street": "10 Bunker Hill Ave.",
+    "city": "Stratham",
+    "zip": "03885",
+    "phone": "603-772-4346",
+    "kind": "central",
+    "lat": 43.011642,
+    "lon": -70.915451,
+    "imls": "NH0112-002",
+    "block": "330150670002009",
+    "raw": {
+     "name": "WIGGIN MEMORIAL LIBRARY",
+     "address": "10 BUNKER HILL AVE.",
+     "city": "STRATHAM"
+    }
+   }
+  ]
+ },
+ "sugar-hill": {
+  "read_on": "2026-10-25",
+  "survey": "FY2024",
+  "libraries": [
+   {
+    "name": "Richardson Memorial Library",
+    "street": "1411 Route 117",
+    "city": "Sugar Hill",
+    "zip": "03586",
+    "phone": "603-823-7001",
+    "kind": "central",
+    "lat": 44.214279,
+    "lon": -71.799728,
+    "imls": "NH0113-002",
+    "block": "330099602003063",
+    "raw": {
+     "name": "RICHARDSON MEMORIAL LIBRARY",
+     "address": "1411 ROUTE 117",
+     "city": "SUGAR HILL"
+    }
+   }
+  ]
+ },
+ "sullivan": {
+  "read_on": "2026-10-25",
+  "survey": "FY2024",
+  "libraries": [
+   {
+    "name": "Sullivan Public Library",
+    "street": "436 Centre Street",
+    "city": "Sullivan",
+    "zip": "03445",
+    "phone": "603-847-3458",
+    "kind": "central",
+    "lat": 43.01281,
+    "lon": -72.217877,
+    "imls": "NH0114-002",
+    "block": "330059704022031",
+    "raw": {
+     "name": "SULLIVAN PUBLIC LIBRARY",
+     "address": "436 CENTRE STREET",
+     "city": "SULLIVAN"
+    }
+   }
+  ]
+ },
+ "sunapee": {
+  "read_on": "2026-10-25",
+  "survey": "FY2024",
+  "libraries": [
+   {
+    "name": "Abbott Library",
+    "street": "11 Soonipi Circle",
+    "city": "Sunapee",
+    "zip": "03782",
+    "phone": "603-763-5513",
+    "kind": "central",
+    "lat": 43.392403,
+    "lon": -72.088303,
+    "imls": "NH0115-002",
+    "block": "330199753003022",
+    "raw": {
+     "name": "ABBOTT LIBRARY",
+     "address": "11 SOONIPI CIRCLE",
+     "city": "SUNAPEE"
+    }
+   }
+  ]
+ },
+ "surry": {
+  "read_on": "2026-10-25",
+  "survey": "FY2024",
+  "libraries": [
+   {
+    "name": "Reed Free Library",
+    "street": "8 Village Road",
+    "city": "Surry",
+    "zip": "03431",
+    "phone": "603-352-1761",
+    "kind": "central",
+    "lat": 43.019169,
+    "lon": -72.321564,
+    "imls": "NH0116-002",
+    "block": "330059701001039",
+    "raw": {
+     "name": "REED FREE LIBRARY",
+     "address": "8 VILLAGE ROAD",
+     "city": "SURRY"
+    }
+   }
+  ]
+ },
+ "sutton": {
+  "read_on": "2026-10-25",
+  "survey": "FY2024",
+  "libraries": [
+   {
+    "name": "Sutton Free Library",
+    "street": "5 Corporation Hill Rd",
+    "city": "Sutton Mills",
+    "zip": "03221",
+    "phone": "603-927-4927",
+    "kind": "central",
+    "lat": 43.334797,
+    "lon": -71.951607,
+    "imls": "NH0232-002",
+    "block": "330130405022020",
+    "raw": {
+     "name": "SUTTON FREE LIBRARY",
+     "address": "5 CORPORATION HILL RD",
+     "city": "SUTTON MILLS"
+    }
+   }
+  ]
+ },
+ "swanzey": {
+  "read_on": "2026-10-25",
+  "survey": "FY2024",
+  "libraries": [
+   {
+    "name": "Mt. Caesar Union Library",
+    "street": "628 Old Homestead Highway",
+    "city": "Swanzey",
+    "zip": "03446",
+    "phone": "603-357-0456",
+    "kind": "central",
+    "lat": 42.87241,
+    "lon": -72.281525,
+    "imls": "NH0117-002",
+    "block": "330059709011015",
+    "raw": {
+     "name": "MT. CAESAR UNION LIBRARY",
+     "address": "628 OLD HOMESTEAD HIGHWAY",
+     "city": "SWANZEY"
+    }
+   },
+   {
+    "name": "Stratton Free Library",
+    "street": "9 Main Street",
+    "city": "West Swanzey",
+    "zip": "03446",
+    "phone": "603-352-9391",
+    "kind": "central",
+    "lat": 42.870678,
+    "lon": -72.324493,
+    "imls": "NH0118-002",
+    "block": "330059709022006",
+    "raw": {
+     "name": "STRATTON FREE LIBRARY",
+     "address": "9 MAIN STREET",
+     "city": "WEST SWANZEY"
+    }
+   }
+  ]
+ },
+ "tamworth": {
+  "read_on": "2026-10-25",
+  "survey": "FY2024",
+  "libraries": [
+   {
+    "name": "Chocorua Public Library",
+    "street": "25 Deer Hill Road",
+    "city": "Chocorua",
+    "zip": "03817",
+    "phone": "603-323-8610",
+    "kind": "central",
+    "lat": 43.877907,
+    "lon": -71.219681,
+    "imls": "NH0239-002",
+    "block": "330039556021012",
+    "raw": {
+     "name": "CHOCORUA PUBLIC LIBRARY",
+     "address": "25 DEER HILL ROAD",
+     "city": "CHOCORUA"
+    }
+   },
+   {
+    "name": "Cook Memorial Library",
+    "street": "93 Main Street",
+    "city": "Tamworth",
+    "zip": "03886",
+    "phone": "603-323-8510",
+    "kind": "central",
+    "lat": 43.859692,
+    "lon": -71.266129,
+    "imls": "NH0238-002",
+    "block": "330039556021077",
+    "raw": {
+     "name": "COOK MEMORIAL LIBRARY",
+     "address": "93 MAIN STREET",
+     "city": "TAMWORTH"
+    }
+   }
+  ]
+ },
+ "temple": {
+  "read_on": "2026-10-25",
+  "survey": "FY2024",
+  "libraries": [
+   {
+    "name": "Mansfield Public Library",
+    "street": "5 Main Street",
+    "city": "Temple",
+    "zip": "03084",
+    "phone": "603-878-3100",
+    "kind": "central",
+    "lat": 42.820309,
+    "lon": -71.851337,
+    "imls": "NH0122-002",
+    "block": "330110225021024",
+    "raw": {
+     "name": "MANSFIELD PUBLIC LIBRARY",
+     "address": "5 MAIN STREET",
+     "city": "TEMPLE"
+    }
+   }
+  ]
+ },
+ "thornton": {
+  "read_on": "2026-10-25",
+  "survey": "FY2024",
+  "libraries": [
+   {
+    "name": "Thornton Public Library",
+    "street": "1884 NH Rte 175",
+    "city": "Thornton",
+    "zip": "03285",
+    "phone": "603-726-8981",
+    "kind": "central",
+    "lat": 43.894985,
+    "lon": -71.664429,
+    "imls": "NH0123-002",
+    "block": "330099604012056",
+    "raw": {
+     "name": "THORNTON PUBLIC LIBRARY",
+     "address": "1884 NH RTE 175",
+     "city": "THORNTON"
+    }
+   }
+  ]
+ },
+ "troy": {
+  "read_on": "2026-10-25",
+  "survey": "FY2024",
+  "libraries": [
+   {
+    "name": "Gay-Kimball Library",
+    "street": "10 South Main Street",
+    "city": "Troy",
+    "zip": "03465",
+    "phone": "603-242-7743",
+    "kind": "central",
+    "lat": 42.824211,
+    "lon": -72.181557,
+    "imls": "NH0125-002",
+    "block": "330059708003030",
+    "raw": {
+     "name": "GAY-KIMBALL LIBRARY",
+     "address": "10 SOUTH MAIN STREET",
+     "city": "TROY"
+    }
+   }
+  ]
+ },
+ "tuftonboro": {
+  "read_on": "2026-10-25",
+  "survey": "FY2024",
+  "libraries": [
+   {
+    "name": "Tuftonboro Free Library",
+    "street": "221 Middle Road",
+    "city": "Center Tuftonboro",
+    "zip": "03816",
+    "phone": "603-569-4256",
+    "kind": "central",
+    "lat": 43.665756,
+    "lon": -71.255402,
+    "imls": "NH0126-004",
+    "block": "330039564001041",
+    "raw": {
+     "name": "TUFTONBORO FREE LIBRARY",
+     "address": "221 MIDDLE ROAD",
+     "city": "CENTER TUFTONBORO"
+    }
+   }
+  ]
+ },
+ "unity": {
+  "read_on": "2026-10-25",
+  "survey": "FY2024",
+  "libraries": [
+   {
+    "name": "Unity Free Public Library",
+    "street": "13 Center Road, Unit 4",
+    "city": "Unity",
+    "zip": "03603",
+    "phone": "603-543-3253",
+    "kind": "central",
+    "lat": 43.292537,
+    "lon": -72.259551,
+    "imls": "NH0127-002",
+    "block": "330199756001050",
+    "raw": {
+     "name": "UNITY FREE PUBLIC LIBRARY",
+     "address": "13 CENTER ROAD, UNIT 4",
+     "city": "UNITY"
+    }
+   }
+  ]
+ },
+ "wakefield": {
+  "read_on": "2026-10-25",
+  "survey": "FY2024",
+  "libraries": [
+   {
+    "name": "Gafney Library",
+    "street": "14 High Street",
+    "city": "Sanbornville",
+    "zip": "03872",
+    "phone": "603-522-3401",
+    "kind": "central",
+    "lat": 43.554371,
+    "lon": -71.03035,
+    "imls": "NH0129-002",
+    "block": "330039560006001",
+    "raw": {
+     "name": "GAFNEY LIBRARY",
+     "address": "14 HIGH STREET",
+     "city": "SANBORNVILLE"
+    }
+   },
+   {
+    "name": "Wakefield Public Library",
+    "street": "2699 Wakefield Road",
+    "city": "Wakefield",
+    "zip": "03872",
+    "phone": "603-522-3032",
+    "kind": "central",
+    "lat": 43.56953,
+    "lon": -71.02977,
+    "imls": "NH0128-003",
+    "block": "330039560006000",
+    "raw": {
+     "name": "WAKEFIELD PUBLIC LIBRARY",
+     "address": "2699 WAKEFIELD ROAD",
+     "city": "WAKEFIELD"
+    }
+   }
+  ]
+ },
+ "walpole": {
+  "read_on": "2026-10-25",
+  "survey": "FY2024",
+  "libraries": [
+   {
+    "name": "Walpole Town Library",
+    "street": "48 Main Street",
+    "city": "Walpole",
+    "zip": "03608",
+    "phone": "603-756-9806",
+    "kind": "central",
+    "lat": 43.079246,
+    "lon": -72.425789,
+    "imls": "NH0132-005",
+    "block": "330059702002048",
+    "raw": {
+     "name": "WALPOLE TOWN LIBRARY",
+     "address": "48 MAIN STREET",
+     "city": "WALPOLE"
+    }
+   },
+   {
+    "name": "North Walpole Branch Library",
+    "street": "70 Church Street",
+    "city": "North Walpole",
+    "zip": "03609",
+    "phone": "603-445-5153",
+    "kind": "branch",
+    "lat": 43.143993,
+    "lon": -72.450333,
+    "imls": "NH0132-004",
+    "block": "330059702001007",
+    "raw": {
+     "name": "NORTH WALPOLE BRANCH LIBRARY",
+     "address": "70 CHURCH STREET",
+     "city": "NORTH WALPOLE"
+    }
+   }
+  ]
+ },
+ "warner": {
+  "read_on": "2026-10-25",
+  "survey": "FY2024",
+  "libraries": [
+   {
+    "name": "Pillsbury Free Library",
+    "street": "18 East Main Street",
+    "city": "Warner",
+    "zip": "03278",
+    "phone": "603-456-2289",
+    "kind": "central",
+    "lat": 43.280304,
+    "lon": -71.815346,
+    "imls": "NH0133-002",
+    "block": "330130385001054",
+    "raw": {
+     "name": "PILLSBURY FREE LIBRARY",
+     "address": "18 EAST MAIN STREET",
+     "city": "WARNER"
+    }
+   }
+  ]
+ },
+ "warren": {
+  "read_on": "2026-10-25",
+  "survey": "FY2024",
+  "libraries": [
+   {
+    "name": "Joseph Patch Library",
+    "street": "320 NH Route 25",
+    "city": "Warren",
+    "zip": "03279",
+    "phone": "603-764-9072",
+    "kind": "central",
+    "lat": 43.918438,
+    "lon": -71.888573,
+    "imls": "NH0134-002",
+    "block": "330099605003030",
+    "raw": {
+     "name": "JOSEPH PATCH LIBRARY",
+     "address": "320 NH ROUTE 25",
+     "city": "WARREN"
+    }
+   }
+  ]
+ },
+ "washington": {
+  "read_on": "2026-10-25",
+  "survey": "FY2024",
+  "libraries": [
+   {
+    "name": "Shedd Free Library",
+    "street": "46 North Main Street",
+    "city": "Washington",
+    "zip": "03280",
+    "phone": "603-495-3592",
+    "kind": "central",
+    "lat": 43.177147,
+    "lon": -72.098206,
+    "imls": "NH0135-002",
+    "block": "330199755003000",
+    "raw": {
+     "name": "SHEDD FREE LIBRARY",
+     "address": "46 NORTH MAIN STREET",
+     "city": "WASHINGTON"
+    }
+   }
+  ]
+ },
+ "weare": {
+  "read_on": "2026-10-25",
+  "survey": "FY2024",
+  "libraries": [
+   {
+    "name": "Weare Public Library",
+    "street": "10 Paige Memorial Lane",
+    "city": "Weare",
+    "zip": "03281",
+    "phone": "603-529-2044",
+    "kind": "central",
+    "lat": 43.095413,
+    "lon": -71.729477,
+    "imls": "NH0137-002",
+    "block": "330110210012033",
+    "raw": {
+     "name": "WEARE PUBLIC LIBRARY",
+     "address": "10 PAIGE MEMORIAL LANE",
+     "city": "WEARE"
+    }
+   }
+  ]
+ },
+ "webster": {
+  "read_on": "2026-10-25",
+  "survey": "FY2024",
+  "libraries": [
+   {
+    "name": "Webster Free Public Library",
+    "street": "947 Battle Street",
+    "city": "Webster",
+    "zip": "03303",
+    "phone": "603-648-2706",
+    "kind": "central",
+    "lat": 43.309184,
+    "lon": -71.718354,
+    "imls": "NH0138-002",
+    "block": "330130385003016",
+    "raw": {
+     "name": "WEBSTER FREE PUBLIC LIBRARY",
+     "address": "947 BATTLE STREET",
+     "city": "WEBSTER"
+    }
+   }
+  ]
+ },
+ "wentworth": {
+  "read_on": "2026-10-25",
+  "survey": "FY2024",
+  "libraries": [
+   {
+    "name": "Webster Memorial Library",
+    "street": "20 Wentworth Village Road",
+    "city": "Wentworth",
+    "zip": "03282",
+    "phone": "603-764-5818",
+    "kind": "central",
+    "lat": 43.869453,
+    "lon": -71.91021,
+    "imls": "NH0139-002",
+    "block": "330099607001025",
+    "raw": {
+     "name": "WEBSTER MEMORIAL LIBRARY",
+     "address": "20 WENTWORTH VILLAGE ROAD",
+     "city": "WENTWORTH"
+    }
+   }
+  ]
+ },
+ "westmoreland": {
+  "read_on": "2026-10-25",
+  "survey": "FY2024",
+  "libraries": [
+   {
+    "name": "Westmoreland Public Library",
+    "street": "33 South Village Road",
+    "city": "Westmoreland",
+    "zip": "03467",
+    "phone": "603-399-7750",
+    "kind": "central",
+    "lat": 42.962898,
+    "lon": -72.439423,
+    "imls": "NH0140-002",
+    "block": "330059715001017",
+    "raw": {
+     "name": "WESTMORELAND PUBLIC LIBRARY",
+     "address": "33 SOUTH VILLAGE ROAD",
+     "city": "WESTMORELAND"
+    }
+   }
+  ]
+ },
+ "whitefield": {
+  "read_on": "2026-10-25",
+  "survey": "FY2024",
+  "libraries": [
+   {
+    "name": "Whitefield Public Library",
+    "street": "8 Lancaster Road",
+    "city": "Whitefield",
+    "zip": "03598",
+    "phone": "603-837-2030",
+    "kind": "central",
+    "lat": 44.374168,
+    "lon": -71.610969,
+    "imls": "NH0141-002",
+    "block": "330079511002022",
+    "raw": {
+     "name": "WHITEFIELD PUBLIC LIBRARY",
+     "address": "8 LANCASTER ROAD",
+     "city": "WHITEFIELD"
+    }
+   }
+  ]
+ },
+ "wilmot": {
+  "read_on": "2026-10-25",
+  "survey": "FY2024",
+  "libraries": [
+   {
+    "name": "Wilmot Public Library",
+    "street": "11 North Wilmot Road",
+    "city": "Wilmot",
+    "zip": "03287",
+    "phone": "603-526-6804",
+    "kind": "central",
+    "lat": 43.451823,
+    "lon": -71.913158,
+    "imls": "NH0143-002",
+    "block": "330130415003026",
+    "raw": {
+     "name": "WILMOT PUBLIC LIBRARY",
+     "address": "11 NORTH WILMOT ROAD",
+     "city": "WILMOT"
+    }
+   }
+  ]
+ },
+ "wilton": {
+  "read_on": "2026-10-25",
+  "survey": "FY2024",
+  "libraries": [
+   {
+    "name": "Wilton Public & Gregg Free Library",
+    "street": "7 Forest Road",
+    "city": "Wilton",
+    "zip": "03086",
+    "phone": "603-654-2581",
+    "kind": "central",
+    "lat": 42.845489,
+    "lon": -71.739159,
+    "imls": "NH0144-002",
+    "block": "330110190001006",
+    "raw": {
+     "name": "WILTON PUBLIC & GREGG FREE LIBRARY",
+     "address": "7 FOREST ROAD",
+     "city": "WILTON"
+    }
+   }
+  ]
+ },
+ "winchester": {
+  "read_on": "2026-10-25",
+  "survey": "FY2024",
+  "libraries": [
+   {
+    "name": "Conant Public Library",
+    "street": "111 Main Street",
+    "city": "Winchester",
+    "zip": "03470",
+    "phone": "603-239-4331",
+    "kind": "central",
+    "lat": 42.772739,
+    "lon": -72.383919,
+    "imls": "NH0145-002",
+    "block": "330059717003014",
+    "raw": {
+     "name": "CONANT PUBLIC LIBRARY",
+     "address": "111 MAIN STREET",
+     "city": "WINCHESTER"
+    }
+   },
+   {
+    "name": "Thayer Public Library",
+    "street": "3 Ashuelot Main Street",
+    "city": "Ashuelot",
+    "zip": "03441",
+    "phone": "603-392-0175",
+    "kind": "central",
+    "lat": 42.777756,
+    "lon": -72.423736,
+    "imls": "NH0146-002",
+    "block": "330059717001052",
+    "raw": {
+     "name": "THAYER PUBLIC LIBRARY",
+     "address": "3 ASHUELOT MAIN STREET",
+     "city": "ASHUELOT"
+    }
+   }
+  ]
+ },
+ "windham": {
+  "read_on": "2026-10-25",
+  "survey": "FY2024",
+  "libraries": [
+   {
+    "name": "Nesmith Library",
+    "street": "8 Fellows Road",
+    "city": "Windham",
+    "zip": "03087",
+    "phone": "603-432-7154",
+    "kind": "central",
+    "lat": 42.803112,
+    "lon": -71.298065,
+    "imls": "NH0147-002",
+    "block": "330151061023004",
+    "raw": {
+     "name": "NESMITH LIBRARY",
+     "address": "8 FELLOWS ROAD",
+     "city": "WINDHAM"
+    }
+   }
+  ]
+ },
+ "wolfeboro": {
+  "read_on": "2026-10-25",
+  "survey": "FY2024",
+  "libraries": [
+   {
+    "name": "Wolfeboro Public Library",
+    "street": "259 South Main Street",
+    "city": "Wolfeboro",
+    "zip": "03894",
+    "phone": "603-569-2428",
+    "kind": "central",
+    "lat": 43.580318,
+    "lon": -71.200508,
+    "imls": "NH0148-002",
+    "block": "330039561023010",
+    "raw": {
+     "name": "WOLFEBORO PUBLIC LIBRARY",
+     "address": "259 SOUTH MAIN STREET",
+     "city": "WOLFEBORO"
+    }
+   }
+  ]
+ },
+ "woodstock": {
+  "read_on": "2026-10-25",
+  "survey": "FY2024",
+  "libraries": [
+   {
+    "name": "Moosilauke Public Library",
+    "street": "165 Lost River Road",
+    "city": "Woodstock",
+    "zip": "03262",
+    "phone": "603-745-9971",
+    "kind": "central",
+    "lat": 44.032539,
+    "lon": -71.697006,
+    "imls": "NH0149-002",
+    "block": "330099605002029",
+    "raw": {
+     "name": "MOOSILAUKE PUBLIC LIBRARY",
+     "address": "165 LOST RIVER ROAD",
+     "city": "WOODSTOCK"
+    }
+   }
+  ]
+ }
+}
