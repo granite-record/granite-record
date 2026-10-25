@@ -437,6 +437,44 @@
     "Día de vetos"
    ],
    "basis": "The glossary and the calendar"
+  },
+  {
+   "en": [
+    "school board",
+    "school boards",
+    "School boards"
+   ],
+   "es": [
+    "junta escolar",
+    "juntas escolares",
+    "Juntas escolares"
+   ],
+   "basis": "The catalog (the town warrant guide)"
+  },
+  {
+   "en": [
+    "city council",
+    "city councils",
+    "City councils"
+   ],
+   "es": [
+    "concejo municipal",
+    "concejos municipales",
+    "Concejos municipales"
+   ],
+   "basis": "The catalog (the Learn pages)"
+  },
+  {
+   "en": [
+    "Executive Councilor",
+    "Executive Councilors"
+   ],
+   "es": [
+    "consejero ejecutivo",
+    "consejeros ejecutivos",
+    "Consejero ejecutivo"
+   ],
+   "basis": "The catalog (the run-for-office guide)"
   }
  ]
 }

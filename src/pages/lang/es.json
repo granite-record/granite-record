@@ -7087,6 +7087,21 @@
    "es": "Con el secretario de su municipio o ciudad o con el estado: quién puede pedirla y qué llevar.",
    "state": "draft"
   },
+  "guide.task.who-to-contact.does": {
+   "en": "Find out who to contact about an issue",
+   "es": "Saber a quién contactar sobre un asunto",
+   "state": "draft"
+  },
+  "guide.task.who-to-contact.head": {
+   "en": "How to know who to contact",
+   "es": "Cómo saber a quién contactar",
+   "state": "draft"
+  },
+  "guide.task.who-to-contact.line": {
+   "en": "Your town for roads and sidewalks, the school board, a state agency, your legislators, or your members of Congress.",
+   "es": "Su municipio para calles y aceras, la junta escolar, una agencia estatal, sus legisladores o sus miembros del Congreso.",
+   "state": "draft"
+  },
   "guide.task.your-representatives.does": {
    "en": "Find your representatives",
    "es": "Encontrar a sus representantes",
@@ -8498,6 +8513,271 @@
   "guide.vital-records.your-town-or-city-clerk-issues": {
    "en": "Your town or city clerk issues certified copies, and is the nearest place to ask. The Division of Vital Records Administration lists how to reach it on its contact page. A certified copy needed only to register to vote is free: see How to Vote.",
    "es": "El secretario de su municipio o ciudad emite copias certificadas, y es el lugar más cercano donde preguntar. La División de Administración de Registros Vitales indica cómo comunicarse con ella en su página de contacto. Una copia certificada que se necesita solo para inscribirse para votar es gratuita: vea Cómo votar.",
+   "state": "draft"
+  },
+  "guide.who-to-contact.a-federal-agency-or-a-federal": {
+   "en": "A federal agency or a federal law",
+   "es": "Una agencia federal o una ley federal",
+   "state": "draft"
+  },
+  "guide.who-to-contact.a-question-about-your-child-starts": {
+   "en": "A question about your child starts with the teacher and the principal. A district policy, a budget or a decision of the district is for the superintendent and the <b>school board</b>, the district&rsquo;s governing body, which provides its schools.",
+   "es": "Una pregunta sobre su hijo empieza con el maestro y el director de la escuela. Una política del distrito, un presupuesto o una decisión del distrito le corresponden al superintendente y a la <b>junta escolar</b> (school board), el órgano de gobierno del distrito, que proporciona sus escuelas.",
+   "state": "draft"
+  },
+  "guide.who-to-contact.a-road-a-sidewalk-trash-a": {
+   "en": "A road, a sidewalk, trash, a local rule",
+   "es": "Una calle, una acera, la basura, una regla local",
+   "state": "draft"
+  },
+  "guide.who-to-contact.a-school": {
+   "en": "A school",
+   "es": "Una escuela",
+   "state": "draft"
+  },
+  "guide.who-to-contact.a-state-law-or-a-bill": {
+   "en": "A state law or a bill",
+   "es": "Una ley estatal o un proyecto de ley",
+   "state": "draft"
+  },
+  "guide.who-to-contact.a-state-program-or-a-state": {
+   "en": "A state program or a state law",
+   "es": "Un programa estatal o una ley estatal",
+   "state": "draft"
+  },
+  "guide.who-to-contact.a-state-program-or-agency": {
+   "en": "A state program or agency",
+   "es": "Un programa o una agencia estatal",
+   "state": "draft"
+  },
+  "guide.who-to-contact.about-the-executive-council-executive": {
+   "en": "About the Executive Council (Executive Council)",
+   "es": "Sobre el Consejo Ejecutivo (Consejo Ejecutivo)",
+   "state": "draft"
+  },
+  "guide.who-to-contact.before-they-can-look-into-your": {
+   "en": "Before they can look into your case, you sign a <b>privacy release</b>, because federal law lets an agency share your records only with your written consent. Each office&rsquo;s website has its form. Contact them too about a federal law or bill.",
+   "es": "Antes de que puedan revisar su caso, usted firma una <b>autorización de privacidad</b> (privacy release), porque la ley federal solo permite que una agencia comparta sus registros con su consentimiento por escrito. El sitio web de cada oficina tiene su formulario. Contáctelos también sobre una ley o un proyecto de ley federal.",
+   "state": "draft"
+  },
+  "guide.who-to-contact.choose-your-town-to-see-everyone": {
+   "en": "Choose your town to see everyone who represents it, from your state representatives to your members of Congress, each with a page here.",
+   "es": "Elija su municipio para ver a todos los que lo representan, desde sus representantes estatales hasta sus miembros del Congreso, cada uno con una página en este sitio.",
+   "state": "draft"
+  },
+  "guide.who-to-contact.city-councils-rsa-47": {
+   "en": "City councils, RSA 47",
+   "es": "Concejos municipales, RSA 47",
+   "state": "draft"
+  },
+  "guide.who-to-contact.contact-the-executive-council-executive": {
+   "en": "Contact the Executive Council (Executive Council)",
+   "es": "Contactar al Consejo Ejecutivo (Consejo Ejecutivo)",
+   "state": "draft"
+  },
+  "guide.who-to-contact.contact-the-governor-office-of-the": {
+   "en": "Contact the Governor (Office of the Governor)",
+   "es": "Contactar al Gobernador (Oficina del Gobernador)",
+   "state": "draft"
+  },
+  "guide.who-to-contact.contact-the-governor-s-office": {
+   "en": "Contact the Governor's office",
+   "es": "Contactar a la oficina del Gobernador",
+   "state": "draft"
+  },
+  "guide.who-to-contact.contact-your-senators-u-s-senate": {
+   "en": "Contact your senators (U.S. Senate)",
+   "es": "Contactar a sus senadores (Senado de EE. UU.)",
+   "state": "draft"
+  },
+  "guide.who-to-contact.find-and-contact-elected-officials-usa": {
+   "en": "Find and contact elected officials (USA.gov)",
+   "es": "Encontrar y contactar a los funcionarios electos (USA.gov)",
+   "state": "draft"
+  },
+  "guide.who-to-contact.find-who-represents-you": {
+   "en": "Find who represents you",
+   "es": "Encuentre quién lo representa",
+   "state": "draft"
+  },
+  "guide.who-to-contact.find-your-representative-u-s-house": {
+   "en": "Find your representative (U.S. House of Representatives)",
+   "es": "Encontrar a su representante (Cámara de Representantes de EE. UU.)",
+   "state": "draft"
+  },
+  "guide.who-to-contact.find-your-town": {
+   "en": "Find your town",
+   "es": "Busque su municipio",
+   "state": "draft"
+  },
+  "guide.who-to-contact.find-your-u-s-representative": {
+   "en": "Find your U.S. representative",
+   "es": "Encuentre a su representante de EE. UU.",
+   "state": "draft"
+  },
+  "guide.who-to-contact.find-your-u-s-senators": {
+   "en": "Find your U.S. senators",
+   "es": "Encuentre a sus senadores de EE. UU.",
+   "state": "draft"
+  },
+  "guide.who-to-contact.help-with-a-federal-agency-a": {
+   "en": "Help with a federal agency (a U.S. senator's office)",
+   "es": "Ayuda con una agencia federal (la oficina de un senador de EE. UU.)",
+   "state": "draft"
+  },
+  "guide.who-to-contact.help-with-a-federal-agency-a-2": {
+   "en": "Help with a federal agency (a U.S. representative's office)",
+   "es": "Ayuda con una agencia federal (la oficina de un representante de EE. UU.)",
+   "state": "draft"
+  },
+  "guide.who-to-contact.highways-and-sidewalks-rsa-231": {
+   "en": "Highways and sidewalks, RSA 231",
+   "es": "Calles y aceras, RSA 231",
+   "state": "draft"
+  },
+  "guide.who-to-contact.how-county-government-works": {
+   "en": "How county government works",
+   "es": "Cómo funciona el gobierno del condado",
+   "state": "draft"
+  },
+  "guide.who-to-contact.how-to-contact-your-legislators": {
+   "en": "How to contact your legislators",
+   "es": "Cómo contactar a sus legisladores",
+   "state": "draft"
+  },
+  "guide.who-to-contact.how-to-find-your-representatives": {
+   "en": "How to find your representatives",
+   "es": "Cómo encontrar a sus representantes",
+   "state": "draft"
+  },
+  "guide.who-to-contact.how-to-submit-testimony-on-a": {
+   "en": "How to submit testimony on a bill",
+   "es": "Cómo enviar testimonio sobre un proyecto de ley",
+   "state": "draft"
+  },
+  "guide.who-to-contact.how-towns-and-cities-are-run": {
+   "en": "How towns and cities are run",
+   "es": "Cómo se gobiernan los municipios y las ciudades",
+   "state": "draft"
+  },
+  "guide.who-to-contact.if-you-cannot-get-an-answer": {
+   "en": "If you cannot get an answer, the <b>Governor&rsquo;s office</b> takes requests for help from residents, and your <b>Executive Councilor</b>, one of five elected by district, helps residents with state agencies.",
+   "es": "Si no obtiene respuesta, la <b>oficina del Gobernador</b> recibe pedidos de ayuda de los residentes, y su <b>consejero ejecutivo</b> (Executive Councilor), uno de los cinco elegidos por distrito, ayuda a los residentes con las agencias estatales.",
+   "state": "draft"
+  },
+  "guide.who-to-contact.lead": {
+   "en": "Which office to contact about a problem or a law, from potholes and sidewalks to a state program or a federal agency, and how to find the people who hold it.",
+   "es": "Qué oficina contactar sobre un problema o una ley, desde baches y aceras hasta un programa estatal o una agencia federal, y cómo encontrar a las personas que la ocupan.",
+   "state": "draft"
+  },
+  "guide.who-to-contact.most-everyday-problems-are-local-your": {
+   "en": "Most everyday problems are local. Your town or city maintains its own roads and repairs its sidewalks, and runs or arranges trash and recycling. In a town the <b>selectboard</b> manages the town&rsquo;s business and may regulate the use of its roads and sidewalks; in a city the <b>city council</b> holds those powers, with the mayor or city manager running the departments.",
+   "es": "La mayoría de los problemas cotidianos son locales. Su municipio o ciudad mantiene sus propias calles y repara sus aceras, y administra u organiza la basura y el reciclaje. En un municipio, la <b>junta de concejales</b> (selectboard) maneja los asuntos del municipio y puede regular el uso de sus calles y aceras; en una ciudad, esos poderes los tiene el <b>concejo municipal</b> (city council), y el alcalde o el administrador municipal dirige los departamentos.",
+   "state": "draft"
+  },
+  "guide.who-to-contact.not-sure-ask-any-of-them": {
+   "en": "Not sure? Ask any of them: an office that cannot help usually knows who can.",
+   "es": "¿No está seguro? Pregúntele a cualquiera de ellos: una oficina que no puede ayudarle suele saber quién puede.",
+   "state": "draft"
+  },
+  "guide.who-to-contact.school-boards-rsa-189": {
+   "en": "School boards, RSA 189",
+   "es": "Juntas escolares, RSA 189",
+   "state": "draft"
+  },
+  "guide.who-to-contact.schools": {
+   "en": "Schools",
+   "es": "Escuelas",
+   "state": "draft"
+  },
+  "guide.who-to-contact.start-with-the-agency-that-runs": {
+   "en": "Start with the agency that runs the program: the Division of Motor Vehicles for a license, the Department of Health and Human Services for SNAP or Medicaid, and so on. Each guide here links the agency&rsquo;s page.",
+   "es": "Empiece por la agencia que administra el programa: la División de Vehículos Motorizados para una licencia, el Departamento de Salud y Servicios Humanos para SNAP o Medicaid, y así sucesivamente. Cada guía de este sitio enlaza la página de la agencia.",
+   "state": "draft"
+  },
+  "guide.who-to-contact.start-with-the-department-that-handles": {
+   "en": "Start with the department that handles it, such as public works for a pothole or a broken sidewalk. If that does not settle it, contact the selectboard or your city councilor. A change to the town&rsquo;s budget or rules may go to town meeting.",
+   "es": "Empiece por el departamento que se ocupa del asunto, como el de obras públicas para un bache o una acera rota. Si eso no lo resuelve, contacte a la junta de concejales o a su concejal de la ciudad. Un cambio al presupuesto o a las reglas del municipio puede ir a la asamblea municipal.",
+   "state": "draft"
+  },
+  "guide.who-to-contact.start-with-whoever-runs-the-thing": {
+   "en": "Start with whoever runs the thing. Roads, sidewalks, trash and local rules are your town or city&rsquo;s: its departments, then the selectboard or city council. Schools are the school board&rsquo;s. A state program is the state agency&rsquo;s that runs it, and a state law or bill is your state representatives&rsquo; and senator&rsquo;s. A problem with a federal agency, such as Social Security, veterans&rsquo; benefits or a passport, is what your U.S. senators&rsquo; and representative&rsquo;s offices help with.",
+   "es": "Empiece por quien está a cargo del asunto. Las calles, las aceras, la basura y las reglas locales le corresponden a su municipio o ciudad: primero a sus departamentos y luego a la junta de concejales o al concejo municipal. Las escuelas le corresponden a la junta escolar. Un programa estatal le corresponde a la agencia estatal que lo administra, y una ley o un proyecto de ley estatal, a sus representantes estatales y a su senador estatal. Con un problema con una agencia federal, como el Seguro Social, los beneficios para veteranos o un pasaporte, ayudan las oficinas de sus senadores y su representante en el Congreso de EE. UU.",
+   "state": "draft"
+  },
+  "guide.who-to-contact.the-county": {
+   "en": "The county",
+   "es": "El condado",
+   "state": "draft"
+  },
+  "guide.who-to-contact.the-executive-council": {
+   "en": "The Executive Council",
+   "es": "El Consejo Ejecutivo",
+   "state": "draft"
+  },
+  "guide.who-to-contact.the-privacy-act-5-u-s": {
+   "en": "The Privacy Act, 5 U.S.C. 552a (federal)",
+   "es": "La Ley de Privacidad (Privacy Act), 5 U.S.C. 552a (federal)",
+   "state": "draft"
+  },
+  "guide.who-to-contact.the-school-then-the-superintendent-and": {
+   "en": "The school, then the superintendent and the school board.",
+   "es": "La escuela, y luego el superintendente y la junta escolar.",
+   "state": "draft"
+  },
+  "guide.who-to-contact.the-state-agency-for-a-program": {
+   "en": "The state agency for a program; your state representatives and senator for a law or a bill.",
+   "es": "La agencia estatal, para un programa; sus representantes estatales y su senador estatal, para una ley o un proyecto de ley.",
+   "state": "draft"
+  },
+  "guide.who-to-contact.title": {
+   "en": "Who to Contact About an Issue: Town, School, State or Federal",
+   "es": "A quién contactar sobre un asunto: municipio, escuela, estado o gobierno federal",
+   "state": "draft"
+  },
+  "guide.who-to-contact.town-meeting-and-local-government": {
+   "en": "Town meeting and local government",
+   "es": "La asamblea municipal y el gobierno local",
+   "state": "draft"
+  },
+  "guide.who-to-contact.town-officers-rsa-41": {
+   "en": "Town officers, RSA 41",
+   "es": "Funcionarios municipales, RSA 41",
+   "state": "draft"
+  },
+  "guide.who-to-contact.what-is-it-about": {
+   "en": "What is it about?",
+   "es": "¿Sobre qué es?",
+   "state": "draft"
+  },
+  "guide.who-to-contact.your-county-runs-the-county-jail": {
+   "en": "Your county runs the county jail and the county nursing home, among other things. Its commissioners run it day to day, and its budget is set by the state representatives elected from the county.",
+   "es": "Su condado administra la cárcel del condado y el hogar de ancianos del condado, entre otras cosas. Sus comisionados lo dirigen día a día, y su presupuesto lo fijan los representantes estatales elegidos en el condado.",
+   "state": "draft"
+  },
+  "guide.who-to-contact.your-state-representatives-and-state": {
+   "en": "Your <b>state representatives and state senator</b> vote on the bills that make and change New Hampshire&rsquo;s laws. Contact them about a bill, or to ask for a new law. You can also tell the committee that hears a bill where you stand.",
+   "es": "Sus <b>representantes estatales y su senador estatal</b> votan los proyectos de ley que crean y cambian las leyes de New Hampshire. Contáctelos sobre un proyecto de ley, o para pedir una ley nueva. También puede decirle al comité que celebra la audiencia de un proyecto de ley cuál es su postura.",
+   "state": "draft"
+  },
+  "guide.who-to-contact.your-town-or-city-roads-sidewalks": {
+   "en": "Your town or city: roads, sidewalks, trash and local rules",
+   "es": "Su municipio o ciudad: calles, aceras, basura y reglas locales",
+   "state": "draft"
+  },
+  "guide.who-to-contact.your-town-or-city-the-department": {
+   "en": "Your town or city: the department, then the selectboard or city council.",
+   "es": "Su municipio o ciudad: el departamento, y luego la junta de concejales o el concejo municipal.",
+   "state": "draft"
+  },
+  "guide.who-to-contact.your-two-u-s-senators-and": {
+   "en": "Your two <b>U.S. senators</b> and your <b>U.S. representative</b> each have staff in New Hampshire who help residents with federal agencies: Social Security, veterans&rsquo; benefits, passports, the IRS, immigration and others. They cannot promise an outcome, but they can ask the agency for a fair and timely answer.",
+   "es": "Sus dos <b>senadores de EE. UU.</b> y su <b>representante de EE. UU.</b> tienen personal en New Hampshire que ayuda a los residentes con las agencias federales: el Seguro Social, los beneficios para veteranos, los pasaportes, el IRS, la inmigración y otras. No pueden prometer un resultado, pero pueden pedirle a la agencia una respuesta justa y oportuna.",
+   "state": "draft"
+  },
+  "guide.who-to-contact.your-u-s-senators-and-u": {
+   "en": "Your U.S. senators and U.S. representative.",
+   "es": "Sus senadores y su representante en el Congreso de EE. UU.",
    "state": "draft"
   },
   "guide.your-representatives.a-district-may-be-a-single": {

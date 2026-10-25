@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-10-11.13
+# GRANITE_VERSION: 2026-10-11.14
 """
 The official pages the how-to guides cite, onto this disk, to check them by.
 
@@ -199,6 +199,12 @@ SOURCES = {
         "https://www.dhhs.nh.gov/programs-services/disability-care/developmental-services",
         "https://www.education.nh.gov/who-we-are/deputy-commissioner/bureau-vocational-rehabilitation/programs-and-services/vocational-rehabilitation-services",
     ],
+    # The guide to who to contact (25 October 2026), from the person's printouts.
+    "who_to_contact": [
+        "https://www.council.nh.gov/about-us",
+        "https://www.council.nh.gov/contact-us",
+        "https://www.governor.nh.gov/contact-governor-ayotte",
+    ],
 }
 
 # NOT STATE AGENCIES, AND NEVER FETCHED. Where a guide sends a reader for help
@@ -301,6 +307,17 @@ OTHER = {
         "https://www.ecfr.gov/current/title-20/section-404.909",
         "https://www.ecfr.gov/current/title-20/section-404.1505",
         "https://www.ecfr.gov/current/title-20/section-416.202",
+    ],
+    # The guide to who to contact (25 October 2026): USA.gov, the two chambers'
+    # finders, a New Hampshire senator's and representative's casework pages,
+    # and the federal Privacy Act at govinfo, read that day.
+    "who_to_contact": [
+        "https://www.usa.gov/elected-officials",
+        "https://www.senate.gov/senators/senators-contact.htm",
+        "https://www.house.gov/representatives/find-your-representative",
+        "https://www.hassan.senate.gov/services/help-with-a-federal-agency",
+        "https://goodlander.house.gov/services/help-federal-agency/",
+        "https://www.govinfo.gov/content/pkg/USCODE-2024-title5/html/USCODE-2024-title5-partI-chap5-subchapII-sec552a.htm",
     ],
 }
 
