@@ -523,6 +523,11 @@
    "es": "Guía",
    "state": "draft"
   },
+  "find.kind.law": {
+   "en": "Law",
+   "es": "Ley",
+   "state": "draft"
+  },
   "find.kind.learn": {
    "en": "Learn",
    "es": "Aprenda",
@@ -557,6 +562,11 @@
   "find.kind.town": {
    "en": "Town",
    "es": "Municipio",
+   "state": "draft"
+  },
+  "find.kind.ward": {
+   "en": "Ward",
+   "es": "Barrio electoral",
    "state": "draft"
   },
   "find.label": {
