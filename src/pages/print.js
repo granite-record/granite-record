@@ -1,4 +1,4 @@
-// GRANITE_VERSION: 2026-10-09.8
+// GRANITE_VERSION: 2026-10-09.9
 /* A BILL'S PRINT SHEET. A reference sheet of one bill's record for paper,
    composed in the reader's browser from the record the page already holds,
    beside a short menu of settings, and printed with the browser's own dialog
@@ -691,9 +691,11 @@ function votes(d,st,W){
     const sub=[];
     if(rc.amendment)sub.push(`Amendment ${esc(rc.amendment)}`);
     if(rc.mover)sub.push(`Moved by ${esc(rc.mover)}`);
+    // Yes and No, as the Votes tab says them (the audit of 25 October 2026):
+    // the record's codes stay Yea and Nay; the words a reader sees do not.
     const parties=Object.entries(rc.tally||{}).map(([p,t])=>{
       const off=Object.entries(t).filter(([k])=>k!=="Yea"&&k!=="Nay").reduce((x,[,c])=>x+c,0);
-      return `<span class="ps-nw"><b>${esc(p)}</b> ${esc(t.Yea||0)} Yea, ${esc(t.Nay||0)} Nay${
+      return `<span class="ps-nw"><b>${esc(p)}</b> ${esc(t.Yea||0)} Yes, ${esc(t.Nay||0)} No${
         off?`, ${esc(off)} did not vote`:""}</span>`;}).join("; ");
     // THE APPROVED VOTE WORDS, components.js's (vote_head, vote_chip): the
     // motion's own name with its plain gloss, and what the vote did, in
@@ -719,7 +721,7 @@ function votes(d,st,W){
   }
   if(!rows.length)return "";
   const names=st.names?rcs.filter(rc=>(rc.members||[]).length).map(rc=>{
-    const groups=[["Yea","Yea"],["Nay","Nay"]].concat(W.other.map(([code,label])=>[code,label]));
+    const groups=[["Yea","Yes"],["Nay","No"]].concat(W.other.map(([code,label])=>[code,label]));
     return `<div class="ps-roll"><h4 class="ps-h4">${esc(W.body[rc.body]||rc.body)} ${
       esc(W.how.RC)}, ${esc(dateWords(rc.date))}: ${voteHead(rc.mk,rc.question,rc.mf)}, member by member</h4>${
       groups.map(([code,label])=>{

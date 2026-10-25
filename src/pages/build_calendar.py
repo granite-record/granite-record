@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-18.42
+# GRANITE_VERSION: 2026-09-18.43
 """
 The General Court's week, one page per week.
 
@@ -1054,7 +1054,11 @@ WEEK_JS = r"""
     if(!on){ cls.push("cmoff"); name+=", not on the calendar"; }
     else if(!day) name+=", loading";
     else{
-      name+=", "+(live?plural(live,"meeting"):"no meetings");
+      // "No meetings shown" where the day has meetings the boxes above hide (a
+      // study committee's, for a reader who has not ticked them): "no
+      // meetings" alone said the day was empty (the audit of 25 October 2026).
+      var hidden=day.cards.filter(function(e){ return !isKD(e)&&!e.cancelled&&!matches(e,c.f); }).length;
+      name+=", "+(live?plural(live,"meeting"):hidden?"no meetings shown":"no meetings");
       if(vis.length>live) name+=", "+(vis.length-live)+" cancelled";
       // The day's key dates by name: the dot alone says only that one is there.
       kds.forEach(function(e){ name+=", "+e.name; });

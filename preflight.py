@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.704
+# GRANITE_VERSION: 2026-09-04.705
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -49521,6 +49521,28 @@ def _year_page_from_home(legislative_year, civics, build_pages):
                   "and in the sitemap; both copies of the status box link it")
 
 
+@check("frontend", "the Spanish home page's way to the legislature's year opens it in Spanish")
+def _year_link_in_lang():
+    """The Spanish home page carries <base href="/">, so the box's bare
+    "learn/legislative-year.html" opened the English page although a Spanish
+    one is built (the audit of 25 October 2026, C4). A language that has the
+    page links its own; one that does not links the English page."""
+    import build_pages as BP
+    import i18n
+    import legislative_year as LY
+    checked = []
+    for lang in i18n.LANGS:
+        if lang == i18n.DEFAULT:
+            continue
+        want = i18n.href(lang, LY.HREF)
+        assert f'href="{want}"' in BP.year_link(lang), (
+            f"the {lang} status box does not link {want}: {BP.year_link(lang)!a}")
+        assert want.startswith(f"/{lang}/") == i18n.has(lang, LY.HREF), want
+        checked.append(f"{lang} {want}")
+    assert checked, "no language but English to check"
+    return "ok", "the status box links " + ", ".join(checked)
+
+
 @check("frontend", "every date the legislature's year states as this term's names its document",
        needs=("legislative_year",))
 def _year_dates_sourced(legislative_year):
@@ -63922,6 +63944,7 @@ def _drawn_pages():
         return next((h for name, h, *_ in drawn[k]["elements"] if name == "results"), "")
     failed = [k for k in drawn if k.split("#")[0] in records
               and (not results(k) or "Could not load the data" in results(k)
+                   or "did not load" in results(k)
                    or "Detail unavailable" in results(k))]
     assert not failed, f"{len(failed)} record pages drew no record: {failed[:4]}"
     return "ok", (f"{len(drawn)} pages and tabs drawn without an error: {len(records)} records "
@@ -64022,6 +64045,11 @@ def _no_index_off_the_list():
         bad.append(f"the bill search took its own controls down: {b['first']} {b['end']['shell']}")
     if "/meta.json" not in b["asked"]:
         bad.append(f"the bill search asked for {b['asked']}, not meta.json")
+    # The bill search has no record to fall back on: one plain line and the
+    # way round it, the developer's detail in the console only.
+    if re.search(r"build_site_v2|http\.server|<code>|Could not load", b["end"]["results"]) \
+            or "did not load" not in b["end"]["results"] or 'href="/directory"' not in b["end"]["results"]:
+        bad.append(f"the bill search that could not load says: {b['end']['results'][:160]!r}")
     try:
         import shell as S
     except ImportError:
@@ -67204,7 +67232,7 @@ ok(/data-d="2026-02-23"[^>]*aria-disabled="true"/.test(g), "a day before the cal
 const cellOf=(h,d)=>{ const m=new RegExp('data-d="'+d+'"[^>]*>(.*?)</td>').exec(h); return m&&m[1]; };
 ok(/<i class="k-hearing"><\/i><i class="k-exec"><\/i><\/span><span class="sr">Tuesday, March 10, 2026, 2 meetings</.test(cellOf(g,"2026-03-10")),
    "10 March in the grid: "+cellOf(g,"2026-03-10"));
-ok(/cmdots" aria-hidden="true"><\/span><span class="sr">Friday, March 13, 2026, no meetings</.test(cellOf(g,"2026-03-13")),
+ok(/cmdots" aria-hidden="true"><\/span><span class="sr">Friday, March 13, 2026, no meetings shown</.test(cellOf(g,"2026-03-13")),
    "a study committee's day for a new reader: "+cellOf(g,"2026-03-13"));
 const gOn=C.gridHtml({view:"2026-03",sel:"2026-03-10",focus:"2026-03-10",today:"2026-03-11",first:"2026-03-02",last:"2026-04-05",days,f:ON});
 ok(/cmdots" aria-hidden="true"><i class="k-study"><\/i><\/span><span class="sr">Friday, March 13, 2026, 1 meeting</.test(cellOf(gOn,"2026-03-13")),
@@ -97891,6 +97919,12 @@ function node2(){
 const tabEls = %s.map(([p]) => { const t = node2(); t.dataset.pane = p; return t; });
 const panes = {}; tabEls.forEach(t => { panes[t.dataset.pane] = node2(); });
 const bar = node2(); bar.hidden = true; bar.querySelectorAll = () => tabEls;
+// A phone's strip: 300px showing tabs 200px apart, each 150px wide.
+bar.scrollWidth = 600; bar.clientWidth = 300; bar.scrollLeft = 0;
+bar.getBoundingClientRect = () => ({left: 0, right: 300});
+tabEls.forEach((t, i) => { t.getBoundingClientRect = () =>
+  ({left: i * 200 - bar.scrollLeft, right: i * 200 + 150 - bar.scrollLeft}); });
+bar.querySelector = () => tabEls.find(t => t.attrs["aria-selected"] === "true") || null;
 document.querySelector = s => s === ".twntabs" ? bar : null;
 document.getElementById = id => panes[id] || null;
 const wrote = []; let pushed = 0;
@@ -97902,7 +97936,7 @@ location.pathname = "/town/lyme"; location.search = "?from=test";
 const shown = () => Object.keys(panes).filter(p => !panes[p].hidden);
 const out = {};
 %s
-out.load = shown(); out.bar = bar.hidden;
+out.load = shown(); out.bar = bar.hidden; out.strip = bar.scrollLeft;
 tabEls[1].fire("click"); out.click = shown();
 document.activeElement = tabEls[1]; bar.fire("keydown", {key: "ArrowRight"});
 out.arrow = shown();
@@ -97929,6 +97963,11 @@ process.stdout.write(JSON.stringify(out));
             if got["load"] != [first] or got["bar"]:
                 bad.append(f"arriving at {hsh or 'no hash'!r} shows {got['load']}, "
                            f"not {first}, with the strip hidden={got['bar']}")
+            # The chosen tab in view: #vote's tab stands at 400-550 in a
+            # strip 300 wide, so the strip moves; the first tab's does not.
+            if (got["strip"] > 0) != (first == "vote"):
+                bad.append(f"arriving at {hsh or 'no hash'!r} left the strip at "
+                           f"{got['strip']}px: the chosen tab is not brought into view")
             if got["click"] != ["officials"] or got["arrow"] != ["vote"] \
                     or got["back"] != ["representatives"]:
                 bad.append(f"click, arrow and address showed {got['click']}, "

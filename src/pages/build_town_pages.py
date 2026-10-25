@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-09.43
+# GRANITE_VERSION: 2026-09-09.44
 """
 A page per town and ward: everyone who represents the people who live there.
 
@@ -1655,6 +1655,18 @@ TABS_JS = """<script>
     });
     if(write&&history.replaceState)
       history.replaceState(null,"",location.pathname+location.search+"#"+id);
+    inView();
+  }
+  // THE CHOSEN TAB IN VIEW, as the Officials page's strip does: on a phone the
+  // strip scrolls, and /town/acworth#services opened Services with its tab
+  // past the strip's edge (the town-pages fix of 25 October 2026). The strip
+  // moves, 2rem clear of the edge where its shadow is; the page does not.
+  function inView(){
+    var t=bar.querySelector('[aria-selected="true"]');
+    if(!t||bar.scrollWidth<=bar.clientWidth+2)return;
+    var a=t.getBoundingClientRect(),b=bar.getBoundingClientRect();
+    if(a.left<b.left)bar.scrollLeft-=b.left-a.left+32;
+    else if(a.right>b.right)bar.scrollLeft+=a.right-b.right+32;
   }
   tabs.forEach(function(t){
     t.addEventListener("click",function(){show(t.dataset.pane,true);});
@@ -1677,6 +1689,8 @@ TABS_JS = """<script>
   });
   bar.hidden=false;
   show(named(location.hash.slice(1))||tabs[0].dataset.pane,false);
+  // and again once the fonts have their widths
+  if(document.fonts&&document.fonts.ready)document.fonts.ready.then(inView);
 })();
 </script>"""
 

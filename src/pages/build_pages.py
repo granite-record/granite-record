@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.237
+# GRANITE_VERSION: 2026-09-04.238
 """
 Build the pages the navigation links to: legislators, town lookup, how it
 works, and about.
@@ -2706,11 +2706,13 @@ def _record(x, lang):
 
 
 def year_link(lang="en"):
-    """YEAR_LINK in `lang`: the way to the legislature's year, which is an
-    English page."""
+    """YEAR_LINK in `lang`: the way to the legislature's year, in `lang`
+    where that page is built in it (i18n.href). Absolute, because the
+    Spanish home page carries <base href="/">, under which the bare HREF
+    opened the English page."""
     if lang == i18n.DEFAULT:
         return YEAR_LINK
-    return (f'<p class="statenote stateyear"><a href="{_year.HREF}">'
+    return (f'<p class="statenote stateyear"><a href="{i18n.href(lang, _year.HREF)}">'
             + say(lang, "home.year_link", "NH Legislature Schedule") + '</a></p>')
 
 

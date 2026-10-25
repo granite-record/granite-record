@@ -1,4 +1,4 @@
-// GRANITE_VERSION: 2026-09-07.246
+// GRANITE_VERSION: 2026-09-07.247
 // esc, dateWords and dateSpan, clock, cmteLink and pchip are components.js's,
 // which every page loads before this file (the component plan's C1 and C2),
 // and so is WORDBOOK, the words of src/pages/words/ that the build writes into
@@ -3173,14 +3173,13 @@ if(window.GR_STATIC){
       bill's, a member's or a committee's page, whose record is in its HTML
       too (shell.page's static), shows that record with one plain line
       (plainRecord, the phone audit of 25 October 2026). The bill search,
-      which has no record without the index, still says what failed. */
+      which has no record without the index, says so in one plain line with
+      the way round it, the Directory; what failed goes to the console, where
+      a developer looks (the same audit's follow-up). */
    if(window.GR_STANDALONE)return plainRecord();
-   $("#results").innerHTML=`<div class="empty"><b>Could not load the data.</b><br><br>
-     <code>${esc(e.message||e)}</code><br><br>
-     If that mentions a status code, the file is missing from this folder — run
-     <code>build_site_v2.py</code>. If it mentions CORS or the scheme, the page was
-     opened from disk rather than served: <code>cd site</code> then
-     <code>python3 -m http.server 8000</code>.</div>`;
+   if(typeof console!=="undefined")console.error("bill search: could not load its index", e);
+   $("#results").innerHTML=`<div class="empty"><p>The bill search did not load. Reload the
+     page to try again, or find a bill in the <a href="/directory">Directory</a>.</p></div>`;
  });
 
 /* HB 0115 IS HOW THE GENERAL COURT WRITES IT. Its own archive addresses a
