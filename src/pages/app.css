@@ -1,4 +1,4 @@
-/* GRANITE_VERSION: 2026-09-07.317 */
+/* GRANITE_VERSION: 2026-09-07.318 */
 /* ONE STYLESHEET FOR EVERY PAGE (23 October 2026). Every page of the site
    links this file, /app.css: the record pages shell.page() makes from
    bills.html, and the five build_pages.py writes -- the home page, Officials,
@@ -4875,11 +4875,16 @@ a.l-pgm{font-weight:600;text-decoration:underline;text-decoration-thickness:1px;
 /* A GUIDE FOR SOMEONE WITH NO CONTEXT (the person, 11 October 2026): the
    answer first, at the lead's size; the path as a diagram, box to box, a
    question's answers side by side and stacked on a phone; then the steps,
-   numbered, each with its button to the official page and its law. */
+   numbered, each with its button to the official page and its law. The
+   diagram keeps the reading column, beside its heading, as the words above
+   it do. A question and its answers share one panel, so the arrow out of it
+   leaves the whole decision -- the next box follows either answer -- and
+   never seems to hang from the answer nearest it (the polish, 25 October
+   2026). */
 .g-glance{font:400 var(--t-lead)/1.5 var(--serif);color:var(--ink);margin:0 0 1rem;max-width:46rem}
 .g-flow{margin:.5rem 0 0}
 .g-flow > ol{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;align-items:center;gap:1.75rem;
-  max-width:46rem;margin-inline:auto}
+  max-width:46rem}
 .g-flow > ol > li{position:relative;width:100%;box-sizing:border-box}
 .g-flow > ol > li + li::before{content:"";position:absolute;left:50%;top:-1.5rem;height:1.125rem;
   border-left:2px solid var(--edge);transform:translateX(-1px)}
@@ -4888,6 +4893,7 @@ a.l-pgm{font-weight:600;text-decoration:underline;text-decoration-thickness:1px;
 .g-fbox span,.g-fq{display:block;text-align:center;font:500 var(--t-ui)/1.45 var(--sans);color:var(--ink);
   background:var(--surface);border:1px solid var(--rule-2);border-radius:var(--r-in);padding:.75rem 1rem;margin:0}
 .g-fq{font-weight:600;border-color:var(--pine);border-width:2px}
+.g-fask{background:var(--wash);border:1px solid var(--rule-2);border-radius:var(--r-out);padding:.75rem}
 .g-fans{list-style:none;margin:.75rem 0 0;padding:0;display:grid;
   grid-template-columns:repeat(auto-fit,minmax(min(100%,12rem),1fr));gap:.75rem}
 .g-fans li{background:var(--surface);border:1px solid var(--rule-2);border-top:3px solid var(--pine);

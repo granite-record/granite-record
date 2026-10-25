@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-08.77
+# GRANITE_VERSION: 2026-09-08.78
 """
 The civics section: a hub and one page per topic, in order.
 
@@ -2187,7 +2187,7 @@ def guide_page(tmpl, g, base, record, draft_why=""):
     sources. A check older than guides.STALE_DAYS puts a notice above it."""
     path = "/" + guide_href(g["slug"])
     secs = [("at-a-glance", "At a Glance",
-             f'<p class="g-glance">{g["glance"]}</p>' + civics.wide(guide_flow(g))),
+             f'<p class="g-glance">{g["glance"]}</p>' + guide_flow(g)),
             ("steps", "Step by Step", guide_steps(g))]
     if g["more"]:
         secs += split_sections(g["more"], path)
@@ -2315,7 +2315,7 @@ def guide_page_lang(g, lang, base, record=""):
     w = Words(lang, g["slug"])
     title = w.t(g["title"])
     secs = [("at-a-glance", I.say(lang, "guides.glance", "At a Glance"),
-             f'<p class="g-glance">{w.h(g["glance"])}</p>' + civics.wide(guide_flow(g, w))),
+             f'<p class="g-glance">{w.h(g["glance"])}</p>' + guide_flow(g, w)),
             ("steps", I.say(lang, "guides.steps", "Step by Step"), guide_steps(g, w))]
     if g["more"]:
         secs += lang_sections(g["more"], w.h(g["more"]), I.href(lang, page))

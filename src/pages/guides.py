@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-10-11.40
+# GRANITE_VERSION: 2026-10-11.41
 """
 The how-to guides: their words, their sources, and what each was checked
 against. Read by build_civics.py, which draws them on the Resources hub's
@@ -363,7 +363,7 @@ VOTING = guide(
          [("Yes", "Find your polling place, then vote."),
           ("No, or not sure", "Check online. If you are not, register with your clerk before the "
                               "election, or at the polling place on election day.")]),
-     box("To register, bring proof of who you are, your age, your citizenship and where you live."),
+     box("Registering? Bring proof of who you are, your age, your citizenship and where you live."),
      box("On election day, show proof of identity to get your ballot, or vote absentee if you "
          "qualify.")],
     [step("Check whether you are already registered",
@@ -527,8 +527,9 @@ VOTING = guide(
          "live: what to bring, the deadline, and absentee ballots. The Secretary of State calls "
          "local and state election officials voters&rsquo; trusted source of election "
          "information.</p>",
-    see=[("Finding your representatives", "/guides/your-representatives.html"),
-         ("How to get a birth or other vital record", "/guides/vital-records.html")],
+    see=[("New to New Hampshire: license, registration and voting", "/guides/new-to-new-hampshire.html"),
+         ("How to get a birth or other vital record", "/guides/vital-records.html"),
+         ("Finding your representatives", "/guides/your-representatives.html")],
     figures=[fig("18 years", "RSA 654:7", "At least 18 years of age on the day of the next election"),
              fig("6 to 13 days", "RSA 654:27", "6 to 13 days prior to the election")])
 
@@ -648,7 +649,8 @@ PUBLIC_RECORD = guide(
          f'<p class="g-acts"><a class="g-btn" href="{RTK_MEMO}" target="_blank" rel="noopener">'
          "The Attorney General&rsquo;s memorandum</a></p>"
          + helps("lawyer"),
-    see=[("Town meeting and local government", "/learn/local-government.html")],
+    see=[("Town meeting and local government", "/learn/local-government.html"),
+         ("Who to contact about an issue", "/guides/who-to-contact.html")],
     figures=[fig("5 business days", "RSA 91-A:4", "within 5 business days of a request"),
              fig("250", "RSA 91-A:4", "in excess of 250 communications")])
 
@@ -748,7 +750,10 @@ ENERGY = guide(
          f'<p class="g-acts"><a class="g-btn" href="{NH211}" target="_blank" rel="noopener">211 '
          "New Hampshire</a></p>"
          "<p>For help with other benefits, and someone to talk them through with:</p>"
-         + helps("nheasy", "adrc"))
+         + helps("nheasy", "adrc"),
+    see=[("How to apply for food or health assistance", "/guides/food-and-health-assistance.html"),
+         ("How to prepare for storms, power outages and other emergencies",
+          "/guides/storms-and-emergencies.html")])
 
 
 # ---------------------------------------------------------------------------
@@ -843,7 +848,9 @@ VITAL = guide(
          "Find your town or city clerk</a> "
          f'<a class="g-btn" href="{DVRA_CONTACT}" target="_blank" rel="noopener">Contact Vital '
          "Records</a></p>",
-    see=[("How to vote in New Hampshire", "/guides/how-to-vote.html")],
+    see=[("How to get a REAL ID", "/guides/real-id.html"),
+         ("How to get a U.S. passport", "/guides/passport.html"),
+         ("How to vote in New Hampshire", "/guides/how-to-vote.html")],
     figures=[fig("$15", "RSA 5-C:10", "the sum of $15 for making a search"),
              fig("$10", "RSA 5-C:10", "$10 for each subsequent copy")])
 
@@ -2372,7 +2379,7 @@ REAL_ID = guide(
          [("Yes", "Consider a REAL ID, and plan at least three months ahead."),
           ("No", "You might not need one. A card without the star says Not for Federal "
                  "Identification.")]),
-     box("Check which documents to bring, then make a DMV appointment."),
+     box("Want one? Check which documents to bring, then make a DMV appointment."),
      box("Go in person: a first REAL ID cannot be done online.")],
     [step("Decide whether you need one",
           "<p>A REAL ID license or ID has a star in the top right corner. Since May 7, 2025, you "
@@ -2779,6 +2786,8 @@ UNEMPLOYMENT = guide(
          "person, with claims and with finding work.</p>"
          f'<p class="g-acts"><a class="g-btn" href="{NHES_OFFICES}" target="_blank" rel="noopener">'
          "NH Works offices</a></p>",
+    see=[("How to apply for food or health assistance", "/guides/food-and-health-assistance.html"),
+         ("How to get help paying for child care", "/guides/child-care-scholarship.html")],
     figures=[fig("14 calendar days", "RSA 282-A:48",
                  "within 14 calendar days after the determination was mailed"),
              fig("18 months", NHES_FILE, "from the last 18 months")])
@@ -3647,8 +3656,9 @@ VIOLENCE = guide(
          "requires you to report it right away to the Division for Children, Youth and Families: call "
          "(800) 894-5533 in New Hampshire, or (603) 271-6562.</p>"
          + helps("legal_aid"),
-    see=[("How to vote", "/guides/how-to-vote.html"),
-         ("How to apply for food or health assistance", "/guides/food-and-health-assistance.html")],
+    see=[("How to get help if you are homeless or may lose your home", "/guides/homelessness-help.html"),
+         ("How to apply for food or health assistance", "/guides/food-and-health-assistance.html"),
+         ("How to vote", "/guides/how-to-vote.html")],
     figures=[fig("24-hour", NHCADSV, "A 24-hour helpline"),
              fig("5 to 7 days", DOJ_ACP, "as much as 5 to 7 days"),
              fig("5 minutes", NHCADSV_CENTERS, "generally in about 5 minutes"),
@@ -3885,7 +3895,7 @@ WEATHER = guide(
      box("Keep supplies for several days at home, and a kit in your car."),
      ask("Has the power gone out?",
          [("Yes", "Keep the refrigerator and freezer closed. Use a generator only outdoors."),
-          ("You need a warm place", "Call 2-1-1, or ask your town about warming centers.")])],
+          ("Yes, and you need a warm place", "Call 2-1-1, or ask your town about warming centers.")])],
     [step("Get alerts",
           "<p><b>NH Alerts</b> is New Hampshire&rsquo;s official emergency notification system. "
           "It sends alerts about local weather, evacuations, AMBER Alerts, hazardous materials "
@@ -4146,7 +4156,8 @@ TRASH = guide(
     more="<h2>Who Can Help</h2>"
          "<p>Your town or city office, and your transfer station, for the local rules, hours "
          "and fees and the date of the next household hazardous waste collection.</p>",
-    see=[("How to prepare for storms, power outages and other emergencies",
+    see=[("Who to contact about an issue", "/guides/who-to-contact.html"),
+         ("How to prepare for storms, power outages and other emergencies",
           "/guides/storms-and-emergencies.html")])
 
 GUIDES += [TRASH]
@@ -4198,9 +4209,10 @@ PASSPORT = guide(
          [("Yes", "You can usually renew by mail or online. You cannot renew in person."),
           ("No, or it is for a child under 16",
            "Apply in person on Form DS-11, at a post office or another acceptance facility.")]),
-     box("Gather proof of citizenship, a photo ID, a photocopy of each, and a photo."),
-     box("Make an appointment. Sign the form only when the agent asks you to."),
-     box("Pay two fees: one to the Department of State, one to the facility.")],
+     box("Applying in person? Gather proof of citizenship, a photo ID, a photocopy of each, and a "
+         "photo."),
+     box("Make an appointment, and sign the form only when the agent asks you to."),
+     box("Pay two fees there: one to the Department of State, one to the facility.")],
     [step("Check whether you can renew instead",
           "<p>You can renew by mail if all of these are true: your most recent passport was "
           "issued for 10 years, when you were 16 or older; it was issued no more than 15 years "
@@ -5282,10 +5294,13 @@ BOATING = guide(
           "not more than 30 consecutive days.</p>"
           "<p>Register by mail or the drop box at the DMV in Concord, or with an authorized boat "
           "agent. Bring the registration application, proof you own the boat (a bill of sale "
-          "signed by you and the seller), your driver&rsquo;s license and the fees. The "
-          "registration fee is set by "
-          "the boat&rsquo;s length: $24 up to 16 feet, $34 up to 21 feet, $52 up to 30 feet, $72 "
-          "up to 45 feet, and $92 over that. An agent who is not a DMV employee adds $5. The "
+          "signed by you and the seller), your driver&rsquo;s license and the fees.</p>"
+          + table("The registration fee, by the boat&rsquo;s length (RSA 270-E:5)",
+                  ["Length", "Registration fee"],
+                  [["Up to 16 feet", "$24"], ["Over 16, up to 21 feet", "$34"],
+                   ["Over 21, up to 30 feet", "$52"], ["Over 30, up to 45 feet", "$72"],
+                   ["Over 45 feet", "$92"]])
+          + "<p>An agent who is not a DMV employee adds $5 to the registration fee. The "
           "boat fee decal and the boat fee, which depends on the kind of boat, its length and its "
           "age, are paid with it; the DMV&rsquo;s boat registration office, (603) 227-4030, can "
           "tell you the total for your boat. The DMV mails a renewal notice before the "
@@ -5370,7 +5385,7 @@ BOATING = guide(
            "registrations expire December 31 and the DMV mails renewal notices before then.",
            DMV_BOATS, OUT_STATE_READ)],
     see=[("How to get a fishing license", "/guides/fishing-license.html"),
-         ("How to register a car", "/guides/register-a-car.html")],
+         ("How to get a hunting license", "/guides/hunting-license.html")],
     figures=[fig("age 16", "RSA 270-D:13", "a person 16 years of age or older"),
              fig("$10", "RSA 270-D:17", "a fee of $10 for issuing a safe boater education certificate"),
              fig("$50", "RSA 270-D:17", "shall not exceed $50"),
