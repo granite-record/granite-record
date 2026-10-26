@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-10-11.59
+# GRANITE_VERSION: 2026-10-11.60
 """
 The how-to guides: their words, their sources, and what each was checked
 against. Read by build_civics.py, which draws them on the Resources hub's
@@ -4075,6 +4075,13 @@ GUIDES += [WARRANT]
 # workers have not been read here, so nothing is said of training or pay.
 # ---------------------------------------------------------------------------
 ELECTION_READ = "2026-10-26"
+# The Secretary of State's published procedures (RSA 660:17-c requires them),
+# read from the person's copies of 26 October 2026, at the addresses the
+# person gave that day.
+SOS_RECOUNT = ("https://www.sos.nh.gov/sites/g/files/ehbemt561/files/documents/2024-09/"
+               "2024-recount-procedures-primary.pdf")
+SOS_TOP_AUDIT = ("https://www.sos.nh.gov/sites/g/files/ehbemt561/files/documents/2024-10/"
+                 "audit-procedures-top-of-ticket.pdf")
 _OFFICER_ROWS = [
     ("Moderator",
      "Elected by the voters by ballot, for 2 or 3 years as the town decides; in a city, each "
@@ -4215,6 +4222,29 @@ ELECTION = guide(
           "percent, and a candidate for governor $500. The Secretary of State and assistants "
           "recount the ballots in Concord, looking at each one; no machine may be used. The "
           "candidates may inspect the ballots and protest how any one is counted.</p>"
+          "<p><b>How a recount runs.</b> The Secretary of State publishes its recount "
+          "procedures; those for state primaries describe it this way. Every recount is open to "
+          "the public, and its time and place are posted on the Secretary of State&rsquo;s "
+          "website. At least one team of two people counts each race. Across the table from "
+          "them sits each candidate, or one person for the candidate, with other observers "
+          "standing behind; cameras show every ballot and the tally sheet on screens facing the "
+          "candidates, and do not record. Each box is opened in front of them and shown empty. "
+          "The ballots are sorted into piles, in a race for one seat one for each candidate and "
+          "piles for undervotes, overvotes and write-ins, and counted out loud in sets of 25, "
+          "each set checked by the second counter. A candidate may challenge how any ballot is "
+          "counted, without giving a reason; the Secretary of State rules on it, and a ballot "
+          "still disputed is kept with a memo of the ruling in case of an appeal. The "
+          "Secretary of State compares the recount with the election night results and "
+          "declares the result, which is final unless changed on an appeal to the Ballot Law "
+          "Commission within 10 days.</p>"
+          "<p><b>The top-of-the-ticket audit.</b> When state representative races are "
+          "recounted after a general election, the Secretary of State also audits the votes on "
+          "those same ballots for President, United States Senate, United States House or "
+          "Governor, choosing the office, for 10 of the recounted races picked at random (or "
+          "all of them, if fewer than 10 are recounted). A discrepancy of more than one percent "
+          "from the reported results allows a full recount of that race. The audit follows the "
+          "general election recount procedures, and its results are published on the "
+          "Secretary of State&rsquo;s website.</p>"
           "<p><b>The audit.</b> After each state primary, general election and presidential "
           "primary, the Secretary of State audits the counting devices. At least 8 devices "
           "are chosen at random, and which ones is not announced until the polls open. A team "
@@ -4224,11 +4254,15 @@ ELECTION = guide(
           "differences, the Secretary of State may look at more ballots or order a full hand "
           "recount. The results are published before noon on the Friday after the "
           "election.</p>",
-          law=["RSA 660:1", "RSA 660:2", "RSA 660:4", "RSA 660:5", "RSA 660:33",
-               "RSA 660:35"])],
+          actions=[("Recount procedures (Secretary of State)", SOS_RECOUNT),
+                   ("Top-of-the-ticket audit procedures (Secretary of State)", SOS_TOP_AUDIT)],
+          law=["RSA 660:1", "RSA 660:2", "RSA 660:4", "RSA 660:5", "RSA 660:17-b",
+               "RSA 660:17-c", "RSA 660:33", "RSA 660:35"])],
     [("Election Officers, RSA 658", "/laws/658"),
      ("Conduct of Elections, RSA 659", "/laws/659"),
      ("Recounts and Audits, RSA 660", "/laws/660"),
+     ("Recount Procedures, State Primary Elections (Secretary of State, 2024)", SOS_RECOUNT),
+     ("Audit Procedures, Top-of-the-Ticket Audits (Secretary of State)", SOS_TOP_AUDIT),
      ("Ballots and Counting Devices, RSA 656", "/laws/656"),
      ("Town Meetings and Moderators, RSA 40", "/laws/40"),
      ("Town Officers, RSA 41", "/laws/41")],
@@ -4352,6 +4386,50 @@ ELECTION = guide(
      claim("The secretary of state and assistants shall visually inspect each ballot; no "
            "mechanical, optical, or electronic device shall be used; the candidates may inspect "
            "the ballots and protest the counting of any ballot.", "RSA 660:5", ELECTION_READ),
+     claim("All recounts, including location and time, will be published on the Secretary of "
+           "State's website. All recounts are open to the public. The Secretary of State will "
+           "assign at least one team of two people for each scheduled recount. The space on the "
+           "opposite side of the table is reserved for each candidate, the candidate's counsel, "
+           "or the candidate's designee - one individual for each candidate - to sit, observe, "
+           "and exercise their right to protest. Additional observers may stand behind the "
+           "candidates or designees. The projection system shows the ballots and tally sheet; "
+           "the cameras do not record. The Secretary of State or designee will open all the "
+           "boxes from each race in view of the candidates, designees, and observers; the box "
+           "will be shown to be empty.", SOS_RECOUNT, ELECTION_READ),
+     claim("Sorting in a primary election with 'Vote for not more than 1.' - Recounters will "
+           "sort all ballots into the following piles: Candidate 1, Candidate 2, Candidate 3, "
+           "etc.; Undervote; Overvote; Write-in. The first recounter will show all ballots by "
+           "placing the ballot under the camera and audibly counting out 25 ballots. The second "
+           "recounter checks this count of 25 ballots. A candidate or designee does not need to "
+           "state a reason to challenge a ballot. The Secretary of State shall rule on the "
+           "voter's intention of the challenged ballot. If a candidate or their designee wishes "
+           "to further challenge the ballot, the Secretary of State will attach a memorandum to "
+           "the ballot stating the ruling; the ballots will be kept separate in case the results "
+           "are appealed to the Ballot Law Commission. The summary sheet will compare the "
+           "recount results to the election night results. The Secretary of State will declare "
+           "the result of the recount which shall be final unless the result is changed because "
+           "of a successful appeal made within 10 days to the Ballot Law Commission.",
+           SOS_RECOUNT, ELECTION_READ),
+     claim("For general election recounts of state representative races, the secretary of "
+           "state's office shall randomly select 10 of the state representative races to "
+           "conduct an audit of the votes cast on those ballots for President, United States "
+           "Senate, United States House of Representatives, or Governor. The Secretary of State "
+           "will select the office to be audited. The audit procedures for the selected race "
+           "will follow the same procedures used for a state general election recount. The "
+           "Secretary of State will announce the results of each audit and publish the results "
+           "of the audit on the Secretary of State's website.", SOS_TOP_AUDIT, ELECTION_READ),
+     claim("For general election recounts of state representative races, the secretary of "
+           "state's office shall conduct an audit of the votes cast on those ballots for "
+           "President, United States Senate, United States House of Representatives, or "
+           "governor, using the ballots for 10 of the state representative races to be "
+           "recounted, selected randomly; if less than 10 races are to be recounted, the "
+           "ballots for each recounted race shall be audited; select the office to be audited; "
+           "and allow a full recount of any race where there is a discrepancy of greater than "
+           "one percent from the election results reported to the secretary of state.",
+           "RSA 660:17-b", ELECTION_READ),
+     claim("The secretary of state shall publish all recount and audit procedures, as well as "
+           "the times to hold any recounts and audits that may take place.", "RSA 660:17-c",
+           ELECTION_READ),
      claim("The secretary of state shall conduct an audit of the devices used to tabulate ballots "
            "after each state primary, general elections, and after the presidential primary.",
            "RSA 660:33", ELECTION_READ),
@@ -4384,7 +4462,8 @@ ELECTION = guide(
          "ballots, receives every town&rsquo;s return, and runs recounts and the audit.</p>")),
     see=[("How to vote", "/guides/how-to-vote.html"),
          ("How to run for office", "/guides/run-for-office.html")],
-    figures=[fig("2 or 3 years", "RSA 40:1", "Every 2 years or 3 years"),
+    figures=[fig("10 days", SOS_RECOUNT, "a successful appeal made within 10 days"),
+             fig("2 or 3 years", "RSA 40:1", "Every 2 years or 3 years"),
              fig("6 years", "RSA 41:46-a", "one supervisor for a term of 6 years"),
              fig("3-year", "RSA 41:46-a", "may adopt a 3-year term"),
              fig("17 years", "RSA 658:7-a", "at least 17 years of age"),

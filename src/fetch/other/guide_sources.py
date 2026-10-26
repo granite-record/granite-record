@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-10-11.22
+# GRANITE_VERSION: 2026-10-11.23
 """
 The official pages the how-to guides cite, onto this disk, to check them by.
 
@@ -231,6 +231,13 @@ SOURCES = {
     "run_for_office": [
         "https://www.sos.nh.gov/elections/running-office",
         "https://www.sos.nh.gov/elections/qualifications-office",
+    ],
+    # The election worker guide (26 October 2026): the Secretary of State's
+    # recount and audit procedures, from the person's copies, at the addresses
+    # the person gave.
+    "election_worker": [
+        "https://www.sos.nh.gov/sites/g/files/ehbemt561/files/documents/2024-09/2024-recount-procedures-primary.pdf",
+        "https://www.sos.nh.gov/sites/g/files/ehbemt561/files/documents/2024-10/audit-procedures-top-of-ticket.pdf",
     ],
     # The Medicare and disability guides (25 October 2026), from the
     # person's printouts. Its own key: under "medicare_and_disability", the

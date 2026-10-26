@@ -3974,6 +3974,11 @@
    "es": "<b>Asistentes para el día.</b> El moderador puede nombrar a un moderador asistente y a los demás funcionarios electorales que considere necesarios, y los supervisores pueden nombrar supervisores asistentes para inscribir a votantes el día de la elección. Un asistente debe tener al menos 17 años de edad, presta juramento y sirve solo en esa elección.",
    "state": "draft"
   },
+  "guide.election-worker.audit-procedures-top-of-the-ticket": {
+   "en": "Audit Procedures, Top-of-the-Ticket Audits (Secretary of State)",
+   "es": "Procedimientos de auditoría, auditorías de los cargos principales de la boleta (Secretaría de Estado)",
+   "state": "draft"
+  },
   "guide.election-worker.ballots-and-counting-devices-rsa-656": {
    "en": "Ballots and Counting Devices, RSA 656",
    "es": "Boletas y dispositivos de conteo, RSA 656",
@@ -4037,6 +4042,11 @@
   "guide.election-worker.for-an-inspector-of-election-the": {
    "en": "For an inspector of election, the law looks to the parties: inspectors are appointed from the two parties that received the most votes for governor, by their state committees or by the selectmen in equal numbers from the two, and the two ballot clerks are one from each. The law does not tie the assistants the moderator appoints to a party.",
    "es": "Para ser inspector electoral, la ley se remite a los partidos: los inspectores se nombran de los dos partidos que obtuvieron más votos para gobernador, por sus comités estatales o por los concejales en igual número de los dos, y los dos encargados de las boletas son uno de cada partido. La ley no vincula a un partido a los asistentes que nombra el moderador.",
+   "state": "draft"
+  },
+  "guide.election-worker.how-a-recount-runs-the-secretary": {
+   "en": "<b>How a recount runs.</b> The Secretary of State publishes its recount procedures; those for state primaries describe it this way. Every recount is open to the public, and its time and place are posted on the Secretary of State&rsquo;s website. At least one team of two people counts each race. Across the table from them sits each candidate, or one person for the candidate, with other observers standing behind; cameras show every ballot and the tally sheet on screens facing the candidates, and do not record. Each box is opened in front of them and shown empty. The ballots are sorted into piles, in a race for one seat one for each candidate and piles for undervotes, overvotes and write-ins, and counted out loud in sets of 25, each set checked by the second counter. A candidate may challenge how any ballot is counted, without giving a reason; the Secretary of State rules on it, and a ballot still disputed is kept with a memo of the ruling in case of an appeal. The Secretary of State compares the recount with the election night results and declares the result, which is final unless changed on an appeal to the Ballot Law Commission within 10 days.",
+   "es": "<b>Cómo se hace un recuento.</b> La Secretaría de Estado publica sus procedimientos de recuento; los de las primarias estatales lo describen así. Todo recuento está abierto al público, y su hora y lugar se publican en el sitio web de la Secretaría de Estado. Al menos un equipo de dos personas cuenta cada contienda. Al otro lado de la mesa se sienta cada candidato, o una persona en su nombre, y otros observadores se quedan de pie detrás; unas cámaras muestran cada boleta y la hoja de conteo en pantallas frente a los candidatos, y no graban. Cada caja se abre frente a ellos y se muestra vacía. Las boletas se separan en pilas, en una contienda por un solo puesto una por cada candidato y pilas para los votos en blanco (undervotes), los votos de más (overvotes) y los votos por escrito (write-ins), y se cuentan en voz alta en grupos de 25, cada grupo comprobado por el segundo contador. Un candidato puede impugnar cómo se cuenta cualquier boleta, sin dar una razón; la Secretaría de Estado decide, y una boleta que sigue en disputa se guarda con una nota de la decisión por si hay una apelación. La Secretaría de Estado compara el recuento con los resultados de la noche de la elección y declara el resultado, que es definitivo salvo que cambie por una apelación ante la Comisión de Leyes Electorales (Ballot Law Commission) dentro de los 10 días.",
    "state": "draft"
   },
   "guide.election-worker.how-chosen": {
@@ -4127,6 +4137,16 @@
   "guide.election-worker.provide-and-equip-the-polling-place": {
    "en": "Provide and equip the polling place, appoint inspectors where the parties do not, and are present when the ballots are sealed",
    "es": "Proporcionan y equipan el lugar de votación, nombran a los inspectores donde los partidos no lo hacen, y están presentes cuando se sellan las boletas",
+   "state": "draft"
+  },
+  "guide.election-worker.recount-procedures-secretary-of-state": {
+   "en": "Recount procedures (Secretary of State)",
+   "es": "Procedimientos de recuento (Secretaría de Estado)",
+   "state": "draft"
+  },
+  "guide.election-worker.recount-procedures-state-primary": {
+   "en": "Recount Procedures, State Primary Elections (Secretary of State, 2024)",
+   "es": "Procedimientos de recuento, elecciones primarias estatales (Secretaría de Estado, 2024)",
    "state": "draft"
   },
   "guide.election-worker.recounts-and-audits-rsa-660": {
@@ -4229,6 +4249,11 @@
    "es": "El Secretario de Estado, el funcionario electoral principal del estado, que prepara las boletas, recibe el acta de resultados de cada municipio y dirige los recuentos y la auditoría.",
    "state": "draft"
   },
+  "guide.election-worker.the-top-of-the-ticket-audit": {
+   "en": "<b>The top-of-the-ticket audit.</b> When state representative races are recounted after a general election, the Secretary of State also audits the votes on those same ballots for President, United States Senate, United States House or Governor, choosing the office, for 10 of the recounted races picked at random (or all of them, if fewer than 10 are recounted). A discrepancy of more than one percent from the reported results allows a full recount of that race. The audit follows the general election recount procedures, and its results are published on the Secretary of State&rsquo;s website.",
+   "es": "<b>La auditoría de los cargos principales.</b> Cuando se hace un recuento de contiendas de representante estatal después de una elección general, la Secretaría de Estado también audita los votos de esas mismas boletas para Presidente, Senado de los Estados Unidos, Cámara de Representantes de los Estados Unidos o Gobernador, eligiendo el cargo, en 10 de las contiendas recontadas elegidas al azar (o en todas, si se recuentan menos de 10). Una discrepancia de más del uno por ciento con los resultados informados permite un recuento completo de esa contienda. La auditoría sigue los procedimientos de recuento de la elección general, y sus resultados se publican en el sitio web de la Secretaría de Estado.",
+   "state": "draft"
+  },
   "guide.election-worker.the-towns-or-wards-selectmen": {
    "en": "The town&rsquo;s or ward&rsquo;s selectmen",
    "es": "Los concejales del municipio o del barrio electoral",
@@ -4242,6 +4267,11 @@
   "guide.election-worker.title": {
    "en": "How to Work at the Polls on Election Day",
    "es": "Cómo trabajar en el lugar de votación el día de la elección",
+   "state": "draft"
+  },
+  "guide.election-worker.top-of-the-ticket-audit-procedures": {
+   "en": "Top-of-the-ticket audit procedures (Secretary of State)",
+   "es": "Procedimientos de la auditoría de los cargos principales (Secretaría de Estado)",
    "state": "draft"
   },
   "guide.election-worker.town-meetings-and-moderators-rsa-40": {
