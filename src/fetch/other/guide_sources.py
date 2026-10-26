@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-10-11.19
+# GRANITE_VERSION: 2026-10-11.20
 """
 The official pages the how-to guides cite, onto this disk, to check them by.
 
@@ -108,6 +108,13 @@ SOURCES = {
         "https://www.dmv.nh.gov/vehicles-boats-or-titles/vehicle-registrations/new-resident-new-hampshire",
         "https://www.dmv.nh.gov/tabbed-content/new-registrations",
         "https://www.dmv.nh.gov/vehicles-boats-and-titles/apply-title",
+    ],
+    # Not yet read, 26 October 2026: the motorcycle guide's DMV pages, which
+    # refuse a cloud session; its claims on them wait for the person's printouts.
+    "motorcycle": [
+        "https://www.dmv.nh.gov/drivers-licensenon-driver-ids/motorcycle-license-endorsement",
+        "https://www.dmv.nh.gov/drivers-licensenon-driver-ids/motorcycle-rider-training-program",
+        "https://www.dmv.nh.gov/motorcycle-endorsement-frequently-asked-questions",
     ],
     "insurance_appeal": [
         "https://www.insurance.nh.gov/consumers",

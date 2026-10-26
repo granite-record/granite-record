@@ -104,6 +104,7 @@ GUIDE_PAGES = tuple(f"guides/{s}.html" for s in (
     "your-representatives", "contact-your-legislators", "attend-a-hearing", "submit-testimony",
     "testifying", "read-a-bill", "using-this-site", "how-to-vote", "run-for-office",
     "renew-drivers-license", "register-a-car", "real-id", "new-to-new-hampshire",
+    "motorcycle-license",
     "food-and-health-assistance", "file-for-unemployment", "wage-rights",
     "heating-and-electric-help", "property-tax-abatement", "property-tax-relief",
     "property-tax-bill", "public-records", "vital-records",
