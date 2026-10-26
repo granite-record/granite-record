@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.715
+# GRANITE_VERSION: 2026-09-04.716
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -26541,6 +26541,8 @@ LEARN_CONSTITUTION_CLAIMS = [
      2, "78", "after he has attained the age of seventy years"),
     ("state-house-and-branches", "on the address of both houses of the legislature",
      2, "73", "upon the address of both houses of the legislature"),
+    ("state-house-and-branches", "changing them means amending it, as Part Second, Article 100 provides",
+     2, "100", "amendments to this constitution may be proposed"),
 ]
 
 

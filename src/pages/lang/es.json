@@ -18526,6 +18526,11 @@
    "es": "Sí. Un comisionado ejerce el cargo por un período fijo y puede volver a ser nombrado de la misma manera: lo propone el Gobernador y lo confirma el Consejo Ejecutivo.",
    "state": "draft"
   },
+  "learn.state-house-and-branches.a-building-of-its-own-for": {
+   "en": "A building of its own for the State Library, planned from 1881, made room for the Supreme Court as well when it was finished in 1895.",
+   "es": "Un edificio propio para la Biblioteca del Estado, planeado desde 1881, dio cabida también a la Corte Suprema cuando se terminó en 1895.",
+   "state": "draft"
+  },
   "learn.state-house-and-branches.a-governor-elected-every-two-years": {
    "en": "A Governor Elected Every Two Years",
    "es": "Un Gobernador elegido cada dos años",
@@ -18541,6 +18546,11 @@
    "es": "Una Cámara de cuatrocientos",
    "state": "draft"
   },
+  "learn.state-house-and-branches.a-huge-gold-painted-wooden-eagle": {
+   "en": "A huge gold-painted wooden eagle was raised to the top of the dome in 1818. At the ceremonies, over which Governor William Plumer presided, one toast ran: &ldquo;The American Eagle. May the shadow of his wings protect every acre of our united continent and the lightning of his eye flash terror and defeat through the ranks of our enemies.&rdquo;",
+   "es": "En 1818 se colocó en lo alto de la cúpula una enorme águila de madera pintada de dorado. En la ceremonia, que presidió el Gobernador William Plumer, uno de los brindis decía: &ldquo;El Águila Americana. Que la sombra de sus alas proteja cada acre de nuestro continente unido y que el relámpago de su mirada siembre el terror y la derrota en las filas de nuestros enemigos.&rdquo;",
+   "state": "draft"
+  },
   "learn.state-house-and-branches.about-the-executive-council": {
    "en": "About the Executive Council",
    "es": "Acerca del Consejo Ejecutivo",
@@ -18549,6 +18559,11 @@
   "learn.state-house-and-branches.as-this-sites-record-stands-the": {
    "en": "As this site&rsquo;s record stands, the House has <b>[[house_seats]] seats and [[house_sitting]] sitting members</b>, with [[house_vacant]] vacant, and the Senate [[senate_districts]] districts. Each member&rsquo;s page is on the <a href=\"officials.html\">Officials page</a>.",
    "es": "Según el registro de este sitio, la Cámara tiene <b>[[house_seats]] escaños y [[house_sitting]] miembros en funciones</b>, con [[house_vacant]] vacantes, y el Senado [[senate_districts]] distritos. La página de cada miembro está en la <a href=\"officials.html\">página de Funcionarios</a>.",
+   "state": "draft"
+  },
+  "learn.state-house-and-branches.by-1909-a-bill-was-introduced": {
+   "en": "By 1909 a bill was introduced for about a million dollars, for what amounted to an entirely new state house, and Manchester again offered the million if the State House were moved there. The legislature again kept it in Concord, and under Governor Quimby the whole building was remodeled, made fire-proof and given electric elevators.",
+   "es": "Para 1909 se presentó un proyecto de ley por cerca de un millón de dólares, para lo que equivalía a un Capitolio completamente nuevo, y Manchester volvió a ofrecer el millón si el Capitolio se trasladaba allí. La Legislatura volvió a mantenerlo en Concord, y bajo el Gobernador Quimby se remodeló todo el edificio, se hizo a prueba de incendios y se le pusieron ascensores eléctricos.",
    "state": "draft"
   },
   "learn.state-house-and-branches.can-a-judge-be-removed-before": {
@@ -18566,6 +18581,11 @@
    "es": "Distrito Cívico de Concord, nominación al Registro Nacional de Lugares Históricos (Servicio de Parques Nacionales, 1983)",
    "state": "draft"
   },
+  "learn.state-house-and-branches.concord-saved-a-considerable-expense-by": {
+   "en": "Concord saved a considerable expense by building it of granite from what are now the Swenson quarries, at the north end of the town, with the stones cut, shaped and faced by inmates of the prison.",
+   "es": "Concord se ahorró un gasto considerable al construirlo con granito de lo que hoy son las canteras Swenson, en el extremo norte del pueblo, y al encargar que los presos de la cárcel cortaran, labraran y pulieran las piedras.",
+   "state": "draft"
+  },
   "learn.state-house-and-branches.find-your-legislators-by-town": {
    "en": "Find your legislators, by town",
    "es": "Encuentre a sus legisladores, por municipio",
@@ -18581,14 +18601,29 @@
    "es": "Cinco <b>consejeros ejecutivos</b> se eligen cada dos años &ldquo;para asesorar al gobernador en la parte ejecutiva del gobierno&rdquo; (Parte Segunda, Artículo 60), uno por cada uno de cinco distritos trazados tan iguales en población como sea posible (Parte Segunda, Artículo 65). Hasta 1792 el consejo lo formaban miembros de la Cámara y del Senado, elegidos por ellos.",
    "state": "draft"
   },
+  "learn.state-house-and-branches.from-the-state-houses-history": {
+   "en": "From the State House&rsquo;s History",
+   "es": "De la historia del Capitolio",
+   "state": "draft"
+  },
   "learn.state-house-and-branches.has-legislators-pay-ever-been-raised": {
    "en": "Has legislators&rsquo; pay ever been raised?",
    "es": "¿Alguna vez se ha aumentado el sueldo de los legisladores?",
    "state": "draft"
   },
+  "learn.state-house-and-branches.history-of-the-state-house-revised": {
+   "en": "History of the State House, revised from the 1977 Manual for the General Court (NH.gov)",
+   "es": "Historia del Capitolio (History of the State House), revisada a partir del Manual de la Legislatura (Manual for the General Court) de 1977 (NH.gov)",
+   "state": "draft"
+  },
   "learn.state-house-and-branches.how-many-members-does-the-general": {
    "en": "How many members does the General Court have?",
    "es": "¿Cuántos miembros tiene la Legislatura (General Court)?",
+   "state": "draft"
+  },
+  "learn.state-house-and-branches.in-1863-during-the-civil-war": {
+   "en": "In 1863, during the Civil War, the city of Manchester offered no less than half a million dollars to build a new capitol there. The legislature kept the capitol in Concord and enlarged it instead, from 1864 to 1866, for about $200,000.",
+   "es": "En 1863, durante la Guerra Civil, la ciudad de Manchester ofreció no menos de medio millón de dólares para construir allí un nuevo Capitolio. La Legislatura mantuvo el Capitolio en Concord y, en cambio, lo amplió de 1864 a 1866, por cerca de $200,000.",
    "state": "draft"
   },
   "learn.state-house-and-branches.in-the-councils-own-words-each": {
@@ -18611,9 +18646,9 @@
    "es": "Se amplió dos veces. En 1864&ndash;1866, según los diseños del arquitecto de Boston Gridley J.F. Bryant, ganó un tercer piso, el pórtico y la cúpula dorada, inspirada en el H&ocirc;tel des Invalides de París. En 1909&ndash;1910 la firma Peabody &amp; Stearns lo extendió hacia el oeste, casi duplicando su tamaño. El granito de cada época tiene otro color: la piedra original está manchada de hierro, y la posterior, sacada de más hondo en las canteras, es más pura.",
    "state": "draft"
   },
-  "learn.state-house-and-branches.judges-are-not-elected-the-governor": {
-   "en": "Judges are not elected. The Governor nominates and the Executive Council confirms (Part Second, Article 46). Once appointed, a judge holds office during good behavior (Part Second, Article 73), and no one may serve as a judge after reaching seventy, a limit in the constitution since 1792 (Part Second, Article 78). <a href=\"learn/the-courts.html\">The Courts</a> says how the courts are arranged.",
-   "es": "Los jueces no se eligen. El Gobernador propone y el Consejo Ejecutivo confirma (Parte Segunda, Artículo 46). Una vez nombrado, un juez ocupa el cargo mientras observe buena conducta (Parte Segunda, Artículo 73), y nadie puede ser juez después de cumplir setenta años, un límite que está en la constitución desde 1792 (Parte Segunda, Artículo 78). <a href=\"learn/the-courts.html\">Los tribunales</a> explica cómo están organizados los tribunales.",
+  "learn.state-house-and-branches.judges-are-appointed-the-governor": {
+   "en": "Judges are appointed. The Governor nominates and the Executive Council confirms (Part Second, Article 46). Once appointed, a judge holds office during good behavior (Part Second, Article 73), and no one may serve as a judge after reaching seventy, a limit in the constitution since 1792 (Part Second, Article 78). <a href=\"learn/the-courts.html\">The Courts</a> says how the courts are arranged.",
+   "es": "Los jueces son nombrados. El Gobernador propone y el Consejo Ejecutivo confirma (Parte Segunda, Artículo 46). Una vez nombrado, un juez ocupa el cargo mientras observe buena conducta (Parte Segunda, Artículo 73), y nadie puede ser juez después de cumplir setenta años, un límite que está en la constitución desde 1792 (Parte Segunda, Artículo 78). <a href=\"learn/the-courts.html\">Los tribunales</a> explica cómo están organizados los tribunales.",
    "state": "draft"
   },
   "learn.state-house-and-branches.judges-serve-until-seventy": {
@@ -18641,6 +18676,11 @@
    "es": "$200 por un período de dos años",
    "state": "draft"
   },
+  "learn.state-house-and-branches.the-building-cost-about-82-000": {
+   "en": "The building cost about $82,000, and the legislature first met in it in 1819. Its builder, Stuart J. Park, has a Concord street named for him: Park Street, north of the building.",
+   "es": "El edificio costó cerca de $82,000, y la Legislatura sesionó en él por primera vez en 1819. Su constructor, Stuart J. Park, tiene una calle de Concord con su nombre: Park Street, al norte del edificio.",
+   "state": "draft"
+  },
   "learn.state-house-and-branches.the-building-stands-three-stories-high": {
    "en": "The building stands three stories high, topped by a gilded dome set on an octagonal base, rising 149 feet. When it was built in 1819 it housed 204 legislators. The National Register nomination that describes it, written in 1983, counted 424 members and called it &ldquo;the largest state legislature in the country.&rdquo;",
    "es": "El edificio tiene tres pisos y lo corona una cúpula dorada sobre una base octogonal, que se eleva a 149 pies. Cuando se construyó en 1819 alojaba a 204 legisladores. La nominación al Registro Nacional que lo describe, escrita en 1983, contaba 424 miembros y la llamaba &ldquo;la legislatura estatal más grande del país.&rdquo;",
@@ -18657,13 +18697,18 @@
    "state": "draft"
   },
   "learn.state-house-and-branches.the-constitution-has-said-200-for": {
-   "en": "The constitution has said $200 for the term, and $250 for the presiding officers, since an amendment of 1889. Changing it would take a constitutional amendment.",
-   "es": "La constitución dice $200 por el período, y $250 para quienes presiden las cámaras, desde una enmienda de 1889. Cambiarlo requeriría una enmienda constitucional.",
+   "en": "The constitution has said $200 for the term, and $250 for the presiding officers, since an amendment of 1889. The figures are the constitution&rsquo;s own words, so changing them means amending it, as Part Second, Article 100 provides.",
+   "es": "La constitución dice $200 por el período, y $250 para quienes presiden las cámaras, desde una enmienda de 1889. Las cifras son palabras de la propia constitución, así que cambiarlas significa enmendarla, como dispone la Parte Segunda, Artículo 100.",
    "state": "draft"
   },
   "learn.state-house-and-branches.the-eagle-on-top-of-the": {
    "en": "The eagle on top of the dome is a copper replica, put up in 1957, of the original wooden eagle erected in 1818. Its head is turned to its right, the sign of a peace eagle, unlike the war eagle it replaced.",
    "es": "El águila en lo alto de la cúpula es una réplica de cobre, colocada en 1957, del águila de madera original levantada en 1818. Tiene la cabeza girada hacia su derecha, la señal de un águila de paz, a diferencia del águila de guerra a la que reemplazó.",
+   "state": "draft"
+  },
+  "learn.state-house-and-branches.the-first-talk-of-a-state": {
+   "en": "The first talk of a state capitol came in 1814. Concord, Hopkinton and Salisbury competed for it, and Salisbury offered seven thousand dollars for the honor. Concord won, and by 1816 the decision to build there was final.",
+   "es": "Se habló por primera vez de un Capitolio estatal en 1814. Concord, Hopkinton y Salisbury compitieron por él, y Salisbury ofreció siete mil dólares por el honor. Ganó Concord, y para 1816 la decisión de construirlo allí era definitiva.",
    "state": "draft"
   },
   "learn.state-house-and-branches.the-governor-and-council-act-together": {
@@ -18706,9 +18751,19 @@
    "es": "El sueldo de un legislador está escrito en la constitución. La Parte Segunda, Artículo 15 da a cada miembro $200 &ldquo;como compensación total por sus servicios durante el período para el que fue elegido,&rdquo; y a quienes presiden las dos cámaras $250. Las cifras las fijó una enmienda de 1889.",
    "state": "draft"
   },
+  "learn.state-house-and-branches.the-state-house-annex-planned-in": {
+   "en": "The State House Annex, planned in 1937, had its cornerstone laid in 1938 and cost $327,000, a federal grant included. An underground passageway joins it to the State House.",
+   "es": "El Anexo del Capitolio (State House Annex), planeado en 1937, tuvo su primera piedra en 1938 y costó $327,000, incluida una subvención federal. Un pasadizo subterráneo lo une al Capitolio.",
+   "state": "draft"
+  },
   "learn.state-house-and-branches.the-state-house-in-concord-at": {
    "en": "The <b>State House</b> in Concord, at 107 North Main Street, was built from 1816 to 1819, with Stuart Park as master builder. It is built of Concord granite, quarried nearby. The first building was a two-story structure in the Federal style, capped by a domed lantern, and it appears to have been based in part on a plate in Robert Morris's <i>Select Architecture</i>, a London pattern book of 1757.",
    "es": "El <b>Capitolio</b> (State House) de Concord, en el 107 de North Main Street, se construyó de 1816 a 1819, con Stuart Park como maestro de obras. Es de granito de Concord, extraído en los alrededores. El primer edificio era una estructura de dos pisos en estilo federal, rematada por una linterna con cúpula, y parece haberse basado en parte en una lámina de <i>Select Architecture</i> de Robert Morris, un libro de modelos publicado en Londres en 1757.",
+   "state": "draft"
+  },
+  "learn.state-house-and-branches.the-states-own-history-of-the": {
+   "en": "The state&rsquo;s own history of the building, revised from the 1977 Manual for the General Court, tells these.",
+   "es": "La historia del edificio que publica el propio estado, revisada a partir del Manual de la Legislatura de 1977, cuenta lo siguiente.",
    "state": "draft"
   },
   "learn.state-house-and-branches.through-the-main-entrance-is-doric": {
@@ -18719,6 +18774,11 @@
   "learn.state-house-and-branches.title": {
    "en": "The State House and What Makes New Hampshire's Government Different",
    "es": "El Capitolio y lo que hace distinto al gobierno de New Hampshire",
+   "state": "draft"
+  },
+  "learn.state-house-and-branches.under-governor-lane-dwinell-the": {
+   "en": "Under Governor Lane Dwinell the weathered wooden eagle was replaced by a metal replica, and the statues of John Stark, Daniel Webster, President Pierce, John P. Hale and Commodore Perkins were cleaned and made tarnishproof.",
+   "es": "Bajo el Gobernador Lane Dwinell, el águila de madera, desgastada por el tiempo, se reemplazó por una réplica de metal, y las estatuas de John Stark, Daniel Webster, el Presidente Pierce, John P. Hale y el comodoro Perkins se limpiaron y se protegieron contra el deslustre.",
    "state": "draft"
   },
   "learn.state-house-and-branches.who-chooses-the-governor-if-no": {
