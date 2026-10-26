@@ -12,16 +12,24 @@ readers reported and what changed -- and publish only if told to.
 Meant for Task Scheduler. Everything it prints also goes to
 logs/nightly-YYYY-MM-DD.log.
 
-WHAT IT ASKS THE GENERAL COURT FOR: fourteen files, once
+WHAT IT ASKS THE GENERAL COURT FOR
 
-snapshot_gencourt.py's bulk files, a few seconds apart, and nothing else. They
-are enough to notice what a day changed -- Docket.txt drives the build, and a
-newly scheduled hearing, a status change, a referral, a roll call and a new
-sponsor all arrive through it -- and they are the one fetch that cannot be done
-later, because the files are live views overwritten as a session moves. Every
-other network step build_all has (bill pages, testimony, committee pages) has
-no refusal handling or budget and stays out of the nightly; the build runs
---local.
+First the day's bulk files: snapshot_gencourt.py opens the Dynamic Data
+Files page once, which rebuilds them, and takes its thirteen files and
+Members.txt, a few seconds apart. They are enough to notice what a day
+changed -- Docket.txt drives the build, and a newly scheduled hearing, a
+status change, a referral, a roll call and a new sponsor all arrive through it
+-- and they are the one fetch that cannot be done later, because the files are
+live views overwritten as a session moves. On the laptop that is all, and
+once. On GitHub's machine (--runner, below) an export that comes back empty is
+asked again, with the database once in its place (EMPTY_TRIES, DB_AFTER_TRIES,
+TRIES_AFTER_DB); and under the same lock, each only while no refusal is on
+file, the night goes on to the SQL host the General Court publishes (the study
+committees' meetings, the current term's data, and the statutes on the nights
+a new law takes effect), next session's bill requests (fetch_lsrs.py) and the
+two index pages of its calendars and journals (fetch_calendar_archive.py
+--listing). Every other network step build_all has (bill pages, testimony,
+committee pages) stays out of the nightly; the build runs --local.
 
 IT ASKS ONLY WHEN NOTHING ELSE IS ASKING. This address has blocked the project
 twice, the second time for two fetches at once, and the bill-text lane runs for

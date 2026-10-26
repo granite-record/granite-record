@@ -428,29 +428,6 @@ ROLLCALL_ONLY = ('<p class="swho">The docket has no line for this vote: the '
                  "it.</p>")
 
 
-def _question_html(it, moved, esc):
-    """"On the motion: ...", or, for a roll call the record states with no
-    words for its question -- an empty question in the roll-call file, a
-    1989-1998 docket row cut from its line -- says so rather than leaving the
-    heading empty."""
-    if (it.action or "").strip():
-        return f'<p class="smq">On the motion: <b>{esc(it.action)}</b>{moved}</p>'
-    return f'<p class="smq">On a question the record does not name{moved}</p>'
-
-
-def _ballots_here(it):
-    """Are this roll call's ballots on the bill's own page? Not where the
-    roll-call file holds the vote under another bill or under none -- one
-    motion on several bills -- and not for a motion drawn from the docket
-    alone: no roll call on record is tied to it, so there are no ballots to
-    be anywhere. The page said there were 1,402 times, every roll call of
-    1989-1998 among them; HB 1's own page of 1997 holds no vote of 10 June."""
-    rc = getattr(it, "rc", None)
-    if rc is None:
-        return False
-    return bool(rc.get("bill")) and session_days._bill_of(rc["bill"]) == it.bill.upper()
-
-
 def others_html(others, body, members, esc, payloads, day="", term="", years=None,
                 nobill=None):
     """The day's votes on no bill -- the chamber's own rules, a ruling of the

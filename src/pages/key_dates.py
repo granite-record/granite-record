@@ -475,13 +475,6 @@ def unnamed(out=print):
 # ---------------------------------------------------------------------------
 # DRAWING. The Calendar's card, and the home page's row, list and line.
 # ---------------------------------------------------------------------------
-def calendar_href(day):
-    """The Calendar at a day: its week and the day, in the query the
-    Calendar's own address keeps (build_calendar.WEEK_JS's writeQuery)."""
-    y, w, _ = _day(day).isocalendar()
-    return f"/calendar?week={y}-W{w:02d}&day={day}"
-
-
 def _esc(s):
     return html.escape(str(s or ""), quote=True).replace("&#x27;", "&rsquo;")
 

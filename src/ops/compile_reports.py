@@ -15,9 +15,10 @@ WHERE REPORTS COME FROM
 functions/api/report.js writes each one to a D1 database. This reads new rows
 with `wrangler d1 execute --json` -- the same login `publish` already uses, so
 there is no API token to keep -- lands them in reports/issues-<db>-<date>.jsonl
-and writes reports/triage-<db>-<date>.md. reports/ is not in git except for
-the ledger of what was done (handled.jsonl), because what a stranger typed does
-not belong in a public repository.
+and writes reports/triage-<db>-<date>.md. reports/ is not in git but for
+schema.sql, the table report.js writes: what a stranger typed does not belong
+in a public repository, and the ledger of what was done (handled.jsonl) stays
+on this machine too, where the triage session reads it (.gitignore).
 
 HOW LONG A REPORT IS KEPT
 

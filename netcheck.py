@@ -116,10 +116,6 @@ def raw_try(host, version, scheme="https", label=""):
         c.close()
 
 
-def raw_try_l(host, version, scheme="https", label=""):
-    return raw_try(host, version, scheme, label)
-
-
 def main():
     tests = [
         ("our User-Agent, https, gc.nh.gov",

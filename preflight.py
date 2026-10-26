@@ -35525,7 +35525,7 @@ def _session_bill_term(BSP, SD, shell):
         rc = item("HB1102", "2015-2016", 1, vote_kind="RC", yeas="200",
                   nays="150", cite_page="10")
         # the roll call on record it is: a motion the docket alone states has
-        # no ballots anywhere, and no pointer (BSP._ballots_here)
+        # no ballots anywhere, and no pointer
         rc.rc = {"year": "2016", "body": "H", "number": 1, "bill": "HB1102",
                  "yeas": 200, "nays": 150}
         cons = item("HB1300", "2015-2016", 2, vote_kind="VV", cite_page="11")

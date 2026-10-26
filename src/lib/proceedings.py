@@ -355,16 +355,6 @@ def by_video(rows=None):
     return dict(out)
 
 
-def bills_on(video_id, rows=None):
-    """Bills scheduled on one recording, in the file's order, no repeats."""
-    seen, out = set(), []
-    for r in (by_video(rows).get(video_id) or []):
-        if r["bill"] not in seen:
-            seen.add(r["bill"])
-            out.append(r["bill"])
-    return out
-
-
 def floor_only(rows=None):
     rows = load() if rows is None else rows
     return [r for r in rows if r["kind"] in FLOOR_KINDS]

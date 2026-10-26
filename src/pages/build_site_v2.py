@@ -3902,13 +3902,6 @@ def build_status(a, index, procs, floor, today, latest_by_body, upcoming):
     status["last_session"] = (max(v["date"] for v in latest_by_body.values())
                               if latest_by_body else None)
     status["hearings_next_14"] = len(upcoming)
-    # Always-correct live links: these URLs resolve to whatever is streaming now,
-    # or to the channel if nothing is, so no polling is needed.
-    status["live"] = [
-        {"chamber": "House",
-         "url": "https://www.youtube.com/@NHHouseofRepresentatives/live"},
-        {"chamber": "Senate",
-         "url": "https://www.youtube.com/@NewHampshireSenate/live"}]
 
     return status
 
