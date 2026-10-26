@@ -73830,7 +73830,11 @@ def _home_says_each_once(BP, chrome):
     nothing. The Spanish page says it all in Spanish, its date in Spanish
     form, its links the same. Nothing in it asks YouTube or Google for
     anything -- no frame, no thumbnail, no script -- and app.css draws the
-    still as the bill's player is drawn: 16:9, Play in its middle.
+    still as the bill's player is drawn: 16:9, Play in its middle. It lays
+    the two out too (the review of 26 October 2026): side by side where a
+    row holds two at 280px, one column in the left rail and on a phone, the
+    title at the meta size, and #session a sheet with a margin and a ruled
+    heading wherever Coming up is one, and not drawn when empty.
 
     HOME_JS's click handler, run in node, puts the no-cookie player in
     Play's place, titled from the button, with the focus where Play had it;
@@ -73917,6 +73921,45 @@ def _home_says_each_once(BP, chrome):
         f".player iframe {frame}")
     assert ".sessline" not in Path("src/pages/app.css").read_text(encoding="utf-8") \
         and not hasattr(BP, "session_line"), "the one line that stood for the players is still here"
+    # THE PLAYERS, LAID OUT (the review of 26 October 2026: none of this was
+    # held, and with .twoup, #session's sheet and its margin gone, the
+    # preview's two players at 1024px stood one over the other at 976x550
+    # each, out of any sheet, where they sit side by side at 463x261 in one).
+    # Two across where a row holds two at 280px, one column in the left rail
+    # and on a phone; the title at the meta size over its player; and
+    # #session set apart wherever Coming up is -- the same sheet, margin and
+    # heading rule, in the same block -- and drawn not at all when empty.
+    P, WIDE, ONE, NARROW = (":where(body.pg) ", ("@media(min-width:73.75em)",),
+                            ("@media(max-width:73.74875em)",), ("@media(max-width:45em)",))
+    laid = [(tuple(re.sub(r"\s+", "", a) for a in at), {" ".join(s.split()) for s in sel.split(",")},
+             {k: " ".join(v.split()) for k, v in _css_decls(body)}) for at, sel, body, n in rules]
+
+    def said(ctx, sel):
+        """What app.css sets for `sel` under exactly the at-rules `ctx`."""
+        out = {}
+        for c, sels, decls in laid:
+            if c == ctx and P + sel in sels:
+                out.update(decls)
+        return out
+
+    want = [((), ".twoup", {"display": "grid", "gap": "var(--sp-6)",
+                            "grid-template-columns": "repeat(auto-fit,minmax(280px,1fr))"}),
+            (WIDE, ".hside .twoup", {"grid-template-columns": "1fr"}),
+            (NARROW, ".twoup", {"grid-template-columns": "1fr"}),
+            ((), ".sesstitle", {"margin": "0 0 var(--sp-3)", "font-size": "var(--t-sm)"}),
+            ((), ".sess .player", {"margin-top": "0"}),
+            (ONE, ".hcols #session:empty", {"display": "none"}),
+            ((), ".hv-sections #session:empty", {"display": "none"}),
+            (ONE, ".hv-panels #session:empty", {"display": "none"})]
+    unlaid = [f"{' '.join(c)} {s} {d} (it sets {said(c, s)})".strip() for c, s, d in want
+              if any(said(c, s).get(k) != v for k, v in d.items())]
+    unlaid += [f"{' '.join(c)} {s} is not in the block that sets {s.replace('#session', '#upcoming')} apart"
+               .strip() for c, s in ((ONE, ".hcols #session"), ((), ".hv-sections #session"),
+                                     (ONE, ".hv-panels #session"), (ONE, ".hv-panels #session h2"),
+                                     (ONE, ".hv-sections #session h2"))
+               if not any(c2 == c and {P + s, P + s.replace("#session", "#upcoming")} <= sels
+                          for c2, sels, _ in laid)]
+    assert not unlaid, "app.css does not lay out Recent Session Days: " + "; ".join(unlaid)
 
     # HOME_JS: PLAY OPENS THE PLAYER, run in node; nothing else drawn into
     # #session, and no address of YouTube's but the player's own.
@@ -73993,7 +74036,9 @@ def _home_says_each_once(BP, chrome):
         f"nothing: {got}")
     return "ok", ("Recent Session Days: a 16:9 player for each chamber, \"House Session (Aug 19, "
                   "2026)\" dated to its page, its own date where the chambers sat apart, in "
-                  "English and Spanish, nothing from YouTube until Play, which opens the no-cookie "
+                  "English and Spanish, two across where they fit and one column in the left rail "
+                  "and on a phone, a sheet wherever Coming up is one; nothing from YouTube until "
+                  "Play, which opens the no-cookie "
                   "player with Play's focus; the rebuild line silent when fresh, a warning when "
                   "five days old or a step failed")
 

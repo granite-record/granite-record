@@ -3526,7 +3526,6 @@ text-align:center;color:var(--ink-2);font-size:var(--t-ui)}
   .cnum{font-size:var(--t-ui)}
   .pbar{flex-wrap:wrap;gap:var(--sp-3)}
   .pbar .jump{font-size:var(--t-sm)}
-  .twoup{grid-template-columns:1fr}
   .entry{grid-template-columns:1fr}
   .statgrid{grid-template-columns:1fr 1fr}
   /* The supporting text carries the site's hedging -- "estimated within
