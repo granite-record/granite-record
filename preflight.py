@@ -34674,6 +34674,9 @@ CLOCK_OF_THEIR_OWN = {
     "town_boards.py": "the day a town's boards were read, in its own run by hand",
     "freeze_term.py": "the day a term's freeze was made, in the freeze's own manifest; the "
                       "build imports it only to read what is frozen",
+    "fetch_calendar_archive.py": "when the listing read each index page, in its own run; the "
+                                 "build reaches it only through cloud.py's handover commands, "
+                                 "which read its queue",
 }
 
 
@@ -92167,7 +92170,9 @@ def _kit_per_year_owner(R, CL):
         bucket has none, never over the bucket's;
       - the night's kit-up sends its 2026 text and not the 2025 one;
       - pull brings the night's 2026 text down, puts back the handover record
-        when it is missing here, and leaves one that is here as it is."""
+        when it is missing here, and leaves one that is here as it is;
+      - and, the record put back, the PDF of 2026 the night kept with docs-up,
+        and none of 2025 (docs_down)."""
     real = CL.load_kit(".")
     texts = next(e for e in real["kit"] if "calendars/*/*.txt" in e.get("globs", []))
     assert texts["owner"] == "laptop" and texts.get("night_from") == R.HANDOVER.as_posix(), \
@@ -92230,6 +92235,10 @@ def _kit_per_year_owner(R, CL):
         code, out = call(night, "kit-up")
         assert code == 0 and (kept(a), kept(b)) == ("a2", "b3"), (
             f"the night's kit-up did not send its 2026 text, or sent the laptop's 2025: {out[-300:]}")
+        pdf = b"%PDF-1.7 five %%EOF"
+        put(night, ".night/docs/calendars/2026/HC 5.pdf", "%PDF-1.7 five %%EOF")
+        assert call(night, "docs-up")[0] == 0
+        CL.FolderBucket(bucket).put_bytes("docs/calendars/2025/HC 4.pdf", pdf)
         (laptop / hand).unlink()
         code, out = call(laptop, "pull")
         assert code == 0 and (laptop / hand).exists() and \
@@ -92237,6 +92246,9 @@ def _kit_per_year_owner(R, CL):
             (laptop / b).read_text(encoding="utf-8") == "b3" and \
             (laptop / a).read_text(encoding="utf-8") == "a2", \
             f"pull did not put the record back, or take the night's text: {out[-400:]}"
+        assert (laptop / "calendars/2026/HC 5.pdf").read_bytes() == pdf and \
+            not (laptop / "calendars/2025/HC 4.pdf").exists(), \
+            f"pull did not bring the night's PDF of 2026, or brought one of 2025: {out[-400:]}"
         mine = json.dumps({"from_year": 2026, "at": "2026-11-10T14:00:00Z",
                            "handed_back": {"at": "2026-12-01T15:00:00Z", "sent": False}})
         put(laptop, hand, mine)
@@ -92361,17 +92373,18 @@ def _documents_off_is_off(R, CA, ECT, FSC, FCR, CL, NI):
       - every year's text is the laptop's in the kit (cloud.owner_of and
         kit_files), as before the texts' entry named the handover record;
         pull, which puts back only a record the bucket holds, is held to its
-        old self by the pull checks, which hold none."""
+        old self by the pull checks, which hold none -- and a pull here, the
+        bucket keeping a PDF under docs/, takes none (docs_down never runs)."""
     def never(*a, **kw):
         raise AssertionError("a reader of what the handover adds was reached with no record")
     real = CL.load_kit(".")
     saved = (CA.night_rows, CA._new_local, R.years_said, CA.take_night, CA.night_plan,
              CA.remember_lists, NI.text_canary, NI.keep_listed, NI.take_night_documents,
-             NI.make_texts, NI.judge_files, NI.docs_warned)
+             NI.make_texts, NI.judge_files, CL.docs_down, NI.docs_warned)
     try:
         (CA.night_rows, CA._new_local, R.years_said, CA.take_night, CA.night_plan,
          CA.remember_lists, NI.text_canary, NI.keep_listed, NI.take_night_documents,
-         NI.make_texts, NI.judge_files) = (never,) * 11
+         NI.make_texts, NI.judge_files, CL.docs_down) = (never,) * 12
         NI.docs_warned = lambda v: never() if any(k in v for k in (
             "text_canary", "document_files", "document_texts", "documents_for_a_person")) else []
         first = _off_night(NI, R, None)
@@ -92416,10 +92429,27 @@ def _documents_off_is_off(R, CA, ECT, FSC, FCR, CL, NI):
                 assert len(owners) == 2 and set(owners.values()) == {"laptop"} and \
                     CL.owner_of(real, "journals/2026/HJ001.txt", f.tmp) == "laptop", \
                     f"with the switch {switch!r} and no record a text is not the laptop's: {owners}"
+        with _HandoverFolder(R) as f:
+            (f.tmp / CL.KIT_FILE).write_text(json.dumps({
+                "kit": [{"what": "texts", "owner": "laptop", "night_from": R.HANDOVER.as_posix(),
+                         "globs": ["calendars/*/*.txt"]},
+                        {"what": "list", "owner": "night", "paths": ["archive/queue.csv"]}],
+                "state": [{"path": "archive/refused.json", "key": "refused.json", "what": "x"}],
+                "logs": {"globs": []}, "backup": real["backup"], "never": real["never"]}),
+                encoding="utf-8")
+            (f.tmp / "calendars" / "2026").mkdir(parents=True)
+            (f.tmp / "calendars" / "2026" / "HC001.txt").write_text("t", encoding="utf-8")
+            (f.archive / "queue.csv").write_text("q", encoding="utf-8")
+            where = ("--root", str(f.tmp), "--local-bucket", str(f.tmp / "bucket"))
+            assert _cloud_call(CL, "seed-kit", *where)[0] == 0
+            CL.FolderBucket(f.tmp / "bucket").put_bytes("docs/calendars/2026/HC 5.pdf", b"%PDF-")
+            code, out = _cloud_call(CL, "pull", *where)
+            assert code == 0 and not (f.tmp / "calendars" / "2026" / "HC 5.pdf").exists(), \
+                f"with no record pull took a PDF the night kept, or failed: {out[-300:]}"
     finally:
         (CA.night_rows, CA._new_local, R.years_said, CA.take_night, CA.night_plan,
          CA.remember_lists, NI.text_canary, NI.keep_listed, NI.take_night_documents,
-         NI.make_texts, NI.judge_files, NI.docs_warned) = saved
+         NI.make_texts, NI.judge_files, CL.docs_down, NI.docs_warned) = saved
     return "ok", ("switched off, or not a switch, and no record: the night's closed verdict and "
                   "its children, the queue, the paths, the drain, the Senate fetch, the committee "
                   "reports, the texts and their owner in the kit as before")
@@ -93636,6 +93666,477 @@ def _make_texts(R, CA, NI):
     return "ok", ("own texts made, others refused with their PDFs kept, journals one at a time "
                   "through the readers, lost PDFs wanted again, an accept once, out of time "
                   "pending, nothing unchecked left where the build reads")
+
+
+class _HandoverLaptop(_HandoverFolder):
+    """_HandoverFolder as a stood-down laptop's working folder for cloud.py's
+    handover commands, with a folder (`bucket`) standing in for the bucket: a
+    small kit, the real bucket's refusal record read after the last night
+    window closed (fresh), and a pulled night whose text canary was identical.
+    The extractor is faked: `made` says, for each run of it, whether the
+    handover record was written by then."""
+
+    def __init__(self, R, CA, CL):
+        super().__init__(R, CA)
+        self.CL, self.real = CL, CL.load_kit(".")
+
+    def __enter__(self):
+        super().__enter__()
+        R, CL = self.R, self.CL
+        self.saved_cl = (CL.make_missing_texts, CL.cmd_seed_kit, os.environ.get(CL.NO_BUCKET))
+        os.environ[CL.NO_BUCKET] = "1"
+        self.bucket, self.made = self.tmp / "bucket", []
+        CL.make_missing_texts = lambda root: self.made.append(
+            (self.archive / R.HANDOVER.name).exists()) or 0
+        self.put(CL.KIT_FILE, json.dumps({"kit": [
+            {"what": "texts", "owner": "laptop", "night_from": R.HANDOVER.as_posix(),
+             "globs": ["calendars/*/*.txt", "journals/*/*.txt"]},
+            {"what": "handover", "owner": "laptop", "optional": True,
+             "paths": [R.HANDOVER.as_posix()]},
+            {"what": "the night's record", "owner": "night", "optional": True,
+             "paths": [R.NIGHT_RECORD.as_posix()]},
+            {"what": "the drain's", "owner": "laptop", "optional": True,
+             "paths": ["archive/queue_fetched.csv"]},
+            {"what": "the list", "owner": "night", "paths": ["archive/queue.csv"]}],
+            "state": [{"path": "archive/refused.json", "key": "refused.json", "what": "x"}],
+            "logs": {"globs": []}, "backup": self.real["backup"], "never": self.real["never"]}))
+        self.put(R.STANDDOWN.as_posix(), json.dumps({"since": "2026-10-01"}))
+        self.put("journals/2025/HJ 0.txt", "a journal of a year the laptop keeps")
+        self.verdict(text_canary="identical for 4 of 4, by pdftotext -layout; pdftotext 26.09.0")
+        self.fresh()
+        return self
+
+    def __exit__(self, *exc):
+        CL = self.CL
+        CL.make_missing_texts, CL.cmd_seed_kit, env = self.saved_cl
+        if env is None:
+            os.environ.pop(CL.NO_BUCKET, None)
+        else:
+            os.environ[CL.NO_BUCKET] = env
+        return super().__exit__(*exc)
+
+    def put(self, rel, body):
+        p = self.tmp / rel
+        p.parent.mkdir(parents=True, exist_ok=True)
+        p.write_bytes(body if isinstance(body, bytes) else body.encode("utf-8"))
+        return p
+
+    def keep(self, rel, body, sha=None):
+        """A PDF in the bucket's docs/, as docs-up keeps one: with its sha256, or `sha`."""
+        import hashlib
+        src = self.put(".scratch.pdf", body)
+        self.CL.FolderBucket(self.bucket).put_file(
+            src, self.CL.DOCS + rel, {"sha256": sha or hashlib.sha256(body).hexdigest()})
+        src.unlink()
+
+    def verdict(self, **v):
+        self.put(self.CL.VERDICTS["last-night.json"], json.dumps(v))
+
+    def fresh(self, read=None):
+        """This laptop read the real bucket's refusal record at `read` (now)."""
+        self.put(self.CL.PULL_RECORD, json.dumps({"refusal": {
+            "kind": "r2", "read": self.R._utc().timestamp() if read is None else read}}))
+
+    def call(self, *argv):
+        """cloud.py here, against the folder bucket: (its status, what it said)."""
+        try:
+            return _cloud_call(self.CL, *argv, "--root", str(self.tmp), "--local-bucket",
+                               str(self.bucket))
+        except SystemExit as e:
+            return e.code, "it exited"
+
+    def record(self, bucket=False):
+        """The handover record here, or the bucket's copy; None where there is none."""
+        p = self.bucket / "kit" / self.R.HANDOVER if bucket else self.archive / self.R.HANDOVER.name
+        return json.loads(p.read_text(encoding="utf-8")) if p.exists() else None
+
+    def write(self, hand):
+        self.put(self.R.HANDOVER.as_posix(), json.dumps(hand))
+
+
+@check("cloud", "the night's PDFs are kept in the bucket once and never over other bytes, the night "
+       "takes down only what its texts wait for, and the laptop takes each one it lacks, whole and "
+       "never over a file",
+       needs=("refusal", "fetch_calendar_archive", "extract_calendar_text", "cloud", "nightly"))
+def _docs_bucket(R, CA, ECT, CL, NI):
+    """docs-up, docs-night and docs_down (the person's design of 26 October
+    2026, D15), on a folder standing in for the bucket:
+
+      - the folders are the night's own (nightly.NIGHT_DOCS, NIGHT_BUCKET) and
+        the four the extractor reads;
+      - docs-up sends only what is under .night/docs, and only a PDF of the
+        four folders; one the bucket holds with other bytes is never written
+        over, and the step fails naming it; the same bytes are kept already;
+        a dry night sends nothing;
+      - docs-night tells the workflow in_force, and lists the bucket's PDFs of
+        the night's years; it takes down only the pending rows' PDFs and a
+        refused text's the person accepted, oldest first, at most
+        DOCS_NIGHT_MOST, and not one whose bytes are not the record's; handed
+        back, in_force=false and no list; a failure part way leaves no list;
+      - docs_down takes each PDF of the years handed over that is not here,
+        whole, never over a file, and none of an earlier year; one that does
+        not come down whole is put nowhere, and named."""
+    import hashlib
+    assert (CL.NIGHT_DOCS, CL.NIGHT_BUCKET, CL.DOCS_ROOTS) == (
+        NI.NIGHT_DOCS.as_posix(), NI.NIGHT_BUCKET.as_posix(), tuple(ECT.ROOTS)), \
+        "cloud.py's folders for the night's documents are not nightly.py's and the extractor's"
+    K = CA.doc_key
+    env = {k: os.environ.get(k) for k in ("GITHUB_OUTPUT", "GITHUB_REF", "DRY_RUN")}
+    saved = (CL.DOCS_NIGHT_MOST, CL.FolderBucket.get_bytes)
+    try:
+        with _HandoverLaptop(R, CA, CL) as f:
+            def sha(b):
+                return hashlib.sha256(b).hexdigest()
+
+            def docs():
+                return {p.relative_to(f.bucket / "docs").as_posix(): p.read_bytes()
+                        for p in (f.bucket / "docs").rglob("*") if p.is_file()}
+            one, two, other = b"%PDF-1.7 one %%EOF", b"%PDF-1.7 two %%EOF", b"%PDF-1.7 2 %%EOF"
+            f.put(".night/docs/calendars/2026/HC 1.pdf", one)
+            f.put(".night/docs/journals/2026/HJ 2.pdf", two)
+            f.put(".night/docs/notes/2026/x.pdf", one)
+            f.put("calendars/2026/HC 7.pdf", one)
+            f.keep("journals/2026/HJ 2.pdf", other)
+            assert f.call("docs-up", "--dry-night")[0] == 0 and \
+                docs() == {"journals/2026/HJ 2.pdf": other}, "a dry night kept a PDF in the bucket"
+            code, out = f.call("docs-up")
+            assert code == 1 and "journals/2026/HJ 2.pdf: the bucket keeps other bytes" in out and \
+                "notes/2026/x.pdf: not a PDF of" in out and docs() == {
+                    "calendars/2026/HC 1.pdf": one, "journals/2026/HJ 2.pdf": other} and \
+                CL.FolderBucket(f.bucket).head("docs/calendars/2026/HC 1.pdf") == {"sha256": sha(one)}, \
+                f"docs-up wrote over other bytes, sent from elsewhere, or did not say: {out[-400:]}"
+            (f.tmp / ".night/docs/notes/2026/x.pdf").unlink()
+            f.put(".night/docs/journals/2026/HJ 2.pdf", other)
+            code, out = f.call("docs-up")
+            assert code == 0 and "0 sent, 2 kept already" in out, out[-300:]
+            # docs-night, on GitHub's machine.
+            os.environ["GITHUB_ACTIONS"], os.environ["GITHUB_OUTPUT"] = "true", str(f.tmp / "out")
+            rows = [_night_row(CA, "H", "calendar", 2026, f"HC {n}.pdf") for n in (1, 2, 3, 4, 5)]
+            CA.write_rows(CA.QUEUE, rows)
+            f.hand(accept={K(rows[2]): "id-1"})
+            f.keep("calendars/2026/HC 2.pdf", two)
+            f.keep("calendars/2026/HC 3.pdf", two)
+            f.keep("calendars/2026/HC 4.pdf", two)
+            f.keep("calendars/2025/HC 9.pdf", two)
+            f.put(R.NIGHT_RECORD.as_posix(), json.dumps({
+                "handover": "2026-11-10T14:00:00Z", "from_year": 2026, "rows": {
+                    K(rows[0]): {"text": "pending", "sha256": sha(one), "fetched": "2026-11-11"},
+                    K(rows[1]): {"text": "pending", "sha256": sha(one), "fetched": "2026-11-12"},
+                    K(rows[2]): {"text": "refused: not its own", "fetched": "2026-11-13"},
+                    K(rows[3]): {"text": "made", "fetched": "2026-11-10"},
+                    K(rows[4]): {"text": "pending", "fetched": "2026-11-14"}}}))
+            listed, came = f.tmp / CA.IN_BUCKET, f.tmp / CL.NIGHT_BUCKET
+            code, out = f.call("docs-night")
+            assert code == 0 and (f.tmp / "out").read_text(encoding="utf-8") == "in_force=true\n" \
+                and json.loads(listed.read_text(encoding="utf-8")) == dict(
+                    {f"calendars/2026/HC {n}.pdf": len(two if n > 1 else one) for n in (1, 2, 3, 4)},
+                    **{"journals/2026/HJ 2.pdf": len(other)}) \
+                and sorted(p.name for p in came.rglob("*.pdf")) == ["HC 1.pdf", "HC 3.pdf"] \
+                and "not taken: calendars/2026/HC 2.pdf" in out, (
+                    "docs-night did not list the night's years, took a PDF its texts do not wait "
+                    f"for or whose bytes are not the record's, or missed one: {out[-400:]}")
+            shutil.rmtree(came)
+            CL.DOCS_NIGHT_MOST = 1
+            code, out = f.call("docs-night")
+            assert code == 0 and [p.name for p in came.rglob("*.pdf")] == ["HC 1.pdf"] and \
+                "3 wait a night" in out, f"docs-night took more than its most, or not the oldest: {out}"
+            CL.DOCS_NIGHT_MOST = saved[0]
+
+            def broken(self, key):
+                raise OSError("the bucket stopped answering")
+            CL.FolderBucket.get_bytes = broken
+            (f.tmp / "out").unlink()
+            assert f.call("docs-night")[0] == 1 and not listed.exists() and \
+                (f.tmp / "out").read_text(encoding="utf-8") == "in_force=true\n", \
+                "a docs-night that failed part way left the bucket's list for the night to trust"
+            CL.FolderBucket.get_bytes = saved[1]
+            f.hand(handed_back={"at": "2026-12-01T15:00:00Z", "sent": False})
+            assert f.call("docs-night")[0] == 0 and not listed.exists() and \
+                (f.tmp / "out").read_text(encoding="utf-8").endswith("in_force=false\n"), \
+                "docs-night read a handed-back record as in force on GitHub's machine"
+            os.environ.pop("GITHUB_ACTIONS")
+            # docs_down, on the laptop.
+            laptop, B = f.tmp / "laptop", CL.FolderBucket(f.bucket)
+            f.put("laptop/calendars/2026/HC 3.pdf", b"%PDF- the laptop's own")
+            assert CL.docs_down(B, laptop, 2026, True)[-1].startswith("4 of the night's PDFs would") \
+                and not (laptop / "calendars/2026/HC 1.pdf").exists(), "a dry docs-down wrote"
+            f.keep("calendars/2026/HC 6.pdf", two, sha=sha(one))
+            try:
+                CL.docs_down(B, laptop, 2026, False)
+                raise AssertionError("docs-down did not fail on a PDF that did not come down whole")
+            except CL.Failed as e:
+                assert "calendars/2026/HC 6.pdf" in str(e), e
+            got = {p.relative_to(laptop).as_posix(): p.read_bytes() for p in laptop.rglob("*")
+                   if p.is_file()}
+            assert got == {"calendars/2026/HC 1.pdf": one, "calendars/2026/HC 2.pdf": two,
+                           "calendars/2026/HC 3.pdf": b"%PDF- the laptop's own",
+                           "calendars/2026/HC 4.pdf": two, "journals/2026/HJ 2.pdf": other}, (
+                "docs-down took an earlier year's PDF, wrote over a file, or left one not whole "
+                f"or a part file: {sorted(got)}")
+    finally:
+        CL.DOCS_NIGHT_MOST, CL.FolderBucket.get_bytes = saved
+        for k, val in env.items():
+            os.environ.pop(k, None) if val is None else os.environ.__setitem__(k, val)
+    return "ok", ("docs-up only tonight's, once, never over others; docs-night the night's years' "
+                  "list, and only the PDFs its texts wait for; docs-down whole, never over a file")
+
+
+@check("cloud", "hand-over makes the missing texts and sends the whole kit before it writes the "
+       "handover record, refuses on each thing it waits for, and carries on where it stopped",
+       needs=("refusal", "fetch_calendar_archive", "cloud"))
+def _hand_over(R, CA, CL):
+    """cloud.py hand-over (the person's design of 26 October 2026, D16), on a
+    folder standing in for the bucket:
+
+      - it refuses, and writes nothing, on GitHub's machine, with --dry-run,
+        on a laptop not stood down, without a read of the real bucket's
+        refusal record since the last night window closed, with a refusal on
+        file, when the night pulled does not say its text canary was
+        identical, and while the fetches' lock is held;
+      - it runs the extractor, then a whole seed-kit, before the record is
+        written; an extractor or a seed-kit that fails writes no record;
+      - the record names every text of 2026 on and none of 2025, and freezes
+        the laptop's own rows of 2026 on, which leave queue_fetched.csv; a
+        PDF of 2026 with no text is named, and does not stop it;
+      - an upload that fails leaves the record here, so the laptop asks for
+        none of those years; run again, it carries on from the upload,
+        making no text and sending no kit, and a third run refuses."""
+    K = CA.doc_key
+    rows = [_night_row(CA, "H", "calendar", y, f"HC {y}.pdf") for y in (2025, 2026)]
+    with _HandoverLaptop(R, CA, CL) as f:
+        CA.write_rows(CA.QUEUE, rows)
+        CA.write_rows(CA.fetched_file(), [dict(r, state="held", attempts="1", bytes="9")
+                                          for r in rows])
+        for rel in ("calendars/2025/HC 2025.txt", "calendars/2026/HC 2026.txt",
+                    "journals/2027/HJ 1.txt"):
+            f.put(rel, "t")
+        f.put("calendars/2026/HC 7.pdf", b"%PDF-")
+        assert f.call("seed-kit")[0] == 0
+        mine = CA.fetched_file().read_bytes()
+
+        def env(k, v):
+            return lambda: os.environ.__setitem__(k, v) if v is not None else os.environ.pop(k)
+
+        def moved(a, b):
+            return lambda: os.replace(a, b)
+        stand, aside = f.tmp / R.STANDDOWN, f.tmp / "stand-down.json"
+        for why, do, undo, more in (
+                ("GitHub's machine", env("GITHUB_ACTIONS", "true"), env("GITHUB_ACTIONS", None), ()),
+                ("--dry-run", lambda: None, lambda: None, ("--dry-run",)),
+                ("not stood down", moved(stand, aside), moved(aside, stand), ()),
+                ("no pull since the window", lambda: f.fresh(0), f.fresh, ()),
+                ("a refusal on file", lambda: R.MARK.write_text("{}", encoding="utf-8"),
+                 lambda: R.MARK.unlink(), ()),
+                ("no identical canary", lambda: f.verdict(text_canary="not proved: no pairs"),
+                 lambda: f.verdict(text_canary="identical for 4 of 4, by pdftotext -layout"), ()),
+                ("the lock held", lambda: R.LOCK.write_text("999999", encoding="utf-8"),
+                 lambda: R.LOCK.unlink(), ())):
+            do()
+            code, out = f.call("hand-over", *more)
+            undo()
+            assert code != 0 and f.record() is None and not f.made and \
+                CA.fetched_file().read_bytes() == mine, \
+                f"hand-over went on with {why}, or wrote before refusing: {code} {out[-300:]}"
+        CL.make_missing_texts = lambda root: 1
+        assert f.call("hand-over")[0] == 1 and f.record() is None, \
+            "hand-over wrote its record after the extractor failed"
+        CL.make_missing_texts = lambda root: f.made.append(f.record() is not None) or 0
+        os.replace(CA.QUEUE, f.tmp / "queue.csv")
+        code, out = f.call("hand-over")
+        os.replace(f.tmp / "queue.csv", CA.QUEUE)
+        assert code == 1 and "no handover record was written" in out and f.record() is None and \
+            CA.fetched_file().read_bytes() == mine, f"a failed seed-kit wrote the record: {out[-300:]}"
+        seeds, seed, fail = [], CL.cmd_seed_kit, [True]
+
+        def failing(a, root):
+            seeds.append((a.only, f.record() is not None))
+            if a.only and fail[0]:
+                raise CL.Failed("the bucket stopped answering")
+            return seed(a, root)
+        del f.made[:]
+        CL.cmd_seed_kit = failing
+        code, out = f.call("hand-over")
+        hand = f.record()
+        assert code == 1 and "run hand-over again" in out and f.made == [False] and \
+            seeds == [(None, False), ([R.HANDOVER.as_posix(), "archive/queue_fetched.csv"], True)], \
+            f"hand-over did not make the texts and send the whole kit before its record: {seeds}"
+        assert hand and hand["from_year"] == 2026 and hand["handed_back"] is None and \
+            hand["texts"] == ["calendars/2026/HC 2026.txt", "journals/2027/HJ 1.txt"] and \
+            hand["rows"] == {K(rows[1]): {"state": "held", "attempts": "1", "error": "", "bytes": "9",
+                                          "fetched": ""}} and \
+            [r["year"] for r in CA.read_rows(CA.fetched_file())] == ["2025"] and \
+            R.night_years() == 2026 and f.record(bucket=True) is None and \
+            "calendars/2026/HC 7.pdf" in out, \
+            f"the record's texts or frozen rows, or the laptop's own rows, are not 2026 on's: {hand}"
+        del seeds[:]
+        fail[0] = False
+        code, out = f.call("hand-over")
+        assert code == 0 and "carrying on from there" in out and f.made == [False] and \
+            [s[0] for s in seeds] == [[R.HANDOVER.as_posix(), "archive/queue_fetched.csv"]] and \
+            f.record() == hand == f.record(bucket=True) and \
+            out.rstrip().splitlines()[-2] == "handed over: 2026 on is the night's", \
+            f"a second hand-over did not carry on from the upload: {seeds} {out[-300:]}"
+        CL.cmd_seed_kit = seed
+        code, out = f.call("hand-over")
+        assert code == 1 and "the night's already" in out, out[-300:]
+    return "ok", ("refused on each thing it waits for; the texts made and the kit sent before the "
+                  "record; 2026 on's texts and rows in it; an upload stopped part way carried on")
+
+
+@check("cloud", "hand-back takes every PDF the night kept and tells the bucket before it takes the "
+       "years back, and only after a night with the switch off",
+       needs=("refusal", "fetch_calendar_archive", "cloud"))
+def _hand_back(R, CA, CL):
+    """cloud.py hand-back (the person's design of 26 October 2026, D17), after
+    a hand-over, on a folder standing in for the bucket:
+
+      - it refuses, and the record stands, while the newest night pulled had
+        the switch at a number, with no night's verdict pulled, without a read
+        of the real bucket since the last window, while a PDF the night's
+        texts wait for did not come down, and when a PDF does not come down
+        whole (nothing is put at its path);
+      - it brings every PDF down, writes "sent": false and sends that; an
+        upload that fails leaves the years the night's here and in the
+        bucket; run again, "sent": true, and they are the laptop's;
+      - the bucket's copy, "sent": false, stops GitHub's night;
+      - there is then nothing to hand back."""
+    import hashlib
+    K = CA.doc_key
+    rows = [_night_row(CA, "H", "calendar", 2026, f"HC {n}.pdf") for n in (1, 2)]
+    body = b"%PDF-1.7 two %%EOF"
+    with _HandoverLaptop(R, CA, CL) as f:
+        CA.write_rows(CA.QUEUE, rows)
+        f.put("calendars/2026/HC 1.txt", "t")
+        assert f.call("hand-over")[0] == 0
+        hand = f.record()
+        f.put(R.NIGHT_RECORD.as_posix(), json.dumps({
+            "handover": hand["at"], "from_year": 2026, "rows": {K(rows[1]): {
+                "state": "held", "text": "pending", "sha256": hashlib.sha256(body).hexdigest()}}}))
+        pdf = f.tmp / "calendars/2026/HC 2.pdf"
+
+        def off():
+            f.verdict(steps={"night": "success"})
+        # The gates are tried with the PDF the night's text waits for in the
+        # bucket, so that nothing but the gate stops the hand-back.
+        for why, do, undo in (
+                ("a pending PDF not here", lambda: None, lambda: None),
+                ("a PDF not whole", lambda: f.keep("calendars/2026/HC 2.pdf", body, sha="0" * 64),
+                 lambda: f.keep("calendars/2026/HC 2.pdf", body)),
+                ("the switch at 3", lambda: f.verdict(night_documents="3"), off),
+                ("no verdict", lambda: (f.tmp / CL.VERDICTS["last-night.json"]).unlink(), off),
+                ("no pull since the window", lambda: f.fresh(0), f.fresh)):
+            do()
+            code, out = f.call("hand-back")
+            undo()
+            assert code != 0 and f.record() == hand and not pdf.exists(), \
+                f"hand-back went on with {why}: {code} {out[-300:]}"
+        seed = CL.cmd_seed_kit
+
+        def failing(a, root):
+            raise CL.Failed("the bucket stopped answering")
+        CL.cmd_seed_kit = failing
+        code, out = f.call("hand-back")
+        CL.cmd_seed_kit = seed
+        assert code == 1 and "run hand-back again" in out and pdf.read_bytes() == body and \
+            f.record()["handed_back"]["sent"] is False and R.night_years() == 2026 and \
+            f.record(bucket=True)["handed_back"] is None, \
+            f"a hand-back whose upload failed gave the years back here: {out[-300:]}"
+        code, out = f.call("hand-back")
+        assert code == 0 and f.record()["handed_back"]["sent"] is True and \
+            R.night_years() is None and f.record(bucket=True)["handed_back"]["sent"] is False, \
+            f"hand-back did not tell the bucket first and take the years back last: {out[-300:]}"
+        night = f.tmp / "night"
+        (night / "archive").mkdir(parents=True)
+        (night / "archive" / R.HANDOVER.name).write_text(json.dumps(f.record(bucket=True)),
+                                                         encoding="utf-8")
+        os.environ["GITHUB_ACTIONS"] = "true"
+        stops = R.night_years(night) is None
+        os.environ.pop("GITHUB_ACTIONS")
+        assert stops, "GitHub's night still reads the bucket's handed-back record as in force"
+        code, out = f.call("hand-back")
+        assert code == 1 and "nothing to hand back" in out, out[-300:]
+    return "ok", ("refused with the switch at a number, no verdict, a stale pull, a pending PDF "
+                  "missing or not whole; every PDF down, the bucket told first, the laptop last")
+
+
+@check("cloud", "the person's word on one of the night's documents -- ask once more, take its text, "
+       "stop -- is written into the handover record and sent by its own command, and refused "
+       "where the night would never act on it",
+       needs=("refusal", "fetch_calendar_archive", "cloud"))
+def _person_words(R, CA, CL):
+    """docs-again, docs-accept and docs-settle (the person's design of 26
+    October 2026, D18), after a hand-over, on a folder standing in for the
+    bucket:
+
+      - docs-again refuses a document a refusal is recorded against, one the
+        last two reads of its list the night keeps do not both name, one held
+        back for a person, one of a year before the handover's and a key the
+        queue does not hold; otherwise it writes a fresh id and takes the key
+        out of settled, and the night spends that id once;
+      - docs-accept takes only a text the night refused; docs-settle wants a
+        reason, and drops the key's again and accept;
+      - each sends the record with --only, and nothing else; each refuses
+        on GitHub's machine and once the years are handed back, and every
+        refusal leaves the record as it was."""
+    K = CA.doc_key
+    rows = [_night_row(CA, "H", "calendar", 2026, f"HC {n}.pdf") for n in (1, 2, 3, 5)]
+    rows += [_night_row(CA, "H", "calendar", 2026, "HC 4.pdf", url="https://example.invalid/4"),
+             _night_row(CA, "H", "calendar", 2025, "HC 6.pdf")]
+    ok, refused, unnamed, texted, unlisted, old = (K(r) for r in rows)
+    with _HandoverLaptop(R, CA, CL) as f:
+        CA.write_rows(CA.QUEUE, rows)
+        f.put("calendars/2025/a.txt", "a1")
+        assert f.call("hand-over")[0] == 0
+        night = {"handover": f.record()["at"], "from_year": 2026, "lists": {"H|calendar|2026": {
+            "read": "2026-11-11T09:00:00", "directory": "calendars\\2026\\",
+            "names": ["HC 1.pdf", "HC 2.pdf", "HC 4.pdf", "HC 5.pdf"]}}, "rows": {
+            ok: {"state": "wanted", "attempts": "3"},
+            refused: {"state": "wanted", "attempts": "1", "error": "refused: HTTP 403"},
+            texted: {"state": "held", "text": "refused: its text does not carry its own number"}}}
+        f.put(R.NIGHT_RECORD.as_posix(), json.dumps(night))
+        f.put("calendars/2025/a.txt", "a2")
+        for argv, why in ((("docs-again", refused), "a refusal is recorded against it"),
+                          (("docs-again", unnamed), "do not both name it"),
+                          (("docs-again", unlisted), "held back for a person (unlisted)"),
+                          (("docs-again", old), "is not a document of 2026 on"),
+                          (("docs-again", "H|calendar|2026|HC 9.pdf"), "is not a document of"),
+                          (("docs-again",), "takes one KEY"),
+                          (("docs-accept", ok), "has not refused its text"),
+                          (("docs-settle", ok), "takes --why")):
+            was = f.record()
+            code, out = f.call(*argv)
+            assert code == 1 and why in out and f.record() == was, \
+                f"{' '.join(argv)} did not refuse ({why}), or wrote: {out[-300:]}"
+        os.environ["GITHUB_ACTIONS"] = "true"
+        code, out = f.call("docs-again", ok)
+        os.environ.pop("GITHUB_ACTIONS")
+        assert code == 1 and "is the laptop's" in out and f.record() == was, \
+            f"docs-again wrote the handover record on GitHub's machine: {out[-300:]}"
+        f.write(dict(f.record(), settled={ok: "a person's"}))
+        assert f.call("docs-again", ok)[0] == 0
+        hand = f.record()
+        assert hand["again"] == {ok: "2026-11-10T19:00:00Z"} and hand["settled"] == {} and \
+            f.record(bucket=True) == hand and \
+            (f.bucket / "kit/calendars/2025/a.txt").read_text(encoding="utf-8") == "a1", \
+            f"docs-again wrote no fresh id, kept the key settled, or sent more than the record: {hand}"
+        assert CA.live("again", ok, hand, night) == hand["again"][ok]
+        night["rows"][ok]["again"] = hand["again"][ok]
+        assert CA.live("again", ok, hand, night) == "", "the night may spend one id twice"
+        assert f.call("docs-accept", texted)[0] == 0 and \
+            f.record()["accept"] == {texted: "2026-11-10T19:00:00Z"} == f.record(bucket=True)["accept"]
+        assert f.call("docs-settle", texted, "--why", "a scan with no text")[0] == 0
+        hand = f.record()
+        assert hand["settled"] == {texted: "a scan with no text"} and hand["accept"] == {} and \
+            f.record(bucket=True) == hand, f"docs-settle did not settle, or kept its accept: {hand}"
+        f.write(dict(hand, handed_back={"at": "2026-12-01T15:00:00Z", "sent": True}))
+        for argv in (("docs-again", ok), ("docs-accept", texted), ("docs-settle", ok, "--why", "x")):
+            was = f.record()
+            code, out = f.call(*argv)
+            assert code == 1 and "handed back" in out and f.record() == was, \
+                f"{argv[0]} wrote after the years were handed back: {out[-300:]}"
+    return "ok", ("docs-again refused for a refusal, an unnamed, held-back, earlier or unknown "
+                  "document, else one id spent once; accept only a refused text; settle with a "
+                  "reason; each sent alone, none after a hand-back")
 
 
 @check("build", "on a stood-down laptop no General Court request starts in GitHub's night "
