@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-10-11.53
+# GRANITE_VERSION: 2026-10-11.54
 """
 The how-to guides: their words, their sources, and what each was checked
 against. Read by build_civics.py, which draws them on the Resources hub's
@@ -6131,12 +6131,14 @@ GUIDES += [CONSUMER]
 # the Insurance Department's consumer services program (RSA 400-A:15-e),
 # and the two FAQs on RSA 420-G:6 and RSA 415:22, all read on 26 October
 # 2026 as the Laws pages print them. The Insurance Department's pages
-# refuse this machine; their addresses come from a web search, and their
-# claims wait for the person's printouts. Medicaid and Medicare are their
-# own guides, linked rather than repeated.
+# refuse this machine; they were read in the person's printouts of 26
+# October 2026 (its home page, Independent External Review, and Healthcare
+# and Long Term Care Appeals, which print no address and were matched by
+# their titles). Medicaid and Medicare are their own guides, linked rather
+# than repeated.
 # ---------------------------------------------------------------------------
 HI_READ = "2026-10-26"
-HI_NHID_READ = None                  # the person's printouts of insurance.nh.gov
+HI_NHID_READ = "2026-10-26"          # the person's printouts of insurance.nh.gov
 HC_DATES = "https://www.healthcare.gov/quick-guide/dates-and-deadlines/"
 HC_SEP = "https://www.healthcare.gov/coverage-outside-open-enrollment/special-enrollment-period/"
 HC_APPLY = "https://www.healthcare.gov/apply-and-enroll/how-to-apply/"
@@ -6244,10 +6246,15 @@ HEALTH_INSURANCE = guide(
           "Commissioner within 180 days of the company&rsquo;s final denial. An independent "
           "review organization decides. The insurance company pays for the review, it must "
           "follow the decision, and it may not retaliate against you for asking.</p>"
+          "<p>The Insurance Department&rsquo;s page says this right is for people covered by "
+          "fully-insured health or dental plans, that there is no cost to you, and that a "
+          "standard review may take up to 60 days. Send its External Health Review Form by "
+          "email or mail.</p>"
           "<p>If your doctor or other provider certifies that waiting would seriously endanger "
           "your life or health, or your ability to regain full function, you can ask for an "
           "<b>expedited</b> review, even while the company&rsquo;s own appeal is under way; it "
-          "is decided within 72 hours. It is not available for care already given.</p>"
+          "is decided within 72 hours. It needs a Provider Certification Form signed by your "
+          "provider. It is not available for care already given.</p>"
           "<p>This review is not for Medicaid, CHIP or Medicare, except Granite Advantage "
           "coverage through a private insurer; for a self-funded employer plan run by an "
           "administrator; or for a federal employee plan. Those have their own appeals. Nor "
@@ -6260,8 +6267,9 @@ HEALTH_INSURANCE = guide(
           "and agents, through a toll-free number and a complaint form. It may tell the "
           "company about your complaint, ask it for relief for you, and meet with both of you "
           "to settle it, but it cannot decide a claim. When you ask, it helps you through an "
-          "insurance company&rsquo;s appeal and an external review. Its Consumer Services "
-          "line is 1-800-852-3416.</p>",
+          "insurance company&rsquo;s appeal and an external review. Call its Consumer "
+          "Services staff at (603) 271-2261, toll free in New Hampshire at 1-800-852-3416, or "
+          "email consumerservices@ins.nh.gov.</p>",
           actions=[("New Hampshire Insurance Department", NHID)],
           law=["RSA 400-A:15-e", "RSA 420-J:5-e"]),
      step("Where Medicaid and Medicare fit",
@@ -6383,14 +6391,33 @@ HEALTH_INSURANCE = guide(
            "specific premium is required, notice of the birth and payment within 31 days after "
            "the date of birth for coverage to continue; no additional premium for the first 31 "
            "days.", "RSA 415:22", HI_READ),
-     # The Insurance Department's pages, waiting for the person's printouts.
-     claim("Independent External Review: how to ask the Insurance Department for an external "
-           "review of a health insurance company's denial, and the request form.", NHID_EXT,
-           HI_NHID_READ),
-     claim("Healthcare and long-term care appeals: how to appeal a health insurance company's "
-           "denial, starting with its internal appeal.", NHID_APPEALS, HI_NHID_READ),
-     claim("The New Hampshire Insurance Department; Consumer Services, 1-800-852-3416, takes "
-           "questions and complaints about insurance companies and agents.", NHID,
+     # The Insurance Department's pages, in the person's printouts of 26 October 2026.
+     claim("New Hampshire law gives individuals who are covered by fully-insured health or "
+           "dental insurance plans the right to have a nationally accredited, independent, "
+           "medical review organization (IRO) review and assess whether the company's denial "
+           "is justified. There is no cost to the patient for an external review. Standard "
+           "External Review: a fully-insured health or dental insurance plan, completed the "
+           "insurer's internal appeal process, received a final denial; must be submitted to "
+           "the Insurance Department within 180 days of the insurance company's final denial "
+           "and may take up to 60 days for the IRO to make its decision. Expedited External "
+           "Review: the treating provider must certify that delaying treatment will seriously "
+           "jeopardize the life or health of the patient or the patient's ability to regain "
+           "maximum function; IROs must complete expedited reviews within 72 hours; may be "
+           "requested at the same time the patient pursues an expedited internal appeal. A "
+           "completed Provider Certification Form, signed by your provider, is required for an "
+           "expedited external review. Download the External Health Review Form PDF to submit "
+           "via email or mail. Call 800-852-3416 to speak with a Consumer Services Officer.",
+           NHID_EXT, HI_NHID_READ),
+     claim("Healthcare and Long Term Care Appeals: guides for understanding the health and "
+           "long-term care insurance appeals process: Understand Health Insurance Claim "
+           "Appeals; Understand Self-Funded or Self-Insured Health Insurance; Consumer Guide to "
+           "External Review; External Review Appeals; Health Insurance Appeals Law; Health "
+           "Insurance Appeals Regulations; NH Certified Independent Review Organizations (IROs) "
+           "for External Appeal of a Healthcare Decision.", NHID_APPEALS, HI_NHID_READ),
+     claim("The New Hampshire Insurance Department regulates the insurance industry in New "
+           "Hampshire. Have questions, need assistance? Call our Consumer Services staff: "
+           "(603) 271-2261, in state toll free (800) 852-3416 or email "
+           "consumerservices@ins.nh.gov. Submit a Complaint; Health Care Appeals.", NHID,
            HI_NHID_READ)]
     + help_claims("nheasy", "lawyer"),
     more=civics.faq(
@@ -6413,8 +6440,9 @@ HEALTH_INSURANCE = guide(
          "<p>Yes. Someone you authorize to act for you, such as your doctor, can make an "
          "appeal to the insurance company or ask for an external review on your behalf.</p>"))
     + "<h2>Who Can Help</h2>"
-         "<p>The Insurance Department&rsquo;s Consumer Services, at 1-800-852-3416, for "
-         "questions and complaints about an insurance company, and help with an appeal. For "
+         "<p>The Insurance Department&rsquo;s Consumer Services, at (603) 271-2261 or toll "
+         "free in New Hampshire at 1-800-852-3416, for questions and complaints about an "
+         "insurance company, and help with an appeal. For "
          "Medicaid, or advice on your own case:</p>"
          + helps("nheasy", "lawyer"),
     see=[("How to apply for food or health assistance", "/guides/food-and-health-assistance.html"),
@@ -6429,7 +6457,8 @@ HEALTH_INSURANCE = guide(
              fig("31 days", "RSA 415:22", "within 31 days after the date of birth"),
              fig("60 days", HC_SEP, "in the past 60 days"),
              fig("90 days", HC_SEP, "in the past 90 days"),
-             fig("2 weeks", HC_APPLY, "within 2 weeks")])
+             fig("2 weeks", HC_APPLY, "within 2 weeks"),
+             fig("60 days", NHID_EXT, "may take up to 60 days")])
 
 GUIDES += [HEALTH_INSURANCE]
 
@@ -8470,15 +8499,19 @@ GUIDES += [BOATING]
 # rules on cancelling a car policy (RSA 417-A) and a home or renters policy
 # (RSA 417-B); and the unfair claim practices the Insurance Department
 # enforces (RSA 417). No statute on this disk was found to require car
-# insurance to register a car, so that New Hampshire does not require it is
-# said on the Insurance Department's word, whose pages refuse this machine:
-# their addresses come from a web search and their claims wait for the
-# person's printouts. The guides recommend no insurer and no amount of
+# insurance to register a car, and the Insurance Department's Automobile
+# Insurance page, in the person's printout of 26 October 2026, does not say
+# either way ("Most states require that you purchase some kind of insurance
+# coverage"), so the car guide says only what the financial responsibility
+# law does. The Department's pages refuse this machine and were read in the
+# person's printouts that day (Automobile Insurance, Homeowners and Renters
+# Insurance, Filing a Complaint, matched by their titles), with its Consumer
+# Complaint Form. The guides recommend no insurer and no amount of
 # coverage. FEMA's FloodSmart page answers this machine and was read the
 # same day (guide_sources.OTHER).
 # ---------------------------------------------------------------------------
 INS_LAW_READ = "2026-10-26"
-INS_DEPT_READ = None                 # the person's printouts of insurance.nh.gov
+INS_DEPT_READ = "2026-10-26"         # the person's printouts of insurance.nh.gov
 FLOOD_READ = "2026-10-26"
 INS_AUTO = "https://www.insurance.nh.gov/consumers/automobile-insurance"
 INS_HOME = "https://www.insurance.nh.gov/consumers/homeowners-and-renters-insurance"
@@ -8500,9 +8533,16 @@ PROPERTY_CLAIM_STEP = step(
 PROPERTY_COMPLAINT_STEP = step(
     "If you disagree with your insurer: complain to the Insurance Department",
     "<p>The <b>New Hampshire Insurance Department</b> takes complaints about insurance "
-    "companies and agents; its Filing a Complaint page says how to file one, online or on a "
-    "printed form. The Insurance Commissioner may examine and investigate an insurer&rsquo;s "
-    "practices.</p>"
+    "companies and agents. Its Filing a Complaint page has an online complaint form, and a "
+    "printable Consumer Complaint Form to mail or fax to the Department. If you complain for "
+    "someone else, such as a spouse, an adult child or a friend, also send its Release of "
+    "Information Form. A Consumer Services Officer reviews what you send and, if the "
+    "Department has authority over it, forwards it to the company or agent for a response; if "
+    "not, the officer refers it to the agency that has and tells you by letter. The Department "
+    "is not always able to get you the remedy you want. The Insurance Commissioner may examine "
+    "and investigate an insurer&rsquo;s practices.</p>"
+    "<p>With a question, call Consumer Services at (603) 271-2261, toll free in New Hampshire "
+    "at 1-800-852-3416, or email consumerservices@ins.nh.gov.</p>"
     "<p>If the Department finds that an insurer broke the law and its finding becomes final, a "
     "consumer harmed by the practice may sue the insurer for the loss, and one who wins also "
     "recovers the cost of the suit, reasonable attorney&rsquo;s fees included. If the Department "
@@ -8527,8 +8567,20 @@ PROPERTY_CLAIM_CLAIMS = [
     claim("A consumer who prevails in an action under RSA 417:19, I recovers, in addition to "
           "damages, the cost of the suit, including reasonable attorneys' fees.", "RSA 417:20",
           INS_LAW_READ),
-    claim("How to file a complaint about an insurance company or agent with the Insurance "
-          "Department, online or on a printable form.", INS_COMPLAINT, INS_DEPT_READ)]
+    claim("Consumer Complaint Forms: Online Consumer Complaint Form (Electronic version); "
+          "Consumer Complaint Form (Printable), intended to be printed for completion and mailed "
+          "or faxed to the New Hampshire Insurance Department; Auto Body Shop Complaint Form; "
+          "Health Provider Complaint Form; Release of Information Form. If you are submitting a "
+          "grievance or request for someone other than yourself (such as a spouse, adult child, "
+          "friend, patient, customer, etc.), please also complete and submit the Release of "
+          "Information Form. If the CSO assigned to your case determines the Department has the "
+          "jurisdictional authority to intervene on your behalf, he/she will forward your "
+          "submission to the appropriate licensee for a response. The Insurance Department is "
+          "not always able to negotiate the remedy you desire. If the issue does not fall within "
+          "the jurisdiction of the Insurance Department, your CSO will refer your complaint to "
+          "that agency and will inform you of the referral by letter. Contact the department's "
+          "Consumer Services Unit at 800-852-3416 or via email at consumerservices@ins.nh.gov. "
+          "21 South Fruit Street, Suite 14, Concord, NH 03301; Phone: (603) 271-2261.", INS_COMPLAINT, INS_DEPT_READ)]
 PROPERTY_CANCEL_CLAIMS = [
     claim("Chapter 417-B applies to insurance other than automobile and workers' compensation "
           "on personal, family, and household risks insuring loss of or damage to real property, "
@@ -8562,9 +8614,9 @@ CAR_INSURANCE = guide(
     "When New Hampshire requires a driver to prove they can pay for a crash, the least a car "
     "insurance policy here must cover, uninsured motorist coverage, and what to do if your "
     "insurer cancels your policy.",
-    "New Hampshire does not require most drivers to buy car insurance, as the Insurance "
-    "Department explains, but a driver who causes a crash is responsible for the damage. After "
-    "a crash you were in without insurance, or after certain convictions, the state can suspend "
+    "New Hampshire&rsquo;s financial responsibility law decides when a driver must prove they "
+    "can pay for a crash. After a crash you were in without insurance, or after certain "
+    "convictions, the state can suspend "
     "your license and registration until you file <b>proof of financial responsibility</b>, "
     "usually an insurance company&rsquo;s certificate. A motor vehicle liability policy here "
     "must cover at least $25,000 for injury to one person, $50,000 for one accident, and "
@@ -8573,21 +8625,23 @@ CAR_INSURANCE = guide(
     [ask("Do you have car insurance?",
          [("Yes", "Your policy carries at least the state&rsquo;s minimums and uninsured motorist "
                   "coverage."),
-          ("No", "You are responsible for any damage you cause, and a crash or certain "
-                 "convictions can cost you your license until you file proof of insurance.")]),
+          ("No", "A crash you must report, or certain convictions, can cost you your license "
+                 "and registration until you file proof of financial responsibility.")]),
      ask("Were you just in a crash?",
          [("Someone was hurt, or the damage is over $1,000",
            "Report it to the DMV in writing within 15 days, unless the police investigated."),
           ("No one was hurt and the damage is less", "Exchange information at the scene.")])],
-    [step("What the law requires, and what it does not",
-          "<p>The Insurance Department&rsquo;s Automobile Insurance page explains that New "
-          "Hampshire does not require you to buy car insurance, and what a policy covers. Without "
-          "insurance you are still responsible for the damage you cause, and the "
-          "<b>financial responsibility law</b> decides when the state requires proof that you "
-          "can pay.</p>"
+    [step("What the law requires",
+          "<p>The <b>financial responsibility law</b> decides when the state requires proof that "
+          "you can pay for damage you cause: after a crash you had to report and had no "
+          "insurance for, or after certain convictions (steps 2 and 3).</p>"
           "<p>That proof means being able to pay $25,000 for injury to or death of one person, "
           "$50,000 for injury to or death of two or more people in one accident, and $25,000 "
-          "for damage to property, for each vehicle registered in your name.</p>",
+          "for damage to property, for each vehicle registered in your name.</p>"
+          "<p>The Insurance Department&rsquo;s Automobile Insurance page divides auto insurance "
+          "into two basic coverage areas, liability and property damage. With a question about "
+          "your coverage, call its Consumer Services unit at (603) 271-2261, toll free in New "
+          "Hampshire at 1-800-852-3416, or email consumerservices@ins.nh.gov.</p>",
           actions=[("Automobile insurance (Insurance Department)", INS_AUTO)],
           law=["RSA 264:20"]),
      step("After a crash",
@@ -8728,12 +8782,25 @@ CAR_INSURANCE = guide(
      claim("Any insured may within 10 days of the receipt of a notice of cancellation or "
            "nonrenewal request in writing that the commissioner review the action.",
            "RSA 417-A:7", INS_LAW_READ),
-     # The Insurance Department's own pages, waiting for the person's printouts.
-     claim("New Hampshire does not require drivers to buy automobile insurance; a driver is still "
-           "responsible for damage they cause; what an automobile policy covers.", INS_AUTO,
-           INS_DEPT_READ),
-     claim("How to file a complaint about an insurance company or agent with the Insurance "
-           "Department, online or on a printable form.", INS_COMPLAINT, INS_DEPT_READ)],
+     # The Insurance Department's own pages, in the person's printouts of 26 October 2026.
+     claim("Auto insurance can be divided into two basic coverage areas: liability and property "
+           "damage. Have a question about your coverage? Call the Consumer Services unit at "
+           "603-271-2261, in state toll free (800) 852-3416 or email "
+           "consumerservices@ins.nh.gov.", INS_AUTO, INS_DEPT_READ),
+     claim("Consumer Complaint Forms: Online Consumer Complaint Form (Electronic version); "
+          "Consumer Complaint Form (Printable), intended to be printed for completion and mailed "
+          "or faxed to the New Hampshire Insurance Department; Auto Body Shop Complaint Form; "
+          "Health Provider Complaint Form; Release of Information Form. If you are submitting a "
+          "grievance or request for someone other than yourself (such as a spouse, adult child, "
+          "friend, patient, customer, etc.), please also complete and submit the Release of "
+          "Information Form. If the CSO assigned to your case determines the Department has the "
+          "jurisdictional authority to intervene on your behalf, he/she will forward your "
+          "submission to the appropriate licensee for a response. The Insurance Department is "
+          "not always able to negotiate the remedy you desire. If the issue does not fall within "
+          "the jurisdiction of the Insurance Department, your CSO will refer your complaint to "
+          "that agency and will inform you of the referral by letter. Contact the department's "
+          "Consumer Services Unit at 800-852-3416 or via email at consumerservices@ins.nh.gov. "
+          "21 South Fruit Street, Suite 14, Concord, NH 03301; Phone: (603) 271-2261.", INS_COMPLAINT, INS_DEPT_READ)],
     more=civics.faq(
         ("Does a driver under 18 need insurance?",
          "<p>A person under 18 gets a license only with a parent&rsquo;s or guardian&rsquo;s "
@@ -8768,24 +8835,28 @@ RENTERS_INSURANCE = guide(
     "renters-insurance", "Renters Insurance in New Hampshire",
     "What a renters insurance policy covers, the rules on cancelling one, and how to file a "
     "claim and complain to the Insurance Department.",
-    "A renters policy insures your own belongings and your <b>liability</b> if someone is hurt "
-    "in your home or you damage someone else&rsquo;s property; the Insurance Department&rsquo;s "
-    "page explains what it covers. Once a policy has been in effect for 90 days, the insurer may "
+    "If you rent, your landlord&rsquo;s insurance does not cover the things you own; a renters "
+    "policy does, the Insurance Department explains, and some policies also cover your living "
+    "expenses if an insured loss keeps you out of your home. Once a policy has been in effect "
+    "for 90 days, the insurer may "
     "cancel it only for the reasons the law lists, with written notice. If an insurer handles "
     "your claim unfairly, you can complain to the <b>Insurance Department</b>.",
     [ask("Do you rent your home?",
-         [("Yes", "A renters policy can cover your belongings and your liability."),
+         [("Yes", "A renters policy can cover your belongings, which your landlord&rsquo;s "
+                  "insurance does not."),
           ("No, you own it", "See homeowners insurance.")]),
      box("If you have a loss, tell your insurer and keep a record of what you send."),
      box("If you disagree with how it is handled, complain to the Insurance Department.")],
     [step("What renters insurance covers",
           "<p>New Hampshire&rsquo;s law on home insurance covers policies on a household&rsquo;s "
           "<b>real property</b> (a building), its <b>personal property</b> (belongings) and its "
-          "<b>legal liability</b> for injury to other people or damage to their property. A "
-          "renters policy is the last two: your belongings and your liability, not the building, "
-          "which is the owner&rsquo;s to insure. The Insurance Department&rsquo;s Homeowners and "
-          "Renters Insurance page explains what such a policy covers and what to ask when you "
-          "buy one.</p>",
+          "<b>legal liability</b> for injury to other people or damage to their property.</p>"
+          "<p>The Insurance Department&rsquo;s Homeowners and Renters Insurance page explains "
+          "that if you rent an apartment, house or condominium, your landlord&rsquo;s insurance "
+          "does not cover the things you own. A renters policy covers your belongings; some "
+          "policies also cover your living expenses if you cannot live in your home because of "
+          "an insured loss, and renters insurance may also protect you from lawsuits alleging "
+          "negligence.</p>",
           actions=[("Homeowners and renters insurance (Insurance Department)", INS_HOME)],
           law=["RSA 417-B:1"]),
      step("If your insurer cancels or will not renew your policy",
@@ -8810,9 +8881,12 @@ RENTERS_INSURANCE = guide(
      ("Unfair insurance practices, RSA 417", "/laws/417")],
     ["417", "417-B"],
     [*PROPERTY_CANCEL_CLAIMS, *PROPERTY_CLAIM_CLAIMS,
-     claim("What homeowners and renters insurance cover, and what to ask when buying a "
-           "policy; a renters policy covers the renter's belongings and liability, not the "
-           "building.", INS_HOME, INS_DEPT_READ)],
+     claim("Renters insurance is another important insurance product to consider. If you live "
+           "in a rented apartment, house, or condominium, your landlord's insurance doesn't "
+           "cover the things you own. In addition to covering your belongings, some policies "
+           "will also cover your living expenses if you are unable to live in your apartment or "
+           "home because of an insured loss. Renters insurance may also protect you from "
+           "lawsuits alleging negligence.", INS_HOME, INS_DEPT_READ)],
     more=civics.faq(
         ("Can my insurer drop me because of my credit?",
          "<p>Not on your credit information alone: the insurer must weigh other factors "
@@ -8830,30 +8904,39 @@ HOMEOWNERS_INSURANCE = guide(
     "homeowners-insurance", "Homeowners Insurance in New Hampshire",
     "What a homeowners insurance policy covers, why a lender may require it and flood "
     "insurance, the rules on cancelling a policy, and how to file a claim and complain.",
-    "A homeowners policy insures your house, your belongings and your <b>liability</b> to "
-    "others; the Insurance Department&rsquo;s page explains what it covers. A mortgage lender "
-    "may require it, and most homeowners policies do not cover flood damage. Once a policy has "
+    "A homeowners policy covers the structure of your home, your belongings and your "
+    "<b>liability</b> for injuries to others or their property while they are on your "
+    "property, the Insurance Department explains. Most mortgage lenders require it for as long "
+    "as you have a mortgage, and most homeowners policies do not cover flood damage. Once a "
+    "policy has "
     "been in effect for 90 days, the insurer may cancel it only for the reasons the law lists, "
     "and it may not refuse to renew it solely because you filed a single valid claim in one "
     "policy term. If an insurer handles "
     "your claim unfairly, you can complain to the <b>Insurance Department</b>.",
     [ask("Do you have a mortgage?",
-         [("Yes", "Your lender may require homeowners insurance, and flood insurance in a "
+         [("Yes", "Most lenders require homeowners insurance, and flood insurance in a "
                   "high-risk flood area."),
-          ("No", "No lender requires it, but you bear any loss you do not insure.")]),
+          ("No", "The Insurance Department&rsquo;s first reason to buy it is to protect your "
+                 "assets.")]),
      box("If you have a loss, tell your insurer and keep a record of what you send."),
      box("If you disagree with how it is handled, complain to the Insurance Department.")],
     [step("What homeowners insurance covers",
           "<p>New Hampshire&rsquo;s law on home insurance covers policies on a household&rsquo;s "
           "<b>real property</b> (the house), its <b>personal property</b> (belongings) and its "
           "<b>legal liability</b> for injury to other people or damage to their property. The "
-          "Insurance Department&rsquo;s Homeowners and Renters Insurance page explains what a "
-          "homeowners policy covers and what to ask when you buy one.</p>",
+          "Insurance Department&rsquo;s Homeowners and Renters Insurance page explains that "
+          "homeowners insurance covers the structure of your home and your personal property, "
+          "and your legal responsibility for injuries to others or their property while they "
+          "are on your property.</p>",
           actions=[("Homeowners and renters insurance (Insurance Department)", INS_HOME)],
           law=["RSA 417-B:1"]),
      step("What a lender may require, and flood insurance",
-          "<p>A mortgage lender may require you to insure the house, as the Insurance "
-          "Department&rsquo;s page explains; your mortgage papers say what it requires.</p>"
+          "<p>Most mortgage lenders require you to have insurance for as long as you have a "
+          "mortgage, and to list them as the mortgagee on the policy, the Insurance Department "
+          "explains. If you let your insurance lapse, your lender will likely insure the home "
+          "itself: the premium might be much higher than a policy you would buy, the coverage "
+          "is limited to damage to the structure, and the lender can require you to pay it until "
+          "you get your own homeowners insurance again.</p>"
           "<p>Most homeowners insurance does not cover flood damage, says FEMA&rsquo;s National "
           "Flood Insurance Program. You must have flood insurance if you own a home in a "
           "<b>Special Flood Hazard Area</b> and have a government-backed mortgage, and some "
@@ -8869,9 +8952,9 @@ HOMEOWNERS_INSURANCE = guide(
           "coverage is not a claim.</p>"
           "<p>Once a policy has been in effect for 90 days, or once it has been renewed, the "
           "insurer may cancel it only if you do not pay the premium, are convicted of a crime "
-          "that increases a hazard insured against, commit fraud in a claim, act with gross "
-          "negligence that substantially increases a hazard, change the property so that it "
-          "cannot be insured, or ask it to.</p>"
+          "that increases a hazard insured against, commit fraud or material misrepresentation "
+          "in a claim, act with gross negligence that substantially increases a hazard, make "
+          "physical changes that leave the property uninsurable, or ask it to.</p>"
           "<p>It must send written notice that states its specific reasons, at least 45 days "
           "before the cancellation or nonrenewal takes effect, or 10 days for not paying or in "
           "the first 90 days of a new policy.</p>",
@@ -8889,8 +8972,17 @@ HOMEOWNERS_INSURANCE = guide(
            "insured having filed a single valid claim within any one previous or current policy "
            "term; inquiries about coverage do not constitute a valid claim.", "RSA 417-B:3-a",
            INS_LAW_READ),
-     claim("What homeowners and renters insurance cover, and what to ask when buying a policy; "
-           "a mortgage lender may require homeowners insurance.", INS_HOME, INS_DEPT_READ),
+     claim("There are two major reasons to buy homeowners insurance: Protect your assets: "
+           "Homeowners insurance covers the structure of your home and your personal property, "
+           "as well as your personal legal responsibility (or liability) for injuries to others "
+           "or their property while they're on your property. Satisfy your mortgage lender: "
+           "Most mortgage lenders require you to have insurance as long as you have a mortgage "
+           "and to list them as the mortgagee on the policy. If you let your insurance lapse, "
+           "your mortgage lender will likely have your home insured. Compared to a policy you "
+           "would buy on your own, the premium might be much higher and the coverage will be "
+           "limited to damage to the structure of your home. The lender can require you to pay "
+           "this higher premium until you get your own homeowners insurance again.", INS_HOME,
+           INS_DEPT_READ),
      claim("You're required to have flood insurance if you own a home or business in a Special "
            "Flood Hazard Area (SFHA) and have a government-backed mortgage; some banks require "
            "flood insurance even if you don't live in a high-risk area; if your property has "

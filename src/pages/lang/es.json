@@ -2103,6 +2103,11 @@
    "es": "El inspector de construcción o el encargado del cumplimiento del código de su municipio o ciudad es la primera persona a quien preguntar, sobre sus permisos, sus cuotas y sus inspecciones. Si su municipio no tiene uno, pregunte en la oficina de los concejales.",
    "state": "draft"
   },
+  "guide.car-insurance.a-crash-you-must-report-or": {
+   "en": "A crash you must report, or certain convictions, can cost you your license and registration until you file proof of financial responsibility.",
+   "es": "Un choque que usted debe reportar, o ciertas condenas, pueden costarle su licencia y su registro hasta que presente una prueba de responsabilidad financiera.",
+   "state": "draft"
+  },
   "guide.car-insurance.a-motor-vehicle-liability-policy-the": {
    "en": "A <b>motor vehicle liability policy</b>, the kind of car insurance whose terms New Hampshire law sets, must cover your liability to others for at least $25,000 for injury to or death of one person, $50,000 for one accident injuring or killing more than one, and $25,000 for damage to others&rsquo; property. You may buy more.",
    "es": "Una <b>póliza de responsabilidad civil de vehículos motorizados</b> (motor vehicle liability policy), el tipo de seguro de auto cuyas condiciones fija la ley de New Hampshire, debe cubrir su responsabilidad ante otros por al menos $25,000 por lesiones o la muerte de una persona, $50,000 por un accidente que hiera o mate a más de una, y $25,000 por daños a la propiedad de otros. Puede comprar más.",
@@ -2253,9 +2258,9 @@
    "es": "Cuándo New Hampshire exige a un conductor demostrar que puede pagar por un choque, lo mínimo que debe cubrir una póliza de seguro de auto aquí, la cobertura de conductor sin seguro y qué hacer si su aseguradora cancela su póliza.",
    "state": "draft"
   },
-  "guide.car-insurance.new-hampshire-does-not-require-most": {
-   "en": "New Hampshire does not require most drivers to buy car insurance, as the Insurance Department explains, but a driver who causes a crash is responsible for the damage. After a crash you were in without insurance, or after certain convictions, the state can suspend your license and registration until you file <b>proof of financial responsibility</b>, usually an insurance company&rsquo;s certificate. A motor vehicle liability policy here must cover at least $25,000 for injury to one person, $50,000 for one accident, and $25,000 for damage to property, and must include <b>uninsured motorist</b> coverage, and on a private passenger car medical payments coverage.",
-   "es": "New Hampshire no exige a la mayoría de los conductores que compren un seguro de auto, según explica el Departamento de Seguros, pero un conductor que causa un choque es responsable de los daños. Después de un choque en el que estuvo sin seguro, o después de ciertas condenas, el estado puede suspender su licencia y su registro hasta que presente una <b>prueba de responsabilidad financiera</b> (proof of financial responsibility), por lo general un certificado de una compañía de seguros. Una póliza de responsabilidad civil de vehículos motorizados aquí debe cubrir al menos $25,000 por lesiones a una persona, $50,000 por un accidente y $25,000 por daños a la propiedad, y debe incluir cobertura de <b>conductor sin seguro</b> (uninsured motorist) y, en un auto de pasajeros particular, de pagos médicos.",
+  "guide.car-insurance.new-hampshires-financial-responsibility": {
+   "en": "New Hampshire&rsquo;s financial responsibility law decides when a driver must prove they can pay for a crash. After a crash you were in without insurance, or after certain convictions, the state can suspend your license and registration until you file <b>proof of financial responsibility</b>, usually an insurance company&rsquo;s certificate. A motor vehicle liability policy here must cover at least $25,000 for injury to one person, $50,000 for one accident, and $25,000 for damage to property, and must include <b>uninsured motorist</b> coverage, and on a private passenger car medical payments coverage.",
+   "es": "La ley de responsabilidad financiera de New Hampshire decide cuándo un conductor debe demostrar que puede pagar por un choque. Después de un choque en el que estuvo sin seguro, o después de ciertas condenas, el estado puede suspender su licencia y su registro hasta que presente una <b>prueba de responsabilidad financiera</b> (proof of financial responsibility), por lo general un certificado de una compañía de seguros. Una póliza de responsabilidad civil de vehículos motorizados aquí debe cubrir al menos $25,000 por lesiones a una persona, $50,000 por un accidente y $25,000 por daños a la propiedad, y debe incluir cobertura de <b>conductor sin seguro</b> (uninsured motorist) y, en un auto de pasajeros particular, de pagos médicos.",
    "state": "draft"
   },
   "guide.car-insurance.no": {
@@ -2303,9 +2308,14 @@
    "es": "Esa prueba significa poder pagar $25,000 por lesiones o la muerte de una persona, $50,000 por lesiones o la muerte de dos o más personas en un accidente, y $25,000 por daños a la propiedad, por cada vehículo registrado a su nombre.",
    "state": "draft"
   },
+  "guide.car-insurance.the-financial-responsibility-law-decides": {
+   "en": "The <b>financial responsibility law</b> decides when the state requires proof that you can pay for damage you cause: after a crash you had to report and had no insurance for, or after certain convictions (steps 2 and 3).",
+   "es": "La <b>ley de responsabilidad financiera</b> (financial responsibility law) decide cuándo el estado exige una prueba de que usted puede pagar los daños que cause: después de un choque que tuvo que reportar y para el que no tenía seguro, o después de ciertas condenas (pasos 2 y 3).",
+   "state": "draft"
+  },
   "guide.car-insurance.the-insurance-departments-automobile": {
-   "en": "The Insurance Department&rsquo;s Automobile Insurance page explains that New Hampshire does not require you to buy car insurance, and what a policy covers. Without insurance you are still responsible for the damage you cause, and the <b>financial responsibility law</b> decides when the state requires proof that you can pay.",
-   "es": "La página de seguro de auto del Departamento de Seguros explica que New Hampshire no le exige comprar un seguro de auto, y qué cubre una póliza. Sin seguro, usted sigue siendo responsable de los daños que cause, y la <b>ley de responsabilidad financiera</b> (financial responsibility law) decide cuándo el estado exige una prueba de que usted puede pagar.",
+   "en": "The Insurance Department&rsquo;s Automobile Insurance page divides auto insurance into two basic coverage areas, liability and property damage. With a question about your coverage, call its Consumer Services unit at (603) 271-2261, toll free in New Hampshire at 1-800-852-3416, or email consumerservices@ins.nh.gov.",
+   "es": "La página de seguro de auto del Departamento de Seguros divide el seguro de auto en dos áreas básicas de cobertura: responsabilidad civil y daños a la propiedad. Si tiene una pregunta sobre su cobertura, llame a Servicios al Consumidor (Consumer Services) al (603) 271-2261, al número gratuito dentro de New Hampshire 1-800-852-3416, o escriba a consumerservices@ins.nh.gov.",
    "state": "draft"
   },
   "guide.car-insurance.the-insurer-must-send-you-written": {
@@ -2348,9 +2358,9 @@
    "es": "Lo que debe incluir una póliza de seguro de auto",
    "state": "draft"
   },
-  "guide.car-insurance.what-the-law-requires-and-what": {
-   "en": "What the law requires, and what it does not",
-   "es": "Lo que la ley exige, y lo que no",
+  "guide.car-insurance.what-the-law-requires": {
+   "en": "What the law requires",
+   "es": "Lo que exige la ley",
    "state": "draft"
   },
   "guide.car-insurance.yes": {
@@ -2361,11 +2371,6 @@
   "guide.car-insurance.yes-an-umbrella-or-excess-policy": {
    "en": "Yes, an umbrella or excess policy over a car policy includes uninsured motorist coverage equal to its limits, unless you turn it down in writing.",
    "es": "Sí, una póliza paraguas o de exceso sobre una póliza de auto incluye una cobertura de conductor sin seguro igual a sus límites, a menos que usted la rechace por escrito.",
-   "state": "draft"
-  },
-  "guide.car-insurance.you-are-responsible-for-any-damage": {
-   "en": "You are responsible for any damage you cause, and a crash or certain convictions can cost you your license until you file proof of insurance.",
-   "es": "Usted es responsable de cualquier daño que cause, y un choque o ciertas condenas pueden costarle su licencia hasta que presente una prueba de seguro.",
    "state": "draft"
   },
   "guide.car-insurance.you-choose-you-may-claim-under": {
@@ -4896,8 +4901,8 @@
    "state": "draft"
   },
   "guide.health-insurance.if-your-doctor-or-other-provider": {
-   "en": "If your doctor or other provider certifies that waiting would seriously endanger your life or health, or your ability to regain full function, you can ask for an <b>expedited</b> review, even while the company&rsquo;s own appeal is under way; it is decided within 72 hours. It is not available for care already given.",
-   "es": "Si su médico u otro proveedor certifica que esperar pondría en grave peligro su vida o su salud, o su capacidad de recuperar todas sus funciones, puede pedir una revisión <b>acelerada</b>, incluso mientras sigue en curso la apelación ante la compañía; se decide dentro de 72 horas. No está disponible para una atención ya recibida.",
+   "en": "If your doctor or other provider certifies that waiting would seriously endanger your life or health, or your ability to regain full function, you can ask for an <b>expedited</b> review, even while the company&rsquo;s own appeal is under way; it is decided within 72 hours. It needs a Provider Certification Form signed by your provider. It is not available for care already given.",
+   "es": "Si su médico u otro proveedor certifica que esperar pondría en grave peligro su vida o su salud, o su capacidad de recuperar todas sus funciones, puede pedir una revisión <b>acelerada</b>, incluso mientras sigue en curso la apelación ante la compañía; se decide dentro de 72 horas. Requiere un formulario de certificación del proveedor (Provider Certification Form) firmado por su proveedor. No está disponible para una atención ya recibida.",
    "state": "draft"
   },
   "guide.health-insurance.if-your-insurance-company-denies-a": {
@@ -5021,13 +5026,18 @@
    "state": "draft"
   },
   "guide.health-insurance.the-insurance-department-investigates": {
-   "en": "The <b>Insurance Department</b> investigates complaints about insurance companies and agents, through a toll-free number and a complaint form. It may tell the company about your complaint, ask it for relief for you, and meet with both of you to settle it, but it cannot decide a claim. When you ask, it helps you through an insurance company&rsquo;s appeal and an external review. Its Consumer Services line is 1-800-852-3416.",
-   "es": "El <b>Departamento de Seguros</b> investiga quejas sobre compañías y agentes de seguros, mediante un número gratuito y un formulario de queja. Puede informar a la compañía de su queja, pedirle una solución para usted y reunirse con ambos para resolverla, pero no puede decidir un reclamo. Si usted lo pide, le ayuda con la apelación ante una compañía de seguros y con una revisión externa. Su línea de Servicios al Consumidor es el 1-800-852-3416.",
+   "en": "The <b>Insurance Department</b> investigates complaints about insurance companies and agents, through a toll-free number and a complaint form. It may tell the company about your complaint, ask it for relief for you, and meet with both of you to settle it, but it cannot decide a claim. When you ask, it helps you through an insurance company&rsquo;s appeal and an external review. Call its Consumer Services staff at (603) 271-2261, toll free in New Hampshire at 1-800-852-3416, or email consumerservices@ins.nh.gov.",
+   "es": "El <b>Departamento de Seguros</b> investiga quejas sobre compañías y agentes de seguros, mediante un número gratuito y un formulario de queja. Puede informar a la compañía de su queja, pedirle una solución para usted y reunirse con ambos para resolverla, pero no puede decidir un reclamo. Si usted lo pide, le ayuda con la apelación ante una compañía de seguros y con una revisión externa. Llame a su personal de Servicios al Consumidor al (603) 271-2261, al número gratuito dentro de New Hampshire 1-800-852-3416, o escriba a consumerservices@ins.nh.gov.",
    "state": "draft"
   },
   "guide.health-insurance.the-insurance-departments-consumer": {
-   "en": "The Insurance Department&rsquo;s Consumer Services, at 1-800-852-3416, for questions and complaints about an insurance company, and help with an appeal. For Medicaid, or advice on your own case:",
-   "es": "Los Servicios al Consumidor del Departamento de Seguros, en el 1-800-852-3416, para preguntas y quejas sobre una compañía de seguros, y ayuda con una apelación. Para Medicaid, o asesoría sobre su propio caso:",
+   "en": "The Insurance Department&rsquo;s Consumer Services, at (603) 271-2261 or toll free in New Hampshire at 1-800-852-3416, for questions and complaints about an insurance company, and help with an appeal. For Medicaid, or advice on your own case:",
+   "es": "Los Servicios al Consumidor del Departamento de Seguros, en el (603) 271-2261 o en el número gratuito dentro de New Hampshire 1-800-852-3416, para preguntas y quejas sobre una compañía de seguros, y ayuda con una apelación. Para Medicaid, o asesoría sobre su propio caso:",
+   "state": "draft"
+  },
+  "guide.health-insurance.the-insurance-departments-page-says-this": {
+   "en": "The Insurance Department&rsquo;s page says this right is for people covered by fully-insured health or dental plans, that there is no cost to you, and that a standard review may take up to 60 days. Send its External Health Review Form by email or mail.",
+   "es": "La página del Departamento de Seguros dice que este derecho es para las personas cubiertas por planes de salud o dentales totalmente asegurados (fully-insured), que no le cuesta nada, y que una revisión estándar puede tardar hasta 60 días. Envíe su formulario de revisión externa de salud (External Health Review Form) por correo electrónico o por correo postal.",
    "state": "draft"
   },
   "guide.health-insurance.the-marketplace-in-your-state-healthcare": {
@@ -5711,14 +5721,9 @@
    "es": "<b>La oficina de asistencia social (welfare) de su municipio o ciudad</b> debe ayudar a una persona que sea pobre y no pueda mantenerse, según las pautas escritas que adopta cada municipio y ciudad: cómo solicitar, quién reúne los requisitos y cómo apelar una decisión.",
    "state": "draft"
   },
-  "guide.homeowners-insurance.a-homeowners-policy-insures-your-house": {
-   "en": "A homeowners policy insures your house, your belongings and your <b>liability</b> to others; the Insurance Department&rsquo;s page explains what it covers. A mortgage lender may require it, and most homeowners policies do not cover flood damage. Once a policy has been in effect for 90 days, the insurer may cancel it only for the reasons the law lists, and it may not refuse to renew it solely because you filed a single valid claim in one policy term. If an insurer handles your claim unfairly, you can complain to the <b>Insurance Department</b>.",
-   "es": "Una póliza de propietarios asegura su casa, sus pertenencias y su <b>responsabilidad</b> ante otros; la página del Departamento de Seguros explica qué cubre. Un prestamista hipotecario puede exigirla, y la mayoría de las pólizas de propietarios no cubren los daños por inundación. Cuando una póliza lleva 90 días en vigor, la aseguradora solo puede cancelarla por las razones que indica la ley, y no puede negarse a renovarla solo porque usted presentó un único reclamo válido en un período de la póliza. Si una aseguradora maneja su reclamo de forma injusta, puede presentar una queja ante el <b>Departamento de Seguros</b>.",
-   "state": "draft"
-  },
-  "guide.homeowners-insurance.a-mortgage-lender-may-require-you": {
-   "en": "A mortgage lender may require you to insure the house, as the Insurance Department&rsquo;s page explains; your mortgage papers say what it requires.",
-   "es": "Un prestamista hipotecario puede exigirle que asegure la casa, según explica la página del Departamento de Seguros; los documentos de su hipoteca dicen qué exige.",
+  "guide.homeowners-insurance.a-homeowners-policy-covers-the-structure": {
+   "en": "A homeowners policy covers the structure of your home, your belongings and your <b>liability</b> for injuries to others or their property while they are on your property, the Insurance Department explains. Most mortgage lenders require it for as long as you have a mortgage, and most homeowners policies do not cover flood damage. Once a policy has been in effect for 90 days, the insurer may cancel it only for the reasons the law lists, and it may not refuse to renew it solely because you filed a single valid claim in one policy term. If an insurer handles your claim unfairly, you can complain to the <b>Insurance Department</b>.",
+   "es": "Una póliza de propietarios cubre la estructura de su vivienda, sus pertenencias y su <b>responsabilidad</b> por lesiones a otras personas o daños a su propiedad mientras están en su propiedad, según explica el Departamento de Seguros. La mayoría de los prestamistas hipotecarios la exigen mientras usted tenga una hipoteca, y la mayoría de las pólizas de propietarios no cubren los daños por inundación. Cuando una póliza lleva 90 días en vigor, la aseguradora solo puede cancelarla por las razones que indica la ley, y no puede negarse a renovarla solo porque usted presentó un único reclamo válido en un período de la póliza. Si una aseguradora maneja su reclamo de forma injusta, puede presentar una queja ante el <b>Departamento de Seguros</b>.",
    "state": "draft"
   },
   "guide.homeowners-insurance.an-insurer-may-not-cancel-or": {
@@ -5836,19 +5841,24 @@
    "es": "La mayoría de los seguros de propietarios no cubren los daños por inundación, dice el Programa Nacional de Seguro contra Inundaciones (National Flood Insurance Program) de FEMA. Debe tener un seguro contra inundaciones si es dueño de una vivienda en una <b>Zona Especial de Riesgo de Inundación</b> (Special Flood Hazard Area) y tiene una hipoteca respaldada por el gobierno, y algunos prestamistas lo exigen fuera de esas zonas. Si la propiedad ya recibió asistencia federal por desastre, necesita un seguro contra inundaciones para volver a reunir los requisitos.",
    "state": "draft"
   },
+  "guide.homeowners-insurance.most-lenders-require-homeowners": {
+   "en": "Most lenders require homeowners insurance, and flood insurance in a high-risk flood area.",
+   "es": "La mayoría de los prestamistas exigen un seguro de propietarios, y un seguro contra inundaciones en una zona de alto riesgo de inundación.",
+   "state": "draft"
+  },
+  "guide.homeowners-insurance.most-mortgage-lenders-require-you-to": {
+   "en": "Most mortgage lenders require you to have insurance for as long as you have a mortgage, and to list them as the mortgagee on the policy, the Insurance Department explains. If you let your insurance lapse, your lender will likely insure the home itself: the premium might be much higher than a policy you would buy, the coverage is limited to damage to the structure, and the lender can require you to pay it until you get your own homeowners insurance again.",
+   "es": "La mayoría de los prestamistas hipotecarios le exigen tener un seguro mientras tenga una hipoteca, y figurar en la póliza como acreedor hipotecario, según explica el Departamento de Seguros. Si deja que su seguro venza, es probable que su prestamista asegure la vivienda por su cuenta: la prima podría ser mucho más alta que la de una póliza que usted compraría, la cobertura se limita a los daños a la estructura, y el prestamista puede exigirle que la pague hasta que usted vuelva a tener su propio seguro de propietarios.",
+   "state": "draft"
+  },
   "guide.homeowners-insurance.new-hampshires-law-on-home-insurance": {
-   "en": "New Hampshire&rsquo;s law on home insurance covers policies on a household&rsquo;s <b>real property</b> (the house), its <b>personal property</b> (belongings) and its <b>legal liability</b> for injury to other people or damage to their property. The Insurance Department&rsquo;s Homeowners and Renters Insurance page explains what a homeowners policy covers and what to ask when you buy one.",
-   "es": "La ley de New Hampshire sobre el seguro de vivienda abarca las pólizas sobre los <b>bienes inmuebles</b> de un hogar (la casa), sus <b>bienes personales</b> (pertenencias) y su <b>responsabilidad legal</b> por lesiones a otras personas o daños a su propiedad. La página del Departamento de Seguros sobre el seguro de propietarios y de inquilinos explica qué cubre una póliza de propietarios y qué preguntar al comprarla.",
+   "en": "New Hampshire&rsquo;s law on home insurance covers policies on a household&rsquo;s <b>real property</b> (the house), its <b>personal property</b> (belongings) and its <b>legal liability</b> for injury to other people or damage to their property. The Insurance Department&rsquo;s Homeowners and Renters Insurance page explains that homeowners insurance covers the structure of your home and your personal property, and your legal responsibility for injuries to others or their property while they are on your property.",
+   "es": "La ley de New Hampshire sobre el seguro de vivienda abarca las pólizas sobre los <b>bienes inmuebles</b> de un hogar (la casa), sus <b>bienes personales</b> (pertenencias) y su <b>responsabilidad legal</b> por lesiones a otras personas o daños a su propiedad. La página del Departamento de Seguros sobre el seguro de propietarios y de inquilinos explica que el seguro de propietarios cubre la estructura de su vivienda y sus bienes personales, y su responsabilidad legal por lesiones a otras personas o daños a su propiedad mientras están en su propiedad.",
    "state": "draft"
   },
   "guide.homeowners-insurance.no": {
    "en": "No",
    "es": "No",
-   "state": "draft"
-  },
-  "guide.homeowners-insurance.no-lender-requires-it-but-you": {
-   "en": "No lender requires it, but you bear any loss you do not insure.",
-   "es": "Ningún prestamista lo exige, pero usted asume cualquier pérdida que no asegure.",
    "state": "draft"
   },
   "guide.homeowners-insurance.not-solely-because-of-a-single": {
@@ -5857,8 +5867,8 @@
    "state": "draft"
   },
   "guide.homeowners-insurance.once-a-policy-has-been-in": {
-   "en": "Once a policy has been in effect for 90 days, or once it has been renewed, the insurer may cancel it only if you do not pay the premium, are convicted of a crime that increases a hazard insured against, commit fraud in a claim, act with gross negligence that substantially increases a hazard, change the property so that it cannot be insured, or ask it to.",
-   "es": "Cuando una póliza lleva 90 días en vigor, o una vez renovada, la aseguradora solo puede cancelarla si usted no paga la prima, es condenado por un delito que aumenta un riesgo asegurado, comete fraude en un reclamo, actúa con negligencia grave que aumenta sustancialmente un riesgo, cambia la propiedad de modo que no se puede asegurar, o lo pide.",
+   "en": "Once a policy has been in effect for 90 days, or once it has been renewed, the insurer may cancel it only if you do not pay the premium, are convicted of a crime that increases a hazard insured against, commit fraud or material misrepresentation in a claim, act with gross negligence that substantially increases a hazard, make physical changes that leave the property uninsurable, or ask it to.",
+   "es": "Cuando una póliza lleva 90 días en vigor, o una vez renovada, la aseguradora solo puede cancelarla si usted no paga la prima, es condenado por un delito que aumenta un riesgo asegurado, comete fraude o una tergiversación importante en un reclamo, actúa con negligencia grave que aumenta sustancialmente un riesgo, hace cambios físicos que dejan la propiedad sin posibilidad de asegurarse, o lo pide.",
    "state": "draft"
   },
   "guide.homeowners-insurance.renters-insurance": {
@@ -5871,9 +5881,14 @@
    "es": "Avise a su compañía de seguros de la pérdida como lo indica su póliza, y guarde constancia de lo que envía y de cuándo lo envía. La ley considera una <b>práctica desleal en la liquidación de reclamos</b> (unfair claim settlement practice) que una aseguradora, sin causa justificada, no actúe con prontitud sobre lo que usted le envía acerca de un reclamo, no intente de buena fe llegar a un arreglo justo y rápido una vez que su responsabilidad está razonablemente clara, o no diga si cubre el reclamo dentro de un plazo razonable después de que usted envía los formularios de prueba de pérdida.",
    "state": "draft"
   },
+  "guide.homeowners-insurance.the-insurance-departments-first-reason": {
+   "en": "The Insurance Department&rsquo;s first reason to buy it is to protect your assets.",
+   "es": "La primera razón que da el Departamento de Seguros para comprarlo es proteger sus bienes.",
+   "state": "draft"
+  },
   "guide.homeowners-insurance.the-new-hampshire-insurance-department": {
-   "en": "The <b>New Hampshire Insurance Department</b> takes complaints about insurance companies and agents; its Filing a Complaint page says how to file one, online or on a printed form. The Insurance Commissioner may examine and investigate an insurer&rsquo;s practices.",
-   "es": "El <b>Departamento de Seguros de New Hampshire</b> (New Hampshire Insurance Department) recibe quejas sobre compañías y agentes de seguros; su página sobre cómo presentar una queja explica cómo hacerlo, en línea o en un formulario impreso. El Comisionado de Seguros puede examinar e investigar las prácticas de una aseguradora.",
+   "en": "The <b>New Hampshire Insurance Department</b> takes complaints about insurance companies and agents. Its Filing a Complaint page has an online complaint form, and a printable Consumer Complaint Form to mail or fax to the Department. If you complain for someone else, such as a spouse, an adult child or a friend, also send its Release of Information Form. A Consumer Services Officer reviews what you send and, if the Department has authority over it, forwards it to the company or agent for a response; if not, the officer refers it to the agency that has and tells you by letter. The Department is not always able to get you the remedy you want. The Insurance Commissioner may examine and investigate an insurer&rsquo;s practices.",
+   "es": "El <b>Departamento de Seguros de New Hampshire</b> (New Hampshire Insurance Department) recibe quejas sobre compañías y agentes de seguros. Su página sobre cómo presentar una queja tiene un formulario de queja en línea, y un formulario de queja del consumidor (Consumer Complaint Form) para imprimir y enviar al Departamento por correo o por fax. Si presenta la queja por otra persona, como su cónyuge, un hijo adulto o un amigo, envíe también su formulario de autorización para divulgar información (Release of Information Form). Un funcionario de Servicios al Consumidor revisa lo que usted envía y, si el Departamento tiene autoridad sobre el asunto, lo remite a la compañía o al agente para que responda; si no la tiene, lo remite a la agencia que sí la tiene y se lo comunica por carta. El Departamento no siempre puede conseguirle la solución que usted desea. El Comisionado de Seguros puede examinar e investigar las prácticas de una aseguradora.",
    "state": "draft"
   },
   "guide.homeowners-insurance.title": {
@@ -5906,6 +5921,11 @@
    "es": "¿Quién reúne los requisitos para el seguro contra inundaciones del NFIP? (FloodSmart, FEMA)",
    "state": "draft"
   },
+  "guide.homeowners-insurance.with-a-question-call-consumer-services": {
+   "en": "With a question, call Consumer Services at (603) 271-2261, toll free in New Hampshire at 1-800-852-3416, or email consumerservices@ins.nh.gov.",
+   "es": "Si tiene una pregunta, llame a Servicios al Consumidor (Consumer Services) al (603) 271-2261, al número gratuito dentro de New Hampshire 1-800-852-3416, o escriba a consumerservices@ins.nh.gov.",
+   "state": "draft"
+  },
   "guide.homeowners-insurance.yes": {
    "en": "Yes",
    "es": "Sí",
@@ -5914,11 +5934,6 @@
   "guide.homeowners-insurance.yes-if-the-home-received-federal": {
    "en": "Yes: if the home received federal disaster assistance before, it needs flood insurance to qualify for more, even after it is sold.",
    "es": "Sí: si la vivienda ya recibió asistencia federal por desastre, necesita un seguro contra inundaciones para volver a reunir los requisitos, incluso después de venderse.",
-   "state": "draft"
-  },
-  "guide.homeowners-insurance.your-lender-may-require-homeowners": {
-   "en": "Your lender may require homeowners insurance, and flood insurance in a high-risk flood area.",
-   "es": "Su prestamista puede exigir un seguro de propietarios, y un seguro contra inundaciones en una zona de alto riesgo de inundación.",
    "state": "draft"
   },
   "guide.how-to-vote.a-physical-disability-or-illness": {
@@ -10127,13 +10142,8 @@
    "state": "draft"
   },
   "guide.renters-insurance.a-renters-policy-can-cover-your": {
-   "en": "A renters policy can cover your belongings and your liability.",
-   "es": "Una póliza de inquilinos puede cubrir sus pertenencias y su responsabilidad.",
-   "state": "draft"
-  },
-  "guide.renters-insurance.a-renters-policy-insures-your-own": {
-   "en": "A renters policy insures your own belongings and your <b>liability</b> if someone is hurt in your home or you damage someone else&rsquo;s property; the Insurance Department&rsquo;s page explains what it covers. Once a policy has been in effect for 90 days, the insurer may cancel it only for the reasons the law lists, with written notice. If an insurer handles your claim unfairly, you can complain to the <b>Insurance Department</b>.",
-   "es": "Una póliza de inquilinos asegura sus propias pertenencias y su <b>responsabilidad</b> si alguien se lesiona en su vivienda o usted daña la propiedad de otra persona; la página del Departamento de Seguros explica qué cubre. Cuando una póliza lleva 90 días en vigor, la aseguradora solo puede cancelarla por las razones que indica la ley, con aviso por escrito. Si una aseguradora maneja su reclamo de forma injusta, puede presentar una queja ante el <b>Departamento de Seguros</b>.",
+   "en": "A renters policy can cover your belongings, which your landlord&rsquo;s insurance does not.",
+   "es": "Una póliza de inquilinos puede cubrir sus pertenencias, que el seguro del arrendador no cubre.",
    "state": "draft"
   },
   "guide.renters-insurance.an-insurer-may-not-cancel-or": {
@@ -10216,6 +10226,11 @@
    "es": "Si sufre una pérdida, avise a su aseguradora y guarde constancia de lo que envía.",
    "state": "draft"
   },
+  "guide.renters-insurance.if-you-rent-your-landlords-insurance": {
+   "en": "If you rent, your landlord&rsquo;s insurance does not cover the things you own; a renters policy does, the Insurance Department explains, and some policies also cover your living expenses if an insured loss keeps you out of your home. Once a policy has been in effect for 90 days, the insurer may cancel it only for the reasons the law lists, with written notice. If an insurer handles your claim unfairly, you can complain to the <b>Insurance Department</b>.",
+   "es": "Si alquila, el seguro del arrendador no cubre las cosas que le pertenecen; una póliza de inquilinos sí, según explica el Departamento de Seguros, y algunas pólizas cubren también sus gastos de vivienda si una pérdida asegurada le impide vivir en su hogar. Cuando una póliza lleva 90 días en vigor, la aseguradora solo puede cancelarla por las razones que indica la ley, con aviso por escrito. Si una aseguradora maneja su reclamo de forma injusta, puede presentar una queja ante el <b>Departamento de Seguros</b>.",
+   "state": "draft"
+  },
   "guide.renters-insurance.if-your-insurer-cancels-or-will": {
    "en": "If your insurer cancels or will not renew your policy",
    "es": "Si su aseguradora cancela su póliza o no la renueva",
@@ -10237,8 +10252,8 @@
    "state": "draft"
   },
   "guide.renters-insurance.new-hampshires-law-on-home-insurance": {
-   "en": "New Hampshire&rsquo;s law on home insurance covers policies on a household&rsquo;s <b>real property</b> (a building), its <b>personal property</b> (belongings) and its <b>legal liability</b> for injury to other people or damage to their property. A renters policy is the last two: your belongings and your liability, not the building, which is the owner&rsquo;s to insure. The Insurance Department&rsquo;s Homeowners and Renters Insurance page explains what such a policy covers and what to ask when you buy one.",
-   "es": "La ley de New Hampshire sobre el seguro de vivienda abarca las pólizas sobre los <b>bienes inmuebles</b> de un hogar (un edificio), sus <b>bienes personales</b> (pertenencias) y su <b>responsabilidad legal</b> por lesiones a otras personas o daños a su propiedad. Una póliza de inquilinos cubre las dos últimas: sus pertenencias y su responsabilidad, no el edificio, que le corresponde asegurar al dueño. La página del Departamento de Seguros sobre el seguro de propietarios y de inquilinos explica qué cubre una póliza así y qué preguntar al comprarla.",
+   "en": "New Hampshire&rsquo;s law on home insurance covers policies on a household&rsquo;s <b>real property</b> (a building), its <b>personal property</b> (belongings) and its <b>legal liability</b> for injury to other people or damage to their property.",
+   "es": "La ley de New Hampshire sobre el seguro de vivienda abarca las pólizas sobre los <b>bienes inmuebles</b> de un hogar (un edificio), sus <b>bienes personales</b> (pertenencias) y su <b>responsabilidad legal</b> por lesiones a otras personas o daños a su propiedad.",
    "state": "draft"
   },
   "guide.renters-insurance.no-you-own-it": {
@@ -10266,9 +10281,14 @@
    "es": "Avise a su compañía de seguros de la pérdida como lo indica su póliza, y guarde constancia de lo que envía y de cuándo lo envía. La ley considera una <b>práctica desleal en la liquidación de reclamos</b> (unfair claim settlement practice) que una aseguradora, sin causa justificada, no actúe con prontitud sobre lo que usted le envía acerca de un reclamo, no intente de buena fe llegar a un arreglo justo y rápido una vez que su responsabilidad está razonablemente clara, o no diga si cubre el reclamo dentro de un plazo razonable después de que usted envía los formularios de prueba de pérdida.",
    "state": "draft"
   },
+  "guide.renters-insurance.the-insurance-departments-homeowners-and": {
+   "en": "The Insurance Department&rsquo;s Homeowners and Renters Insurance page explains that if you rent an apartment, house or condominium, your landlord&rsquo;s insurance does not cover the things you own. A renters policy covers your belongings; some policies also cover your living expenses if you cannot live in your home because of an insured loss, and renters insurance may also protect you from lawsuits alleging negligence.",
+   "es": "La página del Departamento de Seguros sobre el seguro de propietarios y de inquilinos explica que, si usted alquila un apartamento, una casa o un condominio, el seguro del arrendador no cubre las cosas que le pertenecen. Una póliza de inquilinos cubre sus pertenencias; algunas pólizas cubren también sus gastos de vivienda si no puede vivir en su hogar a causa de una pérdida asegurada, y el seguro de inquilinos también puede protegerle de demandas por negligencia.",
+   "state": "draft"
+  },
   "guide.renters-insurance.the-new-hampshire-insurance-department": {
-   "en": "The <b>New Hampshire Insurance Department</b> takes complaints about insurance companies and agents; its Filing a Complaint page says how to file one, online or on a printed form. The Insurance Commissioner may examine and investigate an insurer&rsquo;s practices.",
-   "es": "El <b>Departamento de Seguros de New Hampshire</b> (New Hampshire Insurance Department) recibe quejas sobre compañías y agentes de seguros; su página sobre cómo presentar una queja explica cómo hacerlo, en línea o en un formulario impreso. El Comisionado de Seguros puede examinar e investigar las prácticas de una aseguradora.",
+   "en": "The <b>New Hampshire Insurance Department</b> takes complaints about insurance companies and agents. Its Filing a Complaint page has an online complaint form, and a printable Consumer Complaint Form to mail or fax to the Department. If you complain for someone else, such as a spouse, an adult child or a friend, also send its Release of Information Form. A Consumer Services Officer reviews what you send and, if the Department has authority over it, forwards it to the company or agent for a response; if not, the officer refers it to the agency that has and tells you by letter. The Department is not always able to get you the remedy you want. The Insurance Commissioner may examine and investigate an insurer&rsquo;s practices.",
+   "es": "El <b>Departamento de Seguros de New Hampshire</b> (New Hampshire Insurance Department) recibe quejas sobre compañías y agentes de seguros. Su página sobre cómo presentar una queja tiene un formulario de queja en línea, y un formulario de queja del consumidor (Consumer Complaint Form) para imprimir y enviar al Departamento por correo o por fax. Si presenta la queja por otra persona, como su cónyuge, un hijo adulto o un amigo, envíe también su formulario de autorización para divulgar información (Release of Information Form). Un funcionario de Servicios al Consumidor revisa lo que usted envía y, si el Departamento tiene autoridad sobre el asunto, lo remite a la compañía o al agente para que responda; si no la tiene, lo remite a la agencia que sí la tiene y se lo comunica por carta. El Departamento no siempre puede conseguirle la solución que usted desea. El Comisionado de Seguros puede examinar e investigar las prácticas de una aseguradora.",
    "state": "draft"
   },
   "guide.renters-insurance.title": {
@@ -10284,6 +10304,11 @@
   "guide.renters-insurance.what-renters-insurance-covers": {
    "en": "What renters insurance covers",
    "es": "Qué cubre el seguro de inquilinos",
+   "state": "draft"
+  },
+  "guide.renters-insurance.with-a-question-call-consumer-services": {
+   "en": "With a question, call Consumer Services at (603) 271-2261, toll free in New Hampshire at 1-800-852-3416, or email consumerservices@ins.nh.gov.",
+   "es": "Si tiene una pregunta, llame a Servicios al Consumidor (Consumer Services) al (603) 271-2261, al número gratuito dentro de New Hampshire 1-800-852-3416, o escriba a consumerservices@ins.nh.gov.",
    "state": "draft"
   },
   "guide.renters-insurance.yes": {
