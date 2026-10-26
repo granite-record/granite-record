@@ -55,6 +55,7 @@ AREAS = {"nav": "the header", "page": "the header", "theme": "Settings", "set": 
          "home": "the home page", "card": "the home page's cards",
          "web": "the home page's webinar box", "state": "the home page's status box",
          "fresh": "the home page, under Coming up: a warning that the data is stale",
+         "sess": "the home page's Recent Session Days: the floor sessions' players",
          "gloss": "the Glossary page, and the pop-up on a term", "cal": "Coming up (the week's meetings)",
          "kind": "Coming up: a kind of meeting", "find": "the search box's results",
          "search": "the search box", "yt": "Settings: Your town", "foot": "the footer",

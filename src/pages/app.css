@@ -3526,6 +3526,7 @@ text-align:center;color:var(--ink-2);font-size:var(--t-ui)}
   .cnum{font-size:var(--t-ui)}
   .pbar{flex-wrap:wrap;gap:var(--sp-3)}
   .pbar .jump{font-size:var(--t-sm)}
+  .twoup{grid-template-columns:1fr}
   .entry{grid-template-columns:1fr}
   .statgrid{grid-template-columns:1fr 1fr}
   /* The supporting text carries the site's hedging -- "estimated within
@@ -7857,24 +7858,18 @@ padding:var(--sp-6) var(--sp-6);margin:0;background:var(--surface);max-width:548
 /* No cap of its own any more: .statebox carries it, so the panel and the
    sentence end in the same place. */:where(body.pg) .statenote{font-size:var(--t-ui);color:var(--ink-2);margin:var(--sp-4) 0 0;line-height:1.6}
 :where(body.pg) .statebox p:last-child{margin-bottom:0}
-/* THE LATEST SITTINGS, ONE LINE UNDER THE STATUS (build_pages.session_line;
-   the audit of 25 October 2026, M8, where two players were): in the status
-   box's own small grey type, close under it, and not a panel of its own at
-   any width -- so #session takes none of the gaps and sheets below that set
-   the rails' blocks apart, and .statebox keeps no margin below it, which
-   only ever stood between the box and the players. */
-:where(body.pg) #session{margin-top:0}
-:where(body.pg) .sessline{font-size:var(--t-ui);color:var(--ink-2);margin:var(--sp-5) 0 0;line-height:1.6}
-/* One line where it fits, and where it does not -- the 258px of the left
-   rail from 1180px up -- the date and its dash, then the chambers and the
-   word "recordings", which a plain paragraph left alone on the second row
-   (the preview check of 25 October 2026). An inline block, not nowrap: it
-   moves to the next row whole, and only where even a row of its own cannot
-   hold it -- a reader's larger default font size -- does it wrap inside
-   itself. Held by nowrap it ran past its card and across the webinar card
-   in the middle column at 24px, and off a 320px phone (the review of the
-   same day), as a vote's result once ran out of its chip (_chip_nowrap). */
-:where(body.pg) .sessline .sesswhat{display:inline-block}
+/* RECENT SESSION DAYS, UNDER THE STATUS (build_pages.recent_sessions; the
+   owner, 26 October 2026, wanting the players back after a day as one line
+   of links): a block of its own, a sheet below 1180px as the rails' other
+   blocks are (THE COLUMNS, SET APART, below), each sitting's title over its
+   player. The player is the bill's -- .player and .pstub, above: a 16:9
+   still with Play in its middle, which says "this is a video" before a word
+   of it is read. Two side by side where a row holds two at 280px, which is
+   a tablet's sheet; one over the other in the 258px of the left rail and on
+   a phone (.hside .twoup, and the narrow blocks). */
+:where(body.pg) .twoup{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:var(--sp-6)}
+:where(body.pg) .sesstitle{margin:0 0 var(--sp-3);font-size:var(--t-sm)}
+:where(body.pg) .sess .player{margin-top:0}
 :where(body.pg) details.vac{margin-top:var(--sp-4)}
 :where(body.pg) details.vac summary{cursor:pointer;font-size:var(--t-ui);color:var(--pine)}
 :where(body.pg) .comp{margin:0 0 var(--sp-7)}
@@ -8089,6 +8084,10 @@ padding:var(--sp-7) max(0px,calc(50% - 590px))}
 :where(body.pg) .hside > :first-child{margin-top:0}
 
 :where(body.pg) .hside .cal{margin-top:0}
+/* Stacked, not side by side. .twoup's own floor is minmax(280px,1fr),
+     which in a 290px column is one column anyway -- this says so rather
+     than relying on it, because the ask was explicit. In the left column
+     since 24 October 2026, the same width. */:where(body.pg) .hside .twoup{grid-template-columns:1fr}
 /* Three numbers across a 482px column rather than two, which needs one
      step down the type scale: 20px puts "2,303,047" at 110px, and 134px of
      basis carries it with its padding. The middle column is the widest of
@@ -8177,7 +8176,9 @@ font-variant-numeric:tabular-nums;white-space:nowrap}
   /* display:contents leaves the children without the wrapper's own spacing,
      so the blocks that used to lean on .hside set their own. */
   :where(body.pg) .hcols #state,
-  :where(body.pg) .hcols #upcoming{margin-top:var(--sp-7)}
+  :where(body.pg) .hcols #upcoming,
+  :where(body.pg) .hcols #session{margin-top:var(--sp-7)}
+  :where(body.pg) .hcols #session:empty{display:none}
 }
 /* ---- THE COLUMNS, SET APART (17 October 2026) ---------------------------
    The person: "It would be good if the columns on the homepage could be a bit
@@ -8224,20 +8225,26 @@ font-variant-numeric:tabular-nums;white-space:nowrap}
   text-transform:none;color:var(--ink);border-top:3px solid var(--ink);padding-top:var(--sp-4);
   margin:0 0 var(--sp-5)}
 /* The Court's status is a box of its own already (.statebox), in every
-   treatment, and the line to the latest sittings stands under it (#session). */
+   treatment. */
 :where(body.pg) .hv-sections #upcoming,
+:where(body.pg) .hv-sections #session,
 :where(body.pg) .hv-sections .hrecent{background:var(--surface);border:1px solid var(--rule-2);
   border-radius:var(--r-out);padding:var(--sp-6) var(--sp-6) var(--sp-7);box-sizing:border-box}
+:where(body.pg) .hv-sections #session:empty{display:none}
 :where(body.pg) .hv-sections .hside > div + div:not(.fresh){margin-top:var(--sp-6)}
 @media (max-width:73.74875em){
   :where(body.pg) .hv-panels #upcoming,
+  :where(body.pg) .hv-panels #session,
   :where(body.pg) .hv-panels .hrecent{background:var(--surface);border:1px solid var(--rule-2);
     border-radius:var(--r-out);padding:var(--sp-6) var(--sp-6) var(--sp-7)}
+  :where(body.pg) .hv-panels #session:empty{display:none}
   :where(body.pg) .hv-panels #upcoming > .cal,
   :where(body.pg) .hv-sections #upcoming > .cal{margin-top:0}
   :where(body.pg) .hv-panels #upcoming h2,
+  :where(body.pg) .hv-panels #session h2,
   :where(body.pg) .hv-panels .hrecent h2,
   :where(body.pg) .hv-sections #upcoming h2,
+  :where(body.pg) .hv-sections #session h2,
   :where(body.pg) .hv-sections .hrecent h2{margin-top:0;padding-bottom:var(--sp-4);
     border-bottom:1px solid var(--rule)}
 }
@@ -8338,6 +8345,7 @@ font-variant-numeric:tabular-nums;white-space:nowrap}
 :where(body.pg) .cnum{font-size:var(--t-ui)}
 :where(body.pg) .pbar{flex-wrap:wrap;gap:var(--sp-3)}
 :where(body.pg) .pbar .jump{font-size:var(--t-sm)}
+:where(body.pg) .twoup{grid-template-columns:1fr}
 :where(body.pg) .entry{grid-template-columns:1fr}
 :where(body.pg) .stat{flex-basis:45%}
 :where(body.pg) .note, :where(body.pg) .cite, :where(body.pg) footer, :where(body.pg) .corrections{font-size:var(--t-ui)}
