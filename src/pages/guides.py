@@ -5267,8 +5267,7 @@ WEATHER = guide(
           "and other emergencies by phone call, text message, email or app. Create an account to "
           "choose how you are reached; to get text messages, add your mobile number as a text "
           "(SMS) contact. Or download the Genasys Protect app, which shows alerts where you are "
-          "without an account. Anyone who lives, works, owns property or often visits where NH "
-          "Alerts is used can sign up, and you can add the places your family lives.</p>"
+          "without an account.</p>"
           "<p><b>ReadyNH.gov</b> is the state&rsquo;s official source of information during "
           "emergencies, with what to do before, during and after floods, extreme cold and heat, "
           "power outages, winter storms and other disasters.</p>"
@@ -5277,9 +5276,7 @@ WEATHER = guide(
           "difficult driving.</li>"
           "<li><b>Watch: be prepared.</b> A significant storm is possible.</li>"
           "<li><b>Warning: take action.</b> Dangerous weather is coming or has begun. Under a "
-          "winter storm warning, find shelter right away and delay travel.</li></ul>"
-          "<p>A NOAA Weather Radio and the Emergency Alert System on radio and TV give alerts "
-          "too.</p>",
+          "winter storm warning, find shelter right away and delay travel.</li></ul>",
           actions=[("Sign up for NH Alerts", NH_ALERTS), ("ReadyNH", READYNH),
                    ("Watches and warnings (National Weather Service)", NWS_WINTER)]),
      step("Keep supplies at home and in the car",
@@ -5301,9 +5298,7 @@ WEATHER = guide(
           "generator, camp stove or grill only outdoors, at least 20 feet from windows, doors and "
           "attached garages. Never heat your home with a gas stove or oven. Have carbon monoxide "
           "detectors with battery backup on every level of your home.</li>"
-          "<li><b>Keep the refrigerator and freezer closed.</b> A refrigerator keeps food cold "
-          "for about 4 hours, and a full freezer for about 48 hours. Throw out food that has "
-          "been at 40 degrees or warmer for 2 hours or more: when in doubt, throw it out.</li>"
+          "<li><b>Keep the refrigerator and freezer closed</b>, so food stays cold longer.</li>"
           "<li><b>Plan ahead for medicines that need refrigeration</b> and for medical devices "
           "that need power.</li>"
           "<li><b>If it is very cold or very hot,</b> go to a place in your community with power. "
@@ -5314,12 +5309,7 @@ WEATHER = guide(
           "inside it.</li>"
           "<li>Avoid overexertion when shoveling or walking in snow, which can bring on a heart "
           "attack.</li>"
-          "<li><b>Frostbite</b> causes loss of feeling and color in the face, fingers and toes. "
-          "Go to a warm room and soak in warm water; do not massage the skin or use a heating "
-          "pad.</li>"
-          "<li><b>Hypothermia</b>, a body temperature below 95 degrees, is an emergency. Go to a "
-          "warm room, warm the center of the body first, and keep dry and wrapped in warm "
-          "blankets, including the head and neck.</li></ul>",
+          "<li>Watch for frostbite and hypothermia: the questions below say what to do.</li></ul>",
           actions=[("Winter weather (Ready.gov)", READY_WINTER)]),
      step("If you need a warm place or other help",
           "<p>Call <b>2-1-1</b>, at any hour, for shelters, warming places, utility help and "
@@ -5382,7 +5372,26 @@ WEATHER = guide(
      ours("The heating guide says fuel assistance can arrange an emergency fuel delivery "
           "through the community action agency.", "/guides/heating-and-electric-help.html",
           WX_READ)],
-    more="<h2>Who Can Help</h2>"
+    more=civics.faq(
+        ("Who can sign up for NH Alerts?",
+         "<p>Anyone who lives, works, owns property or often visits where NH Alerts is used can "
+         "sign up, and you can add the places your family lives.</p>"),
+        ("Are there other ways to get alerts?",
+         "<p>A NOAA Weather Radio and the Emergency Alert System on radio and TV give alerts "
+         "too.</p>"),
+        ("How long does food stay safe in a power outage?",
+         "<p>A refrigerator keeps food cold for about 4 hours, and a full freezer for about 48 "
+         "hours. Throw out food that has been at 40 degrees or warmer for 2 hours or more: when "
+         "in doubt, throw it out.</p>"),
+        ("How do I recognize and treat frostbite?",
+         "<p><b>Frostbite</b> causes loss of feeling and color in the face, fingers and toes. Go "
+         "to a warm room and soak in warm water; do not massage the skin or use a heating "
+         "pad.</p>"),
+        ("What is hypothermia, and what should I do?",
+         "<p><b>Hypothermia</b>, a body temperature below 95 degrees, is an emergency. Go to a "
+         "warm room, warm the center of the body first, and keep dry and wrapped in warm "
+         "blankets, including the head and neck.</p>"))
+    + "<h2>Who Can Help</h2>"
          "<p>2-1-1 New Hampshire, at any hour, for shelters, warming places and other help near "
          "you, and your town or city for local warming centers and storm information. In an "
          "emergency, call 911.</p>",
@@ -5637,7 +5646,7 @@ TRASH = guide(
           "station or the dump, or make sure its residents can use one elsewhere. The town "
           "sets the rules: what must be separated for recycling, how trash is collected, what "
           "it costs, and whether you must use special bags or stickers, which the town sells "
-          "at a reasonable price. A town may fine people who break its rules.</p>"
+          "at a reasonable price.</p>"
           "<p>Your town or city office, its website or the transfer station can tell you the "
           "hours, what it takes and how, including anything large.</p>",
           law=["RSA 149-M:17"]),
@@ -5649,10 +5658,7 @@ TRASH = guide(
           "<li><b>Wet-cell and lithium-ion batteries.</b></li>"
           "<li><b>Products that contain mercury</b>, such as mercury fever thermometers. Keep "
           "them separate from your trash, for recycling or hazardous waste disposal.</li>"
-          "<li><b>Leaves and yard waste.</b></li></ul>"
-          "<p>Towns and transfer stations must make information available on recycling "
-          "batteries and electronics and on where mercury products are accepted, and should "
-          "offer recycling for batteries and electronics where they can. Ask at yours.</p>",
+          "<li><b>Leaves and yard waste.</b></li></ul>",
           law=["RSA 149-M:4", "RSA 149-M:27", "RSA 149-M:51", "RSA 149-M:58"]),
      step("Hazardous products: keep them for a collection day",
           "<p>Leftover products that can catch fire, react, explode, corrode or poison, such as "
@@ -5661,13 +5667,12 @@ TRASH = guide(
           "check before putting any out with the trash.</p>"
           "<ul><li>Keep them in their original containers with the labels on, and never mix "
           "them.</li>"
-          "<li>If a container is corroding, call your fire department for instructions.</li>"
+
           "<li>Take them to a household hazardous waste collection. The Department of "
           "Environmental Services lists each town&rsquo;s contact for one, often a regional "
           "event run by a planning commission or a nearby city. If your town has no event "
           "listed, call the Department&rsquo;s Household Hazardous Waste Program at (603) "
-          "271-2047.</li>"
-          "<li>Some garages accept used motor oil for recycling.</li></ul>",
+          "271-2047.</li></ul>",
           actions=[("Collection day contacts by town (Department of Environmental Services)",
                     DES_HHW),
                    ("Household hazardous waste (EPA)", EPA_HHW)]),
@@ -5675,8 +5680,7 @@ TRASH = guide(
           "<p>You can compost food scraps from your kitchen with leaves and other yard "
           "trim. Mix &ldquo;greens&rdquo;, such as fruit and vegetable scraps, coffee "
           "grounds and grass clippings, with &ldquo;browns&rdquo;, such as dry leaves, twigs, "
-          "shredded paper and cardboard. Leave out meat, fish, bones, dairy, fats and oils, "
-          "which attract animals, and pet waste. If you have no room, look for a town or "
+          "shredded paper and cardboard. If you have no room, look for a town or "
           "community composting program that collects food scraps or takes them at a "
           "drop-off.</p>",
           actions=[("Composting at home (EPA)", EPA_COMPOST)])],
@@ -5718,7 +5722,21 @@ TRASH = guide(
            "twigs, shredded paper and cardboard; avoid meat, fish, bones, dairy, fats and oils, "
            "which can attract animals, and pet waste; a municipal or community program may "
            "collect food scraps or offer a drop-off.", EPA_COMPOST, TR_READ)],
-    more="<h2>Who Can Help</h2>"
+    more=civics.faq(
+        ("Can my town fine me for breaking its trash rules?",
+         "<p>Yes: a town may fine people who break its rules.</p>"),
+        ("Where can I recycle batteries and electronics?",
+         "<p>Towns and transfer stations must make information available on recycling "
+         "batteries and electronics and on where mercury products are accepted, and should "
+         "offer recycling for batteries and electronics where they can. Ask at yours.</p>"),
+        ("What if a hazardous product's container is corroding?",
+         "<p>Call your fire department for instructions.</p>"),
+        ("What do I do with used motor oil?",
+         "<p>Some garages accept used motor oil for recycling.</p>"),
+        ("What should I keep out of a compost pile?",
+         "<p>Meat, fish, bones, dairy, fats and oils, which attract animals, and pet "
+         "waste.</p>"))
+    + "<h2>Who Can Help</h2>"
          "<p>Your town or city office, and your transfer station, for the local rules, hours "
          "and fees and the date of the next household hazardous waste collection.</p>",
     see=[("Who to contact about an issue", "/guides/who-to-contact.html"),
@@ -6006,9 +6024,7 @@ PASSPORT = guide(
           "not changing your name or sex; you are not traveling for at least 6 weeks, since an "
           "online renewal cannot be expedited; you are in the United States when you apply; and "
           "you have the passport, undamaged. You pay by card, and you keep the old passport, "
-          "which is canceled once you apply. Renew only at the State Department&rsquo;s own "
-          "site: others that offer to do it for you charge extra and put your information at "
-          "risk.</p>"
+          "which is canceled once you apply.</p>"
           "<p>A renewal is never done in person at a post office. If you cannot renew, apply in "
           "person as a first-time applicant would, as the steps below describe.</p>",
           actions=[("Renew online (State Department)", STATE_ONLINE)]),
@@ -6033,12 +6049,8 @@ PASSPORT = guide(
           "ID, on one side of plain letter-size paper.</li>"
           "<li><b>A photo</b> that meets the State Department&rsquo;s rules. Do not staple it to "
           "the form. Many post offices take one for a fee.</li></ul>"
-          "<p>If you have no birth certificate that meets the rules, the State Department accepts "
-          "other early records of your birth instead, such as hospital, baptismal, medical or "
-          "school records. Its adult passport page says what to bring.</p>"
-          "<p>Unpaid child support over the State Department&rsquo;s limit, or seriously "
-          "delinquent federal tax debt, will delay or stop an application: settle it "
-          "first.</p>"),
+          "<p>No birth certificate that meets the rules? The questions below say what the State "
+          "Department accepts instead.</p>"),
      step("Make an appointment and apply",
           "<p>Thousands of post offices accept first-time applications, by appointment: book "
           "online, at a post office&rsquo;s self-service kiosk, or at the counter. Some offer "
@@ -6059,10 +6071,7 @@ PASSPORT = guide(
           "parents are, and each parent&rsquo;s photo ID, with photocopies.</p>"
           "<p>If one parent cannot come, that parent signs the Statement of Consent, Form "
           "DS-3053, before a notary, and you bring it, with a photocopy of the ID they showed "
-          "the notary, within 90 days of its signing. If you alone have custody, bring proof "
-          "instead, such as a court order granting it, a birth certificate or adoption decree "
-          "naming only you, or the other parent&rsquo;s death certificate. A child&rsquo;s "
-          "passport is valid for 5 years; an adult&rsquo;s, for 10.</p>",
+          "the notary, within 90 days of its signing.</p>",
           actions=[("A child under 16 (State Department)", STATE_CHILD)]),
      step("If you travel soon",
           "<p>Routine processing takes 4 to 6 weeks, and expedited service, for an extra fee, 2 "
@@ -6166,6 +6175,24 @@ PASSPORT = guide(
            "appointments; the Online Passport Appointment System; if you already applied, dial "
            "877-487-2778; National Passport Center, Portsmouth, NH.", STATE_APPOINT,
            PP_STATE_READ)],
+    more=civics.faq(
+        ("Are other websites that offer to renew my passport safe?",
+         "<p>Renew only at the State Department&rsquo;s own site: others that offer to do it for "
+         "you charge extra and put your information at risk.</p>"),
+        ("What if I have no birth certificate that meets the rules?",
+         "<p>If you have no birth certificate that meets the rules, the State Department accepts "
+         "other early records of your birth instead, such as hospital, baptismal, medical or "
+         "school records. Its adult passport page says what to bring.</p>"),
+        ("Can unpaid child support or taxes stop an application?",
+         "<p>Unpaid child support over the State Department&rsquo;s limit, or seriously "
+         "delinquent federal tax debt, will delay or stop an application: settle it "
+         "first.</p>"),
+        ("What if I alone have custody of my child?",
+         "<p>Bring proof of it instead of the other parent&rsquo;s consent, such as a court order "
+         "granting you sole custody, a birth certificate or adoption decree naming only you, or "
+         "the other parent&rsquo;s death certificate.</p>"),
+        ("How long is a passport good for?",
+         "<p>A child&rsquo;s passport is valid for 5 years; an adult&rsquo;s, for 10.</p>")),
     see=[("How to get a birth, death, marriage or divorce certificate", "/guides/vital-records.html"),
          ("How to get a REAL ID", "/guides/real-id.html")],
     figures=[fig("10 years", CFR_PP_VALID, "valid for 10 years"),
@@ -7094,30 +7121,23 @@ FISHING = guide(
           "anyone may fish by angling without a license: the first Saturday in June and the third "
           "Saturday in January, in fresh water or salt water. Season dates, limits and the other "
           "rules still apply, and anyone in a fishing tournament still needs a license that "
-          "day.</li></ul>"
-          "<p>A New Hampshire resident who is legally blind may get a fishing license free, and "
-          "it lasts for life.</p>",
+          "day.</li></ul>",
           actions=[("Free fishing days", FG_FREE_DAYS)],
           law=["RSA 214:1", "RSA 214:2", "RSA 214:1-e"]),
      step("Choose your license",
           "<p><b>Resident or nonresident.</b> You are a resident for a license if you hold a "
           "New Hampshire driver&rsquo;s license or non-driver photo ID and claim residence in no "
-          "other state for any purpose. A nonresident "
-          "full-time student at a school or college in New Hampshire pays the resident fee.</p>"
+          "other state for any purpose.</p>"
           "<p><b>Fresh water.</b> A resident fishing license, or a one-day license. A "
           "nonresident can buy a season license or a one-day, 3-day or 7-day license. A combined "
           "hunting and fishing license is sold too.</p>"
           "<p><b>Salt water.</b> Fishing for saltwater fish in coastal and tidal waters takes a "
           "recreational saltwater license, unless you are fishing from a licensed charter or party "
           "boat. Anglers 68 or older need it too. It also lets you fish Massachusetts&rsquo; "
-          "coastal waters and the whole Maine coast. Digging clams takes a separate license, sold to residents only, and taking "
-          "lobsters or crabs another.</p>"
+          "coastal waters and the whole Maine coast.</p>"
           "<p><b>Lower-cost and free licenses.</b> Residents 68 or older can buy a discounted "
           "senior license; residents born in 1947 or earlier get a free, permanent Milestone "
-          "license from Fish and Game in Concord, its regional offices or select agents. A resident veteran who is totally and "
-          "permanently disabled from service gets a permanent license, with a one-time $10 "
-          "administrative fee. A resident on active duty stationed outside the state can get a "
-          "free license to use while home on leave.</p>"
+          "license from Fish and Game in Concord, its regional offices or select agents.</p>"
           "<p>Fish and Game sets the fees; its license page lists each license and its "
           "price.</p>",
           actions=[("License fees and requirements", FG_FEES),
@@ -7128,7 +7148,7 @@ FISHING = guide(
      step("Buy it online or from an agent",
           "<p>Buy your license on Fish and Game&rsquo;s online license system or from a license "
           "agent. You buy it yourself, as the person who will use it, and give proof of where you "
-          "live. Fish and Game cannot refund a license or exchange it.</p>"
+          "live.</p>"
           "<p>Print your license and sign it, or keep an image of it on your phone: for a fishing "
           "license, that is enough if you can also show a photo ID. Carry it while you fish, and "
           "show it when asked.</p>"
@@ -7215,6 +7235,22 @@ FISHING = guide(
            "before 1947, only at Fish and Game headquarters, regional offices 1, 2 and 4 or "
            "limited agents, not valid if the holder moves out of state.", FG_SENIOR,
            OUT_STATE_READ)],
+    more=civics.faq(
+        ("Is a fishing license free for someone who is blind?",
+         "<p>A New Hampshire resident who is legally blind may get a fishing license free, and "
+         "it lasts for life.</p>"),
+        ("I am a student from another state. What do I pay?",
+         "<p>A nonresident full-time student at a school or college in New Hampshire pays the "
+         "resident fee.</p>"),
+        ("Do I need a license to dig clams or take lobsters?",
+         "<p>Yes. Digging clams takes a separate license, sold to residents only, and taking "
+         "lobsters or crabs another.</p>"),
+        ("Are there licenses for veterans and service members?",
+         "<p>A resident veteran who is totally and permanently disabled from service gets a "
+         "permanent license, with a one-time $10 administrative fee. A resident on active duty "
+         "stationed outside the state can get a free license to use while home on leave.</p>"),
+        ("Can I get a refund?",
+         "<p>No. Fish and Game cannot refund a license or exchange it.</p>")),
     see=[("How to get a hunting license", "/guides/hunting-license.html"),
          ("Boating: your certificate and registration", "/guides/boating.html")],
     figures=[fig("2 days", "RSA 214:1-e", "establishing 2 days per year"),
@@ -7243,16 +7279,14 @@ HUNTING = guide(
           "country;</li>"
           "<li>proof you have held a hunting license before, here or elsewhere.</li></ul>"
           "<p>To hunt with a bow you need the same for <b>bow hunter education</b>: an archery "
-          "license and a hunting license do not stand in for each other. You must be at least 12 "
-          "to get the certificate, and the online course ends with an in-person field day. Fish "
-          "and Game&rsquo;s page lists the courses and how to sign up.</p>",
+          "license and a hunting license do not stand in for each other. Fish and "
+          "Game&rsquo;s page lists the courses and how to sign up.</p>",
           actions=[("Hunter education", FG_HUNTER_ED)],
           law=["RSA 214:23-a"]),
      step("Or start with an apprentice license",
           "<p>If you have not taken the course, you may buy an <b>apprentice hunting "
           "license</b>, once in your lifetime. You may hunt with it only beside a licensed hunter "
-          "who is 18 or older, who answers for what you do. It is not valid for moose, and it "
-          "does not count as a past license when you buy your next one.</p>",
+          "who is 18 or older, who answers for what you do.</p>",
           law=["RSA 214:6-a"]),
      step("Hunters under 16",
           "<p>A hunter under 16 may hunt only with a properly licensed person 18 or older, and "
@@ -7277,10 +7311,7 @@ HUNTING = guide(
           "valid;</li>"
           "<li>for any migratory bird, such as ducks, geese, woodcock, snipe or coot, a free "
           "<b>HIP</b> permit number if you are 16 or older.</li></ul>"
-          "<p>Residents 68 or older can buy discounted senior licenses, and a resident veteran "
-          "totally and permanently disabled from service gets a permanent license, with a "
-          "one-time $10 administrative fee. Fish and Game sets the other fees; its license page "
-          "lists them.</p>",
+          "<p>Fish and Game sets the fees; its license page lists them.</p>",
           actions=[("License fees and requirements", FG_FEES),
                    ("The HIP permit", FG_HIP),
                    ("Buy a Duck Stamp", DUCK_STAMP)],
@@ -7295,9 +7326,6 @@ HUNTING = guide(
           actions=[("Buy a license online", NHFG_LICENSE)],
           law=["RSA 214:8", "RSA 214:1", "RSA 214:36"]),
      step("In the field",
-          "<p>The law recommends that anyone hunting with a firearm or a bow, except for "
-          "waterfowl, wear a hat, vest or other clothing in <b>hunter orange</b> that can be seen "
-          "from all sides.</p>"
           "<p>A deer you take must be <b>registered</b>; you can do it online, as you can a "
           "turkey.</p>",
           actions=[("Register a deer or turkey", NHFG_LICENSE)],
@@ -7382,6 +7410,21 @@ HUNTING = guide(
            FG_HIP, OUT_STATE_READ),
      claim("Senior licenses for residents 68 and older, and the Milestone license.", FG_SENIOR,
            OUT_STATE_READ)],
+    more=civics.faq(
+        ("How old must I be for hunter education, and is the course online?",
+         "<p>You must be at least 12 to get the certificate, and the online course ends with an "
+         "in-person field day.</p>"),
+        ("What can I not do with an apprentice license?",
+         "<p>It is not valid for moose, and it does not count as a past license when you buy "
+         "your next one.</p>"),
+        ("Are there discounted licenses?",
+         "<p>Residents 68 or older can buy discounted senior licenses, and a resident veteran "
+         "totally and permanently disabled from service gets a permanent license, with a "
+         "one-time $10 administrative fee.</p>"),
+        ("Do I have to wear hunter orange?",
+         "<p>The law recommends that anyone hunting with a firearm or a bow, except for "
+         "waterfowl, wear a hat, vest or other clothing in <b>hunter orange</b> that can be seen "
+         "from all sides.</p>")),
     see=[("How to get a fishing license", "/guides/fishing-license.html"),
          ("Boating: your certificate and registration", "/guides/boating.html")],
     figures=[fig("$10", "RSA 214:13", "A $10 administrative fee shall be charged once")])
@@ -7410,8 +7453,6 @@ BOATING = guide(
           "<p>It is issued from age 16, and if you pass at 15 you receive it when you turn 16. It "
           "lasts for life. The state charges $10 for it, and all the fees you can be charged for "
           "it, the course included, may not exceed $50.</p>"
-          "<p>A certificate from another state, the U.S. Coast Guard Auxiliary, the U.S. Power "
-          "Squadron, or an approved Canadian card counts instead.</p>"
           "<p>Carry it, or a copy or a photo of the front and back on your phone, while you "
           "operate, and show it to a Marine Patrol officer who asks.</p>",
           actions=[("Boating education", MP_BOATING_FAQ)],
@@ -7428,9 +7469,8 @@ BOATING = guide(
      step("Young boaters",
           "<p>A person under 16 may operate a boat with a motor of more than 25 horsepower only "
           "with a person 18 or older aboard who holds a safe boater certificate. A personal "
-          "watercraft (the law calls it a ski craft) may be operated only by someone 16 or older. "
-          "A child 12 or under must wear a Coast Guard approved life jacket on the deck of a boat "
-          "that is underway, unless the boat has the side rails the law describes.</p>",
+          "watercraft (the law calls it a ski craft) may be operated only by someone 16 or "
+          "older.</p>",
           law=["RSA 270:30", "RSA 270:74", "RSA 270:30-a"]),
      step("Register your boat every year",
           "<p>Every boat on New Hampshire&rsquo;s waters must be registered and display a "
@@ -7450,10 +7490,8 @@ BOATING = guide(
           "age, are paid with it; the DMV&rsquo;s boat registration office, (603) 227-4030, can "
           "tell you the total for your boat. The DMV mails a renewal notice before the "
           "registration ends.</p>"
-          "<p>Keep the registration certificate aboard. Display the number on each side of the "
-          "front half of the boat, in block letters at least 3 inches high in a contrasting "
-          "color. Every registration ends on <b>December 31</b>. If you sell the boat, or it is "
-          "destroyed or abandoned, tell the DMV in writing within 15 days.</p>",
+          "<p>Keep the registration certificate aboard. Every registration ends on <b>December "
+          "31</b>.</p>",
           actions=[("Boat registration (DMV)", DMV_BOATS),
                    ("The boat fee table, RSA 72-A:3", "/laws/72-a#s3")],
           law=["RSA 270-E:3", "RSA 270-E:4", "RSA 270-E:5", "RSA 270-E:5-a", "RSA 72-A:3",
@@ -7529,6 +7567,19 @@ BOATING = guide(
            "227-4030; by drop box, at authorized boat agents, or by mail to the Concord DMV; "
            "registrations expire December 31 and the DMV mails renewal notices before then.",
            DMV_BOATS, OUT_STATE_READ)],
+    more=civics.faq(
+        ("Does a boating certificate from another state count?",
+         "<p>A certificate from another state, the U.S. Coast Guard Auxiliary, the U.S. Power "
+         "Squadron, or an approved Canadian card counts instead.</p>"),
+        ("Must children wear a life jacket?",
+         "<p>A child 12 or under must wear a Coast Guard approved life jacket on the deck of a "
+         "boat that is underway, unless the boat has the side rails the law describes.</p>"),
+        ("How do I display my registration number?",
+         "<p>Display the number on each side of the front half of the boat, in block letters at "
+         "least 3 inches high in a contrasting color.</p>"),
+        ("What if I sell my boat?",
+         "<p>If you sell the boat, or it is destroyed or abandoned, tell the DMV in writing "
+         "within 15 days.</p>")),
     see=[("How to get a fishing license", "/guides/fishing-license.html"),
          ("How to get a hunting license", "/guides/hunting-license.html")],
     figures=[fig("age 16", "RSA 270-D:13", "a person 16 years of age or older"),
