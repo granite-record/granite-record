@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-10-11.51
+# GRANITE_VERSION: 2026-10-11.52
 """
 The how-to guides: their words, their sources, and what each was checked
 against. Read by build_civics.py, which draws them on the Resources hub's
@@ -198,7 +198,8 @@ def unsourced_contacts(g):
             out.append(f"email {e}")
     for m in CLOCK.finditer(words):
         n = m.group(1)
-        alts = {n, n[:-3]} if n.endswith(":00") else {n}
+        # "8 a.m." is the "8:00 AM" a page prints, and the other way round.
+        alts = {n, n[:-3]} if n.endswith(":00") else {n, n + ":00"}
         if not any(re.search(r"(?<![\d:])" + re.escape(a) + r"(?![\d:])", s) for a in alts
                    for s in said):
             out.append(f"hour {m.group(0)}")
@@ -208,14 +209,18 @@ def unsourced_contacts(g):
     # "On October 12, 2026 its page said": the day a claim of the guide was
     # checked is a date the guide may give for when it read its source.
     import datetime as _dt
-    read_on = {f"{d:%B} {d.day}" for d in (_dt.date.fromisoformat(c["checked"])
-                                            for c in g["claims"] if re.fullmatch(
-                                                r"\d{4}-\d\d-\d\d", str(c["checked"] or "")))}
+    months = ("January", "February", "March", "April", "May", "June", "July", "August",
+              "September", "October", "November", "December")
+    read_on = {f"{months[d.month - 1]} {d.day}" for d in (
+        _dt.date.fromisoformat(c["checked"]) for c in g["claims"]
+        if re.fullmatch(r"\d{4}-\d\d-\d\d", str(c["checked"] or "")))}
     for m in MONTH_DAY.finditer(words):
         mon, day = m.group(1), m.group(2)
         if f"{mon} {int(day)}" in read_on:
             continue
+        # A range a claim records ("June 3-12") holds both its days.
         if not any(re.search(rf"\b{mon[:3]}\w*\.?\s+{day}(?!\d)", s) or
+                   re.search(rf"\b{mon[:3]}\w*\.?\s+\d{{1,2}}\s*[-–]\s*{day}(?!\d)", s) or
                    re.search(rf"\b{day}\s+{mon[:3]}", s) for s in said):
             out.append(f"date {mon} {day}")
     return sorted(set(out))
@@ -512,19 +517,21 @@ VOTING = guide(
      step("If you cannot go in person",
           "<p>You can vote by absentee ballot if you cannot vote in person because, on election "
           "day:</p><ul><li>you will be out of town;</li><li>a religious observance prevents it;</li>"
-          "<li>a physical disability or illness prevents it;</li><li>work, or caring for a child "
-          "or an adult, takes the whole time the polls are open;</li><li>you are confined for a "
-          "misdemeanor conviction or awaiting trial;</li><li>you are in the Attorney "
-          "General&rsquo;s Address Confidentiality Program or protected by a domestic violence "
-          "order; or</li><li>the National Weather Service has issued a winter storm, blizzard or "
-          "ice storm warning for your town and you are worried about traveling.</li></ul>"
+          "<li>a physical disability or illness prevents it;</li><li>work, or caring for "
+          "children or an infirm adult, takes the whole time the polls are open;</li><li>you are "
+          "confined for a misdemeanor or while awaiting trial; or</li><li>you are in the "
+          "Attorney General&rsquo;s Address Confidentiality Program.</li></ul>"
+          "<p>If the National Weather Service issues a winter storm, blizzard or ice storm "
+          "warning for election day in your town, and you are worried about traveling in it, or "
+          "expect school or care to be canceled for those you look after, you may vote absentee "
+          "at your clerk&rsquo;s office on the day before the election.</p>"
           "<p>Send the absentee ballot application to your town or city clerk, not the state, "
           "with the proof of identity the form asks for. The deadline to ask by mail is noon the day before the election, and "
           "to ask and vote in person at the clerk&rsquo;s office, 5 p.m. the day before. A "
           "mailed ballot must reach your clerk by 5 p.m. on election day, so ask for it more "
           "than two weeks ahead.</p>",
           actions=[("Absentee ballots", SOS_ABSENTEE), ("Absentee ballot application", SOS_ABS_APP)],
-          law=["RSA 657:1"])],
+          law=["RSA 657:1", "RSA 657:4", "RSA 7:46"])],
     [("Register to vote (Secretary of State)", SOS_REGISTER),
      ("Proof of voter registration qualifications (Secretary of State)", SOS_PROOF),
      ("Absentee ballots (Secretary of State)", SOS_ABSENTEE),
@@ -534,7 +541,7 @@ VOTING = guide(
      ("Voters and Checklists, RSA 654", "/laws/654"),
      ("Absentee Voting, RSA 657", "/laws/657"),
      ("Election Procedure, RSA 659", "/laws/659")],
-    ["654", "657", "659"],
+    ["654", "657", "659", "7"],
     [claim("The lookup checks your registration and finds your polling place.", SOS_REGISTER, CHECKED),
      claim("You register where you are domiciled, so a move to a new town or ward means registering "
            "there; the form's own options are a new registration, a transfer, and a name or "
@@ -575,7 +582,16 @@ VOTING = guide(
            "advice and tracking in the lookup.", SOS_ABSENTEE, CHECKED),
      claim("Absence, disability, religious observance; an employment obligation for all polling "
            "hours, including care of children and infirm adults, counts as absence; storm "
-           "warnings.", "RSA 657:1", CHECKED)],
+           "warnings.", "RSA 657:1", CHECKED),
+     claim("A winter storm, blizzard or ice storm warning for election day: a person with "
+           "concerns for safety traveling in the storm, or caring for children or infirm adults "
+           "whose school or care may be canceled, is considered absent and may vote absentee on "
+           "the day immediately prior to the election; the clerk's office is open that day.",
+           "RSA 657:1", "2026-10-26"),
+     claim("The application's reasons include being confined in a penal institution for a "
+           "misdemeanor or while awaiting trial.", "RSA 657:4", "2026-10-26"),
+     claim("A participant in the Address Confidentiality Program who is otherwise qualified to "
+           "vote may apply as an absentee voter.", "RSA 7:46", "2026-10-26")],
     more=civics.faq(
         ("I moved within my town. Do I register again?",
          "<p>No. A move within the same town or ward is an address change, made on the same "
@@ -600,9 +616,7 @@ VOTING = guide(
          "shows when your clerk got your request, sent your ballot, and received it back.</p>"))
          + "<h2>Who Can Help</h2>"
          "<p>Your town or city clerk is the person to ask about registering and voting where you "
-         "live: what to bring, the deadline, and absentee ballots. The Secretary of State calls "
-         "local and state election officials voters&rsquo; trusted source of election "
-         "information.</p>",
+         "live: what to bring, the deadline, and absentee ballots.</p>",
     see=[("New to New Hampshire: license, registration and voting", "/guides/new-to-new-hampshire.html"),
          ("How to get a birth or other vital record", "/guides/vital-records.html"),
          ("Finding your representatives", "/guides/your-representatives.html")],
@@ -990,17 +1004,19 @@ ABATEMENT = guide(
      step("Build your case",
           "<p>A town may abate a tax &ldquo;for good cause shown&rdquo;. That usually means one "
           "of these:</p><ul><li><b>An error</b> in how your property is described or measured.</li>"
-          "<li><b>A disproportionate assessment.</b> You show what the property was worth on "
-          "April 1 of the tax year, with an appraisal or sales of comparable properties, and "
-          "that your <em>equalized assessment</em> is higher.</li>"
-          "<li><b>Poverty and inability to pay</b>, explained in detail, including why an "
-          "abatement fits better than other help.</li></ul>"
+          "<li><b>A disproportionate assessment:</b> your <em>equalized assessment</em> is "
+          "higher than the property&rsquo;s value. The application has a place to list "
+          "comparable properties.</li>"
+          "<li><b>Poverty and inability to pay</b>, explained in detail.</li></ul>"
           "<p>The application asks for specific reasons, not a general statement about the tax. "
           "List every property you own in the town, not only the one you are appealing.</p>",
           law=["RSA 76:16"]),
      step("File the application with your town",
-          "<p>Use the Board&rsquo;s abatement application, sign it, and keep a copy.</p>",
-          actions=[("The abatement application", BTLA_ABATE)], law=["RSA 76:16, I(b)"]),
+          "<p>Use the Board&rsquo;s abatement application, sign it, and keep a copy. To apply, "
+          "you must have complied with the property inventory law, RSA 74, and the application "
+          "has a section on it.</p>",
+          actions=[("The abatement application", BTLA_ABATE)],
+          law=["RSA 76:16, I(b)", "RSA 76:16, III"]),
      step("Wait for the decision",
           "<p>The town must grant or deny in writing by July 1, or within 6 months where the "
           "final bill went out after December 31. Not answering counts as a denial. A written "
@@ -1010,8 +1026,8 @@ ABATEMENT = guide(
           "<p>You can appeal to the <b>Board of Tax and Land Appeals</b> or to the <b>Superior "
           "Court</b>, but not both. For the Board, fill in its appeal form and mail it or hand it "
           "in, with the $65 filing fee by check or money order payable to &ldquo;Treasurer, "
-          "State of NH&rdquo;, to the Board of Tax and Land Appeals, 107 Pleasant Street, Johnson Hall, "
-          "Concord, NH 03301.</p>",
+          "State of NH&rdquo;, to the Board of Tax and Land Appeals at the address its property "
+          "tax page gives.</p>",
           actions=[("The Board's property tax page", BTLA), ("The Board's appeal form", BTLA_APPEAL),
                    ("Commonly asked questions", BTLA_FAQ)],
           law=["RSA 76:16-a", "RSA 76:17"])],
@@ -1035,6 +1051,9 @@ ABATEMENT = guide(
      claim("Apply by March 1 after notice of tax; the municipality may charge for the form; "
            "decision by July 1, failure to respond is denial; written decisions give the appeal "
            "procedure and deadline.", "RSA 76:16", CHECKED),
+     claim("Any person aggrieved who has complied with the requirements of RSA 74 may apply; the "
+           "form includes a section concerning compliance with the RSA 74 inventory requirement "
+           "and a section to list any comparable properties.", "RSA 76:16", "2026-10-26"),
      claim("BTLA appeal on payment of a $65 fee by September 1.", "RSA 76:16-a", CHECKED),
      claim("Superior court in lieu of the BTLA, by September 1.", "RSA 76:17", CHECKED),
      claim("2, 6 and 8 months where notice of tax is after December 31.", "RSA 76:16-d", CHECKED),
@@ -1063,8 +1082,8 @@ ABATEMENT = guide(
          'Appeals follow the same routes and deadlines (<a href="/laws/76#s21">RSA 76:21</a>).</p>'))
          + "<h2>Who Can Help</h2>"
          "<p>Your town or city&rsquo;s assessing officials are who you apply to for an "
-         "abatement. For questions about appealing, the Board of Tax and Land Appeals asks you to "
-         "read its commonly asked questions or call its office at (603) 271-2578.</p>"
+         "abatement. For questions about appealing, the Board of Tax and Land Appeals publishes "
+         "commonly asked questions, and its property tax page says how to reach it.</p>"
          f'<p class="g-acts"><a class="g-btn" href="{BTLA}" target="_blank" rel="noopener">The '
          "Board of Tax and Land Appeals</a></p>"
          "<p>For legal help, including if you are at risk of losing your home over unpaid "
@@ -2438,8 +2457,8 @@ CAR = guide(
           actions=[("Estimate your fees", DMV_FEE_EST)], law=["RSA 261:141", "RSA 261:153"]),
      step("Renew every year",
           "<p>A registration in your own name expires at the end of the month of your birthday. To "
-          "renew, bring your registration or renewal notice to your town or city and pay the "
-          "town&rsquo;s fees first; many towns can take the state&rsquo;s part as well.</p>",
+          "renew, go to your town or city and pay the town&rsquo;s fees first; many towns can "
+          "take the state&rsquo;s part as well.</p>",
           law=["RSA 261:62"])],
     [("Vehicle Registrations (Division of Motor Vehicles)", DMV_REG),
      ("Appointments and Services (Division of Motor Vehicles)", DMV_APPT),
@@ -2458,6 +2477,8 @@ CAR = guide(
            "online or mail.", DMV_REG, READ),
      claim("New/Transfer Registration (state portion only) and Registration Renewal (state portion "
            "only): drop box or appointment.", DMV_APPT, READ),
+     # As the license guide read it.
+     claim("The DMV is fully appointment based; book online or call 603-227-4000.", DMV_APPT, READ),
      claim("No registration until the town's permit; the clerk needs a current government-issued "
            "photo ID and the title or title application, or for a title-exempt vehicle a bill of "
            "sale with the listed details.", "RSA 261:148", READ),
@@ -2879,10 +2900,11 @@ UNEMPLOYMENT = guide(
           "partly, through no fault of your own. To be paid for a week you must be able to work, "
           "available for work, and looking for it unless you are exempt, and you must file your "
           "claims on time.</p>"
-          "<p>You must also have earned enough in a base period of four calendar quarters before "
-          "your claim; New Hampshire Employment Security&rsquo;s eligibility page gives the "
-          "amounts.</p>",
-          actions=[("Unemployment eligibility", NHES_ELIG)], law=["RSA 282-A:31, I"]),
+          "<p>You must also have earned enough in a base period, usually the first four of the "
+          "last five completed calendar quarters before your claim; New Hampshire Employment "
+          "Security&rsquo;s eligibility page gives the amounts.</p>",
+          actions=[("Unemployment eligibility", NHES_ELIG)],
+          law=["RSA 282-A:31, I", "RSA 282-A:2"]),
      step("Have these ready",
           "<ul><li>your Social Security number;</li>"
           "<li>if you are not a U.S. citizen, your alien registration number and its expiration "
@@ -2932,6 +2954,10 @@ UNEMPLOYMENT = guide(
            NHES_APPEALS, READ),
      claim("Eligible for a week only if registered for work, a claim made, able and available, and "
            "seeking work, with the exemption for a definite return date.", "RSA 282-A:31", READ),
+     claim("Base period means the first 4 of the last 5 completed calendar quarters immediately "
+           "preceding the individual's benefit year; an alternate base period of the last 4 "
+           "completed quarters for one who does not qualify under it.", "RSA 282-A:2",
+           "2026-10-26"),
      claim("An appeal received or postmarked within 14 calendar days after the determination was "
            "mailed, extendable for sufficient grounds.", "RSA 282-A:48", READ)],
     more=civics.faq(
@@ -2973,16 +2999,17 @@ RUN = guide(
     "Filing to run for elected office in New Hampshire, from governor to town and city offices, "
     "step by step: who files where, the filing period, the fee or petitions, and who is eligible.",
     "To run in a party primary for a state, federal or county office, you file a declaration of "
-    "candidacy in a filing period of about ten days in June of a state election year: with the "
+    "candidacy in a filing period of about ten days in a state election year, in June through "
+    "2026 and in March from 2028: with the "
     "Secretary of State for most offices, or with your town or city clerk if you are running for "
     "state representative. You pay a fee the law sets, or file petitions signed by voters of your "
     "party instead. Town and city offices are filed with your town or city clerk, on dates of "
     "their own.",
     [ask("Which office?",
          [("Governor, Congress, Executive Council, state senate or county",
-           "File with the Secretary of State in June."),
-          ("State representative", "File in June with the clerk of the town or city where you "
-                                   "live."),
+           "File with the Secretary of State in the filing period."),
+          ("State representative", "File in the filing period with the clerk of the town or "
+                                   "city where you live."),
           ("Town or city office", "File with your town or city clerk, on its own dates.")]),
      box("Pay the fee the law sets, or file primary petitions from voters of your party instead."),
      box("Running without a party&rsquo;s primary? File a declaration of intent, the fee, and "
@@ -3004,7 +3031,7 @@ RUN = guide(
                     "years; living in the town or ward"],
                    ["County officer", "18", "Registered voter in the county where you live"]]),
           actions=[("Qualifications for office", SOS_QUAL)], law=["RSA 655:2", "RSA 655:29"]),
-     step("File in the June filing period",
+     step("File in the filing period",
           "<p>To run in a party&rsquo;s primary you must be a registered member of that party. File "
           "a declaration of candidacy, with a statement of financial interests, between the first "
           "Wednesday in June and the Friday of the following week. In 2026 that was June 3 to June "
@@ -3013,7 +3040,10 @@ RUN = guide(
           "state senator and county office file with the Secretary of State. Candidates for state "
           "representative file with the clerk of the town or city where they live.</p>",
           actions=[("Running for office", SOS_RUN), ("Find your town or city clerk", SOS_CLERKS)],
-          law=["RSA 655:14", "RSA 655:15"]),
+          law=["RSA 655:14", "RSA 655:15"],
+          note='From January 1, 2028, a law passed in 2026, <a href="/bill/2026/hb481.html">HB '
+               '481</a> (chapter 44), moves the filing period to the first Friday in March and the '
+               'Friday of the following week.'),
      step("Pay the fee, or file petitions instead",
           "<p>With your declaration, pay the fee for your office, or instead file the number of "
           "primary petitions below, each signed by a registered member of your party, together "
@@ -3027,7 +3057,7 @@ RUN = guide(
           actions=[("Running for office", SOS_RUN)], law=["RSA 655:19-c"]),
      step("Running without a party's primary",
           "<p>To reach the general election ballot by another route, file a declaration of intent "
-          "with the Secretary of State in the same June period, pay the same fee, and file "
+          "with the Secretary of State in the same filing period, pay the same fee, and file "
           "nomination papers signed by registered voters: 3,000 for governor or U.S. senator, 1,500 "
           "from each congressional district; 1,500 for U.S. representative; 750 for executive "
           "councilor or state senator; and 150 for state representative or county officer.</p>",
@@ -3066,6 +3096,9 @@ RUN = guide(
      claim("A primary candidate is a registered member of the party, meets the age and domicile "
            "qualifications by the general election, and files a declaration of candidacy between "
            "the first Wednesday in June and the Friday of the following week.", "RSA 655:14", READ),
+     ours("HB 481 of 2026, chapter 44, effective January 1, 2028, amends RSA 655:14: file "
+          "between the first Friday in March and the Friday of the following week.",
+          "/bill/2026/hb481.html", "2026-10-26"),
      claim("The appropriate official: the Secretary of State for governor, U.S. senator, "
            "representative in Congress, councilor, state senator and county office (I); for state "
            "representative in a district of more than one town or ward, the clerk of the town or "
@@ -3171,7 +3204,7 @@ MOTORCYCLE = guide(
     "permit, rider training and the road test, the fees, the helmet and riding rules, and what a "
     "moped needs.",
     "To ride a motorcycle in New Hampshire you need a motorcycle license or endorsement, a "
-    "3-wheeled motorcycle endorsement, or a motorcycle learner&rsquo;s permit. Most riders start "
+    "3-wheeled motorcycle endorsement, or a motorcycle learner&rsquo;s permit. You can start "
     "with a permit, then pass a road test on a motorcycle or finish a state-approved rider "
     "training course instead. A moped needs less: any valid driver&rsquo;s license, or a moped "
     "license earned with a written test, and a registration.",
@@ -3183,7 +3216,8 @@ MOTORCYCLE = guide(
      box("Register it before you ride it on the road."),
      box("On a motorcycle without a windshield, protect your eyes. Under 18, wear a helmet too.")],
     [step("Get a learner's permit",
-          "<p>A motorcycle learner&rsquo;s permit is the usual first step. You can get one if you "
+          "<p>A motorcycle learner&rsquo;s permit lets you ride while you learn, with limits. "
+          "You can get one if you "
           "are 18 or older, or if you are 16 or 17, have finished an approved driver education "
           "course and hold a New Hampshire driver&rsquo;s license. You pass a written motorcycle "
           "knowledge test, or finish the state&rsquo;s rider training course instead. There is no "
@@ -3265,6 +3299,8 @@ MOTORCYCLE = guide(
            "them.", DMV_FEES, MOTO_DMV_READ),
      claim("Where a moped is registered.", DMV_REG, MOTO_DMV_READ),
      claim("The town and city clerks lookup lists each town's clerk.", SOS_CLERKS, CHECKED),
+     # As the license guide read it.
+     claim("The DMV is fully appointment based; book online or call 603-227-4000.", DMV_APPT, READ),
      claim("A moped is a motor-driven cycle whose speed attainable in one mile is 30 miles per "
            "hour or less; an internal combustion engine no more than 50 cubic centimeters, with "
            "no gear shifting; not an electric bicycle.", "RSA 259:57", MOTO_READ),
@@ -4016,7 +4052,8 @@ CHILD_CARE = guide(
      step("If you disagree with a decision",
           "<p>You can ask for an administrative appeal "
           "hearing, in writing, on the Department&rsquo;s appeal request form or in a letter. "
-          "Your Notice of Decision gives your deadline. You do not need a lawyer.</p>",
+          "Generally you have 30 days from the date on your Notice of Decision. You do not need "
+          "a lawyer.</p>",
           actions=[("Administrative appeals", DHHS_APPEALS)])],
     [("Child Development and Head Start (Department of Health and Human Services)", DHHS_CHILD_DEV),
      ("Child Care Scholarship Provider Enrollment and Web Billing (Department of Health and "
@@ -4058,7 +4095,10 @@ CHILD_CARE = guide(
            "care, with any limits on in-home care in the Plan; information on the range of "
            "options includes sectarian providers and relatives.", CFR_CHOICE, CC_READ),
      # Read before, for the food and health guide.
-     claim("Appeal in writing by form or letter; no attorney needed.", DHHS_APPEALS, READ)]
+     claim("Appeal in writing by form or letter, to the District Office, by mail to the AAU, or by "
+           "email, or by telling a DHHS representative; generally 30 days from the Notice of "
+           "Decision, 90 for SNAP; within 15 days benefits may continue, repaid if upheld; no "
+           "attorney needed and none appointed.", DHHS_APPEALS, READ)]
     + help_claims("nheasy", "legal_aid"),
     more=civics.faq(
         ("Can a relative or a religious provider care for my child?",
@@ -5039,7 +5079,8 @@ TENANT = guide(
            "That is against the law. Ask the district court to order it stopped; there is no "
            "filing fee."),
           ("Something needs repair",
-           "Tell your landlord in writing. If it is not fixed, ask your town to inspect."),
+           "Tell your landlord in writing. If it is not fixed, ask your town whether it has a "
+           "housing code and who enforces it."),
           ("You got an eviction notice or court papers",
            "Read the dates, and get free legal help now. Only a court can make you leave."),
           ("You are moving out",
@@ -5087,18 +5128,21 @@ TENANT = guide(
           "no gas leaks; and heat that can keep every room at an average of at least 65 "
           "degrees. Towns with a housing code enforce their own standards.</p>"
           "<p><b>Tell your landlord in writing</b> what needs fixing, and keep a copy. If it is "
-          "not fixed, ask your town&rsquo;s code enforcement or health officer to inspect. A "
+          "not fixed, ask your town or city whether it has a housing code: where it does, a "
+          "town board or officer enforces it and can find a home unfit to live in. A "
           "landlord must look into a report of bed bugs or other pests within 7 days.</p>",
-          law=["RSA 48-A:14", "RSA 540-A:3", "RSA 540:13-d"]),
+          law=["RSA 48-A:14", "RSA 48-A:3", "RSA 540-A:3", "RSA 540:13-d"]),
      step("Rent increases, the end of a lease, and retaliation",
           "<p><b>When a landlord needs a reason.</b> For most rentals, a landlord can end your "
           "tenancy only for a reason the law lists: unpaid rent, substantial damage, breaking "
           "a material term of the lease, behavior that threatens others&rsquo; health or "
           "safety, or other good cause, which can be a legitimate business or economic reason. "
-          "A lease of 12 months or longer can also end at its term, if the landlord gave you "
-          "written notice at least 60 days before. The exceptions, where no reason is needed: "
-          "a single-family house whose owner owns no more than 3, and a unit in a building of 4 "
-          "units or fewer that the owner lives in.</p>"
+          "A lease of 12 months or longer, counting renewals, can also end at its term, if the "
+          "landlord gave you written notice at least 60 days before and goes to court within 6 "
+          "months after the lease ends. The exceptions, where no reason is needed: a "
+          "single-family house whose owner owns no more than 3, a unit in a building of 4 units "
+          "or fewer that the owner lives in, and a single-family house a bank or other lender "
+          "took through foreclosure.</p>"
           "<p><b>Rent increases.</b> Refusing a rent increase can be good cause to evict, but "
           "only if the landlord gave you written notice of the amount and the date at least 30 "
           "days before it takes effect.</p>"
@@ -5122,8 +5166,9 @@ TENANT = guide(
           "<li><b>If you are served court papers</b> (a Landlord/Tenant Writ), file an "
           "Appearance by the <em>return date</em> on the writ, and an answer with your defenses "
           "no more than 5 days after it. If you do not, you can lose without a hearing.</li>"
-          "<li><b>If you lose,</b> the court may give you up to 60 days to move, if you pay "
-          "the rent each week. To appeal, file a notice of intent to appeal within 7 days of "
+          "<li><b>If you lose,</b> the court may give you up to 60 days to move, or 75 in "
+          "limited cases you must prove, if you pay the rent each week in advance and have not "
+          "defaulted. To appeal, file a notice of intent to appeal within 7 days of "
           "the decision, and pay rent as it comes due.</li></ul>",
           actions=[("Landlord and tenant cases (Judicial Branch)", COURTS_LLT)],
           law=["RSA 540:3", "RSA 540:9", "RSA 540:13", "RSA 540:13-c", "RSA 540-A:3"])],
@@ -5195,21 +5240,28 @@ TENANT = guide(
            "while not in arrears, and the landlord failed to correct within 14 days; the court "
            "may require rent paid into court.", "RSA 540:13-d", RENT_READ),
      claim("Nonrestricted property: single-family houses whose owner owns not more than 3, "
-           "and units in an owner-occupied building of 4 dwelling units or fewer; restricted "
+           "units in an owner-occupied building of 4 dwelling units or fewer, and single-family "
+           "houses acquired by banks or other mortgagees through foreclosure; restricted "
            "property is all other residential rental property.", "RSA 540:1-a", RENT_READ),
+     claim("A public agency a municipality's housing code establishes, which on inspection or a "
+           "petition finds a dwelling unfit for human habitation and orders it repaired or "
+           "closed.", "RSA 48-A:3", "2026-10-26"),
      claim("Restricted property may be terminated only for nonpayment, substantial damage, "
            "failure to comply with a material term, behavior adversely affecting health or "
            "safety, other good cause, and the other listed reasons; a lease of 12 months or "
-           "longer at its expiration with written notice at least 60 days in advance; refusal "
+           "longer, or renewed to 12 months or longer, at its expiration with written notice at "
+           "least 60 days in advance, provided the landlord has filed a possessory action within "
+           "6 months of the lease expiring; refusal "
            "of a rent increase is good cause if written notice of the amount and effective "
            "date came at least 30 days prior; other good cause includes any legitimate "
            "business or economic reason; no termination solely because a tenant is a victim "
            "of domestic violence, sexual assault or stalking.", "RSA 540:2", RENT_READ),
      claim("A month-to-month tenancy may be terminated by the lessee upon 30 days notice.",
            "RSA 540:11", RENT_READ),
-     claim("A tenant may terminate a lease when the tenant or a household member has been a "
-           "victim of domestic violence, sexual assault or stalking, with written verification.",
-           "RSA 540:11-b", RENT_READ),
+     claim("A tenant may terminate a lease when the tenant or a household member has been, "
+           "within the most recent 150 days, a victim of domestic violence, sexual assault or "
+           "stalking, with written verification; the tenant shall vacate within 30 days of "
+           "giving notice.", "RSA 540:11-b", RENT_READ),
      claim("Except where the tenant owes a week's rent or more, a defense that the possessory "
            "action retaliates for reporting a violation, initiating an action under RSA 540-A, "
            "or meeting with other tenants.", "RSA 540:13-a", RENT_READ),
@@ -5230,9 +5282,11 @@ TENANT = guide(
            "answer not more than 5 days after the return date; a notice of intent to appeal "
            "within 7 days of the notice of decision, paying rent as it comes due.",
            "RSA 540:13", RENT_READ),
-     claim("After judgment, the court may order that the tenant not be dispossessed until a "
-           "date not later than 60 days, the tenant paying the weekly former rent in advance.",
-           "RSA 540:13-c", RENT_READ)]
+     claim("Any tenant default precludes a discretionary stay; after judgment, the court may "
+           "order that the tenant not be dispossessed until a date not later than 60 days, or "
+           "not more than 75 days where the defendant proves a longer stay will not harm the "
+           "landlord, the tenant paying the weekly former rent in advance.",
+           "RSA 540:13-c", "2026-10-26")]
     + help_claims("legal_aid"),
     more=civics.faq(
         ("Do the deposit rules apply to every landlord?",
@@ -5252,14 +5306,17 @@ TENANT = guide(
         ("How do I end a month-to-month tenancy myself?",
          "<p><b>Moving out yourself.</b> To end a month-to-month tenancy, give 30 days&rsquo; "
          "written notice. A victim of domestic violence, sexual assault or stalking can end a "
-         "lease early, with verification, and may not be evicted for being a victim.</p>"),
+         "lease early, with written verification, if the abuse happened within the last 150 "
+         "days, and must then leave within 30 days. For most rentals, a landlord may not end a "
+         "tenancy solely because a tenant is a victim, once the tenant gives written "
+         "verification.</p>"),
         ("What happens to things I leave behind?",
          "<p>After you leave, your landlord must store anything you left behind, with "
          "reasonable care, for 7 days, and let you take it without paying rent or storage "
          "fees.</p>"))
          + "<h2>Who Can Help</h2>"
-         "<p>Get help as early as you can, before a deadline passes. Your town or city&rsquo;s "
-         "code enforcement or health officer handles unsafe conditions. For an eviction, a "
+         "<p>Get help as early as you can, before a deadline passes. Your town or city can "
+         "tell you whether it has a housing code and who enforces it. For an eviction, a "
          "lockout or a deposit:</p>"
          + helps("legal_aid"),
     see=[("Renting out a home: a landlord's rights and duties", "/guides/landlord-duties.html"),
@@ -5278,6 +5335,8 @@ TENANT = guide(
              fig("60 days", "RSA 540:2", "at least 60 days in advance"),
              fig("4 units", "RSA 540:1-a", "containing a total of 4 dwelling units or fewer"),
              fig("6 months", "RSA 540:13-b", "within 6 months after"),
+             fig("150 days", "RSA 540:11-b", "within the most recent 150 days"),
+             fig("75", "RSA 540:13-c", "not more than 75 days"),
              fig("3 months", "RSA 540:14", "not more than 3 months' rent"),
              fig("$15", "RSA 540:9", "$15 liquidated damages"),
              fig("12-month", "RSA 540:9", "within a 12-month period")])
@@ -5309,10 +5368,11 @@ LANDLORD = guide(
      box("Never lock a tenant out, shut off a utility or remove belongings: only the court and "
          "the sheriff can.")],
     [step("Before you rent",
-          "<p><b>Know which rules apply to your property.</b> Most residential rentals are "
+          "<p><b>Know which rules apply to your property.</b> A residential rental is "
           "&ldquo;restricted property&rdquo;, where you need a reason the law lists to end a "
-          "tenancy. A single-family house is not, if you own no more than 3, and neither is a "
-          "unit in a building of 4 units or fewer that you live in.</p>",
+          "tenancy, unless it is one of the exceptions: a single-family house, if you own no "
+          "more than 3; a unit in a building of 4 units or fewer that you live in; or a "
+          "single-family house a bank or other lender took through foreclosure.</p>",
           law=["RSA 540:1-a", "RSA 540:1-b", "RSA 540-A:3"]),
      step("Security deposits",
           "<p>These rules apply unless you rent out a single-family home and own no other "
@@ -5347,32 +5407,42 @@ LANDLORD = guide(
           "<p>Investigate a tenant&rsquo;s report of bed bugs or other pests within 7 days, and "
           "take reasonable steps to remove them. A tenant who reported a serious violation in "
           "writing, and was not behind on rent, has a defense to an eviction for nonpayment if "
-          "you did not fix it within 14 days.</p>",
+          "you did not fix it within 14 days, unless the tenant, the tenant&rsquo;s household or "
+          "guests caused it, or extreme weather or the tenant&rsquo;s refusal of access "
+          "prevented the repair.</p>",
           law=["RSA 540-A:3", "RSA 540-A:4", "RSA 48-A:14", "RSA 540:13-d"]),
      step("Ending a tenancy",
           "<p><b>The reasons.</b> For restricted property: unpaid rent, substantial damage, "
           "breaking a material term of the lease, behavior that threatens others&rsquo; health "
           "or safety, or other good cause, which can be a legitimate business or economic "
           "reason. If the cause is the tenant&rsquo;s own conduct, first give a written warning "
-          "that it would be grounds for eviction. A lease of 12 months or longer can end at its "
-          "term if you give written notice at least 60 days before. A tenant who refuses a rent "
+          "that it would be grounds for eviction. A lease of 12 months or longer, counting "
+          "renewals, can end at its term if you give written notice at least 60 days before "
+          "that you will not renew it, and file any eviction within 6 months of the lease "
+          "ending. A tenant who refuses a rent "
           "increase can be evicted for good cause only if you gave written notice of the amount "
           "and the date at least 30 days ahead.</p>"
           "<p><b>The notice.</b> An eviction notice is in writing and states the reason "
           "specifically. It allows 7 days for unpaid rent, substantial damage or a threat to "
           "health or safety, and 30 days for other reasons. For unpaid rent, serve a demand "
-          "for rent too, and the notice must tell the tenant of the right to pay and stay. "
+          "for rent too, and the notice must tell the tenant of any right to pay and stay, which "
+          "a tenant may use no more than 3 times in 12 months. "
           "Anyone can serve them, in hand or at the tenant&rsquo;s home; the court has the "
           "forms.</p>"
           "<p><b>What you may not do.</b> You may not evict to retaliate against a tenant who "
           "reported a code violation, went to court under the tenant protection law, or met "
-          "with other tenants, unless the tenant owes a week&rsquo;s rent or more; nor evict a "
-          "tenant for being a victim of domestic violence, sexual assault or stalking.</p>",
-          law=["RSA 540:2", "RSA 540:3", "RSA 540:5", "RSA 540:13-a", "RSA 540:13-b"]),
+          "with other tenants, unless the tenant owes a week&rsquo;s rent or more; nor end a "
+          "tenancy solely because a tenant or a member of the household is a victim of domestic "
+          "violence, sexual assault or stalking, once the tenant gives you written verification "
+          "of it.</p>",
+          law=["RSA 540:2", "RSA 540:3", "RSA 540:5", "RSA 540:9", "RSA 540:13-a",
+               "RSA 540:13-b"]),
      step("Going to court",
-          "<p>If the tenant has not left when the notice runs out, file a Landlord/Tenant Writ "
-          "in the circuit court&rsquo;s district division. The sheriff serves it, and it is "
-          "returnable 7 days after service. You may claim unpaid rent in the same case, up to "
+          "<p>If the tenant has not left when the notice runs out, buy a Landlord/Tenant Writ "
+          "from the circuit court&rsquo;s district division, complete it, file it and pay the "
+          "filing fee. Every residential eviction also needs the court&rsquo;s Affidavit of "
+          "Compliance with Federal Law, filed with the writ. You deliver the writ to the sheriff, "
+          "who serves it, and it is returnable 7 days after service. You may claim unpaid rent in the same case, up to "
           "$1,500, and sue separately for more. Before any case, the court&rsquo;s free Eviction Diversion Program offers a "
           "mediator.</p>"
           "<p>In a case only for unpaid rent, the tenant can end it by paying, before the "
@@ -5381,8 +5451,9 @@ LANDLORD = guide(
           "creating a new tenancy, if you tell the tenant in writing that you are going ahead "
           "with the eviction.</p>"
           "<p>If you win, the court issues a writ of possession, and the sheriff, not you, "
-          "removes the tenant. The court may give the tenant up to 60 days, with rent paid "
-          "weekly.</p>",
+          "removes the tenant. Unless the tenant defaulted, the court may give the tenant up to "
+          "60 days, or 75 in limited cases the tenant must prove, with rent paid weekly in "
+          "advance.</p>",
           actions=[("Landlord and tenant cases (Judicial Branch)", COURTS_LLT)],
           law=["RSA 540:9", "RSA 540:13", "RSA 540:13-c", "RSA 540:14", "RSA 540-A:4"]),
      step("After the tenant leaves",
@@ -5408,9 +5479,19 @@ LANDLORD = guide(
            "Default, and the Writ of Possession does not issue for at least 5 business days; "
            "after judgment for the landlord, 7 days to file a Notice of Intent to Appeal, with "
            "weekly rent paid during the appeal.", COURTS_LLT, HL_READ),
+     # The same page in the person's printout (evictions1), read 26 October 2026.
+     claim("Landlords are required to submit an Affidavit of Compliance with Federal Law "
+           "approved by the Circuit Court prior to requesting a Landlord/Tenant Writ in all "
+           "residential evictions; the Landlord/Tenant Writ must be purchased from the court, "
+           "completed (except for the return date), filed with the court, and filing fee paid "
+           "prior to service of process; it is the responsibility of the landlord to deliver the "
+           "completed Landlord/Tenant Writ to the sheriff for service; landlords or tenants in "
+           "doubt as to the legal requirements should consult with an attorney.", COURTS_LLT,
+           HL_READ),
      # The statutes, as this site's Laws pages print them, read 25 October 2026.
      claim("Nonrestricted property: single-family houses whose owner owns not more than 3, "
-           "and units in an owner-occupied building of 4 dwelling units or fewer; restricted "
+           "units in an owner-occupied building of 4 dwelling units or fewer, and single-family "
+           "houses acquired by banks or other mortgagees through foreclosure; restricted "
            "property is all other residential rental property.", "RSA 540:1-a", RENT_READ),
      claim("An owner of restricted property files with the town or city clerk, within 30 days "
            "of becoming the owner, the name, address and telephone number of a person within "
@@ -5458,21 +5539,27 @@ LANDLORD = guide(
            "RSA 48-A:14", RENT_READ),
      claim("No possessory action for nonpayment if the premises are in substantial violation "
            "of RSA 48-A or local codes materially affecting habitability, the tenant gave notice "
-           "while not in arrears, and the landlord failed to correct within 14 days.",
+           "while not in arrears, and the landlord failed to correct within 14 days; provided "
+           "the violations were not caused by the tenant, the tenant's family or others on the "
+           "premises with the tenant's consent, and repairs were not prevented by extreme "
+           "weather or the tenant's failure to allow reasonable access.",
            "RSA 540:13-d", RENT_READ),
      claim("Restricted property may be terminated only for nonpayment, substantial damage, "
            "failure to comply with a material term, behavior adversely affecting health or "
            "safety, other good cause, and the other listed reasons; written notice before an "
            "eviction for other good cause based on the tenant's conduct; a lease of 12 months "
-           "or longer at its expiration with written notice at least 60 days in advance; "
+           "or longer, or renewed to 12 months or longer, at its expiration with written notice "
+           "at least 60 days in advance, provided the landlord has filed a possessory action "
+           "within 6 months of the lease expiring; "
            "refusal of a rent increase is good cause if written notice came at least 30 days "
            "prior; other good cause includes any legitimate business or economic reason; no "
-           "termination solely because a tenant is a victim of domestic violence, sexual "
-           "assault or stalking.", "RSA 540:2", RENT_READ),
+           "termination solely because a tenant or household member is a victim of domestic "
+           "violence, sexual assault or stalking, provided the victim gives written "
+           "verification.", "RSA 540:2", RENT_READ),
      claim("For residential tenancies, 30 days' notice; 7 days' notice for nonpayment, "
            "substantial damage, behavior affecting health or safety; the reason stated with "
-           "specificity; for nonpayment, notice of the right to avoid eviction by payment.",
-           "RSA 540:3", RENT_READ),
+           "specificity; for nonpayment, notice of the right, if any, to avoid eviction by "
+           "payment.", "RSA 540:3", RENT_READ),
      claim("A demand for rent or eviction notice may be served by any person, personally or at "
            "the last and usual place of abode; the district court provides forms.",
            "RSA 540:5", RENT_READ),
@@ -5490,9 +5577,11 @@ LANDLORD = guide(
            "a money judgment limited to a maximum of $1,500; accepting the arrearage during "
            "the action without creating a new tenancy, with written notice of the intent to "
            "proceed.", "RSA 540:13", RENT_READ),
-     claim("After judgment, the court may order that the tenant not be dispossessed until a "
-           "date not later than 60 days, the tenant paying the weekly former rent in advance.",
-           "RSA 540:13-c", RENT_READ),
+     claim("Any tenant default precludes a discretionary stay; after judgment, the court may "
+           "order that the tenant not be dispossessed until a date not later than 60 days, or "
+           "not more than 75 days where the defendant proves a longer stay will not harm the "
+           "landlord, the tenant paying the weekly former rent in advance.",
+           "RSA 540:13-c", "2026-10-26"),
      claim("A writ of possession authorizes the sheriff to remove the defendant from the "
            "premises.", "RSA 540:14", RENT_READ)]
     + help_claims("lawyer"),
@@ -5515,9 +5604,9 @@ LANDLORD = guide(
          "going to court can cost you the tenant&rsquo;s damages, costs and attorney&rsquo;s "
          "fees, and no less than $3,000 if you have already re-let the home.</p>"))
          + "<h2>Who Can Help</h2>"
-         "<p>The district court&rsquo;s clerks have the forms for a demand for rent, an "
-         "eviction notice and a Landlord/Tenant Writ, but cannot give legal advice. For advice "
-         "about your own situation, talk to a lawyer:</p>"
+         "<p>The district court has the forms for a demand for rent, an eviction notice and a "
+         "Landlord/Tenant Writ. It advises landlords in doubt about the law&rsquo;s "
+         "requirements to consult a lawyer:</p>"
          + helps("lawyer"),
     see=[("Your rights as a tenant", "/guides/tenant-rights.html"),
          ("How to appeal your property tax assessment", "/guides/property-tax-abatement.html")],
@@ -5533,6 +5622,8 @@ LANDLORD = guide(
              fig("$1,500", "RSA 540:13", "a maximum of $1,500"),
              fig("$15", "RSA 540:9", "$15 liquidated damages"),
              fig("12-month", "RSA 540:9", "within a 12-month period"),
+             fig("12 months", "RSA 540:9", "3 times within a 12-month period"),
+             fig("75", "RSA 540:13-c", "not more than 75 days"),
              fig("$3,000", "RSA 540-A:4", "shall not be less than $3,000"),
              fig("6 months", "RSA 540-A:8", "after 6 months from the termination")])
 
@@ -5567,13 +5658,15 @@ WEATHER = guide(
     "Sign up for NH Alerts, the state&rsquo;s official emergency alerts, and keep enough food, "
     "water and supplies at home to last several days. In a storm or a power outage, never run "
     "a generator, grill or camp stove indoors, and never heat your home with a gas stove or "
-    "oven: carbon monoxide can kill. If you need a warm place or other help, call 2-1-1. In an "
+    "oven: carbon monoxide can kill. If you need a warm place, ask your town or city which "
+    "warming places are open; for housing, utility help and more, call 2-1-1. In an "
     "emergency, call 911.",
     [box("Sign up for NH Alerts, and learn what a watch and a warning mean."),
      box("Keep supplies for several days at home, and a kit in your car."),
      ask("Has the power gone out?",
          [("Yes", "Keep the refrigerator and freezer closed. Use a generator only outdoors."),
-          ("Yes, and you need a warm place", "Call 2-1-1, or ask your town about warming centers.")])],
+          ("Yes, and you need a warm place", "Ask your town about warming places, or call "
+                                             "2-1-1 for other help.")])],
     [step("Get alerts",
           "<p><b>NH Alerts</b> is New Hampshire&rsquo;s official emergency notification system. "
           "It sends alerts about local weather, evacuations, AMBER Alerts, hazardous materials "
@@ -5620,13 +5713,13 @@ WEATHER = guide(
      step("In a winter storm",
           "<ul><li>Stay off the roads if you can. If you are trapped in your car, stay "
           "inside it.</li>"
-          "<li>Avoid overexertion when shoveling or walking in snow, which can bring on a heart "
-          "attack.</li>"
+          "<li>Avoid overexertion when shoveling or walking in snow.</li>"
           "<li>Watch for frostbite and hypothermia: the questions below say what to do.</li></ul>",
           actions=[("Winter weather (Ready.gov)", READY_WINTER)]),
      step("If you need a warm place or other help",
-          "<p>Call <b>2-1-1</b>, at any hour, for shelters, warming places, utility help and "
-          "other services near you. In an emergency, call 911.</p>"
+          "<p>Ask your town or city which warming places are open. Call <b>2-1-1</b>, at any "
+          "hour, for housing, utility help and other services near you. In an emergency, call "
+          "911.</p>"
           "<p>If you are running out of heating fuel or have no heat, call your community "
           "action agency: fuel assistance can arrange an emergency delivery. The guide to help "
           "with heating and electric bills has the agencies.</p>",
@@ -5697,7 +5790,7 @@ WEATHER = guide(
          "hours. Throw out food that has been at 40 degrees or warmer for 2 hours or more: when "
          "in doubt, throw it out.</p>"),
         ("How do I recognize and treat frostbite?",
-         "<p><b>Frostbite</b> causes loss of feeling and color in the face, fingers and toes. Go "
+         "<p><b>Frostbite</b> causes loss of feeling and color. Go "
          "to a warm room and soak in warm water; do not massage the skin or use a heating "
          "pad.</p>"),
         ("What is hypothermia, and what should I do?",
@@ -5705,8 +5798,8 @@ WEATHER = guide(
          "warm room, warm the center of the body first, and keep dry and wrapped in warm "
          "blankets, including the head and neck.</p>"))
     + "<h2>Who Can Help</h2>"
-         "<p>2-1-1 New Hampshire, at any hour, for shelters, warming places and other help near "
-         "you, and your town or city for local warming centers and storm information. In an "
+         "<p>2-1-1 New Hampshire, at any hour, for housing, utility help and other help near "
+         "you, and your town or city for local warming places and storm information. In an "
          "emergency, call 911.</p>",
     see=[("How to get help with heating and electric bills", "/guides/heating-and-electric-help.html"),
          ("How to get help if you are homeless or may lose your home", "/guides/homelessness-help.html")],
@@ -8329,10 +8422,10 @@ CAR_INSURANCE = guide(
     "Department explains, but a driver who causes a crash is responsible for the damage. After "
     "a crash you were in without insurance, or after certain convictions, the state can suspend "
     "your license and registration until you file <b>proof of financial responsibility</b>, "
-    "usually an insurance company&rsquo;s certificate. A car insurance policy sold here must "
-    "cover at least $25,000 for injury to one person, $50,000 for one accident, and $25,000 for "
-    "damage to property, and must include <b>uninsured motorist</b> and medical payments "
-    "coverage.",
+    "usually an insurance company&rsquo;s certificate. A motor vehicle liability policy here "
+    "must cover at least $25,000 for injury to one person, $50,000 for one accident, and "
+    "$25,000 for damage to property, and must include <b>uninsured motorist</b> coverage, and "
+    "on a private passenger car medical payments coverage.",
     [ask("Do you have car insurance?",
          [("Yes", "Your policy carries at least the state&rsquo;s minimums and uninsured motorist "
                   "coverage."),
@@ -8361,8 +8454,8 @@ CAR_INSURANCE = guide(
           "<p>If anyone was hurt or killed, or the damage to property is over $1,000, report the "
           "crash to the DMV in writing within 15 days, unless a police officer investigated "
           "it.</p>"
-          "<p>If you had no insurance policy or bond covering the crash, the state suspends your "
-          "license and registration, and you must turn in your plates, until you put up enough "
+          "<p>If the crash had to be reported and you had no insurance policy or bond covering "
+          "it, the state suspends your license and registration, and you must turn in your plates, until you put up enough "
           "security to pay any judgment for the damage and file proof of financial "
           "responsibility. You receive notice at least 10 days before the suspension starts. It "
           "lasts until you are released from the claim, win in court, or pay a judgment against "
@@ -8387,9 +8480,9 @@ CAR_INSURANCE = guide(
           "also be a deposit of money or securities with the state. Ask your insurance company to "
           "file the certificate.</p>",
           law=["RSA 264:21", "RSA 264:20"]),
-     step("What every car insurance policy must include",
-          "<p>A car insurance policy sold in New Hampshire must cover your liability to others "
-          "for at least $25,000 for injury to or death of one person, $50,000 for one accident "
+     step("What a car insurance policy must include",
+          "<p>A <b>motor vehicle liability policy</b>, the kind of car insurance whose terms New "
+          "Hampshire law sets, must cover your liability to others for at least $25,000 for injury to or death of one person, $50,000 for one accident "
           "injuring or killing more than one, and $25,000 for damage to others&rsquo; property. "
           "You may buy more.</p>"
           "<p>It must also include:</p>"
@@ -8397,7 +8490,8 @@ CAR_INSURANCE = guide(
           "insurance, or a hit-and-run driver, injures you. It is at least as much as the policy&rsquo;s "
           "coverage for injury, and if you buy more than the minimum liability coverage, it rises "
           "to match.</li>"
-          "<li><b>Medical payments coverage</b> of at least $1,000 per person, for reasonable "
+          "<li>On a private passenger car, <b>medical payments coverage</b> of at least $1,000 "
+          "per person, for reasonable "
           "medical costs of the driver and passengers hurt in a crash in your car, for costs "
           "within 3 years of the crash.</li></ul>",
           actions=[("Automobile insurance (Insurance Department)", INS_AUTO)],
@@ -8405,7 +8499,8 @@ CAR_INSURANCE = guide(
      step("If your insurer cancels or will not renew your policy",
           "<p>Once a policy has been in effect for 60 days, or once it has been renewed, an "
           "insurer may cancel it only if you do not pay the premium, if you ask it to, or if you "
-          "were not a New Hampshire resident when the policy was issued or renewed. It may not "
+          "were not a New Hampshire resident when the policy was issued or renewed, unless the car "
+          "was garaged only in New Hampshire then. It may not "
           "cancel or refuse to renew your policy solely because of your age, where you live, "
           "your race, color, creed, national origin, ancestry, marital status or lawful "
           "occupation, or because another insurer turned you down.</p>"
@@ -8437,7 +8532,8 @@ CAR_INSURANCE = guide(
            "registration and require the surrender of the plates until the driver or owner has "
            "furnished security for any judgment and gives and maintains proof of financial "
            "responsibility, with notice not less than 10 days prior; not applicable if a motor "
-           "vehicle liability policy or bond was in effect.", "RSA 264:3", INS_LAW_READ),
+           "vehicle liability policy or bond was in effect, or other insurance or bond covered "
+           "the liability.", "RSA 264:3", INS_LAW_READ),
      claim("The suspension remains until a release, a judgment in the person's favor, or a "
            "satisfied judgment, with proof of financial responsibility; if no written notice that "
            "suit has been brought is received within 2 years, a new license and registration may "
@@ -8455,21 +8551,26 @@ CAR_INSURANCE = guide(
            "of any one person, at least $50,000 on account of any one accident resulting in "
            "injury to or death of more than one person, and at least $25,000 for damage to "
            "property of others.", "RSA 259:61", INS_LAW_READ),
+     claim("No policy under RSA 264:14 for a vehicle registered or principally garaged in the "
+           "state is issued without uninsured motorist coverage.", "RSA 264:15", "2026-10-26"),
      claim("Every policy includes uninsured and hit-and-run motor vehicle coverage at least in "
            "the amounts prescribed for bodily injury; when the insured buys liability coverage "
            "greater than the minimum, uninsured motorist coverage is automatically equal to it; "
            "umbrella or excess policies provide it unless the named insured rejects it in "
            "writing.", "RSA 264:15", INS_LAW_READ),
-     claim("Medical payments coverage of $1,000 per person or more for reasonable medical costs "
+     claim("Any motor vehicle liability policy covering a private passenger automobile includes "
+           "medical payments coverage of $1,000 per person or more for reasonable medical costs "
            "of the driver and passengers, for costs incurred during 3 years following the "
-           "injuries; the insured may claim under medical payments or health insurance or both, "
+           "injuries; not any commercial policy insuring more than 4 automobiles; the insured "
+           "may claim under medical payments or health insurance or both, "
            "without duplicate payment.", "RSA 264:16", INS_LAW_READ),
      claim("No person under the age of 18 years shall be issued a driver's license unless a "
            "parent or guardian gives written permission, insurance coverage is presented, or the "
            "person is emancipated by marriage.", "RSA 263:17", INS_LAW_READ),
      claim("After a policy has been in effect for 60 days, or if it is a renewal, an insurer may "
            "cancel only for nonpayment of premium, the specific request of the insured, or the "
-           "named insured not being a resident of New Hampshire when it was issued or renewed.",
+           "named insured not being a resident of New Hampshire when it was issued or renewed, "
+           "unless the insured vehicle was exclusively garaged in New Hampshire then.",
            "RSA 417-A:4", INS_LAW_READ),
      claim("No insurer shall cancel, refuse to write or refuse to renew solely because of age, "
            "residence, race, color, creed, national origin, ancestry, marital status or lawful "
