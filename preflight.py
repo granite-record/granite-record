@@ -56670,7 +56670,7 @@ def _documents_night(NI, CA, CL):
     saved = (NI.run, NI.LOG, NI.QUIET, NI.live_fingerprint, NI.tracked_changes,
              NI.captions_compared, NI.time, sys.argv, refusal.MARK, refusal.LOCK)
     env_keys = ("GITHUB_RUN_ID", "GITHUB_OUTPUT", "GITHUB_STEP_SUMMARY", "GITHUB_ACTIONS",
-                "GITHUB_SHA")
+                "GITHUB_SHA", CHECKS_CLOCK[0])
     saved_env = {k: os.environ.get(k) for k in env_keys}
     calls = []
     lsrs_exit = [0]         # what the faked fetch of the bill requests ends on
@@ -56779,6 +56779,9 @@ def _documents_night(NI, CA, CL):
         os.chdir(tmp)
         for k in env_keys:
             os.environ.pop(k, None)
+        # A night inside the night's own hours (CHECKS_CLOCK): the steps after
+        # the day's files ask nothing outside them (nightly.asking_left).
+        os.environ[CHECKS_CLOCK[0]] = CHECKS_CLOCK[1]
         refusal.MARK, refusal.LOCK = tmp / "archive" / "refused.json", tmp / "archive" / ".lock"
         Path("archive").mkdir()
         Path("db").mkdir()
@@ -81618,7 +81621,7 @@ def _nightly_runner(NI):
              NI.current_branch, NI.upload_and_check, NI.captions_compared, NI.time,
              sys.argv, refusal.MARK, refusal.LOCK)
     env_keys = ("GITHUB_RUN_ID", "GITHUB_OUTPUT", "GITHUB_STEP_SUMMARY", "GITHUB_ACTIONS",
-                "GITHUB_SHA", "DRY_RUN")
+                "GITHUB_SHA", "DRY_RUN", CHECKS_CLOCK[0])
     saved_env = {k: os.environ.get(k) for k in env_keys}
     calls, size, empty = [], {"bills": 100}, {"rc": 0, "left": 0, "pages": []}
     lsr = {"rc": 0, "rows": 3}
@@ -81704,6 +81707,9 @@ def _nightly_runner(NI):
         os.chdir(tmp)
         for k in env_keys:
             os.environ.pop(k, None)
+        # A night inside the night's own hours (CHECKS_CLOCK): the steps after
+        # the day's files ask nothing outside them (nightly.asking_left).
+        os.environ[CHECKS_CLOCK[0]] = CHECKS_CLOCK[1]
         refusal.MARK, refusal.LOCK = tmp / "archive" / "refused.json", tmp / "archive" / ".lock"
         Path("archive").mkdir()
         # One recording and no caption file: the late-caption check compares none.
@@ -82064,7 +82070,7 @@ class _GateNights:
     into prod/, which is what production then serves."""
 
     ENV = ("GITHUB_RUN_ID", "GITHUB_OUTPUT", "GITHUB_STEP_SUMMARY", "GITHUB_ACTIONS",
-           "GITHUB_SHA", "REVIEW_GATE", "DRY_RUN", "GITHUB_REF")
+           "GITHUB_SHA", "REVIEW_GATE", "DRY_RUN", "GITHUB_REF", "GRANITE_CLOCK_UTC")
 
     def __init__(self, NI):
         import types
@@ -82094,6 +82100,8 @@ class _GateNights:
         # A night on GitHub's machine here is main's unless a check names
         # another ref: a missing one is not main's (CHECKS_REF).
         os.environ[CHECKS_REF[0]] = CHECKS_REF[1]
+        # ... and inside the night's own hours (CHECKS_CLOCK).
+        os.environ[CHECKS_CLOCK[0]] = CHECKS_CLOCK[1]
         refusal.MARK, refusal.LOCK = self.tmp / "archive" / "refused.json", self.tmp / "archive" / ".lock"
         Path("archive").mkdir()
         Path("prod").mkdir()
@@ -88840,7 +88848,7 @@ def _nightly_falls_back(NI, DF, PD, SG):
     saved = (NI.run, NI.LOG, NI.QUIET, NI.live_fingerprint, NI.tracked_changes,
              NI.captions_compared, NI.time, sys.argv, refusal.MARK, refusal.LOCK, PD.HELD)
     env_keys = ("GITHUB_RUN_ID", "GITHUB_OUTPUT", "GITHUB_STEP_SUMMARY", "GITHUB_ACTIONS",
-                "GITHUB_SHA", PD.HELD_ENV)
+                "GITHUB_SHA", PD.HELD_ENV, CHECKS_CLOCK[0])
     saved_env = {k: os.environ.get(k) for k in env_keys}
     calls, slept, locked = [], [], []
     # The two sources of the day's files, and one wait between tries.
@@ -89053,6 +89061,9 @@ def _nightly_falls_back(NI, DF, PD, SG):
         os.chdir(tmp)
         for k in env_keys:
             os.environ.pop(k, None)
+        # A night inside the night's own hours (CHECKS_CLOCK): the steps after
+        # the day's files ask nothing outside them (nightly.asking_left).
+        os.environ[CHECKS_CLOCK[0]] = CHECKS_CLOCK[1]
         refusal.MARK, refusal.LOCK = tmp / "archive" / "refused.json", tmp / "archive" / ".lock"
         PD.HELD = tmp / "archive" / "sql-held.json"
         Path("archive").mkdir()
@@ -91584,18 +91595,30 @@ def _night_clock(NI, R):
                   "each step only if it can end by 12:00")
 
 
-@check("build", "the night's steps that ask the General Court's site after the day's files are "
-       "killed at their own limits: run(timeout=) ends a child still running then on "
-       "RUN_KILLED, and says so; and a step the night's clock did not ask for never holds the "
-       "night for the gate, where one not asked for for another reason still does",
-       needs=("nightly", "refusal"))
-def _clock_steps(NI, R):
-    """THE NIGHT'S CLOCK (the person, 26 October 2026). A socket's timeout
-    bounds one read, not a request, so an answer arriving a byte at a time
-    could carry a step's requests on for as long as the job lets it, and the
-    night's lock with them. run(timeout=) kills a child still running at its
-    limit, ends the step on RUN_KILLED (124, as timeout(1) says it) and says
-    so; a step given no limit ends as it did before.
+@check("build", "the night's bill requests and lists are asked only where they can end by 12:00 "
+       "UTC and are killed at their own limits, keeping the copies on file either way; and a "
+       "step the night's clock did not ask for never holds the night for the gate, where one "
+       "not asked for for another reason still does",
+       needs=("nightly", "refusal", "fetch_calendar_archive"))
+def _clock_steps(NI, R, CA):
+    """THE NIGHT'S CLOCK (the person, 26 October 2026: "The existing bill
+    request and list page steps can stay within 4-8am"). take_lsrs and
+    take_documents ask nightly.asking_left first, with their own minutes:
+
+      - past 12:00 UTC, and before 08:00, neither runs anything; each says
+        "not asked for", and the bill requests and the list on file stay;
+      - inside the hours both run, the bill requests first, each with its
+        minutes as its limit;
+      - a step's minutes cover its own limits and its last request's timeout:
+        the bill requests' three requests at 60 and 90 seconds, five apart,
+        and the listing's LISTING_BUDGET and a request's 60;
+      - KILLED AT ITS MINUTES (the review of 26 October 2026): a socket's
+        timeout bounds one read, not a request, so an answer arriving a byte
+        at a time could carry a step's requests past 12:00. run(timeout=)
+        kills a child still running at its limit and ends the step on
+        RUN_KILLED (124, as timeout(1) says it); a step killed keeps the copy
+        on file whatever its child had half written, says so, and stops the
+        chain (EXITS). A step given no limit ends as it did before.
 
     A LATE NIGHT STILL PUBLISHES ITSELF (the review of 26 October 2026). The
     clock's "not asked for" warns, as the night's warnings name it, and never
@@ -91610,31 +91633,12 @@ def _clock_steps(NI, R):
     from datetime import datetime
     here = os.getcwd()
     tmp = Path(tempfile.mkdtemp(prefix="gr-clock-steps-"))
-    saved = (NI.LOG, NI.QUIET, NI._paths.script)
+    saved = (NI.run, NI.LOG, NI.QUIET, NI._paths.script)
     saved_clock = os.environ.get(R.CLOCK_ENV)
     try:
         os.chdir(tmp)
-        night = NI.Night(types.SimpleNamespace(no_fetch=False, dry_run=False, new_term=False),
-                         datetime(2026, 10, 27, 8, 17))
-        for t in ("2026-10-27T12:30:00Z", "2026-10-27T07:30:00Z"):
-            os.environ[R.CLOCK_ENV] = t
-            why = NI.asking_left(5)[1]
-            night.v.update(lsrs=f"not asked for: {why}; the earlier 1 kept",
-                           documents=f"not asked for: {why}; the earlier 3 kept")
-            late = [w for w in night.warned() if "not asked for" in w[1]]
-            assert len(late) == 2, ("the clock's not asked for is not a warning", late)
-            for served in ([], None):
-                held = NI.warning_reasons(late, served, ())
-                assert not held, ("a night the clock kept from asking waits for the person "
-                                  "though nothing else holds it", held)
-        night.v.update(lsrs=None, documents=(
-            "not asked for: next session's bill requests were asked of the same address a "
-            "moment before and did not complete (exit 1), so nothing more is asked of it "
-            "tonight; the earlier 3 kept"))
-        late = [w for w in night.warned() if "not asked for" in w[1]]
-        assert len(late) == 1 and NI.warning_reasons(late, [], ()), \
-            ("a step not asked for for a reason other than the clock no longer holds", late)
         NI.LOG, NI.QUIET = [], False
+        # run(timeout=), for real: a child past its limit, and one given none.
         NI._paths.script = lambda name: name        # the steps are here, not a code folder's
         Path("slow.py").write_text("import time\nprint('started', flush=True)\ntime.sleep(60)\n",
                                    encoding="utf-8")
@@ -91648,16 +91652,95 @@ def _clock_steps(NI, R):
         with contextlib.redirect_stdout(io.StringIO()):
             code = NI.run([str(tmp / "quick.py")], "a step that ends")
         assert code == 3 and not any("STOPPED" in ln for ln in NI.LOG), (code, NI.LOG)
+        NI._paths.script = saved[3]
+        # Each step's minutes hold its own limits and its last request's timeout.
+        assert NI.LSRS_MINUTES * 60 >= 60 + 90 + 60 + 2 * 5, \
+            "LSRS_MINUTES is less than the bill requests' three requests at their timeouts"
+        assert NI.LISTING_MINUTES * 60 >= CA.LISTING_BUDGET + 60, \
+            "LISTING_MINUTES is less than the listing's own budget and a request's timeout"
+        # The steps, with a fake child: what ran, with which limit, and what a
+        # child killed part way had half written.
+        ran, limits, answer = [], [], {"rc": 0}
+
+        def fake_run(args, label, cwd=None, timeout=None):
+            ran.append(args[0])
+            limits.append(timeout)
+            if answer["rc"] == NI.RUN_KILLED:
+                if args[0] == "fetch_lsrs.py":
+                    NI.LSRS.write_text("[{\"lsr\": ", encoding="utf-8")
+                else:
+                    Path(args[args.index("--out") + 1]).write_text("chamber,kind\n",
+                                                                   encoding="utf-8")
+            return answer["rc"]
+        NI.run = fake_run
+        NI.LSRS.write_text(json.dumps([{"lsr": "2027-0001", "withdrawn": False}]),
+                           encoding="utf-8")
+        CA.write_rows(NI.DOCS, [{"chamber": "H", "kind": "calendar", "year": "2026",
+                                 "name": f"HC {n}.pdf", "path": f"calendars/2026/HC00{n}.pdf",
+                                 "state": "wanted"} for n in (1, 2, 3)])
+        on_file = {f: f.read_bytes() for f in (NI.LSRS, NI.DOCS)}
+        night = NI.Night(types.SimpleNamespace(no_fetch=False, dry_run=False, new_term=False),
+                         datetime(2026, 10, 27, 8, 17))
+        for t in ("2026-10-27T12:30:00Z", "2026-10-27T07:30:00Z"):
+            os.environ[R.CLOCK_ENV] = t
+            NI.EXITS.clear()
+            with contextlib.redirect_stdout(io.StringIO()):
+                lsrs, docs = NI.take_lsrs(), NI.take_documents({})
+            assert not ran and not NI.EXITS, f"at {t} the night still ran {ran}"
+            it_is = f"not asked for: it is {t[11:16]} UTC"
+            assert lsrs.startswith(it_is) and lsrs.endswith("the earlier 1 kept") and \
+                docs.startswith(it_is) and docs.endswith("the earlier 3 kept"), (lsrs, docs)
+            assert all(f.read_bytes() == b for f, b in on_file.items()), "a copy on file moved"
+            night.v.update(lsrs=lsrs, documents=docs)
+            late = [w for w in night.warned() if "not asked for" in w[1]]
+            assert len(late) == 2, ("the clock's not asked for is not a warning", late)
+            for served in ([], None):
+                held = NI.warning_reasons(late, served, ())
+                assert not held, ("a night the clock kept from asking waits for the person "
+                                  "though nothing else holds it", held)
+        # Inside the hours both run, each at its own limit.
+        os.environ[R.CLOCK_ENV] = "2026-10-27T09:00:00Z"
+        NI.EXITS.clear()
+        with contextlib.redirect_stdout(io.StringIO()):
+            NI.take_lsrs(), NI.take_documents({})
+        assert ran == ["fetch_lsrs.py", "fetch_calendar_archive.py"] and \
+            NI.EXITS == {"fetch_lsrs.py": 0}, (ran, NI.EXITS)
+        assert limits == [NI.LSRS_MINUTES * 60, NI.LISTING_MINUTES * 60], (
+            "the bill requests or the lists are not killed at their own minutes, so a slow "
+            f"answer could ask past 12:00 UTC: limits {limits}")
+        # Killed: the copy on file stays, the step says so, and the chain stops.
+        del ran[:], limits[:]
+        answer["rc"] = NI.RUN_KILLED
+        NI.EXITS.clear()
+        with contextlib.redirect_stdout(io.StringIO()):
+            lsrs, docs = NI.take_lsrs(), NI.take_documents({})
+        assert lsrs.startswith(f"not taken: the fetch was still asking after {NI.LSRS_MINUTES} "
+                               "minutes") and NI.EXITS == {"fetch_lsrs.py": NI.RUN_KILLED} and \
+            ran == ["fetch_lsrs.py"] and \
+            docs.startswith("not asked for: next session's bill requests"), (lsrs, docs, ran)
+        # ... and that "not asked for", not the clock's, still holds the night.
+        night.v.update(lsrs=None, documents=docs)
+        late = [w for w in night.warned() if "not asked for" in w[1]]
+        assert len(late) == 1 and NI.warning_reasons(late, [], ()), \
+            ("a step not asked for for a reason other than the clock no longer holds", late)
+        NI.EXITS.clear()
+        with contextlib.redirect_stdout(io.StringIO()):
+            docs = NI.take_documents({})
+        assert docs.startswith(f"not taken: the listing was still asking after "
+                               f"{NI.LISTING_MINUTES} minutes"), docs
+        assert all(f.read_bytes() == b for f, b in on_file.items()), \
+            "a step killed part way did not keep the copy on file"
     finally:
         os.chdir(here)
-        NI.LOG, NI.QUIET, NI._paths.script = saved
+        NI.run, NI.LOG, NI.QUIET, NI._paths.script = saved
+        NI.EXITS.clear()
         if saved_clock is None:
             os.environ.pop(R.CLOCK_ENV, None)
         else:
             os.environ[R.CLOCK_ENV] = saved_clock
         shutil.rmtree(tmp, ignore_errors=True)
-    return "ok", ("a step past its limit is killed and ends on 124; one with none ends as it "
-                  "did; the clock's not asked for never holds the night")
+    return "ok", ("past 12:00 UTC and before 08:00 nothing is asked; each step is killed at its "
+                  "minutes and keeps its copy; the clock's not asked for never holds the night")
 
 
 @check("build", "on a stood-down laptop no General Court request starts in GitHub's night "
@@ -92909,6 +92992,12 @@ NIGHT_DRY_OUTPUT = "      dry_run: ${{ env.DRY_RUN }}"
 # so no run here could see it. A check that wants the gate on sets it itself.
 WORKFLOW_WORDS = ("DRY_RUN", "GITHUB_REF", "GITHUB_REF_NAME", "REVIEW_GATE")
 CHECKS_REF = ("GITHUB_REF", MAIN_REF)
+# THE NIGHT'S CLOCK IN THE FIXTURES (26 October 2026). The steps after the
+# day's files ask only inside the night's own hours, by refusal's clock
+# (nightly.asking_left), and preflight runs at any hour: a fixture that
+# drives a night which fetches states a time inside them, as the tests of
+# the window do (refusal.CLOCK_ENV), and puts back what it found.
+CHECKS_CLOCK = ("GRANITE_CLOCK_UTC", "2026-10-27T09:00:00Z")
 
 # EVERY KIND OF RUN, AND WHAT EACH MUST BE (7 October 2026). For each
 # workflow: the run's event, its ref, the boxes as given (an input left out is

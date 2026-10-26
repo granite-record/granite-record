@@ -699,6 +699,16 @@ ASK_UNTIL = (12, 0)
 # What every "not asked for" of the clock's begins with (asking_left), and so
 # how the gate knows one (clock_kind).
 ASK_CLOCK_SAID = "it is {hm} UTC"
+# Each step's minutes are its longest run, its own limits and its last
+# request's timeout, with a minute's slack: the bill requests' three requests
+# at 60 and 90 seconds, five apart (fetch_lsrs.py); the listing's
+# LISTING_BUDGET and a request's 60 (fetch_calendar_archive.py). preflight
+# holds each to those. And each step is killed at its minutes (run(timeout=);
+# the review of 26 October 2026): a socket's timeout bounds one read, not a
+# request, so an answer coming a byte at a time could otherwise carry a step's
+# requests past ASK_UNTIL.
+LSRS_MINUTES = 5
+LISTING_MINUTES = 7
 
 # RECORDINGS WAITING FOR THEIR START TIMES (30 September 2026; the night's own
 # since 10 October 2026). The night's livestream step captions the new
@@ -3919,20 +3929,31 @@ def clock_kind(kind):
 
 def take_lsrs():
     """Next session's bill requests into lsrs.json, whole or not at all, and a
-    line saying what happened: "installed, ..." or "not taken: ...". The fetch
-    runs here, in the working folder, so that a refusal it meets is recorded in
-    the refusal record every other fetch reads."""
+    line saying what happened: "installed, ...", "not taken: ..." or "not
+    asked for: ...". The fetch runs here, in the working folder, so that a
+    refusal it meets is recorded in the refusal record every other fetch
+    reads. Not asked for where it could not end by ASK_UNTIL, and killed at
+    LSRS_MINUTES (THE NIGHT'S CLOCK)."""
     before = LSRS.read_bytes() if LSRS.exists() else None
     old = load_json(LSRS) if before is not None else []
     old = old if isinstance(old, list) else []
     standing = {r.get("lsr") for r in old if isinstance(r, dict) and not r.get("withdrawn")}
-    rc = run(["fetch_lsrs.py"], "next session's bill requests, from the General Court")
+    ok, why = asking_left(LSRS_MINUTES)
+    if not ok:
+        say(f"  bill requests not asked for: {why}")
+        return (f"not asked for: {why}; "
+                + (f"the earlier {len(standing)} kept" if before is not None else "none on file"))
+    rc = run(["fetch_lsrs.py"], "next session's bill requests, from the General Court",
+             timeout=LSRS_MINUTES * 60)
     EXITS["fetch_lsrs.py"] = rc
     new = load_json(LSRS)
     gone = [r for r in (new if isinstance(new, list) else [])
             if isinstance(r, dict) and r.get("withdrawn") and r.get("lsr") in standing]
     why = ""
-    if rc != 0:
+    if rc == RUN_KILLED:
+        why = (f"the fetch was still asking after {LSRS_MINUTES} minutes, its limit here, and "
+               "was stopped")
+    elif rc != 0:
         why = f"the fetch did not complete (exit {rc})"
     elif not isinstance(new, list) or not new:
         why = "the fetch wrote no requests"
@@ -3983,6 +4004,10 @@ def take_documents(v=None):
     that is short and has nothing else wrong with it is counted there, and
     on night LIST_SAME_NIGHTS it is taken as the page's own.
 
+    THE NIGHT'S HOURS (26 October 2026). Not asked for where it could not end
+    by ASK_UNTIL (asking_left), which the person approved for this step too,
+    and killed at LISTING_MINUTES (THE NIGHT'S CLOCK).
+
     Every sentence this returns is this project's own -- counts and the
     lists' names -- because a warning is shown on the run's public page.
     """
@@ -4005,10 +4030,18 @@ def take_documents(v=None):
                "more is asked of it tonight")
         say(f"  the list of calendars and journals not asked for: {why}")
         return f"not asked for: {why}; {kept}"
+    ok, why = asking_left(LISTING_MINUTES)
+    if not ok:
+        say(f"  the list of calendars and journals not asked for: {why}")
+        return f"not asked for: {why}; {kept}"
     rc = run(["fetch_calendar_archive.py", "--listing", "--out", str(new)],
-             "the calendars and journals the General Court lists")
+             "the calendars and journals the General Court lists",
+             timeout=LISTING_MINUTES * 60)
     why, got, rec, settled = "", [], None, 0
-    if rc == 2 and refusal.MARK.exists():
+    if rc == RUN_KILLED:
+        why = (f"the listing was still asking after {LISTING_MINUTES} minutes, its limit here, "
+               "and was stopped")
+    elif rc == 2 and refusal.MARK.exists():
         # Only with the record on file: a script's own usage error ends on
         # 2 as well, and that is not the General Court saying no.
         why = ("the General Court refused a request: it is recorded, and every fetch "
