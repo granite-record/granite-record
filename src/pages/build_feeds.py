@@ -825,13 +825,16 @@ def main():
     # October 2026): home.json's rows are the home page's calendar, cut at
     # eighty, and so were these (bill_upcoming, above, says why that is
     # gone). A committee's followers are sent the meeting without the
-    # bill's own form and amendment link (committee_row).
+    # bill's own form and amendment link, and a hearing on an amendment
+    # naming the bill it is to, by the label its followers know it by
+    # (committee_row).
     for (year, bid), ahead in sorted(ahead_of.items()):
+        label = FC.line((by_id.get((current, bid)) or {}).get("n") or bid, 120)
         for one in ahead:
             upcoming.setdefault(f"bill:{year}/{bid}", []).append(one["row"])
             sits = cmte_code.get((one["body"], one["name"].lower())) if one["name"] else None
             if sits:
-                upcoming.setdefault(f"committee:{sits}", []).append(FC.committee_row(one["row"]))
+                upcoming.setdefault(f"committee:{sits}", []).append(FC.committee_row(one["row"], label))
 
     # Upcoming hearings. Dated in the FUTURE, which most readers handle by
     # showing the item now -- which is the point. An item nobody sees until

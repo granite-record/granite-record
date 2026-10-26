@@ -53,7 +53,7 @@ import { ConfigError, linksFor, openAddress, openFollow, sameText, sealFollow } 
 import { addDays, clock, errName, fallbackLabel, json, keyOf, nhClock, note, parseKey,
          readCapped } from "./common.js";
 import { readCurrent, readNight } from "./changes.js";
-import { digestEmail, nothingNewEmail, pageNames, sendMail, welcomeEmail } from "./mail.js";
+import { HEARING_SET, digestEmail, nothingNewEmail, pageNames, sendMail, welcomeEmail } from "./mail.js";
 import { countConfirmed, forget, purge } from "./store.js";
 
 export { nhClock };
@@ -178,10 +178,8 @@ const STOPPED = {
 // online sign-in takes testimony for it: the hearings on a proposed
 // amendment among them, with the committee the pane names, and none for a
 // bill that can no longer be heard. So the mark alone decides here. The
-// night's own news of a hearing set is any hearing's line: "public hearing",
-// "hearing", or "public hearing on non-germane amendment 2026-0422h"
-// (plain_action.meeting).
-const HEARING_SET = /^(public )?hearing\b/i;
+// night's own news of a hearing set is any hearing's line (mail.js
+// HEARING_SET, which the email's list reads too, to tell the hearing once).
 export function testifyFor(kind, upcoming, items, frequency, today, ahead = false) {
   if (kind !== "bill") return null;
   const next = (upcoming || [])

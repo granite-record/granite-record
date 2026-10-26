@@ -69,11 +69,14 @@ button"). The hearings told are the ones a bill's Testify button counts as
 live, read by the build from the bill's own record by the button's rules
 (`follow_changes.bill_upcoming`; `CHANGES_FORMAT.md`, `form`) -- a hearing on
 a proposed amendment among them, its number a link to it on the Bill Text
-tab -- and the block says what the button's live pane says, in its order
-and words. `preflight`'s `_testify_email_in_sync` draws the pane and the
-block for the same records and fails where they differ. A change to the
-pane's words is a change to `mail.js` too, and reaches inboxes once the
-sender is deployed again.
+tab, and in the plain text an address on a line of its own -- and the block
+says what the button's live pane says, in its order and words. The line
+that set the hearing is not said again beneath the block (`setsHearing`).
+`preflight`'s `_testify_email_in_sync` draws the pane and the block for the
+same records -- its own, and every record another check draws a Testify
+button for -- and fails where they differ. A change to the pane's words is a
+change to `mail.js` too, and reaches inboxes once the sender is deployed
+again.
 
 **The logo** at the top of every email is `/mail-mark.png`: the site
 header's drawing on a white tile, so a mail app's dark mode cannot hide it.

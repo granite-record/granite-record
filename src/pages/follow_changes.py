@@ -697,7 +697,9 @@ def upcoming_row(day, what, time="", committee="", venue=""):
 # here from the same record by the same rules, and the ones its Testify
 # counts as live carry the form to send them to: these are app.js's
 # functions in Python, and preflight's _testify_email_in_sync runs both on
-# the same records and holds the email's words to the pane's.
+# the same records -- every record a check of preflight draws a Testify
+# button for, so that a record exercising a rule of app.js's exercises this
+# copy's too -- and holds the email's words to the pane's.
 TESTIFY_WORD = re.compile(r"^(public )?hearing$", re.I)
 # A sitting of the floor, a conference, a recording naming the bill: none is
 # a committee's meeting on the calendar (proceedings.FLOOR_KINDS, and the
@@ -879,10 +881,20 @@ def bill_upcoming(rec, *, kind, today, place=lambda v: " ".join(str(v or "").spl
     return out
 
 
-def committee_row(row):
+def committee_row(row, bill=""):
     """A bill's row as its committee's followers are sent it: the meeting,
-    without what is the bill's alone (its form, its amendment's link)."""
-    return {k: v for k, v in row.items() if k not in ("form", "amendment_num")}
+    without what is the bill's alone (its form, its amendment's link). A
+    committee's row names no bill, and a hearing on a proposed amendment
+    named the amendment alone -- "a proposed non-germane amendment
+    (2026-0422h)", which tells a reader nothing (the review of 26 October
+    2026) -- so its words name `bill`, the bill's label, as the Testify
+    pane does: "a proposed non-germane amendment (2026-0422h) to HB
+    1560-FN". mail.js weekAhead takes it for the same meeting as the bill's
+    own row, for a reader who follows both."""
+    out = {k: v for k, v in row.items() if k not in ("form", "amendment_num")}
+    if out.get("amendment") and bill:
+        out["amendment"] = line(f"{out['amendment']} to {bill}", 120)
+    return out
 
 
 def dump(obj, compact=True):

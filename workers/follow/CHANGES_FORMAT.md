@@ -143,7 +143,10 @@ dropped by the sender and refused at sign-up.
     (`/bill/<year>/<bill>/text#amendment-<number>`), so the email links it.
 
   A committee's own rows carry the meeting without the bill's `form` and
-  `amendment_num`.
+  `amendment_num`, and since they name no bill, their `amendment` names the
+  bill it is to: "a proposed non-germane amendment (2026-0422h) to HB
+  1560-FN" (the review of 26 October 2026: an amendment's number alone means
+  nothing to a reader).
 
 A **law** (`law:<chapter>`) is listed for every chapter of the statute
 table. Its items are the sitting term's bills that say they change the

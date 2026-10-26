@@ -6641,7 +6641,7 @@ function followRss(kind,href,folded){
   return folded?`<details class="followalt"><summary>Follow by RSS instead</summary>
     <div class="followaltbody">${body}</div></details>`:body;
 }
-// EMAIL FOLLOWING IS IN BETA UNTIL THE PUBLIC LAUNCH (the person, 26 October
+// EMAIL FOLLOWING IS IN BETA UNTIL THE WEBINAR (the person, 26 October
 // 2026: "Email following can maybe have a disclosure that email following is
 // in beta testing right now until the webinar so folks know that even though
 // it's live, things may be changing day by day"). One line in the small

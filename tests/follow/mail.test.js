@@ -583,10 +583,10 @@ test("the testimony block's time is components.js's clock", () => {
     assert.equal(siteClock(t), ctx.clock(t), t);
 });
 
-// EMAIL FOLLOWING IS IN BETA UNTIL THE PUBLIC LAUNCH (the person, 26 October
+// EMAIL FOLLOWING IS IN BETA UNTIL THE WEBINAR (the person, 26 October
 // 2026). Every email says so, plain and HTML, through 10 November in Concord,
 // and none does from the 11th: the email's own day where it has one.
-test("every email says email following is in beta, until the day after the public launch", () => {
+test("every email says email following is in beta, until the day after the webinar", () => {
   const m = CURRENT.followable.get("bill:2026/HB9903");
   const each = today => ({
     confirmation: confirmationEmail({ origin: SITE, label: m.label, title: m.title, token: "T".repeat(43), today }),
