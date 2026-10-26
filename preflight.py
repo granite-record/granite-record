@@ -91525,25 +91525,115 @@ try {
                   "PS, PS_STREAM and PS_JSONL parse")
 
 
+@check("build", "on GitHub's machine the steps after the day's files that ask the General "
+       "Court's site start only inside the night's own window and only if they can end by "
+       "12:00 UTC, read by refusal's own clock whatever the machine's",
+       needs=("nightly", "refusal"))
+def _night_clock(NI, R):
+    """THE NIGHT'S CLOCK (the person, 26 October 2026: "The existing bill
+    request and list page steps can stay within 4-8am"). Nothing on GitHub
+    read refusal.NIGHT_WINDOWS, and GitHub's cron had begun starting the
+    night hours late, so a night asked the General Court whenever it ran.
+    nightly.asking_left(minutes) is the gate each of those steps asks first:
+
+      - inside the daily window only: not at 07:59, nor on a Monday at 04:30,
+        inside the weekly's own window, nor at 16:00;
+      - and only if the step can end by ASK_UNTIL, 12:00 UTC: 08:01 and 11:40
+        with fifteen minutes to go may ask, 11:50 with fifteen and 12:01 with
+        one may not;
+      - by refusal's own clock, in UTC, with no argument: the runner's clock
+        is Eastern (nightly.yml sets it), so a test time written as Eastern,
+        nine in the morning at -04:00, is 13:00 UTC and may not ask, and one
+        written with no zone is UTC; the gate's source passes night_window()
+        nothing and reads no datetime.now()."""
+    from datetime import datetime
+    saved = os.environ.get(R.CLOCK_ENV)
+    try:
+        for t, minutes, want in (("2026-10-27T07:59:00Z", 1, False),
+                                 ("2026-10-27T08:01:00Z", 1, True),
+                                 ("2026-10-27T11:40:00Z", 15, True),
+                                 ("2026-10-27T11:50:00Z", 15, False),
+                                 ("2026-10-27T12:01:00Z", 1, False),
+                                 ("2026-10-27T16:00:00Z", 1, False),
+                                 ("2026-10-26T04:30:00Z", 1, False),      # a Monday: the weekly's
+                                 ("2026-10-27T09:00:00-04:00", 1, False),  # 13:00 UTC
+                                 ("2026-10-27T09:00:00", 1, True)):        # no zone: UTC
+            os.environ[R.CLOCK_ENV] = t
+            ok, why = NI.asking_left(minutes)
+            assert ok is want, (f"at {t}, a step of {minutes} minutes {'may' if ok else 'may not'} "
+                                f"ask the General Court ({why}); it {'may' if want else 'may not'}")
+            assert ok or (why and re.fullmatch(r"[A-Za-z0-9 ,.:;'()/-]{1,200}", why)), why
+    finally:
+        if saved is None:
+            os.environ.pop(R.CLOCK_ENV, None)
+        else:
+            os.environ[R.CLOCK_ENV] = saved
+    assert R.night_window(datetime.fromisoformat("2026-10-26T04:30:00+00:00")) is not None, \
+        "the Monday case no longer falls in the weekly's window, and proves nothing"
+    assert NI.ASK_UNTIL == (12, 0), "nightly.ASK_UNTIL moved"
+    # By refusal's own clock, with no argument, and never the machine's.
+    src = _paths.locate("nightly.py").read_text(encoding="utf-8")
+    fn = next(n for n in ast.walk(ast.parse(src))
+              if isinstance(n, ast.FunctionDef) and n.name == "asking_left")
+    calls = [n for n in ast.walk(fn) if isinstance(n, ast.Call)]
+    assert any(ast.unparse(c.func) == "refusal.night_window" and not c.args and not c.keywords
+               for c in calls) and not any("datetime.now" in ast.unparse(c) or
+                                           "time.time" in ast.unparse(c) for c in calls), \
+        "nightly.asking_left reads the window by an argument or the machine's own clock"
+    return "ok", ("08:00 to 12:00 UTC by refusal's own clock, never a Monday's weekly window, "
+                  "each step only if it can end by 12:00")
+
+
 @check("build", "the night's steps that ask the General Court's site after the day's files are "
        "killed at their own limits: run(timeout=) ends a child still running then on "
-       "RUN_KILLED, and says so",
-       needs=("nightly",))
-def _clock_steps(NI):
+       "RUN_KILLED, and says so; and a step the night's clock did not ask for never holds the "
+       "night for the gate, where one not asked for for another reason still does",
+       needs=("nightly", "refusal"))
+def _clock_steps(NI, R):
     """THE NIGHT'S CLOCK (the person, 26 October 2026). A socket's timeout
     bounds one read, not a request, so an answer arriving a byte at a time
     could carry a step's requests on for as long as the job lets it, and the
     night's lock with them. run(timeout=) kills a child still running at its
     limit, ends the step on RUN_KILLED (124, as timeout(1) says it) and says
-    so; a step given no limit ends as it did before."""
+    so; a step given no limit ends as it did before.
+
+    A LATE NIGHT STILL PUBLISHES ITSELF (the review of 26 October 2026). The
+    clock's "not asked for" warns, as the night's warnings name it, and never
+    holds the night for the gate (nightly.clock_kind), though no published
+    night carried it: the plan the person approved says a late night's steps
+    wait a day, not that its publish waits. A step not asked for for another
+    reason still holds, as it did."""
     import contextlib
     import io
     import time
+    import types
+    from datetime import datetime
     here = os.getcwd()
     tmp = Path(tempfile.mkdtemp(prefix="gr-clock-steps-"))
     saved = (NI.LOG, NI.QUIET, NI._paths.script)
+    saved_clock = os.environ.get(R.CLOCK_ENV)
     try:
         os.chdir(tmp)
+        night = NI.Night(types.SimpleNamespace(no_fetch=False, dry_run=False, new_term=False),
+                         datetime(2026, 10, 27, 8, 17))
+        for t in ("2026-10-27T12:30:00Z", "2026-10-27T07:30:00Z"):
+            os.environ[R.CLOCK_ENV] = t
+            why = NI.asking_left(5)[1]
+            night.v.update(lsrs=f"not asked for: {why}; the earlier 1 kept",
+                           documents=f"not asked for: {why}; the earlier 3 kept")
+            late = [w for w in night.warned() if "not asked for" in w[1]]
+            assert len(late) == 2, ("the clock's not asked for is not a warning", late)
+            for served in ([], None):
+                held = NI.warning_reasons(late, served, ())
+                assert not held, ("a night the clock kept from asking waits for the person "
+                                  "though nothing else holds it", held)
+        night.v.update(lsrs=None, documents=(
+            "not asked for: next session's bill requests were asked of the same address a "
+            "moment before and did not complete (exit 1), so nothing more is asked of it "
+            "tonight; the earlier 3 kept"))
+        late = [w for w in night.warned() if "not asked for" in w[1]]
+        assert len(late) == 1 and NI.warning_reasons(late, [], ()), \
+            ("a step not asked for for a reason other than the clock no longer holds", late)
         NI.LOG, NI.QUIET = [], False
         NI._paths.script = lambda name: name        # the steps are here, not a code folder's
         Path("slow.py").write_text("import time\nprint('started', flush=True)\ntime.sleep(60)\n",
@@ -91561,8 +91651,13 @@ def _clock_steps(NI):
     finally:
         os.chdir(here)
         NI.LOG, NI.QUIET, NI._paths.script = saved
+        if saved_clock is None:
+            os.environ.pop(R.CLOCK_ENV, None)
+        else:
+            os.environ[R.CLOCK_ENV] = saved_clock
         shutil.rmtree(tmp, ignore_errors=True)
-    return "ok", "a step past its limit is killed and ends on 124; one with none ends as it did"
+    return "ok", ("a step past its limit is killed and ends on 124; one with none ends as it "
+                  "did; the clock's not asked for never holds the night")
 
 
 @check("build", "on a stood-down laptop no General Court request starts in GitHub's night "

@@ -685,6 +685,21 @@ LIST_SAME_NIGHTS = 3
 # the same address next, reads it. Emptied before the two are run.
 EXITS = {}
 
+# THE NIGHT'S CLOCK (the person, 26 October 2026: "The existing bill request
+# and list page steps can stay within 4-8am"). No step that asks the General
+# Court's site after the day's files starts unless it can end by ASK_UNTIL,
+# UTC, inside GitHub's own night window (refusal.NIGHT_WINDOWS' daily one):
+# asking_left. Why 12:00 and not the window's 13:30: a refusal met on the
+# night reaches the bucket only once nightly.py exits, after the build, and a
+# stood-down laptop may pull and start from 13:30, so the hour and a half
+# before that is the build's and asks nothing. The runner's clock is Eastern
+# (nightly.yml sets it), so the window is read by refusal's own clock, which
+# is UTC, never by datetime.now().
+ASK_UNTIL = (12, 0)
+# What every "not asked for" of the clock's begins with (asking_left), and so
+# how the gate knows one (clock_kind).
+ASK_CLOCK_SAID = "it is {hm} UTC"
+
 # RECORDINGS WAITING FOR THEIR START TIMES (30 September 2026; the night's own
 # since 10 October 2026). The night's livestream step captions the new
 # recordings and its --markers step reads them into the start times; the
@@ -3868,6 +3883,40 @@ def not_moving_of(v):
             if isinstance(x, (list, tuple)) and len(x) == 2]
 
 
+def asking_left(minutes):
+    """(True, "") when a step of up to `minutes` that asks the General Court's
+    site may start now: inside GitHub's daily night window, and ending by
+    ASK_UNTIL, UTC (THE NIGHT'S CLOCK); (False, why) otherwise, in this
+    project's words. refusal.night_window() is called with no argument, so
+    it reads its own clock, in UTC -- the runner's is Eastern -- or the
+    tests' GRANITE_CLOCK_UTC. A Monday's weekly window is not the night's."""
+    from datetime import timedelta
+    now = refusal._utc()
+    daily = next(w for w in refusal.NIGHT_WINDOWS if w[0] is None)
+    hours = (f"{daily[1][0]:02d}:{daily[1][1]:02d} to "
+             f"{ASK_UNTIL[0]:02d}:{ASK_UNTIL[1]:02d} UTC")
+    w = refusal.night_window()
+    it_is = ASK_CLOCK_SAID.format(hm=f"{now:%H:%M}")
+    if not w or daily[3] not in w[2]:
+        return False, f"{it_is}, outside the hours the night asks the General Court in, {hours}"
+    until = now.replace(hour=ASK_UNTIL[0], minute=ASK_UNTIL[1], second=0, microsecond=0)
+    if now + timedelta(minutes=minutes) > until:
+        return False, (f"{it_is}, and a step of up to {minutes} minutes would "
+                       f"ask past {ASK_UNTIL[0]:02d}:{ASK_UNTIL[1]:02d} UTC, the last the night "
+                       "asks the General Court")
+    return True, ""
+
+
+def clock_kind(kind):
+    """Whether a kind of warning is a step not asked for by the night's clock
+    (asking_left), which never holds a night (the review of 26 October 2026):
+    a night GitHub started late -- the case the clock is for -- would
+    otherwise go from publishing itself to waiting for the person, the
+    clock's words being a kind no published night had carried. A late
+    night's steps wait a day; its publish does not."""
+    return ("not asked for: " + kind_of(ASK_CLOCK_SAID.format(hm="00:00"))) in str(kind)
+
+
 def take_lsrs():
     """Next session's bill requests into lsrs.json, whole or not at all, and a
     line saying what happened: "installed, ..." or "not taken: ...". The fetch
@@ -4845,7 +4894,8 @@ def warning_reasons(warned, served, recent=()):
     last KINDS_RECENT_DAYS: `warned` is [(kind, sentence)] (warned()),
     `served` that build's kinds, or None where they are not known, and
     `recent` the kinds of the recent published nights (recent_kinds()). A
-    kind of the database fallback's is never one (KINDS_FALLBACK). Each
+    kind of the database fallback's is never one (KINDS_FALLBACK), nor a step
+    the night's clock did not ask for (clock_kind). Each
     quotes tonight's own sentence, cut short, which the run's page carries in
     full as a warning already."""
     said_as = REVIEW_WARNING if served is not None else REVIEW_WARNING_UNKNOWN
@@ -4853,11 +4903,11 @@ def warning_reasons(warned, served, recent=()):
     for kind, said in warned:
         # Nor a failed check of the built site against the record (BUILT_CHECKS),
         # nor a piece of the current term's data not taken (KIND_TERM_DATA),
-        # nor a part of the record that has stopped moving (KIND_NOT_MOVING):
+        # nor a part of the record that has stopped moving (KIND_NOT_MOVING),
+        # nor a step the night's clock did not ask for (clock_kind):
         # each warns and never holds.
-        if kind in seen or fallback_kind(kind) or str(kind).startswith((KIND_BUILT_WARN,
-                                                                       KIND_TERM_DATA,
-                                                                       KIND_NOT_MOVING)):
+        if kind in seen or fallback_kind(kind) or clock_kind(kind) or \
+                str(kind).startswith((KIND_BUILT_WARN, KIND_TERM_DATA, KIND_NOT_MOVING)):
             continue
         seen.add(kind)
         said = str(said)
