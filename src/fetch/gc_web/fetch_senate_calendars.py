@@ -170,6 +170,16 @@ def main():
     a = ap.parse_args()
     global HOLD
 
+    # THE NIGHT'S YEARS ARE THE NIGHT'S TO FETCH (the person's design of 26
+    # October 2026): from the handover GitHub's night is the one machine that
+    # asks for their calendars. --probe lists, and downloads nothing.
+    y = refusal.night_years()
+    if not a.probe and refusal.handed(a.year, y):
+        print(f"\nThe Senate calendars of {a.year} are not fetched here: {refusal.years_said(y)}. "
+              "The night fetches these, and python3 src/ops/cloud.py pull brings them.\n",
+              file=sys.stderr)
+        return refusal.STOOD_DOWN
+
     cache = Path(a.cache) / a.year
     cache.mkdir(parents=True, exist_ok=True)
 

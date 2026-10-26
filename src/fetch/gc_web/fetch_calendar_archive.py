@@ -247,6 +247,23 @@ def _local(prefix, name, label):
     return f"{prefix}{int(digits):03d}{suffix}.pdf"
 
 
+# What a new row's name or label says when it is a supplement to a calendar.
+SUPPLEMENT_RE = re.compile(r"supplement", re.I)
+
+
+def _new_local(prefix, name, label):
+    """The path a row NEW to the queue is given while its year is the night's
+    (merged's `night_from`): _local()'s, but a supplement keeps its source name
+    (the person's plan, 26 October 2026). The Senate's page lists "No 27
+    Supplement June 19 2025" and two more supplements of No 27 before "No 27
+    June 19 2025", and by number alone all four were SC027.pdf: the first saved
+    there, and the base edition then counted as held, never asked for. A row
+    on file keeps the path it has."""
+    if SUPPLEMENT_RE.search(name or "") or SUPPLEMENT_RE.search(label or ""):
+        return name
+    return _local(prefix, name, label)
+
+
 def read_rows(path):
     """The rows of a queue file as they are written, or [] when it is not there."""
     path = Path(path)
@@ -273,6 +290,12 @@ def _key(r):
     return (r.get("chamber"), r.get("kind"), r.get("year"), r.get("name"))
 
 
+def doc_key(r):
+    """A document as every warning prints it and every command takes it:
+    chamber|kind|year|name, "S|calendar|2026|No 21 Supplement.pdf"."""
+    return "|".join(str(x or "") for x in _key(r))
+
+
 def fetched_file():
     """The laptop's record of what its drain fetched, beside the queue."""
     return QUEUE.with_name(FETCHED_NAME)
@@ -297,15 +320,42 @@ def list_is_the_nights():
             and (QUEUE.parent / refusal.STANDDOWN.name).exists())
 
 
+def night_rows():
+    """{doc_key: fields} for the years handed to GitHub's night: the handover's
+    frozen rows -- the laptop's last word on them -- with the night's own record
+    laid over them row by row where that record is of this handover (its
+    "handover" is the record's "at"). {} with no record that reads: the rows
+    of those years then stand as the night's list has them."""
+    state, h = refusal.read_handover()
+    if state != "ok":
+        return {}
+    n = refusal.read_night_record() or {}
+    out = {}
+    for d in (h, n if h.get("at") and n.get("handover") == h["at"] else {}):
+        got = d.get("rows")
+        if isinstance(got, dict):
+            out.update((k, v) for k, v in got.items() if isinstance(v, dict))
+    return out
+
+
 def load_queue():
     """The queue, with what a stood-down laptop's drain has fetched laid over
     it: the list is the night's file and the fetching is the laptop's, and
-    everything here reads them as one."""
+    everything here reads them as one.
+
+    THREE LAYERS ONCE THE YEARS ARE HANDED OVER (the person's design of 26
+    October 2026), in the same order on both machines: the night's list; over
+    its rows of years before the handover's, the laptop's file; over the rows
+    of the night's years, the night's own record of them, or the handover's
+    frozen rows (night_rows). The laptop's file never touches a year of the
+    night's, and only what the drain writes is laid over, never a path."""
     rows = read_rows(QUEUE)
     mine = {_key(r): r for r in read_rows(fetched_file())}
+    y = refusal.night_years()
+    theirs = night_rows() if y is not None else {}
     for r in rows:
         r["label"] = r.get("label") or ""
-        m = mine.get(_key(r))
+        m = theirs.get(doc_key(r)) if refusal.handed(r.get("year"), y) else mine.get(_key(r))
         if m:
             for f in DRAIN_FIELDS:
                 r[f] = m.get(f) or ""
@@ -317,14 +367,20 @@ def save_queue(rows):
     the queue itself. On a stood-down laptop the queue is the night's, and a
     second writer is how the older copy wins: the rows whose state the drain
     changed go to the laptop's own file, and no others, so a row drops out of
-    it once the night's list says the same."""
+    it once the night's list says the same -- and never a row of the years
+    handed to the night, which are the night's to record. While the handover
+    record will not read (every year the night's) the file is left as it is:
+    kept to no year, it would lose the laptop's own."""
     ROOT.mkdir(exist_ok=True)
     if not list_is_the_nights():
         write_rows(QUEUE, rows)
         return
+    y = refusal.night_years()
+    if y == 0:
+        return
     listed = {_key(r): r for r in read_rows(QUEUE)}
-    mine = [r for r in rows if _key(r) in listed and any(
-        (r.get(f) or "") != (listed[_key(r)].get(f) or "") for f in DRAIN_FIELDS)]
+    mine = [r for r in rows if not refusal.handed(r.get("year"), y) and _key(r) in listed
+            and any((r.get(f) or "") != (listed[_key(r)].get(f) or "") for f in DRAIN_FIELDS)]
     if mine or fetched_file().exists():
         write_rows(fetched_file(), mine)
 
@@ -632,19 +688,24 @@ def listing(held, day=None, on_file=None):
     return lists, len(asked)
 
 
-def merged(rows, lists):
+def merged(rows, lists, night_from=None):
     """The queue with tonight's lists in it: (rows, the rows added).
 
     Nothing on file is dropped and no address on file is touched. A list
     read tonight is put in the page's own order, newest first as the General
     Court lists it, with what is new marked wanted; a document on file that
     tonight's page no longer lists stays, after them. A row gains the label
-    the page shows for it."""
+    the page shows for it.
+
+    `night_from`: the first year handed to GitHub's night (refusal.night_years),
+    or None. Only a new row of those years is given a supplement's own name
+    for its path (_new_local); every other path is given as it always was."""
     out = [dict(r) for r in rows]
     added = []
     for li in lists:
         ch, kind, year = li["chamber"], li["kind"], li["year"]
         index, _, _, outdir, prefix = SOURCES[(ch, kind)]
+        path_of = _new_local if refusal.handed(year, night_from) else _local
         block = [r for r in out if (r["chamber"], r["kind"], r["year"]) == (ch, kind, year)]
         have = {}
         for r in block:
@@ -660,7 +721,7 @@ def merged(rows, lists):
                      # pattern: the viewer address its own button would open.
                      "url": index + VIEWER + urllib.parse.quote(
                          li["directory"] + name, safe=""),
-                     "path": str(Path(outdir) / year / _local(prefix, name, label)),
+                     "path": str(Path(outdir) / year / path_of(prefix, name, label)),
                      "state": "wanted", "attempts": "0", "error": "",
                      "bytes": "", "fetched": "", "label": ""}
                 have[name] = r
@@ -876,7 +937,7 @@ def take_listing(a, rows):
                      "stopped": e.why}, indent=1) + "\n", encoding="utf-8", newline="\n")
             return e.code
     rec = {"read": time.strftime("%Y-%m-%dT%H:%M:%S"), "requests": n, "lists": lists}
-    new, added = merged(rows, lists)
+    new, added = merged(rows, lists, refusal.night_years())
     if a.out:
         out = Path(a.out)
         listed = out.with_name(LISTED_NAME)
@@ -1032,6 +1093,14 @@ def drain(rows, chambers, kinds, years, a, held):
                 if r["state"] == "wanted"
                 and (r["chamber"] in chambers) and (r["kind"] in kinds)
                 and (not years or int(r["year"]) in years)]
+        # THE NIGHT'S YEARS ARE NOT ASKED FOR HERE (the person's design of 26
+        # October 2026): from the handover, GitHub's night is the one machine
+        # that asks for them.
+        y = refusal.night_years()
+        left = [r for r in todo if refusal.handed(r.get("year"), y)]
+        if left:
+            todo = [r for r in todo if not refusal.handed(r.get("year"), y)]
+            print(f"{len(left):,} wanted left to the night: {refusal.years_said(y)}")
         n = min(len(todo), a.budget)
         print(f"{len(todo):,} wanted, taking {n:,} this run at about "
               f"{a.delay:g}s apart -- roughly {n * a.delay / 60:.0f} minutes, "

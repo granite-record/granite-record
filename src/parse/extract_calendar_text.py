@@ -44,6 +44,8 @@ import subprocess
 import time
 from collections import Counter
 
+import refusal
+
 ROOTS = ["calendars", "calendars_senate", "journals", "journals_senate"]
 LEDGER = Path("archive/extracted.json")
 
@@ -82,12 +84,18 @@ def extract(pdf):
 
 
 def wanted():
+    """Every PDF with no text beside it -- but none of a year handed to GitHub's
+    night (refusal.night_years): from the handover the night makes those texts,
+    with its pinned pdftotext, and pull brings them here."""
+    y = refusal.night_years()
     out = []
     for root in ROOTS:
         r = Path(root)
         if not r.exists():
             continue
         for pdf in sorted(r.rglob("*.pdf")):
+            if refusal.handed(pdf.relative_to(r).parts[0], y):
+                continue
             txt = pdf.with_suffix(".txt")
             if not txt.exists() or txt.stat().st_size == 0:
                 out.append(pdf)
@@ -100,6 +108,9 @@ def main():
     ap.add_argument("--limit", type=int, default=0)
     a = ap.parse_args()
 
+    y = refusal.night_years()
+    if y is not None:
+        print(f"No text is made here for those years: {refusal.years_said(y)}")
     todo = wanted()
     have = sum(len(list(Path(r).rglob("*.txt"))) for r in ROOTS if Path(r).exists())
     pdfs = sum(len(list(Path(r).rglob("*.pdf"))) for r in ROOTS if Path(r).exists())

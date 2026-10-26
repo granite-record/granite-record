@@ -91825,6 +91825,367 @@ def _night_years(R):
                   "interlock on the laptop only")
 
 
+class _HandoverFolder:
+    """A folder of its own for the handover's checks: the working folder while
+    it lasts, with refusal's records, the lock and the queue in its archive/,
+    so that nothing of this machine's -- the laptop's own handover record
+    least of all -- is read or written. hand() writes a handover record;
+    leaving puts everything back. NIGHT_DOCUMENTS and GITHUB_ACTIONS are unset
+    inside, and the clock is a Tuesday afternoon outside every window."""
+
+    def __init__(self, R, CA=None):
+        self.R, self.CA = R, CA
+
+    def __enter__(self):
+        R, CA = self.R, self.CA
+        self.saved = (os.getcwd(), R.MARK, R.LOCK,
+                      {k: os.environ.get(k) for k in ("GITHUB_ACTIONS", "NIGHT_DOCUMENTS",
+                                                      R.CLOCK_ENV)},
+                      CA and (CA.ROOT, CA.QUEUE, CA._get, CA.time))
+        self.tmp = Path(tempfile.mkdtemp(prefix="gr-handover-"))
+        self.archive = self.tmp / "archive"
+        self.archive.mkdir()
+        os.chdir(self.tmp)
+        R.MARK, R.LOCK = self.archive / "refused.json", self.archive / ".lock"
+        for k in ("GITHUB_ACTIONS", "NIGHT_DOCUMENTS"):
+            os.environ.pop(k, None)
+        os.environ[R.CLOCK_ENV] = "2026-11-10T19:00:00Z"
+        if CA:
+            CA.ROOT, CA.QUEUE = self.archive, self.archive / "queue.csv"
+        return self
+
+    def hand(self, from_year=2026, **kw):
+        """The handover record, in force unless `kw` says otherwise."""
+        (self.archive / self.R.HANDOVER.name).write_text(json.dumps(dict(
+            {"from_year": from_year, "at": "2026-11-10T14:00:00Z", "texts": [], "rows": {},
+             "again": {}, "accept": {}, "settled": {}, "handed_back": None}, **kw)),
+            encoding="utf-8")
+
+    def __exit__(self, *exc):
+        R, CA = self.R, self.CA
+        cwd, R.MARK, R.LOCK, env, ca = self.saved
+        os.chdir(cwd)
+        for k, v in env.items():
+            if v is None:
+                os.environ.pop(k, None)
+            else:
+                os.environ[k] = v
+        if ca:
+            CA.ROOT, CA.QUEUE, CA._get, CA.time = ca
+        shutil.rmtree(self.tmp, ignore_errors=True)
+        return False
+
+
+def _doc(ch, kind, year, name, **kw):
+    """A queue row as the night's list writes one, wanted and never tried."""
+    return dict({"chamber": ch, "kind": kind, "year": str(year), "name": name,
+                 "url": f"https://example.invalid/{year}/{name}", "path": f"docs/{year}/{name}",
+                 "state": "wanted", "attempts": "0", "error": "", "bytes": "", "fetched": "",
+                 "label": ""}, **kw)
+
+
+@check("build", "once the years are handed over the queue is read in three layers, the same on "
+       "both machines: the night's list, the laptop's file over the years before the handover's "
+       "only, and the night's own record over the frozen rows for the rest, never a path",
+       needs=("refusal", "fetch_calendar_archive"))
+def _three_layers(R, CA):
+    """load_queue() and save_queue() under a handover (the person's design of
+    26 October 2026, D4; with no record they are as before, which
+    _documents_off_is_off holds):
+
+      - a row of a year before the handover's is laid over by the laptop's
+        queue_fetched.csv, and one of the handover's year or later never is;
+      - those are laid over by the night's own record where its "handover" is
+        the record's "at", row by row over the handover's frozen rows; a
+        record of another handover falls back to the frozen rows;
+      - only the drain's fields are laid over: a path in either record is not;
+      - handed back and sent, the laptop's file lays over every year again;
+        on GitHub's machine the layers are the laptop's own while in force;
+      - a stood-down laptop's save_queue keeps rows of the years before the
+        handover's only, and never writes the night's list."""
+    K = CA.doc_key
+    with _HandoverFolder(R, CA) as f:
+        listed = [_doc("S", "calendar", 2025, "SC 1.pdf"), _doc("S", "calendar", 2026, "SC 2.pdf"),
+                  _doc("H", "journal", 2026, "HJ 3.pdf"), _doc("H", "calendar", 2027, "HC 4.pdf")]
+        a, b, c, d = listed
+        CA.write_rows(CA.QUEUE, listed)
+        CA.write_rows(CA.fetched_file(), [dict(a, state="held", bytes="10"),
+                                          dict(b, state="held", bytes="20"),
+                                          dict(c, attempts="2", error="x")])
+        frozen = {K(b): {"state": "failed", "attempts": "3", "error": "drop"},
+                  K(c): {"state": "wanted", "attempts": "1"}}
+        f.hand(rows=frozen)
+        night = f.archive / R.NIGHT_RECORD.name
+
+        def got():
+            return {r["name"]: (r["state"], r["attempts"], r["bytes"], r["path"])
+                    for r in CA.load_queue()}
+
+        def tonight(stamp):
+            night.write_text(json.dumps({"handover": stamp, "from_year": 2026, "rows": {
+                K(c): {"state": "held", "attempts": "1", "bytes": "33", "path": "elsewhere.pdf"},
+                K(d): {"state": "gone", "attempts": "1"}}}), encoding="utf-8")
+        tonight("2026-11-10T14:00:00Z")
+        layered = {"SC 1.pdf": ("held", "0", "10", a["path"]),
+                   "SC 2.pdf": ("failed", "3", "", b["path"]),
+                   "HJ 3.pdf": ("held", "1", "33", c["path"]),
+                   "HC 4.pdf": ("gone", "1", "", d["path"])}
+        assert got() == layered, f"in force, the layers are not the design's: {got()}"
+        os.environ["GITHUB_ACTIONS"] = "true"
+        assert got() == layered, f"GitHub's machine lays the queue another way: {got()}"
+        os.environ.pop("GITHUB_ACTIONS")
+        tonight("2026-11-09T14:00:00Z")
+        assert got()["HJ 3.pdf"] == ("wanted", "1", "", c["path"]) and \
+            got()["HC 4.pdf"] == ("wanted", "0", "", d["path"]), \
+            f"a night's record of another handover was laid over the frozen rows: {got()}"
+        tonight("2026-11-10T14:00:00Z")
+        # A stood-down laptop's drain keeps the years before the handover's only.
+        (f.archive / R.STANDDOWN.name).write_text("{}", encoding="utf-8")
+        before = CA.QUEUE.read_bytes()
+        rows = CA.load_queue()
+        for r in rows:
+            r["attempts"] = "2"
+        CA.save_queue(rows)
+        assert CA.QUEUE.read_bytes() == before and \
+            [r["name"] for r in CA.read_rows(CA.fetched_file())] == ["SC 1.pdf"], \
+            "save_queue wrote a row of the night's years to the laptop's file, or wrote the list"
+        # A record that will not read makes every year the night's, and the
+        # laptop's file, kept to no year, would be emptied: it is left alone.
+        mine = CA.fetched_file().read_bytes()
+        (f.archive / R.HANDOVER.name).write_text("{", encoding="utf-8")
+        night.unlink()
+        CA.save_queue(rows)
+        assert CA.fetched_file().read_bytes() == mine, \
+            "with the handover record unreadable, the laptop's save emptied its own file"
+        f.hand(rows=frozen, handed_back={"at": "2026-12-01T15:00:00Z", "sent": True})
+        CA.write_rows(CA.fetched_file(), [dict(b, state="held", bytes="20")])
+        assert got()["SC 2.pdf"] == ("held", "0", "20", b["path"]) and \
+            got()["HJ 3.pdf"] == ("wanted", "0", "", c["path"]), \
+            f"handed back and sent, the laptop's file does not lay over every year: {got()}"
+    return "ok", ("the laptop's file below the handover's year, the night's record over the "
+                  "frozen rows from it, never a path; the laptop's save keeps its own years")
+
+
+class _Held:
+    """refusal.hold() as a run under it sees it: still() always."""
+
+    def still(self):
+        return True
+
+
+def _laptop_asks(R, CA, ECT, FSC, FCR, f):
+    """What the laptop's document commands do in the folder `f`, with every
+    request faked: {"drain": [years asked], "senate": (status, requests),
+    "probe": requests, "committee": (status, years asked), "texts": [years]}.
+    Shared by _documents_off_is_off and _laptop_leaves_the_night_years."""
+    import contextlib
+    import io
+    import time
+    import types
+    out = {}
+    rows = [_doc(ch, kind, y, f"{ch}{y}.pdf", path=str(f.tmp / "docs" / f"{ch}{kind}{y}.pdf"))
+            for ch, kind, y in (("S", "calendar", 2025), ("H", "journal", 2026),
+                                ("H", "calendar", 2027))]
+    asked = []
+    CA._get = lambda url, data=None, timeout=60: asked.append(url) or b"%PDF-1.4 x"
+    CA.time = types.SimpleNamespace(sleep=lambda s: None, time=time.time, strftime=time.strftime)
+    CA.write_rows(CA.QUEUE, rows)
+    with contextlib.redirect_stdout(io.StringIO()) as said:
+        CA.drain(CA.load_queue(), ["H", "S"], ["calendar", "journal"], None,
+                 types.SimpleNamespace(budget=10, delay=1.0), _Held())
+    out["drain"] = sorted(u.split("/")[-2] for u in asked)
+    out["drain said"] = said.getvalue()
+    requests = []
+
+    def sealed(*a, **kw):
+        requests.append(a)
+        raise OSError("sealed by preflight")
+    saved = (FSC.urllib.request.urlopen, FCR.calendar_urls, FCR.extract_text, sys.argv)
+    try:
+        FSC.urllib.request.urlopen = sealed
+        for probe in ([], ["--probe"]):
+            del requests[:]
+            sys.argv = ["fetch_senate_calendars.py", "--year", "2026", "--delay", "0"] + probe
+            with contextlib.redirect_stdout(io.StringIO()), \
+                    contextlib.redirect_stderr(io.StringIO()):
+                try:
+                    rc = FSC.main()
+                except SystemExit as e:
+                    rc = e.code if isinstance(e.code, int) else 1
+            out["probe" if probe else "senate"] = (rc, len(requests))
+        FCR.calendar_urls = lambda year, **kw: years.append(year) or {}
+        FCR.extract_text = lambda path: ("", "preflight")
+        sys.argv = ["fetch_committee_reports.py", "--year", "2026", "--cache",
+                    str(f.tmp / "calendars"), "--out", str(f.tmp / "committee_reports.json")]
+        for run in ("committee", "committee on disk"):
+            years = []
+            if run == "committee on disk":
+                (f.tmp / "calendars" / "2026").mkdir(parents=True, exist_ok=True)
+                (f.tmp / "calendars" / "2026" / "HC001.pdf").write_bytes(b"%PDF-1.4 x")
+            with contextlib.redirect_stdout(io.StringIO()):
+                try:
+                    rc = FCR.main() or 0
+                except SystemExit as e:
+                    rc = e.code if isinstance(e.code, int) else 1
+            out[run] = (rc, years, (f.tmp / "committee_reports.json").exists())
+    finally:
+        (FSC.urllib.request.urlopen, FCR.calendar_urls, FCR.extract_text, sys.argv) = saved
+    for y in (2025, 2026, 2027):
+        (f.tmp / "calendars" / str(y)).mkdir(parents=True, exist_ok=True)
+        (f.tmp / "calendars" / str(y) / "HC001.pdf").write_bytes(b"%PDF-1.4 x")
+    out["texts"] = sorted(p.parent.name for p in ECT.wanted())
+    return out
+
+
+@check("build", "once the years are handed over the laptop asks the General Court for none of "
+       "their documents: the drain leaves them, the Senate fetch stands down, the committee "
+       "reports read this disk even after a hand-back, and no text of them is made here",
+       needs=("refusal", "fetch_calendar_archive", "extract_calendar_text",
+              "fetch_senate_calendars", "fetch_committee_reports"))
+def _laptop_leaves_the_night_years(R, CA, ECT, FSC, FCR):
+    """The laptop's request paths for the night's years (the person's design of
+    26 October 2026, D5), each driven in a folder of its own with every request
+    faked; with no record they are as before (_documents_off_is_off):
+
+      - the drain asks for the years before the handover's only, and says how
+        many it left to the night;
+      - fetch_senate_calendars --year 2026 ends with the stand-down's status
+        (4) before any request; --probe, which downloads nothing, still runs;
+      - fetch_committee_reports --year 2026 reads the House calendars on this
+        disk and asks nobody, in force and after a hand-back alike, and with
+        none on disk writes nothing and ends 0, so build_all's step is green;
+      - extract_calendar_text makes no text of a PDF of those years."""
+    with _HandoverFolder(R, CA) as f:
+        f.hand()
+        got = _laptop_asks(R, CA, ECT, FSC, FCR, f)
+        assert got["drain"] == ["2025"] and "2 wanted left to the night" in got["drain said"], \
+            f"the drain asked for a year handed to the night: {got['drain']}"
+        assert got["senate"] == (R.STOOD_DOWN, 0), \
+            f"the Senate fetch of a year handed to the night did not stand down: {got['senate']}"
+        assert got["probe"] == (1, 1), f"--probe no longer runs: {got['probe']}"
+        assert got["committee"] == (0, [], False), \
+            f"the committee reports of a handed year asked, failed or wrote: {got['committee']}"
+        assert got["committee on disk"] == (0, [], True), \
+            f"the committee reports did not read a handed year's calendar on disk: {got}"
+        assert got["texts"] == ["2025"], f"a text of the night's years would be made: {got['texts']}"
+    with _HandoverFolder(R, CA) as f:
+        f.hand(handed_back={"at": "2026-12-01T15:00:00Z", "sent": True})
+        got = _laptop_asks(R, CA, ECT, FSC, FCR, f)
+        assert got["committee"] == (0, [], False), \
+            f"after a hand-back the committee reports asked again: {got['committee']}"
+        assert got["drain"] == ["2025", "2026", "2027"] and got["senate"][1] == 1, \
+            f"after a hand-back the laptop does not fetch those years again: {got}"
+    return "ok", ("the drain, the Senate fetch, the committee reports and the extractor leave "
+                  "the night's years; the committee reports read disk after a hand-back too")
+
+
+def _listing_paths(CA, rows=()):
+    """The paths `fetch_calendar_archive --listing --out` gives the 2025 Senate
+    page's documents (tests/calendar_index/senate_calendars_2025.html) in the
+    folder it runs in, the read itself faked: {label: file name}."""
+    import contextlib
+    import io
+    import types
+    page = (Path(_paths.locate("preflight.py")).parent / _DOCS_FIX
+            / "senate_calendars_2025.html").read_text(encoding="utf-8")
+    lists = [{"chamber": "S", "kind": "calendar", "year": "2025", "directory": "Calendars\\2025\\",
+              "read": "t", "documents": [{"name": n, "label": lab}
+                                         for n, lab in CA.shown(page)["docs"]]}]
+    saved = CA.listing
+    out = Path("listed.csv").resolve()
+    try:
+        CA.listing = lambda held, day=None, on_file=None: (lists, 0)
+        with contextlib.redirect_stdout(io.StringIO()):
+            rc = CA.take_listing(types.SimpleNamespace(out=str(out)), list(rows))
+    finally:
+        CA.listing = saved
+    assert rc == 0, f"the listing ended {rc}"
+    return {r["label"]: Path(r["path"].replace("\\", "/")).name for r in CA.read_rows(out)}
+
+
+@check("build", "once the years are handed over a new supplement of the night's years keeps a "
+       "path of its own, and every other path is given as it always was",
+       needs=("refusal", "fetch_calendar_archive"))
+def _supplements_own_path(R, CA):
+    """THE SENATE'S SUPPLEMENTS (the person's design of 26 October 2026, D9).
+    "No 27" of 2025 is four documents, three supplements first in the page's
+    order, and _local gave all four SC027.pdf: the supplement was saved there
+    and the base edition then counted as held, never asked for. Under a
+    handover the listing gives a NEW row of the night's years that says
+    "Supplement" its own source name (_new_local), and the base edition keeps
+    its number's path; a year before the handover's, and a row on file, keep
+    the paths they would have had. With no record the paths are today's
+    (_documents_off_is_off)."""
+    with _HandoverFolder(R, CA) as f:
+        f.hand(from_year=2025)
+        paths = _listing_paths(CA)
+        p27 = [p for lab, p in paths.items() if lab.startswith("No 27 ")]
+        assert len(p27) == 4 == len(set(p27)) and paths["No 27 June 19 2025"] == "SC027.pdf", \
+            f"the 2025 Senate page's four documents of No 27 do not have four paths: {p27}"
+        assert len(set(paths.values())) == len(paths), "two documents of the 2025 page share a path"
+        held = [dict(_doc("S", "calendar", 2025, "No 27 Supplement June 19 2025.pdf"),
+                      path="calendars_senate\\2025\\SC027.pdf", state="held")]
+        assert _listing_paths(CA, held)["No 27 Supplement June 19 2025"] == "SC027.pdf", \
+            "a path on file was moved"
+        f.hand(from_year=2026)
+        assert [p for lab, p in _listing_paths(CA).items() if lab.startswith("No 27 ")] == \
+            ["SC027.pdf"] * 4, "a year before the handover's was given new paths"
+    return "ok", "No 27 of 2025's four documents get four paths under a handover from 2025"
+
+
+@check("build", "with the night's documents switched off and no handover record nothing the night "
+       "or the laptop does changes: the queue, its layers, the list's paths, the drain, the "
+       "Senate fetch, the committee reports and the texts are as they were",
+       needs=("refusal", "fetch_calendar_archive", "extract_calendar_text",
+              "fetch_senate_calendars", "fetch_committee_reports"))
+def _documents_off_is_off(R, CA, ECT, FSC, FCR):
+    """THE HARD RULE (the person, 26 October 2026; the design's D1): with
+    NIGHT_DOCUMENTS unset, "off", "Off ", "9" or "²" and no handover record --
+    every machine on the day this merges -- nothing either machine does
+    changes, and nothing added for the handover is reached. For each of them,
+    with the readers of what the handover adds made to raise:
+
+      - load_queue lays the laptop's file over every year, and a stood-down
+        laptop's save keeps rows of every year;
+      - the listing gives the 2025 Senate page's four "No 27" documents their
+        number's path, SC027.pdf, as it always has;
+      - the drain asks for every year's wanted documents; the Senate fetch and
+        the committee reports of 2026 go on to ask (their requests faked);
+        every year's PDF without text is one the extractor makes."""
+    def never(*a, **kw):
+        raise AssertionError("a reader of what the handover adds was reached with no record")
+    saved = (CA.night_rows, CA._new_local, R.years_said)
+    try:
+        CA.night_rows, CA._new_local, R.years_said = never, never, never
+        for switch in (None, "off", "Off ", "9", "²"):
+            with _HandoverFolder(R, CA) as f:
+                if switch is not None:
+                    os.environ["NIGHT_DOCUMENTS"] = switch
+                rows = [_doc("S", "calendar", y, f"SC {y}.pdf") for y in (2025, 2026, 2027)]
+                CA.write_rows(CA.QUEUE, rows)
+                CA.write_rows(CA.fetched_file(), [dict(r, state="held", bytes="9") for r in rows])
+                assert [(r["state"], r["bytes"]) for r in CA.load_queue()] == [("held", "9")] * 3, \
+                    f"with the switch {switch!r} the laptop's file is not laid over every year"
+                (f.archive / R.STANDDOWN.name).write_text("{}", encoding="utf-8")
+                CA.save_queue([dict(r, attempts="1") for r in rows])
+                assert len(CA.read_rows(CA.fetched_file())) == 3, \
+                    f"with the switch {switch!r} the laptop's save left a year out"
+                (f.archive / R.STANDDOWN.name).unlink()
+                paths = _listing_paths(CA)
+                assert [p for lab, p in paths.items() if lab.startswith("No 27 ")] == \
+                    ["SC027.pdf"] * 4, f"with the switch {switch!r} a supplement moved: {paths}"
+                got = _laptop_asks(R, CA, ECT, FSC, FCR, f)
+                assert (got["drain"], got["senate"], got["probe"], got["committee"],
+                        got["committee on disk"], got["texts"]) == (
+                    ["2025", "2026", "2027"], (1, 1), (1, 1), (1, ["2026"], False),
+                    (1, ["2026"], False), ["2025", "2026", "2027"]), \
+                    f"with the switch {switch!r} and no record the laptop's fetches changed: {got}"
+    finally:
+        CA.night_rows, CA._new_local, R.years_said = saved
+    return "ok", ("switched off, or not a switch, and no record: the queue, the paths, the "
+                  "drain, the Senate fetch, the committee reports and the texts as before")
+
+
 @check("build", "on a stood-down laptop no General Court request starts in GitHub's night "
                 "window or the half hour before it, none goes on inside it, and none starts "
                 "before the real bucket's refusal record is read since the last one",

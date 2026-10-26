@@ -543,12 +543,18 @@ def read_handover(root=None):
     return "ok", d
 
 
-def _interlock(root=None):
-    """The from_year of the night's own record pulled here, or None."""
+def read_night_record(root=None):
+    """The night's own record of its years, as it reads here, or None."""
     try:
-        return _from_year(json.loads(_archive(NIGHT_RECORD.name, root).read_text(encoding="utf-8")))
+        d = json.loads(_archive(NIGHT_RECORD.name, root).read_text(encoding="utf-8"))
     except (OSError, ValueError):
         return None
+    return d if isinstance(d, dict) else None
+
+
+def _interlock(root=None):
+    """The from_year of the night's own record pulled here, or None."""
+    return _from_year(read_night_record(root))
 
 
 def night_years(root=None):
@@ -584,6 +590,30 @@ def handed_years(root=None):
     if state == "ok":
         return d["from_year"]
     return 0 if state == "unreadable" else _interlock(root)
+
+
+def handed(year, y):
+    """Whether a year -- a row's, a folder's name, a --year -- is of those from
+    `y` on (night_years() or handed_years(); None while none are). A year that
+    is not a number is, while any are: in doubt, the laptop does not ask."""
+    year = str(year or "").strip()
+    return y is not None and (not year.isdigit() or int(year) >= y)
+
+
+def years_said(y, root=None):
+    """Why the years from `y` on are left to GitHub's night, in the words each
+    command that leaves them says it in: loudly when the record will not read
+    or is missing here."""
+    state, _ = read_handover(root)
+    where = _archive(HANDOVER.name, root)
+    if state == "unreadable":
+        return (f"THE HANDOVER RECORD WILL NOT READ ({where}), so "
+                + (f"{y} on are" if y else "every year is")
+                + " left to GitHub's night until a person mends it")
+    if state == "missing":
+        return (f"{where} is missing here, and the night's own record says {y} on are the "
+                "night's: python3 src/ops/cloud.py pull puts it back")
+    return f"{y} on are GitHub's night's to fetch since the handover ({where})"
 
 
 # ---- GitHub's night window ---------------------------------------------------

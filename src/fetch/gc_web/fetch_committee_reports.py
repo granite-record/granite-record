@@ -729,6 +729,19 @@ def main():
     ap.add_argument("--out", default="committee_reports.json")
     ap.add_argument("--limit", type=int, default=0)
     a = ap.parse_args()
+    # A YEAR EVER HANDED TO GITHUB'S NIGHT IS READ FROM DISK (the person's
+    # design of 26 October 2026), handed back or not: this step asked for every
+    # calendar it lacked about a millisecond apart, under no lock, and from the
+    # handover the night -- or, after a hand-back, the paced drain -- is the one
+    # that asks for a calendar of those years.
+    handed = refusal.handed_years()
+    from_disk = refusal.handed(a.year, handed) and not (a.pdf and Path(a.pdf).exists())
+    if from_disk:
+        a.offline = True
+        print(f"The House calendars of {a.year} are read from {a.cache}/ and asked of nobody: "
+              f"{f'{handed} on' if handed else 'every year'} went to GitHub's night with the "
+              f"handover ({refusal.HANDOVER}), and the night, or the drain after a hand-back, "
+              "asks for them.")
     # Only the fetching mode asks the General Court. --offline, and --pdf with
     # a file on this disk, read what is here, so a refusal on file or GitHub's
     # night has nothing to stop in them -- and they were stopped all the same
@@ -751,6 +764,10 @@ def main():
             m = re.match(r"HC0*(\d+)([A-Z]*)\.pdf$", f.name)
             if m:
                 targets.append((f"{m.group(1)}{m.group(2)}", f))
+        if not targets and from_disk:
+            # Nothing to read is not a failure here: build_all's step stays green.
+            print(f"No House calendars of {a.year} in {cache}/ yet: nothing read, nothing written.")
+            return
         if not targets:
             sys.exit(f"--offline, and no calendars in {cache}/ to read.")
         print(f"offline: {len(targets)} calendars from {cache}/, no requests")
