@@ -4844,6 +4844,210 @@ GUIDES += [TRASH]
 
 
 # ---------------------------------------------------------------------------
+# YOUR RIGHTS AT WORK: GETTING PAID (the person, 25 October 2026: "Write all
+# three know your rights guides too"). From RSA 275 (payment of wages, the
+# final paycheck, deductions, notice, the wage claim, retaliation, meal
+# breaks) and RSA 279 (minimum wage and overtime), read in the site's own
+# Laws pages on 25 October 2026, and the U.S. Department of Labor's overtime
+# page, read the same day. New Hampshire's minimum wage is the federal one
+# (RSA 279:21), and no dollar amount is printed: the statute sets none of its
+# own (FIGURE above). The New Hampshire Department of Labor's own pages refuse
+# this machine, so their claim waits for the person's printouts.
+# ---------------------------------------------------------------------------
+WG_READ = "2026-10-25"
+WG_PAGES_READ = None                 # the person's printouts of dol.nh.gov
+NH_DOL = "https://www.dol.nh.gov/"
+WHD_OVERTIME = "https://www.dol.gov/agencies/whd/overtime"
+
+WAGES = guide(
+    "wage-rights", "Your Rights at Work: Getting Paid",
+    "When your pay is due in New Hampshire, your final paycheck, what your employer may take out "
+    "of your pay, minimum wage, overtime and meal breaks, and how to file a wage claim with the "
+    "Department of Labor.",
+    "In New Hampshire your employer must tell you your rate of pay when you are hired and pay "
+    "you on regular paydays set in advance. If you are fired, all your wages are due within 72 "
+    "hours; if you quit or are laid off, by the next regular payday. Your employer may take money "
+    "out of your pay only as the law requires or you agree in writing. If you are not paid what "
+    "you earned, you can file a wage claim with the New Hampshire Department of Labor, and your "
+    "employer may not punish you for it.",
+    [ask("Were you paid everything you earned, on time?",
+         [("Yes", "Keep your pay statements: they list what was taken out of each paycheck."),
+          ("No", "File a wage claim with the Department of Labor, within 36 months.")]),
+     ask("Did your job end?",
+         [("You were fired", "Your wages are due in full within 72 hours."),
+          ("You quit or were laid off", "Your wages are due by the next regular payday.")]),
+     box("Your employer may not fire or punish you for filing a claim, or for asking about or "
+         "discussing wages.")],
+    [step("Know when you must be paid",
+          "<p>Your employer must pay all the wages you have earned on regular paydays set in "
+          "advance, at no cost to you: within 8 days after the end of the work week if you are "
+          "paid weekly, or within 15 days if you are paid every two weeks. The Department of "
+          "Labor may allow some employers to pay less often, but never less than once a "
+          "month.</p>"
+          "<p>You can be paid in cash, by a check you can cash near work, by direct deposit you "
+          "have agreed to in writing, or on a payroll card with at least one free way to take "
+          "out your whole balance each pay period. An employer that pays electronically must "
+          "also offer you a paper check.</p>"
+          "<p>When you are hired, your employer must tell you your rate of pay and the day and "
+          "place you will be paid, and must tell you before either changes. Its rules on "
+          "vacation pay, sick leave and other benefits must be given to you in writing or "
+          "posted where you can see them. Vacation, holiday and sick pay, severance and work "
+          "expenses that are your employer&rsquo;s practice or policy count as wages when they "
+          "are due.</p>",
+          law=["RSA 275:43", "RSA 275:49"]),
+     step("Your last paycheck",
+          "<ul><li><b>If you are fired</b>, your employer must pay all your wages within 72 "
+          "hours.</li>"
+          "<li><b>If you quit</b>, by the next regular payday. If you gave at least one pay "
+          "period&rsquo;s notice, within 72 hours.</li>"
+          "<li><b>If you are laid off</b>, or your work stops because of a labor dispute, by the "
+          "next regular payday.</li></ul>"
+          "<p>You can ask for the last paycheck to be mailed to you. An employer that willfully, "
+          "and without good cause, pays late owes you extra, as liquidated damages: 10 percent "
+          "of the unpaid wages for each day the pay is late, not counting Sundays and legal "
+          "holidays, up to the amount of the unpaid wages.</p>",
+          law=["RSA 275:44"]),
+     step("What may be taken out of your pay",
+          "<p>Your employer may hold back part of your wages only when a state or federal law "
+          "requires or allows it, such as payroll taxes, or when you have agreed in writing to "
+          "a deduction for a lawful purpose that benefits you, such as union dues, health "
+          "insurance, retirement contributions, a charity, or anything else you agree to that "
+          "gives your employer no financial advantage. A deduction may not be used to make you "
+          "pay for things you need to do your job.</p>"
+          "<p>Each pay period that something is taken out, your employer must give you a "
+          "statement of the deductions.</p>",
+          law=["RSA 275:48", "RSA 275:49"]),
+     step("Minimum wage, overtime and meal breaks",
+          "<p><b>Minimum wage.</b> New Hampshire&rsquo;s minimum wage is the federal minimum "
+          "wage. A tipped worker in a restaurant or hotel who regularly gets tips may be paid a "
+          "lower base rate by the employer, but if base pay and tips together come to less than "
+          "the minimum wage for all the hours worked in a pay period, the employer must pay the "
+          "difference. The law exempts some work, such as farm and household labor, and lets "
+          "some young and new workers be paid less.</p>"
+          "<p><b>Overtime.</b> Unless your job is exempt, you must be paid time and one-half "
+          "your regular rate for every hour over 40 hours in a work week. Federal law requires "
+          "it of most employers; New Hampshire&rsquo;s law requires it of the employers federal "
+          "law does not cover.</p>"
+          "<p><b>Meal breaks.</b> Your employer may not make you work more than 5 consecutive "
+          "hours without a half-hour break to eat, unless you can eat while you work and your "
+          "employer lets you.</p>",
+          actions=[("Overtime pay (U.S. Department of Labor)", WHD_OVERTIME)],
+          law=["RSA 279:21", "RSA 275:30-a"]),
+     step("If you were not paid: file a wage claim",
+          "<p>You can file a <b>wage claim</b> with the New Hampshire Department of Labor, no "
+          "later than 36 months after the wages were due. The Department sends a copy to your "
+          "employer, who has 20 days to object; if it does not, the Department may order it to "
+          "pay. Either side can ask for a hearing, and the Department decides in writing within "
+          "30 days after it. A decision can be appealed to the superior court within 20 "
+          "days.</p>"
+          "<p>You can also sue for unpaid wages in court, yourself or through a representative, "
+          "and the court may order your employer to pay your costs and reasonable "
+          "attorney&rsquo;s fees.</p>",
+          actions=[("New Hampshire Department of Labor", NH_DOL)],
+          law=["RSA 275:51", "RSA 275:53"]),
+     step("Your employer may not punish you for it",
+          "<p>An employer may not fire you, or treat you differently in any other way, because "
+          "you filed a complaint or a claim, took part in an investigation or hearing about "
+          "your pay, or asked about, talked about or shared what you or a coworker are "
+          "paid.</p>"
+          "<p>It is also illegal to pay someone less than a coworker for equal work because of "
+          "their sex. Your employer must post a notice saying so, with how to reach the "
+          "Department of Labor.</p>",
+          law=["RSA 275:38-a", "RSA 275:37", "RSA 275:49"])],
+    [("New Hampshire Department of Labor", NH_DOL),
+     ("Overtime Pay (U.S. Department of Labor)", WHD_OVERTIME),
+     ("Protective Legislation, RSA 275", "/laws/275"),
+     ("Minimum Wage Law, RSA 279", "/laws/279")],
+    ["275", "279"],
+    [# The statutes, read on 25 October 2026 in the site's own Laws pages.
+     claim("Every employer shall pay all wages due within 8 days after the expiration of the "
+           "work week if paid weekly, or within 15 days if paid biweekly, on regular paydays "
+           "designated in advance and at no cost to the employee: in money, by electronic fund "
+           "transfer, by direct deposit with written authorization, by a payroll card with at "
+           "least one free means to withdraw the full balance each pay period, or by checks "
+           "cashable near the place of employment; an employer paying electronically shall offer "
+           "the check option (I); the commissioner may permit payment at least once each "
+           "calendar month (IV); vacation pay, severance pay, personal days, holiday pay, sick "
+           "pay and employee expenses, when a matter of employment practice or policy, are "
+           "wages when due (V).", "RSA 275:43", WG_READ),
+     claim("Discharged: wages in full within 72 hours (I); quits or resigns: no later than the "
+           "next regular payday, or within 72 hours after at least one pay period's notice, by "
+           "mail if requested (II); laid off or suspended by a labor dispute: not later than the "
+           "next regular payday (III); willfully and without good cause failing to pay: "
+           "liquidated damages of 10 percent of the unpaid wages for each day except Sunday and "
+           "legal holidays, or an amount equal to the unpaid wages, whichever is smaller (IV).",
+           "RSA 275:44", WG_READ),
+     claim("No employer may withhold or divert any portion of an employee's wages unless "
+           "required or empowered by state or federal law, including payroll taxes, or with a "
+           "written authorization for a lawful purpose accruing to the benefit of the employee, "
+           "among them union dues, insurance, pension and charity, or any purpose agreed that "
+           "does not grant financial advantage to the employer; not to offset payments for items "
+           "required in the performance of the job.", "RSA 275:48", WG_READ),
+     claim("Notify employees at hiring of the rate of pay and the day and place of payment, and "
+           "of changes before they happen; make available in writing or by posted notice the "
+           "policies on vacation pay, sick leave and other fringe benefits; furnish a statement "
+           "of deductions for each pay period deductions are made; post the equal pay notice "
+           "with how to contact the Department of Labor.", "RSA 275:49", WG_READ),
+     claim("A wage claim may be filed by an employee no later than 36 months from the date the "
+           "wages were due; the employer is served and may object within 20 days from the "
+           "receipt of such notice, or the commissioner may order payment; a hearing if "
+           "requested; a written decision within 30 days after the hearing; appeal to the "
+           "superior court not later than 20 days from the date thereof.", "RSA 275:51",
+           WG_READ),
+     claim("An employee may sue for unpaid wages and liquidated damages in any court of "
+           "competent jurisdiction, himself or through an agent or representative; the court "
+           "may allow costs and reasonable attorney's fees; the commissioner may take an "
+           "assignment of the claim.", "RSA 275:53", WG_READ),
+     claim("No employer shall discharge or in any other manner discriminate against an employee "
+           "because he or she made a charge, filed a complaint, took part in an investigation, "
+           "proceeding or hearing, or inquired about, discussed, or disclosed his or her wages "
+           "or those of another employee.", "RSA 275:38-a", WG_READ),
+     claim("No employer shall pay employees of one sex at a rate less than the rate paid to "
+           "employees of the other sex for equal work, with exceptions such as seniority and "
+           "merit systems.", "RSA 275:37", WG_READ),
+     claim("An employer may not require an employee to work more than 5 consecutive hours "
+           "without granting a 1/2 hour lunch or eating period, unless it is feasible for the "
+           "employee to eat while working and the employer permits it.", "RSA 275:30-a",
+           WG_READ),
+     claim("No employee at an hourly rate lower than that set forth in the federal minimum wage "
+           "law; tipped employees of a restaurant, hotel and the like who customarily receive "
+           "tips get a lower base rate from the employer, and the employer pays the difference "
+           "if wages at the end of a pay period do not equal the minimum wage for all hours "
+           "worked; exceptions for household, domestic and farm labor, outside salesmen, summer "
+           "camps, and lower rates for some young and inexperienced workers; time and one-half "
+           "for all time worked in excess of 40 hours in any one week, except, among others, "
+           "employees of employers covered by the federal Fair Labor Standards Act (VIII).",
+           "RSA 279:21", WG_READ),
+     # The U.S. Department of Labor's page, read on 25 October 2026.
+     claim("Unless exempt, employees covered by the Fair Labor Standards Act must receive overtime "
+           "pay for hours worked over 40 in a workweek at a rate not less than time and one-half "
+           "their regular rates of pay.", WHD_OVERTIME, WG_READ),
+     # The New Hampshire Department of Labor's page, from the person's printouts.
+     claim("The Department of Labor takes wage claims from employees, and how to file one.",
+           NH_DOL, WG_PAGES_READ)]
+    + help_claims("lawyer"),
+    more="<h2>Who Can Help</h2>"
+         "<p>The New Hampshire Department of Labor enforces the state&rsquo;s wage laws and takes "
+         "wage claims. The U.S. Department of Labor&rsquo;s overtime page explains the federal "
+         "overtime rule. For advice about your own situation, a "
+         "lawyer can help:</p>"
+         + helps("lawyer"),
+    see=[("How to file for unemployment", "/guides/file-for-unemployment.html"),
+         ("How to apply for food or health assistance", "/guides/food-and-health-assistance.html")],
+    figures=[fig("72 hours", "RSA 275:44", "within 72 hours"),
+             fig("36 months", "RSA 275:51", "no later than 36 months from the date the wages were due"),
+             fig("8 days", "RSA 275:43", "within 8 days after the expiration of the work week"),
+             fig("15 days", "RSA 275:43", "within 15 days after the expiration of the work week"),
+             fig("10 percent", "RSA 275:44", "10 percent of the unpaid wages"),
+             fig("40 hours", "RSA 279:21", "in excess of 40 hours in any one week"),
+             fig("5 consecutive hours", "RSA 275:30-a", "more than 5 consecutive hours"),
+             fig("20 days", "RSA 275:51", "within 20 days from the receipt of such notice"),
+             fig("30 days", "RSA 275:51", "within 30 days after the hearing")])
+
+GUIDES += [WAGES]
+
+
+# ---------------------------------------------------------------------------
 # A U.S. PASSPORT (the person, 25 October 2026: "go ahead with the passport
 # guide"; federal sources allowed, 24 October 2026). A passport is federal:
 # the Department of State issues it and New Hampshire has no part, so the
@@ -6513,6 +6717,10 @@ TASKS = [
              "SNAP and Medicaid, online at NH Easy or on paper."),
         task("file-for-unemployment", "File for unemployment",
              "Your claim, the weekly claims that follow, and how to appeal."),
+        task("wage-rights", "Get paid what you are owed at work",
+             "When pay is due, your last paycheck, deductions, minimum wage, overtime, and "
+             "filing a wage claim.",
+             head="Your rights at work: getting paid"),
         task("child-care-scholarship", "Get help paying for child care",
              "The Child Care Scholarship: who it is for, how to apply, and choosing a provider."),
         task("domestic-violence-help", "Get help after domestic violence, sexual assault or stalking",
@@ -6661,6 +6869,9 @@ WORDS = {
     "food-and-health-assistance": ("snap", "food stamps", "medicaid", "health insurance",
                                    "benefits", "nh easy"),
     "file-for-unemployment": ("unemployment", "laid off", "lost my job", "benefits", "jobless"),
+    "wage-rights": ("wages", "paycheck", "final paycheck", "last paycheck", "unpaid wages",
+                    "not paid", "overtime", "minimum wage", "wage claim", "meal break",
+                    "pay stub", "department of labor"),
     "child-care-scholarship": ("child care", "childcare", "daycare", "child care scholarship",
                                "child care assistance"),
     "domestic-violence-help": ("domestic violence", "sexual assault", "stalking", "abuse",

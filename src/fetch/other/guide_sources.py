@@ -161,6 +161,13 @@ SOURCES = {
         # linked from the pages above
         "https://www.nhes.nh.gov/resources/office-locations",
     ],
+    # Your rights at work: getting paid (25 October 2026). The New Hampshire
+    # Department of Labor's page, from the person's printouts; the U.S.
+    # Department of Labor's overtime page, read that day.
+    "wages": [
+        "https://www.dol.nh.gov/",
+        "https://www.dol.gov/agencies/whd/overtime",
+    ],
     # The child care guide's, read in the PDFs the person printed and sent on
     # 24 October 2026.
     "child_care": [

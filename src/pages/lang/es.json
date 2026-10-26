@@ -9032,6 +9032,21 @@
    "es": "Con el secretario de su municipio o ciudad o con el estado: quién puede pedirla y qué llevar.",
    "state": "draft"
   },
+  "guide.task.wage-rights.does": {
+   "en": "Get paid what you are owed at work",
+   "es": "Recibir el pago que le deben en el trabajo",
+   "state": "draft"
+  },
+  "guide.task.wage-rights.head": {
+   "en": "Your rights at work: getting paid",
+   "es": "Sus derechos en el trabajo: recibir su pago",
+   "state": "draft"
+  },
+  "guide.task.wage-rights.line": {
+   "en": "When pay is due, your last paycheck, deductions, minimum wage, overtime, and filing a wage claim.",
+   "es": "Cuándo se debe pagar, su último cheque, las deducciones, el salario mínimo, las horas extra y cómo presentar un reclamo de salarios.",
+   "state": "draft"
+  },
   "guide.task.who-to-contact.does": {
    "en": "Find out who to contact about an issue",
    "es": "Saber a quién contactar sobre un asunto",
@@ -10473,6 +10488,231 @@
   "guide.vital-records.your-town-or-city-clerk-issues": {
    "en": "Your town or city clerk issues certified copies, and is the nearest place to ask. The Division of Vital Records Administration lists how to reach it on its contact page. A certified copy needed only to register to vote is free: see How to Vote.",
    "es": "El secretario de su municipio o ciudad emite copias certificadas, y es el lugar más cercano donde preguntar. La División de Administración de Registros Vitales indica cómo comunicarse con ella en su página de contacto. Una copia certificada que se necesita solo para inscribirse para votar es gratuita: vea Cómo votar.",
+   "state": "draft"
+  },
+  "guide.wage-rights.an-employer-may-not-fire-you": {
+   "en": "An employer may not fire you, or treat you differently in any other way, because you filed a complaint or a claim, took part in an investigation or hearing about your pay, or asked about, talked about or shared what you or a coworker are paid.",
+   "es": "Un empleador no puede despedirlo, ni tratarlo de manera diferente de ninguna otra forma, porque usted presentó una queja o un reclamo, participó en una investigación o audiencia sobre su pago, o preguntó, habló o contó cuánto les pagan a usted o a un compañero de trabajo.",
+   "state": "draft"
+  },
+  "guide.wage-rights.did-your-job-end": {
+   "en": "Did your job end?",
+   "es": "¿Terminó su empleo?",
+   "state": "draft"
+  },
+  "guide.wage-rights.each-pay-period-that-something-is": {
+   "en": "Each pay period that something is taken out, your employer must give you a statement of the deductions.",
+   "es": "En cada período de pago en que se le descuente algo, su empleador tiene que darle un detalle de las deducciones.",
+   "state": "draft"
+  },
+  "guide.wage-rights.file-a-wage-claim-with-the": {
+   "en": "File a wage claim with the Department of Labor, within 36 months.",
+   "es": "Presente un reclamo de salarios ante el Departamento de Trabajo, dentro de los 36 meses.",
+   "state": "draft"
+  },
+  "guide.wage-rights.how-to-apply-for-food-or": {
+   "en": "How to apply for food or health assistance",
+   "es": "Cómo solicitar ayuda para alimentos o salud",
+   "state": "draft"
+  },
+  "guide.wage-rights.how-to-file-for-unemployment": {
+   "en": "How to file for unemployment",
+   "es": "Cómo solicitar beneficios por desempleo",
+   "state": "draft"
+  },
+  "guide.wage-rights.if-you-are-fired-your-employer": {
+   "en": "<b>If you are fired</b>, your employer must pay all your wages within 72 hours.",
+   "es": "<b>Si lo despiden</b>, su empleador tiene que pagarle todos sus salarios dentro de las 72 horas.",
+   "state": "draft"
+  },
+  "guide.wage-rights.if-you-are-laid-off-or": {
+   "en": "<b>If you are laid off</b>, or your work stops because of a labor dispute, by the next regular payday.",
+   "es": "<b>Si lo suspenden por falta de trabajo</b>, o su trabajo se detiene por un conflicto laboral, a más tardar el siguiente día de pago regular.",
+   "state": "draft"
+  },
+  "guide.wage-rights.if-you-quit-by-the-next": {
+   "en": "<b>If you quit</b>, by the next regular payday. If you gave at least one pay period&rsquo;s notice, within 72 hours.",
+   "es": "<b>Si renuncia</b>, a más tardar el siguiente día de pago regular. Si avisó con al menos un período de pago de anticipación, dentro de las 72 horas.",
+   "state": "draft"
+  },
+  "guide.wage-rights.if-you-were-not-paid-file": {
+   "en": "If you were not paid: file a wage claim",
+   "es": "Si no le pagaron: presente un reclamo de salarios",
+   "state": "draft"
+  },
+  "guide.wage-rights.in-new-hampshire-your-employer-must": {
+   "en": "In New Hampshire your employer must tell you your rate of pay when you are hired and pay you on regular paydays set in advance. If you are fired, all your wages are due within 72 hours; if you quit or are laid off, by the next regular payday. Your employer may take money out of your pay only as the law requires or you agree in writing. If you are not paid what you earned, you can file a wage claim with the New Hampshire Department of Labor, and your employer may not punish you for it.",
+   "es": "En New Hampshire, su empleador tiene que decirle cuánto le pagará cuando lo contrata y pagarle en días de pago regulares fijados de antemano. Si lo despiden, todos sus salarios se deben dentro de las 72 horas; si renuncia o lo suspenden por falta de trabajo, a más tardar el siguiente día de pago regular. Su empleador puede descontarle dinero del pago solo cuando la ley lo exige o usted lo acepta por escrito. Si no le pagan lo que ganó, puede presentar un reclamo de salarios ante el Departamento de Trabajo de New Hampshire, y su empleador no puede castigarlo por hacerlo.",
+   "state": "draft"
+  },
+  "guide.wage-rights.it-is-also-illegal-to-pay": {
+   "en": "It is also illegal to pay someone less than a coworker for equal work because of their sex. Your employer must post a notice saying so, with how to reach the Department of Labor.",
+   "es": "También es ilegal pagarle a alguien menos que a un compañero por un trabajo igual a causa de su sexo. Su empleador tiene que exhibir un aviso que lo diga, con la forma de comunicarse con el Departamento de Trabajo.",
+   "state": "draft"
+  },
+  "guide.wage-rights.keep-your-pay-statements-they-list": {
+   "en": "Keep your pay statements: they list what was taken out of each paycheck.",
+   "es": "Guarde sus comprobantes de pago: indican lo que se le descontó de cada cheque.",
+   "state": "draft"
+  },
+  "guide.wage-rights.know-when-you-must-be-paid": {
+   "en": "Know when you must be paid",
+   "es": "Sepa cuándo le tienen que pagar",
+   "state": "draft"
+  },
+  "guide.wage-rights.lawyer-referral-service": {
+   "en": "Lawyer Referral Service",
+   "es": "Servicio de Referencia de Abogados",
+   "state": "draft"
+  },
+  "guide.wage-rights.lead": {
+   "en": "When your pay is due in New Hampshire, your final paycheck, what your employer may take out of your pay, minimum wage, overtime and meal breaks, and how to file a wage claim with the Department of Labor.",
+   "es": "Cuándo se debe su pago en New Hampshire, su último cheque, lo que su empleador puede descontarle, el salario mínimo, las horas extra y los descansos para comer, y cómo presentar un reclamo de salarios ante el Departamento de Trabajo.",
+   "state": "draft"
+  },
+  "guide.wage-rights.meal-breaks-your-employer-may-not": {
+   "en": "<b>Meal breaks.</b> Your employer may not make you work more than 5 consecutive hours without a half-hour break to eat, unless you can eat while you work and your employer lets you.",
+   "es": "<b>Descansos para comer.</b> Su empleador no puede hacerlo trabajar más de 5 horas seguidas sin un descanso de media hora para comer, a menos que usted pueda comer mientras trabaja y su empleador se lo permita.",
+   "state": "draft"
+  },
+  "guide.wage-rights.minimum-wage-law-rsa-279": {
+   "en": "Minimum Wage Law, RSA 279",
+   "es": "Ley de Salario Mínimo, RSA 279",
+   "state": "draft"
+  },
+  "guide.wage-rights.minimum-wage-new-hampshires-minimum-wage": {
+   "en": "<b>Minimum wage.</b> New Hampshire&rsquo;s minimum wage is the federal minimum wage. A tipped worker in a restaurant or hotel who regularly gets tips may be paid a lower base rate by the employer, but if base pay and tips together come to less than the minimum wage for all the hours worked in a pay period, the employer must pay the difference. The law exempts some work, such as farm and household labor, and lets some young and new workers be paid less.",
+   "es": "<b>Salario mínimo.</b> El salario mínimo de New Hampshire es el salario mínimo federal. A quien trabaja con propinas en un restaurante o un hotel y las recibe con regularidad, el empleador puede pagarle una tarifa base más baja, pero si el pago base y las propinas juntos no llegan al salario mínimo por todas las horas trabajadas en un período de pago, el empleador tiene que pagar la diferencia. La ley exceptúa algunos trabajos, como las labores agrícolas y domésticas, y permite pagar menos a algunos trabajadores jóvenes o nuevos.",
+   "state": "draft"
+  },
+  "guide.wage-rights.minimum-wage-overtime-and-meal-breaks": {
+   "en": "Minimum wage, overtime and meal breaks",
+   "es": "Salario mínimo, horas extra y descansos para comer",
+   "state": "draft"
+  },
+  "guide.wage-rights.new-hampshire-department-of-labor": {
+   "en": "New Hampshire Department of Labor",
+   "es": "Departamento de Trabajo de New Hampshire",
+   "state": "draft"
+  },
+  "guide.wage-rights.no": {
+   "en": "No",
+   "es": "No",
+   "state": "draft"
+  },
+  "guide.wage-rights.overtime-pay-u-s-department-of": {
+   "en": "Overtime pay (U.S. Department of Labor)",
+   "es": "Pago de horas extra (Departamento de Trabajo de EE. UU.)",
+   "state": "draft"
+  },
+  "guide.wage-rights.overtime-pay-u-s-department-of-2": {
+   "en": "Overtime Pay (U.S. Department of Labor)",
+   "es": "Pago de horas extra (Departamento de Trabajo de EE. UU.)",
+   "state": "draft"
+  },
+  "guide.wage-rights.overtime-unless-your-job-is-exempt": {
+   "en": "<b>Overtime.</b> Unless your job is exempt, you must be paid time and one-half your regular rate for every hour over 40 hours in a work week. Federal law requires it of most employers; New Hampshire&rsquo;s law requires it of the employers federal law does not cover.",
+   "es": "<b>Horas extra.</b> A menos que su puesto esté exento, le tienen que pagar una vez y media su tarifa regular por cada hora por encima de 40 horas en una semana de trabajo. La ley federal lo exige a la mayoría de los empleadores; la ley de New Hampshire lo exige a los empleadores que la ley federal no cubre.",
+   "state": "draft"
+  },
+  "guide.wage-rights.protective-legislation-rsa-275": {
+   "en": "Protective Legislation, RSA 275",
+   "es": "Legislación de protección, RSA 275",
+   "state": "draft"
+  },
+  "guide.wage-rights.the-new-hampshire-department-of-labor": {
+   "en": "The New Hampshire Department of Labor enforces the state&rsquo;s wage laws and takes wage claims. The U.S. Department of Labor&rsquo;s overtime page explains the federal overtime rule. For advice about your own situation, a lawyer can help:",
+   "es": "El Departamento de Trabajo de New Hampshire hace cumplir las leyes de salarios del estado y recibe los reclamos de salarios. La página sobre horas extra del Departamento de Trabajo de EE. UU. explica la regla federal de horas extra. Para recibir consejo sobre su propia situación, un abogado puede ayudarle:",
+   "state": "draft"
+  },
+  "guide.wage-rights.title": {
+   "en": "Your Rights at Work: Getting Paid",
+   "es": "Sus derechos en el trabajo: recibir su pago",
+   "state": "draft"
+  },
+  "guide.wage-rights.were-you-paid-everything-you-earned": {
+   "en": "Were you paid everything you earned, on time?",
+   "es": "¿Le pagaron todo lo que ganó, a tiempo?",
+   "state": "draft"
+  },
+  "guide.wage-rights.what-may-be-taken-out-of": {
+   "en": "What may be taken out of your pay",
+   "es": "Lo que se le puede descontar del pago",
+   "state": "draft"
+  },
+  "guide.wage-rights.when-you-are-hired-your-employer": {
+   "en": "When you are hired, your employer must tell you your rate of pay and the day and place you will be paid, and must tell you before either changes. Its rules on vacation pay, sick leave and other benefits must be given to you in writing or posted where you can see them. Vacation, holiday and sick pay, severance and work expenses that are your employer&rsquo;s practice or policy count as wages when they are due.",
+   "es": "Cuando lo contratan, su empleador tiene que decirle cuánto le pagará y el día y el lugar del pago, y avisarle antes de que cualquiera de los dos cambie. Sus normas sobre vacaciones pagadas, licencia por enfermedad y otros beneficios tienen que dársele por escrito o estar exhibidas donde usted pueda verlas. El pago de vacaciones, días feriados y enfermedad, la indemnización por despido y los gastos de trabajo que sean práctica o política de su empleador cuentan como salarios cuando se deben.",
+   "state": "draft"
+  },
+  "guide.wage-rights.yes": {
+   "en": "Yes",
+   "es": "Sí",
+   "state": "draft"
+  },
+  "guide.wage-rights.you-can-also-sue-for-unpaid": {
+   "en": "You can also sue for unpaid wages in court, yourself or through a representative, and the court may order your employer to pay your costs and reasonable attorney&rsquo;s fees.",
+   "es": "También puede demandar en un tribunal por los salarios no pagados, usted mismo o por medio de un representante, y el tribunal puede ordenar que su empleador pague sus costos y honorarios razonables de abogado.",
+   "state": "draft"
+  },
+  "guide.wage-rights.you-can-ask-for-the-last": {
+   "en": "You can ask for the last paycheck to be mailed to you. An employer that willfully, and without good cause, pays late owes you extra, as liquidated damages: 10 percent of the unpaid wages for each day the pay is late, not counting Sundays and legal holidays, up to the amount of the unpaid wages.",
+   "es": "Puede pedir que le envíen el último cheque por correo. Un empleador que paga tarde a sabiendas y sin causa justificada le debe una suma adicional, como daños fijados por ley: el 10 por ciento de los salarios no pagados por cada día de atraso, sin contar domingos ni días feriados legales, hasta el monto de los salarios no pagados.",
+   "state": "draft"
+  },
+  "guide.wage-rights.you-can-be-paid-in-cash": {
+   "en": "You can be paid in cash, by a check you can cash near work, by direct deposit you have agreed to in writing, or on a payroll card with at least one free way to take out your whole balance each pay period. An employer that pays electronically must also offer you a paper check.",
+   "es": "Le pueden pagar en efectivo, con un cheque que pueda cobrar cerca del trabajo, por depósito directo que usted haya aceptado por escrito, o con una tarjeta de nómina que tenga al menos una forma gratuita de retirar todo su saldo en cada período de pago. Un empleador que paga de forma electrónica también tiene que ofrecerle un cheque en papel.",
+   "state": "draft"
+  },
+  "guide.wage-rights.you-can-file-a-wage-claim": {
+   "en": "You can file a <b>wage claim</b> with the New Hampshire Department of Labor, no later than 36 months after the wages were due. The Department sends a copy to your employer, who has 20 days to object; if it does not, the Department may order it to pay. Either side can ask for a hearing, and the Department decides in writing within 30 days after it. A decision can be appealed to the superior court within 20 days.",
+   "es": "Puede presentar un <b>reclamo de salarios</b> ante el Departamento de Trabajo de New Hampshire, a más tardar 36 meses después de la fecha en que se debían los salarios. El Departamento le envía una copia a su empleador, que tiene 20 días para objetar; si no lo hace, el Departamento puede ordenarle que pague. Cualquiera de las partes puede pedir una audiencia, y el Departamento decide por escrito dentro de los 30 días posteriores. La decisión se puede apelar ante el tribunal superior dentro de los 20 días.",
+   "state": "draft"
+  },
+  "guide.wage-rights.you-quit-or-were-laid-off": {
+   "en": "You quit or were laid off",
+   "es": "Renunció o lo suspendieron por falta de trabajo",
+   "state": "draft"
+  },
+  "guide.wage-rights.you-were-fired": {
+   "en": "You were fired",
+   "es": "Lo despidieron",
+   "state": "draft"
+  },
+  "guide.wage-rights.your-employer-may-hold-back-part": {
+   "en": "Your employer may hold back part of your wages only when a state or federal law requires or allows it, such as payroll taxes, or when you have agreed in writing to a deduction for a lawful purpose that benefits you, such as union dues, health insurance, retirement contributions, a charity, or anything else you agree to that gives your employer no financial advantage. A deduction may not be used to make you pay for things you need to do your job.",
+   "es": "Su empleador puede retener parte de sus salarios solo cuando una ley estatal o federal lo exige o lo permite, como los impuestos sobre la nómina, o cuando usted ha aceptado por escrito una deducción con un fin legal que le beneficie, como cuotas sindicales, seguro médico, aportes para la jubilación, una organización benéfica, o cualquier otra cosa que usted acepte y que no le dé a su empleador ninguna ventaja económica. Una deducción no se puede usar para hacerle pagar las cosas que necesita para hacer su trabajo.",
+   "state": "draft"
+  },
+  "guide.wage-rights.your-employer-may-not-fire-or": {
+   "en": "Your employer may not fire or punish you for filing a claim, or for asking about or discussing wages.",
+   "es": "Su empleador no puede despedirlo ni castigarlo por presentar un reclamo, ni por preguntar o hablar sobre los salarios.",
+   "state": "draft"
+  },
+  "guide.wage-rights.your-employer-may-not-punish-you": {
+   "en": "Your employer may not punish you for it",
+   "es": "Su empleador no puede castigarlo por ello",
+   "state": "draft"
+  },
+  "guide.wage-rights.your-employer-must-pay-all-the": {
+   "en": "Your employer must pay all the wages you have earned on regular paydays set in advance, at no cost to you: within 8 days after the end of the work week if you are paid weekly, or within 15 days if you are paid every two weeks. The Department of Labor may allow some employers to pay less often, but never less than once a month.",
+   "es": "Su empleador tiene que pagarle todos los salarios que haya ganado en días de pago regulares fijados de antemano, sin costo para usted: dentro de los 8 días posteriores al fin de la semana de trabajo si le pagan cada semana, o dentro de los 15 días si le pagan cada dos semanas. El Departamento de Trabajo puede permitir que algunos empleadores paguen con menos frecuencia, pero nunca menos de una vez al mes.",
+   "state": "draft"
+  },
+  "guide.wage-rights.your-last-paycheck": {
+   "en": "Your last paycheck",
+   "es": "Su último cheque",
+   "state": "draft"
+  },
+  "guide.wage-rights.your-wages-are-due-by-the": {
+   "en": "Your wages are due by the next regular payday.",
+   "es": "Sus salarios se deben a más tardar el siguiente día de pago regular.",
+   "state": "draft"
+  },
+  "guide.wage-rights.your-wages-are-due-in-full": {
+   "en": "Your wages are due in full within 72 hours.",
+   "es": "Sus salarios se deben completos dentro de las 72 horas.",
    "state": "draft"
   },
   "guide.who-to-contact.a-federal-agency-or-a-federal": {
