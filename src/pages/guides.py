@@ -3547,6 +3547,186 @@ GUIDES += [MOTORCYCLE]
 
 
 # ---------------------------------------------------------------------------
+# VANITY AND SPECIAL PLATES (the person, 26 October 2026: "add a guide on how
+# to get a vanity plate or specialty plate like a gold star license plate,
+# national guard plate, etc."). From the sections of RSA 261 that create each
+# plate -- who qualifies and what it costs are the law's, and every dollar
+# printed is a fig() on its section -- and the DMV's Vehicle Registrations
+# page, as the person's printout of it read that day, for changing a plate
+# during the year. The person's printout of the DMV's Vanity Plates page
+# (vanityplates1) says where to apply, the mailing address, the character
+# rules of Saf-C 513.62 and how a denial is appealed, but prints no address of
+# its own, and a claim rests on an address a reader can open; its details
+# wait for that address. The decal plates that page lists have no section in
+# RSA 261 on this site's Laws page, so the guide leaves them out.
+# ---------------------------------------------------------------------------
+PLATES_READ = "2026-10-26"
+_PLATE_ROWS = [
+    ("Veteran", "A veteran of the U.S. armed forces, or one discharged with a general discharge "
+     "under honorable conditions, with proof of veteran status",
+     "The regular registration fee and the $4 a plate fee", "RSA 261:87-b"),
+    ("Disabled Veteran, Purple Heart, former prisoner of war, Pearl Harbor survivor",
+     "A veteran the U.S. Department of Veterans Affairs rates permanently and totally disabled "
+     "from a service-connected disability, or who received a vehicle from the U.S. government as "
+     "an amputee or paraplegic; a veteran totally blind from a service-connected disability; a "
+     "former prisoner of war; a Purple Heart recipient; a Pearl Harbor survivor, with proof",
+     "The first set is free", "RSA 261:86"),
+    ("Gold Star Mother, Father or Family",
+     "The mother or stepmother, the father or stepfather, or an immediate family member of a "
+     "person killed while on duty in the U.S. armed forces",
+     "The regular registration fees, and no plate fee", "RSA 261:87-c"),
+    ("National Guard and active duty",
+     "A member or retired member of the National Guard of any state, or an active-duty member "
+     "of the armed forces", "The registration fee", "RSA 261:91"),
+    ("New Hampshire First for Veterans", "Anyone who applies",
+     "$60, then $30 a year when you renew", "RSA 261:97-g"),
+    ("Conservation (moose)", "Anyone who applies", "$30, and $30 a year when you renew",
+     "RSA 261:97-a"),
+    ("State park symbol, on any plate", "Anyone who applies",
+     "$85, at registration and at each yearly renewal", "RSA 261:75-c"),
+]
+
+PLATES = guide(
+    "vanity-and-special-plates", "How to Get a Vanity or Special Plate",
+    "Getting a vanity plate with letters you choose, or a special plate such as a veteran, Gold "
+    "Star, National Guard or conservation plate, in New Hampshire: who qualifies, how to apply, "
+    "and what each costs.",
+    "A <b>vanity plate</b> carries letters and numbers you choose, approved by the Division of "
+    "Motor Vehicles. A <b>special plate</b> shows that you belong to a group the law names, such "
+    "as veterans, Gold Star families or the National Guard, or supports a cause, such as "
+    "conservation or the state parks. Each plate is set by its own section of RSA 261, which "
+    "says who qualifies and what it costs on top of your regular registration.",
+    [ask("What kind of plate do you want?",
+         [("Letters you choose", "A vanity plate, with letters and numbers the DMV approves."),
+          ("A plate for a group you belong to", "A veteran, Gold Star or National Guard plate, "
+           "with proof that you qualify."),
+          ("A plate that supports a cause", "A conservation (moose) plate, a First for Veterans "
+           "plate, or the state park symbol.")]),
+     box("Apply when you register or renew, or change your plate type during the year."),
+     box("If the DMV turns down a vanity plate, it refunds or credits the vanity fee.")],
+    [step("Choose your plate",
+          "<p>A vanity plate carries the letters, or letters and numbers, that the DMV&rsquo;s "
+          "rules allow, and no two plates may be the same. The DMV&rsquo;s Vanity Plates page, "
+          "linked from its Vehicle Registrations page, gives those rules and its Vanity Plate "
+          "Search.</p>"
+          "<p>For a special plate, find yours in the table in step 4: who may have it and what "
+          "it costs.</p>",
+          actions=[("Vehicle registrations (DMV)", DMV_REG)], law=["RSA 261:89"]),
+     step("Apply when you register, or change your plate during the year",
+          "<p>A vanity plate is issued only on application. You can change your plate type at "
+          "any point during the year: the DMV asks for a completed Application for Replacement "
+          "Plates and Decals, the plate fees, a new registration fee, and any other fees for the "
+          "plate you want.</p>",
+          actions=[("Vehicle registrations (DMV)", DMV_REG)], law=["RSA 261:89"]),
+     step("Pay the fees",
+          "<p>A vanity plate costs a special vanity plate service fee of $60, on top of your "
+          "regular registration fee and the number plate fee of $4 a plate, and $60 a year for "
+          "each set when you renew.</p>"
+          "<p>If the DMV turns your choice down, the law has it refund or credit the vanity "
+          "fee, and you get a plate of the same kind.</p>",
+          law=["RSA 261:89", "RSA 261:75"]),
+     step("A special plate: show that you qualify",
+          "<p>Each special plate is issued on application, and the plates for a group need "
+          "proof that you belong to it. For a Gold Star plate, that is a report of casualty (DD "
+          "Form 1300) or an official casualty notice; proof of your relationship, such as a "
+          "birth certificate; or a marriage certificate or a letter from the U.S. Department of "
+          "Veterans Affairs.</p>"
+          + table("Special plates and who may have them (RSA 261)",
+                  ["Plate", "Who qualifies", "What it costs", "The law"],
+                  [(a, b, c, f'<a href="/laws/261#s{d.split(":")[1]}">{d}</a>')
+                   for a, b, c, d in _PLATE_ROWS])
+          + "<p>Some special plates can carry letters you choose too: a Gold Star plate, and a "
+          "conservation or First for Veterans plate, for which you pay the vanity fee as well. "
+          "The state park symbol can go on a vanity plate.</p>",
+          law=["RSA 261:86", "RSA 261:87-b", "RSA 261:87-c", "RSA 261:91"])],
+    [("Vehicle Registrations (Division of Motor Vehicles)", DMV_REG),
+     ("Certificates of Title and Registration of Vehicles, RSA 261", "/laws/261")],
+    ["261"],
+    [claim("Related Resources: Plate Types; Vanity Plates. Plate Changes: you may change your "
+           "plate type at any point during the year; a completed Application for Replacement "
+           "Plates and Decals is required, and you will be required to pay the plate fees, the "
+           "new registration fee, plus any other applicable fees for the plate type requested. "
+           "With the exception of Mopeds, all motor vehicles must begin their registration "
+           "process at the town or city clerk in the town or city in which they reside.",
+           DMV_REG, PLATES_READ),
+     # As the license guide read it.
+     claim("The DMV is fully appointment based; book online or call 603-227-4000.", DMV_APPT, READ),
+     claim("Vanity plates bearing such letters or letters and numbers as the director shall "
+           "prescribe, with no duplication, issued only upon application and payment of a "
+           "special vanity plate service fee of $60, in addition to the regular registration fee "
+           "and any number plate fee; renewed annually for $60 per set; a rejected application's "
+           "fee refunded or credited and a plate of the same classification issued; "
+           "nonconforming plates recalled whenever issued, the prorated fee refunded or "
+           "credited.", "RSA 261:89", PLATES_READ),
+     claim("A number plate or plates for a fee of $4.00 per plate.", "RSA 261:75", PLATES_READ),
+     claim("One set of special plates, the first without charge, for a veteran who is an amputee "
+           "or paraplegic and received the vehicle from the U.S. government, or is rated "
+           "permanently and totally disabled from a service-connected disability; totally blind "
+           "from a service-connected disability; a former prisoner of war; awarded the Purple "
+           "Heart; a Pearl Harbor survivor; with satisfactory proof; a surviving spouse may keep "
+           "a prisoner of war's, Purple Heart or Pearl Harbor plate unless he or she remarries.",
+           "RSA 261:86", PLATES_READ),
+     claim("Veterans' plates for veterans as defined in RSA 21:50, I(a), and those with a general "
+           "discharge under honorable conditions, on application, proof of veteran status and "
+           "payment of the regular registration fee and the $4 per plate fees; renewals at the "
+           "standard fee; the surviving spouse may use the plates until remarriage.",
+           "RSA 261:87-b", PLATES_READ),
+     claim("Gold star plates for a gold star mother (mother or stepmother), father (father or "
+           "stepfather) or family (an immediate family member) of a person killed while on duty "
+           "in the United States armed forces; documented by DD Form 1300 or an official casualty "
+           "notification document, proof of relationship such as a birth certificate, or a "
+           "marriage certificate or a VA benefit or certification letter; upon payment of "
+           "regular registration fees, and no additional plate fees; applicants may request a "
+           "specific combination of characters that meets the requirements for any plate and is "
+           "not already in use.", "RSA 261:87-c", PLATES_READ),
+     claim("A special plate, upon payment of the registration fee, for members or retired members "
+           "of the national guard of any state and active-duty members of the armed forces, "
+           "attached only to vehicles registered in the name of the person issued the plates; a "
+           "retired member's surviving spouse may use them until remarriage.", "RSA 261:91",
+           PLATES_READ),
+     claim("New Hampshire first for veterans plates, issued only upon application and payment of "
+           "a $60 fee in addition to the regular registration and number plate fees; vanity "
+           "versions with the vanity fee as well; renewed annually for $30 per set.",
+           "RSA 261:97-g", PLATES_READ),
+     claim("Conservation plates, issued only upon application and payment of a $30 fee in "
+           "addition to the regular registration and number plate fees; vanity conservation "
+           "plates with the vanity fee as well; renewed annually for $30 per set.",
+           "RSA 261:97-a", PLATES_READ),
+     claim("A special registration plate symbol benefitting the state park system, on any type of "
+           "plate for private passenger vehicles, recreational vehicles and motorcycles, "
+           "available to any applicant upon payment of a fee of $85, in addition to other fees, "
+           "and on a vanity plate with the vanity fee; the fees apply to original registrations "
+           "and annual renewals.", "RSA 261:75-c", PLATES_READ)],
+    more=civics.faq(
+        ("Can I choose the letters on a special plate?",
+         "<p>On some. A Gold Star plate can carry a combination you ask for, if it meets the "
+         "rules for any plate and is not already in use. A conservation or First for Veterans "
+         "plate can be a vanity plate if you pay the vanity fee as well.</p>"),
+        ("What happens if my vanity plate is turned down?",
+         "<p>The law has the DMV refund or credit the vanity fee you paid, and issue you a plate "
+         "of the same kind as the one you asked for.</p>"),
+        ("Can a vanity plate be taken back after it is issued?",
+         "<p>Yes. The law has the DMV recall a vanity plate that does not meet the law and the "
+         "rules, whenever it was issued, and refund or credit the unused part of the fee.</p>"),
+        ("Can my spouse keep my plate?",
+         "<p>For some plates, yes, until he or she remarries: a Veteran plate, a National Guard "
+         "plate of a retired member, and a former prisoner of war, Purple Heart or Pearl Harbor "
+         "survivor plate.</p>"))
+         + DMV_HELP,
+    see=[("How to register a car", "/guides/register-a-car.html"),
+         ("How to get a motorcycle license or ride a moped", "/guides/motorcycle-license.html")],
+    figures=[fig("$60", "RSA 261:89", "a special vanity plate service fee of $60"),
+             fig("$60", "RSA 261:89", "renewed on an annual basis for $60 per set"),
+             fig("$4", "RSA 261:75", "for a fee of $4.00 per plate"),
+             fig("$60", "RSA 261:97-g", "upon payment of a $60 fee"),
+             fig("$30", "RSA 261:97-g", "renewed on an annual basis for $30 per set"),
+             fig("$30", "RSA 261:97-a", "upon payment of a $30 fee"),
+             fig("$85", "RSA 261:75-c", "a special registration plate symbol fee of $85")])
+
+GUIDES += [PLATES]
+
+
+# ---------------------------------------------------------------------------
 # TOURING THE STATE HOUSE (the person, 17 October 2026: a guide to touring
 # the State House -- booking through the Visitor Center, as a school field
 # trip, or as a representative's guest). It rests on one document, the State
@@ -9217,6 +9397,9 @@ TASKS = [
         task("motorcycle-license", "Get a motorcycle license or ride a moped",
              "The learner&rsquo;s permit, rider training and the road test, the riding rules, "
              "and what a moped needs.", head="How to get a motorcycle license"),
+        task("vanity-and-special-plates", "Get a vanity or special plate",
+             "Letters you choose, or a veteran, Gold Star, National Guard or conservation "
+             "plate: who qualifies and what each costs."),
     ]),
     ("Help and Benefits", [
         task("food-and-health-assistance", "Apply for food or health assistance",
@@ -9405,6 +9588,9 @@ WORDS = {
                          "electrician", "plumbing", "plumber", "septic", "shoreland",
                          "wetlands", "contractor"),
     "real-id": ("real id", "license", "id"),
+    "vanity-and-special-plates": ("vanity plate", "license plate", "special plate",
+                                  "gold star", "veteran plate", "national guard plate",
+                                  "moose plate", "conservation plate", "purple heart"),
     "motorcycle-license": ("motorcycle", "motorcycle license", "motorcycle endorsement", "moped",
                            "scooter", "learner's permit", "helmet"),
     "new-to-new-hampshire": ("moving to new hampshire", "new resident", "license",
