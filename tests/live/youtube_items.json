@@ -1,0 +1,592 @@
+{
+ "about": "Synthetic answers of the YouTube Data API v3, in the shape its reference documents (a videos resource, and an error response), made up for these tests rather than recorded from YouTube, whose data may not be kept past 30 days (developer policy III.E.4.d). Each item carries the parts the night's livestreams.py asks for (snippet, contentDetails, liveStreamingDetails) and the one the live Worker adds (status). `js` is what workers/live/youtube.js statusOf says of it, `python` what livestreams.status_of says: tests/live/youtube.test.js runs the JavaScript on these, and preflight's _live_layer the Python.",
+ "items": [
+  {
+   "name": "upcoming, scheduled weeks ahead (a House budget hearing)",
+   "js": "upcoming",
+   "python": "upcoming",
+   "item": {
+    "kind": "youtube#video",
+    "etag": "synthetic-upNextWeek1",
+    "id": "upNextWeek1",
+    "snippet": {
+     "publishedAt": "2026-12-28T15:01:09Z",
+     "channelId": "UCxqjz56akoWRL_5vyaQDtvQ",
+     "title": "Governor's Operating Budget Hearing (01/18/2027)",
+     "description": "",
+     "thumbnails": {},
+     "channelTitle": "NH House of Representatives Committee Streaming",
+     "categoryId": "25",
+     "liveBroadcastContent": "upcoming",
+     "localized": {
+      "title": "Governor's Operating Budget Hearing (01/18/2027)",
+      "description": ""
+     }
+    },
+    "contentDetails": {
+     "duration": "P0D",
+     "dimension": "2d",
+     "definition": "hd",
+     "caption": "false",
+     "licensedContent": false,
+     "contentRating": {},
+     "projection": "rectangular"
+    },
+    "status": {
+     "uploadStatus": "uploaded",
+     "privacyStatus": "public",
+     "license": "youtube",
+     "embeddable": true,
+     "publicStatsViewable": true,
+     "madeForKids": false
+    },
+    "liveStreamingDetails": {
+     "scheduledStartTime": "2027-01-18T14:00:00Z"
+    }
+   }
+  },
+  {
+   "name": "upcoming, scheduled today",
+   "js": "upcoming",
+   "python": "upcoming",
+   "item": {
+    "kind": "youtube#video",
+    "etag": "synthetic-upToday0001",
+    "id": "upToday0001",
+    "snippet": {
+     "publishedAt": "2027-01-06T19:12:44Z",
+     "channelId": "UCxqjz56akoWRL_5vyaQDtvQ",
+     "title": "House Finance (01/07/2027)",
+     "description": "",
+     "thumbnails": {},
+     "channelTitle": "NH House of Representatives Committee Streaming",
+     "categoryId": "25",
+     "liveBroadcastContent": "upcoming",
+     "localized": {
+      "title": "House Finance (01/07/2027)",
+      "description": ""
+     }
+    },
+    "contentDetails": {
+     "duration": "P0D",
+     "dimension": "2d",
+     "definition": "hd",
+     "caption": "false",
+     "licensedContent": false,
+     "contentRating": {},
+     "projection": "rectangular"
+    },
+    "status": {
+     "uploadStatus": "uploaded",
+     "privacyStatus": "public",
+     "license": "youtube",
+     "embeddable": true,
+     "publicStatsViewable": true,
+     "madeForKids": false
+    },
+    "liveStreamingDetails": {
+     "scheduledStartTime": "2027-01-07T15:00:00Z"
+    }
+   }
+  },
+  {
+   "name": "live, scheduled ahead",
+   "js": "live",
+   "python": "live",
+   "item": {
+    "kind": "youtube#video",
+    "etag": "synthetic-liveNow0001",
+    "id": "liveNow0001",
+    "snippet": {
+     "publishedAt": "2027-01-06T19:12:44Z",
+     "channelId": "UCxqjz56akoWRL_5vyaQDtvQ",
+     "title": "House Ways and Means (01/07/2027)",
+     "description": "",
+     "thumbnails": {},
+     "channelTitle": "NH House of Representatives Committee Streaming",
+     "categoryId": "25",
+     "liveBroadcastContent": "live",
+     "localized": {
+      "title": "House Ways and Means (01/07/2027)",
+      "description": ""
+     }
+    },
+    "contentDetails": {
+     "duration": "P0D",
+     "dimension": "2d",
+     "definition": "hd",
+     "caption": "false",
+     "licensedContent": false,
+     "contentRating": {},
+     "projection": "rectangular"
+    },
+    "status": {
+     "uploadStatus": "uploaded",
+     "privacyStatus": "public",
+     "license": "youtube",
+     "embeddable": true,
+     "publicStatsViewable": true,
+     "madeForKids": false
+    },
+    "liveStreamingDetails": {
+     "scheduledStartTime": "2027-01-07T14:00:00Z",
+     "actualStartTime": "2027-01-07T14:01:37Z",
+     "concurrentViewers": "41",
+     "activeLiveChatId": "synthetic-chat-1"
+    }
+   }
+  },
+  {
+   "name": "live, unscheduled: started with no scheduled start (the Senate's way)",
+   "js": "live",
+   "python": "live",
+   "item": {
+    "kind": "youtube#video",
+    "etag": "synthetic-liveUnsch01",
+    "id": "liveUnsch01",
+    "snippet": {
+     "publishedAt": "2027-01-06T19:12:44Z",
+     "channelId": "UCjBZdtrjRnQdmg-2MPMiWrA",
+     "title": "Senate Session (01/07/27)",
+     "description": "",
+     "thumbnails": {},
+     "channelTitle": "New Hampshire Senate Livestream",
+     "categoryId": "25",
+     "liveBroadcastContent": "live",
+     "localized": {
+      "title": "Senate Session (01/07/27)",
+      "description": ""
+     }
+    },
+    "contentDetails": {
+     "duration": "P0D",
+     "dimension": "2d",
+     "definition": "hd",
+     "caption": "false",
+     "licensedContent": false,
+     "contentRating": {},
+     "projection": "rectangular"
+    },
+    "status": {
+     "uploadStatus": "uploaded",
+     "privacyStatus": "public",
+     "license": "youtube",
+     "embeddable": true,
+     "publicStatsViewable": true,
+     "madeForKids": false
+    },
+    "liveStreamingDetails": {
+     "actualStartTime": "2027-01-07T15:03:12Z",
+     "concurrentViewers": "88"
+    }
+   }
+  },
+  {
+   "name": "live and not embeddable",
+   "js": "live",
+   "python": "live",
+   "item": {
+    "kind": "youtube#video",
+    "etag": "synthetic-liveNoEmbed",
+    "id": "liveNoEmbed",
+    "snippet": {
+     "publishedAt": "2027-01-06T19:12:44Z",
+     "channelId": "UCjBZdtrjRnQdmg-2MPMiWrA",
+     "title": "Senate Judiciary (01/07/2027)",
+     "description": "",
+     "thumbnails": {},
+     "channelTitle": "New Hampshire Senate Livestream",
+     "categoryId": "25",
+     "liveBroadcastContent": "live",
+     "localized": {
+      "title": "Senate Judiciary (01/07/2027)",
+      "description": ""
+     }
+    },
+    "contentDetails": {
+     "duration": "P0D",
+     "dimension": "2d",
+     "definition": "hd",
+     "caption": "false",
+     "licensedContent": false,
+     "contentRating": {},
+     "projection": "rectangular"
+    },
+    "status": {
+     "uploadStatus": "uploaded",
+     "privacyStatus": "public",
+     "license": "youtube",
+     "embeddable": false,
+     "publicStatsViewable": true,
+     "madeForKids": false
+    },
+    "liveStreamingDetails": {
+     "scheduledStartTime": "2027-01-07T14:00:00Z",
+     "actualStartTime": "2027-01-07T14:00:58Z"
+    }
+   }
+  },
+  {
+   "name": "ended, its length known",
+   "js": "ended",
+   "python": "finished",
+   "item": {
+    "kind": "youtube#video",
+    "etag": "synthetic-endedFull01",
+    "id": "endedFull01",
+    "snippet": {
+     "publishedAt": "2027-01-07T14:31:40Z",
+     "channelId": "UCxqjz56akoWRL_5vyaQDtvQ",
+     "title": "House Education Policy and Administration (01/07/2027)",
+     "description": "",
+     "thumbnails": {},
+     "channelTitle": "NH House of Representatives Committee Streaming",
+     "categoryId": "25",
+     "liveBroadcastContent": "none",
+     "localized": {
+      "title": "House Education Policy and Administration (01/07/2027)",
+      "description": ""
+     }
+    },
+    "contentDetails": {
+     "duration": "PT1H29M23S",
+     "dimension": "2d",
+     "definition": "hd",
+     "caption": "false",
+     "licensedContent": false,
+     "contentRating": {},
+     "projection": "rectangular"
+    },
+    "status": {
+     "uploadStatus": "processed",
+     "privacyStatus": "public",
+     "license": "youtube",
+     "embeddable": true,
+     "publicStatsViewable": true,
+     "madeForKids": false
+    },
+    "liveStreamingDetails": {
+     "scheduledStartTime": "2027-01-07T13:00:00Z",
+     "actualStartTime": "2027-01-07T13:02:00Z",
+     "actualEndTime": "2027-01-07T14:31:22Z"
+    }
+   }
+  },
+  {
+   "name": "ended, still reported as P0D while YouTube processes it",
+   "js": "ended",
+   "python": "live",
+   "item": {
+    "kind": "youtube#video",
+    "etag": "synthetic-endedP0D001",
+    "id": "endedP0D001",
+    "snippet": {
+     "publishedAt": "2027-01-07T15:10:20Z",
+     "channelId": "UCjBZdtrjRnQdmg-2MPMiWrA",
+     "title": "Senate Finance (01/07/2027)",
+     "description": "",
+     "thumbnails": {},
+     "channelTitle": "New Hampshire Senate Livestream",
+     "categoryId": "25",
+     "liveBroadcastContent": "none",
+     "localized": {
+      "title": "Senate Finance (01/07/2027)",
+      "description": ""
+     }
+    },
+    "contentDetails": {
+     "duration": "P0D",
+     "dimension": "2d",
+     "definition": "hd",
+     "caption": "false",
+     "licensedContent": false,
+     "contentRating": {},
+     "projection": "rectangular"
+    },
+    "status": {
+     "uploadStatus": "processed",
+     "privacyStatus": "public",
+     "license": "youtube",
+     "embeddable": true,
+     "publicStatsViewable": true,
+     "madeForKids": false
+    },
+    "liveStreamingDetails": {
+     "scheduledStartTime": "2027-01-07T13:00:00Z",
+     "actualStartTime": "2027-01-07T13:00:30Z",
+     "actualEndTime": "2027-01-07T15:10:05Z"
+    }
+   }
+  },
+  {
+   "name": "ending: an end time while still said to be live",
+   "js": "ended",
+   "python": "live",
+   "item": {
+    "kind": "youtube#video",
+    "etag": "synthetic-endingNow01",
+    "id": "endingNow01",
+    "snippet": {
+     "publishedAt": "2027-01-06T19:12:44Z",
+     "channelId": "UCxqjz56akoWRL_5vyaQDtvQ",
+     "title": "Fiscal Committee (01/07/2027)",
+     "description": "",
+     "thumbnails": {},
+     "channelTitle": "NH House of Representatives Committee Streaming",
+     "categoryId": "25",
+     "liveBroadcastContent": "live",
+     "localized": {
+      "title": "Fiscal Committee (01/07/2027)",
+      "description": ""
+     }
+    },
+    "contentDetails": {
+     "duration": "P0D",
+     "dimension": "2d",
+     "definition": "hd",
+     "caption": "false",
+     "licensedContent": false,
+     "contentRating": {},
+     "projection": "rectangular"
+    },
+    "status": {
+     "uploadStatus": "uploaded",
+     "privacyStatus": "public",
+     "license": "youtube",
+     "embeddable": true,
+     "publicStatsViewable": true,
+     "madeForKids": false
+    },
+    "liveStreamingDetails": {
+     "scheduledStartTime": "2027-01-07T15:00:00Z",
+     "actualStartTime": "2027-01-07T15:00:10Z",
+     "actualEndTime": "2027-01-07T16:44:00Z"
+    }
+   }
+  },
+  {
+   "name": "cancelled: scheduled, never started, no longer upcoming",
+   "js": "never",
+   "python": "never",
+   "item": {
+    "kind": "youtube#video",
+    "etag": "synthetic-cancelled01",
+    "id": "cancelled01",
+    "snippet": {
+     "publishedAt": "2027-01-06T19:12:44Z",
+     "channelId": "UCxqjz56akoWRL_5vyaQDtvQ",
+     "title": "House Commerce and Consumer Affairs (01/07/2027)",
+     "description": "",
+     "thumbnails": {},
+     "channelTitle": "NH House of Representatives Committee Streaming",
+     "categoryId": "25",
+     "liveBroadcastContent": "none",
+     "localized": {
+      "title": "House Commerce and Consumer Affairs (01/07/2027)",
+      "description": ""
+     }
+    },
+    "contentDetails": {
+     "duration": "P0D",
+     "dimension": "2d",
+     "definition": "hd",
+     "caption": "false",
+     "licensedContent": false,
+     "contentRating": {},
+     "projection": "rectangular"
+    },
+    "status": {
+     "uploadStatus": "processed",
+     "privacyStatus": "public",
+     "license": "youtube",
+     "embeddable": true,
+     "publicStatsViewable": true,
+     "madeForKids": false
+    },
+    "liveStreamingDetails": {
+     "scheduledStartTime": "2027-01-07T18:00:00Z"
+    }
+   }
+  },
+  {
+   "name": "an ordinary upload, no broadcast at all",
+   "js": "upload",
+   "python": "finished",
+   "item": {
+    "kind": "youtube#video",
+    "etag": "synthetic-plainUpload",
+    "id": "plainUpload",
+    "snippet": {
+     "publishedAt": "2027-01-06T19:12:44Z",
+     "channelId": "UCxqjz56akoWRL_5vyaQDtvQ",
+     "title": "The State House Dome",
+     "description": "",
+     "thumbnails": {},
+     "channelTitle": "NH House of Representatives Committee Streaming",
+     "categoryId": "25",
+     "liveBroadcastContent": "none",
+     "localized": {
+      "title": "The State House Dome",
+      "description": ""
+     }
+    },
+    "contentDetails": {
+     "duration": "PT4M2S",
+     "dimension": "2d",
+     "definition": "hd",
+     "caption": "false",
+     "licensedContent": false,
+     "contentRating": {},
+     "projection": "rectangular"
+    },
+    "status": {
+     "uploadStatus": "processed",
+     "privacyStatus": "public",
+     "license": "youtube",
+     "embeddable": true,
+     "publicStatsViewable": true,
+     "madeForKids": false
+    }
+   }
+  },
+  {
+   "name": "started, no end, no longer said to be live",
+   "js": "live",
+   "python": "live",
+   "item": {
+    "kind": "youtube#video",
+    "etag": "synthetic-startedNoEn",
+    "id": "startedNoEn",
+    "snippet": {
+     "publishedAt": "2027-01-06T19:12:44Z",
+     "channelId": "UCjBZdtrjRnQdmg-2MPMiWrA",
+     "title": "Committee of Conference on SB 534  (01/07/2027",
+     "description": "",
+     "thumbnails": {},
+     "channelTitle": "New Hampshire Senate Livestream",
+     "categoryId": "25",
+     "liveBroadcastContent": "none",
+     "localized": {
+      "title": "Committee of Conference on SB 534  (01/07/2027",
+      "description": ""
+     }
+    },
+    "contentDetails": {
+     "duration": "P0D",
+     "dimension": "2d",
+     "definition": "hd",
+     "caption": "false",
+     "licensedContent": false,
+     "contentRating": {},
+     "projection": "rectangular"
+    },
+    "status": {
+     "uploadStatus": "processed",
+     "privacyStatus": "public",
+     "license": "youtube",
+     "embeddable": true,
+     "publicStatsViewable": true,
+     "madeForKids": false
+    },
+    "liveStreamingDetails": {
+     "actualStartTime": "2027-01-07T17:00:00Z"
+    }
+   }
+  }
+ ],
+ "errors": {
+  "quota": {
+   "status": 403,
+   "body": {
+    "error": {
+     "code": 403,
+     "message": "The request cannot be completed because you have exceeded your <a href=\"/youtube/v3/getting-started#quota\">quota</a>.",
+     "errors": [
+      {
+       "message": "The request cannot be completed because you have exceeded your <a href=\"/youtube/v3/getting-started#quota\">quota</a>.",
+       "domain": "youtube.quota",
+       "reason": "quotaExceeded"
+      }
+     ]
+    }
+   }
+  },
+  "key_invalid": {
+   "status": 400,
+   "body": {
+    "error": {
+     "code": 400,
+     "message": "API key not valid. Please pass a valid API key.",
+     "errors": [
+      {
+       "message": "API key not valid. Please pass a valid API key.",
+       "domain": "global",
+       "reason": "badRequest"
+      }
+     ],
+     "status": "INVALID_ARGUMENT",
+     "details": [
+      {
+       "@type": "type.googleapis.com/google.rpc.ErrorInfo",
+       "reason": "API_KEY_INVALID",
+       "domain": "googleapis.com",
+       "metadata": {
+        "service": "youtube.googleapis.com"
+       }
+      }
+     ]
+    }
+   }
+  },
+  "forbidden": {
+   "status": 403,
+   "body": {
+    "error": {
+     "code": 403,
+     "message": "The request is not properly authorized.",
+     "errors": [
+      {
+       "message": "The request is not properly authorized.",
+       "domain": "youtube.common",
+       "reason": "forbidden"
+      }
+     ]
+    }
+   }
+  },
+  "backend": {
+   "status": 503,
+   "body": {
+    "error": {
+     "code": 503,
+     "message": "The service is currently unavailable.",
+     "errors": [
+      {
+       "message": "The service is currently unavailable.",
+       "domain": "global",
+       "reason": "backendError"
+      }
+     ]
+    }
+   }
+  },
+  "playlist_not_found": {
+   "status": 404,
+   "body": {
+    "error": {
+     "code": 404,
+     "message": "The playlist identified with the request's <code>playlistId</code> parameter cannot be found.",
+     "errors": [
+      {
+       "message": "The playlist identified with the request's <code>playlistId</code> parameter cannot be found.",
+       "domain": "youtube.playlistItem",
+       "reason": "playlistNotFound",
+       "location": "playlistId",
+       "locationType": "parameter"
+      }
+     ]
+    }
+   }
+  }
+ }
+}
