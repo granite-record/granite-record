@@ -75629,24 +75629,33 @@ def _member_signposts(BLP):
             'Concord Ward 3</a>, Atk. &amp; Gilmanton Academy Gt</li>') in rec, rec[:400]
     gone = {"id": "1", "former": True, "chamber": "H",
             "display_full": "Rep. Michael Gunski (R - Hills 6)"}
+    gone_s = {"id": "2", "former": True, "chamber": "S",
+              "display_full": "Sen. Jeb Bradley (R - SD3)"}
     got = _app_js("[(window.GR_TOWNS=" + json.dumps(places) + ", scope.renderMemberHead("
                   + json.dumps(sitting) + ")), scope.renderMemberHead(" + json.dumps(gone) + "), "
-                  "(delete window.GR_TOWNS, scope.renderMemberHead(" + json.dumps(sitting) + "))]",
+                  "(delete window.GR_TOWNS, scope.renderMemberHead(" + json.dumps(sitting) + ")), "
+                  "scope.renderMemberHead(" + json.dumps(gone_s) + ")]",
                   names=("renderMemberHead",))
     if got is None:
         return "ok", "the towns are linked in Python; node is not here to draw the head"
-    here, left, bare = got
+    here, left, bare, left_s = got
     trail = lambda h: re.search(r'<nav class="rtrail"[^>]*><ol>(.*?)</ol>', h).group(1)
-    assert trail(left) == ('<li><a href="officials.html">Officials</a></li><li><a href="directory/'
-                           'former-legislators">Former Legislators</a></li><li aria-current="page">'
-                           'Former Representative</li>'), trail(left)
+    # THE LAST STEP IS THE OFFICE ALONE (the owner, 26 October 2026): the
+    # step before it says Former Legislators, so "Former Representative"
+    # there said "former" twice. The heading keeps "Former Representative".
+    for h, office in ((left, "Representative"), (left_s, "Senator")):
+        assert trail(h) == ('<li><a href="officials.html">Officials</a></li><li><a href="directory/'
+                            'former-legislators">Former Legislators</a></li><li aria-current="page">'
+                            f'{office}</li>'), trail(h)
+    assert '<h1 class="rh1">Former Representative Michael Gunski</h1>' in left, (
+        "a former member's heading no longer says Former: " + left[:300])
     assert "former-legislators" not in trail(here), trail(here)
     assert ('<a href="/town/berlin">Berlin</a>, <a href="/town/concord-ward-3">Concord Ward 3</a> '
             'and Atk. &amp; Gilmanton Academy Gt</p>') in here, re.sub(r"\s+", " ", here)[:500]
     assert "/town/" not in bare and "Berlin, Concord Ward 3 and Atk." in bare, (
         "with no GR_TOWNS the towns are not left as words")
-    return "ok", ("a former member's trail is Officials, Former Legislators, Former Representative; "
-                  "a sitting member's towns link /town/berlin and /town/concord-ward-3, and a "
+    return "ok", ("a former member's trail is Officials, Former Legislators, Representative (or "
+                  "Senator); a sitting member's towns link /town/berlin and /town/concord-ward-3, and a "
                   "place spelled otherwise stays words")
 
 

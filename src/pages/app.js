@@ -8545,9 +8545,13 @@ function renderMemberHead(m){
   // Legislators page is the Officials page, and /legislators 301s to it).
   // A MEMBER WHO HAS LEFT, THROUGH THE LIST OF THOSE WHO HAVE (the audit of
   // 25 October 2026, S6): Officials lists only sitting members.
+  // THE LAST STEP IS THE OFFICE ALONE (the owner, 26 October 2026): the step
+  // before it already says Former Legislators, and "Officials › Former
+  // Legislators › Former Representative" said "former" twice. The heading
+  // under the trail still says "Former Representative ...".
   const head=recordHead({trail:[["Officials","officials.html"],
       ...(former?[["Former Legislators","directory/former-legislators"]]:[]),
-      [(former?"Former ":"")+(m.chamber==="S"?"Senator":"Representative"),""]],
+      [m.chamber==="S"?"Senator":"Representative",""]],
     title:esc(fullTitle(named)),line,facts,rail:"",actions:"",kind:`member rh-p${code||"X"}`});
   const note=former?`<p class="rnote">${!/^(Rep|Sen)\. /.test(plain)?`Former member${
     yrs?` &middot; on record ${esc(yrs)}`:""}. `:""}This page is their record in the
