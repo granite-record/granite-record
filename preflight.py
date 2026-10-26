@@ -13661,6 +13661,154 @@ def _rollcall_measure_kinds(RP):
         shutil.rmtree(d, ignore_errors=True)
 
 
+# Real rows of records/rollcalls/RollCallSummary_2025.txt: SB 287's own Senate
+# roll call of 27 March 2025, and the last two of the Senate's 26 June 2025,
+# the second of them SB 287's conference report as the file has it, under HB
+# 287 (Senate Journal 17, page 940, prints it as SB 287's).
+_RC_REFILED = [
+    "2025|S|39|3/27/2025 12:00:00 AM|SB287|16|8|24|0|||Ought to Pass|requiring applicants for absentee ballots to present a copy of their photo identification with their application.||3/27/2025 5:21:48 PM",
+    "2025|S|116|6/26/2025 12:00:00 AM|HB115|8|16|24|0|||Floor Amendment|(New Title) making temporary appropriations for the expenses and encumbrances of the state of New Hampshire.||6/27/2025 9:19:36 AM",
+    "2025|S|117|6/26/2025 12:00:00 AM|HB287|16|8|24|0|||Conference Committee Report|requiring police departments to provide fire departments with certain motorist personal and insurance information following a motor vehicle incident.||6/27/2025 9:16:09 AM",
+]
+
+
+@check("rollcalls", "a roll call a person shows is filed under the wrong bill is keyed to the bill "
+       "it belongs to, for the bill's page and the ballots alike, and only while the roll-call file "
+       "still files it as the entry says (corrections/rollcall_corrections.json)",
+       needs=("rollcall_parser",))
+def _rollcall_refiled(RP):
+    """P14 of the polish of 26 October 2026: the Senate's 16-8 adoption of
+    SB 287's conference report on 26 June 2025 is roll call 117 of 2025 in
+    the General Court's file, filed under HB 287, a House bill killed in
+    February; HB 287's page carried it and every senator's Votes tab linked
+    HB 287. No hand-made file could move a roll call to another bill:
+    docket_corrections.json's "misfiled" moves docket rows, and HB 287's
+    docket has none for this vote. rollcall_parser.roll_call_bill, where
+    rollcalls.json and build_data's ballots both name a roll call's bill,
+    now reads corrections/rollcall_corrections.json.
+
+    Driven here by a corrections folder of the check's own in a temporary
+    project, never the real one: an entry moves 2025-S-117 to SB 287 in
+    parse, through roll_call_bill and in the rollcalls.json the build's own
+    command writes; an entry the file no longer bears out (2025-S-39 is SB
+    287's already) is not applied and is said; one no file holds is said; a
+    malformed entry stops the run; no file changes nothing. Then the
+    person's own file, where there is one, is read against the roll-call
+    files on disk: an entry that has stopped matching fails here, as a
+    docket correction that has stopped matching does."""
+    import contextlib
+    import io
+    keep = (RP.REFILED, dict(RP._REFILED), {k: set(v) for k, v in RP.REFILED_SEEN.items()})
+
+    def reset(path):
+        RP.REFILED = path
+        RP._REFILED.clear()
+        RP.REFILED_SEEN.clear()
+
+    d = Path(tempfile.mkdtemp(prefix="gr-refiled-"))
+    try:
+        corr = _mk(d / "corrections" / "rollcall_corrections.json")
+        entry = {"says": "HB287", "belongs_to": "SB287", "why": "w", "evidence": ["e"],
+                 "checked": "2026-10-26"}
+        corr.write_text(json.dumps({"misfiled": {
+            "2025-S-117": entry, "2025-S-39": dict(entry, says="HB999"),
+            "2025-S-500": dict(entry, says="HB1", belongs_to="HB2")}}), encoding="utf-8")
+        (d / "RollCallSummary.txt").write_text("\n".join(_RC_REFILED) + "\n", encoding="utf-8")
+        reset(corr)
+        got = [RP.roll_call_bill("2025", "S", 117, "HB287"), RP.roll_call_bill("2025", "S", "117", "HB 287"),
+               RP.roll_call_bill("2026", "S", 117, "HB287"), RP.roll_call_bill("2025", "H", 117, "HB287")]
+        assert got == ["SB287", "SB287", "HB287", "HB287"], (
+            f"roll_call_bill gives 2025-S-117 as typed twice, 2026-S-117 and 2025-H-117 as {got}")
+        rows = {r["number"]: r for r in RP.parse(d / "RollCallSummary.txt")}
+        assert {n: r["bill"] for n, r in rows.items()} == {39: "SB287", 116: "HB115", 117: "SB287"} \
+            and not rows[117]["procedural"], f"parse files them under {[(n, r['bill']) for n, r in rows.items()]}"
+        out = io.StringIO()
+        with contextlib.redirect_stdout(out):
+            told = RP.refiled_report()
+            quiet = RP.refiled_report(complete=False)
+        assert told == (["2025-S-117"], ["2025-S-39"], ["2025-S-500"]) and \
+            quiet == (["2025-S-117"], ["2025-S-39"], []), (
+            f"the report says applied, stale, unread: {told}; where not every file was read {quiet}")
+        assert "NOT applied" in out.getvalue() and "did nothing" in out.getvalue(), out.getvalue()
+        # The command build_all runs, in the temporary project: it reads the
+        # corrections folder of the folder it runs in.
+        r = _run([sys.executable, _paths.script("rollcall_parser.py"), "--file", "RollCallSummary.txt",
+                  "--dir", "none", "--all", "--out", "rc.json"],
+                 cwd=d, capture_output=True, text=True, timeout=300)
+        assert r.returncode == 0, "rollcall_parser failed: " + (r.stderr or r.stdout)[-300:]
+        keyed = json.loads((d / "rc.json").read_text(encoding="utf-8")).get("2025-2026") or {}
+        assert sorted(keyed) == ["HB115", "SB287"] and \
+            sorted(x["number"] for x in keyed["SB287"]) == [39, 117], (
+            f"rollcalls.json keys 2025-2026 as {[(b, [x['number'] for x in xs]) for b, xs in keyed.items()]}")
+        assert "2025-S-117 is filed under HB287 in the roll-call file and drawn under SB287" in r.stdout, (
+            "rollcall_parser does not say what the corrections file did: " + r.stdout[-400:])
+        # An entry this cannot apply stops the run rather than passing.
+        for bad in ({"2025-S-117": dict(entry, belongs_to="HB287")}, {"S-117": entry},
+                    {"2025-S-117": dict(entry, says="")}, ["2025-S-117"]):
+            corr.write_text(json.dumps({"misfiled": bad}), encoding="utf-8")
+            reset(corr)
+            try:
+                RP.refiled()
+            except SystemExit:
+                continue
+            raise AssertionError(f"rollcall_corrections.json took {bad} rather than refusing it")
+        reset(d / "corrections" / "absent.json")
+        assert RP.refiled() == {} and RP.roll_call_bill("2025", "S", 117, "HB287") == "HB287", (
+            "with no corrections file a roll call still moved")
+    finally:
+        RP.REFILED = keep[0]
+        RP._REFILED.clear()
+        RP._REFILED.update(keep[1])
+        RP.REFILED_SEEN.clear()
+        RP.REFILED_SEEN.update(keep[2])
+        shutil.rmtree(d, ignore_errors=True)
+    # build_data names every ballot's bill through the same function, and says
+    # what the file did, so the members' Votes tabs move with the bill's page.
+    src = _paths.locate("build_data.py").read_text(encoding="utf-8")
+    assert "RP.roll_call_bill(r[0], r[1], r[2], r[4])" in src and \
+        "RP.refiled_report(complete=False)" in src, (
+        "build_data.py no longer names a ballot's bill through rollcall_parser.roll_call_bill, or "
+        "no longer says what rollcall_corrections.json did")
+    # THE PERSON'S OWN FILE, read and never written: each entry still matches
+    # the roll call the files on disk hold (records/rollcalls/ is in git).
+    real = _paths.ROOT / "corrections" / "rollcall_corrections.json"
+    if not real.is_file():
+        return "ok", ("2025-S-117 moves to SB 287 in a project of the check's own, in parse, "
+                      "rollcalls.json and roll_call_bill; a stale entry is not applied, a malformed one "
+                      "stops; no corrections/rollcall_corrections.json of the person's yet")
+    try:
+        entries = dict(RP.refiled(real))
+    except SystemExit as e:
+        raise AssertionError(str(e)) from None
+    found, years = {}, set()
+    files = sorted((_paths.ROOT / "records" / "rollcalls").glob("RollCallSummary_*.txt"))
+    files.append(_paths.ROOT / "RollCallSummary.txt")
+    for f in files:
+        if not f.is_file():
+            continue
+        for line in f.read_text(encoding="utf-8-sig", errors="replace").splitlines():
+            p = line.split("|")
+            if len(p) < 13 or not p[2].strip().isdigit():
+                continue
+            k = (p[0].strip().lstrip("﻿"), p[1].strip(), int(p[2]))
+            years.add(k[0])
+            if k in entries:
+                found.setdefault(k, RP.bill_number(p[4]) or p[4].strip())
+    bad, unread = [], []
+    for k, e in sorted(entries.items()):
+        name = f"{k[0]}-{k[1]}-{k[2]}"
+        if k not in found:
+            (bad if k[0] in years else unread).append(f"{name} is in no roll-call file of {k[0]} here")
+        elif found[k] != RP.bill_number(e.get("says")):
+            bad.append(f"{name} is filed under {found[k]} in the roll-call file now, not "
+                       f"{RP.bill_number(e.get('says'))}: the entry is stale")
+    assert not bad, "corrections/rollcall_corrections.json: " + "; ".join(bad)
+    return "ok", (f"a project of the check's own moves 2025-S-117 to SB 287, refuses a malformed entry and "
+                  f"leaves a stale one; the person's {len(entries)} "
+                  f"entr{'y matches' if len(entries) == 1 else 'ies match'} the roll-call files here"
+                  + (f" ({'; '.join(unread)})" if unread else ""))
+
+
 # Every docket and Journal line below is copied from the files on disk, and
 # every roll call is a real one with its real number, question, tally and
 # ballot count, so each case is a vote that happened and whose outcome a
