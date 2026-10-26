@@ -51309,6 +51309,19 @@ const click = async (sel, hit, id, to) => {
   await ticks(10);
   return moved;
 };
+// Another filter's checkbox, `v` of Status, ticked with the mouse from the
+// box: the press takes the focus, then the release, its click and the change
+// it makes -- the list narrowed and drawn again -- all before anything the
+// box set going on being left is run.
+const tickStatus = async (v) => {
+  fire("pointerdown", {target: {}});
+  ACTIVE = elsewhere; fx.fire("focusout", {target: rb}); await ticks(10);
+  fire("pointerup", {target: {}});
+  const cb = {dataset: {f: "status"}, value: v, checked: true, closest: () => null};
+  fire("click", {target: cb, detail: 1, button: 0, preventDefault() {}, stopPropagation() {}});
+  fire("change", {target: cb});
+  await ticks(10); return look();
+};
 // The panel drawn again, as ticking and unticking a status draws it.
 const redraw = () => { s.sel.status.add("Died"); s.render(); s.sel.status.clear(); s.render(); return look(); };
 const term = async (t) => { $("#year").fire("change", {target: {value: t}}); await ticks(40); return look(); };
@@ -51429,6 +51442,17 @@ const head = async () => { press("#facets .fhead", {dataset: {g: "rsa"}}); await
     s.sel.status.clear(); s.render(); press(null, null); await ticks(10); out.clickAfter = look();
     // Numbers no RSA number is shaped like.
     out.odd1234 = await type("1234"); out.oddSec = await type("91-A:4:5");
+    // A number typed whole, the box left by ticking a status none of whose
+    // bills change it, with nothing chosen and over a law chosen.
+    press("[data-rsapick]", {dataset: {rsapick: ""}}); await ticks(10);
+    await type("91-A"); out.numTicked = await tickStatus("Withdrawn"); s.sel.status.clear(); s.render();
+    await type("91-A"); await key("Enter"); await type("540");
+    out.numOverTicked = await tickStatus("Withdrawn"); s.sel.status.clear(); s.render();
+    // "91-A" typed, the panel drawn again with the focus kept in the box,
+    // then "tax" typed and Tab: what the box read as it was drawn anew is
+    // not taken for the words.
+    press("[data-rsapick]", {dataset: {rsapick: ""}}); await ticks(10);
+    await type("91-A"); s.render(); await ticks(10); await type("tax"); out.staleTab = await tab();
   } catch (e) { out.threw = e.constructor.name + ": " + e.message + " " + (e.stack || "").split("\n")[1]; }
   process.stdout.write("\n@@" + JSON.stringify(out));
 })().catch(e => { console.log("RUN " + e.message); process.exit(1); });
@@ -51740,7 +51764,14 @@ def _laws_changed_chosen():
     empties it. A number typed whole and the box left is chosen, as Return
     chooses it -- "91-A", and "540" over 91-A -- and "91", which no bill
     changes, is not (the review: "91-A" left by a tap read 91-A over a list it
-    did not filter); the focus stays where the reader sent it: left by Tab,
+    did not filter); left by ticking Withdrawn, none of whose bills changes
+    either, it is chosen still, the number read as the box lost the focus
+    and not from the list the tick's click and change had narrowed before the
+    box was heard to be left (the final review: "91-A" read on with no badge
+    and no line, and "540" over 91-A gave way to 91-A) -- and only as it was
+    left: "91-A" typed and the panel drawn again with the focus kept in the
+    box, then "tax" and Tab, chooses nothing; the focus stays
+    where the reader sent it: left by Tab,
     the law is chosen with the keyboard still in the box, so that Tab goes on
     from there to the control after it (the review: chosen once the focus had
     gone on, the drawing took that control away and the focus fell to the
@@ -51872,6 +51903,20 @@ def _laws_changed_chosen():
     if ca2["rsa"]:
         bad.append(f"'540' typed with Died ticked, the box left by a press, Died unticked and a click elsewhere: "
                    f"chose {ca2['rsa']} -- the box answered a click that was not its own")
+    for k, t, line in (("numTicked", "91-A", f"RSA 91-A, {name}"),
+                       ("numOverTicked", "540 over RSA 91-A", "RSA 540, Actions Against Tenants")):
+        r, a = got[k], t.split()[0]
+        if r["rsa"] != [a] or f"rsa={a}" not in r["address"] or "status=Withdrawn" not in r["address"] \
+                or r["value"] != a or r["line"] != f"Bills that change {line} · Read the law · Clear" \
+                or '<span class="badge">1</span>' not in r["group"] or r["focus"] == "box":
+            bad.append(f"'{t}' typed and the box left by ticking Withdrawn, none of whose bills changes it: "
+                       f"chose {r['rsa']} at {r['address']!r}, the box {r['value']!r} under {r['line']!r}, "
+                       f"the focus {r['focus']} -- the number read again from the list the tick narrowed")
+    st = got["staleTab"]
+    if st["rsa"] or st["value"] != "tax":
+        bad.append(f"'91-A' typed, the panel drawn again with the focus kept in the box, then 'tax' and Tab: "
+                   f"chose {st['rsa']}, the box {st['value']!r} -- the number read as the box was drawn anew "
+                   "outlived it")
     a = _rsa_run(address="?rsa=91-a:4")
     sh, op = a["shut"], a["opened"]
     if sh["rsa"] != ["91-A:4"] or sh["cards"] != ["HB1"] or '<span class="badge">1</span>' not in sh["group"] \
@@ -51883,7 +51928,8 @@ def _laws_changed_chosen():
                   "540 pressed and as 540:, each listing its bills under its name; 404 and 91 are "
                   "not chosen, and say why; Clear and an emptied box list them all; words left give "
                   "way to the chosen number; 194-G is chosen unnamed and unlinked; a number typed "
-                  "whole is chosen on leaving, Tab going on from the box; Clear and an offer pressed "
+                  "whole is chosen on leaving, by Tab going on from the box or by ticking a status "
+                  "none of whose bills change it; Clear and an offer pressed "
                   "with the mouse over the open list do what they say, the box focused only from the "
                   "keyboard")
 
