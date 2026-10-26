@@ -3949,6 +3949,11 @@
    "es": "Nombrado por medio del comité estatal de su partido, o por sus concejales; debe estar inscrito para votar en ese lugar de votación.",
    "state": "draft"
   },
+  "guide.election-worker.are-election-workers-paid": {
+   "en": "Are election workers paid?",
+   "es": "¿Se paga a quienes trabajan en las elecciones?",
+   "state": "draft"
+  },
   "guide.election-worker.as-an-assistant-for-the-day": {
    "en": "As an assistant for the day",
    "es": "Como asistente para el día",
@@ -4087,6 +4092,11 @@
   "guide.election-worker.inspectors-of-election-are-appointed-for": {
    "en": "<b>Inspectors of election</b> are appointed for each polling place by the state committees of the two parties that received the most votes for governor at the last general election, through their chairs. Where a party does not appoint them, the selectmen do, in equal numbers from the two parties. An inspector must be registered to vote at the polling place where they serve, is sworn, and holds the office for 2 years. The committees, or the selectmen with the moderator, may also name alternates, who are called in order when an inspector cannot serve.",
    "es": "Los <b>inspectores electorales</b> de cada lugar de votación los nombran, por medio de sus presidentes, los comités estatales de los dos partidos que obtuvieron más votos para gobernador en la última elección general. Donde un partido no los nombra, lo hacen los concejales, en igual número de los dos partidos. Un inspector debe estar inscrito para votar en el lugar de votación donde sirve, presta juramento y ocupa el cargo por 2 años. Los comités, o los concejales junto con el moderador, también pueden designar suplentes, a quienes se llama en orden cuando un inspector no puede servir.",
+   "state": "draft"
+  },
+  "guide.election-worker.is-there-training": {
+   "en": "Is there training?",
+   "es": "¿Hay capacitación?",
    "state": "draft"
   },
   "guide.election-worker.know-what-an-election-officer-may": {
@@ -4239,14 +4249,29 @@
    "es": "La ley los llama funcionarios electorales: el moderador y su suplente o asistente, el secretario del municipio, de la ciudad o del barrio electoral y sus suplentes, los concejales y los supervisores del padrón electoral. Los inspectores electorales trabajan junto a ellos.",
    "state": "draft"
   },
+  "guide.election-worker.the-manual-and-training-before-each": {
+   "en": "<b>The manual and training.</b> Before each state general election the Secretary of State, with the Attorney General&rsquo;s approval, prepares a manual on New Hampshire&rsquo;s election laws and how to conduct an election, written in nontechnical language. It goes free to every moderator, board of selectmen, city council, board of supervisors of the checklist and town, city and ward clerk, and the Secretary of State may send it to anyone else who asks. The law also refers to the online training on the Secretary of State&rsquo;s website, and has the Secretary of State train the supervisors of the checklist in using the state&rsquo;s voter database to confirm a voter&rsquo;s identity.",
+   "es": "<b>El manual y la capacitación.</b> Antes de cada elección general estatal, la Secretaría de Estado, con la aprobación del Fiscal General, prepara un manual sobre las leyes electorales de New Hampshire y sobre cómo llevar a cabo una elección, escrito en lenguaje no técnico. Se entrega gratis a cada moderador, junta de concejales, concejo municipal y junta de supervisores del padrón electoral, y a cada secretario de municipio, ciudad y distrito, y la Secretaría de Estado puede enviarlo a cualquier otra persona que lo pida. La ley también menciona la capacitación en línea en el sitio web de la Secretaría de Estado, y encarga a la Secretaría de Estado capacitar a los supervisores del padrón electoral en el uso de la base de datos estatal de votantes para confirmar la identidad de un votante.",
+   "state": "draft"
+  },
   "guide.election-worker.the-moderator-may-appoint-election": {
    "en": "The moderator may appoint election officials, at least 17 years old.",
    "es": "El moderador puede nombrar funcionarios electorales, de al menos 17 años de edad.",
    "state": "draft"
   },
+  "guide.election-worker.the-secretary-of-state-prepares-a": {
+   "en": "The Secretary of State prepares a manual on the election laws and procedures before each state general election, sends it free to moderators, clerks, selectmen and supervisors of the checklist, and may send it to anyone who asks. The law also refers to online training on the Secretary of State&rsquo;s website.",
+   "es": "La Secretaría de Estado prepara un manual sobre las leyes y los procedimientos electorales antes de cada elección general estatal, lo envía gratis a los moderadores, secretarios, concejales y supervisores del padrón electoral, y puede enviarlo a cualquier persona que lo pida. La ley también menciona la capacitación en línea en el sitio web de la Secretaría de Estado.",
+   "state": "draft"
+  },
   "guide.election-worker.the-secretary-of-state-the-states": {
    "en": "The Secretary of State, the state&rsquo;s chief election officer, who prepares the ballots, receives every town&rsquo;s return, and runs recounts and the audit.",
    "es": "El Secretario de Estado, el funcionario electoral principal del estado, que prepara las boletas, recibe el acta de resultados de cada municipio y dirige los recuentos y la auditoría.",
+   "state": "draft"
+  },
+  "guide.election-worker.the-sections-that-create-inspectors-of": {
+   "en": "The sections that create inspectors of election and the moderator&rsquo;s assistants (RSA 658:2 to 658:8) say nothing about pay. One election law does: when the Ballot Law Commission orders a checklist re-verified, the supervisors and their assistants are paid what the town or city votes (<a href=\"/laws/654#s38\">RSA 654:38</a>).",
+   "es": "Las secciones que crean los inspectores electorales y los asistentes del moderador (RSA 658:2 a 658:8) no dicen nada sobre un pago. Una ley electoral sí lo hace: cuando la Comisión de Leyes Electorales (Ballot Law Commission) ordena volver a verificar un padrón, los supervisores y sus asistentes reciben lo que vote el municipio o la ciudad (<a href=\"/laws/654#s38\">RSA 654:38</a>).",
    "state": "draft"
   },
   "guide.election-worker.the-top-of-the-ticket-audit": {

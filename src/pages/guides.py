@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-10-11.61
+# GRANITE_VERSION: 2026-10-11.62
 """
 The how-to guides: their words, their sources, and what each was checked
 against. Read by build_civics.py, which draws them on the Resources hub's
@@ -4205,6 +4205,10 @@ def _law_links(cites):
     return "RSA " + ", ".join(out)
 
 
+# The sections on training, the manual and pay, read on the Laws pages on 26
+# October 2026 after the person's printout of Ballotpedia pointed to them.
+PW_READ = "2026-10-26"
+
 ELECTION = guide(
     "election-worker", "How to Work at the Polls on Election Day",
     "Serving as an election officer at your polling place in New Hampshire: who runs an "
@@ -4251,9 +4255,18 @@ ELECTION = guide(
           "must be at least 17 years old, takes the oath, and serves only for that "
           "election.</p>"
           "<p>So to serve, ask your town&rsquo;s moderator, your party&rsquo;s state committee, "
-          "or your selectmen.</p>",
+          "or your selectmen.</p>"
+          "<p><b>The manual and training.</b> Before each state general election the Secretary "
+          "of State, with the Attorney General&rsquo;s approval, prepares a manual on New "
+          "Hampshire&rsquo;s election laws and how to conduct an election, written in "
+          "nontechnical language. It goes free to every moderator, board of selectmen, city "
+          "council, board of supervisors of the checklist and town, city and ward clerk, and the "
+          "Secretary of State may send it to anyone else who asks. The law also refers to the "
+          "online training on the Secretary of State&rsquo;s website, and has the Secretary of "
+          "State train the supervisors of the checklist in using the state&rsquo;s voter "
+          "database to confirm a voter&rsquo;s identity.</p>",
           law=["RSA 658:2", "RSA 658:3", "RSA 658:4", "RSA 658:5", "RSA 658:7", "RSA 658:7-a",
-               "RSA 658:8"]),
+               "RSA 658:8", "RSA 652:22", "RSA 659:13", "RSA 659:77"]),
      step("Know what an election officer may not do",
           "<p>A person whose name is on the ballot for an office other than an election office "
           "may not work as an election official in that election. A moderator, clerk, "
@@ -4353,6 +4366,24 @@ ELECTION = guide(
            ELECTION_READ),
      claim("The secretary of state shall be the chief election officer for the state.",
            "RSA 652:23", ELECTION_READ),
+     claim("The secretary of state, with the advice and approval of the attorney general, shall "
+           "prepare preceding each state general election an up-to-date manual on the New "
+           "Hampshire election laws and procedures for conducting elections, written in "
+           "nontechnical language, distributed free of charge to each moderator, board of "
+           "selectmen, city council, and board of supervisors of the checklist and to each town, "
+           "city, and ward clerk; the secretary of state may distribute it to any other person "
+           "who requests it.", "RSA 652:22", PW_READ),
+     claim("The secretary of state shall provide training for supervisors of the checklist on "
+           "how the nonpublic data in the statewide centralized voter registration database may "
+           "be used to satisfy voter identification requirements.", "RSA 659:13", PW_READ),
+     claim("An election monitor's report documents the extent to which the town or ward "
+           "complies with state law and utilizes the best practices set forth in the election "
+           "procedures manual and the on-line training available on the secretary of state's "
+           "website.", "RSA 659:77", PW_READ),
+     claim("When the ballot law commission directs the supervisors to revise and verify a "
+           "checklist, the supervisors and assistant supervisors shall receive such sums as may "
+           "be voted by the city government or town meeting of the city or town in which they "
+           "serve.", "RSA 654:38", PW_READ),
      claim("Every 2 years or 3 years a moderator shall be chosen by ballot, by plurality vote; "
            "the election of moderators in city wards shall be at every other regular city "
            "election.", "RSA 40:1", ELECTION_READ),
@@ -4530,6 +4561,17 @@ ELECTION = guide(
          "<p>Not as an election official, if you are running for an office other than an "
          "election office. A moderator, clerk, selectman, inspector or supervisor who is on the "
          "ballot keeps their place but may not handle marked ballots or count votes.</p>"),
+        ("Is there training?",
+         "<p>The Secretary of State prepares a manual on the election laws and procedures before "
+         "each state general election, sends it free to moderators, clerks, selectmen and "
+         "supervisors of the checklist, and may send it to anyone who asks. The law also refers "
+         "to online training on the Secretary of State&rsquo;s website.</p>"),
+        ("Are election workers paid?",
+         "<p>The sections that create inspectors of election and the moderator&rsquo;s "
+         "assistants (RSA 658:2 to 658:8) say nothing about pay. One election law does: when the "
+         "Ballot Law Commission orders a checklist re-verified, the supervisors and their "
+         "assistants are paid what the town or city votes "
+         '(<a href="/laws/654#s38">RSA 654:38</a>).</p>'),
         ("Who decides a ballot whose mark is unclear?",
          "<p>The election officers counting the votes, by majority. If no way of counting it "
          "wins a majority, the ballot is not counted for that office.</p>"),
