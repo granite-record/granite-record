@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-10-11.49
+# GRANITE_VERSION: 2026-10-11.50
 """
 The how-to guides: their words, their sources, and what each was checked
 against. Read by build_civics.py, which draws them on the Resources hub's
@@ -7630,6 +7630,453 @@ GUIDES += [BOATING]
 
 
 # ---------------------------------------------------------------------------
+# INSURANCE: CAR, RENTERS AND HOMEOWNERS (the person, 26 October 2026: "add
+# guides to insurance like car insurance, renters insurance, homeowner's
+# insurance, private health insurance, etc."). What the law requires rests on
+# the statutes, read on 26 October 2026 as the Laws pages print them: the
+# financial responsibility law (RSA 264) for when the state asks a driver for
+# proof of insurance, the least a car policy must cover (RSA 259:61) and the
+# uninsured motorist and medical payments coverage every policy carries; the
+# rules on cancelling a car policy (RSA 417-A) and a home or renters policy
+# (RSA 417-B); and the unfair claim practices the Insurance Department
+# enforces (RSA 417). No statute on this disk was found to require car
+# insurance to register a car, so that New Hampshire does not require it is
+# said on the Insurance Department's word, whose pages refuse this machine:
+# their addresses come from a web search and their claims wait for the
+# person's printouts. The guides recommend no insurer and no amount of
+# coverage. FEMA's FloodSmart page answers this machine and was read the
+# same day (guide_sources.OTHER).
+# ---------------------------------------------------------------------------
+INS_LAW_READ = "2026-10-26"
+INS_DEPT_READ = None                 # the person's printouts of insurance.nh.gov
+FLOOD_READ = "2026-10-26"
+INS_AUTO = "https://www.insurance.nh.gov/consumers/automobile-insurance"
+INS_HOME = "https://www.insurance.nh.gov/consumers/homeowners-and-renters-insurance"
+INS_COMPLAINT = "https://www.insurance.nh.gov/consumers/filing-complaint"
+FLOOD_ELIGIBLE = "https://www.floodsmart.gov/get-insured/eligibility"
+
+# The complaint step and its claims, which the renters and homeowners guides
+# share: the unfair claim practices of RSA 417:4, XV, and what a consumer may
+# do after the Insurance Department has acted on a complaint, or has not.
+PROPERTY_CLAIM_STEP = step(
+    "If you have a loss: filing a claim",
+    "<p>Tell your insurance company about the loss as your policy directs, and keep a record of "
+    "what you send and when. The law treats it as an <b>unfair claim settlement practice</b> "
+    "for an insurer, without just cause, to fail to act promptly on what you send about a "
+    "claim, to fail to try in good faith to settle fairly and promptly once its liability is "
+    "reasonably clear, or to fail to say whether it covers the claim within a reasonable time "
+    "after you send the proof of loss forms.</p>",
+    law=["RSA 417:4"])
+PROPERTY_COMPLAINT_STEP = step(
+    "If you disagree with your insurer: complain to the Insurance Department",
+    "<p>The <b>New Hampshire Insurance Department</b> takes complaints about insurance "
+    "companies and agents; its Filing a Complaint page says how to file one, online or on a "
+    "printed form. The Insurance Commissioner may examine and investigate an insurer&rsquo;s "
+    "practices.</p>"
+    "<p>If the Department finds that an insurer broke the law and its finding becomes final, a "
+    "consumer harmed by the practice may sue the insurer for the loss, and one who wins also "
+    "recovers the cost of the suit, reasonable attorney&rsquo;s fees included. If the Department "
+    "takes no action within 120 days of receiving your complaint, that counts as a finding of no "
+    "violation, which you may appeal.</p>",
+    actions=[("File a complaint (Insurance Department)", INS_COMPLAINT)],
+    law=["RSA 417:5", "RSA 417:19", "RSA 417:20"])
+PROPERTY_CLAIM_CLAIMS = [
+    claim("Unfair claim settlement practices, if committed without just cause and not merely "
+          "inadvertently or accidentally: failing to acknowledge and act promptly upon "
+          "communications with respect to claims; not attempting in good faith to effectuate "
+          "prompt, fair and equitable settlements of claims in which liability has become "
+          "reasonably clear; failing to affirm or deny coverage of claims within a reasonable "
+          "time after proof of loss forms have been submitted.", "RSA 417:4", INS_LAW_READ),
+    claim("The commissioner may examine and investigate the affairs of every person engaged in "
+          "the business of insurance in this state.", "RSA 417:5", INS_LAW_READ),
+    claim("When a supplier has been found in violation and the finding has become final, any "
+          "consumer adversely affected may bring suit to recover damages; failure of the "
+          "commissioner to take action within 120 days from the date of the receipt of a "
+          "complaint shall constitute a finding that the practice is not in violation, which "
+          "may be appealed in accordance with RSA 541.", "RSA 417:19", INS_LAW_READ),
+    claim("A consumer who prevails in an action under RSA 417:19, I recovers, in addition to "
+          "damages, the cost of the suit, including reasonable attorneys' fees.", "RSA 417:20",
+          INS_LAW_READ),
+    claim("How to file a complaint about an insurance company or agent with the Insurance "
+          "Department, online or on a printable form.", INS_COMPLAINT, INS_DEPT_READ)]
+PROPERTY_CANCEL_CLAIMS = [
+    claim("Chapter 417-B applies to insurance other than automobile and workers' compensation "
+          "on personal, family, and household risks insuring loss of or damage to real property, "
+          "loss of or damage to personal property, or legal liability for loss of, damage to, or "
+          "injury to persons or property.", "RSA 417-B:1", INS_LAW_READ),
+    claim("No insurer shall cancel or refuse to write or renew such a policy solely because of "
+          "age, residence, race, color, creed, national origin, ancestry, marital status, or "
+          "lawful occupation, including the military service, or solely because another insurer "
+          "has refused to write, cancelled or refused to renew.", "RSA 417-B:2", INS_LAW_READ),
+    claim("No insurer shall cancel, refuse to write, or refuse to renew solely on the basis of "
+          "credit information, without consideration of any other underwriting factor.",
+          "RSA 417-B:2-a", INS_LAW_READ),
+    claim("After a policy has been in effect for 90 days, or if it is a renewal, an insurer may "
+          "cancel only for nonpayment of premium; conviction of a crime increasing a hazard "
+          "insured against; fraud or material misrepresentation in pursuing a claim; grossly "
+          "negligent acts substantially increasing the hazards; physical changes making the "
+          "property uninsurable; or the specific request of the insured.", "RSA 417-B:3",
+          INS_LAW_READ),
+    claim("A written notice of cancellation or refusal to renew, effective not less than 45 days "
+          "after it is mailed or delivered, or 10 days for nonpayment of premium or within 90 "
+          "days of a new policy's effective date, stating the specific reason or reasons.",
+          "RSA 417-B:4", INS_LAW_READ)]
+PROPERTY_CANCEL_FIGS = [
+    fig("90 days", "RSA 417-B:3", "has been in effect for 90 days"),
+    fig("45 days", "RSA 417-B:4", "shall not be less than 45 days after"),
+    fig("10 days", "RSA 417-B:4", "may be 10 days from the date of mailing"),
+    fig("120 days", "RSA 417:19", "within 120 days from the date of the receipt of a complaint")]
+
+CAR_INSURANCE = guide(
+    "car-insurance", "How Car Insurance Works in New Hampshire",
+    "When New Hampshire requires a driver to prove they can pay for a crash, the least a car "
+    "insurance policy here must cover, uninsured motorist coverage, and what to do if your "
+    "insurer cancels your policy.",
+    "New Hampshire does not require most drivers to buy car insurance, as the Insurance "
+    "Department explains, but a driver who causes a crash is responsible for the damage. After "
+    "a crash you were in without insurance, or after certain convictions, the state can suspend "
+    "your license and registration until you file <b>proof of financial responsibility</b>, "
+    "usually an insurance company&rsquo;s certificate. A car insurance policy sold here must "
+    "cover at least $25,000 for injury to one person, $50,000 for one accident, and $25,000 for "
+    "damage to property, and must include <b>uninsured motorist</b> and medical payments "
+    "coverage.",
+    [ask("Do you have car insurance?",
+         [("Yes", "Your policy carries at least the state&rsquo;s minimums and uninsured motorist "
+                  "coverage."),
+          ("No", "You are responsible for any damage you cause, and a crash or certain "
+                 "convictions can cost you your license until you file proof of insurance.")]),
+     ask("Were you just in a crash?",
+         [("Someone was hurt, or the damage is over $1,000",
+           "Report it to the DMV in writing within 15 days, unless the police investigated."),
+          ("No one was hurt and the damage is less", "Exchange information at the scene.")])],
+    [step("What the law requires, and what it does not",
+          "<p>The Insurance Department&rsquo;s Automobile Insurance page explains that New "
+          "Hampshire does not require you to buy car insurance, and what a policy covers. Without "
+          "insurance you are still responsible for the damage you cause, and the "
+          "<b>financial responsibility law</b> decides when the state requires proof that you "
+          "can pay.</p>"
+          "<p>That proof means being able to pay $25,000 for injury to or death of one person, "
+          "$50,000 for injury to or death of two or more people in one accident, and $25,000 "
+          "for damage to property, for each vehicle registered in your name.</p>",
+          actions=[("Automobile insurance (Insurance Department)", INS_AUTO)],
+          law=["RSA 264:20"]),
+     step("After a crash",
+          "<p>Stop at the scene. Give the other driver, anyone hurt, and the owner of any "
+          "property damaged your name and address, your driver&rsquo;s license number, your "
+          "insurance company and policy information, the registration number of the vehicle, "
+          "and the name and address of each person in it.</p>"
+          "<p>If anyone was hurt or killed, or the damage to property is over $1,000, report the "
+          "crash to the DMV in writing within 15 days, unless a police officer investigated "
+          "it.</p>"
+          "<p>If you had no insurance policy or bond covering the crash, the state suspends your "
+          "license and registration, and you must turn in your plates, until you put up enough "
+          "security to pay any judgment for the damage and file proof of financial "
+          "responsibility. You receive notice at least 10 days before the suspension starts. It "
+          "lasts until you are released from the claim, win in court, or pay a judgment against "
+          "you. If no one tells the DMV within 2 years that they have sued you, it may give you "
+          "back your license and registration once you file proof.</p>",
+          law=["RSA 264:25", "RSA 264:3", "RSA 264:7"]),
+     step("After certain convictions",
+          "<p>The state may also suspend your license and registration until you file proof of "
+          "financial responsibility, and keep it on file, after a conviction for:</p>"
+          "<ul><li>driving under the influence of alcohol or drugs;</li>"
+          "<li>failing to stop and report after a crash;</li>"
+          "<li>homicide or assault arising from driving;</li>"
+          "<li>a second conviction for speeding at an excessive rate, or for reckless "
+          "driving.</li></ul>"
+          "<p>You receive notice at least 10 days before the suspension starts. The DMV may stop "
+          "requiring the proof after 3 years, if you have no new conviction, crash or unpaid "
+          "judgment.</p>",
+          law=["RSA 264:2", "RSA 264:7"]),
+     step("Filing proof of financial responsibility",
+          "<p>Proof is usually a <b>certificate</b> that an insurance company or a surety company "
+          "files with the DMV for you, showing that you carry the amounts the law sets. It can "
+          "also be a deposit of money or securities with the state. Ask your insurance company to "
+          "file the certificate.</p>",
+          law=["RSA 264:21", "RSA 264:20"]),
+     step("What every car insurance policy must include",
+          "<p>A car insurance policy sold in New Hampshire must cover your liability to others "
+          "for at least $25,000 for injury to or death of one person, $50,000 for one accident "
+          "injuring or killing more than one, and $25,000 for damage to others&rsquo; property. "
+          "You may buy more.</p>"
+          "<p>It must also include:</p>"
+          "<ul><li><b>Uninsured motorist coverage</b>, which protects you when a driver with no "
+          "insurance, or a hit-and-run driver, injures you. It is at least as much as the policy&rsquo;s "
+          "coverage for injury, and if you buy more than the minimum liability coverage, it rises "
+          "to match.</li>"
+          "<li><b>Medical payments coverage</b> of at least $1,000 per person, for reasonable "
+          "medical costs of the driver and passengers hurt in a crash in your car, for costs "
+          "within 3 years of the crash.</li></ul>",
+          actions=[("Automobile insurance (Insurance Department)", INS_AUTO)],
+          law=["RSA 259:61", "RSA 264:15", "RSA 264:16"]),
+     step("If your insurer cancels or will not renew your policy",
+          "<p>Once a policy has been in effect for 60 days, or once it has been renewed, an "
+          "insurer may cancel it only if you do not pay the premium, if you ask it to, or if you "
+          "were not a New Hampshire resident when the policy was issued or renewed. It may not "
+          "cancel or refuse to renew your policy solely because of your age, where you live, "
+          "your race, color, creed, national origin, ancestry, marital status or lawful "
+          "occupation, or because another insurer turned you down.</p>"
+          "<p>The insurer must send you written notice that states its specific reasons. The "
+          "cancellation takes effect at least 45 days after the notice, or 10 days for not paying "
+          "or in the first 60 days of a new policy. The notice tells you how to reach the "
+          "Insurance Department, and you may ask the Insurance Commissioner to review the "
+          "decision by writing within 10 days of receiving it.</p>",
+          actions=[("File a complaint (Insurance Department)", INS_COMPLAINT)],
+          law=["RSA 417-A:4", "RSA 417-A:3", "RSA 417-A:5", "RSA 417-A:7"])],
+    [("Automobile Insurance (NH Insurance Department)", INS_AUTO),
+     ("Filing a Complaint (NH Insurance Department)", INS_COMPLAINT),
+     ("Financial responsibility, RSA 264", "/laws/264"),
+     ("The motor vehicle liability policy, RSA 259:61", "/laws/259#s61"),
+     ("Driver licenses, RSA 263", "/laws/263"),
+     ("Cancelling car insurance, RSA 417-A", "/laws/417-a")],
+    ["259", "263", "264", "417-A"],
+    [claim("Proof of financial responsibility shall mean proof of ability to respond in damages "
+           "in the amount of $25,000 because of bodily injury or death to any one person; $50,000 "
+           "because of bodily injury to or death to 2 or more persons in any one accident, and "
+           "$25,000 because of injury to and destruction of property; furnished for each motor "
+           "vehicle registered by such person.", "RSA 264:20", INS_LAW_READ),
+     claim("The driver shall immediately stop and give the driver's name and address, driver's "
+           "license number, insurance provider and policy information, registration number and "
+           "the name and address of each occupant; within 15 days report in writing if any "
+           "person is injured or killed, or if damage to property is in excess of $1,000, unless "
+           "the accident is investigated by a police officer.", "RSA 264:25", INS_LAW_READ),
+     claim("After the report of an accident the director shall suspend the license and "
+           "registration and require the surrender of the plates until the driver or owner has "
+           "furnished security for any judgment and gives and maintains proof of financial "
+           "responsibility, with notice not less than 10 days prior; not applicable if a motor "
+           "vehicle liability policy or bond was in effect.", "RSA 264:3", INS_LAW_READ),
+     claim("The suspension remains until a release, a judgment in the person's favor, or a "
+           "satisfied judgment, with proof of financial responsibility; if no written notice that "
+           "suit has been brought is received within 2 years, a new license and registration may "
+           "be issued with proof; the requirement may be waived after 3 years' duration from the "
+           "accident or conviction, with no further record.", "RSA 264:7", INS_LAW_READ),
+     claim("Upon conviction for driving under the influence; failing to stop and report when "
+           "involved in an accident; homicide or assault arising out of driving; the second time "
+           "for an excessive rate of speed; the second time for reckless driving, the director "
+           "may suspend license and registration until proof of financial responsibility is "
+           "given and maintained; notice not less than 10 days prior.", "RSA 264:2",
+           INS_LAW_READ),
+     claim("Proof is given by filing a certificate of an insurance company or surety company, "
+           "or by a deposit of money or securities.", "RSA 264:21", INS_LAW_READ),
+     claim("A motor vehicle liability policy: at least $25,000 on account of injury to or death "
+           "of any one person, at least $50,000 on account of any one accident resulting in "
+           "injury to or death of more than one person, and at least $25,000 for damage to "
+           "property of others.", "RSA 259:61", INS_LAW_READ),
+     claim("Every policy includes uninsured and hit-and-run motor vehicle coverage at least in "
+           "the amounts prescribed for bodily injury; when the insured buys liability coverage "
+           "greater than the minimum, uninsured motorist coverage is automatically equal to it; "
+           "umbrella or excess policies provide it unless the named insured rejects it in "
+           "writing.", "RSA 264:15", INS_LAW_READ),
+     claim("Medical payments coverage of $1,000 per person or more for reasonable medical costs "
+           "of the driver and passengers, for costs incurred during 3 years following the "
+           "injuries; the insured may claim under medical payments or health insurance or both, "
+           "without duplicate payment.", "RSA 264:16", INS_LAW_READ),
+     claim("No person under the age of 18 years shall be issued a driver's license unless a "
+           "parent or guardian gives written permission, insurance coverage is presented, or the "
+           "person is emancipated by marriage.", "RSA 263:17", INS_LAW_READ),
+     claim("After a policy has been in effect for 60 days, or if it is a renewal, an insurer may "
+           "cancel only for nonpayment of premium, the specific request of the insured, or the "
+           "named insured not being a resident of New Hampshire when it was issued or renewed.",
+           "RSA 417-A:4", INS_LAW_READ),
+     claim("No insurer shall cancel, refuse to write or refuse to renew solely because of age, "
+           "residence, race, color, creed, national origin, ancestry, marital status or lawful "
+           "occupation, or solely because another insurer has refused, cancelled or not "
+           "renewed.", "RSA 417-A:3", INS_LAW_READ),
+     claim("A written notice stating the specific reasons, effective not less than 45 days after "
+           "it is mailed or delivered, or 10 days for nonpayment or within 60 days of a new "
+           "policy; advising the right to request the commissioner's review by written request "
+           "within 10 days; with the insurance department's phone number and mailing address.",
+           "RSA 417-A:5", INS_LAW_READ),
+     claim("Any insured may within 10 days of the receipt of a notice of cancellation or "
+           "nonrenewal request in writing that the commissioner review the action.",
+           "RSA 417-A:7", INS_LAW_READ),
+     # The Insurance Department's own pages, waiting for the person's printouts.
+     claim("New Hampshire does not require drivers to buy automobile insurance; a driver is still "
+           "responsible for damage they cause; what an automobile policy covers.", INS_AUTO,
+           INS_DEPT_READ),
+     claim("How to file a complaint about an insurance company or agent with the Insurance "
+           "Department, online or on a printable form.", INS_COMPLAINT, INS_DEPT_READ)],
+    more=civics.faq(
+        ("Does a driver under 18 need insurance?",
+         "<p>A person under 18 gets a license only with a parent&rsquo;s or guardian&rsquo;s "
+         "written permission, or with insurance coverage shown when applying, or if married "
+         '(<a href="/laws/263#s17">RSA 263:17</a>).</p>'),
+        ("Does my car insurance or my health insurance pay my medical bills after a crash?",
+         "<p>You choose: you may claim under your car policy&rsquo;s medical payments coverage, "
+         "your health insurance, or both, but you may not be paid twice for the same bill.</p>"),
+        ("Does an umbrella policy include uninsured motorist coverage?",
+         "<p>Yes, an umbrella or excess policy over a car policy includes uninsured motorist "
+         "coverage equal to its limits, unless you turn it down in writing.</p>"),
+        ("How long must I keep proof on file?",
+         "<p>Until the DMV stops requiring it. It may do so after 3 years, if you have had no "
+         "new conviction, crash or unpaid judgment.</p>")),
+    see=[("How to register a car", "/guides/register-a-car.html"),
+         ("How to renew your driver’s license", "/guides/renew-drivers-license.html")],
+    figures=[fig("$25,000", "RSA 259:61", "at least $25,000 on account of injury"),
+             fig("$50,000", "RSA 259:61", "at least $50,000 on account of any one accident"),
+             fig("$1,000", "RSA 264:25", "damage to property is in excess of $1,000"),
+             fig("$1,000", "RSA 264:16", "greater than $1,000 per person"),
+             fig("15 days", "RSA 264:25", "within 15 days after such accident"),
+             fig("10 days", "RSA 264:3", "not less than 10 days prior"),
+             fig("2 years", "RSA 264:7", "within 2 years from the date of the accident"),
+             fig("3 years", "RSA 264:7", "after 3 years' duration"),
+             fig("3 years", "RSA 264:16", "during 3 years following"),
+             fig("60 days", "RSA 417-A:4", "has been in effect for 60 days"),
+             fig("45 days", "RSA 417-A:5", "shall not be less than 45 days after")])
+
+GUIDES += [CAR_INSURANCE]
+
+RENTERS_INSURANCE = guide(
+    "renters-insurance", "Renters Insurance in New Hampshire",
+    "What a renters insurance policy covers, the rules on cancelling one, and how to file a "
+    "claim and complain to the Insurance Department.",
+    "A renters policy insures your own belongings and your <b>liability</b> if someone is hurt "
+    "in your home or you damage someone else&rsquo;s property; the Insurance Department&rsquo;s "
+    "page explains what it covers. Once a policy has been in effect for 90 days, the insurer may "
+    "cancel it only for the reasons the law lists, with written notice. If an insurer handles "
+    "your claim unfairly, you can complain to the <b>Insurance Department</b>.",
+    [ask("Do you rent your home?",
+         [("Yes", "A renters policy can cover your belongings and your liability."),
+          ("No, you own it", "See homeowners insurance.")]),
+     box("If you have a loss, tell your insurer and keep a record of what you send."),
+     box("If you disagree with how it is handled, complain to the Insurance Department.")],
+    [step("What renters insurance covers",
+          "<p>New Hampshire&rsquo;s law on home insurance covers policies on a household&rsquo;s "
+          "<b>real property</b> (a building), its <b>personal property</b> (belongings) and its "
+          "<b>legal liability</b> for injury to other people or damage to their property. A "
+          "renters policy is the last two: your belongings and your liability, not the building, "
+          "which is the owner&rsquo;s to insure. The Insurance Department&rsquo;s Homeowners and "
+          "Renters Insurance page explains what such a policy covers and what to ask when you "
+          "buy one.</p>",
+          actions=[("Homeowners and renters insurance (Insurance Department)", INS_HOME)],
+          law=["RSA 417-B:1"]),
+     step("If your insurer cancels or will not renew your policy",
+          "<p>An insurer may not cancel or refuse to write or renew your policy solely because "
+          "of your age, where you live, your race, color, creed, national origin, ancestry, "
+          "marital status or lawful occupation, because another insurer turned you down, or on "
+          "your credit information alone.</p>"
+          "<p>Once a policy has been in effect for 90 days, or once it has been renewed, the "
+          "insurer may cancel it only if you do not pay the premium, are convicted of a crime "
+          "that increases a hazard insured against, commit fraud in a claim, act with gross "
+          "negligence that substantially increases a hazard, or ask it to.</p>"
+          "<p>It must send written notice that states its specific reasons, at least 45 days "
+          "before the cancellation or nonrenewal takes effect, or 10 days for not paying or in "
+          "the first 90 days of a new policy.</p>",
+          law=["RSA 417-B:2", "RSA 417-B:2-a", "RSA 417-B:3", "RSA 417-B:4"]),
+     PROPERTY_CLAIM_STEP,
+     PROPERTY_COMPLAINT_STEP],
+    [("Homeowners and Renters Insurance (NH Insurance Department)", INS_HOME),
+     ("Filing a Complaint (NH Insurance Department)", INS_COMPLAINT),
+     ("Home and renters insurance, RSA 417-B", "/laws/417-b"),
+     ("Unfair insurance practices, RSA 417", "/laws/417")],
+    ["417", "417-B"],
+    [*PROPERTY_CANCEL_CLAIMS, *PROPERTY_CLAIM_CLAIMS,
+     claim("What homeowners and renters insurance cover, and what to ask when buying a "
+           "policy; a renters policy covers the renter's belongings and liability, not the "
+           "building.", INS_HOME, INS_DEPT_READ)],
+    more=civics.faq(
+        ("Can my insurer drop me because of my credit?",
+         "<p>Not on your credit information alone: the insurer must weigh other factors "
+         "too.</p>"),
+        ("Is there a time limit for the Insurance Department to act on my complaint?",
+         "<p>If it takes no action within 120 days, you may treat that as a finding against your "
+         "complaint and appeal it.</p>")),
+    see=[("Your rights as a tenant", "/guides/tenant-rights.html"),
+         ("Homeowners insurance", "/guides/homeowners-insurance.html")],
+    figures=PROPERTY_CANCEL_FIGS)
+
+GUIDES += [RENTERS_INSURANCE]
+
+HOMEOWNERS_INSURANCE = guide(
+    "homeowners-insurance", "Homeowners Insurance in New Hampshire",
+    "What a homeowners insurance policy covers, why a lender may require it and flood "
+    "insurance, the rules on cancelling a policy, and how to file a claim and complain.",
+    "A homeowners policy insures your house, your belongings and your <b>liability</b> to "
+    "others; the Insurance Department&rsquo;s page explains what it covers. A mortgage lender "
+    "may require it, and most homeowners policies do not cover flood damage. Once a policy has "
+    "been in effect for 90 days, the insurer may cancel it only for the reasons the law lists, "
+    "and it may not refuse to renew it because of a single valid claim. If an insurer handles "
+    "your claim unfairly, you can complain to the <b>Insurance Department</b>.",
+    [ask("Do you have a mortgage?",
+         [("Yes", "Your lender may require homeowners insurance, and flood insurance in a "
+                  "high-risk flood area."),
+          ("No", "No lender requires it, but you bear any loss you do not insure.")]),
+     box("If you have a loss, tell your insurer and keep a record of what you send."),
+     box("If you disagree with how it is handled, complain to the Insurance Department.")],
+    [step("What homeowners insurance covers",
+          "<p>New Hampshire&rsquo;s law on home insurance covers policies on a household&rsquo;s "
+          "<b>real property</b> (the house), its <b>personal property</b> (belongings) and its "
+          "<b>legal liability</b> for injury to other people or damage to their property. The "
+          "Insurance Department&rsquo;s Homeowners and Renters Insurance page explains what a "
+          "homeowners policy covers and what to ask when you buy one.</p>",
+          actions=[("Homeowners and renters insurance (Insurance Department)", INS_HOME)],
+          law=["RSA 417-B:1"]),
+     step("What a lender may require, and flood insurance",
+          "<p>A mortgage lender may require you to insure the house, as the Insurance "
+          "Department&rsquo;s page explains; your mortgage papers say what it requires.</p>"
+          "<p>Most homeowners insurance does not cover flood damage, says FEMA&rsquo;s National "
+          "Flood Insurance Program. You must have flood insurance if you own a home in a "
+          "<b>Special Flood Hazard Area</b> and have a government-backed mortgage, and some "
+          "lenders require it outside those areas. If the property has received federal "
+          "disaster assistance before, it needs flood insurance to qualify again.</p>",
+          actions=[("Who needs flood insurance (FloodSmart, FEMA)", FLOOD_ELIGIBLE)]),
+     step("If your insurer cancels or will not renew your policy",
+          "<p>An insurer may not cancel or refuse to write or renew your policy solely because "
+          "of your age, where you live, your race, color, creed, national origin, ancestry, "
+          "marital status or lawful occupation, because another insurer turned you down, or on "
+          "your credit information alone. It may not refuse to renew a homeowners policy solely "
+          "because you filed a single valid claim in one policy term, and asking about your "
+          "coverage is not a claim.</p>"
+          "<p>Once a policy has been in effect for 90 days, or once it has been renewed, the "
+          "insurer may cancel it only if you do not pay the premium, are convicted of a crime "
+          "that increases a hazard insured against, commit fraud in a claim, act with gross "
+          "negligence that substantially increases a hazard, change the property so that it "
+          "cannot be insured, or ask it to.</p>"
+          "<p>It must send written notice that states its specific reasons, at least 45 days "
+          "before the cancellation or nonrenewal takes effect, or 10 days for not paying or in "
+          "the first 90 days of a new policy.</p>",
+          law=["RSA 417-B:2", "RSA 417-B:2-a", "RSA 417-B:3-a", "RSA 417-B:3", "RSA 417-B:4"]),
+     PROPERTY_CLAIM_STEP,
+     PROPERTY_COMPLAINT_STEP],
+    [("Homeowners and Renters Insurance (NH Insurance Department)", INS_HOME),
+     ("Filing a Complaint (NH Insurance Department)", INS_COMPLAINT),
+     ("Who’s Eligible for NFIP Flood Insurance? (FloodSmart, FEMA)", FLOOD_ELIGIBLE),
+     ("Home and renters insurance, RSA 417-B", "/laws/417-b"),
+     ("Unfair insurance practices, RSA 417", "/laws/417")],
+    ["417", "417-B"],
+    [*PROPERTY_CANCEL_CLAIMS, *PROPERTY_CLAIM_CLAIMS,
+     claim("The nonrenewal of a homeowner's insurance policy is prohibited if based solely on the "
+           "insured having filed a single valid claim within any one previous or current policy "
+           "term; inquiries about coverage do not constitute a valid claim.", "RSA 417-B:3-a",
+           INS_LAW_READ),
+     claim("What homeowners and renters insurance cover, and what to ask when buying a policy; "
+           "a mortgage lender may require homeowners insurance.", INS_HOME, INS_DEPT_READ),
+     claim("You're required to have flood insurance if you own a home or business in a Special "
+           "Flood Hazard Area (SFHA) and have a government-backed mortgage; some banks require "
+           "flood insurance even if you don't live in a high-risk area; if your property has "
+           "received federal disaster assistance before, you must have flood insurance to "
+           "qualify for future disaster assistance; this requirement is tied to a property, not "
+           "an individual homeowner; most homeowners insurance does not cover flood damage.",
+           FLOOD_ELIGIBLE, FLOOD_READ)],
+    more=civics.faq(
+        ("Can my insurer refuse to renew my policy because I filed a claim?",
+         "<p>Not solely because of a single valid claim in one policy term, and asking about "
+         "your coverage is not a claim.</p>"),
+        ("Does a flood insurance requirement follow the house?",
+         "<p>Yes: if the home received federal disaster assistance before, it needs flood "
+         "insurance to qualify for more, even after it is sold.</p>"),
+        ("Is there a time limit for the Insurance Department to act on my complaint?",
+         "<p>If it takes no action within 120 days, you may treat that as a finding against your "
+         "complaint and appeal it.</p>")),
+    see=[("Renters insurance", "/guides/renters-insurance.html"),
+         ("How to get ready for storms and power outages", "/guides/storms-and-emergencies.html"),
+         ("How to read your property tax bill", "/guides/property-tax-bill.html")],
+    figures=PROPERTY_CANCEL_FIGS)
+
+GUIDES += [HOMEOWNERS_INSURANCE]
+
+
+# ---------------------------------------------------------------------------
 # THE GUIDES BY TASK (the person, 17 October 2026: "refine how the how to
 # guides are displayed on the main resources page and the homepage so it's
 # more intuitive for the general public"). A reader arrives with something to
@@ -7768,6 +8215,19 @@ TASKS = [
              head="How to report a scam or file a consumer complaint"),
         task("public-records", "Get a public record",
              "Ask a town, school district, county or state agency for its records."),
+    ]),
+    ("Insurance", [
+        task("car-insurance", "Understand car insurance in New Hampshire",
+             "When the state requires proof of insurance, the least a policy must cover, and "
+             "uninsured motorist coverage.",
+             head="How car insurance works in New Hampshire"),
+        task("renters-insurance", "Understand renters insurance",
+             "What a renters policy covers, cancellation, and filing a claim or a complaint.",
+             head="Renters insurance: what it covers and your rights"),
+        task("homeowners-insurance", "Understand homeowners insurance",
+             "What a homeowners policy covers, what a lender may require, flood insurance, and "
+             "filing a claim or a complaint.",
+             head="Homeowners insurance: what it covers and your rights"),
     ]),
     ("Property and Records", [
         task("property-tax-abatement", "Appeal your property tax assessment",
@@ -7934,6 +8394,14 @@ WORDS = {
     "property-tax-bill": ("property tax bill", "tax rate", "assessment", "assessed value",
                           "revaluation", "elderly exemption", "veterans credit", "tax deferral"),
     "public-records": ("right to know", "91-a", "records request", "foia"),
+    "car-insurance": ("car insurance", "auto insurance", "insurance", "sr-22", "sr22",
+                      "proof of insurance", "financial responsibility", "uninsured motorist",
+                      "license suspended", "accident report", "crash"),
+    "renters-insurance": ("renters insurance", "renter's insurance", "insurance", "tenant",
+                          "apartment insurance", "insurance claim", "insurance complaint"),
+    "homeowners-insurance": ("homeowners insurance", "home insurance", "insurance",
+                             "flood insurance", "mortgage", "insurance claim",
+                             "insurance complaint", "policy cancelled"),
     "vital-records": ("birth certificate", "death certificate", "marriage certificate",
                       "divorce certificate"),
     "fishing-license": ("fishing license", "fishing", "fish", "free fishing day",
