@@ -6926,9 +6926,19 @@
    "es": "Sus derechos como inquilino",
    "state": "draft"
   },
+  "guide.medicare-and-social-security.a-drug-plan-which-you-can": {
+   "en": "A drug plan, which you can add to Original Medicare.",
+   "es": "Un plan de medicamentos, que puede agregar a Medicare Original.",
+   "state": "draft"
+  },
   "guide.medicare-and-social-security.a-my-social-security-account-lets": {
    "en": "A <b>my Social Security</b> account lets you change your address or direct deposit, print proof of your benefits or a tax form, request a replacement Social Security card, and see your Social Security Statement and earnings record, without a call or a visit. You create it through Login.gov or ID.me, with an email address, a government-issued photo ID and a phone.",
    "es": "Una cuenta <b>my Social Security</b> le permite cambiar su dirección o su depósito directo, imprimir una prueba de sus beneficios o un formulario de impuestos, pedir una tarjeta de Seguro Social de reemplazo y ver su Estado de Cuenta del Seguro Social y su historial de ganancias, sin llamar ni ir a una oficina. Se crea a través de Login.gov o ID.me, con una dirección de correo electrónico, una identificación con foto emitida por el gobierno y un teléfono.",
+   "state": "draft"
+  },
+  "guide.medicare-and-social-security.a-plan-you-can-choose-instead": {
+   "en": "A plan you can choose instead of Original Medicare. You need both Part A and Part B to join one.",
+   "es": "Un plan que puede elegir en lugar de Medicare Original. Necesita la Parte A y la Parte B para inscribirse en uno.",
    "state": "draft"
   },
   "guide.medicare-and-social-security.apply-for-benefits-social-security": {
@@ -6944,6 +6954,11 @@
   "guide.medicare-and-social-security.apply-for-social-security-retirement": {
    "en": "Apply for Social Security retirement benefits",
    "es": "Solicite los beneficios de jubilación del Seguro Social",
+   "state": "draft"
+  },
+  "guide.medicare-and-social-security.apply-to-the-department-of-health": {
+   "en": "Apply to the Department of Health and Human Services through NH Easy, under Medicare beneficiary assistance; its Customer Service Center answers at 1-844-ASK-DHHS (1-844-275-3447), Monday through Friday, 8 a.m. to 4 p.m. Medicare advises applying even if you do not think you qualify.",
+   "es": "Presente su solicitud al Departamento de Salud y Servicios Humanos a través de NH Easy, en la asistencia para beneficiarios de Medicare; su Centro de Servicio al Cliente atiende en el 1-844-ASK-DHHS (1-844-275-3447), de lunes a viernes, de 8 a.m. a 4 p.m. Medicare aconseja presentar la solicitud aunque crea que no reúne los requisitos.",
    "state": "draft"
   },
   "guide.medicare-and-social-security.can-i-get-medicare-before-i": {
@@ -6976,6 +6991,11 @@
    "es": "Comuníquese con Medicare (Medicare)",
    "state": "draft"
   },
+  "guide.medicare-and-social-security.disability-benefits-for-people-who": {
+   "en": "<b>Disability benefits</b>, for people who worked and paid Social Security taxes long enough and have a medical condition that makes it hard or impossible to work and will last at least one year or result in death.",
+   "es": "<b>Beneficios por discapacidad</b>, para quienes trabajaron y pagaron impuestos del Seguro Social el tiempo suficiente y tienen una condición médica que les hace difícil o imposible trabajar y que durará al menos un año o causará la muerte.",
+   "state": "draft"
+  },
   "guide.medicare-and-social-security.do-i-get-medicare-automatically-medicare": {
    "en": "Do I get Medicare automatically? (Medicare)",
    "es": "¿Recibo Medicare automáticamente? (Medicare)",
@@ -6991,6 +7011,11 @@
    "es": "¿Solicitar la Ayuda Adicional también es solicitar un Programa de Ahorros de Medicare?",
    "state": "draft"
   },
+  "guide.medicare-and-social-security.drug-coverage-part-d": {
+   "en": "Drug coverage (Part D)",
+   "es": "Cobertura de medicamentos (Parte D)",
+   "state": "draft"
+  },
   "guide.medicare-and-social-security.extra-help-is-a-federal-program": {
    "en": "<b>Extra Help</b> is a federal program that pays part of your drug plan&rsquo;s costs. You get it automatically if you have full-benefit Medicaid, a Medicare Savings Program or SSI. Otherwise apply through Social Security.",
    "es": "La <b>Ayuda Adicional</b> es un programa federal que paga parte de los costos de su plan de medicamentos. La recibe automáticamente si tiene Medicaid con todos los beneficios (full-benefit Medicaid), un Programa de Ahorros de Medicare o SSI. Si no, solicítela a través del Seguro Social.",
@@ -6999,6 +7024,11 @@
   "guide.medicare-and-social-security.extra-help-medicare": {
    "en": "Extra Help (Medicare)",
    "es": "Ayuda Adicional (Medicare)",
+   "state": "draft"
+  },
+  "guide.medicare-and-social-security.family-and-survivor-benefits-for-the": {
+   "en": "<b>Family and survivor benefits</b>, for the spouse, former spouse, child or dependent parent of someone who worked and paid Social Security taxes.",
+   "es": "<b>Beneficios para familiares y sobrevivientes</b>, para el cónyuge, excónyuge, hijo o padre dependiente de alguien que trabajó y pagó impuestos del Seguro Social.",
    "state": "draft"
   },
   "guide.medicare-and-social-security.for-free-help-comparing-plans-call": {
@@ -7016,6 +7046,16 @@
    "es": "Ayuda con los costos de los medicamentos (Medicare)",
    "state": "draft"
   },
+  "guide.medicare-and-social-security.help-with-the-costs-comes-from": {
+   "en": "<b>Help with the costs</b> comes from two programs: the state&rsquo;s <b>Medicare Savings Programs</b>, which help pay Medicare premiums and, for some people, other costs; and the federal <b>Extra Help</b> program, which pays part of the cost of drug coverage. Step 6 says who qualifies and how to apply.",
+   "es": "<b>La ayuda con los costos</b> viene de dos programas: los <b>Programas de Ahorros de Medicare</b> del estado, que ayudan a pagar las primas de Medicare y, para algunas personas, otros costos; y el programa federal de <b>Ayuda Adicional</b>, que paga parte del costo de la cobertura de medicamentos. El paso 6 dice quién reúne los requisitos y cómo solicitarlos.",
+   "state": "draft"
+  },
+  "guide.medicare-and-social-security.hospital-insurance": {
+   "en": "Hospital insurance.",
+   "es": "Seguro de hospital.",
+   "state": "draft"
+  },
   "guide.medicare-and-social-security.how-do-i-sign-up-for": {
    "en": "How Do I Sign Up for Medicare? (Medicare)",
    "es": "¿Cómo me inscribo en Medicare? (Medicare)",
@@ -7029,6 +7069,11 @@
   "guide.medicare-and-social-security.how-to-get-disability-benefits-and": {
    "en": "How to get disability benefits and services",
    "es": "Cómo obtener beneficios y servicios por discapacidad",
+   "state": "draft"
+  },
+  "guide.medicare-and-social-security.how-you-get-it": {
+   "en": "How you get it",
+   "es": "Cómo se obtiene",
    "state": "draft"
   },
   "guide.medicare-and-social-security.i-am-losing-coverage-through-a": {
@@ -7061,6 +7106,11 @@
    "es": "Inscribirse en un plan (Medicare)",
    "state": "draft"
   },
+  "guide.medicare-and-social-security.know-how-the-programs-fit-together": {
+   "en": "Know how the programs fit together",
+   "es": "Sepa cómo se relacionan los programas",
+   "state": "draft"
+  },
   "guide.medicare-and-social-security.know-when-to-sign-up-for": {
    "en": "Know when to sign up for Medicare",
    "es": "Sepa cuándo inscribirse en Medicare",
@@ -7076,6 +7126,11 @@
    "es": "Maneje sus beneficios en línea",
    "state": "draft"
   },
+  "guide.medicare-and-social-security.medicare-advantage-plan": {
+   "en": "Medicare Advantage Plan",
+   "es": "Plan Medicare Advantage",
+   "state": "draft"
+  },
   "guide.medicare-and-social-security.medicare-answers-at-1-800-medicare": {
    "en": "Medicare answers at 1-800-MEDICARE (1-800-633-4227), 24 hours a day (TTY 1-877-486-2048), and Social Security at 1-800-772-1213.",
    "es": "Medicare atiende en el 1-800-MEDICARE (1-800-633-4227), las 24 horas del día (TTY 1-877-486-2048), y el Seguro Social en el 1-800-772-1213.",
@@ -7086,14 +7141,14 @@
    "es": "Programa de Ahorros para Beneficiarios de Medicare (Departamento de Salud y Servicios Humanos)",
    "state": "draft"
   },
-  "guide.medicare-and-social-security.medicare-part-a-and-part-b": {
-   "en": "Medicare Part A and Part B are signed up for through the Social Security Administration, not through Medicare. The easiest way is online, with a my Social Security account, if you are 65 or older. You can also call Social Security at 1-800-772-1213, Monday through Friday, 8 a.m. to 7 p.m. (TTY 1-800-325-0778), and make an appointment. If a job&rsquo;s group health plan covers you, you can delay Part B.",
-   "es": "La inscripción en la Parte A y la Parte B de Medicare se hace a través de la Administración del Seguro Social, no a través de Medicare. La forma más fácil es en línea, con una cuenta my Social Security, si tiene 65 años o más. También puede llamar al Seguro Social al 1-800-772-1213, de lunes a viernes, de 8 a.m. a 7 p.m. (TTY 1-800-325-0778), y pedir una cita. Si lo cubre el plan de salud colectivo de un empleo, puede aplazar la Parte B.",
+  "guide.medicare-and-social-security.medicare-is-the-countrys-health": {
+   "en": "<b>Medicare</b> is the country&rsquo;s health insurance program for people 65 or older, and for some younger people (see Common Questions below). It comes in parts:",
+   "es": "<b>Medicare</b> es el programa de seguro de salud del país para personas de 65 años o más, y para algunas personas más jóvenes (vea las Preguntas frecuentes más abajo). Tiene varias partes:",
    "state": "draft"
   },
-  "guide.medicare-and-social-security.medicare-savings-programs-are-run-by": {
-   "en": "<b>Medicare Savings Programs</b> are run by the state. Depending on your income and savings, they help pay your Medicare premiums, and the most generous one also pays your deductibles, coinsurance and copayments, so that Medicare providers may not bill you for covered care. In New Hampshire they are the <b>Medicare Beneficiaries Savings Program</b>, also called the Buy-In program: QMB, SLMB, and QDWI, which pays the Part A premium of people with disabilities who work and have lost Medicare because of their earnings. Your home and vehicles do not count against its limits. Apply to the Department of Health and Human Services through NH Easy, under Medicare beneficiary assistance; its Customer Service Center answers at 1-844-ASK-DHHS (1-844-275-3447), Monday through Friday, 8 a.m. to 4 p.m. Medicare advises applying even if you do not think you qualify.",
-   "es": "Los <b>Programas de Ahorros de Medicare</b> los administra el estado. Según sus ingresos y ahorros, ayudan a pagar sus primas de Medicare, y el más amplio también paga sus deducibles, coseguros y copagos, de modo que los proveedores de Medicare no pueden cobrarle por la atención cubierta. En New Hampshire se llaman <b>Programa de Ahorros para Beneficiarios de Medicare</b> (Medicare Beneficiaries Savings Program), también conocido como programa Buy-In: QMB, SLMB y QDWI, que paga la prima de la Parte A de las personas con discapacidad que trabajan y han perdido Medicare por sus ingresos. Su vivienda y sus vehículos no cuentan para sus límites. Solicítelo al Departamento de Salud y Servicios Humanos a través de NH Easy, en la ayuda para beneficiarios de Medicare (Medicare beneficiary assistance); su Centro de Servicio al Cliente atiende en el 1-844-ASK-DHHS (1-844-275-3447), de lunes a viernes, de 8 a.m. a 4 p.m. Medicare aconseja solicitarlo aunque no crea que reúne los requisitos.",
+  "guide.medicare-and-social-security.medicare-part-a-and-part-b": {
+   "en": "Medicare Part A and Part B are signed up for through the Social Security Administration, not through Medicare. The easiest way is online, with a my Social Security account, if you are 65 or older. You can also call Social Security at 1-800-772-1213, Monday through Friday, 8 a.m. to 7 p.m. (TTY 1-800-325-0778), and make an appointment.",
+   "es": "La inscripción en la Parte A y la Parte B de Medicare se hace a través de la Administración del Seguro Social, no a través de Medicare. La forma más fácil es en línea, con una cuenta my Social Security, si tiene 65 años o más. También puede llamar al Seguro Social al 1-800-772-1213, de lunes a viernes, de 8 a.m. a 7 p.m. (TTY 1-800-325-0778), y pedir una cita.",
    "state": "draft"
   },
   "guide.medicare-and-social-security.medicare-savings-programs-medicare": {
@@ -7116,6 +7171,11 @@
    "es": "my Social Security (Administración del Seguro Social)",
    "state": "draft"
   },
+  "guide.medicare-and-social-security.new-hampshires-medicare-savings-programs": {
+   "en": "New Hampshire&rsquo;s <b>Medicare Savings Programs</b> are together called the <b>Medicare Beneficiaries Savings Program</b>, or the Buy-In program. They are for people with low incomes who are eligible for Medicare, and your home and vehicles do not count against their limits:",
+   "es": "Los <b>Programas de Ahorros de Medicare</b> de New Hampshire se llaman en conjunto el <b>Programa de Ahorros para Beneficiarios de Medicare</b> (Medicare Beneficiaries Savings Program), o el programa Buy-In. Son para personas de bajos ingresos que reúnen los requisitos para Medicare, y su vivienda y sus vehículos no cuentan para sus límites:",
+   "state": "draft"
+  },
   "guide.medicare-and-social-security.nh-easy": {
    "en": "NH Easy",
    "es": "NH Easy",
@@ -7136,14 +7196,54 @@
    "es": "Cuando tenga su tarjeta de Medicare, puede crear una cuenta de Medicare en Medicare.gov con su número de Medicare.",
    "state": "draft"
   },
+  "guide.medicare-and-social-security.part": {
+   "en": "Part",
+   "es": "Parte",
+   "state": "draft"
+  },
+  "guide.medicare-and-social-security.part-a": {
+   "en": "Part A",
+   "es": "Parte A",
+   "state": "draft"
+  },
+  "guide.medicare-and-social-security.part-a-and-part-b-premiums": {
+   "en": "Part A and Part B premiums, penalties for signing up late, deductibles and coinsurance. Medicare providers may not bill you for covered care.",
+   "es": "Las primas de la Parte A y la Parte B, las multas por inscribirse tarde, los deducibles y el coseguro. Los proveedores de Medicare no pueden cobrarle por la atención cubierta.",
+   "state": "draft"
+  },
+  "guide.medicare-and-social-security.part-b": {
+   "en": "Part B",
+   "es": "Parte B",
+   "state": "draft"
+  },
+  "guide.medicare-and-social-security.program": {
+   "en": "Program",
+   "es": "Programa",
+   "state": "draft"
+  },
   "guide.medicare-and-social-security.public-assistance-to-blind-aged-or": {
    "en": "Public Assistance to Blind, Aged, or Disabled Persons, RSA 167",
    "es": "Asistencia pública a personas ciegas, mayores o con discapacidad, RSA 167",
    "state": "draft"
   },
+  "guide.medicare-and-social-security.qdwi": {
+   "en": "QDWI",
+   "es": "QDWI",
+   "state": "draft"
+  },
+  "guide.medicare-and-social-security.qmb": {
+   "en": "QMB",
+   "es": "QMB",
+   "state": "draft"
+  },
   "guide.medicare-and-social-security.ready-to-sign-up-for-part": {
    "en": "Ready to Sign Up for Part A and Part B (Medicare)",
    "es": "Listo para inscribirse en la Parte A y la Parte B (Medicare)",
+   "state": "draft"
+  },
+  "guide.medicare-and-social-security.retirement-benefits-for-people-who": {
+   "en": "<b>Retirement benefits</b>, for people who worked and paid Social Security taxes, starting as early as age 62.",
+   "es": "<b>Beneficios de jubilación</b>, para quienes trabajaron y pagaron impuestos del Seguro Social, desde los 62 años como mínimo.",
    "state": "draft"
   },
   "guide.medicare-and-social-security.sign-up-for-medicare-medicare": {
@@ -7171,9 +7271,59 @@
    "es": "Inscríbase a través del Seguro Social en los 7 meses alrededor de su cumpleaños número 65.",
    "state": "draft"
   },
+  "guide.medicare-and-social-security.slmb": {
+   "en": "SLMB",
+   "es": "SLMB",
+   "state": "draft"
+  },
   "guide.medicare-and-social-security.social-security-administration-usa-gov": {
    "en": "Social Security Administration (USA.gov)",
    "es": "Administración del Seguro Social (USA.gov)",
+   "state": "draft"
+  },
+  "guide.medicare-and-social-security.social-security-is-a-set-of": {
+   "en": "<b>Social Security</b> is a set of programs run by the Social Security Administration:",
+   "es": "El <b>Seguro Social</b> es un conjunto de programas que administra la Administración del Seguro Social:",
+   "state": "draft"
+  },
+  "guide.medicare-and-social-security.social-security-pays-benefits-to-people": {
+   "en": "Social Security pays benefits to people who worked and paid Social Security taxes, when they retire or become disabled, and to some of their families. Medicare is health insurance for people 65 or older and some younger people with disabilities. You sign up for Medicare through Social Security, generally in the 7 months around your 65th birthday, and if you already get Social Security benefits you are usually enrolled automatically. Retirement benefits can start as early as age 62. If paying for Medicare is hard, state and federal programs can help with the costs: apply even if you are not sure you qualify. New Hampshire&rsquo;s Aging and Disability Resource Centers give free, one-on-one help.",
+   "es": "El Seguro Social paga beneficios a quienes trabajaron y pagaron impuestos del Seguro Social, cuando se jubilan o quedan discapacitados, y a algunos de sus familiares. Medicare es el seguro de salud para personas de 65 años o más y para algunas personas más jóvenes con discapacidad. Usted se inscribe en Medicare a través del Seguro Social, generalmente en los 7 meses alrededor de su cumpleaños número 65, y si ya recibe beneficios del Seguro Social, por lo general queda inscrito automáticamente. Los beneficios de jubilación pueden empezar desde los 62 años. Si le resulta difícil pagar Medicare, hay programas estatales y federales que pueden ayudar con los costos: presente su solicitud aunque no esté seguro de reunir los requisitos. Los Aging and Disability Resource Centers de New Hampshire ofrecen ayuda gratuita y personal.",
+   "state": "draft"
+  },
+  "guide.medicare-and-social-security.supplemental-security-income-ssi-a": {
+   "en": "<b>Supplemental Security Income (SSI)</b>, a separate program for people who are blind, have a disability, or are 65 or older, and have little or no income or assets.",
+   "es": "El <b>Ingreso Suplementario de Seguridad (SSI)</b>, un programa aparte para personas ciegas, con una discapacidad o de 65 años o más, que tienen pocos o ningún ingreso o bien.",
+   "state": "draft"
+  },
+  "guide.medicare-and-social-security.the-part-a-premium-for-people": {
+   "en": "The Part A premium, for people with disabilities who work and have lost Medicare because of their earnings.",
+   "es": "La prima de la Parte A, para personas con discapacidad que trabajan y que perdieron Medicare por sus ingresos del trabajo.",
+   "state": "draft"
+  },
+  "guide.medicare-and-social-security.the-part-b-premium-and-penalties": {
+   "en": "The Part B premium and penalties for signing up late.",
+   "es": "La prima de la Parte B y las multas por inscribirse tarde.",
+   "state": "draft"
+  },
+  "guide.medicare-and-social-security.the-parts-of-medicare": {
+   "en": "The parts of Medicare",
+   "es": "Las partes de Medicare",
+   "state": "draft"
+  },
+  "guide.medicare-and-social-security.the-second-part-of-medicare-which": {
+   "en": "The second part of Medicare, which New Hampshire&rsquo;s Department of Health and Human Services calls supplemental insurance. It has a premium, and signing up late can add a penalty for as long as you have it.",
+   "es": "La segunda parte de Medicare, que el Departamento de Salud y Servicios Humanos de New Hampshire llama seguro suplementario. Tiene una prima, e inscribirse tarde puede sumar una multa mientras la tenga.",
+   "state": "draft"
+  },
+  "guide.medicare-and-social-security.through-social-security-many-people-are": {
+   "en": "Through Social Security. Many people are enrolled automatically (step 2).",
+   "es": "A través del Seguro Social. Muchas personas quedan inscritas automáticamente (paso 2).",
+   "state": "draft"
+  },
+  "guide.medicare-and-social-security.through-social-security-with-part-a": {
+   "en": "Through Social Security, with Part A, or later on its own. You can put it off while a job&rsquo;s group health plan covers you.",
+   "es": "A través del Seguro Social, junto con la Parte A, o más adelante por separado. Puede aplazarla mientras lo cubra el plan de salud colectivo de un empleo.",
    "state": "draft"
   },
   "guide.medicare-and-social-security.title": {
@@ -7184,6 +7334,21 @@
   "guide.medicare-and-social-security.under-65-you-may-get-medicare": {
    "en": "Under 65, you may get Medicare if you receive Social Security disability benefits or have permanent kidney failure. SSI alone does not qualify you.",
    "es": "Si tiene menos de 65 años, puede recibir Medicare si recibe beneficios por discapacidad del Seguro Social o tiene insuficiencia renal permanente. El SSI por sí solo no le permite reunir los requisitos.",
+   "state": "draft"
+  },
+  "guide.medicare-and-social-security.what-each-medicare-savings-program-pays": {
+   "en": "What each Medicare Savings Program pays",
+   "es": "Lo que paga cada Programa de Ahorros de Medicare",
+   "state": "draft"
+  },
+  "guide.medicare-and-social-security.what-it-helps-pay": {
+   "en": "What it helps pay",
+   "es": "Lo que ayuda a pagar",
+   "state": "draft"
+  },
+  "guide.medicare-and-social-security.what-it-is": {
+   "en": "What it is",
+   "es": "Qué es",
    "state": "draft"
   },
   "guide.medicare-and-social-security.when-am-i-entitled-to-old": {
@@ -7202,8 +7367,8 @@
    "state": "draft"
   },
   "guide.medicare-and-social-security.with-part-a-and-part-b": {
-   "en": "With Part A and Part B, you choose between Original Medicare, which you can pair with a separate drug plan, and a Medicare Advantage Plan, which needs both Part A and Part B. Each fall, from <b>October 15 to December 7</b>, you can join, switch or drop a plan, and the change starts January 1.",
-   "es": "Con la Parte A y la Parte B, usted elige entre Medicare Original, que puede combinar con un plan de medicamentos aparte, y un Plan Medicare Advantage, que requiere la Parte A y la Parte B. Cada otoño, del <b>15 de octubre al 7 de diciembre</b>, puede inscribirse en un plan, cambiarlo o dejarlo, y el cambio empieza el 1 de enero.",
+   "en": "With Part A and Part B, you choose between Original Medicare, with or without a drug plan, and a Medicare Advantage Plan. Each fall, from <b>October 15 to December 7</b>, you can join, switch or drop a plan, and the change starts January 1.",
+   "es": "Con la Parte A y la Parte B, usted elige entre Medicare Original, con o sin un plan de medicamentos, y un Plan Medicare Advantage. Cada otoño, del <b>15 de octubre al 7 de diciembre</b>, puede inscribirse en un plan, cambiarlo o dejarlo, y el cambio empieza el 1 de enero.",
    "state": "draft"
   },
   "guide.medicare-and-social-security.yes": {
@@ -7217,8 +7382,8 @@
    "state": "draft"
   },
   "guide.medicare-and-social-security.you-are-enrolled-automatically-in-part": {
-   "en": "<b>You are enrolled automatically</b> in Part A (hospital insurance) and Part B (medical insurance) if you start getting Social Security benefits at least 4 months before you turn 65, or after you have received disability benefits for 24 months. Your Medicare card comes in the mail.",
-   "es": "<b>Queda inscrito automáticamente</b> en la Parte A (seguro de hospital) y la Parte B (seguro médico) si empieza a recibir beneficios del Seguro Social al menos 4 meses antes de cumplir 65 años, o después de haber recibido beneficios por discapacidad durante 24 meses. Su tarjeta de Medicare le llega por correo.",
+   "en": "<b>You are enrolled automatically</b> in Part A and Part B if you start getting Social Security benefits at least 4 months before you turn 65, or after you have received disability benefits for 24 months. Your Medicare card comes in the mail.",
+   "es": "<b>Queda inscrito automáticamente</b> en la Parte A y la Parte B si empieza a recibir beneficios del Seguro Social al menos 4 meses antes de cumplir 65 años, o después de haber recibido beneficios por discapacidad durante 24 meses. Su tarjeta de Medicare le llega por correo.",
    "state": "draft"
   },
   "guide.medicare-and-social-security.you-are-usually-enrolled-in-medicare": {
@@ -7231,9 +7396,14 @@
    "es": "Puede recibir beneficios de jubilación desde los 62 años si ha trabajado y pagado impuestos del Seguro Social durante al menos 10 años, y tiene que solicitarlos: no empiezan por sí solos. Solicítelos en línea en la página de solicitudes del Seguro Social, que también le permite inscribirse en Medicare, o llame al 1-800-772-1213.",
    "state": "draft"
   },
-  "guide.medicare-and-social-security.you-sign-up-for-medicare-through": {
-   "en": "You sign up for Medicare through Social Security, generally in the 7 months around your 65th birthday. If you already get Social Security benefits, you are usually enrolled automatically. Social Security retirement benefits can start as early as age 62. If paying for Medicare is hard, the state&rsquo;s Medicare Savings Programs and the federal Extra Help program can pay some of the costs: apply even if you are not sure you qualify. New Hampshire&rsquo;s Aging and Disability Resource Centers give free, one-on-one help.",
-   "es": "Usted se inscribe en Medicare a través del Seguro Social, generalmente en los 7 meses alrededor de su cumpleaños número 65. Si ya recibe beneficios del Seguro Social, por lo general queda inscrito automáticamente. Los beneficios de jubilación del Seguro Social pueden empezar desde los 62 años. Si le cuesta pagar Medicare, los Programas de Ahorros de Medicare del estado y el programa federal de Ayuda Adicional pueden pagar parte de los costos: solicítelos aunque no esté seguro de reunir los requisitos. Los Aging and Disability Resource Centers (centros de recursos para el envejecimiento y la discapacidad) de New Hampshire ofrecen ayuda gratuita y personal.",
+  "guide.medicare-and-social-security.you-choose-one-on-medicare-gov": {
+   "en": "You choose one on Medicare.gov (step 5).",
+   "es": "Se elige en Medicare.gov (paso 5).",
+   "state": "draft"
+  },
+  "guide.medicare-and-social-security.you-sign-up-for-part-a": {
+   "en": "You sign up for Part A and Part B through Social Security, which can take your premiums out of your benefit payments. You choose a Medicare Advantage Plan or a drug plan on Medicare.gov.",
+   "es": "Usted se inscribe en la Parte A y la Parte B a través del Seguro Social, que puede descontar sus primas de sus pagos de beneficios. Un Plan Medicare Advantage o un plan de medicamentos se elige en Medicare.gov.",
    "state": "draft"
   },
   "guide.medicare-and-social-security.your-first-chance-is-your-initial": {
