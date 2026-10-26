@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-10-11.49
+# GRANITE_VERSION: 2026-10-11.50
 """
 The how-to guides: their words, their sources, and what each was checked
 against. Read by build_civics.py, which draws them on the Resources hub's
@@ -3075,6 +3075,222 @@ RUN = guide(
 
 
 GUIDES += [LICENSE, CAR, REAL_ID, NEW_RESIDENT, BENEFITS, UNEMPLOYMENT, RUN]
+
+
+# ---------------------------------------------------------------------------
+# A MOTORCYCLE LICENSE, OR A MOPED (the person, 26 October 2026: "Since there
+# are various types of vehicle licensing, it might make sense to add a
+# motorcycle/moped license to that"). Built on the statutes, read on the
+# site's Laws pages that day: RSA 259:57 and 259:63 for what a moped and a
+# motorcycle are, RSA 263:30 to 263:34-i for the permit, the test, rider
+# training and the fees, RSA 265:120 to 265:123 for riding, and RSA 261 for
+# registering. The DMV's motorcycle pages refuse this machine, as its others
+# do, so their claims carry None and wait for the person's printouts; the
+# guide states nothing that rests on them alone, and prints no course
+# tuition, which no statute sets. The helmet law covers riders under 18 only
+# (RSA 265:122) and names no moped, so the guide says nothing of helmets on
+# a moped. Registering is the car guide's, and is linked rather than told
+# again.
+# ---------------------------------------------------------------------------
+MOTO_READ = "2026-10-26"             # the statutes, on the site's Laws pages
+MOTO_DMV_READ = None                 # the DMV's pages: the person's printouts, still to come
+DMV_MOTO = "https://www.dmv.nh.gov/drivers-licensenon-driver-ids/motorcycle-license-endorsement"
+DMV_MOTO_TRAIN = ("https://www.dmv.nh.gov/drivers-licensenon-driver-ids/"
+                  "motorcycle-rider-training-program")
+DMV_MOTO_FAQ = "https://www.dmv.nh.gov/motorcycle-endorsement-frequently-asked-questions"
+
+MOTORCYCLE = guide(
+    "motorcycle-license", "How to Get a Motorcycle License or Ride a Moped",
+    "Getting a motorcycle license or endorsement in New Hampshire, step by step: the learner's "
+    "permit, rider training and the road test, the fees, the helmet and riding rules, and what a "
+    "moped needs.",
+    "To ride a motorcycle in New Hampshire you need a motorcycle license or endorsement, a "
+    "3-wheeled motorcycle endorsement, or a motorcycle learner&rsquo;s permit. Most riders start "
+    "with a permit, then pass a road test on a motorcycle or finish a state-approved rider "
+    "training course instead. A moped needs less: any valid driver&rsquo;s license, or a moped "
+    "license earned with a written test, and a registration.",
+    [ask("What will you ride?",
+         [("A motorcycle, on 2 or 3 wheels",
+           "Get a learner's permit, then pass the road test or finish rider training."),
+          ("A moped", "Ride on any valid driver's license, or pass a written test for a moped "
+                      "license.")]),
+     box("Register it before you ride it on the road."),
+     box("On a motorcycle without a windshield, protect your eyes. Under 18, wear a helmet too.")],
+    [step("Get a learner's permit",
+          "<p>A motorcycle learner&rsquo;s permit is the usual first step. You can get one if you "
+          "are 18 or older, or if you are 16 or 17, have finished an approved driver education "
+          "course and hold a New Hampshire driver&rsquo;s license. You pass a written motorcycle "
+          "knowledge test, or finish the state&rsquo;s rider training course instead. There is no "
+          "road test for a permit.</p>"
+          "<p>With a permit you may ride only after sunrise and before sunset, and you may not "
+          "carry a passenger. It is good for 45 days, and can be renewed once for another "
+          "45 days.</p>",
+          actions=[("Motorcycle endorsement (DMV)", DMV_MOTO)], law=["RSA 263:32"]),
+     step("Pass the road test, or take rider training",
+          "<p>To get the license or endorsement itself, you pass a driving test on a motorcycle. "
+          "A 3-wheeled motorcycle has its own, separate test. If you already have a "
+          "driver&rsquo;s license, what you get is an endorsement on it; if you do not, a "
+          "motorcycle license.</p>"
+          "<p>The DMV may let you skip the road test if you finish a state-approved motorcycle "
+          "rider training course that includes a skills test. Courses are open to New Hampshire "
+          "residents who hold a driver&rsquo;s license of any kind or could get a learner&rsquo;s "
+          "permit, and a course may charge tuition. The DMV&rsquo;s rider training page lists the "
+          "courses.</p>",
+          actions=[("Motorcycle rider training (DMV)", DMV_MOTO_TRAIN),
+                   ("Motorcycle endorsement questions (DMV)", DMV_MOTO_FAQ)],
+          law=["RSA 263:30", "RSA 263:31", "RSA 263:34-b", "RSA 263:34-h"]),
+     step("Pay the fee",
+          "<p>The law sets these fees: $25 for a first motorcycle endorsement or 3-wheeled "
+          "motorcycle endorsement, and nothing to renew either one; $50 for a motorcycle license "
+          "on its own, which the law calls a special motorcycle license, first or renewed; and "
+          "$25 to renew a learner&rsquo;s permit. Another $5 is added to each motorcycle permit, "
+          "license or endorsement, and to each renewal. The DMV&rsquo;s fees page lists them, "
+          "with the cost of a first permit.</p>",
+          actions=[("Licensing fees (DMV)", DMV_FEES)], law=["RSA 263:42, I", "RSA 263:34-i, II"]),
+     step("Register your motorcycle",
+          "<p>A motorcycle is registered the way a car is: first at the clerk&rsquo;s office of "
+          "the town or city where you live, which issues the permit for registration, then for "
+          "the state. The state&rsquo;s fee for a motorcycle is $30, and another $1 is added to "
+          "each registration and renewal. Riding an unregistered motorcycle carries a $100 fine. "
+          "How to Register a Car explains each part.</p>",
+          actions=[("How to register a car", "/guides/register-a-car.html"),
+                   ("Find your town or city clerk", SOS_CLERKS)],
+          law=["RSA 261:148", "RSA 261:141, III", "RSA 263:34-i, I", "RSA 261:40"]),
+     step("Ride by the rules",
+          "<p>If you are under 18, you must wear a helmet of a type the DMV approves, with a neck "
+          "or chin strap, whether you drive or ride as a passenger. A driver who carries a "
+          "passenger under 18 without one breaks the law too. The helmet law covers riders under "
+          "18.</p>"
+          "<p>At any age, if your motorcycle has no windshield or screen that protects your eyes "
+          "and face, wear eyeglasses, goggles or a face shield while it is moving.</p>"
+          "<p>Ride on the permanent seat, astride and facing forward, and carry nothing that "
+          "keeps both hands off the handlebars. A motorcycle is entitled to a full lane of "
+          "traffic.</p>",
+          law=["RSA 265:122", "RSA 265:123", "RSA 265:120", "RSA 265:121"]),
+     step("If you ride a moped",
+          "<p>The law calls a vehicle a moped if it goes no faster than 30 miles per hour within "
+          "a mile and, if it has a gas engine, the engine is no bigger than 50 cubic centimeters "
+          "and has no gears to shift. Anything more is a motorcycle, and needs a motorcycle "
+          "license.</p>"
+          "<p>To ride a moped on the road, you need a valid driver&rsquo;s license from any "
+          "state, a motorcycle license, or a moped license. A moped license is for someone with "
+          "neither, and you get it by passing a written test.</p>"
+          "<p>A moped is registered too, with its own kind of plate. The state&rsquo;s fee is $14, "
+          "and the town permit that a car or motorcycle needs first is not required. Ask the DMV "
+          "or your clerk where to register it.</p>",
+          actions=[("Vehicle registrations (DMV)", DMV_REG)],
+          law=["RSA 259:57", "RSA 259:63", "RSA 263:33", "RSA 263:33-a", "RSA 261:80",
+               "RSA 261:148"])],
+    [("Motorcycle License Endorsement (Division of Motor Vehicles)", DMV_MOTO),
+     ("Motorcycle Rider Training Program (Division of Motor Vehicles)", DMV_MOTO_TRAIN),
+     ("Motorcycle Endorsement Frequently Asked Questions (Division of Motor Vehicles)",
+      DMV_MOTO_FAQ),
+     ("Words and Phrases Defined, RSA 259", "/laws/259"),
+     ("Certificates of Title and Registration of Vehicles, RSA 261", "/laws/261"),
+     ("Drivers' Licenses, RSA 263", "/laws/263"),
+     ("Rules of the Road, RSA 265", "/laws/265")],
+    ["259", "261", "263", "265"],
+    [claim("The motorcycle endorsement: the learner's permit, the knowledge test, the road test "
+           "or rider training in its place, and what to bring.", DMV_MOTO, MOTO_DMV_READ),
+     claim("The rider training courses, where they are held and what they cost.", DMV_MOTO_TRAIN,
+           MOTO_DMV_READ),
+     claim("Common questions on the motorcycle endorsement.", DMV_MOTO_FAQ, MOTO_DMV_READ),
+     claim("The fees for motorcycle permits, licenses and endorsements, a first permit's among "
+           "them.", DMV_FEES, MOTO_DMV_READ),
+     claim("Where a moped is registered.", DMV_REG, MOTO_DMV_READ),
+     claim("The town and city clerks lookup lists each town's clerk.", SOS_CLERKS, CHECKED),
+     claim("A moped is a motor-driven cycle whose speed attainable in one mile is 30 miles per "
+           "hour or less; an internal combustion engine no more than 50 cubic centimeters, with "
+           "no gear shifting; not an electric bicycle.", "RSA 259:57", MOTO_READ),
+     claim("A motorcycle is a motor vehicle with a seat or saddle, on not more than 3 wheels, "
+           "excluding electric bicycles, tractors and mopeds.", "RSA 259:63", MOTO_READ),
+     claim("No person may drive a motorcycle without a motorcycle license or endorsement, a "
+           "3-wheeled motorcycle endorsement or a learner's permit; any of them lets the holder "
+           "drive any registered 2-wheeled or 3-wheeled motorcycle without any other class of "
+           "license; a restricted 3-wheeled endorsement covers 3-wheeled motorcycles only.",
+           "RSA 263:30", MOTO_READ),
+     claim("A motorcycle license for persons without a driver's license, an endorsement for those "
+           "with one; a driver examination conducted on a motorcycle; separate examinations for "
+           "the 3-wheeled restriction; the director may waive it on proof of a state-approved "
+           "rider education course; no more than two attempts, then the rider education program.",
+           "RSA 263:31", MOTO_READ),
+     claim("A learner's permit at 18 or older, or 16 to 18 with an approved driver education "
+           "course and a valid NH driver's license; a written knowledge test or the rider "
+           "education program, no driver examination; after sunrise and before sunset, no "
+           "passengers; valid for 45 days, one renewal for an additional 45 days.",
+           "RSA 263:32", MOTO_READ),
+     claim("A moped needs a current valid driver's license from any state, a motorcycle license "
+           "or a restricted motorcycle license.", "RSA 263:33", MOTO_READ),
+     claim("A restricted license for mopeds, for persons without a driver's or motorcycle "
+           "license, on passing a written examination.", "RSA 263:33-a", MOTO_READ),
+     claim("Rider training courses are open to residents with a valid driver's license of any "
+           "classification or eligible for a learner's permit; a reasonable tuition fee may be "
+           "charged.", "RSA 263:34-b", MOTO_READ),
+     claim("The director may exempt applicants from the licensing skills test on proof of a rider "
+           "training course with a similar test of skills.", "RSA 263:34-h", MOTO_READ),
+     claim("An additional $1 on each motorcycle registration and renewal; an additional $5 on each "
+           "motorcycle permit, license or endorsement fee and each renewal.", "RSA 263:34-i",
+           MOTO_READ),
+     claim("Special motorcycle license, original or renewal, $50; original motorcycle endorsement "
+           "$25; 3-wheeled motorcycle endorsement $25; endorsement renewals no charge; learner's "
+           "permit renewal $25.", "RSA 263:42", MOTO_READ),
+     claim("Registration fees: each motorcycle $30, each moped $14.", "RSA 261:141", MOTO_READ),
+     claim("No vehicle but an OHRV, snowmobile or moped is registered until its owner has a "
+           "permit for registration from the city or town.", "RSA 261:148", MOTO_READ),
+     claim("Driving an unregistered vehicle not exempt is a violation, with a $100 fine.",
+           "RSA 261:40", MOTO_READ),
+     claim("A registered moped gets a number plate of a design different from motorcycle plates.",
+           "RSA 261:80", MOTO_READ),
+     claim("Ride only on the permanent and regular seat; a passenger only on a motorcycle designed "
+           "for more than one, on a seat for 2, a seat fixed at the rear or side, or a sidecar; "
+           "astride, facing forward; nothing that prevents keeping both hands on the handlebars.",
+           "RSA 265:120", MOTO_READ),
+     claim("Full use of a lane; 2 abreast at most; no passing in the same lane; no driving between "
+           "lanes or rows of vehicles.", "RSA 265:121", MOTO_READ),
+     claim("Under 18, approved protective headgear with a neck or chin strap, driving or riding; "
+           "an operator carrying a person under 18 in violation is guilty of a violation.",
+           "RSA 265:122", MOTO_READ),
+     claim("Without a windshield or screen protecting the eyes and face, the driver wears "
+           "eyeglasses, goggles or a protective face shield while in motion.", "RSA 265:123",
+           MOTO_READ)],
+    more=civics.faq(
+        ("What if I fail the road test twice?",
+         "<p>You cannot take it a third time. The law requires you to finish the motorcycle rider "
+         "training course instead.</p>"),
+        ("Do I need a car license to ride a motorcycle?",
+         "<p>No. A motorcycle license is issued to someone with no driver&rsquo;s license, and a "
+         "motorcycle license, endorsement or permit lets you drive any registered motorcycle, on "
+         "2 or 3 wheels, without any other license. To get a permit at 16 or 17, though, you need "
+         "a New Hampshire driver&rsquo;s license.</p>"),
+        ("Is a 3-wheeled motorcycle different?",
+         "<p>A 3-wheeled motorcycle endorsement comes with its own test, on the skills that kind "
+         "of motorcycle needs. With it alone you may drive a 3-wheeled motorcycle but not a "
+         "2-wheeled one. A full motorcycle endorsement covers both.</p>"),
+        ("Is an electric bicycle a moped?",
+         "<p>No. The law leaves electric bicycles out of what it calls a moped, and out of what "
+         "it calls a motorcycle, so the license rules in this guide do not cover one.</p>"),
+        ("Can I carry a passenger?",
+         "<p>Not on a learner&rsquo;s permit. With a license or endorsement, only if the "
+         "motorcycle is built to carry more than one person: on a seat made for two, a seat "
+         "firmly attached behind or beside you, or a sidecar. The passenger sits astride, facing "
+         "forward.</p>"),
+        ("Can I ride between lanes of traffic?",
+         "<p>No. You may not ride between lanes or rows of traffic, or pass a vehicle in its own "
+         "lane. A motorcycle is entitled to a full lane, and two motorcycles may ride side by "
+         "side in one lane, but no more than two.</p>"))
+         + DMV_HELP,
+    see=[("How to register a car", "/guides/register-a-car.html"),
+         ("How to renew your driver's license", "/guides/renew-drivers-license.html")],
+    figures=[fig("45 days", "RSA 263:32", "valid for 45 days from the date of issuance"),
+             fig("$25", "RSA 263:42", "for each original motorcycle endorsement-$25"),
+             fig("$50", "RSA 263:42", "special motorcycle license renewal-$50"),
+             fig("$5", "RSA 263:34-i", "an additional fee of $5"),
+             fig("$1", "RSA 263:34-i", "an additional fee of $1"),
+             fig("$30", "RSA 261:141", "For each motorcycle-$30"),
+             fig("$14", "RSA 261:141", "For each moped-$14"),
+             fig("$100", "RSA 261:40", "The fine for a violation of this section shall be $100")])
+
+GUIDES += [MOTORCYCLE]
 
 
 # ---------------------------------------------------------------------------
@@ -7723,6 +7939,9 @@ TASKS = [
              "Whether you need one, and the documents to bring."),
         task("new-to-new-hampshire", "Move to New Hampshire",
              "Your license, your vehicle&rsquo;s registration and registering to vote."),
+        task("motorcycle-license", "Get a motorcycle license or ride a moped",
+             "The learner&rsquo;s permit, rider training and the road test, the riding rules, "
+             "and what a moped needs.", head="How to get a motorcycle license"),
     ]),
     ("Help and Benefits", [
         task("food-and-health-assistance", "Apply for food or health assistance",
@@ -7895,6 +8114,8 @@ WORDS = {
                          "electrician", "plumbing", "plumber", "septic", "shoreland",
                          "wetlands", "contractor"),
     "real-id": ("real id", "license", "id"),
+    "motorcycle-license": ("motorcycle", "motorcycle license", "motorcycle endorsement", "moped",
+                           "scooter", "learner's permit", "helmet"),
     "new-to-new-hampshire": ("moving to new hampshire", "new resident", "license",
                              "register my car", "register to vote"),
     "food-and-health-assistance": ("snap", "food stamps", "medicaid", "health insurance",
