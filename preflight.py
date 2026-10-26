@@ -22356,6 +22356,13 @@ def _find_city_without_wards(BI, BP):
                     ("concord 1", "/town/concord-ward-1"), ("ward 2", "/town/manchester-ward-2")):
         if want not in panel[q]:
             bad.append(f"{q!r} asks for a ward and the panel draws {panel[q][:6]}, without {want}")
+    # The panel's cap of eight, which findDraw now applies itself after the
+    # fold (findMatch reads uncapped there): "concord ward" has the city and
+    # its ten wards to show, and the panel draws eight of them.
+    shown = [h for h in panel["concord ward"] if h != "BILLS"]
+    if len(shown) != 8:
+        bad.append(f"'concord ward' has eleven answers and the panel draws {len(shown)}, not the "
+                   "eight it keeps to")
     assert not bad, "; ".join(bad[:4])
     assert "_ffold" not in BP.SEARCH_JS and "findMatch(s,Infinity)" in BP.SEARCH_JS, (
         "/search no longer reads every answer, its wards with them")
@@ -67870,6 +67877,20 @@ def _spanish_home(i18n):
         return (re.findall(r'href="([^"]+)"|data-embed="([^"]+)"', m.group(1)) if m else None)
     assert sittings(en) and sittings(es) == sittings(en), (
         f"the latest sittings lead elsewhere in Spanish: {sittings(es)} and {sittings(en)}")
+    # And in Spanish words, not only to the same places (the review of 26
+    # October 2026: main() handing recent_sessions "en" for /es/ passed every
+    # check, and the Spanish home page read "Recent Session Days ... Play").
+    def session_html(t):
+        m = re.search(r'<div id="session">(.*?)</div>\s*</section>', t, re.S)
+        return m.group(1) if m else ""
+    cat = json.loads(Path("src/pages/lang/es.json").read_text(encoding="utf-8"))
+    cat = cat.get("strings", cat)
+    es_s = session_html(es)
+    want = [cat["sess.recent"]["es"], cat["sess.play_house"]["es"].split("{date}")[0]]
+    gone = [w for w in want if w not in es_s]
+    english = [w for w in ("Recent Session Days", ">Play<", "Play the") if w in es_s]
+    assert not gone and not english, (
+        f"the Spanish home page's Recent Session Days lack {gone} and keep the English {english}")
     # And a week that has meetings in it (the fixture's own week may have
     # none): Coming up drawn in both languages for 10 March 2026 out of the
     # calendar checks' rows -- the same cards, bills and times, in Spanish
