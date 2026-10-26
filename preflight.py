@@ -40181,6 +40181,44 @@ def _glossary_page(B, C):
     return "ok", f"{len(C.WORDBOOK['glossary'])} terms under {len(secs)} letters, linked from the footer"
 
 
+@check("build", "a term a Learn page marks for its pop-up is a glossary entry, marked on an abbr so "
+       "its sentence stays one piece to translate, and its Spanish marks the same terms",
+       needs=("civics", "components"))
+def _learn_term_marks(civics, C):
+    """The person, 26 October 2026: "Check the learn guide phrasing for ...
+    undefined technical terms a reader likely may not know, opportunities to
+    add tooltips like we have for -FN and other acronyms on the bill pages."
+    A Learn page marks a term <abbr data-term="KEY">, and components.js's
+    term popovers, which already run on every page, make the first of each a
+    button that opens glossary.json's entry -- in Spanish from the shared
+    words file's GR_GLOSS. abbr and not span, because span is not one of
+    i18n.INLINE's tags: a span inside a sentence would cut it into pieces to
+    translate apart. Held here: every mark names an entry; every mark is an
+    abbr; and every Spanish entry whose English marks terms marks the same
+    ones, so the pop-up is in the Spanish page too."""
+    g = C.WORDBOOK["glossary"]
+    bad, marks = [], 0
+    for t in civics.TOPICS:
+        for m in re.finditer(r'<(\w+)\b[^>]*\bdata-term="([^"]+)"', t["body"]):
+            marks += 1
+            if m.group(1).lower() != "abbr":
+                bad.append(f"{t['slug']} marks {m.group(2)} on a <{m.group(1)}>, not an <abbr>")
+            if m.group(2) not in g:
+                bad.append(f"{t['slug']} marks {m.group(2)!r}, which is no glossary entry")
+    cat = json.loads(Path("src/pages/lang/es.json").read_text(encoding="utf-8"))["strings"]
+    pages = {t["slug"] for t in civics.TOPICS}
+    for k, e in cat.items():
+        if k.split(".")[0] not in ("learn", "guide") or k.split(".")[1] not in pages:
+            continue
+        en = sorted(re.findall(r'data-term="([^"]+)"', e.get("en", "")))
+        es = sorted(re.findall(r'data-term="([^"]+)"', e.get("es", "")))
+        if en != es:
+            bad.append(f"{k}: the English marks {en}, the Spanish {es}")
+    assert marks, "no Learn page marks a term for its pop-up"
+    assert not bad, "; ".join(bad[:5])
+    return "ok", f"{marks} terms marked on the Learn pages, each a glossary entry, in both languages"
+
+
 @check("build", "Using This Site's Reading the Shorthand is drawn from glossary.json, row for row, "
        "and the glossary's notes say what draws it", needs=("civics", "components"))
 def _shorthand_from_the_glossary(civics, C):

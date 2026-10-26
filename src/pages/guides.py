@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-10-11.58
+# GRANITE_VERSION: 2026-10-11.59
 """
 The how-to guides: their words, their sources, and what each was checked
 against. Read by build_civics.py, which draws them on the Resources hub's
@@ -4059,6 +4059,345 @@ GUIDES += [WARRANT]
 
 
 # ---------------------------------------------------------------------------
+# WORKING AT THE POLLS (the person, 26 October 2026: "how to be a poll worker
+# or volunteer with elections including explaining the structure of election
+# moderators and various ways the results are confirmed to be accurate").
+# From the statutes alone, as this site's Laws pages print them that day:
+# who the election officers are and how each is chosen (RSA 40:1, 41:16,
+# 41:46-a, 652:14, 658), what they may not do (658:24, 659:44, 659:58), and
+# each check on the count the law sets -- paper ballots, approved and tested
+# counting devices, a public count, the moderator's declaration, the
+# clerk's return, sealed and kept ballots, recounts and the state audit
+# (656, 659, 660). RSA 658:2 carries a change that takes effect on 1 January
+# 2028 (HB 481 of 2026), and the text on the Laws page may already be the
+# new one, so the guide gives no date from it: only who appoints inspectors,
+# which both versions say. The Secretary of State's own pages for election
+# workers have not been read here, so nothing is said of training or pay.
+# ---------------------------------------------------------------------------
+ELECTION_READ = "2026-10-26"
+_OFFICER_ROWS = [
+    ("Moderator",
+     "Elected by the voters by ballot, for 2 or 3 years as the town decides; in a city, each "
+     "ward&rsquo;s moderator is elected at every other city election",
+     "Oversees the voting and the counting of votes, appoints the assistants, and announces "
+     "the result", "RSA 40:1, 659:9, 659:60, 659:70"),
+    ("Town or ward clerk",
+     "A town&rsquo;s clerk is chosen by ballot at the annual town meeting",
+     "Opens the sealed ballots and counts them with the officers, gives the ballot clerks a "
+     "copy of the checklist, prepares and signs the election return, and keeps the sealed "
+     "ballots afterward", "RSA 41:16, 658:25, 658:31, 659:74, 659:98"),
+    ("Supervisors of the checklist",
+     "Three voters of the town, one elected by ballot every even-numbered year for 6 years, or "
+     "for a 3-year term where the town adopts it",
+     "Bring the corrected checklist of voters and stay all day; may appoint assistant "
+     "supervisors to register voters on election day", "RSA 41:46-a, 658:7, 659:10"),
+    ("Selectmen",
+     "The town&rsquo;s or ward&rsquo;s selectmen",
+     "Provide and equip the polling place, appoint inspectors where the parties do not, and are "
+     "present when the ballots are sealed", "RSA 658:2, 658:9, 658:22, 659:95"),
+    ("Inspectors of election",
+     "Appointed by the state committees of the two parties that received the most votes for "
+     "governor at the last general election, or by the selectmen in equal numbers from those "
+     "two parties; registered to vote at that polling place",
+     "Two, one from each party, are the ballot clerks who hand out the ballots; the others do "
+     "what the moderator assigns, including helping a voter who asks for help",
+     "RSA 658:2, 658:3, 658:25, 659:20"),
+    ("Assistant moderator and other officials",
+     "Appointed by the moderator for that election, at least 17 years old",
+     "What the moderator delegates to them, except declaring the vote",
+     "RSA 658:7, 658:7-a, 658:8"),
+]
+
+
+def _law_links(cites):
+    """"RSA 658:7, 658:7-a" as links to each section on the Laws pages."""
+    out = []
+    for c in cites.replace("RSA ", "").split(", "):
+        ch, sec = c.split(":")
+        out.append(f'<a href="/laws/{ch}#s{sec}">{c}</a>')
+    return "RSA " + ", ".join(out)
+
+
+ELECTION = guide(
+    "election-worker", "How to Work at the Polls on Election Day",
+    "Serving as an election officer at your polling place in New Hampshire: who runs an "
+    "election, how each officer is chosen, how to take part, and how the count is checked.",
+    "Every polling place is run by local election officers. The <b>moderator</b>, elected by "
+    "the voters, runs the polling place and oversees the count. The <b>clerk</b> handles the "
+    "ballots and the official return, the <b>supervisors of the checklist</b> keep the list of "
+    "voters, and the <b>inspectors of election</b>, appointed through the two largest parties, "
+    "hand out ballots and help voters. The moderator may also appoint assistants for the day. "
+    "The count is public, every election is held on paper ballots that are sealed and kept "
+    "afterward, and recounts and a state audit check the count against the paper.",
+    [ask("How would you like to serve?",
+         [("As an inspector of election", "Appointed through your party&rsquo;s state "
+           "committee, or by your selectmen; you must be registered to vote at that polling "
+           "place."),
+          ("As an assistant for the day", "The moderator may appoint election officials, at "
+           "least 17 years old."),
+          ("In an elected office", "Run for moderator, town clerk or supervisor of the "
+           "checklist.")]),
+     box("Take the oath, and serve from the opening of the polls until the ballots are "
+         "sealed."),
+     box("After the polls close, the votes are counted in public, the moderator announces the "
+         "result, and the ballots are sealed and kept for a recount or an audit.")],
+    [step("Learn who runs the polling place",
+          "<p>The law calls them election officers: the moderator and the moderator&rsquo;s "
+          "deputy or assistant, the town, city or ward clerk and their deputies, the selectmen, "
+          "and the supervisors of the checklist. The inspectors of election work beside "
+          "them.</p>"
+          + table("Who runs a polling place",
+                  ["Officer", "How chosen", "What they do", "The law"],
+                  [(a, b, c, _law_links(d)) for a, b, c, d in _OFFICER_ROWS]),
+          law=["RSA 652:14", "RSA 652:23", "RSA 41:1-a", "RSA 656:1"]),
+     step("Ask to be appointed",
+          "<p><b>Inspectors of election</b> are appointed for each polling place by the state "
+          "committees of the two parties that received the most votes for governor at the last "
+          "general election, through their chairs. Where a party does not appoint them, the "
+          "selectmen do, in equal numbers from the two parties. An inspector must be "
+          "registered to vote at the polling place where they serve, is sworn, and holds the "
+          "office for 2 years. The committees, or the selectmen with the moderator, may also "
+          "name alternates, who are called in order when an inspector cannot serve.</p>"
+          "<p><b>Assistants for the day.</b> The moderator may appoint an assistant moderator "
+          "and the other election officials the moderator thinks necessary, and the supervisors "
+          "may appoint assistant supervisors to register voters on election day. An assistant "
+          "must be at least 17 years old, takes the oath, and serves only for that "
+          "election.</p>"
+          "<p>So to serve, ask your town&rsquo;s moderator, your party&rsquo;s state committee, "
+          "or your selectmen.</p>",
+          law=["RSA 658:2", "RSA 658:3", "RSA 658:4", "RSA 658:5", "RSA 658:7", "RSA 658:7-a",
+               "RSA 658:8"]),
+     step("Know what an election officer may not do",
+          "<p>A person whose name is on the ballot for an office other than an election office "
+          "may not work as an election official in that election. A moderator, clerk, "
+          "selectman, inspector or supervisor who is on the ballot may keep their place, but "
+          "may not handle marked ballots or count votes; the moderator appoints someone to "
+          "count in their place.</p>"
+          "<p>No election officer may electioneer while on duty, that is, act in any way meant "
+          "to influence how someone votes. Doing so is a misdemeanor.</p>",
+          law=["RSA 658:24", "RSA 659:58", "RSA 659:44"]),
+     step("How the count is checked on election day",
+          "<p><b>Before the polls open.</b> Every election is held on paper ballots, so that "
+          "the votes can be examined and recounted. The clerk breaks the seal on the ballots in "
+          "public, and the officers count them in front of the clerk, the moderator and at "
+          "least one other voter. The ballot box is opened in public and shown to be "
+          "empty.</p>"
+          "<p><b>Counting machines.</b> A town may use only a counting device the Ballot Law "
+          "Commission has approved, and only one that reads the voter&rsquo;s choice from a "
+          "paper ballot. Each device is tested after it is installed and before every "
+          "election. The clerk gives public notice of the test and marks the test ballots "
+          "&ldquo;TEST&rdquo;. The device is sealed, no seal may be broken without 2 "
+          "witnesses, and every break is logged. If a seal looks tampered with, the moderator "
+          "does not use the device and reports it to the Attorney General and the Secretary "
+          "of State.</p>"
+          "<p><b>After the polls close.</b> The votes are counted in public and the count is "
+          "not stopped until it is finished. Where officers disagree on how to count a mark, "
+          "the majority of those counting decides; if no count has a majority, the ballot is "
+          "not counted for that office. The counting documents are open for public review "
+          "when the results are announced, and a machine&rsquo;s printed results are posted "
+          "within 60 minutes of the last ballot. The moderator announces the final count, and "
+          "the clerk prepares the election return in front of the other officials, signs it, "
+          "and sends a copy to the Secretary of State by 8:00 a.m. the next day. The other "
+          "copy is kept by the clerk, open to the public.</p>"
+          "<p><b>Sealing the ballots.</b> The moderator, with the selectmen, seals every "
+          "ballot in containers from the Secretary of State, writes the number of ballots on "
+          "each seal, and both sign it. The clerk stores the sealed containers and keeps a log "
+          "of where they are, and only those working for the clerk, a recount or the "
+          "Secretary of State may reach them.</p>",
+          law=["RSA 656:1-a", "RSA 658:31", "RSA 658:36", "RSA 656:41", "RSA 656:42",
+               "RSA 659:63", "RSA 659:64", "RSA 659:70", "RSA 659:75", "RSA 659:95",
+               "RSA 659:98"]),
+     step("Recounts and the state audit",
+          "<p><b>A recount.</b> A candidate who lost by less than 20 percent of the ballots "
+          "cast may ask the Secretary of State in writing for a recount, no later than the "
+          "Friday after the election, and pays a fee that depends on the office and the "
+          "margin: a candidate for state representative pays $10 when the margin is under one "
+          "percent, and a candidate for governor $500. The Secretary of State and assistants "
+          "recount the ballots in Concord, looking at each one; no machine may be used. The "
+          "candidates may inspect the ballots and protest how any one is counted.</p>"
+          "<p><b>The audit.</b> After each state primary, general election and presidential "
+          "primary, the Secretary of State audits the counting devices. At least 8 devices "
+          "are chosen at random, and which ones is not announced until the polls open. A team "
+          "of at least 2 people runs the paper ballots through separate audit equipment and "
+          "compares its results with the device&rsquo;s, and examines a random sample of the "
+          "paper ballots by hand. The audit is open to the public. If there are significant "
+          "differences, the Secretary of State may look at more ballots or order a full hand "
+          "recount. The results are published before noon on the Friday after the "
+          "election.</p>",
+          law=["RSA 660:1", "RSA 660:2", "RSA 660:4", "RSA 660:5", "RSA 660:33",
+               "RSA 660:35"])],
+    [("Election Officers, RSA 658", "/laws/658"),
+     ("Conduct of Elections, RSA 659", "/laws/659"),
+     ("Recounts and Audits, RSA 660", "/laws/660"),
+     ("Ballots and Counting Devices, RSA 656", "/laws/656"),
+     ("Town Meetings and Moderators, RSA 40", "/laws/40"),
+     ("Town Officers, RSA 41", "/laws/41")],
+    ["658", "659", "660"],
+    [claim("Election officer means any moderator, deputy moderator, assistant moderator, town "
+           "clerk, deputy town clerk, city clerk, deputy city clerk, ward clerk, selectman, "
+           "supervisor of the checklist, registrar, or deputy registrar.", "RSA 652:14",
+           ELECTION_READ),
+     claim("The secretary of state shall be the chief election officer for the state.",
+           "RSA 652:23", ELECTION_READ),
+     claim("Every 2 years or 3 years a moderator shall be chosen by ballot, by plurality vote; "
+           "the election of moderators in city wards shall be at every other regular city "
+           "election.", "RSA 40:1", ELECTION_READ),
+     claim("At any annual town meeting the voters may vote to determine if they are in favor of "
+           "having 2-year or 3-year terms for the moderator.", "RSA 41:1-a", ELECTION_READ),
+     claim("Every town at the annual meeting shall choose, by ballot, a town clerk.", "RSA 41:16",
+           ELECTION_READ),
+     claim("Ballots for use in all state elections shall be prepared and delivered by the "
+           "secretary of state.", "RSA 656:1", ELECTION_READ),
+     claim("The board of supervisors of the checklist shall consist of 3 legal voters of the "
+           "town; at the annual town election in every even numbered year the voters elect one "
+           "supervisor for a term of 6 years; a city or town's legislative body may adopt a "
+           "3-year term.", "RSA 41:46-a", ELECTION_READ),
+     claim("The state political committees of the 2 parties which received the largest number of "
+           "votes cast for governor at the last previous general election appoint, through their "
+           "chairmen, inspectors of election to act at each polling place; if the appointments "
+           "are not made, the selectmen make them in equal numbers from the 2 parties.",
+           "RSA 658:2", ELECTION_READ),
+     claim("The inspectors of election shall be registered to vote at the polling place where "
+           "they serve.", "RSA 658:3", ELECTION_READ),
+     claim("Each inspector of election shall be sworn and shall hold office for 2 years.",
+           "RSA 658:4", ELECTION_READ),
+     claim("The political committees, or the selectmen in consultation with the moderator, may "
+           "designate a list of alternates, called in numerical order when a principal appointee "
+           "is unavailable.", "RSA 658:5", ELECTION_READ),
+     claim("The moderator may appoint an assistant moderator and such other election officials "
+           "as he or she deems necessary; they take the oath and have the powers the moderator "
+           "delegates, except the declaration of the vote; the supervisors may appoint assistant "
+           "supervisors to register voters on election day.", "RSA 658:7", ELECTION_READ),
+     claim("An assistant election official shall be at least 17 years of age.", "RSA 658:7-a",
+           ELECTION_READ),
+     claim("An assistant election official's term expires at the end of the proceedings at the "
+           "election for which he or she was appointed.", "RSA 658:8", ELECTION_READ),
+     claim("The selectmen of each town and ward shall provide a suitable place to hold state "
+           "elections, furnished with a ballot box, pens or pencils and booths.", "RSA 658:9",
+           ELECTION_READ),
+     claim("If an appointed inspector is absent, the selectmen appoint a qualified person, using "
+           "the list of alternates.", "RSA 658:22", ELECTION_READ),
+     claim("A person other than a moderator, clerk, selectman, inspector of election or "
+           "supervisor of the checklist whose name appears on a ballot for an elective position, "
+           "other than a position of an election official, is disqualified from performing "
+           "duties as an election official in that election; those officers are disqualified "
+           "from handling marked ballots and counting votes.", "RSA 658:24", ELECTION_READ),
+     claim("Two of the inspectors, one from each of the 2 political parties, designated by the "
+           "moderator, act as ballot clerks, have charge of the ballots and furnish them to the "
+           "voters, with a duplicate copy of the checklist from the clerk; the other inspectors "
+           "do the duties the moderator assigns, including assisting voters under RSA 659:20.",
+           "RSA 658:25", ELECTION_READ),
+     claim("The seal of the packages of ballots is publicly broken by the clerk, and the ballots "
+           "are examined and counted by the election officers in the presence of the clerk, the "
+           "moderator, and at least one other legal voter.", "RSA 658:31", ELECTION_READ),
+     claim("At the opening of the polls, the ballot box shall be publicly opened and shown to be "
+           "empty.", "RSA 658:36", ELECTION_READ),
+     claim("All elections shall be conducted using paper ballots, for purposes of facilitating "
+           "the examination and recounting of votes cast.", "RSA 656:1-a", ELECTION_READ),
+     claim("No device shall be used in any election unless it reads the voter's choice on a "
+           "paper ballot and is of a type approved by the ballot law commission.", "RSA 656:41",
+           ELECTION_READ),
+     claim("Each device shall be tested after installation and prior to each election; the clerk "
+           "gives public notice of the pre-election test and marks the test ballots \"TEST\"; no "
+           "person shall break a counting device seal without the presence of 2 witnesses, and "
+           "each break is recorded in the activity log; if a seal appears tampered with, the "
+           "moderator shall refrain from using the device and report it to the attorney general, "
+           "the secretary of state, the clerk and the selectmen.", "RSA 656:42", ELECTION_READ),
+     claim("It shall be the duty of the moderator to secure the observance of the provisions "
+           "relating to the conduct of voting.", "RSA 659:9", ELECTION_READ),
+     claim("The supervisors shall be present at the opening of each election with the corrected "
+           "checklist and remain until the close.", "RSA 659:10", ELECTION_READ),
+     claim("A voter who needs assistance receives the assistance of one or both of the "
+           "inspectors of election detailed for that purpose by the moderator, or of a person of "
+           "the voter's choice.", "RSA 659:20", ELECTION_READ),
+     claim("No election officer shall electioneer while in the performance of official duties, "
+           "meaning to act in any way specifically designed to influence the vote of a voter; a "
+           "violation is a misdemeanor.", "RSA 659:44", ELECTION_READ),
+     claim("An election official who is a candidate for an office other than an election "
+           "official shall disqualify himself or herself from the tabulation of votes, and the "
+           "moderator shall appoint an assistant in that official's place.", "RSA 659:58",
+           ELECTION_READ),
+     claim("The moderator shall oversee the counting of votes by other election officers.",
+           "RSA 659:60", ELECTION_READ),
+     claim("The counting and tabulation of votes shall be public and shall not be adjourned nor "
+           "postponed until completed; documents generated during the tabulation shall be "
+           "available for public review when results are announced; the printed results from "
+           "the voting machine shall be posted within 60 minutes of running the last ballot.",
+           "RSA 659:63", ELECTION_READ),
+     claim("Where the election officers disagree over how to count a ballot, it is counted by "
+           "the majority vote of the officials present and counting; if no count has a "
+           "majority, the ballot is defective for that office.", "RSA 659:64", ELECTION_READ),
+     claim("The moderator shall announce the final count for each office and question.",
+           "RSA 659:70", ELECTION_READ),
+     claim("The town or ward clerk shall prepare the election return in the presence of the "
+           "other election officials, in duplicate, and sign and certify it.", "RSA 659:74",
+           ELECTION_READ),
+     claim("One copy of the return shall be forwarded to the secretary of state no later than "
+           "8:00 a.m. on the day following a state election; the other is kept by the clerk and "
+           "open to public inspection.", "RSA 659:75", ELECTION_READ),
+     claim("The moderator, in the presence of the selectmen, places the ballots in the containers "
+           "provided by the secretary of state, seals them, enters the number of ballots on the "
+           "sealer, and both sign it.", "RSA 659:95", ELECTION_READ),
+     claim("The clerk stores the sealed containers, keeps a log of their location, and once "
+           "stored they are accessible only to individuals working under the direction of the "
+           "clerk, as required for recounts, or for the secretary of state.", "RSA 659:98",
+           ELECTION_READ),
+     claim("A candidate may apply in writing to the secretary of state for a recount, no later "
+           "than the Friday following the election, if the difference is less than 20 percent "
+           "of the total ballots cast.", "RSA 660:1", ELECTION_READ),
+     claim("Where the difference is less than one percent: candidate for governor, $500; "
+           "candidate for state representative, $10.", "RSA 660:2", ELECTION_READ),
+     claim("A recount takes place at a state facility in Concord designated by the secretary of "
+           "state.", "RSA 660:4", ELECTION_READ),
+     claim("The secretary of state and assistants shall visually inspect each ballot; no "
+           "mechanical, optical, or electronic device shall be used; the candidates may inspect "
+           "the ballots and protest the counting of any ballot.", "RSA 660:5", ELECTION_READ),
+     claim("The secretary of state shall conduct an audit of the devices used to tabulate ballots "
+           "after each state primary, general elections, and after the presidential primary.",
+           "RSA 660:33", ELECTION_READ),
+     claim("The secretary of state randomly selects not less than 8 devices and does not announce "
+           "them until after the polls are open; each audit team has at least 2 individuals; the "
+           "audit is open to the public; the paper ballots are processed by the audit equipment "
+           "and compared with the device; a random sample of the paper ballots is physically "
+           "examined; on significant differences the secretary may expand the sample or order a "
+           "full hand recount; results are available prior to 12:00 p.m. on the Friday after "
+           "the election.", "RSA 660:35", ELECTION_READ)],
+    more=civics.faq(
+        ("Do I have to belong to a party?",
+         "<p>For an inspector of election, the law looks to the parties: inspectors are appointed from the "
+         "two parties that received the most votes for governor, by their state committees or "
+         "by the selectmen in equal numbers from the two, and the two ballot clerks are one from "
+         "each. The law does not tie the assistants the moderator appoints to a party.</p>"),
+        ("Can I work at the polls if I am on the ballot?",
+         "<p>Not as an election official, if you are running for an office other than an "
+         "election office. A moderator, clerk, selectman, inspector or supervisor who is on the "
+         "ballot keeps their place but may not handle marked ballots or count votes.</p>"),
+        ("Who decides a ballot whose mark is unclear?",
+         "<p>The election officers counting the votes, by majority. If no way of counting it "
+         "wins a majority, the ballot is not counted for that office.</p>"),
+        ("Can I watch the count?",
+         "<p>Yes. The law makes the counting public, and its documents are open for public "
+         "review when the results are announced. The state audit of counting machines is open "
+         "to the public too.</p>"),
+        ("Who oversees elections across the state?",
+         "<p>The Secretary of State, the state&rsquo;s chief election officer, who prepares the "
+         "ballots, receives every town&rsquo;s return, and runs recounts and the audit.</p>")),
+    see=[("How to vote", "/guides/how-to-vote.html"),
+         ("How to run for office", "/guides/run-for-office.html")],
+    figures=[fig("2 or 3 years", "RSA 40:1", "Every 2 years or 3 years"),
+             fig("6 years", "RSA 41:46-a", "one supervisor for a term of 6 years"),
+             fig("3-year", "RSA 41:46-a", "may adopt a 3-year term"),
+             fig("17 years", "RSA 658:7-a", "at least 17 years of age"),
+             fig("2 years", "RSA 658:4", "shall hold office for 2 years"),
+             fig("60 minutes", "RSA 659:63", "within 60 minutes of running the last ballot"),
+             fig("$10", "RSA 660:2", "Candidate for state representative, $10"),
+             fig("$500", "RSA 660:2", "Candidate for president, United States senator or "
+                                      "governor, $500")])
+
+GUIDES += [ELECTION]
+
+
+# ---------------------------------------------------------------------------
 # HOW YOUR PROPERTY TAX IS FIGURED, AND HOW TO READ YOUR BILL (the person, 25
 # October 2026: "how to read your property tax bill or how property taxes are
 # assessed"). From RSA 72, 75, 76 and 21-J alone, read on 25 October 2026 in
@@ -7368,6 +7707,15 @@ GUIDES += [PASSPORT]
 # and words are that page's). The Department of Health and Human Services'
 # page on the savings programs still waits for a printout.
 # Medicaid itself is the food and health guide's.
+#
+# THE GROUNDWORK FIRST (the person, 26 October 2026: the guide "was very
+# dense and I didn't quite understand things like part A and part B, so it
+# may be better to have a separate explanation for each with a bit of
+# groundwork on how the programs are structured before jumping into the step
+# by step"). Step 1 says what each program is and who runs it, from the same
+# printouts and pages, and the steps after it say only what to do. Part C's
+# name, and what Part A and Part B each cover beyond their one-line names,
+# are on no page on hand, so the guide does not say them.
 # ---------------------------------------------------------------------------
 MC_READ = "2026-10-25"
 SSA_PAGES_READ = "2026-10-25"        # the person's printouts of ssa.gov
@@ -7397,25 +7745,64 @@ MEDICARE = guide(
     "When and how to sign up for Medicare, applying for Social Security retirement benefits, "
     "choosing your coverage, and the state and federal programs that help pay Medicare's costs, "
     "with free counseling in New Hampshire.",
-    "You sign up for Medicare through Social Security, generally in the 7 months around your "
-    "65th birthday. If you already get Social Security benefits, you are usually enrolled "
-    "automatically. Social Security retirement benefits can start as early as age 62. If paying "
-    "for Medicare is hard, the state&rsquo;s Medicare Savings Programs and the federal Extra Help "
-    "program can pay some of the costs: apply even if you are not sure you qualify. New "
-    "Hampshire&rsquo;s Aging and Disability Resource Centers give free, one-on-one help.",
+    "Social Security pays benefits to people who worked and paid Social Security taxes, when "
+    "they retire or become disabled, and to some of their families. Medicare is health insurance "
+    "for people 65 or older and some younger people with disabilities. You sign up for Medicare through Social Security, generally in the 7 months "
+    "around your 65th birthday, and if you already get Social Security benefits you are usually "
+    "enrolled automatically. Retirement benefits can start as early as age 62. If paying for "
+    "Medicare is hard, state and federal programs can help with the costs: apply even if you are "
+    "not sure you qualify. New Hampshire&rsquo;s Aging and Disability Resource Centers give free, "
+    "one-on-one help.",
     [ask("Do you already get Social Security benefits?",
          [("Yes", "You are usually enrolled in Medicare automatically. Watch for your card."),
           ("No", "Sign up through Social Security in the 7 months around your 65th birthday.")]),
      box("Choose Original Medicare or a Medicare Advantage Plan, and a drug plan. Review it every "
          "fall, October 15 to December 7."),
      box("If the costs are hard to pay, apply for a Medicare Savings Program and Extra Help.")],
-    [step("Know when to sign up for Medicare",
+    [step("Know how the programs fit together",
+          "<p><b>Social Security</b> is a set of programs run by the Social Security "
+          "Administration:</p><ul>"
+          "<li><b>Retirement benefits</b>, for people who worked and paid Social Security taxes, "
+          "starting as early as age 62.</li>"
+          "<li><b>Disability benefits</b>, for people who worked and paid Social Security taxes "
+          "long enough and have a medical condition that makes it hard or impossible to work and "
+          "will last at least one year or result in death.</li>"
+          "<li><b>Family and survivor benefits</b>, for the spouse, former spouse, child or "
+          "dependent parent of someone who worked and paid Social Security taxes.</li>"
+          "<li><b>Supplemental Security Income (SSI)</b>, a separate program for people who are "
+          "blind, have a disability, or are 65 or older, and have little or no income or "
+          "assets.</li></ul>"
+          "<p><b>Medicare</b> is the country&rsquo;s health insurance program for people 65 or "
+          "older, and for some younger people (see Common Questions below). It comes in "
+          "parts:</p>"
+          + table("The parts of Medicare",
+                  ["Part", "What it is", "How you get it"],
+                  [["Part A", "Hospital insurance.",
+                    "Through Social Security. Many people are enrolled automatically (step 2)."],
+                   ["Part B", "The second part of Medicare, which New Hampshire&rsquo;s Department of "
+                    "Health and Human Services calls supplemental insurance. It has a premium, and "
+                    "signing up late can add a penalty for as long as you have it.",
+                    "Through Social Security, with Part A, or later on its own. You can put it off "
+                    "while a job&rsquo;s group health plan covers you."],
+                   ["Medicare Advantage Plan", "A plan you can choose instead of Original Medicare. "
+                    "You need both Part A and Part B to join one.",
+                    "You choose one on Medicare.gov (step 5)."],
+                   ["Drug coverage (Part D)", "A drug plan, which you can add to Original Medicare.",
+                    "You choose one on Medicare.gov (step 5)."]])
+          + "<p>You sign up for Part A and Part B through Social Security, which can take your "
+          "premiums out of your benefit payments. You choose a Medicare Advantage Plan or a drug "
+          "plan on Medicare.gov.</p>"
+          "<p><b>Help with the costs</b> comes from two programs: the state&rsquo;s <b>Medicare "
+          "Savings Programs</b>, which help pay Medicare premiums and, for some people, other "
+          "costs; and the federal <b>Extra Help</b> program, which pays part of the cost of drug "
+          "coverage. Step 6 says who qualifies and how to apply.</p>"),
+     step("Know when to sign up for Medicare",
           "<p>Your first chance is your Initial Enrollment Period: 7 months, starting 3 months "
           "before the month you turn 65 and ending 3 months after it. Coverage always starts on "
           "the first of a month, and signing up before your birthday month means it starts "
           "sooner.</p>"
-          "<p><b>You are enrolled automatically</b> in Part A (hospital insurance) and Part B "
-          "(medical insurance) if you start getting Social Security benefits at least 4 months "
+          "<p><b>You are enrolled automatically</b> in Part A and Part B "
+          "if you start getting Social Security benefits at least 4 months "
           "before you turn 65, or after you have received disability benefits for 24 months. "
           "Your Medicare card comes in the mail.</p>"
           "<p><b>If you miss your first chance,</b> you may have to wait for the General "
@@ -7429,8 +7816,7 @@ MEDICARE = guide(
           "Administration, not through Medicare. The easiest way is online, with a my Social "
           "Security account, if you are 65 or older. You can also call Social Security at "
           "1-800-772-1213, Monday through Friday, 8 a.m. to 7 p.m. (TTY 1-800-325-0778), and "
-          "make an appointment. If a job&rsquo;s group health plan covers you, you can delay "
-          "Part B.</p>",
+          "make an appointment.</p>",
           actions=[("Sign up for Medicare (Medicare)", MEDICARE_SIGNUP),
                    ("Sign up for Medicare (Social Security)", SSA_MEDICARE)]),
      step("Apply for Social Security retirement benefits",
@@ -7440,23 +7826,26 @@ MEDICARE = guide(
           "lets you enroll in Medicare, or call 1-800-772-1213.</p>",
           actions=[("Apply for benefits (Social Security)", SSA_APPLY)]),
      step("Choose your coverage, and review it every fall",
-          "<p>With Part A and Part B, you choose between Original Medicare, which you can pair "
-          "with a separate drug plan, and a Medicare Advantage Plan, which needs both Part A "
-          "and Part B. Each fall, from <b>October 15 to December 7</b>, you can join, switch or "
-          "drop a plan, and the change starts January 1.</p>"
+          "<p>With Part A and Part B, you choose between Original Medicare, with or without a "
+          "drug plan, and a Medicare Advantage Plan. Each fall, from <b>October 15 to December "
+          "7</b>, you can join, switch or drop a plan, and the change starts January 1.</p>"
           "<p>For free help comparing plans, call your Aging and Disability Resource "
           "Center (below), or 1-800-MEDICARE (1-800-633-4227), any hour of any day.</p>",
           actions=[("Joining a plan (Medicare)", MEDICARE_PLANS)]),
      step("Get help paying the costs",
-          "<p><b>Medicare Savings Programs</b> are run by the state. Depending on your income "
-          "and savings, they help pay your Medicare premiums, and the most generous one also pays "
-          "your deductibles, coinsurance and copayments, so that Medicare providers may not bill "
-          "you for covered care. In New Hampshire they are the <b>Medicare Beneficiaries Savings "
-          "Program</b>, also called the Buy-In program: QMB, SLMB, and QDWI, which pays the Part "
-          "A premium of people with disabilities who work and have lost Medicare because of their "
-          "earnings. Your home and vehicles do not count against its limits. "
-          "Apply to the Department of Health and Human Services through NH Easy, under Medicare "
-          "beneficiary assistance; its Customer Service Center answers at 1-844-ASK-DHHS "
+          "<p>New Hampshire&rsquo;s <b>Medicare Savings Programs</b> are together called the "
+          "<b>Medicare Beneficiaries Savings Program</b>, or the Buy-In program. They are for "
+          "people with low incomes who are eligible for Medicare, and your home and vehicles do "
+          "not count against their limits:</p>"
+          + table("What each Medicare Savings Program pays",
+                  ["Program", "What it helps pay"],
+                  [["QMB", "Part A and Part B premiums, penalties for signing up late, deductibles "
+                    "and coinsurance. Medicare providers may not bill you for covered care."],
+                   ["SLMB", "The Part B premium and penalties for signing up late."],
+                   ["QDWI", "The Part A premium, for people with disabilities who work and have "
+                    "lost Medicare because of their earnings."]])
+          + "<p>Apply to the Department of Health and Human Services through NH Easy, under "
+          "Medicare beneficiary assistance; its Customer Service Center answers at 1-844-ASK-DHHS "
           "(1-844-275-3447), Monday through Friday, 8 a.m. to 4 p.m. Medicare advises applying "
           "even if you do not think you qualify.</p>"
           "<p><b>Extra Help</b> is a federal program that pays part of your drug plan&rsquo;s "
@@ -7528,16 +7917,28 @@ MEDICARE = guide(
      # Social Security's and the Department's own pages, from the person's printouts.
      claim("Retirement benefits: you're at least 62 years old; you've worked and paid Social "
            "Security taxes for at least 10 years; you may also enroll in Medicare if you are "
-           "eligible. Disability benefits: a medical condition that will last at least one "
-           "year or result in death; you worked and paid Social Security taxes long enough. "
-           "SSI for Disability and SSI for Age 65+: little or no income or assets.",
+           "eligible. Family benefits: you're a spouse, ex-spouse, child, or dependent parent of "
+           "someone who worked and paid Social Security taxes. Disability benefits: you have a "
+           "medical condition that will last at least one year or result in death; your "
+           "condition makes it hard or impossible to work; you worked and paid Social Security "
+           "taxes long enough. Survivor benefits: a spouse, ex-spouse, child, or dependent parent "
+           "of someone who worked and paid Social Security taxes before they died. Supplemental "
+           "Security Income (SSI): SSI for Disability, you're blind or have a disability; SSI for "
+           "Age 65+, you're 65 or older; you have little or no income or assets such as money or "
+           "property.",
            SSA_APPLY, SSA_PAGES_READ),
-     claim("You'll sign up for Medicare Part A and Part B through Social Security; under 65, "
+     claim("Medicare is our country's health insurance program for people age 65 or older. "
+           "You'll sign up for Medicare Part A and Part B through Social Security, so you can "
+           "make both retirement and Medicare choices and withhold any premiums from your benefit "
+           "payments; under 65, "
            "eligible with permanent kidney failure or if you receive Disability benefits; SSI "
            "does not qualify you for Medicare on its own; if you're 65 or older, you can enroll "
            "online; you can delay Part B if you're already covered through an employer group "
-           "health plan; make an appointment: call 800-772-1213, Monday through Friday, 8 a.m. "
-           "to 7 p.m.; TTY 800-325-0778.", SSA_MEDICARE, SSA_PAGES_READ),
+           "health plan; sign up for Part B only if you already have Part A and previously "
+           "declined or never signed up for Part B; review and sign up for Medicare Advantage and "
+           "drug plans on Medicare.gov; Apply for Part D Extra Help; make an appointment: call "
+           "800-772-1213, Monday through Friday, 8 a.m. to 7 p.m.; TTY 800-325-0778.",
+           SSA_MEDICARE, SSA_PAGES_READ),
      claim("With a personal my Social Security account: request a replacement Social Security "
            "Number card; change your address or direct deposit; print proof of benefits or tax "
            "forms; get your Social Security Statement; review earnings; create it through "
@@ -7545,7 +7946,8 @@ MEDICARE = guide(
            "number or a device with a camera.", SSA_ACCOUNT, SSA_PAGES_READ),
      claim("The Medicare Beneficiaries Savings Program assists low-income elderly or disabled "
            "individuals who are eligible for Medicare; also referred to as the Buy-In program; "
-           "QMB helps pay the Part A and Part B premiums, premium penalties for late enrollment, "
+           "QMB helps pay the Medicare Part A (hospital insurance) premium, Medicare Part B "
+           "(supplemental insurance) premium, premium penalties for late enrollment, "
            "deductibles and coinsurance; SLMB or SLMB135 help pay the Part B premium and late "
            "penalties; QDWI pays the Part A premium of disabled working individuals who have "
            "lost Medicare due to earnings; a current resident of NH, no length of time; we do "
@@ -9390,6 +9792,8 @@ TASKS = [
              "Who files where and when, and what it takes, from governor to town offices."),
         task("town-warrant-article", "Put an article on your town meeting warrant",
              "Petition your selectmen or school board to put a question to the voters."),
+        task("election-worker", "Work at the polls on election day",
+             "Who runs a polling place, how to be appointed, and how the count is checked."),
     ]),
     ("Driving and Vehicles", [
         task("renew-drivers-license", "Renew your driver&rsquo;s license",
@@ -9661,6 +10065,8 @@ WORDS = {
                  "ds-11", "ds-82", "international travel"),
     "town-warrant-article": ("warrant article", "petitioned article", "town meeting",
                              "school district meeting", "petition"),
+    "election-worker": ("poll worker", "election worker", "ballot clerk", "inspector of election",
+                        "moderator", "volunteer", "recount", "audit", "supervisors of the checklist"),
     "tour-the-state-house": ("tour", "visit the state house", "field trip", "school trip",
                              "visitor center"),
 }
