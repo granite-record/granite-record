@@ -4050,6 +4050,11 @@
    "es": "Solicite por medio de la agencia",
    "state": "draft"
   },
+  "guide.heating-and-electric-help.ask-about-an-interview-at-home": {
+   "en": "Ask about an interview at home or by phone, or a mail-in application.",
+   "es": "Pregunte por una entrevista en su casa o por teléfono, o por una solicitud por correo.",
+   "state": "draft"
+  },
   "guide.heating-and-electric-help.belknap-and-merrimack": {
    "en": "Belknap and Merrimack",
    "es": "Belknap y Merrimack",
@@ -4085,6 +4090,11 @@
    "es": "Cheshire y Sullivan",
    "state": "draft"
   },
+  "guide.heating-and-electric-help.common-questions": {
+   "en": "Common Questions",
+   "es": "Preguntas frecuentes",
+   "state": "draft"
+  },
   "guide.heating-and-electric-help.community-action-agencies-by-county": {
    "en": "Community action agencies by county (Department of Energy, October 12, 2026)",
    "es": "Agencias de acción comunitaria por condado (Departamento de Energía, 12 de octubre de 2026)",
@@ -4118,6 +4128,11 @@
   "guide.heating-and-electric-help.department-of-energy-rsa-12-p": {
    "en": "Department of Energy, RSA 12-P",
    "es": "Departamento de Energía, RSA 12-P",
+   "state": "draft"
+  },
+  "guide.heating-and-electric-help.do-i-have-to-pay-fuel": {
+   "en": "Do I have to pay fuel assistance back?",
+   "es": "¿Tengo que devolver la ayuda para combustible?",
    "state": "draft"
   },
   "guide.heating-and-electric-help.electric-assistance-is-a-discount-on": {
@@ -4156,8 +4171,8 @@
    "state": "draft"
   },
   "guide.heating-and-electric-help.fuel-assistance-helps-with-heating-costs": {
-   "en": "<b>Fuel assistance</b> helps with heating costs as funds become available. It is a grant, not a loan, and it is not counted as income when you apply for other help. The amount depends on household income, energy costs, the local climate and your kind of housing. The Department&rsquo;s page gives the current range.",
-   "es": "<b>La ayuda para combustible</b> ayuda con los costos de calefacción a medida que hay fondos disponibles. Es una subvención, no un préstamo, y no cuenta como ingreso cuando solicita otras ayudas. La cantidad depende de los ingresos del hogar, los costos de energía, el clima local y su tipo de vivienda. La página del Departamento da el rango actual.",
+   "en": "<b>Fuel assistance</b> helps with heating costs as funds become available. It is a grant, not a loan.",
+   "es": "<b>La ayuda para combustible</b> ayuda con los costos de calefacción a medida que hay fondos disponibles. Es una subvención, no un préstamo.",
    "state": "draft"
   },
   "guide.heating-and-electric-help.fuel-assistance-program": {
@@ -4175,6 +4190,11 @@
    "es": "Hillsborough y Rockingham",
    "state": "draft"
   },
+  "guide.heating-and-electric-help.how-much-fuel-assistance-will-i": {
+   "en": "How much fuel assistance will I get?",
+   "es": "¿Cuánta ayuda para combustible recibiré?",
+   "state": "draft"
+  },
   "guide.heating-and-electric-help.how-to-apply-for-food-or": {
    "en": "How to apply for food or health assistance",
    "es": "Cómo solicitar ayuda para alimentos o salud",
@@ -4183,11 +4203,6 @@
   "guide.heating-and-electric-help.how-to-prepare-for-storms-power": {
    "en": "How to prepare for storms, power outages and other emergencies",
    "es": "Cómo prepararse para tormentas, cortes de electricidad y otras emergencias",
-   "state": "draft"
-  },
-  "guide.heating-and-electric-help.if-you-cannot-get-to-an": {
-   "en": "If you cannot get to an office, ask about an interview at home or by phone, or a mail-in application.",
-   "es": "Si no puede ir a una oficina, pregunte por una entrevista en su casa o por teléfono, o por una solicitud por correo.",
    "state": "draft"
   },
   "guide.heating-and-electric-help.if-you-heat-with-oil-kerosene": {
@@ -4235,6 +4250,11 @@
    "es": "¿Se quedó sin calefacción ahora? Llame a la agencia y diga que es una emergencia.",
    "state": "draft"
   },
+  "guide.heating-and-electric-help.no-it-is-a-grant-not": {
+   "en": "No. It is a grant, not a loan, and it is not counted as income when you apply for other help.",
+   "es": "No. Es una subvención, no un préstamo, y no cuenta como ingreso cuando solicita otras ayudas.",
+   "state": "draft"
+  },
   "guide.heating-and-electric-help.phone": {
    "en": "Phone",
    "es": "Teléfono",
@@ -4255,6 +4275,11 @@
    "es": "Strafford",
    "state": "draft"
   },
+  "guide.heating-and-electric-help.the-amount-depends-on-household-income": {
+   "en": "The amount depends on household income, energy costs, the local climate and your kind of housing. The Department&rsquo;s page gives the current range.",
+   "es": "La cantidad depende de los ingresos del hogar, los costos de energía, el clima local y su tipo de vivienda. La página del Departamento da el rango actual.",
+   "state": "draft"
+  },
   "guide.heating-and-electric-help.title": {
    "en": "How to Get Help With Heating and Electric Bills",
    "es": "Cómo obtener ayuda con las facturas de calefacción y electricidad",
@@ -4268,6 +4293,16 @@
   "guide.heating-and-electric-help.weatherization-helps-lower-income": {
    "en": "<b>Weatherization</b> helps lower-income households make their homes cheaper to heat.",
    "es": "<b>La climatización</b> ayuda a los hogares de menores ingresos a que les cueste menos calentar su vivienda.",
+   "state": "draft"
+  },
+  "guide.heating-and-electric-help.what-if-i-cannot-get-to": {
+   "en": "What if I cannot get to an office?",
+   "es": "¿Y si no puedo ir a una oficina?",
+   "state": "draft"
+  },
+  "guide.heating-and-electric-help.when-should-i-order-heating-fuel": {
+   "en": "When should I order heating fuel?",
+   "es": "¿Cuándo debo pedir combustible para calefacción?",
    "state": "draft"
   },
   "guide.heating-and-electric-help.your-community-action-agency-is-where": {
@@ -6212,8 +6247,8 @@
    "state": "draft"
   },
   "guide.property-tax-abatement.a-disproportionate-assessment-you-show": {
-   "en": "<b>A disproportionate assessment.</b> You show what the property was worth on April 1 of the tax year, with an appraisal or sales of comparable properties, and that your <em>equalized assessment</em> is higher. To get it, divide your assessment by your town&rsquo;s equalization ratio.",
-   "es": "<b>Un avalúo desproporcionado.</b> Usted muestra lo que valía la propiedad el 1 de abril del año fiscal, con una tasación o con ventas de propiedades comparables, y que su <em>avalúo igualado</em> es mayor. Para obtenerlo, divida su avalúo entre el índice de igualación (equalization ratio) de su municipio.",
+   "en": "<b>A disproportionate assessment.</b> You show what the property was worth on April 1 of the tax year, with an appraisal or sales of comparable properties, and that your <em>equalized assessment</em> is higher.",
+   "es": "<b>Un avalúo desproporcionado.</b> Usted muestra lo que valía la propiedad el 1 de abril del año fiscal, con una tasación o con ventas de propiedades comparables, y que su <em>avalúo igualado</em> es mayor.",
    "state": "draft"
   },
   "guide.property-tax-abatement.a-town-may-abate-a-tax": {
@@ -6281,9 +6316,29 @@
    "es": "A más tardar el 1 de septiembre. Uno u otro, no ambos.",
    "state": "draft"
   },
+  "guide.property-tax-abatement.can-i-file-an-appeal-online": {
+   "en": "Can I file an appeal online?",
+   "es": "¿Puedo presentar una apelación en línea?",
+   "state": "draft"
+  },
+  "guide.property-tax-abatement.common-questions": {
+   "en": "Common Questions",
+   "es": "Preguntas frecuentes",
+   "state": "draft"
+  },
   "guide.property-tax-abatement.commonly-asked-questions": {
    "en": "Commonly asked questions",
    "es": "Preguntas frecuentes",
+   "state": "draft"
+  },
+  "guide.property-tax-abatement.divide-your-assessment-by-your-towns": {
+   "en": "Divide your assessment by your town&rsquo;s equalization ratio.",
+   "es": "Divida su avalúo entre el índice de igualación (equalization ratio) de su municipio.",
+   "state": "draft"
+  },
+  "guide.property-tax-abatement.does-the-application-form-cost-anything": {
+   "en": "Does the application form cost anything?",
+   "es": "¿Cuesta algo el formulario de solicitud?",
    "state": "draft"
   },
   "guide.property-tax-abatement.every-deadline-counts-from-the-notice": {
@@ -6316,14 +6371,19 @@
    "es": "Ayuda para pagar el impuesto a la propiedad con ingresos bajos o moderados",
    "state": "draft"
   },
-  "guide.property-tax-abatement.if-a-fire-or-disaster-damaged": {
-   "en": "If a Fire or Disaster Damaged Your Building",
-   "es": "Si un incendio o un desastre dañó su edificio",
+  "guide.property-tax-abatement.how-do-i-work-out-my": {
+   "en": "How do I work out my equalized assessment?",
+   "es": "¿Cómo calculo mi avalúo igualado?",
    "state": "draft"
   },
   "guide.property-tax-abatement.if-you-believe-your-assessment-does": {
    "en": "If you believe your assessment does not reflect your property&rsquo;s value, or you are unable to pay because of poverty, you can ask your town or city for an <em>abatement</em> by March 1 after your final tax bill. It has until July 1 to decide, and silence counts as no. Then you can appeal to the Board of Tax and Land Appeals or the Superior Court, one or the other, by September 1. Keep paying your taxes meanwhile: if an abatement is granted, the amount abated is refunded with interest.",
    "es": "Si cree que su avalúo no refleja el valor de su propiedad, o no puede pagar debido a la pobreza, puede pedir a su municipio o ciudad una <em>reducción</em> (abatement) a más tardar el 1 de marzo siguiente a su factura final del impuesto. El municipio tiene hasta el 1 de julio para decidir, y el silencio cuenta como un no. Luego puede apelar ante la Junta de Apelaciones de Impuestos y Terrenos o ante el Tribunal Superior, uno u otro, a más tardar el 1 de septiembre. Mientras tanto, siga pagando sus impuestos: si se concede una reducción, la cantidad reducida se le reembolsa con intereses.",
+   "state": "draft"
+  },
+  "guide.property-tax-abatement.it-is-filed-on-the-day": {
+   "en": "It is filed on the day you hand it in, the day it is postmarked, or the day an overnight carrier receipts it.",
+   "es": "Se considera presentada el día en que la entrega, el día del matasellos, o el día en que la recibe un servicio de entrega al día siguiente.",
    "state": "draft"
   },
   "guide.property-tax-abatement.know-your-deadlines": {
@@ -6334,6 +6394,11 @@
   "guide.property-tax-abatement.lead": {
    "en": "Asking your town or city for a property tax abatement, and appealing to the Board of Tax and Land Appeals or the Superior Court if it says no, step by step, with every deadline.",
    "es": "Cómo pedir a su municipio o ciudad una reducción (abatement) del impuesto a la propiedad, y cómo apelar ante la Junta de Apelaciones de Impuestos y Terrenos (Board of Tax and Land Appeals) o el Tribunal Superior si se la niegan, paso a paso, con cada plazo.",
+   "state": "draft"
+  },
+  "guide.property-tax-abatement.no-the-board-of-tax-and": {
+   "en": "No. The Board of Tax and Land Appeals does not accept appeals filed electronically.",
+   "es": "No. La Junta de Apelaciones de Impuestos y Terrenos no acepta apelaciones presentadas por medios electrónicos.",
    "state": "draft"
   },
   "guide.property-tax-abatement.or-to-the-superior-court": {
@@ -6417,8 +6482,8 @@
    "state": "draft"
   },
   "guide.property-tax-abatement.use-the-boards-abatement-application": {
-   "en": "Use the Board&rsquo;s abatement application, sign it, and keep a copy. It is filed on the day you hand it in, the day it is postmarked, or the day an overnight carrier receipts it. Your town may charge for the form.",
-   "es": "Use la solicitud de reducción de la Junta, fírmela y guarde una copia. Se considera presentada el día en que la entrega, el día del matasellos, o el día en que la recibe un servicio de entrega al día siguiente. Su municipio puede cobrar por el formulario.",
+   "en": "Use the Board&rsquo;s abatement application, sign it, and keep a copy.",
+   "es": "Use la solicitud de reducción de la Junta, fírmela y guarde una copia.",
    "state": "draft"
   },
   "guide.property-tax-abatement.wait-for-the-decision": {
@@ -6431,9 +6496,29 @@
    "es": "¿Le negaron la reducción?",
    "state": "draft"
   },
+  "guide.property-tax-abatement.what-if-a-fire-or-disaster": {
+   "en": "What if a fire or disaster damaged my building?",
+   "es": "¿Y si un incendio o un desastre dañó mi edificio?",
+   "state": "draft"
+  },
+  "guide.property-tax-abatement.what-if-i-lose-my-appeal": {
+   "en": "What if I lose my appeal?",
+   "es": "¿Y si pierdo mi apelación?",
+   "state": "draft"
+  },
   "guide.property-tax-abatement.when-a-fire-you-did-not": {
    "en": "When a fire you did not cause, or a natural disaster, leaves a building unusable during the tax year, its assessment is prorated for the days it could be used. Apply in writing to your town within 60 days of the damage or by March 1, whichever is later. Appeals follow the same routes and deadlines (<a href=\"/laws/76#s21\">RSA 76:21</a>).",
    "es": "Cuando un incendio que usted no causó, o un desastre natural, deja un edificio inutilizable durante el año fiscal, su avalúo se prorratea según los días en que pudo usarse. Presente la solicitud por escrito a su municipio en un plazo de 60 días desde el daño o a más tardar el 1 de marzo, lo que ocurra más tarde. Las apelaciones siguen las mismas vías y plazos (<a href=\"/laws/76#s21\">RSA 76:21</a>).",
+   "state": "draft"
+  },
+  "guide.property-tax-abatement.when-does-my-application-count-as": {
+   "en": "When does my application count as filed?",
+   "es": "¿Cuándo se considera presentada mi solicitud?",
+   "state": "draft"
+  },
+  "guide.property-tax-abatement.whether-you-appealed-to-the-board": {
+   "en": "Whether you appealed to the Board or to the Superior Court, the decision can then be appealed to the Supreme Court.",
+   "es": "Tanto si apeló ante la Junta como ante el Tribunal Superior, la decisión puede apelarse después ante la Corte Suprema.",
    "state": "draft"
   },
   "guide.property-tax-abatement.within-2-months-of-the-bill": {
@@ -6452,8 +6537,13 @@
    "state": "draft"
   },
   "guide.property-tax-abatement.you-can-appeal-to-the-board": {
-   "en": "You can appeal to the <b>Board of Tax and Land Appeals</b> or to the <b>Superior Court</b>, but not both. For the Board, fill in its appeal form and mail it or hand it in, with the $65 filing fee by check or money order payable to &ldquo;Treasurer, State of NH&rdquo;, to the Board of Tax and Land Appeals, 107 Pleasant Street, Johnson Hall, Concord, NH 03301. It does not accept appeals filed electronically. Either way, the decision can then be appealed to the Supreme Court.",
-   "es": "Puede apelar ante la <b>Junta de Apelaciones de Impuestos y Terrenos</b> o ante el <b>Tribunal Superior</b>, pero no ante ambos. Para la Junta, llene el formulario de apelación de la Junta y envíelo por correo o entréguelo, con la cuota de presentación de $65 en cheque o giro postal a nombre de &ldquo;Treasurer, State of NH&rdquo;, a Board of Tax and Land Appeals, 107 Pleasant Street, Johnson Hall, Concord, NH 03301. No acepta apelaciones presentadas por medios electrónicos. En cualquier caso, la decisión puede apelarse después ante la Corte Suprema.",
+   "en": "You can appeal to the <b>Board of Tax and Land Appeals</b> or to the <b>Superior Court</b>, but not both. For the Board, fill in its appeal form and mail it or hand it in, with the $65 filing fee by check or money order payable to &ldquo;Treasurer, State of NH&rdquo;, to the Board of Tax and Land Appeals, 107 Pleasant Street, Johnson Hall, Concord, NH 03301.",
+   "es": "Puede apelar ante la <b>Junta de Apelaciones de Impuestos y Terrenos</b> o ante el <b>Tribunal Superior</b>, pero no ante ambos. Para la Junta, llene el formulario de apelación de la Junta y envíelo por correo o entréguelo, con la cuota de presentación de $65 en cheque o giro postal a nombre de &ldquo;Treasurer, State of NH&rdquo;, a Board of Tax and Land Appeals, 107 Pleasant Street, Johnson Hall, Concord, NH 03301.",
+   "state": "draft"
+  },
+  "guide.property-tax-abatement.your-town-may-charge-for-the": {
+   "en": "Your town may charge for the form.",
+   "es": "Su municipio puede cobrar por el formulario.",
    "state": "draft"
   },
   "guide.property-tax-abatement.your-town-or-citys-assessing-officials": {
@@ -6477,9 +6567,9 @@
    "state": "draft"
   },
   "guide.property-tax-bill.a-tax-deferral-lets-an-owner": {
-   "en": "A <b>tax deferral</b> lets an owner who is 65 or older, or eligible for Social Security disability benefits, put off all or part of the tax, with interest at 5 percent a year, if paying it would cause undue hardship. You must live in the home and have owned it for at least 5 consecutive years if you apply by age, or one year if you apply by disability. Apply by March 1 after the final tax bill. A mortgage lender must agree. When the home is sold, the deferred tax and its interest must be paid in full. When the owner dies, the heirs may pay it off within 9 months; after that the town may send it to the tax collector.",
-   "state": "draft",
-   "es": "Un <b>aplazamiento del impuesto</b> permite a un propietario de 65 años o más, o que reúne los requisitos para recibir beneficios por discapacidad del Seguro Social, posponer todo el impuesto o parte de él, con un interés del 5 por ciento al año, si pagarlo le causaría una dificultad excesiva. Tiene que vivir en la vivienda y ser su dueño desde hace al menos 5 años seguidos si lo solicita por su edad, o un año si lo solicita por discapacidad. Solicítelo a más tardar el 1 de marzo siguiente a la factura final. Si la vivienda tiene una hipoteca, el prestamista tiene que estar de acuerdo. Cuando se vende la vivienda, el impuesto aplazado y sus intereses se tienen que pagar en su totalidad. Cuando muere el propietario, los herederos pueden saldarlo en un plazo de 9 meses; después, el municipio puede enviarlo al recaudador de impuestos."
+   "en": "A <b>tax deferral</b> lets an owner who is 65 or older, or eligible for Social Security disability benefits, put off all or part of the tax, with interest at 5 percent a year, if paying it would cause undue hardship. You must live in the home and have owned it for at least 5 consecutive years if you apply by age, or one year if you apply by disability. Apply by March 1 after the final tax bill. A mortgage lender must agree.",
+   "es": "Un <b>aplazamiento del impuesto</b> permite a un propietario de 65 años o más, o que reúne los requisitos para recibir beneficios por discapacidad del Seguro Social, posponer todo el impuesto o parte de él, con un interés del 5 por ciento al año, si pagarlo le causaría una dificultad excesiva. Tiene que vivir en la vivienda y ser su dueño desde hace al menos 5 años seguidos si lo solicita por su edad, o un año si lo solicita por discapacidad. Solicítelo a más tardar el 1 de marzo siguiente a la factura final. Si la vivienda tiene una hipoteca, el prestamista tiene que estar de acuerdo.",
+   "state": "draft"
   },
   "guide.property-tax-bill.a-town-that-has-voted-to": {
    "en": "A town that has voted to bill twice a year sends a first bill, worked out from last year&rsquo;s assessment and half of last year&rsquo;s rate, due July 1, and a second bill for the rest of the year&rsquo;s tax, once the new rate is set, due December 1. Ask your tax collector which your town does.",
@@ -6509,6 +6599,21 @@
   "guide.property-tax-bill.ask-your-town-for-an-abatement": {
    "en": "Ask your town for an abatement, by March 1 after the final bill.",
    "es": "Pida a su municipio una reducción, a más tardar el 1 de marzo siguiente a la factura final.",
+   "state": "draft"
+  },
+  "guide.property-tax-bill.between-revaluations-assessments-can": {
+   "en": "Between revaluations, assessments can drift from what properties sell for, and a town&rsquo;s <em>equalization ratio</em> measures how far; the guide to appealing your assessment explains how to use it.",
+   "es": "Entre una revaluación y otra, los avalúos pueden alejarse de los precios de venta de las propiedades, y el <em>coeficiente de igualación</em> (equalization ratio) del municipio mide cuánto; la guía para apelar su avalúo explica cómo usarlo.",
+   "state": "draft"
+  },
+  "guide.property-tax-bill.can-my-mortgage-lender-get-a": {
+   "en": "Can my mortgage lender get a copy of my bill?",
+   "es": "¿Puede mi prestamista hipotecario obtener una copia de mi factura?",
+   "state": "draft"
+  },
+  "guide.property-tax-bill.common-questions": {
+   "en": "Common Questions",
+   "es": "Preguntas frecuentes",
    "state": "draft"
   },
   "guide.property-tax-bill.department-of-revenue-administration-rsa": {
@@ -6692,13 +6797,13 @@
    "state": "draft"
   },
   "guide.property-tax-bill.the-state-education-tax-rate-is": {
-   "en": "The state education tax rate is set by the Department each year to raise a sum the law fixes statewide. So your tax can change even when your assessment does not: when a budget rises or falls, or other revenue changes.",
-   "es": "El Departamento fija cada año la tasa del impuesto estatal para la educación para recaudar una suma que la ley establece para todo el estado. Por eso su impuesto puede cambiar aunque su avalúo no cambie: cuando un presupuesto sube o baja, o cambian otros ingresos.",
+   "en": "The state education tax rate is set by the Department each year to raise a sum the law fixes statewide.",
+   "es": "El Departamento fija cada año la tasa del impuesto estatal para la educación para recaudar una suma que la ley establece para todo el estado.",
    "state": "draft"
   },
   "guide.property-tax-bill.the-tax-year-runs-from-april": {
-   "en": "The tax year runs from April 1 to March 31, and every property is taxed on what it was on April 1. Between revaluations, assessments can drift from what properties sell for, and a town&rsquo;s <em>equalization ratio</em> measures how far; the guide to appealing your assessment explains how to use it.",
-   "es": "El año fiscal va del 1 de abril al 31 de marzo, y cada propiedad paga impuestos según cómo estaba el 1 de abril. Entre una revaluación y otra, los avalúos pueden alejarse de los precios de venta de las propiedades, y el <em>coeficiente de igualación</em> (equalization ratio) del municipio mide cuánto; la guía para apelar su avalúo explica cómo usarlo.",
+   "en": "The tax year runs from April 1 to March 31, and every property is taxed on what it was on April 1.",
+   "es": "El año fiscal va del 1 de abril al 31 de marzo, y cada propiedad paga impuestos según cómo estaba el 1 de abril.",
    "state": "draft"
   },
   "guide.property-tax-bill.title": {
@@ -6721,14 +6826,34 @@
    "es": "Crédito tributario para veteranos",
    "state": "draft"
   },
+  "guide.property-tax-bill.what-happens-to-deferred-tax-when": {
+   "en": "What happens to deferred tax when the home is sold or the owner dies?",
+   "es": "¿Qué pasa con el impuesto aplazado cuando se vende la vivienda o muere el propietario?",
+   "state": "draft"
+  },
+  "guide.property-tax-bill.what-is-the-equalization-ratio": {
+   "en": "What is the equalization ratio?",
+   "es": "¿Qué es el coeficiente de igualación?",
+   "state": "draft"
+  },
   "guide.property-tax-bill.when-it-is-due": {
    "en": "When it is due",
    "es": "Cuándo vence",
    "state": "draft"
   },
+  "guide.property-tax-bill.when-the-home-is-sold-the": {
+   "en": "When the home is sold, the deferred tax and its interest must be paid in full. When the owner dies, the heirs may pay it off within 9 months; after that the town may send it to the tax collector.",
+   "es": "Cuando se vende la vivienda, el impuesto aplazado y sus intereses se tienen que pagar en su totalidad. Cuando muere el propietario, los herederos pueden saldarlo en un plazo de 9 meses; después, el municipio puede enviarlo al recaudador de impuestos.",
+   "state": "draft"
+  },
   "guide.property-tax-bill.who-it-is-for": {
    "en": "Who it is for",
    "es": "Para quién es",
+   "state": "draft"
+  },
+  "guide.property-tax-bill.why-did-my-tax-change-when": {
+   "en": "Why did my tax change when my assessment did not?",
+   "es": "¿Por qué cambió mi impuesto si mi avalúo no cambió?",
    "state": "draft"
   },
   "guide.property-tax-bill.your-assessed-valuation-the-value-of": {
@@ -6749,6 +6874,11 @@
   "guide.property-tax-bill.your-right-to-ask-for-an": {
    "en": "<b>Your right to ask for an abatement</b>, in writing, from your selectmen or assessors.",
    "es": "<b>Su derecho a pedir una reducción</b>, por escrito, a los concejales o a los tasadores.",
+   "state": "draft"
+  },
+  "guide.property-tax-bill.your-tax-can-change-even-when": {
+   "en": "Your tax can change even when your assessment does not: when a budget rises or falls, or other revenue changes.",
+   "es": "Su impuesto puede cambiar aunque su avalúo no cambie: cuando un presupuesto sube o baja, o cambian otros ingresos.",
    "state": "draft"
   },
   "guide.property-tax-bill.your-town-assesses-your-property-at": {
@@ -6806,11 +6936,6 @@
    "es": "603 Legal Aid",
    "state": "draft"
   },
-  "guide.property-tax-relief.a-false-claim-is-a-crime": {
-   "en": "A false claim is a crime, and the Department may audit a claim within three years of granting it (<a href=\"/laws/198#s59\">RSA 198:59</a>).",
-   "es": "Una solicitud falsa es un delito, y el Departamento puede auditar una solicitud dentro de los tres años siguientes a concederla (<a href=\"/laws/198#s59\">RSA 198:59</a>).",
-   "state": "draft"
-  },
   "guide.property-tax-relief.apply-between-may-1-and-june": {
    "en": "Apply between May 1 and June 30.",
    "es": "Solicítelo entre el 1 de mayo y el 30 de junio.",
@@ -6826,6 +6951,11 @@
    "es": "Solicítelo en línea en Granite Tax Connect, o con el formulario DP-8.",
    "state": "draft"
   },
+  "guide.property-tax-relief.can-my-claim-be-checked-later": {
+   "en": "Can my claim be checked later?",
+   "es": "¿Pueden revisar mi solicitud más adelante?",
+   "state": "draft"
+  },
   "guide.property-tax-relief.check-that-you-qualify": {
    "en": "Check that you qualify",
    "es": "Compruebe que reúne los requisitos",
@@ -6834,6 +6964,11 @@
   "guide.property-tax-relief.claims-are-accepted-only-in-that": {
    "en": "Claims are accepted only in that window. Apply online through the Department&rsquo;s Granite Tax Connect portal, using &ldquo;Apply for Property Tax Relief&rdquo;, or on Form DP-8 from the Department&rsquo;s forms page.",
    "es": "Las solicitudes se aceptan solo en ese período. Solicítelo en línea por el portal Granite Tax Connect del Departamento, con la opción &ldquo;Apply for Property Tax Relief&rdquo;, o con el formulario DP-8 de la página de formularios del Departamento.",
+   "state": "draft"
+  },
+  "guide.property-tax-relief.common-questions": {
+   "en": "Common Questions",
+   "es": "Preguntas frecuentes",
    "state": "draft"
   },
   "guide.property-tax-relief.do-you-own-and-live-in": {
@@ -6871,9 +7006,9 @@
    "es": "<b>Los ingresos del hogar</b> son el ingreso bruto ajustado federal de usted y de todos los demás adultos que viven en la vivienda.",
    "state": "draft"
   },
-  "guide.property-tax-relief.how-much-it-can-be": {
-   "en": "How Much It Can Be",
-   "es": "Cuánto puede ser",
+  "guide.property-tax-relief.how-much-relief-can-i-get": {
+   "en": "How much relief can I get?",
+   "es": "¿Cuánto alivio puedo recibir?",
    "state": "draft"
   },
   "guide.property-tax-relief.how-to-appeal-your-property-tax": {
@@ -6986,6 +7121,11 @@
    "es": "Sí",
    "state": "draft"
   },
+  "guide.property-tax-relief.yes-a-false-claim-is-a": {
+   "en": "Yes. A false claim is a crime, and the Department may audit a claim within three years of granting it (<a href=\"/laws/198#s59\">RSA 198:59</a>).",
+   "es": "Sí. Una solicitud falsa es un delito, y el Departamento puede auditar una solicitud dentro de los tres años siguientes a concederla (<a href=\"/laws/198#s59\">RSA 198:59</a>).",
+   "state": "draft"
+  },
   "guide.property-tax-relief.you-can-appeal-in-writing-to": {
    "en": "You can appeal in writing to the Board of Tax and Land Appeals within 30 days of the notice.",
    "es": "Puede apelar por escrito ante la Board of Tax and Land Appeals (Junta de Apelaciones de Impuestos y Terrenos) en un plazo de 30 días a partir del aviso.",
@@ -7041,9 +7181,24 @@
    "es": "Pídalo al organismo público o a la agencia que guarda el registro: la oficina del municipio o de la ciudad, el distrito escolar, el condado o la agencia estatal. Tiene derecho a ver sus registros en su horario de atención, en su oficina, y a copiarlos, salvo que una ley los haga confidenciales.",
    "state": "draft"
   },
+  "guide.public-records.can-i-be-charged-for-a": {
+   "en": "Can I be charged for a request covering many emails?",
+   "es": "¿Me pueden cobrar por una solicitud que abarca muchos correos electrónicos?",
+   "state": "draft"
+  },
+  "guide.public-records.common-questions": {
+   "en": "Common Questions",
+   "es": "Preguntas frecuentes",
+   "state": "draft"
+  },
   "guide.public-records.describe-what-you-want-clearly-enough": {
    "en": "Describe what you want clearly enough that it can be found: the law covers a record &ldquo;reasonably described&rdquo;. A letter or an email is enough. Keep a copy: a complaint to the ombudsman includes the request.",
    "es": "Describa lo que quiere con suficiente claridad para que se pueda encontrar: la ley cubre un registro &ldquo;reasonably described&rdquo; (descrito razonablemente). Basta con una carta o un correo electrónico. Guarde una copia: una queja ante el defensor incluye la solicitud.",
+   "state": "draft"
+  },
+  "guide.public-records.does-the-office-have-to-create": {
+   "en": "Does the office have to create a record for me?",
+   "es": "¿Tiene la oficina que crear un registro para mí?",
    "state": "draft"
   },
   "guide.public-records.for-a-request-covering-more-than": {
@@ -7092,8 +7247,8 @@
    "state": "draft"
   },
   "guide.public-records.looking-at-a-record-is-free": {
-   "en": "Looking at a record is free, and so is having it sent to you without copying. If the office makes copies on its own machine, it can charge what the copies actually cost. Where another law sets a fee for a copy, that fee applies, with nothing added.",
-   "es": "Ver un registro es gratis, y también que se lo envíen sin hacer copias. Si la oficina hace copias en su propia máquina, puede cobrar lo que realmente cuestan. Cuando otra ley fija una cuota por una copia, se aplica esa cuota, sin añadir nada.",
+   "en": "Looking at a record is free, and so is having it sent to you without copying. If the office makes copies on its own machine, it can charge what the copies actually cost.",
+   "es": "Ver un registro es gratis, y también que se lo envíen sin hacer copias. Si la oficina hace copias en su propia máquina, puede cobrar lo que realmente cuestan.",
    "state": "draft"
   },
   "guide.public-records.no": {
@@ -7204,6 +7359,16 @@
   "guide.public-records.what-did-it-say": {
    "en": "What did it say?",
    "es": "¿Qué respondió?",
+   "state": "draft"
+  },
+  "guide.public-records.what-if-another-law-sets-a": {
+   "en": "What if another law sets a fee for a copy?",
+   "es": "¿Y si otra ley fija una cuota por una copia?",
+   "state": "draft"
+  },
+  "guide.public-records.where-another-law-sets-a-fee": {
+   "en": "Where another law sets a fee for a copy, that fee applies, with nothing added.",
+   "es": "Cuando otra ley fija una cuota por una copia, se aplica esa cuota, sin añadir nada.",
    "state": "draft"
   },
   "guide.public-records.who-to-contact-about-an-issue": {
@@ -11195,9 +11360,19 @@
    "es": "Compruebe que puede obtener el registro",
    "state": "draft"
   },
+  "guide.vital-records.common-questions": {
+   "en": "Common Questions",
+   "es": "Preguntas frecuentes",
+   "state": "draft"
+  },
   "guide.vital-records.current-fees": {
    "en": "Current fees",
    "es": "Cuotas actuales",
+   "state": "draft"
+  },
+  "guide.vital-records.do-i-get-the-fee-back": {
+   "en": "Do I get the fee back if no record is found?",
+   "es": "¿Me devuelven la cuota si no se encuentra el registro?",
    "state": "draft"
   },
   "guide.vital-records.fill-in-the-application": {
@@ -11206,13 +11381,18 @@
    "state": "draft"
   },
   "guide.vital-records.fill-in-the-section-for-the": {
-   "en": "Fill in the section for the kind of record you want, and the applicant section with your name, address, reason and relationship, and sign it. For a death record you choose whether it shows the cause and manner of death, and whether the Social Security number is suppressed. A false statement on the application is a felony.",
-   "es": "Llene la sección del tipo de registro que quiere, y la sección del solicitante con su nombre, dirección, motivo y parentesco, y fírmela. Para un registro de defunción, usted elige si muestra la causa y la forma de la muerte, y si se omite el número de Seguro Social. Una declaración falsa en la solicitud es un delito grave.",
+   "en": "Fill in the section for the kind of record you want, and the applicant section with your name, address, reason and relationship, and sign it. A false statement on the application is a felony.",
+   "es": "Llene la sección del tipo de registro que quiere, y la sección del solicitante con su nombre, dirección, motivo y parentesco, y fírmela. Una declaración falsa en la solicitud es un delito grave.",
    "state": "draft"
   },
   "guide.vital-records.find-your-town-or-city-clerk": {
    "en": "<a class=\"g-btn\" href=\"https://app.sos.nh.gov/clerkinformation\" target=\"_blank\" rel=\"noopener\">Find your town or city clerk</a> <a class=\"g-btn\" href=\"https://www.sos.nh.gov/vital-records-0/vital-records-contact-information\" target=\"_blank\" rel=\"noopener\">Contact Vital Records</a>",
    "es": "<a class=\"g-btn\" href=\"https://app.sos.nh.gov/clerkinformation\" target=\"_blank\" rel=\"noopener\">Busque al secretario de su municipio o ciudad</a> <a class=\"g-btn\" href=\"https://www.sos.nh.gov/vital-records-0/vital-records-contact-information\" target=\"_blank\" rel=\"noopener\">Comuníquese con Registros Vitales</a>",
+   "state": "draft"
+  },
+  "guide.vital-records.for-a-death-record-you-choose": {
+   "en": "For a death record you choose whether it shows the cause and manner of death, and whether the Social Security number is suppressed.",
+   "es": "Para un registro de defunción, usted elige si muestra la causa y la forma de la muerte, y si se omite el número de Seguro Social.",
    "state": "draft"
   },
   "guide.vital-records.how-to-get-a-real-id": {
@@ -11231,8 +11411,8 @@
    "state": "draft"
   },
   "guide.vital-records.if-you-are-not-immediate-family": {
-   "en": "If you are not immediate family, include a letter saying which record you need, why, and any evidence for it. The clerk or the state registrar decides, and a refusal can be appealed.",
-   "es": "Si no es familiar inmediato, incluya una carta que diga qué registro necesita, por qué, y cualquier prueba que lo respalde. Decide el secretario o el registrador del estado, y una negativa puede apelarse.",
+   "en": "If you are not immediate family, include a letter saying which record you need, why, and any evidence for it.",
+   "es": "Si no es familiar inmediato, incluya una carta que diga qué registro necesita, por qué, y cualquier prueba que lo respalde.",
    "state": "draft"
   },
   "guide.vital-records.if-you-have-no-photo-id": {
@@ -11258,6 +11438,11 @@
   "guide.vital-records.no": {
    "en": "No",
    "es": "No",
+   "state": "draft"
+  },
+  "guide.vital-records.no-the-15-is-paid-whether": {
+   "en": "No. The $15 is paid whether or not the record is found, and a card payment may cost extra.",
+   "es": "No. Los $15 se pagan se encuentre o no el registro, y un pago con tarjeta puede costar más.",
    "state": "draft"
   },
   "guide.vital-records.pay-15-for-the-search-and": {
@@ -11300,9 +11485,14 @@
    "es": "La solicitud",
    "state": "draft"
   },
+  "guide.vital-records.the-clerk-or-the-state-registrar": {
+   "en": "The clerk or the state registrar decides, and a refusal can be appealed.",
+   "es": "Decide el secretario o el registrador del estado, y una negativa puede apelarse.",
+   "state": "draft"
+  },
   "guide.vital-records.the-fee-is-15-for-the": {
-   "en": "The fee is $15 for the search, which includes one copy, and $10 for each further copy of the same record issued at the same time. The law sets both. The $15 is paid whether or not the record is found, and a card payment may cost extra.",
-   "es": "La cuota es de $15 por la búsqueda, que incluye una copia, y de $10 por cada copia adicional del mismo registro emitida al mismo tiempo. La ley fija ambas. Los $15 se pagan se encuentre o no el registro, y un pago con tarjeta puede costar más.",
+   "en": "The fee is $15 for the search, which includes one copy, and $10 for each further copy of the same record issued at the same time. The law sets both.",
+   "es": "La cuota es de $15 por la búsqueda, que incluye una copia, y de $10 por cada copia adicional del mismo registro emitida al mismo tiempo. La ley fija ambas.",
    "state": "draft"
   },
   "guide.vital-records.the-news-media-for-information-of": {
@@ -11333,6 +11523,16 @@
   "guide.vital-records.vital-records-secretary-of-state": {
    "en": "Vital Records (Secretary of State)",
    "es": "Registros vitales (Secretaría de Estado)",
+   "state": "draft"
+  },
+  "guide.vital-records.what-choices-are-there-on-a": {
+   "en": "What choices are there on a death record?",
+   "es": "¿Qué opciones hay en un registro de defunción?",
+   "state": "draft"
+  },
+  "guide.vital-records.who-decides-whether-i-may-have": {
+   "en": "Who decides whether I may have a record?",
+   "es": "¿Quién decide si puedo obtener un registro?",
    "state": "draft"
   },
   "guide.vital-records.yes": {
