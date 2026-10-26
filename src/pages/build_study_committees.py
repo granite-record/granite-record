@@ -72,6 +72,7 @@ import build_date
 import build_full_sessions as FS
 import build_rsa as RSA
 import components as C
+import plain_action as PA
 import proceedings
 import shell as S
 import site_read as SR
@@ -621,7 +622,11 @@ def meeting_html(c, m, today):
     """One meeting, folded as a committee's meeting is (.cmeet): the day and
     the time, the place and the kind of meeting, the record's marks; open,
     its recording, and the way to it on the Calendar."""
-    said = " &middot; ".join(E(x) for x in (m["venue"], m["type"]) + tuple(m["notes"]) if x)
+    # The room in the words the Calendar says this same meeting in
+    # (plain_action.place): ss166's "SL Room Map Room" is "State Library Map
+    # Room" (the person, 26 October 2026: "SL is the state library map
+    # room"), and "LOB Room 102" is "Legislative Office Building 102".
+    said = " &middot; ".join(E(x) for x in (PA.place(m["venue"]), m["type"]) + tuple(m["notes"]) if x)
     chips = "".join(C.chip(w, "calkind") for w in m["chips"])
     if m["video"]:
         chips += C.chip("Recorded")

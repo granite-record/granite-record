@@ -820,7 +820,10 @@ def main():
                 bill_url(b) if b else bills_page,
                 f"{(b or {}).get('title','')}\n\n"
                 f"{u.get('committee','')} {u.get('what','')}"
-                + (f", {u['venue']}" if u.get("venue") else "")
+                # The room in words, as the email's row below has it and
+                # every page says it: "State Library Map Room", not "SL Map
+                # Room" (26 October 2026).
+                + (f", {PA.place(u['venue'])}" if u.get("venue") else "")
                 # build_pages' note, by the hearing's chamber (hearing_note): the
                 # person's words of 7 October 2026 (F2), and since 23 October
                 # 2026 the Senate's, whose online sign-in takes no testimony.

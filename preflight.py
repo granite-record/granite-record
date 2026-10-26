@@ -41324,7 +41324,7 @@ def _follow_email_words(FC, BF, PA):
                       ("GP232", "Granite Place 232"), ("LOBO 202-204", "Legislative Office Building 202-204"),
                       ("LOB", "Legislative Office Building"), ("SH Reps Hall", hall),
                       ("SH Representatives Hall", hall), ("Reps Hall", hall),
-                      ("Representatives' Hall, SH", hall), ("SL Map Room", "SL Map Room"),
+                      ("Representatives' Hall, SH", hall), ("SL Map Room", "State Library Map Room"),
                       ("302-304", "302-304"), ("", "")):
         assert PA.place(raw) == want, (raw, PA.place(raw))
     assert "FC.committee_label(name, word)" in src and "PA.place(u.get(\"venue\")" in src, \
@@ -41381,7 +41381,7 @@ def _rooms_in_words(PA):
              "Room 100, SH": "Room 100, State House", "SH 122-123": "State House 122-123",
              "GP231": "Granite Place 231", "LOBO 202-204": "Legislative Office Building 202-204",
              "LOB": "Legislative Office Building", "SH Reps Hall": hall, "Reps Hall": hall,
-             "Representatives' Hall, SH": hall, "SL Map Room": "SL Map Room", "302-304": "302-304",
+             "Representatives' Hall, SH": hall, "SL Map Room": "State Library Map Room", "302-304": "302-304",
              "GP Room 230": "Granite Place 230", "SH Room 100": "State House 100",
              "LOB 205-207": "Legislative Office Building 205-207",
              "NH Hospital Association, 125 Airport Rd, Concord, NH":
@@ -41412,6 +41412,89 @@ def _rooms_in_words(PA):
     assert not bad, "; ".join(bad[:6])
     return "ok", (f"{len(cases)} rooms read alike by plain_action.place and roomWords; the Calendar, "
                   "a committee's meetings and Meets In draw them in words")
+
+
+@check("frontend", "SL is the State Library: the Map Room reads \"State Library Map Room\" in all five "
+       "of its spellings, on Testify, the pages, the feed and the email",
+       needs=("plain_action", "build_bill_pages", "build_study_committees"))
+def _state_library_room(PA, BBP, BSC):
+    """The person, 26 October 2026: "SL is the state library map room". The
+    Senate's Education committee sat in the State Library's Map Room for 54
+    hearings of 2025-2026, and the record spells the room five ways: the
+    schedule "SL Map Room" (the Testify button, the Hearings tab, the
+    committee's meetings), the committee's record "SL Rm Map Room" (its Meets
+    In), the database "SL Room Map Room", and the docket "Room Map Room, SL"
+    and "Map Room, SL" (the Documents tab's plain words, the feeds, the
+    email's meeting). Every one printed the "SL", and the docket's second
+    form lost the room altogether. Each is "State Library Map Room" now, in
+    plain_action.place and app.js's roomWords alike; and "Rm" is "Room", so a
+    Senate committee Meets In "State House 100", as its hearings are held.
+
+    Held here: the forms and their look-alikes in both; the docket's lines in
+    plain words and as the email's meeting; tests/follow/meeting_cases.json
+    carrying the Map Room, so mail.test.js holds the email's own words to it;
+    the live Testify pane of a hearing there; the bill's page without scripts
+    (static_record), which printed the schedule's spelling; the feed's
+    hearing ahead, which printed it too; and a study committee's meeting,
+    which printed the database's (ss166's, on the preview of 26 October
+    2026) and now says its room as the Calendar says the same meeting."""
+    import datetime as _dt
+    want = "State Library Map Room"
+    cases = {f: want for f in ("SL Map Room", "SL Rm Map Room", "SL Room Map Room",
+                               "Room Map Room, SL", "Map Room, SL", " SL  Map   Room ")}
+    cases.update({"SL": "State Library", "Room 103, SL": "Room 103, State Library",
+                  "SH Rm 100": "State House 100", "SH Rm 122-123": "State House 122-123",
+                  "SH Rm. 103": "State House 103", "GP Room 230": "Granite Place 230",
+                  # A room named in other words, or a building that is not one of the four, as it was.
+                  "NH Fish & Game Conf Rm": "NH Fish & Game Conf Rm",
+                  "3RD FLR CONF RM, SH": "3RD FLR CONF RM, SH", "STATE LIBRARY": "STATE LIBRARY",
+                  "Hilton Garden Rm, Portsmouth Public Library": "Hilton Garden Rm, Portsmouth Public Library",
+                  "Room 100, St House": "Room 100, St House"})
+    bad = [f"plain_action.place({raw!r}) is {PA.place(raw)!r}" for raw, w in cases.items() if PA.place(raw) != w]
+    got = _app_js(f"{json.dumps(list(cases))}.map(scope.roomWords)", names=("roomWords",))
+    said = ""
+    if got is None:
+        said = "; node not here for app.js"
+    else:
+        bad += [f"roomWords({raw!r}) is {g!r}" for raw, g in zip(cases, got) if g != cases[raw]]
+    for line, words in (("Hearing: 03/24/2026, Map Room, SL, 09:55 am", "Public hearing, 9:55 a.m., " + want),
+                        ("Hearing: 04/21/2026, Room Map Room, SL, 09:45 am",
+                         "Public hearing, 9:45 a.m., " + want)):
+        if PA.plain(line) != words:
+            bad.append(f"plain_action.plain({line!r}) is {PA.plain(line)!r}")
+        if (PA.meeting(line) or {}).get("venue") != want:
+            bad.append(f"the email's meeting for {line!r} is {PA.meeting(line)}")
+    mc = json.loads(Path("tests/follow/meeting_cases.json").read_text(encoding="utf-8"))["cases"]
+    if not [c for c in mc if c.get("meeting") and c["meeting"].get("venue") == want
+            and ", SL," in c["line"] and c["words"].endswith(want)]:
+        bad.append("tests/follow/meeting_cases.json has no Map Room case, so no test holds the email's words")
+    if got is not None:
+        pane = _app_js("""scope.testifyButton({term: "2025-2026", house_committee: "Education", senate_committee: "Education",
+  journey: {rail: [{stop: "Introduced", mark: "p"}, {stop: "House", mark: "p"}, {stop: "Senate", mark: "h"}]},
+  stations: [{what: "hearing", when: "2026-04-14", time: "09:15", body: "S", committee: "Education",
+              venue: "SL Map Room"}], events: []},
+  {id: "HB1093", n: "HB 1093", kind: "active"}, new Date("2026-04-13T16:00:00Z"))""",
+                       names=("testifyButton",))
+        if not re.search(r"at 9:15\s?AM in State Library Map Room\.", pane or ""):
+            bad.append(f"the Testify pane says {re.sub(r'<[^>]+>', ' ', pane or '')[:240]!r}")
+    rec = BBP.static_record({"id": "HB1093", "n": "HB 1093", "year": 2026},
+                            {"stations": [{"when": "2026-04-14", "time": "09:15", "what": "hearing",
+                                           "body": "S", "committee": "Education", "venue": "SL Map Room"}]})
+    if "Senate Education, State Library Map Room</li>" not in rec or "SL Map Room" in rec:
+        bad.append("the bill's page without scripts prints the schedule's \"SL Map Room\"")
+    feeds = Path("src/pages/build_feeds.py").read_text(encoding="utf-8")
+    if "(f\", {PA.place(u['venue'])}\" if u.get(\"venue\") else \"\")" not in feeds:
+        bad.append("the feed's hearing ahead prints the clerk's room")
+    study = BSC.meeting_html({"name": "Commission on the Arts"},
+                             {"id": "day-2026-02-10", "date": "2026-02-10", "time": "09:15",
+                              "venue": "SL Room Map Room", "type": "Regular meeting", "chips": [],
+                              "notes": [], "video": ""}, _dt.date(2026, 10, 26))
+    if '<span class="cmcount">State Library Map Room &middot; Regular meeting</span>' not in study:
+        bad.append("a study committee's meeting prints the database's \"SL Room Map Room\"")
+    assert not bad, "; ".join(bad[:6])
+    return "ok", (f"{len(cases)} rooms read alike, the Map Room's five spellings as \"{want}\"; the docket's "
+                  "lines, the email's meeting, Testify, the page without scripts, the feed and a study "
+                  "committee's meeting say it" + said)
 
 
 @check("build", "About and the Data page describe email updates only once production binds the "
@@ -62054,8 +62137,9 @@ def _study_committee_page(SC):
     assert ids == ["day-2026-03-12", "day-2026-03-10", "day-1993-01-11"], (
         f"the meetings are not newest first, each at its day's address: {ids}")
     first = meets[meets.index('id="day-2026-03-12"'):meets.index('id="day-2026-03-10"')]
-    assert C.chip("Cancelled", "calkind") in first and "LOB Room 102" in first, (
-        "the cancelled meeting does not carry the record's mark and its room")
+    # The room in the Calendar's words (plain_action.place, 26 October 2026).
+    assert C.chip("Cancelled", "calkind") in first and "Legislative Office Building 102" in first, (
+        "the cancelled meeting does not carry the record's mark and its room in words")
     assert 'href="calendar?week=2026-W11&amp;day=2026-03-10&amp;committee=State+Commission+on+Aging"' \
         in meets, "a meeting since the Calendar's first week does not lead to it there"
     fold = meets[meets.index('<details class="sfold ssold"'):]
@@ -70660,6 +70744,148 @@ def _testify_hears_an_amendment():
                   "row on the person's; one hearing where a station stands for the line; two on one day in "
                   "order; HB 524-FN's and HB 71-FN's committee the one that has the bill that day, Ways and "
                   "Means and Finance; HB 1199-FN's at 12:30 PM")
+
+
+_AMENDMENT_LINK_HARNESS = r"""
+require("./stub.js");
+const src = require("fs").readFileSync("./page.js", "utf8");
+const scope = (0, eval)(src + "; ({testifyButton, renderVersions, verKey, VERS, VTEXT, amendmentAsked, "
+  + "seekAmendment, AMENDMENT_HASH, AMENDMENT_FOUND})");
+// SB 575 of 2026's two amendments heard on 4 May, as the version index lists
+// a bill's amendments, by day and length, and the head of each text; listed
+// first, a committee of conference's report whose head names the second
+// after its own number.
+const T = {
+  "/versions/2026/SB575.a0.txt": "June 2, 2026 2026-2109-CofC 08/07 Committee of Conference Report on SB 575 ... that the "
+    + "House recede from amendment 2026-1715h and adopt the following",
+  "/versions/2026/SB575.a1.txt": "Rep. Ladd, Graf. 4 April 23, 2026 2026-1708h 05/09 Amendment to SB 575 Amend the bill by",
+  "/versions/2026/SB575.a2.txt": "Rep. Ladd, Graf. 4 April 23, 2026 2026-1715h 05/09 Amendment to SB 575 Amend the bill by",
+};
+const asked = [];
+globalThis.fetch = async u => {
+  const p = new URL(u).pathname; asked.push(p);
+  return T[p] === undefined ? {ok: false, status: 404, text: async () => ""} : {ok: true, status: 200, text: async () => T[p]};
+};
+const b = {id: "SB575", year: 2026, term: "2025-2026"};
+const ix = {versions: [{title: "Introduced", date: "12/10/2025 09:00:00", text_url: "/versions/2026/SB575.0.txt"}],
+  steps: [], amendments: Object.keys(T).map((u, j) => ({date: ["06/02/2026 12:00:00", "04/23/2026 10:00:00",
+    "04/23/2026 10:05:00"][j], chars: T[u].length, text_url: u}))};
+const moving = {rail: [{stop: "Introduced", mark: "p"}, {stop: "Senate", mark: "p"}, {stop: "House", mark: "h"}]};
+const hb1560 = more => Object.assign({term: "2025-2026", house_committee: "Transportation", journey: moving,
+  stations: [{what: "public hearing", when: "2026-01-27", time: "10:40", body: "H", committee: "Transportation",
+              venue: "GP 232"}],
+  events: [{date: "2026-02-03", routine: false,
+            text: "Public Hearing on non-germane Amendment # 2026-0422h: 02/03/2026 11:20 am GP234"}]}, more || {});
+const row = {id: "HB1560", n: "HB 1560-FN", kind: "active"};
+const at = new Date("2026-01-30T16:00:00Z");
+(async () => {
+  const out = {};
+  out.linked = scope.testifyButton(hb1560({id: "HB1560", year: 2026, namd: 1, nver: 1}), row, at);
+  out.byRow = scope.testifyButton(hb1560({namd: 1, nver: 1}), Object.assign({year: 2026}, row), at);
+  out.none = scope.testifyButton(hb1560({id: "HB1560", year: 2026, nver: 1}), row, at);
+  out.hash = ["amendment-2026-0422h", "amendment-1715h", "amendment-", "2026/HB1560", "rep-2026-H-290"]
+    .map(h => scope.AMENDMENT_HASH.test(h));
+  const k = scope.verKey(b);
+  scope.VERS[k] = ix;
+  const seek = async said => {
+    for (const u of Object.keys(T)) { delete scope.VTEXT[u]; delete scope.AMENDMENT_FOUND[u]; }
+    asked.length = 0;
+    scope.amendmentAsked(b, said);
+    await scope.seekAmendment(k);
+    return {asked: asked.slice(), html: scope.renderVersions(b, {nver: 1, namd: 3}),
+            open: Object.keys(T).filter(u => typeof scope.VTEXT[u] === "string")};
+  };
+  out.second = await seek("amendment-2026-1715h");
+  out.first = await seek("amendment-2026-1708h");
+  out.yearless = await seek("amendment-1715h");
+  out.missing = await seek("amendment-2026-9999h");
+  out.notOne = await seek("2026/SB575");
+  process.stdout.write("\n@@" + JSON.stringify(out));
+})().catch(e => { console.error(e && e.stack || e); process.exit(1); });
+"""
+
+
+@check("frontend", "Testify's amendment number opens that amendment on the Bill Text tab: "
+                   "/bill/<year>/<bill>/text#amendment-<number>, open and brought into view")
+def _testify_amendment_link():
+    """The person, 26 October 2026: "the amendment number should link to open
+    it on the bill text tab". The live pane of a hearing on a proposed
+    amendment names it -- "a proposed non-germane amendment (2026-0422h) to
+    HB 1560-FN" -- and the number is a link to
+    bill/2026/hb1560/text#amendment-2026-0422h: the Bill Text tab, its
+    address since 14 September, at that amendment. Nothing on the site
+    linked an amendment there before, and the tab had no way to open one from
+    an address: it lists a bill's amendments by day and length, "Amendment of
+    January 30, 2026", each opened by pressing it, and its version index does
+    not carry their numbers. The number is in each amendment's own text, the
+    first of its shape near the top, so app.js reads the texts in turn until
+    the one whose first number is the one named, opens it alone, and brings
+    it into view once the version's text above it has come.
+
+    Held in node on HB 1560-FN's pane of 30 January and on SB 575 of 2026's
+    two amendments heard on 4 May, listed after a committee of conference's
+    report whose head names the second after its own number:
+      THE LINK: the number, and only it, links there, with the bill's year and
+        id from the record or else its index row, and the pane reads as it
+        did; with no amendments on the tab (namd), the number is words alone.
+      THE ADDRESS: "amendment-<number>", with or without its year; a bill's
+        own fragment and a session day's report are not one.
+      THE TAB: asked for 2026-1715h, the third text is opened and given the
+        address's id, after reading the report and the first, which stay
+        shut. The first, read no further than it; the second by its number
+        without the year; a number none carries opens nothing and adds no
+        id; and no fragment, nothing.
+      THE PAGE: a bill's own page whose fragment is an amendment's is still
+        that bill's, opens on the tab the path names and asks for the
+        amendment; the same link followed on the tab's own address reads the
+        new fragment; and every redraw brings a found one into view, below
+        the tab strip the page holds at the top of the window -- brought to
+        the very top, its "Amendment of" line and its text's first were
+        under the strip on the preview."""
+    got = _node_app(_AMENDMENT_LINK_HARNESS)
+    if got is None:
+        return "skip", "node, app.js or dom_stub.js is not here"
+    flat = lambda h: re.sub(r"\s+", " ", re.sub(r"<[^>]+>", "", h.replace("&nbsp;", " "))).strip()
+    link = '(<a href="bill/2026/hb1560/text#amendment-2026-0422h">2026-0422h</a>)'
+    for name in ("linked", "byRow"):
+        h = got[name]
+        assert link in h and h.count("<a href=\"bill/") == 1, f"{name}: the pane's amendment is not linked: {h[:600]}"
+        assert "The public hearing on a proposed non-germane amendment (2026-0422h) to HB 1560-FN is scheduled " \
+               "for Tuesday, February 3 at 11:20" in flat(h), f"{name}: the pane reads {flat(h)[:200]!r}"
+    assert "amendment-2026-0422h" not in got["none"] and "(2026-0422h) to HB 1560-FN" in got["none"], (
+        "a bill with no amendment on its Bill Text tab links the number anyway")
+    assert got["hash"] == [True, True, False, False, False], f"the addresses read as an amendment's: {got['hash']}"
+    a = [f"/versions/2026/SB575.a{j}.txt" for j in range(3)]
+    s = got["second"]
+    assert s["open"] == [a[2]] and s["asked"] == a, (
+        f"asked for 2026-1715h, the tab read {s['asked']} and opened {s['open']}")
+    assert re.search(r'<li id="amendment-2026-1715h"><button class="link"\s+data-vamd="[^"]*\|2">'
+                     r'Amendment of Apr 23, 2026</button>[\s\S]*?<pre class="vtext">[^<]*2026-1715h', s["html"]) \
+        and s["html"].count('<pre class="vtext">') == 1 and s["html"].count(' id="amendment-') == 1, (
+            f"the second amendment heard is not the one open and addressed: {s['html'][-900:]}")
+    assert got["first"]["open"] == [a[1]] and got["first"]["asked"] == a[:2] \
+        and 'id="amendment-2026-1708h"' in got["first"]["html"], got["first"]
+    assert got["yearless"]["open"] == [a[2]] and 'id="amendment-1715h"' in got["yearless"]["html"], got["yearless"]
+    for name in ("missing", "notOne"):
+        assert not got[name]["open"] and " id=\"amendment-" not in got[name]["html"], (name, got[name])
+    assert not got["notOne"]["asked"], "with no amendment in the address the tab read amendments anyway"
+    app = Path("src/pages/app.js").read_text(encoding="utf-8")
+    for need, what in (
+            ('const h=said&&!(window.GR_BILL&&AMENDMENT_HASH.test(said))?said:(window.GR_BILL||"");',
+             "a bill's own page whose fragment is an amendment's is still that bill's"),
+            ("if(t===\"6\"&&row){amendmentAsked(row,said);needVersions(row);}",
+             "the Bill Text tab's address asks for the amendment its fragment names"),
+            ("openTab[row.id]=\"6\";amendmentAsked(row,said);needVersions(row);repaint();",
+             "the link followed on the tab's own address is read"),
+            ("  jumpToTab();\n  jumpToAmendment();\n", "a redraw brings the amendment into view"),
+            ('const held=strip&&getComputedStyle(strip).position==="sticky"?strip.getBoundingClientRect().height:0;\n'
+             "  window.scrollTo(0,Math.max(0,li.getBoundingClientRect().top+window.scrollY-held-16));",
+             "the amendment is brought into view below the tab strip a bill's page holds at the top"),
+            ("  });\n  seekAmendment(key);\n}", "the version index's arrival looks for the amendment")):
+        assert need in app, f"app.js: {what} no longer"
+    return "ok", ("HB 1560-FN's 2026-0422h links to its Bill Text tab; SB 575's second amendment opened by its "
+                  "number, alone, past a report naming it; by number without its year; none for a number "
+                  "none carries; the bill's page, the tab's own address and the redraw read it")
 
 
 @check("frontend", "Testify takes a hearing a Senate committee's report dates apart from the docket as the "
