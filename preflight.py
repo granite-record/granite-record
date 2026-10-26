@@ -28819,7 +28819,8 @@ def _cluster_needs_a_mention(build_site_v2):
     return "ok", "no mention inside: no start, no end, no suggestion; two mentions: placed"
 
 
-@check("markers", "a sitting whose recording never names its bill says so, and only there",
+@check("markers", "a sitting whose recording never names its bill says so once, under its one "
+       "button, and only there",
        needs=("build_site_v2", "segment_markers"))
 def _station_not_named(build_site_v2, segment_markers):
     """222 committee sittings drew "Matching proceedings to the moment they
@@ -28829,7 +28830,12 @@ def _station_not_named(build_site_v2, segment_markers):
     segment_markers lists such bills under _not_named; station_for_proceeding
     sets not_named on a sitting drawn with no start, and app.js says the
     captions never name the bill, keeps the player at the scheduled time,
-    and keeps the old words where the bill is named but no opening found."""
+    and keeps the old words where the bill is named but no opening found.
+    Said once since 26 October 2026 (the owner): one button, "Play from
+    00:05:00 · scheduled 10:00 AM", over the note "bill not named in the
+    captions", as the other recording cards are -- a paragraph under the
+    note said it a second time. The same where a not-named sitting's state
+    is one app.js does not know and it still offers the recording."""
     B = build_site_v2
     p = {"bill": "HB152", "body": "H", "committee": "Judiciary",
          "proceeding": "public hearing", "sched_date": "2026-02-03",
@@ -28850,23 +28856,37 @@ def _station_not_named(build_site_v2, segment_markers):
         "a sitting with a stated start is marked not named")
     assert "_not_named" in segment_markers.SIDES, (
         "_not_named is not one of segment_markers.SIDES, so the late-caption withholding keeps it")
-    html_ = _app_js("[scope.renderHearings({id:'HB152', n:'HB 152'}, {stations:"
-                    + json.dumps([st]) + "}), scope.renderHearings({id:'HB152', n:'HB 152'}, "
-                    "{stations:" + json.dumps([plain]) + "})]")
+    odd = dict(st, state="unheard-of")
+    html_ = _app_js("[" + ", ".join("scope.renderHearings({id:'HB152', n:'HB 152'}, {stations:"
+                                    + json.dumps([s]) + "})" for s in (st, plain, odd)) + "]")
     if html_ is not None:
-        named, other = (re.sub(r"\s+", " ", h) for h in html_)
-        for want in ("The recording&rsquo;s captions never name this bill, by number or by title, "
-                     "so no moment in it is marked. The recording is the whole meeting.",
-                     "bill not named in the captions", "Play the recording from 00:05:00",
-                     'data-embed="VIDX|300|'):
+        named, other, fallback = (re.sub(r"\s+", " ", h) for h in html_)
+        # ONE BUTTON WITH ITS NOTE (the owner, 26 October 2026), as the other
+        # recording cards are: where Play starts and the time set, over "bill
+        # not named in the captions" -- said once. A paragraph under the note
+        # said it again ("The recording's captions never name this bill ...").
+        for want in ('<span class="tolnote">bill not named in the captions</span>',
+                     "Play from 00:05:00 · scheduled 10:00", 'data-embed="VIDX|300|'):
             assert want in named, f"the not-named sitting does not say {want!r}"
+        for k, h in (("the not-named sitting", named),
+                     ("a not-named sitting of a state app.js does not know", fallback)):
+            said = re.sub(r"<[^>]+>", " ", h)
+            assert len(re.findall(r"not named|never name", said)) == 1 \
+                and 'class="note"' not in h and h.count('class="pstub"') == 1 \
+                and '<span class="tolnote">bill not named in the captions</span>' in h, (
+                    f"{k} says its bill is not named other than once, under its one button: "
+                    + said[:400])
+        assert "Play from the start · scheduled 10:00" in fallback, (
+            "a not-named sitting of a state app.js does not know is not offered from the start")
         assert "ongoing work" not in named and "not identified" not in named, (
             "the not-named sitting still says the matching is unfinished")
         # One button since 25 October 2026 (S2): "Play from 00:05:00 ·
         # scheduled 10:00 AM (exact moment not found)".
         assert "(exact moment not found)" in other and "not named" not in other, (
             "a sitting whose bill is named lost the words for an opening not found")
-    return "ok", "marked only where its recording never names it and no start is drawn; drawn with the new words"
+    return "ok", ("marked only where its recording never names it and no start is drawn; one "
+                  "button, \"Play from 00:05:00 · scheduled 10:00 AM\", over \"bill not named in "
+                  "the captions\", said once")
 
 
 @check("frontend", "a bill's recording cards say each thing once: two recordings in one line, "
