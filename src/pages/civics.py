@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-08.63
+# GRANITE_VERSION: 2026-09-08.64
 """
 The topics of the civics section: their order, their names, and their prose.
 
@@ -52,6 +52,11 @@ GROUPS = [
      "The institutions, in the order they act on a bill."),
     ("How to Take Part",
      "The mechanics, which are more open than most people expect."),
+    # A THIRD GROUP (the person, 26 October 2026, asking for a history of the
+    # State House and a page of the state's official symbols): pages about
+    # the state itself rather than about how its institutions act on a bill.
+    ("About New Hampshire",
+     "The State House, its history, and what sets the state apart."),
 ]
 
 
@@ -2708,6 +2713,141 @@ is the evidence.</p>
 </div>
 """
 
+# THE STATE HOUSE AND WHAT MAKES THE BRANCHES DIFFERENT (the person, 26
+# October 2026: "add a history of the state house section to the learn pages
+# with fun facts and describe what makes the size and structure of the
+# legislative, executive, and judicial branches different from other
+# states"). Every sentence rests on a source read on 26 October 2026: the
+# building's history on the National Register nomination of the Concord
+# Civic District, written in 1983 (SRC_NRHP_CIVIC), which the National Park
+# Service serves; the branches on the Constitution as collected/constitution.json
+# holds it, each article's amendment notes included, and preflight's
+# LEARN_CONSTITUTION_CLAIMS holds the sentences to their articles; the
+# Council's own words on the person's printout of its About Us page of 25
+# October 2026, the claim guides.py's who-to-contact guide already carries.
+# Nothing here comes from the Visitor Center's pages, which this machine may
+# not ask; the State House facts they hold wait for a printout. And no other
+# state is compared where no source read says so: the one comparison is the
+# nomination's own, dated as it is.
+BODY_STATE_HOUSE = """
+<h2>A Granite Building of 1819</h2>
+<p>The <b>State House</b> in Concord, at 107 North Main Street, was built from
+1816 to 1819, with Stuart Park as master builder. It is built of Concord
+granite, quarried nearby. The first building was a two-story structure in the
+Federal style, capped by a domed lantern, and it appears to have been based in
+part on a plate in Robert Morris's <i>Select Architecture</i>, a London
+pattern book of 1757.</p>
+<p>It was enlarged twice. In 1864&ndash;1866, to designs by the Boston
+architect Gridley J.F. Bryant, it gained a third story, the portico and the
+gilded dome, which is patterned after the H&ocirc;tel des Invalides in Paris.
+In 1909&ndash;1910 the firm of Peabody &amp; Stearns extended it westward,
+nearly doubling its size. The granite of each period differs in color: the
+original stone is stained by iron, and the later stone, cut from deeper in the
+quarries, is purer.</p>
+<p>The building stands three stories high, topped by a gilded dome set on an
+octagonal base, rising 149 feet. When it was built in 1819 it housed 204
+legislators. The National Register nomination that describes it, written in
+1983, counted 424 members and called it &ldquo;the largest state legislature
+in the country.&rdquo;</p>
+
+<h2>Inside and on the Grounds</h2>
+<p>Through the main entrance is <b>Doric Hall</b>, now the Hall of Flags,
+which dates to 1819 and was inspired by Charles Bulfinch&rsquo;s hall in the
+Massachusetts State House. On the second floor, Representatives Hall,
+directly above it, and the Senate Chamber to the north are still in their
+original places, though both have been much enlarged and rearranged. The
+murals in the Senate Chamber are by Barry Faulkner and were installed in
+1943.</p>
+<p>The eagle on top of the dome is a copper replica, put up in 1957, of the
+original wooden eagle erected in 1818. Its head is turned to its right, the
+sign of a peace eagle, unlike the war eagle it replaced.</p>
+<p>The grounds hold statues of Daniel Webster (1886), General John Stark
+(1890), John Hale (1892), Commodore George Perkins (1902, by Daniel
+Chester French) and Franklin Pierce (1914); the Soldiers and Sailors Memorial
+Arch of 1892; a veterans memorial of 1953; and a reproduction of the Liberty
+Bell, cast in France and installed in 1950.</p>
+
+<h2>A House of Four Hundred</h2>
+<p>The constitution calls the legislature <b>the General Court of New
+Hampshire</b> (Part Second, Article 3). Its House of Representatives is to
+have not less than 375 or more than 400 members (Part Second, Article 9), a
+limit an amendment set in 1942; the Senate has 24 members (Part Second,
+Article 25). The Senate began in 1784 with 12 senators, and an amendment in
+1877 raised it to 24.</p>
+<p>As this site&rsquo;s record stands, the House has <b>[[house_seats]] seats and
+[[house_sitting]] sitting members</b>, with [[house_vacant]] vacant, and the
+Senate [[senate_districts]] districts. Each member&rsquo;s page is on the
+<a href="officials.html">Officials page</a>.</p>
+
+<h2>Paid $200 for a Two-Year Term</h2>
+<p>The pay of a legislator is written into the constitution. Part Second,
+Article 15 gives each member $200 &ldquo;as compensation in full for their
+services for the term elected,&rdquo; and the presiding officers of the two
+chambers $250. The figures were set by an amendment of 1889.</p>
+<p>Members are also paid mileage for each day they attend on legislative days,
+but not after the legislature has been in session for 45 legislative days or
+after July 1, whichever comes first. A special session adds $3 a day, for no
+more than 15 days, with the usual mileage.</p>
+
+<h2>A Governor Elected Every Two Years</h2>
+<p>The Governor is the state&rsquo;s supreme executive magistrate, and the
+constitution gives the office the title <b>His Excellency</b> (Part Second,
+Article 41). The office was called President until an amendment of 1792.</p>
+<p>The governor is chosen biennially, in November (Part Second, Article 42):
+a two-year term. Until 1877 the election was every year. A candidate must be
+30 years old and have lived in the state for the 7 years before the election.
+If no one has a plurality of the votes, the House and Senate together elect
+one of the two with the most votes, by joint ballot.</p>
+
+<h2>Five Councilors Beside the Governor</h2>
+<p>Five <b>Executive Councilors</b> are elected biennially &ldquo;for advising
+the governor in the executive part of government&rdquo; (Part Second, Article
+60), one from each of five districts drawn as nearly equal in population as
+may be (Part Second, Article 65). Until 1792 the council was made up of
+members of the House and Senate, elected by them.</p>
+<p>The Governor and Council act together. Judges, the attorney general and
+other officers are nominated and appointed by the governor and council; the
+nomination must be made at least three days before, and no one takes office
+unless a majority of the council agrees (Part Second, Article 46). The
+governor and council each have &ldquo;a negative on each other&rdquo; in these
+choices (Part Second, Article 47).</p>
+<p>In the Council&rsquo;s own words, each of the five Executive Councilors
+represents one fifth of the population, and Councilors are elected every two
+years, concurrently with the Governor; a candidate must live in the district.
+It calls the Councilors the constituent&rsquo;s eyes and ears in Concord.
+<a href="learn/governor-and-council.html">The Governor and the Executive
+Council</a> says what the Council approves.</p>
+
+<h2>Judges Serve Until Seventy</h2>
+<p>The judicial power is vested in the supreme court, a trial court of general
+jurisdiction known as the superior court, and the lower courts the
+legislature establishes (Part Second, Article 72-a, added in 1966). The chief
+justice of the supreme court is the administrative head of all the courts
+(Part Second, Article 73-a, 1978).</p>
+<p>Judges are not elected. The Governor nominates and the Executive Council
+confirms (Part Second, Article 46). Once appointed, a judge holds office
+during good behavior (Part Second, Article 73), and no one may serve as a
+judge after reaching seventy, a limit in the constitution since 1792 (Part
+Second, Article 78). <a href="learn/the-courts.html">The Courts</a> says how
+the courts are arranged.</p>
+""" + faq(
+    ("How many members does the General Court have?",
+     "<p>The constitution allows a House of between 375 and 400 members and sets the Senate at "
+     "24. With every House seat filled, that is 424.</p>"),
+    ("Has legislators&rsquo; pay ever been raised?",
+     "<p>The constitution has said $200 for the term, and $250 for the presiding officers, since "
+     "an amendment of 1889. Changing it would take a constitutional amendment.</p>"),
+    ("Who chooses the Governor if no candidate wins a plurality?",
+     "<p>The House and Senate, by joint ballot, choose between the two candidates with the most "
+     "votes (Part Second, Article 42).</p>"),
+    ("Can a judge be removed before seventy?",
+     "<p>Yes. The Governor, with the consent of the Council, may remove a judge for reasonable "
+     "cause on the address of both houses of the legislature, after the judge has had a chance "
+     "to be heard by a joint committee of both houses (Part Second, Article 73).</p>"),
+    ("Is the eagle on the dome the original?",
+     "<p>No. The eagle there now is a copper replica, put up in 1957, of the wooden eagle "
+     "erected in 1818.</p>"))
+
 # The official addresses these pages send a reader to. Kept in one place
 # because every one of them is a promise that something is there, and a
 # promise made eleven times in eleven files is one nobody checks.
@@ -2812,6 +2952,19 @@ SRC_GENERAL_COURT = ("The General Court", GC + "/")
 # State House links for arranging a tour (17 October 2026). Linked, never
 # fetched from here, for the same reason, and one of the same list.
 SRC_VISITOR_CENTER = ("State House Visitor Center", GC + "/nh_visitorcenter/")
+# THE STATE HOUSE'S HISTORY, from the National Register of Historic Places
+# nomination of the Concord Civic District, which the New Hampshire
+# Historical Society wrote in 1983 and the National Park Service serves as a
+# PDF (read 26 October 2026). The building's dates, builders, granite, dome,
+# eagle and statues are all its words; it is dated in the label because its
+# count of the legislature is 1983's.
+SRC_NRHP_CIVIC = ("Concord Civic District, National Register of Historic Places "
+                  "nomination (National Park Service, 1983)",
+                  "https://npgallery.nps.gov/NRHP/GetAsset/NRHP/83004203_text")
+# The Executive Council's About Us page, as the person printed it on 25
+# October 2026 (it refuses this machine): the words guides.py's
+# who-to-contact guide already carries as a claim (guides.COUNCIL_ABOUT).
+SRC_COUNCIL_ABOUT = ("About the Executive Council", "https://www.council.nh.gov/about-us")
 
 # THE RESOURCES HUB'S OFFICIAL SOURCES TAB: every outside source these pages
 # cite, grouped by who publishes it (the groups' names are the approved
@@ -2825,10 +2978,12 @@ SOURCE_GROUPS = [
     ("The General Court", [SRC_RSA, SRC_RULES, SRC_HOUSE_RULES, SRC_SENATE_RULES,
                            SRC_CALENDARS, SRC_SENATE_CALENDARS, SRC_SCHEDULE,
                            SRC_SENATE_SCHEDULE, SRC_TESTIFY, SRC_SENATE_TESTIFY, SRC_JLCAR]),
-    ("The Governor and State Agencies", [SRC_GOVERNOR, SRC_COUNCIL, SRC_AGENCIES, SRC_DOJ]),
+    ("The Governor and State Agencies", [SRC_GOVERNOR, SRC_COUNCIL, SRC_COUNCIL_ABOUT,
+                                         SRC_AGENCIES, SRC_DOJ]),
     ("The Courts", [SRC_COURTS]),
     (ELECTIONS_GROUP, [SRC_SOS, SRC_CONSTITUTION]),
     ("Towns and Counties", [SRC_NHMA, SRC_COUNTIES]),
+    ("History", [SRC_NRHP_CIVIC]),
 ]
 # Cited, and not official: a third party's list, labelled so where it is
 # cited. The hub's tab lists the state's own sites and the two membership
@@ -2842,6 +2997,7 @@ NOT_OFFICIAL = [SRC_BALLOT_LIST]
 # ---------------------------------------------------------------------------
 HOW = GROUPS[0][0]
 PART = GROUPS[1][0]
+ABOUT = GROUPS[2][0]
 
 TOPICS = [
     topic("general-court", "The General Court", HOW,
@@ -2925,6 +3081,15 @@ TOPICS = [
           [SRC_RSA, SRC_NHMA, SRC_SOS],
           BODY_TOWNS_HOLDS),
 
+    topic("state-house-and-branches",
+          "The State House and What Makes New Hampshire's Government Different",
+          ABOUT,
+          "A granite State House of 1819, a House of up to 400, legislators paid $200 for the "
+          "term, a Governor elected every two years beside an Executive Council, and judges who "
+          "serve until seventy.",
+          BODY_STATE_HOUSE,
+          [SRC_NRHP_CIVIC, SRC_CONSTITUTION, SRC_COUNCIL_ABOUT, SRC_FIND_MEMBER]),
+
     topic("testifying", "How Public Hearings Work", PART,
           "The most open part of the process and the least known. Anyone may "
           "speak on any bill, and you do not need to be invited.",
@@ -2971,6 +3136,7 @@ GUIDES_FOR = {
     "local-government": ("how-to-vote", "run-for-office"),
     "county-government": ("your-representatives",),
     "city-and-town-government": ("property-tax-abatement", "public-records", "run-for-office"),
+    "state-house-and-branches": ("tour-the-state-house", "contact-your-legislators"),
 }
 
 

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-08.81
+# GRANITE_VERSION: 2026-09-08.82
 """
 The civics section: a hub and one page per topic, in order.
 
@@ -1550,9 +1550,11 @@ TOPIC_ICON = {
     # the Learn tab (civics.GROUPS, and what follows them)
     "How the State Works": "columns", "How to Take Part": "testify", "Taking Part": "testify",
     "Start Here": "signpost", NUMBERS_TITLE: "chart", GLOSSARY_TITLE: "book", "Laws (RSA)": "law",
+    "About New Hampshire": "capitol",
     # the Official Sources tab (official_sources' groups)
     "The General Court": "capitol", "The Governor and State Agencies": "columns",
     "The Courts": "gavel", "Elections and the Constitution": "ballot", "Towns and Counties": "map",
+    "History": "book",
     "Other Ways to Follow New Hampshire Legislation": "follow",
 }
 
