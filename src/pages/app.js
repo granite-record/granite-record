@@ -2761,8 +2761,9 @@ const sel={committee:new Set(),topic:new Set(),sponsor:new Set(),status:new Set(
 // THE STATUTE FILTER (the person, 11 October 2026: the RSA search replaces the
 // floor vote day filter). A bill's index row carries `rsa`, the chapters and
 // sections its own text says it changes (rsa.py), each section's chapter with
-// it; a chapter or a section typed or picked here keeps the bills that change
-// it. RSA_SHAPE reads "RSA 91-A:4", "91-a:4" or "91-A" alike.
+// it; a chapter or a section chosen here (rsaGroup, Laws Changed) keeps the
+// bills that change it. RSA_SHAPE reads "RSA 91-A:4", "91-a:4" or "91-A"
+// alike, in the address (?rsa=) and in the search box.
 let rsaText="";
 const RSA_SHAPE=/^\s*(?:rsa\s*)?(\d{1,3}(?:-[a-z]{1,2})?)(?:\s*:\s*([0-9]{1,4}(?:\.[0-9]{1,2})?(?:-[a-z0-9]{1,4})?))?\s*$/i;
 function rsaNorm(t){const m=RSA_SHAPE.exec(String(t||""));return m?m[1].toUpperCase()+(m[2]?":"+m[2].toLowerCase():""):"";}
@@ -2776,8 +2777,18 @@ const LAW_FOLDERS=["404"];
 function lawPath(ch,sec){const s=String(ch).toLowerCase();
   return "/laws/"+s+(LAW_FOLDERS.includes(s)?"/":"")+(sec?"#s"+sec:"");}
 function rsaHref(a){const p=a.split(":");return lawPath(p[0],p[1]);}
-let HAS_RSA=null;
-function hasRsa(){if(HAS_RSA===null&&IDX&&IDX.length)HAS_RSA=IDX.some(b=>b.rsa);return !!HAS_RSA;}
+// WHETHER THE LISTED TERM'S BILLS SAY WHICH LAWS THEY CHANGE, asked of the
+// term on the list (the review of 26 October 2026). Every term's bills do but
+// the bill requests', which have no text yet. It was asked once, of whatever
+// was loaded first, so a page opened on ?term=2027-requests had no Laws
+// Changed filter in any term it was switched to. Kept for each term and for
+// what is loaded of it, since a term's rows arrive after it is chosen.
+const HAS_RSA={};
+function hasRsa(){
+  const k=term+" "+IDX.length;
+  if(!(k in HAS_RSA))HAS_RSA[k]=IDX.some(b=>b.rsa&&b.rsa.length&&inTermOf(b));
+  return HAS_RSA[k];
+}
 // On a phone the filter column stacks ABOVE the results, and an open
 // Committee group is 340 pixels of it -- so the first bill sat past a
 // screen and a half of filters on a 375-wide screen. Someone arriving on
@@ -3316,21 +3327,344 @@ function fgroup(key,label,vals,counts,searchable,paint,show){
     <span class="chev">▸</span></button><div class="fbody${whole?" whole":""}" ${open?"":"hidden"}>${inner}</div></div>`;
 }
 
+/* THE LAWS CHANGED FILTER (the person, 26 October 2026: "it's a bit unclear
+   what the most changed by these bills section means and those don't seem to
+   have any particular meaning. It's more of a power user filter for folks who
+   know a specific chapter of law they want to search for bills that change
+   it, but it should still be easily understandable"). It was headed "RSA
+   (Statute)" over ten pills of bare chapter numbers, "RSA 674 79", which said
+   nothing to anybody who did not already know chapter 674. Now:
+
+   ITS HEADING SAYS WHAT IT FILTERS BY, "Laws Changed (RSA)": the laws a bill
+   changes, said as a bill's own page says it ("Changes this chapter of state
+   law (RSA)", the person's words of 17 October 2026) and in the word the
+   site's Laws tab is named by, with the letters a reader who knows them looks
+   for. Title Case, as every filter's heading is (8 October 2026).
+
+   ITS BOX TAKES A NUMBER OR A NAME. As the reader types, the chapters some
+   bill of the list changes are offered -- by number ("91" offers RSA 91-A),
+   by a section ("91-A:4", or "91-A:" for each section of it a bill changes),
+   or by the words of the chapter's name, or of the name it is known by, or
+   of its topic ("right to know" and "governmental records" offer RSA 91-A,
+   Access to Governmental Records and Meetings) -- each with how many of the
+   bills it would list, the filters already chosen kept. Nothing is filtered
+   until one is chosen -- pressed, taken by Return, or a number typed whole
+   and the box left: typing "91-A" used to list RSA 9's bills, then RSA
+   91's, on the way. A chapter no bill changes is never offered; where what
+   was typed finds none a bill changes, one line under the box says so, and
+   nothing is chosen that would list no bill. Words name no law there ("No
+   bill in the 2025-2026 term changes a law whose name has “students” in
+   it."): the law of the whole list they fit best was named, and it was a
+   law nobody had asked about. A number names the chapter typed, since that
+   is the law asked about ("No bill ... changes RSA 404, Dog Licensing."), as
+   it does for a section no bill changes, its chapter offered above it
+   ("91-A:99"), and for Return on a number no bill changes ("91", where RSA
+   91-A is offered), which chooses nothing and would otherwise seem to do
+   nothing at all.
+
+   ONE CHOSEN, ONE LINE NAMES IT: "Bills that change RSA 91-A, Access to
+   Governmental Records and Meetings · Read the law · Clear". It was the
+   number alone, and "Read the statute", a word the heading no longer uses.
+
+   THE NAMES ARE THE LAWS PAGES' OWN LIST, laws/chapters.json (150 KB),
+   fetched once, when the group is opened -- never for a reader who does not
+   open it (the phone-speed work of 25 October 2026 keeps /bills light). The
+   numbers, the counts and the filter need nothing from it: without it the
+   offers are numbers alone and the words find nothing, which the line under
+   the box says. A COMBOBOX, as the address box and the bill search's offers
+   are (filterCombo): the box says it controls the list and whether it is
+   open; the arrow keys move through it, aria-activedescendant naming the one
+   they are on; Return takes it; Escape shuts the list and only the list; a
+   status line says how many there are. The list is drawn in place as the box
+   is typed in, so the box and the status line are not replaced under the
+   reader; choosing one draws the page. */
+const RSA_MOST=6;
+// The Laws pages' own lists, each asked for once, when it is first wanted:
+// chapters.json, the chapters' names (150 KB), when the group is opened, and
+// headings.json, every section's heading (1.1 MB, 295 KB as sent), only when a
+// colon is typed for a chapter's sections. A list that fails stays failed for
+// that opening of the group, so it is not asked for again on every letter;
+// the next opening asks again (the review of 26 October 2026: one failure kept
+// the words off for the rest of the visit, a phone a moment offline among the
+// ways to get one).
+const RSA_LAWS={data:null,loading:null,failed:false};
+const RSA_HEADS={data:null,loading:null,failed:false};
+function rsaFetch(o,file,take,then){
+  if(o.data||o.failed)return Promise.resolve();
+  if(!o.loading)o.loading=fetch(DATA(file))
+    .then(r=>{if(!r.ok)throw new Error(file+" returned "+r.status);return r.json();})
+    .then(j=>{o.data=take(j);},()=>{o.failed=true;})
+    .then(()=>{o.loading=null;if(!PAGE&&openGroups.has("rsa")&&!facetsShut())then();});
+  return o.loading;
+}
+// The names: the group drawn again with them; and where the reader is typing,
+// the status line told what they found, as a pause in typing tells it.
+function rsaLawsLoad(){
+  return rsaFetch(RSA_LAWS,"laws/chapters.json",j=>j&&typeof j==="object"?j:{},
+    ()=>{renderFacets();if(RSA_OFF.open)rsaPaint(true);});
+}
+// The headings, as {"91-A:4": "Minutes and Records Available for Public
+// Inspection."}: the offers drawn again with them.
+function rsaHeadsLoad(){
+  return rsaFetch(RSA_HEADS,"laws/headings.json",j=>{const m={};
+    (Array.isArray(j)?j:[]).forEach(x=>{if(Array.isArray(x)&&x[0])m[x[0]]=String(x[1]||"");});return m;},
+    ()=>{if(RSA_OFF.open)rsaPaint();});
+}
+// The next opening of the group asks again for a list that failed.
+function rsaReopen(){RSA_LAWS.failed=false;RSA_HEADS.failed=false;}
+// A chapter's row of the Laws pages' list, for a chapter or a section of it.
+function rsaLaw(a){const c=RSA_LAWS.data&&RSA_LAWS.data[String(a).split(":")[0]];return Array.isArray(c)?c:null;}
+// A section's heading as the Laws pages print it, without its full stop; ""
+// where it is not here (a section a bill would write anew has none).
+function rsaHead(a){const h=RSA_HEADS.data&&RSA_HEADS.data[a];
+  return h?String(h).replace(/\s+/g," ").trim().replace(/\.$/,""):"";}
+// ", Access to Governmental Records and Meetings" after RSA 91-A; a section
+// is "in" it; nothing where the name is not here.
+function rsaOf(a){const c=rsaLaw(a);return c&&c[0]?(a.indexOf(":")<0?", ":", in ")+c[0]:"";}
+const rsaNamed=a=>`RSA ${a}${rsaOf(a)}`;
+// Chapters and sections in the statute's own order: 9, 9-A, 91, 91-A, 91-A:2, 91-A:10.
+function rsaCmp(x,y){
+  const p=s=>{const m=/^(\d+)(?:-([A-Z]+))?(?::(\d+)?(.*))?$/.exec(s)||[];
+    return [+m[1]||0,m[2]||"",m[3]===undefined?-1:+m[3],m[4]||""];};
+  const a=p(x),b=p(y);
+  for(let i=0;i<4;i++)if(a[i]!==b[i])return a[i]<b[i]?-1:1;
+  return 0;
+}
+// What is typed, read: {num} -- the chapter, and the section after a colon,
+// as far as they are typed, "91a" and "91 a" read as 91-A, after "RSA",
+// "chapter" or both; `dash` where the chapter is begun, "21-" -- or {words};
+// or {odd}, a number no RSA number is shaped like, "1234" or "91-A:4:5",
+// with no word of three letters in it, which is told what one looks like
+// rather than read as words (the review of 26 October 2026).
+function rsaTyped(t){
+  t=String(t||"").trim().replace(/^(?:(?:rsa|chapter)(?=[\s.\d]|$)\.?\s*)+/i,"");
+  const m=/^(\d{1,3})(-?)([a-z]{0,2})(?::([0-9a-z.\-]*))?$/i.exec(t.replace(/\s+/g,""));
+  if(m){
+    const ch=m[1]+(m[3]?"-"+m[3].toUpperCase():""),sec=m[4]!==undefined;
+    return {num:ch+(sec?":"+m[4].toLowerCase():""),ch,sec,dash:!!m[2]&&!m[3]&&!sec};
+  }
+  if(/\d/.test(t)&&!/[a-z]{3}/i.test(t))return {odd:t};
+  const w=foWords(t);
+  return w.length&&t.length>=FO_MIN?{words:w,raw:t}:null;
+}
+// How well the words typed fit a chapter of the list: 0 its name, 1 the name
+// it is known by, 2 its topics; -1 not at all. The last word may be begun.
+function rsaFit(ws,open,c){
+  const last=ws.length-1,fits=text=>{const vs=foWords(text);
+    return ws.every((t,i)=>vs.some(v=>foWord(t,v,open&&i===last)));};
+  return fits(c[0]||"")?0:fits((c[0]||"")+" "+(c[4]||[]).join(" "))?1
+    :fits((c[0]||"")+" "+(c[4]||[]).join(" ")+" "+(c[5]||[]).join(" "))?2:-1;
+}
+// The bills each chapter and section would list, the other filters and the
+// search kept: worked out when the group is drawn, which every change to them
+// does, and read as the box is typed in.
+let RSA_N={};
+const rsaNarrowed=()=>!!String(query||"").trim()||Object.keys(sel).some(k=>k!=="rsa"&&sel[k].size);
+// "No bill in the 2025-2026 term changes RSA 404, Dog Licensing.", or "None
+// of these bills changes ..." with another filter or the search on. Said only
+// in a term whose bills say which laws they change (rsaGroup): of a bill
+// request, which has no text yet, it would be a guess stated as a fact (the
+// review of 26 October 2026: "No bill request for 2027 changes RSA 91-A",
+// while two of them are plainly about it).
+function rsaNone(what){
+  return (rsaNarrowed()?"None of these bills changes ":`No bill ${termPhrase()} changes `)+what+".";
+}
+// A NAME A TITLE'S FIRST CHAPTER IS KNOWN BY IS THE TITLE'S (the review of 26
+// October 2026). "criminal code" found RSA 625 alone, Preliminary, by the name
+// it is known by -- while bills change chapter after chapter of the Criminal
+// Code: RSA 625:1, "This title shall be known as the Criminal Code". So where
+// the words fit no law by its own name, and fit best the name a title's first
+// chapter is known by, the offers are the six chapters of that title the
+// bills change most, the most bills first -- 625 among them only where a bill
+// changes it and it is one of those six -- and where the bills change none of
+// the title, the line names it: "None of these bills changes the Criminal
+// Code." Anywhere else the name is the chapter's own (RSA 406-B is the
+// "Uniform Unlicensed Insurers Act"), and so it is where the chapter is its
+// title's only one (RSA 624, known as the Revised Statutes Annotated, is all
+// of title LXI). In the list of 26 October 2026, 625 is the one chapter this
+// applies to. null where it does not apply; else the name the title is known
+// by and the offers.
+function rsaTitleOf(best){
+  const L=RSA_LAWS.data,law=L[best.a],t=law[1];
+  if(best.how!==1||!t)return null;
+  const of=Object.keys(L).filter(a=>Array.isArray(L[a])&&L[a][1]===t);
+  if(of.length<2||of.some(a=>rsaCmp(a,best.a)<0))return null;
+  return {name:law[4][0],rows:of.filter(a=>RSA_N[a]).map(a=>({a,n:RSA_N[a]}))
+    .sort((x,y)=>y.n-x.n||rsaCmp(x.a,y.a)).slice(0,RSA_MOST)};
+}
+// The offers for what is typed: {rows:[{a, n}], note, miss}, `note` the line
+// that says why there are none, `miss` the one Return says where it finds
+// nothing to choose.
+function rsaOffers(t){
+  const T=rsaTyped(t),c=RSA_N;
+  let rows=[];
+  if(!T)return {rows,note:"",miss:""};
+  if(T.odd)return {rows,note:"RSA numbers look like 91-A or 91-A:4.",miss:""};
+  if(T.num){
+    // Sections after a colon, and the chapter itself after them, always, so
+    // its name is there; else the chapters whose number begins with what is
+    // typed -- "21-" with exactly that, 21-J and not 210 (the review of 26
+    // October 2026: "1-" offered 189 and 198) -- the one typed first.
+    const num=T.num.replace(/:$/,""),pre=T.sec?T.num:T.dash?T.ch+"-":T.ch;
+    rows=Object.keys(c).filter(a=>(a.indexOf(":")>=0)===T.sec&&a.startsWith(pre))
+      .map(a=>({a,n:c[a]})).sort((x,y)=>(y.a===num)-(x.a===num)||y.n-x.n||rsaCmp(x.a,y.a));
+    // A section no bill changes, typed whole: said so over its chapter.
+    const unchanged=T.sec&&num!==T.ch&&!rows.length;
+    rows=T.sec&&c[T.ch]?rows.slice(0,RSA_MOST-1).concat([{a:T.ch,n:c[T.ch]}]):rows.slice(0,RSA_MOST);
+    // "21-", begun, names no chapter: RSA 21 itself may well be changed.
+    const none=rsaNone(T.dash?`a law whose number begins “${T.ch}-”`:rsaNamed(num));
+    return {rows,note:rows.length&&!unchanged?"":none,miss:T.dash?"":none};
+  }
+  if(!RSA_LAWS.data)return {rows,miss:"",note:RSA_LAWS.failed
+    ?"The laws’ names could not be loaded. Type a chapter’s number, like 91-A."
+    :"Looking up the laws’ names…"};
+  // A last word begun and not yet three letters is not read until it is:
+  // "right to kn" said "No law matches" between "right to" and "right to kno"
+  // (found in Chromium on the preview, 26 October 2026). Now it offers what
+  // "right" does, a whole word.
+  const begun=!/\s$/.test(String(t||""));
+  const cut=begun&&T.words.length>1&&T.words[T.words.length-1].length<FO_MIN;
+  const ws=cut?T.words.slice(0,-1):T.words,open=begun&&!cut;
+  // Every law of the list the words fit: offered where a bill here changes
+  // it; and the one they fit best, for a title's name (rsaTitleOf).
+  let best=null;
+  for(const a of Object.keys(RSA_LAWS.data)){
+    const law=RSA_LAWS.data[a],how=Array.isArray(law)?rsaFit(ws,open,law):-1;
+    if(how<0)continue;
+    if(c[a])rows.push({a,n:c[a],how});
+    if(!best||how<best.how)best={a,how};
+  }
+  const title=best&&rsaTitleOf(best);
+  if(title)return {rows:title.rows,miss:"",note:title.rows.length?"":rsaNone("the "+title.name)};
+  rows.sort((x,y)=>x.how-y.how||y.n-x.n||rsaCmp(x.a,y.a));
+  // None a bill changes: said so, naming no law. The law of the whole list
+  // the words fit best was named, and "students" named RSA 110-E, "driving"
+  // RSA 287-G, laws nobody had asked about (the review of 26 October 2026).
+  return {rows:rows.slice(0,RSA_MOST),miss:"",
+    note:rows.length?"":rsaNone(`a law whose name has “${T.raw}” in it`)};
+}
+// The list and the line under the box as they stand: shut, or what is typed
+// offered, the one the arrow keys are on by its number. `miss` is what was
+// typed when Return found nothing to choose, until it is typed in again.
+const RSA_OFF={open:false,act:"",miss:null};
+let RSADRAW=null;
+function rsaState(){
+  if(!RSA_OFF.open)return {rows:[],note:"",act:-1};
+  const r=rsaOffers(rsaText);
+  if(!r.note&&RSA_OFF.miss===rsaText)r.note=r.miss;
+  return {...r,act:r.rows.findIndex(x=>x.a===RSA_OFF.act)};
+}
+// Each offer: the number, and under it a chapter's name or a section's
+// heading -- a section's chapter is offered with it, named once, rather than
+// the same name under every section -- and how many bills at the right. A
+// section was its number alone, "RSA 91-A:4 8", the bare numbers the person
+// asked to be rid of (the review of 26 October 2026).
+function rsaRows(st){
+  return st.rows.map((r,i)=>{const law=r.a.indexOf(":")<0&&rsaLaw(r.a);
+    const under=law?law[0]||"":r.a.indexOf(":")>=0?rsaHead(r.a):"";
+    return `<li role="option" class="qoffer" id="rsaoffers-${i}" data-rsapick="${esc(r.a)}"
+    aria-selected="${i===st.act}"><span class="rn"><b>RSA ${esc(r.a)}</b>${under
+      ?`<span class="sr">, </span><span class="rt">${esc(under)}</span>`:""}</span>
+    <span class="c">${Number(r.n).toLocaleString()}<span class="sr"> ${r.n===1?"bill":"bills"}</span></span></li>`;}).join("");
+}
+// The list drawn again in place, the box and the status line kept. `say`
+// where what is typed changed: the status line says how many, or the line
+// under the box. Shut, the status line is emptied with it: it went on saying
+// "6 laws match" after Tab had shut the six (the review of 26 October 2026).
+function rsaPaint(say){
+  const box=document.getElementById("rsabox"),list=document.getElementById("rsaoffers");
+  if(!box||!list)return;
+  const st=rsaState(),note=document.getElementById("rsanote");
+  list.innerHTML=rsaRows(st);list.hidden=!st.rows.length;
+  box.setAttribute("aria-expanded",st.rows.length?"true":"false");
+  if(st.act>=0){
+    box.setAttribute("aria-activedescendant","rsaoffers-"+st.act);
+    const on=document.getElementById("rsaoffers-"+st.act);
+    if(on&&on.scrollIntoView)on.scrollIntoView({block:"nearest"});
+  }else box.removeAttribute("aria-activedescendant");
+  if(note){note.textContent=st.note;note.hidden=!st.note;}
+  const s=document.getElementById("rsasay");
+  if(s&&(say||!RSA_OFF.open))s.textContent=st.note||(!st.rows.length?"":st.rows.length===1
+    ?"1 law matches; the down arrow chooses it.":`${st.rows.length} laws match; the down arrow chooses one.`);
+}
+// Return: the offer the arrow keys are on; else what was typed, where a bill
+// changes it -- "540:", its sections not begun, is RSA 540; else, for words,
+// the best of the offers.
+function rsaEnter(){
+  const r=rsaOffers(rsaText),T=rsaTyped(rsaText);
+  const on=r.rows.find(x=>x.a===RSA_OFF.act);
+  if(on)return on.a;
+  if(T&&T.num)return rsaNumber();
+  return T&&r.rows.length?r.rows[0].a:"";
+}
+// The number typed, where a bill here changes it: "91-A", "91-A:4", or
+// "540:", its sections not begun, for RSA 540; "" for words, for a number
+// begun ("21-") and for one no bill changes ("91").
+function rsaNumber(){
+  const T=rsaTyped(rsaText);if(!T||!T.num||T.dash)return "";
+  const a=T.num.replace(/:$/,"");return RSA_N[a]?a:"";
+}
+// A law chosen, or "" for Clear, and the list drawn. The focus stays where
+// the reader sent it (render keeps it, in the box drawn anew where it was in
+// the box), and is put in the box, after its last letter, only `into` it:
+// from the keyboard -- Return, or Clear's own button, which is gone once it
+// is pressed -- never from a finger or the mouse: on a phone that brought the
+// keyboard up over the bills just chosen (the review of 26 October 2026).
+// Where there is no box, in the bill requests, Clear takes the group with
+// it, and the focus goes to the head of the filter above it, which stays,
+// rather than to the page.
+function rsaChoose(a,into){
+  clearTimeout(RSADRAW);RSA_OFF.open=false;RSA_OFF.act="";RSA_OFF.miss=null;
+  sel.rsa.clear();if(a)sel.rsa.add(a);rsaText=a;
+  render();
+  const b=document.getElementById("rsabox");
+  if(b){if(into){b.focus({preventScroll:true});const n=b.value.length;b.setSelectionRange(n,n);}return;}
+  const hs=document.querySelectorAll("#facets .fhead"),h=hs[hs.length-1]||$("#year");
+  if(h&&h.focus)h.focus({preventScroll:true});
+}
 function rsaGroup(inYear){
-  const open=openGroups.has("rsa"),chosen=[...sel.rsa];
-  const c={};inYear.filter(b=>matches(b,"rsa")).forEach(b=>(b.rsa||[]).forEach(a=>{
-    if(a.indexOf(":")<0)c[a]=(c[a]||0)+1;}));
-  const top=Object.keys(c).sort((x,y)=>c[y]-c[x]||(x<y?-1:1)).slice(0,10);
-  const inner=`<input class="sbox" id="rsabox" aria-label="A chapter or section of the RSA"
-      placeholder="A chapter or section: 91-A or 91-A:4" value="${esc(rsaText||chosen[0]||"")}" autocomplete="off">`
-    +(chosen.length?`<p class="frsa">Bills that change <b>RSA ${esc(chosen[0])}</b> &middot; `
-      +`<a href="${esc(rsaHref(chosen[0]))}">Read the statute</a> &middot; <button class="link" data-rsapick="">Clear</button></p>`
-      :(rsaText.trim()?`<p class="fnone">Type a chapter (91-A) or a section (91-A:4)</p>`:""))
-    +(top.length?`<p class="frsa">Most changed by these bills:</p>`
-      +top.map(a=>`<button class="pill frsapick" data-rsapick="${esc(a)}">RSA ${esc(a)} <span class="c">${c[a]}</span></button>`).join(" "):"");
+  const open=openGroups.has("rsa"),chosen=sel.rsa.size?[...sel.rsa][0]:"";
+  // A TERM WHOSE BILLS SAY NO LAW, the bill requests (the review of 26
+  // October 2026): nothing can be offered there or said not to change, so
+  // there is no box; a law chosen in another term stays, as a ticked status
+  // does, named with a line that says why it lists none, so it can be undone
+  // where it was done.
+  const told=hasRsa();
+  if(!told&&!chosen)return "";
+  let inner="";
+  // Shut, nothing in it is drawn or counted, and the names are not fetched.
+  if(open){
+    rsaLawsLoad();
+    // The link to read it, where the Laws pages have the chapter: one a bill
+    // would write anew (RSA 194-G) has no page there yet.
+    const page=!RSA_LAWS.data||rsaLaw(chosen);
+    const line=chosen?`<p class="frsa">Bills that change <b>RSA ${esc(chosen)}</b>${esc(rsaOf(chosen))} &middot; `
+      +(page?`<a href="${esc(rsaHref(chosen))}">Read the law</a> &middot; `:"")
+      +`<button class="link" data-rsapick="">Clear</button></p>`:"";
+    if(!told){
+      inner=`<p class="fnone">${termNoun()==="bills"?"Which laws these bills change is not known."
+        :"A bill request has no text yet, so the laws it would change are not known."}</p>`+line;
+    }else{
+      const c={};inYear.filter(b=>matches(b,"rsa")).forEach(b=>(b.rsa||[]).forEach(a=>{c[a]=(c[a]||0)+1;}));
+      RSA_N=c;
+      const st=rsaState();
+      // "A few words", as the search box above says, rather than "a name",
+      // which under the Sponsor filter's "Type a name…" read as a person's
+      // (the review of 26 October 2026). Short enough for the box at 1280,
+      // which has 250px for it: "A number like 91-A, or a few words" took
+      // 257 and lost its last word; this takes 185 (measured in Chromium).
+      inner=`<input class="sbox" id="rsabox" role="combobox" aria-autocomplete="list" aria-controls="rsaoffers"
+        aria-expanded="${st.rows.length?"true":"false"}"${st.act>=0?` aria-activedescendant="rsaoffers-${st.act}"`:""}
+        aria-label="A law’s RSA number, like 91-A, or a few words from its name" placeholder="Like 91-A, or a few words"
+        value="${esc(rsaText)}" autocomplete="off" spellcheck="false">`
+        +`<ul class="rsaoffers" id="rsaoffers" role="listbox" aria-label="Laws these bills change"${st.rows.length?"":" hidden"}>${rsaRows(st)}</ul>`
+        +`<p class="fnone" id="rsanote"${st.note?"":" hidden"}>${esc(st.note)}</p><span class="sr" id="rsasay" role="status"></span>`
+        +line;
+    }
+  }
   return `<div class="fgroup ${open?'open':''}"><button class="fhead" data-g="rsa"
-    aria-expanded="${open}"><span>RSA (Statute)</span>${chosen.length?`<span class="badge">1</span>`:""}
-    <span class="chev">▸</span></button><div class="fbody" ${open?"":"hidden"}>${inner}</div></div>`;
+    aria-expanded="${open}"><span>Laws Changed (RSA)</span>${chosen?`<span class="badge">1</span>`:""}
+    <span class="chev">▸</span></button><div class="fbody whole" ${open?"":"hidden"}>${inner}</div></div>`;
 }
 
 function renderFacets(){
@@ -3372,10 +3706,12 @@ function renderFacets(){
   h+=fgroup("topic","Topic",present("topic"),cnt("topic","topic"));
   h+=fgroup("sponsor","Sponsor",present("sponsor"),cnt("sponsor","sponsor"),true);
   // THE STATUTE, where the Floor Vote Day filter was (the person, 11 October
-  // 2026). A box for a chapter or a section, the bills' most changed chapters
-  // under it as picks, and the statute itself one link away. A vote day an
-  // old address names still filters; the group is no longer drawn.
-  if(hasRsa())h+=rsaGroup(inYear);
+  // 2026): Laws Changed (RSA) since 26 October, a box that offers the laws
+  // these bills change by number or by name (rsaGroup), and the law itself
+  // one link away. A vote day an old address names still filters; the group
+  // is no longer drawn. Not drawn either in a term whose bills say no law,
+  // unless a law is chosen (rsaGroup).
+  h+=rsaGroup(inYear);
   if(Object.values(sel).some(s=>s.size))h+=`<button class="link" id="clear" style="margin-top:12px">Clear all filters</button>`;
   // Replacing innerHTML resets scrollTop to zero. Capture it first and put it
   // back in the same tick, before anything is painted, or every tick of a
@@ -3388,6 +3724,10 @@ function renderFacets(){
   // things replaced: focus goes back on its copy once the scroll is restored
   // (focusKey, by repaint).
   const held=focusKey();
+  // And the caret in the Laws Changed box, where the laws' names arrive
+  // while it is being typed in (rsaLawsLoad).
+  const ae=document.activeElement;
+  const caret=ae&&ae.id==="rsabox"&&ae.selectionStart!=null?[ae.selectionStart,ae.selectionEnd]:null;
   fx.innerHTML=h;
   fx.scrollTop=keep;
   facetBadge();
@@ -3395,6 +3735,8 @@ function renderFacets(){
     if(innerKeep[i]!==undefined)el.scrollTop=innerKeep[i];
   });
   refocus(held);
+  const rb=caret&&document.getElementById("rsabox");
+  if(rb&&rb===document.activeElement&&rb.setSelectionRange)rb.setSelectionRange(caret[0],caret[1]);
 }
 // THE COUNT HAS TO BE VISIBLE WITH THE PANEL SHUT. A reader who filtered by
 // topic, scrolled, and came back to a closed panel would otherwise have no
@@ -9744,7 +10086,8 @@ document.addEventListener("click",e=>{
   // The bill search's own groups. The Laws page draws its filters with the
   // same classes and opens them itself (build_rsa's LANDING_JS).
   const g=e.target.closest("#facets .fhead");
-  if(g){openGroups.has(g.dataset.g)?openGroups.delete(g.dataset.g):openGroups.add(g.dataset.g);renderFacets();return;}
+  if(g){if(g.dataset.g==="rsa"&&!openGroups.has("rsa"))rsaReopen();
+    openGroups.has(g.dataset.g)?openGroups.delete(g.dataset.g):openGroups.add(g.dataset.g);renderFacets();return;}
   // The phone's filter disclosure. The class goes on .shell rather than on
   // the panel because the stylesheet has to move three things -- the button,
   // the panel and the results -- and one of them is the element being shown.
@@ -9862,18 +10205,114 @@ document.addEventListener("click",e=>{
   if(jq){query=jq.dataset.q;$("#q").value=query;clearTimeout(QDRAW);addressSearch(query);render();
     if(e.detail===0)$("#q").focus();
     return;}
-  if(e.target.id==="clear"){Object.values(sel).forEach(s=>s.clear());render();return;}
+  // The Laws Changed box's words go with its filter: they named it.
+  if(e.target.id==="clear"){Object.values(sel).forEach(s=>s.clear());rsaText="";RSA_OFF.open=false;render();return;}
 });
 document.addEventListener("change",e=>{
   if(PAGE)return;                       // the facet checkboxes are not drawn there
   const f=e.target.dataset.f;if(!f)return;
   e.target.checked?sel[f].add(e.target.value):sel[f].delete(e.target.value);render();});
-let RSADRAW=null;
+// A law offered under the Laws Changed box, pressed, or its Clear (rsaGroup):
+// the keyboard into the box only for a click with no pointer behind it.
 document.addEventListener("click",e=>{
   const pk=e.target.closest&&e.target.closest("[data-rsapick]");
   if(!pk||PAGE)return;
-  const a=pk.dataset.rsapick;sel.rsa.clear();if(a)sel.rsa.add(a);rsaText=a;render();
+  rsaChoose(pk.dataset.rsapick||"",e.detail===0);
 });
+// THE LAWS CHANGED BOX, heard where it is drawn (rsaGroup, the person, 26
+// October 2026). #facets is drawn once and its groups into it, so these
+// outlive every drawing of the box; and Escape on an open list is the list's
+// before it reaches the document, whose Escape shuts the phone's panel.
+{const fx=$("#facets");if(fx&&fx.addEventListener){
+  const shut=()=>{clearTimeout(RSADRAW);RSA_OFF.open=false;RSA_OFF.act="";RSA_OFF.miss=null;rsaPaint();};
+  // THE BOX SAYS WHAT IS CHOSEN once the reader is done with it (the review
+  // of 26 October 2026). With RSA 91-A chosen, the box emptied, or "tax"
+  // typed and left, still listed 91-A's 29 bills under ?rsa=91-A while the
+  // box read as nothing chosen, or as tax. Now an emptied box takes the law
+  // away, as Clear does, after the pause in typing, on Return or on leaving
+  // it; and words that chose nothing give way to the chosen law's number when
+  // the box is left or Escape is pressed.
+  const back=()=>{const ch=sel.rsa.size?[...sel.rsa][0]:"";if(!ch||rsaText===ch)return;
+    rsaText=ch;const b=document.getElementById("rsabox");if(b)b.value=ch;};
+  const emptied=()=>!String(rsaText||"").trim()&&sel.rsa.size>0;
+  // A NUMBER TYPED WHOLE IS CHOSEN ON LEAVING, as Return chooses it (the
+  // review of 26 October 2026): "91-A" typed and the box left by a tap
+  // elsewhere still read 91-A over a list that it did not filter, with no
+  // badge and no line -- where before this filter's box, typing 91-A filtered
+  // by itself. A number no bill changes ("91") is not, and words stay as
+  // typed. The number is the one read as the box lost the focus (`was`), but
+  // only while the box still reads what it read then: left by ticking
+  // Withdrawn, the tick's click and change narrowed the list before the box
+  // was heard to be left, and no bill left in it changed 91-A; but an offer,
+  // a section, Clear or Clear all pressed after "540" or "91-A:" changes the
+  // box's words, and what was pressed is what is chosen (the review of 26
+  // October 2026), and a snapshot left by a press that brought no click is
+  // never taken for words typed since.
+  let was=null;
+  const leave=()=>{const w=was;was=null;if(RSA_OFF.open)shut();
+    if(emptied())return rsaChoose("");
+    const a=w&&w.t===rsaText?w.a:rsaNumber();
+    if(a&&!sel.rsa.has(a))return rsaChoose(a);
+    back();};
+  fx.addEventListener("input",e=>{
+    if(!e.target||e.target.id!=="rsabox")return;
+    rsaText=e.target.value;RSA_OFF.open=true;RSA_OFF.act="";RSA_OFF.miss=null;rsaLawsLoad();
+    // A colon typed asks for the sections, which are offered by heading.
+    const T=rsaTyped(rsaText);if(T&&T.sec)rsaHeadsLoad();
+    clearTimeout(RSADRAW);RSADRAW=setTimeout(()=>{if(emptied())rsaChoose("");else rsaPaint(true);},FO_WAIT);
+  });
+  fx.addEventListener("keydown",e=>{
+    if(!e.target||e.target.id!=="rsabox")return;
+    const k=e.key;
+    if(k==="ArrowDown"||k==="ArrowUp"){
+      clearTimeout(RSADRAW);RSA_OFF.open=true;
+      const rows=rsaOffers(rsaText).rows;
+      if(!rows.length){rsaPaint(true);return;}
+      e.preventDefault();
+      const i=rows.findIndex(r=>r.a===RSA_OFF.act);
+      RSA_OFF.act=rows[k==="ArrowDown"?(i+1)%rows.length:i<=0?rows.length-1:i-1].a;
+      rsaPaint();
+    }else if(k==="Enter"){
+      e.preventDefault();
+      const a=rsaEnter();
+      if(a||emptied())rsaChoose(a,true);
+      // Nothing to choose: the line under the box says why.
+      else{clearTimeout(RSADRAW);RSA_OFF.open=true;RSA_OFF.miss=rsaText;rsaPaint(true);}
+    }else if(k==="Escape"){
+      const st=rsaState();
+      if(st.rows.length||st.note){e.preventDefault();e.stopPropagation();shut();back();}
+    }else if(k==="Tab"){
+      // Tab leaves the box as its keydown is heard, before the focus moves:
+      // what that chooses is drawn with the focus still in the box, so Tab
+      // goes on from there to where it was sent (the review of 26 October
+      // 2026: chosen once the focus had gone on, the drawing took away Read
+      // the law, or the bill, it had gone to, and the focus fell to the page).
+      leave();
+    }
+  });
+  // Left otherwise -- a press, a tap, a phone's Done -- the list shuts and the
+  // box says what is chosen, the focus left where it went; but not when the
+  // box was only drawn again and the focus put back in it.
+  const left=()=>{const b=document.getElementById("rsabox");if(!b||b!==document.activeElement)leave();else was=null;};
+  // AND NOT UNTIL A PRESS'S CLICK IS HEARD (the review of 26 October 2026).
+  // Pressed with the list open, Clear, an offer, "Read the law" and Clear all
+  // filters took the focus from the box, the list shut under the pointer
+  // before it was let go, what was pressed moved up from under it, and no
+  // click came: Clear did not clear. A press and the focus it takes come in
+  // one task, so `pressing` is true for that task alone and cannot outlast it
+  // (a flag cleared by the release stayed set where the release never reached
+  // the page, and the box left later by the keyboard waited on a press long
+  // over). A tap's click comes in the same task as the focus it takes,
+  // before anything set going by it.
+  let pressing=false;
+  const heard=()=>setTimeout(left,0);
+  document.addEventListener("pointerdown",()=>{pressing=true;setTimeout(()=>{pressing=false;},0);},true);
+  fx.addEventListener("focusout",e=>{
+    if(!e.target||e.target.id!=="rsabox")return;
+    was={t:rsaText,a:rsaNumber()};
+    if(pressing)document.addEventListener("click",heard,{once:true});else heard();
+  });
+}}
 // THE SPONSOR FILTER OFFERED FOR A NAME IS TAKEN IN PLACE (sponsorHint, 17
 // October 2026). The name typed lists nothing, so it leaves the box, and the
 // person is ticked as the one sponsor chosen; the list and its address follow.
@@ -9890,7 +10329,7 @@ document.addEventListener("click",e=>{
 // THE VOTES TAB'S FIND, AS YOU TYPE (the webinar pass of 23 October 2026: it
 // filtered only on Return or on leaving the box, and after Return the focus
 // fell to the page). A pause in typing draws the list; the box keeps the
-// focus and the caret, as the statute search above does.
+// focus and the caret, as the sponsor box below does.
 let VQDRAW=null;
 document.addEventListener("input",e=>{
   if(PAGE&&e.target.dataset&&e.target.dataset.pf==="vq"){
@@ -9898,10 +10337,6 @@ document.addEventListener("input",e=>{
     VQDRAW=setTimeout(()=>{if(!PAGE||PAGE.vq===v)return;PAGE.vq=v;PAGE.vshow=0;renderPage();
       const b=document.querySelector('input[data-pf="vq"]');
       if(b){b.focus({preventScroll:true});const n=b.value.length;b.setSelectionRange(n,n);}},250);
-    return;}
-  if(e.target.id==="rsabox"){rsaText=e.target.value;clearTimeout(RSADRAW);
-    RSADRAW=setTimeout(()=>{const a=rsaNorm(rsaText);sel.rsa.clear();if(a)sel.rsa.add(a);render();
-      const b=document.getElementById("rsabox");if(b){b.focus();b.setSelectionRange(b.value.length,b.value.length);}},250);
     return;}
   if(e.target.id==="sbox"){sponsorFilter=e.target.value;renderFacets();
     const b=document.getElementById("sbox");if(b){b.focus();b.setSelectionRange(b.value.length,b.value.length);}}});

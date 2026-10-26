@@ -51003,8 +51003,9 @@ def _search_groups_fixture(passed=0):
     earlier term with no bill still moving, tabled, withdrawn or vetoed, nor
     sent to interim study. `passed` more laws in the current term, HB 100 on,
     make its list longer than the hundred cards drawn at first. One bill was
-    voted on the floor and changes RSA 91-A:4: the RSA (Statute) filter is
-    drawn in the Floor Vote Day filter's place (the person, 11 October 2026)."""
+    voted on the floor and changes RSA 91-A:4: the statute filter, Laws
+    Changed (RSA) since 26 October 2026, is drawn in the Floor Vote Day
+    filter's place (the person, 11 October 2026)."""
     def row(bid, kind, chip, term="2025-2026", status=None):
         return {"id": bid, "n": re.sub(r"^([A-Z]+)", r"\1 ", bid), "title": "a bill",
                 "kind": kind, "status": status or chip, "chip": chip, "committees": [],
@@ -51080,7 +51081,9 @@ def _status_and_type_filters():
     none, so the empty list can be undone where it was done (the review of
     8 October 2026); the Status and Bill Type filters shown whole, never in
     a box that scrolls (the review: a phone's 210px showed six of the
-    current term's seven kinds); every filter headed in Title Case, Floor
+    current term's seven kinds), and Laws Changed with them since 26 October
+    2026, whose offers, six at most, would be cut off there just the same;
+    every filter headed in Title Case, Floor
     Vote Day among them (decided 8 October); and ?status= and ?type= in the
     address ticking the filters, a chip's own word read as its category."""
     fx = _search_groups_fixture()
@@ -51135,11 +51138,14 @@ def _status_and_type_filters():
                    f"{labels.get('type')!r}, not 'Status' and 'Bill Type'")
     # THE STATUTE FILTER REPLACES THE FLOOR VOTE DAY FILTER (the person, 11
     # October 2026: "Eventually we will replace the session day filter on
-    # bill search for the RSA search").
+    # bill search for the RSA search"). Headed Laws Changed (RSA) since the
+    # person's note of 26 October 2026 ("it should still be easily
+    # understandable"; _laws_changed_offers holds the rest of it).
     if "voteday" in labels:
-        bad.append("the Floor Vote Day filter is still drawn; the RSA (Statute) filter replaces it")
-    if labels.get("rsa") != "RSA (Statute)":
-        bad.append(f"the statute filter is headed {labels.get('rsa')!r}, not 'RSA (Statute)'")
+        bad.append("the Floor Vote Day filter is still drawn; the Laws Changed (RSA) filter "
+                   "replaces it")
+    if labels.get("rsa") != "Laws Changed (RSA)":
+        bad.append(f"the statute filter is headed {labels.get('rsa')!r}, not 'Laws Changed (RSA)'")
     lower = [lab for _g, lab in n["labels"] if any(w[:1].islower() for w in lab.split())]
     if lower:
         bad.append(f"a filter's heading is not in Title Case: {lower}")
@@ -51175,8 +51181,9 @@ def _status_and_type_filters():
         bad.append(f"Passed ticked and carried into the requests is not on offer to untick, "
                    f"alone: the filters are {rt['groups']}, offering {rt['status']}, ticked "
                    f"{rt['ticked']}")
-    if sorted(n["whole"]) != ["status", "type"]:
-        bad.append(f"the filters shown whole are {n['whole']}, not Status and Bill Type")
+    if sorted(n["whole"]) != ["rsa", "status", "type"]:
+        bad.append(f"the filters shown whole are {n['whole']}, not Status, Bill Type and Laws "
+                   "Changed")
     if [(v, c) for v, _l, c in got["requests"]["type"]] != [("HB", 2), ("SB", 1)]:
         bad.append(f"the requests' Bill Type filter offers {got['requests']['type']}")
     assert not bad, "; ".join(bad)
@@ -51244,6 +51251,1033 @@ def _status_heads_full_totals():
     assert not bad, "; ".join(bad)
     return "ok", (f"the first {n} of 150 are headed In Progress 4 and Passed 136, the whole "
                   "list each category by the filter's own number, narrowed or not")
+
+
+# THE LAWS CHANGED FILTER (app.js rsaGroup; the person, 26 October 2026), in
+# node: the bill search as bills.html runs it over _rsa_fixture, the address
+# from argv[2], and the reader's steps -- the group opened by its head, the box
+# typed in, the arrow keys, Return, Escape, Tab, leaving the box, an offer
+# pressed, Clear and Clear all filters, the term picker -- each read off the
+# group, its list, the line under the box, the status line, the box's own
+# attributes, value, caret and focus, the cards, the address and every file
+# asked for. The clicks go through app.js's own document listeners, and the
+# typing through #facets', where the box is heard. The box is one element, as
+# the stub has one per id; each time the panel is drawn it is drawn anew as a
+# browser draws it (the review of 26 October 2026, which found a caret and a
+# press that failed silently in Chromium and passed here): its value, list,
+# note and attributes from the markup, the status line empty, the caret at the
+# start, and the focus gone from anything in the panel until app.js puts it
+# back -- refocus finds the box by its id. Where the panel draws no box, there
+# is none to find. argv[3] picks the run: "" the reader's steps; "slow"
+# laws/chapters.json held until words are typed, the names arriving under them
+# mid-word; "slowshut" the same with the panel shut before they arrive;
+# "failonce" laws/chapters.json failing once and the group opened again;
+# "terms" the term picker, the address naming the requests.
+_RSA_GROUP_HARNESS = r"""
+require("./stub.js");
+const fs = require("fs");
+const FIX = JSON.parse(fs.readFileSync("./fixture.json", "utf8"));
+const ASKED = [];
+const MODE = process.argv[3] || "";
+let release = () => {}, releaseIdx = () => {};
+const held = new Promise(r => { release = r; }), heldIdx = new Promise(r => { releaseIdx = r; });
+let failNext = MODE === "failonce" ? 1 : 0, failHeads = failNext;
+globalThis.fetch = async (u) => { const p = decodeURIComponent(new URL(u).pathname); ASKED.push(p);
+  // A file asked for again and again, as a failure asked for anew on every
+  // drawing would be: said, rather than left to run into node's timeout.
+  const n = ASKED.filter(x => x === p).length;
+  if (n > 25) { process.stdout.write("\n@@" + JSON.stringify({runaway: p + " was asked for " + n + " times"}));
+    process.exit(0); }
+  if (MODE.startsWith("slow") && p === "/laws/chapters.json") await held;
+  if (MODE === "terms" && p === "/idx/2025-2026.json") await heldIdx;
+  if (p === "/laws/headings.json" && failHeads > 0) { failHeads--;
+    return { ok: false, status: 503, statusText: "Unavailable", json: async () => { throw new Error("503"); } }; }
+  if (p === "/laws/chapters.json" && failNext > 0) { failNext--;
+    return { ok: false, status: 503, statusText: "Unavailable", json: async () => { throw new Error("503"); } }; }
+  if (!(p in FIX)) return { ok: false, status: 404, statusText: "Not Found",
+                            json: async () => { throw new Error("404"); } };
+  return { ok: true, status: 200, json: async () => JSON.parse(JSON.stringify(FIX[p])) }; };
+const ticks = async (n) => { for (let i = 0; i < n; i++) await new Promise(r => setImmediate(r)); };
+// Timers: each run in a task of its own after the one that set it, as a
+// browser runs them -- not at once, as the stub runs them -- or, HOLD, a
+// pause in typing kept waiting, so that what Return or leaving the box does
+// before it ends can be seen.
+let HOLD = false, TID = 1;
+const PENDING = new Map(), SOON = new Map();
+globalThis.setTimeout = (f, ms) => { const id = TID++;
+  if (HOLD && ms > 0) PENDING.set(id, f);
+  else { SOON.set(id, f); setImmediate(() => { if (SOON.delete(id)) try { f(); } catch (e) {} }); }
+  return id; };
+globalThis.clearTimeout = (id) => { PENDING.delete(id); SOON.delete(id); };
+globalThis.CSS = globalThis.CSS || {escape: (x) => String(x)};
+location.search = process.argv[2] || "";
+history.replaceState = (st, t, u) => { const i = u.indexOf("?");
+  location.search = i < 0 ? "" : u.slice(i).replace(/#.*$/, ""); };
+// The document's listeners, as a browser keeps them: one of each, and one
+// added {once: true} gone once it is heard.
+const DOCON = {};
+document.addEventListener = (t, f, o) => { const l = DOCON[t] = DOCON[t] || [];
+  if (!l.some(x => x.f === f)) l.push({f, once: !!(o && o.once)}); };
+const fire = (t, ev) => { for (const x of [...(DOCON[t] || [])]) {
+  if (x.once) DOCON[t].splice(DOCON[t].indexOf(x), 1); try { x.f(ev); } catch (e) {} } };
+const q = document.querySelector("#q"); q.disabled = true;
+// #facets, an element of the stub's whose innerHTML can be watched.
+const fx = Object.create(document.createElement("div"));
+const qs0 = document.querySelector.bind(document);
+document.querySelector = (x) => (x === "#facets" ? fx : qs0(x));
+const rb = document.getElementById("rsabox"), ro = document.getElementById("rsaoffers");
+const rn = document.getElementById("rsanote"), rs = document.getElementById("rsasay");
+const ATTR = {};
+rb.id = "rsabox"; rb.tagName = "INPUT"; rb.inFacets = true;
+rb.setAttribute = (k, v) => { ATTR[k] = String(v); };
+rb.removeAttribute = (k) => { delete ATTR[k]; };
+rb.getAttribute = (k) => (k in ATTR ? ATTR[k] : null);
+rb.selectionStart = rb.selectionEnd = 0;
+rb.setSelectionRange = (a, b) => { rb.selectionStart = a; rb.selectionEnd = b; };
+let ACTIVE = document.body;
+Object.defineProperty(document, "activeElement", {get: () => ACTIVE, configurable: true});
+rb.focus = () => { ACTIVE = rb; };
+rb.closest = (x) => (x === "#results,#facets" ? fx : null);
+let BOXED = false, DRAWS = 0;
+const byId = document.getElementById.bind(document), qsa = document.querySelectorAll.bind(document);
+document.getElementById = (id) => (!BOXED && ["rsabox", "rsaoffers", "rsanote", "rsasay"].includes(id) ? null : byId(id));
+// The groups' heads as drawn, each to be focused.
+const HEADS = () => [...FXH.matchAll(/<button class="fhead" data-g="([^"]+)"/g)]
+  .map(m => ({g: m[1], tagName: "BUTTON", inFacets: true, focus() { ACTIVE = this; }}));
+document.querySelectorAll = (x) => (x === "#rsabox" ? (BOXED ? [rb] : []) : x === "#facets .fhead" ? HEADS() : qsa(x));
+const unesc = (h) => h.replace(/&quot;/g, '"').replace(/&#39;/g, "'").replace(/&lt;/g, "<")
+  .replace(/&gt;/g, ">").replace(/&amp;/g, "&");
+let FXH = "";
+Object.defineProperty(fx, "innerHTML", {get: () => FXH, set(v) { FXH = String(v); DRAWS++;
+  const box = /<input class="sbox" id="rsabox"[^>]*>/.exec(v);
+  BOXED = !!box;
+  // The box drawn anew with the focus in it says it is left, as Chromium's does.
+  const had = ACTIVE === rb;
+  if (ACTIVE && ACTIVE.inFacets) ACTIVE = document.body;
+  if (had) fx.fire("focusout", {target: rb});
+  if (!box) return;
+  const at = (k) => (new RegExp("\\s" + k + '="([^"]*)"').exec(box[0]) || [])[1];
+  rb.value = unesc(at("value") || ""); rb.selectionStart = rb.selectionEnd = 0;
+  for (const k of Object.keys(ATTR)) delete ATTR[k];
+  for (const k of ["aria-expanded", "aria-activedescendant"]) if (at(k) !== undefined) ATTR[k] = at(k);
+  const ul = /<ul class="rsaoffers"([^>]*)>([\s\S]*?)<\/ul>/.exec(v) || ["", "", ""];
+  ro.innerHTML = ul[2]; ro.hidden = /\shidden/.test(ul[1]);
+  const p = /<p class="fnone" id="rsanote"([^>]*)>([\s\S]*?)<\/p>/.exec(v) || ["", " hidden", ""];
+  rn.textContent = unesc(p[2]); rn.hidden = /\shidden/.test(p[1]);
+  rs.textContent = ""; }});
+const shell = document.querySelector(".shell");
+let SHUT = false;
+shell.classList = {toggle() {}, add() {}, remove() {}, contains: (c) => SHUT && c === "nofacets"};
+let s;
+try { s = (0, eval)(fs.readFileSync("./page.js", "utf8") + "; ({render, sel})"); }
+catch (e) { console.log("LOAD " + e.constructor.name + ": " + e.message); process.exit(1); }
+const $ = (x) => document.querySelector(x);
+const elsewhere = {tagName: "BUTTON", inFacets: true};       // Clear, or the next control in the panel
+const outside = {tagName: "A"};                                // somewhere off the panel
+const next = {tagName: "A", inFacets: true};                   // the control after the box, where Tab goes
+// A click on something whose closest(`sel`) is `hit`: from a pointer, or
+// (detail 0) from the keyboard.
+const press = (sel, hit, detail = 1) => fire("click", {target: {dataset: {}, closest: (x) => x === sel ? hit : null},
+  detail, button: 0, preventDefault() {}, stopPropagation() {}});
+const pressId = (id) => fire("click", {target: {id, dataset: {}, closest: () => null}, detail: 1, button: 0,
+  preventDefault() {}, stopPropagation() {}});
+const text = (h) => unesc(h.replace(/<[^>]+>/g, "").replace(/&middot;/g, "·")).replace(/\s+/g, " ").trim();
+const offers = (html) => [...(html || "").matchAll(/<li\b([^>]*)>([\s\S]*?)<\/li>/g)]
+  .map(m => { const at = (k) => (new RegExp("\\s" + k + '="([^"]*)"').exec(m[1]) || [])[1];
+    return {id: at("id"), role: at("role"), a: at("data-rsapick"), on: at("aria-selected"), text: text(m[2])}; });
+const look = () => {
+  const f = fx.innerHTML, g = (/<div class="fgroup[^"]*"><button class="fhead" data-g="rsa"[\s\S]*$/.exec(f) || [""])[0];
+  const r = $("#results").innerHTML;
+  return {group: g, label: (/data-g="rsa"\s*aria-expanded="[^"]*"><span>([^<]*)<\/span>/.exec(f) || [])[1] || null,
+    boxed: BOXED, line: text((/<p class="frsa">([\s\S]*?)<\/p>/.exec(g) || ["", ""])[1]),
+    why: text((/<p class="fnone">([\s\S]*?)<\/p>/.exec(g) || ["", ""])[1]),
+    links: [...g.matchAll(/<a href="([^"]*)">([^<]*)<\/a>/g)].map(m => [m[1], m[2]]),
+    offers: BOXED ? offers(ro.innerHTML) : [], drawn: offers((/<ul class="rsaoffers"[^>]*>([\s\S]*?)<\/ul>/.exec(g) || ["", ""])[1]),
+    note: !BOXED || rn.hidden ? "" : rn.textContent, say: BOXED ? rs.textContent : "", attrs: {...ATTR},
+    value: rb.value, caret: [rb.selectionStart, rb.selectionEnd],
+    focus: ACTIVE === rb ? "box" : ACTIVE === elsewhere ? "elsewhere" : ACTIVE === outside ? "outside"
+      : ACTIVE === next ? "next" : ACTIVE && ACTIVE.g ? "head:" + ACTIVE.g : "none", groups: HEADS().map(h => h.g),
+    rsa: [...s.sel.rsa], address: location.search,
+    cards: [...r.matchAll(/<article class="card[^"]*" data-id="([^"]+)"/g)].map(m => m[1]),
+    count: $("#count").textContent, asked: ASKED.filter(p => p === "/laws/chapters.json").length,
+    heads: ASKED.filter(p => p === "/laws/headings.json").length, draws: DRAWS};
+};
+// Typing: the box focused, the caret after the last letter.
+const type = async (t) => { ACTIVE = rb; rb.value = t; rb.selectionStart = rb.selectionEnd = t.length;
+  fx.fire("input", {target: rb}); await ticks(10); return look(); };
+const key = async (k) => { let stopped = false;
+  fx.fire("keydown", {target: rb, key: k, stopPropagation() { stopped = true; }}); await ticks(10);
+  return stopped; };
+// The box left for `to`: the focus goes, then the box hears it.
+const leave = async (to) => { ACTIVE = to; fx.fire("focusout", {target: rb}); await ticks(10); return look(); };
+// Tab, as a browser works it: its keydown heard, then the focus moved on
+// from wherever that left it -- from the box, to the control after it; from
+// anywhere else, to the top of the page -- and the box told it is left.
+const tab = async () => { fx.fire("keydown", {target: rb, key: "Tab", stopPropagation() {}}); await ticks(10);
+  ACTIVE = ACTIVE === rb ? next : document.body; fx.fire("focusout", {target: rb}); await ticks(10); return look(); };
+// A press of the mouse, held a moment and let go, as Chromium works one: on
+// `hit` (its closest(`sel`)), on the control whose id is `id`, or on nothing.
+// The press, the focus leaving the box -- for what was pressed, or for the
+// page (`to`, an offer taking no focus) -- and what that set going run while
+// the button is held down; then the release, and in the same task its click,
+// which lands on what was pressed only if that has not moved by then, and
+// otherwise on the page around it. Where the list under the box shut, or the
+// panel was drawn anew, between the press and its click, the click is lost,
+// as it was in Chromium (the review of 26 October 2026: Clear did not
+// clear). Says whether it moved.
+const click = async (sel, hit, id, to) => {
+  const shown = ro.hidden, d0 = DRAWS;
+  fire("pointerdown", {target: {}});
+  ACTIVE = to || (id || hit ? elsewhere : document.body); fx.fire("focusout", {target: rb});
+  await ticks(10);
+  fire("pointerup", {target: {}});
+  const moved = ro.hidden !== shown || DRAWS !== d0;
+  if (moved || !(id || sel)) press(null, null); else if (id) pressId(id); else press(sel, hit);
+  await ticks(10);
+  return moved;
+};
+// Another filter's checkbox, `v` of Status, ticked with the mouse from the
+// box: the press takes the focus, then the release, its click and the change
+// it makes -- the list narrowed and drawn again -- all before anything the
+// box set going on being left is run.
+const tickStatus = async (v) => {
+  fire("pointerdown", {target: {}});
+  ACTIVE = elsewhere; fx.fire("focusout", {target: rb}); await ticks(10);
+  fire("pointerup", {target: {}});
+  const cb = {dataset: {f: "status"}, value: v, checked: true, closest: () => null};
+  fire("click", {target: cb, detail: 1, button: 0, preventDefault() {}, stopPropagation() {}});
+  fire("change", {target: cb});
+  await ticks(10); return look();
+};
+// The panel drawn again, as ticking and unticking a status draws it.
+const redraw = () => { s.sel.status.add("Died"); s.render(); s.sel.status.clear(); s.render(); return look(); };
+const term = async (t) => { $("#year").fire("change", {target: {value: t}}); await ticks(40); return look(); };
+const head = async () => { press("#facets .fhead", {dataset: {g: "rsa"}}); await ticks(30); return look(); };
+(async () => {
+  for (let i = 0; i < 400 && q.disabled !== false; i++) await ticks(1);
+  if (q.disabled !== false) { console.log("app.js never finished loading the fixture"); process.exit(1); }
+  const out = {};
+  try {
+    s.render(); out.shut = look();
+    if (MODE === "terms") {
+      // Arrived on the requests, then the current term; a law chosen there,
+      // then the requests, All Terms and the requests again.
+      out.reqArrive = look();
+      // The current term chosen, and the list drawn again while its rows are
+      // on their way (a letter typed in the search box draws it), then the
+      // rows let in.
+      $("#year").fire("change", {target: {value: "2025-2026"}}); await ticks(5);
+      s.render(); out.reqLoading = look(); releaseIdx(); await ticks(40);
+      out.reqThenNow = look();
+      await head(); await type("91-A"); await key("Enter"); out.nowChosen = look();
+      out.reqChosen = await term("2027-requests");
+      press("[data-rsapick]", {dataset: {rsapick: ""}}); await ticks(10); out.reqCleared = look();
+      out.allOpen = await term("all");
+      out.all404 = await type("404");
+      // A term of bills that say no law: the fixture's earlier one.
+      await term("2025-2026"); await type("91-A"); await key("Enter"); out.oldChosen = await term("2023-2024");
+      process.stdout.write("\n@@" + JSON.stringify(out)); return;
+    }
+    s.sel.status.add("Passed"); s.render(); s.sel.status.clear(); s.render(); out.others = look();
+    out.opened = await head();
+    if (MODE.startsWith("slow")) {
+      out.waiting = await type("right to kn");
+      if (MODE === "slowshut") SHUT = true;
+      const before = DRAWS; release(); await ticks(30); out.arrived = look(); out.redrawn = DRAWS - before;
+      process.stdout.write("\n@@" + JSON.stringify(out)); return;
+    }
+    if (MODE === "failonce") {
+      out.failed = await type("right to know"); out.failedAgain = await type("governmental");
+      out.headsFailed = await type("540:"); out.headsFailedAgain = await type("540:2");
+      await head(); out.reshut = look(); out.reopened = await head();
+      out.retried = await type("right to know"); out.headsRetried = await type("540:");
+      process.stdout.write("\n@@" + JSON.stringify(out)); return;
+    }
+    for (const t of ["91", "9", "RSA 91a", "RSA chapter 91-a", "right to know", "right to kn", "governmental records",
+                     "criminal code", "crimes", "unlicensed insurers", "preliminary", "revised statutes",
+                     "insurance department", "elections", "tenant", "housing", "tax", "21-", "210-", "21", "6",
+                     "540:", "91-A:", "91-A:4-A", "194", "91-A:99", "404", "dog licensing", "xyzzy"])
+      out["t:" + t] = await type(t);
+    await type("21-"); await key("Enter"); out.enterDash = look();
+    await type("540:"); await key("ArrowUp"); out.up = look(); await key("ArrowDown"); out.wrap = look();
+    out.tab = await tab();
+    await type("tax"); out.leftOut = await leave(outside);
+    await type("91"); await key("ArrowDown"); out.down = look();
+    await key("Enter"); out.chosen = look();
+    await type("404"); await key("Enter"); out.enter404 = look();
+    await type("91"); out.escStopped = await key("Escape"); out.esc = look();
+    out.escAgain = await key("Escape");
+    await type("tax"); await key("Escape"); out.escTyped = look();
+    await type("tax"); out.tabTyped = await tab();
+    await type("91-A:4"); await key("Enter"); out.section = look();
+    // Clear, by a finger or the mouse, then from the keyboard.
+    ACTIVE = elsewhere; press("[data-rsapick]", {dataset: {rsapick: ""}}); await ticks(10); out.cleared = look();
+    await type("91-A"); await key("Enter");
+    ACTIVE = elsewhere; press("[data-rsapick]", {dataset: {rsapick: ""}}, 0); await ticks(10); out.clearedKeys = look();
+    // An offer pressed with the mouse, which takes no focus of its own.
+    await type("tenant");
+    out.pressedMoved = await click("[data-rsapick]", {dataset: {rsapick: "540"}}, null, document.body);
+    out.pressed = look();
+    await type("194-g"); await key("Enter"); out.unnamed = look();
+    await type("91"); await key("Enter"); out.enter91 = look();
+    out.retyped = await type("91");
+    await type("540:"); await key("Enter"); out.colon = look();
+    // Emptied: after the pause; on Return before it; on leaving before it.
+    out.emptied = await type("");
+    await type("91-A"); await key("Enter"); HOLD = true; await type(""); await key("Enter"); out.emptiedReturn = look();
+    await type("91-A"); await key("Enter"); await type(""); out.emptiedLeft = await leave(outside);
+    HOLD = false; PENDING.clear();
+    // Clear all filters, with words in the box.
+    await type("91-A"); await key("Enter"); await type("tax"); pressId("clear"); await ticks(10); out.clearAll = look();
+    // Another filter ticked: "None of these bills".
+    s.sel.status.add("Died"); s.render(); out.narrowed = await type("540"); s.sel.status.clear(); s.render();
+    // Tabled ticked, whose one bill changes none of the Criminal Code.
+    s.sel.status.add("Tabled"); s.render(); out.codeNarrowed = await type("criminal code");
+    s.sel.status.clear(); s.render();
+    // The mouse: a press on the chosen line's Clear, and on Clear all
+    // filters, held while the list is open under words typed; one on nothing.
+    await type("91-A"); await key("Enter"); await type("tax");
+    out.mouseClearMoved = await click("[data-rsapick]", {dataset: {rsapick: ""}}); out.mouseClear = look();
+    await type("91-A"); await key("Enter"); await type("tax");
+    out.mouseAllMoved = await click(null, null, "clear"); out.mouseAll = look();
+    await type("91-A"); await key("Enter"); await type("tax"); await click(null, null); out.mouseNothing = look();
+    // Words given way to the chosen number, then the panel drawn again.
+    await type("tax"); await key("Escape"); out.escRedrawn = redraw();
+    await type("tax"); await leave(outside); out.leftRedrawn = redraw();
+    // Spaces over a chosen law: after the pause, and left before it.
+    out.spaces = await type("   ");
+    await type("91-A"); await key("Enter"); HOLD = true; await type("   "); out.spacesLeft = await leave(outside);
+    HOLD = false; PENDING.clear();
+    // A number typed whole and the box left, with nothing chosen and over a
+    // law chosen; and one no bill changes.
+    await type("91-A"); out.numLeft = await leave(outside);
+    await type("540"); out.numOverLeft = await leave(outside);
+    press("[data-rsapick]", {dataset: {rsapick: ""}}); await ticks(10);
+    await type("91"); out.num91Left = await leave(outside);
+    // The same by Tab, with nothing chosen and over a law chosen.
+    await type("91-A"); out.numTab = await tab();
+    await type("540"); out.numOverTab = await tab();
+    // A press whose release never reaches the page (a menu opened over it),
+    // then words typed and the box left.
+    fire("pointerdown", {target: {}}); await ticks(10);
+    await type("tax"); out.stuckLeft = await leave(outside);
+    // "540" typed with Died ticked, none of whose bills change it, the box
+    // left by a press on nothing; then Died unticked, and a click elsewhere,
+    // which is not the box's to answer.
+    press("[data-rsapick]", {dataset: {rsapick: ""}}); await ticks(10);
+    s.sel.status.add("Died"); s.render(); await type("540"); await click(null, null);
+    s.sel.status.clear(); s.render(); press(null, null); await ticks(10); out.clickAfter = look();
+    // Numbers no RSA number is shaped like.
+    out.odd1234 = await type("1234"); out.oddSec = await type("91-A:4:5");
+    // A number typed whole, the box left by ticking a status none of whose
+    // bills change it, with nothing chosen and over a law chosen.
+    press("[data-rsapick]", {dataset: {rsapick: ""}}); await ticks(10);
+    await type("91-A"); out.numTicked = await tickStatus("Withdrawn"); s.sel.status.clear(); s.render();
+    await type("91-A"); await key("Enter"); await type("540");
+    out.numOverTicked = await tickStatus("Withdrawn"); s.sel.status.clear(); s.render();
+    // "91-A" typed, the panel drawn again with the focus kept in the box,
+    // then "tax" typed and Tab: what the box read as it was drawn anew is
+    // not taken for the words.
+    press("[data-rsapick]", {dataset: {rsapick: ""}}); await ticks(10);
+    await type("91-A"); s.render(); await ticks(10); await type("tax"); out.staleTab = await tab();
+    // What is pressed is what is chosen, whatever number the box read as it
+    // was left (the review of 26 October 2026): a section pressed after
+    // "91-A:", and Clear and Clear all pressed after "540" typed over 91-A.
+    press("[data-rsapick]", {dataset: {rsapick: ""}}); await ticks(10);
+    await type("91-A:"); await click("[data-rsapick]", {dataset: {rsapick: "91-A:4"}}, null, document.body);
+    out.secPressed = look();
+    press("[data-rsapick]", {dataset: {rsapick: ""}}); await ticks(10);
+    await type("91-A"); await key("Enter"); await type("540");
+    await click("[data-rsapick]", {dataset: {rsapick: ""}}); out.clearPressed = look();
+    await type("91-A"); await key("Enter"); await type("540");
+    await click(null, null, "clear"); out.clearAllPressed = look();
+    // A press that brings no click (a right button), the box come back to,
+    // its words replaced and left by Tab: the number read at the press is
+    // not taken for the words typed since.
+    press("[data-rsapick]", {dataset: {rsapick: ""}}); await ticks(10);
+    await type("91-A"); fire("pointerdown", {target: {}}); ACTIVE = elsewhere;
+    fx.fire("focusout", {target: rb}); await ticks(10);
+    await type("tax"); out.noClickTab = await tab();
+  } catch (e) { out.threw = e.constructor.name + ": " + e.message + " " + (e.stack || "").split("\n")[1]; }
+  process.stdout.write("\n@@" + JSON.stringify(out));
+})().catch(e => { console.log("RUN " + e.message); process.exit(1); });
+"""
+
+
+def _rsa_fixture(chapters=True):
+    """_search_groups_fixture, and the laws its bills change: HB 1 RSA 91-A:4
+    and 91-A:4-a, HB 4 91-A:2 and 540:2, HB 5 540:1 and 651:2, SB 6 597:1 and
+    a chapter of its own writing, 194-G, that the Laws pages do not have yet,
+    HB 2 21-J and 210, HB 3 21 and 210, HR 9 415 and 204-C, and seven bills a
+    tax law each; and the Criminal Code, Title LXII, as the bills of
+    seventeen terms of nineteen change it: seven of its chapters, each by a
+    different number of bills -- 644 by seven, 631 six, 651 five, 639 four,
+    633 three, RSA 625 itself two (625:9) and 637 one -- so that its six most
+    changed, in that order, are not its first six by number. With
+    `chapters`, their list, laws/chapters.json, as build_rsa.build_indexes
+    writes it: 91-A by its name, the name it is known by and its topic; 91,
+    91-B and 404, which no bill changes; 91, opening Title VI, with a topic
+    of its own, Elections; 540 with the topic Housing, and 204-C, Housing
+    Finance Authority, with the word in its name; 625, Preliminary, known as
+    the Criminal Code, as the real list has it, opening Title LXII, whose 626
+    no bill changes, and 597, of another title with the same topic; 406-B,
+    known as the Uniform Unlicensed Insurers Act, in a
+    title 400-A opens and 415 shares; 624, known as the Revised Statutes
+    Annotated, which no bill changes, alone in its title as in the real list;
+    and laws/headings.json, the sections' headings, but not 91-A:4-a's, a
+    section a bill writes anew."""
+    fx = _search_groups_fixture()
+    changes = {"HB1": ["91-A", "91-A:4", "91-A:4-a"], "HB4": ["91-A", "91-A:2", "540", "540:2"],
+               "HB5": ["540", "540:1", "651", "651:2"], "SB6": ["194-G", "194-G:1", "597", "597:1"],
+               "HB2": ["21-J", "21-J:1", "210", "210:1"], "HB3": ["21", "21:2", "210", "210:1"],
+               "HR9": ["415", "415:6", "204-C", "204-C:1"]}
+    tax = {"SB13": "72", "HB14": "77-A", "HB15": "77-E", "HJR16": "78-A", "PET17": "79-A", "SSHB18": "83-F",
+           "HCO19": "84-A"}
+    code = {"HB5": ["644", "631", "639", "633", "625"], "CACR7": ["644", "631", "651", "639", "633", "625"],
+            "CACR8": ["644", "631", "651", "639", "633"], "SR10": ["644", "631", "651", "639"],
+            "HCR11": ["644", "631", "651"], "SCR12": ["644", "631"], "ZZ20": ["644", "637"]}
+    for b in fx["/idx/2025-2026.json"]:
+        if b["id"] in changes:
+            b["rsa"] = changes[b["id"]]
+        if b["id"] in tax:
+            b["rsa"] = [tax[b["id"]], tax[b["id"]] + ":1"]
+        for ch in code.get(b["id"], []):
+            b["rsa"] = b.get("rsa", []) + [ch, ch + (":9" if ch == "625" else ":1")]
+    if chapters:
+        crimes = ["Crimes, Criminal Procedure and Corrections"]
+        fx["/laws/chapters.json"] = {
+            "91-A": ["Access to Governmental Records and Meetings", "VI", 9, False,
+                     ["right-to-know law"], ["Right to Know"], 1],
+            "91": ["Eligibility to Hold Public Office; Removal", "VI", 4, False, [], ["Elections"], 0],
+            "91-B": ["Records Kept by Towns", "VI", 2, False, [], [], 0],
+            "404": ["Dog Licensing", "XXX", 3, False, [], [], 0],
+            "540": ["Actions Against Tenants", "LV", 20, False, [], ["Housing"], 0],
+            "204-C": ["Housing Finance Authority", "XVII", 30, False, [], ["Housing"], 0],
+            "624": ["Repeals and Revisions", "LXI", 3, False, ["Revised Statutes Annotated"], [], 0],
+            "625": ["Preliminary", "LXII", 9, False, ["Criminal Code"], crimes, 0],
+            "626": ["General Principles", "LXII", 8, False, [], crimes, 0],
+            "631": ["Assault and Related Offenses", "LXII", 4, False, [], crimes, 0],
+            "633": ["Interference with Freedom", "LXII", 9, False, [], crimes, 0],
+            "637": ["Theft", "LXII", 14, False, [], crimes, 0],
+            "639": ["Offenses Against the Family", "LXII", 9, False, [], crimes, 0],
+            "644": ["Breaches of the Peace and Related Offenses", "LXII", 22, False, [], crimes, 0],
+            "651": ["Sentences", "LXII", 56, False, [], crimes, 2],
+            "597": ["Bail and Recognizances", "LIX", 40, False, [], crimes, 0],
+            "400-A": ["Insurance Department", "XXXVII", 40, False, [], ["Insurance"], 0],
+            "406-B": ["Unauthorized Insurance", "XXXVII", 9, False, ["Uniform Unlicensed Insurers Act"],
+                      ["Insurance"], 0],
+            "415": ["Accident and Health Insurance", "XXXVII", 30, False, [], ["Insurance"], 0],
+            "21": ["Statutory Construction", "I", 63, False, [], [], 0],
+            "21-J": ["Department of Revenue Administration", "I", 88, False, [], [], 0],
+            "210": ["Fur-Bearing Animals", "XVIII", 34, False, [], [], 0],
+            "72": ["Persons and Property Liable to Taxation", "V", 80, False, [], [], 0],
+            "77-A": ["Business Profits Tax", "V", 30, False, [], [], 0],
+            "77-E": ["Business Enterprise Tax", "V", 20, False, [], [], 0],
+            "78-A": ["Tax on Meals and Rooms", "V", 30, False, ["Meals"], [], 0],
+            "79-A": ["Current Use Taxation", "V", 30, False, [], [], 0],
+            "83-F": ["Utility Property Tax", "V", 10, False, [], [], 0],
+            "84-A": ["Real Estate Transfer Tax", "V", 10, False, [], [], 0]}
+        fx["/laws/headings.json"] = [["91-A:2", "Meetings Open to Public."],
+                                     ["91-A:4", "Minutes and Records Available for Public  Inspection."],
+                                     ["540:1", "Applicability."], ["540:2", "Termination of Tenancy."]]
+    return fx
+
+
+def _rsa_run(chapters=True, address="", mode=""):
+    got = _node_app(_RSA_GROUP_HARNESS, {"fixture.json": json.dumps(_rsa_fixture(chapters))},
+                    args=(address, mode))
+    if got is not None:
+        assert "threw" not in got, f"the bill search threw {got['threw']}"
+        assert "runaway" not in got, (f"{got.get('runaway')}: a list that fails is asked for again on "
+                                      "every drawing of the panel, not once for each opening of the group")
+    return got
+
+
+def _offered(r):
+    return [x["text"] for x in r["offers"]]
+
+
+@check("frontend", "the bill search's Laws Changed (RSA) filter offers, as its box is typed in, "
+                   "the chapters and sections the term's bills change -- by number, by a "
+                   "section, by the words of a chapter's name or the name it is known by -- "
+                   "each with its name or heading and how many bills it would list, six at most, "
+                   "never a chapter no bill changes, and no pills of bare numbers")
+def _laws_changed_offers():
+    """The person, 26 October 2026: "The RSA (Statute) filter on the bills
+    page is formatted a bit confusingly at the moment as it's a bit unclear
+    what the most changed by these bills section means and those don't seem
+    to have any particular meaning. It's more of a power user filter for folks
+    who know a specific chapter of law they want to search for bills that
+    change it, but it should still be easily understandable." The group was
+    headed RSA (Statute) and drew ten pills of bare chapter numbers and counts
+    under "Most changed by these bills:". Held, over _rsa_fixture in node: the
+    group headed Laws Changed (RSA), its box asking for "Like 91-A, or a few
+    words" -- not "a name", which under the Sponsor filter read as a person's
+    (the review of 26 October 2026) -- and no longer than the 29 characters
+    that fit the box at 1280 ("A number like 91-A, or a few words" lost its
+    last word there); no pill and nothing offered
+    until something is typed; "91", "9", "RSA 91a" and "RSA chapter 91-a"
+    offer RSA 91-A with its name and its two bills, and not 91 or 91-B, which
+    no bill changes; "21" offers RSA 21 first, the number typed, then 210,
+    which more bills change, and 21-J; "6" six of the seven chapters
+    beginning with it, the most changed; "21-" 21-J alone, the chapters whose
+    number begins with exactly that (the review: "1-" offered 189 and 198
+    after 1-A), and Return there chooses nothing and says nothing against
+    it; and "210-", where no bill changes a 210-A and two change 210, says so
+    of a number begun rather than that no bill changes RSA 210; "governmental
+    records" (91-A's name), "right to know" (the name it is known by), "right
+    to kn" on the way to it, and "tenant" (540's name) offer theirs;
+    "housing" RSA 204-C by its name above 540 by its topic, though more bills
+    change 540; "tax" six of the seven tax laws; "540:" the sections of 540
+    the bills change, each with its heading, and the chapter after them, named
+    once; "91-A:4-A" the section 91-A:4-a, which has no heading; a chapter of
+    a bill's own writing, 194-G, offered by its number without a name;
+    "91-A:99", a section no bill changes, its chapter offered under a line
+    that says so; "criminal code", the name RSA 625 is known by -- its
+    title's, the Criminal Code -- the six chapters of the title the bills
+    change most, the most first: 625 among them, as it is one of those six
+    here, and not 637, the seventh, nor 626, which none changes, nor 597,
+    Bail, of another title (the review: where a bill changed 625, as in
+    seventeen terms of nineteen, it was offered alone; and where none did,
+    "No bill ... changes RSA 625, Preliminary" was said while bills changed
+    the code); with Tabled ticked, whose one bill changes none of it, "None
+    of these bills changes the Criminal Code."; "crimes", the topic of the
+    code's chapters and of 597, the six of them most changed, the most first;
+    "preliminary", the name of RSA 625 itself, RSA 625 alone. Where nothing a
+    bill changes fits, one
+    line and nothing offered: a number names the chapter typed ("404", RSA
+    404, Dog Licensing, which no bill of the term changes); words name no
+    law, "No bill in the 2025-2026 term changes a law whose name has “dog
+    licensing” in it." -- the law of the whole list they fitted best was
+    named, and on real data "students" named RSA 110-E and "driving" RSA
+    287-G (the review) -- and so do "unlicensed insurers", the name RSA
+    406-B is known by, which does not open its title; "revised statutes",
+    the name RSA 624 is known by, which is all of its title; "insurance
+    department", RSA 400-A's own name, which opens its title; and
+    "elections", RSA 91's topic, which opens its title too: the title's rule
+    is for a name a title's first chapter is known by, and for no other, or
+    they would offer 415 or 91-A, or name a title. And "1234" and
+    "91-A:4:5", numbers no RSA number is shaped like, "RSA numbers look like
+    91-A or 91-A:4.", where they were asked for a chapter's number as if they
+    had typed words. And the box a combobox: role, aria-controls and
+    aria-expanded on it, every offer an option; the down arrow puts
+    aria-activedescendant on the first and marks it, the up arrow from none
+    on the last, and they wrap; the status line counts them, and is emptied
+    when Tab, Escape or leaving the box shuts the list (it went on saying "6
+    laws match"); Escape shuts the list and goes no further, so
+    the phone's panel stays open, and with the list shut goes on to the
+    document -- as the address box does (_addr_suggest)."""
+    got = _rsa_run()
+    if got is None:
+        return "skip", "app.js, dom_stub.js or node is not here"
+    bad = []
+    o = got["opened"]
+    if o["label"] != "Laws Changed (RSA)":
+        bad.append(f"the group is headed {o['label']!r}, not 'Laws Changed (RSA)'")
+    if re.search(r"Most changed|frsapick|class=\"pill", o["group"]) or o["drawn"]:
+        bad.append("the opened group, nothing typed, still draws pills or offers: "
+                   + o["group"][:300])
+    box = re.search(r'<input class="sbox" id="rsabox"[^>]*>', o["group"])
+    box = box.group(0) if box else ""
+    for want in ('role="combobox"', 'aria-controls="rsaoffers"', 'aria-autocomplete="list"',
+                 'placeholder="Like 91-A, or a few words"',
+                 'aria-label="A law’s RSA number, like 91-A, or a few words from its name"'):
+        if want not in box:
+            bad.append(f"the box is not {want}: {box[:300]}")
+    ph = re.search(r'placeholder="([^"]*)"', box)
+    if not ph or len(ph.group(1)) > 29:
+        bad.append(f"the box's placeholder {ph and ph.group(1)!r} is longer than the 29 characters that "
+                   "fit it at 1280")
+    if 'id="rsaoffers" role="listbox"' not in o["group"]:
+        bad.append("the list under the box is not a listbox named rsaoffers")
+    name = "Access to Governmental Records and Meetings"
+    a91 = ["RSA 91-A, " + name + " 2 bills"]
+    tax = ["RSA 72, Persons and Property Liable to Taxation 1 bill", "RSA 77-A, Business Profits Tax 1 bill",
+           "RSA 77-E, Business Enterprise Tax 1 bill", "RSA 78-A, Tax on Meals and Rooms 1 bill",
+           "RSA 79-A, Current Use Taxation 1 bill", "RSA 83-F, Utility Property Tax 1 bill"]
+    code = ["RSA 644, Breaches of the Peace and Related Offenses 7 bills",
+            "RSA 631, Assault and Related Offenses 6 bills", "RSA 651, Sentences 5 bills",
+            "RSA 639, Offenses Against the Family 4 bills",
+            "RSA 633, Interference with Freedom 3 bills", "RSA 625, Preliminary 2 bills"]
+    want = {"91": a91, "9": a91, "RSA 91a": a91, "RSA chapter 91-a": a91, "right to know": a91,
+            "right to kn": a91, "governmental records": a91, "criminal code": code, "6": code, "crimes": code,
+            "preliminary": ["RSA 625, Preliminary 2 bills"],
+            "tenant": ["RSA 540, Actions Against Tenants 2 bills"],
+            "housing": ["RSA 204-C, Housing Finance Authority 1 bill", "RSA 540, Actions Against Tenants 2 bills"],
+            "tax": tax,
+            "21-": ["RSA 21-J, Department of Revenue Administration 1 bill"],
+            "21": ["RSA 21, Statutory Construction 1 bill", "RSA 210, Fur-Bearing Animals 2 bills",
+                   "RSA 21-J, Department of Revenue Administration 1 bill"],
+            "540:": ["RSA 540:1, Applicability 1 bill", "RSA 540:2, Termination of Tenancy 1 bill",
+                     "RSA 540, Actions Against Tenants 2 bills"],
+            "91-A:": ["RSA 91-A:2, Meetings Open to Public 1 bill",
+                      "RSA 91-A:4, Minutes and Records Available for Public Inspection 1 bill",
+                      "RSA 91-A:4-a 1 bill"] + a91,
+            "91-A:4-A": ["RSA 91-A:4-a 1 bill"] + a91,
+            "194": ["RSA 194-G 1 bill"]}
+    for t, rows in want.items():
+        r = got["t:" + t]
+        if _offered(r) != rows:
+            bad.append(f"{t!r} offers {_offered(r)}, not {rows}")
+        elif any(x["role"] != "option" for x in r["offers"]) or r["attrs"].get("aria-expanded") != "true":
+            bad.append(f"{t!r}: an offer is not an option, or the box does not say the list is open")
+        elif r["note"]:
+            bad.append(f"{t!r} offers and says {r['note']!r} as well")
+    none = {"404": "No bill in the 2025-2026 term changes RSA 404, Dog Licensing.",
+            "210-": "No bill in the 2025-2026 term changes a law whose number begins “210-”."}
+    for t in ("dog licensing", "unlicensed insurers", "revised statutes", "insurance department", "elections",
+              "xyzzy"):
+        none[t] = f"No bill in the 2025-2026 term changes a law whose name has “{t}” in it."
+    odd = "RSA numbers look like 91-A or 91-A:4."
+    for t, r, line in [(t, got["t:" + t], line) for t, line in none.items()] + [
+            ("criminal code, Tabled ticked", got["codeNarrowed"], "None of these bills changes the Criminal Code."),
+            ("1234", got["odd1234"], odd), ("91-A:4:5", got["oddSec"], odd)]:
+        if r["offers"] or r["note"] != line or r["attrs"].get("aria-expanded") != "false":
+            bad.append(f"{t!r} offers {_offered(r)} and says {r['note']!r}, not nothing and {line!r}")
+    ed = got["enterDash"]
+    if ed["rsa"] or _offered(ed) != want["21-"] or ed["note"]:
+        bad.append(f"'21-' and Return chose {ed['rsa']}, offering {_offered(ed)} and saying {ed['note']!r}: "
+                   "nothing to choose, and nothing to say against the 21-J it offers")
+    s99 = got["t:91-A:99"]
+    if _offered(s99) != a91 or s99["note"] != f"No bill in the 2025-2026 term changes RSA 91-A:99, in {name}.":
+        bad.append(f"'91-A:99', a section no bill changes, offers {_offered(s99)} and says "
+                   f"{s99['note']!r}, not its chapter under a line that says no bill changes it")
+    if got["t:9"]["say"] != "1 law matches; the down arrow chooses it." \
+            or got["t:tax"]["say"] != "6 laws match; the down arrow chooses one.":
+        bad.append(f"the status line says {got['t:9']['say']!r} for one offer and {got['t:tax']['say']!r} "
+                   "for six")
+    d = got["down"]
+    if d["attrs"].get("aria-activedescendant") != "rsaoffers-0" \
+            or [x["on"] for x in d["offers"]] != ["true"] or d["offers"][0]["id"] != "rsaoffers-0":
+        bad.append(f"the down arrow does not put the box on the first offer: {d['attrs']}, "
+                   f"{d['offers']}")
+    up, wrap, tab = got["up"], got["wrap"], got["tab"]
+    if up["attrs"].get("aria-activedescendant") != "rsaoffers-2" \
+            or [x["on"] for x in up["offers"]] != ["false", "false", "true"] \
+            or wrap["attrs"].get("aria-activedescendant") != "rsaoffers-0":
+        bad.append(f"the arrow keys do not wrap: up from none is {up['attrs']}, then down "
+                   f"{wrap['attrs']}")
+    for k, r in (("Tab", tab), ("leaving the box", got["leftOut"]), ("Escape", got["esc"])):
+        if r["offers"] or r["attrs"].get("aria-expanded") != "false" or r["say"]:
+            bad.append(f"{k} leaves the list open or the status line saying something: {_offered(r)}, "
+                       f"{r['attrs']}, {r['say']!r}")
+    e = got["esc"]
+    if not got["escStopped"] or "aria-activedescendant" in e["attrs"] or got["escAgain"]:
+        bad.append(f"Escape on the open list stopped there {got['escStopped']}, the box {e['attrs']}; "
+                   f"on the list shut, stopped there {got['escAgain']}, keeping the phone's panel open")
+    assert not bad, "; ".join(bad[:6])
+    return "ok", ("headed Laws Changed (RSA), no pills; 91, 9, RSA 91a and RSA chapter 91-a, right "
+                  "to know and governmental records offer RSA 91-A by name with its two bills, 540 "
+                  "by its name, its topic and its sections by heading, tax six of seven; criminal "
+                  "code its title's six most changed chapters, or the title named; 21- the lettered "
+                  "chapters alone; 91-A:99 and 404 named as typed, and words that find no law a "
+                  "bill changes said in one line naming none; 1234 as no RSA number's shape; the "
+                  "arrow keys, Tab and Escape work the list")
+
+
+@check("frontend", "a law chosen in the Laws Changed filter -- by Return, by the arrow keys, by a "
+                   "press, a section typed or named in the address -- lists the bills that change "
+                   "it, under a line that names it, with the way to read it and Clear, the box "
+                   "always saying what is chosen; a law no bill changes is never chosen")
+def _laws_changed_chosen():
+    """The line under the box was "Bills that change RSA 91-A · Read the
+    statute · Clear": the number alone. Since the person's note of 26 October
+    2026 it names the chapter ("Bills that change RSA 91-A, Access to
+    Governmental Records and Meetings"), a section as in its chapter. Held,
+    over _rsa_fixture in node: "91", the down arrow and Return choose RSA
+    91-A, list HB 1 and HB 4 and say so, with the link to /laws/91-a and
+    Clear, put ?rsa=91-A in the address, and leave the keyboard in the box
+    after its last letter; "404" and Return, a chapter no bill changes,
+    choose nothing and keep what was chosen; "91" and Return, where RSA 91-A
+    is offered and no bill changes RSA 91, choose nothing, keep the offer and
+    say why, until the box is typed in again; "91-A:4" and Return choose the
+    section and list HB 1; "540:" and Return, no section begun, choose RSA
+    540; Clear lists every bill again, and puts the keyboard back in the box
+    only when it was pressed from the keyboard -- tapped, it is not, nor is an
+    offer pressed (the review: a phone's keyboard came up over the bills just
+    chosen) -- and an offer pressed with the mouse is taken, the list staying
+    as it is until its click is heard; 194-G, a chapter the Laws pages do not have,
+    is chosen without a name and without a link to a page there is not; and
+    ?rsa=91-A:4 in the address arrives with the section chosen, named, and HB
+    1 listed. And the box says what is chosen (the review of 26 October 2026:
+    emptied, it showed nothing chosen while ?rsa=91-A listed 29 bills):
+    emptied, the law goes, with its address, after the pause in typing, on
+    Return before it, and on leaving the box before it, the focus left where
+    the reader went, and a box of spaces is an emptied box; words that chose
+    nothing give way to the chosen law's number on Escape and on leaving the
+    box, and stay given way when the panel is drawn again; Clear all filters
+    empties it. A number typed whole and the box left is chosen, as Return
+    chooses it -- "91-A", and "540" over 91-A -- and "91", which no bill
+    changes, is not (the review: "91-A" left by a tap read 91-A over a list it
+    did not filter); left by ticking Withdrawn, none of whose bills changes
+    either, it is chosen still, the number read as the box lost the focus
+    and not from the list the tick's click and change had narrowed before the
+    box was heard to be left (the final review: "91-A" read on with no badge
+    and no line, and "540" over 91-A gave way to 91-A) -- and only as it was
+    left: "91-A" typed and the panel drawn again with the focus kept in the
+    box, then "tax" and Tab, chooses nothing; the focus stays
+    where the reader sent it: left by Tab,
+    the law is chosen with the keyboard still in the box, so that Tab goes on
+    from there to the control after it (the review: chosen once the focus had
+    gone on, the drawing took that control away and the focus fell to the
+    page), and words left by Tab give way there too. With the list open under
+    words typed, the chosen line's Clear and Clear all filters pressed with
+    the mouse, held and let go, do what they say: the list stays as it is
+    until the press's click is heard (the review: it shut under the pointer
+    between press and release, and the click was lost); a press on nothing
+    shuts it once let go; a press whose release never reached the page
+    holds nothing after it -- the box left later is left at once (the
+    review: a flag the release cleared stayed set) -- and the click a press
+    waited for is the only one the box answers. And with
+    another filter ticked, a law no bill of those changes is said as "None of
+    these bills changes ..."."""
+    got = _rsa_run()
+    if got is None:
+        return "skip", "app.js, dom_stub.js or node is not here"
+    bad = []
+    name = "Access to Governmental Records and Meetings"
+    c = got["chosen"]
+    if c["rsa"] != ["91-A"] or c["cards"] != ["HB1", "HB4"] \
+            or c["line"] != f"Bills that change RSA 91-A, {name} · Read the law · Clear" \
+            or c["links"] != [["/laws/91-a", "Read the law"]] or c["drawn"] \
+            or not c["count"].startswith("2 of ") or "rsa=91-A" not in c["address"]:
+        bad.append(f"91, down and Return: chose {c['rsa']}, listing {c['cards']} ({c['count']!r}) "
+                   f"under {c['line']!r} {c['links']}, offering {c['drawn']}, at {c['address']!r}")
+    if c["focus"] != "box" or c["value"] != "91-A" or c["caret"] != [4, 4]:
+        bad.append(f"after Return the box reads {c['value']!r}, the focus {c['focus']}, the caret at "
+                   f"{c['caret']}: not in the box after its last letter")
+    if '<span class="badge">1</span>' not in c["group"]:
+        bad.append("the chosen law is not counted on the group's head")
+    e = got["enter404"]
+    if e["rsa"] != ["91-A"] or e["note"] != "No bill in the 2025-2026 term changes RSA 404, Dog Licensing.":
+        bad.append(f"404 and Return chose {e['rsa']} and said {e['note']!r}: a law no bill "
+                   "changes is not to be chosen, and the line says why")
+    sc = got["section"]
+    if sc["rsa"] != ["91-A:4"] or sc["cards"] != ["HB1"] \
+            or sc["line"] != f"Bills that change RSA 91-A:4, in {name} · Read the law · Clear" \
+            or sc["links"] != [["/laws/91-a#s4", "Read the law"]]:
+        bad.append(f"91-A:4 and Return: chose {sc['rsa']} listing {sc['cards']} under "
+                   f"{sc['line']!r} {sc['links']}")
+    cl, ck = got["cleared"], got["clearedKeys"]
+    if cl["rsa"] or "Bills that change" in cl["group"] or len(cl["cards"]) < 20 or cl["focus"] == "box":
+        bad.append(f"Clear tapped left {cl['rsa']} chosen, {len(cl['cards'])} cards, the focus {cl['focus']}: "
+                   "the box focused brings a phone's keyboard up")
+    if ck["rsa"] or ck["focus"] != "box":
+        bad.append(f"Clear from the keyboard left {ck['rsa']} chosen, the focus {ck['focus']}, not in the box")
+    p = got["pressed"]
+    if got["pressedMoved"] or p["rsa"] != ["540"] or p["cards"] != ["HB4", "HB5"] \
+            or p["line"] != "Bills that change RSA 540, Actions Against Tenants · Read the law · Clear" \
+            or p["focus"] == "box":
+        bad.append(f"RSA 540 pressed with the mouse (the list moved under it {got['pressedMoved']}): chose "
+                   f"{p['rsa']} listing {p['cards']} under {p['line']!r}, the focus {p['focus']}")
+    u = got["unnamed"]
+    if u["rsa"] != ["194-G"] or u["cards"] != ["SB6"] or u["line"] != "Bills that change RSA 194-G · Clear" \
+            or u["links"]:
+        bad.append(f"194-G, which the Laws pages do not have: chose {u['rsa']} listing {u['cards']} "
+                   f"under {u['line']!r} {u['links']}")
+    e91, r91 = got["enter91"], got["retyped"]
+    if e91["rsa"] != ["194-G"] or _offered(e91) != ["RSA 91-A, " + name + " 2 bills"] \
+            or e91["note"] != ("No bill in the 2025-2026 term changes RSA 91, Eligibility to Hold "
+                               "Public Office; Removal.") or r91["note"]:
+        bad.append(f"91 and Return, which no bill changes: chose {e91['rsa']}, offering "
+                   f"{_offered(e91)} and saying {e91['note']!r}, and typed again {r91['note']!r}")
+    co = got["colon"]
+    if co["rsa"] != ["540"] or co["cards"] != ["HB4", "HB5"]:
+        bad.append(f"540: and Return chose {co['rsa']} listing {co['cards']}, not RSA 540")
+    for k, how in (("emptied", "after the pause in typing"), ("emptiedReturn", "on Return before the pause"),
+                   ("emptiedLeft", "on leaving the box before the pause")):
+        r = got[k]
+        if r["rsa"] or "rsa=" in r["address"] or len(r["cards"]) < 20 or r["value"]:
+            bad.append(f"the box emptied, {how}: still chose {r['rsa']} at {r['address']!r}, "
+                       f"{len(r['cards'])} cards, the box {r['value']!r}")
+    if got["emptiedLeft"]["focus"] != "outside":
+        bad.append(f"the box emptied and left, the focus was taken back to {got['emptiedLeft']['focus']}")
+    for k, how in (("escTyped", "Escape"), ("tabTyped", "Tab")):
+        r = got[k]
+        if r["value"] != "91-A" or r["rsa"] != ["91-A"] or r["offers"]:
+            bad.append(f"'tax' typed over RSA 91-A, then {how}: the box reads {r['value']!r} with "
+                       f"{r['rsa']} chosen, offering {_offered(r)}")
+    if got["tabTyped"]["focus"] != "next":
+        bad.append(f"'tax' typed over RSA 91-A and Tab: the focus went to {got['tabTyped']['focus']}, not on")
+    ca = got["clearAll"]
+    if ca["rsa"] or ca["value"] or len(ca["cards"]) < 20:
+        bad.append(f"Clear all filters left {ca['rsa']} chosen and the box reading {ca['value']!r}")
+    n = got["narrowed"]
+    if n["note"] != "None of these bills changes RSA 540, Actions Against Tenants." or n["offers"]:
+        bad.append(f"540 typed with Died ticked says {n['note']!r} offering {_offered(n)}")
+    for k, what in (("mouseClear", "the chosen line's Clear"), ("mouseAll", "Clear all filters")):
+        r = got[k]
+        if got[k + "Moved"] or r["rsa"] or "rsa=" in r["address"] or len(r["cards"]) < 20:
+            bad.append(f"'tax' typed over RSA 91-A, the list open, and {what} pressed with the mouse: the "
+                       f"list shut under the pointer before its click {got[k + 'Moved']}, and {r['rsa']} is still "
+                       f"chosen at {r['address']!r} -- the click lost")
+    mn = got["mouseNothing"]
+    if mn["offers"] or mn["value"] != "91-A" or mn["rsa"] != ["91-A"]:
+        bad.append(f"a press on nothing, let go, left the list {_offered(mn)} and the box {mn['value']!r}: "
+                   "the box is not left once the press is over")
+    for k, how in (("escRedrawn", "Escape"), ("leftRedrawn", "leaving the box")):
+        r = got[k]
+        if r["value"] != "91-A" or r["rsa"] != ["91-A"]:
+            bad.append(f"'tax' typed over RSA 91-A, {how}, then the panel drawn again: the box reads "
+                       f"{r['value']!r}, chosen {r['rsa']} -- the words came back over the law")
+    for k, how in (("spaces", "after the pause"), ("spacesLeft", "left before the pause")):
+        r = got[k]
+        if r["rsa"] or "rsa=" in r["address"] or r["value"].strip():
+            bad.append(f"spaces typed over RSA 91-A, {how}: still chose {r['rsa']} at {r['address']!r}, the "
+                       f"box {r['value']!r}")
+    nl, no, n91 = got["numLeft"], got["numOverLeft"], got["num91Left"]
+    if nl["rsa"] != ["91-A"] or "rsa=91-A" not in nl["address"] or nl["value"] != "91-A" \
+            or nl["line"] != f"Bills that change RSA 91-A, {name} · Read the law · Clear" \
+            or nl["cards"] != ["HB1", "HB4"] or nl["focus"] != "outside":
+        bad.append(f"'91-A' typed and the box left: chose {nl['rsa']} at {nl['address']!r}, the box "
+                   f"{nl['value']!r} under {nl['line']!r}, listing {nl['cards']}, the focus {nl['focus']}")
+    if no["rsa"] != ["540"] or no["value"] != "540":
+        bad.append(f"'540' typed over RSA 91-A and the box left: chose {no['rsa']}, the box {no['value']!r}")
+    if n91["rsa"] or "rsa=" in n91["address"] or n91["value"] != "91":
+        bad.append(f"'91', which no bill changes, typed and the box left: chose {n91['rsa']}, the box "
+                   f"{n91['value']!r}")
+    for k, t, want in (("numTab", "91-A", ["HB1", "HB4"]), ("numOverTab", "540 over RSA 91-A", ["HB4", "HB5"])):
+        r = got[k]
+        if r["cards"] != want or r["value"] != t.split()[0] or r["focus"] != "next":
+            bad.append(f"'{t}' typed and Tab: listing {r['cards']}, the box {r['value']!r}, the focus "
+                       f"{r['focus']} -- not on to the control after the box")
+    sl, ca2 = got["stuckLeft"], got["clickAfter"]
+    if sl["offers"] or sl["value"] != "540":
+        bad.append(f"after a press whose release never reached the page, 'tax' typed and the box left: the "
+                   f"list {_offered(sl)}, the box {sl['value']!r} -- the box not left")
+    if ca2["rsa"]:
+        bad.append(f"'540' typed with Died ticked, the box left by a press, Died unticked and a click elsewhere: "
+                   f"chose {ca2['rsa']} -- the box answered a click that was not its own")
+    for k, t, line in (("numTicked", "91-A", f"RSA 91-A, {name}"),
+                       ("numOverTicked", "540 over RSA 91-A", "RSA 540, Actions Against Tenants")):
+        r, a = got[k], t.split()[0]
+        if r["rsa"] != [a] or f"rsa={a}" not in r["address"] or "status=Withdrawn" not in r["address"] \
+                or r["value"] != a or r["line"] != f"Bills that change {line} · Read the law · Clear" \
+                or '<span class="badge">1</span>' not in r["group"] or r["focus"] == "box":
+            bad.append(f"'{t}' typed and the box left by ticking Withdrawn, none of whose bills changes it: "
+                       f"chose {r['rsa']} at {r['address']!r}, the box {r['value']!r} under {r['line']!r}, "
+                       f"the focus {r['focus']} -- the number read again from the list the tick narrowed")
+    for k, want, what in (("secPressed", ["91-A:4"], "'91-A:' typed and section 91-A:4 pressed"),
+                          ("clearPressed", [], "'540' typed over 91-A and the line's Clear pressed"),
+                          ("clearAllPressed", [], "'540' typed over 91-A and Clear all filters pressed")):
+        if got[k]["rsa"] != want:
+            bad.append(f"{what}: chose {got[k]['rsa']}, not {want} -- the number the box read as it was "
+                       "left was taken over what was pressed")
+    nc = got["noClickTab"]
+    if nc["rsa"] or nc["value"] != "tax":
+        bad.append(f"'91-A' typed, a press with no click, then 'tax' and Tab: chose {nc['rsa']}, the box "
+                   f"{nc['value']!r} -- the number read at the press outlived the words typed since")
+    st = got["staleTab"]
+    if st["rsa"] or st["value"] != "tax":
+        bad.append(f"'91-A' typed, the panel drawn again with the focus kept in the box, then 'tax' and Tab: "
+                   f"chose {st['rsa']}, the box {st['value']!r} -- the number read as the box was drawn anew "
+                   "outlived it")
+    a = _rsa_run(address="?rsa=91-a:4")
+    sh, op = a["shut"], a["opened"]
+    if sh["rsa"] != ["91-A:4"] or sh["cards"] != ["HB1"] or '<span class="badge">1</span>' not in sh["group"] \
+            or op["line"] != f"Bills that change RSA 91-A:4, in {name} · Read the law · Clear":
+        bad.append(f"?rsa=91-a:4 arrives with {sh['rsa']} listing {sh['cards']}, and the group "
+                   f"opened says {op['line']!r}")
+    assert not bad, "; ".join(bad[:6])
+    return "ok", ("RSA 91-A chosen by the arrow keys and Return, 91-A:4 typed and from the address, "
+                  "540 pressed and as 540:, each listing its bills under its name; 404 and 91 are "
+                  "not chosen, and say why; Clear and an emptied box list them all; words left give "
+                  "way to the chosen number; 194-G is chosen unnamed and unlinked; a number typed "
+                  "whole is chosen on leaving, by Tab going on from the box or by ticking a status "
+                  "none of whose bills change it; Clear and an offer pressed "
+                  "with the mouse over the open list do what they say, the box focused only from the "
+                  "keyboard")
+
+
+@check("frontend", "the Laws Changed filter is decided for the term on the list: no box in the "
+                   "bill requests, which have no text, and a law chosen elsewhere named there with "
+                   "why it lists none; switching from the requests to a term draws it")
+def _laws_changed_terms():
+    """The review of 26 October 2026: in 2027 Bill Requests, "91-A" or "right
+    to know" said "No bill request for 2027 changes RSA 91-A, Access to
+    Governmental Records and Meetings." -- while no request carries the laws
+    it changes, having no text, and two of them are plainly about it. And
+    whether the filter was drawn was decided once, of the first term loaded,
+    so a page opened on ?term=2027-requests had none in the term it was
+    switched to. Held, over _rsa_fixture in node, the address naming the
+    requests: no group there; the current term chosen, and the list drawn
+    again while its bills are on their way, as a letter typed in the search
+    box draws it, the group once they arrive (what is known of a term is
+    asked again as its bills arrive: kept for the term alone, the answer
+    given before they came hid the filter for the rest of the visit); RSA
+    91-A chosen and the requests chosen again, the group drawn with its line,
+    "A bill request has no text yet, so the laws it would change are not
+    known.", no box and no "No bill request"; Clear takes it, and the group,
+    away, the keyboard put on the head of the filter above it rather than
+    left on nothing (the review of 26 October 2026: it fell to the page);
+    All Terms draws the box, and a law no bill changes is "No bill
+    across all terms changes ..."; and a term of bills none of which says
+    the laws it changes (none on the site; the fixture's earlier term) says
+    "Which laws these bills change is not known." under the law chosen."""
+    got = _rsa_run(address="?term=2027-requests", mode="terms")
+    if got is None:
+        return "skip", "app.js, dom_stub.js or node is not here"
+    bad = []
+    if got["reqArrive"]["label"] is not None:
+        bad.append("the requests draw a Laws Changed filter, with nothing in them to find")
+    if got["reqThenNow"]["label"] != "Laws Changed (RSA)":
+        bad.append("arrived on the requests and switched to the current term, the list drawn again "
+                   "while its bills were on their way, there is no Laws Changed filter once they are "
+                   "here")
+    if got["nowChosen"]["rsa"] != ["91-A"]:
+        bad.append(f"91-A and Return in the current term chose {got['nowChosen']['rsa']}")
+    r = got["reqChosen"]
+    why = "A bill request has no text yet, so the laws it would change are not known."
+    if r["label"] != "Laws Changed (RSA)" or r["boxed"] or r["why"] != why \
+            or r["line"] != "Bills that change RSA 91-A, Access to Governmental Records and Meetings · " \
+                            "Read the law · Clear" or "No bill request" in r["group"] or r["cards"]:
+        bad.append(f"RSA 91-A chosen, then the requests: the group {r['label']!r}, a box {r['boxed']}, "
+                   f"saying {r['why']!r} and {r['line']!r}, listing {r['cards']}")
+    rc = got["reqCleared"]
+    if rc["rsa"] or rc["label"] is not None:
+        bad.append(f"Clear in the requests left {rc['rsa']} and the group {rc['label']!r}")
+    elif not rc["groups"] or rc["focus"] != "head:" + rc["groups"][-1]:
+        bad.append(f"Clear in the requests took the group away and left the focus on {rc['focus']}, not "
+                   f"on the head of the filter above it ({rc['groups'][-1:]})")
+    a = got["all404"]
+    if not got["allOpen"]["boxed"] or a["note"] != "No bill across all terms changes RSA 404, Dog Licensing.":
+        bad.append(f"All Terms: a box {got['allOpen']['boxed']}, and 404 says {a['note']!r}")
+    o = got["oldChosen"]
+    if o["boxed"] or o["why"] != "Which laws these bills change is not known." or o["rsa"] != ["91-A"]:
+        bad.append(f"RSA 91-A chosen, then a term whose bills say no law: a box {o['boxed']}, saying "
+                   f"{o['why']!r}, chosen {o['rsa']}")
+    assert not bad, "; ".join(bad)
+    return "ok", ("no box in the requests, a law chosen there named with why it lists none; the "
+                  "filter back on switching to a term; across all terms said so")
+
+
+@check("frontend", "the Laws Changed filter fetches the Laws pages' list of chapters only when its "
+                   "group is opened, and once, and their sections' headings only when a colon is "
+                   "typed; without the list it still offers and filters by number, says in words "
+                   "that names cannot be looked up, and asks again when the group is opened again")
+def _laws_changed_names_fetch():
+    """laws/chapters.json is 150 KB, and /bills is kept light on a phone (the
+    phone-speed work of 25 October 2026: a filter group is drawn only when it
+    is open). Held, over _rsa_fixture in node: the list drawn, a filter ticked
+    and drawn again, nothing fetched while the group is shut; opened, the
+    file is fetched, once, however much is typed after; laws/headings.json,
+    1.1 MB, not fetched for anything typed until a colon, then once. Words
+    typed before the names arrive say "Looking up the laws' names…", and
+    once they are here are offered, the status line counting them, and the
+    caret where it was in the box drawn anew (the review of 26 October 2026:
+    "right to kn" became "ZZright to kn" in Chromium) -- unless the panel was
+    shut meanwhile, when nothing is drawn. With the file not there (a 404):
+    "91" still offers RSA 91-A and its two bills, without a name; "540:" its
+    sections by number; words say "The laws' names could not be loaded. Type
+    a chapter's number, like 91-A."; and "91-A" and Return lists HB 1 and HB 4
+    under "Bills that change RSA 91-A", with its link and Clear. And a file
+    that fails once is not asked for again on every letter typed, but is when
+    the group is shut and opened again, and its names are then offered (the
+    review: one failure kept them away until a reload); the headings the
+    same, the sections offered by number meanwhile."""
+    got = _rsa_run()
+    if got is None:
+        return "skip", "app.js, dom_stub.js or node is not here"
+    bad = []
+    if got["shut"]["asked"] or got["others"]["asked"]:
+        bad.append(f"laws/chapters.json was fetched {got['others']['asked']} time(s) with the group "
+                   "shut")
+    if got["opened"]["asked"] != 1 or got["unnamed"]["asked"] != 1:
+        bad.append(f"laws/chapters.json was fetched {got['opened']['asked']} time(s) when the group "
+                   f"opened and {got['unnamed']['asked']} by the end, not once")
+    if got["t:21"]["heads"] or got["t:540:"]["heads"] != 1 or got["unnamed"]["heads"] != 1:
+        bad.append(f"laws/headings.json was fetched {got['t:21']['heads']} time(s) before a colon was "
+                   f"typed, {got['t:540:']['heads']} once one was and {got['unnamed']['heads']} by the end")
+    w = _rsa_run(mode="slow")
+    wa, ar = w["waiting"], w["arrived"]
+    a91 = ["RSA 91-A, Access to Governmental Records and Meetings 2 bills"]
+    if wa["offers"] or wa["note"] != "Looking up the laws’ names…" or _offered(ar) != a91 \
+            or ar["note"] or ar["say"] != "1 law matches; the down arrow chooses it." or ar["asked"] != 1:
+        bad.append(f"words typed before the names arrive say {wa['note']!r} offering "
+                   f"{_offered(wa)}; once they arrive {_offered(ar)}, {ar['note']!r}, the status line "
+                   f"{ar['say']!r}")
+    if ar["focus"] != "box" or ar["caret"] != [11, 11] or ar["value"] != "right to kn":
+        bad.append(f"the names arriving under 'right to kn' left the box reading {ar['value']!r}, the "
+                   f"focus {ar['focus']}, the caret at {ar['caret']}, not after the last letter")
+    z = _rsa_run(mode="slowshut")
+    if z["redrawn"]:
+        bad.append(f"the names arriving with the panel shut drew it {z['redrawn']} time(s)")
+    f = _rsa_run(chapters=False)
+    if _offered(f["t:91"]) != ["RSA 91-A 2 bills"] \
+            or _offered(f["t:540:"]) != ["RSA 540:1 1 bill", "RSA 540:2 1 bill", "RSA 540 2 bills"]:
+        bad.append(f"without the names 91 offers {_offered(f['t:91'])} and 540: {_offered(f['t:540:'])}, "
+                   "not RSA 91-A and 540's sections by number")
+    if f["t:right to know"]["note"] != ("The laws’ names could not be loaded. Type a "
+                                        "chapter’s number, like 91-A."):
+        bad.append(f"without the names, words say {f['t:right to know']['note']!r}")
+    c = f["chosen"]
+    if c["rsa"] != ["91-A"] or c["cards"] != ["HB1", "HB4"] \
+            or c["line"] != "Bills that change RSA 91-A · Read the law · Clear":
+        bad.append(f"without the names 91, down and Return chose {c['rsa']} listing {c['cards']} "
+                   f"under {c['line']!r}")
+    o = _rsa_run(mode="failonce")
+    if o["failedAgain"]["asked"] != 1 or not o["failedAgain"]["note"].startswith("The laws’ names could not"):
+        bad.append(f"a failed list was asked for {o['failedAgain']['asked']} time(s) as words were typed, "
+                   f"saying {o['failedAgain']['note']!r}")
+    if o["retried"]["asked"] != 2 or _offered(o["retried"]) != a91:
+        bad.append(f"the group shut and opened again after a failure: the list asked for "
+                   f"{o['retried']['asked']} time(s), 'right to know' offering {_offered(o['retried'])}")
+    hf, hr = o["headsFailedAgain"], o["headsRetried"]
+    if hf["heads"] != 1 or _offered(o["headsFailed"])[0] != "RSA 540:1 1 bill" or hr["heads"] != 2 \
+            or _offered(hr)[0] != "RSA 540:1, Applicability 1 bill":
+        bad.append(f"the headings failing once: asked {hf['heads']} time(s) as more was typed, offering "
+                   f"{_offered(o['headsFailed'])}; the group opened again, asked {hr['heads']} time(s), "
+                   f"offering {_offered(hr)}")
+    assert not bad, "; ".join(bad)
+    return "ok", ("nothing fetched until the group opens, then laws/chapters.json once, the headings "
+                  "once a colon is typed; words typed before the names arrive are offered when they "
+                  "do, the caret kept; without them RSA 91-A is offered and chosen by number, and a "
+                  "failure is asked again when the group opens again")
+
+
+@check("frontend", "the Laws Changed filter's offers sit in the column under its box, a name of 143 "
+                   "characters wrapping inside it, and its Clear is 44px to a finger without "
+                   "standing its line apart; neither is printed")
+def _laws_changed_layout():
+    """Measured in Chromium at 390 and 1280 on 26 October 2026, with the
+    real list: RSA 14-C's name, 143 characters, wraps inside the 17rem
+    column in an offer and in the chosen line, and nothing in the group is
+    wider than the column. Held here in app.css, as the rules that do it:
+    the list (.rsaoffers) in the column's flow -- not .qoffers, which lies
+    over what is below it, where the group's own Clear and the next filter
+    are -- with its offers' words free to shrink and wrap (min-width:0,
+    overflow-wrap:anywhere), and the chosen line wrapping the same way; its
+    Clear, a button in a sentence, no taller to the eye than the sentence's
+    line: body.pg's 44px on a phone stood "Legislators · Read the law ·
+    Clear" 14px below the rest, so the 44px is padding the margin takes back;
+    and the list not printed, as the bill search's offers are not."""
+    css = Path("src/pages/app.css")
+    if not css.exists():
+        return "skip", "app.css is not in this directory"
+    rules = _css_rules(css.read_text(encoding="utf-8"))
+    flat = {" ".join(sel.split()): dict(_css_decls(body)) for ctx, sel, body, _ln in rules if not ctx}
+    bad = []
+    lst = flat.get(".rsaoffers", {})
+    if not lst or lst.get("position") in ("absolute", "fixed"):
+        bad.append(f".rsaoffers is not a list in the column's flow: {lst}")
+    rn = flat.get(".rsaoffers .rn", {})
+    if rn.get("min-width") != "0" or rn.get("overflow-wrap") != "anywhere":
+        bad.append(f"an offer's words do not wrap inside the column: .rsaoffers .rn is {rn}")
+    if flat.get(".frsa", {}).get("overflow-wrap") != "anywhere":
+        bad.append(f"the chosen line does not wrap a long name: .frsa is {flat.get('.frsa')}")
+    ln = flat.get(".frsa .link", {})
+    pad = re.fullmatch(r"(var\(--sp-\d+\)) 0", ln.get("padding", ""))
+    if ln.get("min-height") != "0" or not pad \
+            or ln.get("margin") != f"calc(-1 * {pad.group(1)}) 0":
+        bad.append(f"Clear in the chosen line is not 44px to a finger and a line tall to the eye: "
+                   f".frsa .link is {ln}")
+    printed = [sel for ctx, sel, body, _ln in rules if any("print" in c for c in ctx)
+               and ".rsaoffers" in sel and dict(_css_decls(body)).get("display") == "none"]
+    if not printed:
+        bad.append("the Laws Changed offers are printed")
+    assert not bad, "; ".join(bad)
+    return "ok", ("the offers in the column's flow, a long name wrapping in an offer and in the chosen "
+                  "line, Clear 44px without standing its line apart, and nothing of it printed")
 
 
 # A member's or a committee's Bills tab as billPane draws it, in node: the
