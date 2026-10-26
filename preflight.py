@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.712
+# GRANITE_VERSION: 2026-09-04.713
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -72561,6 +72561,11 @@ def _testify_amendment_link():
              "the amendment is brought into view below the tab strip a bill's page holds at the top"),
             ("  });\n  seekAmendment(key);\n}", "the version index's arrival looks for the amendment")):
         assert need in app, f"app.js: {what} no longer"
+    # The number is one word: it broke at its hyphen in the pane at 1280 (the
+    # preview check of 26 October 2026).
+    css = Path("src/pages/app.css").read_text(encoding="utf-8")
+    assert re.search(r'\.testifypane a\[href\*="#amendment-"\]\{white-space:nowrap\}', css), (
+        "app.css lets the amendment's number in the Testify pane break at its hyphen")
     return "ok", ("HB 1560-FN's 2026-0422h links to its Bill Text tab; SB 575's second amendment opened by its "
                   "number, alone, past a report naming it; by number without its year; none for a number "
                   "none carries; the bill's page, the tab's own address and the redraw read it")
