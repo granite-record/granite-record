@@ -1163,6 +1163,16 @@
    "es": "en la Cámara, el comité vota en el primer año para conservar el proyecto de ley, sobre el que hay que decidir en el segundo año",
    "state": "draft"
   },
+  "gloss.right-to-know-law.name": {
+   "en": "Right-to-know law",
+   "es": "Ley del Derecho a Saber",
+   "state": "draft"
+  },
+  "gloss.right-to-know-law.says": {
+   "en": "RSA 91-A, the law that opens public bodies to the public: their meetings are open, apart from the nonpublic sessions it allows, and every citizen has the right to inspect their records",
+   "es": "el RSA 91-A, la ley que abre los organismos públicos al público: sus reuniones son abiertas, salvo las sesiones no públicas que permite, y todo ciudadano tiene derecho a examinar sus registros",
+   "state": "draft"
+  },
   "gloss.rsa.name": {
    "en": "Revised Statutes Annotated",
    "es": "Estatutos Revisados Anotados",
@@ -12648,7 +12658,7 @@
    "state": "draft"
   },
   "guide.testifying.hearings-are-announced-in-the-chamber": {
-   "en": "Hearings are announced in the chamber's weekly calendar and on the General Court's meeting schedule. The median notice in the [[term]] term was [[notice_median]] days; some give one.",
+   "en": "Hearings are announced in the chamber's weekly calendar and on the General Court's meeting schedule. The median notice in the [[term]] term was [[notice_median]] days; some give only one day.",
    "es": "Las audiencias se anuncian en el calendario semanal de la cámara y en el horario de reuniones de la Legislatura. En el período [[term]], la mediana de anticipación de los avisos fue de [[notice_median]] días; algunos dan solo un día.",
    "state": "draft"
   },
@@ -12693,8 +12703,8 @@
    "state": "draft"
   },
   "guide.testifying.legislative-office-building-33-north": {
-   "en": "<b>Legislative Office Building:</b> 33 North State Street, Concord. Not in use for hearings at present; hearings are expected back there starting next term.",
-   "es": "<b>Legislative Office Building (edificio de oficinas legislativas):</b> 33 North State Street, Concord. Por ahora no se usa para audiencias; se espera que las audiencias vuelvan allí a partir del próximo período.",
+   "en": "<b>Legislative Office Building:</b> 33 North State Street, Concord. Not in use for hearings at present; hearings are expected back there starting next term, 2027&ndash;2028.",
+   "es": "<b>Legislative Office Building (edificio de oficinas legislativas):</b> 33 North State Street, Concord. Por ahora no se usa para audiencias; se espera que las audiencias vuelvan allí a partir del próximo período, 2027&ndash;2028.",
    "state": "draft"
   },
   "guide.testifying.lob": {
@@ -12828,8 +12838,8 @@
    "state": "draft"
   },
   "guide.testifying.the-general-courts-committee-meetings": {
-   "en": "<b>The General Court&rsquo;s committee meetings and hearings are open to the public</b>, apart from the nonpublic sessions the law allows (<a href=\"/laws/91-a#s2\">RSA 91-A:2</a>). You may attend in person, and most are live streamed and archived, so you can watch one later. Where you may <i>speak</i> is narrower: a public hearing is the meeting for that. You may attend an executive session, but no testimony is taken at it.",
-   "es": "<b>Las reuniones y audiencias de los comités de la Legislatura están abiertas al público</b>, salvo las sesiones no públicas que permite la ley (<a href=\"/laws/91-a#s2\">RSA 91-A:2</a>). Puede asistir en persona, y la mayoría se transmiten en vivo y se archivan, así que puede verlas después. Los lugares donde puede <i>hablar</i> son más limitados: la audiencia pública es la reunión para eso. Puede asistir a una sesión ejecutiva, pero en ella no se toman testimonios.",
+   "en": "<b>The General Court&rsquo;s committee meetings and hearings are open to the public</b>, apart from the nonpublic sessions the law allows (<a href=\"/laws/91-a#s2\">RSA 91-A:2</a>). You may attend in person, and most are live streamed and archived, so you can watch one later. Where you may <i>speak</i> is narrower: a <abbr data-term=\"Public hearing\">public hearing</abbr> is the meeting for that. You may attend an <abbr data-term=\"Executive session\">executive session</abbr>, but no testimony is taken at it.",
+   "es": "<b>Las reuniones y audiencias de los comités de la Legislatura están abiertas al público</b>, salvo las sesiones no públicas que permite la ley (<a href=\"/laws/91-a#s2\">RSA 91-A:2</a>). Puede asistir en persona, y la mayoría se transmiten en vivo y se archivan, así que puede verlas después. Los lugares donde puede <i>hablar</i> son más limitados: la <abbr data-term=\"Public hearing\">audiencia pública</abbr> es la reunión para eso. Puede asistir a una <abbr data-term=\"Executive session\">sesión ejecutiva</abbr>, pero en ella no se toman testimonios.",
    "state": "draft"
   },
   "guide.testifying.the-other-chamber": {
@@ -13651,8 +13661,8 @@
    "state": "draft"
   },
   "guide.using-this-site.a-bill-still-moving-through-the": {
-   "en": "A bill still moving through the General Court carries an RSS feed, and so does every sitting member, every current committee, and every topic. The <b>Follow</b> control on a record's page gives the address where there is one. There are also feeds for the record's newest actions and for hearings coming up. A bill's feed ends once the bill is settled. [[follow_email]]",
-   "es": "Un proyecto de ley que todavía avanza en la Legislatura tiene un canal RSS, y también lo tienen cada miembro en funciones, cada comité actual y cada tema. El control <b>Follow</b> (seguir) de la página de un registro da la dirección cuando la hay. También hay canales con las acciones más recientes del registro y con las próximas audiencias. El canal de un proyecto de ley termina cuando el proyecto queda resuelto. [[follow_email]]",
+   "en": "A bill still moving through the General Court carries an RSS feed, an address a feed reader app can follow for new entries, and so does every sitting member, every current committee, and every topic. The <b>Follow</b> control on a record's page gives the address where there is one. There are also feeds for the record's newest actions and for hearings coming up. A bill's feed ends once the bill is settled. [[follow_email]]",
+   "es": "Un proyecto de ley que todavía avanza en la Legislatura tiene un canal RSS, una dirección que una aplicación lectora de canales puede seguir para recibir las entradas nuevas, y también lo tienen cada miembro en funciones, cada comité actual y cada tema. El control <b>Follow</b> (seguir) de la página de un registro da la dirección cuando la hay. También hay canales con las acciones más recientes del registro y con las próximas audiencias. El canal de un proyecto de ley termina cuando el proyecto queda resuelto. [[follow_email]]",
    "state": "draft"
   },
   "guide.using-this-site.a-bills-tabs": {
@@ -13816,8 +13826,8 @@
    "state": "draft"
   },
   "guide.using-this-site.the-search-button-in-the-header": {
-   "en": "The <b>Search</b> button in the header, drawn as a magnifier, finds legislators, committees, towns and this site's own pages: typing Litchfield offers both the town and the representative of that name. Anything else goes to <a href=\"bills.html\">the bill search</a>, which takes a bill number, several separated by commas, or words from a title, sponsor or committee. It covers one term, or all of them at once, and narrows by committee, topic, prime sponsor, status, bill type and floor vote day. <a href=\"officials.html\">Every sitting member</a> and <a href=\"committees.html\">every committee</a> has a page of their own.",
-   "es": "El botón <b>Buscar</b> del encabezado, dibujado como una lupa, encuentra legisladores, comités, municipios y las páginas de este sitio: si escribe Litchfield, le ofrece tanto el municipio como el representante de ese nombre. Todo lo demás va a <a href=\"bills.html\">la búsqueda de proyectos de ley</a>, que acepta un número de proyecto, varios separados por comas, o palabras de un título, un patrocinador o un comité. Abarca un período, o todos a la vez, y filtra por comité, tema, patrocinador principal, estado, tipo de proyecto y día de votación en el pleno. <a href=\"officials.html\">Cada miembro en funciones</a> y <a href=\"committees.html\">cada comité</a> tiene su propia página.",
+   "en": "The <b>Search</b> button in the header, drawn as a magnifier, finds legislators, committees, towns and this site's own pages: typing Litchfield offers both the town and the representative of that name. Anything else goes to <a href=\"bills.html\">the bill search</a>, which takes a bill number, several separated by commas, or words from a title, sponsor or committee. It covers one term, or all of them at once, and narrows by committee, topic, <abbr data-term=\"Prime sponsor\">prime sponsor</abbr>, status, bill type and floor vote day. <a href=\"officials.html\">Every sitting member</a> and <a href=\"committees.html\">every committee</a> has a page of their own.",
+   "es": "El botón <b>Buscar</b> del encabezado, dibujado como una lupa, encuentra legisladores, comités, municipios y las páginas de este sitio: si escribe Litchfield, le ofrece tanto el municipio como el representante de ese nombre. Todo lo demás va a <a href=\"bills.html\">la búsqueda de proyectos de ley</a>, que acepta un número de proyecto, varios separados por comas, o palabras de un título, un patrocinador o un comité. Abarca un período, o todos a la vez, y filtra por comité, tema, <abbr data-term=\"Prime sponsor\">patrocinador principal</abbr>, estado, tipo de proyecto y día de votación en el pleno. <a href=\"officials.html\">Cada miembro en funciones</a> y <a href=\"committees.html\">cada comité</a> tiene su propia página.",
    "state": "draft"
   },
   "guide.using-this-site.title": {
@@ -15136,8 +15146,8 @@
    "state": "draft"
   },
   "guide.your-representatives.most-places-have-more-than-one": {
-   "en": "Most places have more than one state representative: [[multi_rep_places]] of the [[all_places]] towns and city wards, either because their own district elects several members, or because a floterial district is laid over it, or both. The districts are built from whole towns and wards &mdash; the constitution forbids the legislature to divide a town, ward or place when it draws them, unless the town, ward or place asks for it by referendum (Part II, Articles 11-a and 26-a) &mdash; and within that limit representation is to be \"as equal as circumstances will admit\" (Part II, Article 9).",
-   "es": "La mayoría de los lugares tienen más de un representante estatal: [[multi_rep_places]] de los [[all_places]] municipios y barrios electorales, ya sea porque su propio distrito elige a varios miembros, porque tiene superpuesto un distrito flotante, o por ambas cosas. Los distritos se forman con municipios y barrios electorales enteros &mdash; la constitución prohíbe a la Legislatura dividir un municipio, un barrio electoral o un lugar al trazarlos, salvo que el municipio, el barrio electoral o el lugar lo pida por referéndum (Parte II, artículos 11-a y 26-a) &mdash; y, dentro de ese límite, la representación debe ser \"tan igual como las circunstancias lo permitan\" (Parte II, artículo 9).",
+   "en": "Most places have more than one state representative: [[multi_rep_places]] of the [[all_places]] towns and city wards, either because their own district elects several members, or because a <abbr data-term=\"Floterial district\">floterial district</abbr> is laid over it, or both. The districts are built from whole towns and wards &mdash; the constitution forbids the legislature to divide a town, ward or place when it draws them, unless the town, ward or place asks for it by referendum (Part II, Articles 11-a and 26-a) &mdash; and within that limit representation is to be \"as equal as circumstances will admit\" (Part II, Article 9).",
+   "es": "La mayoría de los lugares tienen más de un representante estatal: [[multi_rep_places]] de los [[all_places]] municipios y barrios electorales, ya sea porque su propio distrito elige a varios miembros, porque tiene superpuesto un <abbr data-term=\"Floterial district\">distrito flotante</abbr>, o por ambas cosas. Los distritos se forman con municipios y barrios electorales enteros &mdash; la constitución prohíbe a la Legislatura dividir un municipio, un barrio electoral o un lugar al trazarlos, salvo que el municipio, el barrio electoral o el lugar lo pida por referéndum (Parte II, artículos 11-a y 26-a) &mdash; y, dentro de ese límite, la representación debe ser \"tan igual como las circunstancias lo permitan\" (Parte II, artículo 9).",
    "state": "draft"
   },
   "guide.your-representatives.new-hampshire-is-divided-into-house": {
@@ -15161,8 +15171,8 @@
    "state": "draft"
   },
   "guide.your-representatives.the-statute-that-sets-out-the": {
-   "en": "The statute that sets out the districts, RSA 662:5, never uses the word <i>floterial</i>. It simply lists each district's towns and its seats. A floterial shows up there as a district covering exactly the same towns as two or more of the county's other districts put together &mdash; [[reps_flot]] is [[reps_flot_under]] combined. Every one of the [[floterial]] districts this site marks as floterial passes that test against the statute.",
-   "es": "La ley que establece los distritos, RSA 662:5, nunca usa la palabra <i>floterial</i>. Simplemente enumera los municipios y los escaños de cada distrito. Un distrito flotante aparece allí como un distrito que abarca exactamente los mismos municipios que dos o más de los otros distritos del condado juntos &mdash; [[reps_flot]] equivale a [[reps_flot_under]] combinados. Cada uno de los [[floterial]] distritos que este sitio marca como flotantes pasa esa prueba frente a la ley.",
+   "en": "The statute that sets out the districts, <abbr data-term=\"RSA\">RSA</abbr> 662:5, never uses the word <i>floterial</i>. It simply lists each district's towns and its seats. A floterial shows up there as a district covering exactly the same towns as two or more of the county's other districts put together &mdash; [[reps_flot]] is [[reps_flot_under]] combined. Every one of the [[floterial]] districts this site marks as floterial passes that test against the statute.",
+   "es": "La ley que establece los distritos, <abbr data-term=\"RSA\">RSA</abbr> 662:5, nunca usa la palabra <i>floterial</i>. Simplemente enumera los municipios y los escaños de cada distrito. Un distrito flotante aparece allí como un distrito que abarca exactamente los mismos municipios que dos o más de los otros distritos del condado juntos &mdash; [[reps_flot]] equivale a [[reps_flot_under]] combinados. Cada uno de los [[floterial]] distritos que este sitio marca como flotantes pasa esa prueba frente a la ley.",
    "state": "draft"
   },
   "guide.your-representatives.this-is-every-seat-a-voter": {
@@ -16497,8 +16507,8 @@
    "state": "draft"
   },
   "learn.city-and-town-government.a-planning-board-has-5-or": {
-   "en": "A <b>planning board</b> has 5 or 7 members in most towns, 7 or 9 in a town with a council, and 9 in a city. In a town governed by a meeting, one selectman or administrative official of the town sits on it ex officio and the selectmen appoint the rest, unless the town meeting has voted that those members be elected; a town that has voted for election may later vote to go back (RSA 673:2).",
-   "es": "Una <b>junta de planificación</b> (planning board) tiene 5 o 7 miembros en la mayoría de los municipios, 7 o 9 en un municipio con concejo, y 9 en una ciudad. En un municipio gobernado por una asamblea, un concejal o un funcionario administrativo del municipio forma parte de ella por su cargo y los concejales nombran al resto, a menos que la asamblea municipal haya votado que esos miembros se elijan; un municipio que haya votado por elegirlos puede después votar para volver atrás (RSA 673:2).",
+   "en": "A <b>planning board</b> has 5 or 7 members in most towns, 7 or 9 in a town with a council, and 9 in a city. In a town governed by a meeting, one selectman or administrative official of the town sits on it ex officio, by virtue of that office, and the selectmen appoint the rest, unless the town meeting has voted that those members be elected; a town that has voted for election may later vote to go back (RSA 673:2).",
+   "es": "Una <b>junta de planificación</b> (planning board) tiene 5 o 7 miembros en la mayoría de los municipios, 7 o 9 en un municipio con concejo, y 9 en una ciudad. En un municipio gobernado por una asamblea, un concejal o un funcionario administrativo del municipio forma parte de ella por su cargo (ex officio), es decir, en virtud de ese cargo, y los concejales nombran al resto, a menos que la asamblea municipal haya votado que esos miembros se elijan; un municipio que haya votado por elegirlos puede después votar para volver atrás (RSA 673:2).",
    "state": "draft"
   },
   "learn.city-and-town-government.a-school-district-is-a-body": {
@@ -16562,8 +16572,8 @@
    "state": "draft"
   },
   "learn.city-and-town-government.charter-a-municipality-s-own-written": {
-   "en": "<b>Charter:</b> a municipality's own written constitution, adopted by its voters. Any incorporated town or city, whatever its population, may draw one up under RSA 49-B, the home rule chapter. A charter prepared under RSA 49-C establishes a city government; one prepared under RSA 49-D establishes a town government (RSA 49-B:2).",
-   "es": "<b>Carta orgánica (charter):</b> la constitución escrita propia de un municipio o ciudad, adoptada por sus votantes. Cualquier municipio o ciudad incorporado, sea cual sea su población, puede redactar una según el RSA 49-B, el capítulo de autonomía local (home rule). Una carta orgánica preparada según el RSA 49-C establece un gobierno de ciudad; una preparada según el RSA 49-D establece un gobierno de municipio (RSA 49-B:2).",
+   "en": "<b>Charter:</b> a municipality's own written constitution, adopted by its voters. Any incorporated town or city, whatever its population, may draw one up under RSA 49-B, the home rule chapter, through which a city or town may adopt the form of government that best addresses local needs (RSA 49-B:1). A charter prepared under RSA 49-C establishes a city government; one prepared under RSA 49-D establishes a town government (RSA 49-B:2).",
+   "es": "<b>Carta orgánica (charter):</b> la constitución escrita propia de un municipio o ciudad, adoptada por sus votantes. Cualquier municipio o ciudad incorporado, sea cual sea su población, puede redactar una según el RSA 49-B, el capítulo de autonomía local (home rule), por el que una ciudad o un municipio puede adoptar la forma de gobierno que mejor responda a sus necesidades locales (RSA 49-B:1). Una carta orgánica preparada según el RSA 49-C establece un gobierno de ciudad; una preparada según el RSA 49-D establece un gobierno de municipio (RSA 49-B:2).",
    "state": "draft"
   },
   "learn.city-and-town-government.city-or-town": {
@@ -16692,8 +16702,8 @@
    "state": "draft"
   },
   "learn.city-and-town-government.no-and-the-difference-matters-when": {
-   "en": "No, and the difference matters when you are working out who decides. A <b>town manager</b> is an office RSA 37 creates: adopting it takes a vote of the meeting (RSA 37:11), and the manager becomes the administrative head of all the town's departments (RSA 37:5), so authority moves from the elected board to an appointed officer. A <b>town administrator</b> is not that office. Where a town has one, the selectmen still manage the town's prudential affairs (RSA 41:8).",
-   "es": "No, y la diferencia importa cuando quiere saber quién decide. Un <b>town manager</b> (administrador municipal) es un cargo que crea el RSA 37: adoptarlo requiere un voto de la asamblea (RSA 37:11), y el administrador pasa a ser el jefe administrativo de todos los departamentos del municipio (RSA 37:5), de modo que la autoridad pasa de la junta electa a un funcionario nombrado. Un <b>town administrator</b> (gerente administrativo del municipio) no es ese cargo. Donde un municipio tiene uno, los concejales siguen manejando los asuntos prudenciales del municipio (RSA 41:8).",
+   "en": "No, and the difference matters when you are working out who decides. A <b>town manager</b> is an office RSA 37 creates: adopting it takes a vote of the meeting (RSA 37:11), and the manager becomes the administrative head of all the town's departments (RSA 37:5), so authority moves from the elected board to an appointed officer. A <b>town administrator</b> is not that office. Where a town has one, the selectmen still manage the town's prudential affairs, its day-to-day business (RSA 41:8).",
+   "es": "No, y la diferencia importa cuando quiere saber quién decide. Un <b>town manager</b> (administrador municipal) es un cargo que crea el RSA 37: adoptarlo requiere un voto de la asamblea (RSA 37:11), y el administrador pasa a ser el jefe administrativo de todos los departamentos del municipio (RSA 37:5), de modo que la autoridad pasa de la junta electa a un funcionario nombrado. Un <b>town administrator</b> (gerente administrativo del municipio) no es ese cargo. Donde un municipio tiene uno, los concejales siguen manejando los asuntos prudenciales del municipio, es decir, su gestión diaria (RSA 41:8).",
    "state": "draft"
   },
   "learn.city-and-town-government.others-a-town-elects-only-if": {
@@ -17186,9 +17196,9 @@
    "es": "Son las mismas personas de quienes este sitio ya tiene páginas. Un representante estatal tiene un segundo trabajo que la mayoría de los residentes nunca ve: el miembro que por la mañana votó un proyecto de ley en Concord puede pasar la tarde fijando un presupuesto del condado que llega en la misma factura del impuesto a la propiedad que el del municipio.",
    "state": "draft"
   },
-  "learn.county-government.they-choose-a-chairman-and-a": {
-   "en": "They choose a chairman and a clerk from among themselves (RSA 28:1). They have the custody and care of all property belonging to the county (RSA 28:4), run its departments from day to day, and prepare the budget the convention votes on. The county treasurer pays money out only on their orders (RSA 29:1).",
-   "es": "Eligen de entre ellos a un presidente y a un secretario (RSA 28:1). Tienen la custodia y el cuidado de todos los bienes del condado (RSA 28:4), dirigen sus departamentos en el día a día y preparan el presupuesto que vota la convención. El tesorero del condado paga solo por orden de ellos (RSA 29:1).",
+  "learn.county-government.they-choose-a-chair-and-a": {
+   "en": "They choose a chair and a clerk from among themselves (RSA 28:1). They have the custody and care of all property belonging to the county (RSA 28:4), run its departments from day to day, and prepare the budget the convention votes on. The county treasurer pays money out only on their orders (RSA 29:1).",
+   "es": "Eligen de entre ellos a quien preside y a un secretario (RSA 28:1). Tienen la custodia y el cuidado de todos los bienes del condado (RSA 28:4), dirigen sus departamentos en el día a día y preparan el presupuesto que vota la convención. El tesorero del condado paga solo por orden de ellos (RSA 29:1).",
    "state": "draft"
   },
   "learn.county-government.this-site-is-the-record-of": {
@@ -17337,8 +17347,8 @@
    "state": "draft"
   },
   "learn.general-court.every-bill-is-referred-to-a": {
-   "en": "Every bill is referred to a committee chosen by subject, and the committee holds the public hearing, votes on a recommendation in an executive session, and writes a report explaining its reasoning. If the committee is split on what action to recommend, there are separate reports from the majority and the minority. The full chamber is not bound by those recommendations, but [[follows_committee]]% of the bills it decided in the [[term]] term went the way its committee recommended.",
-   "es": "Cada proyecto de ley se envía a un comité elegido según el tema, y el comité celebra la audiencia pública, vota una recomendación en una sesión ejecutiva y redacta un informe que explica su razonamiento. Si el comité está dividido sobre qué acción recomendar, hay informes separados de la mayoría y de la minoría. La cámara en pleno no está obligada por esas recomendaciones, pero el [[follows_committee]]% de los proyectos de ley que decidió en el período [[term]] siguió lo que su comité recomendó.",
+   "en": "Every bill is referred to a committee chosen by subject, and the committee holds the <abbr data-term=\"Public hearing\">public hearing</abbr>, votes on a recommendation in an executive session, and writes a report explaining its reasoning. If the committee is split on what action to recommend, there are separate reports from the majority and the minority. The full chamber is not bound by those recommendations, but [[follows_committee]]% of the bills it decided in the [[term]] term went the way its committee recommended.",
+   "es": "Cada proyecto de ley se envía a un comité elegido según el tema, y el comité celebra la <abbr data-term=\"Public hearing\">audiencia pública</abbr>, vota una recomendación en una sesión ejecutiva y redacta un informe que explica su razonamiento. Si el comité está dividido sobre qué acción recomendar, hay informes separados de la mayoría y de la minoría. La cámara en pleno no está obligada por esas recomendaciones, pero el [[follows_committee]]% de los proyectos de ley que decidió en el período [[term]] siguió lo que su comité recomendó.",
    "state": "draft"
   },
   "learn.general-court.every-committee-who-sits-on-it": {
@@ -17397,8 +17407,8 @@
    "state": "draft"
   },
   "learn.general-court.if-it-was-retained-it-survived": {
-   "en": "If it was retained, it survived into the second year and kept its number. Those show as <b>carried over</b> here, and they are the ones people most often fail to find, because they search the current year for a bill filed in the previous one.",
-   "es": "Si fue retenido, siguió vivo en el segundo año y conservó su número. Aquí aparecen como <b>trasladados al segundo año</b> (carried over), y son los que la gente más a menudo no logra encontrar, porque busca en el año en curso un proyecto presentado el año anterior.",
+   "en": "If it was retained, it survived into the second year and kept its number. Those show as <b><abbr data-term=\"Carried over\">carried over</abbr></b> here, and they are the ones people most often fail to find, because they search the current year for a bill filed in the previous one.",
+   "es": "Si fue retenido, siguió vivo en el segundo año y conservó su número. Aquí aparecen como <b><abbr data-term=\"Carried over\">trasladados al segundo año</abbr></b> (carried over), y son los que la gente más a menudo no logra encontrar, porque busca en el año en curso un proyecto presentado el año anterior.",
    "state": "draft"
   },
   "learn.general-court.in-new-hampshire-every-bill-introduced": {
@@ -17452,8 +17462,8 @@
    "state": "draft"
   },
   "learn.general-court.members-are-paid-200-for-the": {
-   "en": "Members are paid <b>$200 for the two-year term</b> plus mileage, and the presiding officers of the two chambers $250 (Part Second, Article 15).",
-   "es": "A los miembros se les paga <b>$200 por el período de dos años</b> más el reembolso por millaje, y a quienes presiden las dos cámaras, $250 (Parte Segunda, Artículo 15).",
+   "en": "Members are paid <b>$200 for the two-year term</b> plus mileage, and the presiding officers of the two chambers, the Speaker of the House and the Senate President, $250 (Part Second, Article 15).",
+   "es": "A los miembros se les paga <b>$200 por el período de dos años</b> más el reembolso por millaje, y a quienes presiden las dos cámaras, el Presidente de la Cámara (Speaker of the House) y el Presidente del Senado, $250 (Parte Segunda, Artículo 15).",
    "state": "draft"
   },
   "learn.general-court.most-bills-are-either-passed-or": {
@@ -17592,8 +17602,8 @@
    "state": "draft"
   },
   "learn.general-court.which-chamber-a-measure-starts-in": {
-   "en": "Which chamber a measure starts in follows from its prime sponsor: a representative's bill begins in the House, a senator's in the Senate.",
-   "es": "La cámara en la que empieza una medida depende de su patrocinador principal: el proyecto de un representante empieza en la Cámara, el de un senador en el Senado.",
+   "en": "Which chamber a measure starts in follows from its <abbr data-term=\"Prime sponsor\">prime sponsor</abbr>: a representative's bill begins in the House, a senator's in the Senate.",
+   "es": "La cámara en la que empieza una medida depende de su <abbr data-term=\"Prime sponsor\">patrocinador principal</abbr>: el proyecto de un representante empieza en la Cámara, el de un senador en el Senado.",
    "state": "draft"
   },
   "learn.general-court.which-chamber-does-a-bill-start": {
@@ -17657,13 +17667,13 @@
    "state": "draft"
   },
   "learn.governor-and-council.it-becomes-law-without-a-signature-2": {
-   "en": "It becomes law without a signature after five days, Sundays excepted &mdash; unless the legislature's adjournment prevents the Governor from returning it, and then it does not become law at all (Part Second, Article 44).",
-   "es": "Se convierte en ley sin firma al cabo de cinco días, sin contar los domingos &mdash; salvo que el receso de la Legislatura impida al Gobernador devolverlo, y entonces no se convierte en ley en absoluto (Parte Segunda, Artículo 44).",
+   "en": "It becomes <abbr data-term=\"Without signature\">law without a signature</abbr> after five days, Sundays excepted &mdash; unless the legislature's adjournment prevents the Governor from returning it, and then it does not become law at all (Part Second, Article 44).",
+   "es": "Se convierte en <abbr data-term=\"Without signature\">ley sin firma</abbr> al cabo de cinco días, sin contar los domingos &mdash; salvo que el receso de la Legislatura impida al Gobernador devolverlo, y entonces no se convierte en ley en absoluto (Parte Segunda, Artículo 44).",
    "state": "draft"
   },
   "learn.governor-and-council.its-approval-is-required-for-a": {
-   "en": "Its approval is required for a great deal of what the executive branch does: state contracts above a threshold, the appointment of commissioners and judges, and pardons. A commissioner nominated by the Governor takes office only when the Council confirms them, and a Governor who has the legislature and not the Council cannot simply proceed.",
-   "es": "Su aprobación es necesaria para gran parte de lo que hace el poder ejecutivo: los contratos del estado por encima de cierto monto, el nombramiento de comisionados y jueces, y los indultos. Un comisionado propuesto por el Gobernador asume el cargo solo cuando el Consejo lo confirma, y un Gobernador que cuenta con la Legislatura pero no con el Consejo no puede simplemente seguir adelante.",
+   "en": "Its approval is required for a great deal of what the executive branch does: state contracts above a threshold, the appointment of commissioners and judges, and pardons. A commissioner, the head of a state department, nominated by the Governor takes office only when the Council confirms them, and a Governor with the legislature&rsquo;s support but not the Council&rsquo;s cannot simply proceed.",
+   "es": "Su aprobación es necesaria para gran parte de lo que hace el poder ejecutivo: los contratos del estado por encima de cierto monto, el nombramiento de comisionados y jueces, y los indultos. Un comisionado, que dirige un departamento del estado, propuesto por el Gobernador asume el cargo solo cuando el Consejo lo confirma, y un Gobernador que cuenta con el apoyo de la Legislatura pero no con el del Consejo no puede simplemente seguir adelante.",
    "state": "draft"
   },
   "learn.governor-and-council.lead": {
@@ -17757,8 +17767,8 @@
    "state": "draft"
   },
   "learn.governor-and-council.the-legislature-can-override-a-veto": {
-   "en": "The legislature can override a veto, but it takes two thirds of each chamber, by roll call, starting with the chamber the bill came from. The constitution says two thirds \"of that house\", and the House counts that among the members voting. That is a high bar and most attempts fail.",
-   "es": "La Legislatura puede anular un veto (override), pero hacen falta dos tercios de cada cámara, en votación nominal, empezando por la cámara de la que vino el proyecto de ley. La constitución dice dos tercios &ldquo;de esa cámara&rdquo;, y la Cámara los cuenta entre los miembros que votan. Es una exigencia alta, y la mayoría de los intentos fracasan.",
+   "en": "The legislature can <abbr data-term=\"Override\">override</abbr> a <abbr data-term=\"Veto\">veto</abbr>, but it takes two thirds of each chamber, by roll call, starting with the chamber the bill came from. The constitution says two thirds \"of that house\", and the House counts that among the members voting. That is a high bar and most attempts fail.",
+   "es": "La Legislatura puede <abbr data-term=\"Override\">anular</abbr> un <abbr data-term=\"Veto\">veto</abbr> (override), pero hacen falta dos tercios de cada cámara, en votación nominal, empezando por la cámara de la que vino el proyecto de ley. La constitución dice dos tercios &ldquo;de esa cámara&rdquo;, y la Cámara los cuenta entre los miembros que votan. Es una exigencia alta, y la mayoría de los intentos fracasan.",
    "state": "draft"
   },
   "learn.governor-and-council.the-legislature-may-override": {
@@ -17772,8 +17782,8 @@
    "state": "draft"
   },
   "learn.governor-and-council.the-new-hampshire-governor-serves-as": {
-   "en": "The New Hampshire governor serves as the state's head of government and supreme executive magistrate, responsible for enforcing state laws, proposing the biennial state budget, and commanding the New Hampshire National Guard.",
-   "es": "El gobernador de New Hampshire es el jefe de gobierno del estado y su máximo magistrado ejecutivo: hace cumplir las leyes del estado, propone el presupuesto bienal del estado y está al mando de la Guardia Nacional de New Hampshire.",
+   "en": "The New Hampshire governor serves as the state's head of government and supreme executive magistrate, responsible for enforcing state laws, proposing the biennial (two-year) state budget, and commanding the New Hampshire National Guard.",
+   "es": "El gobernador de New Hampshire es el jefe de gobierno del estado y su máximo magistrado ejecutivo: hace cumplir las leyes del estado, propone el presupuesto bienal (de dos años) del estado y está al mando de la Guardia Nacional de New Hampshire.",
    "state": "draft"
   },
   "learn.governor-and-council.the-nominee-takes-office": {
@@ -17837,8 +17847,8 @@
    "state": "draft"
   },
   "learn.how-a-bill-becomes-law.a-committee-decides-in-executive-session": {
-   "en": "A committee decides in executive session whether to send a bill to the consent calendar. In the House that takes the committee&rsquo;s unanimous vote, and a bill with a fiscal impact or an appropriation never goes there (House Rule 52); in the Senate every member of the committee present and voting must agree, and a proposed constitutional amendment never goes there (Senate Rules 6-21 and 6-22). It is a separate vote from the committee's recommendation: a recommendation carried on a divided vote can still go to the consent calendar, and this site&rsquo;s record holds thousands of House reports marked that way, among them reports carried 15&ndash;3. What is left on the calendar is acted on without debate, and what that adopts is the committee's recommendation on each bill, which for some of them is to kill it. A bill can be taken off first: ten members must ask in the House, any two senators in the Senate. One that comes off is taken up at the end of the regular calendar.",
-   "es": "Un comité decide en sesión ejecutiva si envía un proyecto de ley al calendario de consenso. En la Cámara eso requiere el voto unánime del comité, y un proyecto de ley con impacto fiscal o con una asignación de fondos nunca va allí (Regla 52 de la Cámara); en el Senado tienen que estar de acuerdo todos los miembros del comité presentes que votan, y una propuesta de enmienda constitucional nunca va allí (Reglas 6-21 y 6-22 del Senado). Es una votación aparte de la recomendación del comité: una recomendación aprobada en una votación dividida puede ir de todos modos al calendario de consenso, y el registro de este sitio tiene miles de informes de la Cámara marcados así, entre ellos informes aprobados 15&ndash;3. Lo que queda en el calendario se decide sin debate, y lo que eso adopta es la recomendación del comité sobre cada proyecto de ley, que para algunos es rechazarlo. Un proyecto de ley se puede sacar antes: tienen que pedirlo diez miembros en la Cámara, y dos senadores cualesquiera en el Senado. El que sale se trata al final del calendario ordinario.",
+   "en": "A committee decides in executive session whether to send a bill to the consent calendar. In the House that takes the committee&rsquo;s unanimous vote, and a bill with a fiscal impact or an appropriation never goes there (House Rule 52); in the Senate every member of the committee present and voting must agree, and a proposed constitutional amendment never goes there (Senate Rules 6-21 and 6-22). It is a separate vote from the committee's recommendation: a recommendation carried on a divided vote can still go to the consent calendar, and this site&rsquo;s record holds thousands of House reports marked that way, among them reports carried 15&ndash;3. What is left on the calendar is acted on without debate, and what that adopts is the committee's recommendation on each bill, which for some of them is to kill it. A bill can be taken off first: ten members must ask in the House, any two senators in the Senate. One that comes off is taken up at the end of the <abbr data-term=\"RC-calendar\">regular calendar</abbr>.",
+   "es": "Un comité decide en sesión ejecutiva si envía un proyecto de ley al calendario de consenso. En la Cámara eso requiere el voto unánime del comité, y un proyecto de ley con impacto fiscal o con una asignación de fondos nunca va allí (Regla 52 de la Cámara); en el Senado tienen que estar de acuerdo todos los miembros del comité presentes que votan, y una propuesta de enmienda constitucional nunca va allí (Reglas 6-21 y 6-22 del Senado). Es una votación aparte de la recomendación del comité: una recomendación aprobada en una votación dividida puede ir de todos modos al calendario de consenso, y el registro de este sitio tiene miles de informes de la Cámara marcados así, entre ellos informes aprobados 15&ndash;3. Lo que queda en el calendario se decide sin debate, y lo que eso adopta es la recomendación del comité sobre cada proyecto de ley, que para algunos es rechazarlo. Un proyecto de ley se puede sacar antes: tienen que pedirlo diez miembros en la Cámara, y dos senadores cualesquiera en el Senado. El que sale se trata al final del <abbr data-term=\"RC-calendar\">calendario ordinario</abbr>.",
    "state": "draft"
   },
   "learn.how-a-bill-becomes-law.a-final-check-of-the-text": {
@@ -17867,8 +17877,8 @@
    "state": "draft"
   },
   "learn.how-a-bill-becomes-law.a-town-or-agency-answering-a": {
-   "en": "A town or agency answering a right-to-know request may charge for the copies. The question was whether it may also charge for the staff time spent finding and reviewing the records. Supporters said small towns without full-time staff absorb real cost for requests that can run to thousands of pages. Opponents said a fee that tracks staff time can be set high enough to price an ordinary resident out of oversight.",
-   "es": "Un municipio o una agencia que responde a una solicitud según el Derecho a Saber (right-to-know) puede cobrar por las copias. La cuestión era si también puede cobrar por el tiempo que el personal dedica a buscar y revisar los registros. Quienes lo apoyaban dijeron que los municipios pequeños sin personal de tiempo completo asumen un costo real por solicitudes que pueden llegar a miles de páginas. Quienes se oponían dijeron que una cuota calculada según el tiempo del personal puede fijarse tan alta que deje a un residente común fuera de la vigilancia de su gobierno.",
+   "en": "A town or agency answering a <abbr data-term=\"Right-to-know law\">right-to-know</abbr> request, a request to see its records under RSA 91-A, may charge for the copies. The question was whether it may also charge for the staff time spent finding and reviewing the records. Supporters said small towns without full-time staff absorb real cost for requests that can run to thousands of pages. Opponents said a fee that tracks staff time can be set high enough to price an ordinary resident out of oversight.",
+   "es": "Un municipio o una agencia que responde a una solicitud según la <abbr data-term=\"Right-to-know law\">Ley del Derecho a Saber</abbr> (right-to-know), es decir, una solicitud para ver sus registros según el RSA 91-A, puede cobrar por las copias. La cuestión era si también puede cobrar por el tiempo que el personal dedica a buscar y revisar los registros. Quienes lo apoyaban dijeron que los municipios pequeños sin personal de tiempo completo asumen un costo real por solicitudes que pueden llegar a miles de páginas. Quienes se oponían dijeron que una cuota calculada según el tiempo del personal puede fijarse tan alta que deje a un residente común fuera de la vigilancia de su gobierno.",
    "state": "draft"
   },
   "learn.how-a-bill-becomes-law.across-the-bills-in-this-record": {
@@ -18042,8 +18052,8 @@
    "state": "draft"
   },
   "learn.how-a-bill-becomes-law.it-shows-how-little-a-first": {
-   "en": "It shows how little a first vote settles. The House Judiciary Committee heard it on January 17, 2024 and split 12&ndash;8 for passing it with an amendment, and on February 1 the House agreed, <b>193 to 179</b>: 63 Republicans for and 125 against, 128 Democrats for and 53 against. A week later the House voted 195 to 183 to reopen that vote, and sent the bill back to the committee, which now split 11&ndash;9 for referring it to interim study, a recommendation that would have ended it for the term. The House refused, 105 to 266, adopted an amendment offered from the floor rather than by the committee, 345 to 24, and passed the bill 268 to 106. The Senate passed it on a voice vote, and Governor Sununu signed it into law on June 14, 2024. Five of its proceedings are on video: the House hearing, both House executive sessions, the work session between them, and the Senate hearing.",
-   "es": "Muestra lo poco que resuelve una primera votación. El Comité Judicial de la Cámara (House Judiciary Committee) lo escuchó en audiencia el 17 de enero de 2024 y se dividió 12&ndash;8 a favor de aprobarlo con una enmienda, y el 1 de febrero la Cámara estuvo de acuerdo, <b>193 a 179</b>: 63 republicanos a favor y 125 en contra, 128 demócratas a favor y 53 en contra. Una semana después la Cámara votó 195 a 183 a favor de reabrir esa votación, y devolvió el proyecto de ley al comité, que ahora se dividió 11&ndash;9 a favor de enviarlo a estudio interino, una recomendación que lo habría dejado sin efecto por el resto del período. La Cámara se negó, 105 a 266, adoptó una enmienda propuesta desde el pleno y no por el comité, 345 a 24, y aprobó el proyecto de ley 268 a 106. El Senado lo aprobó a viva voz, y el Gobernador Sununu lo firmó como ley el 14 de junio de 2024. Cinco de sus sesiones están en video: la audiencia de la Cámara, las dos sesiones ejecutivas de la Cámara, la sesión de trabajo entre ellas y la audiencia del Senado.",
+   "en": "It shows how little a first vote settles. The House Judiciary Committee heard it on January 17, 2024 and split 12&ndash;8 for passing it with an amendment, and on February 1 the House agreed, <b>193 to 179</b>: 63 Republicans for and 125 against, 128 Democrats for and 53 against. A week later the House voted 195 to 183 to reopen that vote, and sent the bill back to the committee, which now split 11&ndash;9 for referring it to interim study, a recommendation that would have ended it for the term. The House refused, 105 to 266, adopted an amendment offered from the floor rather than by the committee, 345 to 24, and passed the bill 268 to 106. The Senate passed it on a voice vote, and Governor Sununu signed it into law on June 14, 2024. Five of its proceedings are on video: the House hearing, both House executive sessions, the <abbr data-term=\"Work session\">work session</abbr> between them, and the Senate hearing.",
+   "es": "Muestra lo poco que resuelve una primera votación. El Comité Judicial de la Cámara (House Judiciary Committee) lo escuchó en audiencia el 17 de enero de 2024 y se dividió 12&ndash;8 a favor de aprobarlo con una enmienda, y el 1 de febrero la Cámara estuvo de acuerdo, <b>193 a 179</b>: 63 republicanos a favor y 125 en contra, 128 demócratas a favor y 53 en contra. Una semana después la Cámara votó 195 a 183 a favor de reabrir esa votación, y devolvió el proyecto de ley al comité, que ahora se dividió 11&ndash;9 a favor de enviarlo a estudio interino, una recomendación que lo habría dejado sin efecto por el resto del período. La Cámara se negó, 105 a 266, adoptó una enmienda propuesta desde el pleno y no por el comité, 345 a 24, y aprobó el proyecto de ley 268 a 106. El Senado lo aprobó a viva voz, y el Gobernador Sununu lo firmó como ley el 14 de junio de 2024. Cinco de sus sesiones están en video: la audiencia de la Cámara, las dos sesiones ejecutivas de la Cámara, la <abbr data-term=\"Work session\">sesión de trabajo</abbr> entre ellas y la audiencia del Senado.",
    "state": "draft"
   },
   "learn.how-a-bill-becomes-law.killed-hb-66-on-what-counts": {
@@ -18067,8 +18077,8 @@
    "state": "draft"
   },
   "learn.how-a-bill-becomes-law.of-the-bills-and-resolutions-filed": {
-   "en": "Of the [[bills]] bills and resolutions filed in the [[term]] term, <b>[[killed]] were killed</b> on a motion of Inexpedient to Legislate, written <b>ITL</b>, and <b>[[signed]] were signed into law</b>. Among the rest, [[study]] were sent for interim study (the committee studies the subject after the session, and the bill goes no further), [[tabled]] died on the table (set aside by a vote and never taken up again), and [[session_end]] died when the session ended without a final vote. Dying is the ordinary outcome, not a failure of the bill or its sponsor.",
-   "es": "De los [[bills]] proyectos de ley y resoluciones presentados en el período [[term]], <b>[[killed]] fueron rechazados</b> mediante una moción de Inexpedient to Legislate (inoportuno legislar), escrita <b>ITL</b>, y <b>[[signed]] fueron firmados como ley</b>. Entre los demás, [[study]] se enviaron a estudio interino (el comité estudia el tema después de la sesión, y el proyecto de ley no avanza más), [[tabled]] murieron sobre la mesa (apartados mediante una votación y nunca retomados), y [[session_end]] murieron al terminar la sesión sin una votación final. Morir es el resultado ordinario, no un fracaso del proyecto de ley ni de su patrocinador.",
+   "en": "Of the [[bills]] bills and resolutions filed in the [[term]] term, <b>[[killed]] were killed</b> on a motion of Inexpedient to Legislate, written <b><abbr data-term=\"ITL\">ITL</abbr></b>, and <b>[[signed]] were signed into law</b>. Among the rest, [[study]] were sent for interim study (the committee studies the subject after the session, and the bill goes no further), [[tabled]] died on the table (set aside by a vote and never taken up again), and [[session_end]] died when the session ended without a final vote. Dying is the ordinary outcome, not a failure of the bill or its sponsor.",
+   "es": "De los [[bills]] proyectos de ley y resoluciones presentados en el período [[term]], <b>[[killed]] fueron rechazados</b> mediante una moción de Inexpedient to Legislate (inoportuno legislar), escrita <b><abbr data-term=\"ITL\">ITL</abbr></b>, y <b>[[signed]] fueron firmados como ley</b>. Entre los demás, [[study]] se enviaron a estudio interino (el comité estudia el tema después de la sesión, y el proyecto de ley no avanza más), [[tabled]] murieron sobre la mesa (apartados mediante una votación y nunca retomados), y [[session_end]] murieron al terminar la sesión sin una votación final. Morir es el resultado ordinario, no un fracaso del proyecto de ley ni de su patrocinador.",
    "state": "draft"
   },
   "learn.how-a-bill-becomes-law.of-the-bills-that-became-law": {
@@ -18127,8 +18137,8 @@
    "state": "draft"
   },
   "learn.how-a-bill-becomes-law.signed-into-law-hb-2-the": {
-   "en": "<b>Signed into law:</b> <a href=\"bill/2025/hb2.html\">HB 2</a>, the budget trailer bill, which carries the statutory changes the state budget needs, with [[hb2_rollcalls]] recorded votes. The letters after its number say it has a fiscal note (FN), an appropriation (A) and a local fiscal impact (LOCAL).",
-   "es": "<b>Firmado como ley:</b> <a href=\"bill/2025/hb2.html\">HB 2</a>, el proyecto de ley complementario del presupuesto (budget trailer bill), que lleva los cambios a las leyes que el presupuesto del estado necesita, con [[hb2_rollcalls]] votaciones registradas. Las letras después de su número dicen que tiene una nota fiscal (FN), una asignación de fondos (A) y un impacto fiscal local (LOCAL).",
+   "en": "<b>Signed into law:</b> <a href=\"bill/2025/hb2.html\">HB 2</a>, the budget trailer bill, which carries the statutory changes the state budget needs, with [[hb2_rollcalls]] recorded votes. The letters after its number say it has a fiscal note (<abbr data-term=\"FN\">FN</abbr>), an appropriation (<abbr data-term=\"A\">A</abbr>) and a local fiscal impact (<abbr data-term=\"LOCAL\">LOCAL</abbr>).",
+   "es": "<b>Firmado como ley:</b> <a href=\"bill/2025/hb2.html\">HB 2</a>, el proyecto de ley complementario del presupuesto (budget trailer bill), que lleva los cambios a las leyes que el presupuesto del estado necesita, con [[hb2_rollcalls]] votaciones registradas. Las letras después de su número dicen que tiene una nota fiscal (<abbr data-term=\"FN\">FN</abbr>), una asignación de fondos (<abbr data-term=\"A\">A</abbr>) y un impacto fiscal local (<abbr data-term=\"LOCAL\">LOCAL</abbr>).",
    "state": "draft"
   },
   "learn.how-a-bill-becomes-law.signed-vetoed-or-left-unsigned": {
@@ -18177,13 +18187,13 @@
    "state": "draft"
   },
   "learn.how-a-bill-becomes-law.the-house-does-not-schedule-its": {
-   "en": "<b>The House does not schedule its votes to a time.</b> Its calendar lists the bills for the day grouped by the committee that reported them, or on some days, such as a veto day, in order by number, and that is the order they are taken up in unless the House votes to take one up at a set point in the day, which is called making it a special order. In practice a session day runs like this:",
-   "es": "<b>La Cámara no fija sus votaciones a una hora.</b> Su calendario enumera los proyectos de ley del día agrupados por el comité que informó sobre ellos o, algunos días, como un día de vetos, en orden por número, y ese es el orden en que se tratan, salvo que la Cámara decida por votación tratar uno en un momento fijo del día, lo que se llama convertirlo en una orden especial (special order). En la práctica, un día de sesión transcurre así:",
+   "en": "<b>The House does not schedule its votes to a time.</b> Its calendar lists the bills for the day grouped by the committee that reported them, or on some days, such as a <abbr data-term=\"Veto day\">veto day</abbr>, in order by number, and that is the order they are taken up in unless the House votes to take one up at a set point in the day, which is called making it a <abbr data-term=\"Special order\">special order</abbr>. In practice a <abbr data-term=\"Session day\">session day</abbr> runs like this:",
+   "es": "<b>La Cámara no fija sus votaciones a una hora.</b> Su calendario enumera los proyectos de ley del día agrupados por el comité que informó sobre ellos o, algunos días, como un <abbr data-term=\"Veto day\">día de vetos</abbr>, en orden por número, y ese es el orden en que se tratan, salvo que la Cámara decida por votación tratar uno en un momento fijo del día, lo que se llama convertirlo en una <abbr data-term=\"Special order\">orden especial</abbr> (special order). En la práctica, un <abbr data-term=\"Session day\">día de sesión</abbr> transcurre así:",
    "state": "draft"
   },
   "learn.how-a-bill-becomes-law.the-longer-road-at-the-end": {
-   "en": "The longer road at the end of the course. It went to a Special Committee on Housing, then to a second chamber that changed it. On the motion to accept that change the House voted <b>172 to 180</b>, on a roll call, and the bill went to a <b>committee of conference</b>. It dealt with how long an approved development keeps the rules it was approved under, and where a building code dispute may be appealed: local control of what gets built against the time and cost of getting anything built. Six of its proceedings are on video, the conference among them. The House then rejected the conference report <b>102 to 261</b>, and the bill did not become law.",
-   "es": "El camino más largo al final del recorrido. Pasó por un Comité Especial de Vivienda (Special Committee on Housing) y después por una segunda cámara que lo cambió. En la moción para aceptar ese cambio la Cámara votó <b>172 a 180</b>, en una votación nominal, y el proyecto de ley fue a un <b>comité de conferencia</b>. Trataba de cuánto tiempo una urbanización aprobada conserva las reglas con las que se aprobó, y de dónde se puede apelar una disputa sobre el código de construcción: el control local de lo que se construye frente al tiempo y el costo de construir cualquier cosa. Seis de sus sesiones están en video, la conferencia entre ellas. Después la Cámara rechazó el informe de la conferencia <b>102 a 261</b>, y el proyecto de ley no se convirtió en ley.",
+   "en": "The longer road at the end of the course. It went to a Special Committee on Housing, then to a second chamber that changed it. On the motion to accept that change the House voted <b>172 to 180</b>, on a roll call, and the bill went to a <b><abbr data-term=\"Committee of conference\">committee of conference</abbr></b>. It dealt with how long an approved development keeps the rules it was approved under, and where a building code dispute may be appealed: local control of what gets built against the time and cost of getting anything built. Six of its proceedings are on video, the conference among them. The House then rejected the conference report <b>102 to 261</b>, and the bill did not become law.",
+   "es": "El camino más largo al final del recorrido. Pasó por un Comité Especial de Vivienda (Special Committee on Housing) y después por una segunda cámara que lo cambió. En la moción para aceptar ese cambio la Cámara votó <b>172 a 180</b>, en una votación nominal, y el proyecto de ley fue a un <b><abbr data-term=\"Committee of conference\">comité de conferencia</abbr></b>. Trataba de cuánto tiempo una urbanización aprobada conserva las reglas con las que se aprobó, y de dónde se puede apelar una disputa sobre el código de construcción: el control local de lo que se construye frente al tiempo y el costo de construir cualquier cosa. Seis de sus sesiones están en video, la conferencia entre ellas. Después la Cámara rechazó el informe de la conferencia <b>102 a 261</b>, y el proyecto de ley no se convirtió en ley.",
    "state": "draft"
   },
   "learn.how-a-bill-becomes-law.the-members-voting": {
@@ -18397,8 +18407,8 @@
    "state": "draft"
   },
   "learn.legislative-year.what-the-deadlines-mean-crossover": {
-   "en": "What the deadlines mean -- crossover, interim study, a committee of conference -- is in <a href=\"learn/glossary.html\">the Glossary</a>.",
-   "es": "Qué significan los plazos &mdash; el paso a la otra cámara (crossover), el estudio interino, un comité de conferencia &mdash; está en <a href=\"learn/glossary.html\">el Glosario</a>.",
+   "en": "What the deadlines mean -- <abbr data-term=\"Crossover\">crossover</abbr>, <abbr data-term=\"IS\">interim study</abbr>, a <abbr data-term=\"Committee of conference\">committee of conference</abbr> -- is in <a href=\"learn/glossary.html\">the Glossary</a>.",
+   "es": "Qué significan los plazos &mdash; el <abbr data-term=\"Crossover\">paso a la otra cámara</abbr> (crossover), el <abbr data-term=\"IS\">estudio interino</abbr>, un <abbr data-term=\"Committee of conference\">comité de conferencia</abbr> &mdash; está en <a href=\"learn/glossary.html\">el Glosario</a>.",
    "state": "draft"
   },
   "learn.local-government.a-town-or-district-adopts-sb": {
@@ -18462,8 +18472,8 @@
    "state": "draft"
   },
   "learn.local-government.default-budget-the-figure-an-sb": {
-   "en": "<b>Default budget:</b> the figure an SB 2 town or district falls back on if the operating budget on the ballot is defeated. It starts from last year's operating budget, is raised or lowered for debt service, contracts and other obligations already incurred or required by law, and is reduced by one-time spending and by the cost of positions the proposed budget eliminates (RSA 40:13, IX). If the proposed budget fails the default takes effect, unless the governing body instead calls one special meeting to try a revised budget.",
-   "es": "<b>Presupuesto por defecto (default budget):</b> la cifra a la que recurre un municipio o distrito SB 2 si se rechaza el presupuesto operativo de la boleta. Parte del presupuesto operativo del año anterior, se aumenta o se reduce según el servicio de la deuda, los contratos y otras obligaciones ya contraídas o exigidas por la ley, y se reduce por los gastos de una sola vez y por el costo de los puestos que elimina el presupuesto propuesto (RSA 40:13, IX). Si el presupuesto propuesto no se aprueba, entra en vigor el presupuesto por defecto, a menos que el órgano de gobierno convoque en su lugar una asamblea especial para intentar aprobar un presupuesto revisado.",
+   "en": "<b>Default budget:</b> the figure an SB 2 town or district falls back on if the operating budget on the ballot is defeated. It starts from last year's operating budget, is raised or lowered for debt service, contracts and other obligations already incurred or required by law, and is reduced by one-time spending and by the cost of positions the proposed budget eliminates (RSA 40:13, IX). If the proposed budget fails the default takes effect, unless the governing body, the selectmen or the school board, instead calls one special meeting to try a revised budget.",
+   "es": "<b>Presupuesto por defecto (default budget):</b> la cifra a la que recurre un municipio o distrito SB 2 si se rechaza el presupuesto operativo de la boleta. Parte del presupuesto operativo del año anterior, se aumenta o se reduce según el servicio de la deuda, los contratos y otras obligaciones ya contraídas o exigidas por la ley, y se reduce por los gastos de una sola vez y por el costo de los puestos que elimina el presupuesto propuesto (RSA 40:13, IX). Si el presupuesto propuesto no se aprueba, entra en vigor el presupuesto por defecto, a menos que el órgano de gobierno, los concejales o la junta escolar, convoque en su lugar una asamblea especial para intentar aprobar un presupuesto revisado.",
    "state": "draft"
   },
   "learn.local-government.how-does-a-town-adopt-sb": {
@@ -18476,9 +18486,9 @@
    "es": "Cómo votan los municipios SB 2",
    "state": "draft"
   },
-  "learn.local-government.in-a-town-under-the-municipal": {
-   "en": "In a town under the municipal budget law, the meeting may not raise the total more than 10 percent above what the budget committee recommends, with some exceptions (RSA 32:18).",
-   "es": "En un municipio sujeto a la ley de presupuesto municipal, la asamblea no puede aumentar el total en más de un 10 por ciento sobre lo que recomienda el comité de presupuesto, con algunas excepciones (RSA 32:18).",
+  "learn.local-government.in-a-town-that-has-adopted": {
+   "en": "In a town that has adopted a budget committee under the municipal budget law (RSA 32:14), the meeting may not raise the total more than 10 percent above what the budget committee recommends, with some exceptions (RSA 32:18).",
+   "es": "En un municipio que ha adoptado un comité de presupuesto según la ley de presupuesto municipal (RSA 32:14), la asamblea no puede aumentar el total en más de un 10 por ciento sobre lo que recomienda el comité de presupuesto, con algunas excepciones (RSA 32:18).",
    "state": "draft"
   },
   "learn.local-government.in-the-same-room-straight-after": {
@@ -19032,8 +19042,8 @@
    "state": "draft"
   },
   "learn.state-house-and-branches.judges-are-appointed-the-governor": {
-   "en": "Judges are appointed. The Governor nominates and the Executive Council confirms (Part Second, Article 46). Once appointed, a judge holds office during good behavior (Part Second, Article 73), and no one may serve as a judge after reaching seventy, a limit in the constitution since 1792 (Part Second, Article 78). <a href=\"learn/the-courts.html\">The Courts</a> says how the courts are arranged.",
-   "es": "Los jueces son nombrados. El Gobernador propone y el Consejo Ejecutivo confirma (Parte Segunda, Artículo 46). Una vez nombrado, un juez ocupa el cargo mientras observe buena conducta (Parte Segunda, Artículo 73), y nadie puede ser juez después de cumplir setenta años, un límite que está en la constitución desde 1792 (Parte Segunda, Artículo 78). <a href=\"learn/the-courts.html\">Los tribunales</a> explica cómo están organizados los tribunales.",
+   "en": "Judges are appointed. The Governor nominates and the Executive Council confirms (Part Second, Article 46). Once appointed, a judge holds office during good behavior, with no fixed term (Part Second, Article 73), and no one may serve as a judge after reaching seventy, a limit in the constitution since 1792 (Part Second, Article 78). <a href=\"learn/the-courts.html\">The Courts</a> says how the courts are arranged.",
+   "es": "Los jueces son nombrados. El Gobernador propone y el Consejo Ejecutivo confirma (Parte Segunda, Artículo 46). Una vez nombrado, un juez ocupa el cargo mientras observe buena conducta, sin un período fijo (Parte Segunda, Artículo 73), y nadie puede ser juez después de cumplir setenta años, un límite que está en la constitución desde 1792 (Parte Segunda, Artículo 78). <a href=\"learn/the-courts.html\">Los tribunales</a> explica cómo están organizados los tribunales.",
    "state": "draft"
   },
   "learn.state-house-and-branches.judges-serve-until-seventy": {
@@ -19102,8 +19112,8 @@
    "state": "draft"
   },
   "learn.state-house-and-branches.the-governor-is-chosen-biennially-in": {
-   "en": "The governor is chosen biennially, in November (Part Second, Article 42): a two-year term. Until 1877 the election was every year. A candidate must be 30 years old and have lived in the state for the 7 years before the election. If no one has a plurality of the votes, the House and Senate together elect one of the two with the most votes, by joint ballot.",
-   "es": "El gobernador se elige cada dos años, en noviembre (Parte Segunda, Artículo 42): un período de dos años. Hasta 1877 la elección era cada año. Un candidato debe tener 30 años y haber vivido en el estado durante los 7 años anteriores a la elección. Si nadie obtiene la mayoría relativa de los votos, la Cámara y el Senado juntos eligen, en votación conjunta, a uno de los dos con más votos.",
+   "en": "The governor is chosen biennially, in November (Part Second, Article 42): a two-year term. Until 1877 the election was every year. A candidate must be 30 years old and have lived in the state for the 7 years before the election. If no one has a plurality of the votes, more than any other candidate, the House and Senate together elect one of the two with the most votes, by joint ballot.",
+   "es": "El gobernador se elige cada dos años, en noviembre (Parte Segunda, Artículo 42): un período de dos años. Hasta 1877 la elección era cada año. Un candidato debe tener 30 años y haber vivido en el estado durante los 7 años anteriores a la elección. Si nadie obtiene la mayoría relativa de los votos, es decir, más que cualquier otro candidato, la Cámara y el Senado juntos eligen, en votación conjunta, a uno de los dos con más votos.",
    "state": "draft"
   },
   "learn.state-house-and-branches.the-governor-is-the-states-supreme": {
@@ -19172,8 +19182,8 @@
    "state": "draft"
   },
   "learn.state-house-and-branches.yes-the-governor-with-the-consent": {
-   "en": "Yes. The Governor, with the consent of the Council, may remove a judge for reasonable cause on the address of both houses of the legislature, after the judge has had a chance to be heard by a joint committee of both houses (Part Second, Article 73).",
-   "es": "Sí. El Gobernador, con el consentimiento del Consejo, puede destituir a un juez por causa razonable a petición de ambas cámaras de la Legislatura, después de que el juez haya tenido la oportunidad de ser oído por un comité conjunto de ambas cámaras (Parte Segunda, Artículo 73).",
+   "en": "Yes. The Governor, with the consent of the Council, may remove a judge for reasonable cause on the address of both houses of the legislature, that is, at their formal request, after the judge has had a chance to be heard by a joint committee of both houses (Part Second, Article 73).",
+   "es": "Sí. El Gobernador, con el consentimiento del Consejo, puede destituir a un juez por causa razonable a petición formal (address) de ambas cámaras de la Legislatura, después de que el juez haya tenido la oportunidad de ser oído por un comité conjunto de ambas cámaras (Parte Segunda, Artículo 73).",
    "state": "draft"
   },
   "learn.state-symbols.1991-sb-40": {
@@ -20047,8 +20057,8 @@
    "state": "draft"
   },
   "learn.state-symbols.the-motto-is-the-words-live": {
-   "en": "The motto is the words &ldquo;Live Free or Die,&rdquo; written by General John Stark on July 31, 1809. The flag is blue, with the state seal at its center inside a wreath of laurel leaves and nine stars. The seal is two inches across, and the law sets out its detail &ldquo;and no other&rdquo;: the frigate Raleigh on the stocks, the sun rising over the sea, a granite boulder, and the date 1776 between two stars. The emblem may be placed on the state&rsquo;s printed material about developing its recreational, industrial and agricultural resources.",
-   "es": "El lema son las palabras &ldquo;Live Free or Die&rdquo; (&ldquo;Vivir libre o morir&rdquo;), escritas por el general John Stark el 31 de julio de 1809. La bandera es azul, con el sello del estado en el centro dentro de una corona de hojas de laurel y nueve estrellas. El sello mide dos pulgadas de diámetro, y la ley fija su detalle &ldquo;y ningún otro&rdquo;: la fragata Raleigh en el astillero, el sol que sale sobre el mar, una roca de granito y la fecha 1776 entre dos estrellas. El emblema puede ponerse en el material impreso del estado sobre el desarrollo de sus recursos recreativos, industriales y agrícolas.",
+   "en": "The motto is the words &ldquo;Live Free or Die,&rdquo; written by General John Stark on July 31, 1809. The flag is blue, with the state seal at its center inside a wreath of laurel leaves and nine stars. The seal is two inches across, and the law sets out its detail &ldquo;and no other&rdquo;: the frigate Raleigh on the stocks, still being built, the sun rising over the sea, a granite boulder, and the date 1776 between two stars. The emblem may be placed on the state&rsquo;s printed material about developing its recreational, industrial and agricultural resources.",
+   "es": "El lema son las palabras &ldquo;Live Free or Die&rdquo; (&ldquo;Vivir libre o morir&rdquo;), escritas por el general John Stark el 31 de julio de 1809. La bandera es azul, con el sello del estado en el centro dentro de una corona de hojas de laurel y nueve estrellas. El sello mide dos pulgadas de diámetro, y la ley fija su detalle &ldquo;y ningún otro&rdquo;: la fragata Raleigh en el astillero, todavía en construcción, el sol que sale sobre el mar, una roca de granito y la fecha 1776 entre dos estrellas. El emblema puede ponerse en el material impreso del estado sobre el desarrollo de sus recursos recreativos, industriales y agrícolas.",
    "state": "draft"
   },
   "learn.state-symbols.the-new-hampshire-state-march-words": {
@@ -20467,8 +20477,8 @@
    "state": "draft"
   },
   "learn.the-courts.the-circuit-court-has-three-divisions": {
-   "en": "The <b>Circuit Court</b> has three divisions (<a href=\"/laws/490-f#s3\">RSA 490-F:3</a>): the district division, which hears lesser crimes and small claims (<a href=\"/laws/502-a#s11\">RSA 502-A:11</a>, <a href=\"/laws/503#s1\">RSA 503:1</a>); the probate division; and the family division, which hears family cases such as divorce and custody (<a href=\"/laws/490-d#s2\">RSA 490-D:2</a>).",
-   "es": "El <b>Tribunal de Circuito</b> (Circuit Court) tiene tres divisiones (<a href=\"/laws/490-f#s3\">RSA 490-F:3</a>): la división de distrito, que ve los delitos menores y las demandas de menor cuantía (<a href=\"/laws/502-a#s11\">RSA 502-A:11</a>, <a href=\"/laws/503#s1\">RSA 503:1</a>); la división testamentaria; y la división de familia, que ve los casos de familia como el divorcio y la custodia (<a href=\"/laws/490-d#s2\">RSA 490-D:2</a>).",
+   "en": "The <b>Circuit Court</b> has three divisions (<a href=\"/laws/490-f#s3\">RSA 490-F:3</a>): the district division, which hears lesser crimes and small claims (<a href=\"/laws/502-a#s11\">RSA 502-A:11</a>, <a href=\"/laws/503#s1\">RSA 503:1</a>); the probate division, which hears wills and estates, guardianships, adoptions and changes of name (<a href=\"/laws/547#s3\">RSA 547:3</a>); and the family division, which hears family cases such as divorce and custody (<a href=\"/laws/490-d#s2\">RSA 490-D:2</a>).",
+   "es": "El <b>Tribunal de Circuito</b> (Circuit Court) tiene tres divisiones (<a href=\"/laws/490-f#s3\">RSA 490-F:3</a>): la división de distrito, que ve los delitos menores y las demandas de menor cuantía (<a href=\"/laws/502-a#s11\">RSA 502-A:11</a>, <a href=\"/laws/503#s1\">RSA 503:1</a>); la división testamentaria, que ve los testamentos y las sucesiones, las tutelas, las adopciones y los cambios de nombre (<a href=\"/laws/547#s3\">RSA 547:3</a>); y la división de familia, que ve los casos de familia como el divorcio y la custodia (<a href=\"/laws/490-d#s2\">RSA 490-D:2</a>).",
    "state": "draft"
   },
   "learn.the-courts.the-executive-council-confirms": {
@@ -20482,8 +20492,8 @@
    "state": "draft"
   },
   "learn.the-courts.the-governor-nominates-and-the-executive": {
-   "en": "The Governor nominates and the Executive Council confirms: the constitution gives the appointment of every judge to the Governor and Council together, and none takes place unless a majority of the Council agree (Part Second, Article 46). There is no judicial election in New Hampshire at any level. No one may serve as a judge after the age of seventy, which is set by the constitution itself: Part Second, Article 78. Raising it to seventy-five has been tried. A 2023 amendment to do so passed both chambers and went to the voters in November 2024, where 65.6% voted yes, short of the two thirds an amendment needs; and a 2026 proposal to make the same change, which failed in the House, still described the limit as seventy.",
-   "es": "El gobernador propone y el Consejo Ejecutivo confirma: la constitución da el nombramiento de cada juez al gobernador y al Consejo juntos, y ninguno se hace sin el acuerdo de la mayoría del Consejo (Parte Segunda, Artículo 46). En New Hampshire no hay elección de jueces en ningún nivel. Nadie puede ejercer como juez después de los setenta años, límite que fija la propia constitución: Parte Segunda, Artículo 78. Se ha intentado subirlo a setenta y cinco. Una enmienda de 2023 para hacerlo fue aprobada por ambas cámaras y se sometió a los votantes en noviembre de 2024, cuando el 65.6% votó a favor, sin llegar a los dos tercios que necesita una enmienda; y una propuesta de 2026 para hacer el mismo cambio, que fracasó en la Cámara, seguía describiendo el límite como de setenta años.",
+   "en": "The Governor nominates and the Executive Council confirms: the constitution gives the appointment of every judge to the Governor and Council together, and none takes place unless a majority of the Council agree (Part Second, Article 46). There is no judicial election in New Hampshire at any level. No one may serve as a judge after the age of seventy, which is set by the constitution itself: Part Second, Article 78. Raising it to seventy-five has been tried. A 2023 amendment to do so passed both chambers and went to the voters in November 2024, where 65.6% voted yes, short of the two thirds an amendment needs; and a 2026 proposal to make the same change, whose text still gave the limit as seventy, failed in the House.",
+   "es": "El gobernador propone y el Consejo Ejecutivo confirma: la constitución da el nombramiento de cada juez al gobernador y al Consejo juntos, y ninguno se hace sin el acuerdo de la mayoría del Consejo (Parte Segunda, Artículo 46). En New Hampshire no hay elección de jueces en ningún nivel. Nadie puede ejercer como juez después de los setenta años, límite que fija la propia constitución: Parte Segunda, Artículo 78. Se ha intentado subirlo a setenta y cinco. Una enmienda de 2023 para hacerlo fue aprobada por ambas cámaras y se sometió a los votantes en noviembre de 2024, cuando el 65.6% votó a favor, sin llegar a los dos tercios que necesita una enmienda; y una propuesta de 2026 para hacer el mismo cambio, cuyo texto todavía daba el límite como de setenta años, fracasó en la Cámara.",
    "state": "draft"
   },
   "learn.the-courts.the-judge-serves": {

@@ -59,5 +59,6 @@
   "Docket": {"name": "Docket", "says": "the General Court's running list of every action taken on a bill, in the order it was recorded", "from": "new, 17 October 2026: the person to check"},
   "Organization Day": {"name": "Organization Day", "says": "the first Wednesday of December after an election, when the new legislature is sworn in and elects its presiding officers", "from": "new, 14 October 2026: the person to check"},
   "Second committee": {"name": "Second committee", "says": "a bill that spends or raises money, sent on after the committee that heard it: in the House to Finance or to Ways and Means, in the Senate to Finance; such bills meet earlier deadlines in their first committee", "from": "legislative-year"},
-  "Veto day": {"name": "Veto day", "says": "the day a chamber meets to take up the Governor's vetoes; overriding one takes two thirds of each chamber, by roll call", "from": "legislative-year"}
+  "Veto day": {"name": "Veto day", "says": "the day a chamber meets to take up the Governor's vetoes; overriding one takes two thirds of each chamber, by roll call", "from": "legislative-year"},
+  "Right-to-know law": {"name": "Right-to-know law", "says": "RSA 91-A, the law that opens public bodies to the public: their meetings are open, apart from the nonpublic sessions it allows, and every citizen has the right to inspect their records", "from": "how-a-bill-becomes-law; RSA 91-A:1, 91-A:2, II and 91-A:4, I, read 26 October 2026"}
 }
