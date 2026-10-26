@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-08.62
+# GRANITE_VERSION: 2026-09-08.63
 """
 The topics of the civics section: their order, their names, and their prose.
 
@@ -1189,12 +1189,6 @@ state constitution gives it. It is made up of [[house_seats]] representatives an
 [[senate_districts]] senators. It is the largest state legislature in the country: the last
 redistricting drew House districts to <b>3,444 residents a seat</b>.</p>
 
-<p>Members are paid <b>$200 for the two-year term</b> plus mileage &mdash; one
-payment, in January of the first year, less withholding. It is often quoted as
-$100 a year, which is the same money divided by two. Almost none have staff.
-Most have other jobs, and the session is arranged around that: the House meets
-on a small number of full days, and committee work fills the rest.</p>
-
 <p>The House's [[house_seats]] is the number of seats, not the number of members. Seats fall
 vacant and are filled at special elections through the term, so the working size of
 the House moves.</p>
@@ -1217,10 +1211,7 @@ year.</p>
 <p><b>Retaining</b> happens in the first year only. A committee keeps the bill
 for more work, studies it over the fall, and reports it to the chamber in
 the second year, where it is voted on like any other bill. A retained bill
-survives into the second year and keeps its number. Those show as
-<b>carried over</b> here, and they are the ones people most often fail to
-find, because they search the current year for a bill filed in the previous
-one.</p>
+survives into the second year and keeps its number.</p>
 <p><b>Interim study</b> happens in the second year only, and it ends the
 bill. The committee studies it over the fall and may report on it, but the
 bill itself dies with the term. To come back it has to be filed again in the
@@ -1236,8 +1227,6 @@ introduced is referred to a committee and given a public hearing that anyone
 may attend and speak at.</p>
 
 <h2>Bills and Resolutions Are Not the Same Thing</h2>
-<p>Which chamber a measure starts in follows from its prime sponsor: a
-representative's bill begins in the House, a senator's in the Senate.</p>
 <table><caption>The kinds of measure</caption><tbody>
 <tr><th scope="row"><b>HB</b></th><td><b>House Bill:</b> a proposed change to New
 Hampshire law. Begins in the House, must pass both chambers, goes to the
@@ -1267,6 +1256,23 @@ recommendations, but [[follows_committee]]% of the bills it decided in the
 
 <p>The motions a committee most often recommends are these:</p>
 """ + MOTIONS + """
+<h2>Common Questions</h2>
+<div class="l-faq">
+<details><summary>What are legislators paid?</summary>
+<p>Members are paid <b>$200 for the two-year term</b> plus mileage &mdash; one
+payment, in January of the first year, less withholding. It is often quoted as
+$100 a year, which is the same money divided by two. Almost none have staff.
+Most have other jobs, and the session is arranged around that: the House meets
+on a small number of full days, and committee work fills the rest.</p>
+</details>
+<details><summary>Why can&rsquo;t I find a bill that was filed last year?</summary>
+<p>If it was retained, it survived into the second year and kept its number. Those show as <b>carried over</b> here, and they are the ones people most often fail to find, because they search the current year for a bill filed in the previous one.</p>
+</details>
+<details><summary>Which chamber does a bill start in?</summary>
+<p>Which chamber a measure starts in follows from its prime sponsor: a
+representative's bill begins in the House, a senator's in the Senate.</p>
+</details>
+</div>
 """ + SHOWS.format("""
 <p>In the [[term]] term, members filed <b>[[bills]] bills and resolutions</b>: [[hb]] House
 bills, [[sb]] Senate bills, [[cacr]] constitutional amendments and [[resolutions]] resolutions.</p>
@@ -1513,10 +1519,8 @@ Guard.</p>
 
 <p>The Governor is elected for two years, at the same election as the whole
 legislature. When a bill has passed both chambers the Governor may sign it,
-veto it, or do nothing, in which case it becomes law without a signature after
-five days, Sundays excepted &mdash; unless the legislature's adjournment
-prevents the Governor from returning it, and then it does not become law at
-all. Part Second, Article 44 of the state constitution sets both.</p>
+veto it, or do nothing; Part Second, Article 44 of the state constitution sets
+out what follows each.</p>
 """ + GOVERNOR_ROUTES + """
 
 <h2>A Veto Is Not Always the End</h2>
@@ -1528,10 +1532,6 @@ the members voting. That is a high bar and most attempts fail.</p>
 In <b>[[veto_failed]]</b> the veto stood. In <b>[[veto_overridden]]</b> it was
 overridden and the bill became law over the Governor's objection.[[veto_pending]]</p>
 [[fig_vetoes]]
-<p>When the Governor vetoes a bill, the reasons are set out in a message
-entered in the journal of the chamber the bill came from. Those messages are printed
-in the House and Senate calendars, and this site carries [[veto_messages]] of the
-[[vetoed]].</p>
 
 <h2>The Executive Council</h2>
 <p>Five councilors, each elected by district, meeting with the Governor.
@@ -1546,10 +1546,26 @@ and not the Council cannot simply proceed.</p>
     ("The Governor nominates", "a commissioner, or a judge."),
     ("The Executive Council confirms", ""),
     ("The nominee takes office", "only when the Council confirms them.")]) + """
+<h2>Common Questions</h2>
+<div class="l-faq">
+<details><summary>What happens if the Governor does nothing with a bill?</summary>
+<p>It becomes law without a signature after five days, Sundays excepted &mdash;
+unless the legislature's adjournment prevents the Governor from returning it, and
+then it does not become law at all (Part Second, Article 44).</p>
+</details>
+<details><summary>Where can I read why the Governor vetoed a bill?</summary>
+<p>When the Governor vetoes a bill, the reasons are set out in a message
+entered in the journal of the chamber the bill came from. Those messages are printed
+in the House and Senate calendars, and this site carries [[veto_messages]] of the
+[[vetoed]].</p>
+</details>
+<details><summary>Why is the Executive Council debated?</summary>
 <p>The Council is genuinely debated. Supporters say it is a check on
 executive power that no single elected officer should be without. Critics say
 it gives five people a veto over routine administration and slows work that
 has already been authorized. Both are arguments about the same fact.</p>
+</details>
+</div>
 """
 
 BODY_GOVERNOR_HOLDS = """This site indexes the legislature, and it holds
@@ -1654,17 +1670,7 @@ Hampshire.</p>
 <p>Nominated by the Governor, confirmed by the Executive Council. That is the
 same route as a judge, and it is the most concrete answer to
 <a href="learn/governor-and-council.html">what the Council does</a>. A
-commissioner serves a fixed term and can be reappointed the same way.</p>
-
-<h2>How Departments Interact with the Legislature</h2>
-<p>A department is usually among the first bodies asked what a bill would
-actually do, and often the body that would have to do it, so agency staff
-appear at hearings regularly. An agency may support a bill, oppose it, or
-appear as neutral and simply explain the effect.</p>
-<p>If you have watched a hearing on this site and heard a department's staff
-explain how a bill would be administered, or ask for a technical change, that
-is what you were listening to. Departments may request legislation, but the
-bill itself has to be filed by a legislator.</p>
+commissioner serves a fixed term.</p>
 
 <h2>What an Agency Cannot Do</h2>
 <p>It cannot give itself powers the statute does not grant. What it can do is
@@ -1673,11 +1679,26 @@ decide the detail, and it does that by writing
 rule except an emergency rule goes to JLCAR before it is adopted. JLCAR, the
 Joint Legislative Committee on Administrative Rules, is a committee of
 legislators from both chambers, and it may approve the rule, approve it on a
-condition, or object.
-For a rule made in the ordinary course, an objection does not by itself stop
-the rule, though the committee can hold it back for a time while it asks the
-legislature to block it by joint resolution; and if the committee takes no
-action within 60 days, the rule is treated as approved.</p>
+condition, or object.</p>
+<h2>Common Questions</h2>
+<div class="l-faq">
+<details><summary>Why do department staff speak at hearings?</summary>
+<p>A department is usually among the first bodies asked what a bill would
+actually do, and often the body that would have to do it, so agency staff
+appear at hearings regularly. An agency may support a bill, oppose it, or
+appear as neutral and simply explain the effect.</p>
+<p>If you have watched a hearing on this site and heard a department's staff
+explain how a bill would be administered, or ask for a technical change, that
+is what you were listening to. Departments may request legislation, but the
+bill itself has to be filed by a legislator.</p>
+</details>
+<details><summary>Can a commissioner be reappointed?</summary>
+<p>Yes. A commissioner serves a fixed term and can be reappointed the same way: nominated by the Governor, confirmed by the Executive Council.</p>
+</details>
+<details><summary>What happens if JLCAR objects to a rule?</summary>
+<p>For a rule made in the ordinary course, an objection does not by itself stop the rule, though the committee can hold it back for a time while it asks the legislature to block it by joint resolution; and if the committee takes no action within 60 days, the rule is treated as approved.</p>
+</details>
+</div>
 """ + SHOWS.format("""
 <p>Where a hearing was recorded &mdash; [[hearing_video_bills]]
 bills[[hearing_video_since]] &mdash; the bill's Hearings tab links the
@@ -1700,11 +1721,25 @@ RSA 541-A". [[rules_delegated]] of the [[bills]] bills and resolutions filed in 
 
 <h2>How a Rule Is Made</h2>
 <p>RSA 541-A:3 sets out the course, and the deadlines below come from the
-sections it points at. The whole of it happens in the rulemaking register
-&mdash; a free bulletin the legislature's own staff publish online each week
-&mdash; and not in a chamber calendar, which is why a rulemaking can run its
-full course without ever appearing where people look for legislation.</p>
+sections it points at.</p>
 """ + flow_diagram(FLOW_RULES, "How a rule is made", level_names=True) + """
+
+<h2>How the Legislature Reviews a Rule</h2>
+<p>The <b>Joint Legislative Committee on Administrative Rules</b>, or JLCAR,
+has members from both chambers and meets at least once a month. The final
+proposal goes to it before the rule can be adopted. It may approve the rule,
+approve it on condition of a stated change, or object to it.</p>
+
+<h2>After the Bill Becomes Law</h2>
+<p>The law is often not the whole answer. What the statute left open is settled
+in the rule, and the rule's hearing is announced in the rulemaking register,
+not in a chamber calendar.</p>
+<h2>Common Questions</h2>
+<div class="l-faq">
+<details><summary>Where do I find a proposed rule?</summary>
+<p>The whole of it happens in the rulemaking register &mdash; a free bulletin the legislature's own staff publish online each week &mdash; and not in a chamber calendar, which is why a rulemaking can run its full course without ever appearing where people look for legislation.</p>
+</details>
+<details><summary>Can a rule take effect without all those steps?</summary>
 <p>Two routes skip most of that. An <b>emergency rule</b> (RSA 541-A:18) takes
 effect at once where the agency finds an imminent peril to public health or
 safety, or a risk of substantial fiscal harm to the state or its citizens,
@@ -1712,23 +1747,12 @@ with only whatever notice the agency finds practicable; an
 <b>interim rule</b> (RSA 541-A:19) is a fast track for matching a new statute,
 a court decision or a federal requirement. Neither lasts more than 180 days,
 so both end in the ordinary course above or they end altogether.</p>
-
-<h2>How the Legislature Reviews a Rule</h2>
-<p>The <b>Joint Legislative Committee on Administrative Rules</b>, or JLCAR,
-has members from both chambers and meets at least once a month. The final
-proposal goes to it before the rule can be adopted. It may approve the rule,
-approve it on condition of a stated change, or object to it. The grounds for an
-objection are set out at RSA 541-A:13, IV, and include a rule beyond the
-agency's authority and one contrary to the intent of the legislature.</p>
-<p>An objection does not by itself stop the rule. To block it the committee
-sponsors a joint resolution, which has to pass both chambers and go to the
-Governor <a href="learn/how-a-bill-becomes-law.html">like any other
-legislation</a>.</p>
-
-<h2>After the Bill Becomes Law</h2>
-<p>The law is often not the whole answer. What the statute left open is settled
-in the rule, and the rule's hearing is announced in the rulemaking register,
-not in a chamber calendar.</p>
+</details>
+<details><summary>What can JLCAR object to, and does an objection stop the rule?</summary>
+<p>The grounds for an objection are set out at RSA 541-A:13, IV, and include a rule beyond the agency's authority and one contrary to the intent of the legislature.</p>
+<p>An objection does not by itself stop the rule. To block it the committee sponsors a joint resolution, which has to pass both chambers and go to the Governor <a href="learn/how-a-bill-becomes-law.html">like any other legislation</a>.</p>
+</details>
+</div>
 """
 
 BODY_RULES_HOLDS = """This site does not carry administrative rules
@@ -1765,10 +1789,7 @@ application of 25 registered voters, or of 2 percent of the town's registered
 voters, whichever is fewer, and never fewer than 10 (RSA 39:3). The articles
 are debated and amended from the floor, and the budget is decided in the
 room: where an article asks
-for a sum of money the meeting may vote more or less than it asks (RSA 39:2),
-though in a town under the municipal budget law the meeting may not raise the
-total more than 10 percent above what the budget committee recommends, with
-some exceptions (RSA 32:18).</p>
+for a sum of money the meeting may vote more or less than it asks (RSA 39:2).</p>
 
 <h2>How SB 2 Towns Vote</h2>
 <p>The meeting is held in two sessions. The first is usually called the
@@ -1776,17 +1797,12 @@ some exceptions (RSA 32:18).</p>
 session, and it handles everything except the ballot. Each article is
 explained and debated and may be amended, and the session votes on those
 amendments &mdash; so a great deal is decided there, even though no article
-is passed or defeated. An amendment may not remove an article's subject,
-though changing a sum of money does not count as doing so, and an article
-whose wording is set by law cannot be amended at all (RSA 40:13, IV).</p>
+is passed or defeated.</p>
 <p>At the second session every article goes on the official ballot, worded as
 the first session left it, and is voted on at the polls with absentee voting
 as in an election. It passes by a simple majority unless a law, contract or
 written agreement requires two thirds, and nothing decided at the second
 session can be reconsidered (RSA 40:13, XIII and XV).</p>
-<p>A town or district adopts SB 2 by three fifths of those voting on the
-question, after a public hearing, and can return to a traditional meeting by
-the same three-fifths vote (RSA 40:14).</p>
 
 <h2>The Default Budget</h2>
 <p><b>Default budget:</b> the figure an SB 2 town or district falls back on if
@@ -1796,11 +1812,27 @@ obligations already incurred or required by law, and is reduced by one-time
 spending and by the cost of positions the proposed budget eliminates (RSA
 40:13, IX). If the proposed budget fails the default takes effect, unless the
 governing body instead calls one special meeting to try a revised budget.</p>
+<h2>Common Questions</h2>
+<div class="l-faq">
+<details><summary>Can a town meeting spend more than the budget committee recommends?</summary>
+<p>In a town under the municipal budget law, the meeting may not raise the total more than 10 percent above what the budget committee recommends, with some exceptions (RSA 32:18).</p>
+</details>
+<details><summary>Can the deliberative session change an article however it likes?</summary>
+<p>No. An amendment may not remove an article's subject, though changing a sum of money does not count as doing so, and an article whose wording is set by law cannot be amended at all (RSA 40:13, IV).</p>
+</details>
+<details><summary>How does a town adopt SB 2, or go back?</summary>
+<p>A town or district adopts SB 2 by three fifths of those voting on the
+question, after a public hearing, and can return to a traditional meeting by
+the same three-fifths vote (RSA 40:14).</p>
+</details>
+<details><summary>Can voters change the default budget?</summary>
 <p>The voters cannot amend the default budget. The governing body &mdash; the
 selectmen or the school board &mdash; can adjust it, on relevant new
 information and only until the ballots are printed (RSA 40:13, XI(b)). That is
 why the argument at a deliberative session is so often about the default
 rather than the proposed budget.</p>
+</details>
+</div>
 """
 
 BODY_LOCAL_HOLDS = """This site covers the state legislature only. It holds no

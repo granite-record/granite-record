@@ -12776,6 +12776,11 @@
    "es": "Antes de que nadie pueda opinar",
    "state": "draft"
   },
+  "learn.administrative-rules.can-a-rule-take-effect-without": {
+   "en": "Can a rule take effect without all those steps?",
+   "es": "¿Puede una regla entrar en vigor sin todos esos pasos?",
+   "state": "draft"
+  },
   "learn.administrative-rules.can-die-here": {
    "en": "Can die here",
    "es": "Puede morir aquí",
@@ -12784,6 +12789,11 @@
   "learn.administrative-rules.comment-stays-open-after-it": {
    "en": "Comment stays open after it",
    "es": "Los comentarios siguen abiertos después",
+   "state": "draft"
+  },
+  "learn.administrative-rules.common-questions": {
+   "en": "Common Questions",
+   "es": "Preguntas frecuentes",
    "state": "draft"
   },
   "learn.administrative-rules.effective-the-next-day": {
@@ -12847,8 +12857,8 @@
    "state": "draft"
   },
   "learn.administrative-rules.rsa-541-a-3-sets-out": {
-   "en": "RSA 541-A:3 sets out the course, and the deadlines below come from the sections it points at. The whole of it happens in the rulemaking register &mdash; a free bulletin the legislature's own staff publish online each week &mdash; and not in a chamber calendar, which is why a rulemaking can run its full course without ever appearing where people look for legislation.",
-   "es": "La RSA 541-A:3 establece el recorrido, y los plazos de abajo vienen de las secciones a las que remite. Todo ocurre en el registro de elaboración de reglas (rulemaking register) &mdash; un boletín gratuito que el propio personal de la Legislatura publica en línea cada semana &mdash; y no en el calendario de una cámara, y por eso una elaboración de reglas puede completar todo su recorrido sin aparecer nunca donde la gente busca la legislación.",
+   "en": "RSA 541-A:3 sets out the course, and the deadlines below come from the sections it points at.",
+   "es": "La RSA 541-A:3 establece el recorrido, y los plazos de abajo vienen de las secciones a las que remite.",
    "state": "draft"
   },
   "learn.administrative-rules.silence-is-approval": {
@@ -12886,14 +12896,19 @@
    "es": "El texto completo, no un resumen",
    "state": "draft"
   },
+  "learn.administrative-rules.the-grounds-for-an-objection-are": {
+   "en": "The grounds for an objection are set out at RSA 541-A:13, IV, and include a rule beyond the agency's authority and one contrary to the intent of the legislature.",
+   "es": "Los motivos de una objeción están en RSA 541-A:13, IV, e incluyen una regla que excede la autoridad de la agencia y una contraria a la intención de la Legislatura.",
+   "state": "draft"
+  },
   "learn.administrative-rules.the-joint-legislative-committee-on": {
    "en": "The Joint Legislative Committee on Administrative Rules &mdash; JLCAR, legislators from both chambers &mdash; may approve the rule, approve it on a stated condition, or object to it. (RSA 541-A:13)",
    "es": "El Joint Legislative Committee on Administrative Rules (Comité Legislativo Conjunto de Reglas Administrativas) &mdash; JLCAR, con legisladores de ambas cámaras &mdash; puede aprobar la regla, aprobarla con una condición expresa u objetarla. (RSA 541-A:13)",
    "state": "draft"
   },
   "learn.administrative-rules.the-joint-legislative-committee-on-2": {
-   "en": "The <b>Joint Legislative Committee on Administrative Rules</b>, or JLCAR, has members from both chambers and meets at least once a month. The final proposal goes to it before the rule can be adopted. It may approve the rule, approve it on condition of a stated change, or object to it. The grounds for an objection are set out at RSA 541-A:13, IV, and include a rule beyond the agency's authority and one contrary to the intent of the legislature.",
-   "es": "El <b>Joint Legislative Committee on Administrative Rules</b> (Comité Legislativo Conjunto de Reglas Administrativas), o JLCAR, tiene miembros de ambas cámaras y se reúne al menos una vez al mes. La propuesta final pasa por él antes de que la regla pueda adoptarse. Puede aprobar la regla, aprobarla con la condición de un cambio expreso u objetarla. Los motivos de una objeción están en la RSA 541-A:13, IV, e incluyen una regla que excede la autoridad de la agencia y una contraria a la intención de la Legislatura.",
+   "en": "The <b>Joint Legislative Committee on Administrative Rules</b>, or JLCAR, has members from both chambers and meets at least once a month. The final proposal goes to it before the rule can be adopted. It may approve the rule, approve it on condition of a stated change, or object to it.",
+   "es": "El <b>Joint Legislative Committee on Administrative Rules</b> (Comité Legislativo Conjunto de Reglas Administrativas), o JLCAR, tiene miembros de ambas cámaras y se reúne al menos una vez al mes. La propuesta final pasa por él antes de que la regla pueda adoptarse. Puede aprobar la regla, aprobarla con la condición de un cambio expreso u objetarla.",
    "state": "draft"
   },
   "learn.administrative-rules.the-law-is-often-not-the": {
@@ -12914,6 +12929,11 @@
   "learn.administrative-rules.the-statute-hands-it-over": {
    "en": "The statute hands it over",
    "es": "La ley lo delega",
+   "state": "draft"
+  },
+  "learn.administrative-rules.the-whole-of-it-happens-in": {
+   "en": "The whole of it happens in the rulemaking register &mdash; a free bulletin the legislature's own staff publish online each week &mdash; and not in a chamber calendar, which is why a rulemaking can run its full course without ever appearing where people look for legislation.",
+   "es": "Todo ocurre en el registro de elaboración de reglas (rulemaking register) &mdash; un boletín gratuito que el propio personal de la Legislatura publica en línea cada semana &mdash; y no en el calendario de una cámara, y por eso una elaboración de reglas puede completar todo su recorrido sin aparecer nunca donde la gente busca la legislación.",
    "state": "draft"
   },
   "learn.administrative-rules.this-site-does-not-carry-administrative": {
@@ -12939,6 +12959,16 @@
   "learn.administrative-rules.what-a-rule-is": {
    "en": "What a Rule Is",
    "es": "Qué es una regla",
+   "state": "draft"
+  },
+  "learn.administrative-rules.what-can-jlcar-object-to-and": {
+   "en": "What can JLCAR object to, and does an objection stop the rule?",
+   "es": "¿A qué puede objetar el JLCAR, y una objeción detiene la regla?",
+   "state": "draft"
+  },
+  "learn.administrative-rules.where-do-i-find-a-proposed": {
+   "en": "Where do I find a proposed rule?",
+   "es": "¿Dónde encuentro una regla propuesta?",
    "state": "draft"
   },
   "learn.administrative-rules.written-comment-is-taken-for-a": {
@@ -13961,6 +13991,11 @@
    "es": "CACR",
    "state": "draft"
   },
+  "learn.general-court.common-questions": {
+   "en": "Common Questions",
+   "es": "Preguntas frecuentes",
+   "state": "draft"
+  },
   "learn.general-court.constitutional-amendment-concurrent": {
    "en": "<b>Constitutional Amendment Concurrent Resolution:</b> a proposed change to the state constitution, requiring a three-fifths vote in both chambers and a two-thirds majority of voters. See <a href=\"learn/the-constitution.html\">The Constitution</a>.",
    "es": "<b>Resolución concurrente de enmienda constitucional</b> (Constitutional Amendment Concurrent Resolution): un cambio propuesto a la constitución del estado, que requiere el voto de tres quintos en ambas cámaras y una mayoría de dos tercios de los votantes. Vea <a href=\"learn/the-constitution.html\">La Constitución</a>.",
@@ -14029,6 +14064,11 @@
   "learn.general-court.hr-sr": {
    "en": "<b>HR</b> / <b>SR</b>",
    "es": "<b>HR</b> / <b>SR</b>",
+   "state": "draft"
+  },
+  "learn.general-court.if-it-was-retained-it-survived": {
+   "en": "If it was retained, it survived into the second year and kept its number. Those show as <b>carried over</b> here, and they are the ones people most often fail to find, because they search the current year for a bill filed in the previous one.",
+   "es": "Si fue retenido, siguió vivo en el segundo año y conservó su número. Aquí aparecen como <b>trasladados al segundo año</b> (carried over), y son los que la gente más a menudo no logra encontrar, porque busca en el año en curso un proyecto presentado el año anterior.",
    "state": "draft"
   },
   "learn.general-court.in-the-record": {
@@ -14127,8 +14167,8 @@
    "state": "draft"
   },
   "learn.general-court.retaining-happens-in-the-first-year": {
-   "en": "<b>Retaining</b> happens in the first year only. A committee keeps the bill for more work, studies it over the fall, and reports it to the chamber in the second year, where it is voted on like any other bill. A retained bill survives into the second year and keeps its number. Those show as <b>carried over</b> here, and they are the ones people most often fail to find, because they search the current year for a bill filed in the previous one.",
-   "es": "<b>Retener</b> (retaining) ocurre solo en el primer año. Un comité se queda con el proyecto de ley para trabajarlo más, lo estudia durante el otoño y presenta su informe a su cámara en el segundo año, donde se vota como cualquier otro proyecto. Un proyecto retenido sigue vivo en el segundo año y conserva su número. Aquí aparecen como <b>trasladados al segundo año</b> (carried over), y son los que la gente más a menudo no logra encontrar, porque buscan en el año en curso un proyecto presentado el año anterior.",
+   "en": "<b>Retaining</b> happens in the first year only. A committee keeps the bill for more work, studies it over the fall, and reports it to the chamber in the second year, where it is voted on like any other bill. A retained bill survives into the second year and keeps its number.",
+   "es": "<b>Retener</b> (retaining) ocurre solo en el primer año. Un comité se queda con el proyecto de ley para trabajarlo más, lo estudia durante el otoño y presenta su informe a su cámara en el segundo año, donde se vota como cualquier otro proyecto. Un proyecto retenido sigue vivo en el segundo año y conserva su número.",
    "state": "draft"
   },
   "learn.general-court.sb": {
@@ -14211,6 +14251,11 @@
    "es": "La Legislatura (General Court)",
    "state": "draft"
   },
+  "learn.general-court.what-are-legislators-paid": {
+   "en": "What are legislators paid?",
+   "es": "¿Cuánto se les paga a los legisladores?",
+   "state": "draft"
+  },
   "learn.general-court.what-it-does": {
    "en": "What it does",
    "es": "Qué hace",
@@ -14219,6 +14264,16 @@
   "learn.general-court.which-chamber-a-measure-starts-in": {
    "en": "Which chamber a measure starts in follows from its prime sponsor: a representative's bill begins in the House, a senator's in the Senate.",
    "es": "La cámara en la que empieza una medida depende de su patrocinador principal: el proyecto de un representante empieza en la Cámara, el de un senador en el Senado.",
+   "state": "draft"
+  },
+  "learn.general-court.which-chamber-does-a-bill-start": {
+   "en": "Which chamber does a bill start in?",
+   "es": "¿En qué cámara empieza un proyecto de ley?",
+   "state": "draft"
+  },
+  "learn.general-court.why-cant-i-find-a-bill": {
+   "en": "Why can&rsquo;t I find a bill that was filed last year?",
+   "es": "¿Por qué no encuentro un proyecto de ley que se presentó el año pasado?",
    "state": "draft"
   },
   "learn.general-court.written": {
@@ -14246,6 +14301,11 @@
    "es": "En los [[terms]] períodos que tiene este sitio hay <b>[[vetoed]] proyectos de ley vetados</b>. En <b>[[veto_failed]]</b> el veto se mantuvo. En <b>[[veto_overridden]]</b> fue anulado y el proyecto de ley se convirtió en ley a pesar de la objeción del Gobernador.[[veto_pending]]",
    "state": "draft"
   },
+  "learn.governor-and-council.common-questions": {
+   "en": "Common Questions",
+   "es": "Preguntas frecuentes",
+   "state": "draft"
+  },
   "learn.governor-and-council.five-councilors-each-elected-by-district": {
    "en": "Five councilors, each elected by district, meeting with the Governor. Almost no state has anything like it, and not many people can describe what it does.",
    "es": "Cinco consejeros, cada uno elegido por distrito, que se reúnen con el Gobernador. Casi ningún estado tiene algo parecido, y no mucha gente sabe describir lo que hace.",
@@ -14264,6 +14324,11 @@
   "learn.governor-and-council.it-becomes-law-without-a-signature": {
    "en": "It becomes law without a signature,",
    "es": "Se convierte en ley sin firma,",
+   "state": "draft"
+  },
+  "learn.governor-and-council.it-becomes-law-without-a-signature-2": {
+   "en": "It becomes law without a signature after five days, Sundays excepted &mdash; unless the legislature's adjournment prevents the Governor from returning it, and then it does not become law at all (Part Second, Article 44).",
+   "es": "Se convierte en ley sin firma al cabo de cinco días, sin contar los domingos &mdash; salvo que el receso de la Legislatura impida al Gobernador devolverlo, y entonces no se convierte en ley en absoluto (Parte Segunda, Artículo 44).",
    "state": "draft"
   },
   "learn.governor-and-council.its-approval-is-required-for-a": {
@@ -14332,8 +14397,8 @@
    "state": "draft"
   },
   "learn.governor-and-council.the-governor-is-elected-for-two": {
-   "en": "The Governor is elected for two years, at the same election as the whole legislature. When a bill has passed both chambers the Governor may sign it, veto it, or do nothing, in which case it becomes law without a signature after five days, Sundays excepted &mdash; unless the legislature's adjournment prevents the Governor from returning it, and then it does not become law at all. Part Second, Article 44 of the state constitution sets both.",
-   "es": "El Gobernador se elige por dos años, en la misma elección que toda la Legislatura. Cuando un proyecto de ley ha sido aprobado por ambas cámaras, el Gobernador puede firmarlo, vetarlo o no hacer nada; en ese caso se convierte en ley sin firma al cabo de cinco días, sin contar los domingos &mdash; salvo que la Legislatura haya levantado sus sesiones y eso impida al Gobernador devolverlo, y entonces no se convierte en ley en absoluto. La Parte Segunda, Artículo 44, de la constitución del estado establece ambas cosas.",
+   "en": "The Governor is elected for two years, at the same election as the whole legislature. When a bill has passed both chambers the Governor may sign it, veto it, or do nothing; Part Second, Article 44 of the state constitution sets out what follows each.",
+   "es": "El Gobernador se elige por dos años, en la misma elección que toda la Legislatura. Cuando un proyecto de ley ha sido aprobado por ambas cámaras, el Gobernador puede firmarlo, vetarlo o no hacer nada; la Parte Segunda, Artículo 44 de la constitución del estado dispone lo que sigue en cada caso.",
    "state": "draft"
   },
   "learn.governor-and-council.the-governor-nominates": {
@@ -14401,9 +14466,24 @@
    "es": "salvo que la Legislatura haya levantado sus sesiones y eso impida devolverlo: entonces no se convierte en ley en absoluto.",
    "state": "draft"
   },
+  "learn.governor-and-council.what-happens-if-the-governor-does": {
+   "en": "What happens if the Governor does nothing with a bill?",
+   "es": "¿Qué pasa si el Gobernador no hace nada con un proyecto de ley?",
+   "state": "draft"
+  },
   "learn.governor-and-council.when-the-governor-vetoes-a-bill": {
    "en": "When the Governor vetoes a bill, the reasons are set out in a message entered in the journal of the chamber the bill came from. Those messages are printed in the House and Senate calendars, and this site carries [[veto_messages]] of the [[vetoed]].",
    "es": "Cuando el Gobernador veta un proyecto de ley, las razones constan en un mensaje que se registra en el diario de sesiones de la cámara de la que vino el proyecto. Esos mensajes se publican en los calendarios de la Cámara y del Senado, y este sitio tiene [[veto_messages]] de los [[vetoed]].",
+   "state": "draft"
+  },
+  "learn.governor-and-council.where-can-i-read-why-the": {
+   "en": "Where can I read why the Governor vetoed a bill?",
+   "es": "¿Dónde puedo leer por qué el Gobernador vetó un proyecto de ley?",
+   "state": "draft"
+  },
+  "learn.governor-and-council.why-is-the-executive-council-debated": {
+   "en": "Why is the Executive Council debated?",
+   "es": "¿Por qué se debate el Consejo Ejecutivo?",
    "state": "draft"
   },
   "learn.how-a-bill-becomes-law.a-bill-is-a-proposed-change": {
@@ -15021,6 +15101,26 @@
    "es": "En la segunda sesión, cada artículo va en la boleta oficial, redactado tal como lo dejó la primera sesión, y se vota en las urnas, con voto en ausencia como en una elección. Se aprueba por mayoría simple, salvo que una ley, un contrato o un acuerdo escrito exija dos tercios, y nada de lo que se decida en la segunda sesión puede reconsiderarse (RSA 40:13, XIII y XV).",
    "state": "draft"
   },
+  "learn.local-government.can-a-town-meeting-spend-more": {
+   "en": "Can a town meeting spend more than the budget committee recommends?",
+   "es": "¿Puede una asamblea municipal gastar más de lo que recomienda el comité de presupuesto?",
+   "state": "draft"
+  },
+  "learn.local-government.can-the-deliberative-session-change-an": {
+   "en": "Can the deliberative session change an article however it likes?",
+   "es": "¿Puede la sesión deliberativa cambiar un artículo como quiera?",
+   "state": "draft"
+  },
+  "learn.local-government.can-voters-change-the-default-budget": {
+   "en": "Can voters change the default budget?",
+   "es": "¿Pueden los votantes cambiar el presupuesto por defecto?",
+   "state": "draft"
+  },
+  "learn.local-government.common-questions": {
+   "en": "Common Questions",
+   "es": "Preguntas frecuentes",
+   "state": "draft"
+  },
   "learn.local-government.debate-and-amendment": {
    "en": "Debate and Amendment",
    "es": "Debate y enmiendas",
@@ -15031,9 +15131,19 @@
    "es": "<b>Presupuesto por defecto (default budget):</b> la cifra a la que recurre un municipio o distrito SB 2 si se rechaza el presupuesto operativo de la boleta. Parte del presupuesto operativo del año anterior, se aumenta o se reduce según el servicio de la deuda, los contratos y otras obligaciones ya contraídas o exigidas por la ley, y se reduce por los gastos de una sola vez y por el costo de los puestos que elimina el presupuesto propuesto (RSA 40:13, IX). Si el presupuesto propuesto no se aprueba, entra en vigor el presupuesto por defecto, a menos que el órgano de gobierno convoque en su lugar una asamblea especial para intentar aprobar un presupuesto revisado.",
    "state": "draft"
   },
+  "learn.local-government.how-does-a-town-adopt-sb": {
+   "en": "How does a town adopt SB 2, or go back?",
+   "es": "¿Cómo adopta un municipio el SB 2, o cómo lo deja?",
+   "state": "draft"
+  },
   "learn.local-government.how-sb-2-towns-vote": {
    "en": "How SB 2 Towns Vote",
    "es": "Cómo votan los municipios SB 2",
+   "state": "draft"
+  },
+  "learn.local-government.in-a-town-under-the-municipal": {
+   "en": "In a town under the municipal budget law, the meeting may not raise the total more than 10 percent above what the budget committee recommends, with some exceptions (RSA 32:18).",
+   "es": "En un municipio sujeto a la ley de presupuesto municipal, la asamblea no puede aumentar el total en más de un 10 por ciento sobre lo que recomienda el comité de presupuesto, con algunas excepciones (RSA 32:18).",
    "state": "draft"
   },
   "learn.local-government.in-the-same-room-straight-after": {
@@ -15054,6 +15164,11 @@
   "learn.local-government.new-hampshire-revised-statutes-annotated": {
    "en": "New Hampshire Revised Statutes Annotated",
    "es": "Estatutos Revisados Anotados de New Hampshire (RSA)",
+   "state": "draft"
+  },
+  "learn.local-government.no-an-amendment-may-not-remove": {
+   "en": "No. An amendment may not remove an article's subject, though changing a sum of money does not count as doing so, and an article whose wording is set by law cannot be amended at all (RSA 40:13, IV).",
+   "es": "No. Una enmienda no puede eliminar el asunto de un artículo, aunque cambiar una suma de dinero no cuenta como hacerlo, y un artículo cuya redacción fija la ley no se puede enmendar en absoluto (RSA 40:13, IV).",
    "state": "draft"
   },
   "learn.local-government.printed-on-the-ballot-beside-a": {
@@ -15092,8 +15207,8 @@
    "state": "draft"
   },
   "learn.local-government.the-meeting-is-held-in-two": {
-   "en": "The meeting is held in two sessions. The first is usually called the <b>deliberative session</b>, though the statute calls it only the first session, and it handles everything except the ballot. Each article is explained and debated and may be amended, and the session votes on those amendments &mdash; so a great deal is decided there, even though no article is passed or defeated. An amendment may not remove an article's subject, though changing a sum of money does not count as doing so, and an article whose wording is set by law cannot be amended at all (RSA 40:13, IV).",
-   "es": "La asamblea se celebra en dos sesiones. La primera se llama por lo general la <b>sesión deliberativa</b> (deliberative session), aunque la ley la llama solo la primera sesión, y se ocupa de todo salvo la boleta. Cada artículo se explica y se debate y puede enmendarse, y la sesión vota esas enmiendas &mdash; así que allí se decide mucho, aunque no se apruebe ni se rechace ningún artículo. Una enmienda no puede eliminar el asunto de un artículo, aunque cambiar una suma de dinero no cuenta como hacerlo, y un artículo cuya redacción fija la ley no puede enmendarse en absoluto (RSA 40:13, IV).",
+   "en": "The meeting is held in two sessions. The first is usually called the <b>deliberative session</b>, though the statute calls it only the first session, and it handles everything except the ballot. Each article is explained and debated and may be amended, and the session votes on those amendments &mdash; so a great deal is decided there, even though no article is passed or defeated.",
+   "es": "La asamblea se celebra en dos sesiones. La primera se llama por lo general la <b>sesión deliberativa</b> (deliberative session), aunque la ley la llama solo la primera sesión, y se ocupa de todo salvo la boleta. Cada artículo se explica y se debate y puede enmendarse, y la sesión vota esas enmiendas &mdash; así que allí se decide mucho, aunque no se apruebe ni se rechace ningún artículo.",
    "state": "draft"
   },
   "learn.local-government.the-same-warrant-except-that-it": {
@@ -15157,8 +15272,8 @@
    "state": "draft"
   },
   "learn.local-government.warrant-the-notice-of-the-meeting": {
-   "en": "<b>Warrant:</b> the notice of the meeting and the list of business to be decided at it. Nothing done at a town meeting except electing its officers is valid unless the subject was stated in the warrant (RSA 39:2). A <b>petitioned article</b> is one the selectmen must put on the warrant on the written application of 25 registered voters, or of 2 percent of the town's registered voters, whichever is fewer, and never fewer than 10 (RSA 39:3). The articles are debated and amended from the floor, and the budget is decided in the room: where an article asks for a sum of money the meeting may vote more or less than it asks (RSA 39:2), though in a town under the municipal budget law the meeting may not raise the total more than 10 percent above what the budget committee recommends, with some exceptions (RSA 32:18).",
-   "es": "<b>Convocatoria (warrant):</b> el aviso de la asamblea y la lista de los asuntos que se decidirán en ella. Nada de lo que se haga en una asamblea municipal, salvo la elección de sus funcionarios, es válido a menos que el asunto figure en la convocatoria (RSA 39:2). Un <b>artículo por petición</b> (petitioned article) es uno que la junta de concejales debe incluir en la convocatoria a solicitud escrita de 25 votantes inscritos, o del 2 por ciento de los votantes inscritos del municipio, lo que sea menor, y nunca menos de 10 (RSA 39:3). Los artículos se debaten y se enmiendan desde la sala, y el presupuesto se decide allí mismo: cuando un artículo pide una suma de dinero, la asamblea puede votar más o menos de lo que pide (RSA 39:2), aunque en un municipio sujeto a la ley de presupuesto municipal la asamblea no puede aumentar el total más de un 10 por ciento por encima de lo que recomienda el comité de presupuesto, con algunas excepciones (RSA 32:18).",
+   "en": "<b>Warrant:</b> the notice of the meeting and the list of business to be decided at it. Nothing done at a town meeting except electing its officers is valid unless the subject was stated in the warrant (RSA 39:2). A <b>petitioned article</b> is one the selectmen must put on the warrant on the written application of 25 registered voters, or of 2 percent of the town's registered voters, whichever is fewer, and never fewer than 10 (RSA 39:3). The articles are debated and amended from the floor, and the budget is decided in the room: where an article asks for a sum of money the meeting may vote more or less than it asks (RSA 39:2).",
+   "es": "<b>Convocatoria (warrant):</b> el aviso de la asamblea y la lista de los asuntos que se decidirán en ella. Nada de lo que se haga en una asamblea municipal, salvo la elección de sus funcionarios, es válido a menos que el asunto figure en la convocatoria (RSA 39:2). Un <b>artículo por petición</b> (petitioned article) es uno que la junta de concejales debe incluir en la convocatoria a solicitud escrita de 25 votantes inscritos, o del 2 por ciento de los votantes inscritos del municipio, lo que sea menor, y nunca menos de 10 (RSA 39:3). Los artículos se debaten y se enmiendan desde la sala, y el presupuesto se decide allí mismo: cuando un artículo pide una suma de dinero, la asamblea puede votar más o menos de lo que pide (RSA 39:2).",
    "state": "draft"
   },
   "learn.local-government.you-may-speak-here": {
@@ -15321,19 +15436,29 @@
    "es": "Una agencia la lleva a cabo",
    "state": "draft"
   },
+  "learn.state-agencies.can-a-commissioner-be-reappointed": {
+   "en": "Can a commissioner be reappointed?",
+   "es": "¿Puede un comisionado ser nombrado otra vez?",
+   "state": "draft"
+  },
+  "learn.state-agencies.common-questions": {
+   "en": "Common Questions",
+   "es": "Preguntas frecuentes",
+   "state": "draft"
+  },
   "learn.state-agencies.departments-may-request-legislation-but": {
    "en": "Departments may request legislation, but the bill itself has to be filed by a legislator.",
    "es": "Los departamentos pueden pedir legislación, pero el proyecto de ley mismo lo tiene que presentar un legislador.",
    "state": "draft"
   },
+  "learn.state-agencies.for-a-rule-made-in-the": {
+   "en": "For a rule made in the ordinary course, an objection does not by itself stop the rule, though the committee can hold it back for a time while it asks the legislature to block it by joint resolution; and if the committee takes no action within 60 days, the rule is treated as approved.",
+   "es": "Para una regla hecha por la vía ordinaria, una objeción no detiene la regla por sí sola, aunque el comité puede retenerla un tiempo mientras pide a la Legislatura que la bloquee mediante una resolución conjunta; y si el comité no actúa en 60 días, la regla se considera aprobada.",
+   "state": "draft"
+  },
   "learn.state-agencies.how-a-commissioner-gets-the-job": {
    "en": "How a Commissioner Gets the Job",
    "es": "Cómo obtiene el cargo un comisionado",
-   "state": "draft"
-  },
-  "learn.state-agencies.how-departments-interact-with-the": {
-   "en": "How Departments Interact with the Legislature",
-   "es": "Cómo se relacionan los departamentos con la Legislatura",
    "state": "draft"
   },
   "learn.state-agencies.if-you-have-watched-a-hearing": {
@@ -15352,8 +15477,8 @@
    "state": "draft"
   },
   "learn.state-agencies.it-cannot-give-itself-powers-the-2": {
-   "en": "It cannot give itself powers the statute does not grant. What it can do is decide the detail, and it does that by writing <a href=\"learn/administrative-rules.html\">administrative rules</a>. Every rule except an emergency rule goes to JLCAR before it is adopted. JLCAR, the Joint Legislative Committee on Administrative Rules, is a committee of legislators from both chambers, and it may approve the rule, approve it on a condition, or object. For a rule made in the ordinary course, an objection does not by itself stop the rule, though the committee can hold it back for a time while it asks the legislature to block it by joint resolution; and if the committee takes no action within 60 days, the rule is treated as approved.",
-   "es": "No puede darse a sí misma poderes que la ley no le otorga. Lo que sí puede hacer es decidir los detalles, y lo hace redactando <a href=\"learn/administrative-rules.html\">reglas administrativas</a>. Cada regla, salvo una regla de emergencia, va al JLCAR antes de adoptarse. El JLCAR, el Comité Legislativo Conjunto de Reglas Administrativas (Joint Legislative Committee on Administrative Rules), es un comité de legisladores de ambas cámaras, y puede aprobar la regla, aprobarla con una condición u objetarla. Para una regla hecha por la vía ordinaria, una objeción no detiene la regla por sí sola, aunque el comité puede retenerla un tiempo mientras pide a la Legislatura que la bloquee mediante una resolución conjunta; y si el comité no actúa en 60 días, la regla se considera aprobada.",
+   "en": "It cannot give itself powers the statute does not grant. What it can do is decide the detail, and it does that by writing <a href=\"learn/administrative-rules.html\">administrative rules</a>. Every rule except an emergency rule goes to JLCAR before it is adopted. JLCAR, the Joint Legislative Committee on Administrative Rules, is a committee of legislators from both chambers, and it may approve the rule, approve it on a condition, or object.",
+   "es": "No puede darse a sí misma poderes que la ley no le otorga. Lo que sí puede hacer es decidir los detalles, y lo hace redactando <a href=\"learn/administrative-rules.html\">reglas administrativas</a>. Cada regla, salvo una regla de emergencia, va al JLCAR antes de adoptarse. El JLCAR, el Comité Legislativo Conjunto de Reglas Administrativas (Joint Legislative Committee on Administrative Rules), es un comité de legisladores de ambas cámaras, y puede aprobar la regla, aprobarla con una condición u objetarla.",
    "state": "draft"
   },
   "learn.state-agencies.its-commissioner-is-nominated-by-the": {
@@ -15367,8 +15492,8 @@
    "state": "draft"
   },
   "learn.state-agencies.nominated-by-the-governor-confirmed-by": {
-   "en": "Nominated by the Governor, confirmed by the Executive Council. That is the same route as a judge, and it is the most concrete answer to <a href=\"learn/governor-and-council.html\">what the Council does</a>. A commissioner serves a fixed term and can be reappointed the same way.",
-   "es": "Lo propone el Gobernador y lo confirma el Consejo Ejecutivo. Es el mismo camino que el de un juez, y es la respuesta más concreta a <a href=\"learn/governor-and-council.html\">lo que hace el Consejo</a>. Un comisionado ejerce el cargo por un período fijo y puede volver a ser propuesto y confirmado de la misma manera.",
+   "en": "Nominated by the Governor, confirmed by the Executive Council. That is the same route as a judge, and it is the most concrete answer to <a href=\"learn/governor-and-council.html\">what the Council does</a>. A commissioner serves a fixed term.",
+   "es": "Lo propone el Gobernador y lo confirma el Consejo Ejecutivo. Es el mismo camino que el de un juez, y es la respuesta más concreta a <a href=\"learn/governor-and-council.html\">lo que hace el Consejo</a>. Un comisionado ejerce el cargo por un período fijo.",
    "state": "draft"
   },
   "learn.state-agencies.state-agencies-a-to-z": {
@@ -15416,6 +15541,11 @@
    "es": "Lo que una agencia no puede hacer",
    "state": "draft"
   },
+  "learn.state-agencies.what-happens-if-jlcar-objects-to": {
+   "en": "What happens if JLCAR objects to a rule?",
+   "es": "¿Qué pasa si el JLCAR objeta una regla?",
+   "state": "draft"
+  },
   "learn.state-agencies.where-a-hearing-was-recorded-bills": {
    "en": "Where a hearing was recorded &mdash; [[hearing_video_bills]] bills[[hearing_video_since]] &mdash; the bill's Hearings tab links the recording, opened where the bill was taken up when that moment has been found. <a href=\"committees.html\">Committee pages</a> list every day a committee met and what it heard.",
    "es": "Cuando se grabó una audiencia &mdash; [[hearing_video_bills]] proyectos de ley[[hearing_video_since]] &mdash; la pestaña Hearings (audiencias) del proyecto de ley enlaza la grabación, que se abre en el punto en que se trató el proyecto si ese momento se ha localizado. Las <a href=\"committees.html\">páginas de los comités</a> indican cada día que un comité se reunió y los proyectos de ley que examinó.",
@@ -15424,6 +15554,16 @@
   "learn.state-agencies.where-statutes-get-applied": {
    "en": "Where Statutes Get Applied",
    "es": "Dónde se aplican las leyes",
+   "state": "draft"
+  },
+  "learn.state-agencies.why-do-department-staff-speak-at": {
+   "en": "Why do department staff speak at hearings?",
+   "es": "¿Por qué habla el personal de los departamentos en las audiencias?",
+   "state": "draft"
+  },
+  "learn.state-agencies.yes-a-commissioner-serves-a-fixed": {
+   "en": "Yes. A commissioner serves a fixed term and can be reappointed the same way: nominated by the Governor, confirmed by the Executive Council.",
+   "es": "Sí. Un comisionado ejerce el cargo por un período fijo y puede volver a ser nombrado de la misma manera: lo propone el Gobernador y lo confirma el Consejo Ejecutivo.",
    "state": "draft"
   },
   "learn.term.caption": {
