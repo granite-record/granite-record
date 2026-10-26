@@ -393,6 +393,55 @@ test("a failed look keeps what was last checked and says it failed; it is never 
   });
 });
 
+// How a reader of the file tells its state, by README.md's rule (the page is a
+// later branch): failed or off as the file says; stale when now is more than
+// 5 minutes past next_check; fresh otherwise.
+function reading(f, now) {
+  if (!f) return "no file";
+  if (!f.status.ok) return f.status.problem;
+  if (now > Date.parse(f.next_check) + 5 * MIN) return "stale";
+  return f.streams.some(s => s.status === "live") ? "fresh, live" : "fresh, none live";
+}
+
+test("a stopped Worker, a failed look, a hold or the switch reads from the file as what it is, never as a fresh look that found nothing", async () => {
+  const w = world({ start: "2027-01-07T14:00:00Z" });
+  w.yt.add({ id: "houseFinanc", chamber: "H", title: "House Finance (01/07/2027)", scheduled: T("2027-01-07T14:00:00Z"),
+             listedAt: T("2027-01-05T14:00:00Z"), start: T("2027-01-07T14:00:00Z"), end: T("2027-01-07T23:30:00Z") });
+  const written = [];
+  w.r2.hooks.put = async (key, value) => { if (key === "streams/2027-01-07.json") written.push([w.now, JSON.parse(value)]); };
+  await w.every("2027-01-07T14:00:00Z", "2027-01-07T15:00:00Z");
+  const day = () => w.streams("2027-01-07");
+  assert.equal(reading(day(), T("2027-01-07T14:59:00Z")), "fresh, live");
+  // The Worker stops at 14:58: by 15:06 the file says so by itself.
+  assert.equal(reading(day(), T("2027-01-07T15:04:00Z")), "fresh, live");
+  assert.equal(reading(day(), T("2027-01-07T15:06:00Z")), "stale");
+  // A quiet evening checked every 30 minutes is not stale between looks.
+  const q = world({ start: "2027-01-08T02:00:00Z" });
+  await q.runAt();
+  assert.equal(reading(q.streams("2027-01-07"), T("2027-01-08T02:34:00Z")), "fresh, none live");
+  assert.equal(reading(q.streams("2027-01-07"), T("2027-01-08T02:36:00Z")), "stale");
+  // A failed look, a hold and the switch each say themselves, at once.
+  w.yt.fail("videos", "backend");
+  await w.runAt("2027-01-07T15:10:00Z");
+  assert.equal(reading(day(), T("2027-01-07T15:10:00Z")), "youtube");
+  w.yt.fail("playlistItems", "quota");
+  await w.runAt("2027-01-07T15:12:00Z");
+  for (const t of ["2027-01-07T15:12:00Z", "2027-01-07T22:00:00Z", "2027-01-08T08:04:00Z"]) {
+    assert.equal(reading(day(), T(t)), "quota", t);
+  }
+  w.r2.seed("control.json", { youtube: "off", sql: "off" });
+  await w.runAt("2027-01-08T08:00:00Z");
+  assert.equal(reading(w.streams("2027-01-08"), T("2027-01-08T08:00:00Z")), "off");
+  // No file written while the stream was live reads as a fresh look that
+  // found nothing live, at the moment it was written or any moment after.
+  assert.ok(written.length >= 32, `${written.length} files written`);
+  for (const [t, f] of written) {
+    for (const later of [t, t + 3 * MIN, t + 30 * MIN, t + 6 * HOUR]) {
+      assert.notEqual(reading(f, later), "fresh, none live", `written ${iso(t)}, read ${iso(later)}`);
+    }
+  }
+});
+
 test("a look YouTube never answers fails inside its deadline", async () => {
   const w = world({ start: "2027-01-07T15:00:00Z" });
   w.yt.hang = "playlistItems";

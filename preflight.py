@@ -79677,7 +79677,7 @@ def _night_timer():
 # The live Worker's suite, and how many tests it had when this was written: a
 # count that falls means a file stopped loading or a test was lost.
 LIVE_TESTS = "tests/live/index.js"
-LIVE_TESTS_AT_LEAST = 36
+LIVE_TESTS_AT_LEAST = 37
 # The person's ready-made switches (workers/live/control/), each as the Worker
 # must read it; and the values control.json may hold (store.js CONTROL_VALUES).
 LIVE_CONTROL = {"all-off.json": {"youtube": "off", "sql": "off"},
@@ -79762,10 +79762,15 @@ def _live_problems(root):
     import tomllib
     bad = []
     live = root / "workers/live"
-    conf = tomllib.loads((live / "wrangler.toml").read_text(encoding="utf-8"))
+    toml_text = (live / "wrangler.toml").read_text(encoding="utf-8")
+    conf = tomllib.loads(toml_text)
     envs = conf.get("env", {})
     prod = envs.get("production") or {}
     # Production alone runs: its cron, its name, its bucket; nothing answers.
+    # A route is refused wherever it is written: under a [[...]] table it
+    # parses as that table's key, and would be read nowhere else.
+    if re.search(r"^\s*(?:\[+[^\]]*\broutes?\]+|routes?\s*=)", toml_text, re.M):
+        bad.append("wrangler.toml declares a route: the live Worker answers no request")
     if set(envs) != {"production"}:
         bad.append(f"wrangler.toml has the environments {sorted(envs)}, and the live Worker has "
                    "production alone")
