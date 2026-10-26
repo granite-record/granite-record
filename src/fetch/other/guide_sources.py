@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-10-11.19
+# GRANITE_VERSION: 2026-10-11.20
 """
 The official pages the how-to guides cite, onto this disk, to check them by.
 
@@ -238,6 +238,14 @@ SOURCES = {
         "https://www.council.nh.gov/contact-us",
         "https://www.governor.nh.gov/contact-governor-ayotte",
     ],
+    # The private health insurance guide (26 October 2026): the Insurance
+    # Department's pages, addresses from a web search, waiting for the
+    # person's printouts.
+    "insurance_health": [
+        "https://www.insurance.nh.gov/",
+        "https://www.insurance.nh.gov/consumers/health-insurance/independent-external-review",
+        "https://www.insurance.nh.gov/consumers/health-insurance/healthcare-and-long-term-care-appeals",
+    ],
     # Fishing, hunting and boating: printed by the person, 25 October 2026.
     "outdoors": [
         "https://www.wildlife.nh.gov/licenses-and-permits/nh-license-requirements",
@@ -367,6 +375,18 @@ OTHER = {
         "https://www.hassan.senate.gov/services/help-with-a-federal-agency",
         "https://goodlander.house.gov/services/help-federal-agency/",
         "https://www.govinfo.gov/content/pkg/USCODE-2024-title5/html/USCODE-2024-title5-partI-chap5-subchapII-sec552a.htm",
+    ],
+    # The private health insurance guide (26 October 2026): HealthCare.gov,
+    # the Marketplace's official site, read that day.
+    "insurance_health": [
+        "https://www.healthcare.gov/quick-guide/dates-and-deadlines/",
+        "https://www.healthcare.gov/coverage-outside-open-enrollment/special-enrollment-period/",
+        "https://www.healthcare.gov/apply-and-enroll/how-to-apply/",
+        "https://www.healthcare.gov/lower-costs/",
+        "https://www.healthcare.gov/have-job-based-coverage/options/",
+        "https://www.healthcare.gov/young-adults/children-under-26/",
+        "https://www.healthcare.gov/appeal-insurance-company-decision/external-review/",
+        "https://www.healthcare.gov/marketplace-in-your-state/",
     ],
     # Fishing, hunting and boating (25 October 2026). Fish and Game's online
     # license system is the state's own, at a .com address rather than nh.gov

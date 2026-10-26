@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-10-11.49
+# GRANITE_VERSION: 2026-10-11.50
 """
 The how-to guides: their words, their sources, and what each was checked
 against. Read by build_civics.py, which draws them on the Resources hub's
@@ -5636,6 +5636,317 @@ GUIDES += [CONSUMER]
 
 
 # ---------------------------------------------------------------------------
+# PRIVATE HEALTH INSURANCE (the person, 26 October 2026: "insurance like car
+# insurance, renters insurance, homeowner's insurance, private health
+# insurance"). The Marketplace's dates, Special Enrollment Periods, savings,
+# ways to apply, job-based coverage and a parent's plan are HealthCare.gov's,
+# whose pages answer this machine and were read on 26 October 2026; its
+# Marketplace in Your State page does not name a state without a click, so
+# the guide says how to find a state's way of applying rather than naming
+# one. A denied claim rests on the Managed Care Law (RSA 420-J: the
+# insurer's appeal, external review and expedited review), complaints on
+# the Insurance Department's consumer services program (RSA 400-A:15-e),
+# and the two FAQs on RSA 420-G:6 and RSA 415:22, all read on 26 October
+# 2026 as the Laws pages print them. The Insurance Department's pages
+# refuse this machine; their addresses come from a web search, and their
+# claims wait for the person's printouts. Medicaid and Medicare are their
+# own guides, linked rather than repeated.
+# ---------------------------------------------------------------------------
+HI_READ = "2026-10-26"
+HI_NHID_READ = None                  # the person's printouts of insurance.nh.gov
+HC_DATES = "https://www.healthcare.gov/quick-guide/dates-and-deadlines/"
+HC_SEP = "https://www.healthcare.gov/coverage-outside-open-enrollment/special-enrollment-period/"
+HC_APPLY = "https://www.healthcare.gov/apply-and-enroll/how-to-apply/"
+HC_LOWER = "https://www.healthcare.gov/lower-costs/"
+HC_JOB = "https://www.healthcare.gov/have-job-based-coverage/options/"
+HC_U26 = "https://www.healthcare.gov/young-adults/children-under-26/"
+HC_EXT = "https://www.healthcare.gov/appeal-insurance-company-decision/external-review/"
+HC_STATE = "https://www.healthcare.gov/marketplace-in-your-state/"
+NHID = "https://www.insurance.nh.gov/"
+NHID_EXT = "https://www.insurance.nh.gov/consumers/health-insurance/independent-external-review"
+NHID_APPEALS = ("https://www.insurance.nh.gov/consumers/health-insurance/"
+                "healthcare-and-long-term-care-appeals")
+
+HEALTH_INSURANCE = guide(
+    "health-insurance", "How to Get Private Health Insurance",
+    "Buying a plan through the Health Insurance Marketplace, when you can enroll, help paying "
+    "premiums, coverage through a job or a parent’s plan, and what to do if your "
+    "insurance company denies a claim in New Hampshire.",
+    "Most people get private health insurance through a job, or buy a plan through the Health "
+    "Insurance Marketplace, whose official site is HealthCare.gov. You can enroll in a "
+    "Marketplace plan during Open Enrollment, November 1 to January 15, or after a life change "
+    "such as losing other coverage, moving or having a baby, and you may get help paying your "
+    "premiums based on your income. If your insurance company denies a claim, you can appeal "
+    "to it, and then ask the New Hampshire Insurance Department for an independent external "
+    "review, which the insurance company pays for.",
+    [ask("How will you get coverage?",
+         [("Through a job",
+           "Ask the employer&rsquo;s benefits office how and when to sign up."),
+          ("On your own",
+           "Apply for a Marketplace plan, and see if you can get help paying."),
+          ("On a low income, at 65, or with a disability",
+           "Medicaid or Medicare may cover you (step 8).")]),
+     box("If your insurance company denies a claim, appeal to it first, then ask the Insurance "
+         "Department for an external review within 180 days.")],
+    [step("Know when you can sign up",
+          "<p>For a plan through the Marketplace, <b>Open Enrollment</b> runs from November 1 "
+          "to January 15. Enroll by December 15 and your coverage can start January 1; enroll "
+          "from December 16 to January 15 and it starts February 1, once you pay your first "
+          "premium. These are HealthCare.gov&rsquo;s dates. How you apply depends on whether "
+          "your state has its own Marketplace: HealthCare.gov&rsquo;s Marketplace in Your "
+          "State page shows how residents of each state apply.</p>"
+          "<p>From January 16 to October 31 you can enroll only with a <b>Special Enrollment "
+          "Period</b>, which certain life changes open. Among them, in the past 60 days:</p>"
+          "<ul><li>getting married, having a baby, adopting a child or placing a child in "
+          "foster care;</li>"
+          "<li>moving to a new ZIP code or county;</li>"
+          "<li>losing qualifying health coverage, such as a job&rsquo;s plan or a "
+          "parent&rsquo;s plan when you turn 26, or expecting to lose it in the next 60 days. "
+          "A loss of Medicaid or CHIP counts within 90 days.</li></ul>"
+          "<p>Choosing to drop coverage yourself, such as stopping your COBRA payments, does "
+          "not open one. You may be asked for documents that show the change. Medicaid and "
+          "CHIP can be applied for at any time.</p>",
+          actions=[("Dates and deadlines (HealthCare.gov)", HC_DATES),
+                   ("Special Enrollment Periods (HealthCare.gov)", HC_SEP),
+                   ("The Marketplace in your state (HealthCare.gov)", HC_STATE)]),
+     step("Apply",
+          "<p>You can apply for a Marketplace plan:</p>"
+          "<ul><li>online at HealthCare.gov, the fastest way;</li>"
+          "<li>by phone, with free help, in other languages too;</li>"
+          "<li>with a local person or organization that helps people apply;</li>"
+          "<li>through a certified enrollment partner, such as an insurance company or an "
+          "online health insurance seller;</li>"
+          "<li>on a paper application, mailed in. Eligibility results come by mail within 2 "
+          "weeks.</li></ul>",
+          actions=[("Ways to apply (HealthCare.gov)", HC_APPLY)]),
+     step("See if you can get help paying",
+          "<p>Depending on your income, you may get savings on your Marketplace premiums, or "
+          "qualify for Medicaid or CHIP instead. Savings are based on your estimate of your "
+          "income for the year you want coverage, not last year. Count yourself, your spouse "
+          "if you are married, and everyone you will claim as a tax dependent. You see the "
+          "exact prices and savings when you fill out the application.</p>"
+          "<p>If you have, or are offered, a job-based plan that is considered affordable and "
+          "meets minimum standards, you will not get savings on a Marketplace plan; most "
+          "job-based plans meet them. If you already have a Marketplace plan and get an offer "
+          "of coverage through a job, it may end your savings even if you turn the offer "
+          "down, so update your Marketplace application.</p>",
+          actions=[("Income levels and savings (HealthCare.gov)", HC_LOWER),
+                   ("If you have job-based insurance (HealthCare.gov)", HC_JOB)]),
+     step("Coverage through a job, COBRA, or a parent’s plan",
+          "<p>For a plan through your job, ask your employer&rsquo;s benefits office how and "
+          "when to sign up.</p>"
+          "<p><b>COBRA</b>, a federal law, lets you and your family keep your employer&rsquo;s "
+          "group health insurance for a limited time after an event such as losing your job or "
+          "having your hours cut. When your COBRA coverage ends, you have 60 days to enroll in a "
+          "Marketplace plan.</p>"
+          "<p>If a parent&rsquo;s plan covers dependents, you can usually be added to it and "
+          "stay on it until you turn 26, even if you are married, have a child, live away from "
+          "home or are not claimed as a tax dependent. On a parent&rsquo;s Marketplace plan, "
+          "you can stay through December 31 of the year you turn 26.</p>",
+          actions=[("Getting or staying on a parent’s plan (HealthCare.gov)", HC_U26)],
+          law=["RSA 420-G:6", "RSA 415:22"]),
+     step("Appeal a denied claim to your insurance company",
+          "<p>Every health insurance company must have a written procedure for appealing a "
+          "denied claim, with a full and fair review by someone other than the person who "
+          "denied it. You have at least 180 days after you are told of the denial to appeal, "
+          "and you may send written comments, documents and records. The company must decide "
+          "an appeal of a prior authorization or of care already given within 30 days, and an "
+          "urgent care appeal within 72 hours. You, or someone you authorize, can make the "
+          "appeal.</p>",
+          actions=[("Health insurance appeals (Insurance Department)", NHID_APPEALS)],
+          law=["RSA 420-J:5"]),
+     step("Ask the Insurance Department for an external review",
+          "<p>If the company still says no, or misses its deadline, you can ask for an "
+          "<b>independent external review</b>: send a written request to the Insurance "
+          "Commissioner within 180 days of the company&rsquo;s final denial. An independent "
+          "review organization decides. The insurance company pays for the review, it must "
+          "follow the decision, and it may not retaliate against you for asking.</p>"
+          "<p>If your doctor or other provider certifies that waiting would seriously endanger "
+          "your life or health, or your ability to regain full function, you can ask for an "
+          "<b>expedited</b> review, even while the company&rsquo;s own appeal is under way; it "
+          "is decided within 72 hours. It is not available for care already given.</p>"
+          "<p>This review is not for Medicaid, CHIP or Medicare, except Granite Advantage "
+          "coverage through a private insurer; for a self-funded employer plan run by an "
+          "administrator; or for a federal employee plan. Those have their own appeals. Nor "
+          "is it for a claim of malpractice. Your Explanation of Benefits or the "
+          "company&rsquo;s final denial names who handles your external review.</p>",
+          actions=[("Independent external review (Insurance Department)", NHID_EXT)],
+          law=["RSA 420-J:5-a", "RSA 420-J:5-c", "RSA 420-J:5-e"]),
+     step("Complain to the Insurance Department",
+          "<p>The <b>Insurance Department</b> investigates complaints about insurance companies "
+          "and agents, through a toll-free number and a complaint form. It may tell the "
+          "company about your complaint, ask it for relief for you, and meet with both of you "
+          "to settle it, but it cannot decide a claim. When you ask, it helps you through an "
+          "insurance company&rsquo;s appeal and an external review. Its Consumer Services "
+          "line is 1-800-852-3416.</p>",
+          actions=[("New Hampshire Insurance Department", NHID)],
+          law=["RSA 400-A:15-e", "RSA 420-J:5-e"]),
+     step("Where Medicaid and Medicare fit",
+          "<p><b>Medicaid</b>, a federal and state program, gives free or low-cost coverage "
+          "to some people with low incomes, families, children, pregnant women, older people "
+          "and people with disabilities; CHIP covers children and pregnant women in families "
+          "that earn too much for Medicaid. In New Hampshire you apply through the Department "
+          "of Health and Human Services. <b>Medicare</b> is the federal health program for "
+          "people 65 and older and some younger people with disabilities or kidney failure. "
+          "Each has its own guide (below).</p>")],
+    [("Dates and Deadlines (HealthCare.gov)", HC_DATES),
+     ("Special Enrollment Periods (HealthCare.gov)", HC_SEP),
+     ("Ways to Apply and Enroll (HealthCare.gov)", HC_APPLY),
+     ("Income Levels and Savings (HealthCare.gov)", HC_LOWER),
+     ("If You Have Job-Based Insurance (HealthCare.gov)", HC_JOB),
+     ("How to Get or Stay on a Parent’s Plan (HealthCare.gov)", HC_U26),
+     ("External Review (HealthCare.gov)", HC_EXT),
+     ("The Marketplace in Your State (HealthCare.gov)", HC_STATE),
+     ("Independent External Review (Insurance Department)", NHID_EXT),
+     ("Healthcare and Long Term Care Appeals (Insurance Department)", NHID_APPEALS),
+     ("New Hampshire Insurance Department", NHID),
+     ("Managed Care Law, RSA 420-J", "/laws/420-j"),
+     ("Insurance Department, RSA 400-A", "/laws/400-a"),
+     ("Portability, Availability, and Renewability of Health Coverage, RSA 420-G",
+      "/laws/420-g"),
+     ("Accident and Health Insurance, RSA 415", "/laws/415")],
+    ["420-J", "400-A", "420-G", "415"],
+    [# HealthCare.gov's pages, read on 26 October 2026.
+     claim("November 1: Open Enrollment starts; coverage can start as soon as January 1. "
+           "December 15: last day to enroll in or change plans for coverage to start January "
+           "1. January 15: Open Enrollment ends. February 1: coverage starts for those who "
+           "enroll in or change plans December 16 through January 15 and pay their first "
+           "premium. Between January 16 and October 31, only with a Special Enrollment Period. "
+           "Medicaid or CHIP at any time. Medicaid: a joint federal and state program, free or "
+           "low-cost health coverage to some low-income individuals, families, children, "
+           "pregnant women, the elderly, and people with disabilities; CHIP: children and "
+           "pregnant women in families that earn too much to qualify for Medicaid.",
+           HC_DATES, HI_READ),
+     claim("You may qualify for a Special Enrollment Period if in the past 60 days you or "
+           "anyone in your household got married; had a baby, adopted a child, or placed a "
+           "child for foster care; moved to a new ZIP code or county; lost qualifying health "
+           "coverage in the past 60 days or expects to lose coverage in the next 60 days; lost "
+           "Medicaid or CHIP coverage in the past 90 days; turned 26 and can no longer be on a "
+           "parent's plan. COBRA lets you and your family continue your employer-sponsored "
+           "group health insurance for a limited time after a qualifying life event, like "
+           "losing your job or having your work hours reduced; when your COBRA coverage ends, "
+           "you have 60 days to enroll in a Marketplace health plan; voluntarily dropping "
+           "COBRA doesn't count. You may have to submit documents. Turned down for a Special "
+           "Enrollment Period, you can appeal the decision. Medicare: a federal health program "
+           "for people 65 and older and certain younger people with disabilities and ESRD.",
+           HC_SEP, HI_READ),
+     claim("Apply online at HealthCare.gov, the fastest way; over the phone, free, non-biased "
+           "help, in other languages; local people and organizations that help you apply; a "
+           "certified enrollment partner, like an insurance company or online health insurance "
+           "seller; a paper application, with eligibility results in the mail within 2 weeks.",
+           HC_APPLY, HI_READ),
+     claim("Savings on Marketplace premiums, or Medicaid or CHIP, based on your income; savings "
+           "are based on your income estimate for the year you want coverage, not last year; "
+           "count yourself, your spouse if you're married, plus everyone you'll claim as a tax "
+           "dependent; exact plan prices and savings when you fill out a Marketplace "
+           "application.", HC_LOWER, HI_READ),
+     claim("With job-based insurance now or an offer of it, no savings on a Marketplace plan if "
+           "the job-based plan is considered affordable and meets minimum standards; most "
+           "job-based plans meet these standards; with a Marketplace plan, an offer of "
+           "job-based insurance may end your savings even if you don't accept it; update your "
+           "Marketplace application.", HC_JOB, HI_READ),
+     claim("If a parent's plan covers dependents, you usually can be added to it and stay on it "
+           "until you turn 26; on a parent's Marketplace plan, through December 31 of the year "
+           "you turn 26; on a parent's job-based plan, generally until 26 even if you got "
+           "married, have a child, live out of the home or aren't claimed as a tax dependent.",
+           HC_U26, HI_READ),
+     claim("Your insurer is required by law to accept the external reviewer's decision; a "
+           "state external review process that meets the federal standards is the one "
+           "insurers in that state follow; your Explanation of Benefits or the final denial of "
+           "the internal appeal gives the contact for the organization that will handle your "
+           "external review.", HC_EXT, HI_READ),
+     claim("How you apply depends on if your state has its own Marketplace; pick your state.",
+           HC_STATE, HI_READ),
+     # The statutes, as the Laws pages print them, read on 26 October 2026.
+     claim("Every carrier maintains a written procedure to appeal a claim denial, with a full "
+           "and fair review; the persons reviewing are not those who made the initial "
+           "determination; at least 180 days following receipt of a notification of a claim "
+           "denial to appeal; the claimant may submit written comments, documents and records; "
+           "a nonexpedited appeal of a prior authorization or post-service claim decided in no "
+           "event more than 30 days after receipt; an expedited urgent care appeal decided no "
+           "more than 72 hours after it is filed; a claimant or a representative of the "
+           "claimant may appeal.", "RSA 420-J:5", HI_READ),
+     claim("A covered person has the right to independent external review of an adverse "
+           "determination after completing internal review, or if the carrier agreed or missed "
+           "its time frames; the request in writing to the commissioner within 180 days of the "
+           "denial decision; not for Medicaid, CHIP or Medicare, except private coverage under "
+           "the granite advantage program; not for self-funded plans administered by an "
+           "administrative services organization or third-party administrator, or federal "
+           "employee benefit programs; not for malpractice.", "RSA 420-J:5-a", HI_READ),
+     claim("Expedited external review when the treating provider certifies that the standard "
+           "time frames would seriously jeopardize the life or health of the covered person or "
+           "the ability to regain maximum function; may be pursued simultaneous with internal "
+           "review; decided no more than 72 hours after it is requested; not for "
+           "determinations made on a retrospective basis.", "RSA 420-J:5-c", HI_READ),
+     claim("The health carrier pays the cost of the external review; the decision is binding on "
+           "the carrier, and on the covered person except where other remedies exist; the "
+           "carrier shall not retaliate; on request, the commissioner provides consumer "
+           "assistance with internal grievances and external review.", "RSA 420-J:5-e",
+           HI_READ),
+     claim("The commissioner maintains a program to investigate complaints against insurers, "
+           "producers and others the commissioner regulates, with a toll-free telephone number "
+           "and a standardized complaint form; may notify the insurer, request relief for the "
+           "complainant and mediate; no power to adjudicate claims.", "RSA 400-A:15-e",
+           HI_READ),
+     claim("Health carriers shall not establish rules of eligibility, including continued "
+           "eligibility, in relation to health status, medical condition, claims experience, "
+           "receipt of health care, medical history, genetic information, evidence of "
+           "insurability or disability; no rescission except for fraud or an intentional "
+           "misrepresentation of material fact.", "RSA 420-G:6", HI_READ),
+     claim("Health insurance policies cover a newly born child from the moment of birth; if a "
+           "specific premium is required, notice of the birth and payment within 31 days after "
+           "the date of birth for coverage to continue; no additional premium for the first 31 "
+           "days.", "RSA 415:22", HI_READ),
+     # The Insurance Department's pages, waiting for the person's printouts.
+     claim("Independent External Review: how to ask the Insurance Department for an external "
+           "review of a health insurance company's denial, and the request form.", NHID_EXT,
+           HI_NHID_READ),
+     claim("Healthcare and long-term care appeals: how to appeal a health insurance company's "
+           "denial, starting with its internal appeal.", NHID_APPEALS, HI_NHID_READ),
+     claim("The New Hampshire Insurance Department; Consumer Services, 1-800-852-3416, takes "
+           "questions and complaints about insurance companies and agents.", NHID,
+           HI_NHID_READ)]
+    + help_claims("nheasy", "lawyer"),
+    more=civics.faq(
+        ("Can an insurance company turn me down because of a health condition?",
+         "<p>No. New Hampshire law forbids a health insurance company to base whether you can "
+         "get or keep coverage on your health, a medical condition, your medical history, "
+         "genetic information or a disability. It may cancel your coverage only for fraud or "
+         "for lying about something important on purpose.</p>"),
+        ("Is my new baby covered?",
+         "<p>A health insurance policy covers a newborn from the moment of birth. If adding a "
+         "child costs more, the policy may require you to tell the company about the birth "
+         "and pay within 31 days after it for the coverage to continue; there is no extra "
+         "premium for those first 31 days.</p>"),
+        ("What if I am turned down for a Special Enrollment Period?",
+         "<p>You can appeal the decision. HealthCare.gov&rsquo;s Special Enrollment Periods "
+         "page explains how.</p>"),
+        ("Can someone appeal for me?",
+         "<p>Yes. Someone you authorize to act for you, such as your doctor, can make an "
+         "appeal to the insurance company or ask for an external review on your behalf.</p>"))
+    + "<h2>Who Can Help</h2>"
+         "<p>The Insurance Department&rsquo;s Consumer Services, at 1-800-852-3416, for "
+         "questions and complaints about an insurance company, and help with an appeal. For "
+         "Medicaid, or advice on your own case:</p>"
+         + helps("nheasy", "lawyer"),
+    see=[("How to apply for food or health assistance", "/guides/food-and-health-assistance.html"),
+         ("How to sign up for Medicare and Social Security, and get help with the costs",
+          "/guides/medicare-and-social-security.html"),
+         ("How to report a scam or file a consumer complaint", "/guides/consumer-rights.html")],
+    figures=[fig("180 days", "RSA 420-J:5-a", "within 180 days of the date"),
+             fig("180 days", "RSA 420-J:5", "at least 180 days following receipt"),
+             fig("30 days", "RSA 420-J:5", "more than 30 days after receipt"),
+             fig("72 hours", "RSA 420-J:5-c", "more than 72 hours after the expedited external review is requested"),
+             fig("72 hours", "RSA 420-J:5", "more than 72 hours after the appeal is filed"),
+             fig("31 days", "RSA 415:22", "within 31 days after the date of birth"),
+             fig("60 days", HC_SEP, "in the past 60 days"),
+             fig("90 days", HC_SEP, "in the past 90 days"),
+             fig("2 weeks", HC_APPLY, "within 2 weeks")])
+
+GUIDES += [HEALTH_INSURANCE]
+
+
+# ---------------------------------------------------------------------------
 # TRASH, RECYCLING, YARD WASTE AND HAZARDOUS WASTE (the person, 24 October
 # 2026: "proper disposal of trash, recycling, compost, large items, and
 # hazardous materials (Hazardous materials day) which varies by town and
@@ -7769,6 +8080,11 @@ TASKS = [
         task("public-records", "Get a public record",
              "Ask a town, school district, county or state agency for its records."),
     ]),
+    ("Insurance", [
+        task("health-insurance", "Get private health insurance",
+             "The Marketplace and when to enroll, help paying premiums, coverage through a job "
+             "or a parent&rsquo;s plan, and appealing a denied claim."),
+    ]),
     ("Property and Records", [
         task("property-tax-abatement", "Appeal your property tax assessment",
              "Ask your town for an abatement, and appeal if it says no."),
@@ -7920,6 +8236,9 @@ WORDS = {
                                "snow storm", "warming center", "emergency kit"),
     "trash-and-recycling": ("trash", "recycling", "dump", "transfer station", "hazardous waste",
                             "compost", "electronics recycling", "paint disposal"),
+    "health-insurance": ("health insurance", "marketplace", "healthcare.gov", "obamacare",
+                         "open enrollment", "cobra", "denied claim", "external review",
+                         "insurance department", "parent's plan"),
     "consumer-rights": ("scam", "fraud", "consumer complaint", "consumer protection",
                         "attorney general", "cancel a sale", "door to door", "gift card",
                         "gift certificate", "prize"),
