@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.717
+# GRANITE_VERSION: 2026-09-04.718
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -25420,6 +25420,15 @@ def _civics_examples():
     # "ballot" out of the pattern instead would let a voter-identification
     # bill through, and those are exactly what it is there to catch.
     ALLOWED = {("1995", "SB2")}
+    # A COMPLETE LIST IS NOT A CHOSEN EXAMPLE (the person, 26 October 2026):
+    # "don't remove charged bills from a list of bills within a certain
+    # category such as the proposed state pistol. I meant that if we are
+    # looking to select example towns, legislators, and bills for the learn
+    # pages to explain a concept, we should choose less polarizing bills if we
+    # have the option." State Symbols lists every proposed symbol in the
+    # record; a gun is one of them, and leaving it out would make the list
+    # untrue. Named by page and bill, so the rule still holds everywhere else.
+    LISTED = {("state-symbols", "2012", "HB1430")}
 
     bad, unknown = [], []
     for slug, year, bid in linked:
@@ -25427,7 +25436,7 @@ def _civics_examples():
         if not b:
             unknown.append(f"{bid} ({year}) on {slug}")
             continue
-        if (year, bid) in ALLOWED:
+        if (year, bid) in ALLOWED or (slug, year, bid) in LISTED:
             continue
         hit = CHARGED.search((b.get("title") or "") + " " + (b.get("topic") or ""))
         if hit:
@@ -66741,6 +66750,34 @@ def _common_questions(G, civics):
             bad.append(f"{slug}: a question without its summary")
     assert not bad, "; ".join(bad[:5])
     return "ok", f"{seen} pages with Common Questions, each a question with its answer"
+
+
+@check("code", "the guides and Learn pages speak of a person as they, never \"he or she\": "
+               "only a quotation keeps the law's own pronouns", needs=("guides", "civics"))
+def _neutral_voice(G, C):
+    """The person, 26 October 2026, on the plate guide's "until he or she
+    remarries": it "should be gender neutral as they, which applies to other
+    sections like he or she unless it's part of the official record as many
+    laws are phrased that way." So the site's own words say "they"; a claim,
+    a figure's words and anything inside quotation marks are the record's and
+    keep its words."""
+    import html
+    pair = re.compile(r"\b(?:he or she|she or he|his or her|her or his|him or her|her or him|"
+                      r"himself or herself|herself or himself|he/she|she/he|his/her|him/her|"
+                      r"s/he)\b", re.I)
+
+    def own(words):
+        t = html.unescape(re.sub(r"<[^>]+>", " ", words or ""))
+        return re.sub(r"[“\"][^”\"]*[”\"]", " ", t)      # quotations stay theirs
+
+    found = []
+    for g in G.GUIDES:
+        found += [f"guide {g['slug']}: {m.group(0)!r}" for m in pair.finditer(own(G.text(g)))]
+    for t in C.TOPICS:
+        found += [f"learn {t['slug']}: {m.group(0)!r}"
+                  for m in pair.finditer(own(t["body"] + " " + t["blurb"]))]
+    assert not found, "say they: " + "; ".join(found[:8])
+    return "ok", f"{len(G.GUIDES)} guides and {len(C.TOPICS)} Learn pages say they"
 
 
 @check("code", "every phone number, email, office hours, street address and date a guide "

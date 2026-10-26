@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-08.68
+# GRANITE_VERSION: 2026-09-08.69
 """
 The topics of the civics section: their order, their names, and their prose.
 
@@ -2466,11 +2466,14 @@ SYMBOLS_OTHER = _symbols("The stones, foods and sport the law names", [
     ("Vegetable", "White potato", "27", "2013", ("2013", "HB 535")),
 ])
 
-# Not every proposal in the record is here: HB 1430 of 2012, a state
-# firearm, is left out because a Learn page links no bill on a charged
-# subject (preflight's _civics_examples), and a gun is one.
+# Every proposal in the record is here, the charged ones with the rest: the
+# person, 26 October 2026, "don't remove charged bills from a list of bills
+# within a certain category such as the proposed state pistol." A complete
+# list is not an example chosen to teach (preflight's _civics_examples).
 PROPOSED_SYMBOLS = _proposals("Proposed state symbols that did not pass", [
     ("2011", "HB 41", "designating purple as the official state color.", "Killed"),
+    ("2012", "HB 1430", "designating the Thompson/Center Contender pistol as the official "
+     "state firearm of New Hampshire.", "Killed"),
     ("2012", "SB 302", "relative to the Honor and Remember Flag as an official symbol to "
      "recognize and honor fallen members of the armed forces and relative to certain "
      "maintenance at the rotary in the town of Epsom.",

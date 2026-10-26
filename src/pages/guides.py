@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-10-11.57
+# GRANITE_VERSION: 2026-10-11.58
 """
 The how-to guides: their words, their sources, and what each was checked
 against. Read by build_civics.py, which draws them on the Resources hub's
@@ -3708,8 +3708,8 @@ PLATES = guide(
         ("Can a vanity plate be taken back after it is issued?",
          "<p>Yes. The law has the DMV recall a vanity plate that does not meet the law and the "
          "rules, whenever it was issued, and refund or credit the unused part of the fee.</p>"),
-        ("Can my spouse keep my plate?",
-         "<p>For some plates, yes, until he or she remarries: a Veteran plate, a National Guard "
+        ("Can my spouse keep my plate after I die?",
+         "<p>For some plates, yes, until they remarry: a Veteran plate, a National Guard "
          "plate of a retired member, and a former prisoner of war, Purple Heart or Pearl Harbor "
          "survivor plate.</p>"))
          + DMV_HELP,
@@ -5000,8 +5000,10 @@ DISCRIMINATION = guide(
     "New Hampshire law forbids discrimination because of your age, sex, gender identity, race, "
     "creed, color, marital status, physical or mental disability, national origin or sexual "
     "orientation: at work and when you apply for a job, when you rent or buy a home, and in "
-    "places open to the public. In housing, having children under 18 is protected too. It is "
-    "also against the law to punish you for complaining. If it happens to you, you can file a "
+    "places open to the public. In housing, it also protects families with a child under 18 "
+    "living with them. And no one may fire, expel or otherwise punish you for opposing "
+    "discrimination, filing a complaint, or testifying or helping in a case about it. If it "
+    "happens to you, you can file a "
     "written complaint with the New Hampshire Commission for Human Rights within 180 days.",
     [ask("Where did it happen?",
          [("At work, or applying for a job",
@@ -9054,9 +9056,13 @@ CAR_INSURANCE = guide(
            "injuries; not any commercial policy insuring more than 4 automobiles; the insured "
            "may claim under medical payments or health insurance or both, "
            "without duplicate payment.", "RSA 264:16", INS_LAW_READ),
+     # RSA 263:17's third route, "emancipated by marriage", is not printed: RSA 457:4
+     # makes any marriage of a person under 18 void (the person, 26 October 2026,
+     # pointed out that New Hampshire bans child marriage).
      claim("No person under the age of 18 years shall be issued a driver's license unless a "
-           "parent or guardian gives written permission, insurance coverage is presented, or the "
-           "person is emancipated by marriage.", "RSA 263:17", INS_LAW_READ),
+           "parent or guardian, or where there is none another responsible adult, gives written "
+           "permission, insurance coverage is presented, or the person is emancipated by "
+           "marriage.", "RSA 263:17", INS_LAW_READ),
      claim("After a policy has been in effect for 60 days, or if it is a renewal, an insurer may "
            "cancel only for nonpayment of premium, the specific request of the insured, or the "
            "named insured not being a resident of New Hampshire when it was issued or renewed, "
@@ -9095,9 +9101,9 @@ CAR_INSURANCE = guide(
           "21 South Fruit Street, Suite 14, Concord, NH 03301; Phone: (603) 271-2261.", INS_COMPLAINT, INS_DEPT_READ)],
     more=civics.faq(
         ("Does a driver under 18 need insurance?",
-         "<p>A person under 18 gets a license only with a parent&rsquo;s or guardian&rsquo;s "
-         "written permission, or with insurance coverage shown when applying, or if married "
-         '(<a href="/laws/263#s17">RSA 263:17</a>).</p>'),
+         "<p>A person under 18 gets a license only with written permission from a parent or "
+         "guardian (or, where there is none, another responsible adult), or with insurance "
+         'coverage shown when applying (<a href="/laws/263#s17">RSA 263:17</a>).</p>'),
         ("Does my car insurance or my health insurance pay my medical bills after a crash?",
          "<p>You choose: you may claim under your car policy&rsquo;s medical payments coverage, "
          "your health insurance, or both, but you may not be paid twice for the same bill.</p>"),
