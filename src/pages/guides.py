@@ -3298,6 +3298,250 @@ GUIDES += [WARRANT]
 
 
 # ---------------------------------------------------------------------------
+# HOW YOUR PROPERTY TAX IS FIGURED, AND HOW TO READ YOUR BILL (the person, 25
+# October 2026: "how to read your property tax bill or how property taxes are
+# assessed"). From RSA 72, 75, 76 and 21-J alone, read on 25 October 2026 in
+# this site's own Laws pages, which print the statute table, as the warrant
+# guide is: the law says how property is appraised, who sets the rate, what a
+# bill must show, when interest starts, and every exemption, credit and
+# deferral a town may offer. The Department of Revenue Administration's own
+# pages refuse this machine, and none of their addresses has been read, so the
+# guide links none; a town's own figures -- its rate, its exemption amounts --
+# are its own, and the guide sends the reader to the town for them. Abatement
+# and the state's low-income relief have guides of their own, linked rather
+# than repeated.
+# ---------------------------------------------------------------------------
+TAX_BILL_READ = "2026-10-25"
+
+TAX_BILL = guide(
+    "property-tax-bill", "How Your Property Tax Is Figured, and How to Read Your Bill",
+    "How your town or city assesses your property, how the tax rate is set, what your property "
+    "tax bill must show, when it is due, and the exemptions, credits and deferrals you can apply "
+    "for by April 15.",
+    "Your town or city assesses your property at its market value as of April 1, and must "
+    "revalue every property at least every fifth year. The voters and officials of your town, "
+    "school district and county set their budgets, and the state works out the rate that raises "
+    "them. Your bill shows your assessment and four rates: town, local school, state education "
+    "and county. If the tax is hard to pay, you may qualify for an exemption, credit or "
+    "deferral: apply to your town by April 15.",
+    [box("Your town assesses your property at its market value, as of April 1."),
+     box("The budgets are voted; the state sets the rate that raises them."),
+     box("Your bill shows your assessment and four rates: town, local school, state education "
+         "and county."),
+     ask("Is something wrong, or is the tax hard to pay?",
+         [("The assessment is too high", "Ask your town for an abatement, by March 1 after the "
+           "final bill."),
+          ("It is hard to pay", "Apply to your town by April 15 for an exemption, credit or "
+           "deferral.")])],
+    [step("How your property is assessed",
+          "<p>Your town or city&rsquo;s assessors or selectmen appraise your land and buildings "
+          "at their <b>market value</b>: what the law calls their full and true value. Each "
+          "year they adjust assessments for changes, such as an addition, a new owner, a "
+          "subdivision or a change in zoning, and to correct errors, so that every assessment in "
+          "town stays in proportion. At least every fifth year they reappraise every property "
+          "in town at full value.</p>"
+          "<p>The tax year runs from April 1 to March 31, and every property is taxed on what it "
+          "was on April 1. Between revaluations, assessments can drift from what properties sell "
+          "for, and a town&rsquo;s <em>equalization ratio</em> measures how far; the guide to "
+          "appealing your assessment explains how to use it.</p>",
+          law=["RSA 75:1", "RSA 75:8", "RSA 75:8-a", "RSA 76:2"]),
+     step("How the tax rate is set",
+          "<p>Your property tax pays for four things: your town or city, your local schools, the "
+          "state&rsquo;s education tax, and your county, and a village district&rsquo;s where "
+          "there is one. Each is voted by its own body: town meeting or the city council, the "
+          "school district meeting or board, the "
+          '<a href="/learn/county-government.html">county convention</a>. The state&rsquo;s '
+          "Department of Revenue Administration checks each budget and estimate of revenue, "
+          "then computes and sets the tax rate for each town and city.</p>"
+          "<p>The state education tax rate is set by the Department each year to raise a sum the "
+          "law fixes statewide. So your tax can change even when your assessment does not: when "
+          "a budget rises or falls, or other revenue changes.</p>",
+          law=["RSA 76:5", "RSA 21-J:35", "RSA 76:3"]),
+     step("Read your bill",
+          "<p>The law says what every property tax bill must show:</p><ul>"
+          "<li><b>The rates</b> for the municipal, local education, state education and county "
+          "taxes, each separately. Your tax is your assessed value multiplied by their total.</li>"
+          "<li><b>Your assessed valuation</b>: the value of the land and buildings you are taxed "
+          "on.</li>"
+          "<li><b>Your right to ask for an abatement</b>, in writing, from your selectmen or "
+          "assessors.</li>"
+          "<li><b>A statement on tax relief</b>, on the bill or with it, at least as much as "
+          "this: &ldquo;If you are elderly, disabled, blind, a veteran, or veteran&rsquo;s "
+          "spouse, or are unable to pay taxes due to poverty or other good cause, you may be "
+          "eligible for a tax exemption, credit, abatement, or deferral.&rdquo;</li>"
+          "<li><b>The date interest starts</b>, which the tax collector sets by the day the last "
+          "bill went out.</li></ul>"
+          "<p>If you have a mortgage, your lender can ask the town for a copy of your "
+          "bill.</p>",
+          law=["RSA 76:11-a", "RSA 76:11", "RSA 76:13"]),
+     step("When it is due",
+          "<p>A town that has voted to bill twice a year sends a first bill, worked out from last "
+          "year&rsquo;s assessment and half of last year&rsquo;s rate, due July 1, and a second "
+          "bill for the rest of the year&rsquo;s tax, once the new rate is set, due December 1. "
+          "Ask your tax collector which your town does.</p>"
+          "<p>Tax not paid by its due date is charged interest at 8 percent a year. Where the "
+          "bills go out late, interest does not start until 30 days after they were mailed. The "
+          "bill says the date.</p>",
+          law=["RSA 76:15-a", "RSA 76:13"]),
+     step("Apply for an exemption, credit or deferral by April 15",
+          "<p>New Hampshire law lets each town and city offer relief to some owners, and the "
+          "town&rsquo;s voters or council decide which it offers and, within the law&rsquo;s "
+          "limits, how much. Ask your assessing office or the selectmen what yours offers. You "
+          "apply once, on the state&rsquo;s form, to your selectmen or assessors, <b>by April "
+          "15</b>, and the application stands from year to year.</p>"
+          + table("Property tax relief a town may offer (RSA 72)",
+                  ["Relief", "Who it is for", "How much"],
+                  [["Elderly exemption",
+                    "Owners 65 or older who have lived in New Hampshire for at least 3 "
+                    "consecutive years, under the town&rsquo;s limits on income and assets",
+                    "Set by the town by age group, never less than $5,000 off the assessed "
+                    "value. The income limit is never under $13,400 single or $20,400 married, "
+                    "and the asset limit, not counting your home, never under $35,000."],
+                   ["Exemption for the blind",
+                    "Owners who are legally blind",
+                    "$15,000 off the assessed value of your home, or more if the town votes it"],
+                   ["Exemption for the disabled",
+                    "Owners eligible for Social Security disability benefits (SSDI or SSI), "
+                    "where the town has adopted it",
+                    "Set by the town"],
+                   ["Veterans&rsquo; tax credit",
+                    "A veteran who served at least 90 days in a qualifying war or conflict and "
+                    "was honorably discharged, or the veteran&rsquo;s spouse or surviving spouse",
+                    "$50 off the tax, or the town&rsquo;s optional credit of $51 up to $750 "
+                    "($1,000 from April 1, 2027)"]])
+          + "<p>Other credits exist, among them for a veteran with a total and permanent "
+          "service-connected disability, and for the surviving spouse of a service member who "
+          "died on active duty; the assessing office has the list.</p>"
+          "<p>A <b>tax deferral</b> lets an owner who is 65 or older, or eligible for Social "
+          "Security disability benefits, put off all or part of the tax, with interest at 5 "
+          "percent a year, if paying it would cause undue hardship. You must live in the home "
+          "and have owned it for at least 5 consecutive years if you apply by age, or one year "
+          "if you apply by disability. Apply by March 1 after the final tax bill. A mortgage "
+          "lender must agree. The deferred tax, with its interest, must be paid when the home is "
+          "sold, or within 9 months of the owner&rsquo;s death.</p>",
+          actions=[("Find your town or city clerk", SOS_CLERKS)],
+          law=["RSA 72:33", "RSA 72:27-a", "RSA 72:39-a", "RSA 72:39-b", "RSA 72:37",
+               "RSA 72:37-b", "RSA 72:28", "RSA 72:35", "RSA 72:29-a", "RSA 72:38-a"]),
+     step("If your assessment is wrong, or you cannot pay",
+          "<p>If you think your assessment is higher than your property is worth, or you cannot "
+          "pay because of poverty, ask your town for an <b>abatement</b> by March 1 after the "
+          "final bill: the guide to appealing your assessment has every step and deadline. If "
+          "your household income is low or moderate, the state refunds part of the education "
+          "tax: apply between May 1 and June 30.</p>",
+          actions=[("How to appeal your assessment", "/guides/property-tax-abatement.html"),
+                   ("Property tax relief on a low or moderate income",
+                    "/guides/property-tax-relief.html")],
+          law=["RSA 76:16"])],
+    [("Exemptions and credits, RSA 72", "/laws/72"),
+     ("Inventory and appraisal, RSA 75", "/laws/75"),
+     ("Apportionment, Assessment and Abatement of Taxes, RSA 76", "/laws/76"),
+     ("Department of Revenue Administration, RSA 21-J", "/laws/21-j"),
+     ("Town and city clerks (Secretary of State)", SOS_CLERKS)],
+    ["72", "75", "76"],
+    [claim("Property is appraised at its market value, its full and true value as it would be "
+           "appraised in payment of a just debt due from a solvent debtor.", "RSA 75:1",
+           TAX_BILL_READ),
+     claim("Annually, assessments are adjusted to reflect changes and correct errors so that "
+           "all are reasonably proportional; considered for material physical change, change "
+           "in ownership, zoning changes, subdivision and other changes affecting value.",
+           "RSA 75:8", TAX_BILL_READ),
+     claim("All real estate is reappraised at full and true value at least as often as every "
+           "fifth year.", "RSA 75:8-a", TAX_BILL_READ),
+     claim("The property tax year is April 1 to March 31, assessed on the inventory taken in "
+           "April.", "RSA 76:2", TAX_BILL_READ),
+     claim("The selectmen assess state and county taxes, town taxes, and school and village "
+           "district taxes.", "RSA 76:5", TAX_BILL_READ),
+     claim("The commissioner of revenue administration computes and establishes the tax rate "
+           "of each town, city, or unincorporated place, examining appropriations and revenue "
+           "estimates.", "RSA 21-J:35", TAX_BILL_READ),
+     claim("The commissioner sets the education tax rate each fiscal year to generate a fixed "
+           "revenue statewide.", "RSA 76:3", TAX_BILL_READ),
+     claim("The tax bill shows the rate for municipal, local education, state education, and "
+           "county taxes separately, the assessed valuation of all lands and buildings, and the "
+           "right to apply in writing to the selectmen or assessors for an abatement; it also "
+           "contains the tax relief statement, on the bill or on a separate sheet enclosed.",
+           "RSA 76:11-a", TAX_BILL_READ),
+     claim("Upon written request of a mortgagee, the collector mails a duplicate copy of the "
+           "property tax bill.", "RSA 76:11", TAX_BILL_READ),
+     claim("Interest at 8 percent per annum on taxes not paid on or before December 1, or 30 "
+           "days after the bills are mailed where a bill is sent on or after November 2 and "
+           "before April 1; the collector states on the bill the date from which interest will "
+           "be charged.", "RSA 76:13", TAX_BILL_READ),
+     claim("In a town that adopts semi-annual collection, a partial payment of 1/2 of the "
+           "previous year's rate times the prior year's valuation is due July 1, and the "
+           "remainder December 1.", "RSA 76:15-a", TAX_BILL_READ),
+     claim("Exemptions and credits require a permanent application, filed with the selectmen "
+           "or assessors by April 15, on the commissioner's form.", "RSA 72:33", TAX_BILL_READ),
+     claim("A town or city adopts, modifies or rescinds an exemption or credit by vote of town "
+           "meeting or its legislative body.", "RSA 72:27-a", TAX_BILL_READ),
+     claim("An elderly exemption requires residence in the state for at least 3 consecutive "
+           "years and net income under the town's limits, never less than $13,400 single or "
+           "$20,400 married.", "RSA 72:39-a", TAX_BILL_READ),
+     claim("Elderly exemption amounts set by the town for ages 65 to 75, 75 to 80, and 80 or "
+           "older; net income limits not less than $13,400 or $20,400; net assets not less than "
+           "$35,000 excluding the residence; no exemption less than $5,000.", "RSA 72:39-b",
+           TAX_BILL_READ),
+     claim("A legally blind inhabitant is exempt on residential real estate to the value of "
+           "$15,000, and a town may exempt more.", "RSA 72:37", TAX_BILL_READ),
+     claim("Where adopted, a person eligible under Title II or Title XVI of the Social Security "
+           "Act for benefits to the disabled receives a yearly exemption in an amount chosen by "
+           "the town.", "RSA 72:37-b", TAX_BILL_READ),
+     claim("The standard veterans' tax credit is $50; the optional credit, where adopted, $51 "
+           "up to $750, and $51 up to $1,000 from April 1, 2027 (HB 1494, chapter 96 of the "
+           "Laws of 2026); a veteran with not less than 90 days of active service in a "
+           "qualifying war or armed conflict, honorably discharged, or the spouse or surviving "
+           "spouse.", "RSA 72:28", TAX_BILL_READ),
+     claim("A tax credit for a person discharged with total and permanent service-connected "
+           "disability, or the surviving spouse.", "RSA 72:35", TAX_BILL_READ),
+     claim("A tax credit for the surviving spouse of a person killed or who died while on "
+           "active duty.", "RSA 72:29-a", TAX_BILL_READ),
+     claim("A resident owner at least 65, or eligible for Social Security disability benefits, "
+           "who has owned the homestead 5 consecutive years (elderly) or one year (disabled) and "
+           "lives in it, may be granted a deferral with annual interest at 5 percent, up to 85 "
+           "percent of equity value; apply by March 1 following notice of tax; the mortgage "
+           "holder's approval; payable within 9 months of the owner's death or on sale.",
+           "RSA 72:38-a", TAX_BILL_READ),
+     claim("Abatement on application by March 1 after notice of tax.", "RSA 76:16",
+           TAX_BILL_READ),
+     claim("The town and city clerks lookup lists each town's clerk.", SOS_CLERKS, CHECKED),
+     ours("County Government explains that the county convention of the county's state "
+          "representatives sets its budget.", "/learn/county-government.html", TAX_BILL_READ),
+     ours("How to Appeal Your Property Tax Assessment explains abatement, its deadlines and the "
+          "equalization ratio.", "/guides/property-tax-abatement.html", TAX_BILL_READ),
+     ours("How to Get Property Tax Relief on a Low or Moderate Income explains the state's "
+          "relief and its May 1 to June 30 filing period.", "/guides/property-tax-relief.html",
+          TAX_BILL_READ)],
+    more="<h2>Who Can Help</h2>"
+         "<p>Your town or city&rsquo;s <b>assessing office</b>, or the selectmen&rsquo;s office "
+         "in a small town, answers questions about your assessment and the relief your town "
+         "offers, and has the application forms. The <b>tax collector</b> answers questions "
+         "about a bill, a payment or interest; the town clerk&rsquo;s office can tell you who "
+         "yours is.</p>"
+         f'<p class="g-acts"><a class="g-btn" href="{SOS_CLERKS}" target="_blank" rel="noopener">'
+         "Find your town or city clerk</a></p>",
+    see=[("How to appeal your property tax assessment", "/guides/property-tax-abatement.html"),
+         ("Help paying property tax on a low or moderate income", "/guides/property-tax-relief.html"),
+         ("Town meeting and local government", "/learn/local-government.html")],
+    figures=[fig("8 percent", "RSA 76:13", "Interest at 8 percent per annum"),
+             fig("30 days", "RSA 76:13", "30 days after the bills are mailed"),
+             fig("$5,000", "RSA 72:39-b", "be less than $5,000"),
+             fig("$13,400", "RSA 72:39-b", "not less than $13,400"),
+             fig("$20,400", "RSA 72:39-b", "not less than $20,400"),
+             fig("$35,000", "RSA 72:39-b", "not less than $35,000 excluding the value of the "
+                                          "person's residence"),
+             fig("$15,000", "RSA 72:37", "to the value of $15,000"),
+             fig("90 days", "RSA 72:28", "not less than 90 days on active service"),
+             fig("$50", "RSA 72:28", "credit shall be $50"),
+             fig("$51", "RSA 72:28", "an amount from $51 up to $750"),
+             fig("$750", "RSA 72:28", "an amount from $51 up to $750"),
+             fig("$1,000", "RSA 72:28", "an amount from $51 up to $1,000"),
+             fig("5 percent", "RSA 72:38-a", "annual interest at 5 percent"),
+             fig("9 months", "RSA 72:38-a", "within 9 months of the date of death")])
+
+GUIDES += [TAX_BILL]
+
+
+# ---------------------------------------------------------------------------
 # HELP PAYING FOR CHILD CARE (the person, 24 October 2026, who named the child
 # care scholarship among the guides to add and allowed federal sources that
 # day). From the Department of Health and Human Services' Child Development
@@ -6075,6 +6319,10 @@ TASKS = [
         task("property-tax-relief", "Get property tax relief on a low or moderate income",
              "Who qualifies for the state&rsquo;s relief, and how to apply.",
              head="How to get property tax relief"),
+        task("property-tax-bill", "Understand your property tax bill",
+             "How your property is assessed, how the rate is set, what the bill shows, and the "
+             "relief you can apply for.",
+             head="How to read your property tax bill"),
         task("public-records", "Get a public record",
              "Ask a town, school district, county or state agency for its records."),
         task("vital-records", "Get a birth, death, marriage or divorce certificate",
@@ -6203,6 +6451,8 @@ WORDS = {
                         "vocational rehabilitation", "area agency", "developmental disability"),
     "property-tax-abatement": ("property tax", "abatement", "assessment"),
     "property-tax-relief": ("property tax", "tax relief", "low income"),
+    "property-tax-bill": ("property tax bill", "tax rate", "assessment", "assessed value",
+                          "revaluation", "elderly exemption", "veterans credit", "tax deferral"),
     "public-records": ("right to know", "91-a", "records request", "foia"),
     "vital-records": ("birth certificate", "death certificate", "marriage certificate",
                       "divorce certificate"),

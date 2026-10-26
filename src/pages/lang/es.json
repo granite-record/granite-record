@@ -5676,6 +5676,316 @@
    "es": "Los funcionarios de avalúos de su municipio o ciudad son a quienes debe pedir una reducción. Para preguntas sobre cómo apelar, la Junta de Apelaciones de Impuestos y Terrenos le pide que lea sus preguntas frecuentes o que llame a su oficina al (603) 271-2578.",
    "state": "draft"
   },
+  "guide.property-tax-bill.15-000-off-the-assessed-value": {
+   "en": "$15,000 off the assessed value of your home, or more if the town votes it",
+   "es": "$15,000 menos en el avalúo de su vivienda, o más si el municipio lo vota",
+   "state": "draft"
+  },
+  "guide.property-tax-bill.50-off-the-tax-or-the": {
+   "en": "$50 off the tax, or the town&rsquo;s optional credit of $51 up to $750 ($1,000 from April 1, 2027)",
+   "es": "$50 menos en el impuesto, o el crédito opcional del municipio, de $51 hasta $750 ($1,000 a partir del 1 de abril de 2027)",
+   "state": "draft"
+  },
+  "guide.property-tax-bill.a-statement-on-tax-relief-on": {
+   "en": "<b>A statement on tax relief</b>, on the bill or with it, at least as much as this: &ldquo;If you are elderly, disabled, blind, a veteran, or veteran&rsquo;s spouse, or are unable to pay taxes due to poverty or other good cause, you may be eligible for a tax exemption, credit, abatement, or deferral.&rdquo;",
+   "es": "<b>Un aviso sobre el alivio fiscal</b>, en la factura o junto con ella, que diga por lo menos esto: &ldquo;Si usted es una persona mayor, tiene una discapacidad, es ciego, es veterano o cónyuge de un veterano, o no puede pagar los impuestos debido a la pobreza u otra causa justificada, puede reunir los requisitos para una exención, un crédito, una reducción o un aplazamiento del impuesto.&rdquo;",
+   "state": "draft"
+  },
+  "guide.property-tax-bill.a-tax-deferral-lets-an-owner": {
+   "en": "A <b>tax deferral</b> lets an owner who is 65 or older, or eligible for Social Security disability benefits, put off all or part of the tax, with interest at 5 percent a year, if paying it would cause undue hardship. You must live in the home and have owned it for at least 5 consecutive years if you apply by age, or one year if you apply by disability. Apply by March 1 after the final tax bill. A mortgage lender must agree. The deferred tax, with its interest, must be paid when the home is sold, or within 9 months of the owner&rsquo;s death.",
+   "es": "Un <b>aplazamiento del impuesto</b> permite a un propietario de 65 años o más, o que reúne los requisitos para recibir beneficios por discapacidad del Seguro Social, posponer todo el impuesto o parte de él, con un interés del 5 por ciento al año, si pagarlo le causaría una dificultad excesiva. Tiene que vivir en la vivienda y ser su dueño desde hace al menos 5 años seguidos si lo solicita por su edad, o un año si lo solicita por discapacidad. Solicítelo a más tardar el 1 de marzo siguiente a la factura final. Si la vivienda tiene una hipoteca, el prestamista tiene que estar de acuerdo. El impuesto aplazado, con sus intereses, se tiene que pagar cuando se vende la vivienda, o en un plazo de 9 meses desde la muerte del propietario.",
+   "state": "draft"
+  },
+  "guide.property-tax-bill.a-town-that-has-voted-to": {
+   "en": "A town that has voted to bill twice a year sends a first bill, worked out from last year&rsquo;s assessment and half of last year&rsquo;s rate, due July 1, and a second bill for the rest of the year&rsquo;s tax, once the new rate is set, due December 1. Ask your tax collector which your town does.",
+   "es": "Un municipio que ha votado facturar dos veces al año envía una primera factura, calculada con el avalúo del año anterior y la mitad de la tasa del año anterior, que vence el 1 de julio, y una segunda factura por el resto del impuesto del año, una vez fijada la nueva tasa, que vence el 1 de diciembre. Pregunte al recaudador de impuestos cómo lo hace su municipio.",
+   "state": "draft"
+  },
+  "guide.property-tax-bill.a-veteran-who-served-at-least": {
+   "en": "A veteran who served at least 90 days in a qualifying war or conflict and was honorably discharged, or the veteran&rsquo;s spouse or surviving spouse",
+   "es": "Un veterano que sirvió al menos 90 días en una guerra o conflicto que da derecho al crédito y fue dado de baja con honores, o el cónyuge o cónyuge sobreviviente del veterano",
+   "state": "draft"
+  },
+  "guide.property-tax-bill.apply-for-an-exemption-credit-or": {
+   "en": "Apply for an exemption, credit or deferral by April 15",
+   "es": "Solicite una exención, un crédito o un aplazamiento a más tardar el 15 de abril",
+   "state": "draft"
+  },
+  "guide.property-tax-bill.apply-to-your-town-by-april": {
+   "en": "Apply to your town by April 15 for an exemption, credit or deferral.",
+   "es": "Presente la solicitud a su municipio a más tardar el 15 de abril para una exención, un crédito o un aplazamiento.",
+   "state": "draft"
+  },
+  "guide.property-tax-bill.apportionment-assessment-and-abatement": {
+   "en": "Apportionment, Assessment and Abatement of Taxes, RSA 76",
+   "es": "Prorrateo, avalúo y reducción de impuestos, RSA 76",
+   "state": "draft"
+  },
+  "guide.property-tax-bill.ask-your-town-for-an-abatement": {
+   "en": "Ask your town for an abatement, by March 1 after the final bill.",
+   "es": "Pida a su municipio una reducción, a más tardar el 1 de marzo siguiente a la factura final.",
+   "state": "draft"
+  },
+  "guide.property-tax-bill.department-of-revenue-administration-rsa": {
+   "en": "Department of Revenue Administration, RSA 21-J",
+   "es": "Departamento de Administración de Ingresos, RSA 21-J",
+   "state": "draft"
+  },
+  "guide.property-tax-bill.elderly-exemption": {
+   "en": "Elderly exemption",
+   "es": "Exención para personas mayores",
+   "state": "draft"
+  },
+  "guide.property-tax-bill.exemption-for-the-blind": {
+   "en": "Exemption for the blind",
+   "es": "Exención para personas ciegas",
+   "state": "draft"
+  },
+  "guide.property-tax-bill.exemption-for-the-disabled": {
+   "en": "Exemption for the disabled",
+   "es": "Exención para personas con discapacidad",
+   "state": "draft"
+  },
+  "guide.property-tax-bill.exemptions-and-credits-rsa-72": {
+   "en": "Exemptions and credits, RSA 72",
+   "es": "Exenciones y créditos, RSA 72",
+   "state": "draft"
+  },
+  "guide.property-tax-bill.find-your-town-or-city-clerk": {
+   "en": "Find your town or city clerk",
+   "es": "Busque al secretario de su municipio o ciudad",
+   "state": "draft"
+  },
+  "guide.property-tax-bill.help-paying-property-tax-on-a": {
+   "en": "Help paying property tax on a low or moderate income",
+   "es": "Ayuda para pagar el impuesto a la propiedad con ingresos bajos o moderados",
+   "state": "draft"
+  },
+  "guide.property-tax-bill.how-much": {
+   "en": "How much",
+   "es": "Cuánto",
+   "state": "draft"
+  },
+  "guide.property-tax-bill.how-the-tax-rate-is-set": {
+   "en": "How the tax rate is set",
+   "es": "Cómo se fija la tasa del impuesto",
+   "state": "draft"
+  },
+  "guide.property-tax-bill.how-to-appeal-your-assessment": {
+   "en": "How to appeal your assessment",
+   "es": "Cómo apelar su avalúo",
+   "state": "draft"
+  },
+  "guide.property-tax-bill.how-to-appeal-your-property-tax": {
+   "en": "How to appeal your property tax assessment",
+   "es": "Cómo apelar el avalúo de su impuesto a la propiedad",
+   "state": "draft"
+  },
+  "guide.property-tax-bill.how-your-property-is-assessed": {
+   "en": "How your property is assessed",
+   "es": "Cómo se hace el avalúo de su propiedad",
+   "state": "draft"
+  },
+  "guide.property-tax-bill.if-you-have-a-mortgage-your": {
+   "en": "If you have a mortgage, your lender can ask the town for a copy of your bill.",
+   "es": "Si tiene una hipoteca, su prestamista puede pedir al municipio una copia de su factura.",
+   "state": "draft"
+  },
+  "guide.property-tax-bill.if-you-think-your-assessment-is": {
+   "en": "If you think your assessment is higher than your property is worth, or you cannot pay because of poverty, ask your town for an <b>abatement</b> by March 1 after the final bill: the guide to appealing your assessment has every step and deadline. If your household income is low or moderate, the state refunds part of the education tax: apply between May 1 and June 30.",
+   "es": "Si cree que su avalúo es más alto de lo que vale su propiedad, o no puede pagar debido a la pobreza, pida a su municipio una <b>reducción</b> (abatement) a más tardar el 1 de marzo siguiente a la factura final: la guía para apelar su avalúo tiene cada paso y cada plazo. Si los ingresos de su hogar son bajos o moderados, el estado reembolsa parte del impuesto para la educación: solicítelo entre el 1 de mayo y el 30 de junio.",
+   "state": "draft"
+  },
+  "guide.property-tax-bill.if-your-assessment-is-wrong-or": {
+   "en": "If your assessment is wrong, or you cannot pay",
+   "es": "Si su avalúo está mal, o no puede pagar",
+   "state": "draft"
+  },
+  "guide.property-tax-bill.inventory-and-appraisal-rsa-75": {
+   "en": "Inventory and appraisal, RSA 75",
+   "es": "Inventario y tasación, RSA 75",
+   "state": "draft"
+  },
+  "guide.property-tax-bill.is-something-wrong-or-is-the": {
+   "en": "Is something wrong, or is the tax hard to pay?",
+   "es": "¿Hay algo mal, o le cuesta pagar el impuesto?",
+   "state": "draft"
+  },
+  "guide.property-tax-bill.it-is-hard-to-pay": {
+   "en": "It is hard to pay",
+   "es": "Me cuesta pagarlo",
+   "state": "draft"
+  },
+  "guide.property-tax-bill.lead": {
+   "en": "How your town or city assesses your property, how the tax rate is set, what your property tax bill must show, when it is due, and the exemptions, credits and deferrals you can apply for by April 15.",
+   "es": "Cómo su municipio o ciudad hace el avalúo de su propiedad, cómo se fija la tasa del impuesto, qué tiene que mostrar su factura del impuesto a la propiedad, cuándo vence, y las exenciones, los créditos y los aplazamientos que puede solicitar a más tardar el 15 de abril.",
+   "state": "draft"
+  },
+  "guide.property-tax-bill.new-hampshire-law-lets-each-town": {
+   "en": "New Hampshire law lets each town and city offer relief to some owners, and the town&rsquo;s voters or council decide which it offers and, within the law&rsquo;s limits, how much. Ask your assessing office or the selectmen what yours offers. You apply once, on the state&rsquo;s form, to your selectmen or assessors, <b>by April 15</b>, and the application stands from year to year.",
+   "es": "La ley de New Hampshire permite a cada municipio y ciudad ofrecer un alivio a algunos propietarios, y los votantes o el concejo del municipio deciden cuál ofrece y, dentro de los límites de la ley, de cuánto. Pregunte a la oficina de avalúos o a los concejales (selectmen) qué ofrece el suyo. Usted presenta la solicitud una sola vez, en el formulario del estado, a los concejales o a los tasadores, <b>a más tardar el 15 de abril</b>, y la solicitud sigue vigente año tras año.",
+   "state": "draft"
+  },
+  "guide.property-tax-bill.other-credits-exist-among-them-for": {
+   "en": "Other credits exist, among them for a veteran with a total and permanent service-connected disability, and for the surviving spouse of a service member who died on active duty; the assessing office has the list.",
+   "es": "Hay otros créditos, entre ellos para un veterano con una discapacidad total y permanente relacionada con el servicio, y para el cónyuge sobreviviente de un miembro de las fuerzas armadas que murió en servicio activo; la oficina de avalúos tiene la lista.",
+   "state": "draft"
+  },
+  "guide.property-tax-bill.owners-65-or-older-who-have": {
+   "en": "Owners 65 or older who have lived in New Hampshire for at least 3 consecutive years, under the town&rsquo;s limits on income and assets",
+   "es": "Propietarios de 65 años o más que han vivido en New Hampshire al menos 3 años seguidos, dentro de los límites de ingresos y bienes del municipio",
+   "state": "draft"
+  },
+  "guide.property-tax-bill.owners-eligible-for-social-security": {
+   "en": "Owners eligible for Social Security disability benefits (SSDI or SSI), where the town has adopted it",
+   "es": "Propietarios que reúnen los requisitos para recibir beneficios por discapacidad del Seguro Social (SSDI o SSI), donde el municipio la ha adoptado",
+   "state": "draft"
+  },
+  "guide.property-tax-bill.owners-who-are-legally-blind": {
+   "en": "Owners who are legally blind",
+   "es": "Propietarios legalmente ciegos",
+   "state": "draft"
+  },
+  "guide.property-tax-bill.property-tax-relief-a-town-may": {
+   "en": "Property tax relief a town may offer (RSA 72)",
+   "es": "El alivio del impuesto a la propiedad que un municipio puede ofrecer (RSA 72)",
+   "state": "draft"
+  },
+  "guide.property-tax-bill.property-tax-relief-on-a-low": {
+   "en": "Property tax relief on a low or moderate income",
+   "es": "Alivio del impuesto a la propiedad con ingresos bajos o moderados",
+   "state": "draft"
+  },
+  "guide.property-tax-bill.read-your-bill": {
+   "en": "Read your bill",
+   "es": "Lea su factura",
+   "state": "draft"
+  },
+  "guide.property-tax-bill.relief": {
+   "en": "Relief",
+   "es": "Alivio",
+   "state": "draft"
+  },
+  "guide.property-tax-bill.set-by-the-town": {
+   "en": "Set by the town",
+   "es": "Lo fija el municipio",
+   "state": "draft"
+  },
+  "guide.property-tax-bill.set-by-the-town-by-age": {
+   "en": "Set by the town by age group, never less than $5,000 off the assessed value. The income limit is never under $13,400 single or $20,400 married, and the asset limit, not counting your home, never under $35,000.",
+   "es": "Lo fija el municipio por grupo de edad, nunca menos de $5,000 menos en el avalúo. El límite de ingresos nunca es menor de $13,400 para una persona soltera o $20,400 para un matrimonio, y el límite de bienes, sin contar su vivienda, nunca es menor de $35,000.",
+   "state": "draft"
+  },
+  "guide.property-tax-bill.tax-not-paid-by-its-due": {
+   "en": "Tax not paid by its due date is charged interest at 8 percent a year. Where the bills go out late, interest does not start until 30 days after they were mailed. The bill says the date.",
+   "es": "El impuesto que no se paga a más tardar en su fecha de vencimiento genera un interés del 8 por ciento al año. Cuando las facturas se envían tarde, el interés no empieza hasta 30 días después de enviarlas. La factura indica la fecha.",
+   "state": "draft"
+  },
+  "guide.property-tax-bill.the-assessment-is-too-high": {
+   "en": "The assessment is too high",
+   "es": "El avalúo es demasiado alto",
+   "state": "draft"
+  },
+  "guide.property-tax-bill.the-budgets-are-voted-the-state": {
+   "en": "The budgets are voted; the state sets the rate that raises them.",
+   "es": "Los presupuestos se votan; el estado fija la tasa que los recauda.",
+   "state": "draft"
+  },
+  "guide.property-tax-bill.the-date-interest-starts-which-the": {
+   "en": "<b>The date interest starts</b>, which the tax collector sets by the day the last bill went out.",
+   "es": "<b>La fecha en que empieza el interés</b>, que el recaudador de impuestos fija según el día en que envió la última factura.",
+   "state": "draft"
+  },
+  "guide.property-tax-bill.the-law-says-what-every-property": {
+   "en": "The law says what every property tax bill must show:",
+   "es": "La ley dice lo que tiene que mostrar toda factura del impuesto a la propiedad:",
+   "state": "draft"
+  },
+  "guide.property-tax-bill.the-rates-for-the-municipal-local": {
+   "en": "<b>The rates</b> for the municipal, local education, state education and county taxes, each separately. Your tax is your assessed value multiplied by their total.",
+   "es": "<b>Las tasas</b> de los impuestos municipal, de educación local, estatal para la educación y del condado, cada una por separado. Su impuesto es el valor de su avalúo multiplicado por la suma de las tasas.",
+   "state": "draft"
+  },
+  "guide.property-tax-bill.the-state-education-tax-rate-is": {
+   "en": "The state education tax rate is set by the Department each year to raise a sum the law fixes statewide. So your tax can change even when your assessment does not: when a budget rises or falls, or other revenue changes.",
+   "es": "El Departamento fija cada año la tasa del impuesto estatal para la educación para recaudar una suma que la ley establece para todo el estado. Por eso su impuesto puede cambiar aunque su avalúo no cambie: cuando un presupuesto sube o baja, o cambian otros ingresos.",
+   "state": "draft"
+  },
+  "guide.property-tax-bill.the-tax-year-runs-from-april": {
+   "en": "The tax year runs from April 1 to March 31, and every property is taxed on what it was on April 1. Between revaluations, assessments can drift from what properties sell for, and a town&rsquo;s <em>equalization ratio</em> measures how far; the guide to appealing your assessment explains how to use it.",
+   "es": "El año fiscal va del 1 de abril al 31 de marzo, y cada propiedad paga impuestos según cómo estaba el 1 de abril. Entre una revaluación y otra, los avalúos pueden alejarse de los precios de venta de las propiedades, y el <em>coeficiente de igualación</em> (equalization ratio) del municipio mide cuánto; la guía para apelar su avalúo explica cómo usarlo.",
+   "state": "draft"
+  },
+  "guide.property-tax-bill.title": {
+   "en": "How Your Property Tax Is Figured, and How to Read Your Bill",
+   "es": "Cómo se calcula su impuesto a la propiedad, y cómo leer su factura",
+   "state": "draft"
+  },
+  "guide.property-tax-bill.town-and-city-clerks-secretary-of": {
+   "en": "Town and city clerks (Secretary of State)",
+   "es": "Secretarios de municipios y ciudades (Secretaría de Estado)",
+   "state": "draft"
+  },
+  "guide.property-tax-bill.town-meeting-and-local-government": {
+   "en": "Town meeting and local government",
+   "es": "La asamblea municipal y el gobierno local",
+   "state": "draft"
+  },
+  "guide.property-tax-bill.veterans-tax-credit": {
+   "en": "Veterans&rsquo; tax credit",
+   "es": "Crédito tributario para veteranos",
+   "state": "draft"
+  },
+  "guide.property-tax-bill.when-it-is-due": {
+   "en": "When it is due",
+   "es": "Cuándo vence",
+   "state": "draft"
+  },
+  "guide.property-tax-bill.who-it-is-for": {
+   "en": "Who it is for",
+   "es": "Para quién es",
+   "state": "draft"
+  },
+  "guide.property-tax-bill.your-assessed-valuation-the-value-of": {
+   "en": "<b>Your assessed valuation</b>: the value of the land and buildings you are taxed on.",
+   "es": "<b>El valor de su avalúo</b>: el valor del terreno y de los edificios por los que paga impuestos.",
+   "state": "draft"
+  },
+  "guide.property-tax-bill.your-bill-shows-your-assessment-and": {
+   "en": "Your bill shows your assessment and four rates: town, local school, state education and county.",
+   "es": "Su factura muestra su avalúo y cuatro tasas: la municipal, la de la escuela local, la estatal para la educación y la del condado.",
+   "state": "draft"
+  },
+  "guide.property-tax-bill.your-property-tax-pays-for-four": {
+   "en": "Your property tax pays for four things: your town or city, your local schools, the state&rsquo;s education tax, and your county, and a village district&rsquo;s where there is one. Each is voted by its own body: town meeting or the city council, the school district meeting or board, the <a href=\"/learn/county-government.html\">county convention</a>. The state&rsquo;s Department of Revenue Administration checks each budget and estimate of revenue, then computes and sets the tax rate for each town and city.",
+   "state": "draft",
+   "es": "Su impuesto a la propiedad paga cuatro cosas: su municipio o ciudad, sus escuelas locales, el impuesto estatal para la educación y su condado, y un distrito de aldea donde lo hay. Cada una la vota su propio órgano: la asamblea municipal o el concejo municipal, la asamblea o la junta del distrito escolar, la <a href=\"/learn/county-government.html\">convención del condado</a>. El Departamento de Administración de Ingresos del estado revisa cada presupuesto y cada estimación de ingresos, y luego calcula y fija la tasa del impuesto de cada municipio y ciudad."
+  },
+  "guide.property-tax-bill.your-right-to-ask-for-an": {
+   "en": "<b>Your right to ask for an abatement</b>, in writing, from your selectmen or assessors.",
+   "es": "<b>Su derecho a pedir una reducción</b>, por escrito, a los concejales o a los tasadores.",
+   "state": "draft"
+  },
+  "guide.property-tax-bill.your-town-assesses-your-property-at": {
+   "en": "Your town assesses your property at its market value, as of April 1.",
+   "es": "Su municipio hace el avalúo de su propiedad según su valor de mercado, al 1 de abril.",
+   "state": "draft"
+  },
+  "guide.property-tax-bill.your-town-or-city-assesses-your": {
+   "en": "Your town or city assesses your property at its market value as of April 1, and must revalue every property at least every fifth year. The voters and officials of your town, school district and county set their budgets, and the state works out the rate that raises them. Your bill shows your assessment and four rates: town, local school, state education and county. If the tax is hard to pay, you may qualify for an exemption, credit or deferral: apply to your town by April 15.",
+   "es": "Su municipio o ciudad hace el avalúo de su propiedad según su valor de mercado al 1 de abril, y tiene que revaluar cada propiedad por lo menos cada cinco años. Los votantes y los funcionarios de su municipio, su distrito escolar y su condado fijan sus presupuestos, y el estado calcula la tasa que los recauda. Su factura muestra su avalúo y cuatro tasas: la municipal, la de la escuela local, la estatal para la educación y la del condado. Si le cuesta pagar el impuesto, puede reunir los requisitos para una exención, un crédito o un aplazamiento: presente la solicitud a su municipio a más tardar el 15 de abril.",
+   "state": "draft"
+  },
+  "guide.property-tax-bill.your-town-or-citys-assessing-office": {
+   "en": "Your town or city&rsquo;s <b>assessing office</b>, or the selectmen&rsquo;s office in a small town, answers questions about your assessment and the relief your town offers, and has the application forms. The <b>tax collector</b> answers questions about a bill, a payment or interest; the town clerk&rsquo;s office can tell you who yours is.",
+   "es": "La <b>oficina de avalúos</b> de su municipio o ciudad, o la oficina de los concejales en un municipio pequeño, responde preguntas sobre su avalúo y el alivio que ofrece su municipio, y tiene los formularios de solicitud. El <b>recaudador de impuestos</b> responde preguntas sobre una factura, un pago o los intereses; la oficina del secretario municipal puede decirle quién es el suyo.",
+   "state": "draft"
+  },
+  "guide.property-tax-bill.your-town-or-citys-assessors-or": {
+   "en": "Your town or city&rsquo;s assessors or selectmen appraise your land and buildings at their <b>market value</b>: what the law calls their full and true value. Each year they adjust assessments for changes, such as an addition, a new owner, a subdivision or a change in zoning, and to correct errors, so that every assessment in town stays in proportion. At least every fifth year they reappraise every property in town at full value.",
+   "es": "Los tasadores o los concejales (selectmen) de su municipio o ciudad tasan su terreno y sus edificios según su <b>valor de mercado</b>: lo que la ley llama su valor pleno y verdadero. Cada año ajustan los avalúos por los cambios, como una ampliación, un nuevo dueño, una subdivisión o un cambio de zonificación, y para corregir errores, de modo que todos los avalúos del municipio sigan siendo proporcionales. Por lo menos cada cinco años vuelven a tasar todas las propiedades del municipio a su valor pleno.",
+   "state": "draft"
+  },
   "guide.property-tax-relief.23-100-to-under-27-800": {
    "en": "$23,100 to under $27,800",
    "es": "De $23,100 a menos de $27,800",
@@ -8205,6 +8515,21 @@
   "guide.task.property-tax-abatement.line": {
    "en": "Ask your town for an abatement, and appeal if it says no.",
    "es": "Pida a su municipio una reducción, y apele si se la niega.",
+   "state": "draft"
+  },
+  "guide.task.property-tax-bill.does": {
+   "en": "Understand your property tax bill",
+   "es": "Entender su factura del impuesto a la propiedad",
+   "state": "draft"
+  },
+  "guide.task.property-tax-bill.head": {
+   "en": "How to read your property tax bill",
+   "es": "Cómo leer su factura del impuesto a la propiedad",
+   "state": "draft"
+  },
+  "guide.task.property-tax-bill.line": {
+   "en": "How your property is assessed, how the rate is set, what the bill shows, and the relief you can apply for.",
+   "es": "Cómo se hace el avalúo de su propiedad, cómo se fija la tasa, qué muestra la factura, y el alivio que puede solicitar.",
    "state": "draft"
   },
   "guide.task.property-tax-relief.does": {
