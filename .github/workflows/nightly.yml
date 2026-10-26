@@ -182,6 +182,15 @@ env:
   # and for every New term run, and "production", with no reviewer, for the
   # rest; preflight holds the two together.
   REVIEW_GATE: "on"
+  # THE NIGHT'S DOCUMENTS (the person's design of 26 October 2026; nightly.py's
+  # docstring section of that name). The repository's variable (Settings ->
+  # Secrets and variables -> Actions -> Variables), so the person switches it
+  # without a commit: unset or "off", and the night asks for no calendar or
+  # journal; "shadow", and it says what it would ask and runs the text canary;
+  # a number from 1 to 8, the most it asks for a night once the laptop has
+  # handed the years over (cloud.py hand-over). Anything else reads as off,
+  # here (contains(), below) and in nightly.py (docs_switch).
+  NIGHT_DOCUMENTS: ${{ vars.NIGHT_DOCUMENTS || 'off' }}
 
 defaults:
   run:
@@ -350,6 +359,78 @@ jobs:
           python src/ops/cloud.py kit-down
           exit $LASTEXITCODE
 
+      # THE NIGHT'S DOCUMENTS, FROM THE BUCKET (the person's design of 26
+      # October 2026). Only where the kit brought a handover record: the
+      # bucket's list of the PDFs it keeps of the night's years, and those the
+      # night's texts wait for (cloud.py docs-night). It reads the bucket and
+      # nothing else, and tells the next step whether the years are handed over
+      # (in_force). Its failure is a warning, never a failed night: without the
+      # list the night asks for no document (nightly.WARN_STEPS).
+      - name: The night's calendars and journals, from R2
+        id: docsnight
+        if: steps.kitdown.outcome == 'success' && hashFiles('archive/documents_handover.json') != ''
+        continue-on-error: true
+        timeout-minutes: 10
+        env:
+          R2_ACCOUNT_ID: ${{ secrets.R2_ACCOUNT_ID }}
+          R2_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
+          R2_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
+          R2_BUCKET: ${{ secrets.R2_BUCKET }}
+        run: |
+          python src/ops/cloud.py docs-night
+          exit $LASTEXITCODE
+
+      # A PINNED PDFTOTEXT, FOR THE NIGHT'S DOCUMENTS (the person, 26 October
+      # 2026: "I accept your recommendation on installing a pinned copy of PDF
+      # to text"). The readers of the calendars and journals were written
+      # against the text pdftotext -layout makes on the laptop. The build of
+      # poppler pinned is oschwartz10612/poppler-windows on GitHub, release
+      # 26.09.0-0 (poppler 26.09.0), at the sha256 of its zip as downloaded
+      # when it was pinned (26 October 2026, 43,709,956 bytes), checked before
+      # the zip is unpacked: other bytes, or no download, and the step fails
+      # closed -- nothing installed, the text canary says not proved, and no
+      # document is asked for and no text made (nightly.text_canary and
+      # canary_ok, told how this step ended by the night step's PDFTOTEXT_PIN).
+      # On success it names the binary in GRANITE_PDFTOTEXT, the only one the
+      # night's extractor runs. When the switch is shadow or a number, and on
+      # every night the years are handed over whatever the switch, so what was
+      # fetched still gets its text. Its failure is a warning (WARN_STEPS).
+      - name: A pinned pdftotext, for the night's documents
+        id: pdftotext
+        if: contains(fromJSON('["shadow","1","2","3","4","5","6","7","8"]'), env.NIGHT_DOCUMENTS) || steps.docsnight.outputs.in_force == 'true'
+        continue-on-error: true
+        timeout-minutes: 10
+        env:
+          POPPLER_URL: https://github.com/oschwartz10612/poppler-windows/releases/download/v26.09.0-0/Release-26.09.0-0.zip
+          POPPLER_SHA256: 7a6f256a0ddf7536182246a5733331bf4677cbcc34f4663774947ad34556c8d0
+          POPPLER_BIN: poppler-26.09.0/Library/bin
+        run: |
+          $zip = Join-Path $env:RUNNER_TEMP 'poppler-pinned.zip'
+          curl.exe -fsSL -m 300 --retry 3 -o $zip $env:POPPLER_URL
+          if ($LASTEXITCODE -ne 0) {
+            Write-Output "The pinned poppler did not download, so there is no pdftotext tonight."
+            exit 1
+          }
+          $got = (Get-FileHash -Algorithm SHA256 -Path $zip).Hash.ToLowerInvariant()
+          if ($got -cne $env:POPPLER_SHA256) {
+            Write-Output "The poppler zip's sha256 is $got, not the pinned $env:POPPLER_SHA256. It is not unpacked, and there is no pdftotext tonight."
+            Remove-Item -Force $zip
+            exit 1
+          }
+          $dir = Join-Path $env:RUNNER_TEMP 'poppler-pinned'
+          Expand-Archive -Path $zip -DestinationPath $dir -Force
+          $exe = Join-Path (Join-Path $dir $env:POPPLER_BIN) 'pdftotext.exe'
+          if (-not (Test-Path $exe)) {
+            Write-Output "The pinned zip holds no $env:POPPLER_BIN/pdftotext.exe, so there is no pdftotext tonight."
+            exit 1
+          }
+          # Its version, for the log; pdftotext prints it on stderr.
+          try { & $exe -v 2>&1 | ForEach-Object { "$_" } } catch { Write-Output "pdftotext -v: $_" }
+          # NAMED, NOT PUT ON THE PATH: the night's extractor runs the binary
+          # this names and no other (extract_calendar_text.pdftotext).
+          Add-Content -Path $env:GITHUB_ENV -Value "GRANITE_PDFTOTEXT=$exe"
+          exit 0
+
       # THE CAPTIONS INBOX (17 October 2026). YouTube refuses this machine with
       # its bot check and answers the laptop, so the laptop asks for what the
       # night's state says waits (livestreams.py --to-inbox, from Task
@@ -436,6 +517,10 @@ jobs:
       # under thirty minutes.
       - name: The night
         id: night
+        env:
+          # How the pinned pdftotext's step ended: anything but success, and
+          # the night asks for no document and makes no text (nightly.canary_ok).
+          PDFTOTEXT_PIN: ${{ steps.pdftotext.outcome }}
         run: |
           $flags = @('--runner')
           if ($env:FETCH -ne 'true') { $flags += '--no-fetch' }
@@ -518,6 +603,30 @@ jobs:
           python src/ops/cloud.py kit-up @hold
           exit $LASTEXITCODE
 
+      # THE NIGHT'S DOCUMENTS, KEPT (the person, 26 October 2026: "keeping the
+      # night's PDFs in the bucket"). Each PDF the night fetched tonight, under
+      # .night/docs and never in the folders the build reads, goes to the
+      # bucket's docs/ only where nothing is, read back against its sha256
+      # (cloud.py docs-up), so neither machine asks the General Court for it
+      # again. After kit-up, so the night's record that names them is in the
+      # bucket first; always(), so a refusal night's go up too; never on a dry
+      # run, which asks for no document. Its failure is a warning, never a
+      # failed night: the next night names each PDF the bucket does not hold
+      # (nightly.WARN_STEPS).
+      - name: Keep tonight's calendars and journals in R2
+        id: docsup
+        if: always() && env.DRY_RUN == 'false' && hashFiles('.night/docs/**/*.pdf') != ''
+        continue-on-error: true
+        timeout-minutes: 10
+        env:
+          R2_ACCOUNT_ID: ${{ secrets.R2_ACCOUNT_ID }}
+          R2_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
+          R2_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
+          R2_BUCKET: ${{ secrets.R2_BUCKET }}
+        run: |
+          python src/ops/cloud.py docs-up
+          exit $LASTEXITCODE
+
       - name: The night's verdict
         if: always()
         run: |
@@ -528,7 +637,10 @@ jobs:
             --outcome "night=${{ steps.night.outcome }}" `
             --outcome "preview=${{ steps.preview.outcome }}" `
             --outcome "pack=${{ steps.pack.outcome }}" `
-            --outcome "kit-up=${{ steps.kitup.outcome }}"
+            --outcome "kit-up=${{ steps.kitup.outcome }}" `
+            --outcome "docs-night=${{ steps.docsnight.outcome }}" `
+            --outcome "pdftotext=${{ steps.pdftotext.outcome }}" `
+            --outcome "docs-up=${{ steps.docsup.outcome }}"
           exit $LASTEXITCODE
 
       - name: Send the state files back to R2

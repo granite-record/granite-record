@@ -92263,11 +92263,12 @@ def _kit_per_year_owner(R, CL):
                   "seed-kit never over the night's; pull puts back a missing record only")
 
 
-def _off_night(NI, R, switch):
+def _off_night(NI, R, switch, pin=None):
     """One night on GitHub's machine through nightly.main(), its steps faked as
     _nightly_runner fakes them (the list not taken), then its --close, told
     that the night's documents' three workflow steps were skipped, with
-    NIGHT_DOCUMENTS `switch` (None: unset): (the closed verdict and the run
+    NIGHT_DOCUMENTS `switch` (None: unset) and PDFTOTEXT_PIN `pin` (None:
+    unset, as before nightly.yml passed it): (the closed verdict and the run
     page's summary, every time in them blanked, and the children it started
     with their flags)."""
     import contextlib
@@ -92278,7 +92279,7 @@ def _off_night(NI, R, switch):
     saved = (NI.run, NI.LOG, NI.QUIET, NI.live_fingerprint, NI.tracked_changes,
              NI.captions_compared, NI.time, sys.argv, R.MARK, R.LOCK)
     env_keys = ("GITHUB_RUN_ID", "GITHUB_OUTPUT", "GITHUB_STEP_SUMMARY", "GITHUB_ACTIONS",
-                "GITHUB_SHA", NI.DOCS_SWITCH, R.CLOCK_ENV)
+                "GITHUB_SHA", NI.DOCS_SWITCH, NI.PDFTOTEXT_PIN_ENV, R.CLOCK_ENV)
     saved_env = {k: os.environ.get(k) for k in env_keys}
     calls = []
 
@@ -92310,6 +92311,8 @@ def _off_night(NI, R, switch):
             os.environ.pop(k, None)
         if switch is not None:
             os.environ[NI.DOCS_SWITCH] = switch
+        if pin is not None:
+            os.environ[NI.PDFTOTEXT_PIN_ENV] = pin
         os.environ.update({R.CLOCK_ENV: CHECKS_CLOCK[1], "GITHUB_RUN_ID": "501",
                            "GITHUB_STEP_SUMMARY": str(tmp / "summary.md")})
         R.MARK, R.LOCK = tmp / "archive" / "refused.json", tmp / "archive" / ".lock"
@@ -92361,7 +92364,11 @@ def _documents_off_is_off(R, CA, ECT, FSC, FCR, CL, NI):
         run page's summary are one and the same, times aside, with no key of
         the night's documents, no warning of theirs and no step of theirs, and
         it starts the same children, none of them the canary, the documents'
-        child or the extractor;
+        child or the extractor -- told PDFTOTEXT_PIN=skipped, as nightly.yml
+        tells it now, or nothing, as before;
+      - nightly.yml's three steps of the night's documents are skipped, as
+        GitHub evaluates their conditions with no handover record and no PDF
+        under the night's folder (no child asked for one);
 
       - load_queue lays the laptop's file over every year, and a stood-down
         laptop's save keeps rows of every year;
@@ -92395,9 +92402,19 @@ def _documents_off_is_off(R, CA, ECT, FSC, FCR, CL, NI):
             and not any(c.startswith("extract_calendar_text") or "--night" in c for c in first[2]) \
             and "text canary" not in first[1] and "documents:" not in first[1], \
             f"with no switch and no record the night carries something of the documents: {first}"
-        for switch in ("off", "Off ", "9", "²"):
-            assert _off_night(NI, R, switch) == first, \
+        for switch in (None, "off", "Off ", "9", "²"):
+            assert _off_night(NI, R, switch, "skipped") == first, \
                 f"with the switch {switch!r} and no record the night is not the one it was"
+        steps, ids = _night_job_steps()
+        if steps:
+            line = _wf_value((WORKFLOW_DIR / "nightly.yml").read_text(encoding="utf-8")
+                             .splitlines(), NI.DOCS_SWITCH)
+            for switch in (None, "off", "Off ", "9", "²"):
+                ctx = {"steps.kitdown.outcome": "success", "env.DRY_RUN": "false",
+                       f"env.{NI.DOCS_SWITCH}": _gh_render(line, {"vars.NIGHT_DOCUMENTS": switch})}
+                ran = [name for sid, name in DOCS_STEPS.items()
+                       if _docs_if(_step_if(steps[ids[sid]]), ctx)]
+                assert not ran, f"with the switch {switch!r} and no record nightly.yml runs {ran}"
         for switch in (None, "off", "Off ", "9", "²"):
             with _HandoverFolder(R, CA) as f:
                 if switch is not None:
@@ -94984,6 +95001,157 @@ def _workflows_captions_inbox(CL):
     return "ok", (f"inbox-down before the livestream step, --inbox {CL.INBOX_LOCAL}, inbox-clear "
                   "after the last state-up, only when DRY_RUN is false and inbox-down and kit-up "
                   "succeeded; both carry on past a failure inside their own limits; nowhere else")
+
+
+def _night_job_steps():
+    """nightly.yml's night job's steps, each as its code (comments out), in
+    order, and {id: index} for those with one; ([], {}) with no nightly.yml."""
+    wf = WORKFLOW_DIR / "nightly.yml"
+    if not wf.exists():
+        return [], {}
+    jl = _wf_jobs(wf.read_text(encoding="utf-8")).get("night") or []
+    steps = ["\n".join(s) for s in _wf_steps(_wf_code(jl))]
+    ids = {m.group(1): k for k, s in enumerate(steps)
+           for m in [re.search(r"^        id:\s*(\S+)\s*$", s, re.M)] if m}
+    return steps, ids
+
+
+def _step_if(step):
+    m = re.search(r"^        if:\s*(.+?)\s*$", step, re.M)
+    return _gh_unwrap(m.group(1)) if m else ""
+
+
+def _docs_if(cond, ctx, files=()):
+    """A step's if as GitHub evaluates it, with what _gh_eval does not read
+    worked out first: hashFiles('p') is '' unless `files` holds p, and
+    contains(fromJSON('[...]'), x) compares x with the list's items as GitHub
+    does, without case."""
+    def contains(m):
+        said = str(ctx.get(m.group(2)) or "").lower()
+        return "true" if said in [str(x).lower() for x in json.loads(m.group(1))] else "false"
+    cond = re.sub(r"contains\(fromJSON\('(\[[^']*\])'\),\s*([\w.]+)\)", contains, cond)
+    cond = re.sub(r"hashFiles\('([^']*)'\)", lambda m: "'h'" if m.group(1) in files else "''", cond)
+    return _gh_eval(cond, ctx)
+
+
+# The night's documents' three workflow steps, by the id each carries in
+# nightly.yml, and the name each is told to --close by (nightly.WARN_STEPS).
+DOCS_STEPS = {"docsnight": "docs-night", "pdftotext": "pdftotext", "docsup": "docs-up"}
+
+
+@check("workflows", "nightly.yml's steps of the night's documents: the switch from the "
+       "repository's variable, the bucket's PDFs after kit-down where a handover record came "
+       "down, the pinned pdftotext after them, tonight's PDFs kept after kit-up, and each step's "
+       "ending told to the verdict",
+       needs=("refusal", "fetch_calendar_archive", "extract_calendar_text", "nightly"))
+def _workflow_documents(R, CA, ECT, NI):
+    """THE NIGHT'S DOCUMENTS IN THE WORKFLOW (the person's design of 26
+    October 2026, D19), in the night job, in order:
+
+      - NIGHT_DOCUMENTS is the repository's variable, "off" where unset;
+      - after kit-down, docs-night, only when kit-down succeeded and a
+        handover record came down with it;
+      - then the pinned pdftotext: its zip's sha256 pinned and compared
+        before it is unpacked, the binary named in GRANITE_PDFTOTEXT, and run
+        only when the switch is shadow or 1 to 8 -- read as nightly.docs_switch
+        reads it -- or docs-night said the years are handed over;
+      - the night step told how that step ended (PDFTOTEXT_PIN);
+      - after kit-up, docs-up, always() but never on a dry run, and only when
+        tonight left a PDF under the night's folder;
+      - each of the three carries on past a failure inside its own ten
+        minutes, and is told to --close by its WARN_STEPS name, which drops
+        one skipped."""
+    steps, ids = _night_job_steps()
+    if not steps:
+        return "skip", "no .github/workflows/nightly.yml here"
+    text = (WORKFLOW_DIR / "nightly.yml").read_text(encoding="utf-8")
+    assert _wf_value(text.splitlines(), NI.DOCS_SWITCH) == \
+        "${{ vars.NIGHT_DOCUMENTS || 'off' }}", "nightly.yml does not read NIGHT_DOCUMENTS as designed"
+    missing = [s for s in ("kitdown", "night", "kitup", *DOCS_STEPS) if s not in ids]
+    assert not missing, f"nightly.yml's night job has no step with the id {missing}"
+    close = [k for k, s in enumerate(steps) if "python nightly.py --runner --close" in s]
+    order = [ids[s] for s in ("kitdown", "docsnight", "pdftotext", "night", "kitup", "docsup")]
+    assert order == sorted(order) and len(close) == 1 and ids["docsup"] < close[0], (
+        "nightly.yml's night does not run kit-down, docs-night, the pinned pdftotext, the night, "
+        f"kit-up, docs-up and the verdict in that order: {order}, the verdict at {close}")
+    switch = json.dumps(["shadow"] + [str(n) for n in range(1, CA.NIGHT_MOST + 1)],
+                        separators=(",", ":"))
+    want = {"docsnight": "steps.kitdown.outcome == 'success' && hashFiles('"
+                         f"{R.HANDOVER.as_posix()}') != ''",
+            "pdftotext": f"contains(fromJSON('{switch}'), env.{NI.DOCS_SWITCH}) || "
+                         "steps.docsnight.outputs.in_force == 'true'",
+            "docsup": "always() && env.DRY_RUN == 'false' && "
+                      f"hashFiles('{NI.NIGHT_DOCS.as_posix()}/**/*.pdf') != ''"}
+    for sid, name in DOCS_STEPS.items():
+        s = steps[ids[sid]]
+        assert _step_if(s) == want[sid], f"nightly.yml's {name} step runs on {_step_if(s)!r}"
+        lim = re.search(r"^        timeout-minutes:\s*(\d+)\s*$", s, re.M)
+        assert re.search(r"^        continue-on-error: true\s*$", s, re.M) and lim and \
+            int(lim.group(1)) <= 10, \
+            f"nightly.yml's {name} step can fail the night, or has no ten minutes of its own"
+        assert f'--outcome "{name}=${{{{ steps.{sid}.outcome }}}}"' in steps[close[0]], \
+            f"nightly.yml's verdict is not told how the {name} step ended"
+        if sid != "pdftotext":
+            assert re.search(rf"^          python src/ops/cloud\.py {name}\s*$", s, re.M), \
+                f"nightly.yml's {name} step does not run cloud.py {name}"
+    assert set(NI.WARN_STEPS) == set(DOCS_STEPS.values()), \
+        f"nightly.WARN_STEPS is {sorted(NI.WARN_STEPS)}, not the three steps nightly.yml tells it of"
+    pin = steps[ids["pdftotext"]]
+    sha = re.search(r"^          POPPLER_SHA256:\s*([0-9a-f]{64})\s*$", pin, re.M)
+    check_at = pin.find("$got -cne $env:POPPLER_SHA256")
+    assert sha and 0 < check_at < pin.find("Expand-Archive") and \
+        f'GITHUB_ENV -Value "{ECT.PDFTOTEXT_ENV}=$exe"' in pin, \
+        "the pinned pdftotext's zip is not checked against its sha256 before it is unpacked, or " \
+        f"the binary is not named in {ECT.PDFTOTEXT_ENV}"
+    assert re.search(rf"^          {NI.PDFTOTEXT_PIN_ENV}: \$\{{\{{ steps\.pdftotext\.outcome \}}\}}\s*$",
+                     steps[ids["night"]], re.M), \
+        f"the night step is not told how the pinned pdftotext's step ended ({NI.PDFTOTEXT_PIN_ENV})"
+    # What each condition does, as GitHub evaluates it.
+    base = {"steps.kitdown.outcome": "success", "env.DRY_RUN": "false"}
+    hand, pdfs = R.HANDOVER.as_posix(), f"{NI.NIGHT_DOCS.as_posix()}/**/*.pdf"
+    for ctx, files, sid, runs in (
+            ({}, {hand}, "docsnight", True), ({}, (), "docsnight", False),
+            ({"steps.kitdown.outcome": "failure"}, {hand}, "docsnight", False),
+            ({"env.NIGHT_DOCUMENTS": "SHADOW"}, (), "pdftotext", True),
+            ({"env.NIGHT_DOCUMENTS": "8"}, (), "pdftotext", True),
+            ({"env.NIGHT_DOCUMENTS": "01"}, (), "pdftotext", False),
+            ({"env.NIGHT_DOCUMENTS": "off", "steps.docsnight.outputs.in_force": "true"}, (),
+             "pdftotext", True),
+            ({"env.NIGHT_DOCUMENTS": "off", "steps.docsnight.outputs.in_force": "false"}, (),
+             "pdftotext", False),
+            ({}, {pdfs}, "docsup", True), ({"env.DRY_RUN": "true"}, {pdfs}, "docsup", False),
+            ({}, (), "docsup", False)):
+        got = bool(_docs_if(_step_if(steps[ids[sid]]), dict(base, **ctx), files))
+        assert got == runs, f"nightly.yml's {DOCS_STEPS[sid]} step {'runs' if got else 'does not run'} " \
+                            f"with {ctx or 'kit-down done'} and {sorted(files) or 'no files'}"
+    return "ok", ("NIGHT_DOCUMENTS from the variable; docs-night after kit-down on a handover "
+                  "record; the pin after it, sha-checked, on the switch or in_force; docs-up after "
+                  "kit-up, never dry; each told to the verdict and never failing the night")
+
+
+@check("build", "the night's documents keep to the clock: the documents' step's minutes hold its "
+       "requests' own limits, and the asking, the texts and an hour's build end inside the "
+       "night's window", needs=("refusal", "fetch_calendar_archive", "nightly"))
+def _documents_time_sums(R, CA, NI):
+    """THE SUMS (the person's design of 26 October 2026, D20). The documents'
+    child is killed at DOCS_FILES_MINUTES; it starts no request after
+    NIGHT_SECONDS, and the last may take NIGHT_DEADLINE and the longest pause
+    before it, so those must fit inside it. And asking ends by ASK_UNTIL, the
+    texts take TEXTS_MINUTES after it and the build about an hour: all of it
+    inside the night's window, which closes at 13:30 UTC (refusal.NIGHT_WINDOWS),
+    after which the laptop may ask again."""
+    (eh, em), = [e for wd, _s, e, _w in R.NIGHT_WINDOWS if wd is None]
+    ask = NI.ASK_UNTIL[0] * 60 + NI.ASK_UNTIL[1]
+    assert ask + NI.TEXTS_MINUTES + 60 <= eh * 60 + em, (
+        f"asking until {NI.ASK_UNTIL}, {NI.TEXTS_MINUTES} minutes of texts and an hour's build "
+        f"end after the night's window closes at {eh:02d}:{em:02d} UTC")
+    need = CA.NIGHT_SECONDS + CA.NIGHT_DEADLINE + CA.NIGHT_PAUSE * 1.25
+    assert NI.DOCS_FILES_MINUTES * 60 >= need, (
+        f"the documents' step is killed at {NI.DOCS_FILES_MINUTES} minutes, before its last "
+        f"request can end ({need:.0f} seconds)")
+    return "ok", (f"{NI.DOCS_FILES_MINUTES * 60} s hold {need:.0f}; asking to "
+                  f"{NI.ASK_UNTIL[0]:02d}:{NI.ASK_UNTIL[1]:02d}, texts and an hour's build end "
+                  f"by {eh:02d}:{em:02d} UTC")
 
 
 @check("workflows", "the built site reaches the publish job through the private bucket, never as "
