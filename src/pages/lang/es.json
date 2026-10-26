@@ -12152,6 +12152,21 @@
    "es": "Qué contiene cada pestaña, cómo seguir un proyecto de ley y cómo avisarnos cuando algo está mal.",
    "state": "draft"
   },
+  "guide.task.vanity-and-special-plates.does": {
+   "en": "Get a vanity or special plate",
+   "es": "Obtener una placa personalizada o especial",
+   "state": "draft"
+  },
+  "guide.task.vanity-and-special-plates.head": {
+   "en": "How to get a vanity or special plate",
+   "es": "Cómo obtener una placa personalizada o especial",
+   "state": "draft"
+  },
+  "guide.task.vanity-and-special-plates.line": {
+   "en": "Letters you choose, or a veteran, Gold Star, National Guard or conservation plate: who qualifies and what each costs.",
+   "es": "Letras que usted elige, o una placa de veterano, Gold Star, de la Guardia Nacional o de conservación: quién reúne los requisitos y cuánto cuesta cada una.",
+   "state": "draft"
+  },
   "guide.task.vital-records.does": {
    "en": "Get a birth, death, marriage or divorce certificate",
    "es": "Obtener un acta de nacimiento, defunción, matrimonio o divorcio",
@@ -13833,6 +13848,346 @@
   "guide.using-this-site.why-do-some-votes-show-no": {
    "en": "Why do some votes show no names?",
    "es": "¿Por qué algunas votaciones no muestran nombres?",
+   "state": "draft"
+  },
+  "guide.vanity-and-special-plates.30-and-30-a-year-when": {
+   "en": "$30, and $30 a year when you renew",
+   "es": "$30, y $30 al año cuando renueva",
+   "state": "draft"
+  },
+  "guide.vanity-and-special-plates.60-then-30-a-year-when": {
+   "en": "$60, then $30 a year when you renew",
+   "es": "$60, y luego $30 al año cuando renueva",
+   "state": "draft"
+  },
+  "guide.vanity-and-special-plates.85-at-registration-and-at-each": {
+   "en": "$85, at registration and at each yearly renewal",
+   "es": "$85, al registrar y en cada renovación anual",
+   "state": "draft"
+  },
+  "guide.vanity-and-special-plates.a-conservation-moose-plate-a-first": {
+   "en": "A conservation (moose) plate, a First for Veterans plate, or the state park symbol.",
+   "es": "Una placa de conservación (alce), una placa First for Veterans o el símbolo de los parques estatales.",
+   "state": "draft"
+  },
+  "guide.vanity-and-special-plates.a-member-or-retired-member-of": {
+   "en": "A member or retired member of the National Guard of any state, or an active-duty member of the armed forces",
+   "es": "Un miembro o miembro retirado de la Guardia Nacional de cualquier estado, o un miembro en servicio activo de las fuerzas armadas",
+   "state": "draft"
+  },
+  "guide.vanity-and-special-plates.a-plate-for-a-group-you": {
+   "en": "A plate for a group you belong to",
+   "es": "Una placa de un grupo al que usted pertenece",
+   "state": "draft"
+  },
+  "guide.vanity-and-special-plates.a-plate-that-supports-a-cause": {
+   "en": "A plate that supports a cause",
+   "es": "Una placa que apoya una causa",
+   "state": "draft"
+  },
+  "guide.vanity-and-special-plates.a-special-plate-show-that-you": {
+   "en": "A special plate: show that you qualify",
+   "es": "Una placa especial: demuestre que reúne los requisitos",
+   "state": "draft"
+  },
+  "guide.vanity-and-special-plates.a-vanity-plate-carries-letters-and": {
+   "en": "A <b>vanity plate</b> carries letters and numbers you choose, approved by the Division of Motor Vehicles. A <b>special plate</b> shows that you belong to a group the law names, such as veterans, Gold Star families or the National Guard, or supports a cause, such as conservation or the state parks. Each plate is set by its own section of RSA 261, which says who qualifies and what it costs on top of your regular registration.",
+   "es": "Una <b>placa personalizada</b> (vanity plate) lleva las letras y los números que usted elige, con la aprobación de la División de Vehículos Motorizados. Una <b>placa especial</b> muestra que usted pertenece a un grupo que la ley nombra, como los veteranos, las familias Gold Star o la Guardia Nacional, o apoya una causa, como la conservación o los parques estatales. Cada placa la establece su propia sección de la RSA 261, que dice quién reúne los requisitos y cuánto cuesta además de su registro habitual.",
+   "state": "draft"
+  },
+  "guide.vanity-and-special-plates.a-vanity-plate-carries-the-letters": {
+   "en": "A vanity plate carries the letters, or letters and numbers, that the DMV&rsquo;s rules allow, and no two plates may be the same. The DMV&rsquo;s Vanity Plates page, linked from its Vehicle Registrations page, gives those rules and its Vanity Plate Search.",
+   "es": "Una placa personalizada lleva las letras, o letras y números, que permiten las reglas del DMV, y no puede haber dos placas iguales. La página de placas personalizadas del DMV (Vanity Plates), enlazada desde su página de registro de vehículos, da esas reglas y su búsqueda de placas (Vanity Plate Search).",
+   "state": "draft"
+  },
+  "guide.vanity-and-special-plates.a-vanity-plate-costs-a-special": {
+   "en": "A vanity plate costs a special vanity plate service fee of $60, on top of your regular registration fee and the number plate fee of $4 a plate, and $60 a year for each set when you renew.",
+   "es": "Una placa personalizada cuesta una cuota especial de servicio de $60, además de su cuota de registro habitual y la cuota de placa de $4 por placa, y $60 al año por cada juego cuando renueva.",
+   "state": "draft"
+  },
+  "guide.vanity-and-special-plates.a-vanity-plate-is-issued-only": {
+   "en": "A vanity plate is issued only on application. You can change your plate type at any point during the year: the DMV asks for a completed Application for Replacement Plates and Decals, the plate fees, a new registration fee, and any other fees for the plate you want.",
+   "es": "Una placa personalizada se emite solo a solicitud. Puede cambiar el tipo de su placa en cualquier momento del año: el DMV pide una solicitud completa de placas y calcomanías de reemplazo (Application for Replacement Plates and Decals), las cuotas de placa, una nueva cuota de registro y cualquier otra cuota de la placa que quiere.",
+   "state": "draft"
+  },
+  "guide.vanity-and-special-plates.a-vanity-plate-with-letters-and": {
+   "en": "A vanity plate, with letters and numbers the DMV approves.",
+   "es": "Una placa personalizada, con letras y números que el DMV aprueba.",
+   "state": "draft"
+  },
+  "guide.vanity-and-special-plates.a-veteran-gold-star-or-national": {
+   "en": "A veteran, Gold Star or National Guard plate, with proof that you qualify.",
+   "es": "Una placa de veterano, Gold Star o de la Guardia Nacional, con prueba de que reúne los requisitos.",
+   "state": "draft"
+  },
+  "guide.vanity-and-special-plates.a-veteran-of-the-u-s": {
+   "en": "A veteran of the U.S. armed forces, or one discharged with a general discharge under honorable conditions, with proof of veteran status",
+   "es": "Un veterano de las fuerzas armadas de EE. UU., o uno dado de baja con una baja general en condiciones honorables, con prueba de su condición de veterano",
+   "state": "draft"
+  },
+  "guide.vanity-and-special-plates.a-veteran-the-u-s-department": {
+   "en": "A veteran the U.S. Department of Veterans Affairs rates permanently and totally disabled from a service-connected disability, or who received a vehicle from the U.S. government as an amputee or paraplegic; a veteran totally blind from a service-connected disability; a former prisoner of war; a Purple Heart recipient; a Pearl Harbor survivor, with proof",
+   "es": "Un veterano a quien el Departamento de Asuntos de Veteranos de EE. UU. califica con una discapacidad total y permanente relacionada con el servicio, o que recibió un vehículo del gobierno de EE. UU. por ser amputado o parapléjico; un veterano con ceguera total por una discapacidad relacionada con el servicio; un ex prisionero de guerra; quien recibió el Corazón Púrpura (Purple Heart); un sobreviviente de Pearl Harbor, con prueba",
+   "state": "draft"
+  },
+  "guide.vanity-and-special-plates.anyone-who-applies": {
+   "en": "Anyone who applies",
+   "es": "Cualquier persona que lo solicite",
+   "state": "draft"
+  },
+  "guide.vanity-and-special-plates.apply-when-you-register-or-change": {
+   "en": "Apply when you register, or change your plate during the year",
+   "es": "Haga la solicitud al registrar, o cambie su placa durante el año",
+   "state": "draft"
+  },
+  "guide.vanity-and-special-plates.apply-when-you-register-or-renew": {
+   "en": "Apply when you register or renew, or change your plate type during the year.",
+   "es": "Haga la solicitud cuando registre o renueve, o cambie el tipo de su placa durante el año.",
+   "state": "draft"
+  },
+  "guide.vanity-and-special-plates.can-a-vanity-plate-be-taken": {
+   "en": "Can a vanity plate be taken back after it is issued?",
+   "es": "¿Pueden retirarle una placa personalizada después de emitida?",
+   "state": "draft"
+  },
+  "guide.vanity-and-special-plates.can-i-choose-the-letters-on": {
+   "en": "Can I choose the letters on a special plate?",
+   "es": "¿Puedo elegir las letras de una placa especial?",
+   "state": "draft"
+  },
+  "guide.vanity-and-special-plates.can-my-spouse-keep-my-plate": {
+   "en": "Can my spouse keep my plate?",
+   "es": "¿Puede mi cónyuge quedarse con mi placa?",
+   "state": "draft"
+  },
+  "guide.vanity-and-special-plates.certificates-of-title-and-registration": {
+   "en": "Certificates of Title and Registration of Vehicles, RSA 261",
+   "es": "Certificados de título y registro de vehículos, RSA 261",
+   "state": "draft"
+  },
+  "guide.vanity-and-special-plates.choose-your-plate": {
+   "en": "Choose your plate",
+   "es": "Elija su placa",
+   "state": "draft"
+  },
+  "guide.vanity-and-special-plates.common-questions": {
+   "en": "Common Questions",
+   "es": "Preguntas frecuentes",
+   "state": "draft"
+  },
+  "guide.vanity-and-special-plates.conservation-moose": {
+   "en": "Conservation (moose)",
+   "es": "Conservación (alce)",
+   "state": "draft"
+  },
+  "guide.vanity-and-special-plates.disabled-veteran-purple-heart-former": {
+   "en": "Disabled Veteran, Purple Heart, former prisoner of war, Pearl Harbor survivor",
+   "es": "Veterano discapacitado, Corazón Púrpura (Purple Heart), ex prisionero de guerra, sobreviviente de Pearl Harbor",
+   "state": "draft"
+  },
+  "guide.vanity-and-special-plates.each-special-plate-is-issued-on": {
+   "en": "Each special plate is issued on application, and the plates for a group need proof that you belong to it. For a Gold Star plate, that is a report of casualty (DD Form 1300) or an official casualty notice; proof of your relationship, such as a birth certificate; or a marriage certificate or a letter from the U.S. Department of Veterans Affairs.",
+   "es": "Cada placa especial se emite a solicitud, y las placas de un grupo exigen prueba de que usted pertenece a él. Para una placa Gold Star, esa prueba es un informe de baja (formulario DD 1300) o un aviso oficial de baja; una prueba de su parentesco, como un acta de nacimiento; o un acta de matrimonio o una carta del Departamento de Asuntos de Veteranos de EE. UU.",
+   "state": "draft"
+  },
+  "guide.vanity-and-special-plates.for-a-special-plate-find-yours": {
+   "en": "For a special plate, find yours in the table in step 4: who may have it and what it costs.",
+   "es": "Para una placa especial, búsquela en la tabla del paso 4: quién puede tenerla y cuánto cuesta.",
+   "state": "draft"
+  },
+  "guide.vanity-and-special-plates.for-some-plates-yes-until-he": {
+   "en": "For some plates, yes, until he or she remarries: a Veteran plate, a National Guard plate of a retired member, and a former prisoner of war, Purple Heart or Pearl Harbor survivor plate.",
+   "es": "Con algunas placas, sí, hasta que vuelva a casarse: una placa de veterano, la placa de la Guardia Nacional de un miembro retirado, y la placa de ex prisionero de guerra, de Corazón Púrpura o de sobreviviente de Pearl Harbor.",
+   "state": "draft"
+  },
+  "guide.vanity-and-special-plates.gold-star-mother-father-or-family": {
+   "en": "Gold Star Mother, Father or Family",
+   "es": "Gold Star Mother, Father o Family (madre, padre o familia)",
+   "state": "draft"
+  },
+  "guide.vanity-and-special-plates.how-to-get-a-motorcycle-license": {
+   "en": "How to get a motorcycle license or ride a moped",
+   "es": "Cómo obtener una licencia de motocicleta o conducir un ciclomotor",
+   "state": "draft"
+  },
+  "guide.vanity-and-special-plates.how-to-register-a-car": {
+   "en": "How to register a car",
+   "es": "Cómo registrar un vehículo",
+   "state": "draft"
+  },
+  "guide.vanity-and-special-plates.if-the-dmv-turns-down-a": {
+   "en": "If the DMV turns down a vanity plate, it refunds or credits the vanity fee.",
+   "es": "Si el DMV rechaza una placa personalizada, reembolsa o acredita la cuota de la placa personalizada.",
+   "state": "draft"
+  },
+  "guide.vanity-and-special-plates.if-the-dmv-turns-your-choice": {
+   "en": "If the DMV turns your choice down, the law has it refund or credit the vanity fee, and you get a plate of the same kind.",
+   "es": "Si el DMV rechaza su elección, la ley le pide que reembolse o acredite la cuota de la placa personalizada, y usted recibe una placa del mismo tipo.",
+   "state": "draft"
+  },
+  "guide.vanity-and-special-plates.lead": {
+   "en": "Getting a vanity plate with letters you choose, or a special plate such as a veteran, Gold Star, National Guard or conservation plate, in New Hampshire: who qualifies, how to apply, and what each costs.",
+   "es": "Cómo obtener en New Hampshire una placa personalizada con las letras que usted elige, o una placa especial como la de veterano, Gold Star, de la Guardia Nacional o de conservación: quién reúne los requisitos, cómo solicitarla y cuánto cuesta cada una.",
+   "state": "draft"
+  },
+  "guide.vanity-and-special-plates.letters-you-choose": {
+   "en": "Letters you choose",
+   "es": "Letras que usted elige",
+   "state": "draft"
+  },
+  "guide.vanity-and-special-plates.national-guard-and-active-duty": {
+   "en": "National Guard and active duty",
+   "es": "Guardia Nacional y servicio activo",
+   "state": "draft"
+  },
+  "guide.vanity-and-special-plates.new-hampshire-first-for-veterans": {
+   "en": "New Hampshire First for Veterans",
+   "es": "New Hampshire First for Veterans",
+   "state": "draft"
+  },
+  "guide.vanity-and-special-plates.on-some-a-gold-star-plate": {
+   "en": "On some. A Gold Star plate can carry a combination you ask for, if it meets the rules for any plate and is not already in use. A conservation or First for Veterans plate can be a vanity plate if you pay the vanity fee as well.",
+   "es": "En algunas. Una placa Gold Star puede llevar una combinación que usted pida, si cumple las reglas de cualquier placa y no está ya en uso. Una placa de conservación o First for Veterans puede ser personalizada si además paga la cuota de placa personalizada.",
+   "state": "draft"
+  },
+  "guide.vanity-and-special-plates.pay-the-fees": {
+   "en": "Pay the fees",
+   "es": "Pague las cuotas",
+   "state": "draft"
+  },
+  "guide.vanity-and-special-plates.plate": {
+   "en": "Plate",
+   "es": "Placa",
+   "state": "draft"
+  },
+  "guide.vanity-and-special-plates.rsa-261-75-c": {
+   "en": "RSA 261:75-c",
+   "es": "RSA 261:75-c",
+   "state": "draft"
+  },
+  "guide.vanity-and-special-plates.rsa-261-86": {
+   "en": "RSA 261:86",
+   "es": "RSA 261:86",
+   "state": "draft"
+  },
+  "guide.vanity-and-special-plates.rsa-261-87-b": {
+   "en": "RSA 261:87-b",
+   "es": "RSA 261:87-b",
+   "state": "draft"
+  },
+  "guide.vanity-and-special-plates.rsa-261-87-c": {
+   "en": "RSA 261:87-c",
+   "es": "RSA 261:87-c",
+   "state": "draft"
+  },
+  "guide.vanity-and-special-plates.rsa-261-91": {
+   "en": "RSA 261:91",
+   "es": "RSA 261:91",
+   "state": "draft"
+  },
+  "guide.vanity-and-special-plates.rsa-261-97-a": {
+   "en": "RSA 261:97-a",
+   "es": "RSA 261:97-a",
+   "state": "draft"
+  },
+  "guide.vanity-and-special-plates.rsa-261-97-g": {
+   "en": "RSA 261:97-g",
+   "es": "RSA 261:97-g",
+   "state": "draft"
+  },
+  "guide.vanity-and-special-plates.some-special-plates-can-carry-letters": {
+   "en": "Some special plates can carry letters you choose too: a Gold Star plate, and a conservation or First for Veterans plate, for which you pay the vanity fee as well. The state park symbol can go on a vanity plate.",
+   "es": "Algunas placas especiales también pueden llevar letras que usted elige: una placa Gold Star, y una placa de conservación o First for Veterans, por la que además paga la cuota de placa personalizada. El símbolo de los parques estatales puede ir en una placa personalizada.",
+   "state": "draft"
+  },
+  "guide.vanity-and-special-plates.special-plates-and-who-may-have": {
+   "en": "Special plates and who may have them (RSA 261)",
+   "es": "Las placas especiales y quién puede tenerlas (RSA 261)",
+   "state": "draft"
+  },
+  "guide.vanity-and-special-plates.state-park-symbol-on-any-plate": {
+   "en": "State park symbol, on any plate",
+   "es": "Símbolo de los parques estatales, en cualquier placa",
+   "state": "draft"
+  },
+  "guide.vanity-and-special-plates.the-first-set-is-free": {
+   "en": "The first set is free",
+   "es": "El primer juego es gratis",
+   "state": "draft"
+  },
+  "guide.vanity-and-special-plates.the-law": {
+   "en": "The law",
+   "es": "La ley",
+   "state": "draft"
+  },
+  "guide.vanity-and-special-plates.the-law-has-the-dmv-refund": {
+   "en": "The law has the DMV refund or credit the vanity fee you paid, and issue you a plate of the same kind as the one you asked for.",
+   "es": "La ley pide al DMV que reembolse o acredite la cuota de placa personalizada que pagó, y que le emita una placa del mismo tipo que la que pidió.",
+   "state": "draft"
+  },
+  "guide.vanity-and-special-plates.the-mother-or-stepmother-the-father": {
+   "en": "The mother or stepmother, the father or stepfather, or an immediate family member of a person killed while on duty in the U.S. armed forces",
+   "es": "La madre o madrastra, el padre o padrastro, o un familiar directo de una persona que murió en servicio en las fuerzas armadas de EE. UU.",
+   "state": "draft"
+  },
+  "guide.vanity-and-special-plates.the-registration-fee": {
+   "en": "The registration fee",
+   "es": "La cuota de registro",
+   "state": "draft"
+  },
+  "guide.vanity-and-special-plates.the-regular-registration-fee-and-the": {
+   "en": "The regular registration fee and the $4 a plate fee",
+   "es": "La cuota de registro habitual y la cuota de $4 por placa",
+   "state": "draft"
+  },
+  "guide.vanity-and-special-plates.the-regular-registration-fees-and-no": {
+   "en": "The regular registration fees, and no plate fee",
+   "es": "Las cuotas de registro habituales, y ninguna cuota de placa",
+   "state": "draft"
+  },
+  "guide.vanity-and-special-plates.title": {
+   "en": "How to Get a Vanity or Special Plate",
+   "es": "Cómo obtener una placa personalizada o especial",
+   "state": "draft"
+  },
+  "guide.vanity-and-special-plates.vehicle-registrations-division-of-motor": {
+   "en": "Vehicle Registrations (Division of Motor Vehicles)",
+   "es": "Registro de vehículos (División de Vehículos Motorizados)",
+   "state": "draft"
+  },
+  "guide.vanity-and-special-plates.vehicle-registrations-dmv": {
+   "en": "Vehicle registrations (DMV)",
+   "es": "Registro de vehículos (DMV)",
+   "state": "draft"
+  },
+  "guide.vanity-and-special-plates.veteran": {
+   "en": "Veteran",
+   "es": "Veterano",
+   "state": "draft"
+  },
+  "guide.vanity-and-special-plates.what-happens-if-my-vanity-plate": {
+   "en": "What happens if my vanity plate is turned down?",
+   "es": "¿Qué pasa si rechazan mi placa personalizada?",
+   "state": "draft"
+  },
+  "guide.vanity-and-special-plates.what-it-costs": {
+   "en": "What it costs",
+   "es": "Cuánto cuesta",
+   "state": "draft"
+  },
+  "guide.vanity-and-special-plates.what-kind-of-plate-do-you": {
+   "en": "What kind of plate do you want?",
+   "es": "¿Qué tipo de placa quiere?",
+   "state": "draft"
+  },
+  "guide.vanity-and-special-plates.who-qualifies": {
+   "en": "Who qualifies",
+   "es": "Quién reúne los requisitos",
+   "state": "draft"
+  },
+  "guide.vanity-and-special-plates.yes-the-law-has-the-dmv": {
+   "en": "Yes. The law has the DMV recall a vanity plate that does not meet the law and the rules, whenever it was issued, and refund or credit the unused part of the fee.",
+   "es": "Sí. La ley pide al DMV que retire una placa personalizada que no cumpla la ley y las reglas, sin importar cuándo se emitió, y que reembolse o acredite la parte no usada de la cuota.",
    "state": "draft"
   },
   "guide.vital-records.a-check-or-money-order-in": {
