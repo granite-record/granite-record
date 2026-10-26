@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-10-11.20
+# GRANITE_VERSION: 2026-10-11.21
 """
 The official pages the how-to guides cite, onto this disk, to check them by.
 
@@ -173,6 +173,8 @@ SOURCES = {
     # Department of Labor's overtime page, read that day.
     "wages": [
         "https://www.dol.nh.gov/",
+        # the online wage claim form, its address as the person gave it (26 October 2026)
+        "https://www.dol.nh.gov/online-forms/file-online-wage-claim",
         "https://www.dol.gov/agencies/whd/overtime",
     ],
     # The child care guide's, read in the PDFs the person printed and sent on

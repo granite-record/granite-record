@@ -7247,13 +7247,23 @@
    "state": "draft"
   },
   "guide.motorcycle-license.a-motorcycle-learners-permit-lets-you": {
-   "en": "A motorcycle learner&rsquo;s permit lets you ride while you learn, with limits. You can get one if you are 18 or older, or if you are 16 or 17, have finished an approved driver education course and hold a New Hampshire driver&rsquo;s license. You pass a written motorcycle knowledge test, or finish the state&rsquo;s rider training course instead. There is no road test for a permit.",
-   "es": "El permiso de aprendizaje para motocicleta le permite conducir mientras aprende, con límites. Puede obtenerlo si tiene 18 años o más, o si tiene 16 o 17, ha terminado un curso aprobado de educación vial y tiene una licencia de conducir de New Hampshire. Para obtenerlo, aprueba un examen escrito de conocimientos sobre motocicletas, o termina el curso de capacitación para motociclistas del estado. El permiso no lleva examen de manejo.",
+   "en": "A motorcycle learner&rsquo;s permit lets you ride while you learn, with limits. You can get one if you are 18 or older, or if you are 16 or 17, have finished an approved driver education course and hold a New Hampshire driver&rsquo;s license. If you are under 18, the DMV also requires you to finish a Basic RiderCourse and bring a parental permission form. You pass a vision test, and a written motorcycle knowledge test or the state&rsquo;s rider training course in its place. There is no road test for a permit.",
+   "es": "El permiso de aprendizaje para motocicleta le permite conducir mientras aprende, con límites. Puede obtenerlo si tiene 18 años o más, o si tiene 16 o 17, ha terminado un curso aprobado de educación vial y tiene una licencia de conducir de New Hampshire. Si tiene menos de 18 años, el DMV además le exige terminar un Basic RiderCourse (curso básico para motociclistas) y traer un formulario de permiso de sus padres. Aprueba un examen de la vista, y un examen escrito de conocimientos sobre motocicletas o, en su lugar, el curso de capacitación para motociclistas del estado. El permiso no lleva examen de manejo.",
    "state": "draft"
   },
   "guide.motorcycle-license.a-motorcycle-on-2-or-3": {
    "en": "A motorcycle, on 2 or 3 wheels",
    "es": "Una motocicleta, de 2 o 3 ruedas",
+   "state": "draft"
+  },
+  "guide.motorcycle-license.a-state-approved-motorcycle-rider": {
+   "en": "A state-approved motorcycle rider training course can take the place of the skills test: the DMV says its graduates do not take its written and skills tests. Under 18, the course is required. The law opens courses to New Hampshire residents who hold a driver&rsquo;s license of any kind or could get a learner&rsquo;s permit, and a course may charge tuition. The DMV&rsquo;s rider training page lists the courses and what they cost; register online, or call the Motorcycle Rider Training office at (603) 227-4025.",
+   "es": "Un curso de capacitación para motociclistas aprobado por el estado puede reemplazar el examen de destrezas: el DMV dice que quienes lo terminan no toman sus exámenes escrito y de destrezas. Si tiene menos de 18 años, el curso es obligatorio. La ley abre los cursos a los residentes de New Hampshire que tienen una licencia de conducir de cualquier tipo o que podrían obtener un permiso de aprendizaje, y un curso puede cobrar matrícula. La página de capacitación para motociclistas del DMV enumera los cursos y lo que cuestan; inscríbase en línea, o llame a la oficina de Motorcycle Rider Training (capacitación para motociclistas) al (603) 227-4025.",
+   "state": "draft"
+  },
+  "guide.motorcycle-license.application-dsmv-450": {
+   "en": "Application (DSMV 450)",
+   "es": "Solicitud (DSMV 450)",
    "state": "draft"
   },
   "guide.motorcycle-license.at-any-age-if-your-motorcycle": {
@@ -7346,6 +7356,16 @@
    "es": "Cuotas de licencias (DMV)",
    "state": "draft"
   },
+  "guide.motorcycle-license.make-an-appointment": {
+   "en": "Make an appointment",
+   "es": "Pida una cita",
+   "state": "draft"
+  },
+  "guide.motorcycle-license.make-an-appointment-with-the-dmv": {
+   "en": "Make an appointment with the DMV. Its page lists what to bring: the application for a driver&rsquo;s license or ID card (form DSMV 450), your current driver&rsquo;s license and the fee.",
+   "es": "Pida una cita con el DMV. Su página indica qué traer: la solicitud de licencia de conducir o tarjeta de identificación (formulario DSMV 450), su licencia de conducir vigente y la cuota.",
+   "state": "draft"
+  },
   "guide.motorcycle-license.motorcycle-endorsement-dmv": {
    "en": "Motorcycle endorsement (DMV)",
    "es": "Endoso de motocicleta (DMV)",
@@ -7376,11 +7396,6 @@
    "es": "Programa de capacitación para motociclistas (División de Vehículos Motorizados)",
    "state": "draft"
   },
-  "guide.motorcycle-license.no-a-motorcycle-license-is-issued": {
-   "en": "No. A motorcycle license is issued to someone with no driver&rsquo;s license, and a motorcycle license, endorsement or permit lets you drive any registered motorcycle, on 2 or 3 wheels, without any other license. To get a permit at 16 or 17, though, you need a New Hampshire driver&rsquo;s license.",
-   "es": "No. La licencia de motocicleta se expide a quien no tiene licencia de conducir, y una licencia, un endoso o un permiso de motocicleta le permite conducir cualquier motocicleta registrada, de 2 o 3 ruedas, sin ninguna otra licencia. Pero para obtener un permiso a los 16 o 17 años, necesita una licencia de conducir de New Hampshire.",
-   "state": "draft"
-  },
   "guide.motorcycle-license.no-the-law-leaves-electric-bicycles": {
    "en": "No. The law leaves electric bicycles out of what it calls a moped, and out of what it calls a motorcycle, so the license rules in this guide do not cover one.",
    "es": "No. La ley deja las bicicletas eléctricas fuera de lo que llama ciclomotor, y fuera de lo que llama motocicleta, así que las reglas de licencia de esta guía no se aplican a una.",
@@ -7394,6 +7409,11 @@
   "guide.motorcycle-license.not-on-a-learners-permit-with": {
    "en": "Not on a learner&rsquo;s permit. With a license or endorsement, only if the motorcycle is built to carry more than one person: on a seat made for two, a seat firmly attached behind or beside you, or a sidecar. The passenger sits astride, facing forward.",
    "es": "No con un permiso de aprendizaje. Con una licencia o un endoso, solo si la motocicleta está hecha para llevar a más de una persona: en un asiento para dos, en un asiento bien sujeto detrás o al lado de usted, o en un sidecar. El pasajero va sentado a horcajadas, mirando hacia adelante.",
+   "state": "draft"
+  },
+  "guide.motorcycle-license.not-under-the-law-it-provides": {
+   "en": "Not under the law: it provides a motorcycle license for someone with no driver&rsquo;s license, and a motorcycle license, endorsement or permit lets you drive any registered motorcycle, on 2 or 3 wheels, without any other license. The DMV&rsquo;s permit page, though, lists a current driver&rsquo;s license among what to bring, so ask the DMV first if you have none. To get a permit at 16 or 17, you need a New Hampshire driver&rsquo;s license.",
+   "es": "No según la ley: esta prevé una licencia de motocicleta para quien no tiene licencia de conducir, y una licencia, un endoso o un permiso de motocicleta le permite conducir cualquier motocicleta registrada, de 2 o 3 ruedas, sin ninguna otra licencia. Pero la página del permiso del DMV incluye una licencia de conducir vigente entre lo que hay que traer, así que pregunte primero al DMV si no tiene una. Para obtener un permiso a los 16 o 17 años, necesita una licencia de conducir de New Hampshire.",
    "state": "draft"
   },
   "guide.motorcycle-license.on-a-motorcycle-without-a-windshield": {
@@ -7441,19 +7461,14 @@
    "es": "Reglas de tránsito, RSA 265",
    "state": "draft"
   },
-  "guide.motorcycle-license.the-dmv-may-let-you-skip": {
-   "en": "The DMV may let you skip the road test if you finish a state-approved motorcycle rider training course that includes a skills test. Courses are open to New Hampshire residents who hold a driver&rsquo;s license of any kind or could get a learner&rsquo;s permit, and a course may charge tuition. The DMV&rsquo;s rider training page lists the courses.",
-   "es": "El DMV puede eximirle del examen de manejo si termina un curso de capacitación para motociclistas aprobado por el estado que incluya un examen de destrezas. Los cursos están abiertos a los residentes de New Hampshire que tienen una licencia de conducir de cualquier tipo o que podrían obtener un permiso de aprendizaje, y un curso puede cobrar matrícula. La página de capacitación para motociclistas del DMV enumera los cursos.",
-   "state": "draft"
-  },
   "guide.motorcycle-license.the-law-calls-a-vehicle-a": {
    "en": "The law calls a vehicle a moped if it goes no faster than 30 miles per hour within a mile and, if it has a gas engine, the engine is no bigger than 50 cubic centimeters and has no gears to shift. Anything more is a motorcycle, and needs a motorcycle license.",
    "es": "La ley llama ciclomotor al vehículo que no pasa de 30 millas por hora en una milla y que, si tiene motor de gasolina, no supera los 50 centímetros cúbicos ni tiene cambios que accionar. Lo que pase de eso es una motocicleta, y necesita una licencia de motocicleta.",
    "state": "draft"
   },
   "guide.motorcycle-license.the-law-sets-these-fees-25": {
-   "en": "The law sets these fees: $25 for a first motorcycle endorsement or 3-wheeled motorcycle endorsement, and nothing to renew either one; $50 for a motorcycle license on its own, which the law calls a special motorcycle license, first or renewed; and $25 to renew a learner&rsquo;s permit. Another $5 is added to each motorcycle permit, license or endorsement, and to each renewal. The DMV&rsquo;s fees page lists them, with the cost of a first permit.",
-   "es": "La ley fija estas cuotas: $25 por un primer endoso de motocicleta o un endoso para motocicleta de 3 ruedas, y nada por renovar cualquiera de los dos; $50 por una licencia de motocicleta por sí sola, que la ley llama licencia especial de motocicleta, sea la primera o una renovación; y $25 por renovar un permiso de aprendizaje. Se suman $5 a cada permiso, licencia o endoso de motocicleta, y a cada renovación. La página de cuotas del DMV las enumera, con la cuota de un primer permiso.",
+   "en": "The law sets these fees: $25 for a first motorcycle endorsement or 3-wheeled motorcycle endorsement, and nothing to renew either one; $50 for a motorcycle license on its own, which the law calls a special motorcycle license, first or renewed; and $25 to renew a learner&rsquo;s permit. Another $5 is added to each motorcycle permit, license or endorsement, and to each renewal. The DMV&rsquo;s fees page lists them with the $5 added, and its motorcycle endorsement page gives what a learner&rsquo;s permit costs. If you paid for a learner&rsquo;s permit within a year before you apply for the license, the DMV does not charge the license fee.",
+   "es": "La ley fija estas cuotas: $25 por un primer endoso de motocicleta o un endoso para motocicleta de 3 ruedas, y nada por renovar cualquiera de los dos; $50 por una licencia de motocicleta por sí sola, que la ley llama licencia especial de motocicleta, sea la primera o una renovación; y $25 por renovar un permiso de aprendizaje. Se suman $5 a cada permiso, licencia o endoso de motocicleta, y a cada renovación. La página de cuotas del DMV las enumera con los $5 sumados, y su página del endoso de motocicleta indica lo que cuesta un permiso de aprendizaje. Si pagó un permiso de aprendizaje en el año anterior a solicitar la licencia, el DMV no le cobra la cuota de la licencia.",
    "state": "draft"
   },
   "guide.motorcycle-license.title": {
@@ -7461,9 +7476,14 @@
    "es": "Cómo obtener una licencia de motocicleta o conducir un ciclomotor",
    "state": "draft"
   },
+  "guide.motorcycle-license.to-apply-bring-your-current-new": {
+   "en": "To apply, bring your current New Hampshire license, the application for a motorcycle endorsement, the fee, and either a rider training completion card from within the past year or your passing skills test result.",
+   "es": "Para solicitarlo, traiga su licencia vigente de New Hampshire, la solicitud de endoso de motocicleta, la cuota, y la tarjeta de haber terminado un curso de capacitación en el último año o el resultado aprobado de su examen de destrezas.",
+   "state": "draft"
+  },
   "guide.motorcycle-license.to-get-the-license-or-endorsement": {
-   "en": "To get the license or endorsement itself, you pass a driving test on a motorcycle. A 3-wheeled motorcycle has its own, separate test. If you already have a driver&rsquo;s license, what you get is an endorsement on it; if you do not, a motorcycle license.",
-   "es": "Para obtener la licencia o el endoso, aprueba un examen de manejo en una motocicleta. La motocicleta de 3 ruedas tiene su propio examen, aparte. Si ya tiene licencia de conducir, lo que obtiene es un endoso en ella; si no la tiene, una licencia de motocicleta.",
+   "en": "To get the license or endorsement itself, you pass a vision test and a driving test on a motorcycle, which the DMV calls the skills test. It gives the test by appointment, in the season when conditions are safe. You bring your own motorcycle, registered and inspected, and you may ride it there only on a valid learner&rsquo;s permit. A 3-wheeled motorcycle has its own, separate test. If you already have a driver&rsquo;s license, what you get is an endorsement on it; if you do not, a motorcycle license.",
+   "es": "Para obtener la licencia o el endoso, aprueba un examen de la vista y un examen de manejo en una motocicleta, que el DMV llama examen de destrezas. Lo da con cita, en la temporada en que las condiciones son seguras. Usted trae su propia motocicleta, registrada e inspeccionada, y solo puede llegar conduciéndola con un permiso de aprendizaje válido. La motocicleta de 3 ruedas tiene su propio examen, aparte. Si ya tiene licencia de conducir, lo que obtiene es un endoso en ella; si no la tiene, una licencia de motocicleta.",
    "state": "draft"
   },
   "guide.motorcycle-license.to-ride-a-moped-on-the": {
@@ -14125,9 +14145,19 @@
    "es": "En cada período de pago en que se le descuente algo, su empleador tiene que darle un detalle de las deducciones.",
    "state": "draft"
   },
+  "guide.wage-rights.file-a-wage-claim-online-department": {
+   "en": "File a wage claim online (Department of Labor)",
+   "es": "Presentar un reclamo de salario en línea (Departamento de Trabajo)",
+   "state": "draft"
+  },
   "guide.wage-rights.file-a-wage-claim-with-the": {
    "en": "File a wage claim with the Department of Labor, within 36 months.",
    "es": "Presente un reclamo de salarios ante el Departamento de Trabajo, dentro de los 36 meses.",
+   "state": "draft"
+  },
+  "guide.wage-rights.file-your-claim-online-with-the": {
+   "en": "File your claim online with the Department&rsquo;s wage claim form. Its office answers at 603-271-3176, Monday through Friday, 8 a.m. to 4:30 p.m.; mail and hearings stay at 95 Pleasant Street, Spaulding Building, in Concord.",
+   "es": "Presente su reclamo en línea con el formulario de reclamo de salario del Departamento. Su oficina atiende en el 603-271-3176, de lunes a viernes, de 8 a.m. a 4:30 p.m.; el correo y las audiencias siguen en 95 Pleasant Street, Spaulding Building, en Concord.",
    "state": "draft"
   },
   "guide.wage-rights.how-can-i-be-paid": {
@@ -14248,11 +14278,6 @@
   "guide.wage-rights.protective-legislation-rsa-275": {
    "en": "Protective Legislation, RSA 275",
    "es": "Legislación de protección, RSA 275",
-   "state": "draft"
-  },
-  "guide.wage-rights.start-from-the-departments-home-page": {
-   "en": "Start from the Department&rsquo;s home page: choose <b>Submit a Wage Claim</b>. Its office answers at 603-271-3176, Monday through Friday, 8 a.m. to 4:30 p.m.; mail and hearings stay at 95 Pleasant Street, Spaulding Building, in Concord.",
-   "es": "Empiece en la página principal del Departamento: elija <b>Submit a Wage Claim</b> (presentar un reclamo de salario). Su oficina atiende en el 603-271-3176, de lunes a viernes, de 8 a.m. a 4:30 p.m.; el correo y las audiencias siguen en 95 Pleasant Street, Spaulding Building, en Concord.",
    "state": "draft"
   },
   "guide.wage-rights.the-law-exempts-some-work-such": {

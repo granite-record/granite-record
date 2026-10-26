@@ -2522,7 +2522,7 @@ CAR = guide(
            "private sale and a title-exempt private sale (bill of sale per RSA 261:148, proof of "
            "VIN by title, past NH registration or the VIN form); proof of residency; renewals at "
            "the town with town fees first, municipal agents, ask the clerk or tax collector about "
-           "online or mail.", DMV_REG, READ),
+           "online or mail.", DMV_REG, "2026-10-26"),
      claim("New/Transfer Registration (state portion only) and Registration Renewal (state portion "
            "only): drop box or appointment.", DMV_APPT, READ),
      # As the license guide read it.
@@ -2642,6 +2642,9 @@ REAL_ID = guide(
      claim("Operator $50, REAL ID operator $60, non-driver ID $20, and the other licenses' fees.",
            DMV_FEES, READ),
      claim("$60 for a Real ID Act compliant license, $50 for each other license.", "RSA 263:42", READ),
+     claim("Application for Driver License or Non-Driver ID Card; I am applying for: Opt-in Real "
+           "ID, yes or no; an original license, a renewal or a non-driver ID card.", DMV_APP,
+           "2026-10-26"),
      claim("The fee for a nondriver's picture identification card, marked not acceptable for "
            "federal identification purposes, is $20, not refundable.", "RSA 260:21", "2026-10-26")],
     more=civics.faq(
@@ -3248,15 +3251,20 @@ GUIDES += [LICENSE, CAR, REAL_ID, NEW_RESIDENT, BENEFITS, UNEMPLOYMENT, RUN]
 # motorcycle are, RSA 263:30 to 263:34-i for the permit, the test, rider
 # training and the fees, RSA 265:120 to 265:123 for riding, and RSA 261 for
 # registering. The DMV's motorcycle pages refuse this machine, as its others
-# do, so their claims carry None and wait for the person's printouts; the
-# guide states nothing that rests on them alone, and prints no course
-# tuition, which no statute sets. The helmet law covers riders under 18 only
+# do; their claims rest on the person's printouts of 26 October 2026
+# (motorcycle1-7: the endorsement page with each of its three panels open,
+# the rider training page with each of its three courses, and the FAQ;
+# fees1, the licensing fees; registration1, vehicle registrations). The
+# guide prints no course tuition or agency-page fee, which no statute sets.
+# Where the DMV's page and the statute differ -- its "$25 for permit
+# renewal" against RSA 263:42's $25 and RSA 263:34-i's added $5 -- the guide
+# says what the statute says. The helmet law covers riders under 18 only
 # (RSA 265:122) and names no moped, so the guide says nothing of helmets on
 # a moped. Registering is the car guide's, and is linked rather than told
 # again.
 # ---------------------------------------------------------------------------
 MOTO_READ = "2026-10-26"             # the statutes, on the site's Laws pages
-MOTO_DMV_READ = None                 # the DMV's pages: the person's printouts, still to come
+MOTO_DMV_READ = "2026-10-26"         # the DMV's pages: the person's printouts
 DMV_MOTO = "https://www.dmv.nh.gov/drivers-licensenon-driver-ids/motorcycle-license-endorsement"
 DMV_MOTO_TRAIN = ("https://www.dmv.nh.gov/drivers-licensenon-driver-ids/"
                   "motorcycle-rider-training-program")
@@ -3283,23 +3291,36 @@ MOTORCYCLE = guide(
           "<p>A motorcycle learner&rsquo;s permit lets you ride while you learn, with limits. "
           "You can get one if you "
           "are 18 or older, or if you are 16 or 17, have finished an approved driver education "
-          "course and hold a New Hampshire driver&rsquo;s license. You pass a written motorcycle "
-          "knowledge test, or finish the state&rsquo;s rider training course instead. There is no "
-          "road test for a permit.</p>"
+          "course and hold a New Hampshire driver&rsquo;s license. If you are under 18, the DMV "
+          "also requires you to finish a Basic RiderCourse and bring a parental permission form. "
+          "You pass a vision test, and a written motorcycle knowledge test or the state&rsquo;s "
+          "rider training course in its place. There is no road test for a permit.</p>"
+          "<p>Make an appointment with the DMV. Its page lists what to bring: the application for "
+          "a driver&rsquo;s license or ID card (form DSMV 450), your current driver&rsquo;s "
+          "license and the fee.</p>"
           "<p>With a permit you may ride only after sunrise and before sunset, and you may not "
           "carry a passenger. It is good for 45 days, and can be renewed once for another "
           "45 days.</p>",
-          actions=[("Motorcycle endorsement (DMV)", DMV_MOTO)], law=["RSA 263:32"]),
+          actions=[("Motorcycle endorsement (DMV)", DMV_MOTO), ("Make an appointment", DMV_APPT),
+                   ("Application (DSMV 450)", DMV_APP)], law=["RSA 263:32"]),
      step("Pass the road test, or take rider training",
-          "<p>To get the license or endorsement itself, you pass a driving test on a motorcycle. "
-          "A 3-wheeled motorcycle has its own, separate test. If you already have a "
-          "driver&rsquo;s license, what you get is an endorsement on it; if you do not, a "
-          "motorcycle license.</p>"
-          "<p>The DMV may let you skip the road test if you finish a state-approved motorcycle "
-          "rider training course that includes a skills test. Courses are open to New Hampshire "
-          "residents who hold a driver&rsquo;s license of any kind or could get a learner&rsquo;s "
-          "permit, and a course may charge tuition. The DMV&rsquo;s rider training page lists the "
-          "courses.</p>",
+          "<p>To get the license or endorsement itself, you pass a vision test and a driving test "
+          "on a motorcycle, which the DMV calls the skills test. It gives the test by appointment, "
+          "in the season when conditions are safe. You bring your own motorcycle, registered and "
+          "inspected, and you may ride it there only on a valid learner&rsquo;s permit. A "
+          "3-wheeled motorcycle has its own, separate test. If you already have a driver&rsquo;s "
+          "license, what you get is an endorsement on it; if you do not, a motorcycle "
+          "license.</p>"
+          "<p>A state-approved motorcycle rider training course can take the place of the skills "
+          "test: the DMV says its graduates do not take its written and skills tests. Under 18, "
+          "the course is required. The law opens courses to New Hampshire residents who hold a "
+          "driver&rsquo;s license of any kind or could get a learner&rsquo;s permit, and a course "
+          "may charge tuition. The DMV&rsquo;s rider training page lists the courses and what "
+          "they cost; register online, or call the Motorcycle Rider Training office at "
+          "(603) 227-4025.</p>"
+          "<p>To apply, bring your current New Hampshire license, the application for a "
+          "motorcycle endorsement, the fee, and either a rider training completion card from "
+          "within the past year or your passing skills test result.</p>",
           actions=[("Motorcycle rider training (DMV)", DMV_MOTO_TRAIN),
                    ("Motorcycle endorsement questions (DMV)", DMV_MOTO_FAQ)],
           law=["RSA 263:30", "RSA 263:31", "RSA 263:34-b", "RSA 263:34-h"]),
@@ -3308,8 +3329,10 @@ MOTORCYCLE = guide(
           "motorcycle endorsement, and nothing to renew either one; $50 for a motorcycle license "
           "on its own, which the law calls a special motorcycle license, first or renewed; and "
           "$25 to renew a learner&rsquo;s permit. Another $5 is added to each motorcycle permit, "
-          "license or endorsement, and to each renewal. The DMV&rsquo;s fees page lists them, "
-          "with the cost of a first permit.</p>",
+          "license or endorsement, and to each renewal. The DMV&rsquo;s fees page lists them with "
+          "the $5 added, and its motorcycle endorsement page gives what a learner&rsquo;s permit "
+          "costs. If you paid for a learner&rsquo;s permit within a year before you apply for the "
+          "license, the DMV does not charge the license fee.</p>",
           actions=[("Licensing fees (DMV)", DMV_FEES)], law=["RSA 263:42, I", "RSA 263:34-i, II"]),
      step("Register your motorcycle",
           "<p>A motorcycle is registered the way a car is: first at the clerk&rsquo;s office of "
@@ -3354,14 +3377,56 @@ MOTORCYCLE = guide(
      ("Drivers' Licenses, RSA 263", "/laws/263"),
      ("Rules of the Road, RSA 265", "/laws/265")],
     ["259", "261", "263", "265"],
-    [claim("The motorcycle endorsement: the learner's permit, the knowledge test, the road test "
-           "or rider training in its place, and what to bring.", DMV_MOTO, MOTO_DMV_READ),
-     claim("The rider training courses, where they are held and what they cost.", DMV_MOTO_TRAIN,
+    [claim("Applicants for a motorcycle license must pass a vision test and provide proof of "
+           "their fitness to drive a motorcycle, by passing a motorcycle Basic Rider Class or by "
+           "taking a DMV motorcycle skills test; at least 16 years old; any applicant under 18 "
+           "must successfully complete a motorcycle Basic Rider Class and provide a parental "
+           "permission form in order to apply for a motorcycle license or permit. Apply: a "
+           "current, valid New Hampshire license; an Application for Motorcycle Endorsement; the "
+           "fee; a completion card from a New Hampshire Motorcycle Rider Training Program showing "
+           "successful completion within the past year, or motorcycle skills test results showing "
+           "a passing grade. Any applicant who pays for a motorcycle learner permit within a year "
+           "of applying for a motorcycle license will not be charged the motorcycle license fee. "
+           "Learner's permit: 18 or older, or 16 to 18 with an approved driver education course "
+           "and a valid New Hampshire driver's license; after sunrise and before sunset; no "
+           "passengers; valid for 45 days; renewed one time; request an appointment and bring the "
+           "Application for Driver License or ID Card (DSMV 450), current driver license, payment "
+           "of $30.00, $25 for permit renewal; vision test; knowledge test. Skills tests are "
+           "given on a seasonal basis, only when conditions are safe for testing; schedule an "
+           "appointment; applicants provide their own motorcycle, and to ride it to the test "
+           "location must have a valid motorcycle learner's permit; currently registered and "
+           "inspected; an applicant who fails the skills test twice is required to take a "
+           "motorcycle rider training class. A three-wheeled motorcycle endorsement: the same "
+           "vision and knowledge exam; may drive any registered three-wheeled motorcycle, but "
+           "shall not drive any two-wheeled motorcycle.", DMV_MOTO, MOTO_DMV_READ),
+     claim("Basic RiderCourse: mandatory for those drivers under the age of 18 who wish to obtain "
+           "a motorcycle endorsement; a completion card will allow a motorcycle endorsement to be "
+           "added to their license; course graduates are exempt from the DMV written and skills "
+           "tests; a motorcycle learner's permit is not required; motorcycles and helmets are "
+           "provided; under 18 must have a valid driver license and a Motorcycle Safety Course "
+           "Waiver signed by a parent or guardian; register on-line, or contact our office at "
+           "(603) 227-4025; take the completion card to the NH DMV within one year. Intermediate "
+           "and Experienced RiderCourses for riders with some experience.", DMV_MOTO_TRAIN,
            MOTO_DMV_READ),
-     claim("Common questions on the motorcycle endorsement.", DMV_MOTO_FAQ, MOTO_DMV_READ),
-     claim("The fees for motorcycle permits, licenses and endorsements, a first permit's among "
-           "them.", DMV_FEES, MOTO_DMV_READ),
-     claim("Where a moped is registered.", DMV_REG, MOTO_DMV_READ),
+     claim("How can I obtain a New Hampshire motorcycle endorsement? Transfer an endorsement from "
+           "your out-of-state license, successfully complete the Motorcycle Rider Training Course, "
+           "or successfully complete written and road tests. Am I required to take a motorcycle "
+           "training course? No; anyone who successfully completes the course is exempt from "
+           "taking the required DMV skills test; the course is required if you are under the age "
+           "of 18. Without a course: make an appointment to schedule the written test to obtain a "
+           "45-day motorcycle permit; you will receive the date, time and location of the skills "
+           "test. The course costs are listed. Out-of-state residents may register for a course.",
+           DMV_MOTO_FAQ, MOTO_DMV_READ),
+     claim("Licensing fees: Motorcycle Only or Motor Driven Cycle Only $55.00; Moped $8.00; First "
+           "time New Hampshire Motorcycle or 3-Wheel License Endorsement $30.00; Renewal of "
+           "Motorcycle or 3-Wheel License Endorsement $5.00.", DMV_FEES, MOTO_DMV_READ),
+     claim("With the exception of Mopeds, all motor vehicles must begin their registration process "
+           "at the town or city clerk in the town or city in which they reside.", DMV_REG,
+           MOTO_DMV_READ),
+     claim("Application for Driver License or Non-Driver ID Card: I am applying for an original "
+           "license, a renewal, a non-driver ID card, a limited privilege license or a "
+           "motorcycle endorsement (includes 3 wheel and motor driven cycle).", DMV_APP,
+           MOTO_DMV_READ),
      claim("The town and city clerks lookup lists each town's clerk.", SOS_CLERKS, CHECKED),
      # As the license guide read it.
      claim("The DMV is fully appointment based; book online or call 603-227-4000.", DMV_APPT, READ),
@@ -3424,10 +3489,12 @@ MOTORCYCLE = guide(
          "<p>You cannot take it a third time. The law requires you to finish the motorcycle rider "
          "training course instead.</p>"),
         ("Do I need a car license to ride a motorcycle?",
-         "<p>No. A motorcycle license is issued to someone with no driver&rsquo;s license, and a "
-         "motorcycle license, endorsement or permit lets you drive any registered motorcycle, on "
-         "2 or 3 wheels, without any other license. To get a permit at 16 or 17, though, you need "
-         "a New Hampshire driver&rsquo;s license.</p>"),
+         "<p>Not under the law: it provides a motorcycle license for someone with no "
+         "driver&rsquo;s license, and a motorcycle license, endorsement or permit lets you drive "
+         "any registered motorcycle, on 2 or 3 wheels, without any other license. The "
+         "DMV&rsquo;s permit page, though, lists a current driver&rsquo;s license among what to "
+         "bring, so ask the DMV first if you have none. To get a permit at 16 or 17, you need a "
+         "New Hampshire driver&rsquo;s license.</p>"),
         ("Is a 3-wheeled motorcycle different?",
          "<p>A 3-wheeled motorcycle endorsement comes with its own test, on the skills that kind "
          "of motorcycle needs. With it alone you may drive a 3-wheeled motorcycle but not a "
@@ -6621,6 +6688,10 @@ GUIDES += [TRASH]
 WG_READ = "2026-10-25"
 WG_PAGES_READ = "2026-10-26"         # the person's printout of dol.nh.gov's home page
 NH_DOL = "https://www.dol.nh.gov/"
+# The online wage claim form's address, as the person gave it on 26 October
+# 2026. Nobody here has read the form, so the guide says nothing of it but
+# that it is where a claim is filed online.
+NH_WAGE_CLAIM = "https://www.dol.nh.gov/online-forms/file-online-wage-claim"
 WHD_OVERTIME = "https://www.dol.gov/agencies/whd/overtime"
 
 WAGES = guide(
@@ -6695,10 +6766,11 @@ WAGES = guide(
           "<p>You can also sue for unpaid wages in court, yourself or through a representative, "
           "and the court may order your employer to pay your costs and reasonable "
           "attorney&rsquo;s fees.</p>"
-          "<p>Start from the Department&rsquo;s home page: choose <b>Submit a Wage Claim</b>. Its "
-          "office answers at 603-271-3176, Monday through Friday, 8 a.m. to 4:30 p.m.; mail and "
+          "<p>File your claim online with the Department&rsquo;s wage claim form. Its office "
+          "answers at 603-271-3176, Monday through Friday, 8 a.m. to 4:30 p.m.; mail and "
           "hearings stay at 95 Pleasant Street, Spaulding Building, in Concord.</p>",
-          actions=[("New Hampshire Department of Labor", NH_DOL)],
+          actions=[("File a wage claim online (Department of Labor)", NH_WAGE_CLAIM),
+                   ("New Hampshire Department of Labor", NH_DOL)],
           law=["RSA 275:51", "RSA 275:53"]),
      step("Your employer may not punish you for it",
           "<p>An employer may not fire you, or treat you differently in any other way, because "
@@ -6782,7 +6854,10 @@ WAGES = guide(
            "a Department Hearings Officer; the Department has moved to Londergan Hall, 101 "
            "Pleasant Street; hearings and mailed correspondence remain at 95 Pleasant Street, "
            "Spaulding Building, Concord, NH 03301; phone 603-271-3176; Monday - Friday, 8AM - "
-           "4:30PM.", NH_DOL, WG_PAGES_READ)]
+           "4:30PM.", NH_DOL, WG_PAGES_READ),
+     # The person's word, not a page read here.
+     claim("The Department of Labor's online wage claim form is at this address, as the person "
+           "gave it on 26 October 2026.", NH_WAGE_CLAIM, "2026-10-26")]
     + help_claims("lawyer"),
     more=civics.faq(
         ("How can I be paid?",
