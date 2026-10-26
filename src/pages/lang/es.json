@@ -2103,6 +2103,286 @@
    "es": "El inspector de construcción o el encargado del cumplimiento del código de su municipio o ciudad es la primera persona a quien preguntar, sobre sus permisos, sus cuotas y sus inspecciones. Si su municipio no tiene uno, pregunte en la oficina de los concejales.",
    "state": "draft"
   },
+  "guide.car-insurance.a-car-insurance-policy-sold-in": {
+   "en": "A car insurance policy sold in New Hampshire must cover your liability to others for at least $25,000 for injury to or death of one person, $50,000 for one accident injuring or killing more than one, and $25,000 for damage to others&rsquo; property. You may buy more.",
+   "es": "Una póliza de seguro de auto vendida en New Hampshire debe cubrir su responsabilidad ante otros por al menos $25,000 por lesiones o la muerte de una persona, $50,000 por un accidente que hiera o mate a más de una, y $25,000 por daños a la propiedad de otros. Puede comprar más.",
+   "state": "draft"
+  },
+  "guide.car-insurance.a-person-under-18-gets-a": {
+   "en": "A person under 18 gets a license only with a parent&rsquo;s or guardian&rsquo;s written permission, or with insurance coverage shown when applying, or if married (<a href=\"/laws/263#s17\">RSA 263:17</a>).",
+   "es": "Una persona menor de 18 años obtiene una licencia solo con el permiso por escrito de uno de sus padres o de su tutor, o si presenta una cobertura de seguro al solicitarla, o si está casada (<a href=\"/laws/263#s17\">RSA 263:17</a>).",
+   "state": "draft"
+  },
+  "guide.car-insurance.a-second-conviction-for-speeding-at": {
+   "en": "a second conviction for speeding at an excessive rate, or for reckless driving.",
+   "es": "una segunda condena por exceso de velocidad, o por conducción temeraria.",
+   "state": "draft"
+  },
+  "guide.car-insurance.after-a-crash": {
+   "en": "After a crash",
+   "es": "Después de un choque",
+   "state": "draft"
+  },
+  "guide.car-insurance.after-certain-convictions": {
+   "en": "After certain convictions",
+   "es": "Después de ciertas condenas",
+   "state": "draft"
+  },
+  "guide.car-insurance.automobile-insurance-insurance": {
+   "en": "Automobile insurance (Insurance Department)",
+   "es": "Seguro de auto (Departamento de Seguros)",
+   "state": "draft"
+  },
+  "guide.car-insurance.automobile-insurance-nh-insurance": {
+   "en": "Automobile Insurance (NH Insurance Department)",
+   "es": "Seguro de auto (Departamento de Seguros de NH)",
+   "state": "draft"
+  },
+  "guide.car-insurance.cancelling-car-insurance-rsa-417-a": {
+   "en": "Cancelling car insurance, RSA 417-A",
+   "es": "Cancelación del seguro de auto, RSA 417-A",
+   "state": "draft"
+  },
+  "guide.car-insurance.common-questions": {
+   "en": "Common Questions",
+   "es": "Preguntas frecuentes",
+   "state": "draft"
+  },
+  "guide.car-insurance.do-you-have-car-insurance": {
+   "en": "Do you have car insurance?",
+   "es": "¿Tiene seguro de auto?",
+   "state": "draft"
+  },
+  "guide.car-insurance.does-a-driver-under-18-need": {
+   "en": "Does a driver under 18 need insurance?",
+   "es": "¿Necesita seguro un conductor menor de 18 años?",
+   "state": "draft"
+  },
+  "guide.car-insurance.does-an-umbrella-policy-include": {
+   "en": "Does an umbrella policy include uninsured motorist coverage?",
+   "es": "¿Incluye una póliza paraguas la cobertura de conductor sin seguro?",
+   "state": "draft"
+  },
+  "guide.car-insurance.does-my-car-insurance-or-my": {
+   "en": "Does my car insurance or my health insurance pay my medical bills after a crash?",
+   "es": "¿Paga mis gastos médicos después de un choque mi seguro de auto o mi seguro médico?",
+   "state": "draft"
+  },
+  "guide.car-insurance.driver-licenses-rsa-263": {
+   "en": "Driver licenses, RSA 263",
+   "es": "Licencias de conducir, RSA 263",
+   "state": "draft"
+  },
+  "guide.car-insurance.driving-under-the-influence-of-alcohol": {
+   "en": "driving under the influence of alcohol or drugs;",
+   "es": "conducir bajo los efectos del alcohol o de drogas;",
+   "state": "draft"
+  },
+  "guide.car-insurance.exchange-information-at-the-scene": {
+   "en": "Exchange information at the scene.",
+   "es": "Intercambie información en el lugar.",
+   "state": "draft"
+  },
+  "guide.car-insurance.failing-to-stop-and-report-after": {
+   "en": "failing to stop and report after a crash;",
+   "es": "no detenerse ni informar después de un choque;",
+   "state": "draft"
+  },
+  "guide.car-insurance.file-a-complaint-insurance-department": {
+   "en": "File a complaint (Insurance Department)",
+   "es": "Presentar una queja (Departamento de Seguros)",
+   "state": "draft"
+  },
+  "guide.car-insurance.filing-a-complaint-nh-insurance": {
+   "en": "Filing a Complaint (NH Insurance Department)",
+   "es": "Cómo presentar una queja (Departamento de Seguros de NH)",
+   "state": "draft"
+  },
+  "guide.car-insurance.filing-proof-of-financial-responsibility": {
+   "en": "Filing proof of financial responsibility",
+   "es": "Cómo presentar la prueba de responsabilidad financiera",
+   "state": "draft"
+  },
+  "guide.car-insurance.financial-responsibility-rsa-264": {
+   "en": "Financial responsibility, RSA 264",
+   "es": "Responsabilidad financiera, RSA 264",
+   "state": "draft"
+  },
+  "guide.car-insurance.homicide-or-assault-arising-from-driving": {
+   "en": "homicide or assault arising from driving;",
+   "es": "homicidio o agresión al conducir;",
+   "state": "draft"
+  },
+  "guide.car-insurance.how-long-must-i-keep-proof": {
+   "en": "How long must I keep proof on file?",
+   "es": "¿Por cuánto tiempo debo mantener la prueba presentada?",
+   "state": "draft"
+  },
+  "guide.car-insurance.how-to-register-a-car": {
+   "en": "How to register a car",
+   "es": "Cómo registrar un auto",
+   "state": "draft"
+  },
+  "guide.car-insurance.how-to-renew-your-drivers-license": {
+   "en": "How to renew your driver’s license",
+   "es": "Cómo renovar su licencia de conducir",
+   "state": "draft"
+  },
+  "guide.car-insurance.if-anyone-was-hurt-or-killed": {
+   "en": "If anyone was hurt or killed, or the damage to property is over $1,000, report the crash to the DMV in writing within 15 days, unless a police officer investigated it.",
+   "es": "Si alguien resultó herido o murió, o los daños a la propiedad pasan de $1,000, informe el choque al DMV por escrito en un plazo de 15 días, a menos que un agente de policía lo haya investigado.",
+   "state": "draft"
+  },
+  "guide.car-insurance.if-you-had-no-insurance-policy": {
+   "en": "If you had no insurance policy or bond covering the crash, the state suspends your license and registration, and you must turn in your plates, until you put up enough security to pay any judgment for the damage and file proof of financial responsibility. You receive notice at least 10 days before the suspension starts. It lasts until you are released from the claim, win in court, or pay a judgment against you. If no one tells the DMV within 2 years that they have sued you, it may give you back your license and registration once you file proof.",
+   "es": "Si no tenía una póliza de seguro ni una fianza que cubriera el choque, el estado suspende su licencia y su registro, y usted debe entregar sus placas, hasta que deposite una garantía suficiente para pagar cualquier sentencia por los daños y presente una prueba de responsabilidad financiera. Recibe un aviso al menos 10 días antes de que empiece la suspensión. La suspensión dura hasta que quede liberado del reclamo, gane en el tribunal o pague una sentencia en su contra. Si nadie avisa al DMV en un plazo de 2 años de que le ha demandado, el DMV puede devolverle su licencia y su registro cuando presente la prueba.",
+   "state": "draft"
+  },
+  "guide.car-insurance.if-your-insurer-cancels-or-will": {
+   "en": "If your insurer cancels or will not renew your policy",
+   "es": "Si su aseguradora cancela su póliza o no la renueva",
+   "state": "draft"
+  },
+  "guide.car-insurance.it-must-also-include": {
+   "en": "It must also include:",
+   "es": "También debe incluir:",
+   "state": "draft"
+  },
+  "guide.car-insurance.lead": {
+   "en": "When New Hampshire requires a driver to prove they can pay for a crash, the least a car insurance policy here must cover, uninsured motorist coverage, and what to do if your insurer cancels your policy.",
+   "es": "Cuándo New Hampshire exige a un conductor demostrar que puede pagar por un choque, lo mínimo que debe cubrir una póliza de seguro de auto aquí, la cobertura de conductor sin seguro y qué hacer si su aseguradora cancela su póliza.",
+   "state": "draft"
+  },
+  "guide.car-insurance.medical-payments-coverage-of-at-least": {
+   "en": "<b>Medical payments coverage</b> of at least $1,000 per person, for reasonable medical costs of the driver and passengers hurt in a crash in your car, for costs within 3 years of the crash.",
+   "es": "<b>Cobertura de pagos médicos</b> (medical payments coverage) de al menos $1,000 por persona, para los costos médicos razonables del conductor y de los pasajeros heridos en un choque en su auto, por los costos dentro de los 3 años siguientes al choque.",
+   "state": "draft"
+  },
+  "guide.car-insurance.new-hampshire-does-not-require-most": {
+   "en": "New Hampshire does not require most drivers to buy car insurance, as the Insurance Department explains, but a driver who causes a crash is responsible for the damage. After a crash you were in without insurance, or after certain convictions, the state can suspend your license and registration until you file <b>proof of financial responsibility</b>, usually an insurance company&rsquo;s certificate. A car insurance policy sold here must cover at least $25,000 for injury to one person, $50,000 for one accident, and $25,000 for damage to property, and must include <b>uninsured motorist</b> and medical payments coverage.",
+   "es": "New Hampshire no exige a la mayoría de los conductores que compren un seguro de auto, según explica el Departamento de Seguros, pero un conductor que causa un choque es responsable de los daños. Después de un choque en el que estuvo sin seguro, o después de ciertas condenas, el estado puede suspender su licencia y su registro hasta que presente una <b>prueba de responsabilidad financiera</b> (proof of financial responsibility), por lo general un certificado de una compañía de seguros. Una póliza de seguro de auto vendida aquí debe cubrir al menos $25,000 por lesiones a una persona, $50,000 por un accidente y $25,000 por daños a la propiedad, y debe incluir cobertura de <b>conductor sin seguro</b> (uninsured motorist) y de pagos médicos.",
+   "state": "draft"
+  },
+  "guide.car-insurance.no": {
+   "en": "No",
+   "es": "No",
+   "state": "draft"
+  },
+  "guide.car-insurance.no-one-was-hurt-and-the": {
+   "en": "No one was hurt and the damage is less",
+   "es": "Nadie resultó herido y los daños son menores",
+   "state": "draft"
+  },
+  "guide.car-insurance.once-a-policy-has-been-in": {
+   "en": "Once a policy has been in effect for 60 days, or once it has been renewed, an insurer may cancel it only if you do not pay the premium, if you ask it to, or if you were not a New Hampshire resident when the policy was issued or renewed. It may not cancel or refuse to renew your policy solely because of your age, where you live, your race, color, creed, national origin, ancestry, marital status or lawful occupation, or because another insurer turned you down.",
+   "es": "Cuando una póliza lleva 60 días en vigor, o una vez renovada, la aseguradora solo puede cancelarla si usted no paga la prima, si usted lo pide, o si no era residente de New Hampshire cuando se emitió o se renovó la póliza. No puede cancelar ni negarse a renovar su póliza solo por su edad, el lugar donde vive, su raza, color, credo, origen nacional, ascendencia, estado civil u ocupación lícita, ni porque otra aseguradora le rechazó.",
+   "state": "draft"
+  },
+  "guide.car-insurance.proof-is-usually-a-certificate-that": {
+   "en": "Proof is usually a <b>certificate</b> that an insurance company or a surety company files with the DMV for you, showing that you carry the amounts the law sets. It can also be a deposit of money or securities with the state. Ask your insurance company to file the certificate.",
+   "es": "La prueba suele ser un <b>certificado</b> que una compañía de seguros o una compañía de fianzas presenta ante el DMV por usted, y que muestra que tiene las cantidades que fija la ley. También puede ser un depósito de dinero o de valores ante el estado. Pida a su compañía de seguros que presente el certificado.",
+   "state": "draft"
+  },
+  "guide.car-insurance.report-it-to-the-dmv-in": {
+   "en": "Report it to the DMV in writing within 15 days, unless the police investigated.",
+   "es": "Infórmelo al DMV por escrito en un plazo de 15 días, a menos que la policía lo haya investigado.",
+   "state": "draft"
+  },
+  "guide.car-insurance.someone-was-hurt-or-the-damage": {
+   "en": "Someone was hurt, or the damage is over $1,000",
+   "es": "Alguien resultó herido, o los daños pasan de $1,000",
+   "state": "draft"
+  },
+  "guide.car-insurance.stop-at-the-scene-give-the": {
+   "en": "Stop at the scene. Give the other driver, anyone hurt, and the owner of any property damaged your name and address, your driver&rsquo;s license number, your insurance company and policy information, the registration number of the vehicle, and the name and address of each person in it.",
+   "es": "Deténgase en el lugar. Dé al otro conductor, a cualquier herido y al dueño de cualquier propiedad dañada su nombre y dirección, su número de licencia de conducir, su compañía de seguros y los datos de su póliza, el número de registro del vehículo, y el nombre y la dirección de cada persona que iba en él.",
+   "state": "draft"
+  },
+  "guide.car-insurance.that-proof-means-being-able-to": {
+   "en": "That proof means being able to pay $25,000 for injury to or death of one person, $50,000 for injury to or death of two or more people in one accident, and $25,000 for damage to property, for each vehicle registered in your name.",
+   "es": "Esa prueba significa poder pagar $25,000 por lesiones o la muerte de una persona, $50,000 por lesiones o la muerte de dos o más personas en un accidente, y $25,000 por daños a la propiedad, por cada vehículo registrado a su nombre.",
+   "state": "draft"
+  },
+  "guide.car-insurance.the-insurance-departments-automobile": {
+   "en": "The Insurance Department&rsquo;s Automobile Insurance page explains that New Hampshire does not require you to buy car insurance, and what a policy covers. Without insurance you are still responsible for the damage you cause, and the <b>financial responsibility law</b> decides when the state requires proof that you can pay.",
+   "es": "La página de seguro de auto del Departamento de Seguros explica que New Hampshire no le exige comprar un seguro de auto, y qué cubre una póliza. Sin seguro, usted sigue siendo responsable de los daños que cause, y la <b>ley de responsabilidad financiera</b> (financial responsibility law) decide cuándo el estado exige una prueba de que usted puede pagar.",
+   "state": "draft"
+  },
+  "guide.car-insurance.the-insurer-must-send-you-written": {
+   "en": "The insurer must send you written notice that states its specific reasons. The cancellation takes effect at least 45 days after the notice, or 10 days for not paying or in the first 60 days of a new policy. The notice tells you how to reach the Insurance Department, and you may ask the Insurance Commissioner to review the decision by writing within 10 days of receiving it.",
+   "es": "La aseguradora debe enviarle un aviso por escrito con sus razones específicas. La cancelación entra en vigor al menos 45 días después del aviso, o 10 días si es por falta de pago o dentro de los primeros 60 días de una póliza nueva. El aviso le indica cómo comunicarse con el Departamento de Seguros, y usted puede pedir al Comisionado de Seguros que revise la decisión, por escrito, dentro de los 10 días siguientes a recibirlo.",
+   "state": "draft"
+  },
+  "guide.car-insurance.the-motor-vehicle-liability-policy-rsa": {
+   "en": "The motor vehicle liability policy, RSA 259:61",
+   "es": "La póliza de responsabilidad de vehículos motorizados, RSA 259:61",
+   "state": "draft"
+  },
+  "guide.car-insurance.the-state-may-also-suspend-your": {
+   "en": "The state may also suspend your license and registration until you file proof of financial responsibility, and keep it on file, after a conviction for:",
+   "es": "El estado también puede suspender su licencia y su registro hasta que presente una prueba de responsabilidad financiera, y la mantenga vigente, después de una condena por:",
+   "state": "draft"
+  },
+  "guide.car-insurance.title": {
+   "en": "How Car Insurance Works in New Hampshire",
+   "es": "Cómo funciona el seguro de auto en New Hampshire",
+   "state": "draft"
+  },
+  "guide.car-insurance.uninsured-motorist-coverage-which": {
+   "en": "<b>Uninsured motorist coverage</b>, which protects you when a driver with no insurance, or a hit-and-run driver, injures you. It is at least as much as the policy&rsquo;s coverage for injury, and if you buy more than the minimum liability coverage, it rises to match.",
+   "es": "<b>Cobertura de conductor sin seguro</b> (uninsured motorist coverage), que le protege cuando un conductor sin seguro, o un conductor que se da a la fuga, le causa lesiones. Es al menos igual a la cobertura de la póliza por lesiones, y si usted compra más que la cobertura mínima de responsabilidad, aumenta en la misma medida.",
+   "state": "draft"
+  },
+  "guide.car-insurance.until-the-dmv-stops-requiring-it": {
+   "en": "Until the DMV stops requiring it. It may do so after 3 years, if you have had no new conviction, crash or unpaid judgment.",
+   "es": "Hasta que el DMV deje de exigirla. Puede hacerlo después de 3 años, si usted no ha tenido una nueva condena, un nuevo choque ni una sentencia sin pagar.",
+   "state": "draft"
+  },
+  "guide.car-insurance.were-you-just-in-a-crash": {
+   "en": "Were you just in a crash?",
+   "es": "¿Acaba de tener un choque?",
+   "state": "draft"
+  },
+  "guide.car-insurance.what-every-car-insurance-policy-must": {
+   "en": "What every car insurance policy must include",
+   "es": "Lo que debe incluir toda póliza de seguro de auto",
+   "state": "draft"
+  },
+  "guide.car-insurance.what-the-law-requires-and-what": {
+   "en": "What the law requires, and what it does not",
+   "es": "Lo que la ley exige, y lo que no",
+   "state": "draft"
+  },
+  "guide.car-insurance.yes": {
+   "en": "Yes",
+   "es": "Sí",
+   "state": "draft"
+  },
+  "guide.car-insurance.yes-an-umbrella-or-excess-policy": {
+   "en": "Yes, an umbrella or excess policy over a car policy includes uninsured motorist coverage equal to its limits, unless you turn it down in writing.",
+   "es": "Sí, una póliza paraguas o de exceso sobre una póliza de auto incluye una cobertura de conductor sin seguro igual a sus límites, a menos que usted la rechace por escrito.",
+   "state": "draft"
+  },
+  "guide.car-insurance.you-are-responsible-for-any-damage": {
+   "en": "You are responsible for any damage you cause, and a crash or certain convictions can cost you your license until you file proof of insurance.",
+   "es": "Usted es responsable de cualquier daño que cause, y un choque o ciertas condenas pueden costarle su licencia hasta que presente una prueba de seguro.",
+   "state": "draft"
+  },
+  "guide.car-insurance.you-choose-you-may-claim-under": {
+   "en": "You choose: you may claim under your car policy&rsquo;s medical payments coverage, your health insurance, or both, but you may not be paid twice for the same bill.",
+   "es": "Usted decide: puede presentar el reclamo a la cobertura de pagos médicos de su póliza de auto, a su seguro médico o a ambos, pero no puede recibir dos pagos por la misma factura.",
+   "state": "draft"
+  },
+  "guide.car-insurance.you-receive-notice-at-least-10": {
+   "en": "You receive notice at least 10 days before the suspension starts. The DMV may stop requiring the proof after 3 years, if you have no new conviction, crash or unpaid judgment.",
+   "es": "Recibe un aviso al menos 10 días antes de que empiece la suspensión. El DMV puede dejar de exigir la prueba después de 3 años, si usted no tiene una nueva condena, un nuevo choque ni una sentencia sin pagar.",
+   "state": "draft"
+  },
+  "guide.car-insurance.your-policy-carries-at-least-the": {
+   "en": "Your policy carries at least the state&rsquo;s minimums and uninsured motorist coverage.",
+   "es": "Su póliza tiene al menos los mínimos del estado y la cobertura de conductor sin seguro.",
+   "state": "draft"
+  },
   "guide.child-care-scholarship.accessing-the-nh-child-care-scholarship": {
    "en": "Accessing the NH Child Care Scholarship, Family Assistance Manual 901 (Department of Health and Human Services)",
    "es": "Cómo acceder a la beca de cuidado infantil, Manual de Asistencia Familiar 901 (Departamento de Salud y Servicios Humanos)",
@@ -4390,6 +4670,11 @@
    "es": "Ayuda y beneficios",
    "state": "draft"
   },
+  "guide.group.insurance": {
+   "en": "Insurance",
+   "es": "Seguros",
+   "state": "draft"
+  },
   "guide.group.know-your-rights": {
    "en": "Know Your Rights",
    "es": "Conozca sus derechos",
@@ -5019,6 +5304,216 @@
   "guide.homelessness-help.your-town-or-city-welfare-office": {
    "en": "<b>Your town or city welfare office</b> must help a person who is poor and unable to support themselves, under the written guidelines every town and city adopts: how to apply, who is eligible, and how to appeal a decision.",
    "es": "<b>La oficina de asistencia social (welfare) de su municipio o ciudad</b> debe ayudar a una persona que sea pobre y no pueda mantenerse, según las pautas escritas que adopta cada municipio y ciudad: cómo solicitar, quién reúne los requisitos y cómo apelar una decisión.",
+   "state": "draft"
+  },
+  "guide.homeowners-insurance.a-homeowners-policy-insures-your-house": {
+   "en": "A homeowners policy insures your house, your belongings and your <b>liability</b> to others; the Insurance Department&rsquo;s page explains what it covers. A mortgage lender may require it, and most homeowners policies do not cover flood damage. Once a policy has been in effect for 90 days, the insurer may cancel it only for the reasons the law lists, and it may not refuse to renew it because of a single valid claim. If an insurer handles your claim unfairly, you can complain to the <b>Insurance Department</b>.",
+   "es": "Una póliza de propietarios asegura su casa, sus pertenencias y su <b>responsabilidad</b> ante otros; la página del Departamento de Seguros explica qué cubre. Un prestamista hipotecario puede exigirla, y la mayoría de las pólizas de propietarios no cubren los daños por inundación. Cuando una póliza lleva 90 días en vigor, la aseguradora solo puede cancelarla por las razones que indica la ley, y no puede negarse a renovarla por un solo reclamo válido. Si una aseguradora maneja su reclamo de forma injusta, puede presentar una queja ante el <b>Departamento de Seguros</b>.",
+   "state": "draft"
+  },
+  "guide.homeowners-insurance.a-mortgage-lender-may-require-you": {
+   "en": "A mortgage lender may require you to insure the house, as the Insurance Department&rsquo;s page explains; your mortgage papers say what it requires.",
+   "es": "Un prestamista hipotecario puede exigirle que asegure la casa, según explica la página del Departamento de Seguros; los documentos de su hipoteca dicen qué exige.",
+   "state": "draft"
+  },
+  "guide.homeowners-insurance.an-insurer-may-not-cancel-or": {
+   "en": "An insurer may not cancel or refuse to write or renew your policy solely because of your age, where you live, your race, color, creed, national origin, ancestry, marital status or lawful occupation, because another insurer turned you down, or on your credit information alone. It may not refuse to renew a homeowners policy solely because you filed a single valid claim in one policy term, and asking about your coverage is not a claim.",
+   "es": "Una aseguradora no puede cancelar su póliza, ni negarse a emitirla o a renovarla, solo por su edad, el lugar donde vive, su raza, color, credo, origen nacional, ascendencia, estado civil u ocupación lícita, porque otra aseguradora le rechazó, ni solo por su información de crédito. No puede negarse a renovar una póliza de propietarios solo porque usted presentó un único reclamo válido en un período de la póliza, y preguntar por su cobertura no es un reclamo.",
+   "state": "draft"
+  },
+  "guide.homeowners-insurance.can-my-insurer-refuse-to-renew": {
+   "en": "Can my insurer refuse to renew my policy because I filed a claim?",
+   "es": "¿Puede mi aseguradora negarse a renovar mi póliza porque presenté un reclamo?",
+   "state": "draft"
+  },
+  "guide.homeowners-insurance.common-questions": {
+   "en": "Common Questions",
+   "es": "Preguntas frecuentes",
+   "state": "draft"
+  },
+  "guide.homeowners-insurance.do-you-have-a-mortgage": {
+   "en": "Do you have a mortgage?",
+   "es": "¿Tiene una hipoteca?",
+   "state": "draft"
+  },
+  "guide.homeowners-insurance.does-a-flood-insurance-requirement": {
+   "en": "Does a flood insurance requirement follow the house?",
+   "es": "¿La obligación de tener seguro contra inundaciones va con la casa?",
+   "state": "draft"
+  },
+  "guide.homeowners-insurance.file-a-complaint-insurance-department": {
+   "en": "File a complaint (Insurance Department)",
+   "es": "Presentar una queja (Departamento de Seguros)",
+   "state": "draft"
+  },
+  "guide.homeowners-insurance.filing-a-complaint-nh-insurance": {
+   "en": "Filing a Complaint (NH Insurance Department)",
+   "es": "Cómo presentar una queja (Departamento de Seguros de NH)",
+   "state": "draft"
+  },
+  "guide.homeowners-insurance.home-and-renters-insurance-rsa-417": {
+   "en": "Home and renters insurance, RSA 417-B",
+   "es": "Seguro de vivienda y de inquilinos, RSA 417-B",
+   "state": "draft"
+  },
+  "guide.homeowners-insurance.homeowners-and-renters-insurance": {
+   "en": "Homeowners and renters insurance (Insurance Department)",
+   "es": "Seguro de propietarios y de inquilinos (Departamento de Seguros)",
+   "state": "draft"
+  },
+  "guide.homeowners-insurance.homeowners-and-renters-insurance-nh": {
+   "en": "Homeowners and Renters Insurance (NH Insurance Department)",
+   "es": "Seguro de propietarios y de inquilinos (Departamento de Seguros de NH)",
+   "state": "draft"
+  },
+  "guide.homeowners-insurance.how-to-get-ready-for-storms": {
+   "en": "How to get ready for storms and power outages",
+   "es": "Cómo prepararse para tormentas y apagones",
+   "state": "draft"
+  },
+  "guide.homeowners-insurance.how-to-read-your-property-tax": {
+   "en": "How to read your property tax bill",
+   "es": "Cómo leer su factura del impuesto a la propiedad",
+   "state": "draft"
+  },
+  "guide.homeowners-insurance.if-it-takes-no-action-within": {
+   "en": "If it takes no action within 120 days, you may treat that as a finding against your complaint and appeal it.",
+   "es": "Si no toma ninguna medida en un plazo de 120 días, puede tratarlo como una decisión en contra de su queja y apelarla.",
+   "state": "draft"
+  },
+  "guide.homeowners-insurance.if-the-department-finds-that-an": {
+   "en": "If the Department finds that an insurer broke the law and its finding becomes final, a consumer harmed by the practice may sue the insurer for the loss, and one who wins also recovers the cost of the suit, reasonable attorney&rsquo;s fees included. If the Department takes no action within 120 days of receiving your complaint, that counts as a finding of no violation, which you may appeal.",
+   "es": "Si el Departamento determina que una aseguradora violó la ley y su decisión queda firme, un consumidor perjudicado por esa práctica puede demandar a la aseguradora por la pérdida, y quien gana también recupera el costo del juicio, incluidos los honorarios razonables de abogado. Si el Departamento no toma ninguna medida en un plazo de 120 días desde que recibe su queja, eso equivale a una decisión de que no hubo violación, que usted puede apelar.",
+   "state": "draft"
+  },
+  "guide.homeowners-insurance.if-you-disagree-with-how-it": {
+   "en": "If you disagree with how it is handled, complain to the Insurance Department.",
+   "es": "Si no está de acuerdo con cómo se maneja, presente una queja ante el Departamento de Seguros.",
+   "state": "draft"
+  },
+  "guide.homeowners-insurance.if-you-disagree-with-your-insurer": {
+   "en": "If you disagree with your insurer: complain to the Insurance Department",
+   "es": "Si no está de acuerdo con su aseguradora: presente una queja ante el Departamento de Seguros",
+   "state": "draft"
+  },
+  "guide.homeowners-insurance.if-you-have-a-loss-filing": {
+   "en": "If you have a loss: filing a claim",
+   "es": "Si sufre una pérdida: cómo presentar un reclamo",
+   "state": "draft"
+  },
+  "guide.homeowners-insurance.if-you-have-a-loss-tell": {
+   "en": "If you have a loss, tell your insurer and keep a record of what you send.",
+   "es": "Si sufre una pérdida, avise a su aseguradora y guarde constancia de lo que envía.",
+   "state": "draft"
+  },
+  "guide.homeowners-insurance.if-your-insurer-cancels-or-will": {
+   "en": "If your insurer cancels or will not renew your policy",
+   "es": "Si su aseguradora cancela su póliza o no la renueva",
+   "state": "draft"
+  },
+  "guide.homeowners-insurance.is-there-a-time-limit-for": {
+   "en": "Is there a time limit for the Insurance Department to act on my complaint?",
+   "es": "¿Hay un plazo para que el Departamento de Seguros actúe sobre mi queja?",
+   "state": "draft"
+  },
+  "guide.homeowners-insurance.it-must-send-written-notice-that": {
+   "en": "It must send written notice that states its specific reasons, at least 45 days before the cancellation or nonrenewal takes effect, or 10 days for not paying or in the first 90 days of a new policy.",
+   "es": "Debe enviarle un aviso por escrito con sus razones específicas, al menos 45 días antes de que la cancelación o la no renovación entre en vigor, o 10 días si es por falta de pago o dentro de los primeros 90 días de una póliza nueva.",
+   "state": "draft"
+  },
+  "guide.homeowners-insurance.lead": {
+   "en": "What a homeowners insurance policy covers, why a lender may require it and flood insurance, the rules on cancelling a policy, and how to file a claim and complain.",
+   "es": "Qué cubre una póliza de seguro de propietarios, por qué un prestamista puede exigirla junto con un seguro contra inundaciones, las reglas para cancelar una póliza y cómo presentar un reclamo y una queja.",
+   "state": "draft"
+  },
+  "guide.homeowners-insurance.most-homeowners-insurance-does-not-cover": {
+   "en": "Most homeowners insurance does not cover flood damage, says FEMA&rsquo;s National Flood Insurance Program. You must have flood insurance if you own a home in a <b>Special Flood Hazard Area</b> and have a government-backed mortgage, and some lenders require it outside those areas. If the property has received federal disaster assistance before, it needs flood insurance to qualify again.",
+   "es": "La mayoría de los seguros de propietarios no cubren los daños por inundación, dice el Programa Nacional de Seguro contra Inundaciones (National Flood Insurance Program) de FEMA. Debe tener un seguro contra inundaciones si es dueño de una vivienda en una <b>Zona Especial de Riesgo de Inundación</b> (Special Flood Hazard Area) y tiene una hipoteca respaldada por el gobierno, y algunos prestamistas lo exigen fuera de esas zonas. Si la propiedad ya recibió asistencia federal por desastre, necesita un seguro contra inundaciones para volver a reunir los requisitos.",
+   "state": "draft"
+  },
+  "guide.homeowners-insurance.new-hampshires-law-on-home-insurance": {
+   "en": "New Hampshire&rsquo;s law on home insurance covers policies on a household&rsquo;s <b>real property</b> (the house), its <b>personal property</b> (belongings) and its <b>legal liability</b> for injury to other people or damage to their property. The Insurance Department&rsquo;s Homeowners and Renters Insurance page explains what a homeowners policy covers and what to ask when you buy one.",
+   "es": "La ley de New Hampshire sobre el seguro de vivienda abarca las pólizas sobre los <b>bienes inmuebles</b> de un hogar (la casa), sus <b>bienes personales</b> (pertenencias) y su <b>responsabilidad legal</b> por lesiones a otras personas o daños a su propiedad. La página del Departamento de Seguros sobre el seguro de propietarios y de inquilinos explica qué cubre una póliza de propietarios y qué preguntar al comprarla.",
+   "state": "draft"
+  },
+  "guide.homeowners-insurance.no": {
+   "en": "No",
+   "es": "No",
+   "state": "draft"
+  },
+  "guide.homeowners-insurance.no-lender-requires-it-but-you": {
+   "en": "No lender requires it, but you bear any loss you do not insure.",
+   "es": "Ningún prestamista lo exige, pero usted asume cualquier pérdida que no asegure.",
+   "state": "draft"
+  },
+  "guide.homeowners-insurance.not-solely-because-of-a-single": {
+   "en": "Not solely because of a single valid claim in one policy term, and asking about your coverage is not a claim.",
+   "es": "No solo por un único reclamo válido en un período de la póliza, y preguntar por su cobertura no es un reclamo.",
+   "state": "draft"
+  },
+  "guide.homeowners-insurance.once-a-policy-has-been-in": {
+   "en": "Once a policy has been in effect for 90 days, or once it has been renewed, the insurer may cancel it only if you do not pay the premium, are convicted of a crime that increases a hazard insured against, commit fraud in a claim, act with gross negligence that substantially increases a hazard, change the property so that it cannot be insured, or ask it to.",
+   "es": "Cuando una póliza lleva 90 días en vigor, o una vez renovada, la aseguradora solo puede cancelarla si usted no paga la prima, es condenado por un delito que aumenta un riesgo asegurado, comete fraude en un reclamo, actúa con negligencia grave que aumenta sustancialmente un riesgo, cambia la propiedad de modo que no se puede asegurar, o lo pide.",
+   "state": "draft"
+  },
+  "guide.homeowners-insurance.renters-insurance": {
+   "en": "Renters insurance",
+   "es": "El seguro de inquilinos",
+   "state": "draft"
+  },
+  "guide.homeowners-insurance.tell-your-insurance-company-about-the": {
+   "en": "Tell your insurance company about the loss as your policy directs, and keep a record of what you send and when. The law treats it as an <b>unfair claim settlement practice</b> for an insurer, without just cause, to fail to act promptly on what you send about a claim, to fail to try in good faith to settle fairly and promptly once its liability is reasonably clear, or to fail to say whether it covers the claim within a reasonable time after you send the proof of loss forms.",
+   "es": "Avise a su compañía de seguros de la pérdida como lo indica su póliza, y guarde constancia de lo que envía y de cuándo lo envía. La ley considera una <b>práctica desleal en la liquidación de reclamos</b> (unfair claim settlement practice) que una aseguradora, sin causa justificada, no actúe con prontitud sobre lo que usted le envía acerca de un reclamo, no intente de buena fe llegar a un arreglo justo y rápido una vez que su responsabilidad está razonablemente clara, o no diga si cubre el reclamo dentro de un plazo razonable después de que usted envía los formularios de prueba de pérdida.",
+   "state": "draft"
+  },
+  "guide.homeowners-insurance.the-new-hampshire-insurance-department": {
+   "en": "The <b>New Hampshire Insurance Department</b> takes complaints about insurance companies and agents; its Filing a Complaint page says how to file one, online or on a printed form. The Insurance Commissioner may examine and investigate an insurer&rsquo;s practices.",
+   "es": "El <b>Departamento de Seguros de New Hampshire</b> (New Hampshire Insurance Department) recibe quejas sobre compañías y agentes de seguros; su página sobre cómo presentar una queja explica cómo hacerlo, en línea o en un formulario impreso. El Comisionado de Seguros puede examinar e investigar las prácticas de una aseguradora.",
+   "state": "draft"
+  },
+  "guide.homeowners-insurance.title": {
+   "en": "Homeowners Insurance in New Hampshire",
+   "es": "El seguro de propietarios en New Hampshire",
+   "state": "draft"
+  },
+  "guide.homeowners-insurance.unfair-insurance-practices-rsa-417": {
+   "en": "Unfair insurance practices, RSA 417",
+   "es": "Prácticas desleales de seguros, RSA 417",
+   "state": "draft"
+  },
+  "guide.homeowners-insurance.what-a-lender-may-require-and": {
+   "en": "What a lender may require, and flood insurance",
+   "es": "Lo que un prestamista puede exigir, y el seguro contra inundaciones",
+   "state": "draft"
+  },
+  "guide.homeowners-insurance.what-homeowners-insurance-covers": {
+   "en": "What homeowners insurance covers",
+   "es": "Qué cubre el seguro de propietarios",
+   "state": "draft"
+  },
+  "guide.homeowners-insurance.who-needs-flood-insurance-floodsmart": {
+   "en": "Who needs flood insurance (FloodSmart, FEMA)",
+   "es": "Quién necesita seguro contra inundaciones (FloodSmart, FEMA)",
+   "state": "draft"
+  },
+  "guide.homeowners-insurance.whos-eligible-for-nfip-flood-insurance": {
+   "en": "Who’s Eligible for NFIP Flood Insurance? (FloodSmart, FEMA)",
+   "es": "¿Quién reúne los requisitos para el seguro contra inundaciones del NFIP? (FloodSmart, FEMA)",
+   "state": "draft"
+  },
+  "guide.homeowners-insurance.yes": {
+   "en": "Yes",
+   "es": "Sí",
+   "state": "draft"
+  },
+  "guide.homeowners-insurance.yes-if-the-home-received-federal": {
+   "en": "Yes: if the home received federal disaster assistance before, it needs flood insurance to qualify for more, even after it is sold.",
+   "es": "Sí: si la vivienda ya recibió asistencia federal por desastre, necesita un seguro contra inundaciones para volver a reunir los requisitos, incluso después de venderse.",
+   "state": "draft"
+  },
+  "guide.homeowners-insurance.your-lender-may-require-homeowners": {
+   "en": "Your lender may require homeowners insurance, and flood insurance in a high-risk flood area.",
+   "es": "Su prestamista puede exigir un seguro de propietarios, y un seguro contra inundaciones en una zona de alto riesgo de inundación.",
    "state": "draft"
   },
   "guide.how-to-vote.a-physical-disability-or-illness": {
@@ -9216,6 +9711,176 @@
    "es": "su licencia actual, u otra prueba de identidad si no la encuentra;",
    "state": "draft"
   },
+  "guide.renters-insurance.a-renters-policy-can-cover-your": {
+   "en": "A renters policy can cover your belongings and your liability.",
+   "es": "Una póliza de inquilinos puede cubrir sus pertenencias y su responsabilidad.",
+   "state": "draft"
+  },
+  "guide.renters-insurance.a-renters-policy-insures-your-own": {
+   "en": "A renters policy insures your own belongings and your <b>liability</b> if someone is hurt in your home or you damage someone else&rsquo;s property; the Insurance Department&rsquo;s page explains what it covers. Once a policy has been in effect for 90 days, the insurer may cancel it only for the reasons the law lists, with written notice. If an insurer handles your claim unfairly, you can complain to the <b>Insurance Department</b>.",
+   "es": "Una póliza de inquilinos asegura sus propias pertenencias y su <b>responsabilidad</b> si alguien se lesiona en su vivienda o usted daña la propiedad de otra persona; la página del Departamento de Seguros explica qué cubre. Cuando una póliza lleva 90 días en vigor, la aseguradora solo puede cancelarla por las razones que indica la ley, con aviso por escrito. Si una aseguradora maneja su reclamo de forma injusta, puede presentar una queja ante el <b>Departamento de Seguros</b>.",
+   "state": "draft"
+  },
+  "guide.renters-insurance.an-insurer-may-not-cancel-or": {
+   "en": "An insurer may not cancel or refuse to write or renew your policy solely because of your age, where you live, your race, color, creed, national origin, ancestry, marital status or lawful occupation, because another insurer turned you down, or on your credit information alone.",
+   "es": "Una aseguradora no puede cancelar su póliza, ni negarse a emitirla o a renovarla, solo por su edad, el lugar donde vive, su raza, color, credo, origen nacional, ascendencia, estado civil u ocupación lícita, porque otra aseguradora le rechazó, ni solo por su información de crédito.",
+   "state": "draft"
+  },
+  "guide.renters-insurance.can-my-insurer-drop-me-because": {
+   "en": "Can my insurer drop me because of my credit?",
+   "es": "¿Puede mi aseguradora cancelarme por mi crédito?",
+   "state": "draft"
+  },
+  "guide.renters-insurance.common-questions": {
+   "en": "Common Questions",
+   "es": "Preguntas frecuentes",
+   "state": "draft"
+  },
+  "guide.renters-insurance.do-you-rent-your-home": {
+   "en": "Do you rent your home?",
+   "es": "¿Alquila su vivienda?",
+   "state": "draft"
+  },
+  "guide.renters-insurance.file-a-complaint-insurance-department": {
+   "en": "File a complaint (Insurance Department)",
+   "es": "Presentar una queja (Departamento de Seguros)",
+   "state": "draft"
+  },
+  "guide.renters-insurance.filing-a-complaint-nh-insurance": {
+   "en": "Filing a Complaint (NH Insurance Department)",
+   "es": "Cómo presentar una queja (Departamento de Seguros de NH)",
+   "state": "draft"
+  },
+  "guide.renters-insurance.home-and-renters-insurance-rsa-417": {
+   "en": "Home and renters insurance, RSA 417-B",
+   "es": "Seguro de vivienda y de inquilinos, RSA 417-B",
+   "state": "draft"
+  },
+  "guide.renters-insurance.homeowners-and-renters-insurance": {
+   "en": "Homeowners and renters insurance (Insurance Department)",
+   "es": "Seguro de propietarios y de inquilinos (Departamento de Seguros)",
+   "state": "draft"
+  },
+  "guide.renters-insurance.homeowners-and-renters-insurance-nh": {
+   "en": "Homeowners and Renters Insurance (NH Insurance Department)",
+   "es": "Seguro de propietarios y de inquilinos (Departamento de Seguros de NH)",
+   "state": "draft"
+  },
+  "guide.renters-insurance.homeowners-insurance": {
+   "en": "Homeowners insurance",
+   "es": "El seguro de propietarios",
+   "state": "draft"
+  },
+  "guide.renters-insurance.if-it-takes-no-action-within": {
+   "en": "If it takes no action within 120 days, you may treat that as a finding against your complaint and appeal it.",
+   "es": "Si no toma ninguna medida en un plazo de 120 días, puede tratarlo como una decisión en contra de su queja y apelarla.",
+   "state": "draft"
+  },
+  "guide.renters-insurance.if-the-department-finds-that-an": {
+   "en": "If the Department finds that an insurer broke the law and its finding becomes final, a consumer harmed by the practice may sue the insurer for the loss, and one who wins also recovers the cost of the suit, reasonable attorney&rsquo;s fees included. If the Department takes no action within 120 days of receiving your complaint, that counts as a finding of no violation, which you may appeal.",
+   "es": "Si el Departamento determina que una aseguradora violó la ley y su decisión queda firme, un consumidor perjudicado por esa práctica puede demandar a la aseguradora por la pérdida, y quien gana también recupera el costo del juicio, incluidos los honorarios razonables de abogado. Si el Departamento no toma ninguna medida en un plazo de 120 días desde que recibe su queja, eso equivale a una decisión de que no hubo violación, que usted puede apelar.",
+   "state": "draft"
+  },
+  "guide.renters-insurance.if-you-disagree-with-how-it": {
+   "en": "If you disagree with how it is handled, complain to the Insurance Department.",
+   "es": "Si no está de acuerdo con cómo se maneja, presente una queja ante el Departamento de Seguros.",
+   "state": "draft"
+  },
+  "guide.renters-insurance.if-you-disagree-with-your-insurer": {
+   "en": "If you disagree with your insurer: complain to the Insurance Department",
+   "es": "Si no está de acuerdo con su aseguradora: presente una queja ante el Departamento de Seguros",
+   "state": "draft"
+  },
+  "guide.renters-insurance.if-you-have-a-loss-filing": {
+   "en": "If you have a loss: filing a claim",
+   "es": "Si sufre una pérdida: cómo presentar un reclamo",
+   "state": "draft"
+  },
+  "guide.renters-insurance.if-you-have-a-loss-tell": {
+   "en": "If you have a loss, tell your insurer and keep a record of what you send.",
+   "es": "Si sufre una pérdida, avise a su aseguradora y guarde constancia de lo que envía.",
+   "state": "draft"
+  },
+  "guide.renters-insurance.if-your-insurer-cancels-or-will": {
+   "en": "If your insurer cancels or will not renew your policy",
+   "es": "Si su aseguradora cancela su póliza o no la renueva",
+   "state": "draft"
+  },
+  "guide.renters-insurance.is-there-a-time-limit-for": {
+   "en": "Is there a time limit for the Insurance Department to act on my complaint?",
+   "es": "¿Hay un plazo para que el Departamento de Seguros actúe sobre mi queja?",
+   "state": "draft"
+  },
+  "guide.renters-insurance.it-must-send-written-notice-that": {
+   "en": "It must send written notice that states its specific reasons, at least 45 days before the cancellation or nonrenewal takes effect, or 10 days for not paying or in the first 90 days of a new policy.",
+   "es": "Debe enviarle un aviso por escrito con sus razones específicas, al menos 45 días antes de que la cancelación o la no renovación entre en vigor, o 10 días si es por falta de pago o dentro de los primeros 90 días de una póliza nueva.",
+   "state": "draft"
+  },
+  "guide.renters-insurance.lead": {
+   "en": "What a renters insurance policy covers, the rules on cancelling one, and how to file a claim and complain to the Insurance Department.",
+   "es": "Qué cubre una póliza de seguro de inquilinos, las reglas para cancelarla y cómo presentar un reclamo y una queja ante el Departamento de Seguros.",
+   "state": "draft"
+  },
+  "guide.renters-insurance.new-hampshires-law-on-home-insurance": {
+   "en": "New Hampshire&rsquo;s law on home insurance covers policies on a household&rsquo;s <b>real property</b> (a building), its <b>personal property</b> (belongings) and its <b>legal liability</b> for injury to other people or damage to their property. A renters policy is the last two: your belongings and your liability, not the building, which is the owner&rsquo;s to insure. The Insurance Department&rsquo;s Homeowners and Renters Insurance page explains what such a policy covers and what to ask when you buy one.",
+   "es": "La ley de New Hampshire sobre el seguro de vivienda abarca las pólizas sobre los <b>bienes inmuebles</b> de un hogar (un edificio), sus <b>bienes personales</b> (pertenencias) y su <b>responsabilidad legal</b> por lesiones a otras personas o daños a su propiedad. Una póliza de inquilinos cubre las dos últimas: sus pertenencias y su responsabilidad, no el edificio, que le corresponde asegurar al dueño. La página del Departamento de Seguros sobre el seguro de propietarios y de inquilinos explica qué cubre una póliza así y qué preguntar al comprarla.",
+   "state": "draft"
+  },
+  "guide.renters-insurance.no-you-own-it": {
+   "en": "No, you own it",
+   "es": "No, es suya",
+   "state": "draft"
+  },
+  "guide.renters-insurance.not-on-your-credit-information-alone": {
+   "en": "Not on your credit information alone: the insurer must weigh other factors too.",
+   "es": "No solo por su información de crédito: la aseguradora debe considerar también otros factores.",
+   "state": "draft"
+  },
+  "guide.renters-insurance.once-a-policy-has-been-in": {
+   "en": "Once a policy has been in effect for 90 days, or once it has been renewed, the insurer may cancel it only if you do not pay the premium, are convicted of a crime that increases a hazard insured against, commit fraud in a claim, act with gross negligence that substantially increases a hazard, or ask it to.",
+   "es": "Cuando una póliza lleva 90 días en vigor, o una vez renovada, la aseguradora solo puede cancelarla si usted no paga la prima, es condenado por un delito que aumenta un riesgo asegurado, comete fraude en un reclamo, actúa con negligencia grave que aumenta sustancialmente un riesgo, o lo pide.",
+   "state": "draft"
+  },
+  "guide.renters-insurance.see-homeowners-insurance": {
+   "en": "See homeowners insurance.",
+   "es": "Vea el seguro de propietarios.",
+   "state": "draft"
+  },
+  "guide.renters-insurance.tell-your-insurance-company-about-the": {
+   "en": "Tell your insurance company about the loss as your policy directs, and keep a record of what you send and when. The law treats it as an <b>unfair claim settlement practice</b> for an insurer, without just cause, to fail to act promptly on what you send about a claim, to fail to try in good faith to settle fairly and promptly once its liability is reasonably clear, or to fail to say whether it covers the claim within a reasonable time after you send the proof of loss forms.",
+   "es": "Avise a su compañía de seguros de la pérdida como lo indica su póliza, y guarde constancia de lo que envía y de cuándo lo envía. La ley considera una <b>práctica desleal en la liquidación de reclamos</b> (unfair claim settlement practice) que una aseguradora, sin causa justificada, no actúe con prontitud sobre lo que usted le envía acerca de un reclamo, no intente de buena fe llegar a un arreglo justo y rápido una vez que su responsabilidad está razonablemente clara, o no diga si cubre el reclamo dentro de un plazo razonable después de que usted envía los formularios de prueba de pérdida.",
+   "state": "draft"
+  },
+  "guide.renters-insurance.the-new-hampshire-insurance-department": {
+   "en": "The <b>New Hampshire Insurance Department</b> takes complaints about insurance companies and agents; its Filing a Complaint page says how to file one, online or on a printed form. The Insurance Commissioner may examine and investigate an insurer&rsquo;s practices.",
+   "es": "El <b>Departamento de Seguros de New Hampshire</b> (New Hampshire Insurance Department) recibe quejas sobre compañías y agentes de seguros; su página sobre cómo presentar una queja explica cómo hacerlo, en línea o en un formulario impreso. El Comisionado de Seguros puede examinar e investigar las prácticas de una aseguradora.",
+   "state": "draft"
+  },
+  "guide.renters-insurance.title": {
+   "en": "Renters Insurance in New Hampshire",
+   "es": "El seguro de inquilinos en New Hampshire",
+   "state": "draft"
+  },
+  "guide.renters-insurance.unfair-insurance-practices-rsa-417": {
+   "en": "Unfair insurance practices, RSA 417",
+   "es": "Prácticas desleales de seguros, RSA 417",
+   "state": "draft"
+  },
+  "guide.renters-insurance.what-renters-insurance-covers": {
+   "en": "What renters insurance covers",
+   "es": "Qué cubre el seguro de inquilinos",
+   "state": "draft"
+  },
+  "guide.renters-insurance.yes": {
+   "en": "Yes",
+   "es": "Sí",
+   "state": "draft"
+  },
+  "guide.renters-insurance.your-rights-as-a-tenant": {
+   "en": "Your rights as a tenant",
+   "es": "Sus derechos como inquilino",
+   "state": "draft"
+  },
   "guide.report-a-road-problem.a-class-vi-road-is-a": {
    "en": "A class VI road is a public way the town does not maintain, and the town has no duty to repair it.",
    "es": "Un camino de clase VI es una vía pública que el municipio no mantiene, y el municipio no tiene obligación de repararlo.",
@@ -10422,6 +11087,21 @@
    "es": "El código de construcción, los permisos y las inspecciones, quién puede hacer trabajos eléctricos y de plomería, la aprobación de sistemas sépticos, y construir cerca del agua.",
    "state": "draft"
   },
+  "guide.task.car-insurance.does": {
+   "en": "Understand car insurance in New Hampshire",
+   "es": "Entienda el seguro de auto en New Hampshire",
+   "state": "draft"
+  },
+  "guide.task.car-insurance.head": {
+   "en": "How car insurance works in New Hampshire",
+   "es": "Cómo funciona el seguro de auto en New Hampshire",
+   "state": "draft"
+  },
+  "guide.task.car-insurance.line": {
+   "en": "When the state requires proof of insurance, the least a policy must cover, and uninsured motorist coverage.",
+   "es": "Cuándo el estado exige una prueba de seguro, lo mínimo que debe cubrir una póliza y la cobertura de conductor sin seguro.",
+   "state": "draft"
+  },
   "guide.task.child-care-scholarship.does": {
    "en": "Get help paying for child care",
    "es": "Obtener ayuda para pagar el cuidado infantil",
@@ -10585,6 +11265,21 @@
   "guide.task.homelessness-help.line": {
    "en": "Shelter, your town&rsquo;s welfare office, your rights in an eviction, and a housing voucher.",
    "es": "Refugio, la oficina de asistencia social de su municipio, sus derechos en un desalojo y un vale de vivienda.",
+   "state": "draft"
+  },
+  "guide.task.homeowners-insurance.does": {
+   "en": "Understand homeowners insurance",
+   "es": "Entienda el seguro de propietarios",
+   "state": "draft"
+  },
+  "guide.task.homeowners-insurance.head": {
+   "en": "Homeowners insurance: what it covers and your rights",
+   "es": "El seguro de propietarios: qué cubre y sus derechos",
+   "state": "draft"
+  },
+  "guide.task.homeowners-insurance.line": {
+   "en": "What a homeowners policy covers, what a lender may require, flood insurance, and filing a claim or a complaint.",
+   "es": "Qué cubre una póliza de propietarios, lo que un prestamista puede exigir, el seguro contra inundaciones y cómo presentar un reclamo o una queja.",
    "state": "draft"
   },
   "guide.task.how-to-vote.does": {
@@ -10810,6 +11505,21 @@
   "guide.task.renew-drivers-license.line": {
    "en": "Online or at a DMV appointment, and what to do if it has expired.",
    "es": "En línea o con cita en el DMV, y qué hacer si ya venció.",
+   "state": "draft"
+  },
+  "guide.task.renters-insurance.does": {
+   "en": "Understand renters insurance",
+   "es": "Entienda el seguro de inquilinos",
+   "state": "draft"
+  },
+  "guide.task.renters-insurance.head": {
+   "en": "Renters insurance: what it covers and your rights",
+   "es": "El seguro de inquilinos: qué cubre y sus derechos",
+   "state": "draft"
+  },
+  "guide.task.renters-insurance.line": {
+   "en": "What a renters policy covers, cancellation, and filing a claim or a complaint.",
+   "es": "Qué cubre una póliza de inquilinos, la cancelación y cómo presentar un reclamo o una queja.",
    "state": "draft"
   },
   "guide.task.report-a-road-problem.does": {

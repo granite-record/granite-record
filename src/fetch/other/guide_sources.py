@@ -259,6 +259,14 @@ SOURCES = {
         "https://www.dmv.nh.gov/vehicles-boats-and-titles/boat-registrations",
         "https://www.wildlife.nh.gov/saltwater-fisheries-new-hampshire/saltwater-fishing-faqs",
     ],
+    # The Insurance Department's consumer pages for the car, renters and
+    # homeowners insurance guides (26 October 2026): addresses from a web
+    # search, each refusing a cloud session, waiting for the person's printouts.
+    "insurance_property": [
+        "https://www.insurance.nh.gov/consumers/automobile-insurance",
+        "https://www.insurance.nh.gov/consumers/homeowners-and-renters-insurance",
+        "https://www.insurance.nh.gov/consumers/filing-complaint",
+    ],
 }
 
 # NOT STATE AGENCIES, AND NEVER FETCHED. Where a guide sends a reader for help
@@ -382,6 +390,11 @@ OTHER = {
     "outdoors": [
         "https://www.nhfishandgame.com/",
         "https://www.fws.gov/service/buy-duck-stamp-or-e-stamp",
+    ],
+    # FEMA's flood insurance page for the homeowners insurance guide, read by
+    # a cloud session on 26 October 2026, where it answered.
+    "insurance_property": [
+        "https://www.floodsmart.gov/get-insured/eligibility",
     ],
 }
 
