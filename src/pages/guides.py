@@ -799,7 +799,7 @@ ENERGY = guide(
           "appointment.</p>",
           actions=[("Fuel Assistance Program", DOE_FUEL)]),
      step("Know what each program does",
-          "<ul><li><b>Fuel assistance</b> helps with heating costs as funds become available. "
+          "<ul><li><b>Fuel assistance</b> helps with heating costs. "
           "It is a grant, not a loan.</li>"
           "<li><b>Electric assistance</b> is a discount on your monthly electric bill if your "
           "income qualifies.</li>"
@@ -830,7 +830,13 @@ ENERGY = guide(
            "or phone interview or mail-in application; no-heat emergencies go to the local agency.",
            DOE_CAA, CHECKED),
      claim("211, Neighbor Helping Neighbor (Eversource, Liberty and Unitil customers), Project Care "
-           "(NHEC customers) and NH Adult and Aging Care, 1-866-634-9412.", DOE_CAA, CHECKED)]
+           "(NHEC customers) and NH Adult and Aging Care, 1-866-634-9412.", DOE_CAA, CHECKED),
+     # 211's own number, as the homelessness guide records 211 NH's page saying it.
+     claim("211 NH connects residents to resources through trained Information and Referral "
+           "Specialists, available 24 hours, 365 days a year, by phone, email or text, for "
+           "housing, utilities, food, mental health and more; dial 211 or 1-866-444-4211; 911 "
+           "for emergencies; 988 for suicide and crisis help.", "https://211nh.org/",
+           "2026-10-24")]
     + help_claims("nheasy", "adrc"),
     more=civics.faq(
         ("What if I cannot get to an office?",
@@ -3465,11 +3471,11 @@ TOUR = guide(
     "Arranging a tour of the State House in Concord through its Visitor Center, bringing a class "
     "on a field trip, and what to expect on the day.",
     "The State House Visitor Center in Concord schedules tours of the State House for groups, "
-    "school classes among them, and a tour is generally an hour. To arrange one, call the Visitor "
-    "Center at (603) 271-2154. Before a class visits, share the Visitor Center&rsquo;s rules for "
+    "school classes among them, and a tour is generally an hour. With any question about a tour, "
+    "call the Visitor Center at (603) 271-2154. Before a class visits, share the Visitor Center&rsquo;s rules for "
     "tours with every adult coming: arrive on time, leave backpacks behind, and bring no food, "
     "drink or gum. To visit with your own representative or senator, contact them directly.",
-    [box("Call the Visitor Center to arrange a tour for your group or class."),
+    [box("Contact the Visitor Center about a tour for your group or class."),
      ask("Bringing a class?",
          [("Yes", "Share the rules for tours with every adult, and plan chaperones, lunches and "
                   "your arrival."),
@@ -3480,7 +3486,7 @@ TOUR = guide(
          "that day.")],
     [step("Arrange the tour",
           "<p>The State House Visitor Center schedules the tours, many groups each day. Call it at "
-          "(603) 271-2154 to ask for a date and with any question, or start from its page.</p>"
+          "(603) 271-2154 with any question, including how to book, or start from its page.</p>"
           "<p>To visit with your own representative or senator, contact them directly. Finding "
           "your representatives says who they are, and How to contact your legislators how to "
           "reach them.</p>",
@@ -3632,7 +3638,7 @@ WARRANT = guide(
      ask("Does your town or school district vote on its articles at the polls (SB 2)?",
          [("No: a traditional meeting",
            "Town: due by the fifth Tuesday before the meeting. School district: 30 days before "
-           "it."),
+           "it, or the second Tuesday in March if that is earlier."),
           ("Yes: SB 2",
            "The petition is due by the second Tuesday in January, for a March meeting.")]),
      box("The selectmen or school board put it on the warrant, and the voters decide it.")],
@@ -3744,7 +3750,7 @@ WARRANT = guide(
         ("What if the selectmen refuse to put it on the warrant?",
          "<p>In a town, selectmen who refuse are guilty of a violation, and if they unreasonably "
          "refuse, a Superior Court justice can order the article inserted on the written "
-         "application of 25 or more voters.</p>"),
+         "application of 25 or more voters, or of one-sixth of the town&rsquo;s voters.</p>"),
         ("Are there special rules for some articles?",
          "<p>An article that would abolish a planning board or zoning commission must also meet "
          "the petition rule in <a href=\"/laws/673#s18\">RSA 673:18, II</a>.</p>"))
@@ -3784,13 +3790,14 @@ TAX_BILL = guide(
     "property-tax-bill", "How Your Property Tax Is Figured, and How to Read Your Bill",
     "How your town or city assesses your property, how the tax rate is set, what your property "
     "tax bill must show, when it is due, and the exemptions, credits and deferrals you can apply "
-    "for by April 15.",
+    "for.",
     "Your town or city assesses your property at its market value as of April 1, and must "
     "revalue every property at least every fifth year. The voters and officials of your town, "
     "school district and county set their budgets, and the state works out the rate that raises "
     "them. Your bill shows your assessment and four rates: town, local school, state education "
-    "and county. If the tax is hard to pay, you may qualify for an exemption, credit or "
-    "deferral: apply to your town by April 15.",
+    "and county. If the tax is hard to pay, you may qualify for an exemption or credit, for "
+    "which you apply to your town by April 15, or a deferral, by March 1 after the final "
+    "bill.",
     [box("Your town assesses your property at its market value, as of April 1."),
      box("The budgets are voted; the state sets the rate that raises them."),
      box("Your bill shows your assessment and four rates: town, local school, state education "
@@ -3798,8 +3805,8 @@ TAX_BILL = guide(
      ask("Is something wrong, or is the tax hard to pay?",
          [("The assessment is too high", "Ask your town for an abatement, by March 1 after the "
            "final bill."),
-          ("It is hard to pay", "Apply to your town by April 15 for an exemption, credit or "
-           "deferral.")])],
+          ("It is hard to pay", "Apply to your town by April 15 for an exemption or credit, "
+           "or by March 1 for a deferral.")])],
     [step("How your property is assessed",
           "<p>Your town or city&rsquo;s assessors or selectmen appraise your land and buildings "
           "at their <b>market value</b>: what the law calls their full and true value. Each "
@@ -3814,7 +3821,7 @@ TAX_BILL = guide(
           "<p>Your property tax pays for four things: your town or city, your local schools, the "
           "state&rsquo;s education tax, and your county, and a village district&rsquo;s where "
           "there is one. Each is voted by its own body: town meeting or the city council, the "
-          "school district meeting or board, the "
+          "school district meeting, the "
           '<a href="/learn/county-government.html">county convention</a>. The state&rsquo;s '
           "Department of Revenue Administration checks each budget and estimate of revenue, "
           "then computes and sets the tax rate for each town and city.</p>"
@@ -3824,7 +3831,7 @@ TAX_BILL = guide(
      step("Read your bill",
           "<p>The law says what every property tax bill must show:</p><ul>"
           "<li><b>The rates</b> for the municipal, local education, state education and county "
-          "taxes, each separately. Your tax is your assessed value multiplied by their total.</li>"
+          "taxes, each separately.</li>"
           "<li><b>Your assessed valuation</b>: the value of the land and buildings you are taxed "
           "on.</li>"
           "<li><b>Your right to ask for an abatement</b>, in writing, from your selectmen or "
@@ -3845,12 +3852,13 @@ TAX_BILL = guide(
           "bills go out late, interest does not start until 30 days after they were mailed. The "
           "bill says the date.</p>",
           law=["RSA 76:15-a", "RSA 76:13"]),
-     step("Apply for an exemption, credit or deferral by April 15",
+     step("Apply for an exemption or credit by April 15, or a deferral by March 1",
           "<p>New Hampshire law lets each town and city offer relief to some owners, and the "
           "town&rsquo;s voters or council decide which it offers and, within the law&rsquo;s "
           "limits, how much. Ask your assessing office or the selectmen what yours offers. You "
           "apply once, on the state&rsquo;s form, to your selectmen or assessors, <b>by April "
-          "15</b>, and the application stands from year to year.</p>"
+          "15</b>, and the application stands from year to year while you live in the same home, "
+          "though your town may ask you to update your information as often as once a year.</p>"
           + table("Property tax relief a town may offer (RSA 72)",
                   ["Relief", "Who it is for", "How much"],
                   [["Elderly exemption",
@@ -3863,8 +3871,10 @@ TAX_BILL = guide(
                     "Owners who are legally blind",
                     "$15,000 off the assessed value of your home, or more if the town votes it"],
                    ["Exemption for the disabled",
-                    "Owners eligible for Social Security disability benefits (SSDI or SSI), "
-                    "where the town has adopted it",
+                    "Owners eligible for Social Security disability benefits (SSDI or SSI) "
+                    "who have lived in New Hampshire at least 5 years and live in the home, "
+                    "under the town&rsquo;s limits on income and assets, where the town has "
+                    "adopted it",
                     "Set by the town"],
                    ["Veterans&rsquo; tax credit",
                     "A veteran who served at least 90 days in a qualifying war or conflict and "
@@ -3932,7 +3942,10 @@ TAX_BILL = guide(
            "previous year's rate times the prior year's valuation is due July 1, and the "
            "remainder December 1.", "RSA 76:15-a", TAX_BILL_READ),
      claim("Exemptions and credits require a permanent application, filed with the selectmen "
-           "or assessors by April 15, on the commissioner's form.", "RSA 72:33", TAX_BILL_READ),
+           "or assessors by April 15, on the commissioner's form; it is sufficient on an annual "
+           "basis so long as the applicant does not change residence; assessing officials may "
+           "require the information periodically but no more frequently than annually.",
+           "RSA 72:33", TAX_BILL_READ),
      claim("A town or city adopts, modifies or rescinds an exemption or credit by vote of town "
            "meeting or its legislative body.", "RSA 72:27-a", TAX_BILL_READ),
      claim("An elderly exemption requires residence in the state for at least 3 consecutive "
@@ -4011,7 +4024,8 @@ TAX_BILL = guide(
              fig("$750", "RSA 72:28", "an amount from $51 up to $750"),
              fig("$1,000", "RSA 72:28", "an amount from $51 up to $1,000"),
              fig("5 percent", "RSA 72:38-a", "annual interest at 5 percent"),
-             fig("9 months", "RSA 72:38-a", "within 9 months of the date of death")])
+             fig("9 months", "RSA 72:38-a", "within 9 months of the date of death"),
+             fig("5 years", "RSA 72:37-b", "resident for at least 5 years")])
 
 GUIDES += [TAX_BILL]
 
@@ -5903,7 +5917,8 @@ CONSUMER = guide(
     "New Hampshire&rsquo;s Consumer Protection Act forbids unfair and deceptive business "
     "practices, and the Attorney General&rsquo;s Consumer Protection and Antitrust Bureau "
     "enforces it. If a seller came to your door, you can usually cancel the sale until midnight "
-    "of the third business day after it. A real prize never costs you a fee. If a business "
+    "of the third business day after it. A prize you are told you have won must cost you "
+    "nothing. If a business "
     "cheated you, you can complain to the Bureau, and you can take the business to court "
     "yourself.",
     [ask("What happened?",
@@ -5913,8 +5928,8 @@ CONSUMER = guide(
            "Complain to the Attorney General&rsquo;s Consumer Protection Bureau."),
           ("A call or letter says you won a prize, for a fee",
            "A prize the law allows costs you nothing. Do not pay.")]),
-     box("You can also take the business to court yourself, within 3 years of learning what "
-         "it did.")],
+     box("You can also take the business to court yourself, unless the sale was more than 3 "
+         "years before you knew, or should have known, what it did.")],
     [step("Know what the law forbids",
           "<p>The Consumer Protection Act makes it unlawful for a business to use any unfair or "
           "deceptive practice. Among the examples the law lists:</p>"
@@ -5924,7 +5939,7 @@ CONSUMER = guide(
           "<li>selling used, reconditioned or secondhand goods as new;</li>"
           "<li>advertising something with no intent to sell it as advertised;</li>"
           "<li>false or misleading claims about a sale price or a price reduction.</li></ul>",
-          law=["RSA 358-A:2", "RSA 361-B:2-a"]),
+          law=["RSA 358-A:2"]),
      step("A prize should never cost you anything",
           "<p>If a seller tells you that you have won something, with words such as "
           "&ldquo;Congratulations&rdquo; or &ldquo;You have won&rdquo;, the law requires the "
@@ -5943,12 +5958,13 @@ CONSUMER = guide(
           "mail, or return the goods in person within that time. The seller must then return, "
           "within 15 days, everything you paid, any trade-in, and any note you signed. If the "
           "seller had already done work that changed your property, you get all your money "
-          "back, or you may ask instead for the property to be put back as it was. The seller "
+          "back, or, if it can reasonably be done, you may ask instead for the property to be put "
+          "back as it was. The seller "
           "must come for its goods or pay to have them returned, and once it has refunded you, "
           "you must let it have them back within the same 15 days. If it makes no effort to get "
           "them back within 90 days of the sale, they are yours.</p>",
           law=["RSA 361-B:1", "RSA 361-B:2", "RSA 361-B:3"]),
-     step("Gift certificates do not expire",
+     step("Gift certificates of $250 or less do not expire",
           "<p>A gift certificate with a face value of $250 or less may not carry an expiration "
           "date, and no gift certificate may lose value to a dormancy fee or any other service "
           "charge. Season passes are not covered.</p>",
@@ -6048,14 +6064,18 @@ CONSUMER = guide(
     + help_claims("lawyer"),
     more=civics.faq(
         ("What must a seller by mail, phone or online tell me?",
-         "<p>A business that sells by mail, by phone or online from a post office box or an "
-         "answering service must say in its advertising its legal name, the street address "
-         "it actually works from, and a phone number for complaints. A seller who will not "
-         "say who and where it is is a warning sign.</p>"),
+         "<p>A business that gives only a post office box, a mail drop or an answering "
+         "service in its advertising must also give its legal name, the street address it "
+         "actually works from, and a phone number for complaints, with some exceptions, such as "
+         "a shop open to the public "
+         '(<a href="/laws/361-b#s2-a">RSA 361-B:2-a</a>). A seller who will not say who and '
+         "where it is is a warning sign.</p>"),
         ("What about contests and sweepstakes?",
-         "<p>A promotion that offers only a chance to win must say who runs it and every "
-         "condition you must meet, and, in writing, each prize&rsquo;s value, how many there "
-         "are and your odds.</p>"),
+         "<p>A sales promotion that tells you that you have a chance to win must say who runs "
+         "it and every condition you must meet, and, in writing, each prize&rsquo;s value, how "
+         "many there are and your odds. The rule does not apply where you need only send in or "
+         "phone in an entry, or where you never have to listen to a sales pitch or pay "
+         "anything.</p>"),
         ("What about a bank, an insurance company or a utility?",
          "<p>Some businesses answer to their own regulator instead: for a bank, an insurance "
          "company or a utility, complain to the Bank Commissioner, the Insurance Commissioner "
@@ -6800,7 +6820,8 @@ PASSPORT = guide(
     "and a photo. If your last passport was issued for 10 years, within the last 15 years, you "
     "can usually renew by mail or online instead.",
     [ask("Have you had a U.S. passport issued for 10 years, within the last 15 years?",
-         [("Yes", "You can usually renew by mail or online. You cannot renew in person."),
+         [("Yes", "You can usually renew by mail or online. You cannot renew at a post "
+                  "office."),
           ("No, or it is for a child under 16",
            "Apply in person on Form DS-11, at a post office or another acceptance facility.")]),
      box("Applying in person? Gather proof of citizenship, a photo ID, a photocopy of each, and a "
@@ -6808,9 +6829,9 @@ PASSPORT = guide(
      box("Make an appointment, and sign the form only when the agent asks you to."),
      box("Pay two fees there: one to the Department of State, one to the facility.")],
     [step("Check whether you can renew instead",
-          "<p>You can renew by mail if all of these are true: your most recent passport was "
-          "issued for 10 years, when you were 16 or older; it was issued no more than 15 years "
-          "ago; and you can send it in with your application.</p>"
+          "<p>You can renew by mail only if your most recent passport was issued for 10 years, "
+          "when you were 16 or older; it was issued no more than 15 years ago; it is undamaged, "
+          "apart from normal wear; and you can send it in with your application.</p>"
           "<p>You can <b>renew online</b> instead if that passport was valid for 10 years and "
           "expires within a year or expired less than 5 years ago; you are 25 or older; you are "
           "not changing your name or sex; you are not traveling for at least 6 weeks, since an "
@@ -6930,6 +6951,9 @@ PASSPORT = guide(
            "form until asked to do so by a passport acceptance agent; evidence of U.S. "
            "citizenship: a U.S. birth certificate, a full validity, undamaged U.S. passport, a "
            "Consular Report of Birth Abroad, or a Certificate of Naturalization or Citizenship; "
+           "adults who do not qualify for renewal because their passport was lost, stolen, or "
+           "damaged, issued over 15 years ago, or issued when they were under age 16; normal "
+           "wear such as folded pages or small bends does not count as a damaged passport; "
            "we do not accept digital evidence such as a mobile or electronic birth certificate; "
            "a physical photo ID, the most common a driver's license; if your ID is from a "
            "different state, bring a second photo ID; photocopies on 8.5 by 11 inch paper, a "
@@ -6984,7 +7008,8 @@ PASSPORT = guide(
          "granting you sole custody, a birth certificate or adoption decree naming only you, or "
          "the other parent&rsquo;s death certificate.</p>"),
         ("How long is a passport good for?",
-         "<p>A child&rsquo;s passport is valid for 5 years; an adult&rsquo;s, for 10.</p>")),
+         "<p>A passport issued to someone under 16 is valid for 5 years; one issued at 16 or older, "
+         "for 10.</p>")),
     see=[("How to get a birth, death, marriage or divorce certificate", "/guides/vital-records.html"),
          ("How to get a REAL ID", "/guides/real-id.html")],
     figures=[fig("10 years", CFR_PP_VALID, "valid for 10 years"),
@@ -7068,8 +7093,8 @@ MEDICARE = guide(
           "Your Medicare card comes in the mail.</p>"
           "<p><b>If you miss your first chance,</b> you may have to wait for the General "
           "Enrollment Period, January 1 to March 31, and pay a monthly late enrollment penalty "
-          "for as long as you have Part B. Some situations, such as losing coverage through a "
-          "job, open a Special Enrollment Period without the penalty.</p>",
+          "for as long as you have Part B. Some situations open a Special Enrollment "
+          "Period.</p>",
           actions=[("When coverage starts (Medicare)", MEDICARE_START),
                    ("Do I get Medicare automatically? (Medicare)", MEDICARE_AUTO)]),
      step("Sign up through Social Security",
@@ -7097,17 +7122,19 @@ MEDICARE = guide(
           actions=[("Joining a plan (Medicare)", MEDICARE_PLANS)]),
      step("Get help paying the costs",
           "<p><b>Medicare Savings Programs</b> are run by the state. Depending on your income "
-          "and savings, they pay your Part B premium, and the most generous one also pays your "
-          "deductibles, coinsurance and copayments, so that Medicare providers may not bill you "
-          "for covered care. In New Hampshire they are the <b>Medicare Beneficiaries Savings "
-          "Program</b>, also called the Buy-In program: QMB, SLMB and, for people with "
-          "disabilities who work, QDWI. Your home and vehicles do not count against its limits. "
+          "and savings, they help pay your Medicare premiums, and the most generous one also pays "
+          "your deductibles, coinsurance and copayments, so that Medicare providers may not bill "
+          "you for covered care. In New Hampshire they are the <b>Medicare Beneficiaries Savings "
+          "Program</b>, also called the Buy-In program: QMB, SLMB, and QDWI, which pays the Part "
+          "A premium of people with disabilities who work and have lost Medicare because of their "
+          "earnings. Your home and vehicles do not count against its limits. "
           "Apply to the Department of Health and Human Services through NH Easy, under Medicare "
           "beneficiary assistance; its Customer Service Center answers at 1-844-ASK-DHHS "
           "(1-844-275-3447), Monday through Friday, 8 a.m. to 4 p.m. Medicare advises applying "
           "even if you do not think you qualify.</p>"
           "<p><b>Extra Help</b> is a federal program that pays part of your drug plan&rsquo;s "
-          "costs. You get it automatically if you have Medicaid, a Medicare Savings Program or "
+          "costs. You get it automatically if you have full-benefit Medicaid, a Medicare Savings "
+          "Program or "
           "SSI. Otherwise apply through Social Security.</p>",
           actions=[("NH Easy", NHEASY),
                    ("Medicare Savings Programs (NH Department of Health and Human Services)", DHHS_MSP),
@@ -7490,7 +7517,7 @@ WHO_TO_CONTACT = guide(
     "who-to-contact", "Who to Contact About an Issue: Town, School, State or Federal",
     "Which office to contact about a problem or a law, from potholes and sidewalks to a state "
     "program or a federal agency, and how to find the people who hold it.",
-    "Start with whoever runs the thing. Roads, sidewalks, trash and local rules are your town or "
+    "Start with whoever runs the thing. Town roads, sidewalks, trash and local rules are your town or "
     "city&rsquo;s: its departments, then the selectboard or city council. Schools are the school "
     "board&rsquo;s. A state program is the state agency&rsquo;s that runs it, and a state law or "
     "bill is your state representatives&rsquo; and senator&rsquo;s. A problem with a federal "
@@ -7516,7 +7543,8 @@ WHO_TO_CONTACT = guide(
           "broken sidewalk. If that does not settle it, contact the selectboard or your city "
           "councilor. A change to the town&rsquo;s budget or rules may go to town meeting.</p>",
           actions=[("How towns and cities are run", "/learn/city-and-town-government.html")],
-          law=["RSA 41:8", "RSA 41:11", "RSA 47:1", "RSA 231:3", "RSA 231:113"]),
+          law=["RSA 41:8", "RSA 41:11", "RSA 47:1", "RSA 231:3", "RSA 231:113",
+               "RSA 149-M:17"]),
      step("Schools",
           "<p>A question about your child starts with the teacher and the principal. A district "
           "policy, a budget or a decision of the district is for the superintendent and the "
@@ -7543,9 +7571,9 @@ WHO_TO_CONTACT = guide(
           actions=[("How to contact your legislators", "/guides/contact-your-legislators.html"),
                    ("How to submit testimony on a bill", "/guides/submit-testimony.html")]),
      step("A federal agency or a federal law",
-          "<p>Your two <b>U.S. senators</b> and your <b>U.S. representative</b> each have staff in "
-          "New Hampshire who help residents with federal agencies: Social Security, veterans&rsquo; "
-          "benefits, passports, the IRS, immigration and others. Contact them too about a federal "
+          "<p>Your two <b>U.S. senators</b> and your <b>U.S. representative</b> help residents "
+          "with federal agencies: Social Security, veterans&rsquo; benefits, passports, the IRS, "
+          "citizenship and others. Contact them too about a federal "
           "law or bill.</p>",
           actions=[("Find your U.S. senators", SENATE_CONTACT),
                    ("Find your U.S. representative", HOUSE_FIND)]),
@@ -7566,8 +7594,9 @@ WHO_TO_CONTACT = guide(
      ("Town officers, RSA 41", "/laws/41"),
      ("City councils, RSA 47", "/laws/47"),
      ("Highways and sidewalks, RSA 231", "/laws/231"),
+     ("Solid waste management, RSA 149-M", "/laws/149-m"),
      ("School boards, RSA 189", "/laws/189")],
-    ["41", "47", "189", "231"],
+    ["41", "47", "189", "231", "149-M"],
     [# The statutes, as this build's table prints them.
      claim("The selectmen shall manage the prudential affairs of the town.", "RSA 41:8", WC_READ),
      claim("The selectmen may regulate the use of all public highways, sidewalks, and commons in "
@@ -7581,6 +7610,8 @@ WHO_TO_CONTACT = guide(
            WC_READ),
      claim("The school board of every district shall provide standard schools.", "RSA 189:1",
            WC_READ),
+     claim("Each town shall either provide a facility or assure access to another approved solid "
+           "waste facility for its residents.", "RSA 149-M:17", "2026-10-26"),
      # Federal, read on 25 October 2026.
      claim("No agency shall disclose any record to any person except pursuant to a written request "
            "by, or with the prior written consent of, the individual to whom the record pertains, "
@@ -8243,7 +8274,8 @@ BOATING = guide(
     "Who needs New Hampshire's safe boater education certificate, how to get it, and how to "
     "register a boat each year.",
     "To run a boat with a motor of more than 25 horsepower you need a <b>safe boater education "
-    "certificate</b>, which lasts for life and costs $10. A boat with a motor, and a sailboat 12 "
+    "certificate</b>, which lasts for life; the state&rsquo;s fee for it is $10, and all fees "
+    "together, the course included, may not exceed $50. A boat with a motor, and a sailboat 12 "
     "feet or longer, must also be <b>registered</b> every year, at the DMV or a boat agent; every "
     "registration ends on December 31.",
     [ask("Does your boat have a motor of more than 25 horsepower?",
@@ -8284,8 +8316,8 @@ BOATING = guide(
           "<b>boat fee decal</b>, except a sailboat under 12 feet, a rowboat or canoe moved by "
           "oars, paddles or sail with no motor, and a boat registered elsewhere that is here for "
           "not more than 30 consecutive days.</p>"
-          "<p>Register by mail or the drop box at the DMV in Concord, or with an authorized boat "
-          "agent. Bring the registration application, proof you own the boat (a bill of sale "
+          "<p>Register through the DMV&rsquo;s drop box service, with an authorized boat agent, "
+          "or by mail to the DMV in Concord. Bring the registration application, proof you own the boat (a bill of sale "
           "signed by you and the seller), your driver&rsquo;s license and the fees.</p>"
           + table("The registration fee, by the boat&rsquo;s length (RSA 270-E:5)",
                   ["Length", "Registration fee"],
@@ -8376,8 +8408,9 @@ BOATING = guide(
            DMV_BOATS, OUT_STATE_READ)],
     more=civics.faq(
         ("Does a boating certificate from another state count?",
-         "<p>A certificate from another state, the U.S. Coast Guard Auxiliary, the U.S. Power "
-         "Squadron, or an approved Canadian card counts instead.</p>"),
+         "<p>A certificate from another state whose course meets New Hampshire&rsquo;s "
+         "standard, or one from the U.S. Coast Guard Auxiliary, the U.S. Power Squadron, or an "
+         "approved Canadian card, counts instead.</p>"),
         ("Must children wear a life jacket?",
          "<p>A child 12 or under must wear a Coast Guard approved life jacket on the deck of a "
          "boat that is underway, unless the boat has the side rails the law describes.</p>"),
