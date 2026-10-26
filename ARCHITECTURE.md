@@ -1763,8 +1763,10 @@ not build.
 Bill pages link into them: `build_site_v2.rsa_url` gives `/laws/...` where the
 table holds the address (the chapter's page for a section it lacks, nothing
 for a chapter it lacks), each index row carries `rsa` for the bill search's
-RSA (Statute) filter, and an enacted bill's record carries `changed`, the
-sections its law wrote.
+Laws Changed (RSA) filter -- which offers the chapters the term's bills
+change by number or by name, the names from `laws/chapters.json`, fetched
+once the group is opened (app.js `rsaGroup`) -- and an enacted bill's record
+carries `changed`, the sections its law wrote.
 
 ## The how-to guides (12 October 2026)
 
