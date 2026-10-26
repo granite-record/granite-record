@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-10-11.47
+# GRANITE_VERSION: 2026-10-11.48
 """
 The how-to guides: their words, their sources, and what each was checked
 against. Read by build_civics.py, which draws them on the Resources hub's
@@ -1524,8 +1524,7 @@ HEARING = guide(
           + "<p>On this site, a bill&rsquo;s page lists its hearings with the day, time and room, "
           "and the Calendar shows the week&rsquo;s hearings by committee. Follow on a "
           "bill&rsquo;s page gives you its new actions as they are recorded, and the site keeps a "
-          "feed of hearings coming up as well.</p>"
-          + SAID["starts-late"],
+          "feed of hearings coming up as well.</p>",
           actions=[("This week's hearings", "/calendar.html"), ("Find a bill", "/bills.html")]),
      step("Decide how to take part",
           "<p>Legislative committee meetings, executive sessions included, are open to the "
@@ -1549,7 +1548,7 @@ HEARING = guide(
           "for an organization, then whether you support or oppose the bill, and why. The most "
           "useful testimony is specific: what the bill would do to you, in your town.</p>"
           "<p>In practice:</p><ul>"
-          + SAID["sponsor-first"] + SAID["chair-time"] + SAID["notes"] + SAID["props"]
+          + SAID["notes"]
           # Testifying and Attending says this under Written Testimony, in
           # the other guide's words (SAID["paper"]).
           + "<li><b>Paper copies are optional.</b> To hand the committee written testimony, bring "
@@ -1557,12 +1556,10 @@ HEARING = guide(
           + SAID["last-call"] + "</ul>",
           actions=[("Written testimony", "/guides/submit-testimony.html")]),
      step("After the hearing",
-          SAID["exec-session"] + SAID["throughout-the-day"]
+          SAID["exec-session"]
           + "<p>The recommendation, such as Ought to Pass or Inexpedient to Legislate, goes to the "
           "full chamber. If the bill passes, a committee of the other chamber holds its own "
-          "hearing on it.</p>"
-          "<p>In the Senate, the committee&rsquo;s hearing report lists who supported, opposed "
-          "or was neutral on the bill and summarizes the testimony.</p>",
+          "hearing on it.</p>",
           actions=[("How a bill becomes law", "/learn/how-a-bill-becomes-law.html")])],
     [("House Calendars No. 23 (1997), No. 7 (2021), No. 8 (2025) and Nos. 2 and 6 (2026), Senate "
       "Calendars No. 20 (2025) and No. 3 (2026), House Journal No. 2 (2025) and Senate Journals "
@@ -1670,6 +1667,15 @@ HEARING = guide(
               "summarizes the testimony.", "Senate committee hearing reports (CandH_Reports), " + DB,
               REPORTS, ["Who supports the bill", "Who opposes the bill", "Who is neutral on the bill",
                         "Summary of testimony presented in support"], READ)],
+    more=civics.faq(
+        ("Will the hearing start at the time in the notice?", SAID["starts-late"]),
+        ("Who speaks first, and how long can I speak?",
+         "<ul>" + SAID["sponsor-first"] + SAID["chair-time"] + "</ul>"),
+        ("Can I bring a sign or props?", "<ul>" + SAID["props"] + "</ul>"),
+        ("Why can&rsquo;t I tell when the committee will vote?", SAID["throughout-the-day"]),
+        ("Is there a record of who spoke?",
+         "<p>In the Senate, the committee&rsquo;s hearing report lists who supported, opposed "
+         "or was neutral on the bill and summarizes the testimony.</p>")),
     see=[("How public hearings work", "/guides/testifying.html"),
          ("How to submit testimony online or in writing", "/guides/submit-testimony.html"),
          ("How to contact your legislators", "/guides/contact-your-legislators.html"),
@@ -1714,10 +1720,8 @@ TESTIMONY = guide(
           "<p>Each chamber has its own online form on the General Court&rsquo;s website, and each "
           "sign-in is for one bill at one committee&rsquo;s hearing on one day. "
           + SAID["window"] + "</p>"
-          + SAID["forms"]
-          + "<p>A sign-in for or against is part of the record and is counted. For House hearings "
-          "this site publishes only how many people signed in supporting, opposing and neutral, "
-          "never names or written testimony.</p>",
+          "<p>Each form asks who you are, whom you represent, if anyone, and whether you "
+          "support the bill, oppose it or are neutral; the questions below say what else.</p>",
           actions=[("House sign-in", HOUSE_SIGNIN), ("Senate sign-in", SENATE_SIGNIN)]),
      step("Write it so it is useful",
           "<p>Start with the bill&rsquo;s number, HB or SB and then the number, and say whether "
@@ -1725,9 +1729,7 @@ TESTIMONY = guide(
           "would do to you, your family, your work or your town. If you write for an "
           "organization, say so.</p>"),
      step("Send it before the hearing",
-          "<p>Committee members can read what is submitted online in the House&rsquo;s portal, "
-          "bill by bill, and are sent links to it at the end of each day their committee holds "
-          "hearings. A committee can vote as soon as its hearing "
+          "<p>A committee can vote as soon as its hearing "
           "ends: Senate notices often say &ldquo;executive session may follow&rdquo;, and a House "
           "committee may meet in executive session straight after a noticed hearing. So send "
           "your testimony before the hearing, as soon as you can once it is scheduled.</p>"),
@@ -1806,6 +1808,16 @@ TESTIMONY = guide(
                 "both close at midnight at the end of the day of the hearing.", READ),
        observed("Written testimony may be brought on paper, one printed copy for each committee "
                 "member, which they take and pass around; paper copies are optional.", READ)],
+    more=civics.faq(
+        ("What exactly does each sign-in form ask for?", SAID["forms"]),
+        ("Is my sign-in counted, and does this site publish it?",
+         "<p>A sign-in for or against is part of the record and is counted. For House hearings "
+         "this site publishes only how many people signed in supporting, opposing and neutral, "
+         "never names or written testimony.</p>"),
+        ("When do committee members see what I submit online?",
+         "<p>Committee members can read what is submitted online in the House&rsquo;s portal, "
+         "bill by bill, and are sent links to it at the end of each day their committee holds "
+         "hearings.</p>")),
     see=[("How public hearings work", "/guides/testifying.html"),
          ("How to attend and speak at a public hearing", "/guides/attend-a-hearing.html"),
          ("How to contact your legislators", "/guides/contact-your-legislators.html"),
@@ -1960,15 +1972,6 @@ READ_BILL = guide(
           "<p>The other letters are explained under Reading the Shorthand.</p>",
           actions=[("Reading the shorthand", "/guides/using-this-site.html#s-reading-the-shorthand")],
           law=["RSA 14:48"]),
-     step("Find its request number",
-          "<p>Before a bill has a number it is a Legislative Service Request, or LSR: a "
-          "legislator&rsquo;s request, which the Office of Legislative Services drafts into a "
-          "bill. When the bill is introduced it gets its number, and its text keeps the "
-          "request&rsquo;s number near the top: HB 1001 of 2024 prints 24-2288, the "
-          "session&rsquo;s year and then the request&rsquo;s own number. While requests for the "
-          "next session are being filed, this site&rsquo;s bill search lists them by title and "
-          "prime sponsor.</p>",
-          actions=[("Search bills and requests", "/bills.html")]),
      step("Read the first page",
           "<p>The first page gives the bill&rsquo;s title, which begins &ldquo;AN ACT&rdquo;; its "
           "sponsors, each with their district; the committee it was sent to; and an "
@@ -1981,9 +1984,7 @@ READ_BILL = guide(
           "read. The type shows what changes:</p><ul>"
           "<li>In a section that rewrites part of a law, <b>regular type</b> is the law as it "
           "stands, <b><i>bold italics</i></b> are words being added, and [<s>brackets, struck "
-          "through</s>] are words being removed. In HB 1001 of 2024, the first section prints a "
-          "paragraph of current law in regular type with one phrase in bold italics: the "
-          "addition.</li>"
+          "through</s>] are words being removed.</li>"
           "<li>A section that is all new, or repealed and written again, is printed wholly in "
           "regular type, as a note on the first page says.</li></ul>"
           "<p>The last section says when the change would take effect. To read a law as it "
@@ -2002,13 +2003,7 @@ READ_BILL = guide(
           "<p>With some exceptions, such as the budget bills, a bill that would change what the "
           "state, a county, a city or a town spends or collects carries a fiscal note. If the "
           "effect is $10,000 or more in each fiscal year the note covers, the note sets out the "
-          "estimate; if less, it says so. The Office of Legislative Budget Assistant prepares it "
-          "and names its sources, and the note is corrected to match the bill as it is "
-          "amended.</p>"
-          "<p>The note marks whether the state, counties or local governments are affected, "
-          "estimates the change in appropriations, revenue and spending by fiscal year, and "
-          "explains how under Methodology. An effect it cannot put a number on may be called "
-          "indeterminable.</p>",
+          "estimate; if less, it says so.</p>",
           law=["RSA 14:44", "RSA 14:46", "RSA 14:47"])],
     [("HB 1001 of 2024 (Granite Record)", "/bill/2024/hb1001.html"),
      ("House Calendars No. 5 (December 27, 2024) and No. 6 (2026), Senate Calendar No. 3 (2026) "
@@ -2099,6 +2094,27 @@ READ_BILL = guide(
             "indeterminable.", "HB 15-FN of 2023, as introduced, its fiscal note", HB15,
             ["FISCAL IMPACT:", "Estimated Increase / (Decrease)", "Appropriation", "Revenue",
              "Expenditures", "METHODOLOGY:", "Indeterminable Decrease", "AGENCIES CONTACTED:"], READ)],
+    more=civics.faq(
+        ("What is the number at the top of the text, like 24-2288?",
+         "<p>Before a bill has a number it is a Legislative Service Request, or LSR: a "
+         "legislator&rsquo;s request, which the Office of Legislative Services drafts into a "
+         "bill. When the bill is introduced it gets its number, and its text keeps the "
+         "request&rsquo;s number near the top: HB 1001 of 2024 prints 24-2288, the "
+         "session&rsquo;s year and then the request&rsquo;s own number. While requests for the "
+         "next session are being filed, this site&rsquo;s <a href=\"/bills.html\">bill search</a> "
+         "lists them by title and "
+         "prime sponsor.</p>"),
+        ("Is there a bill I can look at as an example?",
+         "<p>In HB 1001 of 2024, the first section prints a paragraph of current law in regular "
+         "type with one phrase in bold italics: the addition.</p>"),
+        ("Who writes the fiscal note?",
+         "<p>The Office of Legislative Budget Assistant prepares it and names its sources, and "
+         "the note is corrected to match the bill as it is amended.</p>"),
+        ("What does a fiscal note show?",
+         "<p>The note marks whether the state, counties or local governments are affected, "
+         "estimates the change in appropriations, revenue and spending by fiscal year, and "
+         "explains how under Methodology. An effect it cannot put a number on may be called "
+         "indeterminable.</p>")),
     see=[("Reading the shorthand", "/guides/using-this-site.html#s-reading-the-shorthand"),
          ("How a bill becomes law", "/learn/how-a-bill-becomes-law.html"),
          ("Glossary", "/learn/glossary.html"),
@@ -2858,9 +2874,7 @@ RUN = guide(
           "12. A filing on the last day must be made in person by the candidate, by 5 p.m.</p>"
           "<p>Candidates for governor, U.S. senator, U.S. representative, executive councilor, "
           "state senator and county office file with the Secretary of State. Candidates for state "
-          "representative file with the clerk of the town or city where they live; someone who "
-          "lives in an unincorporated place files with the town clerk the Secretary of State "
-          "designates.</p>",
+          "representative file with the clerk of the town or city where they live.</p>",
           actions=[("Running for office", SOS_RUN), ("Find your town or city clerk", SOS_CLERKS)],
           law=["RSA 655:14", "RSA 655:15"]),
      step("Pay the fee, or file petitions instead",
@@ -2879,18 +2893,14 @@ RUN = guide(
           "with the Secretary of State in the same June period, pay the same fee, and file "
           "nomination papers signed by registered voters: 3,000 for governor or U.S. senator, 1,500 "
           "from each congressional district; 1,500 for U.S. representative; 750 for executive "
-          "councilor or state senator; and 150 for state representative or county officer. The "
-          "papers go first to the supervisors of the checklist in each town or city, on deadlines in the "
-          "summer that the Secretary of State&rsquo;s page gives.</p>",
+          "councilor or state senator; and 150 for state representative or county officer.</p>",
           actions=[("Running for office", SOS_RUN)], law=["RSA 655:14-a", "RSA 655:42"]),
      step("Town and city offices",
           "<p><b>In a town</b> that uses the nonpartisan ballot, file a declaration of candidacy "
           "with the town clerk. Filing opens on the seventh Wednesday before the town election and "
           "closes on the Friday of the following week, and a filing on the last day must be made in "
           "person. Your town clerk can tell you which offices are on the ballot.</p>"
-          "<p><b>In a city</b>, ask the city clerk. In Concord, for example, candidates for mayor, "
-          "city council and ward offices file at the City Clerk&rsquo;s Office, from September 3 to "
-          "13, 2027, for the election of November 2, 2027, with a fee or by petition.</p>",
+          "<p><b>In a city</b>, ask the city clerk.</p>",
           actions=[("Find your town or city clerk", SOS_CLERKS), ("Concord's filing page", CONCORD_FILE)],
           law=["RSA 669:19"])],
     [("Running For Office (Secretary of State)", SOS_RUN),
@@ -2950,7 +2960,17 @@ RUN = guide(
            "supervisor of the checklist; filings at the City Clerk's Office, September 3 to 13, "
            "2027, for the election of November 2, 2027; a fee, or by petition until September 17, "
            "2027.", CONCORD_FILE, READ)],
-    more="<h2>Who Can Help</h2>"
+    more=civics.faq(
+        ("I live in an unincorporated place. Where do I file for state representative?",
+         "<p>With the town clerk the Secretary of State designates.</p>"),
+        ("Where do nomination papers go first?",
+         "<p>To the supervisors of the checklist in each town or city, on deadlines in the "
+         "summer that the Secretary of State&rsquo;s page gives.</p>"),
+        ("How does filing work in a city, such as Concord?",
+         "<p>In Concord, for example, candidates for mayor, city council and ward offices file at "
+         "the City Clerk&rsquo;s Office, from September 3 to 13, 2027, for the election of "
+         "November 2, 2027, with a fee or by petition.</p>"))
+    + "<h2>Who Can Help</h2>"
          "<p>The Secretary of State&rsquo;s Elections Division answers questions about filing for "
          "state and federal office at 603-271-3242 or elections@sos.nh.gov. For town and city "
          "offices, ask your town or city clerk.</p>"
@@ -3053,10 +3073,7 @@ TOUR = guide(
           "<li><b>Chaperones.</b> Bring no more than four per class, and tell them the class "
           "tours as one large group rather than in smaller ones.</li>"
           "<li><b>No backpacks.</b> If your group brings lunches, the Visitor Center will store "
-          "them.</li>"
-          "<li><b>Dress.</b> Students are encouraged to dress up for the visit, but it is not "
-          "required.</li>"
-          "<li><b>The gift shop.</b> To visit it with your group, arrange it in advance.</li></ul>"),
+          "them.</li></ul>"),
      step("On the day",
           "<ul><li><b>Check in first.</b> Do not bring the group into the building until someone "
           "from the Visitor Center knows you have arrived: it is a security precaution.</li>"
@@ -3068,17 +3085,7 @@ TOUR = guide(
           "students to whisper.</li>"
           "<li><b>Cameras.</b> Only adults use cameras.</li>"
           "<li><b>Restrooms</b> are available, and students must be supervised. If students need "
-          "the restroom before the tour begins, tell the Visitor Center right away.</li></ul>"),
-     step("What you may see",
-          "<p>Senators and representatives are told of your visit in the House and Senate "
-          "Calendars, and they often try to meet the students. The tour includes the "
-          "Governor&rsquo;s Office, and the Governor sometimes meets groups when the schedule "
-          "allows; the Visitor Center asks that students not be told they will.</p>"
-          "<p>Rallies, press conferences, bill signings, a session of the House or Senate and "
-          "other events can change the tour, and at times the legislative or executive chambers "
-          "are closed to the public. The Calendar here shows the week&rsquo;s hearings and "
-          "session days.</p>",
-          actions=[("This week's calendar", "/calendar.html")])],
+          "the restroom before the tour begins, tell the Visitor Center right away.</li></ul>")],
     [("Rules for Tours, required reading for a State House tour, undated (New Hampshire State "
       "House Visitor Center)", ""),
      civics.SRC_VISITOR_CENTER,
@@ -3148,6 +3155,21 @@ TOUR = guide(
      ours("How to Contact Your Legislators says how to reach them.",
           "/guides/contact-your-legislators.html", READ),
      ours("The Calendar shows the week's hearings and session days.", "/calendar.html", READ)],
+    more=civics.faq(
+        ("Will students meet their legislators or the Governor?",
+         "<p>Senators and representatives are told of your visit in the House and Senate "
+         "Calendars, and they often try to meet the students. The tour includes the "
+         "Governor&rsquo;s Office, and the Governor sometimes meets groups when the schedule "
+         "allows; the Visitor Center asks that students not be told they will.</p>"),
+        ("Could the tour change on the day?",
+         "<p>Rallies, press conferences, bill signings, a session of the House or Senate and "
+         "other events can change the tour, and at times the legislative or executive chambers "
+         "are closed to the public. The Calendar here shows the week&rsquo;s hearings and "
+         "session days.</p>"),
+        ("Do students need to dress up, and can we visit the gift shop?",
+         "<ul>" "<li><b>Dress.</b> Students are encouraged to dress up for the visit, but it is not "
+         "required.</li>"
+         "<li><b>The gift shop.</b> To visit it with your group, arrange it in advance.</li></ul>")),
     see=[("Finding your representatives", "/guides/your-representatives.html"),
          ("How to contact your legislators", "/guides/contact-your-legislators.html"),
          ("How to attend and speak at a public hearing", "/guides/attend-a-hearing.html")],
@@ -3210,17 +3232,12 @@ WARRANT = guide(
           "stated in the warrant. Write one question, as you want it to appear, for example "
           "&ldquo;To see if the town will vote to&hellip;&rdquo;.</p>"
           "<p>The selectmen or the school board may make only minor changes to the wording, and "
-          "never ones that change what the article was meant to do. An article that would "
-          "abolish a planning board or zoning commission must also meet the petition rule in "
-          '<a href="/laws/673#s18">RSA 673:18, II</a>.</p>',
+          "never ones that change what the article was meant to do.</p>",
           law=["RSA 39:2", "RSA 39:3", "RSA 39:3-c"]),
      step("Collect the signatures",
           "<p>The petition must be signed by <b>25 or more registered voters</b> of the town or "
           "school district, or <b>2 percent</b> of its registered voters if that is fewer, and "
-          "never fewer than 10. For a town, the 2 percent is counted from the voters registered "
-          "before the last state general election.</p>"
-          "<p>You may name one signer as the <b>primary petitioner</b>. If you do not, the first "
-          "registered voter listed is the primary petitioner.</p>",
+          "never fewer than 10.</p>",
           law=["RSA 39:3", "RSA 197:6"]),
      step("Hand it in before the deadline",
           "<p>Give the petition to the selectmen, or any one of them, for the town meeting, or to "
@@ -3233,15 +3250,11 @@ WARRANT = guide(
                     "At least 30 days before the meeting, or by the second Tuesday in March if "
                     "that is earlier",
                     "By the second Tuesday in January, for a meeting in March"]])
-          + "<p>An SB 2 town or district that holds its meeting in April or May has the same "
-          "deadline a month or two later: the second Tuesday in February or in March. If the "
-          "article proposes a bond, the SB 2 deadline is the Friday before.</p>",
+          + "<p>Meeting in April or May, or proposing a bond? See the questions below.</p>",
           law=["RSA 39:3", "RSA 197:6", "RSA 40:13, II-a"]),
      step("What happens next",
-          "<p>The selectmen or the school board must put the article in the warrant. In a town, "
-          "selectmen who refuse are guilty of a violation, and if they unreasonably refuse, a "
-          "Superior Court justice can order the article inserted on the written application of 25 "
-          "or more voters. The warrant is posted at least 14 days before the meeting.</p>"
+          "<p>The selectmen or the school board must put the article in the warrant. The warrant "
+          "is posted at least 14 days before the meeting.</p>"
           "<p>At a <b>traditional meeting</b> the voters debate the article and can amend it "
           "before they vote; where it asks for a sum of money, the meeting may vote more or less, "
           "within the limits of the municipal budget law where the town has adopted it. "
@@ -3291,7 +3304,25 @@ WARRANT = guide(
           "/learn/city-and-town-government.html", WARRANT_READ),
      ours("Town Meeting and Local Government explains the traditional meeting and SB 2.",
           "/learn/local-government.html", WARRANT_READ)],
-    more="<h2>Who Can Help</h2>"
+    more=civics.faq(
+        ("Which registered voters count toward the 2 percent?",
+         "<p>For a town, the 2 percent is counted from the voters registered before the last "
+         "state general election.</p>"),
+        ("What is a primary petitioner?",
+         "<p>You may name one signer as the <b>primary petitioner</b>. If you do not, the first "
+         "registered voter listed is the primary petitioner.</p>"),
+        ("My SB 2 town meets in April or May, or the article proposes a bond. When is it due?",
+         "<p>An SB 2 town or district that holds its meeting in April or May has the same "
+         "deadline a month or two later: the second Tuesday in February or in March. If the "
+         "article proposes a bond, the SB 2 deadline is the Friday before.</p>"),
+        ("What if the selectmen refuse to put it on the warrant?",
+         "<p>In a town, selectmen who refuse are guilty of a violation, and if they unreasonably "
+         "refuse, a Superior Court justice can order the article inserted on the written "
+         "application of 25 or more voters.</p>"),
+        ("Are there special rules for some articles?",
+         "<p>An article that would abolish a planning board or zoning commission must also meet "
+         "the petition rule in <a href=\"/laws/673#s18\">RSA 673:18, II</a>.</p>"))
+    + "<h2>Who Can Help</h2>"
          "<p>Start with your town clerk or the selectmen&rsquo;s office, for the date of the "
          "meeting and whether it uses SB 2. For the school district meeting, ask the school "
          "board. The Secretary of State lists every town&rsquo;s clerk.</p>"

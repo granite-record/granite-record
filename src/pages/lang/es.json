@@ -1318,6 +1318,11 @@
    "es": "Pida la palabra",
    "state": "draft"
   },
+  "guide.attend-a-hearing.can-i-bring-a-sign-or": {
+   "en": "Can I bring a sign or props?",
+   "es": "¿Puedo llevar un cartel u objetos?",
+   "state": "draft"
+  },
   "guide.attend-a-hearing.can-you-go-in-person": {
    "en": "Can you go in person?",
    "es": "¿Puede ir en persona?",
@@ -1326,6 +1331,11 @@
   "guide.attend-a-hearing.committees-of-the-house-and-of": {
    "en": "Committees of the House and of the Senate hold public hearings on bills, and the Senate&rsquo;s rules require one on every bill sent to a committee. You may attend and testify. Find the hearing in the chamber&rsquo;s calendar or on the bill&rsquo;s page here, go to the room the notice names or watch the live stream, and ask to speak when you arrive: on a pink card in the House, on the sign-up sheet in the committee room in the Senate. In practice a hearing never starts before the time in its notice, and often starts later. If you cannot go, you can sign in online or send your position in writing instead.",
    "es": "Los comités de la Cámara y del Senado celebran audiencias públicas sobre los proyectos de ley, y el reglamento del Senado exige una para cada proyecto enviado a un comité. Usted puede asistir y testificar. Busque la audiencia en el calendario de la cámara o en la página del proyecto de ley en este sitio, vaya a la sala que indica el aviso o vea la transmisión en vivo, y pida la palabra al llegar: con una tarjeta rosada en la Cámara, en la hoja para anotarse de la sala del comité en el Senado. En la práctica, una audiencia nunca empieza antes de la hora del aviso, y a menudo empieza más tarde. Si no puede ir, puede inscribirse en línea o enviar su posición por escrito.",
+   "state": "draft"
+  },
+  "guide.attend-a-hearing.common-questions": {
+   "en": "Common Questions",
+   "es": "Preguntas frecuentes",
    "state": "draft"
   },
   "guide.attend-a-hearing.decide-how-to-take-part": {
@@ -1396,6 +1406,11 @@
   "guide.attend-a-hearing.in-the-senate-the-committees-hearing": {
    "en": "In the Senate, the committee&rsquo;s hearing report lists who supported, opposed or was neutral on the bill and summarizes the testimony.",
    "es": "En el Senado, el informe de audiencia del comité enumera quién apoyó el proyecto de ley, quién se opuso y quién fue neutral, y resume el testimonio.",
+   "state": "draft"
+  },
+  "guide.attend-a-hearing.is-there-a-record-of-who": {
+   "en": "Is there a record of who spoke?",
+   "es": "¿Queda constancia de quién habló?",
    "state": "draft"
   },
   "guide.attend-a-hearing.lead": {
@@ -1501,6 +1516,21 @@
   "guide.attend-a-hearing.when-you-speak": {
    "en": "When you speak",
    "es": "Cuando hable",
+   "state": "draft"
+  },
+  "guide.attend-a-hearing.who-speaks-first-and-how-long": {
+   "en": "Who speaks first, and how long can I speak?",
+   "es": "¿Quién habla primero, y cuánto tiempo puedo hablar?",
+   "state": "draft"
+  },
+  "guide.attend-a-hearing.why-cant-i-tell-when-the": {
+   "en": "Why can&rsquo;t I tell when the committee will vote?",
+   "es": "¿Por qué no puedo saber cuándo votará el comité?",
+   "state": "draft"
+  },
+  "guide.attend-a-hearing.will-the-hearing-start-at-the": {
+   "en": "Will the hearing start at the time in the notice?",
+   "es": "¿Empezará la audiencia a la hora del aviso?",
    "state": "draft"
   },
   "guide.attend-a-hearing.written-testimony": {
@@ -7247,8 +7277,8 @@
    "state": "draft"
   },
   "guide.read-a-bill.before-a-bill-has-a-number": {
-   "en": "Before a bill has a number it is a Legislative Service Request, or LSR: a legislator&rsquo;s request, which the Office of Legislative Services drafts into a bill. When the bill is introduced it gets its number, and its text keeps the request&rsquo;s number near the top: HB 1001 of 2024 prints 24-2288, the session&rsquo;s year and then the request&rsquo;s own number. While requests for the next session are being filed, this site&rsquo;s bill search lists them by title and prime sponsor.",
-   "es": "Antes de tener número, un proyecto de ley es una Legislative Service Request, o LSR (solicitud de servicio legislativo): la solicitud de un legislador, que la Office of Legislative Services (Oficina de Servicios Legislativos) redacta como proyecto de ley. Cuando se presenta, el proyecto recibe su número, y su texto conserva el número de la solicitud cerca del principio: el HB 1001 de 2024 imprime 24-2288, el año de la sesión y luego el número propio de la solicitud. Mientras se presentan las solicitudes para la próxima sesión, la búsqueda de proyectos de ley de este sitio las enumera por título y patrocinador principal.",
+   "en": "Before a bill has a number it is a Legislative Service Request, or LSR: a legislator&rsquo;s request, which the Office of Legislative Services drafts into a bill. When the bill is introduced it gets its number, and its text keeps the request&rsquo;s number near the top: HB 1001 of 2024 prints 24-2288, the session&rsquo;s year and then the request&rsquo;s own number. While requests for the next session are being filed, this site&rsquo;s <a href=\"/bills.html\">bill search</a> lists them by title and prime sponsor.",
+   "es": "Antes de tener número, un proyecto de ley es una Legislative Service Request, o LSR (solicitud de servicio legislativo): la solicitud de un legislador, que la Office of Legislative Services (Oficina de Servicios Legislativos) redacta como proyecto de ley. Cuando se presenta, el proyecto recibe su número, y su texto conserva el número de la solicitud cerca del principio: el HB 1001 de 2024 imprime 24-2288, el año de la sesión y luego el número propio de la solicitud. Mientras se presentan las solicitudes para la próxima sesión, la <a href=\"/bills.html\">búsqueda de proyectos de ley</a> de este sitio las enumera por título y patrocinador principal.",
    "state": "draft"
   },
   "guide.read-a-bill.check-for-amendments": {
@@ -7256,9 +7286,9 @@
    "es": "Revise las enmiendas",
    "state": "draft"
   },
-  "guide.read-a-bill.find-its-request-number": {
-   "en": "Find its request number",
-   "es": "Busque su número de solicitud",
+  "guide.read-a-bill.common-questions": {
+   "en": "Common Questions",
+   "es": "Preguntas frecuentes",
    "state": "draft"
   },
   "guide.read-a-bill.fn-after-the-number-the-fiscal": {
@@ -7302,8 +7332,18 @@
    "state": "draft"
   },
   "guide.read-a-bill.in-a-section-that-rewrites-part": {
-   "en": "In a section that rewrites part of a law, <b>regular type</b> is the law as it stands, <b><i>bold italics</i></b> are words being added, and [<s>brackets, struck through</s>] are words being removed. In HB 1001 of 2024, the first section prints a paragraph of current law in regular type with one phrase in bold italics: the addition.",
-   "es": "En una sección que reescribe parte de una ley, el <b>texto normal</b> es la ley tal como está, las palabras en <b><i>negrita cursiva</i></b> se añaden, y las palabras [<s>entre corchetes y tachadas</s>] se quitan. En el HB 1001 de 2024, la primera sección imprime un párrafo de la ley vigente en texto normal con una frase en negrita cursiva: lo que se añade.",
+   "en": "In a section that rewrites part of a law, <b>regular type</b> is the law as it stands, <b><i>bold italics</i></b> are words being added, and [<s>brackets, struck through</s>] are words being removed.",
+   "es": "En una sección que reescribe parte de una ley, el <b>texto normal</b> es la ley tal como está, las palabras en <b><i>negrita cursiva</i></b> se añaden, y las palabras [<s>entre corchetes y tachadas</s>] se quitan.",
+   "state": "draft"
+  },
+  "guide.read-a-bill.in-hb-1001-of-2024-the": {
+   "en": "In HB 1001 of 2024, the first section prints a paragraph of current law in regular type with one phrase in bold italics: the addition.",
+   "es": "En el HB 1001 de 2024, la primera sección imprime un párrafo de la ley vigente en texto normal con una frase en negrita cursiva: lo que se añade.",
+   "state": "draft"
+  },
+  "guide.read-a-bill.is-there-a-bill-i-can": {
+   "en": "Is there a bill I can look at as an example?",
+   "es": "¿Hay algún proyecto de ley que pueda ver como ejemplo?",
    "state": "draft"
   },
   "guide.read-a-bill.laws": {
@@ -7361,11 +7401,6 @@
    "es": "Cómo leer las abreviaturas",
    "state": "draft"
   },
-  "guide.read-a-bill.search-bills-and-requests": {
-   "en": "Search bills and requests",
-   "es": "Buscar proyectos de ley y solicitudes",
-   "state": "draft"
-  },
   "guide.read-a-bill.start-with-the-number-and-its": {
    "en": "Start with the number and its letters",
    "es": "Empiece por el número y sus letras",
@@ -7396,6 +7431,11 @@
    "es": "El número dice en qué cámara empezó el proyecto de ley: HB para un proyecto de la Cámara, SB para uno del Senado. Las letras después del número indican si hay dinero de por medio:",
    "state": "draft"
   },
+  "guide.read-a-bill.the-office-of-legislative-budget": {
+   "en": "The Office of Legislative Budget Assistant prepares it and names its sources, and the note is corrected to match the bill as it is amended.",
+   "es": "La Office of Legislative Budget Assistant (Oficina del Asistente de Presupuesto Legislativo) la prepara y nombra sus fuentes, y la nota se corrige para que coincida con el proyecto a medida que se enmienda.",
+   "state": "draft"
+  },
   "guide.read-a-bill.the-other-letters-are-explained-under": {
    "en": "The other letters are explained under Reading the Shorthand.",
    "es": "Las demás letras se explican en “Cómo leer las abreviaturas”.",
@@ -7421,9 +7461,24 @@
    "es": "Cómo usar este sitio",
    "state": "draft"
   },
+  "guide.read-a-bill.what-does-a-fiscal-note-show": {
+   "en": "What does a fiscal note show?",
+   "es": "¿Qué muestra una nota fiscal?",
+   "state": "draft"
+  },
+  "guide.read-a-bill.what-is-the-number-at-the": {
+   "en": "What is the number at the top of the text, like 24-2288?",
+   "es": "¿Qué es el número que aparece arriba del texto, como 24-2288?",
+   "state": "draft"
+  },
+  "guide.read-a-bill.who-writes-the-fiscal-note": {
+   "en": "Who writes the fiscal note?",
+   "es": "¿Quién redacta la nota fiscal?",
+   "state": "draft"
+  },
   "guide.read-a-bill.with-some-exceptions-such-as-the": {
-   "en": "With some exceptions, such as the budget bills, a bill that would change what the state, a county, a city or a town spends or collects carries a fiscal note. If the effect is $10,000 or more in each fiscal year the note covers, the note sets out the estimate; if less, it says so. The Office of Legislative Budget Assistant prepares it and names its sources, and the note is corrected to match the bill as it is amended.",
-   "es": "Con algunas excepciones, como los proyectos de presupuesto, un proyecto de ley que cambiaría lo que gasta o recauda el estado, un condado, una ciudad o un municipio lleva una nota fiscal. Si el efecto es de $10,000 o más en cada año fiscal que abarca la nota, la nota presenta la estimación; si es menor, lo indica. La Office of Legislative Budget Assistant (Oficina del Asistente de Presupuesto Legislativo) la prepara y nombra sus fuentes, y la nota se corrige para que coincida con el proyecto a medida que se enmienda.",
+   "en": "With some exceptions, such as the budget bills, a bill that would change what the state, a county, a city or a town spends or collects carries a fiscal note. If the effect is $10,000 or more in each fiscal year the note covers, the note sets out the estimate; if less, it says so.",
+   "es": "Con algunas excepciones, como los proyectos de presupuesto, un proyecto de ley que cambiaría lo que gasta o recauda el estado, un condado, una ciudad o un municipio lleva una nota fiscal. Si el efecto es de $10,000 o más en cada año fiscal que abarca la nota, la nota presenta la estimación; si es menor, lo indica.",
    "state": "draft"
   },
   "guide.read-a-bill.yes": {
@@ -8227,13 +8282,18 @@
    "state": "draft"
   },
   "guide.run-for-office.candidates-for-governor-u-s-senator": {
-   "en": "Candidates for governor, U.S. senator, U.S. representative, executive councilor, state senator and county office file with the Secretary of State. Candidates for state representative file with the clerk of the town or city where they live; someone who lives in an unincorporated place files with the town clerk the Secretary of State designates.",
-   "es": "Los candidatos a gobernador, senador de EE. UU., representante de EE. UU., consejero ejecutivo, senador estatal y cargos del condado se inscriben ante la Secretaría de Estado. Los candidatos a representante estatal se inscriben ante el secretario del municipio o la ciudad donde viven; quien vive en un lugar no incorporado (unincorporated place, una zona sin gobierno municipal propio) se inscribe ante el secretario municipal que designa la Secretaría de Estado.",
+   "en": "Candidates for governor, U.S. senator, U.S. representative, executive councilor, state senator and county office file with the Secretary of State. Candidates for state representative file with the clerk of the town or city where they live.",
+   "es": "Los candidatos a gobernador, senador de EE. UU., representante de EE. UU., consejero ejecutivo, senador estatal y cargos del condado se inscriben ante la Secretaría de Estado. Los candidatos a representante estatal se inscriben ante el secretario del municipio o la ciudad donde viven.",
    "state": "draft"
   },
   "guide.run-for-office.check-that-you-qualify": {
    "en": "Check that you qualify",
    "es": "Compruebe que reúne los requisitos",
+   "state": "draft"
+  },
+  "guide.run-for-office.common-questions": {
+   "en": "Common Questions",
+   "es": "Preguntas frecuentes",
    "state": "draft"
   },
   "guide.run-for-office.concord-s-filing-page": {
@@ -8306,19 +8366,34 @@
    "es": "Gobernador, Congreso, Consejo Ejecutivo, Senado estatal o condado",
    "state": "draft"
   },
+  "guide.run-for-office.how-does-filing-work-in-a": {
+   "en": "How does filing work in a city, such as Concord?",
+   "es": "¿Cómo funciona la inscripción en una ciudad, como Concord?",
+   "state": "draft"
+  },
   "guide.run-for-office.how-to-vote-in-new-hampshire": {
    "en": "How to vote in New Hampshire",
    "es": "Cómo votar en New Hampshire",
    "state": "draft"
   },
+  "guide.run-for-office.i-live-in-an-unincorporated-place": {
+   "en": "I live in an unincorporated place. Where do I file for state representative?",
+   "es": "Vivo en un lugar no incorporado (unincorporated place, una zona sin gobierno municipal propio). ¿Dónde me inscribo para representante estatal?",
+   "state": "draft"
+  },
   "guide.run-for-office.in-a-city-ask-the-city": {
-   "en": "<b>In a city</b>, ask the city clerk. In Concord, for example, candidates for mayor, city council and ward offices file at the City Clerk&rsquo;s Office, from September 3 to 13, 2027, for the election of November 2, 2027, with a fee or by petition.",
-   "es": "<b>En una ciudad</b>, pregúntele al secretario de la ciudad. En Concord, por ejemplo, los candidatos a alcalde, concejo municipal y cargos de barrio electoral se inscriben en la oficina del secretario de la ciudad (City Clerk&rsquo;s Office), del 3 al 13 de septiembre de 2027, para la elección del 2 de noviembre de 2027, con una cuota o por petición.",
+   "en": "<b>In a city</b>, ask the city clerk.",
+   "es": "<b>En una ciudad</b>, pregúntele al secretario de la ciudad.",
    "state": "draft"
   },
   "guide.run-for-office.in-a-town-that-uses-the": {
    "en": "<b>In a town</b> that uses the nonpartisan ballot, file a declaration of candidacy with the town clerk. Filing opens on the seventh Wednesday before the town election and closes on the Friday of the following week, and a filing on the last day must be made in person. Your town clerk can tell you which offices are on the ballot.",
    "es": "<b>En un municipio</b> que usa la boleta no partidista, presente una declaración de candidatura ante el secretario municipal. La inscripción se abre el séptimo miércoles antes de la elección municipal y se cierra el viernes de la semana siguiente, y si se inscribe el último día, debe hacerlo en persona. El secretario de su municipio puede decirle qué cargos están en la boleta.",
+   "state": "draft"
+  },
+  "guide.run-for-office.in-concord-for-example-candidates-for": {
+   "en": "In Concord, for example, candidates for mayor, city council and ward offices file at the City Clerk&rsquo;s Office, from September 3 to 13, 2027, for the election of November 2, 2027, with a fee or by petition.",
+   "es": "En Concord, por ejemplo, los candidatos a alcalde, concejo municipal y cargos de barrio electoral se inscriben en la oficina del secretario de la ciudad (City Clerk&rsquo;s Office), del 3 al 13 de septiembre de 2027, para la elección del 2 de noviembre de 2027, con una cuota o por petición.",
    "state": "draft"
   },
   "guide.run-for-office.lead": {
@@ -8432,8 +8507,8 @@
    "state": "draft"
   },
   "guide.run-for-office.to-reach-the-general-election-ballot": {
-   "en": "To reach the general election ballot by another route, file a declaration of intent with the Secretary of State in the same June period, pay the same fee, and file nomination papers signed by registered voters: 3,000 for governor or U.S. senator, 1,500 from each congressional district; 1,500 for U.S. representative; 750 for executive councilor or state senator; and 150 for state representative or county officer. The papers go first to the supervisors of the checklist in each town or city, on deadlines in the summer that the Secretary of State&rsquo;s page gives.",
-   "es": "Para llegar a la boleta de la elección general por otra vía, presente una declaración de intención ante la Secretaría de Estado en el mismo período de junio, pague la misma cuota y presente documentos de nominación firmados por votantes inscritos: 3,000 para gobernador o senador de EE. UU., 1,500 de cada distrito del Congreso; 1,500 para representante de EE. UU.; 750 para consejero ejecutivo o senador estatal; y 150 para representante estatal o funcionario del condado. Los documentos van primero a los supervisores del padrón electoral de cada municipio o ciudad, en los plazos de verano que indica la página de la Secretaría de Estado.",
+   "en": "To reach the general election ballot by another route, file a declaration of intent with the Secretary of State in the same June period, pay the same fee, and file nomination papers signed by registered voters: 3,000 for governor or U.S. senator, 1,500 from each congressional district; 1,500 for U.S. representative; 750 for executive councilor or state senator; and 150 for state representative or county officer.",
+   "es": "Para llegar a la boleta de la elección general por otra vía, presente una declaración de intención ante la Secretaría de Estado en el mismo período de junio, pague la misma cuota y presente documentos de nominación firmados por votantes inscritos: 3,000 para gobernador o senador de EE. UU., 1,500 de cada distrito del Congreso; 1,500 para representante de EE. UU.; 750 para consejero ejecutivo o senador estatal; y 150 para representante estatal o funcionario del condado.",
    "state": "draft"
   },
   "guide.run-for-office.to-run-in-a-party-primary": {
@@ -8444,6 +8519,11 @@
   "guide.run-for-office.to-run-in-a-partys-primary": {
    "en": "To run in a party&rsquo;s primary you must be a registered member of that party. File a declaration of candidacy, with a statement of financial interests, between the first Wednesday in June and the Friday of the following week. In 2026 that was June 3 to June 12. A filing on the last day must be made in person by the candidate, by 5 p.m.",
    "es": "Para postularse en las primarias de un partido debe ser miembro inscrito de ese partido. Presente una declaración de candidatura, con una declaración de intereses financieros, entre el primer miércoles de junio y el viernes de la semana siguiente. En 2026 fue del 3 al 12 de junio. Si se inscribe el último día, debe hacerlo el propio candidato en persona, a más tardar a las 5 p. m.",
+   "state": "draft"
+  },
+  "guide.run-for-office.to-the-supervisors-of-the-checklist": {
+   "en": "To the supervisors of the checklist in each town or city, on deadlines in the summer that the Secretary of State&rsquo;s page gives.",
+   "es": "A los supervisores del padrón electoral de cada municipio o ciudad, en los plazos de verano que indica la página de la Secretaría de Estado.",
    "state": "draft"
   },
   "guide.run-for-office.town-and-city-offices": {
@@ -8481,9 +8561,19 @@
    "es": "Senador de EE. UU.",
    "state": "draft"
   },
+  "guide.run-for-office.where-do-nomination-papers-go-first": {
+   "en": "Where do nomination papers go first?",
+   "es": "¿Adónde van primero los documentos de nominación?",
+   "state": "draft"
+  },
   "guide.run-for-office.which-office": {
    "en": "Which office?",
    "es": "¿Qué cargo?",
+   "state": "draft"
+  },
+  "guide.run-for-office.with-the-town-clerk-the-secretary": {
+   "en": "With the town clerk the Secretary of State designates.",
+   "es": "Ante el secretario municipal que designa la Secretaría de Estado.",
    "state": "draft"
   },
   "guide.run-for-office.with-your-declaration-pay-the-fee": {
@@ -8867,14 +8957,19 @@
    "es": "Sí, y necesita un lugar cálido",
    "state": "draft"
   },
+  "guide.submit-testimony.a-committee-can-vote-as-soon": {
+   "en": "A committee can vote as soon as its hearing ends: Senate notices often say &ldquo;executive session may follow&rdquo;, and a House committee may meet in executive session straight after a noticed hearing. So send your testimony before the hearing, as soon as you can once it is scheduled.",
+   "es": "Un comité puede votar en cuanto termina su audiencia: los avisos del Senado a menudo dicen &ldquo;executive session may follow&rdquo; (puede seguir una sesión ejecutiva), y un comité de la Cámara puede reunirse en sesión ejecutiva justo después de una audiencia anunciada. Así que envíe su testimonio antes de la audiencia, en cuanto pueda una vez que esté programada.",
+   "state": "draft"
+  },
   "guide.submit-testimony.a-sign-in-for-or-against": {
    "en": "A sign-in for or against is part of the record and is counted. For House hearings this site publishes only how many people signed in supporting, opposing and neutral, never names or written testimony.",
    "es": "Una inscripción a favor o en contra forma parte del registro oficial y se cuenta. De las audiencias de la Cámara, este sitio publica solo cuántas personas se inscribieron a favor, en contra o como neutrales, nunca sus nombres ni sus testimonios escritos.",
    "state": "draft"
   },
   "guide.submit-testimony.committee-members-can-read-what-is": {
-   "en": "Committee members can read what is submitted online in the House&rsquo;s portal, bill by bill, and are sent links to it at the end of each day their committee holds hearings. A committee can vote as soon as its hearing ends: Senate notices often say &ldquo;executive session may follow&rdquo;, and a House committee may meet in executive session straight after a noticed hearing. So send your testimony before the hearing, as soon as you can once it is scheduled.",
-   "es": "Los miembros del comité pueden leer lo que se envía en línea en el portal de la Cámara, proyecto por proyecto, y reciben enlaces al final de cada día en que su comité celebra audiencias. Un comité puede votar en cuanto termina su audiencia: los avisos del Senado a menudo dicen &ldquo;executive session may follow&rdquo; (puede seguir una sesión ejecutiva), y un comité de la Cámara puede reunirse en sesión ejecutiva justo después de una audiencia anunciada. Así que envíe su testimonio antes de la audiencia, en cuanto pueda una vez que esté programada.",
+   "en": "Committee members can read what is submitted online in the House&rsquo;s portal, bill by bill, and are sent links to it at the end of each day their committee holds hearings.",
+   "es": "Los miembros del comité pueden leer lo que se envía en línea en el portal de la Cámara, proyecto por proyecto, y reciben enlaces al final de cada día en que su comité celebra audiencias.",
    "state": "draft"
   },
   "guide.submit-testimony.committees": {
@@ -8882,9 +8977,19 @@
    "es": "Comités",
    "state": "draft"
   },
+  "guide.submit-testimony.common-questions": {
+   "en": "Common Questions",
+   "es": "Preguntas frecuentes",
+   "state": "draft"
+  },
   "guide.submit-testimony.each-chamber-has-its-own-online": {
    "en": "Each chamber has its own online form on the General Court&rsquo;s website, and each sign-in is for one bill at one committee&rsquo;s hearing on one day. You can sign in once the hearing is scheduled, and not before: the Senate&rsquo;s guidance says so of its form, and encourages you to sign in well ahead of the hearing. In practice the House&rsquo;s opens the same way, and both close at midnight at the end of the day of the hearing.",
    "es": "Cada cámara tiene su propio formulario en línea en el sitio web de la Legislatura, y cada inscripción es para un solo proyecto de ley, en la audiencia de un comité, en un día concreto. Puede inscribirse una vez que la audiencia esté programada, y no antes: así lo indica la guía del Senado para su formulario, y recomienda inscribirse con bastante anticipación a la audiencia. En la práctica, el de la Cámara se abre de la misma manera, y ambos cierran a la medianoche al final del día de la audiencia.",
+   "state": "draft"
+  },
+  "guide.submit-testimony.each-form-asks-who-you-are": {
+   "en": "Each form asks who you are, whom you represent, if anyone, and whether you support the bill, oppose it or are neutral; the questions below say what else.",
+   "es": "Cada formulario pregunta quién es usted, a quién representa, si representa a alguien, y si apoya el proyecto, se opone o es neutral; las preguntas de abajo dicen qué más.",
    "state": "draft"
   },
   "guide.submit-testimony.email-it-or-bring-it-on": {
@@ -8945,6 +9050,11 @@
   "guide.submit-testimony.how-to-contact-your-legislators": {
    "en": "How to contact your legislators",
    "es": "Cómo comunicarse con sus legisladores",
+   "state": "draft"
+  },
+  "guide.submit-testimony.is-my-sign-in-counted-and": {
+   "en": "Is my sign-in counted, and does this site publish it?",
+   "es": "¿Se cuenta mi registro, y lo publica este sitio?",
    "state": "draft"
   },
   "guide.submit-testimony.lead": {
@@ -9020,6 +9130,16 @@
   "guide.submit-testimony.using-this-site": {
    "en": "Using this site",
    "es": "Cómo usar este sitio",
+   "state": "draft"
+  },
+  "guide.submit-testimony.what-exactly-does-each-sign-in": {
+   "en": "What exactly does each sign-in form ask for?",
+   "es": "¿Qué pide exactamente cada formulario de registro?",
+   "state": "draft"
+  },
+  "guide.submit-testimony.when-do-committee-members-see-what": {
+   "en": "When do committee members see what I submit online?",
+   "es": "¿Cuándo ven los miembros del comité lo que envío en línea?",
    "state": "draft"
   },
   "guide.submit-testimony.write-it-so-it-is-useful": {
@@ -10357,9 +10477,24 @@
    "es": "<b>Avise primero de su llegada.</b> No haga entrar al grupo en el edificio hasta que alguien del Centro de Visitantes sepa que llegaron: es una medida de seguridad.",
    "state": "draft"
   },
+  "guide.tour-the-state-house.common-questions": {
+   "en": "Common Questions",
+   "es": "Preguntas frecuentes",
+   "state": "draft"
+  },
   "guide.tour-the-state-house.contact-your-legislators": {
    "en": "Contact your legislators",
    "es": "Comunicarse con sus legisladores",
+   "state": "draft"
+  },
+  "guide.tour-the-state-house.could-the-tour-change-on-the": {
+   "en": "Could the tour change on the day?",
+   "es": "¿Puede cambiar la visita ese día?",
+   "state": "draft"
+  },
+  "guide.tour-the-state-house.do-students-need-to-dress-up": {
+   "en": "Do students need to dress up, and can we visit the gift shop?",
+   "es": "¿Los estudiantes tienen que vestirse formalmente, y podemos visitar la tienda de regalos?",
    "state": "draft"
   },
   "guide.tour-the-state-house.dress-students-are-encouraged-to-dress": {
@@ -10497,11 +10632,6 @@
    "es": "<b>La entrada.</b> Los grupos entran por las puertas principales, al Hall of Flags (Salón de las Banderas), un salón conmemorativo cerca de las salas de audiencias de los comités, donde puede haber reuniones en curso.",
    "state": "draft"
   },
-  "guide.tour-the-state-house.this-week-s-calendar": {
-   "en": "This week's calendar",
-   "es": "El calendario de esta semana",
-   "state": "draft"
-  },
   "guide.tour-the-state-house.title": {
    "en": "How to Tour the New Hampshire State House",
    "es": "Cómo visitar el Capitolio de New Hampshire",
@@ -10512,9 +10642,9 @@
    "es": "Para visitar a su representante o senador, comuníquese directamente con su oficina. Cómo encontrar a sus representantes dice quiénes son, y Cómo comunicarse con sus legisladores, cómo contactarlos.",
    "state": "draft"
   },
-  "guide.tour-the-state-house.what-you-may-see": {
-   "en": "What you may see",
-   "es": "Lo que puede ver",
+  "guide.tour-the-state-house.will-students-meet-their-legislators-or": {
+   "en": "Will students meet their legislators or the Governor?",
+   "es": "¿Conocerán los estudiantes a sus legisladores o al Gobernador?",
    "state": "draft"
   },
   "guide.tour-the-state-house.yes": {
@@ -10527,6 +10657,11 @@
    "es": "Un artículo de la convocatoria indica el asunto sobre el que se pide a los votantes que decidan. La ley exige que la intención y el efecto de cada artículo se expresen con claridad y sin comentarios ni ambigüedad, y nada de lo que se haga en una asamblea es válido si su asunto no figura en la convocatoria. Escriba una sola pregunta, tal como quiere que aparezca; por ejemplo: &ldquo;<span lang=\"en\">To see if the town will vote to</span>&hellip;&rdquo; (para ver si el municipio votará para&hellip;).",
    "state": "draft"
   },
+  "guide.town-warrant-article.an-article-that-would-abolish-a": {
+   "en": "An article that would abolish a planning board or zoning commission must also meet the petition rule in <a href=\"/laws/673#s18\">RSA 673:18, II</a>.",
+   "es": "Un artículo que eliminaría una junta de planificación o una comisión de zonificación también debe cumplir la regla de petición de <a href=\"/laws/673#s18\">RSA 673:18, II</a>.",
+   "state": "draft"
+  },
   "guide.town-warrant-article.an-sb-2-town-or-district": {
    "en": "An SB 2 town or district that holds its meeting in April or May has the same deadline a month or two later: the second Tuesday in February or in March. If the article proposes a bond, the SB 2 deadline is the Friday before.",
    "es": "Un municipio o distrito SB 2 que celebra su asamblea en abril o mayo tiene la misma fecha límite uno o dos meses después: el segundo martes de febrero o de marzo. Si el artículo propone una emisión de bonos, la fecha límite SB 2 es el viernes anterior.",
@@ -10537,6 +10672,11 @@
    "es": "Cualquier votante inscrito puede pedir a los votantes de su municipio o distrito escolar que decidan una pregunta. Escríbala como un artículo de la convocatoria (<span lang=\"en\">warrant</span>), reúna las firmas de 25 votantes inscritos, o del 2 por ciento de ellos si esa cifra es menor (nunca menos de 10), y entregue la petición a los concejales o a la junta escolar antes de la fecha límite. Ellos deben incluirla en la convocatoria de la asamblea anual, donde los votantes la deciden.",
    "state": "draft",
    "note": "warrant: 'convocatoria', with the English once. Town meeting: 'asamblea municipal', as the calendar's entries say it."
+  },
+  "guide.town-warrant-article.are-there-special-rules-for-some": {
+   "en": "Are there special rules for some articles?",
+   "es": "¿Hay reglas especiales para algunos artículos?",
+   "state": "draft"
   },
   "guide.town-warrant-article.at-a-traditional-meeting-the-voters": {
    "en": "At a <b>traditional meeting</b> the voters debate the article and can amend it before they vote; where it asks for a sum of money, the meeting may vote more or less, within the limits of the municipal budget law where the town has adopted it. In an <b>SB 2</b> town or district it is debated at the first session, the deliberative session, where it can be amended but not changed to remove its subject, and every article then goes on the official ballot for the final vote.",
@@ -10578,6 +10718,11 @@
    "es": "Reúna las firmas de 25 votantes inscritos, o del 2 por ciento si es menor, nunca menos de 10.",
    "state": "draft"
   },
+  "guide.town-warrant-article.common-questions": {
+   "en": "Common Questions",
+   "es": "Preguntas frecuentes",
+   "state": "draft"
+  },
   "guide.town-warrant-article.does-your-town-or-school-district": {
    "en": "Does your town or school district vote on its articles at the polls (SB 2)?",
    "es": "¿Su municipio o distrito escolar vota sus artículos en las urnas (SB 2)?",
@@ -10591,6 +10736,11 @@
   "guide.town-warrant-article.find-your-town-or-city-clerk": {
    "en": "Find your town or city clerk",
    "es": "Busque al secretario de su municipio o ciudad",
+   "state": "draft"
+  },
+  "guide.town-warrant-article.for-a-town-the-2-percent": {
+   "en": "For a town, the 2 percent is counted from the voters registered before the last state general election.",
+   "es": "En un municipio, el 2 por ciento se calcula con los votantes inscritos antes de la última elección general del estado.",
    "state": "draft"
   },
   "guide.town-warrant-article.give-the-petition-to-the-selectmen": {
@@ -10613,6 +10763,11 @@
    "es": "Cómo votar",
    "state": "draft"
   },
+  "guide.town-warrant-article.in-a-town-selectmen-who-refuse": {
+   "en": "In a town, selectmen who refuse are guilty of a violation, and if they unreasonably refuse, a Superior Court justice can order the article inserted on the written application of 25 or more voters.",
+   "es": "En un municipio, los concejales que se nieguen cometen una infracción (<span lang=\"en\">violation</span>), y si se niegan sin razón, un juez del Tribunal Superior puede ordenar que se incluya el artículo a solicitud por escrito de 25 o más votantes.",
+   "state": "draft"
+  },
   "guide.town-warrant-article.lead": {
    "en": "Petitioning your selectmen or school board to put a question before the voters at the annual town or school district meeting: the signatures, the deadline, and what happens next.",
    "es": "Cómo presentar una petición a los concejales de su municipio (selectmen) o a la junta escolar para que sometan una pregunta a los votantes en la asamblea anual del municipio o del distrito escolar: las firmas, la fecha límite y lo que sigue.",
@@ -10621,6 +10776,16 @@
   "guide.town-warrant-article.meeting": {
    "en": "Meeting",
    "es": "Asamblea",
+   "state": "draft"
+  },
+  "guide.town-warrant-article.meeting-in-april-or-may-or": {
+   "en": "Meeting in April or May, or proposing a bond? See the questions below.",
+   "es": "¿La asamblea es en abril o mayo, o el artículo propone un bono? Vea las preguntas de abajo.",
+   "state": "draft"
+  },
+  "guide.town-warrant-article.my-sb-2-town-meets-in": {
+   "en": "My SB 2 town meets in April or May, or the article proposes a bond. When is it due?",
+   "es": "Mi municipio con SB 2 se reúne en abril o mayo, o el artículo propone un bono. ¿Cuándo vence?",
    "state": "draft"
   },
   "guide.town-warrant-article.no-a-traditional-meeting": {
@@ -10654,8 +10819,8 @@
    "state": "draft"
   },
   "guide.town-warrant-article.the-petition-must-be-signed-by": {
-   "en": "The petition must be signed by <b>25 or more registered voters</b> of the town or school district, or <b>2 percent</b> of its registered voters if that is fewer, and never fewer than 10. For a town, the 2 percent is counted from the voters registered before the last state general election.",
-   "es": "La petición debe estar firmada por <b>25 o más votantes inscritos</b> del municipio o distrito escolar, o por el <b>2 por ciento</b> de sus votantes inscritos si esa cifra es menor, y nunca por menos de 10. En un municipio, el 2 por ciento se calcula con los votantes inscritos antes de la última elección general del estado.",
+   "en": "The petition must be signed by <b>25 or more registered voters</b> of the town or school district, or <b>2 percent</b> of its registered voters if that is fewer, and never fewer than 10.",
+   "es": "La petición debe estar firmada por <b>25 o más votantes inscritos</b> del municipio o distrito escolar, o por el <b>2 por ciento</b> de sus votantes inscritos si esa cifra es menor, y nunca por menos de 10.",
    "state": "draft"
   },
   "guide.town-warrant-article.the-selectmen-or-school-board-put": {
@@ -10664,13 +10829,13 @@
    "state": "draft"
   },
   "guide.town-warrant-article.the-selectmen-or-the-school-board": {
-   "en": "The selectmen or the school board may make only minor changes to the wording, and never ones that change what the article was meant to do. An article that would abolish a planning board or zoning commission must also meet the petition rule in <a href=\"/laws/673#s18\">RSA 673:18, II</a>.",
-   "es": "Los concejales o la junta escolar solo pueden hacer cambios menores a la redacción, y nunca cambios que alteren lo que el artículo pretendía hacer. Un artículo que eliminaría una junta de planificación o una comisión de zonificación también debe cumplir la regla de petición de <a href=\"/laws/673#s18\">RSA 673:18, II</a>.",
+   "en": "The selectmen or the school board may make only minor changes to the wording, and never ones that change what the article was meant to do.",
+   "es": "Los concejales o la junta escolar solo pueden hacer cambios menores a la redacción, y nunca cambios que alteren lo que el artículo pretendía hacer.",
    "state": "draft"
   },
   "guide.town-warrant-article.the-selectmen-or-the-school-board-2": {
-   "en": "The selectmen or the school board must put the article in the warrant. In a town, selectmen who refuse are guilty of a violation, and if they unreasonably refuse, a Superior Court justice can order the article inserted on the written application of 25 or more voters. The warrant is posted at least 14 days before the meeting.",
-   "es": "Los concejales o la junta escolar deben incluir el artículo en la convocatoria. En un municipio, los concejales que se nieguen cometen una infracción (<span lang=\"en\">violation</span>), y si se niegan sin razón, un juez del Tribunal Superior puede ordenar que se incluya el artículo a solicitud por escrito de 25 o más votantes. La convocatoria se publica al menos 14 días antes de la asamblea.",
+   "en": "The selectmen or the school board must put the article in the warrant. The warrant is posted at least 14 days before the meeting.",
+   "es": "Los concejales o la junta escolar deben incluir el artículo en la convocatoria. La convocatoria se publica al menos 14 días antes de la asamblea.",
    "state": "draft"
   },
   "guide.town-warrant-article.this-guide-is-for-a-town": {
@@ -10719,9 +10884,24 @@
    "es": "Lo que sigue",
    "state": "draft"
   },
+  "guide.town-warrant-article.what-if-the-selectmen-refuse-to": {
+   "en": "What if the selectmen refuse to put it on the warrant?",
+   "es": "¿Y si los concejales se niegan a incluirlo en la convocatoria?",
+   "state": "draft"
+  },
+  "guide.town-warrant-article.what-is-a-primary-petitioner": {
+   "en": "What is a primary petitioner?",
+   "es": "¿Qué es un peticionario principal (primary petitioner)?",
+   "state": "draft"
+  },
   "guide.town-warrant-article.when-a-petitioned-article-is-due": {
    "en": "When a petitioned article is due",
    "es": "Cuándo hay que entregar un artículo por petición",
+   "state": "draft"
+  },
+  "guide.town-warrant-article.which-registered-voters-count-toward-the": {
+   "en": "Which registered voters count toward the 2 percent?",
+   "es": "¿Qué votantes inscritos cuentan para el 2 por ciento?",
    "state": "draft"
   },
   "guide.town-warrant-article.write-the-article": {
