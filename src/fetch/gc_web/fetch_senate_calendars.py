@@ -316,6 +316,12 @@ def _run(a, cache):
 
     print(f"\n{got} downloaded, {already} already here, {len(failed)} failed"
           f" -> {cache}/")
+    if got and str(a.year).isdigit() and int(a.year) >= date.today().year - 1 and \
+            refusal.documents_switched():
+        # THE NIGHT LEARNS OF THESE ONLY FROM THE BUCKET (the review of 26
+        # October 2026), through their text, which seed-kit sends.
+        print(refusal.SEED_REMINDER.format(
+            what=f"The {got} of {a.year}'s Senate calendars saved here"))
     print(f"{len(idx):,} calendar links in {a.index} ({before:,} before)")
     print("\nextract_vetoes.py reads these for the governor's veto messages on "
           "Senate bills.")

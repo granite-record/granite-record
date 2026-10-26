@@ -795,7 +795,7 @@ def main():
         print(f"  {len(urls)} editions found")
         if not urls:
             sys.exit("No calendar PDFs found. Check the year.")
-        targets, drops = [], 0
+        targets, drops, saved = [], 0, 0
         for num in sorted(urls, key=calendar_order):
             n, suf = calendar_order(num)
             local = cache / f"HC{n:03d}{suf}.pdf"
@@ -829,11 +829,19 @@ def main():
                           "one for 24 hours.")
                     sys.exit(2)
                 local.write_bytes(body)
+                saved += 1
                 print(f"  downloaded HC {num}")
             targets.append((num, local))
             if a.limit and len(targets) >= a.limit:
                 break
 
+        if saved and str(a.year).isdigit() and int(a.year) >= date.today().year - 1 and \
+                refusal.documents_switched():
+            # THE NIGHT LEARNS OF THESE ONLY FROM THE BUCKET (the review of 26
+            # October 2026): saved here and recorded nowhere in its list, a
+            # House calendar of the night's years was asked for again.
+            print(refusal.SEED_REMINDER.format(
+                what=f"The {saved} of {a.year}'s House calendars saved here"))
         # A calendar already downloaded is a calendar, whether or not this run
         # could reach the General Court to be told about it again.
         have = {str(x[0]) for x in targets}

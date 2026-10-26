@@ -233,18 +233,23 @@ them: it takes them when a person runs it, and says how many
 (nights_to_ask) -- but one held back for a person only when a person names
 it (--take NAME): taken unasked, the second of two at one path was marked
 held from the first one's file, the loss the night holds them back to
-prevent. And its own record of a row it leaves to the night goes,
+prevent. A redirect the night recorded waits for a person's decision too:
+this drain follows one, unpaced and uncounted, and takes such a row only by
+name. And its own record of a row it leaves to the night goes,
 so that an older line of this machine's is not laid over the night's.
+--take asks for a held document whose PDF is not on this disk only once
+docs-down has run since the last pull without bringing it, or the night's
+verdict names it among those docs-up did not keep (not_in_bucket).
 
 THE NEWER RECORD WINS (the review of 26 October 2026). While the night
 fetches the documents itself, the laptop's record of a document is laid
 over the night's list only where it is the newer one (laptop_wins): it has
 the document, or a person's word on it (--settle), or it tried more often
-than the night's row says, and the night's row is not gone, failed or
-refused. Laid over every row it named, an old "wanted, one try" undid the
-night's own 404 or refusal every night. With the switch off, every field the
-drain keeps is laid over, as before: then the night's rows carry only the
-laptop's own older errors.
+than the night's row says -- the night counts each try before it asks, so
+that line was written since, whatever the night's says. Laid over every row
+it named, an old "wanted, one try" undid the night's own 404 or refusal
+every night. With the switch off, every field the drain keeps is laid over,
+as before: then the night's rows carry only the laptop's own older errors.
 """
 
 # The bootstrap: _paths.py, found above this file, puts every code folder on the import path.
@@ -455,12 +460,18 @@ def laptop_wins(night, laptop):
     404, or a refusal -- every night, so the night asked again for a document
     that had answered 404 or 403, and its tries never reached three. The
     laptop's wins only where it has the document (held), or where it has
-    tried more often than the night's record says and the night's record is
-    not gone, failed or refused. A person's word (SETTLED) wins too."""
+    tried more often than the night's record says. A person's word (SETTLED)
+    wins too.
+
+    MORE TRIES IS NEWER, WHATEVER THE NIGHT'S LINE SAYS (the review of 26
+    October 2026). Kept from the laptop's line wherever the night's was gone,
+    failed or refused, a document the night recorded a refusal against and a
+    person's drain then found gone (404) stayed wanted with the night's one
+    try: every later drain asked for it again, and its "not moving" warning
+    never ended. The night counts each try before it asks, so a laptop line
+    with more tries than the night's is the one written since."""
     if (laptop.get("state") or "") in ("held", SETTLED):
         return True
-    if (night.get("state") or "") in ("gone", "failed") or refused_before(night.get("error")):
-        return False
     return _tries(laptop) > _tries(night)
 
 
@@ -494,6 +505,49 @@ def taken_path(night, laptop):
     have = night.get("path") or ""
     return ((laptop.get("state") or "") == "held" and bool(have)
             and (laptop.get("path") or "") == _with_file(have, night.get("name") or "") != have)
+
+
+# THE NIGHT'S PDFS AND --take (the review of 26 October 2026). The night's
+# verdict, as pull brought it, names each of its PDFs docs-up did not keep in
+# the bucket (nightly.docs_not_kept); docs-down records what the bucket's
+# docs/ held, and when (cloud.DOCS_DOWN_RECORD); pull records when it ran
+# (cloud.PULL_RECORD). Both records beside the queue, under cloud/, as
+# refusal.py reads the verdict beside its own record. preflight holds these to
+# cloud.py's and nightly.py's.
+DOCS_NOT_KEPT_KEY = "docs_not_kept"
+DOCS_DOWN_NAME = "docs-down.json"
+PULL_NAME = "pull.json"
+
+
+def _record(path):
+    try:
+        d = json.loads(Path(path).read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        return {}
+    return d if isinstance(d, dict) else {}
+
+
+def not_in_bucket(r):
+    """Whether a held document's PDF is known not to be in the bucket, so
+    that --take may ask the General Court for it: the night's verdict, as
+    pull brought it, names it among those docs-up did not keep; or docs-down
+    has run since the last pull and the bucket's docs/ had nothing at its
+    path.
+
+    WHY (the review of 26 October 2026). --take fetched a held document
+    whose PDF was not on this disk, the docs-up warning's way back; run
+    before docs-down, it asked the General Court a second time for a PDF the
+    night had fetched and kept in the bucket for this very laptop."""
+    verdict = _record(refusal.MARK.parent / refusal.NIGHT_VERDICT)
+    if r.get("name") in (verdict.get(DOCS_NOT_KEPT_KEY) or []):
+        return True
+    down = _record(QUEUE.parent / "cloud" / DOCS_DOWN_NAME)
+    pulled = _record(QUEUE.parent / "cloud" / PULL_NAME)
+    try:
+        since = float(down.get("epoch") or 0) >= float(pulled.get("epoch") or 0)
+    except (TypeError, ValueError):
+        return False
+    return bool(down) and since and _disk(r).as_posix() not in (down.get("docs") or [])
 
 
 def nights_fetch():
@@ -1297,6 +1351,11 @@ JOURNAL_NO_RE = re.compile(r"\b[HS]J\s*(?:No\.?\s*)?0*(\d+)([A-Za-z]?)(?![A-Za-z
 class _NoRedirect(urllib.request.HTTPRedirectHandler):
     def redirect_request(self, *a, **k):
         return None
+
+
+# A redirect the night recorded against a row (redirect_said, under
+# REFUSED_MARK), as the drain reads it.
+REDIRECTED_RE = re.compile(r"\ba redirect \(HTTP 3\d\d\)")
 
 
 def redirect_said(err):
@@ -2179,6 +2238,17 @@ def drain(rows, chambers, kinds, years, a, held):
                     print(f"  not taken: {r['chamber']} {r['kind']} {r['year']} {r['name']} is "
                           "held already, its PDF is here, and no other document has its path")
                     continue
+                elif r.get("state") == "held" and list_is_the_nights() and nights_year(r) \
+                        and not not_in_bucket(r):
+                    # THE NIGHT'S COPY FIRST (not_in_bucket): its PDF may be in
+                    # the bucket, which docs-down brings asking nobody.
+                    said.add(r.get("name"))
+                    print(f"  not taken: {r['chamber']} {r['kind']} {r['year']} {r['name']} is "
+                          "held, and the night may have kept its PDF in the bucket: python3 "
+                          "src/ops/cloud.py docs-down first; --take asks for it once docs-down "
+                          "has run since the last pull without bringing it, or the night's "
+                          "verdict names it among the PDFs docs-up did not keep")
+                    continue
                 todo.append(r)
             for n in sorted(take - {r.get("name") for r in todo} - said):
                 print(f"  not taken: no document to take is named {n!r}")
@@ -2247,12 +2317,27 @@ def drain(rows, chambers, kinds, years, a, held):
                       "the night will not ask for -- a refusal recorded against it, "
                       f"{NIGHT_TRIES} tries, no longer on its list, or named here by a "
                       "person -- are a person's, and this drain takes them")
+        # A REDIRECT WAITS FOR A PERSON'S DECISION (the review of 26 October
+        # 2026). The night follows no redirect and records one as a refusal
+        # (redirect_said); _get here follows up to ten, back to back, unpaced
+        # and uncounted -- the very pattern the night rules out. Such a row is
+        # taken only when a person who has decided names it (--take).
+        waits = [r for r in todo if REDIRECTED_RE.search(r.get("error") or "")
+                 and r.get("name") not in take]
+        if waits:
+            todo = [r for r in todo if not any(r is x for x in waits)]
+            print(f"{len(waits):,} whose refusal on the night was a redirect, which this drain "
+                  "would follow and the night does not, wait for a person's decision "
+                  "(watchers/README.md, step 9), and are taken only by name (--take NAME): "
+                  + "; ".join(r["name"] for r in waits[:6])
+                  + (f"; and {len(waits) - 6} more" if len(waits) > 6 else ""))
         n = min(len(todo), a.budget)
         print(f"{len(todo):,} wanted, taking {n:,} this run at about "
               f"{a.delay:g}s apart -- roughly {n * a.delay / 60:.0f} minutes, "
               f"{60 / a.delay:.1f} a minute")
         got = fail = 0
         run = dropped = 0
+        newest_got = 0          # of them, this year's and last year's (nights_year)
         t0 = time.time()
         for i, r in enumerate(todo[:a.budget], 1):
             path = dest.get(id(r)) or Path(r["path"])
@@ -2367,6 +2452,7 @@ def drain(rows, chambers, kinds, years, a, held):
                 # The night's list takes this one path change (taken_path).
                 r["path"] = _with_file(r["path"], r["name"])
             got += 1
+            newest_got += 1 if nights_year(r) else 0
             if got % 10 == 0:
                 save_queue(rows)
                 rate = got / max(1e-9, time.time() - t0)
@@ -2391,6 +2477,14 @@ def drain(rows, chambers, kinds, years, a, held):
         print("The night learns of these only from the bucket: python3 "
               "src/parse/extract_calendar_text.py makes their text, then python3 "
               "src/ops/cloud.py seed-kit sends it, and what this fetched.")
+    elif newest_got and list_is_the_nights() and refusal.documents_switched():
+        # AND IN SHADOW, OR NOT FETCHING (the review of 26 October 2026): the
+        # night's switch is on but not a number, so this machine fetched this
+        # year's documents itself -- and the night asks for nothing once it
+        # is a number until these have reached the bucket
+        # (nightly.unseeded_since).
+        print(refusal.SEED_REMINDER.format(
+            what=f"The {newest_got} of this year's and last year's fetched here"))
     if stopped == "refused":
         return 2
     return 1 if stopped else 0

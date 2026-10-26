@@ -516,8 +516,11 @@ October 2026). Otherwise:
                       list, and only when the list went in and its listing
                       exited 0 (EXITS), the night's clock allows, the kit
                       gives the night the texts (texts_owner: the person's
-                      own commit at turn-on, TEXTS_NOT_NIGHTS) and no earlier
-                      run asked for documents today (DOCS_ASKED_DAY)
+                      own commit at turn-on, TEXTS_NOT_NIGHTS), no earlier
+                      run asked for documents today (DOCS_ASKED_DAY), and,
+                      after a verdict that was not a number, the kit was
+                      last written by the laptop's seed-kit since
+                      (DOCS_UNSEEDED, unseeded_since)
                       (take_document_files: fetch_calendar_archive.py --night,
                       killed at DOCS_FILES_MINUTES, keeping what it wrote down
                       before the request it was killed in); the queue it
@@ -544,7 +547,9 @@ October 2026). Otherwise:
                       whose PDF docs-down brings to archive/documents-held/.
                       While the switch is a number, a refusal met tonight
                       ends the night before its build (BUILD_REFUSED), and
-                      reaches the bucket at once. A document whose text was
+                      reaches the bucket at once; what came whole before it
+                      is staged, held and listed with no text, never asked
+                      for again (REFUSAL_UNTEXTED). A document whose text was
                       not kept is listed with its cause, night after night, in
                       "documents_untexted"; a text of one made since is read
                       again before the build reads it (recheck_untexted)
@@ -982,6 +987,24 @@ KIND_DOCS_LEFT = "the calendars and journals a stopped night left unchecked"
 # night to night until the row is held, so that such a text the laptop sends
 # back is taken out again (the review of 26 October 2026). Said by no warning.
 DOCS_RECOVERED = "documents_recovered"
+# THE LAPTOP'S FETCHES REACH THE NIGHT BEFORE IT FETCHES (the review of 26
+# October 2026). While the last real night's verdict did not say a number --
+# off, shadow, "not fetching" -- the laptop fetched this year's and last
+# year's documents itself (refusal.night_documents), and the night learns of
+# what it fetched only once the laptop's seed-kit sends their text and its
+# record. Left to a person's routine, a first numbered night after such a
+# verdict asked the General Court again for every one fetched since. So a
+# night whose switch is a number carries, from the close of the last such
+# verdict (unseeded_since), when the laptop may have fetched from, and asks
+# for nothing (UNSEEDED_SAID) until tonight's kit-down found the kit last
+# written by the laptop's seed-kit after it (KIT_DOWN's manifest_by and
+# manifest_written, as cloud.py kit-down records them). Written only while
+# the switch is a number.
+DOCS_UNSEEDED = "documents_unseeded_since"
+UNSEEDED_SAID = ("the laptop's own fetches of this year's and last year's documents since "
+                 "{since} have not reached the bucket: on the laptop, python3 src/ops/cloud.py "
+                 "pull, python3 src/parse/extract_calendar_text.py, then python3 src/ops/cloud.py "
+                 "seed-kit, and the next night asks (watchers/README.md, step 9)")
 # What the documents' step says when tonight's list did not go in. The list's
 # own line warns already, with its own kind -- the clock's, where the clock
 # kept it from asking (clock_kind), which never holds a night -- so this one
@@ -1832,6 +1855,12 @@ def main():
         # before 26 October 2026 (the review of 26 October 2026).
         night.v["night_documents"] = (str(switch) if not isinstance(switch, int)
                                       else documents_carried(switch, load_json(VERDICT)))
+        if isinstance(switch, int) and not isinstance(switch, bool):
+            # Whether the laptop's own fetches have reached the bucket since
+            # it last fetched this year's documents (DOCS_UNSEEDED).
+            since = unseeded_since(load_json(VERDICT))
+            if since:
+                night.v[DOCS_UNSEEDED] = since
     say("=" * 74)
     say(f"Granite Record nightly  {started:%Y-%m-%d %H:%M}")
     say("=" * 74)
@@ -2115,7 +2144,8 @@ def main():
             say(f"\nSTOPPED: {BUILD_REFUSED}")
             night.v["build"] = BUILD_REFUSED
             return 1
-        if night and night.v.get("documents_untexted") and (installed or a.no_fetch):
+        if night and (night.v.get("documents_untexted") or DOCS_NO_TEXT.exists()) and \
+                (installed or a.no_fetch):
             # A text made since of a document listed without one is read
             # again before the build reads it, whatever the switch says now
             # (recheck_untexted): on every night that builds, the ones that
@@ -4306,6 +4336,28 @@ def clock_kind(kind):
     return ("not asked for: " + kind_of(ASK_CLOCK_SAID.format(hm="00:00"))) in str(kind)
 
 
+def unseeded_since(prev, kit=None):
+    """When, by the last real night's verdict (`prev`), the laptop may have
+    fetched this year's and last year's documents from, and not sent them
+    since (DOCS_UNSEEDED): that night's close, where its verdict did not say
+    a number; what it carried, where it did; and None once the kit's
+    manifest, as tonight's kit-down found it (`kit`, KIT_DOWN), was last
+    written by the laptop's seed-kit after that -- or where nothing is
+    wanted. "-" where there is no verdict at all."""
+    prev = prev if isinstance(prev, dict) else {}
+    if str(prev.get(DOCS_KEY) or "").isdigit():
+        since = str(prev.get(DOCS_UNSEEDED) or "")
+    else:
+        since = str(prev.get("closed") or prev.get("finished") or prev.get("started") or "-")
+    if not since:
+        return None
+    rec = load_json(KIT_DOWN if kit is None else kit)
+    if isinstance(rec, dict) and rec.get("manifest_by") == "seed-kit" and \
+            str(rec.get("manifest_written") or "") > since:
+        return None
+    return since
+
+
 def refused_tonight(switch):
     """Whether tonight ends before its build (BUILD_REFUSED): the switch a
     number and a refusal on file -- one met tonight, since a night that finds
@@ -4788,6 +4840,10 @@ def _document_files(v, switch, dry_run, new_term, out):
         return f"not asked for: this machine does not make the laptop's text (the text canary {canary})"
     if texts_owner() != "night":
         return f"not asked for: {TEXTS_NOT_NIGHTS}"
+    since = str(v.get(DOCS_UNSEEDED) or "")
+    if since:
+        return "not asked for: " + UNSEEDED_SAID.format(
+            since=since[:10] if since[:4].isdigit() else "the switch was set")
     # ONE FETCH OF THE DOCUMENTS A DAY (the review of 26 October 2026): a
     # second real run the same morning -- the fallback cron, or a person
     # re-running a failed night -- asks for none, whatever its own list says
@@ -5139,6 +5195,9 @@ def texts_run(args, label, until):
 # What a document's text was not kept for when the texts' time ran out.
 TEXTS_LATE = ("its text was not made and checked in the {m} minutes the night gives its texts "
               "({what})")
+# Why a document fetched whole on a night that then met a refusal has no
+# text (make_texts): kept and held, and its text the laptop's to make.
+REFUSAL_UNTEXTED = "a refusal ended the night before its text was made"
 
 
 def make_texts(v, files, day, until=None):
@@ -5204,8 +5263,10 @@ def make_texts(v, files, day, until=None):
     NOTHING MADE AFTER A REFUSAL (the review of 26 October 2026). A refusal
     the documents met reaches the bucket only once this night exits, and a
     stood-down laptop may start soon after 13:30. With one on file, nothing
-    is extracted or checked: tonight's PDFs go, their documents are wanted
-    again, and the night ends at once, before its build (BUILD_REFUSED)."""
+    is extracted or checked, and the night ends at once, before its build
+    (BUILD_REFUSED); but each document fetched whole before the refusal is
+    staged for the bucket, held and listed with no text (REFUSAL_UNTEXTED),
+    never deleted to be asked for again (the review of 26 October 2026)."""
     try:
         return _make_texts(v, files, day, until)
     except Exception as e:                                      # noqa: BLE001
@@ -5243,8 +5304,9 @@ UNTEXTED_SAID = {
     "extractor": "whose text an extractor the canary did not prove made: on the laptop, after "
                  "cloud.py pull and docs-down, extract_calendar_text.py makes it from the PDF "
                  "docs-down brought, and cloud.py seed-kit sends it",
-    "failed": "whose text the night could not make or check (its extractor failed, or it or the "
-              "journal checks ran past the night's time for texts): on "
+    "failed": "whose text the night could not make or check (its extractor failed, it or the "
+              "journal checks ran past the night's time for texts, or a refusal ended the night "
+              "first): on "
               "the laptop, after cloud.py pull and docs-down, extract_calendar_text.py makes it "
               "from the PDF docs-down brought, and cloud.py seed-kit sends it",
     "empty": "with no text in it, a scan perhaps: a person who has opened the PDF docs-down "
@@ -5267,7 +5329,47 @@ UNTEXTED_SAID = {
                      "extract_calendar_text.py, then cloud.py seed-kit",
     "overwritten": "whose PDF on the night's machine was not the one fetched: it is asked for "
                    "again",
+    # A TEXT THE LAPTOP SENT, READ AGAIN AND SET ASIDE (recheck_untexted; the
+    # review of 26 October 2026). Under not_its_own or journal_check, the
+    # warning sent a person to archive/documents-held/, where docs-down brings
+    # nothing for a PDF already at its path -- and the laptop made this text
+    # from that very PDF; and the laptop's text, left there, went back with
+    # every seed-kit.
+    "kit_text": "whose text the laptop made and sent, which the night read again and set aside "
+                "(its why says which test): its PDF is at its own path on the laptop, beside "
+                "that text, which every seed-kit sends again until it is deleted there; once a "
+                "person has opened the PDF: if it is the document, a calendar's path goes in "
+                f"{DOCS_TEXT_ACCEPTED.as_posix()} (PATH: why and day), merged to main, or a "
+                "journal waits for its reader to be fixed, and then extract_calendar_text.py "
+                "and cloud.py seed-kit send its text again; if it is not, its path goes in "
+                f"{DOCS_NO_TEXT.as_posix()}, merged to main, which ends the warning, and "
+                "--take NAME asks for it again only when a person chooses",
 }
+
+
+def untexted_named(untexted):
+    """". Each by its NAME and path: HC 35.pdf (calendars/2026/HC035.pdf,
+    not_its_own); ...; and N more in the verdict's documents_untexted" for
+    the warning: the first DOCS_HELD_SAID, named only in this project's own
+    characters (PLAIN), as held_back_said does.
+
+    NAMED (the review of 26 October 2026). The warning gave counts by kind
+    and cause, and every fix it gave needs a document's path or its NAME --
+    the person's two files in corrections/ take the path, --take the NAME --
+    which were only in the verdict's JSON, under a key nothing named."""
+    named = []
+    for p, e in untexted.items():
+        e = e if isinstance(e, dict) else {}
+        name, cause = str(e.get("name") or ""), str(e.get("cause") or "failed")
+        if PLAIN.fullmatch(str(p)) and PLAIN.fullmatch(name or "-") and PLAIN.fullmatch(cause):
+            named.append(f"{name or 'no name'} ({p}, {cause})")
+    if not named:
+        return ""
+    more = len(untexted) - min(len(named), DOCS_HELD_SAID)
+    return (". Each by its NAME and path: " + "; ".join(named[:DOCS_HELD_SAID])
+            + (f"; and {more} more in the verdict's documents_untexted ({VERDICT.as_posix()} "
+               "on the night, archive/cloud/last-night.json on the laptop after cloud.py pull)"
+               if more > 0 else ""))
 
 
 def _untexted(v, rows, why, day, cause="failed"):
@@ -5356,13 +5458,25 @@ def _make_texts(v, files, day, until=None):
     if not took:
         return ""
     if refusal.MARK.exists():
-        # NOTHING MADE AFTER A REFUSAL (make_texts says why): tonight's PDFs
-        # go in its finally, their documents are wanted again, and nothing
-        # is listed -- they are asked for again once a person clears it.
+        # NOTHING MADE AFTER A REFUSAL (make_texts says why) -- BUT WHAT CAME
+        # WHOLE IS KEPT (the review of 26 October 2026). Deleted and wanted
+        # again, each document fetched whole before the refusal was asked for
+        # a second time once a person cleared it, by the night or, the switch
+        # back on shadow, by the laptop's drain. Staging is a copy and a
+        # record, seconds: each is staged for docs-up, held, and listed with
+        # no text (cause "failed"), which the laptop makes after docs-down.
+        # Only one whose bytes are not the ones fetched is wanted again.
+        staged = stage_pdfs(took)
+        files["staged"] = [_disk(r.get("path")).as_posix() for r in staged]
+        mark_held(staged)
+        for r in staged:
+            _untexted(v, [r], REFUSAL_UNTEXTED, day, "failed")
         wanted_again(took)
+        left = len(took) - len(staged)
         return (f"not made: a refusal is on file, so the night ends at once; tonight's "
-                f"{len(took)} PDFs were deleted, and their documents are asked for again once "
-                "a person clears it")
+                f"{len(staged)} PDFs were kept for the bucket and held, their text the "
+                "laptop's to make" + (f"; {left} whose bytes were not the ones fetched are "
+                                      "asked for again once a person clears it" if left else ""))
     until = until if until is not None else texts_until()
     made, bad, how = [], [], {}
     by = {}                 # each text made, by which extractor
@@ -5503,6 +5617,7 @@ def recheck_untexted(v, day, until=None):
     In the texts' own time (`until`, which make_texts shares; TEXTS_MINUTES):
     out of it, the journals not yet checked are set aside, and stay listed."""
     try:
+        no_text_aside()
         rec = v.get("documents_untexted")
         if not isinstance(rec, dict) or not rec:
             return ""
@@ -5526,7 +5641,7 @@ def recheck_untexted(v, day, until=None):
             if why:
                 DOCS_ASIDE.mkdir(parents=True, exist_ok=True)
                 os.replace(txt, DOCS_ASIDE / txt.as_posix().replace("/", "__"))
-                bad.append((r, f"the text the kit brought: {why}", "not_its_own"))
+                bad.append((r, f"the text the kit brought: {why}", "kit_text"))
             else:
                 ok.append(r)
         journals = [r for r in ok if r.get("kind") == "journal"]
@@ -5540,7 +5655,7 @@ def recheck_untexted(v, day, until=None):
                     m=TEXTS_MINUTES, what="the journal checks"), "failed"))
         for r in refused:
             bad.append((r, f"the text the kit brought: {_and(failed)} --check failed with it, "
-                           "and passed without it", "journal_check"))
+                           "and passed without it", "kit_text"))
         for r, why, cause in bad:
             _untexted(v, [r], why, day, cause)
         # PROVED TONIGHT, AND ONLY THEN DROPPED (untexted_now; the review of 26
@@ -5557,6 +5672,32 @@ def recheck_untexted(v, day, until=None):
         say(f"  the documents' texts made since were not read again: {type(e).__name__}: {e}",
             echo=False)
         return ""
+
+
+def no_text_aside():
+    """Each text here of a document a person has said has none, or whose PDF
+    is not the document (DOCS_NO_TEXT), moved aside out of the build's way
+    (DOCS_ASIDE) and said: [the paths]. Nothing where the person's file is
+    not there, which it is not until the switch has been a number.
+
+    WHY (the review of 26 October 2026). The path in that file ends the
+    document's warning, and so its entry, and so the night's reading again
+    of any text that comes for it -- while the text the night had refused
+    was still on the laptop, and the next seed-kit sent it into the build."""
+    got = load_json(DOCS_NO_TEXT) if DOCS_NO_TEXT.exists() else None
+    out = []
+    for p in (got if isinstance(got, dict) else {}):
+        pdf = _disk(p)
+        txt = pdf.with_suffix(".txt")
+        if pdf.suffix.lower() == ".pdf" and txt.is_file():
+            DOCS_ASIDE.mkdir(parents=True, exist_ok=True)
+            os.replace(txt, DOCS_ASIDE / txt.as_posix().replace("/", "__"))
+            out.append(pdf.as_posix())
+    if out:
+        say(f"  {len(out)} text(s) of documents {DOCS_NO_TEXT.as_posix()} says have none, set "
+            "aside before the build; delete them on the laptop: " + ", ".join(
+                p for p in out[:DOCS_HELD_SAID] if PLAIN.fullmatch(p)))
+    return out
 
 
 def journal_checks(only=None, until=None):
@@ -7113,7 +7254,8 @@ class Night:
             out.append((KIND_DOCS_UNTEXTED,
                         f"{n} of the documents the night fetched {'has' if n == 1 else 'have'} no "
                         f"text it could use ({_by_kind(untexted.values())}): "
-                        + "; ".join(f"{k} {UNTEXTED_SAID[c]}" for c, k in sorted(causes.items()))))
+                        + "; ".join(f"{k} {UNTEXTED_SAID[c]}" for c, k in sorted(causes.items()))
+                        + untexted_named(untexted)))
         held = self.v.get("documents_held_back")
         if isinstance(held, dict) and held:
             out.append((KIND_DOCS_HELD_BACK, held_back_said(held)))
@@ -7543,29 +7685,51 @@ WARN_STEPS = {"pdftotext": ("pdftotext_pinned",
                                      "the kit; a House calendar's committee reports and "
                                      "amendments are read from its PDF, so on the laptop, after "
                                      "cloud.py pull and docs-down, fetch_calendar_archive.py "
-                                     "--take NAME fetches each House calendar named below that "
-                                     "is not there, one request each, with the switch left as "
-                                     "it is; then fetch_committee_reports.py --year YEAR and "
+                                     "--take NAME fetches each House calendar named at the end "
+                                     "of this warning, by its NAME, that is not there, one "
+                                     "request each, with the switch left as it is; then "
+                                     "fetch_committee_reports.py --year YEAR and "
                                      "extract_amendments.py read them, and cloud.py seed-kit "
                                      "sends what they made")}
 # How many of the PDFs not kept the docs-up warning names (docs_not_kept).
 DOCS_NOT_KEPT_SAID = 6
+# docs-up's record of the PDFs it did not keep, beside the staged record
+# (cloud.DOCS_NOT_KEPT, which preflight holds this to).
+DOCS_NOT_KEPT = "not-kept.json"
 
 
 def docs_not_kept():
-    """"; not kept: calendars/2026/HC035.pdf, ..." for the docs-up warning:
-    the PDFs still staged, which docs-up removes only once every one is kept
-    (the review of 26 October 2026: the warning named none, and a person had
-    to find them in the step's log). "" where none can be read."""
+    """("; not kept, by the name --take takes: HC 35.pdf (calendars/2026/
+    HC035.pdf); ...", [the names]) for the docs-up warning and the verdict
+    (fetch_calendar_archive.DOCS_NOT_KEPT_KEY): the PDFs docs-up did not
+    keep, as its own record says (DOCS_NOT_KEPT) -- every one still staged
+    where it wrote none -- each by its name in the night's list. ("", [])
+    where none can be read.
+
+    BY ITS NAME, AND ONLY THOSE NOT KEPT (the review of 26 October 2026).
+    The warning named the staged paths, kept or not, and its fix,
+    fetch_calendar_archive.py --take NAME, takes a list's name and no path:
+    given the path it fetched nothing and said "not taken"."""
     rec = load_json(DOCS_STAGED / DOCS_RECORD)
     files = rec.get("files") if isinstance(rec, dict) else None
-    names = sorted(str(k) for k in files) if isinstance(files, dict) else []
-    names = [n for n in names if PLAIN.fullmatch(n)]
-    if not names:
-        return ""
-    return ("; not kept: " + ", ".join(names[:DOCS_NOT_KEPT_SAID])
-            + (f" and {len(names) - DOCS_NOT_KEPT_SAID} more" if len(names) > DOCS_NOT_KEPT_SAID
-               else ""))
+    paths = sorted(str(k) for k in files) if isinstance(files, dict) else []
+    left = load_json(DOCS_STAGED / DOCS_NOT_KEPT)
+    if isinstance(left, dict) and isinstance(left.get("files"), list):
+        paths = sorted(str(k) for k in left["files"])
+    try:
+        import fetch_calendar_archive as CA
+        by = {_disk(r.get("path")).as_posix(): r.get("name") or "" for r in CA.read_rows(DOCS)}
+    except Exception:                                           # noqa: BLE001
+        by = {}
+    named = [(by.get(_disk(p).as_posix()) or "", p) for p in paths]
+    named = [(n, p) for n, p in named if PLAIN.fullmatch(n or "-") and PLAIN.fullmatch(p)]
+    if not named:
+        return "", []
+    said = [f"{n} ({p})" if n else f"{p} (no document of the list's is at that path)"
+            for n, p in named]
+    return ("; not kept, by the name --take takes: " + "; ".join(said[:DOCS_NOT_KEPT_SAID])
+            + (f"; and {len(said) - DOCS_NOT_KEPT_SAID} more" if len(said) > DOCS_NOT_KEPT_SAID
+               else "")), [n for n, _p in named if n]
 
 
 def held_for_approval(v):
@@ -7710,7 +7874,15 @@ def close_verdict(a):
               if r not in ("success", "skipped", "") and k not in WARN_STEPS]
     for k in WARN_STEPS:
         if steps.get(k) not in (None, "success", "skipped", ""):
-            said = WARN_STEPS[k][1] + (docs_not_kept() if k == "docs-up" else "")
+            more = ""
+            if k == "docs-up":
+                # And the names, for the laptop's --take (fetch_calendar_
+                # archive.not_in_bucket).
+                import fetch_calendar_archive as CA
+                more, names = docs_not_kept()
+                if names:
+                    v[CA.DOCS_NOT_KEPT_KEY] = names
+            said = WARN_STEPS[k][1] + more
             v[WARN_STEPS[k][0]] = said
             v["warnings"] = list(v.get("warnings") or []) + [said]
     if failed:

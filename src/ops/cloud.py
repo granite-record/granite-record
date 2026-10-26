@@ -410,17 +410,20 @@ against its sha256; one already there with the same bytes is already kept,
 and one there with other bytes is never written over -- it is named, and the
 step fails. A file whose bytes are not its record's, or a path that is not a
 PDF of the four folders, is refused before anything is sent. When every one
-is kept, the staged folder is removed: the build machine keeps no PDF. Never
-on a dry night, which fetches no document. A PDF whose text the night found
-was not the document's own goes to docs-apart/<path> instead (DOCS_APART),
-never where the right document's bytes would one day go.
+is kept, the staged folder is removed: the build machine keeps no PDF; where
+one is not, it writes which (DOCS_NOT_KEPT), for the night's verdict to name.
+Never on a dry night, which fetches no document. A PDF whose text the night
+found was not the document's own goes to docs-apart/<path> instead
+(DOCS_APART), never where the right document's bytes would one day go.
 
 docs-down is the laptop's, and only reads the bucket: each PDF under docs/
 that this laptop does not have comes down to its path, whole (a part file,
 read against the sha256 its upload recorded, then renamed), and each under
-docs-apart/ to archive/documents-held/<path>, for a person to open. A file
-already here is never written over, whatever its bytes: one that differs is
-named.
+docs-apart/ to archive/documents-held/<path>, for a person to open -- but not
+one a person has since put at its own path. A file already here is never
+written over, whatever its bytes: one that differs is named. It records what
+docs/ held, and when (DOCS_DOWN_RECORD), which fetch_calendar_archive.py
+--take reads before it asks for a held document's PDF.
 """
 
 # The bootstrap: _paths.py, found above this file, puts every code folder on the import path.
@@ -531,6 +534,18 @@ INBOX_RUN_MOST = 1 << 16
 DOCS = "docs/"
 DOCS_STAGED = ".night/documents"
 DOCS_RECORD = "staged.json"
+# WHICH OF TONIGHT'S PDFS DOCS-UP DID NOT KEEP (the review of 26 October
+# 2026), beside the record, for the night's verdict to name by the name
+# fetch_calendar_archive.py --take takes (nightly.docs_not_kept): the
+# warning named every staged path, kept or not, and --take takes no path.
+DOCS_NOT_KEPT = "not-kept.json"
+# WHAT DOCS-DOWN FOUND IN THE BUCKET, AND WHEN (the review of 26 October
+# 2026): fetch_calendar_archive.py --take fetches a held document whose PDF
+# is not on this disk only once docs-down has run since the last pull and
+# the bucket had none at its path -- before it, the night's own copy may be
+# waiting there, and asking again is the request the bucket exists to save.
+# Never sent (archive/cloud/ is in the kit's never list).
+DOCS_DOWN_RECORD = f"{LOCAL}/docs-down.json"
 DOCS_ROOTS = ("calendars", "calendars_senate", "journals", "journals_senate")
 DOCS_MOST = 50_000_000
 # A PDF WHOSE TEXT THE NIGHT REFUSED AS NOT THE DOCUMENT'S, OR A JOURNAL
@@ -1615,6 +1630,11 @@ def cmd_kit_down(a, root):
     rec_path.write_text(json.dumps({
         "at": now.isoformat(timespec="seconds"), "date": f"{now:%Y-%m-%d}",
         "epoch": time.time(), "manifest_written": man.get("written"),
+        # ... and which command wrote it: the night asks for no document
+        # until the laptop's seed-kit has written it since the laptop last
+        # fetched them itself (nightly.unseeded_since). Never sent: the
+        # record is under archive/cloud/, which the kit never carries.
+        "manifest_by": man.get("by"),
         "files": arrived}), encoding="utf-8")
     say(f"kit-down: fetched {len(got):,} files, {human(sum(want[r]['size'] for r in got))}; "
         f"{len(here):,} were already here; every one checked against its size and "
@@ -4251,6 +4271,15 @@ def cmd_docs_up(a, root):
         say(f"  NOT KEPT: {why}")
     say(f"docs-up: {len(sent)} {'would be ' if a.dry_run else ''}sent ({human(size)}), "
         f"{len(kept)} kept already, {len(bad)} not kept")
+    if bad and not a.dry_run:
+        # Which were not kept, by path, for the night's verdict
+        # (DOCS_NOT_KEPT): every one the record names that is neither sent nor
+        # kept already.
+        done = {k.split("/", 1)[1] for k in sent + kept}
+        named = sorted({doc_path(p) or str(p)[:120] for p in (rec.get("files") or {})}
+                       - done)
+        write_whole(local(root, DOCS_STAGED) / DOCS_NOT_KEPT,
+                    json.dumps({"files": named}, indent=1).encode("utf-8"))
     if bad:
         raise Failed(f"{len(bad)} of tonight's documents are not in the bucket; the first: "
                      f"{bad[0]}. The night will not ask for them again, so the laptop has "
@@ -4295,6 +4324,14 @@ def cmd_docs_down(a, root):
             odd.append(key)
             continue
         dst = local(root, path)
+        if prefix == DOCS_APART and dst.exists():
+            # A PERSON PUT IT AT ITS OWN PATH (the review of 26 October 2026):
+            # brought apart again on every run, a document a person had opened
+            # and moved into its folder came back to DOCS_HELD, unresolved.
+            same += 1
+            say(f"  apart in the bucket, and at its own path here, where a person put it: "
+                f"{path} -- not brought to {DOCS_HELD}/ again")
+            continue
         if prefix == DOCS_APART:
             dst = local(root, f"{DOCS_HELD}/{path}")
             say(f"  apart, in {DOCS_HELD}/ and not where the laptop's text is made: {path} -- "
@@ -4325,6 +4362,13 @@ def cmd_docs_down(a, root):
         os.replace(tmp, dst)
         took.append(path)
         size += n
+    if not a.dry_run:
+        # What the bucket's docs/ held, and when (DOCS_DOWN_RECORD), for
+        # fetch_calendar_archive.py --take.
+        write_whole(local(root, DOCS_DOWN_RECORD), json.dumps({
+            "epoch": time.time(), "at": datetime.now().isoformat(timespec="seconds"),
+            "docs": sorted(p for p in (doc_path(k[len(DOCS):]) for k, _n, x in found
+                                       if x == DOCS) if p)}, indent=1).encode("utf-8"))
     for path in took:
         say(f"  {'would take' if a.dry_run else 'took'} {path}")
     for path in differ:

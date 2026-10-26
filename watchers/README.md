@@ -193,22 +193,35 @@ After 10 November:
    src/ops/cloud.py pull`, then `python3 src/parse/extract_calendar_text.py`,
    then `python3 src/ops/cloud.py seed-kit`, as in step 8. The laptop drains
    this year's and last year's documents until it learns the night fetches
-   them, and one it fetched since step 8 and did not seed is one the night
-   asks for again. Then set it to `1` for a week, and drain none of this
-   year's or last year's documents on the laptop until a `cloud.py pull` has
-   brought the first numbered night's verdict: only that verdict tells the
-   laptop to leave them to the night. The first night that carries each new
-   kind of warning waits for your approval. While the switch is a number, a
-   night that meets a refusal ends at once and builds nothing, so the refusal
-   reaches the bucket before the laptop may start at 13:30; every fetch then
-   waits for a person, as for any refusal. If `document_files` says the
-   General Court refused a request and the refusal on file says "a redirect
-   (HTTP 302)", its viewer answered with a redirect, which the night does
-   not follow: it records it as a refusal, so nothing asks that address
-   again, the laptop included, until a person clears it. Set the switch back
-   to `shadow` and ask before clearing it. A document the night recorded a
-   refusal, a dropped connection or a 404 against keeps that record through
-   the shadow nights, so it is not asked for first once the number is back.
+   them, and the night learns of what it fetched only from the bucket. Then
+   set it to `1` for a week, and drain none of this year's or last year's
+   documents on the laptop until a `cloud.py pull` has brought the first
+   numbered night's verdict: only that verdict tells the laptop to leave
+   them to the night. The night checks the seed-kit itself: a numbered night
+   whose last verdict was not a number asks for no document -- "not asked
+   for: the laptop's own fetches of this year's and last year's documents
+   since DAY have not reached the bucket" -- until that night's kit-down
+   finds the kit last written by the laptop's seed-kit after that verdict,
+   so seed-kit is the last thing the laptop does before the number, here
+   and at every return to a number. While the switch is on but not a
+   number, the laptop's drain and the Senate's and the House's calendar
+   fetches say so whenever they save one of this year's or last year's.
+   The first night that carries each new kind of warning waits for your
+   approval. While the switch is a number, a night that meets a refusal
+   ends at once and builds nothing, so the refusal reaches the bucket before
+   the laptop may start at 13:30; every fetch then waits for a person, as
+   for any refusal. The documents it fetched whole before the refusal are
+   kept in the bucket and held, and listed with no text, which the laptop
+   makes after docs-down (step 10): nobody asks for them again. If
+   `document_files` says the General Court refused a request and the
+   refusal on file says "a redirect (HTTP 302)", its viewer answered with a
+   redirect, which the night does not follow: it records it as a refusal,
+   so nothing asks that address again, the laptop included, until a person
+   clears it. Set the switch back to `shadow` and ask before clearing it;
+   before the number again, pull, extract and seed-kit on the laptop as at
+   the start of this step. A document the night recorded a refusal, a
+   dropped connection or a 404 against keeps that record through the shadow
+   nights, so it is not asked for first once the number is back.
 10. The laptop's routine from then: `cloud.py pull`, then `cloud.py
     docs-down`, which brings the night's PDFs, then the laptop's own share
     that is read off the documents, made again here before seed-kit sends
@@ -238,22 +251,35 @@ After 10 November:
     - a document the night did not find (named in `document_files`, and
       marked gone): if the General Court's page still lists it and it opens
       there, `--take "NAME"`;
-    - a document the night will not ask for again -- a refusal recorded (a
-      redirect among them), a dropped connection, three tries: the drain,
-      which takes them when a person runs it;
+    - a document the night will not ask for again -- a refusal recorded, a
+      dropped connection, three tries: the drain, which takes them when a
+      person runs it -- but not one whose refusal was a redirect: the drain
+      follows a redirect, unpaced and uncounted, which the night will not, so
+      it leaves those for the person's decision in step 9, and takes one
+      only when a person who has decided names it, `--take "NAME"`;
     - a document whose text was not its own: set apart, so that neither the
       night nor the drain asks for it again; `docs-down` brings its PDF to
       `archive/documents-held/`, and its warning says what to do once a
       person has opened it -- `--take "NAME"` once its PDF is back at its
       path marks it held and asks nobody;
     - a document whose PDF the night could not keep in the bucket (the
-      docs-up warning names it): `--take "NAME"` fetches the laptop's own
-      copy, one request, with the switch left as it is, and the readers
-      above then read it;
+      docs-up warning names it by the NAME `--take` takes, and the verdict
+      lists those names under `docs_not_kept`): `--take "NAME"` fetches the
+      laptop's own copy, one request, with the switch left as it is, and
+      the readers above then read it. It asks for none before `docs-down`
+      has run since the last pull without bringing it, unless the verdict
+      names it: the night's own copy may be in the bucket;
     - a document with no text the night could use: its warning says what to
-      do for its cause. Two files of the person's are read from `main` and
-      do nothing until merged there: `corrections/documents_without_text.json`
-      for a document with no text in it, or whose PDF is not the document, and
+      do for its cause, and names the first few by NAME and path; every one
+      is in the verdict's `documents_untexted`, which pull brings to
+      `archive/cloud/last-night.json`. One whose text the laptop made and
+      sent and the night set aside again ("whose text the laptop made and
+      sent") has its PDF at its own path here: delete the text beside it
+      before the next seed-kit, which sends it again. Two files of the
+      person's are read from `main` and do nothing until merged there:
+      `corrections/documents_without_text.json` for a document with no text
+      in it, or whose PDF is not the document -- a text that comes for one
+      named there is set aside before every build -- and
       `corrections/documents_with_text.json` for one whose text a person has
       read and accepts as its own though the night's test refused it; each
       is `{"calendars/2026/HC035.pdf": {"why": "...", "day": "2026-11-20"}}`,

@@ -554,6 +554,33 @@ def night_documents():
     return str(v.get("day") or "an unknown day"), int(said)
 
 
+def documents_switched():
+    """Whether the newest real night's verdict, as pull brought it, says the
+    night's documents' switch at all -- a number, "shadow" or "not
+    fetching: ..." -- which it does unless the switch is off; False where
+    there is no such verdict, on GitHub's machine, and on a machine that has
+    not stood down. The laptop's fetches of this year's and last year's
+    documents print SEED_REMINDER on it (the review of 26 October 2026): in
+    shadow the night will soon fetch them, and learns of the laptop's only
+    from the bucket."""
+    if _governing() is None:
+        return False
+    try:
+        v = json.loads((MARK.parent / NIGHT_VERDICT).read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        return False
+    return isinstance(v, dict) and str(v.get(DOCUMENTS_KEY) or "").strip() not in ("", "off")
+
+
+# What a stood-down laptop's fetch says when it saved this year's or last
+# year's calendars or journals while the night's documents are switched on
+# (documents_switched).
+SEED_REMINDER = ("{what} reach GitHub's night only through the bucket: python3 "
+                 "src/parse/extract_calendar_text.py makes their text, then python3 "
+                 "src/ops/cloud.py seed-kit sends it; until then the night may ask the "
+                 "General Court for them again")
+
+
 def documents_stand_down(who, instead=""):
     """Stop the caller on a laptop that has stood down, once GitHub's night
     fetches the newest calendars and journals itself (night_documents)."""

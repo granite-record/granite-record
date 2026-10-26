@@ -268,7 +268,10 @@ person has accepted it in `corrections/documents_with_text.json`. Each PDF
 goes to the bucket's `docs/` (the workflow's `cloud.py docs-up`), from where
 `cloud.py docs-down` brings it to the laptop -- apart, in
 `archive/documents-held/`, when a journal reader refused its text; one whose
-text was not its own is neither kept nor held, and is a person's. Once a
+text was not its own is kept apart in the bucket, neither held nor wanted,
+and is a person's. A numbered night whose last verdict was not a number
+asks for nothing until the laptop's seed-kit has written the kit since, so
+that what the laptop fetched meanwhile reaches the night first. Once a
 night's verdict says the switch is a number, which it does only while the
 canary passes and the texts are the night's -- the night before's number
 standing through a night that ends before its canary -- the laptop's drain
