@@ -789,8 +789,6 @@ def calendar_html(out, today=None, rows=None, lang="en", events=None):
     dates = sorted(d for d in set(week) | set(kds)
                    if start.isoformat() <= d <= sunday.isoformat()
                    and (week.get(d) or kds.get(d)))
-    nxt = BC.week_key(sunday + _dt.timedelta(days=1))
-    n_next = sum(len(v) for v in home_week(weeks.get(nxt)).values())
     # The week's name and its weekdays, as the Calendar's pager says them
     # ("This Week", "Next Week": the person, 9 October 2026, item 17).
     label = ('<p class="calwk">' + chip(say(lang, "cal.next_week", "Next Week") if ahead
@@ -815,17 +813,18 @@ def calendar_html(out, today=None, rows=None, lang="en", events=None):
 
     if not dates:
         # THE REST OF THE WEEK IS EMPTY every weekend in session and every
-        # day out of it. Out of session -- next week empty too -- it says when
-        # business resumes rather than just "nothing", because the General
-        # Court is a part-time legislature and this is what the page says for
-        # half the year.
+        # day out of it. With next week empty too it went on to say when the
+        # General Court sits and when committees meet on bills (cal.season),
+        # until the owner's choice of 26 October 2026: the rail says what is
+        # scheduled, and the status box beside it where the General Court is
+        # in its year.
         # WHAT IS NOT SCHEDULED, NOT "NOTHING" (the audit of 25 October 2026,
         # M8). The rail leaves the special study committees to the Calendar
         # (home_week), and "Nothing is scheduled next week yet" stood over a
         # week of 26 October 2026 for which the Calendar held seventeen of
         # theirs. It says what the rail holds and does not: the chambers' own
         # meetings.
-        # ITS FIRST SENTENCE IS AN ELEMENT OF ITS OWN (the preview check of 25
+        # ITS SENTENCE IS AN ELEMENT OF ITS OWN (the preview check of 25
         # October 2026), .calnomeet, because it names the same week as the
         # chip above it and HOME_JS says both again in the reader's clock. A
         # rail built on a Sunday read on the Monday had "This Week" over
@@ -836,12 +835,6 @@ def calendar_html(out, today=None, rows=None, lang="en", events=None):
                 else say(lang, "cal.none_left", "No House or Senate committee meetings are "
                          "scheduled for the rest of this week."))
         note = f'<span class="calnomeet">{esc(note)}</span>'
-        if not n_next:
-            # MOSTLY (the survey of 7 October 2026): both chambers sat until veto
-            # day, 19 August, in 2026, and into the autumn in most years.
-            note += " " + esc(say(lang, "cal.season", "The General Court sits mostly from "
-                                  "January to June, and committees meet on bills from the fall "
-                                  "filing period onwards."))
         return (f'<section class="cal" data-mon="{monday.isoformat()}"><h2>{coming}</h2>'
                 f'{label}<p class="note">{note}</p>{more}</section>')
 
@@ -3400,7 +3393,7 @@ fetch(DATA("home.json")).then(r=>r.json()).then(H=>{
       // said This Week and the note under it "... scheduled next week.", in
       // calendar_html's words for the day it was built. The sentence names
       // the same week as the chip, so it is said again with it, in the same
-      // words; the season's sentence after it does not change with the day.
+      // words.
       const none=cal.querySelector(".calnomeet");
       if(off<=0&&off>-7){
         name.textContent=tr("cal.this_week","This Week");

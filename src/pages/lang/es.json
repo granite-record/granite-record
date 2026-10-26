@@ -271,12 +271,6 @@
    "es": "Reuniones de hoy al domingo",
    "state": "draft"
   },
-  "cal.season": {
-   "en": "The General Court sits mostly from January to June, and committees meet on bills from the fall filing period onwards.",
-   "es": "La Legislatura se reúne sobre todo de enero a junio, y los comités estudian proyectos de ley desde el período de presentación del otoño en adelante.",
-   "state": "draft",
-   "note": "\"la Legislatura\" for \"the General Court\" (see foot.attrib)."
-  },
   "cal.senate_day": {
    "en": "Senate Session Day",
    "es": "Día de sesión del Senado",

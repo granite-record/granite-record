@@ -70314,13 +70314,14 @@ def _coming_up_without_study_committees():
     committee's meeting as the database copy gives it, a study committee's
     sitting on a bill as the docket files it, and a standing committee's
     work session on a bill held for interim study, this week and next. The
-    rail holds the standing committee alone and counts next week's sittings
-    without the study committees; a week of study committees alone is an
-    empty week on the rail, which says no House or Senate committee meeting
-    is scheduled rather than that nothing is (the audit of 25 October 2026,
-    M8), and whose chip and sentence name the same week when HOME_JS reads a
-    weekend's build on a weekday (the preview check of the same day); and
-    the Calendar's own week still holds them all.
+    rail holds the standing committee alone; a week of study committees
+    alone is an empty week on the rail, which says no House or Senate
+    committee meeting is scheduled rather than that nothing is (the audit of
+    25 October 2026, M8), and says only that (the owner's choice of 26
+    October 2026: not when the General Court sits), and whose chip and
+    sentence name the same week when HOME_JS reads a weekend's build on a
+    weekday (the preview check of the same day); and the Calendar's own week
+    still holds them all.
     """
     import contextlib
     import datetime as _dt
@@ -70375,8 +70376,7 @@ def _coming_up_without_study_committees():
             empty = BP.calendar_html(tmp, today=monday, rows=[r for r in rows if r.get("study")
                                                               or r["kind"] == "study committee"],
                                      events=[])
-        assert "calday" not in empty and "rest of this week" in empty \
-            and "sits mostly from January to June" in empty, (
+        assert "calday" not in empty and "rest of this week" in empty, (
                 "a week of study committees alone still draws a day in Coming up: "
                 + empty[:300])
         # AND IT DOES NOT SAY "NOTHING" (the audit of 25 October 2026, M8):
@@ -70396,7 +70396,8 @@ def _coming_up_without_study_committees():
                 f"a {k} of study committees alone does not say that no House or Senate "
                 f"committee meeting is scheduled: {page_[:300]}")
         assert ('tr("cal.none_else","No more House or Senate committee meetings are scheduled '
-                'this week.")' in BP.HOME_JS and "Nothing else is scheduled" not in BP.HOME_JS), (
+                'this week.")' in BP.HOME_JS and "Nothing else is scheduled" not in BP.HOME_JS
+                and "sits mostly" not in BP.HOME_JS and "cal.season" not in BP.HOME_JS), (
                     "HOME_JS's empty rest of the week says other words than the built rail's")
         # AND ITS SENTENCE NAMES THE WEEK THE CHIP DOES, IN THE READER'S CLOCK
         # (the preview check of 25 October 2026). The preview, built on Sunday
@@ -70437,6 +70438,14 @@ def _coming_up_without_study_committees():
             assert first and note.startswith(first), (
                 f"{lang}: an empty Coming up's sentence on its week is not an element of its "
                 f"own, so HOME_JS cannot say it again with the chip: {page[:400]}")
+            # AND IT IS THE NOTE'S ONLY SENTENCE (the owner's choice of 26
+            # October 2026, B): "The General Court sits mostly from January
+            # to June, and committees meet on bills from the fall filing
+            # period onwards." stood after it, in both languages, on an
+            # empty rail with next week empty too, as here.
+            assert note == first and "January" not in page and "enero" not in page, (
+                f"{lang}: an empty Coming up says more than that no meeting is scheduled: "
+                f"{note!r}")
             if not node:
                 continue
             words = i18n.words_js(lang, BP.HOME_JS) if lang != "en" else ""
@@ -70484,8 +70493,8 @@ def _coming_up_without_study_committees():
     # SILENCE IS NOT SUCCESS: a reader's day that never ran would pass above.
     assert ran in (0, 8), f"HOME_JS ran on {ran} of the 8 readers' days of an empty rail"
     return "ok", ("a statutory committee and a docket's study committee off the rail, a "
-                  "standing committee's interim study on it, next week counted without them, "
-                  "and all three still on the Calendar's week; "
+                  "standing committee's interim study on it, an empty rail's note its one "
+                  "sentence in both languages, and all three still on the Calendar's week; "
                   + (f"an empty rail's chip and sentence agree in the reader's clock, {ran} "
                      "readers' days in two languages" if ran else
                      "node is not on PATH, so the empty rail was not read in the reader's clock"))
@@ -75349,7 +75358,9 @@ def _sits_mostly_january_to_june():
     August (the survey of 7 October 2026). Both sat on 19 August 2026, and
     the House into the autumn or winter in nine of the twelve years
     2015-2026. It sits MOSTLY from January to June: every page's source that
-    says when it sits says that."""
+    says when it sits says that. The home page's Coming up no longer says it
+    at all (the owner's choice of 26 October 2026: the rail says what is
+    scheduled), so two sources do."""
     files = [_paths.locate("app.js"), _paths.locate("find.js")] + sorted(_paths.code_files("build_*.py")) + [
         _paths.locate("civics.py")]
     said, bare = [], []
@@ -75360,9 +75371,9 @@ def _sits_mostly_january_to_june():
         bare += [Path(f).name for _ in re.finditer(r"sits from January to June", flat)]
         said += [Path(f).name for _ in re.finditer(r"sits mostly from January to June", flat)]
     assert not bare, "these still say the General Court sits from January to June: " + ", ".join(bare)
-    assert sorted(said) == ["app.js", "build_calendar.py", "build_pages.py"], (
-        "the three empty states that say when the General Court sits are " + ", ".join(said))
-    return "ok", "the committee page, the Calendar's week and the home page say \"mostly\""
+    assert sorted(said) == ["app.js", "build_calendar.py"], (
+        "the two empty states that say when the General Court sits are " + ", ".join(said))
+    return "ok", "the committee page and the Calendar's week say \"mostly\"; the home page says neither"
 
 
 @check("frontend", "the Speaker's own page says he is Speaker", needs=("build_site_v2",))
