@@ -2103,9 +2103,9 @@
    "es": "El inspector de construcción o el encargado del cumplimiento del código de su municipio o ciudad es la primera persona a quien preguntar, sobre sus permisos, sus cuotas y sus inspecciones. Si su municipio no tiene uno, pregunte en la oficina de los concejales.",
    "state": "draft"
   },
-  "guide.car-insurance.a-car-insurance-policy-sold-in": {
-   "en": "A car insurance policy sold in New Hampshire must cover your liability to others for at least $25,000 for injury to or death of one person, $50,000 for one accident injuring or killing more than one, and $25,000 for damage to others&rsquo; property. You may buy more.",
-   "es": "Una póliza de seguro de auto vendida en New Hampshire debe cubrir su responsabilidad ante otros por al menos $25,000 por lesiones o la muerte de una persona, $50,000 por un accidente que hiera o mate a más de una, y $25,000 por daños a la propiedad de otros. Puede comprar más.",
+  "guide.car-insurance.a-motor-vehicle-liability-policy-the": {
+   "en": "A <b>motor vehicle liability policy</b>, the kind of car insurance whose terms New Hampshire law sets, must cover your liability to others for at least $25,000 for injury to or death of one person, $50,000 for one accident injuring or killing more than one, and $25,000 for damage to others&rsquo; property. You may buy more.",
+   "es": "Una <b>póliza de responsabilidad civil de vehículos motorizados</b> (motor vehicle liability policy), el tipo de seguro de auto cuyas condiciones fija la ley de New Hampshire, debe cubrir su responsabilidad ante otros por al menos $25,000 por lesiones o la muerte de una persona, $50,000 por un accidente que hiera o mate a más de una, y $25,000 por daños a la propiedad de otros. Puede comprar más.",
    "state": "draft"
   },
   "guide.car-insurance.a-person-under-18-gets-a": {
@@ -2233,9 +2233,9 @@
    "es": "Si alguien resultó herido o murió, o los daños a la propiedad pasan de $1,000, informe el choque al DMV por escrito en un plazo de 15 días, a menos que un agente de policía lo haya investigado.",
    "state": "draft"
   },
-  "guide.car-insurance.if-you-had-no-insurance-policy": {
-   "en": "If you had no insurance policy or bond covering the crash, the state suspends your license and registration, and you must turn in your plates, until you put up enough security to pay any judgment for the damage and file proof of financial responsibility. You receive notice at least 10 days before the suspension starts. It lasts until you are released from the claim, win in court, or pay a judgment against you. If no one tells the DMV within 2 years that they have sued you, it may give you back your license and registration once you file proof.",
-   "es": "Si no tenía una póliza de seguro ni una fianza que cubriera el choque, el estado suspende su licencia y su registro, y usted debe entregar sus placas, hasta que deposite una garantía suficiente para pagar cualquier sentencia por los daños y presente una prueba de responsabilidad financiera. Recibe un aviso al menos 10 días antes de que empiece la suspensión. La suspensión dura hasta que quede liberado del reclamo, gane en el tribunal o pague una sentencia en su contra. Si nadie avisa al DMV en un plazo de 2 años de que le ha demandado, el DMV puede devolverle su licencia y su registro cuando presente la prueba.",
+  "guide.car-insurance.if-the-crash-had-to-be": {
+   "en": "If the crash had to be reported and you had no insurance policy or bond covering it, the state suspends your license and registration, and you must turn in your plates, until you put up enough security to pay any judgment for the damage and file proof of financial responsibility. You receive notice at least 10 days before the suspension starts. It lasts until you are released from the claim, win in court, or pay a judgment against you. If no one tells the DMV within 2 years that they have sued you, it may give you back your license and registration once you file proof.",
+   "es": "Si el choque debía reportarse y usted no tenía una póliza de seguro ni una fianza que lo cubriera, el estado suspende su licencia y su registro, y usted debe entregar sus placas, hasta que deposite una garantía suficiente para pagar cualquier sentencia por los daños y presente una prueba de responsabilidad financiera. Recibe un aviso al menos 10 días antes de que empiece la suspensión. La suspensión dura hasta que quede liberado del reclamo, gane en el tribunal o pague una sentencia en su contra. Si nadie avisa al DMV en un plazo de 2 años de que le ha demandado, el DMV puede devolverle su licencia y su registro cuando presente la prueba.",
    "state": "draft"
   },
   "guide.car-insurance.if-your-insurer-cancels-or-will": {
@@ -2253,14 +2253,9 @@
    "es": "Cuándo New Hampshire exige a un conductor demostrar que puede pagar por un choque, lo mínimo que debe cubrir una póliza de seguro de auto aquí, la cobertura de conductor sin seguro y qué hacer si su aseguradora cancela su póliza.",
    "state": "draft"
   },
-  "guide.car-insurance.medical-payments-coverage-of-at-least": {
-   "en": "<b>Medical payments coverage</b> of at least $1,000 per person, for reasonable medical costs of the driver and passengers hurt in a crash in your car, for costs within 3 years of the crash.",
-   "es": "<b>Cobertura de pagos médicos</b> (medical payments coverage) de al menos $1,000 por persona, para los costos médicos razonables del conductor y de los pasajeros heridos en un choque en su auto, por los costos dentro de los 3 años siguientes al choque.",
-   "state": "draft"
-  },
   "guide.car-insurance.new-hampshire-does-not-require-most": {
-   "en": "New Hampshire does not require most drivers to buy car insurance, as the Insurance Department explains, but a driver who causes a crash is responsible for the damage. After a crash you were in without insurance, or after certain convictions, the state can suspend your license and registration until you file <b>proof of financial responsibility</b>, usually an insurance company&rsquo;s certificate. A car insurance policy sold here must cover at least $25,000 for injury to one person, $50,000 for one accident, and $25,000 for damage to property, and must include <b>uninsured motorist</b> and medical payments coverage.",
-   "es": "New Hampshire no exige a la mayoría de los conductores que compren un seguro de auto, según explica el Departamento de Seguros, pero un conductor que causa un choque es responsable de los daños. Después de un choque en el que estuvo sin seguro, o después de ciertas condenas, el estado puede suspender su licencia y su registro hasta que presente una <b>prueba de responsabilidad financiera</b> (proof of financial responsibility), por lo general un certificado de una compañía de seguros. Una póliza de seguro de auto vendida aquí debe cubrir al menos $25,000 por lesiones a una persona, $50,000 por un accidente y $25,000 por daños a la propiedad, y debe incluir cobertura de <b>conductor sin seguro</b> (uninsured motorist) y de pagos médicos.",
+   "en": "New Hampshire does not require most drivers to buy car insurance, as the Insurance Department explains, but a driver who causes a crash is responsible for the damage. After a crash you were in without insurance, or after certain convictions, the state can suspend your license and registration until you file <b>proof of financial responsibility</b>, usually an insurance company&rsquo;s certificate. A motor vehicle liability policy here must cover at least $25,000 for injury to one person, $50,000 for one accident, and $25,000 for damage to property, and must include <b>uninsured motorist</b> coverage, and on a private passenger car medical payments coverage.",
+   "es": "New Hampshire no exige a la mayoría de los conductores que compren un seguro de auto, según explica el Departamento de Seguros, pero un conductor que causa un choque es responsable de los daños. Después de un choque en el que estuvo sin seguro, o después de ciertas condenas, el estado puede suspender su licencia y su registro hasta que presente una <b>prueba de responsabilidad financiera</b> (proof of financial responsibility), por lo general un certificado de una compañía de seguros. Una póliza de responsabilidad civil de vehículos motorizados aquí debe cubrir al menos $25,000 por lesiones a una persona, $50,000 por un accidente y $25,000 por daños a la propiedad, y debe incluir cobertura de <b>conductor sin seguro</b> (uninsured motorist) y, en un auto de pasajeros particular, de pagos médicos.",
    "state": "draft"
   },
   "guide.car-insurance.no": {
@@ -2273,9 +2268,14 @@
    "es": "Nadie resultó herido y los daños son menores",
    "state": "draft"
   },
+  "guide.car-insurance.on-a-private-passenger-car-medical": {
+   "en": "On a private passenger car, <b>medical payments coverage</b> of at least $1,000 per person, for reasonable medical costs of the driver and passengers hurt in a crash in your car, for costs within 3 years of the crash.",
+   "es": "En un auto de pasajeros particular, <b>cobertura de pagos médicos</b> (medical payments coverage) de al menos $1,000 por persona, para los costos médicos razonables del conductor y de los pasajeros heridos en un choque en su auto, por los costos dentro de los 3 años siguientes al choque.",
+   "state": "draft"
+  },
   "guide.car-insurance.once-a-policy-has-been-in": {
-   "en": "Once a policy has been in effect for 60 days, or once it has been renewed, an insurer may cancel it only if you do not pay the premium, if you ask it to, or if you were not a New Hampshire resident when the policy was issued or renewed. It may not cancel or refuse to renew your policy solely because of your age, where you live, your race, color, creed, national origin, ancestry, marital status or lawful occupation, or because another insurer turned you down.",
-   "es": "Cuando una póliza lleva 60 días en vigor, o una vez renovada, la aseguradora solo puede cancelarla si usted no paga la prima, si usted lo pide, o si no era residente de New Hampshire cuando se emitió o se renovó la póliza. No puede cancelar ni negarse a renovar su póliza solo por su edad, el lugar donde vive, su raza, color, credo, origen nacional, ascendencia, estado civil u ocupación lícita, ni porque otra aseguradora le rechazó.",
+   "en": "Once a policy has been in effect for 60 days, or once it has been renewed, an insurer may cancel it only if you do not pay the premium, if you ask it to, or if you were not a New Hampshire resident when the policy was issued or renewed, unless the car was garaged only in New Hampshire then. It may not cancel or refuse to renew your policy solely because of your age, where you live, your race, color, creed, national origin, ancestry, marital status or lawful occupation, or because another insurer turned you down.",
+   "es": "Cuando una póliza lleva 60 días en vigor, o una vez renovada, la aseguradora solo puede cancelarla si usted no paga la prima, si usted lo pide, o si no era residente de New Hampshire cuando se emitió o se renovó la póliza, salvo que el auto se guardara entonces solo en New Hampshire. No puede cancelar ni negarse a renovar su póliza solo por su edad, el lugar donde vive, su raza, color, credo, origen nacional, ascendencia, estado civil u ocupación lícita, ni porque otra aseguradora le rechazó.",
    "state": "draft"
   },
   "guide.car-insurance.proof-is-usually-a-certificate-that": {
@@ -2343,9 +2343,9 @@
    "es": "¿Acaba de tener un choque?",
    "state": "draft"
   },
-  "guide.car-insurance.what-every-car-insurance-policy-must": {
-   "en": "What every car insurance policy must include",
-   "es": "Lo que debe incluir toda póliza de seguro de auto",
+  "guide.car-insurance.what-a-car-insurance-policy-must": {
+   "en": "What a car insurance policy must include",
+   "es": "Lo que debe incluir una póliza de seguro de auto",
    "state": "draft"
   },
   "guide.car-insurance.what-the-law-requires-and-what": {
@@ -2615,8 +2615,8 @@
    "state": "draft"
   },
   "guide.child-care-scholarship.you-can-ask-for-an-administrative": {
-   "en": "You can ask for an administrative appeal hearing, in writing, on the Department&rsquo;s appeal request form or in a letter. Your Notice of Decision gives your deadline. You do not need a lawyer.",
-   "es": "Puede pedir una audiencia de apelación administrativa, por escrito, en el formulario de solicitud de apelación del Departamento o en una carta. Su aviso de decisión (Notice of Decision) indica su plazo. No necesita un abogado.",
+   "en": "You can ask for an administrative appeal hearing, in writing, on the Department&rsquo;s appeal request form or in a letter. Generally you have 30 days from the date on your Notice of Decision. You do not need a lawyer.",
+   "es": "Puede pedir una audiencia de apelación administrativa, por escrito, en el formulario de solicitud de apelación del Departamento o en una carta. Por lo general tiene 30 días a partir de la fecha de su aviso de decisión (Notice of Decision). No necesita un abogado.",
    "state": "draft"
   },
   "guide.child-care-scholarship.you-choose-who-cares-for-your": {
@@ -4091,8 +4091,8 @@
    "state": "draft"
   },
   "guide.file-for-unemployment.you-must-also-have-earned-enough": {
-   "en": "You must also have earned enough in a base period of four calendar quarters before your claim; New Hampshire Employment Security&rsquo;s eligibility page gives the amounts.",
-   "es": "Además, debe haber ganado lo suficiente en un período base de cuatro trimestres calendario antes de su solicitud; la página de requisitos de New Hampshire Employment Security da las cantidades.",
+   "en": "You must also have earned enough in a base period, usually the first four of the last five completed calendar quarters before your claim; New Hampshire Employment Security&rsquo;s eligibility page gives the amounts.",
+   "es": "Además, debe haber ganado lo suficiente en un período base, por lo general los primeros cuatro de los últimos cinco trimestres calendario completos antes de su solicitud; la página de requisitos de New Hampshire Employment Security da las cantidades.",
    "state": "draft"
   },
   "guide.file-for-unemployment.your-bank-details-if-you-want": {
@@ -6071,6 +6071,11 @@
    "es": "<b>Identidad:</b> una licencia de conducir con foto de cualquier estado; un pasaporte, una tarjeta de pasaporte o una identificación de las fuerzas armadas de EE. UU.; o una identificación con foto de un gobierno local, estatal o federal.",
    "state": "draft"
   },
+  "guide.how-to-vote.if-the-national-weather-service-issues": {
+   "en": "If the National Weather Service issues a winter storm, blizzard or ice storm warning for election day in your town, and you are worried about traveling in it, or expect school or care to be canceled for those you look after, you may vote absentee at your clerk&rsquo;s office on the day before the election.",
+   "es": "Si el Servicio Meteorológico Nacional emite un aviso de tormenta de invierno, ventisca o tormenta de hielo para el día de la elección en su municipio, y le preocupa viajar con ese tiempo, o espera que se cancelen la escuela o el cuidado de las personas que usted atiende, puede votar en ausencia en la oficina de su secretario el día antes de la elección.",
+   "state": "draft"
+  },
   "guide.how-to-vote.if-you-cannot-go-in-person": {
    "en": "If you cannot go in person",
    "es": "Si no puede ir en persona",
@@ -6166,11 +6171,6 @@
    "es": "Declaración sobre el fallo judicial acerca del HB 1569, 29 de mayo de 2026 (Secretaría de Estado)",
    "state": "draft"
   },
-  "guide.how-to-vote.the-national-weather-service-has-issued": {
-   "en": "the National Weather Service has issued a winter storm, blizzard or ice storm warning for your town and you are worried about traveling.",
-   "es": "el Servicio Meteorológico Nacional ha emitido un aviso de tormenta de invierno, ventisca o tormenta de hielo para su municipio y le preocupa viajar.",
-   "state": "draft"
-  },
   "guide.how-to-vote.the-secretary-of-states-voter": {
    "en": "The Secretary of State&rsquo;s voter information lookup tells you whether you are registered and where your polling place is.",
    "es": "La búsqueda de información para votantes de la Secretaría de Estado le dice si está inscrito y dónde está su lugar de votación.",
@@ -6246,9 +6246,9 @@
    "es": "Cuando se inscribe, debe mostrar pruebas de su identidad, su edad, su ciudadanía y su domicilio. Ejemplos que da la Secretaría de Estado:",
    "state": "draft"
   },
-  "guide.how-to-vote.work-or-caring-for-a-child": {
-   "en": "work, or caring for a child or an adult, takes the whole time the polls are open;",
-   "es": "el trabajo, o el cuidado de un niño o de un adulto, le ocupa todo el tiempo en que están abiertas las urnas;",
+  "guide.how-to-vote.work-or-caring-for-children-or": {
+   "en": "work, or caring for children or an infirm adult, takes the whole time the polls are open;",
+   "es": "el trabajo, o el cuidado de niños o de un adulto enfermo o débil, le ocupa todo el tiempo en que están abiertas las urnas;",
    "state": "draft"
   },
   "guide.how-to-vote.yes": {
@@ -6257,13 +6257,13 @@
    "state": "draft"
   },
   "guide.how-to-vote.you-are-confined-for-a-misdemeanor": {
-   "en": "you are confined for a misdemeanor conviction or awaiting trial;",
-   "es": "está recluido por una condena por un delito menor o en espera de juicio;",
+   "en": "you are confined for a misdemeanor or while awaiting trial; or",
+   "es": "está recluido por un delito menor o en espera de juicio; o",
    "state": "draft"
   },
   "guide.how-to-vote.you-are-in-the-attorney-generals": {
-   "en": "you are in the Attorney General&rsquo;s Address Confidentiality Program or protected by a domestic violence order; or",
-   "es": "está en el Programa de Confidencialidad de Domicilio del Fiscal General (Address Confidentiality Program) o protegido por una orden por violencia doméstica; o",
+   "en": "you are in the Attorney General&rsquo;s Address Confidentiality Program.",
+   "es": "está en el Programa de Confidencialidad de Domicilio del Fiscal General (Address Confidentiality Program).",
    "state": "draft"
   },
   "guide.how-to-vote.you-can-apply-up-to-six": {
@@ -6312,8 +6312,8 @@
    "state": "draft"
   },
   "guide.how-to-vote.your-town-or-city-clerk-is": {
-   "en": "Your town or city clerk is the person to ask about registering and voting where you live: what to bring, the deadline, and absentee ballots. The Secretary of State calls local and state election officials voters&rsquo; trusted source of election information.",
-   "es": "El secretario de su municipio o ciudad es la persona a quien preguntar sobre cómo inscribirse y votar donde vive: qué llevar, el plazo y las boletas de voto en ausencia. La Secretaría de Estado considera a los funcionarios electorales locales y estatales la fuente de confianza de los votantes para la información electoral.",
+   "en": "Your town or city clerk is the person to ask about registering and voting where you live: what to bring, the deadline, and absentee ballots.",
+   "es": "El secretario de su municipio o ciudad es la persona a quien preguntar sobre cómo inscribirse y votar donde vive: qué llevar, el plazo y las boletas de voto en ausencia.",
    "state": "draft"
   },
   "guide.hunting-license.a-bear-license-to-hunt-bear": {
@@ -6732,8 +6732,8 @@
    "state": "draft"
   },
   "guide.landlord-duties.if-the-tenant-has-not-left": {
-   "en": "If the tenant has not left when the notice runs out, file a Landlord/Tenant Writ in the circuit court&rsquo;s district division. The sheriff serves it, and it is returnable 7 days after service. You may claim unpaid rent in the same case, up to $1,500, and sue separately for more. Before any case, the court&rsquo;s free Eviction Diversion Program offers a mediator.",
-   "es": "Si el inquilino no se ha ido cuando vence el aviso, presente una orden de desalojo (Landlord/Tenant Writ) en la división de distrito del tribunal de circuito. El sheriff la entrega, y su fecha de respuesta es 7 días después de la entrega. Puede reclamar la renta no pagada en el mismo caso, hasta $1,500, y demandar aparte por más. Antes de cualquier caso, el Programa de Desvío de Desalojos (Eviction Diversion Program) del tribunal, que es gratuito, ofrece un mediador.",
+   "en": "If the tenant has not left when the notice runs out, buy a Landlord/Tenant Writ from the circuit court&rsquo;s district division, complete it, file it and pay the filing fee. Every residential eviction also needs the court&rsquo;s Affidavit of Compliance with Federal Law, filed with the writ. You deliver the writ to the sheriff, who serves it, and it is returnable 7 days after service. You may claim unpaid rent in the same case, up to $1,500, and sue separately for more. Before any case, the court&rsquo;s free Eviction Diversion Program offers a mediator.",
+   "es": "Si el inquilino no se ha ido cuando vence el aviso, compre una orden de desalojo (Landlord/Tenant Writ) en la división de distrito del tribunal de circuito, llénela, preséntela y pague la cuota de presentación. Todo desalojo residencial también necesita la declaración jurada de cumplimiento de la ley federal del tribunal (Affidavit of Compliance with Federal Law), presentada con la orden. Usted entrega la orden al sheriff, quien la notifica, y su fecha de respuesta es 7 días después de la entrega. Puede reclamar la renta no pagada en el mismo caso, hasta $1,500, y demandar aparte por más. Antes de cualquier caso, el Programa de Desvío de Desalojos (Eviction Diversion Program) del tribunal, que es gratuito, ofrece un mediador.",
    "state": "draft"
   },
   "guide.landlord-duties.if-you-own-restricted-property-file": {
@@ -6747,8 +6747,8 @@
    "state": "draft"
   },
   "guide.landlord-duties.if-you-win-the-court-issues": {
-   "en": "If you win, the court issues a writ of possession, and the sheriff, not you, removes the tenant. The court may give the tenant up to 60 days, with rent paid weekly.",
-   "es": "Si gana, el tribunal emite una orden de posesión (writ of possession), y es el sheriff, no usted, quien saca al inquilino. El tribunal puede darle al inquilino hasta 60 días, pagando la renta cada semana.",
+   "en": "If you win, the court issues a writ of possession, and the sheriff, not you, removes the tenant. Unless the tenant defaulted, the court may give the tenant up to 60 days, or 75 in limited cases the tenant must prove, with rent paid weekly in advance.",
+   "es": "Si gana, el tribunal emite una orden de posesión (writ of possession), y es el sheriff, no usted, quien saca al inquilino. Salvo que el inquilino haya incumplido, el tribunal puede darle hasta 60 días, o 75 en casos limitados que el inquilino debe probar, pagando la renta cada semana por adelantado.",
    "state": "draft"
   },
   "guide.landlord-duties.in-a-case-only-for-unpaid": {
@@ -6757,13 +6757,13 @@
    "state": "draft"
   },
   "guide.landlord-duties.investigate-a-tenants-report-of-bed": {
-   "en": "Investigate a tenant&rsquo;s report of bed bugs or other pests within 7 days, and take reasonable steps to remove them. A tenant who reported a serious violation in writing, and was not behind on rent, has a defense to an eviction for nonpayment if you did not fix it within 14 days.",
-   "es": "Investigue el aviso de un inquilino sobre chinches u otras plagas dentro de 7 días, y tome medidas razonables para eliminarlas. Un inquilino que avisó por escrito de una violación grave, sin estar atrasado en la renta, tiene una defensa contra un desalojo por falta de pago si usted no la corrigió dentro de 14 días.",
+   "en": "Investigate a tenant&rsquo;s report of bed bugs or other pests within 7 days, and take reasonable steps to remove them. A tenant who reported a serious violation in writing, and was not behind on rent, has a defense to an eviction for nonpayment if you did not fix it within 14 days, unless the tenant, the tenant&rsquo;s household or guests caused it, or extreme weather or the tenant&rsquo;s refusal of access prevented the repair.",
+   "es": "Investigue el aviso de un inquilino sobre chinches u otras plagas dentro de 7 días, y tome medidas razonables para eliminarlas. Un inquilino que avisó por escrito de una violación grave, sin estar atrasado en la renta, tiene una defensa contra un desalojo por falta de pago si usted no la corrigió dentro de 14 días, salvo que la causaran el inquilino, su familia o sus invitados, o que un clima extremo o la negativa del inquilino a darle acceso impidieran la reparación.",
    "state": "draft"
   },
   "guide.landlord-duties.know-which-rules-apply-to-your": {
-   "en": "<b>Know which rules apply to your property.</b> Most residential rentals are &ldquo;restricted property&rdquo;, where you need a reason the law lists to end a tenancy. A single-family house is not, if you own no more than 3, and neither is a unit in a building of 4 units or fewer that you live in.",
-   "es": "<b>Sepa qué reglas se aplican a su propiedad.</b> La mayoría de los alquileres de vivienda son &ldquo;propiedad restringida&rdquo; (restricted property), en la que necesita una de las razones que enumera la ley para terminar un arrendamiento. No lo es una casa unifamiliar, si usted no tiene más de 3, ni una unidad en un edificio de 4 unidades o menos en el que usted vive.",
+   "en": "<b>Know which rules apply to your property.</b> A residential rental is &ldquo;restricted property&rdquo;, where you need a reason the law lists to end a tenancy, unless it is one of the exceptions: a single-family house, if you own no more than 3; a unit in a building of 4 units or fewer that you live in; or a single-family house a bank or other lender took through foreclosure.",
+   "es": "<b>Sepa qué reglas se aplican a su propiedad.</b> Un alquiler de vivienda es &ldquo;propiedad restringida&rdquo; (restricted property), en la que necesita una de las razones que enumera la ley para terminar un arrendamiento, salvo que sea una de las excepciones: una casa unifamiliar, si usted no tiene más de 3; una unidad en un edificio de 4 unidades o menos en el que usted vive; o una casa unifamiliar que un banco u otro prestamista obtuvo por ejecución hipotecaria.",
    "state": "draft"
   },
   "guide.landlord-duties.landlord-and-tenant-cases-judicial": {
@@ -6836,9 +6836,9 @@
    "es": "Cobrar un depósito de garantía",
    "state": "draft"
   },
-  "guide.landlord-duties.the-district-courts-clerks-have-the": {
-   "en": "The district court&rsquo;s clerks have the forms for a demand for rent, an eviction notice and a Landlord/Tenant Writ, but cannot give legal advice. For advice about your own situation, talk to a lawyer:",
-   "es": "Los secretarios del tribunal de distrito tienen los formularios para una demanda de renta, un aviso de desalojo y una orden de desalojo (Landlord/Tenant Writ), pero no pueden dar asesoría legal. Para recibir asesoría sobre su propia situación, hable con un abogado:",
+  "guide.landlord-duties.the-district-court-has-the-forms": {
+   "en": "The district court has the forms for a demand for rent, an eviction notice and a Landlord/Tenant Writ. It advises landlords in doubt about the law&rsquo;s requirements to consult a lawyer:",
+   "es": "El tribunal de distrito tiene los formularios para una demanda de renta, un aviso de desalojo y una orden de desalojo (Landlord/Tenant Writ). Aconseja a los arrendadores con dudas sobre los requisitos de la ley que consulten a un abogado:",
    "state": "draft"
   },
   "guide.landlord-duties.the-limit-one-months-rent-or": {
@@ -6847,13 +6847,13 @@
    "state": "draft"
   },
   "guide.landlord-duties.the-notice-an-eviction-notice-is": {
-   "en": "<b>The notice.</b> An eviction notice is in writing and states the reason specifically. It allows 7 days for unpaid rent, substantial damage or a threat to health or safety, and 30 days for other reasons. For unpaid rent, serve a demand for rent too, and the notice must tell the tenant of the right to pay and stay. Anyone can serve them, in hand or at the tenant&rsquo;s home; the court has the forms.",
-   "es": "<b>El aviso.</b> Un aviso de desalojo es por escrito y dice la razón de forma específica. Da 7 días si se trata de renta no pagada, daños considerables o una amenaza a la salud o la seguridad, y 30 días por otras razones. Si se trata de renta no pagada, entregue también una demanda de renta, y el aviso debe informarle al inquilino de su derecho a pagar y quedarse. Cualquier persona puede entregarlos, en mano o en la vivienda del inquilino; el tribunal tiene los formularios.",
+   "en": "<b>The notice.</b> An eviction notice is in writing and states the reason specifically. It allows 7 days for unpaid rent, substantial damage or a threat to health or safety, and 30 days for other reasons. For unpaid rent, serve a demand for rent too, and the notice must tell the tenant of any right to pay and stay, which a tenant may use no more than 3 times in 12 months. Anyone can serve them, in hand or at the tenant&rsquo;s home; the court has the forms.",
+   "es": "<b>El aviso.</b> Un aviso de desalojo es por escrito y dice la razón de forma específica. Da 7 días si se trata de renta no pagada, daños considerables o una amenaza a la salud o la seguridad, y 30 días por otras razones. Si se trata de renta no pagada, entregue también una demanda de renta, y el aviso debe informarle al inquilino de cualquier derecho a pagar y quedarse, que un inquilino puede usar no más de 3 veces en 12 meses. Cualquier persona puede entregarlos, en mano o en la vivienda del inquilino; el tribunal tiene los formularios.",
    "state": "draft"
   },
   "guide.landlord-duties.the-reasons-for-restricted-property": {
-   "en": "<b>The reasons.</b> For restricted property: unpaid rent, substantial damage, breaking a material term of the lease, behavior that threatens others&rsquo; health or safety, or other good cause, which can be a legitimate business or economic reason. If the cause is the tenant&rsquo;s own conduct, first give a written warning that it would be grounds for eviction. A lease of 12 months or longer can end at its term if you give written notice at least 60 days before. A tenant who refuses a rent increase can be evicted for good cause only if you gave written notice of the amount and the date at least 30 days ahead.",
-   "es": "<b>Las razones.</b> En una propiedad restringida: renta no pagada, daños considerables, incumplir una condición importante del contrato, una conducta que amenaza la salud o la seguridad de otros, u otra causa justificada, que puede ser una razón comercial o económica legítima. Si la causa es la propia conducta del inquilino, primero dele una advertencia por escrito de que sería motivo de desalojo. Un contrato de 12 meses o más puede terminar a su vencimiento si usted da aviso por escrito al menos 60 días antes. Un inquilino que rechaza un aumento de renta puede ser desalojado por causa justificada solo si usted le avisó por escrito la cantidad y la fecha al menos 30 días antes.",
+   "en": "<b>The reasons.</b> For restricted property: unpaid rent, substantial damage, breaking a material term of the lease, behavior that threatens others&rsquo; health or safety, or other good cause, which can be a legitimate business or economic reason. If the cause is the tenant&rsquo;s own conduct, first give a written warning that it would be grounds for eviction. A lease of 12 months or longer, counting renewals, can end at its term if you give written notice at least 60 days before that you will not renew it, and file any eviction within 6 months of the lease ending. A tenant who refuses a rent increase can be evicted for good cause only if you gave written notice of the amount and the date at least 30 days ahead.",
+   "es": "<b>Las razones.</b> En una propiedad restringida: renta no pagada, daños considerables, incumplir una condición importante del contrato, una conducta que amenaza la salud o la seguridad de otros, u otra causa justificada, que puede ser una razón comercial o económica legítima. Si la causa es la propia conducta del inquilino, primero dele una advertencia por escrito de que sería motivo de desalojo. Un contrato de 12 meses o más, contando las renovaciones, puede terminar a su vencimiento si usted avisa por escrito al menos 60 días antes que no lo renovará, y presenta cualquier desalojo dentro de los 6 meses siguientes al fin del contrato. Un inquilino que rechaza un aumento de renta puede ser desalojado por causa justificada solo si usted le avisó por escrito la cantidad y la fecha al menos 30 días antes.",
    "state": "draft"
   },
   "guide.landlord-duties.these-rules-apply-unless-you-rent": {
@@ -6882,8 +6882,8 @@
    "state": "draft"
   },
   "guide.landlord-duties.what-you-may-not-do-you": {
-   "en": "<b>What you may not do.</b> You may not evict to retaliate against a tenant who reported a code violation, went to court under the tenant protection law, or met with other tenants, unless the tenant owes a week&rsquo;s rent or more; nor evict a tenant for being a victim of domestic violence, sexual assault or stalking.",
-   "es": "<b>Lo que no puede hacer.</b> No puede desalojar como represalia contra un inquilino que denunció una violación del código, acudió al tribunal bajo la ley de protección de inquilinos o se reunió con otros inquilinos, salvo que el inquilino deba una semana de renta o más; ni desalojar a un inquilino por ser víctima de violencia doméstica, agresión sexual o acecho.",
+   "en": "<b>What you may not do.</b> You may not evict to retaliate against a tenant who reported a code violation, went to court under the tenant protection law, or met with other tenants, unless the tenant owes a week&rsquo;s rent or more; nor end a tenancy solely because a tenant or a member of the household is a victim of domestic violence, sexual assault or stalking, once the tenant gives you written verification of it.",
+   "es": "<b>Lo que no puede hacer.</b> No puede desalojar como represalia contra un inquilino que denunció una violación del código, acudió al tribunal bajo la ley de protección de inquilinos o se reunió con otros inquilinos, salvo que el inquilino deba una semana de renta o más; ni terminar un arrendamiento solo porque un inquilino o un miembro de su hogar es víctima de violencia doméstica, agresión sexual o acecho, una vez que el inquilino le da una verificación por escrito.",
    "state": "draft"
   },
   "guide.landlord-duties.with-the-tenants-consent-after-adequate": {
@@ -7231,9 +7231,9 @@
    "es": "Una motocicleta se registra igual que un vehículo: primero en la oficina del secretario del municipio o la ciudad donde vive, que expide el permiso de registro, y después ante el estado. La cuota del estado para una motocicleta es de $30, y se suma $1 a cada registro y cada renovación. Conducir una motocicleta sin registrar conlleva una multa de $100. Cómo registrar un vehículo explica cada parte.",
    "state": "draft"
   },
-  "guide.motorcycle-license.a-motorcycle-learners-permit-is-the": {
-   "en": "A motorcycle learner&rsquo;s permit is the usual first step. You can get one if you are 18 or older, or if you are 16 or 17, have finished an approved driver education course and hold a New Hampshire driver&rsquo;s license. You pass a written motorcycle knowledge test, or finish the state&rsquo;s rider training course instead. There is no road test for a permit.",
-   "es": "El permiso de aprendizaje para motocicleta es el primer paso habitual. Puede obtenerlo si tiene 18 años o más, o si tiene 16 o 17, ha terminado un curso aprobado de educación vial y tiene una licencia de conducir de New Hampshire. Para obtenerlo, aprueba un examen escrito de conocimientos sobre motocicletas, o termina el curso de capacitación para motociclistas del estado. El permiso no lleva examen de manejo.",
+  "guide.motorcycle-license.a-motorcycle-learners-permit-lets-you": {
+   "en": "A motorcycle learner&rsquo;s permit lets you ride while you learn, with limits. You can get one if you are 18 or older, or if you are 16 or 17, have finished an approved driver education course and hold a New Hampshire driver&rsquo;s license. You pass a written motorcycle knowledge test, or finish the state&rsquo;s rider training course instead. There is no road test for a permit.",
+   "es": "El permiso de aprendizaje para motocicleta le permite conducir mientras aprende, con límites. Puede obtenerlo si tiene 18 años o más, o si tiene 16 o 17, ha terminado un curso aprobado de educación vial y tiene una licencia de conducir de New Hampshire. Para obtenerlo, aprueba un examen escrito de conocimientos sobre motocicletas, o termina el curso de capacitación para motociclistas del estado. El permiso no lleva examen de manejo.",
    "state": "draft"
   },
   "guide.motorcycle-license.a-motorcycle-on-2-or-3": {
@@ -7457,8 +7457,8 @@
    "state": "draft"
   },
   "guide.motorcycle-license.to-ride-a-motorcycle-in-new": {
-   "en": "To ride a motorcycle in New Hampshire you need a motorcycle license or endorsement, a 3-wheeled motorcycle endorsement, or a motorcycle learner&rsquo;s permit. Most riders start with a permit, then pass a road test on a motorcycle or finish a state-approved rider training course instead. A moped needs less: any valid driver&rsquo;s license, or a moped license earned with a written test, and a registration.",
-   "es": "Para conducir una motocicleta en New Hampshire necesita una licencia o un endoso de motocicleta, un endoso para motocicleta de 3 ruedas o un permiso de aprendizaje para motocicleta. La mayoría empieza con un permiso y luego aprueba un examen de manejo en una motocicleta, o termina en su lugar un curso de capacitación para motociclistas aprobado por el estado. Un ciclomotor necesita menos: cualquier licencia de conducir válida, o una licencia de ciclomotor obtenida con un examen escrito, y un registro.",
+   "en": "To ride a motorcycle in New Hampshire you need a motorcycle license or endorsement, a 3-wheeled motorcycle endorsement, or a motorcycle learner&rsquo;s permit. You can start with a permit, then pass a road test on a motorcycle or finish a state-approved rider training course instead. A moped needs less: any valid driver&rsquo;s license, or a moped license earned with a written test, and a registration.",
+   "es": "Para conducir una motocicleta en New Hampshire necesita una licencia o un endoso de motocicleta, un endoso para motocicleta de 3 ruedas o un permiso de aprendizaje para motocicleta. Puede empezar con un permiso y luego aprobar un examen de manejo en una motocicleta, o terminar en su lugar un curso de capacitación para motociclistas aprobado por el estado. Un ciclomotor necesita menos: cualquier licencia de conducir válida, o una licencia de ciclomotor obtenida con un examen escrito, y un registro.",
    "state": "draft"
   },
   "guide.motorcycle-license.vehicle-registrations-dmv": {
@@ -8041,9 +8041,9 @@
    "es": "$65, a más tardar el 1 de septiembre.",
    "state": "draft"
   },
-  "guide.property-tax-abatement.a-disproportionate-assessment-you-show": {
-   "en": "<b>A disproportionate assessment.</b> You show what the property was worth on April 1 of the tax year, with an appraisal or sales of comparable properties, and that your <em>equalized assessment</em> is higher.",
-   "es": "<b>Un avalúo desproporcionado.</b> Usted muestra lo que valía la propiedad el 1 de abril del año fiscal, con una tasación o con ventas de propiedades comparables, y que su <em>avalúo igualado</em> es mayor.",
+  "guide.property-tax-abatement.a-disproportionate-assessment-your": {
+   "en": "<b>A disproportionate assessment:</b> your <em>equalized assessment</em> is higher than the property&rsquo;s value. The application has a place to list comparable properties.",
+   "es": "<b>Un avalúo desproporcionado:</b> su <em>avalúo igualado</em> es mayor que el valor de la propiedad. La solicitud tiene un espacio para anotar propiedades comparables.",
    "state": "draft"
   },
   "guide.property-tax-abatement.a-town-may-abate-a-tax": {
@@ -8202,8 +8202,8 @@
    "state": "draft"
   },
   "guide.property-tax-abatement.poverty-and-inability-to-pay-explained": {
-   "en": "<b>Poverty and inability to pay</b>, explained in detail, including why an abatement fits better than other help.",
-   "es": "<b>Pobreza e incapacidad de pagar</b>, explicadas en detalle, incluido por qué una reducción es más adecuada que otras ayudas.",
+   "en": "<b>Poverty and inability to pay</b>, explained in detail.",
+   "es": "<b>Pobreza e incapacidad de pagar</b>, explicadas en detalle.",
    "state": "draft"
   },
   "guide.property-tax-abatement.property-tax-abatement-and-appeal": {
@@ -8277,8 +8277,8 @@
    "state": "draft"
   },
   "guide.property-tax-abatement.use-the-boards-abatement-application": {
-   "en": "Use the Board&rsquo;s abatement application, sign it, and keep a copy.",
-   "es": "Use la solicitud de reducción de la Junta, fírmela y guarde una copia.",
+   "en": "Use the Board&rsquo;s abatement application, sign it, and keep a copy. To apply, you must have complied with the property inventory law, RSA 74, and the application has a section on it.",
+   "es": "Use la solicitud de reducción de la Junta, fírmela y guarde una copia. Para presentarla, debe haber cumplido la ley del inventario de propiedades, RSA 74, y la solicitud tiene una sección sobre eso.",
    "state": "draft"
   },
   "guide.property-tax-abatement.wait-for-the-decision": {
@@ -8332,8 +8332,8 @@
    "state": "draft"
   },
   "guide.property-tax-abatement.you-can-appeal-to-the-board": {
-   "en": "You can appeal to the <b>Board of Tax and Land Appeals</b> or to the <b>Superior Court</b>, but not both. For the Board, fill in its appeal form and mail it or hand it in, with the $65 filing fee by check or money order payable to &ldquo;Treasurer, State of NH&rdquo;, to the Board of Tax and Land Appeals, 107 Pleasant Street, Johnson Hall, Concord, NH 03301.",
-   "es": "Puede apelar ante la <b>Junta de Apelaciones de Impuestos y Terrenos</b> o ante el <b>Tribunal Superior</b>, pero no ante ambos. Para la Junta, llene el formulario de apelación de la Junta y envíelo por correo o entréguelo, con la cuota de presentación de $65 en cheque o giro postal a nombre de &ldquo;Treasurer, State of NH&rdquo;, a Board of Tax and Land Appeals, 107 Pleasant Street, Johnson Hall, Concord, NH 03301.",
+   "en": "You can appeal to the <b>Board of Tax and Land Appeals</b> or to the <b>Superior Court</b>, but not both. For the Board, fill in its appeal form and mail it or hand it in, with the $65 filing fee by check or money order payable to &ldquo;Treasurer, State of NH&rdquo;, to the Board of Tax and Land Appeals at the address its property tax page gives.",
+   "es": "Puede apelar ante la <b>Junta de Apelaciones de Impuestos y Terrenos</b> o ante el <b>Tribunal Superior</b>, pero no ante ambos. Para la Junta, llene el formulario de apelación de la Junta y envíelo por correo o entréguelo, con la cuota de presentación de $65 en cheque o giro postal a nombre de &ldquo;Treasurer, State of NH&rdquo;, a la Junta de Apelaciones de Impuestos y Terrenos (Board of Tax and Land Appeals), en la dirección que da su página sobre el impuesto a la propiedad.",
    "state": "draft"
   },
   "guide.property-tax-abatement.your-town-may-charge-for-the": {
@@ -8342,8 +8342,8 @@
    "state": "draft"
   },
   "guide.property-tax-abatement.your-town-or-citys-assessing-officials": {
-   "en": "Your town or city&rsquo;s assessing officials are who you apply to for an abatement. For questions about appealing, the Board of Tax and Land Appeals asks you to read its commonly asked questions or call its office at (603) 271-2578.",
-   "es": "Los funcionarios de avalúos de su municipio o ciudad son a quienes debe pedir una reducción. Para preguntas sobre cómo apelar, la Junta de Apelaciones de Impuestos y Terrenos le pide que lea sus preguntas frecuentes o que llame a su oficina al (603) 271-2578.",
+   "en": "Your town or city&rsquo;s assessing officials are who you apply to for an abatement. For questions about appealing, the Board of Tax and Land Appeals publishes commonly asked questions, and its property tax page says how to reach it.",
+   "es": "Los funcionarios de avalúos de su municipio o ciudad son a quienes debe pedir una reducción. Para preguntas sobre cómo apelar, la Junta de Apelaciones de Impuestos y Terrenos publica preguntas frecuentes, y su página sobre el impuesto a la propiedad dice cómo comunicarse con ella.",
    "state": "draft"
   },
   "guide.property-tax-bill.15-000-off-the-assessed-value": {
@@ -9622,8 +9622,8 @@
    "state": "draft"
   },
   "guide.register-a-car.a-registration-in-your-own-name": {
-   "en": "A registration in your own name expires at the end of the month of your birthday. To renew, bring your registration or renewal notice to your town or city and pay the town&rsquo;s fees first; many towns can take the state&rsquo;s part as well.",
-   "es": "Un registro a su nombre vence al final del mes de su cumpleaños. Para renovarlo, lleve su registro o su aviso de renovación a su municipio o ciudad y pague primero las cuotas del municipio; muchos municipios pueden cobrar también la parte del estado.",
+   "en": "A registration in your own name expires at the end of the month of your birthday. To renew, go to your town or city and pay the town&rsquo;s fees first; many towns can take the state&rsquo;s part as well.",
+   "es": "Un registro a su nombre vence al final del mes de su cumpleaños. Para renovarlo, vaya a su municipio o ciudad y pague primero las cuotas del municipio; muchos municipios pueden cobrar también la parte del estado.",
    "state": "draft"
   },
   "guide.register-a-car.a-vehicle-exempt-from-titling-or": {
@@ -10581,19 +10581,19 @@
    "es": "Cuotas y peticiones para las primarias (RSA 655:19-c)",
    "state": "draft"
   },
-  "guide.run-for-office.file-in-june-with-the-clerk": {
-   "en": "File in June with the clerk of the town or city where you live.",
-   "es": "Inscríbase en junio ante el secretario del municipio o la ciudad donde vive.",
+  "guide.run-for-office.file-in-the-filing-period": {
+   "en": "File in the filing period",
+   "es": "Inscríbase en el período de inscripción",
    "state": "draft"
   },
-  "guide.run-for-office.file-in-the-june-filing-period": {
-   "en": "File in the June filing period",
-   "es": "Inscríbase en el período de inscripción de junio",
+  "guide.run-for-office.file-in-the-filing-period-with": {
+   "en": "File in the filing period with the clerk of the town or city where you live.",
+   "es": "Inscríbase en el período de inscripción ante el secretario del municipio o la ciudad donde vive.",
    "state": "draft"
   },
   "guide.run-for-office.file-with-the-secretary-of-state": {
-   "en": "File with the Secretary of State in June.",
-   "es": "Inscríbase ante la Secretaría de Estado en junio.",
+   "en": "File with the Secretary of State in the filing period.",
+   "es": "Inscríbase ante la Secretaría de Estado en el período de inscripción.",
    "state": "draft"
   },
   "guide.run-for-office.file-with-your-town-or-city": {
@@ -10614,6 +10614,11 @@
   "guide.run-for-office.finding-your-representatives": {
    "en": "Finding your representatives",
    "es": "Cómo encontrar a sus representantes",
+   "state": "draft"
+  },
+  "guide.run-for-office.from-january-1-2028-a-law": {
+   "en": "From January 1, 2028, a law passed in 2026, <a href=\"/bill/2026/hb481.html\">HB 481</a> (chapter 44), moves the filing period to the first Friday in March and the Friday of the following week.",
+   "es": "A partir del 1 de enero de 2028, una ley aprobada en 2026, <a href=\"/bill/2026/hb481.html\">HB 481</a> (capítulo 44), traslada el período de inscripción al primer viernes de marzo y el viernes de la semana siguiente.",
    "state": "draft"
   },
   "guide.run-for-office.governor": {
@@ -10767,13 +10772,13 @@
    "state": "draft"
   },
   "guide.run-for-office.to-reach-the-general-election-ballot": {
-   "en": "To reach the general election ballot by another route, file a declaration of intent with the Secretary of State in the same June period, pay the same fee, and file nomination papers signed by registered voters: 3,000 for governor or U.S. senator, 1,500 from each congressional district; 1,500 for U.S. representative; 750 for executive councilor or state senator; and 150 for state representative or county officer.",
-   "es": "Para llegar a la boleta de la elección general por otra vía, presente una declaración de intención ante la Secretaría de Estado en el mismo período de junio, pague la misma cuota y presente documentos de nominación firmados por votantes inscritos: 3,000 para gobernador o senador de EE. UU., 1,500 de cada distrito del Congreso; 1,500 para representante de EE. UU.; 750 para consejero ejecutivo o senador estatal; y 150 para representante estatal o funcionario del condado.",
+   "en": "To reach the general election ballot by another route, file a declaration of intent with the Secretary of State in the same filing period, pay the same fee, and file nomination papers signed by registered voters: 3,000 for governor or U.S. senator, 1,500 from each congressional district; 1,500 for U.S. representative; 750 for executive councilor or state senator; and 150 for state representative or county officer.",
+   "es": "Para llegar a la boleta de la elección general por otra vía, presente una declaración de intención ante la Secretaría de Estado en el mismo período de inscripción, pague la misma cuota y presente documentos de nominación firmados por votantes inscritos: 3,000 para gobernador o senador de EE. UU., 1,500 de cada distrito del Congreso; 1,500 para representante de EE. UU.; 750 para consejero ejecutivo o senador estatal; y 150 para representante estatal o funcionario del condado.",
    "state": "draft"
   },
   "guide.run-for-office.to-run-in-a-party-primary": {
-   "en": "To run in a party primary for a state, federal or county office, you file a declaration of candidacy in a filing period of about ten days in June of a state election year: with the Secretary of State for most offices, or with your town or city clerk if you are running for state representative. You pay a fee the law sets, or file petitions signed by voters of your party instead. Town and city offices are filed with your town or city clerk, on dates of their own.",
-   "es": "Para postularse en las primarias de un partido a un cargo estatal, federal o del condado, usted presenta una declaración de candidatura durante un período de inscripción de unos diez días en junio de un año de elecciones estatales: ante la Secretaría de Estado para la mayoría de los cargos, o ante el secretario de su municipio o ciudad si se postula a representante estatal. Paga una cuota que fija la ley, o en su lugar presenta peticiones firmadas por votantes de su partido. Las candidaturas a cargos municipales y de la ciudad se presentan ante el secretario de su municipio o ciudad, en fechas propias.",
+   "en": "To run in a party primary for a state, federal or county office, you file a declaration of candidacy in a filing period of about ten days in a state election year, in June through 2026 and in March from 2028: with the Secretary of State for most offices, or with your town or city clerk if you are running for state representative. You pay a fee the law sets, or file petitions signed by voters of your party instead. Town and city offices are filed with your town or city clerk, on dates of their own.",
+   "es": "Para postularse en las primarias de un partido a un cargo estatal, federal o del condado, usted presenta una declaración de candidatura durante un período de inscripción de unos diez días en un año de elecciones estatales, en junio hasta 2026 y en marzo a partir de 2028: ante la Secretaría de Estado para la mayoría de los cargos, o ante el secretario de su municipio o ciudad si se postula a representante estatal. Paga una cuota que fija la ley, o en su lugar presenta peticiones firmadas por votantes de su partido. Las candidaturas a cargos municipales y de la ciudad se presentan ante el secretario de su municipio o ciudad, en fechas propias.",
    "state": "draft"
   },
   "guide.run-for-office.to-run-in-a-partys-primary": {
@@ -10947,8 +10952,8 @@
    "state": "draft"
   },
   "guide.storms-and-emergencies.2-1-1-new-hampshire-at": {
-   "en": "2-1-1 New Hampshire, at any hour, for shelters, warming places and other help near you, and your town or city for local warming centers and storm information. In an emergency, call 911.",
-   "es": "2-1-1 New Hampshire, a cualquier hora, para refugios, lugares para calentarse y otra ayuda cerca de usted, y su municipio o ciudad para los centros de calentamiento locales y la información sobre tormentas. En una emergencia, llame al 911.",
+   "en": "2-1-1 New Hampshire, at any hour, for housing, utility help and other help near you, and your town or city for local warming places and storm information. In an emergency, call 911.",
+   "es": "2-1-1 New Hampshire, a cualquier hora, para vivienda, ayuda con los servicios públicos y otra ayuda cerca de usted, y su municipio o ciudad para los lugares para calentarse locales y la información sobre tormentas. En una emergencia, llame al 911.",
    "state": "draft"
   },
   "guide.storms-and-emergencies.a-cell-phone-with-chargers-and": {
@@ -11001,14 +11006,24 @@
    "es": "¿Hay otras maneras de recibir alertas?",
    "state": "draft"
   },
+  "guide.storms-and-emergencies.ask-your-town-about-warming-places": {
+   "en": "Ask your town about warming places, or call 2-1-1 for other help.",
+   "es": "Pregunte en su municipio por los lugares para calentarse, o llame al 2-1-1 para otra ayuda.",
+   "state": "draft"
+  },
+  "guide.storms-and-emergencies.ask-your-town-or-city-which": {
+   "en": "Ask your town or city which warming places are open. Call <b>2-1-1</b>, at any hour, for housing, utility help and other services near you. In an emergency, call 911.",
+   "es": "Pregunte en su municipio o ciudad qué lugares para calentarse están abiertos. Llame al <b>2-1-1</b>, a cualquier hora, para vivienda, ayuda con los servicios públicos y otros servicios cerca de usted. En una emergencia, llame al 911.",
+   "state": "draft"
+  },
   "guide.storms-and-emergencies.at-least-a-several-day-supply": {
    "en": "at least a several-day supply of food that will not spoil, and a manual can opener;",
    "es": "por lo menos comida que no se eche a perder para varios días, y un abrelatas manual;",
    "state": "draft"
   },
   "guide.storms-and-emergencies.avoid-overexertion-when-shoveling-or": {
-   "en": "Avoid overexertion when shoveling or walking in snow, which can bring on a heart attack.",
-   "es": "Evite el esfuerzo excesivo al palear nieve o caminar en la nieve: ese esfuerzo puede provocar un ataque al corazón.",
+   "en": "Avoid overexertion when shoveling or walking in snow.",
+   "es": "Evite el esfuerzo excesivo al palear nieve o caminar en la nieve.",
    "state": "draft"
   },
   "guide.storms-and-emergencies.build-a-kit-ready-gov": {
@@ -11019,16 +11034,6 @@
   "guide.storms-and-emergencies.build-a-kit-ready-gov-fema": {
    "en": "Build a kit (Ready.gov, FEMA)",
    "es": "Arme un equipo (Ready.gov, FEMA)",
-   "state": "draft"
-  },
-  "guide.storms-and-emergencies.call-2-1-1-at-any": {
-   "en": "Call <b>2-1-1</b>, at any hour, for shelters, warming places, utility help and other services near you. In an emergency, call 911.",
-   "es": "Llame al <b>2-1-1</b>, a cualquier hora, para encontrar refugios, lugares para calentarse, ayuda con los servicios públicos y otros servicios cerca de usted. En una emergencia, llame al 911.",
-   "state": "draft"
-  },
-  "guide.storms-and-emergencies.call-2-1-1-or-ask": {
-   "en": "Call 2-1-1, or ask your town about warming centers.",
-   "es": "Llame al 2-1-1, o pregunte en su municipio por los centros de calentamiento.",
    "state": "draft"
   },
   "guide.storms-and-emergencies.carbon-monoxide-can-kill-and-you": {
@@ -11042,8 +11047,8 @@
    "state": "draft"
   },
   "guide.storms-and-emergencies.frostbite-causes-loss-of-feeling-and": {
-   "en": "<b>Frostbite</b> causes loss of feeling and color in the face, fingers and toes. Go to a warm room and soak in warm water; do not massage the skin or use a heating pad.",
-   "es": "<b>La congelación</b> causa pérdida de sensibilidad y de color en la cara, los dedos de las manos y de los pies. Vaya a un cuarto cálido y remoje la zona en agua tibia; no frote la piel ni use una almohadilla térmica.",
+   "en": "<b>Frostbite</b> causes loss of feeling and color. Go to a warm room and soak in warm water; do not massage the skin or use a heating pad.",
+   "es": "<b>La congelación</b> causa pérdida de sensibilidad y de color. Vaya a un cuarto cálido y remoje la zona en agua tibia; no frote la piel ni use una almohadilla térmica.",
    "state": "draft"
   },
   "guide.storms-and-emergencies.get-alerts": {
@@ -11182,8 +11187,8 @@
    "state": "draft"
   },
   "guide.storms-and-emergencies.sign-up-for-nh-alerts-the": {
-   "en": "Sign up for NH Alerts, the state&rsquo;s official emergency alerts, and keep enough food, water and supplies at home to last several days. In a storm or a power outage, never run a generator, grill or camp stove indoors, and never heat your home with a gas stove or oven: carbon monoxide can kill. If you need a warm place or other help, call 2-1-1. In an emergency, call 911.",
-   "es": "Inscríbase en NH Alerts, las alertas de emergencia oficiales del estado, y tenga en casa suficiente comida, agua y suministros para varios días. Durante una tormenta o un corte de electricidad, nunca use un generador, una parrilla o una estufa de campamento dentro de la casa, y nunca caliente su hogar con una estufa u horno de gas: el monóxido de carbono puede matar. Si necesita un lugar cálido u otra ayuda, llame al 2-1-1. En una emergencia, llame al 911.",
+   "en": "Sign up for NH Alerts, the state&rsquo;s official emergency alerts, and keep enough food, water and supplies at home to last several days. In a storm or a power outage, never run a generator, grill or camp stove indoors, and never heat your home with a gas stove or oven: carbon monoxide can kill. If you need a warm place, ask your town or city which warming places are open; for housing, utility help and more, call 2-1-1. In an emergency, call 911.",
+   "es": "Inscríbase en NH Alerts, las alertas de emergencia oficiales del estado, y tenga en casa suficiente comida, agua y suministros para varios días. Durante una tormenta o un corte de electricidad, nunca use un generador, una parrilla o una estufa de campamento dentro de la casa, y nunca caliente su hogar con una estufa u horno de gas: el monóxido de carbono puede matar. Si necesita un lugar cálido, pregunte en su municipio o ciudad qué lugares para calentarse están abiertos; para vivienda, ayuda con los servicios públicos y más, llame al 2-1-1. En una emergencia, llame al 911.",
    "state": "draft"
   },
   "guide.storms-and-emergencies.stay-off-the-roads-if-you": {
@@ -12223,8 +12228,8 @@
    "state": "draft"
   },
   "guide.tenant-rights.get-help-as-early-as-you": {
-   "en": "Get help as early as you can, before a deadline passes. Your town or city&rsquo;s code enforcement or health officer handles unsafe conditions. For an eviction, a lockout or a deposit:",
-   "es": "Busque ayuda lo antes posible, antes de que venza un plazo. El encargado del cumplimiento de códigos o el funcionario de salud de su municipio o ciudad se ocupa de las condiciones inseguras. Para un desalojo, un cierre de la vivienda o un depósito:",
+   "en": "Get help as early as you can, before a deadline passes. Your town or city can tell you whether it has a housing code and who enforces it. For an eviction, a lockout or a deposit:",
+   "es": "Busque ayuda lo antes posible, antes de que venza un plazo. Su municipio o ciudad puede decirle si tiene un código de vivienda y quién lo hace cumplir. Para un desalojo, un cierre de la vivienda o un depósito:",
    "state": "draft"
   },
   "guide.tenant-rights.give-your-landlord-your-new-address": {
@@ -12273,8 +12278,8 @@
    "state": "draft"
   },
   "guide.tenant-rights.if-you-lose-the-court-may": {
-   "en": "<b>If you lose,</b> the court may give you up to 60 days to move, if you pay the rent each week. To appeal, file a notice of intent to appeal within 7 days of the decision, and pay rent as it comes due.",
-   "es": "<b>Si pierde,</b> el tribunal puede darle hasta 60 días para mudarse, si paga la renta cada semana. Para apelar, presente un aviso de intención de apelar dentro de 7 días de la decisión, y pague la renta a medida que venza.",
+   "en": "<b>If you lose,</b> the court may give you up to 60 days to move, or 75 in limited cases you must prove, if you pay the rent each week in advance and have not defaulted. To appeal, file a notice of intent to appeal within 7 days of the decision, and pay rent as it comes due.",
+   "es": "<b>Si pierde,</b> el tribunal puede darle hasta 60 días para mudarse, o 75 en casos limitados que usted debe probar, si paga la renta cada semana por adelantado y no ha incumplido. Para apelar, presente un aviso de intención de apelar dentro de 7 días de la decisión, y pague la renta a medida que venza.",
    "state": "draft"
   },
   "guide.tenant-rights.in-new-hampshire-only-a-court": {
@@ -12313,8 +12318,8 @@
    "state": "draft"
   },
   "guide.tenant-rights.moving-out-yourself-to-end-a": {
-   "en": "<b>Moving out yourself.</b> To end a month-to-month tenancy, give 30 days&rsquo; written notice. A victim of domestic violence, sexual assault or stalking can end a lease early, with verification, and may not be evicted for being a victim.",
-   "es": "<b>Si usted decide irse.</b> Para terminar un arrendamiento de mes a mes, dé un aviso por escrito con 30 días de anticipación. Una víctima de violencia doméstica, agresión sexual o acecho puede terminar un contrato antes de tiempo, con una verificación, y no puede ser desalojada por ser víctima.",
+   "en": "<b>Moving out yourself.</b> To end a month-to-month tenancy, give 30 days&rsquo; written notice. A victim of domestic violence, sexual assault or stalking can end a lease early, with written verification, if the abuse happened within the last 150 days, and must then leave within 30 days. For most rentals, a landlord may not end a tenancy solely because a tenant is a victim, once the tenant gives written verification.",
+   "es": "<b>Si usted decide irse.</b> Para terminar un arrendamiento de mes a mes, dé un aviso por escrito con 30 días de anticipación. Una víctima de violencia doméstica, agresión sexual o acecho puede terminar un contrato antes de tiempo, con una verificación por escrito, si el abuso ocurrió en los últimos 150 días, y luego debe irse dentro de 30 días. En la mayoría de los alquileres, un arrendador no puede terminar un arrendamiento solo porque el inquilino es víctima, una vez que el inquilino le da una verificación por escrito.",
    "state": "draft"
   },
   "guide.tenant-rights.only-a-court-can-make-you": {
@@ -12373,13 +12378,13 @@
    "state": "draft"
   },
   "guide.tenant-rights.tell-your-landlord-in-writing-if": {
-   "en": "Tell your landlord in writing. If it is not fixed, ask your town to inspect.",
-   "es": "Avísele a su arrendador por escrito. Si no se arregla, pídale a su municipio que inspeccione.",
+   "en": "Tell your landlord in writing. If it is not fixed, ask your town whether it has a housing code and who enforces it.",
+   "es": "Avísele a su arrendador por escrito. Si no se arregla, pregunte en su municipio si tiene un código de vivienda y quién lo hace cumplir.",
    "state": "draft"
   },
   "guide.tenant-rights.tell-your-landlord-in-writing-what": {
-   "en": "<b>Tell your landlord in writing</b> what needs fixing, and keep a copy. If it is not fixed, ask your town&rsquo;s code enforcement or health officer to inspect. A landlord must look into a report of bed bugs or other pests within 7 days.",
-   "es": "<b>Avísele a su arrendador por escrito</b> qué hay que arreglar, y guarde una copia. Si no se arregla, pídale al encargado del cumplimiento de códigos o al funcionario de salud de su municipio que inspeccione. Un arrendador debe investigar un aviso de chinches u otras plagas dentro de 7 días.",
+   "en": "<b>Tell your landlord in writing</b> what needs fixing, and keep a copy. If it is not fixed, ask your town or city whether it has a housing code: where it does, a town board or officer enforces it and can find a home unfit to live in. A landlord must look into a report of bed bugs or other pests within 7 days.",
+   "es": "<b>Avísele a su arrendador por escrito</b> qué hay que arreglar, y guarde una copia. Si no se arregla, pregunte en su municipio o ciudad si tiene un código de vivienda: donde lo tiene, una junta o un funcionario municipal lo hace cumplir y puede declarar una vivienda no apta para vivir. Un arrendador debe investigar un aviso de chinches u otras plagas dentro de 7 días.",
    "state": "draft"
   },
   "guide.tenant-rights.that-is-against-the-law-ask": {
@@ -12418,8 +12423,8 @@
    "state": "draft"
   },
   "guide.tenant-rights.when-a-landlord-needs-a-reason": {
-   "en": "<b>When a landlord needs a reason.</b> For most rentals, a landlord can end your tenancy only for a reason the law lists: unpaid rent, substantial damage, breaking a material term of the lease, behavior that threatens others&rsquo; health or safety, or other good cause, which can be a legitimate business or economic reason. A lease of 12 months or longer can also end at its term, if the landlord gave you written notice at least 60 days before. The exceptions, where no reason is needed: a single-family house whose owner owns no more than 3, and a unit in a building of 4 units or fewer that the owner lives in.",
-   "es": "<b>Cuándo un arrendador necesita una razón.</b> En la mayoría de los alquileres, un arrendador solo puede terminar su arrendamiento por una razón que la ley enumera: renta no pagada, daños considerables, incumplir una condición importante del contrato, una conducta que amenaza la salud o la seguridad de otros, u otra causa justificada, que puede ser una razón comercial o económica legítima. Un contrato de 12 meses o más también puede terminar a su vencimiento, si el arrendador le avisó por escrito al menos 60 días antes. Las excepciones, en las que no se necesita una razón: una casa unifamiliar cuyo dueño no tiene más de 3, y una unidad en un edificio de 4 unidades o menos en el que vive el dueño.",
+   "en": "<b>When a landlord needs a reason.</b> For most rentals, a landlord can end your tenancy only for a reason the law lists: unpaid rent, substantial damage, breaking a material term of the lease, behavior that threatens others&rsquo; health or safety, or other good cause, which can be a legitimate business or economic reason. A lease of 12 months or longer, counting renewals, can also end at its term, if the landlord gave you written notice at least 60 days before and goes to court within 6 months after the lease ends. The exceptions, where no reason is needed: a single-family house whose owner owns no more than 3, a unit in a building of 4 units or fewer that the owner lives in, and a single-family house a bank or other lender took through foreclosure.",
+   "es": "<b>Cuándo un arrendador necesita una razón.</b> En la mayoría de los alquileres, un arrendador solo puede terminar su arrendamiento por una razón que la ley enumera: renta no pagada, daños considerables, incumplir una condición importante del contrato, una conducta que amenaza la salud o la seguridad de otros, u otra causa justificada, que puede ser una razón comercial o económica legítima. Un contrato de 12 meses o más, contando las renovaciones, también puede terminar a su vencimiento, si el arrendador le avisó por escrito al menos 60 días antes y acude al tribunal dentro de los 6 meses siguientes al fin del contrato. Las excepciones, en las que no se necesita una razón: una casa unifamiliar cuyo dueño no tiene más de 3, una unidad en un edificio de 4 unidades o menos en el que vive el dueño, y una casa unifamiliar que un banco u otro prestamista obtuvo por ejecución hipotecaria.",
    "state": "draft"
   },
   "guide.tenant-rights.when-you-move-out-the-landlord": {
@@ -14636,13 +14641,18 @@
    "state": "draft"
   },
   "guide.your-representatives.a-town-s-population-is-rarely": {
-   "en": "A town's population is rarely an exact multiple of what one seat is worth, and the constitution will not let the legislature split a town to even it out. A floterial is where those remainders are pooled instead.",
-   "es": "La población de un municipio rara vez es un múltiplo exacto de lo que vale un escaño, y la constitución no permite a la Legislatura dividir un municipio para compensarlo. En su lugar, esos sobrantes se juntan en un distrito flotante.",
+   "en": "A town's population is rarely an exact multiple of what one seat is worth, and the constitution will not let the legislature split a town on its own to even it out. A floterial is where those remainders are pooled instead.",
+   "es": "La población de un municipio rara vez es un múltiplo exacto de lo que vale un escaño, y la constitución no permite a la Legislatura dividir un municipio por su cuenta para compensarlo. En su lugar, esos sobrantes se juntan en un distrito flotante.",
    "state": "draft"
   },
   "guide.your-representatives.are-a-districts-members-elected-one": {
    "en": "Are a district&rsquo;s members elected one to each town?",
    "es": "¿Los miembros de un distrito se eligen uno por cada municipio?",
+   "state": "draft"
+  },
+  "guide.your-representatives.can-i-email-my-representative": {
+   "en": "Can I email my representative?",
+   "es": "¿Puedo escribirle por correo electrónico a mi representante?",
    "state": "draft"
   },
   "guide.your-representatives.common-questions": {
@@ -14691,8 +14701,8 @@
    "state": "draft"
   },
   "guide.your-representatives.most-places-have-more-than-one": {
-   "en": "Most places have more than one state representative: [[multi_rep_places]] of the [[all_places]] towns and city wards, either because their own district elects several members, or because a floterial district is laid over it, or both. The districts are built from whole towns and wards &mdash; the constitution forbids the legislature to divide a town, ward or place when it draws them &mdash; and within that limit representation is to be \"as equal as circumstances will admit\" (Part II, Article 9).",
-   "es": "La mayoría de los lugares tienen más de un representante estatal: [[multi_rep_places]] de los [[all_places]] municipios y barrios electorales, ya sea porque su propio distrito elige a varios miembros, porque tiene superpuesto un distrito flotante, o por ambas cosas. Los distritos se forman con municipios y barrios electorales enteros &mdash; la constitución prohíbe a la Legislatura dividir un municipio, un barrio electoral o un lugar al trazarlos &mdash; y, dentro de ese límite, la representación debe ser \"tan igual como las circunstancias lo permitan\" (Parte II, artículo 9).",
+   "en": "Most places have more than one state representative: [[multi_rep_places]] of the [[all_places]] towns and city wards, either because their own district elects several members, or because a floterial district is laid over it, or both. The districts are built from whole towns and wards &mdash; the constitution forbids the legislature to divide a town, ward or place when it draws them, unless the town, ward or place asks for it by referendum (Part II, Articles 11-a and 26-a) &mdash; and within that limit representation is to be \"as equal as circumstances will admit\" (Part II, Article 9).",
+   "es": "La mayoría de los lugares tienen más de un representante estatal: [[multi_rep_places]] de los [[all_places]] municipios y barrios electorales, ya sea porque su propio distrito elige a varios miembros, porque tiene superpuesto un distrito flotante, o por ambas cosas. Los distritos se forman con municipios y barrios electorales enteros &mdash; la constitución prohíbe a la Legislatura dividir un municipio, un barrio electoral o un lugar al trazarlos, salvo que el municipio, el barrio electoral o el lugar lo pida por referéndum (Parte II, artículos 11-a y 26-a) &mdash; y, dentro de ese límite, la representación debe ser \"tan igual como las circunstancias lo permitan\" (Parte II, artículo 9).",
    "state": "draft"
   },
   "guide.your-representatives.new-hampshire-is-divided-into-house": {
@@ -14701,8 +14711,8 @@
    "state": "draft"
   },
   "guide.your-representatives.of-the-sitting-members-publish-an": {
-   "en": "[[members_email]] of the [[members_sitting]] sitting members publish an email address in the General Court's directory. Almost none have staff, so a message to a representative is read by that representative. Most have other jobs.",
-   "es": "[[members_email]] de los [[members_sitting]] miembros en funciones publican una dirección de correo electrónico en el directorio de la Legislatura. Casi ninguno tiene personal, así que un mensaje a un representante lo lee ese mismo representante. La mayoría tiene otros trabajos.",
+   "en": "[[members_email]] of the [[members_sitting]] sitting members publish an email address in the General Court's directory.",
+   "es": "[[members_email]] de los [[members_sitting]] miembros en funciones publican una dirección de correo electrónico en el directorio de la Legislatura.",
    "state": "draft"
   },
   "guide.your-representatives.secretary-of-state": {
@@ -14748,11 +14758,6 @@
   "guide.your-representatives.who-holds-each-of-those-seats": {
    "en": "Who holds each of those seats today is on <a href=\"[[reps_town_url]]\"> [[reps_town]]'s own page</a>, and every other town and ward has one like it.",
    "es": "Quién ocupa hoy cada uno de esos escaños está en <a href=\"[[reps_town_url]]\">la página de [[reps_town]]</a>, y cada uno de los demás municipios y barrios electorales tiene una igual.",
-   "state": "draft"
-  },
-  "guide.your-representatives.will-a-representative-read-my-email": {
-   "en": "Will a representative read my email?",
-   "es": "¿Un representante leerá mi correo electrónico?",
    "state": "draft"
   },
   "guides.all": {
@@ -15307,8 +15312,8 @@
    "state": "draft"
   },
   "hub.learn.the-constitution.blurb": {
-   "en": "One of the oldest still in force, and it is not amended the way statutes are: a CACR needs three fifths of both chambers and then the voters.",
-   "es": "Una de las más antiguas aún vigentes, y no se enmienda como las leyes: una CACR necesita tres quintos de ambas cámaras y después a los votantes.",
+   "en": "In force since 1784, and it is not amended the way statutes are: a CACR needs three fifths of both chambers and then the voters.",
+   "es": "Vigente desde 1784, y no se enmienda como las leyes: una CACR necesita tres quintos de ambas cámaras y después a los votantes.",
    "state": "draft"
   },
   "hub.learn.the-constitution.title": {
@@ -18047,8 +18052,8 @@
    "state": "draft"
   },
   "learn.local-government.local-government-in-new-hampshire-is": {
-   "en": "Local government in New Hampshire is the city or town, the school district and the county. There are [[municipalities]] cities and towns. A city has an elected council or board of aldermen. Most towns have no council: the legislative body is the town meeting, and the registered voters adopt the budget themselves.",
-   "es": "El gobierno local en New Hampshire es la ciudad o el municipio, el distrito escolar y el condado. Hay [[municipalities]] ciudades y municipios. Una ciudad tiene un concejo electo o una junta de concejales municipales (board of aldermen). La mayoría de los municipios no tiene concejo: el órgano legislativo es la asamblea municipal (town meeting), y los votantes inscritos aprueban el presupuesto ellos mismos.",
+   "en": "Local government in New Hampshire is the city or town, the school district and the county. There are [[municipalities]] cities and towns. A city&rsquo;s legislative body is its council, its mayor and council, or its mayor and board of aldermen. A town&rsquo;s is the town meeting, where the registered voters adopt the budget themselves, unless the town has a town council (<a href=\"/laws/21#s47\">RSA 21:47</a>).",
+   "es": "El gobierno local en New Hampshire es la ciudad o el municipio, el distrito escolar y el condado. Hay [[municipalities]] ciudades y municipios. El órgano legislativo de una ciudad es su concejo, su alcalde y concejo, o su alcalde y junta de concejales municipales (board of aldermen). El de un municipio es la asamblea municipal (town meeting), donde los votantes inscritos aprueban el presupuesto ellos mismos, salvo que el municipio tenga un concejo municipal propio (<a href=\"/laws/21#s47\">RSA 21:47</a>).",
    "state": "draft"
   },
   "learn.local-government.new-hampshire-revised-statutes-annotated": {
@@ -18122,8 +18127,8 @@
    "state": "draft"
   },
   "learn.local-government.the-voters-cannot-amend-the-default": {
-   "en": "The voters cannot amend the default budget. The governing body &mdash; the selectmen or the school board &mdash; can adjust it, on relevant new information and only until the ballots are printed (RSA 40:13, XI(b)). That is why the argument at a deliberative session is so often about the default rather than the proposed budget.",
-   "es": "Los votantes no pueden enmendar el presupuesto por defecto. El órgano de gobierno &mdash; la junta de concejales o la junta escolar &mdash; puede ajustarlo, con base en información nueva y pertinente y solo hasta que se impriman las boletas (RSA 40:13, XI(b)). Por eso la discusión en una sesión deliberativa trata tan a menudo del presupuesto por defecto y no del presupuesto propuesto.",
+   "en": "The voters cannot amend the default budget. The governing body &mdash; the selectmen or the school board &mdash; can adjust it, on relevant new information and only until the ballots are printed (RSA 40:13, XI(b)).",
+   "es": "Los votantes no pueden enmendar el presupuesto por defecto. El órgano de gobierno &mdash; la junta de concejales o la junta escolar &mdash; puede ajustarlo, con base en información nueva y pertinente y solo hasta que se impriman las boletas (RSA 40:13, XI(b)).",
    "state": "draft"
   },
   "learn.local-government.the-warrant": {
@@ -18802,8 +18807,8 @@
    "state": "draft"
   },
   "learn.state-symbols.by-a-bill-like-any-other": {
-   "en": "By a bill, like any other law. Each of the sixteen sections added to the chapter since 1991 came from a bill the record shows signed into law, and this page links each one. <a href=\"learn/how-a-bill-becomes-law.html\">How a bill becomes law</a> follows the course every one of them took.",
-   "es": "Mediante un proyecto de ley, como cualquier otra ley. Cada una de las dieciséis secciones añadidas al capítulo desde 1991 vino de un proyecto de ley que el registro muestra firmado como ley, y esta página enlaza cada uno. <a href=\"learn/how-a-bill-becomes-law.html\">Cómo un proyecto se convierte en ley</a> sigue el camino que recorrió cada uno.",
+   "en": "By a bill, like any other law. Each of the fifteen symbols added to the chapter since 1991 came from a bill the record shows signed into law, and this page links each one. <a href=\"learn/how-a-bill-becomes-law.html\">How a bill becomes law</a> follows the course every one of them took.",
+   "es": "Mediante un proyecto de ley, como cualquier otra ley. Cada uno de los quince símbolos añadidos al capítulo desde 1991 vino de un proyecto de ley que el registro muestra firmado como ley, y esta página enlaza cada uno. <a href=\"learn/how-a-bill-becomes-law.html\">Cómo un proyecto se convierte en ley</a> sigue el camino que recorrió cada uno.",
    "state": "draft"
   },
   "learn.state-symbols.can-i-put-the-state-seal": {
@@ -19777,8 +19782,8 @@
    "state": "draft"
   },
   "learn.the-constitution.a-statute-changes-when-a-bill": {
-   "en": "A statute changes when a bill passes both chambers and the Governor signs it. The constitution does not. A change starts as a <b>CACR</b> &mdash; a Constitutional Amendment Concurrent Resolution &mdash; and it has to clear three thresholds, none of which involves the Governor.",
-   "es": "Una ley cambia cuando un proyecto de ley es aprobado por ambas cámaras y el Gobernador lo firma. La constitución no. Un cambio empieza como una <b>CACR</b> &mdash; una resolución concurrente de enmienda constitucional (Constitutional Amendment Concurrent Resolution) &mdash; y tiene que superar tres umbrales, en ninguno de los cuales interviene el Gobernador.",
+   "en": "A statute changes when a bill passes both chambers and becomes law: signed by the Governor, left unsigned for five days, or passed again over a veto. The constitution does not. A change starts as a <b>CACR</b> &mdash; a Constitutional Amendment Concurrent Resolution &mdash; and it has to clear three thresholds, none of which involves the Governor.",
+   "es": "Una ley cambia cuando un proyecto de ley es aprobado por ambas cámaras y se convierte en ley: firmado por el Gobernador, sin firmar después de cinco días, o aprobado de nuevo por encima de un veto. La constitución no. Un cambio empieza como una <b>CACR</b> &mdash; una resolución concurrente de enmienda constitucional (Constitutional Amendment Concurrent Resolution) &mdash; y tiene que superar tres umbrales, en ninguno de los cuales interviene el Gobernador.",
    "state": "draft"
   },
   "learn.the-constitution.a-threshold-in-amber-the-share": {
@@ -19817,13 +19822,13 @@
    "state": "draft"
   },
   "learn.the-constitution.lead": {
-   "en": "One of the oldest still in force, and it is not amended the way statutes are: a CACR needs three fifths of both chambers and then the voters.",
-   "es": "Una de las más antiguas aún vigentes, y no se enmienda como las leyes: una CACR necesita tres quintos de ambas cámaras y después a los votantes.",
+   "en": "In force since 1784, and it is not amended the way statutes are: a CACR needs three fifths of both chambers and then the voters.",
+   "es": "Vigente desde 1784, y no se enmienda como las leyes: una CACR necesita tres quintos de ambas cámaras y después a los votantes.",
    "state": "draft"
   },
   "learn.the-constitution.new-hampshire-s-constitution-took-effect": {
-   "en": "New Hampshire's constitution took effect in 1784 and is among the oldest still in force anywhere. It is in two parts. <b>Part First</b> is the Bill of Rights &mdash; forty-four articles on what the state may not do. <b>Part Second</b> is the Form of Government: the House, the Senate, the Governor, the Council, the courts, and how each is chosen. The whole text, article by article, is on <a href=\"/laws#constitution\">the Laws page</a>.",
-   "es": "La constitución de New Hampshire entró en vigor en 1784 y está entre las más antiguas aún vigentes en cualquier lugar. Tiene dos partes. La <b>Parte Primera</b> es la Declaración de Derechos (Bill of Rights) &mdash; cuarenta y cuatro artículos sobre lo que el estado no puede hacer. La <b>Parte Segunda</b> es la Forma de Gobierno: la Cámara, el Senado, el Gobernador, el Consejo, los tribunales, y cómo se elige cada uno. El texto completo, artículo por artículo, está en <a href=\"/laws#constitution\">la página de Leyes</a>.",
+   "en": "New Hampshire's constitution took effect in 1784. It is in two parts. <b>Part First</b> is the Bill of Rights &mdash; forty-four articles on what the state may not do. <b>Part Second</b> is the Form of Government: the House, the Senate, the Governor, the Council, the courts, and how each is chosen. The whole text, article by article, is on <a href=\"/laws#constitution\">the Laws page</a>.",
+   "es": "La constitución de New Hampshire entró en vigor en 1784. Tiene dos partes. La <b>Parte Primera</b> es la Declaración de Derechos (Bill of Rights) &mdash; cuarenta y cuatro artículos sobre lo que el estado no puede hacer. La <b>Parte Segunda</b> es la Forma de Gobierno: la Cámara, el Senado, el Gobernador, el Consejo, los tribunales, y cómo se elige cada uno. El texto completo, artículo por artículo, está en <a href=\"/laws#constitution\">la página de Leyes</a>.",
    "state": "draft"
   },
   "learn.the-constitution.no-signature-and-no-veto-at": {

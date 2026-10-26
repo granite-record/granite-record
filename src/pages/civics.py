@@ -1635,16 +1635,16 @@ it links out for anything more."""
 
 BODY_CONSTITUTION = """
 <h2>In Two Parts</h2>
-<p>New Hampshire's constitution took effect in 1784 and is among the oldest
-still in force anywhere. It is in two parts. <b>Part First</b> is the Bill of
+<p>New Hampshire's constitution took effect in 1784. It is in two parts. <b>Part First</b> is the Bill of
 Rights &mdash; forty-four articles on what the state may not do. <b>Part
 Second</b> is the Form of Government: the House, the Senate, the Governor, the
 Council, the courts, and how each is chosen. The whole text, article by
 article, is on <a href="/laws#constitution">the Laws page</a>.</p>
 
 <h2>It Is Not Amended the Way Statutes Are</h2>
-<p>A statute changes when a bill passes both chambers and the Governor signs
-it. The constitution does not. A change starts as a <b>CACR</b> &mdash; a
+<p>A statute changes when a bill passes both chambers and becomes law: signed
+by the Governor, left unsigned for five days, or passed again over a veto. The
+constitution does not. A change starts as a <b>CACR</b> &mdash; a
 Constitutional Amendment Concurrent Resolution &mdash; and it has to clear
 three thresholds, none of which involves the Governor.</p>
 """ + flow_diagram(FLOW_CACR, "How the constitution is amended",
@@ -1776,10 +1776,11 @@ below."""
 BODY_LOCAL = """
 <h2>Three Kinds of Local Government</h2>
 <p>Local government in New Hampshire is the city or town, the school district
-and the county. There are [[municipalities]] cities and towns. A city has an
-elected council or board of aldermen. Most towns have no council: the
-legislative body is the town meeting, and the registered voters adopt the
-budget themselves.</p>
+and the county. There are [[municipalities]] cities and towns. A city&rsquo;s
+legislative body is its council, its mayor and council, or its mayor and board
+of aldermen. A town&rsquo;s is the town meeting, where the registered voters
+adopt the budget themselves, unless the town has a town council
+(<a href="/laws/21#s47">RSA 21:47</a>).</p>
 
 <h2>Two Ways to Hold a Town Meeting</h2>
 <p>A town settles its business once a year, and there are two ways it can do
@@ -1840,9 +1841,7 @@ the same three-fifths vote (RSA 40:14).</p>
 <details><summary>Can voters change the default budget?</summary>
 <p>The voters cannot amend the default budget. The governing body &mdash; the
 selectmen or the school board &mdash; can adjust it, on relevant new
-information and only until the ballots are printed (RSA 40:13, XI(b)). That is
-why the argument at a deliberative session is so often about the default
-rather than the proposed budget.</p>
+information and only until the ballots are printed (RSA 40:13, XI(b)).</p>
 </details>
 </div>
 """
@@ -2624,7 +2623,7 @@ court to stop the articles being distributed
 (<a href="/laws/3#s9-c">RSA 3:9-c</a>).</p>
 </details>
 <details><summary>How does something become a state symbol?</summary>
-<p>By a bill, like any other law. Each of the sixteen sections added to the
+<p>By a bill, like any other law. Each of the fifteen symbols added to the
 chapter since 1991 came from a bill the record shows signed into law, and this
 page links each one. <a href="learn/how-a-bill-becomes-law.html">How a
 bill becomes law</a> follows the course every one of them took.</p>
@@ -2775,8 +2774,9 @@ of the [[all_places]] towns and city wards, either because their own district
 elects several members, or because a floterial district is laid over it, or
 both. The districts are built from whole towns and wards &mdash; the
 constitution forbids the legislature to divide a town, ward or place when it
-draws them &mdash; and within that limit representation is to be "as equal as
-circumstances will admit" (Part II, Article 9).</p>
+draws them, unless the town, ward or place asks for it by referendum (Part II,
+Articles 11-a and 26-a) &mdash; and within that limit representation is to be
+"as equal as circumstances will admit" (Part II, Article 9).</p>
 
 <h2>Everyone Who Represents One Town</h2>
 <p>This is every seat a voter in one town elects, from the most local to the
@@ -2803,7 +2803,8 @@ its own members. It elects one or more additional members across all of them
 together. [[reps_town]]'s is laid over [[reps_under_n]] districts.</p>
 [[reps_band]]
 <p>A town's population is rarely an exact multiple of what one seat is worth,
-and the constitution will not let the legislature split a town to even it out.
+and the constitution will not let the legislature split a town on its own to
+even it out.
 A floterial is where those remainders are pooled instead.</p>
 <p>If you live in one of those towns or wards, you are represented by both: the
 members of your own district, and the floterial members you share with the
@@ -2827,11 +2828,9 @@ or more of the county's other districts put together &mdash; [[reps_flot]] is
 [[reps_flot_under]] combined. Every one of the [[floterial]] districts this
 site marks as floterial passes that test against the statute.</p>
 </details>
-<details><summary>Will a representative read my email?</summary>
+<details><summary>Can I email my representative?</summary>
 <p>[[members_email]] of the [[members_sitting]] sitting members publish an
-email address in the General Court's directory. Almost none have staff, so a
-message to a representative is read by that representative. Most have other
-jobs.</p>
+email address in the General Court's directory.</p>
 </details>
 </div>
 """ + SHOWS.format("""
@@ -3321,7 +3320,7 @@ TOPICS = [
           BODY_COURTS_HOLDS),
 
     topic("the-constitution", "The Constitution", HOW,
-          "One of the oldest still in force, and it is not amended the way "
+          "In force since 1784, and it is not amended the way "
           "statutes are: a CACR needs three fifths of both chambers and then "
           "the voters.",
           BODY_CONSTITUTION,
