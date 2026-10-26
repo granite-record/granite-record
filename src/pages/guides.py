@@ -3553,14 +3553,15 @@ GUIDES += [MOTORCYCLE]
 # plate -- who qualifies and what it costs are the law's, and every dollar
 # printed is a fig() on its section -- and the DMV's Vehicle Registrations
 # page, as the person's printout of it read that day, for changing a plate
-# during the year. The person's printout of the DMV's Vanity Plates page
-# (vanityplates1) says where to apply, the mailing address, the character
-# rules of Saf-C 513.62 and how a denial is appealed, but prints no address of
-# its own, and a claim rests on an address a reader can open; its details
-# wait for that address. The decal plates that page lists have no section in
-# RSA 261 on this site's Laws page, so the guide leaves them out.
+# during the year. Where to apply, the mailing address, the character rules of
+# Saf-C 513.62 and how a denial is appealed are the DMV's Vanity Plates page,
+# the person's printout of it (vanityplates1), at the address the person gave
+# on 26 October 2026. The decal plates that page lists have no section in RSA
+# 261 on this site's Laws page, so the guide leaves them out.
 # ---------------------------------------------------------------------------
 PLATES_READ = "2026-10-26"
+DMV_VANITY = ("https://www.dmv.nh.gov/vehicles-boats-and-titles/vehicle-registrations/"
+              "vanity-plates")
 _PLATE_ROWS = [
     ("Veteran", "A veteran of the U.S. armed forces, or one discharged with a general discharge "
      "under honorable conditions, with proof of veteran status",
@@ -3606,24 +3607,61 @@ PLATES = guide(
      box("If the DMV turns down a vanity plate, it refunds or credits the vanity fee.")],
     [step("Choose your plate",
           "<p>A vanity plate carries the letters, or letters and numbers, that the DMV&rsquo;s "
-          "rules allow, and no two plates may be the same. The DMV&rsquo;s Vanity Plates page, "
-          "linked from its Vehicle Registrations page, gives those rules and its Vanity Plate "
-          "Search.</p>"
+          "rules allow, and no two plates may be the same. Under the DMV&rsquo;s rule (Saf-C "
+          "513.62), a vanity plate may not:</p><ul>"
+          "<li>include a zero;</li>"
+          "<li>have more than 7 characters;</li>"
+          "<li>have more than 2 ampersands, plus signs or minus signs, or two of them side by "
+          "side;</li>"
+          "<li>have any character other than letters, numerals, ampersands, plus signs and "
+          "minus signs;</li>"
+          "<li>be only numerals, or only numerals with those symbols;</li>"
+          "<li>have characters that are hard to tell apart;</li>"
+          "<li>refer to, in any language and read any way, intimate body parts, profane or "
+          "vulgar acts, profanity or obscenity, violence, illegal activities, illegal drugs, "
+          "gangs, or slurs, discrimination or bigotry.</li></ul>"
+          + table("The most characters each kind of vanity plate can have",
+                  ["Plate", "Characters"],
+                  [["Passenger", "7"],
+                   ["Apportioned, Conservation, Commercial, Trailer, Veteran, State Park, Active "
+                    "Duty Military", "6"],
+                   ["Antique", "6, or 4 with the Old Man replica"],
+                   ["National Guard, Decal, Veteran Decal", "5"],
+                   ["Motorcycle", "5, no ampersand"],
+                   ["Walking Disability, Purple Heart, Street Rod, Conservation State Park, "
+                    "Disabled Veteran", "4"],
+                   ["Veteran Motorcycle", "4, no ampersand"],
+                   ["Purple Heart Motorcycle, Walking Disability Motorcycle",
+                    "3, two of them letters, no ampersand"]])
+          + "<p>The DMV&rsquo;s Vanity Plate Search shows whether a choice looks available, but "
+          "it cannot save a plate for you, so it may be gone by the time you apply.</p>"
           "<p>For a special plate, find yours in the table in step 4: who may have it and what "
           "it costs.</p>",
-          actions=[("Vehicle registrations (DMV)", DMV_REG)], law=["RSA 261:89"]),
+          actions=[("Vanity plates (DMV)", DMV_VANITY)], law=["RSA 261:89"]),
      step("Apply when you register, or change your plate during the year",
-          "<p>A vanity plate is issued only on application. You can change your plate type at "
-          "any point during the year: the DMV asks for a completed Application for Replacement "
-          "Plates and Decals, the plate fees, a new registration fee, and any other fees for the "
-          "plate you want.</p>",
-          actions=[("Vehicle registrations (DMV)", DMV_REG)], law=["RSA 261:89"]),
+          "<p>A vanity plate is issued only on application. When you register or renew, bring "
+          "the DMV&rsquo;s <b>Application for Vanity Plates</b> to your town or city clerk&rsquo;s "
+          "office. Once the clerk has done the town&rsquo;s part of your registration, you can "
+          "also apply at any DMV office that processes registrations, or mail the application, "
+          "the town portion of your registration and a check for the fees to: NH Dept. of "
+          "Safety, DMV &ndash; Registration Bureau, 23 Hazen Drive, Concord NH 03305. An approved "
+          "plate is mailed to you.</p>"
+          "<p>To change to a vanity plate at another time, bring the application and your "
+          "current registration to your town or city clerk&rsquo;s office or a DMV location. To "
+          "change to another plate type during the year, the DMV asks for a completed "
+          "Application for Replacement Plates and Decals, the plate fees, a new registration "
+          "fee, and any other fees for the plate you want.</p>",
+          actions=[("Vanity plates (DMV)", DMV_VANITY),
+                   ("Vehicle registrations (DMV)", DMV_REG)], law=["RSA 261:89"]),
      step("Pay the fees",
           "<p>A vanity plate costs a special vanity plate service fee of $60, on top of your "
           "regular registration fee and the number plate fee of $4 a plate, and $60 a year for "
-          "each set when you renew.</p>"
-          "<p>If the DMV turns your choice down, the law has it refund or credit the vanity "
-          "fee, and you get a plate of the same kind.</p>",
+          "each set when you renew. The DMV prorates the vanity fee by the month. Changing your "
+          "plate before your next renewal adds a one-time plate fee and a certified registration "
+          "fee, which the DMV&rsquo;s Vanity Plates page lists.</p>"
+          "<p>If the DMV turns your choice down, you get a letter in the mail with a set of "
+          "number plates and a new registration. The vanity fee you paid is credited to your "
+          "customer account, and you can choose a new plate or ask for a refund.</p>",
           law=["RSA 261:89", "RSA 261:75"]),
      step("A special plate: show that you qualify",
           "<p>Each special plate is issued on application, and the plates for a group need "
@@ -3639,7 +3677,8 @@ PLATES = guide(
           "conservation or First for Veterans plate, for which you pay the vanity fee as well. "
           "The state park symbol can go on a vanity plate.</p>",
           law=["RSA 261:86", "RSA 261:87-b", "RSA 261:87-c", "RSA 261:91"])],
-    [("Vehicle Registrations (Division of Motor Vehicles)", DMV_REG),
+    [("Vanity Plates (Division of Motor Vehicles)", DMV_VANITY),
+     ("Vehicle Registrations (Division of Motor Vehicles)", DMV_REG),
      ("Certificates of Title and Registration of Vehicles, RSA 261", "/laws/261")],
     ["261"],
     [claim("Related Resources: Plate Types; Vanity Plates. Plate Changes: you may change your "
@@ -3649,6 +3688,43 @@ PLATES = guide(
            "With the exception of Mopeds, all motor vehicles must begin their registration "
            "process at the town or city clerk in the town or city in which they reside.",
            DMV_REG, PLATES_READ),
+     # The DMV's Vanity Plates page, the person's printout of 26 October 2026.
+     claim("For new and renewal registration, bring the Application for Vanity Plates to your "
+           "Town/City clerk's office; you can also apply for a new vanity plate at any DMV office "
+           "that processes registrations after processing the town/city portion of your "
+           "registration; you may also mail the application, town portion of the registration "
+           "and a check for the appropriate fees to the Concord DMV at: NH Dept. of Safety, DMV - "
+           "Registration Bureau, 23 Hazen Drive, Concord NH 03305. Changing your plate anytime "
+           "other than renewal: bring the application along with your current vehicle "
+           "registration to your Town/City clerk's office or nearest DMV location. If approved, "
+           "the plates will be mailed to you; if denied, a letter by mail along with a set of "
+           "number plates and a new registration; a credit for the paid vanity fees will be "
+           "credited to your customer account; a choice of selecting a new plate or applying for "
+           "a refund; pursuant to Saf-C 508.04, a person whose plate has been denied may submit "
+           "a written request to the Director setting forth a detailed explanation as to why it "
+           "should be issued. Vanity Plate fee (for 12 months, prorated per month); one-time "
+           "plate fee; changing before your next renewal includes the one-time plate fee and a "
+           "certified registration fee. Saf-C 513.62(c): a vanity plate shall not include a "
+           "zero; refer to intimate body parts or genitals, profane or vulgar sexual or excretory "
+           "acts, profanity or obscenity, advocating violence, illegal activities, illegal drugs "
+           "or intoxicants, gangs, racial, ethnic, religious, gender or sexual orientation slur, "
+           "discrimination, genocide, hatred or bigotry, in any language, forward, backward, by "
+           "mirror image or by phonetic spelling; have more than 7 characters; have more than 2 "
+           "ampersands, plus signs, or minus signs, not consecutive; have characters other than "
+           "ampersands, numerals, plus signs, minus signs, or letters; have only numerals or "
+           "only numerals and ampersands, plus signs, or minus signs; have characters which may "
+           "cause difficulty of distinction. Maximum characters: Passenger seven; Apportioned, "
+           "Conservation, Commercial, Trailer, Veteran, State Park, Active Duty Military six; "
+           "Antique six (four with Old Man Replica); Walking Disability, Purple Heart, Street "
+           "Rod, Conservation State Park, Disabled Veteran four; National Guard, Decal, Veteran "
+           "Decal five; Motorcycle five (ampersand not available); Veteran Motorcycle four "
+           "(ampersand not available); Purple Heart Motorcycle, Walking Disability Motorcycle "
+           "three (two must be letters, ampersand not available). The Vanity Plate Search may "
+           "indicate that your plate choice is available, but it cannot save the plate for you. "
+           "Plate Recall: pursuant to Saf-C 513.62(d) the Director may recall any vanity plate "
+           "found not to conform; complaints must be sent to the Director in letter form, signed, "
+           "with an explanation; anonymous letters will not be accepted.", DMV_VANITY,
+           PLATES_READ),
      # As the license guide read it.
      claim("The DMV is fully appointment based; book online or call 603-227-4000.", DMV_APPT, READ),
      claim("Vanity plates bearing such letters or letters and numbers as the director shall "
@@ -3704,10 +3780,14 @@ PLATES = guide(
          "plate can be a vanity plate if you pay the vanity fee as well.</p>"),
         ("What happens if my vanity plate is turned down?",
          "<p>The law has the DMV refund or credit the vanity fee you paid, and issue you a plate "
-         "of the same kind as the one you asked for.</p>"),
+         "of the same kind as the one you asked for. Under the DMV&rsquo;s rule (Saf-C 508.04), "
+         "you may also ask the Director in writing to issue the plate, explaining in detail why "
+         "it should be.</p>"),
         ("Can a vanity plate be taken back after it is issued?",
          "<p>Yes. The law has the DMV recall a vanity plate that does not meet the law and the "
-         "rules, whenever it was issued, and refund or credit the unused part of the fee.</p>"),
+         "rules, whenever it was issued, and refund or credit the unused part of the fee. A "
+         "complaint about a plate goes to the Director in a signed letter explaining why it "
+         "does not meet the rules; anonymous letters are not accepted.</p>"),
         ("Can my spouse keep my plate after I die?",
          "<p>For some plates, yes, until they remarry: a Veteran plate, a National Guard "
          "plate of a retired member, and a former prisoner of war, Purple Heart or Pearl Harbor "
@@ -7535,9 +7615,13 @@ GUIDES += [WAGES]
 # 2026, at the addresses the printouts show -- the State Department had moved
 # them since the guide was drafted, so its links are the printouts' now. No
 # fee is printed: a dollar amount rests on a statute, and none of New
-# Hampshire's sets these (FIGURE above).
+# Hampshire's sets these (FIGURE above). Renewing by mail is the State
+# Department's "Renew Your Passport by Mail", the person's printout of 26
+# October 2026 (passport7), at the address it shows.
 # ---------------------------------------------------------------------------
 PP_READ = "2026-10-25"
+PP_MAIL_READ = "2026-10-26"          # the person's printout (passport7)
+STATE_MAIL = "https://travel.state.gov/en/passports/renew-replace/mail.html"
 PP_STATE_READ = "2026-10-25"         # the person's printouts of travel.state.gov
 STATE_ADULT = "https://travel.state.gov/en/passports/apply/adults.html"
 STATE_ONLINE = "https://travel.state.gov/en/passports/renew-replace/online.html"
@@ -7575,8 +7659,11 @@ PASSPORT = guide(
      box("Pay two fees there: one to the Department of State, one to the facility.")],
     [step("Check whether you can renew instead",
           "<p>You can renew by mail only if your most recent passport was issued for 10 years, "
-          "when you were 16 or older; it was issued no more than 15 years ago; it is undamaged, "
-          "apart from normal wear; and you can send it in with your application.</p>"
+          "when you were 16 or older; it was issued no more than 15 years ago; it has never been "
+          "reported lost or stolen; it is undamaged, apart from normal wear; it was issued in your "
+          "current name, or you can send a document such as a marriage certificate, divorce "
+          "decree or court order showing your name change; and you can send it in with your "
+          "application.</p>"
           "<p>You can <b>renew online</b> instead if that passport was valid for 10 years and "
           "expires within a year or expired less than 5 years ago; you are 25 or older; you are "
           "not changing your name or sex; you are not traveling for at least 6 weeks, since an "
@@ -7585,7 +7672,29 @@ PASSPORT = guide(
           "which is canceled once you apply.</p>"
           "<p>A renewal is never done in person at a post office. If you cannot renew, apply in "
           "person as a first-time applicant would, as the steps below describe.</p>",
-          actions=[("Renew online (State Department)", STATE_ONLINE)]),
+          actions=[("Renew by mail (State Department)", STATE_MAIL),
+                   ("Renew online (State Department)", STATE_ONLINE)]),
+     step("Renew by mail",
+          "<ul><li><b>Fill out Form DS-82</b> with the State Department&rsquo;s Form Filler, "
+          "print it on single-sided paper, and <b>sign and date it</b> before you mail it.</li>"
+          "<li><b>Send your most recent passport.</b> It comes back to you in a separate "
+          "mailing.</li>"
+          "<li><b>If your name has changed</b>, send a certified copy of the legal document that "
+          "changed it, such as a marriage certificate, divorce decree or court order. It comes "
+          "back to you too.</li>"
+          "<li><b>Staple one photo</b> to the application, with four staples in the corners, and "
+          "do not bend it.</li>"
+          "<li><b>Pay by personal check or money order</b> payable to the U.S. Department of "
+          "State, with the applicant&rsquo;s full name and date of birth on the front. Do not "
+          "send cash. The fee depends on whether you renew a book, a card or both; the page "
+          "below lists it.</li></ul>"
+          "<p>Mail it through the U.S. Postal Service. From New Hampshire, routine service goes "
+          "to National Passport Processing Center, Post Office Box 90155, Philadelphia, PA "
+          "19190-0155. For expedited service, for an extra fee, write &ldquo;EXPEDITE&rdquo; on "
+          "the envelope and mail it to National Passport Processing Center, Post Office Box "
+          "90955, Philadelphia, PA 19190-0955. A post office should not charge you its facility "
+          "fee or review a renewal form.</p>",
+          actions=[("Renew by mail (State Department)", STATE_MAIL)]),
      step("Fill out Form DS-11, and do not sign it yet",
           "<p>A first passport, a passport for a child under 16, and one for anyone who cannot "
           "renew are applied for in person. Fill out Form DS-11 with the State "
@@ -7645,6 +7754,7 @@ PASSPORT = guide(
           actions=[("Get your passport fast (State Department)", STATE_FAST),
                    ("Make an appointment at a passport agency", STATE_APPOINT)])],
     [("Apply for Your Adult Passport (U.S. Department of State)", STATE_ADULT),
+     ("Renew Your Passport by Mail (U.S. Department of State)", STATE_MAIL),
      ("Renew Your Passport Online (U.S. Department of State)", STATE_ONLINE),
      ("Apply for a Child's Passport Under 16 (U.S. Department of State)", STATE_CHILD),
      ("Get Your Passport Fast (U.S. Department of State)", STATE_FAST),
@@ -7709,6 +7819,28 @@ PASSPORT = guide(
            "memo, the acceptance fee to the facility; acceptance facilities such as a post "
            "office, library, or local government office, check with the facility to see if you "
            "need to make an appointment.", STATE_ADULT, PP_STATE_READ),
+     # The State Department's Renew by Mail page, the person's printout of 26 October 2026.
+     claim("You can renew by mail if: you can submit your most recent passport with your "
+           "application; your passport has never been reported lost or stolen; was issued "
+           "within the last 15 years; was issued when you were age 16 or older and was valid for "
+           "10 years; was issued in your current name, or you can provide a document like a "
+           "marriage certificate, divorce decree, or court order to show you have changed your "
+           "name; is not damaged, other than normal wear and tear. Fill out your form and print "
+           "it: Form Filler, single-sided paper; sign and date your renewal form before mailing "
+           "it; Form DS-82; you must mail your application; postal employees should not charge "
+           "you a facility fee or review your form and documents. We will return your most "
+           "recent passport book or card in a separate mailing. Name change: a certified copy "
+           "of the legal name change document, such as a marriage certificate, divorce decree, "
+           "court-ordered name change document, returned in a separate mailing. You must provide "
+           "1 photo; staple your photo to the application, four staples vertically in the "
+           "corners; do not bend the photo. Your fee depends on what document you are renewing; "
+           "pay using a personal check or money order payable to the U.S. Department of State; "
+           "do not send cash; write the full name and date of birth of the applicant on the "
+           "front. Mail your application using the United States Postal Service; routine "
+           "service, any other state: National Passport Processing Center, Post Office Box "
+           "90155, Philadelphia, PA 19190-0155; expedited service: write EXPEDITE on the outside "
+           "of the envelope, National Passport Processing Center, Post Office Box 90955, "
+           "Philadelphia, PA 19190-0955.", STATE_MAIL, PP_MAIL_READ),
      claim("Renew online if: the passport is (or was) valid for 10 years, expiring within 1 "
            "year or expired less than 5 years ago; you are age 25 or older; not changing your "
            "name or sex; not traveling for at least 6 weeks, online renewals cannot be "
@@ -7792,9 +7924,10 @@ GUIDES += [PASSPORT]
 # may be better to have a separate explanation for each with a bit of
 # groundwork on how the programs are structured before jumping into the step
 # by step"). Step 1 says what each program is and who runs it, from the same
-# printouts and pages, and the steps after it say only what to do. Part C's
-# name, and what Part A and Part B each cover beyond their one-line names,
-# are on no page on hand, so the guide does not say them.
+# printouts and pages, and the steps after it say only what to do. What each
+# part covers, Part C's name and what Original Medicare is are Medicare.gov's
+# "Parts of Medicare", the person's printout of 26 October 2026 (medicare4),
+# in its own words; it states no costs, so the guide prints none.
 # ---------------------------------------------------------------------------
 MC_READ = "2026-10-25"
 SSA_PAGES_READ = "2026-10-25"        # the person's printouts of ssa.gov
@@ -7810,6 +7943,9 @@ MEDICARE_PLANS = ("https://www.medicare.gov/basics/get-started-with-medicare/get
 MEDICARE_MSP = "https://www.medicare.gov/basics/costs/help/medicare-savings-programs"
 MEDICARE_EXTRA = "https://www.medicare.gov/basics/costs/help/drug-costs"
 MEDICARE_CONTACT = "https://www.medicare.gov/talk-to-someone"
+MEDICARE_PARTS = ("https://www.medicare.gov/basics/get-started-with-medicare/medicare-basics/"
+                  "parts-of-medicare")
+MC_PARTS_READ = "2026-10-26"         # the person's printout (medicare4)
 USA_SSA = "https://www.usa.gov/agencies/social-security-administration"
 SSA_APPLY = "https://www.ssa.gov/apply"
 SSA_MEDICARE = "https://www.ssa.gov/medicare/sign-up"
@@ -7855,20 +7991,33 @@ MEDICARE = guide(
           "older, and for some younger people (see Common Questions below). It comes in "
           "parts:</p>"
           + table("The parts of Medicare",
-                  ["Part", "What it is", "How you get it"],
-                  [["Part A", "Hospital insurance.",
+                  ["Part", "What it helps cover", "How you get it"],
+                  [["Part A (Hospital Insurance)", "Inpatient care in hospitals, skilled nursing "
+                    "facility care, hospice care, and home health care.",
                     "Through Social Security. Many people are enrolled automatically (step 2)."],
-                   ["Part B", "The second part of Medicare, which New Hampshire&rsquo;s Department of "
-                    "Health and Human Services calls supplemental insurance. It has a premium, and "
-                    "signing up late can add a penalty for as long as you have it.",
+                   ["Part B (Medical Insurance)", "Services from doctors and other health care "
+                    "providers, outpatient care, home health care, durable medical equipment "
+                    "(like wheelchairs, walkers and hospital beds), and many preventive services "
+                    "(like screenings, shots or vaccines, and yearly wellness visits). It has a "
+                    "premium, and signing up late can add a penalty for as long as you have it.",
                     "Through Social Security, with Part A, or later on its own. You can put it off "
                     "while a job&rsquo;s group health plan covers you."],
-                   ["Medicare Advantage Plan", "A plan you can choose instead of Original Medicare. "
-                    "You need both Part A and Part B to join one.",
+                   ["Part C (Medicare Advantage)", "An alternative to Original Medicare: a private "
+                    "health plan that Medicare approved, which bundles Part A, Part B and usually "
+                    "Part D. You may need to use the plan&rsquo;s network of doctors, and most plans "
+                    "offer extra benefits Original Medicare does not cover, like vision, hearing "
+                    "and dental. You need both Part A and Part B to join one.",
                     "You choose one on Medicare.gov (step 5)."],
-                   ["Drug coverage (Part D)", "A drug plan, which you can add to Original Medicare.",
-                    "You choose one on Medicare.gov (step 5)."]])
-          + "<p>You sign up for Part A and Part B through Social Security, which can take your "
+                   ["Part D (Drug coverage)", "The cost of prescription drugs. Plans are run by "
+                    "private insurance companies that follow rules set by Medicare.",
+                    "You add a drug plan to Original Medicare, or get it in a Medicare Advantage "
+                    "Plan with drug coverage, on Medicare.gov (step 5)."]])
+          + "<p><b>Original Medicare</b> is Part A and Part B. With it you can use any doctor or "
+          "hospital that takes Medicare, join a separate drug plan, and buy supplemental "
+          "coverage, called <b>Medigap</b>, from a private company to help pay your share of the "
+          "costs. The other way is a Medicare Advantage Plan. You choose when you first sign up, "
+          "and can change at certain times of the year.</p>"
+          "<p>You sign up for Part A and Part B through Social Security, which can take your "
           "premiums out of your benefit payments. You choose a Medicare Advantage Plan or a drug "
           "plan on Medicare.gov.</p>"
           "<p><b>Help with the costs</b> comes from two programs: the state&rsquo;s <b>Medicare "
@@ -7949,6 +8098,7 @@ MEDICARE = guide(
      ("Medicare Savings Programs (Medicare)", MEDICARE_MSP),
      ("Help With Drug Costs (Medicare)", MEDICARE_EXTRA),
      ("Contact Medicare (Medicare)", MEDICARE_CONTACT),
+     ("Parts of Medicare (Medicare)", MEDICARE_PARTS),
      ("Social Security Administration (USA.gov)", USA_SSA),
      ("Apply for Social Security Benefits (Social Security Administration)", SSA_APPLY),
      ("Sign Up for Medicare (Social Security Administration)", SSA_MEDICARE),
@@ -7989,6 +8139,30 @@ MEDICARE = guide(
            "contact SSA to sign up for Part A and Part B; contact your state for Medicare "
            "Savings Programs; SHIPs give free counseling.", MEDICARE_CONTACT, MC_READ),
      claim("Social Security Administration, toll-free number 1-800-772-1213.", USA_SSA, MC_READ),
+     # Medicare.gov's Parts of Medicare, the person's printout of 26 October 2026.
+     claim("Part A (Hospital Insurance) helps cover inpatient care in hospitals, skilled nursing "
+           "facility care, hospice care, and home health care. Part B (Medical Insurance) helps "
+           "cover services from doctors and other health care providers, outpatient care, home "
+           "health care, durable medical equipment (like wheelchairs, walkers, hospital beds), "
+           "and many preventive services (like screenings, shots or vaccines, and yearly "
+           "Wellness visits). Part D (Drug coverage) helps cover the cost of prescription drugs; "
+           "you join a Medicare drug plan in addition to Original Medicare, or get it by joining "
+           "a Medicare Advantage Plan with drug coverage; plans are run by private insurance "
+           "companies that follow rules set by Medicare. Medicare Supplemental Insurance "
+           "(Medigap): extra insurance you can buy from a private company that helps pay your "
+           "share of costs in Original Medicare. When you first sign up and during certain times "
+           "of the year, you can choose; 2 main ways: Original Medicare includes Part A and Part "
+           "B, any doctor or hospital that takes Medicare, a separate drug plan, supplemental "
+           "coverage; Medicare Advantage (also known as Part C) offers an alternative to "
+           "Original Medicare, a private health plan that Medicare approved, bundled plans "
+           "including Part A, Part B, and usually Part D; you may need to use doctors in the "
+           "plan's network; most plans offer extra benefits Original Medicare doesn't cover, "
+           "like vision, hearing, dental. Medicare is federal health insurance for anyone age 65 "
+           "and older, and some people under 65 with certain disabilities or conditions; "
+           "Medicaid is a joint federal and state program that provides health coverage for "
+           "certain low-income people, families and children, pregnant women, the elderly, and "
+           "people with disabilities; if you qualify, you can have both Medicare and Medicaid.",
+           MEDICARE_PARTS, MC_PARTS_READ),
      claim("Entitled to old-age benefits if at least 62 years old, fully insured, and you "
            "apply.", CFR_OLD_AGE, MC_READ),
      claim("The department shall administer the Medicare savings program as described in 42 "
@@ -8046,6 +8220,12 @@ MEDICARE = guide(
         ("Does applying for Extra Help also apply for a Medicare Savings Program?",
          "<p>Yes, unless you say not to: applying for Extra Help through Social Security also "
          "starts an application for a Medicare Savings Program.</p>"),
+        ("What is the difference between Medicare and Medicaid?",
+         "<p>Medicare is federal health insurance for people 65 and older and some younger people "
+         "with certain disabilities or conditions. Medicaid is a joint federal and state program "
+         "that provides health coverage for certain people with low incomes, families and "
+         "children, pregnant women, older people and people with disabilities. If you qualify, "
+         "you can have both.</p>"),
         ("Can I manage Medicare online too?",
          "<p>Once you have your Medicare card, you can make a Medicare account on Medicare.gov "
          "with your Medicare Number.</p>"))

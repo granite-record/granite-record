@@ -7345,19 +7345,14 @@
    "es": "Sus derechos como inquilino",
    "state": "draft"
   },
-  "guide.medicare-and-social-security.a-drug-plan-which-you-can": {
-   "en": "A drug plan, which you can add to Original Medicare.",
-   "es": "Un plan de medicamentos, que puede agregar a Medicare Original.",
-   "state": "draft"
-  },
   "guide.medicare-and-social-security.a-my-social-security-account-lets": {
    "en": "A <b>my Social Security</b> account lets you change your address or direct deposit, print proof of your benefits or a tax form, request a replacement Social Security card, and see your Social Security Statement and earnings record, without a call or a visit. You create it through Login.gov or ID.me, with an email address, a government-issued photo ID and a phone.",
    "es": "Una cuenta <b>my Social Security</b> le permite cambiar su dirección o su depósito directo, imprimir una prueba de sus beneficios o un formulario de impuestos, pedir una tarjeta de Seguro Social de reemplazo y ver su Estado de Cuenta del Seguro Social y su historial de ganancias, sin llamar ni ir a una oficina. Se crea a través de Login.gov o ID.me, con una dirección de correo electrónico, una identificación con foto emitida por el gobierno y un teléfono.",
    "state": "draft"
   },
-  "guide.medicare-and-social-security.a-plan-you-can-choose-instead": {
-   "en": "A plan you can choose instead of Original Medicare. You need both Part A and Part B to join one.",
-   "es": "Un plan que puede elegir en lugar de Medicare Original. Necesita la Parte A y la Parte B para inscribirse en uno.",
+  "guide.medicare-and-social-security.an-alternative-to-original-medicare-a": {
+   "en": "An alternative to Original Medicare: a private health plan that Medicare approved, which bundles Part A, Part B and usually Part D. You may need to use the plan&rsquo;s network of doctors, and most plans offer extra benefits Original Medicare does not cover, like vision, hearing and dental. You need both Part A and Part B to join one.",
+   "es": "Una alternativa a Medicare Original: un plan de salud privado aprobado por Medicare, que reúne la Parte A, la Parte B y, por lo general, la Parte D. Es posible que tenga que usar la red de médicos del plan, y la mayoría de los planes ofrecen beneficios adicionales que Medicare Original no cubre, como visión, audición y atención dental. Necesita la Parte A y la Parte B para inscribirse en uno.",
    "state": "draft"
   },
   "guide.medicare-and-social-security.apply-for-benefits-social-security": {
@@ -7430,11 +7425,6 @@
    "es": "¿Solicitar la Ayuda Adicional también es solicitar un Programa de Ahorros de Medicare?",
    "state": "draft"
   },
-  "guide.medicare-and-social-security.drug-coverage-part-d": {
-   "en": "Drug coverage (Part D)",
-   "es": "Cobertura de medicamentos (Parte D)",
-   "state": "draft"
-  },
   "guide.medicare-and-social-security.extra-help-is-a-federal-program": {
    "en": "<b>Extra Help</b> is a federal program that pays part of your drug plan&rsquo;s costs. You get it automatically if you have full-benefit Medicaid, a Medicare Savings Program or SSI. Otherwise apply through Social Security.",
    "es": "La <b>Ayuda Adicional</b> es un programa federal que paga parte de los costos de su plan de medicamentos. La recibe automáticamente si tiene Medicaid con todos los beneficios (full-benefit Medicaid), un Programa de Ahorros de Medicare o SSI. Si no, solicítela a través del Seguro Social.",
@@ -7468,11 +7458,6 @@
   "guide.medicare-and-social-security.help-with-the-costs-comes-from": {
    "en": "<b>Help with the costs</b> comes from two programs: the state&rsquo;s <b>Medicare Savings Programs</b>, which help pay Medicare premiums and, for some people, other costs; and the federal <b>Extra Help</b> program, which pays part of the cost of drug coverage. Step 6 says who qualifies and how to apply.",
    "es": "<b>La ayuda con los costos</b> viene de dos programas: los <b>Programas de Ahorros de Medicare</b> del estado, que ayudan a pagar las primas de Medicare y, para algunas personas, otros costos; y el programa federal de <b>Ayuda Adicional</b>, que paga parte del costo de la cobertura de medicamentos. El paso 6 dice quién reúne los requisitos y cómo solicitarlos.",
-   "state": "draft"
-  },
-  "guide.medicare-and-social-security.hospital-insurance": {
-   "en": "Hospital insurance.",
-   "es": "Seguro de hospital.",
    "state": "draft"
   },
   "guide.medicare-and-social-security.how-do-i-sign-up-for": {
@@ -7515,6 +7500,11 @@
    "es": "<b>Si pierde su primera oportunidad,</b> quizá tenga que esperar al Período de Inscripción General, del 1 de enero al 31 de marzo, y pagar una multa mensual por inscripción tardía mientras tenga la Parte B. Algunas situaciones abren un Período de Inscripción Especial.",
    "state": "draft"
   },
+  "guide.medicare-and-social-security.inpatient-care-in-hospitals-skilled": {
+   "en": "Inpatient care in hospitals, skilled nursing facility care, hospice care, and home health care.",
+   "es": "La atención hospitalaria con internación, la atención en un centro de enfermería especializada, los cuidados de hospicio y la atención médica en el hogar.",
+   "state": "draft"
+  },
   "guide.medicare-and-social-security.joining-a-plan-medicare": {
    "en": "Joining a plan (Medicare)",
    "es": "Inscribirse en un plan (Medicare)",
@@ -7545,11 +7535,6 @@
    "es": "Maneje sus beneficios en línea",
    "state": "draft"
   },
-  "guide.medicare-and-social-security.medicare-advantage-plan": {
-   "en": "Medicare Advantage Plan",
-   "es": "Plan Medicare Advantage",
-   "state": "draft"
-  },
   "guide.medicare-and-social-security.medicare-answers-at-1-800-medicare": {
    "en": "Medicare answers at 1-800-MEDICARE (1-800-633-4227), 24 hours a day (TTY 1-877-486-2048), and Social Security at 1-800-772-1213.",
    "es": "Medicare atiende en el 1-800-MEDICARE (1-800-633-4227), las 24 horas del día (TTY 1-877-486-2048), y el Seguro Social en el 1-800-772-1213.",
@@ -7558,6 +7543,11 @@
   "guide.medicare-and-social-security.medicare-beneficiaries-savings-program": {
    "en": "Medicare Beneficiaries Savings Program (Department of Health and Human Services)",
    "es": "Programa de Ahorros para Beneficiarios de Medicare (Departamento de Salud y Servicios Humanos)",
+   "state": "draft"
+  },
+  "guide.medicare-and-social-security.medicare-is-federal-health-insurance-for": {
+   "en": "Medicare is federal health insurance for people 65 and older and some younger people with certain disabilities or conditions. Medicaid is a joint federal and state program that provides health coverage for certain people with low incomes, families and children, pregnant women, older people and people with disabilities. If you qualify, you can have both.",
+   "es": "Medicare es un seguro médico federal para las personas de 65 años o más y para algunas personas más jóvenes con ciertas discapacidades o afecciones. Medicaid es un programa conjunto federal y estatal que ofrece cobertura médica a ciertas personas de bajos ingresos, a familias y niños, a mujeres embarazadas, a personas mayores y a personas con discapacidades. Si reúne los requisitos, puede tener ambos.",
    "state": "draft"
   },
   "guide.medicare-and-social-security.medicare-is-the-countrys-health": {
@@ -7615,14 +7605,14 @@
    "es": "Cuando tenga su tarjeta de Medicare, puede crear una cuenta de Medicare en Medicare.gov con su número de Medicare.",
    "state": "draft"
   },
+  "guide.medicare-and-social-security.original-medicare-is-part-a-and": {
+   "en": "<b>Original Medicare</b> is Part A and Part B. With it you can use any doctor or hospital that takes Medicare, join a separate drug plan, and buy supplemental coverage, called <b>Medigap</b>, from a private company to help pay your share of the costs. The other way is a Medicare Advantage Plan. You choose when you first sign up, and can change at certain times of the year.",
+   "es": "<b>Medicare Original</b> es la Parte A y la Parte B. Con él puede acudir a cualquier médico u hospital que acepte Medicare, inscribirse en un plan de medicamentos aparte y comprar a una compañía privada una cobertura suplementaria, llamada <b>Medigap</b>, que ayuda a pagar su parte de los costos. La otra forma es un Plan Medicare Advantage. Usted elige al inscribirse por primera vez, y puede cambiar en ciertas épocas del año.",
+   "state": "draft"
+  },
   "guide.medicare-and-social-security.part": {
    "en": "Part",
    "es": "Parte",
-   "state": "draft"
-  },
-  "guide.medicare-and-social-security.part-a": {
-   "en": "Part A",
-   "es": "Parte A",
    "state": "draft"
   },
   "guide.medicare-and-social-security.part-a-and-part-b-premiums": {
@@ -7630,9 +7620,29 @@
    "es": "Las primas de la Parte A y la Parte B, las multas por inscribirse tarde, los deducibles y el coseguro. Los proveedores de Medicare no pueden cobrarle por la atención cubierta.",
    "state": "draft"
   },
-  "guide.medicare-and-social-security.part-b": {
-   "en": "Part B",
-   "es": "Parte B",
+  "guide.medicare-and-social-security.part-a-hospital-insurance": {
+   "en": "Part A (Hospital Insurance)",
+   "es": "Parte A (seguro de hospital)",
+   "state": "draft"
+  },
+  "guide.medicare-and-social-security.part-b-medical-insurance": {
+   "en": "Part B (Medical Insurance)",
+   "es": "Parte B (seguro médico)",
+   "state": "draft"
+  },
+  "guide.medicare-and-social-security.part-c-medicare-advantage": {
+   "en": "Part C (Medicare Advantage)",
+   "es": "Parte C (Medicare Advantage)",
+   "state": "draft"
+  },
+  "guide.medicare-and-social-security.part-d-drug-coverage": {
+   "en": "Part D (Drug coverage)",
+   "es": "Parte D (cobertura de medicamentos)",
+   "state": "draft"
+  },
+  "guide.medicare-and-social-security.parts-of-medicare-medicare": {
+   "en": "Parts of Medicare (Medicare)",
+   "es": "Las partes de Medicare (Medicare)",
    "state": "draft"
   },
   "guide.medicare-and-social-security.program": {
@@ -7663,6 +7673,11 @@
   "guide.medicare-and-social-security.retirement-benefits-for-people-who": {
    "en": "<b>Retirement benefits</b>, for people who worked and paid Social Security taxes, starting as early as age 62.",
    "es": "<b>Beneficios de jubilación</b>, para quienes trabajaron y pagaron impuestos del Seguro Social, desde los 62 años como mínimo.",
+   "state": "draft"
+  },
+  "guide.medicare-and-social-security.services-from-doctors-and-other-health": {
+   "en": "Services from doctors and other health care providers, outpatient care, home health care, durable medical equipment (like wheelchairs, walkers and hospital beds), and many preventive services (like screenings, shots or vaccines, and yearly wellness visits). It has a premium, and signing up late can add a penalty for as long as you have it.",
+   "es": "Los servicios de médicos y otros proveedores de atención médica, la atención ambulatoria, la atención médica en el hogar, el equipo médico duradero (como sillas de ruedas, andadores y camas de hospital) y muchos servicios preventivos (como exámenes de detección, inyecciones o vacunas, y visitas anuales de bienestar). Tiene una prima, y si se inscribe tarde puede pagar una multa mientras la tenga.",
    "state": "draft"
   },
   "guide.medicare-and-social-security.sign-up-for-medicare-medicare": {
@@ -7715,6 +7730,11 @@
    "es": "El <b>Ingreso Suplementario de Seguridad (SSI)</b>, un programa aparte para personas ciegas, con una discapacidad o de 65 años o más, que tienen pocos o ningún ingreso o bien.",
    "state": "draft"
   },
+  "guide.medicare-and-social-security.the-cost-of-prescription-drugs-plans": {
+   "en": "The cost of prescription drugs. Plans are run by private insurance companies that follow rules set by Medicare.",
+   "es": "El costo de los medicamentos recetados. Los planes los administran compañías de seguros privadas que siguen las reglas de Medicare.",
+   "state": "draft"
+  },
   "guide.medicare-and-social-security.the-part-a-premium-for-people": {
    "en": "The Part A premium, for people with disabilities who work and have lost Medicare because of their earnings.",
    "es": "La prima de la Parte A, para personas con discapacidad que trabajan y que perdieron Medicare por sus ingresos del trabajo.",
@@ -7728,11 +7748,6 @@
   "guide.medicare-and-social-security.the-parts-of-medicare": {
    "en": "The parts of Medicare",
    "es": "Las partes de Medicare",
-   "state": "draft"
-  },
-  "guide.medicare-and-social-security.the-second-part-of-medicare-which": {
-   "en": "The second part of Medicare, which New Hampshire&rsquo;s Department of Health and Human Services calls supplemental insurance. It has a premium, and signing up late can add a penalty for as long as you have it.",
-   "es": "La segunda parte de Medicare, que el Departamento de Salud y Servicios Humanos de New Hampshire llama seguro suplementario. Tiene una prima, e inscribirse tarde puede sumar una multa mientras la tenga.",
    "state": "draft"
   },
   "guide.medicare-and-social-security.through-social-security-many-people-are": {
@@ -7760,14 +7775,19 @@
    "es": "Lo que paga cada Programa de Ahorros de Medicare",
    "state": "draft"
   },
+  "guide.medicare-and-social-security.what-is-the-difference-between-medicare": {
+   "en": "What is the difference between Medicare and Medicaid?",
+   "es": "¿Cuál es la diferencia entre Medicare y Medicaid?",
+   "state": "draft"
+  },
+  "guide.medicare-and-social-security.what-it-helps-cover": {
+   "en": "What it helps cover",
+   "es": "Qué ayuda a cubrir",
+   "state": "draft"
+  },
   "guide.medicare-and-social-security.what-it-helps-pay": {
    "en": "What it helps pay",
    "es": "Lo que ayuda a pagar",
-   "state": "draft"
-  },
-  "guide.medicare-and-social-security.what-it-is": {
-   "en": "What it is",
-   "es": "Qué es",
    "state": "draft"
   },
   "guide.medicare-and-social-security.when-am-i-entitled-to-old": {
@@ -7798,6 +7818,11 @@
   "guide.medicare-and-social-security.yes-unless-you-say-not-to": {
    "en": "Yes, unless you say not to: applying for Extra Help through Social Security also starts an application for a Medicare Savings Program.",
    "es": "Sí, a menos que usted diga que no: al solicitar la Ayuda Adicional a través del Seguro Social también se inicia una solicitud para un Programa de Ahorros de Medicare.",
+   "state": "draft"
+  },
+  "guide.medicare-and-social-security.you-add-a-drug-plan-to": {
+   "en": "You add a drug plan to Original Medicare, or get it in a Medicare Advantage Plan with drug coverage, on Medicare.gov (step 5).",
+   "es": "Agrega un plan de medicamentos a Medicare Original, o lo obtiene en un Plan Medicare Advantage con cobertura de medicamentos, en Medicare.gov (paso 5).",
    "state": "draft"
   },
   "guide.medicare-and-social-security.you-are-enrolled-automatically-in-part": {
@@ -8470,6 +8495,11 @@
    "es": "Llene el formulario DS-11, y no lo firme todavía",
    "state": "draft"
   },
+  "guide.passport.fill-out-form-ds-82-with": {
+   "en": "<b>Fill out Form DS-82</b> with the State Department&rsquo;s Form Filler, print it on single-sided paper, and <b>sign and date it</b> before you mail it.",
+   "es": "<b>Llene el Formulario DS-82</b> con el Form Filler del Departamento de Estado, imprímalo en papel por un solo lado, y <b>fírmelo y féchelo</b> antes de enviarlo por correo.",
+   "state": "draft"
+  },
   "guide.passport.gather-your-documents-and-a-photo": {
    "en": "Gather your documents and a photo",
    "es": "Reúna sus documentos y una foto",
@@ -8525,9 +8555,19 @@
    "es": "Si viaja pronto",
    "state": "draft"
   },
+  "guide.passport.if-your-name-has-changed-send": {
+   "en": "<b>If your name has changed</b>, send a certified copy of the legal document that changed it, such as a marriage certificate, divorce decree or court order. It comes back to you too.",
+   "es": "<b>Si su nombre cambió</b>, envíe una copia certificada del documento legal que lo cambió, como un acta de matrimonio, una sentencia de divorcio o una orden judicial. También se le devuelve.",
+   "state": "draft"
+  },
   "guide.passport.lead": {
    "en": "Getting a first U.S. passport or renewing one from New Hampshire, step by step: whether you can renew by mail, what to bring to a post office, a child's passport, and what to do if you travel soon.",
    "es": "Cómo obtener un primer pasaporte de EE. UU. o renovarlo desde New Hampshire, paso a paso: si puede renovarlo por correo, qué llevar a una oficina postal, el pasaporte de un niño y qué hacer si viaja pronto.",
+   "state": "draft"
+  },
+  "guide.passport.mail-it-through-the-u-s": {
+   "en": "Mail it through the U.S. Postal Service. From New Hampshire, routine service goes to National Passport Processing Center, Post Office Box 90155, Philadelphia, PA 19190-0155. For expedited service, for an extra fee, write &ldquo;EXPEDITE&rdquo; on the envelope and mail it to National Passport Processing Center, Post Office Box 90955, Philadelphia, PA 19190-0955. A post office should not charge you its facility fee or review a renewal form.",
+   "es": "Envíelo por el Servicio Postal de los EE. UU. Desde New Hampshire, el servicio de rutina va a National Passport Processing Center, Post Office Box 90155, Philadelphia, PA 19190-0155. Para el servicio acelerado, con un costo adicional, escriba &ldquo;EXPEDITE&rdquo; en el sobre y envíelo a National Passport Processing Center, Post Office Box 90955, Philadelphia, PA 19190-0955. Una oficina postal no debe cobrarle su cuota de servicio ni revisar un formulario de renovación.",
    "state": "draft"
   },
   "guide.passport.make-an-appointment-and-apply": {
@@ -8575,6 +8615,11 @@
    "es": "Pasaportes (Servicio Postal de EE. UU.)",
    "state": "draft"
   },
+  "guide.passport.pay-by-personal-check-or-money": {
+   "en": "<b>Pay by personal check or money order</b> payable to the U.S. Department of State, with the applicant&rsquo;s full name and date of birth on the front. Do not send cash. The fee depends on whether you renew a book, a card or both; the page below lists it.",
+   "es": "<b>Pague con cheque personal o giro postal</b> a nombre del U.S. Department of State, con el nombre completo y la fecha de nacimiento del solicitante en el frente. No envíe dinero en efectivo. La cuota depende de si renueva una libreta, una tarjeta o ambas; la página de abajo la indica.",
+   "state": "draft"
+  },
   "guide.passport.pay-two-fees-there-one-to": {
    "en": "Pay two fees there: one to the Department of State, one to the facility.",
    "es": "Allí pague dos cuotas: una al Departamento de Estado y otra al centro de aceptación.",
@@ -8590,6 +8635,16 @@
    "es": "<b>Prueba de ciudadanía de EE. UU.</b> Si nació en Estados Unidos, por lo general es un acta de nacimiento certificada que muestre su nombre completo, la fecha y el lugar de su nacimiento y los nombres completos de sus padres, con la firma y el sello del registrador. Si nació en New Hampshire, el secretario de su municipio o ciudad puede expedirla (la guía enlazada al final de esta página dice cómo). Tiene que ser en papel: no se acepta un acta de nacimiento digital o en el celular. También la prueban un pasaporte de EE. UU. de validez completa, un Informe Consular de Nacimiento en el Extranjero o un certificado de naturalización o de ciudadanía.",
    "state": "draft"
   },
+  "guide.passport.renew-by-mail": {
+   "en": "Renew by mail",
+   "es": "Renovar por correo",
+   "state": "draft"
+  },
+  "guide.passport.renew-by-mail-state-department": {
+   "en": "Renew by mail (State Department)",
+   "es": "Renovar por correo (Departamento de Estado)",
+   "state": "draft"
+  },
   "guide.passport.renew-online-state-department": {
    "en": "Renew online (State Department)",
    "es": "Renovar en línea (Departamento de Estado)",
@@ -8600,6 +8655,11 @@
    "es": "Renuévelo solo en el sitio del propio Departamento de Estado: otros que ofrecen hacerlo por usted cobran de más y ponen en riesgo su información.",
    "state": "draft"
   },
+  "guide.passport.renew-your-passport-by-mail-u": {
+   "en": "Renew Your Passport by Mail (U.S. Department of State)",
+   "es": "Renueve su pasaporte por correo (Departamento de Estado de los EE. UU.)",
+   "state": "draft"
+  },
   "guide.passport.renew-your-passport-online-u-s": {
    "en": "Renew Your Passport Online (U.S. Department of State)",
    "es": "Renovar su pasaporte en línea (Departamento de Estado de EE. UU.)",
@@ -8608,6 +8668,16 @@
   "guide.passport.routine-processing-takes-4-to-6": {
    "en": "Routine processing takes 4 to 6 weeks, and expedited service, for an extra fee, 2 to 3 weeks. Neither counts the mail, which can add up to 2 weeks each way; you can pay for faster shipping both ways. The State Department&rsquo;s page has the current times.",
    "es": "El trámite ordinario tarda de 4 a 6 semanas, y el servicio acelerado, por una cuota adicional, de 2 a 3 semanas. Ninguno cuenta el correo, que puede sumar hasta 2 semanas en cada sentido; puede pagar por un envío más rápido de ida y de vuelta. La página del Departamento de Estado tiene los plazos vigentes.",
+   "state": "draft"
+  },
+  "guide.passport.send-your-most-recent-passport-it": {
+   "en": "<b>Send your most recent passport.</b> It comes back to you in a separate mailing.",
+   "es": "<b>Envíe su pasaporte más reciente.</b> Se le devuelve en un envío aparte.",
+   "state": "draft"
+  },
+  "guide.passport.staple-one-photo-to-the-application": {
+   "en": "<b>Staple one photo</b> to the application, with four staples in the corners, and do not bend it.",
+   "es": "<b>Engrape una foto</b> a la solicitud, con cuatro grapas en las esquinas, y no la doble.",
    "state": "draft"
   },
   "guide.passport.the-child-goes-to-the-appointment": {
@@ -8651,8 +8721,8 @@
    "state": "draft"
   },
   "guide.passport.you-can-renew-by-mail-only": {
-   "en": "You can renew by mail only if your most recent passport was issued for 10 years, when you were 16 or older; it was issued no more than 15 years ago; it is undamaged, apart from normal wear; and you can send it in with your application.",
-   "es": "Puede renovarlo por correo solo si su pasaporte más reciente se expidió por 10 años, cuando usted tenía 16 años o más; se expidió hace no más de 15 años; no está dañado, aparte del desgaste normal; y puede enviarlo junto con su solicitud.",
+   "en": "You can renew by mail only if your most recent passport was issued for 10 years, when you were 16 or older; it was issued no more than 15 years ago; it has never been reported lost or stolen; it is undamaged, apart from normal wear; it was issued in your current name, or you can send a document such as a marriage certificate, divorce decree or court order showing your name change; and you can send it in with your application.",
+   "es": "Puede renovar por correo solo si su pasaporte más reciente se emitió por 10 años, cuando usted tenía 16 años o más; se emitió hace no más de 15 años; nunca se reportó perdido ni robado; no está dañado, aparte del desgaste normal; se emitió con su nombre actual, o puede enviar un documento como un acta de matrimonio, una sentencia de divorcio o una orden judicial que muestre su cambio de nombre; y puede enviarlo junto con su solicitud.",
    "state": "draft"
   },
   "guide.passport.you-can-renew-online-instead-if": {
@@ -14479,9 +14549,29 @@
    "es": "¿Por qué algunas votaciones no muestran nombres?",
    "state": "draft"
   },
+  "guide.vanity-and-special-plates.3-two-of-them-letters-no": {
+   "en": "3, two of them letters, no ampersand",
+   "es": "3, dos de ellos letras, sin el signo &amp;",
+   "state": "draft"
+  },
   "guide.vanity-and-special-plates.30-and-30-a-year-when": {
    "en": "$30, and $30 a year when you renew",
    "es": "$30, y $30 al año cuando renueva",
+   "state": "draft"
+  },
+  "guide.vanity-and-special-plates.4-no-ampersand": {
+   "en": "4, no ampersand",
+   "es": "4, sin el signo &amp;",
+   "state": "draft"
+  },
+  "guide.vanity-and-special-plates.5-no-ampersand": {
+   "en": "5, no ampersand",
+   "es": "5, sin el signo &amp;",
+   "state": "draft"
+  },
+  "guide.vanity-and-special-plates.6-or-4-with-the-old": {
+   "en": "6, or 4 with the Old Man replica",
+   "es": "6, o 4 con la réplica del Old Man",
    "state": "draft"
   },
   "guide.vanity-and-special-plates.60-then-30-a-year-when": {
@@ -14525,18 +14615,18 @@
    "state": "draft"
   },
   "guide.vanity-and-special-plates.a-vanity-plate-carries-the-letters": {
-   "en": "A vanity plate carries the letters, or letters and numbers, that the DMV&rsquo;s rules allow, and no two plates may be the same. The DMV&rsquo;s Vanity Plates page, linked from its Vehicle Registrations page, gives those rules and its Vanity Plate Search.",
-   "es": "Una placa personalizada lleva las letras, o letras y números, que permiten las reglas del DMV, y no puede haber dos placas iguales. La página de placas personalizadas del DMV (Vanity Plates), enlazada desde su página de registro de vehículos, da esas reglas y su búsqueda de placas (Vanity Plate Search).",
+   "en": "A vanity plate carries the letters, or letters and numbers, that the DMV&rsquo;s rules allow, and no two plates may be the same. Under the DMV&rsquo;s rule (Saf-C 513.62), a vanity plate may not:",
+   "es": "Una placa personalizada lleva las letras, o letras y números, que permiten las reglas del DMV, y no puede haber dos placas iguales. Según la regla del DMV (Saf-C 513.62), una placa personalizada no puede:",
    "state": "draft"
   },
   "guide.vanity-and-special-plates.a-vanity-plate-costs-a-special": {
-   "en": "A vanity plate costs a special vanity plate service fee of $60, on top of your regular registration fee and the number plate fee of $4 a plate, and $60 a year for each set when you renew.",
-   "es": "Una placa personalizada cuesta una cuota especial de servicio de $60, además de su cuota de registro habitual y la cuota de placa de $4 por placa, y $60 al año por cada juego cuando renueva.",
+   "en": "A vanity plate costs a special vanity plate service fee of $60, on top of your regular registration fee and the number plate fee of $4 a plate, and $60 a year for each set when you renew. The DMV prorates the vanity fee by the month. Changing your plate before your next renewal adds a one-time plate fee and a certified registration fee, which the DMV&rsquo;s Vanity Plates page lists.",
+   "es": "Una placa personalizada cuesta una cuota especial de servicio de placa personalizada de $60, además de su cuota normal de registro y la cuota de placa de $4 por placa, y $60 al año por cada juego cuando renueva. El DMV prorratea la cuota de la placa personalizada por mes. Cambiar su placa antes de su próxima renovación agrega una cuota única de placa y una cuota de registro certificado, que indica la página de Placas Personalizadas del DMV.",
    "state": "draft"
   },
   "guide.vanity-and-special-plates.a-vanity-plate-is-issued-only": {
-   "en": "A vanity plate is issued only on application. You can change your plate type at any point during the year: the DMV asks for a completed Application for Replacement Plates and Decals, the plate fees, a new registration fee, and any other fees for the plate you want.",
-   "es": "Una placa personalizada se emite solo a solicitud. Puede cambiar el tipo de su placa en cualquier momento del año: el DMV pide una solicitud completa de placas y calcomanías de reemplazo (Application for Replacement Plates and Decals), las cuotas de placa, una nueva cuota de registro y cualquier otra cuota de la placa que quiere.",
+   "en": "A vanity plate is issued only on application. When you register or renew, bring the DMV&rsquo;s <b>Application for Vanity Plates</b> to your town or city clerk&rsquo;s office. Once the clerk has done the town&rsquo;s part of your registration, you can also apply at any DMV office that processes registrations, or mail the application, the town portion of your registration and a check for the fees to: NH Dept. of Safety, DMV &ndash; Registration Bureau, 23 Hazen Drive, Concord NH 03305. An approved plate is mailed to you.",
+   "es": "Una placa personalizada se emite solo a solicitud. Cuando registre o renueve, lleve la <b>Application for Vanity Plates</b> (solicitud de placas personalizadas) del DMV a la oficina del secretario de su municipio o ciudad. Una vez que el secretario haya hecho la parte municipal de su registro, también puede solicitarla en cualquier oficina del DMV que tramite registros, o enviar por correo la solicitud, la parte municipal de su registro y un cheque por las cuotas a: NH Dept. of Safety, DMV &ndash; Registration Bureau, 23 Hazen Drive, Concord NH 03305. Una placa aprobada se le envía por correo.",
    "state": "draft"
   },
   "guide.vanity-and-special-plates.a-vanity-plate-with-letters-and": {
@@ -14559,6 +14649,11 @@
    "es": "Un veterano a quien el Departamento de Asuntos de Veteranos de EE. UU. califica con una discapacidad total y permanente relacionada con el servicio, o que recibió un vehículo del gobierno de EE. UU. por ser amputado o parapléjico; un veterano con ceguera total por una discapacidad relacionada con el servicio; un ex prisionero de guerra; quien recibió el Corazón Púrpura (Purple Heart); un sobreviviente de Pearl Harbor, con prueba",
    "state": "draft"
   },
+  "guide.vanity-and-special-plates.antique": {
+   "en": "Antique",
+   "es": "Antiguo",
+   "state": "draft"
+  },
   "guide.vanity-and-special-plates.anyone-who-applies": {
    "en": "Anyone who applies",
    "es": "Cualquier persona que lo solicite",
@@ -14572,6 +14667,16 @@
   "guide.vanity-and-special-plates.apply-when-you-register-or-renew": {
    "en": "Apply when you register or renew, or change your plate type during the year.",
    "es": "Haga la solicitud cuando registre o renueve, o cambie el tipo de su placa durante el año.",
+   "state": "draft"
+  },
+  "guide.vanity-and-special-plates.apportioned-conservation-commercial": {
+   "en": "Apportioned, Conservation, Commercial, Trailer, Veteran, State Park, Active Duty Military",
+   "es": "Prorrateado, Conservación, Comercial, Remolque, Veterano, Parque Estatal, Militar en servicio activo",
+   "state": "draft"
+  },
+  "guide.vanity-and-special-plates.be-only-numerals-or-only-numerals": {
+   "en": "be only numerals, or only numerals with those symbols;",
+   "es": "tener solo números, o solo números con esos símbolos;",
    "state": "draft"
   },
   "guide.vanity-and-special-plates.can-a-vanity-plate-be-taken": {
@@ -14592,6 +14697,11 @@
   "guide.vanity-and-special-plates.certificates-of-title-and-registration": {
    "en": "Certificates of Title and Registration of Vehicles, RSA 261",
    "es": "Certificados de título y registro de vehículos, RSA 261",
+   "state": "draft"
+  },
+  "guide.vanity-and-special-plates.characters": {
+   "en": "Characters",
+   "es": "Caracteres",
    "state": "draft"
   },
   "guide.vanity-and-special-plates.choose-your-plate": {
@@ -14634,6 +14744,26 @@
    "es": "Gold Star Mother, Father o Family (madre, padre o familia)",
    "state": "draft"
   },
+  "guide.vanity-and-special-plates.have-any-character-other-than-letters": {
+   "en": "have any character other than letters, numerals, ampersands, plus signs and minus signs;",
+   "es": "tener cualquier carácter que no sea una letra, un número, el signo &amp;, el signo más o el signo menos;",
+   "state": "draft"
+  },
+  "guide.vanity-and-special-plates.have-characters-that-are-hard-to": {
+   "en": "have characters that are hard to tell apart;",
+   "es": "tener caracteres difíciles de distinguir;",
+   "state": "draft"
+  },
+  "guide.vanity-and-special-plates.have-more-than-2-ampersands-plus": {
+   "en": "have more than 2 ampersands, plus signs or minus signs, or two of them side by side;",
+   "es": "tener más de 2 signos &amp;, signos más o signos menos, o dos de ellos juntos;",
+   "state": "draft"
+  },
+  "guide.vanity-and-special-plates.have-more-than-7-characters": {
+   "en": "have more than 7 characters;",
+   "es": "tener más de 7 caracteres;",
+   "state": "draft"
+  },
   "guide.vanity-and-special-plates.how-to-get-a-motorcycle-license": {
    "en": "How to get a motorcycle license or ride a moped",
    "es": "Cómo obtener una licencia de motocicleta o conducir un ciclomotor",
@@ -14650,8 +14780,13 @@
    "state": "draft"
   },
   "guide.vanity-and-special-plates.if-the-dmv-turns-your-choice": {
-   "en": "If the DMV turns your choice down, the law has it refund or credit the vanity fee, and you get a plate of the same kind.",
-   "es": "Si el DMV rechaza su elección, la ley le pide que reembolse o acredite la cuota de la placa personalizada, y usted recibe una placa del mismo tipo.",
+   "en": "If the DMV turns your choice down, you get a letter in the mail with a set of number plates and a new registration. The vanity fee you paid is credited to your customer account, and you can choose a new plate or ask for a refund.",
+   "es": "Si el DMV rechaza su elección, recibe una carta por correo con un juego de placas y un nuevo registro. La cuota de la placa personalizada que pagó se acredita en su cuenta de cliente, y puede elegir otra placa o pedir un reembolso.",
+   "state": "draft"
+  },
+  "guide.vanity-and-special-plates.include-a-zero": {
+   "en": "include a zero;",
+   "es": "incluir un cero;",
    "state": "draft"
   },
   "guide.vanity-and-special-plates.lead": {
@@ -14664,9 +14799,19 @@
    "es": "Letras que usted elige",
    "state": "draft"
   },
+  "guide.vanity-and-special-plates.motorcycle": {
+   "en": "Motorcycle",
+   "es": "Motocicleta",
+   "state": "draft"
+  },
   "guide.vanity-and-special-plates.national-guard-and-active-duty": {
    "en": "National Guard and active duty",
    "es": "Guardia Nacional y servicio activo",
+   "state": "draft"
+  },
+  "guide.vanity-and-special-plates.national-guard-decal-veteran-decal": {
+   "en": "National Guard, Decal, Veteran Decal",
+   "es": "Guardia Nacional, Calcomanía, Calcomanía de Veterano",
    "state": "draft"
   },
   "guide.vanity-and-special-plates.new-hampshire-first-for-veterans": {
@@ -14679,6 +14824,11 @@
    "es": "En algunas. Una placa Gold Star puede llevar una combinación que usted pida, si cumple las reglas de cualquier placa y no está ya en uso. Una placa de conservación o First for Veterans puede ser personalizada si además paga la cuota de placa personalizada.",
    "state": "draft"
   },
+  "guide.vanity-and-special-plates.passenger": {
+   "en": "Passenger",
+   "es": "Pasajeros",
+   "state": "draft"
+  },
   "guide.vanity-and-special-plates.pay-the-fees": {
    "en": "Pay the fees",
    "es": "Pague las cuotas",
@@ -14687,6 +14837,16 @@
   "guide.vanity-and-special-plates.plate": {
    "en": "Plate",
    "es": "Placa",
+   "state": "draft"
+  },
+  "guide.vanity-and-special-plates.purple-heart-motorcycle-walking": {
+   "en": "Purple Heart Motorcycle, Walking Disability Motorcycle",
+   "es": "Motocicleta Corazón Púrpura, Motocicleta de Discapacidad para Caminar",
+   "state": "draft"
+  },
+  "guide.vanity-and-special-plates.refer-to-in-any-language-and": {
+   "en": "refer to, in any language and read any way, intimate body parts, profane or vulgar acts, profanity or obscenity, violence, illegal activities, illegal drugs, gangs, or slurs, discrimination or bigotry.",
+   "es": "referirse, en cualquier idioma y leída de cualquier forma, a partes íntimas del cuerpo, actos profanos o vulgares, groserías u obscenidades, violencia, actividades ilegales, drogas ilegales, pandillas, o insultos, discriminación o intolerancia.",
    "state": "draft"
   },
   "guide.vanity-and-special-plates.rsa-261-75-c": {
@@ -14739,6 +14899,11 @@
    "es": "Símbolo de los parques estatales, en cualquier placa",
    "state": "draft"
   },
+  "guide.vanity-and-special-plates.the-dmvs-vanity-plate-search-shows": {
+   "en": "The DMV&rsquo;s Vanity Plate Search shows whether a choice looks available, but it cannot save a plate for you, so it may be gone by the time you apply.",
+   "es": "La búsqueda de placas personalizadas (Vanity Plate Search) del DMV muestra si una opción parece disponible, pero no puede reservarle una placa, así que puede ya no estar disponible cuando la solicite.",
+   "state": "draft"
+  },
   "guide.vanity-and-special-plates.the-first-set-is-free": {
    "en": "The first set is free",
    "es": "El primer juego es gratis",
@@ -14750,8 +14915,13 @@
    "state": "draft"
   },
   "guide.vanity-and-special-plates.the-law-has-the-dmv-refund": {
-   "en": "The law has the DMV refund or credit the vanity fee you paid, and issue you a plate of the same kind as the one you asked for.",
-   "es": "La ley pide al DMV que reembolse o acredite la cuota de placa personalizada que pagó, y que le emita una placa del mismo tipo que la que pidió.",
+   "en": "The law has the DMV refund or credit the vanity fee you paid, and issue you a plate of the same kind as the one you asked for. Under the DMV&rsquo;s rule (Saf-C 508.04), you may also ask the Director in writing to issue the plate, explaining in detail why it should be.",
+   "es": "La ley dispone que el DMV reembolse o acredite la cuota de placa personalizada que pagó, y le emita una placa del mismo tipo que la que pidió. Según la regla del DMV (Saf-C 508.04), también puede pedir por escrito al Director que emita la placa, explicando en detalle por qué debería emitirse.",
+   "state": "draft"
+  },
+  "guide.vanity-and-special-plates.the-most-characters-each-kind-of": {
+   "en": "The most characters each kind of vanity plate can have",
+   "es": "El máximo de caracteres que puede tener cada tipo de placa personalizada",
    "state": "draft"
   },
   "guide.vanity-and-special-plates.the-mother-or-stepmother-the-father": {
@@ -14779,6 +14949,21 @@
    "es": "Cómo obtener una placa personalizada o especial",
    "state": "draft"
   },
+  "guide.vanity-and-special-plates.to-change-to-a-vanity-plate": {
+   "en": "To change to a vanity plate at another time, bring the application and your current registration to your town or city clerk&rsquo;s office or a DMV location. To change to another plate type during the year, the DMV asks for a completed Application for Replacement Plates and Decals, the plate fees, a new registration fee, and any other fees for the plate you want.",
+   "es": "Para cambiar a una placa personalizada en otro momento, lleve la solicitud y su registro actual a la oficina del secretario de su municipio o ciudad o a una oficina del DMV. Para cambiar a otro tipo de placa durante el año, el DMV pide la Application for Replacement Plates and Decals (solicitud de placas y calcomanías de reemplazo) completa, las cuotas de placa, una nueva cuota de registro y cualquier otra cuota de la placa que desea.",
+   "state": "draft"
+  },
+  "guide.vanity-and-special-plates.vanity-plates-division-of-motor-vehicles": {
+   "en": "Vanity Plates (Division of Motor Vehicles)",
+   "es": "Placas personalizadas (División de Vehículos Motorizados)",
+   "state": "draft"
+  },
+  "guide.vanity-and-special-plates.vanity-plates-dmv": {
+   "en": "Vanity plates (DMV)",
+   "es": "Placas personalizadas (DMV)",
+   "state": "draft"
+  },
   "guide.vanity-and-special-plates.vehicle-registrations-division-of-motor": {
    "en": "Vehicle Registrations (Division of Motor Vehicles)",
    "es": "Registro de vehículos (División de Vehículos Motorizados)",
@@ -14792,6 +14977,16 @@
   "guide.vanity-and-special-plates.veteran": {
    "en": "Veteran",
    "es": "Veterano",
+   "state": "draft"
+  },
+  "guide.vanity-and-special-plates.veteran-motorcycle": {
+   "en": "Veteran Motorcycle",
+   "es": "Motocicleta de Veterano",
+   "state": "draft"
+  },
+  "guide.vanity-and-special-plates.walking-disability-purple-heart-street": {
+   "en": "Walking Disability, Purple Heart, Street Rod, Conservation State Park, Disabled Veteran",
+   "es": "Discapacidad para Caminar, Corazón Púrpura, Street Rod, Conservación Parque Estatal, Veterano Discapacitado",
    "state": "draft"
   },
   "guide.vanity-and-special-plates.what-happens-if-my-vanity-plate": {
@@ -14815,8 +15010,8 @@
    "state": "draft"
   },
   "guide.vanity-and-special-plates.yes-the-law-has-the-dmv": {
-   "en": "Yes. The law has the DMV recall a vanity plate that does not meet the law and the rules, whenever it was issued, and refund or credit the unused part of the fee.",
-   "es": "Sí. La ley pide al DMV que retire una placa personalizada que no cumpla la ley y las reglas, sin importar cuándo se emitió, y que reembolse o acredite la parte no usada de la cuota.",
+   "en": "Yes. The law has the DMV recall a vanity plate that does not meet the law and the rules, whenever it was issued, and refund or credit the unused part of the fee. A complaint about a plate goes to the Director in a signed letter explaining why it does not meet the rules; anonymous letters are not accepted.",
+   "es": "Sí. La ley dispone que el DMV retire una placa personalizada que no cumpla la ley y las reglas, sin importar cuándo se emitió, y reembolse o acredite la parte no usada de la cuota. Una queja sobre una placa se envía al Director en una carta firmada que explique por qué no cumple las reglas; no se aceptan cartas anónimas.",
    "state": "draft"
   },
   "guide.vital-records.a-check-or-money-order-in": {
