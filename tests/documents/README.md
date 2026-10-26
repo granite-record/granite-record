@@ -49,9 +49,11 @@ Eight files: four PDFs and the laptop's own text of each.
 
        python3 src/parse/extract_calendar_text.py --canary tests/documents
 
-   It should print `text canary: identical for 4 of 4, by pdftotext -layout`.
-   If it prints anything else on the laptop, the text on disk was not made
-   the way the extractor makes it now; choose others.
+   It should print `text canary: identical for 4 of 4, by pdftotext -layout`,
+   then the laptop's pdftotext version (`; pdftotext version ...`), which
+   should be the 26.09.0 the night pins. If it prints anything else on the
+   laptop, the text on disk was not made the way the extractor makes it now;
+   choose others.
 5. Commit the eight files on `dev`.
 
 Nothing else belongs here. Any `.pdf` without its `.txt`, or `.txt` without
@@ -69,5 +71,15 @@ own checks of each text it makes are the guard for that
 masthead and a journal's its chamber's heading, and when a journal's text
 goes in, the build's two journal readers are run on it with `--check` first.
 A text that fails is not kept, the PDF is kept in the bucket, and the
-night's verdict lists it (`documents_untexted`) until a person makes the
-text on the laptop.
+night's verdict lists it (`documents_untexted`) with its cause, and the
+night's warning says what a person does for that cause. Only a text the
+canary's extractor would not prove is simply remade on the laptop: a PDF
+whose text was not the document's, or that a journal reader refused, comes
+down apart (`cloud.py docs-down`, into `archive/documents-held/`) for a
+person to look at, and a text of it made later is read again by the night
+before its build reads it.
+
+On GitHub's machine the canary, like the night, runs only the pdftotext the
+workflow pinned, and its sentence ends with that program's own version
+(`; pdftotext version 26.09.0`), so a passing canary says which it proved.
+On the laptop it runs the one on the PATH, and says which.

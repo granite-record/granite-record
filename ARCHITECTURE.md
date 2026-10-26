@@ -221,15 +221,17 @@ there, though the build still goes out.
 requests, at most three requests (`take_lsrs`); and the two index pages'
 lists of calendars and journals, four requests or eight around the turn of
 the year (`take_documents`, `src/fetch/gc_web/fetch_calendar_archive.py --listing`) -- one
-fetch at a time, each step only if the one before it completed. The steps
-after the day's files each start only if they can finish by 12:00 UTC
-(`nightly.asking_left`, the person's "4-8am"): the night starts at 08:17 UTC,
-so its asking falls between 4:17 and 8 a.m. Eastern in summer and 3:17 and 7
-a.m. in winter, and the hour left before the laptop's window opens at 13:30 is
-the build's, because a refusal met reaches the bucket only when the night
-ends. A step that cannot finish in time is "not asked for", a warning, and
-tomorrow, with the copy on file kept. The verdict's `gc_requests`, and a line
-on the run's page, say what was asked, step by step.
+fetch at a time; the lists only if the bill requests completed, and the
+documents only if the lists did. The steps after the day's files each start
+only if they can finish by 12:00 UTC (`nightly.asking_left`, the person's
+"4-8am"), and each is stopped at its own time limit if it has not: the night
+starts at 08:17 UTC, so its asking falls between 4:17 and 8 a.m. Eastern in
+summer and 3:17 and 7 a.m. in winter, and the 90 minutes before the laptop may
+start again at 13:30 are the build's, because a refusal met reaches the
+bucket only when the night ends. A step that cannot finish in time is "not
+asked for", a warning, and tomorrow, with the copy on file kept. The
+verdict's `gc_requests`, and a line on the run's page, say what was asked,
+step by step.
 
 **The calendars and journals themselves, on the night** (26 October 2026;
 switched off). The repository variable `NIGHT_DOCUMENTS` is the switch, so
@@ -238,24 +240,30 @@ the night asks only what is above. `shadow`, and any dry run, say what would
 be fetched and fetch nothing. A number from 1 to 8 is the most documents a
 night: after the lists, inside the same lock,
 `src/fetch/gc_web/fetch_calendar_archive.py --night` asks for what both tonight's and the night before's lists name,
-oldest first, with a pause of about twenty seconds before each, never for a
-document with a refusal recorded against it or asked three times, and stops
-at the first refusal, the first other failure or the second "not found".
-Nothing is asked unless a pinned `pdftotext`, installed by the workflow and
-checked against its sha256, first makes the laptop's own text of the four
-documents in `tests/documents/` byte for byte (the text canary). After the
-lock and before the build, the night makes each document's text and checks
-it is that document's -- a calendar's number on its masthead, a journal's
-heading, and for a journal the build's two journal readers run with
-`--check` -- and one that fails is left out and listed in the verdict
-(`documents_untexted`) for a person; then it moves the PDF out
-of the folders the build reads; the text goes to the kit, and the workflow's
-`cloud.py docs-up` keeps the PDF in the bucket's `docs/`, from where
-`cloud.py docs-down` brings it to the laptop. Once a night's verdict says
-the switch is a number, the laptop's drain leaves this year's and last
-year's documents that the night will still ask for to it, and its committee
-reports' fetch leaves it those years' House calendars. `nightly.py`'s
-docstring (THE NIGHT'S DOCUMENTS) has the rest.
+oldest first, with a pause of about twenty seconds before each, following no
+redirect, never for a document with a refusal recorded against it or asked
+three times, nor for one it holds back for a person -- a possible rename, a
+path two rows share, an address its list does not give -- which it names
+instead; and it stops at the first refusal, the first other failure or the
+second "not found". Nothing is asked unless a pinned `pdftotext`, installed
+by the workflow, checked against its sha256 and the only one run, first
+makes the laptop's own text of the four documents in `tests/documents/` byte
+for byte (the text canary). After the lock and before the build, the night
+makes each document's text and checks it is that document's -- a calendar's
+number on its masthead, a journal's heading, and for a journal the build's
+two journal readers run with `--check` -- and one that fails is left out and
+listed in the verdict (`documents_untexted`) with its cause and what a person
+does about it; a text of one made later is read the same way before the
+build reads it. Each PDF goes to the bucket's `docs/` (the workflow's
+`cloud.py docs-up`), from where `cloud.py docs-down` brings it to the laptop
+-- apart, in `archive/documents-held/`, when the night refused its text as
+not the document's or a journal reader did. Once a night's verdict says the
+switch is a number, which it does only while the canary passes, the laptop's
+drain leaves this year's and last year's documents that the night will still
+ask for to it, the Senate calendars' fetch stands down for those years, and
+the committee reports' fetch reads those years' House calendars from the
+disk. `nightly.py`'s docstring (THE NIGHT'S DOCUMENTS) has the rest, and
+`watchers/README.md` the person's steps to turn it on.
 
 **A known future need: faster than the nightly.** The record moves once a
 night, so a roll call a chamber takes at noon is on the site the next

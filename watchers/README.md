@@ -87,19 +87,89 @@ both machines now. On a stood-down laptop:
   it, says `NIGHT_DOCUMENTS` is a number, `fetch_calendar_archive.py`'s drain
   here leaves this year's and last year's documents that the night will
   still ask for to it, and says how many; one it will not ask for again -- a
-  refusal recorded against it, three tries, or no longer on its list -- the
-  drain takes when a person runs it. `fetch_committee_reports.py` does not
-  ask for those years' House calendars: `python3 src/ops/cloud.py docs-down`
-  brings the PDFs the night kept, and `--offline` reads them. With the switch
-  off or in shadow -- how it landed -- the laptop fetches them as before.
+  refusal recorded against it, three tries, no longer on its list, or held
+  back for a person -- the drain takes when a person runs it.
+  `fetch_senate_calendars.py` stands down for those years, and
+  `fetch_committee_reports.py` asks for none of those years' House
+  calendars: it reads the ones on this disk instead, which
+  `python3 src/ops/cloud.py docs-down` brings from the bucket. The verdict
+  says a number only while the night can make the laptop's text (its text
+  canary passes); otherwise it says "not fetching", and the laptop fetches
+  them as before -- as it does with the switch off or in shadow, how it
+  landed.
+
+### Turning on the night's documents
+
+The person's steps, in order. Nothing here asks the General Court for
+anything new until step 9. The night's own notes are in `nightly.py` (THE
+NIGHT'S DOCUMENTS).
+
+Before the merge, on the laptop:
+
+1. Check that `archive/runs-in-the-cloud.json` is there. Every rule that keeps
+   the laptop and the night from asking for the same document depends on it.
+2. Run `pdftotext -v`. The night pins 26.09.0; if the laptop's is another,
+   say so before going on, because the release to pin is the laptop's. Then
+   open `archive/extracted.json` and check that the 2025 and 2026 texts say
+   `"how": "pdftotext -layout"`.
+3. Run `python3 src/ops/cloud.py pull`, then
+   `python3 src/parse/extract_calendar_text.py`, then
+   `python3 src/ops/cloud.py seed-kit`. This one cannot wait: from the merge
+   the texts are the night's in the kit, so seed-kit no longer sends a text
+   the bucket already has, and pull reports a text changed here and not sent
+   as a clash every morning.
+4. Put the four fixture pairs in `tests/documents/` (its README says which),
+   run `python3 src/parse/extract_calendar_text.py --canary tests/documents`,
+   and commit them on `dev`.
+5. Run `python3 preflight.py` on the laptop, on `dev`. Windows has not run the
+   new checks.
+6. If you like, set `NIGHT_DOCUMENTS` to `shadow`, start the nightly on `dev`
+   by hand with Dry run ticked and "Take the day's data" unticked -- so it
+   asks the General Court nothing -- and read `text_canary` in its verdict;
+   then delete the variable again. It is the repository's, shared by every
+   branch: still set when `dev` merges, `main` uses it that night.
+7. Merge to `main` with the variable unset. The night then differs only in
+   its hours for the bill requests and the lists.
+
+After 10 November:
+
+8. Set `NIGHT_DOCUMENTS` to `shadow` for three scheduled nights. Each
+   verdict's `document_files` says what the night would ask; `text_canary`
+   should start "identical for 4 of 4" and name pdftotext 26.09.0; and
+   `gc_requests` should be what it was. Warning signs: the would-ask count at
+   its cap every night, any possible rename or document held back, any
+   document of an older year. Documents merged before 26 October that share
+   a path -- the 2026 Senate list's "No 21" and "No 18" with their
+   supplements -- are held back until a person repairs them, once: after a
+   pull, open the PDF at that path to see which document it is, give the
+   other row its own file name as its path in `archive/queue.csv`, and send
+   the list with `python3 src/ops/cloud.py send-night archive/queue.csv`.
+9. Set it to `1` for a week. The first night that carries each new kind of
+   warning waits for your approval. If `document_files` says "failed: HTTP
+   302", the General Court's viewer answers with a redirect, which the night
+   does not follow: set it back to `shadow` and ask.
+10. The laptop's routine from then: `cloud.py pull`, then `cloud.py
+    docs-down`, which brings the night's PDFs; the committee reports read
+    them by themselves. For a journal the night names as a possible rename:
+    `python3 src/fetch/gc_web/fetch_calendar_archive.py --settle "NAME"` if it
+    is the same journal, or run the drain if it is not. A document with no
+    text the night could use is in its warning, with what to do for its cause.
+11. Then `4`, then `8` before late November, when two years' lists are open;
+    and, once the documents' warnings are familiar, ask for them to be exempt
+    from the approval gate.
+
+To turn it off: delete the variable, or set it to `off`. The next night asks
+only what it asked before, and after its next pull the laptop fetches this
+year's documents again.
 
 What the night itself asks, inside that window: the downloads page and the
 day files, then next session's bill requests and the two index pages' lists
 of calendars and journals -- each of those two only if it can finish by 12:00
-UTC (8 a.m. EDT, 7 a.m. EST), since 26 October 2026 -- and, while the
-repository variable `NIGHT_DOCUMENTS` is a number, up to that many new
-calendars and journals themselves, on the same terms. The run's page on the
-Actions tab says what it asked, step by step.
+UTC (8 a.m. EDT, 7 a.m. EST), since 26 October 2026, and stopped at its time
+limit if it has not -- and, while the repository variable `NIGHT_DOCUMENTS`
+is a number, up to that many new calendars and journals themselves, on the
+same terms. The run's page on the Actions tab says what it asked, step by
+step.
 
 `python3 refusal.py` says whether the window is open, when the bucket was last
 read, and whether a refusal is waiting to be sent. So a lane started in the

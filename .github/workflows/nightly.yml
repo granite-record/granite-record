@@ -354,7 +354,10 @@ jobs:
       # 2026, 43,709,956 bytes). The zip is checked before it is unpacked: other
       # bytes, or no download, and the step fails closed -- nothing installed,
       # the night goes on, the text canary says this machine does not make the
-      # laptop's text, and no document is asked for (nightly.text_canary).
+      # laptop's text, and no document is asked for (nightly.text_canary,
+      # told by the night step's PDFTOTEXT_PIN how this step ended). On
+      # success it names the binary in GRANITE_PDFTOTEXT, the only one the
+      # night's extractor runs.
       # Only when the switch is shadow or a number. The laptop's own version is
       # what `pdftotext -v` says there; if the canary finds a difference, the
       # release to pin is the laptop's. Its failure is a warning on the night's
@@ -392,7 +395,12 @@ jobs:
           # Its version, for the log; pdftotext prints it on stderr, which is
           # no failure of the step.
           try { & $exe -v 2>&1 | ForEach-Object { "$_" } } catch { Write-Output "pdftotext -v: $_" }
-          Add-Content -Path $env:GITHUB_PATH -Value $bin
+          # NAMED, NOT PUT ON THE PATH (the review of 26 October 2026): the
+          # night's extractor runs the binary this names and no other
+          # (extract_calendar_text.pdftotext), so another pdftotext on this
+          # machine -- one comes with the runner's own tools -- is never the
+          # one run.
+          Add-Content -Path $env:GITHUB_ENV -Value "GRANITE_PDFTOTEXT=$exe"
           exit 0
 
       - name: Bring the state files down from R2 (the refusal record, last night's census)
@@ -503,6 +511,10 @@ jobs:
       # under thirty minutes.
       - name: The night
         id: night
+        env:
+          # How the pinned pdftotext's step ended: anything but success and
+          # the night fetches no document (nightly.text_canary).
+          PDFTOTEXT_PIN: ${{ steps.pdftotext.outcome }}
         run: |
           $flags = @('--runner')
           if ($env:FETCH -ne 'true') { $flags += '--no-fetch' }

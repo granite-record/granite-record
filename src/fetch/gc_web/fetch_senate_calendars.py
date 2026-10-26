@@ -58,6 +58,7 @@ import urllib.request
 
 import os
 import random
+from datetime import date
 
 import refusal
 from fetch_committee_reports import (DOCNUM_RE, SEL_DOC, SEL_KIND, SEL_YEAR,
@@ -179,6 +180,20 @@ def main():
     # carried on through one. It is also the run that met a 403 -- 664
     # calendars of 1998-2008 are still marked "wanted" in archive/queue.csv
     # from that day, each with "HTTP Error 403: Forbidden" against it.
+    #
+    # AND NOT THE NIGHT'S YEARS ONCE IT FETCHES THEM (the review of 26
+    # October 2026), as fetch_committee_reports stands down for the House's:
+    # GitHub's night fetches this year's and last year's calendars itself
+    # while its switch is a number, and keeps each PDF in the bucket, which
+    # reaches this machine only through docs-down. Asked here as well, a
+    # Senate calendar the night already fetched was asked for twice, and
+    # saved over the same SC###.pdf. --probe downloads nothing, and is not
+    # stopped.
+    if not a.probe and str(a.year).isdigit() and int(a.year) >= date.today().year - 1:
+        refusal.documents_stand_down(
+            f"The Senate calendar fetch of {a.year}",
+            "GitHub's night fetches this year's and last year's Senate calendars and keeps each "
+            "PDF in the bucket: python3 src/ops/cloud.py docs-down brings them here.")
     refusal.check("The Senate calendar fetch")
     with refusal.hold("fetch_senate_calendars") as held:
         HOLD = held

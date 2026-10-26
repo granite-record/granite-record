@@ -742,14 +742,26 @@ def main():
         # back to back. On a laptop that has stood down, and only once the
         # night's own verdict says it fetches them (refusal.night_documents),
         # this year's and last year's are not asked for here: docs-down
-        # brings the night's PDFs, and --offline reads them.
+        # brings the night's PDFs, and this reads them.
         if str(a.year).isdigit() and int(a.year) >= date.today().year - 1:
-            refusal.documents_stand_down(
-                f"The committee reports fetch of {a.year}'s House calendars",
-                "GitHub's night fetches this year's and last year's calendars and keeps "
-                "each PDF in the bucket: python3 src/ops/cloud.py docs-down brings them "
-                f"here, and --year {a.year} --offline reads them without asking anyone.")
-        refusal.check("The committee reports fetch")
+            if a.pdf:
+                # One calendar named and not on this disk: the night's to fetch.
+                refusal.documents_stand_down(
+                    f"The committee reports fetch of {a.pdf}",
+                    "GitHub's night fetches this year's and last year's calendars and keeps "
+                    "each PDF in the bucket: python3 src/ops/cloud.py docs-down brings them here.")
+            elif refusal.night_documents() is not None:
+                # READ, NOT STOPPED (the review of 26 October 2026). build_all
+                # runs this for the session every build, and stopped with
+                # status 4 -- an optional step -- the session's reports fell
+                # behind with every build green. So it reads the calendars on
+                # this disk, as --offline does, and says so.
+                print(f"GitHub's night fetches {a.year}'s House calendars itself now, so none "
+                      "is asked for here: reading the ones on this disk instead, as --offline "
+                      "does. python3 src/ops/cloud.py docs-down brings the night's first.")
+                a.offline = True
+        if not a.offline:
+            refusal.check("The committee reports fetch")
 
     cache = Path(a.cache) / a.year
     cache.mkdir(parents=True, exist_ok=True)

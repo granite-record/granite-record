@@ -18,9 +18,10 @@ while the repository variable `NIGHT_DOCUMENTS` is a number; all but the
 snapshot only if they can finish by 12:00 UTC), the weekly
 (`fetch_committees`), `build_all`'s network steps (not on `--local`), the
 lane, and a person. Once the night fetches the newest calendars and journals,
-the drain here leaves it those it will still ask for, and
-`fetch_committee_reports` leaves it this year's and last year's House
-calendars (`refusal.night_documents`).
+the drain here leaves it those it will still ask for, `fetch_senate_calendars`
+stands down for this year's and last year's, and `fetch_committee_reports`
+reads those years' House calendars from the disk instead of asking
+(`refusal.night_documents`).
 
 Does not belong here: a script that only writes a gc.nh.gov link into a page
 (`pages/`), or one that reads what was saved (`parse/`). `netcheck.py` and

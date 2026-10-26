@@ -511,17 +511,26 @@ default -- and the night does exactly what it did before. Otherwise:
                       list, and only when the list went in and its listing
                       exited 0 (EXITS) and the night's clock allows
                       (take_document_files: fetch_calendar_archive.py --night,
-                      killed at DOCS_FILES_MINUTES); the queue it wrote goes in
-                      only with nothing changed but the fetch's own columns,
-                      on the documents it asked for (judge_files)
+                      killed at DOCS_FILES_MINUTES, keeping what it wrote down
+                      before the request it was killed in); the queue it
+                      wrote goes in only with nothing changed but the fetch's
+                      own columns, on the documents it asked for
+                      (judge_files), and tonight's documents in it as wanted
+                      until their PDF is kept. What it holds back for a
+                      person -- a possible rename, a path two rows share, an
+                      address its list does not give -- is named, every night
+                      ("documents_held_back")
   the texts           after the lock, before the build: each document's text,
-                      made by an extractor the canary proved tonight and read
-                      as itself; the two journal readers checked with
-                      it, and tonight's journals set aside where it is theirs
-                      that fails; each PDF out of the four folders the build
-                      reads, staged for the bucket (make_texts). A document
-                      whose text was not kept stays held and is listed,
-                      night after night, in "documents_untexted"
+                      from the PDF it fetched (its sha256), made by the pinned
+                      pdftotext the canary proved tonight and read as itself;
+                      the two journal readers checked with it, and tonight's
+                      journals set aside where it is theirs that fails; each
+                      PDF staged for the bucket, its document then marked
+                      held, and tonight's PDFs out of the four folders the
+                      build reads (make_texts). A document whose text was not
+                      kept is listed with its cause, night after night, in
+                      "documents_untexted"; a text of one made since is read
+                      again before the build reads it (recheck_untexted)
   the bucket          the workflow's docs-up sends the staged PDFs to docs/,
                       after the night (cloud.py's docstring)
   the verdict         "night_documents", "text_canary", "document_files",
@@ -531,17 +540,22 @@ default -- and the night does exactly what it did before. Otherwise:
                       record not moving -- and "gc_requests", what the night
                       asked of the General Court's site, a line of the run's
                       page on every night
-  the laptop          once a night's verdict says its switch is a number, the
-                      laptop's drain leaves this year's and last year's
-                      calendars and journals to it -- those it will still ask
-                      for; one refused once, tried three times or no longer
-                      listed is a person's, and the drain takes it
-                      (fetch_calendar_archive.nights_to_ask) -- and its
-                      committee reports' fetch leaves it those years' House
-                      calendars, which docs-down brings (refusal.night_documents)
+  the laptop          once a night's verdict says its switch is a number --
+                      which it says only while the canary passes, and "not
+                      fetching" otherwise -- the laptop's drain leaves this
+                      year's and last year's calendars and journals to it --
+                      those it will still ask for; one refused once, tried
+                      three times, no longer listed or held back is a
+                      person's, and the drain takes it
+                      (fetch_calendar_archive.nights_to_ask) -- the Senate
+                      calendars' fetch stands down for those years, and the
+                      committee reports' reads those years' House calendars
+                      from the disk, which docs-down brings (refusal.night_documents)
 
-It landed switched off, and turning it on is the person's: "shadow" first,
-then a number, a step at a time (1, then 4, then 8).
+It landed switched off, and turning it on is the person's, in the order
+watchers/README.md gives ("Turning on the night's documents"): what to do on
+the laptop before the merge, then "shadow", then a number a step at a time
+(1, then 4, then 8).
 
 THE GATE (6 October 2026; on since 15 October 2026)
 
@@ -807,8 +821,12 @@ GC_ASKED = []
 # seconds, five apart (fetch_lsrs.py); the listing's LISTING_BUDGET and a
 # request's 60; the documents' NIGHT_SECONDS and an answer's NIGHT_DEADLINE
 # (fetch_calendar_archive.py), with a minute's slack each. preflight holds
-# each to those. The runner's clock is Eastern (nightly.yml sets it), so the
-# window is read by refusal's own clock, which is UTC, never by datetime.now().
+# each to those. And each step is killed at its minutes (run(timeout=); the
+# review of 26 October 2026): a socket's timeout bounds one read, not a
+# request, so an answer coming a byte at a time could otherwise carry a step's
+# requests past ASK_UNTIL. The runner's clock is Eastern (nightly.yml sets
+# it), so the window is read by refusal's own clock, which is UTC, never by
+# datetime.now().
 ASK_UNTIL = (12, 0)
 LSRS_MINUTES = 5
 LISTING_MINUTES = 7
@@ -824,6 +842,14 @@ DOCS_FILES_MINUTES = 13
 # NIGHT_MOST, the most documents a night. Anything else reads as off.
 DOCS_SWITCH = "NIGHT_DOCUMENTS"
 DOCS_OFF, DOCS_SHADOW = "off", "shadow"
+# What the verdict's "night_documents" says on a night the switch is a number
+# and the night cannot fetch: anything but a number, and the laptop fetches
+# this year's and last year's documents itself again (refusal.night_documents).
+# Only for what lasts -- the canary not passing. A late start, or a list that
+# did not complete, is one night's: the number stands, because a laptop that
+# took the years back for a day would race the next night for the documents
+# its own fetch had not yet sent to the bucket.
+NIGHT_NOT_FETCHING = "not fetching: {why}"
 # Scratch: the night before's list, kept before take_documents replaces it;
 # the fetch's own queue and record; the texts' ledger; tonight's journal texts
 # moved aside; and the roll calls the journal check pairs with.
@@ -841,6 +867,18 @@ DOCS_RECORD = "staged.json"
 # The text canary's fixtures: the laptop's text of four documents beside
 # their PDFs (tests/documents/README.md).
 DOCS_CANARY = Path("tests/documents")
+# How the workflow's step that installs the pinned pdftotext ended, as it
+# passes it to the night ("success", "failure", "skipped"...). Anything but
+# success and the canary is not proved, and no document is asked for: the
+# night never makes text with a pdftotext it did not pin (the review of 26
+# October 2026; extract_calendar_text.pdftotext runs only the one the step
+# names). Unset -- a run by hand, the tests -- it says nothing.
+PDFTOTEXT_PIN_ENV = "PDFTOTEXT_PIN"
+# Documents a person has accepted as having no text the night could make --
+# a scanned page, say -- by path, each with why and the day: the person's
+# file (corrections/, which no generator writes), and the warning for each
+# ends there (untexted_now). Absent until a person writes one.
+DOCS_NO_TEXT = Path("corrections/documents_without_text.json")
 # What a text must carry to be the document's own: a journal its chamber's
 # heading, as journal_bills reads a House Journal's; a calendar the number of
 # its own masthead (calendar_documents.masthead).
@@ -854,6 +892,10 @@ JOURNAL_HEADING = {"H": re.compile(r"HOUSE\s*JOURNAL", re.I),
 DOCS_WAIT_NIGHTS = 3
 DOCS_WAIT_KEPT = 60
 KIND_DOCS_UNTEXTED = "the calendars' and journals' documents with no text the night could use"
+# The documents the night holds back for a person, every night it holds them
+# (held_back_of, held_back_said; the review of 26 October 2026).
+KIND_DOCS_HELD_BACK = "the calendars and journals the night holds back for a person"
+DOCS_HELD_SAID = 4
 # What the documents' step says when it did what it was asked, and is no
 # warning: the switch off, nothing to ask for, shadow, a dry run, installed.
 DOCS_QUIET = ("installed", "nothing to ask for", "shadow:", "a dry run:",
@@ -1684,7 +1726,15 @@ def main():
     GC_ASKED.clear()
     files = None
     if night:
-        night.v["night_documents"] = str(switch)
+        # A NUMBER ONLY WHEN THE NIGHT CAN FETCH (the review of 26 October
+        # 2026). The laptop leaves this year's and last year's documents to
+        # the night whenever this is a number (refusal.night_documents), so a
+        # night that cannot make the laptop's text -- no fixtures, the pinned
+        # pdftotext missing -- wrote a number and fetched nothing, and nobody
+        # fetched them. The canary below sets the number once it passes.
+        night.v["night_documents"] = (str(switch) if not isinstance(switch, int)
+                                      else NIGHT_NOT_FETCHING.format(
+                                          why="the night ended before its text canary ran"))
     say("=" * 74)
     say(f"Granite Record nightly  {started:%Y-%m-%d %H:%M}")
     say("=" * 74)
@@ -1743,6 +1793,10 @@ def main():
             # fetches: whether this machine makes the laptop's text at all.
             # It asks nothing; the night fetches no document without it.
             night.v["text_canary"] = text_canary()
+            if isinstance(switch, int):
+                night.v["night_documents"] = (
+                    str(switch) if night.v["text_canary"].startswith("identical") else
+                    NIGHT_NOT_FETCHING.format(why="this machine does not make the laptop's text"))
 
         installed = False
         if a.no_fetch:
@@ -1891,6 +1945,11 @@ def main():
                     if said:
                         night.v["document_texts"] = said
                     docs_waiting(night.v, switch, night.day)
+                if night and night.v.get("documents_untexted"):
+                    # A text made since of a document listed without one is
+                    # read again before the build reads it, whatever the
+                    # switch says now (recheck_untexted).
+                    recheck_untexted(night.v, night.day)
                 installed = rc == 0 or db_day
                 if night:
                     # The truth about the export, whatever the database did;
@@ -4164,14 +4223,22 @@ def take_lsrs():
         return (f"not asked for: {why}; "
                 + (f"the earlier {len(standing)} kept" if before is not None else "none on file"))
     began = utc_hm()
-    rc = run(["fetch_lsrs.py"], "next session's bill requests, from the General Court")
+    # KILLED AT ITS MINUTES (the review of 26 October 2026). asking_left
+    # holds only at the start: a socket's timeout bounds one read, not a
+    # request, and fetch_lsrs has no deadline of its own, so an answer
+    # arriving a byte at a time could carry its requests past ASK_UNTIL.
+    rc = run(["fetch_lsrs.py"], "next session's bill requests, from the General Court",
+             timeout=LSRS_MINUTES * 60)
     gc_asked("bill requests", began, "at most 3")
     EXITS["fetch_lsrs.py"] = rc
     new = load_json(LSRS)
     gone = [r for r in (new if isinstance(new, list) else [])
             if isinstance(r, dict) and r.get("withdrawn") and r.get("lsr") in standing]
     why = ""
-    if rc != 0:
+    if rc == RUN_KILLED:
+        why = (f"the fetch was still asking after {LSRS_MINUTES} minutes, its limit here, and "
+               "was stopped")
+    elif rc != 0:
         why = f"the fetch did not complete (exit {rc})"
     elif not isinstance(new, list) or not new:
         why = "the fetch wrote no requests"
@@ -4254,15 +4321,20 @@ def take_documents(v=None):
         say(f"  the list of calendars and journals not asked for: {why}")
         return f"not asked for: {why}; {kept}"
     began = utc_hm()
+    # Killed at its minutes, as the bill requests are (take_lsrs says why).
     rc = run(["fetch_calendar_archive.py", "--listing", "--out", str(new)],
-             "the calendars and journals the General Court lists")
+             "the calendars and journals the General Court lists",
+             timeout=LISTING_MINUTES * 60)
     EXITS["listing"] = rc
     said = load_json(listed) if listed.exists() else None
     asked = said.get("requests") if isinstance(said, dict) else None
     gc_asked("lists", began, asked if isinstance(asked, int) else
              f"at most {CA.LISTING_MOST}")
     why, got, rec, settled = "", [], None, 0
-    if rc == 2 and refusal.MARK.exists():
+    if rc == RUN_KILLED:
+        why = (f"the listing was still asking after {LISTING_MINUTES} minutes, its limit here, "
+               "and was stopped")
+    elif rc == 2 and refusal.MARK.exists():
         # Only with the record on file: a script's own usage error ends on
         # 2 as well, and that is not the General Court saying no.
         why = ("the General Court refused a request: it is recorded, and every fetch "
@@ -4344,7 +4416,14 @@ def text_canary():
     laptop's text of the person's fixtures (DOCS_CANARY), byte for byte. Its
     own sentence -- "identical for 4 of 4, by pdftotext -layout", or "not
     proved: ..." -- or "not proved" with why. Asks nothing of anyone. The
-    night fetches no document it could not read as the laptop does."""
+    night fetches no document it could not read as the laptop does; nor one
+    on a night the workflow's pinned pdftotext was not installed
+    (PDFTOTEXT_PIN_ENV), whatever else the machine carries."""
+    pin = os.environ.get(PDFTOTEXT_PIN_ENV)
+    if pin is not None and pin.strip() != "success":
+        said = pin.strip() if PLAIN.fullmatch(pin.strip() or "-") else ""
+        return ("not proved: the pinned pdftotext was not installed tonight (its step: "
+                f"{said or 'no outcome'})")
     mark = len(LOG)
     rc = run(["extract_calendar_text.py", "--canary", DOCS_CANARY.as_posix()],
              "the text canary: does this machine make the laptop's text")
@@ -4360,9 +4439,10 @@ def text_canary():
 
 def canary_proved(said):
     """The extractors tonight's text canary proved, from its own sentence
-    ("identical for 4 of 4, by pdftotext -layout"): a set, empty for a
-    canary that did not pass. make_texts keeps no text another one made."""
-    m = re.fullmatch(r"identical for \d+ of \d+, by (.+)", str(said or "").strip())
+    ("identical for 4 of 4, by pdftotext -layout; pdftotext version
+    26.09.0"): a set, empty for a canary that did not pass. make_texts keeps
+    no text another one made."""
+    m = re.fullmatch(r"identical for \d+ of \d+, by (.+)", str(said or "").split(";")[0].strip())
     return {x.strip() for x in m.group(1).split(", ")} - {"no extractor"} if m else set()
 
 
@@ -4440,10 +4520,13 @@ def take_document_files(v, switch, dry_run=False, new_term=False):
     only where judge_files() finds nothing changed but the fetch's own columns,
     on the documents it asked for tonight -- whatever status it ended on, so
     that a refusal written against a document, a 404 and a try counted are
-    kept. A fetch killed at its limit, or one whose queue is not installed,
-    keeps none of what it fetched: make_texts removes those PDFs, and the next
-    night asks again."""
-    out = {"said": "", "took": [], "fetched": [], "installed": False}
+    kept. A fetch killed at its limit is installed by the same rule from what
+    it wrote down before the request it was killed in, the try that request
+    cost among it (the review of 26 October 2026). Tonight's documents go in
+    wanted, and make_texts marks each held once its PDF is kept for the
+    bucket. One whose queue is not installed keeps none of what it fetched:
+    make_texts removes those PDFs, and the next night asks again."""
+    out = {"said": "", "took": [], "fetched": [], "asked": [], "installed": False}
     try:
         out["said"] = _document_files(v, switch, dry_run, new_term, out)
     except Exception as e:                                      # noqa: BLE001
@@ -4469,15 +4552,27 @@ def _document_files(v, switch, dry_run, new_term, out):
     rows = CA.read_rows(DOCS)
     most = CA.NIGHT_MOST if switch == DOCS_SHADOW else int(switch)
     plan = CA.night_plan(rows, load_json(DOCS_LISTED), load_json(DOCS_BEFORE), most)
+    back = held_back_of(plan)
     if switch == DOCS_SHADOW or dry_run:
         # NOTHING IS ASKED: what would be, said in counts and the lists' names.
         if plan["why"]:
             return f"{'shadow' if switch == DOCS_SHADOW else 'a dry run'}: would ask none: {plan['why']}"
+        held = len(plan["shared"]) + len(plan["unlisted"])
         return (f"{'shadow' if switch == DOCS_SHADOW else 'a dry run'}: would ask "
                 f"{len(plan['ask'])}" + (f" ({_by_kind(plan['ask'])})" if plan["ask"] else "")
                 + f", at most {most} a night; {len(plan['text'])} would be marked held from their "
-                f"text; {len(plan['renames'])} possible renames; {plan['waiting']} more wait; "
-                "nothing was asked")
+                f"text; {len(plan['renames'])} possible renames; "
+                + (f"{held} held back for a person (a path another shares, or an address its list "
+                   "does not give); " if held else "")
+                + f"{plan['waiting']} more wait; nothing was asked")
+    # WHAT THE NIGHT HOLDS BACK FOR A PERSON, named every night it holds them
+    # (the review of 26 October 2026): a possible rename, a path another row
+    # shares, an address its list does not give. Not asked for, by the night
+    # or -- they are a person's -- left by the laptop's drain to it.
+    if back:
+        v["documents_held_back"] = back
+    else:
+        v.pop("documents_held_back", None)
     canary = str(v.get("text_canary") or "not proved: the canary did not run")
     if not canary.startswith("identical"):
         return f"not asked for: this machine does not make the laptop's text (the text canary {canary})"
@@ -4487,8 +4582,7 @@ def _document_files(v, switch, dry_run, new_term, out):
     if plan["why"]:
         return f"not asked for: {plan['why']}"
     if not plan["ask"] and not plan["text"]:
-        return ("nothing to ask for" + (f": {len(plan['renames'])} possible renames, for a person "
-                                        "to decide" if plan["renames"] else ""))
+        return ("nothing to ask for" + (f": {len(back)} held back for a person" if back else ""))
     asked = DOCS_FILES_OUT.with_name(CA.ASKED_NAME)
     DOCS_FILES_OUT.parent.mkdir(parents=True, exist_ok=True)
     for f in (DOCS_FILES_OUT, asked):
@@ -4505,34 +4599,54 @@ def _document_files(v, switch, dry_run, new_term, out):
              else f"at most {most}")
     done = [x for x in (rec or {}).get("asked") or [] if isinstance(x, dict)]
     out["fetched"] = [str(x.get("path") or "") for x in done if x.get("ended") == "fetched"]
+    # Every path a request was made for, fetched or not: make_texts clears
+    # these, and their part files, out of the four folders.
+    out["asked"] = [str(x.get("path") or "") for x in done if x.get("path")]
     stopped = str((rec or {}).get("stopped") or "")
     stopped = stopped if PLAIN.fullmatch(stopped or "-") else ""
     if rc == RUN_KILLED:
-        return (f"not taken: the fetch was still asking after {DOCS_FILES_MINUTES} minutes, its "
-                "limit here, and was stopped; the list installed stays, and what it fetched is "
-                "not kept")
-    why = judge_files(rows, CA.read_rows(DOCS_FILES_OUT), rec)
+        # A FETCH KILLED AT ITS LIMIT KEEPS WHAT IT WROTE DOWN (the review of
+        # 26 October 2026): the fetch writes its queue and its record before
+        # every request, so what is on disk is whole up to the request it was
+        # killed in, and the try that request cost is in it. Installed by the
+        # same rule; without it, a document whose answer always hangs was
+        # asked for every night and its tries never counted.
+        stopped = (f"the fetch was still asking after {DOCS_FILES_MINUTES} minutes, its limit "
+                   "here, and was stopped")
+    got_rows = CA.read_rows(DOCS_FILES_OUT)
+    why = judge_files(rows, got_rows, rec)
     if not why:
+        # HELD ONLY ONCE ITS PDF IS KEPT (the review of 26 October 2026).
+        # Tonight's documents go in as wanted, their tries counted, and
+        # make_texts marks each held once its PDF is staged for the bucket
+        # (mark_held): a night stopped between the two left rows held with
+        # no text, no PDF and no word of either, never asked for again.
+        # Stopped there now, they are asked for again, or held from the text
+        # the night did make.
+        by = {CA._key(r): r for r in got_rows}
+        took = []
+        for x in done:
+            r = by.get((x.get("chamber"), x.get("kind"), x.get("year"), x.get("name")))
+            if x.get("ended") == "fetched" and r is not None and r.get("state") == "held":
+                took.append(dict(r, sha256=x.get("sha256") or "", bytes=r.get("bytes") or ""))
+        keys = {CA._key(r) for r in took}
         try:
-            os.replace(DOCS_FILES_OUT, DOCS)
-            out["installed"] = True
+            CA.write_rows(DOCS, [dict(r, state="wanted", bytes="", fetched="")
+                                 if CA._key(r) in keys else r for r in got_rows])
+            out["installed"], out["took"] = True, took
         except OSError as e:
             say(f"  {type(e).__name__}: {e}", echo=False)
             why = "the list could not be put in place"
     DOCS_FILES_OUT.unlink(missing_ok=True)
     if why:
-        return (f"not taken: {why}; the list installed stays, and the {len(out['fetched'])} "
-                "fetched tonight are not kept")
-    got = {CA._key(r): r for r in CA.read_rows(DOCS)}
-    for x in done:
-        r = got.get((x.get("chamber"), x.get("kind"), x.get("year"), x.get("name")))
-        if x.get("ended") == "fetched" and r is not None and r.get("state") == "held":
-            out["took"].append(dict(r, sha256=x.get("sha256") or "", bytes=r.get("bytes") or ""))
+        return ((f"not taken: {stopped}; " if rc == RUN_KILLED else "not taken: ")
+                + f"{why}; the list installed stays, and the {len(out['fetched'])} fetched "
+                "tonight are not kept")
     held = len((rec or {}).get("held_from_text") or [])
     left = int((rec or {}).get("waiting") or 0)
     said = (f"{len(out['took'])} fetched" + (f" ({_by_kind(out['took'])})" if out["took"] else "")
             + f" in {len(done)} requests; {held} marked held from their text; {left} still to "
-            "ask for")
+            "ask for" + (f"; {len(back)} held back for a person" if back else ""))
     if rc == 2 and refusal.MARK.exists():
         return ("stopped: the General Court refused a request: it is recorded, and every fetch "
                 f"waits for a person; the list installed with it: {said}")
@@ -4540,6 +4654,67 @@ def _document_files(v, switch, dry_run, new_term, out):
         return (f"stopped: {stopped or f'the fetch did not complete (exit {rc})'}; the list "
                 f"installed with it: {said}")
     return f"installed, {said}"
+
+
+def held_back_of(plan):
+    """The verdict's "documents_held_back" from a night_plan: each document the
+    night holds back for a person, with why ("renamed", "shared",
+    "unlisted"), the other document where there is one, and its list's
+    chamber, kind and year; at most DOCS_WAIT_KEPT. {} for none."""
+    import fetch_calendar_archive as CA
+    out = {}
+    for why in ("renamed", "shared", "unlisted"):
+        for r, other in plan.get({"renamed": "renames"}.get(why, why)) or []:
+            out[" ".join(str(x) for x in CA._key(r))] = {
+                "chamber": r.get("chamber"), "kind": r.get("kind"), "year": r.get("year"),
+                "name": r.get("name"), "why": why, "other": (other or {}).get("name") or ""}
+    return dict(list(out.items())[:DOCS_WAIT_KEPT])
+
+
+HELD_BACK_WHY = {
+    "renamed": ("{name}, perhaps the held {other} renamed: if it is the same journal, "
+                "fetch_calendar_archive.py --settle on the laptop says so; if not, the laptop's "
+                "drain fetches it"),
+    "shared": ("{name}, whose path {other} has too: a person gives one its own path in the "
+               "list (watchers/README.md, Turning on the night's documents, step 8)"),
+    "unlisted": "{name}, whose address is not the one its list gives it: a person looks",
+}
+
+
+def held_back_said(held):
+    """The warning's sentence for documents_held_back: how many, and the
+    first few by name with what a person does about each."""
+    items = [e for e in held.values() if isinstance(e, dict) and e.get("why") in HELD_BACK_WHY]
+    if not items:
+        return ""
+    named = [HELD_BACK_WHY[e["why"]].format(name=e.get("name") or "?", other=e.get("other") or "?")
+             for e in items[:DOCS_HELD_SAID]]
+    n = len(items)
+    return (f"{n} of the calendars and journals the General Court lists {'is' if n == 1 else 'are'} "
+            "held back by the night for a person and not asked for: " + "; ".join(named)
+            + (f"; and {n - DOCS_HELD_SAID} more in the verdict's documents_held_back"
+               if n > DOCS_HELD_SAID else ""))
+
+
+def mark_held(staged):
+    """The installed list with each of `staged` -- tonight's documents whose
+    PDF is kept for the bucket -- marked held, with its bytes and when it was
+    fetched; only rows still wanted, nothing else changed. Never raises: a
+    row left wanted is asked for again, or held from its text."""
+    if not staged:
+        return
+    try:
+        import fetch_calendar_archive as CA
+        by = {CA._key(r): r for r in staged}
+        rows = CA.read_rows(DOCS)
+        for r in rows:
+            s = by.get(CA._key(r))
+            if s is not None and r.get("state") == "wanted":
+                r.update(state="held", bytes=str(s.get("bytes") or ""),
+                         fetched=str(s.get("fetched") or ""), error="")
+        CA.write_rows(DOCS, rows)
+    except Exception as e:                                      # noqa: BLE001
+        say(f"  tonight's documents were not marked held: {type(e).__name__}: {e}", echo=False)
 
 
 def _doc_files():
@@ -4558,14 +4733,44 @@ def _disk(path):
     return Path(str(path or "").replace("\\", "/"))
 
 
+def clear_tonights(files):
+    """Tonight's PDFs, and their part files, out of the four folders: each
+    path the fetch asked for tonight (files["asked"], files["fetched"]).
+
+    ONLY TONIGHT'S, BY NAME (the review of 26 October 2026). This deleted
+    every PDF in the four folders, on the word that GitHub's machine holds
+    no other -- and nothing kept `nightly.py --runner` to GitHub: run so on a
+    clone holding the archive, thirty years of calendars and journals would
+    have gone. Every other PDF is swept only where GITHUB_ACTIONS says this
+    is GitHub's machine, which the kit leaves holding none."""
+    paths = {_disk(p) for p in list(files.get("asked") or []) + list(files.get("fetched") or [])
+             if str(p or "").strip()}
+    gone = []
+    for p in sorted(paths):
+        for f in (p, p.with_name(p.name + ".part")):
+            if f.is_file() and f.suffix.lower() in (".pdf", ".part"):
+                f.unlink(missing_ok=True)
+                gone.append(f)
+    if os.environ.get("GITHUB_ACTIONS") == "true":
+        for f in _doc_files():
+            f.unlink(missing_ok=True)
+            gone.append(f)
+    return gone
+
+
 def make_texts(v, files, day):
     """After the lock and before the build: the text of tonight's documents,
     each read as itself; the journal checks; and tonight's PDFs out of the
     four folders the build reads, kept for the bucket. A line for the
     verdict ("document_texts"); v["documents_untexted"] gains each document
     whose text the night could not use. Asks nothing of anyone. NEVER RAISES,
-    and whatever goes wrong, no PDF is left where the build reads: tonight's
-    build reads what the kit will carry tomorrow.
+    and whatever goes wrong, none of tonight's PDFs is left where the build
+    reads: tonight's build reads what the kit will carry tomorrow.
+
+    THE PDF IS THE ONE FETCHED, BEFORE ITS TEXT IS MADE (the review of 26
+    October 2026): its bytes are held to the sha256 its fetch recorded, and
+    one that is not -- another document saved over it -- gets no text, is
+    not kept, stays wanted and is listed.
 
     EACH TEXT READ AS ITSELF. extract_calendar_text.py --only makes the text
     of tonight's PDFs and no others, written whole. A text must be made by an
@@ -4585,69 +4790,143 @@ def make_texts(v, files, day):
     listed; if it fails without them too, they were not the cause, and go
     back.
 
-    NOT KEPT, BUT LISTED. A document whose text is not kept stays held in the
-    list, so the night never asks for it again; it is in
-    v["documents_untexted"] from night to night until its text is here --
-    made on the laptop from the PDF the bucket keeps (cloud.py docs-down),
-    and sent with seed-kit.
+    NOT KEPT, BUT LISTED, each with its cause (UNTEXTED_SAID): from night to
+    night in v["documents_untexted"] until its text is here, or a person
+    accepts it has none (DOCS_NO_TEXT); a text that comes through the kit is
+    read again first (recheck_untexted).
 
-    THE PDFs, OUT OF THE BUILD'S WAY. Each document fetched and installed
-    tonight goes to DOCS_STAGED, with a record of its bytes and sha256, for
-    the workflow's docs-up to keep in the bucket; any other PDF in the four
-    folders -- one fetched and not installed, a part file -- is deleted."""
+    HELD ONCE ITS PDF IS KEPT. Each document fetched and installed tonight
+    -- its text kept or not -- goes to DOCS_STAGED with a record of its bytes
+    and sha256, for the workflow's docs-up, and only then is it marked held
+    in the list (mark_held): until then it went in as wanted, so a night
+    stopped part way asks for it again rather than hold it with nothing. On
+    a failure here, the texts made tonight of documents not yet held go too,
+    for the same reason. Tonight's PDFs and their part files then leave the
+    four folders (clear_tonights)."""
     try:
         return _make_texts(v, files, day)
     except Exception as e:                                      # noqa: BLE001
         say(f"  the documents' text: {type(e).__name__}: {e}", echo=False)
-        for p in _doc_files():
-            p.unlink(missing_ok=True)
-        # Held in the list, and no text: listed, so that a person hears.
         try:
-            if files.get("installed"):
-                _untexted(v, [r for r in files.get("took") or [] if isinstance(r, dict)],
-                          "the night's own step for its text failed", day)
+            kept = set(files.get("staged") or [])
+            for r in files.get("took") or []:
+                if isinstance(r, dict) and _disk(r.get("path")).as_posix() not in kept:
+                    _disk(r.get("path")).with_suffix(".txt").unlink(missing_ok=True)
         except Exception:                                       # noqa: BLE001
             pass
-        return "not made: the night's own step for it failed, and tonight's PDFs were deleted"
+        return ("not made: the night's own step for it failed, and tonight's PDFs were deleted; "
+                "the documents not yet held are asked for again")
     finally:
-        left = _doc_files()
+        left = clear_tonights(files)
         if left:
-            say(f"  {len(left)} PDF(s) still in the four folders, deleted before the build",
-                echo=False)
-            for p in left:
-                p.unlink(missing_ok=True)
+            say(f"  {len(left)} of tonight's PDF(s) left in the four folders, deleted before the "
+                "build", echo=False)
 
 
-def _untexted(v, rows, why, day):
+# Each cause a document's text was not kept for, and what a person does about
+# it, for the warning (the review of 26 October 2026). The warning gave one
+# fix for all of them -- make the text on the laptop, and seed-kit sends it --
+# which for a journal the journal readers refused gave the next night's build
+# the very text that stops it.
+UNTEXTED_SAID = {
+    "extractor": "whose text an extractor the canary did not prove made: a person makes it on "
+                 "the laptop from the PDF docs-down brings, and seed-kit sends it",
+    "failed": "whose text the night's own step failed to make: a person makes it on the laptop "
+              "from the PDF docs-down brings, and seed-kit sends it",
+    "empty": "with no text in it, a scan perhaps: a person who accepts that puts its path in "
+             f"{DOCS_NO_TEXT.as_posix()}, and the warning ends",
+    "not_its_own": "whose text did not carry its own number or heading: a person looks at its "
+                   "PDF, which docs-down keeps apart in archive/documents-held/, before any text "
+                   "of it is made",
+    "journal_check": "whose text a journal reader refused: the reader is fixed first, and a text "
+                     "made before that the night sets aside again",
+    "overwritten": "whose PDF on the night's machine was not the one fetched: it is asked for "
+                   "again",
+}
+
+
+def _untexted(v, rows, why, day, cause="failed"):
     rec = v.get("documents_untexted") if isinstance(v.get("documents_untexted"), dict) else {}
     for r in rows:
         p = _disk(r.get("path")).as_posix()
         rec[p] = {"chamber": r.get("chamber"), "kind": r.get("kind"), "year": r.get("year"),
-                  "since": (rec.get(p) or {}).get("since") or day, "why": why}
+                  "name": r.get("name") or "", "label": r.get("label") or "",
+                  "since": (rec.get(p) or {}).get("since") or day, "why": why,
+                  "cause": cause if cause in UNTEXTED_SAID else "failed"}
     v["documents_untexted"] = rec
 
 
-def _make_texts(v, files, day):
+def _not_its_own(r, text):
+    """Why a text is not the document's own, or "": a calendar's text must
+    carry its number on its masthead, a journal's its chamber's heading."""
     import calendar_documents as CD
+    if r.get("kind") == "calendar":
+        n = (CD.number_of(r.get("name"))[0] or CD.number_of(r.get("label"))[0]
+             or CD.number_of(_disk(r.get("path")).stem)[0])
+        if not (n and CD.masthead(text, r.get("chamber") or "H", n) is not None):
+            return "its text does not carry its own number on its masthead"
+        return ""
+    if not JOURNAL_HEADING.get(r.get("chamber"), JOURNAL_HEADING["H"]).search(text[:20000]):
+        return "its text does not carry its chamber's journal heading"
+    return ""
+
+
+def _journal_gate(journals):
+    """The journal checks with these journals' texts in: [] when they pass,
+    or when they fail without the texts too (not theirs: the texts stay);
+    else the names of the checks that failed, with the texts moved aside to
+    DOCS_ASIDE, out of the build's way."""
+    failed = journal_checks()
+    if not failed:
+        return []
+    DOCS_ASIDE.mkdir(parents=True, exist_ok=True)
+    moved = []
+    for r in journals:
+        txt = _disk(r["path"]).with_suffix(".txt")
+        dst = DOCS_ASIDE / txt.as_posix().replace("/", "__")
+        os.replace(txt, dst)
+        moved.append((txt, dst))
+    again = journal_checks(only=failed)
+    if again:
+        # Not theirs: they fail without them too. Put back.
+        for txt, dst in moved:
+            os.replace(dst, txt)
+        say(f"  the journal checks fail without these journals too ({_and(again)}): they go "
+            "in, and the build says why")
+        return []
+    return failed
+
+
+def _make_texts(v, files, day):
     took = [r for r in files.get("took") or [] if isinstance(r, dict)] if files.get("installed") else []
-    if not took and not files.get("fetched") and not _doc_files():
+    if not took:
         return ""
     made, bad, how = [], [], {}
     by = {}                 # each text made, by which extractor
     proved = canary_proved(v.get("text_canary"))
-    if took:
+    whole = []
+    for r in took:
+        try:
+            data = _disk(r["path"]).read_bytes()
+        except OSError:
+            data = None
+        if data is None or (r.get("sha256") and hashlib.sha256(data).hexdigest() != r["sha256"]):
+            bad.append((r, "its PDF on this machine is not the one fetched tonight", "overwritten"))
+            continue
+        whole.append(r)
+    if whole:
         DOCS_LEDGER.unlink(missing_ok=True)
-        run(["extract_calendar_text.py", "--only", *[_disk(r["path"]).as_posix() for r in took],
+        run(["extract_calendar_text.py", "--only", *[_disk(r["path"]).as_posix() for r in whole],
              "--ledger", str(DOCS_LEDGER)], "the text of tonight's calendars and journals")
         ledger = load_json(DOCS_LEDGER)
         ledger = ledger if isinstance(ledger, dict) else {}
-        for r in took:
+        for r in whole:
             pdf = _disk(r["path"])
             txt = pdf.with_suffix(".txt")
             entry = ledger.get(pdf.as_posix()) or ledger.get(str(pdf)) or {}
             text = txt.read_text(encoding="utf-8", errors="replace") if txt.exists() else ""
             if not text.strip():
-                bad.append((r, "no text came out of it"))
+                bad.append((r, "no text came out of it", "empty"))
                 continue
             # MADE BY WHAT THE CANARY PROVED (the review of 26 October 2026).
             # extract_calendar_text falls back to pdfplumber, then pypdf, for
@@ -4659,57 +4938,95 @@ def _make_texts(v, files, day):
             if made_by not in proved:
                 txt.unlink(missing_ok=True)
                 bad.append((r, f"its text was made by {made_by or 'an extractor not recorded'}, "
-                               "which the text canary did not prove tonight"))
+                               "which the text canary did not prove tonight", "extractor"))
                 continue
-            if r.get("kind") == "calendar":
-                n = CD.number_of(r.get("name"))[0] or CD.number_of(r.get("label"))[0]
-                ok = bool(n) and CD.masthead(text, r.get("chamber") or "H", n) is not None
-                why = "its text does not carry its own number on its masthead"
-            else:
-                ok = bool(JOURNAL_HEADING.get(r.get("chamber"), JOURNAL_HEADING["H"]).search(text[:20000]))
-                why = "its text does not carry its chamber's journal heading"
-            if not ok:
+            why = _not_its_own(r, text)
+            if why:
                 txt.unlink(missing_ok=True)
-                bad.append((r, why))
+                bad.append((r, why, "not_its_own"))
                 continue
             made.append(r)
             by[id(r)] = made_by
     aside = []
     journals = [r for r in made if r.get("kind") == "journal"]
     if journals:
-        failed = journal_checks()
+        failed = _journal_gate(journals)
         if failed:
-            DOCS_ASIDE.mkdir(parents=True, exist_ok=True)
-            moved = []
+            made = [r for r in made if r not in journals]
+            aside = journals
             for r in journals:
-                txt = _disk(r["path"]).with_suffix(".txt")
-                dst = DOCS_ASIDE / txt.as_posix().replace("/", "__")
-                os.replace(txt, dst)
-                moved.append((txt, dst))
-            again = journal_checks(only=failed)
-            if again:
-                # Not tonight's: they fail without them too. Put back.
-                for txt, dst in moved:
-                    os.replace(dst, txt)
-                say(f"  the journal checks fail without tonight's journals too ({_and(again)}): "
-                    "they go in, and the build says why")
-            else:
-                made = [r for r in made if r not in journals]
-                aside = journals
-                for r in journals:
-                    bad.append((r, f"{_and(failed)} --check failed with its text, and passed "
-                                   "without it"))
-    for r, why in bad:
-        _untexted(v, [r], why, day)
+                bad.append((r, f"{_and(failed)} --check failed with its text, and passed "
+                               "without it", "journal_check"))
+    for r, why, cause in bad:
+        _untexted(v, [r], why, day, cause)
+    rec = v.get("documents_untexted")
+    if isinstance(rec, dict):
+        for r in made:
+            rec.pop(_disk(r.get("path")).as_posix(), None)
     for r in made:
         how[by[id(r)]] = how.get(by[id(r)], 0) + 1
-    staged = stage_pdfs(took)
+    overwritten = {id(r) for r, _, cause in bad if cause == "overwritten"}
+    staged = stage_pdfs([r for r in took if id(r) not in overwritten])
+    files["staged"] = [_disk(r.get("path")).as_posix() for r in staged]
+    mark_held(staged)
     said = (f"made {len(made)}" + (f" ({', '.join(f'{n} by {k}' for k, n in sorted(how.items()))})"
                                    if how else "")
             + f"; {len(bad)} not kept" + (f" ({len(aside)} journals set aside by the journal checks)"
                                           if aside else "")
-            + f"; {staged} PDFs kept for the bucket")
+            + f"; {len(staged)} PDFs kept for the bucket")
     return said
+
+
+def recheck_untexted(v, day):
+    """Each document listed in documents_untexted whose text is here now --
+    made on the laptop, and come through the kit -- read again as tonight's
+    are, before the build reads it: a calendar's own number on its masthead,
+    a journal's heading, and the journal checks with it. One that fails is
+    moved aside, out of the build's way, and stays listed with why; one that
+    passes leaves the list (untexted_now). A line for the log, "" for none.
+
+    WHY (the review of 26 October 2026). The night keeps every PDF it
+    fetches, those whose text it refused among them, and docs-down brings
+    them to the laptop, whose ordinary extract_calendar_text makes their
+    text with no such check; seed-kit then sends it. A journal set aside
+    because a journal reader refused it would come back that way, and the
+    next night's build stop on that reader. Never raises."""
+    try:
+        rec = v.get("documents_untexted")
+        if not isinstance(rec, dict) or not rec:
+            return ""
+        back = []
+        for p, e in rec.items():
+            if isinstance(e, dict) and _disk(p).with_suffix(".txt").exists():
+                back.append(dict(e, path=p))
+        if not back:
+            return ""
+        bad, ok = [], []
+        for r in back:
+            txt = _disk(r["path"]).with_suffix(".txt")
+            why = _not_its_own(r, txt.read_text(encoding="utf-8", errors="replace"))
+            if why:
+                DOCS_ASIDE.mkdir(parents=True, exist_ok=True)
+                os.replace(txt, DOCS_ASIDE / txt.as_posix().replace("/", "__"))
+                bad.append((r, f"the text the kit brought: {why}", "not_its_own"))
+            else:
+                ok.append(r)
+        journals = [r for r in ok if r.get("kind") == "journal"]
+        failed = _journal_gate(journals) if journals else []
+        if failed:
+            for r in journals:
+                bad.append((r, f"the text the kit brought: {_and(failed)} --check failed with it, "
+                               "and passed without it", "journal_check"))
+        for r, why, cause in bad:
+            _untexted(v, [r], why, day, cause)
+        said = (f"{len(back) - len(bad)} texts made since are kept; {len(bad)} set aside again"
+                if back else "")
+        say(f"  the documents' texts made since: {said}")
+        return said
+    except Exception as e:                                      # noqa: BLE001
+        say(f"  the documents' texts made since were not read again: {type(e).__name__}: {e}",
+            echo=False)
+        return ""
 
 
 def journal_checks(only=None):
@@ -4734,10 +5051,10 @@ def journal_checks(only=None):
 
 def stage_pdfs(took):
     """Tonight's installed PDFs to DOCS_STAGED, each with its bytes and
-    sha256 in DOCS_RECORD, for docs-up; the number staged. One whose bytes
-    are not the sha256 its fetch recorded is not staged. Every other PDF in
-    the four folders is deleted (make_texts)."""
-    staged = {}
+    sha256 in DOCS_RECORD, for docs-up: [the rows staged]. One whose bytes
+    are not the sha256 its fetch recorded is not staged (make_texts has
+    listed it already)."""
+    staged, rows = {}, []
     for r in took:
         src = _disk(r.get("path"))
         if not src.is_file():
@@ -4751,15 +5068,14 @@ def stage_pdfs(took):
         dst.parent.mkdir(parents=True, exist_ok=True)
         os.replace(src, dst)
         staged[src.as_posix()] = {"sha256": sha, "bytes": len(data)}
+        rows.append(r)
     if staged:
         rec = DOCS_STAGED / DOCS_RECORD
         have = load_json(rec)
         files = dict(have.get("files") or {}) if isinstance(have, dict) else {}
         files.update(staged)
         write_json(rec, {"day": f"{datetime.now():%Y-%m-%d}", "files": files})
-    for p in _doc_files():
-        p.unlink(missing_ok=True)
-    return len(staged)
+    return rows
 
 
 def docs_waiting(v, switch, day):
@@ -4782,13 +5098,19 @@ def docs_waiting(v, switch, day):
 
 
 def untexted_now(v):
-    """documents_untexted, less each document whose text is here now: made on
-    the laptop and sent with seed-kit."""
+    """documents_untexted, less each document whose text is here now -- made
+    on the laptop and sent with seed-kit, and read again first
+    (recheck_untexted) -- and each a person has accepted as having none, by
+    its path in DOCS_NO_TEXT (the review of 26 October 2026: a scan has no
+    text to make, and its warning stood for ever)."""
     rec = v.get("documents_untexted")
     if not isinstance(rec, dict):
         return {}
+    accepted = load_json(DOCS_NO_TEXT) if DOCS_NO_TEXT.exists() else None
+    accepted = {_disk(p).as_posix() for p in accepted} if isinstance(accepted, dict) else set()
     return {p: e for p, e in rec.items()
-            if isinstance(e, dict) and not _disk(p).with_suffix(".txt").exists()}
+            if isinstance(e, dict) and not _disk(p).with_suffix(".txt").exists()
+            and _disk(p).as_posix() not in accepted}
 
 
 def docs_waiting_of(prev, rows, listed, day):
@@ -6220,15 +6542,29 @@ class Night:
                         f"the calendars' and journals' documents: {files}"))
         canary = self.v.get("text_canary")
         if canary and not str(canary).startswith("identical"):
-            out.append(("the text canary: " + kind_of(canary), f"the text canary: {canary}"))
+            # And what follows from it, while the switch is a number: the
+            # verdict says the night is not fetching, so the laptop takes this
+            # year's and last year's back (refusal.night_documents).
+            back = str(self.v.get("night_documents") or "").startswith(
+                NIGHT_NOT_FETCHING.split("{")[0])
+            out.append(("the text canary: " + kind_of(canary), f"the text canary: {canary}"
+                        + ("; until it passes, the laptop fetches this year's and last year's "
+                           "calendars and journals itself, as before the switch" if back else "")))
         untexted = self.v.get("documents_untexted")
         if isinstance(untexted, dict) and untexted:
             n = len(untexted)
+            causes = {}
+            for e in untexted.values():
+                c = e.get("cause") if isinstance(e, dict) else None
+                c = c if c in UNTEXTED_SAID else "failed"
+                causes[c] = causes.get(c, 0) + 1
             out.append((KIND_DOCS_UNTEXTED,
                         f"{n} of the documents the night fetched {'has' if n == 1 else 'have'} no "
-                        f"text it could use ({_by_kind(untexted.values())}): a person makes "
-                        f"{'its' if n == 1 else 'their'} text on the laptop from the PDF the "
-                        "bucket keeps (cloud.py docs-down), and seed-kit sends it"))
+                        f"text it could use ({_by_kind(untexted.values())}): "
+                        + "; ".join(f"{k} {UNTEXTED_SAID[c]}" for c, k in sorted(causes.items()))))
+        held = self.v.get("documents_held_back")
+        if isinstance(held, dict) and held:
+            out.append((KIND_DOCS_HELD_BACK, held_back_said(held)))
         # The recordings waiting for their start times, and why: the night's
         # own caption step since 10 October 2026, so the words name what
         # stopped it rather than a laptop job. The kind is the one this
@@ -6633,8 +6969,31 @@ WARN_STEPS = {"pdftotext": ("pdftotext_pinned",
                             "asked for; the step's own log says which"),
               "docs-up": ("docs_up", "tonight's calendars and journals were fetched and their "
                                      "text kept, and their PDFs were not kept in the bucket "
-                                     "(cloud.py docs-up failed): the laptop has no copy of them; "
-                                     "the step's own log names each")}
+                                     "(cloud.py docs-up failed): the laptop has no copy of them, "
+                                     "and the night will not ask for them again. Their text is in "
+                                     "the kit; a House calendar's committee reports are read from "
+                                     "its PDF, so to fetch those on the laptop, set "
+                                     "NIGHT_DOCUMENTS to off, and after the next night and a pull "
+                                     "run fetch_committee_reports.py --year YEAR, which asks only "
+                                     "for the House calendars the laptop lacks")}
+# How many of the PDFs not kept the docs-up warning names (docs_not_kept).
+DOCS_NOT_KEPT_SAID = 6
+
+
+def docs_not_kept():
+    """"; not kept: calendars/2026/HC035.pdf, ..." for the docs-up warning:
+    the PDFs still staged, which docs-up removes only once every one is kept
+    (the review of 26 October 2026: the warning named none, and a person had
+    to find them in the step's log). "" where none can be read."""
+    rec = load_json(DOCS_STAGED / DOCS_RECORD)
+    files = rec.get("files") if isinstance(rec, dict) else None
+    names = sorted(str(k) for k in files) if isinstance(files, dict) else []
+    names = [n for n in names if PLAIN.fullmatch(n)]
+    if not names:
+        return ""
+    return ("; not kept: " + ", ".join(names[:DOCS_NOT_KEPT_SAID])
+            + (f" and {len(names) - DOCS_NOT_KEPT_SAID} more" if len(names) > DOCS_NOT_KEPT_SAID
+               else ""))
 
 
 def held_for_approval(v):
@@ -6764,8 +7123,9 @@ def close_verdict(a):
               if r not in ("success", "skipped", "") and k not in WARN_STEPS]
     for k in WARN_STEPS:
         if steps.get(k) not in (None, "success", "skipped", ""):
-            v[WARN_STEPS[k][0]] = WARN_STEPS[k][1]
-            v["warnings"] = list(v.get("warnings") or []) + [WARN_STEPS[k][1]]
+            said = WARN_STEPS[k][1] + (docs_not_kept() if k == "docs-up" else "")
+            v[WARN_STEPS[k][0]] = said
+            v["warnings"] = list(v.get("warnings") or []) + [said]
     if failed:
         v["clean"] = False
         v.setdefault("not_clean", []).append("workflow steps that did not succeed: "

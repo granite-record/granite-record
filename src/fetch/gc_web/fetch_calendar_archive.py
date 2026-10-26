@@ -12,6 +12,9 @@ Thirty years of calendars and journals, a night at a time.
     python3 src/fetch/gc_web/fetch_calendar_archive.py --night PREV_LISTED --out .night/files/queue.csv --most 1
                                                                           # GitHub's night only: what
                                                                           #   two nights' lists name
+    python3 src/fetch/gc_web/fetch_calendar_archive.py --settle "SJ 15 June 18, 2026.pdf"
+                                                                          # a possible rename that is
+                                                                          #   the same journal; no network
 
 ARCHIVE_PLAN.md step 4 (the person's plan, in private/ and not in the
 repository), built the way that page says: DISCOVERY AND FETCHING ARE
@@ -40,9 +43,10 @@ archive/queue.csv, one row per document:
 
     chamber,kind,year,name,url,path,state,attempts,error,bytes,fetched
 
-state is wanted / held / failed / gone. A file already on disk is never asked
-for again, so an interrupted run resumes by re-reading the queue and every run
-is idempotent.
+state is wanted / held / failed / gone, or settled: the same document as
+another on file, by a person's word (--settle, below), and never asked for. A
+file already on disk is never asked for again, so an interrupted run resumes
+by re-reading the queue and every run is idempotent.
 
 ONE WORKER. The queue is drained by a single process holding archive/.lock.
 Two fetches at once is what got this address blocked the second time, and a
@@ -161,14 +165,17 @@ rule by rule (night_plan() and take_night(), below):
                    landed switched off (26 October 2026), and the person
                    turns it on
   what it asks     one GET of a row's own address -- the viewer address the
-                   page's own list gave -- for a row both tonight's list and
-                   the night before's name, that no refusal is recorded
-                   against and that has been asked fewer than NIGHT_TRIES
-                   times. A row with its text already beside it is marked
-                   held unasked, before the cap is counted; a journal that
-                   may be a renamed one is named and not asked for. Oldest
-                   first within each list, at most --most (never more than
-                   NIGHT_MOST)
+                   page's own list gave, its folder and its name, which is
+                   checked -- for a row both tonight's list and the night
+                   before's name, that no refusal is recorded against and
+                   that has been asked fewer than NIGHT_TRIES times; and
+                   following no redirect (_NoRedirect). A row with its text
+                   already beside it is marked held unasked, before the cap
+                   is counted; one held back for a person -- a journal that
+                   may be a renamed one, a path two rows share, an address
+                   its list does not give (held_back) -- is named and not
+                   asked for. Oldest first within each list, at most --most
+                   (never more than NIGHT_MOST)
   how gently       --pause seconds, jittered, before every request, the first
                    as well, with the refusal record and the lock read again
                    right before each; no request starts after --seconds; an
@@ -179,9 +186,11 @@ rule by rule (night_plan() and take_night(), below):
                    not a 404, or a second 404: status 1. Nothing is asked
                    again that night
   what it writes   the queue to --out and nowhere else, and beside it each
-                   request and how it ended (ASKED_NAME); each PDF to its own
-                   path through a part file. The night installs the queue,
-                   or does not
+                   request and how it ended (ASKED_NAME) -- both before every
+                   request as well, the try already counted, so a kill at the
+                   night's limit loses neither; each PDF to its own path
+                   through a part file. The night installs the queue, or does
+                   not
   and after it     the night, out of the lock and before the build, makes
                    each document's text and checks it is that document's
                    (nightly.make_texts); the text goes to the kit, and the
@@ -206,11 +215,20 @@ lands off, and the person turns it on -- the laptop fetches them as before.
 
 ONLY THE ONES THE NIGHT WILL STILL ASK FOR (the review of 26 October 2026).
 A row of those years with a refusal recorded against it, NIGHT_TRIES tries,
-or a name the newest list on file no longer gives -- last year's leftovers,
-once the year's list has closed -- is never asked for by the night, and its
-verdict calls it a person's. So the drain does not leave those to the night,
-where nobody would have fetched them: it takes them when a person runs it,
-and says how many (nights_to_ask).
+a name the newest list on file no longer gives -- last year's leftovers,
+once the year's list has closed -- or one the night holds back for a person
+is never asked for by the night, and its verdict calls it a person's. So the
+drain does not leave those to the night, where nobody would have fetched
+them: it takes them when a person runs it, and says how many
+(nights_to_ask). And its own record of a row it leaves to the night goes,
+so that an older line of this machine's is not laid over the night's.
+
+THE NEWER RECORD WINS (the review of 26 October 2026). The laptop's record
+of a document is laid over the night's list only where it is the newer one
+(laptop_wins): it has the document, or a person's word on it (--settle), or
+it tried more often than the night's row says, and the night's row is not
+gone, failed or refused. Laid over every row it named, an old "wanted, one
+try" undid the night's own 404 or refusal every night.
 """
 
 # The bootstrap: _paths.py, found above this file, puts every code folder on the import path.
@@ -252,6 +270,12 @@ DRAIN_FIELDS = ("state", "attempts", "error", "bytes", "fetched")
 # the last time they were read (the night's).
 FETCHED_NAME = "queue_fetched.csv"
 LISTED_NAME = "documents_listed.json"
+# A row a person has settled as the same document as another on file (the
+# review of 26 October 2026): a journal the night held back as a possible
+# rename that is that very journal. Not "held": two held journals that claim
+# one number give that number no link at all (queue_links), and a renamed
+# journal has a text already, under its old name.
+SETTLED = "settled"
 
 # ---- the night's read of the two index pages --------------------------------
 #
@@ -390,16 +414,35 @@ def list_is_the_nights():
             and (QUEUE.parent / refusal.STANDDOWN.name).exists())
 
 
+def laptop_wins(night, laptop):
+    """Whether the laptop's record of a document is laid over the night's.
+
+    THE NEWER RECORD WINS (the review of 26 October 2026). Once the night
+    fetched documents itself, the laptop's older line -- wanted, one try, "not
+    a PDF" -- went over the night's own of the same document -- gone after a
+    404, or a refusal -- every night, so the night asked again for a document
+    that had answered 404 or 403, and its tries never reached three. The
+    laptop's wins only where it has the document (held), or where it has
+    tried more often than the night's record says and the night's record is
+    not gone, failed or refused. A person's word (SETTLED) wins too."""
+    if (laptop.get("state") or "") in ("held", SETTLED):
+        return True
+    if (night.get("state") or "") in ("gone", "failed") or refused_before(night.get("error")):
+        return False
+    return _tries(laptop) > _tries(night)
+
+
 def load_queue():
     """The queue, with what a stood-down laptop's drain has fetched laid over
-    it: the list is the night's file and the fetching is the laptop's, and
-    everything here reads them as one."""
+    it where that is the newer record (laptop_wins): the list is the night's
+    file and the laptop's fetching its own, and everything here reads them as
+    one."""
     rows = read_rows(QUEUE)
     mine = {_key(r): r for r in read_rows(fetched_file())}
     for r in rows:
         r["label"] = r.get("label") or ""
         m = mine.get(_key(r))
-        if m:
+        if m and laptop_wins(r, m):
             for f in DRAIN_FIELDS:
                 r[f] = m.get(f) or ""
     return rows
@@ -1039,12 +1082,37 @@ REFUSED_BEFORE = re.compile(
     r"(?:Error|HTTP)\s*(?:403|429|503)\b|Forbidden|Too Many Requests|Retry-After|block page|Blocked"
     r"|Attack ID|RemoteDisconnected|Connection(?:Reset|Aborted|Refused)|WinError 100(?:53|54|60|61)"
     r"|timed out|refus", re.I)
+# THE WORD EVERY REFUSAL IS WRITTEN WITH (the review of 26 October 2026). A
+# row's error was the answer's own words, and refusal.classify calls more
+# answers refused than those words show: a 500 carrying a Retry-After, or
+# the firewall's page served with a 400. Written as "HTTPError: HTTP Error
+# 500: ...", refused_before() did not know it for one, and once a person
+# cleared the record the night put that very document first in line again.
+# So a refusal is written against its row beginning with this, whatever the
+# answer was, and REFUSED_BEFORE reads it ("refus").
+REFUSED_MARK = "refused: "
 # A journal's number, from its name or its label: "HJ 16 August 19, 2026",
 # "SJ 15", "HJ No 21 09-04-2003".
 JOURNAL_NO_RE = re.compile(r"\b[HS]J\s*(?:No\.?\s*)?0*(\d+)([A-Za-z]?)(?![A-Za-z0-9])", re.I)
 
-# The opener the night's requests go through: urllib's, or a test's fake.
-_open = urllib.request.urlopen
+
+# NO REDIRECTS ON THE NIGHT (the review of 26 October 2026), as
+# fetch_legislation.py's _NoRedirect has it: urlopen follows up to ten,
+# back to back, with no pause and none counted, to addresses no list gave,
+# so one request the night counted could be eleven. A 3xx is an HTTPError
+# here, which refusal.classify reads as a failure, and the step ends on it.
+# Nobody on this disk knows whether the General Court's viewer answers with
+# a redirect; if it does, the first night's one request says "failed: HTTP
+# 302" and nothing more is asked, and following one -- paced and counted --
+# is a person's decision.
+class _NoRedirect(urllib.request.HTTPRedirectHandler):
+    def redirect_request(self, *a, **k):
+        return None
+
+
+# The opener the night's requests go through: one that follows no redirect,
+# or a test's fake.
+_open = urllib.request.build_opener(_NoRedirect).open
 
 
 class NotWhole(Exception):
@@ -1088,17 +1156,115 @@ def _tries(r):
         return NIGHT_TRIES
 
 
-def nights_to_ask(r, lists):
+def nights_to_ask(r, lists, back=None):
     """Whether GitHub's night may still ask for a wanted row of its years
     (night_plan's own rules, the night before's list aside): no refusal
-    recorded against it, fewer than NIGHT_TRIES tries, and named by the
-    newest list on file (`lists`, as lists_of() gives it). With no list on
-    file at all the row counts as named, so that a laptop that cannot tell
-    leaves it to the night rather than ask for it too."""
+    recorded against it, fewer than NIGHT_TRIES tries, named by the newest
+    list on file (`lists`, as lists_of() gives it), and not held back for a
+    person (`back`, as held_back() gives it for that list: a possible
+    rename, a path another row shares, an address the list does not give).
+    The night never asks for one it holds back, so left to the night it was
+    fetched by nobody (the review of 26 October 2026). With no list on file
+    at all the row counts as named, so that a laptop that cannot tell leaves
+    it to the night rather than ask for it too."""
     if refused_before(r.get("error")) or _tries(r) >= NIGHT_TRIES:
+        return False
+    if back and id(r) in back:
         return False
     return not lists or r.get("name") in lists.get(
         (r.get("chamber"), r.get("kind"), str(r.get("year"))), ())
+
+
+def directories_of(rec):
+    """{(chamber, kind, year): the folder the list's own link names} for the
+    lists of a listing record the page answered for; {} for anything else."""
+    out = {}
+    try:
+        for li in rec["lists"]:
+            if not li.get("unanswered"):
+                out[(li["chamber"], li["kind"], str(li["year"]))] = str(li.get("directory") or "")
+    except (KeyError, TypeError, AttributeError):
+        return {}
+    return out
+
+
+def listed_address(r, directory):
+    """Whether a row's own address is the viewer address its list gives it:
+    the index page's viewer, the list's own folder -- in any case, as judge()
+    compares it -- and the row's own name. Compared as the viewer reads it,
+    so a spelling of the same address in other escapes is the same."""
+    try:
+        head = SOURCES[(r.get("chamber"), r.get("kind"))][0] + VIEWER
+    except KeyError:
+        return False
+    url, name = r.get("url") or "", r.get("name") or ""
+    if not directory or not name or not url.startswith(head):
+        return False
+    tail = urllib.parse.unquote(url[len(head):])
+    return tail.endswith(name) and tail[:len(tail) - len(name)].lower() == directory.lower()
+
+
+def held_back(rows, rec):
+    """{id(row): (why, the row it is held back for, or None)}: each wanted
+    row the listing record `rec` names that the night holds back for a
+    person, whatever else is true of it (night_plan; and the laptop's drain,
+    through nights_to_ask, takes these when a person runs it):
+
+      unlisted  its own address is not the viewer address that list gives
+                it -- the list's folder and its name. The night asks only for
+                what the page listed, and a stored address built some other
+                way is a request for a name nobody saw (the review of 26
+                October 2026)
+      shared    another row of the queue that the same record lists has its
+                path. Rows merged before supplements kept their own names
+                share one: the 2026 Senate list's "No 21 Supplement" and
+                "No 21" are both SC021.pdf, so
+                the second download went over the first, or the base edition
+                was counted held from the supplement's text. A person repairs
+                the path; until then neither is asked for or held from text
+      renamed   a journal with the number of a held journal of its chamber
+                and year, whose own name that list no longer gives: a journal
+                is named by the file the General Court posted, so a rename is
+                a second row, a second fetch and a second text every reader
+                of journals reads twice"""
+    now, dirs = lists_of(rec), directories_of(rec)
+    if not now:
+        return {}
+    paths = {}
+    for r in rows:
+        p = _disk(r).as_posix().lower()
+        if p and p != ".":
+            paths.setdefault(p, []).append(r)
+    held = {}
+    for r in rows:
+        if r.get("kind") == "journal" and r.get("state") == "held":
+            n = journal_number(r)
+            if n:
+                held.setdefault((r.get("chamber"), str(r.get("year")), n), []).append(r)
+    out = {}
+    for r in rows:
+        k = (r.get("chamber"), r.get("kind"), str(r.get("year")))
+        if r.get("state") != "wanted" or r.get("name") not in now.get(k, ()):
+            continue
+        if not listed_address(r, dirs.get(k, "")):
+            out[id(r)] = ("unlisted", None)
+            continue
+        # BOTH LISTED TONIGHT: two documents at one path. A calendar renamed
+        # from its short name to its long one shares its number's path with
+        # its old row too, but the old name is no longer listed, and that is
+        # the same document: held from its text, as it always was.
+        others = [x for x in paths.get(_disk(r).as_posix().lower(), ()) if x is not r
+                  and x.get("name") in now.get((x.get("chamber"), x.get("kind"),
+                                                str(x.get("year"))), ())]
+        if others:
+            out[id(r)] = ("shared", others[0])
+            continue
+        if r.get("kind") == "journal" and journal_number(r):
+            gone = [h for h in held.get((k[0], k[2], journal_number(r)), ())
+                    if h.get("name") not in now.get(k, ())]
+            if gone:
+                out[id(r)] = ("renamed", gone[0])
+    return out
 
 
 def night_plan(rows, tonight, before, most):
@@ -1110,6 +1276,10 @@ def night_plan(rows, tonight, before, most):
       text      the rows to mark held from the text beside them, unasked
       renames   [(row, the held row of the same number)]: possible renames,
                 not asked, for a person to decide
+      shared    [(row, a row of the same path)]: not asked, not held from
+                text, for a person to repair (held_back)
+      unlisted  [(row, None)]: rows whose own address is not the one
+                tonight's list gives them, not asked (held_back)
       new       rows listed tonight for the first time, which wait a night
       refused   rows a refusal is recorded against, never asked
       tried     rows asked NIGHT_TRIES times already, which a person decides
@@ -1123,6 +1293,9 @@ def night_plan(rows, tonight, before, most):
                 a document can be listed before its upload is done, and the
                 newest are posted under short names and renamed; no refusal
                 recorded against it; and asked fewer than NIGHT_TRIES times
+      held back its address not the one tonight's list gives it, or its path
+                another row's (held_back, which says why): neither asked for
+                nor held from its text, and named for a person
       its text  a row with its text (or its PDF) beside its path is marked
                 held and never asked for: GitHub's machine holds the texts
                 and no PDFs, and the laptop fetched most of these long ago.
@@ -1137,8 +1310,8 @@ def night_plan(rows, tonight, before, most):
 
     Nothing here asks or writes, so the night can say what it would ask
     without asking it (a dry run's "would ask")."""
-    out = {"ask": [], "waiting": 0, "text": [], "renames": [], "new": 0, "refused": 0,
-           "tried": 0, "why": ""}
+    out = {"ask": [], "waiting": 0, "text": [], "renames": [], "shared": [], "unlisted": [],
+           "new": 0, "refused": 0, "tried": 0, "why": ""}
     if not (isinstance(tonight, dict) and lists_of(tonight)):
         out["why"] = "tonight's list of calendars and journals is not on file"
         return out
@@ -1165,26 +1338,22 @@ def night_plan(rows, tonight, before, most):
             out["tried"] += 1
         else:
             eligible.append(r)
-    held = {}
-    for r in rows:
-        if r.get("kind") == "journal" and r.get("state") == "held":
-            n = journal_number(r)
-            if n:
-                held.setdefault((r.get("chamber"), str(r.get("year")), n), []).append(r)
+    back = held_back(rows, tonight)
     blocks = {}
     for r in eligible:
+        why, other = back.get(id(r), ("", None))
+        # Before the text rule: a row whose path another shares would be
+        # "held" from the other's text, and never asked for.
+        if why in ("unlisted", "shared"):
+            out[why].append((r, other))
+            continue
         p = _disk(r)
         if p.with_suffix(".txt").exists() or p.exists():
             out["text"].append(r)
             continue
-        if r.get("kind") == "journal":
-            k = (r.get("chamber"), str(r.get("year")))
-            listed = now.get((k[0], "journal", k[1]), ())
-            gone = [h for h in held.get((*k, journal_number(r)), ())
-                    if h.get("name") not in listed]
-            if journal_number(r) and gone:
-                out["renames"].append((r, gone[0]))
-                continue
+        if why == "renamed":
+            out["renames"].append((r, other))
+            continue
         blocks.setdefault((r.get("chamber"), r.get("kind"), str(r.get("year"))), []).append(r)
     order = [r for block in blocks.values() for r in reversed(block)]
     out["ask"], out["waiting"] = order[:max(0, most)], max(0, len(order) - max(0, most))
@@ -1273,27 +1442,44 @@ def take_night(a, rows, held):
     WHAT IT WRITES. The queue, whole, to --out and nowhere else: the night
     installs it, or does not. Beside it, ASKED_NAME: each request, with the
     document's name, its bytes, its seconds, its sha256 and how it ended,
-    and the rows marked held from their text, the possible renames and the
-    reason it stopped. Both are written however it ends. A PDF fetched goes
-    to its own path, through a part file; nothing else is written.
+    and the rows marked held from their text, the possible renames, those
+    held back for a person and the reason it stopped. Both are written
+    however it ends -- and before every request as well, with that request
+    and its try already in them (the review of 26 October 2026): the night
+    kills this at its own limit, a kill skips `finally`, and a document whose
+    answer always hangs was asked for again every night with its tries never
+    counted. A PDF fetched goes to its own path, through a part file;
+    nothing else is written.
 
     A FAILURE COUNTS AS A TRY AND WRITES NO ERROR. The Calendar page's picker
     drops a row that carries an error (calendar_documents.linkable), and a
     night's dropped connection is no reason for a reader to lose the link to
     a calendar the page lists. A refusal is written against its row, so that
-    nothing asks for that document again without a person; a 404 too, with
-    the row gone, as the drain writes it."""
+    nothing asks for that document again without a person -- beginning
+    REFUSED_MARK, whatever the answer was -- and a 404 too, with the row
+    gone, as the drain writes it."""
     t0 = time.time()
     out = Path(a.out)
     asked_file = out.with_name(ASKED_NAME)
     rec = {"started": _utc_now(), "most": a.most, "pause": a.pause, "seconds": a.seconds,
            "requests": 0, "asked": [], "held_from_text": [], "possible_renames": [],
-           "new_tonight": 0, "refused_before": 0, "tried_out": 0, "waiting": 0,
-           "stopped": "", "exit": 1}
+           "held_back": [], "new_tonight": 0, "refused_before": 0, "tried_out": 0,
+           "waiting": 0, "stopped": "", "exit": 1}
     code, stopped, done, plan, asked = 0, "", False, None, 0
 
     def who(r):
         return {k: r.get(k) or "" for k in ("chamber", "kind", "year", "name", "path")}
+
+    def keep():
+        # The record first, then the queue: killed between the two, the
+        # record names a request whose try the queue does not yet count,
+        # which the night installs as it is -- never a queue that changed a
+        # row its record does not name.
+        part = asked_file.with_name(asked_file.name + ".part")
+        part.parent.mkdir(parents=True, exist_ok=True)
+        part.write_text(json.dumps(rec, indent=1) + "\n", encoding="utf-8", newline="\n")
+        os.replace(part, asked_file)
+        write_rows(out, rows)
     try:
         def read(p):
             try:
@@ -1306,15 +1492,24 @@ def take_night(a, rows, held):
             rec["held_from_text"].append(who(r))
         rec["possible_renames"] = [dict(who(r), held=h.get("name") or "")
                                    for r, h in plan["renames"]]
+        rec["held_back"] = [dict(who(r), why=why, other=(o or {}).get("name") or "")
+                            for why in ("shared", "unlisted") for r, o in plan[why]]
         rec.update(new_tonight=plan["new"], refused_before=plan["refused"],
                    tried_out=plan["tried"])
         print(f"{len(plan['ask'])} to ask for, at most {a.most}, about {a.pause:g}s apart and "
               f"as long before the first; {len(plan['text'])} held from their text; "
-              f"{len(plan['renames'])} possible renames; {plan['new']} listed for the first "
-              f"time tonight, asked for from tomorrow", flush=True)
+              f"{len(plan['renames'])} possible renames; {len(rec['held_back'])} held back for "
+              f"a person; {plan['new']} listed for the first time tonight, asked for from "
+              "tomorrow", flush=True)
         for r, h in plan["renames"]:
             print(f"  possible rename, not asked for: {r['chamber']} {r['kind']} {r['year']} "
                   f"{r['name']} -- the held {h.get('name')} is no longer listed", flush=True)
+        for r, o in plan["shared"]:
+            print(f"  not asked for, its path is another's: {r['chamber']} {r['kind']} "
+                  f"{r['year']} {r['name']} and {o.get('name')}, both {r.get('path')}", flush=True)
+        for r, _ in plan["unlisted"]:
+            print(f"  not asked for, its address is not the one tonight's list gives it: "
+                  f"{r['chamber']} {r['kind']} {r['year']} {r['name']}", flush=True)
         if plan["why"]:
             # NOT A QUIET NOTHING. The night runs this only after it has
             # installed tonight's list, so a list missing here is something
@@ -1341,10 +1536,16 @@ def take_night(a, rows, held):
             if not held.still():
                 code, stopped = 3, "the lock this runs under is gone"
                 break
-            entry = dict(who(r), at=_utc_now(), bytes=0, seconds=0.0, sha256="", ended="")
+            entry = dict(who(r), at=_utc_now(), bytes=0, seconds=0.0, sha256="",
+                         ended="no answer: it was stopped while asking")
             rec["asked"].append(entry)
             rec["requests"] += 1
             asked += 1
+            # THE TRY COUNTED BEFORE THE REQUEST, and written down: killed
+            # while it waits, the night still has the try and the request.
+            r["attempts"] = str(_tries(r) + 1)
+            rec["stopped"] = "it was stopped while asking"
+            keep()
             begun = time.time()
             blob, e, why = b"", None, ""
             try:
@@ -1356,14 +1557,14 @@ def take_night(a, rows, held):
                 e = err
                 kind = refusal.classify(err) or "failed"
                 why = f"{type(err).__name__}: {err}"
+            rec["stopped"] = ""
             entry["seconds"] = round(time.time() - begun, 1)
             entry["bytes"] = len(blob)
-            r["attempts"] = str(_tries(r) + 1)
             if kind:
                 entry["ended"] = _said(kind, e, why)
                 print(f"  [{asked}] {r['name']}: {entry['ended']}", flush=True)
                 if kind == "refused":
-                    r["error"] = why[:180]
+                    r["error"] = (REFUSED_MARK + why)[:180]
                     refusal.note("fetch_calendar_archive", why[:180])
                     code, stopped = 2, "the General Court refused a request"
                     print("\nRefused. Recorded, and nothing more is asked of it.\n"
@@ -1437,6 +1638,11 @@ def main():
     ap.add_argument("--seconds", type=float,
                     help="(--night) no request starts after this many seconds, at most "
                          f"{NIGHT_SECONDS} (the default)")
+    ap.add_argument("--settle", nargs="+", metavar="NAME",
+                    help="mark the wanted documents of these names settled, asking nobody: a "
+                         "journal the night holds back as a possible rename that a person has "
+                         "found is the same journal. Kept where the drain keeps what it "
+                         "fetched, which the night's list then takes")
     ap.add_argument("--status", action="store_true")
     ap.add_argument("--list", action="store_true")
     ap.add_argument("--chamber", choices=["H", "S", "both"], default="both")
@@ -1460,6 +1666,11 @@ def main():
                              ("--seconds", a.seconds)) if v is not None]
     if a.night is None and nights:
         ap.error(f"{', '.join(nights)} belong to --night")
+    if a.settle is not None and (
+            a.night is not None or a.listing or a.discover or a.status or a.list or a.out
+            or a.chamber != "both" or a.kind != "both" or a.first or a.last != 9999
+            or a.budget is not None or a.delay is not None):
+        ap.error("--settle names documents and asks nobody: it takes no other flag")
     if a.night is not None:
         if (a.listing or a.discover or a.status or a.list or a.chamber != "both"
                 or a.kind != "both" or a.first or a.last != 9999
@@ -1487,6 +1698,8 @@ def main():
     a.delay = 15.0 if a.delay is None else a.delay
 
     ROOT.mkdir(exist_ok=True)
+    if a.settle is not None:
+        return settle(a.settle)
     rows = load_queue()
 
     if a.status or a.list:
@@ -1587,6 +1800,35 @@ def main():
         return drain(rows, chambers, kinds, years, a, held)
 
 
+def settle(names):
+    """--settle: each wanted document of these names marked SETTLED, asking
+    nobody; 0 when every name was found, 1 otherwise.
+
+    A PERSON'S WORD ON A POSSIBLE RENAME (the review of 26 October 2026). The
+    night holds back a journal with the number of one held whose own name
+    its list no longer gives, and warns of it every night, because fetched it
+    is a second text every reader of journals reads twice. When a person
+    finds it is a different journal, the drain here takes it. When it is the
+    same journal under a new name, this says so: kept where the drain keeps
+    what it fetched (save_queue) -- the laptop's file, on a laptop that has
+    stood down, whose settled row the night's list then takes (laptop_wins)
+    -- under the lock, so that no drain running writes over it."""
+    with refusal.hold("settling documents by hand"):
+        rows = load_queue()
+        hit = [r for r in rows if r.get("name") in names and r.get("state") == "wanted"]
+        for r in hit:
+            r["state"], r["error"] = SETTLED, ""
+            print(f"  settled: {r['chamber']} {r['kind']} {r['year']} {r['name']}")
+        found = {r["name"] for r in hit}
+        missing = [n for n in names if n not in found]
+        for n in missing:
+            print(f"  not settled: no wanted document is named {n!r}")
+        if hit:
+            save_queue(rows)
+    print(f"{len(hit)} settled; the night never asks for a settled document")
+    return 1 if missing else 0
+
+
 def drain(rows, chambers, kinds, years, a, held):
     """Fetch up to --budget wanted documents. 0 done, 1 stopped, 2 refused.
 
@@ -1621,22 +1863,34 @@ def drain(rows, chambers, kinds, years, a, held):
             # would have been fetched by nobody.
             first = today().year - 1
             try:
-                lists = lists_of(json.loads(listed_file().read_text(encoding="utf-8")))
+                rec = json.loads(listed_file().read_text(encoding="utf-8"))
             except (OSError, ValueError):
-                lists = {}
+                rec = None
+            lists = lists_of(rec)
+            back = held_back(rows, rec) if lists else {}
             newest = [r for r in todo
                       if str(r.get("year") or "").isdigit() and int(r["year"]) >= first]
-            theirs = {id(r) for r in newest if nights_to_ask(r, lists)}
+            theirs = {id(r) for r in newest if nights_to_ask(r, lists, back)}
             if theirs:
                 todo = [r for r in todo if id(r) not in theirs]
+                # AND THIS MACHINE'S OWN RECORD OF THEM GOES (the review of 26
+                # October 2026): left to the night, a row is the night's to
+                # record, and an older line of this machine's laid over it
+                # would tell the night's list it was never tried.
+                night = {_key(x): x for x in read_rows(QUEUE)}
+                for r in newest:
+                    if id(r) in theirs and _key(r) in night:
+                        for f in DRAIN_FIELDS:
+                            r[f] = night[_key(r)].get(f) or ""
                 print(f"{len(theirs):,} wanted of {first} and later are left to GitHub's "
                       "night, which fetches what the newest lists name: this machine "
                       "drains the years before them")
             if len(newest) > len(theirs):
                 print(f"{len(newest) - len(theirs):,} wanted of {first} and later the night "
                       "will not ask for -- a refusal recorded against it, "
-                      f"{NIGHT_TRIES} tries, or no longer on its list -- are a person's, "
-                      "and this drain takes them")
+                      f"{NIGHT_TRIES} tries, no longer on its list, or held back for a "
+                      "person (a possible rename, a path another shares, an address its "
+                      "list does not give) -- are a person's, and this drain takes them")
         n = min(len(todo), a.budget)
         print(f"{len(todo):,} wanted, taking {n:,} this run at about "
               f"{a.delay:g}s apart -- roughly {n * a.delay / 60:.0f} minutes, "
@@ -1681,7 +1935,9 @@ def drain(rows, chambers, kinds, years, a, held):
                 why = f"{type(e).__name__}: {e}"
             if kind:
                 r["attempts"] = str(int(r["attempts"] or 0) + 1)
-                r["error"] = why[:180]
+                # A refusal in the one word the night reads for one
+                # (REFUSED_MARK), whatever the answer said.
+                r["error"] = ((REFUSED_MARK if kind == "refused" else "") + why)[:180]
                 fail += 1
                 print(f"  [{i}] {r['name']}: {kind}: {r['error'][:80]}",
                       flush=True)

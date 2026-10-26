@@ -529,6 +529,16 @@ DOCS_STAGED = ".night/documents"
 DOCS_RECORD = "staged.json"
 DOCS_ROOTS = ("calendars", "calendars_senate", "journals", "journals_senate")
 DOCS_MOST = 50_000_000
+# A PDF WHOSE TEXT THE NIGHT REFUSED AS NOT THE DOCUMENT'S, OR A JOURNAL
+# READER REFUSED, COMES DOWN APART (the review of 26 October 2026): to this
+# folder, at its own path, and not into the four folders, where the
+# laptop's ordinary extract_calendar_text would make its text with no such
+# check and seed-kit send it -- a journal the readers refused, back in the
+# build that stops on it. The causes are the night's own words for those two
+# (nightly.UNTEXTED_SAID, which preflight holds these to), read from the
+# night's verdict as pull brought it (VERDICTS["last-night.json"]).
+DOCS_HELD = "archive/documents-held"
+DOCS_HELD_CAUSES = ("not_its_own", "journal_check")
 # What pull takes from logs/<day>/, and the folder each goes to. Anything
 # else there stays in the bucket: a name this does not know could be one the
 # laptop uses for a log of its own.
@@ -4236,19 +4246,42 @@ def cmd_docs_up(a, root):
         shutil.rmtree(local(root, DOCS_STAGED), ignore_errors=True)
 
 
+def held_apart(root):
+    """{path: why} for the documents the night's verdict, as pull brought it,
+    lists without text for a cause in DOCS_HELD_CAUSES: docs-down brings
+    those to DOCS_HELD. {} where there is no such verdict."""
+    try:
+        v = json.loads(local(root, VERDICTS["last-night.json"]).read_text(encoding="utf-8"))
+        rec = v.get("documents_untexted") if isinstance(v, dict) else None
+    except (OSError, ValueError):
+        return {}
+    out = {}
+    for p, e in (rec.items() if isinstance(rec, dict) else ()):
+        if isinstance(e, dict) and e.get("cause") in DOCS_HELD_CAUSES and doc_path(p):
+            out[doc_path(p)] = str(e.get("why") or e["cause"])[:200]
+    return out
+
+
 def cmd_docs_down(a, root):
     """The laptop's: each PDF the night kept under DOCS that this laptop does
     not have, to its path, whole and read against the sha256 its upload
-    recorded (THE NIGHT'S DOCUMENTS, KEPT). Reads the bucket and writes
-    nothing there; never writes over a file here."""
+    recorded (THE NIGHT'S DOCUMENTS, KEPT) -- or, for one whose text the
+    night refused as not the document's or a journal reader refused, to
+    DOCS_HELD instead (held_apart). Reads the bucket and writes nothing
+    there; never writes over a file here."""
     bucket = open_bucket(a, preview=True)
     took, same, differ, odd, size = [], 0, [], [], 0
+    apart = held_apart(root)
     for key, n in sorted(bucket.list(DOCS).items()):
         path = doc_path(key[len(DOCS):])
         if not path:
             odd.append(key)
             continue
         dst = local(root, path)
+        if path in apart and not dst.exists():
+            dst = local(root, f"{DOCS_HELD}/{path}")
+            say(f"  apart, in {DOCS_HELD}/ and not where the laptop's text is made: {path} -- "
+                f"the night refused its text ({apart[path]})")
         if dst.exists():
             want = (bucket.head(key) or {}).get("sha256") or ""
             if dst.stat().st_size == n and (not want or sha256_of(dst) == want):

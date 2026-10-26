@@ -31,7 +31,8 @@ pdftotext -layout where poppler is installed, because the calendar is set in
 columns and -layout is what keeps a time in the same line as its bill.
 pdfplumber and pypdf are the fallbacks, and they are worse at exactly that,
 so which one produced a file is recorded rather than left to be guessed at
-when a parse looks wrong.
+when a parse looks wrong. On GitHub's night the pdftotext is the pinned one
+nightly.yml installs and names in GRANITE_PDFTOTEXT, and no other (pdftotext()).
 
 FOR GITHUB'S NIGHT (the person, 26 October 2026)
 
@@ -74,6 +75,7 @@ import _paths  # noqa: E402,F401
 import argparse
 import json
 import os
+import re
 import shutil
 import subprocess
 import tempfile
@@ -83,12 +85,55 @@ from collections import Counter
 ROOTS = ["calendars", "calendars_senate", "journals", "journals_senate"]
 LEDGER = Path("archive/extracted.json")
 
+# THE PINNED PDFTOTEXT, AND ONLY IT, ON GITHUB'S NIGHT (the review of 26
+# October 2026). nightly.yml's pin step names the binary it installed, and
+# checked against its sha256, in this variable. Where it is set that binary
+# is the one run, and no other; on GitHub's machine where it is not set,
+# none is. Another pdftotext on that machine's PATH -- Git for Windows
+# carries one -- could make the same text of four small fixtures and still
+# set another calendar's columns its own way, and the canary would have
+# proved the wrong program.
+PDFTOTEXT_ENV = "GRANITE_PDFTOTEXT"
+VERSION_RE = re.compile(r"pdftotext version [0-9][0-9A-Za-z.-]*")
+
+
+def pdftotext():
+    """The pdftotext this runs, or None: the one PDFTOTEXT_ENV names, if it is
+    a file; else none on GitHub's machine; else whichever is on PATH (the
+    laptop's)."""
+    pinned = os.environ.get(PDFTOTEXT_ENV, "").strip()
+    if pinned:
+        return pinned if Path(pinned).is_file() else None
+    if os.environ.get("GITHUB_ACTIONS") == "true":
+        return None
+    return shutil.which("pdftotext")
+
+
+def version_of(said):
+    """"pdftotext version 26.09.0" from what `pdftotext -v` prints, or ""."""
+    m = VERSION_RE.search(said or "")
+    return m.group(0) if m else ""
+
+
+def pdftotext_version():
+    """What the pdftotext this runs says it is (`-v`, on stderr), or ""."""
+    exe = pdftotext()
+    if not exe:
+        return ""
+    try:
+        out = subprocess.run([exe, "-v"], capture_output=True, text=True, encoding="utf-8",
+                             errors="replace", timeout=30)
+    except (OSError, subprocess.SubprocessError):
+        return ""
+    return version_of((out.stderr or "") + (out.stdout or ""))
+
 
 def extract(pdf):
     """(text, how) -- or (None, why not)."""
-    if shutil.which("pdftotext"):
+    exe = pdftotext()
+    if exe:
         try:
-            out = subprocess.run(["pdftotext", "-layout", str(pdf), "-"],
+            out = subprocess.run([exe, "-layout", str(pdf), "-"],
                                  capture_output=True, text=True,
                                  encoding="utf-8", errors="replace", timeout=180)
             if out.returncode == 0 and (out.stdout or "").strip():
@@ -220,9 +265,14 @@ def canary(folder):
                 first = (f"{pdf.name} differs from line {_first_difference(mine, theirs)}, "
                          f"by {note}")
     by = ", ".join(f"{k}" for k, _ in how.most_common()) or "no extractor"
+    # Which pdftotext, by its own word, so that the night's verdict says the
+    # version it proved, or failed to (the review of 26 October 2026).
+    ver = pdftotext_version()
+    ver = f"; {ver}" if ver else "; no pdftotext here"
     if same == len(pairs):
-        return True, f"identical for {same} of {len(pairs)}, by {by}"
-    return False, f"not proved: identical for {same} of {len(pairs)}; the first that is not: {first}"
+        return True, f"identical for {same} of {len(pairs)}, by {by}{ver}"
+    return False, (f"not proved: identical for {same} of {len(pairs)}; the first that is not: "
+                   f"{first}{ver}")
 
 
 def read_ledger(path):

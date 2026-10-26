@@ -504,8 +504,20 @@ def stand_down(who, instead=""):
 # in the bucket (cloud.py docs-down brings them here). Until then the laptop
 # fetches them as it always has -- the switch lands off, and the person turns
 # it on. The drain leaves to the night only the documents it will still ask
-# for; one it will not -- refused once, tried three times, no longer listed --
-# is a person's, and the drain takes it (fetch_calendar_archive.nights_to_ask).
+# for; one it will not -- refused once, tried three times, no longer listed,
+# or held back for a person -- is a person's, and the drain takes it
+# (fetch_calendar_archive.nights_to_ask). fetch_senate_calendars stands down
+# for those years too, and fetch_committee_reports reads the House calendars
+# on this disk instead of asking (the review of 26 October 2026).
+#
+# A NUMBER ONLY WHEN THE NIGHT CAN FETCH (the review of 26 October 2026). A
+# night whose switch is a number but whose text canary did not pass -- no
+# fixtures, or the pinned pdftotext not installed -- fetches nothing, and
+# writes "not fetching: ..." here instead of the number
+# (nightly.NIGHT_NOT_FETCHING), so this laptop takes those years back until
+# it passes. A late start or a list that did not complete is one night's and
+# leaves the number: taken back for a day, the laptop would race the next
+# night for documents its own fetch had not yet sent to the bucket.
 #
 # The laptop knows the switch only from the night's own verdict, which cloud.py
 # pull brings to archive/cloud/last-night.json (cloud.VERDICTS). On a laptop
@@ -520,10 +532,11 @@ DOCUMENTS_KEY = "night_documents"
 def night_documents():
     """(day, most) when the newest real night's verdict, as pull brought it,
     says that night fetched the newest calendars and journals itself -- its
-    switch a number of documents; None where it did not ("off" or "shadow"),
-    where there is no such verdict, on GitHub's machine, and on a machine
-    that has not stood down. Beside MARK, as _governing() reads the stand-down,
-    so that a test's folder is judged by itself."""
+    switch a number of documents; None where it did not ("off", "shadow", or
+    "not fetching: ..." on a night whose text canary did not pass), where
+    there is no such verdict, on GitHub's machine, and on a machine that has
+    not stood down. Beside MARK, as _governing() reads the stand-down, so that
+    a test's folder is judged by itself."""
     if _governing() is None:
         return None
     try:
