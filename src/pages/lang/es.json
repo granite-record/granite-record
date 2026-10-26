@@ -1509,8 +1509,8 @@
    "state": "draft"
   },
   "guide.attend-a-hearing.when-the-chair-calls-you-speak": {
-   "en": "When the chair calls you, speak briefly. Before closing, the chair asks whether anyone else wishes to speak.",
-   "es": "Cuando el presidente lo llame, hable brevemente. Antes de cerrar, el presidente pregunta si alguien más desea hablar.",
+   "en": "When the chair calls you, speak briefly. Before closing, the chair usually asks whether anyone else wishes to speak.",
+   "es": "Cuando el presidente lo llame, hable brevemente. Antes de cerrar, el presidente suele preguntar si alguien más desea hablar.",
    "state": "draft"
   },
   "guide.attend-a-hearing.when-you-speak": {
@@ -4115,6 +4115,11 @@
    "es": "Una licencia de pesca en agua dulce.",
    "state": "draft"
   },
+  "guide.fishing-license.a-license-ends-on-december-31": {
+   "en": "A license ends on <b>December 31</b> of the year you bought it, unless it is one of the permanent licenses, and cannot be passed to anyone else.",
+   "es": "Una licencia vence el <b>31 de diciembre</b> del año en que la compró, salvo que sea una de las licencias permanentes, y no se puede pasar a otra persona.",
+   "state": "draft"
+  },
   "guide.fishing-license.a-new-hampshire-resident-who-is": {
    "en": "A New Hampshire resident who is legally blind may get a fishing license free, and it lasts for life.",
    "es": "Un residente de New Hampshire legalmente ciego puede obtener una licencia de pesca gratis, y le dura toda la vida.",
@@ -4130,14 +4135,14 @@
    "es": "Una licencia recreativa de agua salada.",
    "state": "draft"
   },
-  "guide.fishing-license.a-resident-veteran-who-is-totally": {
-   "en": "A resident veteran who is totally and permanently disabled from service gets a permanent license, with a one-time $10 administrative fee. A resident on active duty stationed outside the state can get a free license to use while home on leave.",
-   "es": "Un veterano residente con una discapacidad total y permanente por su servicio obtiene una licencia permanente, con una cuota administrativa única de $10. Un residente en servicio activo destinado fuera del estado puede obtener una licencia gratuita para usarla mientras está de permiso en casa.",
+  "guide.fishing-license.a-resident-veteran-discharged-other-than": {
+   "en": "A resident veteran, discharged other than dishonorably, who is totally and permanently disabled from a service-connected disability gets a permanent license, with a one-time $10 administrative fee. A resident on active duty stationed outside the state can get a free license to use while home on leave.",
+   "es": "Un veterano residente, dado de baja en condiciones que no sean deshonrosas, con una discapacidad total y permanente relacionada con su servicio obtiene una licencia permanente, con una cuota administrativa única de $10. Un residente en servicio activo destinado fuera del estado puede obtener una licencia gratuita para usarla mientras está de permiso en casa.",
    "state": "draft"
   },
   "guide.fishing-license.anyone-16-or-older-needs-a": {
-   "en": "Anyone 16 or older needs a license to fish in New Hampshire, in fresh water or salt water, except on the free fishing days Fish and Game sets each year. Buy it online from Fish and Game or from a license agent. Every license ends on December 31.",
-   "es": "Toda persona de 16 años o más necesita una licencia para pescar en New Hampshire, en agua dulce o salada, salvo en los días de pesca gratuita que el Departamento de Pesca y Caza (Fish and Game) fija cada año. Cómprela en línea a Pesca y Caza o con un agente de licencias. Toda licencia vence el 31 de diciembre.",
+   "en": "Anyone 16 or older needs a license to fish in New Hampshire, in fresh water or salt water, except on the free fishing days Fish and Game sets each year and in a few other cases (step 1). Buy it online from Fish and Game or from a license agent. Most licenses end on December 31.",
+   "es": "Toda persona de 16 años o más necesita una licencia para pescar en New Hampshire, en agua dulce o salada, salvo en los días de pesca gratuita que el Departamento de Pesca y Caza (Fish and Game) fija cada año y en algunos otros casos (paso 1). Cómprela en línea a Pesca y Caza o con un agente de licencias. La mayoría de las licencias vencen el 31 de diciembre.",
    "state": "draft"
   },
   "guide.fishing-license.are-there-licenses-for-veterans-and": {
@@ -4203,11 +4208,6 @@
   "guide.fishing-license.do-i-need-a-license-to": {
    "en": "Do I need a license to dig clams or take lobsters?",
    "es": "¿Necesito una licencia para sacar almejas o langostas?",
-   "state": "draft"
-  },
-  "guide.fishing-license.every-license-ends-on-december-31": {
-   "en": "Every license ends on <b>December 31</b> of the year you bought it, and cannot be passed to anyone else.",
-   "es": "Toda licencia vence el <b>31 de diciembre</b> del año en que la compró, y no se puede pasar a otra persona.",
    "state": "draft"
   },
   "guide.fishing-license.fish-and-game-licenses-rsa-214": {
@@ -4286,8 +4286,8 @@
    "state": "draft"
   },
   "guide.fishing-license.lower-cost-and-free-licenses-residents": {
-   "en": "<b>Lower-cost and free licenses.</b> Residents 68 or older can buy a discounted senior license; residents born in 1947 or earlier get a free, permanent Milestone license from Fish and Game in Concord, its regional offices or select agents.",
-   "es": "<b>Licencias más baratas y gratuitas.</b> Los residentes de 68 años o más pueden comprar una licencia con descuento para personas mayores; los residentes nacidos en 1947 o antes obtienen una licencia Milestone gratuita y permanente en la sede de Pesca y Caza en Concord, en sus oficinas regionales o con ciertos agentes.",
+   "en": "<b>Lower-cost and free licenses.</b> Residents 68 or older can buy a discounted senior license; residents born in 1947 or earlier get a free, permanent Milestone license from Fish and Game in Concord, its regional offices in Lancaster, New Hampton and Keene, or select agents, or by mail.",
+   "es": "<b>Licencias más baratas y gratuitas.</b> Los residentes de 68 años o más pueden comprar una licencia con descuento para personas mayores; los residentes nacidos en 1947 o antes obtienen una licencia Milestone gratuita y permanente en la sede de Pesca y Caza en Concord, en sus oficinas regionales de Lancaster, New Hampton y Keene, con ciertos agentes o por correo.",
    "state": "draft"
   },
   "guide.fishing-license.marine-fisheries-rsa-211": {
@@ -4346,8 +4346,8 @@
    "state": "draft"
   },
   "guide.fishing-license.seasons-limits-and-the-waters-with": {
-   "en": "Seasons, limits and the waters with special rules are Fish and Game&rsquo;s to set. Check its rules for the water you plan to fish.",
-   "es": "Las temporadas, los límites y las aguas con reglas especiales los fija Pesca y Caza. Consulte sus reglas para el lugar donde piensa pescar.",
+   "en": "Seasons, limits and the waters with special rules vary. Check Fish and Game&rsquo;s rules for the water you plan to fish.",
+   "es": "Las temporadas, los límites y las aguas con reglas especiales varían. Consulte las reglas de Pesca y Caza para el lugar donde piensa pescar.",
    "state": "draft"
   },
   "guide.fishing-license.senior-and-milestone-licenses": {
@@ -4711,8 +4711,8 @@
    "state": "draft"
   },
   "guide.health-insurance.a-health-insurance-policy-covers-a": {
-   "en": "A health insurance policy covers a newborn from the moment of birth. If adding a child costs more, the policy may require you to tell the company about the birth and pay within 31 days after it for the coverage to continue; there is no extra premium for those first 31 days.",
-   "es": "Una póliza de seguro médico cubre a un recién nacido desde el momento del nacimiento. Si añadir un hijo cuesta más, la póliza puede exigir que avise a la compañía del nacimiento y pague dentro de los 31 días siguientes para que la cobertura continúe; esos primeros 31 días no tienen prima adicional.",
+   "en": "A health insurance policy covers a newborn from the moment of birth. If adding a child costs more, the policy may require you to tell the company about the birth and pay within 31 days after it for the coverage to continue; there is no extra premium for those first 31 days (<a href=\"/laws/415#s22\">RSA 415:22</a>).",
+   "es": "Una póliza de seguro médico cubre a un recién nacido desde el momento del nacimiento. Si añadir un hijo cuesta más, la póliza puede exigir que avise a la compañía del nacimiento y pague dentro de los 31 días siguientes para que la cobertura continúe; esos primeros 31 días no tienen prima adicional (<a href=\"/laws/415#s22\">RSA 415:22</a>).",
    "state": "draft"
   },
   "guide.health-insurance.accident-and-health-insurance-rsa-415": {
@@ -4760,14 +4760,9 @@
    "es": "¿Puede otra persona apelar por mí?",
    "state": "draft"
   },
-  "guide.health-insurance.choosing-to-drop-coverage-yourself-such": {
-   "en": "Choosing to drop coverage yourself, such as stopping your COBRA payments, does not open one. You may be asked for documents that show the change. Medicaid and CHIP can be applied for at any time.",
-   "es": "Dejar la cobertura por decisión propia, por ejemplo dejar de pagar COBRA, no abre uno. Es posible que le pidan documentos que muestren el cambio. Medicaid y CHIP se pueden solicitar en cualquier momento.",
-   "state": "draft"
-  },
-  "guide.health-insurance.cobra-a-federal-law-lets-you": {
-   "en": "<b>COBRA</b>, a federal law, lets you and your family keep your employer&rsquo;s group health insurance for a limited time after an event such as losing your job or having your hours cut. When your COBRA coverage ends, you have 60 days to enroll in a Marketplace plan.",
-   "es": "<b>COBRA</b>, una ley federal, le permite a usted y a su familia mantener el seguro médico de grupo de su empleador por un tiempo limitado después de un hecho como perder el empleo o una reducción de horas. Cuando termina su cobertura de COBRA, tiene 60 días para inscribirse en un plan del Mercado.",
+  "guide.health-insurance.cobra-lets-you-and-your-family": {
+   "en": "<b>COBRA</b> lets you and your family keep your employer&rsquo;s group health insurance for a limited time after an event such as losing your job or having your hours cut. When your COBRA coverage ends, you have 60 days to enroll in a Marketplace plan.",
+   "es": "<b>COBRA</b> le permite a usted y a su familia mantener el seguro médico de grupo de su empleador por un tiempo limitado después de un hecho como perder el empleo o una reducción de horas. Cuando termina su cobertura de COBRA, tiene 60 días para inscribirse en un plan del Mercado.",
    "state": "draft"
   },
   "guide.health-insurance.common-questions": {
@@ -4798,6 +4793,11 @@
   "guide.health-insurance.depending-on-your-income-you-may": {
    "en": "Depending on your income, you may get savings on your Marketplace premiums, or qualify for Medicaid or CHIP instead. Savings are based on your estimate of your income for the year you want coverage, not last year. Count yourself, your spouse if you are married, and everyone you will claim as a tax dependent. You see the exact prices and savings when you fill out the application.",
    "es": "Según sus ingresos, puede recibir ahorros en las primas de su plan del Mercado, o reunir los requisitos para Medicaid o CHIP. Los ahorros se basan en su estimado de ingresos para el año en que quiere la cobertura, no en los del año pasado. Cuéntese a usted, a su cónyuge si está casado, y a todas las personas que declarará como dependientes en sus impuestos. Verá los precios y ahorros exactos al llenar la solicitud.",
+   "state": "draft"
+  },
+  "guide.health-insurance.dropping-cobra-coverage-yourself-does": {
+   "en": "Dropping COBRA coverage yourself does not open one. You may be asked for documents that show the change. Medicaid and CHIP can be applied for at any time.",
+   "es": "Dejar la cobertura de COBRA por decisión propia no abre uno. Es posible que le pidan documentos que muestren el cambio. Medicaid y CHIP se pueden solicitar en cualquier momento.",
    "state": "draft"
   },
   "guide.health-insurance.every-health-insurance-company-must-have": {
@@ -4871,8 +4871,8 @@
    "state": "draft"
   },
   "guide.health-insurance.if-a-parents-plan-covers-dependents": {
-   "en": "If a parent&rsquo;s plan covers dependents, you can usually be added to it and stay on it until you turn 26, even if you are married, have a child, live away from home or are not claimed as a tax dependent. On a parent&rsquo;s Marketplace plan, you can stay through December 31 of the year you turn 26.",
-   "es": "Si el plan de su padre o su madre cubre a dependientes, por lo general usted puede ser añadido y quedarse en él hasta cumplir 26 años, aunque esté casado, tenga un hijo, viva fuera de casa o no lo declaren como dependiente en los impuestos. En el plan del Mercado de su padre o su madre, puede quedarse hasta el 31 de diciembre del año en que cumple 26 años.",
+   "en": "If a parent&rsquo;s plan covers dependents, you can usually be added to it and stay on it until you turn 26. On a parent&rsquo;s job-based plan you can generally stay until 26 even if you are married, have a child, live away from home or are not claimed as a tax dependent. On a parent&rsquo;s Marketplace plan, you can stay through December 31 of the year you turn 26.",
+   "es": "Si el plan de su padre o su madre cubre a dependientes, por lo general usted puede ser añadido y quedarse en él hasta cumplir 26 años. En el plan de empleo de su padre o su madre, por lo general puede quedarse hasta los 26 años aunque esté casado, tenga un hijo, viva fuera de casa o no lo declaren como dependiente en los impuestos. En el plan del Mercado de su padre o su madre, puede quedarse hasta el 31 de diciembre del año en que cumple 26 años.",
    "state": "draft"
   },
   "guide.health-insurance.if-the-company-still-says-no": {
@@ -4965,11 +4965,6 @@
    "es": "Medicaid o Medicare pueden cubrirle (paso 8).",
    "state": "draft"
   },
-  "guide.health-insurance.most-people-get-private-health-insurance": {
-   "en": "Most people get private health insurance through a job, or buy a plan through the Health Insurance Marketplace, whose official site is HealthCare.gov. You can enroll in a Marketplace plan during Open Enrollment, November 1 to January 15, or after a life change such as losing other coverage, moving or having a baby, and you may get help paying your premiums based on your income. If your insurance company denies a claim, you can appeal to it, and then ask the New Hampshire Insurance Department for an independent external review, which the insurance company pays for.",
-   "es": "La mayoría de las personas obtiene un seguro médico privado por su empleo, o compra un plan en el Mercado de Seguros Médicos (Health Insurance Marketplace), cuyo sitio oficial es HealthCare.gov. Puede inscribirse en un plan del Mercado durante la Inscripción Abierta, del 1 de noviembre al 15 de enero, o después de un cambio en su vida como perder otra cobertura, mudarse o tener un bebé, y puede recibir ayuda para pagar sus primas según sus ingresos. Si su compañía de seguros deniega un reclamo, puede apelar ante ella y luego pedir al Departamento de Seguros de New Hampshire una revisión externa independiente, que paga la compañía de seguros.",
-   "state": "draft"
-  },
   "guide.health-insurance.moving-to-a-new-zip-code": {
    "en": "moving to a new ZIP code or county;",
    "es": "mudarse a un nuevo código postal o condado;",
@@ -4986,8 +4981,8 @@
    "state": "draft"
   },
   "guide.health-insurance.no-new-hampshire-law-forbids-a": {
-   "en": "No. New Hampshire law forbids a health insurance company to base whether you can get or keep coverage on your health, a medical condition, your medical history, genetic information or a disability. It may cancel your coverage only for fraud or for lying about something important on purpose.",
-   "es": "No. La ley de New Hampshire prohíbe que una compañía de seguros médicos decida si usted puede obtener o mantener su cobertura según su salud, una condición médica, su historial médico, su información genética o una discapacidad. Solo puede cancelar su cobertura por fraude o por mentir a propósito sobre algo importante.",
+   "en": "No. New Hampshire law forbids a health insurance company to base whether you can get or keep coverage on your health, a medical condition, your medical history, genetic information or a disability (<a href=\"/laws/420-g#s6\">RSA 420-G:6</a>). It may not cancel your coverage back to its start except for fraud or an intentional misrepresentation of an important fact, and it may decline to renew it only for the reasons the law lists, such as unpaid premiums.",
+   "es": "No. La ley de New Hampshire prohíbe que una compañía de seguros médicos decida si usted puede obtener o mantener su cobertura según su salud, una condición médica, su historial médico, su información genética o una discapacidad (<a href=\"/laws/420-g#s6\">RSA 420-G:6</a>). No puede anular su cobertura desde el comienzo salvo por fraude o por una declaración falsa intencional sobre un hecho importante, y solo puede negarse a renovarla por las razones que indica la ley, como no pagar las primas.",
    "state": "draft"
   },
   "guide.health-insurance.on-a-low-income-at-65": {
@@ -5103,6 +5098,11 @@
   "guide.health-insurance.you-can-apply-for-a-marketplace": {
    "en": "You can apply for a Marketplace plan:",
    "es": "Puede solicitar un plan del Mercado:",
+   "state": "draft"
+  },
+  "guide.health-insurance.you-can-get-private-health-insurance": {
+   "en": "You can get private health insurance through a job, or buy a plan through the Health Insurance Marketplace, whose official site is HealthCare.gov. You can enroll in a Marketplace plan during Open Enrollment, November 1 to January 15, or after a life change such as losing other coverage, moving or having a baby, and you may get help paying your premiums based on your income. If your insurance company denies a claim, you can appeal to it, and then ask the New Hampshire Insurance Department for an independent external review, which the insurance company pays for.",
+   "es": "Puede obtener un seguro médico privado por su empleo, o comprar un plan en el Mercado de Seguros Médicos (Health Insurance Marketplace), cuyo sitio oficial es HealthCare.gov. Puede inscribirse en un plan del Mercado durante la Inscripción Abierta, del 1 de noviembre al 15 de enero, o después de un cambio en su vida como perder otra cobertura, mudarse o tener un bebé, y puede recibir ayuda para pagar sus primas según sus ingresos. Si su compañía de seguros deniega un reclamo, puede apelar ante ella y luego pedir al Departamento de Seguros de New Hampshire una revisión externa independiente, que paga la compañía de seguros.",
    "state": "draft"
   },
   "guide.heating-and-electric-help.211-new-hampshire": {
@@ -5431,8 +5431,8 @@
    "state": "draft"
   },
   "guide.homelessness-help.2-1-1-new-hampshire-at": {
-   "en": "2-1-1 New Hampshire, at any hour, and your town or city welfare office are the places to start. For a housing voucher, call New Hampshire Housing at (603) 472-8623. For help with an eviction or a denial of town assistance:",
-   "es": "2-1-1 New Hampshire, a cualquier hora, y la oficina de asistencia social de su municipio o ciudad son los lugares para empezar. Para un vale de vivienda, llame a New Hampshire Housing al (603) 472-8623. Para ayuda con un desalojo o con una negativa de asistencia municipal:",
+   "en": "2-1-1 New Hampshire, at any hour, and your town or city welfare office are the places to start. To have a housing voucher application mailed to you, call New Hampshire Housing at (603) 472-8623. For help with an eviction or a denial of town assistance:",
+   "es": "2-1-1 New Hampshire, a cualquier hora, y la oficina de asistencia social de su municipio o ciudad son los lugares para empezar. Para que le envíen por correo una solicitud de vale de vivienda, llame a New Hampshire Housing al (603) 472-8623. Para ayuda con un desalojo o con una negativa de asistencia municipal:",
    "state": "draft"
   },
   "guide.homelessness-help.2-1-1-new-hampshire-connects": {
@@ -5567,13 +5567,13 @@
    "state": "draft"
   },
   "guide.homelessness-help.if-the-case-is-only-about": {
-   "en": "<b>If the case is only about unpaid rent,</b> it is dismissed if, before the hearing, you pay all the rent you owe, $15, and the landlord&rsquo;s filing and service costs. You can do this up to 3 times in a 12-month period.",
-   "es": "<b>Si el caso es solo por renta no pagada,</b> se desestima si, antes de la audiencia, usted paga toda la renta que debe, $15 y los costos de presentación y de notificación del arrendador. Puede hacerlo hasta 3 veces en un período de 12 meses.",
+   "en": "<b>If the case is only about unpaid rent,</b> it is dismissed if, before the hearing, you pay all the rent you owe, any other lawful charges in your lease, $15, and the landlord&rsquo;s filing and service costs. You can do this up to 3 times in a 12-month period.",
+   "es": "<b>Si el caso es solo por renta no pagada,</b> se desestima si, antes de la audiencia, usted paga toda la renta que debe, cualquier otro cargo legal de su contrato de arrendamiento, $15 y los costos de presentación y de notificación del arrendador. Puede hacerlo hasta 3 veces en un período de 12 meses.",
    "state": "draft"
   },
   "guide.homelessness-help.if-you-are-asked-to-prove": {
-   "en": "If you are asked to prove where you live and have no lease or bill, a signed statement from the welfare official, a police or fire official, an emergency medical provider or a social services provider who knows you counts.",
-   "es": "Si le piden probar dónde vive y no tiene contrato de arrendamiento ni factura, vale una declaración firmada por el funcionario de asistencia social, un funcionario de policía o de bomberos, un proveedor de servicios médicos de emergencia o un proveedor de servicios sociales que lo conozca.",
+   "en": "If you are asked to prove where you live and have no lease or bill, a signed and dated statement on agency letterhead, giving the last date of contact, counts. It can come from the welfare official, a police or fire official, an emergency medical provider, or a local social services provider already serving you, unless the welfare official has specific evidence against it.",
+   "es": "Si le piden probar dónde vive y no tiene contrato de arrendamiento ni factura, vale una declaración firmada y fechada en papel membretado de la agencia, que indique la fecha del último contacto. Puede darla el funcionario de asistencia social, un funcionario de policía o de bomberos, un proveedor de servicios médicos de emergencia o un proveedor local de servicios sociales que ya lo esté atendiendo, salvo que el funcionario de asistencia social tenga pruebas concretas en contra.",
    "state": "draft"
   },
   "guide.homelessness-help.if-you-are-leaving-someone-who": {
@@ -5621,6 +5621,11 @@
    "es": "Dónde encontrar refugio y ayuda de emergencia, lo que su municipio debe hacer, sus derechos si enfrenta un desalojo, cómo solicitar un vale de vivienda y el derecho de sus hijos a seguir en la escuela.",
    "state": "draft"
   },
+  "guide.homelessness-help.new-hampshire-coalition-against-domestic": {
+   "en": "New Hampshire Coalition Against Domestic and Sexual Violence",
+   "es": "Coalición de New Hampshire contra la Violencia Doméstica y Sexual",
+   "state": "draft"
+  },
   "guide.homelessness-help.only-a-court-can-make-you": {
    "en": "Only a court can make you leave. Answer the court papers, and get free legal help.",
    "es": "Solo un tribunal puede obligarlo a irse. Responda a los documentos del tribunal y busque ayuda legal gratuita.",
@@ -5644,6 +5649,11 @@
   "guide.homelessness-help.resources-for-renters-new-hampshire-2": {
    "en": "Resources for Renters (New Hampshire Housing)",
    "es": "Recursos para inquilinos (New Hampshire Housing)",
+   "state": "draft"
+  },
+  "guide.homelessness-help.support-services-and-programs-coalition": {
+   "en": "Support Services and Programs (Coalition Against Domestic and Sexual Violence)",
+   "es": "Servicios y programas de apoyo (Coalición contra la Violencia Doméstica y Sexual)",
    "state": "draft"
   },
   "guide.homelessness-help.the-department-of-health-and-human": {
@@ -5702,8 +5712,8 @@
    "state": "draft"
   },
   "guide.homeowners-insurance.a-homeowners-policy-insures-your-house": {
-   "en": "A homeowners policy insures your house, your belongings and your <b>liability</b> to others; the Insurance Department&rsquo;s page explains what it covers. A mortgage lender may require it, and most homeowners policies do not cover flood damage. Once a policy has been in effect for 90 days, the insurer may cancel it only for the reasons the law lists, and it may not refuse to renew it because of a single valid claim. If an insurer handles your claim unfairly, you can complain to the <b>Insurance Department</b>.",
-   "es": "Una póliza de propietarios asegura su casa, sus pertenencias y su <b>responsabilidad</b> ante otros; la página del Departamento de Seguros explica qué cubre. Un prestamista hipotecario puede exigirla, y la mayoría de las pólizas de propietarios no cubren los daños por inundación. Cuando una póliza lleva 90 días en vigor, la aseguradora solo puede cancelarla por las razones que indica la ley, y no puede negarse a renovarla por un solo reclamo válido. Si una aseguradora maneja su reclamo de forma injusta, puede presentar una queja ante el <b>Departamento de Seguros</b>.",
+   "en": "A homeowners policy insures your house, your belongings and your <b>liability</b> to others; the Insurance Department&rsquo;s page explains what it covers. A mortgage lender may require it, and most homeowners policies do not cover flood damage. Once a policy has been in effect for 90 days, the insurer may cancel it only for the reasons the law lists, and it may not refuse to renew it solely because you filed a single valid claim in one policy term. If an insurer handles your claim unfairly, you can complain to the <b>Insurance Department</b>.",
+   "es": "Una póliza de propietarios asegura su casa, sus pertenencias y su <b>responsabilidad</b> ante otros; la página del Departamento de Seguros explica qué cubre. Un prestamista hipotecario puede exigirla, y la mayoría de las pólizas de propietarios no cubren los daños por inundación. Cuando una póliza lleva 90 días en vigor, la aseguradora solo puede cancelarla por las razones que indica la ley, y no puede negarse a renovarla solo porque usted presentó un único reclamo válido en un período de la póliza. Si una aseguradora maneja su reclamo de forma injusta, puede presentar una queja ante el <b>Departamento de Seguros</b>.",
    "state": "draft"
   },
   "guide.homeowners-insurance.a-mortgage-lender-may-require-you": {
@@ -6532,8 +6542,8 @@
    "state": "draft"
   },
   "guide.hunting-license.residents-68-or-older-can-buy": {
-   "en": "Residents 68 or older can buy discounted senior licenses, and a resident veteran totally and permanently disabled from service gets a permanent license, with a one-time $10 administrative fee.",
-   "es": "Los residentes de 68 años o más pueden comprar licencias con descuento para personas mayores, y un veterano residente con una discapacidad total y permanente por su servicio obtiene una licencia permanente, con una cuota administrativa única de $10.",
+   "en": "Residents 68 or older can buy discounted senior licenses, and a resident veteran, discharged other than dishonorably, who is totally and permanently disabled from a service-connected disability gets a permanent license, with a one-time $10 administrative fee.",
+   "es": "Los residentes de 68 años o más pueden comprar licencias con descuento para personas mayores, y un veterano residente, dado de baja en condiciones que no sean deshonrosas, con una discapacidad total y permanente relacionada con su servicio obtiene una licencia permanente, con una cuota administrativa única de $10.",
    "state": "draft"
   },
   "guide.hunting-license.senior-and-milestone-licenses-nh-fish": {
@@ -6587,8 +6597,8 @@
    "state": "draft"
   },
   "guide.hunting-license.to-buy-a-hunting-license-you": {
-   "en": "To buy a hunting license you need a hunter education certificate, or proof that you have held a hunting license before. A first-time hunter takes the course first, or buys an apprentice license once and hunts beside a licensed adult. Turkey, pheasant and waterfowl each need a license on top of it, and every license ends on December 31.",
-   "es": "Para comprar una licencia de caza necesita un certificado de educación para cazadores (hunter education), o una prueba de que ya tuvo una licencia de caza. Quien caza por primera vez toma primero el curso, o compra una vez una licencia de aprendiz y caza junto a un adulto con licencia. Para pavo, faisán y aves acuáticas se necesita además una licencia para cada uno, y toda licencia vence el 31 de diciembre.",
+   "en": "To buy a hunting license you need a hunter education certificate, or proof that you have held a hunting license before. A first-time hunter takes the course first, or buys an apprentice license once and hunts beside a licensed adult. Turkey, pheasant and waterfowl each need a license on top of it, and most licenses end on December 31.",
+   "es": "Para comprar una licencia de caza necesita un certificado de educación para cazadores (hunter education), o una prueba de que ya tuvo una licencia de caza. Quien caza por primera vez toma primero el curso, o compra una vez una licencia de aprendiz y caza junto a un adulto con licencia. Para pavo, faisán y aves acuáticas se necesita además una licencia para cada uno, y la mayoría de las licencias vencen el 31 de diciembre.",
    "state": "draft"
   },
   "guide.hunting-license.to-hunt-with-a-bow-you": {
@@ -7632,8 +7642,8 @@
    "state": "draft"
   },
   "guide.new-to-new-hampshire.once-you-hold-a-new-hampshire": {
-   "en": "Once you hold a New Hampshire license, tell the DMV within 30 days whenever you change your name, your home or your mailing address. An address change can go through the DMV&rsquo;s drop box service.",
-   "es": "Una vez que tenga una licencia de New Hampshire, avise al DMV en un plazo de 30 días cada vez que cambie de nombre, de domicilio o de dirección postal. Un cambio de dirección puede hacerse por el servicio de buzón de entrega del DMV.",
+   "en": "Once you hold a New Hampshire license, notify the DMV in writing within 30 days whenever you change your name, your home or your mailing address. An address change can go through the DMV&rsquo;s drop box service.",
+   "es": "Una vez que tenga una licencia de New Hampshire, avise al DMV por escrito en un plazo de 30 días cada vez que cambie de nombre, de domicilio o de dirección postal. Un cambio de dirección puede hacerse por el servicio de buzón de entrega del DMV.",
    "state": "draft"
   },
   "guide.new-to-new-hampshire.register-it-within-60-days-starting": {
@@ -9946,6 +9956,11 @@
    "es": "<b>Menos de un año:</b> renuévela como de costumbre.",
    "state": "draft"
   },
+  "guide.renew-drivers-license.license-renewal-dmv": {
+   "en": "License renewal (DMV)",
+   "es": "Renovación de la licencia (DMV)",
+   "state": "draft"
+  },
   "guide.renew-drivers-license.licensing-fees-division-of-motor": {
    "en": "Licensing Fees (Division of Motor Vehicles)",
    "es": "Cuotas de licencias (División de Vehículos Motorizados)",
@@ -9979,6 +9994,11 @@
   "guide.renew-drivers-license.online-renewals-division-of-motor": {
    "en": "Online Renewals (Division of Motor Vehicles)",
    "es": "Renovaciones en línea (División de Vehículos Motorizados)",
+   "state": "draft"
+  },
+  "guide.renew-drivers-license.online-you-print-a-temporary-license": {
+   "en": "Online, you print a temporary license to carry with your old card, and the new card comes by mail within 60 days.",
+   "es": "En línea, usted imprime una licencia temporal para llevar con su tarjeta vieja, y la tarjeta nueva llega por correo en un plazo de 60 días.",
    "state": "draft"
   },
   "guide.renew-drivers-license.only-you-can-renew-your-own": {
@@ -10079,11 +10099,6 @@
   "guide.renew-drivers-license.yes": {
    "en": "Yes",
    "es": "Sí",
-   "state": "draft"
-  },
-  "guide.renew-drivers-license.you-leave-with-a-paper-license": {
-   "en": "You leave with a paper license, and the new card comes by mail within 60 days.",
-   "es": "Sale con una licencia de papel, y la tarjeta nueva llega por correo en un plazo de 60 días.",
    "state": "draft"
   },
   "guide.renew-drivers-license.you-may-not-drive-until-you": {
@@ -10317,8 +10332,8 @@
    "state": "draft"
   },
   "guide.report-a-road-problem.call-or-email-your-town-or": {
-   "en": "Call or email your town or city&rsquo;s <b>public works</b> or <b>highway department</b>, or the selectboard&rsquo;s office in a small town; many towns also take reports online. Say exactly where the problem is (the street, the nearest house number or cross street) and what it is: a pothole, a broken or heaved sidewalk, a streetlight that is out, a signal that is dark or stuck, a blocked drain.",
-   "es": "Llame o escriba al departamento de <b>obras públicas</b> o de <b>caminos</b> de su municipio o ciudad, o a la oficina de los concejales en un municipio pequeño; muchos municipios también reciben reportes en línea. Diga exactamente dónde está el problema (la calle, el número de casa más cercano o la calle que la cruza) y qué es: un bache, una acera rota o levantada, un farol de la calle apagado, un semáforo apagado o trabado, un desagüe tapado.",
+   "en": "Call or email your town or city&rsquo;s <b>public works</b> or <b>highway department</b>, or the selectboard&rsquo;s office in a small town. Say exactly where the problem is (the street, the nearest house number or cross street) and what it is: a pothole, a broken or heaved sidewalk, a streetlight that is out, a signal that is dark or stuck, a blocked drain.",
+   "es": "Llame o escriba al departamento de <b>obras públicas</b> o de <b>caminos</b> de su municipio o ciudad, o a la oficina de los concejales en un municipio pequeño. Diga exactamente dónde está el problema (la calle, el número de casa más cercano o la calle que la cruza) y qué es: un bache, una acera rota o levantada, un farol de la calle apagado, un semáforo apagado o trabado, un desagüe tapado.",
    "state": "draft"
   },
   "guide.report-a-road-problem.cities-towns-and-who-runs-them": {
@@ -10387,8 +10402,8 @@
    "state": "draft"
   },
   "guide.report-a-road-problem.in-the-built-up-centers-of": {
-   "en": "In the built-up centers of the cities and towns the law lists, such as Concord, Manchester and Nashua, the city or town maintains the state routes too.",
-   "es": "En los centros urbanos de las ciudades y municipios que la ley enumera, como Concord, Manchester y Nashua, la ciudad o el municipio mantiene también las rutas estatales.",
+   "en": "In the built-up centers of the cities and towns the law lists, such as Concord, Manchester and Nashua, the city or town maintains the state routes too, except the turnpikes and interstates, which stay the state&rsquo;s.",
+   "es": "En los centros urbanos de las ciudades y municipios que la ley enumera, como Concord, Manchester y Nashua, la ciudad o el municipio mantiene también las rutas estatales, salvo las autopistas de peaje y las interestatales, que siguen a cargo del estado.",
    "state": "draft"
   },
   "guide.report-a-road-problem.is-every-bad-road-insufficient": {
@@ -10407,8 +10422,8 @@
    "state": "draft"
   },
   "guide.report-a-road-problem.most-roads-are-your-towns-or": {
-   "en": "Most roads are your town&rsquo;s or city&rsquo;s. It maintains every ordinary town road, and keeps up the sidewalks along its roads, at no charge to the owners next to them.",
-   "es": "La mayoría de los caminos son de su municipio o de su ciudad. Mantiene todos los caminos municipales comunes, y cuida las aceras a lo largo de sus caminos, sin costo para los dueños de los terrenos que dan a ellas.",
+   "en": "Most roads are your town&rsquo;s or city&rsquo;s. It maintains every ordinary town road, and keeps up the sidewalks it has built along its roads, at no further charge to the owners next to them.",
+   "es": "La mayoría de los caminos son de su municipio o de su ciudad. Mantiene todos los caminos municipales comunes, y cuida las aceras que ha construido a lo largo de sus caminos, sin cobro adicional para los dueños de los terrenos que dan a ellas.",
    "state": "draft"
   },
   "guide.report-a-road-problem.municipal-highways-rsa-231": {
@@ -10417,8 +10432,8 @@
    "state": "draft"
   },
   "guide.report-a-road-problem.no-a-road-simply-in-worse": {
-   "en": "No. A road simply in worse shape than others is not insufficient, and snow and ice the town is clearing under its winter policy are not a ground for a claim.",
-   "es": "No. Un camino que simplemente está en peor estado que otros no es insuficiente, y la nieve y el hielo que el municipio está quitando según su política de invierno no dan lugar a una reclamación.",
+   "en": "No. A road simply in worse shape than others is not insufficient, and snow and ice the town is clearing under a winter policy adopted in good faith are generally not a ground for a claim, unless the town was grossly negligent or reckless.",
+   "es": "No. Un camino que simplemente está en peor estado que otros no es insuficiente, y la nieve y el hielo que el municipio está quitando según una política de invierno adoptada de buena fe por lo general no dan lugar a una reclamación, salvo que el municipio haya actuado con negligencia grave o de forma temeraria.",
    "state": "draft"
   },
   "guide.report-a-road-problem.on-a-state-highway-the-department": {
@@ -10857,8 +10872,8 @@
    "state": "draft"
   },
   "guide.said.exec-session.the-committee-votes-on-what-to": {
-   "en": "The committee votes on what to recommend at an executive session, which you may watch. It can follow the hearing directly: Senate notices often say so, and a House committee may hold one right after a noticed hearing without further notice. Some notices give one block of time to &ldquo;executive session on pending legislation&rdquo;, and in practice the chair then takes up the bills in any order.",
-   "es": "El comité vota qué recomendar en una sesión ejecutiva, que usted puede presenciar. Puede celebrarse justo después de la audiencia: los avisos del Senado a menudo lo indican, y un comité de la Cámara puede celebrar una inmediatamente después de una audiencia anunciada sin más aviso. Algunos avisos reservan un bloque de tiempo para la &ldquo;executive session on pending legislation&rdquo; (sesión ejecutiva sobre proyectos pendientes), y en la práctica el presidente trata entonces los proyectos de ley en cualquier orden.",
+   "en": "The committee votes on what to recommend at an executive session, which you may watch. It can follow the hearing directly: Senate notices often say so, and a House committee may hold one right after a noticed hearing without further notice, if the chair and the ranking member agree. Some notices give one block of time to &ldquo;executive session on pending legislation&rdquo;, and in practice the chair then takes up the bills in any order.",
+   "es": "El comité vota qué recomendar en una sesión ejecutiva, que usted puede presenciar. Puede celebrarse justo después de la audiencia: los avisos del Senado a menudo lo indican, y un comité de la Cámara puede celebrar una inmediatamente después de una audiencia anunciada sin más aviso, si el presidente y el miembro de mayor rango de la minoría están de acuerdo. Algunos avisos reservan un bloque de tiempo para la &ldquo;executive session on pending legislation&rdquo; (sesión ejecutiva sobre proyectos pendientes), y en la práctica el presidente trata entonces los proyectos de ley en cualquier orden.",
    "state": "draft"
   },
   "guide.said.forms.the-houses-sign-in-form-and": {
@@ -12453,13 +12468,13 @@
    "state": "draft"
   },
   "guide.testifying.a-different-act-from-signing-in": {
-   "en": "A different act from signing in, and the chambers ask for it differently: a pink card in the House, the sign-up sheet in the Senate's committee room. The sponsor speaks first, and the chair decides whether to limit everyone after.",
-   "es": "Es un acto distinto de inscribirse, y cada cámara lo pide de forma diferente: una tarjeta rosada en la Cámara, la hoja para anotarse en la sala del comité del Senado. El patrocinador habla primero, y el presidente decide si limita el tiempo de los demás.",
+   "en": "A different act from signing in, and the chambers ask for it differently: a pink card in the House, the sign-up sheet in the Senate's committee room. Usually the sponsor speaks first, and the chair decides whether to limit everyone after.",
+   "es": "Es un acto distinto de inscribirse, y cada cámara lo pide de forma diferente: una tarjeta rosada en la Cámara, la hoja para anotarse en la sala del comité del Senado. Por lo general el patrocinador habla primero, y el presidente decide si limita el tiempo de los demás.",
    "state": "draft"
   },
   "guide.testifying.a-public-hearing-is-the-meeting": {
-   "en": "A public hearing is the meeting at which a committee hears a bill before it votes on what to recommend. Every bill introduced gets one, and anyone may speak at it.",
-   "es": "Una audiencia pública es la reunión en la que un comité escucha opiniones sobre un proyecto de ley antes de votar qué recomendar. Cada proyecto de ley presentado tiene una, y cualquiera puede hablar en ella.",
+   "en": "A public hearing is the meeting at which a committee hears a bill before it votes on what to recommend. Committees of both chambers hold them, and the Senate&rsquo;s rules require one on every bill sent to a committee. Anyone may speak at one.",
+   "es": "Una audiencia pública es la reunión en la que un comité escucha opiniones sobre un proyecto de ley antes de votar qué recomendar. Los comités de ambas cámaras las celebran, y las reglas del Senado exigen una para cada proyecto de ley enviado a un comité. Cualquiera puede hablar en ella.",
    "state": "draft"
   },
   "guide.testifying.a-sign-in-without-a-word": {
@@ -12522,11 +12537,6 @@
    "es": "Se cuenta y forma parte del registro",
    "state": "draft"
   },
-  "guide.testifying.every-legislative-meeting-and-hearing-is": {
-   "en": "<b>Every legislative meeting and hearing is open to the public.</b> You may attend in person, and most are live streamed and archived, so you can watch one later. Where you may <i>speak</i> is narrower: a public hearing is the meeting for that, and it is the only one at which members of the public are heard. You may attend any other meeting &mdash; an executive session, a subcommittee, a work session &mdash; but not speak at it.",
-   "es": "<b>Todas las reuniones y audiencias legislativas están abiertas al público.</b> Puede asistir en persona, y la mayoría se transmiten en vivo y se archivan, así que puede verlas después. Los lugares donde puede <i>hablar</i> son más limitados: la audiencia pública es la reunión para eso, y es la única en la que se escucha a los miembros del público. Puede asistir a cualquier otra reunión &mdash; una sesión ejecutiva, un subcomité, una sesión de trabajo &mdash; pero no hablar en ella.",
-   "state": "draft"
-  },
   "guide.testifying.executive-session": {
    "en": "Executive Session",
    "es": "Sesión ejecutiva",
@@ -12540,6 +12550,11 @@
   "guide.testifying.find-out": {
    "en": "Find Out",
    "es": "Informarse",
+   "state": "draft"
+  },
+  "guide.testifying.go-by-the-notice-for-the": {
+   "en": "<b>Go by the notice for the hearing you are attending</b> &mdash; it names the building and the room, and it is right about the day it was published whatever this page says.",
+   "es": "<b>Guíese por el aviso de la audiencia a la que asiste</b> &mdash; indica el edificio y la sala, y es correcto en el día en que se publicó, diga lo que diga esta página.",
    "state": "draft"
   },
   "guide.testifying.gp": {
@@ -12585,11 +12600,6 @@
   "guide.testifying.in-either-chamber-on-its-own": {
    "en": "In either chamber, on its own form: your name and town, whether you are a member of the public or representing an organization, and which side. In the House you may attach written testimony.",
    "es": "En cualquiera de las dos cámaras, en su propio formulario: su nombre y municipio, si es miembro del público o representa a una organización, y de qué lado está. En la Cámara puede adjuntar un testimonio escrito.",
-   "state": "draft"
-  },
-  "guide.testifying.in-the-house-the-committee-is": {
-   "en": "In the House the committee is given the counts, and the sign-ins are published after the hearing.",
-   "es": "En la Cámara, el comité recibe los conteos, y las inscripciones se publican después de la audiencia.",
    "state": "draft"
   },
   "guide.testifying.in-the-record": {
@@ -12707,11 +12717,6 @@
    "es": "<b>State House (Capitolio estatal):</b> 107 North Main Street, Concord.",
    "state": "draft"
   },
-  "guide.testifying.subcommittee-work-session": {
-   "en": "Subcommittee Work Session",
-   "es": "Sesión de trabajo del subcomité",
-   "state": "draft"
-  },
   "guide.testifying.the-buildings-a-notice-names": {
    "en": "The buildings a notice names",
    "es": "Los edificios que indica un aviso",
@@ -12733,8 +12738,8 @@
    "state": "draft"
   },
   "guide.testifying.the-committee-then-reports-its": {
-   "en": "The committee then reports its recommendation to the chamber, and where it was split the majority and the minority each write a report. Whether you spoke or only signed in, the counts and any written testimony stay in the record.",
-   "es": "Luego el comité informa su recomendación a la cámara, y cuando estuvo dividido, la mayoría y la minoría escriben cada una un informe. Haya hablado o solo se haya inscrito, los conteos y cualquier testimonio escrito quedan en el registro.",
+   "en": "The committee then reports its recommendation to the chamber, and where it was split the minority may file a report of its own. Whether you spoke or only signed in, the counts and any written testimony stay in the record.",
+   "es": "Luego el comité informa su recomendación a la cámara, y cuando estuvo dividido, la minoría puede presentar un informe propio. Haya hablado o solo se haya inscrito, los conteos y cualquier testimonio escrito quedan en el registro.",
    "state": "draft"
   },
   "guide.testifying.the-committee-votes-on-its": {
@@ -12742,9 +12747,9 @@
    "es": "El comité vota su recomendación en una reunión aparte, que puede seguir directamente a la audiencia. En ella no se toma testimonio.",
    "state": "draft"
   },
-  "guide.testifying.the-legislative-office-building-is": {
-   "en": "The Legislative Office Building is expected back in service around the start of the next term, and Granite Place to drop out of the rotation when it is. <b>Go by the notice for the hearing you are attending</b> &mdash; it names the building and the room, and it is right about the day it was published whatever this page says.",
-   "es": "Se espera que el Legislative Office Building vuelva a funcionar hacia el comienzo del próximo período, y que entonces Granite Place deje de usarse. <b>Guíese por el aviso de la audiencia a la que asiste</b> &mdash; indica el edificio y la sala, y es correcto en el día en que se publicó, diga lo que diga esta página.",
+  "guide.testifying.the-general-courts-committee-meetings": {
+   "en": "<b>The General Court&rsquo;s committee meetings and hearings are open to the public</b>, apart from the nonpublic sessions the law allows (<a href=\"/laws/91-a#s2\">RSA 91-A:2</a>). You may attend in person, and most are live streamed and archived, so you can watch one later. Where you may <i>speak</i> is narrower: a public hearing is the meeting for that. You may attend an executive session, but no testimony is taken at it.",
+   "es": "<b>Las reuniones y audiencias de los comités de la Legislatura están abiertas al público</b>, salvo las sesiones no públicas que permite la ley (<a href=\"/laws/91-a#s2\">RSA 91-A:2</a>). Puede asistir en persona, y la mayoría se transmiten en vivo y se archivan, así que puede verlas después. Los lugares donde puede <i>hablar</i> son más limitados: la audiencia pública es la reunión para eso. Puede asistir a una sesión ejecutiva, pero en ella no se toman testimonios.",
    "state": "draft"
   },
   "guide.testifying.the-other-chamber": {
@@ -12753,8 +12758,8 @@
    "state": "draft"
   },
   "guide.testifying.the-sign-ins-are-not-part": {
-   "en": "The sign-ins are not part of the bill's docket, the General Court's list of every action on it, and no link on the docket leads to them. They are kept in the General Court's own sign-in records, which its website offers as a lookup of its own.",
-   "es": "Las inscripciones no forman parte del registro de trámites del proyecto de ley, la lista de la Legislatura de cada acción sobre él, y ningún enlace del registro de trámites lleva a ellas. Se guardan en los registros de inscripción de la propia Legislatura, que su sitio web ofrece como una búsqueda aparte.",
+   "en": "The sign-ins are not part of the bill's docket, the General Court's list of every action on it, and no link on the docket leads to them. They are kept in the General Court&rsquo;s own sign-in records, from which this site shows each bill&rsquo;s House online sign-in counts.",
+   "es": "Las inscripciones no forman parte del registro de trámites del proyecto de ley, la lista de la Legislatura de cada acción sobre él, y ningún enlace del registro de trámites lleva a ellas. Se guardan en los registros de inscripción de la propia Legislatura, de los que este sitio toma los conteos de inscripciones en línea de la Cámara para cada proyecto de ley.",
    "state": "draft"
   },
   "guide.testifying.the-steps-in-order": {
@@ -12800,11 +12805,6 @@
   "guide.testifying.which-meetings-you-may-attend-and": {
    "en": "Which meetings you may attend, and where you may speak",
    "es": "A qué reuniones puede asistir y dónde puede hablar",
-   "state": "draft"
-  },
-  "guide.testifying.work-session": {
-   "en": "Work Session",
-   "es": "Sesión de trabajo",
    "state": "draft"
   },
   "guide.testifying.written-testimony": {
@@ -13876,8 +13876,8 @@
    "state": "draft"
   },
   "guide.vital-records.fill-in-the-section-for-the": {
-   "en": "Fill in the section for the kind of record you want, and the applicant section with your name, address, reason and relationship, and sign it. A false statement on the application is a felony.",
-   "es": "Llene la sección del tipo de registro que quiere, y la sección del solicitante con su nombre, dirección, motivo y parentesco, y fírmela. Una declaración falsa en la solicitud es un delito grave.",
+   "en": "Fill in the section for the kind of record you want, and the applicant section with your name, address, reason and relationship, and sign it. Knowingly making a false statement on the application is a felony.",
+   "es": "Llene la sección del tipo de registro que quiere, y la sección del solicitante con su nombre, dirección, motivo y parentesco, y fírmela. Hacer a sabiendas una declaración falsa en la solicitud es un delito grave.",
    "state": "draft"
   },
   "guide.vital-records.find-your-town-or-city-clerk": {
@@ -14130,6 +14130,11 @@
    "es": "<b>Si renuncia</b>, a más tardar el siguiente día de pago regular. Si avisó con al menos un período de pago de anticipación, dentro de las 72 horas.",
    "state": "draft"
   },
+  "guide.wage-rights.if-you-quit-or-are-laid": {
+   "en": "If you quit or are laid off, you can ask for the last paycheck to be mailed to you.",
+   "es": "Si renuncia o lo despiden por falta de trabajo, puede pedir que le envíen el último cheque por correo.",
+   "state": "draft"
+  },
   "guide.wage-rights.if-you-were-not-paid-file": {
    "en": "If you were not paid: file a wage claim",
    "es": "Si no le pagaron: presente un reclamo de salarios",
@@ -14206,8 +14211,8 @@
    "state": "draft"
   },
   "guide.wage-rights.overtime-unless-your-job-is-exempt": {
-   "en": "<b>Overtime.</b> Unless your job is exempt, you must be paid time and one-half your regular rate for every hour over 40 hours in a work week. Federal law requires it of most employers; New Hampshire&rsquo;s law requires it of the employers federal law does not cover.",
-   "es": "<b>Horas extra.</b> A menos que su puesto esté exento, le tienen que pagar una vez y media su tarifa regular por cada hora por encima de 40 horas en una semana de trabajo. La ley federal lo exige a la mayoría de los empleadores; la ley de New Hampshire lo exige a los empleadores que la ley federal no cubre.",
+   "en": "<b>Overtime.</b> Unless your job is exempt, you must be paid time and one-half your regular rate for every hour over 40 hours in a work week. Federal law requires it of the employers the Fair Labor Standards Act covers; New Hampshire&rsquo;s law requires it of most other employers.",
+   "es": "<b>Horas extra.</b> A menos que su puesto esté exento, le tienen que pagar una vez y media su tarifa regular por cada hora por encima de 40 horas en una semana de trabajo. La ley federal lo exige a los empleadores que cubre la Ley de Normas Justas de Trabajo (Fair Labor Standards Act); la ley de New Hampshire lo exige a la mayoría de los demás empleadores.",
    "state": "draft"
   },
   "guide.wage-rights.protective-legislation-rsa-275": {
@@ -14260,11 +14265,6 @@
    "es": "También puede demandar en un tribunal por los salarios no pagados, usted mismo o por medio de un representante, y el tribunal puede ordenar que su empleador pague sus costos y honorarios razonables de abogado.",
    "state": "draft"
   },
-  "guide.wage-rights.you-can-ask-for-the-last": {
-   "en": "You can ask for the last paycheck to be mailed to you.",
-   "es": "Puede pedir que le envíen el último cheque por correo.",
-   "state": "draft"
-  },
   "guide.wage-rights.you-can-be-paid-in-cash": {
    "en": "You can be paid in cash, by a check you can cash near work, by direct deposit you have agreed to in writing, or on a payroll card with at least one free way to take out your whole balance each pay period. An employer that pays electronically must also offer you a paper check.",
    "es": "Le pueden pagar en efectivo, con un cheque que pueda cobrar cerca del trabajo, por depósito directo que usted haya aceptado por escrito, o con una tarjeta de nómina que tenga al menos una forma gratuita de retirar todo su saldo en cada período de pago. Un empleador que paga de forma electrónica también tiene que ofrecerle un cheque en papel.",
@@ -14286,8 +14286,8 @@
    "state": "draft"
   },
   "guide.wage-rights.your-employer-may-hold-back-part": {
-   "en": "Your employer may hold back part of your wages only when a state or federal law requires or allows it, such as payroll taxes, or when you have agreed in writing to a deduction for a lawful purpose that benefits you, such as union dues, health insurance, retirement contributions, a charity, or anything else you agree to that gives your employer no financial advantage. A deduction may not be used to make you pay for things you need to do your job.",
-   "es": "Su empleador puede retener parte de sus salarios solo cuando una ley estatal o federal lo exige o lo permite, como los impuestos sobre la nómina, o cuando usted ha aceptado por escrito una deducción con un fin legal que le beneficie, como cuotas sindicales, seguro médico, aportes para la jubilación, una organización benéfica, o cualquier otra cosa que usted acepte y que no le dé a su empleador ninguna ventaja económica. Una deducción no se puede usar para hacerle pagar las cosas que necesita para hacer su trabajo.",
+   "en": "Your employer may hold back part of your wages only when a state or federal law requires or allows it, such as payroll taxes, or when you have agreed in writing to a deduction for a lawful purpose that benefits you, such as union dues, health insurance, retirement contributions, a charity, or anything else you agree to that gives your employer no financial advantage. A deduction you agree to for some other purpose may not be used to pay for things you need to do your job.",
+   "es": "Su empleador puede retener parte de sus salarios solo cuando una ley estatal o federal lo exige o lo permite, como los impuestos sobre la nómina, o cuando usted ha aceptado por escrito una deducción con un fin legal que le beneficie, como cuotas sindicales, seguro médico, aportes para la jubilación, una organización benéfica, o cualquier otra cosa que usted acepte y que no le dé a su empleador ninguna ventaja económica. Una deducción que usted acepte para otro fin no se puede usar para pagar las cosas que necesita para hacer su trabajo.",
    "state": "draft"
   },
   "guide.wage-rights.your-employer-may-not-fire-or": {
@@ -15556,6 +15556,11 @@
    "es": "Un proyecto de ley dice que la agencia &ldquo;deberá adoptar reglas&rdquo; sobre algo, y se detiene ahí. Todo lo que dejó abierto se resuelve a partir de ese momento, por la agencia y no por la Legislatura.",
    "state": "draft"
   },
+  "learn.administrative-rules.a-final-objection-puts-the-burden": {
+   "en": "A final objection puts the burden on the agency to defend the rule in court, and the committee can sponsor a joint resolution, which holds the rule back while the legislature acts on it. (RSA 541-A:13, VI and VII)",
+   "es": "Una objeción final obliga a la agencia a defender la regla ante un tribunal, y el comité puede patrocinar una resolución conjunta, que detiene la regla mientras la legislatura decide sobre ella. (RSA 541-A:13, VI y VII)",
+   "state": "draft"
+  },
   "learn.administrative-rules.a-public-hearing": {
    "en": "A public hearing",
    "es": "Una audiencia pública",
@@ -15581,9 +15586,14 @@
    "es": "Una regla administrativa es un requisito que una agencia estatal redacta para aplicar una ley. Las reglas se hacen según la RSA 541-A, la Ley de Procedimiento Administrativo (Administrative Procedure Act).",
    "state": "draft"
   },
+  "learn.administrative-rules.an-adopted-rule-takes-effect-the": {
+   "en": "An adopted rule takes effect the day after it is filed, unless the agency names a later date, and it has the force of law. (RSA 541-A:16, III; 541-A:22, II)",
+   "es": "Una regla adoptada entra en vigor el día después de presentarse, salvo que la agencia fije una fecha posterior, y tiene fuerza de ley. (RSA 541-A:16, III; 541-A:22, II)",
+   "state": "draft"
+  },
   "learn.administrative-rules.an-objection-does-not-by-itself": {
-   "en": "An objection does not by itself stop the rule. To block it the committee sponsors a joint resolution, which has to pass both chambers and go to the Governor <a href=\"learn/how-a-bill-becomes-law.html\">like any other legislation</a>.",
-   "es": "Una objeción no detiene la regla por sí sola. Para bloquearla, el comité patrocina una resolución conjunta, que tiene que ser aprobada por ambas cámaras y pasar al Gobernador <a href=\"learn/how-a-bill-becomes-law.html\">como cualquier otra legislación</a>.",
+   "en": "An objection does not by itself stop the rule. After a final objection the agency has to show, in any court case over the rule, that it is within its authority and the legislature&rsquo;s intent, or the court declares it invalid (<a href=\"/laws/541-a#s13\">RSA 541-A:13, VI</a>). The committee can also vote to sponsor a joint resolution, which holds the rule back while the legislature acts on it (RSA 541-A:13, VII).",
+   "es": "Una objeción no detiene la regla por sí sola. Después de una objeción final, la agencia tiene que demostrar, en cualquier caso judicial sobre la regla, que está dentro de su autoridad y de la intención de la legislatura; si no, el tribunal la declara inválida (<a href=\"/laws/541-a#s13\">RSA 541-A:13, VI</a>). El comité también puede votar para patrocinar una resolución conjunta, que detiene la regla mientras la legislatura decide sobre ella (RSA 541-A:13, VII).",
    "state": "draft"
   },
   "learn.administrative-rules.an-objection-is-not-a-veto": {
@@ -15636,11 +15646,6 @@
    "es": "Preguntas frecuentes",
    "state": "draft"
   },
-  "learn.administrative-rules.effective-the-next-day": {
-   "en": "Effective the next day",
-   "es": "En vigor al día siguiente",
-   "state": "draft"
-  },
   "learn.administrative-rules.how-a-rule-is-made": {
    "en": "How a Rule Is Made",
    "es": "Cómo se hace una regla",
@@ -15659,6 +15664,11 @@
   "learn.administrative-rules.in-force-and-not-for-ever": {
    "en": "In Force, and Not for Ever",
    "es": "En vigor, y no para siempre",
+   "state": "draft"
+  },
+  "learn.administrative-rules.in-force-once-filed": {
+   "en": "In force once filed",
+   "es": "En vigor una vez presentada",
    "state": "draft"
   },
   "learn.administrative-rules.joint-legislative-committee-on": {
@@ -15689,11 +15699,6 @@
   "learn.administrative-rules.notice-in-the-register": {
    "en": "Notice in the register",
    "es": "Aviso en el registro",
-   "state": "draft"
-  },
-  "learn.administrative-rules.once-adopted-and-filed-the-rule": {
-   "en": "Once adopted and filed the rule binds whoever it covers, exactly as a statute would.",
-   "es": "Una vez adoptada y presentada, la regla obliga a quienes abarca, exactamente como lo haría una ley.",
    "state": "draft"
   },
   "learn.administrative-rules.rsa-541-a-3-sets-out": {
@@ -15784,11 +15789,6 @@
   "learn.administrative-rules.title": {
    "en": "Administrative Rules",
    "es": "Las reglas administrativas",
-   "state": "draft"
-  },
-  "learn.administrative-rules.to-actually-stop-a-rule-the": {
-   "en": "To actually stop a rule the committee has to sponsor a joint resolution, and that has to pass both chambers and go to the Governor like any other bill.",
-   "es": "Para detener de verdad una regla, el comité tiene que patrocinar una resolución conjunta, y esta tiene que ser aprobada por ambas cámaras y pasar al Gobernador como cualquier otro proyecto de ley.",
    "state": "draft"
   },
   "learn.administrative-rules.two-routes-skip-most-of-that": {
@@ -19916,6 +19916,11 @@
    "es": "Por qué casi ninguna sale adelante",
    "state": "draft"
   },
+  "learn.the-courts.a-majority-of-the-council-must": {
+   "en": "A majority of the Council must agree: Part Second, Article 46.",
+   "es": "La mayoría del Consejo tiene que estar de acuerdo: Parte Segunda, Artículo 46.",
+   "state": "draft"
+  },
   "learn.the-courts.how-a-judge-gets-the-job": {
    "en": "How a Judge Gets the Job",
    "es": "Cómo llega un juez a su cargo",
@@ -19946,9 +19951,9 @@
    "es": "No hay elección de jueces, en ningún nivel.",
    "state": "draft"
   },
-  "learn.the-courts.the-circuit-court-handles-the-highest": {
-   "en": "The <b>Circuit Court</b> handles the highest volume of cases each year, including misdemeanors, small claims, probate, and family cases such as divorce and custody.",
-   "es": "El <b>Tribunal de Circuito</b> (Circuit Court) atiende el mayor número de casos cada año, entre ellos los delitos menores, las demandas de menor cuantía, los asuntos testamentarios y los casos de familia, como el divorcio y la custodia.",
+  "learn.the-courts.the-circuit-court-has-three-divisions": {
+   "en": "The <b>Circuit Court</b> has three divisions (<a href=\"/laws/490-f#s3\">RSA 490-F:3</a>): the district division, which hears lesser crimes and small claims (<a href=\"/laws/502-a#s11\">RSA 502-A:11</a>, <a href=\"/laws/503#s1\">RSA 503:1</a>); the probate division; and the family division, which hears family cases such as divorce and custody (<a href=\"/laws/490-d#s2\">RSA 490-D:2</a>).",
+   "es": "El <b>Tribunal de Circuito</b> (Circuit Court) tiene tres divisiones (<a href=\"/laws/490-f#s3\">RSA 490-F:3</a>): la división de distrito, que ve los delitos menores y las demandas de menor cuantía (<a href=\"/laws/502-a#s11\">RSA 502-A:11</a>, <a href=\"/laws/503#s1\">RSA 503:1</a>); la división testamentaria; y la división de familia, que ve los casos de familia como el divorcio y la custodia (<a href=\"/laws/490-d#s2\">RSA 490-D:2</a>).",
    "state": "draft"
   },
   "learn.the-courts.the-executive-council-confirms": {
@@ -19962,8 +19967,8 @@
    "state": "draft"
   },
   "learn.the-courts.the-governor-nominates-and-the-executive": {
-   "en": "The Governor nominates and the Executive Council confirms &mdash; the same route as a commissioner, which is the clearest illustration of what the Council is for. There is no judicial election in New Hampshire at any level. No one may serve as a judge after the age of seventy, which is set by the constitution itself: Part Second, Article 78. Raising it to seventy-five has been tried. A 2023 amendment to do so passed both chambers and went to the voters in November 2024, where 65.6% voted yes, short of the two thirds an amendment needs; and a 2026 proposal to make the same change, which failed in the House, still described the limit as seventy.",
-   "es": "El gobernador propone y el Consejo Ejecutivo confirma &mdash; el mismo procedimiento que se sigue con un comisionado, que es la ilustración más clara de para qué sirve el Consejo. En New Hampshire no hay elección de jueces en ningún nivel. Nadie puede ejercer como juez después de los setenta años, límite que fija la propia constitución: Parte Segunda, Artículo 78. Se ha intentado subirlo a setenta y cinco. Una enmienda de 2023 para hacerlo fue aprobada por ambas cámaras y se sometió a los votantes en noviembre de 2024, cuando el 65.6% votó a favor, sin llegar a los dos tercios que necesita una enmienda; y una propuesta de 2026 para hacer el mismo cambio, que fracasó en la Cámara, seguía describiendo el límite como de setenta años.",
+   "en": "The Governor nominates and the Executive Council confirms: the constitution gives the appointment of every judge to the Governor and Council together, and none takes place unless a majority of the Council agree (Part Second, Article 46). There is no judicial election in New Hampshire at any level. No one may serve as a judge after the age of seventy, which is set by the constitution itself: Part Second, Article 78. Raising it to seventy-five has been tried. A 2023 amendment to do so passed both chambers and went to the voters in November 2024, where 65.6% voted yes, short of the two thirds an amendment needs; and a 2026 proposal to make the same change, which failed in the House, still described the limit as seventy.",
+   "es": "El gobernador propone y el Consejo Ejecutivo confirma: la constitución da el nombramiento de cada juez al gobernador y al Consejo juntos, y ninguno se hace sin el acuerdo de la mayoría del Consejo (Parte Segunda, Artículo 46). En New Hampshire no hay elección de jueces en ningún nivel. Nadie puede ejercer como juez después de los setenta años, límite que fija la propia constitución: Parte Segunda, Artículo 78. Se ha intentado subirlo a setenta y cinco. Una enmienda de 2023 para hacerlo fue aprobada por ambas cámaras y se sometió a los votantes en noviembre de 2024, cuando el 65.6% votó a favor, sin llegar a los dos tercios que necesita una enmienda; y una propuesta de 2026 para hacer el mismo cambio, que fracasó en la Cámara, seguía describiendo el límite como de setenta años.",
    "state": "draft"
   },
   "learn.the-courts.the-judge-serves": {
@@ -19981,14 +19986,9 @@
    "es": "La Constitución de New Hampshire",
    "state": "draft"
   },
-  "learn.the-courts.the-same-route-as-a-commissioner": {
-   "en": "The same route as a commissioner.",
-   "es": "El mismo camino que un comisionado.",
-   "state": "draft"
-  },
-  "learn.the-courts.the-superior-court-holds-jury-trials": {
-   "en": "The <b>Superior Court</b> holds jury trials and hears the more serious civil and criminal cases.",
-   "es": "El <b>Tribunal Superior</b> (Superior Court) celebra los juicios con jurado y ve los casos civiles y penales más graves.",
+  "learn.the-courts.the-superior-court-is-the-trial": {
+   "en": "The <b>Superior Court</b> is the trial court of general jurisdiction the constitution names (Part Second, Article 72-a). It hears the civil cases that do not belong to the Circuit Court, and cases where the constitution guarantees a jury trial (<a href=\"/laws/491#s7\">RSA 491:7</a>).",
+   "es": "El <b>Tribunal Superior</b> (Superior Court) es el tribunal de primera instancia de jurisdicción general que nombra la constitución (Parte Segunda, Artículo 72-a). Ve los casos civiles que no corresponden al Tribunal de Circuito, y los casos en que la constitución garantiza un juicio con jurado (<a href=\"/laws/491#s7\">RSA 491:7</a>).",
    "state": "draft"
   },
   "learn.the-courts.the-supreme-court-hears-appeals-and": {

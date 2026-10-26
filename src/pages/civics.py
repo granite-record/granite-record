@@ -601,9 +601,7 @@ WHERE_TO_SPEAK = (
               f'<td data-l="Speak">{speak}</td></tr>'
               for k, speak in (
                   ("public hearing", yn(True, "Yes: the only meeting at which the public is heard")),
-                  ("executive session", yn(False)),
-                  ("subcommittee work session", yn(False)),
-                  ("work session", yn(False))))
+                  ("executive session", yn(False))))
     + "</tbody></table></div>")
 
 # A BILL'S TABS, as a picture of the strip over the list of what each holds:
@@ -1003,8 +1001,8 @@ FLOW_TESTIFY = [
     ("At the Hearing", [
         ("Speaking is separate", "A different act from signing in, and the "
          "chambers ask for it differently: a pink card in the House, the "
-         "sign-up sheet in the Senate's committee room. The sponsor speaks "
-         "first, and the chair decides whether to limit everyone after.", "say"),
+         "sign-up sheet in the Senate's committee room. Usually the sponsor "
+         "speaks first, and the chair decides whether to limit everyone after.", "say"),
         ("You need not speak", "A sign-in without a word said is in the "
          "record and is counted.", ""),
     ]),
@@ -1088,13 +1086,15 @@ FLOW_RULES = [
          "approval, conditional approval or objection, the statute deems the "
          "rule approved. A rule can take effect without anyone having voted "
          "for it. (RSA 541-A:13, II(e))", ("needs", "No vote required")),
-        ("An objection is not a veto", "To actually stop a rule the "
-         "committee has to sponsor a joint resolution, and that has to pass "
-         "both chambers and go to the Governor like any other bill.", ""),
+        ("An objection is not a veto", "A final objection puts the burden "
+         "on the agency to defend the rule in court, and the committee can "
+         "sponsor a joint resolution, which holds the rule back while the "
+         "legislature acts on it. (RSA 541-A:13, VI and VII)", ""),
     ]),
     ("In Force, and Not for Ever", [
-        ("Effective the next day", "Once adopted and filed the rule binds "
-         "whoever it covers, exactly as a statute would.", ""),
+        ("In force once filed", "An adopted rule takes effect the day after "
+         "it is filed, unless the agency names a later date, and it has the "
+         "force of law. (RSA 541-A:16, III; 541-A:22, II)", ""),
         ("Ten years, then it lapses", "No rule is effective for longer than "
          "ten years. To keep it, the agency runs the whole course again, and "
          "the rule stays in force while it does; an agency's own rules of "
@@ -1589,21 +1589,27 @@ BODY_COURTS = """
 <ol class="l-courts" aria-label="The three courts">
 <li>The <b>Supreme Court</b> hears appeals and is the final word on what a state
 law means.</li>
-<li>The <b>Superior Court</b> holds jury trials and hears the more serious civil
-and criminal cases.</li>
-<li>The <b>Circuit Court</b> handles the highest volume of cases each year,
-including misdemeanors, small claims, probate, and family cases such as
-divorce and custody.</li>
+<li>The <b>Superior Court</b> is the trial court of general jurisdiction the
+constitution names (Part Second, Article 72-a). It hears the civil cases that
+do not belong to the Circuit Court, and cases where the constitution guarantees
+a jury trial (<a href="/laws/491#s7">RSA 491:7</a>).</li>
+<li>The <b>Circuit Court</b> has three divisions
+(<a href="/laws/490-f#s3">RSA 490-F:3</a>): the district division, which hears
+lesser crimes and small claims (<a href="/laws/502-a#s11">RSA 502-A:11</a>,
+<a href="/laws/503#s1">RSA 503:1</a>); the probate division; and the family
+division, which hears family cases such as divorce and custody
+(<a href="/laws/490-d#s2">RSA 490-D:2</a>).</li>
 </ol>
 
 <h2>How a Judge Gets the Job</h2>
 """ + chain("How a judge gets the job", [
     ("The Governor nominates", "No judicial election, at any level."),
-    ("The Executive Council confirms", "The same route as a commissioner."),
+    ("The Executive Council confirms", "A majority of the Council must agree: Part Second, Article 46."),
     ("The judge serves", "Until the age of seventy at most: Part Second, Article 78.")]) + """
-<p>The Governor nominates and the Executive Council confirms &mdash; the same
-route as a commissioner, which is the clearest illustration of what the
-Council is for. There is no judicial election in New Hampshire at any level.
+<p>The Governor nominates and the Executive Council confirms: the constitution
+gives the appointment of every judge to the Governor and Council together, and
+none takes place unless a majority of the Council agree (Part Second, Article
+46). There is no judicial election in New Hampshire at any level.
 No one may serve as a judge after the age of seventy, which is set by the
 constitution itself: Part Second, Article 78. Raising it to seventy-five has
 been tried. A 2023 amendment to do so passed both chambers and went to the
@@ -1756,7 +1762,7 @@ so both end in the ordinary course above or they end altogether.</p>
 </details>
 <details><summary>What can JLCAR object to, and does an objection stop the rule?</summary>
 <p>The grounds for an objection are set out at RSA 541-A:13, IV, and include a rule beyond the agency's authority and one contrary to the intent of the legislature.</p>
-<p>An objection does not by itself stop the rule. To block it the committee sponsors a joint resolution, which has to pass both chambers and go to the Governor <a href="learn/how-a-bill-becomes-law.html">like any other legislation</a>.</p>
+<p>An objection does not by itself stop the rule. After a final objection the agency has to show, in any court case over the rule, that it is within its authority and the legislature&rsquo;s intent, or the court declares it invalid (<a href="/laws/541-a#s13">RSA 541-A:13, VI</a>). The committee can also vote to sponsor a joint resolution, which holds the rule back while the legislature acts on it (RSA 541-A:13, VII).</p>
 </details>
 </div>
 """
@@ -2642,16 +2648,17 @@ not be among them."""
 # page is its own.
 BODY_TESTIFYING = """
 <h2>Open to the Public</h2>
-<p><b>Every legislative meeting and hearing is open to the public.</b> You may
-attend in person, and most are live streamed and archived, so you can watch
-one later. Where you may <i>speak</i> is narrower: a public hearing is the
-meeting for that, and it is the only one at which members of the public are
-heard. You may attend any other meeting &mdash; an executive session, a
-subcommittee, a work session &mdash; but not speak at it.</p>
+<p><b>The General Court&rsquo;s committee meetings and hearings are open to
+the public</b>, apart from the nonpublic sessions the law allows
+(<a href="/laws/91-a#s2">RSA 91-A:2</a>). You may attend in person, and most
+are live streamed and archived, so you can watch one later. Where you may
+<i>speak</i> is narrower: a public hearing is the meeting for that. You may
+attend an executive session, but no testimony is taken at it.</p>
 """ + WHERE_TO_SPEAK + """
 <p>A public hearing is the meeting at which a committee hears a bill before it
-votes on what to recommend. Every bill introduced gets one, and anyone may
-speak at it.</p>
+votes on what to recommend. Committees of both chambers hold them, and the
+Senate&rsquo;s rules require one on every bill sent to a committee. Anyone may
+speak at one.</p>
 <p>You do not need to be invited, and you do not need to speak: signing in for
 or against is itself part of the record, and it is counted. Nor does a bill
 have to affect you. Committees hear bills for the whole state rather than for
@@ -2675,9 +2682,7 @@ named in older notices.</td></tr>
 <tr><th scope="row"><b>GP</b></th><td><b>Granite Place:</b> 1 Granite Place, Concord, where
 House committee meetings are now held.</td></tr>
 </tbody></table>
-<p>The Legislative Office Building is expected back in service around the
-start of the next term, and Granite Place to drop out of the rotation when it is.
-<b>Go by the notice for the
+<p><b>Go by the notice for the
 hearing you are attending</b> &mdash; it names the building and the room, and
 it is right about the day it was published whatever this page says.</p>
 
@@ -2685,8 +2690,6 @@ it is right about the day it was published whatever this page says.</p>
 <p><b>Both chambers take sign-ins online</b>, each through its own form on the
 General Court's website, linked below.</p>
 <!-- guides:forms -->
-<p>In the House the committee is given the counts, and the sign-ins are
-published after the hearing.</p>
 <p>The window is not open indefinitely. <!-- guides:window --> If the bill
 passes one chamber and gets a hearing in the other, there is a second window
 on the same terms.</p>
@@ -2724,7 +2727,7 @@ sign-in.</p>
 <!-- guides:exec-session -->
 <!-- guides:throughout-the-day -->
 <p>The committee then reports its recommendation to the chamber, and
-where it was split the majority and the minority each write a report. Whether
+where it was split the minority may file a report of its own. Whether
 you spoke or only signed in, the counts and any written testimony stay in the
 record.</p>
 
@@ -2737,8 +2740,9 @@ happens.</p>
 </details>
 <details><summary>Where are the sign-ins kept?</summary>
 <p>The sign-ins are not part of the bill's docket, the General Court's list of
-every action on it, and no link on the docket leads to them. They are kept in the General Court's own sign-in records, which
-its website offers as a lookup of its own.</p>
+every action on it, and no link on the docket leads to them. They are kept in the General
+Court&rsquo;s own sign-in records, from which this site shows each bill&rsquo;s House online
+sign-in counts.</p>
 </details>
 <details><summary>Can I speak at an executive session?</summary>
 <p>No testimony is taken at an executive session, and one can be hard to

@@ -227,7 +227,8 @@
    ],
    "basis": "The catalog",
    "except": {
-    "learn.governor-and-council.its-approval-is-required-for-a": "An appointment to office (nombramiento), not a scheduled visit."
+    "learn.governor-and-council.its-approval-is-required-for-a": "An appointment to office (nombramiento), not a scheduled visit.",
+    "learn.the-courts.the-governor-nominates-and-the-executive": "A judge's appointment to office (nombramiento), not a scheduled visit."
    }
   },
   {
