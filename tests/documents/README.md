@@ -44,4 +44,7 @@ That the night reads every document as the laptop does: only these four. The
 night's own checks of each text are the guard for the rest
 (`nightly.make_texts`): a calendar's text must carry its own number on its
 masthead and a journal's its chamber's heading, and a journal's text goes in
-only once the build's two journal readers pass with it.
+only once the build's two journal readers pass with it. A text that fails is
+not kept, its PDF stays in the bucket, and the night names the document for
+a person every night, with `docs-accept` among the choices
+(`watchers/README.md`).

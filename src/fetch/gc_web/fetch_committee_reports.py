@@ -16,6 +16,13 @@ The docket gives the join key. A House committee report entry ends with
     python3 src/fetch/gc_web/fetch_committee_reports.py --year 2025
     python3 src/fetch/gc_web/fetch_committee_reports.py --year 2025 --pdf "No16 March 14 2025.PDF"
 
+A YEAR EVER HANDED TO GITHUB'S NIGHT (refusal.handed_years) is read from the
+disk, as --offline reads it, and nothing is asked for it, after a hand-back
+too: this step fetched every calendar it lacked about a millisecond apart,
+under no lock, and for those years the night, or the paced drain after a
+hand-back, is the one that asks. With none of that year's calendars on disk
+it writes nothing and ends 0, so build_all's step stays green.
+
 Text extraction, best first:
     pdftotext -layout   (poppler; much the best on two-column calendars)
     pdfplumber          (pip install pdfplumber)

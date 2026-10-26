@@ -9,6 +9,9 @@ Thirty years of calendars and journals, a night at a time.
                                                                           #   year: the night's, four requests
     python3 src/fetch/gc_web/fetch_calendar_archive.py --budget 400       # fetch that many
     python3 src/fetch/gc_web/fetch_calendar_archive.py --status           # what is held, no network
+    python3 src/fetch/gc_web/fetch_calendar_archive.py --night PREV --most N --root DIR --out FILE
+                                                                          # GitHub's night's alone:
+                                                                          #   the years handed to it
 
 ARCHIVE_PLAN.md step 4 (the person's plan, in private/ and not in the
 repository), built the way that page says: DISCOVERY AND FETCHING ARE
@@ -135,6 +138,34 @@ and --list see one queue; and on GitHub's machine --listing writes the
 laptop's record into the queue it hands the night, which is how a calendar
 the laptop has fetched comes to be marked held in the file the build reads.
 A machine that has not stood down keeps one file, as before.
+
+THE NIGHT'S YEARS (the person's design of 26 October 2026)
+
+From the handover (refusal.night_years; python3 src/ops/cloud.py hand-over)
+GitHub's night is the only machine that asks for the calendars and journals
+of the handover's year and every year after it. With no handover record
+nothing below happens, and everything above is as it was.
+
+  the laptop       the drain leaves those years out and says how many it
+                   left; --night ends 4 anywhere but GitHub's machine
+  the queue        load_queue() lays three layers, the same on both
+                   machines: the night's list; over its rows of earlier
+                   years, the laptop's file, which save_queue() keeps to
+                   those years; over the rows of the night's years, the
+                   night's own record of them (archive/documents_night.json)
+                   where it is of this handover, else the handover's frozen
+                   rows. Only the drain's fields are laid over, never a path
+  a supplement     a row new to those years whose name or label says
+                   Supplement keeps its source name for its path (_new_local)
+  --night          the night's ask, run by nightly.py: night_plan() decides
+                   what may be asked before anything is, and take_night()
+                   asks, one at a time, about NIGHT_PAUSE seconds apart and
+                   following no redirect, for at most --most documents named
+                   by the last two reads of their list, at that list's own
+                   address. It writes the night's record (--out), never the
+                   queue, and each PDF under --root, never in the four
+                   folders, and stops at the first refusal, the first other
+                   failure or the second document not found
 """
 
 # The bootstrap: _paths.py, found above this file, puts every code folder on the import path.

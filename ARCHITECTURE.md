@@ -116,7 +116,8 @@ looks for new livestreams (`src/ops/livestreams.py --since-state`), and runs
 refusal is on file; then, under the same lock, next session's bill requests
 and the two index pages' lists of calendars and journals, each only if it can
 finish by 12:00 UTC and each stopped at its own time limit (THE NIGHT'S CLOCK
-in `nightly.py`), or else a warning and tomorrow; the rebuild,
+in `nightly.py`), or else a warning and tomorrow -- and, once they are handed
+to it, a few of the calendars and journals themselves (below); the rebuild,
 `build_all.py --local --no-captions`, since
 that machine holds no caption files; and the gates -- `preflight.py --code`,
 `src/checks/check_site.py`, a census of the build against the last good
@@ -216,6 +217,32 @@ export is asked once more, half an hour later. The verdict says where the
 installed files came from (`files_from`, `day_files`), a warning leads the
 run's page, and seven such nights in a row (`DB_NIGHTS_MOST`) is an error
 there, though the build still goes out.
+
+**The calendars and journals, handed to the night** (26 October 2026; landed
+switched off). Until the person runs `cloud.py hand-over` on the laptop, the
+laptop's drain is the one asker for the calendars' and journals' PDFs, and the
+laptop makes their text. From then one record,
+`archive/documents_handover.json`, gives GitHub's night the handover's year
+and every year after it (`refusal.night_years`), and the laptop has no request
+path for those years at all: the drain leaves them out,
+`fetch_senate_calendars` stands down for them, and `fetch_committee_reports`
+reads their House calendars from disk, after a hand-back too. The repository
+variable `NIGHT_DOCUMENTS` is the switch: unset or `off` asks for nothing,
+`shadow` says what would be asked, and a number from 1 to 8 is the most
+documents a night. On such a night, under the same lock and only if it can end
+by 12:00 UTC, `src/fetch/gc_web/fetch_calendar_archive.py --night` asks for
+names the last two reads of their list both give, about twenty seconds apart,
+never one with a refusal recorded against it or tried three times, and stops
+at the first refusal, other failure or second not found. What it did goes in
+the night's own record (`archive/documents_night.json`), and each PDF to the
+bucket's `docs/` (`cloud.py docs-up`). Before the build the night makes each
+text with a pinned `pdftotext` that a canary has proved makes the laptop's
+text (`tests/documents/`), and keeps it only if it is its document's own and,
+for a journal, the build's journal readers pass with it. What it will not ask
+for again without a person is listed every night with that person's choices
+(`docs-again`, `docs-accept`, `docs-settle`), and none of its warnings holds
+the publish. `watchers/README.md` has the person's steps, and `nightly.py`'s
+docstring (THE NIGHT'S DOCUMENTS) the rest.
 
 **The term turnover.** The General Court's files describe the current term
 only, so before they turn over, the finished term's inputs are frozen:
@@ -392,7 +419,10 @@ and sha256 on the way down, and the list's `never` entries -- secrets, and
 what readers typed -- are applied to every command. The small state the night
 must remember (`refused.json`, `census.json`, `first-seen.json`, the verdicts)
 lives under `state/`, so a refusal the night meets outlives its machine and
-stops the laptop's fetches too.
+stops the laptop's fetches too. The calendars' and journals' texts are owned
+by year: a year handed to the night is the night's (`cloud.py owner_for`).
+The kit carries no PDF: the night's go to the bucket's `docs/`, each written
+only where nothing is, and `cloud.py pull` brings the laptop those it lacks.
 
 **The build's cache (23 October 2026).** Two steps keep what they worked out
 in `.build_cache/` (`src/lib/build_cache.py`), and the kit carries it as the

@@ -40,6 +40,10 @@ WHAT IT WRITES
 calendars_senate/<year>/SC###.pdf and the same name .txt beside it, which is
 what extract_vetoes.py reads. Nothing else is touched, and a calendar already
 on disk is never asked for again.
+
+A YEAR HANDED TO GITHUB'S NIGHT (refusal.night_years) is not fetched here: it
+ends 4 and says so, and python3 src/ops/cloud.py pull brings the night's
+calendars. --probe still lists.
 """
 
 # The bootstrap: _paths.py, found above this file, puts every code folder on the import path.

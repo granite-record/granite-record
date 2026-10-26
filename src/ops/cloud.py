@@ -88,7 +88,10 @@ laptop's seed-kit never sends a file the night owns over the night's copy --
 only send-night does, when a person names the file -- and the night's kit-up
 never sends a file the laptop owns; if the bucket's
 copy of a file changed after this machine took it down, kit-up keeps the
-bucket's and files its own under replaced/ rather than choose.
+bucket's and files its own under replaced/ rather than choose. The
+calendars' and journals' texts are owned by their year: the laptop's, but
+from the handover a year handed to GitHub's night is the night's (owner_for,
+the entry's "night_from"), and the entry itself never changes owner.
 
 Send a secret or a reader's words. cloud_kit.json's "never" list is applied to
 every command, and preflight holds the list to what it must contain.
@@ -114,6 +117,10 @@ THE BUCKET
                            (THE CAPTIONS INBOX)
     inbox/laptop/          a record of each of the laptop's runs that fill it,
                            <YYYYMMDDTHHMMSSZ>.json (THE CAPTIONS INBOX)
+    docs/<path>            each calendar and journal PDF the night fetched of the
+                           years handed to it, at its working folder's path,
+                           written once and never over (THE NIGHT'S CALENDARS
+                           AND JOURNALS)
 
 On a machine, small state lives under archive/ -- archive/refused.json,
 archive/census.json -- and only the bucket calls it state/. This machine's
@@ -251,6 +258,13 @@ deletes nothing there, and preflight holds its code to that.
                           empty or not the night's: pull stops before
                           reading anything from it. A standing refusal here
                           that the bucket holds none of is a failure.
+  the night's documents   while years are handed to the night: a handover
+                          record missing here is put back first, the one
+                          file of the laptop's pull ever brings down
+                          (put_back_handover); then each PDF of those years
+                          the bucket keeps under docs/ and this laptop lacks
+                          comes down whole, never over a file (docs-down).
+                          Not with --changes-only
 
 --changes-only is the morning triage's: the refusal, the verdicts and the
 change lists, and nothing else -- except a line saying how old the last full
@@ -395,6 +409,41 @@ replaced/ first; and every run record of the laptop's but the newest, the
 same way. A dry run's never: what a dry run took went into its own
 state, which does not go back, so the entry must still be there for the next
 real night. --dry-run says what it would clear.
+
+THE NIGHT'S CALENDARS AND JOURNALS (the person's design of 26 October 2026)
+
+hand-over gives GitHub's night the calendars and journals of this year and
+every year after it, and hand-back gives them back: watchers/README.md has
+the person's steps, and refusal.py's section of that name says what a
+handover is. Each command that writes the handover record
+(archive/documents_handover.json) is the laptop's, runs under the fetches'
+lock, writes the record whole and sends it itself.
+
+  hand-over     on a stood-down laptop, outside the night's window and with a
+                pull since it (refusal.gc_turn), with no refusal on file, no
+                handover standing, and the pulled night's text canary
+                identical. Makes every missing text and sends the whole kit
+                while the texts are the laptop's; only then writes the record,
+                from which this laptop asks for no document of those years;
+                moves its own rows of them from queue_fetched.csv into the
+                record, frozen; and sends it. Run again after a failed send,
+                it carries on from the send
+  hand-back     while a handover stands, on the same laptop and clock as
+                hand-over, and only when the newest night pulled had the
+                switch not at a number. Brings down every PDF the night kept
+                (docs-down), refuses while one its texts wait for is not
+                here, writes "handed_back" with "sent": false, sends it, and
+                only then writes "sent": true
+  docs-again,   the person's word on one document, by its key: a one-shot id
+  docs-accept,  the night spends once (one request; one text taken without
+  docs-settle   its own-number check), or a document never asked for or
+                named again. Each refuses after a hand-back
+  docs-night    the night's, after kit-down: in_force for the workflow, the
+                PDFs its texts wait for to .night/bucket/, and the bucket's
+                list of what it keeps of those years
+  docs-up       the night's, after kit-up: tonight's PDFs to docs/, only where
+                nothing is; never on a dry run
+  docs-down     the laptop's, run by pull and hand-back: each PDF it lacks
 """
 
 # The bootstrap: _paths.py, found above this file, puts every code folder on the import path.

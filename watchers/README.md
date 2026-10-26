@@ -93,6 +93,100 @@ EST), and a running fetch stops at midnight EDT (11 p.m. EST on the Sunday).
 The next morning, after the window, the lane wants `python3 src/ops/cloud.py pull
 --changes-only` and a restart.
 
+## Handing the calendars and journals to the night
+
+From the handover, GitHub's night is the only machine that asks the General
+Court for the calendars and journals of the handover's year and every year
+after it, and this laptop asks for none of them -- not the drain, not
+`fetch_senate_calendars`, not the build's committee-report step -- until a
+person hands them back. Nothing hands them back by itself. The night asks
+for at most `NIGHT_DOCUMENTS` documents a night, before 12:00 UTC, only
+names the General Court's own lists have given two nights running, about
+20 seconds apart, and stops at the first refusal, the first other failure
+or the second document not found. It keeps every PDF in the bucket's
+`docs/`, and `python3 src/ops/cloud.py pull` brings them here.
+
+**0. Before you start.** This working folder -- the one the lane runs
+from -- is on `dev`, or a branch with the handover in it, and it stays on
+one while the years are the night's. Code from before the change does not
+know the handover exists, and its drain and its committee-report step
+would ask for those years too.
+
+### Turning it on
+
+1. Merge `night-clock`, then `night-handover`, to `main`. Leave the
+   repository variable `NIGHT_DOCUMENTS` unset. Nothing the night or this
+   laptop does changes, apart from the clock on the bill requests and the
+   lists.
+2. Set `NIGHT_DOCUMENTS` to `shadow` (GitHub: Settings, Secrets and
+   variables, Actions, Variables). After the next scheduled night, the
+   run's page says:
+   - `text canary: identical for 4 of 4, by pdftotext -layout; ...`. If it
+     says anything else, stop here: the night does not read these
+     documents as this laptop does, and `hand-over` will refuse.
+   - `documents: shadow: would ask N (...) (not handed over: the laptop
+     still fetches these)`. N at the cap night after night means a larger
+     backlog than expected; say so before going on.
+3. On this laptop, outside the night window, with nothing running:
+
+   ```
+   python3 src/ops/cloud.py pull
+   python3 src/ops/cloud.py hand-over
+   ```
+
+   `hand-over` refuses, and says why, unless the night it pulled said the
+   canary was identical, the pull is newer than the last night window,
+   nothing holds `archive/.lock` and no refusal stands. It makes every
+   missing text, sends the whole kit, and only then writes and sends the
+   handover record, `archive/documents_handover.json`. From the moment it
+   writes that record this laptop asks for no calendar or journal of those
+   years. Its last line is `handed over: 2026 on is the night's`. If it
+   stops part way, run it again: it carries on where it stopped.
+4. After the next night the run's page says `documents: shadow: would ask
+   N (...); the handover's texts are all here (M of M)`.
+5. Set `NIGHT_DOCUMENTS` to `1`. After a week of clean nights, `4`; before
+   the late-November turn of the year, `8`.
+
+### When the night gives up on a document
+
+Each night the run's page lists, by reason, the documents the night will
+not ask for again without you, each by its key, for example
+`S|calendar|2026|No 21 Supplement.pdf`, with the choices that reason
+allows. Doing nothing is always safe. Each choice is one command on this
+laptop, and the command sends your word to the bucket itself; the night
+acts on it from its next run:
+
+```
+python3 src/ops/cloud.py docs-again  "KEY"              # ask for it once more: one request
+python3 src/ops/cloud.py docs-accept "KEY"              # take its text as it is: no request
+python3 src/ops/cloud.py docs-settle "KEY" --why "..."  # stop asking, stop naming it
+```
+
+`docs-again` refuses a document a refusal was recorded against, one held
+back for a person, and a name its list no longer gives: the night never
+asks for those. A PDF that turns out to be the wrong document stays in the
+bucket until you remove `docs/<its path>` there by hand; then
+`docs-again`.
+
+### Turning it off
+
+1. Set `NIGHT_DOCUMENTS` to `off`, or delete it. That is all a pause
+   needs: the night asks for no document, still makes the texts of what it
+   has fetched, and says each night that nobody is fetching those years.
+2. Only to give the years back to this laptop, after at least one night
+   has run with the switch off:
+
+   ```
+   python3 src/ops/cloud.py pull
+   python3 src/ops/cloud.py hand-back
+   ```
+
+   `hand-back` brings down every PDF the night kept, and refuses if one
+   did not come, or if the newest night still had the switch at a number.
+   It tells the bucket first and takes the years back on this laptop last.
+   From then the drain fetches those years again, paced, and the build's
+   committee-report step reads their House calendars from disk.
+
 ---
 
 ## `gc_lane.py` -- the one worker for the General Court
