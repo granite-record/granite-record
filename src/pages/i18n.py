@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-10-23.17
+# GRANITE_VERSION: 2026-10-23.19
 """
 The site in more than one language, and how a translation stays current.
 
@@ -104,13 +104,16 @@ GUIDE_PAGES = tuple(f"guides/{s}.html" for s in (
     "your-representatives", "contact-your-legislators", "attend-a-hearing", "submit-testimony",
     "testifying", "read-a-bill", "using-this-site", "how-to-vote", "run-for-office",
     "renew-drivers-license", "register-a-car", "real-id", "new-to-new-hampshire",
-    "food-and-health-assistance", "file-for-unemployment", "heating-and-electric-help",
-    "property-tax-abatement", "property-tax-relief", "public-records", "vital-records",
+    "motorcycle-license",
+    "food-and-health-assistance", "file-for-unemployment", "wage-rights",
+    "heating-and-electric-help", "property-tax-abatement", "property-tax-relief",
+    "property-tax-bill", "public-records", "vital-records",
     "tour-the-state-house", "town-warrant-article", "child-care-scholarship",
-    "domestic-violence-help", "homelessness-help",
-    "storms-and-emergencies", "trash-and-recycling", "passport",
-    "medicare-and-social-security", "disability-help", "who-to-contact",
-    "fishing-license", "hunting-license", "boating"))
+    "domestic-violence-help", "discrimination", "homelessness-help", "tenant-rights",
+    "landlord-duties", "storms-and-emergencies", "trash-and-recycling", "consumer-rights", "passport",
+    "medicare-and-social-security", "disability-help", "who-to-contact", "report-a-road-problem",
+    "fishing-license", "hunting-license", "boating", "building-permits", "car-insurance",
+    "renters-insurance", "homeowners-insurance", "health-insurance"))
 # THE LEARN PAGES (the person, 25 October 2026: "start on the Learn pages"),
 # each named here as its Spanish is written, keyed learn.<slug>.* (guides.
 # page_words). One not named is English to everybody and the hub links the
@@ -120,7 +123,7 @@ LEARN_PAGES = tuple(f"learn/{s}.html" for s in (
     "the-courts", "state-agencies", "administrative-rules", "local-government",
     "county-government", "city-and-town-government",
     "general-court", "how-a-bill-becomes-law", "governor-and-council", "the-constitution",
-    "legislative-year"))
+    "legislative-year", "state-house-and-branches", "state-symbols"))
 # THE OFFICIALS PAGE (the person, 25 October 2026: "Start on the Officials
 # page and My Town in Spanish"): its own words, its tabs' and the words of
 # corrections/officials.json that the tabs say (officials_tabs.data_words).

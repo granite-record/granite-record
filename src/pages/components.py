@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-10-09.18
+# GRANITE_VERSION: 2026-10-09.19
 """
 The site's components, in Python: what the builders draw a person, a
 committee, a chip, a date and a time with, and the words they say.
@@ -440,6 +440,8 @@ ICONS = {
     "grid": '<rect x="4" y="4" width="6.5" height="6.5" rx="1"/><rect x="13.5" y="4" width="6.5" height="6.5" rx="1"/><rect x="4" y="13.5" width="6.5" height="6.5" rx="1"/><rect x="13.5" y="13.5" width="6.5" height="6.5" rx="1"/>',
     # The outdoors: fishing, hunting and boating (25 October 2026).
     "tree": '<path d="M12 3.25 7 9.75h2.75L5.5 15.25h13l-4.25-5.5H17z"/><path d="M12 15.25v5.5M9.25 20.75h5.5"/>',
+    # Insurance: car, renters, homeowners and health (26 October 2026).
+    "shield": '<path d="M12 3.25 4.75 6v5.5c0 4.5 3 8 7.25 9.25 4.25-1.25 7.25-4.75 7.25-9.25V6z"/><path d="m9 12 2.25 2.25 3.75-4"/>',
 }
 
 

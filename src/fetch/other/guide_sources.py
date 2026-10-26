@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-10-11.17
+# GRANITE_VERSION: 2026-10-11.20
 """
 The official pages the how-to guides cite, onto this disk, to check them by.
 
@@ -109,6 +109,13 @@ SOURCES = {
         "https://www.dmv.nh.gov/tabbed-content/new-registrations",
         "https://www.dmv.nh.gov/vehicles-boats-and-titles/apply-title",
     ],
+    # Not yet read, 26 October 2026: the motorcycle guide's DMV pages, which
+    # refuse a cloud session; its claims on them wait for the person's printouts.
+    "motorcycle": [
+        "https://www.dmv.nh.gov/drivers-licensenon-driver-ids/motorcycle-license-endorsement",
+        "https://www.dmv.nh.gov/drivers-licensenon-driver-ids/motorcycle-rider-training-program",
+        "https://www.dmv.nh.gov/motorcycle-endorsement-frequently-asked-questions",
+    ],
     "insurance_appeal": [
         "https://www.insurance.nh.gov/consumers",
         "https://www.insurance.nh.gov/appeals-external-reviews",
@@ -161,6 +168,13 @@ SOURCES = {
         # linked from the pages above
         "https://www.nhes.nh.gov/resources/office-locations",
     ],
+    # Your rights at work: getting paid (25 October 2026). The New Hampshire
+    # Department of Labor's page, from the person's printouts; the U.S.
+    # Department of Labor's overtime page, read that day.
+    "wages": [
+        "https://www.dol.nh.gov/",
+        "https://www.dol.gov/agencies/whd/overtime",
+    ],
     # The child care guide's, read in the PDFs the person printed and sent on
     # 24 October 2026.
     "child_care": [
@@ -175,17 +189,42 @@ SOURCES = {
         "https://www.courts.nh.gov/self-help/restraining-orders",
         "https://www.doj.nh.gov/bureaus/office-victimwitness-assistance/address-confidentiality-program",
     ],
+    # The guide to discrimination (25 October 2026): the Commission for Human
+    # Rights' own page, from the person's printout.
+    "discrimination": [
+        "https://www.humanrights.nh.gov/",
+    ],
     "trash": [
         "https://www.des.nh.gov/sites/g/files/ehbemt341/files/documents/hhw-collection-contacts.pdf",
+    ],
+    # Scams and consumer complaints (25 October 2026): the Attorney General's
+    # pages, from the person's printouts.
+    "consumer": [
+        "https://www.doj.nh.gov/bureaus/consumer-protection-antitrust-bureau",
+        "https://www.doj.nh.gov/consumer/complaints",
     ],
     "emergencies": [
         "https://www.desc.dos.nh.gov/resources/nh-alerts",
         "https://www.readynh.gov/",
     ],
+    # When you need a building permit (25 October 2026), from the person's
+    # printouts.
+    "building_permits": [
+        "https://www.firemarshal.dos.nh.gov/laws-rules-regulatory/state-building-code",
+        "https://www.oplc.nh.gov/electricians-board",
+        "https://www.des.nh.gov/land/waterfront-development/protected-shoreland",
+        "https://des.nh.gov/water/wetlands/permit-assistance",
+    ],
     "homelessness": [
         "https://www.dhhs.nh.gov/programs-services/homeless-services",
         "https://www.courts.nh.gov/our-courts/circuit-court/district-division/landlordtenant",
         "https://www.education.nh.gov/who-we-are/division-of-learner-support/bureau-of-instructional-support/ehcy",
+    ],
+    # Reporting a road problem (25 October 2026): the Department of
+    # Transportation's pages, from the person's printouts.
+    "road_problems": [
+        "https://www.dot.nh.gov/doing-business-nhdot/general-public",
+        "https://www.dot.nh.gov/about-nh-dot/contact-us",
     ],
     "run_for_office": [
         "https://www.sos.nh.gov/elections/running-office",
@@ -206,6 +245,14 @@ SOURCES = {
         "https://www.council.nh.gov/contact-us",
         "https://www.governor.nh.gov/contact-governor-ayotte",
     ],
+    # The private health insurance guide (26 October 2026): the Insurance
+    # Department's pages, addresses from a web search, waiting for the
+    # person's printouts.
+    "insurance_health": [
+        "https://www.insurance.nh.gov/",
+        "https://www.insurance.nh.gov/consumers/health-insurance/independent-external-review",
+        "https://www.insurance.nh.gov/consumers/health-insurance/healthcare-and-long-term-care-appeals",
+    ],
     # Fishing, hunting and boating: printed by the person, 25 October 2026.
     "outdoors": [
         "https://www.wildlife.nh.gov/licenses-and-permits/nh-license-requirements",
@@ -219,6 +266,14 @@ SOURCES = {
         "https://www.nhsp.dos.nh.gov/our-services/field-operations-bureau/marine-patrol/boating-education/14-day-temporary-safe-boating",
         "https://www.dmv.nh.gov/vehicles-boats-and-titles/boat-registrations",
         "https://www.wildlife.nh.gov/saltwater-fisheries-new-hampshire/saltwater-fishing-faqs",
+    ],
+    # The Insurance Department's consumer pages for the car, renters and
+    # homeowners insurance guides (26 October 2026): addresses from a web
+    # search, each refusing a cloud session, waiting for the person's printouts.
+    "insurance_property": [
+        "https://www.insurance.nh.gov/consumers/automobile-insurance",
+        "https://www.insurance.nh.gov/consumers/homeowners-and-renters-insurance",
+        "https://www.insurance.nh.gov/consumers/filing-complaint",
     ],
 }
 
@@ -249,6 +304,11 @@ OTHER = {
         "https://www.nhcadsv.org/medicalforensic-exams.html",
         "https://www.nhcadsv.org/legal-resources.html",
         "https://www.nhcadsv.org/support-services--programs.html",
+    ],
+    # The guide to discrimination (25 October 2026): the U.S. Equal Employment
+    # Opportunity Commission's page on filing a charge, read that day.
+    "discrimination": [
+        "https://www.eeoc.gov/how-file-charge-employment-discrimination",
     ],
     # The homelessness guide (24 October 2026): 211 New Hampshire, which the
     # Department of Health and Human Services sends readers to; New Hampshire
@@ -331,6 +391,18 @@ OTHER = {
         "https://goodlander.house.gov/services/help-federal-agency/",
         "https://www.govinfo.gov/content/pkg/USCODE-2024-title5/html/USCODE-2024-title5-partI-chap5-subchapII-sec552a.htm",
     ],
+    # The private health insurance guide (26 October 2026): HealthCare.gov,
+    # the Marketplace's official site, read that day.
+    "insurance_health": [
+        "https://www.healthcare.gov/quick-guide/dates-and-deadlines/",
+        "https://www.healthcare.gov/coverage-outside-open-enrollment/special-enrollment-period/",
+        "https://www.healthcare.gov/apply-and-enroll/how-to-apply/",
+        "https://www.healthcare.gov/lower-costs/",
+        "https://www.healthcare.gov/have-job-based-coverage/options/",
+        "https://www.healthcare.gov/young-adults/children-under-26/",
+        "https://www.healthcare.gov/appeal-insurance-company-decision/external-review/",
+        "https://www.healthcare.gov/marketplace-in-your-state/",
+    ],
     # Fishing, hunting and boating (25 October 2026). Fish and Game's online
     # license system is the state's own, at a .com address rather than nh.gov
     # (its footer: nh.gov, 11 Hazen Drive, Concord), so it is listed here for the
@@ -338,6 +410,11 @@ OTHER = {
     "outdoors": [
         "https://www.nhfishandgame.com/",
         "https://www.fws.gov/service/buy-duck-stamp-or-e-stamp",
+    ],
+    # FEMA's flood insurance page for the homeowners insurance guide, read by
+    # a cloud session on 26 October 2026, where it answered.
+    "insurance_property": [
+        "https://www.floodsmart.gov/get-insured/eligibility",
     ],
 }
 

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-10-11.45
+# GRANITE_VERSION: 2026-10-11.50
 """
 The how-to guides: their words, their sources, and what each was checked
 against. Read by build_civics.py, which draws them on the Resources hub's
@@ -370,16 +370,13 @@ VOTING = guide(
           "<p>The Secretary of State&rsquo;s voter information lookup tells you whether you are "
           "registered and where your polling place is.</p><p>You can vote only in the town, or "
           "the ward of a city, where you live. If you have moved to a new town or ward, you need "
-          "to register at your new address; a move within the same town or ward is an address "
-          "change, made on the same form.</p>",
+          "to register at your new address.</p>",
           actions=[("Check your voter registration", SOS_APP)], law=["RSA 654:7, I"]),
      step("Make sure you can register",
           "<p>You can register if, on election day, you will be:</p><ul>"
           "<li>at least 18 years old,</li><li>a United States citizen, and</li>"
           "<li>living in the town or city ward where you are registering.</li></ul>"
-          "<p>There is no minimum time you must have lived there first. &ldquo;Living&rdquo; "
-          "here is what the law calls your <em>domicile</em>: the one place you call home and "
-          "take part in public life from. You can have only one.</p>"
+          "<p>There is no minimum time you must have lived there first.</p>"
           "<p>You can register as a Democrat, a Republican, or Undeclared.</p>",
           law=["RSA 654:7, I"]),
      step("Register with your clerk, or at the polls",
@@ -390,8 +387,7 @@ VOTING = guide(
           "election closes 6 to 13 days before it, on a date your supervisors set, so ask your "
           "clerk for it.</li>"
           "<li><b>On election day</b>, at your polling place. You register, then vote at that "
-          "election. If you are waiting in line to register when the polls close, you may still "
-          "register and vote.</li>"
+          "election.</li>"
           "<li><b>By absentee registration</b>, if you qualify and cannot register in person.</li></ul>",
           actions=[("Find your town or city clerk", SOS_CLERKS),
                    ("Registration deadlines", SOS_DEADLINES)],
@@ -409,14 +405,8 @@ VOTING = guide(
           "proves it.</li>"
           "<li><b>Domicile:</b> a New Hampshire driver&rsquo;s license or non-driver ID, a New "
           "Hampshire vehicle registration, a federal photo ID, or a government check, benefit "
-          "statement or tax document showing your address. Without one of those, there is a form "
-          "to fill in together with a lease, a utility bill, or a confirmation signed by the "
-          "owner, manager or tenant where you live, and a separate form for people who are "
-          "homeless.</li></ul>"
-          "<p>If you are missing a document, ask your clerk: with your permission, election "
-          "officials can check New Hampshire voter, motor vehicle and vital records to help prove "
-          "your qualifications. A certified copy of a New Hampshire birth or other vital record "
-          "is free when it is only for registering to vote.</p>",
+          "statement or tax document showing your address.</li></ul>"
+          "<p>Missing a document? The questions below say what you can do.</p>",
           actions=[("What counts as proof", SOS_PROOF),
                    ("Free vital record for voter registration", SOS_FREE_VITAL)],
           law=["RSA 654:12"],
@@ -463,12 +453,10 @@ VOTING = guide(
           "order; or</li><li>the National Weather Service has issued a winter storm, blizzard or "
           "ice storm warning for your town and you are worried about traveling.</li></ul>"
           "<p>Send the absentee ballot application to your town or city clerk, not the state, "
-          "with the proof of identity the form asks for. You can apply up to six months before "
-          "the election. The deadline to ask by mail is noon the day before the election, and "
+          "with the proof of identity the form asks for. The deadline to ask by mail is noon the day before the election, and "
           "to ask and vote in person at the clerk&rsquo;s office, 5 p.m. the day before. A "
           "mailed ballot must reach your clerk by 5 p.m. on election day, so ask for it more "
-          "than two weeks ahead. The voter information lookup shows when your clerk got your "
-          "request, sent your ballot, and received it back.</p>",
+          "than two weeks ahead.</p>",
           actions=[("Absentee ballots", SOS_ABSENTEE), ("Absentee ballot application", SOS_ABS_APP)],
           law=["RSA 657:1"])],
     [("Register to vote (Secretary of State)", SOS_REGISTER),
@@ -522,7 +510,29 @@ VOTING = guide(
      claim("Absence, disability, religious observance; an employment obligation for all polling "
            "hours, including care of children and infirm adults, counts as absence; storm "
            "warnings.", "RSA 657:1", CHECKED)],
-    more="<h2>Who Can Help</h2>"
+    more=civics.faq(
+        ("I moved within my town. Do I register again?",
+         "<p>No. A move within the same town or ward is an address change, made on the same "
+         "voter registration form. A move to a new town or ward means registering there.</p>"),
+        ("What does &ldquo;living there&rdquo; mean?",
+         "<p>&ldquo;Living&rdquo; here is what the law calls your <em>domicile</em>: the one place "
+         "you call home and take part in public life from. You can have only one, and there is "
+         "no minimum time you must have lived there first.</p>"),
+        ("What if I am in line to register when the polls close?",
+         "<p>You may still register and vote.</p>"),
+        ("What if I have no document showing where I live?",
+         "<p>There is a form to fill in together with a lease, a utility bill, or a confirmation "
+         "signed by the owner, manager or tenant where you live, and a separate form for people "
+         "who are homeless.</p>"),
+        ("What if I am missing a document?",
+         "<p>Ask your clerk: with your permission, election officials can check New Hampshire "
+         "voter, motor vehicle and vital records to help prove your qualifications. A certified "
+         "copy of a New Hampshire birth or other vital record is free when it is only for "
+         "registering to vote.</p>"),
+        ("How early can I ask for an absentee ballot, and can I track it?",
+         "<p>You can apply up to six months before the election. The voter information lookup "
+         "shows when your clerk got your request, sent your ballot, and received it back.</p>"))
+         + "<h2>Who Can Help</h2>"
          "<p>Your town or city clerk is the person to ask about registering and voting where you "
          "live: what to bring, the deadline, and absentee ballots. The Secretary of State calls "
          "local and state election officials voters&rsquo; trusted source of election "
@@ -570,9 +580,6 @@ PUBLIC_RECORD = guide(
           "<p>Describe what you want clearly enough that it can be found: the law covers a record "
           "&ldquo;reasonably described&rdquo;. A letter or an email is enough. Keep a copy: a "
           "complaint to the ombudsman includes the request.</p>"
-          "<p>The office does not have to create a record that does not exist, or put information "
-          "together in a form it does not already keep. It may suggest narrowing your request so "
-          "it can answer faster or for less.</p>"
           '<div class="g-sample"><p class="g-sample-h">A request you can copy</p>'
           "<p>To the [office]:</p><p>Under New Hampshire&rsquo;s Right-to-Know Law, RSA 91-A, I am "
           "asking to inspect [describe the records, with dates if you know them]. If you will "
@@ -588,10 +595,7 @@ PUBLIC_RECORD = guide(
      step("Pay only for copies",
           "<p>Looking at a record is free, and so is having it sent to you without copying. If "
           "the office makes copies on its own machine, it can charge what the copies actually "
-          "cost. Where another law sets a fee for a copy, that fee applies, with nothing added.</p>"
-          "<p>For a request covering more than 250 emails or other electronic messages, the law "
-          "allows a charge per message within a limit it sets, and requires it to be waived in "
-          "some cases.</p>",
+          "cost.</p>",
           law=["RSA 91-A:4, IV(d)", "RSA 91-A:4, VIII"]),
      step("If the answer is no",
           "<p>A refusal must be in writing, name the specific exemption it relies on, and "
@@ -641,7 +645,18 @@ PUBLIC_RECORD = guide(
      claim("The Attorney General's memorandum explains RSA 91-A for citizens and officials; it is "
            "not legal advice, and people with specific questions should consult a lawyer.",
            RTK, CHECKED)] + help_claims("lawyer"),
-    more="<h2>Who Can Help</h2>"
+    more=civics.faq(
+        ("Does the office have to create a record for me?",
+         "<p>The office does not have to create a record that does not exist, or put information "
+         "together in a form it does not already keep. It may suggest narrowing your request so "
+         "it can answer faster or for less.</p>"),
+        ("What if another law sets a fee for a copy?",
+         "<p>Where another law sets a fee for a copy, that fee applies, with nothing added.</p>"),
+        ("Can I be charged for a request covering many emails?",
+         "<p>For a request covering more than 250 emails or other electronic messages, the law "
+         "allows a charge per message within a limit it sets, and requires it to be waived in "
+         "some cases.</p>"))
+         + "<h2>Who Can Help</h2>"
          "<p>The office that keeps the record is the first place to ask how to get it. To "
          "understand the law in more depth, the Attorney General publishes a memorandum on the "
          "Right-to-Know Law for citizens and public officials alike. It says it is not legal "
@@ -699,14 +714,11 @@ ENERGY = guide(
           "<p>Call to set up an appointment or to ask how to apply. You can apply for fuel "
           "assistance, electric assistance and weatherization at the same time, and you do not "
           "need one to get another. Bring everything the agency asks for and keep your "
-          "appointment.</p><p>If you cannot get to an office, ask about an interview at home or "
-          "by phone, or a mail-in application.</p>",
+          "appointment.</p>",
           actions=[("Fuel Assistance Program", DOE_FUEL)]),
      step("Know what each program does",
           "<ul><li><b>Fuel assistance</b> helps with heating costs as funds become available. "
-          "It is a grant, not a loan, and it is not counted as income when you apply for other "
-          "help. The amount depends on household income, energy costs, the local climate and "
-          "your kind of housing. The Department&rsquo;s page gives the current range.</li>"
+          "It is a grant, not a loan.</li>"
           "<li><b>Electric assistance</b> is a discount on your monthly electric bill if your "
           "income qualifies.</li>"
           "<li><b>Weatherization</b> helps lower-income households make their homes cheaper to "
@@ -714,9 +726,7 @@ ENERGY = guide(
           actions=[("Fuel assistance: amounts and income limits", DOE_FUEL)]),
      step("In a heating emergency",
           "<p>Call your community action agency. Fuel assistance can arrange an emergency "
-          "delivery of fuel, delay a shut-off notice, or point you to other help.</p>"
-          "<p>If you heat with oil, kerosene or propane, the Department advises calling your "
-          "supplier at least ten days before you need a delivery.</p>")],
+          "delivery of fuel, delay a shut-off notice, or point you to other help.</p>")],
     [("Fuel Assistance Program (Department of Energy)", DOE_FUEL),
      ("Community action agencies (Department of Energy)", DOE_CAA),
      ("Department of Energy, RSA 12-P", "/laws/12-p")],
@@ -740,7 +750,19 @@ ENERGY = guide(
      claim("211, Neighbor Helping Neighbor (Eversource, Liberty and Unitil customers), Project Care "
            "(NHEC customers) and NH Adult and Aging Care, 1-866-634-9412.", DOE_CAA, CHECKED)]
     + help_claims("nheasy", "adrc"),
-    more="<h2>Who Can Help</h2>"
+    more=civics.faq(
+        ("What if I cannot get to an office?",
+         "<p>Ask about an interview at home or by phone, or a mail-in application.</p>"),
+        ("Do I have to pay fuel assistance back?",
+         "<p>No. It is a grant, not a loan, and it is not counted as income when you apply for "
+         "other help.</p>"),
+        ("How much fuel assistance will I get?",
+         "<p>The amount depends on household income, energy costs, the local climate and your "
+         "kind of housing. The Department&rsquo;s page gives the current range.</p>"),
+        ("When should I order heating fuel?",
+         "<p>If you heat with oil, kerosene or propane, the Department advises calling your "
+         "supplier at least ten days before you need a delivery.</p>"))
+         + "<h2>Who Can Help</h2>"
          "<p>Your community action agency is where to apply and where to ask about your "
          "household. The Department of Energy also lists these:</p><ul>"
          "<li><b>211 New Hampshire:</b> dial 211, or 1-866-444-4211, for help finding other "
@@ -793,15 +815,12 @@ VITAL = guide(
           "<li>the news media, for information of a public nature;</li><li>someone the immediate "
           "family has authorized to do genealogical research; and</li><li>a former spouse, for "
           "the divorce record.</li></ul><p>If you are not immediate family, include a letter "
-          "saying which record you need, why, and any evidence for it. The clerk or the state "
-          "registrar decides, and a refusal can be appealed.</p>",
+          "saying which record you need, why, and any evidence for it.</p>",
           law=["RSA 5-C:102"]),
      step("Fill in the application",
           "<p>Fill in the section for the kind of record you want, and the applicant section "
-          "with your name, address, reason and relationship, and sign it. For a death record you "
-          "choose whether it shows the cause and manner of death, and whether the Social "
-          "Security number is suppressed. A false statement on the application is a "
-          "felony.</p>",
+          "with your name, address, reason and relationship, and sign it. A false statement on "
+          "the application is a felony.</p>",
           actions=[("The application", DVRA_APP)], law=["RSA 5-C:14"]),
      step("Apply in person, or by mail",
           "<p><b>In person:</b> take the application and your photo ID to your town or city "
@@ -816,8 +835,7 @@ VITAL = guide(
           actions=[("Request a certificate", DVRA_REQUEST), ("If you have no photo ID", DVRA_NO_ID)]),
      step("Pay the fee",
           "<p>The fee is $15 for the search, which includes one copy, and $10 for each further "
-          "copy of the same record issued at the same time. The law sets both. The $15 is paid "
-          "whether or not the record is found, and a card payment may cost extra.</p>",
+          "copy of the same record issued at the same time. The law sets both.</p>",
           actions=[("Current fees", DVRA_REQUEST)], law=["RSA 5-C:10"])],
     [("Vital Records (Secretary of State)", DVRA),
      ("Request for Certificates (Secretary of State)", DVRA_REQUEST),
@@ -839,7 +857,16 @@ VITAL = guide(
      claim("$15 search including the copy, $10 each subsequent copy.", "RSA 5-C:10", CHECKED),
      claim("A false statement in an application for a certified copy is a class B felony.",
            "RSA 5-C:14", CHECKED)],
-    more="<h2>Who Can Help</h2>"
+    more=civics.faq(
+        ("What choices are there on a death record?",
+         "<p>For a death record you choose whether it shows the cause and manner of death, and "
+         "whether the Social Security number is suppressed.</p>"),
+        ("Do I get the fee back if no record is found?",
+         "<p>No. The $15 is paid whether or not the record is found, and a card payment may cost "
+         "extra.</p>"),
+        ("Who decides whether I may have a record?",
+         "<p>The clerk or the state registrar decides, and a refusal can be appealed.</p>"))
+         + "<h2>Who Can Help</h2>"
          "<p>Your town or city clerk issues certified copies, and is the nearest place to ask. "
          "The Division of Vital Records Administration lists how "
          "to reach it on its contact page. A certified copy needed only to register to vote is "
@@ -899,17 +926,14 @@ ABATEMENT = guide(
           "of these:</p><ul><li><b>An error</b> in how your property is described or measured.</li>"
           "<li><b>A disproportionate assessment.</b> You show what the property was worth on "
           "April 1 of the tax year, with an appraisal or sales of comparable properties, and "
-          "that your <em>equalized assessment</em> is higher. To get it, divide your assessment "
-          "by your town&rsquo;s equalization ratio.</li>"
+          "that your <em>equalized assessment</em> is higher.</li>"
           "<li><b>Poverty and inability to pay</b>, explained in detail, including why an "
           "abatement fits better than other help.</li></ul>"
           "<p>The application asks for specific reasons, not a general statement about the tax. "
           "List every property you own in the town, not only the one you are appealing.</p>",
           law=["RSA 76:16"]),
      step("File the application with your town",
-          "<p>Use the Board&rsquo;s abatement application, sign it, and keep a copy. It is filed "
-          "on the day you hand it in, the day it is postmarked, or the day an overnight carrier "
-          "receipts it. Your town may charge for the form.</p>",
+          "<p>Use the Board&rsquo;s abatement application, sign it, and keep a copy.</p>",
           actions=[("The abatement application", BTLA_ABATE)], law=["RSA 76:16, I(b)"]),
      step("Wait for the decision",
           "<p>The town must grant or deny in writing by July 1, or within 6 months where the "
@@ -921,8 +945,7 @@ ABATEMENT = guide(
           "Court</b>, but not both. For the Board, fill in its appeal form and mail it or hand it "
           "in, with the $65 filing fee by check or money order payable to &ldquo;Treasurer, "
           "State of NH&rdquo;, to the Board of Tax and Land Appeals, 107 Pleasant Street, Johnson Hall, "
-          "Concord, NH 03301. It does not accept appeals filed electronically. Either way, the "
-          "decision can then be appealed to the Supreme Court.</p>",
+          "Concord, NH 03301.</p>",
           actions=[("The Board's property tax page", BTLA), ("The Board's appeal form", BTLA_APPEAL),
                    ("Commonly asked questions", BTLA_FAQ)],
           law=["RSA 76:16-a", "RSA 76:17"])],
@@ -953,12 +976,26 @@ ABATEMENT = guide(
      claim("Damaged buildings: apply within 60 days of the event or by March 1, whichever is "
            "later; appeal as under 76:16-a or 76:17.", "RSA 76:21", CHECKED)]
     + help_claims("legal_aid", "lawyer"),
-    more="<h2>If a Fire or Disaster Damaged Your Building</h2>"
+    more=civics.faq(
+        ("How do I work out my equalized assessment?",
+         "<p>Divide your assessment by your town&rsquo;s equalization ratio.</p>"),
+        ("When does my application count as filed?",
+         "<p>It is filed on the day you hand it in, the day it is postmarked, or the day an "
+         "overnight carrier receipts it.</p>"),
+        ("Does the application form cost anything?",
+         "<p>Your town may charge for the form.</p>"),
+        ("Can I file an appeal online?",
+         "<p>No. The Board of Tax and Land Appeals does not accept appeals filed "
+         "electronically.</p>"),
+        ("What if I lose my appeal?",
+         "<p>Whether you appealed to the Board or to the Superior Court, the decision can then be "
+         "appealed to the Supreme Court.</p>"),
+        ("What if a fire or disaster damaged my building?",
          "<p>When a fire you did not cause, or a natural disaster, leaves a building unusable "
          "during the tax year, its assessment is prorated for the days it could be used. Apply "
          "in writing to your town within 60 days of the damage or by March 1, whichever is later. "
-         'Appeals follow the same routes and deadlines (<a href="/laws/76#s21">RSA 76:21</a>).</p>'
-         "<h2>Who Can Help</h2>"
+         'Appeals follow the same routes and deadlines (<a href="/laws/76#s21">RSA 76:21</a>).</p>'))
+         + "<h2>Who Can Help</h2>"
          "<p>Your town or city&rsquo;s assessing officials are who you apply to for an "
          "abatement. For questions about appealing, the Board of Tax and Land Appeals asks you to "
          "read its commonly asked questions or call its office at (603) 271-2578.</p>"
@@ -1043,7 +1080,8 @@ LMI = guide(
      claim("Certification within 120 days; notice of rejection within 90 days.", "RSA 198:61", CHECKED),
      claim("A fraudulent claim is a misdemeanor; audits within 3 years.", "RSA 198:59", CHECKED)]
     + help_claims("adrc", "legal_aid"),
-    more="<h2>How Much It Can Be</h2>"
+    more=civics.faq(
+        ("How much relief can I get?",
          "<p>The relief is a share of the State Education Property Tax on the lesser of your "
          "home&rsquo;s assessed value and $220,000 multiplied by your town&rsquo;s equalization "
          "ratio, at the education tax rate on your bill. The share depends on your household "
@@ -1053,10 +1091,11 @@ LMI = guide(
                  [["100%", "Under $23,100", "Under $29,400"],
                   ["60%", "$23,100 to under $27,800", "$29,400 to under $35,300"],
                   ["40%", "$27,800 to under $32,400", "$35,300 to under $41,100"],
-                  ["20%", "$32,400 to $37,000", "$41,100 to $47,000"]])
-         + "<p>A false claim is a crime, and the Department may audit a claim within three years "
-           'of granting it (<a href="/laws/198#s59">RSA 198:59</a>).</p>'
-         "<h2>Who Can Help</h2>"
+                  ["20%", "$32,400 to $37,000", "$41,100 to $47,000"]])),
+        ("Can my claim be checked later?",
+         "<p>Yes. A false claim is a crime, and the Department may audit a claim within three "
+         'years of granting it (<a href="/laws/198#s59">RSA 198:59</a>).</p>'))
+         + "<h2>Who Can Help</h2>"
          "<p>The Department of Revenue Administration answers questions about this program at "
          "(603) 230-5920, and keeps a page of frequently asked questions.</p>"
          f'<p class="g-acts"><a class="g-btn" href="{DRA_LMI_FAQ}" target="_blank" rel="noopener">'
@@ -1514,8 +1553,7 @@ HEARING = guide(
           + "<p>On this site, a bill&rsquo;s page lists its hearings with the day, time and room, "
           "and the Calendar shows the week&rsquo;s hearings by committee. Follow on a "
           "bill&rsquo;s page gives you its new actions as they are recorded, and the site keeps a "
-          "feed of hearings coming up as well.</p>"
-          + SAID["starts-late"],
+          "feed of hearings coming up as well.</p>",
           actions=[("This week's hearings", "/calendar.html"), ("Find a bill", "/bills.html")]),
      step("Decide how to take part",
           "<p>Legislative committee meetings, executive sessions included, are open to the "
@@ -1539,7 +1577,7 @@ HEARING = guide(
           "for an organization, then whether you support or oppose the bill, and why. The most "
           "useful testimony is specific: what the bill would do to you, in your town.</p>"
           "<p>In practice:</p><ul>"
-          + SAID["sponsor-first"] + SAID["chair-time"] + SAID["notes"] + SAID["props"]
+          + SAID["notes"]
           # Testifying and Attending says this under Written Testimony, in
           # the other guide's words (SAID["paper"]).
           + "<li><b>Paper copies are optional.</b> To hand the committee written testimony, bring "
@@ -1547,12 +1585,10 @@ HEARING = guide(
           + SAID["last-call"] + "</ul>",
           actions=[("Written testimony", "/guides/submit-testimony.html")]),
      step("After the hearing",
-          SAID["exec-session"] + SAID["throughout-the-day"]
+          SAID["exec-session"]
           + "<p>The recommendation, such as Ought to Pass or Inexpedient to Legislate, goes to the "
           "full chamber. If the bill passes, a committee of the other chamber holds its own "
-          "hearing on it.</p>"
-          "<p>In the Senate, the committee&rsquo;s hearing report lists who supported, opposed "
-          "or was neutral on the bill and summarizes the testimony.</p>",
+          "hearing on it.</p>",
           actions=[("How a bill becomes law", "/learn/how-a-bill-becomes-law.html")])],
     [("House Calendars No. 23 (1997), No. 7 (2021), No. 8 (2025) and Nos. 2 and 6 (2026), Senate "
       "Calendars No. 20 (2025) and No. 3 (2026), House Journal No. 2 (2025) and Senate Journals "
@@ -1660,6 +1696,15 @@ HEARING = guide(
               "summarizes the testimony.", "Senate committee hearing reports (CandH_Reports), " + DB,
               REPORTS, ["Who supports the bill", "Who opposes the bill", "Who is neutral on the bill",
                         "Summary of testimony presented in support"], READ)],
+    more=civics.faq(
+        ("Will the hearing start at the time in the notice?", SAID["starts-late"]),
+        ("Who speaks first, and how long can I speak?",
+         "<ul>" + SAID["sponsor-first"] + SAID["chair-time"] + "</ul>"),
+        ("Can I bring a sign or props?", "<ul>" + SAID["props"] + "</ul>"),
+        ("Why can&rsquo;t I tell when the committee will vote?", SAID["throughout-the-day"]),
+        ("Is there a record of who spoke?",
+         "<p>In the Senate, the committee&rsquo;s hearing report lists who supported, opposed "
+         "or was neutral on the bill and summarizes the testimony.</p>")),
     see=[("How public hearings work", "/guides/testifying.html"),
          ("How to submit testimony online or in writing", "/guides/submit-testimony.html"),
          ("How to contact your legislators", "/guides/contact-your-legislators.html"),
@@ -1704,10 +1749,8 @@ TESTIMONY = guide(
           "<p>Each chamber has its own online form on the General Court&rsquo;s website, and each "
           "sign-in is for one bill at one committee&rsquo;s hearing on one day. "
           + SAID["window"] + "</p>"
-          + SAID["forms"]
-          + "<p>A sign-in for or against is part of the record and is counted. For House hearings "
-          "this site publishes only how many people signed in supporting, opposing and neutral, "
-          "never names or written testimony.</p>",
+          "<p>Each form asks who you are, whom you represent, if anyone, and whether you "
+          "support the bill, oppose it or are neutral; the questions below say what else.</p>",
           actions=[("House sign-in", HOUSE_SIGNIN), ("Senate sign-in", SENATE_SIGNIN)]),
      step("Write it so it is useful",
           "<p>Start with the bill&rsquo;s number, HB or SB and then the number, and say whether "
@@ -1715,9 +1758,7 @@ TESTIMONY = guide(
           "would do to you, your family, your work or your town. If you write for an "
           "organization, say so.</p>"),
      step("Send it before the hearing",
-          "<p>Committee members can read what is submitted online in the House&rsquo;s portal, "
-          "bill by bill, and are sent links to it at the end of each day their committee holds "
-          "hearings. A committee can vote as soon as its hearing "
+          "<p>A committee can vote as soon as its hearing "
           "ends: Senate notices often say &ldquo;executive session may follow&rdquo;, and a House "
           "committee may meet in executive session straight after a noticed hearing. So send "
           "your testimony before the hearing, as soon as you can once it is scheduled.</p>"),
@@ -1796,6 +1837,16 @@ TESTIMONY = guide(
                 "both close at midnight at the end of the day of the hearing.", READ),
        observed("Written testimony may be brought on paper, one printed copy for each committee "
                 "member, which they take and pass around; paper copies are optional.", READ)],
+    more=civics.faq(
+        ("What exactly does each sign-in form ask for?", SAID["forms"]),
+        ("Is my sign-in counted, and does this site publish it?",
+         "<p>A sign-in for or against is part of the record and is counted. For House hearings "
+         "this site publishes only how many people signed in supporting, opposing and neutral, "
+         "never names or written testimony.</p>"),
+        ("When do committee members see what I submit online?",
+         "<p>Committee members can read what is submitted online in the House&rsquo;s portal, "
+         "bill by bill, and are sent links to it at the end of each day their committee holds "
+         "hearings.</p>")),
     see=[("How public hearings work", "/guides/testifying.html"),
          ("How to attend and speak at a public hearing", "/guides/attend-a-hearing.html"),
          ("How to contact your legislators", "/guides/contact-your-legislators.html"),
@@ -1950,15 +2001,6 @@ READ_BILL = guide(
           "<p>The other letters are explained under Reading the Shorthand.</p>",
           actions=[("Reading the shorthand", "/guides/using-this-site.html#s-reading-the-shorthand")],
           law=["RSA 14:48"]),
-     step("Find its request number",
-          "<p>Before a bill has a number it is a Legislative Service Request, or LSR: a "
-          "legislator&rsquo;s request, which the Office of Legislative Services drafts into a "
-          "bill. When the bill is introduced it gets its number, and its text keeps the "
-          "request&rsquo;s number near the top: HB 1001 of 2024 prints 24-2288, the "
-          "session&rsquo;s year and then the request&rsquo;s own number. While requests for the "
-          "next session are being filed, this site&rsquo;s bill search lists them by title and "
-          "prime sponsor.</p>",
-          actions=[("Search bills and requests", "/bills.html")]),
      step("Read the first page",
           "<p>The first page gives the bill&rsquo;s title, which begins &ldquo;AN ACT&rdquo;; its "
           "sponsors, each with their district; the committee it was sent to; and an "
@@ -1971,9 +2013,7 @@ READ_BILL = guide(
           "read. The type shows what changes:</p><ul>"
           "<li>In a section that rewrites part of a law, <b>regular type</b> is the law as it "
           "stands, <b><i>bold italics</i></b> are words being added, and [<s>brackets, struck "
-          "through</s>] are words being removed. In HB 1001 of 2024, the first section prints a "
-          "paragraph of current law in regular type with one phrase in bold italics: the "
-          "addition.</li>"
+          "through</s>] are words being removed.</li>"
           "<li>A section that is all new, or repealed and written again, is printed wholly in "
           "regular type, as a note on the first page says.</li></ul>"
           "<p>The last section says when the change would take effect. To read a law as it "
@@ -1992,13 +2032,7 @@ READ_BILL = guide(
           "<p>With some exceptions, such as the budget bills, a bill that would change what the "
           "state, a county, a city or a town spends or collects carries a fiscal note. If the "
           "effect is $10,000 or more in each fiscal year the note covers, the note sets out the "
-          "estimate; if less, it says so. The Office of Legislative Budget Assistant prepares it "
-          "and names its sources, and the note is corrected to match the bill as it is "
-          "amended.</p>"
-          "<p>The note marks whether the state, counties or local governments are affected, "
-          "estimates the change in appropriations, revenue and spending by fiscal year, and "
-          "explains how under Methodology. An effect it cannot put a number on may be called "
-          "indeterminable.</p>",
+          "estimate; if less, it says so.</p>",
           law=["RSA 14:44", "RSA 14:46", "RSA 14:47"])],
     [("HB 1001 of 2024 (Granite Record)", "/bill/2024/hb1001.html"),
      ("House Calendars No. 5 (December 27, 2024) and No. 6 (2026), Senate Calendar No. 3 (2026) "
@@ -2089,6 +2123,27 @@ READ_BILL = guide(
             "indeterminable.", "HB 15-FN of 2023, as introduced, its fiscal note", HB15,
             ["FISCAL IMPACT:", "Estimated Increase / (Decrease)", "Appropriation", "Revenue",
              "Expenditures", "METHODOLOGY:", "Indeterminable Decrease", "AGENCIES CONTACTED:"], READ)],
+    more=civics.faq(
+        ("What is the number at the top of the text, like 24-2288?",
+         "<p>Before a bill has a number it is a Legislative Service Request, or LSR: a "
+         "legislator&rsquo;s request, which the Office of Legislative Services drafts into a "
+         "bill. When the bill is introduced it gets its number, and its text keeps the "
+         "request&rsquo;s number near the top: HB 1001 of 2024 prints 24-2288, the "
+         "session&rsquo;s year and then the request&rsquo;s own number. While requests for the "
+         "next session are being filed, this site&rsquo;s <a href=\"/bills.html\">bill search</a> "
+         "lists them by title and "
+         "prime sponsor.</p>"),
+        ("Is there a bill I can look at as an example?",
+         "<p>In HB 1001 of 2024, the first section prints a paragraph of current law in regular "
+         "type with one phrase in bold italics: the addition.</p>"),
+        ("Who writes the fiscal note?",
+         "<p>The Office of Legislative Budget Assistant prepares it and names its sources, and "
+         "the note is corrected to match the bill as it is amended.</p>"),
+        ("What does a fiscal note show?",
+         "<p>The note marks whether the state, counties or local governments are affected, "
+         "estimates the change in appropriations, revenue and spending by fiscal year, and "
+         "explains how under Methodology. An effect it cannot put a number on may be called "
+         "indeterminable.</p>")),
     see=[("Reading the shorthand", "/guides/using-this-site.html#s-reading-the-shorthand"),
          ("How a bill becomes law", "/learn/how-a-bill-becomes-law.html"),
          ("Glossary", "/learn/glossary.html"),
@@ -2169,9 +2224,7 @@ LICENSE = guide(
      box("You leave with a paper license, and the new card comes by mail within 60 days.")],
     [step("Watch for your renewal notice",
           "<p>About two months before your license expires, the DMV mails a renewal notice to the "
-          "address it has for you. You will not get one if your mail is forwarded, if you moved and "
-          "did not tell the DMV your new address, or if your license is suspended.</p>"
-          "<p>The expiration date is printed in red on the front of your license.</p>",
+          "address it has for you.</p>",
           law=["RSA 263:10, I"]),
      step("Renew online, if your notice says you can",
           "<p>You need:</p><ul>"
@@ -2180,10 +2233,7 @@ LICENSE = guide(
           "<li>your current license in hand, because you will type in details printed on it;</li>"
           "<li>a MasterCard, VISA, Discover or American Express card; and</li>"
           "<li>a printer, to print the temporary license you carry with your old card until the "
-          "new one arrives.</li></ul>"
-          "<p>Only you can renew your own license, and your current photo is reused. The law allows "
-          "an online renewal only every other time, so the renewal after an online one is in "
-          "person.</p>",
+          "new one arrives.</li></ul>",
           actions=[("Renew online", DMV_ONLINE)], law=["RSA 263:10, II"]),
      step("Or renew at a DMV appointment",
           "<p>DMV offices see people by appointment. Book online, or call 603-227-4000. Bring:</p><ul>"
@@ -2191,19 +2241,12 @@ LICENSE = guide(
           "<li>your current license, or other proof of identity if you cannot find it;</li>"
           "<li>the fee; and</li><li>be ready for a vision test.</li></ul>"
           "<p>To upgrade to a REAL ID at the same time, bring the extra documents it needs. If you "
-          "are not a U.S. citizen, the DMV lists what to bring on a page of its own.</p>"
-          "<p>A non-driver ID card renews the same two ways: online if your notice allows, or by "
-          "appointment with the same application and proof of your identity and residence. A "
-          "commercial driver&rsquo;s license is renewed only by appointment, on its own "
-          "application (form DSMV 312), with a valid medical certificate unless you are "
-          "exempt.</p>",
+          "are not a U.S. citizen, the DMV lists what to bring on a page of its own.</p>",
           actions=[("Make an appointment", DMV_APPT), ("Application (DSMV 450)", DMV_APP),
                    ("If you are not a U.S. citizen", DMV_NON_US)]),
      step("Pay the fee",
           "<p>A renewed driver&rsquo;s license costs $50, or $60 for a REAL ID license, and a "
-          "non-driver ID card costs $20. The law sets all three. Other licenses cost different "
-          "amounts, among them youth, motorcycle and commercial licenses and a license for someone "
-          "who is not a U.S. citizen; the DMV&rsquo;s fees page lists them. The DMV takes credit "
+          "non-driver ID card costs $20. The law sets all three. The DMV takes credit "
           "cards, cash in person, and checks or money orders payable to &ldquo;State of NH - "
           "DMV&rdquo;.</p>",
           actions=[("All licensing fees", DMV_FEES)], law=["RSA 263:42, I", "RSA 260:21"]),
@@ -2247,7 +2290,25 @@ LICENSE = guide(
            "renewal.", "RSA 263:42", READ),
      claim("The fee for a nondriver's picture identification card is $20, not refundable.",
            "RSA 260:21", READ)],
-    more=DMV_HELP,
+    more=civics.faq(
+        ("Why didn&rsquo;t I get a renewal notice?",
+         "<p>You will not get one if your mail is forwarded, if you moved and did not tell the DMV "
+         "your new address, or if your license is suspended.</p>"
+         "<p>The expiration date is printed in red on the front of your license.</p>"),
+        ("Can I renew online every time?",
+         "<p>Only you can renew your own license, and your current photo is reused. The law allows "
+         "an online renewal only every other time, so the renewal after an online one is in "
+         "person.</p>"),
+        ("How do I renew a non-driver ID or a commercial license?",
+         "<p>A non-driver ID card renews the same two ways: online if your notice allows, or by "
+         "appointment with the same application and proof of your identity and residence. A "
+         "commercial driver&rsquo;s license is renewed only by appointment, on its own "
+         "application (form DSMV 312), with a valid medical certificate unless you are "
+         "exempt.</p>"),
+        ("What do other kinds of license cost?",
+         "<p>Other licenses cost different amounts, among them youth, motorcycle and commercial "
+         "licenses and a license for someone who is not a U.S. citizen; the DMV&rsquo;s fees page "
+         "lists them.</p>")) + DMV_HELP,
     see=[("How to get a REAL ID", "/guides/real-id.html"),
          ("New to New Hampshire: license, registration and voting", "/guides/new-to-new-hampshire.html")],
     figures=[fig("$60", "RSA 263:42", "$60 for a Real ID Act compliant license"),
@@ -2286,22 +2347,16 @@ CAR = guide(
           "<li><b>From a dealer in another state:</b> the title from the dealer, or the New "
           "Hampshire title application from your lender. For a brand-new vehicle, the "
           "manufacturer&rsquo;s statement of origin.</li>"
-          "<li><b>From a private seller:</b> the title, properly signed over to you.</li>"
-          "<li><b>A vehicle exempt from titling, from a private seller:</b> a bill of sale with "
-          "the details the law lists, and proof of the vehicle identification number (VIN): the "
-          "title or a copy, a past New Hampshire registration or a copy, or the DMV&rsquo;s VIN "
-          "verification form.</li></ul>"
-          "<p>If the vehicle is leased or financed through a lender in another state, start with "
-          "the DMV&rsquo;s page on 60-day temporary plates.</p>",
+          "<li><b>From a private seller:</b> the title, properly signed over to you.</li></ul>"
+          "<p>A vehicle exempt from titling, or one leased or financed out of state, needs "
+          "something different: the questions below say what.</p>",
           actions=[("Vehicle registrations", DMV_REG), ("VIN verification form", DMV_VIN),
                    ("Temporary plates", DMV_TEMP_PLATES)],
           law=["RSA 261:148"]),
      step("Start at your town or city clerk",
           "<p>Every motor vehicle except a moped starts at the clerk&rsquo;s office of the town or "
           "city where you live. The clerk confirms your residence and issues the town&rsquo;s "
-          "permit, which the state needs before it will register the vehicle. The town&rsquo;s "
-          "fee is set by law from the maker&rsquo;s list price, and gets smaller as the vehicle "
-          "ages.</p>",
+          "permit, which the state needs before it will register the vehicle.</p>",
           actions=[("Find your town or city clerk", SOS_CLERKS)],
           law=["RSA 261:148", "RSA 261:153"]),
      step("Finish the state part",
@@ -2318,8 +2373,7 @@ CAR = guide(
      step("Renew every year",
           "<p>A registration in your own name expires at the end of the month of your birthday. To "
           "renew, bring your registration or renewal notice to your town or city and pay the "
-          "town&rsquo;s fees first; many towns can take the state&rsquo;s part as well. Ask your "
-          "clerk or tax collector whether your town takes renewals online or by mail.</p>",
+          "town&rsquo;s fees first; many towns can take the state&rsquo;s part as well.</p>",
           law=["RSA 261:62"])],
     [("Vehicle Registrations (Division of Motor Vehicles)", DMV_REG),
      ("Appointments and Services (Division of Motor Vehicles)", DMV_APPT),
@@ -2349,7 +2403,21 @@ CAR = guide(
      claim("An individual's registration expires at the end of the month of the registrant's "
            "birthday, the first after issue or, for an original issued in the four months before "
            "it, the second.", "RSA 261:62", READ)],
-    more="<h2>Who Can Help</h2>"
+    more=civics.faq(
+        ("My vehicle is exempt from titling. What do I bring?",
+         "<p>If you bought it from a private seller: a bill of sale with the details the law "
+         "lists, and proof of the vehicle identification number (VIN): the title or a copy, a past "
+         "New Hampshire registration or a copy, or the DMV&rsquo;s VIN verification form.</p>"),
+        ("My vehicle is leased or financed through a lender in another state. Where do I start?",
+         "<p>If the vehicle is leased or financed through a lender in another state, start with "
+         "the DMV&rsquo;s page on 60-day temporary plates.</p>"),
+        ("How is the town&rsquo;s fee figured?",
+         "<p>The town&rsquo;s fee is set by law from the maker&rsquo;s list price, and gets "
+         "smaller as the vehicle ages.</p>"),
+        ("Can I renew online or by mail?",
+         "<p>Ask your clerk or tax collector whether your town takes renewals online or by "
+         "mail.</p>"))
+         + "<h2>Who Can Help</h2>"
          "<p>Your town or city clerk is the place to start, and can tell you what your town asks "
          "for and whether it does the state&rsquo;s part. The Division of Motor Vehicles answers "
          "questions at 603-227-4000.</p>"
@@ -2385,19 +2453,13 @@ REAL_ID = guide(
           "<p>A REAL ID license or ID has a star in the top right corner. Since May 7, 2025, you "
           "need one, or a passport or another accepted ID, to board a domestic flight or enter a "
           "secure federal facility such as a military base or a courthouse.</p>"
-          "<p>REAL ID is voluntary in New Hampshire. A card without the star is marked &ldquo;NOT "
-          "FOR FEDERAL IDENTIFICATION&rdquo;, and you would show a passport or another accepted "
-          "ID for those purposes instead. The Transportation Security Administration charges a fee "
-          "to travelers who arrive without an accepted ID.</p>",
+          "<p>REAL ID is voluntary in New Hampshire.</p>",
           actions=[("REAL ID (DMV)", DMV_REALID), ("REAL ID (TSA)", TSA_REALID)]),
      step("Gather your documents",
           "<p>You prove three things: your identity, your Social Security number, and that you live "
           "in New Hampshire. The DMV&rsquo;s online document checker shows what to bring for your "
-          "situation.</p>"
-          "<p>If your name has changed, through marriage, divorce, adoption or otherwise, your "
-          "birth certificate or passport will show a different name, so bring proof of each change "
-          "that links it to your current name. The document checker&rsquo;s Name Change Wizard "
-          "helps. If you are not a U.S. citizen, the DMV lists what to bring on its own page.</p>",
+          "situation. If you are not a U.S. citizen, the DMV lists what to bring on its own "
+          "page.</p>",
           actions=[("Online document checker", DMV_DOC_CHECK), ("The list of documents", DMV_REALID_DOCS),
                    ("If you are not a U.S. citizen", DMV_NON_US)]),
      step("Make an appointment",
@@ -2409,9 +2471,7 @@ REAL_ID = guide(
      step("Pay the fee",
           "<p>At renewal, a REAL ID driver&rsquo;s license costs $60, against $50 for a "
           "driver&rsquo;s license without the star, and a non-driver ID card costs $20. The law "
-          "sets all three. If you upgrade before your renewal is due, the DMV also charges a "
-          "replacement fee, which its REAL ID page gives. Other licenses cost different amounts; "
-          "the DMV&rsquo;s fees page lists them.</p>",
+          "sets all three.</p>",
           actions=[("Licensing fees", DMV_FEES)], law=["RSA 263:42, I", "RSA 260:21"])],
     [("REAL ID (Division of Motor Vehicles)", DMV_REALID),
      ("REAL ID (Transportation Security Administration)", TSA_REALID),
@@ -2436,7 +2496,23 @@ REAL_ID = guide(
      claim("$60 for a Real ID Act compliant license, $50 for each other license.", "RSA 263:42", READ),
      claim("The fee for a nondriver's picture identification card is $20, not refundable.",
            "RSA 260:21", READ)],
-    more=DMV_HELP,
+    more=civics.faq(
+        ("What if I do not get a REAL ID?",
+         "<p>A card without the star is marked &ldquo;NOT FOR FEDERAL IDENTIFICATION&rdquo;, and "
+         "you would show a passport or another accepted ID for those purposes instead. The "
+         "Transportation Security Administration charges a fee to travelers who arrive without an "
+         "accepted ID.</p>"),
+        ("My name has changed. What do I bring?",
+         "<p>If your name has changed, through marriage, divorce, adoption or otherwise, your "
+         "birth certificate or passport will show a different name, so bring proof of each change "
+         "that links it to your current name. The document checker&rsquo;s Name Change Wizard "
+         "helps.</p>"),
+        ("Does it cost more to upgrade before my renewal is due?",
+         "<p>If you upgrade before your renewal is due, the DMV also charges a replacement fee, "
+         "which its REAL ID page gives.</p>"),
+        ("What do other kinds of license cost?",
+         "<p>Other licenses cost different amounts; the DMV&rsquo;s fees page lists them.</p>"))
+         + DMV_HELP,
     see=[("How to renew your driver's license", "/guides/renew-drivers-license.html")],
     figures=[fig("$60", "RSA 263:42", "$60 for a Real ID Act compliant license"),
              fig("$50", "RSA 263:42", "$50 for each other license"),
@@ -2469,9 +2545,7 @@ NEW_RESIDENT = guide(
      box("Register to vote with your clerk, or at the polls on election day.")],
     [step("Know when the 60 days start",
           "<p>They start when you make a town or city ward in New Hampshire your home: your "
-          "principal place of physical presence, to the exclusion of every other. Actions such as "
-          "buying or leasing your main house or apartment, registering a vehicle here, putting "
-          "your children in a public school, or registering to vote show that you have.</p>",
+          "principal place of physical presence, to the exclusion of every other.</p>",
           actions=[("New to New Hampshire (DMV)", DMV_NEW)]),
      step("Get a New Hampshire driver's license",
           "<p>If you drive in New Hampshire, get a New Hampshire license within 60 days. If you do "
@@ -2481,27 +2555,21 @@ NEW_RESIDENT = guide(
           "or not), and the fee; there is a vision test. You must hand in every license from "
           "another state. You leave with a 60-day paper license, and the card comes by mail within "
           "60 days. If you are not a U.S. citizen, the DMV&rsquo;s page explains where to "
-          "apply.</p>"
-          "<p>The DMV lists a few kinds of out-of-state license that are not valid for driving in "
-          "New Hampshire, on its page about transferring a license.</p>",
+          "apply.</p>",
           actions=[("Transfer a license from another state", DMV_TRANSFER),
                    ("Make an appointment", DMV_APPT), ("If you are not a U.S. citizen", DMV_NON_US)],
           law=["RSA 263:35, I", "RSA 263:4"]),
      step("Register your vehicle",
           "<p>If you own a vehicle you use in New Hampshire, register it here within 60 days. Take "
           "the title and proof of your residence to the clerk&rsquo;s office of the town or city "
-          "where you live. If the vehicle is leased, financed, or exempt from titling, bring "
-          "your registration from the other state, the lease if there is one, your lender&rsquo;s "
-          "name and address, and proof of residence. The clerk prepares a New Hampshire title "
-          "application. Fees differ for each vehicle, so ask your clerk.</p>",
+          "where you live. Fees differ for each vehicle, so ask your clerk.</p>",
           actions=[("Find your town or city clerk", SOS_CLERKS)], law=["RSA 261:45, I"]),
      step("Register to vote",
           "<p>There is no minimum time you must live here before registering. You can register with "
           "your town or city clerk, or at a session of the supervisors of the checklist, until "
           "registration closes 6 to 13 days before an election, on a date your supervisors set. You "
           "can also register at your polling place on election day. Bring proof of your "
-          "identity, age, citizenship and domicile; How to Vote lists what counts.</p>"
-          "<p>You do not need a New Hampshire driver&rsquo;s license to register or to vote.</p>",
+          "identity, age, citizenship and domicile; How to Vote lists what counts.</p>",
           actions=[("Register to vote", SOS_REGISTER)], law=["RSA 654:27"]),
      step("Keep your address up to date",
           "<p>Once you hold a New Hampshire license, tell the DMV within 30 days whenever you change "
@@ -2538,7 +2606,21 @@ NEW_RESIDENT = guide(
            "permanent residence or mailing address.", "RSA 263:9", READ),
      claim("The supervisors' session for correcting the checklist, at which hearings close, is on "
            "a day they designate 6 to 13 days before the election.", "RSA 654:27", COUNTED)],
-    more="<h2>Who Can Help</h2>"
+    more=civics.faq(
+        ("What shows that New Hampshire is my home?",
+         "<p>Actions such as buying or leasing your main house or apartment, registering a "
+         "vehicle here, putting your children in a public school, or registering to vote show "
+         "that you have made it your home.</p>"),
+        ("Can I keep driving on my out-of-state license until then?",
+         "<p>The DMV lists a few kinds of out-of-state license that are not valid for driving in "
+         "New Hampshire, on its page about transferring a license.</p>"),
+        ("My vehicle is leased, financed or exempt from titling. What do I bring?",
+         "<p>If the vehicle is leased, financed, or exempt from titling, bring your registration "
+         "from the other state, the lease if there is one, your lender&rsquo;s name and address, "
+         "and proof of residence. The clerk prepares a New Hampshire title application.</p>"),
+        ("Do I need a New Hampshire license to vote?",
+         "<p>You do not need a New Hampshire driver&rsquo;s license to register or to vote.</p>"))
+         + "<h2>Who Can Help</h2>"
          "<p>Your town or city clerk handles both your vehicle registration and your voter "
          "registration. The Division of Motor Vehicles answers licensing questions at "
          "603-227-4000.</p>"
@@ -2595,8 +2677,7 @@ BENEFITS = guide(
           "<ul><li><b>SNAP</b>, the Supplemental Nutrition Assistance Program, gives eligible "
           "low-income people and families benefits to buy food, paid each month onto an EBT card "
           "used like a debit card at the checkout. Whether you qualify depends on your household&rsquo;s "
-          "size, income, expenses and resources. You may qualify whether you own a home, have none, "
-          "live alone or with others, and whether or not you work or have children.</li>"
+          "size, income, expenses and resources.</li>"
           "<li><b>Medicaid</b> is health coverage, paid for by the federal and state governments, "
           "for people and families who meet its eligibility requirements.</li></ul>",
           actions=[("SNAP", DHHS_SNAP), ("Medicaid", DHHS_MEDICAID)], law=["RSA 167:4"],
@@ -2616,10 +2697,7 @@ BENEFITS = guide(
           "<p><b>On paper:</b> to apply for every kind of assistance, fill in both the Application "
           "for Assistance (Form 800) and its Medical Assistance insert, and mail them to your local "
           "District Office. Both come in Spanish too. For Medicaid alone there is a shorter form, "
-          "800MA. For SNAP, you can also call 603-271-9700 to have an application mailed to "
-          "you.</p>"
-          "<p>If someone is helping you apply, you both fill in the Authorized Representative "
-          "Declaration (Form 778).</p>",
+          "800MA.</p>",
           actions=[("NH Easy", NHEASY), ("Paper applications", DHHS_APPLY)]),
      step("After you apply",
           "<p>You may need to talk with a Department specialist about your situation in an "
@@ -2631,12 +2709,9 @@ BENEFITS = guide(
      step("If you disagree with a decision",
           "<p>You can ask for an administrative appeal hearing. Ask in writing, on the "
           "Department&rsquo;s appeal request form or in a letter, and drop it off or mail it to "
-          "your District Office, mail it to the Administrative Appeals Unit, or email it. If you "
-          "cannot write, tell a Department representative that you want to appeal.</p>"
+          "your District Office, mail it to the Administrative Appeals Unit, or email it.</p>"
           "<p>Generally you have 30 days from the date on your Notice of Decision, or 90 days for "
-          "SNAP; your notice gives your deadline. If you appeal within 15 days, you may in some "
-          "cases keep your benefits at the same level until the appeal is decided, but must repay "
-          "them if the Department&rsquo;s decision is upheld. You do not need a lawyer.</p>",
+          "SNAP; your notice gives your deadline. You do not need a lawyer.</p>",
           actions=[("Administrative appeals", DHHS_APPEALS)])],
     [("Supplemental Nutrition Assistance Program (Department of Health and Human Services)", DHHS_SNAP),
      ("Medicaid (Department of Health and Human Services)", DHHS_MEDICAID),
@@ -2672,7 +2747,23 @@ BENEFITS = guide(
            "167 or RSA 161 to eligible people without sufficient income or resources.",
            "RSA 167:4", READ)]
     + help_claims("nheasy", "adrc", "legal_aid"),
-    more="<h2>Who Can Help</h2>"
+    more=civics.faq(
+        ("Can I get SNAP if I own a home, or have no children?",
+         "<p>You may qualify whether you own a home, have none, live alone or with others, and "
+         "whether or not you work or have children.</p>"),
+        ("Can I get a SNAP application by mail?",
+         "<p>For SNAP, you can also call 603-271-9700 to have an application mailed to you.</p>"),
+        ("What if someone is helping me apply?",
+         "<p>If someone is helping you apply, you both fill in the Authorized Representative "
+         "Declaration (Form 778).</p>"),
+        ("Can I keep my benefits while I appeal?",
+         "<p>If you appeal within 15 days, you may in some cases keep your benefits at the same "
+         "level until the appeal is decided, but must repay them if the Department&rsquo;s "
+         "decision is upheld.</p>"),
+        ("What if I cannot write my appeal?",
+         "<p>If you cannot write, tell a Department representative that you want to "
+         "appeal.</p>"))
+         + "<h2>Who Can Help</h2>"
          "<p>The Department&rsquo;s customer service center answers questions about applying, and "
          "your local District Office can help in person.</p>"
          f'<p class="g-acts"><a class="g-btn" href="{DHHS_OFFICES}" target="_blank" rel="noopener">'
@@ -2721,8 +2812,7 @@ UNEMPLOYMENT = guide(
           "<p>Unemployment insurance replaces part of your wages if you are unemployed, fully or "
           "partly, through no fault of your own. To be paid for a week you must be able to work, "
           "available for work, and looking for it unless you are exempt, and you must file your "
-          "claims on time. Working part-time does not rule you out; working full-time does. School "
-          "employees between terms are judged case by case.</p>"
+          "claims on time.</p>"
           "<p>You must also have earned enough in a base period of four calendar quarters before "
           "your claim; New Hampshire Employment Security&rsquo;s eligibility page gives the "
           "amounts.</p>",
@@ -2745,12 +2835,10 @@ UNEMPLOYMENT = guide(
      step("Every week: file a claim and look for work",
           "<p>You file a claim for each week. Unless you are told you are exempt, you must also look "
           "for work every week and report it on your weekly claim: contacting employers, and taking "
-          "part in activities that prepare you to go back to work. If you work part-time, report "
-          "your hours and earnings on the weekly claim.</p>"),
+          "part in activities that prepare you to go back to work.</p>"),
      step("If you disagree with a determination",
           "<p>Every determination on your claim is on your dashboard and explains how to appeal. "
-          "You have 14 calendar days from when it was issued. After you appeal you will get an "
-          "Appeal Request Notice, and the hearing is held by an Appeal Tribunal chairperson.</p>",
+          "You have 14 calendar days from when it was issued.</p>",
           actions=[("Unemployment appeals", NHES_APPEALS)], law=["RSA 282-A:48"])],
     [("File for Unemployment Benefits (New Hampshire Employment Security)", NHES_FILE),
      ("Unemployment Eligibility (New Hampshire Employment Security)", NHES_ELIG),
@@ -2780,7 +2868,16 @@ UNEMPLOYMENT = guide(
            "seeking work, with the exemption for a definite return date.", "RSA 282-A:31", READ),
      claim("An appeal received or postmarked within 14 calendar days after the determination was "
            "mailed, extendable for sufficient grounds.", "RSA 282-A:48", READ)],
-    more="<h2>Who Can Help</h2>"
+    more=civics.faq(
+        ("Can I get unemployment if I work part-time?",
+         "<p>Working part-time does not rule you out; working full-time does.</p>"
+         "<p>If you work part-time, report your hours and earnings on the weekly claim.</p>"),
+        ("Can a school employee get unemployment between terms?",
+         "<p>School employees between terms are judged case by case.</p>"),
+        ("What happens after I appeal?",
+         "<p>After you appeal you will get an Appeal Request Notice, and the hearing is held by "
+         "an Appeal Tribunal chairperson.</p>"))
+         + "<h2>Who Can Help</h2>"
          "<p>New Hampshire Employment Security&rsquo;s unemployment hotline, (603) 271-7700, "
          "answers questions on weekdays from 8:00 a.m. to 4:30 p.m. Its NH Works offices help in "
          "person, with claims and with finding work.</p>"
@@ -2848,9 +2945,7 @@ RUN = guide(
           "12. A filing on the last day must be made in person by the candidate, by 5 p.m.</p>"
           "<p>Candidates for governor, U.S. senator, U.S. representative, executive councilor, "
           "state senator and county office file with the Secretary of State. Candidates for state "
-          "representative file with the clerk of the town or city where they live; someone who "
-          "lives in an unincorporated place files with the town clerk the Secretary of State "
-          "designates.</p>",
+          "representative file with the clerk of the town or city where they live.</p>",
           actions=[("Running for office", SOS_RUN), ("Find your town or city clerk", SOS_CLERKS)],
           law=["RSA 655:14", "RSA 655:15"]),
      step("Pay the fee, or file petitions instead",
@@ -2869,18 +2964,14 @@ RUN = guide(
           "with the Secretary of State in the same June period, pay the same fee, and file "
           "nomination papers signed by registered voters: 3,000 for governor or U.S. senator, 1,500 "
           "from each congressional district; 1,500 for U.S. representative; 750 for executive "
-          "councilor or state senator; and 150 for state representative or county officer. The "
-          "papers go first to the supervisors of the checklist in each town or city, on deadlines in the "
-          "summer that the Secretary of State&rsquo;s page gives.</p>",
+          "councilor or state senator; and 150 for state representative or county officer.</p>",
           actions=[("Running for office", SOS_RUN)], law=["RSA 655:14-a", "RSA 655:42"]),
      step("Town and city offices",
           "<p><b>In a town</b> that uses the nonpartisan ballot, file a declaration of candidacy "
           "with the town clerk. Filing opens on the seventh Wednesday before the town election and "
           "closes on the Friday of the following week, and a filing on the last day must be made in "
           "person. Your town clerk can tell you which offices are on the ballot.</p>"
-          "<p><b>In a city</b>, ask the city clerk. In Concord, for example, candidates for mayor, "
-          "city council and ward offices file at the City Clerk&rsquo;s Office, from September 3 to "
-          "13, 2027, for the election of November 2, 2027, with a fee or by petition.</p>",
+          "<p><b>In a city</b>, ask the city clerk.</p>",
           actions=[("Find your town or city clerk", SOS_CLERKS), ("Concord's filing page", CONCORD_FILE)],
           law=["RSA 669:19"])],
     [("Running For Office (Secretary of State)", SOS_RUN),
@@ -2940,7 +3031,17 @@ RUN = guide(
            "supervisor of the checklist; filings at the City Clerk's Office, September 3 to 13, "
            "2027, for the election of November 2, 2027; a fee, or by petition until September 17, "
            "2027.", CONCORD_FILE, READ)],
-    more="<h2>Who Can Help</h2>"
+    more=civics.faq(
+        ("I live in an unincorporated place. Where do I file for state representative?",
+         "<p>With the town clerk the Secretary of State designates.</p>"),
+        ("Where do nomination papers go first?",
+         "<p>To the supervisors of the checklist in each town or city, on deadlines in the "
+         "summer that the Secretary of State&rsquo;s page gives.</p>"),
+        ("How does filing work in a city, such as Concord?",
+         "<p>In Concord, for example, candidates for mayor, city council and ward offices file at "
+         "the City Clerk&rsquo;s Office, from September 3 to 13, 2027, for the election of "
+         "November 2, 2027, with a fee or by petition.</p>"))
+    + "<h2>Who Can Help</h2>"
          "<p>The Secretary of State&rsquo;s Elections Division answers questions about filing for "
          "state and federal office at 603-271-3242 or elections@sos.nh.gov. For town and city "
          "offices, ask your town or city clerk.</p>"
@@ -2974,6 +3075,222 @@ RUN = guide(
 
 
 GUIDES += [LICENSE, CAR, REAL_ID, NEW_RESIDENT, BENEFITS, UNEMPLOYMENT, RUN]
+
+
+# ---------------------------------------------------------------------------
+# A MOTORCYCLE LICENSE, OR A MOPED (the person, 26 October 2026: "Since there
+# are various types of vehicle licensing, it might make sense to add a
+# motorcycle/moped license to that"). Built on the statutes, read on the
+# site's Laws pages that day: RSA 259:57 and 259:63 for what a moped and a
+# motorcycle are, RSA 263:30 to 263:34-i for the permit, the test, rider
+# training and the fees, RSA 265:120 to 265:123 for riding, and RSA 261 for
+# registering. The DMV's motorcycle pages refuse this machine, as its others
+# do, so their claims carry None and wait for the person's printouts; the
+# guide states nothing that rests on them alone, and prints no course
+# tuition, which no statute sets. The helmet law covers riders under 18 only
+# (RSA 265:122) and names no moped, so the guide says nothing of helmets on
+# a moped. Registering is the car guide's, and is linked rather than told
+# again.
+# ---------------------------------------------------------------------------
+MOTO_READ = "2026-10-26"             # the statutes, on the site's Laws pages
+MOTO_DMV_READ = None                 # the DMV's pages: the person's printouts, still to come
+DMV_MOTO = "https://www.dmv.nh.gov/drivers-licensenon-driver-ids/motorcycle-license-endorsement"
+DMV_MOTO_TRAIN = ("https://www.dmv.nh.gov/drivers-licensenon-driver-ids/"
+                  "motorcycle-rider-training-program")
+DMV_MOTO_FAQ = "https://www.dmv.nh.gov/motorcycle-endorsement-frequently-asked-questions"
+
+MOTORCYCLE = guide(
+    "motorcycle-license", "How to Get a Motorcycle License or Ride a Moped",
+    "Getting a motorcycle license or endorsement in New Hampshire, step by step: the learner's "
+    "permit, rider training and the road test, the fees, the helmet and riding rules, and what a "
+    "moped needs.",
+    "To ride a motorcycle in New Hampshire you need a motorcycle license or endorsement, a "
+    "3-wheeled motorcycle endorsement, or a motorcycle learner&rsquo;s permit. Most riders start "
+    "with a permit, then pass a road test on a motorcycle or finish a state-approved rider "
+    "training course instead. A moped needs less: any valid driver&rsquo;s license, or a moped "
+    "license earned with a written test, and a registration.",
+    [ask("What will you ride?",
+         [("A motorcycle, on 2 or 3 wheels",
+           "Get a learner's permit, then pass the road test or finish rider training."),
+          ("A moped", "Ride on any valid driver's license, or pass a written test for a moped "
+                      "license.")]),
+     box("Register it before you ride it on the road."),
+     box("On a motorcycle without a windshield, protect your eyes. Under 18, wear a helmet too.")],
+    [step("Get a learner's permit",
+          "<p>A motorcycle learner&rsquo;s permit is the usual first step. You can get one if you "
+          "are 18 or older, or if you are 16 or 17, have finished an approved driver education "
+          "course and hold a New Hampshire driver&rsquo;s license. You pass a written motorcycle "
+          "knowledge test, or finish the state&rsquo;s rider training course instead. There is no "
+          "road test for a permit.</p>"
+          "<p>With a permit you may ride only after sunrise and before sunset, and you may not "
+          "carry a passenger. It is good for 45 days, and can be renewed once for another "
+          "45 days.</p>",
+          actions=[("Motorcycle endorsement (DMV)", DMV_MOTO)], law=["RSA 263:32"]),
+     step("Pass the road test, or take rider training",
+          "<p>To get the license or endorsement itself, you pass a driving test on a motorcycle. "
+          "A 3-wheeled motorcycle has its own, separate test. If you already have a "
+          "driver&rsquo;s license, what you get is an endorsement on it; if you do not, a "
+          "motorcycle license.</p>"
+          "<p>The DMV may let you skip the road test if you finish a state-approved motorcycle "
+          "rider training course that includes a skills test. Courses are open to New Hampshire "
+          "residents who hold a driver&rsquo;s license of any kind or could get a learner&rsquo;s "
+          "permit, and a course may charge tuition. The DMV&rsquo;s rider training page lists the "
+          "courses.</p>",
+          actions=[("Motorcycle rider training (DMV)", DMV_MOTO_TRAIN),
+                   ("Motorcycle endorsement questions (DMV)", DMV_MOTO_FAQ)],
+          law=["RSA 263:30", "RSA 263:31", "RSA 263:34-b", "RSA 263:34-h"]),
+     step("Pay the fee",
+          "<p>The law sets these fees: $25 for a first motorcycle endorsement or 3-wheeled "
+          "motorcycle endorsement, and nothing to renew either one; $50 for a motorcycle license "
+          "on its own, which the law calls a special motorcycle license, first or renewed; and "
+          "$25 to renew a learner&rsquo;s permit. Another $5 is added to each motorcycle permit, "
+          "license or endorsement, and to each renewal. The DMV&rsquo;s fees page lists them, "
+          "with the cost of a first permit.</p>",
+          actions=[("Licensing fees (DMV)", DMV_FEES)], law=["RSA 263:42, I", "RSA 263:34-i, II"]),
+     step("Register your motorcycle",
+          "<p>A motorcycle is registered the way a car is: first at the clerk&rsquo;s office of "
+          "the town or city where you live, which issues the permit for registration, then for "
+          "the state. The state&rsquo;s fee for a motorcycle is $30, and another $1 is added to "
+          "each registration and renewal. Riding an unregistered motorcycle carries a $100 fine. "
+          "How to Register a Car explains each part.</p>",
+          actions=[("How to register a car", "/guides/register-a-car.html"),
+                   ("Find your town or city clerk", SOS_CLERKS)],
+          law=["RSA 261:148", "RSA 261:141, III", "RSA 263:34-i, I", "RSA 261:40"]),
+     step("Ride by the rules",
+          "<p>If you are under 18, you must wear a helmet of a type the DMV approves, with a neck "
+          "or chin strap, whether you drive or ride as a passenger. A driver who carries a "
+          "passenger under 18 without one breaks the law too. The helmet law covers riders under "
+          "18.</p>"
+          "<p>At any age, if your motorcycle has no windshield or screen that protects your eyes "
+          "and face, wear eyeglasses, goggles or a face shield while it is moving.</p>"
+          "<p>Ride on the permanent seat, astride and facing forward, and carry nothing that "
+          "keeps both hands off the handlebars. A motorcycle is entitled to a full lane of "
+          "traffic.</p>",
+          law=["RSA 265:122", "RSA 265:123", "RSA 265:120", "RSA 265:121"]),
+     step("If you ride a moped",
+          "<p>The law calls a vehicle a moped if it goes no faster than 30 miles per hour within "
+          "a mile and, if it has a gas engine, the engine is no bigger than 50 cubic centimeters "
+          "and has no gears to shift. Anything more is a motorcycle, and needs a motorcycle "
+          "license.</p>"
+          "<p>To ride a moped on the road, you need a valid driver&rsquo;s license from any "
+          "state, a motorcycle license, or a moped license. A moped license is for someone with "
+          "neither, and you get it by passing a written test.</p>"
+          "<p>A moped is registered too, with its own kind of plate. The state&rsquo;s fee is $14, "
+          "and the town permit that a car or motorcycle needs first is not required. Ask the DMV "
+          "or your clerk where to register it.</p>",
+          actions=[("Vehicle registrations (DMV)", DMV_REG)],
+          law=["RSA 259:57", "RSA 259:63", "RSA 263:33", "RSA 263:33-a", "RSA 261:80",
+               "RSA 261:148"])],
+    [("Motorcycle License Endorsement (Division of Motor Vehicles)", DMV_MOTO),
+     ("Motorcycle Rider Training Program (Division of Motor Vehicles)", DMV_MOTO_TRAIN),
+     ("Motorcycle Endorsement Frequently Asked Questions (Division of Motor Vehicles)",
+      DMV_MOTO_FAQ),
+     ("Words and Phrases Defined, RSA 259", "/laws/259"),
+     ("Certificates of Title and Registration of Vehicles, RSA 261", "/laws/261"),
+     ("Drivers' Licenses, RSA 263", "/laws/263"),
+     ("Rules of the Road, RSA 265", "/laws/265")],
+    ["259", "261", "263", "265"],
+    [claim("The motorcycle endorsement: the learner's permit, the knowledge test, the road test "
+           "or rider training in its place, and what to bring.", DMV_MOTO, MOTO_DMV_READ),
+     claim("The rider training courses, where they are held and what they cost.", DMV_MOTO_TRAIN,
+           MOTO_DMV_READ),
+     claim("Common questions on the motorcycle endorsement.", DMV_MOTO_FAQ, MOTO_DMV_READ),
+     claim("The fees for motorcycle permits, licenses and endorsements, a first permit's among "
+           "them.", DMV_FEES, MOTO_DMV_READ),
+     claim("Where a moped is registered.", DMV_REG, MOTO_DMV_READ),
+     claim("The town and city clerks lookup lists each town's clerk.", SOS_CLERKS, CHECKED),
+     claim("A moped is a motor-driven cycle whose speed attainable in one mile is 30 miles per "
+           "hour or less; an internal combustion engine no more than 50 cubic centimeters, with "
+           "no gear shifting; not an electric bicycle.", "RSA 259:57", MOTO_READ),
+     claim("A motorcycle is a motor vehicle with a seat or saddle, on not more than 3 wheels, "
+           "excluding electric bicycles, tractors and mopeds.", "RSA 259:63", MOTO_READ),
+     claim("No person may drive a motorcycle without a motorcycle license or endorsement, a "
+           "3-wheeled motorcycle endorsement or a learner's permit; any of them lets the holder "
+           "drive any registered 2-wheeled or 3-wheeled motorcycle without any other class of "
+           "license; a restricted 3-wheeled endorsement covers 3-wheeled motorcycles only.",
+           "RSA 263:30", MOTO_READ),
+     claim("A motorcycle license for persons without a driver's license, an endorsement for those "
+           "with one; a driver examination conducted on a motorcycle; separate examinations for "
+           "the 3-wheeled restriction; the director may waive it on proof of a state-approved "
+           "rider education course; no more than two attempts, then the rider education program.",
+           "RSA 263:31", MOTO_READ),
+     claim("A learner's permit at 18 or older, or 16 to 18 with an approved driver education "
+           "course and a valid NH driver's license; a written knowledge test or the rider "
+           "education program, no driver examination; after sunrise and before sunset, no "
+           "passengers; valid for 45 days, one renewal for an additional 45 days.",
+           "RSA 263:32", MOTO_READ),
+     claim("A moped needs a current valid driver's license from any state, a motorcycle license "
+           "or a restricted motorcycle license.", "RSA 263:33", MOTO_READ),
+     claim("A restricted license for mopeds, for persons without a driver's or motorcycle "
+           "license, on passing a written examination.", "RSA 263:33-a", MOTO_READ),
+     claim("Rider training courses are open to residents with a valid driver's license of any "
+           "classification or eligible for a learner's permit; a reasonable tuition fee may be "
+           "charged.", "RSA 263:34-b", MOTO_READ),
+     claim("The director may exempt applicants from the licensing skills test on proof of a rider "
+           "training course with a similar test of skills.", "RSA 263:34-h", MOTO_READ),
+     claim("An additional $1 on each motorcycle registration and renewal; an additional $5 on each "
+           "motorcycle permit, license or endorsement fee and each renewal.", "RSA 263:34-i",
+           MOTO_READ),
+     claim("Special motorcycle license, original or renewal, $50; original motorcycle endorsement "
+           "$25; 3-wheeled motorcycle endorsement $25; endorsement renewals no charge; learner's "
+           "permit renewal $25.", "RSA 263:42", MOTO_READ),
+     claim("Registration fees: each motorcycle $30, each moped $14.", "RSA 261:141", MOTO_READ),
+     claim("No vehicle but an OHRV, snowmobile or moped is registered until its owner has a "
+           "permit for registration from the city or town.", "RSA 261:148", MOTO_READ),
+     claim("Driving an unregistered vehicle not exempt is a violation, with a $100 fine.",
+           "RSA 261:40", MOTO_READ),
+     claim("A registered moped gets a number plate of a design different from motorcycle plates.",
+           "RSA 261:80", MOTO_READ),
+     claim("Ride only on the permanent and regular seat; a passenger only on a motorcycle designed "
+           "for more than one, on a seat for 2, a seat fixed at the rear or side, or a sidecar; "
+           "astride, facing forward; nothing that prevents keeping both hands on the handlebars.",
+           "RSA 265:120", MOTO_READ),
+     claim("Full use of a lane; 2 abreast at most; no passing in the same lane; no driving between "
+           "lanes or rows of vehicles.", "RSA 265:121", MOTO_READ),
+     claim("Under 18, approved protective headgear with a neck or chin strap, driving or riding; "
+           "an operator carrying a person under 18 in violation is guilty of a violation.",
+           "RSA 265:122", MOTO_READ),
+     claim("Without a windshield or screen protecting the eyes and face, the driver wears "
+           "eyeglasses, goggles or a protective face shield while in motion.", "RSA 265:123",
+           MOTO_READ)],
+    more=civics.faq(
+        ("What if I fail the road test twice?",
+         "<p>You cannot take it a third time. The law requires you to finish the motorcycle rider "
+         "training course instead.</p>"),
+        ("Do I need a car license to ride a motorcycle?",
+         "<p>No. A motorcycle license is issued to someone with no driver&rsquo;s license, and a "
+         "motorcycle license, endorsement or permit lets you drive any registered motorcycle, on "
+         "2 or 3 wheels, without any other license. To get a permit at 16 or 17, though, you need "
+         "a New Hampshire driver&rsquo;s license.</p>"),
+        ("Is a 3-wheeled motorcycle different?",
+         "<p>A 3-wheeled motorcycle endorsement comes with its own test, on the skills that kind "
+         "of motorcycle needs. With it alone you may drive a 3-wheeled motorcycle but not a "
+         "2-wheeled one. A full motorcycle endorsement covers both.</p>"),
+        ("Is an electric bicycle a moped?",
+         "<p>No. The law leaves electric bicycles out of what it calls a moped, and out of what "
+         "it calls a motorcycle, so the license rules in this guide do not cover one.</p>"),
+        ("Can I carry a passenger?",
+         "<p>Not on a learner&rsquo;s permit. With a license or endorsement, only if the "
+         "motorcycle is built to carry more than one person: on a seat made for two, a seat "
+         "firmly attached behind or beside you, or a sidecar. The passenger sits astride, facing "
+         "forward.</p>"),
+        ("Can I ride between lanes of traffic?",
+         "<p>No. You may not ride between lanes or rows of traffic, or pass a vehicle in its own "
+         "lane. A motorcycle is entitled to a full lane, and two motorcycles may ride side by "
+         "side in one lane, but no more than two.</p>"))
+         + DMV_HELP,
+    see=[("How to register a car", "/guides/register-a-car.html"),
+         ("How to renew your driver's license", "/guides/renew-drivers-license.html")],
+    figures=[fig("45 days", "RSA 263:32", "valid for 45 days from the date of issuance"),
+             fig("$25", "RSA 263:42", "for each original motorcycle endorsement-$25"),
+             fig("$50", "RSA 263:42", "special motorcycle license renewal-$50"),
+             fig("$5", "RSA 263:34-i", "an additional fee of $5"),
+             fig("$1", "RSA 263:34-i", "an additional fee of $1"),
+             fig("$30", "RSA 261:141", "For each motorcycle-$30"),
+             fig("$14", "RSA 261:141", "For each moped-$14"),
+             fig("$100", "RSA 261:40", "The fine for a violation of this section shall be $100")])
+
+GUIDES += [MOTORCYCLE]
 
 
 # ---------------------------------------------------------------------------
@@ -3043,10 +3360,7 @@ TOUR = guide(
           "<li><b>Chaperones.</b> Bring no more than four per class, and tell them the class "
           "tours as one large group rather than in smaller ones.</li>"
           "<li><b>No backpacks.</b> If your group brings lunches, the Visitor Center will store "
-          "them.</li>"
-          "<li><b>Dress.</b> Students are encouraged to dress up for the visit, but it is not "
-          "required.</li>"
-          "<li><b>The gift shop.</b> To visit it with your group, arrange it in advance.</li></ul>"),
+          "them.</li></ul>"),
      step("On the day",
           "<ul><li><b>Check in first.</b> Do not bring the group into the building until someone "
           "from the Visitor Center knows you have arrived: it is a security precaution.</li>"
@@ -3058,17 +3372,7 @@ TOUR = guide(
           "students to whisper.</li>"
           "<li><b>Cameras.</b> Only adults use cameras.</li>"
           "<li><b>Restrooms</b> are available, and students must be supervised. If students need "
-          "the restroom before the tour begins, tell the Visitor Center right away.</li></ul>"),
-     step("What you may see",
-          "<p>Senators and representatives are told of your visit in the House and Senate "
-          "Calendars, and they often try to meet the students. The tour includes the "
-          "Governor&rsquo;s Office, and the Governor sometimes meets groups when the schedule "
-          "allows; the Visitor Center asks that students not be told they will.</p>"
-          "<p>Rallies, press conferences, bill signings, a session of the House or Senate and "
-          "other events can change the tour, and at times the legislative or executive chambers "
-          "are closed to the public. The Calendar here shows the week&rsquo;s hearings and "
-          "session days.</p>",
-          actions=[("This week's calendar", "/calendar.html")])],
+          "the restroom before the tour begins, tell the Visitor Center right away.</li></ul>")],
     [("Rules for Tours, required reading for a State House tour, undated (New Hampshire State "
       "House Visitor Center)", ""),
      civics.SRC_VISITOR_CENTER,
@@ -3138,6 +3442,21 @@ TOUR = guide(
      ours("How to Contact Your Legislators says how to reach them.",
           "/guides/contact-your-legislators.html", READ),
      ours("The Calendar shows the week's hearings and session days.", "/calendar.html", READ)],
+    more=civics.faq(
+        ("Will students meet their legislators or the Governor?",
+         "<p>Senators and representatives are told of your visit in the House and Senate "
+         "Calendars, and they often try to meet the students. The tour includes the "
+         "Governor&rsquo;s Office, and the Governor sometimes meets groups when the schedule "
+         "allows; the Visitor Center asks that students not be told they will.</p>"),
+        ("Could the tour change on the day?",
+         "<p>Rallies, press conferences, bill signings, a session of the House or Senate and "
+         "other events can change the tour, and at times the legislative or executive chambers "
+         "are closed to the public. The Calendar here shows the week&rsquo;s hearings and "
+         "session days.</p>"),
+        ("Do students need to dress up, and can we visit the gift shop?",
+         "<ul>" "<li><b>Dress.</b> Students are encouraged to dress up for the visit, but it is not "
+         "required.</li>"
+         "<li><b>The gift shop.</b> To visit it with your group, arrange it in advance.</li></ul>")),
     see=[("Finding your representatives", "/guides/your-representatives.html"),
          ("How to contact your legislators", "/guides/contact-your-legislators.html"),
          ("How to attend and speak at a public hearing", "/guides/attend-a-hearing.html")],
@@ -3200,17 +3519,12 @@ WARRANT = guide(
           "stated in the warrant. Write one question, as you want it to appear, for example "
           "&ldquo;To see if the town will vote to&hellip;&rdquo;.</p>"
           "<p>The selectmen or the school board may make only minor changes to the wording, and "
-          "never ones that change what the article was meant to do. An article that would "
-          "abolish a planning board or zoning commission must also meet the petition rule in "
-          '<a href="/laws/673#s18">RSA 673:18, II</a>.</p>',
+          "never ones that change what the article was meant to do.</p>",
           law=["RSA 39:2", "RSA 39:3", "RSA 39:3-c"]),
      step("Collect the signatures",
           "<p>The petition must be signed by <b>25 or more registered voters</b> of the town or "
           "school district, or <b>2 percent</b> of its registered voters if that is fewer, and "
-          "never fewer than 10. For a town, the 2 percent is counted from the voters registered "
-          "before the last state general election.</p>"
-          "<p>You may name one signer as the <b>primary petitioner</b>. If you do not, the first "
-          "registered voter listed is the primary petitioner.</p>",
+          "never fewer than 10.</p>",
           law=["RSA 39:3", "RSA 197:6"]),
      step("Hand it in before the deadline",
           "<p>Give the petition to the selectmen, or any one of them, for the town meeting, or to "
@@ -3223,15 +3537,11 @@ WARRANT = guide(
                     "At least 30 days before the meeting, or by the second Tuesday in March if "
                     "that is earlier",
                     "By the second Tuesday in January, for a meeting in March"]])
-          + "<p>An SB 2 town or district that holds its meeting in April or May has the same "
-          "deadline a month or two later: the second Tuesday in February or in March. If the "
-          "article proposes a bond, the SB 2 deadline is the Friday before.</p>",
+          + "<p>Meeting in April or May, or proposing a bond? See the questions below.</p>",
           law=["RSA 39:3", "RSA 197:6", "RSA 40:13, II-a"]),
      step("What happens next",
-          "<p>The selectmen or the school board must put the article in the warrant. In a town, "
-          "selectmen who refuse are guilty of a violation, and if they unreasonably refuse, a "
-          "Superior Court justice can order the article inserted on the written application of 25 "
-          "or more voters. The warrant is posted at least 14 days before the meeting.</p>"
+          "<p>The selectmen or the school board must put the article in the warrant. The warrant "
+          "is posted at least 14 days before the meeting.</p>"
           "<p>At a <b>traditional meeting</b> the voters debate the article and can amend it "
           "before they vote; where it asks for a sum of money, the meeting may vote more or less, "
           "within the limits of the municipal budget law where the town has adopted it. "
@@ -3281,7 +3591,25 @@ WARRANT = guide(
           "/learn/city-and-town-government.html", WARRANT_READ),
      ours("Town Meeting and Local Government explains the traditional meeting and SB 2.",
           "/learn/local-government.html", WARRANT_READ)],
-    more="<h2>Who Can Help</h2>"
+    more=civics.faq(
+        ("Which registered voters count toward the 2 percent?",
+         "<p>For a town, the 2 percent is counted from the voters registered before the last "
+         "state general election.</p>"),
+        ("What is a primary petitioner?",
+         "<p>You may name one signer as the <b>primary petitioner</b>. If you do not, the first "
+         "registered voter listed is the primary petitioner.</p>"),
+        ("My SB 2 town meets in April or May, or the article proposes a bond. When is it due?",
+         "<p>An SB 2 town or district that holds its meeting in April or May has the same "
+         "deadline a month or two later: the second Tuesday in February or in March. If the "
+         "article proposes a bond, the SB 2 deadline is the Friday before.</p>"),
+        ("What if the selectmen refuse to put it on the warrant?",
+         "<p>In a town, selectmen who refuse are guilty of a violation, and if they unreasonably "
+         "refuse, a Superior Court justice can order the article inserted on the written "
+         "application of 25 or more voters.</p>"),
+        ("Are there special rules for some articles?",
+         "<p>An article that would abolish a planning board or zoning commission must also meet "
+         "the petition rule in <a href=\"/laws/673#s18\">RSA 673:18, II</a>.</p>"))
+    + "<h2>Who Can Help</h2>"
          "<p>Start with your town clerk or the selectmen&rsquo;s office, for the date of the "
          "meeting and whether it uses SB 2. For the school district meeting, ask the school "
          "board. The Secretary of State lists every town&rsquo;s clerk.</p>"
@@ -3295,6 +3623,258 @@ WARRANT = guide(
              fig("14 days", "RSA 39:5", "at least 14 days before the day of meeting")])
 
 GUIDES += [WARRANT]
+
+
+# ---------------------------------------------------------------------------
+# HOW YOUR PROPERTY TAX IS FIGURED, AND HOW TO READ YOUR BILL (the person, 25
+# October 2026: "how to read your property tax bill or how property taxes are
+# assessed"). From RSA 72, 75, 76 and 21-J alone, read on 25 October 2026 in
+# this site's own Laws pages, which print the statute table, as the warrant
+# guide is: the law says how property is appraised, who sets the rate, what a
+# bill must show, when interest starts, and every exemption, credit and
+# deferral a town may offer. The Department of Revenue Administration's own
+# pages refuse this machine, and none of their addresses has been read, so the
+# guide links none; a town's own figures -- its rate, its exemption amounts --
+# are its own, and the guide sends the reader to the town for them. Abatement
+# and the state's low-income relief have guides of their own, linked rather
+# than repeated.
+# ---------------------------------------------------------------------------
+TAX_BILL_READ = "2026-10-25"
+
+TAX_BILL = guide(
+    "property-tax-bill", "How Your Property Tax Is Figured, and How to Read Your Bill",
+    "How your town or city assesses your property, how the tax rate is set, what your property "
+    "tax bill must show, when it is due, and the exemptions, credits and deferrals you can apply "
+    "for by April 15.",
+    "Your town or city assesses your property at its market value as of April 1, and must "
+    "revalue every property at least every fifth year. The voters and officials of your town, "
+    "school district and county set their budgets, and the state works out the rate that raises "
+    "them. Your bill shows your assessment and four rates: town, local school, state education "
+    "and county. If the tax is hard to pay, you may qualify for an exemption, credit or "
+    "deferral: apply to your town by April 15.",
+    [box("Your town assesses your property at its market value, as of April 1."),
+     box("The budgets are voted; the state sets the rate that raises them."),
+     box("Your bill shows your assessment and four rates: town, local school, state education "
+         "and county."),
+     ask("Is something wrong, or is the tax hard to pay?",
+         [("The assessment is too high", "Ask your town for an abatement, by March 1 after the "
+           "final bill."),
+          ("It is hard to pay", "Apply to your town by April 15 for an exemption, credit or "
+           "deferral.")])],
+    [step("How your property is assessed",
+          "<p>Your town or city&rsquo;s assessors or selectmen appraise your land and buildings "
+          "at their <b>market value</b>: what the law calls their full and true value. Each "
+          "year they adjust assessments for changes, such as an addition, a new owner, a "
+          "subdivision or a change in zoning, and to correct errors, so that every assessment in "
+          "town stays in proportion. At least every fifth year they reappraise every property "
+          "in town at full value.</p>"
+          "<p>The tax year runs from April 1 to March 31, and every property is taxed on what it "
+          "was on April 1.</p>",
+          law=["RSA 75:1", "RSA 75:8", "RSA 75:8-a", "RSA 76:2"]),
+     step("How the tax rate is set",
+          "<p>Your property tax pays for four things: your town or city, your local schools, the "
+          "state&rsquo;s education tax, and your county, and a village district&rsquo;s where "
+          "there is one. Each is voted by its own body: town meeting or the city council, the "
+          "school district meeting or board, the "
+          '<a href="/learn/county-government.html">county convention</a>. The state&rsquo;s '
+          "Department of Revenue Administration checks each budget and estimate of revenue, "
+          "then computes and sets the tax rate for each town and city.</p>"
+          "<p>The state education tax rate is set by the Department each year to raise a sum the "
+          "law fixes statewide.</p>",
+          law=["RSA 76:5", "RSA 21-J:35", "RSA 76:3"]),
+     step("Read your bill",
+          "<p>The law says what every property tax bill must show:</p><ul>"
+          "<li><b>The rates</b> for the municipal, local education, state education and county "
+          "taxes, each separately. Your tax is your assessed value multiplied by their total.</li>"
+          "<li><b>Your assessed valuation</b>: the value of the land and buildings you are taxed "
+          "on.</li>"
+          "<li><b>Your right to ask for an abatement</b>, in writing, from your selectmen or "
+          "assessors.</li>"
+          "<li><b>A statement on tax relief</b>, on the bill or with it, at least as much as "
+          "this: &ldquo;If you are elderly, disabled, blind, a veteran, or veteran&rsquo;s "
+          "spouse, or are unable to pay taxes due to poverty or other good cause, you may be "
+          "eligible for a tax exemption, credit, abatement, or deferral.&rdquo;</li>"
+          "<li><b>The date interest starts</b>, which the tax collector sets by the day the last "
+          "bill went out.</li></ul>",
+          law=["RSA 76:11-a", "RSA 76:11", "RSA 76:13"]),
+     step("When it is due",
+          "<p>A town that has voted to bill twice a year sends a first bill, worked out from last "
+          "year&rsquo;s assessment and half of last year&rsquo;s rate, due July 1, and a second "
+          "bill for the rest of the year&rsquo;s tax, once the new rate is set, due December 1. "
+          "Ask your tax collector which your town does.</p>"
+          "<p>Tax not paid by its due date is charged interest at 8 percent a year. Where the "
+          "bills go out late, interest does not start until 30 days after they were mailed. The "
+          "bill says the date.</p>",
+          law=["RSA 76:15-a", "RSA 76:13"]),
+     step("Apply for an exemption, credit or deferral by April 15",
+          "<p>New Hampshire law lets each town and city offer relief to some owners, and the "
+          "town&rsquo;s voters or council decide which it offers and, within the law&rsquo;s "
+          "limits, how much. Ask your assessing office or the selectmen what yours offers. You "
+          "apply once, on the state&rsquo;s form, to your selectmen or assessors, <b>by April "
+          "15</b>, and the application stands from year to year.</p>"
+          + table("Property tax relief a town may offer (RSA 72)",
+                  ["Relief", "Who it is for", "How much"],
+                  [["Elderly exemption",
+                    "Owners 65 or older who have lived in New Hampshire for at least 3 "
+                    "consecutive years, under the town&rsquo;s limits on income and assets",
+                    "Set by the town by age group, never less than $5,000 off the assessed "
+                    "value. The income limit is never under $13,400 single or $20,400 married, "
+                    "and the asset limit, not counting your home, never under $35,000."],
+                   ["Exemption for the blind",
+                    "Owners who are legally blind",
+                    "$15,000 off the assessed value of your home, or more if the town votes it"],
+                   ["Exemption for the disabled",
+                    "Owners eligible for Social Security disability benefits (SSDI or SSI), "
+                    "where the town has adopted it",
+                    "Set by the town"],
+                   ["Veterans&rsquo; tax credit",
+                    "A veteran who served at least 90 days in a qualifying war or conflict and "
+                    "was honorably discharged, or the veteran&rsquo;s spouse or surviving spouse",
+                    "$50 off the tax, or the town&rsquo;s optional credit of $51 up to $750 "
+                    "($1,000 from April 1, 2027)"]])
+          + "<p>Other credits exist, among them for a veteran with a total and permanent "
+          "service-connected disability, and for the surviving spouse of a service member who "
+          "died on active duty; the assessing office has the list.</p>"
+          "<p>A <b>tax deferral</b> lets an owner who is 65 or older, or eligible for Social "
+          "Security disability benefits, put off all or part of the tax, with interest at 5 "
+          "percent a year, if paying it would cause undue hardship. You must live in the home "
+          "and have owned it for at least 5 consecutive years if you apply by age, or one year "
+          "if you apply by disability. Apply by March 1 after the final tax bill. A mortgage "
+          "lender must agree.</p>",
+          actions=[("Find your town or city clerk", SOS_CLERKS)],
+          law=["RSA 72:33", "RSA 72:27-a", "RSA 72:39-a", "RSA 72:39-b", "RSA 72:37",
+               "RSA 72:37-b", "RSA 72:28", "RSA 72:35", "RSA 72:29-a", "RSA 72:38-a"]),
+     step("If your assessment is wrong, or you cannot pay",
+          "<p>If you think your assessment is higher than your property is worth, or you cannot "
+          "pay because of poverty, ask your town for an <b>abatement</b> by March 1 after the "
+          "final bill: the guide to appealing your assessment has every step and deadline. If "
+          "your household income is low or moderate, the state refunds part of the education "
+          "tax: apply between May 1 and June 30.</p>",
+          actions=[("How to appeal your assessment", "/guides/property-tax-abatement.html"),
+                   ("Property tax relief on a low or moderate income",
+                    "/guides/property-tax-relief.html")],
+          law=["RSA 76:16"])],
+    [("Exemptions and credits, RSA 72", "/laws/72"),
+     ("Inventory and appraisal, RSA 75", "/laws/75"),
+     ("Apportionment, Assessment and Abatement of Taxes, RSA 76", "/laws/76"),
+     ("Department of Revenue Administration, RSA 21-J", "/laws/21-j"),
+     ("Town and city clerks (Secretary of State)", SOS_CLERKS)],
+    ["72", "75", "76"],
+    [claim("Property is appraised at its market value, its full and true value as it would be "
+           "appraised in payment of a just debt due from a solvent debtor.", "RSA 75:1",
+           TAX_BILL_READ),
+     claim("Annually, assessments are adjusted to reflect changes and correct errors so that "
+           "all are reasonably proportional; considered for material physical change, change "
+           "in ownership, zoning changes, subdivision and other changes affecting value.",
+           "RSA 75:8", TAX_BILL_READ),
+     claim("All real estate is reappraised at full and true value at least as often as every "
+           "fifth year.", "RSA 75:8-a", TAX_BILL_READ),
+     claim("The property tax year is April 1 to March 31, assessed on the inventory taken in "
+           "April.", "RSA 76:2", TAX_BILL_READ),
+     claim("The selectmen assess state and county taxes, town taxes, and school and village "
+           "district taxes.", "RSA 76:5", TAX_BILL_READ),
+     claim("The commissioner of revenue administration computes and establishes the tax rate "
+           "of each town, city, or unincorporated place, examining appropriations and revenue "
+           "estimates.", "RSA 21-J:35", TAX_BILL_READ),
+     claim("The commissioner sets the education tax rate each fiscal year to generate a fixed "
+           "revenue statewide.", "RSA 76:3", TAX_BILL_READ),
+     claim("The tax bill shows the rate for municipal, local education, state education, and "
+           "county taxes separately, the assessed valuation of all lands and buildings, and the "
+           "right to apply in writing to the selectmen or assessors for an abatement; it also "
+           "contains the tax relief statement, on the bill or on a separate sheet enclosed.",
+           "RSA 76:11-a", TAX_BILL_READ),
+     claim("Upon written request of a mortgagee, the collector mails a duplicate copy of the "
+           "property tax bill.", "RSA 76:11", TAX_BILL_READ),
+     claim("Interest at 8 percent per annum on taxes not paid on or before December 1, or 30 "
+           "days after the bills are mailed where a bill is sent on or after November 2 and "
+           "before April 1; the collector states on the bill the date from which interest will "
+           "be charged.", "RSA 76:13", TAX_BILL_READ),
+     claim("In a town that adopts semi-annual collection, a partial payment of 1/2 of the "
+           "previous year's rate times the prior year's valuation is due July 1, and the "
+           "remainder December 1.", "RSA 76:15-a", TAX_BILL_READ),
+     claim("Exemptions and credits require a permanent application, filed with the selectmen "
+           "or assessors by April 15, on the commissioner's form.", "RSA 72:33", TAX_BILL_READ),
+     claim("A town or city adopts, modifies or rescinds an exemption or credit by vote of town "
+           "meeting or its legislative body.", "RSA 72:27-a", TAX_BILL_READ),
+     claim("An elderly exemption requires residence in the state for at least 3 consecutive "
+           "years and net income under the town's limits, never less than $13,400 single or "
+           "$20,400 married.", "RSA 72:39-a", TAX_BILL_READ),
+     claim("Elderly exemption amounts set by the town for ages 65 to 75, 75 to 80, and 80 or "
+           "older; net income limits not less than $13,400 or $20,400; net assets not less than "
+           "$35,000 excluding the residence; no exemption less than $5,000.", "RSA 72:39-b",
+           TAX_BILL_READ),
+     claim("A legally blind inhabitant is exempt on residential real estate to the value of "
+           "$15,000, and a town may exempt more.", "RSA 72:37", TAX_BILL_READ),
+     claim("Where adopted, a person eligible under Title II or Title XVI of the Social Security "
+           "Act for benefits to the disabled receives a yearly exemption in an amount chosen by "
+           "the town.", "RSA 72:37-b", TAX_BILL_READ),
+     claim("The standard veterans' tax credit is $50; the optional credit, where adopted, $51 "
+           "up to $750, and $51 up to $1,000 from April 1, 2027 (HB 1494, chapter 96 of the "
+           "Laws of 2026); a veteran with not less than 90 days of active service in a "
+           "qualifying war or armed conflict, honorably discharged, or the spouse or surviving "
+           "spouse.", "RSA 72:28", TAX_BILL_READ),
+     claim("A tax credit for a person discharged with total and permanent service-connected "
+           "disability, or the surviving spouse.", "RSA 72:35", TAX_BILL_READ),
+     claim("A tax credit for the surviving spouse of a person killed or who died while on "
+           "active duty.", "RSA 72:29-a", TAX_BILL_READ),
+     claim("A resident owner at least 65, or eligible for Social Security disability benefits, "
+           "who has owned the homestead 5 consecutive years (elderly) or one year (disabled) and "
+           "lives in it, may be granted a deferral with annual interest at 5 percent, up to 85 "
+           "percent of equity value; apply by March 1 following notice of tax; the mortgage "
+           "holder's approval; payable within 9 months of the owner's death or on sale.",
+           "RSA 72:38-a", TAX_BILL_READ),
+     claim("Abatement on application by March 1 after notice of tax.", "RSA 76:16",
+           TAX_BILL_READ),
+     claim("The town and city clerks lookup lists each town's clerk.", SOS_CLERKS, CHECKED),
+     ours("County Government explains that the county convention of the county's state "
+          "representatives sets its budget.", "/learn/county-government.html", TAX_BILL_READ),
+     ours("How to Appeal Your Property Tax Assessment explains abatement, its deadlines and the "
+          "equalization ratio.", "/guides/property-tax-abatement.html", TAX_BILL_READ),
+     ours("How to Get Property Tax Relief on a Low or Moderate Income explains the state's "
+          "relief and its May 1 to June 30 filing period.", "/guides/property-tax-relief.html",
+          TAX_BILL_READ)],
+    more=civics.faq(
+        ("What is the equalization ratio?",
+         "<p>Between revaluations, assessments can drift from what properties sell for, and a "
+         "town&rsquo;s <em>equalization ratio</em> measures how far; the guide to appealing your "
+         "assessment explains how to use it.</p>"),
+        ("Why did my tax change when my assessment did not?",
+         "<p>Your tax can change even when your assessment does not: when a budget rises or "
+         "falls, or other revenue changes.</p>"),
+        ("Can my mortgage lender get a copy of my bill?",
+         "<p>If you have a mortgage, your lender can ask the town for a copy of your bill.</p>"),
+        ("What happens to deferred tax when the home is sold or the owner dies?",
+         "<p>When the home is sold, the deferred tax and its interest must be paid in full. When "
+         "the owner dies, the heirs may pay it off within 9 months; after that the town may send "
+         "it to the tax collector.</p>"))
+         + "<h2>Who Can Help</h2>"
+         "<p>Your town or city&rsquo;s <b>assessing office</b>, or the selectmen&rsquo;s office "
+         "in a small town, answers questions about your assessment and the relief your town "
+         "offers, and has the application forms. The <b>tax collector</b> answers questions "
+         "about a bill, a payment or interest; the town clerk&rsquo;s office can tell you who "
+         "yours is.</p>"
+         f'<p class="g-acts"><a class="g-btn" href="{SOS_CLERKS}" target="_blank" rel="noopener">'
+         "Find your town or city clerk</a></p>",
+    see=[("How to appeal your property tax assessment", "/guides/property-tax-abatement.html"),
+         ("Help paying property tax on a low or moderate income", "/guides/property-tax-relief.html"),
+         ("Town meeting and local government", "/learn/local-government.html")],
+    figures=[fig("8 percent", "RSA 76:13", "Interest at 8 percent per annum"),
+             fig("30 days", "RSA 76:13", "30 days after the bills are mailed"),
+             fig("$5,000", "RSA 72:39-b", "be less than $5,000"),
+             fig("$13,400", "RSA 72:39-b", "not less than $13,400"),
+             fig("$20,400", "RSA 72:39-b", "not less than $20,400"),
+             fig("$35,000", "RSA 72:39-b", "not less than $35,000 excluding the value of the "
+                                          "person's residence"),
+             fig("$15,000", "RSA 72:37", "to the value of $15,000"),
+             fig("90 days", "RSA 72:28", "not less than 90 days on active service"),
+             fig("$50", "RSA 72:28", "credit shall be $50"),
+             fig("$51", "RSA 72:28", "an amount from $51 up to $750"),
+             fig("$750", "RSA 72:28", "an amount from $51 up to $750"),
+             fig("$1,000", "RSA 72:28", "an amount from $51 up to $1,000"),
+             fig("5 percent", "RSA 72:38-a", "annual interest at 5 percent"),
+             fig("9 months", "RSA 72:38-a", "within 9 months of the date of death")])
+
+GUIDES += [TAX_BILL]
 
 
 # ---------------------------------------------------------------------------
@@ -3357,9 +3937,7 @@ CHILD_CARE = guide(
           "Everyone has the right to apply, and to a decision within 30 days.</p>",
           actions=[("NH Easy", NHEASY), ("Find your District Office", DHHS_OFFICES)]),
      step("Choose a child care provider",
-          "<p>You choose who cares for your child. Federal rules let you choose among child care "
-          "centers, family child care homes and, within the state&rsquo;s limits, care in your own "
-          "home. Relatives and religious providers are among the choices.</p>"
+          "<p>You choose who cares for your child.</p>"
           "<p>The scholarship is paid to the provider, so the provider must be enrolled with the "
           "Department to accept it. Ask a provider you are considering whether it is. The "
           "Department&rsquo;s free Child Care Search, linked from the same page as the "
@@ -3368,20 +3946,9 @@ CHILD_CARE = guide(
           "find care for free: call 1-855-393-1731, extension 2531, weekdays 8 a.m. to 5 p.m.</p>",
           actions=[("Providers and the scholarship", DHHS_CC_PROVIDERS)]),
      step("Keeping the scholarship",
-          "<p>Your eligibility is checked again every 12 months, and you reapply each year.</p>"
-          "<p>In between, federal rules keep the scholarship going at least at the same level "
-          "even if your income goes up, as long as it stays under the federal limit, and "
-          "through temporary changes such as time off work for an illness or to care for a "
-          "family member, a break between seasonal jobs, a school break, fewer hours, or your "
-          "child turning 13. Your share of the cost cannot be raised in that time except as the "
-          "rules allow. If you lose your job or leave your program, it continues for at least "
-          "three months so you can look for work or go back.</p>"),
-     step("If your family is homeless, or you disagree with a decision",
-          "<p><b>Families experiencing homelessness</b> can be approved for child care within 7 "
-          "days of applying, once the child is linked to a provider enrolled with the "
-          "Department. The final decision still comes within 30 days. Say so when you "
-          "apply.</p>"
-          "<p><b>If you disagree with a decision,</b> you can ask for an administrative appeal "
+          "<p>Your eligibility is checked again every 12 months, and you reapply each year.</p>"),
+     step("If you disagree with a decision",
+          "<p>You can ask for an administrative appeal "
           "hearing, in writing, on the Department&rsquo;s appeal request form or in a letter. "
           "Your Notice of Decision gives your deadline. You do not need a lawyer.</p>",
           actions=[("Administrative appeals", DHHS_APPEALS)])],
@@ -3427,7 +3994,28 @@ CHILD_CARE = guide(
      # Read before, for the food and health guide.
      claim("Appeal in writing by form or letter; no attorney needed.", DHHS_APPEALS, READ)]
     + help_claims("nheasy", "legal_aid"),
-    more="<h2>Who Can Help</h2>"
+    more=civics.faq(
+        ("Can a relative or a religious provider care for my child?",
+         "<p>Federal rules let you choose among child care centers, family child care homes and, "
+         "within the state&rsquo;s limits, care in your own home. Relatives and religious "
+         "providers are among the choices.</p>"),
+        ("What if my income goes up, or my situation changes for a while?",
+         "<p>Between those yearly checks, federal rules keep the scholarship going at least "
+         "at the same level "
+         "even if your income goes up, as long as it stays under the federal limit, and "
+         "through temporary changes such as time off work for an illness or to care for a "
+         "family member, a break between seasonal jobs, a school break, fewer hours, or your "
+         "child turning 13. Your share of the cost cannot be raised in that time except as the "
+         "rules allow.</p>"),
+        ("What if I lose my job or leave my program?",
+         "<p>If you lose your job or leave your program, it continues for at least three months "
+         "so you can look for work or go back.</p>"),
+        ("My family is homeless. Can we get child care sooner?",
+         "<p><b>Families experiencing homelessness</b> can be approved for child care within 7 "
+         "days of applying, once the child is linked to a provider enrolled with the "
+         "Department. The final decision still comes within 30 days. Say so when you "
+         "apply.</p>"))
+         + "<h2>Who Can Help</h2>"
          "<p>For questions about the scholarship and your application, call the Department at "
          "1-844-ASK-DHHS (1-844-275-3447), or ask your local District Office in person. For help "
          "finding child care, call Child Care Aware of New Hampshire at 1-855-393-1731, "
@@ -3442,6 +4030,255 @@ CHILD_CARE = guide(
              fig("12 months", DHHS_CHILD_DEV, "redetermined every 12 months")])
 
 GUIDES += [CHILD_CARE]
+
+
+# ---------------------------------------------------------------------------
+# WHEN YOU NEED A BUILDING PERMIT OR AN INSPECTION (the person, 25 October
+# 2026: "what modifications you need permits for or an inspector for things
+# like house additions or electrical or plumbing work"). The state sets the
+# code and the trades' licenses; the town decides how permits are issued and
+# inspects. So the guide says what state law requires, and sends the reader
+# to the town's building office first, for its own permits. Read on 25
+# October 2026, as the Laws pages print them: RSA 155-A (the state building
+# code; RSA 674:51 and 676:11 and :13, which once held the town's part, were
+# repealed on 1 July 2026 and the code's own chapter holds it now; 155-A:7 has
+# a change taking effect 1 July 2027, and the guide says only what both texts
+# say), RSA 319-C (electricians), RSA 153 (plumbers and gas fitters, since
+# RSA 329-A's repeal in 2013), RSA 485-A (septic systems), RSA 483-B
+# (shoreland) and RSA 482-A (wetlands). The Fire Marshal's, the licensing
+# boards' and the Department of Environmental Services' pages refuse a cloud
+# session and wait for the person's printouts; DES's septic page is not
+# linked until its address is seen.
+# ---------------------------------------------------------------------------
+BP_READ = "2026-10-25"
+BP_PAGES_READ = "2026-10-26"         # the person's printouts
+# The State Building Code page: the printout shows no address; its title is the
+# page a search finds at this one (26 October 2026).
+FM_CODES = "https://www.firemarshal.dos.nh.gov/laws-rules-regulatory/state-building-code"
+OPLC_ELECTRICIANS = "https://www.oplc.nh.gov/electricians-board"
+DES_SHORELAND = "https://www.des.nh.gov/land/waterfront-development/protected-shoreland"
+DES_WETLANDS = "https://des.nh.gov/water/wetlands/permit-assistance"
+
+BUILDING_PERMITS = guide(
+    "building-permits", "When You Need a Building Permit or an Inspection",
+    "What New Hampshire's building code covers, getting a permit and inspections from your "
+    "town, who may do electrical, plumbing and gas work, septic approval, and permits for work "
+    "near water.",
+    "Every building project in New Hampshire, from a new house or an addition to a renovation "
+    "or a repair, must meet the state building code. Your town decides how permits are issued "
+    "and who inspects, so ask its building office before you start. Electrical and plumbing "
+    "work needs a licensed electrician or plumber, though you may do your own in a "
+    "single-family home you own and live in. A new septic system, or work that adds to the "
+    "load on one, needs the state&rsquo;s approval first, and so does most building, digging "
+    "or filling near a lake, pond, river, the coast or a wetland.",
+    [box("Before you start, ask your town&rsquo;s building office what permits the work "
+         "needs."),
+     ask("What is the work?",
+         [("Building, adding on, remodeling or repairing",
+           "It must meet the state building code. Your town issues the permit and inspects."),
+          ("Electrical, plumbing or gas",
+           "A licensed trade, or you, in a single-family home you own and live in."),
+          ("A septic system, or adding to the load on one",
+           "The state approves the septic plans first."),
+          ("Near a lake, pond, river, the coast or a wetland",
+           "A state shoreland or wetlands permit may be needed too.")]),
+     box("Get the permits before work starts, and have the work inspected when the town "
+         "asks.")],
+    [step("Start with your town’s building office",
+          "<p>The <b>state building code</b> applies to every building and structure in New "
+          "Hampshire: building one, and altering, renovating, repairing or tearing one down. "
+          "It is a set of national codes the state adopts, among them the building, "
+          "residential, plumbing, mechanical, energy and electrical codes.</p>"
+          "<p>Before work starts, the person responsible for it must get a permit. How that "
+          "works is the town&rsquo;s to set: a town or city that enforces the code has a "
+          "building official, often called the building inspector or code enforcement "
+          "officer, who reviews plans, issues permits and inspects the work. Ask at your town "
+          "or city office before you begin. A permit will not be issued for work that breaks "
+          "the town&rsquo;s zoning or planning board rules, so the same office can tell you "
+          "whether the project needs those boards&rsquo; approval too.</p>",
+          actions=[("The State Building Code (Division of Fire Safety)", FM_CODES)],
+          law=["RSA 155-A:1", "RSA 155-A:2", "RSA 155-A:3", "RSA 155-A:4", "RSA 155-A:7"]),
+     step("Inspections, and if you disagree",
+          "<p>The building official may inspect the work, the site and the building, so plan "
+          "for the inspections your town asks for.</p>"
+          "<p>When a town issues a building permit or a notice of violation, it must tell you "
+          "how to appeal, locally and to the state. A town that enforces the code has a "
+          "building code board of appeals, and there is no fee to appeal a notice of "
+          "violation or another decision of a code official.</p>",
+          law=["RSA 155-A:3", "RSA 155-A:7"]),
+     step("Electrical work",
+          "<p>Electrical work done for pay must be done by an electrician licensed by the "
+          "state. A homeowner may do electrical work in or about a <b>single-family home</b> "
+          "they own and live in, or are building to live in. Your town may still require a "
+          "permit and an inspection for it.</p>"
+          "<p>Otherwise, the state&rsquo;s Electricians&rsquo; Board says, work at 30 volts or "
+          "more needs an active New Hampshire electrician&rsquo;s license. To ask about an "
+          "inspection or report a safety concern, call the Department of Safety at (603) "
+          "271-2791.</p>",
+          actions=[("Electricians' Board (Office of Professional Licensure and "
+                    "Certification)", OPLC_ELECTRICIANS)],
+          law=["RSA 319-C:1", "RSA 319-C:15"]),
+     step("Plumbing and gas work",
+          "<p>Plumbers and gas fitters are licensed by the state&rsquo;s Mechanical Safety and "
+          "Licensing Board. A property owner may install, repair or replace the plumbing in "
+          "their own <b>single-family house or townhouse</b>, including in new construction; "
+          "the work must still meet the state plumbing code.</p>"
+          "<p>Gas fitting is narrower: you may do it yourself only in an existing, stand-alone "
+          "single-family house that you own and live in as your main home, and the work must "
+          "meet the codes and pass any inspection that applies. Your town&rsquo;s building "
+          "office may enforce the plumbing and gas rules.</p>",
+          law=["RSA 153:36", "RSA 153:35"]),
+     step("Septic systems",
+          "<p>No one may build a house or other building that will send wastewater to a septic "
+          "system, or build a septic system, until the Department of Environmental Services "
+          "has approved its plans. The same goes before adding on to a building, or changing "
+          "its use, in a way that would add to the load on its septic system. Your town may have its own rules on top of the state&rsquo;s.</p>"
+          "<p>You may replace or repair the septic system of your own home yourself, following "
+          "the Department&rsquo;s rules.</p>",
+          law=["RSA 485-A:32", "RSA 485-A:35", "RSA 485-A:36", "RSA 485-A:38"]),
+     step("Work near water",
+          "<p>Land within 250 feet of a lake, pond, river or the coast is <b>protected "
+          "shoreland</b>. Building, digging or filling there needs a shoreland permit from the "
+          "Department of Environmental Services. Small projects that meet its standards can "
+          "go ahead on a simpler <b>permit by notification</b>, as soon as the Department "
+          "confirms it has your complete notice.</p>"
+          "<p>Digging, filling, dredging or building in or on a bank, marsh or swamp next to a "
+          "lake, river or other water needs a <b>wetlands permit</b> from the Department, "
+          "applied for through your town or city clerk, who signs the application.</p>"
+          "<p>The Department has an online tool that tells you whether a project needs a "
+          "shoreland permit. For questions, call (603) 271-2147 and ask for the Inspector of the "
+          "Day, or email shoreland@des.nh.gov; for wetlands, lrm@des.nh.gov, with photos, plans "
+          "and the location.</p>",
+          actions=[("Protected shoreland (Department of Environmental Services)", DES_SHORELAND),
+                   ("Wetlands permit help (Department of Environmental Services)", DES_WETLANDS)],
+          law=["RSA 483-B:4", "RSA 483-B:5-b", "RSA 482-A:3"])],
+    [("State Building Code (Division of Fire Safety)", FM_CODES),
+     ("Electricians' Board (Office of Professional Licensure and Certification)",
+      OPLC_ELECTRICIANS),
+     ("Protected Shoreland (Department of Environmental Services)", DES_SHORELAND),
+     ("Wetlands Permit Assistance (Department of Environmental Services)", DES_WETLANDS),
+     ("New Hampshire Building Code, RSA 155-A", "/laws/155-a"),
+     ("Electricians, RSA 319-C", "/laws/319-c"),
+     ("State Board of Fire Control, RSA 153", "/laws/153"),
+     ("Water Pollution and Waste Disposal, RSA 485-A", "/laws/485-a"),
+     ("Shoreland Water Quality Protection Act, RSA 483-B", "/laws/483-b"),
+     ("Fill and Dredge in Wetlands, RSA 482-A", "/laws/482-a")],
+    ["155-A", "319-C", "153", "485-A", "483-B", "482-A"],
+    [# The statutes, as the Laws pages print them, read on 25 October 2026.
+     claim("The state building code is the adoption by reference of the International Building "
+           "Code, Existing Building Code, Plumbing Code, Mechanical Code, Energy Conservation "
+           "Code, Swimming Pool and Spa Code and Residential Code, and the National Electrical "
+           "Code.", "RSA 155-A:1", BP_READ),
+     claim("All buildings, building components, and structures constructed in New Hampshire "
+           "shall comply with the state building code and state fire code; it governs the "
+           "construction and the alteration, renovation, rehabilitation, repair, removal, or "
+           "demolition of buildings; where a municipality has not adopted an enforcement "
+           "mechanism, the contractor shall notify the state fire marshal before construction "
+           "begins excluding one- and 2-family dwellings.", "RSA 155-A:2", BP_READ),
+     claim("The local legislative body may establish a local enforcement agency; a building "
+           "code board of appeals; a building official with authority to review construction "
+           "documents, issue building permits and perform inspections.", "RSA 155-A:3",
+           BP_READ),
+     claim("Before starting work, the person responsible for such construction shall obtain a "
+           "permit, conforming to the locally adopted process; the building official shall "
+           "not issue any permit for construction which will not comply with zoning "
+           "ordinances, building codes, or planning board regulations.", "RSA 155-A:4",
+           BP_READ),
+     claim("The local enforcement agency enforces the state building code; where there is no "
+           "local enforcement agency, the state fire marshal may enforce it upon written "
+           "request of the municipality; the agency may inspect all buildings, structures and "
+           "construction sites; information on the local and state appeals process is given "
+           "when issuing a building permit or notice of violation; no fee shall be required "
+           "to appeal a notice of violation or other decision of a code official.",
+           "RSA 155-A:7", BP_READ),
+     claim("No electrician installation shall be made for compensation, unless made by an "
+           "electrician licensed by the office of professional licensure and certification.",
+           "RSA 319-C:1", BP_READ),
+     claim("Nothing in this chapter shall prevent a homeowner from making electrical "
+           "installations in or about a single family residence owned and occupied by him or "
+           "her or to be occupied by him or her as his or her bona fide personal abode.",
+           "RSA 319-C:15", BP_READ),
+     claim("The license requirements do not apply to fuel gas fitting within an existing single "
+           "family, stand alone structure owned and occupied by the person as a primary "
+           "residence, who shall comply with applicable code and inspection requirements; nor "
+           "to a property owner who installs, repairs, or replaces plumbing in the property "
+           "owner's own single-family detached or townhouse residence, including new "
+           "construction, which shall conform to the state plumbing code.", "RSA 153:36",
+           BP_READ),
+     claim("The mechanical licensing board's rules may be enforced by the building inspection "
+           "department or by any officer designated by the city or town.", "RSA 153:35",
+           BP_READ),
+     claim("No person shall construct any building from which sewage or other wastes will "
+           "discharge or construct a sewage or waste disposal system without prior approval of "
+           "the plans and specifications by the department; local requirements are not "
+           "lessened.", "RSA 485-A:32", BP_READ),
+     claim("Applications for subsurface sewage or waste disposal systems shall be prepared and "
+           "signed by the individual who is directly responsible for them and who has a permit "
+           "issued by the department.", "RSA 485-A:35", BP_READ),
+     claim("No individual shall engage in the business of installing subsurface systems "
+           "without an installer's permit; a person installing a replacement system or "
+           "repairing a system for their own domicile is not required to obtain one, provided "
+           "they comply with the department's rules.", "RSA 485-A:36", BP_READ),
+     claim("Prior to expanding any structure or any change in use which would increase the "
+           "load on a sewage disposal system, the owner shall apply to the department for "
+           "approval of the system.", "RSA 485-A:38", BP_READ),
+     claim("Protected shoreland means all land located within 250 feet of the reference line of "
+           "public waters.", "RSA 483-B:4", BP_READ),
+     claim("No person shall commence construction, excavation, or filling activities within "
+           "the protected shoreland without a permit from the department; projects with no "
+           "impact on water quality qualify for a permit by notification, and the owner may "
+           "proceed upon written notice that a complete notification has been received.",
+           "RSA 483-B:5-b", BP_READ),
+     claim("No person shall excavate, remove, fill, dredge, or construct any structures in or "
+           "on any bank, flat, marsh, or swamp in and adjacent to any waters of the state "
+           "without a permit from the department; the application form is signed by the town "
+           "or city clerk.", "RSA 482-A:3", BP_READ),
+     # The agencies' own pages, from the person's printouts.
+     claim("The State Building Code applies in every municipality statewide; a municipality "
+           "that chooses to enforce it adopts an ordinance confirmed by the Building Code Review "
+           "Board; as of July 1, 2026, local amendments are limited to administrative matters; "
+           "effective July 1, 2026 the code is updated (IBC, IRC, IPC, IMC and others, 2024), "
+           "with a six-month concurrence period from July 1 - December 31, 2026 during which "
+           "permit requests can be submitted under either the 2021 or 2024 codes; Building Code "
+           "Review Board (603) 223-4315.", FM_CODES, BP_PAGES_READ),
+     claim("An active and valid New Hampshire Electrician license is required to work with 30 "
+           "volts or higher; for assistance regarding an inspection or to report a safety "
+           "concern please contact the Department of Safety by calling (603) 271-2791.",
+           OPLC_ELECTRICIANS, BP_PAGES_READ),
+     claim("Within the protected shoreland, vegetation removal, excavation, fill, and "
+           "development are regulated; proposed projects typically require a shoreland permit; "
+           "an interactive tool to determine if a shoreland permit is required; email "
+           "shoreland@des.nh.gov or call (603) 271-2147 and ask to speak with the Inspector of "
+           "the Day.", DES_SHORELAND, BP_PAGES_READ),
+     claim("Projects that involve excavation, fill, dredge, removal, and/or construction of "
+           "structures in or on any bank, flat, marsh, or swamp in or adjacent to wetlands and "
+           "waterbodies often require wetlands permits; questions by email to lrm@des.nh.gov or "
+           "shoreland@des.nh.gov, with photos, plans and location information.", DES_WETLANDS,
+           BP_PAGES_READ)],
+    more=civics.faq(
+        ("Which edition of the code applies?",
+         "<p>A town or city that enforces the code does so by an ordinance the state&rsquo;s "
+         "Building Code Review Board confirms; it may add local amendments, limited since July "
+         "1, 2026 to administrative matters. The state updated its codes to the 2024 editions "
+         "on July 1, 2026; through December 31, 2026 a permit may be sought under either the "
+         "2021 or the 2024 codes. The Review Board answers questions at (603) 223-4315.</p>"),
+        ("What if my town has no building inspector?",
+         "<p>Where a town has no one of its own to enforce the code, the State Fire Marshal "
+         "may enforce it at the town&rsquo;s written request. In such a town, a contractor "
+         "must tell the Fire Marshal before starting any building other than a one- or "
+         "two-family home.</p>"),
+        ("Who may design and install a septic system?",
+         "<p>The plans must be prepared and signed by a designer who holds a permit from the "
+         "Department of Environmental Services, and a system is installed by an installer with "
+         "the Department&rsquo;s permit.</p>"))
+         + "<h2>Who Can Help</h2>"
+         "<p>Your town or city&rsquo;s building inspector or code enforcement officer is the "
+         "first person to ask, about its permits, its fees and its inspections. Where your "
+         "town has none, ask the selectboard&rsquo;s office.</p>",
+    see=[("Who to contact about an issue", "/guides/who-to-contact.html"),
+         ("Cities, towns and who runs them", "/learn/city-and-town-government.html")])
+
+GUIDES += [BUILDING_PERMITS]
 
 
 # ---------------------------------------------------------------------------
@@ -3498,10 +4335,7 @@ VIOLENCE = guide(
           "shelter, support groups, money, medical care, legal referrals and other services. "
           "The crisis centers serve victims of domestic violence, sexual assault, stalking, "
           "child abuse and human trafficking, and their services are free and confidential and "
-          "open to all. If no advocate speaks Spanish, they use an interpreter.</p>"
-          "<p>For sexual assault or stalking, you can also call 1-800-277-5570. Outside New "
-          "Hampshire, call the National Domestic Violence Hotline, 1-800-799-SAFE, or RAINN for "
-          "sexual assault, 1-800-656-HOPE.</p>",
+          "open to all. If no advocate speaks Spanish, they use an interpreter.</p>",
           actions=[("Find your local crisis center", NHCADSV_CENTERS)]),
      step("Make a safety plan",
           "<p>A safety plan is a practical plan for your own situation: how to avoid danger "
@@ -3525,16 +4359,7 @@ VIOLENCE = guide(
           "business day ends, so go to a circuit court before then to ask for an order that "
           "lasts longer.</li>"
           "<li>The court holds a hearing within 30 days of the petition, or 10 days after the "
-          "other person is served, whichever is later.</li></ul>"
-          "<p>If someone is <b>stalking</b> you, you can ask the court for a stalking order the "
-          "same way, whatever your relationship to them. Court staff cannot tell you which order "
-          "is best for you, but an advocate or legal aid can. The court&rsquo;s checklist for the "
-          "petition comes in Spanish and other languages. The DOVE Project gives free lawyers to "
-          "qualifying survivors of domestic violence at the final hearing; ask your crisis "
-          "center.</p>"
-          "<p>When the police respond to abuse, they must help keep you safe: you can ask them "
-          "to request an emergency order, to help you collect clothing, medication and other "
-          "essentials, to take you to a safe place, and to get you an ambulance.</p>",
+          "other person is served, whichever is later.</li></ul>",
           actions=[("Orders of protection (Judicial Branch)", COURTS_PROTECT),
                    ("Legal help, from the Coalition", NHCADSV_LEGAL)],
           law=["RSA 173-B:1", "RSA 173-B:2", "RSA 173-B:3", "RSA 173-B:4", "RSA 173-B:10",
@@ -3552,18 +4377,9 @@ VIOLENCE = guide(
           actions=[("What to expect at the hospital", NHCADSV_EXAMS)],
           law=["RSA 21-M:8-c"]),
      step("Other protections and help",
-          "<ul><li><b>Keeping a new address private.</b> If you have moved, or are about to move, "
-          "somewhere the person who harmed you does not know, the Attorney General&rsquo;s "
-          "Address Confidentiality Program gives you a substitute address to use for state and "
-          "local services, such as a driver&rsquo;s license or car registration, and forwards "
-          "your first-class mail. You do not need a restraining order, criminal charges or a "
-          "police report. Apply before you create any records at the new address, and with a "
-          "crisis center&rsquo;s help, as the law requires. Mail can be delayed by as much as 5 "
-          "to 7 days. A certification lasts 4 years.</li>"
-          "<li><b>Costs of a crime.</b> The Victims&rsquo; Compensation Program helps victims of "
-          "violent crime with costs that come from their injuries. Claims are generally filed "
-          "within 2 years of the crime, and you can still qualify if no one is arrested or "
-          "convicted.</li>"
+          "<ul><li><b>Keeping a new address private:</b> the Attorney General&rsquo;s Address "
+          "Confidentiality Program, and <b>costs of a crime:</b> the Victims&rsquo; Compensation "
+          "Program. The questions below say more.</li>"
           "<li><b>Free legal help</b> with housing, family law, benefits and more: 603 Legal "
           "Aid, 1-800-639-5290.</li></ul>",
           actions=[("Address Confidentiality Program (Attorney General)", DOJ_ACP),
@@ -3647,7 +4463,37 @@ VIOLENCE = guide(
            "unless good cause; not ineligible for failure to apprehend or convict.",
            "RSA 21-M:8-h", DV_READ)]
     + help_claims("legal_aid"),
-    more="<h2>Who Can Help</h2>"
+    more=civics.faq(
+        ("Is there a line for sexual assault or stalking, or for someone outside New Hampshire?",
+         "<p>For sexual assault or stalking, you can also call 1-800-277-5570. Outside New "
+         "Hampshire, call the National Domestic Violence Hotline, 1-800-799-SAFE, or RAINN for "
+         "sexual assault, 1-800-656-HOPE.</p>"),
+        ("What can the police do when they respond?",
+         "<p>When the police respond to abuse, they must help keep you safe: you can ask them "
+         "to request an emergency order, to help you collect clothing, medication and other "
+         "essentials, to take you to a safe place, and to get you an ambulance.</p>"),
+        ("What if someone is stalking me, and can I get help at the hearing?",
+         "<p>If someone is <b>stalking</b> you, you can ask the court for a stalking order the "
+         "same way, whatever your relationship to them. Court staff cannot tell you which order "
+         "is best for you, but an advocate or legal aid can. The court&rsquo;s checklist for the "
+         "petition comes in Spanish and other languages. The DOVE Project gives free lawyers to "
+         "qualifying survivors of domestic violence at the final hearing; ask your crisis "
+         "center.</p>"),
+        ("Can I keep a new address private?",
+         "<p><b>Keeping a new address private.</b> If you have moved, or are about to move, "
+         "somewhere the person who harmed you does not know, the Attorney General&rsquo;s "
+         "Address Confidentiality Program gives you a substitute address to use for state and "
+         "local services, such as a driver&rsquo;s license or car registration, and forwards "
+         "your first-class mail. You do not need a restraining order, criminal charges or a "
+         "police report. Apply before you create any records at the new address, and with a "
+         "crisis center&rsquo;s help, as the law requires. Mail can be delayed by as much as 5 "
+         "to 7 days. A certification lasts 4 years.</p>"),
+        ("Is there help with the costs of a crime?",
+         "<p><b>Costs of a crime.</b> The Victims&rsquo; Compensation Program helps victims of "
+         "violent crime with costs that come from their injuries. Claims are generally filed "
+         "within 2 years of the crime, and you can still qualify if no one is arrested or "
+         "convicted.</p>"))
+         + "<h2>Who Can Help</h2>"
          "<p>Your local crisis center, through the 24-hour helpline at <a href=\"tel:+18666443574\">1-866-644-3574</a>, "
          "is the "
          "place to start for anything on this page. Its advocates can go with you to the "
@@ -3669,6 +4515,233 @@ VIOLENCE = guide(
              fig("2 years", "RSA 21-M:8-h", "within 2 years of the crime")])
 
 GUIDES += [VIOLENCE]
+
+
+# ---------------------------------------------------------------------------
+# IF YOU FACE DISCRIMINATION (the person, 25 October 2026: "Write all three
+# know your rights guides too"). New Hampshire's Law Against Discrimination,
+# RSA 354-A, read on the site's own Laws pages on 25 October 2026: who and
+# what it protects at work, in housing and in places open to the public, the
+# Commission for Human Rights, the 180 days to file a complaint, and the
+# choice of Superior Court after it. The U.S. Equal Employment Opportunity
+# Commission's page on filing a charge answers this machine and was read the
+# same day; HUD's complaint page draws itself by script and was not, so the
+# guide names no federal housing route. The Commission's own pages refuse a
+# cloud session and wait for the person's printouts.
+# ---------------------------------------------------------------------------
+DISC_READ = "2026-10-25"
+DISC_PAGES_READ = "2026-10-26"       # the person's printout of humanrights.nh.gov
+HRC_HOME = "https://www.humanrights.nh.gov/"
+EEOC_FILE = "https://www.eeoc.gov/how-file-charge-employment-discrimination"
+
+DISCRIMINATION = guide(
+    "discrimination", "If You Face Discrimination: Work, Housing and Public Places",
+    "What New Hampshire's Law Against Discrimination protects at work, in renting or buying a "
+    "home, and in stores, restaurants and other places open to the public, and how to file a "
+    "complaint with the Commission for Human Rights.",
+    "New Hampshire law forbids discrimination because of your age, sex, gender identity, race, "
+    "creed, color, marital status, physical or mental disability, national origin or sexual "
+    "orientation: at work and when you apply for a job, when you rent or buy a home, and in "
+    "places open to the public. In housing, having children under 18 is protected too. It is "
+    "also against the law to punish you for complaining. If it happens to you, you can file a "
+    "written complaint with the New Hampshire Commission for Human Rights within 180 days.",
+    [ask("Where did it happen?",
+         [("At work, or applying for a job",
+           "An employer with 6 or more employees is covered, and so are the state and every "
+           "town."),
+          ("Renting or buying a home",
+           "Landlords, sellers and agents are covered, with a few exceptions."),
+          ("A store, restaurant, hotel or other place open to the public",
+           "Every place that serves the public is covered, except a private club.")]),
+     box("Write down what happened, when, and who was there. Keep any letters, messages or "
+         "notices."),
+     box("File a complaint with the Commission for Human Rights within 180 days."),
+     box("The Commission investigates, and tries to settle it. You may go to court instead, "
+         "within the limits the law sets.")],
+    [step("Know what the law protects",
+          "<p>New Hampshire&rsquo;s <b>Law Against Discrimination</b> protects you from being "
+          "treated differently because of your <b>age, sex, gender identity, race, creed, color, "
+          "marital status, physical or mental disability, national origin or sexual "
+          "orientation</b>. In housing it also protects <b>familial status</b>: having a child "
+          "under 18 living with you.</p>"
+          "<ul><li><b>Sexual harassment</b>, such as unwelcome sexual advances or requests for "
+          "sexual favors, is discrimination because of sex.</li>"
+
+          "<li><b>Retaliation</b> is against the law: no one may fire, expel or otherwise punish "
+          "you because you opposed discrimination, filed a complaint, or testified or helped in "
+          "a case.</li></ul>",
+          law=["RSA 354-A:1", "RSA 354-A:7", "RSA 354-A:19"]),
+     step("At work",
+          "<p>An employer may not refuse to hire you, fire you, or treat you differently in pay "
+          "or in the terms of your job because of any of the reasons above, unless the reason is "
+          "a genuine requirement of the job. Job advertisements and applications may not state "
+          "such a preference.</p>",
+          law=["RSA 354-A:2", "RSA 354-A:6", "RSA 354-A:7"]),
+     step("Renting or buying a home",
+          "<p>No one may refuse to rent or sell to you, offer you different terms, tell you a "
+          "home is not available when it is, or advertise a preference, because of any of the "
+          "reasons above or because you have children under 18.</p>",
+          law=["RSA 354-A:8", "RSA 354-A:10", "RSA 354-A:15"]),
+     step("Stores, restaurants and other places open to the public",
+          "<p>A place of <b>public accommodation</b> is any place that offers its goods or "
+          "services to the public: a store, a restaurant, a hotel, a theater, a barbershop, a "
+          "health care provider, a bus, and many more. It may not refuse you service, or treat "
+          "you differently, because of any of the reasons above, or post a notice that some "
+          "people are unwelcome. A club that is distinctly private is not covered.</p>",
+          law=["RSA 354-A:2", "RSA 354-A:16", "RSA 354-A:17"]),
+     step("File a complaint with the Commission for Human Rights",
+          "<p>The <b>New Hampshire Commission for Human Rights</b> takes complaints of "
+          "discrimination. Your complaint is in writing and signed, names who discriminated "
+          "against you, and says what happened. File it <b>within 180 days</b> of the act. Write "
+          "things down as they happen, and keep any letters, emails, texts or notices.</p>"
+          "<p>The Commission also takes complaints of discrimination in K-12 public schools, and "
+          "offers mediation. Submit a complaint from its website, or call (603) 271-2767, "
+          "Monday through Friday, 8 a.m. to 4 p.m.; its office is at 57 Regional Drive, Suite 8, "
+          "in Concord.</p>"
+          "<p>A commissioner investigates, with the Commission&rsquo;s staff, and encourages "
+          "both sides to settle. If the commissioner finds no probable cause, the complaint is "
+          "dismissed, and you can appeal to the Superior Court. If there is probable cause and "
+          "it is not settled, a hearing may be held before 3 commissioners, who can order the "
+          "discrimination to stop and order hiring, reinstatement, back pay and damages. You "
+          "have 30 days after the Commission&rsquo;s order is served to ask the Superior Court "
+          "to review it.</p>",
+          actions=[("Commission for Human Rights", HRC_HOME),
+                   ("File a federal charge (EEOC)", EEOC_FILE)],
+          law=["RSA 354-A:5", "RSA 354-A:21", "RSA 354-A:22"]),
+     step("Or take it to court",
+          "<p>Instead of waiting for the Commission to decide, you may sue in the Superior Court "
+          "of your county, or of the county where it happened: once your complaint has been at "
+          "the Commission for 180 days, or sooner if the Commission agrees in writing, and no "
+          "later than <b>3 years</b> after the discrimination. Either side may ask for a jury. "
+          "If you go to court, you cannot bring the same complaint back to the Commission, and "
+          "you cannot go to court once a Commission hearing has begun.</p>"
+          "<p>These deadlines are strict, and the choices between the Commission and the court "
+          "are hard to undo. A lawyer can advise you on your own case (below).</p>",
+          law=["RSA 354-A:21-a"])],
+    [("Commission for Human Rights (New Hampshire)", HRC_HOME),
+     ("How to File a Charge of Employment Discrimination (U.S. Equal Employment Opportunity "
+      "Commission)", EEOC_FILE),
+     ("Law Against Discrimination, RSA 354-A", "/laws/354-a")],
+    ["354-A"],
+    [# The Law Against Discrimination, as the site's own Laws pages print it, 25 October 2026.
+     claim("Discrimination because of age, sex, gender identity, race, creed, color, marital "
+           "status, familial status, physical or mental disability or national origin, in "
+           "employment, in places of public accommodation and in housing accommodations; no "
+           "person be discriminated against on account of sexual orientation.",
+           "RSA 354-A:1", DISC_READ),
+     claim("\"Employer\" does not include any employer with fewer than 6 persons in its employ, an "
+           "exclusively social club, or a fraternal or religious association or corporation not "
+           "organized for private profit; it includes the state and all political subdivisions, "
+           "boards, departments, and commissions; \"employee\" does not include any individual "
+           "employed by a parent, spouse or child, or in the domestic service of any person; "
+           "familial status, individuals under 18 domiciled with a parent or custodian; a place "
+           "of public accommodation includes any inn, hotel, restaurant, public conveyance, "
+           "barbershop, theater, health care provider, store or other establishment which offers "
+           "its goods or services to the general public, not any institution or club which is "
+           "in its nature distinctly private.", "RSA 354-A:2", DISC_READ),
+     claim("The opportunity to obtain employment without discrimination is a civil right.",
+           "RSA 354-A:6", DISC_READ),
+     claim("Unlawful for an employer to refuse to hire, to discharge, or to discriminate in "
+           "compensation or in terms, conditions or privileges of employment, unless based upon "
+           "a bona fide occupational qualification; or to print any statement, advertisement or "
+           "application form expressing a limitation; harassment on the basis of sex is "
+           "unlawful sex discrimination, including unwelcome sexual advances and requests for "
+           "sexual favors; sex includes pregnancy; leave for the temporary physical disability "
+           "of pregnancy and childbirth, and the original or a comparable job on return unless "
+           "business necessity makes this impossible or unreasonable; reasonable accommodations "
+           "for a qualified individual with a disability unless an undue hardship.",
+           "RSA 354-A:7", DISC_READ),
+     claim("The opportunity to obtain housing without discrimination, including familial status "
+           "and sexual orientation, is a civil right.", "RSA 354-A:8", DISC_READ),
+     claim("Unlawful to refuse a real estate transaction, alter its terms, represent that real "
+           "property is not available when it is, or publish a notice or advertisement "
+           "indicating a preference, limitation, or discrimination.", "RSA 354-A:10", DISC_READ),
+     claim("Exemptions from RSA 354-A:10: certain private sales of single family homes by an "
+           "owner without a broker; rental in a building of not more than 4 families if the "
+           "owner resides in one; rental of rooms in a private home by an owner; the exemptions "
+           "do not apply to RSA 354-A:10, VII.", "RSA 354-A:15", DISC_READ),
+     claim("Equal access to places of public accommodation is a civil right; unlawful to "
+           "refuse, withhold or deny its accommodations, or to post a notice that any person is "
+           "unwelcome.", "RSA 354-A:17", DISC_READ),
+     claim("Equal access to places of public accommodation without discrimination is a civil "
+           "right, including sexual orientation.", "RSA 354-A:16", DISC_READ),
+     claim("Unlawful to discharge, expel, or otherwise retaliate against any person because he "
+           "has opposed any practices forbidden under this chapter or has filed a complaint, "
+           "testified or assisted in any proceeding.", "RSA 354-A:19", DISC_READ),
+     claim("The commission receives, investigates and passes upon complaints alleging "
+           "violations of this chapter.", "RSA 354-A:5", DISC_READ),
+     claim("A verified complaint in writing naming who committed the practice and the "
+           "particulars; investigation by a commissioner, encouraging settlement; dismissal on "
+           "no probable cause, with a right of appeal to superior court; conciliation; a hearing "
+           "before 3 members of the commission; orders to cease and desist, hiring, "
+           "reinstatement, back pay, compensatory damages; must be filed within 180 days after "
+           "the alleged act of discrimination.", "RSA 354-A:21", DISC_READ),
+     claim("At the expiration of 180 days after the timely filing of a complaint with the "
+           "commission, or sooner if the commission assents in writing, but not later than 3 "
+           "years after the alleged unlawful practice occurred, a civil action in the superior "
+           "court for the county where it occurred or of the party's residence; trial by jury; "
+           "not available once a commission hearing has begun or concluded; a party electing "
+           "court is barred from a subsequent complaint to the commission on the same practice.",
+           "RSA 354-A:21-a", DISC_READ),
+     claim("Judicial review of a commission order in the superior court, instituted within 30 "
+           "days after the service of the order of the commission.", "RSA 354-A:22", DISC_READ),
+     # The EEOC's page, read on 25 October 2026.
+     claim("The 180-calendar-day filing deadline is extended to 300 calendar days if a state or "
+           "local agency enforces a law that prohibits employment discrimination on the same "
+           "basis; if you file a charge with either EEOC or a FEPA with a worksharing agreement, "
+           "the charge also will be automatically filed with the other agency (dual filing); "
+           "you can let the state agency know if you also want your charge filed with the EEOC; "
+           "1-800-669-4000.", EEOC_FILE, DISC_READ),
+     # The Commission's own page, from the person's printout.
+     claim("A state agency established by RSA 354-A for the purpose of education and enforcement "
+           "of the law against discrimination in employment, housing, places of public "
+           "accommodation and K-12 public schools; Submit a Complaint; Mediation; 57 Regional "
+           "Drive, Suite 8, Concord, NH 03301; (603) 271-2767; Monday - Friday, 8AM - 4PM.",
+           HRC_HOME, DISC_PAGES_READ)]
+    + help_claims("lawyer"),
+    more=civics.faq(
+        ("Does the law cover pregnancy?",
+         "<p>Discrimination because of sex includes <b>pregnancy</b>. An employer must give a "
+         "leave of absence for a disability caused by pregnancy or childbirth, and hold your "
+         "job or a comparable one for your return unless business necessity makes that "
+         "impossible or unreasonable.</p>"),
+        ("Must an employer adjust my job for a disability?",
+         "<p>An employer must make <b>reasonable accommodations</b> for a qualified employee "
+         "or applicant with a disability, such as a changed schedule or equipment, unless "
+         "doing so would be an undue hardship.</p>"),
+        ("Which employers does the law cover?",
+         "<p>The law covers employers with 6 or more employees, and the state and its cities, "
+         "towns, boards and departments. It does not cover a nonprofit social "
+         "club, or a nonprofit fraternal or religious organization, as an employer, or work "
+         "for your own parent, spouse or child, or in someone&rsquo;s home as a domestic "
+         "worker.</p>"),
+        ("Are there exceptions in housing?",
+         "<p>There are a few exceptions. They include renting a unit in a building of no more "
+         "than 4 units where the owner lives in one of them, renting a room in the "
+         "owner&rsquo;s own home, and some sales of a single-family home by its owner without "
+         "a real estate agent.</p>"),
+        ("Can I file with the federal government too?",
+         "<p><b>At work, federal law protects you too.</b> The U.S. Equal Employment "
+         "Opportunity Commission says that where a state agency enforces a law like this one, "
+         "its own deadline is extended to 300 days, and that a charge filed with a state "
+         "agency that works with it can be filed with both at once. Tell the Commission if you "
+         "want yours filed with the federal agency as well.</p>"))
+         + "<h2>Who Can Help</h2>"
+         "<p>The Commission for Human Rights can tell you how to file a complaint. For advice "
+         "on your own case, talk to a lawyer:</p>"
+         + helps("lawyer"),
+    see=[("Your rights as a tenant", "/guides/tenant-rights.html"),
+         ("Your rights at work: getting paid", "/guides/wage-rights.html"),
+         ("How to get help after domestic violence, sexual assault or stalking",
+          "/guides/domestic-violence-help.html")],
+    figures=[fig("180 days", "RSA 354-A:21", "within 180 days after the alleged act of discrimination"),
+             fig("3 years", "RSA 354-A:21-a", "not later than 3 years after the alleged unlawful "
+                 "practice occurred"),
+             fig("30 days", "RSA 354-A:22", "within 30 days after the service of the order of the "
+                 "commission"),
+             fig("300 days", EEOC_FILE, "extended to 300 calendar days")])
+
+GUIDES += [DISCRIMINATION]
 
 
 # ---------------------------------------------------------------------------
@@ -3719,11 +4792,7 @@ HOMELESS = guide(
           "health crisis, call 988.</p>"
           "<p><b>Your town or city welfare office</b> must help a person who is poor and unable "
           "to support themselves, under the written guidelines every town and city adopts: how "
-          "to apply, who is eligible, and how to appeal a decision. If you are only staying in a "
-          "town for now, it must still give you the temporary help that is reasonable and "
-          "necessary. If you are asked to prove where you live and have no lease or bill, a "
-          "signed statement from the welfare official, a police or fire official, an emergency "
-          "medical provider or a social services provider who knows you counts.</p>",
+          "to apply, who is eligible, and how to appeal a decision.</p>",
           actions=[("2-1-1 New Hampshire", NH211_HOME)],
           law=["RSA 165:1", "RSA 165:1-c"]),
      step("Find a shelter",
@@ -3748,10 +4817,7 @@ HOMELESS = guide(
           "the landlord take back the home.</li>"
           "<li><b>If the case is only about unpaid rent,</b> it is dismissed if, before the "
           "hearing, you pay all the rent you owe, $15, and the landlord&rsquo;s filing and "
-          "service costs. You can do this up to 3 times in a 12-month period.</li>"
-          "<li><b>If you lose,</b> you have 7 days from the Notice of Judgment to file a Notice "
-          "of Intent to Appeal, and you will have to pay rent each week while the appeal goes "
-          "on.</li></ul>"
+          "service costs. You can do this up to 3 times in a 12-month period.</li></ul>"
           "<p>Get free legal help as early as you can, from 603 Legal Aid or New Hampshire "
           "Legal Assistance.</p>",
           actions=[("Landlord and tenant cases (Judicial Branch)", COURTS_LLT)],
@@ -3841,7 +4907,19 @@ HOMELESS = guide(
            "landlord's filing fee and service charges; not more than 3 times within a 12-month "
            "period.", "RSA 540:9", HL_READ)]
     + help_claims("legal_aid"),
-    more="<h2>Who Can Help</h2>"
+    more=civics.faq(
+        ("What if I am only staying in a town for now?",
+         "<p>If you are only staying in a town for now, it must still give you the temporary "
+         "help that is reasonable and necessary.</p>"),
+        ("What if I have no lease or bill to prove where I live?",
+         "<p>If you are asked to prove where you live and have no lease or bill, a signed "
+         "statement from the welfare official, a police or fire official, an emergency medical "
+         "provider or a social services provider who knows you counts.</p>"),
+        ("Can I appeal if I lose an eviction case?",
+         "<p><b>If you lose,</b> you have 7 days from the Notice of Judgment to file a Notice "
+         "of Intent to Appeal, and you will have to pay rent each week while the appeal goes "
+         "on.</p>"))
+         + "<h2>Who Can Help</h2>"
          "<p>2-1-1 New Hampshire, at any hour, and your town or city welfare office are the "
          "places to start. For a housing voucher, call New Hampshire Housing at (603) 472-8623. "
          "For help with an eviction or a denial of town assistance:</p>"
@@ -3859,6 +4937,540 @@ HOMELESS = guide(
              fig("7 to 9 years", NHH_APPLY, "wait of 7 to 9 years")])
 
 GUIDES += [HOMELESS]
+
+
+# ---------------------------------------------------------------------------
+# RENTING A HOME: THE TENANT'S RIGHTS AND THE LANDLORD'S DUTIES (the person,
+# 25 October 2026: "know your rights guides for both tenants and
+# landlords"). One law, two readers, so two guides that say it alike and link
+# each other. Read on 25 October 2026 from RSA 540 (actions against tenants),
+# RSA 540-A (prohibited practices and security deposits) and RSA 48-A:14
+# (the minimum standards where a town has no housing code of its own) as this
+# site's Laws pages print them -- with the paragraphs in force since 8
+# October 2026, where the chapters print an old and a new version -- and from
+# the Judicial Branch's landlord-tenant page and New Hampshire Housing's
+# renters' page, as the homelessness guide read them on 24 October 2026.
+# Neither guide is legal advice: each says where a reader gets a lawyer or
+# free legal aid. The security deposit rules do not reach every landlord
+# (RSA 540-A:5, I), nor does the need for a reason to evict (RSA 540:1-a), and
+# each guide says so where it matters.
+# ---------------------------------------------------------------------------
+RENT_READ = "2026-10-25"
+
+TENANT = guide(
+    "tenant-rights", "Your Rights as a Tenant",
+    "What a New Hampshire landlord may and may not do, your security deposit, repairs and heat, "
+    "rent increases, and what happens in an eviction, step by step, with the law for each.",
+    "In New Hampshire only a court can make you leave your home: a landlord may not lock you "
+    "out, shut off your utilities or hold your belongings to force you out. For most rentals, a "
+    "security deposit can be no more than one month&rsquo;s rent or $100, whichever is more, "
+    "and it comes back within 30 days after you move out, less the cost of any damage beyond "
+    "normal wear and tear. Your home must meet basic standards for heat, water, plumbing and "
+    "safety. If you get an eviction notice or court papers, read the dates and get free legal "
+    "help right away.",
+    [ask("What is happening?",
+         [("You were locked out, or a utility was shut off",
+           "That is against the law. Ask the district court to order it stopped; there is no "
+           "filing fee."),
+          ("Something needs repair",
+           "Tell your landlord in writing. If it is not fixed, ask your town to inspect."),
+          ("You got an eviction notice or court papers",
+           "Read the dates, and get free legal help now. Only a court can make you leave."),
+          ("You are moving out",
+           "Your deposit comes back within 30 days, with a written list of any deductions.")]),
+     box("Keep copies of your lease, rent receipts, letters and photos.")],
+    [step("Only a court can make you leave",
+          "<p>A landlord may not:</p>"
+          "<ul><li><b>shut off or interrupt a utility</b>, such as water, heat, electricity or "
+          "gas, except briefly while repairs are made or in an emergency;</li>"
+          "<li><b>lock you out</b>, or keep you from your home or your belongings, except "
+          "through the court;</li>"
+          "<li><b>enter your home without your consent</b>, except to make emergency repairs "
+          "or with a court&rsquo;s order.</li></ul>"
+          "<p>You, in turn, may not damage the landlord&rsquo;s property or keep the landlord "
+          "from making necessary repairs, at a reasonable time after notice that is adequate "
+          "for the situation.</p>"
+          "<p>If a landlord breaks these rules, you can file a petition in the circuit "
+          "court&rsquo;s district division where the home is. There is <b>no filing fee</b>, "
+          "you do not need a lawyer, and the clerk has the forms. The court holds a hearing "
+          "within 30 days of the filing or 10 days after the landlord is served, whichever is "
+          "later, and can order the landlord to stop at once if you face immediate harm. It can "
+          "also award you damages, and order the landlord to pay your costs and attorney&rsquo;s "
+          "fees.</p>",
+          actions=[("Landlord and tenant cases (Judicial Branch)", COURTS_LLT)],
+          law=["RSA 540-A:2", "RSA 540-A:3", "RSA 540-A:4"]),
+     step("Your security deposit",
+          "<ul><li><b>The limit:</b> one month&rsquo;s rent or $100, whichever is more.</li>"
+          "<li><b>A receipt</b> stating the amount and where the deposit is held, unless you "
+          "paid by check.</li>"
+          "<li><b>Within 5 days of moving in,</b> give your landlord a written list of anything "
+          "in the home that needs repair, and keep a copy. Your landlord must tell you that you "
+          "can.</li>"
+          "<li><b>When you move out,</b> the landlord returns it within 30 days, with any "
+          "interest. A landlord who keeps any of it for damage beyond reasonable wear and tear, "
+          "unpaid rent or other charges must give you a written, itemized list.</li></ul>"
+          "<p>Give your landlord your new address when you leave. A landlord who does not "
+          "return a deposit as the law requires can owe you twice the amount wrongly kept.</p>",
+          law=["RSA 540-A:5", "RSA 540-A:6", "RSA 540-A:7", "RSA 540-A:8"]),
+     step("Repairs, heat and a safe home",
+          "<p>Where your town has no housing code of its own, the law sets the minimum: no "
+          "insect, rodent or bed bug infestation left without an inspection and treatment "
+          "program; no defective plumbing or sewage back-up; no exposed wires or other danger "
+          "of shock or fire; no roof or walls that leak; no falling plaster, large holes, or "
+          "unsound porches, stairs or railings; enough water and working hot water equipment; "
+          "no gas leaks; and heat that can keep every room at an average of at least 65 "
+          "degrees. Towns with a housing code enforce their own standards.</p>"
+          "<p><b>Tell your landlord in writing</b> what needs fixing, and keep a copy. If it is "
+          "not fixed, ask your town&rsquo;s code enforcement or health officer to inspect. A "
+          "landlord must look into a report of bed bugs or other pests within 7 days.</p>",
+          law=["RSA 48-A:14", "RSA 540-A:3", "RSA 540:13-d"]),
+     step("Rent increases, the end of a lease, and retaliation",
+          "<p><b>When a landlord needs a reason.</b> For most rentals, a landlord can end your "
+          "tenancy only for a reason the law lists: unpaid rent, substantial damage, breaking "
+          "a material term of the lease, behavior that threatens others&rsquo; health or "
+          "safety, or other good cause, which can be a legitimate business or economic reason. "
+          "A lease of 12 months or longer can also end at its term, if the landlord gave you "
+          "written notice at least 60 days before. The exceptions, where no reason is needed: "
+          "a single-family house whose owner owns no more than 3, and a unit in a building of 4 "
+          "units or fewer that the owner lives in.</p>"
+          "<p><b>Rent increases.</b> Refusing a rent increase can be good cause to evict, but "
+          "only if the landlord gave you written notice of the amount and the date at least 30 "
+          "days before it takes effect.</p>"
+          "<p><b>Retaliation.</b> A landlord may not evict you for reporting a code violation, "
+          "for going to court under the tenant protection law, or for meeting with other "
+          "tenants, unless you owe a week&rsquo;s rent or more. An eviction, a rent increase or "
+          "a big change in your terms within 6 months of that is presumed to be retaliation, "
+          "and the court can award you up to 3 months&rsquo; rent.</p>",
+          law=["RSA 540:1-a", "RSA 540:2", "RSA 540:11", "RSA 540:11-b", "RSA 540:13-a",
+               "RSA 540:13-b", "RSA 540:14"]),
+     step("If you get an eviction notice or court papers",
+          "<ul><li><b>The eviction notice</b> must be in writing and say why. It gives you 7 "
+          "days to leave for unpaid rent, substantial damage or a threat to others&rsquo; "
+          "safety, and 30 days for other reasons. It does not make you leave by itself: if you "
+          "stay, the landlord must go to court.</li>"
+          "<li><b>For unpaid rent,</b> the case is dismissed if, before the hearing, you pay "
+          "all the rent you owe, other lawful charges, $15 and the landlord&rsquo;s filing and "
+          "service costs. You can do this up to 3 times in a 12-month period.</li>"
+          "<li><b>Before any court case,</b> the court&rsquo;s free Eviction Diversion Program "
+          "offers a mediator to help you and your landlord reach an agreement.</li>"
+          "<li><b>If you are served court papers</b> (a Landlord/Tenant Writ), file an "
+          "Appearance by the <em>return date</em> on the writ, and an answer with your defenses "
+          "no more than 5 days after it. If you do not, you can lose without a hearing.</li>"
+          "<li><b>If you lose,</b> the court may give you up to 60 days to move, if you pay "
+          "the rent each week. To appeal, file a notice of intent to appeal within 7 days of "
+          "the decision, and pay rent as it comes due.</li></ul>",
+          actions=[("Landlord and tenant cases (Judicial Branch)", COURTS_LLT)],
+          law=["RSA 540:3", "RSA 540:9", "RSA 540:13", "RSA 540:13-c", "RSA 540-A:3"])],
+    [("Landlord/Tenant, District Division (Judicial Branch)", COURTS_LLT),
+     ("Resources for Renters (New Hampshire Housing)", NHH_RENTERS),
+     ("Actions Against Tenants, RSA 540", "/laws/540"),
+     ("Prohibited Practices and Security Deposits, RSA 540-A", "/laws/540-a"),
+     ("Housing Standards, RSA 48-A", "/laws/48-a")],
+    ["540", "540-A", "48-A"],
+    [# The Judicial Branch's and New Hampshire Housing's pages, as the
+     # homelessness guide read them on 24 October 2026.
+     claim("The Eviction Diversion Program: free mediation before a court case, voluntary, no "
+           "rights given up; a tenant files an Appearance by the return date on the "
+           "Landlord/Tenant Writ to be heard; the return date is not the hearing; trial within "
+           "about 10 days of an Appearance; failing to file or appear brings a Notice of "
+           "Default, and the Writ of Possession does not issue for at least 5 business days; "
+           "after judgment for the landlord, 7 days to file a Notice of Intent to Appeal, with "
+           "weekly rent paid during the appeal.", COURTS_LLT, HL_READ),
+     claim("For emergency shelter or housing, call 2-1-1, contact your local Community Action "
+           "Program, or contact town welfare; New Hampshire Housing encourages anyone "
+           "struggling to pay rent to apply and indicate preferences; wait about 7 to 9 years; "
+           "contact your town about a town housing authority; for eviction help, 603 Legal Aid "
+           "and New Hampshire Legal Assistance.", NHH_RENTERS, HL_READ),
+     # The statutes, as this site's Laws pages print them, read 25 October 2026.
+     claim("No landlord shall willfully violate a tenant's right to quiet enjoyment or attempt "
+           "to circumvent lawful procedures for eviction; no tenant shall willfully damage the "
+           "landlord's property or prevent completion of necessary repairs.", "RSA 540-A:2",
+           RENT_READ),
+     claim("No landlord shall willfully interrupt or terminate any utility service, including "
+           "water, heat, light, electricity and gas, except temporarily while repairs are in "
+           "process or in emergencies (I); deny a tenant access to the premises (II) or to the "
+           "tenant's property (III) other than through proper judicial process; enter without "
+           "prior consent other than to make emergency repairs (IV), or with a court order "
+           "(V-d); a tenant shall not willfully prevent necessary repairs or refuse access at a "
+           "reasonable time after adequate notice (V); a landlord investigates a report of an "
+           "infestation within 7 days (V-a); stores a vacated tenant's personal property with "
+           "reasonable care for 7 days, recoverable without rent or storage fees (VII).",
+           "RSA 540-A:3", RENT_READ),
+     claim("A petition in the district court, no filing fee, without legal counsel; the clerks "
+           "supply forms; a hearing within 30 days of filing or 10 days of service, whichever "
+           "is later; temporary orders on an immediate threat of irreparable harm; damages; "
+           "the civil remedies of RSA 358-A:10 with costs and reasonable attorney's fees.",
+           "RSA 540-A:4", RENT_READ),
+     claim("A landlord for this subdivision excludes a person who rents a single-family "
+           "residence and owns no other rental property, or rents units in an owner-occupied "
+           "building of 5 units or less, except for a unit occupied by a person 60 years of "
+           "age or older.", "RSA 540-A:5", RENT_READ),
+     claim("No security deposit in excess of one month's rent or $100, whichever is greater; a "
+           "signed receipt stating the amount and where held, not required when paid by check; "
+           "notice that conditions needing repair be noted in writing within 5 days of "
+           "occupancy; deposits held in trust; interest on a deposit held one year or longer.",
+           "RSA 540-A:6", RENT_READ),
+     claim("Return the security deposit and interest within 30 days from the termination of the "
+           "tenancy; deduct damages excluding reasonable wear and tear, unpaid rent and other "
+           "lawful charges, with a written, itemized list.", "RSA 540-A:7", RENT_READ),
+     claim("A landlord who does not comply with RSA 540-A:6, IV or 540-A:7 is liable for twice "
+           "the deposit plus interest, less lawful charges; not liable if the tenant failed to "
+           "give a new address; unclaimed deposits after 6 months become the landlord's.",
+           "RSA 540-A:8", RENT_READ),
+     claim("In a municipality without its own ordinance, no landlord shall maintain premises "
+           "infested by insects, rodents or bed bugs without an inspection program; with "
+           "defective plumbing or sewage back-up; electrical dangers; leaking roof or walls; "
+           "falling plaster; substantial holes; unsound porches, stairs or railings; garbage "
+           "in common areas; inadequate water or hot water equipment; gas leaks; or heating "
+           "not capable of a temperature of at least an average of 65 degrees.",
+           "RSA 48-A:14", RENT_READ),
+     claim("No possessory action for nonpayment if the premises are in substantial violation "
+           "of RSA 48-A or local codes materially affecting habitability, the tenant gave notice "
+           "while not in arrears, and the landlord failed to correct within 14 days; the court "
+           "may require rent paid into court.", "RSA 540:13-d", RENT_READ),
+     claim("Nonrestricted property: single-family houses whose owner owns not more than 3, "
+           "and units in an owner-occupied building of 4 dwelling units or fewer; restricted "
+           "property is all other residential rental property.", "RSA 540:1-a", RENT_READ),
+     claim("Restricted property may be terminated only for nonpayment, substantial damage, "
+           "failure to comply with a material term, behavior adversely affecting health or "
+           "safety, other good cause, and the other listed reasons; a lease of 12 months or "
+           "longer at its expiration with written notice at least 60 days in advance; refusal "
+           "of a rent increase is good cause if written notice of the amount and effective "
+           "date came at least 30 days prior; other good cause includes any legitimate "
+           "business or economic reason; no termination solely because a tenant is a victim "
+           "of domestic violence, sexual assault or stalking.", "RSA 540:2", RENT_READ),
+     claim("A month-to-month tenancy may be terminated by the lessee upon 30 days notice.",
+           "RSA 540:11", RENT_READ),
+     claim("A tenant may terminate a lease when the tenant or a household member has been a "
+           "victim of domestic violence, sexual assault or stalking, with written verification.",
+           "RSA 540:11-b", RENT_READ),
+     claim("Except where the tenant owes a week's rent or more, a defense that the possessory "
+           "action retaliates for reporting a violation, initiating an action under RSA 540-A, "
+           "or meeting with other tenants.", "RSA 540:13-a", RENT_READ),
+     claim("A rebuttable presumption of retaliation when a possessory action, an increase in "
+           "rent or a substantial alteration in the terms is instituted within 6 months after "
+           "the protected act.", "RSA 540:13-b", RENT_READ),
+     claim("On a successful defense of retaliation, damages of not more than 3 months' rent.",
+           "RSA 540:14", RENT_READ),
+     claim("For residential tenancies, 30 days' notice; 7 days' notice for nonpayment, "
+           "substantial damage, behavior affecting health or safety; the eviction notice "
+           "states the reason with specificity, and for nonpayment the right to avoid eviction "
+           "by payment.", "RSA 540:3", RENT_READ),
+     claim("A possessory action for nonpayment is dismissed if the tenant pays, before the "
+           "hearing, all rent due, other lawful charges, $15 liquidated damages and the filing "
+           "fee and service charges; not more than 3 times within a 12-month period.",
+           "RSA 540:9", RENT_READ),
+     claim("The tenant files an appearance no later than the return day on the writ and an "
+           "answer not more than 5 days after the return date; a notice of intent to appeal "
+           "within 7 days of the notice of decision, paying rent as it comes due.",
+           "RSA 540:13", RENT_READ),
+     claim("After judgment, the court may order that the tenant not be dispossessed until a "
+           "date not later than 60 days, the tenant paying the weekly former rent in advance.",
+           "RSA 540:13-c", RENT_READ)]
+    + help_claims("legal_aid"),
+    more=civics.faq(
+        ("Do the deposit rules apply to every landlord?",
+         "<p>The deposit rules apply to most landlords. They do not apply to someone who rents "
+         "out a single-family home and owns no other rental property, or who rents units in a "
+         "building of 5 units or fewer that they live in themselves, unless the tenant is 60 "
+         "or older.</p>"),
+        ("Do I get interest on my deposit?",
+         "<p><b>It stays your money,</b> held in trust. If it is held for a year or longer, "
+         "the landlord pays you the interest it earned.</p>"),
+        ("Can I hold back rent until repairs are made?",
+         "<p>If you are evicted for not paying rent, the court may refuse the eviction when "
+         "the home has a serious health or safety violation that you reported in writing "
+         "while you were not behind on rent, and the landlord did not fix it within 14 days. "
+         "The court may require you to pay the rent into court meanwhile. Holding back rent is "
+         "risky: talk to legal aid before you do.</p>"),
+        ("How do I end a month-to-month tenancy myself?",
+         "<p><b>Moving out yourself.</b> To end a month-to-month tenancy, give 30 days&rsquo; "
+         "written notice. A victim of domestic violence, sexual assault or stalking can end a "
+         "lease early, with verification, and may not be evicted for being a victim.</p>"),
+        ("What happens to things I leave behind?",
+         "<p>After you leave, your landlord must store anything you left behind, with "
+         "reasonable care, for 7 days, and let you take it without paying rent or storage "
+         "fees.</p>"))
+         + "<h2>Who Can Help</h2>"
+         "<p>Get help as early as you can, before a deadline passes. Your town or city&rsquo;s "
+         "code enforcement or health officer handles unsafe conditions. For an eviction, a "
+         "lockout or a deposit:</p>"
+         + helps("legal_aid"),
+    see=[("Renting out a home: a landlord's rights and duties", "/guides/landlord-duties.html"),
+         ("How to get help if you are homeless or may lose your home",
+          "/guides/homelessness-help.html"),
+         ("How to get help after domestic violence, sexual assault or stalking",
+          "/guides/domestic-violence-help.html")],
+    figures=[fig("$100", "RSA 540-A:6", "one month's rent or $100"),
+             fig("30 days", "RSA 540-A:7", "within 30 days from the termination of the tenancy"),
+             fig("10 days", "RSA 540-A:4", "within 10 days of service of process"),
+             fig("5 units", "RSA 540-A:5", "building of 5 units or less"),
+             fig("5 days", "RSA 540-A:6", "within 5 days of occupancy"),
+             fig("7 days", "RSA 540-A:3", "within 7 days of receiving notice"),
+             fig("14 days", "RSA 540:13-d", "within 14 days of the receipt"),
+             fig("12 months", "RSA 540:2", "original term of which is 12 months or longer"),
+             fig("60 days", "RSA 540:2", "at least 60 days in advance"),
+             fig("4 units", "RSA 540:1-a", "containing a total of 4 dwelling units or fewer"),
+             fig("6 months", "RSA 540:13-b", "within 6 months after"),
+             fig("3 months", "RSA 540:14", "not more than 3 months' rent"),
+             fig("$15", "RSA 540:9", "$15 liquidated damages"),
+             fig("12-month", "RSA 540:9", "within a 12-month period")])
+
+LANDLORD = guide(
+    "landlord-duties", "Renting Out a Home: A Landlord's Rights and Duties",
+    "What New Hampshire law asks of a landlord: security deposits, entering the home, repairs "
+    "and minimum standards, ending a tenancy, and the only lawful way to evict, through the "
+    "district court.",
+    "A New Hampshire landlord ends a tenancy with a written eviction notice and, if the tenant "
+    "stays, a case in the circuit court&rsquo;s district division: changing the locks, shutting "
+    "off a utility or removing a tenant&rsquo;s belongings is against the law. Most landlords "
+    "may hold a security deposit of no more than one month&rsquo;s rent or $100, whichever is "
+    "more, and must return it within 30 days of the end of the tenancy, with an itemized list "
+    "of any deductions. You must keep the home free of the hazards the law lists, and you may "
+    "enter without the tenant&rsquo;s consent only for emergency repairs or with a court "
+    "order.",
+    [ask("What do you need to do?",
+         [("Take a security deposit",
+           "At most one month&rsquo;s rent or $100, whichever is more, with a receipt."),
+          ("Get into the unit",
+           "With the tenant&rsquo;s consent, after adequate notice; without it, only for "
+           "emergency repairs or with a court order."),
+          ("End a tenancy",
+           "Serve a written eviction notice; if the tenant stays, file a case in the district "
+           "court."),
+          ("Close out after a tenant leaves",
+           "Return the deposit within 30 days, and store belongings left behind for 7 days.")]),
+     box("Never lock a tenant out, shut off a utility or remove belongings: only the court and "
+         "the sheriff can.")],
+    [step("Before you rent",
+          "<p><b>Know which rules apply to your property.</b> Most residential rentals are "
+          "&ldquo;restricted property&rdquo;, where you need a reason the law lists to end a "
+          "tenancy. A single-family house is not, if you own no more than 3, and neither is a "
+          "unit in a building of 4 units or fewer that you live in.</p>",
+          law=["RSA 540:1-a", "RSA 540:1-b", "RSA 540-A:3"]),
+     step("Security deposits",
+          "<p>These rules apply unless you rent out a single-family home and own no other "
+          "rental property, or rent units in a building of 5 units or fewer that you live in, "
+          "and even then they apply to a tenant 60 or older.</p>"
+          "<ul><li><b>The limit:</b> one month&rsquo;s rent or $100, whichever is more.</li>"
+          "<li><b>A signed receipt</b> stating the amount and where it is held, unless the "
+          "tenant paid by check, and written notice that the tenant may list conditions needing "
+          "repair within 5 days of moving in.</li>"
+          "<li><b>Hold it in trust,</b> apart from your own money, in a New Hampshire bank or "
+          "credit union, or post a bond with the town or city clerk. Held a year or longer, it "
+          "earns the tenant interest.</li>"
+          "<li><b>Return it within 30 days</b> of the end of the tenancy, with any interest. "
+          "You may deduct the cost of damage beyond reasonable wear and tear, unpaid rent and "
+          "other lawful charges, with a written, itemized list and evidence of the repairs, "
+          "such as receipts or estimates.</li></ul>"
+          "<p>A landlord who does not return a deposit as required can owe the tenant twice "
+          "the amount.</p>",
+          law=["RSA 540-A:5", "RSA 540-A:6", "RSA 540-A:7", "RSA 540-A:8"]),
+     step("Entering the home, repairs and minimum standards",
+          "<p><b>Entry.</b> Enter only with the tenant&rsquo;s consent, given at a reasonable "
+          "time after notice that is adequate under the circumstances. Without consent, you "
+          "may enter only to make emergency repairs, or with a court order; if a tenant "
+          "refuses reasonable access, you can ask the district court for one.</p>"
+          "<p><b>Minimum standards.</b> Where the town has no housing code of its own, the law "
+          "forbids keeping a rental with an untreated insect, rodent or bed bug infestation, "
+          "defective plumbing or sewage back-up, electrical hazards, a leaking roof or walls, "
+          "falling plaster, large holes, unsound porches, stairs or railings, garbage piling "
+          "up in common areas, too little water or broken hot water equipment, gas leaks, or "
+          "heat that cannot keep every room at an average of at least 65 degrees. Towns with a "
+          "housing code enforce their own.</p>"
+          "<p>Investigate a tenant&rsquo;s report of bed bugs or other pests within 7 days, and "
+          "take reasonable steps to remove them. A tenant who reported a serious violation in "
+          "writing, and was not behind on rent, has a defense to an eviction for nonpayment if "
+          "you did not fix it within 14 days.</p>",
+          law=["RSA 540-A:3", "RSA 540-A:4", "RSA 48-A:14", "RSA 540:13-d"]),
+     step("Ending a tenancy",
+          "<p><b>The reasons.</b> For restricted property: unpaid rent, substantial damage, "
+          "breaking a material term of the lease, behavior that threatens others&rsquo; health "
+          "or safety, or other good cause, which can be a legitimate business or economic "
+          "reason. If the cause is the tenant&rsquo;s own conduct, first give a written warning "
+          "that it would be grounds for eviction. A lease of 12 months or longer can end at its "
+          "term if you give written notice at least 60 days before. A tenant who refuses a rent "
+          "increase can be evicted for good cause only if you gave written notice of the amount "
+          "and the date at least 30 days ahead.</p>"
+          "<p><b>The notice.</b> An eviction notice is in writing and states the reason "
+          "specifically. It allows 7 days for unpaid rent, substantial damage or a threat to "
+          "health or safety, and 30 days for other reasons. For unpaid rent, serve a demand "
+          "for rent too, and the notice must tell the tenant of the right to pay and stay. "
+          "Anyone can serve them, in hand or at the tenant&rsquo;s home; the court has the "
+          "forms.</p>"
+          "<p><b>What you may not do.</b> You may not evict to retaliate against a tenant who "
+          "reported a code violation, went to court under the tenant protection law, or met "
+          "with other tenants, unless the tenant owes a week&rsquo;s rent or more; nor evict a "
+          "tenant for being a victim of domestic violence, sexual assault or stalking.</p>",
+          law=["RSA 540:2", "RSA 540:3", "RSA 540:5", "RSA 540:13-a", "RSA 540:13-b"]),
+     step("Going to court",
+          "<p>If the tenant has not left when the notice runs out, file a Landlord/Tenant Writ "
+          "in the circuit court&rsquo;s district division. The sheriff serves it, and it is "
+          "returnable 7 days after service. You may claim unpaid rent in the same case, up to "
+          "$1,500, and sue separately for more. Before any case, the court&rsquo;s free Eviction Diversion Program offers a "
+          "mediator.</p>"
+          "<p>In a case only for unpaid rent, the tenant can end it by paying, before the "
+          "hearing, the rent owed, other lawful charges, $15 and your filing and service costs, "
+          "up to 3 times in a 12-month period. You may accept back rent during the case without "
+          "creating a new tenancy, if you tell the tenant in writing that you are going ahead "
+          "with the eviction.</p>"
+          "<p>If you win, the court issues a writ of possession, and the sheriff, not you, "
+          "removes the tenant. The court may give the tenant up to 60 days, with rent paid "
+          "weekly.</p>",
+          actions=[("Landlord and tenant cases (Judicial Branch)", COURTS_LLT)],
+          law=["RSA 540:9", "RSA 540:13", "RSA 540:13-c", "RSA 540:14", "RSA 540-A:4"]),
+     step("After the tenant leaves",
+          "<p>Return the security deposit, with any interest and an itemized list of "
+          "deductions, within 30 days. If the tenant gave you no new address, you are not "
+          "liable for missing the deadline, and a deposit unclaimed after 6 months becomes "
+          "yours.</p>"
+          "<p>Store anything the tenant left behind, with reasonable care, for 7 days after "
+          "they leave, and let them take it back without paying rent or storage fees. After "
+          "that, you may dispose of it.</p>",
+          law=["RSA 540-A:7", "RSA 540-A:8", "RSA 540-A:3"])],
+    [("Landlord/Tenant, District Division (Judicial Branch)", COURTS_LLT),
+     ("Actions Against Tenants, RSA 540", "/laws/540"),
+     ("Prohibited Practices and Security Deposits, RSA 540-A", "/laws/540-a"),
+     ("Housing Standards, RSA 48-A", "/laws/48-a")],
+    ["540", "540-A", "48-A"],
+    [# The Judicial Branch's page, as the homelessness guide read it on 24
+     # October 2026.
+     claim("The Eviction Diversion Program: free mediation before a court case, voluntary, no "
+           "rights given up; a tenant files an Appearance by the return date on the "
+           "Landlord/Tenant Writ to be heard; the return date is not the hearing; trial within "
+           "about 10 days of an Appearance; failing to file or appear brings a Notice of "
+           "Default, and the Writ of Possession does not issue for at least 5 business days; "
+           "after judgment for the landlord, 7 days to file a Notice of Intent to Appeal, with "
+           "weekly rent paid during the appeal.", COURTS_LLT, HL_READ),
+     # The statutes, as this site's Laws pages print them, read 25 October 2026.
+     claim("Nonrestricted property: single-family houses whose owner owns not more than 3, "
+           "and units in an owner-occupied building of 4 dwelling units or fewer; restricted "
+           "property is all other residential rental property.", "RSA 540:1-a", RENT_READ),
+     claim("An owner of restricted property files with the town or city clerk, within 30 days "
+           "of becoming the owner, the name, address and telephone number of a person within "
+           "the state authorized to accept service of process; it may be the owner.",
+           "RSA 540:1-b", RENT_READ),
+     claim("No utility interruption (I), denial of access to the premises (II) or to the "
+           "tenant's property (III) other than through proper judicial process; entry only "
+           "with prior consent, for emergency repairs (IV), or with a court order (V-d); a "
+           "tenant may not refuse access at a reasonable time after adequate notice (V); "
+           "investigate a reported infestation within 7 days and take reasonable measures "
+           "(V-a); store a vacated tenant's property with reasonable care for 7 days, then "
+           "dispose of it (VII); disclose an application fee in writing and return the excess "
+           "within 30 days (VIII); allow at least one non-electronic form of payment (X).",
+           "RSA 540-A:3", RENT_READ),
+     claim("A petition in the district court to enforce RSA 540-A:2 and 540-A:3; the civil "
+           "remedies of RSA 358-A:10 with costs and reasonable attorney's fees; landlord "
+           "damages for an unlawful lock-out where the premises have been re-let not less "
+           "than $3,000.", "RSA 540-A:4", RENT_READ),
+     claim("A landlord for this subdivision excludes a person who rents a single-family "
+           "residence and owns no other rental property, or rents units in an owner-occupied "
+           "building of 5 units or less, except for a unit occupied by a person 60 years of "
+           "age or older.", "RSA 540-A:5", RENT_READ),
+     claim("No security deposit in excess of one month's rent or $100, whichever is greater; a "
+           "signed receipt stating the amount and where held, not required when paid by check; "
+           "notice that conditions needing repair be given in writing within 5 days of "
+           "occupancy; deposits held in trust, not mingled with the landlord's money, in a New "
+           "Hampshire bank, savings and loan or credit union, or a bond posted with the town or "
+           "city clerk; turned over on a sale with notice by registered or certified mail; "
+           "interest on a deposit held one year or longer.", "RSA 540-A:6", RENT_READ),
+     claim("Return the security deposit and interest within 30 days from the termination of the "
+           "tenancy; deduct damages excluding reasonable wear and tear, with a written, "
+           "itemized list and satisfactory evidence of repair such as receipts and estimates; "
+           "deduct unpaid rent and lawful charges with an itemized list.", "RSA 540-A:7",
+           RENT_READ),
+     claim("A landlord who does not comply with RSA 540-A:6, IV or 540-A:7 is liable for twice "
+           "the deposit plus interest, less lawful charges; not liable if the tenant failed to "
+           "give a new address; unclaimed deposits after 6 months become the landlord's.",
+           "RSA 540-A:8", RENT_READ),
+     claim("In a municipality without its own ordinance, no landlord shall maintain premises "
+           "infested by insects, rodents or bed bugs without an inspection program; with "
+           "defective plumbing or sewage back-up; electrical dangers; leaking roof or walls; "
+           "falling plaster; substantial holes; unsound porches, stairs or railings; garbage "
+           "in common areas; inadequate water or hot water equipment; gas leaks; or heating "
+           "not capable of a temperature of at least an average of 65 degrees.",
+           "RSA 48-A:14", RENT_READ),
+     claim("No possessory action for nonpayment if the premises are in substantial violation "
+           "of RSA 48-A or local codes materially affecting habitability, the tenant gave notice "
+           "while not in arrears, and the landlord failed to correct within 14 days.",
+           "RSA 540:13-d", RENT_READ),
+     claim("Restricted property may be terminated only for nonpayment, substantial damage, "
+           "failure to comply with a material term, behavior adversely affecting health or "
+           "safety, other good cause, and the other listed reasons; written notice before an "
+           "eviction for other good cause based on the tenant's conduct; a lease of 12 months "
+           "or longer at its expiration with written notice at least 60 days in advance; "
+           "refusal of a rent increase is good cause if written notice came at least 30 days "
+           "prior; other good cause includes any legitimate business or economic reason; no "
+           "termination solely because a tenant is a victim of domestic violence, sexual "
+           "assault or stalking.", "RSA 540:2", RENT_READ),
+     claim("For residential tenancies, 30 days' notice; 7 days' notice for nonpayment, "
+           "substantial damage, behavior affecting health or safety; the reason stated with "
+           "specificity; for nonpayment, notice of the right to avoid eviction by payment.",
+           "RSA 540:3", RENT_READ),
+     claim("A demand for rent or eviction notice may be served by any person, personally or at "
+           "the last and usual place of abode; the district court provides forms.",
+           "RSA 540:5", RENT_READ),
+     claim("Except where the tenant owes a week's rent or more, a defense that the possessory "
+           "action retaliates for reporting a violation, initiating an action under RSA 540-A, "
+           "or meeting with other tenants.", "RSA 540:13-a", RENT_READ),
+     claim("A rebuttable presumption of retaliation when a possessory action, an increase in "
+           "rent or a substantial alteration in the terms is instituted within 6 months after "
+           "the protected act.", "RSA 540:13-b", RENT_READ),
+     claim("A possessory action for nonpayment is dismissed if the tenant pays, before the "
+           "hearing, all rent due, other lawful charges, $15 liquidated damages and the filing "
+           "fee and service charges; not more than 3 times within a 12-month period.",
+           "RSA 540:9", RENT_READ),
+     claim("The writ is returnable 7 days from service by the sheriff; a claim for unpaid rent, "
+           "a money judgment limited to a maximum of $1,500; accepting the arrearage during "
+           "the action without creating a new tenancy, with written notice of the intent to "
+           "proceed.", "RSA 540:13", RENT_READ),
+     claim("After judgment, the court may order that the tenant not be dispossessed until a "
+           "date not later than 60 days, the tenant paying the weekly former rent in advance.",
+           "RSA 540:13-c", RENT_READ),
+     claim("A writ of possession authorizes the sheriff to remove the defendant from the "
+           "premises.", "RSA 540:14", RENT_READ)]
+    + help_claims("lawyer"),
+    more=civics.faq(
+        ("Do I need someone to accept court papers for me?",
+         "<p>If you own restricted property, file a statement with the town or city clerk, "
+         "within 30 days of becoming the owner, naming a person in New Hampshire who can "
+         "accept court papers for you; it may be you.</p>"),
+        ("Can I charge an application fee, or require rent online?",
+         "<p>Before you charge an application fee, tell the applicant in writing how much it "
+         "is and whether you require a background or credit check. If you do not rent to "
+         "them, return whatever is beyond the actual cost of those checks and reasonable "
+         "costs within 30 days. You may not require rent to be paid only electronically: "
+         "accept at least one other way.</p>"),
+        ("What if I sell the property?",
+         "<p><b>If you sell the property,</b> turn the deposits over to the buyer and tell "
+         "each tenant by registered or certified mail.</p>"),
+        ("What does a lockout or a utility shut-off cost a landlord?",
+         "<p>A lockout, a utility shut-off or removing a tenant&rsquo;s things instead of "
+         "going to court can cost you the tenant&rsquo;s damages, costs and attorney&rsquo;s "
+         "fees, and no less than $3,000 if you have already re-let the home.</p>"))
+         + "<h2>Who Can Help</h2>"
+         "<p>The district court&rsquo;s clerks have the forms for a demand for rent, an "
+         "eviction notice and a Landlord/Tenant Writ, but cannot give legal advice. For advice "
+         "about your own situation, talk to a lawyer:</p>"
+         + helps("lawyer"),
+    see=[("Your rights as a tenant", "/guides/tenant-rights.html"),
+         ("How to appeal your property tax assessment", "/guides/property-tax-abatement.html")],
+    figures=[fig("$100", "RSA 540-A:6", "one month's rent or $100"),
+             fig("30 days", "RSA 540-A:7", "within 30 days from the termination of the tenancy"),
+             fig("7 days", "RSA 540-A:3", "for a period of 7 days"),
+             fig("4 units", "RSA 540:1-a", "containing a total of 4 dwelling units or fewer"),
+             fig("5 units", "RSA 540-A:5", "building of 5 units or less"),
+             fig("5 days", "RSA 540-A:6", "within 5 days of occupancy"),
+             fig("14 days", "RSA 540:13-d", "within 14 days of the receipt"),
+             fig("12 months", "RSA 540:2", "original term of which is 12 months or longer"),
+             fig("60 days", "RSA 540:2", "at least 60 days in advance"),
+             fig("$1,500", "RSA 540:13", "a maximum of $1,500"),
+             fig("$15", "RSA 540:9", "$15 liquidated damages"),
+             fig("12-month", "RSA 540:9", "within a 12-month period"),
+             fig("$3,000", "RSA 540-A:4", "shall not be less than $3,000"),
+             fig("6 months", "RSA 540-A:8", "after 6 months from the termination")])
+
+GUIDES += [TENANT, LANDLORD]
 
 
 # ---------------------------------------------------------------------------
@@ -3902,8 +5514,7 @@ WEATHER = guide(
           "and other emergencies by phone call, text message, email or app. Create an account to "
           "choose how you are reached; to get text messages, add your mobile number as a text "
           "(SMS) contact. Or download the Genasys Protect app, which shows alerts where you are "
-          "without an account. Anyone who lives, works, owns property or often visits where NH "
-          "Alerts is used can sign up, and you can add the places your family lives.</p>"
+          "without an account.</p>"
           "<p><b>ReadyNH.gov</b> is the state&rsquo;s official source of information during "
           "emergencies, with what to do before, during and after floods, extreme cold and heat, "
           "power outages, winter storms and other disasters.</p>"
@@ -3912,9 +5523,7 @@ WEATHER = guide(
           "difficult driving.</li>"
           "<li><b>Watch: be prepared.</b> A significant storm is possible.</li>"
           "<li><b>Warning: take action.</b> Dangerous weather is coming or has begun. Under a "
-          "winter storm warning, find shelter right away and delay travel.</li></ul>"
-          "<p>A NOAA Weather Radio and the Emergency Alert System on radio and TV give alerts "
-          "too.</p>",
+          "winter storm warning, find shelter right away and delay travel.</li></ul>",
           actions=[("Sign up for NH Alerts", NH_ALERTS), ("ReadyNH", READYNH),
                    ("Watches and warnings (National Weather Service)", NWS_WINTER)]),
      step("Keep supplies at home and in the car",
@@ -3936,9 +5545,7 @@ WEATHER = guide(
           "generator, camp stove or grill only outdoors, at least 20 feet from windows, doors and "
           "attached garages. Never heat your home with a gas stove or oven. Have carbon monoxide "
           "detectors with battery backup on every level of your home.</li>"
-          "<li><b>Keep the refrigerator and freezer closed.</b> A refrigerator keeps food cold "
-          "for about 4 hours, and a full freezer for about 48 hours. Throw out food that has "
-          "been at 40 degrees or warmer for 2 hours or more: when in doubt, throw it out.</li>"
+          "<li><b>Keep the refrigerator and freezer closed</b>, so food stays cold longer.</li>"
           "<li><b>Plan ahead for medicines that need refrigeration</b> and for medical devices "
           "that need power.</li>"
           "<li><b>If it is very cold or very hot,</b> go to a place in your community with power. "
@@ -3949,12 +5556,7 @@ WEATHER = guide(
           "inside it.</li>"
           "<li>Avoid overexertion when shoveling or walking in snow, which can bring on a heart "
           "attack.</li>"
-          "<li><b>Frostbite</b> causes loss of feeling and color in the face, fingers and toes. "
-          "Go to a warm room and soak in warm water; do not massage the skin or use a heating "
-          "pad.</li>"
-          "<li><b>Hypothermia</b>, a body temperature below 95 degrees, is an emergency. Go to a "
-          "warm room, warm the center of the body first, and keep dry and wrapped in warm "
-          "blankets, including the head and neck.</li></ul>",
+          "<li>Watch for frostbite and hypothermia: the questions below say what to do.</li></ul>",
           actions=[("Winter weather (Ready.gov)", READY_WINTER)]),
      step("If you need a warm place or other help",
           "<p>Call <b>2-1-1</b>, at any hour, for shelters, warming places, utility help and "
@@ -4017,7 +5619,26 @@ WEATHER = guide(
      ours("The heating guide says fuel assistance can arrange an emergency fuel delivery "
           "through the community action agency.", "/guides/heating-and-electric-help.html",
           WX_READ)],
-    more="<h2>Who Can Help</h2>"
+    more=civics.faq(
+        ("Who can sign up for NH Alerts?",
+         "<p>Anyone who lives, works, owns property or often visits where NH Alerts is used can "
+         "sign up, and you can add the places your family lives.</p>"),
+        ("Are there other ways to get alerts?",
+         "<p>A NOAA Weather Radio and the Emergency Alert System on radio and TV give alerts "
+         "too.</p>"),
+        ("How long does food stay safe in a power outage?",
+         "<p>A refrigerator keeps food cold for about 4 hours, and a full freezer for about 48 "
+         "hours. Throw out food that has been at 40 degrees or warmer for 2 hours or more: when "
+         "in doubt, throw it out.</p>"),
+        ("How do I recognize and treat frostbite?",
+         "<p><b>Frostbite</b> causes loss of feeling and color in the face, fingers and toes. Go "
+         "to a warm room and soak in warm water; do not massage the skin or use a heating "
+         "pad.</p>"),
+        ("What is hypothermia, and what should I do?",
+         "<p><b>Hypothermia</b>, a body temperature below 95 degrees, is an emergency. Go to a "
+         "warm room, warm the center of the body first, and keep dry and wrapped in warm "
+         "blankets, including the head and neck.</p>"))
+    + "<h2>Who Can Help</h2>"
          "<p>2-1-1 New Hampshire, at any hour, for shelters, warming places and other help near "
          "you, and your town or city for local warming centers and storm information. In an "
          "emergency, call 911.</p>",
@@ -4028,6 +5649,517 @@ WEATHER = guide(
              fig("2 hours", READY_POWER, "2 hours or more")])
 
 GUIDES += [WEATHER]
+
+
+# ---------------------------------------------------------------------------
+# SCAMS AND CONSUMER COMPLAINTS (the person, 25 October 2026: "Write all
+# three know your rights guides too", of "scams and consumer complaints").
+# What a buyer may do rests on the law, read on 25 October 2026 as the Laws
+# pages print it: the Consumer Protection Act (RSA 358-A) for what is unfair
+# or deceptive, who enforces it and what a court may award; the home
+# solicitation sale rules (RSA 361-B) for cancelling a sale made away from a
+# store; and the Prizes and Gifts Act (RSA 358-O) for the "you have won"
+# letter or call. The Attorney General's Consumer Protection and Antitrust
+# Bureau's pages refuse this machine; their addresses come from a web search
+# and their claims wait for the person's printouts. The FTC's consumer pages
+# answer this machine with an empty page, so the guide does not cite them.
+# ---------------------------------------------------------------------------
+CP_READ = "2026-10-25"
+CP_AG_READ = "2026-10-26"            # the person's printouts of doj.nh.gov
+AG_CPB = "https://www.doj.nh.gov/bureaus/consumer-protection-antitrust-bureau"
+AG_COMPLAINT = "https://www.doj.nh.gov/consumer/complaints"
+
+CONSUMER = guide(
+    "consumer-rights", "Scams and Consumer Complaints: Your Rights as a Buyer",
+    "How to spot a scam, how to cancel a sale made at your door, your rights with gift "
+    "certificates, and how to complain to the Attorney General or take a business to court "
+    "in New Hampshire.",
+    "New Hampshire&rsquo;s Consumer Protection Act forbids unfair and deceptive business "
+    "practices, and the Attorney General&rsquo;s Consumer Protection and Antitrust Bureau "
+    "enforces it. If a seller came to your door, you can usually cancel the sale until midnight "
+    "of the third business day after it. A real prize never costs you a fee. If a business "
+    "cheated you, you can complain to the Bureau, and you can take the business to court "
+    "yourself.",
+    [ask("What happened?",
+         [("You bought something from a seller at your door",
+           "Cancel in writing by midnight of the third business day."),
+          ("A business misled or cheated you",
+           "Complain to the Attorney General&rsquo;s Consumer Protection Bureau."),
+          ("A call or letter says you won a prize, for a fee",
+           "A prize the law allows costs you nothing. Do not pay.")]),
+     box("You can also take the business to court yourself, within 3 years of learning what "
+         "it did.")],
+    [step("Know what the law forbids",
+          "<p>The Consumer Protection Act makes it unlawful for a business to use any unfair or "
+          "deceptive practice. Among the examples the law lists:</p>"
+          "<ul><li>claiming a product or service has an approval, a certification, a quality or "
+          "a benefit it does not have, or that the business is connected with someone it is "
+          "not;</li>"
+          "<li>selling used, reconditioned or secondhand goods as new;</li>"
+          "<li>advertising something with no intent to sell it as advertised;</li>"
+          "<li>false or misleading claims about a sale price or a price reduction.</li></ul>",
+          law=["RSA 358-A:2", "RSA 361-B:2-a"]),
+     step("A prize should never cost you anything",
+          "<p>If a seller tells you that you have won something, with words such as "
+          "&ldquo;Congratulations&rdquo; or &ldquo;You have won&rdquo;, the law requires the "
+          "prize to be yours without any obligation, delivered at no cost to you within 10 days. "
+          "A &ldquo;prize&rdquo; that asks you to pay a handling, registration, redemption or "
+          "delivery fee, or to buy something first, is not one the law allows. Do not pay, and "
+          "report it (step 5).</p>",
+          law=["RSA 358-O:3", "RSA 358-O:4"]),
+     step("Cancel a sale made at your door",
+          "<p>A sale of goods or services priced at $150 or more, made anywhere other than the "
+          "seller&rsquo;s permanent place of business, such as at your home, is a <b>home "
+          "solicitation sale</b>. You may cancel it until <b>midnight of the third business "
+          "day</b> after the sale. The seller must give you a receipt or contract that says so, "
+          "with its name and address.</p>"
+          "<p>To cancel, mail the seller a written notice, preferably by certified or registered "
+          "mail, or return the goods in person within that time. The seller must then return, "
+          "within 15 days, everything you paid, any trade-in, and any note you signed. If the "
+          "seller had already done work that changed your property, you get all your money "
+          "back, or you may ask instead for the property to be put back as it was. The seller "
+          "must come for its goods or pay to have them returned, and once it has refunded you, "
+          "you must let it have them back within the same 15 days. If it makes no effort to get "
+          "them back within 90 days of the sale, they are yours.</p>",
+          law=["RSA 361-B:1", "RSA 361-B:2", "RSA 361-B:3"]),
+     step("Gift certificates do not expire",
+          "<p>A gift certificate with a face value of $250 or less may not carry an expiration "
+          "date, and no gift certificate may lose value to a dormancy fee or any other service "
+          "charge. Season passes are not covered.</p>",
+          law=["RSA 358-A:2"]),
+     step("Complain to the Attorney General",
+          "<p>The Attorney General&rsquo;s <b>Consumer Protection and Antitrust Bureau</b> "
+          "enforces the Consumer Protection Act. It can ask a court to stop a business&rsquo;s "
+          "unlawful practice and to order money or property returned to the people it harmed.</p>"
+          "<p>A complaint is made in writing, on the Bureau&rsquo;s consumer complaint form: "
+          "online, after you create an account with the State for filing forms, or on the "
+          "paper form, mailed or emailed. Give as much detail as you can, with every paper that "
+          "bears on it, such as a car dealer&rsquo;s paperwork. An attorney reviews it and may "
+          "send it to the business to answer in writing. It is not a formal legal process, it "
+          "can take time, and it does not guarantee an answer or a resolution; the Bureau "
+          "cannot represent you or give you legal advice. If you are not satisfied, consider a "
+          "private lawyer or small claims court.</p>",
+          actions=[("File a consumer complaint (Attorney General)", AG_COMPLAINT)],
+          law=["RSA 358-A:4", "RSA 358-A:3"]),
+     step("Take the business to court",
+          "<p>You can sue a business that used an unfair or deceptive practice against you. If "
+          "you win, the court awards your actual losses or $1,000, whichever is greater, and "
+          "two to three times that if the business knew it was breaking the law, plus your court "
+          "costs and reasonable attorney&rsquo;s fees. An agreement that gives up this right does "
+          "not hold. The law does not reach a transaction more than 3 years before you knew, or should have "
+          "known, what the business did.</p>"
+          "<p>A lawyer can tell you whether you have a case (below).</p>",
+          law=["RSA 358-A:10", "RSA 358-A:3"])],
+    [("Consumer Protection and Antitrust Bureau (Attorney General)", AG_CPB),
+     ("File a Consumer Complaint (Attorney General)", AG_COMPLAINT),
+     ("Regulation of Business Practices for Consumer Protection, RSA 358-A", "/laws/358-a"),
+     ("Prizes and Gifts Act, RSA 358-O", "/laws/358-o"),
+     ("Retail Selling, RSA 361-B", "/laws/361-b")],
+    ["358-A", "358-O", "361-B"],
+    [# The statutes, as the Laws pages print them, read on 25 October 2026.
+     claim("Unlawful: any unfair or deceptive act or practice in trade or commerce, including "
+           "representing that goods or services have sponsorship, approval, characteristics or "
+           "benefits they do not have, or an affiliation the person does not have; representing "
+           "goods as new if deteriorated, reconditioned, used or secondhand; advertising with "
+           "intent not to sell as advertised; false or misleading statements of fact concerning "
+           "price reductions; gift certificates having a face value of $250 or less with "
+           "expiration dates; dormancy fees or other service charges reducing a gift "
+           "certificate; not applying to season passes.", "RSA 358-A:2", CP_READ),
+     claim("A seller stating a post office box, a mail-receiving street address or an "
+           "answering-service number in its advertising must disclose its legal name, the "
+           "street address from which business actually is conducted, and a telephone number "
+           "for customer inquiries and complaints; except retail premises open to the public.",
+           "RSA 361-B:2-a", CP_READ),
+     claim("No person shall represent that another has won anything of value unless it is "
+           "given without obligation and delivered at no expense to the recipient within 10 "
+           "days; \"Congratulations\" or \"You have won\" is such a representation; a handling "
+           "charge includes promotional, redemption, registration fees or delivery costs.",
+           "RSA 358-O:3", CP_READ),
+     claim("A chance to win must disclose on whose behalf the promotion is conducted and all "
+           "material conditions; in writing, each prize's retail value, the number to be "
+           "awarded and the odds.", "RSA 358-O:4", CP_READ),
+     claim("A home solicitation sale is a sale of goods or services, priced at $150 or more, "
+           "with a solicitation and sale at any place other than the seller's permanent place "
+           "of business.", "RSA 361-B:1", CP_READ),
+     claim("The seller furnishes a receipt and contract with its name and address and the "
+           "statement that the buyer may cancel any time prior to midnight of the third "
+           "business day after the date of the transaction; cancel by written notice mailed, "
+           "preferably certified or registered, or by returning the merchandise in person; "
+           "the seller returns within 15 days of the cancellation payments, any trade-in and "
+           "any note; if work physically altered the buyer's property, a refund of all funds, "
+           "or full restoration instead; the seller calls for the merchandise or pays for its "
+           "return; after 90 days following the sale without effort to recover it, it becomes "
+           "the buyer's property; after returning all payments the seller is entitled to receive "
+           "the goods within the same 15 day period.", "RSA 361-B:2", CP_READ),
+     claim("A violation of this chapter is an unfair or deceptive act under RSA 358-A:2, "
+           "enforced by RSA 358-A's remedies.", "RSA 361-B:3", CP_READ),
+     claim("Administered and enforced by the consumer protection and antitrust bureau, "
+           "department of justice; the attorney general may seek an injunction and restitution "
+           "of money or property to any person injured.", "RSA 358-A:4", CP_READ),
+     claim("Exempt: trade or commerce subject to the bank commissioner, the insurance "
+           "commissioner or the public utilities commission; transactions entered into more "
+           "than 3 years prior to the time the plaintiff knew, or reasonably should have known, "
+           "of the conduct.", "RSA 358-A:3", CP_READ),
+     claim("Any person injured may bring an action for damages and equitable relief; recovery "
+           "of actual damages or $1,000, whichever is greater; for a willful or knowing "
+           "violation as much as 3 times, but not less than 2 times, such amount; costs and "
+           "reasonable attorney's fees; any attempted waiver of the right to these damages is "
+           "void.", "RSA 358-A:10", CP_READ),
+     # The Attorney General's pages, from the person's printouts.
+     claim("The Consumer Protection and Antitrust Bureau enforces state and federal laws that "
+           "make unfair and deceptive business practices unlawful; Consumer Complaints; "
+           "Consumer Protection Hotline; Office of the Attorney General, 1 Granite Place South, "
+           "Concord, (603) 271-3658.", AG_CPB, CP_AG_READ),
+     claim("You may file a complaint with the Consumer Protection and Antitrust Bureau; all "
+           "complaints submitted in writing using a consumer complaint form, electronically "
+           "after creating an account with the State for filing forms online, or printed and "
+           "mailed or emailed; include all supporting documents, for example a dealership's "
+           "paperwork; reviewed by an attorney, who may send it to the business for review and "
+           "response in writing; not a formal legal process; can take time; does not guarantee "
+           "a response or resolution; the Bureau cannot provide legal representation or advice; "
+           "consider speaking to a private lawyer or seeking relief in small claims court.",
+           AG_COMPLAINT, CP_AG_READ)]
+    + help_claims("lawyer"),
+    more=civics.faq(
+        ("What must a seller by mail, phone or online tell me?",
+         "<p>A business that sells by mail, by phone or online from a post office box or an "
+         "answering service must say in its advertising its legal name, the street address "
+         "it actually works from, and a phone number for complaints. A seller who will not "
+         "say who and where it is is a warning sign.</p>"),
+        ("What about contests and sweepstakes?",
+         "<p>A promotion that offers only a chance to win must say who runs it and every "
+         "condition you must meet, and, in writing, each prize&rsquo;s value, how many there "
+         "are and your odds.</p>"),
+        ("What about a bank, an insurance company or a utility?",
+         "<p>Some businesses answer to their own regulator instead: for a bank, an insurance "
+         "company or a utility, complain to the Bank Commissioner, the Insurance Commissioner "
+         "or the Public Utilities Commission.</p>"))
+         + "<h2>Who Can Help</h2>"
+         "<p>The Attorney General&rsquo;s Consumer Protection and Antitrust Bureau takes "
+         "complaints on its consumer complaint form; the Attorney General&rsquo;s office "
+         "answers at (603) 271-3658. For advice on your own case:</p>"
+         + helps("lawyer"),
+    see=[("Who to contact about an issue", "/guides/who-to-contact.html")],
+    figures=[fig("$150", "RSA 361-B:1", "priced at $150 or more"),
+             fig("15 days", "RSA 361-B:2", "within 15 days of the cancellation"),
+             fig("90 days", "RSA 361-B:2", "after 90 days following the sale"),
+             fig("10 days", "RSA 358-O:3", "within 10 days of the representation"),
+             fig("$250", "RSA 358-A:2", "a face value of $250 or less"),
+             fig("$1,000", "RSA 358-A:10", "$1,000, whichever is greater"),
+             fig("3 years", "RSA 358-A:3", "more than 3 years prior")])
+
+GUIDES += [CONSUMER]
+
+
+# ---------------------------------------------------------------------------
+# PRIVATE HEALTH INSURANCE (the person, 26 October 2026: "insurance like car
+# insurance, renters insurance, homeowner's insurance, private health
+# insurance"). The Marketplace's dates, Special Enrollment Periods, savings,
+# ways to apply, job-based coverage and a parent's plan are HealthCare.gov's,
+# whose pages answer this machine and were read on 26 October 2026; its
+# Marketplace in Your State page does not name a state without a click, so
+# the guide says how to find a state's way of applying rather than naming
+# one. A denied claim rests on the Managed Care Law (RSA 420-J: the
+# insurer's appeal, external review and expedited review), complaints on
+# the Insurance Department's consumer services program (RSA 400-A:15-e),
+# and the two FAQs on RSA 420-G:6 and RSA 415:22, all read on 26 October
+# 2026 as the Laws pages print them. The Insurance Department's pages
+# refuse this machine; their addresses come from a web search, and their
+# claims wait for the person's printouts. Medicaid and Medicare are their
+# own guides, linked rather than repeated.
+# ---------------------------------------------------------------------------
+HI_READ = "2026-10-26"
+HI_NHID_READ = None                  # the person's printouts of insurance.nh.gov
+HC_DATES = "https://www.healthcare.gov/quick-guide/dates-and-deadlines/"
+HC_SEP = "https://www.healthcare.gov/coverage-outside-open-enrollment/special-enrollment-period/"
+HC_APPLY = "https://www.healthcare.gov/apply-and-enroll/how-to-apply/"
+HC_LOWER = "https://www.healthcare.gov/lower-costs/"
+HC_JOB = "https://www.healthcare.gov/have-job-based-coverage/options/"
+HC_U26 = "https://www.healthcare.gov/young-adults/children-under-26/"
+HC_EXT = "https://www.healthcare.gov/appeal-insurance-company-decision/external-review/"
+HC_STATE = "https://www.healthcare.gov/marketplace-in-your-state/"
+NHID = "https://www.insurance.nh.gov/"
+NHID_EXT = "https://www.insurance.nh.gov/consumers/health-insurance/independent-external-review"
+NHID_APPEALS = ("https://www.insurance.nh.gov/consumers/health-insurance/"
+                "healthcare-and-long-term-care-appeals")
+
+HEALTH_INSURANCE = guide(
+    "health-insurance", "How to Get Private Health Insurance",
+    "Buying a plan through the Health Insurance Marketplace, when you can enroll, help paying "
+    "premiums, coverage through a job or a parent’s plan, and what to do if your "
+    "insurance company denies a claim in New Hampshire.",
+    "Most people get private health insurance through a job, or buy a plan through the Health "
+    "Insurance Marketplace, whose official site is HealthCare.gov. You can enroll in a "
+    "Marketplace plan during Open Enrollment, November 1 to January 15, or after a life change "
+    "such as losing other coverage, moving or having a baby, and you may get help paying your "
+    "premiums based on your income. If your insurance company denies a claim, you can appeal "
+    "to it, and then ask the New Hampshire Insurance Department for an independent external "
+    "review, which the insurance company pays for.",
+    [ask("How will you get coverage?",
+         [("Through a job",
+           "Ask the employer&rsquo;s benefits office how and when to sign up."),
+          ("On your own",
+           "Apply for a Marketplace plan, and see if you can get help paying."),
+          ("On a low income, at 65, or with a disability",
+           "Medicaid or Medicare may cover you (step 8).")]),
+     box("If your insurance company denies a claim, appeal to it first, then ask the Insurance "
+         "Department for an external review within 180 days.")],
+    [step("Know when you can sign up",
+          "<p>For a plan through the Marketplace, <b>Open Enrollment</b> runs from November 1 "
+          "to January 15. Enroll by December 15 and your coverage can start January 1; enroll "
+          "from December 16 to January 15 and it starts February 1, once you pay your first "
+          "premium. These are HealthCare.gov&rsquo;s dates. How you apply depends on whether "
+          "your state has its own Marketplace: HealthCare.gov&rsquo;s Marketplace in Your "
+          "State page shows how residents of each state apply.</p>"
+          "<p>From January 16 to October 31 you can enroll only with a <b>Special Enrollment "
+          "Period</b>, which certain life changes open. Among them, in the past 60 days:</p>"
+          "<ul><li>getting married, having a baby, adopting a child or placing a child in "
+          "foster care;</li>"
+          "<li>moving to a new ZIP code or county;</li>"
+          "<li>losing qualifying health coverage, such as a job&rsquo;s plan or a "
+          "parent&rsquo;s plan when you turn 26, or expecting to lose it in the next 60 days. "
+          "A loss of Medicaid or CHIP counts within 90 days.</li></ul>"
+          "<p>Choosing to drop coverage yourself, such as stopping your COBRA payments, does "
+          "not open one. You may be asked for documents that show the change. Medicaid and "
+          "CHIP can be applied for at any time.</p>",
+          actions=[("Dates and deadlines (HealthCare.gov)", HC_DATES),
+                   ("Special Enrollment Periods (HealthCare.gov)", HC_SEP),
+                   ("The Marketplace in your state (HealthCare.gov)", HC_STATE)]),
+     step("Apply",
+          "<p>You can apply for a Marketplace plan:</p>"
+          "<ul><li>online at HealthCare.gov, the fastest way;</li>"
+          "<li>by phone, with free help, in other languages too;</li>"
+          "<li>with a local person or organization that helps people apply;</li>"
+          "<li>through a certified enrollment partner, such as an insurance company or an "
+          "online health insurance seller;</li>"
+          "<li>on a paper application, mailed in. Eligibility results come by mail within 2 "
+          "weeks.</li></ul>",
+          actions=[("Ways to apply (HealthCare.gov)", HC_APPLY)]),
+     step("See if you can get help paying",
+          "<p>Depending on your income, you may get savings on your Marketplace premiums, or "
+          "qualify for Medicaid or CHIP instead. Savings are based on your estimate of your "
+          "income for the year you want coverage, not last year. Count yourself, your spouse "
+          "if you are married, and everyone you will claim as a tax dependent. You see the "
+          "exact prices and savings when you fill out the application.</p>"
+          "<p>If you have, or are offered, a job-based plan that is considered affordable and "
+          "meets minimum standards, you will not get savings on a Marketplace plan; most "
+          "job-based plans meet them. If you already have a Marketplace plan and get an offer "
+          "of coverage through a job, it may end your savings even if you turn the offer "
+          "down, so update your Marketplace application.</p>",
+          actions=[("Income levels and savings (HealthCare.gov)", HC_LOWER),
+                   ("If you have job-based insurance (HealthCare.gov)", HC_JOB)]),
+     step("Coverage through a job, COBRA, or a parent’s plan",
+          "<p>For a plan through your job, ask your employer&rsquo;s benefits office how and "
+          "when to sign up.</p>"
+          "<p><b>COBRA</b>, a federal law, lets you and your family keep your employer&rsquo;s "
+          "group health insurance for a limited time after an event such as losing your job or "
+          "having your hours cut. When your COBRA coverage ends, you have 60 days to enroll in a "
+          "Marketplace plan.</p>"
+          "<p>If a parent&rsquo;s plan covers dependents, you can usually be added to it and "
+          "stay on it until you turn 26, even if you are married, have a child, live away from "
+          "home or are not claimed as a tax dependent. On a parent&rsquo;s Marketplace plan, "
+          "you can stay through December 31 of the year you turn 26.</p>",
+          actions=[("Getting or staying on a parent’s plan (HealthCare.gov)", HC_U26)],
+          law=["RSA 420-G:6", "RSA 415:22"]),
+     step("Appeal a denied claim to your insurance company",
+          "<p>Every health insurance company must have a written procedure for appealing a "
+          "denied claim, with a full and fair review by someone other than the person who "
+          "denied it. You have at least 180 days after you are told of the denial to appeal, "
+          "and you may send written comments, documents and records. The company must decide "
+          "an appeal of a prior authorization or of care already given within 30 days, and an "
+          "urgent care appeal within 72 hours. You, or someone you authorize, can make the "
+          "appeal.</p>",
+          actions=[("Health insurance appeals (Insurance Department)", NHID_APPEALS)],
+          law=["RSA 420-J:5"]),
+     step("Ask the Insurance Department for an external review",
+          "<p>If the company still says no, or misses its deadline, you can ask for an "
+          "<b>independent external review</b>: send a written request to the Insurance "
+          "Commissioner within 180 days of the company&rsquo;s final denial. An independent "
+          "review organization decides. The insurance company pays for the review, it must "
+          "follow the decision, and it may not retaliate against you for asking.</p>"
+          "<p>If your doctor or other provider certifies that waiting would seriously endanger "
+          "your life or health, or your ability to regain full function, you can ask for an "
+          "<b>expedited</b> review, even while the company&rsquo;s own appeal is under way; it "
+          "is decided within 72 hours. It is not available for care already given.</p>"
+          "<p>This review is not for Medicaid, CHIP or Medicare, except Granite Advantage "
+          "coverage through a private insurer; for a self-funded employer plan run by an "
+          "administrator; or for a federal employee plan. Those have their own appeals. Nor "
+          "is it for a claim of malpractice. Your Explanation of Benefits or the "
+          "company&rsquo;s final denial names who handles your external review.</p>",
+          actions=[("Independent external review (Insurance Department)", NHID_EXT)],
+          law=["RSA 420-J:5-a", "RSA 420-J:5-c", "RSA 420-J:5-e"]),
+     step("Complain to the Insurance Department",
+          "<p>The <b>Insurance Department</b> investigates complaints about insurance companies "
+          "and agents, through a toll-free number and a complaint form. It may tell the "
+          "company about your complaint, ask it for relief for you, and meet with both of you "
+          "to settle it, but it cannot decide a claim. When you ask, it helps you through an "
+          "insurance company&rsquo;s appeal and an external review. Its Consumer Services "
+          "line is 1-800-852-3416.</p>",
+          actions=[("New Hampshire Insurance Department", NHID)],
+          law=["RSA 400-A:15-e", "RSA 420-J:5-e"]),
+     step("Where Medicaid and Medicare fit",
+          "<p><b>Medicaid</b>, a federal and state program, gives free or low-cost coverage "
+          "to some people with low incomes, families, children, pregnant women, older people "
+          "and people with disabilities; CHIP covers children and pregnant women in families "
+          "that earn too much for Medicaid. In New Hampshire you apply through the Department "
+          "of Health and Human Services. <b>Medicare</b> is the federal health program for "
+          "people 65 and older and some younger people with disabilities or kidney failure. "
+          "Each has its own guide (below).</p>")],
+    [("Dates and Deadlines (HealthCare.gov)", HC_DATES),
+     ("Special Enrollment Periods (HealthCare.gov)", HC_SEP),
+     ("Ways to Apply and Enroll (HealthCare.gov)", HC_APPLY),
+     ("Income Levels and Savings (HealthCare.gov)", HC_LOWER),
+     ("If You Have Job-Based Insurance (HealthCare.gov)", HC_JOB),
+     ("How to Get or Stay on a Parent’s Plan (HealthCare.gov)", HC_U26),
+     ("External Review (HealthCare.gov)", HC_EXT),
+     ("The Marketplace in Your State (HealthCare.gov)", HC_STATE),
+     ("Independent External Review (Insurance Department)", NHID_EXT),
+     ("Healthcare and Long Term Care Appeals (Insurance Department)", NHID_APPEALS),
+     ("New Hampshire Insurance Department", NHID),
+     ("Managed Care Law, RSA 420-J", "/laws/420-j"),
+     ("Insurance Department, RSA 400-A", "/laws/400-a"),
+     ("Portability, Availability, and Renewability of Health Coverage, RSA 420-G",
+      "/laws/420-g"),
+     ("Accident and Health Insurance, RSA 415", "/laws/415")],
+    ["420-J", "400-A", "420-G", "415"],
+    [# HealthCare.gov's pages, read on 26 October 2026.
+     claim("November 1: Open Enrollment starts; coverage can start as soon as January 1. "
+           "December 15: last day to enroll in or change plans for coverage to start January "
+           "1. January 15: Open Enrollment ends. February 1: coverage starts for those who "
+           "enroll in or change plans December 16 through January 15 and pay their first "
+           "premium. Between January 16 and October 31, only with a Special Enrollment Period. "
+           "Medicaid or CHIP at any time. Medicaid: a joint federal and state program, free or "
+           "low-cost health coverage to some low-income individuals, families, children, "
+           "pregnant women, the elderly, and people with disabilities; CHIP: children and "
+           "pregnant women in families that earn too much to qualify for Medicaid.",
+           HC_DATES, HI_READ),
+     claim("You may qualify for a Special Enrollment Period if in the past 60 days you or "
+           "anyone in your household got married; had a baby, adopted a child, or placed a "
+           "child for foster care; moved to a new ZIP code or county; lost qualifying health "
+           "coverage in the past 60 days or expects to lose coverage in the next 60 days; lost "
+           "Medicaid or CHIP coverage in the past 90 days; turned 26 and can no longer be on a "
+           "parent's plan. COBRA lets you and your family continue your employer-sponsored "
+           "group health insurance for a limited time after a qualifying life event, like "
+           "losing your job or having your work hours reduced; when your COBRA coverage ends, "
+           "you have 60 days to enroll in a Marketplace health plan; voluntarily dropping "
+           "COBRA doesn't count. You may have to submit documents. Turned down for a Special "
+           "Enrollment Period, you can appeal the decision. Medicare: a federal health program "
+           "for people 65 and older and certain younger people with disabilities and ESRD.",
+           HC_SEP, HI_READ),
+     claim("Apply online at HealthCare.gov, the fastest way; over the phone, free, non-biased "
+           "help, in other languages; local people and organizations that help you apply; a "
+           "certified enrollment partner, like an insurance company or online health insurance "
+           "seller; a paper application, with eligibility results in the mail within 2 weeks.",
+           HC_APPLY, HI_READ),
+     claim("Savings on Marketplace premiums, or Medicaid or CHIP, based on your income; savings "
+           "are based on your income estimate for the year you want coverage, not last year; "
+           "count yourself, your spouse if you're married, plus everyone you'll claim as a tax "
+           "dependent; exact plan prices and savings when you fill out a Marketplace "
+           "application.", HC_LOWER, HI_READ),
+     claim("With job-based insurance now or an offer of it, no savings on a Marketplace plan if "
+           "the job-based plan is considered affordable and meets minimum standards; most "
+           "job-based plans meet these standards; with a Marketplace plan, an offer of "
+           "job-based insurance may end your savings even if you don't accept it; update your "
+           "Marketplace application.", HC_JOB, HI_READ),
+     claim("If a parent's plan covers dependents, you usually can be added to it and stay on it "
+           "until you turn 26; on a parent's Marketplace plan, through December 31 of the year "
+           "you turn 26; on a parent's job-based plan, generally until 26 even if you got "
+           "married, have a child, live out of the home or aren't claimed as a tax dependent.",
+           HC_U26, HI_READ),
+     claim("Your insurer is required by law to accept the external reviewer's decision; a "
+           "state external review process that meets the federal standards is the one "
+           "insurers in that state follow; your Explanation of Benefits or the final denial of "
+           "the internal appeal gives the contact for the organization that will handle your "
+           "external review.", HC_EXT, HI_READ),
+     claim("How you apply depends on if your state has its own Marketplace; pick your state.",
+           HC_STATE, HI_READ),
+     # The statutes, as the Laws pages print them, read on 26 October 2026.
+     claim("Every carrier maintains a written procedure to appeal a claim denial, with a full "
+           "and fair review; the persons reviewing are not those who made the initial "
+           "determination; at least 180 days following receipt of a notification of a claim "
+           "denial to appeal; the claimant may submit written comments, documents and records; "
+           "a nonexpedited appeal of a prior authorization or post-service claim decided in no "
+           "event more than 30 days after receipt; an expedited urgent care appeal decided no "
+           "more than 72 hours after it is filed; a claimant or a representative of the "
+           "claimant may appeal.", "RSA 420-J:5", HI_READ),
+     claim("A covered person has the right to independent external review of an adverse "
+           "determination after completing internal review, or if the carrier agreed or missed "
+           "its time frames; the request in writing to the commissioner within 180 days of the "
+           "denial decision; not for Medicaid, CHIP or Medicare, except private coverage under "
+           "the granite advantage program; not for self-funded plans administered by an "
+           "administrative services organization or third-party administrator, or federal "
+           "employee benefit programs; not for malpractice.", "RSA 420-J:5-a", HI_READ),
+     claim("Expedited external review when the treating provider certifies that the standard "
+           "time frames would seriously jeopardize the life or health of the covered person or "
+           "the ability to regain maximum function; may be pursued simultaneous with internal "
+           "review; decided no more than 72 hours after it is requested; not for "
+           "determinations made on a retrospective basis.", "RSA 420-J:5-c", HI_READ),
+     claim("The health carrier pays the cost of the external review; the decision is binding on "
+           "the carrier, and on the covered person except where other remedies exist; the "
+           "carrier shall not retaliate; on request, the commissioner provides consumer "
+           "assistance with internal grievances and external review.", "RSA 420-J:5-e",
+           HI_READ),
+     claim("The commissioner maintains a program to investigate complaints against insurers, "
+           "producers and others the commissioner regulates, with a toll-free telephone number "
+           "and a standardized complaint form; may notify the insurer, request relief for the "
+           "complainant and mediate; no power to adjudicate claims.", "RSA 400-A:15-e",
+           HI_READ),
+     claim("Health carriers shall not establish rules of eligibility, including continued "
+           "eligibility, in relation to health status, medical condition, claims experience, "
+           "receipt of health care, medical history, genetic information, evidence of "
+           "insurability or disability; no rescission except for fraud or an intentional "
+           "misrepresentation of material fact.", "RSA 420-G:6", HI_READ),
+     claim("Health insurance policies cover a newly born child from the moment of birth; if a "
+           "specific premium is required, notice of the birth and payment within 31 days after "
+           "the date of birth for coverage to continue; no additional premium for the first 31 "
+           "days.", "RSA 415:22", HI_READ),
+     # The Insurance Department's pages, waiting for the person's printouts.
+     claim("Independent External Review: how to ask the Insurance Department for an external "
+           "review of a health insurance company's denial, and the request form.", NHID_EXT,
+           HI_NHID_READ),
+     claim("Healthcare and long-term care appeals: how to appeal a health insurance company's "
+           "denial, starting with its internal appeal.", NHID_APPEALS, HI_NHID_READ),
+     claim("The New Hampshire Insurance Department; Consumer Services, 1-800-852-3416, takes "
+           "questions and complaints about insurance companies and agents.", NHID,
+           HI_NHID_READ)]
+    + help_claims("nheasy", "lawyer"),
+    more=civics.faq(
+        ("Can an insurance company turn me down because of a health condition?",
+         "<p>No. New Hampshire law forbids a health insurance company to base whether you can "
+         "get or keep coverage on your health, a medical condition, your medical history, "
+         "genetic information or a disability. It may cancel your coverage only for fraud or "
+         "for lying about something important on purpose.</p>"),
+        ("Is my new baby covered?",
+         "<p>A health insurance policy covers a newborn from the moment of birth. If adding a "
+         "child costs more, the policy may require you to tell the company about the birth "
+         "and pay within 31 days after it for the coverage to continue; there is no extra "
+         "premium for those first 31 days.</p>"),
+        ("What if I am turned down for a Special Enrollment Period?",
+         "<p>You can appeal the decision. HealthCare.gov&rsquo;s Special Enrollment Periods "
+         "page explains how.</p>"),
+        ("Can someone appeal for me?",
+         "<p>Yes. Someone you authorize to act for you, such as your doctor, can make an "
+         "appeal to the insurance company or ask for an external review on your behalf.</p>"))
+    + "<h2>Who Can Help</h2>"
+         "<p>The Insurance Department&rsquo;s Consumer Services, at 1-800-852-3416, for "
+         "questions and complaints about an insurance company, and help with an appeal. For "
+         "Medicaid, or advice on your own case:</p>"
+         + helps("nheasy", "lawyer"),
+    see=[("How to apply for food or health assistance", "/guides/food-and-health-assistance.html"),
+         ("How to sign up for Medicare and Social Security, and get help with the costs",
+          "/guides/medicare-and-social-security.html"),
+         ("How to report a scam or file a consumer complaint", "/guides/consumer-rights.html")],
+    figures=[fig("180 days", "RSA 420-J:5-a", "within 180 days of the date"),
+             fig("180 days", "RSA 420-J:5", "at least 180 days following receipt"),
+             fig("30 days", "RSA 420-J:5", "more than 30 days after receipt"),
+             fig("72 hours", "RSA 420-J:5-c", "more than 72 hours after the expedited external review is requested"),
+             fig("72 hours", "RSA 420-J:5", "more than 72 hours after the appeal is filed"),
+             fig("31 days", "RSA 415:22", "within 31 days after the date of birth"),
+             fig("60 days", HC_SEP, "in the past 60 days"),
+             fig("90 days", HC_SEP, "in the past 90 days"),
+             fig("2 weeks", HC_APPLY, "within 2 weeks")])
+
+GUIDES += [HEALTH_INSURANCE]
 
 
 # ---------------------------------------------------------------------------
@@ -4072,7 +6204,7 @@ TRASH = guide(
           "station or the dump, or make sure its residents can use one elsewhere. The town "
           "sets the rules: what must be separated for recycling, how trash is collected, what "
           "it costs, and whether you must use special bags or stickers, which the town sells "
-          "at a reasonable price. A town may fine people who break its rules.</p>"
+          "at a reasonable price.</p>"
           "<p>Your town or city office, its website or the transfer station can tell you the "
           "hours, what it takes and how, including anything large.</p>",
           law=["RSA 149-M:17"]),
@@ -4084,10 +6216,7 @@ TRASH = guide(
           "<li><b>Wet-cell and lithium-ion batteries.</b></li>"
           "<li><b>Products that contain mercury</b>, such as mercury fever thermometers. Keep "
           "them separate from your trash, for recycling or hazardous waste disposal.</li>"
-          "<li><b>Leaves and yard waste.</b></li></ul>"
-          "<p>Towns and transfer stations must make information available on recycling "
-          "batteries and electronics and on where mercury products are accepted, and should "
-          "offer recycling for batteries and electronics where they can. Ask at yours.</p>",
+          "<li><b>Leaves and yard waste.</b></li></ul>",
           law=["RSA 149-M:4", "RSA 149-M:27", "RSA 149-M:51", "RSA 149-M:58"]),
      step("Hazardous products: keep them for a collection day",
           "<p>Leftover products that can catch fire, react, explode, corrode or poison, such as "
@@ -4096,13 +6225,12 @@ TRASH = guide(
           "check before putting any out with the trash.</p>"
           "<ul><li>Keep them in their original containers with the labels on, and never mix "
           "them.</li>"
-          "<li>If a container is corroding, call your fire department for instructions.</li>"
+
           "<li>Take them to a household hazardous waste collection. The Department of "
           "Environmental Services lists each town&rsquo;s contact for one, often a regional "
           "event run by a planning commission or a nearby city. If your town has no event "
           "listed, call the Department&rsquo;s Household Hazardous Waste Program at (603) "
-          "271-2047.</li>"
-          "<li>Some garages accept used motor oil for recycling.</li></ul>",
+          "271-2047.</li></ul>",
           actions=[("Collection day contacts by town (Department of Environmental Services)",
                     DES_HHW),
                    ("Household hazardous waste (EPA)", EPA_HHW)]),
@@ -4110,8 +6238,7 @@ TRASH = guide(
           "<p>You can compost food scraps from your kitchen with leaves and other yard "
           "trim. Mix &ldquo;greens&rdquo;, such as fruit and vegetable scraps, coffee "
           "grounds and grass clippings, with &ldquo;browns&rdquo;, such as dry leaves, twigs, "
-          "shredded paper and cardboard. Leave out meat, fish, bones, dairy, fats and oils, "
-          "which attract animals, and pet waste. If you have no room, look for a town or "
+          "shredded paper and cardboard. If you have no room, look for a town or "
           "community composting program that collects food scraps or takes them at a "
           "drop-off.</p>",
           actions=[("Composting at home (EPA)", EPA_COMPOST)])],
@@ -4153,7 +6280,21 @@ TRASH = guide(
            "twigs, shredded paper and cardboard; avoid meat, fish, bones, dairy, fats and oils, "
            "which can attract animals, and pet waste; a municipal or community program may "
            "collect food scraps or offer a drop-off.", EPA_COMPOST, TR_READ)],
-    more="<h2>Who Can Help</h2>"
+    more=civics.faq(
+        ("Can my town fine me for breaking its trash rules?",
+         "<p>Yes: a town may fine people who break its rules.</p>"),
+        ("Where can I recycle batteries and electronics?",
+         "<p>Towns and transfer stations must make information available on recycling "
+         "batteries and electronics and on where mercury products are accepted, and should "
+         "offer recycling for batteries and electronics where they can. Ask at yours.</p>"),
+        ("What if a hazardous product's container is corroding?",
+         "<p>Call your fire department for instructions.</p>"),
+        ("What do I do with used motor oil?",
+         "<p>Some garages accept used motor oil for recycling.</p>"),
+        ("What should I keep out of a compost pile?",
+         "<p>Meat, fish, bones, dairy, fats and oils, which attract animals, and pet "
+         "waste.</p>"))
+    + "<h2>Who Can Help</h2>"
          "<p>Your town or city office, and your transfer station, for the local rules, hours "
          "and fees and the date of the next household hazardous waste collection.</p>",
     see=[("Who to contact about an issue", "/guides/who-to-contact.html"),
@@ -4161,6 +6302,226 @@ TRASH = guide(
           "/guides/storms-and-emergencies.html")])
 
 GUIDES += [TRASH]
+
+
+# ---------------------------------------------------------------------------
+# YOUR RIGHTS AT WORK: GETTING PAID (the person, 25 October 2026: "Write all
+# three know your rights guides too"). From RSA 275 (payment of wages, the
+# final paycheck, deductions, notice, the wage claim, retaliation, meal
+# breaks) and RSA 279 (minimum wage and overtime), read in the site's own
+# Laws pages on 25 October 2026, and the U.S. Department of Labor's overtime
+# page, read the same day. New Hampshire's minimum wage is the federal one
+# (RSA 279:21), and no dollar amount is printed: the statute sets none of its
+# own (FIGURE above). The New Hampshire Department of Labor's own pages refuse
+# this machine, so their claim waits for the person's printouts.
+# ---------------------------------------------------------------------------
+WG_READ = "2026-10-25"
+WG_PAGES_READ = "2026-10-26"         # the person's printout of dol.nh.gov's home page
+NH_DOL = "https://www.dol.nh.gov/"
+WHD_OVERTIME = "https://www.dol.gov/agencies/whd/overtime"
+
+WAGES = guide(
+    "wage-rights", "Your Rights at Work: Getting Paid",
+    "When your pay is due in New Hampshire, your final paycheck, what your employer may take out "
+    "of your pay, minimum wage, overtime and meal breaks, and how to file a wage claim with the "
+    "Department of Labor.",
+    "In New Hampshire your employer must tell you your rate of pay when you are hired and pay "
+    "you on regular paydays set in advance. If you are fired, all your wages are due within 72 "
+    "hours; if you quit or are laid off, by the next regular payday. Your employer may take money "
+    "out of your pay only as the law requires or you agree in writing. If you are not paid what "
+    "you earned, you can file a wage claim with the New Hampshire Department of Labor, and your "
+    "employer may not punish you for it.",
+    [ask("Were you paid everything you earned, on time?",
+         [("Yes", "Keep your pay statements: they list what was taken out of each paycheck."),
+          ("No", "File a wage claim with the Department of Labor, within 36 months.")]),
+     ask("Did your job end?",
+         [("You were fired", "Your wages are due in full within 72 hours."),
+          ("You quit or were laid off", "Your wages are due by the next regular payday.")]),
+     box("Your employer may not fire or punish you for filing a claim, or for asking about or "
+         "discussing wages.")],
+    [step("Know when you must be paid",
+          "<p>Your employer must pay all the wages you have earned on regular paydays set in "
+          "advance, at no cost to you: within 8 days after the end of the work week if you are "
+          "paid weekly, or within 15 days if you are paid every two weeks. The Department of "
+          "Labor may allow some employers to pay less often, but never less than once a "
+          "month.</p>"
+          "<p>When you are hired, your employer must tell you your rate of pay and the day and "
+          "place you will be paid, and must tell you before either changes.</p>",
+          law=["RSA 275:43", "RSA 275:49"]),
+     step("Your last paycheck",
+          "<ul><li><b>If you are fired</b>, your employer must pay all your wages within 72 "
+          "hours.</li>"
+          "<li><b>If you quit</b>, by the next regular payday. If you gave at least one pay "
+          "period&rsquo;s notice, within 72 hours.</li>"
+          "<li><b>If you are laid off</b>, or your work stops because of a labor dispute, by the "
+          "next regular payday.</li></ul>"
+          "<p>An employer that willfully, "
+          "and without good cause, pays late owes you extra, as liquidated damages: 10 percent "
+          "of the unpaid wages for each day the pay is late, not counting Sundays and legal "
+          "holidays, up to the amount of the unpaid wages.</p>",
+          law=["RSA 275:44"]),
+     step("What may be taken out of your pay",
+          "<p>Your employer may hold back part of your wages only when a state or federal law "
+          "requires or allows it, such as payroll taxes, or when you have agreed in writing to "
+          "a deduction for a lawful purpose that benefits you, such as union dues, health "
+          "insurance, retirement contributions, a charity, or anything else you agree to that "
+          "gives your employer no financial advantage. A deduction may not be used to make you "
+          "pay for things you need to do your job.</p>"
+          "<p>Each pay period that something is taken out, your employer must give you a "
+          "statement of the deductions.</p>",
+          law=["RSA 275:48", "RSA 275:49"]),
+     step("Minimum wage, overtime and meal breaks",
+          "<p><b>Minimum wage.</b> New Hampshire&rsquo;s minimum wage is the federal minimum "
+          "wage.</p>"
+          "<p><b>Overtime.</b> Unless your job is exempt, you must be paid time and one-half "
+          "your regular rate for every hour over 40 hours in a work week. Federal law requires "
+          "it of most employers; New Hampshire&rsquo;s law requires it of the employers federal "
+          "law does not cover.</p>"
+          "<p><b>Meal breaks.</b> Your employer may not make you work more than 5 consecutive "
+          "hours without a half-hour break to eat, unless you can eat while you work and your "
+          "employer lets you.</p>",
+          actions=[("Overtime pay (U.S. Department of Labor)", WHD_OVERTIME)],
+          law=["RSA 279:21", "RSA 275:30-a"]),
+     step("If you were not paid: file a wage claim",
+          "<p>You can file a <b>wage claim</b> with the New Hampshire Department of Labor, no "
+          "later than 36 months after the wages were due. The Department sends a copy to your "
+          "employer, who has 20 days to object; if it does not, the Department may order it to "
+          "pay. Either side can ask for a hearing, and the Department decides in writing within "
+          "30 days after it. A decision can be appealed to the superior court within 20 "
+          "days.</p>"
+          "<p>You can also sue for unpaid wages in court, yourself or through a representative, "
+          "and the court may order your employer to pay your costs and reasonable "
+          "attorney&rsquo;s fees.</p>"
+          "<p>Start from the Department&rsquo;s home page: choose <b>Submit a Wage Claim</b>. Its "
+          "office answers at 603-271-3176, Monday through Friday, 8 a.m. to 4:30 p.m.; mail and "
+          "hearings stay at 95 Pleasant Street, Spaulding Building, in Concord.</p>",
+          actions=[("New Hampshire Department of Labor", NH_DOL)],
+          law=["RSA 275:51", "RSA 275:53"]),
+     step("Your employer may not punish you for it",
+          "<p>An employer may not fire you, or treat you differently in any other way, because "
+          "you filed a complaint or a claim, took part in an investigation or hearing about "
+          "your pay, or asked about, talked about or shared what you or a coworker are "
+          "paid.</p>"
+          "<p>It is also illegal to pay someone less than a coworker for equal work because of "
+          "their sex. Your employer must post a notice saying so, with how to reach the "
+          "Department of Labor.</p>",
+          law=["RSA 275:38-a", "RSA 275:37", "RSA 275:49"])],
+    [("New Hampshire Department of Labor", NH_DOL),
+     ("Overtime Pay (U.S. Department of Labor)", WHD_OVERTIME),
+     ("Protective Legislation, RSA 275", "/laws/275"),
+     ("Minimum Wage Law, RSA 279", "/laws/279")],
+    ["275", "279"],
+    [# The statutes, read on 25 October 2026 in the site's own Laws pages.
+     claim("Every employer shall pay all wages due within 8 days after the expiration of the "
+           "work week if paid weekly, or within 15 days if paid biweekly, on regular paydays "
+           "designated in advance and at no cost to the employee: in money, by electronic fund "
+           "transfer, by direct deposit with written authorization, by a payroll card with at "
+           "least one free means to withdraw the full balance each pay period, or by checks "
+           "cashable near the place of employment; an employer paying electronically shall offer "
+           "the check option (I); the commissioner may permit payment at least once each "
+           "calendar month (IV); vacation pay, severance pay, personal days, holiday pay, sick "
+           "pay and employee expenses, when a matter of employment practice or policy, are "
+           "wages when due (V).", "RSA 275:43", WG_READ),
+     claim("Discharged: wages in full within 72 hours (I); quits or resigns: no later than the "
+           "next regular payday, or within 72 hours after at least one pay period's notice, by "
+           "mail if requested (II); laid off or suspended by a labor dispute: not later than the "
+           "next regular payday (III); willfully and without good cause failing to pay: "
+           "liquidated damages of 10 percent of the unpaid wages for each day except Sunday and "
+           "legal holidays, or an amount equal to the unpaid wages, whichever is smaller (IV).",
+           "RSA 275:44", WG_READ),
+     claim("No employer may withhold or divert any portion of an employee's wages unless "
+           "required or empowered by state or federal law, including payroll taxes, or with a "
+           "written authorization for a lawful purpose accruing to the benefit of the employee, "
+           "among them union dues, insurance, pension and charity, or any purpose agreed that "
+           "does not grant financial advantage to the employer; not to offset payments for items "
+           "required in the performance of the job.", "RSA 275:48", WG_READ),
+     claim("Notify employees at hiring of the rate of pay and the day and place of payment, and "
+           "of changes before they happen; make available in writing or by posted notice the "
+           "policies on vacation pay, sick leave and other fringe benefits; furnish a statement "
+           "of deductions for each pay period deductions are made; post the equal pay notice "
+           "with how to contact the Department of Labor.", "RSA 275:49", WG_READ),
+     claim("A wage claim may be filed by an employee no later than 36 months from the date the "
+           "wages were due; the employer is served and may object within 20 days from the "
+           "receipt of such notice, or the commissioner may order payment; a hearing if "
+           "requested; a written decision within 30 days after the hearing; appeal to the "
+           "superior court not later than 20 days from the date thereof.", "RSA 275:51",
+           WG_READ),
+     claim("An employee may sue for unpaid wages and liquidated damages in any court of "
+           "competent jurisdiction, himself or through an agent or representative; the court "
+           "may allow costs and reasonable attorney's fees; the commissioner may take an "
+           "assignment of the claim.", "RSA 275:53", WG_READ),
+     claim("No employer shall discharge or in any other manner discriminate against an employee "
+           "because he or she made a charge, filed a complaint, took part in an investigation, "
+           "proceeding or hearing, or inquired about, discussed, or disclosed his or her wages "
+           "or those of another employee.", "RSA 275:38-a", WG_READ),
+     claim("No employer shall pay employees of one sex at a rate less than the rate paid to "
+           "employees of the other sex for equal work, with exceptions such as seniority and "
+           "merit systems.", "RSA 275:37", WG_READ),
+     claim("An employer may not require an employee to work more than 5 consecutive hours "
+           "without granting a 1/2 hour lunch or eating period, unless it is feasible for the "
+           "employee to eat while working and the employer permits it.", "RSA 275:30-a",
+           WG_READ),
+     claim("No employee at an hourly rate lower than that set forth in the federal minimum wage "
+           "law; tipped employees of a restaurant, hotel and the like who customarily receive "
+           "tips get a lower base rate from the employer, and the employer pays the difference "
+           "if wages at the end of a pay period do not equal the minimum wage for all hours "
+           "worked; exceptions for household, domestic and farm labor, outside salesmen, summer "
+           "camps, and lower rates for some young and inexperienced workers; time and one-half "
+           "for all time worked in excess of 40 hours in any one week, except, among others, "
+           "employees of employers covered by the federal Fair Labor Standards Act (VIII).",
+           "RSA 279:21", WG_READ),
+     # The U.S. Department of Labor's page, read on 25 October 2026.
+     claim("Unless exempt, employees covered by the Fair Labor Standards Act must receive overtime "
+           "pay for hours worked over 40 in a workweek at a rate not less than time and one-half "
+           "their regular rates of pay.", WHD_OVERTIME, WG_READ),
+     # The New Hampshire Department of Labor's page, from the person's printouts.
+     claim("Submit a Wage Claim: your claim will be reviewed for scheduling for a hearing before "
+           "a Department Hearings Officer; the Department has moved to Londergan Hall, 101 "
+           "Pleasant Street; hearings and mailed correspondence remain at 95 Pleasant Street, "
+           "Spaulding Building, Concord, NH 03301; phone 603-271-3176; Monday - Friday, 8AM - "
+           "4:30PM.", NH_DOL, WG_PAGES_READ)]
+    + help_claims("lawyer"),
+    more=civics.faq(
+        ("How can I be paid?",
+         "<p>You can be paid in cash, by a check you can cash near work, by direct deposit you "
+         "have agreed to in writing, or on a payroll card with at least one free way to take "
+         "out your whole balance each pay period. An employer that pays electronically must "
+         "also offer you a paper check.</p>"),
+        ("Do vacation pay and other benefits count as wages?",
+         "<p>Your employer&rsquo;s rules on vacation pay, sick leave and other benefits must "
+         "be given to you in "
+         "writing or posted where you can see them. Vacation, holiday and sick pay, severance "
+         "and work expenses that are your employer&rsquo;s practice or policy count as wages "
+         "when they are due.</p>"),
+        ("Can my last paycheck be mailed to me?",
+         "<p>You can ask for the last paycheck to be mailed to you.</p>"),
+        ("Can a tipped worker be paid less than the minimum wage?",
+         "<p>A tipped worker in a restaurant or hotel who regularly gets tips may be paid a "
+         "lower base rate by the employer, but if base pay and tips together come to less than "
+         "the minimum wage for all the hours worked in a pay period, the employer must pay the "
+         "difference.</p>"),
+        ("Does the minimum wage cover every job?",
+         "<p>The law exempts some work, such as farm and household labor, and lets some young "
+         "and new workers be paid less.</p>"))
+         + "<h2>Who Can Help</h2>"
+         "<p>The New Hampshire Department of Labor enforces the state&rsquo;s wage laws and takes "
+         "wage claims. The U.S. Department of Labor&rsquo;s overtime page explains the federal "
+         "overtime rule. For advice about your own situation, a "
+         "lawyer can help:</p>"
+         + helps("lawyer"),
+    see=[("How to file for unemployment", "/guides/file-for-unemployment.html"),
+         ("How to apply for food or health assistance", "/guides/food-and-health-assistance.html")],
+    figures=[fig("72 hours", "RSA 275:44", "within 72 hours"),
+             fig("36 months", "RSA 275:51", "no later than 36 months from the date the wages were due"),
+             fig("8 days", "RSA 275:43", "within 8 days after the expiration of the work week"),
+             fig("15 days", "RSA 275:43", "within 15 days after the expiration of the work week"),
+             fig("10 percent", "RSA 275:44", "10 percent of the unpaid wages"),
+             fig("40 hours", "RSA 279:21", "in excess of 40 hours in any one week"),
+             fig("5 consecutive hours", "RSA 275:30-a", "more than 5 consecutive hours"),
+             fig("20 days", "RSA 275:51", "within 20 days from the receipt of such notice"),
+             fig("30 days", "RSA 275:51", "within 30 days after the hearing")])
+
+GUIDES += [WAGES]
 
 
 # ---------------------------------------------------------------------------
@@ -4221,9 +6582,7 @@ PASSPORT = guide(
           "not changing your name or sex; you are not traveling for at least 6 weeks, since an "
           "online renewal cannot be expedited; you are in the United States when you apply; and "
           "you have the passport, undamaged. You pay by card, and you keep the old passport, "
-          "which is canceled once you apply. Renew only at the State Department&rsquo;s own "
-          "site: others that offer to do it for you charge extra and put your information at "
-          "risk.</p>"
+          "which is canceled once you apply.</p>"
           "<p>A renewal is never done in person at a post office. If you cannot renew, apply in "
           "person as a first-time applicant would, as the steps below describe.</p>",
           actions=[("Renew online (State Department)", STATE_ONLINE)]),
@@ -4248,12 +6607,8 @@ PASSPORT = guide(
           "ID, on one side of plain letter-size paper.</li>"
           "<li><b>A photo</b> that meets the State Department&rsquo;s rules. Do not staple it to "
           "the form. Many post offices take one for a fee.</li></ul>"
-          "<p>If you have no birth certificate that meets the rules, the State Department accepts "
-          "other early records of your birth instead, such as hospital, baptismal, medical or "
-          "school records. Its adult passport page says what to bring.</p>"
-          "<p>Unpaid child support over the State Department&rsquo;s limit, or seriously "
-          "delinquent federal tax debt, will delay or stop an application: settle it "
-          "first.</p>"),
+          "<p>No birth certificate that meets the rules? The questions below say what the State "
+          "Department accepts instead.</p>"),
      step("Make an appointment and apply",
           "<p>Thousands of post offices accept first-time applications, by appointment: book "
           "online, at a post office&rsquo;s self-service kiosk, or at the counter. Some offer "
@@ -4274,10 +6629,7 @@ PASSPORT = guide(
           "parents are, and each parent&rsquo;s photo ID, with photocopies.</p>"
           "<p>If one parent cannot come, that parent signs the Statement of Consent, Form "
           "DS-3053, before a notary, and you bring it, with a photocopy of the ID they showed "
-          "the notary, within 90 days of its signing. If you alone have custody, bring proof "
-          "instead, such as a court order granting it, a birth certificate or adoption decree "
-          "naming only you, or the other parent&rsquo;s death certificate. A child&rsquo;s "
-          "passport is valid for 5 years; an adult&rsquo;s, for 10.</p>",
+          "the notary, within 90 days of its signing.</p>",
           actions=[("A child under 16 (State Department)", STATE_CHILD)]),
      step("If you travel soon",
           "<p>Routine processing takes 4 to 6 weeks, and expedited service, for an extra fee, 2 "
@@ -4381,6 +6733,24 @@ PASSPORT = guide(
            "appointments; the Online Passport Appointment System; if you already applied, dial "
            "877-487-2778; National Passport Center, Portsmouth, NH.", STATE_APPOINT,
            PP_STATE_READ)],
+    more=civics.faq(
+        ("Are other websites that offer to renew my passport safe?",
+         "<p>Renew only at the State Department&rsquo;s own site: others that offer to do it for "
+         "you charge extra and put your information at risk.</p>"),
+        ("What if I have no birth certificate that meets the rules?",
+         "<p>If you have no birth certificate that meets the rules, the State Department accepts "
+         "other early records of your birth instead, such as hospital, baptismal, medical or "
+         "school records. Its adult passport page says what to bring.</p>"),
+        ("Can unpaid child support or taxes stop an application?",
+         "<p>Unpaid child support over the State Department&rsquo;s limit, or seriously "
+         "delinquent federal tax debt, will delay or stop an application: settle it "
+         "first.</p>"),
+        ("What if I alone have custody of my child?",
+         "<p>Bring proof of it instead of the other parent&rsquo;s consent, such as a court order "
+         "granting you sole custody, a birth certificate or adoption decree naming only you, or "
+         "the other parent&rsquo;s death certificate.</p>"),
+        ("How long is a passport good for?",
+         "<p>A child&rsquo;s passport is valid for 5 years; an adult&rsquo;s, for 10.</p>")),
     see=[("How to get a birth, death, marriage or divorce certificate", "/guides/vital-records.html"),
          ("How to get a REAL ID", "/guides/real-id.html")],
     figures=[fig("10 years", CFR_PP_VALID, "valid for 10 years"),
@@ -4474,12 +6844,7 @@ MEDICARE = guide(
           "Security account, if you are 65 or older. You can also call Social Security at "
           "1-800-772-1213, Monday through Friday, 8 a.m. to 7 p.m. (TTY 1-800-325-0778), and "
           "make an appointment. If a job&rsquo;s group health plan covers you, you can delay "
-          "Part B.</p>"
-          "<p>Under 65, you may get Medicare if you receive Social Security disability "
-          "benefits or have permanent kidney failure. SSI alone does not qualify you.</p>"
-          "<p>If you already have Part A and are adding Part B because you are losing coverage "
-          "through a job, your employer fills out form CMS-L564, which you send to your local "
-          "Social Security office.</p>",
+          "Part B.</p>",
           actions=[("Sign up for Medicare (Medicare)", MEDICARE_SIGNUP),
                    ("Sign up for Medicare (Social Security)", SSA_MEDICARE)]),
      step("Apply for Social Security retirement benefits",
@@ -4509,8 +6874,7 @@ MEDICARE = guide(
           "even if you do not think you qualify.</p>"
           "<p><b>Extra Help</b> is a federal program that pays part of your drug plan&rsquo;s "
           "costs. You get it automatically if you have Medicaid, a Medicare Savings Program or "
-          "SSI. Otherwise apply through Social Security; applying for Extra Help also starts an "
-          "application for a Medicare Savings Program, unless you say not to.</p>",
+          "SSI. Otherwise apply through Social Security.</p>",
           actions=[("NH Easy", NHEASY),
                    ("Medicare Savings Programs (NH Department of Health and Human Services)", DHHS_MSP),
                    ("Extra Help (Medicare)", MEDICARE_EXTRA)],
@@ -4520,8 +6884,7 @@ MEDICARE = guide(
           "deposit, print proof of your benefits or a tax form, request a replacement Social "
           "Security card, and see your Social Security Statement and earnings record, without "
           "a call or a visit. You create it through Login.gov or ID.me, with an email address, "
-          "a government-issued photo ID and a phone. Once you have your Medicare card, you can "
-          "also make a Medicare account on Medicare.gov with your Medicare Number.</p>",
+          "a government-issued photo ID and a phone.</p>",
           actions=[("my Social Security", SSA_ACCOUNT)])],
     [("When Does Medicare Coverage Start? (Medicare)", MEDICARE_START),
      ("How Do I Sign Up for Medicare? (Medicare)", MEDICARE_AUTO),
@@ -4603,7 +6966,21 @@ MEDICARE = guide(
            "(1-844-275-3447), Monday through Friday, 8:00 a.m. to 4:00 p.m.; administrative "
            "appeal hearing.", DHHS_MSP, DHHS_MSP_READ)]
     + help_claims("adrc", "nheasy", "legal_aid"),
-    more="<h2>Who Can Help</h2>"
+    more=civics.faq(
+        ("Can I get Medicare before I turn 65?",
+         "<p>Under 65, you may get Medicare if you receive Social Security disability benefits "
+         "or have permanent kidney failure. SSI alone does not qualify you.</p>"),
+        ("I am losing coverage through a job. How do I add Part B?",
+         "<p>If you already have Part A and are adding Part B because you are losing coverage "
+         "through a job, your employer fills out form CMS-L564, which you send to your local "
+         "Social Security office.</p>"),
+        ("Does applying for Extra Help also apply for a Medicare Savings Program?",
+         "<p>Yes, unless you say not to: applying for Extra Help through Social Security also "
+         "starts an application for a Medicare Savings Program.</p>"),
+        ("Can I manage Medicare online too?",
+         "<p>Once you have your Medicare card, you can make a Medicare account on Medicare.gov "
+         "with your Medicare Number.</p>"))
+         + "<h2>Who Can Help</h2>"
          "<p>Medicare answers at 1-800-MEDICARE (1-800-633-4227), 24 hours a day (TTY "
          "1-877-486-2048), and Social Security at 1-800-772-1213.</p>"
          + helps("adrc", "nheasy", "legal_aid"),
@@ -4670,14 +7047,9 @@ DISABILITY = guide(
           "any substantial work and is expected to last at least 12 months or to result in "
           "death. It runs two programs:</p>"
           "<ul><li><b>SSDI</b> (Social Security Disability Insurance) is for people who have "
-          "worked long enough, and paid Social Security taxes, to be insured. Benefits begin "
-          "after a waiting period of 5 months of disability. After 24 months of disability "
-          "benefits, you get Medicare automatically.</li>"
+          "worked long enough, and paid Social Security taxes, to be insured.</li>"
           "<li><b>SSI</b> (Supplemental Security Income) is for people who are disabled, blind "
           "or 65 or older, and whose income and savings are under its limits.</li></ul>"
-          "<p>SSI also counts what you own, such as money in the bank and vehicles, up to a "
-          "limit. Social Security&rsquo;s Who Can Get SSI page gives the income and resource "
-          "limits.</p>"
           "<p>Apply as soon as you can, online on Social Security&rsquo;s Apply page, or call "
           "1-800-772-1213 for an appointment.</p>",
           actions=[("Apply for benefits (Social Security)", SSA_APPLY),
@@ -4701,17 +7073,14 @@ DISABILITY = guide(
           "services come through ten regional <b>area agencies</b>. Apply to the one for where "
           "you live. It arranges an evaluation, and makes its first recommendations within 21 "
           "days of your application. Its services include service coordination, help living in "
-          "the community, and employment and day services.</p>"
-          "<p>For a child from birth up to age 3 with a developmental delay, or at risk of one, "
-          "the area agencies also run Family Centered Early Supports and Services.</p>",
+          "the community, and employment and day services.</p>",
           actions=[("Developmental services and the area agencies (Department of Health and "
                     "Human Services)", DHHS_DEV)],
           law=["RSA 171-A:6", "RSA 171-A:18", "RSA 171-A:18-a"]),
      step("Help getting or keeping a job: vocational rehabilitation",
           "<p>The Department of Education&rsquo;s <b>Bureau of Vocational Rehabilitation</b> "
           "helps people with disabilities prepare for, find and keep a job, under the federal "
-          "vocational rehabilitation program. Its independent living program helps people with "
-          "disabilities, and older people who are blind, live more independently.</p>"
+          "vocational rehabilitation program.</p>"
           "<p>Any New Hampshire resident with a disability may qualify, whether looking for a "
           "first job or wanting to keep working after a disability. Its help includes career "
           "counseling, job training, help finding a job, and assistive technology. To apply, "
@@ -4814,7 +7183,22 @@ DISABILITY = guide(
            "working after acquiring a disability; to apply, complete the online referral form; "
            "(603) 271-3494.", NHVR, DIS_PRINT_READ)]
     + help_claims("adrc", "nheasy", "legal_aid"),
-    more="<h2>Who Can Help</h2>"
+    more=civics.faq(
+        ("When do SSDI benefits begin, and when does Medicare start?",
+         "<p>Benefits begin after a waiting period of 5 months of disability. After 24 months of "
+         "disability benefits, you get Medicare automatically.</p>"),
+        ("Does SSI count what I own?",
+         "<p>SSI also counts what you own, such as money in the bank and vehicles, up to a "
+         "limit. Social Security&rsquo;s Who Can Get SSI page gives the income and resource "
+         "limits.</p>"),
+        ("Is there help for a young child with a developmental delay?",
+         "<p>For a child from birth up to age 3 with a developmental delay, or at risk of one, "
+         "the area agencies also run Family Centered Early Supports and Services.</p>"),
+        ("Is there help living more independently?",
+         "<p>The Bureau of Vocational Rehabilitation&rsquo;s independent living program helps "
+         "people with disabilities, and older people who are blind, live more "
+         "independently.</p>"))
+         + "<h2>Who Can Help</h2>"
          "<p>Social Security answers at 1-800-772-1213. For help with the state&rsquo;s "
          "programs, and with finding your way among all of them:</p>"
          + helps("adrc", "nheasy", "legal_aid"),
@@ -4886,10 +7270,7 @@ WHO_TO_CONTACT = guide(
           actions=[("Find your town", "/officials.html#my-town")]),
      step("Your town or city: roads, sidewalks, trash and local rules",
           "<p>Most everyday problems are local. Your town or city maintains its own roads and "
-          "repairs its sidewalks, and runs or arranges trash and recycling. In a town the "
-          "<b>selectboard</b> manages the town&rsquo;s business and may regulate the use of its "
-          "roads and sidewalks; in a city the <b>city council</b> holds those powers, with the "
-          "mayor or city manager running the departments.</p>"
+          "repairs its sidewalks, and runs or arranges trash and recycling.</p>"
           "<p>Start with the department that handles it, such as public works for a pothole or a "
           "broken sidewalk. If that does not settle it, contact the selectboard or your city "
           "councilor. A change to the town&rsquo;s budget or rules may go to town meeting.</p>",
@@ -4923,11 +7304,8 @@ WHO_TO_CONTACT = guide(
      step("A federal agency or a federal law",
           "<p>Your two <b>U.S. senators</b> and your <b>U.S. representative</b> each have staff in "
           "New Hampshire who help residents with federal agencies: Social Security, veterans&rsquo; "
-          "benefits, passports, the IRS, immigration and others. They cannot promise an outcome, "
-          "but they can ask the agency for a fair and timely answer.</p>"
-          "<p>Before they can look into your case, you sign a <b>privacy release</b>, because "
-          "federal law lets an agency share your records only with your written consent. Each "
-          "office&rsquo;s website has its form. Contact them too about a federal law or bill.</p>",
+          "benefits, passports, the IRS, immigration and others. Contact them too about a federal "
+          "law or bill.</p>",
           actions=[("Find your U.S. senators", SENATE_CONTACT),
                    ("Find your U.S. representative", HOUSE_FIND)]),
      step("The county",
@@ -5003,10 +7381,230 @@ WHO_TO_CONTACT = guide(
            COUNCIL_ABOUT, WC_PRINT_READ),
      claim("New Hampshire Executive Council: gcweb@nh.gov, (603) 271-3632; Contact Councilor "
            "links for each of the five councilors.", COUNCIL_CONTACT, WC_PRINT_READ)],
+    more=civics.faq(
+        ("Who runs a town, and who runs a city?",
+         "<p>In a town the <b>selectboard</b> manages the town&rsquo;s business and may regulate "
+         "the use of its roads and sidewalks; in a city the <b>city council</b> holds those "
+         "powers, with the mayor or city manager running the departments.</p>"),
+        ("Can my members of Congress fix a problem with a federal agency?",
+         "<p>They cannot promise an outcome, but they can ask the agency for a fair and timely "
+         "answer.</p>"),
+        ("Why do they ask me to sign a privacy release?",
+         "<p>Before they can look into your case, you sign a <b>privacy release</b>, because "
+         "federal law lets an agency share your records only with your written consent. Each "
+         "office&rsquo;s website has its form.</p>")),
     see=[("How to find your representatives", "/guides/your-representatives.html"),
          ("How to contact your legislators", "/guides/contact-your-legislators.html")])
 
 GUIDES += [WHO_TO_CONTACT]
+
+
+# ---------------------------------------------------------------------------
+# A POTHOLE, A BROKEN SIGNAL OR A SIDEWALK (the person, 25 October 2026: "how
+# to report issues like potholes, broken stoplights, or sidewalk issues to
+# your town"). Who keeps which road is the law's -- RSA 229:5's classes, the
+# state's duty in RSA 230:1-4 and the town's in RSA 231:2-3 and 231:113 --
+# and so is what a written notice makes a town or the state do, and answer
+# for (RSA 231:90-92-a, RSA 230:78-81), with the deadlines to claim for
+# damage (RSA 507-B:7 for a town, RSA 541-B:14 for the state). Read on 25
+# October 2026 in this build's statute table. No statute says who owns a
+# traffic signal or a streetlight, so the guide sends those to whoever keeps
+# the road and says no more. The Department of Transportation's pages refuse
+# this machine; their claims wait for the person's printouts.
+# ---------------------------------------------------------------------------
+ROAD_READ = "2026-10-25"
+ROAD_STATE_READ = "2026-10-26"       # the person's printouts of dot.nh.gov
+NHDOT_PUBLIC = "https://www.dot.nh.gov/doing-business-nhdot/general-public"
+NHDOT_CONTACT = "https://www.dot.nh.gov/about-nh-dot/contact-us"
+
+ROAD_PROBLEM = guide(
+    "report-a-road-problem", "How to Report a Pothole, a Broken Signal or a Sidewalk Problem",
+    "Who fixes which road in New Hampshire, how to report a pothole, a broken sidewalk or a "
+    "signal to your town or the state, and what to do if a road problem damaged your car.",
+    "Town roads and sidewalks are your town or city&rsquo;s to fix: report a pothole, a broken "
+    "sidewalk, a streetlight or a signal to its public works or highway department. The main "
+    "state highways are the state Department of Transportation&rsquo;s: report those to its "
+    "maintenance district for your town. For a dangerous spot, a signed written notice to the "
+    "town makes it act, and answer for damage if it does not. If a road problem damaged your "
+    "car, the deadline to give notice is short.",
+    [ask("Whose road is it?",
+         [("A town or city street, or its sidewalk",
+           "Your town or city&rsquo;s public works or highway department."),
+          ("A state highway",
+           "The Department of Transportation&rsquo;s maintenance district for your town.")]),
+     box("Dangerous? Put it in writing, signed, saying where it is and what is wrong."),
+     box("Damaged your car? Give written notice of the date, time and place, within the "
+         "deadline.")],
+    [step("Work out whose road it is",
+          "<p>Most roads are your town&rsquo;s or city&rsquo;s. It maintains every ordinary town "
+          "road, and keeps up the sidewalks along its roads, at no charge to the owners next to "
+          "them.</p>"
+          "<p>The state&rsquo;s <b>Department of Transportation</b> maintains the main state "
+          "highways, and the parts of the secondary state highways it has improved; a town "
+          "maintains the rest of those.</p>"
+          "<p>If you are not sure whose road it is, start with your town.</p>",
+          law=["RSA 229:5", "RSA 230:1", "RSA 230:3", "RSA 230:4", "RSA 231:2", "RSA 231:3",
+               "RSA 231:93", "RSA 231:113"]),
+     step("Report it to your town or city",
+          "<p>Call or email your town or city&rsquo;s <b>public works</b> or <b>highway "
+          "department</b>, or the selectboard&rsquo;s office in a small town; many towns also "
+          "take reports online. Say exactly where the problem is (the street, the nearest house "
+          "number or cross street) and what it is: a pothole, a broken or heaved sidewalk, a "
+          "streetlight that is out, a signal that is dark or stuck, a blocked drain.</p>"
+          "<p>A traffic signal that is out at a busy intersection is a danger to everyone "
+          "using it: report it at once, and if someone may be hurt, call 911.</p>",
+          law=["RSA 231:113"]),
+     step("Report it to the state, for a state highway",
+          "<p>If a signal is out, a stop sign is down or a state road is iced over, call the "
+          "Department of Transportation&rsquo;s <b>Traffic Management Center</b> at (603) "
+          "271-6862. For a pothole, drainage or another problem on a state road, contact the "
+          "Department&rsquo;s highway maintenance district for your town; its page for the "
+          "public links the districts, and a form for a damage claim. Other questions go to "
+          "(603) 271-3734 or info@dot.nh.gov.</p>"
+          "<p>Anyone may notify the Department of a dangerous spot on a state highway. Once "
+          "it is notified, unless it decides in good faith there is no danger, it must put up "
+          "warnings at once and make a plan to repair the spot within 96 hours.</p>",
+          actions=[("The Department of Transportation, for the public", NHDOT_PUBLIC),
+                   ("Contact the Department of Transportation", NHDOT_CONTACT)],
+          law=["RSA 230:78", "RSA 230:79"]),
+     step("For a dangerous spot, put it in writing",
+          "<p>The law gives a written notice weight a phone call does not have. If a town "
+          "road, a bridge or a sidewalk is <b>insufficient</b> &ndash; not passable safely, or "
+          "with a hazard a careful traveler could not see or avoid &ndash; anyone may give the "
+          "town written notice. Sign it, say in general terms where it is and what is wrong, "
+          "and give it to a selectman or the highway agent (in a city, the mayor or a street "
+          "commissioner), with a copy to the town or city clerk.</p>"
+          "<p>The town must then, unless it decides in good faith there is no such danger, "
+          "put up warnings at once and, within 72 hours, make a plan to repair it, and carry "
+          "the plan out. If it does not, it is liable for the injury or damage the danger "
+          "causes.</p>",
+          law=["RSA 231:90", "RSA 231:91", "RSA 231:92-a"]),
+     step("If a road problem damaged your car",
+          "<p><b>On a town road</b>, the town answers for damage only if it had written notice "
+          "of the danger and did not act, or its officials knew of it and were grossly "
+          "negligent or acted in bad faith, or its employee created it on purpose or "
+          "recklessly. Before you can sue, the town or city clerk must be told by "
+          "<b>registered mail within 60 days</b> of the damage the date, time and place it "
+          "happened, and a suit must be brought within 3 years.</p>"
+          "<p><b>On a state highway</b>, the Department of Transportation answers on the same "
+          "terms. A claim against the state goes to the state Board of Claims or the Superior "
+          "Court, depending on its size. The Department must be told in writing, within 180 "
+          "days of the damage, the date, time and place it happened, and the claim must be "
+          "brought within 3 years.</p>"
+          "<p>Take pictures of the spot and the damage, and keep your repair bills.</p>",
+          law=["RSA 231:92", "RSA 507-B:7", "RSA 230:80", "RSA 541-B:9", "RSA 541-B:14"])],
+    [("General Public (New Hampshire Department of Transportation)", NHDOT_PUBLIC),
+     ("Contact Us (New Hampshire Department of Transportation)", NHDOT_CONTACT),
+     ("Classification of Highways, RSA 229", "/laws/229"),
+     ("Highways: Layout and Maintenance by the State, RSA 230", "/laws/230"),
+     ("Municipal Highways, RSA 231", "/laws/231"),
+     ("Actions Against Governmental Units, RSA 507-B", "/laws/507-b"),
+     ("Board of Claims, RSA 541-B", "/laws/541-b")],
+    ["229", "230", "231", "507-B", "541-B"],
+    [# The statutes, as this build's table prints them.
+     claim("Class I highways: the primary state highway system; class II: the secondary state "
+           "highway system; class IV: highways within the compact sections of the cities and "
+           "towns listed (among them Concord, Manchester, Nashua); class V: all other traveled "
+           "highways the town has the duty to maintain regularly, town roads; class VI: all "
+           "other existing public ways, including highways not maintained and repaired by the "
+           "town for 5 successive years or more.", "RSA 229:5", ROAD_READ),
+     claim("The department of transportation shall assume full control and pay the costs of "
+           "construction, reconstruction and maintenance of all class I highways.",
+           "RSA 230:1", ROAD_READ),
+     claim("The department shall assume full control and pay the costs of reconstruction and "
+           "maintenance of all class II highways which have been improved to the satisfaction "
+           "of the commissioner.", "RSA 230:3", ROAD_READ),
+     claim("All other class II highways shall be maintained by the city or town in which they "
+           "are located.", "RSA 230:4", ROAD_READ),
+     claim("All class IV highways shall be wholly constructed, reconstructed and maintained by "
+           "the city or town in which they are located.", "RSA 231:2", ROAD_READ),
+     claim("All class V highways shall be constructed, reconstructed, and maintained by the "
+           "city or town in which they are located.", "RSA 231:3", ROAD_READ),
+     claim("Municipalities shall not be deemed to have any duty of care whatsoever with respect "
+           "to the construction, maintenance or repair of class I, III, III-a or VI highways, "
+           "or state maintained portions of class II highways.", "RSA 231:93", ROAD_READ),
+     claim("The highway agent, under the direction of the mayor and aldermen or the selectmen, "
+           "has charge of the repair of sidewalks, maintained, repaired and reconstructed by "
+           "the city or town without further assessment to the abutting owner.",
+           "RSA 231:113", ROAD_READ),
+     claim("Any person may give written notice of an insufficiency of a class IV or V highway, "
+           "bridge or sidewalk to one of the selectmen or highway agents, or the mayor or "
+           "street commissioners, with a copy to the clerk; signed, setting forth in general "
+           "terms the location and the nature of the insufficiency; insufficient only if not "
+           "passable in any safe manner, or a safety hazard not reasonably discoverable or "
+           "avoidable; not insufficient merely by not being kept to the standard of another "
+           "highway.", "RSA 231:90", ROAD_READ),
+     claim("On notice, unless no insufficiency exists in good faith, the municipality shall "
+           "immediately place danger signals and within 72 hours thereafter develop a plan for "
+           "repairing it and implement it; if it fails to act, it is liable for personal "
+           "injury or property damage proximately caused by the insufficiency.",
+           "RSA 231:91", ROAD_READ),
+     claim("A municipality is not liable unless the damage was caused by an insufficiency and it "
+           "received written notice and failed to act, or officials had actual knowledge and "
+           "were grossly negligent or exercised bad faith, or the condition was created by an "
+           "intentional act of an employee with gross negligence or reckless disregard.",
+           "RSA 231:92", ROAD_READ),
+     claim("Not liable for hazards caused solely by snow, ice, or other inclement weather when "
+           "a delay results from a winter maintenance policy adopted in good faith, absent "
+           "gross negligence or reckless disregard.", "RSA 231:92-a", ROAD_READ),
+     claim("Any person may give notice of an insufficiency of a class I or class II highway or "
+           "highway bridge to the department of transportation, setting forth its location and "
+           "nature.", "RSA 230:78", ROAD_READ),
+     claim("On notice, unless no insufficiency exists in good faith, the department shall "
+           "immediately place danger signals and within 96 hours thereafter develop a plan for "
+           "repairing it; if it fails to act it is liable for damage proximately caused.",
+           "RSA 230:79", ROAD_READ),
+     claim("The department of transportation is not liable unless the damage was caused by an "
+           "insufficiency and it received notice and failed to act, or the commissioner had "
+           "actual knowledge and was grossly negligent or in bad faith, or an employee created "
+           "it intentionally with gross negligence or reckless disregard.", "RSA 230:80",
+           ROAD_READ),
+     claim("An action against a governmental unit within 3 years after the time of injury or "
+           "damage; as a condition precedent, the clerk of the governmental unit shall be "
+           "notified by registered mail within 60 days after the time of the injury or damage "
+           "as to the date, time and location.", "RSA 507-B:7", ROAD_READ),
+     claim("The board of claims hears claims against an agency up to an amount, concurrently "
+           "with the superior court above it, and the superior court alone above a higher "
+           "amount.", "RSA 541-B:9", ROAD_READ),
+     claim("A claim brought within 3 years of the damage; as a condition precedent, the agency "
+           "shall be provided written notice within 180 days after the time of the injury or "
+           "damage as to the date, time, and location.", "RSA 541-B:14", ROAD_READ),
+     # The Department of Transportation's own pages, from the person's printouts.
+     claim("If there is an immediate concern, a signal is out, a stop sign is down, the road "
+           "is iced over, please call the Traffic Management Center at (603) 271-6862; other "
+           "road issues, on State Roads, i.e., potholes, drainage issues, contact the "
+           "Maintenance District that maintains the roads in your specific town; To Submit a "
+           "Damage Claim please visit the link and fill out the form.", NHDOT_PUBLIC,
+           ROAD_STATE_READ),
+     claim("All Road Emergencies, including broken signal lights: call the NHDOT Traffic "
+           "Management Center (603) 271-6862; General Road Concerns on State Roads: call the "
+           "appropriate NHDOT Highway Maintenance District Office; General Questions: (603) "
+           "271-3734 or info@dot.nh.gov.", NHDOT_CONTACT, ROAD_STATE_READ)]
+    + help_claims("lawyer"),
+    more=civics.faq(
+        ("Who fixes a state route through a city center?",
+         "<p>In the built-up centers of the cities and towns the law lists, such as Concord, "
+         "Manchester and Nashua, the city or town maintains the state routes too.</p>"),
+        ("What is a class VI road?",
+         "<p>A class VI road is a public way the town does not maintain, and the town has no "
+         "duty to repair it.</p>"),
+        ("Is every bad road &ldquo;insufficient&rdquo;?",
+         "<p>No. A road simply in worse shape than others is not insufficient, and snow and ice "
+         "the town is clearing under its winter policy are not a ground for a claim.</p>"))
+         + "<h2>Who Can Help</h2>"
+         "<p>Your town or city&rsquo;s public works or highway department is the place to ask "
+         "about a town road, and the town office can tell you who that is. For a claim for "
+         "damage, a lawyer can tell you whether you have one:</p>"
+         + helps("lawyer"),
+    see=[("Who to contact about an issue", "/guides/who-to-contact.html"),
+         ("Cities, towns and who runs them", "/learn/city-and-town-government.html")],
+    figures=[fig("96 hours", "RSA 230:79", "within 96 hours thereafter"),
+             fig("72 hours", "RSA 231:91", "within 72 hours thereafter"),
+             fig("60 days", "RSA 507-B:7", "within 60 days after the time of the injury or damage"),
+             fig("3 years", "RSA 507-B:7", "within 3 years after the time of injury or damage"),
+             fig("180 days", "RSA 541-B:14", "within 180 days after the time of the injury or damage")])
+
+GUIDES += [ROAD_PROBLEM]
 
 
 # ---------------------------------------------------------------------------
@@ -5081,30 +7679,23 @@ FISHING = guide(
           "anyone may fish by angling without a license: the first Saturday in June and the third "
           "Saturday in January, in fresh water or salt water. Season dates, limits and the other "
           "rules still apply, and anyone in a fishing tournament still needs a license that "
-          "day.</li></ul>"
-          "<p>A New Hampshire resident who is legally blind may get a fishing license free, and "
-          "it lasts for life.</p>",
+          "day.</li></ul>",
           actions=[("Free fishing days", FG_FREE_DAYS)],
           law=["RSA 214:1", "RSA 214:2", "RSA 214:1-e"]),
      step("Choose your license",
           "<p><b>Resident or nonresident.</b> You are a resident for a license if you hold a "
           "New Hampshire driver&rsquo;s license or non-driver photo ID and claim residence in no "
-          "other state for any purpose. A nonresident "
-          "full-time student at a school or college in New Hampshire pays the resident fee.</p>"
+          "other state for any purpose.</p>"
           "<p><b>Fresh water.</b> A resident fishing license, or a one-day license. A "
           "nonresident can buy a season license or a one-day, 3-day or 7-day license. A combined "
           "hunting and fishing license is sold too.</p>"
           "<p><b>Salt water.</b> Fishing for saltwater fish in coastal and tidal waters takes a "
           "recreational saltwater license, unless you are fishing from a licensed charter or party "
           "boat. Anglers 68 or older need it too. It also lets you fish Massachusetts&rsquo; "
-          "coastal waters and the whole Maine coast. Digging clams takes a separate license, sold to residents only, and taking "
-          "lobsters or crabs another.</p>"
+          "coastal waters and the whole Maine coast.</p>"
           "<p><b>Lower-cost and free licenses.</b> Residents 68 or older can buy a discounted "
           "senior license; residents born in 1947 or earlier get a free, permanent Milestone "
-          "license from Fish and Game in Concord, its regional offices or select agents. A resident veteran who is totally and "
-          "permanently disabled from service gets a permanent license, with a one-time $10 "
-          "administrative fee. A resident on active duty stationed outside the state can get a "
-          "free license to use while home on leave.</p>"
+          "license from Fish and Game in Concord, its regional offices or select agents.</p>"
           "<p>Fish and Game sets the fees; its license page lists each license and its "
           "price.</p>",
           actions=[("License fees and requirements", FG_FEES),
@@ -5115,7 +7706,7 @@ FISHING = guide(
      step("Buy it online or from an agent",
           "<p>Buy your license on Fish and Game&rsquo;s online license system or from a license "
           "agent. You buy it yourself, as the person who will use it, and give proof of where you "
-          "live. Fish and Game cannot refund a license or exchange it.</p>"
+          "live.</p>"
           "<p>Print your license and sign it, or keep an image of it on your phone: for a fishing "
           "license, that is enough if you can also show a photo ID. Carry it while you fish, and "
           "show it when asked.</p>"
@@ -5202,6 +7793,22 @@ FISHING = guide(
            "before 1947, only at Fish and Game headquarters, regional offices 1, 2 and 4 or "
            "limited agents, not valid if the holder moves out of state.", FG_SENIOR,
            OUT_STATE_READ)],
+    more=civics.faq(
+        ("Is a fishing license free for someone who is blind?",
+         "<p>A New Hampshire resident who is legally blind may get a fishing license free, and "
+         "it lasts for life.</p>"),
+        ("I am a student from another state. What do I pay?",
+         "<p>A nonresident full-time student at a school or college in New Hampshire pays the "
+         "resident fee.</p>"),
+        ("Do I need a license to dig clams or take lobsters?",
+         "<p>Yes. Digging clams takes a separate license, sold to residents only, and taking "
+         "lobsters or crabs another.</p>"),
+        ("Are there licenses for veterans and service members?",
+         "<p>A resident veteran who is totally and permanently disabled from service gets a "
+         "permanent license, with a one-time $10 administrative fee. A resident on active duty "
+         "stationed outside the state can get a free license to use while home on leave.</p>"),
+        ("Can I get a refund?",
+         "<p>No. Fish and Game cannot refund a license or exchange it.</p>")),
     see=[("How to get a hunting license", "/guides/hunting-license.html"),
          ("Boating: your certificate and registration", "/guides/boating.html")],
     figures=[fig("2 days", "RSA 214:1-e", "establishing 2 days per year"),
@@ -5230,16 +7837,14 @@ HUNTING = guide(
           "country;</li>"
           "<li>proof you have held a hunting license before, here or elsewhere.</li></ul>"
           "<p>To hunt with a bow you need the same for <b>bow hunter education</b>: an archery "
-          "license and a hunting license do not stand in for each other. You must be at least 12 "
-          "to get the certificate, and the online course ends with an in-person field day. Fish "
-          "and Game&rsquo;s page lists the courses and how to sign up.</p>",
+          "license and a hunting license do not stand in for each other. Fish and "
+          "Game&rsquo;s page lists the courses and how to sign up.</p>",
           actions=[("Hunter education", FG_HUNTER_ED)],
           law=["RSA 214:23-a"]),
      step("Or start with an apprentice license",
           "<p>If you have not taken the course, you may buy an <b>apprentice hunting "
           "license</b>, once in your lifetime. You may hunt with it only beside a licensed hunter "
-          "who is 18 or older, who answers for what you do. It is not valid for moose, and it "
-          "does not count as a past license when you buy your next one.</p>",
+          "who is 18 or older, who answers for what you do.</p>",
           law=["RSA 214:6-a"]),
      step("Hunters under 16",
           "<p>A hunter under 16 may hunt only with a properly licensed person 18 or older, and "
@@ -5264,10 +7869,7 @@ HUNTING = guide(
           "valid;</li>"
           "<li>for any migratory bird, such as ducks, geese, woodcock, snipe or coot, a free "
           "<b>HIP</b> permit number if you are 16 or older.</li></ul>"
-          "<p>Residents 68 or older can buy discounted senior licenses, and a resident veteran "
-          "totally and permanently disabled from service gets a permanent license, with a "
-          "one-time $10 administrative fee. Fish and Game sets the other fees; its license page "
-          "lists them.</p>",
+          "<p>Fish and Game sets the fees; its license page lists them.</p>",
           actions=[("License fees and requirements", FG_FEES),
                    ("The HIP permit", FG_HIP),
                    ("Buy a Duck Stamp", DUCK_STAMP)],
@@ -5282,9 +7884,6 @@ HUNTING = guide(
           actions=[("Buy a license online", NHFG_LICENSE)],
           law=["RSA 214:8", "RSA 214:1", "RSA 214:36"]),
      step("In the field",
-          "<p>The law recommends that anyone hunting with a firearm or a bow, except for "
-          "waterfowl, wear a hat, vest or other clothing in <b>hunter orange</b> that can be seen "
-          "from all sides.</p>"
           "<p>A deer you take must be <b>registered</b>; you can do it online, as you can a "
           "turkey.</p>",
           actions=[("Register a deer or turkey", NHFG_LICENSE)],
@@ -5369,6 +7968,21 @@ HUNTING = guide(
            FG_HIP, OUT_STATE_READ),
      claim("Senior licenses for residents 68 and older, and the Milestone license.", FG_SENIOR,
            OUT_STATE_READ)],
+    more=civics.faq(
+        ("How old must I be for hunter education, and is the course online?",
+         "<p>You must be at least 12 to get the certificate, and the online course ends with an "
+         "in-person field day.</p>"),
+        ("What can I not do with an apprentice license?",
+         "<p>It is not valid for moose, and it does not count as a past license when you buy "
+         "your next one.</p>"),
+        ("Are there discounted licenses?",
+         "<p>Residents 68 or older can buy discounted senior licenses, and a resident veteran "
+         "totally and permanently disabled from service gets a permanent license, with a "
+         "one-time $10 administrative fee.</p>"),
+        ("Do I have to wear hunter orange?",
+         "<p>The law recommends that anyone hunting with a firearm or a bow, except for "
+         "waterfowl, wear a hat, vest or other clothing in <b>hunter orange</b> that can be seen "
+         "from all sides.</p>")),
     see=[("How to get a fishing license", "/guides/fishing-license.html"),
          ("Boating: your certificate and registration", "/guides/boating.html")],
     figures=[fig("$10", "RSA 214:13", "A $10 administrative fee shall be charged once")])
@@ -5397,8 +8011,6 @@ BOATING = guide(
           "<p>It is issued from age 16, and if you pass at 15 you receive it when you turn 16. It "
           "lasts for life. The state charges $10 for it, and all the fees you can be charged for "
           "it, the course included, may not exceed $50.</p>"
-          "<p>A certificate from another state, the U.S. Coast Guard Auxiliary, the U.S. Power "
-          "Squadron, or an approved Canadian card counts instead.</p>"
           "<p>Carry it, or a copy or a photo of the front and back on your phone, while you "
           "operate, and show it to a Marine Patrol officer who asks.</p>",
           actions=[("Boating education", MP_BOATING_FAQ)],
@@ -5415,9 +8027,8 @@ BOATING = guide(
      step("Young boaters",
           "<p>A person under 16 may operate a boat with a motor of more than 25 horsepower only "
           "with a person 18 or older aboard who holds a safe boater certificate. A personal "
-          "watercraft (the law calls it a ski craft) may be operated only by someone 16 or older. "
-          "A child 12 or under must wear a Coast Guard approved life jacket on the deck of a boat "
-          "that is underway, unless the boat has the side rails the law describes.</p>",
+          "watercraft (the law calls it a ski craft) may be operated only by someone 16 or "
+          "older.</p>",
           law=["RSA 270:30", "RSA 270:74", "RSA 270:30-a"]),
      step("Register your boat every year",
           "<p>Every boat on New Hampshire&rsquo;s waters must be registered and display a "
@@ -5437,10 +8048,8 @@ BOATING = guide(
           "age, are paid with it; the DMV&rsquo;s boat registration office, (603) 227-4030, can "
           "tell you the total for your boat. The DMV mails a renewal notice before the "
           "registration ends.</p>"
-          "<p>Keep the registration certificate aboard. Display the number on each side of the "
-          "front half of the boat, in block letters at least 3 inches high in a contrasting "
-          "color. Every registration ends on <b>December 31</b>. If you sell the boat, or it is "
-          "destroyed or abandoned, tell the DMV in writing within 15 days.</p>",
+          "<p>Keep the registration certificate aboard. Every registration ends on <b>December "
+          "31</b>.</p>",
           actions=[("Boat registration (DMV)", DMV_BOATS),
                    ("The boat fee table, RSA 72-A:3", "/laws/72-a#s3")],
           law=["RSA 270-E:3", "RSA 270-E:4", "RSA 270-E:5", "RSA 270-E:5-a", "RSA 72-A:3",
@@ -5516,6 +8125,19 @@ BOATING = guide(
            "227-4030; by drop box, at authorized boat agents, or by mail to the Concord DMV; "
            "registrations expire December 31 and the DMV mails renewal notices before then.",
            DMV_BOATS, OUT_STATE_READ)],
+    more=civics.faq(
+        ("Does a boating certificate from another state count?",
+         "<p>A certificate from another state, the U.S. Coast Guard Auxiliary, the U.S. Power "
+         "Squadron, or an approved Canadian card counts instead.</p>"),
+        ("Must children wear a life jacket?",
+         "<p>A child 12 or under must wear a Coast Guard approved life jacket on the deck of a "
+         "boat that is underway, unless the boat has the side rails the law describes.</p>"),
+        ("How do I display my registration number?",
+         "<p>Display the number on each side of the front half of the boat, in block letters at "
+         "least 3 inches high in a contrasting color.</p>"),
+        ("What if I sell my boat?",
+         "<p>If you sell the boat, or it is destroyed or abandoned, tell the DMV in writing "
+         "within 15 days.</p>")),
     see=[("How to get a fishing license", "/guides/fishing-license.html"),
          ("How to get a hunting license", "/guides/hunting-license.html")],
     figures=[fig("age 16", "RSA 270-D:13", "a person 16 years of age or older"),
@@ -5532,6 +8154,453 @@ BOATING = guide(
              fig("$5", "RSA 270-E:5", "there shall be $5 collected for each registration")])
 
 GUIDES += [BOATING]
+
+
+# ---------------------------------------------------------------------------
+# INSURANCE: CAR, RENTERS AND HOMEOWNERS (the person, 26 October 2026: "add
+# guides to insurance like car insurance, renters insurance, homeowner's
+# insurance, private health insurance, etc."). What the law requires rests on
+# the statutes, read on 26 October 2026 as the Laws pages print them: the
+# financial responsibility law (RSA 264) for when the state asks a driver for
+# proof of insurance, the least a car policy must cover (RSA 259:61) and the
+# uninsured motorist and medical payments coverage every policy carries; the
+# rules on cancelling a car policy (RSA 417-A) and a home or renters policy
+# (RSA 417-B); and the unfair claim practices the Insurance Department
+# enforces (RSA 417). No statute on this disk was found to require car
+# insurance to register a car, so that New Hampshire does not require it is
+# said on the Insurance Department's word, whose pages refuse this machine:
+# their addresses come from a web search and their claims wait for the
+# person's printouts. The guides recommend no insurer and no amount of
+# coverage. FEMA's FloodSmart page answers this machine and was read the
+# same day (guide_sources.OTHER).
+# ---------------------------------------------------------------------------
+INS_LAW_READ = "2026-10-26"
+INS_DEPT_READ = None                 # the person's printouts of insurance.nh.gov
+FLOOD_READ = "2026-10-26"
+INS_AUTO = "https://www.insurance.nh.gov/consumers/automobile-insurance"
+INS_HOME = "https://www.insurance.nh.gov/consumers/homeowners-and-renters-insurance"
+INS_COMPLAINT = "https://www.insurance.nh.gov/consumers/filing-complaint"
+FLOOD_ELIGIBLE = "https://www.floodsmart.gov/get-insured/eligibility"
+
+# The complaint step and its claims, which the renters and homeowners guides
+# share: the unfair claim practices of RSA 417:4, XV, and what a consumer may
+# do after the Insurance Department has acted on a complaint, or has not.
+PROPERTY_CLAIM_STEP = step(
+    "If you have a loss: filing a claim",
+    "<p>Tell your insurance company about the loss as your policy directs, and keep a record of "
+    "what you send and when. The law treats it as an <b>unfair claim settlement practice</b> "
+    "for an insurer, without just cause, to fail to act promptly on what you send about a "
+    "claim, to fail to try in good faith to settle fairly and promptly once its liability is "
+    "reasonably clear, or to fail to say whether it covers the claim within a reasonable time "
+    "after you send the proof of loss forms.</p>",
+    law=["RSA 417:4"])
+PROPERTY_COMPLAINT_STEP = step(
+    "If you disagree with your insurer: complain to the Insurance Department",
+    "<p>The <b>New Hampshire Insurance Department</b> takes complaints about insurance "
+    "companies and agents; its Filing a Complaint page says how to file one, online or on a "
+    "printed form. The Insurance Commissioner may examine and investigate an insurer&rsquo;s "
+    "practices.</p>"
+    "<p>If the Department finds that an insurer broke the law and its finding becomes final, a "
+    "consumer harmed by the practice may sue the insurer for the loss, and one who wins also "
+    "recovers the cost of the suit, reasonable attorney&rsquo;s fees included. If the Department "
+    "takes no action within 120 days of receiving your complaint, that counts as a finding of no "
+    "violation, which you may appeal.</p>",
+    actions=[("File a complaint (Insurance Department)", INS_COMPLAINT)],
+    law=["RSA 417:5", "RSA 417:19", "RSA 417:20"])
+PROPERTY_CLAIM_CLAIMS = [
+    claim("Unfair claim settlement practices, if committed without just cause and not merely "
+          "inadvertently or accidentally: failing to acknowledge and act promptly upon "
+          "communications with respect to claims; not attempting in good faith to effectuate "
+          "prompt, fair and equitable settlements of claims in which liability has become "
+          "reasonably clear; failing to affirm or deny coverage of claims within a reasonable "
+          "time after proof of loss forms have been submitted.", "RSA 417:4", INS_LAW_READ),
+    claim("The commissioner may examine and investigate the affairs of every person engaged in "
+          "the business of insurance in this state.", "RSA 417:5", INS_LAW_READ),
+    claim("When a supplier has been found in violation and the finding has become final, any "
+          "consumer adversely affected may bring suit to recover damages; failure of the "
+          "commissioner to take action within 120 days from the date of the receipt of a "
+          "complaint shall constitute a finding that the practice is not in violation, which "
+          "may be appealed in accordance with RSA 541.", "RSA 417:19", INS_LAW_READ),
+    claim("A consumer who prevails in an action under RSA 417:19, I recovers, in addition to "
+          "damages, the cost of the suit, including reasonable attorneys' fees.", "RSA 417:20",
+          INS_LAW_READ),
+    claim("How to file a complaint about an insurance company or agent with the Insurance "
+          "Department, online or on a printable form.", INS_COMPLAINT, INS_DEPT_READ)]
+PROPERTY_CANCEL_CLAIMS = [
+    claim("Chapter 417-B applies to insurance other than automobile and workers' compensation "
+          "on personal, family, and household risks insuring loss of or damage to real property, "
+          "loss of or damage to personal property, or legal liability for loss of, damage to, or "
+          "injury to persons or property.", "RSA 417-B:1", INS_LAW_READ),
+    claim("No insurer shall cancel or refuse to write or renew such a policy solely because of "
+          "age, residence, race, color, creed, national origin, ancestry, marital status, or "
+          "lawful occupation, including the military service, or solely because another insurer "
+          "has refused to write, cancelled or refused to renew.", "RSA 417-B:2", INS_LAW_READ),
+    claim("No insurer shall cancel, refuse to write, or refuse to renew solely on the basis of "
+          "credit information, without consideration of any other underwriting factor.",
+          "RSA 417-B:2-a", INS_LAW_READ),
+    claim("After a policy has been in effect for 90 days, or if it is a renewal, an insurer may "
+          "cancel only for nonpayment of premium; conviction of a crime increasing a hazard "
+          "insured against; fraud or material misrepresentation in pursuing a claim; grossly "
+          "negligent acts substantially increasing the hazards; physical changes making the "
+          "property uninsurable; or the specific request of the insured.", "RSA 417-B:3",
+          INS_LAW_READ),
+    claim("A written notice of cancellation or refusal to renew, effective not less than 45 days "
+          "after it is mailed or delivered, or 10 days for nonpayment of premium or within 90 "
+          "days of a new policy's effective date, stating the specific reason or reasons.",
+          "RSA 417-B:4", INS_LAW_READ)]
+PROPERTY_CANCEL_FIGS = [
+    fig("90 days", "RSA 417-B:3", "has been in effect for 90 days"),
+    fig("45 days", "RSA 417-B:4", "shall not be less than 45 days after"),
+    fig("10 days", "RSA 417-B:4", "may be 10 days from the date of mailing"),
+    fig("120 days", "RSA 417:19", "within 120 days from the date of the receipt of a complaint")]
+
+CAR_INSURANCE = guide(
+    "car-insurance", "How Car Insurance Works in New Hampshire",
+    "When New Hampshire requires a driver to prove they can pay for a crash, the least a car "
+    "insurance policy here must cover, uninsured motorist coverage, and what to do if your "
+    "insurer cancels your policy.",
+    "New Hampshire does not require most drivers to buy car insurance, as the Insurance "
+    "Department explains, but a driver who causes a crash is responsible for the damage. After "
+    "a crash you were in without insurance, or after certain convictions, the state can suspend "
+    "your license and registration until you file <b>proof of financial responsibility</b>, "
+    "usually an insurance company&rsquo;s certificate. A car insurance policy sold here must "
+    "cover at least $25,000 for injury to one person, $50,000 for one accident, and $25,000 for "
+    "damage to property, and must include <b>uninsured motorist</b> and medical payments "
+    "coverage.",
+    [ask("Do you have car insurance?",
+         [("Yes", "Your policy carries at least the state&rsquo;s minimums and uninsured motorist "
+                  "coverage."),
+          ("No", "You are responsible for any damage you cause, and a crash or certain "
+                 "convictions can cost you your license until you file proof of insurance.")]),
+     ask("Were you just in a crash?",
+         [("Someone was hurt, or the damage is over $1,000",
+           "Report it to the DMV in writing within 15 days, unless the police investigated."),
+          ("No one was hurt and the damage is less", "Exchange information at the scene.")])],
+    [step("What the law requires, and what it does not",
+          "<p>The Insurance Department&rsquo;s Automobile Insurance page explains that New "
+          "Hampshire does not require you to buy car insurance, and what a policy covers. Without "
+          "insurance you are still responsible for the damage you cause, and the "
+          "<b>financial responsibility law</b> decides when the state requires proof that you "
+          "can pay.</p>"
+          "<p>That proof means being able to pay $25,000 for injury to or death of one person, "
+          "$50,000 for injury to or death of two or more people in one accident, and $25,000 "
+          "for damage to property, for each vehicle registered in your name.</p>",
+          actions=[("Automobile insurance (Insurance Department)", INS_AUTO)],
+          law=["RSA 264:20"]),
+     step("After a crash",
+          "<p>Stop at the scene. Give the other driver, anyone hurt, and the owner of any "
+          "property damaged your name and address, your driver&rsquo;s license number, your "
+          "insurance company and policy information, the registration number of the vehicle, "
+          "and the name and address of each person in it.</p>"
+          "<p>If anyone was hurt or killed, or the damage to property is over $1,000, report the "
+          "crash to the DMV in writing within 15 days, unless a police officer investigated "
+          "it.</p>"
+          "<p>If you had no insurance policy or bond covering the crash, the state suspends your "
+          "license and registration, and you must turn in your plates, until you put up enough "
+          "security to pay any judgment for the damage and file proof of financial "
+          "responsibility. You receive notice at least 10 days before the suspension starts. It "
+          "lasts until you are released from the claim, win in court, or pay a judgment against "
+          "you. If no one tells the DMV within 2 years that they have sued you, it may give you "
+          "back your license and registration once you file proof.</p>",
+          law=["RSA 264:25", "RSA 264:3", "RSA 264:7"]),
+     step("After certain convictions",
+          "<p>The state may also suspend your license and registration until you file proof of "
+          "financial responsibility, and keep it on file, after a conviction for:</p>"
+          "<ul><li>driving under the influence of alcohol or drugs;</li>"
+          "<li>failing to stop and report after a crash;</li>"
+          "<li>homicide or assault arising from driving;</li>"
+          "<li>a second conviction for speeding at an excessive rate, or for reckless "
+          "driving.</li></ul>"
+          "<p>You receive notice at least 10 days before the suspension starts. The DMV may stop "
+          "requiring the proof after 3 years, if you have no new conviction, crash or unpaid "
+          "judgment.</p>",
+          law=["RSA 264:2", "RSA 264:7"]),
+     step("Filing proof of financial responsibility",
+          "<p>Proof is usually a <b>certificate</b> that an insurance company or a surety company "
+          "files with the DMV for you, showing that you carry the amounts the law sets. It can "
+          "also be a deposit of money or securities with the state. Ask your insurance company to "
+          "file the certificate.</p>",
+          law=["RSA 264:21", "RSA 264:20"]),
+     step("What every car insurance policy must include",
+          "<p>A car insurance policy sold in New Hampshire must cover your liability to others "
+          "for at least $25,000 for injury to or death of one person, $50,000 for one accident "
+          "injuring or killing more than one, and $25,000 for damage to others&rsquo; property. "
+          "You may buy more.</p>"
+          "<p>It must also include:</p>"
+          "<ul><li><b>Uninsured motorist coverage</b>, which protects you when a driver with no "
+          "insurance, or a hit-and-run driver, injures you. It is at least as much as the policy&rsquo;s "
+          "coverage for injury, and if you buy more than the minimum liability coverage, it rises "
+          "to match.</li>"
+          "<li><b>Medical payments coverage</b> of at least $1,000 per person, for reasonable "
+          "medical costs of the driver and passengers hurt in a crash in your car, for costs "
+          "within 3 years of the crash.</li></ul>",
+          actions=[("Automobile insurance (Insurance Department)", INS_AUTO)],
+          law=["RSA 259:61", "RSA 264:15", "RSA 264:16"]),
+     step("If your insurer cancels or will not renew your policy",
+          "<p>Once a policy has been in effect for 60 days, or once it has been renewed, an "
+          "insurer may cancel it only if you do not pay the premium, if you ask it to, or if you "
+          "were not a New Hampshire resident when the policy was issued or renewed. It may not "
+          "cancel or refuse to renew your policy solely because of your age, where you live, "
+          "your race, color, creed, national origin, ancestry, marital status or lawful "
+          "occupation, or because another insurer turned you down.</p>"
+          "<p>The insurer must send you written notice that states its specific reasons. The "
+          "cancellation takes effect at least 45 days after the notice, or 10 days for not paying "
+          "or in the first 60 days of a new policy. The notice tells you how to reach the "
+          "Insurance Department, and you may ask the Insurance Commissioner to review the "
+          "decision by writing within 10 days of receiving it.</p>",
+          actions=[("File a complaint (Insurance Department)", INS_COMPLAINT)],
+          law=["RSA 417-A:4", "RSA 417-A:3", "RSA 417-A:5", "RSA 417-A:7"])],
+    [("Automobile Insurance (NH Insurance Department)", INS_AUTO),
+     ("Filing a Complaint (NH Insurance Department)", INS_COMPLAINT),
+     ("Financial responsibility, RSA 264", "/laws/264"),
+     ("The motor vehicle liability policy, RSA 259:61", "/laws/259#s61"),
+     ("Driver licenses, RSA 263", "/laws/263"),
+     ("Cancelling car insurance, RSA 417-A", "/laws/417-a")],
+    ["259", "263", "264", "417-A"],
+    [claim("Proof of financial responsibility shall mean proof of ability to respond in damages "
+           "in the amount of $25,000 because of bodily injury or death to any one person; $50,000 "
+           "because of bodily injury to or death to 2 or more persons in any one accident, and "
+           "$25,000 because of injury to and destruction of property; furnished for each motor "
+           "vehicle registered by such person.", "RSA 264:20", INS_LAW_READ),
+     claim("The driver shall immediately stop and give the driver's name and address, driver's "
+           "license number, insurance provider and policy information, registration number and "
+           "the name and address of each occupant; within 15 days report in writing if any "
+           "person is injured or killed, or if damage to property is in excess of $1,000, unless "
+           "the accident is investigated by a police officer.", "RSA 264:25", INS_LAW_READ),
+     claim("After the report of an accident the director shall suspend the license and "
+           "registration and require the surrender of the plates until the driver or owner has "
+           "furnished security for any judgment and gives and maintains proof of financial "
+           "responsibility, with notice not less than 10 days prior; not applicable if a motor "
+           "vehicle liability policy or bond was in effect.", "RSA 264:3", INS_LAW_READ),
+     claim("The suspension remains until a release, a judgment in the person's favor, or a "
+           "satisfied judgment, with proof of financial responsibility; if no written notice that "
+           "suit has been brought is received within 2 years, a new license and registration may "
+           "be issued with proof; the requirement may be waived after 3 years' duration from the "
+           "accident or conviction, with no further record.", "RSA 264:7", INS_LAW_READ),
+     claim("Upon conviction for driving under the influence; failing to stop and report when "
+           "involved in an accident; homicide or assault arising out of driving; the second time "
+           "for an excessive rate of speed; the second time for reckless driving, the director "
+           "may suspend license and registration until proof of financial responsibility is "
+           "given and maintained; notice not less than 10 days prior.", "RSA 264:2",
+           INS_LAW_READ),
+     claim("Proof is given by filing a certificate of an insurance company or surety company, "
+           "or by a deposit of money or securities.", "RSA 264:21", INS_LAW_READ),
+     claim("A motor vehicle liability policy: at least $25,000 on account of injury to or death "
+           "of any one person, at least $50,000 on account of any one accident resulting in "
+           "injury to or death of more than one person, and at least $25,000 for damage to "
+           "property of others.", "RSA 259:61", INS_LAW_READ),
+     claim("Every policy includes uninsured and hit-and-run motor vehicle coverage at least in "
+           "the amounts prescribed for bodily injury; when the insured buys liability coverage "
+           "greater than the minimum, uninsured motorist coverage is automatically equal to it; "
+           "umbrella or excess policies provide it unless the named insured rejects it in "
+           "writing.", "RSA 264:15", INS_LAW_READ),
+     claim("Medical payments coverage of $1,000 per person or more for reasonable medical costs "
+           "of the driver and passengers, for costs incurred during 3 years following the "
+           "injuries; the insured may claim under medical payments or health insurance or both, "
+           "without duplicate payment.", "RSA 264:16", INS_LAW_READ),
+     claim("No person under the age of 18 years shall be issued a driver's license unless a "
+           "parent or guardian gives written permission, insurance coverage is presented, or the "
+           "person is emancipated by marriage.", "RSA 263:17", INS_LAW_READ),
+     claim("After a policy has been in effect for 60 days, or if it is a renewal, an insurer may "
+           "cancel only for nonpayment of premium, the specific request of the insured, or the "
+           "named insured not being a resident of New Hampshire when it was issued or renewed.",
+           "RSA 417-A:4", INS_LAW_READ),
+     claim("No insurer shall cancel, refuse to write or refuse to renew solely because of age, "
+           "residence, race, color, creed, national origin, ancestry, marital status or lawful "
+           "occupation, or solely because another insurer has refused, cancelled or not "
+           "renewed.", "RSA 417-A:3", INS_LAW_READ),
+     claim("A written notice stating the specific reasons, effective not less than 45 days after "
+           "it is mailed or delivered, or 10 days for nonpayment or within 60 days of a new "
+           "policy; advising the right to request the commissioner's review by written request "
+           "within 10 days; with the insurance department's phone number and mailing address.",
+           "RSA 417-A:5", INS_LAW_READ),
+     claim("Any insured may within 10 days of the receipt of a notice of cancellation or "
+           "nonrenewal request in writing that the commissioner review the action.",
+           "RSA 417-A:7", INS_LAW_READ),
+     # The Insurance Department's own pages, waiting for the person's printouts.
+     claim("New Hampshire does not require drivers to buy automobile insurance; a driver is still "
+           "responsible for damage they cause; what an automobile policy covers.", INS_AUTO,
+           INS_DEPT_READ),
+     claim("How to file a complaint about an insurance company or agent with the Insurance "
+           "Department, online or on a printable form.", INS_COMPLAINT, INS_DEPT_READ)],
+    more=civics.faq(
+        ("Does a driver under 18 need insurance?",
+         "<p>A person under 18 gets a license only with a parent&rsquo;s or guardian&rsquo;s "
+         "written permission, or with insurance coverage shown when applying, or if married "
+         '(<a href="/laws/263#s17">RSA 263:17</a>).</p>'),
+        ("Does my car insurance or my health insurance pay my medical bills after a crash?",
+         "<p>You choose: you may claim under your car policy&rsquo;s medical payments coverage, "
+         "your health insurance, or both, but you may not be paid twice for the same bill.</p>"),
+        ("Does an umbrella policy include uninsured motorist coverage?",
+         "<p>Yes, an umbrella or excess policy over a car policy includes uninsured motorist "
+         "coverage equal to its limits, unless you turn it down in writing.</p>"),
+        ("How long must I keep proof on file?",
+         "<p>Until the DMV stops requiring it. It may do so after 3 years, if you have had no "
+         "new conviction, crash or unpaid judgment.</p>")),
+    see=[("How to register a car", "/guides/register-a-car.html"),
+         ("How to renew your driver’s license", "/guides/renew-drivers-license.html")],
+    figures=[fig("$25,000", "RSA 259:61", "at least $25,000 on account of injury"),
+             fig("$50,000", "RSA 259:61", "at least $50,000 on account of any one accident"),
+             fig("$1,000", "RSA 264:25", "damage to property is in excess of $1,000"),
+             fig("$1,000", "RSA 264:16", "greater than $1,000 per person"),
+             fig("15 days", "RSA 264:25", "within 15 days after such accident"),
+             fig("10 days", "RSA 264:3", "not less than 10 days prior"),
+             fig("2 years", "RSA 264:7", "within 2 years from the date of the accident"),
+             fig("3 years", "RSA 264:7", "after 3 years' duration"),
+             fig("3 years", "RSA 264:16", "during 3 years following"),
+             fig("60 days", "RSA 417-A:4", "has been in effect for 60 days"),
+             fig("45 days", "RSA 417-A:5", "shall not be less than 45 days after")])
+
+GUIDES += [CAR_INSURANCE]
+
+RENTERS_INSURANCE = guide(
+    "renters-insurance", "Renters Insurance in New Hampshire",
+    "What a renters insurance policy covers, the rules on cancelling one, and how to file a "
+    "claim and complain to the Insurance Department.",
+    "A renters policy insures your own belongings and your <b>liability</b> if someone is hurt "
+    "in your home or you damage someone else&rsquo;s property; the Insurance Department&rsquo;s "
+    "page explains what it covers. Once a policy has been in effect for 90 days, the insurer may "
+    "cancel it only for the reasons the law lists, with written notice. If an insurer handles "
+    "your claim unfairly, you can complain to the <b>Insurance Department</b>.",
+    [ask("Do you rent your home?",
+         [("Yes", "A renters policy can cover your belongings and your liability."),
+          ("No, you own it", "See homeowners insurance.")]),
+     box("If you have a loss, tell your insurer and keep a record of what you send."),
+     box("If you disagree with how it is handled, complain to the Insurance Department.")],
+    [step("What renters insurance covers",
+          "<p>New Hampshire&rsquo;s law on home insurance covers policies on a household&rsquo;s "
+          "<b>real property</b> (a building), its <b>personal property</b> (belongings) and its "
+          "<b>legal liability</b> for injury to other people or damage to their property. A "
+          "renters policy is the last two: your belongings and your liability, not the building, "
+          "which is the owner&rsquo;s to insure. The Insurance Department&rsquo;s Homeowners and "
+          "Renters Insurance page explains what such a policy covers and what to ask when you "
+          "buy one.</p>",
+          actions=[("Homeowners and renters insurance (Insurance Department)", INS_HOME)],
+          law=["RSA 417-B:1"]),
+     step("If your insurer cancels or will not renew your policy",
+          "<p>An insurer may not cancel or refuse to write or renew your policy solely because "
+          "of your age, where you live, your race, color, creed, national origin, ancestry, "
+          "marital status or lawful occupation, because another insurer turned you down, or on "
+          "your credit information alone.</p>"
+          "<p>Once a policy has been in effect for 90 days, or once it has been renewed, the "
+          "insurer may cancel it only if you do not pay the premium, are convicted of a crime "
+          "that increases a hazard insured against, commit fraud in a claim, act with gross "
+          "negligence that substantially increases a hazard, or ask it to.</p>"
+          "<p>It must send written notice that states its specific reasons, at least 45 days "
+          "before the cancellation or nonrenewal takes effect, or 10 days for not paying or in "
+          "the first 90 days of a new policy.</p>",
+          law=["RSA 417-B:2", "RSA 417-B:2-a", "RSA 417-B:3", "RSA 417-B:4"]),
+     PROPERTY_CLAIM_STEP,
+     PROPERTY_COMPLAINT_STEP],
+    [("Homeowners and Renters Insurance (NH Insurance Department)", INS_HOME),
+     ("Filing a Complaint (NH Insurance Department)", INS_COMPLAINT),
+     ("Home and renters insurance, RSA 417-B", "/laws/417-b"),
+     ("Unfair insurance practices, RSA 417", "/laws/417")],
+    ["417", "417-B"],
+    [*PROPERTY_CANCEL_CLAIMS, *PROPERTY_CLAIM_CLAIMS,
+     claim("What homeowners and renters insurance cover, and what to ask when buying a "
+           "policy; a renters policy covers the renter's belongings and liability, not the "
+           "building.", INS_HOME, INS_DEPT_READ)],
+    more=civics.faq(
+        ("Can my insurer drop me because of my credit?",
+         "<p>Not on your credit information alone: the insurer must weigh other factors "
+         "too.</p>"),
+        ("Is there a time limit for the Insurance Department to act on my complaint?",
+         "<p>If it takes no action within 120 days, you may treat that as a finding against your "
+         "complaint and appeal it.</p>")),
+    see=[("Your rights as a tenant", "/guides/tenant-rights.html"),
+         ("Homeowners insurance", "/guides/homeowners-insurance.html")],
+    figures=PROPERTY_CANCEL_FIGS)
+
+GUIDES += [RENTERS_INSURANCE]
+
+HOMEOWNERS_INSURANCE = guide(
+    "homeowners-insurance", "Homeowners Insurance in New Hampshire",
+    "What a homeowners insurance policy covers, why a lender may require it and flood "
+    "insurance, the rules on cancelling a policy, and how to file a claim and complain.",
+    "A homeowners policy insures your house, your belongings and your <b>liability</b> to "
+    "others; the Insurance Department&rsquo;s page explains what it covers. A mortgage lender "
+    "may require it, and most homeowners policies do not cover flood damage. Once a policy has "
+    "been in effect for 90 days, the insurer may cancel it only for the reasons the law lists, "
+    "and it may not refuse to renew it because of a single valid claim. If an insurer handles "
+    "your claim unfairly, you can complain to the <b>Insurance Department</b>.",
+    [ask("Do you have a mortgage?",
+         [("Yes", "Your lender may require homeowners insurance, and flood insurance in a "
+                  "high-risk flood area."),
+          ("No", "No lender requires it, but you bear any loss you do not insure.")]),
+     box("If you have a loss, tell your insurer and keep a record of what you send."),
+     box("If you disagree with how it is handled, complain to the Insurance Department.")],
+    [step("What homeowners insurance covers",
+          "<p>New Hampshire&rsquo;s law on home insurance covers policies on a household&rsquo;s "
+          "<b>real property</b> (the house), its <b>personal property</b> (belongings) and its "
+          "<b>legal liability</b> for injury to other people or damage to their property. The "
+          "Insurance Department&rsquo;s Homeowners and Renters Insurance page explains what a "
+          "homeowners policy covers and what to ask when you buy one.</p>",
+          actions=[("Homeowners and renters insurance (Insurance Department)", INS_HOME)],
+          law=["RSA 417-B:1"]),
+     step("What a lender may require, and flood insurance",
+          "<p>A mortgage lender may require you to insure the house, as the Insurance "
+          "Department&rsquo;s page explains; your mortgage papers say what it requires.</p>"
+          "<p>Most homeowners insurance does not cover flood damage, says FEMA&rsquo;s National "
+          "Flood Insurance Program. You must have flood insurance if you own a home in a "
+          "<b>Special Flood Hazard Area</b> and have a government-backed mortgage, and some "
+          "lenders require it outside those areas. If the property has received federal "
+          "disaster assistance before, it needs flood insurance to qualify again.</p>",
+          actions=[("Who needs flood insurance (FloodSmart, FEMA)", FLOOD_ELIGIBLE)]),
+     step("If your insurer cancels or will not renew your policy",
+          "<p>An insurer may not cancel or refuse to write or renew your policy solely because "
+          "of your age, where you live, your race, color, creed, national origin, ancestry, "
+          "marital status or lawful occupation, because another insurer turned you down, or on "
+          "your credit information alone. It may not refuse to renew a homeowners policy solely "
+          "because you filed a single valid claim in one policy term, and asking about your "
+          "coverage is not a claim.</p>"
+          "<p>Once a policy has been in effect for 90 days, or once it has been renewed, the "
+          "insurer may cancel it only if you do not pay the premium, are convicted of a crime "
+          "that increases a hazard insured against, commit fraud in a claim, act with gross "
+          "negligence that substantially increases a hazard, change the property so that it "
+          "cannot be insured, or ask it to.</p>"
+          "<p>It must send written notice that states its specific reasons, at least 45 days "
+          "before the cancellation or nonrenewal takes effect, or 10 days for not paying or in "
+          "the first 90 days of a new policy.</p>",
+          law=["RSA 417-B:2", "RSA 417-B:2-a", "RSA 417-B:3-a", "RSA 417-B:3", "RSA 417-B:4"]),
+     PROPERTY_CLAIM_STEP,
+     PROPERTY_COMPLAINT_STEP],
+    [("Homeowners and Renters Insurance (NH Insurance Department)", INS_HOME),
+     ("Filing a Complaint (NH Insurance Department)", INS_COMPLAINT),
+     ("Who’s Eligible for NFIP Flood Insurance? (FloodSmart, FEMA)", FLOOD_ELIGIBLE),
+     ("Home and renters insurance, RSA 417-B", "/laws/417-b"),
+     ("Unfair insurance practices, RSA 417", "/laws/417")],
+    ["417", "417-B"],
+    [*PROPERTY_CANCEL_CLAIMS, *PROPERTY_CLAIM_CLAIMS,
+     claim("The nonrenewal of a homeowner's insurance policy is prohibited if based solely on the "
+           "insured having filed a single valid claim within any one previous or current policy "
+           "term; inquiries about coverage do not constitute a valid claim.", "RSA 417-B:3-a",
+           INS_LAW_READ),
+     claim("What homeowners and renters insurance cover, and what to ask when buying a policy; "
+           "a mortgage lender may require homeowners insurance.", INS_HOME, INS_DEPT_READ),
+     claim("You're required to have flood insurance if you own a home or business in a Special "
+           "Flood Hazard Area (SFHA) and have a government-backed mortgage; some banks require "
+           "flood insurance even if you don't live in a high-risk area; if your property has "
+           "received federal disaster assistance before, you must have flood insurance to "
+           "qualify for future disaster assistance; this requirement is tied to a property, not "
+           "an individual homeowner; most homeowners insurance does not cover flood damage.",
+           FLOOD_ELIGIBLE, FLOOD_READ)],
+    more=civics.faq(
+        ("Can my insurer refuse to renew my policy because I filed a claim?",
+         "<p>Not solely because of a single valid claim in one policy term, and asking about "
+         "your coverage is not a claim.</p>"),
+        ("Does a flood insurance requirement follow the house?",
+         "<p>Yes: if the home received federal disaster assistance before, it needs flood "
+         "insurance to qualify for more, even after it is sold.</p>"),
+        ("Is there a time limit for the Insurance Department to act on my complaint?",
+         "<p>If it takes no action within 120 days, you may treat that as a finding against your "
+         "complaint and appeal it.</p>")),
+    see=[("Renters insurance", "/guides/renters-insurance.html"),
+         ("How to get ready for storms and power outages", "/guides/storms-and-emergencies.html"),
+         ("How to read your property tax bill", "/guides/property-tax-bill.html")],
+    figures=PROPERTY_CANCEL_FIGS)
+
+GUIDES += [HOMEOWNERS_INSURANCE]
 
 
 # ---------------------------------------------------------------------------
@@ -5628,30 +8697,70 @@ TASKS = [
              "Whether you need one, and the documents to bring."),
         task("new-to-new-hampshire", "Move to New Hampshire",
              "Your license, your vehicle&rsquo;s registration and registering to vote."),
+        task("motorcycle-license", "Get a motorcycle license or ride a moped",
+             "The learner&rsquo;s permit, rider training and the road test, the riding rules, "
+             "and what a moped needs.", head="How to get a motorcycle license"),
     ]),
     ("Help and Benefits", [
         task("food-and-health-assistance", "Apply for food or health assistance",
              "SNAP and Medicaid, online at NH Easy or on paper."),
+        task("heating-and-electric-help", "Get help with heating and electric bills",
+             "Fuel assistance, help with electric bills, weatherization, and what to do with no "
+             "heat."),
         task("file-for-unemployment", "File for unemployment",
              "Your claim, the weekly claims that follow, and how to appeal."),
         task("child-care-scholarship", "Get help paying for child care",
              "The Child Care Scholarship: who it is for, how to apply, and choosing a provider."),
-        task("domestic-violence-help", "Get help after domestic violence, sexual assault or stalking",
-             "The 24-hour helpline, a safety plan, a protective order, and care after an assault."),
         task("homelessness-help", "Get help if you are homeless or may lose your home",
              "Shelter, your town&rsquo;s welfare office, your rights in an eviction, and a "
              "housing voucher."),
+        task("domestic-violence-help", "Get help after domestic violence, sexual assault or stalking",
+             "The 24-hour helpline, a safety plan, a protective order, and care after an assault."),
         task("storms-and-emergencies", "Prepare for storms, power outages and emergencies",
              "Emergency alerts, supplies, power outage and winter storm safety, and where to "
              "find a warm place."),
-        task("heating-and-electric-help", "Get help with heating and electric bills",
-             "Fuel assistance, help with electric bills, weatherization, and what to do with no "
-             "heat."),
+    ]),
+    ("Federal Benefits", [
         task("medicare-and-social-security", "Sign up for Medicare and Social Security",
              "When to sign up, choosing coverage, and help paying Medicare&rsquo;s costs."),
         task("disability-help", "Get disability benefits and services",
              "SSDI and SSI, the state&rsquo;s cash and medical assistance, area agencies and "
              "vocational rehabilitation."),
+    ]),
+    ("Know Your Rights", [
+        task("tenant-rights", "Know your rights as a tenant",
+             "Security deposits, repairs and heat, rent increases, and what happens in an "
+             "eviction.",
+             head="Your rights as a tenant, from deposits to eviction"),
+        task("wage-rights", "Get paid what you are owed at work",
+             "When pay is due, your last paycheck, deductions, minimum wage, overtime, and "
+             "filing a wage claim.",
+             head="Your rights at work: getting paid"),
+        task("discrimination", "Get help if you face discrimination",
+             "At work, renting or buying a home, and in stores and other public places: what "
+             "the law forbids, and how to file a complaint."),
+        task("consumer-rights", "Report a scam or a business that cheated you",
+             "Cancel a sale made at your door, your rights with gift certificates, and "
+             "complaining to the Attorney General.",
+             head="How to report a scam or file a consumer complaint"),
+        task("public-records", "Get a public record",
+             "Ask a town, school district, county or state agency for its records."),
+    ]),
+    ("Insurance", [
+        task("car-insurance", "Understand car insurance in New Hampshire",
+             "When the state requires proof of insurance, the least a policy must cover, and "
+             "uninsured motorist coverage.",
+             head="How car insurance works in New Hampshire"),
+        task("renters-insurance", "Understand renters insurance",
+             "What a renters policy covers, cancellation, and filing a claim or a complaint.",
+             head="Renters insurance: what it covers and your rights"),
+        task("homeowners-insurance", "Understand homeowners insurance",
+             "What a homeowners policy covers, what a lender may require, flood insurance, and "
+             "filing a claim or a complaint.",
+             head="Homeowners insurance: what it covers and your rights"),
+        task("health-insurance", "Get private health insurance",
+             "The Marketplace and when to enroll, help paying premiums, coverage through a job "
+             "or a parent&rsquo;s plan, and appealing a denied claim."),
     ]),
     ("Property and Records", [
         task("property-tax-abatement", "Appeal your property tax assessment",
@@ -5659,8 +8768,13 @@ TASKS = [
         task("property-tax-relief", "Get property tax relief on a low or moderate income",
              "Who qualifies for the state&rsquo;s relief, and how to apply.",
              head="How to get property tax relief"),
-        task("public-records", "Get a public record",
-             "Ask a town, school district, county or state agency for its records."),
+        task("property-tax-bill", "Understand your property tax bill",
+             "How your property is assessed, how the rate is set, what the bill shows, and the "
+             "relief you can apply for.",
+             head="How to read your property tax bill"),
+        task("landlord-duties", "Rent out a home",
+             "A landlord&rsquo;s duties: security deposits, entry, minimum standards, and "
+             "evicting through the court."),
         task("vital-records", "Get a birth, death, marriage or divorce certificate",
              "From your town or city clerk or the state: who may ask and what to bring."),
         task("passport", "Get a U.S. passport",
@@ -5678,6 +8792,14 @@ TASKS = [
              "each year.", head="How to get a boater certificate and register a boat"),
     ]),
     ("Around Your Town", [
+        task("report-a-road-problem", "Report a pothole or a sidewalk problem",
+             "Who fixes which road, how to tell your town or the state, and what to do if a "
+             "road problem damaged your car.",
+             head="How to report a pothole or a road problem"),
+        task("building-permits", "Find out when you need a building permit",
+             "The building code, permits and inspections, who may do electrical and plumbing "
+             "work, septic approval, and building near water.",
+             head="How to know when you need a building permit"),
         task("trash-and-recycling", "Get rid of trash, recycling and hazardous waste",
              "Your transfer station, what never goes in the trash, hazardous waste days and "
              "composting."),
@@ -5743,6 +8865,9 @@ WORDS = {
     "who-to-contact": ("who do i contact", "complaint", "pothole", "sidewalk", "city council",
                        "selectboard", "school board", "congressman", "senator", "federal agency",
                        "casework", "help with a state agency", "constituent services"),
+    "report-a-road-problem": ("pothole", "streetlight", "street light", "traffic light",
+                              "traffic signal", "stoplight", "sidewalk", "road repair",
+                              "public works", "highway department", "car damage"),
     "contact-your-legislators": ("email my representative", "call my senator",
                                  "write my legislator", "contact"),
     "attend-a-hearing": ("testify", "public hearing", "speak on a bill", "attend"),
@@ -5758,22 +8883,44 @@ WORDS = {
                               "update my license", "expired license"),
     "register-a-car": ("register my car", "car registration", "vehicle registration", "plates",
                        "dmv"),
+    "building-permits": ("building permit", "permit", "inspection", "building inspector",
+                         "code enforcement", "addition", "renovation", "remodel", "electrical",
+                         "electrician", "plumbing", "plumber", "septic", "shoreland",
+                         "wetlands", "contractor"),
     "real-id": ("real id", "license", "id"),
+    "motorcycle-license": ("motorcycle", "motorcycle license", "motorcycle endorsement", "moped",
+                           "scooter", "learner's permit", "helmet"),
     "new-to-new-hampshire": ("moving to new hampshire", "new resident", "license",
                              "register my car", "register to vote"),
     "food-and-health-assistance": ("snap", "food stamps", "medicaid", "health insurance",
                                    "benefits", "nh easy"),
     "file-for-unemployment": ("unemployment", "laid off", "lost my job", "benefits", "jobless"),
+    "wage-rights": ("wages", "paycheck", "final paycheck", "last paycheck", "unpaid wages",
+                    "not paid", "overtime", "minimum wage", "wage claim", "meal break",
+                    "pay stub", "department of labor"),
     "child-care-scholarship": ("child care", "childcare", "daycare", "child care scholarship",
                                "child care assistance"),
     "domestic-violence-help": ("domestic violence", "sexual assault", "stalking", "abuse",
                                "restraining order", "protective order", "rape"),
+    "discrimination": ("discrimination", "discriminated", "harassment", "sexual harassment",
+                       "human rights", "fair housing", "racism", "retaliation"),
     "homelessness-help": ("homeless", "shelter", "eviction", "evicted", "housing voucher",
                           "section 8", "town welfare", "rent"),
+    "tenant-rights": ("tenant", "renter", "renting", "landlord", "security deposit",
+                      "eviction", "evicted", "lease", "rent increase", "repairs", "no heat",
+                      "locked out", "bed bugs"),
+    "landlord-duties": ("landlord", "rental property", "evict a tenant", "eviction notice",
+                        "security deposit", "lease", "tenant", "demand for rent"),
     "storms-and-emergencies": ("storm", "power outage", "emergency", "nh alerts", "generator",
                                "snow storm", "warming center", "emergency kit"),
     "trash-and-recycling": ("trash", "recycling", "dump", "transfer station", "hazardous waste",
                             "compost", "electronics recycling", "paint disposal"),
+    "health-insurance": ("health insurance", "marketplace", "healthcare.gov", "obamacare",
+                         "open enrollment", "cobra", "denied claim", "external review",
+                         "insurance department", "parent's plan"),
+    "consumer-rights": ("scam", "fraud", "consumer complaint", "consumer protection",
+                        "attorney general", "cancel a sale", "door to door", "gift card",
+                        "gift certificate", "prize"),
     "heating-and-electric-help": ("fuel assistance", "heating", "electric bill", "weatherization"),
     "medicare-and-social-security": ("medicare", "social security", "retirement", "turning 65",
                                      "medicare savings program", "extra help", "part b",
@@ -5782,7 +8929,17 @@ WORDS = {
                         "vocational rehabilitation", "area agency", "developmental disability"),
     "property-tax-abatement": ("property tax", "abatement", "assessment"),
     "property-tax-relief": ("property tax", "tax relief", "low income"),
+    "property-tax-bill": ("property tax bill", "tax rate", "assessment", "assessed value",
+                          "revaluation", "elderly exemption", "veterans credit", "tax deferral"),
     "public-records": ("right to know", "91-a", "records request", "foia"),
+    "car-insurance": ("car insurance", "auto insurance", "insurance", "sr-22", "sr22",
+                      "proof of insurance", "financial responsibility", "uninsured motorist",
+                      "license suspended", "accident report", "crash"),
+    "renters-insurance": ("renters insurance", "renter's insurance", "insurance", "tenant",
+                          "apartment insurance", "insurance claim", "insurance complaint"),
+    "homeowners-insurance": ("homeowners insurance", "home insurance", "insurance",
+                             "flood insurance", "mortgage", "insurance claim",
+                             "insurance complaint", "policy cancelled"),
     "vital-records": ("birth certificate", "death certificate", "marriage certificate",
                       "divorce certificate"),
     "fishing-license": ("fishing license", "fishing", "fish", "free fishing day",

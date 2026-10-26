@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.708
+# GRANITE_VERSION: 2026-09-04.711
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -26432,7 +26432,7 @@ LEARN_CONSTITUTION_CLAIMS = [
      2, "100", "a three fifths vote of the entire membership of each house"),
     ("how-a-bill-becomes-law", "then two thirds of those voting on the question at the election",
      2, "100", "approval by two thirds of the qualified voters present and voting on the subject"),
-    ("governor-and-council", "in which case it becomes law without a signature after five days, Sundays "
+    ("governor-and-council", "It becomes law without a signature after five days, Sundays "
      "excepted", 2, "44", "within five days (sundays excepted)"),
     ("governor-and-council", "Five days pass Sundays excepted.", 2, "44", "within five days (sundays excepted)"),
     ("governor-and-council", "unless the legislature's adjournment prevents the Governor from returning "
@@ -26487,6 +26487,60 @@ LEARN_CONSTITUTION_CLAIMS = [
      "Article 9)", 2, "9", "as equal as circumstances will admit"),
     ("your-representatives", "the constitution forbids the legislature to divide a town, ward or place",
      2, "9", "no town, ward or place shall be divided"),
+    # The State House and what makes the branches different (26 October 2026).
+    ("state-house-and-branches", "the General Court of New Hampshire (Part Second, Article 3)",
+     2, "3", "the general court of new hampshire"),
+    ("state-house-and-branches", "not less than 375 or more than 400 members (Part Second, Article 9)",
+     2, "9", "not less than three hundred seventy-five or more than four hundred"),
+    ("state-house-and-branches", "the Senate has 24 members (Part Second, Article 25)",
+     2, "25", "the senate shall consist of twenty four members"),
+    ("state-house-and-branches", "Article 15 gives each member $200", 2, "15", "the sum of $200"),
+    ("state-house-and-branches", "as compensation in full for their services for the term elected",
+     2, "15", "as compensation in full for their services for the term elected"),
+    ("state-house-and-branches", "the presiding officers of the two chambers $250",
+     2, "15", "the presiding officers of both houses"),
+    ("state-house-and-branches", "the presiding officers of the two chambers $250",
+     2, "15", "the sum of $250"),
+    ("state-house-and-branches", "45 legislative days or after July 1, whichever comes first",
+     2, "15", "45 legislative days or after the first day of july"),
+    ("state-house-and-branches", "A special session adds $3 a day, for no more than 15 days",
+     2, "15", "$3 per day for a period not exceeding 15 days"),
+    ("state-house-and-branches", "the title His Excellency (Part Second, Article 41)",
+     2, "41", "whose title shall be his excellency"),
+    ("state-house-and-branches", "The governor is chosen biennially, in November (Part Second, Article 42)",
+     2, "42", "the governor shall be chosen biennially in the month of november"),
+    ("state-house-and-branches", "30 years old and have lived in the state for the 7 years before the "
+     "election", 2, "42", "an inhabitant of this state for 7 years next preceding"),
+    ("state-house-and-branches", "30 years old and have lived in the state for the 7 years before the "
+     "election", 2, "42", "of the age of 30 years"),
+    ("state-house-and-branches", "the House and Senate together elect one of the two with the most votes, "
+     "by joint ballot", 2, "42", "by joint ballot elect one of the two persons, having the highest number "
+                                 "of votes"),
+    ("state-house-and-branches", "Five Executive Councilors are elected biennially",
+     2, "60", "biennially elected, by ballot, five councilors"),
+    ("state-house-and-branches", "for advising the governor in the executive part of government",
+     2, "60", "for advising the governor in the executive part of government"),
+    ("state-house-and-branches", "five districts drawn as nearly equal in population as may be",
+     2, "65", "five districts, as nearly equal as may be, governing themselves by the number of population"),
+    ("state-house-and-branches", "nominated and appointed by the governor and council",
+     2, "46", "shall be nominated and appointed by the governor and council"),
+    ("state-house-and-branches", "the nomination must be made at least three days before",
+     2, "46", "at least three days prior to such appointment"),
+    ("state-house-and-branches", "no one takes office unless a majority of the council agrees",
+     2, "46", "unless a majority of the council agree thereto"),
+    ("state-house-and-branches", "a negative on each other", 2, "47", "a negative on each other"),
+    ("state-house-and-branches", "a trial court of general jurisdiction known as the superior court",
+     2, "72-a", "a trial court of general jurisdiction known as the superior court"),
+    ("state-house-and-branches", "the administrative head of all the courts",
+     2, "73-a", "the administrative head of all the courts"),
+    ("state-house-and-branches", "The Governor nominates and the Executive Council confirms",
+     2, "46", "all judicial officers"),
+    ("state-house-and-branches", "a judge holds office during good behavior",
+     2, "73", "shall hold their offices during good behavior"),
+    ("state-house-and-branches", "no one may serve as a judge after reaching seventy",
+     2, "78", "after he has attained the age of seventy years"),
+    ("state-house-and-branches", "on the address of both houses of the legislature",
+     2, "73", "upon the address of both houses of the legislature"),
 ]
 
 
@@ -34964,7 +35018,12 @@ def _links_resolve():
     Learn section cites real bills by number in hand-written prose -- HB 1002
     of 2024 among them -- and this fixture holds four invented ones. A link to
     a bill the fixture does not carry is counted and skipped, and the count is
-    in the result line so that it going up is visible.
+    in the result line so that it going up is visible. A chapter of the Laws
+    pages is the same case (26 October 2026): the state symbols page cites
+    RSA 3 section by section, and the fixture's statute table holds 91-A
+    alone, so a link to a chapter the fixture does not carry is counted and
+    skipped in the same way, and its count is in the result line beside the
+    bills'.
 
     AND IT IS BUILT AS A CLONE BUILDS IT: WITH NO LOGO (1 October 2026). The
     logo and the icons are not in the repository, so this is the site every
@@ -34991,9 +35050,11 @@ def _links_resolve():
         rules = _redirect_rules(site)
         have_bill = {p.relative_to(site / "bill").with_suffix("").as_posix()
                      for p in (site / "bill").rglob("*.html")}
+        have_law = {re.sub(r"(/index)?\.html$", "", p.relative_to(site / "laws").as_posix())
+                    for p in (site / "laws").rglob("*.html")} if (site / "laws").is_dir() else set()
         pages = sorted(site.rglob("*.html"))
         assert pages, "the fixture chain wrote no pages to check"
-        broken, offsite_bill, n = Counter(), 0, 0
+        broken, offsite_bill, offsite_law, n = Counter(), 0, 0, 0
         where = {}
         for page in pages:
             rel = page.relative_to(site).as_posix()
@@ -35014,6 +35075,10 @@ def _links_resolve():
                 bill = re.fullmatch(r"/bill/(.+?)(?:\.html)?", path)
                 if bill and bill.group(1) not in have_bill:
                     offsite_bill += 1
+                    continue
+                law = re.fullmatch(r"/laws/([^/]+?)/?(?:\.html)?", path)
+                if law and law.group(1) not in have_law:
+                    offsite_law += 1
                     continue
                 n += 1
                 if not _served(site, path, rules):
@@ -35122,8 +35187,9 @@ def _links_resolve():
         assert not bad, "check_site, once the logo is there: " + "; ".join(bad)[:160]
         return "ok", (f"{n} internal links on {len(pages)} fixture pages, each "
                       f"resolved through <base href> and served by a file or a "
-                      f"_redirects rule; {offsite_bill} more name a bill this "
-                      "fixture does not carry. Built as a clone, with no logo: "
+                      f"_redirects rule; {offsite_bill} more name a bill and "
+                      f"{offsite_law} a chapter of the laws this fixture does not "
+                      "carry. Built as a clone, with no logo: "
                       f"the only dead addresses are {len(icons)} icons "
                       f"({sum(no_logo.values())} links), the heading is text, "
                       "the header has no mark and check_site says why once; "
@@ -40750,7 +40816,9 @@ def _guide_search_words(BC, G):
             ("where do i vote", "how-to-vote"),
             ("food stamps", "food-and-health-assistance"),
             ("I want to testify on a bill", "submit-testimony"),
-            ("my landlord is evicting me", "homelessness-help"),
+            # Tenant Rights, not Homelessness Help, since there is one (the renting
+            # guides, 26 October 2026): a tenant facing eviction has rights to use first.
+            ("my landlord is evicting me", "tenant-rights"),
             ("lost my job", "file-for-unemployment"),
             ("dump hours", "trash-and-recycling"),
             ("birth certificate", "vital-records"),
@@ -66638,6 +66706,39 @@ def _guide_laws_lower(G, BC):
         bad += [f'{g["slug"]}: reads chapter {c!r}' for c in laws if c.endswith("-")]
     assert not bad, "a guide links a Laws page out of lower case: " + "; ".join(bad[:5])
     return "ok", f"{len(G.GUIDES)} guides, every Laws link lower case"
+
+
+@check("build", "every Common Questions section is questions with answers: each a question "
+                "that ends in a question mark and opens on words of its own, and the section "
+                "is after the page's main text, never its first",
+       needs=("guides", "civics"))
+def _common_questions(G, civics):
+    """The person, 26 October 2026: a FAQ dropdown "near the end" of a guide or
+    a Learn page, holding the finer details so the page stays streamlined.
+    civics.faq draws it; this reads every guide's words and every Learn
+    page's body for it, so a question with no answer, a heading typed where a
+    question should be, or a section moved to the top is caught."""
+    bodies = [(g["slug"], g["more"]) for g in G.GUIDES]
+    bodies += [(t["slug"], t["body"]) for t in civics.TOPICS]
+    seen, bad = 0, []
+    for slug, html_ in bodies:
+        if 'class="l-faq"' not in (html_ or ""):
+            continue
+        seen += 1
+        if slug in [t["slug"] for t in civics.TOPICS] and html_.lstrip().startswith("<h2>Common Questions"):
+            bad.append(f"{slug}: Common Questions is the page's first section")
+        block = html_[html_.index('class="l-faq"'):]
+        block = block[:block.index("</div>")] if "</div>" in block else block
+        for m in re.finditer(r"<details><summary>(.*?)</summary>(.*?)</details>", block, re.S):
+            q, a = m.group(1).strip(), re.sub(r"<[^>]+>", "", m.group(2)).strip()
+            if not q.endswith("?"):
+                bad.append(f"{slug}: {q[:50]!r} is not a question")
+            if len(a) < 10:
+                bad.append(f"{slug}: {q[:50]!r} has no answer")
+        if block.count("<details>") != len(re.findall(r"<details><summary>.*?</summary>", block, re.S)):
+            bad.append(f"{slug}: a question without its summary")
+    assert not bad, "; ".join(bad[:5])
+    return "ok", f"{seen} pages with Common Questions, each a question with its answer"
 
 
 @check("code", "guide_sources names each of its lists once, so no list of pages silently "

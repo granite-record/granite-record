@@ -210,7 +210,11 @@
     "cuota",
     "cuotas"
    ],
-   "basis": "The person's term list, 25 October 2026: cuota, not cargo or tarifa"
+   "basis": "The person's term list, 25 October 2026: cuota, not cargo or tarifa; a lawyer's fees are honorarios, not cuotas (the wage, consumer and renting guides, 25 and 26 October 2026)",
+   "skip": [
+    "attorney’s fees",
+    "attorney's fees"
+   ]
   },
   {
    "en": [
@@ -655,6 +659,15 @@
     "Patrulla Marina"
    ],
    "basis": "The fishing, hunting and boating guides, 25 October 2026: with the English beside it at first mention."
+  },
+  {
+   "en": [
+    "equalization ratio"
+   ],
+   "es": [
+    "coeficiente de igualación"
+   ],
+   "basis": "One word for the Department of Revenue Administration's ratio on every property tax page (the FAQ rollout, 26 October 2026: two guides had said índice, two coeficiente)"
   }
  ]
 }
