@@ -109,7 +109,7 @@ GUIDE_PAGES = tuple(f"guides/{s}.html" for s in (
     "property-tax-bill", "public-records", "vital-records",
     "tour-the-state-house", "town-warrant-article", "child-care-scholarship",
     "domestic-violence-help", "discrimination", "homelessness-help",
-    "storms-and-emergencies", "trash-and-recycling", "passport",
+    "storms-and-emergencies", "trash-and-recycling", "consumer-rights", "passport",
     "medicare-and-social-security", "disability-help", "who-to-contact", "report-a-road-problem",
     "fishing-license", "hunting-license", "boating", "building-permits"))
 # THE LEARN PAGES (the person, 25 October 2026: "start on the Learn pages"),

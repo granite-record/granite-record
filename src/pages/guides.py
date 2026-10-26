@@ -4711,6 +4711,189 @@ GUIDES += [WEATHER]
 
 
 # ---------------------------------------------------------------------------
+# SCAMS AND CONSUMER COMPLAINTS (the person, 25 October 2026: "Write all
+# three know your rights guides too", of "scams and consumer complaints").
+# What a buyer may do rests on the law, read on 25 October 2026 as the Laws
+# pages print it: the Consumer Protection Act (RSA 358-A) for what is unfair
+# or deceptive, who enforces it and what a court may award; the home
+# solicitation sale rules (RSA 361-B) for cancelling a sale made away from a
+# store; and the Prizes and Gifts Act (RSA 358-O) for the "you have won"
+# letter or call. The Attorney General's Consumer Protection and Antitrust
+# Bureau's pages refuse this machine; their addresses come from a web search
+# and their claims wait for the person's printouts. The FTC's consumer pages
+# answer this machine with an empty page, so the guide does not cite them.
+# ---------------------------------------------------------------------------
+CP_READ = "2026-10-25"
+CP_AG_READ = None                    # the person's printouts of doj.nh.gov
+AG_CPB = "https://www.doj.nh.gov/bureaus/consumer-protection-antitrust-bureau"
+AG_COMPLAINT = "https://www.doj.nh.gov/consumer/complaints"
+
+CONSUMER = guide(
+    "consumer-rights", "Scams and Consumer Complaints: Your Rights as a Buyer",
+    "How to spot a scam, how to cancel a sale made at your door, your rights with gift "
+    "certificates, and how to complain to the Attorney General or take a business to court "
+    "in New Hampshire.",
+    "New Hampshire&rsquo;s Consumer Protection Act forbids unfair and deceptive business "
+    "practices, and the Attorney General&rsquo;s Consumer Protection and Antitrust Bureau "
+    "enforces it. If a seller came to your door, you can usually cancel the sale until midnight "
+    "of the third business day after it. A real prize never costs you a fee. If a business "
+    "cheated you, you can complain to the Bureau, and you can take the business to court "
+    "yourself.",
+    [ask("What happened?",
+         [("You bought something from a seller at your door",
+           "Cancel in writing by midnight of the third business day."),
+          ("A business misled or cheated you",
+           "Complain to the Attorney General&rsquo;s Consumer Protection Bureau."),
+          ("A call or letter says you won a prize, for a fee",
+           "A prize the law allows costs you nothing. Do not pay.")]),
+     box("You can also take the business to court yourself, within 3 years of learning what "
+         "it did.")],
+    [step("Know what the law forbids",
+          "<p>The Consumer Protection Act makes it unlawful for a business to use any unfair or "
+          "deceptive practice. Among the examples the law lists:</p>"
+          "<ul><li>claiming a product or service has an approval, a certification, a quality or "
+          "a benefit it does not have, or that the business is connected with someone it is "
+          "not;</li>"
+          "<li>selling used, reconditioned or secondhand goods as new;</li>"
+          "<li>advertising something with no intent to sell it as advertised;</li>"
+          "<li>false or misleading claims about a sale price or a price reduction.</li></ul>"
+          "<p>A business that sells by mail, by phone or online from a post office box or an "
+          "answering service must say in its advertising its legal name, the street address "
+          "it actually works from, and a phone number for complaints. A seller who will not "
+          "say who and where it is is a warning sign.</p>",
+          law=["RSA 358-A:2", "RSA 361-B:2-a"]),
+     step("A prize should never cost you anything",
+          "<p>If a seller tells you that you have won something, with words such as "
+          "&ldquo;Congratulations&rdquo; or &ldquo;You have won&rdquo;, the law requires the "
+          "prize to be yours without any obligation, delivered at no cost to you within 10 days. "
+          "A &ldquo;prize&rdquo; that asks you to pay a handling, registration, redemption or "
+          "delivery fee, or to buy something first, is not one the law allows. Do not pay, and "
+          "report it (step 5).</p>"
+          "<p>A promotion that offers only a chance to win must say who runs it and every "
+          "condition you must meet, and, in writing, each prize&rsquo;s value, how many there "
+          "are and your odds.</p>",
+          law=["RSA 358-O:3", "RSA 358-O:4"]),
+     step("Cancel a sale made at your door",
+          "<p>A sale of goods or services priced at $150 or more, made anywhere other than the "
+          "seller&rsquo;s permanent place of business, such as at your home, is a <b>home "
+          "solicitation sale</b>. You may cancel it until <b>midnight of the third business "
+          "day</b> after the sale. The seller must give you a receipt or contract that says so, "
+          "with its name and address.</p>"
+          "<p>To cancel, mail the seller a written notice, preferably by certified or registered "
+          "mail, or return the goods in person within that time. The seller must then return, "
+          "within 15 days, everything you paid, any trade-in, and any note you signed. If the "
+          "seller had already done work that changed your property, you get all your money "
+          "back, or you may ask instead for the property to be put back as it was. The seller "
+          "must come for its goods or pay to have them returned, and once it has refunded you, "
+          "you must let it have them back within the same 15 days. If it makes no effort to get "
+          "them back within 90 days of the sale, they are yours.</p>",
+          law=["RSA 361-B:1", "RSA 361-B:2", "RSA 361-B:3"]),
+     step("Gift certificates do not expire",
+          "<p>A gift certificate with a face value of $250 or less may not carry an expiration "
+          "date, and no gift certificate may lose value to a dormancy fee or any other service "
+          "charge. Season passes are not covered.</p>",
+          law=["RSA 358-A:2"]),
+     step("Complain to the Attorney General",
+          "<p>The Attorney General&rsquo;s <b>Consumer Protection and Antitrust Bureau</b> "
+          "enforces the Consumer Protection Act. It can ask a court to stop a business&rsquo;s "
+          "unlawful practice and to order money or property returned to the people it harmed. "
+          "File a complaint with the Bureau online, or call its Consumer Hotline; report a scam "
+          "to your local police as well.</p>"
+          "<p>The Bureau does not enforce a private contract: a dispute over a contract alone is "
+          "yours to take to court.</p>"
+          "<p>Some businesses answer to their own regulator instead: for a bank, an insurance "
+          "company or a utility, complain to the Bank Commissioner, the Insurance Commissioner "
+          "or the Public Utilities Commission.</p>",
+          actions=[("File a consumer complaint (Attorney General)", AG_COMPLAINT)],
+          law=["RSA 358-A:4", "RSA 358-A:3"]),
+     step("Take the business to court",
+          "<p>You can sue a business that used an unfair or deceptive practice against you. If "
+          "you win, the court awards your actual losses or $1,000, whichever is greater, and "
+          "two to three times that if the business knew it was breaking the law, plus your court "
+          "costs and reasonable attorney&rsquo;s fees. An agreement that gives up this right does "
+          "not hold. The law does not reach a transaction more than 3 years before you knew, or should have "
+          "known, what the business did.</p>"
+          "<p>A lawyer can tell you whether you have a case (below).</p>",
+          law=["RSA 358-A:10", "RSA 358-A:3"])],
+    [("Consumer Protection and Antitrust Bureau (Attorney General)", AG_CPB),
+     ("File a Consumer Complaint (Attorney General)", AG_COMPLAINT),
+     ("Regulation of Business Practices for Consumer Protection, RSA 358-A", "/laws/358-a"),
+     ("Prizes and Gifts Act, RSA 358-O", "/laws/358-o"),
+     ("Retail Selling, RSA 361-B", "/laws/361-b")],
+    ["358-A", "358-O", "361-B"],
+    [# The statutes, as the Laws pages print them, read on 25 October 2026.
+     claim("Unlawful: any unfair or deceptive act or practice in trade or commerce, including "
+           "representing that goods or services have sponsorship, approval, characteristics or "
+           "benefits they do not have, or an affiliation the person does not have; representing "
+           "goods as new if deteriorated, reconditioned, used or secondhand; advertising with "
+           "intent not to sell as advertised; false or misleading statements of fact concerning "
+           "price reductions; gift certificates having a face value of $250 or less with "
+           "expiration dates; dormancy fees or other service charges reducing a gift "
+           "certificate; not applying to season passes.", "RSA 358-A:2", CP_READ),
+     claim("A seller stating a post office box, a mail-receiving street address or an "
+           "answering-service number in its advertising must disclose its legal name, the "
+           "street address from which business actually is conducted, and a telephone number "
+           "for customer inquiries and complaints; except retail premises open to the public.",
+           "RSA 361-B:2-a", CP_READ),
+     claim("No person shall represent that another has won anything of value unless it is "
+           "given without obligation and delivered at no expense to the recipient within 10 "
+           "days; \"Congratulations\" or \"You have won\" is such a representation; a handling "
+           "charge includes promotional, redemption, registration fees or delivery costs.",
+           "RSA 358-O:3", CP_READ),
+     claim("A chance to win must disclose on whose behalf the promotion is conducted and all "
+           "material conditions; in writing, each prize's retail value, the number to be "
+           "awarded and the odds.", "RSA 358-O:4", CP_READ),
+     claim("A home solicitation sale is a sale of goods or services, priced at $150 or more, "
+           "with a solicitation and sale at any place other than the seller's permanent place "
+           "of business.", "RSA 361-B:1", CP_READ),
+     claim("The seller furnishes a receipt and contract with its name and address and the "
+           "statement that the buyer may cancel any time prior to midnight of the third "
+           "business day after the date of the transaction; cancel by written notice mailed, "
+           "preferably certified or registered, or by returning the merchandise in person; "
+           "the seller returns within 15 days of the cancellation payments, any trade-in and "
+           "any note; if work physically altered the buyer's property, a refund of all funds, "
+           "or full restoration instead; the seller calls for the merchandise or pays for its "
+           "return; after 90 days following the sale without effort to recover it, it becomes "
+           "the buyer's property; after returning all payments the seller is entitled to receive "
+           "the goods within the same 15 day period.", "RSA 361-B:2", CP_READ),
+     claim("A violation of this chapter is an unfair or deceptive act under RSA 358-A:2, "
+           "enforced by RSA 358-A's remedies.", "RSA 361-B:3", CP_READ),
+     claim("Administered and enforced by the consumer protection and antitrust bureau, "
+           "department of justice; the attorney general may seek an injunction and restitution "
+           "of money or property to any person injured.", "RSA 358-A:4", CP_READ),
+     claim("Exempt: trade or commerce subject to the bank commissioner, the insurance "
+           "commissioner or the public utilities commission; transactions entered into more "
+           "than 3 years prior to the time the plaintiff knew, or reasonably should have known, "
+           "of the conduct.", "RSA 358-A:3", CP_READ),
+     claim("Any person injured may bring an action for damages and equitable relief; recovery "
+           "of actual damages or $1,000, whichever is greater; for a willful or knowing "
+           "violation as much as 3 times, but not less than 2 times, such amount; costs and "
+           "reasonable attorney's fees; any attempted waiver of the right to these damages is "
+           "void.", "RSA 358-A:10", CP_READ),
+     # The Attorney General's pages, from the person's printouts.
+     claim("The Consumer Protection and Antitrust Bureau enforces the Consumer Protection Act "
+           "and takes complaints.", AG_CPB, CP_AG_READ),
+     claim("File a consumer complaint online or by calling the Consumer Hotline; report scams "
+           "to your local police department too; the Attorney General's Office does not "
+           "enforce private contracts.", AG_COMPLAINT, CP_AG_READ)]
+    + help_claims("lawyer"),
+    more="<h2>Who Can Help</h2>"
+         "<p>The Attorney General&rsquo;s Consumer Protection and Antitrust Bureau takes "
+         "complaints online and on its Consumer Hotline. For advice on your own case:</p>"
+         + helps("lawyer"),
+    see=[("Who to contact about an issue", "/guides/who-to-contact.html")],
+    figures=[fig("$150", "RSA 361-B:1", "priced at $150 or more"),
+             fig("15 days", "RSA 361-B:2", "within 15 days of the cancellation"),
+             fig("90 days", "RSA 361-B:2", "after 90 days following the sale"),
+             fig("10 days", "RSA 358-O:3", "within 10 days of the representation"),
+             fig("$250", "RSA 358-A:2", "a face value of $250 or less"),
+             fig("$1,000", "RSA 358-A:10", "$1,000, whichever is greater"),
+             fig("3 years", "RSA 358-A:3", "more than 3 years prior")])
+
+GUIDES += [CONSUMER]
+
+
+# ---------------------------------------------------------------------------
 # TRASH, RECYCLING, YARD WASTE AND HAZARDOUS WASTE (the person, 24 October
 # 2026: "proper disposal of trash, recycling, compost, large items, and
 # hazardous materials (Hazardous materials day) which varies by town and
@@ -6742,6 +6925,10 @@ TASKS = [
         task("disability-help", "Get disability benefits and services",
              "SSDI and SSI, the state&rsquo;s cash and medical assistance, area agencies and "
              "vocational rehabilitation."),
+        task("consumer-rights", "Report a scam or a business that cheated you",
+             "Cancel a sale made at your door, your rights with gift certificates, and "
+             "complaining to the Attorney General.",
+             head="How to report a scam or file a consumer complaint"),
     ]),
     ("Property and Records", [
         task("property-tax-abatement", "Appeal your property tax assessment",
@@ -6884,6 +7071,9 @@ WORDS = {
                                "snow storm", "warming center", "emergency kit"),
     "trash-and-recycling": ("trash", "recycling", "dump", "transfer station", "hazardous waste",
                             "compost", "electronics recycling", "paint disposal"),
+    "consumer-rights": ("scam", "fraud", "consumer complaint", "consumer protection",
+                        "attorney general", "cancel a sale", "door to door", "gift card",
+                        "gift certificate", "prize"),
     "heating-and-electric-help": ("fuel assistance", "heating", "electric bill", "weatherization"),
     "medicare-and-social-security": ("medicare", "social security", "retirement", "turning 65",
                                      "medicare savings program", "extra help", "part b",

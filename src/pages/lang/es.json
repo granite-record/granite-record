@@ -2219,6 +2219,216 @@
    "es": "los ingresos de su hogar están dentro de los límites actuales del Departamento, que publica cada año, vigentes desde el 1 de julio.",
    "state": "draft"
   },
+  "guide.consumer-rights.a-business-misled-or-cheated-you": {
+   "en": "A business misled or cheated you",
+   "es": "Una empresa lo engañó o lo estafó",
+   "state": "draft"
+  },
+  "guide.consumer-rights.a-business-that-sells-by-mail": {
+   "en": "A business that sells by mail, by phone or online from a post office box or an answering service must say in its advertising its legal name, the street address it actually works from, and a phone number for complaints. A seller who will not say who and where it is is a warning sign.",
+   "es": "Una empresa que vende por correo, por teléfono o en línea desde una casilla en la oficina postal o un servicio de contestador debe indicar en su publicidad su nombre legal, la dirección física desde donde realmente trabaja y un número de teléfono para quejas. Un vendedor que no dice quién es ni dónde está es una señal de alerta.",
+   "state": "draft"
+  },
+  "guide.consumer-rights.a-call-or-letter-says-you": {
+   "en": "A call or letter says you won a prize, for a fee",
+   "es": "Una llamada o una carta dice que ganó un premio, a cambio de una cuota",
+   "state": "draft"
+  },
+  "guide.consumer-rights.a-gift-certificate-with-a-face": {
+   "en": "A gift certificate with a face value of $250 or less may not carry an expiration date, and no gift certificate may lose value to a dormancy fee or any other service charge. Season passes are not covered.",
+   "es": "Un certificado de regalo con un valor nominal de $250 o menos no puede tener fecha de vencimiento, y ningún certificado de regalo puede perder valor por una cuota de inactividad ni por ningún otro cargo por servicio. Los pases de temporada no están incluidos.",
+   "state": "draft"
+  },
+  "guide.consumer-rights.a-lawyer-can-tell-you-whether": {
+   "en": "A lawyer can tell you whether you have a case (below).",
+   "es": "Un abogado puede decirle si tiene un caso (abajo).",
+   "state": "draft"
+  },
+  "guide.consumer-rights.a-prize-should-never-cost-you": {
+   "en": "A prize should never cost you anything",
+   "es": "Un premio nunca debería costarle nada",
+   "state": "draft"
+  },
+  "guide.consumer-rights.a-prize-the-law-allows-costs": {
+   "en": "A prize the law allows costs you nothing. Do not pay.",
+   "es": "Un premio que la ley permite no le cuesta nada. No pague.",
+   "state": "draft"
+  },
+  "guide.consumer-rights.a-promotion-that-offers-only-a": {
+   "en": "A promotion that offers only a chance to win must say who runs it and every condition you must meet, and, in writing, each prize&rsquo;s value, how many there are and your odds.",
+   "es": "Una promoción que solo ofrece la posibilidad de ganar debe decir quién la organiza y todas las condiciones que usted debe cumplir, y, por escrito, el valor de cada premio, cuántos hay y sus probabilidades de ganar.",
+   "state": "draft"
+  },
+  "guide.consumer-rights.a-sale-of-goods-or-services": {
+   "en": "A sale of goods or services priced at $150 or more, made anywhere other than the seller&rsquo;s permanent place of business, such as at your home, is a <b>home solicitation sale</b>. You may cancel it until <b>midnight of the third business day</b> after the sale. The seller must give you a receipt or contract that says so, with its name and address.",
+   "es": "Una venta de bienes o servicios con un precio de $150 o más, hecha en cualquier lugar que no sea el local comercial permanente del vendedor, como su casa, es una <b>venta a domicilio</b>. Puede cancelarla hasta la <b>medianoche del tercer día hábil</b> después de la venta. El vendedor debe darle un recibo o contrato que lo diga, con su nombre y dirección.",
+   "state": "draft"
+  },
+  "guide.consumer-rights.advertising-something-with-no-intent-to": {
+   "en": "advertising something with no intent to sell it as advertised;",
+   "es": "anunciar algo sin intención de venderlo como se anuncia;",
+   "state": "draft"
+  },
+  "guide.consumer-rights.cancel-a-sale-made-at-your": {
+   "en": "Cancel a sale made at your door",
+   "es": "Cancelar una venta hecha en su puerta",
+   "state": "draft"
+  },
+  "guide.consumer-rights.cancel-in-writing-by-midnight-of": {
+   "en": "Cancel in writing by midnight of the third business day.",
+   "es": "Cancele por escrito antes de la medianoche del tercer día hábil.",
+   "state": "draft"
+  },
+  "guide.consumer-rights.claiming-a-product-or-service-has": {
+   "en": "claiming a product or service has an approval, a certification, a quality or a benefit it does not have, or that the business is connected with someone it is not;",
+   "es": "afirmar que un producto o servicio tiene una aprobación, una certificación, una calidad o un beneficio que no tiene, o que la empresa está relacionada con alguien con quien no lo está;",
+   "state": "draft"
+  },
+  "guide.consumer-rights.complain-to-the-attorney-general": {
+   "en": "Complain to the Attorney General",
+   "es": "Presentar una queja ante el Fiscal General",
+   "state": "draft"
+  },
+  "guide.consumer-rights.complain-to-the-attorney-generals": {
+   "en": "Complain to the Attorney General&rsquo;s Consumer Protection Bureau.",
+   "es": "Presente una queja ante la Oficina de Protección al Consumidor del Fiscal General.",
+   "state": "draft"
+  },
+  "guide.consumer-rights.consumer-protection-and-antitrust-bureau": {
+   "en": "Consumer Protection and Antitrust Bureau (Attorney General)",
+   "es": "Oficina de Protección al Consumidor y Antimonopolio (Fiscal General)",
+   "state": "draft"
+  },
+  "guide.consumer-rights.false-or-misleading-claims-about-a": {
+   "en": "false or misleading claims about a sale price or a price reduction.",
+   "es": "afirmaciones falsas o engañosas sobre un precio de oferta o una rebaja.",
+   "state": "draft"
+  },
+  "guide.consumer-rights.file-a-consumer-complaint-attorney": {
+   "en": "File a consumer complaint (Attorney General)",
+   "es": "Presentar una queja de consumidor (Fiscal General)",
+   "state": "draft"
+  },
+  "guide.consumer-rights.file-a-consumer-complaint-attorney-2": {
+   "en": "File a Consumer Complaint (Attorney General)",
+   "es": "Presentar una queja de consumidor (Fiscal General)",
+   "state": "draft"
+  },
+  "guide.consumer-rights.gift-certificates-do-not-expire": {
+   "en": "Gift certificates do not expire",
+   "es": "Los certificados de regalo no vencen",
+   "state": "draft"
+  },
+  "guide.consumer-rights.if-a-seller-tells-you-that": {
+   "en": "If a seller tells you that you have won something, with words such as &ldquo;Congratulations&rdquo; or &ldquo;You have won&rdquo;, the law requires the prize to be yours without any obligation, delivered at no cost to you within 10 days. A &ldquo;prize&rdquo; that asks you to pay a handling, registration, redemption or delivery fee, or to buy something first, is not one the law allows. Do not pay, and report it (step 5).",
+   "es": "Si un vendedor le dice que ganó algo, con palabras como &ldquo;Felicidades&rdquo; o &ldquo;Usted ganó&rdquo;, la ley exige que el premio sea suyo sin ninguna obligación, entregado sin costo para usted dentro de los 10 días. Un &ldquo;premio&rdquo; que le pide pagar una cuota de manejo, de inscripción, de canje o de envío, o comprar algo primero, no es uno que la ley permita. No pague, y denúncielo (paso 5).",
+   "state": "draft"
+  },
+  "guide.consumer-rights.know-what-the-law-forbids": {
+   "en": "Know what the law forbids",
+   "es": "Sepa lo que la ley prohíbe",
+   "state": "draft"
+  },
+  "guide.consumer-rights.lawyer-referral-service": {
+   "en": "Lawyer Referral Service",
+   "es": "Servicio de referencia de abogados",
+   "state": "draft"
+  },
+  "guide.consumer-rights.lead": {
+   "en": "How to spot a scam, how to cancel a sale made at your door, your rights with gift certificates, and how to complain to the Attorney General or take a business to court in New Hampshire.",
+   "es": "Cómo reconocer una estafa, cómo cancelar una venta hecha en su puerta, sus derechos con los certificados de regalo, y cómo presentar una queja ante el Fiscal General o llevar a una empresa a los tribunales en New Hampshire.",
+   "state": "draft"
+  },
+  "guide.consumer-rights.new-hampshires-consumer-protection-act": {
+   "en": "New Hampshire&rsquo;s Consumer Protection Act forbids unfair and deceptive business practices, and the Attorney General&rsquo;s Consumer Protection and Antitrust Bureau enforces it. If a seller came to your door, you can usually cancel the sale until midnight of the third business day after it. A real prize never costs you a fee. If a business cheated you, you can complain to the Bureau, and you can take the business to court yourself.",
+   "es": "La Ley de Protección al Consumidor de New Hampshire prohíbe las prácticas comerciales injustas y engañosas, y la Oficina de Protección al Consumidor y Antimonopolio del Fiscal General la hace cumplir. Si un vendedor vino a su puerta, por lo general puede cancelar la venta hasta la medianoche del tercer día hábil después de hacerla. Un premio de verdad nunca le cobra una cuota. Si una empresa lo estafó, puede presentar una queja ante la Oficina, y puede llevar a la empresa a los tribunales usted mismo.",
+   "state": "draft"
+  },
+  "guide.consumer-rights.prizes-and-gifts-act-rsa-358": {
+   "en": "Prizes and Gifts Act, RSA 358-O",
+   "es": "Ley de Premios y Regalos, RSA 358-O",
+   "state": "draft"
+  },
+  "guide.consumer-rights.regulation-of-business-practices-for": {
+   "en": "Regulation of Business Practices for Consumer Protection, RSA 358-A",
+   "es": "Regulación de las prácticas comerciales para la protección del consumidor, RSA 358-A",
+   "state": "draft"
+  },
+  "guide.consumer-rights.retail-selling-rsa-361-b": {
+   "en": "Retail Selling, RSA 361-B",
+   "es": "Venta al por menor, RSA 361-B",
+   "state": "draft"
+  },
+  "guide.consumer-rights.selling-used-reconditioned-or-secondhand": {
+   "en": "selling used, reconditioned or secondhand goods as new;",
+   "es": "vender como nuevos productos usados, reacondicionados o de segunda mano;",
+   "state": "draft"
+  },
+  "guide.consumer-rights.some-businesses-answer-to-their-own": {
+   "en": "Some businesses answer to their own regulator instead: for a bank, an insurance company or a utility, complain to the Bank Commissioner, the Insurance Commissioner or the Public Utilities Commission.",
+   "es": "Algunas empresas responden ante su propio organismo regulador: en el caso de un banco, una compañía de seguros o una empresa de servicios públicos, presente su queja ante el Comisionado de Bancos, el Comisionado de Seguros o la Comisión de Servicios Públicos.",
+   "state": "draft"
+  },
+  "guide.consumer-rights.take-the-business-to-court": {
+   "en": "Take the business to court",
+   "es": "Llevar a la empresa a los tribunales",
+   "state": "draft"
+  },
+  "guide.consumer-rights.the-attorney-generals-consumer": {
+   "en": "The Attorney General&rsquo;s <b>Consumer Protection and Antitrust Bureau</b> enforces the Consumer Protection Act. It can ask a court to stop a business&rsquo;s unlawful practice and to order money or property returned to the people it harmed. File a complaint with the Bureau online, or call its Consumer Hotline; report a scam to your local police as well.",
+   "es": "La <b>Oficina de Protección al Consumidor y Antimonopolio</b> del Fiscal General hace cumplir la Ley de Protección al Consumidor. Puede pedir a un tribunal que detenga la práctica ilegal de una empresa y que ordene devolver el dinero o los bienes a las personas perjudicadas. Presente una queja ante la Oficina en línea, o llame a su Línea de Atención al Consumidor; denuncie también una estafa a la policía local.",
+   "state": "draft"
+  },
+  "guide.consumer-rights.the-attorney-generals-consumer-2": {
+   "en": "The Attorney General&rsquo;s Consumer Protection and Antitrust Bureau takes complaints online and on its Consumer Hotline. For advice on your own case:",
+   "es": "La Oficina de Protección al Consumidor y Antimonopolio del Fiscal General recibe quejas en línea y en su Línea de Atención al Consumidor. Para recibir asesoría sobre su propio caso:",
+   "state": "draft"
+  },
+  "guide.consumer-rights.the-bureau-does-not-enforce-a": {
+   "en": "The Bureau does not enforce a private contract: a dispute over a contract alone is yours to take to court.",
+   "es": "La Oficina no hace cumplir un contrato privado: una disputa solo sobre un contrato le corresponde a usted llevarla a los tribunales.",
+   "state": "draft"
+  },
+  "guide.consumer-rights.the-consumer-protection-act-makes-it": {
+   "en": "The Consumer Protection Act makes it unlawful for a business to use any unfair or deceptive practice. Among the examples the law lists:",
+   "es": "La Ley de Protección al Consumidor prohíbe que una empresa use cualquier práctica injusta o engañosa. Entre los ejemplos que la ley enumera:",
+   "state": "draft"
+  },
+  "guide.consumer-rights.title": {
+   "en": "Scams and Consumer Complaints: Your Rights as a Buyer",
+   "es": "Estafas y quejas de consumidores: sus derechos como comprador",
+   "state": "draft"
+  },
+  "guide.consumer-rights.to-cancel-mail-the-seller-a": {
+   "en": "To cancel, mail the seller a written notice, preferably by certified or registered mail, or return the goods in person within that time. The seller must then return, within 15 days, everything you paid, any trade-in, and any note you signed. If the seller had already done work that changed your property, you get all your money back, or you may ask instead for the property to be put back as it was. The seller must come for its goods or pay to have them returned, and once it has refunded you, you must let it have them back within the same 15 days. If it makes no effort to get them back within 90 days of the sale, they are yours.",
+   "state": "draft",
+   "es": "Para cancelar, envíe al vendedor un aviso por escrito, de preferencia por correo certificado o registrado, o devuelva los productos en persona dentro de ese plazo. El vendedor debe devolverle entonces, dentro de los 15 días, todo lo que pagó, cualquier artículo entregado como parte de pago y cualquier pagaré que haya firmado. Si el vendedor ya había hecho un trabajo que modificó su propiedad, usted recupera todo su dinero, o puede pedir en su lugar que la propiedad quede como estaba. El vendedor debe ir a buscar sus productos o pagar su devolución, y una vez que le haya reembolsado, usted debe permitir que los recupere dentro de los mismos 15 días. Si no intenta recuperarlos dentro de los 90 días posteriores a la venta, pasan a ser suyos."
+  },
+  "guide.consumer-rights.what-happened": {
+   "en": "What happened?",
+   "es": "¿Qué pasó?",
+   "state": "draft"
+  },
+  "guide.consumer-rights.who-to-contact-about-an-issue": {
+   "en": "Who to contact about an issue",
+   "es": "A quién contactar sobre un asunto",
+   "state": "draft"
+  },
+  "guide.consumer-rights.you-bought-something-from-a-seller": {
+   "en": "You bought something from a seller at your door",
+   "es": "Le compró algo a un vendedor en su puerta",
+   "state": "draft"
+  },
+  "guide.consumer-rights.you-can-also-take-the-business": {
+   "en": "You can also take the business to court yourself, within 3 years of learning what it did.",
+   "es": "También puede llevar a la empresa a los tribunales usted mismo, dentro de los 3 años después de enterarse de lo que hizo.",
+   "state": "draft"
+  },
+  "guide.consumer-rights.you-can-sue-a-business-that": {
+   "en": "You can sue a business that used an unfair or deceptive practice against you. If you win, the court awards your actual losses or $1,000, whichever is greater, and two to three times that if the business knew it was breaking the law, plus your court costs and reasonable attorney&rsquo;s fees. An agreement that gives up this right does not hold. The law does not reach a transaction more than 3 years before you knew, or should have known, what the business did.",
+   "state": "draft",
+   "es": "Puede demandar a una empresa que usó contra usted una práctica injusta o engañosa. Si gana, el tribunal le otorga sus pérdidas reales o $1,000, lo que sea mayor, y de dos a tres veces esa cantidad si la empresa sabía que estaba violando la ley, más sus costos judiciales y honorarios razonables de abogado. Un acuerdo que le haga renunciar a este derecho no tiene validez. La ley no alcanza una transacción de más de 3 años antes de que usted supiera, o debiera haber sabido, lo que hizo la empresa."
+  },
   "guide.contact-your-legislators.a-members-page-here-and-your": {
    "en": "A member&rsquo;s page here, and your town&rsquo;s page, give the email address the member lists with the General Court, which nearly every member does. This site does not repeat members&rsquo; phone numbers, because many are personal ones; the General Court&rsquo;s own member list carries the numbers they give it, and senators list an office in Concord. To write to every member of a committee at once, use the button on the committee&rsquo;s page.",
    "es": "La página de un miembro en este sitio, y la de su municipio, dan la dirección de correo electrónico que el miembro registra en la Legislatura, algo que casi todos hacen. Este sitio no repite los números de teléfono de los miembros, porque muchos son personales; la propia lista de miembros de la Legislatura incluye los números que le dan, y los senadores indican una oficina en Concord. Para escribir a todos los miembros de un comité a la vez, use el botón de la página del comité.",
@@ -8550,6 +8760,21 @@
   "guide.task.child-care-scholarship.line": {
    "en": "The Child Care Scholarship: who it is for, how to apply, and choosing a provider.",
    "es": "La beca de cuidado infantil: para quién es, cómo solicitarla y cómo elegir un proveedor.",
+   "state": "draft"
+  },
+  "guide.task.consumer-rights.does": {
+   "en": "Report a scam or a business that cheated you",
+   "es": "Denunciar una estafa o una empresa que lo estafó",
+   "state": "draft"
+  },
+  "guide.task.consumer-rights.head": {
+   "en": "How to report a scam or file a consumer complaint",
+   "es": "Cómo denunciar una estafa o presentar una queja de consumidor",
+   "state": "draft"
+  },
+  "guide.task.consumer-rights.line": {
+   "en": "Cancel a sale made at your door, your rights with gift certificates, and complaining to the Attorney General.",
+   "es": "Cancelar una venta hecha en su puerta, sus derechos con los certificados de regalo, y presentar una queja ante el Fiscal General.",
    "state": "draft"
   },
   "guide.task.contact-your-legislators.does": {
