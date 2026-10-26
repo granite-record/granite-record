@@ -325,6 +325,7 @@ export async function look({ key, fetchImpl = fetch, now, yt: before = {}, prev 
       byId.set(id, entry(it, old, found.get(id) || inList.get(id) || fresh.get(id)));
     }
     for (const s of byId.values()) {
+      s.seen = { playlist: null, search: null, ...(s.seen || {}) };
       if (!s.seen.playlist && inList.has(s.video)) s.seen.playlist = at;
       if (!s.seen.search && found.has(s.video)) s.seen.search = at;
     }
