@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-10-11.44
+# GRANITE_VERSION: 2026-10-11.45
 """
 The how-to guides: their words, their sources, and what each was checked
 against. Read by build_civics.py, which draws them on the Resources hub's
@@ -4993,6 +4993,201 @@ GUIDES += [WHO_TO_CONTACT]
 
 
 # ---------------------------------------------------------------------------
+# A POTHOLE, A BROKEN SIGNAL OR A SIDEWALK (the person, 25 October 2026: "how
+# to report issues like potholes, broken stoplights, or sidewalk issues to
+# your town"). Who keeps which road is the law's -- RSA 229:5's classes, the
+# state's duty in RSA 230:1-4 and the town's in RSA 231:2-3 and 231:113 --
+# and so is what a written notice makes a town or the state do, and answer
+# for (RSA 231:90-92-a, RSA 230:78-81), with the deadlines to claim for
+# damage (RSA 507-B:7 for a town, RSA 541-B:14 for the state). Read on 25
+# October 2026 in this build's statute table. No statute says who owns a
+# traffic signal or a streetlight, so the guide sends those to whoever keeps
+# the road and says no more. The Department of Transportation's pages refuse
+# this machine; their claims wait for the person's printouts.
+# ---------------------------------------------------------------------------
+ROAD_READ = "2026-10-25"
+ROAD_STATE_READ = None               # the person's printouts of dot.nh.gov
+NHDOT_PUBLIC = "https://www.dot.nh.gov/doing-business-nhdot/general-public"
+NHDOT_CONTACT = "https://www.dot.nh.gov/about-nh-dot/contact-us"
+
+ROAD_PROBLEM = guide(
+    "report-a-road-problem", "How to Report a Pothole, a Broken Signal or a Sidewalk Problem",
+    "Who fixes which road in New Hampshire, how to report a pothole, a broken sidewalk or a "
+    "signal to your town or the state, and what to do if a road problem damaged your car.",
+    "Town roads and sidewalks are your town or city&rsquo;s to fix: report a pothole, a broken "
+    "sidewalk, a streetlight or a signal to its public works or highway department. The main "
+    "state highways are the state Department of Transportation&rsquo;s: report those to its "
+    "maintenance district for your town. For a dangerous spot, a signed written notice to the "
+    "town makes it act, and answer for damage if it does not. If a road problem damaged your "
+    "car, the deadline to give notice is short.",
+    [ask("Whose road is it?",
+         [("A town or city street, or its sidewalk",
+           "Your town or city&rsquo;s public works or highway department."),
+          ("A state highway",
+           "The Department of Transportation&rsquo;s maintenance district for your town.")]),
+     box("Dangerous? Put it in writing, signed, saying where it is and what is wrong."),
+     box("Damaged your car? Give written notice of the date, time and place, within the "
+         "deadline.")],
+    [step("Work out whose road it is",
+          "<p>Most roads are your town&rsquo;s or city&rsquo;s. It maintains every ordinary town "
+          "road, and in the built-up centers of the cities and towns the law lists, such as "
+          "Concord, Manchester and Nashua, it maintains the state routes too. It also keeps up "
+          "the sidewalks along its roads, at no charge to the owners next to them.</p>"
+          "<p>The state&rsquo;s <b>Department of Transportation</b> maintains the main state "
+          "highways, and the parts of the secondary state highways it has improved; a town "
+          "maintains the rest of those. A class VI road is a public way the town does not "
+          "maintain, and the town has no duty to repair it.</p>"
+          "<p>If you are not sure whose road it is, start with your town.</p>",
+          law=["RSA 229:5", "RSA 230:1", "RSA 230:3", "RSA 230:4", "RSA 231:2", "RSA 231:3",
+               "RSA 231:93", "RSA 231:113"]),
+     step("Report it to your town or city",
+          "<p>Call or email your town or city&rsquo;s <b>public works</b> or <b>highway "
+          "department</b>, or the selectboard&rsquo;s office in a small town; many towns also "
+          "take reports online. Say exactly where the problem is (the street, the nearest house "
+          "number or cross street) and what it is: a pothole, a broken or heaved sidewalk, a "
+          "streetlight that is out, a signal that is dark or stuck, a blocked drain.</p>"
+          "<p>A traffic signal that is out at a busy intersection is a danger to everyone "
+          "using it: report it at once, and if someone may be hurt, call 911.</p>",
+          law=["RSA 231:113"]),
+     step("Report it to the state, for a state highway",
+          "<p>The Department of Transportation&rsquo;s page for the public lists its highway "
+          "maintenance districts and how to reach the one for your town about a pothole, "
+          "drainage or another problem on a state road, and the number to call about a "
+          "hazard that needs attention right away.</p>"
+          "<p>Anyone may notify the Department of a dangerous spot on a state highway. Once "
+          "it is notified, unless it decides in good faith there is no danger, it must put up "
+          "warnings at once and make a plan to repair the spot within 96 hours.</p>",
+          actions=[("The Department of Transportation, for the public", NHDOT_PUBLIC),
+                   ("Contact the Department of Transportation", NHDOT_CONTACT)],
+          law=["RSA 230:78", "RSA 230:79"]),
+     step("For a dangerous spot, put it in writing",
+          "<p>The law gives a written notice weight a phone call does not have. If a town "
+          "road, a bridge or a sidewalk is <b>insufficient</b> &ndash; not passable safely, or "
+          "with a hazard a careful traveler could not see or avoid &ndash; anyone may give the "
+          "town written notice. Sign it, say in general terms where it is and what is wrong, "
+          "and give it to a selectman or the highway agent (in a city, the mayor or a street "
+          "commissioner), with a copy to the town or city clerk.</p>"
+          "<p>The town must then, unless it decides in good faith there is no such danger, "
+          "put up warnings at once and, within 72 hours, make a plan to repair it, and carry "
+          "the plan out. If it does not, it is liable for the injury or damage the danger "
+          "causes. A road simply in worse shape than others is not insufficient, and snow and "
+          "ice the town is clearing under its winter policy are not a ground for a claim.</p>",
+          law=["RSA 231:90", "RSA 231:91", "RSA 231:92-a"]),
+     step("If a road problem damaged your car",
+          "<p><b>On a town road</b>, the town answers for damage only if it had written notice "
+          "of the danger and did not act, or its officials knew of it and were grossly "
+          "negligent or acted in bad faith, or its employee created it on purpose or "
+          "recklessly. Before you can sue, the town or city clerk must be told by "
+          "<b>registered mail within 60 days</b> of the damage the date, time and place it "
+          "happened, and a suit must be brought within 3 years.</p>"
+          "<p><b>On a state highway</b>, the Department of Transportation answers on the same "
+          "terms. A claim against the state goes to the state Board of Claims or the Superior "
+          "Court, depending on its size. The Department must be told in writing, within 180 "
+          "days of the damage, the date, time and place it happened, and the claim must be "
+          "brought within 3 years.</p>"
+          "<p>Take pictures of the spot and the damage, and keep your repair bills.</p>",
+          law=["RSA 231:92", "RSA 507-B:7", "RSA 230:80", "RSA 541-B:9", "RSA 541-B:14"])],
+    [("General Public (New Hampshire Department of Transportation)", NHDOT_PUBLIC),
+     ("Contact Us (New Hampshire Department of Transportation)", NHDOT_CONTACT),
+     ("Classification of Highways, RSA 229", "/laws/229"),
+     ("Highways: Layout and Maintenance by the State, RSA 230", "/laws/230"),
+     ("Municipal Highways, RSA 231", "/laws/231"),
+     ("Actions Against Governmental Units, RSA 507-B", "/laws/507-b"),
+     ("Board of Claims, RSA 541-B", "/laws/541-b")],
+    ["229", "230", "231", "507-B", "541-B"],
+    [# The statutes, as this build's table prints them.
+     claim("Class I highways: the primary state highway system; class II: the secondary state "
+           "highway system; class IV: highways within the compact sections of the cities and "
+           "towns listed (among them Concord, Manchester, Nashua); class V: all other traveled "
+           "highways the town has the duty to maintain regularly, town roads; class VI: all "
+           "other existing public ways, including highways not maintained and repaired by the "
+           "town for 5 successive years or more.", "RSA 229:5", ROAD_READ),
+     claim("The department of transportation shall assume full control and pay the costs of "
+           "construction, reconstruction and maintenance of all class I highways.",
+           "RSA 230:1", ROAD_READ),
+     claim("The department shall assume full control and pay the costs of reconstruction and "
+           "maintenance of all class II highways which have been improved to the satisfaction "
+           "of the commissioner.", "RSA 230:3", ROAD_READ),
+     claim("All other class II highways shall be maintained by the city or town in which they "
+           "are located.", "RSA 230:4", ROAD_READ),
+     claim("All class IV highways shall be wholly constructed, reconstructed and maintained by "
+           "the city or town in which they are located.", "RSA 231:2", ROAD_READ),
+     claim("All class V highways shall be constructed, reconstructed, and maintained by the "
+           "city or town in which they are located.", "RSA 231:3", ROAD_READ),
+     claim("Municipalities shall not be deemed to have any duty of care whatsoever with respect "
+           "to the construction, maintenance or repair of class I, III, III-a or VI highways, "
+           "or state maintained portions of class II highways.", "RSA 231:93", ROAD_READ),
+     claim("The highway agent, under the direction of the mayor and aldermen or the selectmen, "
+           "has charge of the repair of sidewalks, maintained, repaired and reconstructed by "
+           "the city or town without further assessment to the abutting owner.",
+           "RSA 231:113", ROAD_READ),
+     claim("Any person may give written notice of an insufficiency of a class IV or V highway, "
+           "bridge or sidewalk to one of the selectmen or highway agents, or the mayor or "
+           "street commissioners, with a copy to the clerk; signed, setting forth in general "
+           "terms the location and the nature of the insufficiency; insufficient only if not "
+           "passable in any safe manner, or a safety hazard not reasonably discoverable or "
+           "avoidable; not insufficient merely by not being kept to the standard of another "
+           "highway.", "RSA 231:90", ROAD_READ),
+     claim("On notice, unless no insufficiency exists in good faith, the municipality shall "
+           "immediately place danger signals and within 72 hours thereafter develop a plan for "
+           "repairing it and implement it; if it fails to act, it is liable for personal "
+           "injury or property damage proximately caused by the insufficiency.",
+           "RSA 231:91", ROAD_READ),
+     claim("A municipality is not liable unless the damage was caused by an insufficiency and it "
+           "received written notice and failed to act, or officials had actual knowledge and "
+           "were grossly negligent or exercised bad faith, or the condition was created by an "
+           "intentional act of an employee with gross negligence or reckless disregard.",
+           "RSA 231:92", ROAD_READ),
+     claim("Not liable for hazards caused solely by snow, ice, or other inclement weather when "
+           "a delay results from a winter maintenance policy adopted in good faith, absent "
+           "gross negligence or reckless disregard.", "RSA 231:92-a", ROAD_READ),
+     claim("Any person may give notice of an insufficiency of a class I or class II highway or "
+           "highway bridge to the department of transportation, setting forth its location and "
+           "nature.", "RSA 230:78", ROAD_READ),
+     claim("On notice, unless no insufficiency exists in good faith, the department shall "
+           "immediately place danger signals and within 96 hours thereafter develop a plan for "
+           "repairing it; if it fails to act it is liable for damage proximately caused.",
+           "RSA 230:79", ROAD_READ),
+     claim("The department of transportation is not liable unless the damage was caused by an "
+           "insufficiency and it received notice and failed to act, or the commissioner had "
+           "actual knowledge and was grossly negligent or in bad faith, or an employee created "
+           "it intentionally with gross negligence or reckless disregard.", "RSA 230:80",
+           ROAD_READ),
+     claim("An action against a governmental unit within 3 years after the time of injury or "
+           "damage; as a condition precedent, the clerk of the governmental unit shall be "
+           "notified by registered mail within 60 days after the time of the injury or damage "
+           "as to the date, time and location.", "RSA 507-B:7", ROAD_READ),
+     claim("The board of claims hears claims against an agency up to an amount, concurrently "
+           "with the superior court above it, and the superior court alone above a higher "
+           "amount.", "RSA 541-B:9", ROAD_READ),
+     claim("A claim brought within 3 years of the damage; as a condition precedent, the agency "
+           "shall be provided written notice within 180 days after the time of the injury or "
+           "damage as to the date, time, and location.", "RSA 541-B:14", ROAD_READ),
+     # The Department of Transportation's own pages, from the person's printouts.
+     claim("The general public: for potholes, drainage and other issues on state roads, "
+           "contact the highway maintenance district that maintains the roads in your town; "
+           "a number for a hazard that needs immediate attention.", NHDOT_PUBLIC,
+           ROAD_STATE_READ),
+     claim("How to contact the Department, and its highway maintenance district offices.",
+           NHDOT_CONTACT, ROAD_STATE_READ)]
+    + help_claims("lawyer"),
+    more="<h2>Who Can Help</h2>"
+         "<p>Your town or city&rsquo;s public works or highway department is the place to ask "
+         "about a town road, and the town office can tell you who that is. For a claim for "
+         "damage, a lawyer can tell you whether you have one:</p>"
+         + helps("lawyer"),
+    see=[("Who to contact about an issue", "/guides/who-to-contact.html"),
+         ("Cities, towns and who runs them", "/learn/city-and-town-government.html")],
+    figures=[fig("96 hours", "RSA 230:79", "within 96 hours thereafter"),
+             fig("72 hours", "RSA 231:91", "within 72 hours thereafter"),
+             fig("60 days", "RSA 507-B:7", "within 60 days after the time of the injury or damage"),
+             fig("3 years", "RSA 507-B:7", "within 3 years after the time of injury or damage"),
+             fig("180 days", "RSA 541-B:14", "within 180 days after the time of the injury or damage")])
+
+GUIDES += [ROAD_PROBLEM]
+
+
+# ---------------------------------------------------------------------------
 # FISHING, HUNTING AND BOATING (the person, 25 October 2026: "adding things
 # like how to get a fishing license, hunting license, boat license, etc would
 # be a good fit"). Three guides, resting first on the statutes, read that day
@@ -5574,6 +5769,10 @@ TASKS = [
              "Your town for roads and sidewalks, the school board, a state agency, your "
              "legislators, or your members of Congress.",
              head="How to know who to contact"),
+        task("report-a-road-problem", "Report a pothole or a sidewalk problem",
+             "Who fixes which road, how to tell your town or the state, and what to do if a "
+             "road problem damaged your car.",
+             head="How to report a pothole or a road problem"),
         task("contact-your-legislators", "Contact your legislators",
              "Email or call the people who represent you, and write a message they can act on."),
         task("attend-a-hearing", "Attend or speak at a public hearing",
@@ -5726,6 +5925,9 @@ WORDS = {
     "who-to-contact": ("who do i contact", "complaint", "pothole", "sidewalk", "city council",
                        "selectboard", "school board", "congressman", "senator", "federal agency",
                        "casework", "help with a state agency", "constituent services"),
+    "report-a-road-problem": ("pothole", "streetlight", "street light", "traffic light",
+                              "traffic signal", "stoplight", "sidewalk", "road repair",
+                              "public works", "highway department", "car damage"),
     "contact-your-legislators": ("email my representative", "call my senator",
                                  "write my legislator", "contact"),
     "attend-a-hearing": ("testify", "public hearing", "speak on a bill", "attend"),

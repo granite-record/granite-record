@@ -6706,6 +6706,206 @@
    "es": "su licencia actual, u otra prueba de identidad si no la encuentra;",
    "state": "draft"
   },
+  "guide.report-a-road-problem.a-state-highway": {
+   "en": "A state highway",
+   "es": "Una carretera estatal",
+   "state": "draft"
+  },
+  "guide.report-a-road-problem.a-town-or-city-street-or": {
+   "en": "A town or city street, or its sidewalk",
+   "es": "Una calle del municipio o de la ciudad, o su acera",
+   "state": "draft"
+  },
+  "guide.report-a-road-problem.a-traffic-signal-that-is-out": {
+   "en": "A traffic signal that is out at a busy intersection is a danger to everyone using it: report it at once, and if someone may be hurt, call 911.",
+   "es": "Un semáforo apagado en un cruce con mucho tránsito es un peligro para todos los que lo usan: repórtelo de inmediato, y si alguien puede salir herido, llame al 911.",
+   "state": "draft"
+  },
+  "guide.report-a-road-problem.actions-against-governmental-units-rsa": {
+   "en": "Actions Against Governmental Units, RSA 507-B",
+   "es": "Demandas contra unidades de gobierno, RSA 507-B",
+   "state": "draft"
+  },
+  "guide.report-a-road-problem.anyone-may-notify-the-department-of": {
+   "en": "Anyone may notify the Department of a dangerous spot on a state highway. Once it is notified, unless it decides in good faith there is no danger, it must put up warnings at once and make a plan to repair the spot within 96 hours.",
+   "es": "Cualquier persona puede avisar al Departamento de un lugar peligroso en una carretera estatal. Una vez avisado, salvo que decida de buena fe que no hay peligro, tiene que poner advertencias de inmediato y preparar un plan para reparar el lugar dentro de 96 horas.",
+   "state": "draft"
+  },
+  "guide.report-a-road-problem.board-of-claims-rsa-541-b": {
+   "en": "Board of Claims, RSA 541-B",
+   "es": "Junta de Reclamaciones, RSA 541-B",
+   "state": "draft"
+  },
+  "guide.report-a-road-problem.call-or-email-your-town-or": {
+   "en": "Call or email your town or city&rsquo;s <b>public works</b> or <b>highway department</b>, or the selectboard&rsquo;s office in a small town; many towns also take reports online. Say exactly where the problem is (the street, the nearest house number or cross street) and what it is: a pothole, a broken or heaved sidewalk, a streetlight that is out, a signal that is dark or stuck, a blocked drain.",
+   "es": "Llame o escriba al departamento de <b>obras públicas</b> o de <b>caminos</b> de su municipio o ciudad, o a la oficina de los concejales en un municipio pequeño; muchos municipios también reciben reportes en línea. Diga exactamente dónde está el problema (la calle, el número de casa más cercano o la calle que la cruza) y qué es: un bache, una acera rota o levantada, un farol de la calle apagado, un semáforo apagado o trabado, un desagüe tapado.",
+   "state": "draft"
+  },
+  "guide.report-a-road-problem.cities-towns-and-who-runs-them": {
+   "en": "Cities, towns and who runs them",
+   "es": "Ciudades, municipios y quién los gobierna",
+   "state": "draft"
+  },
+  "guide.report-a-road-problem.classification-of-highways-rsa-229": {
+   "en": "Classification of Highways, RSA 229",
+   "es": "Clasificación de las carreteras, RSA 229",
+   "state": "draft"
+  },
+  "guide.report-a-road-problem.contact-the-department-of-transportation": {
+   "en": "Contact the Department of Transportation",
+   "es": "Contactar al Departamento de Transporte",
+   "state": "draft"
+  },
+  "guide.report-a-road-problem.contact-us-new-hampshire-department-of": {
+   "en": "Contact Us (New Hampshire Department of Transportation)",
+   "es": "Contacto (Departamento de Transporte de New Hampshire)",
+   "state": "draft"
+  },
+  "guide.report-a-road-problem.damaged-your-car-give-written-notice": {
+   "en": "Damaged your car? Give written notice of the date, time and place, within the deadline.",
+   "es": "¿Dañó su auto? Avise por escrito la fecha, la hora y el lugar, dentro del plazo.",
+   "state": "draft"
+  },
+  "guide.report-a-road-problem.dangerous-put-it-in-writing-signed": {
+   "en": "Dangerous? Put it in writing, signed, saying where it is and what is wrong.",
+   "es": "¿Es peligroso? Póngalo por escrito, firmado, diciendo dónde está y qué está mal.",
+   "state": "draft"
+  },
+  "guide.report-a-road-problem.for-a-dangerous-spot-put-it": {
+   "en": "For a dangerous spot, put it in writing",
+   "es": "Para un lugar peligroso, póngalo por escrito",
+   "state": "draft"
+  },
+  "guide.report-a-road-problem.general-public-new-hampshire-department": {
+   "en": "General Public (New Hampshire Department of Transportation)",
+   "es": "Público en general (Departamento de Transporte de New Hampshire)",
+   "state": "draft"
+  },
+  "guide.report-a-road-problem.highways-layout-and-maintenance-by-the": {
+   "en": "Highways: Layout and Maintenance by the State, RSA 230",
+   "es": "Carreteras: trazado y mantenimiento por el estado, RSA 230",
+   "state": "draft"
+  },
+  "guide.report-a-road-problem.if-a-road-problem-damaged-your": {
+   "en": "If a road problem damaged your car",
+   "es": "Si un problema del camino dañó su auto",
+   "state": "draft"
+  },
+  "guide.report-a-road-problem.if-you-are-not-sure-whose": {
+   "en": "If you are not sure whose road it is, start with your town.",
+   "es": "Si no está seguro de quién es el camino, empiece por su municipio.",
+   "state": "draft"
+  },
+  "guide.report-a-road-problem.lawyer-referral-service": {
+   "en": "Lawyer Referral Service",
+   "es": "Servicio de referencia de abogados",
+   "state": "draft"
+  },
+  "guide.report-a-road-problem.lead": {
+   "en": "Who fixes which road in New Hampshire, how to report a pothole, a broken sidewalk or a signal to your town or the state, and what to do if a road problem damaged your car.",
+   "es": "Quién arregla cada camino en New Hampshire, cómo reportar un bache, una acera rota o un semáforo a su municipio o al estado, y qué hacer si un problema del camino dañó su auto.",
+   "state": "draft"
+  },
+  "guide.report-a-road-problem.most-roads-are-your-towns-or": {
+   "en": "Most roads are your town&rsquo;s or city&rsquo;s. It maintains every ordinary town road, and in the built-up centers of the cities and towns the law lists, such as Concord, Manchester and Nashua, it maintains the state routes too. It also keeps up the sidewalks along its roads, at no charge to the owners next to them.",
+   "es": "La mayoría de los caminos son de su municipio o de su ciudad. Mantiene todos los caminos municipales comunes y, en los centros urbanos de las ciudades y municipios que la ley enumera, como Concord, Manchester y Nashua, mantiene también las rutas estatales. También cuida las aceras a lo largo de sus caminos, sin costo para los dueños de los terrenos que dan a ellas.",
+   "state": "draft"
+  },
+  "guide.report-a-road-problem.municipal-highways-rsa-231": {
+   "en": "Municipal Highways, RSA 231",
+   "es": "Caminos municipales, RSA 231",
+   "state": "draft"
+  },
+  "guide.report-a-road-problem.on-a-state-highway-the-department": {
+   "en": "<b>On a state highway</b>, the Department of Transportation answers on the same terms. A claim against the state goes to the state Board of Claims or the Superior Court, depending on its size. The Department must be told in writing, within 180 days of the damage, the date, time and place it happened, and the claim must be brought within 3 years.",
+   "es": "<b>En una carretera estatal</b>, el Departamento de Transporte responde en los mismos términos. Una reclamación contra el estado va a la Junta de Reclamaciones del estado o al Tribunal Superior, según su monto. Hay que avisar al Departamento por escrito, dentro de 180 días del daño, la fecha, la hora y el lugar en que ocurrió, y la reclamación debe presentarse dentro de 3 años.",
+   "state": "draft"
+  },
+  "guide.report-a-road-problem.on-a-town-road-the-town": {
+   "en": "<b>On a town road</b>, the town answers for damage only if it had written notice of the danger and did not act, or its officials knew of it and were grossly negligent or acted in bad faith, or its employee created it on purpose or recklessly. Before you can sue, the town or city clerk must be told by <b>registered mail within 60 days</b> of the damage the date, time and place it happened, and a suit must be brought within 3 years.",
+   "es": "<b>En un camino municipal</b>, el municipio responde por el daño solo si recibió aviso por escrito del peligro y no actuó, o si sus funcionarios lo conocían y actuaron con negligencia grave o de mala fe, o si un empleado suyo lo creó a propósito o con temeridad. Antes de poder demandar, hay que avisar al secretario de su municipio o ciudad por <b>correo certificado dentro de 60 días</b> del daño la fecha, la hora y el lugar en que ocurrió, y la demanda debe presentarse dentro de 3 años.",
+   "state": "draft"
+  },
+  "guide.report-a-road-problem.report-it-to-the-state-for": {
+   "en": "Report it to the state, for a state highway",
+   "es": "Repórtelo al estado, si es una carretera estatal",
+   "state": "draft"
+  },
+  "guide.report-a-road-problem.report-it-to-your-town-or": {
+   "en": "Report it to your town or city",
+   "es": "Repórtelo a su municipio o ciudad",
+   "state": "draft"
+  },
+  "guide.report-a-road-problem.take-pictures-of-the-spot-and": {
+   "en": "Take pictures of the spot and the damage, and keep your repair bills.",
+   "es": "Tome fotos del lugar y del daño, y guarde las facturas de la reparación.",
+   "state": "draft"
+  },
+  "guide.report-a-road-problem.the-department-of-transportation-for-the": {
+   "en": "The Department of Transportation, for the public",
+   "es": "El Departamento de Transporte, para el público",
+   "state": "draft"
+  },
+  "guide.report-a-road-problem.the-department-of-transportations": {
+   "en": "The Department of Transportation&rsquo;s maintenance district for your town.",
+   "es": "El distrito de mantenimiento del Departamento de Transporte que corresponde a su municipio.",
+   "state": "draft"
+  },
+  "guide.report-a-road-problem.the-department-of-transportations-page": {
+   "en": "The Department of Transportation&rsquo;s page for the public lists its highway maintenance districts and how to reach the one for your town about a pothole, drainage or another problem on a state road, and the number to call about a hazard that needs attention right away.",
+   "es": "La página del Departamento de Transporte para el público enumera sus distritos de mantenimiento de carreteras y cómo comunicarse con el de su municipio por un bache, el drenaje u otro problema en un camino estatal, y el número al que llamar por un peligro que necesita atención inmediata.",
+   "state": "draft"
+  },
+  "guide.report-a-road-problem.the-law-gives-a-written-notice": {
+   "en": "The law gives a written notice weight a phone call does not have. If a town road, a bridge or a sidewalk is <b>insufficient</b> &ndash; not passable safely, or with a hazard a careful traveler could not see or avoid &ndash; anyone may give the town written notice. Sign it, say in general terms where it is and what is wrong, and give it to a selectman or the highway agent (in a city, the mayor or a street commissioner), with a copy to the town or city clerk.",
+   "es": "La ley le da a un aviso por escrito un peso que no tiene una llamada. Si un camino municipal, un puente o una acera es <b>insuficiente</b> &ndash; no se puede transitar con seguridad, o tiene un peligro que un viajero cuidadoso no podría ver ni evitar &ndash; cualquier persona puede avisar por escrito al municipio. Fírmelo, diga en términos generales dónde está y qué está mal, y entréguelo a uno de los concejales o al encargado de caminos (en una ciudad, al alcalde o a un comisionado de calles), con una copia al secretario de su municipio o ciudad.",
+   "state": "draft"
+  },
+  "guide.report-a-road-problem.the-states-department-of-transportation": {
+   "en": "The state&rsquo;s <b>Department of Transportation</b> maintains the main state highways, and the parts of the secondary state highways it has improved; a town maintains the rest of those. A class VI road is a public way the town does not maintain, and the town has no duty to repair it.",
+   "es": "El <b>Departamento de Transporte</b> del estado mantiene las carreteras estatales principales, y las partes de las carreteras estatales secundarias que ha mejorado; un municipio mantiene el resto de estas. Un camino de clase VI es una vía pública que el municipio no mantiene, y el municipio no tiene obligación de repararlo.",
+   "state": "draft"
+  },
+  "guide.report-a-road-problem.the-town-must-then-unless-it": {
+   "en": "The town must then, unless it decides in good faith there is no such danger, put up warnings at once and, within 72 hours, make a plan to repair it, and carry the plan out. If it does not, it is liable for the injury or damage the danger causes. A road simply in worse shape than others is not insufficient, and snow and ice the town is clearing under its winter policy are not a ground for a claim.",
+   "es": "Entonces el municipio, salvo que decida de buena fe que no existe tal peligro, tiene que poner advertencias de inmediato y, dentro de 72 horas, preparar un plan para repararlo, y cumplirlo. Si no lo hace, responde por las lesiones o los daños que cause el peligro. Un camino que simplemente está en peor estado que otros no es insuficiente, y la nieve y el hielo que el municipio está quitando según su política de invierno no dan lugar a una reclamación.",
+   "state": "draft"
+  },
+  "guide.report-a-road-problem.title": {
+   "en": "How to Report a Pothole, a Broken Signal or a Sidewalk Problem",
+   "es": "Cómo reportar un bache, un semáforo dañado o un problema en la acera",
+   "state": "draft"
+  },
+  "guide.report-a-road-problem.town-roads-and-sidewalks-are-your": {
+   "en": "Town roads and sidewalks are your town or city&rsquo;s to fix: report a pothole, a broken sidewalk, a streetlight or a signal to its public works or highway department. The main state highways are the state Department of Transportation&rsquo;s: report those to its maintenance district for your town. For a dangerous spot, a signed written notice to the town makes it act, and answer for damage if it does not. If a road problem damaged your car, the deadline to give notice is short.",
+   "es": "Los caminos y las aceras del municipio le toca arreglarlos a su municipio o ciudad: reporte un bache, una acera rota, un farol de la calle o un semáforo a su departamento de obras públicas o de caminos. Las carreteras estatales principales son del Departamento de Transporte del estado: repórtelas a su distrito de mantenimiento para su municipio. Para un lugar peligroso, un aviso por escrito y firmado al municipio lo obliga a actuar, y a responder por los daños si no lo hace. Si un problema del camino dañó su auto, el plazo para avisar es corto.",
+   "state": "draft"
+  },
+  "guide.report-a-road-problem.who-to-contact-about-an-issue": {
+   "en": "Who to contact about an issue",
+   "es": "A quién contactar sobre un asunto",
+   "state": "draft"
+  },
+  "guide.report-a-road-problem.whose-road-is-it": {
+   "en": "Whose road is it?",
+   "es": "¿De quién es el camino?",
+   "state": "draft"
+  },
+  "guide.report-a-road-problem.work-out-whose-road-it-is": {
+   "en": "Work out whose road it is",
+   "es": "Averigüe de quién es el camino",
+   "state": "draft"
+  },
+  "guide.report-a-road-problem.your-town-or-citys-public-works": {
+   "en": "Your town or city&rsquo;s public works or highway department.",
+   "es": "El departamento de obras públicas o de caminos de su municipio o ciudad.",
+   "state": "draft"
+  },
+  "guide.report-a-road-problem.your-town-or-citys-public-works-2": {
+   "en": "Your town or city&rsquo;s public works or highway department is the place to ask about a town road, and the town office can tell you who that is. For a claim for damage, a lawyer can tell you whether you have one:",
+   "es": "El departamento de obras públicas o de caminos de su municipio o ciudad es el lugar para preguntar por un camino municipal, y la oficina del municipio le puede decir cuál es. Para una reclamación por daños, un abogado puede decirle si tiene derecho a una:",
+   "state": "draft"
+  },
   "guide.run-for-office.age": {
    "en": "Age",
    "es": "Edad",
@@ -7865,6 +8065,21 @@
   "guide.task.renew-drivers-license.line": {
    "en": "Online or at a DMV appointment, and what to do if it has expired.",
    "es": "En línea o con cita en el DMV, y qué hacer si ya venció.",
+   "state": "draft"
+  },
+  "guide.task.report-a-road-problem.does": {
+   "en": "Report a pothole or a sidewalk problem",
+   "es": "Reportar un bache o un problema en la acera",
+   "state": "draft"
+  },
+  "guide.task.report-a-road-problem.head": {
+   "en": "How to report a pothole or a road problem",
+   "es": "Cómo reportar un bache o un problema del camino",
+   "state": "draft"
+  },
+  "guide.task.report-a-road-problem.line": {
+   "en": "Who fixes which road, how to tell your town or the state, and what to do if a road problem damaged your car.",
+   "es": "Quién arregla cada camino, cómo avisar a su municipio o al estado, y qué hacer si un problema del camino dañó su auto.",
    "state": "draft"
   },
   "guide.task.run-for-office.does": {

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-10-11.17
+# GRANITE_VERSION: 2026-10-11.18
 """
 The official pages the how-to guides cite, onto this disk, to check them by.
 
@@ -186,6 +186,12 @@ SOURCES = {
         "https://www.dhhs.nh.gov/programs-services/homeless-services",
         "https://www.courts.nh.gov/our-courts/circuit-court/district-division/landlordtenant",
         "https://www.education.nh.gov/who-we-are/division-of-learner-support/bureau-of-instructional-support/ehcy",
+    ],
+    # Reporting a road problem (25 October 2026): the Department of
+    # Transportation's pages, from the person's printouts.
+    "road_problems": [
+        "https://www.dot.nh.gov/doing-business-nhdot/general-public",
+        "https://www.dot.nh.gov/about-nh-dot/contact-us",
     ],
     "run_for_office": [
         "https://www.sos.nh.gov/elections/running-office",
