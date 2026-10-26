@@ -444,6 +444,25 @@ GitHub's night only, with the day's files, under the same lock:
                       A refusal met while asking is recorded as every
                       refusal is, and the next night does not ask at all
 
+THE NIGHT'S CLOCK (26 October 2026)
+
+Nothing on GitHub read refusal.NIGHT_WINDOWS: only a laptop that has stood
+down was held by it, and a night GitHub started hours late asked the General
+Court whenever it ran. Now the steps after the day's files that ask its site
+-- the bill requests and the lists -- each start only if they can end by
+ASK_UNTIL, 12:00 UTC, inside the night's own window (asking_left); otherwise
+"not asked for", a warning, and tomorrow, with the copy on file kept. That
+warning never holds the night for the gate (clock_kind): a night GitHub
+started late publishes itself, as it did before the clock, a day behind on
+what was not asked for. Each step is also killed at its own minutes
+(LSRS_MINUTES, LISTING_MINUTES; run(timeout=)), because a socket's timeout
+bounds one read, not a request. The person approved it: "The existing bill
+request and list page steps can stay within 4-8am". The night starts at
+08:17 UTC, so its asking falls between then and 12:00 UTC: 4:17 to 8 a.m.
+Eastern in summer, and 3:17 to 7 a.m. in winter, since the hours are kept in
+UTC. The hour and a half before the window's 13:30 is the build's: a refusal
+the night meets reaches the bucket only when this exits.
+
 THE GATE, IN SHADOW (6 October 2026)
 
 Every night that passes its checks waits for approval in GitHub's "production"
