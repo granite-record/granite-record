@@ -1765,8 +1765,10 @@ table holds the address (the chapter's page for a section it lacks, nothing
 for a chapter it lacks), each index row carries `rsa` for the bill search's
 Laws Changed (RSA) filter -- which offers the chapters the term's bills
 change by number or by name, the names from `laws/chapters.json`, fetched
-once the group is opened (app.js `rsaGroup`) -- and an enacted bill's record
-carries `changed`, the sections its law wrote.
+once the group is opened, and their sections by heading, from
+`laws/headings.json`, fetched once a colon is typed (app.js `rsaGroup`); the
+bill requests carry no `rsa`, having no text, and get no box -- and an
+enacted bill's record carries `changed`, the sections its law wrote.
 
 ## The how-to guides (12 October 2026)
 
