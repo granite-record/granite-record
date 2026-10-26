@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-10-11.17
+# GRANITE_VERSION: 2026-10-11.18
 """
 The official pages the how-to guides cite, onto this disk, to check them by.
 
@@ -177,6 +177,12 @@ SOURCES = {
     ],
     "trash": [
         "https://www.des.nh.gov/sites/g/files/ehbemt341/files/documents/hhw-collection-contacts.pdf",
+    ],
+    # Scams and consumer complaints (25 October 2026): the Attorney General's
+    # pages, from the person's printouts.
+    "consumer": [
+        "https://www.doj.nh.gov/bureaus/consumer-protection-antitrust-bureau",
+        "https://www.doj.nh.gov/consumer/complaints",
     ],
     "emergencies": [
         "https://www.desc.dos.nh.gov/resources/nh-alerts",
