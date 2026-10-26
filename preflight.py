@@ -91743,6 +91743,88 @@ def _clock_steps(NI, R, CA):
                   "minutes and keeps its copy; the clock's not asked for never holds the night")
 
 
+@check("build", "the handover of the calendars and journals is read one way on each machine: the "
+       "laptop gives the years up first and takes them back last, an unreadable record stands it "
+       "down for every year, and GitHub's machine acts only on a record in force",
+       needs=("refusal",))
+def _night_years(R):
+    """refusal.night_years() and handed_years() (the person's design of 26
+    October 2026, D3), on records in a folder of their own:
+
+      - no record: None everywhere, which is every machine until the handover;
+      - in force (handed_back null): from_year on both machines;
+      - handed back with "sent" false: still the laptop's from_year, which
+        gives the years back last, and None on GitHub's machine, which stops
+        at the bucket's word; "sent" true: None on both;
+      - a record that will not read -- not JSON, from_year a string, a
+        boolean, before 1989 or after next year, handed_back not an object:
+        the laptop stands down for every year (0), or from the night's own
+        record's from_year when one has been pulled; GitHub's machine, None;
+      - missing, with a night's record pulled: its from_year on the laptop
+        (the interlock), never on GitHub's machine;
+      - handed_years: from_year handed back or not, 0 unreadable, the
+        interlock's year missing;
+      - `root` reads that folder's archive/, not MARK's."""
+    saved = (R.MARK, os.environ.get("GITHUB_ACTIONS"), os.environ.get(R.CLOCK_ENV))
+    tmp = Path(tempfile.mkdtemp(prefix="gr-night-years-"))
+    try:
+        os.environ[R.CLOCK_ENV] = "2026-11-10T15:00:00Z"
+        R.MARK = tmp / "archive" / "refused.json"
+        R.MARK.parent.mkdir(parents=True)
+        hand, night = R.MARK.parent / R.HANDOVER.name, R.MARK.parent / R.NIGHT_RECORD.name
+
+        def both():
+            """(the laptop's night_years, GitHub's, handed_years)."""
+            os.environ.pop("GITHUB_ACTIONS", None)
+            laptop, handed = R.night_years(), R.handed_years()
+            os.environ["GITHUB_ACTIONS"] = "true"
+            github = R.night_years()
+            os.environ.pop("GITHUB_ACTIONS", None)
+            return laptop, github, handed
+
+        def record(**kw):
+            hand.write_text(json.dumps(dict({"from_year": 2026, "at": "2026-11-10T14:00:00Z",
+                                             "handed_back": None}, **kw)), encoding="utf-8")
+        assert both() == (None, None, None), f"with no record: {both()}"
+        record()
+        assert both() == (2026, 2026, 2026), f"in force: {both()}"
+        record(handed_back={"at": "2026-12-01T15:00:00Z", "sent": False})
+        assert both() == (2026, None, 2026), f"handed back, not yet sent: {both()}"
+        record(handed_back={"at": "2026-12-01T15:00:00Z", "sent": True})
+        assert both() == (None, None, 2026), f"handed back and sent: {both()}"
+        record(from_year=2027)
+        assert both() == (2027, 2027, 2027), "next year's handover does not read"
+        for bad in ('{"from_year": 2026', '{"from_year": "2026"}', '{"from_year": true}',
+                    '{"from_year": 1988}', '{"from_year": 2028}', '[2026]',
+                    '{"from_year": 2026, "handed_back": "yes"}'):
+            hand.write_text(bad, encoding="utf-8")
+            assert both() == (0, None, 0), f"a record that will not read ({bad}): {both()}"
+        night.write_text(json.dumps({"from_year": 2026, "rows": {}}), encoding="utf-8")
+        assert both() == (2026, None, 0), f"unreadable, with the night's record pulled: {both()}"
+        hand.unlink()
+        assert both() == (2026, None, 2026), f"missing, with the night's record pulled: {both()}"
+        night.write_text('{"from_year": "x"}', encoding="utf-8")
+        assert both() == (None, None, None), f"missing, the night's record without a year: {both()}"
+        night.unlink()
+        other = tmp / "elsewhere"
+        (other / "archive").mkdir(parents=True)
+        (other / "archive" / R.HANDOVER.name).write_text('{"from_year": 2026, "handed_back": null}',
+                                                          encoding="utf-8")
+        assert R.night_years(other) == 2026 and R.night_years() is None, \
+            "night_years(root) read MARK's folder, not root's"
+    finally:
+        R.MARK = saved[0]
+        for k, v in (("GITHUB_ACTIONS", saved[1]), (R.CLOCK_ENV, saved[2])):
+            if v is None:
+                os.environ.pop(k, None)
+            else:
+                os.environ[k] = v
+        shutil.rmtree(tmp, ignore_errors=True)
+    return "ok", ("no record, nothing; in force, the year; handed back, the laptop last; "
+                  "unreadable, every year on the laptop and none on GitHub's machine; the "
+                  "interlock on the laptop only")
+
+
 @check("build", "on a stood-down laptop no General Court request starts in GitHub's night "
                 "window or the half hour before it, none goes on inside it, and none starts "
                 "before the real bucket's refusal record is read since the last one",

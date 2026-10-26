@@ -493,6 +493,99 @@ def stand_down(who, instead=""):
     sys.exit(STOOD_DOWN)
 
 
+# ---- the calendars and journals handed to GitHub's night ---------------------
+#
+# ONE OWNER PER YEAR (the person's design of 26 October 2026). One record,
+# written on the laptop by `cloud.py hand-over`, hands GitHub's night every
+# calendar and journal of its from_year and every year after it. From the
+# moment it is written the laptop has no request path for those years at all,
+# and the night is the only machine that asks for them. Nothing the night does
+# gives a year back: a hand-back is a person's command, which tells the bucket
+# first and takes the years back on the laptop last (handed_back, with "sent"
+# false until the bucket has it). With no record, which is every machine until
+# a person hands the years over, nothing anywhere changes.
+#
+# night_years() is the one reader, on both machines, and handed_years() the
+# committee-report step's. The record is read beside MARK, as _governing()
+# reads the stand-down, so a test's folder is judged by itself; and on the
+# laptop, beside it too, the night's own record of those years, which pull
+# brings: with the handover record missing, it keeps the years the night's
+# (the interlock) until the next pull puts the record back.
+HANDOVER = Path("archive/documents_handover.json")
+NIGHT_RECORD = Path("archive/documents_night.json")
+FIRST_YEAR = 1989                    # the oldest bill on record
+
+
+def _archive(name, root=None):
+    """`name` in the archive folder: beside MARK, or under `root`."""
+    return MARK.parent / name if root is None else Path(root) / "archive" / name
+
+
+def _from_year(d):
+    """A record's from_year when it is a year from FIRST_YEAR to next year, else None."""
+    y = d.get("from_year") if isinstance(d, dict) else None
+    return y if type(y) is int and FIRST_YEAR <= y <= _utc().year + 1 else None
+
+
+def read_handover(root=None):
+    """("missing", None), ("unreadable", None), or ("ok", the record): one that
+    parses, whose from_year is a year (_from_year) and whose handed_back is
+    null or an object."""
+    p = _archive(HANDOVER.name, root)
+    if not p.exists():
+        return "missing", None
+    try:
+        d = json.loads(p.read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        return "unreadable", None
+    if _from_year(d) is None or not isinstance(d.get("handed_back"), (dict, type(None))):
+        return "unreadable", None
+    return "ok", d
+
+
+def _interlock(root=None):
+    """The from_year of the night's own record pulled here, or None."""
+    try:
+        return _from_year(json.loads(_archive(NIGHT_RECORD.name, root).read_text(encoding="utf-8")))
+    except (OSError, ValueError):
+        return None
+
+
+def night_years(root=None):
+    """The first year whose calendars and journals are GitHub's night's to ask
+    for, or None while they are this machine's as before.
+
+    On GitHub's machine: the record's from_year while it reads and has not been
+    handed back; otherwise None. On the laptop, which gives the years up first
+    and takes them back last: from_year until a hand-back has reached the
+    bucket ("sent": true); with the record missing, the from_year of the night's
+    record pulled here, if any (the interlock); with one that will not read,
+    that year or 0 -- every year the night's -- until a person mends it."""
+    state, d = read_handover(root)
+    github = os.environ.get("GITHUB_ACTIONS") == "true"
+    if state == "ok":
+        back = d.get("handed_back")
+        if back is None or (not github and back.get("sent") is not True):
+            return d["from_year"]
+        return None
+    if github:
+        return None
+    y = _interlock(root)
+    return (0 if y is None else y) if state == "unreadable" else y
+
+
+def handed_years(root=None):
+    """The first year ever handed to the night, handed back or not: from_year;
+    0 when the record will not read; the interlock's year when it is missing.
+    None with neither record. fetch_committee_reports reads it, and asks for no
+    House calendar of those years again (the night's drain, or the laptop's
+    after a hand-back, is the one asker)."""
+    state, d = read_handover(root)
+    if state == "ok":
+        return d["from_year"]
+    return 0 if state == "unreadable" else _interlock(root)
+
+
 # ---- GitHub's night window ---------------------------------------------------
 #
 # The one definition of when GitHub's machine may be asking the General Court,
