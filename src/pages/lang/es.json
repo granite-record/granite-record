@@ -2103,8 +2103,8 @@
    "state": "draft"
   },
   "guide.car-insurance.a-person-under-18-gets-a": {
-   "en": "A person under 18 gets a license only with a parent&rsquo;s or guardian&rsquo;s written permission, or with insurance coverage shown when applying, or if married (<a href=\"/laws/263#s17\">RSA 263:17</a>).",
-   "es": "Una persona menor de 18 años obtiene una licencia solo con el permiso por escrito de uno de sus padres o de su tutor, o si presenta una cobertura de seguro al solicitarla, o si está casada (<a href=\"/laws/263#s17\">RSA 263:17</a>).",
+   "en": "A person under 18 gets a license only with written permission from a parent or guardian (or, where there is none, another responsible adult), or with insurance coverage shown when applying (<a href=\"/laws/263#s17\">RSA 263:17</a>).",
+   "es": "Una persona menor de 18 años obtiene una licencia solo con el permiso por escrito de uno de sus padres o de su tutor (o, si no los hay, de otro adulto responsable), o si presenta una cobertura de seguro al solicitarla (<a href=\"/laws/263#s17\">RSA 263:17</a>).",
    "state": "draft"
   },
   "guide.car-insurance.a-second-conviction-for-speeding-at": {
@@ -3489,8 +3489,8 @@
    "state": "draft"
   },
   "guide.discrimination.new-hampshire-law-forbids-discrimination": {
-   "en": "New Hampshire law forbids discrimination because of your age, sex, gender identity, race, creed, color, marital status, physical or mental disability, national origin or sexual orientation: at work and when you apply for a job, when you rent or buy a home, and in places open to the public. In housing, having children under 18 is protected too. It is also against the law to punish you for complaining. If it happens to you, you can file a written complaint with the New Hampshire Commission for Human Rights within 180 days.",
-   "es": "La ley de New Hampshire prohíbe la discriminación por su edad, sexo, identidad de género, raza, credo, color, estado civil, discapacidad física o mental, origen nacional u orientación sexual: en el trabajo y al solicitar un empleo, al alquilar o comprar una vivienda, y en los lugares abiertos al público. En la vivienda, tener hijos menores de 18 años también está protegido. También es ilegal castigarle por quejarse. Si le ocurre, puede presentar una queja por escrito ante la Comisión de Derechos Humanos de New Hampshire dentro de los 180 días.",
+   "en": "New Hampshire law forbids discrimination because of your age, sex, gender identity, race, creed, color, marital status, physical or mental disability, national origin or sexual orientation: at work and when you apply for a job, when you rent or buy a home, and in places open to the public. In housing, it also protects families with a child under 18 living with them. And no one may fire, expel or otherwise punish you for opposing discrimination, filing a complaint, or testifying or helping in a case about it. If it happens to you, you can file a written complaint with the New Hampshire Commission for Human Rights within 180 days.",
+   "es": "La ley de New Hampshire prohíbe la discriminación por su edad, sexo, identidad de género, raza, credo, color, estado civil, discapacidad física o mental, origen nacional u orientación sexual: en el trabajo y al solicitar un empleo, al alquilar o comprar una vivienda, y en los lugares abiertos al público. En la vivienda, también protege a las familias que viven con un hijo menor de 18 años. Y nadie puede despedirle, expulsarle ni castigarle de otro modo por oponerse a la discriminación, presentar una queja, o declarar o ayudar en un caso sobre ella. Si le ocurre, puede presentar una queja por escrito ante la Comisión de Derechos Humanos de New Hampshire dentro de los 180 días.",
    "state": "draft"
   },
   "guide.discrimination.new-hampshires-law-against": {
@@ -13975,8 +13975,8 @@
    "state": "draft"
   },
   "guide.vanity-and-special-plates.can-my-spouse-keep-my-plate": {
-   "en": "Can my spouse keep my plate?",
-   "es": "¿Puede mi cónyuge quedarse con mi placa?",
+   "en": "Can my spouse keep my plate after I die?",
+   "es": "¿Puede mi cónyuge quedarse con mi placa después de mi muerte?",
    "state": "draft"
   },
   "guide.vanity-and-special-plates.certificates-of-title-and-registration": {
@@ -14014,9 +14014,9 @@
    "es": "Para una placa especial, búsquela en la tabla del paso 4: quién puede tenerla y cuánto cuesta.",
    "state": "draft"
   },
-  "guide.vanity-and-special-plates.for-some-plates-yes-until-he": {
-   "en": "For some plates, yes, until he or she remarries: a Veteran plate, a National Guard plate of a retired member, and a former prisoner of war, Purple Heart or Pearl Harbor survivor plate.",
-   "es": "Con algunas placas, sí, hasta que vuelva a casarse: una placa de veterano, la placa de la Guardia Nacional de un miembro retirado, y la placa de ex prisionero de guerra, de Corazón Púrpura o de sobreviviente de Pearl Harbor.",
+  "guide.vanity-and-special-plates.for-some-plates-yes-until-they": {
+   "en": "For some plates, yes, until they remarry: a Veteran plate, a National Guard plate of a retired member, and a former prisoner of war, Purple Heart or Pearl Harbor survivor plate.",
+   "es": "Con algunas placas, sí, hasta que vuelva a casarse: una placa de veterano, una placa de la Guardia Nacional de un miembro retirado, y una placa de ex prisionero de guerra, de Corazón Púrpura o de sobreviviente de Pearl Harbor.",
    "state": "draft"
   },
   "guide.vanity-and-special-plates.gold-star-mother-father-or-family": {
@@ -19340,6 +19340,11 @@
    "es": "que designa al mastodonte como el fósil oficial del estado.",
    "state": "draft"
   },
+  "learn.state-symbols.designating-the-thompson-center": {
+   "en": "designating the Thompson/Center Contender pistol as the official state firearm of New Hampshire.",
+   "es": "que designa la pistola Thompson/Center Contender como el arma de fuego oficial del estado de New Hampshire.",
+   "state": "draft"
+  },
   "learn.state-symbols.designating-within-the-crystal-hills-as": {
    "en": "designating &ldquo;Within the Crystal Hills&rdquo; as the official animated film of New Hampshire.",
    "es": "que designa &ldquo;Within the Crystal Hills&rdquo; como la película animada oficial de New Hampshire.",
@@ -19463,6 +19468,11 @@
   "learn.state-symbols.hb-1390": {
    "en": "HB 1390",
    "es": "HB 1390",
+   "state": "draft"
+  },
+  "learn.state-symbols.hb-1430": {
+   "en": "HB 1430",
+   "es": "HB 1430",
    "state": "draft"
   },
   "learn.state-symbols.hb-152": {
