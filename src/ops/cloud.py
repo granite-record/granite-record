@@ -718,20 +718,36 @@ def entry_matches(e, rel):
                                             for g in e.get("globs", []))
 
 
-def owner_of(kit, rel):
+def owner_for(e, rel, root):
+    """Who writes `rel` under its entry `e`: the entry's owner -- except that
+    an entry naming the handover record ("night_from") gives GitHub's night
+    every file of a year folder handed to it (refusal.night_years(root): the
+    record in `root`'s archive/), the calendars' and journals' texts of 2026
+    on, say, from the handover. The entry itself never changes owner, so a
+    hand-back gives the years back with no edit here; and with no record, or
+    no `root`, ownership is the entry's, as it always was."""
+    if e.get("night_from") and root is not None:
+        import refusal
+        parts = rel.split("/")
+        if len(parts) > 2 and refusal.handed(parts[1], refusal.night_years(root)):
+            return "night"
+    return e["owner"]
+
+
+def owner_of(kit, rel, root=None):
     for e in kit.get("kit", []):
         if entry_matches(e, rel):
-            return e["owner"]
+            return owner_for(e, rel, root)
     return None
 
 
-def held_back(kit, rel):
+def held_back(kit, rel, root=None):
     """Whether kit-up --hold keeps this file out of kit/ until the New term
     run's build is published: every file of the night's, unless its entry
     says "held": false."""
     for e in kit.get("kit", []):
         if entry_matches(e, rel):
-            return e["owner"] == "night" and e.get("held", True) is not False
+            return owner_for(e, rel, root) == "night" and e.get("held", True) is not False
     return False
 
 
@@ -744,7 +760,7 @@ def kit_files(root, kit):
     never = never_rx(kit)
     files, missing, held = {}, [], []
     for e in kit.get("kit", []):
-        owner, found = e["owner"], []
+        found = []
         for p in e.get("paths", []):
             if local(root, p).is_file():
                 found.append(p)
@@ -759,6 +775,7 @@ def kit_files(root, kit):
             if any(rx.match(p) for rx in never):
                 held.append(p)
                 continue
+            owner = owner_for(e, p, root)
             if files.get(p, owner) != owner:
                 raise Failed(f"{KIT_FILE} gives {p} two owners; one file has one writer")
             files[p] = owner
@@ -1730,16 +1747,16 @@ def cmd_kit_up(a, root):
     night = [r for r in changed if files[r] == "night"]
     theirs = [r for r in changed if files[r] == "laptop"]
     gone = [r for r in before if r not in files and not local(root, r).exists()
-            and owner_of(kit, r) == "night"]
+            and owner_of(kit, r, root) == "night"]
     # --hold RUN, a New term run's: what the night changed waits under
     # nights/RUN/kit/ and kit/ keeps the copies it had, until kit-release.
     hold = getattr(a, "hold", None)
     waiting, gone_waiting = [], []
     if hold:
         hprefix, hkey = _held_keys(hold)
-        waiting = [r for r in night if held_back(kit, r)]
+        waiting = [r for r in night if held_back(kit, r, root)]
         night = [r for r in night if r not in waiting]
-        gone_waiting = [r for r in gone if held_back(kit, r)]
+        gone_waiting = [r for r in gone if held_back(kit, r, root)]
         gone = [r for r in gone if r not in gone_waiting]
     # A DRY RUN SENDS BACK ONLY WHAT IT FETCHED (the docstring): the rest of
     # what it changed is its branch's code's work, and stays out of kit/.
@@ -2290,7 +2307,7 @@ def cmd_kit_release(a, root):
     never = never_rx(kit)
     for rel in list(held) + removed:
         check_rel(rel)
-        if not held_back(kit, rel) or any(rx.match(rel) for rx in never):
+        if not held_back(kit, rel, root) or any(rx.match(rel) for rx in never):
             raise Failed(f"{hkey} names {rel}, which {KIT_FILE} does not hold back for "
                          "a New term run; nothing was released")
     man, _ = read_manifest(bucket, "kit")
@@ -3003,18 +3020,45 @@ def kit_history(bucket, today, days=35):
     return hist
 
 
+def put_back_handover(bucket, root, man, dry):
+    """THE HANDOVER RECORD, WHERE IT IS MISSING HERE (the person's design of 26
+    October 2026): the laptop's own file, and the only one of the laptop's that
+    pull ever brings down -- into an empty place only, and whole, as the
+    bucket's kit manifest records it. Lost here, the laptop would know the
+    night's years only from the interlock. ([put back], [why one was not])."""
+    import refusal
+    rel = refusal.HANDOVER.as_posix()
+    ent = man["files"].get(rel)
+    if not ent or local(root, rel).exists():
+        return [], []
+    if dry:
+        return [rel], []
+    data = bucket.get_bytes(f"kit/{rel}")
+    if _sha(data) != ent.get("sha256"):
+        return [], [f"{rel}: the bucket's copy is not the one its kit manifest records, so "
+                    "it was not put back"]
+    try:
+        create_whole(local(root, rel), data)
+    except FileExistsError:
+        return [], []
+    return [rel], []
+
+
 def pull_kit(a, bucket, root, kit, known, take, day, today):
     """The night's kit files, down to this laptop where the bucket's differs
     and this laptop's copy is still the one it last had in common with the
-    bucket. Returns a dict of what it found and did."""
+    bucket. Returns a dict of what it found and did. A handover record missing
+    here is put back first (put_back_handover), so that what is the night's is
+    judged by it."""
     man, _ = read_manifest(bucket, "kit")
     if man is None:
         raise Failed(f"{bucket.describe()} has no {MANIFEST.format('kit')}: seed-kit has "
                      "not run, so there is no kit to take anything back from")
+    put_back, not_back = put_back_handover(bucket, root, man, a.dry_run)
     never = never_rx(kit)
     night, r = {}, {"laptop": 0, "nobody": 0, "site": 0, "never": 0}
     for rel, ent in man["files"].items():
-        owner = owner_of(kit, rel)
+        owner = owner_of(kit, rel, root)
         if any(rx.match(rel) for rx in never):
             r["never"] += 1
         elif owner == "laptop":
@@ -3064,7 +3108,7 @@ def pull_kit(a, bucket, root, kit, known, take, day, today):
         todo[rel] = night[rel]
     gone = sorted(rel for rel in known if rel not in man["files"])
     r.update(todo=todo, here=here, clash=clash, taking=taking, gone=gone, got=set(),
-             bad=bad, aside=[], night=len(night), moved=[])
+             bad=not_back + bad, aside=[], night=len(night), moved=[], put_back=put_back)
     if a.dry_run:
         return r
     for rel in taking:
@@ -3167,7 +3211,7 @@ def bucket_is_the_nights(bucket):
     return False
 
 
-def full_pull_news(bucket, kit, rec, now):
+def full_pull_news(bucket, kit, rec, now, root=None):
     """--changes-only's word on everything else: how old the last FULL pull
     is, and how many of the night's files the bucket's kit manifest has
     changed since -- which a morning of changes-only pulls would otherwise
@@ -3183,7 +3227,7 @@ def full_pull_news(bucket, kit, rec, now):
         return ["the bucket holds no kit manifest"]
     never, known = never_rx(kit), rec.get("kit") or {}
     night = {rel: e for rel, e in man["files"].items()
-             if owner_of(kit, rel) == "night" and not rel.startswith(PULL_NOT)
+             if owner_of(kit, rel, root) == "night" and not rel.startswith(PULL_NOT)
              and not any(rx.match(rel) for rx in never)}
     newer = sorted(rel for rel, e in night.items()
                    if (known.get(rel) or [None, None])[1] != e.get("sha256"))
@@ -3290,11 +3334,13 @@ def cmd_pull(a, root):
     # 4. THE KIT -- or, for --changes-only, how far behind it this laptop is.
     k = None
     if a.changes_only:
-        for ln in full_pull_news(bucket, kit, rec, now):
+        for ln in full_pull_news(bucket, kit, rec, now, root):
             say(f"  kit: {ln}")
     else:
         known = rec.setdefault("kit", {})
         k = pull_kit(a, bucket, root, kit, known, take, day, today)
+        show("missing here, and " + ("would be" if a.dry_run else "was") + " put back from the "
+             "bucket's kit", k["put_back"], {})
         todo = k["todo"]
         show("the night's files " + ("that would come down" if a.dry_run else "to take"),
              list(todo), {r: e["size"] for r, e in todo.items()})
@@ -3633,7 +3679,7 @@ def cmd_send_night(a, root):
         if rel.startswith(PULL_NOT):
             raise Failed(f"{rel} is the built site's or the build cache's, which are each "
                          "build's own and never sent by hand. Nothing was sent.")
-        owner = owner_of(kit, rel)
+        owner = owner_of(kit, rel, root)
         if owner == "laptop":
             raise Failed(f"{rel} is the laptop's in {KIT_FILE}, and seed-kit sends the "
                          "laptop's files; send-night sends only the night's. Nothing was sent.")

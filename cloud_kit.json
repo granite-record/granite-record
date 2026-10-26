@@ -140,13 +140,26 @@
       "paths": ["archive/queue_fetched.csv"]
     },
     {
+      "what": "The handover of the calendars and journals to GitHub's night (refusal.HANDOVER; the person's design of 26 October 2026): from its from_year on the night is the one machine that asks the General Court for them, and the laptop asks for none. Written on the laptop alone, by cloud.py's hand-over, hand-back and the person's word on a document, each of which sends it itself; pull brings it back where it is missing here, and nowhere else. Optional: none exists until a person hands the years over.",
+      "owner": "laptop",
+      "optional": true,
+      "paths": ["archive/documents_handover.json"]
+    },
+    {
+      "what": "The night's own record of the years handed to it (refusal.NIGHT_RECORD): each document's tries, state and text, and the last two reads of each list. Written by the night alone; the laptop reads it, and keeps those years the night's by it while the handover record is missing here. Optional: none exists before the first night after a handover.",
+      "owner": "night",
+      "optional": true,
+      "paths": ["archive/documents_night.json"]
+    },
+    {
       "what": "The saved bill pages.",
       "owner": "laptop",
       "globs": ["legislation/**"]
     },
     {
-      "what": "The calendars' and journals' text: the .txt beside each PDF, not the PDF.",
+      "what": "The calendars' and journals' text: the .txt beside each PDF, not the PDF. The laptop's -- except, from a handover, the texts of the years it hands GitHub's night (night_from, cloud.owner_for), which the night makes and the laptop's seed-kit sends only where the bucket has none. With no handover record, all of them the laptop's.",
       "owner": "laptop",
+      "night_from": "archive/documents_handover.json",
       "globs": ["calendars/*/*.txt", "calendars_senate/*/*.txt", "journals/*/*.txt", "journals_senate/*/*.txt"]
     },
     {

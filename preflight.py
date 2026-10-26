@@ -92133,12 +92133,116 @@ def _supplements_own_path(R, CA):
     return "ok", "No 27 of 2025's four documents get four paths under a handover from 2025"
 
 
+@check("cloud", "once the years are handed over, their texts in the kit are the night's and the "
+       "older years' the laptop's, by the handover record alone; and pull puts back a "
+       "handover record missing here, and only one missing",
+       needs=("refusal", "cloud"))
+def _kit_per_year_owner(R, CL):
+    """THE KIT'S TEXT ENTRY NEVER CHANGES OWNER (the person's design of 26
+    October 2026, D6). It stays the laptop's and names the handover record
+    (night_from); cloud.owner_for gives the night the texts of a year folder
+    handed to it, so with no record ownership is as it was and a hand-back
+    needs no edit. Driven on a folder bucket, a laptop and a night:
+
+      - the real kit: the texts' entry names refusal.HANDOVER; the handover
+        record is the laptop's and the night's own record the night's, both
+        optional, gitignored and in no dry run's globs;
+      - calendars/2026/b.txt is the night's and calendars/2025/a.txt the
+        laptop's once 2026 is handed over, and both the laptop's without;
+      - seed-kit sends the laptop's 2025 text, and a 2026 text only where the
+        bucket has none, never over the bucket's;
+      - the night's kit-up sends its 2026 text and not the 2025 one;
+      - pull brings the night's 2026 text down, puts back the handover record
+        when it is missing here, and leaves one that is here as it is."""
+    real = CL.load_kit(".")
+    texts = next(e for e in real["kit"] if "calendars/*/*.txt" in e.get("globs", []))
+    assert texts["owner"] == "laptop" and texts.get("night_from") == R.HANDOVER.as_posix(), \
+        "the kit's texts entry does not name the handover record, or is not the laptop's"
+    for rel, owner in ((R.HANDOVER.as_posix(), "laptop"), (R.NIGHT_RECORD.as_posix(), "night")):
+        e = [e for e in real["kit"] if rel in e.get("paths", [])]
+        assert len(e) == 1 and e[0]["owner"] == owner and e[0].get("optional"), \
+            f"{rel} is not one optional entry of the {owner}'s in the kit"
+        assert not any(CL.glob_re(g).match(rel) for g in real.get("dry_run", {}).get("globs", [])), \
+            f"a dry run would send {rel}"
+    r = _run(["git", "check-ignore", R.HANDOVER.as_posix(), R.NIGHT_RECORD.as_posix()],
+             capture_output=True, text=True)
+    assert r.returncode == 0 and len((r.stdout or "").split()) == 2, \
+        "the handover record or the night's record is not gitignored"
+    kit = {"kit": [{"what": "texts", "owner": "laptop", "night_from": R.HANDOVER.as_posix(),
+                    "globs": ["calendars/*/*.txt"]},
+                   {"what": "handover", "owner": "laptop", "optional": True,
+                    "paths": [R.HANDOVER.as_posix()]},
+                   {"what": "list", "owner": "night", "paths": ["archive/queue.csv"]}],
+           "state": [{"path": "archive/refused.json", "key": "refused.json", "what": "x"}],
+           "logs": {"globs": []}, "backup": real["backup"], "never": real["never"]}
+    saved_env = os.environ.get(CL.NO_BUCKET)
+    with _HandoverFolder(R) as f:
+        os.environ[CL.NO_BUCKET] = "1"
+        laptop, night, bucket = f.tmp / "laptop", f.tmp / "night", f.tmp / "bucket"
+
+        def put(root, rel, body):
+            (root / rel).parent.mkdir(parents=True, exist_ok=True)
+            (root / rel).write_text(body, encoding="utf-8")
+
+        def call(root, *argv):
+            return _cloud_call(CL, *argv, "--root", str(root), "--local-bucket", str(bucket))
+
+        def kept(rel):
+            return (bucket / "kit" / rel).read_text(encoding="utf-8")
+        a, b, c, hand = ("calendars/2025/a.txt", "calendars/2026/b.txt", "calendars/2026/c.txt",
+                         R.HANDOVER.as_posix())
+        for root in (laptop, night):
+            put(root, CL.KIT_FILE, json.dumps(kit))
+        for rel, body in ((a, "a1"), (b, "b1"), ("archive/queue.csv", "q")):
+            put(laptop, rel, body)
+        assert CL.owner_of(kit, b, laptop) == CL.owner_of(kit, a, laptop) == "laptop", \
+            "with no handover record a text of 2026 is not the laptop's"
+        assert call(laptop, "seed-kit")[0] == 0
+        record = json.dumps({"from_year": 2026, "at": "2026-11-10T14:00:00Z", "handed_back": None})
+        put(laptop, hand, record)
+        assert call(laptop, "seed-kit", "--only", hand)[0] == 0 and kept(hand) == record
+        assert (CL.owner_of(kit, b, laptop), CL.owner_of(kit, a, laptop)) == ("night", "laptop"), \
+            "with 2026 handed over, its text is not the night's, or 2025's is not the laptop's"
+        for rel, body in ((a, "a2"), (b, "b2"), (c, "c1")):
+            put(laptop, rel, body)
+        code, out = call(laptop, "seed-kit")
+        assert code == 0 and (kept(a), kept(b), kept(c)) == ("a2", "b1", "c1"), (
+            "seed-kit did not send the laptop's text, sent one of the night's over the bucket's, "
+            f"or kept back one the bucket had none of: {out[-300:]}")
+        put(laptop, b, "b1")
+        assert call(night, "kit-down")[0] == 0 and (night / hand).exists()
+        put(night, a, "a3")
+        put(night, b, "b3")
+        code, out = call(night, "kit-up")
+        assert code == 0 and (kept(a), kept(b)) == ("a2", "b3"), (
+            f"the night's kit-up did not send its 2026 text, or sent the laptop's 2025: {out[-300:]}")
+        (laptop / hand).unlink()
+        code, out = call(laptop, "pull")
+        assert code == 0 and (laptop / hand).exists() and \
+            (laptop / hand).read_text(encoding="utf-8") == record and \
+            (laptop / b).read_text(encoding="utf-8") == "b3" and \
+            (laptop / a).read_text(encoding="utf-8") == "a2", \
+            f"pull did not put the record back, or take the night's text: {out[-400:]}"
+        mine = json.dumps({"from_year": 2026, "at": "2026-11-10T14:00:00Z",
+                           "handed_back": {"at": "2026-12-01T15:00:00Z", "sent": False}})
+        put(laptop, hand, mine)
+        assert call(laptop, "pull")[0] == 0 and \
+            (laptop / hand).read_text(encoding="utf-8") == mine, \
+            "pull wrote the bucket's handover record over the laptop's own"
+    if saved_env is None:
+        os.environ.pop(CL.NO_BUCKET, None)
+    else:
+        os.environ[CL.NO_BUCKET] = saved_env
+    return "ok", ("2026's texts the night's and 2025's the laptop's by the handover record; "
+                  "seed-kit never over the night's; pull puts back a missing record only")
+
+
 @check("build", "with the night's documents switched off and no handover record nothing the night "
        "or the laptop does changes: the queue, its layers, the list's paths, the drain, the "
-       "Senate fetch, the committee reports and the texts are as they were",
+       "Senate fetch, the committee reports, the texts and the kit's owners are as they were",
        needs=("refusal", "fetch_calendar_archive", "extract_calendar_text",
-              "fetch_senate_calendars", "fetch_committee_reports"))
-def _documents_off_is_off(R, CA, ECT, FSC, FCR):
+              "fetch_senate_calendars", "fetch_committee_reports", "cloud"))
+def _documents_off_is_off(R, CA, ECT, FSC, FCR, CL):
     """THE HARD RULE (the person, 26 October 2026; the design's D1): with
     NIGHT_DOCUMENTS unset, "off", "Off ", "9" or "²" and no handover record --
     every machine on the day this merges -- nothing either machine does
@@ -92151,9 +92255,14 @@ def _documents_off_is_off(R, CA, ECT, FSC, FCR):
         number's path, SC027.pdf, as it always has;
       - the drain asks for every year's wanted documents; the Senate fetch and
         the committee reports of 2026 go on to ask (their requests faked);
-        every year's PDF without text is one the extractor makes."""
+        every year's PDF without text is one the extractor makes;
+      - every year's text is the laptop's in the kit (cloud.owner_of and
+        kit_files), as before the texts' entry named the handover record;
+        pull, which puts back only a record the bucket holds, is held to its
+        old self by the pull checks, which hold none."""
     def never(*a, **kw):
         raise AssertionError("a reader of what the handover adds was reached with no record")
+    real = CL.load_kit(".")
     saved = (CA.night_rows, CA._new_local, R.years_said)
     try:
         CA.night_rows, CA._new_local, R.years_said = never, never, never
@@ -92180,10 +92289,19 @@ def _documents_off_is_off(R, CA, ECT, FSC, FCR):
                     ["2025", "2026", "2027"], (1, 1), (1, 1), (1, ["2026"], False),
                     (1, ["2026"], False), ["2025", "2026", "2027"]), \
                     f"with the switch {switch!r} and no record the laptop's fetches changed: {got}"
+                for y in (2025, 2026):
+                    (f.tmp / "journals" / str(y)).mkdir(parents=True)
+                    (f.tmp / "journals" / str(y) / "HJ001.txt").write_text("t", encoding="utf-8")
+                owners = {p: o for p, o in CL.kit_files(f.tmp, real)[0].items()
+                          if p.endswith(".txt")}
+                assert len(owners) == 2 and set(owners.values()) == {"laptop"} and \
+                    CL.owner_of(real, "journals/2026/HJ001.txt", f.tmp) == "laptop", \
+                    f"with the switch {switch!r} and no record a text is not the laptop's: {owners}"
     finally:
         CA.night_rows, CA._new_local, R.years_said = saved
     return "ok", ("switched off, or not a switch, and no record: the queue, the paths, the "
-                  "drain, the Senate fetch, the committee reports and the texts as before")
+                  "drain, the Senate fetch, the committee reports, the texts and their "
+                  "owner in the kit as before")
 
 
 @check("build", "on a stood-down laptop no General Court request starts in GitHub's night "
