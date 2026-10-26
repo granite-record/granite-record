@@ -1,4 +1,4 @@
-/* GRANITE_VERSION: 2026-09-07.323 */
+/* GRANITE_VERSION: 2026-09-07.324 */
 /* ONE STYLESHEET FOR EVERY PAGE (23 October 2026). Every page of the site
    links this file, /app.css: the record pages shell.page() makes from
    bills.html, and the five build_pages.py writes -- the home page, Officials,
@@ -3883,6 +3883,10 @@ text-decoration:none;border-radius:var(--r-in);padding:var(--sp-4) var(--sp-6)}
    divider inside a panel, the values in the ink on the wash (12.38:1 light,
    10.41:1 dark). */
 .testifypane .trule{border:0;border-top:1px solid var(--rule);margin:var(--sp-5) 0}
+/* An amendment's number is one word: "2026-0422h" broke at its hyphen at
+   1280 (the preview check of 26 October 2026). Kept whole, here only, so the
+   pane's markup stays the email's. */
+.testifypane a[href*="#amendment-"]{white-space:nowrap}
 .testifypane .tvals{list-style:none;margin:0;padding:var(--sp-4) var(--sp-5);background:var(--wash);
 border-radius:var(--r-in);color:var(--ink);font-weight:600;line-height:1.6}
 .testifypane .tvals li{margin:0;overflow-wrap:anywhere}
