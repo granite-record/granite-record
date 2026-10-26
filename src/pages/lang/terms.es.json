@@ -210,7 +210,11 @@
     "cuota",
     "cuotas"
    ],
-   "basis": "The person's term list, 25 October 2026: cuota, not cargo or tarifa"
+   "basis": "The person's term list, 25 October 2026: cuota, not cargo or tarifa; attorney’s fees are honorarios de abogado, as Spanish says them (the renting guides, 26 October 2026)",
+   "skip": [
+    "attorney’s fees",
+    "attorney's fees"
+   ]
   },
   {
    "en": [
