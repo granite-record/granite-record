@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.710
+# GRANITE_VERSION: 2026-09-04.711
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -26487,6 +26487,60 @@ LEARN_CONSTITUTION_CLAIMS = [
      "Article 9)", 2, "9", "as equal as circumstances will admit"),
     ("your-representatives", "the constitution forbids the legislature to divide a town, ward or place",
      2, "9", "no town, ward or place shall be divided"),
+    # The State House and what makes the branches different (26 October 2026).
+    ("state-house-and-branches", "the General Court of New Hampshire (Part Second, Article 3)",
+     2, "3", "the general court of new hampshire"),
+    ("state-house-and-branches", "not less than 375 or more than 400 members (Part Second, Article 9)",
+     2, "9", "not less than three hundred seventy-five or more than four hundred"),
+    ("state-house-and-branches", "the Senate has 24 members (Part Second, Article 25)",
+     2, "25", "the senate shall consist of twenty four members"),
+    ("state-house-and-branches", "Article 15 gives each member $200", 2, "15", "the sum of $200"),
+    ("state-house-and-branches", "as compensation in full for their services for the term elected",
+     2, "15", "as compensation in full for their services for the term elected"),
+    ("state-house-and-branches", "the presiding officers of the two chambers $250",
+     2, "15", "the presiding officers of both houses"),
+    ("state-house-and-branches", "the presiding officers of the two chambers $250",
+     2, "15", "the sum of $250"),
+    ("state-house-and-branches", "45 legislative days or after July 1, whichever comes first",
+     2, "15", "45 legislative days or after the first day of july"),
+    ("state-house-and-branches", "A special session adds $3 a day, for no more than 15 days",
+     2, "15", "$3 per day for a period not exceeding 15 days"),
+    ("state-house-and-branches", "the title His Excellency (Part Second, Article 41)",
+     2, "41", "whose title shall be his excellency"),
+    ("state-house-and-branches", "The governor is chosen biennially, in November (Part Second, Article 42)",
+     2, "42", "the governor shall be chosen biennially in the month of november"),
+    ("state-house-and-branches", "30 years old and have lived in the state for the 7 years before the "
+     "election", 2, "42", "an inhabitant of this state for 7 years next preceding"),
+    ("state-house-and-branches", "30 years old and have lived in the state for the 7 years before the "
+     "election", 2, "42", "of the age of 30 years"),
+    ("state-house-and-branches", "the House and Senate together elect one of the two with the most votes, "
+     "by joint ballot", 2, "42", "by joint ballot elect one of the two persons, having the highest number "
+                                 "of votes"),
+    ("state-house-and-branches", "Five Executive Councilors are elected biennially",
+     2, "60", "biennially elected, by ballot, five councilors"),
+    ("state-house-and-branches", "for advising the governor in the executive part of government",
+     2, "60", "for advising the governor in the executive part of government"),
+    ("state-house-and-branches", "five districts drawn as nearly equal in population as may be",
+     2, "65", "five districts, as nearly equal as may be, governing themselves by the number of population"),
+    ("state-house-and-branches", "nominated and appointed by the governor and council",
+     2, "46", "shall be nominated and appointed by the governor and council"),
+    ("state-house-and-branches", "the nomination must be made at least three days before",
+     2, "46", "at least three days prior to such appointment"),
+    ("state-house-and-branches", "no one takes office unless a majority of the council agrees",
+     2, "46", "unless a majority of the council agree thereto"),
+    ("state-house-and-branches", "a negative on each other", 2, "47", "a negative on each other"),
+    ("state-house-and-branches", "a trial court of general jurisdiction known as the superior court",
+     2, "72-a", "a trial court of general jurisdiction known as the superior court"),
+    ("state-house-and-branches", "the administrative head of all the courts",
+     2, "73-a", "the administrative head of all the courts"),
+    ("state-house-and-branches", "The Governor nominates and the Executive Council confirms",
+     2, "46", "all judicial officers"),
+    ("state-house-and-branches", "a judge holds office during good behavior",
+     2, "73", "shall hold their offices during good behavior"),
+    ("state-house-and-branches", "no one may serve as a judge after reaching seventy",
+     2, "78", "after he has attained the age of seventy years"),
+    ("state-house-and-branches", "on the address of both houses of the legislature",
+     2, "73", "upon the address of both houses of the legislature"),
 ]
 
 

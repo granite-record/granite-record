@@ -13751,6 +13751,16 @@
    "es": "El Gobernador y el Consejo Ejecutivo",
    "state": "draft"
   },
+  "hub.learn.group.about-new-hampshire.name": {
+   "en": "About New Hampshire",
+   "es": "Sobre New Hampshire",
+   "state": "draft"
+  },
+  "hub.learn.group.about-new-hampshire.note": {
+   "en": "The State House, its history, and what sets the state apart.",
+   "es": "El Capitolio, su historia y lo que distingue al estado.",
+   "state": "draft"
+  },
   "hub.learn.group.how-the-state-works.name": {
    "en": "How the State Works",
    "es": "Cómo funciona el estado",
@@ -13856,6 +13866,16 @@
    "es": "Las agencias estatales",
    "state": "draft"
   },
+  "hub.learn.state-house-and-branches.blurb": {
+   "en": "A granite State House of 1819, a House of up to 400, legislators paid $200 for the term, a Governor elected every two years beside an Executive Council, and judges who serve until seventy.",
+   "es": "Un Capitolio de granito de 1819, una Cámara de hasta 400 miembros, legisladores que cobran $200 por el período, un Gobernador elegido cada dos años junto a un Consejo Ejecutivo, y jueces que sirven hasta los setenta años.",
+   "state": "draft"
+  },
+  "hub.learn.state-house-and-branches.title": {
+   "en": "The State House and What Makes New Hampshire&#x27;s Government Different",
+   "es": "El Capitolio y lo que hace distinto al gobierno de New Hampshire",
+   "state": "draft"
+  },
   "hub.learn.the-constitution.blurb": {
    "en": "One of the oldest still in force, and it is not amended the way statutes are: a CACR needs three fifths of both chambers and then the voters.",
    "es": "Una de las más antiguas aún vigentes, y no se enmienda como las leyes: una CACR necesita tres quintos de ambas cámaras y después a los votantes.",
@@ -13876,6 +13896,11 @@
    "es": "Los tribunales",
    "state": "draft"
   },
+  "hub.src.about-the-executive-council.name": {
+   "en": "About the Executive Council",
+   "es": "Acerca del Consejo Ejecutivo",
+   "state": "draft"
+  },
   "hub.src.administrative-rules-rsa-541-a.name": {
    "en": "Administrative rules, RSA 541-A",
    "es": "Reglas administrativas, RSA 541-A",
@@ -13891,6 +13916,16 @@
    "es": "Cada página de este sitio termina con sus fuentes. Si algo está mal, <a href=\"mailto:contact@graniterecord.org\">díganoslo</a> &mdash; para eso existe esa dirección.",
    "state": "draft"
   },
+  "hub.src.concord-civic-district-national-register.name": {
+   "en": "Concord Civic District, National Register of Historic Places nomination",
+   "es": "Distrito Cívico de Concord, nominación al Registro Nacional de Lugares Históricos",
+   "state": "draft"
+  },
+  "hub.src.concord-civic-district-national-register.what": {
+   "en": "National Park Service, 1983",
+   "es": "Servicio de Parques Nacionales, 1983",
+   "state": "draft"
+  },
   "hub.src.county-government-county-by-county.name": {
    "en": "County government, county by county",
    "es": "El gobierno de cada condado",
@@ -13904,6 +13939,11 @@
   "hub.src.group.elections-and-the-constitution": {
    "en": "Elections and the Constitution",
    "es": "Elecciones y la Constitución",
+   "state": "draft"
+  },
+  "hub.src.group.history": {
+   "en": "History",
+   "es": "Historia",
    "state": "draft"
   },
   "hub.src.group.the-courts": {
@@ -16984,6 +17024,211 @@
   "learn.state-agencies.yes-a-commissioner-serves-a-fixed": {
    "en": "Yes. A commissioner serves a fixed term and can be reappointed the same way: nominated by the Governor, confirmed by the Executive Council.",
    "es": "Sí. Un comisionado ejerce el cargo por un período fijo y puede volver a ser nombrado de la misma manera: lo propone el Gobernador y lo confirma el Consejo Ejecutivo.",
+   "state": "draft"
+  },
+  "learn.state-house-and-branches.a-governor-elected-every-two-years": {
+   "en": "A Governor Elected Every Two Years",
+   "es": "Un Gobernador elegido cada dos años",
+   "state": "draft"
+  },
+  "learn.state-house-and-branches.a-granite-building-of-1819": {
+   "en": "A Granite Building of 1819",
+   "es": "Un edificio de granito de 1819",
+   "state": "draft"
+  },
+  "learn.state-house-and-branches.a-house-of-four-hundred": {
+   "en": "A House of Four Hundred",
+   "es": "Una Cámara de cuatrocientos",
+   "state": "draft"
+  },
+  "learn.state-house-and-branches.about-the-executive-council": {
+   "en": "About the Executive Council",
+   "es": "Acerca del Consejo Ejecutivo",
+   "state": "draft"
+  },
+  "learn.state-house-and-branches.as-this-sites-record-stands-the": {
+   "en": "As this site&rsquo;s record stands, the House has <b>[[house_seats]] seats and [[house_sitting]] sitting members</b>, with [[house_vacant]] vacant, and the Senate [[senate_districts]] districts. Each member&rsquo;s page is on the <a href=\"officials.html\">Officials page</a>.",
+   "es": "Según el registro de este sitio, la Cámara tiene <b>[[house_seats]] escaños y [[house_sitting]] miembros en funciones</b>, con [[house_vacant]] vacantes, y el Senado [[senate_districts]] distritos. La página de cada miembro está en la <a href=\"officials.html\">página de Funcionarios</a>.",
+   "state": "draft"
+  },
+  "learn.state-house-and-branches.can-a-judge-be-removed-before": {
+   "en": "Can a judge be removed before seventy?",
+   "es": "¿Se puede destituir a un juez antes de los setenta años?",
+   "state": "draft"
+  },
+  "learn.state-house-and-branches.common-questions": {
+   "en": "Common Questions",
+   "es": "Preguntas frecuentes",
+   "state": "draft"
+  },
+  "learn.state-house-and-branches.concord-civic-district-national-register": {
+   "en": "Concord Civic District, National Register of Historic Places nomination (National Park Service, 1983)",
+   "es": "Distrito Cívico de Concord, nominación al Registro Nacional de Lugares Históricos (Servicio de Parques Nacionales, 1983)",
+   "state": "draft"
+  },
+  "learn.state-house-and-branches.find-your-legislators-by-town": {
+   "en": "Find your legislators, by town",
+   "es": "Encuentre a sus legisladores, por municipio",
+   "state": "draft"
+  },
+  "learn.state-house-and-branches.five-councilors-beside-the-governor": {
+   "en": "Five Councilors Beside the Governor",
+   "es": "Cinco consejeros junto al Gobernador",
+   "state": "draft"
+  },
+  "learn.state-house-and-branches.five-executive-councilors-are-elected": {
+   "en": "Five <b>Executive Councilors</b> are elected biennially &ldquo;for advising the governor in the executive part of government&rdquo; (Part Second, Article 60), one from each of five districts drawn as nearly equal in population as may be (Part Second, Article 65). Until 1792 the council was made up of members of the House and Senate, elected by them.",
+   "es": "Cinco <b>consejeros ejecutivos</b> se eligen cada dos años &ldquo;para asesorar al gobernador en la parte ejecutiva del gobierno&rdquo; (Parte Segunda, Artículo 60), uno por cada uno de cinco distritos trazados tan iguales en población como sea posible (Parte Segunda, Artículo 65). Hasta 1792 el consejo lo formaban miembros de la Cámara y del Senado, elegidos por ellos.",
+   "state": "draft"
+  },
+  "learn.state-house-and-branches.has-legislators-pay-ever-been-raised": {
+   "en": "Has legislators&rsquo; pay ever been raised?",
+   "es": "¿Alguna vez se ha aumentado el sueldo de los legisladores?",
+   "state": "draft"
+  },
+  "learn.state-house-and-branches.how-many-members-does-the-general": {
+   "en": "How many members does the General Court have?",
+   "es": "¿Cuántos miembros tiene la Legislatura (General Court)?",
+   "state": "draft"
+  },
+  "learn.state-house-and-branches.in-the-councils-own-words-each": {
+   "en": "In the Council&rsquo;s own words, each of the five Executive Councilors represents one fifth of the population, and Councilors are elected every two years, concurrently with the Governor; a candidate must live in the district. It calls the Councilors the constituent&rsquo;s eyes and ears in Concord. <a href=\"learn/governor-and-council.html\">The Governor and the Executive Council</a> says what the Council approves.",
+   "es": "En palabras del propio Consejo, cada uno de los cinco consejeros ejecutivos representa a una quinta parte de la población, y los consejeros se eligen cada dos años, al mismo tiempo que el Gobernador; el candidato debe vivir en el distrito. El Consejo llama a los consejeros los ojos y oídos de sus electores en Concord. <a href=\"learn/governor-and-council.html\">El Gobernador y el Consejo Ejecutivo</a> explica qué aprueba el Consejo.",
+   "state": "draft"
+  },
+  "learn.state-house-and-branches.inside-and-on-the-grounds": {
+   "en": "Inside and on the Grounds",
+   "es": "Por dentro y en los jardines",
+   "state": "draft"
+  },
+  "learn.state-house-and-branches.is-the-eagle-on-the-dome": {
+   "en": "Is the eagle on the dome the original?",
+   "es": "¿Es original el águila de la cúpula?",
+   "state": "draft"
+  },
+  "learn.state-house-and-branches.it-was-enlarged-twice-in-18641866": {
+   "en": "It was enlarged twice. In 1864&ndash;1866, to designs by the Boston architect Gridley J.F. Bryant, it gained a third story, the portico and the gilded dome, which is patterned after the H&ocirc;tel des Invalides in Paris. In 1909&ndash;1910 the firm of Peabody &amp; Stearns extended it westward, nearly doubling its size. The granite of each period differs in color: the original stone is stained by iron, and the later stone, cut from deeper in the quarries, is purer.",
+   "es": "Se amplió dos veces. En 1864&ndash;1866, según los diseños del arquitecto de Boston Gridley J.F. Bryant, ganó un tercer piso, el pórtico y la cúpula dorada, inspirada en el H&ocirc;tel des Invalides de París. En 1909&ndash;1910 la firma Peabody &amp; Stearns lo extendió hacia el oeste, casi duplicando su tamaño. El granito de cada época tiene otro color: la piedra original está manchada de hierro, y la posterior, sacada de más hondo en las canteras, es más pura.",
+   "state": "draft"
+  },
+  "learn.state-house-and-branches.judges-are-not-elected-the-governor": {
+   "en": "Judges are not elected. The Governor nominates and the Executive Council confirms (Part Second, Article 46). Once appointed, a judge holds office during good behavior (Part Second, Article 73), and no one may serve as a judge after reaching seventy, a limit in the constitution since 1792 (Part Second, Article 78). <a href=\"learn/the-courts.html\">The Courts</a> says how the courts are arranged.",
+   "es": "Los jueces no se eligen. El Gobernador propone y el Consejo Ejecutivo confirma (Parte Segunda, Artículo 46). Una vez nombrado, un juez ocupa el cargo mientras observe buena conducta (Parte Segunda, Artículo 73), y nadie puede ser juez después de cumplir setenta años, un límite que está en la constitución desde 1792 (Parte Segunda, Artículo 78). <a href=\"learn/the-courts.html\">Los tribunales</a> explica cómo están organizados los tribunales.",
+   "state": "draft"
+  },
+  "learn.state-house-and-branches.judges-serve-until-seventy": {
+   "en": "Judges Serve Until Seventy",
+   "es": "Los jueces sirven hasta los setenta años",
+   "state": "draft"
+  },
+  "learn.state-house-and-branches.lead": {
+   "en": "A granite State House of 1819, a House of up to 400, legislators paid $200 for the term, a Governor elected every two years beside an Executive Council, and judges who serve until seventy.",
+   "es": "Un Capitolio de granito de 1819, una Cámara de hasta 400 miembros, legisladores que cobran $200 por el período, un Gobernador elegido cada dos años junto a un Consejo Ejecutivo, y jueces que sirven hasta los setenta años.",
+   "state": "draft"
+  },
+  "learn.state-house-and-branches.members-are-also-paid-mileage-for": {
+   "en": "Members are also paid mileage for each day they attend on legislative days, but not after the legislature has been in session for 45 legislative days or after July 1, whichever comes first. A special session adds $3 a day, for no more than 15 days, with the usual mileage.",
+   "es": "Los miembros también cobran millaje por cada día que asisten en días legislativos, pero no después de que la Legislatura haya sesionado 45 días legislativos ni después del 1 de julio, lo que ocurra primero. Una sesión extraordinaria añade $3 al día, por no más de 15 días, con el millaje de costumbre.",
+   "state": "draft"
+  },
+  "learn.state-house-and-branches.no-the-eagle-there-now-is": {
+   "en": "No. The eagle there now is a copper replica, put up in 1957, of the wooden eagle erected in 1818.",
+   "es": "No. El águila que hay ahora es una réplica de cobre, colocada en 1957, del águila de madera levantada en 1818.",
+   "state": "draft"
+  },
+  "learn.state-house-and-branches.paid-200-for-a-two-year": {
+   "en": "Paid $200 for a Two-Year Term",
+   "es": "$200 por un período de dos años",
+   "state": "draft"
+  },
+  "learn.state-house-and-branches.the-building-stands-three-stories-high": {
+   "en": "The building stands three stories high, topped by a gilded dome set on an octagonal base, rising 149 feet. When it was built in 1819 it housed 204 legislators. The National Register nomination that describes it, written in 1983, counted 424 members and called it &ldquo;the largest state legislature in the country.&rdquo;",
+   "es": "El edificio tiene tres pisos y lo corona una cúpula dorada sobre una base octogonal, que se eleva a 149 pies. Cuando se construyó en 1819 alojaba a 204 legisladores. La nominación al Registro Nacional que lo describe, escrita en 1983, contaba 424 miembros y la llamaba &ldquo;la legislatura estatal más grande del país.&rdquo;",
+   "state": "draft"
+  },
+  "learn.state-house-and-branches.the-constitution-allows-a-house-of": {
+   "en": "The constitution allows a House of between 375 and 400 members and sets the Senate at 24. With every House seat filled, that is 424.",
+   "es": "La constitución permite una Cámara de entre 375 y 400 miembros y fija el Senado en 24. Con todos los escaños de la Cámara ocupados, son 424.",
+   "state": "draft"
+  },
+  "learn.state-house-and-branches.the-constitution-calls-the-legislature": {
+   "en": "The constitution calls the legislature <b>the General Court of New Hampshire</b> (Part Second, Article 3). Its House of Representatives is to have not less than 375 or more than 400 members (Part Second, Article 9), a limit an amendment set in 1942; the Senate has 24 members (Part Second, Article 25). The Senate began in 1784 with 12 senators, and an amendment in 1877 raised it to 24.",
+   "es": "La constitución llama a la Legislatura <b>the General Court of New Hampshire</b> (Parte Segunda, Artículo 3). Su Cámara de Representantes debe tener no menos de 375 ni más de 400 miembros (Parte Segunda, Artículo 9), un límite que fijó una enmienda en 1942; el Senado tiene 24 miembros (Parte Segunda, Artículo 25). El Senado empezó en 1784 con 12 senadores, y una enmienda de 1877 lo aumentó a 24.",
+   "state": "draft"
+  },
+  "learn.state-house-and-branches.the-constitution-has-said-200-for": {
+   "en": "The constitution has said $200 for the term, and $250 for the presiding officers, since an amendment of 1889. Changing it would take a constitutional amendment.",
+   "es": "La constitución dice $200 por el período, y $250 para quienes presiden las cámaras, desde una enmienda de 1889. Cambiarlo requeriría una enmienda constitucional.",
+   "state": "draft"
+  },
+  "learn.state-house-and-branches.the-eagle-on-top-of-the": {
+   "en": "The eagle on top of the dome is a copper replica, put up in 1957, of the original wooden eagle erected in 1818. Its head is turned to its right, the sign of a peace eagle, unlike the war eagle it replaced.",
+   "es": "El águila en lo alto de la cúpula es una réplica de cobre, colocada en 1957, del águila de madera original levantada en 1818. Tiene la cabeza girada hacia su derecha, la señal de un águila de paz, a diferencia del águila de guerra a la que reemplazó.",
+   "state": "draft"
+  },
+  "learn.state-house-and-branches.the-governor-and-council-act-together": {
+   "en": "The Governor and Council act together. Judges, the attorney general and other officers are nominated and appointed by the governor and council; the nomination must be made at least three days before, and no one takes office unless a majority of the council agrees (Part Second, Article 46). The governor and council each have &ldquo;a negative on each other&rdquo; in these choices (Part Second, Article 47).",
+   "es": "El Gobernador y el Consejo actúan juntos. Los jueces, el fiscal general y otros funcionarios son propuestos y nombrados por el gobernador y el consejo; la propuesta debe hacerse al menos tres días antes, y nadie asume el cargo si no está de acuerdo la mayoría del consejo (Parte Segunda, Artículo 46). El gobernador y el consejo tienen cada uno &ldquo;un veto sobre el otro&rdquo; en estas decisiones (Parte Segunda, Artículo 47).",
+   "state": "draft"
+  },
+  "learn.state-house-and-branches.the-governor-is-chosen-biennially-in": {
+   "en": "The governor is chosen biennially, in November (Part Second, Article 42): a two-year term. Until 1877 the election was every year. A candidate must be 30 years old and have lived in the state for the 7 years before the election. If no one has a plurality of the votes, the House and Senate together elect one of the two with the most votes, by joint ballot.",
+   "es": "El gobernador se elige cada dos años, en noviembre (Parte Segunda, Artículo 42): un período de dos años. Hasta 1877 la elección era cada año. Un candidato debe tener 30 años y haber vivido en el estado durante los 7 años anteriores a la elección. Si nadie obtiene la mayoría relativa de los votos, la Cámara y el Senado juntos eligen, en votación conjunta, a uno de los dos con más votos.",
+   "state": "draft"
+  },
+  "learn.state-house-and-branches.the-governor-is-the-states-supreme": {
+   "en": "The Governor is the state&rsquo;s supreme executive magistrate, and the constitution gives the office the title <b>His Excellency</b> (Part Second, Article 41). The office was called President until an amendment of 1792.",
+   "es": "El Gobernador es el magistrado ejecutivo supremo del estado, y la constitución da al cargo el título de <b>His Excellency</b> (Su Excelencia) (Parte Segunda, Artículo 41). El cargo se llamaba Presidente hasta una enmienda de 1792.",
+   "state": "draft"
+  },
+  "learn.state-house-and-branches.the-grounds-hold-statues-of-daniel": {
+   "en": "The grounds hold statues of Daniel Webster (1886), General John Stark (1890), John Hale (1892), Commodore George Perkins (1902, by Daniel Chester French) and Franklin Pierce (1914); the Soldiers and Sailors Memorial Arch of 1892; a veterans memorial of 1953; and a reproduction of the Liberty Bell, cast in France and installed in 1950.",
+   "es": "En los jardines hay estatuas de Daniel Webster (1886), el general John Stark (1890), John Hale (1892), el comodoro George Perkins (1902, obra de Daniel Chester French) y Franklin Pierce (1914); el Arco Conmemorativo de los Soldados y Marineros de 1892; un monumento a los veteranos de 1953; y una reproducción de la Campana de la Libertad, fundida en Francia e instalada en 1950.",
+   "state": "draft"
+  },
+  "learn.state-house-and-branches.the-house-and-senate-by-joint": {
+   "en": "The House and Senate, by joint ballot, choose between the two candidates with the most votes (Part Second, Article 42).",
+   "es": "La Cámara y el Senado, en votación conjunta, eligen entre los dos candidatos con más votos (Parte Segunda, Artículo 42).",
+   "state": "draft"
+  },
+  "learn.state-house-and-branches.the-judicial-power-is-vested-in": {
+   "en": "The judicial power is vested in the supreme court, a trial court of general jurisdiction known as the superior court, and the lower courts the legislature establishes (Part Second, Article 72-a, added in 1966). The chief justice of the supreme court is the administrative head of all the courts (Part Second, Article 73-a, 1978).",
+   "es": "El poder judicial reside en la corte suprema, un tribunal de primera instancia de jurisdicción general llamado tribunal superior, y los tribunales inferiores que establezca la Legislatura (Parte Segunda, Artículo 72-a, añadido en 1966). El presidente de la corte suprema es el jefe administrativo de todos los tribunales (Parte Segunda, Artículo 73-a, 1978).",
+   "state": "draft"
+  },
+  "learn.state-house-and-branches.the-new-hampshire-constitution": {
+   "en": "The New Hampshire Constitution",
+   "es": "La Constitución de New Hampshire",
+   "state": "draft"
+  },
+  "learn.state-house-and-branches.the-pay-of-a-legislator-is": {
+   "en": "The pay of a legislator is written into the constitution. Part Second, Article 15 gives each member $200 &ldquo;as compensation in full for their services for the term elected,&rdquo; and the presiding officers of the two chambers $250. The figures were set by an amendment of 1889.",
+   "es": "El sueldo de un legislador está escrito en la constitución. La Parte Segunda, Artículo 15 da a cada miembro $200 &ldquo;como compensación total por sus servicios durante el período para el que fue elegido,&rdquo; y a quienes presiden las dos cámaras $250. Las cifras las fijó una enmienda de 1889.",
+   "state": "draft"
+  },
+  "learn.state-house-and-branches.the-state-house-in-concord-at": {
+   "en": "The <b>State House</b> in Concord, at 107 North Main Street, was built from 1816 to 1819, with Stuart Park as master builder. It is built of Concord granite, quarried nearby. The first building was a two-story structure in the Federal style, capped by a domed lantern, and it appears to have been based in part on a plate in Robert Morris's <i>Select Architecture</i>, a London pattern book of 1757.",
+   "es": "El <b>Capitolio</b> (State House) de Concord, en el 107 de North Main Street, se construyó de 1816 a 1819, con Stuart Park como maestro de obras. Es de granito de Concord, extraído en los alrededores. El primer edificio era una estructura de dos pisos en estilo federal, rematada por una linterna con cúpula, y parece haberse basado en parte en una lámina de <i>Select Architecture</i> de Robert Morris, un libro de modelos publicado en Londres en 1757.",
+   "state": "draft"
+  },
+  "learn.state-house-and-branches.through-the-main-entrance-is-doric": {
+   "en": "Through the main entrance is <b>Doric Hall</b>, now the Hall of Flags, which dates to 1819 and was inspired by Charles Bulfinch&rsquo;s hall in the Massachusetts State House. On the second floor, Representatives Hall, directly above it, and the Senate Chamber to the north are still in their original places, though both have been much enlarged and rearranged. The murals in the Senate Chamber are by Barry Faulkner and were installed in 1943.",
+   "es": "Tras la entrada principal está el <b>Doric Hall</b>, hoy el Salón de las Banderas (Hall of Flags), que data de 1819 y se inspiró en el salón de Charles Bulfinch en el Capitolio de Massachusetts. En el segundo piso, el Salón de Representantes, justo encima, y la Cámara del Senado, al norte, siguen en su lugar original, aunque ambos se han ampliado y reorganizado mucho. Los murales de la Cámara del Senado son de Barry Faulkner y se instalaron en 1943.",
+   "state": "draft"
+  },
+  "learn.state-house-and-branches.title": {
+   "en": "The State House and What Makes New Hampshire's Government Different",
+   "es": "El Capitolio y lo que hace distinto al gobierno de New Hampshire",
+   "state": "draft"
+  },
+  "learn.state-house-and-branches.who-chooses-the-governor-if-no": {
+   "en": "Who chooses the Governor if no candidate wins a plurality?",
+   "es": "¿Quién elige al Gobernador si ningún candidato obtiene la mayoría relativa?",
+   "state": "draft"
+  },
+  "learn.state-house-and-branches.yes-the-governor-with-the-consent": {
+   "en": "Yes. The Governor, with the consent of the Council, may remove a judge for reasonable cause on the address of both houses of the legislature, after the judge has had a chance to be heard by a joint committee of both houses (Part Second, Article 73).",
+   "es": "Sí. El Gobernador, con el consentimiento del Consejo, puede destituir a un juez por causa razonable a petición de ambas cámaras de la Legislatura, después de que el juez haya tenido la oportunidad de ser oído por un comité conjunto de ambas cámaras (Parte Segunda, Artículo 73).",
    "state": "draft"
   },
   "learn.term.caption": {
