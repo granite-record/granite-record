@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-10-11.47
+# GRANITE_VERSION: 2026-10-11.48
 """
 The how-to guides: their words, their sources, and what each was checked
 against. Read by build_civics.py, which draws them on the Resources hub's
@@ -580,9 +580,6 @@ PUBLIC_RECORD = guide(
           "<p>Describe what you want clearly enough that it can be found: the law covers a record "
           "&ldquo;reasonably described&rdquo;. A letter or an email is enough. Keep a copy: a "
           "complaint to the ombudsman includes the request.</p>"
-          "<p>The office does not have to create a record that does not exist, or put information "
-          "together in a form it does not already keep. It may suggest narrowing your request so "
-          "it can answer faster or for less.</p>"
           '<div class="g-sample"><p class="g-sample-h">A request you can copy</p>'
           "<p>To the [office]:</p><p>Under New Hampshire&rsquo;s Right-to-Know Law, RSA 91-A, I am "
           "asking to inspect [describe the records, with dates if you know them]. If you will "
@@ -598,10 +595,7 @@ PUBLIC_RECORD = guide(
      step("Pay only for copies",
           "<p>Looking at a record is free, and so is having it sent to you without copying. If "
           "the office makes copies on its own machine, it can charge what the copies actually "
-          "cost. Where another law sets a fee for a copy, that fee applies, with nothing added.</p>"
-          "<p>For a request covering more than 250 emails or other electronic messages, the law "
-          "allows a charge per message within a limit it sets, and requires it to be waived in "
-          "some cases.</p>",
+          "cost.</p>",
           law=["RSA 91-A:4, IV(d)", "RSA 91-A:4, VIII"]),
      step("If the answer is no",
           "<p>A refusal must be in writing, name the specific exemption it relies on, and "
@@ -651,7 +645,18 @@ PUBLIC_RECORD = guide(
      claim("The Attorney General's memorandum explains RSA 91-A for citizens and officials; it is "
            "not legal advice, and people with specific questions should consult a lawyer.",
            RTK, CHECKED)] + help_claims("lawyer"),
-    more="<h2>Who Can Help</h2>"
+    more=civics.faq(
+        ("Does the office have to create a record for me?",
+         "<p>The office does not have to create a record that does not exist, or put information "
+         "together in a form it does not already keep. It may suggest narrowing your request so "
+         "it can answer faster or for less.</p>"),
+        ("What if another law sets a fee for a copy?",
+         "<p>Where another law sets a fee for a copy, that fee applies, with nothing added.</p>"),
+        ("Can I be charged for a request covering many emails?",
+         "<p>For a request covering more than 250 emails or other electronic messages, the law "
+         "allows a charge per message within a limit it sets, and requires it to be waived in "
+         "some cases.</p>"))
+         + "<h2>Who Can Help</h2>"
          "<p>The office that keeps the record is the first place to ask how to get it. To "
          "understand the law in more depth, the Attorney General publishes a memorandum on the "
          "Right-to-Know Law for citizens and public officials alike. It says it is not legal "
@@ -709,14 +714,11 @@ ENERGY = guide(
           "<p>Call to set up an appointment or to ask how to apply. You can apply for fuel "
           "assistance, electric assistance and weatherization at the same time, and you do not "
           "need one to get another. Bring everything the agency asks for and keep your "
-          "appointment.</p><p>If you cannot get to an office, ask about an interview at home or "
-          "by phone, or a mail-in application.</p>",
+          "appointment.</p>",
           actions=[("Fuel Assistance Program", DOE_FUEL)]),
      step("Know what each program does",
           "<ul><li><b>Fuel assistance</b> helps with heating costs as funds become available. "
-          "It is a grant, not a loan, and it is not counted as income when you apply for other "
-          "help. The amount depends on household income, energy costs, the local climate and "
-          "your kind of housing. The Department&rsquo;s page gives the current range.</li>"
+          "It is a grant, not a loan.</li>"
           "<li><b>Electric assistance</b> is a discount on your monthly electric bill if your "
           "income qualifies.</li>"
           "<li><b>Weatherization</b> helps lower-income households make their homes cheaper to "
@@ -724,9 +726,7 @@ ENERGY = guide(
           actions=[("Fuel assistance: amounts and income limits", DOE_FUEL)]),
      step("In a heating emergency",
           "<p>Call your community action agency. Fuel assistance can arrange an emergency "
-          "delivery of fuel, delay a shut-off notice, or point you to other help.</p>"
-          "<p>If you heat with oil, kerosene or propane, the Department advises calling your "
-          "supplier at least ten days before you need a delivery.</p>")],
+          "delivery of fuel, delay a shut-off notice, or point you to other help.</p>")],
     [("Fuel Assistance Program (Department of Energy)", DOE_FUEL),
      ("Community action agencies (Department of Energy)", DOE_CAA),
      ("Department of Energy, RSA 12-P", "/laws/12-p")],
@@ -750,7 +750,19 @@ ENERGY = guide(
      claim("211, Neighbor Helping Neighbor (Eversource, Liberty and Unitil customers), Project Care "
            "(NHEC customers) and NH Adult and Aging Care, 1-866-634-9412.", DOE_CAA, CHECKED)]
     + help_claims("nheasy", "adrc"),
-    more="<h2>Who Can Help</h2>"
+    more=civics.faq(
+        ("What if I cannot get to an office?",
+         "<p>Ask about an interview at home or by phone, or a mail-in application.</p>"),
+        ("Do I have to pay fuel assistance back?",
+         "<p>No. It is a grant, not a loan, and it is not counted as income when you apply for "
+         "other help.</p>"),
+        ("How much fuel assistance will I get?",
+         "<p>The amount depends on household income, energy costs, the local climate and your "
+         "kind of housing. The Department&rsquo;s page gives the current range.</p>"),
+        ("When should I order heating fuel?",
+         "<p>If you heat with oil, kerosene or propane, the Department advises calling your "
+         "supplier at least ten days before you need a delivery.</p>"))
+         + "<h2>Who Can Help</h2>"
          "<p>Your community action agency is where to apply and where to ask about your "
          "household. The Department of Energy also lists these:</p><ul>"
          "<li><b>211 New Hampshire:</b> dial 211, or 1-866-444-4211, for help finding other "
@@ -803,15 +815,12 @@ VITAL = guide(
           "<li>the news media, for information of a public nature;</li><li>someone the immediate "
           "family has authorized to do genealogical research; and</li><li>a former spouse, for "
           "the divorce record.</li></ul><p>If you are not immediate family, include a letter "
-          "saying which record you need, why, and any evidence for it. The clerk or the state "
-          "registrar decides, and a refusal can be appealed.</p>",
+          "saying which record you need, why, and any evidence for it.</p>",
           law=["RSA 5-C:102"]),
      step("Fill in the application",
           "<p>Fill in the section for the kind of record you want, and the applicant section "
-          "with your name, address, reason and relationship, and sign it. For a death record you "
-          "choose whether it shows the cause and manner of death, and whether the Social "
-          "Security number is suppressed. A false statement on the application is a "
-          "felony.</p>",
+          "with your name, address, reason and relationship, and sign it. A false statement on "
+          "the application is a felony.</p>",
           actions=[("The application", DVRA_APP)], law=["RSA 5-C:14"]),
      step("Apply in person, or by mail",
           "<p><b>In person:</b> take the application and your photo ID to your town or city "
@@ -826,8 +835,7 @@ VITAL = guide(
           actions=[("Request a certificate", DVRA_REQUEST), ("If you have no photo ID", DVRA_NO_ID)]),
      step("Pay the fee",
           "<p>The fee is $15 for the search, which includes one copy, and $10 for each further "
-          "copy of the same record issued at the same time. The law sets both. The $15 is paid "
-          "whether or not the record is found, and a card payment may cost extra.</p>",
+          "copy of the same record issued at the same time. The law sets both.</p>",
           actions=[("Current fees", DVRA_REQUEST)], law=["RSA 5-C:10"])],
     [("Vital Records (Secretary of State)", DVRA),
      ("Request for Certificates (Secretary of State)", DVRA_REQUEST),
@@ -849,7 +857,16 @@ VITAL = guide(
      claim("$15 search including the copy, $10 each subsequent copy.", "RSA 5-C:10", CHECKED),
      claim("A false statement in an application for a certified copy is a class B felony.",
            "RSA 5-C:14", CHECKED)],
-    more="<h2>Who Can Help</h2>"
+    more=civics.faq(
+        ("What choices are there on a death record?",
+         "<p>For a death record you choose whether it shows the cause and manner of death, and "
+         "whether the Social Security number is suppressed.</p>"),
+        ("Do I get the fee back if no record is found?",
+         "<p>No. The $15 is paid whether or not the record is found, and a card payment may cost "
+         "extra.</p>"),
+        ("Who decides whether I may have a record?",
+         "<p>The clerk or the state registrar decides, and a refusal can be appealed.</p>"))
+         + "<h2>Who Can Help</h2>"
          "<p>Your town or city clerk issues certified copies, and is the nearest place to ask. "
          "The Division of Vital Records Administration lists how "
          "to reach it on its contact page. A certified copy needed only to register to vote is "
@@ -909,17 +926,14 @@ ABATEMENT = guide(
           "of these:</p><ul><li><b>An error</b> in how your property is described or measured.</li>"
           "<li><b>A disproportionate assessment.</b> You show what the property was worth on "
           "April 1 of the tax year, with an appraisal or sales of comparable properties, and "
-          "that your <em>equalized assessment</em> is higher. To get it, divide your assessment "
-          "by your town&rsquo;s equalization ratio.</li>"
+          "that your <em>equalized assessment</em> is higher.</li>"
           "<li><b>Poverty and inability to pay</b>, explained in detail, including why an "
           "abatement fits better than other help.</li></ul>"
           "<p>The application asks for specific reasons, not a general statement about the tax. "
           "List every property you own in the town, not only the one you are appealing.</p>",
           law=["RSA 76:16"]),
      step("File the application with your town",
-          "<p>Use the Board&rsquo;s abatement application, sign it, and keep a copy. It is filed "
-          "on the day you hand it in, the day it is postmarked, or the day an overnight carrier "
-          "receipts it. Your town may charge for the form.</p>",
+          "<p>Use the Board&rsquo;s abatement application, sign it, and keep a copy.</p>",
           actions=[("The abatement application", BTLA_ABATE)], law=["RSA 76:16, I(b)"]),
      step("Wait for the decision",
           "<p>The town must grant or deny in writing by July 1, or within 6 months where the "
@@ -931,8 +945,7 @@ ABATEMENT = guide(
           "Court</b>, but not both. For the Board, fill in its appeal form and mail it or hand it "
           "in, with the $65 filing fee by check or money order payable to &ldquo;Treasurer, "
           "State of NH&rdquo;, to the Board of Tax and Land Appeals, 107 Pleasant Street, Johnson Hall, "
-          "Concord, NH 03301. It does not accept appeals filed electronically. Either way, the "
-          "decision can then be appealed to the Supreme Court.</p>",
+          "Concord, NH 03301.</p>",
           actions=[("The Board's property tax page", BTLA), ("The Board's appeal form", BTLA_APPEAL),
                    ("Commonly asked questions", BTLA_FAQ)],
           law=["RSA 76:16-a", "RSA 76:17"])],
@@ -963,12 +976,26 @@ ABATEMENT = guide(
      claim("Damaged buildings: apply within 60 days of the event or by March 1, whichever is "
            "later; appeal as under 76:16-a or 76:17.", "RSA 76:21", CHECKED)]
     + help_claims("legal_aid", "lawyer"),
-    more="<h2>If a Fire or Disaster Damaged Your Building</h2>"
+    more=civics.faq(
+        ("How do I work out my equalized assessment?",
+         "<p>Divide your assessment by your town&rsquo;s equalization ratio.</p>"),
+        ("When does my application count as filed?",
+         "<p>It is filed on the day you hand it in, the day it is postmarked, or the day an "
+         "overnight carrier receipts it.</p>"),
+        ("Does the application form cost anything?",
+         "<p>Your town may charge for the form.</p>"),
+        ("Can I file an appeal online?",
+         "<p>No. The Board of Tax and Land Appeals does not accept appeals filed "
+         "electronically.</p>"),
+        ("What if I lose my appeal?",
+         "<p>Whether you appealed to the Board or to the Superior Court, the decision can then be "
+         "appealed to the Supreme Court.</p>"),
+        ("What if a fire or disaster damaged my building?",
          "<p>When a fire you did not cause, or a natural disaster, leaves a building unusable "
          "during the tax year, its assessment is prorated for the days it could be used. Apply "
          "in writing to your town within 60 days of the damage or by March 1, whichever is later. "
-         'Appeals follow the same routes and deadlines (<a href="/laws/76#s21">RSA 76:21</a>).</p>'
-         "<h2>Who Can Help</h2>"
+         'Appeals follow the same routes and deadlines (<a href="/laws/76#s21">RSA 76:21</a>).</p>'))
+         + "<h2>Who Can Help</h2>"
          "<p>Your town or city&rsquo;s assessing officials are who you apply to for an "
          "abatement. For questions about appealing, the Board of Tax and Land Appeals asks you to "
          "read its commonly asked questions or call its office at (603) 271-2578.</p>"
@@ -1053,7 +1080,8 @@ LMI = guide(
      claim("Certification within 120 days; notice of rejection within 90 days.", "RSA 198:61", CHECKED),
      claim("A fraudulent claim is a misdemeanor; audits within 3 years.", "RSA 198:59", CHECKED)]
     + help_claims("adrc", "legal_aid"),
-    more="<h2>How Much It Can Be</h2>"
+    more=civics.faq(
+        ("How much relief can I get?",
          "<p>The relief is a share of the State Education Property Tax on the lesser of your "
          "home&rsquo;s assessed value and $220,000 multiplied by your town&rsquo;s equalization "
          "ratio, at the education tax rate on your bill. The share depends on your household "
@@ -1063,10 +1091,11 @@ LMI = guide(
                  [["100%", "Under $23,100", "Under $29,400"],
                   ["60%", "$23,100 to under $27,800", "$29,400 to under $35,300"],
                   ["40%", "$27,800 to under $32,400", "$35,300 to under $41,100"],
-                  ["20%", "$32,400 to $37,000", "$41,100 to $47,000"]])
-         + "<p>A false claim is a crime, and the Department may audit a claim within three years "
-           'of granting it (<a href="/laws/198#s59">RSA 198:59</a>).</p>'
-         "<h2>Who Can Help</h2>"
+                  ["20%", "$32,400 to $37,000", "$41,100 to $47,000"]])),
+        ("Can my claim be checked later?",
+         "<p>Yes. A false claim is a crime, and the Department may audit a claim within three "
+         'years of granting it (<a href="/laws/198#s59">RSA 198:59</a>).</p>'))
+         + "<h2>Who Can Help</h2>"
          "<p>The Department of Revenue Administration answers questions about this program at "
          "(603) 230-5920, and keeps a page of frequently asked questions.</p>"
          f'<p class="g-acts"><a class="g-btn" href="{DRA_LMI_FAQ}" target="_blank" rel="noopener">'
@@ -3351,9 +3380,7 @@ TAX_BILL = guide(
           "town stays in proportion. At least every fifth year they reappraise every property "
           "in town at full value.</p>"
           "<p>The tax year runs from April 1 to March 31, and every property is taxed on what it "
-          "was on April 1. Between revaluations, assessments can drift from what properties sell "
-          "for, and a town&rsquo;s <em>equalization ratio</em> measures how far; the guide to "
-          "appealing your assessment explains how to use it.</p>",
+          "was on April 1.</p>",
           law=["RSA 75:1", "RSA 75:8", "RSA 75:8-a", "RSA 76:2"]),
      step("How the tax rate is set",
           "<p>Your property tax pays for four things: your town or city, your local schools, the "
@@ -3364,8 +3391,7 @@ TAX_BILL = guide(
           "Department of Revenue Administration checks each budget and estimate of revenue, "
           "then computes and sets the tax rate for each town and city.</p>"
           "<p>The state education tax rate is set by the Department each year to raise a sum the "
-          "law fixes statewide. So your tax can change even when your assessment does not: when "
-          "a budget rises or falls, or other revenue changes.</p>",
+          "law fixes statewide.</p>",
           law=["RSA 76:5", "RSA 21-J:35", "RSA 76:3"]),
      step("Read your bill",
           "<p>The law says what every property tax bill must show:</p><ul>"
@@ -3380,9 +3406,7 @@ TAX_BILL = guide(
           "spouse, or are unable to pay taxes due to poverty or other good cause, you may be "
           "eligible for a tax exemption, credit, abatement, or deferral.&rdquo;</li>"
           "<li><b>The date interest starts</b>, which the tax collector sets by the day the last "
-          "bill went out.</li></ul>"
-          "<p>If you have a mortgage, your lender can ask the town for a copy of your "
-          "bill.</p>",
+          "bill went out.</li></ul>",
           law=["RSA 76:11-a", "RSA 76:11", "RSA 76:13"]),
      step("When it is due",
           "<p>A town that has voted to bill twice a year sends a first bill, worked out from last "
@@ -3427,9 +3451,7 @@ TAX_BILL = guide(
           "percent a year, if paying it would cause undue hardship. You must live in the home "
           "and have owned it for at least 5 consecutive years if you apply by age, or one year "
           "if you apply by disability. Apply by March 1 after the final tax bill. A mortgage "
-          "lender must agree. When the home is sold, the deferred tax and its interest must be "
-          "paid in full. When the owner dies, the heirs may pay it off within 9 months; after "
-          "that the town may send it to the tax collector.</p>",
+          "lender must agree.</p>",
           actions=[("Find your town or city clerk", SOS_CLERKS)],
           law=["RSA 72:33", "RSA 72:27-a", "RSA 72:39-a", "RSA 72:39-b", "RSA 72:37",
                "RSA 72:37-b", "RSA 72:28", "RSA 72:35", "RSA 72:29-a", "RSA 72:38-a"]),
@@ -3522,7 +3544,21 @@ TAX_BILL = guide(
      ours("How to Get Property Tax Relief on a Low or Moderate Income explains the state's "
           "relief and its May 1 to June 30 filing period.", "/guides/property-tax-relief.html",
           TAX_BILL_READ)],
-    more="<h2>Who Can Help</h2>"
+    more=civics.faq(
+        ("What is the equalization ratio?",
+         "<p>Between revaluations, assessments can drift from what properties sell for, and a "
+         "town&rsquo;s <em>equalization ratio</em> measures how far; the guide to appealing your "
+         "assessment explains how to use it.</p>"),
+        ("Why did my tax change when my assessment did not?",
+         "<p>Your tax can change even when your assessment does not: when a budget rises or "
+         "falls, or other revenue changes.</p>"),
+        ("Can my mortgage lender get a copy of my bill?",
+         "<p>If you have a mortgage, your lender can ask the town for a copy of your bill.</p>"),
+        ("What happens to deferred tax when the home is sold or the owner dies?",
+         "<p>When the home is sold, the deferred tax and its interest must be paid in full. When "
+         "the owner dies, the heirs may pay it off within 9 months; after that the town may send "
+         "it to the tax collector.</p>"))
+         + "<h2>Who Can Help</h2>"
          "<p>Your town or city&rsquo;s <b>assessing office</b>, or the selectmen&rsquo;s office "
          "in a small town, answers questions about your assessment and the relief your town "
          "offers, and has the application forms. The <b>tax collector</b> answers questions "
