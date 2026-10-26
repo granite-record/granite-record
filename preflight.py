@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.713
+# GRANITE_VERSION: 2026-09-04.714
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -66739,6 +66739,39 @@ def _common_questions(G, civics):
             bad.append(f"{slug}: a question without its summary")
     assert not bad, "; ".join(bad[:5])
     return "ok", f"{seen} pages with Common Questions, each a question with its answer"
+
+
+@check("code", "every phone number, email, office hours, street address and date a guide "
+               "prints is in the words a claim of it records its source as saying, but for "
+               "the few named as waiting for a printout", needs=("guides",))
+def _guide_contacts_sourced(G):
+    """The person, 26 October 2026: "make sure there are absolutely no
+    hallucinations in those sorts of pages and in the instructions". FIGURE
+    and COUNT held money, shares and periods to their sources; nothing held
+    the details a reader acts on most directly. The audit that day found
+    phone numbers that no claim of their guide recorded -- the Division of
+    Motor Vehicles' number printed in four guides and recorded in one, the
+    Board of Tax and Land Appeals' number and street recorded nowhere. A
+    wrong digit there sends someone to a stranger.
+
+    guides.unsourced_contacts finds them; guides.CONTACTS_AWAITING names the
+    ones no source on this disk can settle, each with the printout that
+    would. A name on that list that a claim now records fails too, so the
+    list is cleared as the printouts come in rather than left to excuse a
+    later mistake."""
+    loose, stale, waiting = [], [], 0
+    for g in G.GUIDES:
+        found = set(G.unsourced_contacts(g))
+        why, named = G.CONTACTS_AWAITING.get(g["slug"], ("", []))
+        loose += [f"{g['slug']}: {x}" for x in sorted(found - set(named))]
+        stale += [f"{g['slug']}: {x}" for x in named if x not in found]
+        waiting += len(found & set(named))
+    assert not loose, ("printed with no claim recording it (add the claim from the source, "
+                       "or take the detail out): " + "; ".join(loose[:8]))
+    assert not stale, ("named in guides.CONTACTS_AWAITING but a claim records it now; take "
+                       "it off the list: " + "; ".join(stale[:8]))
+    return "ok", (f"every contact detail rests on a claim, but {waiting} named as waiting for "
+                  f"the person's printout")
 
 
 @check("code", "the assistant guard stops what needs the person's word and what no assistant "

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-10-11.52
+# GRANITE_VERSION: 2026-10-11.53
 """
 The how-to guides: their words, their sources, and what each was checked
 against. Read by build_civics.py, which draws them on the Resources hub's
@@ -177,6 +177,27 @@ MONTH_DAY = re.compile(r"\b(January|February|March|April|May|June|July|August|Se
 def _plain(s):
     import html as _h
     return re.sub(r"\s+", " ", _h.unescape(re.sub(r"<[^>]+>", " ", s or "")))
+
+
+# WAITING FOR A PRINTOUT, BY NAME. Contact details the audit of 26 October
+# 2026 found printed with no claim recording them, which no source on this
+# disk can settle digit by digit. Each is named with why, and preflight
+# fails on any other -- and on any of these once a claim records it, so the
+# list only ever shrinks. Clear one by adding the claim from the person's
+# printout and taking its line out.
+CONTACTS_AWAITING = {
+    "heating-and-electric-help": (
+        "the community action agencies' numbers, transcribed from the Department of "
+        "Energy's page on 12 October 2026 before a claim recorded digits; the person's "
+        "printout of energy.nh.gov's community action agencies page settles them",
+        ["phone (603) 223-0043", "phone (603) 323-7400", "phone (603) 352-7512",
+         "phone (603) 435-2500", "phone (603) 542-9528", "phone (603) 752-3248",
+         "phone (603) 968-3560"]),
+    "vital-records": (
+        "the Division of Vital Records Administration's mailing address, whose claim records "
+        "no street; the person's printout of its Request for Certificates page settles it",
+        ["address 9 Ratification Way"]),
+}
 
 
 def unsourced_contacts(g):
