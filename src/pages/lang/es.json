@@ -7345,9 +7345,24 @@
    "es": "Sus derechos como inquilino",
    "state": "draft"
   },
+  "guide.medicare-and-social-security.a-deductible-what-you-pay-before": {
+   "en": "A <b>deductible</b>, what you pay before Original Medicare starts to pay: for Part A, once for each hospital benefit period, which can be more than once a year; for Part B, once each year.",
+   "es": "Un <b>deducible</b>, lo que usted paga antes de que Medicare Original empiece a pagar: en la Parte A, una vez por cada período de beneficios en el hospital, lo que puede ocurrir más de una vez al año; en la Parte B, una vez al año.",
+   "state": "draft"
+  },
+  "guide.medicare-and-social-security.a-medicare-advantage-plans-and-a": {
+   "en": "A Medicare Advantage Plan&rsquo;s and a drug plan&rsquo;s premiums and other costs vary by plan. Medicare.gov&rsquo;s Costs page lists the current amounts, several of which can change each year.",
+   "es": "Las primas y otros costos de un Plan Medicare Advantage y de un plan de medicamentos varían según el plan. La página de Costos de Medicare.gov indica los montos vigentes, varios de los cuales pueden cambiar cada año.",
+   "state": "draft"
+  },
   "guide.medicare-and-social-security.a-my-social-security-account-lets": {
    "en": "A <b>my Social Security</b> account lets you change your address or direct deposit, print proof of your benefits or a tax form, request a replacement Social Security card, and see your Social Security Statement and earnings record, without a call or a visit. You create it through Login.gov or ID.me, with an email address, a government-issued photo ID and a phone.",
    "es": "Una cuenta <b>my Social Security</b> le permite cambiar su dirección o su depósito directo, imprimir una prueba de sus beneficios o un formulario de impuestos, pedir una tarjeta de Seguro Social de reemplazo y ver su Estado de Cuenta del Seguro Social y su historial de ganancias, sin llamar ni ir a una oficina. Se crea a través de Login.gov o ID.me, con una dirección de correo electrónico, una identificación con foto emitida por el gobierno y un teléfono.",
+   "state": "draft"
+  },
+  "guide.medicare-and-social-security.a-premium-paid-each-month-most": {
+   "en": "A <b>premium</b>, paid each month. Most people pay no premium for Part A, because they or a spouse paid Medicare taxes long enough while working, and no one who gets Medicare before turning 65 pays one. Part B has a monthly premium, which you pay even if you use no Part B services, and which is higher for some people depending on income.",
+   "es": "Una <b>prima</b>, que se paga cada mes. La mayoría de las personas no paga prima por la Parte A, porque ellas o su cónyuge pagaron impuestos de Medicare el tiempo suficiente mientras trabajaban, y nadie que reciba Medicare antes de cumplir 65 años la paga. La Parte B tiene una prima mensual, que usted paga aunque no use servicios de la Parte B, y que es más alta para algunas personas según sus ingresos.",
    "state": "draft"
   },
   "guide.medicare-and-social-security.an-alternative-to-original-medicare-a": {
@@ -7395,6 +7410,11 @@
    "es": "Elija su cobertura, y revísela cada otoño",
    "state": "draft"
   },
+  "guide.medicare-and-social-security.coinsurance-your-share-of-the-cost": {
+   "en": "<b>Coinsurance</b>, your share of the cost of each covered service after you have paid your deductible, and <b>copayments</b>, such as the one a hospital charges for each outpatient service.",
+   "es": "El <b>coseguro</b>, su parte del costo de cada servicio cubierto después de haber pagado su deducible, y los <b>copagos</b>, como el que cobra un hospital por cada servicio ambulatorio.",
+   "state": "draft"
+  },
   "guide.medicare-and-social-security.common-questions": {
    "en": "Common Questions",
    "es": "Preguntas frecuentes",
@@ -7405,6 +7425,11 @@
    "es": "Comuníquese con Medicare (Medicare)",
    "state": "draft"
   },
+  "guide.medicare-and-social-security.costs-medicare": {
+   "en": "Costs (Medicare)",
+   "es": "Costos (Medicare)",
+   "state": "draft"
+  },
   "guide.medicare-and-social-security.disability-benefits-for-people-who": {
    "en": "<b>Disability benefits</b>, for people who worked and paid Social Security taxes long enough and have a medical condition that makes it hard or impossible to work and will last at least one year or result in death.",
    "es": "<b>Beneficios por discapacidad</b>, para quienes trabajaron y pagaron impuestos del Seguro Social el tiempo suficiente y tienen una condición médica que les hace difícil o imposible trabajar y que durará al menos un año o causará la muerte.",
@@ -7413,6 +7438,11 @@
   "guide.medicare-and-social-security.do-i-get-medicare-automatically-medicare": {
    "en": "Do I get Medicare automatically? (Medicare)",
    "es": "¿Recibo Medicare automáticamente? (Medicare)",
+   "state": "draft"
+  },
+  "guide.medicare-and-social-security.do-i-still-pay-the-part": {
+   "en": "Do I still pay the Part B premium with a Medicare Advantage Plan or Medigap?",
+   "es": "¿Sigo pagando la prima de la Parte B con un Plan Medicare Advantage o con Medigap?",
    "state": "draft"
   },
   "guide.medicare-and-social-security.do-you-already-get-social-security": {
@@ -7450,6 +7480,11 @@
    "es": "Obtenga ayuda para pagar los costos",
    "state": "draft"
   },
+  "guide.medicare-and-social-security.get-medicare-drug-coverage-when-you": {
+   "en": "Get Medicare drug coverage when you first get Part A, Part B or both, and don't go 63 days or more without creditable drug coverage, which is coverage similar in value to Part D. If you qualify for Extra Help, you won't have to pay the Part D late enrollment penalty.",
+   "es": "Obtenga cobertura de medicamentos de Medicare cuando reciba por primera vez la Parte A, la Parte B o ambas, y no pase 63 días o más sin una cobertura de medicamentos acreditable, es decir, una cobertura de valor similar a la Parte D. Si reúne los requisitos para la Ayuda Adicional, no tendrá que pagar la multa por inscripción tardía de la Parte D.",
+   "state": "draft"
+  },
   "guide.medicare-and-social-security.help-with-drug-costs-medicare": {
    "en": "Help With Drug Costs (Medicare)",
    "es": "Ayuda con los costos de los medicamentos (Medicare)",
@@ -7458,6 +7493,11 @@
   "guide.medicare-and-social-security.help-with-the-costs-comes-from": {
    "en": "<b>Help with the costs</b> comes from two programs: the state&rsquo;s <b>Medicare Savings Programs</b>, which help pay Medicare premiums and, for some people, other costs; and the federal <b>Extra Help</b> program, which pays part of the cost of drug coverage. Step 6 says who qualifies and how to apply.",
    "es": "<b>La ayuda con los costos</b> viene de dos programas: los <b>Programas de Ahorros de Medicare</b> del estado, que ayudan a pagar las primas de Medicare y, para algunas personas, otros costos; y el programa federal de <b>Ayuda Adicional</b>, que paga parte del costo de la cobertura de medicamentos. El paso 6 dice quién reúne los requisitos y cómo solicitarlos.",
+   "state": "draft"
+  },
+  "guide.medicare-and-social-security.how-do-i-avoid-a-late": {
+   "en": "How do I avoid a late penalty for drug coverage?",
+   "es": "¿Cómo evito una multa por inscribirme tarde en la cobertura de medicamentos?",
    "state": "draft"
   },
   "guide.medicare-and-social-security.how-do-i-sign-up-for": {
@@ -7503,6 +7543,11 @@
   "guide.medicare-and-social-security.inpatient-care-in-hospitals-skilled": {
    "en": "Inpatient care in hospitals, skilled nursing facility care, hospice care, and home health care.",
    "es": "La atención hospitalaria con internación, la atención en un centro de enfermería especializada, los cuidados de hospicio y la atención médica en el hogar.",
+   "state": "draft"
+  },
+  "guide.medicare-and-social-security.is-there-a-limit-on-what": {
+   "en": "Is there a limit on what I pay out of pocket?",
+   "es": "¿Hay un límite a lo que pago de mi bolsillo?",
    "state": "draft"
   },
   "guide.medicare-and-social-security.joining-a-plan-medicare": {
@@ -7598,6 +7643,11 @@
   "guide.medicare-and-social-security.no": {
    "en": "No",
    "es": "No",
+   "state": "draft"
+  },
+  "guide.medicare-and-social-security.not-in-original-medicare-there-is": {
+   "en": "Not in Original Medicare: there is no yearly limit on what you pay for Part A and Part B services, unless you have a Medigap policy or join a Medicare Advantage Plan. Each Medicare Advantage Plan sets its own yearly limit; once you have paid it, the plan pays for your covered health services for the rest of the calendar year. Drug coverage (Part D) has a yearly limit too, which counts your deductible, what you pay yourself, and certain payments made for you, such as through Extra Help.",
+   "es": "No en Medicare Original: no hay un límite anual a lo que paga por los servicios de la Parte A y la Parte B, a menos que tenga una póliza Medigap o se inscriba en un Plan Medicare Advantage. Cada Plan Medicare Advantage fija su propio límite anual; una vez que usted lo ha pagado, el plan paga sus servicios de salud cubiertos durante el resto del año calendario. La cobertura de medicamentos (Parte D) también tiene un límite anual, que cuenta su deducible, lo que usted paga y ciertos pagos hechos en su nombre, como los de la Ayuda Adicional.",
    "state": "draft"
   },
   "guide.medicare-and-social-security.once-you-have-your-medicare-card": {
@@ -7775,6 +7825,11 @@
    "es": "Lo que paga cada Programa de Ahorros de Medicare",
    "state": "draft"
   },
+  "guide.medicare-and-social-security.what-if-i-don-t-qualify": {
+   "en": "What if I don't qualify for premium-free Part A?",
+   "es": "¿Qué pasa si no llego a reunir los requisitos para la Parte A sin prima?",
+   "state": "draft"
+  },
   "guide.medicare-and-social-security.what-is-the-difference-between-medicare": {
    "en": "What is the difference between Medicare and Medicaid?",
    "es": "¿Cuál es la diferencia entre Medicare y Medicaid?",
@@ -7788,6 +7843,16 @@
   "guide.medicare-and-social-security.what-it-helps-pay": {
    "en": "What it helps pay",
    "es": "Lo que ayuda a pagar",
+   "state": "draft"
+  },
+  "guide.medicare-and-social-security.what-medicare-costs-depends-on-the": {
+   "en": "<b>What Medicare costs</b> depends on the coverage you have and the services you use. The costs come in a few kinds:",
+   "es": "<b>Lo que cuesta Medicare</b> depende de la cobertura que tenga y de los servicios que use. Los costos son de varios tipos:",
+   "state": "draft"
+  },
+  "guide.medicare-and-social-security.what-medicare-costs-medicare": {
+   "en": "What Medicare costs (Medicare)",
+   "es": "Lo que cuesta Medicare (Medicare)",
    "state": "draft"
   },
   "guide.medicare-and-social-security.when-am-i-entitled-to-old": {
@@ -7820,6 +7885,11 @@
    "es": "Sí, a menos que usted diga que no: al solicitar la Ayuda Adicional a través del Seguro Social también se inicia una solicitud para un Programa de Ahorros de Medicare.",
    "state": "draft"
   },
+  "guide.medicare-and-social-security.yes-you-must-have-part-b": {
+   "en": "Yes. You must have Part B and keep paying its premium to stay in a Medicare Advantage Plan, or to keep a Medigap policy.",
+   "es": "Sí. Debe tener la Parte B y seguir pagando su prima para permanecer en un Plan Medicare Advantage o para conservar una póliza Medigap.",
+   "state": "draft"
+  },
   "guide.medicare-and-social-security.you-add-a-drug-plan-to": {
    "en": "You add a drug plan to Original Medicare, or get it in a Medicare Advantage Plan with drug coverage, on Medicare.gov (step 5).",
    "es": "Agrega un plan de medicamentos a Medicare Original, o lo obtiene en un Plan Medicare Advantage con cobertura de medicamentos, en Medicare.gov (paso 5).",
@@ -7843,6 +7913,11 @@
   "guide.medicare-and-social-security.you-choose-one-on-medicare-gov": {
    "en": "You choose one on Medicare.gov (step 5).",
    "es": "Se elige en Medicare.gov (paso 5).",
+   "state": "draft"
+  },
+  "guide.medicare-and-social-security.you-might-be-able-to-buy": {
+   "en": "You might be able to buy it, for a monthly premium that depends on how long you or your spouse worked and paid Medicare taxes. You also have to sign up for Part B to buy Part A, and if you don't buy Part A when you are first eligible, usually when you turn 65, you might pay a penalty.",
+   "es": "Es posible que pueda comprarla, por una prima mensual que depende de cuánto tiempo usted o su cónyuge trabajaron y pagaron impuestos de Medicare. También tiene que inscribirse en la Parte B para comprar la Parte A, y si no compra la Parte A cuando reúne los requisitos por primera vez, por lo general al cumplir 65 años, es posible que pague una multa.",
    "state": "draft"
   },
   "guide.medicare-and-social-security.you-sign-up-for-part-a": {
