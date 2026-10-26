@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-10-11.23
+# GRANITE_VERSION: 2026-10-11.24
 """
 The official pages the how-to guides cite, onto this disk, to check them by.
 
