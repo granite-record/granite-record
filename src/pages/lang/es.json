@@ -9987,6 +9987,21 @@
    "es": "<b>Ambas cámaras aceptan inscripciones en línea</b>, cada una con su propio formulario en el sitio web de la Legislatura, enlazado abajo.",
    "state": "draft"
   },
+  "guide.testifying.can-i-speak-at-an-executive": {
+   "en": "Can I speak at an executive session?",
+   "es": "¿Puedo hablar en una sesión ejecutiva?",
+   "state": "draft"
+  },
+  "guide.testifying.can-i-watch-a-hearing-instead": {
+   "en": "Can I watch a hearing instead of going?",
+   "es": "¿Puedo ver una audiencia en lugar de ir?",
+   "state": "draft"
+  },
+  "guide.testifying.common-questions": {
+   "en": "Common Questions",
+   "es": "Preguntas frecuentes",
+   "state": "draft"
+  },
   "guide.testifying.counted-and-part-of-the-record": {
    "en": "Counted, and part of the record",
    "es": "Se cuenta y forma parte del registro",
@@ -10260,6 +10275,11 @@
   "guide.testifying.when-a-hearing-starts": {
    "en": "When a Hearing Starts",
    "es": "Cuándo empieza una audiencia",
+   "state": "draft"
+  },
+  "guide.testifying.where-are-the-sign-ins-kept": {
+   "en": "Where are the sign-ins kept?",
+   "es": "¿Dónde se guardan los registros de asistencia (sign-ins)?",
    "state": "draft"
   },
   "guide.testifying.which-meetings-you-may-attend-and": {
@@ -10945,6 +10965,11 @@
    "es": "Las pestañas de un proyecto de ley",
    "state": "draft"
   },
+  "guide.using-this-site.a-voice-or-division-vote-has": {
+   "en": "A voice or division vote has no member-by-member record to show, because none was made.",
+   "es": "Una votación a viva voz o por división no tiene un registro miembro por miembro que mostrar, porque no se hizo ninguno.",
+   "state": "draft"
+  },
   "guide.using-this-site.bill-text": {
    "en": "Bill Text",
    "es": "Bill Text",
@@ -10960,6 +10985,11 @@
    "es": "Aquí nunca se citan los subtítulos. La transcripción automática convierte \"HB 1381\" en \"HP 1381\" con tanta frecuencia que una cita sería un error de transcripción disfrazado de cita. La marca de tiempo es la afirmación. La grabación es la prueba.",
    "state": "draft"
   },
+  "guide.using-this-site.common-questions": {
+   "en": "Common Questions",
+   "es": "Preguntas frecuentes",
+   "state": "draft"
+  },
   "guide.using-this-site.documents": {
    "en": "Documents",
    "es": "Documents",
@@ -10968,6 +10998,11 @@
   "guide.using-this-site.documents-the-official-pages-this-all": {
    "en": "<b>Documents</b> &mdash; the official pages this all comes from.",
    "es": "<b>Documents</b> (documentos) &mdash; las páginas oficiales de donde viene todo esto.",
+   "state": "draft"
+  },
+  "guide.using-this-site.does-every-term-hold-as-much": {
+   "en": "Does every term hold as much?",
+   "es": "¿Todos los períodos contienen lo mismo?",
    "state": "draft"
   },
   "guide.using-this-site.every-bill-s-legislator-s-and": {
@@ -11091,8 +11126,8 @@
    "state": "draft"
   },
   "guide.using-this-site.votes-every-roll-call-this-record": {
-   "en": "<b>Votes</b> &mdash; every roll call this record holds, by member, from [[rollcall_first_year]] on, and each voice or division vote on the bill, a division with its count. A voice or division vote has no member-by-member record to show, because none was made.",
-   "es": "<b>Votes</b> (votaciones) &mdash; cada votación nominal que contiene este registro, por miembro, desde [[rollcall_first_year]], y cada votación a viva voz o por división sobre el proyecto, la de división con su conteo. Una votación a viva voz o por división no tiene un registro miembro por miembro que mostrar, porque no se hizo ninguno.",
+   "en": "<b>Votes</b> &mdash; every roll call this record holds, by member, from [[rollcall_first_year]] on, and each voice or division vote on the bill, a division with its count.",
+   "es": "<b>Votes</b> (votaciones) &mdash; cada votación nominal que contiene este registro, por miembro, desde [[rollcall_first_year]], y cada votación a viva voz o por división sobre el proyecto, la de división con su conteo.",
    "state": "draft"
   },
   "guide.using-this-site.what-a-bill-s-page-holds": {
@@ -11123,6 +11158,16 @@
   "guide.using-this-site.where-the-chair-can-be-heard": {
    "en": "Where the chair can be heard taking the bill up, that is the time.",
    "es": "Cuando se oye al presidente abrir la consideración del proyecto de ley, esa es la hora.",
+   "state": "draft"
+  },
+  "guide.using-this-site.why-are-captions-never-quoted": {
+   "en": "Why are captions never quoted?",
+   "es": "¿Por qué nunca se citan los subtítulos?",
+   "state": "draft"
+  },
+  "guide.using-this-site.why-do-some-votes-show-no": {
+   "en": "Why do some votes show no names?",
+   "es": "¿Por qué algunas votaciones no muestran nombres?",
    "state": "draft"
   },
   "guide.vital-records.a-check-or-money-order-in": {
@@ -11865,6 +11910,16 @@
    "es": "La población de un municipio rara vez es un múltiplo exacto de lo que vale un escaño, y la constitución no permite a la Legislatura dividir un municipio para compensarlo. En su lugar, esos sobrantes se juntan en un distrito flotante.",
    "state": "draft"
   },
+  "guide.your-representatives.are-a-districts-members-elected-one": {
+   "en": "Are a district&rsquo;s members elected one to each town?",
+   "es": "¿Los miembros de un distrito se eligen uno por cada municipio?",
+   "state": "draft"
+  },
+  "guide.your-representatives.common-questions": {
+   "en": "Common Questions",
+   "es": "Preguntas frecuentes",
+   "state": "draft"
+  },
   "guide.your-representatives.every-committee-page-lists-its-members": {
    "en": "Every <a href=\"committees.html\">committee page</a> lists its members and has a button that opens an email to all of them at once.",
    "es": "Cada <a href=\"committees.html\">página de comité</a> enumera a sus miembros y tiene un botón que abre un correo electrónico a todos ellos a la vez.",
@@ -11888,11 +11943,6 @@
   "guide.your-representatives.house-and-senate-districts": {
    "en": "House and Senate Districts",
    "es": "Distritos de la Cámara y del Senado",
-   "state": "draft"
-  },
-  "guide.your-representatives.how-to-contact-a-member": {
-   "en": "How to Contact a Member",
-   "es": "Cómo comunicarse con un miembro",
    "state": "draft"
   },
   "guide.your-representatives.if-you-live-in-one-of": {
@@ -11960,9 +12010,19 @@
    "es": "Qué significa la numeración de los distritos",
    "state": "draft"
   },
+  "guide.your-representatives.where-does-the-law-say-which": {
+   "en": "Where does the law say which districts are floterial?",
+   "es": "¿Dónde dice la ley qué distritos son flotantes (floterial)?",
+   "state": "draft"
+  },
   "guide.your-representatives.who-holds-each-of-those-seats": {
    "en": "Who holds each of those seats today is on <a href=\"[[reps_town_url]]\"> [[reps_town]]'s own page</a>, and every other town and ward has one like it.",
    "es": "Quién ocupa hoy cada uno de esos escaños está en <a href=\"[[reps_town_url]]\">la página de [[reps_town]]</a>, y cada uno de los demás municipios y barrios electorales tiene una igual.",
+   "state": "draft"
+  },
+  "guide.your-representatives.will-a-representative-read-my-email": {
+   "en": "Will a representative read my email?",
+   "es": "¿Un representante leerá mi correo electrónico?",
    "state": "draft"
   },
   "guides.all": {
@@ -13271,6 +13331,11 @@
    "es": "Cobra los impuestos que le encargan los concejales, los entrega al tesorero al menos cada semana, y a diario cuando lo recaudado llega a $3,500, lleva la cuenta de lo cobrado y lo reducido, e informa al final del año (RSA 41:35).",
    "state": "draft"
   },
+  "learn.city-and-town-government.common-questions": {
+   "en": "Common Questions",
+   "es": "Preguntas frecuentes",
+   "state": "draft"
+  },
   "learn.city-and-town-government.council-manager-the-other-common": {
    "en": "<b>Council-manager:</b> the other common arrangement, set out for charter cities at RSA 49-C. The charter names either the mayor or an appointed <b>city manager</b> as chief administrative officer, heading the administrative branch, supervising the city's administrative affairs and carrying out the policies the elected body enacts (RSA 49-C:16). The council appoints the manager for an indefinite term and fixes the salary, by a vote of at least a majority of the council, and the charter sets out how the manager may be removed (RSA 49-C:17). Where a city runs this way, the mayor chairs the council and the manager runs the administration.",
    "es": "<b>Concejo y administrador:</b> la otra forma común, establecida para las ciudades con carta orgánica en el RSA 49-C. La carta orgánica nombra al alcalde o a un <b>administrador municipal</b> (city manager) designado como director administrativo, que dirige la rama administrativa, supervisa los asuntos administrativos de la ciudad y ejecuta las políticas que establece el órgano electo (RSA 49-C:16). El concejo nombra al administrador por un período indefinido y fija su salario, con el voto de al menos la mayoría del concejo, y la carta orgánica establece cómo se puede destituir al administrador (RSA 49-C:17). Donde una ciudad funciona así, el alcalde preside el concejo y el administrador dirige la administración.",
@@ -13279,6 +13344,11 @@
   "learn.city-and-town-government.decides": {
    "en": "Decides",
    "es": "Decide",
+   "state": "draft"
+  },
+  "learn.city-and-town-government.does-a-town-charter-have-to": {
+   "en": "Does a town charter have to end town meeting?",
+   "es": "¿Una carta municipal tiene que acabar con la asamblea municipal?",
    "state": "draft"
   },
   "learn.city-and-town-government.elected-by-ballot-at-the-annual": {
@@ -13301,6 +13371,11 @@
    "es": "Custodia el dinero del municipio, lo paga por orden de los concejales, lleva las cuentas e invierte lo que no se necesita de inmediato según la política de inversiones de los concejales (RSA 41:29).",
    "state": "draft"
   },
+  "learn.city-and-town-government.how-does-a-charter-already-in": {
+   "en": "How does a charter already in force change?",
+   "es": "¿Cómo cambia una carta municipal que ya está en vigor?",
+   "state": "draft"
+  },
   "learn.city-and-town-government.how-it-starts": {
    "en": "How It Starts",
    "es": "Cómo empieza",
@@ -13314,6 +13389,11 @@
   "learn.city-and-town-government.in-the-record": {
    "en": "In the Record",
    "es": "En el registro",
+   "state": "draft"
+  },
+  "learn.city-and-town-government.is-a-town-administrator-the-same": {
+   "en": "Is a town administrator the same as a town manager?",
+   "es": "¿Un town administrator es lo mismo que un administrador municipal (town manager)?",
    "state": "draft"
   },
   "learn.city-and-town-government.it-starts-with-a-question-on": {
@@ -13546,9 +13626,9 @@
    "es": "Secretario municipal (town clerk)",
    "state": "draft"
   },
-  "learn.city-and-town-government.town-managers-and-town-administrators": {
-   "en": "Town Managers and Town Administrators",
-   "es": "Administradores municipales (town managers y town administrators)",
+  "learn.city-and-town-government.town-managers": {
+   "en": "Town Managers",
+   "es": "Administradores municipales (town managers)",
    "state": "draft"
   },
   "learn.city-and-town-government.treasurer": {
@@ -13566,9 +13646,9 @@
    "es": "<b>Distrito de aldea (village district):</b> una unidad más pequeña dentro de uno o más municipios, formada para prestar uno o unos pocos servicios. A petición de 10 o más votantes domiciliados en una aldea, los concejales fijan los límites del distrito, y la ley enumera los fines para los que se puede formar: entre ellos, protección contra incendios, alumbrado público, suministro de agua, aceras y desagües, alcantarillado, parques, policía, caminos y servicio de ambulancia (RSA 52:1). Una vez formado, es una corporación pública, con los mismos poderes que un municipio respecto de esos mismos fines (RSA 52:3).",
    "state": "draft"
   },
-  "learn.city-and-town-government.village-districts": {
-   "en": "Village Districts",
-   "es": "Distritos de aldea (village districts)",
+  "learn.city-and-town-government.what-is-a-village-district": {
+   "en": "What is a village district?",
+   "es": "¿Qué es un distrito de aldea (village district)?",
    "state": "draft"
   },
   "learn.county-government.5-to-20-days-after-it": {
@@ -13606,9 +13686,14 @@
    "es": "Antes del 1 de diciembre (antes del 1 de junio si el condado usa un año fiscal opcional)",
    "state": "draft"
   },
-  "learn.county-government.coroner-new-hampshire-elects-none-sudden": {
-   "en": "<b>Coroner:</b> New Hampshire elects none. Sudden, unexpected or unnatural deaths are investigated by medical examiners of the Office of the Chief Medical Examiner, a state office within the Department of Justice, rather than by a county officer (RSA 611-B:2, 611-B:11). RSA 611-B replaced RSA 611, the earlier medical examiners chapter, which was repealed in 2007.",
-   "es": "<b>Coroner (funcionario electo que investiga muertes en otros estados):</b> New Hampshire no elige ninguno. Las muertes repentinas, inesperadas o no naturales las investigan los médicos forenses de la Oficina del Médico Forense Jefe (Office of the Chief Medical Examiner), una oficina estatal dentro del Departamento de Justicia, y no un funcionario del condado (RSA 611-B:2, 611-B:11). RSA 611-B reemplazó a RSA 611, el capítulo anterior sobre los médicos forenses, que fue derogado en 2007.",
+  "learn.county-government.can-the-county-spend-more-after": {
+   "en": "Can the county spend more after its budget is adopted?",
+   "es": "¿Puede el condado gastar más después de aprobar su presupuesto?",
+   "state": "draft"
+  },
+  "learn.county-government.common-questions": {
+   "en": "Common Questions",
+   "es": "Preguntas frecuentes",
    "state": "draft"
   },
   "learn.county-government.county-attorney-the-county-s-prosecutor": {
@@ -13634,6 +13719,11 @@
   "learn.county-government.county-treasurer-has-custody-of-all": {
    "en": "<b>County treasurer:</b> has custody of all money belonging to the county, pays it out only on the commissioners' orders, keeps the account of what comes in and goes out, and reports at the end of the fiscal year (RSA 29:1).",
    "es": "<b>Tesorero del condado (county treasurer):</b> tiene la custodia de todo el dinero del condado, lo paga solo por orden de los comisionados, lleva la cuenta de lo que entra y sale, e informa al final del año fiscal (RSA 29:1).",
+   "state": "draft"
+  },
+  "learn.county-government.does-new-hampshire-elect-a-coroner": {
+   "en": "Does New Hampshire elect a coroner?",
+   "es": "¿New Hampshire elige un coroner (funcionario que investiga muertes)?",
    "state": "draft"
   },
   "learn.county-government.every-member-of-both-chambers-has": {
@@ -13691,6 +13781,11 @@
    "es": "Ningún condado cobra un impuesto directamente. El tesorero del condado envía una orden a la junta de concejales de cada municipio del condado, que la obliga a calcular y cobrar la parte del impuesto del condado que le toca a ese municipio y entregarla (RSA 29:11). El municipio la recauda con el impuesto a la propiedad. Por eso una factura del impuesto lleva una línea del condado junto a las del municipio, la escuela y la educación estatal, y por eso un presupuesto que aprueba la delegación aparece en una factura del impuesto meses después.",
    "state": "draft"
   },
+  "learn.county-government.no-new-hampshire-elects-none-sudden": {
+   "en": "No. New Hampshire elects none. Sudden, unexpected or unnatural deaths are investigated by medical examiners of the Office of the Chief Medical Examiner, a state office within the Department of Justice, rather than by a county officer (RSA 611-B:2, 611-B:11). RSA 611-B replaced RSA 611, the earlier medical examiners chapter, which was repealed in 2007.",
+   "es": "No. New Hampshire no elige ninguno. Las muertes repentinas, inesperadas o no naturales las investigan los médicos forenses de la Oficina del Médico Forense Jefe (Office of the Chief Medical Examiner), una oficina estatal dentro del Departamento de Justicia, y no un funcionario del condado (RSA 611-B:2, 611-B:11). RSA 611-B reemplazó a RSA 611, el capítulo anterior sobre los médicos forenses, que fue derogado en 2007.",
+   "state": "draft"
+  },
   "learn.county-government.not-until-28-days-after-it": {
    "en": "Not until 28 days after it is mailed",
    "es": "No antes de 28 días después del envío",
@@ -13709,11 +13804,6 @@
   "learn.county-government.register-of-deeds-keeps-the-registry": {
    "en": "<b>Register of deeds:</b> keeps the registry of deeds, which is the county's record of who owns which land. Deeds, mortgages and the other documents that affect title to land are recorded there, and a deed that has not been recorded does not hold against a later buyer who paid for the land in good faith (RSA 477:3-a, 478:4). The register keeps the records safe in the office the county provides (RSA 478:1).",
    "es": "<b>Registrador de escrituras (register of deeds):</b> lleva el registro de escrituras, que es el registro del condado de quién es dueño de cada terreno. Allí se inscriben las escrituras, las hipotecas y los demás documentos que afectan la propiedad de la tierra, y una escritura que no se ha inscrito no vale frente a un comprador posterior que pagó el terreno de buena fe (RSA 477:3-a, 478:4). El registrador guarda los registros a salvo en la oficina que provee el condado (RSA 478:1).",
-   "state": "draft"
-  },
-  "learn.county-government.register-of-probate-still-elected-though": {
-   "en": "<b>Register of probate:</b> still elected, though almost all of the duties are gone. On July 1, 2011 the probate court became the probate division of the Circuit Court (RSA 490-F:3), and the registers' duties passed to the circuit court clerks, apart from a few the statute leaves with the register (RSA 490-F:13). Among those, the register works with the Secretary of State and the administrative judge of the Circuit Court on preserving closed files that may be of historical significance, and keeps an index of any files removed from the court (RSA 548:5). The office is named in the constitution, in articles 71 and 81 of Part Second, so removing it takes an amendment and not a bill: <a href=\"bill/2022/cacr21.html\">CACR 21 (2022)</a> would have struck it out, passed both chambers, and went to the voters, where it did not reach the <a href=\"learn/the-constitution.html\">two thirds of those voting</a> an amendment needs. [[probate_vote]]",
-   "es": "<b>Registrador de testamentos (register of probate):</b> todavía se elige, aunque casi todas sus funciones desaparecieron. El 1 de julio de 2011 el tribunal testamentario pasó a ser la división testamentaria del Tribunal de Circuito (RSA 490-F:3), y las funciones de los registradores pasaron a los secretarios del tribunal de circuito, salvo unas pocas que la ley deja al registrador (RSA 490-F:13). Entre ellas, el registrador trabaja con la Secretaría de Estado y el juez administrativo del Tribunal de Circuito para conservar los expedientes cerrados que puedan tener importancia histórica, y lleva un índice de los expedientes retirados del tribunal (RSA 548:5). El cargo figura en la Constitución, en los artículos 71 y 81 de la Parte Segunda, así que eliminarlo requiere una enmienda y no un proyecto de ley: <a href=\"bill/2022/cacr21.html\">CACR 21 (2022)</a> habría suprimido el cargo; fue aprobada por ambas cámaras y se sometió a los votantes, donde no alcanzó los <a href=\"learn/the-constitution.html\">dos tercios de los votos emitidos</a> que una enmienda necesita. [[probate_vote]]",
    "state": "draft"
   },
   "learn.county-government.rsa-24-1": {
@@ -13826,6 +13916,11 @@
    "es": "Los funcionarios de la parte del condado de su boleta",
    "state": "draft"
   },
+  "learn.county-government.the-register-of-probate-is-still": {
+   "en": "The register of probate is still elected, though almost all of the duties are gone. On July 1, 2011 the probate court became the probate division of the Circuit Court (RSA 490-F:3), and the registers' duties passed to the circuit court clerks, apart from a few the statute leaves with the register (RSA 490-F:13). Among those, the register works with the Secretary of State and the administrative judge of the Circuit Court on preserving closed files that may be of historical significance, and keeps an index of any files removed from the court (RSA 548:5). The office is named in the constitution, in articles 71 and 81 of Part Second, so removing it takes an amendment and not a bill: <a href=\"bill/2022/cacr21.html\">CACR 21 (2022)</a> would have struck it out, passed both chambers, and went to the voters, where it did not reach the <a href=\"learn/the-constitution.html\">two thirds of those voting</a> an amendment needs. [[probate_vote]]",
+   "es": "El registrador de testamentos (register of probate) todavía se elige, aunque casi todas sus funciones desaparecieron. El 1 de julio de 2011 el tribunal testamentario pasó a ser la división testamentaria del Tribunal de Circuito (RSA 490-F:3), y las funciones de los registradores pasaron a los secretarios del tribunal de circuito, salvo unas pocas que la ley deja al registrador (RSA 490-F:13). Entre ellas, el registrador trabaja con la Secretaría de Estado y el juez administrativo del Tribunal de Circuito para conservar los expedientes cerrados que puedan tener importancia histórica, y lleva un índice de los expedientes retirados del tribunal (RSA 548:5). El cargo figura en la Constitución, en los artículos 71 y 81 de la Parte Segunda, así que eliminarlo requiere una enmienda y no un proyecto de ley: <a href=\"bill/2022/cacr21.html\">CACR 21 (2022)</a> habría suprimido el cargo; fue aprobada por ambas cámaras y se sometió a los votantes, donde no alcanzó los <a href=\"learn/the-constitution.html\">dos tercios de los votos emitidos</a> que una enmienda necesita. [[probate_vote]]",
+   "state": "draft"
+  },
   "learn.county-government.the-state-representatives-of-the": {
    "en": "The state representatives of the representative districts of the county. Nobody is elected to it separately.",
    "es": "Los representantes estatales de los distritos de representantes del condado. Nadie es elegido para ella por separado.",
@@ -13871,6 +13966,11 @@
    "es": "Dos años, salvo en Rockingham y Coos, que pasaron a mandatos de cuatro años.",
    "state": "draft"
   },
+  "learn.county-government.what-does-the-register-of-probate": {
+   "en": "What does the register of probate still do?",
+   "es": "¿Qué hace todavía el registrador de testamentos (register of probate)?",
+   "state": "draft"
+  },
   "learn.county-government.what-happens-after-the-budget-is": {
    "en": "What Happens After the Budget Is Adopted",
    "es": "Qué pasa después de aprobado el presupuesto",
@@ -13894,6 +13994,16 @@
   "learn.county-government.who": {
    "en": "Who",
    "es": "Quiénes",
+   "state": "draft"
+  },
+  "learn.county-government.who-sets-the-county-officers-pay": {
+   "en": "Who sets the county officers&rsquo; pay?",
+   "es": "¿Quién fija la remuneración de los funcionarios del condado?",
+   "state": "draft"
+  },
+  "learn.county-government.why-is-it-called-both-a": {
+   "en": "Why is it called both a convention and a delegation?",
+   "es": "¿Por qué se llama a la vez convención (convention) y delegación (delegation)?",
    "state": "draft"
   },
   "learn.county-government.within-90-days-of-the-fiscal": {
