@@ -2208,9 +2208,7 @@ LICENSE = guide(
      box("You leave with a paper license, and the new card comes by mail within 60 days.")],
     [step("Watch for your renewal notice",
           "<p>About two months before your license expires, the DMV mails a renewal notice to the "
-          "address it has for you. You will not get one if your mail is forwarded, if you moved and "
-          "did not tell the DMV your new address, or if your license is suspended.</p>"
-          "<p>The expiration date is printed in red on the front of your license.</p>",
+          "address it has for you.</p>",
           law=["RSA 263:10, I"]),
      step("Renew online, if your notice says you can",
           "<p>You need:</p><ul>"
@@ -2219,10 +2217,7 @@ LICENSE = guide(
           "<li>your current license in hand, because you will type in details printed on it;</li>"
           "<li>a MasterCard, VISA, Discover or American Express card; and</li>"
           "<li>a printer, to print the temporary license you carry with your old card until the "
-          "new one arrives.</li></ul>"
-          "<p>Only you can renew your own license, and your current photo is reused. The law allows "
-          "an online renewal only every other time, so the renewal after an online one is in "
-          "person.</p>",
+          "new one arrives.</li></ul>",
           actions=[("Renew online", DMV_ONLINE)], law=["RSA 263:10, II"]),
      step("Or renew at a DMV appointment",
           "<p>DMV offices see people by appointment. Book online, or call 603-227-4000. Bring:</p><ul>"
@@ -2230,19 +2225,12 @@ LICENSE = guide(
           "<li>your current license, or other proof of identity if you cannot find it;</li>"
           "<li>the fee; and</li><li>be ready for a vision test.</li></ul>"
           "<p>To upgrade to a REAL ID at the same time, bring the extra documents it needs. If you "
-          "are not a U.S. citizen, the DMV lists what to bring on a page of its own.</p>"
-          "<p>A non-driver ID card renews the same two ways: online if your notice allows, or by "
-          "appointment with the same application and proof of your identity and residence. A "
-          "commercial driver&rsquo;s license is renewed only by appointment, on its own "
-          "application (form DSMV 312), with a valid medical certificate unless you are "
-          "exempt.</p>",
+          "are not a U.S. citizen, the DMV lists what to bring on a page of its own.</p>",
           actions=[("Make an appointment", DMV_APPT), ("Application (DSMV 450)", DMV_APP),
                    ("If you are not a U.S. citizen", DMV_NON_US)]),
      step("Pay the fee",
           "<p>A renewed driver&rsquo;s license costs $50, or $60 for a REAL ID license, and a "
-          "non-driver ID card costs $20. The law sets all three. Other licenses cost different "
-          "amounts, among them youth, motorcycle and commercial licenses and a license for someone "
-          "who is not a U.S. citizen; the DMV&rsquo;s fees page lists them. The DMV takes credit "
+          "non-driver ID card costs $20. The law sets all three. The DMV takes credit "
           "cards, cash in person, and checks or money orders payable to &ldquo;State of NH - "
           "DMV&rdquo;.</p>",
           actions=[("All licensing fees", DMV_FEES)], law=["RSA 263:42, I", "RSA 260:21"]),
@@ -2286,7 +2274,25 @@ LICENSE = guide(
            "renewal.", "RSA 263:42", READ),
      claim("The fee for a nondriver's picture identification card is $20, not refundable.",
            "RSA 260:21", READ)],
-    more=DMV_HELP,
+    more=civics.faq(
+        ("Why didn&rsquo;t I get a renewal notice?",
+         "<p>You will not get one if your mail is forwarded, if you moved and did not tell the DMV "
+         "your new address, or if your license is suspended.</p>"
+         "<p>The expiration date is printed in red on the front of your license.</p>"),
+        ("Can I renew online every time?",
+         "<p>Only you can renew your own license, and your current photo is reused. The law allows "
+         "an online renewal only every other time, so the renewal after an online one is in "
+         "person.</p>"),
+        ("How do I renew a non-driver ID or a commercial license?",
+         "<p>A non-driver ID card renews the same two ways: online if your notice allows, or by "
+         "appointment with the same application and proof of your identity and residence. A "
+         "commercial driver&rsquo;s license is renewed only by appointment, on its own "
+         "application (form DSMV 312), with a valid medical certificate unless you are "
+         "exempt.</p>"),
+        ("What do other kinds of license cost?",
+         "<p>Other licenses cost different amounts, among them youth, motorcycle and commercial "
+         "licenses and a license for someone who is not a U.S. citizen; the DMV&rsquo;s fees page "
+         "lists them.</p>")) + DMV_HELP,
     see=[("How to get a REAL ID", "/guides/real-id.html"),
          ("New to New Hampshire: license, registration and voting", "/guides/new-to-new-hampshire.html")],
     figures=[fig("$60", "RSA 263:42", "$60 for a Real ID Act compliant license"),
@@ -2325,22 +2331,16 @@ CAR = guide(
           "<li><b>From a dealer in another state:</b> the title from the dealer, or the New "
           "Hampshire title application from your lender. For a brand-new vehicle, the "
           "manufacturer&rsquo;s statement of origin.</li>"
-          "<li><b>From a private seller:</b> the title, properly signed over to you.</li>"
-          "<li><b>A vehicle exempt from titling, from a private seller:</b> a bill of sale with "
-          "the details the law lists, and proof of the vehicle identification number (VIN): the "
-          "title or a copy, a past New Hampshire registration or a copy, or the DMV&rsquo;s VIN "
-          "verification form.</li></ul>"
-          "<p>If the vehicle is leased or financed through a lender in another state, start with "
-          "the DMV&rsquo;s page on 60-day temporary plates.</p>",
+          "<li><b>From a private seller:</b> the title, properly signed over to you.</li></ul>"
+          "<p>A vehicle exempt from titling, or one leased or financed out of state, needs "
+          "something different: the questions below say what.</p>",
           actions=[("Vehicle registrations", DMV_REG), ("VIN verification form", DMV_VIN),
                    ("Temporary plates", DMV_TEMP_PLATES)],
           law=["RSA 261:148"]),
      step("Start at your town or city clerk",
           "<p>Every motor vehicle except a moped starts at the clerk&rsquo;s office of the town or "
           "city where you live. The clerk confirms your residence and issues the town&rsquo;s "
-          "permit, which the state needs before it will register the vehicle. The town&rsquo;s "
-          "fee is set by law from the maker&rsquo;s list price, and gets smaller as the vehicle "
-          "ages.</p>",
+          "permit, which the state needs before it will register the vehicle.</p>",
           actions=[("Find your town or city clerk", SOS_CLERKS)],
           law=["RSA 261:148", "RSA 261:153"]),
      step("Finish the state part",
@@ -2357,8 +2357,7 @@ CAR = guide(
      step("Renew every year",
           "<p>A registration in your own name expires at the end of the month of your birthday. To "
           "renew, bring your registration or renewal notice to your town or city and pay the "
-          "town&rsquo;s fees first; many towns can take the state&rsquo;s part as well. Ask your "
-          "clerk or tax collector whether your town takes renewals online or by mail.</p>",
+          "town&rsquo;s fees first; many towns can take the state&rsquo;s part as well.</p>",
           law=["RSA 261:62"])],
     [("Vehicle Registrations (Division of Motor Vehicles)", DMV_REG),
      ("Appointments and Services (Division of Motor Vehicles)", DMV_APPT),
@@ -2388,7 +2387,21 @@ CAR = guide(
      claim("An individual's registration expires at the end of the month of the registrant's "
            "birthday, the first after issue or, for an original issued in the four months before "
            "it, the second.", "RSA 261:62", READ)],
-    more="<h2>Who Can Help</h2>"
+    more=civics.faq(
+        ("My vehicle is exempt from titling. What do I bring?",
+         "<p>If you bought it from a private seller: a bill of sale with the details the law "
+         "lists, and proof of the vehicle identification number (VIN): the title or a copy, a past "
+         "New Hampshire registration or a copy, or the DMV&rsquo;s VIN verification form.</p>"),
+        ("My vehicle is leased or financed through a lender in another state. Where do I start?",
+         "<p>If the vehicle is leased or financed through a lender in another state, start with "
+         "the DMV&rsquo;s page on 60-day temporary plates.</p>"),
+        ("How is the town&rsquo;s fee figured?",
+         "<p>The town&rsquo;s fee is set by law from the maker&rsquo;s list price, and gets "
+         "smaller as the vehicle ages.</p>"),
+        ("Can I renew online or by mail?",
+         "<p>Ask your clerk or tax collector whether your town takes renewals online or by "
+         "mail.</p>"))
+         + "<h2>Who Can Help</h2>"
          "<p>Your town or city clerk is the place to start, and can tell you what your town asks "
          "for and whether it does the state&rsquo;s part. The Division of Motor Vehicles answers "
          "questions at 603-227-4000.</p>"
@@ -2424,19 +2437,13 @@ REAL_ID = guide(
           "<p>A REAL ID license or ID has a star in the top right corner. Since May 7, 2025, you "
           "need one, or a passport or another accepted ID, to board a domestic flight or enter a "
           "secure federal facility such as a military base or a courthouse.</p>"
-          "<p>REAL ID is voluntary in New Hampshire. A card without the star is marked &ldquo;NOT "
-          "FOR FEDERAL IDENTIFICATION&rdquo;, and you would show a passport or another accepted "
-          "ID for those purposes instead. The Transportation Security Administration charges a fee "
-          "to travelers who arrive without an accepted ID.</p>",
+          "<p>REAL ID is voluntary in New Hampshire.</p>",
           actions=[("REAL ID (DMV)", DMV_REALID), ("REAL ID (TSA)", TSA_REALID)]),
      step("Gather your documents",
           "<p>You prove three things: your identity, your Social Security number, and that you live "
           "in New Hampshire. The DMV&rsquo;s online document checker shows what to bring for your "
-          "situation.</p>"
-          "<p>If your name has changed, through marriage, divorce, adoption or otherwise, your "
-          "birth certificate or passport will show a different name, so bring proof of each change "
-          "that links it to your current name. The document checker&rsquo;s Name Change Wizard "
-          "helps. If you are not a U.S. citizen, the DMV lists what to bring on its own page.</p>",
+          "situation. If you are not a U.S. citizen, the DMV lists what to bring on its own "
+          "page.</p>",
           actions=[("Online document checker", DMV_DOC_CHECK), ("The list of documents", DMV_REALID_DOCS),
                    ("If you are not a U.S. citizen", DMV_NON_US)]),
      step("Make an appointment",
@@ -2448,9 +2455,7 @@ REAL_ID = guide(
      step("Pay the fee",
           "<p>At renewal, a REAL ID driver&rsquo;s license costs $60, against $50 for a "
           "driver&rsquo;s license without the star, and a non-driver ID card costs $20. The law "
-          "sets all three. If you upgrade before your renewal is due, the DMV also charges a "
-          "replacement fee, which its REAL ID page gives. Other licenses cost different amounts; "
-          "the DMV&rsquo;s fees page lists them.</p>",
+          "sets all three.</p>",
           actions=[("Licensing fees", DMV_FEES)], law=["RSA 263:42, I", "RSA 260:21"])],
     [("REAL ID (Division of Motor Vehicles)", DMV_REALID),
      ("REAL ID (Transportation Security Administration)", TSA_REALID),
@@ -2475,7 +2480,23 @@ REAL_ID = guide(
      claim("$60 for a Real ID Act compliant license, $50 for each other license.", "RSA 263:42", READ),
      claim("The fee for a nondriver's picture identification card is $20, not refundable.",
            "RSA 260:21", READ)],
-    more=DMV_HELP,
+    more=civics.faq(
+        ("What if I do not get a REAL ID?",
+         "<p>A card without the star is marked &ldquo;NOT FOR FEDERAL IDENTIFICATION&rdquo;, and "
+         "you would show a passport or another accepted ID for those purposes instead. The "
+         "Transportation Security Administration charges a fee to travelers who arrive without an "
+         "accepted ID.</p>"),
+        ("My name has changed. What do I bring?",
+         "<p>If your name has changed, through marriage, divorce, adoption or otherwise, your "
+         "birth certificate or passport will show a different name, so bring proof of each change "
+         "that links it to your current name. The document checker&rsquo;s Name Change Wizard "
+         "helps.</p>"),
+        ("Does it cost more to upgrade before my renewal is due?",
+         "<p>If you upgrade before your renewal is due, the DMV also charges a replacement fee, "
+         "which its REAL ID page gives.</p>"),
+        ("What do other kinds of license cost?",
+         "<p>Other licenses cost different amounts; the DMV&rsquo;s fees page lists them.</p>"))
+         + DMV_HELP,
     see=[("How to renew your driver's license", "/guides/renew-drivers-license.html")],
     figures=[fig("$60", "RSA 263:42", "$60 for a Real ID Act compliant license"),
              fig("$50", "RSA 263:42", "$50 for each other license"),
@@ -2508,9 +2529,7 @@ NEW_RESIDENT = guide(
      box("Register to vote with your clerk, or at the polls on election day.")],
     [step("Know when the 60 days start",
           "<p>They start when you make a town or city ward in New Hampshire your home: your "
-          "principal place of physical presence, to the exclusion of every other. Actions such as "
-          "buying or leasing your main house or apartment, registering a vehicle here, putting "
-          "your children in a public school, or registering to vote show that you have.</p>",
+          "principal place of physical presence, to the exclusion of every other.</p>",
           actions=[("New to New Hampshire (DMV)", DMV_NEW)]),
      step("Get a New Hampshire driver's license",
           "<p>If you drive in New Hampshire, get a New Hampshire license within 60 days. If you do "
@@ -2520,27 +2539,21 @@ NEW_RESIDENT = guide(
           "or not), and the fee; there is a vision test. You must hand in every license from "
           "another state. You leave with a 60-day paper license, and the card comes by mail within "
           "60 days. If you are not a U.S. citizen, the DMV&rsquo;s page explains where to "
-          "apply.</p>"
-          "<p>The DMV lists a few kinds of out-of-state license that are not valid for driving in "
-          "New Hampshire, on its page about transferring a license.</p>",
+          "apply.</p>",
           actions=[("Transfer a license from another state", DMV_TRANSFER),
                    ("Make an appointment", DMV_APPT), ("If you are not a U.S. citizen", DMV_NON_US)],
           law=["RSA 263:35, I", "RSA 263:4"]),
      step("Register your vehicle",
           "<p>If you own a vehicle you use in New Hampshire, register it here within 60 days. Take "
           "the title and proof of your residence to the clerk&rsquo;s office of the town or city "
-          "where you live. If the vehicle is leased, financed, or exempt from titling, bring "
-          "your registration from the other state, the lease if there is one, your lender&rsquo;s "
-          "name and address, and proof of residence. The clerk prepares a New Hampshire title "
-          "application. Fees differ for each vehicle, so ask your clerk.</p>",
+          "where you live. Fees differ for each vehicle, so ask your clerk.</p>",
           actions=[("Find your town or city clerk", SOS_CLERKS)], law=["RSA 261:45, I"]),
      step("Register to vote",
           "<p>There is no minimum time you must live here before registering. You can register with "
           "your town or city clerk, or at a session of the supervisors of the checklist, until "
           "registration closes 6 to 13 days before an election, on a date your supervisors set. You "
           "can also register at your polling place on election day. Bring proof of your "
-          "identity, age, citizenship and domicile; How to Vote lists what counts.</p>"
-          "<p>You do not need a New Hampshire driver&rsquo;s license to register or to vote.</p>",
+          "identity, age, citizenship and domicile; How to Vote lists what counts.</p>",
           actions=[("Register to vote", SOS_REGISTER)], law=["RSA 654:27"]),
      step("Keep your address up to date",
           "<p>Once you hold a New Hampshire license, tell the DMV within 30 days whenever you change "
@@ -2577,7 +2590,21 @@ NEW_RESIDENT = guide(
            "permanent residence or mailing address.", "RSA 263:9", READ),
      claim("The supervisors' session for correcting the checklist, at which hearings close, is on "
            "a day they designate 6 to 13 days before the election.", "RSA 654:27", COUNTED)],
-    more="<h2>Who Can Help</h2>"
+    more=civics.faq(
+        ("What shows that New Hampshire is my home?",
+         "<p>Actions such as buying or leasing your main house or apartment, registering a "
+         "vehicle here, putting your children in a public school, or registering to vote show "
+         "that you have made it your home.</p>"),
+        ("Can I keep driving on my out-of-state license until then?",
+         "<p>The DMV lists a few kinds of out-of-state license that are not valid for driving in "
+         "New Hampshire, on its page about transferring a license.</p>"),
+        ("My vehicle is leased, financed or exempt from titling. What do I bring?",
+         "<p>If the vehicle is leased, financed, or exempt from titling, bring your registration "
+         "from the other state, the lease if there is one, your lender&rsquo;s name and address, "
+         "and proof of residence. The clerk prepares a New Hampshire title application.</p>"),
+        ("Do I need a New Hampshire license to vote?",
+         "<p>You do not need a New Hampshire driver&rsquo;s license to register or to vote.</p>"))
+         + "<h2>Who Can Help</h2>"
          "<p>Your town or city clerk handles both your vehicle registration and your voter "
          "registration. The Division of Motor Vehicles answers licensing questions at "
          "603-227-4000.</p>"
@@ -3798,16 +3825,7 @@ BUILDING_PERMITS = guide(
           "officer, who reviews plans, issues permits and inspects the work. Ask at your town "
           "or city office before you begin. A permit will not be issued for work that breaks "
           "the town&rsquo;s zoning or planning board rules, so the same office can tell you "
-          "whether the project needs those boards&rsquo; approval too.</p>"
-          "<p>A town or city that enforces the code does so by an ordinance the state&rsquo;s "
-          "Building Code Review Board confirms; it may add local amendments, limited since July "
-          "1, 2026 to administrative matters. The state updated its codes to the 2024 editions "
-          "on July 1, 2026; through December 31, 2026 a permit may be sought under either the "
-          "2021 or the 2024 codes. The Review Board answers questions at (603) 223-4315.</p>"
-          "<p>Where a town has no one of its own to enforce the code, the State Fire Marshal "
-          "may enforce it at the town&rsquo;s written request. In such a town, a contractor "
-          "must tell the Fire Marshal before starting any building other than a one- or "
-          "two-family home.</p>",
+          "whether the project needs those boards&rsquo; approval too.</p>",
           actions=[("The State Building Code (Division of Fire Safety)", FM_CODES)],
           law=["RSA 155-A:1", "RSA 155-A:2", "RSA 155-A:3", "RSA 155-A:4", "RSA 155-A:7"]),
      step("Inspections, and if you disagree",
@@ -3845,10 +3863,8 @@ BUILDING_PERMITS = guide(
           "system, or build a septic system, until the Department of Environmental Services "
           "has approved its plans. The same goes before adding on to a building, or changing "
           "its use, in a way that would add to the load on its septic system. Your town may have its own rules on top of the state&rsquo;s.</p>"
-          "<p>The plans must be prepared and signed by a designer who holds a permit from the "
-          "Department, and a system is installed by an installer with the Department&rsquo;s "
-          "permit. You may replace or repair the septic system of your own home yourself, "
-          "following the Department&rsquo;s rules.</p>",
+          "<p>You may replace or repair the septic system of your own home yourself, following "
+          "the Department&rsquo;s rules.</p>",
           law=["RSA 485-A:32", "RSA 485-A:35", "RSA 485-A:36", "RSA 485-A:38"]),
      step("Work near water",
           "<p>Land within 250 feet of a lake, pond, river or the coast is <b>protected "
@@ -3969,7 +3985,23 @@ BUILDING_PERMITS = guide(
            "waterbodies often require wetlands permits; questions by email to lrm@des.nh.gov or "
            "shoreland@des.nh.gov, with photos, plans and location information.", DES_WETLANDS,
            BP_PAGES_READ)],
-    more="<h2>Who Can Help</h2>"
+    more=civics.faq(
+        ("Which edition of the code applies?",
+         "<p>A town or city that enforces the code does so by an ordinance the state&rsquo;s "
+         "Building Code Review Board confirms; it may add local amendments, limited since July "
+         "1, 2026 to administrative matters. The state updated its codes to the 2024 editions "
+         "on July 1, 2026; through December 31, 2026 a permit may be sought under either the "
+         "2021 or the 2024 codes. The Review Board answers questions at (603) 223-4315.</p>"),
+        ("What if my town has no building inspector?",
+         "<p>Where a town has no one of its own to enforce the code, the State Fire Marshal "
+         "may enforce it at the town&rsquo;s written request. In such a town, a contractor "
+         "must tell the Fire Marshal before starting any building other than a one- or "
+         "two-family home.</p>"),
+        ("Who may design and install a septic system?",
+         "<p>The plans must be prepared and signed by a designer who holds a permit from the "
+         "Department of Environmental Services, and a system is installed by an installer with "
+         "the Department&rsquo;s permit.</p>"))
+         + "<h2>Who Can Help</h2>"
          "<p>Your town or city&rsquo;s building inspector or code enforcement officer is the "
          "first person to ask, about its permits, its fees and its inspections. Where your "
          "town has none, ask the selectboard&rsquo;s office.</p>",
@@ -6570,10 +6602,7 @@ WHO_TO_CONTACT = guide(
           actions=[("Find your town", "/officials.html#my-town")]),
      step("Your town or city: roads, sidewalks, trash and local rules",
           "<p>Most everyday problems are local. Your town or city maintains its own roads and "
-          "repairs its sidewalks, and runs or arranges trash and recycling. In a town the "
-          "<b>selectboard</b> manages the town&rsquo;s business and may regulate the use of its "
-          "roads and sidewalks; in a city the <b>city council</b> holds those powers, with the "
-          "mayor or city manager running the departments.</p>"
+          "repairs its sidewalks, and runs or arranges trash and recycling.</p>"
           "<p>Start with the department that handles it, such as public works for a pothole or a "
           "broken sidewalk. If that does not settle it, contact the selectboard or your city "
           "councilor. A change to the town&rsquo;s budget or rules may go to town meeting.</p>",
@@ -6607,11 +6636,8 @@ WHO_TO_CONTACT = guide(
      step("A federal agency or a federal law",
           "<p>Your two <b>U.S. senators</b> and your <b>U.S. representative</b> each have staff in "
           "New Hampshire who help residents with federal agencies: Social Security, veterans&rsquo; "
-          "benefits, passports, the IRS, immigration and others. They cannot promise an outcome, "
-          "but they can ask the agency for a fair and timely answer.</p>"
-          "<p>Before they can look into your case, you sign a <b>privacy release</b>, because "
-          "federal law lets an agency share your records only with your written consent. Each "
-          "office&rsquo;s website has its form. Contact them too about a federal law or bill.</p>",
+          "benefits, passports, the IRS, immigration and others. Contact them too about a federal "
+          "law or bill.</p>",
           actions=[("Find your U.S. senators", SENATE_CONTACT),
                    ("Find your U.S. representative", HOUSE_FIND)]),
      step("The county",
@@ -6687,6 +6713,18 @@ WHO_TO_CONTACT = guide(
            COUNCIL_ABOUT, WC_PRINT_READ),
      claim("New Hampshire Executive Council: gcweb@nh.gov, (603) 271-3632; Contact Councilor "
            "links for each of the five councilors.", COUNCIL_CONTACT, WC_PRINT_READ)],
+    more=civics.faq(
+        ("Who runs a town, and who runs a city?",
+         "<p>In a town the <b>selectboard</b> manages the town&rsquo;s business and may regulate "
+         "the use of its roads and sidewalks; in a city the <b>city council</b> holds those "
+         "powers, with the mayor or city manager running the departments.</p>"),
+        ("Can my members of Congress fix a problem with a federal agency?",
+         "<p>They cannot promise an outcome, but they can ask the agency for a fair and timely "
+         "answer.</p>"),
+        ("Why do they ask me to sign a privacy release?",
+         "<p>Before they can look into your case, you sign a <b>privacy release</b>, because "
+         "federal law lets an agency share your records only with your written consent. Each "
+         "office&rsquo;s website has its form.</p>")),
     see=[("How to find your representatives", "/guides/your-representatives.html"),
          ("How to contact your legislators", "/guides/contact-your-legislators.html")])
 
@@ -6731,13 +6769,11 @@ ROAD_PROBLEM = guide(
          "deadline.")],
     [step("Work out whose road it is",
           "<p>Most roads are your town&rsquo;s or city&rsquo;s. It maintains every ordinary town "
-          "road, and in the built-up centers of the cities and towns the law lists, such as "
-          "Concord, Manchester and Nashua, it maintains the state routes too. It also keeps up "
-          "the sidewalks along its roads, at no charge to the owners next to them.</p>"
+          "road, and keeps up the sidewalks along its roads, at no charge to the owners next to "
+          "them.</p>"
           "<p>The state&rsquo;s <b>Department of Transportation</b> maintains the main state "
           "highways, and the parts of the secondary state highways it has improved; a town "
-          "maintains the rest of those. A class VI road is a public way the town does not "
-          "maintain, and the town has no duty to repair it.</p>"
+          "maintains the rest of those.</p>"
           "<p>If you are not sure whose road it is, start with your town.</p>",
           law=["RSA 229:5", "RSA 230:1", "RSA 230:3", "RSA 230:4", "RSA 231:2", "RSA 231:3",
                "RSA 231:93", "RSA 231:113"]),
@@ -6773,8 +6809,7 @@ ROAD_PROBLEM = guide(
           "<p>The town must then, unless it decides in good faith there is no such danger, "
           "put up warnings at once and, within 72 hours, make a plan to repair it, and carry "
           "the plan out. If it does not, it is liable for the injury or damage the danger "
-          "causes. A road simply in worse shape than others is not insufficient, and snow and "
-          "ice the town is clearing under its winter policy are not a ground for a claim.</p>",
+          "causes.</p>",
           law=["RSA 231:90", "RSA 231:91", "RSA 231:92-a"]),
      step("If a road problem damaged your car",
           "<p><b>On a town road</b>, the town answers for damage only if it had written notice "
@@ -6878,7 +6913,17 @@ ROAD_PROBLEM = guide(
            "appropriate NHDOT Highway Maintenance District Office; General Questions: (603) "
            "271-3734 or info@dot.nh.gov.", NHDOT_CONTACT, ROAD_STATE_READ)]
     + help_claims("lawyer"),
-    more="<h2>Who Can Help</h2>"
+    more=civics.faq(
+        ("Who fixes a state route through a city center?",
+         "<p>In the built-up centers of the cities and towns the law lists, such as Concord, "
+         "Manchester and Nashua, the city or town maintains the state routes too.</p>"),
+        ("What is a class VI road?",
+         "<p>A class VI road is a public way the town does not maintain, and the town has no "
+         "duty to repair it.</p>"),
+        ("Is every bad road &ldquo;insufficient&rdquo;?",
+         "<p>No. A road simply in worse shape than others is not insufficient, and snow and ice "
+         "the town is clearing under its winter policy are not a ground for a claim.</p>"))
+         + "<h2>Who Can Help</h2>"
          "<p>Your town or city&rsquo;s public works or highway department is the place to ask "
          "about a town road, and the town office can tell you who that is. For a claim for "
          "damage, a lawyer can tell you whether you have one:</p>"

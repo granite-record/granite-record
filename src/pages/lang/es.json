@@ -1793,6 +1793,11 @@
    "es": "Ciudades, municipios y quién los dirige",
    "state": "draft"
   },
+  "guide.building-permits.common-questions": {
+   "en": "Common Questions",
+   "es": "Preguntas frecuentes",
+   "state": "draft"
+  },
   "guide.building-permits.digging-filling-dredging-or-building-in": {
    "en": "Digging, filling, dredging or building in or on a bank, marsh or swamp next to a lake, river or other water needs a <b>wetlands permit</b> from the Department, applied for through your town or city clerk, who signs the application.",
    "es": "Excavar, rellenar, dragar o construir en o sobre una orilla, un pantano o una ciénaga junto a un lago, un río u otra masa de agua requiere un <b>permiso de humedales</b> del Departamento, que se solicita a través del secretario de su municipio o ciudad, quien firma la solicitud.",
@@ -1939,8 +1944,8 @@
    "state": "draft"
   },
   "guide.building-permits.the-plans-must-be-prepared-and": {
-   "en": "The plans must be prepared and signed by a designer who holds a permit from the Department, and a system is installed by an installer with the Department&rsquo;s permit. You may replace or repair the septic system of your own home yourself, following the Department&rsquo;s rules.",
-   "es": "Los planos los tiene que preparar y firmar un diseñador con permiso del Departamento, y el sistema lo instala un instalador con permiso del Departamento. Usted mismo puede reemplazar o reparar el sistema séptico de su propia vivienda, siguiendo las reglas del Departamento.",
+   "en": "The plans must be prepared and signed by a designer who holds a permit from the Department of Environmental Services, and a system is installed by an installer with the Department&rsquo;s permit.",
+   "es": "Los planos los tiene que preparar y firmar un diseñador con permiso del Departamento de Servicios Ambientales, y el sistema lo instala un instalador con permiso del Departamento.",
    "state": "draft"
   },
   "guide.building-permits.the-state-approves-the-septic-plans": {
@@ -1978,6 +1983,11 @@
    "es": "Ayuda con permisos de humedales (Departamento de Servicios Ambientales)",
    "state": "draft"
   },
+  "guide.building-permits.what-if-my-town-has-no": {
+   "en": "What if my town has no building inspector?",
+   "es": "¿Y si mi municipio no tiene inspector de construcción?",
+   "state": "draft"
+  },
   "guide.building-permits.what-is-the-work": {
    "en": "What is the work?",
    "es": "¿Qué obra es?",
@@ -1993,6 +2003,16 @@
    "es": "Donde un municipio no tiene a nadie propio que haga cumplir el código, el Jefe Estatal de Bomberos puede hacerlo cumplir si el municipio lo pide por escrito. En ese municipio, un contratista tiene que avisar al Jefe Estatal de Bomberos antes de empezar cualquier construcción que no sea una casa para una o dos familias.",
    "state": "draft"
   },
+  "guide.building-permits.which-edition-of-the-code-applies": {
+   "en": "Which edition of the code applies?",
+   "es": "¿Qué edición del código se aplica?",
+   "state": "draft"
+  },
+  "guide.building-permits.who-may-design-and-install-a": {
+   "en": "Who may design and install a septic system?",
+   "es": "¿Quién puede diseñar e instalar un sistema séptico?",
+   "state": "draft"
+  },
   "guide.building-permits.who-to-contact-about-an-issue": {
    "en": "Who to contact about an issue",
    "es": "A quién contactar sobre un asunto",
@@ -2001,6 +2021,11 @@
   "guide.building-permits.work-near-water": {
    "en": "Work near water",
    "es": "Obras cerca del agua",
+   "state": "draft"
+  },
+  "guide.building-permits.you-may-replace-or-repair-the": {
+   "en": "You may replace or repair the septic system of your own home yourself, following the Department&rsquo;s rules.",
+   "es": "Usted mismo puede reemplazar o reparar el sistema séptico de su propia vivienda, siguiendo las reglas del Departamento.",
    "state": "draft"
   },
   "guide.building-permits.your-town-or-citys-building-inspector": {
@@ -5781,14 +5806,34 @@
    "es": "Su primera oportunidad es su Período de Inscripción Inicial: 7 meses, que empiezan 3 meses antes del mes en que cumple 65 años y terminan 3 meses después. La cobertura siempre empieza el primer día de un mes, y si se inscribe antes del mes de su cumpleaños, empieza antes.",
    "state": "draft"
   },
+  "guide.new-to-new-hampshire.actions-such-as-buying-or-leasing": {
+   "en": "Actions such as buying or leasing your main house or apartment, registering a vehicle here, putting your children in a public school, or registering to vote show that you have made it your home.",
+   "es": "Acciones como comprar o alquilar su casa o apartamento principal, registrar un vehículo aquí, inscribir a sus hijos en una escuela pública o inscribirse para votar muestran que ha hecho de New Hampshire su hogar.",
+   "state": "draft"
+  },
+  "guide.new-to-new-hampshire.can-i-keep-driving-on-my": {
+   "en": "Can I keep driving on my out-of-state license until then?",
+   "es": "¿Puedo seguir manejando con mi licencia de otro estado mientras tanto?",
+   "state": "draft"
+  },
   "guide.new-to-new-hampshire.certificates-of-title-and-registration": {
    "en": "Certificates of Title and Registration of Vehicles, RSA 261",
    "es": "Certificados de título y registro de vehículos, RSA 261",
    "state": "draft"
   },
+  "guide.new-to-new-hampshire.common-questions": {
+   "en": "Common Questions",
+   "es": "Preguntas frecuentes",
+   "state": "draft"
+  },
   "guide.new-to-new-hampshire.dmv-appointments-and-drop-box": {
    "en": "DMV appointments and drop box",
    "es": "Citas y buzón de entrega del DMV",
+   "state": "draft"
+  },
+  "guide.new-to-new-hampshire.do-i-need-a-new-hampshire": {
+   "en": "Do I need a New Hampshire license to vote?",
+   "es": "¿Necesito una licencia de New Hampshire para votar?",
    "state": "draft"
   },
   "guide.new-to-new-hampshire.do-you-drive-here-or-own": {
@@ -5841,6 +5886,11 @@
    "es": "Tengo un vehículo",
    "state": "draft"
   },
+  "guide.new-to-new-hampshire.if-the-vehicle-is-leased-financed": {
+   "en": "If the vehicle is leased, financed, or exempt from titling, bring your registration from the other state, the lease if there is one, your lender&rsquo;s name and address, and proof of residence. The clerk prepares a New Hampshire title application.",
+   "es": "Si el vehículo es arrendado, está financiado o está exento de título, lleve su registro del otro estado, el contrato de arrendamiento si lo hay, el nombre y la dirección de su prestamista, y una prueba de residencia. El secretario prepara una solicitud de título de New Hampshire.",
+   "state": "draft"
+  },
   "guide.new-to-new-hampshire.if-you-are-not-a-u": {
    "en": "If you are not a U.S. citizen",
    "es": "Si no es ciudadano de EE. UU.",
@@ -5852,8 +5902,8 @@
    "state": "draft"
   },
   "guide.new-to-new-hampshire.if-you-own-a-vehicle-you": {
-   "en": "If you own a vehicle you use in New Hampshire, register it here within 60 days. Take the title and proof of your residence to the clerk&rsquo;s office of the town or city where you live. If the vehicle is leased, financed, or exempt from titling, bring your registration from the other state, the lease if there is one, your lender&rsquo;s name and address, and proof of residence. The clerk prepares a New Hampshire title application. Fees differ for each vehicle, so ask your clerk.",
-   "es": "Si tiene un vehículo que usa en New Hampshire, regístrelo aquí en un plazo de 60 días. Lleve el título y una prueba de su residencia a la oficina del secretario del municipio o la ciudad donde vive. Si el vehículo es arrendado, está financiado o está exento de título, lleve su registro del otro estado, el contrato de arrendamiento si lo hay, el nombre y la dirección de su prestamista, y una prueba de residencia. El secretario prepara una solicitud de título de New Hampshire. Las cuotas son distintas para cada vehículo, así que pregúntele a su secretario.",
+   "en": "If you own a vehicle you use in New Hampshire, register it here within 60 days. Take the title and proof of your residence to the clerk&rsquo;s office of the town or city where you live. Fees differ for each vehicle, so ask your clerk.",
+   "es": "Si tiene un vehículo que usa en New Hampshire, regístrelo aquí en un plazo de 60 días. Lleve el título y una prueba de su residencia a la oficina del secretario del municipio o la ciudad donde vive. Las cuotas son distintas para cada vehículo, así que pregúntele a su secretario.",
    "state": "draft"
   },
   "guide.new-to-new-hampshire.keep-your-address-up-to-date": {
@@ -5884,6 +5934,11 @@
   "guide.new-to-new-hampshire.make-an-appointment-at-a-dmv": {
    "en": "Make an appointment at a DMV office, and bring the completed application (form DSMV 450), proof of your identity and residence for the kind of license you want (a REAL ID or not), and the fee; there is a vision test. You must hand in every license from another state. You leave with a 60-day paper license, and the card comes by mail within 60 days. If you are not a U.S. citizen, the DMV&rsquo;s page explains where to apply.",
    "es": "Pida una cita en una oficina del DMV, y lleve la solicitud completa (formulario DSMV 450), pruebas de su identidad y residencia para el tipo de licencia que quiere (REAL ID o no) y la cuota; hay un examen de la vista. Debe entregar todas las licencias de otros estados. Sale con una licencia de papel de 60 días, y la tarjeta llega por correo en un plazo de 60 días. Si no es ciudadano de EE. UU., la página del DMV explica dónde solicitarla.",
+   "state": "draft"
+  },
+  "guide.new-to-new-hampshire.my-vehicle-is-leased-financed-or": {
+   "en": "My vehicle is leased, financed or exempt from titling. What do I bring?",
+   "es": "Mi vehículo es arrendado, está financiado o está exento de título. ¿Qué llevo?",
    "state": "draft"
   },
   "guide.new-to-new-hampshire.new-resident-to-new-hampshire-division": {
@@ -5942,8 +5997,8 @@
    "state": "draft"
   },
   "guide.new-to-new-hampshire.they-start-when-you-make-a": {
-   "en": "They start when you make a town or city ward in New Hampshire your home: your principal place of physical presence, to the exclusion of every other. Actions such as buying or leasing your main house or apartment, registering a vehicle here, putting your children in a public school, or registering to vote show that you have.",
-   "es": "Empiezan cuando usted hace de un municipio o de un barrio electoral de una ciudad de New Hampshire su hogar: su lugar principal de presencia física, con exclusión de cualquier otro. Acciones como comprar o alquilar su casa o apartamento principal, registrar un vehículo aquí, inscribir a sus hijos en una escuela pública o inscribirse para votar muestran que lo ha hecho.",
+   "en": "They start when you make a town or city ward in New Hampshire your home: your principal place of physical presence, to the exclusion of every other.",
+   "es": "Empiezan cuando usted hace de un municipio o de un barrio electoral de una ciudad de New Hampshire su hogar: su lugar principal de presencia física, con exclusión de cualquier otro.",
    "state": "draft"
   },
   "guide.new-to-new-hampshire.title": {
@@ -5959,6 +6014,11 @@
   "guide.new-to-new-hampshire.transfer-license-from-another-state": {
    "en": "Transfer License From Another State (Division of Motor Vehicles)",
    "es": "Traspasar una licencia de otro estado (División de Vehículos Motorizados)",
+   "state": "draft"
+  },
+  "guide.new-to-new-hampshire.what-shows-that-new-hampshire-is": {
+   "en": "What shows that New Hampshire is my home?",
+   "es": "¿Qué muestra que New Hampshire es mi hogar?",
    "state": "draft"
   },
   "guide.new-to-new-hampshire.you-do-not-need-a-new": {
@@ -7596,6 +7656,11 @@
    "es": "Sí",
    "state": "draft"
   },
+  "guide.real-id.a-card-without-the-star-is": {
+   "en": "A card without the star is marked &ldquo;NOT FOR FEDERAL IDENTIFICATION&rdquo;, and you would show a passport or another accepted ID for those purposes instead. The Transportation Security Administration charges a fee to travelers who arrive without an accepted ID.",
+   "es": "Una tarjeta sin la estrella está marcada &ldquo;NOT FOR FEDERAL IDENTIFICATION&rdquo; (no válida para identificación federal), y para esos fines tendría que mostrar en su lugar un pasaporte u otra identificación aceptada. La Administración de Seguridad en el Transporte (TSA) cobra una cuota a los viajeros que llegan sin una identificación aceptada.",
+   "state": "draft"
+  },
   "guide.real-id.a-real-id-is-a-drivers": {
    "en": "A REAL ID is a driver&rsquo;s license or non-driver ID marked with a star. Since May 7, 2025, you need one, or a passport or another accepted ID, to board a domestic flight or enter a secure federal building. In New Hampshire it is voluntary. You get one in person at a DMV office, when you renew or by appointment, with documents proving your identity, your Social Security number and that you live in New Hampshire.",
    "es": "Una REAL ID es una licencia de conducir o una identificación de no conductor marcada con una estrella. Desde el 7 de mayo de 2025, necesita una, o un pasaporte u otra identificación aceptada, para abordar un vuelo nacional o entrar en un edificio federal de acceso restringido. En New Hampshire es voluntaria. Se obtiene en persona en una oficina del DMV, al renovar o con cita, con documentos que prueben su identidad, su número de Seguro Social y que vive en New Hampshire.",
@@ -7617,8 +7682,13 @@
    "state": "draft"
   },
   "guide.real-id.at-renewal-a-real-id-drivers": {
-   "en": "At renewal, a REAL ID driver&rsquo;s license costs $60, against $50 for a driver&rsquo;s license without the star, and a non-driver ID card costs $20. The law sets all three. If you upgrade before your renewal is due, the DMV also charges a replacement fee, which its REAL ID page gives. Other licenses cost different amounts; the DMV&rsquo;s fees page lists them.",
-   "es": "Al renovar, una licencia de conducir REAL ID cuesta $60, frente a $50 por una licencia de conducir sin la estrella, y una tarjeta de identificación de no conductor cuesta $20. La ley fija las tres. Si cambia a una REAL ID antes de que le toque renovar, el DMV cobra además una cuota de reemplazo, que indica su página sobre la REAL ID. Otras licencias cuestan distinto; la página de cuotas del DMV las enumera.",
+   "en": "At renewal, a REAL ID driver&rsquo;s license costs $60, against $50 for a driver&rsquo;s license without the star, and a non-driver ID card costs $20. The law sets all three.",
+   "es": "Al renovar, una licencia de conducir REAL ID cuesta $60, frente a $50 por una licencia de conducir sin la estrella, y una tarjeta de identificación de no conductor cuesta $20. La ley fija las tres.",
+   "state": "draft"
+  },
+  "guide.real-id.common-questions": {
+   "en": "Common Questions",
+   "es": "Preguntas frecuentes",
    "state": "draft"
   },
   "guide.real-id.consider-a-real-id-and-plan": {
@@ -7629,6 +7699,11 @@
   "guide.real-id.decide-whether-you-need-one": {
    "en": "Decide whether you need one",
    "es": "Decida si la necesita",
+   "state": "draft"
+  },
+  "guide.real-id.does-it-cost-more-to-upgrade": {
+   "en": "Does it cost more to upgrade before my renewal is due?",
+   "es": "¿Cuesta más cambiar a una REAL ID antes de que me toque renovar?",
    "state": "draft"
   },
   "guide.real-id.drivers-licenses-rsa-263": {
@@ -7656,9 +7731,14 @@
    "es": "Si no es ciudadano de EE. UU.",
    "state": "draft"
   },
+  "guide.real-id.if-you-upgrade-before-your-renewal": {
+   "en": "If you upgrade before your renewal is due, the DMV also charges a replacement fee, which its REAL ID page gives.",
+   "es": "Si cambia a una REAL ID antes de que le toque renovar, el DMV cobra además una cuota de reemplazo, que indica su página sobre la REAL ID.",
+   "state": "draft"
+  },
   "guide.real-id.if-your-name-has-changed-through": {
-   "en": "If your name has changed, through marriage, divorce, adoption or otherwise, your birth certificate or passport will show a different name, so bring proof of each change that links it to your current name. The document checker&rsquo;s Name Change Wizard helps. If you are not a U.S. citizen, the DMV lists what to bring on its own page.",
-   "es": "Si su nombre cambió, por matrimonio, divorcio, adopción u otro motivo, su acta de nacimiento o su pasaporte mostrarán un nombre distinto, así que lleve prueba de cada cambio que lo vincule con su nombre actual. El asistente de cambio de nombre (Name Change Wizard) del verificador de documentos le ayuda. Si no es ciudadano de EE. UU., el DMV indica qué llevar en su propia página.",
+   "en": "If your name has changed, through marriage, divorce, adoption or otherwise, your birth certificate or passport will show a different name, so bring proof of each change that links it to your current name. The document checker&rsquo;s Name Change Wizard helps.",
+   "es": "Si su nombre cambió, por matrimonio, divorcio, adopción u otro motivo, su acta de nacimiento o su pasaporte mostrarán un nombre distinto, así que lleve prueba de cada cambio que lo vincule con su nombre actual. El asistente de cambio de nombre (Name Change Wizard) del verificador de documentos le ayuda.",
    "state": "draft"
   },
   "guide.real-id.lead": {
@@ -7676,6 +7756,11 @@
    "es": "Pida una cita",
    "state": "draft"
   },
+  "guide.real-id.my-name-has-changed-what-do": {
+   "en": "My name has changed. What do I bring?",
+   "es": "Mi nombre cambió. ¿Qué llevo?",
+   "state": "draft"
+  },
   "guide.real-id.no": {
    "en": "No",
    "es": "No",
@@ -7684,6 +7769,11 @@
   "guide.real-id.online-document-checker": {
    "en": "Online document checker",
    "es": "Verificador de documentos en línea",
+   "state": "draft"
+  },
+  "guide.real-id.other-licenses-cost-different-amounts": {
+   "en": "Other licenses cost different amounts; the DMV&rsquo;s fees page lists them.",
+   "es": "Otras licencias cuestan distinto; la página de cuotas del DMV las enumera.",
    "state": "draft"
   },
   "guide.real-id.pay-the-fee": {
@@ -7702,8 +7792,8 @@
    "state": "draft"
   },
   "guide.real-id.real-id-is-voluntary-in-new": {
-   "en": "REAL ID is voluntary in New Hampshire. A card without the star is marked &ldquo;NOT FOR FEDERAL IDENTIFICATION&rdquo;, and you would show a passport or another accepted ID for those purposes instead. The Transportation Security Administration charges a fee to travelers who arrive without an accepted ID.",
-   "es": "La REAL ID es voluntaria en New Hampshire. Una tarjeta sin la estrella está marcada &ldquo;NOT FOR FEDERAL IDENTIFICATION&rdquo; (no válida para identificación federal), y para esos fines tendría que mostrar en su lugar un pasaporte u otra identificación aceptada. La Administración de Seguridad en el Transporte (TSA) cobra una cuota a los viajeros que llegan sin una identificación aceptada.",
+   "en": "REAL ID is voluntary in New Hampshire.",
+   "es": "La REAL ID es voluntaria en New Hampshire.",
    "state": "draft"
   },
   "guide.real-id.real-id-transportation-security": {
@@ -7731,6 +7821,16 @@
    "es": "¿La quiere? Revise qué documentos llevar y luego pida una cita en el DMV.",
    "state": "draft"
   },
+  "guide.real-id.what-do-other-kinds-of-license": {
+   "en": "What do other kinds of license cost?",
+   "es": "¿Cuánto cuestan otros tipos de licencia?",
+   "state": "draft"
+  },
+  "guide.real-id.what-if-i-do-not-get": {
+   "en": "What if I do not get a REAL ID?",
+   "es": "¿Y si no saco una REAL ID?",
+   "state": "draft"
+  },
   "guide.real-id.will-you-fly-within-the-u": {
    "en": "Will you fly within the U.S. or enter secure federal buildings without a passport?",
    "es": "¿Va a volar dentro de EE. UU. o a entrar en edificios federales de acceso restringido sin pasaporte?",
@@ -7752,18 +7852,18 @@
    "state": "draft"
   },
   "guide.real-id.you-prove-three-things-your-identity": {
-   "en": "You prove three things: your identity, your Social Security number, and that you live in New Hampshire. The DMV&rsquo;s online document checker shows what to bring for your situation.",
-   "es": "Usted prueba tres cosas: su identidad, su número de Seguro Social y que vive en New Hampshire. El verificador de documentos en línea del DMV muestra qué llevar en su situación.",
+   "en": "You prove three things: your identity, your Social Security number, and that you live in New Hampshire. The DMV&rsquo;s online document checker shows what to bring for your situation. If you are not a U.S. citizen, the DMV lists what to bring on its own page.",
+   "es": "Usted prueba tres cosas: su identidad, su número de Seguro Social y que vive en New Hampshire. El verificador de documentos en línea del DMV muestra qué llevar en su situación. Si no es ciudadano de EE. UU., el DMV indica qué llevar en su propia página.",
    "state": "draft"
   },
   "guide.register-a-car.a-registration-in-your-own-name": {
-   "en": "A registration in your own name expires at the end of the month of your birthday. To renew, bring your registration or renewal notice to your town or city and pay the town&rsquo;s fees first; many towns can take the state&rsquo;s part as well. Ask your clerk or tax collector whether your town takes renewals online or by mail.",
-   "es": "Un registro a su nombre vence al final del mes de su cumpleaños. Para renovarlo, lleve su registro o su aviso de renovación a su municipio o ciudad y pague primero las cuotas del municipio; muchos municipios pueden cobrar también la parte del estado. Pregúntele a su secretario o al recaudador de impuestos si su municipio acepta renovaciones en línea o por correo.",
+   "en": "A registration in your own name expires at the end of the month of your birthday. To renew, bring your registration or renewal notice to your town or city and pay the town&rsquo;s fees first; many towns can take the state&rsquo;s part as well.",
+   "es": "Un registro a su nombre vence al final del mes de su cumpleaños. Para renovarlo, lleve su registro o su aviso de renovación a su municipio o ciudad y pague primero las cuotas del municipio; muchos municipios pueden cobrar también la parte del estado.",
    "state": "draft"
   },
-  "guide.register-a-car.a-vehicle-exempt-from-titling-from": {
-   "en": "<b>A vehicle exempt from titling, from a private seller:</b> a bill of sale with the details the law lists, and proof of the vehicle identification number (VIN): the title or a copy, a past New Hampshire registration or a copy, or the DMV&rsquo;s VIN verification form.",
-   "es": "<b>Un vehículo exento de título, de un vendedor particular:</b> una factura de compraventa con los datos que indica la ley, y una prueba del número de identificación del vehículo (VIN): el título o una copia, un registro anterior de New Hampshire o una copia, o el formulario de verificación del VIN del DMV.",
+  "guide.register-a-car.a-vehicle-exempt-from-titling-or": {
+   "en": "A vehicle exempt from titling, or one leased or financed out of state, needs something different: the questions below say what.",
+   "es": "Un vehículo exento de título, o uno arrendado o financiado en otro estado, necesita otra cosa: las preguntas de abajo dicen qué.",
    "state": "draft"
   },
   "guide.register-a-car.appointments-and-services-division-of": {
@@ -7771,9 +7871,19 @@
    "es": "Citas y servicios (División de Vehículos Motorizados)",
    "state": "draft"
   },
+  "guide.register-a-car.ask-your-clerk-or-tax-collector": {
+   "en": "Ask your clerk or tax collector whether your town takes renewals online or by mail.",
+   "es": "Pregúntele a su secretario o al recaudador de impuestos si su municipio acepta renovaciones en línea o por correo.",
+   "state": "draft"
+  },
   "guide.register-a-car.bring-a-current-government-photo-id": {
    "en": "Bring a current government photo ID, and proof that you live in the town if your clerk has not already seen it. What else depends on how you got the vehicle:",
    "es": "Lleve una identificación vigente del gobierno con foto, y una prueba de que vive en el municipio si su secretario todavía no la ha visto. Lo demás depende de cómo obtuvo el vehículo:",
+   "state": "draft"
+  },
+  "guide.register-a-car.can-i-renew-online-or-by": {
+   "en": "Can I renew online or by mail?",
+   "es": "¿Puedo renovar en línea o por correo?",
    "state": "draft"
   },
   "guide.register-a-car.can-your-clerk-do-the-state": {
@@ -7784,6 +7894,11 @@
   "guide.register-a-car.certificates-of-title-and-registration": {
    "en": "Certificates of Title and Registration of Vehicles, RSA 261",
    "es": "Certificados de título y registro de vehículos, RSA 261",
+   "state": "draft"
+  },
+  "guide.register-a-car.common-questions": {
+   "en": "Common Questions",
+   "es": "Preguntas frecuentes",
    "state": "draft"
   },
   "guide.register-a-car.dmv-appointments-and-drop-box": {
@@ -7797,8 +7912,8 @@
    "state": "draft"
   },
   "guide.register-a-car.every-motor-vehicle-except-a-moped": {
-   "en": "Every motor vehicle except a moped starts at the clerk&rsquo;s office of the town or city where you live. The clerk confirms your residence and issues the town&rsquo;s permit, which the state needs before it will register the vehicle. The town&rsquo;s fee is set by law from the maker&rsquo;s list price, and gets smaller as the vehicle ages.",
-   "es": "El registro de todo vehículo motorizado, salvo un ciclomotor, empieza en la oficina del secretario del municipio o la ciudad donde usted vive. El secretario confirma su residencia y emite el permiso del municipio, que el estado necesita antes de registrar el vehículo. La cuota del municipio la fija la ley a partir del precio de lista del fabricante, y baja a medida que el vehículo envejece.",
+   "en": "Every motor vehicle except a moped starts at the clerk&rsquo;s office of the town or city where you live. The clerk confirms your residence and issues the town&rsquo;s permit, which the state needs before it will register the vehicle.",
+   "es": "El registro de todo vehículo motorizado, salvo un ciclomotor, empieza en la oficina del secretario del municipio o la ciudad donde usted vive. El secretario confirma su residencia y emite el permiso del municipio, que el estado necesita antes de registrar el vehículo.",
    "state": "draft"
   },
   "guide.register-a-car.find-your-town-or-city-clerk": {
@@ -7846,9 +7961,19 @@
    "es": "Vaya con el secretario de su municipio o ciudad, con su título o factura de compraventa y una identificación con foto.",
    "state": "draft"
   },
+  "guide.register-a-car.how-is-the-towns-fee-figured": {
+   "en": "How is the town&rsquo;s fee figured?",
+   "es": "¿Cómo se calcula la cuota del municipio?",
+   "state": "draft"
+  },
   "guide.register-a-car.if-the-vehicle-is-leased-or": {
    "en": "If the vehicle is leased or financed through a lender in another state, start with the DMV&rsquo;s page on 60-day temporary plates.",
    "es": "Si el vehículo es arrendado o está financiado por un prestamista de otro estado, empiece por la página del DMV sobre las placas temporales de 60 días.",
+   "state": "draft"
+  },
+  "guide.register-a-car.if-you-bought-it-from-a": {
+   "en": "If you bought it from a private seller: a bill of sale with the details the law lists, and proof of the vehicle identification number (VIN): the title or a copy, a past New Hampshire registration or a copy, or the DMV&rsquo;s VIN verification form.",
+   "es": "Si lo compró a un vendedor particular: una factura de compraventa con los datos que indica la ley, y una prueba del número de identificación del vehículo (VIN): el título o una copia, un registro anterior de New Hampshire o una copia, o el formulario de verificación del VIN del DMV.",
    "state": "draft"
   },
   "guide.register-a-car.know-what-you-will-pay": {
@@ -7864,6 +7989,16 @@
   "guide.register-a-car.many-clerks-are-agents-of-the": {
    "en": "Many clerks are agents of the state and can complete the state registration too, for an extra fee. If you have the title, or the vehicle needs none, you may be able to do everything at the clerk&rsquo;s office. Otherwise, the DMV completes the state part by appointment or through its drop box service.",
    "es": "Muchos secretarios son agentes del estado y también pueden completar el registro estatal, por una cuota adicional. Si tiene el título, o si el vehículo no lo necesita, quizá pueda hacerlo todo en la oficina del secretario. Si no, el DMV completa la parte estatal con cita o mediante su servicio de buzón de entrega.",
+   "state": "draft"
+  },
+  "guide.register-a-car.my-vehicle-is-exempt-from-titling": {
+   "en": "My vehicle is exempt from titling. What do I bring?",
+   "es": "Mi vehículo está exento de título. ¿Qué llevo?",
+   "state": "draft"
+  },
+  "guide.register-a-car.my-vehicle-is-leased-or-financed": {
+   "en": "My vehicle is leased or financed through a lender in another state. Where do I start?",
+   "es": "Mi vehículo es arrendado o está financiado por un prestamista de otro estado. ¿Por dónde empiezo?",
    "state": "draft"
   },
   "guide.register-a-car.new-to-new-hampshire-license": {
@@ -7899,6 +8034,11 @@
   "guide.register-a-car.temporary-plates": {
    "en": "Temporary plates",
    "es": "Placas temporales",
+   "state": "draft"
+  },
+  "guide.register-a-car.the-towns-fee-is-set-by": {
+   "en": "The town&rsquo;s fee is set by law from the maker&rsquo;s list price, and gets smaller as the vehicle ages.",
+   "es": "La cuota del municipio la fija la ley a partir del precio de lista del fabricante, y baja a medida que el vehículo envejece.",
    "state": "draft"
   },
   "guide.register-a-car.title": {
@@ -7962,13 +8102,13 @@
    "state": "draft"
   },
   "guide.renew-drivers-license.a-renewed-drivers-license-costs-50": {
-   "en": "A renewed driver&rsquo;s license costs $50, or $60 for a REAL ID license, and a non-driver ID card costs $20. The law sets all three. Other licenses cost different amounts, among them youth, motorcycle and commercial licenses and a license for someone who is not a U.S. citizen; the DMV&rsquo;s fees page lists them. The DMV takes credit cards, cash in person, and checks or money orders payable to &ldquo;State of NH - DMV&rdquo;.",
-   "es": "Una licencia de conducir renovada cuesta $50, o $60 para una licencia REAL ID, y una tarjeta de identificación de no conductor cuesta $20. La ley fija las tres. Otras licencias cuestan distinto, entre ellas las de jóvenes, de motocicleta y comerciales, y la licencia de una persona que no es ciudadana de EE. UU.; la página de cuotas del DMV las enumera. El DMV acepta tarjetas de crédito, efectivo en persona, y cheques o giros postales a nombre de &ldquo;State of NH - DMV&rdquo;.",
+   "en": "A renewed driver&rsquo;s license costs $50, or $60 for a REAL ID license, and a non-driver ID card costs $20. The law sets all three. The DMV takes credit cards, cash in person, and checks or money orders payable to &ldquo;State of NH - DMV&rdquo;.",
+   "es": "Una licencia de conducir renovada cuesta $50, o $60 para una licencia REAL ID, y una tarjeta de identificación de no conductor cuesta $20. La ley fija las tres. El DMV acepta tarjetas de crédito, efectivo en persona, y cheques o giros postales a nombre de &ldquo;State of NH - DMV&rdquo;.",
    "state": "draft"
   },
   "guide.renew-drivers-license.about-two-months-before-your-license": {
-   "en": "About two months before your license expires, the DMV mails a renewal notice to the address it has for you. You will not get one if your mail is forwarded, if you moved and did not tell the DMV your new address, or if your license is suspended.",
-   "es": "Unos dos meses antes de que venza su licencia, el DMV envía un aviso de renovación a la dirección que tiene de usted. No lo recibirá si su correo se reenvía a otra dirección, si se mudó y no le dio al DMV su nueva dirección, o si su licencia está suspendida.",
+   "en": "About two months before your license expires, the DMV mails a renewal notice to the address it has for you.",
+   "es": "Unos dos meses antes de que venza su licencia, el DMV envía un aviso de renovación a la dirección que tiene de usted.",
    "state": "draft"
   },
   "guide.renew-drivers-license.all-licensing-fees": {
@@ -7991,6 +8131,16 @@
    "es": "esté listo para un examen de la vista.",
    "state": "draft"
   },
+  "guide.renew-drivers-license.can-i-renew-online-every-time": {
+   "en": "Can I renew online every time?",
+   "es": "¿Puedo renovar en línea cada vez?",
+   "state": "draft"
+  },
+  "guide.renew-drivers-license.common-questions": {
+   "en": "Common Questions",
+   "es": "Preguntas frecuentes",
+   "state": "draft"
+  },
   "guide.renew-drivers-license.dmv-offices-see-people-by-appointment": {
    "en": "DMV offices see people by appointment. Book online, or call 603-227-4000. Bring:",
    "es": "Las oficinas del DMV atienden con cita. Pida la cita en línea, o llame al 603-227-4000. Lleve:",
@@ -8009,6 +8159,11 @@
   "guide.renew-drivers-license.getting-a-real-id-for-the": {
    "en": "Getting a REAL ID for the first time? That renewal is in person.",
    "es": "¿Va a obtener una REAL ID por primera vez? Esa renovación es en persona.",
+   "state": "draft"
+  },
+  "guide.renew-drivers-license.how-do-i-renew-a-non": {
+   "en": "How do I renew a non-driver ID or a commercial license?",
+   "es": "¿Cómo renuevo una identificación de no conductor o una licencia comercial?",
    "state": "draft"
   },
   "guide.renew-drivers-license.how-to-get-a-real-id": {
@@ -8081,6 +8236,11 @@
    "es": "O renuévela con cita en el DMV",
    "state": "draft"
   },
+  "guide.renew-drivers-license.other-licenses-cost-different-amounts": {
+   "en": "Other licenses cost different amounts, among them youth, motorcycle and commercial licenses and a license for someone who is not a U.S. citizen; the DMV&rsquo;s fees page lists them.",
+   "es": "Otras licencias cuestan distinto, entre ellas las de jóvenes, de motocicleta y comerciales, y la licencia de una persona que no es ciudadana de EE. UU.; la página de cuotas del DMV las enumera.",
+   "state": "draft"
+  },
   "guide.renew-drivers-license.pay-the-fee": {
    "en": "Pay the fee",
    "es": "Pague la cuota",
@@ -8151,6 +8311,16 @@
    "es": "Esté atento a su aviso de renovación",
    "state": "draft"
   },
+  "guide.renew-drivers-license.what-do-other-kinds-of-license": {
+   "en": "What do other kinds of license cost?",
+   "es": "¿Cuánto cuestan otros tipos de licencia?",
+   "state": "draft"
+  },
+  "guide.renew-drivers-license.why-didnt-i-get-a-renewal": {
+   "en": "Why didn&rsquo;t I get a renewal notice?",
+   "es": "¿Por qué no recibí un aviso de renovación?",
+   "state": "draft"
+  },
   "guide.renew-drivers-license.yes": {
    "en": "Yes",
    "es": "Sí",
@@ -8171,6 +8341,11 @@
    "es": "Necesita:",
    "state": "draft"
   },
+  "guide.renew-drivers-license.you-will-not-get-one-if": {
+   "en": "You will not get one if your mail is forwarded, if you moved and did not tell the DMV your new address, or if your license is suspended.",
+   "es": "No lo recibirá si su correo se reenvía a otra dirección, si se mudó y no le dio al DMV su nueva dirección, o si su licencia está suspendida.",
+   "state": "draft"
+  },
   "guide.renew-drivers-license.your-current-license-in-hand-because": {
    "en": "your current license in hand, because you will type in details printed on it;",
    "es": "su licencia actual a mano, porque tendrá que escribir datos impresos en ella;",
@@ -8179,6 +8354,11 @@
   "guide.renew-drivers-license.your-current-license-or-other-proof": {
    "en": "your current license, or other proof of identity if you cannot find it;",
    "es": "su licencia actual, u otra prueba de identidad si no la encuentra;",
+   "state": "draft"
+  },
+  "guide.report-a-road-problem.a-class-vi-road-is-a": {
+   "en": "A class VI road is a public way the town does not maintain, and the town has no duty to repair it.",
+   "es": "Un camino de clase VI es una vía pública que el municipio no mantiene, y el municipio no tiene obligación de repararlo.",
    "state": "draft"
   },
   "guide.report-a-road-problem.a-state-highway": {
@@ -8224,6 +8404,11 @@
   "guide.report-a-road-problem.classification-of-highways-rsa-229": {
    "en": "Classification of Highways, RSA 229",
    "es": "Clasificación de las carreteras, RSA 229",
+   "state": "draft"
+  },
+  "guide.report-a-road-problem.common-questions": {
+   "en": "Common Questions",
+   "es": "Preguntas frecuentes",
    "state": "draft"
   },
   "guide.report-a-road-problem.contact-the-department-of-transportation": {
@@ -8276,6 +8461,16 @@
    "es": "Si no está seguro de quién es el camino, empiece por su municipio.",
    "state": "draft"
   },
+  "guide.report-a-road-problem.in-the-built-up-centers-of": {
+   "en": "In the built-up centers of the cities and towns the law lists, such as Concord, Manchester and Nashua, the city or town maintains the state routes too.",
+   "es": "En los centros urbanos de las ciudades y municipios que la ley enumera, como Concord, Manchester y Nashua, la ciudad o el municipio mantiene también las rutas estatales.",
+   "state": "draft"
+  },
+  "guide.report-a-road-problem.is-every-bad-road-insufficient": {
+   "en": "Is every bad road &ldquo;insufficient&rdquo;?",
+   "es": "¿Todo camino en mal estado es &ldquo;insuficiente&rdquo;?",
+   "state": "draft"
+  },
   "guide.report-a-road-problem.lawyer-referral-service": {
    "en": "Lawyer Referral Service",
    "es": "Servicio de referencia de abogados",
@@ -8287,13 +8482,18 @@
    "state": "draft"
   },
   "guide.report-a-road-problem.most-roads-are-your-towns-or": {
-   "en": "Most roads are your town&rsquo;s or city&rsquo;s. It maintains every ordinary town road, and in the built-up centers of the cities and towns the law lists, such as Concord, Manchester and Nashua, it maintains the state routes too. It also keeps up the sidewalks along its roads, at no charge to the owners next to them.",
-   "es": "La mayoría de los caminos son de su municipio o de su ciudad. Mantiene todos los caminos municipales comunes y, en los centros urbanos de las ciudades y municipios que la ley enumera, como Concord, Manchester y Nashua, mantiene también las rutas estatales. También cuida las aceras a lo largo de sus caminos, sin costo para los dueños de los terrenos que dan a ellas.",
+   "en": "Most roads are your town&rsquo;s or city&rsquo;s. It maintains every ordinary town road, and keeps up the sidewalks along its roads, at no charge to the owners next to them.",
+   "es": "La mayoría de los caminos son de su municipio o de su ciudad. Mantiene todos los caminos municipales comunes, y cuida las aceras a lo largo de sus caminos, sin costo para los dueños de los terrenos que dan a ellas.",
    "state": "draft"
   },
   "guide.report-a-road-problem.municipal-highways-rsa-231": {
    "en": "Municipal Highways, RSA 231",
    "es": "Caminos municipales, RSA 231",
+   "state": "draft"
+  },
+  "guide.report-a-road-problem.no-a-road-simply-in-worse": {
+   "en": "No. A road simply in worse shape than others is not insufficient, and snow and ice the town is clearing under its winter policy are not a ground for a claim.",
+   "es": "No. Un camino que simplemente está en peor estado que otros no es insuficiente, y la nieve y el hielo que el municipio está quitando según su política de invierno no dan lugar a una reclamación.",
    "state": "draft"
   },
   "guide.report-a-road-problem.on-a-state-highway-the-department": {
@@ -8337,13 +8537,13 @@
    "state": "draft"
   },
   "guide.report-a-road-problem.the-states-department-of-transportation": {
-   "en": "The state&rsquo;s <b>Department of Transportation</b> maintains the main state highways, and the parts of the secondary state highways it has improved; a town maintains the rest of those. A class VI road is a public way the town does not maintain, and the town has no duty to repair it.",
-   "es": "El <b>Departamento de Transporte</b> del estado mantiene las carreteras estatales principales, y las partes de las carreteras estatales secundarias que ha mejorado; un municipio mantiene el resto de estas. Un camino de clase VI es una vía pública que el municipio no mantiene, y el municipio no tiene obligación de repararlo.",
+   "en": "The state&rsquo;s <b>Department of Transportation</b> maintains the main state highways, and the parts of the secondary state highways it has improved; a town maintains the rest of those.",
+   "es": "El <b>Departamento de Transporte</b> del estado mantiene las carreteras estatales principales, y las partes de las carreteras estatales secundarias que ha mejorado; un municipio mantiene el resto de estas.",
    "state": "draft"
   },
   "guide.report-a-road-problem.the-town-must-then-unless-it": {
-   "en": "The town must then, unless it decides in good faith there is no such danger, put up warnings at once and, within 72 hours, make a plan to repair it, and carry the plan out. If it does not, it is liable for the injury or damage the danger causes. A road simply in worse shape than others is not insufficient, and snow and ice the town is clearing under its winter policy are not a ground for a claim.",
-   "es": "Entonces el municipio, salvo que decida de buena fe que no existe tal peligro, tiene que poner advertencias de inmediato y, dentro de 72 horas, preparar un plan para repararlo, y cumplirlo. Si no lo hace, responde por las lesiones o los daños que cause el peligro. Un camino que simplemente está en peor estado que otros no es insuficiente, y la nieve y el hielo que el municipio está quitando según su política de invierno no dan lugar a una reclamación.",
+   "en": "The town must then, unless it decides in good faith there is no such danger, put up warnings at once and, within 72 hours, make a plan to repair it, and carry the plan out. If it does not, it is liable for the injury or damage the danger causes.",
+   "es": "Entonces el municipio, salvo que decida de buena fe que no existe tal peligro, tiene que poner advertencias de inmediato y, dentro de 72 horas, preparar un plan para repararlo, y cumplirlo. Si no lo hace, responde por las lesiones o los daños que cause el peligro.",
    "state": "draft"
   },
   "guide.report-a-road-problem.title": {
@@ -8354,6 +8554,16 @@
   "guide.report-a-road-problem.town-roads-and-sidewalks-are-your": {
    "en": "Town roads and sidewalks are your town or city&rsquo;s to fix: report a pothole, a broken sidewalk, a streetlight or a signal to its public works or highway department. The main state highways are the state Department of Transportation&rsquo;s: report those to its maintenance district for your town. For a dangerous spot, a signed written notice to the town makes it act, and answer for damage if it does not. If a road problem damaged your car, the deadline to give notice is short.",
    "es": "Los caminos y las aceras del municipio le toca arreglarlos a su municipio o ciudad: reporte un bache, una acera rota, un farol de la calle o un semáforo a su departamento de obras públicas o de caminos. Las carreteras estatales principales son del Departamento de Transporte del estado: repórtelas a su distrito de mantenimiento para su municipio. Para un lugar peligroso, un aviso por escrito y firmado al municipio lo obliga a actuar, y a responder por los daños si no lo hace. Si un problema del camino dañó su auto, el plazo para avisar es corto.",
+   "state": "draft"
+  },
+  "guide.report-a-road-problem.what-is-a-class-vi-road": {
+   "en": "What is a class VI road?",
+   "es": "¿Qué es un camino de clase VI?",
+   "state": "draft"
+  },
+  "guide.report-a-road-problem.who-fixes-a-state-route-through": {
+   "en": "Who fixes a state route through a city center?",
+   "es": "¿Quién arregla una ruta estatal que cruza el centro de una ciudad?",
    "state": "draft"
   },
   "guide.report-a-road-problem.who-to-contact-about-an-issue": {
@@ -11821,8 +12031,13 @@
    "state": "draft"
   },
   "guide.who-to-contact.before-they-can-look-into-your": {
-   "en": "Before they can look into your case, you sign a <b>privacy release</b>, because federal law lets an agency share your records only with your written consent. Each office&rsquo;s website has its form. Contact them too about a federal law or bill.",
-   "es": "Antes de que puedan revisar su caso, usted firma una <b>autorización de privacidad</b> (privacy release), porque la ley federal solo permite que una agencia comparta sus registros con su consentimiento por escrito. El sitio web de cada oficina tiene su formulario. Contáctelos también sobre una ley o un proyecto de ley federal.",
+   "en": "Before they can look into your case, you sign a <b>privacy release</b>, because federal law lets an agency share your records only with your written consent. Each office&rsquo;s website has its form.",
+   "es": "Antes de que puedan revisar su caso, usted firma una <b>autorización de privacidad</b> (privacy release), porque la ley federal solo permite que una agencia comparta sus registros con su consentimiento por escrito. El sitio web de cada oficina tiene su formulario.",
+   "state": "draft"
+  },
+  "guide.who-to-contact.can-my-members-of-congress-fix": {
+   "en": "Can my members of Congress fix a problem with a federal agency?",
+   "es": "¿Pueden mis miembros del Congreso resolver un problema con una agencia federal?",
    "state": "draft"
   },
   "guide.who-to-contact.choose-your-town-to-see-everyone": {
@@ -11833,6 +12048,11 @@
   "guide.who-to-contact.city-councils-rsa-47": {
    "en": "City councils, RSA 47",
    "es": "Concejos municipales, RSA 47",
+   "state": "draft"
+  },
+  "guide.who-to-contact.common-questions": {
+   "en": "Common Questions",
+   "es": "Preguntas frecuentes",
    "state": "draft"
   },
   "guide.who-to-contact.contact-the-executive-council-executive": {
@@ -11930,14 +12150,19 @@
    "state": "draft",
    "es": "Si no obtiene respuesta, la <b>oficina del Gobernador</b> recibe pedidos de ayuda de los residentes: llame a su oficina de Servicios al Ciudadano (Constituent Services) al (603) 271-7676, o elija Request Assistance en su página de contacto. Su <b>consejero ejecutivo</b> (Executive Councilor), uno de los cinco elegidos por distrito cada dos años, es, en palabras del propio Consejo, un defensor de la gente y sus ojos y oídos en Concord. La oficina del Consejo atiende en el (603) 271-3632."
   },
+  "guide.who-to-contact.in-a-town-the-selectboard-manages": {
+   "en": "In a town the <b>selectboard</b> manages the town&rsquo;s business and may regulate the use of its roads and sidewalks; in a city the <b>city council</b> holds those powers, with the mayor or city manager running the departments.",
+   "es": "En un municipio, la <b>junta de concejales</b> (selectboard) maneja los asuntos del municipio y puede regular el uso de sus calles y aceras; en una ciudad, esos poderes los tiene el <b>concejo municipal</b> (city council), y el alcalde o el administrador municipal dirige los departamentos.",
+   "state": "draft"
+  },
   "guide.who-to-contact.lead": {
    "en": "Which office to contact about a problem or a law, from potholes and sidewalks to a state program or a federal agency, and how to find the people who hold it.",
    "es": "Qué oficina contactar sobre un problema o una ley, desde baches y aceras hasta un programa estatal o una agencia federal, y cómo encontrar a las personas que la ocupan.",
    "state": "draft"
   },
   "guide.who-to-contact.most-everyday-problems-are-local-your": {
-   "en": "Most everyday problems are local. Your town or city maintains its own roads and repairs its sidewalks, and runs or arranges trash and recycling. In a town the <b>selectboard</b> manages the town&rsquo;s business and may regulate the use of its roads and sidewalks; in a city the <b>city council</b> holds those powers, with the mayor or city manager running the departments.",
-   "es": "La mayoría de los problemas cotidianos son locales. Su municipio o ciudad mantiene sus propias calles y repara sus aceras, y administra u organiza la basura y el reciclaje. En un municipio, la <b>junta de concejales</b> (selectboard) maneja los asuntos del municipio y puede regular el uso de sus calles y aceras; en una ciudad, esos poderes los tiene el <b>concejo municipal</b> (city council), y el alcalde o el administrador municipal dirige los departamentos.",
+   "en": "Most everyday problems are local. Your town or city maintains its own roads and repairs its sidewalks, and runs or arranges trash and recycling.",
+   "es": "La mayoría de los problemas cotidianos son locales. Su municipio o ciudad mantiene sus propias calles y repara sus aceras, y administra u organiza la basura y el reciclaje.",
    "state": "draft"
   },
   "guide.who-to-contact.not-sure-ask-any-of-them": {
@@ -11995,6 +12220,11 @@
    "es": "La agencia estatal, para un programa; sus representantes estatales y su senador estatal, para una ley o un proyecto de ley.",
    "state": "draft"
   },
+  "guide.who-to-contact.they-cannot-promise-an-outcome-but": {
+   "en": "They cannot promise an outcome, but they can ask the agency for a fair and timely answer.",
+   "es": "No pueden prometer un resultado, pero pueden pedirle a la agencia una respuesta justa y oportuna.",
+   "state": "draft"
+  },
   "guide.who-to-contact.title": {
    "en": "Who to Contact About an Issue: Town, School, State or Federal",
    "es": "A quién contactar sobre un asunto: municipio, escuela, estado o gobierno federal",
@@ -12013,6 +12243,16 @@
   "guide.who-to-contact.what-is-it-about": {
    "en": "What is it about?",
    "es": "¿Sobre qué es?",
+   "state": "draft"
+  },
+  "guide.who-to-contact.who-runs-a-town-and-who": {
+   "en": "Who runs a town, and who runs a city?",
+   "es": "¿Quién gobierna un municipio, y quién una ciudad?",
+   "state": "draft"
+  },
+  "guide.who-to-contact.why-do-they-ask-me-to": {
+   "en": "Why do they ask me to sign a privacy release?",
+   "es": "¿Por qué me piden firmar una autorización de privacidad?",
    "state": "draft"
   },
   "guide.who-to-contact.your-county-runs-the-county-jail": {
@@ -12036,8 +12276,8 @@
    "state": "draft"
   },
   "guide.who-to-contact.your-two-u-s-senators-and": {
-   "en": "Your two <b>U.S. senators</b> and your <b>U.S. representative</b> each have staff in New Hampshire who help residents with federal agencies: Social Security, veterans&rsquo; benefits, passports, the IRS, immigration and others. They cannot promise an outcome, but they can ask the agency for a fair and timely answer.",
-   "es": "Sus dos <b>senadores de EE. UU.</b> y su <b>representante de EE. UU.</b> tienen personal en New Hampshire que ayuda a los residentes con las agencias federales: el Seguro Social, los beneficios para veteranos, los pasaportes, el IRS, la inmigración y otras. No pueden prometer un resultado, pero pueden pedirle a la agencia una respuesta justa y oportuna.",
+   "en": "Your two <b>U.S. senators</b> and your <b>U.S. representative</b> each have staff in New Hampshire who help residents with federal agencies: Social Security, veterans&rsquo; benefits, passports, the IRS, immigration and others. Contact them too about a federal law or bill.",
+   "es": "Sus dos <b>senadores de EE. UU.</b> y su <b>representante de EE. UU.</b> tienen personal en New Hampshire que ayuda a los residentes con las agencias federales: el Seguro Social, los beneficios para veteranos, los pasaportes, el IRS, la inmigración y otras. Contáctelos también sobre una ley o un proyecto de ley federal.",
    "state": "draft"
   },
   "guide.who-to-contact.your-u-s-senators-and-u": {
