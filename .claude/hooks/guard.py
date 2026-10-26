@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-10-26.2
+# GRANITE_VERSION: 2026-10-26.3
 """
 What an AI assistant working in this repository may not do on its own.
 
@@ -209,8 +209,9 @@ def bash(cmd, cwd):
                 sub == "reflog" and "expire" in args) or (
                 sub == "gc" and "--prune" in argstr) or (sub == "update-ref" and "-d" in args):
             return "deny", "this rewrites or discards git history, which is how work is recovered."
-        if sub == "branch" and re.search(r"(?:^|\s)(?:-D|-d|--delete)\b", argstr) and re.search(
-                r"\b(?:main|master|dev)\b", argstr):
+        # The branch named exactly, so ">/dev/null" is not the dev branch.
+        if sub == "branch" and re.search(r"(?:^|\s)(?:-D|-d|--delete)\b", argstr) and any(
+                re.fullmatch(r"(?:origin/)?(?:main|master|dev)", a) for a in args):
             return "deny", "main and dev are never deleted."
         if sub == "stash" and args[:1] and args[0] in ("drop", "clear"):
             return "ask", "this throws away stashed work."

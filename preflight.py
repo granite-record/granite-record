@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.716
+# GRANITE_VERSION: 2026-09-04.717
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -66831,6 +66831,7 @@ def _assistant_guard():
         (B("git push origin +guides"), "deny"),
         (B("git clean -fdx"), "deny"),
         (B("git filter-branch --env-filter 'x' HEAD"), "deny"),
+        (B("git branch -D dev"), "deny"),
         (B("rm -rf work"), "deny"),
         (B("rm -r db/"), "deny"),
         (B("rm -rf ."), "deny"),
@@ -66848,6 +66849,7 @@ def _assistant_guard():
         (B("grep -rn 'gc.nh.gov' src/pages"), "allow"),
         (B("git push -u origin guides && git push origin HEAD:dev"), "allow"),
         (B("rm -rf site/es .build_cache"), "allow"),
+        (B("git branch -d worktree-agent-x >/dev/null"), "allow"),
         (B("rm -rf /tmp/scratch-build"), "allow"),
         (B("python3 src/ops/cloud.py pull"), "allow"),
         (("Edit", {"file_path": "src/pages/guides.py"}), "allow"),
