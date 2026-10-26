@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-10-11.48
+# GRANITE_VERSION: 2026-10-11.49
 """
 The how-to guides: their words, their sources, and what each was checked
 against. Read by build_civics.py, which draws them on the Resources hub's
@@ -7727,44 +7727,47 @@ TASKS = [
     ("Help and Benefits", [
         task("food-and-health-assistance", "Apply for food or health assistance",
              "SNAP and Medicaid, online at NH Easy or on paper."),
-        task("file-for-unemployment", "File for unemployment",
-             "Your claim, the weekly claims that follow, and how to appeal."),
-        task("wage-rights", "Get paid what you are owed at work",
-             "When pay is due, your last paycheck, deductions, minimum wage, overtime, and "
-             "filing a wage claim.",
-             head="Your rights at work: getting paid"),
-        task("child-care-scholarship", "Get help paying for child care",
-             "The Child Care Scholarship: who it is for, how to apply, and choosing a provider."),
-        task("domestic-violence-help", "Get help after domestic violence, sexual assault or stalking",
-             "The 24-hour helpline, a safety plan, a protective order, and care after an assault."),
-        task("discrimination", "Get help if you face discrimination",
-             "At work, renting or buying a home, and in stores and other public places: what "
-             "the law forbids, and how to file a complaint."),
-        task("homelessness-help", "Get help if you are homeless or may lose your home",
-             "Shelter, your town&rsquo;s welfare office, your rights in an eviction, and a "
-             "housing voucher."),
-        task("tenant-rights", "Know your rights as a tenant",
-             "Security deposits, repairs and heat, rent increases, and what happens in an "
-             "eviction.",
-             head="Your rights as a tenant, from deposits to eviction"),
-        task("landlord-duties", "Rent out a home",
-             "A landlord&rsquo;s duties: security deposits, entry, minimum standards, and "
-             "evicting through the court."),
-        task("storms-and-emergencies", "Prepare for storms, power outages and emergencies",
-             "Emergency alerts, supplies, power outage and winter storm safety, and where to "
-             "find a warm place."),
         task("heating-and-electric-help", "Get help with heating and electric bills",
              "Fuel assistance, help with electric bills, weatherization, and what to do with no "
              "heat."),
+        task("file-for-unemployment", "File for unemployment",
+             "Your claim, the weekly claims that follow, and how to appeal."),
+        task("child-care-scholarship", "Get help paying for child care",
+             "The Child Care Scholarship: who it is for, how to apply, and choosing a provider."),
+        task("homelessness-help", "Get help if you are homeless or may lose your home",
+             "Shelter, your town&rsquo;s welfare office, your rights in an eviction, and a "
+             "housing voucher."),
+        task("domestic-violence-help", "Get help after domestic violence, sexual assault or stalking",
+             "The 24-hour helpline, a safety plan, a protective order, and care after an assault."),
+        task("storms-and-emergencies", "Prepare for storms, power outages and emergencies",
+             "Emergency alerts, supplies, power outage and winter storm safety, and where to "
+             "find a warm place."),
+    ]),
+    ("Federal Benefits", [
         task("medicare-and-social-security", "Sign up for Medicare and Social Security",
              "When to sign up, choosing coverage, and help paying Medicare&rsquo;s costs."),
         task("disability-help", "Get disability benefits and services",
              "SSDI and SSI, the state&rsquo;s cash and medical assistance, area agencies and "
              "vocational rehabilitation."),
+    ]),
+    ("Know Your Rights", [
+        task("tenant-rights", "Know your rights as a tenant",
+             "Security deposits, repairs and heat, rent increases, and what happens in an "
+             "eviction.",
+             head="Your rights as a tenant, from deposits to eviction"),
+        task("wage-rights", "Get paid what you are owed at work",
+             "When pay is due, your last paycheck, deductions, minimum wage, overtime, and "
+             "filing a wage claim.",
+             head="Your rights at work: getting paid"),
+        task("discrimination", "Get help if you face discrimination",
+             "At work, renting or buying a home, and in stores and other public places: what "
+             "the law forbids, and how to file a complaint."),
         task("consumer-rights", "Report a scam or a business that cheated you",
              "Cancel a sale made at your door, your rights with gift certificates, and "
              "complaining to the Attorney General.",
              head="How to report a scam or file a consumer complaint"),
+        task("public-records", "Get a public record",
+             "Ask a town, school district, county or state agency for its records."),
     ]),
     ("Property and Records", [
         task("property-tax-abatement", "Appeal your property tax assessment",
@@ -7776,8 +7779,9 @@ TASKS = [
              "How your property is assessed, how the rate is set, what the bill shows, and the "
              "relief you can apply for.",
              head="How to read your property tax bill"),
-        task("public-records", "Get a public record",
-             "Ask a town, school district, county or state agency for its records."),
+        task("landlord-duties", "Rent out a home",
+             "A landlord&rsquo;s duties: security deposits, entry, minimum standards, and "
+             "evicting through the court."),
         task("vital-records", "Get a birth, death, marriage or divorce certificate",
              "From your town or city clerk or the state: who may ask and what to bring."),
         task("passport", "Get a U.S. passport",

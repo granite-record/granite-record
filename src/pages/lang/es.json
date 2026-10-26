@@ -4380,9 +4380,19 @@
    "es": "Conducir y vehículos",
    "state": "draft"
   },
+  "guide.group.federal-benefits": {
+   "en": "Federal Benefits",
+   "es": "Beneficios federales",
+   "state": "draft"
+  },
   "guide.group.help-and-benefits": {
    "en": "Help and Benefits",
    "es": "Ayuda y beneficios",
+   "state": "draft"
+  },
+  "guide.group.know-your-rights": {
+   "en": "Know Your Rights",
+   "es": "Conozca sus derechos",
    "state": "draft"
   },
   "guide.group.more": {
