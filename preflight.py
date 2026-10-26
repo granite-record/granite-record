@@ -66588,7 +66588,10 @@ def _translations(i18n):
     the code says now, with the same {placeholders}; an entry no code asks
     for is a leftover. And say() itself is held to the rule on a catalog
     made for the purpose: current words answer, words translated from other
-    English do not, and the miss is kept for the build to say."""
+    English do not, and the miss is kept for the build to say. The
+    proofreader is told where each key's words are by its first part
+    (src/ops/translations.py's AREAS), so every first part has its place
+    there, and no place is kept for a first part nothing uses."""
     import chrome
     import build_pages as BP
     words, problems = i18n.code_words()
@@ -66607,6 +66610,19 @@ def _translations(i18n):
         st = [e.get("state") for e in cat["strings"].values()]
         said.append(f"{lang}: {st.count('proofread')} proofread, {st.count('draft')} drafts, "
                     + ("offered" if cat["offered"] else "unlisted"))
+    # Where each word is on the site, for the proofreader's sheet
+    # (translations.AREAS, by a key's first part): every first part the code
+    # uses has its place, and no place is kept for one nothing uses. A key
+    # whose first part has none goes to the proofreader with "on the site"
+    # blank, as fifteen did until 26 October 2026, and the review of that
+    # day deleted "sess" with nothing failing.
+    import translations
+    used = {k.split(".")[0] for k in words}
+    unnamed, unused = sorted(used - set(translations.AREAS)), sorted(set(translations.AREAS) - used)
+    assert not unnamed and not unused, (
+        "src/ops/translations.py's AREAS, the proofreader's \"on the site\" column, and the code's "
+        f"keys differ: no place for {unnamed or 'none'}; a place for {unused or 'none'}, which no "
+        "code asks for")
     # The tables the English is also written in, held to the words here.
     assert chrome.tab_words("en") == {h: w for h, w, _g in chrome.NAV_TABS}, (
         "chrome.tab_words and NAV_TABS say the sections differently")
