@@ -1523,9 +1523,14 @@
    "es": "Sirve en su lugar un certificado de otro estado, de la Reserva Auxiliar de la Guardia Costera de EE. UU. (U.S. Coast Guard Auxiliary), del U.S. Power Squadron o una tarjeta canadiense aprobada.",
    "state": "draft"
   },
+  "guide.boating.a-child-12-or-under-must": {
+   "en": "A child 12 or under must wear a Coast Guard approved life jacket on the deck of a boat that is underway, unless the boat has the side rails the law describes.",
+   "es": "Un niño de 12 años o menos debe llevar un chaleco salvavidas aprobado por la Guardia Costera en la cubierta de una embarcación en marcha, salvo que la embarcación tenga las barandas que describe la ley.",
+   "state": "draft"
+  },
   "guide.boating.a-person-under-16-may-operate": {
-   "en": "A person under 16 may operate a boat with a motor of more than 25 horsepower only with a person 18 or older aboard who holds a safe boater certificate. A personal watercraft (the law calls it a ski craft) may be operated only by someone 16 or older. A child 12 or under must wear a Coast Guard approved life jacket on the deck of a boat that is underway, unless the boat has the side rails the law describes.",
-   "es": "Una persona menor de 16 años solo puede manejar una embarcación con un motor de más de 25 caballos de fuerza si va a bordo una persona de 18 años o más que tenga el certificado de navegación segura. Una moto acuática (la ley la llama ski craft) solo puede manejarla alguien de 16 años o más. Un niño de 12 años o menos debe llevar un chaleco salvavidas aprobado por la Guardia Costera en la cubierta de una embarcación en marcha, salvo que la embarcación tenga las barandas que describe la ley.",
+   "en": "A person under 16 may operate a boat with a motor of more than 25 horsepower only with a person 18 or older aboard who holds a safe boater certificate. A personal watercraft (the law calls it a ski craft) may be operated only by someone 16 or older.",
+   "es": "Una persona menor de 16 años solo puede manejar una embarcación con un motor de más de 25 caballos de fuerza si va a bordo una persona de 18 años o más que tenga el certificado de navegación segura. Una moto acuática (la ley la llama ski craft) solo puede manejarla alguien de 16 años o más.",
    "state": "draft"
   },
   "guide.boating.a-rowboat-or-canoe-with-no": {
@@ -1578,6 +1583,21 @@
    "es": "Llévelo, o una copia o una foto del frente y el reverso en su teléfono, mientras maneja, y muéstreselo a un agente de la Patrulla Marina (Marine Patrol) que se lo pida.",
    "state": "draft"
   },
+  "guide.boating.common-questions": {
+   "en": "Common Questions",
+   "es": "Preguntas frecuentes",
+   "state": "draft"
+  },
+  "guide.boating.display-the-number-on-each-side": {
+   "en": "Display the number on each side of the front half of the boat, in block letters at least 3 inches high in a contrasting color.",
+   "es": "Muestre el número a cada lado de la mitad delantera de la embarcación, en letras de molde de al menos 3 pulgadas de alto y de un color que contraste.",
+   "state": "draft"
+  },
+  "guide.boating.does-a-boating-certificate-from-another": {
+   "en": "Does a boating certificate from another state count?",
+   "es": "¿Vale un certificado de navegación de otro estado?",
+   "state": "draft"
+  },
   "guide.boating.does-it-need-registering": {
    "en": "Does it need registering?",
    "es": "¿Hay que registrarla?",
@@ -1598,6 +1618,11 @@
    "es": "Obtenga su certificado de educación para la navegación segura",
    "state": "draft"
   },
+  "guide.boating.how-do-i-display-my-registration": {
+   "en": "How do I display my registration number?",
+   "es": "¿Cómo muestro mi número de registro?",
+   "state": "draft"
+  },
   "guide.boating.how-to-get-a-fishing-license": {
    "en": "How to get a fishing license",
    "es": "Cómo obtener una licencia de pesca",
@@ -1613,14 +1638,19 @@
    "es": "Si tiene 16 años o más y no tiene certificado, un vendedor o alquilador de embarcaciones aprobado por el estado puede hacerle un examen breve y darle un <b>certificado temporal</b>, válido hasta por 14 días y solo en las aguas de New Hampshire. Lleve una identificación con foto al examen. Cuesta $10, y no puede obtener más de uno en un año calendario; es una solución a corto plazo, no un sustituto del curso.",
    "state": "draft"
   },
+  "guide.boating.if-you-sell-the-boat-or": {
+   "en": "If you sell the boat, or it is destroyed or abandoned, tell the DMV in writing within 15 days.",
+   "es": "Si vende la embarcación, o si se destruye o se abandona, avise al DMV por escrito en un plazo de 15 días.",
+   "state": "draft"
+  },
   "guide.boating.it-is-issued-from-age-16": {
    "en": "It is issued from age 16, and if you pass at 15 you receive it when you turn 16. It lasts for life. The state charges $10 for it, and all the fees you can be charged for it, the course included, may not exceed $50.",
    "es": "Se expide a partir de los 16 años, y si aprueba a los 15 lo recibe al cumplir 16. Dura toda la vida. El estado cobra $10 por él, y el total de las cuotas que le pueden cobrar por él, incluido el curso, no puede pasar de $50.",
    "state": "draft"
   },
   "guide.boating.keep-the-registration-certificate-aboard": {
-   "en": "Keep the registration certificate aboard. Display the number on each side of the front half of the boat, in block letters at least 3 inches high in a contrasting color. Every registration ends on <b>December 31</b>. If you sell the boat, or it is destroyed or abandoned, tell the DMV in writing within 15 days.",
-   "es": "Mantenga el certificado de registro a bordo. Muestre el número a cada lado de la mitad delantera de la embarcación, en letras de molde de al menos 3 pulgadas de alto y de un color que contraste. Todo registro vence el <b>31 de diciembre</b>. Si vende la embarcación, o si se destruye o se abandona, avise al DMV por escrito en un plazo de 15 días.",
+   "en": "Keep the registration certificate aboard. Every registration ends on <b>December 31</b>.",
+   "es": "Mantenga el certificado de registro a bordo. Todo registro vence el <b>31 de diciembre</b>.",
    "state": "draft"
   },
   "guide.boating.lead": {
@@ -1631,6 +1661,11 @@
   "guide.boating.length": {
    "en": "Length",
    "es": "Largo",
+   "state": "draft"
+  },
+  "guide.boating.must-children-wear-a-life-jacket": {
+   "en": "Must children wear a life jacket?",
+   "es": "¿Los niños tienen que llevar chaleco salvavidas?",
    "state": "draft"
   },
   "guide.boating.no": {
@@ -1726,6 +1761,11 @@
   "guide.boating.visiting-or-renting-a-temporary": {
    "en": "Visiting or renting: a temporary certificate",
    "es": "Si está de visita o alquila: un certificado temporal",
+   "state": "draft"
+  },
+  "guide.boating.what-if-i-sell-my-boat": {
+   "en": "What if I sell my boat?",
+   "es": "¿Y si vendo mi embarcación?",
    "state": "draft"
   },
   "guide.boating.yes": {
@@ -3550,14 +3590,29 @@
    "es": "Un residente de New Hampshire legalmente ciego puede obtener una licencia de pesca gratis, y le dura toda la vida.",
    "state": "draft"
   },
+  "guide.fishing-license.a-nonresident-full-time-student-at": {
+   "en": "A nonresident full-time student at a school or college in New Hampshire pays the resident fee.",
+   "es": "Un estudiante no residente de tiempo completo en una escuela o universidad de New Hampshire paga la cuota de residente.",
+   "state": "draft"
+  },
   "guide.fishing-license.a-recreational-saltwater-license": {
    "en": "A recreational saltwater license.",
    "es": "Una licencia recreativa de agua salada.",
    "state": "draft"
   },
+  "guide.fishing-license.a-resident-veteran-who-is-totally": {
+   "en": "A resident veteran who is totally and permanently disabled from service gets a permanent license, with a one-time $10 administrative fee. A resident on active duty stationed outside the state can get a free license to use while home on leave.",
+   "es": "Un veterano residente con una discapacidad total y permanente por su servicio obtiene una licencia permanente, con una cuota administrativa única de $10. Un residente en servicio activo destinado fuera del estado puede obtener una licencia gratuita para usarla mientras está de permiso en casa.",
+   "state": "draft"
+  },
   "guide.fishing-license.anyone-16-or-older-needs-a": {
    "en": "Anyone 16 or older needs a license to fish in New Hampshire, in fresh water or salt water, except on the free fishing days Fish and Game sets each year. Buy it online from Fish and Game or from a license agent. Every license ends on December 31.",
    "es": "Toda persona de 16 años o más necesita una licencia para pescar en New Hampshire, en agua dulce o salada, salvo en los días de pesca gratuita que el Departamento de Pesca y Caza (Fish and Game) fija cada año. Cómprela en línea a Pesca y Caza o con un agente de licencias. Toda licencia vence el 31 de diciembre.",
+   "state": "draft"
+  },
+  "guide.fishing-license.are-there-licenses-for-veterans-and": {
+   "en": "Are there licenses for veterans and service members?",
+   "es": "¿Hay licencias para veteranos y militares?",
    "state": "draft"
   },
   "guide.fishing-license.are-you-under-16": {
@@ -3591,8 +3646,13 @@
    "state": "draft"
   },
   "guide.fishing-license.buy-your-license-on-fish-and": {
-   "en": "Buy your license on Fish and Game&rsquo;s online license system or from a license agent. You buy it yourself, as the person who will use it, and give proof of where you live. Fish and Game cannot refund a license or exchange it.",
-   "es": "Compre su licencia en el sistema de licencias en línea de Pesca y Caza o con un agente de licencias. Debe comprarla usted mismo, como la persona que la usará, y dar prueba de dónde vive. Pesca y Caza no puede reembolsar ni cambiar una licencia.",
+   "en": "Buy your license on Fish and Game&rsquo;s online license system or from a license agent. You buy it yourself, as the person who will use it, and give proof of where you live.",
+   "es": "Compre su licencia en el sistema de licencias en línea de Pesca y Caza o con un agente de licencias. Debe comprarla usted mismo, como la persona que la usará, y dar prueba de dónde vive.",
+   "state": "draft"
+  },
+  "guide.fishing-license.can-i-get-a-refund": {
+   "en": "Can I get a refund?",
+   "es": "¿Me pueden devolver el dinero?",
    "state": "draft"
   },
   "guide.fishing-license.check-whether-you-need-one": {
@@ -3603,6 +3663,16 @@
   "guide.fishing-license.choose-your-license": {
    "en": "Choose your license",
    "es": "Elija su licencia",
+   "state": "draft"
+  },
+  "guide.fishing-license.common-questions": {
+   "en": "Common Questions",
+   "es": "Preguntas frecuentes",
+   "state": "draft"
+  },
+  "guide.fishing-license.do-i-need-a-license-to": {
+   "en": "Do I need a license to dig clams or take lobsters?",
+   "es": "¿Necesito una licencia para sacar almejas o langostas?",
    "state": "draft"
   },
   "guide.fishing-license.every-license-ends-on-december-31": {
@@ -3640,6 +3710,11 @@
    "es": "Cómo obtener una licencia de caza",
    "state": "draft"
   },
+  "guide.fishing-license.i-am-a-student-from-another": {
+   "en": "I am a student from another state. What do I pay?",
+   "es": "Soy estudiante de otro estado. ¿Cuánto pago?",
+   "state": "draft"
+  },
   "guide.fishing-license.if-you-are-a-new-hampshire": {
    "en": "if you are a New Hampshire resident fishing on your own land;",
    "es": "si es residente de New Hampshire y pesca en su propio terreno;",
@@ -3648,6 +3723,11 @@
   "guide.fishing-license.if-you-are-under-16": {
    "en": "if you are under 16;",
    "es": "si tiene menos de 16 años;",
+   "state": "draft"
+  },
+  "guide.fishing-license.is-a-fishing-license-free-for": {
+   "en": "Is a fishing license free for someone who is blind?",
+   "es": "¿Es gratuita la licencia de pesca para una persona ciega?",
    "state": "draft"
   },
   "guide.fishing-license.lakes-ponds-rivers-and-streams": {
@@ -3676,8 +3756,8 @@
    "state": "draft"
   },
   "guide.fishing-license.lower-cost-and-free-licenses-residents": {
-   "en": "<b>Lower-cost and free licenses.</b> Residents 68 or older can buy a discounted senior license; residents born in 1947 or earlier get a free, permanent Milestone license from Fish and Game in Concord, its regional offices or select agents. A resident veteran who is totally and permanently disabled from service gets a permanent license, with a one-time $10 administrative fee. A resident on active duty stationed outside the state can get a free license to use while home on leave.",
-   "es": "<b>Licencias más baratas y gratuitas.</b> Los residentes de 68 años o más pueden comprar una licencia con descuento para personas mayores; los residentes nacidos en 1947 o antes obtienen una licencia Milestone gratuita y permanente en la sede de Pesca y Caza en Concord, en sus oficinas regionales o con ciertos agentes. Un veterano residente con una discapacidad total y permanente por su servicio obtiene una licencia permanente, con una cuota administrativa única de $10. Un residente en servicio activo destinado fuera del estado puede obtener una licencia gratuita para usarla mientras está de permiso en casa.",
+   "en": "<b>Lower-cost and free licenses.</b> Residents 68 or older can buy a discounted senior license; residents born in 1947 or earlier get a free, permanent Milestone license from Fish and Game in Concord, its regional offices or select agents.",
+   "es": "<b>Licencias más baratas y gratuitas.</b> Los residentes de 68 años o más pueden comprar una licencia con descuento para personas mayores; los residentes nacidos en 1947 o antes obtienen una licencia Milestone gratuita y permanente en la sede de Pesca y Caza en Concord, en sus oficinas regionales o con ciertos agentes.",
    "state": "draft"
   },
   "guide.fishing-license.marine-fisheries-rsa-211": {
@@ -3700,6 +3780,11 @@
    "es": "No",
    "state": "draft"
   },
+  "guide.fishing-license.no-fish-and-game-cannot-refund": {
+   "en": "No. Fish and Game cannot refund a license or exchange it.",
+   "es": "No. Pesca y Caza no puede reembolsar ni cambiar una licencia.",
+   "state": "draft"
+  },
   "guide.fishing-license.on-a-free-fishing-day-the": {
    "en": "on a <b>free fishing day</b>. The law lets Fish and Game set 2 days a year when anyone may fish by angling without a license: the first Saturday in June and the third Saturday in January, in fresh water or salt water. Season dates, limits and the other rules still apply, and anyone in a fishing tournament still needs a license that day.",
    "es": "en un <b>día de pesca gratuita</b>. La ley permite que Pesca y Caza fije 2 días al año en los que cualquier persona puede pescar con caña o sedal sin licencia: el primer sábado de junio y el tercer sábado de enero, en agua dulce o salada. Siguen vigentes las temporadas, los límites y las demás reglas, y quien participe en un torneo de pesca sigue necesitando licencia ese día.",
@@ -3711,13 +3796,13 @@
    "state": "draft"
   },
   "guide.fishing-license.resident-or-nonresident-you-are-a": {
-   "en": "<b>Resident or nonresident.</b> You are a resident for a license if you hold a New Hampshire driver&rsquo;s license or non-driver photo ID and claim residence in no other state for any purpose. A nonresident full-time student at a school or college in New Hampshire pays the resident fee.",
-   "es": "<b>Residente o no residente.</b> Para la licencia, usted es residente si tiene una licencia de conducir o una identificación con foto para no conductores de New Hampshire y no declara residencia en ningún otro estado para ningún fin. Un estudiante no residente de tiempo completo en una escuela o universidad de New Hampshire paga la cuota de residente.",
+   "en": "<b>Resident or nonresident.</b> You are a resident for a license if you hold a New Hampshire driver&rsquo;s license or non-driver photo ID and claim residence in no other state for any purpose.",
+   "es": "<b>Residente o no residente.</b> Para la licencia, usted es residente si tiene una licencia de conducir o una identificación con foto para no conductores de New Hampshire y no declara residencia en ningún otro estado para ningún fin.",
    "state": "draft"
   },
   "guide.fishing-license.salt-water-fishing-for-saltwater-fish": {
-   "en": "<b>Salt water.</b> Fishing for saltwater fish in coastal and tidal waters takes a recreational saltwater license, unless you are fishing from a licensed charter or party boat. Anglers 68 or older need it too. It also lets you fish Massachusetts&rsquo; coastal waters and the whole Maine coast. Digging clams takes a separate license, sold to residents only, and taking lobsters or crabs another.",
-   "es": "<b>Agua salada.</b> Pescar peces de agua salada en aguas costeras y de marea requiere una licencia recreativa de agua salada, salvo que pesque desde un barco de alquiler o de excursión con licencia. Los pescadores de 68 años o más también la necesitan. Además, le permite pescar en las aguas costeras de Massachusetts y en toda la costa de Maine. Sacar almejas requiere una licencia aparte, que se vende solo a residentes, y sacar langostas o cangrejos, otra.",
+   "en": "<b>Salt water.</b> Fishing for saltwater fish in coastal and tidal waters takes a recreational saltwater license, unless you are fishing from a licensed charter or party boat. Anglers 68 or older need it too. It also lets you fish Massachusetts&rsquo; coastal waters and the whole Maine coast.",
+   "es": "<b>Agua salada.</b> Pescar peces de agua salada en aguas costeras y de marea requiere una licencia recreativa de agua salada, salvo que pesque desde un barco de alquiler o de excursión con licencia. Los pescadores de 68 años o más también la necesitan. Además, le permite pescar en las aguas costeras de Massachusetts y en toda la costa de Maine.",
    "state": "draft"
   },
   "guide.fishing-license.saltwater-fishing-questions-nh-fish-and": {
@@ -3768,6 +3853,11 @@
   "guide.fishing-license.yes": {
    "en": "Yes",
    "es": "Sí",
+   "state": "draft"
+  },
+  "guide.fishing-license.yes-digging-clams-takes-a-separate": {
+   "en": "Yes. Digging clams takes a separate license, sold to residents only, and taking lobsters or crabs another.",
+   "es": "Sí. Sacar almejas requiere una licencia aparte, que se vende solo a residentes, y sacar langostas o cangrejos, otra.",
    "state": "draft"
   },
   "guide.fishing-license.you-may-fish-without-a-license": {
@@ -5001,6 +5091,11 @@
    "es": "una <b>licencia de arco</b> para cazar con arco;",
    "state": "draft"
   },
+  "guide.hunting-license.are-there-discounted-licenses": {
+   "en": "Are there discounted licenses?",
+   "es": "¿Hay licencias con descuento?",
+   "state": "draft"
+  },
   "guide.hunting-license.boating-your-certificate-and": {
    "en": "Boating: your certificate and registration",
    "es": "Navegación: su certificado y el registro de su embarcación",
@@ -5036,9 +5131,24 @@
    "es": "Elija sus licencias",
    "state": "draft"
   },
+  "guide.hunting-license.common-questions": {
+   "en": "Common Questions",
+   "es": "Preguntas frecuentes",
+   "state": "draft"
+  },
+  "guide.hunting-license.do-i-have-to-wear-hunter": {
+   "en": "Do I have to wear hunter orange?",
+   "es": "¿Tengo que llevar ropa de color naranja de cazador?",
+   "state": "draft"
+  },
   "guide.hunting-license.fish-and-game-licenses-rsa-214": {
    "en": "Fish and game licenses, RSA 214",
    "es": "Licencias de pesca y caza, RSA 214",
+   "state": "draft"
+  },
+  "guide.hunting-license.fish-and-game-sets-the-fees": {
+   "en": "Fish and Game sets the fees; its license page lists them.",
+   "es": "Pesca y Caza fija las cuotas; su página de licencias las muestra.",
    "state": "draft"
   },
   "guide.hunting-license.for-any-migratory-bird-such-as": {
@@ -5054,6 +5164,11 @@
   "guide.hunting-license.have-you-held-a-hunting-license": {
    "en": "Have you held a hunting license before?",
    "es": "¿Ha tenido antes una licencia de caza?",
+   "state": "draft"
+  },
+  "guide.hunting-license.how-old-must-i-be-for": {
+   "en": "How old must I be for hunter education, and is the course online?",
+   "es": "¿Qué edad debo tener para la educación para cazadores, y el curso es en línea?",
    "state": "draft"
   },
   "guide.hunting-license.how-to-get-a-fishing-license": {
@@ -5087,13 +5202,18 @@
    "state": "draft"
   },
   "guide.hunting-license.if-you-have-not-taken-the": {
-   "en": "If you have not taken the course, you may buy an <b>apprentice hunting license</b>, once in your lifetime. You may hunt with it only beside a licensed hunter who is 18 or older, who answers for what you do. It is not valid for moose, and it does not count as a past license when you buy your next one.",
-   "es": "Si no ha tomado el curso, puede comprar una <b>licencia de caza de aprendiz</b>, una sola vez en la vida. Con ella solo puede cazar junto a un cazador con licencia de 18 años o más, que responde por lo que usted haga. No vale para alces, y no cuenta como licencia anterior cuando compre la siguiente.",
+   "en": "If you have not taken the course, you may buy an <b>apprentice hunting license</b>, once in your lifetime. You may hunt with it only beside a licensed hunter who is 18 or older, who answers for what you do.",
+   "es": "Si no ha tomado el curso, puede comprar una <b>licencia de caza de aprendiz</b>, una sola vez en la vida. Con ella solo puede cazar junto a un cazador con licencia de 18 años o más, que responde por lo que usted haga.",
    "state": "draft"
   },
   "guide.hunting-license.in-the-field": {
    "en": "In the field",
    "es": "En el campo",
+   "state": "draft"
+  },
+  "guide.hunting-license.it-is-not-valid-for-moose": {
+   "en": "It is not valid for moose, and it does not count as a past license when you buy your next one.",
+   "es": "No vale para alces, y no cuenta como licencia anterior cuando compre la siguiente.",
    "state": "draft"
   },
   "guide.hunting-license.lead": {
@@ -5147,8 +5267,8 @@
    "state": "draft"
   },
   "guide.hunting-license.residents-68-or-older-can-buy": {
-   "en": "Residents 68 or older can buy discounted senior licenses, and a resident veteran totally and permanently disabled from service gets a permanent license, with a one-time $10 administrative fee. Fish and Game sets the other fees; its license page lists them.",
-   "es": "Los residentes de 68 años o más pueden comprar licencias con descuento para personas mayores, y un veterano residente con una discapacidad total y permanente por su servicio obtiene una licencia permanente, con una cuota administrativa única de $10. Pesca y Caza fija las demás cuotas; su página de licencias las muestra.",
+   "en": "Residents 68 or older can buy discounted senior licenses, and a resident veteran totally and permanently disabled from service gets a permanent license, with a one-time $10 administrative fee.",
+   "es": "Los residentes de 68 años o más pueden comprar licencias con descuento para personas mayores, y un veterano residente con una discapacidad total y permanente por su servicio obtiene una licencia permanente, con una cuota administrativa única de $10.",
    "state": "draft"
   },
   "guide.hunting-license.senior-and-milestone-licenses-nh-fish": {
@@ -5207,13 +5327,23 @@
    "state": "draft"
   },
   "guide.hunting-license.to-hunt-with-a-bow-you": {
-   "en": "To hunt with a bow you need the same for <b>bow hunter education</b>: an archery license and a hunting license do not stand in for each other. You must be at least 12 to get the certificate, and the online course ends with an in-person field day. Fish and Game&rsquo;s page lists the courses and how to sign up.",
-   "es": "Para cazar con arco necesita lo mismo para la <b>educación para cazadores con arco</b>: una licencia de arco y una licencia de caza no sustituyen la una a la otra. Debe tener al menos 12 años para obtener el certificado, y el curso en línea termina con un día de práctica presencial. La página del Departamento de Pesca y Caza (Fish and Game) muestra los cursos y cómo inscribirse.",
+   "en": "To hunt with a bow you need the same for <b>bow hunter education</b>: an archery license and a hunting license do not stand in for each other. Fish and Game&rsquo;s page lists the courses and how to sign up.",
+   "es": "Para cazar con arco necesita lo mismo para la <b>educación para cazadores con arco</b>: una licencia de arco y una licencia de caza no sustituyen la una a la otra. La página del Departamento de Pesca y Caza (Fish and Game) muestra los cursos y cómo inscribirse.",
+   "state": "draft"
+  },
+  "guide.hunting-license.what-can-i-not-do-with": {
+   "en": "What can I not do with an apprentice license?",
+   "es": "¿Qué no puedo hacer con una licencia de aprendiz?",
    "state": "draft"
   },
   "guide.hunting-license.yes": {
    "en": "Yes",
    "es": "Sí",
+   "state": "draft"
+  },
+  "guide.hunting-license.you-must-be-at-least-12": {
+   "en": "You must be at least 12 to get the certificate, and the online course ends with an in-person field day.",
+   "es": "Debe tener al menos 12 años para obtener el certificado, y el curso en línea termina con un día de práctica presencial.",
    "state": "draft"
   },
   "guide.landlord-duties.a-landlord-who-does-not-return": {
@@ -5941,6 +6071,11 @@
    "es": "Un niño menor de 16 años (Departamento de Estado)",
    "state": "draft"
   },
+  "guide.passport.a-childs-passport-is-valid-for": {
+   "en": "A child&rsquo;s passport is valid for 5 years; an adult&rsquo;s, for 10.",
+   "es": "El pasaporte de un niño vale por 5 años; el de un adulto, por 10.",
+   "state": "draft"
+  },
   "guide.passport.a-first-passport-a-passport-for": {
    "en": "A first passport, a passport for a child under 16, and one for anyone who cannot renew are applied for in person. Fill out Form DS-11 with the State Department&rsquo;s form filler and print it on one side of the paper, but <b>do not sign it</b>: you sign it in front of the acceptance agent, under oath.",
    "es": "El primer pasaporte, el pasaporte de un niño menor de 16 años y el de quien no puede renovarlo se solicitan en persona. Llene el formulario DS-11 con la herramienta para llenar formularios del Departamento de Estado e imprímalo por un solo lado del papel, pero <b>no lo firme</b>: lo firma delante del agente de aceptación, bajo juramento.",
@@ -6001,14 +6136,34 @@
    "es": "¿Va a solicitarlo en persona? Reúna la prueba de ciudadanía, una identificación con foto, una fotocopia de cada una y una foto.",
    "state": "draft"
   },
+  "guide.passport.are-other-websites-that-offer-to": {
+   "en": "Are other websites that offer to renew my passport safe?",
+   "es": "¿Son seguros otros sitios web que ofrecen renovar mi pasaporte?",
+   "state": "draft"
+  },
   "guide.passport.book-at-a-post-office-usps": {
    "en": "Book at a post office (USPS)",
    "es": "Reservar en una oficina postal (USPS)",
    "state": "draft"
   },
+  "guide.passport.bring-proof-of-it-instead-of": {
+   "en": "Bring proof of it instead of the other parent&rsquo;s consent, such as a court order granting you sole custody, a birth certificate or adoption decree naming only you, or the other parent&rsquo;s death certificate.",
+   "es": "Lleve una prueba de ella en lugar del consentimiento del otro padre o madre, como una orden judicial que le otorgue la custodia exclusiva, un acta de nacimiento o un decreto de adopción que lo nombre solo a usted, o el acta de defunción del otro padre o madre.",
+   "state": "draft"
+  },
+  "guide.passport.can-unpaid-child-support-or-taxes": {
+   "en": "Can unpaid child support or taxes stop an application?",
+   "es": "¿Puede una deuda de manutención de hijos o de impuestos detener la solicitud?",
+   "state": "draft"
+  },
   "guide.passport.check-whether-you-can-renew-instead": {
    "en": "Check whether you can renew instead",
    "es": "Vea si puede renovarlo en lugar de solicitar uno nuevo",
+   "state": "draft"
+  },
+  "guide.passport.common-questions": {
+   "en": "Common Questions",
+   "es": "Preguntas frecuentes",
    "state": "draft"
   },
   "guide.passport.execution-of-passport-application-22-cfr": {
@@ -6046,6 +6201,11 @@
    "es": "¿Ha tenido un pasaporte de EE. UU. expedido por 10 años, dentro de los últimos 15 años?",
    "state": "draft"
   },
+  "guide.passport.how-long-is-a-passport-good": {
+   "en": "How long is a passport good for?",
+   "es": "¿Por cuánto tiempo vale un pasaporte?",
+   "state": "draft"
+  },
   "guide.passport.how-to-get-a-birth-death": {
    "en": "How to get a birth, death, marriage or divorce certificate",
    "es": "Cómo obtener un acta de nacimiento, defunción, matrimonio o divorcio",
@@ -6057,8 +6217,8 @@
    "state": "draft"
   },
   "guide.passport.if-one-parent-cannot-come-that": {
-   "en": "If one parent cannot come, that parent signs the Statement of Consent, Form DS-3053, before a notary, and you bring it, with a photocopy of the ID they showed the notary, within 90 days of its signing. If you alone have custody, bring proof instead, such as a court order granting it, a birth certificate or adoption decree naming only you, or the other parent&rsquo;s death certificate. A child&rsquo;s passport is valid for 5 years; an adult&rsquo;s, for 10.",
-   "es": "Si uno de los padres no puede ir, ese padre o madre firma la Declaración de Consentimiento, formulario DS-3053, ante un notario, y usted la lleva, con una fotocopia de la identificación que mostró al notario, dentro de los 90 días de su firma. Si solo usted tiene la custodia, lleve una prueba en su lugar, como una orden judicial que se la otorgue, un acta de nacimiento o un decreto de adopción que lo nombre solo a usted, o el acta de defunción del otro padre o madre. El pasaporte de un niño vale por 5 años; el de un adulto, por 10.",
+   "en": "If one parent cannot come, that parent signs the Statement of Consent, Form DS-3053, before a notary, and you bring it, with a photocopy of the ID they showed the notary, within 90 days of its signing.",
+   "es": "Si uno de los padres no puede ir, ese padre o madre firma la Declaración de Consentimiento, formulario DS-3053, ante un notario, y usted la lleva, con una fotocopia de la identificación que mostró al notario, dentro de los 90 días de su firma.",
    "state": "draft"
   },
   "guide.passport.if-you-have-no-birth-certificate": {
@@ -6106,6 +6266,11 @@
    "es": "Los menores, 22 CFR 51.28 (federal)",
    "state": "draft"
   },
+  "guide.passport.no-birth-certificate-that-meets-the": {
+   "en": "No birth certificate that meets the rules? The questions below say what the State Department accepts instead.",
+   "es": "¿No tiene un acta de nacimiento que cumpla las reglas? Las preguntas de abajo dicen qué acepta en su lugar el Departamento de Estado.",
+   "state": "draft"
+  },
   "guide.passport.no-or-it-is-for-a": {
    "en": "No, or it is for a child under 16",
    "es": "No, o es para un niño menor de 16 años",
@@ -6139,6 +6304,11 @@
   "guide.passport.renew-online-state-department": {
    "en": "Renew online (State Department)",
    "es": "Renovar en línea (Departamento de Estado)",
+   "state": "draft"
+  },
+  "guide.passport.renew-only-at-the-state-departments": {
+   "en": "Renew only at the State Department&rsquo;s own site: others that offer to do it for you charge extra and put your information at risk.",
+   "es": "Renuévelo solo en el sitio del propio Departamento de Estado: otros que ofrecen hacerlo por usted cobran de más y ponen en riesgo su información.",
    "state": "draft"
   },
   "guide.passport.renew-your-passport-online-u-s": {
@@ -6176,6 +6346,16 @@
    "es": "La validez de los pasaportes, 22 CFR 51.4 (federal)",
    "state": "draft"
   },
+  "guide.passport.what-if-i-alone-have-custody": {
+   "en": "What if I alone have custody of my child?",
+   "es": "¿Y si solo yo tengo la custodia de mi hijo?",
+   "state": "draft"
+  },
+  "guide.passport.what-if-i-have-no-birth": {
+   "en": "What if I have no birth certificate that meets the rules?",
+   "es": "¿Y si no tengo un acta de nacimiento que cumpla las reglas?",
+   "state": "draft"
+  },
   "guide.passport.yes": {
    "en": "Yes",
    "es": "Sí",
@@ -6187,8 +6367,8 @@
    "state": "draft"
   },
   "guide.passport.you-can-renew-online-instead-if": {
-   "en": "You can <b>renew online</b> instead if that passport was valid for 10 years and expires within a year or expired less than 5 years ago; you are 25 or older; you are not changing your name or sex; you are not traveling for at least 6 weeks, since an online renewal cannot be expedited; you are in the United States when you apply; and you have the passport, undamaged. You pay by card, and you keep the old passport, which is canceled once you apply. Renew only at the State Department&rsquo;s own site: others that offer to do it for you charge extra and put your information at risk.",
-   "es": "En cambio, puede <b>renovarlo en línea</b> si ese pasaporte valía por 10 años y vence dentro de un año o venció hace menos de 5 años; tiene 25 años o más; no cambia su nombre ni su sexo; no viajará durante al menos 6 semanas, ya que una renovación en línea no se puede acelerar; está en Estados Unidos cuando presenta la solicitud; y tiene el pasaporte, sin daños. Paga con tarjeta, y se queda con el pasaporte anterior, que se cancela en cuanto presenta la solicitud. Renuévelo solo en el sitio del propio Departamento de Estado: otros que ofrecen hacerlo por usted cobran de más y ponen en riesgo su información.",
+   "en": "You can <b>renew online</b> instead if that passport was valid for 10 years and expires within a year or expired less than 5 years ago; you are 25 or older; you are not changing your name or sex; you are not traveling for at least 6 weeks, since an online renewal cannot be expedited; you are in the United States when you apply; and you have the passport, undamaged. You pay by card, and you keep the old passport, which is canceled once you apply.",
+   "es": "En cambio, puede <b>renovarlo en línea</b> si ese pasaporte valía por 10 años y vence dentro de un año o venció hace menos de 5 años; tiene 25 años o más; no cambia su nombre ni su sexo; no viajará durante al menos 6 semanas, ya que una renovación en línea no se puede acelerar; está en Estados Unidos cuando presenta la solicitud; y tiene el pasaporte, sin daños. Paga con tarjeta, y se queda con el pasaporte anterior, que se cancela en cuanto presenta la solicitud.",
    "state": "draft"
   },
   "guide.passport.you-can-usually-renew-by-mail": {
@@ -8621,6 +8801,11 @@
    "es": "Una radio meteorológica de la NOAA (NOAA Weather Radio) y el Sistema de Alerta de Emergencia en la radio y la televisión también dan alertas.",
    "state": "draft"
   },
+  "guide.storms-and-emergencies.a-refrigerator-keeps-food-cold-for": {
+   "en": "A refrigerator keeps food cold for about 4 hours, and a full freezer for about 48 hours. Throw out food that has been at 40 degrees or warmer for 2 hours or more: when in doubt, throw it out.",
+   "es": "Un refrigerador mantiene la comida fría unas 4 horas, y un congelador lleno unas 48 horas. Tire la comida que haya estado a 40 grados Fahrenheit (4 °C) o más durante 2 horas o más: si tiene dudas, tírela.",
+   "state": "draft"
+  },
   "guide.storms-and-emergencies.add-what-your-household-needs-such": {
    "en": "Add what your household needs, such as medicines. Store it all in one or two containers that are easy to carry, and replace anything that expires.",
    "es": "Agregue lo que necesite su hogar, como medicamentos. Guárdelo todo en uno o dos recipientes fáciles de llevar, y reemplace lo que se venza.",
@@ -8634,6 +8819,16 @@
   "guide.storms-and-emergencies.after-an-emergency-you-may-need": {
    "en": "After an emergency you may need to manage on your own for several days. A basic kit includes:",
    "es": "Después de una emergencia, puede que tenga que arreglárselas solo durante varios días. Un equipo básico incluye:",
+   "state": "draft"
+  },
+  "guide.storms-and-emergencies.anyone-who-lives-works-owns-property": {
+   "en": "Anyone who lives, works, owns property or often visits where NH Alerts is used can sign up, and you can add the places your family lives.",
+   "es": "Cualquier persona que viva, trabaje, tenga una propiedad o visite con frecuencia un lugar donde se usa NH Alerts puede inscribirse, y puede agregar los lugares donde vive su familia.",
+   "state": "draft"
+  },
+  "guide.storms-and-emergencies.are-there-other-ways-to-get": {
+   "en": "Are there other ways to get alerts?",
+   "es": "¿Hay otras maneras de recibir alertas?",
    "state": "draft"
   },
   "guide.storms-and-emergencies.at-least-a-several-day-supply": {
@@ -8671,6 +8866,11 @@
    "es": "<b>El monóxido de carbono puede matar</b>, y no se puede ver ni oler. Use un generador, una estufa de campamento o una parrilla solo al aire libre, a por lo menos 20 pies de ventanas, puertas y garajes adjuntos. Nunca caliente su hogar con una estufa u horno de gas. Tenga detectores de monóxido de carbono con batería de respaldo en cada piso de su casa.",
    "state": "draft"
   },
+  "guide.storms-and-emergencies.common-questions": {
+   "en": "Common Questions",
+   "es": "Preguntas frecuentes",
+   "state": "draft"
+  },
   "guide.storms-and-emergencies.frostbite-causes-loss-of-feeling-and": {
    "en": "<b>Frostbite</b> causes loss of feeling and color in the face, fingers and toes. Go to a warm room and soak in warm water; do not massage the skin or use a heating pad.",
    "es": "<b>La congelación</b> causa pérdida de sensibilidad y de color en la cara, los dedos de las manos y de los pies. Vaya a un cuarto cálido y remoje la zona en agua tibia; no frote la piel ni use una almohadilla térmica.",
@@ -8684,6 +8884,16 @@
   "guide.storms-and-emergencies.has-the-power-gone-out": {
    "en": "Has the power gone out?",
    "es": "¿Se fue la electricidad?",
+   "state": "draft"
+  },
+  "guide.storms-and-emergencies.how-do-i-recognize-and-treat": {
+   "en": "How do I recognize and treat frostbite?",
+   "es": "¿Cómo reconozco y trato la congelación?",
+   "state": "draft"
+  },
+  "guide.storms-and-emergencies.how-long-does-food-stay-safe": {
+   "en": "How long does food stay safe in a power outage?",
+   "es": "¿Cuánto tiempo se conserva la comida durante un corte de electricidad?",
    "state": "draft"
   },
   "guide.storms-and-emergencies.how-to-get-help-if-you": {
@@ -8747,8 +8957,8 @@
    "state": "draft"
   },
   "guide.storms-and-emergencies.keep-the-refrigerator-and-freezer-closed-2": {
-   "en": "<b>Keep the refrigerator and freezer closed.</b> A refrigerator keeps food cold for about 4 hours, and a full freezer for about 48 hours. Throw out food that has been at 40 degrees or warmer for 2 hours or more: when in doubt, throw it out.",
-   "es": "<b>Mantenga cerrados el refrigerador y el congelador.</b> Un refrigerador mantiene la comida fría unas 4 horas, y un congelador lleno unas 48 horas. Tire la comida que haya estado a 40 grados Fahrenheit (4 °C) o más durante 2 horas o más: si tiene dudas, tírela.",
+   "en": "<b>Keep the refrigerator and freezer closed</b>, so food stays cold longer.",
+   "es": "<b>Mantenga cerrados el refrigerador y el congelador</b>, para que la comida se mantenga fría más tiempo.",
    "state": "draft"
   },
   "guide.storms-and-emergencies.lead": {
@@ -8762,8 +8972,8 @@
    "state": "draft"
   },
   "guide.storms-and-emergencies.nh-alerts-is-new-hampshires-official": {
-   "en": "<b>NH Alerts</b> is New Hampshire&rsquo;s official emergency notification system. It sends alerts about local weather, evacuations, AMBER Alerts, hazardous materials and other emergencies by phone call, text message, email or app. Create an account to choose how you are reached; to get text messages, add your mobile number as a text (SMS) contact. Or download the Genasys Protect app, which shows alerts where you are without an account. Anyone who lives, works, owns property or often visits where NH Alerts is used can sign up, and you can add the places your family lives.",
-   "es": "<b>NH Alerts</b> es el sistema oficial de notificaciones de emergencia de New Hampshire. Envía alertas sobre el tiempo local, evacuaciones, alertas AMBER, materiales peligrosos y otras emergencias por llamada telefónica, mensaje de texto, correo electrónico o aplicación. Cree una cuenta para elegir cómo quiere recibirlas; para recibir mensajes de texto, agregue su número de celular como contacto de texto (SMS). O descargue la aplicación Genasys Protect, que muestra las alertas donde usted esté sin necesidad de una cuenta. Cualquier persona que viva, trabaje, tenga una propiedad o visite con frecuencia un lugar donde se usa NH Alerts puede inscribirse, y puede agregar los lugares donde vive su familia.",
+   "en": "<b>NH Alerts</b> is New Hampshire&rsquo;s official emergency notification system. It sends alerts about local weather, evacuations, AMBER Alerts, hazardous materials and other emergencies by phone call, text message, email or app. Create an account to choose how you are reached; to get text messages, add your mobile number as a text (SMS) contact. Or download the Genasys Protect app, which shows alerts where you are without an account.",
+   "es": "<b>NH Alerts</b> es el sistema oficial de notificaciones de emergencia de New Hampshire. Envía alertas sobre el tiempo local, evacuaciones, alertas AMBER, materiales peligrosos y otras emergencias por llamada telefónica, mensaje de texto, correo electrónico o aplicación. Cree una cuenta para elegir cómo quiere recibirlas; para recibir mensajes de texto, agregue su número de celular como contacto de texto (SMS). O descargue la aplicación Genasys Protect, que muestra las alertas donde usted esté sin necesidad de una cuenta.",
    "state": "draft"
   },
   "guide.storms-and-emergencies.plan-ahead-for-medicines-that-need": {
@@ -8832,6 +9042,11 @@
    "es": "<b>Vigilancia (Watch): esté preparado.</b> Es posible una tormenta importante.",
    "state": "draft"
   },
+  "guide.storms-and-emergencies.watch-for-frostbite-and-hypothermia-the": {
+   "en": "Watch for frostbite and hypothermia: the questions below say what to do.",
+   "es": "Esté atento a la congelación y la hipotermia: las preguntas de abajo dicen qué hacer.",
+   "state": "draft"
+  },
   "guide.storms-and-emergencies.watches-and-warnings-national-weather": {
    "en": "Watches and warnings (National Weather Service)",
    "es": "Vigilancias y avisos (Servicio Meteorológico Nacional)",
@@ -8840,6 +9055,16 @@
   "guide.storms-and-emergencies.water-one-gallon-per-person-per": {
    "en": "water, one gallon per person per day, for several days;",
    "es": "agua, un galón por persona por día, para varios días;",
+   "state": "draft"
+  },
+  "guide.storms-and-emergencies.what-is-hypothermia-and-what-should": {
+   "en": "What is hypothermia, and what should I do?",
+   "es": "¿Qué es la hipotermia y qué debo hacer?",
+   "state": "draft"
+  },
+  "guide.storms-and-emergencies.who-can-sign-up-for-nh": {
+   "en": "Who can sign up for NH Alerts?",
+   "es": "¿Quién puede inscribirse en NH Alerts?",
    "state": "draft"
   },
   "guide.storms-and-emergencies.winter-weather-ready-gov": {
@@ -10749,6 +10974,16 @@
    "es": "Pregunte a su municipio cómo maneja la basura y el reciclaje: una estación de transferencia, recolección a domicilio, bolsas o etiquetas adhesivas.",
    "state": "draft"
   },
+  "guide.trash-and-recycling.call-your-fire-department-for": {
+   "en": "Call your fire department for instructions.",
+   "es": "Llame a su departamento de bomberos para recibir instrucciones.",
+   "state": "draft"
+  },
+  "guide.trash-and-recycling.can-my-town-fine-me-for": {
+   "en": "Can my town fine me for breaking its trash rules?",
+   "es": "¿Puede multarme mi municipio por no cumplir sus reglas de basura?",
+   "state": "draft"
+  },
   "guide.trash-and-recycling.collection-day-contacts-by-town": {
    "en": "Collection day contacts by town (Department of Environmental Services)",
    "es": "Contactos por municipio para los días de recolección (Departamento de Servicios Ambientales)",
@@ -10757,6 +10992,11 @@
   "guide.trash-and-recycling.collection-event-contacts-2026-2027": {
    "en": "Collection event contacts, 2026-2027 (Department of Environmental Services)",
    "es": "Contactos para las jornadas de recolección, 2026-2027 (Departamento de Servicios Ambientales)",
+   "state": "draft"
+  },
+  "guide.trash-and-recycling.common-questions": {
+   "en": "Common Questions",
+   "es": "Preguntas frecuentes",
    "state": "draft"
   },
   "guide.trash-and-recycling.compost-at-home": {
@@ -10790,8 +11030,8 @@
    "state": "draft"
   },
   "guide.trash-and-recycling.every-town-must-either-run-a": {
-   "en": "Every town must either run a solid waste facility, often called the transfer station or the dump, or make sure its residents can use one elsewhere. The town sets the rules: what must be separated for recycling, how trash is collected, what it costs, and whether you must use special bags or stickers, which the town sells at a reasonable price. A town may fine people who break its rules.",
-   "es": "Cada municipio debe tener una instalación para desechos sólidos, a menudo llamada la estación de transferencia (transfer station) o el basurero (dump), o asegurarse de que sus residentes puedan usar una en otro lugar. El municipio fija las reglas: qué hay que separar para reciclar, cómo se recoge la basura, cuánto cuesta y si hay que usar bolsas o etiquetas adhesivas especiales, que el municipio vende a un precio razonable. Un municipio puede multar a quien no cumpla sus reglas.",
+   "en": "Every town must either run a solid waste facility, often called the transfer station or the dump, or make sure its residents can use one elsewhere. The town sets the rules: what must be separated for recycling, how trash is collected, what it costs, and whether you must use special bags or stickers, which the town sells at a reasonable price.",
+   "es": "Cada municipio debe tener una instalación para desechos sólidos, a menudo llamada la estación de transferencia (transfer station) o el basurero (dump), o asegurarse de que sus residentes puedan usar una en otro lugar. El municipio fija las reglas: qué hay que separar para reciclar, cómo se recoge la basura, cuánto cuesta y si hay que usar bolsas o etiquetas adhesivas especiales, que el municipio vende a un precio razonable.",
    "state": "draft"
   },
   "guide.trash-and-recycling.hazardous-products-keep-them-for-a": {
@@ -10812,11 +11052,6 @@
   "guide.trash-and-recycling.how-to-prepare-for-storms-power": {
    "en": "How to prepare for storms, power outages and other emergencies",
    "es": "Cómo prepararse para tormentas, cortes de electricidad y otras emergencias",
-   "state": "draft"
-  },
-  "guide.trash-and-recycling.if-a-container-is-corroding-call": {
-   "en": "If a container is corroding, call your fire department for instructions.",
-   "es": "Si un envase se está corroyendo, llame a su departamento de bomberos para recibir instrucciones.",
    "state": "draft"
   },
   "guide.trash-and-recycling.is-it-something-special": {
@@ -10852,6 +11087,11 @@
   "guide.trash-and-recycling.leftover-products-that-can-catch-fire": {
    "en": "Leftover products that can catch fire, react, explode, corrode or poison, such as paints, cleaners, oils, batteries and pesticides, are <b>household hazardous waste</b>. Do not pour them down the drain, on the ground or into a storm drain, and check before putting any out with the trash.",
    "es": "Los restos de productos que pueden incendiarse, reaccionar, explotar, corroer o envenenar, como pinturas, productos de limpieza, aceites, baterías y pesticidas, son <b>desechos peligrosos del hogar</b>. No los eche por el desagüe, en el suelo ni en una alcantarilla pluvial, y averigüe antes de poner alguno con la basura.",
+   "state": "draft"
+  },
+  "guide.trash-and-recycling.meat-fish-bones-dairy-fats-and": {
+   "en": "Meat, fish, bones, dairy, fats and oils, which attract animals, and pet waste.",
+   "es": "Carne, pescado, huesos, lácteos, grasas y aceites, que atraen animales, y excrementos de mascotas.",
    "state": "draft"
   },
   "guide.trash-and-recycling.never-in-the-trash-ask-your": {
@@ -10915,14 +11155,39 @@
    "es": "Baterías de celda húmeda y de iones de litio.",
    "state": "draft"
   },
+  "guide.trash-and-recycling.what-do-i-do-with-used": {
+   "en": "What do I do with used motor oil?",
+   "es": "¿Qué hago con el aceite de motor usado?",
+   "state": "draft"
+  },
+  "guide.trash-and-recycling.what-if-a-hazardous-product-s": {
+   "en": "What if a hazardous product's container is corroding?",
+   "es": "¿Y si el envase de un producto peligroso se está corroyendo?",
+   "state": "draft"
+  },
+  "guide.trash-and-recycling.what-should-i-keep-out-of": {
+   "en": "What should I keep out of a compost pile?",
+   "es": "¿Qué no debo poner en el compost?",
+   "state": "draft"
+  },
+  "guide.trash-and-recycling.where-can-i-recycle-batteries-and": {
+   "en": "Where can I recycle batteries and electronics?",
+   "es": "¿Dónde puedo reciclar baterías y aparatos electrónicos?",
+   "state": "draft"
+  },
   "guide.trash-and-recycling.who-to-contact-about-an-issue": {
    "en": "Who to contact about an issue",
    "es": "A quién contactar sobre un asunto",
    "state": "draft"
   },
+  "guide.trash-and-recycling.yes-a-town-may-fine-people": {
+   "en": "Yes: a town may fine people who break its rules.",
+   "es": "Sí: un municipio puede multar a quien no cumpla sus reglas.",
+   "state": "draft"
+  },
   "guide.trash-and-recycling.you-can-compost-food-scraps-from": {
-   "en": "You can compost food scraps from your kitchen with leaves and other yard trim. Mix &ldquo;greens&rdquo;, such as fruit and vegetable scraps, coffee grounds and grass clippings, with &ldquo;browns&rdquo;, such as dry leaves, twigs, shredded paper and cardboard. Leave out meat, fish, bones, dairy, fats and oils, which attract animals, and pet waste. If you have no room, look for a town or community composting program that collects food scraps or takes them at a drop-off.",
-   "es": "Puede hacer compost con los restos de comida de su cocina junto con hojas y otros recortes del jardín. Mezcle materiales &ldquo;verdes&rdquo;, como restos de frutas y verduras, residuos de café y césped cortado, con materiales &ldquo;marrones&rdquo;, como hojas secas, ramitas, papel y cartón triturados. No ponga carne, pescado, huesos, lácteos, grasas ni aceites, que atraen animales, ni excrementos de mascotas. Si no tiene espacio, busque un programa de compostaje municipal o comunitario que recoja los restos de comida o los reciba en un punto de entrega.",
+   "en": "You can compost food scraps from your kitchen with leaves and other yard trim. Mix &ldquo;greens&rdquo;, such as fruit and vegetable scraps, coffee grounds and grass clippings, with &ldquo;browns&rdquo;, such as dry leaves, twigs, shredded paper and cardboard. If you have no room, look for a town or community composting program that collects food scraps or takes them at a drop-off.",
+   "es": "Puede hacer compost con los restos de comida de su cocina junto con hojas y otros recortes del jardín. Mezcle materiales &ldquo;verdes&rdquo;, como restos de frutas y verduras, residuos de café y césped cortado, con materiales &ldquo;marrones&rdquo;, como hojas secas, ramitas, papel y cartón triturados. Si no tiene espacio, busque un programa de compostaje municipal o comunitario que recoja los restos de comida o los reciba en un punto de entrega.",
    "state": "draft"
   },
   "guide.trash-and-recycling.your-town-or-city-office-and": {
