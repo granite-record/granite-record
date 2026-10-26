@@ -145,6 +145,7 @@ import _paths  # noqa: E402,F401
 
 import argparse
 import csv
+import hashlib
 import html
 import json
 import os
@@ -156,7 +157,7 @@ import urllib.error
 import urllib.parse
 import urllib.request
 from collections import Counter
-from datetime import date
+from datetime import date, datetime
 
 from fetch_committee_reports import (DOCNUM_RE, OPTION_RE, SEL_DOC, SEL_KIND,
                                      SEL_YEAR, SELECT_RE, UA, _hidden, _options)
@@ -966,6 +967,648 @@ def take_listing(a, rows):
     return 0
 
 
+# ---- GitHub's night asks for the documents of the years handed to it --------
+#
+# From the handover (refusal.night_years) the night is the one machine that
+# asks for the calendars and journals of its years (the person's design of 26
+# October 2026). --night is that ask: night_plan() decides what may be asked
+# before anything is; take_night() asks, one at a time, and writes what
+# happened to the night's own record -- never the queue -- and every PDF
+# under --root, never in the four folders.
+#
+# The pause before every request, the first too, jittered by a quarter; the
+# most documents a night; how long it may go on starting requests; the tries
+# a document gets across nights before a person is told. For one answer, the
+# socket's timeout, the whole answer's deadline and the largest PDF taken:
+# guesses, written down as guesses, for nothing on this disk measures them.
+NIGHT_PAUSE = 20.0
+NIGHT_MOST = 8
+NIGHT_SECONDS = 600
+NIGHT_TRIES = 3
+# The night before's list must be this much older than tonight's: a night is
+# a day apart, and a second run the same morning finds the first run's list
+# on file.
+LISTED_APART_HOURS = 20
+NIGHT_TIMEOUT = 60
+NIGHT_DEADLINE = 90
+NIGHT_BYTES_MOST = 50_000_000
+# A whole PDF ends with its end-of-file marker; this much of its tail is read for it.
+NIGHT_EOF_TAIL = 2048
+NIGHT_CHUNK = 1 << 16
+# Beside --out: each request the night made and how it ended, and the rows its
+# plan marked held without asking -- what the night installs the record against.
+ASKED_NAME = "documents_asked.json"
+# The bucket's own list of the PDFs it keeps, {path: bytes}, read tonight
+# after kit-down (cloud.py docs-night): on the runner only.
+IN_BUCKET = Path(".night") / "docs_in_bucket.json"
+
+# A refusal written against a row, in the words the drain wrote it with: a
+# 403, 429 or 503, a Retry-After, the firewall's page, or a dropped
+# connection, this address's usual way of saying no. A second ask cannot
+# tell whether the address or the document is refusing, so the night never
+# asks for such a row (the approved rule B7): a person settles it, or hands
+# the years back.
+REFUSED_BEFORE = re.compile(
+    r"(?:Error|HTTP)\s*(?:403|429|503)\b|Forbidden|Too Many Requests|Retry-After|block page|Blocked"
+    r"|Attack ID|RemoteDisconnected|Connection\s?(?:Reset|Aborted|Refused)|reset by peer"
+    r"|EOF occurred|SSLEOF|WinError 100(?:53|54|60|61)|timed out|refus", re.I)
+# The word every refusal the night meets is written with, whatever the answer
+# said: refusal.classify calls more answers refused than their own words show
+# (a 500 with a Retry-After), and REFUSED_BEFORE reads this ("refus").
+REFUSED_MARK = "refused: "
+# A journal's number, from its name or its label: "HJ 16 August 19, 2026",
+# "SJ 15", "HJ No 21 09-04-2003".
+JOURNAL_NO_RE = re.compile(r"\b[HS]J\s*(?:No\.?\s*)?0*(\d+)([A-Za-z]?)(?![A-Za-z0-9])", re.I)
+
+
+# NO REDIRECTS ON THE NIGHT, as fetch_legislation.py's _NoRedirect has it:
+# urlopen follows up to ten, unpaced and uncounted, to addresses no list gave.
+# A 3xx is an HTTPError here, and the night records it as a refusal
+# (redirect_said): a firewall's redirect to its block page may carry the sign
+# only in its Location.
+class _NoRedirect(urllib.request.HTTPRedirectHandler):
+    def redirect_request(self, *a, **k):
+        return None
+
+
+def redirect_said(err):
+    """A redirect the night met, in this project's words: its status and the
+    host its Location names, reduced to a host name's own characters."""
+    loc = ""
+    try:
+        loc = (err.headers.get("Location") if err.headers is not None else "") or ""
+    except Exception:                                       # noqa: BLE001
+        loc = ""
+    host = re.sub(r"[^A-Za-z0-9.-]", "", urllib.parse.urlsplit(str(loc)).hostname or "")[:80]
+    return f"a redirect (HTTP {err.code}) to {host or 'an address it did not name'}"
+
+
+# The opener the night's requests go through: one that follows no redirect,
+# or a test's fake.
+_open = urllib.request.build_opener(_NoRedirect).open
+
+
+class NotWhole(Exception):
+    """An answer that did not arrive whole: too slow, too large, or shorter
+    than it said it would be. Said in this project's words."""
+
+
+def _utc_now():
+    """Now, by refusal's UTC clock, as the night's records write it."""
+    return refusal._utc().strftime("%Y-%m-%dT%H:%M:%SZ")
+
+
+def _disk(r):
+    """A row's path on this machine. The queue was written on Windows, where
+    its paths carry backslashes; read as folders wherever this runs."""
+    return Path((r.get("path") or "").replace("\\", "/"))
+
+
+def _list_of(r):
+    """The list a row is on: (chamber, kind, year)."""
+    return (r.get("chamber"), r.get("kind"), str(r.get("year")))
+
+
+def _dict(x):
+    return x if isinstance(x, dict) else {}
+
+
+def _json(path):
+    """A JSON file as it reads, or None."""
+    try:
+        return json.loads(Path(path).read_text(encoding="utf-8"))
+    except (OSError, ValueError, TypeError):
+        return None
+
+
+def refused_before(error):
+    """Whether a row's recorded error is a refusal (REFUSED_BEFORE)."""
+    return bool(REFUSED_BEFORE.search(error or ""))
+
+
+def journal_number(r):
+    """A journal row's number as "16" or "16A", or "" where none is read."""
+    for text in (r.get("name") or "", r.get("label") or ""):
+        m = JOURNAL_NO_RE.search(text) or DOCNUM_RE.search(text)
+        if m:
+            num = m.group(1)
+            digits = "".join(c for c in num if c.isdigit())
+            letter = "".join(c for c in num if c.isalpha()) + (
+                m.group(2) if m.re is JOURNAL_NO_RE else "")
+            if digits:
+                return f"{int(digits)}{letter.upper()}"
+    return ""
+
+
+def _tries(r):
+    try:
+        return int((r.get("attempts") or "0").strip() or 0)
+    except (ValueError, AttributeError):
+        return NIGHT_TRIES
+
+
+def directories_of(rec):
+    """{(chamber, kind, year): the folder the list's own link names} for the
+    lists of a listing record the page answered for; {} for anything else."""
+    out = {}
+    try:
+        for li in rec["lists"]:
+            if not li.get("unanswered"):
+                out[(li["chamber"], li["kind"], str(li["year"]))] = str(li.get("directory") or "")
+    except (KeyError, TypeError, AttributeError):
+        return {}
+    return out
+
+
+def listed_address(r, directory):
+    """Whether a row's own address is the viewer address its list gives it:
+    the index page's viewer, the list's own folder -- in any case, as judge()
+    compares it -- and the row's own name. Compared as the viewer reads it,
+    so a spelling of the same address in other escapes is the same."""
+    try:
+        head = SOURCES[(r.get("chamber"), r.get("kind"))][0] + VIEWER
+    except KeyError:
+        return False
+    url, name = r.get("url") or "", r.get("name") or ""
+    if not directory or not name or not url.startswith(head):
+        return False
+    tail = urllib.parse.unquote(url[len(head):])
+    return tail.endswith(name) and tail[:len(tail) - len(name)].lower() == directory.lower()
+
+
+def held_back(rows, latest, dirs):
+    """{id(row): (why, the row it is held back for, or None)} for each row its
+    list names that the night holds back for a person whatever else is true of
+    it (night_plan's rule 3). `latest`: {(chamber, kind, year): the names its
+    list's newest read gives}; `dirs`: {(chamber, kind, year): that read's
+    folder}.
+
+      unlisted  its own address is not the viewer address its list gives it
+                (the list's folder and its name): a request for a name nobody saw
+      shared    another row its list names has its path: rows merged before
+                the handover gave a supplement its own name share one (the
+                2026 Senate list's "No 21 Supplement" and "No 21" are both
+                SC021.pdf), and one download would go over the other
+      renamed   a journal with the number of a held journal of its chamber and
+                year, whose own name its list no longer gives: fetched, a
+                second text every reader of journals reads twice"""
+    def listed(x):
+        return x.get("name") in latest.get(_list_of(x), ())
+    paths = {}
+    for r in rows:
+        p = _disk(r).as_posix().lower()
+        if p and p != ".":
+            paths.setdefault(p, []).append(r)
+    held = {}
+    for r in rows:
+        if r.get("kind") == "journal" and r.get("state") == "held" and journal_number(r):
+            held.setdefault((r.get("chamber"), str(r.get("year")), journal_number(r)), []).append(r)
+    out = {}
+    for r in rows:
+        k = _list_of(r)
+        if not listed(r):
+            continue
+        if not listed_address(r, dirs.get(k, "")):
+            out[id(r)] = ("unlisted", None)
+            continue
+        others = [x for x in paths.get(_disk(r).as_posix().lower(), ()) if x is not r and listed(x)]
+        if others:
+            out[id(r)] = ("shared", others[0])
+            continue
+        if r.get("kind") == "journal" and journal_number(r):
+            gone = [h for h in held.get((k[0], k[2], journal_number(r)), ()) if not listed(h)]
+            if gone:
+                out[id(r)] = ("renamed", gone[0])
+    return out
+
+
+def live(word, key, hand, night):
+    """The person's one-shot id for `key` under `word` -- "again" (docs-again)
+    or "accept" (docs-accept) -- while the night's record has not spent it:
+    the handover's id where it differs from the one the night's row carries;
+    "" otherwise. No date is compared with anything, so one id buys exactly
+    one request, or one text."""
+    want = str(_dict(_dict(hand).get(word)).get(key) or "")
+    had = str(_dict(_dict(_dict(night).get("rows")).get(key)).get(word) or "")
+    return want if want and want != had else ""
+
+
+def night_record(hand):
+    """The night's own record of the years the handover `hand` gave it: the
+    one on file (refusal.read_night_record) where its "handover" is the
+    record's "at", or a new one. {"handover", "from_year", "rows": {key:
+    fields}, "lists": {list: {read, directory, names}}, "dropped": day}."""
+    n = refusal.read_night_record() or {}
+    at = _dict(hand).get("at")
+    if not (at and n.get("handover") == at):
+        n = {"handover": at, "from_year": _dict(hand).get("from_year")}
+    for k, empty in (("rows", {}), ("lists", {})):
+        if not isinstance(n.get(k), dict):
+            n[k] = empty
+    n.setdefault("dropped", None)
+    return n
+
+
+def remember_lists(record, tonight, before):
+    """Each list of the night's years read tonight, kept in the night's
+    `record` as {read, directory, the names both reads gave} where the night
+    before's read is at least LISTED_APART_HOURS older; a list no longer read
+    keeps its last entry. From 1 February the listing reads a year's lists no
+    more (years_wanted), and this is what the night asks that year's last
+    documents from: the two reads that named them, at their list's own
+    address (night_plan's rule 2). The record, changed in place."""
+    apart = _hours_apart(_dict(before).get("read"), _dict(tonight).get("read"))
+    if apart is None or apart < LISTED_APART_HOURS:
+        return record
+    then, dirs = lists_of(before), directories_of(tonight)
+    kept = record.setdefault("lists", {})
+    for k, names in lists_of(tonight).items():
+        if k in then and refusal.handed(k[2], record.get("from_year")):
+            both = set(then[k])
+            kept["|".join(k)] = {"read": tonight["read"], "directory": dirs.get(k, ""),
+                                 "names": [n for n in names if n in both]}
+    return record
+
+
+def night_plan(rows, tonight, before, most, y, hand=None, night=None, bucket=None, root=None):
+    """What tonight may ask for, decided before anything is asked; it asks
+    nothing and writes nothing. A dict:
+
+      ask      the rows to ask for, in the order they are asked, at most `most`
+      waiting  how many more might have been asked, past the cap
+      text     rows to mark held from the text beside them, unasked
+      bucket   rows to mark held from the bucket's copy of their PDF, unasked
+      person   [(reason, row, detail)]: the rows only a person can move, the
+               reason one of "held back", "refused", "not found", "tried
+               out", "text refused" and "not in the bucket"
+      new      rows listed for the first time tonight, which wait a night
+      why      "" or why nothing may be asked at all
+
+    `rows` is the queue as load_queue lays it; `tonight` and `before` the
+    listing records installed tonight and the night before; `y` the first year
+    of the night's (the handover's from_year, or this year before one);
+    `hand` the handover record, for the person's word; `night` the night's
+    own record (night_record); `bucket` the bucket's list of kept PDFs
+    (IN_BUCKET), None where it was not read; `root` where tonight's PDFs go.
+
+    THE RULES (the person's design of 26 October 2026), in this order:
+
+      1  the night's years only: from `y`
+      2  named by the two newest reads of its list, at least
+         LISTED_APART_HOURS apart: tonight's and the night before's, or for a
+         list no longer read the pair kept in the night's record
+         (remember_lists). A name the lists gave once, or never, is not asked
+      3  held back for a person (held_back): neither asked for nor held from a
+         text, whatever else is true of it
+      4  its text: a wanted row with a .txt beside its path is held from it --
+         whatever its tries or its error, which is cleared -- and not asked
+         for. A row not found is not: a text at its path is another row's
+      5  the bucket: a wanted row whose PDF the bucket keeps is held, its text
+         to be made from the bucket's copy, and not asked for
+      6  settled by a person: never asked for, never named
+      7  again: a live one-shot id (live) asks once, first in line, whatever
+         the row's state or tries -- never past rules 1 to 3, nor a refusal
+      8  asked: wanted, no refusal recorded against it, under NIGHT_TRIES tries
+      9  for a person: every other row its lists name, by reason
+      10 order: again first, then the never tried, then oldest first within
+         each list, the lists in the queue's order; at most `most` requests,
+         a document not found counted as one"""
+    out = {"ask": [], "waiting": 0, "text": [], "bucket": [], "person": [], "new": 0, "why": ""}
+    if not lists_of(tonight):
+        out["why"] = "tonight's list of calendars and journals is not on file"
+        return out
+    if not lists_of(before):
+        out["why"] = "the night before's list of calendars and journals is not on file"
+        return out
+    if tonight.get("read") == before.get("read"):
+        out["why"] = ("tonight's list is the night before's, read at the same time: it was "
+                      "not installed tonight")
+        return out
+    apart = _hours_apart(before.get("read"), tonight.get("read"))
+    if apart is None or apart < LISTED_APART_HOURS:
+        out["why"] = ("when the two lists were read is not on file" if apart is None else
+                      "the night before's list is from this morning: it was read less than "
+                      f"{LISTED_APART_HOURS} hours before tonight's, by an earlier run")
+        return out
+    # {list: (the names its newest read gives, those both reads give, its folder)}
+    named = {}
+    for k, e in _dict(_dict(night).get("lists")).items():
+        if isinstance(e, dict) and isinstance(e.get("names"), list):
+            named[tuple(str(k).split("|"))] = (e["names"], e["names"], str(e.get("directory") or ""))
+    now, then, dirs = lists_of(tonight), lists_of(before), directories_of(tonight)
+    for k, names in now.items():
+        named[k] = (names, [n for n in names if n in set(then.get(k, ()))], dirs.get(k, ""))
+    back = held_back(rows, {k: v[0] for k, v in named.items()}, {k: v[2] for k, v in named.items()})
+    settled, mine = _dict(_dict(hand).get("settled")), _dict(_dict(night).get("rows"))
+    blocks, asks = {}, []
+    for i, r in enumerate(rows):
+        k, key, state = _list_of(r), doc_key(r), r.get("state")
+        if not refusal.handed(k[2], y) or k not in named:                      # 1
+            continue
+        if r.get("name") not in named[k][1]:                                    # 2
+            if state == "wanted" and r.get("name") in named[k][0]:
+                out["new"] += 1
+            continue
+        again, why = live("again", key, hand, night), back.get(id(r))
+        if why and (state == "wanted" or again):                                # 3
+            if key not in settled:
+                out["person"].append(("held back", r, why[0]))
+            continue
+        if state == "wanted" and _disk(r).with_suffix(".txt").exists():         # 4
+            out["text"].append(r)
+            continue
+        if state == "wanted" and bucket is not None and _disk(r).as_posix() in bucket:   # 5
+            out["bucket"].append(r)
+            continue
+        if key in settled:                                                      # 6
+            continue
+        if refused_before(r.get("error")):
+            out["person"].append(("refused", r, r.get("error") or ""))
+            continue
+        if again or (state == "wanted" and _tries(r) < NIGHT_TRIES):            # 7, 8
+            asks.append((0 if again else 1 if _tries(r) == 0 else 2,
+                         blocks.setdefault(k, len(blocks)), -i, r))
+            continue
+        e = _dict(mine.get(key))                                                # 9
+        text = str(e.get("text") or "")
+        if state == "gone":
+            out["person"].append(("not found", r, r.get("error") or ""))
+        elif state in ("wanted", "failed"):
+            out["person"].append(("tried out", r, f"{_tries(r)} tries"))
+        elif text.startswith(REFUSED_MARK) and not live("accept", key, hand, night):
+            out["person"].append(("text refused", r, text[len(REFUSED_MARK):]))
+        elif (e.get("sha256") and text != "pending" and bucket is not None
+              and _disk(r).as_posix() not in bucket
+              and not (root and (Path(root) / _disk(r)).exists())):
+            out["person"].append(("not in the bucket", r, ""))
+    order = [a[-1] for a in sorted(asks, key=lambda a: a[:3])]                 # 10
+    out["ask"], out["waiting"] = order[:max(0, most)], max(0, len(order) - max(0, most))
+    return out
+
+
+def _hours_apart(earlier, later):
+    """Hours from one listing record's "read" to another's, or None where
+    either will not read. Both are written the same way, by take_listing on
+    the same kind of machine."""
+    try:
+        a = datetime.strptime(str(earlier), "%Y-%m-%dT%H:%M:%S")
+        b = datetime.strptime(str(later), "%Y-%m-%dT%H:%M:%S")
+    except ValueError:
+        return None
+    return (b - a).total_seconds() / 3600
+
+
+def whole_pdf(blob):
+    """"" when `blob` reads as a whole PDF, or why not, in this project's
+    words. The drain took anything that began "%PDF", so a file the server
+    held half written was saved and marked held for good."""
+    if not blob.startswith(b"%PDF-"):
+        return f"not a PDF ({len(blob):,} bytes)"
+    if b"%%EOF" not in blob[-NIGHT_EOF_TAIL:]:
+        return "not a whole PDF: it has no end-of-file marker"
+    return ""
+
+
+def read_whole(r, started):
+    """An answer's body, read in chunks: whole, within NIGHT_DEADLINE seconds
+    of `started`, no larger than NIGHT_BYTES_MOST, and as long as its own
+    Content-Length says. NotWhole otherwise. The socket's timeout bounds one
+    read; this bounds them all, so a server that sends a byte a minute
+    cannot hold the night's lock into the morning."""
+    headers = getattr(r, "headers", None)
+    said = (headers.get("Content-Length") if headers is not None else None) or ""
+    chunks, n = [], 0
+    while True:
+        b = r.read(NIGHT_CHUNK)
+        # After every read, the last empty one too: an answer that came
+        # whole in two minutes still took two minutes of the night's lock.
+        if time.time() - started > NIGHT_DEADLINE:
+            raise NotWhole(f"it took longer than {NIGHT_DEADLINE} seconds")
+        if not b:
+            break
+        n += len(b)
+        if n > NIGHT_BYTES_MOST:
+            raise NotWhole(f"it is larger than {NIGHT_BYTES_MOST // 1_000_000} MB")
+        chunks.append(b)
+    if str(said).strip().isdigit() and int(said) != n:
+        raise NotWhole(f"it is {n:,} bytes of the {int(said):,} it said")
+    return b"".join(chunks)
+
+
+def _get_document(url):
+    """One document, whole (read_whole), through _open."""
+    started = time.time()
+    req = urllib.request.Request(url, headers=dict(UA))
+    with _open(req, timeout=NIGHT_TIMEOUT) as r:
+        return read_whole(r, started)
+
+
+def _said(kind, e, why):
+    """How a request ended, in this project's words: the night's verdict and
+    its run's page are public, and take none of a server's."""
+    if kind == "missing":
+        return f"not found (HTTP {getattr(e, 'code', '?')})"
+    if kind in ("refused", "dropped"):
+        return kind
+    if isinstance(e, urllib.error.HTTPError):
+        return f"failed: HTTP {e.code}"
+    if isinstance(e, NotWhole):
+        return f"failed: {e}"
+    if e is not None:
+        return f"failed: {type(e).__name__}"
+    return f"failed: {why}"
+
+
+def take_night(a, rows, held):
+    """--night: ask for what night_plan() allows, and write what happened to
+    the night's own record of its years at --out; nightly.py installs it, or
+    does not. 0 when it ended as it should -- everything asked that might be,
+    the cap reached, or the time allowed spent; 1 when it stopped on a failure
+    or a second document not found, or could ask nothing at all; 2 on a
+    refusal, recorded; 3 when the lock it runs under was lost.
+
+    THE STOP RULES. A refusal -- a 403, 429 or 503, a Retry-After, the
+    firewall's page served as a 200, a redirect -- is written against its row
+    beginning REFUSED_MARK, the record goes to disk, and only then is it
+    noted (refusal.note), and nothing more is asked. A 404 marks its row gone;
+    a second ends the step, because 404s one after another are what a scan of
+    guessed names looks like from the far end, which is how this address was
+    first blocked. Any other failure counts its try, writes no error -- the
+    Calendar page's picker drops a row that carries one -- and ends the step.
+    A dropped connection counts as all NIGHT_TRIES tries; one on the next
+    night that asks too (the record's "dropped" names the last such night) is
+    a refusal, the drain's two-drop rule carried across nights. No request
+    starts once --seconds have passed.
+
+    WHAT IT WRITES. The night's record, whole, to --out, and beside it
+    ASKED_NAME: each request, with its key, bytes, seconds, sha256 and how it
+    ended, and the rows the plan held from a text or from the bucket's copy.
+    Both are written before every request, with that request and its try (and
+    a live `again` id) already in them, so a step killed at its limit still
+    counts what it asked; the log first, so the record never changes a row its
+    log does not name. A PDF fetched goes to --root/<its path> through a part
+    file, and its row becomes held with its text to be made (text: pending)."""
+    t0 = time.time()
+    out, root = Path(a.out), Path(a.root)
+    asked_file = out.with_name(ASKED_NAME)
+    log = {"started": _utc_now(), "most": a.most, "seconds": a.seconds, "requests": 0,
+           "asked": [], "held_from_text": [], "from_bucket": [], "person": {},
+           "new_tonight": 0, "waiting": 0, "stopped": "", "exit": 1}
+    code, stopped, done, plan, night, dropped = 0, "", False, None, None, False
+
+    def write(path, d):
+        part = path.with_name(path.name + ".part")
+        part.parent.mkdir(parents=True, exist_ok=True)
+        part.write_text(json.dumps(d, indent=1) + "\n", encoding="utf-8", newline="\n")
+        os.replace(part, path)
+
+    def keep():
+        write(asked_file, log)
+        if night is not None:
+            write(out, night)
+
+    def put(r, **kw):
+        e = dict(_dict(night["rows"].get(doc_key(r))))
+        e.update({f: r.get(f) or "" for f in DRAIN_FIELDS}, **kw)
+        night["rows"][doc_key(r)] = e
+    try:
+        state, hand = refusal.read_handover()
+        y = refusal.night_years() if state == "ok" else None
+        bucket = _json(IN_BUCKET)
+        if y is None:
+            code, stopped = 1, "nothing was asked for: the handover is not in force"
+        elif not isinstance(bucket, dict):
+            code, stopped = 1, ("nothing was asked for: the bucket's list of the PDFs it keeps "
+                                "was not read tonight")
+        else:
+            night = night_record(hand)
+            plan = night_plan(rows, _json(listed_file()), _json(a.night), a.most, y, hand,
+                              night, bucket, root)
+            for r in plan["text"]:
+                r["state"], r["error"] = "held", ""
+                put(r)
+                log["held_from_text"].append(doc_key(r))
+            for r in plan["bucket"]:
+                r["state"], r["error"] = "held", ""
+                r["bytes"] = str(bucket.get(_disk(r).as_posix()) or "")
+                put(r, text="pending")
+                log["from_bucket"].append(doc_key(r))
+            for reason, r, _ in plan["person"]:
+                log["person"].setdefault(reason, []).append(doc_key(r))
+            log["new_tonight"] = plan["new"]
+            keep()
+            print(f"{len(plan['ask'])} to ask for, at most {a.most}, about {NIGHT_PAUSE:g}s apart "
+                  f"and as long before the first; {len(plan['text'])} held from their text; "
+                  f"{len(plan['bucket'])} from the bucket's copy; {len(plan['person'])} for a "
+                  f"person; {plan['new']} listed for the first time tonight", flush=True)
+            if plan["why"]:
+                code, stopped = 1, f"nothing was asked for: {plan['why']}"
+            missing = 0
+            for r in plan["ask"]:
+                pause = NIGHT_PAUSE * random.uniform(0.75, 1.25)
+                if time.time() - t0 + pause >= a.seconds:
+                    stopped = f"the {a.seconds:g} seconds allowed were spent"
+                    break
+                time.sleep(pause)
+                # Immediately before the request, not before the pause.
+                if refusal.MARK.exists():
+                    code, stopped = 2, "a refusal is on file"
+                    break
+                if not held.still():
+                    code, stopped = 3, "the lock this runs under is gone"
+                    break
+                key = doc_key(r)
+                entry = {"key": key, "path": r.get("path") or "", "at": _utc_now(), "bytes": 0,
+                         "seconds": 0.0, "sha256": "", "ended": "no answer: it was stopped while asking"}
+                log["asked"].append(entry)
+                log["requests"] += 1
+                # THE TRY COUNTED BEFORE THE REQUEST, with the id it spends.
+                r["attempts"] = str(_tries(r) + 1)
+                again = live("again", key, hand, night)
+                put(r, **({"again": again} if again else {}))
+                log["stopped"] = "it was stopped while asking"
+                keep()
+                begun, blob, e, why = time.time(), b"", None, ""
+                try:
+                    blob = _get_document(r["url"])
+                    kind = refusal.classify(body=blob[:4000].decode("utf-8", "replace"))
+                    why = "the firewall's block page, served as 200" if kind else whole_pdf(blob)
+                    kind = kind or ("failed" if why else None)
+                except Exception as err:                        # noqa: BLE001
+                    e, why = err, f"{type(err).__name__}: {err}"
+                    kind = refusal.classify(err) or "failed"
+                    if isinstance(err, urllib.error.HTTPError) and 300 <= err.code < 400:
+                        kind, why = "refused", redirect_said(err)
+                log["stopped"] = ""
+                entry.update(seconds=round(time.time() - begun, 1), bytes=len(blob))
+                if kind == "dropped":
+                    r["attempts"] = str(max(_tries(r), NIGHT_TRIES))
+                    if night.get("dropped"):
+                        kind, why = "refused", ("a dropped connection on the second night "
+                                                f"running that asked (the first {night['dropped']})")
+                    night["dropped"], dropped = _utc_now()[:10], True
+                if kind:
+                    entry["ended"] = _said(kind, e, why)
+                    print(f"  [{log['requests']}] {key}: {entry['ended']}", flush=True)
+                    if kind == "refused":
+                        # THE MARK ON DISK BEFORE THE REFUSAL GOES ON FILE.
+                        r["error"] = (REFUSED_MARK + why)[:180]
+                        put(r)
+                        keep()
+                        refusal.note("fetch_calendar_archive", why[:180])
+                        code, stopped = 2, "the General Court refused a request"
+                        print("\nRefused. Recorded, and nothing more is asked of it.\n"
+                              "python3 netcheck.py says what kind of refusal it is "
+                              "without making it worse.", flush=True)
+                        break
+                    if kind == "missing":
+                        r["state"], r["error"] = "gone", why[:180]
+                        put(r)
+                        missing += 1
+                        if missing >= 2:
+                            code, stopped = 1, "a second document the list names was not found"
+                            break
+                        continue
+                    put(r)
+                    code, stopped = 1, ("a connection was dropped" if kind == "dropped"
+                                        else f"a request {entry['ended']}")
+                    break
+                dest = root / _disk(r)
+                try:
+                    if not dest.resolve().is_relative_to(root.resolve()):
+                        raise OSError("its path is not under --root")
+                    dest.parent.mkdir(parents=True, exist_ok=True)
+                    part = dest.with_name(dest.name + ".part")
+                    part.write_bytes(blob)
+                    os.replace(part, dest)
+                except OSError as err:
+                    entry["ended"] = f"failed: it could not be saved ({type(err).__name__})"
+                    put(r)
+                    code, stopped = 1, "a document fetched could not be saved"
+                    break
+                sha = hashlib.sha256(blob).hexdigest()
+                r["state"], r["bytes"], r["error"] = "held", str(len(blob)), ""
+                r["fetched"] = time.strftime("%Y-%m-%dT%H:%M:%S")
+                put(r, text="pending", sha256=sha)
+                entry.update(ended="fetched", sha256=sha)
+                print(f"  [{log['requests']}] {key}: fetched, {len(blob):,} bytes, "
+                      f"{entry['seconds']:g}s", flush=True)
+            if log["requests"] and not dropped:
+                night["dropped"] = None
+        done = True
+    finally:
+        if plan is not None:
+            log["waiting"] = plan["waiting"] + len(plan["ask"]) - log["requests"]
+        log.update(ended=_utc_now(), stopped=stopped if done else (
+            stopped or "it stopped on an error of its own"), exit=code if done else 1)
+        keep()
+    got = sum(1 for x in log["asked"] if x["ended"] == "fetched")
+    print(f"\n{log['requests']} requests, {got} fetched, {time.time() - t0:.0f}s"
+          + (f"; stopped: {stopped}" if stopped else "")
+          + f"; {log['waiting']} still to ask for -> {out}", flush=True)
+    return code
+
+
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--discover", action="store_true")
@@ -974,7 +1617,21 @@ def main():
                          "queue: the night's read, four requests")
     ap.add_argument("--out", help="(--listing) write the queue here, and "
                                   f"{LISTED_NAME} beside it, and leave judging and "
-                                  "installing them to the caller: nightly.py")
+                                  "installing them to the caller: nightly.py. (--night) "
+                                  f"the night's record of its years, with {ASKED_NAME} "
+                                  "beside it")
+    ap.add_argument("--night", metavar="PREV_LISTED",
+                    help="GitHub's night, the years handed to it: ask for what tonight's "
+                         "list and the night before's (PREV_LISTED) both name, gently "
+                         "(take_night). Writes --out, the log beside it, and each PDF "
+                         "under --root")
+    ap.add_argument("--most", type=int, default=1,
+                    help=f"(--night) the most documents asked for, 1 to {NIGHT_MOST} (default 1)")
+    ap.add_argument("--seconds", type=float, default=NIGHT_SECONDS,
+                    help="(--night) no request starts after this many seconds, at most "
+                         f"{NIGHT_SECONDS} (the default)")
+    ap.add_argument("--root", help="(--night) the folder each PDF fetched is saved under, at "
+                                   "its own path: never the four folders")
     ap.add_argument("--status", action="store_true")
     ap.add_argument("--list", action="store_true")
     ap.add_argument("--chamber", choices=["H", "S", "both"], default="both")
@@ -989,6 +1646,33 @@ def main():
                          "a quarter either way, so a run does not arrive on a "
                          "metronome.")
     a = ap.parse_args()
+    if a.night is None and (a.root or a.most != 1 or a.seconds != NIGHT_SECONDS):
+        ap.error("--most, --seconds and --root belong to --night")
+    if a.night is not None:
+        if a.listing or a.discover or a.status or a.list:
+            ap.error("--night asks for what two nights' lists name, at its own pace: it "
+                     "takes no --listing, --discover, --status or --list")
+        if not (a.out and a.root):
+            ap.error("--night writes only --out and under --root, and needs both")
+        if Path(a.root).resolve() == Path(".").resolve() or Path(a.out).resolve() in {
+                QUEUE.resolve(), fetched_file().resolve(), listed_file().resolve(),
+                refusal.NIGHT_RECORD.resolve()}:
+            ap.error("--night writes none of the queue's own files, and no PDF in the four "
+                     "folders: the night installs what it writes")
+        if not 1 <= a.most <= NIGHT_MOST:
+            ap.error(f"--most is 1 to {NIGHT_MOST}: the night asks for no more documents "
+                     "than that")
+        if not 0 < a.seconds <= NIGHT_SECONDS:
+            ap.error(f"--seconds is more than 0 and at most {NIGHT_SECONDS}")
+        # GITHUB'S NIGHT'S, AND ONLY THERE (the person's design of 26 October
+        # 2026): from the handover the laptop has no request path for the
+        # night's years at all, and before it the laptop's drain is the one.
+        if os.environ.get("GITHUB_ACTIONS") != "true":
+            print("--night does not run on this machine: it is GitHub's night's alone. "
+                  "The calendars and journals of the years handed to the night reach this "
+                  "machine with python3 src/ops/cloud.py pull; the drain fetches the "
+                  "others.", file=sys.stderr)
+            return refusal.STOOD_DOWN
 
     ROOT.mkdir(exist_ok=True)
     rows = load_queue()
@@ -1037,6 +1721,11 @@ def main():
         refusal.check("The calendar and journal listing")
     if a.listing:
         return take_listing(a, rows)
+
+    if a.night is not None:
+        refusal.check("The night's fetch of the calendars and journals handed to it")
+        with refusal.hold("the night's fetch of the calendars and journals") as held:
+            return take_night(a, rows, held)
 
     if a.discover:
         print("=" * 70)

@@ -91976,8 +91976,9 @@ class _Held:
 def _laptop_asks(R, CA, ECT, FSC, FCR, f):
     """What the laptop's document commands do in the folder `f`, with every
     request faked: {"drain": [years asked], "senate": (status, requests),
-    "probe": requests, "committee": (status, years asked), "texts": [years]}.
-    Shared by _documents_off_is_off and _laptop_leaves_the_night_years."""
+    "probe": requests, "committee": (status, years asked), "night": (status,
+    requests, written), "texts": [years]}. Shared by _documents_off_is_off and
+    _laptop_leaves_the_night_years."""
     import contextlib
     import io
     import time
@@ -92000,9 +92001,18 @@ def _laptop_asks(R, CA, ECT, FSC, FCR, f):
     def sealed(*a, **kw):
         requests.append(a)
         raise OSError("sealed by preflight")
-    saved = (FSC.urllib.request.urlopen, FCR.calendar_urls, FCR.extract_text, sys.argv)
+    saved = (FSC.urllib.request.urlopen, FCR.calendar_urls, FCR.extract_text, sys.argv, CA._open)
     try:
-        FSC.urllib.request.urlopen = sealed
+        FSC.urllib.request.urlopen = CA._open = sealed
+        del requests[:]
+        sys.argv = ["fetch_calendar_archive.py", "--night", "before.json", "--root",
+                    str(f.tmp / "night"), "--out", str(f.tmp / "night.json")]
+        with contextlib.redirect_stdout(io.StringIO()), contextlib.redirect_stderr(io.StringIO()):
+            try:
+                rc = CA.main()
+            except SystemExit as e:
+                rc = e.code if isinstance(e.code, int) else 1
+        out["night"] = (rc, len(requests), any(f.tmp.glob("night*")))
         for probe in ([], ["--probe"]):
             del requests[:]
             sys.argv = ["fetch_senate_calendars.py", "--year", "2026", "--delay", "0"] + probe
@@ -92029,7 +92039,7 @@ def _laptop_asks(R, CA, ECT, FSC, FCR, f):
                     rc = e.code if isinstance(e.code, int) else 1
             out[run] = (rc, years, (f.tmp / "committee_reports.json").exists())
     finally:
-        (FSC.urllib.request.urlopen, FCR.calendar_urls, FCR.extract_text, sys.argv) = saved
+        (FSC.urllib.request.urlopen, FCR.calendar_urls, FCR.extract_text, sys.argv, CA._open) = saved
     for y in (2025, 2026, 2027):
         (f.tmp / "calendars" / str(y)).mkdir(parents=True, exist_ok=True)
         (f.tmp / "calendars" / str(y) / "HC001.pdf").write_bytes(b"%PDF-1.4 x")
@@ -92054,7 +92064,9 @@ def _laptop_leaves_the_night_years(R, CA, ECT, FSC, FCR):
       - fetch_committee_reports --year 2026 reads the House calendars on this
         disk and asks nobody, in force and after a hand-back alike, and with
         none on disk writes nothing and ends 0, so build_all's step is green;
-      - extract_calendar_text makes no text of a PDF of those years."""
+      - extract_calendar_text makes no text of a PDF of those years;
+      - fetch_calendar_archive --night stands down on the laptop (4), asking
+        and writing nothing: it is GitHub's night's alone."""
     with _HandoverFolder(R, CA) as f:
         f.hand()
         got = _laptop_asks(R, CA, ECT, FSC, FCR, f)
@@ -92068,6 +92080,8 @@ def _laptop_leaves_the_night_years(R, CA, ECT, FSC, FCR):
         assert got["committee on disk"] == (0, [], True), \
             f"the committee reports did not read a handed year's calendar on disk: {got}"
         assert got["texts"] == ["2025"], f"a text of the night's years would be made: {got['texts']}"
+        assert got["night"] == (R.STOOD_DOWN, 0, False), \
+            f"--night ran on the laptop, asked or wrote: {got['night']}"
     with _HandoverFolder(R, CA) as f:
         f.hand(handed_back={"at": "2026-12-01T15:00:00Z", "sent": True})
         got = _laptop_asks(R, CA, ECT, FSC, FCR, f)
@@ -92263,9 +92277,11 @@ def _documents_off_is_off(R, CA, ECT, FSC, FCR, CL):
     def never(*a, **kw):
         raise AssertionError("a reader of what the handover adds was reached with no record")
     real = CL.load_kit(".")
-    saved = (CA.night_rows, CA._new_local, R.years_said)
+    saved = (CA.night_rows, CA._new_local, R.years_said, CA.take_night, CA.night_plan,
+             CA.remember_lists)
     try:
-        CA.night_rows, CA._new_local, R.years_said = never, never, never
+        (CA.night_rows, CA._new_local, R.years_said, CA.take_night, CA.night_plan,
+         CA.remember_lists) = (never,) * 6
         for switch in (None, "off", "Off ", "9", "²"):
             with _HandoverFolder(R, CA) as f:
                 if switch is not None:
@@ -92285,9 +92301,9 @@ def _documents_off_is_off(R, CA, ECT, FSC, FCR, CL):
                     ["SC027.pdf"] * 4, f"with the switch {switch!r} a supplement moved: {paths}"
                 got = _laptop_asks(R, CA, ECT, FSC, FCR, f)
                 assert (got["drain"], got["senate"], got["probe"], got["committee"],
-                        got["committee on disk"], got["texts"]) == (
+                        got["committee on disk"], got["night"], got["texts"]) == (
                     ["2025", "2026", "2027"], (1, 1), (1, 1), (1, ["2026"], False),
-                    (1, ["2026"], False), ["2025", "2026", "2027"]), \
+                    (1, ["2026"], False), (R.STOOD_DOWN, 0, False), ["2025", "2026", "2027"]), \
                     f"with the switch {switch!r} and no record the laptop's fetches changed: {got}"
                 for y in (2025, 2026):
                     (f.tmp / "journals" / str(y)).mkdir(parents=True)
@@ -92298,10 +92314,381 @@ def _documents_off_is_off(R, CA, ECT, FSC, FCR, CL):
                     CL.owner_of(real, "journals/2026/HJ001.txt", f.tmp) == "laptop", \
                     f"with the switch {switch!r} and no record a text is not the laptop's: {owners}"
     finally:
-        CA.night_rows, CA._new_local, R.years_said = saved
+        (CA.night_rows, CA._new_local, R.years_said, CA.take_night, CA.night_plan,
+         CA.remember_lists) = saved
     return "ok", ("switched off, or not a switch, and no record: the queue, the paths, the "
                   "drain, the Senate fetch, the committee reports, the texts and their "
                   "owner in the kit as before")
+
+
+def _night_row(CA, ch, kind, year, name, **kw):
+    """A queue row as the night's list writes one: its list's own viewer
+    address, and its own name's path."""
+    import urllib.parse
+    index, _, folder, outdir, _ = CA.SOURCES[(ch, kind)]
+    return _doc(ch, kind, year, name, **dict(
+        {"url": index + CA.VIEWER + urllib.parse.quote(f"{folder}\\{year}\\{name}", safe=""),
+         "path": f"{outdir}\\{year}\\{name}"}, **kw))
+
+
+def _night_lists(CA, read, rows):
+    """A listing record as take_listing writes one, read at `read`, whose
+    lists name `rows`."""
+    by = {}
+    for r in rows:
+        by.setdefault((r["chamber"], r["kind"], r["year"]), []).append(
+            {"name": r["name"], "label": r.get("label") or ""})
+    return {"read": read, "requests": 4, "lists": [
+        {"chamber": c, "kind": k, "year": y, "directory": f"{CA.SOURCES[(c, k)][2]}\\{y}\\",
+         "documents": d} for (c, k, y), d in by.items()]}
+
+
+@check("build", "the night's plan asks only for its own years' documents that two reads of their "
+       "list named, at the list's own address: a text or the bucket's copy holds a row unasked, "
+       "a person's again asks once and never past a refusal, and the rest is named for a person",
+       needs=("refusal", "fetch_calendar_archive"))
+def _night_plan(R, CA):
+    """night_plan() and remember_lists() (the person's design of 26 October
+    2026, D7), one case for each rule, on rows in a folder of their own:
+
+      1  a 2025 row is not asked for when 2026 on are the night's;
+      2  a name only tonight's list gives waits a night; after 1 February a
+         year's list no longer read is asked from the pair the night's record
+         kept, at that pair's folder, and a name the pair lacks is not;
+      3  held back: an address that is not its list's, a path two listed rows
+         share, a journal with a held journal's number whose name is gone;
+      4  a wanted row with its text is held from it, tried out and refused
+         though it is; a row not found with a text at its path is not;
+      5  a wanted row whose PDF the bucket keeps is held from the bucket's copy;
+      6  a settled row is neither asked for nor named;
+      7  again asks a row not found and a tried-out row, first; never a
+         refusal, a row held back or a name one read gave; spent, not again;
+      8  wanted, under three tries, no refusal: asked;
+      9  for a person: refused, not found, tried out, text refused (unless a
+         live accept), PDF not in the bucket;
+      10 again first, then the never tried, then oldest first in each list,
+         the lists in the queue's order; at most `most`;
+      and nothing at all while tonight's list or the night before's is not on
+      file, or they were read less than 20 hours apart; before a handover the
+      plan is drawn the same way, for this year."""
+    K = CA.doc_key
+    with _HandoverFolder(R, CA):
+        def row(name, year=2026, kind="calendar", **kw):
+            return _night_row(CA, "S", kind, year, name, **kw)
+        elsewhere = "https://example.invalid/SC.pdf"
+        rows = {
+            "old": row("SC 1.pdf", 2025), "new": row("SC 2.pdf"), "untried": row("SC 3.pdf"),
+            "tried": row("SC 4.pdf", attempts="1"), "unlisted": row("SC 5.pdf", url=elsewhere),
+            "shared": row("SC 6.pdf", path="calendars_senate\\2026\\SC006.pdf"),
+            "shared too": row("SC 6 Supplement.pdf", path="calendars_senate\\2026\\SC006.pdf"),
+            "texted": row("SC 7.pdf", attempts="3", error="HTTPError: HTTP Error 403: Forbidden"),
+            "gone texted": row("SC 8.pdf", state="gone", attempts="1"),
+            "in bucket": row("SC 9.pdf"), "settled": row("SC 10.pdf", attempts="3"),
+            "gone again": row("SC 11.pdf", state="gone", attempts="1"),
+            "tried again": row("SC 12.pdf", attempts="3"),
+            "refused again": row("SC 13.pdf", attempts="1", error="refused: HTTP Error 403"),
+            "unlisted again": row("SC 14.pdf", url=elsewhere, state="gone", attempts="1"),
+            "new again": row("SC 15.pdf"),
+            "tried out": row("SC 16.pdf", attempts="3"), "text refused": row("SC 17.pdf", state="held"),
+            "accepted": row("SC 18.pdf", state="held"), "lost": row("SC 19.pdf", state="held"),
+            "spent": row("SC 20.pdf", state="gone", attempts="1"),
+            "renamed from": row("SJ 5 May 1.pdf", kind="journal", state="held"),
+            "renamed": row("SJ 5 May 2.pdf", kind="journal"),
+            "failed": row("SC 21.pdf", state="failed", attempts="3")}
+        queue = list(rows.values())
+        once = [r for k, r in rows.items() if k not in ("new", "new again", "renamed from")]
+        tonight = _night_lists(CA, "2026-11-11T05:00:00", [r for r in queue if r is not rows["renamed from"]])
+        before = _night_lists(CA, "2026-11-10T05:00:00", once)
+        for k in ("texted", "gone texted"):
+            p = CA._disk(rows[k]).with_suffix(".txt")
+            p.parent.mkdir(parents=True, exist_ok=True)
+            p.write_text("its text", encoding="utf-8")
+        hand = {"from_year": 2026, "at": "2026-11-10T14:00:00Z", "settled": {K(rows["settled"]): "why"},
+                "again": {K(rows[k]): "id-1" for k in ("gone again", "tried again", "refused again",
+                                                      "unlisted again", "new again", "spent")},
+                "accept": {K(rows["accepted"]): "id-2"}}
+        night = {"handover": hand["at"], "from_year": 2026, "lists": {}, "rows": {
+            K(rows["spent"]): {"again": "id-1"},
+            K(rows["text refused"]): {"text": "refused: its number is not on its masthead"},
+            K(rows["accepted"]): {"text": "refused: its number is not on its masthead"},
+            K(rows["lost"]): {"text": "made", "sha256": "ab"}}}
+        bucket = {CA._disk(rows["in bucket"]).as_posix(): 9}
+        plan = CA.night_plan(queue, tonight, before, 8, 2026, hand, night, bucket, ".night/docs")
+        on_file = R.MARK.parent / R.NIGHT_RECORD.name
+        on_file.write_text(json.dumps(dict(night, handover="2026-11-01T14:00:00Z")), encoding="utf-8")
+        assert CA.night_record(hand)["rows"] == {}, "the night's record of another handover was used"
+        on_file.write_text(json.dumps(night), encoding="utf-8")
+        assert CA.night_record(hand)["rows"] == night["rows"], "the night's own record was not read"
+
+        def names(rs):
+            return [next(k for k, r in rows.items() if r is x) for x in rs]
+        assert names(plan["ask"]) == ["tried again", "gone again", "untried", "tried"], \
+            f"the plan asks for the wrong rows, or in the wrong order: {names(plan['ask'])}"
+        assert names(plan["text"]) == ["texted"] and names(plan["bucket"]) == ["in bucket"], \
+            f"the text and bucket rules held {names(plan['text'])}, {names(plan['bucket'])}"
+        person = {names([r])[0]: (why, d) for why, r, d in plan["person"]}
+        assert {k: v[0] for k, v in person.items()} == {
+            "unlisted": "held back", "shared": "held back", "shared too": "held back",
+            "renamed": "held back", "unlisted again": "held back", "refused again": "refused",
+            "gone texted": "not found", "spent": "not found", "tried out": "tried out",
+            "failed": "tried out",
+            "text refused": "text refused", "lost": "not in the bucket"}, \
+            f"the rows for a person are not the design's: {person}"
+        assert (person["unlisted"][1], person["shared"][1], person["renamed"][1]) == (
+            "unlisted", "shared", "renamed"), f"held back for the wrong reason: {person}"
+        assert plan["new"] == 2 and plan["waiting"] == 0 and plan["why"] == "", \
+            f"two rows listed tonight alone are not counted new: {plan['new']}"
+        capped = CA.night_plan(queue, tonight, before, 3, 2026, hand, night, bucket, ".night/docs")
+        assert names(capped["ask"]) == ["tried again", "gone again", "untried"] and capped["waiting"] == 1, \
+            "the cap is not taken from the head of the order"
+        assert names(CA.night_plan(queue, tonight, before, 8, 2026)["ask"]) == [
+            "in bucket", "untried", "tried"], "before a handover the plan is not drawn as before"
+        order = [row("SC 30.pdf"), row("SC 31.pdf", attempts="1"), row("SC 32.pdf"),
+                 _night_row(CA, "H", "calendar", 2026, "HC 33.pdf"), row("SC 34.pdf")]
+        two = (_night_lists(CA, "2026-11-11T05:00:00", order), _night_lists(CA, "2026-11-10T05:00:00", order))
+        assert [r["name"] for r in CA.night_plan(order, *two, 8, 2026)["ask"]] == [
+            "SC 34.pdf", "SC 32.pdf", "SC 30.pdf", "HC 33.pdf", "SC 31.pdf"], \
+            "not the never tried first, then oldest first within each list, lists in the queue's order"
+        # Rule 2 at the year's turn: 2026's lists no longer read, its pair kept.
+        kept = [row("SC 40.pdf"), row("SC 41.pdf")]
+        night["lists"] = {"S|calendar|2026": {"read": "2027-01-31T05:00:00",
+                                              "directory": "Calendars\\2026\\", "names": ["SC 40.pdf"]}}
+        turn = [_night_row(CA, "S", "calendar", 2027, "SC 1.pdf")]
+        late = CA.night_plan(kept + turn, _night_lists(CA, "2027-02-02T05:00:00", turn),
+                             _night_lists(CA, "2027-02-01T05:00:00", turn), 8, 2026, hand, night, {})
+        assert [r["name"] for r in late["ask"]] == ["SC 40.pdf", "SC 1.pdf"], \
+            f"after 1 February the kept pair is not what the night asks from: {late['ask']}"
+        for t, b, why in ((None, before, "tonight's list"), (tonight, None, "night before's list"),
+                          (tonight, tonight, "same time"),
+                          (tonight, dict(before, read="2026-11-10T10:00:00"), "this morning")):
+            p = CA.night_plan(queue, t, b, 8, 2026, hand, night, bucket)
+            assert not p["ask"] and why in p["why"], f"{why}: asked {names(p['ask'])}, {p['why']!r}"
+        # remember_lists keeps the night's years' pairs read 20 hours apart, and a list no longer read.
+        rec = {"from_year": 2026, "lists": {"S|calendar|2025": {"names": ["x"]}}}
+        lists = [row("SC 50.pdf"), row("SC 51.pdf"), row("SC 52.pdf", 2025)]
+        CA.remember_lists(rec, _night_lists(CA, "2026-11-11T05:00:00", lists),
+                          _night_lists(CA, "2026-11-10T10:00:00", lists[:1] + lists[2:]))
+        assert rec["lists"] == {"S|calendar|2025": {"names": ["x"]}}, "a pair under 20 hours was kept"
+        CA.remember_lists(rec, _night_lists(CA, "2026-11-11T05:00:00", lists),
+                          _night_lists(CA, "2026-11-10T05:00:00", lists[:1] + lists[2:]))
+        assert rec["lists"] == {"S|calendar|2025": {"names": ["x"]}, "S|calendar|2026": {
+            "read": "2026-11-11T05:00:00", "directory": "Calendars\\2026\\", "names": ["SC 50.pdf"]}}, \
+            f"remember_lists did not keep the night's years' pair, or kept another: {rec['lists']}"
+    return "ok", ("one case a rule: years, two reads (and the kept pair), held back, text, bucket, "
+                  "settled, again once, asked, for a person, order and cap")
+
+
+@check("build", "the night asks for a document only after a pause, counts its try first, stops at "
+       "a refusal (on file before it is noted), a redirect, the firewall's page, any other "
+       "failure, a second night's drop or a second 404, takes only a whole PDF, and saves it "
+       "under --root alone",
+       needs=("refusal", "fetch_calendar_archive"))
+def _night_requests(R, CA):
+    """take_night() and --night's arguments (the person's design of 26 October
+    2026, D8), every request answered by a fake opener in a folder of its own:
+
+      - a pause of 15 to 25 seconds before every request, the first as well,
+        and MARK and the lock read after it, not before;
+      - the try, and a live again id, on disk before the request; an id
+        spent asks no more;
+      - a 403 written against its row ("refused: ") before refusal.note; a
+        redirect and the firewall's page served as 200 are refusals too;
+      - a 500, a PDF with no end-of-file marker, one shorter than it said or
+        larger than the most: the step stops, the try counted, no error;
+      - a dropped connection: three tries, no error, the day kept; a drop
+        on the next night that asks is a refusal; a night that asks and
+        ends otherwise forgets it;
+      - the second 404 stops the step, and a 404 counts toward --most;
+      - no request starts after --seconds; nothing is asked with the
+        handover not in force or the bucket's list not read;
+      - a PDF goes to --root/<its path> through a part file, nowhere else, and
+        its row is held with its text to be made and its sha256;
+      - --night runs on GitHub's machine only, and its arguments are held."""
+    import contextlib
+    import hashlib
+    import http.client
+    import io
+    import time
+    import types
+    import urllib.error
+    import urllib.parse
+    K = CA.doc_key
+    saved = (CA._open, R.note, CA.NIGHT_BYTES_MOST, sys.argv, CA.os)
+    with _HandoverFolder(R, CA) as f:
+        os.environ["GITHUB_ACTIONS"] = "true"
+        events, at_ask, noted, renamed = [], [], [], []
+
+        def nowhere(*a, **kw):
+            raise AssertionError("a request went another way than the night's opener")
+        CA._get = nowhere
+        CA.os = types.SimpleNamespace(**{k: getattr(os, k) for k in dir(os) if not k.startswith("__")})
+        CA.os.replace = lambda a, b: renamed.append((Path(a).as_posix(), Path(b).as_posix())) or os.replace(a, b)
+        out = Path(".night") / "documents_night.json"
+
+        def row(name, **kw):
+            return _night_row(CA, "S", "calendar", 2026, name, **kw)
+
+        class Answer:
+            def __init__(self, b, said=None):
+                self.b, self.headers = b, {"Content-Length": str(len(b) if said is None else said)}
+
+            def read(self, n=-1):
+                got, self.b = self.b[:n], self.b[n:]
+                return got
+
+            def __enter__(self):
+                return self
+
+            def __exit__(self, *x):
+                return False
+
+        def night(rows, answers=(), most=8, seconds=600, held=None, on_sleep=None,
+                  record=None, again=None, bucket=(), **hand):
+            R.MARK.unlink(missing_ok=True)
+            shutil.rmtree(".night", ignore_errors=True)
+            Path(".night").mkdir()
+            del events[:], at_ask[:], noted[:]
+            CA.write_rows(CA.QUEUE, rows)
+            f.hand(again=again or {}, **hand)
+            mine = f.archive / R.NIGHT_RECORD.name
+            mine.unlink(missing_ok=True)
+            if record is not None:
+                mine.write_text(json.dumps(dict({"handover": "2026-11-10T14:00:00Z",
+                                                 "from_year": 2026, "rows": {}}, **record)))
+            CA.listed_file().write_text(json.dumps(_night_lists(CA, "2026-11-11T05:00:00", rows)))
+            Path("before.json").write_text(json.dumps(_night_lists(CA, "2026-11-10T05:00:00", rows)))
+            if bucket is not None:
+                CA.IN_BUCKET.write_text(json.dumps(dict(bucket)), encoding="utf-8")
+            answers = dict(answers)
+
+            def opener(req, timeout=None):
+                name = urllib.parse.unquote(req.full_url).rsplit("\\", 1)[-1]
+                events.append(("ask", name))
+                at_ask.append(json.loads(out.read_text(encoding="utf-8")))
+                a, pdf = answers.get(name, "pdf"), b"%PDF-1.7\n" + name.encode() + b"\n%%EOF\n"
+                if a.isdigit():
+                    raise urllib.error.HTTPError(req.full_url, int(a), "no", {
+                        "Location": "https://block.example/x?y"} if a == "302" else {}, None)
+                if a == "drop":
+                    raise http.client.RemoteDisconnected("closed without an answer")
+                return Answer({"block": _BLOCK_PAGE.encode(), "noeof": b"%PDF-1.7 half"}.get(a, pdf),
+                              len(pdf) + 5 if a == "short" else None)
+            CA._open = opener
+            CA.time = types.SimpleNamespace(
+                sleep=lambda s: events.append(("sleep", s)) or (on_sleep and on_sleep()),
+                time=time.time, strftime=time.strftime)
+            a = types.SimpleNamespace(night="before.json", most=most, seconds=seconds,
+                                      root=str(Path(".night") / "docs"), out=str(out))
+            with contextlib.redirect_stdout(io.StringIO()):
+                code = CA.take_night(a, CA.load_queue(), held or _Held())
+            asked = [e[1] for e in events if e[0] == "ask"]
+            return code, CA._json(out), CA._json(out.with_name(CA.ASKED_NAME)), asked
+
+        def note(where, why):
+            noted.append(json.loads(out.read_text(encoding="utf-8"))["rows"])
+            saved[1](where, why)
+        try:
+            R.note = note
+            c, d, h = (row("SC 3.pdf"), row("SC 4.pdf", attempts="1"),
+                       row("SC 7.pdf", attempts="3", error="HTTPError: HTTP Error 403: Forbidden"))
+            CA._disk(h).parent.mkdir(parents=True, exist_ok=True)
+            CA._disk(h).with_suffix(".txt").write_text("its text", encoding="utf-8")
+            code, rec, log, asked = night([c, d, h])
+            assert code == 0 and [e[0] for e in events] == ["sleep", "ask", "sleep", "ask"] and \
+                asked == ["SC 3.pdf", "SC 4.pdf"], f"not a pause before every request: {events}"
+            assert all(15 <= s <= 25 for k, s in events if k == "sleep"), f"a pause out of range: {events}"
+            assert (at_ask[0]["rows"][K(c)]["attempts"], at_ask[1]["rows"][K(d)]["attempts"]) == ("1", "2"), \
+                "the try was not on disk before its request"
+            for r in (c, d):
+                body = (Path(".night") / "docs" / CA._disk(r)).read_bytes()
+                e = rec["rows"][K(r)]
+                assert (e["state"], e["text"], e["sha256"], e["bytes"], e["error"]) == (
+                    "held", "pending", hashlib.sha256(body).hexdigest(), str(len(body)), ""), \
+                    f"a fetched row is not held with its text to be made: {e}"
+            assert not list(Path(".").rglob("*.part")) and all(
+                p.parts[:2] == (".night", "docs") for p in Path(".").rglob("*.pdf")), \
+                "a PDF or a part file was left outside --root"
+            assert [(a, b) for a, b in renamed if b.endswith(".pdf")] == [
+                (f"{b}.part", b) for b in (f".night/docs/{CA._disk(r).as_posix()}" for r in (c, d))], \
+                f"a PDF was not saved through a part file under --root: {renamed}"
+            assert (rec["rows"][K(h)]["state"], rec["rows"][K(h)]["error"], log["held_from_text"]) == (
+                "held", "", [K(h)]), f"the text rule did not hold a tried-out row and clear its error: {rec}"
+            assert rec["dropped"] is None and rec["handover"] == "2026-11-10T14:00:00Z"
+            # MARK and the lock, read after the pause: set during it, nothing is asked.
+            code, rec, log, asked = night([c], on_sleep=lambda: R.MARK.write_text("{}"))
+            assert code == 2 and asked == [] and log["requests"] == 0, "MARK was not read after the pause"
+            lost = types.SimpleNamespace(still=lambda: not any(e[0] == "sleep" for e in events))
+            code, rec, log, asked = night([c], held=lost)
+            assert code == 3 and asked == [], "the lock was not read after the pause"
+            # A person's again: the id on disk with the try, then spent.
+            g = row("SC 11.pdf", state="gone", attempts="3")
+            code, rec, log, asked = night([g], again={K(g): "id-1"})
+            assert asked == ["SC 11.pdf"] and at_ask[0]["rows"][K(g)]["again"] == "id-1" and \
+                at_ask[0]["rows"][K(g)]["attempts"] == "4", "the again id was not on disk before its request"
+            code, _, _, asked = night([g], again={K(g): "id-1"}, record={"rows": rec["rows"]})
+            assert asked == [], "a spent again id asked a second time"
+            # Refusals: on file against the row before refusal.note, and nothing more asked.
+            for answer, said in (("403", "refused: HTTPError"), ("302", "refused: a redirect (HTTP 302) to "
+                                 "block.example"), ("block", "refused: the firewall's block page")):
+                code, rec, log, asked = night([c, d], {"SC 3.pdf": answer})
+                assert code == 2 and asked == ["SC 3.pdf"] and R.MARK.exists() and \
+                    noted and noted[0][K(c)]["error"].startswith(said), \
+                    f"a {answer} was not a refusal on file before it was noted: {noted}"
+            # Other failures: the step stops, the try counted, no error written.
+            for answer, said in (("500", "HTTP 500"), ("noeof", "end-of-file"), ("short", "bytes of the"),
+                                 ("big", "larger than")):
+                CA.NIGHT_BYTES_MOST = 10 if answer == "big" else saved[2]
+                code, rec, log, asked = night([c, d], {"SC 3.pdf": answer})
+                e = rec["rows"][K(c)]
+                assert code == 1 and asked == ["SC 3.pdf"] and said in log["asked"][0]["ended"] and \
+                    (e["state"], e["attempts"], e["error"]) == ("wanted", "1", "") and \
+                    not R.MARK.exists(), f"a {answer} did not stop with its try and no error: {e}, {log}"
+            CA.NIGHT_BYTES_MOST = saved[2]
+            assert CA.whole_pdf(b"%PDF-1.7\n%%EOF\n") == "" and "not a PDF" in CA.whole_pdf(b"<html>")
+            # A dropped connection; a second on the next night that asks; a night that forgets it.
+            code, rec, log, asked = night([c, d], {"SC 3.pdf": "drop"})
+            e = rec["rows"][K(c)]
+            assert code == 1 and (e["attempts"], e["error"]) == ("3", "") and \
+                rec["dropped"] == "2026-11-10" and not R.MARK.exists(), f"a drop: {e}, {rec['dropped']}"
+            code, rec, log, asked = night([d], {"SC 4.pdf": "drop"}, record={"dropped": "2026-11-09"})
+            assert code == 2 and R.MARK.exists() and rec["rows"][K(d)]["error"].startswith("refused: "), \
+                "a drop on the next night that asked was not a refusal"
+            code, rec, log, asked = night([d], record={"dropped": "2026-11-09"})
+            assert code == 0 and rec["dropped"] is None, "a night that asked and fetched kept the drop"
+            # The second 404 stops; a 404 counts toward --most.
+            e3 = row("SC 20.pdf")
+            code, rec, log, asked = night([c, d, e3], {"SC 20.pdf": "404", "SC 3.pdf": "404"})
+            assert code == 1 and asked == ["SC 20.pdf", "SC 3.pdf"] and \
+                rec["rows"][K(c)]["state"] == rec["rows"][K(e3)]["state"] == "gone", \
+                f"the second 404 did not stop the step: {asked}"
+            code, rec, log, asked = night([c, d, e3], {"SC 20.pdf": "404"}, most=2)
+            assert code == 0 and asked == ["SC 20.pdf", "SC 3.pdf"] and log["waiting"] == 1, \
+                f"a 404 did not count toward --most: {asked}"
+            # No request after --seconds; none out of force or without the bucket's list.
+            code, rec, log, asked = night([c], seconds=1)
+            assert code == 0 and asked == [] and "seconds" in log["stopped"], "a request after --seconds"
+            for kw, why in (({"bucket": None}, "bucket"),
+                            ({"handed_back": {"at": "2026-12-01T15:00:00Z", "sent": True}}, "in force")):
+                code, rec, log, asked = night([c], **kw)
+                assert code == 1 and asked == [] and rec is None and why in log["stopped"], \
+                    f"asked, or wrote a record, with {kw}: {log['stopped']}"
+            # --night's arguments, and GitHub's machine alone.
+            for argv, want in ((["--most", "2"], 2), (["--night", "b", "--out", "o"], 2),
+                               (["--night", "b", "--root", ".", "--out", "o"], 2),
+                               (["--night", "b", "--root", "r", "--out", "o", "--most", "9"], 2),
+                               (["--night", "b", "--root", "r", "--out", "o", "--seconds", "601"], 2)):
+                sys.argv = ["fetch_calendar_archive.py", *argv]
+                with contextlib.redirect_stderr(io.StringIO()):
+                    try:
+                        rc = CA.main()
+                    except SystemExit as e:
+                        rc = e.code
+                assert rc == want, f"--night's arguments {argv} ended {rc}"
+        finally:
+            CA._open, R.note, CA.NIGHT_BYTES_MOST, sys.argv, CA.os = saved
+    return "ok", ("a pause before each request, the try first, refusals on file before noted, "
+                  "failures stop with no error, the drop across nights, two 404s, whole PDFs "
+                  "under --root alone")
 
 
 @check("build", "on a stood-down laptop no General Court request starts in GitHub's night "
