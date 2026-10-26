@@ -454,6 +454,41 @@ Preflight fails if any page writes the frame by hand.
 5. `python3 src/checks/check_site.py` on a build: the deploy allows 100,000
    files and it warns at 90,000, so a page per record is a decision.
 
+**Add or change a How-To guide or a Learn page.** These pages tell people
+what the law requires of them, so they say nothing a source on hand does not.
+1. Read the source before writing a word: the agency's page, or the
+   person's printout of it where the site refuses this machine (most nh.gov
+   agencies do); the statute on this site's own Laws page
+   (`/laws/<chapter>`); the constitution in `collected/constitution.json`.
+   Never a General Court page, and never memory.
+2. A guide is `guides.guide(...)`: a one-paragraph glance, a flow diagram
+   (`box`, `ask`), numbered `step()`s with a button wherever a step sends the
+   reader to an official page, Common Questions first in `more=`
+   (`civics.faq`), sources, See Also. A Learn page is a `civics.topic(...)`
+   whose body is `<h2>` sections with its Common Questions near the end. Copy
+   the shape of a neighbour rather than inventing one.
+3. Every statement a reader could act on rests on a `claim()` of the guide:
+   its source and the words that source was read as saying, with the day it
+   was read. A guide with a claim not yet read (`checked=None`) is held back
+   from the site. A Learn page has no ledger, so it says only what its own
+   sources say.
+4. Say no more than the source: not "must" where it says "may", not "every"
+   where it says "most", and never drop the condition or the exception that
+   comes with a rule. A general truth nobody sourced is a finding, however
+   true it sounds.
+5. A dollar amount or a percentage is a `fig()` on an RSA section, which the
+   build finds in the statute table every night; a count ("30 days") is a
+   `fig()` on a section or a read claim. A phone number, email, office
+   hours, street address or date is in the words of one of the guide's
+   claims (`guides.unsourced_contacts`). Preflight fails otherwise.
+6. The Spanish in the same commit: every piece changed has its
+   `src/pages/lang/es.json` entry brought current, and `python3
+   src/ops/translations.py --lang es` lists nothing stale or missing.
+7. Read the page back as a stranger would: `python3 src/checks/fact_sheet.py
+   <slug>` prints its every word beside its evidence. A sentence with no
+   line of the ledger, no section of a cited statute and no printout behind
+   it is fixed before the commit, not after.
+
 **Change what an email says, or how it looks.** The email sender is the
 Worker in `workers/follow/` (its README has the whole of it), deployed on its
 own rather than by the nightly.
@@ -511,6 +546,22 @@ nine.
 - **Do not reformat a file you are not otherwise changing.** A reformat hides
   the real diff, and this repository is read by people trying to work out why
   something is the way it is.
+
+**An AI assistant working here is held to these by a guard, not only told
+them.** `.claude/hooks/guard.py` runs before every shell command, file write,
+web fetch and GitHub call that Claude Code, or a helper agent it starts,
+makes in this repository. It refuses outright what no assistant should do:
+contacting the General Court's servers from a command of its own, a force
+push, `git clean -f` (the data folders are untracked), rewriting history, a
+recursive delete beyond the throwaway folders, overwriting `STATE.md` or the
+person's timed records. It asks the person first for what needs their word:
+`publish`, wrangler and the Cloudflare account, a push or merge to `main`,
+the scripts that ask the General Court, `cloud.py push` and `seed-kit`,
+`refusal.py --clear`, the workflows, reading a credential, and any change to
+the guard itself. Preflight's `_assistant_guard` holds that list as a table
+and starts the hook as Claude Code does, so a weakened rule fails the build.
+It is a backstop for the honest mistake made at speed, not a sandbox; the
+rules above still apply where it cannot see.
 
 ## Data, and what it is not ours to license
 

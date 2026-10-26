@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-10-11.51
+# GRANITE_VERSION: 2026-10-11.52
 """
 The how-to guides: their words, their sources, and what each was checked
 against. Read by build_civics.py, which draws them on the Resources hub's
@@ -207,10 +207,9 @@ def unsourced_contacts(g):
             out.append(f"address {m.group(0)}")
     # "On October 12, 2026 its page said": the day a claim of the guide was
     # checked is a date the guide may give for when it read its source.
-    import datetime as _dt
-    read_on = {f"{d:%B} {d.day}" for d in (_dt.date.fromisoformat(c["checked"])
-                                            for c in g["claims"] if re.fullmatch(
-                                                r"\d{4}-\d\d-\d\d", str(c["checked"] or "")))}
+    import components
+    read_on = {components.date_words(c["checked"], "full").split(",")[0] for c in g["claims"]
+               if re.fullmatch(r"\d{4}-\d\d-\d\d", str(c["checked"] or ""))}
     for m in MONTH_DAY.finditer(words):
         mon, day = m.group(1), m.group(2)
         if f"{mon} {int(day)}" in read_on:

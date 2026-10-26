@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-10-26.1
+# GRANITE_VERSION: 2026-10-26.2
 """
 What an AI assistant working in this repository may not do on its own.
 
@@ -124,7 +124,8 @@ def _under(rel, dirs):
 def _dirty(cwd):
     try:
         out = subprocess.run(["git", "status", "--porcelain", "--untracked-files=no"],
-                             cwd=cwd, capture_output=True, text=True, timeout=10)
+                             cwd=cwd, capture_output=True, text=True, encoding="utf-8",
+                             errors="replace", timeout=10)
         return bool(out.stdout.strip())
     except (OSError, subprocess.SubprocessError):
         return True
@@ -133,7 +134,8 @@ def _dirty(cwd):
 def _branch(cwd):
     try:
         return subprocess.run(["git", "rev-parse", "--abbrev-ref", "HEAD"], cwd=cwd,
-                              capture_output=True, text=True, timeout=10).stdout.strip()
+                              capture_output=True, text=True, encoding="utf-8",
+                              errors="replace", timeout=10).stdout.strip()
     except (OSError, subprocess.SubprocessError):
         return ""
 
