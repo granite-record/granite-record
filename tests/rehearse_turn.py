@@ -148,6 +148,14 @@ REPO = _paths.ROOT
 TERM, NEW = "2025-2026", "2027-2028"
 BOM = b"\xef\xbb\xbf"
 DAY = "2026-10-05"                     # the stated day of every build here
+# THE NIGHT'S CLOCK (26 October 2026). A night asks next session's bill
+# requests and the lists of calendars and journals only between 08:00 and
+# 12:00 UTC, by refusal's clock (nightly.asking_left), so every night here is
+# stated at a time inside those hours, as preflight's CHECKS_CLOCK states its
+# own: what a rehearsal exercises does not depend on the hour it is run. The
+# copy has no stand-down, so no laptop guard reads it; and the builds and
+# checks a night starts are given none (env), since they ask nobody.
+CLOCK = ("GRANITE_CLOCK_UTC", "2026-10-27T09:00:00Z")
 RESULTS = {"nights": [], "checks": [], "failed": []}
 
 
@@ -162,7 +170,8 @@ def note(ok, what, detail=""):
 
 
 def env(seed="2"):
-    return dict(os.environ, PYTHONIOENCODING="utf-8", PYTHONHASHSEED=seed,
+    return dict({k: v for k, v in os.environ.items() if k != CLOCK[0]},
+                PYTHONIOENCODING="utf-8", PYTHONHASHSEED=seed,
                 GRANITE_BUILD_DATE=DAY, HTTP_PROXY="http://127.0.0.1:9",
                 HTTPS_PROXY="http://127.0.0.1:9", NO_PROXY="", GRANITE_NO_BUCKET="1")
 
@@ -456,6 +465,9 @@ class Nights:
         import probe_db
         import caption_span                                     # noqa: F401
         self.NI, self.SG, self.refusal, self.PD = NI, SG, refusal, probe_db
+        # Inside the night's hours, whatever the hour this runs (CLOCK).
+        assert refusal.CLOCK_ENV == CLOCK[0], "refusal reads its test clock under another name"
+        os.environ[CLOCK[0]] = CLOCK[1]
         NI.run = self.fake
         NI.time = types.SimpleNamespace(sleep=lambda s: None, time=time.time)
         SG.time = types.SimpleNamespace(sleep=lambda s: None, time=time.time)
@@ -476,7 +488,7 @@ class Nights:
         urllib.request.urlopen = no
 
     # The steps.
-    def fake(self, args, label, cwd=None):
+    def fake(self, args, label, cwd=None, timeout=None):
         NI, name = self.NI, Path(args[0]).name
         self.calls.append([name] + list(args[1:]))
         NI.say(f"\n--- {label} ---")

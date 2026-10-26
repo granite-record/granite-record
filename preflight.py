@@ -81883,7 +81883,7 @@ def _nightly_reports_loud(NI):
         NI.build_running = lambda: deferred
         NI.gc_quiet = real_gc_quiet
 
-        def fake(args, label):
+        def fake(args, label, cwd=None, timeout=None):
             NI.say(f"\n--- {label} ---")
             rc = (rcs or {}).get(args[0], 0)
             if args[0] == "compile_reports.py":
@@ -85637,7 +85637,7 @@ def _nightly_new_term(NI, SG, BA):
              NI.captions_compared, NI.time, NI.FILE_CEILING, sys.argv, refusal.MARK,
              refusal.LOCK, SG.get, SG.time, NI.upload_and_check, NI.current_branch)
     env_keys = ("GITHUB_RUN_ID", "GITHUB_OUTPUT", "GITHUB_STEP_SUMMARY", "GITHUB_ACTIONS",
-                "GITHUB_SHA", "GITHUB_REF")
+                "GITHUB_SHA", "GITHUB_REF", CHECKS_CLOCK[0])
     saved_env = {k: os.environ.get(k) for k in env_keys}
     calls, how = [], {"bills": 100, "smaller": False, "rows": {}}
     today = f"{datetime.now():%Y-%m-%d}"
@@ -85716,6 +85716,9 @@ def _nightly_new_term(NI, SG, BA):
         for k in env_keys:
             os.environ.pop(k, None)
         os.environ[CHECKS_REF[0]] = CHECKS_REF[1]   # main's, unless a night names another
+        # A night inside the night's own hours (CHECKS_CLOCK): the steps after
+        # the day's files ask nothing outside them (nightly.asking_left).
+        os.environ[CHECKS_CLOCK[0]] = CHECKS_CLOCK[1]
         refusal.MARK, refusal.LOCK = tmp / "archive" / "refused.json", tmp / "archive" / ".lock"
         Path("archive").mkdir()
         Path("db").mkdir()
@@ -85829,6 +85832,11 @@ def _nightly_new_term(NI, SG, BA):
         assert not any("--allow-shrink" in c for c in of("snapshot_gencourt.py")) and \
             of("build_all.py") == [["build_all.py", "--local", "--no-captions"]], calls
         assert "new_term" not in verdict() and verdict()["asked"]["new_term"] is False
+        # Inside the night's hours whatever the hour this runs (CHECKS_CLOCK):
+        # the bill requests are asked, as a night started on time asks them.
+        assert of("fetch_lsrs.py") and str(verdict().get("lsrs")).startswith("installed"), \
+            ("an ordinary night did not ask the bill requests: this check's nights depend on "
+             f"the hour it runs ({verdict().get('lsrs')})")
 
         # An ordinary night that meets much smaller files: nothing installed or
         # built, and the run's page says what it may be and which box to tick.
@@ -85953,6 +85961,8 @@ def _nightly_new_term(NI, SG, BA):
         code, _ = night("--runner", "--new-term", run_id="204")
         v = verdict()
         assert code == 0 and v["clean"] and v["publishable"], (code, v.get("not_clean"))
+        assert of("fetch_lsrs.py") and str(v.get("lsrs")).startswith("installed"), \
+            f"the New term run did not ask the bill requests ({v.get('lsrs')})"
         assert of("snapshot_gencourt.py") and all("--allow-shrink" in c and "--allow-turn" in c
                                                   for c in of("snapshot_gencourt.py")), calls
         assert of("build_all.py") == [["build_all.py", "--local", "--no-captions", "--allow-prune"]], \
@@ -86401,7 +86411,7 @@ def _new_term_waits_for_publish(NI, SG, CL, BA):
              NI.upload_and_check, NI.current_branch, freeze_term.ready)
     freeze_term.ready = lambda root=".", term=None: (True, "frozen, for this check")
     env_keys = ("GITHUB_RUN_ID", "GITHUB_OUTPUT", "GITHUB_STEP_SUMMARY", "GITHUB_ACTIONS",
-                "GITHUB_SHA")
+                "GITHUB_SHA", CHECKS_CLOCK[0])
     saved_env = {k: os.environ.get(k) for k in env_keys}
     calls, gc = [], {}
     today = f"{datetime.now():%Y-%m-%d}"
@@ -86577,6 +86587,9 @@ def _new_term_waits_for_publish(NI, SG, CL, BA):
     try:
         for k in env_keys:
             os.environ.pop(k, None)
+        # A night inside the night's own hours (CHECKS_CLOCK): the steps after
+        # the day's files ask nothing outside them (nightly.asking_left).
+        os.environ[CHECKS_CLOCK[0]] = CHECKS_CLOCK[1]
         NI.run = fake
         NI.time = types.SimpleNamespace(sleep=lambda s: None, time=__import__("time").time)
         NI.live_fingerprint = lambda base, timeout=180: "an-older-build"
@@ -86599,6 +86612,12 @@ def _new_term_waits_for_publish(NI, SG, CL, BA):
         first = the_night("first", "300")
         assert first.v["gates"] == "no baseline" and first.v["fetch"] == "installed" and \
             first.census == 10, first.v
+        # Inside the night's hours whatever the hour this runs (CHECKS_CLOCK):
+        # the bill requests are asked, and lsrs.json is the night's to carry.
+        assert ["fetch_lsrs.py"] in first.calls and \
+            str(first.v.get("lsrs")).startswith("installed"), (
+                "the first night did not ask the bill requests: this check's nights depend on "
+                f"the hour it runs ({first.v.get('lsrs')})")
         before = later_nights_get()
         assert before[0] == OLD and before[3] == 10, before[3]
 
@@ -92076,7 +92095,10 @@ def _night_clock(NI, R):
         is Eastern (nightly.yml sets it), so a test time written as Eastern,
         nine in the morning at -04:00, is 13:00 UTC and may not ask, and one
         written with no zone is UTC; the gate's source passes night_window()
-        nothing and reads no datetime.now()."""
+        nothing and reads no datetime.now();
+      - and nightly.py's docstring says what it holds: the two steps that ask
+        it, and not the day's files, which keep their own rule (the review of
+        26 October 2026: it said the night's asking all fell before 12:00)."""
     from datetime import datetime
     saved = os.environ.get(R.CLOCK_ENV)
     try:
@@ -92111,6 +92133,24 @@ def _night_clock(NI, R):
                for c in calls) and not any("datetime.now" in ast.unparse(c) or
                                            "time.time" in ast.unparse(c) for c in calls), \
         "nightly.asking_left reads the window by an argument or the machine's own clock"
+    # What the clock holds, as the docstring says it (the review of 26 October
+    # 2026): the bill requests and the lists, the two steps that ask the gate,
+    # and not the day's files, which a night started late still asks whenever
+    # it runs -- so "its asking falls between then and 12:00" was not so.
+    gated = sorted(n.name for n in ast.walk(_parsed(_paths.locate("nightly.py")))
+                   if isinstance(n, ast.FunctionDef)
+                   and n.name != "asking_left" and any(
+                       isinstance(c, ast.Call) and ast.unparse(c.func) == "asking_left"
+                       for c in ast.walk(n)))
+    assert gated == ["take_documents", "take_lsrs"], (
+        f"nightly.asking_left gates {gated}, where THE NIGHT'S CLOCK names the bill requests "
+        "and the lists")
+    said = " ".join(re.split(r"\n\n[A-Z][A-Z' ,]+\(", NI.__doc__.split("THE NIGHT'S CLOCK (", 1)[1],
+                             maxsplit=1)[0].split())
+    assert re.search(r"those two steps ask between then and 12:00 UTC", said) and \
+        re.search(r"The day's files keep their own rule", said), (
+            "nightly.py's THE NIGHT'S CLOCK no longer says that only the bill requests and the "
+            "lists keep the hours, and that the day's files keep their own rule")
     return "ok", ("08:00 to 12:00 UTC by refusal's own clock, never a Monday's weekly window, "
                   "each step only if it can end by 12:00")
 
@@ -92119,8 +92159,8 @@ def _night_clock(NI, R):
        "UTC and are killed at their own limits, keeping the copies on file either way; and a "
        "step the night's clock did not ask for never holds the night for the gate, where one "
        "not asked for for another reason still does",
-       needs=("nightly", "refusal", "fetch_calendar_archive"))
-def _clock_steps(NI, R, CA):
+       needs=("nightly", "refusal", "fetch_calendar_archive", "fetch_lsrs"))
+def _clock_steps(NI, R, CA, FL):
     """THE NIGHT'S CLOCK (the person, 26 October 2026: "The existing bill
     request and list page steps can stay within 4-8am"). take_lsrs and
     take_documents ask nightly.asking_left first, with their own minutes:
@@ -92129,9 +92169,15 @@ def _clock_steps(NI, R, CA):
         "not asked for", and the bill requests and the list on file stay;
       - inside the hours both run, the bill requests first, each with its
         minutes as its limit;
-      - a step's minutes cover its own limits and its last request's timeout:
-        the bill requests' three requests at 60 and 90 seconds, five apart,
-        and the listing's LISTING_BUDGET and a request's 60;
+      - AT THE EDGE OF THE HOURS each gates on its own minutes (the review of
+        26 October 2026: a step asking asking_left(0), or the other step's
+        minutes, passed every case above): each may start at 12:00 less its
+        minutes and not a minute later, alone and in the night's order;
+      - a step's minutes cover its own limits and its last request's timeout,
+        read off the fetches themselves: every request fetch_lsrs's main()
+        makes, at its timeout, and every pause between them; the listing's
+        LISTING_BUDGET, the pause before its last request at its longest,
+        and that request's timeout;
       - KILLED AT ITS MINUTES (the review of 26 October 2026): a socket's
         timeout bounds one read, not a request, so an answer arriving a byte
         at a time could carry a step's requests past 12:00. run(timeout=)
@@ -92145,15 +92191,22 @@ def _clock_steps(NI, R, CA):
     holds the night for the gate (nightly.clock_kind), though no published
     night carried it: the plan the person approved says a late night's steps
     wait a day, not that its publish waits. A step not asked for for another
-    reason still holds, as it did."""
+    reason still holds, as it did.
+
+    AND IT LEAVES THE MACHINE WATCH AS IT FOUND IT (the review of 26 October
+    2026). The real run() names its step in nightly.WATCH, and every machine
+    watch line of the rest of the run, the night's own preflight log among
+    them, said "step: a step that ends"."""
     import contextlib
+    import inspect
     import io
     import time
     import types
-    from datetime import datetime
+    from datetime import datetime, timedelta, timezone
     here = os.getcwd()
     tmp = Path(tempfile.mkdtemp(prefix="gr-clock-steps-"))
     saved = (NI.run, NI.LOG, NI.QUIET, NI._paths.script)
+    saved_step = NI.WATCH["step"]
     saved_clock = os.environ.get(R.CLOCK_ENV)
     try:
         os.chdir(tmp)
@@ -92173,11 +92226,43 @@ def _clock_steps(NI, R, CA):
             code = NI.run([str(tmp / "quick.py")], "a step that ends")
         assert code == 3 and not any("STOPPED" in ln for ln in NI.LOG), (code, NI.LOG)
         NI._paths.script = saved[3]
-        # Each step's minutes hold its own limits and its last request's timeout.
-        assert NI.LSRS_MINUTES * 60 >= 60 + 90 + 60 + 2 * 5, \
-            "LSRS_MINUTES is less than the bill requests' three requests at their timeouts"
-        assert NI.LISTING_MINUTES * 60 >= CA.LISTING_BUDGET + 60, \
-            "LISTING_MINUTES is less than the listing's own budget and a request's timeout"
+
+        # Each step's minutes hold its longest run, read off the fetch itself
+        # rather than written here, so a timeout or a pause raised there is a
+        # step killed every night here (the review of 26 October 2026).
+        def worst(mod, where, asks):
+            """(seconds, requests): every request the function `where` of
+            `mod` makes, at the timeout it passes or its default, and every
+            pause it sleeps, the longest its jitter allows."""
+            fn = _parsed(mod.__file__)
+            for name in where.split("."):
+                fn = next(n for n in ast.walk(fn)
+                          if isinstance(n, ast.FunctionDef) and n.name == name)
+            names = {**vars(mod), "random": types.SimpleNamespace(uniform=max)}
+
+            def value(e):
+                return eval(compile(ast.Expression(e), mod.__file__, "eval"), names)
+            secs, n = 0.0, 0
+            for c in (c for c in ast.walk(fn) if isinstance(c, ast.Call)):
+                f = ast.unparse(c.func)
+                if f in asks:
+                    sig = inspect.signature(getattr(mod, f)).parameters
+                    given = {**dict(zip(sig, c.args)), **{k.arg: k.value for k in c.keywords}}
+                    secs += value(given["timeout"]) if "timeout" in given else \
+                        sig["timeout"].default
+                    n += 1
+                elif f == "time.sleep":
+                    secs += value(c.args[0])
+            return secs, n
+        lsrs_worst, n = worst(FL, "main", ("get", "post"))
+        assert n and NI.LSRS_MINUTES * 60 >= lsrs_worst, (
+            f"LSRS_MINUTES is {NI.LSRS_MINUTES}, less than the {lsrs_worst:g} seconds of "
+            f"fetch_lsrs's {n} requests at their timeouts and its pauses between them")
+        tail, n = worst(CA, "listing.ask", ("_get", "_page"))
+        assert n and NI.LISTING_MINUTES * 60 >= CA.LISTING_BUDGET + tail, (
+            f"LISTING_MINUTES is {NI.LISTING_MINUTES}, less than the listing's own budget of "
+            f"{CA.LISTING_BUDGET} seconds and {tail:g} more for the pause before its last "
+            "request and that request's timeout")
         # The steps, with a fake child: what ran, with which limit, and what a
         # child killed part way had half written.
         ran, limits, answer = [], [], {"rc": 0}
@@ -92228,6 +92313,34 @@ def _clock_steps(NI, R, CA):
         assert limits == [NI.LSRS_MINUTES * 60, NI.LISTING_MINUTES * 60], (
             "the bill requests or the lists are not killed at their own minutes, so a slow "
             f"answer could ask past 12:00 UTC: limits {limits}")
+        # At the edge of the hours, each by its own minutes: alone, at 12:00
+        # less its minutes it starts and a minute later it does not; and in
+        # the night's order, a minute either side of the bill requests' last.
+        until = datetime(2026, 10, 27, *NI.ASK_UNTIL, tzinfo=timezone.utc)
+        steps = ((NI.take_lsrs, NI.LSRS_MINUTES, "fetch_lsrs.py"),
+                 (lambda: NI.take_documents({}), NI.LISTING_MINUTES, "fetch_calendar_archive.py"))
+
+        def at(when, *take):
+            os.environ[R.CLOCK_ENV] = f"{when:%Y-%m-%dT%H:%M:%SZ}"
+            del ran[:], limits[:]
+            NI.EXITS.clear()
+            with contextlib.redirect_stdout(io.StringIO()):
+                for t in take:
+                    t()
+            return list(ran)
+        for take, minutes, name in steps:
+            last = until - timedelta(minutes=minutes)
+            for when, want in ((last, [name]), (last + timedelta(minutes=1), [])):
+                assert at(when, take) == want, (
+                    f"at {when:%H:%M} UTC {name} {'ran' if ran else 'did not run'}: a step of "
+                    f"{minutes} minutes may start until {last:%H:%M} and not after, to end by "
+                    f"{until:%H:%M}")
+        last = until - timedelta(minutes=NI.LSRS_MINUTES)
+        for when in (last - timedelta(minutes=1), last + timedelta(minutes=1)):
+            want = [n for _, m, n in steps if when + timedelta(minutes=m) <= until]
+            got = at(when, *(t for t, _, _ in steps))
+            assert got == want, f"at {when:%H:%M} UTC the night's two steps ran {got}, not {want}"
+        os.environ[R.CLOCK_ENV] = "2026-10-27T09:00:00Z"
         # Killed: the copy on file stays, the step says so, and the chain stops.
         del ran[:], limits[:]
         answer["rc"] = NI.RUN_KILLED
@@ -92253,14 +92366,147 @@ def _clock_steps(NI, R, CA):
     finally:
         os.chdir(here)
         NI.run, NI.LOG, NI.QUIET, NI._paths.script = saved
+        NI.WATCH["step"] = saved_step
         NI.EXITS.clear()
         if saved_clock is None:
             os.environ.pop(R.CLOCK_ENV, None)
         else:
             os.environ[R.CLOCK_ENV] = saved_clock
         shutil.rmtree(tmp, ignore_errors=True)
-    return "ok", ("past 12:00 UTC and before 08:00 nothing is asked; each step is killed at its "
-                  "minutes and keeps its copy; the clock's not asked for never holds the night")
+    assert NI.WATCH["step"] == saved_step, (
+        f"this check's real run() left the machine watch on {NI.WATCH['step']!r}, which every "
+        "later watch line of the run would name as its step")
+    return "ok", ("past 12:00 UTC and before 08:00 nothing is asked; each step starts only if it "
+                  "can end by 12:00 by its own minutes, which hold its fetch's longest run, and "
+                  "is killed at them keeping its copy; the clock's not asked for never holds "
+                  "the night")
+
+
+@check("build", "every fake of nightly.run, here and under tests/, takes run()'s timeout, and "
+       "every harness whose nights reach the bill requests or the lists states a time inside "
+       "the night's hours, so that no check's answer depends on the hour it runs",
+       needs=("nightly",))
+def _clock_fakes(NI):
+    """THE NIGHT'S CLOCK IN THE HARNESSES (the review of 26 October 2026).
+    take_lsrs and take_documents pass run() a timeout, so a fake put in place
+    of nightly.run that takes none raises TypeError the first time a night
+    reaches them -- which is only inside the night's hours: a check run in
+    the afternoon passes, and the night's own preflight at 08:20 UTC fails.
+    tests/rehearse_turn.py's fake did. And a harness whose nights reach those
+    steps without stating a time tests the asking path in the morning and
+    "not asked for" after noon, a break in either showing at one time of day
+    only: two of the six did. Read off the source, so the answer is the same
+    at every hour:
+
+      - every function put in place of nightly.run (NI.run, self.NI.run or
+        nightly.run, alone or in a tuple) -- a def, a method, a lambda, or
+        the def a factory returns -- takes `timeout`, or **kwargs; a name
+        that is no def here is the original put back;
+      - every harness -- a top-level def or class here, a whole script under
+        tests/ -- that puts one there and runs nightly.main() --runner,
+        other than the weekly's alone, sets the test clock in os.environ
+        (CHECKS_CLOCK here); a weekly harness that answers the bill requests
+        or the lists counts as one that reaches them.
+    """
+    import inspect
+    assert "timeout" in inspect.signature(NI.run).parameters, "nightly.run takes no timeout"
+    me = Path(__file__).resolve()
+    files = [me] + sorted((me.parent / "tests").glob("*.py"))
+
+    def is_run(t):
+        return isinstance(t, ast.Attribute) and t.attr == "run" and \
+            ast.unparse(t.value) in ("NI", "self.NI", "nightly")
+
+    def takes_timeout(fn):
+        a = fn.args
+        return a.kwarg is not None or "timeout" in {x.arg for x in a.posonlyargs + a.args +
+                                                    a.kwonlyargs}
+
+    def sets_clock(unit):
+        return any(isinstance(n, ast.Assign) and any(
+            isinstance(t, ast.Subscript) and ast.unparse(t.value) == "os.environ" and
+            re.search(r"CLOCK|GRANITE_CLOCK_UTC", ast.unparse(t.slice)) for t in n.targets)
+            for n in ast.walk(unit))
+
+    def defs_in(node):
+        out = {}
+        for n in ast.walk(node):
+            if isinstance(n, ast.FunctionDef):
+                out.setdefault(n.name, []).append(n)
+        return out
+
+    fakes, bad, unread, harnesses, unclocked = 0, [], [], [], []
+    for f in files:
+        tree = _parsed(f)
+        rel = f.relative_to(me.parent).as_posix()
+        everywhere = None
+        units = ([n for n in tree.body if isinstance(n, (ast.FunctionDef, ast.ClassDef))]
+                 if f == me else [tree])
+        for unit in units:
+            assigns = [n for n in ast.walk(unit) if isinstance(n, ast.Assign) and any(
+                is_run(x) for t in n.targets for x in (t.elts if isinstance(t, ast.Tuple) else
+                                                        [t]))]
+            if not assigns:
+                continue
+            defs = defs_in(unit)
+            everywhere = everywhere if everywhere is not None else defs_in(tree)
+
+            def resolve(v):
+                if isinstance(v, ast.Lambda):
+                    return [v]
+                if isinstance(v, ast.Name):
+                    return defs.get(v.id) or everywhere.get(v.id) or []
+                if isinstance(v, ast.Attribute) and ast.unparse(v.value) == "self":
+                    return defs.get(v.attr, [])
+                if isinstance(v, ast.Call):
+                    return [g for fac in resolve(v.func) for r in ast.walk(fac)
+                            if isinstance(r, ast.Return) and r.value is not None
+                            for g in resolve(r.value)] or None
+                return []
+            installs = 0
+            for n in assigns:
+                for t in n.targets:
+                    pairs = (list(zip(t.elts, n.value.elts)) if isinstance(t, ast.Tuple) and
+                             isinstance(n.value, ast.Tuple) else
+                             [] if isinstance(t, ast.Tuple) else [(t, n.value)])
+                    for target, v in pairs:
+                        if not is_run(target):
+                            continue
+                        got = resolve(v)
+                        if got is None:
+                            unread.append(f"{rel}:{n.lineno}")
+                        for fn in got or ():
+                            fakes += 1
+                            installs += 1
+                            if not takes_timeout(fn):
+                                bad.append(f"{rel}:{fn.lineno} {getattr(fn, 'name', 'lambda')}")
+            if not installs:
+                continue
+            said = {n.value for n in ast.walk(unit)
+                    if isinstance(n, ast.Constant) and isinstance(n.value, str)}
+            mains = any(isinstance(n, ast.Call) and isinstance(n.func, ast.Attribute) and
+                        n.func.attr == "main" and ast.unparse(n.func.value) in
+                        ("NI", "self.NI", "nightly") for n in ast.walk(unit))
+            if mains and "--runner" in said and (
+                    "--weekly" not in said or
+                    said & {"fetch_lsrs.py", "fetch_calendar_archive.py"}):
+                name = getattr(unit, "name", rel)
+                harnesses.append(name)
+                if not sets_clock(unit):
+                    unclocked.append(name)
+    assert not unread, ("a fake put in place of nightly.run that this cannot read, so cannot "
+                        "say takes run()'s timeout: " + ", ".join(unread))
+    assert not bad, ("these fakes of nightly.run take no timeout, and raise TypeError the "
+                     "first time a night reaches the bill requests or the lists, inside the "
+                     "night's hours only: " + ", ".join(bad))
+    assert not unclocked, ("these harnesses drive nights that reach the bill requests or the "
+                           "lists without stating a time (CHECKS_CLOCK), so what they test "
+                           "depends on the hour they run: " + ", ".join(unclocked))
+    assert fakes >= 15 and len(harnesses) >= 7, (
+        f"found only {fakes} fakes of nightly.run and {len(harnesses)} harnesses that reach the "
+        "bill requests: this check no longer reads them")
+    return "ok", (f"{fakes} fakes of nightly.run take timeout=; {len(harnesses)} harnesses "
+                  f"state a time inside the night's hours ({', '.join(harnesses)})")
 
 
 @check("build", "on a stood-down laptop no General Court request starts in GitHub's night "

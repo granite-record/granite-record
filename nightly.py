@@ -458,10 +458,13 @@ what was not asked for. Each step is also killed at its own minutes
 (LSRS_MINUTES, LISTING_MINUTES; run(timeout=)), because a socket's timeout
 bounds one read, not a request. The person approved it: "The existing bill
 request and list page steps can stay within 4-8am". The night starts at
-08:17 UTC, so its asking falls between then and 12:00 UTC: 4:17 to 8 a.m.
+08:17 UTC, so those two steps ask between then and 12:00 UTC: 4:17 to 8 a.m.
 Eastern in summer, and 3:17 to 7 a.m. in winter, since the hours are kept in
-UTC. The hour and a half before the window's 13:30 is the build's: a refusal
-the night meets reaches the bucket only when this exits.
+UTC. The day's files keep their own rule and not these hours: a night GitHub
+starts late still asks the export whenever it runs, and a New term run tries
+it as refusal.NIGHT_WINDOWS describes. The hour and a half before the
+window's 13:30 is the build's: a refusal the night meets reaches the bucket
+only when this exits.
 
 THE GATE, IN SHADOW (6 October 2026)
 
