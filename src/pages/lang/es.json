@@ -1768,6 +1768,11 @@
    "es": "Puede necesitar también un permiso estatal de zona costera protegida o de humedales.",
    "state": "draft"
   },
+  "guide.building-permits.a-town-or-city-that-enforces": {
+   "en": "A town or city that enforces the code does so by an ordinance the state&rsquo;s Building Code Review Board confirms; it may add local amendments, limited since July 1, 2026 to administrative matters. The state updated its codes to the 2024 editions on July 1, 2026; through December 31, 2026 a permit may be sought under either the 2021 or the 2024 codes. The Review Board answers questions at (603) 223-4315.",
+   "es": "Un municipio o ciudad que hace cumplir el código lo hace mediante una ordenanza que confirma la Junta de Revisión del Código de Construcción del estado (Building Code Review Board); puede añadir enmiendas locales, limitadas desde el 1 de julio de 2026 a asuntos administrativos. El estado actualizó sus códigos a las ediciones de 2024 el 1 de julio de 2026; hasta el 31 de diciembre de 2026 se puede pedir un permiso con los códigos de 2021 o con los de 2024. La Junta de Revisión atiende preguntas en el (603) 223-4315.",
+   "state": "draft"
+  },
   "guide.building-permits.before-work-starts-the-person": {
    "en": "Before work starts, the person responsible for it must get a permit. How that works is the town&rsquo;s to set: a town or city that enforces the code has a building official, often called the building inspector or code enforcement officer, who reviews plans, issues permits and inspects the work. Ask at your town or city office before you begin. A permit will not be issued for work that breaks the town&rsquo;s zoning or planning board rules, so the same office can tell you whether the project needs those boards&rsquo; approval too.",
    "es": "Antes de empezar la obra, el responsable de ella tiene que obtener un permiso. Cómo funciona lo decide el municipio: un municipio o una ciudad que hace cumplir el código tiene un funcionario de construcción, a menudo llamado inspector de construcción o encargado del cumplimiento del código, que revisa los planos, expide los permisos e inspecciona la obra. Pregunte en la oficina de su municipio o ciudad antes de empezar. No se expide un permiso para una obra que no cumpla las reglas de zonificación o de la junta de planificación del municipio, así que la misma oficina puede decirle si el proyecto necesita también la aprobación de esas juntas.",
@@ -1858,11 +1863,6 @@
    "es": "Lo que abarca el código de construcción de New Hampshire, cómo obtener un permiso e inspecciones de su municipio, quién puede hacer trabajos eléctricos, de plomería y de gas, la aprobación de sistemas sépticos, y los permisos para obras cerca del agua.",
    "state": "draft"
   },
-  "guide.building-permits.mechanical-safety-and-licensing-board": {
-   "en": "Mechanical Safety and Licensing Board (Office of Professional Licensure and Certification)",
-   "es": "Junta de Seguridad Mecánica y Licencias (Oficina de Licencias y Certificación Profesionales)",
-   "state": "draft"
-  },
   "guide.building-permits.near-a-lake-pond-river-the": {
    "en": "Near a lake, pond, river, the coast or a wetland",
    "es": "Cerca de un lago, un estanque, un río, la costa o un humedal",
@@ -1876,6 +1876,11 @@
   "guide.building-permits.no-one-may-build-a-house": {
    "en": "No one may build a house or other building that will send wastewater to a septic system, or build a septic system, until the Department of Environmental Services has approved its plans. The same goes before adding on to a building, or changing its use, in a way that would add to the load on its septic system. Your town may have its own rules on top of the state&rsquo;s.",
    "es": "Nadie puede construir una casa u otro edificio cuyas aguas residuales vayan a un sistema séptico, ni construir un sistema séptico, hasta que el Departamento de Servicios Ambientales haya aprobado sus planos. Lo mismo vale antes de ampliar un edificio, o de cambiar su uso, de una manera que aumente lo que recibe su sistema séptico. Su municipio puede tener reglas propias además de las del estado.",
+   "state": "draft"
+  },
+  "guide.building-permits.otherwise-the-states-electricians-board": {
+   "en": "Otherwise, the state&rsquo;s Electricians&rsquo; Board says, work at 30 volts or more needs an active New Hampshire electrician&rsquo;s license. To ask about an inspection or report a safety concern, call the Department of Safety at (603) 271-2791.",
+   "es": "Fuera de ese caso, según la Junta de Electricistas del estado (Electricians' Board), el trabajo con 30 voltios o más requiere una licencia de electricista de New Hampshire vigente. Para preguntar por una inspección o informar de un problema de seguridad, llame al Departamento de Seguridad al (603) 271-2791.",
    "state": "draft"
   },
   "guide.building-permits.plumbers-and-gas-fitters-are-licensed": {
@@ -1918,14 +1923,19 @@
    "es": "Junta Estatal de Control de Incendios, RSA 153",
    "state": "draft"
   },
-  "guide.building-permits.state-fire-and-building-codes-state": {
-   "en": "State Fire and Building Codes (State Fire Marshal)",
-   "es": "Códigos estatales de incendios y de construcción (Jefe Estatal de Bomberos)",
+  "guide.building-permits.state-building-code-division-of-fire": {
+   "en": "State Building Code (Division of Fire Safety)",
+   "es": "Código de Construcción del Estado (División de Seguridad contra Incendios)",
    "state": "draft"
   },
   "guide.building-permits.the-building-official-may-inspect-the": {
    "en": "The building official may inspect the work, the site and the building, so plan for the inspections your town asks for.",
    "es": "El funcionario de construcción puede inspeccionar la obra, el sitio y el edificio, así que cuente con las inspecciones que pida su municipio.",
+   "state": "draft"
+  },
+  "guide.building-permits.the-department-has-an-online-tool": {
+   "en": "The Department has an online tool that tells you whether a project needs a shoreland permit. For questions, call (603) 271-2147 and ask for the Inspector of the Day, or email shoreland@des.nh.gov; for wetlands, lrm@des.nh.gov, with photos, plans and the location.",
+   "es": "El Departamento tiene una herramienta en línea que indica si un proyecto necesita un permiso de zona ribereña. Para preguntas, llame al (603) 271-2147 y pida hablar con el inspector de turno (Inspector of the Day), o escriba a shoreland@des.nh.gov; para humedales, a lrm@des.nh.gov, con fotos, planos y la ubicación.",
    "state": "draft"
   },
   "guide.building-permits.the-plans-must-be-prepared-and": {
@@ -1943,9 +1953,9 @@
    "es": "El <b>código estatal de construcción</b> se aplica a todo edificio y estructura de New Hampshire: al construirlo, y al modificarlo, renovarlo, repararlo o demolerlo. Es un conjunto de códigos nacionales que el estado adopta, entre ellos los de construcción, vivienda, plomería, sistemas mecánicos, energía y electricidad.",
    "state": "draft"
   },
-  "guide.building-permits.the-state-s-building-and-fire": {
-   "en": "The state's building and fire codes (State Fire Marshal)",
-   "es": "Los códigos estatales de construcción y de incendios (Jefe Estatal de Bomberos)",
+  "guide.building-permits.the-state-building-code-division-of": {
+   "en": "The State Building Code (Division of Fire Safety)",
+   "es": "El Código de Construcción del Estado (División de Seguridad contra Incendios)",
    "state": "draft"
   },
   "guide.building-permits.title": {
@@ -2234,6 +2244,11 @@
    "es": "Una llamada o una carta dice que ganó un premio, a cambio de una cuota",
    "state": "draft"
   },
+  "guide.consumer-rights.a-complaint-is-made-in-writing": {
+   "en": "A complaint is made in writing, on the Bureau&rsquo;s consumer complaint form: online, after you create an account with the State for filing forms, or on the paper form, mailed or emailed. Give as much detail as you can, with every paper that bears on it, such as a car dealer&rsquo;s paperwork. An attorney reviews it and may send it to the business to answer in writing. It is not a formal legal process, it can take time, and it does not guarantee an answer or a resolution; the Bureau cannot represent you or give you legal advice. If you are not satisfied, consider a private lawyer or small claims court.",
+   "es": "La queja se presenta por escrito, en el formulario de quejas del consumidor de la Oficina: en línea, después de crear una cuenta con el estado para presentar formularios, o en el formulario en papel, enviado por correo postal o electrónico. Dé todos los detalles que pueda, con cada documento relacionado, como los papeles de un concesionario de autos. Un abogado de la Oficina la revisa y puede enviarla a la empresa para que responda por escrito. No es un proceso legal formal, puede tardar y no garantiza una respuesta ni una solución; la Oficina no puede representarle ni darle asesoría legal. Si no queda satisfecho, considere hablar con un abogado privado o acudir al tribunal de reclamos menores.",
+   "state": "draft"
+  },
   "guide.consumer-rights.a-gift-certificate-with-a-face": {
    "en": "A gift certificate with a face value of $250 or less may not carry an expiration date, and no gift certificate may lose value to a dormancy fee or any other service charge. Season passes are not covered.",
    "es": "Un certificado de regalo con un valor nominal de $250 o menos no puede tener fecha de vencimiento, y ningún certificado de regalo puede perder valor por una cuota de inactividad ni por ningún otro cargo por servicio. Los pases de temporada no están incluidos.",
@@ -2375,18 +2390,13 @@
    "state": "draft"
   },
   "guide.consumer-rights.the-attorney-generals-consumer": {
-   "en": "The Attorney General&rsquo;s <b>Consumer Protection and Antitrust Bureau</b> enforces the Consumer Protection Act. It can ask a court to stop a business&rsquo;s unlawful practice and to order money or property returned to the people it harmed. File a complaint with the Bureau online, or call its Consumer Hotline; report a scam to your local police as well.",
-   "es": "La <b>Oficina de Protección al Consumidor y Antimonopolio</b> del Fiscal General hace cumplir la Ley de Protección al Consumidor. Puede pedir a un tribunal que detenga la práctica ilegal de una empresa y que ordene devolver el dinero o los bienes a las personas perjudicadas. Presente una queja ante la Oficina en línea, o llame a su Línea de Atención al Consumidor; denuncie también una estafa a la policía local.",
+   "en": "The Attorney General&rsquo;s <b>Consumer Protection and Antitrust Bureau</b> enforces the Consumer Protection Act. It can ask a court to stop a business&rsquo;s unlawful practice and to order money or property returned to the people it harmed.",
+   "es": "La <b>Oficina de Protección al Consumidor y Antimonopolio</b> del Fiscal General hace cumplir la Ley de Protección al Consumidor. Puede pedir a un tribunal que detenga la práctica ilegal de una empresa y que ordene devolver el dinero o los bienes a las personas perjudicadas.",
    "state": "draft"
   },
   "guide.consumer-rights.the-attorney-generals-consumer-2": {
-   "en": "The Attorney General&rsquo;s Consumer Protection and Antitrust Bureau takes complaints online and on its Consumer Hotline. For advice on your own case:",
-   "es": "La Oficina de Protección al Consumidor y Antimonopolio del Fiscal General recibe quejas en línea y en su Línea de Atención al Consumidor. Para recibir asesoría sobre su propio caso:",
-   "state": "draft"
-  },
-  "guide.consumer-rights.the-bureau-does-not-enforce-a": {
-   "en": "The Bureau does not enforce a private contract: a dispute over a contract alone is yours to take to court.",
-   "es": "La Oficina no hace cumplir un contrato privado: una disputa solo sobre un contrato le corresponde a usted llevarla a los tribunales.",
+   "en": "The Attorney General&rsquo;s Consumer Protection and Antitrust Bureau takes complaints on its consumer complaint form; the Attorney General&rsquo;s office answers at (603) 271-3658. For advice on your own case:",
+   "es": "La Oficina de Protección al Consumidor y Antimonopolio del Fiscal General recibe quejas en su formulario de quejas del consumidor; la oficina del Fiscal General atiende en el (603) 271-3658. Para recibir asesoría sobre su propio caso:",
    "state": "draft"
   },
   "guide.consumer-rights.the-consumer-protection-act-makes-it": {
@@ -3012,6 +3022,11 @@
   "guide.discrimination.stores-restaurants-and-other-places-open": {
    "en": "Stores, restaurants and other places open to the public",
    "es": "Tiendas, restaurantes y otros lugares abiertos al público",
+   "state": "draft"
+  },
+  "guide.discrimination.the-commission-also-takes-complaints-of": {
+   "en": "The Commission also takes complaints of discrimination in K-12 public schools, and offers mediation. Submit a complaint from its website, or call (603) 271-2767, Monday through Friday, 8 a.m. to 4 p.m.; its office is at 57 Regional Drive, Suite 8, in Concord.",
+   "es": "La Comisión también recibe quejas por discriminación en las escuelas públicas de K-12, y ofrece mediación. Presente una queja desde su sitio web, o llame al (603) 271-2767, de lunes a viernes, de 8 a.m. a 4 p.m.; su oficina está en 57 Regional Drive, Suite 8, en Concord.",
    "state": "draft"
   },
   "guide.discrimination.the-commission-for-human-rights-can": {
@@ -4586,6 +4601,11 @@
    "es": "¿Está inscrito para votar donde vive ahora?",
    "state": "draft"
   },
+  "guide.how-to-vote.ask-your-clerk-with-your-permission": {
+   "en": "Ask your clerk: with your permission, election officials can check New Hampshire voter, motor vehicle and vital records to help prove your qualifications. A certified copy of a New Hampshire birth or other vital record is free when it is only for registering to vote.",
+   "es": "Pregúntele a su secretario: con su permiso, los funcionarios electorales pueden consultar los registros de votantes, de vehículos motorizados y vitales de New Hampshire para ayudarle a probar que reúne los requisitos. Una copia certificada de un acta de nacimiento u otro registro vital de New Hampshire es gratuita cuando es solo para inscribirse para votar.",
+   "state": "draft"
+  },
   "guide.how-to-vote.at-least-18-years-old": {
    "en": "at least 18 years old,",
    "es": "tiene al menos 18 años,",
@@ -4626,9 +4646,14 @@
    "es": "<b>Ciudadanía:</b> un acta de nacimiento de EE. UU., un pasaporte o una tarjeta de pasaporte de EE. UU., o los documentos de naturalización. Estar inscrito para votar en New Hampshire ahora, o haberlo estado antes, también la prueba.",
    "state": "draft"
   },
+  "guide.how-to-vote.common-questions": {
+   "en": "Common Questions",
+   "es": "Preguntas frecuentes",
+   "state": "draft"
+  },
   "guide.how-to-vote.domicile-a-new-hampshire-drivers-license": {
-   "en": "<b>Domicile:</b> a New Hampshire driver&rsquo;s license or non-driver ID, a New Hampshire vehicle registration, a federal photo ID, or a government check, benefit statement or tax document showing your address. Without one of those, there is a form to fill in together with a lease, a utility bill, or a confirmation signed by the owner, manager or tenant where you live, and a separate form for people who are homeless.",
-   "es": "<b>Domicilio:</b> una licencia de conducir o una identificación de no conductor de New Hampshire, un registro de vehículo de New Hampshire, una identificación federal con foto, o un cheque del gobierno, un estado de cuenta de beneficios o un documento de impuestos que muestre su dirección. Si no tiene ninguno de esos, hay un formulario que se llena junto con un contrato de alquiler, una factura de servicios públicos o una confirmación firmada por el dueño, el administrador o el inquilino del lugar donde vive, y un formulario aparte para las personas sin hogar.",
+   "en": "<b>Domicile:</b> a New Hampshire driver&rsquo;s license or non-driver ID, a New Hampshire vehicle registration, a federal photo ID, or a government check, benefit statement or tax document showing your address.",
+   "es": "<b>Domicilio:</b> una licencia de conducir o una identificación de no conductor de New Hampshire, un registro de vehículo de New Hampshire, una identificación federal con foto, o un cheque del gobierno, un estado de cuenta de beneficios o un documento de impuestos que muestre su dirección.",
    "state": "draft"
   },
   "guide.how-to-vote.election-procedure-rsa-659": {
@@ -4661,19 +4686,24 @@
    "es": "Registro vital gratuito para inscribirse para votar",
    "state": "draft"
   },
+  "guide.how-to-vote.how-early-can-i-ask-for": {
+   "en": "How early can I ask for an absentee ballot, and can I track it?",
+   "es": "¿Con cuánta anticipación puedo pedir una boleta de voto en ausencia, y puedo seguirla?",
+   "state": "draft"
+  },
   "guide.how-to-vote.how-to-get-a-birth-or": {
    "en": "How to get a birth or other vital record",
    "es": "Cómo obtener un acta de nacimiento u otro registro vital",
    "state": "draft"
   },
+  "guide.how-to-vote.i-moved-within-my-town-do": {
+   "en": "I moved within my town. Do I register again?",
+   "es": "Me mudé dentro de mi municipio. ¿Tengo que inscribirme otra vez?",
+   "state": "draft"
+  },
   "guide.how-to-vote.identity-a-photo-drivers-license-from": {
    "en": "<b>Identity:</b> a photo driver&rsquo;s license from any state; a U.S. passport, passport card or armed services ID; or photo ID from a local, state or federal government.",
    "es": "<b>Identidad:</b> una licencia de conducir con foto de cualquier estado; un pasaporte, una tarjeta de pasaporte o una identificación de las fuerzas armadas de EE. UU.; o una identificación con foto de un gobierno local, estatal o federal.",
-   "state": "draft"
-  },
-  "guide.how-to-vote.if-you-are-missing-a-document": {
-   "en": "If you are missing a document, ask your clerk: with your permission, election officials can check New Hampshire voter, motor vehicle and vital records to help prove your qualifications. A certified copy of a New Hampshire birth or other vital record is free when it is only for registering to vote.",
-   "es": "Si le falta un documento, pregúntele a su secretario: con su permiso, los funcionarios electorales pueden consultar los registros de votantes, de vehículos motorizados y vitales de New Hampshire para ayudarle a probar que reúne los requisitos. Una copia certificada de un acta de nacimiento u otro registro vital de New Hampshire es gratuita cuando es solo para inscribirse para votar.",
    "state": "draft"
   },
   "guide.how-to-vote.if-you-cannot-go-in-person": {
@@ -4686,6 +4716,11 @@
    "es": "Cómo comprobar que está inscrito, inscribirse si no lo está, qué llevar y dónde votar, paso a paso, con la página de la Secretaría de Estado para cada cosa.",
    "state": "draft"
   },
+  "guide.how-to-vote.living-here-is-what-the-law": {
+   "en": "&ldquo;Living&rdquo; here is what the law calls your <em>domicile</em>: the one place you call home and take part in public life from. You can have only one, and there is no minimum time you must have lived there first.",
+   "es": "&ldquo;Vivir&rdquo;, aquí, es lo que la ley llama su <em>domicilio</em>: el único lugar que considera su hogar y desde el cual participa en la vida pública. Solo puede tener uno, y no hay un tiempo mínimo que deba haber vivido allí antes.",
+   "state": "draft"
+  },
   "guide.how-to-vote.living-in-the-town-or-city": {
    "en": "living in the town or city ward where you are registering.",
    "es": "vive en el municipio o el barrio electoral de la ciudad donde se inscribe.",
@@ -4696,9 +4731,19 @@
    "es": "Asegúrese de que puede inscribirse",
    "state": "draft"
   },
+  "guide.how-to-vote.missing-a-document-the-questions-below": {
+   "en": "Missing a document? The questions below say what you can do.",
+   "es": "¿Le falta un documento? Las preguntas de abajo dicen qué puede hacer.",
+   "state": "draft"
+  },
   "guide.how-to-vote.new-to-new-hampshire-license": {
    "en": "New to New Hampshire: license, registration and voting",
    "es": "Nuevo en New Hampshire: licencia, registro del vehículo y voto",
+   "state": "draft"
+  },
+  "guide.how-to-vote.no-a-move-within-the-same": {
+   "en": "No. A move within the same town or ward is an address change, made on the same voter registration form. A move to a new town or ward means registering there.",
+   "es": "No. Una mudanza dentro del mismo municipio o barrio electoral es un cambio de dirección, que se hace en el mismo formulario de inscripción de votantes. Si se muda a otro municipio o barrio electoral, tiene que inscribirse allí.",
    "state": "draft"
   },
   "guide.how-to-vote.no-or-not-sure": {
@@ -4707,8 +4752,8 @@
    "state": "draft"
   },
   "guide.how-to-vote.on-election-day-at-your-polling": {
-   "en": "<b>On election day</b>, at your polling place. You register, then vote at that election. If you are waiting in line to register when the polls close, you may still register and vote.",
-   "es": "<b>El día de la elección</b>, en su lugar de votación. Se inscribe y luego vota en esa elección. Si está en la fila para inscribirse cuando cierran las urnas, todavía puede inscribirse y votar.",
+   "en": "<b>On election day</b>, at your polling place. You register, then vote at that election.",
+   "es": "<b>El día de la elección</b>, en su lugar de votación. Se inscribe y luego vota en esa elección.",
    "state": "draft"
   },
   "guide.how-to-vote.on-election-day-go-to-your": {
@@ -4747,8 +4792,8 @@
    "state": "draft"
   },
   "guide.how-to-vote.send-the-absentee-ballot-application-to": {
-   "en": "Send the absentee ballot application to your town or city clerk, not the state, with the proof of identity the form asks for. You can apply up to six months before the election. The deadline to ask by mail is noon the day before the election, and to ask and vote in person at the clerk&rsquo;s office, 5 p.m. the day before. A mailed ballot must reach your clerk by 5 p.m. on election day, so ask for it more than two weeks ahead. The voter information lookup shows when your clerk got your request, sent your ballot, and received it back.",
-   "es": "Envíe la solicitud de boleta de voto en ausencia al secretario de su municipio o ciudad, no al estado, con la prueba de identidad que pide el formulario. Puede solicitarla hasta seis meses antes de la elección. El plazo para pedirla por correo es el mediodía del día anterior a la elección, y para pedirla y votar en persona en la oficina del secretario, las 5 p. m. del día anterior. Una boleta enviada por correo debe llegar a su secretario a más tardar a las 5 p. m. del día de la elección, así que pídala con más de dos semanas de anticipación. La búsqueda de información para votantes muestra cuándo recibió su secretario su solicitud, cuándo le envió la boleta y cuándo la recibió de vuelta.",
+   "en": "Send the absentee ballot application to your town or city clerk, not the state, with the proof of identity the form asks for. The deadline to ask by mail is noon the day before the election, and to ask and vote in person at the clerk&rsquo;s office, 5 p.m. the day before. A mailed ballot must reach your clerk by 5 p.m. on election day, so ask for it more than two weeks ahead.",
+   "es": "Envíe la solicitud de boleta de voto en ausencia al secretario de su municipio o ciudad, no al estado, con la prueba de identidad que pide el formulario. El plazo para pedirla por correo es el mediodía del día anterior a la elección, y para pedirla y votar en persona en la oficina del secretario, las 5 p. m. del día anterior. Una boleta enviada por correo debe llegar a su secretario a más tardar a las 5 p. m. del día de la elección, así que pídala con más de dos semanas de anticipación.",
    "state": "draft"
   },
   "guide.how-to-vote.statement-on-the-court-s-hb": {
@@ -4766,9 +4811,14 @@
    "es": "La búsqueda de información para votantes de la Secretaría de Estado le dice si está inscrito y dónde está su lugar de votación.",
    "state": "draft"
   },
+  "guide.how-to-vote.there-is-a-form-to-fill": {
+   "en": "There is a form to fill in together with a lease, a utility bill, or a confirmation signed by the owner, manager or tenant where you live, and a separate form for people who are homeless.",
+   "es": "Hay un formulario que se llena junto con un contrato de alquiler, una factura de servicios públicos o una confirmación firmada por el dueño, el administrador o el inquilino del lugar donde vive, y un formulario aparte para las personas sin hogar.",
+   "state": "draft"
+  },
   "guide.how-to-vote.there-is-no-minimum-time-you": {
-   "en": "There is no minimum time you must have lived there first. &ldquo;Living&rdquo; here is what the law calls your <em>domicile</em>: the one place you call home and take part in public life from. You can have only one.",
-   "es": "No hay un tiempo mínimo que deba haber vivido allí antes. &ldquo;Vivir&rdquo;, aquí, es lo que la ley llama su <em>domicilio</em>: el único lugar que considera su hogar y desde el cual participa en la vida pública. Solo puede tener uno.",
+   "en": "There is no minimum time you must have lived there first.",
+   "es": "No hay un tiempo mínimo que deba haber vivido allí antes.",
    "state": "draft"
   },
   "guide.how-to-vote.this-changed-in-2026-and-the": {
@@ -4806,6 +4856,26 @@
    "es": "Qué se acepta como prueba",
    "state": "draft"
   },
+  "guide.how-to-vote.what-does-living-there-mean": {
+   "en": "What does &ldquo;living there&rdquo; mean?",
+   "es": "¿Qué quiere decir &ldquo;vivir allí&rdquo;?",
+   "state": "draft"
+  },
+  "guide.how-to-vote.what-if-i-am-in-line": {
+   "en": "What if I am in line to register when the polls close?",
+   "es": "¿Y si estoy en la fila para inscribirme cuando cierran las urnas?",
+   "state": "draft"
+  },
+  "guide.how-to-vote.what-if-i-am-missing-a": {
+   "en": "What if I am missing a document?",
+   "es": "¿Y si me falta un documento?",
+   "state": "draft"
+  },
+  "guide.how-to-vote.what-if-i-have-no-document": {
+   "en": "What if I have no document showing where I live?",
+   "es": "¿Y si no tengo un documento que muestre dónde vivo?",
+   "state": "draft"
+  },
   "guide.how-to-vote.when-you-register-you-must-show": {
    "en": "When you register you must show proof of your identity, your age, your citizenship and your domicile. Examples the Secretary of State gives:",
    "es": "Cuando se inscribe, debe mostrar pruebas de su identidad, su edad, su ciudadanía y su domicilio. Ejemplos que da la Secretaría de Estado:",
@@ -4831,6 +4901,11 @@
    "es": "está en el Programa de Confidencialidad de Domicilio del Fiscal General (Address Confidentiality Program) o protegido por una orden por violencia doméstica; o",
    "state": "draft"
   },
+  "guide.how-to-vote.you-can-apply-up-to-six": {
+   "en": "You can apply up to six months before the election. The voter information lookup shows when your clerk got your request, sent your ballot, and received it back.",
+   "es": "Puede solicitarla hasta seis meses antes de la elección. La búsqueda de información para votantes muestra cuándo recibió su secretario su solicitud, cuándo le envió la boleta y cuándo la recibió de vuelta.",
+   "state": "draft"
+  },
   "guide.how-to-vote.you-can-register-as-a-democrat": {
    "en": "You can register as a Democrat, a Republican, or Undeclared.",
    "es": "Puede inscribirse como demócrata, como republicano o como Undeclared (sin afiliación a un partido).",
@@ -4847,13 +4922,18 @@
    "state": "draft"
   },
   "guide.how-to-vote.you-can-vote-only-in-the": {
-   "en": "You can vote only in the town, or the ward of a city, where you live. If you have moved to a new town or ward, you need to register at your new address; a move within the same town or ward is an address change, made on the same form.",
-   "es": "Solo puede votar en el municipio, o en el barrio electoral de una ciudad, donde vive. Si se mudó a otro municipio o barrio electoral, tiene que inscribirse en su nueva dirección; una mudanza dentro del mismo municipio o barrio electoral es un cambio de dirección, que se hace en el mismo formulario.",
+   "en": "You can vote only in the town, or the ward of a city, where you live. If you have moved to a new town or ward, you need to register at your new address.",
+   "es": "Solo puede votar en el municipio, o en el barrio electoral de una ciudad, donde vive. Si se mudó a otro municipio o barrio electoral, tiene que inscribirse en su nueva dirección.",
    "state": "draft"
   },
   "guide.how-to-vote.you-fill-in-a-voter-registration": {
    "en": "You fill in a voter registration form, and you can do it in any of these ways:",
    "es": "Usted llena un formulario de inscripción de votantes, y puede hacerlo de cualquiera de estas maneras:",
+   "state": "draft"
+  },
+  "guide.how-to-vote.you-may-still-register-and-vote": {
+   "en": "You may still register and vote.",
+   "es": "Todavía puede inscribirse y votar.",
    "state": "draft"
   },
   "guide.how-to-vote.you-vote-at-the-polling-place": {
@@ -8021,6 +8101,11 @@
    "es": "Si un problema del camino dañó su auto",
    "state": "draft"
   },
+  "guide.report-a-road-problem.if-a-signal-is-out-a": {
+   "en": "If a signal is out, a stop sign is down or a state road is iced over, call the Department of Transportation&rsquo;s <b>Traffic Management Center</b> at (603) 271-6862. For a pothole, drainage or another problem on a state road, contact the Department&rsquo;s highway maintenance district for your town; its page for the public links the districts, and a form for a damage claim. Other questions go to (603) 271-3734 or info@dot.nh.gov.",
+   "es": "Si un semáforo no funciona, una señal de alto está caída o una carretera estatal está cubierta de hielo, llame al <b>Centro de Gestión del Tráfico</b> (Traffic Management Center) del Departamento de Transporte al (603) 271-6862. Para un bache, un problema de drenaje u otro problema en una carretera estatal, comuníquese con el distrito de mantenimiento de carreteras del Departamento que corresponde a su municipio; su página para el público enlaza los distritos y un formulario para reclamar daños. Otras preguntas, al (603) 271-3734 o a info@dot.nh.gov.",
+   "state": "draft"
+  },
   "guide.report-a-road-problem.if-you-are-not-sure-whose": {
    "en": "If you are not sure whose road it is, start with your town.",
    "es": "Si no está seguro de quién es el camino, empiece por su municipio.",
@@ -8079,11 +8164,6 @@
   "guide.report-a-road-problem.the-department-of-transportations": {
    "en": "The Department of Transportation&rsquo;s maintenance district for your town.",
    "es": "El distrito de mantenimiento del Departamento de Transporte que corresponde a su municipio.",
-   "state": "draft"
-  },
-  "guide.report-a-road-problem.the-department-of-transportations-page": {
-   "en": "The Department of Transportation&rsquo;s page for the public lists its highway maintenance districts and how to reach the one for your town about a pothole, drainage or another problem on a state road, and the number to call about a hazard that needs attention right away.",
-   "es": "La página del Departamento de Transporte para el público enumera sus distritos de mantenimiento de carreteras y cómo comunicarse con el de su municipio por un bache, el drenaje u otro problema en un camino estatal, y el número al que llamar por un peligro que necesita atención inmediata.",
    "state": "draft"
   },
   "guide.report-a-road-problem.the-law-gives-a-written-notice": {
@@ -11400,6 +11480,11 @@
    "es": "Legislación de protección, RSA 275",
    "state": "draft"
   },
+  "guide.wage-rights.start-from-the-departments-home-page": {
+   "en": "Start from the Department&rsquo;s home page: choose <b>Submit a Wage Claim</b>. Its office answers at 603-271-3176, Monday through Friday, 8 a.m. to 4:30 p.m.; mail and hearings stay at 95 Pleasant Street, Spaulding Building, in Concord.",
+   "es": "Empiece en la página principal del Departamento: elija <b>Submit a Wage Claim</b> (presentar un reclamo de salario). Su oficina atiende en el 603-271-3176, de lunes a viernes, de 8 a.m. a 4:30 p.m.; el correo y las audiencias siguen en 95 Pleasant Street, Spaulding Building, en Concord.",
+   "state": "draft"
+  },
   "guide.wage-rights.the-new-hampshire-department-of-labor": {
    "en": "The New Hampshire Department of Labor enforces the state&rsquo;s wage laws and takes wage claims. The U.S. Department of Labor&rsquo;s overtime page explains the federal overtime rule. For advice about your own situation, a lawyer can help:",
    "es": "El Departamento de Trabajo de New Hampshire hace cumplir las leyes de salarios del estado y recibe los reclamos de salarios. La página sobre horas extra del Departamento de Trabajo de EE. UU. explica la regla federal de horas extra. Para recibir consejo sobre su propia situación, un abogado puede ayudarle:",
@@ -14346,11 +14431,6 @@
    "es": "Una revisión final del texto en busca de errores antes de enviarlo.",
    "state": "draft"
   },
-  "learn.how-a-bill-becomes-law.a-house-session-day-in-order": {
-   "en": "A House Session Day, in Order",
-   "es": "Un día de sesión de la Cámara, en orden",
-   "state": "draft"
-  },
   "learn.how-a-bill-becomes-law.a-legislative-service-request-or-lsr": {
    "en": "A Legislative Service Request, or LSR: a title and an idea, filed in the fall. Attorneys at the Office of Legislative Services draft the text.",
    "es": "Una solicitud de servicio legislativo (Legislative Service Request, o LSR): un título y una idea, presentados en el otoño. Los abogados de la Oficina de Servicios Legislativos redactan el texto.",
@@ -14429,6 +14509,11 @@
   "learn.how-a-bill-becomes-law.committee-of-conference": {
    "en": "Committee of conference",
    "es": "Comité de conferencia",
+   "state": "draft"
+  },
+  "learn.how-a-bill-becomes-law.common-questions": {
+   "en": "Common Questions",
+   "es": "Preguntas frecuentes",
    "state": "draft"
   },
   "learn.how-a-bill-becomes-law.counted-against": {
@@ -14646,11 +14731,6 @@
    "es": "El comité vota qué recomendar. Es una reunión aparte de la audiencia, a menudo días después. No puede acabar con el proyecto de ley por sí mismo: la recomendación va al pleno.",
    "state": "draft"
   },
-  "learn.how-a-bill-becomes-law.the-consent-calendar": {
-   "en": "The Consent Calendar",
-   "es": "El calendario de consenso (Consent Calendar)",
-   "state": "draft"
-  },
   "learn.how-a-bill-becomes-law.the-consent-calendar-first-the-bills": {
    "en": "<b>The consent calendar</b>, first. The bills taken off it are announced, and the rest are decided in one vote.",
    "es": "<b>El calendario de consenso</b>, primero. Se anuncian los proyectos de ley que se sacaron de él, y los demás se deciden en una sola votación.",
@@ -14776,11 +14856,6 @@
    "es": "Votación a viva voz",
    "state": "draft"
   },
-  "learn.how-a-bill-becomes-law.votes-that-need-more-than-a": {
-   "en": "Votes That Need More Than a Majority",
-   "es": "Votaciones que necesitan más que una mayoría",
-   "state": "draft"
-  },
   "learn.how-a-bill-becomes-law.way": {
    "en": "Way",
    "es": "Manera",
@@ -14796,6 +14871,16 @@
    "es": "Qué registra cada manera de votar",
    "state": "draft"
   },
+  "learn.how-a-bill-becomes-law.what-is-the-consent-calendar": {
+   "en": "What is the consent calendar?",
+   "es": "¿Qué es el calendario de consenso (Consent Calendar)?",
+   "state": "draft"
+  },
+  "learn.how-a-bill-becomes-law.when-will-the-house-vote-on": {
+   "en": "When will the House vote on a bill?",
+   "es": "¿Cuándo votará la Cámara un proyecto de ley?",
+   "state": "draft"
+  },
   "learn.how-a-bill-becomes-law.where-it-will-not-agree-members": {
    "en": "Where it will not agree: members of both chambers try to write a version each will accept. Both chambers must then adopt the report unchanged.",
    "es": "Si no lo acepta: miembros de ambas cámaras intentan redactar una versión que cada una acepte. Después ambas cámaras tienen que adoptar el informe sin cambios.",
@@ -14809,6 +14894,11 @@
   "learn.how-a-bill-becomes-law.which-side-won": {
    "en": "Which side won",
    "es": "Qué lado ganó",
+   "state": "draft"
+  },
+  "learn.how-a-bill-becomes-law.why-can-a-measure-win-a": {
+   "en": "Why can a measure win a majority and still fail?",
+   "es": "¿Por qué una medida puede ganar por mayoría y aun así no aprobarse?",
    "state": "draft"
   },
   "learn.how-a-bill-becomes-law.yes": {

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-10-11.46
+# GRANITE_VERSION: 2026-10-11.47
 """
 The how-to guides: their words, their sources, and what each was checked
 against. Read by build_civics.py, which draws them on the Resources hub's
@@ -370,16 +370,13 @@ VOTING = guide(
           "<p>The Secretary of State&rsquo;s voter information lookup tells you whether you are "
           "registered and where your polling place is.</p><p>You can vote only in the town, or "
           "the ward of a city, where you live. If you have moved to a new town or ward, you need "
-          "to register at your new address; a move within the same town or ward is an address "
-          "change, made on the same form.</p>",
+          "to register at your new address.</p>",
           actions=[("Check your voter registration", SOS_APP)], law=["RSA 654:7, I"]),
      step("Make sure you can register",
           "<p>You can register if, on election day, you will be:</p><ul>"
           "<li>at least 18 years old,</li><li>a United States citizen, and</li>"
           "<li>living in the town or city ward where you are registering.</li></ul>"
-          "<p>There is no minimum time you must have lived there first. &ldquo;Living&rdquo; "
-          "here is what the law calls your <em>domicile</em>: the one place you call home and "
-          "take part in public life from. You can have only one.</p>"
+          "<p>There is no minimum time you must have lived there first.</p>"
           "<p>You can register as a Democrat, a Republican, or Undeclared.</p>",
           law=["RSA 654:7, I"]),
      step("Register with your clerk, or at the polls",
@@ -390,8 +387,7 @@ VOTING = guide(
           "election closes 6 to 13 days before it, on a date your supervisors set, so ask your "
           "clerk for it.</li>"
           "<li><b>On election day</b>, at your polling place. You register, then vote at that "
-          "election. If you are waiting in line to register when the polls close, you may still "
-          "register and vote.</li>"
+          "election.</li>"
           "<li><b>By absentee registration</b>, if you qualify and cannot register in person.</li></ul>",
           actions=[("Find your town or city clerk", SOS_CLERKS),
                    ("Registration deadlines", SOS_DEADLINES)],
@@ -409,14 +405,8 @@ VOTING = guide(
           "proves it.</li>"
           "<li><b>Domicile:</b> a New Hampshire driver&rsquo;s license or non-driver ID, a New "
           "Hampshire vehicle registration, a federal photo ID, or a government check, benefit "
-          "statement or tax document showing your address. Without one of those, there is a form "
-          "to fill in together with a lease, a utility bill, or a confirmation signed by the "
-          "owner, manager or tenant where you live, and a separate form for people who are "
-          "homeless.</li></ul>"
-          "<p>If you are missing a document, ask your clerk: with your permission, election "
-          "officials can check New Hampshire voter, motor vehicle and vital records to help prove "
-          "your qualifications. A certified copy of a New Hampshire birth or other vital record "
-          "is free when it is only for registering to vote.</p>",
+          "statement or tax document showing your address.</li></ul>"
+          "<p>Missing a document? The questions below say what you can do.</p>",
           actions=[("What counts as proof", SOS_PROOF),
                    ("Free vital record for voter registration", SOS_FREE_VITAL)],
           law=["RSA 654:12"],
@@ -463,12 +453,10 @@ VOTING = guide(
           "order; or</li><li>the National Weather Service has issued a winter storm, blizzard or "
           "ice storm warning for your town and you are worried about traveling.</li></ul>"
           "<p>Send the absentee ballot application to your town or city clerk, not the state, "
-          "with the proof of identity the form asks for. You can apply up to six months before "
-          "the election. The deadline to ask by mail is noon the day before the election, and "
+          "with the proof of identity the form asks for. The deadline to ask by mail is noon the day before the election, and "
           "to ask and vote in person at the clerk&rsquo;s office, 5 p.m. the day before. A "
           "mailed ballot must reach your clerk by 5 p.m. on election day, so ask for it more "
-          "than two weeks ahead. The voter information lookup shows when your clerk got your "
-          "request, sent your ballot, and received it back.</p>",
+          "than two weeks ahead.</p>",
           actions=[("Absentee ballots", SOS_ABSENTEE), ("Absentee ballot application", SOS_ABS_APP)],
           law=["RSA 657:1"])],
     [("Register to vote (Secretary of State)", SOS_REGISTER),
@@ -522,7 +510,29 @@ VOTING = guide(
      claim("Absence, disability, religious observance; an employment obligation for all polling "
            "hours, including care of children and infirm adults, counts as absence; storm "
            "warnings.", "RSA 657:1", CHECKED)],
-    more="<h2>Who Can Help</h2>"
+    more=civics.faq(
+        ("I moved within my town. Do I register again?",
+         "<p>No. A move within the same town or ward is an address change, made on the same "
+         "voter registration form. A move to a new town or ward means registering there.</p>"),
+        ("What does &ldquo;living there&rdquo; mean?",
+         "<p>&ldquo;Living&rdquo; here is what the law calls your <em>domicile</em>: the one place "
+         "you call home and take part in public life from. You can have only one, and there is "
+         "no minimum time you must have lived there first.</p>"),
+        ("What if I am in line to register when the polls close?",
+         "<p>You may still register and vote.</p>"),
+        ("What if I have no document showing where I live?",
+         "<p>There is a form to fill in together with a lease, a utility bill, or a confirmation "
+         "signed by the owner, manager or tenant where you live, and a separate form for people "
+         "who are homeless.</p>"),
+        ("What if I am missing a document?",
+         "<p>Ask your clerk: with your permission, election officials can check New Hampshire "
+         "voter, motor vehicle and vital records to help prove your qualifications. A certified "
+         "copy of a New Hampshire birth or other vital record is free when it is only for "
+         "registering to vote.</p>"),
+        ("How early can I ask for an absentee ballot, and can I track it?",
+         "<p>You can apply up to six months before the election. The voter information lookup "
+         "shows when your clerk got your request, sent your ballot, and received it back.</p>"))
+         + "<h2>Who Can Help</h2>"
          "<p>Your town or city clerk is the person to ask about registering and voting where you "
          "live: what to bring, the deadline, and absentee ballots. The Secretary of State calls "
          "local and state election officials voters&rsquo; trusted source of election "
@@ -3708,10 +3718,11 @@ GUIDES += [CHILD_CARE]
 # linked until its address is seen.
 # ---------------------------------------------------------------------------
 BP_READ = "2026-10-25"
-BP_PAGES_READ = None                 # the person's printouts, still to come
-FM_CODES = "https://www.firemarshal.dos.nh.gov/laws-rules-regulatory/state-fire-building-codes"
+BP_PAGES_READ = "2026-10-26"         # the person's printouts
+# The State Building Code page: the printout shows no address; its title is the
+# page a search finds at this one (26 October 2026).
+FM_CODES = "https://www.firemarshal.dos.nh.gov/laws-rules-regulatory/state-building-code"
 OPLC_ELECTRICIANS = "https://www.oplc.nh.gov/electricians-board"
-OPLC_MECHANICAL = "https://www.oplc.nh.gov/mechanical-safety-and-licensing-board"
 DES_SHORELAND = "https://www.des.nh.gov/land/waterfront-development/protected-shoreland"
 DES_WETLANDS = "https://des.nh.gov/water/wetlands/permit-assistance"
 
@@ -3752,11 +3763,16 @@ BUILDING_PERMITS = guide(
           "or city office before you begin. A permit will not be issued for work that breaks "
           "the town&rsquo;s zoning or planning board rules, so the same office can tell you "
           "whether the project needs those boards&rsquo; approval too.</p>"
+          "<p>A town or city that enforces the code does so by an ordinance the state&rsquo;s "
+          "Building Code Review Board confirms; it may add local amendments, limited since July "
+          "1, 2026 to administrative matters. The state updated its codes to the 2024 editions "
+          "on July 1, 2026; through December 31, 2026 a permit may be sought under either the "
+          "2021 or the 2024 codes. The Review Board answers questions at (603) 223-4315.</p>"
           "<p>Where a town has no one of its own to enforce the code, the State Fire Marshal "
           "may enforce it at the town&rsquo;s written request. In such a town, a contractor "
           "must tell the Fire Marshal before starting any building other than a one- or "
           "two-family home.</p>",
-          actions=[("The state's building and fire codes (State Fire Marshal)", FM_CODES)],
+          actions=[("The State Building Code (Division of Fire Safety)", FM_CODES)],
           law=["RSA 155-A:1", "RSA 155-A:2", "RSA 155-A:3", "RSA 155-A:4", "RSA 155-A:7"]),
      step("Inspections, and if you disagree",
           "<p>The building official may inspect the work, the site and the building, so plan "
@@ -3770,7 +3786,11 @@ BUILDING_PERMITS = guide(
           "<p>Electrical work done for pay must be done by an electrician licensed by the "
           "state. A homeowner may do electrical work in or about a <b>single-family home</b> "
           "they own and live in, or are building to live in. Your town may still require a "
-          "permit and an inspection for it.</p>",
+          "permit and an inspection for it.</p>"
+          "<p>Otherwise, the state&rsquo;s Electricians&rsquo; Board says, work at 30 volts or "
+          "more needs an active New Hampshire electrician&rsquo;s license. To ask about an "
+          "inspection or report a safety concern, call the Department of Safety at (603) "
+          "271-2791.</p>",
           actions=[("Electricians' Board (Office of Professional Licensure and "
                     "Certification)", OPLC_ELECTRICIANS)],
           law=["RSA 319-C:1", "RSA 319-C:15"]),
@@ -3783,8 +3803,6 @@ BUILDING_PERMITS = guide(
           "single-family house that you own and live in as your main home, and the work must "
           "meet the codes and pass any inspection that applies. Your town&rsquo;s building "
           "office may enforce the plumbing and gas rules.</p>",
-          actions=[("Mechanical Safety and Licensing Board (Office of Professional Licensure "
-                    "and Certification)", OPLC_MECHANICAL)],
           law=["RSA 153:36", "RSA 153:35"]),
      step("Septic systems",
           "<p>No one may build a house or other building that will send wastewater to a septic "
@@ -3804,15 +3822,17 @@ BUILDING_PERMITS = guide(
           "confirms it has your complete notice.</p>"
           "<p>Digging, filling, dredging or building in or on a bank, marsh or swamp next to a "
           "lake, river or other water needs a <b>wetlands permit</b> from the Department, "
-          "applied for through your town or city clerk, who signs the application.</p>",
+          "applied for through your town or city clerk, who signs the application.</p>"
+          "<p>The Department has an online tool that tells you whether a project needs a "
+          "shoreland permit. For questions, call (603) 271-2147 and ask for the Inspector of the "
+          "Day, or email shoreland@des.nh.gov; for wetlands, lrm@des.nh.gov, with photos, plans "
+          "and the location.</p>",
           actions=[("Protected shoreland (Department of Environmental Services)", DES_SHORELAND),
                    ("Wetlands permit help (Department of Environmental Services)", DES_WETLANDS)],
           law=["RSA 483-B:4", "RSA 483-B:5-b", "RSA 482-A:3"])],
-    [("State Fire and Building Codes (State Fire Marshal)", FM_CODES),
+    [("State Building Code (Division of Fire Safety)", FM_CODES),
      ("Electricians' Board (Office of Professional Licensure and Certification)",
       OPLC_ELECTRICIANS),
-     ("Mechanical Safety and Licensing Board (Office of Professional Licensure and "
-      "Certification)", OPLC_MECHANICAL),
      ("Protected Shoreland (Department of Environmental Services)", DES_SHORELAND),
      ("Wetlands Permit Assistance (Department of Environmental Services)", DES_WETLANDS),
      ("New Hampshire Building Code, RSA 155-A", "/laws/155-a"),
@@ -3892,14 +3912,26 @@ BUILDING_PERMITS = guide(
            "without a permit from the department; the application form is signed by the town "
            "or city clerk.", "RSA 482-A:3", BP_READ),
      # The agencies' own pages, from the person's printouts.
-     claim("The fire and building codes New Hampshire has adopted.", FM_CODES, BP_PAGES_READ),
-     claim("The Electricians' Board: licenses for electricians.", OPLC_ELECTRICIANS,
-           BP_PAGES_READ),
-     claim("The Mechanical Safety and Licensing Board: licenses for plumbers and gas fitters.",
-           OPLC_MECHANICAL, BP_PAGES_READ),
-     claim("The Protected Shoreland: permits for work within 250 feet of public waters.",
-           DES_SHORELAND, BP_PAGES_READ),
-     claim("Help with wetlands permits, and how applications are reviewed.", DES_WETLANDS,
+     claim("The State Building Code applies in every municipality statewide; a municipality "
+           "that chooses to enforce it adopts an ordinance confirmed by the Building Code Review "
+           "Board; as of July 1, 2026, local amendments are limited to administrative matters; "
+           "effective July 1, 2026 the code is updated (IBC, IRC, IPC, IMC and others, 2024), "
+           "with a six-month concurrence period from July 1 - December 31, 2026 during which "
+           "permit requests can be submitted under either the 2021 or 2024 codes; Building Code "
+           "Review Board (603) 223-4315.", FM_CODES, BP_PAGES_READ),
+     claim("An active and valid New Hampshire Electrician license is required to work with 30 "
+           "volts or higher; for assistance regarding an inspection or to report a safety "
+           "concern please contact the Department of Safety by calling (603) 271-2791.",
+           OPLC_ELECTRICIANS, BP_PAGES_READ),
+     claim("Within the protected shoreland, vegetation removal, excavation, fill, and "
+           "development are regulated; proposed projects typically require a shoreland permit; "
+           "an interactive tool to determine if a shoreland permit is required; email "
+           "shoreland@des.nh.gov or call (603) 271-2147 and ask to speak with the Inspector of "
+           "the Day.", DES_SHORELAND, BP_PAGES_READ),
+     claim("Projects that involve excavation, fill, dredge, removal, and/or construction of "
+           "structures in or on any bank, flat, marsh, or swamp in or adjacent to wetlands and "
+           "waterbodies often require wetlands permits; questions by email to lrm@des.nh.gov or "
+           "shoreland@des.nh.gov, with photos, plans and location information.", DES_WETLANDS,
            BP_PAGES_READ)],
     more="<h2>Who Can Help</h2>"
          "<p>Your town or city&rsquo;s building inspector or code enforcement officer is the "
@@ -4151,7 +4183,7 @@ GUIDES += [VIOLENCE]
 # cloud session and wait for the person's printouts.
 # ---------------------------------------------------------------------------
 DISC_READ = "2026-10-25"
-DISC_PAGES_READ = None               # the person's printouts of humanrights.nh.gov
+DISC_PAGES_READ = "2026-10-26"       # the person's printout of humanrights.nh.gov
 HRC_HOME = "https://www.humanrights.nh.gov/"
 EEOC_FILE = "https://www.eeoc.gov/how-file-charge-employment-discrimination"
 
@@ -4230,6 +4262,10 @@ DISCRIMINATION = guide(
           "discrimination. Your complaint is in writing and signed, names who discriminated "
           "against you, and says what happened. File it <b>within 180 days</b> of the act. Write "
           "things down as they happen, and keep any letters, emails, texts or notices.</p>"
+          "<p>The Commission also takes complaints of discrimination in K-12 public schools, and "
+          "offers mediation. Submit a complaint from its website, or call (603) 271-2767, "
+          "Monday through Friday, 8 a.m. to 4 p.m.; its office is at 57 Regional Drive, Suite 8, "
+          "in Concord.</p>"
           "<p>A commissioner investigates, with the Commission&rsquo;s staff, and encourages "
           "both sides to settle. If the commissioner finds no probable cause, the complaint is "
           "dismissed, and you can appeal to the Superior Court. If there is probable cause and "
@@ -4330,9 +4366,11 @@ DISCRIMINATION = guide(
            "you can let the state agency know if you also want your charge filed with the EEOC; "
            "1-800-669-4000.", EEOC_FILE, DISC_READ),
      # The Commission's own page, from the person's printout.
-     claim("The New Hampshire Commission for Human Rights takes complaints of discrimination in "
-           "employment, housing and public accommodation, and says how to file one.", HRC_HOME,
-           DISC_PAGES_READ)]
+     claim("A state agency established by RSA 354-A for the purpose of education and enforcement "
+           "of the law against discrimination in employment, housing, places of public "
+           "accommodation and K-12 public schools; Submit a Complaint; Mediation; 57 Regional "
+           "Drive, Suite 8, Concord, NH 03301; (603) 271-2767; Monday - Friday, 8AM - 4PM.",
+           HRC_HOME, DISC_PAGES_READ)]
     + help_claims("lawyer"),
     more="<h2>Who Can Help</h2>"
          "<p>The Commission for Human Rights can tell you how to file a complaint. For advice "
@@ -5248,7 +5286,7 @@ GUIDES += [WEATHER]
 # answer this machine with an empty page, so the guide does not cite them.
 # ---------------------------------------------------------------------------
 CP_READ = "2026-10-25"
-CP_AG_READ = None                    # the person's printouts of doj.nh.gov
+CP_AG_READ = "2026-10-26"            # the person's printouts of doj.nh.gov
 AG_CPB = "https://www.doj.nh.gov/bureaus/consumer-protection-antitrust-bureau"
 AG_COMPLAINT = "https://www.doj.nh.gov/consumer/complaints"
 
@@ -5320,11 +5358,15 @@ CONSUMER = guide(
      step("Complain to the Attorney General",
           "<p>The Attorney General&rsquo;s <b>Consumer Protection and Antitrust Bureau</b> "
           "enforces the Consumer Protection Act. It can ask a court to stop a business&rsquo;s "
-          "unlawful practice and to order money or property returned to the people it harmed. "
-          "File a complaint with the Bureau online, or call its Consumer Hotline; report a scam "
-          "to your local police as well.</p>"
-          "<p>The Bureau does not enforce a private contract: a dispute over a contract alone is "
-          "yours to take to court.</p>"
+          "unlawful practice and to order money or property returned to the people it harmed.</p>"
+          "<p>A complaint is made in writing, on the Bureau&rsquo;s consumer complaint form: "
+          "online, after you create an account with the State for filing forms, or on the "
+          "paper form, mailed or emailed. Give as much detail as you can, with every paper that "
+          "bears on it, such as a car dealer&rsquo;s paperwork. An attorney reviews it and may "
+          "send it to the business to answer in writing. It is not a formal legal process, it "
+          "can take time, and it does not guarantee an answer or a resolution; the Bureau "
+          "cannot represent you or give you legal advice. If you are not satisfied, consider a "
+          "private lawyer or small claims court.</p>"
           "<p>Some businesses answer to their own regulator instead: for a bank, an insurance "
           "company or a utility, complain to the Bank Commissioner, the Insurance Commissioner "
           "or the Public Utilities Commission.</p>",
@@ -5395,15 +5437,24 @@ CONSUMER = guide(
            "reasonable attorney's fees; any attempted waiver of the right to these damages is "
            "void.", "RSA 358-A:10", CP_READ),
      # The Attorney General's pages, from the person's printouts.
-     claim("The Consumer Protection and Antitrust Bureau enforces the Consumer Protection Act "
-           "and takes complaints.", AG_CPB, CP_AG_READ),
-     claim("File a consumer complaint online or by calling the Consumer Hotline; report scams "
-           "to your local police department too; the Attorney General's Office does not "
-           "enforce private contracts.", AG_COMPLAINT, CP_AG_READ)]
+     claim("The Consumer Protection and Antitrust Bureau enforces state and federal laws that "
+           "make unfair and deceptive business practices unlawful; Consumer Complaints; "
+           "Consumer Protection Hotline; Office of the Attorney General, 1 Granite Place South, "
+           "Concord, (603) 271-3658.", AG_CPB, CP_AG_READ),
+     claim("You may file a complaint with the Consumer Protection and Antitrust Bureau; all "
+           "complaints submitted in writing using a consumer complaint form, electronically "
+           "after creating an account with the State for filing forms online, or printed and "
+           "mailed or emailed; include all supporting documents, for example a dealership's "
+           "paperwork; reviewed by an attorney, who may send it to the business for review and "
+           "response in writing; not a formal legal process; can take time; does not guarantee "
+           "a response or resolution; the Bureau cannot provide legal representation or advice; "
+           "consider speaking to a private lawyer or seeking relief in small claims court.",
+           AG_COMPLAINT, CP_AG_READ)]
     + help_claims("lawyer"),
     more="<h2>Who Can Help</h2>"
          "<p>The Attorney General&rsquo;s Consumer Protection and Antitrust Bureau takes "
-         "complaints online and on its Consumer Hotline. For advice on your own case:</p>"
+         "complaints on its consumer complaint form; the Attorney General&rsquo;s office "
+         "answers at (603) 271-3658. For advice on your own case:</p>"
          + helps("lawyer"),
     see=[("Who to contact about an issue", "/guides/who-to-contact.html")],
     figures=[fig("$150", "RSA 361-B:1", "priced at $150 or more"),
@@ -5562,7 +5613,7 @@ GUIDES += [TRASH]
 # this machine, so their claim waits for the person's printouts.
 # ---------------------------------------------------------------------------
 WG_READ = "2026-10-25"
-WG_PAGES_READ = None                 # the person's printouts of dol.nh.gov
+WG_PAGES_READ = "2026-10-26"         # the person's printout of dol.nh.gov's home page
 NH_DOL = "https://www.dol.nh.gov/"
 WHD_OVERTIME = "https://www.dol.gov/agencies/whd/overtime"
 
@@ -5649,7 +5700,10 @@ WAGES = guide(
           "days.</p>"
           "<p>You can also sue for unpaid wages in court, yourself or through a representative, "
           "and the court may order your employer to pay your costs and reasonable "
-          "attorney&rsquo;s fees.</p>",
+          "attorney&rsquo;s fees.</p>"
+          "<p>Start from the Department&rsquo;s home page: choose <b>Submit a Wage Claim</b>. Its "
+          "office answers at 603-271-3176, Monday through Friday, 8 a.m. to 4:30 p.m.; mail and "
+          "hearings stay at 95 Pleasant Street, Spaulding Building, in Concord.</p>",
           actions=[("New Hampshire Department of Labor", NH_DOL)],
           law=["RSA 275:51", "RSA 275:53"]),
      step("Your employer may not punish you for it",
@@ -5730,8 +5784,11 @@ WAGES = guide(
            "pay for hours worked over 40 in a workweek at a rate not less than time and one-half "
            "their regular rates of pay.", WHD_OVERTIME, WG_READ),
      # The New Hampshire Department of Labor's page, from the person's printouts.
-     claim("The Department of Labor takes wage claims from employees, and how to file one.",
-           NH_DOL, WG_PAGES_READ)]
+     claim("Submit a Wage Claim: your claim will be reviewed for scheduling for a hearing before "
+           "a Department Hearings Officer; the Department has moved to Londergan Hall, 101 "
+           "Pleasant Street; hearings and mailed correspondence remain at 95 Pleasant Street, "
+           "Spaulding Building, Concord, NH 03301; phone 603-271-3176; Monday - Friday, 8AM - "
+           "4:30PM.", NH_DOL, WG_PAGES_READ)]
     + help_claims("lawyer"),
     more="<h2>Who Can Help</h2>"
          "<p>The New Hampshire Department of Labor enforces the state&rsquo;s wage laws and takes "
@@ -6614,7 +6671,7 @@ GUIDES += [WHO_TO_CONTACT]
 # this machine; their claims wait for the person's printouts.
 # ---------------------------------------------------------------------------
 ROAD_READ = "2026-10-25"
-ROAD_STATE_READ = None               # the person's printouts of dot.nh.gov
+ROAD_STATE_READ = "2026-10-26"       # the person's printouts of dot.nh.gov
 NHDOT_PUBLIC = "https://www.dot.nh.gov/doing-business-nhdot/general-public"
 NHDOT_CONTACT = "https://www.dot.nh.gov/about-nh-dot/contact-us"
 
@@ -6658,10 +6715,12 @@ ROAD_PROBLEM = guide(
           "using it: report it at once, and if someone may be hurt, call 911.</p>",
           law=["RSA 231:113"]),
      step("Report it to the state, for a state highway",
-          "<p>The Department of Transportation&rsquo;s page for the public lists its highway "
-          "maintenance districts and how to reach the one for your town about a pothole, "
-          "drainage or another problem on a state road, and the number to call about a "
-          "hazard that needs attention right away.</p>"
+          "<p>If a signal is out, a stop sign is down or a state road is iced over, call the "
+          "Department of Transportation&rsquo;s <b>Traffic Management Center</b> at (603) "
+          "271-6862. For a pothole, drainage or another problem on a state road, contact the "
+          "Department&rsquo;s highway maintenance district for your town; its page for the "
+          "public links the districts, and a form for a damage claim. Other questions go to "
+          "(603) 271-3734 or info@dot.nh.gov.</p>"
           "<p>Anyone may notify the Department of a dangerous spot on a state highway. Once "
           "it is notified, unless it decides in good faith there is no danger, it must put up "
           "warnings at once and make a plan to repair the spot within 96 hours.</p>",
@@ -6772,12 +6831,16 @@ ROAD_PROBLEM = guide(
            "shall be provided written notice within 180 days after the time of the injury or "
            "damage as to the date, time, and location.", "RSA 541-B:14", ROAD_READ),
      # The Department of Transportation's own pages, from the person's printouts.
-     claim("The general public: for potholes, drainage and other issues on state roads, "
-           "contact the highway maintenance district that maintains the roads in your town; "
-           "a number for a hazard that needs immediate attention.", NHDOT_PUBLIC,
+     claim("If there is an immediate concern, a signal is out, a stop sign is down, the road "
+           "is iced over, please call the Traffic Management Center at (603) 271-6862; other "
+           "road issues, on State Roads, i.e., potholes, drainage issues, contact the "
+           "Maintenance District that maintains the roads in your specific town; To Submit a "
+           "Damage Claim please visit the link and fill out the form.", NHDOT_PUBLIC,
            ROAD_STATE_READ),
-     claim("How to contact the Department, and its highway maintenance district offices.",
-           NHDOT_CONTACT, ROAD_STATE_READ)]
+     claim("All Road Emergencies, including broken signal lights: call the NHDOT Traffic "
+           "Management Center (603) 271-6862; General Road Concerns on State Roads: call the "
+           "appropriate NHDOT Highway Maintenance District Office; General Questions: (603) "
+           "271-3734 or info@dot.nh.gov.", NHDOT_CONTACT, ROAD_STATE_READ)]
     + help_claims("lawyer"),
     more="<h2>Who Can Help</h2>"
          "<p>Your town or city&rsquo;s public works or highway department is the place to ask "

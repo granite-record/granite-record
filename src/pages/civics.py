@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-08.61
+# GRANITE_VERSION: 2026-09-08.62
 """
 The topics of the civics section: their order, their names, and their prose.
 
@@ -259,6 +259,20 @@ def wide(html_):
     build_civics reads the markers; a figure without them stays in the
     reading column."""
     return f"<!--wide-->{html_}<!--/wide-->"
+
+
+def faq(*pairs):
+    """COMMON QUESTIONS (the person, 26 October 2026: "FAQ could be used to
+    trim down some of the finer details in the general guides so that people
+    who want to know more can view the faq dropdown near the end and the
+    guide and learn pages stay more streamlined for a general audience").
+    A section of its own, each question a <details> that opens on its answer:
+    the finer points a page's steps or sections need not carry, still on the
+    page, still searchable, and printed open. `pairs` is [(question, answer
+    HTML)], each answer resting on what the page's sources already say."""
+    return ('<h2>Common Questions</h2><div class="l-faq">'
+            + "".join(f"<details><summary>{q}</summary>{a}</details>" for q, a in pairs)
+            + "</div>")
 
 
 def flow_diagram(flow=FLOW, heading="The course of a bill", level=3, key="", level_names=False):
@@ -1324,57 +1338,6 @@ answer to "how did my representative vote", because the bill was decided by
 voice vote or division and no record of names was made.</p>
 [[fig_rollcalls]]
 
-<h2>Votes That Need More Than a Majority</h2>
-<p>Overriding a veto takes two thirds of each chamber, by roll call, under
-Part Second, Article 44 of the state constitution. The article says two thirds
-"of that house", and the House counts it among the members voting rather than
-against its whole membership: in August 2026 it overrode a veto 231 to 88
-when 384 members were in office. Amending the constitution takes three fifths
-of the members of each chamber, and then two thirds of those voting on the
-question at the election, under Part Second, Article 100. The chambers count
-that three fifths against every member in office rather than against those
-present &mdash; 240 when all 400 House seats are filled &mdash; so a measure
-can win a clear majority of those voting and fail anyway.</p>
-""" + THRESHOLDS + """
-
-<h2>The Consent Calendar</h2>
-<p>A committee decides in executive session whether to send a bill to the
-consent calendar, and in both chambers that decision must be unanimous. It is
-a separate vote from the committee's recommendation: a recommendation carried
-on a divided vote can still go to the consent calendar, and this
-site&rsquo;s record holds thousands of House reports marked that way, among
-them reports carried 15&ndash;3. The calendar is then decided in a single
-vote, without floor debate. What that vote adopts is the committee's
-recommendation on each bill, which for some of them is to kill it. A bill can
-be taken off first, and one that comes off is debated and voted on by itself
-at the end of the regular calendar. Taking one off has needed ten members in
-the House since January 2023, and two senators in the Senate since April
-2026; before that, one member's request was enough in either chamber.</p>
-
-<h2>A House Session Day, in Order</h2>
-<p><b>The House does not schedule its votes to a time.</b> Its calendar lists
-the bills for the day grouped by the committee that reported them, or on some
-days, such as a veto day, in order by number, and that is the order they are
-taken up in unless the House votes to take one up at a set point in the day,
-which is called making it a special order. In practice a session day runs like
-this:</p>
-<ol>
-<li><b>The consent calendar</b>, first. The bills taken off it are announced,
-and the rest are decided in one vote.</li>
-<li><b>The regular calendar</b>, committee by committee, sometimes broken by a
-lunch recess, with the rest of it after lunch.</li>
-<li><b>The bills taken off the consent calendar</b>, each debated and voted on
-by itself.</li>
-<li><b>Adjournment</b>, followed by <b>unanimous consent speeches</b>: any
-member may speak on something that matters to them, a constituent's story or
-a holiday, in remarks meant to be non-partisan. No vote is usually taken,
-unless a member objects to a speaker continuing; then the House votes on
-whether the member may go on, as it did a few times in 2026.</li>
-</ol>
-<p>A motion to reprimand or censure a member can be brought up at any point in
-the day. So a vote you are waiting for has no set time: the calendar tells you
-only where in the day's order its bill falls.</p>
-
 <h2>Two Bills, Followed All the Way</h2>
 <p>Both went through both chambers, and on each the closest roll call in the
 House did not split cleanly along party lines: a majority of Republicans voted
@@ -1416,6 +1379,61 @@ and the bill did not become law.</p>
 settled questions. The site takes no position on either. The arguments above
 are summarized from what was said for and against, and the recordings are
 there so you can check whether that summary is fair.</p>
+
+<h2>Common Questions</h2>
+<div class="l-faq">
+<details><summary>Why can a measure win a majority and still fail?</summary>
+<p>Overriding a veto takes two thirds of each chamber, by roll call, under
+Part Second, Article 44 of the state constitution. The article says two thirds
+"of that house", and the House counts it among the members voting rather than
+against its whole membership: in August 2026 it overrode a veto 231 to 88
+when 384 members were in office. Amending the constitution takes three fifths
+of the members of each chamber, and then two thirds of those voting on the
+question at the election, under Part Second, Article 100. The chambers count
+that three fifths against every member in office rather than against those
+present &mdash; 240 when all 400 House seats are filled &mdash; so a measure
+can win a clear majority of those voting and fail anyway.</p>
+""" + THRESHOLDS + """
+</details>
+<details><summary>What is the consent calendar?</summary>
+<p>A committee decides in executive session whether to send a bill to the
+consent calendar, and in both chambers that decision must be unanimous. It is
+a separate vote from the committee's recommendation: a recommendation carried
+on a divided vote can still go to the consent calendar, and this
+site&rsquo;s record holds thousands of House reports marked that way, among
+them reports carried 15&ndash;3. The calendar is then decided in a single
+vote, without floor debate. What that vote adopts is the committee's
+recommendation on each bill, which for some of them is to kill it. A bill can
+be taken off first, and one that comes off is debated and voted on by itself
+at the end of the regular calendar. Taking one off has needed ten members in
+the House since January 2023, and two senators in the Senate since April
+2026; before that, one member's request was enough in either chamber.</p>
+</details>
+<details><summary>When will the House vote on a bill?</summary>
+<p><b>The House does not schedule its votes to a time.</b> Its calendar lists
+the bills for the day grouped by the committee that reported them, or on some
+days, such as a veto day, in order by number, and that is the order they are
+taken up in unless the House votes to take one up at a set point in the day,
+which is called making it a special order. In practice a session day runs like
+this:</p>
+<ol>
+<li><b>The consent calendar</b>, first. The bills taken off it are announced,
+and the rest are decided in one vote.</li>
+<li><b>The regular calendar</b>, committee by committee, sometimes broken by a
+lunch recess, with the rest of it after lunch.</li>
+<li><b>The bills taken off the consent calendar</b>, each debated and voted on
+by itself.</li>
+<li><b>Adjournment</b>, followed by <b>unanimous consent speeches</b>: any
+member may speak on something that matters to them, a constituent's story or
+a holiday, in remarks meant to be non-partisan. No vote is usually taken,
+unless a member objects to a speaker continuing; then the House votes on
+whether the member may go on, as it did a few times in 2026.</li>
+</ol>
+<p>A motion to reprimand or censure a member can be brought up at any point in
+the day. So a vote you are waiting for has no set time: the calendar tells you
+only where in the day's order its bill falls.</p>
+</details>
+</div>
 """ + SHOWS.format("""
 <p>Follow the two worked examples through the record:
 <a href="bill/2024/hb1002.html">HB 1002 (2024)</a> and

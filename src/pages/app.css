@@ -1,4 +1,4 @@
-/* GRANITE_VERSION: 2026-09-07.321 */
+/* GRANITE_VERSION: 2026-09-07.322 */
 /* ONE STYLESHEET FOR EVERY PAGE (23 October 2026). Every page of the site
    links this file, /app.css: the record pages shell.page() makes from
    bills.html, and the five build_pages.py writes -- the home page, Officials,
@@ -4543,6 +4543,54 @@ text-transform:uppercase;color:var(--ink-2);margin:0 0 var(--sp-4);font-family:v
   text-decoration:underline;text-decoration-thickness:1px;text-underline-offset:3px}
 .l-otpb a:hover{color:var(--ink)}
 @media (prefers-reduced-motion:reduce){.l-otp > summary::after{transition:none}}
+/* ON THIS PAGE, BESIDE THE PAGE (the person, 26 October 2026: "an index
+   along the left side that scrolls with you like on the laws pages"). On a
+   screen wide enough for the article to keep its margin headings and its
+   measure beside it (75em), OTP_JS copies the list into .l-sidewrap, a
+   column of its own on the left, where it stays in view as the reader
+   scrolls, the section being read marked; the dropdown under the title is
+   then not needed and is hidden. Narrower, the dropdown serves. A page in
+   another language is drawn in the home page's frame (.wrap, 820px), which
+   here takes the page's full width as the English page has. Without
+   JavaScript the dropdown stays at every width. */
+.l-sidewrap{display:none}
+@media (min-width:75em){
+  .l-page:has(> .l-sidewrap){position:relative;padding-left:calc(14rem + var(--sp-9))}
+  .l-sidewrap{display:block;position:absolute;top:0;bottom:0;left:0;width:14rem}
+  .l-side{position:sticky;top:1rem;max-height:calc(100vh - 2rem);overflow-y:auto;
+    padding:1.125rem 0 0;box-sizing:border-box}
+  .l-sidehead{font:600 var(--t-label)/1.3 var(--sans);letter-spacing:.07em;text-transform:uppercase;
+    color:var(--ink-2);margin:0 0 .5rem}
+  .l-side ol{list-style:none;margin:0;padding:0;border-left:1px solid var(--rule-2)}
+  .l-side a{display:block;padding:.375rem .75rem;margin-left:-1px;border-left:3px solid transparent;
+    font:400 var(--t-sm)/1.35 var(--sans);color:var(--ink-2);text-decoration:none}
+  .l-side a:hover{color:var(--ink);background:var(--wash)}
+  .l-side a:focus-visible{outline:2px solid var(--pine);outline-offset:-2px}
+  .l-side a[aria-current]{color:var(--ink);font-weight:600;border-left-color:var(--pine);background:var(--pine-soft)}
+  .l-page:has(> .l-sidewrap) .l-head .l-otp{display:none}
+  :where(body.pg) .wrap:has(> .l-page > .l-sidewrap){max-width:1180px}
+}
+@media print{.l-sidewrap{display:none}}
+/* COMMON QUESTIONS (civics.faq): each question a row that opens on its
+   answer, the answer at the page's reading size under it; printed open
+   (OTP_JS opens them before printing). */
+.l-faq{border-top:1px solid var(--rule-2);max-width:var(--l-meas)}
+.l-faq > details{border-bottom:1px solid var(--rule-2)}
+.l-faq > details > summary{cursor:pointer;list-style:none;display:flex;align-items:flex-start;gap:.75rem;
+  min-height:2.75rem;box-sizing:border-box;padding:.75rem .25rem;
+  font:600 var(--t-ui)/1.4 var(--sans);color:var(--ink)}
+.l-faq > details > summary::-webkit-details-marker{display:none}
+.l-faq > details > summary::before{content:"";flex:none;width:.875rem;height:.875rem;margin-top:.25rem;
+  background:var(--pine);-webkit-mask:var(--l-chev) center/contain no-repeat;mask:var(--l-chev) center/contain no-repeat;
+  transition:transform .15s}
+.l-faq > details[open] > summary::before{transform:rotate(90deg)}
+.l-faq > details > summary:hover{color:var(--pine)}
+.l-faq > details > summary:focus-visible{outline:2px solid var(--pine);outline-offset:2px}
+.l-faq > details > :not(summary){margin-left:1.625rem}
+.l-faq > details > p,.l-faq > details > ol,.l-faq > details > ul{font:400 var(--t-read)/1.65 var(--serif);color:var(--ink);margin-top:0;margin-bottom:.75rem}
+.l-faq > details > :last-child{margin-bottom:1rem}
+@media (prefers-reduced-motion:reduce){.l-faq > details > summary::before{transition:none}}
+@media (forced-colors:active){.l-faq > details > summary::before{forced-color-adjust:none;background:CanvasText}}
 @media (max-width:45em){
   .l-head .pageacts > details{flex:1 1 auto}
   .l-head .pageacts > details > summary{justify-content:center;min-height:2.75rem}

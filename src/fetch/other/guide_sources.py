@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-10-11.18
+# GRANITE_VERSION: 2026-10-11.19
 """
 The official pages the how-to guides cite, onto this disk, to check them by.
 
@@ -203,9 +203,8 @@ SOURCES = {
     # When you need a building permit (25 October 2026), from the person's
     # printouts.
     "building_permits": [
-        "https://www.firemarshal.dos.nh.gov/laws-rules-regulatory/state-fire-building-codes",
+        "https://www.firemarshal.dos.nh.gov/laws-rules-regulatory/state-building-code",
         "https://www.oplc.nh.gov/electricians-board",
-        "https://www.oplc.nh.gov/mechanical-safety-and-licensing-board",
         "https://www.des.nh.gov/land/waterfront-development/protected-shoreland",
         "https://des.nh.gov/water/wetlands/permit-assistance",
     ],

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.708
+# GRANITE_VERSION: 2026-09-04.709
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -65478,6 +65478,39 @@ def _guide_laws_lower(G, BC):
         bad += [f'{g["slug"]}: reads chapter {c!r}' for c in laws if c.endswith("-")]
     assert not bad, "a guide links a Laws page out of lower case: " + "; ".join(bad[:5])
     return "ok", f"{len(G.GUIDES)} guides, every Laws link lower case"
+
+
+@check("build", "every Common Questions section is questions with answers: each a question "
+                "that ends in a question mark and opens on words of its own, and the section "
+                "is after the page's main text, never its first",
+       needs=("guides", "civics"))
+def _common_questions(G, civics):
+    """The person, 26 October 2026: a FAQ dropdown "near the end" of a guide or
+    a Learn page, holding the finer details so the page stays streamlined.
+    civics.faq draws it; this reads every guide's words and every Learn
+    page's body for it, so a question with no answer, a heading typed where a
+    question should be, or a section moved to the top is caught."""
+    bodies = [(g["slug"], g["more"]) for g in G.GUIDES]
+    bodies += [(t["slug"], t["body"]) for t in civics.TOPICS]
+    seen, bad = 0, []
+    for slug, html_ in bodies:
+        if 'class="l-faq"' not in (html_ or ""):
+            continue
+        seen += 1
+        if slug in [t["slug"] for t in civics.TOPICS] and html_.lstrip().startswith("<h2>Common Questions"):
+            bad.append(f"{slug}: Common Questions is the page's first section")
+        block = html_[html_.index('class="l-faq"'):]
+        block = block[:block.index("</div>")] if "</div>" in block else block
+        for m in re.finditer(r"<details><summary>(.*?)</summary>(.*?)</details>", block, re.S):
+            q, a = m.group(1).strip(), re.sub(r"<[^>]+>", "", m.group(2)).strip()
+            if not q.endswith("?"):
+                bad.append(f"{slug}: {q[:50]!r} is not a question")
+            if len(a) < 10:
+                bad.append(f"{slug}: {q[:50]!r} has no answer")
+        if block.count("<details>") != len(re.findall(r"<details><summary>.*?</summary>", block, re.S)):
+            bad.append(f"{slug}: a question without its summary")
+    assert not bad, "; ".join(bad[:5])
+    return "ok", f"{seen} pages with Common Questions, each a question with its answer"
 
 
 @check("code", "guide_sources names each of its lists once, so no list of pages silently "
