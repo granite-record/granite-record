@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-10-11.55
+# GRANITE_VERSION: 2026-10-11.56
 """
 The how-to guides: their words, their sources, and what each was checked
 against. Read by build_civics.py, which draws them on the Resources hub's
@@ -186,17 +186,6 @@ def _plain(s):
 # list only ever shrinks. Clear one by adding the claim from the person's
 # printout and taking its line out.
 CONTACTS_AWAITING = {
-    "heating-and-electric-help": (
-        "the community action agencies' numbers, transcribed from the Department of "
-        "Energy's page on 12 October 2026 before a claim recorded digits; the person's "
-        "printout of energy.nh.gov's community action agencies page settles them",
-        ["phone (603) 223-0043", "phone (603) 323-7400", "phone (603) 352-7512",
-         "phone (603) 435-2500", "phone (603) 542-9528", "phone (603) 752-3248",
-         "phone (603) 968-3560"]),
-    "vital-records": (
-        "the Division of Vital Records Administration's mailing address, whose claim records "
-        "no street; the person's printout of its Request for Certificates page settles it",
-        ["address 9 Ratification Way"]),
 }
 
 
@@ -797,14 +786,14 @@ ENERGY = guide(
      box("Call it to set up an appointment and apply. You can apply for all three programs at once."),
      box("No heat right now? Call the agency and say it is an emergency.")],
     [step("Find your community action agency",
-          "<p>Five agencies cover the state, each its own counties. The Department of Energy "
-          "lists every office and its number.</p>"
-          + table("Community action agencies by county (Department of Energy, October 12, 2026)",
+          "<p>The Department of Energy lists five agencies, each serving its own counties, "
+          "and every office and its number.</p>"
+          + table("Community action agencies by county (Department of Energy, October 26, 2026)",
                   ["Counties", "Agency", "Phone"],
-                  [["Belknap and Merrimack", "Community Action Program Belknap-Merrimack Counties",
+                  [["Belknap and Merrimack", "Community Action Program, Belknap/Merrimack Counties",
                     "(603) 223-0043"],
                    ["Hillsborough and Rockingham",
-                    "Community Action Partnership of Hillsborough and Rockingham Counties",
+                    "Community Action Partnership Hillsborough and Rockingham Counties",
                     "Several offices; see the Department&rsquo;s list"],
                    ["Cheshire and Sullivan", "Southwestern Community Services",
                     "Keene (603) 352-7512, Claremont (603) 542-9528"],
@@ -846,12 +835,25 @@ ENERGY = guide(
            "weatherization helps low-income households with conservation improvements.",
            DOE_FUEL, CHECKED),
      claim("Call your fuel vendor at least ten days ahead.", DOE_FUEL, CHECKED),
-     claim("The agencies, the counties each serves and their numbers; apply for all three "
-           "programs at once, none required for another; homebound applicants may ask for a home "
-           "or phone interview or mail-in application; no-heat emergencies go to the local agency.",
-           DOE_CAA, CHECKED),
-     claim("211, Neighbor Helping Neighbor (Eversource, Liberty and Unitil customers), Project Care "
-           "(NHEC customers) and NH Adult and Aging Care, 1-866-634-9412.", DOE_CAA, CHECKED),
+     # The person's printout of the page, 26 October 2026, its numbers as printed.
+     claim("Community Action Program, Belknap/Merrimack Counties: All Belknap and Merrimack "
+           "County Residents (603) 223-0043. Community Action Partnership Hillsborough and "
+           "Rockingham Counties (CAPHR): Hillsborough County and Rockingham County offices. "
+           "Southwestern Community Services (Cheshire and Sullivan Counties): Keene (603) "
+           "352-7512; Claremont (603) 542-9528. Community Action Partnership of Strafford County: "
+           "Dover (603) 435-2500 Ext. 4001. Tri-County Community Action Program (Coos, Carroll and "
+           "Grafton Counties): Carroll County: (603) 323-7400; Coos County: (603) 752-3248; "
+           "Grafton County: (603) 968-3560. You can apply for Electric Assistance, Fuel "
+           "Assistance, and Weatherization Assistance at the same time. You do not need to "
+           "receive benefits from one program to participate in the other programs. If you are "
+           "homebound and unable to visit a CAA office, please call your local Community Action "
+           "Agency office and ask about other options, such as a home interview, an interview "
+           "over the phone, and mail-in applications. For NO-HEAT EMERGENCIES and other "
+           "assistance inquiries, please contact your local community action agency.",
+           DOE_CAA, "2026-10-26"),
+     claim("Other Assistance Resources: Neighbor Helping Neighbor (for customers of Eversource, "
+           "Liberty and Unitil); Project Care (for NHEC customers only); 211 Dial 211 or "
+           "1-866-444-4211; NH Adult and Aging Care 1-866-634-9412.", DOE_CAA, "2026-10-26"),
      # 211's own number, as the homelessness guide records 211 NH's page saying it.
      claim("211 NH connects residents to resources through trained Information and Referral "
            "Specialists, available 24 hours, 365 days a year, by phone, email or text, for "
@@ -928,8 +930,8 @@ VITAL = guide(
           law=["RSA 5-C:102"]),
      step("Fill in the application",
           "<p>Fill in the section for the kind of record you want, and the applicant section "
-          "with your name, address, reason and relationship, and sign it. Knowingly making a "
-          "false statement on the application is a felony.</p>",
+          "with your name, address, reason and relationship, and sign it. Willfully and knowingly "
+          "making a false statement on the application is a class B felony.</p>",
           actions=[("The application", DVRA_APP)], law=["RSA 5-C:14"]),
      step("Apply in person, or by mail",
           "<p><b>In person:</b> take the application and your photo ID to your town or city "
@@ -951,15 +953,33 @@ VITAL = guide(
      ("Application for a certified copy of a vital record (Secretary of State)", DVRA_APP),
      ("Vital Records Administration, RSA 5-C", "/laws/5-c")],
     ["5-C"],
-    [claim("DVRA issues certified copies of birth, death, marriage, divorce and civil union "
-           "certificates, as do all 234 local clerks, to those with a direct and tangible "
-           "interest; apply to DVRA or at the local clerk; $15 search fee, payable whether or not "
-           "found, plus card costs; $10 for additional copies at the same time; positive "
-           "identification required, or the documentary evidence form.", DVRA_REQUEST, CHECKED),
-     claim("The DVRA mailing address.", DVRA_REQUEST, CHECKED),
-     claim("The application's sections, the death record options, and the mailing checklist: "
-           "check or money order payable to Treasurer-State of New Hampshire, ID photocopy, proof "
-           "of address, return envelope.", DVRA_APP, CHECKED),
+    # The person's printouts of the page and the form, 26 October 2026.
+    [claim("In addition to all 234 local City and Town Clerks, the Division of Vital Records "
+           "Administration (DVRA) issues certified copies of birth, death, marriage, divorce and "
+           "civil union certificates to qualified individuals and agencies that provide a "
+           "\"direct and tangible\" interest; complete the application and send it to the DVRA "
+           "or visit your local City or Town Clerk and pay a search fee; the current fee is $15, "
+           "plus any additional expenses incurred for credit card transactions, payable whether or "
+           "not a record is found; additional copies of the same record issued at the same time "
+           "are $10; present positive identification including, but not limited to, a driver's "
+           "license, passport or other picture identification, or complete the form "
+           "Documentation Evidence for Individuals Not Possessing An Acceptable Picture "
+           "Identification.", DVRA_REQUEST, "2026-10-26"),
+     claim("Submit the completed application (with payment in U.S. funds ONLY and photo "
+           "identification) to: NH Department of State, Division of Vital Records "
+           "Administration, Registration / Certification, 9 Ratification Way, Concord, NH "
+           "03301-2455.", DVRA_REQUEST, "2026-10-26"),
+     claim("Event sections and an applicant section (legal name, mailing address, reason for "
+           "request, signature, relationship to registrant); for a death record, with cause of "
+           "death & manner of death, manner of death only, or without cause or manner of death, "
+           "and whether the social security number is suppressed; when mailing: check or money "
+           "order in US funds made payable to \"Treasurer-State of New Hampshire\", legible "
+           "photocopy of your photo identification, proof of your mailing address (utility bill, "
+           "lease agreement, car registration, etc.) if it isn't on the photo ID, self-addressed, "
+           "pre-stamped return envelope for faster mailing; any person shall be guilty of a "
+           "CLASS B Felony if they willfully and knowingly make any false statement in an "
+           "application for a certified copy of a vital record (RSA 5-C:14).", DVRA_APP,
+           "2026-10-26"),
      claim("Records public before 1901 (births) and 1948 (others); who has a direct and tangible "
            "interest; a letter for a claim, reviewed by the registrar or clerk, with appeal.",
            "RSA 5-C:102", CHECKED),
@@ -8591,6 +8611,9 @@ FLOOD_READ = "2026-10-26"
 INS_AUTO = "https://www.insurance.nh.gov/consumers/automobile-insurance"
 INS_HOME = "https://www.insurance.nh.gov/consumers/homeowners-and-renters-insurance"
 INS_COMPLAINT = "https://www.insurance.nh.gov/consumers/filing-complaint"
+# The Department's Auto Insurance Consumer Guide, whose address the person gave
+# with their printout of it (26 October 2026).
+INS_AUTO_GUIDE = "https://mm.nh.gov/files/uploads/nhid/documents/nh-auto-guide.pdf"
 FLOOD_ELIGIBLE = "https://www.floodsmart.gov/get-insured/eligibility"
 
 # The complaint step and its claims, which the renters and homeowners guides
@@ -8686,12 +8709,13 @@ PROPERTY_CANCEL_FIGS = [
 
 CAR_INSURANCE = guide(
     "car-insurance", "How Car Insurance Works in New Hampshire",
-    "When New Hampshire requires a driver to prove they can pay for a crash, the least a car "
-    "insurance policy here must cover, uninsured motorist coverage, and what to do if your "
-    "insurer cancels your policy.",
-    "New Hampshire&rsquo;s financial responsibility law decides when a driver must prove they "
-    "can pay for a crash. After a crash you were in without insurance, or after certain "
-    "convictions, the state can suspend "
+    "Whether New Hampshire requires car insurance, when a driver must prove they can pay for a "
+    "crash, the least a car insurance policy here must cover, uninsured motorist coverage, and "
+    "what to do if your insurer cancels your policy.",
+    "New Hampshire law does not require you to carry car insurance, but you must be able to "
+    "pay enough to meet its <b>financial responsibility</b> requirements if you cause an "
+    "accident, or your driving privileges may be suspended. After a crash you were in without "
+    "insurance, or after certain convictions, the state can suspend "
     "your license and registration until you file <b>proof of financial responsibility</b>, "
     "usually an insurance company&rsquo;s certificate. A motor vehicle liability policy here "
     "must cover at least $25,000 for injury to one person, $50,000 for one accident, and "
@@ -8700,13 +8724,19 @@ CAR_INSURANCE = guide(
     [ask("Do you have car insurance?",
          [("Yes", "Your policy carries at least the state&rsquo;s minimums and uninsured motorist "
                   "coverage."),
-          ("No", "A crash you must report, or certain convictions, can cost you your license "
-                 "and registration until you file proof of financial responsibility.")]),
+          ("No", "The law does not require it, but a crash you must report, or certain "
+                 "convictions, can cost you your license and registration until you file proof "
+                 "of financial responsibility.")]),
      ask("Were you just in a crash?",
          [("Someone was hurt, or the damage is over $1,000",
            "Report it to the DMV in writing within 15 days, unless the police investigated."),
           ("No one was hurt and the damage is less", "Exchange information at the scene.")])],
     [step("What the law requires",
+          "<p>New Hampshire law does not require you to carry car insurance. You must, though, "
+          "be able to show you can pay enough to meet the state&rsquo;s financial responsibility "
+          "requirements if you cause an accident, and if you cannot, your driving privileges may "
+          "be suspended, as the Insurance Department&rsquo;s Auto Insurance Consumer Guide "
+          "explains.</p>"
           "<p>The <b>financial responsibility law</b> decides when the state requires proof that "
           "you can pay for damage you cause: after a crash you had to report and had no "
           "insurance for, or after certain convictions (steps 2 and 3).</p>"
@@ -8717,7 +8747,8 @@ CAR_INSURANCE = guide(
           "into two basic coverage areas, liability and property damage. With a question about "
           "your coverage, call its Consumer Services unit at (603) 271-2261, toll free in New "
           "Hampshire at 1-800-852-3416, or email consumerservices@ins.nh.gov.</p>",
-          actions=[("Automobile insurance (Insurance Department)", INS_AUTO)],
+          actions=[("Auto Insurance Consumer Guide (Insurance Department)", INS_AUTO_GUIDE),
+                   ("Automobile insurance (Insurance Department)", INS_AUTO)],
           law=["RSA 264:20"]),
      step("After a crash",
           "<p>Stop at the scene. Give the other driver, anyone hurt, and the owner of any "
@@ -8784,14 +8815,20 @@ CAR_INSURANCE = guide(
           "decision by writing within 10 days of receiving it.</p>",
           actions=[("File a complaint (Insurance Department)", INS_COMPLAINT)],
           law=["RSA 417-A:4", "RSA 417-A:3", "RSA 417-A:5", "RSA 417-A:7"])],
-    [("Automobile Insurance (NH Insurance Department)", INS_AUTO),
+    [("Auto Insurance Consumer Guide (NH Insurance Department)", INS_AUTO_GUIDE),
+     ("Automobile Insurance (NH Insurance Department)", INS_AUTO),
      ("Filing a Complaint (NH Insurance Department)", INS_COMPLAINT),
      ("Financial responsibility, RSA 264", "/laws/264"),
      ("The motor vehicle liability policy, RSA 259:61", "/laws/259#s61"),
      ("Driver licenses, RSA 263", "/laws/263"),
      ("Cancelling car insurance, RSA 417-A", "/laws/417-a")],
     ["259", "263", "264", "417-A"],
-    [claim("Proof of financial responsibility shall mean proof of ability to respond in damages "
+    [claim("New Hampshire motor vehicle laws do not require you to carry auto insurance, but you "
+           "must be able to demonstrate that you are able to provide sufficient funds to meet New "
+           "Hampshire motor vehicle financial responsibility requirements in the event of an "
+           "\u201cat-fault\u201d accident. If you are unable to meet these requirements your "
+           "driving privileges in New Hampshire may be suspended.", INS_AUTO_GUIDE, INS_DEPT_READ),
+     claim("Proof of financial responsibility shall mean proof of ability to respond in damages "
            "in the amount of $25,000 because of bodily injury or death to any one person; $50,000 "
            "because of bodily injury to or death to 2 or more persons in any one accident, and "
            "$25,000 because of injury to and destruction of property; furnished for each motor "

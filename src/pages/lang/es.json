@@ -2103,11 +2103,6 @@
    "es": "El inspector de construcción o el encargado del cumplimiento del código de su municipio o ciudad es la primera persona a quien preguntar, sobre sus permisos, sus cuotas y sus inspecciones. Si su municipio no tiene uno, pregunte en la oficina de los concejales.",
    "state": "draft"
   },
-  "guide.car-insurance.a-crash-you-must-report-or": {
-   "en": "A crash you must report, or certain convictions, can cost you your license and registration until you file proof of financial responsibility.",
-   "es": "Un choque que usted debe reportar, o ciertas condenas, pueden costarle su licencia y su registro hasta que presente una prueba de responsabilidad financiera.",
-   "state": "draft"
-  },
   "guide.car-insurance.a-motor-vehicle-liability-policy-the": {
    "en": "A <b>motor vehicle liability policy</b>, the kind of car insurance whose terms New Hampshire law sets, must cover your liability to others for at least $25,000 for injury to or death of one person, $50,000 for one accident injuring or killing more than one, and $25,000 for damage to others&rsquo; property. You may buy more.",
    "es": "Una <b>póliza de responsabilidad civil de vehículos motorizados</b> (motor vehicle liability policy), el tipo de seguro de auto cuyas condiciones fija la ley de New Hampshire, debe cubrir su responsabilidad ante otros por al menos $25,000 por lesiones o la muerte de una persona, $50,000 por un accidente que hiera o mate a más de una, y $25,000 por daños a la propiedad de otros. Puede comprar más.",
@@ -2131,6 +2126,16 @@
   "guide.car-insurance.after-certain-convictions": {
    "en": "After certain convictions",
    "es": "Después de ciertas condenas",
+   "state": "draft"
+  },
+  "guide.car-insurance.auto-insurance-consumer-guide-insurance": {
+   "en": "Auto Insurance Consumer Guide (Insurance Department)",
+   "es": "Guía del consumidor sobre seguros de auto (Departamento de Seguros)",
+   "state": "draft"
+  },
+  "guide.car-insurance.auto-insurance-consumer-guide-nh": {
+   "en": "Auto Insurance Consumer Guide (NH Insurance Department)",
+   "es": "Guía del consumidor sobre seguros de auto (Departamento de Seguros de NH)",
    "state": "draft"
   },
   "guide.car-insurance.automobile-insurance-insurance": {
@@ -2254,13 +2259,18 @@
    "state": "draft"
   },
   "guide.car-insurance.lead": {
-   "en": "When New Hampshire requires a driver to prove they can pay for a crash, the least a car insurance policy here must cover, uninsured motorist coverage, and what to do if your insurer cancels your policy.",
-   "es": "Cuándo New Hampshire exige a un conductor demostrar que puede pagar por un choque, lo mínimo que debe cubrir una póliza de seguro de auto aquí, la cobertura de conductor sin seguro y qué hacer si su aseguradora cancela su póliza.",
+   "en": "Whether New Hampshire requires car insurance, when a driver must prove they can pay for a crash, the least a car insurance policy here must cover, uninsured motorist coverage, and what to do if your insurer cancels your policy.",
+   "es": "Si New Hampshire exige el seguro de auto, cuándo un conductor debe demostrar que puede pagar por un choque, lo mínimo que debe cubrir una póliza de seguro de auto aquí, la cobertura de conductor sin seguro y qué hacer si su aseguradora cancela su póliza.",
    "state": "draft"
   },
-  "guide.car-insurance.new-hampshires-financial-responsibility": {
-   "en": "New Hampshire&rsquo;s financial responsibility law decides when a driver must prove they can pay for a crash. After a crash you were in without insurance, or after certain convictions, the state can suspend your license and registration until you file <b>proof of financial responsibility</b>, usually an insurance company&rsquo;s certificate. A motor vehicle liability policy here must cover at least $25,000 for injury to one person, $50,000 for one accident, and $25,000 for damage to property, and must include <b>uninsured motorist</b> coverage, and on a private passenger car medical payments coverage.",
-   "es": "La ley de responsabilidad financiera de New Hampshire decide cuándo un conductor debe demostrar que puede pagar por un choque. Después de un choque en el que estuvo sin seguro, o después de ciertas condenas, el estado puede suspender su licencia y su registro hasta que presente una <b>prueba de responsabilidad financiera</b> (proof of financial responsibility), por lo general un certificado de una compañía de seguros. Una póliza de responsabilidad civil de vehículos motorizados aquí debe cubrir al menos $25,000 por lesiones a una persona, $50,000 por un accidente y $25,000 por daños a la propiedad, y debe incluir cobertura de <b>conductor sin seguro</b> (uninsured motorist) y, en un auto de pasajeros particular, de pagos médicos.",
+  "guide.car-insurance.new-hampshire-law-does-not-require": {
+   "en": "New Hampshire law does not require you to carry car insurance, but you must be able to pay enough to meet its <b>financial responsibility</b> requirements if you cause an accident, or your driving privileges may be suspended. After a crash you were in without insurance, or after certain convictions, the state can suspend your license and registration until you file <b>proof of financial responsibility</b>, usually an insurance company&rsquo;s certificate. A motor vehicle liability policy here must cover at least $25,000 for injury to one person, $50,000 for one accident, and $25,000 for damage to property, and must include <b>uninsured motorist</b> coverage, and on a private passenger car medical payments coverage.",
+   "es": "La ley de New Hampshire no le exige tener seguro de auto, pero usted debe poder pagar lo suficiente para cumplir sus requisitos de <b>responsabilidad financiera</b> si causa un accidente, o se le pueden suspender sus privilegios de conducir. Después de un choque en el que estuvo sin seguro, o después de ciertas condenas, el estado puede suspender su licencia y su registro hasta que presente una <b>prueba de responsabilidad financiera</b> (proof of financial responsibility), por lo general un certificado de una compañía de seguros. Una póliza de responsabilidad civil de vehículos motorizados aquí debe cubrir al menos $25,000 por lesiones a una persona, $50,000 por un accidente y $25,000 por daños a la propiedad, y debe incluir cobertura de <b>conductor sin seguro</b> (uninsured motorist) y, en un auto de pasajeros particular, de pagos médicos.",
+   "state": "draft"
+  },
+  "guide.car-insurance.new-hampshire-law-does-not-require-2": {
+   "en": "New Hampshire law does not require you to carry car insurance. You must, though, be able to show you can pay enough to meet the state&rsquo;s financial responsibility requirements if you cause an accident, and if you cannot, your driving privileges may be suspended, as the Insurance Department&rsquo;s Auto Insurance Consumer Guide explains.",
+   "es": "La ley de New Hampshire no le exige tener seguro de auto. Sin embargo, usted debe poder demostrar que puede pagar lo suficiente para cumplir los requisitos de responsabilidad financiera del estado si causa un accidente; si no puede, se le pueden suspender sus privilegios de conducir, como explica la Guía del consumidor sobre seguros de auto del Departamento de Seguros.",
    "state": "draft"
   },
   "guide.car-insurance.no": {
@@ -2321,6 +2331,11 @@
   "guide.car-insurance.the-insurer-must-send-you-written": {
    "en": "The insurer must send you written notice that states its specific reasons. The cancellation takes effect at least 45 days after the notice, or 10 days for not paying or in the first 60 days of a new policy. The notice tells you how to reach the Insurance Department, and you may ask the Insurance Commissioner to review the decision by writing within 10 days of receiving it.",
    "es": "La aseguradora debe enviarle un aviso por escrito con sus razones específicas. La cancelación entra en vigor al menos 45 días después del aviso, o 10 días si es por falta de pago o dentro de los primeros 60 días de una póliza nueva. El aviso le indica cómo comunicarse con el Departamento de Seguros, y usted puede pedir al Comisionado de Seguros que revise la decisión, por escrito, dentro de los 10 días siguientes a recibirlo.",
+   "state": "draft"
+  },
+  "guide.car-insurance.the-law-does-not-require-it": {
+   "en": "The law does not require it, but a crash you must report, or certain convictions, can cost you your license and registration until you file proof of financial responsibility.",
+   "es": "La ley no lo exige, pero un choque que usted debe reportar, o ciertas condenas, pueden costarle su licencia y su registro hasta que presente una prueba de responsabilidad financiera.",
    "state": "draft"
   },
   "guide.car-insurance.the-motor-vehicle-liability-policy-rsa": {
@@ -5186,8 +5201,8 @@
    "state": "draft"
   },
   "guide.heating-and-electric-help.community-action-agencies-by-county": {
-   "en": "Community action agencies by county (Department of Energy, October 12, 2026)",
-   "es": "Agencias de acción comunitaria por condado (Departamento de Energía, 12 de octubre de 2026)",
+   "en": "Community action agencies by county (Department of Energy, October 26, 2026)",
+   "es": "Agencias de acción comunitaria por condado (Departamento de Energía, 26 de octubre de 2026)",
    "state": "draft"
   },
   "guide.heating-and-electric-help.community-action-agencies-department-of": {
@@ -5195,19 +5210,19 @@
    "es": "Agencias de acción comunitaria (Departamento de Energía)",
    "state": "draft"
   },
-  "guide.heating-and-electric-help.community-action-partnership-of": {
-   "en": "Community Action Partnership of Hillsborough and Rockingham Counties",
-   "es": "Community Action Partnership of Hillsborough and Rockingham Counties",
+  "guide.heating-and-electric-help.community-action-partnership": {
+   "en": "Community Action Partnership Hillsborough and Rockingham Counties",
+   "es": "Community Action Partnership Hillsborough and Rockingham Counties",
    "state": "draft"
   },
-  "guide.heating-and-electric-help.community-action-partnership-of-2": {
+  "guide.heating-and-electric-help.community-action-partnership-of": {
    "en": "Community Action Partnership of Strafford County",
    "es": "Community Action Partnership of Strafford County",
    "state": "draft"
   },
   "guide.heating-and-electric-help.community-action-program-belknap": {
-   "en": "Community Action Program Belknap-Merrimack Counties",
-   "es": "Community Action Program Belknap-Merrimack Counties",
+   "en": "Community Action Program, Belknap/Merrimack Counties",
+   "es": "Community Action Program, Belknap/Merrimack Counties",
    "state": "draft"
   },
   "guide.heating-and-electric-help.counties": {
@@ -5243,11 +5258,6 @@
   "guide.heating-and-electric-help.find-your-community-action-agency": {
    "en": "Find your community action agency",
    "es": "Busque su agencia de acción comunitaria",
-   "state": "draft"
-  },
-  "guide.heating-and-electric-help.five-agencies-cover-the-state-each": {
-   "en": "Five agencies cover the state, each its own counties. The Department of Energy lists every office and its number.",
-   "es": "Cinco agencias cubren el estado, cada una con sus propios condados. El Departamento de Energía tiene la lista de todas las oficinas y sus números.",
    "state": "draft"
   },
   "guide.heating-and-electric-help.for-help-with-other-benefits-and": {
@@ -5368,6 +5378,11 @@
   "guide.heating-and-electric-help.the-amount-depends-on-household-income": {
    "en": "The amount depends on household income, energy costs, the local climate and your kind of housing. The Department&rsquo;s page gives the current range.",
    "es": "La cantidad depende de los ingresos del hogar, los costos de energía, el clima local y su tipo de vivienda. La página del Departamento da el rango actual.",
+   "state": "draft"
+  },
+  "guide.heating-and-electric-help.the-department-of-energy-lists-five": {
+   "en": "The Department of Energy lists five agencies, each serving its own counties, and every office and its number.",
+   "es": "El Departamento de Energía enumera cinco agencias, cada una al servicio de sus propios condados, y cada oficina con su número.",
    "state": "draft"
   },
   "guide.heating-and-electric-help.title": {
@@ -13926,8 +13941,8 @@
    "state": "draft"
   },
   "guide.vital-records.fill-in-the-section-for-the": {
-   "en": "Fill in the section for the kind of record you want, and the applicant section with your name, address, reason and relationship, and sign it. Knowingly making a false statement on the application is a felony.",
-   "es": "Llene la sección del tipo de registro que quiere, y la sección del solicitante con su nombre, dirección, motivo y parentesco, y fírmela. Hacer a sabiendas una declaración falsa en la solicitud es un delito grave.",
+   "en": "Fill in the section for the kind of record you want, and the applicant section with your name, address, reason and relationship, and sign it. Willfully and knowingly making a false statement on the application is a class B felony.",
+   "es": "Llene la sección del tipo de registro que quiere, y la sección del solicitante con su nombre, dirección, motivo y parentesco, y fírmela. Hacer de forma deliberada y a sabiendas una declaración falsa en la solicitud es un delito grave de clase B.",
    "state": "draft"
   },
   "guide.vital-records.find-your-town-or-city-clerk": {

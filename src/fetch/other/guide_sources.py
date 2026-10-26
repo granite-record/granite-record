@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-10-11.21
+# GRANITE_VERSION: 2026-10-11.22
 """
 The official pages the how-to guides cite, onto this disk, to check them by.
 
@@ -276,6 +276,8 @@ SOURCES = {
         "https://www.insurance.nh.gov/consumers/automobile-insurance",
         "https://www.insurance.nh.gov/consumers/homeowners-and-renters-insurance",
         "https://www.insurance.nh.gov/consumers/filing-complaint",
+        # The Department's Auto Insurance Consumer Guide, its address the person's.
+        "https://mm.nh.gov/files/uploads/nhid/documents/nh-auto-guide.pdf",
     ],
 }
 
