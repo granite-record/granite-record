@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.709
+# GRANITE_VERSION: 2026-09-04.710
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -26432,7 +26432,7 @@ LEARN_CONSTITUTION_CLAIMS = [
      2, "100", "a three fifths vote of the entire membership of each house"),
     ("how-a-bill-becomes-law", "then two thirds of those voting on the question at the election",
      2, "100", "approval by two thirds of the qualified voters present and voting on the subject"),
-    ("governor-and-council", "in which case it becomes law without a signature after five days, Sundays "
+    ("governor-and-council", "It becomes law without a signature after five days, Sundays "
      "excepted", 2, "44", "within five days (sundays excepted)"),
     ("governor-and-council", "Five days pass Sundays excepted.", 2, "44", "within five days (sundays excepted)"),
     ("governor-and-council", "unless the legislature's adjournment prevents the Governor from returning "
