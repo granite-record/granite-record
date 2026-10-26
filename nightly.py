@@ -12,17 +12,39 @@ readers reported and what changed -- and publish only if told to.
 Meant for Task Scheduler. Everything it prints also goes to
 logs/nightly-YYYY-MM-DD.log.
 
-WHAT IT ASKS THE GENERAL COURT FOR: fourteen files, once -- and on GitHub's
-machine, after them, the steps THE NIGHT'S CLOCK names (below)
+WHAT IT ASKS THE GENERAL COURT FOR
 
-snapshot_gencourt.py's bulk files, a few seconds apart. They
-are enough to notice what a day changed -- Docket.txt drives the build, and a
-newly scheduled hearing, a status change, a referral, a roll call and a new
-sponsor all arrive through it -- and they are the one fetch that cannot be done
-later, because the files are live views overwritten as a session moves. Every
-other network step build_all has (bill pages, testimony, committee pages) has
-no refusal handling or budget and stays out of the nightly; the build runs
---local.
+The day's files, once: snapshot_gencourt.py asks the downloads page and then
+its fourteen bulk files, a few seconds apart. They are enough to notice what
+a day changed -- Docket.txt drives the build, and a newly scheduled hearing, a
+status change, a referral, a roll call and a new sponsor all arrive through
+it -- and they are the one fetch that cannot be done later, because the files
+are live views overwritten as a session moves. Every other network step
+build_all has (bill pages, testimony, committee pages) has no refusal
+handling or budget and stays out of the nightly; the build runs --local.
+
+On GitHub's machine, after them and under the same lock, each step only if
+it can end by 12:00 UTC (THE NIGHT'S CLOCK, below), and each only if the one
+before it completed:
+
+  the bill requests   next session's, fetch_lsrs.py: at most three requests
+                      (take_lsrs)
+  the lists           the two index pages' calendars and journals: four
+                      requests, eight while two years' lists can both grow
+                      (take_documents; THE CALENDARS AND JOURNALS THE
+                      GENERAL COURT LISTS)
+  the documents       only while the repository's NIGHT_DOCUMENTS is a
+                      number: at most that many new calendars and journals,
+                      one at a time, about twenty seconds apart (THE NIGHT'S
+                      DOCUMENTS). Unset or "off", which is how it landed on
+                      26 October 2026, nothing
+
+and, from the SQL host the General Court publishes credentials for rather
+than its web server, the study committees' meetings and the current term's
+data (ON GITHUB'S MACHINE; TERM_VIEWS, TERM_FILES), and the day's files
+themselves on a night the export comes back empty (A NIGHT THE EXPORT FAILS).
+What the night asked of the web server, step by step, is in its verdict
+("gc_requests") and a line of the run's page.
 
 IT ASKS ONLY WHEN NOTHING ELSE IS ASKING. This address has blocked the project
 twice, the second time for two fetches at once, and the bill-text lane runs for
@@ -414,7 +436,8 @@ GitHub's night only, with the day's files, under the same lock:
                       newest year: four requests, a few seconds apart and as
                       long before the first, and eight while two years' lists
                       can both still grow (its docstring says when). No
-                      document is downloaded
+                      document is downloaded by it: THE NIGHT'S DOCUMENTS,
+                      below, is the step that may, after it
   after the bill      it asks the address the bill requests were asked of a
   requests            moment before. If that fetch did not complete -- a
                       dropped connection ends it on 1 with no refusal on
@@ -437,8 +460,10 @@ GitHub's night only, with the day's files, under the same lock:
                       night's file to let a real change through
   one writer          archive/queue.csv is the night's file in the kit from
                       this day. The laptop's drain still fetches the
-                      documents, and what it fetched reaches this list
-                      through its own file (archive/queue_fetched.csv)
+                      documents -- the newest ones only until the night
+                      fetches them itself (THE NIGHT'S DOCUMENTS) -- and what
+                      it fetched reaches this list through its own file
+                      (archive/queue_fetched.csv)
   a failure           is a warning on the night's page and never a failed
                       night: the list installed stays, and a picker a few
                       days behind is no reason to hold back the day's docket.
@@ -454,8 +479,11 @@ requests, the lists and the documents -- each start only if they can end by
 ASK_UNTIL, 12:00 UTC, inside the night's own window (asking_left); otherwise
 "not asked for", a warning, and tomorrow. The person approved it for the bill
 requests and the lists as well ("The existing bill request and list page
-steps can stay within 4-8am"). The hour before the window's 13:30 is the
-build's: a refusal the night meets reaches the bucket only when this exits.
+steps can stay within 4-8am"). The night starts at 08:17 UTC, so its asking
+falls between then and 12:00 UTC: 4:17 to 8 a.m. Eastern in summer, and 3:17
+to 7 a.m. in winter, since the hours are kept in UTC. The hour before the
+window's 13:30 is the build's: a refusal the night meets reaches the bucket
+only when this exits.
 
 A KNOWN FUTURE NEED, NOT BUILT. The person, the same day: "eventually we may
 need the site to update faster than the nightly for live updates on votes on
@@ -487,7 +515,8 @@ default -- and the night does exactly what it did before. Otherwise:
                       only with nothing changed but the fetch's own columns,
                       on the documents it asked for (judge_files)
   the texts           after the lock, before the build: each document's text,
-                      read as itself; the two journal readers checked with
+                      made by an extractor the canary proved tonight and read
+                      as itself; the two journal readers checked with
                       it, and tonight's journals set aside where it is theirs
                       that fails; each PDF out of the four folders the build
                       reads, staged for the bucket (make_texts). A document
@@ -503,31 +532,42 @@ default -- and the night does exactly what it did before. Otherwise:
                       asked of the General Court's site, a line of the run's
                       page on every night
   the laptop          once a night's verdict says its switch is a number, the
-                      laptop's drain and its committee reports' fetch leave
-                      this year's and last year's calendars to it
-                      (refusal.night_documents)
+                      laptop's drain leaves this year's and last year's
+                      calendars and journals to it -- those it will still ask
+                      for; one refused once, tried three times or no longer
+                      listed is a person's, and the drain takes it
+                      (fetch_calendar_archive.nights_to_ask) -- and its
+                      committee reports' fetch leaves it those years' House
+                      calendars, which docs-down brings (refusal.night_documents)
 
-THE GATE, IN SHADOW (6 October 2026)
+It landed switched off, and turning it on is the person's: "shadow" first,
+then a number, a step at a time (1, then 4, then 8).
 
-Every night that passes its checks waits for approval in GitHub's "production"
-environment, and the record lags by however long that takes. The design the
-person approved on 6 October 2026 lets an ordinary data night publish itself
-and keeps their look for a night that is a New term run, the first night after
-a release (its commit is not the one production's build.json names, or either
-is not known), a night that changed far more than a data night does (a
-finished term's bill list rewritten, or more than REVIEW_ROWS_MOST of the
-current term's rows), or one with a kind of warning neither the build
-production serves nor a night published in the last fourteen days carried.
+THE GATE (6 October 2026; on since 15 October 2026)
+
+Until the gate, every night that passed its checks waited for approval in
+GitHub's "production" environment, and the record lagged by however long that
+took. The design the person approved on 6 October 2026 lets an ordinary data
+night publish itself and keeps their look for a night that is a New term run,
+the first night after a release (its commit is not the one production's
+build.json names, or either is not known, unless a clean dry run of that very
+commit proved it: proven_by_dry_run), a night that changed far more than a
+data night does (a finished term's bill list rewritten, or more than
+REVIEW_ROWS_MOST of the current term's rows), or one with a kind of warning
+neither the build production serves nor a night published in the last
+fourteen days carried.
 The day's files coming from the General Court's database, and every other
 note of that fallback, never hold a night, nor does an error on the run's
 page: both stay on the page and in the verdict, for the morning triage (the
 person's decision of 6 October 2026). Every night that builds says so in its
 verdict ("review"), its output ("review") and one line on its run's page. The
-workflow's REVIEW_GATE says whether the publish job is routed by it; until the
-person switches it on, after
-five scheduled nights where its answer matches theirs, it is "shadow", the
-page says what the gate WOULD have done, and nothing about what is published,
-when, or behind which environment changes. THE GATE, below, has the detail.
+workflow's REVIEW_GATE says whether the publish job is routed by it, and it
+is "on" (15 October 2026): a night the gate clears deploys through
+"production", which has no reviewer, and a night it holds, a night with no
+verdict and every New term run through "production-review", where the person
+approves. From 6 to 15 October it ran as "shadow": every night still waited
+in "production" and the page said what the gate WOULD have done. THE GATE,
+below, has the detail.
 """
 
 # The bootstrap: _paths.py, found above this file, puts every code folder on the import path.
@@ -919,11 +959,11 @@ COMMIT = re.compile(r"[0-9a-f]{40}")
 # before it reads, so a night never judges by an earlier night's answer.
 SERVED = {}
 
-# THE GATE (6 October 2026). Every night that passes its checks waits today for
-# a person's approval in the "production" environment, and the live record
-# lags by however long that takes. The design approved on 6 October 2026 lets an
-# ordinary data night publish itself and keeps the look for a night that is
-# one of these:
+# THE GATE (6 October 2026; on since 15 October 2026). Before it, every night
+# that passed its checks waited for a person's approval in the "production"
+# environment, and the live record lagged by however long that took. The
+# design approved on 6 October 2026 lets an ordinary data night publish itself
+# and keeps the look for a night that is one of these:
 #
 #   a New term run       always: the person's rule of 30 September 2026
 #   a release            tonight's code is not the code of the build production
@@ -3623,7 +3663,11 @@ DB_MISSED_NIGHTS = 2
 # is read off them: the House committees' reports, the meetings and their
 # rooms, amendments (AUTOMATION_ROADBLOCKS.md, section 2) -- comes down in the
 # kit as the laptop last sent it, and kit-down records each file with the time
-# the laptop last changed it (cloud.KIT_RECORD, its mtime). These are the files
+# the laptop last changed it (cloud.KIT_RECORD, its mtime). (The newest
+# calendars' and journals' text is the night's own once its NIGHT_DOCUMENTS
+# switch is a number -- THE NIGHT'S DOCUMENTS, 26 October 2026 -- and no .txt
+# is among the files below; what is read off them is still the laptop's.)
+# These are the files
 # of that share that move with the current term; the past terms' and the
 # rarely changing ones (member_party.json, committee_details.json) are not
 # among them. preflight holds each to a laptop-owned kit entry. They move only
@@ -4314,6 +4358,14 @@ def text_canary():
         f"not proved: the canary did not complete (exit {rc})"
 
 
+def canary_proved(said):
+    """The extractors tonight's text canary proved, from its own sentence
+    ("identical for 4 of 4, by pdftotext -layout"): a set, empty for a
+    canary that did not pass. make_texts keeps no text another one made."""
+    m = re.fullmatch(r"identical for \d+ of \d+, by (.+)", str(said or "").strip())
+    return {x.strip() for x in m.group(1).split(", ")} - {"no extractor"} if m else set()
+
+
 def keep_listed():
     """DOCS_LISTED, as it is before tonight's list replaces it, to
     DOCS_BEFORE: the night before's, which the documents' fetch reads. Never
@@ -4516,10 +4568,12 @@ def make_texts(v, files, day):
     build reads what the kit will carry tomorrow.
 
     EACH TEXT READ AS ITSELF. extract_calendar_text.py --only makes the text
-    of tonight's PDFs and no others, written whole. A calendar's text must
-    carry its own number on its masthead (calendar_documents.masthead), a
-    journal's its chamber's heading (JOURNAL_HEADING); one that does not is
-    not kept, and is listed.
+    of tonight's PDFs and no others, written whole. A text must be made by an
+    extractor tonight's canary proved (canary_proved): one pdftotext gave
+    nothing for falls back to pdfplumber there, which is what the canary
+    keeps out. A calendar's text must carry its own number on its masthead
+    (calendar_documents.masthead), a journal's its chamber's heading
+    (JOURNAL_HEADING). One that does not is not kept, and is listed.
 
     THE JOURNAL CHECKS. journal_bills.py and journal_motions.py are build
     steps that stop the build -- and the night -- on a journal they cannot
@@ -4580,6 +4634,7 @@ def _make_texts(v, files, day):
         return ""
     made, bad, how = [], [], {}
     by = {}                 # each text made, by which extractor
+    proved = canary_proved(v.get("text_canary"))
     if took:
         DOCS_LEDGER.unlink(missing_ok=True)
         run(["extract_calendar_text.py", "--only", *[_disk(r["path"]).as_posix() for r in took],
@@ -4594,6 +4649,18 @@ def _make_texts(v, files, day):
             if not text.strip():
                 bad.append((r, "no text came out of it"))
                 continue
+            # MADE BY WHAT THE CANARY PROVED (the review of 26 October 2026).
+            # extract_calendar_text falls back to pdfplumber, then pypdf, for
+            # a PDF pdftotext gives nothing for, and those set a calendar's
+            # columns differently -- what the canary exists to keep out. A
+            # text made by any extractor the canary did not prove tonight is
+            # not kept, and is listed for a person.
+            made_by = str(entry.get("how") or "")
+            if made_by not in proved:
+                txt.unlink(missing_ok=True)
+                bad.append((r, f"its text was made by {made_by or 'an extractor not recorded'}, "
+                               "which the text canary did not prove tonight"))
+                continue
             if r.get("kind") == "calendar":
                 n = CD.number_of(r.get("name"))[0] or CD.number_of(r.get("label"))[0]
                 ok = bool(n) and CD.masthead(text, r.get("chamber") or "H", n) is not None
@@ -4606,7 +4673,7 @@ def _make_texts(v, files, day):
                 bad.append((r, why))
                 continue
             made.append(r)
-            by[id(r)] = str(entry.get("how") or "an extractor not recorded")
+            by[id(r)] = made_by
     aside = []
     journals = [r for r in made if r.get("kind") == "journal"]
     if journals:

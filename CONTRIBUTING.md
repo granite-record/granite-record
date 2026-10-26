@@ -129,7 +129,7 @@ project:
 | `numpy` | `src/parse/topic_model.py` (the only top-level third-party import) |
 | `openpyxl` | `src/hearings/build_manifest.py`, `src/hearings/ground_truth.py`, `src/hearings/probe_alignment.py` |
 | `pdfplumber` | calendar and PDF text extraction |
-| `pypdf` | PDF page handling in `fetch_committee_reports.py` and `extract_calendar_text.py` (not installed by the nightly, which needs neither) |
+| `pypdf` | PDF page handling in `fetch_committee_reports.py` and `extract_calendar_text.py`'s last fallback (not installed by the nightly: when it makes the text of the calendars and journals it fetched, it uses a pinned `pdftotext`, which `nightly.yml` installs and checks by its sha256, and keeps no text a fallback made) |
 | `xlrd` | `src/parse/parse_sos_results.py`, for the Secretary of State's older `.xls` results (`xlrd==2.0.2`; the nightly installs it, so its 2024 results check runs there) |
 | `PIL` (Pillow) | `src/pages/build_brand.py` (drawing your own icons and link-card images; the project's are not in the repository) |
 | `faster_whisper` | `src/fetch/youtube/transcribe_and_align.py` (transcribing a recording that has no captions) |
@@ -141,7 +141,10 @@ packages into seven hard requirements.
 The versions the nightly and the weekly install are pinned once, in
 `requirements.txt`; the night's caption tools (`yt-dlp` and its solver) are
 pinned in `nightly.yml`'s own step, where preflight's livestream check reads
-them.
+them; and so is the night's `pdftotext`, a poppler build for Windows pinned
+by the sha256 of its zip and installed only while the repository variable
+`NIGHT_DOCUMENTS` is not `off` (preflight's check of the night's documents
+reads it).
 
 ## How work is done here
 

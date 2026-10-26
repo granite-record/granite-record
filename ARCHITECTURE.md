@@ -104,7 +104,7 @@ typed from the root answers "can't open file".
 The site is built and published by a night on GitHub's machines and fed by
 the maintainer's laptop, and the two meet in a private Cloudflare R2 bucket
 rather than on either machine. `nightly.py`'s docstring is the long version
-of the first four parts below, `cloud.py`'s of the morning and the kit, and
+of the parts below about the night, `cloud.py`'s of the morning and the kit, and
 `src/ops/livestreams.py`'s of the captions.
 
 **The night, on GitHub.** `.github/workflows/nightly.yml` runs every night at
@@ -113,7 +113,10 @@ started on -- `main` on a schedule. Its first job brings the small state
 files and the kit down from R2 (`cloud.py state-down`, `cloud.py kit-down`),
 looks for new livestreams (`src/ops/livestreams.py --since-state`), and runs
 `nightly.py --runner`: the day's bulk files from gc.nh.gov, asked only when no
-refusal is on file; the rebuild, `build_all.py --local --no-captions`, since
+refusal is on file; then, under the same lock and each only if it can finish
+by 12:00 UTC, next session's bill requests and the two index pages' lists of
+calendars and journals (and, while the switch below is on, a few new
+calendars and journals themselves); the rebuild, `build_all.py --local --no-captions`, since
 that machine holds no caption files; and the gates -- `preflight.py --code`,
 `src/checks/check_site.py`, a census of the build against the last good
 build's counts (`archive/census.json`), and a ceiling of 95,000 files
@@ -213,6 +216,57 @@ installed files came from (`files_from`, `day_files`), a warning leads the
 run's page, and seven such nights in a row (`DB_NIGHTS_MOST`) is an error
 there, though the build still goes out.
 
+**What the night asks the General Court's web server, and when** (26 October
+2026). The downloads page and the fourteen day files; next session's bill
+requests, at most three requests (`take_lsrs`); and the two index pages'
+lists of calendars and journals, four requests or eight around the turn of
+the year (`take_documents`, `src/fetch/gc_web/fetch_calendar_archive.py --listing`) -- one
+fetch at a time, each step only if the one before it completed. The steps
+after the day's files each start only if they can finish by 12:00 UTC
+(`nightly.asking_left`, the person's "4-8am"): the night starts at 08:17 UTC,
+so its asking falls between 4:17 and 8 a.m. Eastern in summer and 3:17 and 7
+a.m. in winter, and the hour left before the laptop's window opens at 13:30 is
+the build's, because a refusal met reaches the bucket only when the night
+ends. A step that cannot finish in time is "not asked for", a warning, and
+tomorrow, with the copy on file kept. The verdict's `gc_requests`, and a line
+on the run's page, say what was asked, step by step.
+
+**The calendars and journals themselves, on the night** (26 October 2026;
+switched off). The repository variable `NIGHT_DOCUMENTS` is the switch, so
+the person turns it without a commit. Unset or `off`, which is how it landed,
+the night asks only what is above. `shadow`, and any dry run, say what would
+be fetched and fetch nothing. A number from 1 to 8 is the most documents a
+night: after the lists, inside the same lock,
+`src/fetch/gc_web/fetch_calendar_archive.py --night` asks for what both tonight's and the night before's lists name,
+oldest first, with a pause of about twenty seconds before each, never for a
+document with a refusal recorded against it or asked three times, and stops
+at the first refusal, the first other failure or the second "not found".
+Nothing is asked unless a pinned `pdftotext`, installed by the workflow and
+checked against its sha256, first makes the laptop's own text of the four
+documents in `tests/documents/` byte for byte (the text canary). After the
+lock and before the build, the night makes each document's text and checks
+it is that document's -- a calendar's number on its masthead, a journal's
+heading, and for a journal the build's two journal readers run with
+`--check` -- and one that fails is left out and listed in the verdict
+(`documents_untexted`) for a person; then it moves the PDF out
+of the folders the build reads; the text goes to the kit, and the workflow's
+`cloud.py docs-up` keeps the PDF in the bucket's `docs/`, from where
+`cloud.py docs-down` brings it to the laptop. Once a night's verdict says
+the switch is a number, the laptop's drain leaves this year's and last
+year's documents that the night will still ask for to it, and its committee
+reports' fetch leaves it those years' House calendars. `nightly.py`'s
+docstring (THE NIGHT'S DOCUMENTS) has the rest.
+
+**A known future need: faster than the nightly.** The record moves once a
+night, so a roll call a chamber takes at noon is on the site the next
+morning. The person has said (26 October 2026) that the site may one day need
+to update faster than the nightly, for the votes on session days as they are
+taken. Nothing is built for it. It would be a run of its own, under the same
+refusal record and the same one-fetch-at-a-time rule, and a decision of the
+person's with a plan of its own -- and, because it would ask the General
+Court during the day on the very days its servers are busiest, one to raise
+with its IT office first.
+
 **The term turnover.** The General Court's files describe the current term
 only, so before they turn over, the finished term's inputs are frozen:
 `src/lib/freeze_term.py --views` copies the database's views of the term into
@@ -302,7 +356,8 @@ November, to Organization Day's, 42 days in 2016 -- and the pandemic's
 suspension of March and April 2020 left out; `preflight` holds the figures to
 the finished terms on disk); a piece of the database's views
 not taken on a second night running; the laptop's share of the record --
-bill text, the calendars' and journals' text and what is read off them --
+bill text, and what is read off the calendars and journals, whose text is
+the laptop's too until the night fetches the newest itself --
 standing still while the record moved on for longer than that season's
 figure; nothing arriving in the captions inbox for three days while
 recordings wait; and the laptop's own record of its caption runs, which each
@@ -388,7 +443,11 @@ and sha256 on the way down, and the list's `never` entries -- secrets, and
 what readers typed -- are applied to every command. The small state the night
 must remember (`refused.json`, `census.json`, `first-seen.json`, the verdicts)
 lives under `state/`, so a refusal the night meets outlives its machine and
-stops the laptop's fetches too.
+stops the laptop's fetches too. The kit carries no PDF: the calendars and
+journals the night fetches go to the bucket's `docs/` instead, one object a
+document, each written only where nothing is and read back against its sha256
+(`cloud.py docs-up`, never on a dry run), and the laptop takes the ones it
+lacks with `cloud.py docs-down`, which writes nothing in the bucket.
 
 **The build's cache (23 October 2026).** Two steps keep what they worked out
 in `.build_cache/` (`src/lib/build_cache.py`), and the kit carries it as the

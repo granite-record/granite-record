@@ -55870,7 +55870,7 @@ def _document_files_night(NI, CA, CL, R):
     seal = _Seal()
     calls, seen = [], {"listed": 0}
     how = {"canary": (0, "text canary: identical for 4 of 4, by pdftotext -layout"),
-           "texts": {}, "bills": [0], "motions": [0], "night_rc": None}
+           "texts": {}, "bills": [0], "motions": [0], "night_rc": None, "made_by": {}}
     # The real --night, its opener a table of answers, its pauses none.
     wrap = (
         "import json, os, sys, types, urllib.error, urllib.parse\n"
@@ -55988,7 +55988,8 @@ def _document_files_night(NI, CA, CL, R):
                     "October 1, 2026\nNo. 29\n" if pdf.name.startswith("SC") else
                     "HOUSE JOURNAL No. 17\nThursday, October 1, 2026\n")
                 pdf.with_suffix(".txt").write_text(text, encoding="utf-8")
-                ledger[str(pdf)] = {"ok": True, "how": "pdftotext -layout", "chars": len(text)}
+                ledger[str(pdf)] = {"ok": True, "chars": len(text),
+                                    "how": how["made_by"].get(pdf.name, "pdftotext -layout")}
             NI.write_json(args[args.index("--ledger") + 1], ledger)
         elif name == "journal_bills.py":
             rc = how["bills"].pop(0) if len(how["bills"]) > 1 else how["bills"][0]
@@ -56212,6 +56213,23 @@ def _document_files_night(NI, CA, CL, R):
         assert not Path("calendars/2026/HC035.txt").exists() and \
             v["documents_untexted"]["calendars/2026/HC035.pdf"]["why"] == (
                 "its text does not carry its own number on its masthead"), v.get("documents_untexted")
+        # A text made by an extractor the canary did not prove -- pdftotext
+        # gave nothing, and the extractor fell back to pdfplumber -- is not
+        # kept either, however well it reads (the review of 26 October 2026).
+        reseed()
+        how["made_by"] = {"HC035.pdf": "pdfplumber"}
+        code, v = night("--runner", run_id="611", switch="1")
+        how["made_by"] = {}
+        assert not Path("calendars/2026/HC035.txt").exists() and \
+            v["documents_untexted"]["calendars/2026/HC035.pdf"]["why"] == (
+                "its text was made by pdfplumber, which the text canary did not prove tonight") \
+            and v["document_texts"].startswith("made 0; 1 not kept"), (
+                v.get("documents_untexted"), v.get("document_texts"))
+        assert NI.canary_proved("identical for 4 of 4, by pdftotext -layout") == \
+            {"pdftotext -layout"} and not NI.canary_proved(
+                "not proved: identical for 3 of 4; the first that is not: x") and \
+            NI.canary_proved("identical for 2 of 2, by pdftotext -layout, pdfplumber") == \
+            {"pdftotext -layout", "pdfplumber"}
 
         # ---- A REFUSAL: recorded against its document, installed, warned.
         reseed()
@@ -75780,7 +75798,7 @@ def _calendar_drain(CA):
             def still(self):
                 return True
 
-        def laptop_drain(verdict):
+        def laptop_drain(verdict, rows=None, listed=None):
             for f in tmp.glob("SC*.pdf"):
                 f.unlink()
             v = tmp / refusal.NIGHT_VERDICT
@@ -75788,13 +75806,16 @@ def _calendar_drain(CA):
             if verdict is not None:
                 v.parent.mkdir(parents=True, exist_ok=True)
                 v.write_text(json.dumps(verdict), encoding="utf-8")
-            rows = [dict(doc("S", "calendar", y, f"SC {i}.pdf"), path=str(tmp / f"SC{y}.pdf"))
-                    for i, y in enumerate(("2027", "2026", "2025", "2024"))]
+            CA.listed_file().unlink(missing_ok=True)
+            if listed is not None:
+                CA.listed_file().write_text(json.dumps(listed), encoding="utf-8")
+            rows = rows or [dict(doc("S", "calendar", y, f"SC {i}.pdf"), path=str(tmp / f"SC{y}.pdf"))
+                            for i, y in enumerate(("2027", "2026", "2025", "2024"))]
             del opened[:]
             said = io.StringIO()
             with contextlib.redirect_stdout(said):
                 rc = CA.drain(rows, ["H", "S"], ["calendar", "journal"], None,
-                              types.SimpleNamespace(budget=4, delay=1.0), Held())
+                              types.SimpleNamespace(budget=8, delay=1.0), Held())
             return rc, said.getvalue()
         for verdict in (None, {"day": "2026-10-26", "night_documents": "off"},
                         {"day": "2026-10-26", "night_documents": "shadow"}):
@@ -75808,6 +75829,30 @@ def _calendar_drain(CA):
             "on a laptop that has stood down, with the night fetching them, the drain did not "
             "leave this year's and last year's rows to the night, or did not say so: "
             f"{names()} {said[-300:]}")
+        # ... but only those the night will still ask for (the review of 26
+        # October 2026). A refusal recorded against a row, three tries, or a
+        # list that no longer names it -- last year's leftovers once the
+        # year's list is closed -- and the night never asks for it: it is a
+        # person's, and the drain a person starts takes it. Left to the night
+        # as well, it was fetched by nobody.
+        rows = [dict(doc("S", "calendar", y, f"SC {i}.pdf", **kw), path=str(tmp / f"SC{y}-{i}.pdf"))
+                for i, (y, kw) in enumerate((
+                    ("2027", {}),                                                # the night's
+                    ("2026", {"error": "HTTPError: HTTP Error 403: Forbidden"}),  # refused once
+                    ("2026", {"attempts": "3"}),                                 # tried out
+                    ("2025", {}),                                                # no longer listed
+                    ("2024", {})))]                                              # an older year
+        rc, said = laptop_drain({"day": "2026-10-26", "night_documents": "2"}, rows=rows, listed={
+            "read": "2026-10-26T08:30:00", "lists": [
+                {"chamber": "S", "kind": "calendar", "year": y, "documents": [{"name": n} for n in ns]}
+                for y, ns in (("2027", ["SC 0.pdf"]), ("2026", ["SC 1.pdf", "SC 2.pdf"]))]})
+        assert rc == 0 and names() == ["SC 1.pdf", "SC 2.pdf", "SC 3.pdf", "SC 4.pdf"] and \
+            "1 wanted of 2025 and later are left to GitHub's night" in said and \
+            "3 wanted of 2025 and later the night will not ask for" in said, (
+                "on a laptop that has stood down, the drain left to the night a row the night "
+                "will never ask for (a refusal recorded, three tries, or no longer listed), or "
+                f"took one the night will: {names()} {said[-400:]}")
+        CA.listed_file().unlink()
         assert refusal.night_documents() == ("2026-10-26", 2)
         refusal.STANDDOWN.unlink()
         assert refusal.night_documents() is None, "a machine that has not stood down read the switch"
@@ -75818,7 +75863,8 @@ def _calendar_drain(CA):
         refusal.STANDDOWN.unlink()
         laptop = [dict(doc("S", "calendar", y, f"SC {i}.pdf"), path=str(tmp / f"SC{y}.pdf"))
                   for i, y in enumerate(("2027", "2026", "2025", "2024"))]
-        (tmp / "SC2024.pdf").unlink()
+        for f in tmp.glob("SC*.pdf"):
+            f.unlink()
         del opened[:]
         laptop = [dict(r, state="wanted") for r in laptop]
         with contextlib.redirect_stdout(io.StringIO()):
@@ -76055,6 +76101,26 @@ def _calendar_text_canary(EX):
     assert "python3 src/parse/extract_calendar_text.py --canary tests/documents" in said and all(
         w in said for w in ("House Calendar", "House Journal", "Senate Calendar", "Senate Journal")), \
         f"{readme.as_posix()} no longer says which four documents go there, or how to prove them"
+    # THE FIXTURES ARE BYTES (the review of 26 October 2026). The canary
+    # compares the laptop's text with the night's byte for byte, line endings
+    # included, and core.autocrlf is on here: without -text, git would turn
+    # the laptop's CRLF into LF on commit and back again only on a checkout
+    # set to, so a runner's clone set otherwise would fail the canary and
+    # fetch nothing, with no difference in the text at all.
+    probe = [(readme.parent / n).as_posix() for n in ("HC012.txt", "SJ 05 March 6, 2025.pdf")]
+    r = _run(["git", "check-attr", "text", "--", *probe], capture_output=True, text=True,
+             timeout=60)
+    if r.returncode == 0 and r.stdout.strip():
+        said = dict(ln.rsplit(": text: ", 1) for ln in r.stdout.strip().splitlines()
+                    if ": text: " in ln)
+        assert said and all(v == "unset" for v in said.values()), (
+            "the text canary's fixtures are not kept as bytes (.gitattributes: "
+            "tests/documents/*.txt -text), so a checkout may change the laptop's line endings "
+            f"and the canary fail on no difference in the text: {said}")
+    else:
+        assert re.search(r"^tests/documents/\*\.txt\s+-text\s*$",
+                         Path(".gitattributes").read_text(encoding="utf-8"), re.M), \
+            ".gitattributes does not keep the text canary's fixtures as bytes"
     pairs = sum(1 for f in readme.parent.glob("*.pdf") if f.with_suffix(".txt").is_file())
     return "ok", ("--only extracts what it names and no more, a text already there is kept, a text "
                   "is written through a part file, the ledger is merged; the canary is 0 only on "

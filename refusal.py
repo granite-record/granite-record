@@ -503,7 +503,9 @@ def stand_down(who, instead=""):
 # a document is all the General Court should see, and the night keeps each PDF
 # in the bucket (cloud.py docs-down brings them here). Until then the laptop
 # fetches them as it always has -- the switch lands off, and the person turns
-# it on.
+# it on. The drain leaves to the night only the documents it will still ask
+# for; one it will not -- refused once, tried three times, no longer listed --
+# is a person's, and the drain takes it (fetch_calendar_archive.nights_to_ask).
 #
 # The laptop knows the switch only from the night's own verdict, which cloud.py
 # pull brings to archive/cloud/last-night.json (cloud.VERDICTS). On a laptop

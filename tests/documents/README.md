@@ -41,6 +41,9 @@ Eight files: four PDFs and the laptop's own text of each.
    names**, so that `HC012.pdf` sits beside `HC012.txt`. Copy the files with
    Explorer or `copy`; do not open the `.txt` and save it from an editor,
    which can change its line endings and so every byte the canary compares.
+   Git keeps them as they are: `.gitattributes` marks `tests/documents/*.txt`
+   as bytes (`-text`), so neither the commit nor the night's checkout
+   converts their line endings, and preflight holds that.
    If two would share a name, rename the PDF and its text the same way.
 4. **Run the canary on the laptop**, from the repository's root:
 
@@ -60,5 +63,11 @@ ignored.
 That the night's machine reads every document the way the laptop does. It
 proves that it reads these four the same, byte for byte, which is the most a
 check that asks the General Court for nothing can prove. A document set
-differently from all four could still come out differently; the night's
-journal checks, a later stage, are the guard for that.
+differently from all four could still come out differently. The night's
+own checks of each text it makes are the guard for that
+(`nightly.make_texts`): a calendar's text must carry its own number on its
+masthead and a journal's its chamber's heading, and when a journal's text
+goes in, the build's two journal readers are run on it with `--check` first.
+A text that fails is not kept, the PDF is kept in the bucket, and the
+night's verdict lists it (`documents_untexted`) until a person makes the
+text on the laptop.

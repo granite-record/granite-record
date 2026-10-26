@@ -82,6 +82,25 @@ both machines now. On a stood-down laptop:
   bucket holds this refusal -- `python3 src/ops/cloud.py send-refusal` sends it once
   the bucket holds none -- or a person lifts it here.
 
+- **Once the night fetches the newest calendars and journals, this laptop
+  leaves them to it.** When the night's verdict, as `cloud.py pull` brings
+  it, says `NIGHT_DOCUMENTS` is a number, `fetch_calendar_archive.py`'s drain
+  here leaves this year's and last year's documents that the night will
+  still ask for to it, and says how many; one it will not ask for again -- a
+  refusal recorded against it, three tries, or no longer on its list -- the
+  drain takes when a person runs it. `fetch_committee_reports.py` does not
+  ask for those years' House calendars: `python3 src/ops/cloud.py docs-down`
+  brings the PDFs the night kept, and `--offline` reads them. With the switch
+  off or in shadow -- how it landed -- the laptop fetches them as before.
+
+What the night itself asks, inside that window: the downloads page and the
+day files, then next session's bill requests and the two index pages' lists
+of calendars and journals -- each of those two only if it can finish by 12:00
+UTC (8 a.m. EDT, 7 a.m. EST), since 26 October 2026 -- and, while the
+repository variable `NIGHT_DOCUMENTS` is a number, up to that many new
+calendars and journals themselves, on the same terms. The run's page on the
+Actions tab says what it asked, step by step.
+
 `python3 refusal.py` says whether the window is open, when the bucket was last
 read, and whether a refusal is waiting to be sent. So a lane started in the
 morning Eastern time starts its last step before 3:30 a.m. EDT (2:30 a.m.
@@ -144,7 +163,10 @@ queued is in `gc_lane.queue`, with the reasoning beside each line.
   on 6 October 2026. Captions come through `livestreams.py` now.
 - **`extract_watch.py`**, which wrote the text beside each calendar and
   journal PDF behind the calendar drain, retired on 6 October 2026. The drain is
-  finished; `extract_calendar_text.py` is run by hand after a fetch of PDFs.
+  finished; `extract_calendar_text.py` is run by hand after a fetch of PDFs
+  here, and `seed-kit` sends the text the bucket does not hold. GitHub's night
+  makes the text of the documents it fetches itself, once `NIGHT_DOCUMENTS`
+  is a number (`nightly.make_texts`).
 - **`narrative_watch.py`**, stood down on purpose after it narrated 2015-2016
   from a half-complete database seed, retired on 6 October 2026. The archived
   terms are narrated by `build_all.py` (`narrative.py`, `narrate_archive.py`).

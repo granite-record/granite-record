@@ -9,7 +9,7 @@ Thirty years of calendars and journals, a night at a time.
                                                                           #   year: the night's, four requests
     python3 src/fetch/gc_web/fetch_calendar_archive.py --budget 400       # fetch that many
     python3 src/fetch/gc_web/fetch_calendar_archive.py --status           # what is held, no network
-    python3 src/fetch/gc_web/fetch_calendar_archive.py --night PREV_LISTED --out .night/queue.csv --most 1
+    python3 src/fetch/gc_web/fetch_calendar_archive.py --night PREV_LISTED --out .night/files/queue.csv --most 1
                                                                           # GitHub's night only: what
                                                                           #   two nights' lists name
 
@@ -86,7 +86,11 @@ nightly.take_documents() runs it under the night's lock:
                    before. While two years' lists can both still gain a
                    document -- the next year's has opened, or it is January
                    -- the year before as well: eight, and never more
-                   (LISTING_MOST). No PDF is asked for
+                   (LISTING_MOST). No PDF is asked for: --night, below,
+                   is the night's one fetch of a document. Since 26
+                   October 2026 the night runs this only if it can end by
+                   12:00 UTC (nightly.asking_left), which the person
+                   approved for the list too
   what it trusts   only what the page says of itself. Each answer is read
                    for the list it shows -- its own selected kind and year --
                    and for its own "View PDF File" link, whose folder is the
@@ -145,6 +149,17 @@ The person approved GitHub's night fetching new calendars and journals
 itself, gently. --night is that fetch, and it is built to the person's plan,
 rule by rule (night_plan() and take_night(), below):
 
+  who runs it      nightly.take_document_files, and nothing else: under the
+                   night's lock, straight after the list, and only when the
+                   repository's NIGHT_DOCUMENTS is a number (1 to NIGHT_MOST,
+                   which it passes as --most), tonight's list went in and its
+                   listing exited 0, no refusal is on file, the text canary
+                   passed, and the step can end by 12:00 UTC; killed at
+                   nightly.DOCS_FILES_MINUTES whatever its own limits say.
+                   Unset or "off", nothing calls it; "shadow", and any dry
+                   run, call night_plan() alone, which asks nothing. It
+                   landed switched off (26 October 2026), and the person
+                   turns it on
   what it asks     one GET of a row's own address -- the viewer address the
                    page's own list gave -- for a row both tonight's list and
                    the night before's name, that no refusal is recorded
@@ -167,6 +182,12 @@ rule by rule (night_plan() and take_night(), below):
                    request and how it ended (ASKED_NAME); each PDF to its own
                    path through a part file. The night installs the queue,
                    or does not
+  and after it     the night, out of the lock and before the build, makes
+                   each document's text and checks it is that document's
+                   (nightly.make_texts); the text goes to the kit, and the
+                   PDF out of the four folders the build reads and into the
+                   bucket's docs/ (cloud.py docs-up), from where docs-down
+                   brings it to the laptop. The build reads no PDF
 
 A NEW SUPPLEMENT KEEPS ITS OWN NAME. _local() names a calendar by its
 number, and the Senate's "No 27 Supplement ..." of 19 June 2025 and its two
@@ -182,6 +203,14 @@ fetches the newest documents (its switch a number, refusal.night_documents),
 the drain there leaves the rows of this year and the year before, and any
 later, to the night, and says how many it left. Until then -- the switch
 lands off, and the person turns it on -- the laptop fetches them as before.
+
+ONLY THE ONES THE NIGHT WILL STILL ASK FOR (the review of 26 October 2026).
+A row of those years with a refusal recorded against it, NIGHT_TRIES tries,
+or a name the newest list on file no longer gives -- last year's leftovers,
+once the year's list has closed -- is never asked for by the night, and its
+verdict calls it a person's. So the drain does not leave those to the night,
+where nobody would have fetched them: it takes them when a person runs it,
+and says how many (nights_to_ask).
 """
 
 # The bootstrap: _paths.py, found above this file, puts every code folder on the import path.
@@ -1059,6 +1088,19 @@ def _tries(r):
         return NIGHT_TRIES
 
 
+def nights_to_ask(r, lists):
+    """Whether GitHub's night may still ask for a wanted row of its years
+    (night_plan's own rules, the night before's list aside): no refusal
+    recorded against it, fewer than NIGHT_TRIES tries, and named by the
+    newest list on file (`lists`, as lists_of() gives it). With no list on
+    file at all the row counts as named, so that a laptop that cannot tell
+    leaves it to the night rather than ask for it too."""
+    if refused_before(r.get("error")) or _tries(r) >= NIGHT_TRIES:
+        return False
+    return not lists or r.get("name") in lists.get(
+        (r.get("chamber"), r.get("kind"), str(r.get("year"))), ())
+
+
 def night_plan(rows, tonight, before, most):
     """What tonight may ask for, decided before anything is asked. A dict:
 
@@ -1568,14 +1610,33 @@ def drain(rows, chambers, kinds, years, a, held):
             # later to it: two machines asking for one document is a request
             # the General Court did not need to see. With the night's
             # switch off or in shadow, it fetches them as before.
+            #
+            # BUT ONLY THE ONES THE NIGHT WILL STILL ASK FOR (the review of
+            # 26 October 2026). The night never asks again for a row with a
+            # refusal recorded against it or NIGHT_TRIES tries, and never for
+            # one its newest list no longer names -- last year's leftovers,
+            # once January's two lists are one again. Those are a person's,
+            # the verdict says so, and this drain, which a person starts, is
+            # the person's way to fetch them; left to the night as well, they
+            # would have been fetched by nobody.
             first = today().year - 1
-            theirs = {id(r) for r in todo
-                      if str(r.get("year") or "").isdigit() and int(r["year"]) >= first}
+            try:
+                lists = lists_of(json.loads(listed_file().read_text(encoding="utf-8")))
+            except (OSError, ValueError):
+                lists = {}
+            newest = [r for r in todo
+                      if str(r.get("year") or "").isdigit() and int(r["year"]) >= first]
+            theirs = {id(r) for r in newest if nights_to_ask(r, lists)}
             if theirs:
                 todo = [r for r in todo if id(r) not in theirs]
                 print(f"{len(theirs):,} wanted of {first} and later are left to GitHub's "
                       "night, which fetches what the newest lists name: this machine "
                       "drains the years before them")
+            if len(newest) > len(theirs):
+                print(f"{len(newest) - len(theirs):,} wanted of {first} and later the night "
+                      "will not ask for -- a refusal recorded against it, "
+                      f"{NIGHT_TRIES} tries, or no longer on its list -- are a person's, "
+                      "and this drain takes them")
         n = min(len(todo), a.budget)
         print(f"{len(todo):,} wanted, taking {n:,} this run at about "
               f"{a.delay:g}s apart -- roughly {n * a.delay / 60:.0f} minutes, "
