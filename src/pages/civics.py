@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-08.66
+# GRANITE_VERSION: 2026-09-08.67
 """
 The topics of the civics section: their order, their names, and their prose.
 
@@ -2999,8 +2999,12 @@ is the evidence.</p>
 # LEARN_CONSTITUTION_CLAIMS holds the sentences to their articles; the
 # Council's own words on the person's printout of its About Us page of 25
 # October 2026, the claim guides.py's who-to-contact guide already carries.
-# Nothing here comes from the Visitor Center's pages, which this machine may
-# not ask; the State House facts they hold wait for a printout. And no other
+# The history section's facts are the state's own History of the State
+# House on NH.gov (revised from the 1977 Manual for the General Court), as
+# the person printed it on 26 October 2026 (SRC_STATE_HOUSE_HISTORY): each
+# line says only what that page says, and none of it disagrees with the
+# nomination. Nothing here comes from the Visitor Center's pages, which this
+# machine may not ask; the State House facts they hold wait for a printout. And no other
 # state is compared where no source read says so: the one comparison is the
 # nomination's own, dated as it is.
 BODY_STATE_HOUSE = """
@@ -3040,6 +3044,45 @@ sign of a peace eagle, unlike the war eagle it replaced.</p>
 Chester French) and Franklin Pierce (1914); the Soldiers and Sailors Memorial
 Arch of 1892; a veterans memorial of 1953; and a reproduction of the Liberty
 Bell, cast in France and installed in 1950.</p>
+
+<h2>From the State House&rsquo;s History</h2>
+<p>The state&rsquo;s own history of the building, revised from the 1977
+Manual for the General Court, tells these.</p>
+<ul>
+<li>The first talk of a state capitol came in 1814. Concord, Hopkinton and
+Salisbury competed for it, and Salisbury offered seven thousand dollars for
+the honor. Concord won, and by 1816 the decision to build there was
+final.</li>
+<li>Concord saved a considerable expense by building it of granite from what
+are now the Swenson quarries, at the north end of the town, with the stones
+cut, shaped and faced by inmates of the prison.</li>
+<li>A huge gold-painted wooden eagle was raised to the top of the dome in
+1818. At the ceremonies, over which Governor William Plumer presided, one
+toast ran: &ldquo;The American Eagle. May the shadow of his wings protect
+every acre of our united continent and the lightning of his eye flash terror
+and defeat through the ranks of our enemies.&rdquo;</li>
+<li>The building cost about $82,000, and the legislature first met in it in
+1819. Its builder, Stuart J. Park, has a Concord street named for him: Park
+Street, north of the building.</li>
+<li>In 1863, during the Civil War, the city of Manchester offered no less than
+half a million dollars to build a new capitol there. The legislature kept the
+capitol in Concord and enlarged it instead, from 1864 to 1866, for about
+$200,000.</li>
+<li>A building of its own for the State Library, planned from 1881, made room
+for the Supreme Court as well when it was finished in 1895.</li>
+<li>By 1909 a bill was introduced for about a million dollars, for what
+amounted to an entirely new state house, and Manchester again offered the
+million if the State House were moved there. The legislature again kept it in
+Concord, and under Governor Quimby the whole building was remodeled, made
+fire-proof and given electric elevators.</li>
+<li>The State House Annex, planned in 1937, had its cornerstone laid in 1938
+and cost $327,000, a federal grant included. An underground passageway joins
+it to the State House.</li>
+<li>Under Governor Lane Dwinell the weathered wooden eagle was replaced by a
+metal replica, and the statues of John Stark, Daniel Webster, President
+Pierce, John P. Hale and Commodore Perkins were cleaned and made
+tarnishproof.</li>
+</ul>
 
 <h2>A House of Four Hundred</h2>
 <p>The constitution calls the legislature <b>the General Court of New
@@ -3098,7 +3141,7 @@ jurisdiction known as the superior court, and the lower courts the
 legislature establishes (Part Second, Article 72-a, added in 1966). The chief
 justice of the supreme court is the administrative head of all the courts
 (Part Second, Article 73-a, 1978).</p>
-<p>Judges are not elected. The Governor nominates and the Executive Council
+<p>Judges are appointed. The Governor nominates and the Executive Council
 confirms (Part Second, Article 46). Once appointed, a judge holds office
 during good behavior (Part Second, Article 73), and no one may serve as a
 judge after reaching seventy, a limit in the constitution since 1792 (Part
@@ -3110,7 +3153,8 @@ the courts are arranged.</p>
      "24. With every House seat filled, that is 424.</p>"),
     ("Has legislators&rsquo; pay ever been raised?",
      "<p>The constitution has said $200 for the term, and $250 for the presiding officers, since "
-     "an amendment of 1889. Changing it would take a constitutional amendment.</p>"),
+     "an amendment of 1889. The figures are the constitution&rsquo;s own words, so changing them "
+     "means amending it, as Part Second, Article 100 provides.</p>"),
     ("Who chooses the Governor if no candidate wins a plurality?",
      "<p>The House and Senate, by joint ballot, choose between the two candidates with the most "
      "votes (Part Second, Article 42).</p>"),
@@ -3246,6 +3290,13 @@ SRC_VISITOR_CENTER = ("State House Visitor Center", GC + "/nh_visitorcenter/")
 SRC_NRHP_CIVIC = ("Concord Civic District, National Register of Historic Places "
                   "nomination (National Park Service, 1983)",
                   "https://npgallery.nps.gov/NRHP/GetAsset/NRHP/83004203_text")
+# The state's History of the State House on NH.gov, "Revised from State of
+# New Hampshire Manual for the General Court 1977, pp.115-124", as the person
+# printed it on 26 October 2026. The printout does not show its address, so
+# the source is named and not linked (build_civics.sources_list) until the
+# person gives it; a source with no address is in no SOURCE_GROUPS group.
+SRC_STATE_HOUSE_HISTORY = ("History of the State House, revised from the 1977 Manual for "
+                           "the General Court (NH.gov)", "")
 # The Executive Council's About Us page, as the person printed it on 25
 # October 2026 (it refuses this machine): the words guides.py's
 # who-to-contact guide already carries as a claim (guides.COUNCIL_ABOUT).
@@ -3373,7 +3424,8 @@ TOPICS = [
           "term, a Governor elected every two years beside an Executive Council, and judges who "
           "serve until seventy.",
           BODY_STATE_HOUSE,
-          [SRC_NRHP_CIVIC, SRC_CONSTITUTION, SRC_COUNCIL_ABOUT, SRC_FIND_MEMBER]),
+          [SRC_NRHP_CIVIC, SRC_STATE_HOUSE_HISTORY, SRC_CONSTITUTION, SRC_COUNCIL_ABOUT,
+           SRC_FIND_MEMBER]),
     topic("state-symbols", "New Hampshire\u2019s State Symbols", ABOUT,
           "The purple finch, the purple lilac, granite and smoky quartz: every "
           "symbol the law names, and the ones proposed that did not pass.",
