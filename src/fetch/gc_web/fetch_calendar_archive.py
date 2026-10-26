@@ -177,8 +177,11 @@ Supplement its source name, as _local() already does for a name with no
 number. A path on file never moves.
 
 AND THE LAPTOP LEAVES THEM TO IT. On a laptop that has stood down, --night
-refuses (refusal.stand_down), and the drain leaves the rows of this year and
-the year before, and any later, to the night, and says how many it left.
+refuses (refusal.stand_down); and once the night's own verdict says it
+fetches the newest documents (its switch a number, refusal.night_documents),
+the drain there leaves the rows of this year and the year before, and any
+later, to the night, and says how many it left. Until then -- the switch
+lands off, and the person turns it on -- the laptop fetches them as before.
 """
 
 # The bootstrap: _paths.py, found above this file, puts every code folder on the import path.
@@ -1556,12 +1559,15 @@ def drain(rows, chambers, kinds, years, a, held):
                 if r["state"] == "wanted"
                 and (r["chamber"] in chambers) and (r["kind"] in kinds)
                 and (not years or int(r["year"]) in years)]
-        if list_is_the_nights():
-            # THE NEWEST YEARS ARE THE NIGHT'S (the person, 26 October 2026).
-            # GitHub's night fetches what the newest lists name, so on a
-            # laptop that has stood down this drain leaves this year's rows,
-            # last year's and any later to it: two machines asking for one
-            # document is a request the General Court did not need to see.
+        if list_is_the_nights() and refusal.night_documents():
+            # THE NEWEST YEARS ARE THE NIGHT'S (the person, 26 October 2026)
+            # -- once it fetches them. While GitHub's night fetches what the
+            # newest lists name, as its own verdict says (the switch a
+            # number: refusal.night_documents), this drain on a laptop that
+            # has stood down leaves this year's rows, last year's and any
+            # later to it: two machines asking for one document is a request
+            # the General Court did not need to see. With the night's
+            # switch off or in shadow, it fetches them as before.
             first = today().year - 1
             theirs = {id(r) for r in todo
                       if str(r.get("year") or "").isdigit() and int(r["year"]) >= first}

@@ -40,6 +40,11 @@ The nightly's kit and the laptop's backup, in the project's private R2 bucket.
                                                        down, before its livestream step
     python3 src/ops/cloud.py inbox-clear [--dry-run]   ... and clears what its sent state no
                                                        longer waits for; never on a dry run
+    python3 src/ops/cloud.py docs-up [--dry-run]       the night keeps the calendars' and
+                                                       journals' PDFs it fetched tonight,
+                                                       under docs/; never on a dry run
+    python3 src/ops/cloud.py docs-down [--dry-run]     ... and the laptop takes each one it
+                                                       does not have
 
     --local-bucket FOLDER   a folder stands in for the bucket, for testing
     --root FOLDER           the working folder (default: the current one)
@@ -103,6 +108,8 @@ THE BUCKET
                            (THE CAPTIONS INBOX)
     inbox/laptop/          a record of each of the laptop's runs that fill it,
                            <YYYYMMDDTHHMMSSZ>.json (THE CAPTIONS INBOX)
+    docs/<path>            the calendars' and journals' PDFs the night fetched, laid
+                           out as the working folder is (THE NIGHT'S DOCUMENTS, KEPT)
 
 On a machine, small state lives under archive/ -- archive/refused.json,
 archive/census.json -- and only the bucket calls it state/. This machine's
@@ -384,6 +391,32 @@ replaced/ first; and every run record of the laptop's but the newest, the
 same way. A dry run's never: what a dry run took went into its own
 state, which does not go back, so the entry must still be there for the next
 real night. --dry-run says what it would clear.
+
+THE NIGHT'S DOCUMENTS, KEPT: docs-up, docs-down (26 October 2026)
+
+The person approved the night fetching the newest calendars and journals
+itself, and keeping the PDFs it fetched in the bucket ("keeping the night's
+PDFs in the bucket"), so that the laptop never asks the General Court for the
+same file again: the House committees' reports and the amendments are read
+off the PDFs, not their text, and the kit carries no PDF (preflight holds it
+to that). So the PDFs travel apart from the kit, under docs/, one object a
+document, at the path the working folder gives it.
+
+docs-up is the night's, a workflow step after the night: nightly.py leaves
+tonight's PDFs, once their text is made, under DOCS_STAGED with a record
+(DOCS_RECORD) of each one's path, bytes and sha256, outside the four folders
+the build reads. Each goes to docs/<path> only where nothing is, read back
+against its sha256; one already there with the same bytes is already kept,
+and one there with other bytes is never written over -- it is named, and the
+step fails. A file whose bytes are not its record's, or a path that is not a
+PDF of the four folders, is refused before anything is sent. When every one
+is kept, the staged folder is removed: the build machine keeps no PDF. Never
+on a dry night, which fetches no document.
+
+docs-down is the laptop's, and only reads the bucket: each PDF under docs/
+that this laptop does not have comes down to its path, whole (a part file,
+read against the sha256 its upload recorded, then renamed). A file already
+here is never written over, whatever its bytes: one that differs is named.
 """
 
 # The bootstrap: _paths.py, found above this file, puts every code folder on the import path.
@@ -484,6 +517,18 @@ INBOX_RUNS = "inbox/laptop/"
 INBOX_RUN_LOCAL = "archive/captions-laptop.json"
 _INBOX_RUN = re.compile(r"^inbox/laptop/(\d{8}T\d{6}Z)\.json$")
 INBOX_RUN_MOST = 1 << 16
+# THE NIGHT'S DOCUMENTS, KEPT (26 October 2026; the docstring says why): the
+# bucket's prefix for the calendars' and journals' PDFs the night fetched;
+# where nightly.py leaves tonight's for docs-up (nightly.DOCS_STAGED, which
+# preflight holds to this), and the record beside them; the four folders a
+# document's path may be in (extract_calendar_text.ROOTS); and the largest
+# PDF taken, the night's fetch's own ceiling (fetch_calendar_archive.
+# NIGHT_BYTES_MOST).
+DOCS = "docs/"
+DOCS_STAGED = ".night/documents"
+DOCS_RECORD = "staged.json"
+DOCS_ROOTS = ("calendars", "calendars_senate", "journals", "journals_senate")
+DOCS_MOST = 50_000_000
 # What pull takes from logs/<day>/, and the folder each goes to. Anything
 # else there stays in the bucket: a name this does not know could be one the
 # laptop uses for a log of its own.
@@ -4090,6 +4135,151 @@ def cmd_inbox_clear(a, root):
            + ("would be cleared" if a.dry_run else "cleared") if older else ""))
 
 
+# ------------------------------------------------- the night's documents, kept --
+
+def doc_path(rel):
+    """`rel` as a document's path under DOCS -- a PDF in one of DOCS_ROOTS, with
+    / between folders -- or "" where it is not one. The queue was written on
+    Windows, so a path may carry backslashes."""
+    rel = str(rel or "").replace("\\", "/")
+    parts = rel.split("/")
+    if (not rel or rel.startswith("/") or ":" in parts[0] or len(parts) < 2
+            or parts[0] not in DOCS_ROOTS or any(x in ("", ".", "..") for x in parts)
+            or not rel.lower().endswith(".pdf")):
+        return ""
+    return rel
+
+
+def staged_docs(root):
+    """(record, [(path, file, sha256, bytes)], [why]): what the night left
+    under DOCS_STAGED for docs-up, each file read against its record. The
+    record is None where nothing was staged. A path that is not a document's,
+    a file missing, or one whose bytes are not its record's is a why, and is
+    not sent."""
+    folder = local(root, DOCS_STAGED)
+    raw = folder / DOCS_RECORD
+    if not raw.exists():
+        return None, [], []
+    try:
+        rec = json.loads(raw.read_text(encoding="utf-8"))
+        files = rec.get("files")
+        if not isinstance(files, dict):
+            raise ValueError("no files table")
+    except (OSError, ValueError, AttributeError) as e:
+        raise Failed(f"{DOCS_STAGED}/{DOCS_RECORD} will not read ({e}); nothing was sent")
+    good, bad = [], []
+    for rel, want in sorted(files.items()):
+        path = doc_path(rel)
+        f = folder.joinpath(*path.split("/")) if path else None
+        if not path:
+            bad.append(f"{str(rel)[:120]}: not a PDF of {', '.join(DOCS_ROOTS)}")
+        elif not isinstance(want, dict) or not f.is_file():
+            bad.append(f"{path}: not staged")
+        elif f.stat().st_size != want.get("bytes") or f.stat().st_size > DOCS_MOST \
+                or sha256_of(f) != want.get("sha256"):
+            bad.append(f"{path}: its bytes are not the ones its record names")
+        else:
+            good.append((path, f, want["sha256"], want["bytes"]))
+    return rec, good, bad
+
+
+def cmd_docs_up(a, root):
+    """The night's, after it: tonight's PDFs to DOCS, each only where nothing
+    is, read back against its sha256 (THE NIGHT'S DOCUMENTS, KEPT). Never on a
+    dry night. Fails, naming each, where one is not kept."""
+    if dry_night(a):
+        say("docs-up: a dry run fetches no document, and keeps none in the bucket")
+        return
+    rec, good, bad = staged_docs(root)
+    if rec is None:
+        say(f"docs-up: nothing staged tonight ({DOCS_STAGED}/{DOCS_RECORD} is not here)")
+        return
+    bucket = open_bucket(a, preview=True)
+    sent, kept, size = [], [], 0
+    for path, f, sha, n in good:
+        key = DOCS + path
+        there = bucket.head(key)
+        if there is not None:
+            got = there.get("sha256") or ""
+            if got != sha:
+                data = bucket.get_bytes(key)
+                got = hashlib.sha256(data).hexdigest() if data is not None else ""
+            if got == sha:
+                kept.append(path)
+            else:
+                bad.append(f"{path}: the bucket keeps other bytes under that name, which are "
+                           "never written over")
+            continue
+        if a.dry_run:
+            sent.append(path)
+            size += n
+            continue
+        bucket.put_file(f, key, {"sha256": sha})
+        back = bucket.get_bytes(key)
+        if back is None or hashlib.sha256(back).hexdigest() != sha:
+            bad.append(f"{path}: did not read back as the file sent")
+            continue
+        sent.append(path)
+        size += n
+    for path in sent:
+        say(f"  {'would keep' if a.dry_run else 'kept'} {DOCS}{path}")
+    for why in bad:
+        say(f"  NOT KEPT: {why}")
+    say(f"docs-up: {len(sent)} {'would be ' if a.dry_run else ''}sent ({human(size)}), "
+        f"{len(kept)} kept already, {len(bad)} not kept")
+    if bad:
+        raise Failed(f"{len(bad)} of tonight's documents are not in the bucket; the first: "
+                     f"{bad[0]}. The night will not ask for them again, so the laptop has "
+                     "no copy of them but this machine's, which is gone with it")
+    if not a.dry_run:
+        # Every one is kept: the build machine keeps no PDF (the docstring).
+        shutil.rmtree(local(root, DOCS_STAGED), ignore_errors=True)
+
+
+def cmd_docs_down(a, root):
+    """The laptop's: each PDF the night kept under DOCS that this laptop does
+    not have, to its path, whole and read against the sha256 its upload
+    recorded (THE NIGHT'S DOCUMENTS, KEPT). Reads the bucket and writes
+    nothing there; never writes over a file here."""
+    bucket = open_bucket(a, preview=True)
+    took, same, differ, odd, size = [], 0, [], [], 0
+    for key, n in sorted(bucket.list(DOCS).items()):
+        path = doc_path(key[len(DOCS):])
+        if not path:
+            odd.append(key)
+            continue
+        dst = local(root, path)
+        if dst.exists():
+            want = (bucket.head(key) or {}).get("sha256") or ""
+            if dst.stat().st_size == n and (not want or sha256_of(dst) == want):
+                same += 1
+            else:
+                differ.append(path)
+            continue
+        if a.dry_run:
+            took.append(path)
+            size += n
+            continue
+        want = (bucket.head(key) or {}).get("sha256") or ""
+        dst.parent.mkdir(parents=True, exist_ok=True)
+        tmp = dst.with_name(dst.name + ".part")
+        bucket.get_file(key, tmp, n)
+        if tmp.stat().st_size != n or (want and sha256_of(tmp) != want):
+            tmp.unlink(missing_ok=True)
+            raise Failed(f"{key} did not come down whole (its size or sha256 is not what the "
+                         "bucket says); nothing was put at its path")
+        os.replace(tmp, dst)
+        took.append(path)
+        size += n
+    for path in took:
+        say(f"  {'would take' if a.dry_run else 'took'} {path}")
+    for path in differ:
+        say(f"  here already, and not the bucket's copy (left as it is): {path}")
+    say(f"docs-down: {len(took)} {'would come' if a.dry_run else 'came'} down ({human(size)}), "
+        f"{same} here already, {len(differ)} here and different (left alone)"
+        + (f", {len(odd)} key(s) of no document's shape left alone" if odd else ""))
+
+
 COMMANDS = {"kit-list": cmd_kit_list, "seed-kit": cmd_seed_kit,
             "kit-down": cmd_kit_down, "kit-up": cmd_kit_up,
             "state-down": cmd_state_down, "state-up": cmd_state_up,
@@ -4098,7 +4288,8 @@ COMMANDS = {"kit-list": cmd_kit_list, "seed-kit": cmd_seed_kit,
             "kit-release": cmd_kit_release,
             "backup": cmd_backup, "pull": cmd_pull, "send-refusal": cmd_send_refusal,
             "send-night": cmd_send_night,
-            "inbox-down": cmd_inbox_down, "inbox-clear": cmd_inbox_clear}
+            "inbox-down": cmd_inbox_down, "inbox-clear": cmd_inbox_clear,
+            "docs-up": cmd_docs_up, "docs-down": cmd_docs_down}
 
 
 def main(argv=None):
@@ -4131,7 +4322,7 @@ def main(argv=None):
     ap.add_argument("--dry-night", action="store_true",
                     help="kit-up, state-up: a dry run's night -- only what it fetched, its "
                          "logs apart and a refusal, a hold and its own verdict go back; "
-                         "inbox-clear: nothing is cleared; on "
+                         "inbox-clear: nothing is cleared; docs-up: nothing is kept; on "
                          "GitHub's machine the workflow's DRY_RUN, or a run of a branch "
                          "other than main, says so whatever is passed")
     ap.add_argument("--hold", metavar="RUN",
@@ -4166,7 +4357,8 @@ def main(argv=None):
     try:
         if a.command == "kit-list":
             cmd_kit_list(a, root)
-        elif a.command in ("pull", "send-night", "inbox-down", "inbox-clear") and a.dry_run:
+        elif a.command in ("pull", "send-night", "inbox-down", "inbox-clear", "docs-up",
+                           "docs-down") and a.dry_run:
             # A dry pull writes nothing, so there is no writer for the lock to
             # keep out -- and taking it would make archive/cloud/, a folder a
             # dry run has no business making. A dry send-night writes nothing

@@ -12,9 +12,10 @@ readers reported and what changed -- and publish only if told to.
 Meant for Task Scheduler. Everything it prints also goes to
 logs/nightly-YYYY-MM-DD.log.
 
-WHAT IT ASKS THE GENERAL COURT FOR: fourteen files, once
+WHAT IT ASKS THE GENERAL COURT FOR: fourteen files, once -- and on GitHub's
+machine, after them, the steps THE NIGHT'S CLOCK names (below)
 
-snapshot_gencourt.py's bulk files, a few seconds apart, and nothing else. They
+snapshot_gencourt.py's bulk files, a few seconds apart. They
 are enough to notice what a day changed -- Docket.txt drives the build, and a
 newly scheduled hearing, a status change, a referral, a roll call and a new
 sponsor all arrive through it -- and they are the one fetch that cannot be done
@@ -444,6 +445,68 @@ GitHub's night only, with the day's files, under the same lock:
                       A refusal met while asking is recorded as every
                       refusal is, and the next night does not ask at all
 
+THE NIGHT'S CLOCK (26 October 2026)
+
+Nothing on GitHub read refusal.NIGHT_WINDOWS: only a laptop that has stood
+down was held by it, and a night GitHub started hours late asked the General
+Court whenever it ran. Now the steps after the day's files -- the bill
+requests, the lists and the documents -- each start only if they can end by
+ASK_UNTIL, 12:00 UTC, inside the night's own window (asking_left); otherwise
+"not asked for", a warning, and tomorrow. The person approved it for the bill
+requests and the lists as well ("The existing bill request and list page
+steps can stay within 4-8am"). The hour before the window's 13:30 is the
+build's: a refusal the night meets reaches the bucket only when this exits.
+
+A KNOWN FUTURE NEED, NOT BUILT. The person, the same day: "eventually we may
+need the site to update faster than the nightly for live updates on votes on
+session days." Nothing here does that: the record moves once a night, and a
+roll call a chamber takes at noon is on the site the next morning. Doing it
+would be a run of its own, inside this file's rules -- one fetch at a time,
+the refusal record, the window, the General Court's IT office's word on
+session days -- and is a decision for the person, with a plan of its own.
+
+THE NIGHT'S DOCUMENTS (26 October 2026)
+
+The person approved the night fetching the newest calendars and journals
+itself, gently, with a pinned pdftotext and the PDFs kept in the bucket. The
+repository's NIGHT_DOCUMENTS is the switch (docs_switch); "off" -- the
+default -- and the night does exactly what it did before. Otherwise:
+
+  the canary          before anything is asked, whether this machine makes
+                      the laptop's text of the person's fixtures, byte for
+                      byte (text_canary; tests/documents/README.md). No
+                      document is asked for without it
+  shadow              what would be asked, said and not asked
+                      (fetch_calendar_archive.night_plan); a dry run, whatever
+                      the switch, the same
+  a number            at most that many documents, inside the lock, after the
+                      list, and only when the list went in and its listing
+                      exited 0 (EXITS) and the night's clock allows
+                      (take_document_files: fetch_calendar_archive.py --night,
+                      killed at DOCS_FILES_MINUTES); the queue it wrote goes in
+                      only with nothing changed but the fetch's own columns,
+                      on the documents it asked for (judge_files)
+  the texts           after the lock, before the build: each document's text,
+                      read as itself; the two journal readers checked with
+                      it, and tonight's journals set aside where it is theirs
+                      that fails; each PDF out of the four folders the build
+                      reads, staged for the bucket (make_texts). A document
+                      whose text was not kept stays held and is listed,
+                      night after night, in "documents_untexted"
+  the bucket          the workflow's docs-up sends the staged PDFs to docs/,
+                      after the night (cloud.py's docstring)
+  the verdict         "night_documents", "text_canary", "document_files",
+                      "document_texts", "documents_untexted",
+                      "documents_waiting" -- a document of the night's years
+                      still wanted DOCS_WAIT_NIGHTS nights on is a part of the
+                      record not moving -- and "gc_requests", what the night
+                      asked of the General Court's site, a line of the run's
+                      page on every night
+  the laptop          once a night's verdict says its switch is a number, the
+                      laptop's drain and its committee reports' fetch leave
+                      this year's and last year's calendars to it
+                      (refusal.night_documents)
+
 THE GATE, IN SHADOW (6 October 2026)
 
 Every night that passes its checks waits for approval in GitHub's "production"
@@ -481,6 +544,7 @@ import os
 import re
 import shutil
 import subprocess
+import threading
 import time
 import urllib.error
 import urllib.request
@@ -679,10 +743,81 @@ DOCS_LISTED = Path("archive/documents_listed.json")
 # the night takes it. Without this a real change -- two files renamed in one
 # day is enough, of sixteen -- refused all four lists every night after.
 LIST_SAME_NIGHTS = 3
-# How the night's own requests of the General Court's site ended, by script:
-# take_lsrs writes its fetch's exit status, and take_documents, which asks
-# the same address next, reads it. Emptied before the two are run.
+# How the night's own requests of the General Court's site ended, by step:
+# take_lsrs writes its fetch's exit status ("fetch_lsrs.py"), and
+# take_documents, which asks the same address next, reads it; take_documents
+# writes the listing's ("listing"), and take_document_files reads that and
+# writes its own ("documents") -- the lane's rule, that a step which fails
+# stops the chain (26 October 2026). Emptied before the first is run.
 EXITS = {}
+# What the night asked of the General Court's site, step by step, for the
+# run's page (gc_asked, gc_requests). Emptied as each night begins.
+GC_ASKED = []
+
+# THE NIGHT'S CLOCK (the person, 26 October 2026: "The existing bill request
+# and list page steps can stay within 4-8am"). No step that asks the General
+# Court's site after the day's files starts unless it can end by ASK_UNTIL,
+# UTC, inside GitHub's own night window (refusal.NIGHT_WINDOWS' daily one):
+# the bill requests, the lists and the documents alike (asking_left). Why
+# 12:00 and not the window's 13:30: a refusal met on the night reaches the
+# bucket only once nightly.py exits, after the build, and the laptop may pull
+# and start from 13:30 -- so the night stops asking an hour (preflight's REST)
+# before that. The minutes are each step's longest run, its own limits and
+# its last request's timeout: the bill requests' three requests at 60 and 90
+# seconds, five apart (fetch_lsrs.py); the listing's LISTING_BUDGET and a
+# request's 60; the documents' NIGHT_SECONDS and an answer's NIGHT_DEADLINE
+# (fetch_calendar_archive.py), with a minute's slack each. preflight holds
+# each to those. The runner's clock is Eastern (nightly.yml sets it), so the
+# window is read by refusal's own clock, which is UTC, never by datetime.now().
+ASK_UNTIL = (12, 0)
+LSRS_MINUTES = 5
+LISTING_MINUTES = 7
+DOCS_FILES_MINUTES = 13
+
+# THE NIGHT'S DOCUMENTS (the person, 26 October 2026: "The nightly may gently
+# fetch new calendars, journals, and the hearing schedule from the general
+# court", and "I accept your recommendation on installing a pinned copy of
+# PDF to text, keeping the night's PDFs in the bucket"). The repository's
+# variable NIGHT_DOCUMENTS (nightly.yml) is the switch: "off", the default --
+# the night does exactly what it did before; "shadow" -- it says what it
+# would ask and asks nothing; or a number, 1 to fetch_calendar_archive's
+# NIGHT_MOST, the most documents a night. Anything else reads as off.
+DOCS_SWITCH = "NIGHT_DOCUMENTS"
+DOCS_OFF, DOCS_SHADOW = "off", "shadow"
+# Scratch: the night before's list, kept before take_documents replaces it;
+# the fetch's own queue and record; the texts' ledger; tonight's journal texts
+# moved aside; and the roll calls the journal check pairs with.
+DOCS_BEFORE = SCRATCH / "documents_listed.before.json"
+DOCS_FILES_OUT = SCRATCH / "files" / "queue.csv"
+DOCS_LEDGER = SCRATCH / "extracted.json"
+DOCS_ASIDE = SCRATCH / "aside"
+DOCS_ROLLCALLS = SCRATCH / "rollcalls.json"
+# Where tonight's PDFs wait for the bucket once their text is made, outside
+# the four folders the build reads, and the record of each (cloud.py's
+# DOCS_STAGED and DOCS_RECORD, which preflight holds these to). The
+# workflow's docs-up sends them.
+DOCS_STAGED = SCRATCH / "documents"
+DOCS_RECORD = "staged.json"
+# The text canary's fixtures: the laptop's text of four documents beside
+# their PDFs (tests/documents/README.md).
+DOCS_CANARY = Path("tests/documents")
+# What a text must carry to be the document's own: a journal its chamber's
+# heading, as journal_bills reads a House Journal's; a calendar the number of
+# its own masthead (calendar_documents.masthead).
+# The Senate's running heads print it with no space between the words
+# ("SENATEJOURNAL6JANUARY2021", journal_motions.py), so none is needed.
+JOURNAL_HEADING = {"H": re.compile(r"HOUSE\s*JOURNAL", re.I),
+                   "S": re.compile(r"SENATE\s*JOURNAL", re.I)}
+# A document of the night's years still wanted this many nights after it was
+# first counted is a part of the record not moving (KIND_NOT_MOVING), on the
+# nights the night fetches them; the verdict keeps at most DOCS_WAIT_KEPT.
+DOCS_WAIT_NIGHTS = 3
+DOCS_WAIT_KEPT = 60
+KIND_DOCS_UNTEXTED = "the calendars' and journals' documents with no text the night could use"
+# What the documents' step says when it did what it was asked, and is no
+# warning: the switch off, nothing to ask for, shadow, a dry run, installed.
+DOCS_QUIET = ("installed", "nothing to ask for", "shadow:", "a dry run:",
+              "not asked for: the switch is off")
 
 # RECORDINGS WAITING FOR THEIR START TIMES (30 September 2026; the night's own
 # since 10 October 2026). The night's livestream step captions the new
@@ -1140,6 +1275,7 @@ DB_WHY = {
 DB_ASKED = ("connect", "query", "short", "error")
 
 QUIET = False             # --runner: child output to the log file only
+RUN_KILLED = 124          # run(timeout=): a step killed at its limit, as timeout(1) says it
 
 
 def say(msg="", echo=True):
@@ -1186,12 +1322,17 @@ def mark_reports_failed(day, log_name):
     return out
 
 
-def run(args, label, cwd=None):
+def run(args, label, cwd=None, timeout=None):
     """Stream the step's output as it happens, and log it too. The exit code.
 
     A child of this process, run with this interpreter directly and no shell,
     so a fetch it starts sees this process as its parent and runs under the
     lock this process holds.
+
+    `timeout`, in seconds: a child still running then is killed, and the step
+    ends on RUN_KILLED (26 October 2026). The night's fetch of the documents
+    has limits of its own, and this is the one that holds when they do not:
+    a step with none had the job's five hours, and the night's lock with them.
     """
     say(f"\n--- {label} ---")
     WATCH["step"] = label
@@ -1210,16 +1351,33 @@ def run(args, label, cwd=None):
                        stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
                        text=True, bufsize=1, cwd=cwd,
                        env={SQL_HELD_ENV: str(SQL_HELD.resolve())})
-    for ln in proc.stdout:
-        say("  " + ln.rstrip(), echo=False)
-    proc.wait()
-    if QUIET and proc.returncode:
+    killed = threading.Event()
+    timer = None
+    if timeout is not None:
+        def kill():
+            killed.set()
+            proc.kill()
+        timer = threading.Timer(timeout, kill)
+        timer.daemon = True
+        timer.start()
+    try:
+        for ln in proc.stdout:
+            say("  " + ln.rstrip(), echo=False)
+        proc.wait()
+    finally:
+        if timer is not None:
+            timer.cancel()
+    code = RUN_KILLED if killed.is_set() else proc.returncode
+    if killed.is_set():
+        say(f"  STOPPED: still running after {timeout:g} seconds, its limit here, so it was "
+            "killed")
+    if QUIET and code:
         # GitHub's log says why a step failed without anyone opening the
         # whole log: its failure lines and its last few.
         for ln in failure_lines(LOG[mark:]):
             print(ln, flush=True)
-    say(f"  ({time.time() - t0:.0f}s, exit {proc.returncode})")
-    return proc.returncode
+    say(f"  ({time.time() - t0:.0f}s, exit {code})")
+    return code
 
 
 def failure_lines(lines, tail=6):
@@ -1478,6 +1636,15 @@ def main():
                             # including a deferred one: see the build_running
                             # branch below. Never on GitHub's machine.
     night = Night(a, started) if a.runner else None
+    # THE NIGHT'S DOCUMENTS' SWITCH, as the workflow passes it, in the
+    # verdict whatever it says: the laptop reads it there (refusal.
+    # night_documents). And what tonight asks of the General Court's site,
+    # for the run's page, from nothing.
+    switch = docs_switch() if a.runner else DOCS_OFF
+    GC_ASKED.clear()
+    files = None
+    if night:
+        night.v["night_documents"] = str(switch)
     say("=" * 74)
     say(f"Granite Record nightly  {started:%Y-%m-%d %H:%M}")
     say("=" * 74)
@@ -1531,6 +1698,11 @@ def main():
             return 1
         if night:
             night.v["preflight"] = "passed"
+        if night and switch != DOCS_OFF:
+            # THE TEXT CANARY (26 October 2026), whether or not tonight
+            # fetches: whether this machine makes the laptop's text at all.
+            # It asks nothing; the night fetches no document without it.
+            night.v["text_canary"] = text_canary()
 
         installed = False
         if a.no_fetch:
@@ -1574,10 +1746,13 @@ def main():
                     with refusal.hold("nightly"):
                         for tries in range(1, EMPTY_TRIES + 1):
                             asked = datetime.now()
+                            began = utc_hm()
                             rc = run(["snapshot_gencourt.py", "--dir", a.archive, "--into", "."]
                                      + (["--allow-shrink", "--allow-turn"] if a.new_term else []),
                                      "the day's bulk files"
                                      + (f", try {tries} of {last}" if tries > 1 else ""))
+                            gc_asked("the day's files" + (f", try {tries}" if tries > 1 else ""),
+                                     began, "at most 15")
                             got = fetch_status(rc, a.archive, asked)
                             said = data_page(a.archive, asked)
                             if said and not page_said:
@@ -1651,10 +1826,31 @@ def main():
                             # And the calendars and journals the General
                             # Court lists, from its two index pages.
                             if not refusal.MARK.exists():
+                                # The list on file, kept as the night before's
+                                # before tonight's replaces it: the documents'
+                                # fetch asks only for what two nights' lists
+                                # name (THE NIGHT'S DOCUMENTS).
+                                if switch != DOCS_OFF:
+                                    keep_listed()
                                 night.v["documents"] = take_documents(night.v)
+                                # And the documents those lists name, when the
+                                # switch is on, under the same lock, last.
+                                if switch != DOCS_OFF:
+                                    files = take_document_files(night.v, switch, a.dry_run,
+                                                                a.new_term)
+                                    night.v["document_files"] = files["said"]
+                                    DOCS_BEFORE.unlink(missing_ok=True)
                 except SystemExit as e:
                     rc = e.code if isinstance(e.code, int) else 3
                     say(f"  the lock was taken by someone else first (exit {rc})")
+                if night and switch != DOCS_OFF:
+                    # THE TEXTS, after the lock and before the build, which
+                    # reads them and no PDF (make_texts); and how long the
+                    # night's years' documents have waited (docs_waiting_of).
+                    said = make_texts(night.v, files or {}, night.day)
+                    if said:
+                        night.v["document_texts"] = said
+                    docs_waiting(night.v, switch, night.day)
                 installed = rc == 0 or db_day
                 if night:
                     # The truth about the export, whatever the database did;
@@ -3829,7 +4025,10 @@ def not_moving(v, day, st, laptop, now=None, fetched=True):
                        ("the laptop's share", lambda: laptop_share_behind(today)),
                        ("the captions inbox", lambda: inbox_silent(st, laptop, now)),
                        ("the laptop's caption runs",
-                        lambda: laptop_run_said(laptop, now) if fetched else [])):
+                        lambda: laptop_run_said(laptop, now) if fetched else []),
+                       ("the calendars and journals",
+                        lambda: docs_waiting_said(v.get("documents_waiting"))
+                        if str(v.get("night_documents") or "").isdigit() else [])):
         try:
             out += said()
         except Exception as e:      # noqa: BLE001 -- a warning never stops the verdict
@@ -3845,16 +4044,84 @@ def not_moving_of(v):
             if isinstance(x, (list, tuple)) and len(x) == 2]
 
 
+def asking_left(minutes):
+    """(True, "") when a step of up to `minutes` that asks the General Court's
+    site may start now: inside GitHub's daily night window, and ending by
+    ASK_UNTIL, UTC (THE NIGHT'S CLOCK); (False, why) otherwise, in this
+    project's words. refusal.night_window() is called with no argument, so
+    it reads its own clock, in UTC -- the runner's is Eastern -- or the
+    tests' GRANITE_CLOCK_UTC. A Monday's weekly window is not the night's."""
+    from datetime import timedelta
+    now = refusal._utc()
+    daily = next(w for w in refusal.NIGHT_WINDOWS if w[0] is None)
+    hours = (f"{daily[1][0]:02d}:{daily[1][1]:02d} to "
+             f"{ASK_UNTIL[0]:02d}:{ASK_UNTIL[1]:02d} UTC")
+    w = refusal.night_window()
+    if not w or daily[3] not in w[2]:
+        return False, (f"it is {now:%H:%M} UTC, outside the hours the night asks the General "
+                       f"Court in, {hours}")
+    until = now.replace(hour=ASK_UNTIL[0], minute=ASK_UNTIL[1], second=0, microsecond=0)
+    if now + timedelta(minutes=minutes) > until:
+        return False, (f"it is {now:%H:%M} UTC, and a step of up to {minutes} minutes would "
+                       f"ask past {ASK_UNTIL[0]:02d}:{ASK_UNTIL[1]:02d} UTC, the last the night "
+                       "asks the General Court")
+    return True, ""
+
+
+def docs_switch():
+    """The night's documents switch, as the workflow passes NIGHT_DOCUMENTS
+    (THE NIGHT'S DOCUMENTS): "off", "shadow", or the most documents a night as
+    a number, 1 to fetch_calendar_archive.NIGHT_MOST. Unset, empty and
+    anything else are "off"."""
+    said = os.environ.get(DOCS_SWITCH, "").strip().lower()
+    if said == DOCS_SHADOW:
+        return DOCS_SHADOW
+    if said.isdigit():
+        try:
+            import fetch_calendar_archive as CA
+            most = CA.NIGHT_MOST
+        except Exception:                                       # noqa: BLE001
+            return DOCS_OFF
+        if 1 <= int(said) <= most:
+            return int(said)
+    return DOCS_OFF
+
+
+def gc_asked(step, began, requests):
+    """One step's requests of the General Court's site, for the run's page
+    (gc_requests): its name, when it began and ended (UTC), and how many it
+    asked -- a number where the step counts them, or "at most N"."""
+    from datetime import timezone
+    GC_ASKED.append({"step": step, "from": began,
+                     "to": datetime.now(timezone.utc).strftime("%H:%M"),
+                     "requests": requests})
+
+
+def utc_hm():
+    from datetime import timezone
+    return datetime.now(timezone.utc).strftime("%H:%M")
+
+
 def take_lsrs():
     """Next session's bill requests into lsrs.json, whole or not at all, and a
-    line saying what happened: "installed, ..." or "not taken: ...". The fetch
-    runs here, in the working folder, so that a refusal it meets is recorded in
-    the refusal record every other fetch reads."""
+    line saying what happened: "installed, ...", "not taken: ..." or "not
+    asked for: ...". The fetch runs here, in the working folder, so that a
+    refusal it meets is recorded in the refusal record every other fetch
+    reads. Not asked for where it could not end by ASK_UNTIL (THE NIGHT'S
+    CLOCK): the night's own hours, which the person approved for this step
+    too (26 October 2026)."""
     before = LSRS.read_bytes() if LSRS.exists() else None
     old = load_json(LSRS) if before is not None else []
     old = old if isinstance(old, list) else []
     standing = {r.get("lsr") for r in old if isinstance(r, dict) and not r.get("withdrawn")}
+    ok, why = asking_left(LSRS_MINUTES)
+    if not ok:
+        say(f"  bill requests not asked for: {why}")
+        return (f"not asked for: {why}; "
+                + (f"the earlier {len(standing)} kept" if before is not None else "none on file"))
+    began = utc_hm()
     rc = run(["fetch_lsrs.py"], "next session's bill requests, from the General Court")
+    gc_asked("bill requests", began, "at most 3")
     EXITS["fetch_lsrs.py"] = rc
     new = load_json(LSRS)
     gone = [r for r in (new if isinstance(new, list) else [])
@@ -3911,6 +4178,11 @@ def take_documents(v=None):
     that is short and has nothing else wrong with it is counted there, and
     on night LIST_SAME_NIGHTS it is taken as the page's own.
 
+    THE NIGHT'S HOURS, AND THE NEXT STEP IN THE CHAIN (26 October 2026). Not
+    asked for where it could not end by ASK_UNTIL (asking_left), which the
+    person approved for this step too. Its own exit goes in EXITS
+    ("listing"), for the documents' step after it.
+
     Every sentence this returns is this project's own -- counts and the
     lists' names -- because a warning is shown on the run's public page.
     """
@@ -3933,8 +4205,18 @@ def take_documents(v=None):
                "more is asked of it tonight")
         say(f"  the list of calendars and journals not asked for: {why}")
         return f"not asked for: {why}; {kept}"
+    ok, why = asking_left(LISTING_MINUTES)
+    if not ok:
+        say(f"  the list of calendars and journals not asked for: {why}")
+        return f"not asked for: {why}; {kept}"
+    began = utc_hm()
     rc = run(["fetch_calendar_archive.py", "--listing", "--out", str(new)],
              "the calendars and journals the General Court lists")
+    EXITS["listing"] = rc
+    said = load_json(listed) if listed.exists() else None
+    asked = said.get("requests") if isinstance(said, dict) else None
+    gc_asked("lists", began, asked if isinstance(asked, int) else
+             f"at most {CA.LISTING_MOST}")
     why, got, rec, settled = "", [], None, 0
     if rc == 2 and refusal.MARK.exists():
         # Only with the record on file: a script's own usage error ends on
@@ -3998,6 +4280,517 @@ def take_documents(v=None):
                  "posted yet")
     say(f"  the list of calendars and journals: {what}")
     return what
+
+
+# ---- the night's documents (the person, 26 October 2026) -------------------
+#
+# THE NIGHT'S DOCUMENTS says what the switch is. These are its steps, in the
+# order the night runs them: the canary before anything is asked; the fetch
+# of what two nights' lists name, inside the night's lock, after the list;
+# and, after the lock is let go and before the build, the texts, the journal
+# checks, and the PDFs out of the build's way and into the bucket's.
+
+# A sentence a step passes on from a child's own record reaches the run's
+# public page only in words of this kind (take_documents' rule).
+PLAIN = re.compile(r"[A-Za-z0-9 ,.:;'()/_-]{1,200}")
+
+
+def text_canary():
+    """extract_calendar_text.py --canary: whether this machine makes the
+    laptop's text of the person's fixtures (DOCS_CANARY), byte for byte. Its
+    own sentence -- "identical for 4 of 4, by pdftotext -layout", or "not
+    proved: ..." -- or "not proved" with why. Asks nothing of anyone. The
+    night fetches no document it could not read as the laptop does."""
+    mark = len(LOG)
+    rc = run(["extract_calendar_text.py", "--canary", DOCS_CANARY.as_posix()],
+             "the text canary: does this machine make the laptop's text")
+    said = next((ln.strip()[len("text canary: "):] for ln in reversed(LOG[mark:])
+                 if ln.strip().startswith("text canary: ")), "")
+    if not PLAIN.fullmatch(said or "-"):
+        said = ""
+    if rc == 0 and said.startswith("identical"):
+        return said
+    return said if said.startswith("not proved") else \
+        f"not proved: the canary did not complete (exit {rc})"
+
+
+def keep_listed():
+    """DOCS_LISTED, as it is before tonight's list replaces it, to
+    DOCS_BEFORE: the night before's, which the documents' fetch reads. Never
+    raises; none is kept where none is on file."""
+    try:
+        DOCS_BEFORE.unlink(missing_ok=True)
+        if DOCS_LISTED.exists():
+            DOCS_BEFORE.parent.mkdir(parents=True, exist_ok=True)
+            shutil.copyfile(DOCS_LISTED, DOCS_BEFORE)
+    except OSError as e:
+        say(f"  the night before's list was not kept aside: {type(e).__name__}: {e}", echo=False)
+
+
+def _by_kind(rows):
+    """"House Calendar 2, Senate Journal 1" for rows of the queue."""
+    import fetch_calendar_archive as CA
+    from collections import Counter
+    by = Counter((r.get("chamber"), r.get("kind")) for r in rows)
+    return ", ".join(f"{CA.SAID[k]} {by[k]}" for k in CA.SOURCES if by.get(k))
+
+
+def judge_files(was, got, rec):
+    """"" when the queue the documents' fetch wrote may replace the one
+    installed, or why not: the same documents in the same order; nothing
+    changed but the fetch's own columns (fetch_calendar_archive.DRAIN_FIELDS);
+    and those only on the documents its record says it asked for, or marked
+    held from their text, tonight. Anything else is a queue this step did not
+    make, and tonight's list stays."""
+    import fetch_calendar_archive as CA
+    if not got:
+        return "the fetch wrote no list"
+    if not isinstance(rec, dict):
+        return "the fetch wrote no record of what it asked"
+    if len(got) != len(was):
+        return f"it lists {len(got):,} documents where {len(was):,} are installed"
+    touched = {(str(x.get("chamber")), str(x.get("kind")), str(x.get("year")), str(x.get("name")))
+               for x in (rec.get("asked") or []) + (rec.get("held_from_text") or [])
+               if isinstance(x, dict)}
+    for a, b in zip(was, got):
+        if CA._key(a) != CA._key(b):
+            return "its documents are not the installed list's, in its order"
+        for f in CA.FIELDS:
+            if (a.get(f) or "") == (b.get(f) or ""):
+                continue
+            if f not in CA.DRAIN_FIELDS:
+                return f"it changed the {f} of a document, which is the list's and not the fetch's"
+            if tuple(str(x) for x in CA._key(a)) not in touched:
+                return "it changed a document it did not ask for tonight"
+    return ""
+
+
+def take_document_files(v, switch, dry_run=False, new_term=False):
+    """The calendars and journals two nights' lists name, fetched gently
+    (fetch_calendar_archive.py --night), and the queue installed with what
+    became of each, or not. {"said": the verdict's line, "took": the rows
+    fetched and installed tonight, for make_texts, "fetched": every path the
+    fetch saved a PDF to, "installed": whether its queue went in}.
+
+    NEVER RAISES: main() has no outer except, and a step that raised would
+    end the night before the build. Whatever goes wrong is "not taken: the
+    night's own step for it failed".
+
+    ASKED FOR ONLY when the switch is a number; on a run that is not a New
+    term run and not a dry run; with no refusal on file; when tonight's list
+    was installed and the listing before it exited 0 (EXITS: the chain); when
+    this machine makes the laptop's text (the text canary); and when it can
+    end by ASK_UNTIL (THE NIGHT'S CLOCK). In shadow, and on a dry run, it says
+    what it would ask -- fetch_calendar_archive.night_plan(), which asks
+    nothing -- and asks nothing.
+
+    INSTALLED ONLY WHOLE: the queue the fetch wrote replaces the installed one
+    only where judge_files() finds nothing changed but the fetch's own columns,
+    on the documents it asked for tonight -- whatever status it ended on, so
+    that a refusal written against a document, a 404 and a try counted are
+    kept. A fetch killed at its limit, or one whose queue is not installed,
+    keeps none of what it fetched: make_texts removes those PDFs, and the next
+    night asks again."""
+    out = {"said": "", "took": [], "fetched": [], "installed": False}
+    try:
+        out["said"] = _document_files(v, switch, dry_run, new_term, out)
+    except Exception as e:                                      # noqa: BLE001
+        say(f"  the calendars' and journals' documents: {type(e).__name__}: {e}", echo=False)
+        out["said"] = "not taken: the night's own step for it failed; the list installed stays"
+    say(f"  the calendars' and journals' documents: {out['said']}")
+    return out
+
+
+def _document_files(v, switch, dry_run, new_term, out):
+    import fetch_calendar_archive as CA
+    if switch == DOCS_OFF:
+        return "not asked for: the switch is off"
+    if new_term:
+        return f"not asked for: a {NEW_TERM_BOX} run asks for no document"
+    if refusal.MARK.exists():
+        return "not asked for: a refusal is on file"
+    if not str(v.get("documents") or "").startswith("installed"):
+        return "not asked for: tonight's list of calendars and journals was not installed"
+    if EXITS.get("listing") != 0:
+        return (f"not asked for: the list was asked of the same address a moment before and "
+                f"did not complete (exit {EXITS.get('listing')})")
+    rows = CA.read_rows(DOCS)
+    most = CA.NIGHT_MOST if switch == DOCS_SHADOW else int(switch)
+    plan = CA.night_plan(rows, load_json(DOCS_LISTED), load_json(DOCS_BEFORE), most)
+    if switch == DOCS_SHADOW or dry_run:
+        # NOTHING IS ASKED: what would be, said in counts and the lists' names.
+        if plan["why"]:
+            return f"{'shadow' if switch == DOCS_SHADOW else 'a dry run'}: would ask none: {plan['why']}"
+        return (f"{'shadow' if switch == DOCS_SHADOW else 'a dry run'}: would ask "
+                f"{len(plan['ask'])}" + (f" ({_by_kind(plan['ask'])})" if plan["ask"] else "")
+                + f", at most {most} a night; {len(plan['text'])} would be marked held from their "
+                f"text; {len(plan['renames'])} possible renames; {plan['waiting']} more wait; "
+                "nothing was asked")
+    canary = str(v.get("text_canary") or "not proved: the canary did not run")
+    if not canary.startswith("identical"):
+        return f"not asked for: this machine does not make the laptop's text (the text canary {canary})"
+    ok, why = asking_left(DOCS_FILES_MINUTES)
+    if not ok:
+        return f"not asked for: {why}"
+    if plan["why"]:
+        return f"not asked for: {plan['why']}"
+    if not plan["ask"] and not plan["text"]:
+        return ("nothing to ask for" + (f": {len(plan['renames'])} possible renames, for a person "
+                                        "to decide" if plan["renames"] else ""))
+    asked = DOCS_FILES_OUT.with_name(CA.ASKED_NAME)
+    DOCS_FILES_OUT.parent.mkdir(parents=True, exist_ok=True)
+    for f in (DOCS_FILES_OUT, asked):
+        f.unlink(missing_ok=True)
+    began = utc_hm()
+    rc = run(["fetch_calendar_archive.py", "--night", str(DOCS_BEFORE), "--out", str(DOCS_FILES_OUT),
+              "--most", str(most)],
+             "the calendars and journals two nights' lists name, from the General Court",
+             timeout=DOCS_FILES_MINUTES * 60)
+    EXITS["documents"] = rc
+    rec = load_json(asked)
+    rec = rec if isinstance(rec, dict) else None
+    gc_asked("documents", began, rec["requests"] if rec and isinstance(rec.get("requests"), int)
+             else f"at most {most}")
+    done = [x for x in (rec or {}).get("asked") or [] if isinstance(x, dict)]
+    out["fetched"] = [str(x.get("path") or "") for x in done if x.get("ended") == "fetched"]
+    stopped = str((rec or {}).get("stopped") or "")
+    stopped = stopped if PLAIN.fullmatch(stopped or "-") else ""
+    if rc == RUN_KILLED:
+        return (f"not taken: the fetch was still asking after {DOCS_FILES_MINUTES} minutes, its "
+                "limit here, and was stopped; the list installed stays, and what it fetched is "
+                "not kept")
+    why = judge_files(rows, CA.read_rows(DOCS_FILES_OUT), rec)
+    if not why:
+        try:
+            os.replace(DOCS_FILES_OUT, DOCS)
+            out["installed"] = True
+        except OSError as e:
+            say(f"  {type(e).__name__}: {e}", echo=False)
+            why = "the list could not be put in place"
+    DOCS_FILES_OUT.unlink(missing_ok=True)
+    if why:
+        return (f"not taken: {why}; the list installed stays, and the {len(out['fetched'])} "
+                "fetched tonight are not kept")
+    got = {CA._key(r): r for r in CA.read_rows(DOCS)}
+    for x in done:
+        r = got.get((x.get("chamber"), x.get("kind"), x.get("year"), x.get("name")))
+        if x.get("ended") == "fetched" and r is not None and r.get("state") == "held":
+            out["took"].append(dict(r, sha256=x.get("sha256") or "", bytes=r.get("bytes") or ""))
+    held = len((rec or {}).get("held_from_text") or [])
+    left = int((rec or {}).get("waiting") or 0)
+    said = (f"{len(out['took'])} fetched" + (f" ({_by_kind(out['took'])})" if out["took"] else "")
+            + f" in {len(done)} requests; {held} marked held from their text; {left} still to "
+            "ask for")
+    if rc == 2 and refusal.MARK.exists():
+        return ("stopped: the General Court refused a request: it is recorded, and every fetch "
+                f"waits for a person; the list installed with it: {said}")
+    if rc != 0:
+        return (f"stopped: {stopped or f'the fetch did not complete (exit {rc})'}; the list "
+                f"installed with it: {said}")
+    return f"installed, {said}"
+
+
+def _doc_files():
+    """Every PDF, and every part of one, in the four folders a document is
+    saved to: on GitHub's machine only tonight's, since the kit carries no
+    PDF (cloud_kit.json, and preflight holds it)."""
+    out = []
+    for root in ("calendars", "calendars_senate", "journals", "journals_senate"):
+        if Path(root).is_dir():
+            out += [p for p in Path(root).rglob("*")
+                    if p.is_file() and (p.suffix.lower() == ".pdf" or p.name.lower().endswith(".pdf.part"))]
+    return sorted(out)
+
+
+def _disk(path):
+    return Path(str(path or "").replace("\\", "/"))
+
+
+def make_texts(v, files, day):
+    """After the lock and before the build: the text of tonight's documents,
+    each read as itself; the journal checks; and tonight's PDFs out of the
+    four folders the build reads, kept for the bucket. A line for the
+    verdict ("document_texts"); v["documents_untexted"] gains each document
+    whose text the night could not use. Asks nothing of anyone. NEVER RAISES,
+    and whatever goes wrong, no PDF is left where the build reads: tonight's
+    build reads what the kit will carry tomorrow.
+
+    EACH TEXT READ AS ITSELF. extract_calendar_text.py --only makes the text
+    of tonight's PDFs and no others, written whole. A calendar's text must
+    carry its own number on its masthead (calendar_documents.masthead), a
+    journal's its chamber's heading (JOURNAL_HEADING); one that does not is
+    not kept, and is listed.
+
+    THE JOURNAL CHECKS. journal_bills.py and journal_motions.py are build
+    steps that stop the build -- and the night -- on a journal they cannot
+    read. When a journal's text goes in tonight, both are run first, with
+    --check, which writes nothing; journal_motions pairs the journals with
+    tonight's roll calls, made into the scratch folder (rollcall_parser.py).
+    If either fails, tonight's journal texts are moved aside, the check is
+    run again, and if it passes without them they are not kept and are
+    listed; if it fails without them too, they were not the cause, and go
+    back.
+
+    NOT KEPT, BUT LISTED. A document whose text is not kept stays held in the
+    list, so the night never asks for it again; it is in
+    v["documents_untexted"] from night to night until its text is here --
+    made on the laptop from the PDF the bucket keeps (cloud.py docs-down),
+    and sent with seed-kit.
+
+    THE PDFs, OUT OF THE BUILD'S WAY. Each document fetched and installed
+    tonight goes to DOCS_STAGED, with a record of its bytes and sha256, for
+    the workflow's docs-up to keep in the bucket; any other PDF in the four
+    folders -- one fetched and not installed, a part file -- is deleted."""
+    try:
+        return _make_texts(v, files, day)
+    except Exception as e:                                      # noqa: BLE001
+        say(f"  the documents' text: {type(e).__name__}: {e}", echo=False)
+        for p in _doc_files():
+            p.unlink(missing_ok=True)
+        # Held in the list, and no text: listed, so that a person hears.
+        try:
+            if files.get("installed"):
+                _untexted(v, [r for r in files.get("took") or [] if isinstance(r, dict)],
+                          "the night's own step for its text failed", day)
+        except Exception:                                       # noqa: BLE001
+            pass
+        return "not made: the night's own step for it failed, and tonight's PDFs were deleted"
+    finally:
+        left = _doc_files()
+        if left:
+            say(f"  {len(left)} PDF(s) still in the four folders, deleted before the build",
+                echo=False)
+            for p in left:
+                p.unlink(missing_ok=True)
+
+
+def _untexted(v, rows, why, day):
+    rec = v.get("documents_untexted") if isinstance(v.get("documents_untexted"), dict) else {}
+    for r in rows:
+        p = _disk(r.get("path")).as_posix()
+        rec[p] = {"chamber": r.get("chamber"), "kind": r.get("kind"), "year": r.get("year"),
+                  "since": (rec.get(p) or {}).get("since") or day, "why": why}
+    v["documents_untexted"] = rec
+
+
+def _make_texts(v, files, day):
+    import calendar_documents as CD
+    took = [r for r in files.get("took") or [] if isinstance(r, dict)] if files.get("installed") else []
+    if not took and not files.get("fetched") and not _doc_files():
+        return ""
+    made, bad, how = [], [], {}
+    by = {}                 # each text made, by which extractor
+    if took:
+        DOCS_LEDGER.unlink(missing_ok=True)
+        run(["extract_calendar_text.py", "--only", *[_disk(r["path"]).as_posix() for r in took],
+             "--ledger", str(DOCS_LEDGER)], "the text of tonight's calendars and journals")
+        ledger = load_json(DOCS_LEDGER)
+        ledger = ledger if isinstance(ledger, dict) else {}
+        for r in took:
+            pdf = _disk(r["path"])
+            txt = pdf.with_suffix(".txt")
+            entry = ledger.get(pdf.as_posix()) or ledger.get(str(pdf)) or {}
+            text = txt.read_text(encoding="utf-8", errors="replace") if txt.exists() else ""
+            if not text.strip():
+                bad.append((r, "no text came out of it"))
+                continue
+            if r.get("kind") == "calendar":
+                n = CD.number_of(r.get("name"))[0] or CD.number_of(r.get("label"))[0]
+                ok = bool(n) and CD.masthead(text, r.get("chamber") or "H", n) is not None
+                why = "its text does not carry its own number on its masthead"
+            else:
+                ok = bool(JOURNAL_HEADING.get(r.get("chamber"), JOURNAL_HEADING["H"]).search(text[:20000]))
+                why = "its text does not carry its chamber's journal heading"
+            if not ok:
+                txt.unlink(missing_ok=True)
+                bad.append((r, why))
+                continue
+            made.append(r)
+            by[id(r)] = str(entry.get("how") or "an extractor not recorded")
+    aside = []
+    journals = [r for r in made if r.get("kind") == "journal"]
+    if journals:
+        failed = journal_checks()
+        if failed:
+            DOCS_ASIDE.mkdir(parents=True, exist_ok=True)
+            moved = []
+            for r in journals:
+                txt = _disk(r["path"]).with_suffix(".txt")
+                dst = DOCS_ASIDE / txt.as_posix().replace("/", "__")
+                os.replace(txt, dst)
+                moved.append((txt, dst))
+            again = journal_checks(only=failed)
+            if again:
+                # Not tonight's: they fail without them too. Put back.
+                for txt, dst in moved:
+                    os.replace(dst, txt)
+                say(f"  the journal checks fail without tonight's journals too ({_and(again)}): "
+                    "they go in, and the build says why")
+            else:
+                made = [r for r in made if r not in journals]
+                aside = journals
+                for r in journals:
+                    bad.append((r, f"{_and(failed)} --check failed with its text, and passed "
+                                   "without it"))
+    for r, why in bad:
+        _untexted(v, [r], why, day)
+    for r in made:
+        how[by[id(r)]] = how.get(by[id(r)], 0) + 1
+    staged = stage_pdfs(took)
+    said = (f"made {len(made)}" + (f" ({', '.join(f'{n} by {k}' for k, n in sorted(how.items()))})"
+                                   if how else "")
+            + f"; {len(bad)} not kept" + (f" ({len(aside)} journals set aside by the journal checks)"
+                                          if aside else "")
+            + f"; {staged} PDFs kept for the bucket")
+    return said
+
+
+def journal_checks(only=None):
+    """The build's two journal readers, with --check: [the names of those
+    that failed]. journal_motions pairs the journals with tonight's roll
+    calls, made into the scratch folder first; where those cannot be made,
+    it is a check that failed."""
+    failed = []
+    if only is None or "journal_bills.py" in only:
+        if run(["journal_bills.py", "--check"], "the House Journal's bills, checked") != 0:
+            failed.append("journal_bills.py")
+    if only is None or "journal_motions.py" in only:
+        DOCS_ROLLCALLS.unlink(missing_ok=True)
+        made = run(["rollcall_parser.py", "--file", "RollCallSummary.txt", "--all", "--out",
+                    str(DOCS_ROLLCALLS)], "tonight's roll calls, for the journal check") == 0 \
+            and DOCS_ROLLCALLS.exists()
+        if not made or run(["journal_motions.py", "--check", "--rollcalls", str(DOCS_ROLLCALLS)],
+                           "the Journals' votes on no bill, checked") != 0:
+            failed.append("journal_motions.py")
+    return failed
+
+
+def stage_pdfs(took):
+    """Tonight's installed PDFs to DOCS_STAGED, each with its bytes and
+    sha256 in DOCS_RECORD, for docs-up; the number staged. One whose bytes
+    are not the sha256 its fetch recorded is not staged. Every other PDF in
+    the four folders is deleted (make_texts)."""
+    staged = {}
+    for r in took:
+        src = _disk(r.get("path"))
+        if not src.is_file():
+            continue
+        data = src.read_bytes()
+        sha = hashlib.sha256(data).hexdigest()
+        if r.get("sha256") and sha != r["sha256"]:
+            say(f"  {src.as_posix()}: its bytes are not the ones fetched; not kept", echo=False)
+            continue
+        dst = DOCS_STAGED / src.as_posix()
+        dst.parent.mkdir(parents=True, exist_ok=True)
+        os.replace(src, dst)
+        staged[src.as_posix()] = {"sha256": sha, "bytes": len(data)}
+    if staged:
+        rec = DOCS_STAGED / DOCS_RECORD
+        have = load_json(rec)
+        files = dict(have.get("files") or {}) if isinstance(have, dict) else {}
+        files.update(staged)
+        write_json(rec, {"day": f"{datetime.now():%Y-%m-%d}", "files": files})
+    for p in _doc_files():
+        p.unlink(missing_ok=True)
+    return len(staged)
+
+
+def docs_waiting(v, switch, day):
+    """v["documents_waiting"] for tonight (docs_waiting_of), on a night the
+    switch is a number and tonight's list went in; carried as it was on a
+    night whose list did not, and dropped while the switch is not a number,
+    when the night is not the one fetching them. Never raises."""
+    if isinstance(switch, bool) or not isinstance(switch, int):
+        v.pop("documents_waiting", None)
+        return
+    if not str(v.get("documents") or "").startswith("installed"):
+        return
+    try:
+        import fetch_calendar_archive as CA
+        v["documents_waiting"] = docs_waiting_of(v.get("documents_waiting"), CA.read_rows(DOCS),
+                                                 load_json(DOCS_LISTED), day)
+    except Exception as e:                                      # noqa: BLE001
+        say(f"  how long the documents have waited could not be worked out: "
+            f"{type(e).__name__}: {e}", echo=False)
+
+
+def untexted_now(v):
+    """documents_untexted, less each document whose text is here now: made on
+    the laptop and sent with seed-kit."""
+    rec = v.get("documents_untexted")
+    if not isinstance(rec, dict):
+        return {}
+    return {p: e for p, e in rec.items()
+            if isinstance(e, dict) and not _disk(p).with_suffix(".txt").exists()}
+
+
+def docs_waiting_of(prev, rows, listed, day):
+    """Tonight's "documents_waiting": each document tonight's list names that
+    is still wanted, with the night it was first counted and on how many
+    nights since, one a day; at most DOCS_WAIT_KEPT, the oldest first."""
+    import fetch_calendar_archive as CA
+    now = CA.lists_of(listed) if isinstance(listed, dict) else {}
+    prev = prev if isinstance(prev, dict) else {}
+    out = {}
+    for r in rows:
+        if r.get("state") != "wanted" or r.get("name") not in now.get(
+                (r.get("chamber"), r.get("kind"), str(r.get("year"))), ()):
+            continue
+        k = " ".join(str(x) for x in CA._key(r))
+        e = dict(prev.get(k)) if isinstance(prev.get(k), dict) else {"since": day, "nights": 0}
+        if e.get("last") != day:
+            try:
+                e["nights"] = max(0, int(e.get("nights") or 0)) + 1
+            except (TypeError, ValueError):
+                e["nights"] = 1
+            e["last"] = day
+        e.update(chamber=r.get("chamber"), kind=r.get("kind"))
+        out[k] = e
+    keep = sorted(out, key=lambda k: (str(out[k].get("since")), k))[:DOCS_WAIT_KEPT]
+    return {k: out[k] for k in keep}
+
+
+def docs_waiting_said(rec):
+    """[(kind, sentence)]: documents of the night's years still wanted
+    DOCS_WAIT_NIGHTS nights or more after they were first counted, a part of
+    the record not moving; [] otherwise."""
+    if not isinstance(rec, dict):
+        return []
+    late = [e for e in rec.values() if isinstance(e, dict) and _db_nights(e) >= DOCS_WAIT_NIGHTS]
+    if not late:
+        return []
+    since = min(str(e.get("since")) for e in late)
+    return [(KIND_NOT_MOVING + "the calendars and journals",
+             f"{len(late)} of the calendars and journals the General Court lists "
+             f"{'has' if len(late) == 1 else 'have'} waited {DOCS_WAIT_NIGHTS} nights or more to "
+             f"be fetched, the oldest since {since} ({_by_kind(late)}). The night asks for a few a "
+             "night and never for one asked three times, or refused once: the verdict's "
+             "document_files says what it asked, and a document it will not ask for again is a "
+             "person's to fetch.")]
+
+
+def gc_requests(asked):
+    """What the night asked of the General Court's site, for the verdict
+    ("gc_requests") and one line of the run's page: each step, its requests,
+    and the first and last times (UTC); None for a night that asked
+    nothing."""
+    steps = [dict(x) for x in asked if isinstance(x, dict)]
+    if not steps:
+        return None
+    most = sum(int(str(x["requests"]).split()[-1]) for x in steps
+               if str(x["requests"]).split()[-1].isdigit())
+    exact = all(isinstance(x["requests"], int) for x in steps)
+    return {"steps": steps, "first": steps[0]["from"], "last": steps[-1]["to"],
+            "requests": most if exact else f"at most {most}"}
+
+
+def gc_requests_line(rec):
+    """The run's page's line for gc_requests; "" for none."""
+    if not isinstance(rec, dict) or not rec.get("steps"):
+        return ""
+    return (f"asked of the General Court's site tonight: {rec['requests']} requests, "
+            f"{rec['first']} to {rec['last']} UTC ("
+            + ", ".join(f"{x['step']} {x['requests']}" for x in rec["steps"]) + ")")
 
 
 def take_views(views, label, shrink=SWAP_SHRINK, not_again=False, together=False):
@@ -5006,6 +5799,14 @@ class Night:
         short = prev.get("documents_short") if isinstance(prev, dict) else None
         if isinstance(short, dict):
             self.v["documents_short"] = short
+        # The night's documents (26 October 2026): those whose text the night
+        # could not use, until a person makes it, and how long the night's
+        # years' documents have waited to be fetched. Carried, so that a night
+        # which does not ask leaves them where they were.
+        for k in ("documents_untexted", "documents_waiting"):
+            got = prev.get(k) if isinstance(prev, dict) else None
+            if isinstance(got, dict) and got:
+                self.v[k] = got
         # The database pieces not taken, and since when (DB_MISSED): carried,
         # so that a night which does not ask leaves them where they were, and
         # finish() folds tonight's in.
@@ -5342,6 +6143,25 @@ class Night:
         if docs and not str(docs).startswith("installed"):
             out.append(("the General Court's list of calendars and journals: " + kind_of(docs),
                         f"the General Court's list of calendars and journals: {docs}"))
+        # THE NIGHT'S DOCUMENTS (26 October 2026): anything not installed or
+        # not asked for -- but the switch off, nothing to ask for, shadow and
+        # a dry run, which are what was asked of it -- and a canary that did
+        # not pass, and the documents with no text the night could use.
+        files = self.v.get("document_files")
+        if files and not str(files).startswith(DOCS_QUIET):
+            out.append(("the calendars' and journals' documents: " + kind_of(files),
+                        f"the calendars' and journals' documents: {files}"))
+        canary = self.v.get("text_canary")
+        if canary and not str(canary).startswith("identical"):
+            out.append(("the text canary: " + kind_of(canary), f"the text canary: {canary}"))
+        untexted = self.v.get("documents_untexted")
+        if isinstance(untexted, dict) and untexted:
+            n = len(untexted)
+            out.append((KIND_DOCS_UNTEXTED,
+                        f"{n} of the documents the night fetched {'has' if n == 1 else 'have'} no "
+                        f"text it could use ({_by_kind(untexted.values())}): a person makes "
+                        f"{'its' if n == 1 else 'their'} text on the laptop from the PDF the "
+                        "bucket keeps (cloud.py docs-down), and seed-kit sends it"))
         # The recordings waiting for their start times, and why: the night's
         # own caption step since 10 October 2026, so the words name what
         # stopped it rather than a laptop job. The kind is the one this
@@ -5414,6 +6234,15 @@ class Night:
         # those carried (DB_MISSED), then whatever has stood still for longer
         # than it does, before the warnings are counted, which carry it.
         v[DB_MISSED] = db_missed_of(v.get(DB_MISSED), v, self.day)
+        # The documents whose text a person has made since leave the list;
+        # and what the night asked of the General Court's site (gc_requests).
+        if "documents_untexted" in v:
+            v["documents_untexted"] = untexted_now(v)
+            if not v["documents_untexted"]:
+                v.pop("documents_untexted")
+        asked = gc_requests(GC_ASKED)
+        if asked:
+            v["gc_requests"] = asked
         v["not_moving"] = [list(x) for x in not_moving(
             v, self.day, load_json(LIVE_STATE), laptop_run(), fetched=not self.a.no_fetch)]
         why = self.problems()
@@ -5500,6 +6329,8 @@ class Night:
                       if k != "refused"]
                    + ([f"- {unpublished_note(v).strip()}"] if unpublished_note(v) else [])
                    + ([f"- {captions_line(caps)}"] if caps else [])
+                   + ([f"- {gc_requests_line(v.get('gc_requests'))}"]
+                      if gc_requests_line(v.get("gc_requests")) else [])
                    + [f"- {w}" for w in why[:8]]
                    + [f"- warning: {w}" for w in v["warnings"]])
 
@@ -5719,6 +6550,24 @@ def upload_and_check(a, site, target, base):
 # stops or holds the site.
 ALERT_FILE = Path("logs/alert.txt")
 WARN_FILE = Path("logs/alert-warn.txt")
+# The workflow's steps whose failure is a warning and not a failed night
+# (close_verdict): {step: (the verdict's key, its sentence)}. docs-up keeps
+# tonight's PDFs in the bucket (THE NIGHT'S DOCUMENTS): their text went to the
+# kit, the list says they are held, and the build is the night's whatever
+# became of them -- but the night will not ask for them again, so the laptop
+# has no copy of them unless a person fetches one, and that is a person's to
+# hear (warns_of). And the pinned pdftotext not installed -- its download
+# failed, or its bytes were not the sha256 nightly.yml pins, which is the step
+# failing closed: the canary then says this machine does not make the
+# laptop's text, and the night asks for no document.
+WARN_STEPS = {"pdftotext": ("pdftotext_pinned",
+                            "the pinned pdftotext was not installed tonight (its download failed, "
+                            "or its bytes were not the sha256 nightly.yml pins): no document was "
+                            "asked for; the step's own log says which"),
+              "docs-up": ("docs_up", "tonight's calendars and journals were fetched and their "
+                                     "text kept, and their PDFs were not kept in the bucket "
+                                     "(cloud.py docs-up failed): the laptop has no copy of them; "
+                                     "the step's own log names each")}
 
 
 def held_for_approval(v):
@@ -5744,7 +6593,9 @@ def warns_of(v):
     caption runs missing or old among them. [] for none."""
     said = built_warn_alert(v.get("built_checks"))
     held = held_for_approval(v)
-    return ([held] if held else []) + ([said] if said else []) + [s for _kind, s in not_moving_of(v)]
+    kept = [str(v[key]) for key, _ in WARN_STEPS.values() if v.get(key)]
+    return ([held] if held else []) + ([said] if said else []) + kept + \
+        [s for _kind, s in not_moving_of(v)]
 
 
 def alerts_of(v):
@@ -5839,7 +6690,15 @@ def close_verdict(a):
             gh_summary([f"- {apart}"]
                        + ([f"- {off_main_line(v['off_main'])}"] if v.get("off_main") else []))
     v["steps"] = steps
-    failed = [f"{k} ({r})" for k, r in steps.items() if r not in ("success", "skipped", "")]
+    # A STEP WHOSE FAILURE WARNS (WARN_STEPS): tonight's PDFs not kept in the
+    # bucket is a warning, and the warnings' alert, and never a failed job,
+    # which would publish nothing for it.
+    failed = [f"{k} ({r})" for k, r in steps.items()
+              if r not in ("success", "skipped", "") and k not in WARN_STEPS]
+    for k in WARN_STEPS:
+        if steps.get(k) not in (None, "success", "skipped", ""):
+            v[WARN_STEPS[k][0]] = WARN_STEPS[k][1]
+            v["warnings"] = list(v.get("warnings") or []) + [WARN_STEPS[k][1]]
     if failed:
         v["clean"] = False
         v.setdefault("not_clean", []).append("workflow steps that did not succeed: "

@@ -42,6 +42,7 @@ import urllib.error
 import urllib.request
 import child
 from collections import defaultdict
+from datetime import date
 
 INDEX = "https://gc.nh.gov/house/calendars_journals/"
 UA = {"User-Agent": "granite-record/1.0 (civic transparency project; "
@@ -734,6 +735,20 @@ def main():
     # night has nothing to stop in them -- and they were stopped all the same
     # until 27 September, when the offline re-read of every calendar met it.
     if not (a.offline or (a.pdf and Path(a.pdf).exists())):
+        # THIS YEAR'S AND LAST YEAR'S CALENDARS ARE THE NIGHT'S once it
+        # fetches them (the person, 26 October 2026). GitHub's night fetches
+        # the newest calendars itself when its switch is on, and keeps each
+        # PDF in the bucket; this asked for the same House calendars again,
+        # back to back. On a laptop that has stood down, and only once the
+        # night's own verdict says it fetches them (refusal.night_documents),
+        # this year's and last year's are not asked for here: docs-down
+        # brings the night's PDFs, and --offline reads them.
+        if str(a.year).isdigit() and int(a.year) >= date.today().year - 1:
+            refusal.documents_stand_down(
+                f"The committee reports fetch of {a.year}'s House calendars",
+                "GitHub's night fetches this year's and last year's calendars and keeps "
+                "each PDF in the bucket: python3 src/ops/cloud.py docs-down brings them "
+                f"here, and --year {a.year} --offline reads them without asking anyone.")
         refusal.check("The committee reports fetch")
 
     cache = Path(a.cache) / a.year

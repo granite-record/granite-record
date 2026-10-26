@@ -145,8 +145,8 @@
       "globs": ["legislation/**"]
     },
     {
-      "what": "The calendars' and journals' text: the .txt beside each PDF, not the PDF.",
-      "owner": "laptop",
+      "what": "The calendars' and journals' text: the .txt beside each PDF, not the PDF. The night's since 26 October 2026, when the person approved it fetching the newest calendars and journals itself: it makes the text of each document it fetches (nightly.make_texts) and kit-up sends it, and the PDF goes to the bucket's docs/ (cloud.py docs-up), never the kit. The laptop's until then. seed-kit still sends a text the bucket does not hold, so the laptop's drains of the older years still reach the night; a text the bucket holds goes back only with the night's kit-up.",
+      "owner": "night",
       "globs": ["calendars/*/*.txt", "calendars_senate/*/*.txt", "journals/*/*.txt", "journals_senate/*/*.txt"]
     },
     {

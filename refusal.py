@@ -493,6 +493,64 @@ def stand_down(who, instead=""):
     sys.exit(STOOD_DOWN)
 
 
+# ---- the newest calendars and journals, once GitHub's night fetches them -----
+#
+# THE NIGHT'S ONCE ITS OWN VERDICT SAYS SO (the person, 26 October 2026). The
+# night may fetch the newest calendars and journals itself, switched by the
+# repository's NIGHT_DOCUMENTS: "off", "shadow" (it says what it would ask and
+# asks nothing), or the most documents a night. Once it fetches them, the
+# laptop's own fetches of this year's and last year's stand down: one fetch of
+# a document is all the General Court should see, and the night keeps each PDF
+# in the bucket (cloud.py docs-down brings them here). Until then the laptop
+# fetches them as it always has -- the switch lands off, and the person turns
+# it on.
+#
+# The laptop knows the switch only from the night's own verdict, which cloud.py
+# pull brings to archive/cloud/last-night.json (cloud.VERDICTS). On a laptop
+# that has stood down no General Court fetch starts without a read of the
+# bucket since the last night window closed (gc_turn), so the verdict read here
+# is never older than the last night. A dry run's verdict is kept apart, and
+# is never read here.
+NIGHT_VERDICT = Path("cloud") / "last-night.json"     # beside MARK, under archive/
+DOCUMENTS_KEY = "night_documents"
+
+
+def night_documents():
+    """(day, most) when the newest real night's verdict, as pull brought it,
+    says that night fetched the newest calendars and journals itself -- its
+    switch a number of documents; None where it did not ("off" or "shadow"),
+    where there is no such verdict, on GitHub's machine, and on a machine
+    that has not stood down. Beside MARK, as _governing() reads the stand-down,
+    so that a test's folder is judged by itself."""
+    if _governing() is None:
+        return None
+    try:
+        v = json.loads((MARK.parent / NIGHT_VERDICT).read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        return None
+    said = str(v.get(DOCUMENTS_KEY) or "").strip() if isinstance(v, dict) else ""
+    if not (said.isdigit() and int(said) >= 1):
+        return None
+    return str(v.get("day") or "an unknown day"), int(said)
+
+
+def documents_stand_down(who, instead=""):
+    """Stop the caller on a laptop that has stood down, once GitHub's night
+    fetches the newest calendars and journals itself (night_documents)."""
+    owner = night_documents()
+    if owner is None:
+        return
+    day, most = owner
+    print(f"\n{who} does not run on this machine while GitHub's night fetches the newest "
+          f"calendars and journals itself: its verdict of {day} says it takes up to {most} "
+          f"a night ({MARK.parent / NIGHT_VERDICT} says so, as cloud.py pull brought it).\n"
+          + (f"{instead}\n" if instead else "")
+          + "When the person switches the night's documents off (the repository's "
+          "NIGHT_DOCUMENTS), the next night's verdict says so, and this runs here again "
+          "after a pull.\n", file=sys.stderr)
+    sys.exit(STOOD_DOWN)
+
+
 # ---- GitHub's night window ---------------------------------------------------
 #
 # The one definition of when GitHub's machine may be asking the General Court,

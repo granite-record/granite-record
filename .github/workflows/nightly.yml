@@ -182,6 +182,18 @@ env:
   # and for every New term run, and "production", with no reviewer, for the
   # rest; preflight holds the two together.
   REVIEW_GATE: "on"
+  # THE NIGHT'S DOCUMENTS (the person, 26 October 2026: "The nightly may gently
+  # fetch new calendars, journals, and the hearing schedule from the general
+  # court", and "I accept your recommendation on installing a pinned copy of
+  # PDF to text, keeping the night's PDFs in the bucket"). The repository's
+  # variable, Settings -> Secrets and variables -> Actions -> Variables, so
+  # the person switches it without a commit, and every branch's run reads the
+  # same one: "off", or unset, and the night asks exactly what it asked before
+  # and installs nothing new; "shadow", and it says what it would ask, asks
+  # nothing, and runs the text canary; a number from 1 to 8, the most
+  # documents a night it fetches (nightly.docs_switch). Anything else reads
+  # as off, here and in nightly.py.
+  NIGHT_DOCUMENTS: ${{ vars.NIGHT_DOCUMENTS || 'off' }}
 
 defaults:
   run:
@@ -328,6 +340,61 @@ jobs:
             yt-dlp==2026.8.19 yt-dlp-ejs==0.8.0 curl_cffi==0.16.0 certifi==2026.7.22
           exit $LASTEXITCODE
 
+      # A PINNED PDFTOTEXT, FOR THE NIGHT'S DOCUMENTS (the person, 26 October
+      # 2026: "I accept your recommendation on installing a pinned copy of PDF
+      # to text"). The readers of the calendars and journals were written
+      # against the text pdftotext -layout makes on the laptop; this machine
+      # has only pdfplumber, which sets a calendar's columns differently, so a
+      # time lands on another line from its bill. The build of poppler pinned
+      # is oschwartz10612/poppler-windows on GitHub: the Windows build
+      # pdf2image's own instructions name, packaged from conda-forge's build of
+      # poppler's release, with pdftotext.exe and the libraries it needs in one
+      # zip. Release 26.09.0-0 (poppler 26.09.0, built 15 September 2026), at
+      # the sha256 of its zip as downloaded when it was pinned (26 October
+      # 2026, 43,709,956 bytes). The zip is checked before it is unpacked: other
+      # bytes, or no download, and the step fails closed -- nothing installed,
+      # the night goes on, the text canary says this machine does not make the
+      # laptop's text, and no document is asked for (nightly.text_canary).
+      # Only when the switch is shadow or a number. The laptop's own version is
+      # what `pdftotext -v` says there; if the canary finds a difference, the
+      # release to pin is the laptop's. Its failure is a warning on the night's
+      # page, never a failed night (nightly.WARN_STEPS).
+      - name: A pinned pdftotext, for the night's documents
+        id: pdftotext
+        if: contains(fromJSON('["shadow","1","2","3","4","5","6","7","8"]'), env.NIGHT_DOCUMENTS)
+        continue-on-error: true
+        timeout-minutes: 10
+        env:
+          POPPLER_URL: https://github.com/oschwartz10612/poppler-windows/releases/download/v26.09.0-0/Release-26.09.0-0.zip
+          POPPLER_SHA256: 7a6f256a0ddf7536182246a5733331bf4677cbcc34f4663774947ad34556c8d0
+          POPPLER_BIN: poppler-26.09.0/Library/bin
+        run: |
+          $zip = Join-Path $env:RUNNER_TEMP 'poppler-pinned.zip'
+          curl.exe -fsSL -m 300 --retry 3 -o $zip $env:POPPLER_URL
+          if ($LASTEXITCODE -ne 0) {
+            Write-Output "The pinned poppler did not download, so there is no pdftotext tonight."
+            exit 1
+          }
+          $got = (Get-FileHash -Algorithm SHA256 -Path $zip).Hash.ToLowerInvariant()
+          if ($got -cne $env:POPPLER_SHA256) {
+            Write-Output "The poppler zip's sha256 is $got, not the pinned $env:POPPLER_SHA256. It is not unpacked, and there is no pdftotext tonight."
+            Remove-Item -Force $zip
+            exit 1
+          }
+          $dir = Join-Path $env:RUNNER_TEMP 'poppler-pinned'
+          Expand-Archive -Path $zip -DestinationPath $dir -Force
+          $bin = Join-Path $dir $env:POPPLER_BIN
+          $exe = Join-Path $bin 'pdftotext.exe'
+          if (-not (Test-Path $exe)) {
+            Write-Output "The pinned zip holds no $env:POPPLER_BIN/pdftotext.exe, so there is no pdftotext tonight."
+            exit 1
+          }
+          # Its version, for the log; pdftotext prints it on stderr, which is
+          # no failure of the step.
+          try { & $exe -v 2>&1 | ForEach-Object { "$_" } } catch { Write-Output "pdftotext -v: $_" }
+          Add-Content -Path $env:GITHUB_PATH -Value $bin
+          exit 0
+
       - name: Bring the state files down from R2 (the refusal record, last night's census)
         id: statedown
         env:
@@ -458,6 +525,30 @@ jobs:
           python src/ops/cloud.py state-up
           exit $LASTEXITCODE
 
+      # THE NIGHT'S DOCUMENTS, KEPT (the person, 26 October 2026: "keeping the
+      # night's PDFs in the bucket"). The PDFs the night fetched tonight, which
+      # it moved out of the build's way once their text was made, go to the
+      # bucket's docs/, each only where nothing is, read back against its
+      # sha256 (cloud.py docs-up), so the laptop never asks the General Court
+      # for them again. Never on a dry run, which fetches no document, and only
+      # when the switch is a number, the only nights that fetch one; a night
+      # that fetched none has nothing staged, which docs-up says. Its failure
+      # is a warning on the night's page and its alert, never a failed night:
+      # the text is kept either way (nightly.WARN_STEPS).
+      - name: Keep tonight's calendars and journals in the private bucket
+        id: docsup
+        if: always() && env.DRY_RUN == 'false' && env.FETCH == 'true' && contains(fromJSON('["1","2","3","4","5","6","7","8"]'), env.NIGHT_DOCUMENTS)
+        continue-on-error: true
+        timeout-minutes: 10
+        env:
+          R2_ACCOUNT_ID: ${{ secrets.R2_ACCOUNT_ID }}
+          R2_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
+          R2_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
+          R2_BUCKET: ${{ secrets.R2_BUCKET }}
+        run: |
+          python src/ops/cloud.py docs-up
+          exit $LASTEXITCODE
+
       # A dry run's to its own address, dry-run.graniterecord.pages.dev, and
       # never to the night's, which a night waiting for approval is approved
       # from (nightly.py reads the dry run itself).
@@ -528,7 +619,9 @@ jobs:
             --outcome "night=${{ steps.night.outcome }}" `
             --outcome "preview=${{ steps.preview.outcome }}" `
             --outcome "pack=${{ steps.pack.outcome }}" `
-            --outcome "kit-up=${{ steps.kitup.outcome }}"
+            --outcome "kit-up=${{ steps.kitup.outcome }}" `
+            --outcome "pdftotext=${{ steps.pdftotext.outcome }}" `
+            --outcome "docs-up=${{ steps.docsup.outcome }}"
           exit $LASTEXITCODE
 
       - name: Send the state files back to R2
