@@ -123,7 +123,7 @@ LEARN_PAGES = tuple(f"learn/{s}.html" for s in (
     "the-courts", "state-agencies", "administrative-rules", "local-government",
     "county-government", "city-and-town-government",
     "general-court", "how-a-bill-becomes-law", "governor-and-council", "the-constitution",
-    "legislative-year", "state-house-and-branches"))
+    "legislative-year", "state-house-and-branches", "state-symbols"))
 # THE OFFICIALS PAGE (the person, 25 October 2026: "Start on the Officials
 # page and My Town in Spanish"): its own words, its tabs' and the words of
 # corrections/officials.json that the tabs say (officials_tabs.data_words).

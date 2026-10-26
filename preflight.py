@@ -34978,7 +34978,12 @@ def _links_resolve():
     Learn section cites real bills by number in hand-written prose -- HB 1002
     of 2024 among them -- and this fixture holds four invented ones. A link to
     a bill the fixture does not carry is counted and skipped, and the count is
-    in the result line so that it going up is visible.
+    in the result line so that it going up is visible. A chapter of the Laws
+    pages is the same case (26 October 2026): the state symbols page cites
+    RSA 3 section by section, and the fixture's statute table holds 91-A
+    alone, so a link to a chapter the fixture does not carry is counted and
+    skipped in the same way, and its count is in the result line beside the
+    bills'.
 
     AND IT IS BUILT AS A CLONE BUILDS IT: WITH NO LOGO (1 October 2026). The
     logo and the icons are not in the repository, so this is the site every
@@ -35005,9 +35010,11 @@ def _links_resolve():
         rules = _redirect_rules(site)
         have_bill = {p.relative_to(site / "bill").with_suffix("").as_posix()
                      for p in (site / "bill").rglob("*.html")}
+        have_law = {re.sub(r"(/index)?\.html$", "", p.relative_to(site / "laws").as_posix())
+                    for p in (site / "laws").rglob("*.html")} if (site / "laws").is_dir() else set()
         pages = sorted(site.rglob("*.html"))
         assert pages, "the fixture chain wrote no pages to check"
-        broken, offsite_bill, n = Counter(), 0, 0
+        broken, offsite_bill, offsite_law, n = Counter(), 0, 0, 0
         where = {}
         for page in pages:
             rel = page.relative_to(site).as_posix()
@@ -35028,6 +35035,10 @@ def _links_resolve():
                 bill = re.fullmatch(r"/bill/(.+?)(?:\.html)?", path)
                 if bill and bill.group(1) not in have_bill:
                     offsite_bill += 1
+                    continue
+                law = re.fullmatch(r"/laws/([^/]+?)/?(?:\.html)?", path)
+                if law and law.group(1) not in have_law:
+                    offsite_law += 1
                     continue
                 n += 1
                 if not _served(site, path, rules):
@@ -35136,8 +35147,9 @@ def _links_resolve():
         assert not bad, "check_site, once the logo is there: " + "; ".join(bad)[:160]
         return "ok", (f"{n} internal links on {len(pages)} fixture pages, each "
                       f"resolved through <base href> and served by a file or a "
-                      f"_redirects rule; {offsite_bill} more name a bill this "
-                      "fixture does not carry. Built as a clone, with no logo: "
+                      f"_redirects rule; {offsite_bill} more name a bill and "
+                      f"{offsite_law} a chapter of the laws this fixture does not "
+                      "carry. Built as a clone, with no logo: "
                       f"the only dead addresses are {len(icons)} icons "
                       f"({sum(no_logo.values())} links), the heading is text, "
                       "the header has no mark and check_site says why once; "

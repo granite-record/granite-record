@@ -1549,6 +1549,7 @@ TOPIC_ICON = {
     "Around Your Town": "pin", "Visiting the State House": "capitol", G.MORE: "grid",
     # the Learn tab (civics.GROUPS, and what follows them)
     "How the State Works": "columns", "How to Take Part": "testify", "Taking Part": "testify",
+    "About New Hampshire": "map",
     "Start Here": "signpost", NUMBERS_TITLE: "chart", GLOSSARY_TITLE: "book", "Laws (RSA)": "law",
     "About New Hampshire": "capitol",
     # the Official Sources tab (official_sources' groups)

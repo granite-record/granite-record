@@ -15291,6 +15291,16 @@
    "es": "El Capitolio y lo que hace distinto al gobierno de New Hampshire",
    "state": "draft"
   },
+  "hub.learn.state-symbols.blurb": {
+   "en": "The purple finch, the purple lilac, granite and smoky quartz: every symbol the law names, and the ones proposed that did not pass.",
+   "es": "El pinzón púrpura, la lila púrpura, el granito y el cuarzo ahumado: cada símbolo que nombra la ley, y los que se propusieron y no se aprobaron.",
+   "state": "draft"
+  },
+  "hub.learn.state-symbols.title": {
+   "en": "New Hampshire’s State Symbols",
+   "es": "Los símbolos del estado de New Hampshire",
+   "state": "draft"
+  },
   "hub.learn.the-constitution.blurb": {
    "en": "One of the oldest still in force, and it is not amended the way statutes are: a CACR needs three fifths of both chambers and then the voters.",
    "es": "Una de las más antiguas aún vigentes, y no se enmienda como las leyes: una CACR necesita tres quintos de ambas cámaras y después a los votantes.",
@@ -18644,6 +18654,1031 @@
   "learn.state-house-and-branches.yes-the-governor-with-the-consent": {
    "en": "Yes. The Governor, with the consent of the Council, may remove a judge for reasonable cause on the address of both houses of the legislature, after the judge has had a chance to be heard by a joint committee of both houses (Part Second, Article 73).",
    "es": "Sí. El Gobernador, con el consentimiento del Consejo, puede destituir a un juez por causa razonable a petición de ambas cámaras de la Legislatura, después de que el juez haya tenido la oportunidad de ser oído por un comité conjunto de ambas cámaras (Parte Segunda, Artículo 73).",
+   "state": "draft"
+  },
+  "learn.state-symbols.1991-sb-40": {
+   "en": "1991 &middot; <a href=\"bill/1991/sb40.html\">SB 40</a>",
+   "es": "1991 &middot; <a href=\"bill/1991/sb40.html\">SB 40</a>",
+   "state": "draft"
+  },
+  "learn.state-symbols.1992-hb-1210": {
+   "en": "1992 &middot; <a href=\"bill/1992/hb1210.html\">HB 1210</a>",
+   "es": "1992 &middot; <a href=\"bill/1992/hb1210.html\">HB 1210</a>",
+   "state": "draft"
+  },
+  "learn.state-symbols.1994-hb-1438": {
+   "en": "1994 &middot; <a href=\"bill/1994/hb1438.html\">HB 1438</a>",
+   "es": "1994 &middot; <a href=\"bill/1994/hb1438.html\">HB 1438</a>",
+   "state": "draft"
+  },
+  "learn.state-symbols.1994-sb-538": {
+   "en": "1994 &middot; <a href=\"bill/1994/sb538.html\">SB 538</a>",
+   "es": "1994 &middot; <a href=\"bill/1994/sb538.html\">SB 538</a>",
+   "state": "draft"
+  },
+  "learn.state-symbols.1995-hb-631": {
+   "en": "1995 &middot; <a href=\"bill/1995/hb631.html\">HB 631</a>",
+   "es": "1995 &middot; <a href=\"bill/1995/hb631.html\">HB 631</a>",
+   "state": "draft"
+  },
+  "learn.state-symbols.1998-sb-412": {
+   "en": "1998 &middot; <a href=\"bill/1998/sb412.html\">SB 412</a>",
+   "es": "1998 &middot; <a href=\"bill/1998/sb412.html\">SB 412</a>",
+   "state": "draft"
+  },
+  "learn.state-symbols.2006-hb-1111": {
+   "en": "2006 &middot; <a href=\"bill/2006/hb1111.html\">HB 1111</a>",
+   "es": "2006 &middot; <a href=\"bill/2006/hb1111.html\">HB 1111</a>",
+   "state": "draft"
+  },
+  "learn.state-symbols.2009-sb-13": {
+   "en": "2009 &middot; <a href=\"bill/2009/sb13.html\">SB 13</a>",
+   "es": "2009 &middot; <a href=\"bill/2009/sb13.html\">SB 13</a>",
+   "state": "draft"
+  },
+  "learn.state-symbols.2010-hb-1206": {
+   "en": "2010 &middot; <a href=\"bill/2010/hb1206.html\">HB 1206</a>",
+   "es": "2010 &middot; <a href=\"bill/2010/hb1206.html\">HB 1206</a>",
+   "state": "draft"
+  },
+  "learn.state-symbols.2013-hb-535": {
+   "en": "2013 &middot; <a href=\"bill/2013/hb535.html\">HB 535</a>",
+   "es": "2013 &middot; <a href=\"bill/2013/hb535.html\">HB 535</a>",
+   "state": "draft"
+  },
+  "learn.state-symbols.2015-hb-423": {
+   "en": "2015 &middot; <a href=\"bill/2015/hb423.html\">HB 423</a>",
+   "es": "2015 &middot; <a href=\"bill/2015/hb423.html\">HB 423</a>",
+   "state": "draft"
+  },
+  "learn.state-symbols.2018-hb-1474": {
+   "en": "2018 &middot; <a href=\"bill/2018/hb1474.html\">HB 1474</a>",
+   "es": "2018 &middot; <a href=\"bill/2018/hb1474.html\">HB 1474</a>",
+   "state": "draft"
+  },
+  "learn.state-symbols.2019-hb-280": {
+   "en": "2019 &middot; <a href=\"bill/2019/hb280.html\">HB 280</a>",
+   "es": "2019 &middot; <a href=\"bill/2019/hb280.html\">HB 280</a>",
+   "state": "draft"
+  },
+  "learn.state-symbols.2021-hb-318": {
+   "en": "2021 &middot; <a href=\"bill/2021/hb318.html\">HB 318</a>",
+   "es": "2021 &middot; <a href=\"bill/2021/hb318.html\">HB 318</a>",
+   "state": "draft"
+  },
+  "learn.state-symbols.2025-hb-776-fn": {
+   "en": "2025 &middot; <a href=\"bill/2025/hb776.html\">HB 776-FN</a>",
+   "es": "2025 &middot; <a href=\"bill/2025/hb776.html\">HB 776-FN</a>",
+   "state": "draft"
+  },
+  "learn.state-symbols.a-blue-field-with-the-state": {
+   "en": "A blue field with the state seal at its center, in a wreath of laurel leaves with nine stars",
+   "es": "Un campo azul con el sello del estado en el centro, dentro de una corona de hojas de laurel con nueve estrellas",
+   "state": "draft"
+  },
+  "learn.state-symbols.a-sett-of-green-black-white": {
+   "en": "A sett of green, black, white, purple and red",
+   "es": "Un diseño de cuadros en verde, negro, blanco, púrpura y rojo",
+   "state": "draft"
+  },
+  "learn.state-symbols.amphibian": {
+   "en": "Amphibian",
+   "es": "Anfibio",
+   "state": "draft"
+  },
+  "learn.state-symbols.animal": {
+   "en": "Animal",
+   "es": "Animal",
+   "state": "draft"
+  },
+  "learn.state-symbols.apple-cider": {
+   "en": "Apple cider",
+   "es": "Sidra de manzana",
+   "state": "draft"
+  },
+  "learn.state-symbols.autumn-in-new-hampshire-words-and": {
+   "en": "&ldquo;Autumn in New Hampshire,&rdquo; words and music by Leo Austin",
+   "es": "&ldquo;Autumn in New Hampshire,&rdquo; letra y música de Leo Austin",
+   "state": "draft"
+  },
+  "learn.state-symbols.beryl": {
+   "en": "Beryl",
+   "es": "Berilo",
+   "state": "draft"
+  },
+  "learn.state-symbols.beverage": {
+   "en": "Beverage",
+   "es": "Bebida",
+   "state": "draft"
+  },
+  "learn.state-symbols.bill": {
+   "en": "Bill",
+   "es": "Proyecto de ley",
+   "state": "draft"
+  },
+  "learn.state-symbols.bird": {
+   "en": "Bird",
+   "es": "Ave",
+   "state": "draft"
+  },
+  "learn.state-symbols.bobcat-lynx-rufus": {
+   "en": "Bobcat, <i>Lynx rufus</i>",
+   "es": "Lince rojo, <i>Lynx rufus</i>",
+   "state": "draft"
+  },
+  "learn.state-symbols.brook-trout-salvelinus-fontinalis": {
+   "en": "Brook trout, <i>Salvelinus fontinalis</i>",
+   "es": "Trucha de arroyo, <i>Salvelinus fontinalis</i>",
+   "state": "draft"
+  },
+  "learn.state-symbols.butterfly": {
+   "en": "Butterfly",
+   "es": "Mariposa",
+   "state": "draft"
+  },
+  "learn.state-symbols.by-a-bill-like-any-other": {
+   "en": "By a bill, like any other law. Each of the sixteen sections added to the chapter since 1991 came from a bill the record shows signed into law, and this page links each one. <a href=\"learn/how-a-bill-becomes-law.html\">How a bill becomes law</a> follows the course every one of them took.",
+   "es": "Mediante un proyecto de ley, como cualquier otra ley. Cada una de las dieciséis secciones añadidas al capítulo desde 1991 vino de un proyecto de ley que el registro muestra firmado como ley, y esta página enlaza cada uno. <a href=\"learn/how-a-bill-becomes-law.html\">Cómo un proyecto se convierte en ley</a> sigue el camino que recorrió cada uno.",
+   "state": "draft"
+  },
+  "learn.state-symbols.can-i-put-the-state-seal": {
+   "en": "Can I put the state seal on something I sell?",
+   "es": "¿Puedo poner el sello del estado en algo que vendo?",
+   "state": "draft"
+  },
+  "learn.state-symbols.changing-the-flag": {
+   "en": "Changing the Flag",
+   "es": "Cambiar la bandera",
+   "state": "draft"
+  },
+  "learn.state-symbols.chinook": {
+   "en": "Chinook",
+   "es": "Chinook",
+   "state": "draft"
+  },
+  "learn.state-symbols.common-questions": {
+   "en": "Common Questions",
+   "es": "Preguntas frecuentes",
+   "state": "draft"
+  },
+  "learn.state-symbols.daring-jumping-spider-phidippus-audax": {
+   "en": "Daring jumping spider, <i>Phidippus audax</i>",
+   "es": "Araña saltarina audaz, <i>Phidippus audax</i>",
+   "state": "draft"
+  },
+  "learn.state-symbols.declaring-old-hampshire-applejack-the": {
+   "en": "declaring Old Hampshire Applejack the state spirit of New Hampshire.",
+   "es": "que declara al Old Hampshire Applejack la bebida espirituosa del estado de New Hampshire.",
+   "state": "draft"
+  },
+  "learn.state-symbols.designating-purple-as-the-official-state": {
+   "en": "designating purple as the official state color.",
+   "es": "que designa el púrpura como el color oficial del estado.",
+   "state": "draft"
+  },
+  "learn.state-symbols.designating-the-apple-cider-doughnut-the": {
+   "en": "designating the apple cider doughnut the official doughnut of the state of New Hampshire.",
+   "es": "que designa la dona de sidra de manzana como la dona oficial del estado de New Hampshire.",
+   "state": "draft"
+  },
+  "learn.state-symbols.designating-the-mastodon-as-the-official": {
+   "en": "designating the mastodon as the official state fossil.",
+   "es": "que designa al mastodonte como el fósil oficial del estado.",
+   "state": "draft"
+  },
+  "learn.state-symbols.designating-the-thompson-center": {
+   "en": "designating the Thompson/Center Contender pistol as the official state firearm of New Hampshire.",
+   "es": "que designa la pistola Thompson/Center Contender como el arma de fuego oficial del estado de New Hampshire.",
+   "state": "draft"
+  },
+  "learn.state-symbols.designating-within-the-crystal-hills-as": {
+   "en": "designating &ldquo;Within the Crystal Hills&rdquo; as the official animated film of New Hampshire.",
+   "es": "que designa &ldquo;Within the Crystal Hills&rdquo; como la película animada oficial de New Hampshire.",
+   "state": "draft"
+  },
+  "learn.state-symbols.died-on-the-table": {
+   "en": "Died on the table",
+   "es": "Murió sobre la mesa",
+   "state": "draft"
+  },
+  "learn.state-symbols.died-the-chambers-did-not-agree": {
+   "en": "Died: the chambers did not agree on a version",
+   "es": "Murió: las cámaras no acordaron una versión",
+   "state": "draft"
+  },
+  "learn.state-symbols.dog": {
+   "en": "Dog",
+   "es": "Perro",
+   "state": "draft"
+  },
+  "learn.state-symbols.emblem": {
+   "en": "Emblem",
+   "es": "Emblema",
+   "state": "draft"
+  },
+  "learn.state-symbols.establishing-a-commission-to-study-the": {
+   "en": "establishing a commission to study the state flag and its history.",
+   "es": "que crea una comisión para estudiar la bandera del estado y su historia.",
+   "state": "draft"
+  },
+  "learn.state-symbols.establishing-a-committee-to-study": {
+   "en": "establishing a committee to study redesigning the state flag.",
+   "es": "que crea un comité para estudiar un nuevo diseño de la bandera del estado.",
+   "state": "draft"
+  },
+  "learn.state-symbols.establishing-a-state-poem": {
+   "en": "establishing a state poem.",
+   "es": "que establece un poema del estado.",
+   "state": "draft"
+  },
+  "learn.state-symbols.establishing-orange-red-and-yellow-as": {
+   "en": "establishing orange, red, and yellow as the state colors.",
+   "es": "que establece el naranja, el rojo y el amarillo como los colores del estado.",
+   "state": "draft"
+  },
+  "learn.state-symbols.establishing-the-red-tailed-hawk-as": {
+   "en": "establishing the red-tailed hawk as the New Hampshire state raptor.",
+   "es": "que establece al halcón de cola roja como el ave rapaz del estado de New Hampshire.",
+   "state": "draft"
+  },
+  "learn.state-symbols.flag": {
+   "en": "Flag",
+   "es": "Bandera",
+   "state": "draft"
+  },
+  "learn.state-symbols.flower": {
+   "en": "Flower",
+   "es": "Flor",
+   "state": "draft"
+  },
+  "learn.state-symbols.freshwater-fish": {
+   "en": "Freshwater fish",
+   "es": "Pez de agua dulce",
+   "state": "draft"
+  },
+  "learn.state-symbols.fruit": {
+   "en": "Fruit",
+   "es": "Fruta",
+   "state": "draft"
+  },
+  "learn.state-symbols.gem": {
+   "en": "Gem",
+   "es": "Gema",
+   "state": "draft"
+  },
+  "learn.state-symbols.granite": {
+   "en": "Granite",
+   "es": "Granito",
+   "state": "draft"
+  },
+  "learn.state-symbols.granite-beryl-and-smoky-quartz-were": {
+   "en": "Granite, beryl and smoky quartz were named by the same law, in 1985. The foods came later: the pumpkin in 2006, apple cider in 2010 and the white potato in 2013.",
+   "es": "El granito, el berilo y el cuarzo ahumado los nombró la misma ley, en 1985. Los alimentos llegaron después: la calabaza en 2006, la sidra de manzana en 2010 y la papa blanca en 2013.",
+   "state": "draft"
+  },
+  "learn.state-symbols.hb-1016": {
+   "en": "HB 1016",
+   "es": "HB 1016",
+   "state": "draft"
+  },
+  "learn.state-symbols.hb-1020": {
+   "en": "HB 1020",
+   "es": "HB 1020",
+   "state": "draft"
+  },
+  "learn.state-symbols.hb-113": {
+   "en": "HB 113",
+   "es": "HB 113",
+   "state": "draft"
+  },
+  "learn.state-symbols.hb-123": {
+   "en": "HB 123",
+   "es": "HB 123",
+   "state": "draft"
+  },
+  "learn.state-symbols.hb-1231-fn": {
+   "en": "HB 1231-FN",
+   "es": "HB 1231-FN",
+   "state": "draft"
+  },
+  "learn.state-symbols.hb-1242": {
+   "en": "HB 1242",
+   "es": "HB 1242",
+   "state": "draft"
+  },
+  "learn.state-symbols.hb-138-fn": {
+   "en": "HB 138-FN",
+   "es": "HB 138-FN",
+   "state": "draft"
+  },
+  "learn.state-symbols.hb-1390": {
+   "en": "HB 1390",
+   "es": "HB 1390",
+   "state": "draft"
+  },
+  "learn.state-symbols.hb-1430": {
+   "en": "HB 1430",
+   "es": "HB 1430",
+   "state": "draft"
+  },
+  "learn.state-symbols.hb-152": {
+   "en": "HB 152",
+   "es": "HB 152",
+   "state": "draft"
+  },
+  "learn.state-symbols.hb-176-fn": {
+   "en": "HB 176-FN",
+   "es": "HB 176-FN",
+   "state": "draft"
+  },
+  "learn.state-symbols.hb-210": {
+   "en": "HB 210",
+   "es": "HB 210",
+   "state": "draft"
+  },
+  "learn.state-symbols.hb-373": {
+   "en": "HB 373",
+   "es": "HB 373",
+   "state": "draft"
+  },
+  "learn.state-symbols.hb-41": {
+   "en": "HB 41",
+   "es": "HB 41",
+   "state": "draft"
+  },
+  "learn.state-symbols.hb-420": {
+   "en": "HB 420",
+   "es": "HB 420",
+   "state": "draft"
+  },
+  "learn.state-symbols.hb-552-fn": {
+   "en": "HB 552-FN",
+   "es": "HB 552-FN",
+   "state": "draft"
+  },
+  "learn.state-symbols.hb-89": {
+   "en": "HB 89",
+   "es": "HB 89",
+   "state": "draft"
+  },
+  "learn.state-symbols.how-does-something-become-a-state": {
+   "en": "How does something become a state symbol?",
+   "es": "¿Cómo se convierte algo en símbolo del estado?",
+   "state": "draft"
+  },
+  "learn.state-symbols.how-it-ended": {
+   "en": "How it ended",
+   "es": "Cómo terminó",
+   "state": "draft"
+  },
+  "learn.state-symbols.insect": {
+   "en": "Insect",
+   "es": "Insecto",
+   "state": "draft"
+  },
+  "learn.state-symbols.its-title": {
+   "en": "Its title",
+   "es": "Su título",
+   "state": "draft"
+  },
+  "learn.state-symbols.karner-blue-lycaeides-melissa-subspecies": {
+   "en": "Karner Blue, <i>Lycaeides melissa</i>, subspecies <i>samuelis</i>",
+   "es": "Azul de Karner, <i>Lycaeides melissa</i>, subespecie <i>samuelis</i>",
+   "state": "draft"
+  },
+  "learn.state-symbols.killed": {
+   "en": "Killed",
+   "es": "Rechazado",
+   "state": "draft"
+  },
+  "learn.state-symbols.ladybug-also-known-as-the-ladybird": {
+   "en": "Ladybug, also known as the ladybird and the lady beetle",
+   "es": "Mariquita, también conocida como catarina o vaquita de San Antonio",
+   "state": "draft"
+  },
+  "learn.state-symbols.lead": {
+   "en": "The purple finch, the purple lilac, granite and smoky quartz: every symbol the law names, and the ones proposed that did not pass.",
+   "es": "El pinzón púrpura, la lila púrpura, el granito y el cuarzo ahumado: cada símbolo que nombra la ley, y los que se propusieron y no se aprobaron.",
+   "state": "draft"
+  },
+  "learn.state-symbols.live-free-or-die-words-and": {
+   "en": "&ldquo;Live Free or Die,&rdquo; words and music by Barry Palmer",
+   "es": "&ldquo;Live Free or Die,&rdquo; letra y música de Barry Palmer",
+   "state": "draft"
+  },
+  "learn.state-symbols.live-free-or-die-written-by": {
+   "en": "&ldquo;Live Free or Die,&rdquo; written by General John Stark, July 31, 1809",
+   "es": "&ldquo;Live Free or Die&rdquo; (&ldquo;Vivir libre o morir&rdquo;), escrito por el general John Stark el 31 de julio de 1809",
+   "state": "draft"
+  },
+  "learn.state-symbols.marsupial": {
+   "en": "Marsupial",
+   "es": "Marsupial",
+   "state": "draft"
+  },
+  "learn.state-symbols.mineral": {
+   "en": "Mineral",
+   "es": "Mineral",
+   "state": "draft"
+  },
+  "learn.state-symbols.motto": {
+   "en": "Motto",
+   "es": "Lema",
+   "state": "draft"
+  },
+  "learn.state-symbols.named": {
+   "en": "Named",
+   "es": "Nombrado",
+   "state": "draft"
+  },
+  "learn.state-symbols.new-hampshire-hills-words-by-paul": {
+   "en": "&ldquo;New Hampshire Hills,&rdquo; words by Paul Scott Mowrer, music by Tom Powers",
+   "es": "&ldquo;New Hampshire Hills,&rdquo; letra de Paul Scott Mowrer, música de Tom Powers",
+   "state": "draft"
+  },
+  "learn.state-symbols.new-hampshire-my-new-hampshire-words": {
+   "en": "&ldquo;New Hampshire, my New Hampshire,&rdquo; words by Julius Richelson, music by Walter P. Smith",
+   "es": "&ldquo;New Hampshire, my New Hampshire,&rdquo; letra de Julius Richelson, música de Walter P. Smith",
+   "state": "draft"
+  },
+  "learn.state-symbols.new-hampshire-naturally-words-and-music": {
+   "en": "&ldquo;New Hampshire Naturally,&rdquo; words and music by Rick Shaw and Ron Shaw",
+   "es": "&ldquo;New Hampshire Naturally,&rdquo; letra y música de Rick Shaw y Ron Shaw",
+   "state": "draft"
+  },
+  "learn.state-symbols.new-hampshire-red": {
+   "en": "New Hampshire Red",
+   "es": "New Hampshire Red",
+   "state": "draft"
+  },
+  "learn.state-symbols.new-hampshires-granite-state-words-and": {
+   "en": "&ldquo;New Hampshire&rsquo;s Granite State,&rdquo; words and music by Anne B. Currier",
+   "es": "&ldquo;New Hampshire&rsquo;s Granite State,&rdquo; letra y música de Anne B. Currier",
+   "state": "draft"
+  },
+  "learn.state-symbols.new-hampshires-symbols-are-named-in": {
+   "en": "New Hampshire&rsquo;s symbols are named in its statutes, in chapter 3 of the Revised Statutes Annotated, headed &ldquo;State Emblems, Flag, Etc.&rdquo; Twenty-nine of its sections each name one: a motto, a seal, a flag, an emblem, ten songs, a tartan, and the plants, animals, stones, foods and sport below. Each section links to <a href=\"/laws/3\">the chapter</a> on this site.",
+   "es": "Los símbolos de New Hampshire están nombrados en sus leyes, en el capítulo 3 de los Estatutos Revisados Anotados, titulado &ldquo;State Emblems, Flag, Etc.&rdquo; (emblemas del estado, bandera, etc.). Veintinueve de sus secciones nombran uno cada una: un lema, un sello, una bandera, un emblema, diez canciones, un tartán, y las plantas, los animales, las piedras, los alimentos y el deporte de abajo. Cada sección enlaza con <a href=\"/laws/3\">el capítulo</a> en este sitio.",
+   "state": "draft"
+  },
+  "learn.state-symbols.not-without-the-secretary-of-states": {
+   "en": "Not without the Secretary of State&rsquo;s authorization. The seal is the property of the state, and no one may make or sell merchandise bearing a likeness of it, or put it on anything used to advertise or promote services, unless the Secretary of State has authorized that use (<a href=\"/laws/3#s9-a\">RSA 3:9-a</a>). Doing so is a misdemeanor for a natural person and a felony for any other person (<a href=\"/laws/3#s9-b\">RSA 3:9-b</a>), and the Attorney General may go to court to stop the articles being distributed (<a href=\"/laws/3#s9-c\">RSA 3:9-c</a>).",
+   "es": "No sin la autorización de la Secretaría de Estado. El sello es propiedad del estado, y nadie puede fabricar ni vender mercancía con una imagen de él, ni ponerlo en algo que se use para anunciar o promover servicios, a menos que la Secretaría de Estado haya autorizado ese uso (<a href=\"/laws/3#s9-a\">RSA 3:9-a</a>). Hacerlo es un delito menor (misdemeanor) para una persona física y un delito grave (felony) para cualquier otra persona (<a href=\"/laws/3#s9-b\">RSA 3:9-b</a>), y el Fiscal General puede acudir al tribunal para detener la distribución de esos artículos (<a href=\"/laws/3#s9-c\">RSA 3:9-c</a>).",
+   "state": "draft"
+  },
+  "learn.state-symbols.oh-new-hampshire-youre-my-home": {
+   "en": "&ldquo;Oh, New Hampshire (you&rsquo;re my home),&rdquo; words and music by Brownie McIntosh",
+   "es": "&ldquo;Oh, New Hampshire (you&rsquo;re my home),&rdquo; letra y música de Brownie McIntosh",
+   "state": "draft"
+  },
+  "learn.state-symbols.old-new-hampshire-words-by-dr": {
+   "en": "&ldquo;Old New Hampshire,&rdquo; words by Dr. John F. Holmes, music by Maurice Hoffmann",
+   "es": "&ldquo;Old New Hampshire,&rdquo; letra del Dr. John F. Holmes, música de Maurice Hoffmann",
+   "state": "draft"
+  },
+  "learn.state-symbols.pink-ladys-slipper-cypripedium-acaule": {
+   "en": "Pink lady&rsquo;s slipper, <i>Cypripedium acaule</i>",
+   "es": "Zapatilla de dama rosada, <i>Cypripedium acaule</i>",
+   "state": "draft"
+  },
+  "learn.state-symbols.plants-and-animals": {
+   "en": "Plants and Animals",
+   "es": "Plantas y animales",
+   "state": "draft"
+  },
+  "learn.state-symbols.poultry": {
+   "en": "Poultry",
+   "es": "Ave de corral",
+   "state": "draft"
+  },
+  "learn.state-symbols.proclaiming-lake-winnipesaukee-the": {
+   "en": "proclaiming Lake Winnipesaukee the official state lake of New Hampshire.",
+   "es": "que proclama al lago Winnipesaukee el lago oficial del estado de New Hampshire.",
+   "state": "draft"
+  },
+  "learn.state-symbols.proclaiming-the-virginia-opossum-the": {
+   "en": "proclaiming the Virginia opossum the state marsupial of New Hampshire and relative to the penalty for incorrect application of fertilizers.",
+   "es": "que proclama a la zarigüeya de Virginia el marsupial del estado de New Hampshire, y sobre la sanción por aplicar fertilizantes de forma incorrecta.",
+   "state": "draft"
+  },
+  "learn.state-symbols.proposals-to-change-or-study-the": {
+   "en": "Proposals to change or study the state flag",
+   "es": "Propuestas para cambiar o estudiar la bandera del estado",
+   "state": "draft"
+  },
+  "learn.state-symbols.proposed-state-symbols-that-did-not": {
+   "en": "Proposed state symbols that did not pass",
+   "es": "Símbolos del estado propuestos que no se aprobaron",
+   "state": "draft"
+  },
+  "learn.state-symbols.proposed-symbols-that-did-not-pass": {
+   "en": "Proposed Symbols That Did Not Pass",
+   "es": "Símbolos propuestos que no se aprobaron",
+   "state": "draft"
+  },
+  "learn.state-symbols.pumpkin": {
+   "en": "Pumpkin",
+   "es": "Calabaza",
+   "state": "draft"
+  },
+  "learn.state-symbols.purple-finch": {
+   "en": "Purple finch",
+   "es": "Pinzón púrpura",
+   "state": "draft"
+  },
+  "learn.state-symbols.purple-lilac-syringa-vulgaris": {
+   "en": "Purple lilac, <i>Syringa vulgaris</i>",
+   "es": "Lila púrpura, <i>Syringa vulgaris</i>",
+   "state": "draft"
+  },
+  "learn.state-symbols.raptor": {
+   "en": "Raptor",
+   "es": "Ave rapaz",
+   "state": "draft"
+  },
+  "learn.state-symbols.red-tailed-hawk-buteo-jamaicensis": {
+   "en": "Red-tailed hawk, <i>Buteo jamaicensis</i>",
+   "es": "Halcón de cola roja, <i>Buteo jamaicensis</i>",
+   "state": "draft"
+  },
+  "learn.state-symbols.referred-for-interim-study": {
+   "en": "Referred for interim study",
+   "es": "Enviado a estudio interino",
+   "state": "draft"
+  },
+  "learn.state-symbols.relative-to-changing-the-state-flag": {
+   "en": "relative to changing the state flag design.",
+   "es": "sobre el cambio del diseño de la bandera del estado.",
+   "state": "draft"
+  },
+  "learn.state-symbols.relative-to-the-design-and-the": {
+   "en": "relative to the design and the display of the state flag.",
+   "es": "sobre el diseño y la exhibición de la bandera del estado.",
+   "state": "draft"
+  },
+  "learn.state-symbols.relative-to-the-honor-and-remember": {
+   "en": "relative to the Honor and Remember Flag as an official symbol to recognize and honor fallen members of the armed forces and relative to certain maintenance at the rotary in the town of Epsom.",
+   "es": "sobre la bandera Honor and Remember como símbolo oficial para reconocer y honrar a los miembros caídos de las fuerzas armadas, y sobre cierto mantenimiento en la rotonda del municipio de Epsom.",
+   "state": "draft"
+  },
+  "learn.state-symbols.relative-to-the-new-hampshire-state": {
+   "en": "relative to the New Hampshire state flag.",
+   "es": "sobre la bandera del estado de New Hampshire.",
+   "state": "draft"
+  },
+  "learn.state-symbols.relative-to-the-state-flag": {
+   "en": "relative to the state flag.",
+   "es": "sobre la bandera del estado.",
+   "state": "draft"
+  },
+  "learn.state-symbols.rock": {
+   "en": "Rock",
+   "es": "Roca",
+   "state": "draft"
+  },
+  "learn.state-symbols.rsa-3-1": {
+   "en": "RSA 3:1",
+   "es": "RSA 3:1",
+   "state": "draft"
+  },
+  "learn.state-symbols.rsa-3-10": {
+   "en": "RSA 3:10",
+   "es": "RSA 3:10",
+   "state": "draft"
+  },
+  "learn.state-symbols.rsa-3-11": {
+   "en": "RSA 3:11",
+   "es": "RSA 3:11",
+   "state": "draft"
+  },
+  "learn.state-symbols.rsa-3-12": {
+   "en": "RSA 3:12",
+   "es": "RSA 3:12",
+   "state": "draft"
+  },
+  "learn.state-symbols.rsa-3-13": {
+   "en": "RSA 3:13",
+   "es": "RSA 3:13",
+   "state": "draft"
+  },
+  "learn.state-symbols.rsa-3-14": {
+   "en": "RSA 3:14",
+   "es": "RSA 3:14",
+   "state": "draft"
+  },
+  "learn.state-symbols.rsa-3-15": {
+   "en": "RSA 3:15",
+   "es": "RSA 3:15",
+   "state": "draft"
+  },
+  "learn.state-symbols.rsa-3-16": {
+   "en": "RSA 3:16",
+   "es": "RSA 3:16",
+   "state": "draft"
+  },
+  "learn.state-symbols.rsa-3-17": {
+   "en": "RSA 3:17",
+   "es": "RSA 3:17",
+   "state": "draft"
+  },
+  "learn.state-symbols.rsa-3-18": {
+   "en": "RSA 3:18",
+   "es": "RSA 3:18",
+   "state": "draft"
+  },
+  "learn.state-symbols.rsa-3-19": {
+   "en": "RSA 3:19",
+   "es": "RSA 3:19",
+   "state": "draft"
+  },
+  "learn.state-symbols.rsa-3-2": {
+   "en": "RSA 3:2",
+   "es": "RSA 3:2",
+   "state": "draft"
+  },
+  "learn.state-symbols.rsa-3-20": {
+   "en": "RSA 3:20",
+   "es": "RSA 3:20",
+   "state": "draft"
+  },
+  "learn.state-symbols.rsa-3-21": {
+   "en": "RSA 3:21",
+   "es": "RSA 3:21",
+   "state": "draft"
+  },
+  "learn.state-symbols.rsa-3-22": {
+   "en": "RSA 3:22",
+   "es": "RSA 3:22",
+   "state": "draft"
+  },
+  "learn.state-symbols.rsa-3-24": {
+   "en": "RSA 3:24",
+   "es": "RSA 3:24",
+   "state": "draft"
+  },
+  "learn.state-symbols.rsa-3-25": {
+   "en": "RSA 3:25",
+   "es": "RSA 3:25",
+   "state": "draft"
+  },
+  "learn.state-symbols.rsa-3-26": {
+   "en": "RSA 3:26",
+   "es": "RSA 3:26",
+   "state": "draft"
+  },
+  "learn.state-symbols.rsa-3-27": {
+   "en": "RSA 3:27",
+   "es": "RSA 3:27",
+   "state": "draft"
+  },
+  "learn.state-symbols.rsa-3-28": {
+   "en": "RSA 3:28",
+   "es": "RSA 3:28",
+   "state": "draft"
+  },
+  "learn.state-symbols.rsa-3-29": {
+   "en": "RSA 3:29",
+   "es": "RSA 3:29",
+   "state": "draft"
+  },
+  "learn.state-symbols.rsa-3-30": {
+   "en": "RSA 3:30",
+   "es": "RSA 3:30",
+   "state": "draft"
+  },
+  "learn.state-symbols.rsa-3-31": {
+   "en": "RSA 3:31",
+   "es": "RSA 3:31",
+   "state": "draft"
+  },
+  "learn.state-symbols.rsa-3-32": {
+   "en": "RSA 3:32",
+   "es": "RSA 3:32",
+   "state": "draft"
+  },
+  "learn.state-symbols.rsa-3-5": {
+   "en": "RSA 3:5",
+   "es": "RSA 3:5",
+   "state": "draft"
+  },
+  "learn.state-symbols.rsa-3-6": {
+   "en": "RSA 3:6",
+   "es": "RSA 3:6",
+   "state": "draft"
+  },
+  "learn.state-symbols.rsa-3-7": {
+   "en": "RSA 3:7",
+   "es": "RSA 3:7",
+   "state": "draft"
+  },
+  "learn.state-symbols.rsa-3-8": {
+   "en": "RSA 3:8",
+   "es": "RSA 3:8",
+   "state": "draft"
+  },
+  "learn.state-symbols.rsa-3-9": {
+   "en": "RSA 3:9",
+   "es": "RSA 3:9",
+   "state": "draft"
+  },
+  "learn.state-symbols.rsa-3-state-emblems-flag-etc": {
+   "en": "RSA 3, State Emblems, Flag, Etc., on this site's Laws pages",
+   "es": "RSA 3, State Emblems, Flag, Etc. (emblemas del estado, bandera, etc.), en las páginas de leyes de este sitio",
+   "state": "draft"
+  },
+  "learn.state-symbols.saltwater-game-fish": {
+   "en": "Saltwater game fish",
+   "es": "Pez de pesca deportiva de agua salada",
+   "state": "draft"
+  },
+  "learn.state-symbols.sb-30": {
+   "en": "SB 30",
+   "es": "SB 30",
+   "state": "draft"
+  },
+  "learn.state-symbols.sb-302": {
+   "en": "SB 302",
+   "es": "SB 302",
+   "state": "draft"
+  },
+  "learn.state-symbols.sb-319-fn-local": {
+   "en": "SB 319-FN-LOCAL",
+   "es": "SB 319-FN-LOCAL",
+   "state": "draft"
+  },
+  "learn.state-symbols.sb-42": {
+   "en": "SB 42",
+   "es": "SB 42",
+   "state": "draft"
+  },
+  "learn.state-symbols.sb-423-fn-local": {
+   "en": "SB 423-FN-LOCAL",
+   "es": "SB 423-FN-LOCAL",
+   "state": "draft"
+  },
+  "learn.state-symbols.sb-94-fn-local": {
+   "en": "SB 94-FN-LOCAL",
+   "es": "SB 94-FN-LOCAL",
+   "state": "draft"
+  },
+  "learn.state-symbols.seal": {
+   "en": "Seal",
+   "es": "Sello",
+   "state": "draft"
+  },
+  "learn.state-symbols.section": {
+   "en": "Section",
+   "es": "Sección",
+   "state": "draft"
+  },
+  "learn.state-symbols.sixteen-of-the-sections-name-a": {
+   "en": "Sixteen of the sections name a living thing. The first was the purple lilac, in 1919. The most recent is the Virginia opossum, in 2025, and its section adds that opossums found within the state&rsquo;s borders &ldquo;shall be known as &lsquo;New Hampshire opossums.&rsquo;&rdquo;",
+   "es": "Dieciséis de las secciones nombran un ser vivo. El primero fue la lila púrpura, en 1919. El más reciente es la zarigüeya de Virginia, en 2025, y su sección añade que las zarigüeyas que se encuentren dentro de las fronteras del estado &ldquo;se conocerán como &lsquo;zarigüeyas de New Hampshire&rsquo;&rdquo; (&ldquo;New Hampshire opossums&rdquo;).",
+   "state": "draft"
+  },
+  "learn.state-symbols.skiing": {
+   "en": "Skiing",
+   "es": "Esquí",
+   "state": "draft"
+  },
+  "learn.state-symbols.smoky-quartz": {
+   "en": "Smoky quartz",
+   "es": "Cuarzo ahumado",
+   "state": "draft"
+  },
+  "learn.state-symbols.someone-born-in-new-hampshire-or": {
+   "en": "Someone born in New Hampshire, or born to a mother domiciled in New Hampshire at the time of the birth. The section says it does not affect official records, and that no one who in good faith proclaims themselves a native under it may be charged with perjury (<a href=\"/laws/3#s23\">RSA 3:23</a>, added in 2002 by <a href=\"bill/2002/hb1175.html\">HB 1175</a>).",
+   "es": "Alguien nacido en New Hampshire, o nacido de una madre domiciliada en New Hampshire en el momento del nacimiento. La sección dice que no afecta los registros oficiales, y que nadie que de buena fe se proclame nativo según ella puede ser acusado de perjurio (<a href=\"/laws/3#s23\">RSA 3:23</a>, añadida en 2002 por <a href=\"bill/2002/hb1175.html\">HB 1175</a>).",
+   "state": "draft"
+  },
+  "learn.state-symbols.songs": {
+   "en": "Songs",
+   "es": "Canciones",
+   "state": "draft"
+  },
+  "learn.state-symbols.spider": {
+   "en": "Spider",
+   "es": "Araña",
+   "state": "draft"
+  },
+  "learn.state-symbols.sport": {
+   "en": "Sport",
+   "es": "Deporte",
+   "state": "draft"
+  },
+  "learn.state-symbols.spotted-newt-notophthalmus-viridescens": {
+   "en": "Spotted newt, <i>Notophthalmus viridescens</i>",
+   "es": "Tritón moteado, <i>Notophthalmus viridescens</i>",
+   "state": "draft"
+  },
+  "learn.state-symbols.stone-food-and-sport": {
+   "en": "Stone, Food and Sport",
+   "es": "Piedra, alimentos y deporte",
+   "state": "draft"
+  },
+  "learn.state-symbols.striped-bass-roccus-saxatilis": {
+   "en": "Striped bass, <i>Roccus saxatilis</i>",
+   "es": "Lubina rayada, <i>Roccus saxatilis</i>",
+   "state": "draft"
+  },
+  "learn.state-symbols.symbol": {
+   "en": "Symbol",
+   "es": "Símbolo",
+   "state": "draft"
+  },
+  "learn.state-symbols.tartan": {
+   "en": "Tartan",
+   "es": "Tartán",
+   "state": "draft"
+  },
+  "learn.state-symbols.ten-songs-from-old-new-hampshire": {
+   "en": "Ten songs, from &ldquo;Old New Hampshire&rdquo; to &ldquo;Live Free or Die&rdquo;",
+   "es": "Diez canciones, de &ldquo;Old New Hampshire&rdquo; a &ldquo;Live Free or Die&rdquo;",
+   "state": "draft"
+  },
+  "learn.state-symbols.the-emblems-of-the-state": {
+   "en": "The Emblems of the State",
+   "es": "Los emblemas del estado",
+   "state": "draft"
+  },
+  "learn.state-symbols.the-emblems-of-the-state-2": {
+   "en": "The emblems of the state",
+   "es": "Los emblemas del estado",
+   "state": "draft"
+  },
+  "learn.state-symbols.the-flag-over-the-state-house": {
+   "en": "The Flag Over the State House",
+   "es": "La bandera sobre el Capitolio",
+   "state": "draft"
+  },
+  "learn.state-symbols.the-flags-section-was-last-changed": {
+   "en": "The flag&rsquo;s section was last changed in 1931, by its source note. Every bill in the record that proposed to change it, or to study it, has died or gone to interim study.",
+   "es": "La sección de la bandera se modificó por última vez en 1931, según su nota de fuentes. Cada proyecto de ley del registro que propuso cambiarla, o estudiarla, murió o pasó a estudio interino.",
+   "state": "draft"
+  },
+  "learn.state-symbols.the-frigate-raleigh-on-the-stocks": {
+   "en": "The frigate Raleigh on the stocks, the sun rising over the sea, a laurel border and the date 1776",
+   "es": "La fragata Raleigh en el astillero, el sol que sale sobre el mar, un borde de laurel y la fecha 1776",
+   "state": "draft"
+  },
+  "learn.state-symbols.the-last-was-added-in-2007": {
+   "en": "The last was added in 2007, by <a href=\"bill/2007/hb482.html\">HB 482</a>.",
+   "es": "La última se añadió en 2007, por <a href=\"bill/2007/hb482.html\">HB 482</a>.",
+   "state": "draft"
+  },
+  "learn.state-symbols.the-law-lists-them-in-this": {
+   "en": "The law lists them in this order (<a href=\"/laws/3#s7\">RSA 3:7</a>):",
+   "es": "La ley las enumera en este orden (<a href=\"/laws/3#s7\">RSA 3:7</a>):",
+   "state": "draft"
+  },
+  "learn.state-symbols.the-law-names-them-as-different": {
+   "en": "The law names them as different symbols. The purple lilac is the state flower and the pink lady&rsquo;s slipper the state wildflower. The striped bass is the state saltwater game fish and the brook trout the state freshwater fish; both fish were named in 1994.",
+   "es": "La ley los nombra como símbolos distintos. La lila púrpura es la flor del estado y la zapatilla de dama rosada, la flor silvestre del estado. La lubina rayada es el pez de pesca deportiva de agua salada del estado y la trucha de arroyo, el pez de agua dulce del estado; ambos peces se nombraron en 1994.",
+   "state": "draft"
+  },
+  "learn.state-symbols.the-motto-is-the-words-live": {
+   "en": "The motto is the words &ldquo;Live Free or Die,&rdquo; written by General John Stark on July 31, 1809. The flag is blue, with the state seal at its center inside a wreath of laurel leaves and nine stars. The seal is two inches across, and the law sets out its detail &ldquo;and no other&rdquo;: the frigate Raleigh on the stocks, the sun rising over the sea, a granite boulder, and the date 1776 between two stars. The emblem may be placed on the state&rsquo;s printed material about developing its recreational, industrial and agricultural resources.",
+   "es": "El lema son las palabras &ldquo;Live Free or Die&rdquo; (&ldquo;Vivir libre o morir&rdquo;), escritas por el general John Stark el 31 de julio de 1809. La bandera es azul, con el sello del estado en el centro dentro de una corona de hojas de laurel y nueve estrellas. El sello mide dos pulgadas de diámetro, y la ley fija su detalle &ldquo;y ningún otro&rdquo;: la fragata Raleigh en el astillero, el sol que sale sobre el mar, una roca de granito y la fecha 1776 entre dos estrellas. El emblema puede ponerse en el material impreso del estado sobre el desarrollo de sus recursos recreativos, industriales y agrícolas.",
+   "state": "draft"
+  },
+  "learn.state-symbols.the-new-hampshire-state-march-words": {
+   "en": "&ldquo;The New Hampshire State March,&rdquo; words and music by Rene Richards",
+   "es": "&ldquo;The New Hampshire State March,&rdquo; letra y música de Rene Richards",
+   "state": "draft"
+  },
+  "learn.state-symbols.the-old-man-of-the-mountain": {
+   "en": "The Old Man of the Mountain in an elliptical panel, with the motto below and the words New Hampshire above",
+   "es": "El Viejo de la Montaña (Old Man of the Mountain) en un panel elíptico, con el lema abajo y las palabras New Hampshire arriba",
+   "state": "draft"
+  },
+  "learn.state-symbols.the-old-man-of-the-mountain-2": {
+   "en": "&ldquo;The Old Man of the Mountain,&rdquo; words and music by Paul Belanger",
+   "es": "&ldquo;The Old Man of the Mountain,&rdquo; letra y música de Paul Belanger",
+   "state": "draft"
+  },
+  "learn.state-symbols.the-plants-and-animals-the-law": {
+   "en": "The plants and animals the law names",
+   "es": "Las plantas y los animales que nombra la ley",
+   "state": "draft"
+  },
+  "learn.state-symbols.the-pow-mia-flag-is-displayed": {
+   "en": "The POW-MIA flag is displayed above the State House, all state facilities and the state&rsquo;s military facilities whenever the flag of the United States is flown (<a href=\"/laws/3#s3-a\">RSA 3:3-a</a>). Only flags officially recognized by the federal government may be flown over the State House. A state, United States or POW-MIA flag bought with state funds or displayed in a state facility must be made in the United States, if it was acquired after that section took effect (<a href=\"/laws/3#s4-a\">RSA 3:4-a</a>).",
+   "es": "La bandera POW-MIA se exhibe sobre el Capitolio, en todas las instalaciones del estado y en las instalaciones militares del estado siempre que ondea la bandera de los Estados Unidos (<a href=\"/laws/3#s3-a\">RSA 3:3-a</a>). Solo las banderas reconocidas oficialmente por el gobierno federal pueden ondear sobre el Capitolio. Una bandera del estado, de los Estados Unidos o POW-MIA comprada con fondos del estado o exhibida en una instalación del estado debe estar fabricada en los Estados Unidos, si se adquirió después de que esa sección entrara en vigor (<a href=\"/laws/3#s4-a\">RSA 3:4-a</a>).",
+   "state": "draft"
+  },
+  "learn.state-symbols.the-seals-source-note-opens-with": {
+   "en": "The seal&rsquo;s source note opens with entries that name no year, so 1931 is the first year it gives. The tartan&rsquo;s colors each stand for something, its section says: purple for the purple finch and the purple lilac, the state bird and the state flower; green for the forests; black for the granite mountains; white for the snow; and red for all state heroes.",
+   "es": "La nota de fuentes del sello empieza con entradas que no dan año, así que 1931 es el primer año que da. Cada color del tartán representa algo, dice su sección: el púrpura, el pinzón púrpura y la lila púrpura, el ave y la flor del estado; el verde, los bosques; el negro, las montañas de granito; el blanco, la nieve; y el rojo, a todos los héroes del estado.",
+   "state": "draft"
+  },
+  "learn.state-symbols.the-state-flag-is-displayed-above": {
+   "en": "The state flag is displayed above the State House whenever the legislature is in session, during meetings of the Governor and Council when expedient, and on other occasions the Governor designates (<a href=\"/laws/3#s3\">RSA 3:3</a>). The Governor may make rules for its use and display, and the law is to be read &ldquo;to encourage the display of the state flag on public buildings&rdquo; (<a href=\"/laws/3#s4\">RSA 3:4</a>).",
+   "es": "La bandera del estado se exhibe sobre el Capitolio siempre que la legislatura está en sesión, durante las reuniones del Gobernador y el Consejo cuando conviene, y en otras ocasiones que el Gobernador designe (<a href=\"/laws/3#s3\">RSA 3:3</a>). El Gobernador puede dictar reglas para su uso y exhibición, y la ley debe leerse de modo que &ldquo;fomente la exhibición de la bandera del estado en los edificios públicos&rdquo; (<a href=\"/laws/3#s4\">RSA 3:4</a>).",
+   "state": "draft"
+  },
+  "learn.state-symbols.the-stones-foods-and-sport-the": {
+   "en": "The stones, foods and sport the law names",
+   "es": "Las piedras, los alimentos y el deporte que nombra la ley",
+   "state": "draft"
+  },
+  "learn.state-symbols.the-year-beside-each-is-the": {
+   "en": "The year beside each is the earliest year the section&rsquo;s source note gives. Where the law is from 1989 or later, the bill that made it is linked to its page in this site&rsquo;s record.",
+   "es": "El año junto a cada uno es el primer año que da la nota de fuentes de su sección. Donde la ley es de 1989 o posterior, el proyecto de ley que la creó enlaza con su página en el registro de este sitio.",
+   "state": "draft"
+  },
+  "learn.state-symbols.this-site-s-bill-record-1989": {
+   "en": "This site's bill record, 1989 to 2026",
+   "es": "El registro de proyectos de ley de este sitio, de 1989 a 2026",
+   "state": "draft"
+  },
+  "learn.state-symbols.this-site-s-bill-record-begins": {
+   "en": "This site's bill record begins in 1989, so a symbol named before then has no bill page here; its year is the one its section's source note gives. The proposals that did not pass were found by their titles, so a symbol proposed inside a bill titled for something else would not be among them.",
+   "es": "El registro de proyectos de ley de este sitio empieza en 1989, así que un símbolo nombrado antes no tiene aquí página de proyecto de ley; su año es el que da la nota de fuentes de su sección. Las propuestas que no se aprobaron se encontraron por sus títulos, así que un símbolo propuesto dentro de un proyecto de ley titulado por otro asunto no estaría entre ellas.",
+   "state": "draft"
+  },
+  "learn.state-symbols.this-sites-bill-record-goes-back": {
+   "en": "This site&rsquo;s bill record goes back to 1989, and some of its bills proposed a symbol that never became law. Each line is the record&rsquo;s own: the bill&rsquo;s number, its year, its title and how it ended.",
+   "es": "El registro de proyectos de ley de este sitio llega hasta 1989, y algunos de sus proyectos propusieron un símbolo que nunca llegó a ser ley. Cada línea es la del propio registro: el número del proyecto, su año, su título y cómo terminó.",
+   "state": "draft"
+  },
+  "learn.state-symbols.title": {
+   "en": "New Hampshire’s State Symbols",
+   "es": "Los símbolos del estado de New Hampshire",
+   "state": "draft"
+  },
+  "learn.state-symbols.tree": {
+   "en": "Tree",
+   "es": "Árbol",
+   "state": "draft"
+  },
+  "learn.state-symbols.two-of-them-came-back-the": {
+   "en": "Two of them came back. The red-tailed hawk, killed as HB 373 in 2015, became the state raptor as <a href=\"bill/2019/hb280.html\">HB 280</a> in 2019. The Virginia opossum&rsquo;s own bill, SB 30, died in 2025 when the chambers did not agree on a version; the same designation passed that year inside <a href=\"bill/2025/hb776.html\">HB 776-FN</a>, a bill about the crime of aggravated driving while intoxicated.",
+   "es": "Dos de ellos volvieron. El halcón de cola roja, rechazado como HB 373 en 2015, se convirtió en el ave rapaz del estado como <a href=\"bill/2019/hb280.html\">HB 280</a> en 2019. El proyecto de ley propio de la zarigüeya de Virginia, SB 30, murió en 2025 cuando las cámaras no acordaron una versión; la misma designación se aprobó ese año dentro de <a href=\"bill/2025/hb776.html\">HB 776-FN</a>, un proyecto de ley sobre el delito de conducir en estado de ebriedad con agravantes.",
+   "state": "draft"
+  },
+  "learn.state-symbols.vegetable": {
+   "en": "Vegetable",
+   "es": "Verdura",
+   "state": "draft"
+  },
+  "learn.state-symbols.virginia-opossum-didelphis-virginiana": {
+   "en": "Virginia opossum, <i>Didelphis virginiana</i>",
+   "es": "Zarigüeya de Virginia, <i>Didelphis virginiana</i>",
+   "state": "draft"
+  },
+  "learn.state-symbols.what-are-the-ten-state-songs": {
+   "en": "What are the ten state songs?",
+   "es": "¿Cuáles son las diez canciones del estado?",
+   "state": "draft"
+  },
+  "learn.state-symbols.what-the-law-names": {
+   "en": "What the Law Names",
+   "es": "Lo que nombra la ley",
+   "state": "draft"
+  },
+  "learn.state-symbols.what-the-law-names-2": {
+   "en": "What the law names",
+   "es": "Lo que nombra la ley",
+   "state": "draft"
+  },
+  "learn.state-symbols.white-birch-betula-papyrifera": {
+   "en": "White birch, <i>Betula papyrifera</i>",
+   "es": "Abedul blanco, <i>Betula papyrifera</i>",
+   "state": "draft"
+  },
+  "learn.state-symbols.white-potato": {
+   "en": "White potato",
+   "es": "Papa blanca",
+   "state": "draft"
+  },
+  "learn.state-symbols.white-tail-deer": {
+   "en": "White tail deer",
+   "es": "Venado de cola blanca",
+   "state": "draft"
+  },
+  "learn.state-symbols.who-counts-as-a-new-hampshire": {
+   "en": "Who counts as a New Hampshire native?",
+   "es": "¿Quién cuenta como nativo de New Hampshire?",
+   "state": "draft"
+  },
+  "learn.state-symbols.why-are-there-two-state-flowers": {
+   "en": "Why are there two state flowers and two state fish?",
+   "es": "¿Por qué hay dos flores del estado y dos peces del estado?",
+   "state": "draft"
+  },
+  "learn.state-symbols.wildcat": {
+   "en": "Wildcat",
+   "es": "Felino silvestre",
+   "state": "draft"
+  },
+  "learn.state-symbols.wildflower": {
+   "en": "Wildflower",
+   "es": "Flor silvestre",
+   "state": "draft"
+  },
+  "learn.state-symbols.year": {
+   "en": "Year",
+   "es": "Año",
    "state": "draft"
   },
   "learn.term.caption": {
