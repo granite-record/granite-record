@@ -536,7 +536,10 @@ DOCS_MOST = 50_000_000
 # check and seed-kit send it -- a journal the readers refused, back in the
 # build that stops on it. The causes are the night's own words for those two
 # (nightly.UNTEXTED_SAID, which preflight holds these to), read from the
-# night's verdict as pull brought it (VERDICTS["last-night.json"]).
+# night's verdict as pull brought it (VERDICTS["last-night.json"]). Since the
+# second review of 26 October 2026 the night keeps no PDF whose text was not
+# its own at all (nightly.tried_out), so in practice only a journal's comes
+# down apart.
 DOCS_HELD = "archive/documents-held"
 DOCS_HELD_CAUSES = ("not_its_own", "journal_check")
 # What pull takes from logs/<day>/, and the folder each goes to. Anything

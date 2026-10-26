@@ -506,18 +506,23 @@ def stand_down(who, instead=""):
 # it on. The drain leaves to the night only the documents it will still ask
 # for; one it will not -- refused once, tried three times, no longer listed,
 # or held back for a person -- is a person's, and the drain takes it
-# (fetch_calendar_archive.nights_to_ask). fetch_senate_calendars stands down
+# (fetch_calendar_archive.nights_to_ask), one held back only when a person
+# names it (--take). fetch_senate_calendars stands down
 # for those years too, and fetch_committee_reports reads the House calendars
 # on this disk instead of asking (the review of 26 October 2026).
 #
 # A NUMBER ONLY WHEN THE NIGHT CAN FETCH (the review of 26 October 2026). A
-# night whose switch is a number but whose text canary did not pass -- no
-# fixtures, or the pinned pdftotext not installed -- fetches nothing, and
-# writes "not fetching: ..." here instead of the number
-# (nightly.NIGHT_NOT_FETCHING), so this laptop takes those years back until
-# it passes. A late start or a list that did not complete is one night's and
-# leaves the number: taken back for a day, the laptop would race the next
-# night for documents its own fetch had not yet sent to the bucket.
+# night whose switch is a number but whose text canary ran and did not pass
+# -- no fixtures, another pdftotext's text -- or whose kit still gives the
+# laptop the texts fetches nothing, and writes "not fetching: ..." here
+# instead of the number (nightly.NIGHT_NOT_FETCHING), so this laptop takes
+# those years back until it can. A late start, a list that did not complete,
+# a night that ended before its canary ran and a pinned pdftotext that did
+# not download are one night's and leave the night before's number
+# (nightly.documents_carried): taken back for a day, the laptop would race
+# the next night for documents its own fetch had not yet sent to the bucket.
+# With the switch off the verdict does not say it at all, which reads here as
+# off.
 #
 # The laptop knows the switch only from the night's own verdict, which cloud.py
 # pull brings to archive/cloud/last-night.json (cloud.VERDICTS). On a laptop

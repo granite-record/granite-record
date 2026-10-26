@@ -15,6 +15,9 @@ Thirty years of calendars and journals, a night at a time.
     python3 src/fetch/gc_web/fetch_calendar_archive.py --settle "SJ 15 June 18, 2026.pdf"
                                                                           # a possible rename that is
                                                                           #   the same journal; no network
+    python3 src/fetch/gc_web/fetch_calendar_archive.py --take "No 27 June 19 2025.pdf"
+                                                                          # these documents and no
+                                                                          #   others, by a person's word
 
 ARCHIVE_PLAN.md step 4 (the person's plan, in private/ and not in the
 repository), built the way that page says: DISCOVERY AND FETCHING ARE
@@ -184,7 +187,10 @@ rule by rule (night_plan() and take_night(), below):
                    NIGHT_BYTES_MOST) or it is not taken
   when it stops    one refusal, recorded: status 2. The first failure that is
                    not a 404, or a second 404: status 1. Nothing is asked
-                   again that night
+                   again that night; and a document whose connection was
+                   dropped, or that answered with a redirect, is not asked
+                   for again without a person (all NIGHT_TRIES tries
+                   counted, the review of 26 October 2026)
   what it writes   the queue to --out and nowhere else, and beside it each
                    request and how it ended (ASKED_NAME) -- both before every
                    request as well, the try already counted, so a kill at the
@@ -204,7 +210,11 @@ siblings came before "No 27 June 19 2025" on the page, all four SC027.pdf:
 the first saved there, and the base edition then counted as held without
 ever being asked for. merged() gives a new row whose name or label says
 Supplement its source name, as _local() already does for a name with no
-number. A path on file never moves.
+number; and a wanted row whose path another row tonight's lists name has,
+one of its own (own_path): no PDF of a wanted row is held anywhere. No
+other path on file moves. Both only on a night that fetches the documents
+itself (--night-fetches; the review of 26 October 2026): with the switch
+off, the list's paths are given as before.
 
 AND THE LAPTOP LEAVES THEM TO IT. On a laptop that has stood down, --night
 refuses (refusal.stand_down); and once the night's own verdict says it
@@ -220,15 +230,21 @@ once the year's list has closed -- or one the night holds back for a person
 is never asked for by the night, and its verdict calls it a person's. So the
 drain does not leave those to the night, where nobody would have fetched
 them: it takes them when a person runs it, and says how many
-(nights_to_ask). And its own record of a row it leaves to the night goes,
+(nights_to_ask) -- but one held back for a person only when a person names
+it (--take NAME): taken unasked, the second of two at one path was marked
+held from the first one's file, the loss the night holds them back to
+prevent. And its own record of a row it leaves to the night goes,
 so that an older line of this machine's is not laid over the night's.
 
-THE NEWER RECORD WINS (the review of 26 October 2026). The laptop's record
-of a document is laid over the night's list only where it is the newer one
-(laptop_wins): it has the document, or a person's word on it (--settle), or
-it tried more often than the night's row says, and the night's row is not
-gone, failed or refused. Laid over every row it named, an old "wanted, one
-try" undid the night's own 404 or refusal every night.
+THE NEWER RECORD WINS (the review of 26 October 2026). While the night
+fetches the documents itself, the laptop's record of a document is laid
+over the night's list only where it is the newer one (laptop_wins): it has
+the document, or a person's word on it (--settle), or it tried more often
+than the night's row says, and the night's row is not gone, failed or
+refused. Laid over every row it named, an old "wanted, one try" undid the
+night's own 404 or refusal every night. With the switch off, every field the
+drain keeps is laid over, as before: then the night's rows carry only the
+laptop's own older errors.
 """
 
 # The bootstrap: _paths.py, found above this file, puts every code folder on the import path.
@@ -432,20 +448,51 @@ def laptop_wins(night, laptop):
     return _tries(laptop) > _tries(night)
 
 
-def load_queue():
+def nights_fetch():
+    """Whether GitHub's night fetches the newest documents itself, as this
+    machine can tell: its verdict, as pull brought it, says its switch is a
+    number (refusal.night_documents) -- on a laptop that has stood down, and
+    never on GitHub's own machine, where the night says so with
+    --night-fetches."""
+    return refusal.night_documents() is not None
+
+
+def load_queue(newer=None):
     """The queue, with what a stood-down laptop's drain has fetched laid over
-    it where that is the newer record (laptop_wins): the list is the night's
-    file and the laptop's fetching its own, and everything here reads them as
-    one."""
+    it: the list is the night's file and the laptop's fetching its own, and
+    everything here reads them as one.
+
+    WHILE THE NIGHT FETCHES THE DOCUMENTS ITSELF, ONLY THE NEWER RECORD
+    (laptop_wins; `newer`, which is nights_fetch() unless the caller says),
+    and only for a row of the years it fetches (nights_year). Otherwise
+    every field the drain keeps, as it was before 26 October 2026
+    (the review of 26 October 2026: applied with the switch off, an old row's
+    refusal -- the 664 Senate calendars of 1998-2008 carry "HTTP Error 403"
+    -- outranked the laptop's own newer 404 or third failure, and the drain
+    asked for a document that had answered 404, every run)."""
+    if newer is None:
+        newer = nights_fetch()
     rows = read_rows(QUEUE)
     mine = {_key(r): r for r in read_rows(fetched_file())}
     for r in rows:
         r["label"] = r.get("label") or ""
         m = mine.get(_key(r))
-        if m and laptop_wins(r, m):
+        if m and (laptop_wins(r, m) if newer and nights_year(r) else True):
             for f in DRAIN_FIELDS:
                 r[f] = m.get(f) or ""
     return rows
+
+
+def nights_year(r):
+    """Whether a row is of the years the night fetches -- this year and last,
+    and any later -- the only ones whose record in the night's list can be
+    the night's own. Of an older year the night's row carries only what it
+    took from the laptop's record, and the laptop's is always the newer: the
+    664 Senate calendars of 1998-2008 kept the laptop's 403 of 9 September in
+    the night's list, and laid over only where laptop_wins, it outranked the
+    laptop's own later 404 there too (the review of 26 October 2026)."""
+    year = str(r.get("year") or "")
+    return year.isdigit() and int(year) >= today().year - 1
 
 
 def save_queue(rows):
@@ -768,15 +815,70 @@ def listing(held, day=None, on_file=None):
     return lists, len(asked)
 
 
-def merged(rows, lists):
+def _with_file(path, name):
+    """`path` with its file name replaced by `name`, its folders as written
+    (the queue was written on Windows, with backslashes)."""
+    m = re.match(r"(.*[\\/])", path or "")
+    return (m.group(1) if m else "") + name
+
+
+def own_path(r, rows, now, supplements_only=False):
+    """The path a wanted row named by tonight's lists (`now`, as lists_of()
+    gives them) takes when another row those lists name has its path, or ""
+    where it keeps its own: _new_local()'s, where that is another -- a
+    supplement's own name -- and otherwise its own source name, as _local()
+    gives a name with no number (never with `supplements_only`, merged's
+    first pass, so that of a supplement and its base edition both wanted it
+    is the supplement that moves). Never a path another row of `rows` has.
+
+    A SHARED PATH REPAIRED BY THE NIGHT (the review of 26 October 2026).
+    Rows merged before supplements kept their own names share one -- the 2026
+    Senate list's "No 21 Supplement" and "No 21" are both SC021.pdf -- and no
+    PDF of a wanted row is held anywhere, so it can be given a path of its
+    own without a person: the one the night then fetches it to. Only while
+    the night fetches the documents itself (merged's `own`)."""
+    if r.get("state") != "wanted":
+        return ""
+    k = (r.get("chamber"), r.get("kind"), str(r.get("year")))
+    if r.get("name") not in now.get(k, ()) or k[:2] not in SOURCES:
+        return ""
+    mine = (r.get("path") or "").replace("\\", "/").lower()
+    if not any(x is not r and (x.get("path") or "").replace("\\", "/").lower() == mine
+               and x.get("name") in now.get((x.get("chamber"), x.get("kind"),
+                                             str(x.get("year"))), ())
+               for x in rows):
+        return ""
+    prefix = SOURCES[k[:2]][4]
+    have = (r.get("path") or "").replace("\\", "/").rsplit("/", 1)[-1]
+    name = _new_local(prefix, r.get("name") or "", r.get("label") or "")
+    if supplements_only and name.lower() == have.lower():
+        return ""
+    name = name if name.lower() != have.lower() else (r.get("name") or "")
+    new = _with_file(r.get("path") or "", name)
+    taken = {(x.get("path") or "").replace("\\", "/").lower() for x in rows}
+    if not name or name.lower() == have.lower() or new.replace("\\", "/").lower() in taken:
+        return ""
+    return new
+
+
+def merged(rows, lists, own=False):
     """The queue with tonight's lists in it: (rows, the rows added).
 
     Nothing on file is dropped and no address on file is touched. A list
     read tonight is put in the page's own order, newest first as the General
     Court lists it, with what is new marked wanted; a document on file that
     tonight's page no longer lists stays, after them. A row gains the label
-    the page shows for it."""
+    the page shows for it.
+
+    `own`: GitHub's night fetches the documents itself tonight (THE NEWEST
+    DOCUMENTS ARE THE NIGHT'S TO FETCH). Only then does a new supplement keep
+    its own name (_new_local), and a wanted row whose path another row
+    tonight's lists name has take one of its own (own_path) -- the only path
+    on file that ever moves. With the night's documents switched off, paths
+    are given as they were before 26 October 2026 (the review of 26 October
+    2026: the switch off changes nothing the night writes)."""
     out = [dict(r) for r in rows]
+    path_of = _new_local if own else _local
     added = []
     for li in lists:
         ch, kind, year = li["chamber"], li["kind"], li["year"]
@@ -796,7 +898,7 @@ def merged(rows, lists):
                      # pattern: the viewer address its own button would open.
                      "url": index + VIEWER + urllib.parse.quote(
                          li["directory"] + name, safe=""),
-                     "path": str(Path(outdir) / year / _new_local(prefix, name, label)),
+                     "path": str(Path(outdir) / year / path_of(prefix, name, label)),
                      "state": "wanted", "attempts": "0", "error": "",
                      "bytes": "", "fetched": "", "label": ""}
                 have[name] = r
@@ -818,6 +920,14 @@ def merged(rows, lists):
             at = older[0] if older else (mine[-1] + 1 if mine else len(out))
         out = [r for r in out[:at] if id(r) not in ids] + fresh + rest \
             + [r for r in out[at:] if id(r) not in ids]
+    if own:
+        now = {(li["chamber"], li["kind"], str(li["year"])): [d["name"] for d in li["documents"]]
+               for li in lists if not li.get("unanswered")}
+        for supplements_only in (True, False):
+            for r in out:
+                new = own_path(r, out, now, supplements_only)
+                if new:
+                    r["path"] = new
     return out, added
 
 
@@ -878,7 +988,7 @@ def shortfall(was, rec, last=None):
     return out
 
 
-def judge(was, new, rec, last=None, shorter=False):
+def judge(was, new, rec, last=None, shorter=False, repath=False):
     """Why tonight's list may not replace the one on file, or "" when it may.
 
     The night's rule for every fetch, in this file's terms: whole or not at
@@ -898,7 +1008,10 @@ def judge(was, new, rec, last=None, shorter=False):
                  the night passes it once the same list has come back short
                  the same way on enough nights running to be the page's own
       a merge    every document on file is still in the queue, at the
-                 address and the path it had
+                 address and the path it had -- but, on a night that
+                 fetches the documents itself (`repath`), a wanted document
+                 whose path another that tonight's lists name has, given one
+                 of its own exactly as own_path() gives it
       their own  what is new is named by a list read tonight, is marked
                  wanted, and its address is the viewer's with the page's own
                  folder and the page's own name
@@ -961,8 +1074,17 @@ def judge(was, new, rec, last=None, shorter=False):
     if lost:
         return (f"{len(lost)} of the {len(was)} documents on file "
                 f"{'is' if len(lost) == 1 else 'are'} not in it")
-    if any((now[_key(r)].get(f) or "") != (r.get(f) or "") for r in was for f in ("url", "path")):
-        return "it changes the address or the path of a document on file"
+    named = {k: names for k, (names, _) in got.items() if k not in silent}
+    for r in was:
+        n = now[_key(r)]
+        if (n.get("url") or "") != (r.get("url") or ""):
+            return "it changes the address or the path of a document on file"
+        if (n.get("path") or "") != (r.get("path") or ""):
+            # The one path that moves (own_path), and only as it gives it.
+            old = dict(n, path=r.get("path") or "")
+            if not repath or own_path(old, [old if x is n else x for x in new],
+                                      named) != (n.get("path") or ""):
+                return "it changes the address or the path of a document on file"
     old = {_key(r) for r in was}
     for r in new:
         if _key(r) in old:
@@ -1012,7 +1134,7 @@ def take_listing(a, rows):
                      "stopped": e.why}, indent=1) + "\n", encoding="utf-8", newline="\n")
             return e.code
     rec = {"read": time.strftime("%Y-%m-%dT%H:%M:%S"), "requests": n, "lists": lists}
-    new, added = merged(rows, lists)
+    new, added = merged(rows, lists, own=a.own)
     if a.out:
         out = Path(a.out)
         listed = out.with_name(LISTED_NAME)
@@ -1023,7 +1145,7 @@ def take_listing(a, rows):
             last = json.loads(listed_file().read_text(encoding="utf-8"))
         except (OSError, ValueError):
             last = None
-        why = judge(read_rows(QUEUE), new, rec, last)
+        why = judge(read_rows(QUEUE), new, rec, last, repath=a.own)
         if why:
             print(f"\nNot installed: {why}. {QUEUE} is as it was.")
             return 1
@@ -1062,6 +1184,10 @@ NIGHT_PAUSE_LEAST = 15.0
 NIGHT_MOST = 8
 NIGHT_SECONDS = 600
 NIGHT_TRIES = 3
+# The night before's list must be this much older than tonight's: a night is
+# a day apart, and a second run the same morning finds the first run's list
+# on file (night_plan; the review of 26 October 2026).
+LISTED_APART_HOURS = 20
 NIGHT_TIMEOUT = 60
 NIGHT_DEADLINE = 90
 NIGHT_BYTES_MOST = 50_000_000
@@ -1220,13 +1346,22 @@ def held_back(rows, rec):
                 share one: the 2026 Senate list's "No 21 Supplement" and
                 "No 21" are both SC021.pdf, so
                 the second download went over the first, or the base edition
-                was counted held from the supplement's text. A person repairs
-                the path; until then neither is asked for or held from text
+                was counted held from the supplement's text. On a night that
+                fetches the documents itself, the list gives the wanted one a
+                path of its own (own_path); until then neither is asked for
+                or held from text
       renamed   a journal with the number of a held journal of its chamber
                 and year, whose own name that list no longer gives: a journal
                 is named by the file the General Court posted, so a rename is
                 a second row, a second fetch and a second text every reader
-                of journals reads twice"""
+                of journals reads twice
+      both_held two held rows that list names share a path: one document's
+                file is there, and the other was never fetched -- the old
+                drain marked it held from that file (the review of 26 October
+                2026: a pair already both held was never reported). Said once
+                a pair, against the later row, until a text is beside either
+                one's own name, which the laptop's drain gives the one a
+                person names (--take NAME)"""
     now, dirs = lists_of(rec), directories_of(rec)
     if not now:
         return {}
@@ -1264,6 +1399,17 @@ def held_back(rows, rec):
                     if h.get("name") not in now.get(k, ())]
             if gone:
                 out[id(r)] = ("renamed", gone[0])
+    for r in rows:
+        k = (r.get("chamber"), r.get("kind"), str(r.get("year")))
+        if r.get("state") != "held" or r.get("name") not in now.get(k, ()):
+            continue
+        pair = paths.get(_disk(r).as_posix().lower(), [])
+        before = [x for x in pair[:next(i for i, x in enumerate(pair) if x is r)]
+                  if x.get("state") == "held" and x.get("name") in now.get(
+                      (x.get("chamber"), x.get("kind"), str(x.get("year"))), ())]
+        if before and not any((_disk(x).parent / (x.get("name") or "x")).with_suffix(".txt")
+                              .exists() for x in (r, before[0])):
+            out[id(r)] = ("both_held", before[0])
     return out
 
 
@@ -1280,6 +1426,8 @@ def night_plan(rows, tonight, before, most):
                 text, for a person to repair (held_back)
       unlisted  [(row, None)]: rows whose own address is not the one
                 tonight's list gives them, not asked (held_back)
+      both_held [(row, the other)]: two held rows at one path, one of them
+                never fetched, for a person (held_back)
       new       rows listed tonight for the first time, which wait a night
       refused   rows a refusal is recorded against, never asked
       tried     rows asked NIGHT_TRIES times already, which a person decides
@@ -1291,7 +1439,11 @@ def night_plan(rows, tonight, before, most):
                 record installed tonight) AND by the night before's
                 (`before`), so it has been listed for at least a night --
                 a document can be listed before its upload is done, and the
-                newest are posted under short names and renamed; no refusal
+                newest are posted under short names and renamed. The night
+                before's read at least LISTED_APART_HOURS before tonight's:
+                a second run the same morning finds the first run's list on
+                file, and read as the night before's it let through what was
+                first listed that morning (the review of 26 October 2026); no refusal
                 recorded against it; and asked fewer than NIGHT_TRIES times
       held back its address not the one tonight's list gives it, or its path
                 another row's (held_back, which says why): neither asked for
@@ -1311,7 +1463,7 @@ def night_plan(rows, tonight, before, most):
     Nothing here asks or writes, so the night can say what it would ask
     without asking it (a dry run's "would ask")."""
     out = {"ask": [], "waiting": 0, "text": [], "renames": [], "shared": [], "unlisted": [],
-           "new": 0, "refused": 0, "tried": 0, "why": ""}
+           "both_held": [], "new": 0, "refused": 0, "tried": 0, "why": ""}
     if not (isinstance(tonight, dict) and lists_of(tonight)):
         out["why"] = "tonight's list of calendars and journals is not on file"
         return out
@@ -1321,6 +1473,13 @@ def night_plan(rows, tonight, before, most):
     if tonight.get("read") == before.get("read"):
         out["why"] = ("tonight's list is the night before's, read at the same time: it was "
                       "not installed tonight")
+        return out
+    apart = _hours_apart(before.get("read"), tonight.get("read"))
+    if apart is None or apart < LISTED_APART_HOURS:
+        out["why"] = ("the night before's list is from this morning: the list on file was read "
+                      f"less than {LISTED_APART_HOURS} hours before tonight's, by an earlier "
+                      "run" if apart is not None else
+                      "when the two lists were read is not on file")
         return out
     now, then = lists_of(tonight), lists_of(before)
     eligible = []
@@ -1339,6 +1498,8 @@ def night_plan(rows, tonight, before, most):
         else:
             eligible.append(r)
     back = held_back(rows, tonight)
+    out["both_held"] = [(r, back[id(r)][1]) for r in rows
+                        if back.get(id(r), ("", None))[0] == "both_held"]
     blocks = {}
     for r in eligible:
         why, other = back.get(id(r), ("", None))
@@ -1358,6 +1519,18 @@ def night_plan(rows, tonight, before, most):
     order = [r for block in blocks.values() for r in reversed(block)]
     out["ask"], out["waiting"] = order[:max(0, most)], max(0, len(order) - max(0, most))
     return out
+
+
+def _hours_apart(earlier, later):
+    """Hours from one listing record's "read" to another's, or None where
+    either will not read. Both are written the same way, by take_listing on
+    the same kind of machine."""
+    try:
+        a = datetime.strptime(str(earlier), "%Y-%m-%dT%H:%M:%S")
+        b = datetime.strptime(str(later), "%Y-%m-%dT%H:%M:%S")
+    except ValueError:
+        return None
+    return (b - a).total_seconds() / 3600
 
 
 def whole_pdf(blob):
@@ -1454,7 +1627,9 @@ def take_night(a, rows, held):
     A FAILURE COUNTS AS A TRY AND WRITES NO ERROR. The Calendar page's picker
     drops a row that carries an error (calendar_documents.linkable), and a
     night's dropped connection is no reason for a reader to lose the link to
-    a calendar the page lists. A refusal is written against its row, so that
+    a calendar the page lists. A dropped connection or a redirect counts as
+    all NIGHT_TRIES tries, so that the night never asks for that document
+    again without a person. A refusal is written against its row, so that
     nothing asks for that document again without a person -- beginning
     REFUSED_MARK, whatever the answer was -- and a 404 too, with the row
     gone, as the drain writes it."""
@@ -1578,6 +1753,17 @@ def take_night(a, rows, held):
                         code, stopped = 1, "a second document the list names was not found"
                         break
                     continue
+                # A DROP OR A REDIRECT IS NEVER ASKED AGAIN WITHOUT A PERSON
+                # (the review of 26 October 2026). refusal.classify calls a
+                # dropped connection this address's usual way of refusing, and
+                # a redirect is one this does not follow; counted as one try
+                # each, the same document was asked first every night, three
+                # nights running, and a refusal never went on file. Its tries
+                # are made the most the night gives -- no error is written, so
+                # the Calendar page keeps its link -- and it is a person's.
+                if kind == "dropped" or (isinstance(e, urllib.error.HTTPError)
+                                         and 300 <= e.code < 400):
+                    r["attempts"] = str(max(_tries(r), NIGHT_TRIES))
                 code, stopped = 1, ("a connection was dropped" if kind == "dropped"
                                     else f"a request {entry['ended']}")
                 break
@@ -1643,6 +1829,17 @@ def main():
                          "journal the night holds back as a possible rename that a person has "
                          "found is the same journal. Kept where the drain keeps what it "
                          "fetched, which the night's list then takes")
+    ap.add_argument("--night-fetches", action="store_true",
+                    help="(--listing) GitHub's night, on a night it fetches the documents "
+                         "itself: a new supplement keeps its own name, a wanted document "
+                         "whose path another listed one has is given its own, and this "
+                         "machine's record is laid over the list only where it is the "
+                         "newer. nightly.py passes it, and only then")
+    ap.add_argument("--take", nargs="+", metavar="NAME",
+                    help="the drain takes the documents of these names and no others, "
+                         "whatever holds them back: one the night holds back for a person, "
+                         "one it did not find (gone), and one of two held at one path -- "
+                         "saved under its own name where another has its path")
     ap.add_argument("--status", action="store_true")
     ap.add_argument("--list", action="store_true")
     ap.add_argument("--chamber", choices=["H", "S", "both"], default="both")
@@ -1694,13 +1891,26 @@ def main():
             ap.error(f"--pause is at least {NIGHT_PAUSE_LEAST:g} seconds")
         if not 0 < a.seconds <= NIGHT_SECONDS:
             ap.error(f"--seconds is more than 0 and at most {NIGHT_SECONDS}")
+    if a.night_fetches and not a.listing:
+        ap.error("--night-fetches belongs to --listing")
+    if a.take is not None and (a.night is not None or a.listing or a.discover or a.status
+                               or a.list or a.settle is not None):
+        ap.error("--take names documents for the drain: it takes no --night, --listing, "
+                 "--discover, --status, --list or --settle")
     a.budget = 150 if a.budget is None else a.budget
     a.delay = 15.0 if a.delay is None else a.delay
 
     ROOT.mkdir(exist_ok=True)
     if a.settle is not None:
         return settle(a.settle)
-    rows = load_queue()
+    # WHETHER THE NIGHT FETCHES THE DOCUMENTS ITSELF (the review of 26 October
+    # 2026): on GitHub's machine its own --night, or --night-fetches from
+    # nightly.py; on a laptop that has stood down, the night's verdict as pull
+    # brought it. Only then is the laptop's record laid over the list only
+    # where it is the newer, and are paths given the night's way (merged).
+    # With the switch off, both are as they were.
+    a.own = a.night is not None or a.night_fetches or nights_fetch()
+    rows = load_queue(a.own)
 
     if a.status or a.list:
         by = Counter((r["chamber"], r["kind"], r["state"]) for r in rows)
@@ -1808,7 +2018,8 @@ def settle(names):
     night holds back a journal with the number of one held whose own name
     its list no longer gives, and warns of it every night, because fetched it
     is a second text every reader of journals reads twice. When a person
-    finds it is a different journal, the drain here takes it. When it is the
+    finds it is a different journal, the drain here takes it by its name
+    (--take NAME). When it is the
     same journal under a new name, this says so: kept where the drain keeps
     what it fetched (save_queue) -- the laptop's file, on a laptop that has
     stood down, whose settled row the night's list then takes (laptop_wins)
@@ -1825,7 +2036,9 @@ def settle(names):
             print(f"  not settled: no wanted document is named {n!r}")
         if hit:
             save_queue(rows)
-    print(f"{len(hit)} settled; the night never asks for a settled document")
+    print(f"{len(hit)} settled; the night never asks for a settled document"
+          + (f". The night learns of it only from the bucket: python3 src/ops/cloud.py "
+             f"seed-kit sends {fetched_file()}" if hit and list_is_the_nights() else ""))
     return 1 if missing else 0
 
 
@@ -1838,11 +2051,40 @@ def drain(rows, chambers, kinds, years, a, held):
     batch at the same address.
     """
     stopped = ""
+    take = set(getattr(a, "take", None) or ())
+    own = getattr(a, "own", None)
+    own = nights_fetch() if own is None else own
+    # Where a document is saved: its own path, but one --take names whose path
+    # another row has goes under its own name (own_file), never over the
+    # other's file and never held from it.
+    dest = {}
     try:
         todo = [r for r in rows
                 if r["state"] == "wanted"
                 and (r["chamber"] in chambers) and (r["kind"] in kinds)
                 and (not years or int(r["year"]) in years)]
+        if take:
+            # A PERSON NAMES WHAT IS TAKEN (the review of 26 October 2026):
+            # the documents of these names and no others, whatever holds them
+            # back -- one the night holds back for a person, one it did not
+            # find (gone), one of two held at one path. A held one is taken
+            # only where another row has its path: the other document is the
+            # one there, and this one was never fetched.
+            paths = Counter(_disk(r).as_posix().lower() for r in rows)
+            todo, said = [], set()
+            for r in rows:
+                if r.get("name") not in take or r.get("state") not in ("wanted", "gone", "held"):
+                    continue
+                if paths[_disk(r).as_posix().lower()] > 1:
+                    dest[id(r)] = Path(_with_file(r["path"], r["name"]).replace("\\", "/"))
+                elif r.get("state") == "held":
+                    said.add(r.get("name"))
+                    print(f"  not taken: {r['chamber']} {r['kind']} {r['year']} {r['name']} is "
+                          "held already, and no other document has its path")
+                    continue
+                todo.append(r)
+            for n in sorted(take - {r.get("name") for r in todo} - said):
+                print(f"  not taken: no document to take is named {n!r}")
         if list_is_the_nights() and refusal.night_documents():
             # THE NEWEST YEARS ARE THE NIGHT'S (the person, 26 October 2026)
             # -- once it fetches them. While GitHub's night fetches what the
@@ -1868,9 +2110,27 @@ def drain(rows, chambers, kinds, years, a, held):
                 rec = None
             lists = lists_of(rec)
             back = held_back(rows, rec) if lists else {}
-            newest = [r for r in todo
-                      if str(r.get("year") or "").isdigit() and int(r["year"]) >= first]
+            newest = [r for r in todo if r.get("state") == "wanted"
+                      and str(r.get("year") or "").isdigit() and int(r["year"]) >= first]
             theirs = {id(r) for r in newest if nights_to_ask(r, lists, back)}
+            for r in (x for x in todo if take and id(x) in theirs):
+                print(f"  not taken: {r['chamber']} {r['kind']} {r['year']} {r['name']} is the "
+                      "night's to ask for, which it does itself")
+            # HELD BACK FOR A PERSON, AND TAKEN ONLY WHEN A PERSON NAMES IT (the
+            # review of 26 October 2026). The night holds back a possible
+            # rename, a path two listed rows share and an address its list
+            # does not give; this drain took them all, saved one of two at
+            # their one path and marked the other held from that file -- the
+            # very loss the night holds them back to prevent. A person who has
+            # looked names one with --take.
+            kept = [r for r in todo if id(r) in back and r.get("state") == "wanted"
+                    and id(r) not in theirs and r.get("name") not in take]
+            if kept:
+                todo = [r for r in todo if not any(r is x for x in kept)]
+                print(f"{len(kept):,} held back by the night for a person, not taken without "
+                      "their name (--take NAME): "
+                      + "; ".join(f"{r['name']} ({back[id(r)][0]})" for r in kept[:6])
+                      + (f"; and {len(kept) - 6} more" if len(kept) > 6 else ""))
             if theirs:
                 todo = [r for r in todo if id(r) not in theirs]
                 # AND THIS MACHINE'S OWN RECORD OF THEM GOES (the review of 26
@@ -1885,12 +2145,11 @@ def drain(rows, chambers, kinds, years, a, held):
                 print(f"{len(theirs):,} wanted of {first} and later are left to GitHub's "
                       "night, which fetches what the newest lists name: this machine "
                       "drains the years before them")
-            if len(newest) > len(theirs):
-                print(f"{len(newest) - len(theirs):,} wanted of {first} and later the night "
-                      "will not ask for -- a refusal recorded against it, "
-                      f"{NIGHT_TRIES} tries, no longer on its list, or held back for a "
-                      "person (a possible rename, a path another shares, an address its "
-                      "list does not give) -- are a person's, and this drain takes them")
+            if len(newest) > len(theirs) + len(kept):
+                print(f"{len(newest) - len(theirs) - len(kept):,} wanted of {first} and later "
+                      "the night will not ask for -- a refusal recorded against it, "
+                      f"{NIGHT_TRIES} tries, no longer on its list, or named here by a "
+                      "person -- are a person's, and this drain takes them")
         n = min(len(todo), a.budget)
         print(f"{len(todo):,} wanted, taking {n:,} this run at about "
               f"{a.delay:g}s apart -- roughly {n * a.delay / 60:.0f} minutes, "
@@ -1899,7 +2158,7 @@ def drain(rows, chambers, kinds, years, a, held):
         run = dropped = 0
         t0 = time.time()
         for i, r in enumerate(todo[:a.budget], 1):
-            path = Path(r["path"])
+            path = dest.get(id(r)) or Path(r["path"])
             if path.exists():
                 r["state"] = "held"
                 r["bytes"] = str(path.stat().st_size)
@@ -1936,8 +2195,12 @@ def drain(rows, chambers, kinds, years, a, held):
             if kind:
                 r["attempts"] = str(int(r["attempts"] or 0) + 1)
                 # A refusal in the one word the night reads for one
-                # (REFUSED_MARK), whatever the answer said.
-                r["error"] = ((REFUSED_MARK if kind == "refused" else "") + why)[:180]
+                # (REFUSED_MARK), whatever the answer said -- while the night
+                # fetches the documents itself and reads this machine's
+                # record; otherwise in the answer's own words, as before (the
+                # review of 26 October 2026: the switch off changes nothing).
+                r["error"] = ((REFUSED_MARK if kind == "refused" and own else "")
+                              + why)[:180]
                 fail += 1
                 print(f"  [{i}] {r['name']}: {kind}: {r['error'][:80]}",
                       flush=True)
@@ -2010,6 +2273,12 @@ def drain(rows, chambers, kinds, years, a, held):
     left = sum(1 for x in rows if x["state"] == "wanted")
     if left and not stopped:
         print(f"{left:,} still wanted. Run again for the next {a.budget}.")
+    if got and own and list_is_the_nights():
+        # The night learns of these only through the bucket (the review of 26
+        # October 2026): until then it holds them back, or asks for them.
+        print("The night learns of these only from the bucket: python3 "
+              "src/parse/extract_calendar_text.py makes their text, then python3 "
+              "src/ops/cloud.py seed-kit sends it, and what this fetched.")
     if stopped == "refused":
         return 2
     return 1 if stopped else 0

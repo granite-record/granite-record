@@ -87,22 +87,32 @@ both machines now. On a stood-down laptop:
   it, says `NIGHT_DOCUMENTS` is a number, `fetch_calendar_archive.py`'s drain
   here leaves this year's and last year's documents that the night will
   still ask for to it, and says how many; one it will not ask for again -- a
-  refusal recorded against it, three tries, no longer on its list, or held
-  back for a person -- the drain takes when a person runs it.
+  refusal recorded against it, three tries, no longer on its list -- the
+  drain takes when a person runs it, and one the night holds back for a
+  person -- a possible rename, a path two documents share, an address its
+  list does not give -- only when a person names it:
+  `python3 src/fetch/gc_web/fetch_calendar_archive.py --take "NAME"`. A
+  drain, a `--take` or a
+  `--settle` reaches the night only through the bucket: make the text
+  (`python3 src/parse/extract_calendar_text.py`), then
+  `python3 src/ops/cloud.py seed-kit`.
   `fetch_senate_calendars.py` stands down for those years, and
   `fetch_committee_reports.py` asks for none of those years' House
   calendars: it reads the ones on this disk instead, which
   `python3 src/ops/cloud.py docs-down` brings from the bucket. The verdict
   says a number only while the night can make the laptop's text (its text
-  canary passes); otherwise it says "not fetching", and the laptop fetches
-  them as before -- as it does with the switch off or in shadow, how it
-  landed.
+  canary passes) and the kit gives it the texts; otherwise it says "not
+  fetching", and the laptop fetches them as before -- as it does with the
+  switch off or in shadow, how it landed, when the verdict does not say it
+  at all. A night that ends before its canary runs, or whose pinned
+  `pdftotext` does not download, keeps the night before's word.
 
 ### Turning on the night's documents
 
 The person's steps, in order. Nothing here asks the General Court for
-anything new until step 9. The night's own notes are in `nightly.py` (THE
-NIGHT'S DOCUMENTS).
+anything new until step 9, but a document a person names to fetch from the
+laptop in step 7. The night's own notes are in `nightly.py` (THE NIGHT'S
+DOCUMENTS).
 
 Before the merge, on the laptop:
 
@@ -112,55 +122,99 @@ Before the merge, on the laptop:
    say so before going on, because the release to pin is the laptop's. Then
    open `archive/extracted.json` and check that the 2025 and 2026 texts say
    `"how": "pdftotext -layout"`.
-3. Run `python3 src/ops/cloud.py pull`, then
-   `python3 src/parse/extract_calendar_text.py`, then
-   `python3 src/ops/cloud.py seed-kit`. This one cannot wait: from the merge
-   the texts are the night's in the kit, so seed-kit no longer sends a text
-   the bucket already has, and pull reports a text changed here and not sent
-   as a clash every morning.
-4. Put the four fixture pairs in `tests/documents/` (its README says which),
+3. Put the four fixture pairs in `tests/documents/` (its README says which),
    run `python3 src/parse/extract_calendar_text.py --canary tests/documents`,
    and commit them on `dev`.
-5. Run `python3 preflight.py` on the laptop, on `dev`. Windows has not run the
+4. Run `python3 preflight.py` on the laptop, on `dev`. Windows has not run the
    new checks.
-6. If you like, set `NIGHT_DOCUMENTS` to `shadow`, start the nightly on `dev`
+5. If you like, set `NIGHT_DOCUMENTS` to `shadow`, start the nightly on `dev`
    by hand with Dry run ticked and "Take the day's data" unticked -- so it
    asks the General Court nothing -- and read `text_canary` in its verdict;
    then delete the variable again. It is the repository's, shared by every
    branch: still set when `dev` merges, `main` uses it that night.
-7. Merge to `main` with the variable unset. The night then differs only in
-   its hours for the bill requests and the lists.
+6. Merge to `main` with the variable unset. The night then differs only in
+   its hours for the bill requests and the lists: the calendars' and
+   journals' text stays the laptop's in the kit, and its verdict, its list
+   and what seed-kit, pull and kit-up send are as they were.
 
 After 10 November:
 
-8. Set `NIGHT_DOCUMENTS` to `shadow` for three scheduled nights. Each
-   verdict's `document_files` says what the night would ask; `text_canary`
-   should start "identical for 4 of 4" and name pdftotext 26.09.0; and
-   `gc_requests` should be what it was. Warning signs: the would-ask count at
-   its cap every night, any possible rename or document held back, any
+7. Set `NIGHT_DOCUMENTS` to `shadow` for three scheduled nights. Each
+   verdict's `document_files` says what the night would ask, and
+   `documents_held_back` names each document it would hold back for a
+   person; `text_canary` should start "identical for 4 of 4" and name
+   pdftotext 26.09.0; and `gc_requests` should be what it was. Warning signs:
+   the would-ask count at its cap every night, any possible rename, any
    document of an older year. Documents merged before 26 October that share
    a path -- the 2026 Senate list's "No 21" and "No 18" with their
-   supplements -- are held back until a person repairs them, once: after a
-   pull, open the PDF at that path to see which document it is, give the
-   other row its own file name as its path in `archive/queue.csv`, and send
-   the list with `python3 src/ops/cloud.py send-night archive/queue.csv`.
+   supplements -- are named as held back: once the night fetches (step 9) its
+   list gives the one still wanted a file of its own, and nobody need do
+   anything. Two that share a path and are both held are named too ("both
+   held"): one of them was never fetched. On the laptop, open the PDF at that
+   path to see which document it is, then fetch the other with
+   `python3 src/fetch/gc_web/fetch_calendar_archive.py --take "NAME"`, which
+   saves it under its own name, run
+   `python3 src/parse/extract_calendar_text.py`, and
+   `python3 src/ops/cloud.py seed-kit`. The 2025 Senate list collides too,
+   and the night no longer reads it, so it names none of these: SC027.pdf is
+   the path of four documents ("No 27 June 19 2025" and three supplements of
+   it) and SC024A.pdf of two. Check them the same way, now.
+8. Make the texts the night's, once, before any number:
+   - on the laptop, `python3 src/ops/cloud.py pull`, then
+     `python3 src/parse/extract_calendar_text.py`, then
+     `python3 src/ops/cloud.py seed-kit`, so the bucket holds every text and
+     the laptop's record of what its drain fetched -- a document fetched here
+     and not seeded is one the night asks for again;
+   - then, on `dev`, change the texts' entry in `cloud_kit.json` (the one
+     whose globs are the four `*.txt`) from `"owner": "laptop"` to
+     `"owner": "night"`, and `KIT_TEXTS_OWNER` in `preflight.py` to match,
+     in one commit; run `python3 preflight.py`, and merge to `main`.
+   From that merge, seed-kit sends only a text the bucket does not hold, and
+   pull takes the night's. Until it, a night whose switch is a number asks
+   for no document and says so: "not fetching: the calendars' and journals'
+   text is still the laptop's".
 9. Set it to `1` for a week. The first night that carries each new kind of
    warning waits for your approval. If `document_files` says "failed: HTTP
    302", the General Court's viewer answers with a redirect, which the night
-   does not follow: set it back to `shadow` and ask.
+   does not follow -- nor asks for that document again: set it back to
+   `shadow` and ask.
 10. The laptop's routine from then: `cloud.py pull`, then `cloud.py
     docs-down`, which brings the night's PDFs; the committee reports read
-    them by themselves. For a journal the night names as a possible rename:
-    `python3 src/fetch/gc_web/fetch_calendar_archive.py --settle "NAME"` if it
-    is the same journal, or run the drain if it is not. A document with no
-    text the night could use is in its warning, with what to do for its cause.
+    them by themselves. Whatever is fetched or decided here reaches the night
+    only through the bucket, so each of these ends with
+    `python3 src/parse/extract_calendar_text.py` and then
+    `python3 src/ops/cloud.py seed-kit`:
+    - a journal the night names as a possible rename:
+      `python3 src/fetch/gc_web/fetch_calendar_archive.py --settle "NAME"` if
+      it is the same journal, or `--take "NAME"` if it is not;
+    - a document held back because its address is not the one its list
+      gives, once a person has looked: `--take "NAME"`;
+    - a document the night did not find (named in `document_files`, and
+      marked gone): if the General Court's page still lists it and it opens
+      there, `--take "NAME"`;
+    - a document the night will not ask for again -- a refusal recorded, a
+      dropped connection or a redirect, three tries: the drain, which takes
+      them when a person runs it;
+    - a document with no text the night could use: its warning says what to
+      do for its cause. Two files of the person's are read from `main` and
+      do nothing until merged there: `corrections/documents_without_text.json`
+      for a document with no text in it, and
+      `corrections/documents_with_text.json` for one whose text a person has
+      read and accepts as its own though the night's test refused it; each
+      is `{"calendars/2026/HC035.pdf": {"why": "...", "day": "2026-11-20"}}`,
+      a document's PDF path, as the warning gives it, with why and the day.
 11. Then `4`, then `8` before late November, when two years' lists are open;
     and, once the documents' warnings are familiar, ask for them to be exempt
     from the approval gate.
 
 To turn it off: delete the variable, or set it to `off`. The next night asks
-only what it asked before, and after its next pull the laptop fetches this
-year's documents again.
+only what it asked before, and its verdict no longer says the switch; after
+its next pull the laptop fetches this year's documents again. Run
+`python3 src/ops/cloud.py docs-down` first, before any fetch of this year's
+or last year's documents here, so that the laptop has the PDFs the night
+fetched and the drain and the committee reports do not ask for them again.
+The texts stay the night's in the kit; seed-kit still sends any the bucket
+does not hold.
 
 What the night itself asks, inside that window: the downloads page and the
 day files, then next session's bill requests and the two index pages' lists
