@@ -1279,8 +1279,10 @@ HEARING_NOTE = ("Anyone may attend a public hearing and ask to speak. You can "
 # takes a position and no testimony, and the page that confirms the sign-in
 # says how to send it (the Senate's Public Guidance for Committee Meetings,
 # which guides.TESTIMONY cites). So a Senate hearing's note says that, in the
-# words the bill page's Testify box and the emails use for the same form
-# (app.js testifyBox, mail.js testifyWords, 22 October 2026).
+# words the emails use for the same form (workers/follow/mail.js
+# testifyWords, 22 October 2026). The bill page's Testify pane said them too
+# until the person's shorter wording of 26 October 2026 (app.js
+# testifyButton), and no longer carries this sentence.
 HEARING_NOTE_SENATE = ("Anyone may attend a public hearing and ask to speak. You can "
                        "also sign in online to register a position. The page that "
                        "confirms your sign-in says how to send written testimony.")
@@ -3245,7 +3247,8 @@ const REC=window.GR_LANG&&window.GR_LANG!=="en"?' lang="en"':"";
 // and this says how long ago it was as build_pages.past_rel does -- "today",
 // "yesterday", "3 days ago", nothing past a fortnight -- from the day the
 // reader is in, as Coming up's days say "tomorrow". Not from home.json, so it
-// holds with the fetch failing.
+// holds with the fetch failing. The reader's day on purpose; a testimony
+// deadline is Concord's (TWO CLOCKS, ON PURPOSE, at app.js's nhDay).
 const latRel=(d,now)=>{
   const p=String(d||"").split("-").map(Number);
   const off=Math.round((now-new Date(p[0],p[1]-1,p[2]))/86400000);
@@ -3363,6 +3366,8 @@ fetch(DATA("home.json")).then(r=>r.json()).then(H=>{
   // reader's clock the rail is the coming Monday's week, Monday to Sunday,
   // and its name says so; on a weekday it is today to Sunday, and its name
   // says This Week again for a rail built at the weekend.
+  // The reader's day on purpose; a testimony deadline is Concord's (TWO
+  // CLOCKS, ON PURPOSE, at app.js's nhDay).
   (function(){
     const now=new Date(); now.setHours(0,0,0,0);
     const dow=now.getDay(),ahead=dow===6||dow===0;
