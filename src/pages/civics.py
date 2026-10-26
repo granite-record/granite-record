@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-08.63
+# GRANITE_VERSION: 2026-09-08.64
 """
 The topics of the civics section: their order, their names, and their prose.
 
@@ -42,8 +42,10 @@ import i18n as I
 import legislative_year
 
 # The order is the order of the proposal, and it is the order the "next
-# topic" link at the foot of each page walks. Two groups: how the state
-# works, then how to take part. Their names are headings -- on the Resources
+# topic" link at the foot of each page walks. Three groups: how the state
+# works, how to take part, and the state itself (About New Hampshire, the
+# owner's request of 26 October 2026 for pages on the state's symbols and
+# its State House). Their names are headings -- on the Resources
 # hub's Learn tab and in The Thirteen Pages at the foot of each page -- so
 # they are in Title Case, as every heading is (the person, 8 and 9 October
 # 2026, item 17).
@@ -52,6 +54,8 @@ GROUPS = [
      "The institutions, in the order they act on a bill."),
     ("How to Take Part",
      "The mechanics, which are more open than most people expect."),
+    ("About New Hampshire",
+     "The state itself: what its laws name as its own."),
 ]
 
 
@@ -2355,6 +2359,279 @@ because bills about towns and cities arrive in the record every week, written
 as though you already knew all of this."""
 
 
+# NEW HAMPSHIRE'S STATE SYMBOLS (the owner, 26 October 2026: "Another fun
+# learn page could be listing all of the state designated things like the
+# state bird and state gem and the various proposed official state things
+# that didn't pass"). Every symbol is read from RSA chapter 3 on this site's
+# own Laws page (/laws/3) on 26 October 2026: its section, what the section
+# names, and the earliest year its source note gives; a bill is linked where
+# the source note names one. The proposals that did not pass are the bill
+# record's (idx/<term>.json, read the same day), each by its number, year,
+# title and status exactly as the record gives them. A Learn page has no
+# claim check to hold it back, so nothing here goes past those two.
+def _bill_link(year, number):
+    """HB 776-FN of 2025 -> its page in this site's record."""
+    slug = number.split("-")[0].replace(" ", "").lower()
+    return f'<a href="bill/{year}/{slug}.html">{number}</a>'
+
+
+def _symbols(caption, rows):
+    """A table of symbols: what each is, the law's words for it, its section
+    on the Laws page and the year it was named, with the bill where the
+    record has one. `rows` is [(symbol, words, section, year, bill)], bill
+    None or (year, number)."""
+    def enacted(year, bill):
+        return year if not bill else f"{year} &middot; {_bill_link(*bill)}"
+    return ('<div class="l-tablewrap l-stack"><table class="l-table">'
+            f'<caption class="sr">{caption}</caption>'
+            '<thead><tr><th scope="col">Symbol</th><th scope="col">What the law names</th>'
+            '<th scope="col">Section</th><th scope="col">Named</th></tr></thead><tbody>'
+            + "".join(f'<tr><th scope="row">{sym}</th><td data-l="What the law names">{words}</td>'
+                      f'<td class="l-rsa" data-l="Section"><a href="/laws/3#s{sec.lower()}">RSA 3:{sec}</a></td>'
+                      f'<td class="l-rsa" data-l="Named">{enacted(year, bill)}</td></tr>'
+                      for sym, words, sec, year, bill in rows)
+            + "</tbody></table></div>")
+
+
+def _proposals(caption, rows):
+    """The record's bills that did not pass: [(year, number, title, how it
+    ended)], each as the bill index gives it."""
+    return ('<div class="l-tablewrap l-stack"><table class="l-table">'
+            f'<caption class="sr">{caption}</caption>'
+            '<thead><tr><th scope="col">Bill</th><th scope="col">Year</th>'
+            '<th scope="col">Its title</th><th scope="col">How it ended</th></tr></thead><tbody>'
+            + "".join(f'<tr><th scope="row">{_bill_link(year, n)}</th><td data-l="Year">{year}</td>'
+                      f'<td data-l="Its title">{title}</td><td data-l="How it ended">{end}</td></tr>'
+                      for year, n, title, end in rows)
+            + "</tbody></table></div>")
+
+
+SYMBOLS_EMBLEMS = _symbols("The emblems of the state", [
+    ("Motto", "&ldquo;Live Free or Die,&rdquo; written by General John Stark, July 31, 1809",
+     "8", "1945", None),
+    ("Seal", "The frigate Raleigh on the stocks, the sun rising over the sea, a laurel border "
+     "and the date 1776", "9", "1931", None),
+    ("Flag", "A blue field with the state seal at its center, in a wreath of laurel leaves "
+     "with nine stars", "2", "1909", None),
+    ("Emblem", "The Old Man of the Mountain in an elliptical panel, with the motto below and "
+     "the words New Hampshire above", "1", "1945", None),
+    ("Songs", "Ten songs, from &ldquo;Old New Hampshire&rdquo; to &ldquo;Live Free or "
+     "Die&rdquo;", "7", "1949", None),
+    ("Tartan", "A sett of green, black, white, purple and red", "21", "1995",
+     ("1995", "HB 631")),
+])
+
+SYMBOLS_LIVING = _symbols("The plants and animals the law names", [
+    ("Flower", "Purple lilac, <i>Syringa vulgaris</i>", "5", "1919", None),
+    ("Tree", "White birch, <i>Betula papyrifera</i>", "6", "1947", None),
+    ("Bird", "Purple finch", "10", "1957", None),
+    ("Insect", "Ladybug, also known as the ladybird and the lady beetle", "11", "1977", None),
+    ("Animal", "White tail deer", "12", "1983", None),
+    ("Amphibian", "Spotted newt, <i>Notophthalmus viridescens</i>", "16", "1985", None),
+    ("Wildflower", "Pink lady&rsquo;s slipper, <i>Cypripedium acaule</i>", "17", "1991",
+     ("1991", "SB 40")),
+    ("Butterfly", "Karner Blue, <i>Lycaeides melissa</i>, subspecies <i>samuelis</i>", "18",
+     "1992", ("1992", "HB 1210")),
+    ("Saltwater game fish", "Striped bass, <i>Roccus saxatilis</i>", "19", "1994",
+     ("1994", "HB 1438")),
+    ("Freshwater fish", "Brook trout, <i>Salvelinus fontinalis</i>", "20", "1994",
+     ("1994", "SB 538")),
+    ("Dog", "Chinook", "25", "2009", ("2009", "SB 13")),
+    ("Wildcat", "Bobcat, <i>Lynx rufus</i>", "28", "2015", ("2015", "HB 423")),
+    ("Poultry", "New Hampshire Red", "29", "2018", ("2018", "HB 1474")),
+    ("Raptor", "Red-tailed hawk, <i>Buteo jamaicensis</i>", "30", "2019", ("2019", "HB 280")),
+    ("Spider", "Daring jumping spider, <i>Phidippus audax</i>", "31", "2021", ("2021", "HB 318")),
+    ("Marsupial", "Virginia opossum, <i>Didelphis virginiana</i>", "32", "2025",
+     ("2025", "HB 776-FN")),
+])
+
+SYMBOLS_OTHER = _symbols("The stones, foods and sport the law names", [
+    ("Rock", "Granite", "13", "1985", None),
+    ("Mineral", "Beryl", "14", "1985", None),
+    ("Gem", "Smoky quartz", "15", "1985", None),
+    ("Sport", "Skiing", "22", "1998", ("1998", "SB 412")),
+    ("Fruit", "Pumpkin", "24", "2006", ("2006", "HB 1111")),
+    ("Beverage", "Apple cider", "26", "2010", ("2010", "HB 1206")),
+    ("Vegetable", "White potato", "27", "2013", ("2013", "HB 535")),
+])
+
+PROPOSED_SYMBOLS = _proposals("Proposed state symbols that did not pass", [
+    ("2011", "HB 41", "designating purple as the official state color.", "Killed"),
+    ("2012", "HB 1430", "designating the Thompson/Center Contender pistol as the official "
+     "state firearm of New Hampshire.", "Killed"),
+    ("2012", "SB 302", "relative to the Honor and Remember Flag as an official symbol to "
+     "recognize and honor fallen members of the armed forces and relative to certain "
+     "maintenance at the rotary in the town of Epsom.",
+     "Died: the chambers did not agree on a version"),
+    ("2013", "HB 420", "establishing orange, red, and yellow as the state colors.",
+     "Died on the table"),
+    ("2015", "HB 113", "designating the mastodon as the official state fossil.", "Killed"),
+    ("2015", "HB 152", "establishing a state poem.", "Killed"),
+    ("2015", "HB 373", "establishing the red-tailed hawk as the New Hampshire state raptor.",
+     "Killed"),
+    ("2020", "SB 42", "declaring Old Hampshire Applejack the state spirit of New Hampshire.",
+     "Killed"),
+    ("2025", "HB 89", "designating &ldquo;Within the Crystal Hills&rdquo; as the official "
+     "animated film of New Hampshire.", "Killed"),
+    ("2025", "SB 30", "proclaiming the Virginia opossum the state marsupial of New Hampshire "
+     "and relative to the penalty for incorrect application of fertilizers.",
+     "Died: the chambers did not agree on a version"),
+    ("2026", "HB 1020", "proclaiming Lake Winnipesaukee the official state lake of New "
+     "Hampshire.", "Killed"),
+    ("2026", "HB 1390", "designating the apple cider doughnut the official doughnut of the "
+     "state of New Hampshire.", "Killed"),
+])
+
+# The bills in the record that proposed to change the flag or to study it:
+# the nine the flag section's own Laws page lists as bills whose text says
+# they change RSA 3:2, and the two studies, which change no section.
+PROPOSED_FLAGS = _proposals("Proposals to change or study the state flag", [
+    ("1996", "HB 552-FN", "relative to the design and the display of the state flag.",
+     "Referred for interim study"),
+    ("1997", "HB 138-FN", "relative to the design and the display of the state flag.", "Killed"),
+    ("2000", "SB 423-FN-LOCAL", "relative to the New Hampshire state flag.", "Killed"),
+    ("2001", "SB 94-FN-LOCAL", "relative to the New Hampshire state flag.", "Killed"),
+    ("2004", "HB 1231-FN", "relative to the state flag.", "Killed"),
+    ("2004", "SB 319-FN-LOCAL", "relative to the New Hampshire state flag.", "Killed"),
+    ("2005", "HB 123", "relative to the New Hampshire state flag.", "Killed"),
+    ("2018", "HB 1242", "establishing a committee to study redesigning the state flag.",
+     "Killed"),
+    ("2024", "HB 1016", "relative to the New Hampshire state flag.", "Killed"),
+    ("2025", "HB 176-FN", "relative to changing the state flag design.", "Killed"),
+    ("2025", "HB 210", "establishing a commission to study the state flag and its history.",
+     "Killed"),
+])
+
+BODY_SYMBOLS = """
+<h2>What the Law Names</h2>
+<p>New Hampshire&rsquo;s symbols are named in its statutes, in chapter 3 of
+the Revised Statutes Annotated, headed &ldquo;State Emblems, Flag, Etc.&rdquo;
+Twenty-nine of its sections each name one: a motto, a seal, a flag, an
+emblem, ten songs, a tartan, and the plants, animals, stones, foods and sport
+below. Each section links to <a href="/laws/3">the chapter</a> on this site.</p>
+<p>The year beside each is the earliest year the section&rsquo;s source note
+gives. Where the law is from 1989 or later, the bill that made it is linked to
+its page in this site&rsquo;s record.</p>
+
+<h2>The Emblems of the State</h2>
+<p>The motto is the words &ldquo;Live Free or Die,&rdquo; written by General
+John Stark on July 31, 1809. The flag is blue, with the state seal at its
+center inside a wreath of laurel leaves and nine stars. The seal is two inches
+across, and the law sets out its detail &ldquo;and no other&rdquo;: the frigate
+Raleigh on the stocks, the sun rising over the sea, a granite boulder, and the
+date 1776 between two stars. The emblem may be placed on the state&rsquo;s
+printed material about developing its recreational, industrial and
+agricultural resources.</p>
+""" + SYMBOLS_EMBLEMS + """
+<p>The seal&rsquo;s source note opens with entries that name no year, so 1931
+is the first year it gives. The tartan&rsquo;s colors each stand for
+something, its section says: purple for the purple finch and the purple
+lilac, the state bird and the state flower; green for the forests; black for
+the granite mountains; white for the snow; and red for all state heroes.</p>
+
+<h2>Plants and Animals</h2>
+<p>Sixteen of the sections name a living thing. The first was the purple
+lilac, in 1919. The most recent is the Virginia opossum, in 2025, and its
+section adds that opossums found within the state&rsquo;s borders &ldquo;shall
+be known as &lsquo;New Hampshire opossums.&rsquo;&rdquo;</p>
+""" + SYMBOLS_LIVING + """
+
+<h2>Stone, Food and Sport</h2>
+<p>Granite, beryl and smoky quartz were named by the same law, in 1985. The
+foods came later: the pumpkin in 2006, apple cider in 2010 and the white
+potato in 2013.</p>
+""" + SYMBOLS_OTHER + """
+
+<h2>The Flag Over the State House</h2>
+<p>The state flag is displayed above the State House whenever the legislature
+is in session, during meetings of the Governor and Council when expedient,
+and on other occasions the Governor designates
+(<a href="/laws/3#s3">RSA 3:3</a>). The Governor may make rules for its use
+and display, and the law is to be read &ldquo;to encourage the display of the
+state flag on public buildings&rdquo; (<a href="/laws/3#s4">RSA 3:4</a>).</p>
+<p>The POW-MIA flag is displayed above the State House, all state facilities
+and the state&rsquo;s military facilities whenever the flag of the United
+States is flown (<a href="/laws/3#s3-a">RSA 3:3-a</a>). Only flags officially
+recognized by the federal government may be flown over the State House. A
+state, United States or POW-MIA flag bought with state funds or displayed in a
+state facility must be made in the United States, if it was acquired after
+that section took effect (<a href="/laws/3#s4-a">RSA 3:4-a</a>).</p>
+
+<h2>Proposed Symbols That Did Not Pass</h2>
+<p>This site&rsquo;s bill record goes back to 1989, and some of its bills
+proposed a symbol that never became law. Each line is the record&rsquo;s own: the
+bill&rsquo;s number, its year, its title and how it ended.</p>
+""" + PROPOSED_SYMBOLS + """
+<p>Two of them came back. The red-tailed hawk, killed as HB 373 in 2015,
+became the state raptor as <a href="bill/2019/hb280.html">HB 280</a> in 2019.
+The Virginia opossum&rsquo;s own bill, SB 30, died in 2025 when the chambers
+did not agree on a version; the same designation passed that year inside
+<a href="bill/2025/hb776.html">HB 776-FN</a>, a bill about the crime of
+aggravated driving while intoxicated.</p>
+<h3>Changing the Flag</h3>
+<p>The flag&rsquo;s section was last changed in 1931, by its source note.
+Every bill in the record that proposed to change it, or to study it, has died
+or gone to interim study.</p>
+""" + PROPOSED_FLAGS + """
+
+<h2>Common Questions</h2>
+<div class="l-faq">
+<details><summary>What are the ten state songs?</summary>
+<p>The law lists them in this order (<a href="/laws/3#s7">RSA 3:7</a>):</p>
+<ul>
+<li>&ldquo;Old New Hampshire,&rdquo; words by Dr. John F. Holmes, music by Maurice Hoffmann</li>
+<li>&ldquo;New Hampshire, my New Hampshire,&rdquo; words by Julius Richelson, music by Walter P. Smith</li>
+<li>&ldquo;New Hampshire Hills,&rdquo; words by Paul Scott Mowrer, music by Tom Powers</li>
+<li>&ldquo;Autumn in New Hampshire,&rdquo; words and music by Leo Austin</li>
+<li>&ldquo;New Hampshire&rsquo;s Granite State,&rdquo; words and music by Anne B. Currier</li>
+<li>&ldquo;Oh, New Hampshire (you&rsquo;re my home),&rdquo; words and music by Brownie McIntosh</li>
+<li>&ldquo;The Old Man of the Mountain,&rdquo; words and music by Paul Belanger</li>
+<li>&ldquo;The New Hampshire State March,&rdquo; words and music by Rene Richards</li>
+<li>&ldquo;New Hampshire Naturally,&rdquo; words and music by Rick Shaw and Ron Shaw</li>
+<li>&ldquo;Live Free or Die,&rdquo; words and music by Barry Palmer</li>
+</ul>
+<p>The last was added in 2007, by <a href="bill/2007/hb482.html">HB 482</a>.</p>
+</details>
+<details><summary>Who counts as a New Hampshire native?</summary>
+<p>Someone born in New Hampshire, or born to a mother domiciled in New
+Hampshire at the time of the birth. The section says it does not affect
+official records, and that no one who in good faith proclaims themselves a
+native under it may be charged with perjury
+(<a href="/laws/3#s23">RSA 3:23</a>, added in 2002 by
+<a href="bill/2002/hb1175.html">HB 1175</a>).</p>
+</details>
+<details><summary>Why are there two state flowers and two state fish?</summary>
+<p>The law names them as different symbols. The purple lilac is the state
+flower and the pink lady&rsquo;s slipper the state wildflower. The striped
+bass is the state saltwater game fish and the brook trout the state
+freshwater fish; both fish were named in 1994.</p>
+</details>
+<details><summary>Can I put the state seal on something I sell?</summary>
+<p>Not without the Secretary of State&rsquo;s authorization. The seal is the
+property of the state, and no one may make or sell merchandise bearing a
+likeness of it, or put it on anything used to advertise or promote services,
+unless the Secretary of State has authorized that use (<a href="/laws/3#s9-a">RSA 3:9-a</a>). Doing so
+is a misdemeanor for a natural person and a felony for any other person
+(<a href="/laws/3#s9-b">RSA 3:9-b</a>), and the Attorney General may go to
+court to stop the articles being distributed
+(<a href="/laws/3#s9-c">RSA 3:9-c</a>).</p>
+</details>
+<details><summary>How does something become a state symbol?</summary>
+<p>By a bill, like any other law. Each of the sixteen sections added to the
+chapter since 1991 came from a bill the record shows signed into law, and this
+page links each one. <a href="learn/how-a-bill-becomes-law.html">How a
+bill becomes law</a> follows the course every one of them took.</p>
+</details>
+</div>
+"""
+
+BODY_SYMBOLS_HOLDS = """This site's bill record begins in 1989, so a symbol
+named before then has no bill page here; its year is the one its section's
+source note gives. The proposals that did not pass were found by their
+titles, so a symbol proposed inside a bill titled for something else would
+not be among them."""
+
+
 # WHAT THE GUIDES ALSO SAY IS THEIRS (the person's approval of 23 October
 # 2026). This page and the guides to attending a hearing and to submitting
 # testimony said the same things in copied paragraphs, and the copies had
@@ -2739,6 +3016,11 @@ SRC_RSA = ("New Hampshire Revised Statutes Annotated", RSA)
 # the finder and the map, and everyone who represents the town, on one tab.
 SRC_FIND_MEMBER = ("Find your legislators, by town",
                    "/officials.html#my-town")
+# THIS SITE's own Laws page and bill record, which the state symbols page
+# reads (26 October 2026): chapter 3 as the Laws pages carry it, and the
+# bills since 1989.
+SRC_LAWS_3 = ("RSA 3, State Emblems, Flag, Etc., on this site's Laws pages", "/laws/3")
+SRC_BILL_RECORD = ("This site's bill record, 1989 to 2026", "/bills.html")
 SRC_TESTIFY = ("House online testimony sign-in",
                GC + "/house/committees/remotetestimony/")
 # The Senate's own sign-in form. The person supplied the address on 17
@@ -2842,6 +3124,7 @@ NOT_OFFICIAL = [SRC_BALLOT_LIST]
 # ---------------------------------------------------------------------------
 HOW = GROUPS[0][0]
 PART = GROUPS[1][0]
+ABOUT = GROUPS[2][0]
 
 TOPICS = [
     topic("general-court", "The General Court", HOW,
@@ -2924,6 +3207,13 @@ TOPICS = [
           BODY_TOWNS,
           [SRC_RSA, SRC_NHMA, SRC_SOS],
           BODY_TOWNS_HOLDS),
+
+    topic("state-symbols", "New Hampshire\u2019s State Symbols", ABOUT,
+          "The purple finch, the purple lilac, granite and smoky quartz: every "
+          "symbol the law names, and the ones proposed that did not pass.",
+          BODY_SYMBOLS,
+          [SRC_LAWS_3, SRC_BILL_RECORD],
+          BODY_SYMBOLS_HOLDS),
 
     topic("testifying", "How Public Hearings Work", PART,
           "The most open part of the process and the least known. Anyone may "
