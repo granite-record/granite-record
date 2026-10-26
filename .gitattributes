@@ -15,6 +15,10 @@
 # sha256 collected/election_<year>.json names (17 October 2026).
 *.xls   -text
 *.xlsx  -text
+# The text canary's fixtures (tests/documents/README.md): the laptop's own
+# text of four documents, kept as the bytes the laptop wrote, line ends and
+# all, whatever a checkout is set to convert.
+tests/documents/*.txt   -text
 
 # And these are text, everywhere, whatever the checkout does: the version
 # stamps and the palette are compared byte for byte by preflight.

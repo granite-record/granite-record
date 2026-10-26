@@ -92691,6 +92691,171 @@ def _night_requests(R, CA):
                   "under --root alone")
 
 
+@check("build", "the text canary passes only when this machine makes the laptop's own text of "
+       "every fixture, and no fixtures is not a pass; --only --into makes one PDF's text by "
+       "pdftotext alone, through a part file; on GitHub only the pinned pdftotext runs",
+       needs=("extract_calendar_text",))
+def _extractor(EX):
+    """extract_calendar_text.py as GitHub's night runs it (the person's design
+    of 26 October 2026, D10), with pdftotext faked -- what is held here is what
+    is done with its text, not which text poppler makes on this machine:
+
+      - --canary DIR is 0 only when every PDF in DIR has its text beside it
+        and this machine's text of each is the laptop's, line for line, a
+        line's end (Windows' or Linux's) aside; no pair, a lone file, a PDF
+        that gives nothing and one character of difference are "not proved";
+      - --only PDF --into TXT writes TXT through a part file and nothing else,
+        by pdftotext alone: with none here it makes no text, and pdfplumber,
+        which sets a calendar's columns its own way, is never tried;
+      - GRANITE_PDFTOTEXT's binary is the one run where it is set, and on
+        GitHub's machine no other: not one on the PATH;
+      - tests/documents/README.md says what goes there, and its texts are kept
+        as bytes. Until the person adds the four real pairs the canary there
+        says "not proved", and the night asks for nothing."""
+    import contextlib
+    import io
+    import types
+    here = Path(".").resolve()
+    readme = here / "tests" / "documents" / "README.md"
+    tmp = Path(tempfile.mkdtemp(prefix="gr-extractor-"))
+    saved = (EX.pdftotext, EX.os, sys.argv, EX.pdftotext_version, EX.subprocess,
+             sys.modules.get("pdfplumber"))
+    env_was = {k: os.environ.get(k) for k in (EX.PDFTOTEXT_ENV, "GITHUB_ACTIONS", "PATH")}
+    fell_back = []
+
+    def main(*argv):
+        sys.argv = ["extract_calendar_text.py", *argv]
+        out = io.StringIO()
+        with contextlib.redirect_stdout(out), contextlib.redirect_stderr(out):
+            try:
+                rc = EX.main()
+            except SystemExit as e:
+                rc = e.code
+        return rc, out.getvalue()
+
+    def made(args, **kw):
+        """pdftotext, faked: the text of a PDF named for it, none of a scan."""
+        name = Path(args[-2]).name
+        return types.SimpleNamespace(returncode=0, stderr="", stdout="" if "scan" in name else
+                                     f"the text of {name}\n\f  a second line\n")
+    try:
+        os.chdir(tmp)
+        sys.modules["pdfplumber"] = types.SimpleNamespace(open=lambda p: fell_back.append(p))
+        EX.subprocess = types.SimpleNamespace(run=made, TimeoutExpired=TimeoutError,
+                                              SubprocessError=OSError)
+        EX.pdftotext = lambda: "/pinned/pdftotext"
+        EX.pdftotext_version = lambda: "pdftotext version 26.09.0"
+        fx = Path("fx")
+        fx.mkdir()
+        (fx / "README.md").write_text("what goes here\n", encoding="utf-8")
+        rc, said = main("--canary", "fx")
+        assert rc == 1 and "not proved" in said and "holds no PDF" in said, \
+            f"the canary passed with no fixtures: {said}"
+        for n, nl in (("HC012", "\r\n"), ("SJ 05 March 6, 2025", "\n")):
+            (fx / f"{n}.pdf").write_bytes(b"%PDF-1.7 %%EOF")
+            (fx / f"{n}.txt").write_bytes(made([f"{n}.pdf", "-"]).stdout.replace("\n", nl).encode())
+        rc, said = main("--canary", "fx")
+        assert rc == 0 and said.strip() == ("text canary: identical for 2 of 2, by pdftotext -layout; "
+                                            "pdftotext version 26.09.0"), \
+            f"the laptop's own text, Windows' line ends and all, was not proved: {said}"
+        good = (fx / "HC012.txt").read_bytes()
+        (fx / "HC012.txt").write_bytes(good.replace(b"second", b"Second"))
+        rc, said = main("--canary", "fx")
+        assert rc == 1 and "identical for 1 of 2" in said and "HC012.pdf differs from line 2" in said, \
+            f"one character of difference was not caught, or not where it is: {said}"
+        (fx / "HC012.txt").write_bytes(good)
+        for lone in ("HC013.pdf", "HC014.txt", "HJ scan.pdf"):
+            (fx / lone).write_bytes(b"%PDF-1.7 %%EOF")
+            if "scan" in lone:
+                (fx / "HJ scan.txt").write_text("x", encoding="utf-8")
+            rc, said = main("--canary", "fx")
+            assert rc == 1 and ("has no pair" in said or "gave no text here" in said), \
+                f"{lone} was let by: {said}"
+            for f in fx.glob(Path(lone).stem + ".*"):
+                f.unlink()
+        assert main("--canary", "fx")[0] == 0
+        # --only --into: one PDF's text, by pdftotext alone, through a part file.
+        pdf = Path(".night/docs/calendars/2026/HC036.pdf")
+        pdf.parent.mkdir(parents=True)
+        pdf.write_bytes(b"%PDF-1.7 %%EOF")
+        into = Path(".night/text/calendars/2026/HC036.txt")
+        rc, said = main("--only", str(pdf), "--into", str(into))
+        assert rc == 0 and into.read_text(encoding="utf-8") == made([str(pdf), "-"]).stdout and \
+            not list(Path(".").rglob("*.part")) and not Path("calendars").exists() and \
+            not Path("archive").exists(), f"--only --into wrote elsewhere, or no text: {said}"
+        into.unlink()
+        EX.os = types.SimpleNamespace(replace=lambda a, b: (_ for _ in ()).throw(OSError("stopped")))
+        try:
+            main("--only", str(pdf), "--into", str(into))
+            raise AssertionError("the text was not written through a rename")
+        except OSError:
+            pass
+        EX.os = saved[1]
+        assert not into.exists() and into.with_name(into.name + ".part").exists(), \
+            "--into wrote its text in place, not through a part file"
+        into.with_name(into.name + ".part").unlink()
+        EX.pdftotext = lambda: None
+        del fell_back[:]
+        rc, said = main("--only", str(pdf), "--into", str(into))
+        assert rc == 1 and not into.exists() and not fell_back and "no pdftotext" in said, \
+            f"--only made a text with no pdftotext, or fell back to another extractor: {said}"
+        for argv in (["--only", str(pdf)], ["--into", str(into)],
+                     ["--only", str(pdf), "--into", str(into), "--limit", "1"],
+                     ["--canary", "fx", "--check"]):
+            assert main(*argv)[0] == 2, f"{argv} was taken"
+        # The pinned pdftotext, and on GitHub's machine no other.
+        EX.pdftotext = saved[0]
+        found = tmp / "path" / ("pdftotext.exe" if os.name == "nt" else "pdftotext")
+        found.parent.mkdir()
+        found.write_bytes(b"")
+        found.chmod(0o755)
+        pinned = tmp / "pinned-pdftotext"
+        pinned.write_bytes(b"")
+        os.environ["PATH"] = str(found.parent)
+        os.environ.pop(EX.PDFTOTEXT_ENV, None)
+        os.environ.pop("GITHUB_ACTIONS", None)
+        assert EX.pdftotext() and Path(EX.pdftotext()).resolve() == found.resolve(), \
+            "the laptop's pdftotext on its PATH is not the one run"
+        os.environ["GITHUB_ACTIONS"] = "true"
+        assert EX.pdftotext() is None, "on GitHub's machine a pdftotext it did not pin would run"
+        os.environ[EX.PDFTOTEXT_ENV] = str(pinned)
+        assert EX.pdftotext() == str(pinned), "the pinned pdftotext is not the one run"
+        os.environ[EX.PDFTOTEXT_ENV] = str(tmp / "not-there")
+        assert EX.pdftotext() is None, "a pinned pdftotext that is not there was taken for one"
+        assert EX.version_of("pdftotext version 26.09.0\nCopyright 2005-2026\n") == \
+            "pdftotext version 26.09.0" and EX.version_of("Usage: pdftotext") == ""
+    finally:
+        os.chdir(here)
+        (EX.pdftotext, EX.os, sys.argv, EX.pdftotext_version, EX.subprocess) = saved[:5]
+        if saved[5] is None:
+            sys.modules.pop("pdfplumber", None)
+        else:
+            sys.modules["pdfplumber"] = saved[5]
+        for k, val in env_was.items():
+            if val is None:
+                os.environ.pop(k, None)
+            else:
+                os.environ[k] = val
+        shutil.rmtree(tmp, ignore_errors=True)
+    said = readme.read_text(encoding="utf-8")
+    assert "python3 src/parse/extract_calendar_text.py --canary tests/documents" in said and all(
+        w in said for w in ("House Calendar", "House Journal", "Senate Calendar", "Senate Journal")), \
+        "tests/documents/README.md no longer says which four documents go there, or how to prove them"
+    assert re.search(r"^tests/documents/\*\.txt\s+-text\s*$",
+                     Path(".gitattributes").read_text(encoding="utf-8"), re.M), \
+        ".gitattributes does not keep the text canary's fixtures as bytes"
+    pairs = sum(1 for f in readme.parent.glob("*.pdf") if f.with_suffix(".txt").is_file())
+    if not pairs:
+        proved, why = EX.canary(readme.parent)
+        assert not proved and "holds no PDF" in why, f"the canary passed with no fixtures: {why}"
+    return "ok", ("the canary is identical only on the laptop's own text, line for line, and "
+                  "\"not proved\" for no pair, a lone file or one character; --only --into by "
+                  "pdftotext alone through a part file; the pinned binary alone on GitHub; "
+                  + (f"tests/documents/ holds {pairs} pair(s)" if pairs else
+                     "THE REAL PAIRS ARE ABSENT: tests/documents/ holds none until the person adds "
+                     "them, and until then the canary says not proved and the night asks for nothing"))
+
+
 @check("build", "on a stood-down laptop no General Court request starts in GitHub's night "
                 "window or the half hour before it, none goes on inside it, and none starts "
                 "before the real bucket's refusal record is read since the last one",
