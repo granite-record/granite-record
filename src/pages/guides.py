@@ -296,8 +296,8 @@ HELP = {
           "or eligibility requirement; 1-866-634-9412, Monday to Friday 8:30 to 4:30.", ADRC)]),
     "legal_aid": (
         "<li><b>Free civil legal aid.</b> New Hampshire Legal Assistance helps people with low "
-        "income and limited assets, and adults 60 and over, mainly with housing (eviction, "
-        "foreclosure and property tax deeding), domestic violence and family law, and public "
+        "income and limited assets, and adults 60 and over, mainly with housing (including "
+        "property tax deeding), domestic violence and family law, and public "
         "benefits. Apply through 603 Legal Aid, online or at 1-800-639-5290; it also publishes "
         "self-help articles.</li>",
         [("603 Legal Aid", LEGAL_AID)],
@@ -665,7 +665,9 @@ PUBLIC_RECORD = guide(
      step("If the answer is no",
           "<p>A refusal must be in writing, name the specific exemption it relies on, and "
           "briefly explain how it applies. To have a refusal reviewed, the law provides two "
-          "routes, and choosing one closes the other:</p><ul>"
+          "routes. Going to Superior Court rules out the ombudsman; filing with the ombudsman "
+          "rules out the court until the ombudsman rules or the deadline for a ruling "
+          "passes:</p><ul>"
           "<li><b>Superior Court.</b> You can file a petition yourself, with or without a lawyer, "
           "and the court is to give it priority.</li>"
           "<li><b>The Right-to-Know ombudsman.</b> A signed, written complaint with a fee, which "
@@ -698,7 +700,10 @@ PUBLIC_RECORD = guide(
            "RSA 91-A:4", "2026-10-11"),
      claim("A denial is written, names the specific exemption and explains how it applies.",
            "RSA 91-A:4", "2026-10-11"),
-     claim("Superior court or the ombudsman; choosing one forecloses the other.", "RSA 91-A:7", "2026-10-11"),
+     claim("Superior court or the ombudsman; a petition to the superior court forecloses a "
+           "complaint to the ombudsman; a complaint to the ombudsman forecloses the superior "
+           "court until the ombudsman issues a final ruling or the deadline for such a ruling has "
+           "passed.", "RSA 91-A:7", "2026-10-26"),
      claim("A petition may be filed with or without counsel and has high priority.", "RSA 91-A:7", "2026-10-11"),
      claim("The ombudsman complaint is signed, written, with a fee the ombudsman may waive.",
            "RSA 91-A:7-b", "2026-10-11"),
@@ -1107,7 +1112,8 @@ LMI = guide(
     [step("Check that you qualify",
           "<p>You qualify if all of these are true:</p><ul>"
           "<li>you own a home, or an interest in one, that is subject to the State Education "
-          "Property Tax;</li><li>you lived in it on April 1 of the year you are claiming for; "
+          "Property Tax;</li><li>you lived in it on April 1 of the year you are claiming for, "
+          "or were away on active military duty or for a while, keeping it as your main home; "
           "and</li><li>your household income is $37,000 or less if you are single, or $47,000 or "
           "less if you are married or a head of household.</li></ul>"
           "<p><b>Household income</b> is the federal adjusted gross income of you and of every "
@@ -1115,10 +1121,15 @@ LMI = guide(
           actions=[("Who qualifies, and the limits", DRA_LMI)],
           law=["RSA 198:56", "RSA 198:57, III"]),
      step("Apply between May 1 and June 30",
-          "<p>Claims are accepted only in that window. Apply online through the Department&rsquo;s "
+          "<p>Claims are filed in that window. The Department may accept a late, complete claim "
+          "up to November 1 if an accident, mistake or misfortune kept you from filing on time, "
+          "or if you or another adult in your household asked for an extension to file a federal "
+          "income tax return.</p>"
+          "<p>Apply online through the Department&rsquo;s "
           "Granite Tax Connect portal, using &ldquo;Apply for Property Tax Relief&rdquo;, or on "
           "Form DP-8 from the Department&rsquo;s forms page.</p>",
-          actions=[("Granite Tax Connect", DRA_GTC), ("Forms, including DP-8", DRA_FORMS)]),
+          actions=[("Granite Tax Connect", DRA_GTC), ("Forms, including DP-8", DRA_FORMS)],
+          law=["RSA 198:57, VI"]),
      step("Wait for the decision",
           "<p>The Department has 120 days from receiving your complete application. If your "
           "claim is turned down in whole or in part, it must tell you within 90 days of receiving "
@@ -1141,9 +1152,19 @@ LMI = guide(
      claim("Owns a homestead subject to the education tax, resided there April 1, household "
            "income limits $37,000 and $47,000; the relief formula and its percentages.",
            "RSA 198:57", CHECKED),
+     claim("Resided in such homestead on April 1 of the year for which the claim is made, except "
+           "persons on active duty in the United States armed forces or temporarily away but "
+           "maintaining the homestead as a primary domicile; complete applications filed between "
+           "May 1 and June 30; the commissioner may accept late filed, but complete, applications "
+           "filed on or before November 1, if prevented from timely filing due to accident, "
+           "mistake or misfortune, or if the claimant or other adult member of the household "
+           "requested an extension of time to file a federal income tax return.", "RSA 198:57",
+           "2026-10-26"),
      claim("Appeal to the BTLA in writing within 30 days.", "RSA 198:60", CHECKED),
      claim("Certification within 120 days; notice of rejection within 90 days.", "RSA 198:61", CHECKED),
-     claim("A fraudulent claim is a misdemeanor; audits within 3 years.", "RSA 198:59", CHECKED)]
+     claim("A fraudulent claim is a misdemeanor; audits within 3 years; the commissioner may "
+           "assess and collect sums granted on a fraudulent or erroneously paid claim, with "
+           "interest and a penalty.", "RSA 198:59", "2026-10-26")]
     + help_claims("adrc", "legal_aid"),
     more=civics.faq(
         ("How much relief can I get?",
@@ -1158,8 +1179,9 @@ LMI = guide(
                   ["40%", "$27,800 to under $32,400", "$35,300 to under $41,100"],
                   ["20%", "$32,400 to $37,000", "$41,100 to $47,000"]])),
         ("Can my claim be checked later?",
-         "<p>Yes. A false claim is a crime, and the Department may audit a claim within three "
-         'years of granting it (<a href="/laws/198#s59">RSA 198:59</a>).</p>'))
+         "<p>Yes. A fraudulent claim is a crime, and the Department may audit a claim within "
+         "three years of granting it and collect back what was paid in error, with interest and "
+         'a penalty (<a href="/laws/198#s59">RSA 198:59</a>).</p>'))
          + "<h2>Who Can Help</h2>"
          "<p>The Department of Revenue Administration answers questions about this program at "
          "(603) 230-5920, and keeps a page of frequently asked questions.</p>"
@@ -1560,10 +1582,9 @@ SAID = {
         "<p>The Senate&rsquo;s guidance says to send written testimony to the committee through "
         "the &ldquo;Email All Committee Members&rdquo; link on the committee&rsquo;s page on "
         "the General Court&rsquo;s website. <a href=\"/committees.html\">Every committee&rsquo;s "
-        "page here</a> does the same: it lists the members and has a button that opens one email "
-        "to all of them. Put the bill&rsquo;s number in the subject line. It works for a House or "
-        "a Senate committee, and for a bill whose hearing has passed but whose committee has not "
-        "yet voted.</p>"),
+        "page here</a>, House or Senate, does the same: it lists the members and has a button "
+        "that opens one email to all of them. Put the bill&rsquo;s number in the subject "
+        "line.</p>"),
     "paper": (
         "<p>In practice you can also bring written testimony to the hearing on paper: one "
         "printed copy for each member of the committee, which they will take and pass around. "
@@ -1905,9 +1926,10 @@ TESTIMONY = guide(
     more=civics.faq(
         ("What exactly does each sign-in form ask for?", SAID["forms"]),
         ("Is my sign-in counted, and does this site publish it?",
-         "<p>A sign-in for or against is part of the record and is counted. For House hearings "
-         "this site publishes only how many people signed in supporting, opposing and neutral, "
-         "never names or written testimony.</p>"),
+         "<p>Each online sign-in is kept in the House&rsquo;s database with its hearing, "
+         "committee and bill, and committee members can read the submissions bill by bill. For "
+         "House hearings this site publishes only how many people signed in supporting, opposing "
+         "and neutral, never names or written testimony.</p>"),
         ("When do committee members see what I submit online?",
          "<p>Committee members can read what is submitted online in the House&rsquo;s portal, "
          "bill by bill, and are sent links to it at the end of each day their committee holds "
@@ -2506,8 +2528,8 @@ REAL_ID = guide(
     "A REAL ID is a driver&rsquo;s license or non-driver ID marked with a star. Since May 7, 2025, "
     "you need one, or a passport or another accepted ID, to board a domestic flight or enter a "
     "secure federal building. In New Hampshire it is voluntary. You get one in person at a DMV "
-    "office, when you renew or by appointment, with documents proving your identity, your Social "
-    "Security number and that you live in New Hampshire.",
+    "office, when you renew or by appointment, with documents proving your identity, your "
+    "citizenship, your Social Security number and that you live in New Hampshire.",
     [ask("Will you fly within the U.S. or enter secure federal buildings without a passport?",
          [("Yes", "Consider a REAL ID, and plan at least three months ahead."),
           ("No", "You might not need one. A card without the star says Not for Federal "
@@ -2521,12 +2543,13 @@ REAL_ID = guide(
           "<p>REAL ID is voluntary in New Hampshire.</p>",
           actions=[("REAL ID (DMV)", DMV_REALID), ("REAL ID (TSA)", TSA_REALID)]),
      step("Gather your documents",
-          "<p>You prove three things: your identity, your Social Security number, and that you live "
-          "in New Hampshire. The DMV&rsquo;s online document checker shows what to bring for your "
-          "situation. If you are not a U.S. citizen, the DMV lists what to bring on its own "
-          "page.</p>",
+          "<p>The law asks for documents proving your identity, your United States citizenship, "
+          "your Social Security number, and that you live in New Hampshire. The DMV&rsquo;s "
+          "online document checker shows what to bring for your situation. If you are not a "
+          "U.S. citizen, the DMV lists what to bring on its own page.</p>",
           actions=[("Online document checker", DMV_DOC_CHECK), ("The list of documents", DMV_REALID_DOCS),
-                   ("If you are not a U.S. citizen", DMV_NON_US)]),
+                   ("If you are not a U.S. citizen", DMV_NON_US)],
+          law=["RSA 263:14-b", "RSA 260:21-a"]),
      step("Make an appointment",
           "<p>You can get a REAL ID when you renew, or upgrade before then by appointment. The DMV "
           "suggests booking at least three months before you need it. Bring the application for "
@@ -2535,9 +2558,11 @@ REAL_ID = guide(
           actions=[("Make an appointment", DMV_APPT), ("Application (DSMV 450)", DMV_APP)]),
      step("Pay the fee",
           "<p>At renewal, a REAL ID driver&rsquo;s license costs $60, against $50 for a "
-          "driver&rsquo;s license without the star, and a non-driver ID card costs $20. The law "
-          "sets all three.</p>",
-          actions=[("Licensing fees", DMV_FEES)], law=["RSA 263:42, I", "RSA 260:21"])],
+          "driver&rsquo;s license without the star. For a non-driver ID card, the law sets $10 "
+          "for a REAL ID card and $20 for one without the star. The DMV&rsquo;s fees page "
+          "gives what it charges.</p>",
+          actions=[("Licensing fees", DMV_FEES)],
+          law=["RSA 263:42, I", "RSA 260:21-a", "RSA 260:21"])],
     [("REAL ID (Division of Motor Vehicles)", DMV_REALID),
      ("REAL ID (Transportation Security Administration)", TSA_REALID),
      ("Appointments and Services (Division of Motor Vehicles)", DMV_APPT),
@@ -2552,15 +2577,25 @@ REAL_ID = guide(
            "fee to opt in before renewal; bring the application for the license type.",
            DMV_REALID, READ),
      claim("A first REAL ID needs an in-person appointment, not an online renewal.", DMV_ONLINE, READ),
-     claim("Upgrade to REAL ID outside renewal by appointment; a renewal may upgrade.", DMV_APPT, READ),
+     claim("Upgrade to REAL ID outside renewal by appointment; a renewal may upgrade; the DMV is "
+           "fully appointment based; book online or call 603-227-4000.", DMV_APPT, READ),
+     claim("Renew by appointment with the DSMV 450; a non-driver ID renews by appointment with "
+           "the DSMV 450 and proof of identity and residency.", DMV_RENEW, READ),
+     claim("A license that complies with Public Law 109-13 to a resident who provides documents "
+           "required to demonstrate identity, United States citizenship, social security number, "
+           "and New Hampshire residency.", "RSA 263:14-b", "2026-10-26"),
+     claim("A nondriver's picture identification card that complies with Public Law 109-13: "
+           "documents to demonstrate identity, United States citizenship, social security "
+           "number, and New Hampshire residency; the fee for such card shall be $10.",
+           "RSA 260:21-a", "2026-10-26"),
      claim("Enforcement began May 7, 2025; REAL ID compliant to board domestic flights and access "
            "certain federal facilities; a star; a passport is acceptable; travelers without an "
            "acceptable ID pay a fee.", TSA_REALID, READ),
      claim("Operator $50, REAL ID operator $60, non-driver ID $20, and the other licenses' fees.",
            DMV_FEES, READ),
      claim("$60 for a Real ID Act compliant license, $50 for each other license.", "RSA 263:42", READ),
-     claim("The fee for a nondriver's picture identification card is $20, not refundable.",
-           "RSA 260:21", READ)],
+     claim("The fee for a nondriver's picture identification card, marked not acceptable for "
+           "federal identification purposes, is $20, not refundable.", "RSA 260:21", "2026-10-26")],
     more=civics.faq(
         ("What if I do not get a REAL ID?",
          "<p>A card without the star is marked &ldquo;NOT FOR FEDERAL IDENTIFICATION&rdquo;, and "
@@ -2581,7 +2616,8 @@ REAL_ID = guide(
     see=[("How to renew your driver's license", "/guides/renew-drivers-license.html")],
     figures=[fig("$60", "RSA 263:42", "$60 for a Real ID Act compliant license"),
              fig("$50", "RSA 263:42", "$50 for each other license"),
-             fig("$20", "RSA 260:21", "The fee for such card shall be $20")])
+             fig("$20", "RSA 260:21", "The fee for such card shall be $20"),
+             fig("$10", "RSA 260:21-a", "The fee for such card shall be $10")])
 
 
 # ---------------------------------------------------------------------------
@@ -2776,7 +2812,7 @@ BENEFITS = guide(
           "Department&rsquo;s appeal request form or in a letter, and drop it off or mail it to "
           "your District Office, mail it to the Administrative Appeals Unit, or email it.</p>"
           "<p>Generally you have 30 days from the date on your Notice of Decision, or 90 days for "
-          "SNAP; your notice gives your deadline. You do not need a lawyer.</p>",
+          "SNAP. You do not need a lawyer.</p>",
           actions=[("Administrative appeals", DHHS_APPEALS)])],
     [("Supplemental Nutrition Assistance Program (Department of Health and Human Services)", DHHS_SNAP),
      ("Medicaid (Department of Health and Human Services)", DHHS_MEDICAID),
@@ -4142,7 +4178,8 @@ BUILDING_PERMITS = guide(
          [("Building, adding on, remodeling or repairing",
            "It must meet the state building code. Your town issues the permit and inspects."),
           ("Electrical, plumbing or gas",
-           "A licensed trade, or you, in a single-family home you own and live in."),
+           "A licensed trade, or you, in a single-family home you own and live in (for gas, "
+           "only an existing, stand-alone house that is your main home)."),
           ("A septic system, or adding to the load on one",
            "The state approves the septic plans first."),
           ("Near a lake, pond, river, the coast or a wetland",
@@ -4184,15 +4221,15 @@ BUILDING_PERMITS = guide(
                     "Certification)", OPLC_ELECTRICIANS)],
           law=["RSA 319-C:1", "RSA 319-C:15"]),
      step("Plumbing and gas work",
-          "<p>Plumbers and gas fitters are licensed by the state&rsquo;s Mechanical Safety and "
-          "Licensing Board. A property owner may install, repair or replace the plumbing in "
+          "<p>Plumbers and gas fitters are licensed by the state&rsquo;s Mechanical Licensing "
+          "Board, part of the Office of Professional Licensure and Certification. A property owner may install, repair or replace the plumbing in "
           "their own <b>single-family house or townhouse</b>, including in new construction; "
           "the work must still meet the state plumbing code.</p>"
           "<p>Gas fitting is narrower: you may do it yourself only in an existing, stand-alone "
           "single-family house that you own and live in as your main home, and the work must "
           "meet the codes and pass any inspection that applies. Your town&rsquo;s building "
           "office may enforce the plumbing and gas rules.</p>",
-          law=["RSA 153:36", "RSA 153:35"]),
+          law=["RSA 153:27-a", "RSA 153:36", "RSA 153:35"]),
      step("Septic systems",
           "<p>No one may build a house or other building that will send wastewater to a septic "
           "system, or build a septic system, until the Department of Environmental Services "
@@ -4202,8 +4239,9 @@ BUILDING_PERMITS = guide(
           "the Department&rsquo;s rules.</p>",
           law=["RSA 485-A:32", "RSA 485-A:35", "RSA 485-A:36", "RSA 485-A:38"]),
      step("Work near water",
-          "<p>Land within 250 feet of a lake, pond, river or the coast is <b>protected "
-          "shoreland</b>. Building, digging or filling there needs a shoreland permit from the "
+          "<p>Land within 250 feet of a lake or pond of more than 10 acres, a larger river (one "
+          "of fourth order or higher, or one the state has designated as protected) or tidal "
+          "water is <b>protected shoreland</b>. Building, digging or filling there needs a shoreland permit from the "
           "Department of Environmental Services. Small projects that meet its standards can "
           "go ahead on a simpler <b>permit by notification</b>, as soon as the Department "
           "confirms it has your complete notice.</p>"
@@ -4231,9 +4269,11 @@ BUILDING_PERMITS = guide(
     ["155-A", "319-C", "153", "485-A", "483-B", "482-A"],
     [# The statutes, as the Laws pages print them, read on 25 October 2026.
      claim("The state building code is the adoption by reference of the International Building "
-           "Code, Existing Building Code, Plumbing Code, Mechanical Code, Energy Conservation "
-           "Code, Swimming Pool and Spa Code and Residential Code, and the National Electrical "
-           "Code.", "RSA 155-A:1", BP_READ),
+           "Code 2024, the International Existing Building Code 2024, the International Plumbing "
+           "Code 2024, the International Mechanical Code 2024, the International Energy "
+           "Conservation Code 2018, the International Swimming Pool and Spa Code 2024 and the "
+           "International Residential Code 2024, and the National Electrical Code 2023.",
+           "RSA 155-A:1", "2026-10-26"),
      claim("All buildings, building components, and structures constructed in New Hampshire "
            "shall comply with the state building code and state fire code; it governs the "
            "construction and the alteration, renovation, rehabilitation, repair, removal, or "
@@ -4270,6 +4310,8 @@ BUILDING_PERMITS = guide(
            "owner's own single-family detached or townhouse residence, including new "
            "construction, which shall conform to the state plumbing code.", "RSA 153:36",
            BP_READ),
+     claim("The mechanical licensing board is established as a unit within the office of "
+           "professional licensure and certification.", "RSA 153:27-a", "2026-10-26"),
      claim("The mechanical licensing board's rules may be enforced by the building inspection "
            "department or by any officer designated by the city or town.", "RSA 153:35",
            BP_READ),
@@ -4288,7 +4330,11 @@ BUILDING_PERMITS = guide(
            "load on a sewage disposal system, the owner shall apply to the department for "
            "approval of the system.", "RSA 485-A:38", BP_READ),
      claim("Protected shoreland means all land located within 250 feet of the reference line of "
-           "public waters.", "RSA 483-B:4", BP_READ),
+           "public waters; public waters include all lakes, ponds, and artificial impoundments "
+           "greater than 10 acres in size; coastal waters subject to the ebb and flow of the "
+           "tide; and rivers, all year-round flowing waters of fourth order or higher and all "
+           "rivers and river segments designated as protected under RSA 483:15.", "RSA 483-B:4",
+           "2026-10-26"),
      claim("No person shall commence construction, excavation, or filling activities within "
            "the protected shoreland without a permit from the department; projects with no "
            "impact on water quality qualify for a permit by notification, and the owner may "
@@ -4324,9 +4370,11 @@ BUILDING_PERMITS = guide(
         ("Which edition of the code applies?",
          "<p>A town or city that enforces the code does so by an ordinance the state&rsquo;s "
          "Building Code Review Board confirms; it may add local amendments, limited since July "
-         "1, 2026 to administrative matters. The state updated its codes to the 2024 editions "
-         "on July 1, 2026; through December 31, 2026 a permit may be sought under either the "
-         "2021 or the 2024 codes. The Review Board answers questions at (603) 223-4315.</p>"),
+         "1, 2026 to administrative matters. On July 1, 2026 the state moved six of its codes "
+         "to their 2024 editions: the building, residential, existing building, plumbing, "
+         "mechanical, and swimming pool and spa codes. The energy code stays the 2018 edition "
+         "and the electrical code the 2023. Through December 31, 2026 a permit may be sought "
+         "under either the 2021 or the 2024 codes. The Review Board answers questions at (603) 223-4315.</p>"),
         ("What if my town has no building inspector?",
          "<p>Where a town has no one of its own to enforce the code, the State Fire Marshal "
          "may enforce it at the town&rsquo;s written request. In such a town, a contractor "
@@ -4434,8 +4482,8 @@ VIOLENCE = guide(
           "cannot see, or have been exposed to an infection or to pregnancy. Emergency "
           "contraception works best within 72 hours.</p>"
           "<ul><li><b>The exam is free.</b> The bill is never sent to you or your family.</li>"
-          "<li><b>You choose whether to report</b> to the police, and you can have the exam "
-          "first and decide later. If you are under 18, the hospital staff must report it.</li>"
+          "<li><b>You choose whether to report</b> to the police, and the exam can be "
+          "anonymous. If you are under 18, the hospital staff must report it.</li>"
           "<li><b>You choose what happens.</b> You can say no to any part of the exam, at any "
           "time.</li>"
           "<li>An advocate from the crisis center can be with you, for free.</li></ul>",
@@ -4564,7 +4612,8 @@ VIOLENCE = guide(
          "place to start for anything on this page. Its advocates can go with you to the "
          "hospital, the police or the court.</p>"
          "<p>If you think a child under 18 is being abused or neglected, New Hampshire law "
-         "requires you to report it right away to the Division for Children, Youth and Families: call "
+         'requires you to report it right away (<a href="/laws/169-c#s29">RSA 169-C:29</a> and '
+         '<a href="/laws/169-c#s30">30</a>) to the Division for Children, Youth and Families: call '
          "(800) 894-5533 in New Hampshire, or (603) 271-6562.</p>"
          + helps("legal_aid"),
     see=[("How to get help if you are homeless or may lose your home", "/guides/homelessness-help.html"),
@@ -6252,14 +6301,15 @@ TRASH = guide(
     "Hampshire, household hazardous waste collection days, and composting at home.",
     "Trash and recycling are your town&rsquo;s to run: every town must provide a place for its "
     "residents&rsquo; trash, or arrange for one, and sets its own rules, fees and recycling. "
-    "Some things may not go in the trash anywhere in New Hampshire: electronics, wet-cell and "
-    "lithium-ion batteries, products containing mercury, and leaves and yard waste. Paint, "
+    "State law keeps some things out of New Hampshire&rsquo;s landfills and incinerators: "
+    "electronics, wet-cell and lithium-ion batteries, products containing mercury, and leaves "
+    "and yard waste. Paint, "
     "pesticides, cleaners and other hazardous household products go to a household hazardous "
     "waste collection.",
     [box("Ask your town how it takes trash and recycling: a transfer station, pickup, bags or "
          "stickers."),
      ask("Is it something special?",
-         [("Electronics, batteries, mercury, yard waste",
+         [("Electronics, wet-cell and lithium-ion batteries, mercury, yard waste",
            "Never in the trash. Ask your transfer station where it goes."),
           ("Paint, cleaners, pesticides, oil",
            "Keep it for a household hazardous waste collection.")]),
@@ -6349,9 +6399,10 @@ TRASH = guide(
         ("Can my town fine me for breaking its trash rules?",
          "<p>Yes: a town may fine people who break its rules.</p>"),
         ("Where can I recycle batteries and electronics?",
-         "<p>Towns and transfer stations must make information available on recycling "
-         "batteries and electronics and on where mercury products are accepted, and should "
-         "offer recycling for batteries and electronics where they can. Ask at yours.</p>"),
+         "<p>Towns, and the operators of landfills and incinerators, must make information "
+         "available on recycling wet-cell and lithium-ion batteries and electronics, and "
+         "should offer recycling for them where they can. Ask at your town&rsquo;s transfer "
+         "station.</p>"),
         ("What if a hazardous product's container is corroding?",
          "<p>Call your fire department for instructions.</p>"),
         ("What do I do with used motor oil?",
@@ -7151,12 +7202,13 @@ DISABILITY = guide(
           "counseling, job training, help finding a job, and assistive technology. To apply, "
           "fill in the online referral form on its page.</p>",
           actions=[("Vocational Rehabilitation (Department of Education)", NHVR)],
-          law=["RSA 200-C:1", "RSA 200-C:24"]),
+          law=["RSA 200-C:1", "RSA 200-C:24", "RSA 200-C:25"]),
      step("If you are turned down",
           "<p><b>Social Security:</b> you can ask it to reconsider, in writing, within 60 days "
           "after you receive its decision. The notice says how.</p>"
           "<p><b>The state:</b> you can ask for an administrative appeal hearing, in writing, on "
-          "the Department&rsquo;s form or in a letter. Your notice gives your deadline. You do "
+          "the Department&rsquo;s form or in a letter. Generally you have 30 days from the date "
+          "on your Notice of Decision. You do "
           "not need a lawyer, and free legal aid can help with benefits appeals (below).</p>",
           actions=[("Administrative appeals (Department of Health and Human Services)",
                     DHHS_APPEALS)])],
@@ -7211,10 +7263,14 @@ DISABILITY = guide(
      claim("The bureau of vocational rehabilitation of the department of education, under the "
            "federal vocational rehabilitation program.", "RSA 200-C:1", DIS_READ),
      claim("An independent living program within the bureau, to assist eligible persons with "
-           "disabilities in increasing their independence, including services to the elderly "
-           "blind.", "RSA 200-C:24", DIS_READ),
+           "disabilities in increasing their independence.", "RSA 200-C:24", DIS_READ),
+     claim("The independent living program's services include services to the elderly blind "
+           "for the purpose of increasing independence.", "RSA 200-C:25", "2026-10-26"),
      # Read before, for the food and health guide.
-     claim("Appeal in writing by form or letter; no attorney needed.", DHHS_APPEALS, READ),
+     claim("Appeal in writing by form or letter, to the District Office, by mail to the AAU, or by "
+           "email, or by telling a DHHS representative; generally 30 days from the Notice of "
+           "Decision, 90 for SNAP; within 15 days benefits may continue, repaid if upheld; no "
+           "attorney needed and none appointed.", DHHS_APPEALS, READ),
      # The agencies' own pages, from the person's printouts.
      claim("Disability benefits: you have a medical condition that will last at least one "
            "year or result in death; your condition makes it hard or impossible to work; you "
@@ -7258,7 +7314,8 @@ DISABILITY = guide(
          "limits.</p>"),
         ("Is there help for a young child with a developmental delay?",
          "<p>For a child from birth up to age 3 with a developmental delay, or at risk of one, "
-         "the area agencies also run Family Centered Early Supports and Services.</p>"),
+         "the Department of Health and Human Services runs Family Centered Early Supports and "
+         "Services.</p>"),
         ("Is there help living more independently?",
          "<p>The Bureau of Vocational Rehabilitation&rsquo;s independent living program helps "
          "people with disabilities, and older people who are blind, live more "
@@ -7277,7 +7334,8 @@ DISABILITY = guide(
                  "shall be 48 months"),
              fig("21 days", "RSA 171-A:6", "within 21 days after application for service"),
              fig("age 3", "RSA 171-A:18-a", "birth up to age 3"),
-             fig("60 days", CFR_RECONSIDER, "within 60 days")])
+             fig("60 days", CFR_RECONSIDER, "within 60 days"),
+             fig("30 days", DHHS_APPEALS, "generally 30 days from the Notice of Decision")])
 
 GUIDES += [DISABILITY]
 
@@ -8549,8 +8607,9 @@ RENTERS_INSURANCE = guide(
           "your credit information alone.</p>"
           "<p>Once a policy has been in effect for 90 days, or once it has been renewed, the "
           "insurer may cancel it only if you do not pay the premium, are convicted of a crime "
-          "that increases a hazard insured against, commit fraud in a claim, act with gross "
-          "negligence that substantially increases a hazard, or ask it to.</p>"
+          "that increases a hazard insured against, commit fraud or material misrepresentation in "
+          "a claim, act with gross negligence that substantially increases a hazard, make "
+          "physical changes that leave the property uninsurable, or ask it to.</p>"
           "<p>It must send written notice that states its specific reasons, at least 45 days "
           "before the cancellation or nonrenewal takes effect, or 10 days for not paying or in "
           "the first 90 days of a new policy.</p>",

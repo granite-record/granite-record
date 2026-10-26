@@ -1824,8 +1824,8 @@
    "state": "draft"
   },
   "guide.building-permits.a-licensed-trade-or-you-in": {
-   "en": "A licensed trade, or you, in a single-family home you own and live in.",
-   "es": "Un profesional con licencia, o usted mismo, en una casa unifamiliar que es suya y donde vive.",
+   "en": "A licensed trade, or you, in a single-family home you own and live in (for gas, only an existing, stand-alone house that is your main home).",
+   "es": "Un profesional con licencia, o usted mismo, en una casa unifamiliar que es suya y donde vive (para el gas, solo en una casa existente e independiente que sea su residencia principal).",
    "state": "draft"
   },
   "guide.building-permits.a-septic-system-or-adding-to": {
@@ -1839,8 +1839,8 @@
    "state": "draft"
   },
   "guide.building-permits.a-town-or-city-that-enforces": {
-   "en": "A town or city that enforces the code does so by an ordinance the state&rsquo;s Building Code Review Board confirms; it may add local amendments, limited since July 1, 2026 to administrative matters. The state updated its codes to the 2024 editions on July 1, 2026; through December 31, 2026 a permit may be sought under either the 2021 or the 2024 codes. The Review Board answers questions at (603) 223-4315.",
-   "es": "Un municipio o ciudad que hace cumplir el código lo hace mediante una ordenanza que confirma la Junta de Revisión del Código de Construcción del estado (Building Code Review Board); puede añadir enmiendas locales, limitadas desde el 1 de julio de 2026 a asuntos administrativos. El estado actualizó sus códigos a las ediciones de 2024 el 1 de julio de 2026; hasta el 31 de diciembre de 2026 se puede pedir un permiso con los códigos de 2021 o con los de 2024. La Junta de Revisión atiende preguntas en el (603) 223-4315.",
+   "en": "A town or city that enforces the code does so by an ordinance the state&rsquo;s Building Code Review Board confirms; it may add local amendments, limited since July 1, 2026 to administrative matters. On July 1, 2026 the state moved six of its codes to their 2024 editions: the building, residential, existing building, plumbing, mechanical, and swimming pool and spa codes. The energy code stays the 2018 edition and the electrical code the 2023. Through December 31, 2026 a permit may be sought under either the 2021 or the 2024 codes. The Review Board answers questions at (603) 223-4315.",
+   "es": "Un municipio o ciudad que hace cumplir el código lo hace mediante una ordenanza que confirma la Junta de Revisión del Código de Construcción del estado (Building Code Review Board); puede añadir enmiendas locales, limitadas desde el 1 de julio de 2026 a asuntos administrativos. El 1 de julio de 2026 el estado pasó seis de sus códigos a las ediciones de 2024: los de construcción, residencial, edificios existentes, plomería, mecánico, y piscinas y spas. El código de energía sigue en la edición de 2018 y el eléctrico en la de 2023. Hasta el 31 de diciembre de 2026 se puede pedir un permiso con los códigos de 2021 o con los de 2024. La Junta de Revisión atiende preguntas en el (603) 223-4315.",
    "state": "draft"
   },
   "guide.building-permits.before-work-starts-the-person": {
@@ -1929,8 +1929,8 @@
    "state": "draft"
   },
   "guide.building-permits.land-within-250-feet-of-a": {
-   "en": "Land within 250 feet of a lake, pond, river or the coast is <b>protected shoreland</b>. Building, digging or filling there needs a shoreland permit from the Department of Environmental Services. Small projects that meet its standards can go ahead on a simpler <b>permit by notification</b>, as soon as the Department confirms it has your complete notice.",
-   "es": "El terreno a menos de 250 pies de un lago, un estanque, un río o la costa es <b>zona costera protegida</b>. Construir, excavar o rellenar allí requiere un permiso de zona costera del Departamento de Servicios Ambientales. Las obras pequeñas que cumplen sus normas pueden hacerse con un <b>permiso por notificación</b>, más sencillo, en cuanto el Departamento confirma que recibió su aviso completo.",
+   "en": "Land within 250 feet of a lake or pond of more than 10 acres, a larger river (one of fourth order or higher, or one the state has designated as protected) or tidal water is <b>protected shoreland</b>. Building, digging or filling there needs a shoreland permit from the Department of Environmental Services. Small projects that meet its standards can go ahead on a simpler <b>permit by notification</b>, as soon as the Department confirms it has your complete notice.",
+   "es": "El terreno a menos de 250 pies de un lago o estanque de más de 10 acres, de un río mayor (de cuarto orden o superior, o uno que el estado ha designado como protegido) o de aguas de marea es <b>zona costera protegida</b>. Construir, excavar o rellenar allí requiere un permiso de zona costera del Departamento de Servicios Ambientales. Las obras pequeñas que cumplen sus normas pueden hacerse con un <b>permiso por notificación</b>, más sencillo, en cuanto el Departamento confirma que recibió su aviso completo.",
    "state": "draft"
   },
   "guide.building-permits.lead": {
@@ -1959,8 +1959,8 @@
    "state": "draft"
   },
   "guide.building-permits.plumbers-and-gas-fitters-are-licensed": {
-   "en": "Plumbers and gas fitters are licensed by the state&rsquo;s Mechanical Safety and Licensing Board. A property owner may install, repair or replace the plumbing in their own <b>single-family house or townhouse</b>, including in new construction; the work must still meet the state plumbing code.",
-   "es": "Los plomeros y los instaladores de gas reciben su licencia de la Junta de Seguridad Mecánica y Licencias del estado. El dueño de una propiedad puede instalar, reparar o reemplazar la plomería de su propia <b>casa unifamiliar o casa adosada</b>, también en una construcción nueva; la obra igual tiene que cumplir el código estatal de plomería.",
+   "en": "Plumbers and gas fitters are licensed by the state&rsquo;s Mechanical Licensing Board, part of the Office of Professional Licensure and Certification. A property owner may install, repair or replace the plumbing in their own <b>single-family house or townhouse</b>, including in new construction; the work must still meet the state plumbing code.",
+   "es": "Los plomeros y los instaladores de gas reciben su licencia de la Junta de Licencias Mecánicas del estado (Mechanical Licensing Board), parte de la Oficina de Licencias y Certificación Profesional. El dueño de una propiedad puede instalar, reparar o reemplazar la plomería de su propia <b>casa unifamiliar o casa adosada</b>, también en una construcción nueva; la obra igual tiene que cumplir el código estatal de plomería.",
    "state": "draft"
   },
   "guide.building-permits.plumbing-and-gas-work": {
@@ -3120,8 +3120,8 @@
    "state": "draft"
   },
   "guide.disability-help.for-a-child-from-birth-up": {
-   "en": "For a child from birth up to age 3 with a developmental delay, or at risk of one, the area agencies also run Family Centered Early Supports and Services.",
-   "es": "Para un niño desde el nacimiento hasta los 3 años con un retraso del desarrollo, o en riesgo de tenerlo, las agencias regionales también ofrecen Family Centered Early Supports and Services (apoyos y servicios tempranos centrados en la familia).",
+   "en": "For a child from birth up to age 3 with a developmental delay, or at risk of one, the Department of Health and Human Services runs Family Centered Early Supports and Services.",
+   "es": "Para un niño desde el nacimiento hasta los 3 años con un retraso del desarrollo, o en riesgo de tenerlo, el Departamento de Salud y Servicios Humanos ofrece Family Centered Early Supports and Services (apoyos y servicios tempranos centrados en la familia).",
    "state": "draft"
   },
   "guide.disability-help.for-a-developmental-disability-or-an": {
@@ -3275,8 +3275,8 @@
    "state": "draft"
   },
   "guide.disability-help.the-state-you-can-ask-for": {
-   "en": "<b>The state:</b> you can ask for an administrative appeal hearing, in writing, on the Department&rsquo;s form or in a letter. Your notice gives your deadline. You do not need a lawyer, and free legal aid can help with benefits appeals (below).",
-   "es": "<b>El estado:</b> puede pedir una audiencia de apelación administrativa, por escrito, en el formulario del Departamento o en una carta. Su aviso le indica el plazo. No necesita un abogado, y la ayuda legal gratuita puede ayudarle con las apelaciones de beneficios (abajo).",
+   "en": "<b>The state:</b> you can ask for an administrative appeal hearing, in writing, on the Department&rsquo;s form or in a letter. Generally you have 30 days from the date on your Notice of Decision. You do not need a lawyer, and free legal aid can help with benefits appeals (below).",
+   "es": "<b>El estado:</b> puede pedir una audiencia de apelación administrativa, por escrito, en el formulario del Departamento o en una carta. Por lo general tiene 30 días desde la fecha de su aviso de decisión. No necesita un abogado, y la ayuda legal gratuita puede ayudarle con las apelaciones de beneficios (abajo).",
    "state": "draft"
   },
   "guide.disability-help.title": {
@@ -3711,8 +3711,8 @@
    "state": "draft"
   },
   "guide.domestic-violence-help.if-you-think-a-child-under": {
-   "en": "If you think a child under 18 is being abused or neglected, New Hampshire law requires you to report it right away to the Division for Children, Youth and Families: call (800) 894-5533 in New Hampshire, or (603) 271-6562.",
-   "es": "Si cree que un niño menor de 18 años sufre abuso o negligencia, la ley de New Hampshire le exige denunciarlo de inmediato a la División para Niños, Jóvenes y Familias (DCYF): llame al (800) 894-5533 dentro de New Hampshire, o al (603) 271-6562.",
+   "en": "If you think a child under 18 is being abused or neglected, New Hampshire law requires you to report it right away (<a href=\"/laws/169-c#s29\">RSA 169-C:29</a> and <a href=\"/laws/169-c#s30\">30</a>) to the Division for Children, Youth and Families: call (800) 894-5533 in New Hampshire, or (603) 271-6562.",
+   "es": "Si cree que un niño menor de 18 años sufre abuso o negligencia, la ley de New Hampshire le exige denunciarlo de inmediato (<a href=\"/laws/169-c#s29\">RSA 169-C:29</a> y <a href=\"/laws/169-c#s30\">30</a>) a la División para Niños, Jóvenes y Familias (DCYF): llame al (800) 894-5533 dentro de New Hampshire, o al (603) 271-6562.",
    "state": "draft"
   },
   "guide.domestic-violence-help.in-an-emergency-call-911": {
@@ -3876,8 +3876,8 @@
    "state": "draft"
   },
   "guide.domestic-violence-help.you-choose-whether-to-report-to": {
-   "en": "<b>You choose whether to report</b> to the police, and you can have the exam first and decide later. If you are under 18, the hospital staff must report it.",
-   "es": "<b>Usted decide si lo denuncia</b> a la policía, y puede hacerse el examen primero y decidir después. Si es menor de 18 años, el personal del hospital debe denunciarlo.",
+   "en": "<b>You choose whether to report</b> to the police, and the exam can be anonymous. If you are under 18, the hospital staff must report it.",
+   "es": "<b>Usted decide si lo denuncia</b> a la policía, y el examen puede ser anónimo. Si es menor de 18 años, el personal del hospital debe denunciarlo.",
    "state": "draft"
   },
   "guide.domestic-violence-help.your-local-crisis-center-through-the": {
@@ -4481,8 +4481,8 @@
    "state": "draft"
   },
   "guide.food-and-health-assistance.generally-you-have-30-days-from": {
-   "en": "Generally you have 30 days from the date on your Notice of Decision, or 90 days for SNAP; your notice gives your deadline. You do not need a lawyer.",
-   "es": "Por lo general tiene 30 días desde la fecha de su aviso de decisión, o 90 días para SNAP; su aviso indica su plazo. No necesita un abogado.",
+   "en": "Generally you have 30 days from the date on your Notice of Decision, or 90 days for SNAP. You do not need a lawyer.",
+   "es": "Por lo general tiene 30 días desde la fecha de su aviso de decisión, o 90 días para SNAP. No necesita un abogado.",
    "state": "draft"
   },
   "guide.food-and-health-assistance.how-do-you-want-to-apply": {
@@ -5416,8 +5416,8 @@
    "state": "draft"
   },
   "guide.help.legal_aid.free-civil-legal-aid-new-hampshire": {
-   "en": "<b>Free civil legal aid.</b> New Hampshire Legal Assistance helps people with low income and limited assets, and adults 60 and over, mainly with housing (eviction, foreclosure and property tax deeding), domestic violence and family law, and public benefits. Apply through 603 Legal Aid, online or at 1-800-639-5290; it also publishes self-help articles.",
-   "es": "<b>Ayuda legal civil gratuita.</b> New Hampshire Legal Assistance ayuda a personas de bajos ingresos y pocos bienes, y a adultos de 60 años o más, sobre todo con vivienda (desalojos, ejecuciones hipotecarias y la pérdida de la propiedad por impuestos no pagados), violencia doméstica y derecho de familia, y beneficios públicos. Se solicita por medio de 603 Legal Aid, en línea o en el 1-800-639-5290; también publica artículos de autoayuda.",
+   "en": "<b>Free civil legal aid.</b> New Hampshire Legal Assistance helps people with low income and limited assets, and adults 60 and over, mainly with housing (including property tax deeding), domestic violence and family law, and public benefits. Apply through 603 Legal Aid, online or at 1-800-639-5290; it also publishes self-help articles.",
+   "es": "<b>Ayuda legal civil gratuita.</b> New Hampshire Legal Assistance ayuda a personas de bajos ingresos y pocos bienes, y a adultos de 60 años o más, sobre todo con vivienda (incluida la pérdida de la propiedad por impuestos no pagados), violencia doméstica y derecho de familia, y beneficios públicos. Se solicita por medio de 603 Legal Aid, en línea o en el 1-800-639-5290; también publica artículos de autoayuda.",
    "state": "draft"
   },
   "guide.help.nheasy.nh-easy-the-department-of-health": {
@@ -8736,6 +8736,11 @@
    "es": "Solicítelo en línea en Granite Tax Connect, o con el formulario DP-8.",
    "state": "draft"
   },
+  "guide.property-tax-relief.apply-online-through-the-departments": {
+   "en": "Apply online through the Department&rsquo;s Granite Tax Connect portal, using &ldquo;Apply for Property Tax Relief&rdquo;, or on Form DP-8 from the Department&rsquo;s forms page.",
+   "es": "Solicítelo en línea por el portal Granite Tax Connect del Departamento, con la opción &ldquo;Apply for Property Tax Relief&rdquo;, o con el formulario DP-8 de la página de formularios del Departamento.",
+   "state": "draft"
+  },
   "guide.property-tax-relief.can-my-claim-be-checked-later": {
    "en": "Can my claim be checked later?",
    "es": "¿Pueden revisar mi solicitud más adelante?",
@@ -8746,9 +8751,9 @@
    "es": "Compruebe que reúne los requisitos",
    "state": "draft"
   },
-  "guide.property-tax-relief.claims-are-accepted-only-in-that": {
-   "en": "Claims are accepted only in that window. Apply online through the Department&rsquo;s Granite Tax Connect portal, using &ldquo;Apply for Property Tax Relief&rdquo;, or on Form DP-8 from the Department&rsquo;s forms page.",
-   "es": "Las solicitudes se aceptan solo en ese período. Solicítelo en línea por el portal Granite Tax Connect del Departamento, con la opción &ldquo;Apply for Property Tax Relief&rdquo;, o con el formulario DP-8 de la página de formularios del Departamento.",
+  "guide.property-tax-relief.claims-are-filed-in-that-window": {
+   "en": "Claims are filed in that window. The Department may accept a late, complete claim up to November 1 if an accident, mistake or misfortune kept you from filing on time, or if you or another adult in your household asked for an extension to file a federal income tax return.",
+   "es": "Las solicitudes se presentan en ese período. El Departamento puede aceptar una solicitud tardía, pero completa, hasta el 1 de noviembre si un accidente, un error o una desgracia le impidió presentarla a tiempo, o si usted u otro adulto de su hogar pidió una prórroga para presentar la declaración federal del impuesto sobre la renta.",
    "state": "draft"
   },
   "guide.property-tax-relief.common-questions": {
@@ -8906,9 +8911,9 @@
    "es": "Sí",
    "state": "draft"
   },
-  "guide.property-tax-relief.yes-a-false-claim-is-a": {
-   "en": "Yes. A false claim is a crime, and the Department may audit a claim within three years of granting it (<a href=\"/laws/198#s59\">RSA 198:59</a>).",
-   "es": "Sí. Una solicitud falsa es un delito, y el Departamento puede auditar una solicitud dentro de los tres años siguientes a concederla (<a href=\"/laws/198#s59\">RSA 198:59</a>).",
+  "guide.property-tax-relief.yes-a-fraudulent-claim-is-a": {
+   "en": "Yes. A fraudulent claim is a crime, and the Department may audit a claim within three years of granting it and collect back what was paid in error, with interest and a penalty (<a href=\"/laws/198#s59\">RSA 198:59</a>).",
+   "es": "Sí. Una solicitud fraudulenta es un delito, y el Departamento puede auditar una solicitud dentro de los tres años siguientes a concederla y cobrar lo pagado por error, con intereses y una multa (<a href=\"/laws/198#s59\">RSA 198:59</a>).",
    "state": "draft"
   },
   "guide.property-tax-relief.you-can-appeal-in-writing-to": {
@@ -8917,8 +8922,8 @@
    "state": "draft"
   },
   "guide.property-tax-relief.you-lived-in-it-on-april": {
-   "en": "you lived in it on April 1 of the year you are claiming for; and",
-   "es": "vivía en ella el 1 de abril del año por el que solicita; y",
+   "en": "you lived in it on April 1 of the year you are claiming for, or were away on active military duty or for a while, keeping it as your main home; and",
+   "es": "vivía en ella el 1 de abril del año por el que solicita, o estaba fuera en servicio militar activo o por un tiempo, conservándola como su residencia principal; y",
    "state": "draft"
   },
   "guide.property-tax-relief.you-own-a-home-or-an": {
@@ -8942,8 +8947,8 @@
    "state": "draft"
   },
   "guide.public-records.a-refusal-must-be-in-writing": {
-   "en": "A refusal must be in writing, name the specific exemption it relies on, and briefly explain how it applies. To have a refusal reviewed, the law provides two routes, and choosing one closes the other:",
-   "es": "Una negativa debe darse por escrito, nombrar la exención concreta en la que se basa y explicar brevemente cómo se aplica. Para que se revise una negativa, la ley ofrece dos vías, y elegir una cierra la otra:",
+   "en": "A refusal must be in writing, name the specific exemption it relies on, and briefly explain how it applies. To have a refusal reviewed, the law provides two routes. Going to Superior Court rules out the ombudsman; filing with the ombudsman rules out the court until the ombudsman rules or the deadline for a ruling passes:",
+   "es": "Una negativa debe darse por escrito, nombrar la exención concreta en la que se basa y explicar brevemente cómo se aplica. Para que se revise una negativa, la ley ofrece dos vías. Acudir al Tribunal Superior descarta al ombudsman; presentar una queja ante el ombudsman descarta el tribunal hasta que el ombudsman resuelva o venza el plazo para resolver:",
    "state": "draft"
   },
   "guide.public-records.a-request-you-can-copy": {
@@ -9412,8 +9417,8 @@
    "state": "draft"
   },
   "guide.real-id.a-real-id-is-a-drivers": {
-   "en": "A REAL ID is a driver&rsquo;s license or non-driver ID marked with a star. Since May 7, 2025, you need one, or a passport or another accepted ID, to board a domestic flight or enter a secure federal building. In New Hampshire it is voluntary. You get one in person at a DMV office, when you renew or by appointment, with documents proving your identity, your Social Security number and that you live in New Hampshire.",
-   "es": "Una REAL ID es una licencia de conducir o una identificación de no conductor marcada con una estrella. Desde el 7 de mayo de 2025, necesita una, o un pasaporte u otra identificación aceptada, para abordar un vuelo nacional o entrar en un edificio federal de acceso restringido. En New Hampshire es voluntaria. Se obtiene en persona en una oficina del DMV, al renovar o con cita, con documentos que prueben su identidad, su número de Seguro Social y que vive en New Hampshire.",
+   "en": "A REAL ID is a driver&rsquo;s license or non-driver ID marked with a star. Since May 7, 2025, you need one, or a passport or another accepted ID, to board a domestic flight or enter a secure federal building. In New Hampshire it is voluntary. You get one in person at a DMV office, when you renew or by appointment, with documents proving your identity, your citizenship, your Social Security number and that you live in New Hampshire.",
+   "es": "Una REAL ID es una licencia de conducir o una identificación de no conductor marcada con una estrella. Desde el 7 de mayo de 2025, necesita una, o un pasaporte u otra identificación aceptada, para abordar un vuelo nacional o entrar en un edificio federal de acceso restringido. En New Hampshire es voluntaria. Se obtiene en persona en una oficina del DMV, al renovar o con cita, con documentos que prueben su identidad, su ciudadanía, su número de Seguro Social y que vive en New Hampshire.",
    "state": "draft"
   },
   "guide.real-id.a-real-id-license-or-id": {
@@ -9432,8 +9437,8 @@
    "state": "draft"
   },
   "guide.real-id.at-renewal-a-real-id-drivers": {
-   "en": "At renewal, a REAL ID driver&rsquo;s license costs $60, against $50 for a driver&rsquo;s license without the star, and a non-driver ID card costs $20. The law sets all three.",
-   "es": "Al renovar, una licencia de conducir REAL ID cuesta $60, frente a $50 por una licencia de conducir sin la estrella, y una tarjeta de identificación de no conductor cuesta $20. La ley fija las tres.",
+   "en": "At renewal, a REAL ID driver&rsquo;s license costs $60, against $50 for a driver&rsquo;s license without the star. For a non-driver ID card, the law sets $10 for a REAL ID card and $20 for one without the star. The DMV&rsquo;s fees page gives what it charges.",
+   "es": "Al renovar, una licencia de conducir REAL ID cuesta $60, frente a $50 por una licencia de conducir sin la estrella. Para una tarjeta de identificación de no conductor, la ley fija $10 por una tarjeta REAL ID y $20 por una sin la estrella. La página de cuotas del DMV indica lo que cobra.",
    "state": "draft"
   },
   "guide.real-id.common-questions": {
@@ -9556,6 +9561,11 @@
    "es": "REAL ID (TSA)",
    "state": "draft"
   },
+  "guide.real-id.the-law-asks-for-documents-proving": {
+   "en": "The law asks for documents proving your identity, your United States citizenship, your Social Security number, and that you live in New Hampshire. The DMV&rsquo;s online document checker shows what to bring for your situation. If you are not a U.S. citizen, the DMV lists what to bring on its own page.",
+   "es": "La ley pide documentos que prueben su identidad, su ciudadanía de los Estados Unidos, su número de Seguro Social y que vive en New Hampshire. El verificador de documentos en línea del DMV muestra qué llevar en su situación. Si no es ciudadano de EE. UU., el DMV indica qué llevar en su propia página.",
+   "state": "draft"
+  },
   "guide.real-id.the-list-of-documents": {
    "en": "The list of documents",
    "es": "La lista de documentos",
@@ -9599,11 +9609,6 @@
   "guide.real-id.you-might-not-need-one-a": {
    "en": "You might not need one. A card without the star says Not for Federal Identification.",
    "es": "Puede que no la necesite. Una tarjeta sin la estrella dice Not for Federal Identification (no válida para identificación federal).",
-   "state": "draft"
-  },
-  "guide.real-id.you-prove-three-things-your-identity": {
-   "en": "You prove three things: your identity, your Social Security number, and that you live in New Hampshire. The DMV&rsquo;s online document checker shows what to bring for your situation. If you are not a U.S. citizen, the DMV lists what to bring on its own page.",
-   "es": "Usted prueba tres cosas: su identidad, su número de Seguro Social y que vive en New Hampshire. El verificador de documentos en línea del DMV muestra qué llevar en su situación. Si no es ciudadano de EE. UU., el DMV indica qué llevar en su propia página.",
    "state": "draft"
   },
   "guide.register-a-car.a-registration-in-your-own-name": {
@@ -10232,8 +10237,8 @@
    "state": "draft"
   },
   "guide.renters-insurance.once-a-policy-has-been-in": {
-   "en": "Once a policy has been in effect for 90 days, or once it has been renewed, the insurer may cancel it only if you do not pay the premium, are convicted of a crime that increases a hazard insured against, commit fraud in a claim, act with gross negligence that substantially increases a hazard, or ask it to.",
-   "es": "Cuando una póliza lleva 90 días en vigor, o una vez renovada, la aseguradora solo puede cancelarla si usted no paga la prima, es condenado por un delito que aumenta un riesgo asegurado, comete fraude en un reclamo, actúa con negligencia grave que aumenta sustancialmente un riesgo, o lo pide.",
+   "en": "Once a policy has been in effect for 90 days, or once it has been renewed, the insurer may cancel it only if you do not pay the premium, are convicted of a crime that increases a hazard insured against, commit fraud or material misrepresentation in a claim, act with gross negligence that substantially increases a hazard, make physical changes that leave the property uninsurable, or ask it to.",
+   "es": "Cuando una póliza lleva 90 días en vigor, o una vez renovada, la aseguradora solo puede cancelarla si usted no paga la prima, es condenado por un delito que aumenta un riesgo asegurado, comete fraude o una tergiversación importante en un reclamo, actúa con negligencia grave que aumenta sustancialmente un riesgo, hace cambios físicos que dejan la propiedad sin posibilidad de asegurarse, o lo pide.",
    "state": "draft"
   },
   "guide.renters-insurance.see-homeowners-insurance": {
@@ -10847,8 +10852,8 @@
    "state": "draft"
   },
   "guide.said.email.the-senates-guidance-says-to-send": {
-   "en": "The Senate&rsquo;s guidance says to send written testimony to the committee through the &ldquo;Email All Committee Members&rdquo; link on the committee&rsquo;s page on the General Court&rsquo;s website. <a href=\"/committees.html\">Every committee&rsquo;s page here</a> does the same: it lists the members and has a button that opens one email to all of them. Put the bill&rsquo;s number in the subject line. It works for a House or a Senate committee, and for a bill whose hearing has passed but whose committee has not yet voted.",
-   "es": "La guía del Senado indica enviar el testimonio escrito al comité mediante el enlace &ldquo;Email All Committee Members&rdquo; (enviar correo a todos los miembros del comité) de la página del comité en el sitio web de la Legislatura. <a href=\"/committees.html\">La página de cada comité en este sitio</a> hace lo mismo: enumera a los miembros y tiene un botón que abre un solo correo electrónico para todos ellos. Ponga el número del proyecto de ley en el asunto. Sirve para un comité de la Cámara o del Senado, y para un proyecto de ley cuya audiencia ya pasó pero cuyo comité todavía no ha votado.",
+   "en": "The Senate&rsquo;s guidance says to send written testimony to the committee through the &ldquo;Email All Committee Members&rdquo; link on the committee&rsquo;s page on the General Court&rsquo;s website. <a href=\"/committees.html\">Every committee&rsquo;s page here</a>, House or Senate, does the same: it lists the members and has a button that opens one email to all of them. Put the bill&rsquo;s number in the subject line.",
+   "es": "La guía del Senado indica enviar el testimonio escrito al comité mediante el enlace &ldquo;Email All Committee Members&rdquo; (enviar correo a todos los miembros del comité) de la página del comité en el sitio web de la Legislatura. <a href=\"/committees.html\">La página de cada comité en este sitio</a>, de la Cámara o del Senado, hace lo mismo: enumera a los miembros y tiene un botón que abre un solo correo electrónico para todos ellos. Ponga el número del proyecto de ley en el asunto.",
    "state": "draft"
   },
   "guide.said.exec-session.the-committee-votes-on-what-to": {
@@ -11247,11 +11252,6 @@
    "es": "Un comité puede votar en cuanto termina su audiencia: los avisos del Senado a menudo dicen &ldquo;executive session may follow&rdquo; (puede seguir una sesión ejecutiva), y un comité de la Cámara puede reunirse en sesión ejecutiva justo después de una audiencia anunciada. Así que envíe su testimonio antes de la audiencia, en cuanto pueda una vez que esté programada.",
    "state": "draft"
   },
-  "guide.submit-testimony.a-sign-in-for-or-against": {
-   "en": "A sign-in for or against is part of the record and is counted. For House hearings this site publishes only how many people signed in supporting, opposing and neutral, never names or written testimony.",
-   "es": "Una inscripción a favor o en contra forma parte del registro oficial y se cuenta. De las audiencias de la Cámara, este sitio publica solo cuántas personas se inscribieron a favor, en contra o como neutrales, nunca sus nombres ni sus testimonios escritos.",
-   "state": "draft"
-  },
   "guide.submit-testimony.committee-members-can-read-what-is": {
    "en": "Committee members can read what is submitted online in the House&rsquo;s portal, bill by bill, and are sent links to it at the end of each day their committee holds hearings.",
    "es": "Los miembros del comité pueden leer lo que se envía en línea en el portal de la Cámara, proyecto por proyecto, y reciben enlaces al final de cada día en que su comité celebra audiencias.",
@@ -11275,6 +11275,11 @@
   "guide.submit-testimony.each-form-asks-who-you-are": {
    "en": "Each form asks who you are, whom you represent, if anyone, and whether you support the bill, oppose it or are neutral; the questions below say what else.",
    "es": "Cada formulario pregunta quién es usted, a quién representa, si representa a alguien, y si apoya el proyecto, se opone o es neutral; las preguntas de abajo dicen qué más.",
+   "state": "draft"
+  },
+  "guide.submit-testimony.each-online-sign-in-is-kept": {
+   "en": "Each online sign-in is kept in the House&rsquo;s database with its hearing, committee and bill, and committee members can read the submissions bill by bill. For House hearings this site publishes only how many people signed in supporting, opposing and neutral, never names or written testimony.",
+   "es": "Cada inscripción en línea se guarda en la base de datos de la Cámara con su audiencia, su comité y su proyecto de ley, y los miembros del comité pueden leer lo enviado proyecto por proyecto. De las audiencias de la Cámara, este sitio publica solo cuántas personas se inscribieron a favor, en contra o como neutrales, nunca sus nombres ni sus testimonios escritos.",
    "state": "draft"
   },
   "guide.submit-testimony.email-it-or-bring-it-on": {
@@ -13384,14 +13389,14 @@
    "es": "Compostaje en casa (EPA)",
    "state": "draft"
   },
-  "guide.trash-and-recycling.electronics-batteries-mercury-yard-waste": {
-   "en": "Electronics, batteries, mercury, yard waste",
-   "es": "Aparatos electrónicos, baterías, mercurio, desechos de jardín",
-   "state": "draft"
-  },
   "guide.trash-and-recycling.electronics-computers-and-monitors": {
    "en": "<b>Electronics:</b> computers and monitors, printers, televisions and other screens, cell phones, copiers and fax machines.",
    "es": "<b>Aparatos electrónicos:</b> computadoras y monitores, impresoras, televisores y otras pantallas, teléfonos celulares, fotocopiadoras y máquinas de fax.",
+   "state": "draft"
+  },
+  "guide.trash-and-recycling.electronics-wet-cell-and-lithium-ion": {
+   "en": "Electronics, wet-cell and lithium-ion batteries, mercury, yard waste",
+   "es": "Aparatos electrónicos, baterías de celda húmeda y de iones de litio, mercurio, desechos de jardín",
    "state": "draft"
   },
   "guide.trash-and-recycling.every-town-must-either-run-a": {
@@ -13505,14 +13510,14 @@
    "state": "draft",
    "note": "transfer station: 'estación de transferencia', with the English once, and the dump 'basurero'; wet-cell battery: 'batería de celda húmeda', the statute's term."
   },
-  "guide.trash-and-recycling.towns-and-transfer-stations-must-make": {
-   "en": "Towns and transfer stations must make information available on recycling batteries and electronics and on where mercury products are accepted, and should offer recycling for batteries and electronics where they can. Ask at yours.",
-   "es": "Los municipios y las estaciones de transferencia deben dar información sobre el reciclaje de baterías y aparatos electrónicos y sobre dónde se aceptan los productos con mercurio, y deberían ofrecer reciclaje de baterías y aparatos electrónicos cuando puedan. Pregunte en la suya.",
+  "guide.trash-and-recycling.towns-and-the-operators-of-landfills": {
+   "en": "Towns, and the operators of landfills and incinerators, must make information available on recycling wet-cell and lithium-ion batteries and electronics, and should offer recycling for them where they can. Ask at your town&rsquo;s transfer station.",
+   "es": "Los municipios, y quienes operan vertederos e incineradores, deben dar información sobre el reciclaje de las baterías de celda húmeda y de iones de litio y de los aparatos electrónicos, y deberían ofrecer su reciclaje cuando puedan. Pregunte en la estación de transferencia de su municipio.",
    "state": "draft"
   },
   "guide.trash-and-recycling.trash-and-recycling-are-your-towns": {
-   "en": "Trash and recycling are your town&rsquo;s to run: every town must provide a place for its residents&rsquo; trash, or arrange for one, and sets its own rules, fees and recycling. Some things may not go in the trash anywhere in New Hampshire: electronics, wet-cell and lithium-ion batteries, products containing mercury, and leaves and yard waste. Paint, pesticides, cleaners and other hazardous household products go to a household hazardous waste collection.",
-   "es": "La basura y el reciclaje están a cargo de su municipio: cada municipio debe ofrecer a sus residentes un lugar para la basura, o encargarse de que tengan uno, y fija sus propias reglas, cuotas y reciclaje. Algunas cosas no pueden ir a la basura en ningún lugar de New Hampshire: los aparatos electrónicos, las baterías de celda húmeda y de iones de litio, los productos que contienen mercurio, y las hojas y los desechos de jardín. La pintura, los pesticidas, los productos de limpieza y otros productos peligrosos del hogar van a una recolección de desechos peligrosos del hogar.",
+   "en": "Trash and recycling are your town&rsquo;s to run: every town must provide a place for its residents&rsquo; trash, or arrange for one, and sets its own rules, fees and recycling. State law keeps some things out of New Hampshire&rsquo;s landfills and incinerators: electronics, wet-cell and lithium-ion batteries, products containing mercury, and leaves and yard waste. Paint, pesticides, cleaners and other hazardous household products go to a household hazardous waste collection.",
+   "es": "La basura y el reciclaje están a cargo de su municipio: cada municipio debe ofrecer a sus residentes un lugar para la basura, o encargarse de que tengan uno, y fija sus propias reglas, cuotas y reciclaje. La ley estatal prohíbe llevar algunas cosas a los vertederos y los incineradores de New Hampshire: los aparatos electrónicos, las baterías de celda húmeda y de iones de litio, los productos que contienen mercurio, y las hojas y los desechos de jardín. La pintura, los pesticidas, los productos de limpieza y otros productos peligrosos del hogar van a una recolección de desechos peligrosos del hogar.",
    "state": "draft"
   },
   "guide.trash-and-recycling.wet-cell-and-lithium-ion-batteries": {
@@ -16012,8 +16017,8 @@
    "state": "draft"
   },
   "learn.city-and-town-government.a-city-has-no-town-meeting": {
-   "en": "A city has no town meeting. The powers the law vests in towns, or in the inhabitants of them, are exercised by the city council (RSA 47:1). The council may be called a <b>city council</b> or a <b>board of aldermen</b>; the name is the city's and the function is the same. How many members there are, and whether they are elected by ward or at large or both, is set by the city's charter.",
-   "es": "Una ciudad no tiene asamblea municipal. Los poderes que la ley otorga a los municipios, o a sus habitantes, los ejerce el concejo municipal (RSA 47:1). El concejo puede llamarse <b>concejo municipal</b> (city council) o <b>junta de concejales municipales</b> (board of aldermen); el nombre es de la ciudad y la función es la misma. Cuántos miembros tiene, y si se eligen por barrio electoral, por toda la ciudad o de ambas formas, lo fija la carta orgánica de la ciudad.",
+   "en": "A city has no town meeting. The powers the law vests in towns, or in the inhabitants of them, are exercised by the city council (RSA 47:1). Depending on its charter, a city's elected body may be a <b>mayor and board of aldermen</b>, a <b>mayor and council</b>, or a <b>city council</b> (RSA 49-B:2).",
+   "es": "Una ciudad no tiene asamblea municipal. Los poderes que la ley otorga a los municipios, o a sus habitantes, los ejerce el concejo municipal (RSA 47:1). Según su carta orgánica, el órgano electo de una ciudad puede ser un <b>alcalde y una junta de concejales municipales</b> (mayor and board of aldermen), un <b>alcalde y un concejo</b> (mayor and council) o un <b>concejo municipal</b> (city council) (RSA 49-B:2).",
    "state": "draft"
   },
   "learn.city-and-town-government.a-city-manager-the-council-appoints": {
@@ -16037,8 +16042,8 @@
    "state": "draft"
   },
   "learn.city-and-town-government.a-district-holds-its-own-meeting": {
-   "en": "A district holds its own meeting and has its own moderator, clerk, treasurer and commissioners, who have the same powers over the district's business as a town's moderator, clerk, treasurer and selectmen have over the town's (RSA 52:8). A village district may adopt the manager form too, but only once the town it lies in (or, if it spans towns, the one holding most of its taxable value) has adopted it, and it must then appoint that town's manager as its own (RSA 37:14). If you live in one, it is a separate line on your tax bill.",
-   "es": "Un distrito celebra su propia asamblea y tiene su propio moderador, secretario, tesorero y comisionados, que tienen sobre los asuntos del distrito los mismos poderes que el moderador, el secretario, el tesorero y los concejales de un municipio tienen sobre los del municipio (RSA 52:8). Un distrito de aldea también puede adoptar la forma de administrador, pero solo después de que la haya adoptado el municipio en el que se encuentra (o, si abarca varios municipios, el que tiene la mayor parte de su valor tributable), y entonces debe nombrar como propio al administrador de ese municipio (RSA 37:14). Si usted vive en uno, aparece como una línea aparte en su factura de impuestos.",
+   "en": "A district holds its own meeting and has its own moderator, clerk, treasurer and commissioners, who have the same powers over the district's business as a town's moderator, clerk, treasurer and selectmen have over the town's (RSA 52:8). A village district may adopt the manager form too, but only once the town it lies in (or, if it spans towns, the one holding most of its taxable value) has adopted it, and it must then appoint that town's manager as its own (RSA 37:14).",
+   "es": "Un distrito celebra su propia asamblea y tiene su propio moderador, secretario, tesorero y comisionados, que tienen sobre los asuntos del distrito los mismos poderes que el moderador, el secretario, el tesorero y los concejales de un municipio tienen sobre los del municipio (RSA 52:8). Un distrito de aldea también puede adoptar la forma de administrador, pero solo después de que la haya adoptado el municipio en el que se encuentra (o, si abarca varios municipios, el que tiene la mayor parte de su valor tributable), y entonces debe nombrar como propio al administrador de ese municipio (RSA 37:14).",
    "state": "draft"
   },
   "learn.city-and-town-government.a-meeting-and-a-selectboard": {
@@ -16066,11 +16071,6 @@
    "es": "Un municipio",
    "state": "draft"
   },
-  "learn.city-and-town-government.a-town-administrator-is-a-different": {
-   "en": "A <b>town administrator</b> is a different thing, and the difference matters when you are working out who decides. There is no statutory office of town administrator. The selectmen hire one to help them run the town's business, and the administrator works under their direct supervision. Adopting RSA 37 moves authority from the elected board to an appointed officer; hiring an administrator does not, and needs no vote of the meeting.",
-   "es": "Un <b>town administrator</b> (gerente administrativo del municipio) es otra cosa, y la diferencia importa cuando quiere saber quién decide. No existe un cargo de town administrator establecido por ley. Los concejales contratan a uno para que les ayude a manejar los asuntos del municipio, y el gerente trabaja bajo su supervisión directa. Adoptar el RSA 37 traslada autoridad de la junta electa a un funcionario nombrado; contratar a un gerente administrativo no lo hace, y no requiere ningún voto de la asamblea.",
-   "state": "draft"
-  },
   "learn.city-and-town-government.a-town-charter-does-not-have": {
    "en": "A town charter does not have to abolish the town meeting. RSA 49-D:3 sets out the forms a town charter may choose between: a town council; an official ballot town council; a budgetary town meeting, which keeps the meeting but limits it to the operating budget and bonds; an official ballot town meeting; and a representative town meeting, where members elected from districts vote in place of the whole electorate. A charter may also make a <b>town manager</b> the chief administrative officer, under the town council-town manager form (RSA 49-D:2).",
    "es": "La carta orgánica de un municipio no tiene que abolir la asamblea municipal. El RSA 49-D:3 enumera las formas entre las que puede escoger una carta orgánica municipal: un concejo municipal; un concejo municipal con boleta oficial; una asamblea municipal presupuestaria, que conserva la asamblea pero la limita al presupuesto de operación y a los bonos; una asamblea municipal con boleta oficial; y una asamblea municipal representativa, en la que miembros elegidos por distritos votan en lugar de todo el electorado. Una carta orgánica también puede hacer de un <b>administrador municipal</b> (town manager) el director administrativo, en la forma de concejo municipal y administrador municipal (RSA 49-D:2).",
@@ -16079,6 +16079,11 @@
   "learn.city-and-town-government.a-town-may-adopt-the-town": {
    "en": "A town may adopt the town manager form under RSA 37. It takes a vote: the chapter does not operate in a town until a majority of the voters present and voting at an annual meeting adopt it (RSA 37:11), and on the written application of 10 or more voters the selectmen must put the question in the warrant (RSA 37:12). Once adopted, the selectmen appoint the manager (RSA 37:2), who becomes the administrative head of all departments of the town and is responsible for administering them (RSA 37:5). The manager appoints and dismisses subordinate staff, examines the affairs of any department under the manager's control, and prepares the year's expenditure and revenue estimates (RSA 37:6). What the manager does not get are the things the meeting and the selectmen keep, among them warning town meetings, making bylaws, borrowing money, assessing or collecting taxes, granting licenses and laying out highways; nor does the manager supervise the town clerk or the town treasurer (RSA 37:5).",
    "es": "Un municipio puede adoptar la forma de administrador municipal (town manager) según el RSA 37. Hace falta una votación: el capítulo no rige en un municipio hasta que la mayoría de los votantes presentes que voten en una asamblea anual lo adopte (RSA 37:11), y a solicitud escrita de 10 o más votantes los concejales deben incluir la pregunta en la convocatoria (RSA 37:12). Una vez adoptado, los concejales nombran al administrador (RSA 37:2), que pasa a ser el jefe administrativo de todos los departamentos del municipio y responsable de administrarlos (RSA 37:5). El administrador nombra y despide al personal subordinado, examina los asuntos de cualquier departamento a su cargo y prepara los cálculos de gastos e ingresos del año (RSA 37:6). Lo que el administrador no recibe son las funciones que conservan la asamblea y los concejales, entre ellas convocar las asambleas municipales, dictar reglamentos, pedir dinero prestado, tasar o cobrar impuestos, otorgar licencias y trazar carreteras; tampoco supervisa al secretario municipal ni al tesorero municipal (RSA 37:5).",
+   "state": "draft"
+  },
+  "learn.city-and-town-government.a-town-may-combine-the-two": {
+   "en": "A town may combine the two into one office. It takes a petitioned article and a majority at the annual meeting, and the combined officer is then elected for a term of one year or three (RSA 41:45-a).",
+   "es": "Un municipio puede combinar los dos en un solo cargo. Hace falta un artículo por petición y una mayoría en la asamblea anual, y el funcionario combinado se elige entonces por un período de uno o de tres años (RSA 41:45-a).",
    "state": "draft"
   },
   "learn.city-and-town-government.a-town-the-meeting-decides-the": {
@@ -16142,8 +16147,8 @@
    "state": "draft"
   },
   "learn.city-and-town-government.council-manager-the-other-common": {
-   "en": "<b>Council-manager:</b> the other common arrangement, set out for charter cities at RSA 49-C. The charter names either the mayor or an appointed <b>city manager</b> as chief administrative officer, heading the administrative branch, supervising the city's administrative affairs and carrying out the policies the elected body enacts (RSA 49-C:16). The council appoints the manager for an indefinite term and fixes the salary, by a vote of at least a majority of the council, and the charter sets out how the manager may be removed (RSA 49-C:17). Where a city runs this way, the mayor chairs the council and the manager runs the administration.",
-   "es": "<b>Concejo y administrador:</b> la otra forma común, establecida para las ciudades con carta orgánica en el RSA 49-C. La carta orgánica nombra al alcalde o a un <b>administrador municipal</b> (city manager) designado como director administrativo, que dirige la rama administrativa, supervisa los asuntos administrativos de la ciudad y ejecuta las políticas que establece el órgano electo (RSA 49-C:16). El concejo nombra al administrador por un período indefinido y fija su salario, con el voto de al menos la mayoría del concejo, y la carta orgánica establece cómo se puede destituir al administrador (RSA 49-C:17). Donde una ciudad funciona así, el alcalde preside el concejo y el administrador dirige la administración.",
+   "en": "<b>Council-manager:</b> the other common arrangement, set out for charter cities at RSA 49-C. The charter names either the mayor or an appointed <b>city manager</b> as chief administrative officer, heading the administrative branch, supervising the city's administrative affairs and carrying out the policies the elected body enacts (RSA 49-C:16). The council appoints the manager for an indefinite term and fixes the salary, by a vote of at least a majority of the council, and the charter sets out how the manager may be removed (RSA 49-C:17). Where a city runs this way, the mayor chairs the council (RSA 49-C:12) and the manager runs the administration.",
+   "es": "<b>Concejo y administrador:</b> la otra forma común, establecida para las ciudades con carta orgánica en el RSA 49-C. La carta orgánica nombra al alcalde o a un <b>administrador municipal</b> (city manager) designado como director administrativo, que dirige la rama administrativa, supervisa los asuntos administrativos de la ciudad y ejecuta las políticas que establece el órgano electo (RSA 49-C:16). El concejo nombra al administrador por un período indefinido y fija su salario, con el voto de al menos la mayoría del concejo, y la carta orgánica establece cómo se puede destituir al administrador (RSA 49-C:17). Donde una ciudad funciona así, el alcalde preside el concejo (RSA 49-C:12) y el administrador dirige la administración.",
    "state": "draft"
   },
   "learn.city-and-town-government.decides": {
@@ -16216,11 +16221,6 @@
    "es": "Redacta la carta orgánica y presenta su informe. (RSA 49-B:4)",
    "state": "draft"
   },
-  "learn.city-and-town-government.keeps-the-town-s-records-issues": {
-   "en": "Keeps the town's records, issues the licenses and registrations, and runs the mechanics of elections. A town may vote to make the term 3 years (RSA 41:16-b).",
-   "es": "Guarda los archivos del municipio, expide las licencias y los registros, y se encarga de la organización práctica de las elecciones. Un municipio puede votar para que el período sea de 3 años (RSA 41:16-b).",
-   "state": "draft"
-  },
   "learn.city-and-town-government.lead": {
    "en": "A town meeting and a selectboard, or a council and a mayor, or a council and a manager.",
    "es": "Una asamblea municipal y una junta de concejales, o un concejo y un alcalde, o un concejo y un administrador.",
@@ -16229,11 +16229,6 @@
   "learn.city-and-town-government.library-trustees": {
    "en": "Library trustees",
    "es": "Fideicomisarios de la biblioteca (library trustees)",
-   "state": "draft"
-  },
-  "learn.city-and-town-government.many-towns-have-combined-the-two": {
-   "en": "Many towns have combined the two into one office. It takes a petitioned article and a majority at the annual meeting, and the combined officer is then elected for a term of one year or three (RSA 41:45-a).",
-   "es": "Muchos municipios han combinado los dos en un solo cargo. Hace falta un artículo por petición y una mayoría en la asamblea anual, y el funcionario combinado se elige entonces por un período de uno o de tres años (RSA 41:45-a).",
    "state": "draft"
   },
   "learn.city-and-town-government.mayor-under-the-general-law-the": {
@@ -16256,6 +16251,11 @@
    "es": "Nueve miembros, electos",
    "state": "draft"
   },
+  "learn.city-and-town-government.no-and-the-difference-matters-when": {
+   "en": "No, and the difference matters when you are working out who decides. A <b>town manager</b> is an office RSA 37 creates: adopting it takes a vote of the meeting (RSA 37:11), and the manager becomes the administrative head of all the town's departments (RSA 37:5), so authority moves from the elected board to an appointed officer. A <b>town administrator</b> is not that office. Where a town has one, the selectmen still manage the town's prudential affairs (RSA 41:8).",
+   "es": "No, y la diferencia importa cuando quiere saber quién decide. Un <b>town manager</b> (administrador municipal) es un cargo que crea el RSA 37: adoptarlo requiere un voto de la asamblea (RSA 37:11), y el administrador pasa a ser el jefe administrativo de todos los departamentos del municipio (RSA 37:5), de modo que la autoridad pasa de la junta electa a un funcionario nombrado. Un <b>town administrator</b> (gerente administrativo del municipio) no es ese cargo. Donde un municipio tiene uno, los concejales siguen manejando los asuntos prudenciales del municipio (RSA 41:8).",
+   "state": "draft"
+  },
   "learn.city-and-town-government.others-a-town-elects-only-if": {
    "en": "Others a town elects only if it has voted to: the tax collector, town assessors, constables or police officers, the fire chief or firewards, and the elected members of a planning board, zoning board of adjustment, budget committee or conservation commission (RSA 669:17).",
    "es": "Otros los elige un municipio solo si así lo ha votado: el recaudador de impuestos, los tasadores municipales, los alguaciles o agentes de policía, el jefe de bomberos o los inspectores de incendios, y los miembros electos de una junta de planificación, una junta de ajustes de zonificación, un comité de presupuesto o una comisión de conservación (RSA 669:17).",
@@ -16264,6 +16264,11 @@
   "learn.city-and-town-government.planning-board-and-zoning-board-of": {
    "en": "Planning Board and Zoning Board of Adjustment",
    "es": "La junta de planificación y la junta de ajustes de zonificación",
+   "state": "draft"
+  },
+  "learn.city-and-town-government.records-every-vote-the-town-passes": {
+   "en": "Records every vote the town passes and carries out the other duties the law gives the office (RSA 41:16). A town may vote to make the term 3 years (RSA 41:16-b).",
+   "es": "Registra cada votación que aprueba el municipio y cumple las demás funciones que la ley asigna al cargo (RSA 41:16). Un municipio puede votar para que el período sea de 3 años (RSA 41:16-b).",
    "state": "draft"
   },
   "learn.city-and-town-government.rsa-41-8": {
@@ -16281,9 +16286,9 @@
    "es": "(RSA 47:1)",
    "state": "draft"
   },
-  "learn.city-and-town-government.rsa-49-c-16-49-c": {
-   "en": "(RSA 49-C:16, 49-C:17)",
-   "es": "(RSA 49-C:16, 49-C:17)",
+  "learn.city-and-town-government.rsa-49-c-12-49-c": {
+   "en": "(RSA 49-C:12, 49-C:16, 49-C:17)",
+   "es": "(RSA 49-C:12, 49-C:16, 49-C:17)",
    "state": "draft"
   },
   "learn.city-and-town-government.school-administrative-unit-the-sau-the": {
@@ -16501,9 +16506,9 @@
    "es": "Preguntas frecuentes",
    "state": "draft"
   },
-  "learn.county-government.county-attorney-the-county-s-prosecutor": {
-   "en": "<b>County attorney:</b> the county's prosecutor. The office acts under the direction of the Attorney General, performs the Attorney General's duties for the county in the Attorney General's absence, and prosecutes or defends suits in which the county has an interest (RSA 7:34).",
-   "es": "<b>Fiscal del condado (county attorney):</b> el fiscal que acusa en nombre del condado. La oficina actúa bajo la dirección del Fiscal General (Attorney General), cumple las funciones del Fiscal General en el condado en su ausencia, y presenta o defiende las demandas en que el condado tiene interés (RSA 7:34).",
+  "learn.county-government.county-attorney-acts-under-the-direction": {
+   "en": "<b>County attorney:</b> acts under the direction of the Attorney General, performs the Attorney General's duties for the county in the Attorney General's absence, and, if no other representation is provided, prosecutes or defends suits in which the county has an interest, under the direction of the county commissioners (RSA 7:34).",
+   "es": "<b>Fiscal del condado (county attorney):</b> actúa bajo la dirección del Fiscal General (Attorney General), cumple las funciones del Fiscal General en el condado en su ausencia y, si no se dispone otra representación, presenta o defiende las demandas en que el condado tiene interés, bajo la dirección de los comisionados del condado (RSA 7:34).",
    "state": "draft"
   },
   "learn.county-government.county-commissioners-the-county-s": {
@@ -16712,8 +16717,8 @@
    "state": "draft"
   },
   "learn.county-government.the-executive-committee-examines-it-the": {
-   "en": "<b>The executive committee examines it.</b> The convention may designate the executive committee to sit as a subcommittee on the budget and report recommendations back to the full convention (RSA 24:2). That is where a county budget is gone through line by line, but the committee recommends: it does not appropriate.",
-   "es": "<b>El comité ejecutivo lo examina.</b> La convención puede designar al comité ejecutivo para que actúe como subcomité del presupuesto y presente recomendaciones a la convención en pleno (RSA 24:2). Es allí donde un presupuesto del condado se revisa partida por partida, pero el comité recomienda: no asigna fondos.",
+   "en": "<b>The executive committee examines it.</b> The convention may designate the executive committee to sit as a subcommittee on the budget and report recommendations back to the full convention (RSA 24:2). Where it does, the committee recommends: it does not appropriate (RSA 24:13).",
+   "es": "<b>El comité ejecutivo lo examina.</b> La convención puede designar al comité ejecutivo para que actúe como subcomité del presupuesto y presente recomendaciones a la convención en pleno (RSA 24:2). Cuando lo hace, el comité recomienda: no asigna fondos (RSA 24:13).",
    "state": "draft"
   },
   "learn.county-government.the-officers-on-the-county-part": {
@@ -16882,8 +16887,8 @@
    "state": "draft"
   },
   "learn.general-court.constitutional-amendment-concurrent": {
-   "en": "<b>Constitutional Amendment Concurrent Resolution:</b> a proposed change to the state constitution, requiring a three-fifths vote in both chambers and a two-thirds majority of voters. See <a href=\"learn/the-constitution.html\">The Constitution</a>.",
-   "es": "<b>Resolución concurrente de enmienda constitucional</b> (Constitutional Amendment Concurrent Resolution): un cambio propuesto a la constitución del estado, que requiere el voto de tres quintos en ambas cámaras y una mayoría de dos tercios de los votantes. Vea <a href=\"learn/the-constitution.html\">La Constitución</a>.",
+   "en": "<b>Constitutional Amendment Concurrent Resolution:</b> a proposed change to the state constitution, requiring a three-fifths vote of the entire membership of each chamber and approval by two-thirds of the voters voting on it (Part Second, Article 100). See <a href=\"learn/the-constitution.html\">The Constitution</a>.",
+   "es": "<b>Resolución concurrente de enmienda constitucional</b> (Constitutional Amendment Concurrent Resolution): un cambio propuesto a la constitución del estado, que requiere el voto de tres quintos del total de miembros de cada cámara y la aprobación de dos tercios de los votantes que votan sobre ella (Parte Segunda, Artículo 100). Vea <a href=\"learn/the-constitution.html\">La Constitución</a>.",
    "state": "draft"
   },
   "learn.general-court.every-bill-gets-a-public-hearing": {
@@ -16956,6 +16961,11 @@
    "es": "Si fue retenido, siguió vivo en el segundo año y conservó su número. Aquí aparecen como <b>trasladados al segundo año</b> (carried over), y son los que la gente más a menudo no logra encontrar, porque busca en el año en curso un proyecto presentado el año anterior.",
    "state": "draft"
   },
+  "learn.general-court.in-new-hampshire-every-bill-introduced": {
+   "en": "In New Hampshire every bill introduced is referred to a committee and given a public hearing that anyone may attend and speak at.",
+   "es": "En New Hampshire, cada proyecto de ley que se presenta se envía a un comité y recibe una audiencia pública a la que cualquier persona puede asistir y en la que puede hablar.",
+   "state": "draft"
+  },
   "learn.general-court.in-the-record": {
    "en": "In the Record",
    "es": "En el registro",
@@ -17002,8 +17012,8 @@
    "state": "draft"
   },
   "learn.general-court.members-are-paid-200-for-the": {
-   "en": "Members are paid <b>$200 for the two-year term</b> plus mileage &mdash; one payment, in January of the first year, less withholding. It is often quoted as $100 a year, which is the same money divided by two. Almost none have staff. Most have other jobs, and the session is arranged around that: the House meets on a small number of full days, and committee work fills the rest.",
-   "es": "A los miembros se les paga <b>$200 por el período de dos años</b> más el reembolso por millaje &mdash; un solo pago, en enero del primer año, menos las retenciones. Suele citarse como $100 al año, que es el mismo dinero dividido entre dos. Casi ninguno tiene personal. La mayoría tiene otro trabajo, y la sesión se organiza en torno a eso: la Cámara se reúne en pocos días completos, y el trabajo de los comités ocupa el resto.",
+   "en": "Members are paid <b>$200 for the two-year term</b> plus mileage, and the presiding officers of the two chambers $250 (Part Second, Article 15).",
+   "es": "A los miembros se les paga <b>$200 por el período de dos años</b> más el reembolso por millaje, y a quienes presiden las dos cámaras, $250 (Parte Segunda, Artículo 15).",
    "state": "draft"
   },
   "learn.general-court.most-bills-are-either-passed-or": {
@@ -17012,8 +17022,8 @@
    "state": "draft"
   },
   "learn.general-court.new-hampshire-s-legislature-is-called": {
-   "en": "New Hampshire's legislature is called the <b>General Court</b>, the name the state constitution gives it. It is made up of [[house_seats]] representatives and [[senate_districts]] senators. It is the largest state legislature in the country: the last redistricting drew House districts to <b>3,444 residents a seat</b>.",
-   "es": "La legislatura de New Hampshire se llama <b>General Court</b>, el nombre que le da la constitución del estado; en este sitio la llamamos la Legislatura. Está formada por [[house_seats]] representantes y [[senate_districts]] senadores. Es la legislatura estatal más grande del país: la última redistribución de distritos trazó los distritos de la Cámara a razón de <b>3,444 residentes por escaño</b>.",
+   "en": "New Hampshire's legislature is called the <b>General Court</b>, the name the state constitution gives it. It is made up of [[house_seats]] representatives and [[senate_districts]] senators. It is the largest state legislature in the country.",
+   "es": "La legislatura de New Hampshire se llama <b>General Court</b>, el nombre que le da la constitución del estado; en este sitio la llamamos la Legislatura. Está formada por [[house_seats]] representantes y [[senate_districts]] senadores. Es la legislatura estatal más grande del país.",
    "state": "draft"
   },
   "learn.general-court.otp": {
@@ -17077,8 +17087,8 @@
    "state": "draft"
   },
   "learn.general-court.the-general-court-sits-in-two": {
-   "en": "The General Court sits in two-year terms beginning in odd years. A term begins on <b>Organization Day</b>, the first Wednesday of December after the November election, when the newly elected members are sworn in and elect the Speaker and the Senate President. [[org_day]] Bill numbers are unique across the whole term, so there is only ever one HB 84 in 2025&ndash;2026, and there will be another in the next term. That is why every address on this site carries the year. <a href=\"learn/legislative-year.html\">NH Legislative Schedule</a> lays a term out date by date.",
-   "es": "La Legislatura sesiona en períodos de dos años que empiezan en años impares. Un período empieza el <b>Día de Organización</b> (Organization Day), el primer miércoles de diciembre después de la elección de noviembre, cuando los miembros recién elegidos prestan juramento y eligen al presidente de la Cámara (Speaker) y al presidente del Senado (Senate President). [[org_day]] Los números de los proyectos de ley son únicos en todo el período, así que solo hay un HB 84 en 2025&ndash;2026, y habrá otro en el período siguiente. Por eso cada dirección de este sitio lleva el año. <a href=\"learn/legislative-year.html\">Cronograma legislativo de NH</a> presenta un período fecha por fecha.",
+   "en": "The General Court sits in two-year terms. A term begins on <b>Organization Day</b>, the first Wednesday of December after the November election, in an even-numbered year, when the newly elected members are sworn in and elect the Speaker and the Senate President; the two chambers then assemble each January of the two years the term is named for (Part Second, Article 3). [[org_day]] Bill numbers are unique across the whole term, so there is only ever one HB 84 in 2025&ndash;2026, and there will be another in the next term. That is why every address on this site carries the year. <a href=\"learn/legislative-year.html\">NH Legislative Schedule</a> lays a term out date by date.",
+   "es": "La Legislatura sesiona en períodos de dos años. Un período empieza el <b>Día de Organización</b> (Organization Day), el primer miércoles de diciembre después de la elección de noviembre, en un año par, cuando los miembros recién elegidos prestan juramento y eligen al presidente de la Cámara (Speaker) y al presidente del Senado (Senate President); después las dos cámaras se reúnen cada enero de los dos años que dan nombre al período (Parte Segunda, Artículo 3). [[org_day]] Los números de los proyectos de ley son únicos en todo el período, así que solo hay un HB 84 en 2025&ndash;2026, y habrá otro en el período siguiente. Por eso cada dirección de este sitio lleva el año. <a href=\"learn/legislative-year.html\">Cronograma legislativo de NH</a> presenta un período fecha por fecha.",
    "state": "draft"
   },
   "learn.general-court.the-house-is-seats-and-sitting": {
@@ -17124,11 +17134,6 @@
   "learn.general-court.there-are-house-districts-and-senate": {
    "en": "There are <b>[[house_districts]] House districts and [[senate_districts]] Senate districts</b>. [[floterial]] of those House districts are floterial districts: each is laid over two or more neighboring districts and elects a representative of its own, whom their voters elect as well as their own district's &mdash; see <a href=\"guides/your-representatives.html\">Finding your representatives</a>.",
    "es": "Hay <b>[[house_districts]] distritos de la Cámara y [[senate_districts]] distritos del Senado</b>. [[floterial]] de esos distritos de la Cámara son distritos flotantes (floterial): cada uno se superpone a dos o más distritos vecinos y elige a un representante propio, al que los votantes de esos distritos eligen además del de su propio distrito &mdash; vea <a href=\"guides/your-representatives.html\">Cómo encontrar a sus representantes</a>.",
-   "state": "draft"
-  },
-  "learn.general-court.this-is-unusual-in-most-states": {
-   "en": "This is unusual. In most states a committee chair can decline to hear a bill and it dies without anyone speaking on it. In New Hampshire every bill introduced is referred to a committee and given a public hearing that anyone may attend and speak at.",
-   "es": "Esto es poco común. En la mayoría de los estados, el presidente de un comité puede negarse a dar audiencia a un proyecto de ley, y este muere sin que nadie hable sobre él. En New Hampshire, cada proyecto de ley que se presenta se envía a un comité y recibe una audiencia pública a la que cualquier persona puede asistir y en la que puede hablar.",
    "state": "draft"
   },
   "learn.general-court.title": {
