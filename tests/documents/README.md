@@ -72,15 +72,14 @@ masthead and a journal's its chamber's heading, and when a journal's text
 goes in, the build's two journal readers are run on it with `--check` first.
 A text that fails is not kept, the night's verdict lists it
 (`documents_untexted`) with its cause, and the night's warning says what a
-person does for that cause. Its PDF is kept in the bucket for every cause
-but one: a PDF whose text was not the document's own is neither kept nor
-held, and the night does not ask for it again (`nightly.tried_out`); a person
-fetches it on the laptop with
-`src/fetch/gc_web/fetch_calendar_archive.py --take` to open it.
-A PDF whose text a journal reader refused comes down apart (`cloud.py
-docs-down`, into `archive/documents-held/`) for a person to look at; the
-others come down to their own folders, where the laptop's extractor can make
-their text. Any text of such a document made later is read again by the
+person does for that cause. Its PDF is kept in the bucket whatever the
+cause. A PDF whose text was not the document's own is kept apart there
+(`docs-apart/`), and its document set apart -- neither held nor wanted, so
+that nothing asks the General Court for it again without a person's name
+(`nightly.set_apart`). It, and a PDF whose text a journal reader refused,
+come down apart (`cloud.py docs-down`, into `archive/documents-held/`) for a
+person to look at; the others come down to their own folders, where the
+laptop's extractor can make their text. Any text of such a document made later is read again by the
 night before its build reads it.
 
 On GitHub's machine the canary, like the night, runs only the pdftotext the

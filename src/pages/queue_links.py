@@ -36,6 +36,14 @@ def calendar_keys_from_queue(path="archive/queue.csv"):
     listed documents share one file it is the one row that records fetching
     it, or none. Journals are not here: in 1997-2012 the docket's "HJ n" is
     the House Record's issue number, not the file's.
+
+    A BASE EDITION AT A NAME OF ITS OWN (the review of 26 October 2026). Where
+    a supplement was saved at the number's file, the base edition is fetched
+    to its own source name -- by a person's fetch_calendar_archive.py --take,
+    or by GitHub's night (own_path) -- "No 27 June 19 2025.pdf", whose name
+    states its number, a path the drain never gives otherwise (it turns any
+    such name into the number's own file). It answers for that number, where
+    no base edition at the number's own file does already.
     """
     try:
         rows = list(csv.DictReader(open(path, encoding="utf-8")))
@@ -45,7 +53,7 @@ def calendar_keys_from_queue(path="archive/queue.csv"):
     for r in rows:
         if r.get("kind") == "calendar" and r.get("state") == "held":
             by[r["path"].replace("\\", "/").lower()].append(r)
-    out = {}
+    out, own = {}, defaultdict(list)
     for p, rs in by.items():
         pick = rs if len(rs) == 1 else [r for r in rs if r.get("fetched")]
         if len(pick) != 1 or not pick[0].get("url"):
@@ -56,6 +64,18 @@ def calendar_keys_from_queue(path="archive/queue.csv"):
         if m:
             out[f"{m.group(3).upper()} {int(m.group(4))}{m.group(5).upper()} "
                 f"{m.group(2)}"] = pick[0]["url"]
+            continue
+        # "No" as the drain reads it (DOCNUM_RE), case and all: a name it
+        # reads a number in never keeps its own name as its path.
+        folder, _, name = pick[0]["path"].replace("\\", "/").rpartition("/")
+        d = re.match(r"^calendars(_senate)?/(\d{4})$", folder.lower())
+        n = re.match(r"No\s*0*(\d+)([A-Za-z]?)\b", name)
+        if d and n and name.lower().endswith(".pdf"):
+            own[f"{'SC' if d.group(1) else 'HC'} {int(n.group(1))}{n.group(2).upper()} "
+                f"{d.group(2)}"].append(pick[0]["url"])
+    for k, urls in own.items():
+        if k not in out and len(urls) == 1:
+            out[k] = urls[0]
     return out
 
 

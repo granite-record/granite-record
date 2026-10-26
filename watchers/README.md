@@ -153,12 +153,21 @@ After 10 November:
    held"): one of them was never fetched. On the laptop, open the PDF at that
    path to see which document it is, then fetch the other with
    `python3 src/fetch/gc_web/fetch_calendar_archive.py --take "NAME"`, which
-   saves it under its own name, run
+   saves it under its own name and records that path, run
    `python3 src/parse/extract_calendar_text.py`, and
-   `python3 src/ops/cloud.py seed-kit`. The 2025 Senate list collides too,
-   and the night no longer reads it, so it names none of these: SC027.pdf is
-   the path of four documents ("No 27 June 19 2025" and three supplements of
-   it) and SC024A.pdf of two. Check them the same way, now.
+   `python3 src/ops/cloud.py seed-kit`; the night's next list takes the new
+   path. The 2025 Senate list collides too, and the night no longer reads
+   it, so it names none of these: SC027.pdf is the path of four documents
+   ("No 27 June 19 2025" and three supplements of it) and SC024A.pdf of two.
+   Check them the same way, now.
+   What each repair leaves linked on the Calendar cards and in the docket's
+   citations: the base edition, whichever of the two the file was -- at the
+   number's own file (SC027.pdf), or, where a supplement is at that file, at
+   its own name, when that name states its number as the Senate's do ("No 27
+   June 19 2025.pdf"). A supplement is never linked by number, and a base
+   edition at a name of its own that states no number ("SC 27.pdf") is
+   fetched and has its text, but its number is not linked. The same holds
+   for the night's own repair of a path two wanted documents share.
    The first shadow night that names a document held back, or whose canary
    did not pass, waits for your approval in production-review before it
    publishes: each is a kind of warning no published night has carried, and
@@ -180,17 +189,36 @@ After 10 November:
    pull takes the night's. Until it, a night whose switch is a number asks
    for no document and says so: "not fetching: the calendars' and journals'
    text is still the laptop's".
-9. Set it to `1` for a week. The first night that carries each new kind of
-   warning waits for your approval. If `document_files` says the General
-   Court refused a request and the refusal on file says "a redirect (HTTP
-   302)", its viewer answered with a redirect, which the night does not
-   follow: it records it as a refusal, so nothing asks that address again,
-   the laptop included, until a person clears it. Set the switch back to
-   `shadow` and ask before clearing it.
+9. First, on the laptop, immediately before the number: `python3
+   src/ops/cloud.py pull`, then `python3 src/parse/extract_calendar_text.py`,
+   then `python3 src/ops/cloud.py seed-kit`, as in step 8. The laptop drains
+   this year's and last year's documents until it learns the night fetches
+   them, and one it fetched since step 8 and did not seed is one the night
+   asks for again. Then set it to `1` for a week, and drain none of this
+   year's or last year's documents on the laptop until a `cloud.py pull` has
+   brought the first numbered night's verdict: only that verdict tells the
+   laptop to leave them to the night. The first night that carries each new
+   kind of warning waits for your approval. While the switch is a number, a
+   night that meets a refusal ends at once and builds nothing, so the refusal
+   reaches the bucket before the laptop may start at 13:30; every fetch then
+   waits for a person, as for any refusal. If `document_files` says the
+   General Court refused a request and the refusal on file says "a redirect
+   (HTTP 302)", its viewer answered with a redirect, which the night does
+   not follow: it records it as a refusal, so nothing asks that address
+   again, the laptop included, until a person clears it. Set the switch back
+   to `shadow` and ask before clearing it. A document the night recorded a
+   refusal, a dropped connection or a 404 against keeps that record through
+   the shadow nights, so it is not asked for first once the number is back.
 10. The laptop's routine from then: `cloud.py pull`, then `cloud.py
-    docs-down`, which brings the night's PDFs; the committee reports read
-    them by themselves. Whatever is fetched or decided here reaches the night
-    only through the bucket, so each of these ends with
+    docs-down`, which brings the night's PDFs, then the laptop's own share
+    that is read off the documents, made again here before seed-kit sends
+    it: `python3 src/fetch/gc_web/fetch_committee_reports.py --year YEAR`
+    (`committee_reports.json`, from the House calendars' PDFs on this disk;
+    it asks the General Court for none of the night's years), `python3
+    src/parse/extract_amendments.py` (`amendments.json`, from the same PDFs)
+    and `python3 src/hearings/calendar_meetings.py --out meetings.json` (from
+    the calendars' text pull brought). Whatever is fetched or decided here
+    reaches the night only through the bucket, so each of these ends with
     `python3 src/parse/extract_calendar_text.py` and then
     `python3 src/ops/cloud.py seed-kit` -- after, never before, any entry it
     needs in a file of the person's in `corrections/` is merged to `main`
@@ -213,10 +241,19 @@ After 10 November:
     - a document the night will not ask for again -- a refusal recorded (a
       redirect among them), a dropped connection, three tries: the drain,
       which takes them when a person runs it;
+    - a document whose text was not its own: set apart, so that neither the
+      night nor the drain asks for it again; `docs-down` brings its PDF to
+      `archive/documents-held/`, and its warning says what to do once a
+      person has opened it -- `--take "NAME"` once its PDF is back at its
+      path marks it held and asks nobody;
+    - a document whose PDF the night could not keep in the bucket (the
+      docs-up warning names it): `--take "NAME"` fetches the laptop's own
+      copy, one request, with the switch left as it is, and the readers
+      above then read it;
     - a document with no text the night could use: its warning says what to
       do for its cause. Two files of the person's are read from `main` and
       do nothing until merged there: `corrections/documents_without_text.json`
-      for a document with no text in it, and
+      for a document with no text in it, or whose PDF is not the document, and
       `corrections/documents_with_text.json` for one whose text a person has
       read and accepts as its own though the night's test refused it; each
       is `{"calendars/2026/HC035.pdf": {"why": "...", "day": "2026-11-20"}}`,

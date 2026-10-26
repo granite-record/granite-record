@@ -411,12 +411,16 @@ and one there with other bytes is never written over -- it is named, and the
 step fails. A file whose bytes are not its record's, or a path that is not a
 PDF of the four folders, is refused before anything is sent. When every one
 is kept, the staged folder is removed: the build machine keeps no PDF. Never
-on a dry night, which fetches no document.
+on a dry night, which fetches no document. A PDF whose text the night found
+was not the document's own goes to docs-apart/<path> instead (DOCS_APART),
+never where the right document's bytes would one day go.
 
 docs-down is the laptop's, and only reads the bucket: each PDF under docs/
 that this laptop does not have comes down to its path, whole (a part file,
-read against the sha256 its upload recorded, then renamed). A file already
-here is never written over, whatever its bytes: one that differs is named.
+read against the sha256 its upload recorded, then renamed), and each under
+docs-apart/ to archive/documents-held/<path>, for a person to open. A file
+already here is never written over, whatever its bytes: one that differs is
+named.
 """
 
 # The bootstrap: _paths.py, found above this file, puts every code folder on the import path.
@@ -536,12 +540,17 @@ DOCS_MOST = 50_000_000
 # check and seed-kit send it -- a journal the readers refused, back in the
 # build that stops on it. The causes are the night's own words for those two
 # (nightly.UNTEXTED_SAID, which preflight holds these to), read from the
-# night's verdict as pull brought it (VERDICTS["last-night.json"]). Since the
-# second review of 26 October 2026 the night keeps no PDF whose text was not
-# its own at all (nightly.tried_out), so in practice only a journal's comes
-# down apart.
+# night's verdict as pull brought it (VERDICTS["last-night.json"]).
 DOCS_HELD = "archive/documents-held"
 DOCS_HELD_CAUSES = ("not_its_own", "journal_check")
+# A PDF WHOSE TEXT WAS NOT ITS OWN IS KEPT APART IN THE BUCKET TOO (the review
+# of 26 October 2026): under this prefix and never under DOCS, where the right
+# document's bytes would one day go and docs-up never writes over others. It
+# was deleted, and the laptop's ordinary drain asked the General Court for the
+# same file again for a person to open. docs-down brings each to DOCS_HELD,
+# whatever the verdict says. nightly.stage_pdfs marks it in the staged record
+# ("apart").
+DOCS_APART = "docs-apart/"
 # What pull takes from logs/<day>/, and the folder each goes to. Anything
 # else there stays in the bucket: a name this does not know could be one the
 # laptop uses for a log of its own.
@@ -4164,8 +4173,9 @@ def doc_path(rel):
 
 
 def staged_docs(root):
-    """(record, [(path, file, sha256, bytes)], [why]): what the night left
-    under DOCS_STAGED for docs-up, each file read against its record. The
+    """(record, [(path, file, sha256, bytes, apart)], [why]): what the night
+    left under DOCS_STAGED for docs-up, each file read against its record,
+    `apart` where the record says its text was not its own (DOCS_APART). The
     record is None where nothing was staged. A path that is not a document's,
     a file missing, or one whose bytes are not its record's is a why, and is
     not sent."""
@@ -4192,14 +4202,15 @@ def staged_docs(root):
                 or sha256_of(f) != want.get("sha256"):
             bad.append(f"{path}: its bytes are not the ones its record names")
         else:
-            good.append((path, f, want["sha256"], want["bytes"]))
+            good.append((path, f, want["sha256"], want["bytes"], want.get("apart") is True))
     return rec, good, bad
 
 
 def cmd_docs_up(a, root):
-    """The night's, after it: tonight's PDFs to DOCS, each only where nothing
-    is, read back against its sha256 (THE NIGHT'S DOCUMENTS, KEPT). Never on a
-    dry night. Fails, naming each, where one is not kept."""
+    """The night's, after it: tonight's PDFs to DOCS -- one whose text was not
+    its own to DOCS_APART -- each only where nothing is, read back against its
+    sha256 (THE NIGHT'S DOCUMENTS, KEPT). Never on a dry night. Fails, naming
+    each, where one is not kept."""
     if dry_night(a):
         say("docs-up: a dry run fetches no document, and keeps none in the bucket")
         return
@@ -4209,8 +4220,8 @@ def cmd_docs_up(a, root):
         return
     bucket = open_bucket(a, preview=True)
     sent, kept, size = [], [], 0
-    for path, f, sha, n in good:
-        key = DOCS + path
+    for path, f, sha, n, apart in good:
+        key = (DOCS_APART if apart else DOCS) + path
         there = bucket.head(key)
         if there is not None:
             got = there.get("sha256") or ""
@@ -4218,13 +4229,13 @@ def cmd_docs_up(a, root):
                 data = bucket.get_bytes(key)
                 got = hashlib.sha256(data).hexdigest() if data is not None else ""
             if got == sha:
-                kept.append(path)
+                kept.append(key)
             else:
                 bad.append(f"{path}: the bucket keeps other bytes under that name, which are "
                            "never written over")
             continue
         if a.dry_run:
-            sent.append(path)
+            sent.append(key)
             size += n
             continue
         bucket.put_file(f, key, {"sha256": sha})
@@ -4232,10 +4243,10 @@ def cmd_docs_up(a, root):
         if back is None or hashlib.sha256(back).hexdigest() != sha:
             bad.append(f"{path}: did not read back as the file sent")
             continue
-        sent.append(path)
+        sent.append(key)
         size += n
-    for path in sent:
-        say(f"  {'would keep' if a.dry_run else 'kept'} {DOCS}{path}")
+    for key in sent:
+        say(f"  {'would keep' if a.dry_run else 'kept'} {key}")
     for why in bad:
         say(f"  NOT KEPT: {why}")
     say(f"docs-up: {len(sent)} {'would be ' if a.dry_run else ''}sent ({human(size)}), "
@@ -4270,18 +4281,25 @@ def cmd_docs_down(a, root):
     not have, to its path, whole and read against the sha256 its upload
     recorded (THE NIGHT'S DOCUMENTS, KEPT) -- or, for one whose text the
     night refused as not the document's or a journal reader refused, to
-    DOCS_HELD instead (held_apart). Reads the bucket and writes nothing
-    there; never writes over a file here."""
+    DOCS_HELD instead (held_apart); and each it kept under DOCS_APART, to
+    DOCS_HELD always. Reads the bucket and writes nothing there; never writes
+    over a file here."""
     bucket = open_bucket(a, preview=True)
     took, same, differ, odd, size = [], 0, [], [], 0
     apart = held_apart(root)
-    for key, n in sorted(bucket.list(DOCS).items()):
-        path = doc_path(key[len(DOCS):])
+    found = [(key, n, DOCS) for key, n in sorted(bucket.list(DOCS).items())]
+    found += [(key, n, DOCS_APART) for key, n in sorted(bucket.list(DOCS_APART).items())]
+    for key, n, prefix in found:
+        path = doc_path(key[len(prefix):])
         if not path:
             odd.append(key)
             continue
         dst = local(root, path)
-        if path in apart and not dst.exists():
+        if prefix == DOCS_APART:
+            dst = local(root, f"{DOCS_HELD}/{path}")
+            say(f"  apart, in {DOCS_HELD}/ and not where the laptop's text is made: {path} -- "
+                "the night found its text was not the document's own")
+        elif path in apart and not dst.exists():
             dst = local(root, f"{DOCS_HELD}/{path}")
             say(f"  apart, in {DOCS_HELD}/ and not where the laptop's text is made: {path} -- "
                 f"the night refused its text ({apart[path]})")

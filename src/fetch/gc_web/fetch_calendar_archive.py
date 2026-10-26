@@ -300,6 +300,14 @@ SETTLED = "settled"
 # it so, and the next night takes that text out and asks again
 # (nightly.recover_making).
 MAKING = "making"
+# A row GitHub's night fetched whose text did not carry its own number or
+# heading (the review of 26 October 2026): its PDF kept apart in the bucket
+# (cloud.DOCS_APART), which docs-down brings to archive/documents-held/, and
+# the row a person's. Not "wanted", so that neither the night nor this drain
+# asks the General Court for the same file again without a person's name
+# (--take); not "held", since nothing has shown it is the document. Its
+# address stays linked, as a wanted row's is (calendar_documents.linkable).
+APART = "apart"
 
 # ---- the night's read of the two index pages --------------------------------
 #
@@ -456,6 +464,38 @@ def laptop_wins(night, laptop):
     return _tries(laptop) > _tries(night)
 
 
+def night_newer(night, laptop):
+    """Whether the night's own record of a row of its years is newer than
+    the laptop's, whatever the switch says tonight: it has more tries, and
+    the laptop's line is not held or settled.
+
+    THE NIGHT'S OWN LINE OUTLIVES A NIGHT THAT DOES NOT FETCH (the review of
+    26 October 2026). On a shadow night, or one whose canary failed, the
+    listing laid every field of the laptop's line over the night's own, so a
+    line from before the turn-on -- wanted, one try, "not a PDF" -- undid
+    the night's refusal mark, its drop's three tries and its 404's gone, and
+    the next night that fetched asked for that document again: after a
+    refusal, the very one refused. The night counts each try before it asks,
+    so its line has more tries than the laptop's whenever it asked since the
+    laptop's line was laid over it. While the switch has never been a number
+    the night's tries are only ever copies of the laptop's, never more, and
+    nothing changes."""
+    return (nights_year(night) and _tries(night) > _tries(laptop)
+            and (laptop.get("state") or "") not in ("held", SETTLED))
+
+
+def taken_path(night, laptop):
+    """Whether the laptop's line gives a row the one path a person's --take
+    gives it: held, at its own name in the same folder, where the night's
+    row has another document's path (drain, `dest`). The night's list takes
+    that path with the laptop's record (load_queue), and judge() allows it --
+    the review of 26 October 2026: with the path left at the other's file,
+    two fetched rows claimed one file and the Calendar cards linked neither."""
+    have = night.get("path") or ""
+    return ((laptop.get("state") or "") == "held" and bool(have)
+            and (laptop.get("path") or "") == _with_file(have, night.get("name") or "") != have)
+
+
 def nights_fetch():
     """Whether GitHub's night fetches the newest documents itself, as this
     machine can tell: its verdict, as pull brought it, says its switch is a
@@ -477,7 +517,9 @@ def load_queue(newer=None):
     (the review of 26 October 2026: applied with the switch off, an old row's
     refusal -- the 664 Senate calendars of 1998-2008 carry "HTTP Error 403"
     -- outranked the laptop's own newer 404 or third failure, and the drain
-    asked for a document that had answered 404, every run)."""
+    asked for a document that had answered 404, every run). Whatever
+    `newer` says, the night's own line of its years stands where it has
+    more tries than the laptop's (night_newer)."""
     if newer is None:
         newer = nights_fetch()
     rows = read_rows(QUEUE)
@@ -485,7 +527,11 @@ def load_queue(newer=None):
     for r in rows:
         r["label"] = r.get("label") or ""
         m = mine.get(_key(r))
+        if m and night_newer(r, m):
+            continue
         if m and (laptop_wins(r, m) if newer and nights_year(r) else True):
+            if taken_path(r, m):
+                r["path"] = m["path"]
             for f in DRAIN_FIELDS:
                 r[f] = m.get(f) or ""
     return rows
@@ -514,8 +560,10 @@ def save_queue(rows):
         write_rows(QUEUE, rows)
         return
     listed = {_key(r): r for r in read_rows(QUEUE)}
+    # And the path a person's --take gives a row (taken_path), until the
+    # night's list carries it too.
     mine = [r for r in rows if _key(r) in listed and any(
-        (r.get(f) or "") != (listed[_key(r)].get(f) or "") for f in DRAIN_FIELDS)]
+        (r.get(f) or "") != (listed[_key(r)].get(f) or "") for f in DRAIN_FIELDS + ("path",))]
     if mine or fetched_file().exists():
         write_rows(fetched_file(), mine)
 
@@ -1088,6 +1136,9 @@ def judge(was, new, rec, last=None, shorter=False, repath=False):
         if (n.get("url") or "") != (r.get("url") or ""):
             return "it changes the address or the path of a document on file"
         if (n.get("path") or "") != (r.get("path") or ""):
+            # A person's --take: a held row at its own name (taken_path).
+            if taken_path(r, n):
+                continue
             # The one path that moves (own_path), and only as it gives it.
             old = dict(n, path=r.get("path") or "")
             if not repath or own_path(old, [old if x is n else x for x in new],
@@ -1774,7 +1825,14 @@ def take_night(a, rows, held):
                 entry["ended"] = _said(kind, e, why)
                 print(f"  [{asked}] {r['name']}: {entry['ended']}", flush=True)
                 if kind == "refused":
+                    # THE MARK ON DISK BEFORE THE REFUSAL GOES ON FILE (the
+                    # review of 26 October 2026): the queue and the record
+                    # reached --out only in `finally`, and a kill between --
+                    # the night's limit -- installed the try with no mark, so
+                    # once a person cleared the refusal the night asked for
+                    # this very document again.
                     r["error"] = (REFUSED_MARK + why)[:180]
+                    keep()
                     refusal.note("fetch_calendar_archive", why[:180])
                     code, stopped = 2, "the General Court refused a request"
                     print("\nRefused. Recorded, and nothing more is asked of it.\n"
@@ -1872,8 +1930,9 @@ def main():
     ap.add_argument("--take", nargs="+", metavar="NAME",
                     help="the drain takes the documents of these names and no others, "
                          "whatever holds them back: one the night holds back for a person, "
-                         "one it did not find (gone), and one of two held at one path -- "
-                         "saved under its own name where another has its path")
+                         "one it did not find (gone), one it set apart, one of two held at "
+                         "one path -- saved under its own name where another has its path -- "
+                         "and one held whose PDF is not on this disk")
     ap.add_argument("--status", action="store_true")
     ap.add_argument("--list", action="store_true")
     ap.add_argument("--chamber", choices=["H", "S", "both"], default="both")
@@ -2103,18 +2162,22 @@ def drain(rows, chambers, kinds, years, a, held):
             # back -- one the night holds back for a person, one it did not
             # find (gone), one of two held at one path. A held one is taken
             # only where another row has its path: the other document is the
-            # one there, and this one was never fetched.
+            # one there, and this one was never fetched -- or where its PDF is
+            # not on this disk (the review of 26 October 2026): one the night
+            # fetched and could not keep in the bucket (docs-up failed), whose
+            # committee reports are read from that PDF here.
             paths = Counter(_disk(r).as_posix().lower() for r in rows)
             todo, said = [], set()
             for r in rows:
-                if r.get("name") not in take or r.get("state") not in ("wanted", "gone", "held"):
+                if r.get("name") not in take or r.get("state") not in ("wanted", "gone", "held",
+                                                                        APART):
                     continue
                 if paths[_disk(r).as_posix().lower()] > 1:
                     dest[id(r)] = Path(_with_file(r["path"], r["name"]).replace("\\", "/"))
-                elif r.get("state") == "held":
+                elif r.get("state") == "held" and _disk(r).exists():
                     said.add(r.get("name"))
                     print(f"  not taken: {r['chamber']} {r['kind']} {r['year']} {r['name']} is "
-                          "held already, and no other document has its path")
+                          "held already, its PDF is here, and no other document has its path")
                     continue
                 todo.append(r)
             for n in sorted(take - {r.get("name") for r in todo} - said):
@@ -2196,6 +2259,8 @@ def drain(rows, chambers, kinds, years, a, held):
             if path.exists():
                 r["state"] = "held"
                 r["bytes"] = str(path.stat().st_size)
+                if id(r) in dest:
+                    r["path"] = _with_file(r["path"], r["name"])
                 continue
             # Immediately before the request, not before the sleep that
             # preceded it: a refusal another process met while this one
@@ -2295,6 +2360,12 @@ def drain(rows, chambers, kinds, years, a, held):
             r["bytes"] = str(len(blob))
             r["error"] = ""
             r["fetched"] = time.strftime("%Y-%m-%dT%H:%M:%S")
+            if id(r) in dest:
+                # THE RECORD SAYS WHERE IT WENT (the review of 26 October
+                # 2026): left at the other document's path, two fetched rows
+                # claimed one file, and the Calendar cards linked neither.
+                # The night's list takes this one path change (taken_path).
+                r["path"] = _with_file(r["path"], r["name"])
             got += 1
             if got % 10 == 0:
                 save_queue(rows)

@@ -55874,7 +55874,22 @@ def _document_files_night(NI, CA, CL, R):
         a document listed without one is read again before the build, and
         set aside where a journal reader or its masthead refuses it; a
         person's file of documents with no text ends their warning; each
-        cause has its own advice; and what the night holds back is named."""
+        cause has its own advice; and what the night holds back is named.
+
+    And the third review of 26 October 2026:
+
+      - a night GitHub started late, in shadow or on a number, holds nothing
+        for the gate: the documents' step is quiet when the list did not go
+        in, whose own line warns;
+      - while the switch is a number, a refusal met tonight ends the night
+        before its build, so that it reaches the bucket at once;
+      - a document listed without a text leaves the list only once its text
+        is read again and kept -- not on a night that ended first -- and a
+        night that takes no data reads it again before its build;
+      - the texts a stopped night left, sent back by the laptop, are taken
+        out again until the row is held;
+      - a document whose text was not its own is set apart, its PDF staged
+        apart for the bucket; and the person's steps say what each needs."""
     import contextlib
     import hashlib
     import io
@@ -56298,6 +56313,30 @@ def _document_files_night(NI, CA, CL, R):
                                     f"{NI.DOCS_FILES_MINUTES} minutes would ask past 12:00 UTC, "
                                     "the last the night asks the General Court") and \
             not any("--night" in c["args"] for c in calls), v.get("document_files")
+        # A LATE NIGHT IN SHADOW OR ON A NUMBER STILL PUBLISHES ITSELF (the
+        # review of 26 October 2026). The clock keeps the list from asking, and
+        # the documents' step then said tonight's list was not installed -- a
+        # kind of its own, which the gate held the night for. It is quiet now:
+        # the list's own line warns, with the clock's kind, which holds nothing.
+        late_day = next_clock()[:10]
+        for word in ("shadow", "2"):
+            code, v = night("--runner", run_id="606", switch=word, clock=f"{late_day}T12:30:00Z")
+            gate = NI.Night(types.SimpleNamespace(no_fetch=False, dry_run=False, new_term=False),
+                            _dt.datetime(2026, 10, 27, 8, 17))
+            gate.v.update(v)
+            warned = gate.warned()
+            held = NI.warning_reasons(warned, [], ())
+            # The harness's nights wait for reasons of their own (no commit, no
+            # production to read); none of tonight's may be a warning's.
+            kinds = [w for w in (v.get("review") or {}).get("why") or []
+                     if w.startswith((NI.REVIEW_WARNING.split("{")[0],
+                                      NI.REVIEW_WARNING_UNKNOWN.split("{")[0]))]
+            assert v["documents"].startswith("not asked for: it is 12:30 UTC") and \
+                v["document_files"] == NI.DOCS_NO_LIST and not held and not kinds and \
+                not any(w.startswith("the calendars' and journals' documents:")
+                        for w in v["warnings"]), (
+                    f"a night GitHub started late with the switch {word!r} waits for the person: "
+                    f"{held} {v.get('review')} {v.get('document_files')}")
 
         # ---- ON: what two nights' lists name, under the lock, and the texts
         # after it; none of tonight's PDFs for the build -- and a PDF that is
@@ -56403,6 +56442,37 @@ def _document_files_night(NI, CA, CL, R):
             v["documents_untexted"][hj + ".pdf"]["cause"] == "journal_check", (
                 "a text of a journal the readers refused came back through the kit and went into "
                 f"the build: {v.get('documents_untexted')}")
+        # DROPPED ONLY WHEN PROVED (the review of 26 October 2026). The text
+        # comes through the kit again, and the next nights end before the
+        # recheck, which only a night that builds runs: a refusal on file,
+        # preflight failed. The entry was dropped because a text was there,
+        # no check ever ran on it, and every later build read it. It stays,
+        # and the first night that builds -- one that takes no data among
+        # them -- reads it again before its build.
+        Path(hj + ".txt").write_text("HOUSE JOURNAL", encoding="utf-8")
+        R.MARK.write_text(json.dumps({"at": "2026-10-28T09:00:00", "where": "x"}),
+                          encoding="utf-8")
+        code, v = night("--runner", run_id="630", switch="2")
+        R.MARK.unlink()
+        kept_on_refusal = hj + ".pdf" in (v.get("documents_untexted") or {})
+        NI.run = preflight_fails
+        code, v = night("--runner", run_id="631", switch="2")
+        NI.run = real_run
+        assert kept_on_refusal and hj + ".pdf" in (v.get("documents_untexted") or {}) and \
+            v["preflight"] == "failed" and not ran("build_all.py"), (
+                "a document listed without a text left the list on a night that ended before "
+                f"any check of the text the kit brought: refusal kept {kept_on_refusal}, "
+                f"{v.get('documents_untexted')}")
+        how["motions"] = [1, 0, 1]
+        code, v = night("--runner", "--no-fetch", run_id="632", switch="2")
+        how["motions"] = [0]
+        seq = order()
+        assert not Path(hj + ".txt").exists() and \
+            v["documents_untexted"][hj + ".pdf"]["cause"] == "journal_check" and \
+            "journal_motions.py" in seq and seq.index("journal_motions.py") < seq.index(
+                "build_all.py"), (
+                "a night that takes no data built with a text the kit brought and no check of it",
+                seq, v.get("documents_untexted"))
         Path(hj + ".txt").write_text("HOUSE JOURNAL", encoding="utf-8")
         code, v = night("--runner", run_id="610", switch="2")
         assert "documents_untexted" not in v and not any("no text" in w for w in v["warnings"]), \
@@ -56496,8 +56566,8 @@ def _document_files_night(NI, CA, CL, R):
         # AND WHAT THE PERSON READS SAYS WHAT THE CODE DOES (the review of 26
         # October 2026): the first shadow night waits for approval (step 7); a
         # file of the person's is merged to main before seed-kit sends the text
-        # it needs (step 10); a PDF whose text was not its own is not kept
-        # (tests/documents/README.md, which said every PDF was).
+        # it needs (step 10); a PDF whose text was not its own is kept apart
+        # (tests/documents/README.md).
         steps = re.sub(r"\s+", " ", _paths.locate("watchers/README.md").read_text(
             encoding="utf-8"))
         fixtures = re.sub(r"\s+", " ", (here / "tests" / "documents" / "README.md").read_text(
@@ -56507,8 +56577,26 @@ def _document_files_night(NI, CA, CL, R):
                  "not pass, waits for your approval in production-review", steps),
                 ("`python3 src/ops/cloud.py seed-kit` -- after, never before, any entry it needs "
                  "in a file of the person's in `corrections/` is merged to `main`", steps),
-                ("a PDF whose text was not the document's own is neither kept nor held", fixtures)):
+                ("A PDF whose text was not the document's own is kept apart there", fixtures),
+                # THE REVIEW OF 26 OCTOBER 2026: a document the laptop drained
+                # between step 8 and the number reached the night only through
+                # a seed-kit nobody was told to run; step 10 did not say the
+                # laptop's share read off the documents is made again before
+                # seed-kit; step 7 did not say what a repair leaves linked.
+                ("9. First, on the laptop, immediately before the number: `python3 "
+                 "src/ops/cloud.py pull`, then `python3 src/parse/extract_calendar_text.py`, "
+                 "then `python3 src/ops/cloud.py seed-kit`", steps),
+                ("drain none of this year's or last year's documents on the laptop until a "
+                 "`cloud.py pull` has brought the first numbered night's verdict", steps),
+                ("What each repair leaves linked on the Calendar cards", steps)):
             assert said in where, f"the person's instructions no longer say: {said}"
+        ten = steps[steps.index("10. The laptop's routine"):steps.index("11. Then `4`")]
+        order10 = [ten.find(x) for x in ("docs-down", "fetch_committee_reports.py --year YEAR",
+                                         "extract_amendments.py", "calendar_meetings.py --out "
+                                         "meetings.json", "`python3 src/ops/cloud.py seed-kit`")]
+        assert -1 not in order10 and order10 == sorted(order10), (
+            "watchers/README.md's step 10 does not make the laptop's share read off the "
+            f"documents again between docs-down and seed-kit: {order10}")
         assert "the PDF is kept in the bucket, and" not in fixtures, (
             "tests/documents/README.md says every PDF whose text fails is kept in the bucket")
         # EACH CAUSE WITH ITS STEPS (the review of 26 October 2026): where the
@@ -56528,19 +56616,26 @@ def _document_files_night(NI, CA, CL, R):
         assert not Path("calendars/2026/HC035.txt").exists() and \
             v["documents_untexted"]["calendars/2026/HC035.pdf"]["why"] == (
                 "its text does not carry its own number on its masthead"), v.get("documents_untexted")
-        # ... AND NEITHER KEPT NOR HELD (the review of 26 October 2026): held,
+        # ... AND KEPT APART, A PERSON'S (the review of 26 October 2026): held,
         # with its wrong bytes at docs/<path>, the right document was never
-        # asked for and never could be kept. Wanted, with no error -- its link
-        # stays -- every try counted, so the night does not ask again, and no
-        # PDF staged for the bucket.
+        # asked for and never could be kept; deleted, wanted with every try
+        # counted, the laptop's ordinary drain asked the General Court for the
+        # same file again. Set apart -- not wanted, not held, no error, so its
+        # link stays -- and its PDF staged apart, for docs-apart/ in the
+        # bucket and archive/documents-held/ on the laptop.
         q = {r["name"]: r for r in CA.read_rows(NI.DOCS)}["HC 35.pdf"]
-        assert (q["state"], q["attempts"], q["error"]) == ("wanted", str(CA.NIGHT_TRIES), "") and \
-            not (NI.DOCS_STAGED / "calendars/2026/HC035.pdf").exists() and \
-            v["document_texts"].endswith("0 PDFs kept for the bucket"), (
-                "a calendar whose text was not its own was held, kept, or left to be asked again: "
-                f"{q} {v.get('document_texts')}")
+        rec = NI.load_json(NI.DOCS_STAGED / NI.DOCS_RECORD) or {}
+        assert (q["state"], q["attempts"], q["error"]) == (CA.APART, "1", "") and \
+            (NI.DOCS_STAGED / "calendars/2026/HC035.pdf").exists() and \
+            (rec.get("files") or {}).get("calendars/2026/HC035.pdf", {}).get("apart") is True and \
+            v["document_texts"].endswith("0 PDFs kept for the bucket, and 1 apart, whose text was "
+                                         "not their own"), (
+                "a calendar whose text was not its own was held, kept with the others, deleted, "
+                f"or left wanted: {q} {v.get('document_texts')} {rec}")
         assert "--take" in NI.UNTEXTED_SAID["not_its_own"] and \
-            NI.DOCS_TEXT_ACCEPTED.as_posix() in NI.UNTEXTED_SAID["not_its_own"]
+            NI.DOCS_TEXT_ACCEPTED.as_posix() in NI.UNTEXTED_SAID["not_its_own"] and \
+            NI.DOCS_NO_TEXT.as_posix() in NI.UNTEXTED_SAID["not_its_own"] and \
+            "documents-held" in NI.UNTEXTED_SAID["not_its_own"]
         # A PERSON'S WORD THAT A TEXT IS ITS OWN (the review of 26 October
         # 2026): a calendar whose masthead's number will not read, made on the
         # laptop and accepted in the person's file, is kept, where the same
@@ -56608,7 +56703,10 @@ def _document_files_night(NI, CA, CL, R):
         # refusal met after a document came whole reaches the bucket only once
         # the night exits, and the texts and the journal checks ran first with
         # no limit: nothing is extracted or checked now, the PDF goes, its
-        # document is wanted again with its try counted, and the build starts.
+        # document is wanted again with its try counted -- AND NO BUILD (the
+        # review of 26 October 2026): the build ran first, with no limit, and
+        # a stood-down laptop may pull at 13:30 and ask the same address. The
+        # night ends at once, so the workflow sends the refusal straight on.
         reseed()
         code, v = night("--runner", run_id="612", switch="2", answers={"HC 36.pdf": "403"})
         q = {r["name"]: r for r in CA.read_rows(NI.DOCS)}
@@ -56618,12 +56716,20 @@ def _document_files_night(NI, CA, CL, R):
             (q["HC 35.pdf"]["state"], q["HC 35.pdf"]["attempts"]) == ("wanted", "1") and \
             not Path("calendars/2026/HC035.txt").exists() and not pdfs() and \
             not (NI.DOCS_STAGED / "calendars/2026/HC035.pdf").exists() and \
-            v["document_texts"].startswith("not made: a refusal is on file") and \
-            ran("build_all.py"), (
-                "after a refusal the night still made and checked texts before its build, which "
-                "the refusal waits for", order(), v.get("document_texts"),
+            v["document_texts"].startswith("not made: a refusal is on file"), (
+                "after a refusal the night still made and checked texts, which the refusal "
+                "waits for", order(), v.get("document_texts"),
                 (q["HC 35.pdf"]["state"], q["HC 35.pdf"]["attempts"]))
+        assert code == 1 and not ran("build_all.py", "gc_changes.py") and \
+            v["build"] == NI.BUILD_REFUSED and not v["built"], (
+                "a refusal met on a night the switch is a number waited for the build before it "
+                "could reach the bucket", code, order(), v.get("build"))
+        # ... and only while the switch is a number: off and in shadow the
+        # night is as it was.
+        assert NI.refused_tonight(2) and not any(NI.refused_tonight(s) for s in (
+            NI.DOCS_OFF, NI.DOCS_SHADOW, True)), "the build stops for a refusal with the switch off"
         R.MARK.unlink()
+        assert not NI.refused_tonight(2), "the build stops with no refusal on file"
         # ---- THE TEXTS' OWN TIME (the review of 26 October 2026): every child
         # the texts start is killed at what is left of TEXTS_MINUTES, which
         # the extractor and the journal checks share. Out of time, a text not
@@ -56802,12 +56908,25 @@ def _document_files_night(NI, CA, CL, R):
                 "a night stopped between its texts and its PDFs left texts nothing checked for "
                 "the next build, or said nothing", [p.as_posix() for p in stray if p.exists()],
                 [(n, r["state"]) for n, r in q.items()], v["warnings"])
+        # ... AND THE LAPTOP SENDS THEM BACK (the review of 26 October 2026):
+        # the stopped night's kit-up sent those texts, the laptop's pull took
+        # them, and once this night's kit-up removed them its seed-kit sent
+        # them back. The next night held each row from such a text without
+        # asking; it takes them out again, until the row is held.
+        for p in stray:
+            p.write_text("a text nothing checked, sent back by the laptop", encoding="utf-8")
         code, v = night("--runner", run_id="620", switch="2")
         q = {r["name"]: r for r in CA.read_rows(NI.DOCS)}
         assert asked_names() == ["HC 35.pdf", "HC 36.pdf"] and NI.DOCS_LEFT not in v and \
             [q[n]["state"] for n in ("HC 35.pdf", "HC 36.pdf")] == ["held", "held"], (
                 "the documents a stopped night left were not asked for again",
                 asked_names(), [(n, r["state"]) for n, r in q.items()])
+        # Held now, with the texts the night checked: the next night leaves
+        # them, and says nothing more of them.
+        code, v = night("--runner", "--no-fetch", run_id="621", switch="2")
+        assert NI.DOCS_RECOVERED not in v and all(p.exists() for p in stray), (
+            "the rows a stopped night left are still taken out once the night has held them",
+            v.get(NI.DOCS_RECOVERED))
 
         # ---- NEVER RAISES, and no PDF for the build either way.
         def boom(*a, **k):
@@ -57053,6 +57172,26 @@ def _night_documents_bucket(CL, NI, R):
                 f"made: {code} {out[-400:]}")
         assert set(CL.DOCS_HELD_CAUSES) == {"not_its_own", "journal_check"} <= set(NI.UNTEXTED_SAID), \
             "docs-down and nightly.py disagree about which refusals keep a PDF apart"
+        # A PDF WHOSE TEXT WAS NOT ITS OWN IS KEPT APART IN THE BUCKET (the
+        # review of 26 October 2026): deleted, the laptop's drain asked the
+        # General Court for it again. Staged apart, docs-up keeps it under
+        # docs-apart/ -- never docs/, where the right document's bytes would go
+        # -- and docs-down brings it to documents-held/ whatever the verdict.
+        CL.open_bucket = saved_open
+        HC9 = "calendars/2026/HC039.pdf"
+        other = b"%PDF-1.7\n another document under 39's name \n%%EOF\n"
+        stage({HC9: other}, record={"day": "2026-10-28", "files": {HC9: {
+            "sha256": hashlib.sha256(other).hexdigest(), "bytes": len(other), "apart": True}}})
+        code, out = up()
+        assert code == 0 and kept(HC9) is None and \
+            (bucket / CL.DOCS_APART.rstrip("/") / HC9).read_bytes() == other, (code, out)
+        CL.open_bucket = lambda a, preview=False: ReadOnly(a.local_bucket, create=False)
+        code, out = _cloud_call(CL, "docs-down", "--root", str(laptop), "--local-bucket",
+                                str(bucket))
+        assert code == 0 and (laptop / CL.DOCS_HELD / HC9).exists() and \
+            (laptop / CL.DOCS_HELD / HC9).read_bytes() == other and not (laptop / HC9).exists(), (
+                "a PDF whose text was not its own came down where the laptop's text is made, or "
+                f"not at all: {code} {out[-400:]}")
         CL.open_bucket = saved_open
         tree = ast.parse(Path(CL.__file__).read_text(encoding="utf-8"))
         reached = _reached(tree, "cmd_docs_down", leaves={"FolderBucket", "NotAsked", "R2Bucket"})
@@ -57325,8 +57464,14 @@ def _night_documents_laptop(NI, R, FCR, FSC):
         # it named none, and gave no way back.
         NI.write_json(NI.DOCS_STAGED / NI.DOCS_RECORD, {"day": "2026-10-27", "files": {
             "calendars/2026/HC035.pdf": {"sha256": "0" * 64, "bytes": 9}}})
-        assert "set NIGHT_DOCUMENTS to off" in NI.WARN_STEPS["docs-up"][1] and \
-            "fetch_committee_reports.py --year YEAR" in NI.WARN_STEPS["docs-up"][1], \
+        # ... WITH THE SWITCH LEFT AS IT IS (the review of 26 October 2026): its
+        # one way back was to switch the night's documents off. A person names
+        # each with --take, which takes a held document whose PDF is not here
+        # (_calendar_drain drives it).
+        said_up = NI.WARN_STEPS["docs-up"][1]
+        assert "fetch_calendar_archive.py --take NAME" in said_up and \
+            "with the switch left as it is" in said_up and "NIGHT_DOCUMENTS" not in said_up and \
+            "fetch_committee_reports.py --year YEAR" in said_up and "seed-kit" in said_up, \
             "the docs-up warning does not say how a person gets the PDFs back"
         for steps, failed in (([("night", "success"), ("docs-up", "failure")], False),
                               ([("night", "success"), ("pdftotext", "failure")], False),
@@ -76165,7 +76310,14 @@ def _calendar_drain(CA):
         them; --settle keeps a person's word on a rename;
       - the laptop's record is laid over the night's only where it is the
         newer one, so a 404 the night met stays gone after the next list,
-        and the laptop drops its record of a row it leaves to the night.
+        and the laptop drops its record of a row it leaves to the night;
+        and a list read on a night that does not fetch keeps the night's own
+        refusal, drop or 404 over the laptop's older line (night_newer);
+      - a refusal's mark is beside --out before the refusal goes on file;
+      - a document set apart is taken only by name, and from a file at its
+        path asking nobody; a held one whose PDF is not here is taken by
+        name; a --take at a shared path records the path it saved to, the
+        night's list takes it, and the base edition stays linked.
     """
     import contextlib
     import hashlib
@@ -76530,6 +76682,31 @@ def _calendar_drain(CA):
         assert rc == 2 and len(opened) == 1 and len(slept) == 1 and refusal.MARK.exists() and \
             CA.refused_before(q["HC 33.pdf"]["error"]) and rec["exit"] == 2 and \
             rec["asked"][0]["ended"] == "refused" and "Forbidden" not in json.dumps(rec), (rc, rec)
+        # THE MARK ON DISK BEFORE THE REFUSAL GOES ON FILE (the review of 26
+        # October 2026): what --out and its record say the moment the refusal
+        # is recorded is what a kill then leaves, and what the night installs.
+        # They said the try and no mark, and once a person cleared the record
+        # the night asked for that very document again.
+        real_note, at_note = refusal.note, []
+
+        def noting(where, why):
+            out = Path(sys.argv[sys.argv.index("--out") + 1])
+            at_note.append(({r["name"]: r for r in CA.read_rows(out)},
+                            json.loads(out.with_name(CA.ASKED_NAME).read_text(encoding="utf-8"))))
+            return real_note(where, why)
+        refusal.note = noting
+        try:
+            rc, q, rec, said = night([urllib.error.HTTPError("u", 403, "Forbidden", {}, None),
+                                      WHOLE], "--most", "8")
+        finally:
+            refusal.note = real_note
+        assert rc == 2 and len(at_note) == 1 and \
+            at_note[0][0]["HC 33.pdf"]["error"].startswith(CA.REFUSED_MARK) and \
+            at_note[0][0]["HC 33.pdf"]["attempts"] == "1" and \
+            at_note[0][1]["asked"][0]["ended"] == "refused", (
+                "the refusal went on file before its row's mark was written beside --out, so a "
+                "kill there installs the try with no mark",
+                at_note and at_note[0][0].get("HC 33.pdf"))
         rc, q, rec, said = night([b"<h1>Web Page Blocked</h1> Attack ID: 9", WHOLE], "--most", "8")
         assert rc == 2 and len(opened) == 1 and refusal.MARK.exists() and \
             not Path(q["HC 33.pdf"]["path"]).exists(), "the block page served as 200 was saved"
@@ -76695,11 +76872,41 @@ def _calendar_drain(CA):
         # 2026): the night does not fetch, so the laptop's record is the only
         # newer one there is. Laid over only where laptop_wins, a night row
         # that carried the laptop's own older 403 outranked the laptop's 404,
-        # its third failure and its gone, and the drain asked again.
+        # its third failure and its gone, and the drain asked again (the loop
+        # below). BUT NOT OVER A LINE OF THE NIGHT'S OWN, WHICH HAS MORE TRIES
+        # (night_newer; the review of 26 October 2026): a shadow night's list
+        # put the laptop's line from before the turn-on over the night's 404.
         rc, got = list_it()
         assert rc == 0 and (got["HC 33.pdf"]["state"], got["HC 33.pdf"]["attempts"]) == (
-            "wanted", "1"), ("with the switch off the list did not take the laptop's record as "
-                             f"it did before: {got.get('HC 33.pdf')}")
+            "gone", "2"), ("a list read with the switch not a number laid the laptop's older "
+                           f"line over the night's own 404: {got.get('HC 33.pdf')}")
+        # ... nor over its refusal or its drop. Each met on a night that
+        # fetches, with the laptop's line from before the turn-on beside it,
+        # one try and "not a PDF"; then a shadow night's list; then the next
+        # night that fetches, which must not ask for it -- after a refusal,
+        # the very one refused, as soon as a person cleared the record.
+        stale = dict(state="wanted", attempts="1", error="not a PDF (812 bytes)")
+        for answers, what in (([urllib.error.HTTPError("u", 403, "Forbidden", {}, None)],
+                               "a refusal"),
+                              ([http.client.RemoteDisconnected("closed")], "a drop"),
+                              ([urllib.error.HTTPError("u", 404, "Not Found", {}, None)]
+                               + [WHOLE] * 6, "a 404")):
+            rc, q, rec, said = night(answers, "--most", "8", over={"HC 33.pdf": stale},
+                                     laptop={"HC 33.pdf": stale})
+            refusal.MARK.unlink(missing_ok=True)             # a person clears the record
+            mine = {k: q["HC 33.pdf"][k] for k in ("state", "attempts", "error")}
+            assert names()[0] == "HC 33.pdf" and int(mine["attempts"]) > 1, (what, mine)
+            CA.write_rows(CA.QUEUE, list(q.values()))        # the night installs it
+            rc, got = list_it()                              # a shadow night's list
+            nxt = CA.night_plan(list(got.values()),
+                                listing("2026-10-28T04:30:00", gone={"SJ 15.pdf"}),
+                                listing("2026-10-27T04:30:00", gone={"SJ 15.pdf"}), 8)
+            assert rc == 0 and {k: got["HC 33.pdf"][k] for k in mine} == mine and \
+                "HC 33.pdf" not in [x["name"] for x in nxt["ask"]], (
+                    f"after {what} on a night that fetched, a shadow night's list laid the "
+                    f"laptop's older line over the night's own ({mine} -> "
+                    f"{ {k: got['HC 33.pdf'][k] for k in mine} }), and the next night that "
+                    f"fetches asks for it: {[x['name'] for x in nxt['ask']]}")
         CA.listing = saved[12]
         for mine, want in ((dict(state="gone", attempts="2", error="HTTPError: HTTP Error 404: x"),
                             ("gone", "2")),
@@ -76879,6 +77086,43 @@ def _calendar_drain(CA):
                                 take=["SJ 15 June 18, 2026.pdf"])
         assert rc == 0 and names() == ["SJ 15 June 18, 2026.pdf"], (
             f"--take did not take the document a person named: {names()} {said[-300:]}")
+        # A DOCUMENT WHOSE TEXT WAS NOT ITS OWN IS A PERSON'S (the review of 26
+        # October 2026): wanted with every try counted, the night left it, and
+        # this drain asked the General Court for the very file the night had
+        # fetched. Set apart (CA.APART), it is taken only by name -- and from
+        # the file a person put at its path, asking nobody.
+        held_pdf = tmp / "apart" / "SC030.pdf"
+        aside = [dict(doc("S", "calendar", "2026", "SC 30.pdf", state=CA.APART),
+                      path=str(held_pdf))]
+        for verdict in (None, {"day": "2026-10-26", "night_documents": "2"}):
+            rows_a = [dict(r) for r in aside]
+            rc, said = laptop_drain(verdict, rows=rows_a)
+            assert rc == 0 and not names() and rows_a[0]["state"] == CA.APART, (
+                "the laptop's drain asked again for a document the night set apart, its text "
+                f"not its own: {names()} {said[-300:]}")
+        held_pdf.parent.mkdir(parents=True, exist_ok=True)
+        held_pdf.write_bytes(WHOLE)
+        rows_a = [dict(r) for r in aside]
+        rc, said = laptop_drain({"day": "2026-10-26", "night_documents": "2"}, rows=rows_a,
+                                take=["SC 30.pdf"])
+        assert rc == 0 and not names() and rows_a[0]["state"] == "held", (
+            "--take of a document set apart, its PDF put at its path by a person, asked again or "
+            f"did not hold it: {names()} {rows_a[0]['state']}")
+        # A HELD DOCUMENT WHOSE PDF IS NOT HERE, BY NAME (the review of 26
+        # October 2026): the night fetched it and docs-up could not keep it, so
+        # the laptop's committee reports have no PDF to read. --take fetches it
+        # with the switch left as it is; one whose PDF is here it does not.
+        rows_h = [dict(r, state="held") for r in aside]
+        rc, said = laptop_drain({"day": "2026-10-26", "night_documents": "2"}, rows=rows_h,
+                                take=["SC 30.pdf"])
+        assert rc == 0 and not names() and "its PDF is here" in said, (
+            f"--take asked again for a held document whose PDF is here: {names()} {said[-300:]}")
+        held_pdf.unlink()
+        rc, said = laptop_drain({"day": "2026-10-26", "night_documents": "2"}, rows=rows_h,
+                                take=["SC 30.pdf"])
+        assert rc == 0 and names() == ["SC 30.pdf"] and held_pdf.read_bytes() == WHOLE, (
+            "--take did not fetch a held document whose PDF is not on this disk, the docs-up "
+            f"warning's way back: {names()} {said[-300:]}")
         # THE REVIEWER'S CASE (the review of 26 October 2026): two documents
         # wanted at one path, and a possible rename, on a laptop that has stood
         # down with the night at 4. The drain asked for the supplement, saved
@@ -76910,6 +77154,81 @@ def _calendar_drain(CA):
                 "a document named by a person whose path another has was saved over that path, "
                 f"or the other was held from its file: {names()} {[r['state'] for r in rows4]}")
         own.unlink()
+        # BOTH HELD, A PERSON'S --take, AND THE CALENDAR CARDS' LINK (the review
+        # of 26 October 2026). watchers/README.md's step 7: two documents held
+        # at SC027.pdf, one never fetched; a person opens the file and takes
+        # the other by name. --take saved it under its own name and left its
+        # row at SC027.pdf, so two fetched rows claimed one file and the base
+        # edition's link left the Calendar cards. The record says where it
+        # went now, the night's list takes that one path, and the base edition
+        # is linked whichever of the two the file was; and a base edition the
+        # night fetches to its own name (own_path) is linked too.
+        import queue_links as QL
+        cwd, work = os.getcwd(), Path(tempfile.mkdtemp(prefix="gr-take-links-"))
+        tmps.append(work)
+        base, supp = "No 27 June 19 2025.pdf", "No 27 Supplement June 19 2025.pdf"
+        pairs = [(CA.SOURCES[(c, k)], c, k) for c, k in CA.SOURCES]
+        rec27 = {"read": "2026-11-20T04:30:00", "requests": 4, "lists": [
+            {"chamber": c, "kind": k, "year": "2025", "directory": f"{s[2]}\\2025\\",
+             "read": "2026-11-20T04:30:00",
+             "documents": [{"name": n, "label": n[:-4]} for n in (supp, base)]
+             if (c, k) == ("S", "calendar") else []} for s, c, k in pairs]}
+        csv_links = work / "links.csv"
+        try:
+            os.chdir(work)
+            for at_file in (base, supp):
+                taken = supp if at_file == base else base
+                shutil.rmtree(work / "calendars_senate", ignore_errors=True)
+                p27 = work / "calendars_senate" / "2025" / "SC027.pdf"
+                p27.parent.mkdir(parents=True)
+                p27.write_bytes(WHOLE)
+                two = [dict(doc("S", "calendar", "2025", n, state="held"), label=n[:-4],
+                            path="calendars_senate/2025/SC027.pdf",
+                            fetched="2025-06-20T01:00:00" if n == at_file else "")
+                       for n in (supp, base)]
+                CA.write_rows(CA.QUEUE, two)                  # the night's list
+                CA.fetched_file().unlink(missing_ok=True)
+                CA.write_rows(csv_links, two)
+                before = QL.calendar_keys_from_queue(str(csv_links))
+                rows_t = [dict(r) for r in two]
+                rc, said = laptop_drain({"day": "2026-11-19", "night_documents": "shadow"},
+                                        rows=rows_t, take=[taken])
+                mine = Path(f"calendars_senate/2025/{taken}")
+                listed = CA.load_queue(False)                 # a shadow night's list
+                new, _ = CA.merged(listed, rec27["lists"])
+                why = CA.judge(CA.read_rows(CA.QUEUE), new, rec27)
+                CA.write_rows(csv_links, new)
+                after = QL.calendar_keys_from_queue(str(csv_links))
+                url = next(r["url"] for r in two if r["name"] == base)
+                assert rc == 0 and names() == [taken] and mine.exists() and \
+                    p27.read_bytes() == WHOLE and not why and \
+                    {r["name"]: r["path"] for r in new}[taken] == f"calendars_senate/2025/{taken}" \
+                    and after == {"SC 27 2025": url} and \
+                    (before == {"SC 27 2025": url}) == (at_file == base), (
+                        f"both held at SC027.pdf, the file {at_file!r}, and a person's --take of "
+                        f"{taken!r}: links before {before}, after {after}; the night's list "
+                        f"{why or 'took it'}; {names()} {[(r['name'], r['path']) for r in new]}")
+            # The night's own repair: the base edition wanted at a path its
+            # held supplement has, given its own name, fetched there, linked.
+            q21 =[dict(doc("S", "calendar", "2026", n, state=s), label="",
+                        path="calendars_senate\\2026\\SC021.pdf",
+                        fetched="2026-05-29T01:00:00" if s == "held" else "")
+                   for n, s in (("No 21 Supplement May 28 2026.pdf", "held"),
+                                ("No 21 May 28 2026.pdf", "wanted"))]
+            out21, _ = CA.merged(q21, [{"chamber": "S", "kind": "calendar", "year": "2026",
+                                        "directory": sc[2] + "\\2026\\",
+                                        "documents": [{"name": r["name"], "label": ""}
+                                                      for r in q21]}], own=True)
+            for r in out21:
+                if r["state"] == "wanted":
+                    r.update(state="held", fetched="2026-11-21T08:40:00")
+            CA.write_rows(csv_links, out21)
+            got21 = QL.calendar_keys_from_queue(str(csv_links))
+            assert got21 == {"SC 21 2026": q21[1]["url"]}, (
+                "a base edition the night fetched to its own name, its supplement at the "
+                f"number's file, is not linked: {got21} {[(r['name'], r['path']) for r in out21]}")
+        finally:
+            os.chdir(cwd)
         # ... and with the switch off, the drain is what it was: the refusal in
         # the answer's own words, no word the night reads it by.
         CA._get = lambda url, data=None, timeout=60: (
