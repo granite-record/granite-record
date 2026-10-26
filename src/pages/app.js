@@ -2368,25 +2368,38 @@ function filterCombo(inp,o){
 // THE BILL SEARCH'S OFFERS: a Topic, or a Committee, of the bills in the
 // term, by name; each with the count it would list -- the filters already
 // chosen kept, this one added, and the words it does not stand for searched.
+// IN THE TERM AN OFFER LANDS IN (the review of 26 October 2026). With a bill
+// open on /bills and the picker turned, the list's term waits for the bill to
+// be closed (heldTerm), and taking an offer closes it (takeOffer, unfocus):
+// the offers were counted and chosen in the open bill's term and landed in
+// the held one -- 2023-2024's HB 104 open, 2025-2026 chosen, "housing" offered
+// "Topic Housing 62" and "House Special Committee on Housing 9", and they
+// listed 117 bills and none. So they are worked out in the held term, as the
+// list they lead to will be; `term` is put back at once, since the open bill
+// is still looked up in its own (render).
 function billOffers(q){
   if(!IDX.length)return [];
   const t=String(q||"").trim();
   if(billNumbers(t)||RSA_SHAPE.test(t))return [];
-  const inYear=IDX.filter(inTermOf);
-  const vals=k=>{const c={};inYear.forEach(b=>facetVals(b,k).forEach(v=>{
-    if(v&&!sel[k].has(v))c[v]=(c[v]||0)+1;}));return Object.keys(c).map(v=>[v,v,c[v]]);};
-  const offers=filterOffers(q,[
-    {key:"topic",values:vals("topic"),say:v=>`All bills with the topic <b>${esc(v)}</b>`},
-    // "House No Committee Assignment" is a filter, and no committee.
-    {key:"committee",values:vals("committee").filter(x=>!/\bno committee\b/i.test(x[0])),
-     say:v=>`All bills referred to the <b>${esc(v)}</b> committee`}]);
-  for(const o of offers){
-    const was=query;
-    query=o.rest;sel[o.key].add(o.v);
-    try{o.n=IDX.filter(b=>matches(b)).length;}
-    finally{sel[o.key].delete(o.v);query=was;}
-  }
-  return offers;
+  const own=term;
+  if(heldTerm!==null)term=heldTerm;
+  try{
+    const inYear=IDX.filter(inTermOf);
+    const vals=k=>{const c={};inYear.forEach(b=>facetVals(b,k).forEach(v=>{
+      if(v&&!sel[k].has(v))c[v]=(c[v]||0)+1;}));return Object.keys(c).map(v=>[v,v,c[v]]);};
+    const offers=filterOffers(q,[
+      {key:"topic",values:vals("topic"),say:v=>`All bills with the topic <b>${esc(v)}</b>`},
+      // "House No Committee Assignment" is a filter, and no committee.
+      {key:"committee",values:vals("committee").filter(x=>!/\bno committee\b/i.test(x[0])),
+       say:v=>`All bills referred to the <b>${esc(v)}</b> committee`}]);
+    for(const o of offers){
+      const was=query;
+      query=o.rest;sel[o.key].add(o.v);
+      try{o.n=IDX.filter(b=>matches(b)).length;}
+      finally{sel[o.key].delete(o.v);query=was;}
+    }
+    return offers;
+  }finally{term=own;}
 }
 // An offer taken, as ticking it in the list would be. Off the list -- a
 // bill's own page, a member's, a committee's -- it is taken where the list
@@ -2394,9 +2407,7 @@ function billOffers(q){
 function takeOffer(o){
   if(PAGE||window.GR_STATIC||window.GR_STANDALONE){
     const p=new URLSearchParams(),newest=((META&&META.terms)||[])[0];
-    // The picker's choice, held while the bill is open (heldTerm).
-    const t=heldTerm!==null?heldTerm:term;
-    if(window.GR_STANDALONE&&!PAGE&&t&&newest&&t!==newest)p.set("term",t);
+    if(window.GR_STANDALONE&&!PAGE&&term&&newest&&term!==newest)p.set("term",term);
     if(o.rest)p.set("q",o.rest);
     p.append(o.key,o.v);
     location.href=BASE+"bills?"+p.toString();
@@ -3019,22 +3030,25 @@ if(window.GR_STATIC){
      // On a record page there is no list to re-filter, and render() would
      // write one over the record.
      if(PAGE||window.GR_STATIC){location.href=BASE+"bills";return;}
-     // ON A BILL'S OWN PAGE THE PICKER CHOOSES THE TERM THE NEXT SEARCH RUNS
-     // IN, AND NOTHING ELSE. Re-rendering here swapped the record under the
-     // reader: a focused view is found by bill number alone, so changing the
-     // term redrew the page as the bill with the SAME NUMBER in the new term
-     // -- a different bill, about a different subject, at an address still
-     // naming the old one. A bill number is only unique within a biennium,
-     // which is the whole reason every address on this site carries the year.
-     // The term's bills are fetched now, so the search that follows runs in
-     // it immediately.
+     // ON /bills WITH A BILL OPEN, THE PICKER CHOOSES THE TERM THE LIST WILL
+     // BE IN ONCE THE BILL IS CLOSED, AND NOTHING ELSE. (A bill's own page
+     // has no picker: staticChromeDown hides it.) Re-rendering here swapped
+     // the record under the reader: an open bill is found by its number
+     // alone, so changing the term redrew it as the bill with the SAME
+     // NUMBER in the new term -- a different bill, about a different subject,
+     // at an address still naming the old one. A bill number is only unique
+     // within a biennium, which is the whole reason every address on this
+     // site carries the year.
      // AND THE OPEN BILL KEEPS ITS OWN TERM UNTIL IT IS CLOSED (the review of
      // 25 October 2026). The term was taken at once, so the next redraw --
      // a tab pressed -- did the swapping instead: 2023-2024's HB 104, the
      // picker turned to 2025-2026, became 2025-2026's HB 104 under the old
      // bill's row, its Cite still /bill/2023/hb104 and a live Testify for the
      // other bill in it. The choice is held (heldTerm) and taken when the
-     // bill is closed (unfocus), which a search from here does first.
+     // bill is closed (unfocus), which a search or an offer taken from the
+     // open bill does first; the offers under the box are the held term's
+     // meanwhile (billOffers). Its bills are fetched now, so the list is
+     // there to draw when the bill is closed.
      if(focused){
        heldTerm=e.target.value;
        (heldTerm===ALL_TERMS?terms:[heldTerm]).forEach(ensureTerm);
@@ -4230,13 +4244,19 @@ const TESTIFY_FORMS={H:["House","https://gc.nh.gov/house/committees/remotetestim
 // "today", "tomorrow", "in 3 days", "yesterday" and "this week" are words
 // about the calendar of the person reading, so a committee's Upcoming
 // (calendarBlock), the home page's Coming up and Latest Activity
-// (build_pages HOME_JS), the Calendar (build_calendar WEEK_JS) and what
-// retires on a day (components.js, data-until) read the reader's own clock,
-// and each of them points here. They are not to be made one: on Concord's
-// clock a reader in London at 1 a.m. on the 14th would be told a hearing on
-// the 14th is "tomorrow"; on the reader's, a reader in Los Angeles at 11:30
-// p.m. on the 13th would be sent to a sign-in that closed two and a half
-// hours earlier.
+// (build_pages HOME_JS) and the Calendar (build_calendar WEEK_JS) read the
+// reader's own clock, and each of them points here. Those are not to be
+// made one: on Concord's clock a reader in London at 1 a.m. on the 14th
+// would be told a hearing on the 14th is "tomorrow"; on the reader's, a
+// reader in Los Angeles at 11:30 p.m. on the 13th would be sent to a sign-in
+// that closed two and a half hours earlier.
+// AND ONE THAT IS NEITHER (the review of 26 October 2026): what retires on a
+// day (components.js, data-until) names no day. It hides a member-elect from
+// the day they take office, an event in Concord of the same kind as a
+// testimony deadline, and it reads the reader's clock by a choice (the
+// members-elect, 16 October 2026), not by the rule above; it points here too.
+// Whether it should follow Concord's day is that choice's to revisit, and
+// nothing here forbids it.
 const NH_DAY=(()=>{try{return new Intl.DateTimeFormat("en-US",{timeZone:"America/New_York",
   year:"numeric",month:"2-digit",day:"2-digit"});}catch(e){return null;}})();
 function nhDay(now){
@@ -4267,6 +4287,50 @@ function sittingTerm(now){
 // nor S fell through to the shut button, which could call it the hearing
 // that "has passed" (the review of 25 October 2026).
 const testifyBody=s=>TESTIFY_FORMS[s.body]?s.body:/^public /i.test(s.what||"")?"H":"S";
+// A HEARING ON A PROPOSED AMENDMENT IS A PUBLIC HEARING TOO (the review of 26
+// October 2026). The House's docket line "Public Hearing on non-germane
+// Amendment # 2026-0422h: 02/03/2026 11:20 am GP234" -- and SB 210 of 2025's
+// "Public Hearing on Amendment # 2025-2318h: ..." -- is a public hearing on
+// the bill, and the House's online sign-in takes positions for it: 1,904 for
+// HB 1560-FN's, 1,820 for CACR 12's. No station stands for it: a bill's
+// proceedings are read from its own hearing lines (docket_parser), and this
+// is not one. The Senate's, "Hearing: 02/18/2026, Room 103, SH, 09:00 am, on
+// proposed non-germane amendment # ...", is a station already. The button
+// read the stations alone, so on 47 such hearings of 44 bills of 2025-2026
+// it named the wrong last hearing -- CACR 12's "was Mar 9, 2026", where its
+// Summary has 1,820 signed in on April 15 -- and HB 1560-FN, heard on 27
+// January, would have read "has passed" the week before its second hearing.
+// So they are read here from the record's own events: the day a person
+// corrected the row to where there is one (date_as_recorded), and otherwise
+// the line's own -- SB 210's row was entered on 21 May for the 27th; the time
+// and the room from the line; the committee of the bill's House referral. A
+// line the docket called off (called_off) is no hearing, and one a House
+// station already stands for, that day at that time, is not counted twice.
+// The stations are left as they are, since the Hearings tab, the recordings
+// and their moments read them: this is Testify's reading alone.
+const AMENDMENT_HEARING=new RegExp("^Public\\s+Hearing\\s+on\\s+(?:Proposed\\s+)?(Non-?\\s?Germane\\s+)?"
+  +"(?:Amendment|AM)\\b([^:]*):\\s*(\\d{1,2})/(\\d{1,2})/(\\d{4})\\b\\s*"
+  +"(?:(\\d{1,2}):(\\d{2})\\s*([ap])\\.?\\s?m\\b\\.?)?\\s*(.*)$","i");
+function testifyHearings(d){
+  const heard=(d.stations||[]).filter(s=>/^(public )?hearing$/i.test(s.what||"")&&s.when);
+  (d.events||[]).forEach(e=>{
+    const m=AMENDMENT_HEARING.exec(String(e.text||"").trim());
+    if(!m||e.called_off)return;
+    const when=e.date_as_recorded&&e.date?String(e.date)
+      :`${m[5]}-${m[3].padStart(2,"0")}-${m[4].padStart(2,"0")}`;
+    const time=m[6]?`${String(+m[6]%12+(/p/i.test(m[8])?12:0)).padStart(2,"0")}:${m[7]}`:"";
+    if(heard.some(s=>testifyBody(s)==="H"&&s.when===when&&String(s.time||"")===time))return;
+    const room=String(m[9]||"").split(/\s*(?:[([;*]|https?:)/)[0].trim();
+    const num=(/(?:\d{4}-)?\d{3,4}[a-z]+/i.exec(m[2])||[""])[0];
+    heard.push({what:"public hearing",body:"H",when,time,committee:d.house_committee||"",
+      venue:/^[A-Za-z0-9-][A-Za-z0-9 ,.'&-]{0,79}$/.test(room)?room:"",
+      amendment:`a proposed ${m[1]?"non-germane ":""}amendment${num?` (${num})`:""}`});
+  });
+  return heard;
+}
+// Two hearings on one day are two (HB 1300 of 2026's at 10:00, and its
+// hearing on 2026-0093h at 10:15): ordered by the day, then the time.
+const testifyOrder=(a,b)=>a.when.localeCompare(b.when)||String(a.time||"").localeCompare(String(b.time||""));
 // WHETHER A HEARING CAN STILL COME (the review of 25 October 2026). The
 // rail's last mark alone said a bill had ended, and missed 46 of the sitting
 // term's 2,243 on the preview of 26 October 2026: HR 17, which died on the
@@ -4338,23 +4402,35 @@ function testifyButton(d,b,now=new Date()){
   // EACH CHAMBER'S WORD (the audit of 25 October 2026, M2): the House's
   // hearings are "public hearing" and the Senate's "hearing", and the box
   // read the House's alone -- SB 406 of 2026, heard on 13 January, said
-  // testimony had not opened. workers/follow reads both the same way.
-  const heard=(d.stations||[]).filter(s=>/^(public )?hearing$/i.test(s.what||"")&&s.when);
+  // testimony had not opened. workers/follow reads both the same way. And a
+  // hearing on a proposed amendment (testifyHearings).
+  const heard=testifyHearings(d);
   const moving=testifyMoving(d,b,today);
   // A hearing still to come, for a bill that can still be heard: a bill that
   // has stopped moving keeps no hearing ahead, whatever a station says.
-  const next=moving?heard.filter(s=>s.when>=today).sort((a,b)=>a.when.localeCompare(b.when))[0]:null;
+  const next=moving?heard.filter(s=>s.when>=today).sort(testifyOrder)[0]:null;
   const bill=b&&b.n?String(b.n):"";
   // The words beside the drawing are in a span of their own, as Report's
   // are, so the button's gap does not part them.
   const button=(cls,words)=>`<details class="testify ${cls}"><summary>${icon("testify")}<span>${words}</span></summary>`;
   if(next){
-    const [house,url]=TESTIFY_FORMS[testifyBody(next)];
+    const body=testifyBody(next);
+    const [house,url]=TESTIFY_FORMS[body];
     const room=next.venue?roomWords(next.venue):"";
-    const cmte=testifyCommittee(house,next.committee);
+    // THE COMMITTEE WHERE THE STATION NAMES NONE (the review of 26 October
+    // 2026): the pane says to choose the committee "as shown below", and
+    // three hearings of 2025 -- HB 154's and HB 382's in the Senate, HR 18's
+    // in the House -- showed none, where the record names the committee of
+    // the bill's referral in that chamber (house_committee, senate_committee),
+    // the name the bill's page gives it.
+    const cmte=testifyCommittee(house,next.committee||(body==="H"?d.house_committee:d.senate_committee));
+    // A hearing on a proposed amendment says so (testifyHearings): the bill
+    // has had its own, and this one is on "a proposed non-germane amendment
+    // (2026-0422h)", in the words the bill's Summary uses for it.
+    const on=(next.amendment?esc(next.amendment)+" to ":"")+(bill?esc(bill):"this bill");
     return button("tlive",`Testify<span class="tuntil"> until ${esc(dateWords(next.when,"short"))}</span>`)
       +`<div class="testifypane">
-      <p>The public hearing on ${bill?esc(bill):"this bill"} is scheduled for ${esc(dateWords(next.when,"day"))}${
+      <p>The public hearing on ${on} is scheduled for ${esc(dateWords(next.when,"day"))}${
         next.time?` at ${esc(clock(next.time))}`:""}${room?` in ${esc(room)}`:""}. Public testimony is open
       until midnight the day of the hearing.</p>
       <hr class="trule">
@@ -4364,7 +4440,7 @@ function testifyButton(d,b,now=new Date()){
         bill?`<li>${esc(bill)}</li>`:""}</ul></div></details>`;
   }
   // Only a hearing whose day has gone is one that has passed.
-  const past=heard.filter(s=>s.when<today).sort((a,b)=>b.when.localeCompare(a.when));
+  const past=heard.filter(s=>s.when<today).sort((a,b)=>testifyOrder(b,a));
   const last=past[0];
   // "IT OPENS AGAIN" ONLY WHERE IT CAN: a bill still moving (testifyMoving),
   // heard by one chamber alone -- CACR 13 of 2026, heard in both, was told it
@@ -9636,16 +9712,14 @@ function submitSearch(){
   // address written for the search went onto the bill's own entry in history
   // instead, /bill/2025/hb2?q=housing (the review of 2 October 2026). It goes
   // where the others go, with the words -- and with the term, where the
-  // picker beside the box names one that is not the newest: on a bill's own
-  // page that picker chooses the term the next search runs in (its change
-  // handler, above), and /bills opens on the newest unless told.
+  // bill's is not the newest, since /bills opens on the newest unless told.
+  // The term picker is not on a bill's own page (staticChromeDown hides it),
+  // so the term is the bill's own.
   if(PAGE||window.GR_STATIC||window.GR_STANDALONE){
     const to=[];
     const newest=((META&&META.terms)||[])[0];
-    // The picker's choice, held while the bill is open (heldTerm).
-    const t=heldTerm!==null?heldTerm:term;
-    if(window.GR_STANDALONE&&!PAGE&&t&&newest&&t!==newest)
-      to.push("term="+encodeURIComponent(t));
+    if(window.GR_STANDALONE&&!PAGE&&term&&newest&&term!==newest)
+      to.push("term="+encodeURIComponent(term));
     // Half an emoji is not an address: encodeURIComponent throws on a
     // surrogate with no partner (find.js, _fwell).
     if(query)to.push("q="+encodeURIComponent(

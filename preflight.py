@@ -69295,6 +69295,180 @@ def _hearing_note_wording():
                   f"says it, {drew}")
 
 
+def _css_parts(sel):
+    """A complex selector as [(combinator, compound)], left to right; the
+    first combinator is "". Brackets and parentheses are kept whole."""
+    out, cur, comb, depth, i = [], "", "", 0, 0
+    while i < len(sel):
+        c = sel[i]
+        if c in "([":
+            depth += 1
+        elif c in ")]":
+            depth -= 1
+        if depth == 0 and c in " >+~":
+            j = i
+            while j < len(sel) and sel[j] in " >+~":
+                j += 1
+            if cur:
+                out.append((comb, cur))
+                cur = ""
+            k = sel[i:j].strip()
+            comb = k or " "
+            i = j
+            continue
+        cur += c
+        i += 1
+    if cur:
+        out.append((comb, cur))
+    return out
+
+
+def _css_simple(compound):
+    """A compound selector's simple selectors: ("tag", t), ("id", x),
+    ("class", x), ("attr", text), ("pseudo", name, argument or None),
+    ("element", name)."""
+    out, i, n = [], 0, len(compound)
+    m = re.match(r"[A-Za-z*][\w-]*", compound)
+    if m:
+        out.append(("tag", m.group(0).lower()))
+        i = m.end()
+    while i < n:
+        c = compound[i]
+        if compound.startswith("::", i):
+            m = re.match(r"::([\w-]+)(\([^)]*\))?", compound[i:])
+            out.append(("element", m.group(1).lower()))
+            i += m.end()
+        elif c in "#.":
+            m = re.match(r"[#.]((?:\\.|[\w-])+)", compound[i:])
+            out.append(("id" if c == "#" else "class", m.group(1).replace("\\", "")))
+            i += m.end()
+        elif c == "[":
+            j = compound.index("]", i)
+            out.append(("attr", compound[i + 1:j]))
+            i = j + 1
+        elif c == ":":
+            m = re.match(r":([\w-]+)", compound[i:])
+            name, i = m.group(1).lower(), i + m.end()
+            arg = None
+            if i < n and compound[i] == "(":
+                depth, j = 0, i
+                while True:
+                    depth += (compound[j] == "(") - (compound[j] == ")")
+                    if depth == 0:
+                        break
+                    j += 1
+                arg, i = compound[i + 1:j], j + 1
+            out.append(("pseudo", name, arg))
+        else:
+            i += 1
+    return out
+
+
+def _css_compound_fits(compound, el):
+    """Whether a compound selector can match `el` -- {"tag", "ids", "classes",
+    "attrs", "states"}, an attribute's value None where it may be any -- or,
+    for el None, a sibling this model does not know: there anything but a
+    pseudo-element or a state of the pointer or of the focus may hold."""
+    for s in _css_simple(compound):
+        kind = s[0]
+        if kind == "element":
+            return False
+        if kind == "pseudo":
+            name, arg = s[1], s[2]
+            if name in ("is", "where", "matches", "any"):
+                alts = [(_css_parts(a) or [("", "*")])[-1][1] for a in _css_selectors(arg)]
+                if not any(_css_compound_fits(a, el) for a in alts):
+                    return False
+            elif name == "not":
+                if el is not None and any(_css_compound_fits((_css_parts(a) or [("", "*")])[-1][1], el)
+                                          for a in _css_selectors(arg)):
+                    return False
+            elif name in ("hover", "active", "focus", "focus-visible", "focus-within", "open",
+                          "checked", "disabled", "empty", "target", "placeholder-shown", "visited",
+                          "link", "any-link", "invalid", "required", "indeterminate", "popover-open",
+                          "modal", "fullscreen", "autofill", "read-only", "read-write", "enabled",
+                          "default", "valid", "optional", "user-invalid", "user-valid"):
+                states = el["states"] if el is not None else {"focus-within"}
+                if name not in states:
+                    return False
+            elif name == "root":
+                if el is None or el["tag"] != "html":
+                    return False
+            # :has(), :first-child, :nth-*, :lang() and the like: may hold.
+            continue
+        if el is None:
+            continue
+        if kind == "tag" and s[1] not in ("*", el["tag"]):
+            return False
+        if kind == "id" and s[1] not in el["ids"]:
+            return False
+        if kind == "class" and s[1] not in el["classes"]:
+            return False
+        if kind == "attr":
+            m = re.fullmatch(r"\s*([\w-]+)\s*(?:([~|^$*]?=)\s*[\"']?(.*?)[\"']?\s*(?:\s[is])?)?\s*", s[1])
+            if not m or m.group(1) not in el["attrs"]:
+                return False
+            if m.group(2) and el["attrs"][m.group(1)] is not None \
+                    and not (m.group(2) == "=" and el["attrs"][m.group(1)] == m.group(3)):
+                return False
+    return True
+
+
+def _css_can_reach(sel, chain):
+    """Whether the complex selector `sel` can match chain[0], the element in
+    question, whose ancestors outward are chain[1:], to the root; a sibling
+    named by + or ~ is one this model does not know."""
+    parts = _css_parts(sel)
+    if not parts:
+        return False
+
+    def fits(k, j):
+        comb, compound = parts[k]
+        el = chain[j] if j < len(chain) else None
+        if not _css_compound_fits(compound, el):
+            return False
+        if k == 0:
+            return True
+        if comb == ">":
+            return j + 1 < len(chain) and fits(k - 1, j + 1)
+        if comb in ("+", "~"):
+            # A sibling this model does not know, and then its parent's line.
+            prev_comb, prev = parts[k - 1]
+            if not _css_compound_fits(prev, None):
+                return False
+            if k - 1 == 0:
+                return True
+            return any(fits(k - 2, jj) for jj in ([j + 1] if prev_comb == ">" else
+                                                     range(j + 1, len(chain))) if jj < len(chain))
+        return any(fits(k - 1, jj) for jj in range(j + 1, len(chain)))
+    return fits(len(parts) - 1, 0)
+
+
+def _css_specificity(sel):
+    """(ids, classes, types) of a complex selector: :is() and :not() count as
+    their most specific argument, :where() as nothing."""
+    a = b = c = 0
+    for _, compound in _css_parts(sel):
+        for s in _css_simple(compound):
+            if s[0] == "id":
+                a += 1
+            elif s[0] in ("class", "attr"):
+                b += 1
+            elif s[0] == "tag" and s[1] != "*":
+                c += 1
+            elif s[0] == "element":
+                c += 1
+            elif s[0] == "pseudo":
+                if s[1] == "where":
+                    continue
+                if s[1] in ("is", "not", "matches", "has") and s[2]:
+                    best = max((_css_specificity(x) for x in _css_selectors(s[2])), default=(0, 0, 0))
+                    a, b, c = a + best[0], b + best[1], c + best[2]
+                else:
+                    b += 1
+    return (a, b, c)
+
+
 @check("frontend", "a bill's Testify button counts the Senate's hearings, and says testimony opens again "
        "only while one chamber has heard it")
 def _testify_box_senate():
@@ -69385,7 +69559,10 @@ def _testify_in_the_row():
     2nd, 2026' / 'House Housing Committee' / 'SB 123'". Filled from the
     record: the day as the site writes days (no ordinal), the time as it
     writes times, the room in roomWords' words; a time or a room the record
-    lacks left out cleanly, and a committee it lacks too; then the site's
+    lacks left out cleanly, and a committee it lacks too -- the station's, or
+    where the station names none, the record's for that chamber
+    (house_committee, senate_committee; the review of 26 October 2026 found
+    HB 154's, HB 382's and HR 18's hearings showing no committee); then the site's
     rule, the sentence, the chamber's form as the button, and the date in
     full, the committee with its chamber and the bill's number, a line each
     -- "Senate Finance Committee", and "House Special Committee on Housing"
@@ -69427,7 +69604,11 @@ def _testify_in_the_row():
     button, or wholly beyond the :focus-visible outline's offset and width
     (the review of 25 October 2026 found the ring of the ink at 2px to 3px
     under the outline's 2px to 4px, focused-open and focused-shut the same
-    pixels); the pane's rule is the site's divider and its values the ink on
+    pixels) -- measured against every rule of app.css that can reach the
+    open button, shut of focus and under it, and not one selector's (the
+    review of 26 October 2026: a later rule with no ring under focus, or an
+    outline drawn inside the button, passed), with no rule but the ring's own
+    setting a box-shadow on it; the pane's rule is the site's divider and its values the ink on
     the wash; the row is left off the printed sheet, Testify with it; and on
     a phone the open one spans the row, where "Testify until Jan 13" is one
     line.
@@ -69455,6 +69636,13 @@ def _testify_in_the_row():
   const special = bill([st("public hearing", "2999-01-13", "H", "Special Committee on Housing", "10:30",
                            "LOB 306-308")]);
   const named = bill([st("hearing", "2999-01-13", "S", "Senate Finance", "13:00", "SH 103")]);
+  // A station that names no committee, where the record names the bill's
+  // committee in that chamber (HB 154's Senate hearing of 29 April 2025, HR
+  // 18's House hearing of 18 March 2025): the record's is shown.
+  const fromRecS = Object.assign(bill([st("hearing", "2999-01-13", "S", "", "09:30", "LOB 103")]),
+                                 {senate_committee: "Election Law and Municipal Affairs", house_committee: "Election Law"});
+  const fromRecH = Object.assign(bill([st("public hearing", "2999-01-13", "", "", "10:30", "LOB 301-303")]),
+                                 {house_committee: "Environment and Agriculture", senate_committee: "Energy and Natural Resources"});
   const passed = bill([st("hearing", "2000-01-13", "S", "Finance")]);
   const none = bill([]);
   // HR 2 of 2025, adopted by the House the day it came in.
@@ -69525,6 +69713,8 @@ def _testify_in_the_row():
     special: scope.testifyButton(special, {id: "HB1", n: "HB 1", kind: "active"}),
     named: scope.testifyButton(named, b),
     nameless: scope.testifyButton(live, {id: "SB406", kind: "active"}),
+    fromRecS: scope.testifyButton(fromRecS, {id: "HB154", n: "HB 154", kind: "active"}),
+    fromRecH: scope.testifyButton(fromRecH, {id: "HR18", n: "HR 18", kind: "active"}),
     day: scope.dateWords("2999-01-13", "day"),
     long: scope.dateWords("2999-01-13", "long"),
     passed: scope.testifyButton(passed, b),
@@ -69607,7 +69797,13 @@ def _testify_in_the_row():
             ("named", f"The public hearing on SB 406-FN-A is scheduled for {got['day']} at 1:00 PM in State "
              "House 103. Public", [got["long"], "Senate Finance Committee", "SB 406-FN-A"]),
             ("nameless", f"The public hearing on this bill is scheduled for {got['day']} at 1:00 PM in State "
-             "House 103. Public", [got["long"], "Senate Finance Committee"])):
+             "House 103. Public", [got["long"], "Senate Finance Committee"]),
+            ("fromRecS", f"The public hearing on HB 154 is scheduled for {got['day']} at 9:30 AM in Legislative "
+             "Office Building 103. Public", [got["long"], "Senate Election Law and Municipal Affairs Committee",
+                                             "HB 154"]),
+            ("fromRecH", f"The public hearing on HR 18 is scheduled for {got['day']} at 10:30 AM in Legislative "
+             "Office Building 301-303. Public", [got["long"], "House Environment and Agriculture Committee",
+                                                 "HR 18"])):
         said = nb(flat(pane(got[name])))
         assert said.startswith(want) and lines(got[name]) == vals, (
             f"the live pane of a record with {name} reads {said!r}, its values {lines(got[name])}")
@@ -69696,16 +69892,75 @@ def _testify_in_the_row():
     # focused-shut are the same pixels. So the ring that marks it open, open
     # and focused alike, lies inside the button (an outline at an offset of
     # nothing or more never paints there) or wholly beyond the band.
-    focus = {}
-    for (ctx, sel), d in rules.items():
-        if sel == ":focus-visible" or (".testify" in sel and sel.endswith(":focus-visible")):
-            focus.update({k: v for k, v in d.items() if k in ("outline", "outline-offset")})
-    ow = re.search(r"(\d+)px", focus.get("outline", ""))
-    oo = re.search(r"(-?\d+)px", focus.get("outline-offset", "0px"))
-    assert ow and oo, f"the :focus-visible rule has no outline to measure the open ring against: {focus}"
+    # EVERY RULE THAT CAN REACH IT (the review of 26 October 2026). This read
+    # the ring's own selector and :focus-visible's alone, and a later
+    # ".testify.tlive > summary:focus-visible{box-shadow:none}" took the ring
+    # away under focus, and "outline-offset:-3px" on the open button laid the
+    # focus ring over it, with every check passing. So every rule of app.css
+    # but the printed sheet's whose selector can match that summary -- open,
+    # live, in its row, in the bill's head, as a bill's page and a bill
+    # opened on /bills draw it (the ancestors read off the preview, 26
+    # October 2026; the body with the mark other pages carry, the root with
+    # either theme the reader may choose), shut of focus and under it -- is
+    # gathered by
+    # _css_can_reach and the cascade worked out (specificity, then order,
+    # !important over both): no rule but the ring's own sets a box-shadow on
+    # it, none sets an outline-offset below nothing, and the outline and the
+    # ring measured below are the ones that win.
+    RING = ".testify.tlive[open] > summary"
+    def _reaching(focused):
+        el = lambda tag, ids=(), classes=(), attrs=None, states=(): {
+            "tag": tag, "ids": set(ids), "classes": set(classes), "attrs": attrs or {},
+            "states": set(states) | ({"focus-within"} if focused else set())}
+        chain = [el("summary", states=("focus", "focus-visible") if focused else ()),
+                 el("details", classes=("testify", "tlive"), attrs={"open": ""}, states=("open",)),
+                 el("div", classes=("testifyin", "tliverow")),
+                 el("div", ids=("pageacts",), classes=("pageacts", "inhead")),
+                 el("div", classes=("racts",)),
+                 el("header", classes=("rhead", "rh-bill")),
+                 el("article", classes=("card", "focus", "rec"), attrs={"data-id": "SB406"}),
+                 el("div", ids=("results",)),
+                 el("main", ids=("main",)),
+                 el("div", classes=("shell", "nofacets", "focused")),
+                 el("body", classes=("pg",)),
+                 el("html", classes=("js",), attrs={"lang": "en", "data-theme": None})]
+        hits = []
+        for order, (ctx, sel, body, line) in enumerate(_css_rules(text)):
+            if any("print" in c for c in ctx):
+                continue
+            for one in _css_selectors(sel):
+                if _css_can_reach(one, chain):
+                    hits.append(((_css_specificity(one), order), ctx, one, dict(_css_decls(body)), line))
+        hits.sort(key=lambda h: h[0])
+        won = {}
+        for _key, ctx, one, decls, line in hits:
+            for k, v in decls.items():
+                imp = "!important" in v
+                if k not in won or imp or not won[k][1]:
+                    won[k] = (v.replace("!important", "").strip(), imp, one, line)
+        return hits, won
+    shut_hits, shut_won = _reaching(False)
+    focus_hits, focus_won = _reaching(True)
+    assert any(one == RING and not ctx for _k, ctx, one, _d, _l in shut_hits), (
+        f"{RING} is not among the rules that reach the open Testify button: the reach is not read right")
+    others = sorted({(one, d["box-shadow"], line) for _k, ctx, one, d, line in focus_hits
+                     if "box-shadow" in d and not (one == RING and not ctx)})
+    assert not others, (
+        "a rule besides the open ring's own sets a box-shadow on the filled Testify button, open or open and "
+        f"focused, over the ring that marks it open: {others}")
+    inward = sorted({(one, d["outline-offset"], line) for _k, ctx, one, d, line in focus_hits
+                     if re.match(r"\s*-\s*\d*\.?\d+", d.get("outline-offset", ""))})
+    assert not inward, (
+        "a rule puts the focus ring inside the filled Testify button, open, where it lies over the ring that "
+        f"marks it open: {inward}")
+    ow = re.search(r"(\d+)px", (focus_won.get("outline-width") or focus_won.get("outline") or ("",))[0])
+    oo = re.search(r"(-?\d+)px", (focus_won.get("outline-offset") or ("0px",))[0])
+    assert ow and oo, (
+        f"no outline reaches the focused Testify button to measure the open ring against: "
+        f"{focus_won.get('outline')}, {focus_won.get('outline-offset')}")
     off, reach = int(oo.group(1)), int(oo.group(1)) + int(ow.group(1))
-    ring = rules.get(((), ".testify.tlive[open] > summary"), {}).get("box-shadow", "")
-    fring = rules.get(((), ".testify.tlive[open] > summary:focus-visible"), {}).get("box-shadow", ring)
+    ring = (shut_won.get("box-shadow") or ("",))[0]
+    fring = (focus_won.get("box-shadow") or ("",))[0]
     def _ring(shadow):
         parts = [p.strip() for p in shadow.split(",") if p.strip()]
         out, inner = [], 0
@@ -70082,6 +70337,137 @@ def _testify_when_it_cannot_open():
                   "body, or a body of neither chamber, live with its word's chamber's form")
 
 
+@check("frontend", "Testify counts a public hearing on a proposed amendment, which the House holds on a "
+                   "bill already heard and no station stands for")
+def _testify_hears_an_amendment():
+    """The review of 26 October 2026. The House's docket line "Public Hearing
+    on non-germane Amendment # 2026-0422h: 02/03/2026 11:20 am GP234" is a
+    public hearing on the bill, and the House's online sign-in takes
+    positions for it -- 1,904 for HB 1560-FN's -- but no station stands for
+    it, and testifyButton read the stations alone. On 21 bills of 2025-2026
+    the greyed pane named the wrong last hearing (CACR 12's "Mar 9, 2026",
+    where its Summary has 1,820 signed in on April 15), and staged as the
+    nightly had them, HB 1560-FN on 30 January, CACR 12 on 13 April and SB 56
+    on 20 April were greyed as passed with a hearing days away. app.js's
+    testifyHearings reads them from the record's events.
+
+    Run in node on the shape of HB 1560-FN of 2026 -- its own House hearing
+    on 27 January, then one on a proposed non-germane amendment on 3 February
+    -- at a moment named for each case:
+
+      30 JANUARY: live, "Testify until Feb 3", the House's form, its pane
+        "The public hearing on a proposed non-germane amendment (2026-0422h)
+        to HB 1560-FN is scheduled for Tuesday, February 3 at 11:20 AM in
+        Granite Place 234", and the committee of its House referral to choose.
+      5 FEBRUARY: greyed, its last public hearing Feb 3, 2026.
+      CACR 12's, at 03:00 pm in "SH Reps Hall" after hearings in both
+        chambers: live on 13 April "at 3:00 PM in Representatives' Hall, State
+        House", and after it, its last public hearing Apr 15, 2026.
+      A LINE THE DOCKET CALLED OFF (called_off): no hearing; on 30 January
+        the bill's hearing has passed, on Jan 27.
+      SB 210 of 2025's "Public Hearing on Amendment # 2025-2318h: 05/27/2025
+        ...", entered on 21 May: the hearing is the line's day, the 27th.
+      A ROW A PERSON CORRECTED (date_as_recorded): the corrected day.
+      A HOUSE STATION ALREADY AT THAT DAY AND TIME: one hearing, not two.
+      TWO ON ONE DAY, the amendment's first (09:30, the bill's own at 10:00):
+        the pane names the first."""
+    got = _app_js("""(() => {
+  const moving = {rail: [{stop: "Introduced", mark: "p"}, {stop: "House", mark: "h"}, {stop: "Senate", mark: "-"},
+                         {stop: "Governor", mark: "-"}, {stop: "Law", mark: "-"}]};
+  const row = {id: "HB1560", n: "HB 1560-FN", kind: "active"};
+  const own = {what: "public hearing", when: "2026-01-27", time: "10:40", body: "H", committee: "Transportation",
+               venue: "GP 232"};
+  const exec = {what: "executive session", when: "2026-02-10", time: "10:00", body: "H", committee: "Transportation"};
+  const ev = (date, text, more) => Object.assign({date, text, routine: false}, more || {});
+  const amd = "Public Hearing on non-germane Amendment # 2026-0422h: 02/03/2026 11:20 am GP234";
+  const rec = (events, stations) => ({term: "2025-2026", house_committee: "Transportation", senate_committee: "",
+    journey: moving, stations: stations || [own, exec],
+    events: [ev("2026-01-27", "Public Hearing: 01/27/2026 10:40 am GP 232")].concat(events)});
+  const at = (d, iso, r) => scope.testifyButton(d, r || row, new Date(iso));
+  const hb1300 = {term: "2025-2026", house_committee: "Commerce and Consumer Affairs", journey: moving,
+    stations: [{what: "public hearing", when: "2026-01-20", time: "10:00", body: "H", committee: "Commerce and Consumer Affairs", venue: "GP 158"}],
+    events: [ev("2026-01-20", "Public Hearing on non-germane Amendment # 2026-0093h: 01/20/2026 09:30 am GP 158")]};
+  const same = {term: "2025-2026", house_committee: "Commerce and Consumer Affairs", journey: moving,
+    stations: [{what: "public hearing", when: "2026-01-20", time: "10:15", body: "H", committee: "Commerce and Consumer Affairs", venue: "GP 158"}],
+    events: [ev("2026-01-20", "Public Hearing on non-germane Amendment # 2026-0093h: 01/20/2026 10:15 am GP 158")]};
+  const sb210 = {term: "2025-2026", house_committee: "Education Policy and Administration", journey: moving,
+    stations: [{what: "hearing", when: "2025-02-11", time: "13:00", body: "S", committee: "Education", venue: "SH 100"}],
+    events: [ev("2025-05-21", "Public Hearing on Amendment # 2025-2318h: 05/27/2025 10:00 am LOB 205-207")]};
+  // CACR 12 of 2026: heard by Senate Finance, then House Ways and Means, then
+  // in the afternoon in Representatives' Hall on a proposed amendment.
+  const cacr12 = {term: "2025-2026", house_committee: "Ways and Means", senate_committee: "Finance",
+    journey: {rail: [{stop: "Introduced", mark: "p"}, {stop: "Senate", mark: "p"}, {stop: "House", mark: "h"},
+                     {stop: "Voters", mark: "-"}]},
+    stations: [{what: "hearing", when: "2026-01-27", time: "13:15", body: "S", committee: "Finance", venue: "SH 103"},
+               {what: "public hearing", when: "2026-03-09", time: "10:45", body: "H", committee: "Ways and Means",
+                venue: "GP 159"}],
+    events: [ev("2026-04-15", "Public Hearing on non-germane Amendment # 2026-1134h: 04/15/2026 03:00 pm SH Reps Hall")]};
+  return {
+    cacr12: at(cacr12, "2026-04-13T17:00:00Z", {id: "CACR12", n: "CACR 12", kind: "active"}),
+    cacr12After: at(cacr12, "2026-04-16T17:00:00Z", {id: "CACR12", n: "CACR 12", kind: "active"}),
+    before: at(rec([ev("2026-02-03", amd)]), "2026-01-30T17:00:00Z"),
+    after: at(rec([ev("2026-02-03", amd)]), "2026-02-05T17:00:00Z"),
+    called: at(rec([ev("2026-02-03", amd, {row_note: "A cancellation.", called_off: true})]), "2026-01-30T17:00:00Z"),
+    sb210: at(sb210, "2025-05-23T17:00:00Z", {id: "SB210", n: "SB 210", kind: "active"}),
+    corrected: at(rec([ev("2026-02-04", amd, {date_as_recorded: "2026-02-03"})]), "2026-02-04T03:00:00Z"),
+    same: at(same, "2026-01-21T17:00:00Z", {id: "HB1300", n: "HB 1300", kind: "active"}),
+    twoOneDay: at(hb1300, "2026-01-19T17:00:00Z", {id: "HB1300", n: "HB 1300", kind: "active"}),
+    days: [scope.dateWords("2026-02-03", "day"), scope.dateWords("2026-02-03", "long")],
+  };
+})()""", names=("testifyButton", "dateWords"))
+    if got is None:
+        return "skip", "node, app.js or dom_stub.js is not here"
+    flat = lambda h: " ".join(re.sub(r"<[^>]+>", " ", h).replace("&rsquo;", "’").split())
+    pane = lambda h: flat((re.search(r'<div class="testifypane">(.*?)</div></details>', h, re.S) or [None, ""])[1])
+    summ = lambda h: flat((re.search(r"<summary>(.*?)</summary>", h, re.S) or [None, ""])[1])
+    vals = lambda h: [flat(x) for x in re.findall(r"<li>(.*?)</li>", h, re.S)]
+    before = got["before"]
+    assert before.startswith('<details class="testify tlive">') and summ(before) == "Testify until Feb 3", (
+        "HB 1560-FN on 30 January, its hearing on a proposed amendment on 3 February, is not live: "
+        f"{summ(before)!r} {pane(before)[:160]!r}")
+    want = ("The public hearing on a proposed non-germane amendment (2026-0422h) to HB 1560-FN is scheduled for "
+            f"{got['days'][0]} at 11:20 AM in Granite Place 234. Public testimony is open until midnight the "
+            "day of the hearing.")
+    assert pane(before).startswith(want), f"HB 1560-FN's live pane on 30 January reads {pane(before)!r}"
+    assert vals(before) == [got["days"][1], "House Transportation Committee", "HB 1560-FN"] \
+        and 'href="https://gc.nh.gov/house/committees/remotetestimony/"' in before, (
+            f"HB 1560-FN's live pane gives {vals(before)} to choose, not the House's hearing of 3 February")
+    after = got["after"]
+    assert after.startswith('<details class="testify toff">') and pane(after) == (
+        "Online testimony for this bill has passed: its last public hearing was Feb 3, 2026. It opens again "
+        "if the bill is scheduled for a hearing in the other chamber."), (
+            f"HB 1560-FN on 5 February names another hearing as its last: {pane(after)!r}")
+    assert summ(got["cacr12"]) == "Testify until Apr 15" and pane(got["cacr12"]).startswith(
+        "The public hearing on a proposed non-germane amendment (2026-1134h) to CACR 12 is scheduled for "
+        "Wednesday, April 15 at 3:00 PM in Representatives' Hall, State House.") \
+        and vals(got["cacr12"]) == ["Wednesday, April 15, 2026", "House Ways and Means Committee", "CACR 12"], (
+            f"CACR 12 on 13 April, its hearing on a proposed amendment at 3 p.m. on the 15th, reads "
+            f"{summ(got['cacr12'])!r}: {pane(got['cacr12'])[:220]!r} {vals(got['cacr12'])}")
+    assert pane(got["cacr12After"]) == "Online testimony for this bill has passed: its last public hearing was " \
+        "Apr 15, 2026.", f"CACR 12 after its hearing of 15 April reads {pane(got['cacr12After'])!r}"
+    assert got["called"].startswith('<details class="testify toff">') \
+        and "its public hearing was Jan 27, 2026." in pane(got["called"]), (
+            f"a hearing on an amendment the docket called off is counted: {pane(got['called'])!r}")
+    assert got["sb210"].startswith('<details class="testify tlive">') and summ(got["sb210"]) == "Testify until May 27" \
+        and pane(got["sb210"]).startswith("The public hearing on a proposed amendment (2025-2318h) to SB 210 is "
+                                          "scheduled for Tuesday, May 27 at 10:00 AM in Legislative Office "
+                                          "Building 205-207."), (
+            f"SB 210's hearing on an amendment, its row entered on 21 May for the 27th, reads "
+            f"{summ(got['sb210'])!r}: {pane(got['sb210'])[:200]!r}")
+    assert summ(got["corrected"]) == "Testify until Feb 4", (
+        f"a row a person corrected to 4 February keeps the clerk's day: {summ(got['corrected'])!r}")
+    assert pane(got["same"]) == "Online testimony for this bill has passed: its public hearing was Jan 20, 2026. " \
+        "It opens again if the bill is scheduled for a hearing in the other chamber.", (
+            f"a House station and the line for it, one hearing, are counted as two: {pane(got['same'])!r}")
+    assert " at 9:30 AM in Granite Place 158." in pane(got["twoOneDay"]) \
+        and pane(got["twoOneDay"]).startswith("The public hearing on a proposed non-germane amendment (2026-0093h)"), (
+            f"of two hearings on one day the pane does not name the first: {pane(got['twoOneDay'])[:200]!r}")
+    return "ok", ("HB 1560-FN live on 30 January for its hearing on a proposed amendment of 3 February, and "
+                  "passed on Feb 3 after it; a line called off, none; SB 210's on the line's day, a corrected "
+                  "row on the person's; one hearing where a station stands for the line; two on one day in "
+                  "order")
+
+
 @check("frontend", "a testimony deadline is Concord's and a day's name the reader's, and each place that "
                    "reads the reader's clock points to where nhDay says why")
 def _testify_two_clocks():
@@ -70095,7 +70481,17 @@ def _testify_two_clocks():
     calendar -- and their comments stated that rule, the opposite one, with
     nothing to say the difference was meant. A later "unify the clocks" would
     break one or the other. nhDay's comment says why there are two, naming
-    each of the five, and each of the five points back to it."""
+    each of the five, and each of the five points back to it.
+
+    BUT data-until NAMES NO DAY (the review of 26 October 2026). It hides a
+    member-elect from the day they take office, an event in Concord of the
+    same kind as a testimony deadline, and it reads the reader's clock by the
+    choice of 16 October 2026 (the members-elect), not because a day's name is
+    the reader's. nhDay's comment filed it under that rule and then forbade
+    making the clocks one, which would forbid a change that may be right
+    there. So the rule names the four places that say a day's name, and
+    data-until is named apart, as the reader's clock by that choice, which
+    nothing forbids revisiting; components.js says the same."""
     js = Path("src/pages/app.js").read_text(encoding="utf-8")
     head = js[js.index("// NEW HAMPSHIRE'S DAY, NOT THE READER'S"):js.index("function nhDay(")]
     flat = " ".join(c.strip("/ ").strip() for c in head.splitlines())
@@ -70103,6 +70499,19 @@ def _testify_two_clocks():
     for named in ("A DEADLINE IS CONCORD'S", "A DAY'S NAME IS THE READER'S", "calendarBlock", "HOME_JS",
                   "build_calendar", "data-until", "not to be made one"):
         assert named in flat, f"nhDay's comment no longer says {named!r}"
+    rule = flat[flat.index("A DAY'S NAME IS THE READER'S"):flat.index("not to be made one")]
+    assert "data-until" not in rule and "components.js" not in rule, (
+        "nhDay's comment files data-until, which names no day, under \"a day's name is the reader's\" and "
+        "forbids making its clock Concord's")
+    at = flat.index("data-until")
+    apart = flat[max(0, at - 300):at + 500]
+    assert "16 October 2026" in apart and "names no day" in apart, (
+        "nhDay's comment does not name data-until apart, as the reader's clock by the choice of 16 October "
+        "2026 and not a day's name")
+    cj = Path("src/pages/components.js").read_text(encoding="utf-8")
+    cnote = " ".join(cj[cj.index("// WHAT RETIRES ON A DAY"):cj.index("function day(){")].replace("//", " ").split())
+    assert "not because a day's name is the reader's" in cnote, (
+        "components.js's data-until says it reads the reader's clock as a day's name does")
     pointer = "TWO CLOCKS, ON PURPOSE"
     places = (("src/pages/app.js", "const today=new Date(); today.setHours(0,0,0,0);\n  const when=d=>{"),
               ("src/pages/build_pages.py", "const latRel=(d,now)=>{"),
@@ -70115,11 +70524,13 @@ def _testify_two_clocks():
         before = " ".join(text[max(0, text.index(anchor) - 400):text.index(anchor)].replace("//", " ").split())
         assert pointer in before and "nhDay" in before, (
             f"{f} reads the reader's clock at {anchor[:40]!r} with no pointer to nhDay's TWO CLOCKS")
-    return "ok", "nhDay says why the two clocks differ, and the five places on the reader's clock point to it"
+    return "ok", ("nhDay says why the two clocks differ, and the five places on the reader's clock point to it; "
+                  "data-until named apart, the reader's clock by the choice of 16 October 2026")
 
 
 @check("frontend", "on /bills, the term picker changed while a bill is open keeps that bill, its record and "
-                   "its row until it is closed, and the search after it runs in the term chosen")
+                   "its row until it is closed, offers filters in the term chosen meanwhile, and closing the "
+                   "bill takes that term once")
 def _picker_keeps_the_open_bill():
     """The review of 25 October 2026, a fault older than Testify: on /bills,
     2023-2024's HB 104 open, the term picker turned to 2025-2026 and a tab
@@ -70130,12 +70541,28 @@ def _picker_keeps_the_open_bill():
     the bill by its number in the new term, and dkey looked its record up
     there.
 
-    The handler holds the choice while a bill is open (heldTerm), and unfocus
-    takes it when the bill is closed, which a search from the open bill does
-    first; a bill's own page, which leaves for /bills to search, names the
-    held term in the address it leaves for (submitSearch, takeOffer). Run
-    here in node: the handler's own text, out of app.js, with the index
-    holding HB 104 in both terms."""
+    The handler holds the choice while a bill is open (heldTerm) and fetches
+    that term's bills; unfocus takes it when the bill is closed, which a
+    search or an offer taken from the open bill does first, lets it go, and
+    forgets the open bill's cards and tabs. A bill's own page has no picker
+    (staticChromeDown hides it), so nothing there reads the held term.
+
+    The review of 26 October 2026 found three parts of that could each be
+    taken out with this check passing, and one regression: the offers under
+    the box (billOffers) were counted and chosen in the open bill's term and
+    landed in the held one -- "Topic Housing 62" listing 117 bills, "House
+    Special Committee on Housing" none. So, run here in node with the
+    handler's own text out of app.js, an index holding HB 104 and housing
+    bills in both terms, and a fetch that records what it is asked for:
+
+      the picker turned with 2023-2024's HB 104 open: the bill, its record and
+        the redraw stay 2023-2024's, and 2025-2026's bills are asked for;
+      the offers for "housing" meanwhile: 2025-2026's topic and committee,
+        with 2025-2026's counts, and the open bill still looked up in its own;
+      the bill closed: the list is 2025-2026's, nothing is held any more, and
+        the old bill's open card and tab are forgotten;
+      then the picker turned back to 2023-2024 with no bill open, and a bill
+        opened and closed: the list stays 2023-2024's."""
     js = Path("src/pages/app.js").read_text(encoding="utf-8")
     start = js.index('ys.addEventListener("change",e=>{')
     end = js.index("Promise.all(want.map(ensureTerm)).then(render);});", start) + len(
@@ -70148,38 +70575,76 @@ def _picker_keeps_the_open_bill():
     change = "change:eval(" + json.dumps(
         '(()=>{const terms=["2025-2026","2023-2024"];return ' + handler + ";})()") + ")"
     got = _app_js("""(() => {
-  const older = {id: "HB104", n: "HB 104", term: "2023-2024", year: 2024, title: "the earlier one", kind: "done"};
-  const newer = {id: "HB104", n: "HB 104-FN", term: "2025-2026", year: 2026, title: "the newer one", kind: "active"};
+  const row = (id, n, term, title, kind, topic, committee) => ({id, n, term, year: +term.slice(5), title, kind,
+    topic, committee, committees: [committee]});
+  const older = row("HB104", "HB 104", "2023-2024", "the earlier one", "done", "Housing",
+                    "House Special Committee on Housing");
+  const newer = row("HB104", "HB 104-FN", "2025-2026", "the newer one", "active", "Housing", "House Housing");
   scope.IDX.length = 0;
-  scope.IDX.push(older, newer);
+  scope.IDX.push(older, newer,
+    row("HB5", "HB 5", "2023-2024", "a", "done", "Housing", "House Special Committee on Housing"),
+    row("HB7", "HB 7", "2025-2026", "b", "active", "Housing", "House Housing"),
+    row("HB9", "HB 9", "2025-2026", "c", "active", "Housing", "House Commerce"),
+    row("HB11", "HB 11", "2025-2026", "d", "active", "Taxation", "House Ways and Means"));
+  // The terms' bills, asked for and never answered: what was asked is the
+  // point, and render is not run again behind this.
+  const asked = [];
+  scope.setEnsure(t => { asked.push(t); return new Promise(() => {}); });
   scope.setTerm("2023-2024");
   scope.setFocused("HB104");
+  scope.openCards.add("HB104");
+  scope.openTab.HB104 = "votes";
   scope.detail["2024/HB104"] = {term: "2023-2024", stations: [], journey: {}};
   scope.detail["2026/HB104"] = {term: "2025-2026", stations: [], journey: {}};
   scope.change({target: {value: "2025-2026"}});
-  const held = {term: scope.getTerm(), key: scope.dkey("HB104"), focused: scope.getFocused()};
+  const fetched = asked.slice();
+  const held = {term: scope.getTerm(), key: scope.dkey("HB104"), focused: scope.getFocused(),
+                held: scope.getHeld()};
+  const offers = scope.billOffers("housing").map(o => [o.key, o.v, o.n]);
+  const keptOwn = {term: scope.getTerm(), key: scope.dkey("HB104")};
   let drew = "";
   try { scope.render(); drew = document.querySelector("#results").innerHTML; } catch (e) { drew = "RENDER " + e.message; }
   scope.unfocus(0);
-  return {held, drew: drew.includes("the earlier one") && !drew.includes("the newer one"),
-          after: {term: scope.getTerm(), focused: scope.getFocused(), key: scope.dkey("HB104")}};
-})()""", names=("render", "unfocus", "IDX", "detail", "dkey", "setTerm:(t)=>{term=t;}",
-                "getTerm:()=>term", "setFocused:(x)=>{focused=x;}", "getFocused:()=>focused",
+  const after = {term: scope.getTerm(), focused: scope.getFocused(), key: scope.dkey("HB104"),
+                 held: scope.getHeld(), open: scope.openCards.has("HB104"), tab: scope.openTab.HB104 || null};
+  // Again: the picker turned back with no bill open, then a bill opened and
+  // closed. Nothing is held from before to be taken again.
+  scope.change({target: {value: "2023-2024"}});
+  scope.setFocused("HB104");
+  scope.unfocus(0);
+  return {fetched, held, offers, keptOwn, drew: drew.includes("the earlier one") && !drew.includes("the newer one"),
+          after, again: {term: scope.getTerm(), held: scope.getHeld()}};
+})()""", names=("render", "unfocus", "billOffers", "IDX", "detail", "dkey", "openCards", "openTab",
+                "setTerm:(t)=>{term=t;}", "getTerm:()=>term", "setFocused:(x)=>{focused=x;}",
+                "getFocused:()=>focused", "getHeld:()=>heldTerm", "setEnsure:(f)=>{ensureTerm=f;}",
                 json.dumps(change)[1:-1]))
     if got is None:
         return "skip", "node, app.js or dom_stub.js is not here"
-    assert got["held"] == {"term": "2023-2024", "key": "2024/HB104", "focused": "HB104"}, (
+    assert got["held"] == {"term": "2023-2024", "key": "2024/HB104", "focused": "HB104", "held": "2025-2026"}, (
         f"the picker turned while 2023-2024's HB 104 was open swaps the bill under the reader: {got['held']}")
+    assert got["fetched"] == ["2025-2026"], (
+        f"the picker turned while a bill is open does not fetch the chosen term's bills: {got['fetched']}")
     assert got["drew"], "a redraw after the picker turned drew another term's HB 104 in the open bill's place"
-    assert got["after"] == {"term": "2025-2026", "focused": None, "key": "2026/HB104"}, (
-        f"closing the bill did not take the term the picker chose: {got['after']}")
-    # A bill's own page searches by leaving for /bills, and names the held term.
+    assert sorted(got["offers"]) == [["committee", "House Housing", 2], ["topic", "Housing", 3]], (
+        "with 2023-2024's HB 104 open and the picker on 2025-2026, the offers for \"housing\" are not "
+        f"2025-2026's, where taking one lands: {got['offers']}")
+    assert got["keptOwn"] == {"term": "2023-2024", "key": "2024/HB104"}, (
+        f"working out the offers left the open bill looked up in the held term: {got['keptOwn']}")
+    assert got["after"] == {"term": "2025-2026", "focused": None, "key": "2026/HB104", "held": None,
+                            "open": False, "tab": None}, (
+        f"closing the bill did not take the term the picker chose, once, and forget the old bill's cards: "
+        f"{got['after']}")
+    assert got["again"] == {"term": "2023-2024", "held": None}, (
+        f"a term the picker chose earlier was taken again when a later bill was closed: {got['again']}")
+    # No other place reads the held term: the picker is not on a bill's own
+    # page, the only place takeOffer and submitSearch leave for /bills.
     for fn in ("function submitSearch(", "function takeOffer("):
         body = js[js.index(fn):js.index("\n}\n", js.index(fn))]
-        assert "heldTerm!==null?heldTerm:term" in body, (
-            f"{fn[9:-1]} on a bill's own page leaves for /bills without the term the picker chose")
-    return "ok", ("2023-2024's HB 104 stays open, its record 2024/HB104, with the picker on 2025-2026; "
-                  "closed, the list is 2025-2026's; a bill's own page searches in the term chosen")
+        assert "heldTerm" not in body, (
+            f"{fn[9:-1]} reads the held term where no picker can have chosen one; unfocus takes it")
+    return "ok", ("2023-2024's HB 104 stays open, its record 2024/HB104, with the picker on 2025-2026 and its "
+                  "bills asked for; the offers 2025-2026's; closed, the list is 2025-2026's, nothing held, the "
+                  "old cards forgotten; turned back with no bill open, a later close keeps 2023-2024")
 
 
 @check("frontend", "the home page says each thing once: its latest sittings are one line to their "

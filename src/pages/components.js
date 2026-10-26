@@ -636,8 +636,10 @@ function electLine(key,election,takesOffice,today){
 // read on the 3rd -- a night held, a copy a browser kept -- shows no
 // member-elect, because the day they take office has come. Only ever hides:
 // what the build hid stays hidden whatever the reader's clock says. The
-// reader's day on purpose; a testimony deadline is Concord's (TWO CLOCKS, ON
-// PURPOSE, at app.js's nhDay).
+// reader's day by that choice, not because a day's name is the reader's: a
+// day someone takes office is an event in Concord, as a testimony deadline
+// is, and that one is Concord's (TWO CLOCKS, ON PURPOSE, at app.js's nhDay,
+// says why and leaves this one open).
 (function(){
   if(typeof document==="undefined"||!document.querySelectorAll)return;
   function day(){
