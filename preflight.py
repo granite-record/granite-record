@@ -69382,8 +69382,9 @@ def _css_compound_fits(compound, el):
                 if not any(_css_compound_fits(a, el) for a in alts):
                     return False
             elif name == "not":
-                if el is not None and any(_css_compound_fits((_css_parts(a) or [("", "*")])[-1][1], el)
-                                          for a in _css_selectors(arg)):
+                sure = None if el is None else dict(el, attrs={k: v for k, v in el["attrs"].items() if v is not None})
+                if sure is not None and any(_css_compound_fits((_css_parts(a) or [("", "*")])[-1][1], sure)
+                                            for a in _css_selectors(arg)):
                     return False
             elif name in ("hover", "active", "focus", "focus-visible", "focus-within", "open",
                           "checked", "disabled", "empty", "target", "placeholder-shown", "visited",
@@ -69812,6 +69813,12 @@ def _testify_in_the_row():
         and re.search(r"Testify pane\b.{0,200}?\bno longer carries\b", above), (
             "the comment above build_pages.HEARING_NOTE_SENATE says the bill page's Testify pane uses the "
             f"Senate note's words, which it has not since 26 October 2026: {above!r}")
+    # The same claim in the note's own check is held the same way (the review
+    # of 26 October 2026): its docstring names the emails' testifyWords and
+    # never says the pane carries the sentence.
+    doc = " ".join((_hearing_note_wording.__doc__ or "").split())
+    assert "testifyWords" in doc and "in the words of the bill page's Testify pane" not in doc, (
+        f"_hearing_note_wording's docstring says the Testify pane carries the Senate note's words: {doc[-300:]!r}")
     # A part the record lacks is left out cleanly; a day carries no ordinal.
     for name, want, vals in (
             ("bare", f"The public hearing on SB 406-FN-A is scheduled for {got['day']}. Public testimony",
@@ -70000,6 +70007,14 @@ def _testify_in_the_row():
                 for key, ctx, one, d, line in hits], won
     shut_hits, shut_won = _reaching(False)
     focus_hits, focus_won = _reaching(True)
+    # A RULE BEHIND THE SITE'S OWN DARK GUARD REACHES THE BUTTON (the review of
+    # 26 October 2026). The root's data-theme may be anything, and :not() took
+    # "may be anything" for a sure match, so every rule written as app.css
+    # writes dark ones -- :root:not([data-theme="light"]) ... -- was left out
+    # of the cascade, and a dark-only ring of 1.07:1 passed every check.
+    for guard in (':root:not([data-theme="light"]) .testify.tlive > summary:focus-visible',
+                  'html:not([data-theme="light"]) .testify.tlive > summary:focus-visible'):
+        assert _css_can_reach(guard, _chain(True)), f"the cascade model never lets {guard!r} reach the button"
     # A TOKEN AS IT STANDS ON THE BUTTON: a custom property a rule sets on the
     # button or any element round it below the root -- where the palette's
     # own blocks set them -- is inherited, the nearest winning; then the
