@@ -4358,7 +4358,7 @@ const REFERRED=/\b(?:re-?)?referred\s+to\s+(.+?)\s*(?:[(:;]|\b\d{1,2}\/\d{1,2}\/
 function testifyHouseCommittee(d,when,time,room){
   const flat=v=>String(v||"").replace(/\s+/g,"").toLowerCase();
   const mins=t=>{const m=/^(\d{1,2}):(\d{2})/.exec(String(t||""));return m?+m[1]*60+ +m[2]:null;};
-  const meets=(d.stations||[]).filter(s=>s.body==="H"&&s.when&&s.when<=when
+  const meets=(d.stations||[]).filter(s=>s.body==="H"&&s.when
     &&String(s.committee||"").trim()&&!/^(house|senate)$/i.test(String(s.committee).trim()));
   const near=s=>(room&&flat(s.venue)===flat(room)?0:1e5)
     +(mins(s.time)==null||mins(time)==null?5e4:Math.abs(mins(s.time)-mins(time)));

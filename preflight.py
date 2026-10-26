@@ -69236,8 +69236,10 @@ def _hearing_note_wording():
     sign-in registers a position, and the page confirming it says how to send
     written testimony (the Senate's guidance, guides.TESTIMONY's record). A
     Senate committee's note, and a Senate hearing's item in the feed, say
-    so, in the words of the bill page's Testify pane; and the feed takes the
-    note from build_pages rather than typing it."""
+    so, in the words the emails use for the same form (workers/follow/mail.js
+    testifyWords; the bill page's Testify pane has not said them since the
+    person's wording of 26 October 2026); and the feed takes the note from
+    build_pages rather than typing it."""
     import contextlib
     import datetime as _dt
     import io
@@ -69784,6 +69786,32 @@ def _testify_in_the_row():
     for old in ("Until then, anyone may sign", "On the form", "The page that confirms your sign-in",
                 "In practice", "online testimony</a>"):
         assert old not in pane(live) and old not in lp, f"the live pane still says {old!r}"
+    # WHO ELSE SAYS THE SENATE'S SENTENCE (the review of 26 October 2026). The
+    # comment above build_pages.HEARING_NOTE_SENATE said its last sentence was
+    # in "the words the bill page's Testify pane and the emails use", and the
+    # pane has not said it since the person's wording of 26 October. So that
+    # comment names the emails' testifyWords, which say it, and says the pane
+    # no longer does; and both halves are read off the code.
+    sentence = "The page that confirms your sign-in says how to send written testimony."
+    bp_lines = Path("src/pages/build_pages.py").read_text(encoding="utf-8").splitlines()
+    at = next(i for i, x in enumerate(bp_lines) if x.startswith("HEARING_NOTE_SENATE = "))
+    above = []
+    for x in reversed(bp_lines[:at]):
+        if not x.startswith("#"):
+            break
+        above.insert(0, x.lstrip("#").strip())
+    above = " ".join(above)
+    mail = Path("workers/follow/mail.js").read_text(encoding="utf-8")
+    words = mail[mail.index("export function testifyWords("):mail.index("function testifyBlock(")]
+    app_src = Path("src/pages/app.js").read_text(encoding="utf-8")
+    button_src = app_src[app_src.index("function testifyButton("):app_src.index("function mountTestify(")]
+    assert sentence in words and "mail.js testifyWords" in above, (
+        "the comment above build_pages.HEARING_NOTE_SENATE no longer names the emails' testifyWords as "
+        f"saying its last sentence, or they no longer do: {above!r}")
+    assert sentence not in button_src and "Testify pane and the emails use" not in above \
+        and re.search(r"Testify pane\b.{0,200}?\bno longer carries\b", above), (
+            "the comment above build_pages.HEARING_NOTE_SENATE says the bill page's Testify pane uses the "
+            f"Senate note's words, which it has not since 26 October 2026: {above!r}")
     # A part the record lacks is left out cleanly; a day carries no ordinal.
     for name, want, vals in (
             ("bare", f"The public hearing on SB 406-FN-A is scheduled for {got['day']}. Public testimony",
@@ -70009,11 +70037,58 @@ def _testify_in_the_row():
     wv = (focus_won.get("outline-width") or ("",))[0]
     ow = {"thin": 1, "medium": 3, "thick": 5}.get(wv) or (
         int(float(re.match(r"(-?\d*\.?\d+)", wv).group(1))) if re.match(r"-?\d*\.?\d+(px)?$", wv) else 0)
-    oo = re.search(r"(-?\d+)px", (focus_won.get("outline-offset") or ("0px",))[0])
-    assert ow >= 1 and oo, (
+    assert ow >= 1, (
         f"no outline reaches the focused Testify button to measure the open ring against: "
         f"{focus_won.get('outline-width')}, {focus_won.get('outline-style')}, {focus_won.get('outline-offset')}")
-    off, reach = int(oo.group(1)), int(oo.group(1)) + ow
+    # AN OFFSET OF 0 NEEDS NO UNIT (the review of 26 October 2026): this read
+    # a px length alone, and a valid outline-offset:0 failed here as "no
+    # outline reaches" the button. A length in px, or a bare 0.
+    def _offset_px(value):
+        v = str(value or "").strip()
+        m = re.fullmatch(r"(-?\d*\.?\d+)px", v) or re.fullmatch(r"([-+]?0*\.?0+)", v)
+        return int(float(m.group(1))) if m else None
+    assert [_offset_px(x) for x in ("0", "0px", "2px", "-2px", "2", "2em")] == [0, 0, 2, -2, None, None], (
+        "the focus ring's outline-offset is not read as a length in px or a bare 0")
+    ov = str((focus_won.get("outline-offset") or ("0",))[0]).strip()
+    off = _offset_px(ov)
+    assert off is not None, (
+        f"the winning outline-offset on the focused Testify button, {ov!r} "
+        f"({(focus_won.get('outline-offset') or ('', '', 'no rule'))[2]}), is not one this check reads: a "
+        "length in px, or 0")
+    reach = off + ow
+    # THE OUTLINE'S COLOUR (the review of 26 October 2026). This read the
+    # winning outline's style and width and never its colour, so a later
+    # ".testify.tlive > summary:focus-visible{outline:2px solid}" -- the
+    # colour left to currentcolor, the button's own --on-pine -- or an
+    # outline-color of transparent or of the paper took the keyboard's ring
+    # out of sight (1.20:1 on the paper in the light scheme, 1.07:1 in the
+    # dark) with every check passing. So the winning outline-color is
+    # resolved as it stands on the button: currentcolor is the button's
+    # winning color, the nearest set going out; transparent, or a colour
+    # this check cannot read, is no ring; and it must be 3:1 on the paper
+    # round the button, where an outline at an offset of nothing or more is
+    # drawn, in both schemes.
+    oc = str((focus_won.get("outline-color") or ("currentcolor",))[0]).strip()
+    oc_rule = (focus_won.get("outline-color") or ("", "", "no rule"))[2]
+    if oc.lower() == "currentcolor":
+        oc = ""
+        for at in range(len(_chain(True))):
+            c = str((_reaching(True, at)[1].get("color") or ("",))[0]).strip()
+            if c and c.lower() not in ("inherit", "currentcolor"):
+                oc = c
+                break
+    mine_focused = _tokens(True)
+    outline_ratios = []
+    for scheme in ("light", "dark"):
+        a, g = _colour(oc, mine_focused, scheme), _colour("var(--paper)", mine_focused, scheme)
+        assert oc.lower() != "transparent" and a and g, (
+            f"the focus ring's colour on the Testify button, {oc!r} ({oc_rule}), is not a colour this check can "
+            f"read in the {scheme} palette: a ring of no colour is no focus ring")
+        r = _css_ratio(a, g)
+        assert r >= 3, (
+            f"the focus ring on the Testify button, {oc} ({oc_rule}), is {r:.2f}:1 on the paper in the {scheme} "
+            "palette, under 3:1: the keyboard's ring is out of sight")
+        outline_ratios.append(f"{r:.2f}")
     ring = (shut_won.get("box-shadow") or ("",))[0]
     fring = (focus_won.get("box-shadow") or ("",))[0]
     def _ring(shadow):
@@ -70090,7 +70165,8 @@ def _testify_in_the_row():
                   f"link; none for an earlier term or on the Summary; after Follow, or Cite, in the row; "
                   f"on-pine on pine {ratios[0]} and {ratios[1]}:1, ink-2 on wash {ratios[2]} and "
                   f"{ratios[3]}:1, the open ring {where} {ratios[4]} and {ratios[5]}:1 clear of the focus "
-                  f"ring's {off}-{reach}px, the values {ratios[6]} and {ratios[7]}:1; live on the hearing's "
+                  f"ring's {off}-{reach}px, the focus ring {outline_ratios[0]} and {outline_ratios[1]}:1 on "
+                  f"the paper, the values {ratios[6]} and {ratios[7]}:1; live on the hearing's "
                   f"day, by Concord's clock; an ended bill unheard told so; the row decided in mountTestify")
 
 
@@ -70451,20 +70527,41 @@ def _testify_hears_an_amendment():
         executive session at 10:00 on 29 October in GP 159, the hearing on
         2025-3021h at 10:10 in the same room: "House Ways and Means
         Committee". With a second meeting that day, of another committee in
-        another room nearer the time, the line's room decides; with no
-        referral on the record, that day's meeting alone says Ways and Means;
-        and with neither, the last House meeting before the day, which a
-        station of the floor, naming the chamber, is not.
-      HB 71-FN, referred to Finance on 6 February 2025, the day Education
-        Policy and Administration's executive session is also dated, Finance
-        meeting on the 17th: "House Finance Committee"; with no Finance
-        meeting on the record, the referral alone says Finance, a referral
-        and a meeting on one day taken as the referral, since the committee
-        meets before the House sends the bill on. A row citing the Senate's
-        journal, or one naming no committee ("Rereferred to Committee"), or
-        dated after the hearing, or one to interim study, is not a House
-        referral of that day. And a House hearing whose station names no
-        committee is given the same: Finance, not the first referral.
+        another room nearer the time and listed first, the line's room
+        decides, not the order; with two that day, neither in the line's
+        room, the nearer time; a Senate committee's meeting that day, in the
+        line's room at its time, is not the House's; with no referral on the
+        record, that day's meeting alone says Ways and Means; and with
+        neither, the last House meeting before the day, which a station of
+        the floor, naming the chamber, is not. The record has Ways and
+        Means' meeting alone that day: the others are made up to test the
+        choice.
+      HB 71-FN, referred to Education Policy and Administration and, on 6
+        February 2025, to Finance, Finance meeting on the 17th: "House
+        Finance Committee". The record dates Education Policy and
+        Administration's executive session 27 January; the fixture puts it
+        on 6 February, the referral's day, to test the tie. So with no
+        Finance meeting on the record, the referral alone says Finance, a
+        referral and a meeting on one day taken as the referral, since the
+        committee meets before the House sends the bill on; and a referral
+        dated the hearing's own day, with no meeting that day, is one. A row
+        citing the Senate's journal or its calendar, one the docket called
+        off, one naming no committee ("Rereferred to Committee"), one dated
+        after the hearing, or one to interim study, is not a House referral;
+        a row re-referring it to a committee by name is. No row of the
+        sitting term is a referral on the day of a hearing, a row of the
+        Senate's calendar naming a committee, a referral called off or a
+        re-referral by name: those cases are made up to hold the rule. And a
+        House hearing whose station names no committee is given the same:
+        Finance, not the first referral.
+      HB 197-FN, its rows as the record has them: introduced on 8 January
+        2025 and referred to Executive Departments and Administration, and
+        the same day "Vacated and Referred to Finance (Rep. C. McGuire): MA
+        VV 01/08/2025": "House Finance Committee" -- the later of the day's
+        two referrals, and the committee's name alone, not what the line
+        says after it. Its hearing of 23 January is Finance's on the record;
+        the fixture leaves that station's committee off, so that with no
+        meeting before it the referrals decide.
       A 12:30 PM LINE, HB 1199-FN's "02/03/2026 12:30 pm SH Representatives
         Hall": "at 12:30 PM in Representatives' Hall, State House", not
         "24:30" -- the noon hour is the one wrap of the line's clock no
@@ -70522,16 +70619,32 @@ def _testify_hears_an_amendment():
   // HB 71-FN of 2025-2026: heard and reported by Education Policy and
   // Administration, passed and sent to Finance on 6 February, the hearing on
   // 2025-0555h at 1:00 pm on 17 March in LOB 210-211, Finance's executive
-  // session there at 1:15.
+  // session there at 1:15. The record dates Education Policy and
+  // Administration's executive session 27 January; this puts it on 6
+  // February, the referral's day, to test the tie. `sentOn` moves the
+  // referral to Finance to another day.
   const EPA = "Education Policy and Administration";
-  const hb71 = (stations, more) => ({term: "2025-2026", house_committee: EPA, senate_committee: "Judiciary",
-    journey: moving,
+  const mdy = iso => iso.slice(5, 7) + "/" + iso.slice(8, 10) + "/" + iso.slice(0, 4);
+  const hb71 = (stations, more, sentOn = "2025-02-06") => ({term: "2025-2026", house_committee: EPA,
+    senate_committee: "Judiciary", journey: moving,
     stations: [H("public hearing", "2025-01-22", "09:30", EPA, "LOB 205-207"),
                H("executive session", "2025-02-06", "09:00", EPA, "LOB 205-207")].concat(stations),
     events: [hj("2025-01-08", "Introduced 01/08/2025 and referred to " + EPA),
-             hj("2025-02-06", "Referred to Finance 02/06/2025")].concat(more || [],
+             hj(sentOn, "Referred to Finance " + mdy(sentOn))].concat(more || [],
             [ev("2025-03-17", "Public Hearing on non-germane Amendment # 2025-0555h: 03/17/2025 01:00 pm LOB 210-211")])});
   const r71 = {id: "HB71", n: "HB 71-FN", kind: "active"};
+  // HB 197-FN of 2025-2026, its rows as the record has them: introduced on 8
+  // January and referred to Executive Departments and Administration, then
+  // the same day vacated from it and referred to Finance, the line going on
+  // after the name. Its hearing of 23 January is Finance's on the record;
+  // here that station names no committee, so that with no meeting before it
+  // the two referrals of one day decide.
+  const hb197 = {term: "2025-2026", house_committee: "Finance", senate_committee: "", journey: moving,
+    stations: [H("public hearing", "2025-01-23", "10:00", "", "LOB 210-211")],
+    events: [ev("2025-01-08", "Introduced 01/08/2025 and referred to Executive Departments and Administration",
+                {cite: "HJ 2, page 10"}),
+             ev("2025-01-08", "Vacated and Referred to Finance (Rep. C. McGuire): MA VV 01/08/2025", {cite: "HJ 2"}),
+             ev("2025-01-23", "Public Hearing: 01/23/2025 10:00 am LOB 210-211")]};
   // HB 1199-FN of 2026: the hearing on 2026-0340h at 12:30 pm in the House
   // chamber, the committee's executive session there at the same time.
   const hb1199 = {term: "2025-2026", house_committee: "Fish and Game and Marine Resources",
@@ -70542,8 +70655,20 @@ def _testify_hears_an_amendment():
     events: [ev("2026-02-03", "Public Hearing on non-germane Amendment # 2026-0340h: 02/03/2026 12:30 pm SH Representatives Hall")]};
   return {
     hb524: at(hb524([wmExec]), "2025-10-27T16:00:00Z", r524),
-    hb524Rooms: at(hb524([wmExec, H("work session", "2025-10-29", "10:10", HHS, "LOB 301-303")]),
+    // The other committee's meeting, nearer the time, listed first: the
+    // line's room decides, not the order.
+    hb524Rooms: at(hb524([H("work session", "2025-10-29", "10:10", HHS, "LOB 301-303"), wmExec]),
                    "2025-10-27T16:00:00Z", r524),
+    // Two committees meet that day, neither in the line's room (Ways and
+    // Means' moved out of GP 159 for this): the nearer time decides.
+    hb524Times: at(hb524([H("work session", "2025-10-29", "13:00", HHS, "LOB 301-303"),
+                          H("executive session", "2025-10-29", "10:00", "Ways and Means", "LOB 202-204")]),
+                   "2025-10-27T16:00:00Z", r524),
+    // A Senate committee's meeting that day, in the line's room at its very
+    // time, is not a House committee's.
+    hb524Senate: at(hb524([wmExec, {what: "executive session", when: "2025-10-29", time: "10:10", body: "S",
+                                    committee: "Health and Human Services", venue: "GP 159"}]),
+                    "2025-10-27T16:00:00Z", r524),
     hb524Met: at(hb524([wmExec], false), "2025-10-27T16:00:00Z", r524),
     // A station of the chamber's floor, which names the chamber, is no
     // committee's meeting.
@@ -70557,7 +70682,18 @@ def _testify_hears_an_amendment():
                                      {cite: "SJ 9"}),
                                   ev("2025-03-11", "Rereferred to Committee, MA, VV; 03/11/2025"),
                                   ev("2025-03-12", "Committee Report: Referred to Interim Study, 03/12/2025; Vote 5-0; CC"),
+                                  ev("2025-03-12", "==CANCELLED== Referred to Ways and Means 03/12/2025",
+                                     {cite: "HJ 9", row_note: "A cancellation.", called_off: true}),
+                                  ev("2025-03-13", "Committee Report: Referred to Ways and Means 03/13/2025; Vote 5-0",
+                                     {cite: "SC 12"}),
                                   hj("2025-03-20", "Referred to Ways and Means 03/20/2025")]), "2025-03-14T16:00:00Z", r71),
+    // Referred to Finance on the day of the hearing itself, no meeting that
+    // day: the referral, not the last meeting before it.
+    hb71OnTheDay: at(hb71([], [], "2025-03-17"), "2025-03-14T16:00:00Z", r71),
+    // Re-referred to a committee by name: that committee.
+    hb71Rereferred: at(hb71([], [hj("2025-03-10", "Rereferred to Ways and Means 03/10/2025")]),
+                       "2025-03-14T16:00:00Z", r71),
+    hb197: at(hb197, "2025-01-21T17:00:00Z", {id: "HB197", n: "HB 197-FN", kind: "active"}),
     // A House hearing whose station names no committee (HR 18's of 2025
     // did), after the referral: the committee that has the bill that day.
     hb71Nameless: at(hb71([H("public hearing", "2025-03-17", "13:00", "", "LOB 210-211")]), "2025-03-14T16:00:00Z", r71),
@@ -70626,7 +70762,11 @@ def _testify_hears_an_amendment():
             ("hb524", "Wednesday, October 29, 2025", "House Ways and Means Committee", "HB 524-FN",
              "that day's Ways and Means meeting in its room, and its referral"),
             ("hb524Rooms", "Wednesday, October 29, 2025", "House Ways and Means Committee", "HB 524-FN",
-             "the meeting in the line's room, over another committee's nearer the time"),
+             "the meeting in the line's room, over another committee's nearer the time and listed first"),
+            ("hb524Times", "Wednesday, October 29, 2025", "House Ways and Means Committee", "HB 524-FN",
+             "the meeting nearer the line's time, of two that day in neither the line's room"),
+            ("hb524Senate", "Wednesday, October 29, 2025", "House Ways and Means Committee", "HB 524-FN",
+             "the House's meeting that day, not a Senate committee's in the line's room at its time"),
             ("hb524Met", "Wednesday, October 29, 2025", "House Ways and Means Committee", "HB 524-FN",
              "that day's Ways and Means meeting, with no referral on the record"),
             ("hb524Before", "Wednesday, October 29, 2025", "House Ways and Means Committee", "HB 524-FN",
@@ -70637,7 +70777,14 @@ def _testify_hears_an_amendment():
             ("hb71Sent", "Monday, March 17, 2025", "House Finance Committee", "HB 71-FN",
              "the referral to Finance, on the day of the last meeting of the committee it left"),
             ("hb71NotTheHouse", "Monday, March 17, 2025", "House Finance Committee", "HB 71-FN",
-             "the House's referral, not a Senate row, a row naming no committee or one after the day"),
+             "the House's referral, not a row of the Senate's journal or calendar, a row naming no committee, "
+             "one called off or one after the day"),
+            ("hb71OnTheDay", "Monday, March 17, 2025", "House Finance Committee", "HB 71-FN",
+             "the referral dated the hearing's own day"),
+            ("hb71Rereferred", "Monday, March 17, 2025", "House Ways and Means Committee", "HB 71-FN",
+             "a re-referral to a committee by name"),
+            ("hb197", "Thursday, January 23, 2025", "House Finance Committee", "HB 197-FN",
+             "the later of a day's two referrals, its name alone"),
             ("hb71Nameless", "Monday, March 17, 2025", "House Finance Committee", "HB 71-FN",
              "the referral, for a House hearing whose station names no committee")):
         h = got[name]
@@ -70648,6 +70795,21 @@ def _testify_hears_an_amendment():
     assert pane(got["hb71"]).startswith("The public hearing on a proposed non-germane amendment (2025-0555h) to "
                                         "HB 71-FN is scheduled for Monday, March 17 at 1:00 PM in Legislative "
                                         "Office Building 210-211."), f"HB 71-FN's live pane reads {pane(got['hb71'])!r}"
+    # A CASE NAMED FOR A REAL RECORD IS THE REAL THING, OR SAYS IT IS NOT
+    # (the review of 26 October 2026). This check's words had HB 71-FN
+    # referred to Finance on the day its executive session in Education
+    # Policy and Administration "is also dated": that is the fixture's tie,
+    # and the record dates the session 27 January. Its words and the
+    # fixture's both say so.
+    import inspect
+    src = inspect.getsource(_testify_hears_an_amendment)
+    words = [" ".join(x.split()) for x in (_testify_hears_an_amendment.__doc__ or "",
+             src[src.index('_app_js("""'):src.index('""", names=')].replace("//", " "))]
+    assert all("executive session is also dated" not in w and "to test the tie" in w
+               and "The record dates Education Policy and Administration's executive session 27 January" in w
+               for w in words), (
+            "this check's words or its HB 71-FN fixture no longer say that the fixture's executive session of "
+            "6 February is moved there to test the tie, the record's being on 27 January")
     # A 12:30 PM LINE
     assert pane(got["hb1199"]).startswith(
         "The public hearing on a proposed non-germane amendment (2026-0340h) to HB 1199-FN is scheduled for "
@@ -70659,7 +70821,8 @@ def _testify_hears_an_amendment():
                   "passed on Feb 3 after it; a line called off, none; SB 210's on the line's day, a corrected "
                   "row on the person's; one hearing where a station stands for the line; two on one day in "
                   "order; HB 524-FN's and HB 71-FN's committee the one that has the bill that day, Ways and "
-                  "Means and Finance; HB 1199-FN's at 12:30 PM")
+                  "Means and Finance, by the room, the time, the House's meetings and the House's referrals; "
+                  "HB 197-FN's the later of a day's two referrals, Finance; HB 1199-FN's at 12:30 PM")
 
 
 @check("frontend", "Testify takes a hearing a Senate committee's report dates apart from the docket as the "
