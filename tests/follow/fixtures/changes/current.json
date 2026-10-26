@@ -47,7 +47,8 @@
         "time": "10:00",
         "what": "public hearing",
         "committee": "House Example Committee",
-        "venue": "Legislative Office Building 305"
+        "venue": "Legislative Office Building 305",
+        "form": "H"
       }
     ],
     "committee:H90": [

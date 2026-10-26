@@ -4283,8 +4283,11 @@ function sittingTerm(now){
 // bill, so the pane says what to pick, in the order the Senate's guidance
 // gives -- the hearing's day, then the committee, then the bill -- which the
 // House's form asks for too. workers/follow/mail.js testifyWords gives the
-// same three in the emails, in the older, longer words: the person's of 26
-// October 2026 were for this pane.
+// emails this pane's words, in its order (the person, 26 October 2026:
+// "Emails should stay in sync with how the site displays the testify
+// button"), for the hearings follow_changes.bill_upcoming reads from the
+// record by these functions' rules; preflight's _testify_email_in_sync holds
+// the two to one answer, so a change here is a change there.
 // A HEARING'S CHAMBER: the station's own body, and where it names neither
 // chamber, the chamber whose word the station uses (EACH CHAMBER'S WORD,
 // below: "public hearing" is the House's, "hearing" the Senate's). So every
@@ -6638,6 +6641,18 @@ function followRss(kind,href,folded){
   return folded?`<details class="followalt"><summary>Follow by RSS instead</summary>
     <div class="followaltbody">${body}</div></details>`:body;
 }
+// EMAIL FOLLOWING IS IN BETA UNTIL THE PUBLIC LAUNCH (the person, 26 October
+// 2026: "Email following can maybe have a disclosure that email following is
+// in beta testing right now until the webinar so folks know that even though
+// it's live, things may be changing day by day"). One line in the small
+// print, src/pages/words/follow_beta.json's, which every email that follows
+// sends says too (site.gen.js's FOLLOW_BETA). It retires on its "until", the
+// day after the webinar of 10 November, as the home page's webinar box does:
+// data-until, which components.js's behaviour judges by the reader's date.
+function followBeta(){
+  const b=WORDBOOK.follow_beta;
+  return b&&b.note?`<p class="panfine followbeta"${untilAttrs(b.until)}>${esc(b.note)}</p>`:"";
+}
 function followMailForm(key){
   // ONE PANEL WITH CHOOSING YOUR TOWN (the person's choice A, 14 October
   // 2026): a heading, one sentence, one field and its button, and the
@@ -6661,6 +6676,7 @@ function followMailForm(key){
       <button type="submit" class="followsend">Email me updates</button></div>
     <p class="panfine">Nothing is sent until you confirm. Every email lets you change what you follow or
       unsubscribe.</p>
+    ${followBeta()}
     <p style="position:absolute;left:-9999px" aria-hidden="true"><label>Leave this empty
     <input name="website" tabindex="-1" autocomplete="off"></label></p>
     <div class="followcheck"></div>

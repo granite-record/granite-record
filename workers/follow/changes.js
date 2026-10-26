@@ -23,6 +23,9 @@ export const ITEM_KINDS = new Set(["action", "hearing", "scheduled", "exec", "vo
   "report", "sponsor", "sitting", "study"]);
 const BASES = new Set(["first-seen", "record-date"]);
 const CHAMBERS = new Set(["House", "Senate"]);
+const FORMS = new Set(["H", "S"]);
+// An amendment's number as the Bill Text tab opens it (app.js AMENDMENT_HASH).
+export const AMENDMENT_NUM = /^(?:\d{4}-)?\d{3,4}[a-z]{1,2}$/i;
 
 const isObj = o => !!o && typeof o === "object" && !Array.isArray(o);
 
@@ -96,9 +99,24 @@ export function checkCurrent(obj) {
       const what = text(u.what, 120, `${w} what`, notes);
       if (!what) continue;
       if (u.time !== undefined && u.time !== "" && !TIME.test(u.time)) notes.push(`${w}: time is not HH:MM`);
+      // A HEARING THE BILL'S TESTIFY BUTTON COUNTS (26 October 2026,
+      // CHANGES_FORMAT.md): "form", the chamber whose online sign-in takes
+      // testimony for it; on a proposed amendment, "amendment", its words,
+      // and "amendment_num", where the Bill Text tab opens it.
+      let form = "", num = "";
+      if (u.form !== undefined && u.form !== "") {
+        if (FORMS.has(u.form)) form = u.form;
+        else notes.push(`${w}: form is neither H nor S`);
+      }
+      if (u.amendment_num !== undefined && u.amendment_num !== "") {
+        if (typeof u.amendment_num === "string" && AMENDMENT_NUM.test(u.amendment_num)) num = u.amendment_num;
+        else notes.push(`${w}: amendment_num is not an amendment's number`);
+      }
       rows.push({ date: u.date, what, time: TIME.test(u.time ?? "") ? u.time : "",
         committee: text(u.committee, 120, `${w} committee`, notes, false),
-        venue: text(u.venue, 120, `${w} venue`, notes, false) });
+        venue: text(u.venue, 120, `${w} venue`, notes, false),
+        amendment: text(u.amendment, 120, `${w} amendment`, notes, false),
+        amendment_num: num, form });
     }
     rows.sort((a, b) => (a.date + a.time).localeCompare(b.date + b.time));
     if (rows.length) upcoming.set(k, rows);

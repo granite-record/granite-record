@@ -50,7 +50,7 @@
  */
 
 import { ConfigError, linksFor, openAddress, openFollow, sameText, sealFollow } from "./address.js";
-import { addDays, chamberOf, clock, errName, fallbackLabel, json, keyOf, nhClock, note, parseKey,
+import { addDays, clock, errName, fallbackLabel, json, keyOf, nhClock, note, parseKey,
          readCapped } from "./common.js";
 import { readCurrent, readNight } from "./changes.js";
 import { digestEmail, nothingNewEmail, pageNames, sendMail, welcomeEmail } from "./mail.js";
@@ -161,32 +161,42 @@ const STOPPED = {
 // reader, the morning before the hearing ("eve") and the morning of it
 // ("day"), whether or not anything else is new. A weekly reader has it in the
 // week ahead. The hearing is current.json's -- what is still scheduled as of
-// last night -- and a hearing whose committee names no chamber has no form to
-// send anyone to, so it is not said.
+// last night.
 //
 // ahead: a test send's (A TEST SEND, below), never a run's. A bill with a
 // public hearing still to come says "open" on any day, so that a test shows
 // the block wherever a followed bill has one ahead, not only on the three
 // mornings a real email says it.
 //
-// The House calls its hearings "public hearing" and the Senate "hearing"
-// (the audit of 25 October 2026, M2): both are the one meeting that takes
-// testimony, and this read the House's alone.
-const PUBLIC_HEARING = /^(public )?hearing$/i;
+// THE HEARINGS THE SITE'S TESTIFY COUNTS, AND NO OTHERS (the person, 26
+// October 2026: "Emails should stay in sync with how the site displays the
+// testify button"). This read current.json's upcoming for a "public hearing"
+// or a "hearing" (the House's word and the Senate's; the audit of 25 October
+// 2026, M2) whose committee named a chamber. The build now reads each bill's
+// own record by the button's rules (follow_changes.bill_upcoming) and marks
+// the hearings the button counts as live with "form", the chamber whose
+// online sign-in takes testimony for it: the hearings on a proposed
+// amendment among them, with the committee the pane names, and none for a
+// bill that can no longer be heard. So the mark alone decides here. The
+// night's own news of a hearing set is any hearing's line: "public hearing",
+// "hearing", or "public hearing on non-germane amendment 2026-0422h"
+// (plain_action.meeting).
+const HEARING_SET = /^(public )?hearing\b/i;
 export function testifyFor(kind, upcoming, items, frequency, today, ahead = false) {
   if (kind !== "bill") return null;
   const next = (upcoming || [])
-    .filter(u => PUBLIC_HEARING.test(u.what || "") && u.date >= today && chamberOf(u.committee))
+    .filter(u => u.form && u.date >= today)
     .sort((a, b) => (a.date + (a.time || "")).localeCompare(b.date + (b.time || "")))[0];
   if (!next) return null;
   const daily = frequency !== "weekly";
   const phase = daily && next.date === today ? "day"
     : daily && next.date === addDays(today, 1) ? "eve"
-    : items.some(it => it.meeting && PUBLIC_HEARING.test(it.meeting.what || "") &&
+    : items.some(it => it.meeting && HEARING_SET.test(it.meeting.what || "") &&
         it.meeting.date === next.date && it.meeting.state !== "cancelled") ? "open"
     : ahead ? "open" : "";
-  return phase ? { phase, chamber: chamberOf(next.committee), date: next.date,
-                   time: next.time || "", committee: next.committee, venue: next.venue || "" } : null;
+  return phase ? { phase, chamber: next.form, date: next.date, time: next.time || "",
+                   committee: next.committee || "", venue: next.venue || "",
+                   amendment: next.amendment || "", amendment_num: next.amendment_num || "" } : null;
 }
 
 // nights: the nights read, oldest first. cursor: { date, built } of the newest

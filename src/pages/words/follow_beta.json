@@ -1,0 +1,8 @@
+{
+  "_about": [
+    "EMAIL FOLLOWING IS IN BETA UNTIL THE PUBLIC LAUNCH (the person, 26 October 2026: \"Email following can maybe have a disclosure that email following is in beta testing right now until the webinar so folks know that even though it's live, things may be changing day by day\"). The webinar on Tuesday, 10 November 2026 is the public launch (build_pages.WEBINAR_UNTIL retires the home page's box on the 11th). 'note' is the one line, and 'until' the day it is no longer said, the day after the launch.",
+    "Said in two places from here. On the site, in the Follow by email pane (app.js followMailForm), where components.js carries this file as WORDBOOK.follow_beta and the line carries data-until, so components.js's behaviour hides it from that day by the reader's own date, as it hides the webinar's box. In every email that follows send -- the confirmation, the welcome, a new link, the daily and the weekly -- from workers/follow/site.gen.js (FOLLOW_BETA), which src/pages/follow_site.py writes from this file: mail.js leaves it out from that day by New Hampshire's date. A change here reaches the emails by running that and committing site.gen.js, and the inboxes once the sender is deployed again; preflight's _follow_beta_note holds both places to this file and to the day."
+  ],
+  "note": "Email following is in beta until the public launch on November 10: it is live, but details may change from day to day.",
+  "until": "2026-11-11"
+}

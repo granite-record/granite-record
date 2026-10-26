@@ -656,7 +656,8 @@ def current_file(tonight, built, sitting_term, new_by, followable, upcoming):
         rows = sorted({json.dumps(r, sort_keys=True): r for r in upcoming[key]
                        if r.get("date", "") >= tonight}.values(),
                       key=lambda r: (r["date"], r.get("time", ""), r["what"],
-                                     r.get("committee", ""), r.get("venue", "")))
+                                     r.get("committee", ""), r.get("venue", ""),
+                                     r.get("amendment", ""), r.get("form", "")))
         if rows:
             up[key] = rows
     return {"format": FORMAT, "date": tonight, "built": built, "sitting_term": sitting_term,
@@ -678,6 +679,210 @@ def upcoming_row(day, what, time="", committee="", venue=""):
         if v:
             row[f] = v
     return row
+
+
+# ---- the hearings a bill's Testify button counts, for the emails ---------------------
+# EMAILS SAY WHAT THE SITE'S TESTIFY SAYS (the person, 26 October 2026:
+# "Emails should stay in sync with how the site displays the testify
+# button"). The button (app.js testifyButton) reads a bill's record: its
+# stations' public hearings, the hearings on a proposed amendment that only
+# its docket lines carry (testifyHearings), the committee that has the bill
+# that day (testifyHouseCommittee), and whether it can still be heard at all
+# (testifyMoving). The email read current.json's upcoming, which was
+# home.json's calendar rows -- the first eighty of the fortnight, where a
+# fortnight in session holds hundreds (607 hearings from 20 January 2026
+# alone), so most bills' hearings never reached it -- and none of the
+# amendment hearings, and a hearing whose station names no committee had no
+# chamber and so no form. So the rows a bill's followers are sent are read
+# here from the same record by the same rules, and the ones its Testify
+# counts as live carry the form to send them to: these are app.js's
+# functions in Python, and preflight's _testify_email_in_sync runs both on
+# the same records and holds the email's words to the pane's.
+TESTIFY_WORD = re.compile(r"^(public )?hearing$", re.I)
+# A sitting of the floor, a conference, a recording naming the bill: none is
+# a committee's meeting on the calendar (proceedings.FLOOR_KINDS, and the
+# floor index's third kind).
+NOT_A_MEETING = ("floor debate", "committee of conference", "recording naming this bill")
+AMENDMENT_HEARING = re.compile(
+    r"^Public\s+Hearing\s+on\s+(?:Proposed\s+)?(Non-?\s?Germane\s+)?(?:Amendment|AM)\b([^:]*):\s*"
+    r"(\d{1,2})/(\d{1,2})/(\d{4})\b\s*(?:(\d{1,2}):(\d{2})\s*([ap])\.?\s?m\b\.?)?\s*(.*)$", re.I)
+AMENDMENT_NUM = re.compile(r"(?:\d{4}-)?\d{3,4}[a-z]+", re.I)
+# What the Bill Text tab opens at its address (app.js AMENDMENT_HASH).
+AMENDMENT_OPENS = re.compile(r"^(?:\d{4}-)?\d{3,4}[a-z]{1,2}$", re.I)
+AMENDMENT_ROOM = re.compile(r"^[A-Za-z0-9-][A-Za-z0-9 ,.'&-]{0,79}$")
+REFERRED = re.compile(r"\b(?:re-?)?referred\s+to\s+(.+?)\s*(?:[(:;]|\b\d{1,2}/\d{1,2}/\d{4}\b|$)", re.I)
+
+
+def testify_body(s):
+    """app.js testifyBody: the station's chamber, or where it names neither,
+    the chamber whose word it uses ("public hearing" the House's)."""
+    if s.get("body") in CHAMBERS:
+        return s["body"]
+    return "H" if re.match(r"public ", str(s.get("what") or ""), re.I) else "S"
+
+
+def _order(s):
+    return (str(s.get("when") or ""), str(s.get("time") or ""))
+
+
+def _report_dated(s):
+    return s.get("dated_by") == "report"
+
+
+def testify_house_committee(rec, when, time, room):
+    """app.js testifyHouseCommittee: the House committee that has the bill on
+    the day -- the one meeting on it that day (in the line's room, then
+    nearest its time), else the later of its last House referral and its last
+    House meeting before the day, else house_committee."""
+    def flat(v):
+        return re.sub(r"\s+", "", str(v or "")).lower()
+
+    def mins(t):
+        m = re.match(r"(\d{1,2}):(\d{2})", str(t or ""))
+        return int(m.group(1)) * 60 + int(m.group(2)) if m else None
+
+    meets = [s for s in rec.get("stations") or []
+             if s.get("body") == "H" and s.get("when") and s["when"] <= when
+             and str(s.get("committee") or "").strip()
+             and not re.fullmatch(r"(house|senate)", str(s["committee"]).strip(), re.I)]
+
+    def near(s):
+        a, b = mins(s.get("time")), mins(time)
+        return ((0 if room and flat(s.get("venue")) == flat(room) else 100000)
+                + (50000 if a is None or b is None else abs(a - b)))
+    that = sorted((s for s in meets if s["when"] == when), key=near)
+    if that:
+        return str(that[0]["committee"]).strip()
+    before = sorted((s for s in meets if s["when"] < when), key=_order)
+    met = before[-1] if before else None
+    sent = None
+    for e in rec.get("events") or []:
+        if e.get("called_off") or re.match(r"S[JC]\b", str(e.get("cite") or "").strip()) \
+                or not e.get("date") or str(e["date"]) > when:
+            continue
+        m = REFERRED.search(str(e.get("text") or "").strip())
+        if not m or re.match(r"(committee|interim study)\b", m.group(1), re.I):
+            continue
+        if not sent or str(e["date"]) >= sent[0]:
+            sent = (str(e["date"]), m.group(1).strip())
+    if sent and (not met or sent[0] >= met["when"]):
+        return sent[1]
+    if met:
+        return str(met["committee"]).strip()
+    return rec.get("house_committee") or ""
+
+
+def testify_hearings(rec):
+    """app.js testifyHearings: the record's public hearings -- its stations',
+    a report's only where the docket has no Senate hearing of the bill, and
+    each hearing on a proposed amendment its docket lines set that no House
+    station stands for -- each a station-like dict; an amendment's carries
+    "amendment" (its words) and "amendment_num"."""
+    heard = [s for s in rec.get("stations") or []
+             if TESTIFY_WORD.match(str(s.get("what") or "")) and s.get("when")
+             and not (_report_dated(s) and s.get("docket_heard"))]
+    for e in rec.get("events") or []:
+        m = AMENDMENT_HEARING.match(str(e.get("text") or "").strip())
+        if not m or e.get("called_off"):
+            continue
+        when = (str(e["date"]) if e.get("date_as_recorded") and e.get("date")
+                else f"{m.group(5)}-{m.group(3).zfill(2)}-{m.group(4).zfill(2)}")
+        time = (f"{int(m.group(6)) % 12 + (12 if m.group(8).lower() == 'p' else 0):02d}:{m.group(7)}"
+                if m.group(6) else "")
+        if any(testify_body(s) == "H" and s.get("when") == when and str(s.get("time") or "") == time
+               for s in heard):
+            continue
+        room = re.split(r"\s*(?:[(\[;*]|https?:)", m.group(9) or "")[0].strip()
+        num = AMENDMENT_NUM.search(m.group(2))
+        num = num.group(0) if num else ""
+        heard.append({"what": "public hearing", "body": "H", "when": when, "time": time,
+                      "committee": testify_house_committee(rec, when, time, room),
+                      "venue": room if AMENDMENT_ROOM.match(room) else "",
+                      "amendment": f"a proposed {'non-germane ' if m.group(1) else ''}amendment"
+                                   + (f" ({num})" if num else ""),
+                      "amendment_num": num})
+    return heard
+
+
+def testify_moving(rec, kind, today):
+    """app.js testifyMoving: whether a hearing can still come -- not once the
+    term's last session day has gone, and then by the index row's kind
+    ("active" alone), or where there is none, by the rail."""
+    if rec.get("session_over") and str(rec["session_over"]) < today:
+        return False
+    if kind:
+        return kind == "active"
+    rail = (rec.get("journey") or {}).get("rail") or []
+    return (not any(s.get("mark") == "x" for s in rail)
+            and any(s.get("stop") in ("House", "Senate") and s.get("mark") == "h" for s in rail))
+
+
+def testify_committee(house, c):
+    """app.js testifyCommittee: "House Housing Committee" -- the chamber, the
+    name, and "Committee" where the name does not say it."""
+    n = str(c or "").strip()
+    if not n:
+        return ""
+    named = n if n.lower().startswith(house.lower() + " ") else f"{house} {n}"
+    return named if re.search(r"\bcommittee\b", n, re.I) else f"{named} Committee"
+
+
+def bill_upcoming(rec, *, kind, today, place=lambda v: " ".join(str(v or "").split())):
+    """Every meeting on the bill still to come, as current.json's upcoming
+    rows, from its record: [{"row", "body", "name"}], where "name" is the
+    committee that will sit as the record names it, for filing the row
+    under that committee too (committee_row). A public hearing the bill's
+    Testify button counts while the bill can still be heard carries "form",
+    "H" or "S": the chamber whose online sign-in takes testimony for it, in
+    the words the button's pane uses -- its committee the pane's, its room
+    in place()'s words (roomWords), and on a proposed amendment "amendment",
+    with "amendment_num" where the bill's Bill Text tab can open it (namd).
+    `kind` is the bill's index row's; `today` New Hampshire's day."""
+    heard = testify_hearings(rec)
+    moving = testify_moving(rec, kind, today)
+    out = []
+
+    def add(s, testify):
+        body = testify_body(s) if testify else str(s.get("body") or "").strip().upper()
+        house = CHAMBERS.get(body, "")
+        name = str(s.get("committee") or "").strip()
+        if testify and not name:
+            # The committee where the station names none (app.js
+            # testifyButton): the House's that has the bill that day, the
+            # Senate's of its referral.
+            name = (testify_house_committee(rec, s["when"], str(s.get("time") or ""), s.get("venue") or "")
+                    if body == "H" else str(rec.get("senate_committee") or "").strip())
+        label = (testify_committee(house, name) if testify else
+                 committee_label(name, house) if name else "")
+        row = upcoming_row(s["when"], s.get("what") or "hearing", str(s.get("time") or ""),
+                           label, place(s.get("venue") or ""))
+        if not row:
+            return
+        if s.get("amendment"):
+            row["amendment"] = line(s["amendment"], 120)
+            num = s.get("amendment_num") or ""
+            if num and rec.get("namd") and AMENDMENT_OPENS.match(num):
+                row["amendment_num"] = num
+        if testify and moving:
+            row["form"] = body
+        out.append({"row": row, "body": body, "name": name})
+
+    counted = [id(s) for s in heard]
+    for s in rec.get("stations") or []:
+        what = str(s.get("what") or "").strip().lower()
+        if what in NOT_A_MEETING or _report_dated(s) or not s.get("when") or s["when"] < today:
+            continue
+        add(s, id(s) in counted)
+    for s in heard:
+        if s.get("amendment") and s["when"] >= today:
+            add(s, True)
+    return out
+
+
+def committee_row(row):
+    """A bill's row as its committee's followers are sent it: the meeting,
+    without what is the bill's alone (its form, its amendment's link)."""
+    return {k: v for k, v in row.items() if k not in ("form", "amendment_num")}
 
 
 def dump(obj, compact=True):
@@ -884,8 +1089,14 @@ def check_files(files):
                         _text(u.get("what"), 120, f"{w} what", p)
                         if u.get("time") not in (None, "") and not TIME.match(str(u["time"])):
                             p.append(f"{w}: time is not HH:MM")
-                        for fld in ("committee", "venue"):
+                        for fld in ("committee", "venue", "amendment"):
                             _text(u.get(fld), 120, f"{w} {fld}", p, required=False)
+                        if u.get("form") not in (None, "") and u["form"] not in CHAMBERS:
+                            p.append(f"{w}: form is neither H nor S")
+                        if u.get("amendment_num") not in (None, "") and not (
+                                isinstance(u["amendment_num"], str)
+                                and AMENDMENT_OPENS.match(u["amendment_num"])):
+                            p.append(f"{w}: amendment_num is not an amendment's number")
                 current = obj if not p else None
         elif f in nights_n:
             if _head(obj, p):

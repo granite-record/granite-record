@@ -29,9 +29,12 @@ that mail.js imports:
                     and unsubscribe pages (page.js) are drawn in. The brick's
                     soft ground is --st-done-bg, the one the site draws its
                     own brick-red chip on; app.css has no --brick-soft.
+    FOLLOW_BETA     follow_beta.json: the line that says email following is
+                    in beta, and the day it is no longer said (26 October
+                    2026), which the Follow by email pane says too
 
 What is the email's own and not the site's stays in mail.js: the white
-ground, the mark's empty alt, every sentence. What is the manage page's own
+ground, the mark's empty alt, every other sentence. What is the manage page's own
 stays in page.js: its font stacks, which name the site's fonts and then the
 system's, since the page loads no font from anywhere.
 
@@ -74,9 +77,10 @@ APP_CSS = Path("src/pages/app.css")
 APP_JS = Path("src/pages/app.js")
 CHIPS = Path("src/pages/words/chips.json")
 STUDY = Path("src/pages/words/study_report.json")
+BETA = Path("src/pages/words/follow_beta.json")
 BRAND = Path("src/pages/build_brand.py")    # imported, for the mark
 # Every file the written one is made from.
-SOURCES = (APP_CSS, APP_JS, CHIPS, STUDY, BRAND)
+SOURCES = (APP_CSS, APP_JS, CHIPS, STUDY, BETA, BRAND)
 
 HEX = re.compile(r"#[0-9A-Fa-f]{6}")
 
@@ -194,6 +198,10 @@ def values(root=None):
     said = study.get("said") or {}
     if not isinstance(study.get("head"), str) or set(said) != {"rec", "not", "without"}:
         raise SourceError('study_report.json has no "head", or its "said" is not rec, not and without')
+    beta = json.loads((base / BETA).read_text(encoding="utf-8"))
+    if not (isinstance(beta.get("note"), str) and beta["note"].strip()
+            and re.fullmatch(r"\d{4}-\d{2}-\d{2}", str(beta.get("until") or ""))):
+        raise SourceError('follow_beta.json has no "note", or no "until" as YYYY-MM-DD')
     import build_brand as BB
     mark = {"path": f"/{BB.MAIL_MARK}", "width": BB.MARK_BOX[0] + 2 * BB.MAIL_PAD,
             "height": BB.MARK_BOX[1] + 2 * BB.MAIL_PAD}
@@ -210,6 +218,8 @@ def values(root=None):
                           testify_forms((base / APP_JS).read_text(encoding="utf-8"))),
         "STUDY_REPORT": ("src/pages/words/study_report.json",
                          {"head": study["head"], "said": {k: said[k] for k in ("rec", "not", "without")}}),
+        "FOLLOW_BETA": ("src/pages/words/follow_beta.json: the beta line, and the day it is no longer said",
+                        {"note": beta["note"], "until": beta["until"]}),
         "MARK_FILE": ("src/pages/build_brand.py: MAIL_MARK, at MARK_BOX plus MAIL_PAD on every side", mark),
         "PAGE_PALETTE": ("src/pages/app.css, light :root and dark :root[data-theme=\"dark\"]: the manage "
                          "page's colours, --brick-soft from --st-done-bg",

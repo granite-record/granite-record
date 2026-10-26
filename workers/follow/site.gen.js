@@ -16,6 +16,8 @@ export const VOTE_INK = {"yes": "#215C43", "no": "#CE6A62"};
 export const TESTIFY_FORMS = {"H": ["House", "https://gc.nh.gov/house/committees/remotetestimony/"], "S": ["Senate", "https://gc.nh.gov/remotecommittee/senate.aspx"]};
 // src/pages/words/study_report.json.
 export const STUDY_REPORT = {"head": "Interim study report", "said": {"rec": "recommends future legislation", "not": "does not recommend future legislation", "without": "makes no recommendation"}};
+// src/pages/words/follow_beta.json: the beta line, and the day it is no longer said.
+export const FOLLOW_BETA = {"note": "Email following is in beta until the public launch on November 10: it is live, but details may change from day to day.", "until": "2026-11-11"};
 // src/pages/build_brand.py: MAIL_MARK, at MARK_BOX plus MAIL_PAD on every side.
 export const MARK_FILE = {"path": "/mail-mark.png", "width": 41, "height": 64};
 // src/pages/app.css, light :root and dark :root[data-theme="dark"]: the manage page's colours, --brick-soft from --st-done-bg.
