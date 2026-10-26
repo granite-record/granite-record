@@ -3220,7 +3220,8 @@ const REC=window.GR_LANG&&window.GR_LANG!=="en"?' lang="en"':"";
 // and this says how long ago it was as build_pages.past_rel does -- "today",
 // "yesterday", "3 days ago", nothing past a fortnight -- from the day the
 // reader is in, as Coming up's days say "tomorrow". Not from home.json, so it
-// holds with the fetch failing.
+// holds with the fetch failing. The reader's day on purpose; a testimony
+// deadline is Concord's (TWO CLOCKS, ON PURPOSE, at app.js's nhDay).
 const latRel=(d,now)=>{
   const p=String(d||"").split("-").map(Number);
   const off=Math.round((now-new Date(p[0],p[1]-1,p[2]))/86400000);
@@ -3340,6 +3341,8 @@ fetch(DATA("home.json")).then(r=>r.json()).then(H=>{
   // reader's clock the rail is the coming Monday's week, Monday to Sunday,
   // and its name says so; on a weekday it is today to Sunday, and its name
   // says This Week again for a rail built at the weekend.
+  // The reader's day on purpose; a testimony deadline is Concord's (TWO
+  // CLOCKS, ON PURPOSE, at app.js's nhDay).
   (function(){
     const now=new Date(); now.setHours(0,0,0,0);
     const dow=now.getDay(),ahead=dow===6||dow===0;

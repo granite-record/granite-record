@@ -2394,7 +2394,9 @@ function billOffers(q){
 function takeOffer(o){
   if(PAGE||window.GR_STATIC||window.GR_STANDALONE){
     const p=new URLSearchParams(),newest=((META&&META.terms)||[])[0];
-    if(window.GR_STANDALONE&&!PAGE&&term&&newest&&term!==newest)p.set("term",term);
+    // The picker's choice, held while the bill is open (heldTerm).
+    const t=heldTerm!==null?heldTerm:term;
+    if(window.GR_STANDALONE&&!PAGE&&t&&newest&&t!==newest)p.set("term",t);
     if(o.rest)p.set("q",o.rest);
     p.append(o.key,o.v);
     location.href=BASE+"bills?"+p.toString();
@@ -2874,8 +2876,9 @@ function forgetCardState(){
   for (const k of Object.keys(segSel)) delete segSel[k];
 }
 // Which bill is filling the screen, and where the reader was standing when
-// they opened it.
-let focused=null,focusY=0;
+// they opened it. heldTerm is a term the picker chose while it was open,
+// taken when it is closed (the picker's change handler, and unfocus).
+let focused=null,focusY=0,heldTerm=null;
 // Bills whose procedural lines the reader has chosen to see.
 const showRoutine=new Set();
 
@@ -3016,8 +3019,6 @@ if(window.GR_STATIC){
      // On a record page there is no list to re-filter, and render() would
      // write one over the record.
      if(PAGE||window.GR_STATIC){location.href=BASE+"bills";return;}
-     term=e.target.value;
-     forgetCardState();
      // ON A BILL'S OWN PAGE THE PICKER CHOOSES THE TERM THE NEXT SEARCH RUNS
      // IN, AND NOTHING ELSE. Re-rendering here swapped the record under the
      // reader: a focused view is found by bill number alone, so changing the
@@ -3025,12 +3026,21 @@ if(window.GR_STATIC){
      // -- a different bill, about a different subject, at an address still
      // naming the old one. A bill number is only unique within a biennium,
      // which is the whole reason every address on this site carries the year.
-     // The term is still taken, and its bills still fetched, so the search
-     // that follows runs in it immediately.
+     // The term's bills are fetched now, so the search that follows runs in
+     // it immediately.
+     // AND THE OPEN BILL KEEPS ITS OWN TERM UNTIL IT IS CLOSED (the review of
+     // 25 October 2026). The term was taken at once, so the next redraw --
+     // a tab pressed -- did the swapping instead: 2023-2024's HB 104, the
+     // picker turned to 2025-2026, became 2025-2026's HB 104 under the old
+     // bill's row, its Cite still /bill/2023/hb104 and a live Testify for the
+     // other bill in it. The choice is held (heldTerm) and taken when the
+     // bill is closed (unfocus), which a search from here does first.
      if(focused){
-       const t=term===ALL_TERMS?terms:[term];
-       t.forEach(ensureTerm);
+       heldTerm=e.target.value;
+       (heldTerm===ALL_TERMS?terms:[heldTerm]).forEach(ensureTerm);
        return;}
+     term=e.target.value;
+     forgetCardState();
      // The term's bills may not be here yet. Fetch, then draw -- and say so
      // meanwhile, because a picker that does nothing for a moment reads as
      // broken.
@@ -4176,7 +4186,8 @@ const gcSource=d=>d.docket_url?`<a href="${esc(d.docket_url)}" target="_blank" r
 // confirmation page says where to send it -- only once a bill's public
 // hearing is scheduled (the Senate's guidance, civics.SRC_SENATE_TESTIFY),
 // and in practice until midnight at the end of the hearing's day (the
-// editor's account, an observed() claim in guides.py). Neither form can be
+// editor's account, an observed() claim in guides.py; the live pane says it
+// plainly, the person's choice of 26 October 2026). Neither form can be
 // opened at a bill, so the control links to the form of the chamber whose
 // hearing is next.
 // A BUTTON IN THE ROW, NOT A BOX ON THE SUMMARY (the person, 25 October
@@ -4191,9 +4202,9 @@ const gcSource=d=>d.docket_url?`<a href="${esc(d.docket_url)}" target="_blank" r
 // <summary> is the button and whose pane opens under it; mountTestify puts
 // it in the row. While a hearing is ahead the button is filled in pine and
 // says the hearing's day, "Testify until Jan 13" -- the day the sign-in
-// takes positions until, and in practice until midnight at its end, which
-// the pane says as practice -- and the pane holds what the box held: the
-// hearing, the chamber's form and what to choose on it, in the same words.
+// takes positions until, to its midnight -- and the pane says the hearing,
+// the chamber's form and what to choose on it, in the person's words of 26
+// October 2026 (THE LIVE PANE IN THE PERSON'S WORDS, below).
 // Otherwise the button is greyed, and its pane says which it is, passed or
 // not opened yet, in the box's sentences, with no form and no steps. Grey
 // is a colour and nothing more, so the button's own words tell a screen
@@ -4207,8 +4218,25 @@ const TESTIFY_FORMS={H:["House","https://gc.nh.gov/house/committees/remotetestim
 // reader's own clock: in Los Angeles at 11:30 p.m. on 13 January, 2:30 a.m.
 // on the 14th in Concord, SB 406 still read "Testify until Jan 13", and in
 // London at 1 a.m. on the 14th, 8 p.m. on the 13th in Concord, it read shut.
-// The term turns by Concord's day too. The IANA zone carries the daylight-saving rule, as workers/follow's
-// nhClock does; a browser without it falls back to its own day.
+// The term turns by Concord's day too. The IANA zone carries the
+// daylight-saving rule, as workers/follow's nhClock does; a browser without
+// it falls back to its own day.
+// TWO CLOCKS, ON PURPOSE (the review of 25 October 2026). A DEADLINE IS
+// CONCORD'S: the online sign-in closes at midnight in New Hampshire wherever
+// the reader is ("Public testimony is open until midnight the day of the
+// hearing", the person's words of 26 October 2026, which name no zone), so
+// whether it is still open, the day the button names and which term is
+// sitting are asked of New Hampshire's day. A DAY'S NAME IS THE READER'S:
+// "today", "tomorrow", "in 3 days", "yesterday" and "this week" are words
+// about the calendar of the person reading, so a committee's Upcoming
+// (calendarBlock), the home page's Coming up and Latest Activity
+// (build_pages HOME_JS), the Calendar (build_calendar WEEK_JS) and what
+// retires on a day (components.js, data-until) read the reader's own clock,
+// and each of them points here. They are not to be made one: on Concord's
+// clock a reader in London at 1 a.m. on the 14th would be told a hearing on
+// the 14th is "tomorrow"; on the reader's, a reader in Los Angeles at 11:30
+// p.m. on the 13th would be sent to a sign-in that closed two and a half
+// hours earlier.
 const NH_DAY=(()=>{try{return new Intl.DateTimeFormat("en-US",{timeZone:"America/New_York",
   year:"numeric",month:"2-digit",day:"2-digit"});}catch(e){return null;}})();
 function nhDay(now){
@@ -4228,8 +4256,81 @@ function sittingTerm(now){
 // for "instructions on how to select the bill"): neither form opens at a
 // bill, so the pane says what to pick, in the order the Senate's guidance
 // gives -- the hearing's day, then the committee, then the bill -- which the
-// House's form asks for too. workers/follow/mail.js testifyWords says it the
-// same way in the emails.
+// House's form asks for too. workers/follow/mail.js testifyWords gives the
+// same three in the emails, in the older, longer words: the person's of 26
+// October 2026 were for this pane.
+// A HEARING'S CHAMBER: the station's own body, and where it names neither
+// chamber, the chamber whose word the station uses (EACH CHAMBER'S WORD,
+// below: "public hearing" is the House's, "hearing" the Senate's). So every
+// hearing has a form, and one still to come is always the live button: with
+// the form looked up by body alone, a hearing ahead whose body was neither H
+// nor S fell through to the shut button, which could call it the hearing
+// that "has passed" (the review of 25 October 2026).
+const testifyBody=s=>TESTIFY_FORMS[s.body]?s.body:/^public /i.test(s.what||"")?"H":"S";
+// WHETHER A HEARING CAN STILL COME (the review of 25 October 2026). The
+// rail's last mark alone said a bill had ended, and missed 46 of the sitting
+// term's 2,243 on the preview of 26 October 2026: HR 17, which died on the
+// table unheard (its rail ends in the pause), and HR 48, adopted, whose rail
+// is empty, were told testimony
+// "opens once a public hearing is scheduled"; CACRs, HCRs and an HR whose
+// rails end in a stop not reached were told "It opens again" in another
+// chamber after they had died, and an HR has no other chamber. So this asks
+// what the site already asks to say a bill has stopped moving, in order:
+//  - THE TERM HAS STOPPED SITTING: the record's session_over, the last
+//    session day (build_site_v2 writes it on a bill that ran out of days),
+//    is before New Hampshire's today. Nothing is scheduled after it.
+//  - THE INDEX ROW'S KIND, the row of the record's own term, which
+//    mountTestify chooses: "active" is a bill still moving, and every other
+//    kind has ended -- became law ("law"), adopted ("adopted"), vetoed
+//    ("veto"), held for interim study ("study"), or killed, withdrawn, died
+//    on the table or with the session ("done"). build_site_v2's
+//    bill_disposition gives it, and turns every "active" of the sitting term
+//    to "done" once its session is over. Follow's shell.still_moving reads
+//    the same kind, and keeps "study" followable too, since the study
+//    committee's report is news; a bill sent to study is not heard again
+//    this term, so here "active" alone is still moving.
+//  - WHERE NO ROW SAYS, THE RAIL: still moving while a chamber's stop is the
+//    ring of a bill there now ("h") and nothing on it is crossed. Not the
+//    pause ("t"): it is a bill on the table while the session sits and the
+//    chamber whose table a bill died on alike (journey_rail), and HR 17's
+//    rail, [Introduced p, House t], is the same either way. A rail with no
+//    stops, or none of those, has ended: a record with nothing to say it is
+//    moving is not told testimony will open. The record's next_step is the
+//    General Court's own words, and is not read for this.
+function testifyMoving(d,b,today){
+  if(d.session_over&&String(d.session_over)<today)return false;
+  if(b&&b.kind)return b.kind==="active";
+  const rail=((d.journey||{}).rail)||[];
+  return !rail.some(s=>s.mark==="x")
+    &&rail.some(s=>(s.stop==="House"||s.stop==="Senate")&&s.mark==="h");
+}
+// THE LIVE PANE IN THE PERSON'S WORDS (26 October 2026: "The testify button
+// explanation is overly wordy. It could read more like: 'The public hearing
+// on SB 123 is scheduled for Tuesday, April 2nd at 10:30AM in the
+// Legislative Office Building Room 123. Public testimony is open until
+// midnight the day of the hearing.' ----- 'To submit online testimony,
+// choose the hearing date, committee, and bill number as shown below.'
+// Submit Online Testimony (LINK) 'Tuesday, April 2nd, 2026' / 'House Housing
+// Committee' / 'SB 123'"). Filled from the record: the day as the site
+// writes days, with no ordinal; the time as it writes times (clock); the
+// room in the words every room on the site is in (roomWords, S7), with
+// "Room" only where those words have it; and a part the record lacks left
+// out, never "at undefined". Then a rule; the sentence; the chamber's form
+// as a button; and the three things the form asks for, each on a line of
+// its own: the hearing's date in full, the committee with its chamber, and
+// the bill's number as the index has it.
+// THE COMMITTEE AS THE PERSON WROTE IT, "House Housing Committee": the
+// chamber, the name the station carries (the name its page has, "House
+// Housing", less the chamber), and "Committee". A name that says
+// "Committee" itself takes only the chamber -- "House Special Committee on
+// Housing", not "... on Housing Committee", as cmteTitle has it -- and one
+// that already names its chamber is not given it twice.
+const testifyCommittee=(house,c)=>{
+  const n=String(c||"").trim();
+  if(!n)return "";
+  const named=n.toLowerCase().startsWith(house.toLowerCase()+" ")?n:`${house} ${n}`;
+  return /\bcommittee\b/i.test(n)?named:`${named} Committee`;
+};
 function testifyButton(d,b,now=new Date()){
   if(!d||!d.term)return "";
   if(d.term!==sittingTerm(now))return "";
@@ -4239,33 +4340,42 @@ function testifyButton(d,b,now=new Date()){
   // read the House's alone -- SB 406 of 2026, heard on 13 January, said
   // testimony had not opened. workers/follow reads both the same way.
   const heard=(d.stations||[]).filter(s=>/^(public )?hearing$/i.test(s.what||"")&&s.when);
-  const next=heard.filter(s=>s.when>=today).sort((a,b)=>a.when.localeCompare(b.when))[0];
-  const rail=((d.journey||{}).rail)||[];
-  const ended=!!rail.length&&/^[px]$/.test(rail[rail.length-1].mark||"");
+  const moving=testifyMoving(d,b,today);
+  // A hearing still to come, for a bill that can still be heard: a bill that
+  // has stopped moving keeps no hearing ahead, whatever a station says.
+  const next=moving?heard.filter(s=>s.when>=today).sort((a,b)=>a.when.localeCompare(b.when))[0]:null;
+  const bill=b&&b.n?String(b.n):"";
   // The words beside the drawing are in a span of their own, as Report's
   // are, so the button's gap does not part them.
   const button=(cls,words)=>`<details class="testify ${cls}"><summary>${icon("testify")}<span>${words}</span></summary>`;
-  if(next&&TESTIFY_FORMS[next.body]){
-    const [house,url]=TESTIFY_FORMS[next.body];
+  if(next){
+    const [house,url]=TESTIFY_FORMS[testifyBody(next)];
+    const room=next.venue?roomWords(next.venue):"";
+    const cmte=testifyCommittee(house,next.committee);
     return button("tlive",`Testify<span class="tuntil"> until ${esc(dateWords(next.when,"short"))}</span>`)
       +`<div class="testifypane">
-      <p>The ${esc(house)} public hearing is <b>${esc(dateWords(next.when,"long"))}</b>${
-        next.committee?`, before ${esc(next.committee)}`:""}. Until then, anyone may sign
-      in online to ${next.body==="S"?"register support, opposition or a neutral position"
-        :"register support, opposition or a neutral position and submit written testimony"}, or come
-      and ask to speak.</p>
-      <p><a class="tgo" href="${esc(url)}" target="_blank" rel="noopener">${esc(house)} online
-      testimony</a></p>
-      <p class="tsteps">On the form, choose the hearing&rsquo;s date, ${esc(dateWords(next.when,"long"))};
-      then the committee${next.committee?`, ${esc(next.committee)}`:""}; then the bill${
-        b&&b.n?`, ${esc(b.n)}`:""}. In practice the online sign-in stays open until midnight
-      at the end of the hearing&rsquo;s day.${next.body==="S"?" The page that confirms your sign-in says how to send"
-        +" written testimony.":""}</p></div></details>`;
+      <p>The public hearing on ${bill?esc(bill):"this bill"} is scheduled for ${esc(dateWords(next.when,"day"))}${
+        next.time?` at ${esc(clock(next.time))}`:""}${room?` in ${esc(room)}`:""}. Public testimony is open
+      until midnight the day of the hearing.</p>
+      <hr class="trule">
+      <p>To submit online testimony, choose the hearing date, committee, and bill number as shown below.</p>
+      <p><a class="tgo" href="${esc(url)}" target="_blank" rel="noopener">Submit Online Testimony</a></p>
+      <ul class="tvals"><li>${esc(dateWords(next.when,"long"))}</li>${cmte?`<li>${esc(cmte)}</li>`:""}${
+        bill?`<li>${esc(bill)}</li>`:""}</ul></div></details>`;
   }
-  const last=heard.sort((a,b)=>b.when.localeCompare(a.when))[0];
-  // "The other chamber" only while one chamber alone has heard it: CACR 13
-  // of 2026, heard in both, was told it opens again in the other.
-  const one=new Set(heard.map(s=>s.body)).size===1;
+  // Only a hearing whose day has gone is one that has passed.
+  const past=heard.filter(s=>s.when<today).sort((a,b)=>b.when.localeCompare(a.when));
+  const last=past[0];
+  // "IT OPENS AGAIN" ONLY WHERE IT CAN: a bill still moving (testifyMoving),
+  // heard by one chamber alone -- CACR 13 of 2026, heard in both, was told it
+  // opens again in the other -- whose rail has the other chamber's stop and
+  // that chamber has not yet decided it. A resolution of one chamber has no
+  // such stop: an HR or an SR is never told of another chamber.
+  const rail=((d.journey||{}).rail)||[];
+  const bodies=new Set(past.map(testifyBody));
+  const other=last&&bodies.size===1
+    &&rail.find(s=>s.stop===(testifyBody(last)==="H"?"Senate":"House"));
+  const again=moving&&!!other&&/^[ht-]$/.test(other.mark||"");
   // ENDED WITHOUT A HEARING (the review of 25 October 2026): HR 2 of 2025,
   // adopted by the House the day it was introduced, and HB 1786 of 2026,
   // whose hearing was cancelled and which died on the table, were never
@@ -4275,12 +4385,12 @@ function testifyButton(d,b,now=new Date()){
   // term has one (the person, 22 October 2026: "Bills that are from the
   // current year should have the testimony box but greyed out").
   const why=last
-    ?`Online testimony for this bill has passed: its ${heard.length>1?"last ":""}public hearing was ${
+    ?`Online testimony for this bill has passed: its ${past.length>1?"last ":""}public hearing was ${
       esc(dateWords(last.when))}.`
-      +(ended||!one?"":" It opens again if the bill is scheduled for a hearing in the other chamber.")
-    :ended?"Online testimony did not open for this bill: it had no public hearing."
-    :"Online testimony has not opened yet: it opens once a public hearing is scheduled.";
-  const shut=last?", not open: its hearing has passed":ended?", not open: no hearing was held":", not open yet";
+      +(again?" It opens again if the bill is scheduled for a hearing in the other chamber.":"")
+    :moving?"Online testimony has not opened yet: it opens once a public hearing is scheduled."
+    :"Online testimony did not open for this bill: it had no public hearing.";
+  const shut=last?", not open: its hearing has passed":moving?", not open yet":", not open: no hearing was held";
   return button("toff",`Testify<span class="sr">${shut}</span>`)
     +`<div class="testifypane"><p>${why}</p></div></details>`;
 }
@@ -4296,6 +4406,11 @@ function testifyButton(d,b,now=new Date()){
 // bill, HB 104", the 2023-2024 bill's label, and the next redraw, with the
 // right one, drew the button again and shut the pane. The label is the
 // row's of the record's term, as Print takes it, whatever row a caller has.
+// THIS IS THE ONE PLACE THAT DECIDES THE ROW (the review of 25 October
+// 2026): render() and focusActions hand in what they have, and the row of
+// the record's own term is chosen here, its label and its kind (whether the
+// bill is still moving, testifyMoving) with it. A caller's row is used only
+// where the index has none for that term.
 const TESTIFY_DRAWN=new WeakMap();
 function mountTestify(b,d){
   const acts=document.getElementById("pageacts");
@@ -6118,10 +6233,10 @@ function focusActions(id){
     mountFollow(feed?"bill":"",feed?feed.getAttribute("href"):"",`${y}/${id}`);
     mountReport("bill",`${y}/${id}`);
     // Testify too, for a bill of the sitting term, as render() draws it on
-    // the bill's own page (the person, 25 October 2026); the row within the
-    // term, as yearOf finds it, since HB 104 is a bill of every term.
-    mountTestify(IDX.find(x=>x.id===id&&(!term||x.term===term))||IDX.find(x=>x.id===id)||{id,n:id},
-      detail[dkey(id)]);
+    // the bill's own page (the person, 25 October 2026). Which row -- HB 104
+    // is a bill of every term -- is mountTestify's to decide, by the record's
+    // own term, and nobody else's: this hands it the number alone.
+    mountTestify({id,n:id},detail[dkey(id)]);
     placeActions();
   }).catch(()=>{if(focusActs===id)focusActs=null;});
 }
@@ -8284,6 +8399,8 @@ function calendarBlock(rows,heading){
     if(!days.has(d))days.set(d,[]);
     days.get(d).push(k);
   });
+  // The reader's day, on purpose: "today" and "tomorrow" are theirs, where
+  // a testimony deadline is Concord's (TWO CLOCKS, ON PURPOSE, at nhDay).
   const today=new Date(); today.setHours(0,0,0,0);
   const when=d=>{
     const dd=new Date(d+"T00:00:00");
@@ -9106,6 +9223,8 @@ function unfocus(y){
   // belongs to a list that is no longer on screen.
   if(y===undefined)y=focusY;
   focused=null;
+  // The term the picker chose while the bill was open, taken now.
+  if(heldTerm!==null){term=heldTerm;heldTerm=null;forgetCardState();}
   // Leaving a bill named in the address would mean the next refresh reopened
   // it, which is not where the reader is standing.
   // Back to the list's own address rather than the bill's.
@@ -9523,8 +9642,10 @@ function submitSearch(){
   if(PAGE||window.GR_STATIC||window.GR_STANDALONE){
     const to=[];
     const newest=((META&&META.terms)||[])[0];
-    if(window.GR_STANDALONE&&!PAGE&&term&&newest&&term!==newest)
-      to.push("term="+encodeURIComponent(term));
+    // The picker's choice, held while the bill is open (heldTerm).
+    const t=heldTerm!==null?heldTerm:term;
+    if(window.GR_STANDALONE&&!PAGE&&t&&newest&&t!==newest)
+      to.push("term="+encodeURIComponent(t));
     // Half an emoji is not an address: encodeURIComponent throws on a
     // surrogate with no partner (find.js, _fwell).
     if(query)to.push("q="+encodeURIComponent(

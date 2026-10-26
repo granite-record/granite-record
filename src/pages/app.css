@@ -3860,16 +3860,31 @@ color:var(--ink-2);font-weight:600;margin-right:var(--sp-3)}
    turns to the ink while their pane is open, the only thing that ties a pane
    hanging from the row's foot to the button that opened it, and the rule
    above kept the filled one's pine; the ink as its outline would be 1.8:1
-   against the pine and barely show. So a ring of the ink stands outside it,
-   the page's paper between: 13.47:1 on the paper light, 14.20:1 dark, and
-   one pixel of ink, unlike the focus ring's two of pine. */
-.testify.tlive[open] > summary{box-shadow:0 0 0 2px var(--paper),0 0 0 3px var(--ink)}
+   against the pine and barely show. So open, a ring of --on-pine runs inside
+   its edge, the ink of its own words: 9.09:1 on the pine light, 8.38:1 dark.
+   INSIDE, SO THE FOCUS RING CANNOT COVER IT (the review of 25 October 2026).
+   It was a ring of the ink outside the button, at 2px to 3px, and
+   :focus-visible's 2px of pine at 2px out covers 2px to 4px: focused, the
+   open button and the shut one were the same pixels, where Follow, Cite and
+   Report still show their ink outline. An outline is drawn outside the
+   border at an offset of nothing or more, and this lies wholly within it;
+   and outside, nothing more is drawn to collide with the next button, 4px
+   away on a phone. */
+.testify.tlive[open] > summary{box-shadow:inset 0 0 0 2px var(--on-pine)}
 .testifypane p{margin:0 0 var(--sp-4)}
 .testifypane p:last-child{margin:0}
 .testify .tgo{display:inline-block;background:var(--pine);color:var(--on-pine);font-weight:600;
 text-decoration:none;border-radius:var(--r-in);padding:var(--sp-4) var(--sp-6)}
 .testify .tgo:hover,.testify .tgo:focus-visible{text-decoration:underline}
-.testify .tsteps{color:var(--ink-2)}
+/* THE LIVE PANE, AS THE PERSON SKETCHED IT (26 October 2026): the hearing,
+   a rule, the sentence, the form's button, and the three things to choose
+   on it set apart, a line each, as values to copy -- the rule the site's
+   divider inside a panel, the values in the ink on the wash (12.38:1 light,
+   10.41:1 dark). */
+.testifypane .trule{border:0;border-top:1px solid var(--rule);margin:var(--sp-5) 0}
+.testifypane .tvals{list-style:none;margin:0;padding:var(--sp-4) var(--sp-5);background:var(--wash);
+border-radius:var(--r-in);color:var(--ink);font-weight:600;line-height:1.6}
+.testifypane .tvals li{margin:0;overflow-wrap:anywhere}
 /* REPORT AND SHARE, SIDE BY SIDE under the record. The report's form opens
    under its button across the column, as it always has, and Share follows
    it there while it is open; the button pressed does not move. Share's line

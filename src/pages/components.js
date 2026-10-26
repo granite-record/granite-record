@@ -635,7 +635,9 @@ function electLine(key,election,takesOffice,today){
 // itself again, and hidden from that day on: a page built on 1 December and
 // read on the 3rd -- a night held, a copy a browser kept -- shows no
 // member-elect, because the day they take office has come. Only ever hides:
-// what the build hid stays hidden whatever the reader's clock says.
+// what the build hid stays hidden whatever the reader's clock says. The
+// reader's day on purpose; a testimony deadline is Concord's (TWO CLOCKS, ON
+// PURPOSE, at app.js's nhDay).
 (function(){
   if(typeof document==="undefined"||!document.querySelectorAll)return;
   function day(){
