@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-10-07.10
+# GRANITE_VERSION: 2026-10-07.11
 """
 The nightly "what changed" files the email sender reads, and the first-seen
 ledger that decides what is new in them.

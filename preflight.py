@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.711
+# GRANITE_VERSION: 2026-09-04.712
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -70786,9 +70786,9 @@ def _hearing_note_wording():
     sign-in registers a position, and the page confirming it says how to send
     written testimony (the Senate's guidance, guides.TESTIMONY's record). A
     Senate committee's note, and a Senate hearing's item in the feed, say
-    so, in the words the emails use for the same form (workers/follow/mail.js
-    testifyWords; the bill page's Testify pane has not said them since the
-    person's wording of 26 October 2026); and the feed takes the note from
+    so; neither the bill page's Testify pane nor the emails (workers/follow/
+    mail.js testifyWords) has said it since the person's shorter wording of
+    26 October 2026, which both share; and the feed takes the note from
     build_pages rather than typing it."""
     import contextlib
     import datetime as _dt
@@ -71356,18 +71356,22 @@ def _testify_in_the_row():
     words = mail[mail.index("export function testifyWords("):mail.index("function testifyBlock(")]
     app_src = Path("src/pages/app.js").read_text(encoding="utf-8")
     button_src = app_src[app_src.index("function testifyButton("):app_src.index("function mountTestify(")]
-    assert sentence in words and "mail.js testifyWords" in above, (
-        "the comment above build_pages.HEARING_NOTE_SENATE no longer names the emails' testifyWords as "
-        f"saying its last sentence, or they no longer do: {above!r}")
-    assert sentence not in button_src and "Testify pane and the emails use" not in above \
-        and re.search(r"Testify pane\b.{0,200}?\bno longer carries\b", above), (
-            "the comment above build_pages.HEARING_NOTE_SENATE says the bill page's Testify pane uses the "
-            f"Senate note's words, which it has not since 26 October 2026: {above!r}")
+    # Since the emails took the pane's words too (26 October 2026), neither
+    # says the Senate note's last sentence, and the comment says so of both.
+    assert sentence not in words and sentence not in button_src, (
+        "the emails' testifyWords or the Testify pane say the Senate note's last sentence again; the "
+        "comment above build_pages.HEARING_NOTE_SENATE says neither does")
+    assert "mail.js testifyWords" in above and "testifyButton" in above \
+        and "Testify pane and the emails use" not in above \
+        and re.search(r"neither\s+carries this sentence", above), (
+            "the comment above build_pages.HEARING_NOTE_SENATE does not say that neither the Testify pane "
+            f"nor the emails carry the Senate note's last sentence: {above!r}")
     # The same claim in the note's own check is held the same way (the review
     # of 26 October 2026): its docstring names the emails' testifyWords and
     # never says the pane carries the sentence.
     doc = " ".join((_hearing_note_wording.__doc__ or "").split())
-    assert "testifyWords" in doc and "in the words of the bill page's Testify pane" not in doc, (
+    assert "testifyWords" in doc and "in the words of the bill page's Testify pane" not in doc \
+        and "in the words the emails use" not in doc, (
         f"_hearing_note_wording's docstring says the Testify pane carries the Senate note's words: {doc[-300:]!r}")
     # A part the record lacks is left out cleanly; a day carries no ordinal.
     for name, want, vals in (

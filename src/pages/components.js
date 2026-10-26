@@ -1,4 +1,4 @@
-// GRANITE_VERSION: 2026-10-09.22
+// GRANITE_VERSION: 2026-10-09.23
 /* THE SITE'S COMPONENTS, IN THE BROWSER. Published as site/components.js and
    loaded by every page, in its head, before app.js, find.js and any page's
    own script, so each of them draws a person, a committee, a date or a time

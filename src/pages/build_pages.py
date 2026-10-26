@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.239
+# GRANITE_VERSION: 2026-09-04.240
 """
 Build the pages the navigation links to: legislators, town lookup, how it
 works, and about.
@@ -1278,11 +1278,11 @@ HEARING_NOTE = ("Anyone may attend a public hearing and ask to speak. You can "
 # House's form, which takes written testimony with a sign-in. The Senate's
 # takes a position and no testimony, and the page that confirms the sign-in
 # says how to send it (the Senate's Public Guidance for Committee Meetings,
-# which guides.TESTIMONY cites). So a Senate hearing's note says that, in the
-# words the emails use for the same form (workers/follow/mail.js
-# testifyWords, 22 October 2026). The bill page's Testify pane said them too
-# until the person's shorter wording of 26 October 2026 (app.js
-# testifyButton), and no longer carries this sentence.
+# which guides.TESTIMONY cites). So a Senate hearing's note says that. The
+# bill page's Testify pane (app.js testifyButton) and the follow emails
+# (workers/follow/mail.js testifyWords) said it too until the person's
+# shorter wording of 26 October 2026, which both now share, and neither
+# carries this sentence any more.
 HEARING_NOTE_SENATE = ("Anyone may attend a public hearing and ask to speak. You can "
                        "also sign in online to register a position. The page that "
                        "confirms your sign-in says how to send written testimony.")

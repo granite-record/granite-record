@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-10-23.2
+# GRANITE_VERSION: 2026-10-23.3
 """
 The site's colours and words the email sender draws with, written into
 workers/follow/site.gen.js from the files the site itself draws them from.
