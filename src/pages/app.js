@@ -1,4 +1,4 @@
-// GRANITE_VERSION: 2026-09-07.249
+// GRANITE_VERSION: 2026-09-07.250
 // esc, dateWords and dateSpan, clock, cmteLink and pchip are components.js's,
 // which every page loads before this file (the component plan's C1 and C2),
 // and so is WORDBOOK, the words of src/pages/words/ that the build writes into
@@ -5362,9 +5362,9 @@ function hearingReport(r,video){
 // and none is coming; the page says that rather than "ongoing work". It names
 // the captions because they are what was read: a chair may have said a number
 // the captions lost, and "the recording does not name it" would then be false.
-const NOT_NAMED=`The recording&rsquo;s captions never name this bill, by
-  number or by title, so no moment in it is marked. The recording is the
-  whole meeting.`;
+// The note under the card's one button, said once (the owner, 26 October
+// 2026): a paragraph under the note said it a second time, at length.
+const NOT_NAMED="bill not named in the captions";
 
 // A ROOM AS THE DOCUMENTS TAB SAYS IT (the person, approved 17 October 2026):
 // "Legislative Office Building 210-211" for the clerk's "LOB 210-211", with
@@ -5476,8 +5476,9 @@ function renderHearings(b,d){
     // time the meeting was set for if there is one, and that the bill's own
     // moment was not found -- said once, where it used to be said in the
     // button, again under it and a third time in a note.
-    const unfound=from=>`${from>0?`Play from ${hms(from)}`:"Play from the start"}${
-      s.time?` · scheduled ${esc(clock(s.time))}`:""} (exact moment not found)`;
+    const playFrom=from=>`${from>0?`Play from ${hms(from)}`:"Play from the start"}${
+      s.time?` · scheduled ${esc(clock(s.time))}`:""}`;
+    const unfound=from=>`${playFrom(from)} (exact moment not found)`;
     // "stated" is "located" with the boundary in the chair's own words. It
     // was its own state string and matched no branch here, so the best data
     // this site has -- 3,829 proceedings, a median of one second -- fell
@@ -5531,13 +5532,11 @@ function renderHearings(b,d){
       // NOT NAMED ON THE RECORDING (17 October 2026, the wording the person
       // approved). Where the recording's captions never name the bill, no
       // moment can be marked, and "not done" promised work that cannot come.
-      if(s.not_named)inner=player(from,
-        `Play the recording from ${hms(from)} \u2014 scheduled for ${
-          esc(s.time||"this day")}`,
-        "bill not named in the captions")
-        +`<p class="note" style="margin-top:8px">${NOT_NAMED} Hearings run
-        behind, so the bill is usually after the scheduled time rather than
-        before it.</p>`;
+      // ONE BUTTON WITH ITS NOTE (the owner, 26 October 2026), as the other
+      // recording cards are: "Play from 00:05:00 \u00b7 scheduled 10:00 AM" over
+      // "bill not named in the captions". The note under the button said it,
+      // and a paragraph under that said it again.
+      if(s.not_named)inner=player(from,playFrom(from),NOT_NAMED);
       // "Play from the start · scheduled 10:00 AM (exact moment not found)":
       // the owner's words of 25 October 2026 (S2). It was "start time not
       // identified yet" in the button and again under it, a note saying it a
@@ -5709,10 +5708,7 @@ function renderHearings(b,d){
     // still offer the recording. Saying "no recording" when one is right there
     // is the worst possible failure -- it hides working data and looks like the
     // site has less than it does.
-    else if(s.video_id&&s.not_named)inner=player(0,
-      "Play the recording \u2014 the bill is not named in it",
-      "bill not named in the captions")
-      +`<p class="note" style="margin-top:8px">${NOT_NAMED}</p>`;
+    else if(s.video_id&&s.not_named)inner=player(0,playFrom(0),NOT_NAMED);
     else if(s.video_id)inner=player(0,unfound(0),"");
     else inner=`<div class="vbox"><p>No recording matched to this proceeding.</p></div>`;
     // Was a second list of state strings, which never gained "stated" or
@@ -8545,9 +8541,13 @@ function renderMemberHead(m){
   // Legislators page is the Officials page, and /legislators 301s to it).
   // A MEMBER WHO HAS LEFT, THROUGH THE LIST OF THOSE WHO HAVE (the audit of
   // 25 October 2026, S6): Officials lists only sitting members.
+  // THE LAST STEP IS THE OFFICE ALONE (the owner, 26 October 2026): the step
+  // before it already says Former Legislators, and "Officials › Former
+  // Legislators › Former Representative" said "former" twice. The heading
+  // under the trail still says "Former Representative ...".
   const head=recordHead({trail:[["Officials","officials.html"],
       ...(former?[["Former Legislators","directory/former-legislators"]]:[]),
-      [(former?"Former ":"")+(m.chamber==="S"?"Senator":"Representative"),""]],
+      [m.chamber==="S"?"Senator":"Representative",""]],
     title:esc(fullTitle(named)),line,facts,rail:"",actions:"",kind:`member rh-p${code||"X"}`});
   const note=former?`<p class="rnote">${!/^(Rep|Sen)\. /.test(plain)?`Former member${
     yrs?` &middot; on record ${esc(yrs)}`:""}. `:""}This page is their record in the

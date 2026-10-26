@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-08.65
+# GRANITE_VERSION: 2026-09-08.70
 """
 The topics of the civics section: their order, their names, and their prose.
 
@@ -558,7 +558,7 @@ TOWN_FORMS = boxes("Who decides, and who carries it out", [
         ("Decides", "The council, which enacts the policies."),
         ("Carries it out", "A city manager the council appoints, heading the administrative "
                            "branch; the mayor chairs the council. "
-                           + _RSA.format("RSA 49-C:16, 49-C:17"))])])
+                           + _RSA.format("RSA 49-C:12, 49-C:16, 49-C:17"))])])
 
 # HOW A CHARTER IS ADOPTED: the page's own sentences, with its two thresholds.
 FLOW_CHARTER = [
@@ -601,9 +601,7 @@ WHERE_TO_SPEAK = (
               f'<td data-l="Speak">{speak}</td></tr>'
               for k, speak in (
                   ("public hearing", yn(True, "Yes: the only meeting at which the public is heard")),
-                  ("executive session", yn(False)),
-                  ("subcommittee work session", yn(False)),
-                  ("work session", yn(False))))
+                  ("executive session", yn(False))))
     + "</tbody></table></div>")
 
 # A BILL'S TABS, as a picture of the strip over the list of what each holds:
@@ -985,7 +983,7 @@ FLOW_TESTIFY = [
     ("Find Out", [
         ("The calendar", "Hearings are announced in the chamber's weekly "
          "calendar and on the General Court's meeting schedule. The median "
-         "notice in the [[term]] term was [[notice_median]] days; some give one.",
+         "notice in the [[term]] term was [[notice_median]] days; some give only one day.",
          ""),
     ]),
     ("Sign In", [
@@ -1003,8 +1001,8 @@ FLOW_TESTIFY = [
     ("At the Hearing", [
         ("Speaking is separate", "A different act from signing in, and the "
          "chambers ask for it differently: a pink card in the House, the "
-         "sign-up sheet in the Senate's committee room. The sponsor speaks "
-         "first, and the chair decides whether to limit everyone after.", "say"),
+         "sign-up sheet in the Senate's committee room. Usually the sponsor "
+         "speaks first, and the chair decides whether to limit everyone after.", "say"),
         ("You need not speak", "A sign-in without a word said is in the "
          "record and is counted.", ""),
     ]),
@@ -1088,13 +1086,15 @@ FLOW_RULES = [
          "approval, conditional approval or objection, the statute deems the "
          "rule approved. A rule can take effect without anyone having voted "
          "for it. (RSA 541-A:13, II(e))", ("needs", "No vote required")),
-        ("An objection is not a veto", "To actually stop a rule the "
-         "committee has to sponsor a joint resolution, and that has to pass "
-         "both chambers and go to the Governor like any other bill.", ""),
+        ("An objection is not a veto", "A final objection puts the burden "
+         "on the agency to defend the rule in court, and the committee can "
+         "sponsor a joint resolution, which holds the rule back while the "
+         "legislature acts on it. (RSA 541-A:13, VI and VII)", ""),
     ]),
     ("In Force, and Not for Ever", [
-        ("Effective the next day", "Once adopted and filed the rule binds "
-         "whoever it covers, exactly as a statute would.", ""),
+        ("In force once filed", "An adopted rule takes effect the day after "
+         "it is filed, unless the agency names a later date, and it has the "
+         "force of law. (RSA 541-A:16, III; 541-A:22, II)", ""),
         ("Ten years, then it lapses", "No rule is effective for longer than "
          "ten years. To keep it, the agency runs the whole course again, and "
          "the rule stays in force while it does; an agency's own rules of "
@@ -1163,16 +1163,21 @@ CMP_TOWN = [
 # read, so Learn teaches the words a reader meets on a bill. Two rows are
 # Learn's own: interim study's line is decision 131's ("the bill goes no
 # further this term; the study committee may recommend new legislation"),
-# and retaining, which no vote card names, keeps the page's words.
+# and retaining, which no vote card names, keeps the page's words. Both
+# rows checked against the 2025-2026 House Rules, Rule 45 (a) and (c), on 26
+# October 2026: interim study "a committee report only in the second-year
+# session", its final report "its findings and any recommendations"; a bill
+# "retained by a vote of the committee for action in the second year
+# session" "shall be acted on during the second-year session".
 def _motions():
     import components
     m = components.WORDBOOK["votes"]["motions"]
     rows = [(m[k]["abbr"], m[k]["motion"], m[k]["gloss"]) for k in ("otp", "otpa", "itl")]
     rows.append((m["is"]["abbr"], m["is"]["motion"],
-                 "The bill goes no further this term; the study committee may recommend "
-                 "new legislation"))
-    rows.append(("Retain", "Retain", "Hold the bill in the committee: first year only, "
-                 "and it returns in the second"))
+                 "Second year only: the bill goes no further this term, and the committee "
+                 "reports its findings and any recommendations"))
+    rows.append(("Retain", "Retain", "First year only, in the House: the committee keeps the "
+                 "bill, which must be acted on in the second year"))
     return ('<div class="l-tablewrap l-stack"><table class="l-table">'
             '<caption class="sr">The motions a committee most often recommends</caption>'
             '<thead><tr><th scope="col">Written</th><th scope="col">The motion</th>'
@@ -1194,8 +1199,7 @@ BODY_GENERAL_COURT = """
 <h2>The Largest State Legislature</h2>
 <p>New Hampshire's legislature is called the <b>General Court</b>, the name the
 state constitution gives it. It is made up of [[house_seats]] representatives and
-[[senate_districts]] senators. It is the largest state legislature in the country: the last
-redistricting drew House districts to <b>3,444 residents a seat</b>.</p>
+[[senate_districts]] senators. It is the largest state legislature in the country.</p>
 
 <p>The House's [[house_seats]] is the number of seats, not the number of members. Seats fall
 vacant and are filled at special elections through the term, so the working size of
@@ -1203,10 +1207,12 @@ the House moves.</p>
 [[fig_seats]]
 
 <h2>A Term Is Two Years</h2>
-<p>The General Court sits in two-year terms beginning in odd years. A term
-begins on <b>Organization Day</b>, the first Wednesday of December after the
-November election, when the newly elected members are sworn in and elect the
-Speaker and the Senate President. [[org_day]] Bill
+<p>The General Court sits in two-year terms. A term begins on
+<b>Organization Day</b>, the first Wednesday of December after the November
+election, in an even-numbered year, when the newly elected members are sworn in
+and elect the Speaker and the Senate President; the two chambers then assemble
+each January of the two years the term is named for (Part Second, Article 3).
+[[org_day]] Bill
 numbers are unique across the whole term, so there is only ever one HB 84 in
 2025&ndash;2026, and there will be another in the next term. That is why every
 address on this site carries the year.
@@ -1229,8 +1235,7 @@ suggests.</p>
 [[fig_term]]
 
 <h2>Every Bill Gets a Public Hearing</h2>
-<p>This is unusual. In most states a committee chair can decline to hear a
-bill and it dies without anyone speaking on it. In New Hampshire every bill
+<p>In New Hampshire every bill
 introduced is referred to a committee and given a public hearing that anyone
 may attend and speak at.</p>
 
@@ -1249,13 +1254,14 @@ any law.</td></tr>
 Resolution:</b> similar to an HR or SR, but voted on by both chambers.</td></tr>
 <tr><th scope="row"><b>CACR</b></th><td><b>Constitutional Amendment Concurrent
 Resolution:</b> a proposed change to the state constitution, requiring a
-three-fifths vote in both chambers and a two-thirds majority of voters. See
+three-fifths vote of the entire membership of each chamber and approval by
+two-thirds of the voters voting on it (Part Second, Article 100). See
 <a href="learn/the-constitution.html">The Constitution</a>.</td></tr>
 </tbody></table>
 
 <h2>How Committees Work</h2>
 <p>Every bill is referred to a committee chosen by subject, and the committee
-holds the public hearing, votes on a recommendation in an executive
+holds the <abbr data-term="Public hearing">public hearing</abbr>, votes on a recommendation in an executive
 session, and writes a report explaining its reasoning. If the committee is
 split on what action to recommend, there are separate reports from the
 majority and the minority. The full chamber is not bound by those
@@ -1267,17 +1273,14 @@ recommendations, but [[follows_committee]]% of the bills it decided in the
 <h2>Common Questions</h2>
 <div class="l-faq">
 <details><summary>What are legislators paid?</summary>
-<p>Members are paid <b>$200 for the two-year term</b> plus mileage &mdash; one
-payment, in January of the first year, less withholding. It is often quoted as
-$100 a year, which is the same money divided by two. Almost none have staff.
-Most have other jobs, and the session is arranged around that: the House meets
-on a small number of full days, and committee work fills the rest.</p>
+<p>Members are paid <b>$200 for the two-year term</b> plus mileage, and the
+presiding officers of the two chambers, the Speaker of the House and the Senate President, $250 (Part Second, Article 15).</p>
 </details>
 <details><summary>Why can&rsquo;t I find a bill that was filed last year?</summary>
-<p>If it was retained, it survived into the second year and kept its number. Those show as <b>carried over</b> here, and they are the ones people most often fail to find, because they search the current year for a bill filed in the previous one.</p>
+<p>If it was retained, it survived into the second year and kept its number. Those show as <b><abbr data-term="Carried over">carried over</abbr></b> here, and they are the ones people most often fail to find, because they search the current year for a bill filed in the previous one.</p>
 </details>
 <details><summary>Which chamber does a bill start in?</summary>
-<p>Which chamber a measure starts in follows from its prime sponsor: a
+<p>Which chamber a measure starts in follows from its <abbr data-term="Prime sponsor">prime sponsor</abbr>: a
 representative's bill begins in the House, a senator's in the Senate.</p>
 </details>
 </div>
@@ -1326,7 +1329,7 @@ Council</a> for the last stage.</p>
 
 <h2>How Most Bills End</h2>
 <p>Of the [[bills]] bills and resolutions filed in the [[term]] term,
-<b>[[killed]] were killed</b> on a motion of Inexpedient to Legislate, written <b>ITL</b>, and
+<b>[[killed]] were killed</b> on a motion of Inexpedient to Legislate, written <b><abbr data-term="ITL">ITL</abbr></b>, and
 <b>[[signed]] were signed into law</b>. Among the rest, [[study]] were sent
 for interim study (the committee studies the subject after the session, and
 the bill goes no further), [[tabled]] died on the table (set aside by a vote
@@ -1360,7 +1363,7 @@ each party voted against its own side.</p>
 
 <h3>HB 1002 (2024): What a Public Record May Cost</h3>
 <p>A town or agency answering a
-right-to-know request may charge for the copies. The question was whether it
+<abbr data-term="Right-to-know law">right-to-know</abbr> request, a request to see its records under RSA 91-A, may charge for the copies. The question was whether it
 may also charge for the staff time spent finding and reviewing the records.
 Supporters said small towns without full-time staff absorb real cost for
 requests that can run to thousands of pages. Opponents said a fee that tracks
@@ -1377,13 +1380,13 @@ refused, 105 to 266, adopted an amendment offered from the floor rather than
 by the committee, 345 to 24, and passed the bill 268 to 106. The Senate passed
 it on a voice vote, and Governor Sununu signed it into law on June 14, 2024.
 Five of its proceedings are on video: the House hearing, both House executive
-sessions, the work session between them, and the Senate hearing.</p>
+sessions, the <abbr data-term="Work session">work session</abbr> between them, and the Senate hearing.</p>
 
 <h3>HB 1215 (2024): A Bill That Went to a Committee of Conference</h3>
 <p>The longer road at the end of the course. It went to a Special Committee on
 Housing, then to a second chamber that changed it. On the motion to accept
-that change the House divided <b>172 to 180</b>, and the bill went to a
-<b>committee of conference</b>. It dealt with how long an approved development
+that change the House voted <b>172 to 180</b>, on a roll call, and the bill went to a
+<b><abbr data-term="Committee of conference">committee of conference</abbr></b>. It dealt with how long an approved development
 keeps the rules it was approved under, and where a building code dispute may
 be appealed: local control of what gets built against the time and cost of
 getting anything built. Six of its proceedings are on video, the conference
@@ -1411,24 +1414,26 @@ can win a clear majority of those voting and fail anyway.</p>
 </details>
 <details><summary>What is the consent calendar?</summary>
 <p>A committee decides in executive session whether to send a bill to the
-consent calendar, and in both chambers that decision must be unanimous. It is
-a separate vote from the committee's recommendation: a recommendation carried
-on a divided vote can still go to the consent calendar, and this
-site&rsquo;s record holds thousands of House reports marked that way, among
-them reports carried 15&ndash;3. The calendar is then decided in a single
-vote, without floor debate. What that vote adopts is the committee's
-recommendation on each bill, which for some of them is to kill it. A bill can
-be taken off first, and one that comes off is debated and voted on by itself
-at the end of the regular calendar. Taking one off has needed ten members in
-the House since January 2023, and two senators in the Senate since April
-2026; before that, one member's request was enough in either chamber.</p>
+consent calendar. In the House that takes the committee&rsquo;s unanimous
+vote, and a bill with a fiscal impact or an appropriation never goes there
+(House Rule 52); in the Senate every member of the committee present and
+voting must agree, and a proposed constitutional amendment never goes there
+(Senate Rules 6-21 and 6-22). It is a separate vote from the committee's
+recommendation: a recommendation carried on a divided vote can still go to
+the consent calendar, and this site&rsquo;s record holds thousands of House
+reports marked that way, among them reports carried 15&ndash;3. What is left
+on the calendar is acted on without debate, and what that adopts is the
+committee's recommendation on each bill, which for some of them is to kill
+it. A bill can be taken off first: ten members must ask in the House, any two
+senators in the Senate. One that comes off is taken up at the end of the
+<abbr data-term="RC-calendar">regular calendar</abbr>.</p>
 </details>
 <details><summary>When will the House vote on a bill?</summary>
 <p><b>The House does not schedule its votes to a time.</b> Its calendar lists
 the bills for the day grouped by the committee that reported them, or on some
-days, such as a veto day, in order by number, and that is the order they are
+days, such as a <abbr data-term="Veto day">veto day</abbr>, in order by number, and that is the order they are
 taken up in unless the House votes to take one up at a set point in the day,
-which is called making it a special order. In practice a session day runs like
+which is called making it a <abbr data-term="Special order">special order</abbr>. In practice a <abbr data-term="Session day">session day</abbr> runs like
 this:</p>
 <ol>
 <li><b>The consent calendar</b>, first. The bills taken off it are announced,
@@ -1460,8 +1465,8 @@ died.</p>
 <p><b>Signed into law:</b>
 <a href="bill/2025/hb2.html">HB 2</a>, the budget trailer bill, which carries
 the statutory changes the state budget needs, with [[hb2_rollcalls]] recorded
-votes. The letters after its number say it has a fiscal note (FN), an
-appropriation (A) and a local fiscal impact (LOCAL).</p>
+votes. The letters after its number say it has a fiscal note (<abbr data-term="FN">FN</abbr>), an
+appropriation (<abbr data-term="A">A</abbr>) and a local fiscal impact (<abbr data-term="LOCAL">LOCAL</abbr>).</p>
 <p><b>Vetoed, and the override failed:</b>
 <a href="bill/2026/hb349.html">HB 349</a>, on whether optometrists may perform
 ophthalmic laser procedures. It passed both chambers and was vetoed, and the
@@ -1508,8 +1513,8 @@ the November election.</p>
 
 <h2 id="s-dates">The Full Schedule</h2>
 [[year_dates]]
-<p>What the deadlines mean -- crossover, interim study, a committee of
-conference -- is in <a href="learn/glossary.html">the Glossary</a>.</p>
+<p>What the deadlines mean -- <abbr data-term="Crossover">crossover</abbr>, <abbr data-term="IS">interim study</abbr>, a <abbr data-term="Committee of conference">committee of
+conference</abbr> -- is in <a href="learn/glossary.html">the Glossary</a>.</p>
 """ + SHOWS.format("""
 <p><a href="calendar.html">The Calendar</a> for this week's hearings and
 sessions; the days each chamber sat, <a href="session/house.html">the
@@ -1522,7 +1527,7 @@ BODY_GOVERNOR = """
 <h2>The Governor</h2>
 <p>The New Hampshire governor serves as the state's head of government and
 supreme executive magistrate, responsible for enforcing state laws, proposing
-the biennial state budget, and commanding the New Hampshire National
+the biennial (two-year) state budget, and commanding the New Hampshire National
 Guard.</p>
 
 <p>The Governor is elected for two years, at the same election as the whole
@@ -1532,7 +1537,7 @@ out what follows each.</p>
 """ + GOVERNOR_ROUTES + """
 
 <h2>A Veto Is Not Always the End</h2>
-<p>The legislature can override a veto, but it takes two thirds of each
+<p>The legislature can <abbr data-term="Override">override</abbr> a <abbr data-term="Veto">veto</abbr>, but it takes two thirds of each
 chamber, by roll call, starting with the chamber the bill came from. The
 constitution says two thirds "of that house", and the House counts that among
 the members voting. That is a high bar and most attempts fail.</p>
@@ -1542,14 +1547,12 @@ overridden and the bill became law over the Governor's objection.[[veto_pending]
 [[fig_vetoes]]
 
 <h2>The Executive Council</h2>
-<p>Five councilors, each elected by district, meeting with the Governor.
-Almost no state has anything like it, and not many people can describe what it
-does.</p>
+<p>Five councilors, each elected by district, meeting with the Governor.</p>
 <p>Its approval is required for a great deal of what the executive branch
 does: state contracts above a threshold, the appointment of commissioners and
-judges, and pardons. A commissioner nominated by the Governor takes office
-only when the Council confirms them, and a Governor who has the legislature
-and not the Council cannot simply proceed.</p>
+judges, and pardons. A commissioner, the head of a state department, nominated by the Governor takes office
+only when the Council confirms them, and a Governor with the legislature&rsquo;s support but not the Council&rsquo;s
+cannot simply proceed.</p>
 """ + chain("How a commissioner or a judge is appointed", [
     ("The Governor nominates", "a commissioner, or a judge."),
     ("The Executive Council confirms", ""),
@@ -1557,7 +1560,7 @@ and not the Council cannot simply proceed.</p>
 <h2>Common Questions</h2>
 <div class="l-faq">
 <details><summary>What happens if the Governor does nothing with a bill?</summary>
-<p>It becomes law without a signature after five days, Sundays excepted &mdash;
+<p>It becomes <abbr data-term="Without signature">law without a signature</abbr> after five days, Sundays excepted &mdash;
 unless the legislature's adjournment prevents the Governor from returning it, and
 then it does not become law at all (Part Second, Article 44).</p>
 </details>
@@ -1591,27 +1594,33 @@ BODY_COURTS = """
 <ol class="l-courts" aria-label="The three courts">
 <li>The <b>Supreme Court</b> hears appeals and is the final word on what a state
 law means.</li>
-<li>The <b>Superior Court</b> holds jury trials and hears the more serious civil
-and criminal cases.</li>
-<li>The <b>Circuit Court</b> handles the highest volume of cases each year,
-including misdemeanors, small claims, probate, and family cases such as
-divorce and custody.</li>
+<li>The <b>Superior Court</b> is the trial court of general jurisdiction the
+constitution names (Part Second, Article 72-a). It hears the civil cases that
+do not belong to the Circuit Court, and cases where the constitution guarantees
+a jury trial (<a href="/laws/491#s7">RSA 491:7</a>).</li>
+<li>The <b>Circuit Court</b> has three divisions
+(<a href="/laws/490-f#s3">RSA 490-F:3</a>): the district division, which hears
+lesser crimes and small claims (<a href="/laws/502-a#s11">RSA 502-A:11</a>,
+<a href="/laws/503#s1">RSA 503:1</a>); the probate division, which hears wills and estates, guardianships, adoptions and changes of name (<a href="/laws/547#s3">RSA 547:3</a>); and the family
+division, which hears family cases such as divorce and custody
+(<a href="/laws/490-d#s2">RSA 490-D:2</a>).</li>
 </ol>
 
 <h2>How a Judge Gets the Job</h2>
 """ + chain("How a judge gets the job", [
     ("The Governor nominates", "No judicial election, at any level."),
-    ("The Executive Council confirms", "The same route as a commissioner."),
+    ("The Executive Council confirms", "A majority of the Council must agree: Part Second, Article 46."),
     ("The judge serves", "Until the age of seventy at most: Part Second, Article 78.")]) + """
-<p>The Governor nominates and the Executive Council confirms &mdash; the same
-route as a commissioner, which is the clearest illustration of what the
-Council is for. There is no judicial election in New Hampshire at any level.
+<p>The Governor nominates and the Executive Council confirms: the constitution
+gives the appointment of every judge to the Governor and Council together, and
+none takes place unless a majority of the Council agree (Part Second, Article
+46). There is no judicial election in New Hampshire at any level.
 No one may serve as a judge after the age of seventy, which is set by the
 constitution itself: Part Second, Article 78. Raising it to seventy-five has
 been tried. A 2023 amendment to do so passed both chambers and went to the
 voters in November 2024, where 65.6% voted yes, short of the two thirds an
-amendment needs; and a 2026 proposal to make the same change, which
-failed in the House, still described the limit as seventy.</p>
+amendment needs; and a 2026 proposal to make the same change, whose text
+still gave the limit as seventy, failed in the House.</p>
 
 <h2>Where the Courts and the Legislature Meet</h2>
 <p>The legislature writes statutes, and the courts decide what they mean when
@@ -1631,16 +1640,16 @@ it links out for anything more."""
 
 BODY_CONSTITUTION = """
 <h2>In Two Parts</h2>
-<p>New Hampshire's constitution took effect in 1784 and is among the oldest
-still in force anywhere. It is in two parts. <b>Part First</b> is the Bill of
+<p>New Hampshire's constitution took effect in 1784. It is in two parts. <b>Part First</b> is the Bill of
 Rights &mdash; forty-four articles on what the state may not do. <b>Part
 Second</b> is the Form of Government: the House, the Senate, the Governor, the
 Council, the courts, and how each is chosen. The whole text, article by
 article, is on <a href="/laws#constitution">the Laws page</a>.</p>
 
 <h2>It Is Not Amended the Way Statutes Are</h2>
-<p>A statute changes when a bill passes both chambers and the Governor signs
-it. The constitution does not. A change starts as a <b>CACR</b> &mdash; a
+<p>A statute changes when a bill passes both chambers and becomes law: signed
+by the Governor, left unsigned for five days, or passed again over a veto. The
+constitution does not. A change starts as a <b>CACR</b> &mdash; a
 Constitutional Amendment Concurrent Resolution &mdash; and it has to clear
 three thresholds, none of which involves the Governor.</p>
 """ + flow_diagram(FLOW_CACR, "How the constitution is amended",
@@ -1663,8 +1672,8 @@ Services, Transportation, Environmental Services, Education, Safety, Revenue
 Administration and the rest are where statutes get applied around New
 Hampshire.</p>
 """ + chain("From statute to rule", [
-    ("The legislature passes a law", "Departments may request legislation, but the bill "
-     "itself has to be filed by a legislator."),
+    ("The legislature passes a law", "Departments may request legislation, but a House "
+     "bill is drafted only with a House member as its sponsor."),
     ("An agency carries it out", "Its commissioner is nominated by the Governor and "
      "confirmed by the Executive Council, for a fixed term."),
     ("The agency decides the detail", "It cannot give itself powers the statute does not "
@@ -1698,7 +1707,8 @@ appear as neutral and simply explain the effect.</p>
 <p>If you have watched a hearing on this site and heard a department's staff
 explain how a bill would be administered, or ask for a technical change, that
 is what you were listening to. Departments may request legislation, but the
-bill itself has to be filed by a legislator.</p>
+House drafts a bill only once a House member sponsors it, and the analysis of
+a bill a state agency requested names that agency (House Rule 37).</p>
 </details>
 <details><summary>Can a commissioner be reappointed?</summary>
 <p>Yes. A commissioner serves a fixed term and can be reappointed the same way: nominated by the Governor, confirmed by the Executive Council.</p>
@@ -1758,7 +1768,7 @@ so both end in the ordinary course above or they end altogether.</p>
 </details>
 <details><summary>What can JLCAR object to, and does an objection stop the rule?</summary>
 <p>The grounds for an objection are set out at RSA 541-A:13, IV, and include a rule beyond the agency's authority and one contrary to the intent of the legislature.</p>
-<p>An objection does not by itself stop the rule. To block it the committee sponsors a joint resolution, which has to pass both chambers and go to the Governor <a href="learn/how-a-bill-becomes-law.html">like any other legislation</a>.</p>
+<p>An objection does not by itself stop the rule. After a final objection the agency has to show, in any court case over the rule, that it is within its authority and the legislature&rsquo;s intent, or the court declares it invalid (<a href="/laws/541-a#s13">RSA 541-A:13, VI</a>). The committee can also vote to sponsor a joint resolution, which holds the rule back while the legislature acts on it (RSA 541-A:13, VII).</p>
 </details>
 </div>
 """
@@ -1772,10 +1782,11 @@ below."""
 BODY_LOCAL = """
 <h2>Three Kinds of Local Government</h2>
 <p>Local government in New Hampshire is the city or town, the school district
-and the county. There are [[municipalities]] cities and towns. A city has an
-elected council or board of aldermen. Most towns have no council: the
-legislative body is the town meeting, and the registered voters adopt the
-budget themselves.</p>
+and the county. There are [[municipalities]] cities and towns. A city&rsquo;s
+legislative body is its council, its mayor and council, or its mayor and board
+of aldermen. A town&rsquo;s is the town meeting, where the registered voters
+adopt the budget themselves, unless the town has a town council
+(<a href="/laws/21#s47">RSA 21:47</a>).</p>
 
 <h2>Two Ways to Hold a Town Meeting</h2>
 <p>A town settles its business once a year, and there are two ways it can do
@@ -1819,11 +1830,11 @@ operating budget, is raised or lowered for debt service, contracts and other
 obligations already incurred or required by law, and is reduced by one-time
 spending and by the cost of positions the proposed budget eliminates (RSA
 40:13, IX). If the proposed budget fails the default takes effect, unless the
-governing body instead calls one special meeting to try a revised budget.</p>
+governing body, the selectmen or the school board, instead calls one special meeting to try a revised budget.</p>
 <h2>Common Questions</h2>
 <div class="l-faq">
 <details><summary>Can a town meeting spend more than the budget committee recommends?</summary>
-<p>In a town under the municipal budget law, the meeting may not raise the total more than 10 percent above what the budget committee recommends, with some exceptions (RSA 32:18).</p>
+<p>In a town that has adopted a budget committee under the municipal budget law (RSA 32:14), the meeting may not raise the total more than 10 percent above what the budget committee recommends, with some exceptions (RSA 32:18).</p>
 </details>
 <details><summary>Can the deliberative session change an article however it likes?</summary>
 <p>No. An amendment may not remove an article's subject, though changing a sum of money does not count as doing so, and an article whose wording is set by law cannot be amended at all (RSA 40:13, IV).</p>
@@ -1836,9 +1847,7 @@ the same three-fifths vote (RSA 40:14).</p>
 <details><summary>Can voters change the default budget?</summary>
 <p>The voters cannot amend the default budget. The governing body &mdash; the
 selectmen or the school board &mdash; can adjust it, on relevant new
-information and only until the ballots are printed (RSA 40:13, XI(b)). That is
-why the argument at a deliberative session is so often about the default
-rather than the proposed budget.</p>
+information and only until the ballots are printed (RSA 40:13, XI(b)).</p>
 </details>
 </div>
 """
@@ -1957,9 +1966,8 @@ publishes notice of it, with a summary of the budget, in a newspaper at least
 
 <p><b>The executive committee examines it.</b> The convention may designate
 the executive committee to sit as a subcommittee on the budget and report
-recommendations back to the full convention (RSA 24:2). That is where a county
-budget is gone through line by line, but the committee recommends: it does not
-appropriate.</p>
+recommendations back to the full convention (RSA 24:2). Where it does, the
+committee recommends: it does not appropriate (RSA 24:13).</p>
 
 <p><b>The delegation votes.</b> Raising county taxes and making appropriations
 are the convention's powers, not the commissioners' (RSA 24:13), so the figure
@@ -1993,7 +2001,7 @@ every county has three. In most counties each is elected by the voters of that
 district alone; in Carroll and Sullivan, each is elected from a district but by
 the voters of the whole county (RSA 653:1, VI).</p>
 
-<p>They choose a chairman and a clerk from among themselves (RSA 28:1). They
+<p>They choose a chair and a clerk from among themselves (RSA 28:1). They
 have the custody and care of all property belonging to the county (RSA 28:4),
 run its departments from day to day, and prepare the budget the convention
 votes on. The county treasurer pays money out only on their orders
@@ -2014,10 +2022,11 @@ deputies have the same authority throughout the state as in their own county
 to serve process, investigate crimes and apprehend, and may enforce civil
 orders issued by any court (RSA 104:6).</p>
 
-<p><b>County attorney:</b> the county's prosecutor. The office acts under the
-direction of the Attorney General, performs the Attorney General's duties for
-the county in the Attorney General's absence, and prosecutes or defends suits
-in which the county has an interest (RSA 7:34).</p>
+<p><b>County attorney:</b> acts under the direction of the Attorney General,
+performs the Attorney General's duties for the county in the Attorney General's
+absence, and, if no other representation is provided, prosecutes or defends
+suits in which the county has an interest, under the direction of the county
+commissioners (RSA 7:34).</p>
 
 <p><b>County treasurer:</b> has custody of all money belonging to the county,
 pays it out only on the commissioners' orders, keeps the account of what comes
@@ -2153,11 +2162,9 @@ unsafe (RSA 40:4).</p>
 
 <h2>A City: A Council Decides, a Mayor or a Manager Carries It Out</h2>
 <p>A city has no town meeting. The powers the law vests in towns, or in the
-inhabitants of them, are exercised by the city council (RSA 47:1). The council
-may be called a <b>city council</b> or a <b>board of aldermen</b>; the name is
-the city's and the function is the same. How many members there are, and
-whether they are elected by ward or at large or both, is set by the city's
-charter.</p>
+inhabitants of them, are exercised by the city council (RSA 47:1). Depending on
+its charter, a city's elected body may be a <b>mayor and board of aldermen</b>,
+a <b>mayor and council</b>, or a <b>city council</b> (RSA 49-B:2).</p>
 
 <p><b>Mayor:</b> under the general law the mayor is the chief executive
 officer of the city (RSA 45:7), presides in the board of aldermen, and has a
@@ -2172,7 +2179,7 @@ carrying out the policies the elected body enacts (RSA 49-C:16). The council
 appoints the manager for an indefinite term and fixes the salary, by a vote of
 at least a majority of the council, and the charter sets out how the manager
 may be removed (RSA 49-C:17). Where a city runs this way, the mayor chairs the
-council and the manager runs the administration.</p>
+council (RSA 49-C:12) and the manager runs the administration.</p>
 
 <h2>Town Managers</h2>
 <p>A town may adopt the town manager form under RSA 37. It takes a vote: the
@@ -2205,14 +2212,14 @@ elected members of a planning board, zoning board of adjustment, budget
 committee or conservation commission (RSA 669:17).</p>
 
 <table><tbody>
-<tr><th scope="row"><b>Town clerk</b></th><td>Keeps the town's records, issues the
-licenses and registrations, and runs the mechanics of elections. A town may
+<tr><th scope="row"><b>Town clerk</b></th><td>Records every vote the town passes and
+carries out the other duties the law gives the office (RSA 41:16). A town may
 vote to make the term 3 years (RSA 41:16-b).</td></tr>
 <tr><th scope="row"><b>Tax collector</b></th><td>Collects the taxes the selectmen commit,
 remits them to the treasurer at least weekly, and daily once receipts reach
 $3,500, keeps the account of what was collected
 and abated, and reports at year end (RSA 41:35).</td></tr>
-<tr><th scope="row"><b>Clerk/tax collector</b></th><td>Many towns have combined the two
+<tr><th scope="row"><b>Clerk/tax collector</b></th><td>A town may combine the two
 into one office. It takes a petitioned article and a majority at the annual
 meeting, and the combined officer is then elected for a term of one year or
 three (RSA 41:45-a).</td></tr>
@@ -2242,8 +2249,8 @@ not, and which it is was a choice the town made.</p>
 
 <p>A <b>planning board</b> has 5 or 7 members in most towns, 7 or 9 in a town
 with a council, and 9 in a city. In a town governed by a meeting, one
-selectman or administrative official of the town sits on it ex officio and the
-selectmen appoint the rest, unless the town meeting has voted that those
+selectman or administrative official of the town sits on it ex officio, by virtue of
+that office, and the selectmen appoint the rest, unless the town meeting has voted that those
 members be elected; a town that has voted for election may later vote to go
 back (RSA 673:2).</p>
 
@@ -2275,7 +2282,7 @@ district's school board sits on the SAU board.</p>
 <h2>Changing the Form of Government: The Charter</h2>
 <p><b>Charter:</b> a municipality's own written constitution, adopted by its
 voters. Any incorporated town or city, whatever its population, may draw one
-up under RSA 49-B, the home rule chapter. A charter prepared under RSA 49-C
+up under RSA 49-B, the home rule chapter, through which a city or town may adopt the form of government that best addresses local needs (RSA 49-B:1). A charter prepared under RSA 49-C
 establishes a city government; one prepared under RSA 49-D establishes a town
 government (RSA 49-B:2).</p>
 
@@ -2297,12 +2304,13 @@ offices on your neighbor's.</p>
 <h2>Common Questions</h2>
 <div class="l-faq">
 <details><summary>Is a town administrator the same as a town manager?</summary>
-<p>A <b>town administrator</b> is a different thing, and the difference
-matters when you are working out who decides. There is no statutory office of
-town administrator. The selectmen hire one to help them run the town's
-business, and the administrator works under their direct supervision. Adopting
-RSA 37 moves authority from the elected board to an appointed officer; hiring
-an administrator does not, and needs no vote of the meeting.</p>
+<p>No, and the difference matters when you are working out who decides. A
+<b>town manager</b> is an office RSA 37 creates: adopting it takes a vote of
+the meeting (RSA 37:11), and the manager becomes the administrative head of all
+the town's departments (RSA 37:5), so authority moves from the elected board to
+an appointed officer. A <b>town administrator</b> is not that office. Where a
+town has one, the selectmen still manage the town's prudential affairs, its
+day-to-day business (RSA 41:8).</p>
 </details>
 <details><summary>What is a village district?</summary>
 <p><b>Village district:</b> a smaller unit inside one or more towns, formed to
@@ -2320,8 +2328,7 @@ business as a town's moderator, clerk, treasurer and selectmen have over the
 town's (RSA 52:8). A village district may adopt the manager form too, but
 only once the town it lies in (or, if it spans towns, the one holding most of
 its taxable value) has adopted it, and it must then appoint that town's
-manager as its own (RSA 37:14). If you live in one, it is a separate line on
-your tax bill.</p>
+manager as its own (RSA 37:14).</p>
 </details>
 <details><summary>How does a charter already in force change?</summary>
 <p>A charter already in force changes by one of two routes. A revision, which
@@ -2459,11 +2466,14 @@ SYMBOLS_OTHER = _symbols("The stones, foods and sport the law names", [
     ("Vegetable", "White potato", "27", "2013", ("2013", "HB 535")),
 ])
 
-# Not every proposal in the record is here: HB 1430 of 2012, a state
-# firearm, is left out because a Learn page links no bill on a charged
-# subject (preflight's _civics_examples), and a gun is one.
+# Every proposal in the record is here, the charged ones with the rest: the
+# person, 26 October 2026, "don't remove charged bills from a list of bills
+# within a certain category such as the proposed state pistol." A complete
+# list is not an example chosen to teach (preflight's _civics_examples).
 PROPOSED_SYMBOLS = _proposals("Proposed state symbols that did not pass", [
     ("2011", "HB 41", "designating purple as the official state color.", "Killed"),
+    ("2012", "HB 1430", "designating the Thompson/Center Contender pistol as the official "
+     "state firearm of New Hampshire.", "Killed"),
     ("2012", "SB 302", "relative to the Honor and Remember Flag as an official symbol to "
      "recognize and honor fallen members of the armed forces and relative to certain "
      "maintenance at the rotary in the town of Epsom.",
@@ -2523,7 +2533,7 @@ its page in this site&rsquo;s record.</p>
 John Stark on July 31, 1809. The flag is blue, with the state seal at its
 center inside a wreath of laurel leaves and nine stars. The seal is two inches
 across, and the law sets out its detail &ldquo;and no other&rdquo;: the frigate
-Raleigh on the stocks, the sun rising over the sea, a granite boulder, and the
+Raleigh on the stocks, still being built, the sun rising over the sea, a granite boulder, and the
 date 1776 between two stars. The emblem may be placed on the state&rsquo;s
 printed material about developing its recreational, industrial and
 agricultural resources.</p>
@@ -2622,7 +2632,7 @@ court to stop the articles being distributed
 (<a href="/laws/3#s9-c">RSA 3:9-c</a>).</p>
 </details>
 <details><summary>How does something become a state symbol?</summary>
-<p>By a bill, like any other law. Each of the sixteen sections added to the
+<p>By a bill, like any other law. Each of the fifteen symbols added to the
 chapter since 1991 came from a bill the record shows signed into law, and this
 page links each one. <a href="learn/how-a-bill-becomes-law.html">How a
 bill becomes law</a> follows the course every one of them took.</p>
@@ -2646,16 +2656,17 @@ not be among them."""
 # page is its own.
 BODY_TESTIFYING = """
 <h2>Open to the Public</h2>
-<p><b>Every legislative meeting and hearing is open to the public.</b> You may
-attend in person, and most are live streamed and archived, so you can watch
-one later. Where you may <i>speak</i> is narrower: a public hearing is the
-meeting for that, and it is the only one at which members of the public are
-heard. You may attend any other meeting &mdash; an executive session, a
-subcommittee, a work session &mdash; but not speak at it.</p>
+<p><b>The General Court&rsquo;s committee meetings and hearings are open to
+the public</b>, apart from the nonpublic sessions the law allows
+(<a href="/laws/91-a#s2">RSA 91-A:2</a>). You may attend in person, and most
+are live streamed and archived, so you can watch one later. Where you may
+<i>speak</i> is narrower: a <abbr data-term="Public hearing">public hearing</abbr> is the meeting for that. You may
+attend an <abbr data-term="Executive session">executive session</abbr>, but no testimony is taken at it.</p>
 """ + WHERE_TO_SPEAK + """
 <p>A public hearing is the meeting at which a committee hears a bill before it
-votes on what to recommend. Every bill introduced gets one, and anyone may
-speak at it.</p>
+votes on what to recommend. Committees of both chambers hold them, and the
+Senate&rsquo;s rules require one on every bill sent to a committee. Anyone may
+speak at one.</p>
 <p>You do not need to be invited, and you do not need to speak: signing in for
 or against is itself part of the record, and it is counted. Nor does a bill
 have to affect you. Committees hear bills for the whole state rather than for
@@ -2670,18 +2681,23 @@ calendars announced in the [[term]] term, the median notice is
 <b>[[notice_median]] days</b>. That is the gap between the day the calendar is
 published and the day of the hearing.</p>
 <p>Notices name the room by building:</p>
+<!-- THE BUILDINGS (the person, a state representative, 26 October 2026):
+"LOB Address: 33 N State St, Concord, NH 03301 (Not currently being used for
+hearings, expected to be used again starting next term and no longer use
+Granite Place as it was a temporary change while the LOB was undergoing
+renovations)". Granite Place stays in the table for the notices that name it;
+its street address, which nothing on hand recorded, is left out. -->
 <table><caption class="sr">The buildings a notice names</caption><tbody>
 <tr><th scope="row"><b>SH</b></th><td><b>State House:</b> 107 North Main Street,
 Concord.</td></tr>
 <tr><th scope="row"><b>LOB</b></th><td><b>Legislative Office Building:</b> 33 North State
-Street, Concord. Out of use for hearings while it is being worked on, and
-named in older notices.</td></tr>
-<tr><th scope="row"><b>GP</b></th><td><b>Granite Place:</b> 1 Granite Place, Concord, where
-House committee meetings are now held.</td></tr>
+Street, Concord. Not in use for hearings at present; hearings are expected back
+there starting next term, 2027&ndash;2028.</td></tr>
+<tr><th scope="row"><b>GP</b></th><td><b>Granite Place,</b> Concord: where House committees
+met for a time while the Legislative Office Building was being renovated, and
+named in notices from then.</td></tr>
 </tbody></table>
-<p>The Legislative Office Building is expected back in service around the
-start of the next term, and Granite Place to drop out of the rotation when it is.
-<b>Go by the notice for the
+<p><b>Go by the notice for the
 hearing you are attending</b> &mdash; it names the building and the room, and
 it is right about the day it was published whatever this page says.</p>
 
@@ -2689,8 +2705,6 @@ it is right about the day it was published whatever this page says.</p>
 <p><b>Both chambers take sign-ins online</b>, each through its own form on the
 General Court's website, linked below.</p>
 <!-- guides:forms -->
-<p>In the House the committee is given the counts, and the sign-ins are
-published after the hearing.</p>
 <p>The window is not open indefinitely. <!-- guides:window --> If the bill
 passes one chamber and gets a hearing in the other, there is a second window
 on the same terms.</p>
@@ -2728,7 +2742,7 @@ sign-in.</p>
 <!-- guides:exec-session -->
 <!-- guides:throughout-the-day -->
 <p>The committee then reports its recommendation to the chamber, and
-where it was split the majority and the minority each write a report. Whether
+where it was split the minority may file a report of its own. Whether
 you spoke or only signed in, the counts and any written testimony stay in the
 record.</p>
 
@@ -2741,8 +2755,9 @@ happens.</p>
 </details>
 <details><summary>Where are the sign-ins kept?</summary>
 <p>The sign-ins are not part of the bill's docket, the General Court's list of
-every action on it, and no link on the docket leads to them. They are kept in the General Court's own sign-in records, which
-its website offers as a lookup of its own.</p>
+every action on it, and no link on the docket leads to them. They are kept in the General
+Court&rsquo;s own sign-in records, from which this site shows each bill&rsquo;s House online
+sign-in counts.</p>
 </details>
 <details><summary>Can I speak at an executive session?</summary>
 <p>No testimony is taken at an executive session, and one can be hard to
@@ -2772,11 +2787,12 @@ district and in at least one House district, set by the town or ward they live
 in.</p>
 <p>Most places have more than one state representative: [[multi_rep_places]]
 of the [[all_places]] towns and city wards, either because their own district
-elects several members, or because a floterial district is laid over it, or
+elects several members, or because a <abbr data-term="Floterial district">floterial district</abbr> is laid over it, or
 both. The districts are built from whole towns and wards &mdash; the
 constitution forbids the legislature to divide a town, ward or place when it
-draws them &mdash; and within that limit representation is to be "as equal as
-circumstances will admit" (Part II, Article 9).</p>
+draws them, unless the town, ward or place asks for it by referendum (Part II,
+Articles 11-a and 26-a) &mdash; and within that limit representation is to be
+"as equal as circumstances will admit" (Part II, Article 9).</p>
 
 <h2>Everyone Who Represents One Town</h2>
 <p>This is every seat a voter in one town elects, from the most local to the
@@ -2803,7 +2819,8 @@ its own members. It elects one or more additional members across all of them
 together. [[reps_town]]'s is laid over [[reps_under_n]] districts.</p>
 [[reps_band]]
 <p>A town's population is rarely an exact multiple of what one seat is worth,
-and the constitution will not let the legislature split a town to even it out.
+and the constitution will not let the legislature split a town on its own to
+even it out.
 A floterial is where those remainders are pooled instead.</p>
 <p>If you live in one of those towns or wards, you are represented by both: the
 members of your own district, and the floterial members you share with the
@@ -2820,18 +2837,16 @@ than one seat, its members are elected at large across the whole of it, not
 one to each town. The largest elects [[largest]] representatives.</p>
 </details>
 <details><summary>Where does the law say which districts are floterial?</summary>
-<p>The statute that sets out the districts, RSA 662:5, never uses the word
+<p>The statute that sets out the districts, <abbr data-term="RSA">RSA</abbr> 662:5, never uses the word
 <i>floterial</i>. It simply lists each district's towns and its seats. A
 floterial shows up there as a district covering exactly the same towns as two
 or more of the county's other districts put together &mdash; [[reps_flot]] is
 [[reps_flot_under]] combined. Every one of the [[floterial]] districts this
 site marks as floterial passes that test against the statute.</p>
 </details>
-<details><summary>Will a representative read my email?</summary>
+<details><summary>Can I email my representative?</summary>
 <p>[[members_email]] of the [[members_sitting]] sitting members publish an
-email address in the General Court's directory. Almost none have staff, so a
-message to a representative is read by that representative. Most have other
-jobs.</p>
+email address in the General Court's directory.</p>
 </details>
 </div>
 """ + SHOWS.format("""
@@ -2912,8 +2927,8 @@ offers both the town and the
 representative of that name. Anything else goes to
 <a href="bills.html">the bill search</a>, which takes a bill number, several
 separated by commas, or words from a title, sponsor or committee. It covers
-one term, or all of them at once, and narrows by committee, topic, prime
-sponsor, status, bill type and floor vote day. <a href="officials.html">Every sitting member</a> and
+one term, or all of them at once, and narrows by committee, topic, <abbr data-term="Prime sponsor">prime
+sponsor</abbr>, status, bill type and floor vote day. <a href="officials.html">Every sitting member</a> and
 <a href="committees.html">every committee</a> has a page of their own.</p>
 
 <h2>What a Bill's Page Holds</h2>
@@ -2958,7 +2973,8 @@ recording.</li>
 """ + SHORTHAND_TABLE + """
 
 <h2>Following a Bill</h2>
-<p>A bill still moving through the General Court carries an RSS feed, and so
+<p>A bill still moving through the General Court carries an RSS feed, an address a
+feed reader app can follow for new entries, and so
 does every sitting member, every current committee, and every topic. The
 <b>Follow</b> control on a record's page gives the address where there is one.
 There are also feeds for the record's newest actions and for hearings coming
@@ -3002,8 +3018,12 @@ is the evidence.</p>
 # LEARN_CONSTITUTION_CLAIMS holds the sentences to their articles; the
 # Council's own words on the person's printout of its About Us page of 25
 # October 2026, the claim guides.py's who-to-contact guide already carries.
-# Nothing here comes from the Visitor Center's pages, which this machine may
-# not ask; the State House facts they hold wait for a printout. And no other
+# The history section's facts are the state's own History of the State
+# House on NH.gov (revised from the 1977 Manual for the General Court), as
+# the person printed it on 26 October 2026 (SRC_STATE_HOUSE_HISTORY): each
+# line says only what that page says, and none of it disagrees with the
+# nomination. Nothing here comes from the Visitor Center's pages, which this
+# machine may not ask; the State House facts they hold wait for a printout. And no other
 # state is compared where no source read says so: the one comparison is the
 # nomination's own, dated as it is.
 BODY_STATE_HOUSE = """
@@ -3044,6 +3064,45 @@ Chester French) and Franklin Pierce (1914); the Soldiers and Sailors Memorial
 Arch of 1892; a veterans memorial of 1953; and a reproduction of the Liberty
 Bell, cast in France and installed in 1950.</p>
 
+<h2>From the State House&rsquo;s History</h2>
+<p>The state&rsquo;s own history of the building, revised from the 1977
+Manual for the General Court, tells these.</p>
+<ul>
+<li>The first talk of a state capitol came in 1814. Concord, Hopkinton and
+Salisbury competed for it, and Salisbury offered seven thousand dollars for
+the honor. Concord won, and by 1816 the decision to build there was
+final.</li>
+<li>Concord saved a considerable expense by building it of granite from what
+are now the Swenson quarries, at the north end of the town, with the stones
+cut, shaped and faced by inmates of the prison.</li>
+<li>A huge gold-painted wooden eagle was raised to the top of the dome in
+1818. At the ceremonies, over which Governor William Plumer presided, one
+toast ran: &ldquo;The American Eagle. May the shadow of his wings protect
+every acre of our united continent and the lightning of his eye flash terror
+and defeat through the ranks of our enemies.&rdquo;</li>
+<li>The building cost about $82,000, and the legislature first met in it in
+1819. Its builder, Stuart J. Park, has a Concord street named for him: Park
+Street, north of the building.</li>
+<li>In 1863, during the Civil War, the city of Manchester offered no less than
+half a million dollars to build a new capitol there. The legislature kept the
+capitol in Concord and enlarged it instead, from 1864 to 1866, for about
+$200,000.</li>
+<li>A building of its own for the State Library, planned from 1881, made room
+for the Supreme Court as well when it was finished in 1895.</li>
+<li>By 1909 a bill was introduced for about a million dollars, for what
+amounted to an entirely new state house, and Manchester again offered the
+million if the State House were moved there. The legislature again kept it in
+Concord, and under Governor Quimby the whole building was remodeled, made
+fire-proof and given electric elevators.</li>
+<li>The State House Annex, planned in 1937, had its cornerstone laid in 1938
+and cost $327,000, a federal grant included. An underground passageway joins
+it to the State House.</li>
+<li>Under Governor Lane Dwinell the weathered wooden eagle was replaced by a
+metal replica, and the statues of John Stark, Daniel Webster, President
+Pierce, John P. Hale and Commodore Perkins were cleaned and made
+tarnishproof.</li>
+</ul>
+
 <h2>A House of Four Hundred</h2>
 <p>The constitution calls the legislature <b>the General Court of New
 Hampshire</b> (Part Second, Article 3). Its House of Representatives is to
@@ -3073,7 +3132,7 @@ Article 41). The office was called President until an amendment of 1792.</p>
 <p>The governor is chosen biennially, in November (Part Second, Article 42):
 a two-year term. Until 1877 the election was every year. A candidate must be
 30 years old and have lived in the state for the 7 years before the election.
-If no one has a plurality of the votes, the House and Senate together elect
+If no one has a plurality of the votes, more than any other candidate, the House and Senate together elect
 one of the two with the most votes, by joint ballot.</p>
 
 <h2>Five Councilors Beside the Governor</h2>
@@ -3101,9 +3160,9 @@ jurisdiction known as the superior court, and the lower courts the
 legislature establishes (Part Second, Article 72-a, added in 1966). The chief
 justice of the supreme court is the administrative head of all the courts
 (Part Second, Article 73-a, 1978).</p>
-<p>Judges are not elected. The Governor nominates and the Executive Council
+<p>Judges are appointed. The Governor nominates and the Executive Council
 confirms (Part Second, Article 46). Once appointed, a judge holds office
-during good behavior (Part Second, Article 73), and no one may serve as a
+during good behavior, with no fixed term (Part Second, Article 73), and no one may serve as a
 judge after reaching seventy, a limit in the constitution since 1792 (Part
 Second, Article 78). <a href="learn/the-courts.html">The Courts</a> says how
 the courts are arranged.</p>
@@ -3113,13 +3172,14 @@ the courts are arranged.</p>
      "24. With every House seat filled, that is 424.</p>"),
     ("Has legislators&rsquo; pay ever been raised?",
      "<p>The constitution has said $200 for the term, and $250 for the presiding officers, since "
-     "an amendment of 1889. Changing it would take a constitutional amendment.</p>"),
+     "an amendment of 1889. The figures are the constitution&rsquo;s own words, so changing them "
+     "means amending it, as Part Second, Article 100 provides.</p>"),
     ("Who chooses the Governor if no candidate wins a plurality?",
      "<p>The House and Senate, by joint ballot, choose between the two candidates with the most "
      "votes (Part Second, Article 42).</p>"),
     ("Can a judge be removed before seventy?",
      "<p>Yes. The Governor, with the consent of the Council, may remove a judge for reasonable "
-     "cause on the address of both houses of the legislature, after the judge has had a chance "
+     "cause on the address of both houses of the legislature, that is, at their formal request, after the judge has had a chance "
      "to be heard by a joint committee of both houses (Part Second, Article 73).</p>"),
     ("Is the eagle on the dome the original?",
      "<p>No. The eagle there now is a copper replica, put up in 1957, of the wooden eagle "
@@ -3143,6 +3203,10 @@ SRC_CONSTITUTION = ("The New Hampshire Constitution",
                     "https://www.nh.gov/glance/state-constitution")
 # Both chambers publish their rules as a PDF now; the .aspx pages both of
 # these named answer 404, which is how a source link rots quietly.
+# The person printed both on 26 October 2026: the 2025-2026 House Rules "as
+# of December 17, 2025", and the Rules of the Senate 2025-2026 as amended
+# through 06/04/2026. The consent calendar, retaining, interim study and who
+# sponsors a bill are told from those printouts; nothing here fetches them.
 SRC_HOUSE_RULES = ("House Rules", GC + "/house/aboutthehouse/houseRules.pdf")
 SRC_SENATE_RULES = ("Senate Rules", GC + "/senate/about_senate/senate_rules.pdf")
 SRC_RSA = ("New Hampshire Revised Statutes Annotated", RSA)
@@ -3160,6 +3224,12 @@ SRC_FIND_MEMBER = ("Find your legislators, by town",
 # reads (26 October 2026): chapter 3 as the Laws pages carry it, and the
 # bills since 1989.
 SRC_LAWS_3 = ("RSA 3, State Emblems, Flag, Etc., on this site's Laws pages", "/laws/3")
+# The Governor's budget (RSA 9:8) and a commissioner's term (RSA 21-G:8), on
+# this site's Laws pages (the audit of 26 October 2026).
+SRC_LAWS_9 = ("RSA 9, Budget and Appropriations; Revolving Funds, on this site's Laws pages",
+              "/laws/9")
+SRC_LAWS_21G = ("RSA 21-G, Organization of Executive Branch, on this site's Laws pages",
+                "/laws/21-g")
 SRC_BILL_RECORD = ("This site's bill record, 1989 to 2026", "/bills.html")
 SRC_TESTIFY = ("House online testimony sign-in",
                GC + "/house/committees/remotetestimony/")
@@ -3243,6 +3313,13 @@ SRC_VISITOR_CENTER = ("State House Visitor Center", GC + "/nh_visitorcenter/")
 SRC_NRHP_CIVIC = ("Concord Civic District, National Register of Historic Places "
                   "nomination (National Park Service, 1983)",
                   "https://npgallery.nps.gov/NRHP/GetAsset/NRHP/83004203_text")
+# The state's History of the State House on NH.gov, "Revised from State of
+# New Hampshire Manual for the General Court 1977, pp.115-124", as the person
+# printed it on 26 October 2026. The printout does not show its address, so
+# the source is named and not linked (build_civics.sources_list) until the
+# person gives it; a source with no address is in no SOURCE_GROUPS group.
+SRC_STATE_HOUSE_HISTORY = ("History of the State House, revised from the 1977 Manual for "
+                           "the General Court (NH.gov)", "")
 # The Executive Council's About Us page, as the person printed it on 25
 # October 2026 (it refuses this machine): the words guides.py's
 # who-to-contact guide already carries as a claim (guides.COUNCIL_ABOUT).
@@ -3310,7 +3387,7 @@ TOPICS = [
           "The Governor signs or vetoes. The Council -- five members, elected "
           "by district -- approves contracts, nominations and pardons.",
           BODY_GOVERNOR,
-          [SRC_CONSTITUTION, SRC_GOVERNOR, SRC_COUNCIL],
+          [SRC_CONSTITUTION, SRC_GOVERNOR, SRC_COUNCIL, SRC_LAWS_9],
           BODY_GOVERNOR_HOLDS),
 
     topic("the-courts", "The Courts", HOW,
@@ -3321,7 +3398,7 @@ TOPICS = [
           BODY_COURTS_HOLDS),
 
     topic("the-constitution", "The Constitution", HOW,
-          "One of the oldest still in force, and it is not amended the way "
+          "In force since 1784, and it is not amended the way "
           "statutes are: a CACR needs three fifths of both chambers and then "
           "the voters.",
           BODY_CONSTITUTION,
@@ -3331,7 +3408,7 @@ TOPICS = [
           "Who actually carries out what the legislature passes, and how a "
           "commissioner gets the job.",
           BODY_AGENCIES,
-          [SRC_AGENCIES, SRC_COUNCIL, SRC_CONSTITUTION]),
+          [SRC_AGENCIES, SRC_COUNCIL, SRC_CONSTITUTION, SRC_LAWS_21G, SRC_HOUSE_RULES]),
 
     topic("administrative-rules", "Administrative Rules", HOW,
           "A statute says what shall happen; the rules say how, and the "
@@ -3370,7 +3447,8 @@ TOPICS = [
           "term, a Governor elected every two years beside an Executive Council, and judges who "
           "serve until seventy.",
           BODY_STATE_HOUSE,
-          [SRC_NRHP_CIVIC, SRC_CONSTITUTION, SRC_COUNCIL_ABOUT, SRC_FIND_MEMBER]),
+          [SRC_NRHP_CIVIC, SRC_STATE_HOUSE_HISTORY, SRC_CONSTITUTION, SRC_COUNCIL_ABOUT,
+           SRC_FIND_MEMBER]),
     topic("state-symbols", "New Hampshire\u2019s State Symbols", ABOUT,
           "The purple finch, the purple lilac, granite and smoky quartz: every "
           "symbol the law names, and the ones proposed that did not pass.",
@@ -3394,7 +3472,7 @@ TOPICS = [
           "What the tabs hold, what a timestamp claims and what it does not, "
           "how to follow a bill, and how to tell us we are wrong.",
           BODY_SITE,
-          [SRC_CALENDARS, SRC_RSA]),
+          [SRC_CALENDARS, SRC_RSA, SRC_HOUSE_RULES, SRC_SENATE_RULES]),
 ]
 
 

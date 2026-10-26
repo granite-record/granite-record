@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.713
+# GRANITE_VERSION: 2026-09-04.720
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -18946,7 +18946,7 @@ def _class_collisions():
         "cal", "calbills", "calbody", "calcmte", "calcount", "caldate",
         "calday", "calmeet", "calmix", "calslot", "caltime", "calwhere",
         "cdrel",
-        # the recording player, on a bill's Videos tab
+        # the recording player, on a bill's Videos tab and the home page
         "player", "pstub",
         # A COMMITTEE'S MEETING, as a fold: app.js's meetingHtml for a
         # committee's Meetings tab, and build_full_sessions' day_section for
@@ -22247,6 +22247,131 @@ def _find_pages_officials(BI, G, civics, BC):
                   "Calendar, and Concord once above its wards, each a Ward")
 
 
+# The header's panel and /search's list over find.json as build_indexes writes
+# it (26 October 2026): findDraw's addresses in order, the bills as BILLS, and
+# findMatch's with the cap off, which is what /search reads.
+_FIND_WARDS_JS = r"""
+require("./stub.js");
+const fs = require("fs"), vm = require("vm");
+globalThis.fetch = async () => ({ ok: false, status: 404, json: async () => { throw new Error("404"); } });
+globalThis.chip = (t, cls) => `<span class="${cls}">${t}</span>`;
+vm.runInThisContext(fs.readFileSync("./find.js", "utf8"), { filename: "find.js" });
+const F = vm.runInThisContext("({FIND, findDraw, findMatch})");
+const go = JSON.parse(fs.readFileSync("./go.json", "utf8"));
+F.FIND.rows = go.rows;
+const panel = document.getElementById("findout");
+const out = {panel: {}, search: {}};
+for (const q of go.cases) {
+  F.findDraw(q);
+  out.panel[q] = (panel.innerHTML.match(/<a class="fbills"|<a href="[^"]*"/g) || []).map(a =>
+    a.startsWith('<a class="fbills"') ? "BILLS" : a.slice(9, -1));
+  out.search[q] = F.findMatch(q, Infinity).map(r => r[3]);
+}
+console.log(JSON.stringify(out));
+"""
+
+
+@check("frontend", "the header's search shows a city with wards once, its bills under it, and its "
+       "wards only where a ward is asked for; /search still lists every ward",
+       needs=("build_indexes", "build_pages"))
+def _find_city_without_wards(BI, BP):
+    """The owner, 26 October 2026 (C): typing "Concord" into the header's
+    search filled the dropdown with the city and seven of its ten wards,
+    pushing its bills out of sight. find.js's findDraw now leaves a ward out
+    of the panel where its city's row is among the answers (_ffold), unless
+    what was typed asks for a ward -- "ward", or a number -- and the same for
+    every city with wards. The city's row opens the Officials page's town
+    view, which lists the wards, and /search, which reads findMatch with the
+    cap off, still lists each one. Here: find_index over two cities with
+    wards and a town without, and find.js in node, as the header draws it.
+
+    The fold comes before the panel's cap of eight (the review of 26 October
+    2026): folded after it, "Concord" filled the eight with the city and
+    seven wards, folded those to the city, and lost the guide that mentions
+    Concord and ranks after the wards -- the State House tour, here as on
+    the site. And a number is a ward asked for even where it matches the
+    city's own row: "concord 1" matches "10 wards", and without the number's
+    exemption Ward 1 was folded away under it."""
+    if shutil.which("node") is None:
+        return "skip", "node is not installed"
+    site = Path(tempfile.mkdtemp(prefix="gr-wards-"))
+    try:
+        (site / "town").mkdir()
+        towns = {"Concord": [{"county": "Merrimack", "ward": str(w)} for w in range(1, 11)],
+                 "Manchester": [{"county": "Hillsborough", "ward": str(w)} for w in (1, 2, 3)],
+                 "Andover": [{"county": "Merrimack", "ward": ""}]}
+        for t, seats in towns.items():
+            for s in seats:
+                stem = t.lower() + (f"-ward-{s['ward']}" if s["ward"] else "")
+                (site / "town" / f"{stem}.html").write_text("<p>", encoding="utf-8")
+        # A guide that mentions Concord in its line, not its name: it ranks
+        # after the city's ten wards, as the published guide does.
+        (site / "guides").mkdir()
+        (site / "guides" / "tour-the-state-house.html").write_text(
+            '<meta property="og:title" content="How to Tour the New Hampshire State House | '
+            'Granite Record"><meta name="description" content="Arranging a tour of the State '
+            'House in Concord through its Visitor Center.">', encoding="utf-8")
+        rows = BI.find_index(site, [], towns)
+    finally:
+        shutil.rmtree(site, ignore_errors=True)
+    tour = "/guides/tour-the-state-house"
+    cases = ["concord", "Concord", "manchester", "andover", "concord ward", "concord 3",
+             "concord 1", "ward 2"]
+    root = Path(tempfile.mkdtemp(prefix="gr-wards-js-"))
+    try:
+        (root / "stub.js").write_text(Path("tests/dom_stub.js").read_text(encoding="utf-8"),
+                                      encoding="utf-8")
+        (root / "find.js").write_text(Path("src/pages/find.js").read_text(encoding="utf-8"),
+                                      encoding="utf-8")
+        (root / "go.json").write_text(json.dumps({"rows": rows, "cases": cases}), encoding="utf-8")
+        (root / "go.js").write_text(_FIND_WARDS_JS, encoding="utf-8")
+        r = _run(["node", "go.js"], cwd=root, capture_output=True, text=True, timeout=60)
+        said = (r.stdout + r.stderr).strip()
+        last = (said.splitlines() or ["no output"])[-1]
+        assert r.returncode == 0 and last.startswith("{"), "node go.js: " + said[-300:]
+        got = json.loads(last)
+    finally:
+        shutil.rmtree(root, ignore_errors=True)
+    panel, search = got["panel"], got["search"]
+    bad = []
+    for q, city in (("concord", "Concord"), ("Concord", "Concord"), ("manchester", "Manchester")):
+        drawn = panel[q]
+        if drawn[:2] != [f"/officials?town={city}", "BILLS"] or any("-ward-" in h for h in drawn):
+            bad.append(f"{q!r}: the panel draws {drawn[:6]}, not the city alone with its bills "
+                       "under it")
+        wards = [h for h in search[q] if h.startswith(f"town/{city.lower()}-ward-")]
+        if search[q][:1] != [f"officials?town={city}"] or len(wards) != len(towns[city]):
+            bad.append(f"{q!r}: /search lists {search[q][:4]} and {len(wards)} wards, not the city "
+                       f"over all {len(towns[city])}")
+    # Folded before the cap: the room the wards left goes to the guide that
+    # ranks after them, under the bills.
+    for q in ("concord", "Concord"):
+        if panel[q] != ["/officials?town=Concord", "BILLS", tour]:
+            bad.append(f"{q!r}: the panel draws {panel[q][:6]}, not the city, the bills and then "
+                       f"the guide that ranks after the wards ({tour}): its wards folded after "
+                       "the panel's eight were taken")
+    if panel["andover"][:1] != ["/town/andover"]:
+        bad.append(f"'andover', a town without wards, draws {panel['andover'][:3]}")
+    for q, want in (("concord ward", "/town/concord-ward-1"), ("concord 3", "/town/concord-ward-3"),
+                    ("concord 1", "/town/concord-ward-1"), ("ward 2", "/town/manchester-ward-2")):
+        if want not in panel[q]:
+            bad.append(f"{q!r} asks for a ward and the panel draws {panel[q][:6]}, without {want}")
+    # The panel's cap of eight, which findDraw now applies itself after the
+    # fold (findMatch reads uncapped there): "concord ward" has the city and
+    # its ten wards to show, and the panel draws eight of them.
+    shown = [h for h in panel["concord ward"] if h != "BILLS"]
+    if len(shown) != 8:
+        bad.append(f"'concord ward' has eleven answers and the panel draws {len(shown)}, not the "
+                   "eight it keeps to")
+    assert not bad, "; ".join(bad[:4])
+    assert "_ffold" not in BP.SEARCH_JS and "findMatch(s,Infinity)" in BP.SEARCH_JS, (
+        "/search no longer reads every answer, its wards with them")
+    return "ok", ("'Concord' and 'Manchester' draw the city alone and the bills under it, and "
+                  "'Concord' the guide that ranks after its wards; 'concord ward', 'concord 3', "
+                  "'concord 1' and 'ward 2' still draw wards; /search lists every ward under "
+                  "its city")
+
+
 @check("frontend", "the search names a committee with its chamber, House Housing Committee, so "
        "it is not taken for the subject of the same name; it is still found by its own name",
        needs=("build_pages",))
@@ -24808,9 +24933,9 @@ def _audit_minor(BSP, seating, BP):
     if got["title"] != "Recording of House Finance, May 5, 2026" or \
             got["undated"] != "Recording of House Finance":
         bad.append(f"a player is named {got['title']!r} and, undated, {got['undated']!r}")
-    # The home page drew two players until 25 October 2026 (the audit's
-    # M8): its latest sittings are a line to their days' pages now
-    # (_home_says_each_once).
+    # The home page's two players (Recent Session Days, back on 26 October
+    # 2026) are named for their chamber and day at build time, and its
+    # handler run in _home_says_each_once.
     if 'title="Hearing recording"' in js or 'title="Floor session"' in js:
         bad.append("app.js still gives every player one title")
     if "dataset.title" not in js:
@@ -25420,6 +25545,15 @@ def _civics_examples():
     # "ballot" out of the pattern instead would let a voter-identification
     # bill through, and those are exactly what it is there to catch.
     ALLOWED = {("1995", "SB2")}
+    # A COMPLETE LIST IS NOT A CHOSEN EXAMPLE (the person, 26 October 2026):
+    # "don't remove charged bills from a list of bills within a certain
+    # category such as the proposed state pistol. I meant that if we are
+    # looking to select example towns, legislators, and bills for the learn
+    # pages to explain a concept, we should choose less polarizing bills if we
+    # have the option." State Symbols lists every proposed symbol in the
+    # record; a gun is one of them, and leaving it out would make the list
+    # untrue. Named by page and bill, so the rule still holds everywhere else.
+    LISTED = {("state-symbols", "2012", "HB1430")}
 
     bad, unknown = [], []
     for slug, year, bid in linked:
@@ -25427,7 +25561,7 @@ def _civics_examples():
         if not b:
             unknown.append(f"{bid} ({year}) on {slug}")
             continue
-        if (year, bid) in ALLOWED:
+        if (year, bid) in ALLOWED or (slug, year, bid) in LISTED:
             continue
         hit = CHARGED.search((b.get("title") or "") + " " + (b.get("topic") or ""))
         if hit:
@@ -26541,6 +26675,8 @@ LEARN_CONSTITUTION_CLAIMS = [
      2, "78", "after he has attained the age of seventy years"),
     ("state-house-and-branches", "on the address of both houses of the legislature",
      2, "73", "upon the address of both houses of the legislature"),
+    ("state-house-and-branches", "changing them means amending it, as Part Second, Article 100 provides",
+     2, "100", "amendments to this constitution may be proposed"),
 ]
 
 
@@ -28817,7 +28953,8 @@ def _cluster_needs_a_mention(build_site_v2):
     return "ok", "no mention inside: no start, no end, no suggestion; two mentions: placed"
 
 
-@check("markers", "a sitting whose recording never names its bill says so, and only there",
+@check("markers", "a sitting whose recording never names its bill says so once, under its one "
+       "button, and only there",
        needs=("build_site_v2", "segment_markers"))
 def _station_not_named(build_site_v2, segment_markers):
     """222 committee sittings drew "Matching proceedings to the moment they
@@ -28827,7 +28964,12 @@ def _station_not_named(build_site_v2, segment_markers):
     segment_markers lists such bills under _not_named; station_for_proceeding
     sets not_named on a sitting drawn with no start, and app.js says the
     captions never name the bill, keeps the player at the scheduled time,
-    and keeps the old words where the bill is named but no opening found."""
+    and keeps the old words where the bill is named but no opening found.
+    Said once since 26 October 2026 (the owner): one button, "Play from
+    00:05:00 · scheduled 10:00 AM", over the note "bill not named in the
+    captions", as the other recording cards are -- a paragraph under the
+    note said it a second time. The same where a not-named sitting's state
+    is one app.js does not know and it still offers the recording."""
     B = build_site_v2
     p = {"bill": "HB152", "body": "H", "committee": "Judiciary",
          "proceeding": "public hearing", "sched_date": "2026-02-03",
@@ -28848,23 +28990,37 @@ def _station_not_named(build_site_v2, segment_markers):
         "a sitting with a stated start is marked not named")
     assert "_not_named" in segment_markers.SIDES, (
         "_not_named is not one of segment_markers.SIDES, so the late-caption withholding keeps it")
-    html_ = _app_js("[scope.renderHearings({id:'HB152', n:'HB 152'}, {stations:"
-                    + json.dumps([st]) + "}), scope.renderHearings({id:'HB152', n:'HB 152'}, "
-                    "{stations:" + json.dumps([plain]) + "})]")
+    odd = dict(st, state="unheard-of")
+    html_ = _app_js("[" + ", ".join("scope.renderHearings({id:'HB152', n:'HB 152'}, {stations:"
+                                    + json.dumps([s]) + "})" for s in (st, plain, odd)) + "]")
     if html_ is not None:
-        named, other = (re.sub(r"\s+", " ", h) for h in html_)
-        for want in ("The recording&rsquo;s captions never name this bill, by number or by title, "
-                     "so no moment in it is marked. The recording is the whole meeting.",
-                     "bill not named in the captions", "Play the recording from 00:05:00",
-                     'data-embed="VIDX|300|'):
+        named, other, fallback = (re.sub(r"\s+", " ", h) for h in html_)
+        # ONE BUTTON WITH ITS NOTE (the owner, 26 October 2026), as the other
+        # recording cards are: where Play starts and the time set, over "bill
+        # not named in the captions" -- said once. A paragraph under the note
+        # said it again ("The recording's captions never name this bill ...").
+        for want in ('<span class="tolnote">bill not named in the captions</span>',
+                     "Play from 00:05:00 · scheduled 10:00", 'data-embed="VIDX|300|'):
             assert want in named, f"the not-named sitting does not say {want!r}"
+        for k, h in (("the not-named sitting", named),
+                     ("a not-named sitting of a state app.js does not know", fallback)):
+            said = re.sub(r"<[^>]+>", " ", h)
+            assert len(re.findall(r"not named|never name", said)) == 1 \
+                and 'class="note"' not in h and h.count('class="pstub"') == 1 \
+                and '<span class="tolnote">bill not named in the captions</span>' in h, (
+                    f"{k} says its bill is not named other than once, under its one button: "
+                    + said[:400])
+        assert "Play from the start · scheduled 10:00" in fallback, (
+            "a not-named sitting of a state app.js does not know is not offered from the start")
         assert "ongoing work" not in named and "not identified" not in named, (
             "the not-named sitting still says the matching is unfinished")
         # One button since 25 October 2026 (S2): "Play from 00:05:00 ·
         # scheduled 10:00 AM (exact moment not found)".
         assert "(exact moment not found)" in other and "not named" not in other, (
             "a sitting whose bill is named lost the words for an opening not found")
-    return "ok", "marked only where its recording never names it and no start is drawn; drawn with the new words"
+    return "ok", ("marked only where its recording never names it and no start is drawn; one "
+                  "button, \"Play from 00:05:00 · scheduled 10:00 AM\", over \"bill not named in "
+                  "the captions\", said once")
 
 
 @check("frontend", "a bill's recording cards say each thing once: two recordings in one line, "
@@ -34517,17 +34673,22 @@ def _chain():
             f"session/days.json names the roll calls {listed.get('rc')} and the pages carry "
             f"rc- ids for {ids_on_disk}: a member's Votes tab links \"#rc-<key>\" where this "
             "file says a page draws one")
-        # THE LINE TO THE LATEST SITTINGS' RECORDINGS (build_pages.session_line,
-        # 25 October 2026) leads to the days' pages, and to no day without one.
-        handed = re.search(r'<div id="session">(.*?)</div>', homepage, re.S)
-        assert handed, "the home page has no line to its latest sittings"
+        # RECENT SESSION DAYS (build_pages.recent_sessions, 26 October 2026):
+        # each player's date leads to its sitting's page, and to no day
+        # without one; and each player is a Play button until pressed.
+        handed = re.search(r'<div id="session">(.*?)</div>\s*</section>', homepage, re.S)
+        assert handed, "the home page has no Recent Session Days"
         linked = re.findall(r'href="/?session/([HS])/(\d{4}-\d\d-\d\d)"', handed.group(1))
         for b, d in linked:
             assert d in on_disk.get(b, []), (
                 f"the home page links the sitting {b}/{d}, which has no page")
         assert linked, (
-            "the home page's line to its latest sittings links none of their days, "
+            "the home page's Recent Session Days dates none of its players to their pages, "
             "though the fixture's newest recorded sitting has a page: " + handed.group(1)[:200])
+        assert handed.group(1).count('class="pstub"') >= len(linked) \
+            and "<iframe" not in handed.group(1), (
+                "a sitting on the home page is not a Play button, or a player is loaded before "
+                "Play is pressed: " + handed.group(1)[:300])
         # EVERY LANDMARK HAS A NAME, AND EVERY TABLE A HEADER CELL (the audit
         # of 2 October 2026, M6 and M7). A Learn article carries three navs
         # and a week of the Calendar four, and the one on every page had no
@@ -40018,6 +40179,44 @@ def _glossary_page(B, C):
     assert '<a href="learn/glossary.html">Glossary</a>' in CH.FOOTER, \
         "the footer (chrome.FOOTER, on every page) does not lead to the glossary"
     return "ok", f"{len(C.WORDBOOK['glossary'])} terms under {len(secs)} letters, linked from the footer"
+
+
+@check("build", "a term a Learn page marks for its pop-up is a glossary entry, marked on an abbr so "
+       "its sentence stays one piece to translate, and its Spanish marks the same terms",
+       needs=("civics", "components"))
+def _learn_term_marks(civics, C):
+    """The person, 26 October 2026: "Check the learn guide phrasing for ...
+    undefined technical terms a reader likely may not know, opportunities to
+    add tooltips like we have for -FN and other acronyms on the bill pages."
+    A Learn page marks a term <abbr data-term="KEY">, and components.js's
+    term popovers, which already run on every page, make the first of each a
+    button that opens glossary.json's entry -- in Spanish from the shared
+    words file's GR_GLOSS. abbr and not span, because span is not one of
+    i18n.INLINE's tags: a span inside a sentence would cut it into pieces to
+    translate apart. Held here: every mark names an entry; every mark is an
+    abbr; and every Spanish entry whose English marks terms marks the same
+    ones, so the pop-up is in the Spanish page too."""
+    g = C.WORDBOOK["glossary"]
+    bad, marks = [], 0
+    for t in civics.TOPICS:
+        for m in re.finditer(r'<(\w+)\b[^>]*\bdata-term="([^"]+)"', t["body"]):
+            marks += 1
+            if m.group(1).lower() != "abbr":
+                bad.append(f"{t['slug']} marks {m.group(2)} on a <{m.group(1)}>, not an <abbr>")
+            if m.group(2) not in g:
+                bad.append(f"{t['slug']} marks {m.group(2)!r}, which is no glossary entry")
+    cat = json.loads(Path("src/pages/lang/es.json").read_text(encoding="utf-8"))["strings"]
+    pages = {t["slug"] for t in civics.TOPICS}
+    for k, e in cat.items():
+        if k.split(".")[0] not in ("learn", "guide") or k.split(".")[1] not in pages:
+            continue
+        en = sorted(re.findall(r'data-term="([^"]+)"', e.get("en", "")))
+        es = sorted(re.findall(r'data-term="([^"]+)"', e.get("es", "")))
+        if en != es:
+            bad.append(f"{k}: the English marks {en}, the Spanish {es}")
+    assert marks, "no Learn page marks a term for its pop-up"
+    assert not bad, "; ".join(bad[:5])
+    return "ok", f"{marks} terms marked on the Learn pages, each a glossary entry, in both languages"
 
 
 @check("build", "Using This Site's Reading the Shorthand is drawn from glossary.json, row for row, "
@@ -53430,8 +53629,8 @@ def _review_of_audit_fixes(BP):
     handlers put it on the first card, or the first vote, they brought.
 
     Play, and a long analysis. Each is a click that moves focus: to the
-    player that replaces Play where Play had it, on a bill (the home page
-    drew players too, until 25 October 2026); to the start of the text
+    player that replaces Play where Play had it, on a bill (the home page's
+    own, Recent Session Days, is run in _home_says_each_once); to the start of the text
     "Show more" opened. Clicked here.
 
     The seat map. Its focus listeners sat on the <svg>, which made the chart
@@ -66446,7 +66645,10 @@ def _translations(i18n):
     the code says now, with the same {placeholders}; an entry no code asks
     for is a leftover. And say() itself is held to the rule on a catalog
     made for the purpose: current words answer, words translated from other
-    English do not, and the miss is kept for the build to say."""
+    English do not, and the miss is kept for the build to say. The
+    proofreader is told where each key's words are by its first part
+    (src/ops/translations.py's AREAS), so every first part has its place
+    there, and no place is kept for a first part nothing uses."""
     import chrome
     import build_pages as BP
     words, problems = i18n.code_words()
@@ -66465,6 +66667,19 @@ def _translations(i18n):
         st = [e.get("state") for e in cat["strings"].values()]
         said.append(f"{lang}: {st.count('proofread')} proofread, {st.count('draft')} drafts, "
                     + ("offered" if cat["offered"] else "unlisted"))
+    # Where each word is on the site, for the proofreader's sheet
+    # (translations.AREAS, by a key's first part): every first part the code
+    # uses has its place, and no place is kept for one nothing uses. A key
+    # whose first part has none goes to the proofreader with "on the site"
+    # blank, as fifteen did until 26 October 2026, and the review of that
+    # day deleted "sess" with nothing failing.
+    import translations
+    used = {k.split(".")[0] for k in words}
+    unnamed, unused = sorted(used - set(translations.AREAS)), sorted(set(translations.AREAS) - used)
+    assert not unnamed and not unused, (
+        "src/ops/translations.py's AREAS, the proofreader's \"on the site\" column, and the code's "
+        f"keys differ: no place for {unnamed or 'none'}; a place for {unused or 'none'}, which no "
+        "code asks for")
     # The tables the English is also written in, held to the words here.
     assert chrome.tab_words("en") == {h: w for h, w, _g in chrome.NAV_TABS}, (
         "chrome.tab_words and NAV_TABS say the sections differently")
@@ -66742,6 +66957,174 @@ def _common_questions(G, civics):
             bad.append(f"{slug}: a question without its summary")
     assert not bad, "; ".join(bad[:5])
     return "ok", f"{seen} pages with Common Questions, each a question with its answer"
+
+
+@check("code", "the guides and Learn pages speak of a person as they, never \"he or she\": "
+               "only a quotation keeps the law's own pronouns", needs=("guides", "civics"))
+def _neutral_voice(G, C):
+    """The person, 26 October 2026, on the plate guide's "until he or she
+    remarries": it "should be gender neutral as they, which applies to other
+    sections like he or she unless it's part of the official record as many
+    laws are phrased that way." So the site's own words say "they"; a claim,
+    a figure's words and anything inside quotation marks are the record's and
+    keep its words."""
+    import html
+    pair = re.compile(r"\b(?:he or she|she or he|his or her|her or his|him or her|her or him|"
+                      r"himself or herself|herself or himself|he/she|she/he|his/her|him/her|"
+                      r"s/he)\b", re.I)
+
+    def own(words):
+        t = html.unescape(re.sub(r"<[^>]+>", " ", words or ""))
+        return re.sub(r"[“\"][^”\"]*[”\"]", " ", t)      # quotations stay theirs
+
+    found = []
+    for g in G.GUIDES:
+        found += [f"guide {g['slug']}: {m.group(0)!r}" for m in pair.finditer(own(G.text(g)))]
+    for t in C.TOPICS:
+        found += [f"learn {t['slug']}: {m.group(0)!r}"
+                  for m in pair.finditer(own(t["body"] + " " + t["blurb"]))]
+    assert not found, "say they: " + "; ".join(found[:8])
+    return "ok", f"{len(G.GUIDES)} guides and {len(C.TOPICS)} Learn pages say they"
+
+
+@check("code", "every phone number, email, office hours, street address and date a guide "
+               "prints is in the words a claim of it records its source as saying, but for "
+               "the few named as waiting for a printout", needs=("guides",))
+def _guide_contacts_sourced(G):
+    """The person, 26 October 2026: "make sure there are absolutely no
+    hallucinations in those sorts of pages and in the instructions". FIGURE
+    and COUNT held money, shares and periods to their sources; nothing held
+    the details a reader acts on most directly. The audit that day found
+    phone numbers that no claim of their guide recorded -- the Division of
+    Motor Vehicles' number printed in four guides and recorded in one, the
+    Board of Tax and Land Appeals' number and street recorded nowhere. A
+    wrong digit there sends someone to a stranger.
+
+    guides.unsourced_contacts finds them; guides.CONTACTS_AWAITING names the
+    ones no source on this disk can settle, each with the printout that
+    would. A name on that list that a claim now records fails too, so the
+    list is cleared as the printouts come in rather than left to excuse a
+    later mistake."""
+    loose, stale, waiting = [], [], 0
+    for g in G.GUIDES:
+        found = set(G.unsourced_contacts(g))
+        why, named = G.CONTACTS_AWAITING.get(g["slug"], ("", []))
+        loose += [f"{g['slug']}: {x}" for x in sorted(found - set(named))]
+        stale += [f"{g['slug']}: {x}" for x in named if x not in found]
+        waiting += len(found & set(named))
+    assert not loose, ("printed with no claim recording it (add the claim from the source, "
+                       "or take the detail out): " + "; ".join(loose[:8]))
+    assert not stale, ("named in guides.CONTACTS_AWAITING but a claim records it now; take "
+                       "it off the list: " + "; ".join(stale[:8]))
+    return "ok", (f"every contact detail rests on a claim, but {waiting} named as waiting for "
+                  f"the person's printout")
+
+
+@check("code", "the assistant guard stops what needs the person's word and what no assistant "
+               "may do, lets ordinary work through, is wired to every tool that could do harm, "
+               "and starts")
+def _assistant_guard():
+    """The person, 26 October 2026: make sure this development "will avoid
+    the mistakes of other AI agents who have deleted codebases or ones that
+    have gained unapproved access to the backend of websites it wasn't
+    supposed to." .claude/hooks/guard.py is the answer, run by Claude Code
+    before every shell command, file write, web fetch and GitHub call any
+    session or helper agent makes here. A hook that fails to start lets the
+    call through, so this check starts it as Claude Code does.
+
+    THE TABLE IS THE POLICY. Each row is a call and what the guard must say
+    to it. Taking a row out, or turning a "deny" into an "allow", is a
+    decision for the person, not an edit to make a build pass. Every script
+    that calls refusal.check() -- every one that asks the General Court --
+    is added to the table as it stands, so a new fetcher is held from the
+    day it is written."""
+    import importlib.util
+    spec = importlib.util.spec_from_file_location("guard", ".claude/hooks/guard.py")
+    guard = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(guard)
+    B = lambda c: ("Bash", {"command": c})                        # noqa: E731
+    table = [
+        # The General Court, never from an ad-hoc command or a fetch tool.
+        (B("curl -s https://gc.nh.gov/bill_status/"), "deny"),
+        (B("wget http://www.gencourt.state.nh.us/rsa/html/"), "deny"),
+        (B("python3 -c \"import urllib.request as u; u.urlopen('https://gc.nh.gov/x')\""), "deny"),
+        (("WebFetch", {"url": "https://gc.nh.gov/house/"}), "deny"),
+        (B("sqlcmd -S 66.211.150.69 -Q 'select 1'"), "deny"),
+        # Its scripts, and what goes live, only on the person's word.
+        (B("python3 build_all.py"), "ask"),
+        (B("python3 refusal.py --clear"), "ask"),
+        (B("python3 src/ops/cloud.py push"), "ask"),
+        (B("python3 src/ops/cloud.py seed-kit"), "ask"),
+        (B("publish"), "ask"),
+        (B("cmd /c publish.bat"), "ask"),
+        (B("npx wrangler d1 execute follow --remote --command 'select 1'"), "ask"),
+        (B("curl -X DELETE https://api.cloudflare.com/client/v4/accounts/x"), "ask"),
+        (B("git push origin HEAD:main"), "ask"),
+        (B("gh pr merge 12"), "ask"),
+        (("mcp__github__merge_pull_request", {}), "ask"),
+        (("mcp__github__push_files", {"branch": "main"}), "ask"),
+        (("mcp__github__actions_run_trigger", {}), "ask"),
+        (("Edit", {"file_path": ".github/workflows/nightly.yml"}), "ask"),
+        (("Edit", {"file_path": ".claude/hooks/guard.py"}), "ask"),
+        (("Write", {"file_path": "corrections/officials.json"}), "ask"),
+        (B("cat .dev.vars"), "ask"),
+        (B("echo $CLOUDFLARE_API_TOKEN"), "ask"),
+        # What cannot be undone.
+        (B("git push --force origin dev"), "deny"),
+        (B("git push -f"), "deny"),
+        (B("git push origin +guides"), "deny"),
+        (B("git clean -fdx"), "deny"),
+        (B("git filter-branch --env-filter 'x' HEAD"), "deny"),
+        (B("git branch -D dev"), "deny"),
+        (B("rm -rf work"), "deny"),
+        (B("rm -r db/"), "deny"),
+        (B("rm -rf ."), "deny"),
+        (B("rm -rf src"), "deny"),
+        (B("rm -rf .git"), "deny"),
+        (B("echo '[]' > corrections/bill_notes.json"), "deny"),
+        (("Write", {"file_path": "STATE.md"}), "deny"),
+        (("Edit", {"file_path": "review/ground_truth.csv"}), "deny"),
+        (("Edit", {"file_path": "review/checked.jsonl"}), "deny"),
+        # Ordinary work, which a guard that cried wolf would teach people to wave through.
+        (B("python3 preflight.py --code"), "allow"),
+        (B("python3 build_all.py --local"), "allow"),
+        (B("python3 src/ops/inventory.py --bump-changed"), "allow"),
+        (B("python3 src/hearings/probe_alignment.py --truth"), "allow"),
+        (B("grep -rn 'gc.nh.gov' src/pages"), "allow"),
+        (B("git push -u origin guides && git push origin HEAD:dev"), "allow"),
+        (B("rm -rf site/es .build_cache"), "allow"),
+        (B("git branch -d worktree-agent-x >/dev/null"), "allow"),
+        (B("rm -rf /tmp/scratch-build"), "allow"),
+        (B("python3 src/ops/cloud.py pull"), "allow"),
+        (("Edit", {"file_path": "src/pages/guides.py"}), "allow"),
+        (("Edit", {"file_path": "corrections/officials.json"}), "allow"),
+    ]
+    for f in sorted(Path(".").rglob("*.py")):
+        if ".claude" in f.parts or f.name in guard.NOT_FETCHERS:
+            continue
+        try:
+            if "refusal.check(" in f.read_text(encoding="utf-8", errors="replace"):
+                table.append((B(f"python3 {f.as_posix()}"), "ask"))
+        except OSError:
+            continue
+    wrong = [f"{tool} {inp}: wants {want}, says {got[0]}" for (tool, inp), want in table
+             if (got := guard.decide(tool, inp)) and got[0] != want]
+    assert not wrong, f"{len(wrong)} of {len(table)} calls answered wrongly: " + "; ".join(wrong[:6])
+
+    cfg = json.loads(Path(".claude/settings.json").read_text(encoding="utf-8"))
+    wired = [h for e in cfg.get("hooks", {}).get("PreToolUse", [])
+             for h in e.get("hooks", []) if "guard.py" in h.get("command", "")
+             and all(re.search(e.get("matcher", ""), t) for t in
+                     ("Bash", "PowerShell", "Edit", "Write", "NotebookEdit", "WebFetch",
+                      "mcp__github__merge_pull_request"))]
+    assert wired, ".claude/settings.json does not run guard.py before every tool that could do harm"
+
+    out = _sealed_run([sys.executable, ".claude/hooks/guard.py"], capture_output=True,
+                      timeout=30, input=json.dumps(
+                             {"tool_name": "Bash", "tool_input": {"command": "git clean -fdx"}}))
+    assert '"permissionDecision": "deny"' in out.stdout, (
+        f"guard.py does not start and answer as Claude Code runs it: {out.stdout or out.stderr}")
+    return "ok", f"{len(table)} calls answered as the policy says, and the hook is wired and starts"
 
 
 @check("code", "guide_sources names each of its lists once, so no list of pages silently "
@@ -67565,13 +67948,27 @@ def _spanish_home(i18n):
     assert bills(en) and bills(es) == bills(en), ("Latest Activity holds different meetings or "
                                                   f"bills in Spanish: {bills(es)} and {bills(en)}")
     assert meets(es) == meets(en), "Coming up holds different meetings in Spanish"
-    # The line to the latest sittings' recordings (session_line, 25 October
-    # 2026): the same days' pages from both.
+    # Recent Session Days (recent_sessions, 26 October 2026): the same days'
+    # pages and the same recordings from both.
     def sittings(t):
-        m = re.search(r'<div id="session">(.*?)</div>', t, re.S)
-        return re.findall(r'href="([^"]+)"', m.group(1)) if m else None
+        m = re.search(r'<div id="session">(.*?)</div>\s*</section>', t, re.S)
+        return (re.findall(r'href="([^"]+)"|data-embed="([^"]+)"', m.group(1)) if m else None)
     assert sittings(en) and sittings(es) == sittings(en), (
         f"the latest sittings lead elsewhere in Spanish: {sittings(es)} and {sittings(en)}")
+    # And in Spanish words, not only to the same places (the review of 26
+    # October 2026: main() handing recent_sessions "en" for /es/ passed every
+    # check, and the Spanish home page read "Recent Session Days ... Play").
+    def session_html(t):
+        m = re.search(r'<div id="session">(.*?)</div>\s*</section>', t, re.S)
+        return m.group(1) if m else ""
+    cat = json.loads(Path("src/pages/lang/es.json").read_text(encoding="utf-8"))
+    cat = cat.get("strings", cat)
+    es_s = session_html(es)
+    want = [cat["sess.recent"]["es"], cat["sess.play_house"]["es"].split("{date}")[0]]
+    gone = [w for w in want if w not in es_s]
+    english = [w for w in ("Recent Session Days", ">Play<", "Play the") if w in es_s]
+    assert not gone and not english, (
+        f"the Spanish home page's Recent Session Days lack {gone} and keep the English {english}")
     # And a week that has meetings in it (the fixture's own week may have
     # none): Coming up drawn in both languages for 10 March 2026 out of the
     # calendar checks' rows -- the same cards, bills and times, in Spanish
@@ -70062,13 +70459,14 @@ def _coming_up_without_study_committees():
     committee's meeting as the database copy gives it, a study committee's
     sitting on a bill as the docket files it, and a standing committee's
     work session on a bill held for interim study, this week and next. The
-    rail holds the standing committee alone and counts next week's sittings
-    without the study committees; a week of study committees alone is an
-    empty week on the rail, which says no House or Senate committee meeting
-    is scheduled rather than that nothing is (the audit of 25 October 2026,
-    M8), and whose chip and sentence name the same week when HOME_JS reads a
-    weekend's build on a weekday (the preview check of the same day); and
-    the Calendar's own week still holds them all.
+    rail holds the standing committee alone; a week of study committees
+    alone is an empty week on the rail, which says no House or Senate
+    committee meeting is scheduled rather than that nothing is (the audit of
+    25 October 2026, M8), and says only that (the owner's choice of 26
+    October 2026: not when the General Court sits), and whose chip and
+    sentence name the same week when HOME_JS reads a weekend's build on a
+    weekday (the preview check of the same day); and the Calendar's own week
+    still holds them all.
     """
     import contextlib
     import datetime as _dt
@@ -70123,8 +70521,7 @@ def _coming_up_without_study_committees():
             empty = BP.calendar_html(tmp, today=monday, rows=[r for r in rows if r.get("study")
                                                               or r["kind"] == "study committee"],
                                      events=[])
-        assert "calday" not in empty and "rest of this week" in empty \
-            and "sits mostly from January to June" in empty, (
+        assert "calday" not in empty and "rest of this week" in empty, (
                 "a week of study committees alone still draws a day in Coming up: "
                 + empty[:300])
         # AND IT DOES NOT SAY "NOTHING" (the audit of 25 October 2026, M8):
@@ -70144,7 +70541,8 @@ def _coming_up_without_study_committees():
                 f"a {k} of study committees alone does not say that no House or Senate "
                 f"committee meeting is scheduled: {page_[:300]}")
         assert ('tr("cal.none_else","No more House or Senate committee meetings are scheduled '
-                'this week.")' in BP.HOME_JS and "Nothing else is scheduled" not in BP.HOME_JS), (
+                'this week.")' in BP.HOME_JS and "Nothing else is scheduled" not in BP.HOME_JS
+                and "sits mostly" not in BP.HOME_JS and "cal.season" not in BP.HOME_JS), (
                     "HOME_JS's empty rest of the week says other words than the built rail's")
         # AND ITS SENTENCE NAMES THE WEEK THE CHIP DOES, IN THE READER'S CLOCK
         # (the preview check of 25 October 2026). The preview, built on Sunday
@@ -70185,6 +70583,14 @@ def _coming_up_without_study_committees():
             assert first and note.startswith(first), (
                 f"{lang}: an empty Coming up's sentence on its week is not an element of its "
                 f"own, so HOME_JS cannot say it again with the chip: {page[:400]}")
+            # AND IT IS THE NOTE'S ONLY SENTENCE (the owner's choice of 26
+            # October 2026, B): "The General Court sits mostly from January
+            # to June, and committees meet on bills from the fall filing
+            # period onwards." stood after it, in both languages, on an
+            # empty rail with next week empty too, as here.
+            assert note == first and "January" not in page and "enero" not in page, (
+                f"{lang}: an empty Coming up says more than that no meeting is scheduled: "
+                f"{note!r}")
             if not node:
                 continue
             words = i18n.words_js(lang, BP.HOME_JS) if lang != "en" else ""
@@ -70232,8 +70638,8 @@ def _coming_up_without_study_committees():
     # SILENCE IS NOT SUCCESS: a reader's day that never ran would pass above.
     assert ran in (0, 8), f"HOME_JS ran on {ran} of the 8 readers' days of an empty rail"
     return "ok", ("a statutory committee and a docket's study committee off the rail, a "
-                  "standing committee's interim study on it, next week counted without them, "
-                  "and all three still on the Calendar's week; "
+                  "standing committee's interim study on it, an empty rail's note its one "
+                  "sentence in both languages, and all three still on the Calendar's week; "
                   + (f"an empty rail's chip and sentence agree in the reader's clock, {ran} "
                      "readers' days in two languages" if ran else
                      "node is not on PATH, so the empty rail was not read in the reader's clock"))
@@ -72564,11 +72970,6 @@ def _testify_amendment_link():
              "the amendment is brought into view below the tab strip a bill's page holds at the top"),
             ("  });\n  seekAmendment(key);\n}", "the version index's arrival looks for the amendment")):
         assert need in app, f"app.js: {what} no longer"
-    # The number is one word: it broke at its hyphen in the pane at 1280 (the
-    # preview check of 26 October 2026).
-    css = Path("src/pages/app.css").read_text(encoding="utf-8")
-    assert re.search(r'\.testifypane a\[href\*="#amendment-"\]\{white-space:nowrap\}', css), (
-        "app.css lets the amendment's number in the Testify pane break at its hyphen")
     return "ok", ("HB 1560-FN's 2026-0422h links to its Bill Text tab; SB 575's second amendment opened by its "
                   "number, alone, past a report naming it; by number without its year; none for a number "
                   "none carries; the bill's page, the tab's own address and the redraw read it")
@@ -73520,94 +73921,170 @@ def _picker_keeps_the_open_bill():
                   "old cards forgotten; turned back with no bill open, a later close keeps 2023-2024")
 
 
-@check("frontend", "the home page says each thing once: its latest sittings are one line to their "
-                   "days' pages, \"Aug 19, 2026 — House · Senate recordings\", in both languages, "
-                   "and the rebuild line under Coming up speaks only to warn",
+@check("frontend", "the home page's Recent Session Days are a player for each chamber, dated "
+                   "\"House Session (Aug 19, 2026)\" to the sitting's page, loading nothing from "
+                   "YouTube until Play is pressed, in both languages; and the rebuild line under "
+                   "Coming up speaks only to warn",
        needs=("build_pages", "chrome"))
 def _home_says_each_once(BP, chrome):
-    """The audit of 25 October 2026, M8, the home page being the webinar's
-    first screen. Two large black players for the sittings of 19 August were
-    the heaviest thing on it, under titles dated "August 19th, 2026", a style
-    used nowhere else on the site (the person's F3 of 7 October, retired with
-    the players); and "Data rebuilt ..." stood under Coming up and again in
-    the footer.
+    """RECENT SESSION DAYS (the owner, 26 October 2026, of the release
+    candidate: "the embedded house and session recent session videos are no
+    longer displaying properly"). The audit of 25 October, M8, had put one
+    line, "Aug 19, 2026 — House · Senate recordings", where the live site
+    has two click-to-play players under "Recent Session Days"; the owner
+    wants the players back, with the date in the site's own style.
 
-    session_line, drawn from home.json's latest_sessions: both chambers on
-    one day are one line, "Aug 19, 2026 — House · Senate recordings", each
-    name the way to its day's page, which opens on the recording; chambers on
-    different days a line each, the newest first, in the singular; a sitting
-    with no page leads to its recording rather than to nothing; no sitting is
-    no line; and the Spanish page says it in Spanish, its date in Spanish
-    form, its links the same. HOME_JS draws no player and leaves #session
-    alone. Its rebuild block is run in node against build.json as a fresh, a
-    stale and a failed build leave it: the fresh one leaves the line empty --
-    the footer says when (chrome.FOOT_JS) -- and the other two warn."""
+    recent_sessions, drawn from home.json's latest_sessions at build time:
+    the heading, then for each chamber in home.json's order its title,
+    "House Session (Aug 19, 2026)" -- date_words' medium form, no ordinal --
+    the date the way to the sitting's page where one is built and words
+    where none is, over a .player holding one Play button: its accessible
+    name the chamber's and the day's ("Play the House floor session of Aug
+    19, 2026"), the frame's title on it for when it is pressed. Chambers
+    that last sat on different days each carry their own date. No sitting is
+    nothing. The Spanish page says it all in Spanish, its date in Spanish
+    form, its links the same. Nothing in it asks YouTube or Google for
+    anything -- no frame, no thumbnail, no script -- and app.css draws the
+    still as the bill's player is drawn: 16:9, Play in its middle. It lays
+    the two out too (the review of 26 October 2026): side by side where a
+    row holds two at 280px, one column in the left rail and on a phone, the
+    title at the meta size, and #session a sheet with a margin and a ruled
+    heading wherever Coming up is one, and not drawn when empty.
+
+    HOME_JS's click handler, run in node, puts the no-cookie player in
+    Play's place, titled from the button, with the focus where Play had it;
+    it draws nothing else into #session. Its rebuild block is run against
+    build.json as a fresh, a stale and a failed build leave it: the fresh
+    one leaves the line empty -- the footer says when (chrome.FOOT_JS) --
+    and the other two warn (the audit of 25 October 2026, M8, kept)."""
+    import html as _html
     import components as C
     one = {"latest_sessions": [{"date": "2026-08-19", "video_id": "vH", "chamber": "House"},
                                {"date": "2026-08-19", "video_id": "vS", "chamber": "Senate"}]}
     sits = {("H", "2026-08-19"), ("S", "2026-08-19")}
-    # WHAT FOLLOWS THE DASH IS HELD TOGETHER (the preview check of 25 October
-    # 2026): at 1180px and up the left rail's 258px broke the line before
-    # "recordings" and left it alone on a second row, in Spanish before
-    # "Cámara · Senado". In .sesswhat, an inline block in app.css, a line
-    # too long for the rail breaks after the dash, and one that fits is one row.
-    got = BP.session_line(one, "en", sits)
-    want = ('<p class="sessline">Aug 19, 2026 — <span class="sesswhat">'
-            '<a href="session/H/2026-08-19.html">House</a> · '
-            '<a href="session/S/2026-08-19.html">Senate</a> recordings</span></p>')
-    assert got == want, f"both chambers' sitting of 19 August reads {got!r}, not {want!r}"
+
+    def cells(h):
+        """[(title as text, the date's href or None, {Play's attributes},
+        Play's words, the cell's HTML)] of a drawn Recent Session Days."""
+        out = []
+        for c in re.findall(r'<div class="sess">(.*?)</div></div>', h, re.S):
+            title = re.search(r'<p class="sesstitle">(.*?)</p>', c, re.S)
+            stub = re.findall(r'<div class="player"><button type="button" class="pstub" ([^>]*)>(.*?)'
+                              r'</button>$', c, re.S)
+            href = re.search(r'<a href="([^"]+)">', title.group(1)) if title else None
+            attrs = dict(re.findall(r'([\w-]+)="([^"]*)"', stub[0][0])) if len(stub) == 1 else {}
+            out.append((_html.unescape(re.sub(r"<[^>]+>", "", title.group(1))) if title else None,
+                        href.group(1) if href else None,
+                        {k: _html.unescape(v) for k, v in attrs.items()},
+                        re.sub(r"<[^>]+>", "", stub[0][1]) if len(stub) == 1 else None, c))
+        return out
+
+    got = BP.recent_sessions(one, "en", sits)
+    assert got.startswith("<h2>Recent Session Days</h2>"), f"Recent Session Days is not its heading: {got[:120]!r}"
+    drawn = cells(got)
+    want = [("House Session (Aug 19, 2026)", "session/H/2026-08-19.html",
+             {"data-embed": "vH",
+              "data-title": "Recording of the House floor session, Aug 19, 2026",
+              "aria-label": "Play the House floor session of Aug 19, 2026"}, "Play"),
+            ("Senate Session (Aug 19, 2026)", "session/S/2026-08-19.html",
+             {"data-embed": "vS",
+              "data-title": "Recording of the Senate floor session, Aug 19, 2026",
+              "aria-label": "Play the Senate floor session of Aug 19, 2026"}, "Play")]
+    assert [d[:4] for d in drawn] == want, (
+        f"both chambers' sittings of 19 August are drawn as {[d[:4] for d in drawn]}, not two "
+        f"players titled \"House Session (Aug 19, 2026)\" and \"Senate Session (Aug 19, 2026)\", "
+        f"each dated to its page and Play named for its chamber and day")
+    # NOTHING FROM YOUTUBE OR GOOGLE BEFORE PLAY (the privacy page: "a player
+    # only loads if you press play"): no frame, no image, no script, and no
+    # address of theirs at all.
+    loads = [w for w in ("<iframe", "<img", "<script", "<link", "youtube", "ytimg", "google",
+                         "srcset", "background") if w in got.lower()]
+    assert not loads, f"Recent Session Days asks for something before Play is pressed: {loads}"
+    assert "19th" not in got and "August" not in got, f"a date in the old ordinal style: {got[:300]!r}"
+    # Different days, one without a page: each its own date, the one with no
+    # page in words.
     apart = {"latest_sessions": [{"date": "2026-06-04", "video_id": "vH", "chamber": "House"},
                                  {"date": "2026-06-11", "video_id": "vS", "chamber": "Senate"}]}
-    got = BP.session_line(apart, "en", {("H", "2026-06-04")})
-    want = ('<p class="sessline">Jun 11, 2026 — <span class="sesswhat">'
-            '<a href="https://www.youtube.com/watch?v=vS">Senate</a> recording</span></p>'
-            '<p class="sessline">Jun 4, 2026 — <span class="sesswhat">'
-            '<a href="session/H/2026-06-04.html">House</a> recording</span></p>')
-    assert got == want, (f"chambers that sat on different days, one without a page, read "
-                         f"{got!r}, not {want!r}")
-    assert BP.session_line({}, "en", sits) == "" and BP.session_line(
-        {"latest_sessions": []}, "en") == "", "no sitting on record still draws a line"
-    es = BP.session_line(one, "es", sits)
+    drawn = cells(BP.recent_sessions(apart, "en", {("H", "2026-06-04")}))
+    assert [(d[0], d[1], d[2].get("aria-label")) for d in drawn] == [
+        ("House Session (Jun 4, 2026)", "session/H/2026-06-04.html",
+         "Play the House floor session of Jun 4, 2026"),
+        ("Senate Session (Jun 11, 2026)", None, "Play the Senate floor session of Jun 11, 2026")], (
+        f"chambers that sat on different days, one without a page, are drawn as "
+        f"{[(d[0], d[1], d[2].get('aria-label')) for d in drawn]}")
+    assert BP.recent_sessions({}, "en", sits) == "" and BP.recent_sessions(
+        {"latest_sessions": []}, "en") == "", "no sitting on record still draws Recent Session Days"
+    # In Spanish: the same days' pages under a Spanish date, in Spanish words.
+    es = BP.recent_sessions(one, "es", sits)
     day = C.date_words("2026-08-19", "medium", "es")
-    assert day in es and 'href="session/H/2026-08-19.html"' in es \
-        and 'href="session/S/2026-08-19.html"' in es, (
-            f"the Spanish line does not lead to the same days under a Spanish date: {es!r}")
-    assert "recording" not in es and ">House<" not in es and ">Senate<" not in es, (
-        f"the Spanish line says English words: {es!r}")
-    # The Spanish in its own order, "grabaciones: Cámara · Senado", held
-    # together after the dash just the same, and its words unchanged.
-    held = re.fullmatch(r'<p class="sessline">([^<]*) — <span class="sesswhat">(.*)</span></p>', es)
-    assert held and held.group(1) == day and re.sub(r"<[^>]+>", "", held.group(2)) == (
-        "grabaciones: Cámara · Senado"), (
-            f"the Spanish line does not keep what follows its dash together: {es!r}")
-    # Held together as an inline block, which moves to the next row whole and
-    # wraps inside itself only where a row of its own cannot hold it -- and
-    # never by nowrap, which at a reader's larger default font size (24px,
-    # Chrome's "Very large") ran "Senado" past the left rail's card and
-    # across the webinar card at 1920px, and off a 320px phone with the page
-    # pushed sideways (the review of the same day, measured on the preview).
-    # Nowrap on the line itself would hold the block too, so neither may.
+    drawn = cells(es)
+    assert [d[1] for d in drawn] == ["session/H/2026-08-19.html", "session/S/2026-08-19.html"] \
+        and all(day in d[0] and day in d[2].get("aria-label", "") and day in d[2].get("data-title", "")
+                for d in drawn), f"the Spanish players do not lead to the same days under {day!r}: {es[:400]!r}"
+    english = [w for w in ("Recent Session", "Session", ">Play<", "Play the", "Recording of", "floor")
+               if w in es]
+    assert not english, f"the Spanish Recent Session Days says English words: {english}"
+    # THE STILL IS A VIDEO'S: the shared .pstub is 16:9 with Play in its
+    # middle, and the frame that takes its place 16:9 too.
     rules = _css_rules(Path("src/pages/app.css").read_text(encoding="utf-8"))
-    mine = [(at, [" ".join(s.split()) for s in sel.split(",")], dict(_css_decls(body)), n)
-            for at, sel, body, n in rules if re.search(r"\.(sessline|sesswhat)\b", sel)]
-    block = [n for at, sels, d, n in mine if not at and d.get("display") == "inline-block"
-             and ":where(body.pg) .sessline .sesswhat" in sels]
-    assert block, ("app.css does not hold .sessline's .sesswhat together as an inline block "
-                   "(:where(body.pg) .sessline .sesswhat{display:inline-block}), so the line to "
-                   "the latest sittings can leave its last word alone on a row")
-    held = [f"line {n}" for at, sels, d, n in mine
-            if d.get("white-space") in ("nowrap", "pre") or "nowrap" in (
-                d.get("text-wrap", ""), d.get("text-wrap-mode", ""))]
-    assert not held, (f"app.css holds the line to the latest sittings on one row ({', '.join(held)}): "
-                      "at a larger default font size it runs out of its card and off a phone. "
-                      "The inline block keeps it together where it fits and lets it wrap where "
-                      "it does not")
+    flat = {sel.strip(): dict(_css_decls(body)) for at, sel, body, n in rules if not at}
+    stub, frame = flat.get(".pstub", {}), flat.get(".player iframe", {})
+    assert (stub.get("aspect-ratio"), stub.get("display"), stub.get("align-items"),
+            stub.get("justify-content"), frame.get("aspect-ratio")) == (
+        "16/9", "flex", "center", "center", "16/9"), (
+        f"app.css's Play is not a 16:9 still with Play in its middle: .pstub {stub}, "
+        f".player iframe {frame}")
+    assert ".sessline" not in Path("src/pages/app.css").read_text(encoding="utf-8") \
+        and not hasattr(BP, "session_line"), "the one line that stood for the players is still here"
+    # THE PLAYERS, LAID OUT (the review of 26 October 2026: none of this was
+    # held, and with .twoup, #session's sheet and its margin gone, the
+    # preview's two players at 1024px stood one over the other at 976x550
+    # each, out of any sheet, where they sit side by side at 463x261 in one).
+    # Two across where a row holds two at 280px, one column in the left rail
+    # and on a phone; the title at the meta size over its player; and
+    # #session set apart wherever Coming up is -- the same sheet, margin and
+    # heading rule, in the same block -- and drawn not at all when empty.
+    P, WIDE, ONE, NARROW = (":where(body.pg) ", ("@media(min-width:73.75em)",),
+                            ("@media(max-width:73.74875em)",), ("@media(max-width:45em)",))
+    laid = [(tuple(re.sub(r"\s+", "", a) for a in at), {" ".join(s.split()) for s in sel.split(",")},
+             {k: " ".join(v.split()) for k, v in _css_decls(body)}) for at, sel, body, n in rules]
 
-    # HOME_JS: no player, no title of its own for a sitting, #session left alone.
+    def said(ctx, sel):
+        """What app.css sets for `sel` under exactly the at-rules `ctx`."""
+        out = {}
+        for c, sels, decls in laid:
+            if c == ctx and P + sel in sels:
+                out.update(decls)
+        return out
+
+    want = [((), ".twoup", {"display": "grid", "gap": "var(--sp-6)",
+                            "grid-template-columns": "repeat(auto-fit,minmax(280px,1fr))"}),
+            (WIDE, ".hside .twoup", {"grid-template-columns": "1fr"}),
+            (NARROW, ".twoup", {"grid-template-columns": "1fr"}),
+            ((), ".sesstitle", {"margin": "0 0 var(--sp-3)", "font-size": "var(--t-sm)"}),
+            ((), ".sess .player", {"margin-top": "0"}),
+            (ONE, ".hcols #session:empty", {"display": "none"}),
+            ((), ".hv-sections #session:empty", {"display": "none"}),
+            (ONE, ".hv-panels #session:empty", {"display": "none"})]
+    unlaid = [f"{' '.join(c)} {s} {d} (it sets {said(c, s)})".strip() for c, s, d in want
+              if any(said(c, s).get(k) != v for k, v in d.items())]
+    unlaid += [f"{' '.join(c)} {s} is not in the block that sets {s.replace('#session', '#upcoming')} apart"
+               .strip() for c, s in ((ONE, ".hcols #session"), ((), ".hv-sections #session"),
+                                     (ONE, ".hv-panels #session"), (ONE, ".hv-panels #session h2"),
+                                     (ONE, ".hv-sections #session h2"))
+               if not any(c2 == c and {P + s, P + s.replace("#session", "#upcoming")} <= sels
+                          for c2, sels, _ in laid)]
+    assert not unlaid, "app.css does not lay out Recent Session Days: " + "; ".join(unlaid)
+
+    # HOME_JS: PLAY OPENS THE PLAYER, run in node; nothing else drawn into
+    # #session, and no address of YouTube's but the player's own.
     js = BP.HOME_JS
-    left = [w for w in ("data-embed", "pstub", 'getElementById("session")', "ordinal(",
-                        'tr("sess.', "youtube") if w in js]
-    assert not left, f"HOME_JS still draws the sittings' players: {left}"
+    assert 'getElementById("session")' not in js and "ordinal(" not in js \
+        and js.count("youtube") == 1 and "ytimg" not in js, (
+            "HOME_JS draws into #session, or asks YouTube for more than the player")
+    hand = re.search(r'document\.addEventListener\("click",e=>\{\s*const st=e\.target\.closest&&'
+                     r'e\.target\.closest\("#session \[data-embed\]"\);.*?\n\}\);', js, re.S)
+    assert hand, "HOME_JS has no handler that turns Recent Session Days' Play into its player"
     # The footer keeps the day the data was rebuilt, on every page.
     assert 'getElementById("built")' in chrome.FOOT_JS and "Data rebuilt" in chrome.FOOT_JS, (
         "the footer no longer says when the data was rebuilt")
@@ -73618,7 +74095,8 @@ def _home_says_each_once(BP, chrome):
     assert m, "HOME_JS has no block reading build.json"
     node = shutil.which("node") or shutil.which("node.exe")
     if not node:
-        return "ok", "the line to the sittings drawn in both languages; node is not here to run the rebuild line"
+        return "ok", ("Recent Session Days drawn in both languages; node is not here to run Play "
+                      "or the rebuild line")
     prog = _components_js() + "\n" + (
         "globalThis.window=globalThis;const DATA=f=>f;let B=null;"
         "const el={className:'fresh',innerHTML:''};"
@@ -73643,10 +74121,41 @@ def _home_says_each_once(BP, chrome):
         f"a build five days old does not warn: {got['stale']}")
     assert got["failed"]["cls"] == "fresh stale" and "1 build step failed" in got["failed"]["html"], (
         f"a build with a failed step does not warn: {got['failed']}")
-    return "ok", ("the sittings of one day one line, of two days two, each to its page or its "
-                  "recording, in English and Spanish, held together after the dash; no player; "
-                  "the rebuild line silent when fresh, a warning when five days old or a step "
-                  "failed")
+
+    # PLAY, RUN: the handler alone, over a button as recent_sessions draws it,
+    # pressed with the focus on it and without; and a click elsewhere, which
+    # it leaves alone.
+    prog = _components_js() + "\n" + (
+        "const heard=[];globalThis.document={activeElement:null,"
+        "addEventListener:(t,f)=>heard.push([t,f])};\n" + hand.group(0) + "\n"
+        "const press=(had,inside)=>{let n=0;const frame={focus(){n++;}};"
+        "const st={dataset:{embed:'vH',title:'Recording of the House floor session, Aug 19, 2026'},"
+        "parentNode:{querySelector:q=>q==='iframe'?frame:null}};"
+        "document.activeElement=had?st:{};"
+        "heard.forEach(([t,f])=>t==='click'&&f({target:{closest:q=>"
+        "inside&&q==='#session [data-embed]'?st:null}}));"
+        "return {html:st.outerHTML||null,focus:n};};"
+        "process.stdout.write(JSON.stringify({had:press(true,true),not:press(false,true),"
+        "away:press(true,false)}));")
+    r = _node_file(node, prog, capture_output=True, text=True, timeout=60)
+    assert r.returncode == 0, "Play's handler would not run: " + (r.stderr or "")[-300:]
+    got = json.loads(r.stdout)
+    frame_ = re.sub(r"\s+", " ", got["had"]["html"] or "")
+    assert re.fullmatch(r'<iframe allow="autoplay" allowfullscreen src="https://www\.youtube-nocookie'
+                        r'\.com/embed/vH\?autoplay=1" title="Recording of the House floor session, '
+                        r'Aug 19, 2026"></iframe>', frame_), (
+        f"pressing Play does not put the no-cookie player, titled for its chamber and day, in "
+        f"its place: {frame_!r}")
+    assert (got["had"]["focus"], got["not"]["focus"], got["away"]["html"]) == (1, 0, None), (
+        f"the player takes the focus only where Play had it, and a click elsewhere opens "
+        f"nothing: {got}")
+    return "ok", ("Recent Session Days: a 16:9 player for each chamber, \"House Session (Aug 19, "
+                  "2026)\" dated to its page, its own date where the chambers sat apart, in "
+                  "English and Spanish, two across where they fit and one column in the left rail "
+                  "and on a phone, a sheet wherever Coming up is one; nothing from YouTube until "
+                  "Play, which opens the no-cookie "
+                  "player with Play's focus; the rebuild line silent when fresh, a warning when "
+                  "five days old or a step failed")
 
 
 @check("frontend", "the home page's one search box is the header's finder, its top results in a "
@@ -75102,7 +75611,9 @@ def _sits_mostly_january_to_june():
     August (the survey of 7 October 2026). Both sat on 19 August 2026, and
     the House into the autumn or winter in nine of the twelve years
     2015-2026. It sits MOSTLY from January to June: every page's source that
-    says when it sits says that."""
+    says when it sits says that. The home page's Coming up no longer says it
+    at all (the owner's choice of 26 October 2026: the rail says what is
+    scheduled), so two sources do."""
     files = [_paths.locate("app.js"), _paths.locate("find.js")] + sorted(_paths.code_files("build_*.py")) + [
         _paths.locate("civics.py")]
     said, bare = [], []
@@ -75113,9 +75624,9 @@ def _sits_mostly_january_to_june():
         bare += [Path(f).name for _ in re.finditer(r"sits from January to June", flat)]
         said += [Path(f).name for _ in re.finditer(r"sits mostly from January to June", flat)]
     assert not bare, "these still say the General Court sits from January to June: " + ", ".join(bare)
-    assert sorted(said) == ["app.js", "build_calendar.py", "build_pages.py"], (
-        "the three empty states that say when the General Court sits are " + ", ".join(said))
-    return "ok", "the committee page, the Calendar's week and the home page say \"mostly\""
+    assert sorted(said) == ["app.js", "build_calendar.py"], (
+        "the two empty states that say when the General Court sits are " + ", ".join(said))
+    return "ok", "the committee page and the Calendar's week say \"mostly\"; the home page says neither"
 
 
 @check("frontend", "the Speaker's own page says he is Speaker", needs=("build_site_v2",))
@@ -75495,24 +76006,33 @@ def _member_signposts(BLP):
             'Concord Ward 3</a>, Atk. &amp; Gilmanton Academy Gt</li>') in rec, rec[:400]
     gone = {"id": "1", "former": True, "chamber": "H",
             "display_full": "Rep. Michael Gunski (R - Hills 6)"}
+    gone_s = {"id": "2", "former": True, "chamber": "S",
+              "display_full": "Sen. Jeb Bradley (R - SD3)"}
     got = _app_js("[(window.GR_TOWNS=" + json.dumps(places) + ", scope.renderMemberHead("
                   + json.dumps(sitting) + ")), scope.renderMemberHead(" + json.dumps(gone) + "), "
-                  "(delete window.GR_TOWNS, scope.renderMemberHead(" + json.dumps(sitting) + "))]",
+                  "(delete window.GR_TOWNS, scope.renderMemberHead(" + json.dumps(sitting) + ")), "
+                  "scope.renderMemberHead(" + json.dumps(gone_s) + ")]",
                   names=("renderMemberHead",))
     if got is None:
         return "ok", "the towns are linked in Python; node is not here to draw the head"
-    here, left, bare = got
+    here, left, bare, left_s = got
     trail = lambda h: re.search(r'<nav class="rtrail"[^>]*><ol>(.*?)</ol>', h).group(1)
-    assert trail(left) == ('<li><a href="officials.html">Officials</a></li><li><a href="directory/'
-                           'former-legislators">Former Legislators</a></li><li aria-current="page">'
-                           'Former Representative</li>'), trail(left)
+    # THE LAST STEP IS THE OFFICE ALONE (the owner, 26 October 2026): the
+    # step before it says Former Legislators, so "Former Representative"
+    # there said "former" twice. The heading keeps "Former Representative".
+    for h, office in ((left, "Representative"), (left_s, "Senator")):
+        assert trail(h) == ('<li><a href="officials.html">Officials</a></li><li><a href="directory/'
+                            'former-legislators">Former Legislators</a></li><li aria-current="page">'
+                            f'{office}</li>'), trail(h)
+    assert '<h1 class="rh1">Former Representative Michael Gunski</h1>' in left, (
+        "a former member's heading no longer says Former: " + left[:300])
     assert "former-legislators" not in trail(here), trail(here)
     assert ('<a href="/town/berlin">Berlin</a>, <a href="/town/concord-ward-3">Concord Ward 3</a> '
             'and Atk. &amp; Gilmanton Academy Gt</p>') in here, re.sub(r"\s+", " ", here)[:500]
     assert "/town/" not in bare and "Berlin, Concord Ward 3 and Atk." in bare, (
         "with no GR_TOWNS the towns are not left as words")
-    return "ok", ("a former member's trail is Officials, Former Legislators, Former Representative; "
-                  "a sitting member's towns link /town/berlin and /town/concord-ward-3, and a "
+    return "ok", ("a former member's trail is Officials, Former Legislators, Representative (or "
+                  "Senator); a sitting member's towns link /town/berlin and /town/concord-ward-3, and a "
                   "place spelled otherwise stays words")
 
 

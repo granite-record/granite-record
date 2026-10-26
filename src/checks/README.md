@@ -24,7 +24,11 @@ Scripts that write no record and no page, only a verdict or a report:
   (`site_manifest`: `record` after a build, `compare` after a change), so a
   "nothing moved" proof builds its baseline once a commit;
 - which of preflight's checks a change can reach (`check_select`, which
-  `preflight.py --changed` runs on).
+  `preflight.py --changed` runs on);
+- a How-To guide's or Learn page's every word beside its evidence
+  (`fact_sheet`: the claims ledger, the figures and their statute words, and
+  any contact detail no claim records), for the reader who checks that a page
+  says nothing its sources do not.
 
 Run by: the night (`check_site`, `check_live`, `gc_changes`), `publish.bat`
 (`check_site`, `check_live`), and a person (`rendered_sweep` before a front-end

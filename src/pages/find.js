@@ -1,4 +1,4 @@
-// GRANITE_VERSION: 2026-09-16.43
+// GRANITE_VERSION: 2026-09-16.44
 /* FIND ANYTHING, FROM THE HEADER (16 September, asked for in these words:
    "a search icon in the header that lets you search for anything including
    legislators, committees, towns, and bills ... searching Litchfield would
@@ -862,6 +862,22 @@ function findBillsAll(B,q,what){
     <span class="fwhat">${line}</span></a>`;
 }
 
+/* A CITY ONCE IN THE PANEL, ITS WARDS ON /search (the owner, 26 October
+   2026). find.json has a city's row, "Concord · 10 wards", above a row for
+   each of its wards, and the panel's eight rows were the city and seven of
+   its wards, which pushed Concord's bills out of sight. In the panel a ward
+   waits behind its city: it is left out where its city is among the
+   answers, unless what was typed asks for a ward -- the word "ward", or a
+   number ("concord 3"). The city's row opens the Officials page's town view
+   on it, which lists its wards, and /search, which is every answer, lists
+   them too (it reads findMatch, not this). Every city with wards alike: a
+   ward's row is "<city>, Ward <n>" (build_indexes.find_index). */
+function _ffold(rows,s){
+  if(/\d|\bwards?\b/i.test(s))return rows;
+  const cities=new Set(rows.filter(r=>r[0]==="town").map(r=>r[1]));
+  return rows.filter(r=>r[0]!=="ward"||!cities.has(String(r[1]).replace(/, Ward \S+$/,"")));
+}
+
 function findDraw(q,ids){
   ids=ids||FIND_IDS;
   const out=document.getElementById(ids.out);
@@ -872,7 +888,8 @@ function findDraw(q,ids){
   if(!s){out.innerHTML=`<p class="fnote">${tr("find.type","Type a legislator, a committee, a town, a subject, a bill number or words from a bill&rsquo;s title.")}</p>`;
     findSay("",ids);return;}
   const num=findBill(s);
-  const rows=findMatch(s);
+  // The panel's eight, a city's wards folded into it (_ffold).
+  const rows=_ffold(findMatch(s,Infinity),s).slice(0,8);
   // A statute's number: the Laws pages' list of chapters, once, and the
   // panel drawn again with its row when it is here (findLawRow).
   const law=findLawRow(s);

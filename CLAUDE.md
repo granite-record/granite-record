@@ -112,6 +112,16 @@ merge to `main` goes live the next night. `src/ops/cloud.py seed-kit` and
 Everything else — builds, checks, parsers, the site build — is fine to run
 freely.
 
+**`.claude/hooks/guard.py` enforces this list.** Claude Code runs it before
+every command, file write, web fetch and GitHub call, here and in every
+helper agent: it refuses what no assistant may do (the General Court from an
+ad-hoc command, force pushes, `git clean -f`, history rewrites, deleting the
+data folders, overwriting the person's records) and makes the person answer
+for what needs their word (publish, `main`, a fetch, wrangler, credentials).
+When it stops a call, do not look for a way round it: say what was stopped
+and why, and let the person decide. Changing the guard, or preflight's table
+of what it must stop, is the person's decision.
+
 ---
 
 ## The rules that produced the good results
@@ -140,6 +150,16 @@ place, with the ones placed for the first time within a minute at the median
 (the person's decision, 24 October 2026; `livestreams.worse` keeps it). This
 matters more in an agentic loop, not less: it is the guard against tuning a
 pattern until the number looks right.
+
+**A guide or a Learn page says only what a source on hand says.** They
+tell people what the law requires of them. Every statement rests on a claim
+of the guide (the source, its words as read, the day), a section of a
+statute it cites, or the person's printout -- never memory, never a general
+truth nobody sourced, never "must" where the source says "may". Preflight
+holds money, counts, phone numbers, emails, hours, addresses and dates to
+their sources; the wording is a reader's job, and `src/checks/fact_sheet.py
+<slug>` shows a page beside its evidence. CONTRIBUTING.md's recipe *Add or
+change a How-To guide or a Learn page* is the whole list.
 
 **Silence is not success.** A build that finishes having published nothing; a
 fetch killed at fifteen minutes that looks like a hang; a step that prints one

@@ -8,15 +8,15 @@
   "OTP": {"name": "Ought to Pass", "says": "a motion to pass the bill", "from": "using-this-site"},
   "OTPA": {"name": "Ought to Pass with Amendment", "says": "a motion to pass the bill with the committee's amendment", "from": "using-this-site; says: new, 14 October 2026: the person to check"},
   "ITL": {"name": "Inexpedient to Legislate", "says": "a motion to kill the bill", "from": "using-this-site"},
-  "IS": {"name": "Interim Study", "says": "a motion to have the committee study the subject after the session; the bill itself goes no further this term", "from": "how-a-bill-becomes-law"},
-  "Retain": {"name": "Retain", "says": "a House committee keeps the bill through the fall of the first year and reports it in the second", "from": "how-a-bill-becomes-law"},
+  "IS": {"name": "Interim Study", "says": "a committee report made only in the second year of a term: the bill goes no further this term, and the committee reports its findings and any recommendations", "from": "how-a-bill-becomes-law; checked against House Rule 45 and Senate Rule 4-2, 26 October 2026"},
+  "Retain": {"name": "Retain", "says": "in the House, the committee votes in the first year to keep the bill, which must be acted on in the second year", "from": "how-a-bill-becomes-law; checked against House Rule 45, 26 October 2026"},
   "MA": {"name": "Motion Adopted", "says": "the motion carried", "from": "using-this-site; says: new, 14 October 2026: the person to check"},
   "MF": {"name": "Motion Failed", "says": "the motion failed", "from": "using-this-site; says: new, 14 October 2026: the person to check"},
   "VV": {"name": "Voice vote", "says": "a vote by the sound of the members' voices, with no count and no names recorded", "from": "using-this-site"},
   "DV": {"name": "Division vote", "says": "a vote that is counted, with the totals recorded but not who voted which way", "from": "using-this-site"},
   "RC": {"name": "Roll call", "says": "each member recorded by name", "from": "using-this-site"},
   "RC-calendar": {"name": "Regular Calendar", "says": "the bills a chamber takes up one at a time, open to debate, rather than together on the consent calendar", "from": "docket key; says: new, 14 October 2026: the person to check"},
-  "CC": {"name": "Consent Calendar", "says": "the committee's recommendation, to pass, to kill or to send to interim study, adopted with the whole calendar in one vote, without floor debate", "from": "using-this-site"},
+  "CC": {"name": "Consent Calendar", "says": "the committee's recommendation, to pass, to kill or to send to interim study, adopted with what is left on the calendar, without debate; a bill goes there only by the committee's unanimous vote", "from": "using-this-site; checked against House Rule 52 and Senate Rules 6-21 and 6-23, 26 October 2026"},
   "OT3rdg": {"name": "Ordered to a third reading", "says": "passed to the last stage before the chamber's final vote on the bill", "from": "using-this-site; says: new, 14 October 2026: the person to check"},
   "HJ": {"name": "House Journal", "says": "the chamber's own record of the day, cited by issue and sometimes page", "from": "using-this-site"},
   "SJ": {"name": "Senate Journal", "says": "the chamber's own record of the day, cited by issue and sometimes page", "from": "using-this-site"},
@@ -59,5 +59,6 @@
   "Docket": {"name": "Docket", "says": "the General Court's running list of every action taken on a bill, in the order it was recorded", "from": "new, 17 October 2026: the person to check"},
   "Organization Day": {"name": "Organization Day", "says": "the first Wednesday of December after an election, when the new legislature is sworn in and elects its presiding officers", "from": "new, 14 October 2026: the person to check"},
   "Second committee": {"name": "Second committee", "says": "a bill that spends or raises money, sent on after the committee that heard it: in the House to Finance or to Ways and Means, in the Senate to Finance; such bills meet earlier deadlines in their first committee", "from": "legislative-year"},
-  "Veto day": {"name": "Veto day", "says": "the day a chamber meets to take up the Governor's vetoes; overriding one takes two thirds of each chamber, by roll call", "from": "legislative-year"}
+  "Veto day": {"name": "Veto day", "says": "the day a chamber meets to take up the Governor's vetoes; overriding one takes two thirds of each chamber, by roll call", "from": "legislative-year"},
+  "Right-to-know law": {"name": "Right-to-know law", "says": "RSA 91-A, the law that opens public bodies to the public: their meetings are open, apart from the nonpublic sessions it allows, and every citizen has the right to inspect their records", "from": "how-a-bill-becomes-law; RSA 91-A:1, 91-A:2, II and 91-A:4, I, read 26 October 2026"}
 }

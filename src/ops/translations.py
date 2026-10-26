@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-10-23.6
+# GRANITE_VERSION: 2026-10-23.7
 """
 The site's translations: what is translated, what has gone stale, and the
 proofreader's sheet out and back. src/pages/i18n.py says how a translation
@@ -55,6 +55,7 @@ AREAS = {"nav": "the header", "page": "the header", "theme": "Settings", "set": 
          "home": "the home page", "card": "the home page's cards",
          "web": "the home page's webinar box", "state": "the home page's status box",
          "fresh": "the home page, under Coming up: a warning that the data is stale",
+         "sess": "the home page's Recent Session Days: the floor sessions' players",
          "gloss": "the Glossary page, and the pop-up on a term", "cal": "Coming up (the week's meetings)",
          "kind": "Coming up: a kind of meeting", "find": "the search box's results",
          "search": "the search box", "yt": "Settings: Your town", "foot": "the footer",
@@ -67,7 +68,26 @@ AREAS = {"nav": "the header", "page": "the header", "theme": "Settings", "set": 
          # what Learn's pages say around their own words.
          "learn": "the Learn pages (the page is the key's second part)",
          "reps": "Finding Your Representatives: the worked example",
-         "trrep": "the box for reporting a mistake in the translation"}
+         "trrep": "the box for reporting a mistake in the translation",
+         # Every first part the code uses has its place here (26 October
+         # 2026): fifteen had none, so their rows went to the proofreader
+         # with the column blank. preflight's _translations holds the two
+         # lists the same.
+         "rec": "the home page's Latest Activity: a committee's recommendation",
+         "study": "the home page's Latest Activity: an interim study report",
+         "vote": "the home page's Latest Activity: what a sitting did with a bill",
+         "hub": "the Resources page's Learn and Official Sources tabs",
+         "year": "the Learn page on the legislative year",
+         "of": "the Officials page: its title, its tabs' names and their headings",
+         "lf": "the Officials page: what Find Your Town finds, and the roster by county",
+         "map": "the district map, on the Officials page's My Town tab",
+         "off": "the Officials page's tabs: each office and who holds it",
+         "elect": "the members-elect: the Officials page's Members-Elect tab, and Your Town",
+         "comp": "the Officials page's Legislators tab: who holds the seats",
+         "roster": "the Officials page's Legislators tab: the roster",
+         "party": "the Officials page's Legislators tab: a party's name",
+         "seat": "the Officials page's Legislators tab: the House seating chart",
+         "sc": "the Officials page's Legislators tab: the line under the seating chart"}
 
 
 def area(key):
