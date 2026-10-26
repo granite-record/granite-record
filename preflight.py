@@ -22283,7 +22283,15 @@ def _find_city_without_wards(BI, BP):
     every city with wards. The city's row opens the Officials page's town
     view, which lists the wards, and /search, which reads findMatch with the
     cap off, still lists each one. Here: find_index over two cities with
-    wards and a town without, and find.js in node, as the header draws it."""
+    wards and a town without, and find.js in node, as the header draws it.
+
+    The fold comes before the panel's cap of eight (the review of 26 October
+    2026): folded after it, "Concord" filled the eight with the city and
+    seven wards, folded those to the city, and lost the guide that mentions
+    Concord and ranks after the wards -- the State House tour, here as on
+    the site. And a number is a ward asked for even where it matches the
+    city's own row: "concord 1" matches "10 wards", and without the number's
+    exemption Ward 1 was folded away under it."""
     if shutil.which("node") is None:
         return "skip", "node is not installed"
     site = Path(tempfile.mkdtemp(prefix="gr-wards-"))
@@ -22296,10 +22304,19 @@ def _find_city_without_wards(BI, BP):
             for s in seats:
                 stem = t.lower() + (f"-ward-{s['ward']}" if s["ward"] else "")
                 (site / "town" / f"{stem}.html").write_text("<p>", encoding="utf-8")
+        # A guide that mentions Concord in its line, not its name: it ranks
+        # after the city's ten wards, as the published guide does.
+        (site / "guides").mkdir()
+        (site / "guides" / "tour-the-state-house.html").write_text(
+            '<meta property="og:title" content="How to Tour the New Hampshire State House | '
+            'Granite Record"><meta name="description" content="Arranging a tour of the State '
+            'House in Concord through its Visitor Center.">', encoding="utf-8")
         rows = BI.find_index(site, [], towns)
     finally:
         shutil.rmtree(site, ignore_errors=True)
-    cases = ["concord", "Concord", "manchester", "andover", "concord ward", "concord 3", "ward 2"]
+    tour = "/guides/tour-the-state-house"
+    cases = ["concord", "Concord", "manchester", "andover", "concord ward", "concord 3",
+             "concord 1", "ward 2"]
     root = Path(tempfile.mkdtemp(prefix="gr-wards-js-"))
     try:
         (root / "stub.js").write_text(Path("tests/dom_stub.js").read_text(encoding="utf-8"),
@@ -22326,18 +22343,26 @@ def _find_city_without_wards(BI, BP):
         if search[q][:1] != [f"officials?town={city}"] or len(wards) != len(towns[city]):
             bad.append(f"{q!r}: /search lists {search[q][:4]} and {len(wards)} wards, not the city "
                        f"over all {len(towns[city])}")
+    # Folded before the cap: the room the wards left goes to the guide that
+    # ranks after them, under the bills.
+    for q in ("concord", "Concord"):
+        if panel[q] != ["/officials?town=Concord", "BILLS", tour]:
+            bad.append(f"{q!r}: the panel draws {panel[q][:6]}, not the city, the bills and then "
+                       f"the guide that ranks after the wards ({tour}): its wards folded after "
+                       "the panel's eight were taken")
     if panel["andover"][:1] != ["/town/andover"]:
         bad.append(f"'andover', a town without wards, draws {panel['andover'][:3]}")
     for q, want in (("concord ward", "/town/concord-ward-1"), ("concord 3", "/town/concord-ward-3"),
-                    ("ward 2", "/town/manchester-ward-2")):
+                    ("concord 1", "/town/concord-ward-1"), ("ward 2", "/town/manchester-ward-2")):
         if want not in panel[q]:
             bad.append(f"{q!r} asks for a ward and the panel draws {panel[q][:6]}, without {want}")
     assert not bad, "; ".join(bad[:4])
     assert "_ffold" not in BP.SEARCH_JS and "findMatch(s,Infinity)" in BP.SEARCH_JS, (
         "/search no longer reads every answer, its wards with them")
-    return "ok", ("'Concord' and 'Manchester' draw the city alone and the bills under it; "
-                  "'concord ward', 'concord 3' and 'ward 2' still draw wards; /search lists "
-                  "every ward under its city")
+    return "ok", ("'Concord' and 'Manchester' draw the city alone and the bills under it, and "
+                  "'Concord' the guide that ranks after its wards; 'concord ward', 'concord 3', "
+                  "'concord 1' and 'ward 2' still draw wards; /search lists every ward under "
+                  "its city")
 
 
 @check("frontend", "the search names a committee with its chamber, House Housing Committee, so "
