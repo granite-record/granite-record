@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-10-11.50
+# GRANITE_VERSION: 2026-10-11.51
 """
 The how-to guides: their words, their sources, and what each was checked
 against. Read by build_civics.py, which draws them on the Resources hub's
@@ -153,6 +153,72 @@ def unbacked(g):
     found = {m.group(0).replace(" ", "") for m in FIGURE.finditer(words)}
     found |= {_flat(m.group(0)) for m in COUNT.finditer(words)}
     return sorted(found - declared)
+
+
+# A CONTACT DETAIL IS A CLAIM TOO (the person, 26 October 2026: "make sure
+# there are absolutely no hallucinations in those sorts of pages and in the
+# instructions"). FIGURE and COUNT hold money, shares and periods to their
+# sources; nothing held the details a reader acts on most directly -- a phone
+# number, an email address, an office's hours, a street address, a date. An
+# audit that day found phone numbers no claim of their guide recorded, right
+# or not. So each one a guide prints must be found in the words a claim of
+# that guide records its source as saying: a phone number by its ten digits,
+# an email address as written, an hour by its clock number, a street address
+# by its number and street, a date by its month and day.
+PHONE = re.compile(r"(?<![\d-])(?:1[-\s.]?)?\(?\d{3}\)?[-\s.]\d{3}[-\s.]\d{4}(?!\d)")
+EMAIL = re.compile(r"[\w.+-]+@[\w-]+(?:\.[\w-]+)*\.[a-z]{2,}", re.I)
+CLOCK = re.compile(r"\b(\d{1,2}(?::\d\d)?)(?:\s|&nbsp;)?[ap]\.m\.", re.I)
+STREET = re.compile(r"\b(\d{1,5})\s+((?:[A-Z][a-z]+\s){1,3}(?:Street|Road|Drive|Avenue|Lane|Way|"
+                    r"Boulevard|Place|Square|Highway))\b")
+MONTH_DAY = re.compile(r"\b(January|February|March|April|May|June|July|August|September|"
+                       r"October|November|December)(?:\s|&nbsp;)+(\d{1,2})(?!\d)")
+
+
+def _plain(s):
+    import html as _h
+    return re.sub(r"\s+", " ", _h.unescape(re.sub(r"<[^>]+>", " ", s or "")))
+
+
+def unsourced_contacts(g):
+    """The phone numbers, email addresses, hours, street addresses and dates
+    the guide prints that no claim of it records its source as saying."""
+    said = [_plain(c["says"] + " " + " ".join(c.get("words") or [])) for c in g["claims"]]
+    said += [_plain(f["says"]) for f in g.get("figures") or []]
+    digits = [re.sub(r"\D", "", s) for s in said]
+    low = [s.lower() for s in said]
+    words = _plain(text(g))
+    out = []
+    for m in PHONE.finditer(words):
+        d = re.sub(r"\D", "", m.group(0))[-10:]
+        if not any(d in x for x in digits):
+            out.append(f"phone {m.group(0)}")
+    for m in EMAIL.finditer(words):
+        e = m.group(0).rstrip(".").lower()
+        if not any(e in s for s in low):
+            out.append(f"email {e}")
+    for m in CLOCK.finditer(words):
+        n = m.group(1)
+        alts = {n, n[:-3]} if n.endswith(":00") else {n}
+        if not any(re.search(r"(?<![\d:])" + re.escape(a) + r"(?![\d:])", s) for a in alts
+                   for s in said):
+            out.append(f"hour {m.group(0)}")
+    for m in STREET.finditer(words):
+        if not any(m.group(1) in s and m.group(2).split()[0].lower() in s.lower() for s in said):
+            out.append(f"address {m.group(0)}")
+    # "On October 12, 2026 its page said": the day a claim of the guide was
+    # checked is a date the guide may give for when it read its source.
+    import datetime as _dt
+    read_on = {f"{d:%B} {d.day}" for d in (_dt.date.fromisoformat(c["checked"])
+                                            for c in g["claims"] if re.fullmatch(
+                                                r"\d{4}-\d\d-\d\d", str(c["checked"] or "")))}
+    for m in MONTH_DAY.finditer(words):
+        mon, day = m.group(1), m.group(2)
+        if f"{mon} {int(day)}" in read_on:
+            continue
+        if not any(re.search(rf"\b{mon[:3]}\w*\.?\s+{day}(?!\d)", s) or
+                   re.search(rf"\b{day}\s+{mon[:3]}", s) for s in said):
+            out.append(f"date {mon} {day}")
+    return sorted(set(out))
 
 
 def fig_faults(g):
