@@ -4542,6 +4542,529 @@ GUIDES += [HOMELESS]
 
 
 # ---------------------------------------------------------------------------
+# RENTING A HOME: THE TENANT'S RIGHTS AND THE LANDLORD'S DUTIES (the person,
+# 25 October 2026: "know your rights guides for both tenants and
+# landlords"). One law, two readers, so two guides that say it alike and link
+# each other. Read on 25 October 2026 from RSA 540 (actions against tenants),
+# RSA 540-A (prohibited practices and security deposits) and RSA 48-A:14
+# (the minimum standards where a town has no housing code of its own) as this
+# site's Laws pages print them -- with the paragraphs in force since 8
+# October 2026, where the chapters print an old and a new version -- and from
+# the Judicial Branch's landlord-tenant page and New Hampshire Housing's
+# renters' page, as the homelessness guide read them on 24 October 2026.
+# Neither guide is legal advice: each says where a reader gets a lawyer or
+# free legal aid. The security deposit rules do not reach every landlord
+# (RSA 540-A:5, I), nor does the need for a reason to evict (RSA 540:1-a), and
+# each guide says so where it matters.
+# ---------------------------------------------------------------------------
+RENT_READ = "2026-10-25"
+
+TENANT = guide(
+    "tenant-rights", "Your Rights as a Tenant",
+    "What a New Hampshire landlord may and may not do, your security deposit, repairs and heat, "
+    "rent increases, and what happens in an eviction, step by step, with the law for each.",
+    "In New Hampshire only a court can make you leave your home: a landlord may not lock you "
+    "out, shut off your utilities or hold your belongings to force you out. For most rentals, a "
+    "security deposit can be no more than one month&rsquo;s rent or $100, whichever is more, "
+    "and it comes back within 30 days after you move out, less the cost of any damage beyond "
+    "normal wear and tear. Your home must meet basic standards for heat, water, plumbing and "
+    "safety. If you get an eviction notice or court papers, read the dates and get free legal "
+    "help right away.",
+    [ask("What is happening?",
+         [("You were locked out, or a utility was shut off",
+           "That is against the law. Ask the district court to order it stopped; there is no "
+           "filing fee."),
+          ("Something needs repair",
+           "Tell your landlord in writing. If it is not fixed, ask your town to inspect."),
+          ("You got an eviction notice or court papers",
+           "Read the dates, and get free legal help now. Only a court can make you leave."),
+          ("You are moving out",
+           "Your deposit comes back within 30 days, with a written list of any deductions.")]),
+     box("Keep copies of your lease, rent receipts, letters and photos.")],
+    [step("Only a court can make you leave",
+          "<p>A landlord may not:</p>"
+          "<ul><li><b>shut off or interrupt a utility</b>, such as water, heat, electricity or "
+          "gas, except briefly while repairs are made or in an emergency;</li>"
+          "<li><b>lock you out</b>, or keep you from your home or your belongings, except "
+          "through the court;</li>"
+          "<li><b>enter your home without your consent</b>, except to make emergency repairs "
+          "or with a court&rsquo;s order.</li></ul>"
+          "<p>You, in turn, may not damage the landlord&rsquo;s property or keep the landlord "
+          "from making necessary repairs, at a reasonable time after notice that is adequate "
+          "for the situation.</p>"
+          "<p>If a landlord breaks these rules, you can file a petition in the circuit "
+          "court&rsquo;s district division where the home is. There is <b>no filing fee</b>, "
+          "you do not need a lawyer, and the clerk has the forms. The court holds a hearing "
+          "within 30 days of the filing or 10 days after the landlord is served, whichever is "
+          "later, and can order the landlord to stop at once if you face immediate harm. It can "
+          "also award you damages, and order the landlord to pay your costs and attorney&rsquo;s "
+          "fees.</p>",
+          actions=[("Landlord and tenant cases (Judicial Branch)", COURTS_LLT)],
+          law=["RSA 540-A:2", "RSA 540-A:3", "RSA 540-A:4"]),
+     step("Your security deposit",
+          "<p>The deposit rules apply to most landlords. They do not apply to someone who rents "
+          "out a single-family home and owns no other rental property, or who rents units in a "
+          "building of 5 units or fewer that they live in themselves, unless the tenant is 60 "
+          "or older.</p>"
+          "<ul><li><b>The limit:</b> one month&rsquo;s rent or $100, whichever is more.</li>"
+          "<li><b>A receipt</b> stating the amount and where the deposit is held, unless you "
+          "paid by check.</li>"
+          "<li><b>Within 5 days of moving in,</b> give your landlord a written list of anything "
+          "in the home that needs repair, and keep a copy. Your landlord must tell you that you "
+          "can.</li>"
+          "<li><b>It stays your money,</b> held in trust. If it is held for a year or longer, "
+          "the landlord pays you the interest it earned.</li>"
+          "<li><b>When you move out,</b> the landlord returns it within 30 days, with any "
+          "interest. A landlord who keeps any of it for damage beyond reasonable wear and tear, "
+          "unpaid rent or other charges must give you a written, itemized list.</li></ul>"
+          "<p>Give your landlord your new address when you leave. A landlord who does not "
+          "return a deposit as the law requires can owe you twice the amount wrongly kept.</p>",
+          law=["RSA 540-A:5", "RSA 540-A:6", "RSA 540-A:7", "RSA 540-A:8"]),
+     step("Repairs, heat and a safe home",
+          "<p>Where your town has no housing code of its own, the law sets the minimum: no "
+          "insect, rodent or bed bug infestation left without an inspection and treatment "
+          "program; no defective plumbing or sewage back-up; no exposed wires or other danger "
+          "of shock or fire; no roof or walls that leak; no falling plaster, large holes, or "
+          "unsound porches, stairs or railings; enough water and working hot water equipment; "
+          "no gas leaks; and heat that can keep every room at an average of at least 65 "
+          "degrees. Towns with a housing code enforce their own standards.</p>"
+          "<p><b>Tell your landlord in writing</b> what needs fixing, and keep a copy. If it is "
+          "not fixed, ask your town&rsquo;s code enforcement or health officer to inspect. A "
+          "landlord must look into a report of bed bugs or other pests within 7 days.</p>"
+          "<p>If you are evicted for not paying rent, the court may refuse the eviction when "
+          "the home has a serious health or safety violation that you reported in writing "
+          "while you were not behind on rent, and the landlord did not fix it within 14 days. "
+          "The court may require you to pay the rent into court meanwhile. Holding back rent is "
+          "risky: talk to legal aid before you do.</p>",
+          law=["RSA 48-A:14", "RSA 540-A:3", "RSA 540:13-d"]),
+     step("Rent increases, the end of a lease, and retaliation",
+          "<p><b>When a landlord needs a reason.</b> For most rentals, a landlord can end your "
+          "tenancy only for a reason the law lists: unpaid rent, substantial damage, breaking "
+          "a material term of the lease, behavior that threatens others&rsquo; health or "
+          "safety, or other good cause, which can be a legitimate business or economic reason. "
+          "A lease of 12 months or longer can also end at its term, if the landlord gave you "
+          "written notice at least 60 days before. The exceptions, where no reason is needed: "
+          "a single-family house whose owner owns no more than 3, and a unit in a building of 4 "
+          "units or fewer that the owner lives in.</p>"
+          "<p><b>Rent increases.</b> Refusing a rent increase can be good cause to evict, but "
+          "only if the landlord gave you written notice of the amount and the date at least 30 "
+          "days before it takes effect.</p>"
+          "<p><b>Retaliation.</b> A landlord may not evict you for reporting a code violation, "
+          "for going to court under the tenant protection law, or for meeting with other "
+          "tenants, unless you owe a week&rsquo;s rent or more. An eviction, a rent increase or "
+          "a big change in your terms within 6 months of that is presumed to be retaliation, "
+          "and the court can award you up to 3 months&rsquo; rent.</p>"
+          "<p><b>Moving out yourself.</b> To end a month-to-month tenancy, give 30 days&rsquo; "
+          "written notice. A victim of domestic violence, sexual assault or stalking can end a "
+          "lease early, with verification, and may not be evicted for being a victim.</p>",
+          law=["RSA 540:1-a", "RSA 540:2", "RSA 540:11", "RSA 540:11-b", "RSA 540:13-a",
+               "RSA 540:13-b", "RSA 540:14"]),
+     step("If you get an eviction notice or court papers",
+          "<ul><li><b>The eviction notice</b> must be in writing and say why. It gives you 7 "
+          "days to leave for unpaid rent, substantial damage or a threat to others&rsquo; "
+          "safety, and 30 days for other reasons. It does not make you leave by itself: if you "
+          "stay, the landlord must go to court.</li>"
+          "<li><b>For unpaid rent,</b> the case is dismissed if, before the hearing, you pay "
+          "all the rent you owe, other lawful charges, $15 and the landlord&rsquo;s filing and "
+          "service costs. You can do this up to 3 times in a 12-month period.</li>"
+          "<li><b>Before any court case,</b> the court&rsquo;s free Eviction Diversion Program "
+          "offers a mediator to help you and your landlord reach an agreement.</li>"
+          "<li><b>If you are served court papers</b> (a Landlord/Tenant Writ), file an "
+          "Appearance by the <em>return date</em> on the writ, and an answer with your defenses "
+          "no more than 5 days after it. If you do not, you can lose without a hearing.</li>"
+          "<li><b>If you lose,</b> the court may give you up to 60 days to move, if you pay "
+          "the rent each week. To appeal, file a notice of intent to appeal within 7 days of "
+          "the decision, and pay rent as it comes due.</li></ul>"
+          "<p>After you leave, your landlord must store anything you left behind, with "
+          "reasonable care, for 7 days, and let you take it without paying rent or storage "
+          "fees.</p>",
+          actions=[("Landlord and tenant cases (Judicial Branch)", COURTS_LLT)],
+          law=["RSA 540:3", "RSA 540:9", "RSA 540:13", "RSA 540:13-c", "RSA 540-A:3"])],
+    [("Landlord/Tenant, District Division (Judicial Branch)", COURTS_LLT),
+     ("Resources for Renters (New Hampshire Housing)", NHH_RENTERS),
+     ("Actions Against Tenants, RSA 540", "/laws/540"),
+     ("Prohibited Practices and Security Deposits, RSA 540-A", "/laws/540-a"),
+     ("Housing Standards, RSA 48-A", "/laws/48-a")],
+    ["540", "540-A", "48-A"],
+    [# The Judicial Branch's and New Hampshire Housing's pages, as the
+     # homelessness guide read them on 24 October 2026.
+     claim("The Eviction Diversion Program: free mediation before a court case, voluntary, no "
+           "rights given up; a tenant files an Appearance by the return date on the "
+           "Landlord/Tenant Writ to be heard; the return date is not the hearing; trial within "
+           "about 10 days of an Appearance; failing to file or appear brings a Notice of "
+           "Default, and the Writ of Possession does not issue for at least 5 business days; "
+           "after judgment for the landlord, 7 days to file a Notice of Intent to Appeal, with "
+           "weekly rent paid during the appeal.", COURTS_LLT, HL_READ),
+     claim("For emergency shelter or housing, call 2-1-1, contact your local Community Action "
+           "Program, or contact town welfare; New Hampshire Housing encourages anyone "
+           "struggling to pay rent to apply and indicate preferences; wait about 7 to 9 years; "
+           "contact your town about a town housing authority; for eviction help, 603 Legal Aid "
+           "and New Hampshire Legal Assistance.", NHH_RENTERS, HL_READ),
+     # The statutes, as this site's Laws pages print them, read 25 October 2026.
+     claim("No landlord shall willfully violate a tenant's right to quiet enjoyment or attempt "
+           "to circumvent lawful procedures for eviction; no tenant shall willfully damage the "
+           "landlord's property or prevent completion of necessary repairs.", "RSA 540-A:2",
+           RENT_READ),
+     claim("No landlord shall willfully interrupt or terminate any utility service, including "
+           "water, heat, light, electricity and gas, except temporarily while repairs are in "
+           "process or in emergencies (I); deny a tenant access to the premises (II) or to the "
+           "tenant's property (III) other than through proper judicial process; enter without "
+           "prior consent other than to make emergency repairs (IV), or with a court order "
+           "(V-d); a tenant shall not willfully prevent necessary repairs or refuse access at a "
+           "reasonable time after adequate notice (V); a landlord investigates a report of an "
+           "infestation within 7 days (V-a); stores a vacated tenant's personal property with "
+           "reasonable care for 7 days, recoverable without rent or storage fees (VII).",
+           "RSA 540-A:3", RENT_READ),
+     claim("A petition in the district court, no filing fee, without legal counsel; the clerks "
+           "supply forms; a hearing within 30 days of filing or 10 days of service, whichever "
+           "is later; temporary orders on an immediate threat of irreparable harm; damages; "
+           "the civil remedies of RSA 358-A:10 with costs and reasonable attorney's fees.",
+           "RSA 540-A:4", RENT_READ),
+     claim("A landlord for this subdivision excludes a person who rents a single-family "
+           "residence and owns no other rental property, or rents units in an owner-occupied "
+           "building of 5 units or less, except for a unit occupied by a person 60 years of "
+           "age or older.", "RSA 540-A:5", RENT_READ),
+     claim("No security deposit in excess of one month's rent or $100, whichever is greater; a "
+           "signed receipt stating the amount and where held, not required when paid by check; "
+           "notice that conditions needing repair be noted in writing within 5 days of "
+           "occupancy; deposits held in trust; interest on a deposit held one year or longer.",
+           "RSA 540-A:6", RENT_READ),
+     claim("Return the security deposit and interest within 30 days from the termination of the "
+           "tenancy; deduct damages excluding reasonable wear and tear, unpaid rent and other "
+           "lawful charges, with a written, itemized list.", "RSA 540-A:7", RENT_READ),
+     claim("A landlord who does not comply with RSA 540-A:6, IV or 540-A:7 is liable for twice "
+           "the deposit plus interest, less lawful charges; not liable if the tenant failed to "
+           "give a new address; unclaimed deposits after 6 months become the landlord's.",
+           "RSA 540-A:8", RENT_READ),
+     claim("In a municipality without its own ordinance, no landlord shall maintain premises "
+           "infested by insects, rodents or bed bugs without an inspection program; with "
+           "defective plumbing or sewage back-up; electrical dangers; leaking roof or walls; "
+           "falling plaster; substantial holes; unsound porches, stairs or railings; garbage "
+           "in common areas; inadequate water or hot water equipment; gas leaks; or heating "
+           "not capable of a temperature of at least an average of 65 degrees.",
+           "RSA 48-A:14", RENT_READ),
+     claim("No possessory action for nonpayment if the premises are in substantial violation "
+           "of RSA 48-A or local codes materially affecting habitability, the tenant gave notice "
+           "while not in arrears, and the landlord failed to correct within 14 days; the court "
+           "may require rent paid into court.", "RSA 540:13-d", RENT_READ),
+     claim("Nonrestricted property: single-family houses whose owner owns not more than 3, "
+           "and units in an owner-occupied building of 4 dwelling units or fewer; restricted "
+           "property is all other residential rental property.", "RSA 540:1-a", RENT_READ),
+     claim("Restricted property may be terminated only for nonpayment, substantial damage, "
+           "failure to comply with a material term, behavior adversely affecting health or "
+           "safety, other good cause, and the other listed reasons; a lease of 12 months or "
+           "longer at its expiration with written notice at least 60 days in advance; refusal "
+           "of a rent increase is good cause if written notice of the amount and effective "
+           "date came at least 30 days prior; other good cause includes any legitimate "
+           "business or economic reason; no termination solely because a tenant is a victim "
+           "of domestic violence, sexual assault or stalking.", "RSA 540:2", RENT_READ),
+     claim("A month-to-month tenancy may be terminated by the lessee upon 30 days notice.",
+           "RSA 540:11", RENT_READ),
+     claim("A tenant may terminate a lease when the tenant or a household member has been a "
+           "victim of domestic violence, sexual assault or stalking, with written verification.",
+           "RSA 540:11-b", RENT_READ),
+     claim("Except where the tenant owes a week's rent or more, a defense that the possessory "
+           "action retaliates for reporting a violation, initiating an action under RSA 540-A, "
+           "or meeting with other tenants.", "RSA 540:13-a", RENT_READ),
+     claim("A rebuttable presumption of retaliation when a possessory action, an increase in "
+           "rent or a substantial alteration in the terms is instituted within 6 months after "
+           "the protected act.", "RSA 540:13-b", RENT_READ),
+     claim("On a successful defense of retaliation, damages of not more than 3 months' rent.",
+           "RSA 540:14", RENT_READ),
+     claim("For residential tenancies, 30 days' notice; 7 days' notice for nonpayment, "
+           "substantial damage, behavior affecting health or safety; the eviction notice "
+           "states the reason with specificity, and for nonpayment the right to avoid eviction "
+           "by payment.", "RSA 540:3", RENT_READ),
+     claim("A possessory action for nonpayment is dismissed if the tenant pays, before the "
+           "hearing, all rent due, other lawful charges, $15 liquidated damages and the filing "
+           "fee and service charges; not more than 3 times within a 12-month period.",
+           "RSA 540:9", RENT_READ),
+     claim("The tenant files an appearance no later than the return day on the writ and an "
+           "answer not more than 5 days after the return date; a notice of intent to appeal "
+           "within 7 days of the notice of decision, paying rent as it comes due.",
+           "RSA 540:13", RENT_READ),
+     claim("After judgment, the court may order that the tenant not be dispossessed until a "
+           "date not later than 60 days, the tenant paying the weekly former rent in advance.",
+           "RSA 540:13-c", RENT_READ)]
+    + help_claims("legal_aid"),
+    more="<h2>Who Can Help</h2>"
+         "<p>Get help as early as you can, before a deadline passes. Your town or city&rsquo;s "
+         "code enforcement or health officer handles unsafe conditions. For an eviction, a "
+         "lockout or a deposit:</p>"
+         + helps("legal_aid"),
+    see=[("Renting out a home: a landlord's rights and duties", "/guides/landlord-duties.html"),
+         ("How to get help if you are homeless or may lose your home",
+          "/guides/homelessness-help.html"),
+         ("How to get help after domestic violence, sexual assault or stalking",
+          "/guides/domestic-violence-help.html")],
+    figures=[fig("$100", "RSA 540-A:6", "one month's rent or $100"),
+             fig("30 days", "RSA 540-A:7", "within 30 days from the termination of the tenancy"),
+             fig("10 days", "RSA 540-A:4", "within 10 days of service of process"),
+             fig("5 units", "RSA 540-A:5", "building of 5 units or less"),
+             fig("5 days", "RSA 540-A:6", "within 5 days of occupancy"),
+             fig("7 days", "RSA 540-A:3", "within 7 days of receiving notice"),
+             fig("14 days", "RSA 540:13-d", "within 14 days of the receipt"),
+             fig("12 months", "RSA 540:2", "original term of which is 12 months or longer"),
+             fig("60 days", "RSA 540:2", "at least 60 days in advance"),
+             fig("4 units", "RSA 540:1-a", "containing a total of 4 dwelling units or fewer"),
+             fig("6 months", "RSA 540:13-b", "within 6 months after"),
+             fig("3 months", "RSA 540:14", "not more than 3 months' rent"),
+             fig("$15", "RSA 540:9", "$15 liquidated damages"),
+             fig("12-month", "RSA 540:9", "within a 12-month period")])
+
+LANDLORD = guide(
+    "landlord-duties", "Renting Out a Home: A Landlord's Rights and Duties",
+    "What New Hampshire law asks of a landlord: security deposits, entering the home, repairs "
+    "and minimum standards, ending a tenancy, and the only lawful way to evict, through the "
+    "district court.",
+    "A New Hampshire landlord ends a tenancy with a written eviction notice and, if the tenant "
+    "stays, a case in the circuit court&rsquo;s district division: changing the locks, shutting "
+    "off a utility or removing a tenant&rsquo;s belongings is against the law. Most landlords "
+    "may hold a security deposit of no more than one month&rsquo;s rent or $100, whichever is "
+    "more, and must return it within 30 days of the end of the tenancy, with an itemized list "
+    "of any deductions. You must keep the home free of the hazards the law lists, and you may "
+    "enter without the tenant&rsquo;s consent only for emergency repairs or with a court "
+    "order.",
+    [ask("What do you need to do?",
+         [("Take a security deposit",
+           "At most one month&rsquo;s rent or $100, whichever is more, with a receipt."),
+          ("Get into the unit",
+           "With the tenant&rsquo;s consent, after adequate notice; without it, only for "
+           "emergency repairs or with a court order."),
+          ("End a tenancy",
+           "Serve a written eviction notice; if the tenant stays, file a case in the district "
+           "court."),
+          ("Close out after a tenant leaves",
+           "Return the deposit within 30 days, and store belongings left behind for 7 days.")]),
+     box("Never lock a tenant out, shut off a utility or remove belongings: only the court and "
+         "the sheriff can.")],
+    [step("Before you rent",
+          "<p><b>Know which rules apply to your property.</b> Most residential rentals are "
+          "&ldquo;restricted property&rdquo;, where you need a reason the law lists to end a "
+          "tenancy. A single-family house is not, if you own no more than 3, and neither is a "
+          "unit in a building of 4 units or fewer that you live in.</p>"
+          "<p>If you own restricted property, file a statement with the town or city clerk, "
+          "within 30 days of becoming the owner, naming a person in New Hampshire who can "
+          "accept court papers for you; it may be you.</p>"
+          "<p>Before you charge an application fee, tell the applicant in writing how much it "
+          "is and whether you require a background or credit check. If you do not rent to "
+          "them, return whatever is beyond the actual cost of those checks and reasonable "
+          "costs within 30 days. You may not require rent to be paid only electronically: "
+          "accept at least one other way.</p>",
+          law=["RSA 540:1-a", "RSA 540:1-b", "RSA 540-A:3"]),
+     step("Security deposits",
+          "<p>These rules apply unless you rent out a single-family home and own no other "
+          "rental property, or rent units in a building of 5 units or fewer that you live in, "
+          "and even then they apply to a tenant 60 or older.</p>"
+          "<ul><li><b>The limit:</b> one month&rsquo;s rent or $100, whichever is more.</li>"
+          "<li><b>A signed receipt</b> stating the amount and where it is held, unless the "
+          "tenant paid by check, and written notice that the tenant may list conditions needing "
+          "repair within 5 days of moving in.</li>"
+          "<li><b>Hold it in trust,</b> apart from your own money, in a New Hampshire bank or "
+          "credit union, or post a bond with the town or city clerk. Held a year or longer, it "
+          "earns the tenant interest.</li>"
+          "<li><b>Return it within 30 days</b> of the end of the tenancy, with any interest. "
+          "You may deduct the cost of damage beyond reasonable wear and tear, unpaid rent and "
+          "other lawful charges, with a written, itemized list and evidence of the repairs, "
+          "such as receipts or estimates.</li>"
+          "<li><b>If you sell the property,</b> turn the deposits over to the buyer and tell "
+          "each tenant by registered or certified mail.</li></ul>"
+          "<p>A landlord who does not return a deposit as required can owe the tenant twice "
+          "the amount.</p>",
+          law=["RSA 540-A:5", "RSA 540-A:6", "RSA 540-A:7", "RSA 540-A:8"]),
+     step("Entering the home, repairs and minimum standards",
+          "<p><b>Entry.</b> Enter only with the tenant&rsquo;s consent, given at a reasonable "
+          "time after notice that is adequate under the circumstances. Without consent, you "
+          "may enter only to make emergency repairs, or with a court order; if a tenant "
+          "refuses reasonable access, you can ask the district court for one.</p>"
+          "<p><b>Minimum standards.</b> Where the town has no housing code of its own, the law "
+          "forbids keeping a rental with an untreated insect, rodent or bed bug infestation, "
+          "defective plumbing or sewage back-up, electrical hazards, a leaking roof or walls, "
+          "falling plaster, large holes, unsound porches, stairs or railings, garbage piling "
+          "up in common areas, too little water or broken hot water equipment, gas leaks, or "
+          "heat that cannot keep every room at an average of at least 65 degrees. Towns with a "
+          "housing code enforce their own.</p>"
+          "<p>Investigate a tenant&rsquo;s report of bed bugs or other pests within 7 days, and "
+          "take reasonable steps to remove them. A tenant who reported a serious violation in "
+          "writing, and was not behind on rent, has a defense to an eviction for nonpayment if "
+          "you did not fix it within 14 days.</p>",
+          law=["RSA 540-A:3", "RSA 540-A:4", "RSA 48-A:14", "RSA 540:13-d"]),
+     step("Ending a tenancy",
+          "<p><b>The reasons.</b> For restricted property: unpaid rent, substantial damage, "
+          "breaking a material term of the lease, behavior that threatens others&rsquo; health "
+          "or safety, or other good cause, which can be a legitimate business or economic "
+          "reason. If the cause is the tenant&rsquo;s own conduct, first give a written warning "
+          "that it would be grounds for eviction. A lease of 12 months or longer can end at its "
+          "term if you give written notice at least 60 days before. A tenant who refuses a rent "
+          "increase can be evicted for good cause only if you gave written notice of the amount "
+          "and the date at least 30 days ahead.</p>"
+          "<p><b>The notice.</b> An eviction notice is in writing and states the reason "
+          "specifically. It allows 7 days for unpaid rent, substantial damage or a threat to "
+          "health or safety, and 30 days for other reasons. For unpaid rent, serve a demand "
+          "for rent too, and the notice must tell the tenant of the right to pay and stay. "
+          "Anyone can serve them, in hand or at the tenant&rsquo;s home; the court has the "
+          "forms.</p>"
+          "<p><b>What you may not do.</b> You may not evict to retaliate against a tenant who "
+          "reported a code violation, went to court under the tenant protection law, or met "
+          "with other tenants, unless the tenant owes a week&rsquo;s rent or more; nor evict a "
+          "tenant for being a victim of domestic violence, sexual assault or stalking.</p>",
+          law=["RSA 540:2", "RSA 540:3", "RSA 540:5", "RSA 540:13-a", "RSA 540:13-b"]),
+     step("Going to court",
+          "<p>If the tenant has not left when the notice runs out, file a Landlord/Tenant Writ "
+          "in the circuit court&rsquo;s district division. The sheriff serves it, and it is "
+          "returnable 7 days after service. You may claim unpaid rent in the same case, up to "
+          "$1,500, and sue separately for more. Before any case, the court&rsquo;s free Eviction Diversion Program offers a "
+          "mediator.</p>"
+          "<p>In a case only for unpaid rent, the tenant can end it by paying, before the "
+          "hearing, the rent owed, other lawful charges, $15 and your filing and service costs, "
+          "up to 3 times in a 12-month period. You may accept back rent during the case without "
+          "creating a new tenancy, if you tell the tenant in writing that you are going ahead "
+          "with the eviction.</p>"
+          "<p>If you win, the court issues a writ of possession, and the sheriff, not you, "
+          "removes the tenant. The court may give the tenant up to 60 days, with rent paid "
+          "weekly.</p>"
+          "<p>A lockout, a utility shut-off or removing a tenant&rsquo;s things instead of "
+          "going to court can cost you the tenant&rsquo;s damages, costs and attorney&rsquo;s "
+          "fees, and no less than $3,000 if you have already re-let the home.</p>",
+          actions=[("Landlord and tenant cases (Judicial Branch)", COURTS_LLT)],
+          law=["RSA 540:9", "RSA 540:13", "RSA 540:13-c", "RSA 540:14", "RSA 540-A:4"]),
+     step("After the tenant leaves",
+          "<p>Return the security deposit, with any interest and an itemized list of "
+          "deductions, within 30 days. If the tenant gave you no new address, you are not "
+          "liable for missing the deadline, and a deposit unclaimed after 6 months becomes "
+          "yours.</p>"
+          "<p>Store anything the tenant left behind, with reasonable care, for 7 days after "
+          "they leave, and let them take it back without paying rent or storage fees. After "
+          "that, you may dispose of it.</p>",
+          law=["RSA 540-A:7", "RSA 540-A:8", "RSA 540-A:3"])],
+    [("Landlord/Tenant, District Division (Judicial Branch)", COURTS_LLT),
+     ("Actions Against Tenants, RSA 540", "/laws/540"),
+     ("Prohibited Practices and Security Deposits, RSA 540-A", "/laws/540-a"),
+     ("Housing Standards, RSA 48-A", "/laws/48-a")],
+    ["540", "540-A", "48-A"],
+    [# The Judicial Branch's page, as the homelessness guide read it on 24
+     # October 2026.
+     claim("The Eviction Diversion Program: free mediation before a court case, voluntary, no "
+           "rights given up; a tenant files an Appearance by the return date on the "
+           "Landlord/Tenant Writ to be heard; the return date is not the hearing; trial within "
+           "about 10 days of an Appearance; failing to file or appear brings a Notice of "
+           "Default, and the Writ of Possession does not issue for at least 5 business days; "
+           "after judgment for the landlord, 7 days to file a Notice of Intent to Appeal, with "
+           "weekly rent paid during the appeal.", COURTS_LLT, HL_READ),
+     # The statutes, as this site's Laws pages print them, read 25 October 2026.
+     claim("Nonrestricted property: single-family houses whose owner owns not more than 3, "
+           "and units in an owner-occupied building of 4 dwelling units or fewer; restricted "
+           "property is all other residential rental property.", "RSA 540:1-a", RENT_READ),
+     claim("An owner of restricted property files with the town or city clerk, within 30 days "
+           "of becoming the owner, the name, address and telephone number of a person within "
+           "the state authorized to accept service of process; it may be the owner.",
+           "RSA 540:1-b", RENT_READ),
+     claim("No utility interruption (I), denial of access to the premises (II) or to the "
+           "tenant's property (III) other than through proper judicial process; entry only "
+           "with prior consent, for emergency repairs (IV), or with a court order (V-d); a "
+           "tenant may not refuse access at a reasonable time after adequate notice (V); "
+           "investigate a reported infestation within 7 days and take reasonable measures "
+           "(V-a); store a vacated tenant's property with reasonable care for 7 days, then "
+           "dispose of it (VII); disclose an application fee in writing and return the excess "
+           "within 30 days (VIII); allow at least one non-electronic form of payment (X).",
+           "RSA 540-A:3", RENT_READ),
+     claim("A petition in the district court to enforce RSA 540-A:2 and 540-A:3; the civil "
+           "remedies of RSA 358-A:10 with costs and reasonable attorney's fees; landlord "
+           "damages for an unlawful lock-out where the premises have been re-let not less "
+           "than $3,000.", "RSA 540-A:4", RENT_READ),
+     claim("A landlord for this subdivision excludes a person who rents a single-family "
+           "residence and owns no other rental property, or rents units in an owner-occupied "
+           "building of 5 units or less, except for a unit occupied by a person 60 years of "
+           "age or older.", "RSA 540-A:5", RENT_READ),
+     claim("No security deposit in excess of one month's rent or $100, whichever is greater; a "
+           "signed receipt stating the amount and where held, not required when paid by check; "
+           "notice that conditions needing repair be given in writing within 5 days of "
+           "occupancy; deposits held in trust, not mingled with the landlord's money, in a New "
+           "Hampshire bank, savings and loan or credit union, or a bond posted with the town or "
+           "city clerk; turned over on a sale with notice by registered or certified mail; "
+           "interest on a deposit held one year or longer.", "RSA 540-A:6", RENT_READ),
+     claim("Return the security deposit and interest within 30 days from the termination of the "
+           "tenancy; deduct damages excluding reasonable wear and tear, with a written, "
+           "itemized list and satisfactory evidence of repair such as receipts and estimates; "
+           "deduct unpaid rent and lawful charges with an itemized list.", "RSA 540-A:7",
+           RENT_READ),
+     claim("A landlord who does not comply with RSA 540-A:6, IV or 540-A:7 is liable for twice "
+           "the deposit plus interest, less lawful charges; not liable if the tenant failed to "
+           "give a new address; unclaimed deposits after 6 months become the landlord's.",
+           "RSA 540-A:8", RENT_READ),
+     claim("In a municipality without its own ordinance, no landlord shall maintain premises "
+           "infested by insects, rodents or bed bugs without an inspection program; with "
+           "defective plumbing or sewage back-up; electrical dangers; leaking roof or walls; "
+           "falling plaster; substantial holes; unsound porches, stairs or railings; garbage "
+           "in common areas; inadequate water or hot water equipment; gas leaks; or heating "
+           "not capable of a temperature of at least an average of 65 degrees.",
+           "RSA 48-A:14", RENT_READ),
+     claim("No possessory action for nonpayment if the premises are in substantial violation "
+           "of RSA 48-A or local codes materially affecting habitability, the tenant gave notice "
+           "while not in arrears, and the landlord failed to correct within 14 days.",
+           "RSA 540:13-d", RENT_READ),
+     claim("Restricted property may be terminated only for nonpayment, substantial damage, "
+           "failure to comply with a material term, behavior adversely affecting health or "
+           "safety, other good cause, and the other listed reasons; written notice before an "
+           "eviction for other good cause based on the tenant's conduct; a lease of 12 months "
+           "or longer at its expiration with written notice at least 60 days in advance; "
+           "refusal of a rent increase is good cause if written notice came at least 30 days "
+           "prior; other good cause includes any legitimate business or economic reason; no "
+           "termination solely because a tenant is a victim of domestic violence, sexual "
+           "assault or stalking.", "RSA 540:2", RENT_READ),
+     claim("For residential tenancies, 30 days' notice; 7 days' notice for nonpayment, "
+           "substantial damage, behavior affecting health or safety; the reason stated with "
+           "specificity; for nonpayment, notice of the right to avoid eviction by payment.",
+           "RSA 540:3", RENT_READ),
+     claim("A demand for rent or eviction notice may be served by any person, personally or at "
+           "the last and usual place of abode; the district court provides forms.",
+           "RSA 540:5", RENT_READ),
+     claim("Except where the tenant owes a week's rent or more, a defense that the possessory "
+           "action retaliates for reporting a violation, initiating an action under RSA 540-A, "
+           "or meeting with other tenants.", "RSA 540:13-a", RENT_READ),
+     claim("A rebuttable presumption of retaliation when a possessory action, an increase in "
+           "rent or a substantial alteration in the terms is instituted within 6 months after "
+           "the protected act.", "RSA 540:13-b", RENT_READ),
+     claim("A possessory action for nonpayment is dismissed if the tenant pays, before the "
+           "hearing, all rent due, other lawful charges, $15 liquidated damages and the filing "
+           "fee and service charges; not more than 3 times within a 12-month period.",
+           "RSA 540:9", RENT_READ),
+     claim("The writ is returnable 7 days from service by the sheriff; a claim for unpaid rent, "
+           "a money judgment limited to a maximum of $1,500; accepting the arrearage during "
+           "the action without creating a new tenancy, with written notice of the intent to "
+           "proceed.", "RSA 540:13", RENT_READ),
+     claim("After judgment, the court may order that the tenant not be dispossessed until a "
+           "date not later than 60 days, the tenant paying the weekly former rent in advance.",
+           "RSA 540:13-c", RENT_READ),
+     claim("A writ of possession authorizes the sheriff to remove the defendant from the "
+           "premises.", "RSA 540:14", RENT_READ)]
+    + help_claims("lawyer"),
+    more="<h2>Who Can Help</h2>"
+         "<p>The district court&rsquo;s clerks have the forms for a demand for rent, an "
+         "eviction notice and a Landlord/Tenant Writ, but cannot give legal advice. For advice "
+         "about your own situation, talk to a lawyer:</p>"
+         + helps("lawyer"),
+    see=[("Your rights as a tenant", "/guides/tenant-rights.html"),
+         ("How to appeal your property tax assessment", "/guides/property-tax-abatement.html")],
+    figures=[fig("$100", "RSA 540-A:6", "one month's rent or $100"),
+             fig("30 days", "RSA 540-A:7", "within 30 days from the termination of the tenancy"),
+             fig("7 days", "RSA 540-A:3", "for a period of 7 days"),
+             fig("4 units", "RSA 540:1-a", "containing a total of 4 dwelling units or fewer"),
+             fig("5 units", "RSA 540-A:5", "building of 5 units or less"),
+             fig("5 days", "RSA 540-A:6", "within 5 days of occupancy"),
+             fig("14 days", "RSA 540:13-d", "within 14 days of the receipt"),
+             fig("12 months", "RSA 540:2", "original term of which is 12 months or longer"),
+             fig("60 days", "RSA 540:2", "at least 60 days in advance"),
+             fig("$1,500", "RSA 540:13", "a maximum of $1,500"),
+             fig("$15", "RSA 540:9", "$15 liquidated damages"),
+             fig("12-month", "RSA 540:9", "within a 12-month period"),
+             fig("$3,000", "RSA 540-A:4", "shall not be less than $3,000"),
+             fig("6 months", "RSA 540-A:8", "after 6 months from the termination")])
+
+GUIDES += [TENANT, LANDLORD]
+
+
+# ---------------------------------------------------------------------------
 # STORMS, POWER OUTAGES AND OTHER EMERGENCIES (the person, 24 October 2026).
 # From FEMA's Ready.gov pages on a supply kit, power outages and winter
 # weather, read on 24 October 2026 through the session's web reader (Ready.gov
@@ -6914,6 +7437,13 @@ TASKS = [
         task("homelessness-help", "Get help if you are homeless or may lose your home",
              "Shelter, your town&rsquo;s welfare office, your rights in an eviction, and a "
              "housing voucher."),
+        task("tenant-rights", "Know your rights as a tenant",
+             "Security deposits, repairs and heat, rent increases, and what happens in an "
+             "eviction.",
+             head="Your rights as a tenant, from deposits to eviction"),
+        task("landlord-duties", "Rent out a home",
+             "A landlord&rsquo;s duties: security deposits, entry, minimum standards, and "
+             "evicting through the court."),
         task("storms-and-emergencies", "Prepare for storms, power outages and emergencies",
              "Emergency alerts, supplies, power outage and winter storm safety, and where to "
              "find a warm place."),
@@ -7067,6 +7597,11 @@ WORDS = {
                        "human rights", "fair housing", "racism", "retaliation"),
     "homelessness-help": ("homeless", "shelter", "eviction", "evicted", "housing voucher",
                           "section 8", "town welfare", "rent"),
+    "tenant-rights": ("tenant", "renter", "renting", "landlord", "security deposit",
+                      "eviction", "evicted", "lease", "rent increase", "repairs", "no heat",
+                      "locked out", "bed bugs"),
+    "landlord-duties": ("landlord", "rental property", "evict a tenant", "eviction notice",
+                        "security deposit", "lease", "tenant", "demand for rent"),
     "storms-and-emergencies": ("storm", "power outage", "emergency", "nh alerts", "generator",
                                "snow storm", "warming center", "emergency kit"),
     "trash-and-recycling": ("trash", "recycling", "dump", "transfer station", "hazardous waste",

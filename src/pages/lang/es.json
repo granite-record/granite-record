@@ -5136,6 +5136,256 @@
    "es": "Sí",
    "state": "draft"
   },
+  "guide.landlord-duties.a-landlord-who-does-not-return": {
+   "en": "A landlord who does not return a deposit as required can owe the tenant twice the amount.",
+   "es": "Un arrendador que no devuelve un depósito como lo exige la ley puede deberle al inquilino el doble de la cantidad.",
+   "state": "draft"
+  },
+  "guide.landlord-duties.a-lockout-a-utility-shut-off": {
+   "en": "A lockout, a utility shut-off or removing a tenant&rsquo;s things instead of going to court can cost you the tenant&rsquo;s damages, costs and attorney&rsquo;s fees, and no less than $3,000 if you have already re-let the home.",
+   "es": "Dejar fuera a un inquilino, cortarle un servicio o sacar sus cosas en lugar de acudir al tribunal puede costarle los daños del inquilino, las costas y los honorarios de abogado, y no menos de $3,000 si ya volvió a alquilar la vivienda.",
+   "state": "draft"
+  },
+  "guide.landlord-duties.a-new-hampshire-landlord-ends-a": {
+   "en": "A New Hampshire landlord ends a tenancy with a written eviction notice and, if the tenant stays, a case in the circuit court&rsquo;s district division: changing the locks, shutting off a utility or removing a tenant&rsquo;s belongings is against the law. Most landlords may hold a security deposit of no more than one month&rsquo;s rent or $100, whichever is more, and must return it within 30 days of the end of the tenancy, with an itemized list of any deductions. You must keep the home free of the hazards the law lists, and you may enter without the tenant&rsquo;s consent only for emergency repairs or with a court order.",
+   "es": "En New Hampshire, un arrendador termina un arrendamiento con un aviso de desalojo por escrito y, si el inquilino se queda, con un caso en la división de distrito del tribunal de circuito: cambiar las cerraduras, cortar un servicio o sacar las pertenencias de un inquilino es ilegal. La mayoría de los arrendadores no pueden cobrar un depósito de garantía de más de un mes de renta o $100, lo que sea mayor, y deben devolverlo dentro de los 30 días del fin del arrendamiento, con una lista detallada de cualquier descuento. Usted debe mantener la vivienda libre de los peligros que la ley enumera, y solo puede entrar sin el consentimiento del inquilino para hacer reparaciones de emergencia o con una orden judicial.",
+   "state": "draft"
+  },
+  "guide.landlord-duties.a-signed-receipt-stating-the-amount": {
+   "en": "<b>A signed receipt</b> stating the amount and where it is held, unless the tenant paid by check, and written notice that the tenant may list conditions needing repair within 5 days of moving in.",
+   "es": "<b>Un recibo firmado</b> que indique la cantidad y dónde se guarda, salvo que el inquilino haya pagado con cheque, y un aviso por escrito de que el inquilino puede anotar lo que necesita reparación dentro de los 5 días de mudarse.",
+   "state": "draft"
+  },
+  "guide.landlord-duties.actions-against-tenants-rsa-540": {
+   "en": "Actions Against Tenants, RSA 540",
+   "es": "Acciones contra inquilinos, RSA 540",
+   "state": "draft"
+  },
+  "guide.landlord-duties.after-the-tenant-leaves": {
+   "en": "After the tenant leaves",
+   "es": "Cuando el inquilino se va",
+   "state": "draft"
+  },
+  "guide.landlord-duties.at-most-one-months-rent-or": {
+   "en": "At most one month&rsquo;s rent or $100, whichever is more, with a receipt.",
+   "es": "Como máximo un mes de renta o $100, lo que sea mayor, con un recibo.",
+   "state": "draft"
+  },
+  "guide.landlord-duties.before-you-charge-an-application-fee": {
+   "en": "Before you charge an application fee, tell the applicant in writing how much it is and whether you require a background or credit check. If you do not rent to them, return whatever is beyond the actual cost of those checks and reasonable costs within 30 days. You may not require rent to be paid only electronically: accept at least one other way.",
+   "es": "Antes de cobrar una cuota de solicitud, dígale al solicitante por escrito cuánto es y si exige una verificación de antecedentes o de crédito. Si no le alquila, devuélvale lo que exceda el costo real de esas verificaciones y los gastos razonables dentro de 30 días. No puede exigir que la renta se pague solo por medios electrónicos: acepte al menos otra forma de pago.",
+   "state": "draft"
+  },
+  "guide.landlord-duties.before-you-rent": {
+   "en": "Before you rent",
+   "es": "Antes de alquilar",
+   "state": "draft"
+  },
+  "guide.landlord-duties.close-out-after-a-tenant-leaves": {
+   "en": "Close out after a tenant leaves",
+   "es": "Cerrar cuentas cuando un inquilino se va",
+   "state": "draft"
+  },
+  "guide.landlord-duties.end-a-tenancy": {
+   "en": "End a tenancy",
+   "es": "Terminar un arrendamiento",
+   "state": "draft"
+  },
+  "guide.landlord-duties.ending-a-tenancy": {
+   "en": "Ending a tenancy",
+   "es": "Cómo terminar un arrendamiento",
+   "state": "draft"
+  },
+  "guide.landlord-duties.entering-the-home-repairs-and-minimum": {
+   "en": "Entering the home, repairs and minimum standards",
+   "es": "Entrar a la vivienda, reparaciones y normas mínimas",
+   "state": "draft"
+  },
+  "guide.landlord-duties.entry-enter-only-with-the-tenants": {
+   "en": "<b>Entry.</b> Enter only with the tenant&rsquo;s consent, given at a reasonable time after notice that is adequate under the circumstances. Without consent, you may enter only to make emergency repairs, or with a court order; if a tenant refuses reasonable access, you can ask the district court for one.",
+   "es": "<b>La entrada.</b> Entre solo con el consentimiento del inquilino, a una hora razonable y con un aviso adecuado según las circunstancias. Sin consentimiento, solo puede entrar para hacer reparaciones de emergencia o con una orden judicial; si un inquilino le niega un acceso razonable, puede pedirle una al tribunal de distrito.",
+   "state": "draft"
+  },
+  "guide.landlord-duties.get-into-the-unit": {
+   "en": "Get into the unit",
+   "es": "Entrar a la vivienda",
+   "state": "draft"
+  },
+  "guide.landlord-duties.going-to-court": {
+   "en": "Going to court",
+   "es": "Acudir al tribunal",
+   "state": "draft"
+  },
+  "guide.landlord-duties.hold-it-in-trust-apart-from": {
+   "en": "<b>Hold it in trust,</b> apart from your own money, in a New Hampshire bank or credit union, or post a bond with the town or city clerk. Held a year or longer, it earns the tenant interest.",
+   "es": "<b>Guárdelo en fideicomiso,</b> separado de su propio dinero, en un banco o una cooperativa de crédito de New Hampshire, o deposite una fianza con el secretario de su municipio o ciudad. Si lo guarda un año o más, genera intereses para el inquilino.",
+   "state": "draft"
+  },
+  "guide.landlord-duties.housing-standards-rsa-48-a": {
+   "en": "Housing Standards, RSA 48-A",
+   "es": "Normas de vivienda, RSA 48-A",
+   "state": "draft"
+  },
+  "guide.landlord-duties.how-to-appeal-your-property-tax": {
+   "en": "How to appeal your property tax assessment",
+   "es": "Cómo apelar la tasación de su impuesto a la propiedad",
+   "state": "draft"
+  },
+  "guide.landlord-duties.if-the-tenant-has-not-left": {
+   "en": "If the tenant has not left when the notice runs out, file a Landlord/Tenant Writ in the circuit court&rsquo;s district division. The sheriff serves it, and it is returnable 7 days after service. You may claim unpaid rent in the same case, up to $1,500, and sue separately for more. Before any case, the court&rsquo;s free Eviction Diversion Program offers a mediator.",
+   "es": "Si el inquilino no se ha ido cuando vence el aviso, presente una orden de desalojo (Landlord/Tenant Writ) en la división de distrito del tribunal de circuito. El sheriff la entrega, y su fecha de respuesta es 7 días después de la entrega. Puede reclamar la renta no pagada en el mismo caso, hasta $1,500, y demandar aparte por más. Antes de cualquier caso, el Programa de Desvío de Desalojos (Eviction Diversion Program) del tribunal, que es gratuito, ofrece un mediador.",
+   "state": "draft"
+  },
+  "guide.landlord-duties.if-you-own-restricted-property-file": {
+   "en": "If you own restricted property, file a statement with the town or city clerk, within 30 days of becoming the owner, naming a person in New Hampshire who can accept court papers for you; it may be you.",
+   "es": "Si es dueño de una propiedad restringida, presente una declaración ante el secretario de su municipio o ciudad, dentro de los 30 días de hacerse dueño, con el nombre de una persona en New Hampshire que pueda recibir documentos judiciales en su nombre; puede ser usted.",
+   "state": "draft"
+  },
+  "guide.landlord-duties.if-you-sell-the-property-turn": {
+   "en": "<b>If you sell the property,</b> turn the deposits over to the buyer and tell each tenant by registered or certified mail.",
+   "es": "<b>Si vende la propiedad,</b> entregue los depósitos al comprador y avise a cada inquilino por correo registrado o certificado.",
+   "state": "draft"
+  },
+  "guide.landlord-duties.if-you-win-the-court-issues": {
+   "en": "If you win, the court issues a writ of possession, and the sheriff, not you, removes the tenant. The court may give the tenant up to 60 days, with rent paid weekly.",
+   "es": "Si gana, el tribunal emite una orden de posesión (writ of possession), y es el sheriff, no usted, quien saca al inquilino. El tribunal puede darle al inquilino hasta 60 días, pagando la renta cada semana.",
+   "state": "draft"
+  },
+  "guide.landlord-duties.in-a-case-only-for-unpaid": {
+   "en": "In a case only for unpaid rent, the tenant can end it by paying, before the hearing, the rent owed, other lawful charges, $15 and your filing and service costs, up to 3 times in a 12-month period. You may accept back rent during the case without creating a new tenancy, if you tell the tenant in writing that you are going ahead with the eviction.",
+   "es": "En un caso solo por renta no pagada, el inquilino puede terminarlo si paga, antes de la audiencia, la renta que debe, otros cargos legales, $15 y sus costos de presentación y de entrega, hasta 3 veces en un período de 12 meses. Puede aceptar la renta atrasada durante el caso sin crear un nuevo arrendamiento, si le dice al inquilino por escrito que seguirá adelante con el desalojo.",
+   "state": "draft"
+  },
+  "guide.landlord-duties.investigate-a-tenants-report-of-bed": {
+   "en": "Investigate a tenant&rsquo;s report of bed bugs or other pests within 7 days, and take reasonable steps to remove them. A tenant who reported a serious violation in writing, and was not behind on rent, has a defense to an eviction for nonpayment if you did not fix it within 14 days.",
+   "es": "Investigue el aviso de un inquilino sobre chinches u otras plagas dentro de 7 días, y tome medidas razonables para eliminarlas. Un inquilino que avisó por escrito de una violación grave, sin estar atrasado en la renta, tiene una defensa contra un desalojo por falta de pago si usted no la corrigió dentro de 14 días.",
+   "state": "draft"
+  },
+  "guide.landlord-duties.know-which-rules-apply-to-your": {
+   "en": "<b>Know which rules apply to your property.</b> Most residential rentals are &ldquo;restricted property&rdquo;, where you need a reason the law lists to end a tenancy. A single-family house is not, if you own no more than 3, and neither is a unit in a building of 4 units or fewer that you live in.",
+   "es": "<b>Sepa qué reglas se aplican a su propiedad.</b> La mayoría de los alquileres de vivienda son &ldquo;propiedad restringida&rdquo; (restricted property), en la que necesita una de las razones que enumera la ley para terminar un arrendamiento. No lo es una casa unifamiliar, si usted no tiene más de 3, ni una unidad en un edificio de 4 unidades o menos en el que usted vive.",
+   "state": "draft"
+  },
+  "guide.landlord-duties.landlord-and-tenant-cases-judicial": {
+   "en": "Landlord and tenant cases (Judicial Branch)",
+   "es": "Casos entre arrendador e inquilino (Poder Judicial)",
+   "state": "draft"
+  },
+  "guide.landlord-duties.landlord-tenant-district-division": {
+   "en": "Landlord/Tenant, District Division (Judicial Branch)",
+   "es": "Arrendador e inquilino, División de Distrito (Poder Judicial)",
+   "state": "draft"
+  },
+  "guide.landlord-duties.lawyer-referral-service": {
+   "en": "Lawyer Referral Service",
+   "es": "Servicio de referencia de abogados",
+   "state": "draft"
+  },
+  "guide.landlord-duties.lead": {
+   "en": "What New Hampshire law asks of a landlord: security deposits, entering the home, repairs and minimum standards, ending a tenancy, and the only lawful way to evict, through the district court.",
+   "es": "Lo que la ley de New Hampshire le pide a un arrendador: los depósitos de garantía, la entrada a la vivienda, las reparaciones y las normas mínimas, cómo terminar un arrendamiento y la única forma legal de desalojar, a través del tribunal de distrito.",
+   "state": "draft"
+  },
+  "guide.landlord-duties.minimum-standards-where-the-town-has": {
+   "en": "<b>Minimum standards.</b> Where the town has no housing code of its own, the law forbids keeping a rental with an untreated insect, rodent or bed bug infestation, defective plumbing or sewage back-up, electrical hazards, a leaking roof or walls, falling plaster, large holes, unsound porches, stairs or railings, garbage piling up in common areas, too little water or broken hot water equipment, gas leaks, or heat that cannot keep every room at an average of at least 65 degrees. Towns with a housing code enforce their own.",
+   "es": "<b>Normas mínimas.</b> Donde el municipio no tiene un código de vivienda propio, la ley prohíbe mantener un alquiler con una plaga de insectos, roedores o chinches sin tratar, plomería defectuosa o aguas residuales que se devuelven, peligros eléctricos, techo o paredes con goteras, yeso que se cae, agujeros grandes, porches, escaleras o barandas inseguros, basura acumulada en las áreas comunes, poca agua o equipo de agua caliente averiado, fugas de gas, o una calefacción que no puede mantener cada habitación a un promedio de al menos 65 grados. Los municipios con un código de vivienda aplican el suyo.",
+   "state": "draft"
+  },
+  "guide.landlord-duties.never-lock-a-tenant-out-shut": {
+   "en": "Never lock a tenant out, shut off a utility or remove belongings: only the court and the sheriff can.",
+   "es": "Nunca deje fuera a un inquilino, ni le corte un servicio, ni saque sus pertenencias: solo el tribunal y el sheriff pueden hacerlo.",
+   "state": "draft"
+  },
+  "guide.landlord-duties.prohibited-practices-and-security": {
+   "en": "Prohibited Practices and Security Deposits, RSA 540-A",
+   "es": "Prácticas prohibidas y depósitos de garantía, RSA 540-A",
+   "state": "draft"
+  },
+  "guide.landlord-duties.return-it-within-30-days-of": {
+   "en": "<b>Return it within 30 days</b> of the end of the tenancy, with any interest. You may deduct the cost of damage beyond reasonable wear and tear, unpaid rent and other lawful charges, with a written, itemized list and evidence of the repairs, such as receipts or estimates.",
+   "es": "<b>Devuélvalo dentro de 30 días</b> del fin del arrendamiento, con los intereses que correspondan. Puede descontar el costo de los daños que vayan más allá del desgaste razonable, la renta no pagada y otros cargos legales, con una lista escrita y detallada y pruebas de las reparaciones, como recibos o presupuestos.",
+   "state": "draft"
+  },
+  "guide.landlord-duties.return-the-deposit-within-30-days": {
+   "en": "Return the deposit within 30 days, and store belongings left behind for 7 days.",
+   "es": "Devuelva el depósito dentro de 30 días, y guarde las pertenencias que queden durante 7 días.",
+   "state": "draft"
+  },
+  "guide.landlord-duties.return-the-security-deposit-with-any": {
+   "en": "Return the security deposit, with any interest and an itemized list of deductions, within 30 days. If the tenant gave you no new address, you are not liable for missing the deadline, and a deposit unclaimed after 6 months becomes yours.",
+   "es": "Devuelva el depósito de garantía, con los intereses que correspondan y una lista detallada de los descuentos, dentro de 30 días. Si el inquilino no le dio una dirección nueva, usted no responde por no cumplir el plazo, y un depósito que nadie reclama después de 6 meses pasa a ser suyo.",
+   "state": "draft"
+  },
+  "guide.landlord-duties.security-deposits": {
+   "en": "Security deposits",
+   "es": "Depósitos de garantía",
+   "state": "draft"
+  },
+  "guide.landlord-duties.serve-a-written-eviction-notice-if": {
+   "en": "Serve a written eviction notice; if the tenant stays, file a case in the district court.",
+   "es": "Entregue un aviso de desalojo por escrito; si el inquilino se queda, presente un caso en el tribunal de distrito.",
+   "state": "draft"
+  },
+  "guide.landlord-duties.store-anything-the-tenant-left-behind": {
+   "en": "Store anything the tenant left behind, with reasonable care, for 7 days after they leave, and let them take it back without paying rent or storage fees. After that, you may dispose of it.",
+   "es": "Guarde lo que el inquilino dejó, con cuidado razonable, durante 7 días después de que se vaya, y déjele llevárselo sin cobrarle renta ni cuotas de almacenamiento. Después de eso, puede deshacerse de ello.",
+   "state": "draft"
+  },
+  "guide.landlord-duties.take-a-security-deposit": {
+   "en": "Take a security deposit",
+   "es": "Cobrar un depósito de garantía",
+   "state": "draft"
+  },
+  "guide.landlord-duties.the-district-courts-clerks-have-the": {
+   "en": "The district court&rsquo;s clerks have the forms for a demand for rent, an eviction notice and a Landlord/Tenant Writ, but cannot give legal advice. For advice about your own situation, talk to a lawyer:",
+   "es": "Los secretarios del tribunal de distrito tienen los formularios para una demanda de renta, un aviso de desalojo y una orden de desalojo (Landlord/Tenant Writ), pero no pueden dar asesoría legal. Para recibir asesoría sobre su propia situación, hable con un abogado:",
+   "state": "draft"
+  },
+  "guide.landlord-duties.the-limit-one-months-rent-or": {
+   "en": "<b>The limit:</b> one month&rsquo;s rent or $100, whichever is more.",
+   "es": "<b>El límite:</b> un mes de renta o $100, lo que sea mayor.",
+   "state": "draft"
+  },
+  "guide.landlord-duties.the-notice-an-eviction-notice-is": {
+   "en": "<b>The notice.</b> An eviction notice is in writing and states the reason specifically. It allows 7 days for unpaid rent, substantial damage or a threat to health or safety, and 30 days for other reasons. For unpaid rent, serve a demand for rent too, and the notice must tell the tenant of the right to pay and stay. Anyone can serve them, in hand or at the tenant&rsquo;s home; the court has the forms.",
+   "es": "<b>El aviso.</b> Un aviso de desalojo es por escrito y dice la razón de forma específica. Da 7 días si se trata de renta no pagada, daños considerables o una amenaza a la salud o la seguridad, y 30 días por otras razones. Si se trata de renta no pagada, entregue también una demanda de renta, y el aviso debe informarle al inquilino de su derecho a pagar y quedarse. Cualquier persona puede entregarlos, en mano o en la vivienda del inquilino; el tribunal tiene los formularios.",
+   "state": "draft"
+  },
+  "guide.landlord-duties.the-reasons-for-restricted-property": {
+   "en": "<b>The reasons.</b> For restricted property: unpaid rent, substantial damage, breaking a material term of the lease, behavior that threatens others&rsquo; health or safety, or other good cause, which can be a legitimate business or economic reason. If the cause is the tenant&rsquo;s own conduct, first give a written warning that it would be grounds for eviction. A lease of 12 months or longer can end at its term if you give written notice at least 60 days before. A tenant who refuses a rent increase can be evicted for good cause only if you gave written notice of the amount and the date at least 30 days ahead.",
+   "es": "<b>Las razones.</b> En una propiedad restringida: renta no pagada, daños considerables, incumplir una condición importante del contrato, una conducta que amenaza la salud o la seguridad de otros, u otra causa justificada, que puede ser una razón comercial o económica legítima. Si la causa es la propia conducta del inquilino, primero dele una advertencia por escrito de que sería motivo de desalojo. Un contrato de 12 meses o más puede terminar a su vencimiento si usted da aviso por escrito al menos 60 días antes. Un inquilino que rechaza un aumento de renta puede ser desalojado por causa justificada solo si usted le avisó por escrito la cantidad y la fecha al menos 30 días antes.",
+   "state": "draft"
+  },
+  "guide.landlord-duties.these-rules-apply-unless-you-rent": {
+   "en": "These rules apply unless you rent out a single-family home and own no other rental property, or rent units in a building of 5 units or fewer that you live in, and even then they apply to a tenant 60 or older.",
+   "es": "Estas reglas se aplican salvo que usted alquile una casa unifamiliar y no tenga otra propiedad en alquiler, o alquile unidades en un edificio de 5 unidades o menos en el que usted vive, y aun así se aplican a un inquilino de 60 años o más.",
+   "state": "draft"
+  },
+  "guide.landlord-duties.title": {
+   "en": "Renting Out a Home: A Landlord's Rights and Duties",
+   "es": "Alquilar una vivienda: los derechos y deberes de un arrendador",
+   "state": "draft"
+  },
+  "guide.landlord-duties.what-do-you-need-to-do": {
+   "en": "What do you need to do?",
+   "es": "¿Qué necesita hacer?",
+   "state": "draft"
+  },
+  "guide.landlord-duties.what-you-may-not-do-you": {
+   "en": "<b>What you may not do.</b> You may not evict to retaliate against a tenant who reported a code violation, went to court under the tenant protection law, or met with other tenants, unless the tenant owes a week&rsquo;s rent or more; nor evict a tenant for being a victim of domestic violence, sexual assault or stalking.",
+   "es": "<b>Lo que no puede hacer.</b> No puede desalojar como represalia contra un inquilino que denunció una violación del código, acudió al tribunal bajo la ley de protección de inquilinos o se reunió con otros inquilinos, salvo que el inquilino deba una semana de renta o más; ni desalojar a un inquilino por ser víctima de violencia doméstica, agresión sexual o acecho.",
+   "state": "draft"
+  },
+  "guide.landlord-duties.with-the-tenants-consent-after-adequate": {
+   "en": "With the tenant&rsquo;s consent, after adequate notice; without it, only for emergency repairs or with a court order.",
+   "es": "Con el consentimiento del inquilino, después de un aviso adecuado; sin él, solo para reparaciones de emergencia o con una orden judicial.",
+   "state": "draft"
+  },
+  "guide.landlord-duties.your-rights-as-a-tenant": {
+   "en": "Your rights as a tenant",
+   "es": "Sus derechos como inquilino",
+   "state": "draft"
+  },
   "guide.medicare-and-social-security.a-my-social-security-account-lets": {
    "en": "A <b>my Social Security</b> account lets you change your address or direct deposit, print proof of your benefits or a tax form, request a replacement Social Security card, and see your Social Security Statement and earnings record, without a call or a visit. You create it through Login.gov or ID.me, with an email address, a government-issued photo ID and a phone. Once you have your Medicare card, you can also make a Medicare account on Medicare.gov with your Medicare Number.",
    "es": "Una cuenta <b>my Social Security</b> le permite cambiar su dirección o su depósito directo, imprimir una prueba de sus beneficios o un formulario de impuestos, pedir una tarjeta de Seguro Social de reemplazo y ver su Estado de Cuenta del Seguro Social y su historial de ganancias, sin llamar ni ir a una oficina. Se crea a través de Login.gov o ID.me, con una dirección de correo electrónico, una identificación con foto emitida por el gobierno y un teléfono. Cuando tenga su tarjeta de Medicare, también puede crear una cuenta de Medicare en Medicare.gov con su número de Medicare.",
@@ -8942,6 +9192,21 @@
    "es": "La educación para cazadores, la licencia de aprendiz y las licencias para pavo, faisán y aves acuáticas.",
    "state": "draft"
   },
+  "guide.task.landlord-duties.does": {
+   "en": "Rent out a home",
+   "es": "Alquilar una vivienda a otros",
+   "state": "draft"
+  },
+  "guide.task.landlord-duties.head": {
+   "en": "How to rent out a home",
+   "es": "Cómo dar en alquiler una vivienda",
+   "state": "draft"
+  },
+  "guide.task.landlord-duties.line": {
+   "en": "A landlord&rsquo;s duties: security deposits, entry, minimum standards, and evicting through the court.",
+   "es": "Los deberes de un arrendador: depósitos de garantía, entrada, normas mínimas y el desalojo a través del tribunal.",
+   "state": "draft"
+  },
   "guide.task.medicare-and-social-security.does": {
    "en": "Sign up for Medicare and Social Security",
    "es": "Inscribirse en Medicare y el Seguro Social",
@@ -9167,6 +9432,21 @@
    "es": "Diga a un comité su posición sobre un proyecto de ley sin ir a Concord.",
    "state": "draft"
   },
+  "guide.task.tenant-rights.does": {
+   "en": "Know your rights as a tenant",
+   "es": "Conocer sus derechos como inquilino",
+   "state": "draft"
+  },
+  "guide.task.tenant-rights.head": {
+   "en": "Your rights as a tenant, from deposits to eviction",
+   "es": "Sus derechos como inquilino, del depósito al desalojo",
+   "state": "draft"
+  },
+  "guide.task.tenant-rights.line": {
+   "en": "Security deposits, repairs and heat, rent increases, and what happens in an eviction.",
+   "es": "Depósitos de garantía, reparaciones y calefacción, aumentos de renta y lo que pasa en un desalojo.",
+   "state": "draft"
+  },
   "guide.task.testifying.does": {
    "en": "Learn how hearings work before you go",
    "es": "Aprender cómo funcionan las audiencias antes de ir",
@@ -9300,6 +9580,281 @@
   "guide.task.your-representatives.line": {
    "en": "Who represents your town in the House and the Senate, and what the district numbers mean.",
    "es": "Quién representa a su municipio en la Cámara y en el Senado, y qué significan los números de los distritos.",
+   "state": "draft"
+  },
+  "guide.tenant-rights.603-legal-aid": {
+   "en": "603 Legal Aid",
+   "es": "603 Legal Aid",
+   "state": "draft"
+  },
+  "guide.tenant-rights.a-landlord-may-not": {
+   "en": "A landlord may not:",
+   "es": "Un arrendador no puede:",
+   "state": "draft"
+  },
+  "guide.tenant-rights.a-receipt-stating-the-amount-and": {
+   "en": "<b>A receipt</b> stating the amount and where the deposit is held, unless you paid by check.",
+   "es": "<b>Un recibo</b> que indique la cantidad y dónde se guarda el depósito, salvo que haya pagado con cheque.",
+   "state": "draft"
+  },
+  "guide.tenant-rights.actions-against-tenants-rsa-540": {
+   "en": "Actions Against Tenants, RSA 540",
+   "es": "Acciones contra inquilinos, RSA 540",
+   "state": "draft"
+  },
+  "guide.tenant-rights.after-you-leave-your-landlord-must": {
+   "en": "After you leave, your landlord must store anything you left behind, with reasonable care, for 7 days, and let you take it without paying rent or storage fees.",
+   "es": "Después de que se vaya, su arrendador debe guardar lo que usted dejó, con cuidado razonable, durante 7 días, y dejarle llevárselo sin pagar renta ni cuotas de almacenamiento.",
+   "state": "draft"
+  },
+  "guide.tenant-rights.before-any-court-case-the-courts": {
+   "en": "<b>Before any court case,</b> the court&rsquo;s free Eviction Diversion Program offers a mediator to help you and your landlord reach an agreement.",
+   "es": "<b>Antes de cualquier caso judicial,</b> el Programa de Desvío de Desalojos (Eviction Diversion Program) del tribunal, que es gratuito, ofrece un mediador para ayudarle a usted y a su arrendador a llegar a un acuerdo.",
+   "state": "draft"
+  },
+  "guide.tenant-rights.enter-your-home-without-your-consent": {
+   "en": "<b>enter your home without your consent</b>, except to make emergency repairs or with a court&rsquo;s order.",
+   "es": "<b>entrar a su vivienda sin su consentimiento</b>, salvo para hacer reparaciones de emergencia o con una orden del tribunal.",
+   "state": "draft"
+  },
+  "guide.tenant-rights.for-unpaid-rent-the-case-is": {
+   "en": "<b>For unpaid rent,</b> the case is dismissed if, before the hearing, you pay all the rent you owe, other lawful charges, $15 and the landlord&rsquo;s filing and service costs. You can do this up to 3 times in a 12-month period.",
+   "es": "<b>Si se trata de renta no pagada,</b> el caso se desestima si, antes de la audiencia, usted paga toda la renta que debe, otros cargos legales, $15 y los costos de presentación y de entrega del arrendador. Puede hacerlo hasta 3 veces en un período de 12 meses.",
+   "state": "draft"
+  },
+  "guide.tenant-rights.get-help-as-early-as-you": {
+   "en": "Get help as early as you can, before a deadline passes. Your town or city&rsquo;s code enforcement or health officer handles unsafe conditions. For an eviction, a lockout or a deposit:",
+   "es": "Busque ayuda lo antes posible, antes de que venza un plazo. El encargado del cumplimiento de códigos o el funcionario de salud de su municipio o ciudad se ocupa de las condiciones inseguras. Para un desalojo, un cierre de la vivienda o un depósito:",
+   "state": "draft"
+  },
+  "guide.tenant-rights.give-your-landlord-your-new-address": {
+   "en": "Give your landlord your new address when you leave. A landlord who does not return a deposit as the law requires can owe you twice the amount wrongly kept.",
+   "es": "Dele a su arrendador su nueva dirección cuando se vaya. Un arrendador que no devuelve un depósito como lo exige la ley puede deberle el doble de la cantidad retenida indebidamente.",
+   "state": "draft"
+  },
+  "guide.tenant-rights.housing-standards-rsa-48-a": {
+   "en": "Housing Standards, RSA 48-A",
+   "es": "Normas de vivienda, RSA 48-A",
+   "state": "draft"
+  },
+  "guide.tenant-rights.how-to-get-help-after-domestic": {
+   "en": "How to get help after domestic violence, sexual assault or stalking",
+   "es": "Cómo obtener ayuda después de violencia doméstica, agresión sexual o acecho",
+   "state": "draft"
+  },
+  "guide.tenant-rights.how-to-get-help-if-you": {
+   "en": "How to get help if you are homeless or may lose your home",
+   "es": "Cómo obtener ayuda si no tiene hogar o puede perder su vivienda",
+   "state": "draft"
+  },
+  "guide.tenant-rights.if-a-landlord-breaks-these-rules": {
+   "en": "If a landlord breaks these rules, you can file a petition in the circuit court&rsquo;s district division where the home is. There is <b>no filing fee</b>, you do not need a lawyer, and the clerk has the forms. The court holds a hearing within 30 days of the filing or 10 days after the landlord is served, whichever is later, and can order the landlord to stop at once if you face immediate harm. It can also award you damages, and order the landlord to pay your costs and attorney&rsquo;s fees.",
+   "es": "Si un arrendador no cumple estas reglas, puede presentar una petición en la división de distrito del tribunal de circuito del lugar donde está la vivienda. <b>No se cobra cuota de presentación</b>, no necesita un abogado y el secretario tiene los formularios. El tribunal celebra una audiencia dentro de 30 días de la presentación o 10 días después de la entrega al arrendador, lo que ocurra más tarde, y puede ordenarle al arrendador que se detenga de inmediato si usted enfrenta un daño inmediato. También puede concederle una indemnización por daños y ordenar al arrendador que pague sus costas y honorarios de abogado.",
+   "state": "draft"
+  },
+  "guide.tenant-rights.if-you-are-evicted-for-not": {
+   "en": "If you are evicted for not paying rent, the court may refuse the eviction when the home has a serious health or safety violation that you reported in writing while you were not behind on rent, and the landlord did not fix it within 14 days. The court may require you to pay the rent into court meanwhile. Holding back rent is risky: talk to legal aid before you do.",
+   "es": "Si lo desalojan por no pagar la renta, el tribunal puede negar el desalojo cuando la vivienda tiene una violación grave de salud o seguridad que usted avisó por escrito cuando no estaba atrasado en la renta, y el arrendador no la corrigió dentro de 14 días. Mientras tanto, el tribunal puede exigirle que pague la renta al tribunal. Retener la renta es arriesgado: hable con la asistencia legal antes de hacerlo.",
+   "state": "draft"
+  },
+  "guide.tenant-rights.if-you-are-served-court-papers": {
+   "en": "<b>If you are served court papers</b> (a Landlord/Tenant Writ), file an Appearance by the <em>return date</em> on the writ, and an answer with your defenses no more than 5 days after it. If you do not, you can lose without a hearing.",
+   "es": "<b>Si le entregan documentos del tribunal</b> (una orden judicial llamada Landlord/Tenant Writ), presente un formulario de comparecencia (Appearance) a más tardar en la <em>fecha de respuesta</em> (return date) que indica la orden, y una contestación con sus defensas a más tardar 5 días después. Si no lo hace, puede perder sin audiencia.",
+   "state": "draft"
+  },
+  "guide.tenant-rights.if-you-get-an-eviction-notice": {
+   "en": "If you get an eviction notice or court papers",
+   "es": "Si recibe un aviso de desalojo o documentos del tribunal",
+   "state": "draft"
+  },
+  "guide.tenant-rights.if-you-lose-the-court-may": {
+   "en": "<b>If you lose,</b> the court may give you up to 60 days to move, if you pay the rent each week. To appeal, file a notice of intent to appeal within 7 days of the decision, and pay rent as it comes due.",
+   "es": "<b>Si pierde,</b> el tribunal puede darle hasta 60 días para mudarse, si paga la renta cada semana. Para apelar, presente un aviso de intención de apelar dentro de 7 días de la decisión, y pague la renta a medida que venza.",
+   "state": "draft"
+  },
+  "guide.tenant-rights.in-new-hampshire-only-a-court": {
+   "en": "In New Hampshire only a court can make you leave your home: a landlord may not lock you out, shut off your utilities or hold your belongings to force you out. For most rentals, a security deposit can be no more than one month&rsquo;s rent or $100, whichever is more, and it comes back within 30 days after you move out, less the cost of any damage beyond normal wear and tear. Your home must meet basic standards for heat, water, plumbing and safety. If you get an eviction notice or court papers, read the dates and get free legal help right away.",
+   "es": "En New Hampshire solo un tribunal puede obligarlo a dejar su vivienda: un arrendador no puede dejarlo fuera, cortarle los servicios ni retener sus pertenencias para obligarlo a irse. En la mayoría de los alquileres, un depósito de garantía no puede ser de más de un mes de renta o $100, lo que sea mayor, y se le devuelve dentro de los 30 días de mudarse, menos el costo de cualquier daño más allá del desgaste normal. Su vivienda debe cumplir normas básicas de calefacción, agua, plomería y seguridad. Si recibe un aviso de desalojo o documentos del tribunal, lea las fechas y busque asistencia legal gratuita de inmediato.",
+   "state": "draft"
+  },
+  "guide.tenant-rights.it-stays-your-money-held-in": {
+   "en": "<b>It stays your money,</b> held in trust. If it is held for a year or longer, the landlord pays you the interest it earned.",
+   "es": "<b>Sigue siendo su dinero,</b> guardado en fideicomiso. Si se guarda un año o más, el arrendador le paga los intereses que generó.",
+   "state": "draft"
+  },
+  "guide.tenant-rights.keep-copies-of-your-lease-rent": {
+   "en": "Keep copies of your lease, rent receipts, letters and photos.",
+   "es": "Guarde copias de su contrato, los recibos de renta, las cartas y las fotos.",
+   "state": "draft"
+  },
+  "guide.tenant-rights.landlord-and-tenant-cases-judicial": {
+   "en": "Landlord and tenant cases (Judicial Branch)",
+   "es": "Casos entre arrendador e inquilino (Poder Judicial)",
+   "state": "draft"
+  },
+  "guide.tenant-rights.landlord-tenant-district-division": {
+   "en": "Landlord/Tenant, District Division (Judicial Branch)",
+   "es": "Arrendador e inquilino, División de Distrito (Poder Judicial)",
+   "state": "draft"
+  },
+  "guide.tenant-rights.lead": {
+   "en": "What a New Hampshire landlord may and may not do, your security deposit, repairs and heat, rent increases, and what happens in an eviction, step by step, with the law for each.",
+   "es": "Lo que un arrendador de New Hampshire puede y no puede hacer, su depósito de garantía, las reparaciones y la calefacción, los aumentos de renta y lo que pasa en un desalojo, paso a paso, con la ley de cada cosa.",
+   "state": "draft"
+  },
+  "guide.tenant-rights.lock-you-out-or-keep-you": {
+   "en": "<b>lock you out</b>, or keep you from your home or your belongings, except through the court;",
+   "es": "<b>dejarlo fuera</b>, ni impedirle el acceso a su vivienda o a sus pertenencias, salvo a través del tribunal;",
+   "state": "draft"
+  },
+  "guide.tenant-rights.moving-out-yourself-to-end-a": {
+   "en": "<b>Moving out yourself.</b> To end a month-to-month tenancy, give 30 days&rsquo; written notice. A victim of domestic violence, sexual assault or stalking can end a lease early, with verification, and may not be evicted for being a victim.",
+   "es": "<b>Si usted decide irse.</b> Para terminar un arrendamiento de mes a mes, dé un aviso por escrito con 30 días de anticipación. Una víctima de violencia doméstica, agresión sexual o acecho puede terminar un contrato antes de tiempo, con una verificación, y no puede ser desalojada por ser víctima.",
+   "state": "draft"
+  },
+  "guide.tenant-rights.only-a-court-can-make-you": {
+   "en": "Only a court can make you leave",
+   "es": "Solo un tribunal puede obligarlo a irse",
+   "state": "draft"
+  },
+  "guide.tenant-rights.prohibited-practices-and-security": {
+   "en": "Prohibited Practices and Security Deposits, RSA 540-A",
+   "es": "Prácticas prohibidas y depósitos de garantía, RSA 540-A",
+   "state": "draft"
+  },
+  "guide.tenant-rights.read-the-dates-and-get-free": {
+   "en": "Read the dates, and get free legal help now. Only a court can make you leave.",
+   "es": "Lea las fechas y busque asistencia legal gratuita ahora. Solo un tribunal puede obligarlo a irse.",
+   "state": "draft"
+  },
+  "guide.tenant-rights.rent-increases-refusing-a-rent-increase": {
+   "en": "<b>Rent increases.</b> Refusing a rent increase can be good cause to evict, but only if the landlord gave you written notice of the amount and the date at least 30 days before it takes effect.",
+   "es": "<b>Aumentos de renta.</b> Rechazar un aumento de renta puede ser causa justificada para desalojar, pero solo si el arrendador le avisó por escrito la cantidad y la fecha al menos 30 días antes de que entre en vigor.",
+   "state": "draft"
+  },
+  "guide.tenant-rights.rent-increases-the-end-of-a": {
+   "en": "Rent increases, the end of a lease, and retaliation",
+   "es": "Aumentos de renta, el fin de un contrato y las represalias",
+   "state": "draft"
+  },
+  "guide.tenant-rights.renting-out-a-home-a-landlord": {
+   "en": "Renting out a home: a landlord's rights and duties",
+   "es": "Alquilar una vivienda: los derechos y deberes de un arrendador",
+   "state": "draft"
+  },
+  "guide.tenant-rights.repairs-heat-and-a-safe-home": {
+   "en": "Repairs, heat and a safe home",
+   "es": "Reparaciones, calefacción y una vivienda segura",
+   "state": "draft"
+  },
+  "guide.tenant-rights.resources-for-renters-new-hampshire": {
+   "en": "Resources for Renters (New Hampshire Housing)",
+   "es": "Recursos para inquilinos (New Hampshire Housing)",
+   "state": "draft"
+  },
+  "guide.tenant-rights.retaliation-a-landlord-may-not-evict": {
+   "en": "<b>Retaliation.</b> A landlord may not evict you for reporting a code violation, for going to court under the tenant protection law, or for meeting with other tenants, unless you owe a week&rsquo;s rent or more. An eviction, a rent increase or a big change in your terms within 6 months of that is presumed to be retaliation, and the court can award you up to 3 months&rsquo; rent.",
+   "es": "<b>Represalias.</b> Un arrendador no puede desalojarlo por denunciar una violación del código, por acudir al tribunal bajo la ley de protección de inquilinos o por reunirse con otros inquilinos, salvo que usted deba una semana de renta o más. Un desalojo, un aumento de renta o un cambio importante en sus condiciones dentro de 6 meses de eso se presume una represalia, y el tribunal puede concederle hasta 3 meses de renta.",
+   "state": "draft"
+  },
+  "guide.tenant-rights.shut-off-or-interrupt-a-utility": {
+   "en": "<b>shut off or interrupt a utility</b>, such as water, heat, electricity or gas, except briefly while repairs are made or in an emergency;",
+   "es": "<b>cortar o interrumpir un servicio</b>, como el agua, la calefacción, la electricidad o el gas, salvo brevemente mientras se hacen reparaciones o en una emergencia;",
+   "state": "draft"
+  },
+  "guide.tenant-rights.something-needs-repair": {
+   "en": "Something needs repair",
+   "es": "Algo necesita reparación",
+   "state": "draft"
+  },
+  "guide.tenant-rights.tell-your-landlord-in-writing-if": {
+   "en": "Tell your landlord in writing. If it is not fixed, ask your town to inspect.",
+   "es": "Avísele a su arrendador por escrito. Si no se arregla, pídale a su municipio que inspeccione.",
+   "state": "draft"
+  },
+  "guide.tenant-rights.tell-your-landlord-in-writing-what": {
+   "en": "<b>Tell your landlord in writing</b> what needs fixing, and keep a copy. If it is not fixed, ask your town&rsquo;s code enforcement or health officer to inspect. A landlord must look into a report of bed bugs or other pests within 7 days.",
+   "es": "<b>Avísele a su arrendador por escrito</b> qué hay que arreglar, y guarde una copia. Si no se arregla, pídale al encargado del cumplimiento de códigos o al funcionario de salud de su municipio que inspeccione. Un arrendador debe investigar un aviso de chinches u otras plagas dentro de 7 días.",
+   "state": "draft"
+  },
+  "guide.tenant-rights.that-is-against-the-law-ask": {
+   "en": "That is against the law. Ask the district court to order it stopped; there is no filing fee.",
+   "es": "Eso es ilegal. Pídale al tribunal de distrito que ordene detenerlo; no se cobra cuota de presentación.",
+   "state": "draft"
+  },
+  "guide.tenant-rights.the-deposit-rules-apply-to-most": {
+   "en": "The deposit rules apply to most landlords. They do not apply to someone who rents out a single-family home and owns no other rental property, or who rents units in a building of 5 units or fewer that they live in themselves, unless the tenant is 60 or older.",
+   "es": "Las reglas del depósito se aplican a la mayoría de los arrendadores. No se aplican a quien alquila una casa unifamiliar y no tiene otra propiedad en alquiler, ni a quien alquila unidades en un edificio de 5 unidades o menos en el que vive, salvo que el inquilino tenga 60 años o más.",
+   "state": "draft"
+  },
+  "guide.tenant-rights.the-eviction-notice-must-be-in": {
+   "en": "<b>The eviction notice</b> must be in writing and say why. It gives you 7 days to leave for unpaid rent, substantial damage or a threat to others&rsquo; safety, and 30 days for other reasons. It does not make you leave by itself: if you stay, the landlord must go to court.",
+   "es": "<b>El aviso de desalojo</b> debe ser por escrito y decir la razón. Le da 7 días para irse si se trata de renta no pagada, daños considerables o una amenaza a la seguridad de otros, y 30 días por otras razones. No lo obliga a irse por sí solo: si usted se queda, el arrendador debe acudir al tribunal.",
+   "state": "draft"
+  },
+  "guide.tenant-rights.the-limit-one-months-rent-or": {
+   "en": "<b>The limit:</b> one month&rsquo;s rent or $100, whichever is more.",
+   "es": "<b>El límite:</b> un mes de renta o $100, lo que sea mayor.",
+   "state": "draft"
+  },
+  "guide.tenant-rights.title": {
+   "en": "Your Rights as a Tenant",
+   "es": "Sus derechos como inquilino",
+   "state": "draft"
+  },
+  "guide.tenant-rights.what-is-happening": {
+   "en": "What is happening?",
+   "es": "¿Qué está pasando?",
+   "state": "draft"
+  },
+  "guide.tenant-rights.when-a-landlord-needs-a-reason": {
+   "en": "<b>When a landlord needs a reason.</b> For most rentals, a landlord can end your tenancy only for a reason the law lists: unpaid rent, substantial damage, breaking a material term of the lease, behavior that threatens others&rsquo; health or safety, or other good cause, which can be a legitimate business or economic reason. A lease of 12 months or longer can also end at its term, if the landlord gave you written notice at least 60 days before. The exceptions, where no reason is needed: a single-family house whose owner owns no more than 3, and a unit in a building of 4 units or fewer that the owner lives in.",
+   "es": "<b>Cuándo un arrendador necesita una razón.</b> En la mayoría de los alquileres, un arrendador solo puede terminar su arrendamiento por una razón que la ley enumera: renta no pagada, daños considerables, incumplir una condición importante del contrato, una conducta que amenaza la salud o la seguridad de otros, u otra causa justificada, que puede ser una razón comercial o económica legítima. Un contrato de 12 meses o más también puede terminar a su vencimiento, si el arrendador le avisó por escrito al menos 60 días antes. Las excepciones, en las que no se necesita una razón: una casa unifamiliar cuyo dueño no tiene más de 3, y una unidad en un edificio de 4 unidades o menos en el que vive el dueño.",
+   "state": "draft"
+  },
+  "guide.tenant-rights.when-you-move-out-the-landlord": {
+   "en": "<b>When you move out,</b> the landlord returns it within 30 days, with any interest. A landlord who keeps any of it for damage beyond reasonable wear and tear, unpaid rent or other charges must give you a written, itemized list.",
+   "es": "<b>Cuando se mude,</b> el arrendador se lo devuelve dentro de 30 días, con los intereses que correspondan. Un arrendador que retiene una parte por daños más allá del desgaste razonable, renta no pagada u otros cargos debe darle una lista escrita y detallada.",
+   "state": "draft"
+  },
+  "guide.tenant-rights.where-your-town-has-no-housing": {
+   "en": "Where your town has no housing code of its own, the law sets the minimum: no insect, rodent or bed bug infestation left without an inspection and treatment program; no defective plumbing or sewage back-up; no exposed wires or other danger of shock or fire; no roof or walls that leak; no falling plaster, large holes, or unsound porches, stairs or railings; enough water and working hot water equipment; no gas leaks; and heat that can keep every room at an average of at least 65 degrees. Towns with a housing code enforce their own standards.",
+   "es": "Donde su municipio no tiene un código de vivienda propio, la ley fija el mínimo: ninguna plaga de insectos, roedores o chinches sin un programa de inspección y tratamiento; nada de plomería defectuosa ni aguas residuales que se devuelven; nada de cables expuestos u otro peligro de descarga o incendio; ni techo ni paredes con goteras; nada de yeso que se cae, agujeros grandes, ni porches, escaleras o barandas inseguros; suficiente agua y un equipo de agua caliente que funcione; ninguna fuga de gas; y una calefacción que pueda mantener cada habitación a un promedio de al menos 65 grados. Los municipios con un código de vivienda aplican sus propias normas.",
+   "state": "draft"
+  },
+  "guide.tenant-rights.within-5-days-of-moving-in": {
+   "en": "<b>Within 5 days of moving in,</b> give your landlord a written list of anything in the home that needs repair, and keep a copy. Your landlord must tell you that you can.",
+   "es": "<b>Dentro de los 5 días de mudarse,</b> dele a su arrendador una lista por escrito de todo lo que necesita reparación en la vivienda, y guarde una copia. Su arrendador debe decirle que puede hacerlo.",
+   "state": "draft"
+  },
+  "guide.tenant-rights.you-are-moving-out": {
+   "en": "You are moving out",
+   "es": "Se va a mudar",
+   "state": "draft"
+  },
+  "guide.tenant-rights.you-got-an-eviction-notice-or": {
+   "en": "You got an eviction notice or court papers",
+   "es": "Recibió un aviso de desalojo o documentos del tribunal",
+   "state": "draft"
+  },
+  "guide.tenant-rights.you-in-turn-may-not-damage": {
+   "en": "You, in turn, may not damage the landlord&rsquo;s property or keep the landlord from making necessary repairs, at a reasonable time after notice that is adequate for the situation.",
+   "es": "Usted, a su vez, no puede dañar la propiedad del arrendador ni impedirle hacer las reparaciones necesarias, a una hora razonable y con un aviso adecuado según la situación.",
+   "state": "draft"
+  },
+  "guide.tenant-rights.you-were-locked-out-or-a": {
+   "en": "You were locked out, or a utility was shut off",
+   "es": "Lo dejaron fuera, o le cortaron un servicio",
+   "state": "draft"
+  },
+  "guide.tenant-rights.your-deposit-comes-back-within-30": {
+   "en": "Your deposit comes back within 30 days, with a written list of any deductions.",
+   "es": "Su depósito se le devuelve dentro de 30 días, con una lista escrita de cualquier descuento.",
+   "state": "draft"
+  },
+  "guide.tenant-rights.your-security-deposit": {
+   "en": "Your security deposit",
+   "es": "Su depósito de garantía",
    "state": "draft"
   },
   "guide.testifying.a-different-act-from-signing-in": {

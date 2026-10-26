@@ -40710,7 +40710,9 @@ def _guide_search_words(BC, G):
             ("where do i vote", "how-to-vote"),
             ("food stamps", "food-and-health-assistance"),
             ("I want to testify on a bill", "submit-testimony"),
-            ("my landlord is evicting me", "homelessness-help"),
+            # Tenant Rights, not Homelessness Help, since there is one (the renting
+            # guides, 26 October 2026): a tenant facing eviction has rights to use first.
+            ("my landlord is evicting me", "tenant-rights"),
             ("lost my job", "file-for-unemployment"),
             ("dump hours", "trash-and-recycling"),
             ("birth certificate", "vital-records"),
