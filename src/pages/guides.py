@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-10-11.45
+# GRANITE_VERSION: 2026-10-11.46
 """
 The how-to guides: their words, their sources, and what each was checked
 against. Read by build_civics.py, which draws them on the Resources hub's
@@ -3417,8 +3417,9 @@ TAX_BILL = guide(
           "percent a year, if paying it would cause undue hardship. You must live in the home "
           "and have owned it for at least 5 consecutive years if you apply by age, or one year "
           "if you apply by disability. Apply by March 1 after the final tax bill. A mortgage "
-          "lender must agree. The deferred tax, with its interest, must be paid when the home is "
-          "sold, or within 9 months of the owner&rsquo;s death.</p>",
+          "lender must agree. When the home is sold, the deferred tax and its interest must be "
+          "paid in full. When the owner dies, the heirs may pay it off within 9 months; after "
+          "that the town may send it to the tax collector.</p>",
           actions=[("Find your town or city clerk", SOS_CLERKS)],
           law=["RSA 72:33", "RSA 72:27-a", "RSA 72:39-a", "RSA 72:39-b", "RSA 72:37",
                "RSA 72:37-b", "RSA 72:28", "RSA 72:35", "RSA 72:29-a", "RSA 72:38-a"]),
@@ -7376,10 +7377,6 @@ TASKS = [
              "Your town for roads and sidewalks, the school board, a state agency, your "
              "legislators, or your members of Congress.",
              head="How to know who to contact"),
-        task("report-a-road-problem", "Report a pothole or a sidewalk problem",
-             "Who fixes which road, how to tell your town or the state, and what to do if a "
-             "road problem damaged your car.",
-             head="How to report a pothole or a road problem"),
         task("contact-your-legislators", "Contact your legislators",
              "Email or call the people who represent you, and write a message they can act on."),
         task("attend-a-hearing", "Attend or speak at a public hearing",
@@ -7477,10 +7474,6 @@ TASKS = [
         task("passport", "Get a U.S. passport",
              "A first passport or a renewal, what to bring to a post office, and a child&rsquo;s "
              "passport."),
-        task("building-permits", "Find out when you need a building permit",
-             "The building code, permits and inspections, who may do electrical and plumbing "
-             "work, septic approval, and building near water.",
-             head="How to know when you need a building permit"),
     ]),
     ("Outdoors and Recreation", [
         task("fishing-license", "Get a fishing license",
@@ -7493,6 +7486,14 @@ TASKS = [
              "each year.", head="How to get a boater certificate and register a boat"),
     ]),
     ("Around Your Town", [
+        task("report-a-road-problem", "Report a pothole or a sidewalk problem",
+             "Who fixes which road, how to tell your town or the state, and what to do if a "
+             "road problem damaged your car.",
+             head="How to report a pothole or a road problem"),
+        task("building-permits", "Find out when you need a building permit",
+             "The building code, permits and inspections, who may do electrical and plumbing "
+             "work, septic approval, and building near water.",
+             head="How to know when you need a building permit"),
         task("trash-and-recycling", "Get rid of trash, recycling and hazardous waste",
              "Your transfer station, what never goes in the trash, hazardous waste days and "
              "composting."),
