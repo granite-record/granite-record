@@ -3689,6 +3689,228 @@ GUIDES += [CHILD_CARE]
 
 
 # ---------------------------------------------------------------------------
+# WHEN YOU NEED A BUILDING PERMIT OR AN INSPECTION (the person, 25 October
+# 2026: "what modifications you need permits for or an inspector for things
+# like house additions or electrical or plumbing work"). The state sets the
+# code and the trades' licenses; the town decides how permits are issued and
+# inspects. So the guide says what state law requires, and sends the reader
+# to the town's building office first, for its own permits. Read on 25
+# October 2026, as the Laws pages print them: RSA 155-A (the state building
+# code; RSA 674:51 and 676:11 and :13, which once held the town's part, were
+# repealed on 1 July 2026 and the code's own chapter holds it now; 155-A:7 has
+# a change taking effect 1 July 2027, and the guide says only what both texts
+# say), RSA 319-C (electricians), RSA 153 (plumbers and gas fitters, since
+# RSA 329-A's repeal in 2013), RSA 485-A (septic systems), RSA 483-B
+# (shoreland) and RSA 482-A (wetlands). The Fire Marshal's, the licensing
+# boards' and the Department of Environmental Services' pages refuse a cloud
+# session and wait for the person's printouts; DES's septic page is not
+# linked until its address is seen.
+# ---------------------------------------------------------------------------
+BP_READ = "2026-10-25"
+BP_PAGES_READ = None                 # the person's printouts, still to come
+FM_CODES = "https://www.firemarshal.dos.nh.gov/laws-rules-regulatory/state-fire-building-codes"
+OPLC_ELECTRICIANS = "https://www.oplc.nh.gov/electricians-board"
+OPLC_MECHANICAL = "https://www.oplc.nh.gov/mechanical-safety-and-licensing-board"
+DES_SHORELAND = "https://www.des.nh.gov/land/waterfront-development/protected-shoreland"
+DES_WETLANDS = "https://des.nh.gov/water/wetlands/permit-assistance"
+
+BUILDING_PERMITS = guide(
+    "building-permits", "When You Need a Building Permit or an Inspection",
+    "What New Hampshire's building code covers, getting a permit and inspections from your "
+    "town, who may do electrical, plumbing and gas work, septic approval, and permits for work "
+    "near water.",
+    "Every building project in New Hampshire, from a new house or an addition to a renovation "
+    "or a repair, must meet the state building code. Your town decides how permits are issued "
+    "and who inspects, so ask its building office before you start. Electrical and plumbing "
+    "work needs a licensed electrician or plumber, though you may do your own in a "
+    "single-family home you own and live in. A new septic system, or work that adds to the "
+    "load on one, needs the state&rsquo;s approval first, and so does most building, digging "
+    "or filling near a lake, pond, river, the coast or a wetland.",
+    [box("Before you start, ask your town&rsquo;s building office what permits the work "
+         "needs."),
+     ask("What is the work?",
+         [("Building, adding on, remodeling or repairing",
+           "It must meet the state building code. Your town issues the permit and inspects."),
+          ("Electrical, plumbing or gas",
+           "A licensed trade, or you, in a single-family home you own and live in."),
+          ("A septic system, or adding to the load on one",
+           "The state approves the septic plans first."),
+          ("Near a lake, pond, river, the coast or a wetland",
+           "A state shoreland or wetlands permit may be needed too.")]),
+     box("Get the permits before work starts, and have the work inspected when the town "
+         "asks.")],
+    [step("Start with your town’s building office",
+          "<p>The <b>state building code</b> applies to every building and structure in New "
+          "Hampshire: building one, and altering, renovating, repairing or tearing one down. "
+          "It is a set of national codes the state adopts, among them the building, "
+          "residential, plumbing, mechanical, energy and electrical codes.</p>"
+          "<p>Before work starts, the person responsible for it must get a permit. How that "
+          "works is the town&rsquo;s to set: a town or city that enforces the code has a "
+          "building official, often called the building inspector or code enforcement "
+          "officer, who reviews plans, issues permits and inspects the work. Ask at your town "
+          "or city office before you begin. A permit will not be issued for work that breaks "
+          "the town&rsquo;s zoning or planning board rules, so the same office can tell you "
+          "whether the project needs those boards&rsquo; approval too.</p>"
+          "<p>Where a town has no one of its own to enforce the code, the State Fire Marshal "
+          "may enforce it at the town&rsquo;s written request. In such a town, a contractor "
+          "must tell the Fire Marshal before starting any building other than a one- or "
+          "two-family home.</p>",
+          actions=[("The state's building and fire codes (State Fire Marshal)", FM_CODES)],
+          law=["RSA 155-A:1", "RSA 155-A:2", "RSA 155-A:3", "RSA 155-A:4", "RSA 155-A:7"]),
+     step("Inspections, and if you disagree",
+          "<p>The building official may inspect the work, the site and the building, so plan "
+          "for the inspections your town asks for.</p>"
+          "<p>When a town issues a building permit or a notice of violation, it must tell you "
+          "how to appeal, locally and to the state. A town that enforces the code has a "
+          "building code board of appeals, and there is no fee to appeal a notice of "
+          "violation or another decision of a code official.</p>",
+          law=["RSA 155-A:3", "RSA 155-A:7"]),
+     step("Electrical work",
+          "<p>Electrical work done for pay must be done by an electrician licensed by the "
+          "state. A homeowner may do electrical work in or about a <b>single-family home</b> "
+          "they own and live in, or are building to live in. Your town may still require a "
+          "permit and an inspection for it.</p>",
+          actions=[("Electricians' Board (Office of Professional Licensure and "
+                    "Certification)", OPLC_ELECTRICIANS)],
+          law=["RSA 319-C:1", "RSA 319-C:15"]),
+     step("Plumbing and gas work",
+          "<p>Plumbers and gas fitters are licensed by the state&rsquo;s Mechanical Safety and "
+          "Licensing Board. A property owner may install, repair or replace the plumbing in "
+          "their own <b>single-family house or townhouse</b>, including in new construction; "
+          "the work must still meet the state plumbing code.</p>"
+          "<p>Gas fitting is narrower: you may do it yourself only in an existing, stand-alone "
+          "single-family house that you own and live in as your main home, and the work must "
+          "meet the codes and pass any inspection that applies. Your town&rsquo;s building "
+          "office may enforce the plumbing and gas rules.</p>",
+          actions=[("Mechanical Safety and Licensing Board (Office of Professional Licensure "
+                    "and Certification)", OPLC_MECHANICAL)],
+          law=["RSA 153:36", "RSA 153:35"]),
+     step("Septic systems",
+          "<p>No one may build a house or other building that will send wastewater to a septic "
+          "system, or build a septic system, until the Department of Environmental Services "
+          "has approved its plans. The same goes before adding on to a building, or changing "
+          "its use, in a way that would add to the load on its septic system. Your town may have its own rules on top of the state&rsquo;s.</p>"
+          "<p>The plans must be prepared and signed by a designer who holds a permit from the "
+          "Department, and a system is installed by an installer with the Department&rsquo;s "
+          "permit. You may replace or repair the septic system of your own home yourself, "
+          "following the Department&rsquo;s rules.</p>",
+          law=["RSA 485-A:32", "RSA 485-A:35", "RSA 485-A:36", "RSA 485-A:38"]),
+     step("Work near water",
+          "<p>Land within 250 feet of a lake, pond, river or the coast is <b>protected "
+          "shoreland</b>. Building, digging or filling there needs a shoreland permit from the "
+          "Department of Environmental Services. Small projects that meet its standards can "
+          "go ahead on a simpler <b>permit by notification</b>, as soon as the Department "
+          "confirms it has your complete notice.</p>"
+          "<p>Digging, filling, dredging or building in or on a bank, marsh or swamp next to a "
+          "lake, river or other water needs a <b>wetlands permit</b> from the Department, "
+          "applied for through your town or city clerk, who signs the application.</p>",
+          actions=[("Protected shoreland (Department of Environmental Services)", DES_SHORELAND),
+                   ("Wetlands permit help (Department of Environmental Services)", DES_WETLANDS)],
+          law=["RSA 483-B:4", "RSA 483-B:5-b", "RSA 482-A:3"])],
+    [("State Fire and Building Codes (State Fire Marshal)", FM_CODES),
+     ("Electricians' Board (Office of Professional Licensure and Certification)",
+      OPLC_ELECTRICIANS),
+     ("Mechanical Safety and Licensing Board (Office of Professional Licensure and "
+      "Certification)", OPLC_MECHANICAL),
+     ("Protected Shoreland (Department of Environmental Services)", DES_SHORELAND),
+     ("Wetlands Permit Assistance (Department of Environmental Services)", DES_WETLANDS),
+     ("New Hampshire Building Code, RSA 155-A", "/laws/155-a"),
+     ("Electricians, RSA 319-C", "/laws/319-c"),
+     ("State Board of Fire Control, RSA 153", "/laws/153"),
+     ("Water Pollution and Waste Disposal, RSA 485-A", "/laws/485-a"),
+     ("Shoreland Water Quality Protection Act, RSA 483-B", "/laws/483-b"),
+     ("Fill and Dredge in Wetlands, RSA 482-A", "/laws/482-a")],
+    ["155-A", "319-C", "153", "485-A", "483-B", "482-A"],
+    [# The statutes, as the Laws pages print them, read on 25 October 2026.
+     claim("The state building code is the adoption by reference of the International Building "
+           "Code, Existing Building Code, Plumbing Code, Mechanical Code, Energy Conservation "
+           "Code, Swimming Pool and Spa Code and Residential Code, and the National Electrical "
+           "Code.", "RSA 155-A:1", BP_READ),
+     claim("All buildings, building components, and structures constructed in New Hampshire "
+           "shall comply with the state building code and state fire code; it governs the "
+           "construction and the alteration, renovation, rehabilitation, repair, removal, or "
+           "demolition of buildings; where a municipality has not adopted an enforcement "
+           "mechanism, the contractor shall notify the state fire marshal before construction "
+           "begins excluding one- and 2-family dwellings.", "RSA 155-A:2", BP_READ),
+     claim("The local legislative body may establish a local enforcement agency; a building "
+           "code board of appeals; a building official with authority to review construction "
+           "documents, issue building permits and perform inspections.", "RSA 155-A:3",
+           BP_READ),
+     claim("Before starting work, the person responsible for such construction shall obtain a "
+           "permit, conforming to the locally adopted process; the building official shall "
+           "not issue any permit for construction which will not comply with zoning "
+           "ordinances, building codes, or planning board regulations.", "RSA 155-A:4",
+           BP_READ),
+     claim("The local enforcement agency enforces the state building code; where there is no "
+           "local enforcement agency, the state fire marshal may enforce it upon written "
+           "request of the municipality; the agency may inspect all buildings, structures and "
+           "construction sites; information on the local and state appeals process is given "
+           "when issuing a building permit or notice of violation; no fee shall be required "
+           "to appeal a notice of violation or other decision of a code official.",
+           "RSA 155-A:7", BP_READ),
+     claim("No electrician installation shall be made for compensation, unless made by an "
+           "electrician licensed by the office of professional licensure and certification.",
+           "RSA 319-C:1", BP_READ),
+     claim("Nothing in this chapter shall prevent a homeowner from making electrical "
+           "installations in or about a single family residence owned and occupied by him or "
+           "her or to be occupied by him or her as his or her bona fide personal abode.",
+           "RSA 319-C:15", BP_READ),
+     claim("The license requirements do not apply to fuel gas fitting within an existing single "
+           "family, stand alone structure owned and occupied by the person as a primary "
+           "residence, who shall comply with applicable code and inspection requirements; nor "
+           "to a property owner who installs, repairs, or replaces plumbing in the property "
+           "owner's own single-family detached or townhouse residence, including new "
+           "construction, which shall conform to the state plumbing code.", "RSA 153:36",
+           BP_READ),
+     claim("The mechanical licensing board's rules may be enforced by the building inspection "
+           "department or by any officer designated by the city or town.", "RSA 153:35",
+           BP_READ),
+     claim("No person shall construct any building from which sewage or other wastes will "
+           "discharge or construct a sewage or waste disposal system without prior approval of "
+           "the plans and specifications by the department; local requirements are not "
+           "lessened.", "RSA 485-A:32", BP_READ),
+     claim("Applications for subsurface sewage or waste disposal systems shall be prepared and "
+           "signed by the individual who is directly responsible for them and who has a permit "
+           "issued by the department.", "RSA 485-A:35", BP_READ),
+     claim("No individual shall engage in the business of installing subsurface systems "
+           "without an installer's permit; a person installing a replacement system or "
+           "repairing a system for their own domicile is not required to obtain one, provided "
+           "they comply with the department's rules.", "RSA 485-A:36", BP_READ),
+     claim("Prior to expanding any structure or any change in use which would increase the "
+           "load on a sewage disposal system, the owner shall apply to the department for "
+           "approval of the system.", "RSA 485-A:38", BP_READ),
+     claim("Protected shoreland means all land located within 250 feet of the reference line of "
+           "public waters.", "RSA 483-B:4", BP_READ),
+     claim("No person shall commence construction, excavation, or filling activities within "
+           "the protected shoreland without a permit from the department; projects with no "
+           "impact on water quality qualify for a permit by notification, and the owner may "
+           "proceed upon written notice that a complete notification has been received.",
+           "RSA 483-B:5-b", BP_READ),
+     claim("No person shall excavate, remove, fill, dredge, or construct any structures in or "
+           "on any bank, flat, marsh, or swamp in and adjacent to any waters of the state "
+           "without a permit from the department; the application form is signed by the town "
+           "or city clerk.", "RSA 482-A:3", BP_READ),
+     # The agencies' own pages, from the person's printouts.
+     claim("The fire and building codes New Hampshire has adopted.", FM_CODES, BP_PAGES_READ),
+     claim("The Electricians' Board: licenses for electricians.", OPLC_ELECTRICIANS,
+           BP_PAGES_READ),
+     claim("The Mechanical Safety and Licensing Board: licenses for plumbers and gas fitters.",
+           OPLC_MECHANICAL, BP_PAGES_READ),
+     claim("The Protected Shoreland: permits for work within 250 feet of public waters.",
+           DES_SHORELAND, BP_PAGES_READ),
+     claim("Help with wetlands permits, and how applications are reviewed.", DES_WETLANDS,
+           BP_PAGES_READ)],
+    more="<h2>Who Can Help</h2>"
+         "<p>Your town or city&rsquo;s building inspector or code enforcement officer is the "
+         "first person to ask, about its permits, its fees and its inspections. Where your "
+         "town has none, ask the selectboard&rsquo;s office.</p>",
+    see=[("Who to contact about an issue", "/guides/who-to-contact.html"),
+         ("Cities, towns and who runs them", "/learn/city-and-town-government.html")])
+
+GUIDES += [BUILDING_PERMITS]
+
+
+# ---------------------------------------------------------------------------
 # HELP AFTER DOMESTIC VIOLENCE, SEXUAL ASSAULT OR STALKING (the person, 24
 # October 2026: "support services for things like sexual assault victims,
 # domestic violence victims, or the homeless"; homelessness is a guide of its
@@ -6330,6 +6552,10 @@ TASKS = [
         task("passport", "Get a U.S. passport",
              "A first passport or a renewal, what to bring to a post office, and a child&rsquo;s "
              "passport."),
+        task("building-permits", "Find out when you need a building permit",
+             "The building code, permits and inspections, who may do electrical and plumbing "
+             "work, septic approval, and building near water.",
+             head="How to know when you need a building permit"),
     ]),
     ("Outdoors and Recreation", [
         task("fishing-license", "Get a fishing license",
@@ -6425,6 +6651,10 @@ WORDS = {
                               "update my license", "expired license"),
     "register-a-car": ("register my car", "car registration", "vehicle registration", "plates",
                        "dmv"),
+    "building-permits": ("building permit", "permit", "inspection", "building inspector",
+                         "code enforcement", "addition", "renovation", "remodel", "electrical",
+                         "electrician", "plumbing", "plumber", "septic", "shoreland",
+                         "wetlands", "contractor"),
     "real-id": ("real id", "license", "id"),
     "new-to-new-hampshire": ("moving to new hampshire", "new resident", "license",
                              "register my car", "register to vote"),

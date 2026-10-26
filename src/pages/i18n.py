@@ -110,7 +110,7 @@ GUIDE_PAGES = tuple(f"guides/{s}.html" for s in (
     "domestic-violence-help", "discrimination", "homelessness-help",
     "storms-and-emergencies", "trash-and-recycling", "passport",
     "medicare-and-social-security", "disability-help", "who-to-contact", "report-a-road-problem",
-    "fishing-license", "hunting-license", "boating"))
+    "fishing-license", "hunting-license", "boating", "building-permits"))
 # THE LEARN PAGES (the person, 25 October 2026: "start on the Learn pages"),
 # each named here as its Spanish is written, keyed learn.<slug>.* (guides.
 # page_words). One not named is English to everybody and the hub links the

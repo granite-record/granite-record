@@ -1753,6 +1753,251 @@
    "es": "Navegantes jóvenes",
    "state": "draft"
   },
+  "guide.building-permits.a-licensed-trade-or-you-in": {
+   "en": "A licensed trade, or you, in a single-family home you own and live in.",
+   "es": "Un profesional con licencia, o usted mismo, en una casa unifamiliar que es suya y donde vive.",
+   "state": "draft"
+  },
+  "guide.building-permits.a-septic-system-or-adding-to": {
+   "en": "A septic system, or adding to the load on one",
+   "es": "Un sistema séptico, o aumentar lo que recibe",
+   "state": "draft"
+  },
+  "guide.building-permits.a-state-shoreland-or-wetlands-permit": {
+   "en": "A state shoreland or wetlands permit may be needed too.",
+   "es": "Puede necesitar también un permiso estatal de zona costera protegida o de humedales.",
+   "state": "draft"
+  },
+  "guide.building-permits.before-work-starts-the-person": {
+   "en": "Before work starts, the person responsible for it must get a permit. How that works is the town&rsquo;s to set: a town or city that enforces the code has a building official, often called the building inspector or code enforcement officer, who reviews plans, issues permits and inspects the work. Ask at your town or city office before you begin. A permit will not be issued for work that breaks the town&rsquo;s zoning or planning board rules, so the same office can tell you whether the project needs those boards&rsquo; approval too.",
+   "es": "Antes de empezar la obra, el responsable de ella tiene que obtener un permiso. Cómo funciona lo decide el municipio: un municipio o una ciudad que hace cumplir el código tiene un funcionario de construcción, a menudo llamado inspector de construcción o encargado del cumplimiento del código, que revisa los planos, expide los permisos e inspecciona la obra. Pregunte en la oficina de su municipio o ciudad antes de empezar. No se expide un permiso para una obra que no cumpla las reglas de zonificación o de la junta de planificación del municipio, así que la misma oficina puede decirle si el proyecto necesita también la aprobación de esas juntas.",
+   "state": "draft"
+  },
+  "guide.building-permits.before-you-start-ask-your-towns": {
+   "en": "Before you start, ask your town&rsquo;s building office what permits the work needs.",
+   "es": "Antes de empezar, pregunte en la oficina de construcción de su municipio qué permisos necesita la obra.",
+   "state": "draft"
+  },
+  "guide.building-permits.building-adding-on-remodeling-or": {
+   "en": "Building, adding on, remodeling or repairing",
+   "es": "Construir, ampliar, remodelar o reparar",
+   "state": "draft"
+  },
+  "guide.building-permits.cities-towns-and-who-runs-them": {
+   "en": "Cities, towns and who runs them",
+   "es": "Ciudades, municipios y quién los dirige",
+   "state": "draft"
+  },
+  "guide.building-permits.digging-filling-dredging-or-building-in": {
+   "en": "Digging, filling, dredging or building in or on a bank, marsh or swamp next to a lake, river or other water needs a <b>wetlands permit</b> from the Department, applied for through your town or city clerk, who signs the application.",
+   "es": "Excavar, rellenar, dragar o construir en o sobre una orilla, un pantano o una ciénaga junto a un lago, un río u otra masa de agua requiere un <b>permiso de humedales</b> del Departamento, que se solicita a través del secretario de su municipio o ciudad, quien firma la solicitud.",
+   "state": "draft"
+  },
+  "guide.building-permits.electrical-plumbing-or-gas": {
+   "en": "Electrical, plumbing or gas",
+   "es": "Electricidad, plomería o gas",
+   "state": "draft"
+  },
+  "guide.building-permits.electrical-work": {
+   "en": "Electrical work",
+   "es": "Trabajos eléctricos",
+   "state": "draft"
+  },
+  "guide.building-permits.electrical-work-done-for-pay-must": {
+   "en": "Electrical work done for pay must be done by an electrician licensed by the state. A homeowner may do electrical work in or about a <b>single-family home</b> they own and live in, or are building to live in. Your town may still require a permit and an inspection for it.",
+   "es": "Los trabajos eléctricos que se hacen a cambio de pago tiene que hacerlos un electricista con licencia del estado. El dueño de una casa puede hacer trabajos eléctricos dentro o alrededor de una <b>casa unifamiliar</b> que es suya y donde vive, o que construye para vivir en ella. Su municipio todavía puede exigir un permiso y una inspección.",
+   "state": "draft"
+  },
+  "guide.building-permits.electricians-board-office-of": {
+   "en": "Electricians' Board (Office of Professional Licensure and Certification)",
+   "es": "Junta de Electricistas (Oficina de Licencias y Certificación Profesionales)",
+   "state": "draft"
+  },
+  "guide.building-permits.electricians-rsa-319-c": {
+   "en": "Electricians, RSA 319-C",
+   "es": "Electricistas, RSA 319-C",
+   "state": "draft"
+  },
+  "guide.building-permits.every-building-project-in-new-hampshire": {
+   "en": "Every building project in New Hampshire, from a new house or an addition to a renovation or a repair, must meet the state building code. Your town decides how permits are issued and who inspects, so ask its building office before you start. Electrical and plumbing work needs a licensed electrician or plumber, though you may do your own in a single-family home you own and live in. A new septic system, or work that adds to the load on one, needs the state&rsquo;s approval first, and so does most building, digging or filling near a lake, pond, river, the coast or a wetland.",
+   "es": "Toda obra de construcción en New Hampshire, desde una casa nueva o una ampliación hasta una renovación o una reparación, tiene que cumplir el código estatal de construcción. Su municipio decide cómo se expiden los permisos y quién inspecciona, así que pregunte en su oficina de construcción antes de empezar. Los trabajos eléctricos y de plomería requieren un electricista o un plomero con licencia, aunque usted puede hacer los suyos en una casa unifamiliar que es suya y donde vive. Un sistema séptico nuevo, o una obra que aumente lo que recibe uno, necesita antes la aprobación del estado, y también la necesita la mayor parte de las obras, excavaciones o rellenos cerca de un lago, un estanque, un río, la costa o un humedal.",
+   "state": "draft"
+  },
+  "guide.building-permits.fill-and-dredge-in-wetlands-rsa": {
+   "en": "Fill and Dredge in Wetlands, RSA 482-A",
+   "es": "Relleno y dragado en humedales, RSA 482-A",
+   "state": "draft"
+  },
+  "guide.building-permits.gas-fitting-is-narrower-you-may": {
+   "en": "Gas fitting is narrower: you may do it yourself only in an existing, stand-alone single-family house that you own and live in as your main home, and the work must meet the codes and pass any inspection that applies. Your town&rsquo;s building office may enforce the plumbing and gas rules.",
+   "es": "Las instalaciones de gas son más restringidas: puede hacerlas usted mismo solo en una casa unifamiliar existente e independiente que es suya y donde vive como su vivienda principal, y la obra tiene que cumplir los códigos y pasar cualquier inspección que corresponda. La oficina de construcción de su municipio puede hacer cumplir las reglas de plomería y de gas.",
+   "state": "draft"
+  },
+  "guide.building-permits.get-the-permits-before-work-starts": {
+   "en": "Get the permits before work starts, and have the work inspected when the town asks.",
+   "es": "Obtenga los permisos antes de empezar la obra, y haga inspeccionar la obra cuando el municipio lo pida.",
+   "state": "draft"
+  },
+  "guide.building-permits.inspections-and-if-you-disagree": {
+   "en": "Inspections, and if you disagree",
+   "es": "Inspecciones, y si no está de acuerdo",
+   "state": "draft"
+  },
+  "guide.building-permits.it-must-meet-the-state-building": {
+   "en": "It must meet the state building code. Your town issues the permit and inspects.",
+   "es": "Tiene que cumplir el código estatal de construcción. Su municipio expide el permiso e inspecciona.",
+   "state": "draft"
+  },
+  "guide.building-permits.land-within-250-feet-of-a": {
+   "en": "Land within 250 feet of a lake, pond, river or the coast is <b>protected shoreland</b>. Building, digging or filling there needs a shoreland permit from the Department of Environmental Services. Small projects that meet its standards can go ahead on a simpler <b>permit by notification</b>, as soon as the Department confirms it has your complete notice.",
+   "es": "El terreno a menos de 250 pies de un lago, un estanque, un río o la costa es <b>zona costera protegida</b>. Construir, excavar o rellenar allí requiere un permiso de zona costera del Departamento de Servicios Ambientales. Las obras pequeñas que cumplen sus normas pueden hacerse con un <b>permiso por notificación</b>, más sencillo, en cuanto el Departamento confirma que recibió su aviso completo.",
+   "state": "draft"
+  },
+  "guide.building-permits.lead": {
+   "en": "What New Hampshire's building code covers, getting a permit and inspections from your town, who may do electrical, plumbing and gas work, septic approval, and permits for work near water.",
+   "es": "Lo que abarca el código de construcción de New Hampshire, cómo obtener un permiso e inspecciones de su municipio, quién puede hacer trabajos eléctricos, de plomería y de gas, la aprobación de sistemas sépticos, y los permisos para obras cerca del agua.",
+   "state": "draft"
+  },
+  "guide.building-permits.mechanical-safety-and-licensing-board": {
+   "en": "Mechanical Safety and Licensing Board (Office of Professional Licensure and Certification)",
+   "es": "Junta de Seguridad Mecánica y Licencias (Oficina de Licencias y Certificación Profesionales)",
+   "state": "draft"
+  },
+  "guide.building-permits.near-a-lake-pond-river-the": {
+   "en": "Near a lake, pond, river, the coast or a wetland",
+   "es": "Cerca de un lago, un estanque, un río, la costa o un humedal",
+   "state": "draft"
+  },
+  "guide.building-permits.new-hampshire-building-code-rsa-155": {
+   "en": "New Hampshire Building Code, RSA 155-A",
+   "es": "Código de Construcción de New Hampshire, RSA 155-A",
+   "state": "draft"
+  },
+  "guide.building-permits.no-one-may-build-a-house": {
+   "en": "No one may build a house or other building that will send wastewater to a septic system, or build a septic system, until the Department of Environmental Services has approved its plans. The same goes before adding on to a building, or changing its use, in a way that would add to the load on its septic system. Your town may have its own rules on top of the state&rsquo;s.",
+   "es": "Nadie puede construir una casa u otro edificio cuyas aguas residuales vayan a un sistema séptico, ni construir un sistema séptico, hasta que el Departamento de Servicios Ambientales haya aprobado sus planos. Lo mismo vale antes de ampliar un edificio, o de cambiar su uso, de una manera que aumente lo que recibe su sistema séptico. Su municipio puede tener reglas propias además de las del estado.",
+   "state": "draft"
+  },
+  "guide.building-permits.plumbers-and-gas-fitters-are-licensed": {
+   "en": "Plumbers and gas fitters are licensed by the state&rsquo;s Mechanical Safety and Licensing Board. A property owner may install, repair or replace the plumbing in their own <b>single-family house or townhouse</b>, including in new construction; the work must still meet the state plumbing code.",
+   "es": "Los plomeros y los instaladores de gas reciben su licencia de la Junta de Seguridad Mecánica y Licencias del estado. El dueño de una propiedad puede instalar, reparar o reemplazar la plomería de su propia <b>casa unifamiliar o casa adosada</b>, también en una construcción nueva; la obra igual tiene que cumplir el código estatal de plomería.",
+   "state": "draft"
+  },
+  "guide.building-permits.plumbing-and-gas-work": {
+   "en": "Plumbing and gas work",
+   "es": "Plomería y gas",
+   "state": "draft"
+  },
+  "guide.building-permits.protected-shoreland-department-of": {
+   "en": "Protected shoreland (Department of Environmental Services)",
+   "es": "Zona costera protegida (Departamento de Servicios Ambientales)",
+   "state": "draft"
+  },
+  "guide.building-permits.protected-shoreland-department-of-2": {
+   "en": "Protected Shoreland (Department of Environmental Services)",
+   "es": "Zona costera protegida (Departamento de Servicios Ambientales)",
+   "state": "draft"
+  },
+  "guide.building-permits.septic-systems": {
+   "en": "Septic systems",
+   "es": "Sistemas sépticos",
+   "state": "draft"
+  },
+  "guide.building-permits.shoreland-water-quality-protection-act": {
+   "en": "Shoreland Water Quality Protection Act, RSA 483-B",
+   "es": "Ley de Protección de la Calidad del Agua en la Zona Costera, RSA 483-B",
+   "state": "draft"
+  },
+  "guide.building-permits.start-with-your-towns-building-office": {
+   "en": "Start with your town’s building office",
+   "es": "Empiece por la oficina de construcción de su municipio",
+   "state": "draft"
+  },
+  "guide.building-permits.state-board-of-fire-control-rsa": {
+   "en": "State Board of Fire Control, RSA 153",
+   "es": "Junta Estatal de Control de Incendios, RSA 153",
+   "state": "draft"
+  },
+  "guide.building-permits.state-fire-and-building-codes-state": {
+   "en": "State Fire and Building Codes (State Fire Marshal)",
+   "es": "Códigos estatales de incendios y de construcción (Jefe Estatal de Bomberos)",
+   "state": "draft"
+  },
+  "guide.building-permits.the-building-official-may-inspect-the": {
+   "en": "The building official may inspect the work, the site and the building, so plan for the inspections your town asks for.",
+   "es": "El funcionario de construcción puede inspeccionar la obra, el sitio y el edificio, así que cuente con las inspecciones que pida su municipio.",
+   "state": "draft"
+  },
+  "guide.building-permits.the-plans-must-be-prepared-and": {
+   "en": "The plans must be prepared and signed by a designer who holds a permit from the Department, and a system is installed by an installer with the Department&rsquo;s permit. You may replace or repair the septic system of your own home yourself, following the Department&rsquo;s rules.",
+   "es": "Los planos los tiene que preparar y firmar un diseñador con permiso del Departamento, y el sistema lo instala un instalador con permiso del Departamento. Usted mismo puede reemplazar o reparar el sistema séptico de su propia vivienda, siguiendo las reglas del Departamento.",
+   "state": "draft"
+  },
+  "guide.building-permits.the-state-approves-the-septic-plans": {
+   "en": "The state approves the septic plans first.",
+   "es": "El estado aprueba antes los planos del sistema séptico.",
+   "state": "draft"
+  },
+  "guide.building-permits.the-state-building-code-applies-to": {
+   "en": "The <b>state building code</b> applies to every building and structure in New Hampshire: building one, and altering, renovating, repairing or tearing one down. It is a set of national codes the state adopts, among them the building, residential, plumbing, mechanical, energy and electrical codes.",
+   "es": "El <b>código estatal de construcción</b> se aplica a todo edificio y estructura de New Hampshire: al construirlo, y al modificarlo, renovarlo, repararlo o demolerlo. Es un conjunto de códigos nacionales que el estado adopta, entre ellos los de construcción, vivienda, plomería, sistemas mecánicos, energía y electricidad.",
+   "state": "draft"
+  },
+  "guide.building-permits.the-state-s-building-and-fire": {
+   "en": "The state's building and fire codes (State Fire Marshal)",
+   "es": "Los códigos estatales de construcción y de incendios (Jefe Estatal de Bomberos)",
+   "state": "draft"
+  },
+  "guide.building-permits.title": {
+   "en": "When You Need a Building Permit or an Inspection",
+   "es": "Cuándo necesita un permiso de construcción o una inspección",
+   "state": "draft"
+  },
+  "guide.building-permits.water-pollution-and-waste-disposal-rsa": {
+   "en": "Water Pollution and Waste Disposal, RSA 485-A",
+   "es": "Contaminación del agua y eliminación de desechos, RSA 485-A",
+   "state": "draft"
+  },
+  "guide.building-permits.wetlands-permit-assistance-department-of": {
+   "en": "Wetlands Permit Assistance (Department of Environmental Services)",
+   "es": "Ayuda con permisos de humedales (Departamento de Servicios Ambientales)",
+   "state": "draft"
+  },
+  "guide.building-permits.wetlands-permit-help-department-of": {
+   "en": "Wetlands permit help (Department of Environmental Services)",
+   "es": "Ayuda con permisos de humedales (Departamento de Servicios Ambientales)",
+   "state": "draft"
+  },
+  "guide.building-permits.what-is-the-work": {
+   "en": "What is the work?",
+   "es": "¿Qué obra es?",
+   "state": "draft"
+  },
+  "guide.building-permits.when-a-town-issues-a-building": {
+   "en": "When a town issues a building permit or a notice of violation, it must tell you how to appeal, locally and to the state. A town that enforces the code has a building code board of appeals, and there is no fee to appeal a notice of violation or another decision of a code official.",
+   "es": "Cuando un municipio expide un permiso de construcción o un aviso de infracción, tiene que decirle cómo apelar, en el municipio y ante el estado. Un municipio que hace cumplir el código tiene una junta de apelaciones del código de construcción, y apelar un aviso de infracción u otra decisión de un funcionario del código no tiene cuota.",
+   "state": "draft"
+  },
+  "guide.building-permits.where-a-town-has-no-one": {
+   "en": "Where a town has no one of its own to enforce the code, the State Fire Marshal may enforce it at the town&rsquo;s written request. In such a town, a contractor must tell the Fire Marshal before starting any building other than a one- or two-family home.",
+   "es": "Donde un municipio no tiene a nadie propio que haga cumplir el código, el Jefe Estatal de Bomberos puede hacerlo cumplir si el municipio lo pide por escrito. En ese municipio, un contratista tiene que avisar al Jefe Estatal de Bomberos antes de empezar cualquier construcción que no sea una casa para una o dos familias.",
+   "state": "draft"
+  },
+  "guide.building-permits.who-to-contact-about-an-issue": {
+   "en": "Who to contact about an issue",
+   "es": "A quién contactar sobre un asunto",
+   "state": "draft"
+  },
+  "guide.building-permits.work-near-water": {
+   "en": "Work near water",
+   "es": "Obras cerca del agua",
+   "state": "draft"
+  },
+  "guide.building-permits.your-town-or-citys-building-inspector": {
+   "en": "Your town or city&rsquo;s building inspector or code enforcement officer is the first person to ask, about its permits, its fees and its inspections. Where your town has none, ask the selectboard&rsquo;s office.",
+   "es": "El inspector de construcción o el encargado del cumplimiento del código de su municipio o ciudad es la primera persona a quien preguntar, sobre sus permisos, sus cuotas y sus inspecciones. Si su municipio no tiene uno, pregunte en la oficina de los concejales.",
+   "state": "draft"
+  },
   "guide.child-care-scholarship.accessing-the-nh-child-care-scholarship": {
    "en": "Accessing the NH Child Care Scholarship, Family Assistance Manual 901 (Department of Health and Human Services)",
    "es": "Cómo acceder a la beca de cuidado infantil, Manual de Asistencia Familiar 901 (Departamento de Salud y Servicios Humanos)",
@@ -8275,6 +8520,21 @@
   "guide.task.boating.line": {
    "en": "The safe boater education certificate, the temporary one, and registering a boat each year.",
    "es": "El certificado de educación para la navegación segura, el temporal y el registro anual de una embarcación.",
+   "state": "draft"
+  },
+  "guide.task.building-permits.does": {
+   "en": "Find out when you need a building permit",
+   "es": "Saber cuándo necesita un permiso de construcción",
+   "state": "draft"
+  },
+  "guide.task.building-permits.head": {
+   "en": "How to know when you need a building permit",
+   "es": "Cómo saber cuándo necesita un permiso de construcción",
+   "state": "draft"
+  },
+  "guide.task.building-permits.line": {
+   "en": "The building code, permits and inspections, who may do electrical and plumbing work, septic approval, and building near water.",
+   "es": "El código de construcción, los permisos y las inspecciones, quién puede hacer trabajos eléctricos y de plomería, la aprobación de sistemas sépticos, y construir cerca del agua.",
    "state": "draft"
   },
   "guide.task.child-care-scholarship.does": {
