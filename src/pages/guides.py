@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-10-11.51
+# GRANITE_VERSION: 2026-10-11.52
 """
 The how-to guides: their words, their sources, and what each was checked
 against. Read by build_civics.py, which draws them on the Resources hub's
@@ -885,8 +885,8 @@ VITAL = guide(
           law=["RSA 5-C:102"]),
      step("Fill in the application",
           "<p>Fill in the section for the kind of record you want, and the applicant section "
-          "with your name, address, reason and relationship, and sign it. A false statement on "
-          "the application is a felony.</p>",
+          "with your name, address, reason and relationship, and sign it. Knowingly making a "
+          "false statement on the application is a felony.</p>",
           actions=[("The application", DVRA_APP)], law=["RSA 5-C:14"]),
      step("Apply in person, or by mail",
           "<p><b>In person:</b> take the application and your photo ID to your town or city "
@@ -1525,7 +1525,8 @@ SAID = {
     "exec-session": (
         "<p>The committee votes on what to recommend at an executive session, which you may "
         "watch. It can follow the hearing directly: Senate notices often say so, and a House "
-        "committee may hold one right after a noticed hearing without further notice. Some "
+        "committee may hold one right after a noticed hearing without further notice, if the "
+        "chair and the ranking member agree. Some "
         "notices give one block of "
         "time to &ldquo;executive session on pending legislation&rdquo;, and in practice the "
         "chair then takes up the bills in any order.</p>"),
@@ -1611,7 +1612,7 @@ HEARING = guide(
          [("Yes", "Go to the room, and ask to speak: a pink card in the House, the sign-up sheet "
                   "in the Senate."),
           ("No", "Watch the live stream, and sign in online or send your position in writing.")]),
-     box("When the chair calls you, speak briefly. Before closing, the chair asks whether anyone "
+     box("When the chair calls you, speak briefly. Before closing, the chair usually asks whether anyone "
          "else wishes to speak."),
      box("Afterward, the committee votes on what to recommend, sometimes the same day.")],
     [step("Find the hearing",
@@ -2287,11 +2288,12 @@ LICENSE = guide(
      # No claim of this guide gives the paper license's 60 days, which the
      # DMV's page for new residents does (NEW_RESIDENT), so it is not printed
      # here (COUNT, 23 October 2026); the card's 60 days are DMV_ONLINE's.
-     box("You leave with a paper license, and the new card comes by mail within 60 days.")],
+     box("Online, you print a temporary license to carry with your old card, and the new card "
+         "comes by mail within 60 days.")],
     [step("Watch for your renewal notice",
           "<p>About two months before your license expires, the DMV mails a renewal notice to the "
           "address it has for you.</p>",
-          law=["RSA 263:10, I"]),
+          actions=[("License renewal (DMV)", DMV_RENEW)]),
      step("Renew online, if your notice says you can",
           "<p>You need:</p><ul>"
           "<li>the <b>Renewal Identification Number</b> from your notice, which works from 60 days "
@@ -2638,8 +2640,9 @@ NEW_RESIDENT = guide(
           "identity, age, citizenship and domicile; How to Vote lists what counts.</p>",
           actions=[("Register to vote", SOS_REGISTER)], law=["RSA 654:27"]),
      step("Keep your address up to date",
-          "<p>Once you hold a New Hampshire license, tell the DMV within 30 days whenever you change "
-          "your name, your home or your mailing address. An address change can go through the "
+          "<p>Once you hold a New Hampshire license, notify the DMV in writing within 30 days "
+          "whenever you change your name, your home or your mailing address. An address change "
+          "can go through the "
           "DMV&rsquo;s drop box service.</p>",
           actions=[("DMV appointments and drop box", DMV_APPT)], law=["RSA 263:9"])],
     [("New Resident to New Hampshire (Division of Motor Vehicles)", DMV_NEW),
@@ -2660,7 +2663,8 @@ NEW_RESIDENT = guide(
      claim("A NH license within 60 days of residency; by appointment with the DSMV 450, proof of "
            "identity and residency for REAL ID or not, the fee and a vision test; non-citizens see "
            "their page; listed out-of-state license classes are invalid in NH.", DMV_TRANSFER, READ),
-     claim("Address change by drop box service.", DMV_APPT, READ),
+     claim("Address change by drop box service; the DMV is fully appointment based; book "
+           "online or call 603-227-4000.", DMV_APPT, READ),
      claim("Citizen, 18 on election day, resident of the town or ward, no minimum period; register "
            "with the clerk or supervisors 6 to 13 days before, or at the polls; proof of identity, "
            "age, citizenship and domicile.", SOS_REGISTER, READ),
@@ -2668,8 +2672,8 @@ NEW_RESIDENT = guide(
            "establishing bona fide residency to obtain a NH license.", "RSA 263:35", READ),
      claim("No license until every other jurisdiction's license is surrendered.", "RSA 263:4", READ),
      claim("A new resident has 60 days from residency to register vehicles in NH.", "RSA 261:45", READ),
-     claim("A licensed driver notifies the director within 30 days of a change of legal name, "
-           "permanent residence or mailing address.", "RSA 263:9", READ),
+     claim("A licensed driver notifies the director in writing within 30 days of a change of "
+           "legal name, permanent residence or mailing address.", "RSA 263:9", READ),
      claim("The supervisors' session for correcting the checklist, at which hearings close, is on "
            "a day they designate 6 to 13 days before the election.", "RSA 654:27", COUNTED)],
     more=civics.faq(
@@ -4882,8 +4886,9 @@ HOMELESS = guide(
           "no sooner than 5 business days later it can issue a Writ of Possession, which lets "
           "the landlord take back the home.</li>"
           "<li><b>If the case is only about unpaid rent,</b> it is dismissed if, before the "
-          "hearing, you pay all the rent you owe, $15, and the landlord&rsquo;s filing and "
-          "service costs. You can do this up to 3 times in a 12-month period.</li></ul>"
+          "hearing, you pay all the rent you owe, any other lawful charges in your lease, $15, "
+          "and the landlord&rsquo;s filing and service costs. You can do this up to 3 times in a "
+          "12-month period.</li></ul>"
           "<p>Get free legal help as early as you can, from 603 Legal Aid or New Hampshire "
           "Legal Assistance.</p>",
           actions=[("Landlord and tenant cases (Judicial Branch)", COURTS_LLT)],
@@ -4917,6 +4922,9 @@ HOMELESS = guide(
      ("Housing Choice Voucher: Apply (New Hampshire Housing)", NHH_APPLY),
      ("Resources for Renters (New Hampshire Housing)", NHH_RENTERS),
      ("Education for Homeless Children and Youth Program (Department of Education)", DOE_EHCY),
+     ("New Hampshire Coalition Against Domestic and Sexual Violence", NHCADSV),
+     ("Support Services and Programs (Coalition Against Domestic and Sexual Violence)",
+      NHCADSV_SERVICES),
      ("Education for homeless children and youths, 42 U.S.C. 11432 (federal)", USC_11432),
      ("Aid to Assisted Persons, RSA 165", "/laws/165"),
      ("Actions Against Tenants, RSA 540", "/laws/540"),
@@ -4939,7 +4947,9 @@ HOMELESS = guide(
            "and New Hampshire Housing pays the remainder to the landlord; the household selects "
            "a unit meeting housing quality standards; for very low-income households, with "
            "income limits on the page; apply online or call 1-800-439-7247 for a mailed "
-           "application; for most applicants an estimated wait of 7 to 9 years.",
+           "application; for a paper application, contact us at (603) 472-8623 or "
+           "rentinfo@nhhousing.org to request one be mailed to you; for most applicants an "
+           "estimated wait of 7 to 9 years.",
            NHH_APPLY, HL_READ),
      claim("The Eviction Diversion Program: free mediation before a court case, voluntary, no "
            "rights given up; a tenant files an Appearance by the return date on the "
@@ -4962,8 +4972,16 @@ HOMELESS = guide(
            "the town's overseers of public welfare; every town and city adopts written "
            "guidelines on applying, eligibility and appeals; proof of residency includes an "
            "attestation by the welfare official, a law enforcement or fire official, an EMS "
-           "provider or a social services provider with an existing relationship.",
+           "provider or a local third party social services provider with an existing service "
+           "relationship, on official agency letterhead, with the last date of contact, signed "
+           "and dated by an authorized official, unless the welfare official identifies specific, "
+           "substantiated evidence contradicting it.",
            "RSA 165:1", HL_READ),
+     claim("A 24-hour helpline, 1-866-644-3574; the crisis centers serve victims of domestic "
+           "violence, sexual assault, stalking, child abuse and human trafficking; free and "
+           "confidential.", NHCADSV, DV_READ),
+     claim("Free and confidential crisis center services, including accompaniment to hospitals, "
+           "police and courts and emergency shelter.", NHCADSV_SERVICES, DV_READ),
      claim("A person temporarily in a town that is not their residence is given reasonable and "
            "necessary temporary assistance.", "RSA 165:1-c", HL_READ),
      claim("No landlord may interrupt utility service or deny a tenant access to the premises "
@@ -4978,16 +4996,19 @@ HOMELESS = guide(
          "<p>If you are only staying in a town for now, it must still give you the temporary "
          "help that is reasonable and necessary.</p>"),
         ("What if I have no lease or bill to prove where I live?",
-         "<p>If you are asked to prove where you live and have no lease or bill, a signed "
-         "statement from the welfare official, a police or fire official, an emergency medical "
-         "provider or a social services provider who knows you counts.</p>"),
+         "<p>If you are asked to prove where you live and have no lease or bill, a signed and "
+         "dated statement on agency letterhead, giving the last date of contact, counts. It can "
+         "come from the welfare official, a police or fire official, an emergency medical "
+         "provider, or a local social services provider already serving you, unless the welfare "
+         "official has specific evidence against it.</p>"),
         ("Can I appeal if I lose an eviction case?",
          "<p><b>If you lose,</b> you have 7 days from the Notice of Judgment to file a Notice "
          "of Intent to Appeal, and you will have to pay rent each week while the appeal goes "
          "on.</p>"))
          + "<h2>Who Can Help</h2>"
          "<p>2-1-1 New Hampshire, at any hour, and your town or city welfare office are the "
-         "places to start. For a housing voucher, call New Hampshire Housing at (603) 472-8623. "
+         "places to start. To have a housing voucher application mailed to you, call New "
+         "Hampshire Housing at (603) 472-8623. "
          "For help with an eviction or a denial of town assistance:</p>"
          + helps("legal_aid"),
     see=[("How to get help after domestic violence, sexual assault or stalking",
@@ -5954,7 +5975,7 @@ HEALTH_INSURANCE = guide(
     "Buying a plan through the Health Insurance Marketplace, when you can enroll, help paying "
     "premiums, coverage through a job or a parent’s plan, and what to do if your "
     "insurance company denies a claim in New Hampshire.",
-    "Most people get private health insurance through a job, or buy a plan through the Health "
+    "You can get private health insurance through a job, or buy a plan through the Health "
     "Insurance Marketplace, whose official site is HealthCare.gov. You can enroll in a "
     "Marketplace plan during Open Enrollment, November 1 to January 15, or after a life change "
     "such as losing other coverage, moving or having a baby, and you may get help paying your "
@@ -5985,8 +6006,8 @@ HEALTH_INSURANCE = guide(
           "<li>losing qualifying health coverage, such as a job&rsquo;s plan or a "
           "parent&rsquo;s plan when you turn 26, or expecting to lose it in the next 60 days. "
           "A loss of Medicaid or CHIP counts within 90 days.</li></ul>"
-          "<p>Choosing to drop coverage yourself, such as stopping your COBRA payments, does "
-          "not open one. You may be asked for documents that show the change. Medicaid and "
+          "<p>Dropping COBRA coverage yourself does not open one. You may be asked for "
+          "documents that show the change. Medicaid and "
           "CHIP can be applied for at any time.</p>",
           actions=[("Dates and deadlines (HealthCare.gov)", HC_DATES),
                    ("Special Enrollment Periods (HealthCare.gov)", HC_SEP),
@@ -6017,16 +6038,16 @@ HEALTH_INSURANCE = guide(
      step("Coverage through a job, COBRA, or a parent’s plan",
           "<p>For a plan through your job, ask your employer&rsquo;s benefits office how and "
           "when to sign up.</p>"
-          "<p><b>COBRA</b>, a federal law, lets you and your family keep your employer&rsquo;s "
+          "<p><b>COBRA</b> lets you and your family keep your employer&rsquo;s "
           "group health insurance for a limited time after an event such as losing your job or "
           "having your hours cut. When your COBRA coverage ends, you have 60 days to enroll in a "
           "Marketplace plan.</p>"
           "<p>If a parent&rsquo;s plan covers dependents, you can usually be added to it and "
-          "stay on it until you turn 26, even if you are married, have a child, live away from "
-          "home or are not claimed as a tax dependent. On a parent&rsquo;s Marketplace plan, "
-          "you can stay through December 31 of the year you turn 26.</p>",
-          actions=[("Getting or staying on a parent’s plan (HealthCare.gov)", HC_U26)],
-          law=["RSA 420-G:6", "RSA 415:22"]),
+          "stay on it until you turn 26. On a parent&rsquo;s job-based plan you can generally "
+          "stay until 26 even if you are married, have a child, live away from home or are not "
+          "claimed as a tax dependent. On a parent&rsquo;s Marketplace plan, you can stay "
+          "through December 31 of the year you turn 26.</p>",
+          actions=[("Getting or staying on a parent’s plan (HealthCare.gov)", HC_U26)]),
      step("Appeal a denied claim to your insurance company",
           "<p>Every health insurance company must have a written procedure for appealing a "
           "denied claim, with a full and fair review by someone other than the person who "
@@ -6174,7 +6195,10 @@ HEALTH_INSURANCE = guide(
            "eligibility, in relation to health status, medical condition, claims experience, "
            "receipt of health care, medical history, genetic information, evidence of "
            "insurability or disability; no rescission except for fraud or an intentional "
-           "misrepresentation of material fact.", "RSA 420-G:6", HI_READ),
+           "misrepresentation of material fact; renewable except for nonpayment of required "
+           "premiums, fraud or intentional misrepresentation, an employer's failure to meet "
+           "participation requirements or violation of the chapter, or the carrier ceasing to "
+           "offer coverage in the market.", "RSA 420-G:6", HI_READ),
      claim("Health insurance policies cover a newly born child from the moment of birth; if a "
            "specific premium is required, notice of the birth and payment within 31 days after "
            "the date of birth for coverage to continue; no additional premium for the first 31 "
@@ -6193,13 +6217,15 @@ HEALTH_INSURANCE = guide(
         ("Can an insurance company turn me down because of a health condition?",
          "<p>No. New Hampshire law forbids a health insurance company to base whether you can "
          "get or keep coverage on your health, a medical condition, your medical history, "
-         "genetic information or a disability. It may cancel your coverage only for fraud or "
-         "for lying about something important on purpose.</p>"),
+         "genetic information or a disability (<a href=\"/laws/420-g#s6\">RSA 420-G:6</a>). "
+         "It may not cancel your coverage back to its start except for fraud or an intentional "
+         "misrepresentation of an important fact, and it may decline to renew it only for the "
+         "reasons the law lists, such as unpaid premiums.</p>"),
         ("Is my new baby covered?",
          "<p>A health insurance policy covers a newborn from the moment of birth. If adding a "
          "child costs more, the policy may require you to tell the company about the birth "
          "and pay within 31 days after it for the coverage to continue; there is no extra "
-         "premium for those first 31 days.</p>"),
+         "premium for those first 31 days (<a href=\"/laws/415#s22\">RSA 415:22</a>).</p>"),
         ("What if I am turned down for a Special Enrollment Period?",
          "<p>You can appeal the decision. HealthCare.gov&rsquo;s Special Enrollment Periods "
          "page explains how.</p>"),
@@ -6431,8 +6457,8 @@ WAGES = guide(
           "requires or allows it, such as payroll taxes, or when you have agreed in writing to "
           "a deduction for a lawful purpose that benefits you, such as union dues, health "
           "insurance, retirement contributions, a charity, or anything else you agree to that "
-          "gives your employer no financial advantage. A deduction may not be used to make you "
-          "pay for things you need to do your job.</p>"
+          "gives your employer no financial advantage. A deduction you agree to for some other "
+          "purpose may not be used to pay for things you need to do your job.</p>"
           "<p>Each pay period that something is taken out, your employer must give you a "
           "statement of the deductions.</p>",
           law=["RSA 275:48", "RSA 275:49"]),
@@ -6441,8 +6467,8 @@ WAGES = guide(
           "wage.</p>"
           "<p><b>Overtime.</b> Unless your job is exempt, you must be paid time and one-half "
           "your regular rate for every hour over 40 hours in a work week. Federal law requires "
-          "it of most employers; New Hampshire&rsquo;s law requires it of the employers federal "
-          "law does not cover.</p>"
+          "it of the employers the Fair Labor Standards Act covers; New Hampshire&rsquo;s law "
+          "requires it of most other employers.</p>"
           "<p><b>Meal breaks.</b> Your employer may not make you work more than 5 consecutive "
           "hours without a half-hour break to eat, unless you can eat while you work and your "
           "employer lets you.</p>",
@@ -6560,7 +6586,8 @@ WAGES = guide(
          "and work expenses that are your employer&rsquo;s practice or policy count as wages "
          "when they are due.</p>"),
         ("Can my last paycheck be mailed to me?",
-         "<p>You can ask for the last paycheck to be mailed to you.</p>"),
+         "<p>If you quit or are laid off, you can ask for the last paycheck to be mailed to "
+         "you.</p>"),
         ("Can a tipped worker be paid less than the minimum wage?",
          "<p>A tipped worker in a restaurant or hotel who regularly gets tips may be paid a "
          "lower base rate by the employer, but if base pay and tips together come to less than "
@@ -7503,8 +7530,8 @@ ROAD_PROBLEM = guide(
          "deadline.")],
     [step("Work out whose road it is",
           "<p>Most roads are your town&rsquo;s or city&rsquo;s. It maintains every ordinary town "
-          "road, and keeps up the sidewalks along its roads, at no charge to the owners next to "
-          "them.</p>"
+          "road, and keeps up the sidewalks it has built along its roads, at no further charge "
+          "to the owners next to them.</p>"
           "<p>The state&rsquo;s <b>Department of Transportation</b> maintains the main state "
           "highways, and the parts of the secondary state highways it has improved; a town "
           "maintains the rest of those.</p>"
@@ -7513,8 +7540,8 @@ ROAD_PROBLEM = guide(
                "RSA 231:93", "RSA 231:113"]),
      step("Report it to your town or city",
           "<p>Call or email your town or city&rsquo;s <b>public works</b> or <b>highway "
-          "department</b>, or the selectboard&rsquo;s office in a small town; many towns also "
-          "take reports online. Say exactly where the problem is (the street, the nearest house "
+          "department</b>, or the selectboard&rsquo;s office in a small town. Say exactly where "
+          "the problem is (the street, the nearest house "
           "number or cross street) and what it is: a pothole, a broken or heaved sidewalk, a "
           "streetlight that is out, a signal that is dark or stuck, a blocked drain.</p>"
           "<p>A traffic signal that is out at a busy intersection is a danger to everyone "
@@ -7650,13 +7677,15 @@ ROAD_PROBLEM = guide(
     more=civics.faq(
         ("Who fixes a state route through a city center?",
          "<p>In the built-up centers of the cities and towns the law lists, such as Concord, "
-         "Manchester and Nashua, the city or town maintains the state routes too.</p>"),
+         "Manchester and Nashua, the city or town maintains the state routes too, except the "
+         "turnpikes and interstates, which stay the state&rsquo;s.</p>"),
         ("What is a class VI road?",
          "<p>A class VI road is a public way the town does not maintain, and the town has no "
          "duty to repair it.</p>"),
         ("Is every bad road &ldquo;insufficient&rdquo;?",
          "<p>No. A road simply in worse shape than others is not insufficient, and snow and ice "
-         "the town is clearing under its winter policy are not a ground for a claim.</p>"))
+         "the town is clearing under a winter policy adopted in good faith are generally not a "
+         "ground for a claim, unless the town was grossly negligent or reckless.</p>"))
          + "<h2>Who Can Help</h2>"
          "<p>Your town or city&rsquo;s public works or highway department is the place to ask "
          "about a town road, and the town office can tell you who that is. For a claim for "
@@ -7728,8 +7757,9 @@ FISHING = guide(
     "Who needs a New Hampshire fishing license and who does not, the free fishing days, saltwater "
     "fishing, and how to buy a license online or from an agent.",
     "Anyone 16 or older needs a license to fish in New Hampshire, in fresh water or salt water, "
-    "except on the free fishing days Fish and Game sets each year. Buy it online from Fish and Game "
-    "or from a license agent. Every license ends on December 31.",
+    "except on the free fishing days Fish and Game sets each year and in a few other cases (step "
+    "1). Buy it online from Fish and Game or from a license agent. Most licenses end on December "
+    "31.",
     [ask("Are you under 16?",
          [("Yes", "You may fish without a license."),
           ("No", "You need a license, unless it is a free fishing day.")]),
@@ -7761,7 +7791,8 @@ FISHING = guide(
           "coastal waters and the whole Maine coast.</p>"
           "<p><b>Lower-cost and free licenses.</b> Residents 68 or older can buy a discounted "
           "senior license; residents born in 1947 or earlier get a free, permanent Milestone "
-          "license from Fish and Game in Concord, its regional offices or select agents.</p>"
+          "license from Fish and Game in Concord, its regional offices in Lancaster, New Hampton "
+          "and Keene, or select agents, or by mail.</p>"
           "<p>Fish and Game sets the fees; its license page lists each license and its "
           "price.</p>",
           actions=[("License fees and requirements", FG_FEES),
@@ -7776,13 +7807,13 @@ FISHING = guide(
           "<p>Print your license and sign it, or keep an image of it on your phone: for a fishing "
           "license, that is enough if you can also show a photo ID. Carry it while you fish, and "
           "show it when asked.</p>"
-          "<p>Every license ends on <b>December 31</b> of the year you bought it, and cannot be "
-          "passed to anyone else.</p>",
+          "<p>A license ends on <b>December 31</b> of the year you bought it, unless it is one "
+          "of the permanent licenses, and cannot be passed to anyone else.</p>",
           actions=[("Buy a license online", NHFG_LICENSE)],
           law=["RSA 214:1", "RSA 214:36"]),
      step("Before you go",
-          "<p>Seasons, limits and the waters with special rules are Fish and Game&rsquo;s to set. "
-          "Check its rules for the water you plan to fish.</p>",
+          "<p>Seasons, limits and the waters with special rules vary. Check Fish and "
+          "Game&rsquo;s rules for the water you plan to fish.</p>",
           actions=[("License requirements", FG_REQUIREMENTS)])],
     [("Buy a license online (NH Fish and Game)", NHFG_LICENSE),
      ("License fees and requirements (NH Fish and Game)", FG_FEES),
@@ -7856,8 +7887,10 @@ FISHING = guide(
            "licensed charter or party boat.", FG_SALT_FAQ, OUT_STATE_READ),
      claim("Discounted senior licenses for residents at least 68 at purchase and born in or after "
            "1948, bought annually; free permanent Milestone licenses for residents born in or "
-           "before 1947, only at Fish and Game headquarters, regional offices 1, 2 and 4 or "
-           "limited agents, not valid if the holder moves out of state.", FG_SENIOR,
+           "before 1947, only at Fish and Game headquarters or Regional Offices 1 (Lancaster), 2 "
+           "(New Hampton), 4 (Keene), and at limited license agents; you may also print and mail "
+           "an application to headquarters in Concord; not valid if the holder moves out of "
+           "state.", FG_SENIOR,
            OUT_STATE_READ)],
     more=civics.faq(
         ("Is a fishing license free for someone who is blind?",
@@ -7870,8 +7903,9 @@ FISHING = guide(
          "<p>Yes. Digging clams takes a separate license, sold to residents only, and taking "
          "lobsters or crabs another.</p>"),
         ("Are there licenses for veterans and service members?",
-         "<p>A resident veteran who is totally and permanently disabled from service gets a "
-         "permanent license, with a one-time $10 administrative fee. A resident on active duty "
+         "<p>A resident veteran, discharged other than dishonorably, who is totally and "
+         "permanently disabled from a service-connected disability gets a permanent license, "
+         "with a one-time $10 administrative fee. A resident on active duty "
          "stationed outside the state can get a free license to use while home on leave.</p>"),
         ("Can I get a refund?",
          "<p>No. Fish and Game cannot refund a license or exchange it.</p>")),
@@ -7891,7 +7925,7 @@ HUNTING = guide(
     "To buy a hunting license you need a hunter education certificate, or proof that you have held "
     "a hunting license before. A first-time hunter takes the course first, or buys an apprentice "
     "license once and hunts beside a licensed adult. Turkey, pheasant and waterfowl each need a "
-    "license on top of it, and every license ends on December 31.",
+    "license on top of it, and most licenses end on December 31.",
     [ask("Have you held a hunting license before?",
          [("Yes", "Show that license to buy a new one."),
           ("No", "Take hunter education, or buy an apprentice license once.")]),
@@ -8042,9 +8076,10 @@ HUNTING = guide(
          "<p>It is not valid for moose, and it does not count as a past license when you buy "
          "your next one.</p>"),
         ("Are there discounted licenses?",
-         "<p>Residents 68 or older can buy discounted senior licenses, and a resident veteran "
-         "totally and permanently disabled from service gets a permanent license, with a "
-         "one-time $10 administrative fee.</p>"),
+         "<p>Residents 68 or older can buy discounted senior licenses, and a resident veteran, "
+         "discharged other than dishonorably, who is totally and permanently disabled from a "
+         "service-connected disability gets a permanent license, with a one-time $10 "
+         "administrative fee.</p>"),
         ("Do I have to wear hunter orange?",
          "<p>The law recommends that anyone hunting with a firearm or a bow, except for "
          "waterfowl, wear a hat, vest or other clothing in <b>hunter orange</b> that can be seen "
@@ -8588,7 +8623,8 @@ HOMEOWNERS_INSURANCE = guide(
     "others; the Insurance Department&rsquo;s page explains what it covers. A mortgage lender "
     "may require it, and most homeowners policies do not cover flood damage. Once a policy has "
     "been in effect for 90 days, the insurer may cancel it only for the reasons the law lists, "
-    "and it may not refuse to renew it because of a single valid claim. If an insurer handles "
+    "and it may not refuse to renew it solely because you filed a single valid claim in one "
+    "policy term. If an insurer handles "
     "your claim unfairly, you can complain to the <b>Insurance Department</b>.",
     [ask("Do you have a mortgage?",
          [("Yes", "Your lender may require homeowners insurance, and flood insurance in a "
