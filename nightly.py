@@ -481,6 +481,7 @@ import os
 import re
 import shutil
 import subprocess
+import threading
 import time
 import urllib.error
 import urllib.request
@@ -1140,6 +1141,7 @@ DB_WHY = {
 DB_ASKED = ("connect", "query", "short", "error")
 
 QUIET = False             # --runner: child output to the log file only
+RUN_KILLED = 124          # run(timeout=): a step killed at its limit, as timeout(1) says it
 
 
 def say(msg="", echo=True):
@@ -1186,12 +1188,16 @@ def mark_reports_failed(day, log_name):
     return out
 
 
-def run(args, label, cwd=None):
+def run(args, label, cwd=None, timeout=None):
     """Stream the step's output as it happens, and log it too. The exit code.
 
     A child of this process, run with this interpreter directly and no shell,
     so a fetch it starts sees this process as its parent and runs under the
     lock this process holds.
+
+    `timeout`, in seconds: a child still running then is killed, and the step
+    ends on RUN_KILLED (26 October 2026). A step with none has the job's
+    hours, and the night's lock with them (THE NIGHT'S CLOCK).
     """
     say(f"\n--- {label} ---")
     WATCH["step"] = label
@@ -1210,16 +1216,33 @@ def run(args, label, cwd=None):
                        stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
                        text=True, bufsize=1, cwd=cwd,
                        env={SQL_HELD_ENV: str(SQL_HELD.resolve())})
-    for ln in proc.stdout:
-        say("  " + ln.rstrip(), echo=False)
-    proc.wait()
-    if QUIET and proc.returncode:
+    killed = threading.Event()
+    timer = None
+    if timeout is not None:
+        def kill():
+            killed.set()
+            proc.kill()
+        timer = threading.Timer(timeout, kill)
+        timer.daemon = True
+        timer.start()
+    try:
+        for ln in proc.stdout:
+            say("  " + ln.rstrip(), echo=False)
+        proc.wait()
+    finally:
+        if timer is not None:
+            timer.cancel()
+    code = RUN_KILLED if killed.is_set() else proc.returncode
+    if killed.is_set():
+        say(f"  STOPPED: still running after {timeout:g} seconds, its limit here, so it was "
+            "killed")
+    if QUIET and code:
         # GitHub's log says why a step failed without anyone opening the
         # whole log: its failure lines and its last few.
         for ln in failure_lines(LOG[mark:]):
             print(ln, flush=True)
-    say(f"  ({time.time() - t0:.0f}s, exit {proc.returncode})")
-    return proc.returncode
+    say(f"  ({time.time() - t0:.0f}s, exit {code})")
+    return code
 
 
 def failure_lines(lines, tail=6):

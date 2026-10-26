@@ -22877,7 +22877,7 @@ def _check_live_reads_what_it_checks():
             looks, saved_ = [], (NI.child.run, NI.time.sleep, NI.run, NI.LOG[:])
             NI.child.run = lambda *a_, **k_: subprocess.CompletedProcess(a_, 0, "", "")
             NI.time.sleep = lambda s: None
-            NI.run = lambda args, label, cwd=None: looks.append(label) or live_code
+            NI.run = lambda args, label, cwd=None, timeout=None: looks.append(label) or live_code
             try:
                 with contextlib.redirect_stdout(io.StringIO()):
                     landed = NI.upload_and_check(argparse.Namespace(project="p"), root,
@@ -41788,7 +41788,7 @@ def _statutes_weekly(NI, B):
     saved = (NI.run, NI.LOG, NI.QUIET, probe_db.hold_standing)
 
     def dump(n, columns):
-        def run(args, label, cwd=None):
+        def run(args, label, cwd=None, timeout=None):
             assert args[0] == "fetch_archive_db.py" and "NH_RSA" in args, args
             db = Path(cwd) / "db"
             db.mkdir(parents=True, exist_ok=True)
@@ -56724,7 +56724,7 @@ def _documents_night(NI, CA, CL):
         except OSError:
             return {"asked": [], "slept": [], "paused": []}
 
-    def fake(args, label, cwd=None):
+    def fake(args, label, cwd=None, timeout=None):
         calls.append(list(args))
         NI.say(f"\n--- {label} ---")
         name = Path(args[0]).name
@@ -81624,7 +81624,7 @@ def _nightly_runner(NI):
     lsr = {"rc": 0, "rows": 3}
     kept = {}                   # each night's own verdict, as site-up sends it with its site
 
-    def fake(args, label, cwd=None):
+    def fake(args, label, cwd=None, timeout=None):
         calls.append(list(args))
         NI.say(f"\n--- {label} ---")
         NI.say("  a line the step printed", echo=False)
@@ -82148,7 +82148,7 @@ class _GateNights:
             Path("archive/first-seen.next.json").write_text(
                 json.dumps({"format": 1, "build": self.builds}), encoding="utf-8")
 
-    def fake(self, args, label, cwd=None):
+    def fake(self, args, label, cwd=None, timeout=None):
         self.NI.say(f"\n--- {label} ---")
         name, rc = Path(args[0]).name, 0
         if name == "build_all.py":
@@ -83565,7 +83565,7 @@ def _nightly_weekly(NI):
     def member(i, active=True):
         return {"id": str(i), "name": f"Member {i}", "party_code": "R", "seat_active": active}
 
-    def fake(args, label, cwd=None):
+    def fake(args, label, cwd=None, timeout=None):
         NI.say(f"\n--- {label} ---")
         name, rc = Path(args[0]).name, 0
         out = Path(args[args.index("--out") + 1]) if "--out" in args else None
@@ -83716,7 +83716,7 @@ def _nightly_weekly_dry(NI):
     def member(i):
         return {"id": str(i), "name": f"Member {i}", "party_code": "R", "seat_active": True}
 
-    def fake(args, label, cwd=None):
+    def fake(args, label, cwd=None, timeout=None):
         name = Path(args[0]).name
         calls.append(name)
         NI.say(f"\n--- {label} ---")
@@ -85114,7 +85114,7 @@ def _nightly_new_term(NI, SG, BA):
     calls, how = [], {"bills": 100, "smaller": False, "rows": {}}
     today = f"{datetime.now():%Y-%m-%d}"
 
-    def fake(args, label, cwd=None):
+    def fake(args, label, cwd=None, timeout=None):
         calls.append(list(args))
         NI.say(f"\n--- {label} ---")
         name, rc = Path(args[0]).name, 0
@@ -85898,7 +85898,7 @@ def _new_term_waits_for_publish(NI, SG, CL, BA):
         "logs": {"globs": ["logs/*", "reports/gc-changes-*.md"]},
         "backup": real["backup"], "never": real["never"]}
 
-    def fake(args, label, cwd=None):
+    def fake(args, label, cwd=None, timeout=None):
         calls.append(list(args))
         NI.say(f"\n--- {label} ---")
         name, rc = Path(args[0]).name, 0
@@ -88854,7 +88854,7 @@ def _nightly_falls_back(NI, DF, PD, SG):
     today = f"{datetime.now():%Y-%m-%d}"
     MEMBERS = _dbday_bytes(_DBDAY_EXPORT["Members.txt"] + ["Birch, Ben|ben.birch@example.gov||Member"])
 
-    def fake(args, label, cwd=None):
+    def fake(args, label, cwd=None, timeout=None):
         calls.append(list(args))
         NI.say(f"\n--- {label} ---")
         name = Path(args[0]).name
@@ -90812,7 +90812,7 @@ def _nightly_weekly_new_term(NI):
     def member(i):
         return {"id": str(i), "name": f"Member {i}", "party_code": "R", "seat_active": True}
 
-    def fake(args, label, cwd=None):
+    def fake(args, label, cwd=None, timeout=None):
         NI.say(f"\n--- {label} ---")
         name = Path(args[0]).name
         out = Path(args[args.index("--out") + 1]) if "--out" in args else None
@@ -91523,6 +91523,46 @@ try {
     return "ok", ("PS_JSONL's reader, run in PowerShell over a table, hands back a pipe, CRLF, "
                   "a tab, quotes, non-ASCII, U+2028, NULL and an empty string exactly; "
                   "PS, PS_STREAM and PS_JSONL parse")
+
+
+@check("build", "the night's steps that ask the General Court's site after the day's files are "
+       "killed at their own limits: run(timeout=) ends a child still running then on "
+       "RUN_KILLED, and says so",
+       needs=("nightly",))
+def _clock_steps(NI):
+    """THE NIGHT'S CLOCK (the person, 26 October 2026). A socket's timeout
+    bounds one read, not a request, so an answer arriving a byte at a time
+    could carry a step's requests on for as long as the job lets it, and the
+    night's lock with them. run(timeout=) kills a child still running at its
+    limit, ends the step on RUN_KILLED (124, as timeout(1) says it) and says
+    so; a step given no limit ends as it did before."""
+    import contextlib
+    import io
+    import time
+    here = os.getcwd()
+    tmp = Path(tempfile.mkdtemp(prefix="gr-clock-steps-"))
+    saved = (NI.LOG, NI.QUIET, NI._paths.script)
+    try:
+        os.chdir(tmp)
+        NI.LOG, NI.QUIET = [], False
+        NI._paths.script = lambda name: name        # the steps are here, not a code folder's
+        Path("slow.py").write_text("import time\nprint('started', flush=True)\ntime.sleep(60)\n",
+                                   encoding="utf-8")
+        Path("quick.py").write_text("raise SystemExit(3)\n", encoding="utf-8")
+        t0 = time.time()
+        with contextlib.redirect_stdout(io.StringIO()):
+            code = NI.run([str(tmp / "slow.py")], "a step that does not end", timeout=2)
+        assert code == NI.RUN_KILLED == 124 and time.time() - t0 < 30 and any(
+            "STOPPED: still running after 2 seconds" in ln for ln in NI.LOG), (code, NI.LOG[-3:])
+        NI.LOG = []
+        with contextlib.redirect_stdout(io.StringIO()):
+            code = NI.run([str(tmp / "quick.py")], "a step that ends")
+        assert code == 3 and not any("STOPPED" in ln for ln in NI.LOG), (code, NI.LOG)
+    finally:
+        os.chdir(here)
+        NI.LOG, NI.QUIET, NI._paths.script = saved
+        shutil.rmtree(tmp, ignore_errors=True)
+    return "ok", "a step past its limit is killed and ends on 124; one with none ends as it did"
 
 
 @check("build", "on a stood-down laptop no General Court request starts in GitHub's night "
@@ -109941,7 +109981,7 @@ def _night_term_data(NI):
     saved = (NI.run, NI.take_views, NI.LOG[:], probe_db.hold_standing, NI.QUIET)
     seen = []
 
-    def fake(args, label, cwd=None):
+    def fake(args, label, cwd=None, timeout=None):
         out = Path(args[args.index("--out") + 1])
         have = json.loads(out.read_text(encoding="utf-8")) if out.exists() else {}
         seen.append((Path(args[0]).name, sorted(have)))
@@ -110002,7 +110042,7 @@ def _night_term_data(NI):
         """take_views of the term's views, the dump giving `views`, the query
         of `failed` failing, the fetch exiting `rc`, and the query's count of
         each view in `counted` where it is not the file's lines."""
-        def run(args, label, cwd=None):
+        def run(args, label, cwd=None, timeout=None):
             assert args[0] == "fetch_archive_db.py" and args.count("--only") == 3, args
             db = Path(cwd) / "db"
             db.mkdir(parents=True, exist_ok=True)
