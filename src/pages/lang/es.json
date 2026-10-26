@@ -6938,7 +6938,7 @@
   },
   "guide.property-tax-abatement.divide-your-assessment-by-your-towns": {
    "en": "Divide your assessment by your town&rsquo;s equalization ratio.",
-   "es": "Divida su avalúo entre el índice de igualación (equalization ratio) de su municipio.",
+   "es": "Divida su avalúo entre el coeficiente de igualación (equalization ratio) de su municipio.",
    "state": "draft"
   },
   "guide.property-tax-abatement.does-the-application-form-cost-anything": {
@@ -7688,7 +7688,7 @@
   },
   "guide.property-tax-relief.the-relief-is-a-share-of": {
    "en": "The relief is a share of the State Education Property Tax on the lesser of your home&rsquo;s assessed value and $220,000 multiplied by your town&rsquo;s equalization ratio, at the education tax rate on your bill. The share depends on your household income. The Department works it out from your claim.",
-   "es": "El alivio es una parte del impuesto estatal a la propiedad para la educación sobre el menor de dos valores: el avalúo de su vivienda, o $220,000 multiplicados por el índice de igualación de su municipio, a la tasa del impuesto para la educación de su factura. La parte depende de los ingresos de su hogar. El Departamento la calcula a partir de su solicitud.",
+   "es": "El alivio es una parte del impuesto estatal a la propiedad para la educación sobre el menor de dos valores: el avalúo de su vivienda, o $220,000 multiplicados por el coeficiente de igualación de su municipio, a la tasa del impuesto para la educación de su factura. La parte depende de los ingresos de su hogar. El Departamento la calcula a partir de su solicitud.",
    "state": "draft"
   },
   "guide.property-tax-relief.the-share-of-the-tax-refunded": {
