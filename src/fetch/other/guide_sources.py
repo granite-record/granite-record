@@ -175,6 +175,11 @@ SOURCES = {
         "https://www.courts.nh.gov/self-help/restraining-orders",
         "https://www.doj.nh.gov/bureaus/office-victimwitness-assistance/address-confidentiality-program",
     ],
+    # The guide to discrimination (25 October 2026): the Commission for Human
+    # Rights' own page, from the person's printout.
+    "discrimination": [
+        "https://www.humanrights.nh.gov/",
+    ],
     "trash": [
         "https://www.des.nh.gov/sites/g/files/ehbemt341/files/documents/hhw-collection-contacts.pdf",
     ],
@@ -255,6 +260,11 @@ OTHER = {
         "https://www.nhcadsv.org/medicalforensic-exams.html",
         "https://www.nhcadsv.org/legal-resources.html",
         "https://www.nhcadsv.org/support-services--programs.html",
+    ],
+    # The guide to discrimination (25 October 2026): the U.S. Equal Employment
+    # Opportunity Commission's page on filing a charge, read that day.
+    "discrimination": [
+        "https://www.eeoc.gov/how-file-charge-employment-discrimination",
     ],
     # The homelessness guide (24 October 2026): 211 New Hampshire, which the
     # Department of Health and Human Services sends readers to; New Hampshire

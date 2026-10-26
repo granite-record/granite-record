@@ -107,7 +107,7 @@ GUIDE_PAGES = tuple(f"guides/{s}.html" for s in (
     "food-and-health-assistance", "file-for-unemployment", "heating-and-electric-help",
     "property-tax-abatement", "property-tax-relief", "public-records", "vital-records",
     "tour-the-state-house", "town-warrant-article", "child-care-scholarship",
-    "domestic-violence-help", "homelessness-help",
+    "domestic-violence-help", "discrimination", "homelessness-help",
     "storms-and-emergencies", "trash-and-recycling", "passport",
     "medicare-and-social-security", "disability-help", "who-to-contact", "report-a-road-problem",
     "fishing-license", "hunting-license", "boating"))
