@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-10-11.22
+# GRANITE_VERSION: 2026-10-11.23
 """
 The official pages the how-to guides cite, onto this disk, to check them by.
 
@@ -106,6 +106,8 @@ SOURCES = {
     "car": [
         "https://www.dmv.nh.gov/vehicles-boats-and-titles/vehicle-registrations",
         "https://www.dmv.nh.gov/vehicles-boats-or-titles/vehicle-registrations/new-resident-new-hampshire",
+        # the person's printout of 26 October 2026, at the address they gave
+        "https://www.dmv.nh.gov/vehicles-boats-and-titles/vehicle-registrations/vanity-plates",
         "https://www.dmv.nh.gov/tabbed-content/new-registrations",
         "https://www.dmv.nh.gov/vehicles-boats-and-titles/apply-title",
     ],
@@ -351,6 +353,7 @@ OTHER = {
     "passport": [
         "https://travel.state.gov/en/passports/apply/adults.html",
         "https://travel.state.gov/en/passports/renew-replace/online.html",
+        "https://travel.state.gov/en/passports/renew-replace/mail.html",
         "https://travel.state.gov/en/passports/apply/child/under-16.html",
         "https://travel.state.gov/en/passports/apply/get-fast.html",
         "https://travel.state.gov/en/passports/apply/get-fast/make-appointment.html",
@@ -373,6 +376,8 @@ OTHER = {
         "https://www.medicare.gov/basics/costs/help/medicare-savings-programs",
         "https://www.medicare.gov/basics/costs/help/drug-costs",
         "https://www.medicare.gov/talk-to-someone",
+        # the person's printout of 26 October 2026
+        "https://www.medicare.gov/basics/get-started-with-medicare/medicare-basics/parts-of-medicare",
         "https://www.usa.gov/agencies/social-security-administration",
         "https://www.ssa.gov/apply",
         "https://www.ssa.gov/medicare/sign-up",
