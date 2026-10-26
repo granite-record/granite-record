@@ -120,7 +120,7 @@
     "ground_truth.py": "2026-09-05.4",
     ".claude/hooks/guard.py": "2026-10-26.3",
     "handoff.py": "2026-09-05.20",
-    "i18n.py": "2026-10-23.20",
+    "i18n.py": "2026-10-23.21",
     "inventory.py": "2026-09-04.11",
     "journal_bills.py": "2026-09-30.7",
     "journal_days.py": "2026-09-19.14",

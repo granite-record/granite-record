@@ -3905,6 +3905,391 @@
    "es": "Su centro de crisis local, por medio de la línea de ayuda de 24 horas, <a href=\"tel:+18666443574\">1-866-644-3574</a>, es el primer lugar al que acudir para cualquier asunto de esta página. Sus consejeros pueden acompañarlo al hospital, a la policía o al tribunal.",
    "state": "draft"
   },
+  "guide.election-worker.a-person-whose-name-is-on": {
+   "en": "A person whose name is on the ballot for an office other than an election office may not work as an election official in that election. A moderator, clerk, selectman, inspector or supervisor who is on the ballot may keep their place, but may not handle marked ballots or count votes; the moderator appoints someone to count in their place.",
+   "es": "Una persona cuyo nombre figura en la boleta para un cargo que no es electoral no puede trabajar como funcionario electoral en esa elección. Un moderador, secretario, concejal, inspector o supervisor que figura en la boleta puede conservar su puesto, pero no puede manejar boletas marcadas ni contar votos; el moderador nombra a otra persona para contar en su lugar.",
+   "state": "draft"
+  },
+  "guide.election-worker.a-recount-a-candidate-who-lost": {
+   "en": "<b>A recount.</b> A candidate who lost by less than 20 percent of the ballots cast may ask the Secretary of State in writing for a recount, no later than the Friday after the election, and pays a fee that depends on the office and the margin: a candidate for state representative pays $10 when the margin is under one percent, and a candidate for governor $500. The Secretary of State and assistants recount the ballots in Concord, looking at each one; no machine may be used. The candidates may inspect the ballots and protest how any one is counted.",
+   "es": "<b>Un recuento.</b> Un candidato que perdió por menos del 20 por ciento de las boletas emitidas puede pedir por escrito un recuento a la Secretaría de Estado, a más tardar el viernes siguiente a la elección, y paga una cuota que depende del cargo y del margen: un candidato a representante estatal paga $10 cuando el margen es menor del uno por ciento, y un candidato a gobernador $500. La Secretaría de Estado y sus asistentes vuelven a contar las boletas en Concord, mirando cada una; no se puede usar ninguna máquina. Los candidatos pueden revisar las boletas y protestar cómo se cuenta cualquiera de ellas.",
+   "state": "draft"
+  },
+  "guide.election-worker.a-towns-clerk-is-chosen-by": {
+   "en": "A town&rsquo;s clerk is chosen by ballot at the annual town meeting",
+   "es": "El secretario de un municipio se elige mediante boleta en la asamblea municipal anual",
+   "state": "draft"
+  },
+  "guide.election-worker.after-the-polls-close-the-votes": {
+   "en": "After the polls close, the votes are counted in public, the moderator announces the result, and the ballots are sealed and kept for a recount or an audit.",
+   "es": "Después del cierre de la votación, los votos se cuentan en público, el moderador anuncia el resultado y las boletas se sellan y se guardan para un recuento o una auditoría.",
+   "state": "draft"
+  },
+  "guide.election-worker.after-the-polls-close-the-votes-2": {
+   "en": "<b>After the polls close.</b> The votes are counted in public and the count is not stopped until it is finished. Where officers disagree on how to count a mark, the majority of those counting decides; if no count has a majority, the ballot is not counted for that office. The counting documents are open for public review when the results are announced, and a machine&rsquo;s printed results are posted within 60 minutes of the last ballot. The moderator announces the final count, and the clerk prepares the election return in front of the other officials, signs it, and sends a copy to the Secretary of State by 8:00 a.m. the next day. The other copy is kept by the clerk, open to the public.",
+   "es": "<b>Después del cierre de la votación.</b> Los votos se cuentan en público y el conteo no se detiene hasta terminar. Cuando los funcionarios no están de acuerdo sobre cómo contar una marca, decide la mayoría de quienes cuentan; si ninguna forma de contarla obtiene mayoría, la boleta no se cuenta para ese cargo. Los documentos del conteo están disponibles para revisión pública cuando se anuncian los resultados, y los resultados impresos de una máquina se publican dentro de los 60 minutos de la última boleta. El moderador anuncia el conteo final, y el secretario prepara el acta de resultados frente a los demás funcionarios, la firma y envía una copia a la Secretaría de Estado antes de las 8:00 a.m. del día siguiente. El secretario guarda la otra copia, abierta al público.",
+   "state": "draft"
+  },
+  "guide.election-worker.appointed-by-the-moderator-for-that": {
+   "en": "Appointed by the moderator for that election, at least 17 years old",
+   "es": "Nombrados por el moderador para esa elección, de al menos 17 años de edad",
+   "state": "draft"
+  },
+  "guide.election-worker.appointed-by-the-state-committees-of": {
+   "en": "Appointed by the state committees of the two parties that received the most votes for governor at the last general election, or by the selectmen in equal numbers from those two parties; registered to vote at that polling place",
+   "es": "Nombrados por los comités estatales de los dos partidos que obtuvieron más votos para gobernador en la última elección general, o por los concejales en igual número de esos dos partidos; inscritos para votar en ese lugar de votación",
+   "state": "draft"
+  },
+  "guide.election-worker.appointed-through-your-partys-state": {
+   "en": "Appointed through your party&rsquo;s state committee, or by your selectmen; you must be registered to vote at that polling place.",
+   "es": "Nombrado por medio del comité estatal de su partido, o por sus concejales; debe estar inscrito para votar en ese lugar de votación.",
+   "state": "draft"
+  },
+  "guide.election-worker.as-an-assistant-for-the-day": {
+   "en": "As an assistant for the day",
+   "es": "Como asistente para el día",
+   "state": "draft"
+  },
+  "guide.election-worker.as-an-inspector-of-election": {
+   "en": "As an inspector of election",
+   "es": "Como inspector electoral",
+   "state": "draft"
+  },
+  "guide.election-worker.ask-to-be-appointed": {
+   "en": "Ask to be appointed",
+   "es": "Pida que lo nombren",
+   "state": "draft"
+  },
+  "guide.election-worker.assistant-moderator-and-other-officials": {
+   "en": "Assistant moderator and other officials",
+   "es": "Moderador asistente y otros funcionarios",
+   "state": "draft"
+  },
+  "guide.election-worker.assistants-for-the-day-the-moderator": {
+   "en": "<b>Assistants for the day.</b> The moderator may appoint an assistant moderator and the other election officials the moderator thinks necessary, and the supervisors may appoint assistant supervisors to register voters on election day. An assistant must be at least 17 years old, takes the oath, and serves only for that election.",
+   "es": "<b>Asistentes para el día.</b> El moderador puede nombrar a un moderador asistente y a los demás funcionarios electorales que considere necesarios, y los supervisores pueden nombrar supervisores asistentes para inscribir a votantes el día de la elección. Un asistente debe tener al menos 17 años de edad, presta juramento y sirve solo en esa elección.",
+   "state": "draft"
+  },
+  "guide.election-worker.ballots-and-counting-devices-rsa-656": {
+   "en": "Ballots and Counting Devices, RSA 656",
+   "es": "Boletas y dispositivos de conteo, RSA 656",
+   "state": "draft"
+  },
+  "guide.election-worker.before-the-polls-open-every-election": {
+   "en": "<b>Before the polls open.</b> Every election is held on paper ballots, so that the votes can be examined and recounted. The clerk breaks the seal on the ballots in public, and the officers count them in front of the clerk, the moderator and at least one other voter. The ballot box is opened in public and shown to be empty.",
+   "es": "<b>Antes de que abra la votación.</b> Toda elección se hace con boletas de papel, para que los votos puedan examinarse y volver a contarse. El secretario rompe el sello de las boletas en público, y los funcionarios las cuentan frente al secretario, al moderador y al menos a otro votante. La urna se abre en público y se muestra que está vacía.",
+   "state": "draft"
+  },
+  "guide.election-worker.bring-the-corrected-checklist-of-voters": {
+   "en": "Bring the corrected checklist of voters and stay all day; may appoint assistant supervisors to register voters on election day",
+   "es": "Llevan el padrón electoral corregido y permanecen todo el día; pueden nombrar supervisores asistentes para inscribir a votantes el día de la elección",
+   "state": "draft"
+  },
+  "guide.election-worker.can-i-watch-the-count": {
+   "en": "Can I watch the count?",
+   "es": "¿Puedo observar el conteo?",
+   "state": "draft"
+  },
+  "guide.election-worker.can-i-work-at-the-polls": {
+   "en": "Can I work at the polls if I am on the ballot?",
+   "es": "¿Puedo trabajar en el lugar de votación si figuro en la boleta?",
+   "state": "draft"
+  },
+  "guide.election-worker.common-questions": {
+   "en": "Common Questions",
+   "es": "Preguntas frecuentes",
+   "state": "draft"
+  },
+  "guide.election-worker.conduct-of-elections-rsa-659": {
+   "en": "Conduct of Elections, RSA 659",
+   "es": "Desarrollo de las elecciones, RSA 659",
+   "state": "draft"
+  },
+  "guide.election-worker.counting-machines-a-town-may-use": {
+   "en": "<b>Counting machines.</b> A town may use only a counting device the Ballot Law Commission has approved, and only one that reads the voter&rsquo;s choice from a paper ballot. Each device is tested after it is installed and before every election. The clerk gives public notice of the test and marks the test ballots &ldquo;TEST&rdquo;. The device is sealed, no seal may be broken without 2 witnesses, and every break is logged. If a seal looks tampered with, the moderator does not use the device and reports it to the Attorney General and the Secretary of State.",
+   "es": "<b>Máquinas de conteo.</b> Un municipio solo puede usar un dispositivo de conteo que haya aprobado la Comisión de Leyes Electorales (Ballot Law Commission), y solo uno que lea la elección del votante en una boleta de papel. Cada dispositivo se prueba después de instalarse y antes de cada elección. El secretario da aviso público de la prueba y marca las boletas de prueba con la palabra &ldquo;TEST&rdquo;. El dispositivo se sella, ningún sello puede romperse sin 2 testigos, y cada ruptura se registra. Si un sello parece alterado, el moderador no usa el dispositivo y lo informa al Fiscal General y a la Secretaría de Estado.",
+   "state": "draft"
+  },
+  "guide.election-worker.do-i-have-to-belong-to": {
+   "en": "Do I have to belong to a party?",
+   "es": "¿Tengo que pertenecer a un partido?",
+   "state": "draft"
+  },
+  "guide.election-worker.elected-by-the-voters-by-ballot": {
+   "en": "Elected by the voters by ballot, for 2 or 3 years as the town decides; in a city, each ward&rsquo;s moderator is elected at every other city election",
+   "es": "Elegido por los votantes mediante boleta, por 2 o 3 años según decida el municipio; en una ciudad, el moderador de cada barrio electoral se elige en una de cada dos elecciones municipales",
+   "state": "draft"
+  },
+  "guide.election-worker.election-officers-rsa-658": {
+   "en": "Election Officers, RSA 658",
+   "es": "Funcionarios electorales, RSA 658",
+   "state": "draft"
+  },
+  "guide.election-worker.every-polling-place-is-run-by": {
+   "en": "Every polling place is run by local election officers. The <b>moderator</b>, elected by the voters, runs the polling place and oversees the count. The <b>clerk</b> handles the ballots and the official return, the <b>supervisors of the checklist</b> keep the list of voters, and the <b>inspectors of election</b>, appointed through the two largest parties, hand out ballots and help voters. The moderator may also appoint assistants for the day. The count is public, every election is held on paper ballots that are sealed and kept afterward, and recounts and a state audit check the count against the paper.",
+   "es": "Cada lugar de votación lo dirigen funcionarios electorales locales. El <b>moderador</b>, elegido por los votantes, dirige el lugar de votación y supervisa el conteo. El <b>secretario</b> se encarga de las boletas y del acta oficial de resultados, los <b>supervisores del padrón electoral</b> llevan la lista de votantes, y los <b>inspectores electorales</b>, nombrados por medio de los dos partidos más grandes, entregan las boletas y ayudan a los votantes. El moderador también puede nombrar asistentes para el día. El conteo es público, toda elección se hace con boletas de papel que se sellan y se guardan después, y los recuentos y una auditoría estatal comparan el conteo con el papel.",
+   "state": "draft"
+  },
+  "guide.election-worker.for-an-inspector-of-election-the": {
+   "en": "For an inspector of election, the law looks to the parties: inspectors are appointed from the two parties that received the most votes for governor, by their state committees or by the selectmen in equal numbers from the two, and the two ballot clerks are one from each. The law does not tie the assistants the moderator appoints to a party.",
+   "es": "Para ser inspector electoral, la ley se remite a los partidos: los inspectores se nombran de los dos partidos que obtuvieron más votos para gobernador, por sus comités estatales o por los concejales en igual número de los dos, y los dos encargados de las boletas son uno de cada partido. La ley no vincula a un partido a los asistentes que nombra el moderador.",
+   "state": "draft"
+  },
+  "guide.election-worker.how-chosen": {
+   "en": "How chosen",
+   "es": "Cómo se elige",
+   "state": "draft"
+  },
+  "guide.election-worker.how-the-count-is-checked-on": {
+   "en": "How the count is checked on election day",
+   "es": "Cómo se verifica el conteo el día de la elección",
+   "state": "draft"
+  },
+  "guide.election-worker.how-to-run-for-office": {
+   "en": "How to run for office",
+   "es": "Cómo postularse para un cargo",
+   "state": "draft"
+  },
+  "guide.election-worker.how-to-vote": {
+   "en": "How to vote",
+   "es": "Cómo votar",
+   "state": "draft"
+  },
+  "guide.election-worker.how-would-you-like-to-serve": {
+   "en": "How would you like to serve?",
+   "es": "¿Cómo le gustaría servir?",
+   "state": "draft"
+  },
+  "guide.election-worker.in-an-elected-office": {
+   "en": "In an elected office",
+   "es": "En un cargo electo",
+   "state": "draft"
+  },
+  "guide.election-worker.inspectors-of-election": {
+   "en": "Inspectors of election",
+   "es": "Inspectores electorales",
+   "state": "draft"
+  },
+  "guide.election-worker.inspectors-of-election-are-appointed-for": {
+   "en": "<b>Inspectors of election</b> are appointed for each polling place by the state committees of the two parties that received the most votes for governor at the last general election, through their chairs. Where a party does not appoint them, the selectmen do, in equal numbers from the two parties. An inspector must be registered to vote at the polling place where they serve, is sworn, and holds the office for 2 years. The committees, or the selectmen with the moderator, may also name alternates, who are called in order when an inspector cannot serve.",
+   "es": "Los <b>inspectores electorales</b> de cada lugar de votación los nombran, por medio de sus presidentes, los comités estatales de los dos partidos que obtuvieron más votos para gobernador en la última elección general. Donde un partido no los nombra, lo hacen los concejales, en igual número de los dos partidos. Un inspector debe estar inscrito para votar en el lugar de votación donde sirve, presta juramento y ocupa el cargo por 2 años. Los comités, o los concejales junto con el moderador, también pueden designar suplentes, a quienes se llama en orden cuando un inspector no puede servir.",
+   "state": "draft"
+  },
+  "guide.election-worker.know-what-an-election-officer-may": {
+   "en": "Know what an election officer may not do",
+   "es": "Sepa lo que un funcionario electoral no puede hacer",
+   "state": "draft"
+  },
+  "guide.election-worker.lead": {
+   "en": "Serving as an election officer at your polling place in New Hampshire: who runs an election, how each officer is chosen, how to take part, and how the count is checked.",
+   "es": "Cómo servir como funcionario electoral en su lugar de votación en New Hampshire: quién dirige una elección, cómo se elige a cada funcionario, cómo participar y cómo se verifica el conteo.",
+   "state": "draft"
+  },
+  "guide.election-worker.learn-who-runs-the-polling-place": {
+   "en": "Learn who runs the polling place",
+   "es": "Conozca quién dirige el lugar de votación",
+   "state": "draft"
+  },
+  "guide.election-worker.moderator": {
+   "en": "Moderator",
+   "es": "Moderador",
+   "state": "draft"
+  },
+  "guide.election-worker.no-election-officer-may-electioneer": {
+   "en": "No election officer may electioneer while on duty, that is, act in any way meant to influence how someone votes. Doing so is a misdemeanor.",
+   "es": "Ningún funcionario electoral puede hacer campaña mientras está de servicio, es decir, actuar de cualquier manera destinada a influir en cómo vota alguien. Hacerlo es un delito menor.",
+   "state": "draft"
+  },
+  "guide.election-worker.not-as-an-election-official-if": {
+   "en": "Not as an election official, if you are running for an office other than an election office. A moderator, clerk, selectman, inspector or supervisor who is on the ballot keeps their place but may not handle marked ballots or count votes.",
+   "es": "No como funcionario electoral, si se postula para un cargo que no es electoral. Un moderador, secretario, concejal, inspector o supervisor que figura en la boleta conserva su puesto, pero no puede manejar boletas marcadas ni contar votos.",
+   "state": "draft"
+  },
+  "guide.election-worker.officer": {
+   "en": "Officer",
+   "es": "Funcionario",
+   "state": "draft"
+  },
+  "guide.election-worker.opens-the-sealed-ballots-and-counts": {
+   "en": "Opens the sealed ballots and counts them with the officers, gives the ballot clerks a copy of the checklist, prepares and signs the election return, and keeps the sealed ballots afterward",
+   "es": "Abre las boletas selladas y las cuenta con los funcionarios, entrega a los encargados de las boletas una copia del padrón electoral, prepara y firma el acta de resultados, y guarda después las boletas selladas",
+   "state": "draft"
+  },
+  "guide.election-worker.oversees-the-voting-and-the-counting": {
+   "en": "Oversees the voting and the counting of votes, appoints the assistants, and announces the result",
+   "es": "Supervisa la votación y el conteo de los votos, nombra a los asistentes y anuncia el resultado",
+   "state": "draft"
+  },
+  "guide.election-worker.provide-and-equip-the-polling-place": {
+   "en": "Provide and equip the polling place, appoint inspectors where the parties do not, and are present when the ballots are sealed",
+   "es": "Proporcionan y equipan el lugar de votación, nombran a los inspectores donde los partidos no lo hacen, y están presentes cuando se sellan las boletas",
+   "state": "draft"
+  },
+  "guide.election-worker.recounts-and-audits-rsa-660": {
+   "en": "Recounts and Audits, RSA 660",
+   "es": "Recuentos y auditorías, RSA 660",
+   "state": "draft"
+  },
+  "guide.election-worker.recounts-and-the-state-audit": {
+   "en": "Recounts and the state audit",
+   "es": "Los recuentos y la auditoría estatal",
+   "state": "draft"
+  },
+  "guide.election-worker.rsa-40-1-659-9-659": {
+   "en": "RSA <a href=\"/laws/40#s1\">40:1</a>, <a href=\"/laws/659#s9\">659:9</a>, <a href=\"/laws/659#s60\">659:60</a>, <a href=\"/laws/659#s70\">659:70</a>",
+   "es": "RSA <a href=\"/laws/40#s1\">40:1</a>, <a href=\"/laws/659#s9\">659:9</a>, <a href=\"/laws/659#s60\">659:60</a>, <a href=\"/laws/659#s70\">659:70</a>",
+   "state": "draft"
+  },
+  "guide.election-worker.rsa-41-16-658-25-658": {
+   "en": "RSA <a href=\"/laws/41#s16\">41:16</a>, <a href=\"/laws/658#s25\">658:25</a>, <a href=\"/laws/658#s31\">658:31</a>, <a href=\"/laws/659#s74\">659:74</a>, <a href=\"/laws/659#s98\">659:98</a>",
+   "es": "RSA <a href=\"/laws/41#s16\">41:16</a>, <a href=\"/laws/658#s25\">658:25</a>, <a href=\"/laws/658#s31\">658:31</a>, <a href=\"/laws/659#s74\">659:74</a>, <a href=\"/laws/659#s98\">659:98</a>",
+   "state": "draft"
+  },
+  "guide.election-worker.rsa-41-46-a-658-7": {
+   "en": "RSA <a href=\"/laws/41#s46-a\">41:46-a</a>, <a href=\"/laws/658#s7\">658:7</a>, <a href=\"/laws/659#s10\">659:10</a>",
+   "es": "RSA <a href=\"/laws/41#s46-a\">41:46-a</a>, <a href=\"/laws/658#s7\">658:7</a>, <a href=\"/laws/659#s10\">659:10</a>",
+   "state": "draft"
+  },
+  "guide.election-worker.rsa-658-2-658-3-658": {
+   "en": "RSA <a href=\"/laws/658#s2\">658:2</a>, <a href=\"/laws/658#s3\">658:3</a>, <a href=\"/laws/658#s25\">658:25</a>, <a href=\"/laws/659#s20\">659:20</a>",
+   "es": "RSA <a href=\"/laws/658#s2\">658:2</a>, <a href=\"/laws/658#s3\">658:3</a>, <a href=\"/laws/658#s25\">658:25</a>, <a href=\"/laws/659#s20\">659:20</a>",
+   "state": "draft"
+  },
+  "guide.election-worker.rsa-658-2-658-9-658": {
+   "en": "RSA <a href=\"/laws/658#s2\">658:2</a>, <a href=\"/laws/658#s9\">658:9</a>, <a href=\"/laws/658#s22\">658:22</a>, <a href=\"/laws/659#s95\">659:95</a>",
+   "es": "RSA <a href=\"/laws/658#s2\">658:2</a>, <a href=\"/laws/658#s9\">658:9</a>, <a href=\"/laws/658#s22\">658:22</a>, <a href=\"/laws/659#s95\">659:95</a>",
+   "state": "draft"
+  },
+  "guide.election-worker.rsa-658-7-658-7-a": {
+   "en": "RSA <a href=\"/laws/658#s7\">658:7</a>, <a href=\"/laws/658#s7-a\">658:7-a</a>, <a href=\"/laws/658#s8\">658:8</a>",
+   "es": "RSA <a href=\"/laws/658#s7\">658:7</a>, <a href=\"/laws/658#s7-a\">658:7-a</a>, <a href=\"/laws/658#s8\">658:8</a>",
+   "state": "draft"
+  },
+  "guide.election-worker.run-for-moderator-town-clerk-or": {
+   "en": "Run for moderator, town clerk or supervisor of the checklist.",
+   "es": "Postúlese para moderador, secretario municipal o supervisor del padrón electoral.",
+   "state": "draft"
+  },
+  "guide.election-worker.sealing-the-ballots-the-moderator-with": {
+   "en": "<b>Sealing the ballots.</b> The moderator, with the selectmen, seals every ballot in containers from the Secretary of State, writes the number of ballots on each seal, and both sign it. The clerk stores the sealed containers and keeps a log of where they are, and only those working for the clerk, a recount or the Secretary of State may reach them.",
+   "es": "<b>El sellado de las boletas.</b> El moderador, con los concejales, sella todas las boletas en recipientes de la Secretaría de Estado, anota el número de boletas en cada sello, y ambos lo firman. El secretario guarda los recipientes sellados y lleva un registro de dónde están, y solo quienes trabajan para el secretario, para un recuento o para la Secretaría de Estado pueden acceder a ellos.",
+   "state": "draft"
+  },
+  "guide.election-worker.selectmen": {
+   "en": "Selectmen",
+   "es": "Concejales",
+   "state": "draft"
+  },
+  "guide.election-worker.so-to-serve-ask-your-towns": {
+   "en": "So to serve, ask your town&rsquo;s moderator, your party&rsquo;s state committee, or your selectmen.",
+   "es": "Así que, para servir, pregunte al moderador de su municipio, al comité estatal de su partido o a sus concejales.",
+   "state": "draft"
+  },
+  "guide.election-worker.supervisors-of-the-checklist": {
+   "en": "Supervisors of the checklist",
+   "es": "Supervisores del padrón electoral",
+   "state": "draft"
+  },
+  "guide.election-worker.take-the-oath-and-serve-from": {
+   "en": "Take the oath, and serve from the opening of the polls until the ballots are sealed.",
+   "es": "Preste juramento y sirva desde la apertura de la votación hasta que se sellen las boletas.",
+   "state": "draft"
+  },
+  "guide.election-worker.the-audit-after-each-state-primary": {
+   "en": "<b>The audit.</b> After each state primary, general election and presidential primary, the Secretary of State audits the counting devices. At least 8 devices are chosen at random, and which ones is not announced until the polls open. A team of at least 2 people runs the paper ballots through separate audit equipment and compares its results with the device&rsquo;s, and examines a random sample of the paper ballots by hand. The audit is open to the public. If there are significant differences, the Secretary of State may look at more ballots or order a full hand recount. The results are published before noon on the Friday after the election.",
+   "es": "<b>La auditoría.</b> Después de cada elección primaria estatal, elección general y primaria presidencial, la Secretaría de Estado audita los dispositivos de conteo. Se eligen al azar al menos 8 dispositivos, y cuáles son no se anuncia hasta que abre la votación. Un equipo de al menos 2 personas pasa las boletas de papel por un equipo de auditoría aparte, compara sus resultados con los del dispositivo y examina a mano una muestra al azar de las boletas de papel. La auditoría está abierta al público. Si hay diferencias importantes, la Secretaría de Estado puede revisar más boletas u ordenar un recuento completo a mano. Los resultados se publican antes del mediodía del viernes siguiente a la elección.",
+   "state": "draft"
+  },
+  "guide.election-worker.the-election-officers-counting-the-votes": {
+   "en": "The election officers counting the votes, by majority. If no way of counting it wins a majority, the ballot is not counted for that office.",
+   "es": "Los funcionarios electorales que cuentan los votos, por mayoría. Si ninguna forma de contarla obtiene mayoría, la boleta no se cuenta para ese cargo.",
+   "state": "draft"
+  },
+  "guide.election-worker.the-law": {
+   "en": "The law",
+   "es": "La ley",
+   "state": "draft"
+  },
+  "guide.election-worker.the-law-calls-them-election-officers": {
+   "en": "The law calls them election officers: the moderator and the moderator&rsquo;s deputy or assistant, the town, city or ward clerk and their deputies, the selectmen, and the supervisors of the checklist. The inspectors of election work beside them.",
+   "es": "La ley los llama funcionarios electorales: el moderador y su suplente o asistente, el secretario del municipio, de la ciudad o del barrio electoral y sus suplentes, los concejales y los supervisores del padrón electoral. Los inspectores electorales trabajan junto a ellos.",
+   "state": "draft"
+  },
+  "guide.election-worker.the-moderator-may-appoint-election": {
+   "en": "The moderator may appoint election officials, at least 17 years old.",
+   "es": "El moderador puede nombrar funcionarios electorales, de al menos 17 años de edad.",
+   "state": "draft"
+  },
+  "guide.election-worker.the-secretary-of-state-the-states": {
+   "en": "The Secretary of State, the state&rsquo;s chief election officer, who prepares the ballots, receives every town&rsquo;s return, and runs recounts and the audit.",
+   "es": "El Secretario de Estado, el funcionario electoral principal del estado, que prepara las boletas, recibe el acta de resultados de cada municipio y dirige los recuentos y la auditoría.",
+   "state": "draft"
+  },
+  "guide.election-worker.the-towns-or-wards-selectmen": {
+   "en": "The town&rsquo;s or ward&rsquo;s selectmen",
+   "es": "Los concejales del municipio o del barrio electoral",
+   "state": "draft"
+  },
+  "guide.election-worker.three-voters-of-the-town-one": {
+   "en": "Three voters of the town, one elected by ballot every even-numbered year for 6 years, or for a 3-year term where the town adopts it",
+   "es": "Tres votantes del municipio; se elige uno mediante boleta cada año par, por 6 años, o por un período de 3 años donde el municipio lo adopte",
+   "state": "draft"
+  },
+  "guide.election-worker.title": {
+   "en": "How to Work at the Polls on Election Day",
+   "es": "Cómo trabajar en el lugar de votación el día de la elección",
+   "state": "draft"
+  },
+  "guide.election-worker.town-meetings-and-moderators-rsa-40": {
+   "en": "Town Meetings and Moderators, RSA 40",
+   "es": "Asambleas municipales y moderadores, RSA 40",
+   "state": "draft"
+  },
+  "guide.election-worker.town-officers-rsa-41": {
+   "en": "Town Officers, RSA 41",
+   "es": "Funcionarios municipales, RSA 41",
+   "state": "draft"
+  },
+  "guide.election-worker.town-or-ward-clerk": {
+   "en": "Town or ward clerk",
+   "es": "Secretario del municipio o del barrio electoral",
+   "state": "draft"
+  },
+  "guide.election-worker.two-one-from-each-party-are": {
+   "en": "Two, one from each party, are the ballot clerks who hand out the ballots; the others do what the moderator assigns, including helping a voter who asks for help",
+   "es": "Dos, uno de cada partido, son los encargados de las boletas que las entregan a los votantes; los demás hacen lo que el moderador les asigne, incluida la ayuda a un votante que la pida",
+   "state": "draft"
+  },
+  "guide.election-worker.what-the-moderator-delegates-to-them": {
+   "en": "What the moderator delegates to them, except declaring the vote",
+   "es": "Lo que el moderador les delegue, salvo declarar el resultado de la votación",
+   "state": "draft"
+  },
+  "guide.election-worker.what-they-do": {
+   "en": "What they do",
+   "es": "Qué hace",
+   "state": "draft"
+  },
+  "guide.election-worker.who-decides-a-ballot-whose-mark": {
+   "en": "Who decides a ballot whose mark is unclear?",
+   "es": "¿Quién decide sobre una boleta cuya marca no es clara?",
+   "state": "draft"
+  },
+  "guide.election-worker.who-oversees-elections-across-the-state": {
+   "en": "Who oversees elections across the state?",
+   "es": "¿Quién supervisa las elecciones en todo el estado?",
+   "state": "draft"
+  },
+  "guide.election-worker.who-runs-a-polling-place": {
+   "en": "Who runs a polling place",
+   "es": "Quién dirige un lugar de votación",
+   "state": "draft"
+  },
+  "guide.election-worker.yes-the-law-makes-the-counting": {
+   "en": "Yes. The law makes the counting public, and its documents are open for public review when the results are announced. The state audit of counting machines is open to the public too.",
+   "es": "Sí. La ley hace público el conteo, y sus documentos están disponibles para revisión pública cuando se anuncian los resultados. La auditoría estatal de las máquinas de conteo también está abierta al público.",
+   "state": "draft"
+  },
   "guide.file-for-unemployment.after-you-appeal-you-will-get": {
    "en": "After you appeal you will get an Appeal Request Notice, and the hearing is held by an Appeal Tribunal chairperson.",
    "es": "Después de apelar recibirá un aviso de solicitud de apelación (Appeal Request Notice), y la audiencia la dirige el presidente de un Tribunal de Apelaciones (Appeal Tribunal).",
@@ -11840,6 +12225,21 @@
   "guide.task.domestic-violence-help.line": {
    "en": "The 24-hour helpline, a safety plan, a protective order, and care after an assault.",
    "es": "La línea de ayuda de 24 horas, un plan de seguridad, una orden de protección y atención después de una agresión.",
+   "state": "draft"
+  },
+  "guide.task.election-worker.does": {
+   "en": "Work at the polls on election day",
+   "es": "Trabajar en el lugar de votación el día de la elección",
+   "state": "draft"
+  },
+  "guide.task.election-worker.head": {
+   "en": "How to work at the polls on election day",
+   "es": "Cómo trabajar en el lugar de votación el día de la elección",
+   "state": "draft"
+  },
+  "guide.task.election-worker.line": {
+   "en": "Who runs a polling place, how to be appointed, and how the count is checked.",
+   "es": "Quién dirige un lugar de votación, cómo lo nombran y cómo se verifica el conteo.",
    "state": "draft"
   },
   "guide.task.file-for-unemployment.does": {
