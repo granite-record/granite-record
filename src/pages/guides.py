@@ -7368,6 +7368,15 @@ GUIDES += [PASSPORT]
 # and words are that page's). The Department of Health and Human Services'
 # page on the savings programs still waits for a printout.
 # Medicaid itself is the food and health guide's.
+#
+# THE GROUNDWORK FIRST (the person, 26 October 2026: the guide "was very
+# dense and I didn't quite understand things like part A and part B, so it
+# may be better to have a separate explanation for each with a bit of
+# groundwork on how the programs are structured before jumping into the step
+# by step"). Step 1 says what each program is and who runs it, from the same
+# printouts and pages, and the steps after it say only what to do. Part C's
+# name, and what Part A and Part B each cover beyond their one-line names,
+# are on no page on hand, so the guide does not say them.
 # ---------------------------------------------------------------------------
 MC_READ = "2026-10-25"
 SSA_PAGES_READ = "2026-10-25"        # the person's printouts of ssa.gov
@@ -7397,25 +7406,64 @@ MEDICARE = guide(
     "When and how to sign up for Medicare, applying for Social Security retirement benefits, "
     "choosing your coverage, and the state and federal programs that help pay Medicare's costs, "
     "with free counseling in New Hampshire.",
-    "You sign up for Medicare through Social Security, generally in the 7 months around your "
-    "65th birthday. If you already get Social Security benefits, you are usually enrolled "
-    "automatically. Social Security retirement benefits can start as early as age 62. If paying "
-    "for Medicare is hard, the state&rsquo;s Medicare Savings Programs and the federal Extra Help "
-    "program can pay some of the costs: apply even if you are not sure you qualify. New "
-    "Hampshire&rsquo;s Aging and Disability Resource Centers give free, one-on-one help.",
+    "Social Security pays benefits to people who worked and paid Social Security taxes, when "
+    "they retire or become disabled, and to some of their families. Medicare is health insurance "
+    "for people 65 or older and some younger people with disabilities. You sign up for Medicare through Social Security, generally in the 7 months "
+    "around your 65th birthday, and if you already get Social Security benefits you are usually "
+    "enrolled automatically. Retirement benefits can start as early as age 62. If paying for "
+    "Medicare is hard, state and federal programs can help with the costs: apply even if you are "
+    "not sure you qualify. New Hampshire&rsquo;s Aging and Disability Resource Centers give free, "
+    "one-on-one help.",
     [ask("Do you already get Social Security benefits?",
          [("Yes", "You are usually enrolled in Medicare automatically. Watch for your card."),
           ("No", "Sign up through Social Security in the 7 months around your 65th birthday.")]),
      box("Choose Original Medicare or a Medicare Advantage Plan, and a drug plan. Review it every "
          "fall, October 15 to December 7."),
      box("If the costs are hard to pay, apply for a Medicare Savings Program and Extra Help.")],
-    [step("Know when to sign up for Medicare",
+    [step("Know how the programs fit together",
+          "<p><b>Social Security</b> is a set of programs run by the Social Security "
+          "Administration:</p><ul>"
+          "<li><b>Retirement benefits</b>, for people who worked and paid Social Security taxes, "
+          "starting as early as age 62.</li>"
+          "<li><b>Disability benefits</b>, for people who worked and paid Social Security taxes "
+          "long enough and have a medical condition that makes it hard or impossible to work and "
+          "will last at least one year or result in death.</li>"
+          "<li><b>Family and survivor benefits</b>, for the spouse, former spouse, child or "
+          "dependent parent of someone who worked and paid Social Security taxes.</li>"
+          "<li><b>Supplemental Security Income (SSI)</b>, a separate program for people who are "
+          "blind, have a disability, or are 65 or older, and have little or no income or "
+          "assets.</li></ul>"
+          "<p><b>Medicare</b> is the country&rsquo;s health insurance program for people 65 or "
+          "older, and for some younger people (see Common Questions below). It comes in "
+          "parts:</p>"
+          + table("The parts of Medicare",
+                  ["Part", "What it is", "How you get it"],
+                  [["Part A", "Hospital insurance.",
+                    "Through Social Security. Many people are enrolled automatically (step 2)."],
+                   ["Part B", "The second part of Medicare, which New Hampshire&rsquo;s Department of "
+                    "Health and Human Services calls supplemental insurance. It has a premium, and "
+                    "signing up late can add a penalty for as long as you have it.",
+                    "Through Social Security, with Part A, or later on its own. You can put it off "
+                    "while a job&rsquo;s group health plan covers you."],
+                   ["Medicare Advantage Plan", "A plan you can choose instead of Original Medicare. "
+                    "You need both Part A and Part B to join one.",
+                    "You choose one on Medicare.gov (step 5)."],
+                   ["Drug coverage (Part D)", "A drug plan, which you can add to Original Medicare.",
+                    "You choose one on Medicare.gov (step 5)."]])
+          + "<p>You sign up for Part A and Part B through Social Security, which can take your "
+          "premiums out of your benefit payments. You choose a Medicare Advantage Plan or a drug "
+          "plan on Medicare.gov.</p>"
+          "<p><b>Help with the costs</b> comes from two programs: the state&rsquo;s <b>Medicare "
+          "Savings Programs</b>, which help pay Medicare premiums and, for some people, other "
+          "costs; and the federal <b>Extra Help</b> program, which pays part of the cost of drug "
+          "coverage. Step 6 says who qualifies and how to apply.</p>"),
+     step("Know when to sign up for Medicare",
           "<p>Your first chance is your Initial Enrollment Period: 7 months, starting 3 months "
           "before the month you turn 65 and ending 3 months after it. Coverage always starts on "
           "the first of a month, and signing up before your birthday month means it starts "
           "sooner.</p>"
-          "<p><b>You are enrolled automatically</b> in Part A (hospital insurance) and Part B "
-          "(medical insurance) if you start getting Social Security benefits at least 4 months "
+          "<p><b>You are enrolled automatically</b> in Part A and Part B "
+          "if you start getting Social Security benefits at least 4 months "
           "before you turn 65, or after you have received disability benefits for 24 months. "
           "Your Medicare card comes in the mail.</p>"
           "<p><b>If you miss your first chance,</b> you may have to wait for the General "
@@ -7429,8 +7477,7 @@ MEDICARE = guide(
           "Administration, not through Medicare. The easiest way is online, with a my Social "
           "Security account, if you are 65 or older. You can also call Social Security at "
           "1-800-772-1213, Monday through Friday, 8 a.m. to 7 p.m. (TTY 1-800-325-0778), and "
-          "make an appointment. If a job&rsquo;s group health plan covers you, you can delay "
-          "Part B.</p>",
+          "make an appointment.</p>",
           actions=[("Sign up for Medicare (Medicare)", MEDICARE_SIGNUP),
                    ("Sign up for Medicare (Social Security)", SSA_MEDICARE)]),
      step("Apply for Social Security retirement benefits",
@@ -7440,23 +7487,26 @@ MEDICARE = guide(
           "lets you enroll in Medicare, or call 1-800-772-1213.</p>",
           actions=[("Apply for benefits (Social Security)", SSA_APPLY)]),
      step("Choose your coverage, and review it every fall",
-          "<p>With Part A and Part B, you choose between Original Medicare, which you can pair "
-          "with a separate drug plan, and a Medicare Advantage Plan, which needs both Part A "
-          "and Part B. Each fall, from <b>October 15 to December 7</b>, you can join, switch or "
-          "drop a plan, and the change starts January 1.</p>"
+          "<p>With Part A and Part B, you choose between Original Medicare, with or without a "
+          "drug plan, and a Medicare Advantage Plan. Each fall, from <b>October 15 to December "
+          "7</b>, you can join, switch or drop a plan, and the change starts January 1.</p>"
           "<p>For free help comparing plans, call your Aging and Disability Resource "
           "Center (below), or 1-800-MEDICARE (1-800-633-4227), any hour of any day.</p>",
           actions=[("Joining a plan (Medicare)", MEDICARE_PLANS)]),
      step("Get help paying the costs",
-          "<p><b>Medicare Savings Programs</b> are run by the state. Depending on your income "
-          "and savings, they help pay your Medicare premiums, and the most generous one also pays "
-          "your deductibles, coinsurance and copayments, so that Medicare providers may not bill "
-          "you for covered care. In New Hampshire they are the <b>Medicare Beneficiaries Savings "
-          "Program</b>, also called the Buy-In program: QMB, SLMB, and QDWI, which pays the Part "
-          "A premium of people with disabilities who work and have lost Medicare because of their "
-          "earnings. Your home and vehicles do not count against its limits. "
-          "Apply to the Department of Health and Human Services through NH Easy, under Medicare "
-          "beneficiary assistance; its Customer Service Center answers at 1-844-ASK-DHHS "
+          "<p>New Hampshire&rsquo;s <b>Medicare Savings Programs</b> are together called the "
+          "<b>Medicare Beneficiaries Savings Program</b>, or the Buy-In program. They are for "
+          "people with low incomes who are eligible for Medicare, and your home and vehicles do "
+          "not count against their limits:</p>"
+          + table("What each Medicare Savings Program pays",
+                  ["Program", "What it helps pay"],
+                  [["QMB", "Part A and Part B premiums, penalties for signing up late, deductibles "
+                    "and coinsurance. Medicare providers may not bill you for covered care."],
+                   ["SLMB", "The Part B premium and penalties for signing up late."],
+                   ["QDWI", "The Part A premium, for people with disabilities who work and have "
+                    "lost Medicare because of their earnings."]])
+          + "<p>Apply to the Department of Health and Human Services through NH Easy, under "
+          "Medicare beneficiary assistance; its Customer Service Center answers at 1-844-ASK-DHHS "
           "(1-844-275-3447), Monday through Friday, 8 a.m. to 4 p.m. Medicare advises applying "
           "even if you do not think you qualify.</p>"
           "<p><b>Extra Help</b> is a federal program that pays part of your drug plan&rsquo;s "
@@ -7528,16 +7578,28 @@ MEDICARE = guide(
      # Social Security's and the Department's own pages, from the person's printouts.
      claim("Retirement benefits: you're at least 62 years old; you've worked and paid Social "
            "Security taxes for at least 10 years; you may also enroll in Medicare if you are "
-           "eligible. Disability benefits: a medical condition that will last at least one "
-           "year or result in death; you worked and paid Social Security taxes long enough. "
-           "SSI for Disability and SSI for Age 65+: little or no income or assets.",
+           "eligible. Family benefits: you're a spouse, ex-spouse, child, or dependent parent of "
+           "someone who worked and paid Social Security taxes. Disability benefits: you have a "
+           "medical condition that will last at least one year or result in death; your "
+           "condition makes it hard or impossible to work; you worked and paid Social Security "
+           "taxes long enough. Survivor benefits: a spouse, ex-spouse, child, or dependent parent "
+           "of someone who worked and paid Social Security taxes before they died. Supplemental "
+           "Security Income (SSI): SSI for Disability, you're blind or have a disability; SSI for "
+           "Age 65+, you're 65 or older; you have little or no income or assets such as money or "
+           "property.",
            SSA_APPLY, SSA_PAGES_READ),
-     claim("You'll sign up for Medicare Part A and Part B through Social Security; under 65, "
+     claim("Medicare is our country's health insurance program for people age 65 or older. "
+           "You'll sign up for Medicare Part A and Part B through Social Security, so you can "
+           "make both retirement and Medicare choices and withhold any premiums from your benefit "
+           "payments; under 65, "
            "eligible with permanent kidney failure or if you receive Disability benefits; SSI "
            "does not qualify you for Medicare on its own; if you're 65 or older, you can enroll "
            "online; you can delay Part B if you're already covered through an employer group "
-           "health plan; make an appointment: call 800-772-1213, Monday through Friday, 8 a.m. "
-           "to 7 p.m.; TTY 800-325-0778.", SSA_MEDICARE, SSA_PAGES_READ),
+           "health plan; sign up for Part B only if you already have Part A and previously "
+           "declined or never signed up for Part B; review and sign up for Medicare Advantage and "
+           "drug plans on Medicare.gov; Apply for Part D Extra Help; make an appointment: call "
+           "800-772-1213, Monday through Friday, 8 a.m. to 7 p.m.; TTY 800-325-0778.",
+           SSA_MEDICARE, SSA_PAGES_READ),
      claim("With a personal my Social Security account: request a replacement Social Security "
            "Number card; change your address or direct deposit; print proof of benefits or tax "
            "forms; get your Social Security Statement; review earnings; create it through "
@@ -7545,7 +7607,8 @@ MEDICARE = guide(
            "number or a device with a camera.", SSA_ACCOUNT, SSA_PAGES_READ),
      claim("The Medicare Beneficiaries Savings Program assists low-income elderly or disabled "
            "individuals who are eligible for Medicare; also referred to as the Buy-In program; "
-           "QMB helps pay the Part A and Part B premiums, premium penalties for late enrollment, "
+           "QMB helps pay the Medicare Part A (hospital insurance) premium, Medicare Part B "
+           "(supplemental insurance) premium, premium penalties for late enrollment, "
            "deductibles and coinsurance; SLMB or SLMB135 help pay the Part B premium and late "
            "penalties; QDWI pays the Part A premium of disabled working individuals who have "
            "lost Medicare due to earnings; a current resident of NH, no length of time; we do "
