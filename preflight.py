@@ -64353,9 +64353,29 @@ def _with_components(js, here="."):
     page loads it, then the script. Both without their comments, as the
     site publishes them, while _PUBLISHED_SCRIPTS is set."""
     if _PUBLISHED_SCRIPTS:
-        import strip_js
-        return strip_js.strip(_components_js(here)) + "\n" + strip_js.strip(js)
+        return _stripped(_components_js(here)) + "\n" + _stripped(js)
     return _components_js(here) + "\n" + js
+
+
+# EACH SCRIPT IS STRIPPED ONCE A RUN (26 October 2026). The published pass of
+# _published_scripts_run_the_same hands node about a hundred harnesses, and
+# each stripped components.js and its page's script afresh: 260 calls to
+# strip_js.strip, 101 s of a 195 s check, for a few texts. strip() is a pure
+# function of its text, so each is stripped once and the answer kept, keyed by
+# a sha256 of the text and by the strip() that made it: a check that put
+# another strip() in place would not be handed this one's answer. A text
+# strip() refuses is refused again on every call, as before.
+_STRIPPED = {}
+
+
+def _stripped(js):
+    """strip_js.strip(js), worked out once a run for each text."""
+    import hashlib
+    import strip_js
+    key = (strip_js.strip, hashlib.sha256(js.encode("utf-8")).digest())
+    if key not in _STRIPPED:
+        _STRIPPED[key] = strip_js.strip(js)
+    return _STRIPPED[key]
 
 
 def _camel(name):
@@ -110478,6 +110498,24 @@ def _empty_view_read(FT, SHR, BTD):
 
 # ======================================================================= main ==
 
+# EVERY RUN ENDS ON ITS SLOWEST CHECKS (26 October 2026). The night's
+# `preflight.py --code` took 110 s on 9 October and 285 s on 26 October, and
+# nobody saw it grow: the night's log gave the step's seconds and never which
+# checks took them. Now every run says its ten slowest, by function, under its
+# count, which the night's log carries for --code and for --built; and every
+# check's seconds go into the run's record (handoff.record_run's "timings")
+# and into --built's list (BUILT_OUT, "seconds").
+SLOWEST = 10
+
+
+def _slowest(took, wall, n=SLOWEST):
+    """The line naming the `n` slowest of `took`, [(seconds, check)], slowest
+    first, with how many ran and the run's seconds in all (`wall`)."""
+    top = sorted(took, key=lambda x: -x[0])[:n]
+    return (f"slowest {len(top)} of {len(took)} checks, of {wall:.0f} s in all: "
+            + "; ".join(f"{c['fn'].__name__} {s:.1f} s" for s, c in top))
+
+
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--code", action="store_true", help="skip the data checks")
@@ -110536,7 +110574,7 @@ def main():
         # suite, and handoff.py reads a record as a run of all of it.
         handoff = None
 
-    results, group, built = [], None, []
+    results, group, built, took = [], None, [], []
     for c in CHECKS:
         if a.code and c["group"] == "data":
             continue
@@ -110549,6 +110587,7 @@ def main():
         if c["group"] != group:
             group = c["group"]
             print(f"\n{group.upper()}")
+        t0 = _time.perf_counter()
         mods = []
         missing = None
         for n in c["needs"]:
@@ -110570,10 +110609,12 @@ def main():
                     traceback.print_exc()
             _OUTCOMES[c["fn"].__name__] = (status, msg)
             status, msg = _settle(status, msg, c.get("expect_fail"))
+        took.append((_time.perf_counter() - t0, c))
         results.append((c["group"], c["name"], status, msg))
         if a.built:
             built.append({"fn": c["fn"].__name__, "group": c["group"], "name": c["name"],
-                          "status": status, "msg": str(msg)[:600], "tier": built_tier(c)})
+                          "status": status, "msg": str(msg)[:600], "tier": built_tier(c),
+                          "seconds": round(took[-1][0], 2)})
         mark = {"ok": "  ok  ", "skip": " skip ", "FAIL": " FAIL ",
                 "ERROR": "ERROR ", "xfail": "xfail "}[status]
         print(f"  [{mark}] {c['name']}")
@@ -110592,11 +110633,13 @@ def main():
         BUILT_OUT.write_text(json.dumps(built, indent=1), encoding="utf-8")
     if handoff:
         handoff.record_run("code" if a.code else "data" if a.data else "all", results,
-                           tree, _time.time() - began, data=data)
+                           tree, _time.time() - began, data=data,
+                           timings=[(c["fn"].__name__, s) for s, c in took])
 
     print("\n" + "=" * 74)
     print(f"{len(ok)} passed, {len(bad)} failed, {len(skipped)} skipped"
           + (f", {len(expected)} expected to fail" if expected else ""))
+    print(_slowest(took, _time.time() - began))
     if bad:
         print("\nWhat is broken:")
         for g, n, s, m in bad:
@@ -111787,6 +111830,102 @@ def _published_scripts_run_the_same(BP, SJ):
                         + " | ".join(differ[:4]))
     return "ok", (f"{len(chosen)} checks that run a page's script in node came out the same on "
                   f"the published copy ({', '.join(f'{n} {k}' for k, n in sorted(ran.items()))})")
+
+
+# ---- what a run leaves behind, and what it says of its time (26 October 2026)
+#
+# AFTER _published_scripts_run_the_same, and last, ON PURPOSE: the first of
+# these counts the machine watches every check before it left going.
+
+@check("pipeline", "a run of preflight leaves no machine watch going: nightly.main() stops the "
+       "one it starts on GitHub's machine however it returns, and no check before this one "
+       "left one", needs=("nightly",))
+def _no_watch_left(NI):
+    """nightly.machine_watch() started a thread that printed a [machine ...]
+    line once a minute and had no way to stop. Every check that ran the night
+    or the week in this process left one behind, printing into whatever came
+    next: 222 of them after one --code run (the codebase review, 26 October
+    2026). main() stops it now however it returns (nightly._watch_ends).
+    Here the week runs with weekly() replaced by one that counts the watches
+    going -- the one main() started, and no other -- and none is going once
+    main() has returned; and none was going before, from any check this run
+    ran ahead of this one, which is why this registers last."""
+    import contextlib
+    import io
+    import threading
+
+    def going():
+        return [t for t in threading.enumerate() if t.name == "machine-watch" and t.is_alive()]
+    before, seen = going(), []
+    here = os.getcwd()
+    tmp = Path(tempfile.mkdtemp(prefix="gr-watch-"))
+    saved = (NI.weekly, NI.QUIET, NI.LOG, sys.argv)
+
+    def week(a):
+        seen.append(len(going()))
+        return 0
+    try:
+        os.chdir(tmp)
+        NI.weekly, NI.LOG = week, []
+        sys.argv = ["nightly.py", "--runner", "--weekly"]
+        with contextlib.redirect_stdout(io.StringIO()), contextlib.redirect_stderr(io.StringIO()):
+            try:
+                code = NI.main()
+            except SystemExit as e:
+                code = e.code
+    finally:
+        os.chdir(here)
+        NI.weekly, NI.QUIET, NI.LOG, sys.argv = saved
+        shutil.rmtree(tmp, ignore_errors=True)
+    after = going()
+    assert seen == [len(before) + 1], (
+        f"the week saw {seen} machine watches going, with {len(before)} going before main() "
+        f"ran: main() did not start its one (exit {code})")
+    assert not after, (f"{len(after)} machine watches are still going after nightly.main() "
+                       "returned: it no longer stops the one it starts (_watch_ends)")
+    assert not before, (f"{len(before)} machine watches were left going by the checks this run "
+                        "ran before this one: something starts one that main() does not stop")
+    return "ok", "the week ran with its watch going, and none is going after it or was before it"
+
+
+@check("files", "every run ends on its ten slowest checks, and the run's record keeps every "
+       "check's seconds", needs=("handoff",))
+def _slowest_said(H):
+    """EVERY RUN ENDS ON ITS SLOWEST CHECKS (above main()). Held here: the
+    line names the ten slowest of a run, slowest first, by function and
+    seconds, with how many ran and the run's seconds in all; main() prints it
+    under the count and hands every check's seconds to handoff.record_run;
+    and the record keeps them as "timings", one for each check in its order,
+    beside "checks" as handoff.last_run reads it."""
+    import inspect
+    import types
+
+    def fake(name):
+        return {"fn": types.SimpleNamespace(__name__=name)}
+    took = [(float(i), fake(f"_c{i}")) for i in (3, 14, 1, 5, 9, 2, 6, 5, 3, 5, 8, 9, 7, 9, 3, 2)]
+    line = _slowest(took, 123.4)
+    want = ("slowest 10 of 16 checks, of 123 s in all: _c14 14.0 s; _c9 9.0 s; _c9 9.0 s; "
+            "_c9 9.0 s; _c8 8.0 s; _c7 7.0 s; _c6 6.0 s; _c5 5.0 s; _c5 5.0 s; _c5 5.0 s")
+    assert line == want, f"the slowest line reads {line!r}, not {want!r}"
+    assert "passed," not in line, "handoff.py takes a line with 'passed,' in it for the count"
+    src = inspect.getsource(main)
+    assert "print(_slowest(took" in src and "timings=[" in src, (
+        "main() no longer says its slowest checks, or no longer records every check's seconds")
+    here = os.getcwd()
+    tmp = Path(tempfile.mkdtemp(prefix="gr-timings-"))
+    results = [("files", "one", "ok", ""), ("build", "two", "FAIL", "broken")]
+    try:
+        os.chdir(tmp)
+        assert H.record_run("code", results, (None, None), 2.0,
+                            timings=[("_one", 0.123), ("_two", 1.987)]), "no record was written"
+        rec = json.loads(H.RUN.read_text(encoding="utf-8"))
+    finally:
+        os.chdir(here)
+        shutil.rmtree(tmp, ignore_errors=True)
+    assert rec.get("checks") == [["files", "one", "ok"], ["build", "two", "FAIL"]] and \
+        rec.get("timings") == [["_one", 0.12], ["_two", 1.99]], (
+        f"the record keeps {rec.get('checks')} and {rec.get('timings')}")
+    return "ok", "the slowest ten said in order; every check's seconds kept beside its status"
 
 
 if __name__ == "__main__":

@@ -474,6 +474,7 @@ sys.path += [str(p) for p in Path(__file__).resolve().parents if (p / "_paths.py
 import _paths  # noqa: E402,F401
 
 import argparse
+import functools
 import gzip
 import hashlib
 import json
@@ -1402,6 +1403,19 @@ def gated(before, after, force, new_term=False):
     return hard + blocked, blocked, lines
 
 
+def _watch_ends(main):
+    """`main` with the machine watch it may start (machine_watch) stopped
+    however it returns: a value, SystemExit or an error."""
+    @functools.wraps(main)
+    def night():
+        try:
+            return main()
+        finally:
+            machine_unwatch()
+    return night
+
+
+@_watch_ends
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--site", default="site")
@@ -1997,18 +2011,42 @@ def machine_line():
             f"{g(head)} of {g(limit)} GB, disk free {g(disk)} GB; step: {WATCH['step'] or '-'}")
 
 
+# THE WATCH ENDS WITH main() (26 October 2026). It had no way to stop, and
+# preflight runs main() in its own process dozens of times: every run of the
+# night or the week there left a thread behind that printed a [machine ...]
+# line a minute into whatever came next: 222 threads after one
+# `preflight.py --code`, and over a thousand such lines in its output. One
+# watch at a time now, and main() stops it however it returns (_watch_ends).
+# On GitHub's machine nothing changes: the watch ran until the process ended,
+# and main()'s return is that end.
+WATCHING = {}
+
+
 def machine_watch():
+    """Start the watch: machine_line() now and every WATCH_EVERY seconds,
+    until machine_unwatch()."""
     import threading
 
+    machine_unwatch()
     # Its own clock, not time.sleep, which the checks replace to count a
     # night's waits.
-    tick = threading.Event()
+    stop = threading.Event()
 
     def watch():
-        while True:
+        while not stop.is_set():
             print(machine_line(), flush=True)
-            tick.wait(WATCH_EVERY)
-    threading.Thread(target=watch, name="machine-watch", daemon=True).start()
+            stop.wait(WATCH_EVERY)
+    t = threading.Thread(target=watch, name="machine-watch", daemon=True)
+    WATCHING.update(stop=stop, thread=t)
+    t.start()
+
+
+def machine_unwatch():
+    """Stop the watch machine_watch() started, if one is going."""
+    stop, t = WATCHING.pop("stop", None), WATCHING.pop("thread", None)
+    if stop is not None:
+        stop.set()
+        t.join(timeout=5)
 
 
 def machine_lows():
