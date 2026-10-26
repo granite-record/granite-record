@@ -243,8 +243,9 @@ the lists, inside the same lock,
 `src/fetch/gc_web/fetch_calendar_archive.py --night` asks for what both tonight's and the night before's lists name
 -- the night before's read at least 20 hours earlier, and once a day --
 oldest first, with a pause of about twenty seconds before each, following no
-redirect, never for a document with a refusal recorded against it or asked
-three times (a dropped connection or a redirect counts as all three), nor for
+redirect -- a redirect is recorded as a refusal -- never for a document with
+a refusal recorded against it or asked three times (a dropped connection
+counts as all three), nor for
 one it holds back for a person -- a possible rename, a path two rows share, an
 address its list does not give, two held at one path -- which it names
 instead; and it stops at the first refusal, the first other failure or the

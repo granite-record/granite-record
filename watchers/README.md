@@ -159,6 +159,13 @@ After 10 November:
    and the night no longer reads it, so it names none of these: SC027.pdf is
    the path of four documents ("No 27 June 19 2025" and three supplements of
    it) and SC024A.pdf of two. Check them the same way, now.
+   The first shadow night that names a document held back, or whose canary
+   did not pass, waits for your approval in production-review before it
+   publishes: each is a kind of warning no published night has carried, and
+   the gate holds a night for a new kind. Read `documents_held_back` and
+   `text_canary` in its verdict; if they are what this step expects, approve
+   it. Once a night carrying that kind is published, the same kind holds no
+   night for fourteen days after.
 8. Make the texts the night's, once, before any number:
    - on the laptop, `python3 src/ops/cloud.py pull`, then
      `python3 src/parse/extract_calendar_text.py`, then
@@ -174,27 +181,38 @@ After 10 November:
    for no document and says so: "not fetching: the calendars' and journals'
    text is still the laptop's".
 9. Set it to `1` for a week. The first night that carries each new kind of
-   warning waits for your approval. If `document_files` says "failed: HTTP
-   302", the General Court's viewer answers with a redirect, which the night
-   does not follow -- nor asks for that document again: set it back to
-   `shadow` and ask.
+   warning waits for your approval. If `document_files` says the General
+   Court refused a request and the refusal on file says "a redirect (HTTP
+   302)", its viewer answered with a redirect, which the night does not
+   follow: it records it as a refusal, so nothing asks that address again,
+   the laptop included, until a person clears it. Set the switch back to
+   `shadow` and ask before clearing it.
 10. The laptop's routine from then: `cloud.py pull`, then `cloud.py
     docs-down`, which brings the night's PDFs; the committee reports read
     them by themselves. Whatever is fetched or decided here reaches the night
     only through the bucket, so each of these ends with
     `python3 src/parse/extract_calendar_text.py` and then
-    `python3 src/ops/cloud.py seed-kit`:
+    `python3 src/ops/cloud.py seed-kit` -- after, never before, any entry it
+    needs in a file of the person's in `corrections/` is merged to `main`
+    (below): a text seed-kit sends before then, the night sets aside and
+    kit-up then removes from the bucket, and it has to be sent again:
     - a journal the night names as a possible rename:
       `python3 src/fetch/gc_web/fetch_calendar_archive.py --settle "NAME"` if
-      it is the same journal, or `--take "NAME"` if it is not;
+      it is the same journal, or `--take "NAME"` if it is not. --settle
+      leaves the site linking the journal by its old address -- the session
+      days, the votes -- and the Calendars & Journals picker lists it under
+      both names, because a settle changes only the drain's own fields,
+      which are all the laptop's record carries to the night. Nobody has
+      seen whether the old address still opens after a rename: the first
+      time, open it, and if it does not, ask;
     - a document held back because its address is not the one its list
       gives, once a person has looked: `--take "NAME"`;
     - a document the night did not find (named in `document_files`, and
       marked gone): if the General Court's page still lists it and it opens
       there, `--take "NAME"`;
-    - a document the night will not ask for again -- a refusal recorded, a
-      dropped connection or a redirect, three tries: the drain, which takes
-      them when a person runs it;
+    - a document the night will not ask for again -- a refusal recorded (a
+      redirect among them), a dropped connection, three tries: the drain,
+      which takes them when a person runs it;
     - a document with no text the night could use: its warning says what to
       do for its cause. Two files of the person's are read from `main` and
       do nothing until merged there: `corrections/documents_without_text.json`

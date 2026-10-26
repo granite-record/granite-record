@@ -187,10 +187,10 @@ rule by rule (night_plan() and take_night(), below):
                    NIGHT_BYTES_MOST) or it is not taken
   when it stops    one refusal, recorded: status 2. The first failure that is
                    not a 404, or a second 404: status 1. Nothing is asked
-                   again that night; and a document whose connection was
-                   dropped, or that answered with a redirect, is not asked
-                   for again without a person (all NIGHT_TRIES tries
-                   counted, the review of 26 October 2026)
+                   again that night; a document whose connection was
+                   dropped is not asked for again without a person (all
+                   NIGHT_TRIES tries counted), and a redirect is a refusal,
+                   recorded (the review of 26 October 2026)
   what it writes   the queue to --out and nowhere else, and beside it each
                    request and how it ended (ASKED_NAME) -- both before every
                    request as well, the try already counted, so a kill at the
@@ -292,6 +292,14 @@ LISTED_NAME = "documents_listed.json"
 # one number give that number no link at all (queue_links), and a renamed
 # journal has a text already, under its old name.
 SETTLED = "settled"
+# A row GitHub's night fetched tonight whose text it has not yet made, read
+# and checked, and whose PDF it has not yet kept for the bucket (the review of
+# 26 October 2026): nightly.make_texts marks it held once its PDF is kept, or
+# wanted again. Not "wanted", so that night_plan neither asks for it nor holds
+# it from a text nothing checked; a night stopped while making its text left
+# it so, and the next night takes that text out and asks again
+# (nightly.recover_making).
+MAKING = "making"
 
 # ---- the night's read of the two index pages --------------------------------
 #
@@ -1204,10 +1212,13 @@ ASKED_NAME = "documents_asked.json"
 # second ask of a document that once answered 403 cannot tell whether the
 # address or the document is refusing (watchers/gc_lane.queue, the proving
 # run of 12 September). The night never asks for such a row; a person does.
+# AND EVERY DROP refusal.classify COUNTS (the review of 26 October 2026): an
+# SSL "EOF occurred in violation of protocol" and "Connection reset by peer",
+# with its space, were drops there and nothing here.
 REFUSED_BEFORE = re.compile(
     r"(?:Error|HTTP)\s*(?:403|429|503)\b|Forbidden|Too Many Requests|Retry-After|block page|Blocked"
-    r"|Attack ID|RemoteDisconnected|Connection(?:Reset|Aborted|Refused)|WinError 100(?:53|54|60|61)"
-    r"|timed out|refus", re.I)
+    r"|Attack ID|RemoteDisconnected|Connection\s?(?:Reset|Aborted|Refused)|reset by peer"
+    r"|EOF occurred|SSLEOF|WinError 100(?:53|54|60|61)|timed out|refus", re.I)
 # THE WORD EVERY REFUSAL IS WRITTEN WITH (the review of 26 October 2026). A
 # row's error was the answer's own words, and refusal.classify calls more
 # answers refused than those words show: a 500 carrying a Retry-After, or
@@ -1226,14 +1237,27 @@ JOURNAL_NO_RE = re.compile(r"\b[HS]J\s*(?:No\.?\s*)?0*(\d+)([A-Za-z]?)(?![A-Za-z
 # fetch_legislation.py's _NoRedirect has it: urlopen follows up to ten,
 # back to back, with no pause and none counted, to addresses no list gave,
 # so one request the night counted could be eleven. A 3xx is an HTTPError
-# here, which refusal.classify reads as a failure, and the step ends on it.
-# Nobody on this disk knows whether the General Court's viewer answers with
-# a redirect; if it does, the first night's one request says "failed: HTTP
-# 302" and nothing more is asked, and following one -- paced and counted --
-# is a person's decision.
+# here, and the night records it as a refusal (redirect_said; the review of
+# 26 October 2026): a firewall's redirect to its block page may carry the
+# sign only in its Location. Nobody on this disk knows whether the General
+# Court's viewer answers with a redirect; if it does, the first night's one
+# request is a refusal on file, everything waits for a person, and following
+# one -- paced and counted -- is that person's decision.
 class _NoRedirect(urllib.request.HTTPRedirectHandler):
     def redirect_request(self, *a, **k):
         return None
+
+
+def redirect_said(err):
+    """A redirect the night met, in this project's words: its status and the
+    host its Location names, reduced to a host name's own characters."""
+    loc = ""
+    try:
+        loc = (err.headers.get("Location") if err.headers is not None else "") or ""
+    except Exception:                                       # noqa: BLE001
+        loc = ""
+    host = re.sub(r"[^A-Za-z0-9.-]", "", urllib.parse.urlsplit(str(loc)).hostname or "")[:80]
+    return f"a redirect (HTTP {err.code}) to {host or 'an address it did not name'}"
 
 
 # The opener the night's requests go through: one that follows no redirect,
@@ -1627,9 +1651,10 @@ def take_night(a, rows, held):
     A FAILURE COUNTS AS A TRY AND WRITES NO ERROR. The Calendar page's picker
     drops a row that carries an error (calendar_documents.linkable), and a
     night's dropped connection is no reason for a reader to lose the link to
-    a calendar the page lists. A dropped connection or a redirect counts as
-    all NIGHT_TRIES tries, so that the night never asks for that document
-    again without a person. A refusal is written against its row, so that
+    a calendar the page lists. A dropped connection counts as all
+    NIGHT_TRIES tries, so that the night never asks for that document again
+    without a person. A redirect is a refusal (redirect_said), recorded as
+    one. A refusal is written against its row, so that
     nothing asks for that document again without a person -- beginning
     REFUSED_MARK, whatever the answer was -- and a 404 too, with the row
     gone, as the drain writes it."""
@@ -1732,6 +1757,16 @@ def take_night(a, rows, held):
                 e = err
                 kind = refusal.classify(err) or "failed"
                 why = f"{type(err).__name__}: {err}"
+                if isinstance(err, urllib.error.HTTPError) and 300 <= err.code < 400:
+                    # A REDIRECT IS A REFUSAL ON THE NIGHT (the review of 26
+                    # October 2026). A firewall that answers with a redirect
+                    # to its block page carries the sign in the Location, and
+                    # perhaps not in the body refusal.classify reads; counted
+                    # as a failure, nothing went on file, and a stood-down
+                    # laptop that pulled after 13:30 asked the same address.
+                    # Recorded, everything waits for the person who has to
+                    # look at a redirect anyway (watchers/README.md, step 9).
+                    kind, why = "refused", redirect_said(err)
             rec["stopped"] = ""
             entry["seconds"] = round(time.time() - begun, 1)
             entry["bytes"] = len(blob)
@@ -1753,16 +1788,15 @@ def take_night(a, rows, held):
                         code, stopped = 1, "a second document the list names was not found"
                         break
                     continue
-                # A DROP OR A REDIRECT IS NEVER ASKED AGAIN WITHOUT A PERSON
-                # (the review of 26 October 2026). refusal.classify calls a
-                # dropped connection this address's usual way of refusing, and
-                # a redirect is one this does not follow; counted as one try
-                # each, the same document was asked first every night, three
-                # nights running, and a refusal never went on file. Its tries
-                # are made the most the night gives -- no error is written, so
-                # the Calendar page keeps its link -- and it is a person's.
-                if kind == "dropped" or (isinstance(e, urllib.error.HTTPError)
-                                         and 300 <= e.code < 400):
+                # A DROP IS NEVER ASKED AGAIN WITHOUT A PERSON (the review of
+                # 26 October 2026). refusal.classify calls a dropped
+                # connection this address's usual way of refusing; counted as
+                # one try, the same document was asked first every night,
+                # three nights running, and a refusal never went on file. Its
+                # tries are made the most the night gives -- no error is
+                # written, so the Calendar page keeps its link -- and it is a
+                # person's. (A redirect is a refusal, above.)
+                if kind == "dropped":
                     r["attempts"] = str(max(_tries(r), NIGHT_TRIES))
                 code, stopped = 1, ("a connection was dropped" if kind == "dropped"
                                     else f"a request {entry['ended']}")
@@ -2227,6 +2261,13 @@ def drain(rows, chambers, kinds, years, a, held):
                     # luck; two in a run is this address refusing.
                     dropped += 1
                     if dropped >= 2:
+                        # Recorded as a refusal, so written against its row
+                        # as one (REFUSED_MARK), as the branch above writes
+                        # it (the review of 26 October 2026): in the drop's
+                        # own words alone, the night could put this very
+                        # document first once a person cleared the record.
+                        if own and not r["error"].startswith(REFUSED_MARK):
+                            r["error"] = (REFUSED_MARK + r["error"])[:180]
                         refusal.note("fetch_calendar_archive", r["error"])
                         stopped = "refused"
                         print("\nTwo dropped connections this run. Stopping "
