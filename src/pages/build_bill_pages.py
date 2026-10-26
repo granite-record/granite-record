@@ -55,6 +55,7 @@ import re
 import build_date
 import build_rsa as BR
 from components import clock
+import plain_action as PA
 import rsa
 import shell as S
 import site_read as SR
@@ -192,7 +193,10 @@ def static_record(b, d, data_url=None):
             + ": " + E(s.get("what") or "")
             + (", " + E(f"{CHAMBER.get(s.get('body'), '')} {s['committee']}".strip())
                if s.get("committee") else "")
-            + (f", {E(s['venue'])}" if s.get("venue") else "") + "</li>" for s in st) + "</ul>")
+            # The room in the words the page the script draws says it in
+            # (roomWords, plain_action.place): "State Library Map Room", not
+            # the schedule's "SL Map Room" (26 October 2026).
+            + (f", {E(PA.place(s['venue']))}" if s.get("venue") else "") + "</li>" for s in st) + "</ul>")
     rc = d.get("rollcalls") or []
     if rc:
         def vote(r):

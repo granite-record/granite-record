@@ -722,8 +722,13 @@ test("milestones only: the decisions and what is scheduled, not every docket lin
     assert.match(a[0].text, /Full committee work session set for/, "everything has the work session");
     assert.equal(f.length, 1, "the 5th held no milestone, so nothing went");
     assert.match(f[0].text, /October 6, 2026 {2}HB 9903-FN — Executive session set for 1:00 p\.m\./);
-    assert.match(f[0].text, /October 6, 2026 {2}HB 9903-FN — Hearing set for Wednesday, October 14, 10:00 a\.m\./,
-      "a meeting on another day keeps its date");
+    // The hearing set for the 14th is told once, by the testimony block in
+    // the Testify pane's words and with its day, and not again beneath it as
+    // the line that set it (mail.js setsHearing; the review of 26 October
+    // 2026). mail.test.js holds that a meeting on another day keeps its date.
+    assert.match(f[0].text, /The public hearing on HB 9903-FN is scheduled for Wednesday, October 14 at 10:00.AM/,
+      "the hearing set for another day is told, with its day");
+    assert.doesNotMatch(f[0].text, /Hearing set for/, "the hearing is told twice, in two clocks");
   } finally { w.close(); }
 });
 

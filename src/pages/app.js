@@ -3170,7 +3170,11 @@ if(window.GR_STATIC){
    // open, so it takes over here rather than drawing the bill list first and
    // replacing it. The index is still loaded: a vote names a bill and not its
    // year, and yearOf needs the index to turn one into a link.
-   const h=decodeURIComponent(location.hash.slice(1))||(window.GR_BILL||"");
+   // A bill's own page whose fragment names a place in it, not a bill --
+   // /bill/2026/hb1560/text#amendment-2026-0422h (AMENDMENT_HASH, below) --
+   // is still that bill's page (26 October 2026).
+   const said=decodeURIComponent(location.hash.slice(1));
+   const h=said&&!(window.GR_BILL&&AMENDMENT_HASH.test(said))?said:(window.GR_BILL||"");
    const hm=/^(?:(\d{4})\/)?([A-Z]{2,5}\d+)$/i.exec(h);
    if(hm){
      const id=hm[2].toUpperCase(),hy=hm[1]||"";
@@ -3184,7 +3188,9 @@ if(window.GR_STATIC){
      // The tab this bill's own address names.
      if(window.GR_BILL){
        const t=BILL_TABS[tabFromPath()];
-       if(t){openTab[id]=t;if(t==="6"&&row)needVersions(row);TAB_JUMP=id;}
+       if(t){openTab[id]=t;
+         if(t==="6"&&row){amendmentAsked(row,said);needVersions(row);}
+         TAB_JUMP=id;}
      }
      openBill(id);
    }
@@ -4277,8 +4283,11 @@ function sittingTerm(now){
 // bill, so the pane says what to pick, in the order the Senate's guidance
 // gives -- the hearing's day, then the committee, then the bill -- which the
 // House's form asks for too. workers/follow/mail.js testifyWords gives the
-// same three in the emails, in the older, longer words: the person's of 26
-// October 2026 were for this pane.
+// emails this pane's words, in its order (the person, 26 October 2026:
+// "Emails should stay in sync with how the site displays the testify
+// button"), for the hearings follow_changes.bill_upcoming reads from the
+// record by these functions' rules; preflight's _testify_email_in_sync holds
+// the two to one answer, so a change here is a change there.
 // A HEARING'S CHAMBER: the station's own body, and where it names neither
 // chamber, the chamber whose word the station uses (EACH CHAMBER'S WORD,
 // below: "public hearing" is the House's, "hearing" the Senate's). So every
@@ -4390,7 +4399,7 @@ function testifyHearings(d){
     const num=(/(?:\d{4}-)?\d{3,4}[a-z]+/i.exec(m[2])||[""])[0];
     heard.push({what:"public hearing",body:"H",when,time,committee:testifyHouseCommittee(d,when,time,room),
       venue:/^[A-Za-z0-9-][A-Za-z0-9 ,.'&-]{0,79}$/.test(room)?room:"",
-      amendment:`a proposed ${m[1]?"non-germane ":""}amendment${num?` (${num})`:""}`});
+      amendment:`a proposed ${m[1]?"non-germane ":""}amendment${num?` (${num})`:""}`,amendment_num:num});
   });
   return heard;
 }
@@ -4498,7 +4507,16 @@ function testifyButton(d,b,now=new Date()){
     // A hearing on a proposed amendment says so (testifyHearings): the bill
     // has had its own, and this one is on "a proposed non-germane amendment
     // (2026-0422h)", in the words the bill's Summary uses for it.
-    const on=(next.amendment?esc(next.amendment)+" to ":"")+(bill?esc(bill):"this bill");
+    // ITS NUMBER OPENS IT (the person, 26 October 2026: "the amendment number
+    // should link to open it on the bill text tab"): the Bill Text tab, at
+    // that amendment, open (AMENDMENT_HASH). Where the record says the tab
+    // has amendments to open (namd); otherwise the number is words alone.
+    const num=next.amendment_num||"", yr=d.year||(b&&b.year), bid=d.id||(b&&b.id);
+    const amd=!next.amendment?"":num&&d.namd&&yr&&bid&&AMENDMENT_HASH.test("amendment-"+num)
+      ?esc(next.amendment).replace(`(${esc(num)})`,
+        `(<a href="${esc(amendmentHref(yr,bid,num))}">${esc(num)}</a>)`)
+      :esc(next.amendment);
+    const on=(amd?amd+" to ":"")+(bill?esc(bill):"this bill");
     return button("tlive",`Testify<span class="tuntil"> until ${esc(dateWords(next.when,"short"))}</span>`)
       +`<div class="testifypane">
       <p>The public hearing on ${on} is scheduled for ${esc(dateWords(next.when,"day"))}${
@@ -5008,7 +5026,7 @@ const NOT_NAMED=`The recording&rsquo;s captions never name this bill, by
 
 // A ROOM AS THE DOCUMENTS TAB SAYS IT (the person, approved 17 October 2026):
 // "Legislative Office Building 210-211" for the clerk's "LOB 210-211", with
-// plain_action.BUILDINGS' three buildings.
+// plain_action.BUILDINGS' buildings.
 //
 // THE SAME WORDS AS plain_action.place, AND EVERYWHERE A ROOM IS SHOWN (the
 // audit of 25 October 2026, S7): the Calendar, a committee's meetings,
@@ -5020,17 +5038,30 @@ const NOT_NAMED=`The recording&rsquo;s captions never name this bill, by
 // building alone, "Room 100, SH", the House chamber -- and preflight holds it
 // to plain_action.place's own cases. "GP Room 230" is "Granite Place 230",
 // the room the docket calls "GP 230", so one room reads one way.
+//
+// SL IS THE STATE LIBRARY (the person, 26 October 2026: "SL is the state
+// library map room"), and a room with a name is said after its building
+// whichever side the clerk wrote it: "SL Map Room", "SL Rm Map Room", "Room
+// Map Room, SL" and "Map Room, SL" are all "State Library Map Room", where
+// Testify, the Hearings tab and a Senate Education meeting said "SL Map
+// Room". And "Rm" is "Room": a Senate committee Meets In "SH Rm 100", its
+// hearings "State House 100". plain_action.BUILDINGS, _named and
+// _PLACE_BLDG, in the same order.
 const ROOM_BUILDINGS={LOB:"Legislative Office Building",LOBO:"Legislative Office Building",
-  SH:"State House",GP:"Granite Place"};
+  SH:"State House",GP:"Granite Place",SL:"State Library"};
 const roomWords=v=>{
   const t=String(v||"").split(/\s+/).filter(Boolean).join(" ");
   if(/^(?:SH,?\s+)?(?:Reps|Representatives)'?\s+Hall(?:,?\s*SH)?$/i.test(t))
     return "Representatives' Hall, State House";
-  if(/^(?:LOBO|LOB|SH|GP)$/.test(t))return ROOM_BUILDINGS[t];
-  return t.replace(/\bRoom\s+(\w[\w .\-]*?)\s*,\s*([A-Z]{2,3})\b/gi,
+  if(/^(?:LOBO|LOB|SH|GP|SL)$/.test(t))return ROOM_BUILDINGS[t];
+  return t.replace(/\b(?:Room\s+)?((?:[A-Z][\w']*\s+)+Room)\s*,\s*(LOBO|LOB|SH|GP|SL)\b/g,
+      (m,n,k)=>`${ROOM_BUILDINGS[k]} ${n}`)
+    .replace(/\b(LOBO|LOB|SH|GP|SL)\s+(?:Rm\.?\s+|Room\s+)?((?:[A-Z][\w']*\s+)+Room)\b/g,
+      (m,k,n)=>`${ROOM_BUILDINGS[k]} ${n}`)
+    .replace(/\bRoom\s+(\w[\w .\-]*?)\s*,\s*([A-Z]{2,3})\b/gi,
       (m,r,k)=>`Room ${r.trim()}, ${ROOM_BUILDINGS[k.toUpperCase()]&&k.toUpperCase()!=="LOBO"
         ?ROOM_BUILDINGS[k.toUpperCase()]:k}`)
-    .replace(/\b(LOBO|LOB|SH|GP) ?(?:Room )?([0-9][0-9A-Za-z\-]*)\b(?!:)/g,
+    .replace(/\b(LOBO|LOB|SH|GP|SL) ?(?:Room |Rm\.? ?)?([0-9][0-9A-Za-z\-]*)\b(?!:)/g,
       (m,k,n)=>`${ROOM_BUILDINGS[k]} ${n}`);
 };
 // "approximate", the one word an inferred moment carries (CLAUDE.md,
@@ -6063,7 +6094,8 @@ function renderVersions(b,d){
   const amdblock=amds.length?`<h2 class="amdsec">The amendments themselves</h2>
     <p class="note">Each amendment as the General Court published it; these are
     not versions of the bill.</p>
-    <ul class="vamds">${amds.map((a,j)=>`<li><button class="link"
+    <ul class="vamds">${amds.map((a,j)=>`<li${AMENDMENT_FOUND[a.text_url]
+      ?` id="amendment-${esc(AMENDMENT_FOUND[a.text_url])}"`:""}><button class="link"
       data-vamd="${esc(key)}|${j}">Amendment of ${esc(recordDay(a.date))}</button>
       <span class="dim">${(a.chars||0).toLocaleString()} characters</span>${
       VTEXT[a.text_url]!==undefined
@@ -6133,7 +6165,83 @@ function wantVersionBody(b){
       .then(x=>{VTEXT[url]=json?(x.blocks||x):x;repaint();})
       .catch(()=>{VTEXT[url]=null;repaint();});
   });
+  seekAmendment(key);
 }
+
+// AN AMENDMENT BY ITS NUMBER, FROM THE ADDRESS (the person, 26 October 2026:
+// "the amendment number should link to open it on the bill text tab").
+// /bill/2026/hb1560/text#amendment-2026-0422h opens HB 1560-FN's Bill Text
+// tab with that amendment open and brought into view, as "Amendment of
+// January 30, 2026" opens when it is pressed; Testify's pane links its
+// number there (testifyButton). The version index lists a bill's amendments
+// by their day and length, not their number, and the number is in each one's
+// own text, the first thing in it with that shape: "January 30, 2026
+// 2026-0422h 05/08 Amendment to HB 1560-FN". So the texts are read in turn
+// until the one whose first number is this one, which alone is opened. On
+// the preview of 26 October 2026 that found the amendment of every one of
+// the 46 hearings on one that the sitting term's records hold. A number none
+// of them carries leaves the tab as it always opens.
+const AMENDMENT_HASH=/^amendment-((?:\d{4}-)?\d{3,4}[a-z]{1,2})$/i;
+const amendmentHref=(year,id,num)=>`bill/${year}/${String(id).toLowerCase()}/text#amendment-${num}`;
+// "2026-0422h"; a committee of conference's "2026-2109-CofC" is its own.
+const amendmentOwn=t=>{
+  const m=/\b(\d{4}-\d{4})(-?[a-z]*)/i.exec(String(t||"").slice(0,1000));
+  return m?(m[1]+m[2]).toLowerCase():"";
+};
+let AMENDMENT_WANT=null;     // {key, num}: the one the address names, until it is looked for
+let AMENDMENT_JUMP=null;     // its text's address once found, until it is in view
+const AMENDMENT_FOUND={};    // text address -> the number it was found by
+function amendmentAsked(b,said){
+  const m=AMENDMENT_HASH.exec(String(said||""));
+  AMENDMENT_WANT=m?{key:verKey(b),num:m[1].toLowerCase()}:null;
+}
+async function seekAmendment(key){
+  const w=AMENDMENT_WANT, ix=VERS[key];
+  if(!w||w.key!==key||!ix||ix._error)return;
+  AMENDMENT_WANT=null;
+  for(const a of ix.amendments||[]){
+    let t=VTEXT[a.text_url];
+    if(typeof t!=="string"){
+      try{
+        const r=await fetch(DATA(a.text_url.replace(/^\//,"")));
+        if(!r.ok)continue;
+        t=await r.text();
+      }catch(_){continue;}
+    }
+    const own=amendmentOwn(t);
+    if(own&&(own===w.num||own.endsWith("-"+w.num))){
+      VTEXT[a.text_url]=t;AMENDMENT_FOUND[a.text_url]=w.num;AMENDMENT_JUMP=a.text_url;
+      repaint();return;
+    }
+  }
+}
+// Brought into view once, when the version's own text above it has come, so
+// that text arriving after cannot push it back down the page; and below the
+// tab strip, which a bill's own page holds at the top of the window as it
+// scrolls: brought to the top, "Amendment of January 30, 2026" and the
+// text's first line were under it (the preview, 26 October 2026).
+function jumpToAmendment(){
+  if(!AMENDMENT_JUMP)return;
+  const li=document.getElementById("amendment-"+AMENDMENT_FOUND[AMENDMENT_JUMP]);
+  const pane=li&&li.closest(".pane");
+  if(!li||!pane||pane.querySelector(".spin"))return;
+  AMENDMENT_JUMP=null;
+  const card=li.closest(".card"), strip=card&&card.querySelector(".tabs");
+  const held=strip&&getComputedStyle(strip).position==="sticky"?strip.getBoundingClientRect().height:0;
+  window.scrollTo(0,Math.max(0,li.getBoundingClientRect().top+window.scrollY-held-16));
+}
+// The same link followed on the Bill Text tab's own address moves only the
+// fragment, and the page is not loaded again: the fragment is read then too.
+window.addEventListener("hashchange",()=>{
+  if(!window.GR_BILL)return;
+  let said="";
+  try{said=decodeURIComponent(location.hash.slice(1));}catch(_){return;}
+  const gm=/^(\d{4})\/([A-Z]{2,5}\d+)$/i.exec(String(window.GR_BILL));
+  const row=gm&&AMENDMENT_HASH.test(said)
+    ?IDX.find(x=>x.id===gm[2].toUpperCase()&&String(x.year)===gm[1]):null;
+  if(!row)return;
+  openTab[row.id]="6";amendmentAsked(row,said);needVersions(row);repaint();
+});
 
 
 // A TAB'S COUNT AS A BADGE (the person's choice A, 14 October 2026). The
@@ -6556,6 +6664,18 @@ function followRss(kind,href,folded){
   return folded?`<details class="followalt"><summary>Follow by RSS instead</summary>
     <div class="followaltbody">${body}</div></details>`:body;
 }
+// EMAIL FOLLOWING IS IN BETA UNTIL THE WEBINAR (the person, 26 October
+// 2026: "Email following can maybe have a disclosure that email following is
+// in beta testing right now until the webinar so folks know that even though
+// it's live, things may be changing day by day"). One line in the small
+// print, src/pages/words/follow_beta.json's, which every email that follows
+// sends says too (site.gen.js's FOLLOW_BETA). It retires on its "until", the
+// day after the webinar of 10 November, as the home page's webinar box does:
+// data-until, which components.js's behaviour judges by the reader's date.
+function followBeta(){
+  const b=WORDBOOK.follow_beta;
+  return b&&b.note?`<p class="panfine followbeta"${untilAttrs(b.until)}>${esc(b.note)}</p>`:"";
+}
 function followMailForm(key){
   // ONE PANEL WITH CHOOSING YOUR TOWN (the person's choice A, 14 October
   // 2026): a heading, one sentence, one field and its button, and the
@@ -6579,6 +6699,7 @@ function followMailForm(key){
       <button type="submit" class="followsend">Email me updates</button></div>
     <p class="panfine">Nothing is sent until you confirm. Every email lets you change what you follow or
       unsubscribe.</p>
+    ${followBeta()}
     <p style="position:absolute;left:-9999px" aria-hidden="true"><label>Leave this empty
     <input name="website" tabindex="-1" autocomplete="off"></label></p>
     <div class="followcheck"></div>
@@ -6906,6 +7027,7 @@ const repaint=()=>{
   // bill list over the day.
   if(PAGE)renderPage();else if(SESSV)drawSessionVotes();else render();
   jumpToTab();
+  jumpToAmendment();
 };
 
 // A BILL'S ADDRESS THAT NAMES A TAB OPENS AT IT (the webinar pass of 23

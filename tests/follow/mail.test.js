@@ -11,8 +11,9 @@ import { readFileSync } from "node:fs";
 import vm from "node:vm";
 import { checkCurrent, checkNight } from "../../workers/follow/changes.js";
 import { parseKey } from "../../workers/follow/common.js";
-import { MARK, PALETTE, STATUS_INK, TESTIFY_FORMS, VOTE_INK, ballotWords, confirmationEmail, dateOnce, dayDate, digestEmail, longDate,
-         meetingWords, newLinkEmail, nothingNewEmail, pageNames, shortDate, welcomeEmail } from "../../workers/follow/mail.js";
+import { FOLLOW_BETA, MARK, PALETTE, STATUS_INK, TESTIFY_FORMS, VOTE_INK, ballotWords, betaNote, confirmationEmail,
+         dateOnce, dayDate, digestEmail, longDate, meetingWords, newLinkEmail, nothingNewEmail, pageNames, shortDate,
+         siteClock, welcomeEmail } from "../../workers/follow/mail.js";
 import { collect, testifyFor } from "../../workers/follow/sender.js";
 import { SITE, loadFixtures } from "./fakes.js";
 
@@ -432,7 +433,10 @@ test("the plain text says what the HTML says", () => {
 // The person: "emails include updates for when testimony has opened for a
 // certain bill and when it closes, with a similar button to click to go
 // straight to the testify page", and, asked when it closes, "both": the day
-// before the hearing and the morning of it.
+// before the hearing and the morning of it. And on 26 October 2026: "Emails
+// should stay in sync with how the site displays the testify button" -- the
+// hearings it counts, which the build marks with "form", and the words of
+// its live pane (preflight's _testify_email_in_sync draws both).
 test("a bill's testimony is told when its hearing is set, the day before it and the day of it", () => {
   const up = CURRENT.upcoming.get("bill:2026/HB9903");
   const set = { meeting: { what: "public hearing", date: "2026-10-14" } };
@@ -446,14 +450,26 @@ test("a bill's testimony is told when its hearing is set, the day before it and 
   assert.equal(phase("bill", up, [], "weekly", "2026-10-13"), null, "a weekly has it in its week ahead");
   assert.equal(phase("bill", up, [set], "weekly", "2026-10-10"), "open");
   assert.equal(phase("topic", up, [set], "daily", "2026-10-10"), null, "a bill's own follower only");
-  assert.equal(phase("bill", up.map(u => ({ ...u, committee: "Joint Example Committee" })), [], "daily",
-    "2026-10-14"), null, "no one chamber's form serves a joint committee");
   assert.equal(phase("bill", up, [{ meeting: { ...set.meeting, state: "cancelled" } }], "daily", "2026-10-10"),
     null, "a cancelled hearing opens nothing");
-  assert.equal(phase("bill", up.map(u => ({ ...u, what: "executive session" })), [], "daily", "2026-10-14"),
-    null, "only a public hearing takes testimony");
+  // The build's mark decides: a hearing the bill's Testify does not count as
+  // live -- a bill that can no longer be heard, a meeting that is not a
+  // public hearing -- carries none, and is not told.
+  assert.equal(phase("bill", up.map(u => ({ ...u, form: "" })), [], "daily", "2026-10-14"), null,
+    "a row without the build's mark is told nothing");
+  assert.equal(phase("bill", up.map(u => ({ ...u, form: "" })), [set], "daily", "2026-10-10"), null);
+  // A hearing on a proposed amendment, set that night: the docket's line, as
+  // plain_action.meeting hands it over, is a hearing set.
+  const amd = up.map(u => ({ ...u, amendment: "a proposed non-germane amendment (2026-0422h)",
+                             amendment_num: "2026-0422h" }));
+  assert.equal(phase("bill", amd, [{ meeting: { what: "public hearing on non-germane amendment 2026-0422h",
+    date: "2026-10-14" } }], "daily", "2026-10-10"), "open", "the night a hearing on an amendment was set");
   assert.deepEqual(testifyFor("bill", up, [], "daily", "2026-10-14"), { phase: "day", chamber: "H",
-    date: "2026-10-14", time: "10:00", committee: "House Example Committee", venue: "Legislative Office Building 305" });
+    date: "2026-10-14", time: "10:00", committee: "House Example Committee", venue: "Legislative Office Building 305",
+    amendment: "", amendment_num: "" });
+  assert.deepEqual(testifyFor("bill", amd, [], "daily", "2026-10-13"), { phase: "eve", chamber: "H",
+    date: "2026-10-14", time: "10:00", committee: "House Example Committee", venue: "Legislative Office Building 305",
+    amendment: "a proposed non-germane amendment (2026-0422h)", amendment_num: "2026-0422h" });
 });
 
 // The audit of 25 October 2026 (M2): the Senate calls its hearings "hearing",
@@ -461,11 +477,12 @@ test("a bill's testimony is told when its hearing is set, the day before it and 
 // Senate hearing told no follower that testimony was open.
 test("a Senate hearing takes testimony as a House public hearing does, in the daily and the week ahead", () => {
   const senate = rows => rows.map(r => r.what === "public hearing"
-    ? { ...r, what: "hearing", committee: "Senate Example Committee" } : r);
+    ? { ...r, what: "hearing", committee: "Senate Example Committee", ...(r.form ? { form: "S" } : {}) } : r);
   const current = { ...CURRENT, upcoming: new Map([...CURRENT.upcoming].map(([k, rows]) => [k, senate(rows)])) };
   const up = current.upcoming.get("bill:2026/HB9903");
   assert.deepEqual(testifyFor("bill", up, [], "daily", "2026-10-14"), { phase: "day", chamber: "S",
-    date: "2026-10-14", time: "10:00", committee: "Senate Example Committee", venue: "Legislative Office Building 305" });
+    date: "2026-10-14", time: "10:00", committee: "Senate Example Committee", venue: "Legislative Office Building 305",
+    amendment: "", amendment_num: "" });
   assert.equal(testifyFor("bill", up, [{ meeting: { what: "hearing", date: "2026-10-14" } }], "daily",
     "2026-10-10")?.phase, "open", "the night a Senate hearing was set");
   const sections = collect({ follows: FOLLOWS, nights: NIGHTS.filter(n => n.date > "2026-10-02"), cursor: {},
@@ -474,54 +491,123 @@ test("a Senate hearing takes testimony as a House public hearing does, in the da
     names: pageNames(current), ...LINKS });
   const ahead = weekly.html.slice(weekly.html.indexOf(">Coming up<"));
   assert.ok(ahead.includes(TESTIFY_FORMS.S[1]), "the Senate form beside the Senate hearing");
-  assert.match(visible(ahead), /On the form, choose Wednesday, October 14, then the Senate Example Committee, then HB 9903/);
+  assert.match(visible(ahead), /Wednesday, October 14, 2026\nSenate Example Committee\nHB 9903-FN\n/);
 });
 
 // A daily on the day before and the day of the hearing, with nothing else new.
-function onDay(today) {
+function onDay(today, current = CURRENT) {
   const follows = [{ ...parseKey("bill:2026/HB9903"), fh: "x" }];
-  const sections = collect({ follows, nights: [], cursor: {}, current: CURRENT, frequency: "daily", today });
-  return digestEmail({ origin: SITE, frequency: "daily", date: today, sections, names: pageNames(CURRENT), ...LINKS });
+  const sections = collect({ follows, nights: [], cursor: {}, current, frequency: "daily", today });
+  return digestEmail({ origin: SITE, frequency: "daily", date: today, sections, names: pageNames(current), ...LINKS });
 }
 
-test("the day before and the day of a hearing, the daily says how to testify and leads with it", () => {
+test("the day before and the day of a hearing, the daily says what the site's Testify pane says, and leads with it", () => {
   const label = CURRENT.followable.get("bill:2026/HB9903").label;
-  const [house, url] = TESTIFY_FORMS.H;
+  const url = TESTIFY_FORMS.H[1];
   const eve = onDay("2026-10-13"), day = onDay("2026-10-14");
   assert.equal(eve.subject, `Public hearing tomorrow on ${label}: testify online`);
   assert.equal(day.subject, `Public hearing today on ${label}: testify online`);
-  for (const [m, when, close] of [[eve, "tomorrow, Wednesday, October 14", "at the end of that day"],
-                                  [day, "today", "tonight"]]) {
-    const words = visible(m.html);
-    assert.ok(words.includes(`${label}\u2019s public hearing is ${when} at 10:00 a.m., before the House ` +
-      "Example Committee, Legislative Office Building 305."), words);
-    // The closing time is the editor's observed practice, and said as practice.
-    assert.ok(words.includes(`In practice the sign-in stays open until midnight ${close}.`), "when it closes");
-    assert.doesNotMatch(words, /closes at midnight/, "never stated as a rule");
-    assert.ok(words.includes("Anyone may sign in online for or against the bill, or as neutral, and submit " +
-      "written testimony."),
-      "what the House form takes");
+  for (const m of [eve, day]) {
+    const words = visible(m.html).replace(/\u00a0/g, " ");
+    // The button's words, the hearing and when it closes, a rule, what to
+    // choose, the form, and the three values, a line each: the pane's.
+    const block = ["Testify until Oct 14",
+      `The public hearing on ${label} is scheduled for Wednesday, October 14 at 10:00 AM in Legislative ` +
+      "Office Building 305. Public testimony is open until midnight the day of the hearing.",
+      "To submit online testimony, choose the hearing date, committee, and bill number as shown below.",
+      "Submit Online Testimony", "Wednesday, October 14, 2026", "House Example Committee", label];
+    // Each after the one before it, in the order the pane says them.
+    const inOrder = s => block.reduce((at, b) => at < 0 ? at : s.indexOf(b, at), s.indexOf("Testify until"));
+    assert.ok(inOrder(words) >= 0, `the block, in order: ${words}`);
+    assert.match(m.html, /<hr style="border:0;border-top:1px solid [^"]+">\s*<p style="margin:0">To submit online/,
+      "a rule between the hearing and how to submit, as the pane's");
+    for (const old of ["In practice", "Anyone may sign in", "On the form", "online testimony</a>",
+                       "public hearing is tomorrow", "’s public hearing"])
+      assert.ok(!m.html.includes(old) && !m.text.includes(old), `the block still says ${old}`);
     // The button: the chamber's own form, as a pine button.
     assert.match(m.html, new RegExp(`<td bgcolor="${PALETTE.pine}"[^>]*><a href="${url.replace(/[.?]/g, "\\$&")}"` +
-      `[^>]*>${house} online testimony</a>`));
-    // What to choose on it, since no form opens at a bill.
-    assert.ok(words.includes("On the form, choose the hearing\u2019s date, Wednesday, October 14; then the " +
-      `committee, House Example Committee; then the bill, ${label}.`), "the steps");
-    assert.ok(m.text.includes(`${house} online testimony: ${url}`), "the plain text carries the form too");
+      "[^>]*>Submit Online Testimony</a>"));
+    // The plain text carries the same, in the same order.
+    const text = m.text.replace(/\u00a0/g, " ");
+    assert.ok(inOrder(text) >= 0, `the plain text's block, in order: ${text}`);
+    assert.ok(m.text.includes(`Submit Online Testimony: ${url}`), "the plain text carries the form too");
   }
+});
+
+test("a hearing on a proposed amendment says so, its number opening it on the Bill Text tab", () => {
+  const amend = (num, keep = true) => ({ ...CURRENT, upcoming: new Map([...CURRENT.upcoming].map(([k, rows]) =>
+    [k, rows.map(r => r.form ? { ...r, amendment: `a proposed non-germane amendment (${num})`,
+                                  ...(keep ? { amendment_num: num } : {}) } : r)])) });
+  const m = onDay("2026-10-13", amend("2026-0422h"));
+  const words = visible(m.html).replace(/\u00a0/g, " ");
+  assert.ok(words.includes("The public hearing on a proposed non-germane amendment (2026-0422h) to HB 9903-FN " +
+    "is scheduled for Wednesday, October 14 at 10:00 AM in Legislative Office Building 305."), words);
+  assert.match(m.html, /\(<a href="https:\/\/graniterecord\.org\/bill\/2026\/hb9903\/text#amendment-2026-0422h"[^>]*>2026-0422h<\/a>\) to <a href="https:\/\/graniterecord\.org\/bill\/2026\/hb9903"/,
+    "the number opens the amendment on the bill's Bill Text tab");
+  assert.ok(m.text.includes("The public hearing on a proposed non-germane amendment (2026-0422h) to HB 9903-FN is"));
+  // Where the tab cannot open it (no amendment_num), the number is words alone.
+  const plain = onDay("2026-10-13", amend("2026-0422h", false));
+  assert.ok(visible(plain.html).includes("(2026-0422h) to HB 9903-FN"));
+  assert.doesNotMatch(plain.html, /#amendment-/);
+  // The weekly's week ahead names it too, a row of its own.
+  const current = amend("2026-0422h");
+  const sections = collect({ follows: FOLLOWS, nights: NIGHTS.filter(n => n.date > "2026-10-02"), cursor: {},
+    current, frequency: "weekly", today: TODAY });
+  const weekly = digestEmail({ origin: SITE, frequency: "weekly", date: TODAY, sections, names: pageNames(current), ...LINKS });
+  const ahead = weekly.html.slice(weekly.html.indexOf(">Coming up<"));
+  assert.match(visible(ahead), /Public hearing on a proposed non-germane amendment \(2026-0422h\)/);
+  assert.match(ahead, /#amendment-2026-0422h/);
 });
 
 test("the night a hearing is set, the daily says testimony is open; the weekly puts the form in its week ahead", () => {
   const daily = digest("daily", "2026-10-02");
-  assert.ok(visible(daily.html).includes("Online testimony is open"), "open, the night it was set");
-  assert.ok(visible(daily.html).includes("Anyone may sign in online for or against the bill, or as neutral, " +
-    "and submit written testimony. In practice the sign-in stays open until midnight at the end of that day."));
+  const words = visible(daily.html).replace(/\u00a0/g, " ");
+  assert.ok(words.includes("Testify until Oct 14"), "open, the night it was set");
+  assert.ok(words.includes("Public testimony is open until midnight the day of the hearing."));
   const weekly = digest("weekly");
-  assert.doesNotMatch(weekly.html, /Online testimony is open/, "the weekly says it once, in its week ahead");
+  assert.doesNotMatch(weekly.html, /Testify until/, "the weekly says it once, in its week ahead");
   const ahead = weekly.html.slice(weekly.html.indexOf(">Coming up<"));
   assert.ok(ahead.includes(TESTIFY_FORMS.H[1]), "the House form beside the public hearing");
-  assert.match(visible(ahead), /On the form, choose Wednesday, October 14, then the House Example Committee, then HB 9903[^.]*\. In practice it stays open until midnight that day\./);
-  assert.ok(!/Tuesday, October 13[^\n]*\n[^\n]*online testimony/.test(visible(ahead)), "not beside an executive session");
+  assert.match(visible(ahead), /Public testimony is open until midnight the day of the hearing\. To submit online testimony, choose the hearing date, committee, and bill number as shown below\.\n?[^\n]*\n*Submit Online Testimony\n*[\s\S]*Wednesday, October 14, 2026\nHouse Example Committee\nHB 9903-FN\n/);
+  assert.ok(!/Tuesday, October 13[^\n]*\n[^\n]*Submit Online Testimony/.test(visible(ahead)), "not beside an executive session");
+  assert.match(weekly.text, /\n {4}Submit Online Testimony: https:[^\n]+\n {6}Wednesday, October 14, 2026\n {6}House Example Committee\n {6}HB 9903-FN\n/);
+});
+
+// The time as the site's pane says it: components.js's clock.
+test("the testimony block's time is components.js's clock", () => {
+  const ctx = {};
+  vm.createContext(ctx);
+  vm.runInContext(readFileSync(new URL("../../src/pages/components.js", import.meta.url), "utf8") +
+    ";this.clock=clock;", ctx);
+  for (const t of ["00:00", "09:05", "10:00", "11:59", "12:00", "12:30", "13:15", "23:59", "", "24:00", "x"])
+    assert.equal(siteClock(t), ctx.clock(t), t);
+});
+
+// EMAIL FOLLOWING IS IN BETA UNTIL THE WEBINAR (the person, 26 October
+// 2026). Every email says so, plain and HTML, through 10 November in Concord,
+// and none does from the 11th: the email's own day where it has one.
+test("every email says email following is in beta, until the day after the webinar", () => {
+  const m = CURRENT.followable.get("bill:2026/HB9903");
+  const each = today => ({
+    confirmation: confirmationEmail({ origin: SITE, label: m.label, title: m.title, token: "T".repeat(43), today }),
+    welcome: welcomeEmail({ origin: SITE, kind: "bill", label: m.label, title: m.title, url: m.url,
+      frequency: "daily", ...LINKS, today }),
+    newLink: newLinkEmail({ origin: SITE, ...LINKS, today }),
+    daily: digestEmail({ origin: SITE, frequency: "daily", date: today, names: pageNames(CURRENT), ...LINKS,
+      sections: collect({ follows: FOLLOWS, nights: NIGHTS, cursor: {}, current: CURRENT, frequency: "daily", today }) }),
+    weekly: digestEmail({ origin: SITE, frequency: "weekly", date: today, names: pageNames(CURRENT), ...LINKS,
+      sections: collect({ follows: FOLLOWS, nights: NIGHTS, cursor: {}, current: CURRENT, frequency: "weekly", today }) }),
+    nothingNew: nothingNewEmail({ origin: SITE, frequency: "daily", date: today, nights: 1, ...LINKS }),
+  });
+  assert.equal(FOLLOW_BETA.until, "2026-11-11");
+  for (const [day, said] of [["2026-10-26", true], ["2026-11-10", true], ["2026-11-11", false], ["2027-01-05", false]]) {
+    for (const [name, e] of Object.entries(each(day))) {
+      assert.equal(e.text.includes(FOLLOW_BETA.note), said, `${name} on ${day}: the plain text`);
+      assert.equal(visible(e.html).includes(FOLLOW_BETA.note), said, `${name} on ${day}: the HTML`);
+    }
+  }
+  assert.equal(betaNote("2026-11-10"), FOLLOW_BETA.note);
+  assert.equal(betaNote("2026-11-11"), "");
 });
 
 test("a bill's status chip is coloured as the site colours it, on a bar, its word dark", () => {

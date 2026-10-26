@@ -258,12 +258,13 @@ test("test send: testify blocks where a followed bill has a public hearing ahead
     assert.equal(r.answer.nothing_new, 0);
     assert.ok(!r.answer.notes.some(n => /testify/.test(n)));
     const [daily, weekly] = mailsTo(w, x.address);
-    assert.match(daily.text, /ONLINE TESTIMONY IS OPEN/);
-    assert.match(daily.text, /HB 9903-FN’s public hearing is Wednesday, October 14 at 10:00 a\.m\./);
-    assert.match(daily.html, /House online testimony<\/a>/);
+    // The site's Testify button and pane, in their words (26 October 2026).
+    assert.match(daily.text, /\n {2}Testify until Oct 14\n/);
+    assert.match(daily.text, /The public hearing on HB 9903-FN is scheduled for Wednesday, October 14 at 10:00\u00a0AM in /);
+    assert.match(daily.html, /Submit Online Testimony<\/a>/);
     // The weekly has it beside the hearing in the week ahead.
     assert.match(weekly.text, /Wednesday, October 14, 10:00 a\.m\.: Public hearing/);
-    assert.match(weekly.text, /House online testimony: https:/);
+    assert.match(weekly.text, /Submit Online Testimony: https:/);
 
     // ... and the run that morning, for the same reader, sends nothing: the
     // block is the test's alone, outside the three mornings a real one says it.

@@ -28,16 +28,17 @@
  */
 
 import { ConfigError } from "./address.js";
-import { addDays, chamberOf, esc, oneLine, parseKey, siteUrl } from "./common.js";
+import { AMENDMENT_NUM } from "./changes.js";
+import { addDays, esc, nhClock, oneLine, parseKey, siteUrl } from "./common.js";
 // THE SITE'S COLOURS AND WORDS, FROM THE SITE'S OWN FILES (23 October 2026).
 // Every value an email shares with the site -- its inks, a status chip's
 // colour, the vote ring's, the testimony forms, a study report's words, the
 // mark's file and size -- is in site.gen.js, which src/pages/follow_site.py
 // writes from the file the site draws it from. Change it there and run that;
 // nothing here types one of them.
-import { MARK_FILE, SITE_PALETTE, STATUS_CLASS, STATUS_INK, STUDY_REPORT, TESTIFY_FORMS,
+import { FOLLOW_BETA, MARK_FILE, SITE_PALETTE, STATUS_CLASS, STATUS_INK, STUDY_REPORT, TESTIFY_FORMS,
          VOTE_INK } from "./site.gen.js";
-export { STATUS_CLASS, STATUS_INK, TESTIFY_FORMS, VOTE_INK };
+export { FOLLOW_BETA, STATUS_CLASS, STATUS_INK, TESTIFY_FORMS, VOTE_INK };
 
 const RESEND = "https://api.resend.com/emails";
 
@@ -165,6 +166,18 @@ export function clockTime(hhmm) {
   return `${h}:${hhmm.slice(3)} ${ap}`;
 }
 
+// A TIME AS THE SITE WRITES ONE, components.js's clock: "11:20 AM", the space
+// a no-break one. The testimony block says what the site's Testify pane
+// says (26 October 2026), and the pane says its time so; the rest of an
+// email keeps its own "11:20 a.m.". mail.test.js loads components.js and
+// holds the two to one answer.
+export function siteClock(hhmm) {
+  const m = /^(\d{1,2}):(\d\d)/.exec(String(hhmm || ""));
+  if (!m || +m[1] > 23) return String(hhmm || "");
+  const h = +m[1];
+  return `${h % 12 || 12}:${m[2]}\u00a0${h < 12 ? "AM" : "PM"}`;
+}
+
 const plural = (n, one, many) => `${n} ${n === 1 ? one : many}`;
 const cap = s => String(s).charAt(0).toUpperCase() + String(s).slice(1);
 
@@ -191,6 +204,20 @@ export const UPDATED = "Granite Record updates overnight, so this covers the rec
 // sweep, 17 October 2026).
 const NO_REPLY = "This address takes no replies. If something here looks wrong, use " +
   "“Report a problem” on the bill's, legislator's or committee's page";
+
+// EMAIL FOLLOWING IS IN BETA UNTIL THE WEBINAR (the person, 26 October
+// 2026: "Email following can maybe have a disclosure that email following is
+// in beta testing right now until the webinar so folks know that even though
+// it's live, things may be changing day by day"). One line in every email
+// this sends, plain and HTML, and the site's Follow by email pane says the
+// same: both are site.gen.js's FOLLOW_BETA, from follow_beta.json. It stops
+// by itself on FOLLOW_BETA.until, the day after the webinar of 10 November,
+// by New Hampshire's date -- the email's own day where it has one (a daily's
+// or weekly's), and otherwise the day it is sent, in Concord.
+export function betaNote(day) {
+  const d = /^\d{4}-\d{2}-\d{2}$/.test(String(day || "")) ? String(day) : nhClock(new Date()).date;
+  return d < FOLLOW_BETA.until ? FOLLOW_BETA.note : "";
+}
 
 // ---- the frame of every email --------------------------------------------------------
 // The site's palette, light, on a white ground that every block declares
@@ -281,12 +308,15 @@ const a = (href, label) =>
 
 // nightly: whether the email reports anything, and so needs saying how
 // current it is. An email that reports nothing (the one a confirmation
-// sends) leaves it out rather than say "this email reports".
-function footer(origin, feedbackUrl, manage, unsub, gone, nightly = true) {
+// sends) leaves it out rather than say "this email reports". day: the
+// email's own New Hampshire day, for the beta line (betaNote).
+function footer(origin, feedbackUrl, manage, unsub, gone, nightly = true, day = "") {
   const fb = feedbackUrl ? siteOrForm(feedbackUrl) : "";
   const small = `${P};font-size:14px;color:${INK2}`;
-  const lines = nightly ? [UPDATED, ""] : [];
+  const beta = betaNote(day);
+  const lines = [...(beta ? [beta, ""] : []), ...(nightly ? [UPDATED, ""] : [])];
   const html = [`<hr style="border:0;border-top:1px solid ${RULE};margin:28px 0 16px">`,
+    ...(beta ? [`<p style="${small}">${esc(beta)}</p>`] : []),
     ...(nightly ? [`<p style="${small}">${esc(UPDATED)}</p>`] : [])];
   if (gone) {
     const s = "That was the last thing you followed, so your address has been deleted " +
@@ -395,10 +425,13 @@ function button(href, words, margin = "20px 0") {
     `font-size:16px;color:${WHITE};text-decoration:none;border-radius:4px">${esc(words)}</a></td></tr></table>`;
 }
 
-export function confirmationEmail({ origin, label, title, token }) {
+// today: New Hampshire's day, for the beta line; the day it is sent where
+// none is given (betaNote).
+export function confirmationEmail({ origin, label, title, token, today = "" }) {
   const what = oneLine(label, 120) + (title ? ` — ${oneLine(title, 160)}` : "");
   const link = confirmLink(origin, token);
   const subject = oneLine(`Confirm: email updates on ${oneLine(label, 80)}`, 120);
+  const beta = betaNote(today);
   const text = [
     "Someone asked graniterecord.org to send this address email updates on:",
     "", `  ${what}`, "",
@@ -406,6 +439,7 @@ export function confirmationEmail({ origin, label, title, token }) {
     "", link, "",
     "If it was not you, ignore this email. The request, and this address with it, " +
     "is deleted within 48 hours without being used.", "",
+    ...(beta ? [beta, ""] : []),
     "Granite Record is a public record of the New Hampshire General Court. " +
     "This address takes no replies.",
   ].join("\n");
@@ -415,6 +449,7 @@ export function confirmationEmail({ origin, label, title, token }) {
     `<p style="${P}">Nothing is sent unless you confirm.</p>` + button(link, "Confirm") +
     `<p style="${P};font-size:14px;color:${INK2}">If it was not you, ignore this email. The ` +
     `request, and this address with it, is deleted within 48 hours without being used.</p>` +
+    (beta ? `<p style="${P};font-size:14px;color:${INK2}">${esc(beta)}</p>` : "") +
     `<p style="${P};font-size:14px;color:${INK2}">Granite Record is a public record of the ` +
     `New Hampshire General Court. This address takes no replies.</p>`,
     { preheader: "Nothing is sent unless you confirm.", title: subject });
@@ -461,7 +496,7 @@ const OFTEN = {
 // legislators, committees and topics, and "things" covers them all.
 export function welcomeEmail({ origin, kind, label, title, url, frequency, kept = false,
                                pausedUntil = "", total = 1, newcomer = true, manage, unsub,
-                               feedbackUrl }) {
+                               feedbackUrl, today = "" }) {
   const subject = oneLine(`You're following ${followName(kind, label)}`, 150);
   const what = oneLine(label, 120) + (title ? ` — ${oneLine(title, 160)}` : "");
   const page = url ? siteUrl(origin, url) : "";
@@ -481,7 +516,7 @@ export function welcomeEmail({ origin, kind, label, title, url, frequency, kept 
       "every update carries the same link."
     : "The link below opens your page for email updates, where you can change what you " +
       "follow and how often. Every update carries the same link.";
-  const f = footer(origin, feedbackUrl, manage, unsub, false, false);
+  const f = footer(origin, feedbackUrl, manage, unsub, false, false, today);
   const text = ["You are now following:", "", `  ${what}`, ...(page ? [`  ${page}`] : []), "",
     ...(count ? [count, ""] : []), ...(req ? [req, ""] : []), how, ...(paused ? ["", paused] : []), "", keep, "",
     "----", f.text].join("\n");
@@ -499,11 +534,11 @@ export function welcomeEmail({ origin, kind, label, title, url, frequency, kept 
 }
 
 // ---- a new link -----------------------------------------------------------------------
-export function newLinkEmail({ origin, manage, unsub, feedbackUrl }) {
+export function newLinkEmail({ origin, manage, unsub, feedbackUrl, today = "" }) {
   const subject = "Your new link for Granite Record email updates";
   const head = "You asked for a new private link. Every link in earlier emails from " +
     "Granite Record has stopped working, their unsubscribe links included.";
-  const f = footer(origin, feedbackUrl, manage, unsub, false, false);
+  const f = footer(origin, feedbackUrl, manage, unsub, false, false, today);
   return {
     subject,
     text: [head, "", "Your new link, to change what you follow or how often:",
@@ -562,53 +597,128 @@ function voteBar(r) {
 }
 
 // ---- testifying on a bill -----------------------------------------------------------------
-// THE CHAMBERS' ONLINE SIGN-IN FORMS, app.js's TESTIFY_FORMS (site.gen.js's,
-// read from app.js). Neither form can be opened at a bill, so the email says
-// what to choose on it, in the order the Senate's guidance gives -- the
-// hearing's day, then the committee, then the bill -- which the House's form
-// asks for too (guides.py, TESTIFY).
-// THE CLOSING TIME IS PRACTICE, AND SAID AS PRACTICE (22 October 2026). The
-// Senate's guidance says its sign-in opens once a hearing is scheduled; no
-// calendar or guidance on record says when either chamber's closes. That
-// both stay open until midnight at the end of the hearing's day is the
-// editor's own account (guides.py, an observed() claim), so the email says
-// "in practice", and its headings and subjects name the hearing -- a fact of
-// the record -- rather than a deadline.
-const TESTIFY_HEAD = { open: "Online testimony is open",
-  eve: "Public hearing tomorrow: testify online",
-  day: "Public hearing today: testify online" };
+// THE SITE'S TESTIFY BUTTON, IN THE EMAIL (the person, 26 October 2026:
+// "Emails should stay in sync with how the site displays the testify
+// button"). The block says what a bill's button and its live pane say
+// (app.js testifyButton), in their order and their words: the button's
+// "Testify until Feb 3"; the hearing, "The public hearing on HB 1560-FN is
+// scheduled for Tuesday, February 3 at 11:20 AM in Granite Place 234", and on
+// a proposed amendment "on a proposed non-germane amendment (2026-0422h) to
+// HB 1560-FN", its number a link that opens it on the bill's Bill Text tab
+// (the person, the same day: "the amendment number should link to open it on
+// the bill text tab"); "Public testimony is open until midnight the day of
+// the hearing."; a rule; "To submit online testimony, choose the hearing
+// date, committee, and bill number as shown below."; Submit Online
+// Testimony, the chamber's form (site.gen.js's TESTIFY_FORMS, from app.js);
+// and the three things to choose on it, a line each -- the date in full,
+// the committee as the pane names it, the bill. The day as the site writes
+// days (components.js's dateWords: dayDate, longDate, shortDate), the time
+// as it writes times (siteClock), and the room, the committee and the
+// amendment as the build hands them over, read from the bill's record by
+// the pane's own rules (follow_changes.bill_upcoming).
+// The block said it in words of its own until then -- "HB 1's public hearing
+// is tomorrow ... Anyone may sign in online ... In practice the sign-in stays
+// open until midnight ... On the form, choose ..." -- which the pane said
+// too until the person's words of 26 October replaced them there. preflight's
+// _testify_email_in_sync draws the pane and this block for the same records
+// and fails where they say different things.
+export const TESTIFY_SAID = {
+  midnight: "Public testimony is open until midnight the day of the hearing.",
+  choose: "To submit online testimony, choose the hearing date, committee, and bill number as shown below.",
+  go: "Submit Online Testimony",
+};
 
-// sender.testifyFor's { phase, chamber, date, time, committee, venue }, for
-// the bill labelled `label`: the block's heading, what and when, how it
-// closes, the form, and what to choose on it.
-export function testifyWords(t, label) {
-  const [house, url] = TESTIFY_FORMS[t.chamber];
-  const day = t.phase === "day" ? "today" : t.phase === "eve" ? `tomorrow, ${dayDate(t.date)}` : dayDate(t.date);
-  const when = `${label}\u2019s public hearing is ${day}` +
-    (clockTime(t.time) ? ` at ${clockTime(t.time)}` : "") +
-    (t.committee ? `, before the ${t.committee}` : "") + (t.venue ? `, ${t.venue}` : "") + ".";
-  const what = t.chamber === "H"
-    ? "sign in online for or against the bill, or as neutral, and submit written testimony"
-    : "sign in online for or against the bill, or as neutral";
-  const close = `Anyone may ${what}. In practice the sign-in stays open until midnight ` +
-    (t.phase === "day" ? "tonight." : "at the end of that day.");
-  const steps = `On the form, choose the hearing\u2019s date, ${dayDate(t.date)}; then the committee` +
-    (t.committee ? `, ${t.committee}` : "") + `; then the bill, ${label}.` +
-    (t.chamber === "S" ? " The page that confirms your sign-in says how to send written testimony." : "");
-  return { head: TESTIFY_HEAD[t.phase], when, close, url, button: `${house} online testimony`, steps };
+// sender.testifyFor's { chamber, date, time, committee, venue, amendment,
+// amendment_num }, for the bill labelled `label` whose page is `page`
+// ("/bill/2026/hb1560"): the button's words, the hearing, the form and the
+// values; and the amendment's number with the address that opens it, where
+// the build says the Bill Text tab can (amendment_num).
+export function testifyWords(t, label, page = "") {
+  const url = TESTIFY_FORMS[t.chamber][1];
+  const time = t.time ? siteClock(t.time) : "";
+  const bill = label || "this bill";
+  const when = ` is scheduled for ${dayDate(t.date)}` + (time ? ` at ${time}` : "") +
+    (t.venue ? ` in ${t.venue}` : "") + ".";
+  const hearing = `The public hearing on ${t.amendment ? `${t.amendment} to ` : ""}${bill}${when}`;
+  const num = t.amendment && AMENDMENT_NUM.test(t.amendment_num || "") &&
+    t.amendment.includes(`(${t.amendment_num})`) && page ? t.amendment_num : "";
+  return { button: `Testify until ${shortDate(t.date, t.date)}`, hearing, midnight: TESTIFY_SAID.midnight,
+           choose: TESTIFY_SAID.choose, go: TESTIFY_SAID.go, url,
+           values: [longDate(t.date, true), t.committee, label].filter(Boolean),
+           amendment: t.amendment || "", bill, when, num, opens: num ? `${page}/text` : "" };
 }
 
-function testifyBlock(t, label) {
-  const w = testifyWords(t, label);
+// Words with an amendment's "(2026-0422h)" in them, as HTML, the number a
+// link to the bill's Bill Text tab at that amendment, open (app.js
+// amendmentHref; the tab reads "#amendment-2026-0422h").
+const amendmentHref = (origin, w) => siteUrl(origin, w.opens) + `#amendment-${w.num}`;
+function amendmentLinked(origin, words, w) {
+  if (!w.num) return esc(words);
+  return esc(words).replace(`(${esc(w.num)})`, `(${a(amendmentHref(origin, w), w.num)})`);
+}
+// THE AMENDMENT'S ADDRESS IN THE PLAIN TEXT TOO (the review of 26 October
+// 2026). The person asked that "the amendment number should link to open it
+// on the bill text tab", and the plain text, which some readers and some
+// screen readers are given in place of the HTML, printed "(2026-0422h)" with
+// no address while it gave one for Submit Online Testimony. A line of its
+// own after the block, so the pane's sentence stays word for word:
+// "Amendment 2026-0422h: https://graniterecord.org/bill/2026/hb1560/text#amendment-2026-0422h".
+const amendmentLine = (origin, w) => w.num ? `Amendment ${w.num}: ${amendmentHref(origin, w)}` : "";
+
+// A bill an email names is a link to its page (names(), the person's of 17
+// October 2026), in the testimony block too; the words are the pane's.
+const billLinked = (origin, label, page) => page ? a(siteUrl(origin, page), label) : esc(label);
+
+// The three things to choose on the form, a line each, set apart as the
+// pane sets them on its wash: here a box with the site's rule for its edge,
+// the words in the ink, bold. `html` holds each line as HTML already.
+function testifyValues(html) {
+  return `<table role="presentation" cellpadding="0" cellspacing="0" border="0" ` +
+    `style="margin:0;border:1px solid ${RULE};border-radius:4px"><tr><td style="padding:8px 12px;` +
+    `font-size:15px;line-height:1.6;font-weight:600;color:${INK}">` +
+    html.join("<br>") + "</td></tr></table>";
+}
+
+// The night's own news of a hearing set is any hearing's line: "public
+// hearing", "hearing", or "public hearing on non-germane amendment
+// 2026-0422h" (plain_action.meeting). sender.testifyFor reads it to know the
+// night a hearing is set, and the bill's list below the block (setsHearing).
+export const HEARING_SET = /^(public )?hearing\b/i;
+// THE HEARING TOLD ONCE (the review of 26 October 2026). The night a hearing
+// is set -- or set so late that the next morning is its eve -- the block says
+// it in the pane's words, and the line that set it said it again under it, in
+// the email's other clock: "... at 11:20 AM in Granite Place 234" in the
+// block, "Hearing on non-germane amendment 2026-0422h set for Tuesday,
+// February 3, 11:20 a.m., Granite Place 234" beneath. That line is left out
+// of the bill's list where the block is drawn: a hearing's line, of the
+// block's day, at its hour where both have one, that set it. A line that
+// moved it, put it off or recessed it stays, since what changed is news the
+// block does not carry; and the subject and "at a glance" keep it, as they
+// carry no block.
+const setsHearing = (it, t) => !!it.meeting && HEARING_SET.test(it.meeting.what || "") &&
+  it.meeting.date === t.date && !it.meeting.state &&
+  (!it.meeting.time || !t.time || it.meeting.time === t.time);
+
+// find: the email's names (namesIn), so the committee to choose links to its
+// page as every committee an email names does.
+function testifyBlock(origin, t, label, page, find = () => undefined) {
+  const w = testifyWords(t, label, page);
+  const bill = label ? billLinked(origin, label, page) : esc(w.bill);
   return {
-    text: [`  ${w.head.toUpperCase()}`, `  ${w.when} ${w.close}`, `  ${w.button}: ${w.url}`, `  ${w.steps}`],
+    text: [`  ${w.button}`, `  ${w.hearing} ${w.midnight}`, `  ${w.choose}`, `  ${w.go}: ${w.url}`,
+           ...w.values.map(v => `    ${v}`), ...(w.num ? [`  ${amendmentLine(origin, w)}`] : [])],
     html: `<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" ` +
       `style="margin:6px 0 12px;border:1px solid ${RULE};border-left:4px solid ${PINE};border-radius:4px">` +
       `<tr><td bgcolor="${WHITE}" style="background:${WHITE};padding:12px 14px;font-size:15px;line-height:1.45">` +
-      `<p style="margin:0 0 4px;font-weight:600;font-size:16px">${esc(w.head)}</p>` +
-      `<p style="margin:0">${esc(w.when)} ${esc(w.close)}</p>` +
-      button(w.url, w.button, "10px 0") +
-      `<p style="margin:0;font-size:14px;color:${INK2}">${esc(w.steps)}</p></td></tr></table>`,
+      `<p style="margin:0 0 6px;font-weight:600;font-size:16px">${esc(w.button)}</p>` +
+      `<p style="margin:0">The public hearing on ` +
+      (w.amendment ? `${amendmentLinked(origin, w.amendment, w)} to ` : "") + bill + esc(w.when) +
+      ` ${esc(w.midnight)}</p>` +
+      `<hr style="border:0;border-top:1px solid ${RULE};margin:12px 0">` +
+      `<p style="margin:0">${esc(w.choose)}</p>` +
+      button(w.url, w.go, "10px 0") +
+      testifyValues([esc(longDate(t.date, true)), ...(t.committee ? [linkWhole(origin, t.committee, find)] : []),
+                     ...(label ? [bill] : [])]) + "</td></tr></table>",
   };
 }
 
@@ -789,14 +899,24 @@ export function headlines(sections, date = "", skipAhead = false) {
 
 // The week ahead, from every section's upcoming: one row a meeting, with
 // every followed record it concerns.
+// A hearing on a proposed amendment is a row of its own (26 October 2026),
+// and beside each record the meeting concerns, the chamber whose online
+// sign-in takes testimony for it, where its Testify button counts the
+// hearing (the row's "form"; a committee's own row carries none).
+// A committee's row names the bill its amendment is to ("... (2026-0422h) to
+// HB 1560-FN", follow_changes.committee_row), and a bill's own row does not,
+// its section naming the bill: the same meeting all the same, one row for a
+// reader who follows both, in the bill's words with "For HB 1560-FN".
 function weekAhead(sections) {
   const rows = new Map();
   for (const s of sections) {
     for (const u of s.upcoming || []) {
-      const k = [u.date, u.time, u.what, u.committee, u.venue].join("|");
-      if (!rows.has(k)) rows.set(k, { ...u, labels: [], urls: [] });
+      const on = u.amendment && s.kind === "bill" ? `${u.amendment} to ${s.label}` : u.amendment || "";
+      const k = [u.date, u.time, u.what, u.committee, u.venue, on].join("|");
+      if (!rows.has(k)) rows.set(k, { ...u, labels: [], urls: [], forms: [], amendment_num: "", page: "" });
       const r = rows.get(k);
-      if (!r.labels.includes(s.label)) { r.labels.push(s.label); r.urls.push(s.url); }
+      if (!r.labels.includes(s.label)) { r.labels.push(s.label); r.urls.push(s.url); r.forms.push(u.form || ""); }
+      if (!r.amendment_num && u.amendment_num && s.url) { r.amendment_num = u.amendment_num; r.page = s.url; }
     }
   }
   return [...rows.values()].sort((a, b) => (a.date + a.time).localeCompare(b.date + b.time));
@@ -885,35 +1005,40 @@ export function digestEmail({ origin, frequency, date, sections: given, manage, 
     html += `<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">`;
     for (const r of ahead) {
       const when = [dayDate(r.date), clockTime(r.time)].filter(Boolean).join(", ");
-      const what = cap(r.what);
+      // A hearing on a proposed amendment says so, its number a link to it
+      // on the Bill Text tab, as the Testify pane says it (26 October 2026).
+      const what = cap(r.what) + (r.amendment ? ` on ${r.amendment}` : "");
+      const opens = r.amendment && AMENDMENT_NUM.test(r.amendment_num) && r.page
+        ? { num: r.amendment_num, opens: `${r.page}/text` } : { num: "" };
       // The committee that will sit is named once, where it sits, and not
       // again among what the reader follows that the meeting concerns.
       const others = r.labels.map((l, i) => [l, r.urls[i]]).filter(([l]) => !(r.committee && same(l, r.committee)));
       text.push(`  ${when}: ${what}${r.committee ? `, ${r.committee}` : ""}${r.venue ? `, ${r.venue}` : ""}.` +
         (others.length ? ` For ${andList(others.map(([l]) => l))}.` : ""));
-      // A public hearing a chamber's form serves: the form, and what to
-      // choose on it, as a daily's testimony block says it. The Senate's is
-      // "hearing", the House's "public hearing" (sender.js PUBLIC_HEARING).
-      const form = /^(public )?hearing$/i.test(r.what || "") && r.date >= date && TESTIFY_FORMS[chamberOf(r.committee)];
-      const bills = r.labels.map((l, i) => [l, r.urls[i]])
-        .filter(([l]) => /^(?:HB|SB|HCR|SCR|HJR|SJR|HR|SR|CACR)\b/.test(l));
+      // A HEARING A FOLLOWED BILL'S TESTIFY COUNTS (26 October 2026): how to
+      // submit testimony, in the pane's words and order, as the daily's
+      // block says it -- when it closes, what to choose, the form, and the
+      // three values, the bills the reader follows as one "or" the other.
+      const takes = r.date >= date ? r.labels.map((l, i) => [l, r.forms[i], r.urls[i]])
+        .filter(([, f]) => TESTIFY_FORMS[f]) : [];
+      const form = takes.length ? TESTIFY_FORMS[takes[0][1]] : null;
       const or = parts => andList(parts).replace(/ and ([^,]+)$/, " or $1");
-      const lead = `On the form, choose ${dayDate(r.date)}, then the ${r.committee}, then `;
-      const tail = ". In practice it stays open until midnight that day.";
-      const steps = form && bills.length ? lead + or(bills.map(([l]) => l)) + tail : "";
-      const stepsHtml = steps ? esc(`On the form, choose ${dayDate(r.date)}, then the `) +
-        linkWhole(origin, r.committee, find) + ", then " + or(bills.map(([l, u]) => u ? a(siteUrl(origin, u), l)
-        : linkWhole(origin, l, find))) + esc(tail) : "";
-      if (steps) text.push(`    ${form[0]} online testimony: ${form[1]}`, `    ${steps}`);
+      const values = form ? [longDate(r.date, true), r.committee, or(takes.map(([l]) => l))].filter(Boolean) : [];
+      const valuesHtml = form ? [esc(longDate(r.date, true)),
+        ...(r.committee ? [linkWhole(origin, r.committee, find)] : []),
+        or(takes.map(([l, , u]) => billLinked(origin, l, u)))] : [];
+      if (form) text.push(`    ${TESTIFY_SAID.midnight} ${TESTIFY_SAID.choose}`,
+        `    ${TESTIFY_SAID.go}: ${form[1]}`, ...values.map(v => `      ${v}`));
+      if (opens.num) text.push(`    ${amendmentLine(origin, opens)}`);
       html += `<tr><td style="padding:8px 0;border-bottom:1px solid ${RULE};font-size:15px">` +
-        `<span style="color:${INK2}">${esc(when)}</span><br><b>${esc(what)}</b>` +
+        `<span style="color:${INK2}">${esc(when)}</span><br><b>${amendmentLinked(origin, what, opens)}</b>` +
         (r.committee ? `, ${linkWhole(origin, r.committee, find)}` : "") +
         (r.venue ? `, ${esc(r.venue)}` : "") +
         (others.length ? `<br><span style="font-size:14px;color:${INK2}">For ` +
           andList(others.map(([l, u]) => u ? a(siteUrl(origin, u), l) : linkWhole(origin, l, find))) +
           "</span>" : "") +
-        (steps ? button(form[1], `${form[0]} online testimony`, "8px 0 4px") +
-          `<span style="font-size:14px;color:${INK2}">${stepsHtml}</span>` : "") + "</td></tr>";
+        (form ? `<p style="margin:8px 0 0">${esc(TESTIFY_SAID.midnight)} ${esc(TESTIFY_SAID.choose)}</p>` +
+          button(form[1], TESTIFY_SAID.go, "8px 0") + testifyValues(valuesHtml) : "") + "</td></tr>";
     }
     html += "</table>";
     text.push("");
@@ -936,8 +1061,9 @@ export function digestEmail({ origin, frequency, date, sections: given, manage, 
         html += `<p style="margin:2px 0 6px;font-size:14px;color:${INK2}">Now ${statusChip(s.now)}</p>`;
       }
       // The weekly's is in its week ahead, beside the hearing.
-      if (s.testify && TESTIFY_FORMS[s.testify.chamber] && !(weekly && ahead.length)) {
-        const b = testifyBlock(s.testify, s.label);
+      const block = !!s.testify && !!TESTIFY_FORMS[s.testify.chamber] && !(weekly && ahead.length);
+      if (block) {
+        const b = testifyBlock(origin, s.testify, s.label, s.url, find);
         text.push(...b.text);
         html += b.html;
       }
@@ -961,8 +1087,11 @@ export function digestEmail({ origin, frequency, date, sections: given, manage, 
       // What is still to come is the week ahead's, in the weekly; and of
       // the old events newly recorded, the first few, the rest counted. The
       // study's report leads, with its date, as any milestone would.
-      const fresh = s.items.filter(it => !late(it) && !(weekly && ahead.length && it.date > date));
-      const old = s.items.filter(it => late(it));
+      // And the line that set the hearing the block tells is not told again
+      // (setsHearing).
+      const told = it => block && setsHearing(it, s.testify);
+      const fresh = s.items.filter(it => !late(it) && !(weekly && ahead.length && it.date > date) && !told(it));
+      const old = s.items.filter(it => late(it) && !told(it));
       const shown = [...fresh, ...old.slice(0, LATE_SHOWN)]
         .map(it => ({ date: it.date, words: itemWords(it, date), bold: it.milestone && !late(it),
                       rc: it.rollcall || null }));
@@ -1015,7 +1144,7 @@ export function digestEmail({ origin, frequency, date, sections: given, manage, 
       text.push("");
     }
   }
-  const f = footer(origin, feedbackUrl, manage, unsub, gone);
+  const f = footer(origin, feedbackUrl, manage, unsub, gone, true, date);
   text.push("----", f.text);
   return {
     subject,
@@ -1044,7 +1173,7 @@ export function nothingNewEmail({ origin, frequency, date, nights, manage, unsub
     `so a real ${which} update would not have been sent.`;
   const tail = "This one was sent because a test was asked for. Nothing about your updates has changed.";
   const dateline = `${weekly ? "Weekly" : "Daily"} update — ${longDate(date, true)}`;
-  const f = footer(origin, feedbackUrl, manage, unsub, false);
+  const f = footer(origin, feedbackUrl, manage, unsub, false, true, date);
   return {
     subject,
     text: [dateline, "", head, "", tail, "", "----", f.text].join("\n"),
