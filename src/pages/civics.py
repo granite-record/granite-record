@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-08.67
+# GRANITE_VERSION: 2026-09-08.68
 """
 The topics of the civics section: their order, their names, and their prose.
 
@@ -1163,16 +1163,21 @@ CMP_TOWN = [
 # read, so Learn teaches the words a reader meets on a bill. Two rows are
 # Learn's own: interim study's line is decision 131's ("the bill goes no
 # further this term; the study committee may recommend new legislation"),
-# and retaining, which no vote card names, keeps the page's words.
+# and retaining, which no vote card names, keeps the page's words. Both
+# rows checked against the 2025-2026 House Rules, Rule 45 (a) and (c), on 26
+# October 2026: interim study "a committee report only in the second-year
+# session", its final report "its findings and any recommendations"; a bill
+# "retained by a vote of the committee for action in the second year
+# session" "shall be acted on during the second-year session".
 def _motions():
     import components
     m = components.WORDBOOK["votes"]["motions"]
     rows = [(m[k]["abbr"], m[k]["motion"], m[k]["gloss"]) for k in ("otp", "otpa", "itl")]
     rows.append((m["is"]["abbr"], m["is"]["motion"],
-                 "The bill goes no further this term; the study committee may recommend "
-                 "new legislation"))
-    rows.append(("Retain", "Retain", "Hold the bill in the committee: first year only, "
-                 "and it returns in the second"))
+                 "Second year only: the bill goes no further this term, and the committee "
+                 "reports its findings and any recommendations"))
+    rows.append(("Retain", "Retain", "First year only, in the House: the committee keeps the "
+                 "bill, which must be acted on in the second year"))
     return ('<div class="l-tablewrap l-stack"><table class="l-table">'
             '<caption class="sr">The motions a committee most often recommends</caption>'
             '<thead><tr><th scope="col">Written</th><th scope="col">The motion</th>'
@@ -1409,17 +1414,19 @@ can win a clear majority of those voting and fail anyway.</p>
 </details>
 <details><summary>What is the consent calendar?</summary>
 <p>A committee decides in executive session whether to send a bill to the
-consent calendar, and in both chambers that decision must be unanimous. It is
-a separate vote from the committee's recommendation: a recommendation carried
-on a divided vote can still go to the consent calendar, and this
-site&rsquo;s record holds thousands of House reports marked that way, among
-them reports carried 15&ndash;3. The calendar is then decided in a single
-vote, without floor debate. What that vote adopts is the committee's
-recommendation on each bill, which for some of them is to kill it. A bill can
-be taken off first, and one that comes off is debated and voted on by itself
-at the end of the regular calendar. Taking one off has needed ten members in
-the House since January 2023, and two senators in the Senate since April
-2026; before that, one member's request was enough in either chamber.</p>
+consent calendar. In the House that takes the committee&rsquo;s unanimous
+vote, and a bill with a fiscal impact or an appropriation never goes there
+(House Rule 52); in the Senate every member of the committee present and
+voting must agree, and a proposed constitutional amendment never goes there
+(Senate Rules 6-21 and 6-22). It is a separate vote from the committee's
+recommendation: a recommendation carried on a divided vote can still go to
+the consent calendar, and this site&rsquo;s record holds thousands of House
+reports marked that way, among them reports carried 15&ndash;3. What is left
+on the calendar is acted on without debate, and what that adopts is the
+committee's recommendation on each bill, which for some of them is to kill
+it. A bill can be taken off first: ten members must ask in the House, any two
+senators in the Senate. One that comes off is taken up at the end of the
+regular calendar.</p>
 </details>
 <details><summary>When will the House vote on a bill?</summary>
 <p><b>The House does not schedule its votes to a time.</b> Its calendar lists
@@ -1665,8 +1672,8 @@ Services, Transportation, Environmental Services, Education, Safety, Revenue
 Administration and the rest are where statutes get applied around New
 Hampshire.</p>
 """ + chain("From statute to rule", [
-    ("The legislature passes a law", "Departments may request legislation, but the bill "
-     "itself has to be filed by a legislator."),
+    ("The legislature passes a law", "Departments may request legislation, but a House "
+     "bill is drafted only with a House member as its sponsor."),
     ("An agency carries it out", "Its commissioner is nominated by the Governor and "
      "confirmed by the Executive Council, for a fixed term."),
     ("The agency decides the detail", "It cannot give itself powers the statute does not "
@@ -1700,7 +1707,8 @@ appear as neutral and simply explain the effect.</p>
 <p>If you have watched a hearing on this site and heard a department's staff
 explain how a bill would be administered, or ask for a technical change, that
 is what you were listening to. Departments may request legislation, but the
-bill itself has to be filed by a legislator.</p>
+House drafts a bill only once a House member sponsors it, and the analysis of
+a bill a state agency requested names that agency (House Rule 37).</p>
 </details>
 <details><summary>Can a commissioner be reappointed?</summary>
 <p>Yes. A commissioner serves a fixed term and can be reappointed the same way: nominated by the Governor, confirmed by the Executive Council.</p>
@@ -2670,14 +2678,21 @@ calendars announced in the [[term]] term, the median notice is
 <b>[[notice_median]] days</b>. That is the gap between the day the calendar is
 published and the day of the hearing.</p>
 <p>Notices name the room by building:</p>
+<!-- THE BUILDINGS (the person, a state representative, 26 October 2026):
+"LOB Address: 33 N State St, Concord, NH 03301 (Not currently being used for
+hearings, expected to be used again starting next term and no longer use
+Granite Place as it was a temporary change while the LOB was undergoing
+renovations)". Granite Place stays in the table for the notices that name it;
+its street address, which nothing on hand recorded, is left out. -->
 <table><caption class="sr">The buildings a notice names</caption><tbody>
 <tr><th scope="row"><b>SH</b></th><td><b>State House:</b> 107 North Main Street,
 Concord.</td></tr>
 <tr><th scope="row"><b>LOB</b></th><td><b>Legislative Office Building:</b> 33 North State
-Street, Concord. Out of use for hearings while it is being worked on, and
-named in older notices.</td></tr>
-<tr><th scope="row"><b>GP</b></th><td><b>Granite Place:</b> 1 Granite Place, Concord, where
-House committee meetings are now held.</td></tr>
+Street, Concord. Not in use for hearings at present; hearings are expected back
+there starting next term.</td></tr>
+<tr><th scope="row"><b>GP</b></th><td><b>Granite Place,</b> Concord: where House committees
+met for a time while the Legislative Office Building was being renovated, and
+named in notices from then.</td></tr>
 </tbody></table>
 <p><b>Go by the notice for the
 hearing you are attending</b> &mdash; it names the building and the room, and
@@ -3184,6 +3199,10 @@ SRC_CONSTITUTION = ("The New Hampshire Constitution",
                     "https://www.nh.gov/glance/state-constitution")
 # Both chambers publish their rules as a PDF now; the .aspx pages both of
 # these named answer 404, which is how a source link rots quietly.
+# The person printed both on 26 October 2026: the 2025-2026 House Rules "as
+# of December 17, 2025", and the Rules of the Senate 2025-2026 as amended
+# through 06/04/2026. The consent calendar, retaining, interim study and who
+# sponsors a bill are told from those printouts; nothing here fetches them.
 SRC_HOUSE_RULES = ("House Rules", GC + "/house/aboutthehouse/houseRules.pdf")
 SRC_SENATE_RULES = ("Senate Rules", GC + "/senate/about_senate/senate_rules.pdf")
 SRC_RSA = ("New Hampshire Revised Statutes Annotated", RSA)
@@ -3385,7 +3404,7 @@ TOPICS = [
           "Who actually carries out what the legislature passes, and how a "
           "commissioner gets the job.",
           BODY_AGENCIES,
-          [SRC_AGENCIES, SRC_COUNCIL, SRC_CONSTITUTION, SRC_LAWS_21G]),
+          [SRC_AGENCIES, SRC_COUNCIL, SRC_CONSTITUTION, SRC_LAWS_21G, SRC_HOUSE_RULES]),
 
     topic("administrative-rules", "Administrative Rules", HOW,
           "A statute says what shall happen; the rules say how, and the "
@@ -3449,7 +3468,7 @@ TOPICS = [
           "What the tabs hold, what a timestamp claims and what it does not, "
           "how to follow a bill, and how to tell us we are wrong.",
           BODY_SITE,
-          [SRC_CALENDARS, SRC_RSA]),
+          [SRC_CALENDARS, SRC_RSA, SRC_HOUSE_RULES, SRC_SENATE_RULES]),
 ]
 
 

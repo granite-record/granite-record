@@ -776,8 +776,8 @@
    "state": "draft"
   },
   "gloss.cc.says": {
-   "en": "the committee's recommendation, to pass, to kill or to send to interim study, adopted with the whole calendar in one vote, without floor debate",
-   "es": "la recomendación del comité —aprobar, descartar o enviar a estudio interino— adoptada con todo el calendario en una sola votación, sin debate en el pleno",
+   "en": "the committee's recommendation, to pass, to kill or to send to interim study, adopted with what is left on the calendar, without debate; a bill goes there only by the committee's unanimous vote",
+   "es": "la recomendación del comité —aprobar, descartar o enviar a estudio interino— adoptada con lo que queda en el calendario, sin debate; un proyecto de ley solo llega allí por el voto unánime del comité",
    "state": "draft"
   },
   "gloss.chaptered.name": {
@@ -958,8 +958,8 @@
    "state": "draft"
   },
   "gloss.is.says": {
-   "en": "a motion to have the committee study the subject after the session; the bill itself goes no further this term",
-   "es": "una moción para que el comité estudie el tema después de la sesión; el proyecto de ley en sí no avanza más en este período legislativo",
+   "en": "a committee report made only in the second year of a term: the bill goes no further this term, and the committee reports its findings and any recommendations",
+   "es": "un informe del comité que solo se hace en el segundo año de un período: el proyecto de ley no avanza más en este período, y el comité informa sus conclusiones y cualquier recomendación",
    "state": "draft"
   },
   "gloss.itl.name": {
@@ -1159,8 +1159,8 @@
    "state": "draft"
   },
   "gloss.retain.says": {
-   "en": "a House committee keeps the bill through the fall of the first year and reports it in the second",
-   "es": "un comité de la Cámara conserva el proyecto de ley durante el otoño del primer año y presenta su informe sobre él en el segundo",
+   "en": "in the House, the committee votes in the first year to keep the bill, which must be acted on in the second year",
+   "es": "en la Cámara, el comité vota en el primer año para conservar el proyecto de ley, sobre el que hay que decidir en el segundo año",
    "state": "draft"
   },
   "gloss.rsa.name": {
@@ -12627,9 +12627,9 @@
    "es": "GP",
    "state": "draft"
   },
-  "guide.testifying.granite-place-1-granite-place-concord": {
-   "en": "<b>Granite Place:</b> 1 Granite Place, Concord, where House committee meetings are now held.",
-   "es": "<b>Granite Place:</b> 1 Granite Place, Concord, donde se celebran ahora las reuniones de los comités de la Cámara.",
+  "guide.testifying.granite-place-concord-where-house": {
+   "en": "<b>Granite Place,</b> Concord: where House committees met for a time while the Legislative Office Building was being renovated, and named in notices from then.",
+   "es": "<b>Granite Place,</b> Concord: donde se reunieron por un tiempo los comités de la Cámara mientras se renovaba el Legislative Office Building, y mencionado en los avisos de entonces.",
    "state": "draft"
   },
   "guide.testifying.hearings-are-announced-in-the-chamber": {
@@ -12678,8 +12678,8 @@
    "state": "draft"
   },
   "guide.testifying.legislative-office-building-33-north": {
-   "en": "<b>Legislative Office Building:</b> 33 North State Street, Concord. Out of use for hearings while it is being worked on, and named in older notices.",
-   "es": "<b>Legislative Office Building (edificio de oficinas legislativas):</b> 33 North State Street, Concord. Fuera de uso para audiencias mientras está en obras, y mencionado en avisos anteriores.",
+   "en": "<b>Legislative Office Building:</b> 33 North State Street, Concord. Not in use for hearings at present; hearings are expected back there starting next term.",
+   "es": "<b>Legislative Office Building (edificio de oficinas legislativas):</b> 33 North State Street, Concord. Por ahora no se usa para audiencias; se espera que las audiencias vuelvan allí a partir del próximo período.",
    "state": "draft"
   },
   "guide.testifying.lob": {
@@ -13715,6 +13715,11 @@
    "es": "Calendarios y diarios de la Cámara",
    "state": "draft"
   },
+  "guide.using-this-site.house-rules": {
+   "en": "House Rules",
+   "es": "Reglamento de la Cámara",
+   "state": "draft"
+  },
   "guide.using-this-site.how-to-find-a-bill-a": {
    "en": "How to Find a Bill, a Member or a Town",
    "es": "Cómo encontrar un proyecto de ley, un miembro o un municipio",
@@ -13768,6 +13773,11 @@
   "guide.using-this-site.reports-what-the-committee-recommended": {
    "en": "<b>Reports</b> &mdash; what the committee recommended and why, in the committee's own words, and the Governor's message where a bill was vetoed.",
    "es": "<b>Reports</b> (informes) &mdash; lo que recomendó el comité y por qué, en las propias palabras del comité, y el mensaje del gobernador cuando se vetó un proyecto de ley.",
+   "state": "draft"
+  },
+  "guide.using-this-site.senate-rules": {
+   "en": "Senate Rules",
+   "es": "Reglamento del Senado",
    "state": "draft"
   },
   "guide.using-this-site.sponsors": {
@@ -16986,6 +16996,11 @@
    "es": "Encuentre a sus legisladores, por municipio",
    "state": "draft"
   },
+  "learn.general-court.first-year-only-in-the-house": {
+   "en": "First year only, in the House: the committee keeps the bill, which must be acted on in the second year",
+   "es": "Solo en el primer año, en la Cámara: el comité conserva el proyecto de ley, sobre el que hay que decidir en el segundo año",
+   "state": "draft"
+  },
   "learn.general-court.hb": {
    "en": "HB",
    "es": "HB",
@@ -16994,11 +17009,6 @@
   "learn.general-court.hcr-scr": {
    "en": "<b>HCR</b> / <b>SCR</b>",
    "es": "<b>HCR</b> / <b>SCR</b>",
-   "state": "draft"
-  },
-  "learn.general-court.hold-the-bill-in-the-committee": {
-   "en": "Hold the bill in the committee: first year only, and it returns in the second",
-   "es": "Mantener el proyecto de ley en el comité: solo en el primer año, y vuelve en el segundo",
    "state": "draft"
   },
   "learn.general-court.house-bill-a-proposed-change-to": {
@@ -17146,6 +17156,11 @@
    "es": "SB",
    "state": "draft"
   },
+  "learn.general-court.second-year-only-the-bill-goes": {
+   "en": "Second year only: the bill goes no further this term, and the committee reports its findings and any recommendations",
+   "es": "Solo en el segundo año: el proyecto de ley no avanza más en este período, y el comité informa sus conclusiones y cualquier recomendación",
+   "state": "draft"
+  },
   "learn.general-court.senate-bill-begins-in-the-senate": {
    "en": "<b>Senate Bill:</b> begins in the Senate, otherwise the same as a House Bill.",
    "es": "<b>Senate Bill</b> (proyecto de ley del Senado): empieza en el Senado; por lo demás, es igual que un House Bill.",
@@ -17154,11 +17169,6 @@
   "learn.general-court.senate-rules": {
    "en": "Senate Rules",
    "es": "Reglamento del Senado",
-   "state": "draft"
-  },
-  "learn.general-court.the-bill-goes-no-further-this": {
-   "en": "The bill goes no further this term; the study committee may recommend new legislation",
-   "es": "El proyecto de ley no avanza más en este período; el comité de estudio puede recomendar una nueva legislación",
    "state": "draft"
   },
   "learn.general-court.the-general-court-sits-in-two": {
@@ -17472,8 +17482,8 @@
    "state": "draft"
   },
   "learn.how-a-bill-becomes-law.a-committee-decides-in-executive-session": {
-   "en": "A committee decides in executive session whether to send a bill to the consent calendar, and in both chambers that decision must be unanimous. It is a separate vote from the committee's recommendation: a recommendation carried on a divided vote can still go to the consent calendar, and this site&rsquo;s record holds thousands of House reports marked that way, among them reports carried 15&ndash;3. The calendar is then decided in a single vote, without floor debate. What that vote adopts is the committee's recommendation on each bill, which for some of them is to kill it. A bill can be taken off first, and one that comes off is debated and voted on by itself at the end of the regular calendar. Taking one off has needed ten members in the House since January 2023, and two senators in the Senate since April 2026; before that, one member's request was enough in either chamber.",
-   "es": "Un comité decide en sesión ejecutiva si envía un proyecto de ley al calendario de consenso, y en ambas cámaras esa decisión tiene que ser unánime. Es una votación aparte de la recomendación del comité: una recomendación aprobada en una votación dividida puede ir de todos modos al calendario de consenso, y el registro de este sitio tiene miles de informes de la Cámara marcados así, entre ellos informes aprobados 15&ndash;3. Después el calendario se decide en una sola votación, sin debate en el pleno. Lo que esa votación adopta es la recomendación del comité sobre cada proyecto de ley, que para algunos es rechazarlo. Un proyecto de ley se puede sacar antes, y el que sale se debate y se vota por separado al final del calendario ordinario. Sacar uno requiere diez miembros en la Cámara desde enero de 2023, y dos senadores en el Senado desde abril de 2026; antes, bastaba la petición de un solo miembro en cualquiera de las dos cámaras.",
+   "en": "A committee decides in executive session whether to send a bill to the consent calendar. In the House that takes the committee&rsquo;s unanimous vote, and a bill with a fiscal impact or an appropriation never goes there (House Rule 52); in the Senate every member of the committee present and voting must agree, and a proposed constitutional amendment never goes there (Senate Rules 6-21 and 6-22). It is a separate vote from the committee's recommendation: a recommendation carried on a divided vote can still go to the consent calendar, and this site&rsquo;s record holds thousands of House reports marked that way, among them reports carried 15&ndash;3. What is left on the calendar is acted on without debate, and what that adopts is the committee's recommendation on each bill, which for some of them is to kill it. A bill can be taken off first: ten members must ask in the House, any two senators in the Senate. One that comes off is taken up at the end of the regular calendar.",
+   "es": "Un comité decide en sesión ejecutiva si envía un proyecto de ley al calendario de consenso. En la Cámara eso requiere el voto unánime del comité, y un proyecto de ley con impacto fiscal o con una asignación de fondos nunca va allí (Regla 52 de la Cámara); en el Senado tienen que estar de acuerdo todos los miembros del comité presentes que votan, y una propuesta de enmienda constitucional nunca va allí (Reglas 6-21 y 6-22 del Senado). Es una votación aparte de la recomendación del comité: una recomendación aprobada en una votación dividida puede ir de todos modos al calendario de consenso, y el registro de este sitio tiene miles de informes de la Cámara marcados así, entre ellos informes aprobados 15&ndash;3. Lo que queda en el calendario se decide sin debate, y lo que eso adopta es la recomendación del comité sobre cada proyecto de ley, que para algunos es rechazarlo. Un proyecto de ley se puede sacar antes: tienen que pedirlo diez miembros en la Cámara, y dos senadores cualesquiera en el Senado. El que sale se trata al final del calendario ordinario.",
    "state": "draft"
   },
   "learn.how-a-bill-becomes-law.a-final-check-of-the-text": {
@@ -18417,13 +18427,18 @@
    "state": "draft"
   },
   "learn.state-agencies.departments-may-request-legislation-but": {
-   "en": "Departments may request legislation, but the bill itself has to be filed by a legislator.",
-   "es": "Los departamentos pueden pedir legislación, pero el proyecto de ley mismo lo tiene que presentar un legislador.",
+   "en": "Departments may request legislation, but a House bill is drafted only with a House member as its sponsor.",
+   "es": "Los departamentos pueden pedir legislación, pero un proyecto de ley de la Cámara solo se redacta con un miembro de la Cámara como patrocinador.",
    "state": "draft"
   },
   "learn.state-agencies.for-a-rule-made-in-the": {
    "en": "For a rule made in the ordinary course, an objection does not by itself stop the rule, though the committee can hold it back for a time while it asks the legislature to block it by joint resolution; and if the committee takes no action within 60 days, the rule is treated as approved.",
    "es": "Para una regla hecha por la vía ordinaria, una objeción no detiene la regla por sí sola, aunque el comité puede retenerla un tiempo mientras pide a la Legislatura que la bloquee mediante una resolución conjunta; y si el comité no actúa en 60 días, la regla se considera aprobada.",
+   "state": "draft"
+  },
+  "learn.state-agencies.house-rules": {
+   "en": "House Rules",
+   "es": "Reglamento de la Cámara",
    "state": "draft"
   },
   "learn.state-agencies.how-a-commissioner-gets-the-job": {
@@ -18432,8 +18447,8 @@
    "state": "draft"
   },
   "learn.state-agencies.if-you-have-watched-a-hearing": {
-   "en": "If you have watched a hearing on this site and heard a department's staff explain how a bill would be administered, or ask for a technical change, that is what you were listening to. Departments may request legislation, but the bill itself has to be filed by a legislator.",
-   "es": "Si ha visto en este sitio una audiencia y ha oído al personal de un departamento explicar cómo se administraría un proyecto de ley, o pedir un cambio técnico, eso es lo que estaba escuchando. Los departamentos pueden pedir legislación, pero el proyecto de ley mismo lo tiene que presentar un legislador.",
+   "en": "If you have watched a hearing on this site and heard a department's staff explain how a bill would be administered, or ask for a technical change, that is what you were listening to. Departments may request legislation, but the House drafts a bill only once a House member sponsors it, and the analysis of a bill a state agency requested names that agency (House Rule 37).",
+   "es": "Si ha visto en este sitio una audiencia y ha oído al personal de un departamento explicar cómo se administraría un proyecto de ley, o pedir un cambio técnico, eso es lo que estaba escuchando. Los departamentos pueden pedir legislación, pero la Cámara redacta un proyecto de ley solo cuando un miembro de la Cámara lo patrocina, y el análisis de un proyecto de ley que pidió una agencia estatal nombra a esa agencia (Regla 37 de la Cámara).",
    "state": "draft"
   },
   "learn.state-agencies.in-the-record": {
