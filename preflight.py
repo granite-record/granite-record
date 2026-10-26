@@ -99828,7 +99828,9 @@ def _language_sweep_words(civics, C):
              "Choose a time on a card to jump the recording there."),
             ("app.js", app, 's.venue?" · "+esc(s.venue)', "roomWords(s.venue)"),
             ("chrome.py", src("chrome.py"), "MIT Open Source Licensed", "Open source (MIT License)"),
-            ("build_pages.py", pages, "/bill/&lt;year&gt;/&lt;number&gt;", "<code>/bill/2026/hb1</code>"),
+            # The example a page the build writes (not_found_example; P2 of the
+            # polish of 26 October 2026), held by _not_found_example_is_there.
+            ("build_pages.py", pages, "/bill/&lt;year&gt;/&lt;number&gt;", "<code>[[example]]</code>"),
             ("build_rsa.py", src("build_rsa.py"), "the bills now proposing to",
              "laws not yet included."),
             ("build_site_v2.py", src("build_site_v2.py"), '"text": f"Still in interim study when',
@@ -111662,6 +111664,78 @@ def _chapter_addresses_one_rule(BR, BSV, G, BP, RSA):
     return "ok", (f"bill records, guides, app.js and the not-found page give /laws/404/; "
                   f"{sum(good.values())} addresses of it across {len(good)} built files, none without "
                   "its slash" + ("; " + "; ".join(said) if said else ""))
+
+
+@check("build", "the not-found page's example address is a bill page the build writes: HB 1 of the "
+       "newest term with a page, else that term's first bill, at the year its page is under",
+       needs=("build_pages",))
+def _not_found_example_is_there(BP):
+    """P2 of the polish of 26 October 2026: every 404 said "for example
+    /bill/2026/hb1", and HB 1 of the 2025-2026 term was filed in 2025, so the
+    one address offered to a lost reader was itself a 404 (/bill/2025/hb1 is
+    the page). build_pages.not_found_example reads it off the bill index the
+    way build_bill_pages.py writes the pages: the index row's year, and only
+    a bill with a record to write its page from. Here, on a site of a few
+    files: HB 1 at its own year before a bill listed ahead of it; a term with
+    no record yet passed over for the term before it; a record already
+    inlined into its page counted; no index, no example and no "for example"
+    clause. Then, on the fixture site, the address its built 404.html offers
+    is a page the build wrote. On the preview of 26 October 2026 (the real
+    record) the rule gives /bill/2025/hb1, the budget, which answers 200."""
+    root = Path(tempfile.mkdtemp(prefix="gr-404ex-"))
+    site = root / "site"
+
+    def plant(rows, records=(), pages=()):
+        shutil.rmtree(site, ignore_errors=True)
+        terms = sorted({r["term"] for r in rows})
+        _mk(site / "meta.json").write_text(json.dumps({"terms": terms}), encoding="utf-8")
+        for t in terms:
+            _mk(site / "idx" / f"{t}.json").write_text(
+                json.dumps([r for r in rows if r["term"] == t]), encoding="utf-8")
+        for yr, bid in records:
+            _mk(site / "bills" / yr / f"{bid}.json").write_text("{}", encoding="utf-8")
+        for yr, bid in pages:
+            _mk(site / "bill" / yr / f"{bid.lower()}.html").write_text("<p>x</p>", encoding="utf-8")
+
+    try:
+        rows = [{"term": "2025-2026", "id": "HB561", "year": "2026"},
+                {"term": "2025-2026", "id": "HB1", "year": "2025"},
+                {"term": "2025-2026", "id": "HB2", "year": ""},
+                {"term": "2027-2028", "id": "HB1", "year": "2027"}]
+        plant(rows, records=[("2026", "HB561"), ("2025", "HB1")])
+        got = [BP.not_found_example(site)]
+        plant(rows, records=[("2026", "HB561")])
+        got.append(BP.not_found_example(site))
+        plant(rows, records=[("2027", "HB1")], pages=[("2025", "HB1")])
+        got.append(BP.not_found_example(site))
+        plant(rows, pages=[("2025", "HB1")])
+        got.append(BP.not_found_example(site))
+        shutil.rmtree(site, ignore_errors=True)
+        got.append(BP.not_found_example(site))
+    finally:
+        shutil.rmtree(root, ignore_errors=True)
+    want = ["/bill/2025/hb1", "/bill/2026/hb561", "/bill/2027/hb1", "/bill/2025/hb1", ""]
+    assert got == want, f"the not-found page's example on five sites is {got}, not {want}"
+    with_one = BP.not_found_body("/bill/2025/hb1")
+    without = BP.not_found_body("")
+    assert "<code>/bill/2025/hb1</code>, and a bill number" in with_one, \
+        "the not-found page does not give the example it was handed"
+    assert "for example" not in without and "has a page of its own, and a bill number" in without, \
+        "with no example the not-found page still says 'for example', or lost the sentence round it"
+    absent = [x for x in CHAIN_NEEDS if not _paths.locate(x).exists()]
+    if absent:
+        return "ok", "the example is chosen as held; the fixture site was not built: not here, " + \
+            ", ".join(absent)
+    shared, _base, _ran, _days = _fixture_site_shared()
+    built = shared / "site"
+    page = (built / "404.html").read_text(encoding="utf-8")
+    found = re.findall(r"for example\s*<code>(/bill/(\d{4})/([a-z0-9]+))</code>", page)
+    assert len(found) == 1, f"the fixture's 404.html offers {len(found)} bill addresses as its example"
+    addr, yr, bid = found[0]
+    assert (built / "bill" / yr / f"{bid}.html").is_file(), (
+        f"the fixture's 404.html offers {addr}, and the build wrote no page there")
+    return "ok", (f"HB 1 first, at its own year, from the newest term with a record; the fixture's "
+                  f"404.html offers {addr}, a page the build wrote")
 
 
 @check("build", "check_site holds the sitemap to the site both ways: an address only a folder answers "
