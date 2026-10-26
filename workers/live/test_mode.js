@@ -121,7 +121,9 @@ export async function runTest(env, { connect, now = new Date(), test = {} } = {}
   }
 
   const problem = refused?.code || statements.find(s => s.problem)?.problem || null;
-  if (!problem && !unread.length) next.done.push(job.day);
+  // Roll calls past three Q2 statements are listed in `unread`, and
+  // compare_test.mjs calls that a no-go; asking again would find the same.
+  if (!problem) next.done.push(job.day);
   const shape = liveShape({ readAt, summary, ballots });
   return {
     test: next,

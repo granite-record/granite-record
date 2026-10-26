@@ -79711,7 +79711,7 @@ def _live_tds():
     fails = _tap_failures(out)
     passed = [m.replace("\\#", "#") for m in re.findall(r"^ok \d+ - (.*)$", out, re.M)]
     missing = [c for c in LIVE_TDS_CASES if not any(c in n for n in passed)]
-    assert not fails and r.returncode == 0 and count.get("pass", 0) >= 31, (
+    assert not fails and r.returncode == 0 and count.get("pass", 0) >= 33, (
         f"the live votes reader fails {len(fails)}: " + "; ".join(repr(n) for n, _s in fails[:5])
         + f" ({count or out.strip()[-300:]}). `node --test {' '.join(f.as_posix() for f in files)}` shows each")
     assert not missing, "these cases no longer pass, or no longer exist: " + "; ".join(missing)

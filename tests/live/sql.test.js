@@ -330,6 +330,40 @@ test("a statement that fails is recorded with its code, the rest still run, and 
   }
 });
 
+test("roll calls past three Q2 statements are listed as unread, and the sitting is not asked again", async () => {
+  const many = Array.from({ length: 61 }, (_, i) => ["H", String(i + 1), "2026-03-11T10:00:00", "", "1", "0", "0", "0", "",
+                                                     "", "VOTE SYSTEM"]);
+  const fake = await startFakeTds({ answer: fromRecords({ q1: { columns: text(...Array(11).fill("")), rows: many } }) });
+  try {
+    const got = await runTest(env(fake.port), { connect: nodeConnect, now: WED, test: {} });
+    assert.deepEqual(got.file.test.unread, ["2026-H-61"]);
+    assert.equal(got.file.test.statements.filter(s => s.name.startsWith("q2")).length, 3);
+    assert.deepEqual(got.test.done, ["2026-03-11"], "the same read would find the same");
+    assert.match(compare(got.file).said.join("\n"), /ballots of 1 roll calls were not read/);
+  } finally {
+    await fake.close();
+  }
+});
+
+test("a connection dropped in the middle of the test: what had run is kept, the rest is said not to have run", async () => {
+  const records = fromRecords();
+  const fake = await startFakeTds({ answer: (sql, n) => (sql.includes("FROM Docket d")
+    ? { columns: text("", "", "", "", ""), rows: Array.from({ length: 900 }, () => ["H", "HB1", "2026-03-11T10:00:00", "1", "RC 1-2"]), drop: true }
+    : records(sql, n)) });
+  try {
+    const got = await runTest(env(fake.port), { connect: nodeConnect, now: WED, test: {} });
+    const said = Object.fromEntries(got.file.test.statements.map(s => [s.name, s]));
+    assert.equal(said.q1.problem, null);
+    assert.equal(said.q3.problem, "query");
+    assert.match(said["q2 1"].error, /not run: the connection had closed/);
+    assert.equal(got.file.status.problem, "query");
+    assert.deepEqual(got.test.done, []);
+    assert.equal(fake.seen.connections, 1, "no second connection that day");
+  } finally {
+    await fake.close();
+  }
+});
+
 test("once both sittings are read, a weekday's test logs in and closes, and says how long each took", async () => {
   const fake = await startFakeTds({});
   try {
