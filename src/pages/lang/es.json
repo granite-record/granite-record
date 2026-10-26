@@ -16400,6 +16400,26 @@
    "es": "New Hampshire Municipal Association, una asociación de miembros",
    "state": "draft"
   },
+  "hub.src.history-of-new-hampshire-revised-from.name": {
+   "en": "History of New Hampshire, revised from the 1977 Manual for the General Court",
+   "es": "Historia de New Hampshire (History), revisada a partir del Manual de la Legislatura (Manual for the General Court) de 1977",
+   "state": "draft"
+  },
+  "hub.src.history-of-new-hampshire-revised-from.what": {
+   "en": "NH.gov",
+   "es": "NH.gov",
+   "state": "draft"
+  },
+  "hub.src.history-of-the-state-house-revised.name": {
+   "en": "History of the State House, revised from the 1977 Manual for the General Court",
+   "es": "Historia del Capitolio (History of the State House), revisada a partir del Manual de la Legislatura (Manual for the General Court) de 1977",
+   "state": "draft"
+  },
+  "hub.src.history-of-the-state-house-revised.what": {
+   "en": "NH.gov",
+   "es": "NH.gov",
+   "state": "draft"
+  },
   "hub.src.house-calendars-and-journals.name": {
    "en": "House calendars and journals",
    "es": "Calendarios y diarios de sesiones de la Cámara",
@@ -18016,8 +18036,13 @@
    "state": "draft"
   },
   "learn.general-court.new-hampshire-s-legislature-is-called": {
-   "en": "New Hampshire's legislature is called the <b>General Court</b>, the name the state constitution gives it. It is made up of [[house_seats]] representatives and [[senate_districts]] senators. It is the largest state legislature in the country.",
-   "es": "La legislatura de New Hampshire se llama <b>General Court</b>, el nombre que le da la constitución del estado; en este sitio la llamamos la Legislatura. Está formada por [[house_seats]] representantes y [[senate_districts]] senadores. Es la legislatura estatal más grande del país.",
+   "en": "New Hampshire's legislature is called the <b>General Court</b>, the name the state constitution gives it. It is made up of [[house_seats]] representatives and [[senate_districts]] senators. It is the largest state legislature in the country: the National Conference of State Legislatures&rsquo; table counts 424 seats in New Hampshire&rsquo;s, against 253 in the next largest, Pennsylvania&rsquo;s.",
+   "es": "La legislatura de New Hampshire se llama <b>General Court</b> (Tribunal General), el nombre que le da la constitución del estado. La forman [[house_seats]] representantes y [[senate_districts]] senadores. Es la legislatura estatal más grande del país: la tabla de la Conferencia Nacional de Legislaturas Estatales (National Conference of State Legislatures) cuenta 424 escaños en la de New Hampshire, frente a 253 en la siguiente más grande, la de Pensilvania.",
+   "state": "draft"
+  },
+  "learn.general-court.number-of-legislators-and-length-of": {
+   "en": "Number of Legislators and Length of Terms in Years (National Conference of State Legislatures)",
+   "es": "Número de legisladores y duración de sus mandatos (Number of Legislators and Length of Terms in Years) (Conferencia Nacional de Legislaturas Estatales)",
    "state": "draft"
   },
   "learn.general-court.otp": {
@@ -19495,9 +19520,19 @@
    "es": "Acerca del Consejo Ejecutivo",
    "state": "draft"
   },
+  "learn.state-house-and-branches.against-the-other-states-the-national": {
+   "en": "Against the other states: the National Conference of State Legislatures&rsquo; table of June 19, 2024 counts 424 seats in New Hampshire&rsquo;s legislature, the most of any state; the next largest, Pennsylvania&rsquo;s, has 253. Most states elect their senators for four years; New Hampshire&rsquo;s senators, like its representatives, serve two.",
+   "es": "Frente a los demás estados: la tabla de la Conferencia Nacional de Legislaturas Estatales del 19 de junio de 2024 cuenta 424 escaños en la legislatura de New Hampshire, la cifra más alta de todos los estados; la siguiente más grande, la de Pensilvania, tiene 253. La mayoría de los estados eligen a sus senadores por cuatro años; los senadores de New Hampshire, como sus representantes, ejercen dos.",
+   "state": "draft"
+  },
   "learn.state-house-and-branches.as-this-sites-record-stands-the": {
    "en": "As this site&rsquo;s record stands, the House has <b>[[house_seats]] seats and [[house_sitting]] sitting members</b>, with [[house_vacant]] vacant, and the Senate [[senate_districts]] districts. Each member&rsquo;s page is on the <a href=\"officials.html\">Officials page</a>.",
    "es": "Según el registro de este sitio, la Cámara tiene <b>[[house_seats]] escaños y [[house_sitting]] miembros en funciones</b>, con [[house_vacant]] vacantes, y el Senado [[senate_districts]] distritos. La página de cada miembro está en la <a href=\"officials.html\">página de Funcionarios</a>.",
+   "state": "draft"
+  },
+  "learn.state-house-and-branches.benning-wentworth-was-its-chief": {
+   "en": "Benning Wentworth was its chief magistrate from 1741 to 1766, and granted more than a hundred towns after 1761, some of them in what is now Vermont.",
+   "es": "Benning Wentworth fue su primer magistrado de 1741 a 1766, y concedió más de cien municipios después de 1761, algunos de ellos en lo que hoy es Vermont.",
    "state": "draft"
   },
   "learn.state-house-and-branches.by-1909-a-bill-was-introduced": {
@@ -19508,6 +19543,11 @@
   "learn.state-house-and-branches.can-a-judge-be-removed-before": {
    "en": "Can a judge be removed before seventy?",
    "es": "¿Se puede destituir a un juez antes de los setenta años?",
+   "state": "draft"
+  },
+  "learn.state-house-and-branches.captain-john-smith-first-named-the": {
+   "en": "Captain John Smith first named the region &ldquo;North Virginia,&rdquo; but King James later changed it to &ldquo;New England.&rdquo; New Hampshire takes its name from Captain Mason&rsquo;s own English county of Hampshire.",
+   "es": "El capitán John Smith llamó primero a la región &ldquo;North Virginia&rdquo; (Virginia del Norte), pero el rey Jacobo la cambió después a &ldquo;New England&rdquo; (Nueva Inglaterra). New Hampshire debe su nombre al condado inglés de Hampshire, de donde era el capitán Mason.",
    "state": "draft"
   },
   "learn.state-house-and-branches.common-questions": {
@@ -19540,14 +19580,29 @@
    "es": "Cinco <b>consejeros ejecutivos</b> se eligen cada dos años &ldquo;para asesorar al gobernador en la parte ejecutiva del gobierno&rdquo; (Parte Segunda, Artículo 60), uno por cada uno de cinco distritos trazados tan iguales en población como sea posible (Parte Segunda, Artículo 65). Hasta 1792 el consejo lo formaban miembros de la Cámara y del Senado, elegidos por ellos.",
    "state": "draft"
   },
+  "learn.state-house-and-branches.from-new-hampshires-history": {
+   "en": "From New Hampshire&rsquo;s History",
+   "es": "De la historia de New Hampshire",
+   "state": "draft"
+  },
   "learn.state-house-and-branches.from-the-state-houses-history": {
    "en": "From the State House&rsquo;s History",
    "es": "De la historia del Capitolio",
    "state": "draft"
   },
+  "learn.state-house-and-branches.full-and-part-time-legislatures-national": {
+   "en": "Full- and Part-Time Legislatures (National Conference of State Legislatures)",
+   "es": "Legislaturas de tiempo completo y de tiempo parcial (Full- and Part-Time Legislatures) (Conferencia Nacional de Legislaturas Estatales)",
+   "state": "draft"
+  },
   "learn.state-house-and-branches.has-legislators-pay-ever-been-raised": {
    "en": "Has legislators&rsquo; pay ever been raised?",
    "es": "¿Alguna vez se ha aumentado el sueldo de los legisladores?",
+   "state": "draft"
+  },
+  "learn.state-house-and-branches.history-of-new-hampshire-revised-from": {
+   "en": "History of New Hampshire, revised from the 1977 Manual for the General Court (NH.gov)",
+   "es": "Historia de New Hampshire (History), revisada a partir del Manual de la Legislatura (Manual for the General Court) de 1977 (NH.gov)",
    "state": "draft"
   },
   "learn.state-house-and-branches.history-of-the-state-house-revised": {
@@ -19558,6 +19613,11 @@
   "learn.state-house-and-branches.how-many-members-does-the-general": {
    "en": "How many members does the General Court have?",
    "es": "¿Cuántos miembros tiene la Legislatura (General Court)?",
+   "state": "draft"
+  },
+  "learn.state-house-and-branches.in-1623-captain-john-mason-and": {
+   "en": "In 1623 Captain John Mason and others sent David Thomson, Edward Hilton and Thomas Hilton to found a fishing colony at the mouth of the Piscataqua River. Thomson&rsquo;s party settled at Little Harbor, or &ldquo;Pannaway,&rdquo; now Rye; the Hiltons, eight miles upriver, at a place they called Northam, afterwards named Dover.",
+   "es": "En 1623, el capitán John Mason y otros enviaron a David Thomson, Edward Hilton y Thomas Hilton a fundar una colonia de pesca en la desembocadura del río Piscataqua. El grupo de Thomson se estableció en Little Harbor, o &ldquo;Pannaway&rdquo;, hoy Rye; los Hilton, ocho millas río arriba, en un lugar al que llamaron Northam, más tarde llamado Dover.",
    "state": "draft"
   },
   "learn.state-house-and-branches.in-1863-during-the-civil-war": {
@@ -19605,9 +19665,29 @@
    "es": "Los miembros también cobran millaje por cada día que asisten en días legislativos, pero no después de que la Legislatura haya sesionado 45 días legislativos ni después del 1 de julio, lo que ocurra primero. Una sesión extraordinaria añade $3 al día, por no más de 15 días, con el millaje de costumbre.",
    "state": "draft"
   },
+  "learn.state-house-and-branches.meshech-weare-was-elected-the-first": {
+   "en": "Meshech Weare was elected the first state &ldquo;president.&rdquo;",
+   "es": "Meshech Weare fue elegido el primer &ldquo;presidente&rdquo; del estado.",
+   "state": "draft"
+  },
+  "learn.state-house-and-branches.new-hampshire-became-a-royal-province": {
+   "en": "New Hampshire became a royal province in 1679, with John Cutt as president. From 1698 it was under the jurisdiction of Massachusetts, and it stayed so until 1741.",
+   "es": "New Hampshire se convirtió en provincia real en 1679, con John Cutt como presidente. Desde 1698 estuvo bajo la jurisdicción de Massachusetts, y así siguió hasta 1741.",
+   "state": "draft"
+  },
+  "learn.state-house-and-branches.new-hampshire-was-the-ninth-and": {
+   "en": "New Hampshire was the ninth and deciding state to accept the national Constitution, and its John Langdon was President of the Senate when Washington was elected the first President.",
+   "es": "New Hampshire fue el noveno estado, y el decisivo, en aceptar la Constitución nacional, y su John Langdon era presidente del Senado cuando Washington fue elegido primer presidente.",
+   "state": "draft"
+  },
   "learn.state-house-and-branches.no-the-eagle-there-now-is": {
    "en": "No. The eagle there now is a copper replica, put up in 1957, of the wooden eagle erected in 1818.",
    "es": "No. El águila que hay ahora es una réplica de cobre, colocada en 1957, del águila de madera levantada en 1818.",
+   "state": "draft"
+  },
+  "learn.state-house-and-branches.number-of-legislators-and-length-of": {
+   "en": "Number of Legislators and Length of Terms in Years (National Conference of State Legislatures)",
+   "es": "Número de legisladores y duración de sus mandatos (Number of Legislators and Length of Terms in Years) (Conferencia Nacional de Legislaturas Estatales)",
    "state": "draft"
   },
   "learn.state-house-and-branches.paid-200-for-a-two-year": {
@@ -19680,6 +19760,11 @@
    "es": "El poder judicial reside en la corte suprema, un tribunal de primera instancia de jurisdicción general llamado tribunal superior, y los tribunales inferiores que establezca la Legislatura (Parte Segunda, Artículo 72-a, añadido en 1966). El presidente de la corte suprema es el jefe administrativo de todos los tribunales (Parte Segunda, Artículo 73-a, 1978).",
    "state": "draft"
   },
+  "learn.state-house-and-branches.the-national-conference-of-state": {
+   "en": "The National Conference of State Legislatures, in a page updated July 28, 2021, puts New Hampshire&rsquo;s among the ten &ldquo;part-time lite&rdquo; legislatures, one of its two part-time groups. Of the part-time legislatures it says that lawmakers spend on average the equivalent of half of a full-time job on legislative work, for pay low enough that they need other income to make a living. It calls them traditional or citizen legislatures, found most often in the smallest, more rural states.",
+   "es": "La Conferencia Nacional de Legislaturas Estatales, en una página actualizada el 28 de julio de 2021, sitúa la de New Hampshire entre las diez legislaturas de &ldquo;tiempo parcial ligero&rdquo; (part-time lite), uno de sus dos grupos de tiempo parcial. De las legislaturas de tiempo parcial dice que los legisladores dedican en promedio el equivalente a la mitad de un trabajo de tiempo completo a la labor legislativa, con un sueldo tan bajo que necesitan otros ingresos para ganarse la vida. Las llama legislaturas tradicionales o ciudadanas, más frecuentes en los estados más pequeños y rurales.",
+   "state": "draft"
+  },
   "learn.state-house-and-branches.the-new-hampshire-constitution": {
    "en": "The New Hampshire Constitution",
    "es": "La Constitución de New Hampshire",
@@ -19698,6 +19783,11 @@
   "learn.state-house-and-branches.the-state-house-in-concord-at": {
    "en": "The <b>State House</b> in Concord, at 107 North Main Street, was built from 1816 to 1819, with Stuart Park as master builder. It is built of Concord granite, quarried nearby. The first building was a two-story structure in the Federal style, capped by a domed lantern, and it appears to have been based in part on a plate in Robert Morris's <i>Select Architecture</i>, a London pattern book of 1757.",
    "es": "El <b>Capitolio</b> (State House) de Concord, en el 107 de North Main Street, se construyó de 1816 a 1819, con Stuart Park como maestro de obras. Es de granito de Concord, extraído en los alrededores. El primer edificio era una estructura de dos pisos en estilo federal, rematada por una linterna con cúpula, y parece haberse basado en parte en una lámina de <i>Select Architecture</i> de Robert Morris, un libro de modelos publicado en Londres en 1757.",
+   "state": "draft"
+  },
+  "learn.state-house-and-branches.the-states-own-history-of-new": {
+   "en": "The state&rsquo;s own history of New Hampshire, revised from the same 1977 Manual, tells these.",
+   "es": "La historia de New Hampshire que publica el propio estado, revisada a partir del mismo Manual de 1977, cuenta lo siguiente.",
    "state": "draft"
   },
   "learn.state-house-and-branches.the-states-own-history-of-the": {
