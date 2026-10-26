@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-10-23.17
+# GRANITE_VERSION: 2026-10-23.18
 """
 The site in more than one language, and how a translation stays current.
 
@@ -107,7 +107,7 @@ GUIDE_PAGES = tuple(f"guides/{s}.html" for s in (
     "food-and-health-assistance", "file-for-unemployment", "heating-and-electric-help",
     "property-tax-abatement", "property-tax-relief", "public-records", "vital-records",
     "tour-the-state-house", "town-warrant-article", "child-care-scholarship",
-    "domestic-violence-help", "homelessness-help",
+    "domestic-violence-help", "discrimination", "homelessness-help",
     "storms-and-emergencies", "trash-and-recycling", "passport",
     "medicare-and-social-security", "disability-help", "who-to-contact",
     "fishing-license", "hunting-license", "boating"))

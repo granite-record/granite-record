@@ -2399,6 +2399,221 @@
    "es": "Quién puede recibir los beneficios de SSI, 20 CFR 416.202 (federal)",
    "state": "draft"
   },
+  "guide.discrimination.a-commissioner-investigates-with-the": {
+   "en": "A commissioner investigates, with the Commission&rsquo;s staff, and encourages both sides to settle. If the commissioner finds no probable cause, the complaint is dismissed, and you can appeal to the Superior Court. If there is probable cause and it is not settled, a hearing may be held before 3 commissioners, who can order the discrimination to stop and order hiring, reinstatement, back pay and damages. You have 30 days after the Commission&rsquo;s order is served to ask the Superior Court to review it.",
+   "es": "Un comisionado investiga, con el personal de la Comisión, y anima a ambas partes a llegar a un acuerdo. Si el comisionado no encuentra causa probable, la queja se desestima, y usted puede apelar ante el Tribunal Superior. Si hay causa probable y no se llega a un acuerdo, puede celebrarse una audiencia ante 3 comisionados, que pueden ordenar que cese la discriminación y ordenar la contratación, la reincorporación, el pago de salarios atrasados y una indemnización. Tiene 30 días desde que se le notifica la orden de la Comisión para pedir al Tribunal Superior que la revise.",
+   "state": "draft"
+  },
+  "guide.discrimination.a-place-of-public-accommodation-is": {
+   "en": "A place of <b>public accommodation</b> is any place that offers its goods or services to the public: a store, a restaurant, a hotel, a theater, a barbershop, a health care provider, a bus, and many more. It may not refuse you service, or treat you differently, because of any of the reasons above, or post a notice that some people are unwelcome. A club that is distinctly private is not covered.",
+   "es": "Un <b>lugar público</b> (place of public accommodation) es cualquier lugar que ofrece sus productos o servicios al público: una tienda, un restaurante, un hotel, un teatro, una barbería, un proveedor de atención médica, un autobús y muchos más. No puede negarle el servicio ni tratarle de otra manera por cualquiera de las razones anteriores, ni poner un aviso de que algunas personas no son bienvenidas. Un club que es claramente privado no está cubierto.",
+   "state": "draft"
+  },
+  "guide.discrimination.a-store-restaurant-hotel-or-other": {
+   "en": "A store, restaurant, hotel or other place open to the public",
+   "es": "Una tienda, un restaurante, un hotel u otro lugar abierto al público",
+   "state": "draft"
+  },
+  "guide.discrimination.an-employer-may-not-refuse-to": {
+   "en": "An employer may not refuse to hire you, fire you, or treat you differently in pay or in the terms of your job because of any of the reasons above, unless the reason is a genuine requirement of the job. Job advertisements and applications may not state such a preference.",
+   "es": "Un empleador no puede negarse a contratarle, despedirle ni tratarle de otra manera en el sueldo o en las condiciones de su trabajo por cualquiera de las razones anteriores, a menos que la razón sea un requisito auténtico del puesto. Los anuncios de empleo y las solicitudes no pueden expresar una preferencia así.",
+   "state": "draft"
+  },
+  "guide.discrimination.an-employer-must-make-reasonable": {
+   "en": "An employer must make <b>reasonable accommodations</b> for a qualified employee or applicant with a disability, such as a changed schedule or equipment, unless doing so would be an undue hardship.",
+   "es": "Un empleador debe hacer <b>ajustes razonables</b> para un empleado o solicitante con una discapacidad que reúna los requisitos del puesto, como un horario distinto o un equipo, a menos que hacerlo suponga una carga excesiva.",
+   "state": "draft"
+  },
+  "guide.discrimination.an-employer-with-6-or-more": {
+   "en": "An employer with 6 or more employees is covered, and so are the state and every town.",
+   "es": "Están cubiertos los empleadores con 6 o más empleados, el estado y todos los municipios.",
+   "state": "draft"
+  },
+  "guide.discrimination.at-work": {
+   "en": "At work",
+   "es": "En el trabajo",
+   "state": "draft"
+  },
+  "guide.discrimination.at-work-federal-law-protects-you": {
+   "en": "<b>At work, federal law protects you too.</b> The U.S. Equal Employment Opportunity Commission says that where a state agency enforces a law like this one, its own deadline is extended to 300 days, and that a charge filed with a state agency that works with it can be filed with both at once. Tell the Commission if you want yours filed with the federal agency as well.",
+   "es": "<b>En el trabajo, la ley federal también le protege.</b> La Comisión para la Igualdad de Oportunidades en el Empleo de EE. UU. (EEOC) dice que, donde una agencia estatal hace cumplir una ley como esta, su propio plazo se amplía a 300 días, y que una denuncia presentada ante una agencia estatal que colabora con ella puede quedar presentada ante las dos a la vez. Dígale a la Comisión si quiere que la suya se presente también ante la agencia federal.",
+   "state": "draft"
+  },
+  "guide.discrimination.at-work-or-applying-for-a": {
+   "en": "At work, or applying for a job",
+   "es": "En el trabajo, o al solicitar un empleo",
+   "state": "draft"
+  },
+  "guide.discrimination.commission-for-human-rights": {
+   "en": "Commission for Human Rights",
+   "es": "Comisión de Derechos Humanos",
+   "state": "draft"
+  },
+  "guide.discrimination.commission-for-human-rights-new": {
+   "en": "Commission for Human Rights (New Hampshire)",
+   "es": "Comisión de Derechos Humanos (New Hampshire)",
+   "state": "draft"
+  },
+  "guide.discrimination.discrimination-because-of-sex-includes": {
+   "en": "Discrimination because of sex includes <b>pregnancy</b>. An employer must give a leave of absence for a disability caused by pregnancy or childbirth, and hold your job or a comparable one for your return unless business necessity makes that impossible or unreasonable.",
+   "es": "La discriminación por sexo incluye el <b>embarazo</b>. Un empleador debe dar una licencia por la incapacidad que causen el embarazo o el parto, y guardarle su puesto o uno comparable para cuando regrese, a menos que una necesidad del negocio lo haga imposible o poco razonable.",
+   "state": "draft"
+  },
+  "guide.discrimination.every-place-that-serves-the-public": {
+   "en": "Every place that serves the public is covered, except a private club.",
+   "es": "Está cubierto todo lugar que atiende al público, salvo un club privado.",
+   "state": "draft"
+  },
+  "guide.discrimination.file-a-complaint-with-the-commission": {
+   "en": "File a complaint with the Commission for Human Rights within 180 days.",
+   "es": "Presente una queja ante la Comisión de Derechos Humanos dentro de los 180 días.",
+   "state": "draft"
+  },
+  "guide.discrimination.file-a-complaint-with-the-commission-2": {
+   "en": "File a complaint with the Commission for Human Rights",
+   "es": "Presente una queja ante la Comisión de Derechos Humanos",
+   "state": "draft"
+  },
+  "guide.discrimination.file-a-federal-charge-eeoc": {
+   "en": "File a federal charge (EEOC)",
+   "es": "Presentar una denuncia federal (EEOC)",
+   "state": "draft"
+  },
+  "guide.discrimination.how-to-file-a-charge-of": {
+   "en": "How to File a Charge of Employment Discrimination (U.S. Equal Employment Opportunity Commission)",
+   "es": "Cómo presentar una denuncia por discriminación en el empleo (Comisión para la Igualdad de Oportunidades en el Empleo de EE. UU.)",
+   "state": "draft"
+  },
+  "guide.discrimination.how-to-get-help-after-domestic": {
+   "en": "How to get help after domestic violence, sexual assault or stalking",
+   "es": "Cómo obtener ayuda después de violencia doméstica, agresión sexual o acoso",
+   "state": "draft"
+  },
+  "guide.discrimination.instead-of-waiting-for-the-commission": {
+   "en": "Instead of waiting for the Commission to decide, you may sue in the Superior Court of your county, or of the county where it happened: once your complaint has been at the Commission for 180 days, or sooner if the Commission agrees in writing, and no later than <b>3 years</b> after the discrimination. Either side may ask for a jury. If you go to court, you cannot bring the same complaint back to the Commission, and you cannot go to court once a Commission hearing has begun.",
+   "es": "En lugar de esperar a que la Comisión decida, puede demandar ante el Tribunal Superior de su condado, o del condado donde ocurrió: cuando su queja lleve 180 días ante la Comisión, o antes si la Comisión lo acepta por escrito, y a más tardar <b>3 años</b> después de la discriminación. Cualquiera de las partes puede pedir un jurado. Si va al tribunal, no puede volver a llevar la misma queja a la Comisión, y no puede ir al tribunal una vez que haya empezado una audiencia ante la Comisión.",
+   "state": "draft"
+  },
+  "guide.discrimination.know-what-the-law-protects": {
+   "en": "Know what the law protects",
+   "es": "Sepa qué protege la ley",
+   "state": "draft"
+  },
+  "guide.discrimination.landlords-sellers-and-agents-are-covered": {
+   "en": "Landlords, sellers and agents are covered, with a few exceptions.",
+   "es": "Están cubiertos los arrendadores, los vendedores y los agentes, con algunas excepciones.",
+   "state": "draft"
+  },
+  "guide.discrimination.law-against-discrimination-rsa-354-a": {
+   "en": "Law Against Discrimination, RSA 354-A",
+   "es": "Ley contra la Discriminación, RSA 354-A",
+   "state": "draft"
+  },
+  "guide.discrimination.lawyer-referral-service": {
+   "en": "Lawyer Referral Service",
+   "es": "Servicio de referencia de abogados",
+   "state": "draft"
+  },
+  "guide.discrimination.lead": {
+   "en": "What New Hampshire's Law Against Discrimination protects at work, in renting or buying a home, and in stores, restaurants and other places open to the public, and how to file a complaint with the Commission for Human Rights.",
+   "es": "Lo que la Ley contra la Discriminación de New Hampshire protege en el trabajo, al alquilar o comprar una vivienda, y en tiendas, restaurantes y otros lugares abiertos al público, y cómo presentar una queja ante la Comisión de Derechos Humanos.",
+   "state": "draft"
+  },
+  "guide.discrimination.new-hampshire-law-forbids-discrimination": {
+   "en": "New Hampshire law forbids discrimination because of your age, sex, gender identity, race, creed, color, marital status, physical or mental disability, national origin or sexual orientation: at work and when you apply for a job, when you rent or buy a home, and in places open to the public. In housing, having children under 18 is protected too. It is also against the law to punish you for complaining. If it happens to you, you can file a written complaint with the New Hampshire Commission for Human Rights within 180 days.",
+   "es": "La ley de New Hampshire prohíbe la discriminación por su edad, sexo, identidad de género, raza, credo, color, estado civil, discapacidad física o mental, origen nacional u orientación sexual: en el trabajo y al solicitar un empleo, al alquilar o comprar una vivienda, y en los lugares abiertos al público. En la vivienda, tener hijos menores de 18 años también está protegido. También es ilegal castigarle por quejarse. Si le ocurre, puede presentar una queja por escrito ante la Comisión de Derechos Humanos de New Hampshire dentro de los 180 días.",
+   "state": "draft"
+  },
+  "guide.discrimination.new-hampshires-law-against": {
+   "en": "New Hampshire&rsquo;s <b>Law Against Discrimination</b> protects you from being treated differently because of your <b>age, sex, gender identity, race, creed, color, marital status, physical or mental disability, national origin or sexual orientation</b>. In housing it also protects <b>familial status</b>: having a child under 18 living with you.",
+   "es": "La <b>Ley contra la Discriminación</b> de New Hampshire le protege de recibir un trato distinto por su <b>edad, sexo, identidad de género, raza, credo, color, estado civil, discapacidad física o mental, origen nacional u orientación sexual</b>. En la vivienda también protege la <b>situación familiar</b>: tener un hijo menor de 18 años que vive con usted.",
+   "state": "draft"
+  },
+  "guide.discrimination.no-one-may-refuse-to-rent": {
+   "en": "No one may refuse to rent or sell to you, offer you different terms, tell you a home is not available when it is, or advertise a preference, because of any of the reasons above or because you have children under 18.",
+   "es": "Nadie puede negarse a alquilarle o venderle, ofrecerle condiciones distintas, decirle que una vivienda no está disponible cuando sí lo está, ni anunciar una preferencia, por cualquiera de las razones anteriores o porque tiene hijos menores de 18 años.",
+   "state": "draft"
+  },
+  "guide.discrimination.or-take-it-to-court": {
+   "en": "Or take it to court",
+   "es": "O llévelo al tribunal",
+   "state": "draft"
+  },
+  "guide.discrimination.renting-or-buying-a-home": {
+   "en": "Renting or buying a home",
+   "es": "Al alquilar o comprar una vivienda",
+   "state": "draft"
+  },
+  "guide.discrimination.retaliation-is-against-the-law-no": {
+   "en": "<b>Retaliation</b> is against the law: no one may fire, expel or otherwise punish you because you opposed discrimination, filed a complaint, or testified or helped in a case.",
+   "es": "Las <b>represalias</b> son ilegales: nadie puede despedirle, expulsarle ni castigarle de otra forma porque usted se opuso a la discriminación, presentó una queja, o declaró o ayudó en un caso.",
+   "state": "draft"
+  },
+  "guide.discrimination.sexual-harassment-such-as-unwelcome": {
+   "en": "<b>Sexual harassment</b>, such as unwelcome sexual advances or requests for sexual favors, is discrimination because of sex.",
+   "es": "El <b>acoso sexual</b>, como insinuaciones sexuales no deseadas o pedidos de favores sexuales, es discriminación por sexo.",
+   "state": "draft"
+  },
+  "guide.discrimination.stores-restaurants-and-other-places-open": {
+   "en": "Stores, restaurants and other places open to the public",
+   "es": "Tiendas, restaurantes y otros lugares abiertos al público",
+   "state": "draft"
+  },
+  "guide.discrimination.the-commission-for-human-rights-can": {
+   "en": "The Commission for Human Rights can tell you how to file a complaint. For advice on your own case, talk to a lawyer:",
+   "es": "La Comisión de Derechos Humanos puede decirle cómo presentar una queja. Para recibir consejo sobre su propio caso, hable con un abogado:",
+   "state": "draft"
+  },
+  "guide.discrimination.the-commission-investigates-and-tries-to": {
+   "en": "The Commission investigates, and tries to settle it. You may go to court instead, within the limits the law sets.",
+   "es": "La Comisión investiga y trata de llegar a un acuerdo. Puede ir al tribunal en su lugar, dentro de los límites que fija la ley.",
+   "state": "draft"
+  },
+  "guide.discrimination.the-law-covers-employers-with-6": {
+   "en": "The law covers employers with 6 or more employees, and the state and its cities, towns, boards and departments. It does not cover a nonprofit social club, or a nonprofit fraternal or religious organization, as an employer, or work for your own parent, spouse or child, or in someone&rsquo;s home as a domestic worker.",
+   "es": "La ley cubre a los empleadores con 6 o más empleados, y al estado y sus ciudades, municipios, juntas y departamentos. No cubre, como empleador, a un club social sin fines de lucro ni a una organización fraternal o religiosa sin fines de lucro, ni el trabajo para su propio padre o madre, cónyuge o hijo, ni el trabajo doméstico en la casa de alguien.",
+   "state": "draft"
+  },
+  "guide.discrimination.the-new-hampshire-commission-for-human": {
+   "en": "The <b>New Hampshire Commission for Human Rights</b> takes complaints of discrimination. Your complaint is in writing and signed, names who discriminated against you, and says what happened. File it <b>within 180 days</b> of the act. Write things down as they happen, and keep any letters, emails, texts or notices.",
+   "es": "La <b>Comisión de Derechos Humanos de New Hampshire</b> recibe quejas por discriminación. Su queja va por escrito y firmada, nombra a quien le discriminó y dice lo que pasó. Preséntela <b>dentro de los 180 días</b> del hecho. Anote las cosas a medida que ocurren, y guarde las cartas, correos electrónicos, mensajes de texto o avisos.",
+   "state": "draft"
+  },
+  "guide.discrimination.there-are-a-few-exceptions-they": {
+   "en": "There are a few exceptions. They include renting a unit in a building of no more than 4 units where the owner lives in one of them, renting a room in the owner&rsquo;s own home, and some sales of a single-family home by its owner without a real estate agent.",
+   "es": "Hay algunas excepciones. Entre ellas: alquilar una unidad en un edificio de no más de 4 unidades donde el dueño vive en una de ellas, alquilar una habitación en la propia casa del dueño, y algunas ventas de una casa unifamiliar por su dueño sin un agente de bienes raíces.",
+   "state": "draft"
+  },
+  "guide.discrimination.these-deadlines-are-strict-and-the": {
+   "en": "These deadlines are strict, and the choices between the Commission and the court are hard to undo. A lawyer can advise you on your own case (below).",
+   "es": "Estos plazos son estrictos, y es difícil deshacer la elección entre la Comisión y el tribunal. Un abogado puede aconsejarle sobre su propio caso (más abajo).",
+   "state": "draft"
+  },
+  "guide.discrimination.title": {
+   "en": "If You Face Discrimination: Work, Housing and Public Places",
+   "es": "Si sufre discriminación: en el trabajo, la vivienda y los lugares públicos",
+   "state": "draft"
+  },
+  "guide.discrimination.where-did-it-happen": {
+   "en": "Where did it happen?",
+   "es": "¿Dónde ocurrió?",
+   "state": "draft"
+  },
+  "guide.discrimination.write-down-what-happened-when-and": {
+   "en": "Write down what happened, when, and who was there. Keep any letters, messages or notices.",
+   "es": "Anote qué pasó, cuándo y quién estaba presente. Guarde las cartas, los mensajes o los avisos.",
+   "state": "draft"
+  },
+  "guide.discrimination.your-rights-as-a-tenant": {
+   "en": "Your rights as a tenant",
+   "es": "Sus derechos como inquilino",
+   "state": "draft"
+  },
+  "guide.discrimination.your-rights-at-work-getting-paid": {
+   "en": "Your rights at work: getting paid",
+   "es": "Sus derechos en el trabajo: que le paguen",
+   "state": "draft"
+  },
   "guide.domestic-violence-help.603-legal-aid": {
    "en": "603 Legal Aid",
    "es": "603 Legal Aid",
@@ -7595,6 +7810,21 @@
   "guide.task.disability-help.line": {
    "en": "SSDI and SSI, the state&rsquo;s cash and medical assistance, area agencies and vocational rehabilitation.",
    "es": "SSDI y SSI, la ayuda estatal en efectivo y médica, las agencias regionales y la rehabilitación vocacional.",
+   "state": "draft"
+  },
+  "guide.task.discrimination.does": {
+   "en": "Get help if you face discrimination",
+   "es": "Obtener ayuda si sufre discriminación",
+   "state": "draft"
+  },
+  "guide.task.discrimination.head": {
+   "en": "How to get help if you face discrimination",
+   "es": "Cómo obtener ayuda si sufre discriminación",
+   "state": "draft"
+  },
+  "guide.task.discrimination.line": {
+   "en": "At work, renting or buying a home, and in stores and other public places: what the law forbids, and how to file a complaint.",
+   "es": "En el trabajo, al alquilar o comprar una vivienda, y en tiendas y otros lugares públicos: lo que la ley prohíbe y cómo presentar una queja.",
    "state": "draft"
   },
   "guide.task.domestic-violence-help.does": {

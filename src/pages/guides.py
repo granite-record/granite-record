@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-10-11.44
+# GRANITE_VERSION: 2026-10-11.45
 """
 The how-to guides: their words, their sources, and what each was checked
 against. Read by build_civics.py, which draws them on the Resources hub's
@@ -3672,6 +3672,220 @@ GUIDES += [VIOLENCE]
 
 
 # ---------------------------------------------------------------------------
+# IF YOU FACE DISCRIMINATION (the person, 25 October 2026: "Write all three
+# know your rights guides too"). New Hampshire's Law Against Discrimination,
+# RSA 354-A, read on the site's own Laws pages on 25 October 2026: who and
+# what it protects at work, in housing and in places open to the public, the
+# Commission for Human Rights, the 180 days to file a complaint, and the
+# choice of Superior Court after it. The U.S. Equal Employment Opportunity
+# Commission's page on filing a charge answers this machine and was read the
+# same day; HUD's complaint page draws itself by script and was not, so the
+# guide names no federal housing route. The Commission's own pages refuse a
+# cloud session and wait for the person's printouts.
+# ---------------------------------------------------------------------------
+DISC_READ = "2026-10-25"
+DISC_PAGES_READ = None               # the person's printouts of humanrights.nh.gov
+HRC_HOME = "https://www.humanrights.nh.gov/"
+EEOC_FILE = "https://www.eeoc.gov/how-file-charge-employment-discrimination"
+
+DISCRIMINATION = guide(
+    "discrimination", "If You Face Discrimination: Work, Housing and Public Places",
+    "What New Hampshire's Law Against Discrimination protects at work, in renting or buying a "
+    "home, and in stores, restaurants and other places open to the public, and how to file a "
+    "complaint with the Commission for Human Rights.",
+    "New Hampshire law forbids discrimination because of your age, sex, gender identity, race, "
+    "creed, color, marital status, physical or mental disability, national origin or sexual "
+    "orientation: at work and when you apply for a job, when you rent or buy a home, and in "
+    "places open to the public. In housing, having children under 18 is protected too. It is "
+    "also against the law to punish you for complaining. If it happens to you, you can file a "
+    "written complaint with the New Hampshire Commission for Human Rights within 180 days.",
+    [ask("Where did it happen?",
+         [("At work, or applying for a job",
+           "An employer with 6 or more employees is covered, and so are the state and every "
+           "town."),
+          ("Renting or buying a home",
+           "Landlords, sellers and agents are covered, with a few exceptions."),
+          ("A store, restaurant, hotel or other place open to the public",
+           "Every place that serves the public is covered, except a private club.")]),
+     box("Write down what happened, when, and who was there. Keep any letters, messages or "
+         "notices."),
+     box("File a complaint with the Commission for Human Rights within 180 days."),
+     box("The Commission investigates, and tries to settle it. You may go to court instead, "
+         "within the limits the law sets.")],
+    [step("Know what the law protects",
+          "<p>New Hampshire&rsquo;s <b>Law Against Discrimination</b> protects you from being "
+          "treated differently because of your <b>age, sex, gender identity, race, creed, color, "
+          "marital status, physical or mental disability, national origin or sexual "
+          "orientation</b>. In housing it also protects <b>familial status</b>: having a child "
+          "under 18 living with you.</p>"
+          "<ul><li><b>Sexual harassment</b>, such as unwelcome sexual advances or requests for "
+          "sexual favors, is discrimination because of sex.</li>"
+          "<li>Discrimination because of sex includes <b>pregnancy</b>. An employer must give a "
+          "leave of absence for a disability caused by pregnancy or childbirth, and hold your "
+          "job or a comparable one for your return unless business necessity makes that "
+          "impossible or unreasonable.</li>"
+          "<li>An employer must make <b>reasonable accommodations</b> for a qualified employee "
+          "or applicant with a disability, such as a changed schedule or equipment, unless "
+          "doing so would be an undue hardship.</li>"
+          "<li><b>Retaliation</b> is against the law: no one may fire, expel or otherwise punish "
+          "you because you opposed discrimination, filed a complaint, or testified or helped in "
+          "a case.</li></ul>",
+          law=["RSA 354-A:1", "RSA 354-A:7", "RSA 354-A:19"]),
+     step("At work",
+          "<p>An employer may not refuse to hire you, fire you, or treat you differently in pay "
+          "or in the terms of your job because of any of the reasons above, unless the reason is "
+          "a genuine requirement of the job. Job advertisements and applications may not state "
+          "such a preference.</p>"
+          "<p>The law covers employers with 6 or more employees, and the state and its cities, "
+          "towns, boards and departments. It does not cover a nonprofit social "
+          "club, or a nonprofit fraternal or religious organization, as an employer, or work "
+          "for your own parent, spouse or child, or in someone&rsquo;s home as a domestic "
+          "worker.</p>",
+          law=["RSA 354-A:2", "RSA 354-A:6", "RSA 354-A:7"]),
+     step("Renting or buying a home",
+          "<p>No one may refuse to rent or sell to you, offer you different terms, tell you a "
+          "home is not available when it is, or advertise a preference, because of any of the "
+          "reasons above or because you have children under 18.</p>"
+          "<p>There are a few exceptions. They include renting a unit in a building of no more "
+          "than 4 units where the owner lives in one of them, renting a room in the "
+          "owner&rsquo;s own home, and some sales of a single-family home by its owner without "
+          "a real estate agent.</p>",
+          law=["RSA 354-A:8", "RSA 354-A:10", "RSA 354-A:15"]),
+     step("Stores, restaurants and other places open to the public",
+          "<p>A place of <b>public accommodation</b> is any place that offers its goods or "
+          "services to the public: a store, a restaurant, a hotel, a theater, a barbershop, a "
+          "health care provider, a bus, and many more. It may not refuse you service, or treat "
+          "you differently, because of any of the reasons above, or post a notice that some "
+          "people are unwelcome. A club that is distinctly private is not covered.</p>",
+          law=["RSA 354-A:2", "RSA 354-A:16", "RSA 354-A:17"]),
+     step("File a complaint with the Commission for Human Rights",
+          "<p>The <b>New Hampshire Commission for Human Rights</b> takes complaints of "
+          "discrimination. Your complaint is in writing and signed, names who discriminated "
+          "against you, and says what happened. File it <b>within 180 days</b> of the act. Write "
+          "things down as they happen, and keep any letters, emails, texts or notices.</p>"
+          "<p>A commissioner investigates, with the Commission&rsquo;s staff, and encourages "
+          "both sides to settle. If the commissioner finds no probable cause, the complaint is "
+          "dismissed, and you can appeal to the Superior Court. If there is probable cause and "
+          "it is not settled, a hearing may be held before 3 commissioners, who can order the "
+          "discrimination to stop and order hiring, reinstatement, back pay and damages. You "
+          "have 30 days after the Commission&rsquo;s order is served to ask the Superior Court "
+          "to review it.</p>"
+          "<p><b>At work, federal law protects you too.</b> The U.S. Equal Employment "
+          "Opportunity Commission says that where a state agency enforces a law like this one, "
+          "its own deadline is extended to 300 days, and that a charge filed with a state "
+          "agency that works with it can be filed with both at once. Tell the Commission if you "
+          "want yours filed with the federal agency as well.</p>",
+          actions=[("Commission for Human Rights", HRC_HOME),
+                   ("File a federal charge (EEOC)", EEOC_FILE)],
+          law=["RSA 354-A:5", "RSA 354-A:21", "RSA 354-A:22"]),
+     step("Or take it to court",
+          "<p>Instead of waiting for the Commission to decide, you may sue in the Superior Court "
+          "of your county, or of the county where it happened: once your complaint has been at "
+          "the Commission for 180 days, or sooner if the Commission agrees in writing, and no "
+          "later than <b>3 years</b> after the discrimination. Either side may ask for a jury. "
+          "If you go to court, you cannot bring the same complaint back to the Commission, and "
+          "you cannot go to court once a Commission hearing has begun.</p>"
+          "<p>These deadlines are strict, and the choices between the Commission and the court "
+          "are hard to undo. A lawyer can advise you on your own case (below).</p>",
+          law=["RSA 354-A:21-a"])],
+    [("Commission for Human Rights (New Hampshire)", HRC_HOME),
+     ("How to File a Charge of Employment Discrimination (U.S. Equal Employment Opportunity "
+      "Commission)", EEOC_FILE),
+     ("Law Against Discrimination, RSA 354-A", "/laws/354-a")],
+    ["354-A"],
+    [# The Law Against Discrimination, as the site's own Laws pages print it, 25 October 2026.
+     claim("Discrimination because of age, sex, gender identity, race, creed, color, marital "
+           "status, familial status, physical or mental disability or national origin, in "
+           "employment, in places of public accommodation and in housing accommodations; no "
+           "person be discriminated against on account of sexual orientation.",
+           "RSA 354-A:1", DISC_READ),
+     claim("\"Employer\" does not include any employer with fewer than 6 persons in its employ, an "
+           "exclusively social club, or a fraternal or religious association or corporation not "
+           "organized for private profit; it includes the state and all political subdivisions, "
+           "boards, departments, and commissions; \"employee\" does not include any individual "
+           "employed by a parent, spouse or child, or in the domestic service of any person; "
+           "familial status, individuals under 18 domiciled with a parent or custodian; a place "
+           "of public accommodation includes any inn, hotel, restaurant, public conveyance, "
+           "barbershop, theater, health care provider, store or other establishment which offers "
+           "its goods or services to the general public, not any institution or club which is "
+           "in its nature distinctly private.", "RSA 354-A:2", DISC_READ),
+     claim("The opportunity to obtain employment without discrimination is a civil right.",
+           "RSA 354-A:6", DISC_READ),
+     claim("Unlawful for an employer to refuse to hire, to discharge, or to discriminate in "
+           "compensation or in terms, conditions or privileges of employment, unless based upon "
+           "a bona fide occupational qualification; or to print any statement, advertisement or "
+           "application form expressing a limitation; harassment on the basis of sex is "
+           "unlawful sex discrimination, including unwelcome sexual advances and requests for "
+           "sexual favors; sex includes pregnancy; leave for the temporary physical disability "
+           "of pregnancy and childbirth, and the original or a comparable job on return unless "
+           "business necessity makes this impossible or unreasonable; reasonable accommodations "
+           "for a qualified individual with a disability unless an undue hardship.",
+           "RSA 354-A:7", DISC_READ),
+     claim("The opportunity to obtain housing without discrimination, including familial status "
+           "and sexual orientation, is a civil right.", "RSA 354-A:8", DISC_READ),
+     claim("Unlawful to refuse a real estate transaction, alter its terms, represent that real "
+           "property is not available when it is, or publish a notice or advertisement "
+           "indicating a preference, limitation, or discrimination.", "RSA 354-A:10", DISC_READ),
+     claim("Exemptions from RSA 354-A:10: certain private sales of single family homes by an "
+           "owner without a broker; rental in a building of not more than 4 families if the "
+           "owner resides in one; rental of rooms in a private home by an owner; the exemptions "
+           "do not apply to RSA 354-A:10, VII.", "RSA 354-A:15", DISC_READ),
+     claim("Equal access to places of public accommodation is a civil right; unlawful to "
+           "refuse, withhold or deny its accommodations, or to post a notice that any person is "
+           "unwelcome.", "RSA 354-A:17", DISC_READ),
+     claim("Equal access to places of public accommodation without discrimination is a civil "
+           "right, including sexual orientation.", "RSA 354-A:16", DISC_READ),
+     claim("Unlawful to discharge, expel, or otherwise retaliate against any person because he "
+           "has opposed any practices forbidden under this chapter or has filed a complaint, "
+           "testified or assisted in any proceeding.", "RSA 354-A:19", DISC_READ),
+     claim("The commission receives, investigates and passes upon complaints alleging "
+           "violations of this chapter.", "RSA 354-A:5", DISC_READ),
+     claim("A verified complaint in writing naming who committed the practice and the "
+           "particulars; investigation by a commissioner, encouraging settlement; dismissal on "
+           "no probable cause, with a right of appeal to superior court; conciliation; a hearing "
+           "before 3 members of the commission; orders to cease and desist, hiring, "
+           "reinstatement, back pay, compensatory damages; must be filed within 180 days after "
+           "the alleged act of discrimination.", "RSA 354-A:21", DISC_READ),
+     claim("At the expiration of 180 days after the timely filing of a complaint with the "
+           "commission, or sooner if the commission assents in writing, but not later than 3 "
+           "years after the alleged unlawful practice occurred, a civil action in the superior "
+           "court for the county where it occurred or of the party's residence; trial by jury; "
+           "not available once a commission hearing has begun or concluded; a party electing "
+           "court is barred from a subsequent complaint to the commission on the same practice.",
+           "RSA 354-A:21-a", DISC_READ),
+     claim("Judicial review of a commission order in the superior court, instituted within 30 "
+           "days after the service of the order of the commission.", "RSA 354-A:22", DISC_READ),
+     # The EEOC's page, read on 25 October 2026.
+     claim("The 180-calendar-day filing deadline is extended to 300 calendar days if a state or "
+           "local agency enforces a law that prohibits employment discrimination on the same "
+           "basis; if you file a charge with either EEOC or a FEPA with a worksharing agreement, "
+           "the charge also will be automatically filed with the other agency (dual filing); "
+           "you can let the state agency know if you also want your charge filed with the EEOC; "
+           "1-800-669-4000.", EEOC_FILE, DISC_READ),
+     # The Commission's own page, from the person's printout.
+     claim("The New Hampshire Commission for Human Rights takes complaints of discrimination in "
+           "employment, housing and public accommodation, and says how to file one.", HRC_HOME,
+           DISC_PAGES_READ)]
+    + help_claims("lawyer"),
+    more="<h2>Who Can Help</h2>"
+         "<p>The Commission for Human Rights can tell you how to file a complaint. For advice "
+         "on your own case, talk to a lawyer:</p>"
+         + helps("lawyer"),
+    see=[("Your rights as a tenant", "/guides/tenant-rights.html"),
+         ("Your rights at work: getting paid", "/guides/wage-rights.html"),
+         ("How to get help after domestic violence, sexual assault or stalking",
+          "/guides/domestic-violence-help.html")],
+    figures=[fig("180 days", "RSA 354-A:21", "within 180 days after the alleged act of discrimination"),
+             fig("3 years", "RSA 354-A:21-a", "not later than 3 years after the alleged unlawful "
+                 "practice occurred"),
+             fig("30 days", "RSA 354-A:22", "within 30 days after the service of the order of the "
+                 "commission"),
+             fig("300 days", EEOC_FILE, "extended to 300 calendar days")])
+
+GUIDES += [DISCRIMINATION]
+
+
+# ---------------------------------------------------------------------------
 # HELP IF YOU ARE HOMELESS OR MAY LOSE YOUR HOME (the person, 24 October
 # 2026). From the Department of Health and Human Services' Homeless Services
 # page, the Judicial Branch's Landlord/Tenant page and the Department of
@@ -5621,6 +5835,9 @@ TASKS = [
              "The Child Care Scholarship: who it is for, how to apply, and choosing a provider."),
         task("domestic-violence-help", "Get help after domestic violence, sexual assault or stalking",
              "The 24-hour helpline, a safety plan, a protective order, and care after an assault."),
+        task("discrimination", "Get help if you face discrimination",
+             "At work, renting or buying a home, and in stores and other public places: what "
+             "the law forbids, and how to file a complaint."),
         task("homelessness-help", "Get help if you are homeless or may lose your home",
              "Shelter, your town&rsquo;s welfare office, your rights in an eviction, and a "
              "housing voucher."),
@@ -5751,6 +5968,8 @@ WORDS = {
                                "child care assistance"),
     "domestic-violence-help": ("domestic violence", "sexual assault", "stalking", "abuse",
                                "restraining order", "protective order", "rape"),
+    "discrimination": ("discrimination", "discriminated", "harassment", "sexual harassment",
+                       "human rights", "fair housing", "racism", "retaliation"),
     "homelessness-help": ("homeless", "shelter", "eviction", "evicted", "housing voucher",
                           "section 8", "town welfare", "rent"),
     "storms-and-emergencies": ("storm", "power outage", "emergency", "nh alerts", "generator",
