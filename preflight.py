@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.712
+# GRANITE_VERSION: 2026-09-04.713
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -66739,6 +66739,111 @@ def _common_questions(G, civics):
             bad.append(f"{slug}: a question without its summary")
     assert not bad, "; ".join(bad[:5])
     return "ok", f"{seen} pages with Common Questions, each a question with its answer"
+
+
+@check("code", "the assistant guard stops what needs the person's word and what no assistant "
+               "may do, lets ordinary work through, is wired to every tool that could do harm, "
+               "and starts")
+def _assistant_guard():
+    """The person, 26 October 2026: make sure this development "will avoid
+    the mistakes of other AI agents who have deleted codebases or ones that
+    have gained unapproved access to the backend of websites it wasn't
+    supposed to." .claude/hooks/guard.py is the answer, run by Claude Code
+    before every shell command, file write, web fetch and GitHub call any
+    session or helper agent makes here. A hook that fails to start lets the
+    call through, so this check starts it as Claude Code does.
+
+    THE TABLE IS THE POLICY. Each row is a call and what the guard must say
+    to it. Taking a row out, or turning a "deny" into an "allow", is a
+    decision for the person, not an edit to make a build pass. Every script
+    that calls refusal.check() -- every one that asks the General Court --
+    is added to the table as it stands, so a new fetcher is held from the
+    day it is written."""
+    import importlib.util
+    spec = importlib.util.spec_from_file_location("guard", ".claude/hooks/guard.py")
+    guard = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(guard)
+    B = lambda c: ("Bash", {"command": c})                        # noqa: E731
+    table = [
+        # The General Court, never from an ad-hoc command or a fetch tool.
+        (B("curl -s https://gc.nh.gov/bill_status/"), "deny"),
+        (B("wget http://www.gencourt.state.nh.us/rsa/html/"), "deny"),
+        (B("python3 -c \"import urllib.request as u; u.urlopen('https://gc.nh.gov/x')\""), "deny"),
+        (("WebFetch", {"url": "https://gc.nh.gov/house/"}), "deny"),
+        (B("sqlcmd -S 66.211.150.69 -Q 'select 1'"), "deny"),
+        # Its scripts, and what goes live, only on the person's word.
+        (B("python3 build_all.py"), "ask"),
+        (B("python3 refusal.py --clear"), "ask"),
+        (B("python3 src/ops/cloud.py push"), "ask"),
+        (B("python3 src/ops/cloud.py seed-kit"), "ask"),
+        (B("publish"), "ask"),
+        (B("cmd /c publish.bat"), "ask"),
+        (B("npx wrangler d1 execute follow --remote --command 'select 1'"), "ask"),
+        (B("curl -X DELETE https://api.cloudflare.com/client/v4/accounts/x"), "ask"),
+        (B("git push origin HEAD:main"), "ask"),
+        (B("gh pr merge 12"), "ask"),
+        (("mcp__github__merge_pull_request", {}), "ask"),
+        (("mcp__github__push_files", {"branch": "main"}), "ask"),
+        (("mcp__github__actions_run_trigger", {}), "ask"),
+        (("Edit", {"file_path": ".github/workflows/nightly.yml"}), "ask"),
+        (("Edit", {"file_path": ".claude/hooks/guard.py"}), "ask"),
+        (("Write", {"file_path": "corrections/officials.json"}), "ask"),
+        (B("cat .dev.vars"), "ask"),
+        (B("echo $CLOUDFLARE_API_TOKEN"), "ask"),
+        # What cannot be undone.
+        (B("git push --force origin dev"), "deny"),
+        (B("git push -f"), "deny"),
+        (B("git push origin +guides"), "deny"),
+        (B("git clean -fdx"), "deny"),
+        (B("git filter-branch --env-filter 'x' HEAD"), "deny"),
+        (B("rm -rf work"), "deny"),
+        (B("rm -r db/"), "deny"),
+        (B("rm -rf ."), "deny"),
+        (B("rm -rf src"), "deny"),
+        (B("rm -rf .git"), "deny"),
+        (B("echo '[]' > corrections/bill_notes.json"), "deny"),
+        (("Write", {"file_path": "STATE.md"}), "deny"),
+        (("Edit", {"file_path": "review/ground_truth.csv"}), "deny"),
+        (("Edit", {"file_path": "review/checked.jsonl"}), "deny"),
+        # Ordinary work, which a guard that cried wolf would teach people to wave through.
+        (B("python3 preflight.py --code"), "allow"),
+        (B("python3 build_all.py --local"), "allow"),
+        (B("python3 src/ops/inventory.py --bump-changed"), "allow"),
+        (B("python3 src/hearings/probe_alignment.py --truth"), "allow"),
+        (B("grep -rn 'gc.nh.gov' src/pages"), "allow"),
+        (B("git push -u origin guides && git push origin HEAD:dev"), "allow"),
+        (B("rm -rf site/es .build_cache"), "allow"),
+        (B("rm -rf /tmp/scratch-build"), "allow"),
+        (B("python3 src/ops/cloud.py pull"), "allow"),
+        (("Edit", {"file_path": "src/pages/guides.py"}), "allow"),
+        (("Edit", {"file_path": "corrections/officials.json"}), "allow"),
+    ]
+    for f in sorted(Path(".").rglob("*.py")):
+        if ".claude" in f.parts or f.name in guard.NOT_FETCHERS:
+            continue
+        try:
+            if "refusal.check(" in f.read_text(encoding="utf-8", errors="replace"):
+                table.append((B(f"python3 {f.as_posix()}"), "ask"))
+        except OSError:
+            continue
+    wrong = [f"{tool} {inp}: wants {want}, says {got[0]}" for (tool, inp), want in table
+             if (got := guard.decide(tool, inp)) and got[0] != want]
+    assert not wrong, f"{len(wrong)} of {len(table)} calls answered wrongly: " + "; ".join(wrong[:6])
+
+    cfg = json.loads(Path(".claude/settings.json").read_text(encoding="utf-8"))
+    wired = [h for e in cfg.get("hooks", {}).get("PreToolUse", [])
+             for h in e.get("hooks", []) if "guard.py" in h.get("command", "")
+             and all(re.search(e.get("matcher", ""), t) for t in
+                     ("Bash", "PowerShell", "Edit", "Write", "NotebookEdit", "WebFetch",
+                      "mcp__github__merge_pull_request"))]
+    assert wired, ".claude/settings.json does not run guard.py before every tool that could do harm"
+
+    out = _sealed_run([sys.executable, ".claude/hooks/guard.py"], capture_output=True,
+                      timeout=30, input=json.dumps(
+                             {"tool_name": "Bash", "tool_input": {"command": "git clean -fdx"}}))
+    assert '"permissionDecision": "deny"' in out.stdout, (
+        f"guard.py does not start and answer as Claude Code runs it: {out.stdout or out.stderr}")
+    return "ok", f"{len(table)} calls answered as the policy says, and the hook is wired and starts"
 
 
 @check("code", "guide_sources names each of its lists once, so no list of pages silently "

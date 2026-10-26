@@ -1,0 +1,25 @@
+{
+  "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "^(Bash|PowerShell|Edit|Write|MultiEdit|NotebookEdit|WebFetch|mcp__github__.*)$",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python3 \"${CLAUDE_PROJECT_DIR}/.claude/hooks/guard.py\"",
+            "timeout": 20
+          }
+        ]
+      }
+    ]
+  },
+  "permissions": {
+    "deny": [
+      "WebFetch(domain:gc.nh.gov)",
+      "WebFetch(domain:*.gc.nh.gov)",
+      "WebFetch(domain:gencourt.state.nh.us)",
+      "WebFetch(domain:*.gencourt.state.nh.us)",
+      "WebFetch(domain:api.cloudflare.com)"
+    ]
+  }
+}
