@@ -2068,6 +2068,16 @@
    "es": "Solicite en línea o en papel",
    "state": "draft"
   },
+  "guide.child-care-scholarship.between-those-yearly-checks-federal": {
+   "en": "Between those yearly checks, federal rules keep the scholarship going at least at the same level even if your income goes up, as long as it stays under the federal limit, and through temporary changes such as time off work for an illness or to care for a family member, a break between seasonal jobs, a school break, fewer hours, or your child turning 13. Your share of the cost cannot be raised in that time except as the rules allow.",
+   "es": "Entre esas revisiones anuales, las reglas federales mantienen la beca al menos al mismo nivel aunque sus ingresos aumenten, siempre que sigan por debajo del límite federal, y a pesar de cambios temporales como una ausencia del trabajo por enfermedad o para cuidar a un familiar, una pausa entre trabajos de temporada, unas vacaciones escolares, menos horas, o que su hijo cumpla 13 años. Su parte del costo no puede aumentar durante ese tiempo, salvo en los casos que permiten las reglas.",
+   "state": "draft"
+  },
+  "guide.child-care-scholarship.can-a-relative-or-a-religious": {
+   "en": "Can a relative or a religious provider care for my child?",
+   "es": "¿Puede cuidar a mi hijo un familiar o un proveedor religioso?",
+   "state": "draft"
+  },
   "guide.child-care-scholarship.check-that-it-fits-your-family": {
    "en": "Check that it fits your family: a child under 13 (under 18 with a disability), and parents working, looking for work, or in a training program.",
    "es": "Confirme que corresponde a su familia: un niño menor de 13 años (menor de 18 con una discapacidad), y padres que trabajan, buscan trabajo o están en un programa de capacitación.",
@@ -2093,6 +2103,11 @@
    "es": "Elija un proveedor de cuidado infantil",
    "state": "draft"
   },
+  "guide.child-care-scholarship.common-questions": {
+   "en": "Common Questions",
+   "es": "Preguntas frecuentes",
+   "state": "draft"
+  },
   "guide.child-care-scholarship.eligibility-determination-45-cfr-98-21": {
    "en": "Eligibility determination, 45 CFR 98.21 (federal)",
    "es": "La determinación de elegibilidad, 45 CFR 98.21 (federal)",
@@ -2101,6 +2116,11 @@
   "guide.child-care-scholarship.families-experiencing-homelessness-can": {
    "en": "<b>Families experiencing homelessness</b> can be approved for child care within 7 days of applying, once the child is linked to a provider enrolled with the Department. The final decision still comes within 30 days. Say so when you apply.",
    "es": "<b>Las familias sin hogar</b> pueden recibir la aprobación para el cuidado infantil en un plazo de 7 días desde la solicitud, una vez que el niño esté vinculado a un proveedor inscrito con el Departamento. La decisión final llega igualmente en un plazo de 30 días. Indíquelo al presentar su solicitud.",
+   "state": "draft"
+  },
+  "guide.child-care-scholarship.federal-rules-let-you-choose-among": {
+   "en": "Federal rules let you choose among child care centers, family child care homes and, within the state&rsquo;s limits, care in your own home. Relatives and religious providers are among the choices.",
+   "es": "Las reglas federales le permiten elegir entre centros de cuidado infantil, hogares de cuidado infantil familiar y, dentro de los límites del estado, el cuidado en su propia casa. Los familiares y los proveedores religiosos están entre las opciones.",
    "state": "draft"
   },
   "guide.child-care-scholarship.find-your-district-office": {
@@ -2129,18 +2149,13 @@
    "state": "draft"
   },
   "guide.child-care-scholarship.if-you-disagree-with-a-decision": {
-   "en": "<b>If you disagree with a decision,</b> you can ask for an administrative appeal hearing, in writing, on the Department&rsquo;s appeal request form or in a letter. Your Notice of Decision gives your deadline. You do not need a lawyer.",
-   "es": "<b>Si no está de acuerdo con una decisión,</b> puede pedir una audiencia de apelación administrativa, por escrito, en el formulario de solicitud de apelación del Departamento o en una carta. Su aviso de decisión (Notice of Decision) indica su plazo. No necesita un abogado.",
+   "en": "If you disagree with a decision",
+   "es": "Si no está de acuerdo con una decisión",
    "state": "draft"
   },
-  "guide.child-care-scholarship.if-your-family-is-homeless-or": {
-   "en": "If your family is homeless, or you disagree with a decision",
-   "es": "Si su familia no tiene hogar, o si no está de acuerdo con una decisión",
-   "state": "draft"
-  },
-  "guide.child-care-scholarship.in-between-federal-rules-keep-the": {
-   "en": "In between, federal rules keep the scholarship going at least at the same level even if your income goes up, as long as it stays under the federal limit, and through temporary changes such as time off work for an illness or to care for a family member, a break between seasonal jobs, a school break, fewer hours, or your child turning 13. Your share of the cost cannot be raised in that time except as the rules allow. If you lose your job or leave your program, it continues for at least three months so you can look for work or go back.",
-   "es": "Mientras tanto, las reglas federales mantienen la beca al menos al mismo nivel aunque sus ingresos aumenten, siempre que sigan por debajo del límite federal, y a pesar de cambios temporales como una ausencia del trabajo por enfermedad o para cuidar a un familiar, una pausa entre trabajos de temporada, unas vacaciones escolares, menos horas, o que su hijo cumpla 13 años. Su parte del costo no puede aumentar durante ese tiempo, salvo en los casos que permiten las reglas. Si pierde su trabajo o deja su programa, la beca continúa al menos tres meses para que pueda buscar trabajo o volver.",
+  "guide.child-care-scholarship.if-you-lose-your-job-or": {
+   "en": "If you lose your job or leave your program, it continues for at least three months so you can look for work or go back.",
+   "es": "Si pierde su trabajo o deja su programa, la beca continúa al menos tres meses para que pueda buscar trabajo o volver.",
    "state": "draft"
   },
   "guide.child-care-scholarship.keeping-the-scholarship": {
@@ -2151,6 +2166,11 @@
   "guide.child-care-scholarship.lead": {
    "en": "Applying for New Hampshire's Child Care Scholarship through the Department of Health and Human Services, step by step: who it is for, how to apply, choosing a provider, and keeping it.",
    "es": "Cómo solicitar la beca de cuidado infantil de New Hampshire (Child Care Scholarship) por medio del Departamento de Salud y Servicios Humanos, paso a paso: para quién es, cómo solicitarla, cómo elegir un proveedor y cómo conservarla.",
+   "state": "draft"
+  },
+  "guide.child-care-scholarship.my-family-is-homeless-can-we": {
+   "en": "My family is homeless. Can we get child care sooner?",
+   "es": "Mi familia no tiene hogar. ¿Podemos conseguir cuidado infantil antes?",
    "state": "draft"
   },
   "guide.child-care-scholarship.new-hampshires-child-care-scholarship": {
@@ -2234,9 +2254,24 @@
    "es": "Para programar una cita de seguimiento, llame al 1-844-ASK-DHHS (1-844-275-3447). Toda persona tiene derecho a solicitar, y a una decisión en un plazo de 30 días.",
    "state": "draft"
   },
+  "guide.child-care-scholarship.what-if-i-lose-my-job": {
+   "en": "What if I lose my job or leave my program?",
+   "es": "¿Y si pierdo mi trabajo o dejo mi programa?",
+   "state": "draft"
+  },
+  "guide.child-care-scholarship.what-if-my-income-goes-up": {
+   "en": "What if my income goes up, or my situation changes for a while?",
+   "es": "¿Y si mis ingresos aumentan, o mi situación cambia por un tiempo?",
+   "state": "draft"
+  },
+  "guide.child-care-scholarship.you-can-ask-for-an-administrative": {
+   "en": "You can ask for an administrative appeal hearing, in writing, on the Department&rsquo;s appeal request form or in a letter. Your Notice of Decision gives your deadline. You do not need a lawyer.",
+   "es": "Puede pedir una audiencia de apelación administrativa, por escrito, en el formulario de solicitud de apelación del Departamento o en una carta. Su aviso de decisión (Notice of Decision) indica su plazo. No necesita un abogado.",
+   "state": "draft"
+  },
   "guide.child-care-scholarship.you-choose-who-cares-for-your": {
-   "en": "You choose who cares for your child. Federal rules let you choose among child care centers, family child care homes and, within the state&rsquo;s limits, care in your own home. Relatives and religious providers are among the choices.",
-   "es": "Usted elige quién cuida a su hijo. Las reglas federales le permiten elegir entre centros de cuidado infantil, hogares de cuidado infantil familiar y, dentro de los límites del estado, el cuidado en su propia casa. Los familiares y los proveedores religiosos están entre las opciones.",
+   "en": "You choose who cares for your child.",
+   "es": "Usted elige quién cuida a su hijo.",
    "state": "draft"
   },
   "guide.child-care-scholarship.your-child-is-under-13-years": {
@@ -2689,6 +2724,16 @@
    "es": "La definición básica de discapacidad, 20 CFR 404.1505 (federal)",
    "state": "draft"
   },
+  "guide.disability-help.benefits-begin-after-a-waiting-period": {
+   "en": "Benefits begin after a waiting period of 5 months of disability. After 24 months of disability benefits, you get Medicare automatically.",
+   "es": "Los beneficios empiezan después de un período de espera de 5 meses de discapacidad. Después de 24 meses de beneficios por discapacidad, recibe Medicare automáticamente.",
+   "state": "draft"
+  },
+  "guide.disability-help.common-questions": {
+   "en": "Common Questions",
+   "es": "Preguntas frecuentes",
+   "state": "draft"
+  },
   "guide.disability-help.developmental-services-and-the-area": {
    "en": "Developmental services and the area agencies (Department of Health and Human Services)",
    "es": "Servicios del desarrollo y las agencias regionales (Departamento de Salud y Servicios Humanos)",
@@ -2697,6 +2742,11 @@
   "guide.disability-help.developmental-services-department-of": {
    "en": "Developmental Services (Department of Health and Human Services)",
    "es": "Servicios del desarrollo (Departamento de Salud y Servicios Humanos)",
+   "state": "draft"
+  },
+  "guide.disability-help.does-ssi-count-what-i-own": {
+   "en": "Does SSI count what I own?",
+   "es": "¿El SSI cuenta lo que poseo?",
    "state": "draft"
   },
   "guide.disability-help.for-a-child-from-birth-up": {
@@ -2752,6 +2802,16 @@
   "guide.disability-help.income-because-you-cannot-work": {
    "en": "Income, because you cannot work",
    "es": "Ingresos, porque no puede trabajar",
+   "state": "draft"
+  },
+  "guide.disability-help.is-there-help-for-a-young": {
+   "en": "Is there help for a young child with a developmental delay?",
+   "es": "¿Hay ayuda para un niño pequeño con un retraso en el desarrollo?",
+   "state": "draft"
+  },
+  "guide.disability-help.is-there-help-living-more-independently": {
+   "en": "Is there help living more independently?",
+   "es": "¿Hay ayuda para vivir con más independencia?",
    "state": "draft"
   },
   "guide.disability-help.lead": {
@@ -2820,8 +2880,8 @@
    "state": "draft"
   },
   "guide.disability-help.ssdi-social-security-disability": {
-   "en": "<b>SSDI</b> (Social Security Disability Insurance) is for people who have worked long enough, and paid Social Security taxes, to be insured. Benefits begin after a waiting period of 5 months of disability. After 24 months of disability benefits, you get Medicare automatically.",
-   "es": "<b>SSDI</b> (Seguro Social por Incapacidad) es para quienes han trabajado lo suficiente, y pagado impuestos del Seguro Social, para estar asegurados. Los beneficios empiezan después de un período de espera de 5 meses de discapacidad. Después de 24 meses de beneficios por discapacidad, recibe Medicare automáticamente.",
+   "en": "<b>SSDI</b> (Social Security Disability Insurance) is for people who have worked long enough, and paid Social Security taxes, to be insured.",
+   "es": "<b>SSDI</b> (Seguro Social por Incapacidad) es para quienes han trabajado lo suficiente, y pagado impuestos del Seguro Social, para estar asegurados.",
    "state": "draft"
   },
   "guide.disability-help.ssi-also-counts-what-you-own": {
@@ -2834,9 +2894,14 @@
    "es": "<b>SSI</b> (Seguridad de Ingreso Suplementario) es para personas con discapacidad, ciegas o de 65 años o más, cuyos ingresos y ahorros están por debajo de sus límites.",
    "state": "draft"
   },
+  "guide.disability-help.the-bureau-of-vocational-rehabilitations": {
+   "en": "The Bureau of Vocational Rehabilitation&rsquo;s independent living program helps people with disabilities, and older people who are blind, live more independently.",
+   "es": "El programa de vida independiente de la Oficina de Rehabilitación Vocacional ayuda a las personas con discapacidad, y a las personas mayores ciegas, a vivir con más independencia.",
+   "state": "draft"
+  },
   "guide.disability-help.the-department-of-educations-bureau-of": {
-   "en": "The Department of Education&rsquo;s <b>Bureau of Vocational Rehabilitation</b> helps people with disabilities prepare for, find and keep a job, under the federal vocational rehabilitation program. Its independent living program helps people with disabilities, and older people who are blind, live more independently.",
-   "es": "La <b>Oficina de Rehabilitación Vocacional</b> (Bureau of Vocational Rehabilitation) del Departamento de Educación ayuda a las personas con discapacidad a prepararse para un empleo, conseguirlo y conservarlo, dentro del programa federal de rehabilitación vocacional. Su programa de vida independiente ayuda a las personas con discapacidad, y a las personas mayores ciegas, a vivir con más independencia.",
+   "en": "The Department of Education&rsquo;s <b>Bureau of Vocational Rehabilitation</b> helps people with disabilities prepare for, find and keep a job, under the federal vocational rehabilitation program.",
+   "es": "La <b>Oficina de Rehabilitación Vocacional</b> (Bureau of Vocational Rehabilitation) del Departamento de Educación ayuda a las personas con discapacidad a prepararse para un empleo, conseguirlo y conservarlo, dentro del programa federal de rehabilitación vocacional.",
    "state": "draft"
   },
   "guide.disability-help.the-state-you-can-ask-for": {
@@ -2867,6 +2932,11 @@
   "guide.disability-help.what-do-you-need": {
    "en": "What do you need?",
    "es": "¿Qué necesita?",
+   "state": "draft"
+  },
+  "guide.disability-help.when-do-ssdi-benefits-begin-and": {
+   "en": "When do SSDI benefits begin, and when does Medicare start?",
+   "es": "¿Cuándo empiezan los beneficios de SSDI, y cuándo empieza Medicare?",
    "state": "draft"
   },
   "guide.disability-help.who-can-get-ssi-social-security": {
@@ -3380,14 +3450,34 @@
    "es": "Su centro de crisis local, por medio de la línea de ayuda de 24 horas, <a href=\"tel:+18666443574\">1-866-644-3574</a>, es el primer lugar al que acudir para cualquier asunto de esta página. Sus consejeros pueden acompañarlo al hospital, a la policía o al tribunal.",
    "state": "draft"
   },
+  "guide.file-for-unemployment.after-you-appeal-you-will-get": {
+   "en": "After you appeal you will get an Appeal Request Notice, and the hearing is held by an Appeal Tribunal chairperson.",
+   "es": "Después de apelar recibirá un aviso de solicitud de apelación (Appeal Request Notice), y la audiencia la dirige el presidente de un Tribunal de Apelaciones (Appeal Tribunal).",
+   "state": "draft"
+  },
   "guide.file-for-unemployment.appeal-within-14-calendar-days-as": {
    "en": "Appeal within 14 calendar days, as the determination explains.",
    "es": "Apele en un plazo de 14 días calendario, como explica la determinación.",
    "state": "draft"
   },
+  "guide.file-for-unemployment.can-a-school-employee-get-unemployment": {
+   "en": "Can a school employee get unemployment between terms?",
+   "es": "¿Puede un empleado escolar recibir beneficios de desempleo entre períodos lectivos?",
+   "state": "draft"
+  },
+  "guide.file-for-unemployment.can-i-get-unemployment-if-i": {
+   "en": "Can I get unemployment if I work part-time?",
+   "es": "¿Puedo recibir beneficios de desempleo si trabajo a tiempo parcial?",
+   "state": "draft"
+  },
   "guide.file-for-unemployment.check-that-unemployment-fits-your": {
    "en": "Check that unemployment fits your situation",
    "es": "Compruebe que el desempleo corresponde a su situación",
+   "state": "draft"
+  },
+  "guide.file-for-unemployment.common-questions": {
+   "en": "Common Questions",
+   "es": "Preguntas frecuentes",
    "state": "draft"
   },
   "guide.file-for-unemployment.do-you-disagree-with-a-determination": {
@@ -3401,8 +3491,8 @@
    "state": "draft"
   },
   "guide.file-for-unemployment.every-determination-on-your-claim-is": {
-   "en": "Every determination on your claim is on your dashboard and explains how to appeal. You have 14 calendar days from when it was issued. After you appeal you will get an Appeal Request Notice, and the hearing is held by an Appeal Tribunal chairperson.",
-   "es": "Cada determinación sobre su solicitud aparece en su panel y explica cómo apelar. Tiene 14 días calendario desde que se emitió. Después de apelar recibirá un aviso de solicitud de apelación (Appeal Request Notice), y la audiencia la dirige el presidente de un Tribunal de Apelaciones (Appeal Tribunal).",
+   "en": "Every determination on your claim is on your dashboard and explains how to appeal. You have 14 calendar days from when it was issued.",
+   "es": "Cada determinación sobre su solicitud aparece en su panel y explica cómo apelar. Tiene 14 días calendario desde que se emitió.",
    "state": "draft"
   },
   "guide.file-for-unemployment.every-week-file-a-claim-and": {
@@ -3460,6 +3550,11 @@
    "es": "Si no está de acuerdo con una determinación",
    "state": "draft"
   },
+  "guide.file-for-unemployment.if-you-work-part-time-report": {
+   "en": "If you work part-time, report your hours and earnings on the weekly claim.",
+   "es": "Si trabaja a tiempo parcial, informe sus horas y sus ingresos en la solicitud semanal.",
+   "state": "draft"
+  },
   "guide.file-for-unemployment.keep-filing-each-week-while-you": {
    "en": "Keep filing each week while you are out of work.",
    "es": "Siga presentando la solicitud cada semana mientras esté sin trabajo.",
@@ -3493,6 +3588,11 @@
   "guide.file-for-unemployment.read-your-monetary-determination-whether": {
    "en": "Read your monetary determination: whether your past wages qualify, and how much.",
    "es": "Lea su determinación monetaria: si sus salarios anteriores reúnen los requisitos y cuánto podría recibir.",
+   "state": "draft"
+  },
+  "guide.file-for-unemployment.school-employees-between-terms-are": {
+   "en": "School employees between terms are judged case by case.",
+   "es": "A los empleados escolares entre períodos lectivos se les evalúa caso por caso.",
    "state": "draft"
   },
   "guide.file-for-unemployment.the-name-address-and-phone-number": {
@@ -3531,8 +3631,18 @@
    "state": "draft"
   },
   "guide.file-for-unemployment.unemployment-insurance-replaces-part-of": {
-   "en": "Unemployment insurance replaces part of your wages if you are unemployed, fully or partly, through no fault of your own. To be paid for a week you must be able to work, available for work, and looking for it unless you are exempt, and you must file your claims on time. Working part-time does not rule you out; working full-time does. School employees between terms are judged case by case.",
-   "es": "El seguro de desempleo reemplaza parte de su salario si está desempleado, total o parcialmente, sin culpa suya. Para cobrar una semana debe poder trabajar, estar disponible para trabajar y estar buscando trabajo, salvo que esté exento, y debe presentar sus solicitudes a tiempo. Trabajar a tiempo parcial no lo descarta; trabajar a tiempo completo, sí. A los empleados escolares entre períodos lectivos se les evalúa caso por caso.",
+   "en": "Unemployment insurance replaces part of your wages if you are unemployed, fully or partly, through no fault of your own. To be paid for a week you must be able to work, available for work, and looking for it unless you are exempt, and you must file your claims on time.",
+   "es": "El seguro de desempleo reemplaza parte de su salario si está desempleado, total o parcialmente, sin culpa suya. Para cobrar una semana debe poder trabajar, estar disponible para trabajar y estar buscando trabajo, salvo que esté exento, y debe presentar sus solicitudes a tiempo.",
+   "state": "draft"
+  },
+  "guide.file-for-unemployment.what-happens-after-i-appeal": {
+   "en": "What happens after I appeal?",
+   "es": "¿Qué pasa después de que apelo?",
+   "state": "draft"
+  },
+  "guide.file-for-unemployment.working-part-time-does-not-rule": {
+   "en": "Working part-time does not rule you out; working full-time does.",
+   "es": "Trabajar a tiempo parcial no lo descarta; trabajar a tiempo completo, sí.",
    "state": "draft"
   },
   "guide.file-for-unemployment.yes": {
@@ -3541,8 +3651,8 @@
    "state": "draft"
   },
   "guide.file-for-unemployment.you-file-a-claim-for-each": {
-   "en": "You file a claim for each week. Unless you are told you are exempt, you must also look for work every week and report it on your weekly claim: contacting employers, and taking part in activities that prepare you to go back to work. If you work part-time, report your hours and earnings on the weekly claim.",
-   "es": "Usted presenta una solicitud por cada semana. Salvo que le digan que está exento, también debe buscar trabajo cada semana e informarlo en su solicitud semanal: contactar a empleadores y participar en actividades que lo preparen para volver a trabajar. Si trabaja a tiempo parcial, informe sus horas y sus ingresos en la solicitud semanal.",
+   "en": "You file a claim for each week. Unless you are told you are exempt, you must also look for work every week and report it on your weekly claim: contacting employers, and taking part in activities that prepare you to go back to work.",
+   "es": "Usted presenta una solicitud por cada semana. Salvo que le digan que está exento, también debe buscar trabajo cada semana e informarlo en su solicitud semanal: contactar a empleadores y participar en actividades que lo preparen para volver a trabajar.",
    "state": "draft"
   },
   "guide.file-for-unemployment.you-must-also-have-earned-enough": {
@@ -3840,6 +3950,26 @@
    "es": "Solicite en línea o en papel",
    "state": "draft"
   },
+  "guide.food-and-health-assistance.can-i-get-a-snap-application": {
+   "en": "Can I get a SNAP application by mail?",
+   "es": "¿Puedo recibir una solicitud de SNAP por correo?",
+   "state": "draft"
+  },
+  "guide.food-and-health-assistance.can-i-get-snap-if-i": {
+   "en": "Can I get SNAP if I own a home, or have no children?",
+   "es": "¿Puedo recibir SNAP si tengo casa propia, o si no tengo hijos?",
+   "state": "draft"
+  },
+  "guide.food-and-health-assistance.can-i-keep-my-benefits-while": {
+   "en": "Can I keep my benefits while I appeal?",
+   "es": "¿Puedo mantener mis beneficios mientras apelo?",
+   "state": "draft"
+  },
+  "guide.food-and-health-assistance.common-questions": {
+   "en": "Common Questions",
+   "es": "Preguntas frecuentes",
+   "state": "draft"
+  },
   "guide.food-and-health-assistance.examples-of-acceptable-proof-form-800v": {
    "en": "Examples of acceptable proof (Form 800V)",
    "es": "Ejemplos de pruebas aceptables (formulario 800V)",
@@ -3860,9 +3990,14 @@
    "es": "Para recibir ayuda con una solicitud, hablar de sus opciones con alguien, y obtener ayuda legal gratuita si le niegan o le reducen un beneficio:",
    "state": "draft"
   },
+  "guide.food-and-health-assistance.for-snap-you-can-also-call": {
+   "en": "For SNAP, you can also call 603-271-9700 to have an application mailed to you.",
+   "es": "Para SNAP, también puede llamar al 603-271-9700 para que le envíen una solicitud por correo.",
+   "state": "draft"
+  },
   "guide.food-and-health-assistance.generally-you-have-30-days-from": {
-   "en": "Generally you have 30 days from the date on your Notice of Decision, or 90 days for SNAP; your notice gives your deadline. If you appeal within 15 days, you may in some cases keep your benefits at the same level until the appeal is decided, but must repay them if the Department&rsquo;s decision is upheld. You do not need a lawyer.",
-   "es": "Por lo general tiene 30 días desde la fecha de su aviso de decisión, o 90 días para SNAP; su aviso indica su plazo. Si apela en un plazo de 15 días, en algunos casos puede mantener sus beneficios al mismo nivel hasta que se decida la apelación, pero debe devolverlos si se confirma la decisión del Departamento. No necesita un abogado.",
+   "en": "Generally you have 30 days from the date on your Notice of Decision, or 90 days for SNAP; your notice gives your deadline. You do not need a lawyer.",
+   "es": "Por lo general tiene 30 días desde la fecha de su aviso de decisión, o 90 días para SNAP; su aviso indica su plazo. No necesita un abogado.",
    "state": "draft"
   },
   "guide.food-and-health-assistance.how-do-you-want-to-apply": {
@@ -3878,6 +4013,16 @@
   "guide.food-and-health-assistance.if-someone-is-helping-you-apply": {
    "en": "If someone is helping you apply, you both fill in the Authorized Representative Declaration (Form 778).",
    "es": "Si alguien le ayuda a solicitar, ambos llenan la declaración de representante autorizado (Authorized Representative Declaration, formulario 778).",
+   "state": "draft"
+  },
+  "guide.food-and-health-assistance.if-you-appeal-within-15-days": {
+   "en": "If you appeal within 15 days, you may in some cases keep your benefits at the same level until the appeal is decided, but must repay them if the Department&rsquo;s decision is upheld.",
+   "es": "Si apela en un plazo de 15 días, en algunos casos puede mantener sus beneficios al mismo nivel hasta que se decida la apelación, pero debe devolverlos si se confirma la decisión del Departamento.",
+   "state": "draft"
+  },
+  "guide.food-and-health-assistance.if-you-cannot-write-tell-a": {
+   "en": "If you cannot write, tell a Department representative that you want to appeal.",
+   "es": "Si no puede escribir, dígale a un representante del Departamento que quiere apelar.",
    "state": "draft"
   },
   "guide.food-and-health-assistance.if-you-disagree-with-a-decision": {
@@ -3926,8 +4071,8 @@
    "state": "draft"
   },
   "guide.food-and-health-assistance.on-paper-to-apply-for-every": {
-   "en": "<b>On paper:</b> to apply for every kind of assistance, fill in both the Application for Assistance (Form 800) and its Medical Assistance insert, and mail them to your local District Office. Both come in Spanish too. For Medicaid alone there is a shorter form, 800MA. For SNAP, you can also call 603-271-9700 to have an application mailed to you.",
-   "es": "<b>En papel:</b> para solicitar todo tipo de ayuda, llene la solicitud Application for Assistance (formulario 800) y su anexo de asistencia médica (Medical Assistance), y envíelos por correo a su oficina de distrito. Ambos están también en español. Para Medicaid solamente hay un formulario más corto, el 800MA. Para SNAP, también puede llamar al 603-271-9700 para que le envíen una solicitud por correo.",
+   "en": "<b>On paper:</b> to apply for every kind of assistance, fill in both the Application for Assistance (Form 800) and its Medical Assistance insert, and mail them to your local District Office. Both come in Spanish too. For Medicaid alone there is a shorter form, 800MA.",
+   "es": "<b>En papel:</b> para solicitar todo tipo de ayuda, llene la solicitud Application for Assistance (formulario 800) y su anexo de asistencia médica (Medical Assistance), y envíelos por correo a su oficina de distrito. Ambos están también en español. Para Medicaid solamente hay un formulario más corto, el 800MA.",
    "state": "draft"
   },
   "guide.food-and-health-assistance.online": {
@@ -3961,8 +4106,8 @@
    "state": "draft"
   },
   "guide.food-and-health-assistance.snap-the-supplemental-nutrition": {
-   "en": "<b>SNAP</b>, the Supplemental Nutrition Assistance Program, gives eligible low-income people and families benefits to buy food, paid each month onto an EBT card used like a debit card at the checkout. Whether you qualify depends on your household&rsquo;s size, income, expenses and resources. You may qualify whether you own a home, have none, live alone or with others, and whether or not you work or have children.",
-   "es": "<b>SNAP</b>, el Programa de Asistencia Nutricional Suplementaria, da a las personas y familias de bajos ingresos que reúnen los requisitos beneficios para comprar alimentos, que se depositan cada mes en una tarjeta EBT que se usa como una tarjeta de débito en la caja. Si reúne o no los requisitos depende del tamaño, los ingresos, los gastos y los recursos de su hogar. Puede reunir los requisitos tenga o no casa propia, viva solo o con otras personas, y tenga o no trabajo o hijos.",
+   "en": "<b>SNAP</b>, the Supplemental Nutrition Assistance Program, gives eligible low-income people and families benefits to buy food, paid each month onto an EBT card used like a debit card at the checkout. Whether you qualify depends on your household&rsquo;s size, income, expenses and resources.",
+   "es": "<b>SNAP</b>, el Programa de Asistencia Nutricional Suplementaria, da a las personas y familias de bajos ingresos que reúnen los requisitos beneficios para comprar alimentos, que se depositan cada mes en una tarjeta EBT que se usa como una tarjeta de débito en la caja. Si reúne o no los requisitos depende del tamaño, los ingresos, los gastos y los recursos de su hogar.",
    "state": "draft"
   },
   "guide.food-and-health-assistance.stay-covered-new-hampshire-department-of": {
@@ -3990,19 +4135,34 @@
    "es": "Cómo solicitar ayuda para alimentos o salud",
    "state": "draft"
   },
+  "guide.food-and-health-assistance.what-if-i-cannot-write-my": {
+   "en": "What if I cannot write my appeal?",
+   "es": "¿Y si no puedo escribir mi apelación?",
+   "state": "draft"
+  },
+  "guide.food-and-health-assistance.what-if-someone-is-helping-me": {
+   "en": "What if someone is helping me apply?",
+   "es": "¿Y si alguien me ayuda a presentar la solicitud?",
+   "state": "draft"
+  },
   "guide.food-and-health-assistance.work-requirements-changed-in-2025-since": {
    "en": "<b>Work requirements changed in 2025.</b> Since November 1, 2025, under federal legislation passed on July 4, 2025, adults aged 18 through 64 who are able to work and have no child under 14 in their household must work, volunteer or take part in training at least 80 hours a month to get SNAP for more than three months in three years, unless they are exempt; the SNAP page lists the exemptions. The Department is also preparing for changes to Medicaid eligibility, including work or other community engagement requirements for people covered through the Granite Advantage Health Care Program; its Stay Covered New Hampshire page has them. This is what the Department said on October 17, 2026: check its pages before you apply.",
    "es": "<b>Los requisitos de trabajo cambiaron en 2025.</b> Desde el 1 de noviembre de 2025, según una ley federal aprobada el 4 de julio de 2025, los adultos de 18 a 64 años que pueden trabajar y no tienen en su hogar ningún niño menor de 14 años deben trabajar, hacer voluntariado o participar en una capacitación al menos 80 horas al mes para recibir SNAP por más de tres meses en tres años, salvo que estén exentos; la página de SNAP enumera las exenciones. El Departamento también se está preparando para cambios en los requisitos de Medicaid, entre ellos requisitos de trabajo u otra participación comunitaria para las personas cubiertas por el Granite Advantage Health Care Program; su página Stay Covered New Hampshire los explica. Esto es lo que decía el Departamento el 17 de octubre de 2026: consulte sus páginas antes de solicitar.",
    "state": "draft"
   },
   "guide.food-and-health-assistance.you-can-ask-for-an-administrative": {
-   "en": "You can ask for an administrative appeal hearing. Ask in writing, on the Department&rsquo;s appeal request form or in a letter, and drop it off or mail it to your District Office, mail it to the Administrative Appeals Unit, or email it. If you cannot write, tell a Department representative that you want to appeal.",
-   "es": "Puede pedir una audiencia de apelación administrativa. Pídala por escrito, en el formulario de solicitud de apelación del Departamento o en una carta, y entréguela o envíela por correo a su oficina de distrito, envíela por correo a la Unidad de Apelaciones Administrativas (Administrative Appeals Unit), o mándela por correo electrónico. Si no puede escribir, dígale a un representante del Departamento que quiere apelar.",
+   "en": "You can ask for an administrative appeal hearing. Ask in writing, on the Department&rsquo;s appeal request form or in a letter, and drop it off or mail it to your District Office, mail it to the Administrative Appeals Unit, or email it.",
+   "es": "Puede pedir una audiencia de apelación administrativa. Pídala por escrito, en el formulario de solicitud de apelación del Departamento o en una carta, y entréguela o envíela por correo a su oficina de distrito, envíela por correo a la Unidad de Apelaciones Administrativas (Administrative Appeals Unit), o mándela por correo electrónico.",
    "state": "draft"
   },
   "guide.food-and-health-assistance.you-may-need-to-talk-with": {
    "en": "You may need to talk with a Department specialist about your situation in an interview; the Department tells you if one is needed. You will also give proof of your household&rsquo;s circumstances. Form 800V gives examples of what is accepted, and you can upload documents through NH Easy. Have them with you at an interview to avoid delays.",
    "es": "Puede que tenga que hablar de su situación con un especialista del Departamento en una entrevista; el Departamento le avisa si hace falta. También dará pruebas de la situación de su hogar. El formulario 800V da ejemplos de lo que se acepta, y puede subir documentos por NH Easy. Téngalos a mano en la entrevista para evitar demoras.",
+   "state": "draft"
+  },
+  "guide.food-and-health-assistance.you-may-qualify-whether-you-own": {
+   "en": "You may qualify whether you own a home, have none, live alone or with others, and whether or not you work or have children.",
+   "es": "Puede reunir los requisitos tenga o no casa propia, viva solo o con otras personas, y tenga o no trabajo o hijos.",
    "state": "draft"
   },
   "guide.group.around-your-town": {
@@ -5527,8 +5687,8 @@
    "state": "draft"
   },
   "guide.medicare-and-social-security.a-my-social-security-account-lets": {
-   "en": "A <b>my Social Security</b> account lets you change your address or direct deposit, print proof of your benefits or a tax form, request a replacement Social Security card, and see your Social Security Statement and earnings record, without a call or a visit. You create it through Login.gov or ID.me, with an email address, a government-issued photo ID and a phone. Once you have your Medicare card, you can also make a Medicare account on Medicare.gov with your Medicare Number.",
-   "es": "Una cuenta <b>my Social Security</b> le permite cambiar su dirección o su depósito directo, imprimir una prueba de sus beneficios o un formulario de impuestos, pedir una tarjeta de Seguro Social de reemplazo y ver su Estado de Cuenta del Seguro Social y su historial de ganancias, sin llamar ni ir a una oficina. Se crea a través de Login.gov o ID.me, con una dirección de correo electrónico, una identificación con foto emitida por el gobierno y un teléfono. Cuando tenga su tarjeta de Medicare, también puede crear una cuenta de Medicare en Medicare.gov con su número de Medicare.",
+   "en": "A <b>my Social Security</b> account lets you change your address or direct deposit, print proof of your benefits or a tax form, request a replacement Social Security card, and see your Social Security Statement and earnings record, without a call or a visit. You create it through Login.gov or ID.me, with an email address, a government-issued photo ID and a phone.",
+   "es": "Una cuenta <b>my Social Security</b> le permite cambiar su dirección o su depósito directo, imprimir una prueba de sus beneficios o un formulario de impuestos, pedir una tarjeta de Seguro Social de reemplazo y ver su Estado de Cuenta del Seguro Social y su historial de ganancias, sin llamar ni ir a una oficina. Se crea a través de Login.gov o ID.me, con una dirección de correo electrónico, una identificación con foto emitida por el gobierno y un teléfono.",
    "state": "draft"
   },
   "guide.medicare-and-social-security.apply-for-benefits-social-security": {
@@ -5546,6 +5706,16 @@
    "es": "Solicite los beneficios de jubilación del Seguro Social",
    "state": "draft"
   },
+  "guide.medicare-and-social-security.can-i-get-medicare-before-i": {
+   "en": "Can I get Medicare before I turn 65?",
+   "es": "¿Puedo recibir Medicare antes de cumplir 65 años?",
+   "state": "draft"
+  },
+  "guide.medicare-and-social-security.can-i-manage-medicare-online-too": {
+   "en": "Can I manage Medicare online too?",
+   "es": "¿También puedo manejar Medicare en línea?",
+   "state": "draft"
+  },
   "guide.medicare-and-social-security.choose-original-medicare-or-a-medicare": {
    "en": "Choose Original Medicare or a Medicare Advantage Plan, and a drug plan. Review it every fall, October 15 to December 7.",
    "es": "Elija Medicare Original o un Plan Medicare Advantage, y un plan de medicamentos. Revise su cobertura cada otoño, del 15 de octubre al 7 de diciembre.",
@@ -5554,6 +5724,11 @@
   "guide.medicare-and-social-security.choose-your-coverage-and-review-it": {
    "en": "Choose your coverage, and review it every fall",
    "es": "Elija su cobertura, y revísela cada otoño",
+   "state": "draft"
+  },
+  "guide.medicare-and-social-security.common-questions": {
+   "en": "Common Questions",
+   "es": "Preguntas frecuentes",
    "state": "draft"
   },
   "guide.medicare-and-social-security.contact-medicare-medicare": {
@@ -5571,9 +5746,14 @@
    "es": "¿Ya recibe beneficios del Seguro Social?",
    "state": "draft"
   },
+  "guide.medicare-and-social-security.does-applying-for-extra-help-also": {
+   "en": "Does applying for Extra Help also apply for a Medicare Savings Program?",
+   "es": "¿Solicitar la Ayuda Adicional también es solicitar un Programa de Ahorros de Medicare?",
+   "state": "draft"
+  },
   "guide.medicare-and-social-security.extra-help-is-a-federal-program": {
-   "en": "<b>Extra Help</b> is a federal program that pays part of your drug plan&rsquo;s costs. You get it automatically if you have Medicaid, a Medicare Savings Program or SSI. Otherwise apply through Social Security; applying for Extra Help also starts an application for a Medicare Savings Program, unless you say not to.",
-   "es": "La <b>Ayuda Adicional</b> es un programa federal que paga parte de los costos de su plan de medicamentos. La recibe automáticamente si tiene Medicaid, un Programa de Ahorros de Medicare o SSI. Si no, solicítela a través del Seguro Social; al solicitar la Ayuda Adicional también se inicia una solicitud para un Programa de Ahorros de Medicare, a menos que usted diga que no.",
+   "en": "<b>Extra Help</b> is a federal program that pays part of your drug plan&rsquo;s costs. You get it automatically if you have Medicaid, a Medicare Savings Program or SSI. Otherwise apply through Social Security.",
+   "es": "La <b>Ayuda Adicional</b> es un programa federal que paga parte de los costos de su plan de medicamentos. La recibe automáticamente si tiene Medicaid, un Programa de Ahorros de Medicare o SSI. Si no, solicítela a través del Seguro Social.",
    "state": "draft"
   },
   "guide.medicare-and-social-security.extra-help-medicare": {
@@ -5609,6 +5789,11 @@
   "guide.medicare-and-social-security.how-to-get-disability-benefits-and": {
    "en": "How to get disability benefits and services",
    "es": "Cómo obtener beneficios y servicios por discapacidad",
+   "state": "draft"
+  },
+  "guide.medicare-and-social-security.i-am-losing-coverage-through-a": {
+   "en": "I am losing coverage through a job. How do I add Part B?",
+   "es": "Voy a perder la cobertura de un empleo. ¿Cómo agrego la Parte B?",
    "state": "draft"
   },
   "guide.medicare-and-social-security.if-the-costs-are-hard-to": {
@@ -5706,6 +5891,11 @@
    "es": "No",
    "state": "draft"
   },
+  "guide.medicare-and-social-security.once-you-have-your-medicare-card": {
+   "en": "Once you have your Medicare card, you can make a Medicare account on Medicare.gov with your Medicare Number.",
+   "es": "Cuando tenga su tarjeta de Medicare, puede crear una cuenta de Medicare en Medicare.gov con su número de Medicare.",
+   "state": "draft"
+  },
   "guide.medicare-and-social-security.public-assistance-to-blind-aged-or": {
    "en": "Public Assistance to Blind, Aged, or Disabled Persons, RSA 167",
    "es": "Asistencia pública a personas ciegas, mayores o con discapacidad, RSA 167",
@@ -5779,6 +5969,11 @@
   "guide.medicare-and-social-security.yes": {
    "en": "Yes",
    "es": "Sí",
+   "state": "draft"
+  },
+  "guide.medicare-and-social-security.yes-unless-you-say-not-to": {
+   "en": "Yes, unless you say not to: applying for Extra Help through Social Security also starts an application for a Medicare Savings Program.",
+   "es": "Sí, a menos que usted diga que no: al solicitar la Ayuda Adicional a través del Seguro Social también se inicia una solicitud para un Programa de Ahorros de Medicare.",
    "state": "draft"
   },
   "guide.medicare-and-social-security.you-are-enrolled-automatically-in-part": {
@@ -11760,14 +11955,49 @@
    "es": "El secretario de su municipio o ciudad emite copias certificadas, y es el lugar más cercano donde preguntar. La División de Administración de Registros Vitales indica cómo comunicarse con ella en su página de contacto. Una copia certificada que se necesita solo para inscribirse para votar es gratuita: vea Cómo votar.",
    "state": "draft"
   },
+  "guide.wage-rights.a-tipped-worker-in-a-restaurant": {
+   "en": "A tipped worker in a restaurant or hotel who regularly gets tips may be paid a lower base rate by the employer, but if base pay and tips together come to less than the minimum wage for all the hours worked in a pay period, the employer must pay the difference.",
+   "es": "A quien trabaja con propinas en un restaurante o un hotel y las recibe con regularidad, el empleador puede pagarle una tarifa base más baja, pero si el pago base y las propinas juntos no llegan al salario mínimo por todas las horas trabajadas en un período de pago, el empleador tiene que pagar la diferencia.",
+   "state": "draft"
+  },
   "guide.wage-rights.an-employer-may-not-fire-you": {
    "en": "An employer may not fire you, or treat you differently in any other way, because you filed a complaint or a claim, took part in an investigation or hearing about your pay, or asked about, talked about or shared what you or a coworker are paid.",
    "es": "Un empleador no puede despedirlo, ni tratarlo de manera diferente de ninguna otra forma, porque usted presentó una queja o un reclamo, participó en una investigación o audiencia sobre su pago, o preguntó, habló o contó cuánto les pagan a usted o a un compañero de trabajo.",
    "state": "draft"
   },
+  "guide.wage-rights.an-employer-that-willfully-and-without": {
+   "en": "An employer that willfully, and without good cause, pays late owes you extra, as liquidated damages: 10 percent of the unpaid wages for each day the pay is late, not counting Sundays and legal holidays, up to the amount of the unpaid wages.",
+   "es": "Un empleador que paga tarde a sabiendas y sin causa justificada le debe una suma adicional, como daños fijados por ley: el 10 por ciento de los salarios no pagados por cada día de atraso, sin contar domingos ni días feriados legales, hasta el monto de los salarios no pagados.",
+   "state": "draft"
+  },
+  "guide.wage-rights.can-a-tipped-worker-be-paid": {
+   "en": "Can a tipped worker be paid less than the minimum wage?",
+   "es": "¿Se le puede pagar menos del salario mínimo a quien trabaja con propinas?",
+   "state": "draft"
+  },
+  "guide.wage-rights.can-my-last-paycheck-be-mailed": {
+   "en": "Can my last paycheck be mailed to me?",
+   "es": "¿Me pueden enviar el último cheque por correo?",
+   "state": "draft"
+  },
+  "guide.wage-rights.common-questions": {
+   "en": "Common Questions",
+   "es": "Preguntas frecuentes",
+   "state": "draft"
+  },
   "guide.wage-rights.did-your-job-end": {
    "en": "Did your job end?",
    "es": "¿Terminó su empleo?",
+   "state": "draft"
+  },
+  "guide.wage-rights.do-vacation-pay-and-other-benefits": {
+   "en": "Do vacation pay and other benefits count as wages?",
+   "es": "¿Las vacaciones pagadas y otros beneficios cuentan como salario?",
+   "state": "draft"
+  },
+  "guide.wage-rights.does-the-minimum-wage-cover-every": {
+   "en": "Does the minimum wage cover every job?",
+   "es": "¿El salario mínimo cubre todos los trabajos?",
    "state": "draft"
   },
   "guide.wage-rights.each-pay-period-that-something-is": {
@@ -11778,6 +12008,11 @@
   "guide.wage-rights.file-a-wage-claim-with-the": {
    "en": "File a wage claim with the Department of Labor, within 36 months.",
    "es": "Presente un reclamo de salarios ante el Departamento de Trabajo, dentro de los 36 meses.",
+   "state": "draft"
+  },
+  "guide.wage-rights.how-can-i-be-paid": {
+   "en": "How can I be paid?",
+   "es": "¿Cómo me pueden pagar?",
    "state": "draft"
   },
   "guide.wage-rights.how-to-apply-for-food-or": {
@@ -11851,8 +12086,8 @@
    "state": "draft"
   },
   "guide.wage-rights.minimum-wage-new-hampshires-minimum-wage": {
-   "en": "<b>Minimum wage.</b> New Hampshire&rsquo;s minimum wage is the federal minimum wage. A tipped worker in a restaurant or hotel who regularly gets tips may be paid a lower base rate by the employer, but if base pay and tips together come to less than the minimum wage for all the hours worked in a pay period, the employer must pay the difference. The law exempts some work, such as farm and household labor, and lets some young and new workers be paid less.",
-   "es": "<b>Salario mínimo.</b> El salario mínimo de New Hampshire es el salario mínimo federal. A quien trabaja con propinas en un restaurante o un hotel y las recibe con regularidad, el empleador puede pagarle una tarifa base más baja, pero si el pago base y las propinas juntos no llegan al salario mínimo por todas las horas trabajadas en un período de pago, el empleador tiene que pagar la diferencia. La ley exceptúa algunos trabajos, como las labores agrícolas y domésticas, y permite pagar menos a algunos trabajadores jóvenes o nuevos.",
+   "en": "<b>Minimum wage.</b> New Hampshire&rsquo;s minimum wage is the federal minimum wage.",
+   "es": "<b>Salario mínimo.</b> El salario mínimo de New Hampshire es el salario mínimo federal.",
    "state": "draft"
   },
   "guide.wage-rights.minimum-wage-overtime-and-meal-breaks": {
@@ -11895,6 +12130,11 @@
    "es": "Empiece en la página principal del Departamento: elija <b>Submit a Wage Claim</b> (presentar un reclamo de salario). Su oficina atiende en el 603-271-3176, de lunes a viernes, de 8 a.m. a 4:30 p.m.; el correo y las audiencias siguen en 95 Pleasant Street, Spaulding Building, en Concord.",
    "state": "draft"
   },
+  "guide.wage-rights.the-law-exempts-some-work-such": {
+   "en": "The law exempts some work, such as farm and household labor, and lets some young and new workers be paid less.",
+   "es": "La ley exceptúa algunos trabajos, como las labores agrícolas y domésticas, y permite pagar menos a algunos trabajadores jóvenes o nuevos.",
+   "state": "draft"
+  },
   "guide.wage-rights.the-new-hampshire-department-of-labor": {
    "en": "The New Hampshire Department of Labor enforces the state&rsquo;s wage laws and takes wage claims. The U.S. Department of Labor&rsquo;s overtime page explains the federal overtime rule. For advice about your own situation, a lawyer can help:",
    "es": "El Departamento de Trabajo de New Hampshire hace cumplir las leyes de salarios del estado y recibe los reclamos de salarios. La página sobre horas extra del Departamento de Trabajo de EE. UU. explica la regla federal de horas extra. Para recibir consejo sobre su propia situación, un abogado puede ayudarle:",
@@ -11916,8 +12156,8 @@
    "state": "draft"
   },
   "guide.wage-rights.when-you-are-hired-your-employer": {
-   "en": "When you are hired, your employer must tell you your rate of pay and the day and place you will be paid, and must tell you before either changes. Its rules on vacation pay, sick leave and other benefits must be given to you in writing or posted where you can see them. Vacation, holiday and sick pay, severance and work expenses that are your employer&rsquo;s practice or policy count as wages when they are due.",
-   "es": "Cuando lo contratan, su empleador tiene que decirle cuánto le pagará y el día y el lugar del pago, y avisarle antes de que cualquiera de los dos cambie. Sus normas sobre vacaciones pagadas, licencia por enfermedad y otros beneficios tienen que dársele por escrito o estar exhibidas donde usted pueda verlas. El pago de vacaciones, días feriados y enfermedad, la indemnización por despido y los gastos de trabajo que sean práctica o política de su empleador cuentan como salarios cuando se deben.",
+   "en": "When you are hired, your employer must tell you your rate of pay and the day and place you will be paid, and must tell you before either changes.",
+   "es": "Cuando lo contratan, su empleador tiene que decirle cuánto le pagará y el día y el lugar del pago, y avisarle antes de que cualquiera de los dos cambie.",
    "state": "draft"
   },
   "guide.wage-rights.yes": {
@@ -11931,8 +12171,8 @@
    "state": "draft"
   },
   "guide.wage-rights.you-can-ask-for-the-last": {
-   "en": "You can ask for the last paycheck to be mailed to you. An employer that willfully, and without good cause, pays late owes you extra, as liquidated damages: 10 percent of the unpaid wages for each day the pay is late, not counting Sundays and legal holidays, up to the amount of the unpaid wages.",
-   "es": "Puede pedir que le envíen el último cheque por correo. Un empleador que paga tarde a sabiendas y sin causa justificada le debe una suma adicional, como daños fijados por ley: el 10 por ciento de los salarios no pagados por cada día de atraso, sin contar domingos ni días feriados legales, hasta el monto de los salarios no pagados.",
+   "en": "You can ask for the last paycheck to be mailed to you.",
+   "es": "Puede pedir que le envíen el último cheque por correo.",
    "state": "draft"
   },
   "guide.wage-rights.you-can-be-paid-in-cash": {
@@ -11973,6 +12213,11 @@
   "guide.wage-rights.your-employer-must-pay-all-the": {
    "en": "Your employer must pay all the wages you have earned on regular paydays set in advance, at no cost to you: within 8 days after the end of the work week if you are paid weekly, or within 15 days if you are paid every two weeks. The Department of Labor may allow some employers to pay less often, but never less than once a month.",
    "es": "Su empleador tiene que pagarle todos los salarios que haya ganado en días de pago regulares fijados de antemano, sin costo para usted: dentro de los 8 días posteriores al fin de la semana de trabajo si le pagan cada semana, o dentro de los 15 días si le pagan cada dos semanas. El Departamento de Trabajo puede permitir que algunos empleadores paguen con menos frecuencia, pero nunca menos de una vez al mes.",
+   "state": "draft"
+  },
+  "guide.wage-rights.your-employers-rules-on-vacation-pay": {
+   "en": "Your employer&rsquo;s rules on vacation pay, sick leave and other benefits must be given to you in writing or posted where you can see them. Vacation, holiday and sick pay, severance and work expenses that are your employer&rsquo;s practice or policy count as wages when they are due.",
+   "es": "Las normas de su empleador sobre vacaciones pagadas, licencia por enfermedad y otros beneficios tienen que dársele por escrito o estar exhibidas donde usted pueda verlas. El pago de vacaciones, días feriados y enfermedad, la indemnización por despido y los gastos de trabajo que sean práctica o política de su empleador cuentan como salarios cuando se deben.",
    "state": "draft"
   },
   "guide.wage-rights.your-last-paycheck": {

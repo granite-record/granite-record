@@ -2661,8 +2661,7 @@ BENEFITS = guide(
           "<ul><li><b>SNAP</b>, the Supplemental Nutrition Assistance Program, gives eligible "
           "low-income people and families benefits to buy food, paid each month onto an EBT card "
           "used like a debit card at the checkout. Whether you qualify depends on your household&rsquo;s "
-          "size, income, expenses and resources. You may qualify whether you own a home, have none, "
-          "live alone or with others, and whether or not you work or have children.</li>"
+          "size, income, expenses and resources.</li>"
           "<li><b>Medicaid</b> is health coverage, paid for by the federal and state governments, "
           "for people and families who meet its eligibility requirements.</li></ul>",
           actions=[("SNAP", DHHS_SNAP), ("Medicaid", DHHS_MEDICAID)], law=["RSA 167:4"],
@@ -2682,10 +2681,7 @@ BENEFITS = guide(
           "<p><b>On paper:</b> to apply for every kind of assistance, fill in both the Application "
           "for Assistance (Form 800) and its Medical Assistance insert, and mail them to your local "
           "District Office. Both come in Spanish too. For Medicaid alone there is a shorter form, "
-          "800MA. For SNAP, you can also call 603-271-9700 to have an application mailed to "
-          "you.</p>"
-          "<p>If someone is helping you apply, you both fill in the Authorized Representative "
-          "Declaration (Form 778).</p>",
+          "800MA.</p>",
           actions=[("NH Easy", NHEASY), ("Paper applications", DHHS_APPLY)]),
      step("After you apply",
           "<p>You may need to talk with a Department specialist about your situation in an "
@@ -2697,12 +2693,9 @@ BENEFITS = guide(
      step("If you disagree with a decision",
           "<p>You can ask for an administrative appeal hearing. Ask in writing, on the "
           "Department&rsquo;s appeal request form or in a letter, and drop it off or mail it to "
-          "your District Office, mail it to the Administrative Appeals Unit, or email it. If you "
-          "cannot write, tell a Department representative that you want to appeal.</p>"
+          "your District Office, mail it to the Administrative Appeals Unit, or email it.</p>"
           "<p>Generally you have 30 days from the date on your Notice of Decision, or 90 days for "
-          "SNAP; your notice gives your deadline. If you appeal within 15 days, you may in some "
-          "cases keep your benefits at the same level until the appeal is decided, but must repay "
-          "them if the Department&rsquo;s decision is upheld. You do not need a lawyer.</p>",
+          "SNAP; your notice gives your deadline. You do not need a lawyer.</p>",
           actions=[("Administrative appeals", DHHS_APPEALS)])],
     [("Supplemental Nutrition Assistance Program (Department of Health and Human Services)", DHHS_SNAP),
      ("Medicaid (Department of Health and Human Services)", DHHS_MEDICAID),
@@ -2738,7 +2731,23 @@ BENEFITS = guide(
            "167 or RSA 161 to eligible people without sufficient income or resources.",
            "RSA 167:4", READ)]
     + help_claims("nheasy", "adrc", "legal_aid"),
-    more="<h2>Who Can Help</h2>"
+    more=civics.faq(
+        ("Can I get SNAP if I own a home, or have no children?",
+         "<p>You may qualify whether you own a home, have none, live alone or with others, and "
+         "whether or not you work or have children.</p>"),
+        ("Can I get a SNAP application by mail?",
+         "<p>For SNAP, you can also call 603-271-9700 to have an application mailed to you.</p>"),
+        ("What if someone is helping me apply?",
+         "<p>If someone is helping you apply, you both fill in the Authorized Representative "
+         "Declaration (Form 778).</p>"),
+        ("Can I keep my benefits while I appeal?",
+         "<p>If you appeal within 15 days, you may in some cases keep your benefits at the same "
+         "level until the appeal is decided, but must repay them if the Department&rsquo;s "
+         "decision is upheld.</p>"),
+        ("What if I cannot write my appeal?",
+         "<p>If you cannot write, tell a Department representative that you want to "
+         "appeal.</p>"))
+         + "<h2>Who Can Help</h2>"
          "<p>The Department&rsquo;s customer service center answers questions about applying, and "
          "your local District Office can help in person.</p>"
          f'<p class="g-acts"><a class="g-btn" href="{DHHS_OFFICES}" target="_blank" rel="noopener">'
@@ -2787,8 +2796,7 @@ UNEMPLOYMENT = guide(
           "<p>Unemployment insurance replaces part of your wages if you are unemployed, fully or "
           "partly, through no fault of your own. To be paid for a week you must be able to work, "
           "available for work, and looking for it unless you are exempt, and you must file your "
-          "claims on time. Working part-time does not rule you out; working full-time does. School "
-          "employees between terms are judged case by case.</p>"
+          "claims on time.</p>"
           "<p>You must also have earned enough in a base period of four calendar quarters before "
           "your claim; New Hampshire Employment Security&rsquo;s eligibility page gives the "
           "amounts.</p>",
@@ -2811,12 +2819,10 @@ UNEMPLOYMENT = guide(
      step("Every week: file a claim and look for work",
           "<p>You file a claim for each week. Unless you are told you are exempt, you must also look "
           "for work every week and report it on your weekly claim: contacting employers, and taking "
-          "part in activities that prepare you to go back to work. If you work part-time, report "
-          "your hours and earnings on the weekly claim.</p>"),
+          "part in activities that prepare you to go back to work.</p>"),
      step("If you disagree with a determination",
           "<p>Every determination on your claim is on your dashboard and explains how to appeal. "
-          "You have 14 calendar days from when it was issued. After you appeal you will get an "
-          "Appeal Request Notice, and the hearing is held by an Appeal Tribunal chairperson.</p>",
+          "You have 14 calendar days from when it was issued.</p>",
           actions=[("Unemployment appeals", NHES_APPEALS)], law=["RSA 282-A:48"])],
     [("File for Unemployment Benefits (New Hampshire Employment Security)", NHES_FILE),
      ("Unemployment Eligibility (New Hampshire Employment Security)", NHES_ELIG),
@@ -2846,7 +2852,16 @@ UNEMPLOYMENT = guide(
            "seeking work, with the exemption for a definite return date.", "RSA 282-A:31", READ),
      claim("An appeal received or postmarked within 14 calendar days after the determination was "
            "mailed, extendable for sufficient grounds.", "RSA 282-A:48", READ)],
-    more="<h2>Who Can Help</h2>"
+    more=civics.faq(
+        ("Can I get unemployment if I work part-time?",
+         "<p>Working part-time does not rule you out; working full-time does.</p>"
+         "<p>If you work part-time, report your hours and earnings on the weekly claim.</p>"),
+        ("Can a school employee get unemployment between terms?",
+         "<p>School employees between terms are judged case by case.</p>"),
+        ("What happens after I appeal?",
+         "<p>After you appeal you will get an Appeal Request Notice, and the hearing is held by "
+         "an Appeal Tribunal chairperson.</p>"))
+         + "<h2>Who Can Help</h2>"
          "<p>New Hampshire Employment Security&rsquo;s unemployment hotline, (603) 271-7700, "
          "answers questions on weekdays from 8:00 a.m. to 4:30 p.m. Its NH Works offices help in "
          "person, with claims and with finding work.</p>"
@@ -3675,9 +3690,7 @@ CHILD_CARE = guide(
           "Everyone has the right to apply, and to a decision within 30 days.</p>",
           actions=[("NH Easy", NHEASY), ("Find your District Office", DHHS_OFFICES)]),
      step("Choose a child care provider",
-          "<p>You choose who cares for your child. Federal rules let you choose among child care "
-          "centers, family child care homes and, within the state&rsquo;s limits, care in your own "
-          "home. Relatives and religious providers are among the choices.</p>"
+          "<p>You choose who cares for your child.</p>"
           "<p>The scholarship is paid to the provider, so the provider must be enrolled with the "
           "Department to accept it. Ask a provider you are considering whether it is. The "
           "Department&rsquo;s free Child Care Search, linked from the same page as the "
@@ -3686,20 +3699,9 @@ CHILD_CARE = guide(
           "find care for free: call 1-855-393-1731, extension 2531, weekdays 8 a.m. to 5 p.m.</p>",
           actions=[("Providers and the scholarship", DHHS_CC_PROVIDERS)]),
      step("Keeping the scholarship",
-          "<p>Your eligibility is checked again every 12 months, and you reapply each year.</p>"
-          "<p>In between, federal rules keep the scholarship going at least at the same level "
-          "even if your income goes up, as long as it stays under the federal limit, and "
-          "through temporary changes such as time off work for an illness or to care for a "
-          "family member, a break between seasonal jobs, a school break, fewer hours, or your "
-          "child turning 13. Your share of the cost cannot be raised in that time except as the "
-          "rules allow. If you lose your job or leave your program, it continues for at least "
-          "three months so you can look for work or go back.</p>"),
-     step("If your family is homeless, or you disagree with a decision",
-          "<p><b>Families experiencing homelessness</b> can be approved for child care within 7 "
-          "days of applying, once the child is linked to a provider enrolled with the "
-          "Department. The final decision still comes within 30 days. Say so when you "
-          "apply.</p>"
-          "<p><b>If you disagree with a decision,</b> you can ask for an administrative appeal "
+          "<p>Your eligibility is checked again every 12 months, and you reapply each year.</p>"),
+     step("If you disagree with a decision",
+          "<p>You can ask for an administrative appeal "
           "hearing, in writing, on the Department&rsquo;s appeal request form or in a letter. "
           "Your Notice of Decision gives your deadline. You do not need a lawyer.</p>",
           actions=[("Administrative appeals", DHHS_APPEALS)])],
@@ -3745,7 +3747,28 @@ CHILD_CARE = guide(
      # Read before, for the food and health guide.
      claim("Appeal in writing by form or letter; no attorney needed.", DHHS_APPEALS, READ)]
     + help_claims("nheasy", "legal_aid"),
-    more="<h2>Who Can Help</h2>"
+    more=civics.faq(
+        ("Can a relative or a religious provider care for my child?",
+         "<p>Federal rules let you choose among child care centers, family child care homes and, "
+         "within the state&rsquo;s limits, care in your own home. Relatives and religious "
+         "providers are among the choices.</p>"),
+        ("What if my income goes up, or my situation changes for a while?",
+         "<p>Between those yearly checks, federal rules keep the scholarship going at least "
+         "at the same level "
+         "even if your income goes up, as long as it stays under the federal limit, and "
+         "through temporary changes such as time off work for an illness or to care for a "
+         "family member, a break between seasonal jobs, a school break, fewer hours, or your "
+         "child turning 13. Your share of the cost cannot be raised in that time except as the "
+         "rules allow.</p>"),
+        ("What if I lose my job or leave my program?",
+         "<p>If you lose your job or leave your program, it continues for at least three months "
+         "so you can look for work or go back.</p>"),
+        ("My family is homeless. Can we get child care sooner?",
+         "<p><b>Families experiencing homelessness</b> can be approved for child care within 7 "
+         "days of applying, once the child is linked to a provider enrolled with the "
+         "Department. The final decision still comes within 30 days. Say so when you "
+         "apply.</p>"))
+         + "<h2>Who Can Help</h2>"
          "<p>For questions about the scholarship and your application, call the Department at "
          "1-844-ASK-DHHS (1-844-275-3447), or ask your local District Office in person. For help "
          "finding child care, call Child Care Aware of New Hampshire at 1-855-393-1731, "
@@ -5710,16 +5733,8 @@ WAGES = guide(
           "paid weekly, or within 15 days if you are paid every two weeks. The Department of "
           "Labor may allow some employers to pay less often, but never less than once a "
           "month.</p>"
-          "<p>You can be paid in cash, by a check you can cash near work, by direct deposit you "
-          "have agreed to in writing, or on a payroll card with at least one free way to take "
-          "out your whole balance each pay period. An employer that pays electronically must "
-          "also offer you a paper check.</p>"
           "<p>When you are hired, your employer must tell you your rate of pay and the day and "
-          "place you will be paid, and must tell you before either changes. Its rules on "
-          "vacation pay, sick leave and other benefits must be given to you in writing or "
-          "posted where you can see them. Vacation, holiday and sick pay, severance and work "
-          "expenses that are your employer&rsquo;s practice or policy count as wages when they "
-          "are due.</p>",
+          "place you will be paid, and must tell you before either changes.</p>",
           law=["RSA 275:43", "RSA 275:49"]),
      step("Your last paycheck",
           "<ul><li><b>If you are fired</b>, your employer must pay all your wages within 72 "
@@ -5728,7 +5743,7 @@ WAGES = guide(
           "period&rsquo;s notice, within 72 hours.</li>"
           "<li><b>If you are laid off</b>, or your work stops because of a labor dispute, by the "
           "next regular payday.</li></ul>"
-          "<p>You can ask for the last paycheck to be mailed to you. An employer that willfully, "
+          "<p>An employer that willfully, "
           "and without good cause, pays late owes you extra, as liquidated damages: 10 percent "
           "of the unpaid wages for each day the pay is late, not counting Sundays and legal "
           "holidays, up to the amount of the unpaid wages.</p>",
@@ -5745,11 +5760,7 @@ WAGES = guide(
           law=["RSA 275:48", "RSA 275:49"]),
      step("Minimum wage, overtime and meal breaks",
           "<p><b>Minimum wage.</b> New Hampshire&rsquo;s minimum wage is the federal minimum "
-          "wage. A tipped worker in a restaurant or hotel who regularly gets tips may be paid a "
-          "lower base rate by the employer, but if base pay and tips together come to less than "
-          "the minimum wage for all the hours worked in a pay period, the employer must pay the "
-          "difference. The law exempts some work, such as farm and household labor, and lets "
-          "some young and new workers be paid less.</p>"
+          "wage.</p>"
           "<p><b>Overtime.</b> Unless your job is exempt, you must be paid time and one-half "
           "your regular rate for every hour over 40 hours in a work week. Federal law requires "
           "it of most employers; New Hampshire&rsquo;s law requires it of the employers federal "
@@ -5858,7 +5869,29 @@ WAGES = guide(
            "Spaulding Building, Concord, NH 03301; phone 603-271-3176; Monday - Friday, 8AM - "
            "4:30PM.", NH_DOL, WG_PAGES_READ)]
     + help_claims("lawyer"),
-    more="<h2>Who Can Help</h2>"
+    more=civics.faq(
+        ("How can I be paid?",
+         "<p>You can be paid in cash, by a check you can cash near work, by direct deposit you "
+         "have agreed to in writing, or on a payroll card with at least one free way to take "
+         "out your whole balance each pay period. An employer that pays electronically must "
+         "also offer you a paper check.</p>"),
+        ("Do vacation pay and other benefits count as wages?",
+         "<p>Your employer&rsquo;s rules on vacation pay, sick leave and other benefits must "
+         "be given to you in "
+         "writing or posted where you can see them. Vacation, holiday and sick pay, severance "
+         "and work expenses that are your employer&rsquo;s practice or policy count as wages "
+         "when they are due.</p>"),
+        ("Can my last paycheck be mailed to me?",
+         "<p>You can ask for the last paycheck to be mailed to you.</p>"),
+        ("Can a tipped worker be paid less than the minimum wage?",
+         "<p>A tipped worker in a restaurant or hotel who regularly gets tips may be paid a "
+         "lower base rate by the employer, but if base pay and tips together come to less than "
+         "the minimum wage for all the hours worked in a pay period, the employer must pay the "
+         "difference.</p>"),
+        ("Does the minimum wage cover every job?",
+         "<p>The law exempts some work, such as farm and household labor, and lets some young "
+         "and new workers be paid less.</p>"))
+         + "<h2>Who Can Help</h2>"
          "<p>The New Hampshire Department of Labor enforces the state&rsquo;s wage laws and takes "
          "wage claims. The U.S. Department of Labor&rsquo;s overtime page explains the federal "
          "overtime rule. For advice about your own situation, a "
@@ -6190,12 +6223,7 @@ MEDICARE = guide(
           "Security account, if you are 65 or older. You can also call Social Security at "
           "1-800-772-1213, Monday through Friday, 8 a.m. to 7 p.m. (TTY 1-800-325-0778), and "
           "make an appointment. If a job&rsquo;s group health plan covers you, you can delay "
-          "Part B.</p>"
-          "<p>Under 65, you may get Medicare if you receive Social Security disability "
-          "benefits or have permanent kidney failure. SSI alone does not qualify you.</p>"
-          "<p>If you already have Part A and are adding Part B because you are losing coverage "
-          "through a job, your employer fills out form CMS-L564, which you send to your local "
-          "Social Security office.</p>",
+          "Part B.</p>",
           actions=[("Sign up for Medicare (Medicare)", MEDICARE_SIGNUP),
                    ("Sign up for Medicare (Social Security)", SSA_MEDICARE)]),
      step("Apply for Social Security retirement benefits",
@@ -6225,8 +6253,7 @@ MEDICARE = guide(
           "even if you do not think you qualify.</p>"
           "<p><b>Extra Help</b> is a federal program that pays part of your drug plan&rsquo;s "
           "costs. You get it automatically if you have Medicaid, a Medicare Savings Program or "
-          "SSI. Otherwise apply through Social Security; applying for Extra Help also starts an "
-          "application for a Medicare Savings Program, unless you say not to.</p>",
+          "SSI. Otherwise apply through Social Security.</p>",
           actions=[("NH Easy", NHEASY),
                    ("Medicare Savings Programs (NH Department of Health and Human Services)", DHHS_MSP),
                    ("Extra Help (Medicare)", MEDICARE_EXTRA)],
@@ -6236,8 +6263,7 @@ MEDICARE = guide(
           "deposit, print proof of your benefits or a tax form, request a replacement Social "
           "Security card, and see your Social Security Statement and earnings record, without "
           "a call or a visit. You create it through Login.gov or ID.me, with an email address, "
-          "a government-issued photo ID and a phone. Once you have your Medicare card, you can "
-          "also make a Medicare account on Medicare.gov with your Medicare Number.</p>",
+          "a government-issued photo ID and a phone.</p>",
           actions=[("my Social Security", SSA_ACCOUNT)])],
     [("When Does Medicare Coverage Start? (Medicare)", MEDICARE_START),
      ("How Do I Sign Up for Medicare? (Medicare)", MEDICARE_AUTO),
@@ -6319,7 +6345,21 @@ MEDICARE = guide(
            "(1-844-275-3447), Monday through Friday, 8:00 a.m. to 4:00 p.m.; administrative "
            "appeal hearing.", DHHS_MSP, DHHS_MSP_READ)]
     + help_claims("adrc", "nheasy", "legal_aid"),
-    more="<h2>Who Can Help</h2>"
+    more=civics.faq(
+        ("Can I get Medicare before I turn 65?",
+         "<p>Under 65, you may get Medicare if you receive Social Security disability benefits "
+         "or have permanent kidney failure. SSI alone does not qualify you.</p>"),
+        ("I am losing coverage through a job. How do I add Part B?",
+         "<p>If you already have Part A and are adding Part B because you are losing coverage "
+         "through a job, your employer fills out form CMS-L564, which you send to your local "
+         "Social Security office.</p>"),
+        ("Does applying for Extra Help also apply for a Medicare Savings Program?",
+         "<p>Yes, unless you say not to: applying for Extra Help through Social Security also "
+         "starts an application for a Medicare Savings Program.</p>"),
+        ("Can I manage Medicare online too?",
+         "<p>Once you have your Medicare card, you can make a Medicare account on Medicare.gov "
+         "with your Medicare Number.</p>"))
+         + "<h2>Who Can Help</h2>"
          "<p>Medicare answers at 1-800-MEDICARE (1-800-633-4227), 24 hours a day (TTY "
          "1-877-486-2048), and Social Security at 1-800-772-1213.</p>"
          + helps("adrc", "nheasy", "legal_aid"),
@@ -6386,14 +6426,9 @@ DISABILITY = guide(
           "any substantial work and is expected to last at least 12 months or to result in "
           "death. It runs two programs:</p>"
           "<ul><li><b>SSDI</b> (Social Security Disability Insurance) is for people who have "
-          "worked long enough, and paid Social Security taxes, to be insured. Benefits begin "
-          "after a waiting period of 5 months of disability. After 24 months of disability "
-          "benefits, you get Medicare automatically.</li>"
+          "worked long enough, and paid Social Security taxes, to be insured.</li>"
           "<li><b>SSI</b> (Supplemental Security Income) is for people who are disabled, blind "
           "or 65 or older, and whose income and savings are under its limits.</li></ul>"
-          "<p>SSI also counts what you own, such as money in the bank and vehicles, up to a "
-          "limit. Social Security&rsquo;s Who Can Get SSI page gives the income and resource "
-          "limits.</p>"
           "<p>Apply as soon as you can, online on Social Security&rsquo;s Apply page, or call "
           "1-800-772-1213 for an appointment.</p>",
           actions=[("Apply for benefits (Social Security)", SSA_APPLY),
@@ -6417,17 +6452,14 @@ DISABILITY = guide(
           "services come through ten regional <b>area agencies</b>. Apply to the one for where "
           "you live. It arranges an evaluation, and makes its first recommendations within 21 "
           "days of your application. Its services include service coordination, help living in "
-          "the community, and employment and day services.</p>"
-          "<p>For a child from birth up to age 3 with a developmental delay, or at risk of one, "
-          "the area agencies also run Family Centered Early Supports and Services.</p>",
+          "the community, and employment and day services.</p>",
           actions=[("Developmental services and the area agencies (Department of Health and "
                     "Human Services)", DHHS_DEV)],
           law=["RSA 171-A:6", "RSA 171-A:18", "RSA 171-A:18-a"]),
      step("Help getting or keeping a job: vocational rehabilitation",
           "<p>The Department of Education&rsquo;s <b>Bureau of Vocational Rehabilitation</b> "
           "helps people with disabilities prepare for, find and keep a job, under the federal "
-          "vocational rehabilitation program. Its independent living program helps people with "
-          "disabilities, and older people who are blind, live more independently.</p>"
+          "vocational rehabilitation program.</p>"
           "<p>Any New Hampshire resident with a disability may qualify, whether looking for a "
           "first job or wanting to keep working after a disability. Its help includes career "
           "counseling, job training, help finding a job, and assistive technology. To apply, "
@@ -6530,7 +6562,22 @@ DISABILITY = guide(
            "working after acquiring a disability; to apply, complete the online referral form; "
            "(603) 271-3494.", NHVR, DIS_PRINT_READ)]
     + help_claims("adrc", "nheasy", "legal_aid"),
-    more="<h2>Who Can Help</h2>"
+    more=civics.faq(
+        ("When do SSDI benefits begin, and when does Medicare start?",
+         "<p>Benefits begin after a waiting period of 5 months of disability. After 24 months of "
+         "disability benefits, you get Medicare automatically.</p>"),
+        ("Does SSI count what I own?",
+         "<p>SSI also counts what you own, such as money in the bank and vehicles, up to a "
+         "limit. Social Security&rsquo;s Who Can Get SSI page gives the income and resource "
+         "limits.</p>"),
+        ("Is there help for a young child with a developmental delay?",
+         "<p>For a child from birth up to age 3 with a developmental delay, or at risk of one, "
+         "the area agencies also run Family Centered Early Supports and Services.</p>"),
+        ("Is there help living more independently?",
+         "<p>The Bureau of Vocational Rehabilitation&rsquo;s independent living program helps "
+         "people with disabilities, and older people who are blind, live more "
+         "independently.</p>"))
+         + "<h2>Who Can Help</h2>"
          "<p>Social Security answers at 1-800-772-1213. For help with the state&rsquo;s "
          "programs, and with finding your way among all of them:</p>"
          + helps("adrc", "nheasy", "legal_aid"),
