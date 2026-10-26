@@ -1,6 +1,7 @@
 // One world for a test of the live Worker: a clock the test moves, an R2
 // bucket in memory, a YouTube that is a function, and Healthchecks as a list
 // of what it was sent. run() is the Worker's own (index.js), given all four.
+import "./no_network.js";
 import { FakeR2 } from "./fake_r2.js";
 import { FakeYouTube, KEY } from "./fake_youtube.js";
 import { run } from "../../workers/live/index.js";

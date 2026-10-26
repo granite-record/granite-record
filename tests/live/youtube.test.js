@@ -302,7 +302,7 @@ test("quotaExceeded holds the YouTube half to midnight Pacific, says so in the f
   assert.equal(w.streams("2027-01-08").status.ok, true);
 });
 
-test("a refused key holds it for the rest of New Hampshire's day; so does a forbidden answer, and no key at all", async () => {
+test("a refused key holds it for the rest of New Hampshire's day, and so does a forbidden answer", async () => {
   for (const kind of ["key_invalid", "forbidden"]) {
     const w = world({ start: "2027-01-07T15:00:00Z" });
     w.yt.fail("*", kind);
@@ -317,11 +317,31 @@ test("a refused key holds it for the rest of New Hampshire's day; so does a forb
     await w.runAt(T("2027-01-08T05:00:00Z"));
     assert.ok(w.yt.calls.length > n, `${kind}: asked again the next day`);
   }
-  const w = world({ start: "2027-01-07T15:00:00Z", key: null });
-  const out = await w.runAt();
-  assert.equal(w.yt.calls.length, 0, "with no key, nothing is asked");
-  assert.ok(out.codes.includes("youtube_problem_key"));
-  assert.match(w.fails()[0].body, /no YOUTUBE_API_KEY secret/);
+});
+
+test("a new key lifts a refused key's hold at the next run; no key at all is said at every look and held for nothing", async () => {
+  const w = world({ start: "2027-01-07T15:00:00Z" });
+  w.yt.fail("*", "key_invalid");
+  await w.runAt();
+  assert.match(w.state().yt.held.key, /^[0-9a-f]{12}$/, "the hold keeps a print of the key, not the key");
+  await w.runAt(T("2027-01-07T15:02:00Z"));
+  const n = w.yt.calls.length;
+  w.env.YOUTUBE_API_KEY = w.yt.key = "a-new-synthetic-key";
+  const out = await w.runAt(T("2027-01-07T15:04:00Z"));
+  assert.ok(out.codes.includes("new_key") && w.yt.calls.length > n, out.codes.join(" "));
+  assert.equal(w.streams("2027-01-07").status.ok, true);
+
+  const none = world({ start: "2027-01-07T15:00:00Z", key: null });
+  await none.every("2027-01-07T15:00:00Z", "2027-01-07T15:06:00Z");
+  assert.equal(none.yt.calls.length, 0, "with no key, nothing is asked");
+  assert.equal(none.state().yt.held, undefined, "and nothing is held");
+  assert.equal(none.streams("2027-01-07").status.problem, "key");
+  assert.equal(none.fails().length, 3, "every look says so");
+  assert.match(none.fails()[0].body, /no YOUTUBE_API_KEY secret/);
+  none.env.YOUTUBE_API_KEY = KEY;
+  await none.runAt(T("2027-01-07T15:06:00Z"));
+  assert.ok(none.yt.calls.length > 0, "the first run after the key is put asks");
+  assert.equal(none.streams("2027-01-07").status.ok, true);
 });
 
 test("five failed looks in a row tell Healthchecks, four do not, and a good look starts the count again", async () => {

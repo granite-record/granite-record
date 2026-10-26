@@ -137,6 +137,15 @@ async function ask(fetchImpl, key, method, params, tally, timeoutMs) {
   return body;
 }
 
+// A refused key's hold is kept with this print of it, so a new key lifts the
+// hold at once: the first twelve hex digits of its SHA-256, which say whether
+// it changed and nothing of what it is.
+export async function keyPrint(key) {
+  if (!key) return null;
+  const d = new Uint8Array(await crypto.subtle.digest("SHA-256", new TextEncoder().encode(String(key))));
+  return [...d.slice(0, 6)].map(b => b.toString(16).padStart(2, "0")).join("");
+}
+
 // ---- the file -------------------------------------------------------------------
 export const streamsKey = day => `streams/${day}.json`;
 
@@ -331,9 +340,15 @@ export async function look({ key, fetchImpl = fetch, now, yt: before = {}, prev 
     if (e.problem === "quota") {
       yt.held = { why: "quota", until: iso(midnightAfter(now, PACIFIC)), since: at };
       fail = `YouTube's quota is spent: the YouTube half waits for midnight Pacific (${e.detail})`;
+    } else if (e.problem === "key" && !key) {
+      // Not held: YouTube was not asked, and the first run after the person
+      // puts the secret uses it.
+      fail = "there is no YOUTUBE_API_KEY secret, so YouTube was not asked: README.md says how to put it";
     } else if (e.problem === "key") {
-      yt.held = { why: "key", until: iso(midnightAfter(now, NEW_YORK)), since: at };
-      fail = `YouTube refused the key, or there is none: the YouTube half waits for tomorrow (${e.detail})`;
+      // Held for the day, as a refused key should be; lifted at the next run
+      // if the person puts a new one (index.js compares the print).
+      yt.held = { why: "key", until: iso(midnightAfter(now, NEW_YORK)), since: at, key: await keyPrint(key) };
+      fail = `YouTube refused the key: the YouTube half waits for tomorrow, or a new key (${e.detail})`;
     } else {
       yt.fails = (yt.fails || 0) + 1;
       if (yt.fails >= FAILS_TO_TELL) fail = `${yt.fails} looks at YouTube in a row have failed (${e.detail})`;

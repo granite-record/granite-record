@@ -28,12 +28,14 @@
  *
  * Its secrets are YOUTUBE_API_KEY, a second key in the existing Google
  * project restricted to the YouTube Data API v3, and HEALTHCHECK_URL; README.md
- * says how the person sets each. Without the key, every look is a refused key
- * and is said so; without the URL, nothing is pinged.
+ * says how the person sets each. Without the key, YouTube is asked nothing and
+ * every look says so, until the first run after the key is put; a key YouTube
+ * refuses is held for the day, or until the person puts a new one. Without
+ * the URL, nothing is pinged.
  */
 import { clock } from "../follow/common.js";
 import { iso, nh, youtubeDue } from "./clock.js";
-import { look, offFile, streamsKey } from "./youtube.js";
+import { keyPrint, look, offFile, streamsKey } from "./youtube.js";
 import { CONTROL_DEFAULT, WAITS_TO_TELL, WRITE_BY_MS, emptyState, leaseHeld, noteWait, putJSON,
          readControl, readJSON, readState, releaseLease, sweep, takeLease } from "./store.js";
 
@@ -108,10 +110,15 @@ export async function run(env, opts = {}) {
     if (!bucket) throw new Error("no LIVE bucket is bound");
     control = await readControl(bucket);
     const { state, etag } = await readState(bucket);
-    const p = plan(now, state, control);
     const s = state ? structuredClone(state) : emptyState();
-    if (s.day !== p.today) { s.day = p.today; s.count = { units: 0, searches: 0 }; }
     s.yt = s.yt || {};
+    // A refused key's hold lifts as soon as the person puts a new key.
+    if (s.yt.held && s.yt.held.why === "key" && s.yt.held.key !== await keyPrint(env.YOUTUBE_API_KEY)) {
+      s.yt.held = null;
+      out.codes.push("new_key");
+    }
+    const p = plan(now, s, control);
+    if (s.day !== p.today) { s.day = p.today; s.count = { units: 0, searches: 0 }; }
     out.count = s.count;
     if (p.held) out.codes.push(`youtube_held_${p.held.why}`);
     if (!p.youtube && !p.off && !p.sweep) {

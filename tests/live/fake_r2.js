@@ -43,14 +43,15 @@ export class FakeR2 {
     }
   }
 
+  // A cursor is where the last page ended, by key, as R2's is a position in
+  // the listing: so objects deleted from a page already read move nothing.
   async list({ prefix = "", cursor, limit = 1000 } = {}) {
     this.ops.push(["list", prefix]);
-    const keys = [...this.objects.keys()].filter(k => k.startsWith(prefix)).sort();
-    const from = cursor ? Number(cursor) : 0;
-    const page = keys.slice(from, from + limit);
-    const truncated = from + limit < keys.length;
+    const keys = [...this.objects.keys()].filter(k => k.startsWith(prefix) && (!cursor || k > cursor)).sort();
+    const page = keys.slice(0, limit);
+    const truncated = keys.length > limit;
     return { objects: page.map(k => this._meta(k, this.objects.get(k))), truncated,
-             cursor: truncated ? String(from + limit) : undefined, delimitedPrefixes: [] };
+             cursor: truncated ? page.at(-1) : undefined, delimitedPrefixes: [] };
   }
 
   // For the tests: an object's body as JSON, or undefined; and an object put
