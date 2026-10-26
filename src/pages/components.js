@@ -1,4 +1,4 @@
-// GRANITE_VERSION: 2026-10-09.22
+// GRANITE_VERSION: 2026-10-09.23
 /* THE SITE'S COMPONENTS, IN THE BROWSER. Published as site/components.js and
    loaded by every page, in its head, before app.js, find.js and any page's
    own script, so each of them draws a person, a committee, a date or a time
@@ -637,7 +637,11 @@ function electLine(key,election,takesOffice,today){
 // itself again, and hidden from that day on: a page built on 1 December and
 // read on the 3rd -- a night held, a copy a browser kept -- shows no
 // member-elect, because the day they take office has come. Only ever hides:
-// what the build hid stays hidden whatever the reader's clock says.
+// what the build hid stays hidden whatever the reader's clock says. The
+// reader's day by that choice, not because a day's name is the reader's: a
+// day someone takes office is an event in Concord, as a testimony deadline
+// is, and that one is Concord's (TWO CLOCKS, ON PURPOSE, at app.js's nhDay,
+// says why and leaves this one open).
 (function(){
   if(typeof document==="undefined"||!document.querySelectorAll)return;
   function day(){

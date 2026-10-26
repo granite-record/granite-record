@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-10-14.12
+# GRANITE_VERSION: 2026-10-14.13
 """
 A docket line in plain words, for a reader who does not know the clerk's
 shorthand -- the email digest and the Documents tab (the person's choices of
@@ -55,15 +55,40 @@ VOTES = json.loads((_paths.ROOT / "src/pages/words/votes.json").read_text(encodi
 STUDY = json.loads((_paths.ROOT / "src/pages/words/study_report.json").read_text(encoding="utf-8"))
 
 # The buildings the clerk abbreviates, as the calendar and the site name them.
-BUILDINGS = {"LOB": "Legislative Office Building", "SH": "State House", "GP": "Granite Place"}
+# SL IS THE STATE LIBRARY (the person, 26 October 2026: "SL is the state
+# library map room"). The Senate's Education committee sat in its Map Room
+# for 54 hearings of 2025-2026, which the docket writes "Room Map Room, SL"
+# and "Map Room, SL", the schedule "SL Map Room", the committee's own record
+# "SL Rm Map Room" and the database "SL Room Map Room"; the Testify button,
+# the Hearings tab, the committee's page and the email all printed the "SL".
+BUILDINGS = {"LOB": "Legislative Office Building", "SH": "State House", "GP": "Granite Place",
+             "SL": "State Library"}
 
 _TIME = re.compile(r"\b(\d{1,2}):(\d{2})\s*([ap])\.?m\.?", re.I)
 _ROOM = re.compile(r"\bRoom\s+([\w][\w .\-]*?)\s*,\s*([A-Z]{2,3})\b", re.I)
 # A room number, never the hour after it: "Representatives' Hall, SH 3:00
 # p.m.", the Senate's hearing on HB 1 and HB 2 of 2015, read as "State House
 # 3" once its two-digit year was read (16 October 2026).
-_BLDG = re.compile(r"\b(LOB|SH|GP)\s+([0-9][0-9A-Za-z\-]*)\b(?!:)")
-_TALLY = re.compile(r"\b(RC|DV|VV)\b\s*=?\s*(?:(\d+)\s*Y?\s*-\s*(\d+)\s*N?)?", re.I)
+_BLDG = re.compile(r"\b(LOB|SH|GP|SL)\s+([0-9][0-9A-Za-z\-]*)\b(?!:)")
+# A ROOM WITH A NAME, NOT A NUMBER, after its building, whichever side of
+# the room the clerk wrote the building on (26 October 2026): all five
+# spellings of the Map Room above are "State Library Map Room", one room read
+# one way, as "GP Room 230" and "GP 230" are both "Granite Place 230" (S7).
+# A name is capitalised words ending in "Room", so a number never is one.
+# app.js's roomWords has the same two patterns, held to these by preflight.
+_NAMED = r"(?:[A-Z][\w']*\s+)+Room"
+_NAMED_AFTER = re.compile(rf"\b(?:Room\s+)?({_NAMED})\s*,\s*(LOBO|LOB|SH|GP|SL)\b")
+_NAMED_BEFORE = re.compile(rf"\b(LOBO|LOB|SH|GP|SL)\s+(?:Rm\.?\s+|Room\s+)?({_NAMED})\b")
+
+
+def _named(t):
+    """t with a named room in the site's words: "Map Room, SL" and "SL Rm Map
+    Room" are "State Library Map Room"."""
+    t = _NAMED_AFTER.sub(lambda m: f"{_PLACE_BUILDINGS[m.group(2)]} {m.group(1)}", t)
+    return _NAMED_BEFORE.sub(lambda m: f"{_PLACE_BUILDINGS[m.group(1)]} {m.group(2)}", t)
+
+
+_TALLY =re.compile(r"\b(RC|DV|VV)\b\s*=?\s*(?:(\d+)\s*Y?\s*-\s*(\d+)\s*N?)?", re.I)
 _VOTE = re.compile(r"\bVote\s+(\d+)\s*-\s*(\d+)", re.I)
 _AMD = re.compile(r"#\s*((?:\d{4}-)?\d+[a-z]*)", re.I)
 _CHAPTER = re.compile(r"\bChapter\s*(\d+)", re.I)
@@ -80,8 +105,11 @@ def _where(raw):
     t = _TIME.search(raw)
     if t:
         bits.append(_clock(t))
+    n = _NAMED_AFTER.search(raw) or _NAMED_BEFORE.search(raw)
     r = _ROOM.search(raw)
-    if r:
+    if n:
+        bits.append(_named(n.group(0)))
+    elif r:
         bits.append(f"Room {r.group(1).strip()}, {BUILDINGS.get(r.group(2).upper(), r.group(2))}")
     else:
         b = _BLDG.search(raw)
@@ -519,8 +547,13 @@ def plain(raw, bill="", body="", next_line=""):
 # the Calendar and a committee's Meets In print beside the docket's "GP 230"
 # for the same room: "Granite Place 230", as the docket's is. app.js's
 # roomWords is this rule in the browser, held to it by preflight.
-_PLACE_BLDG = re.compile(r"\b(LOBO|LOB|SH|GP) ?(?:Room )?([0-9][0-9A-Za-z\-]*)\b(?!:)")
-_PLACE_ALONE = re.compile(r"^(LOBO|LOB|SH|GP)$")
+#
+# AND "Rm" (26 October 2026): the Senate committees' own record gives the
+# room they meet in as "SH Rm 100", "SH Rm 122-123" and "SL Rm Map Room",
+# and their pages said Meets In "SH Rm 100" where a hearing of theirs says
+# "State House 100". A named room, the State Library's Map Room, is _named's.
+_PLACE_BLDG = re.compile(r"\b(LOBO|LOB|SH|GP|SL) ?(?:Room |Rm\.? ?)?([0-9][0-9A-Za-z\-]*)\b(?!:)")
+_PLACE_ALONE = re.compile(r"^(LOBO|LOB|SH|GP|SL)$")
 _REPS_HALL = re.compile(r"^(?:SH,?\s+)?(?:Reps|Representatives)'?\s+Hall(?:,?\s*SH)?$", re.I)
 _PLACE_BUILDINGS = dict(BUILDINGS, LOBO=BUILDINGS["LOB"])
 
@@ -528,13 +561,15 @@ _PLACE_BUILDINGS = dict(BUILDINGS, LOBO=BUILDINGS["LOB"])
 def place(raw):
     """A meeting's room in the words the calendar uses: "GP 231", "GP231" and
     "GP Room 231" are "Granite Place 231", "Room 100, SH" is "Room 100, State
-    House", "SH Reps Hall" is "Representatives' Hall, State House". Anything
-    else comes back as it was, spaces made single."""
+    House", "SH Reps Hall" is "Representatives' Hall, State House", "SL Map
+    Room" and "Map Room, SL" are "State Library Map Room". Anything else comes
+    back as it was, spaces made single."""
     t = " ".join(str(raw or "").split())
     if _REPS_HALL.match(t):
         return "Representatives' Hall, State House"
     if _PLACE_ALONE.match(t):
         return _PLACE_BUILDINGS[t]
+    t = _named(t)
     t = _ROOM.sub(lambda m: f"Room {m.group(1).strip()}, "
                             f"{BUILDINGS.get(m.group(2).upper(), m.group(2))}", t)
     return _PLACE_BLDG.sub(lambda m: f"{_PLACE_BUILDINGS[m.group(1)]} {m.group(2)}", t)

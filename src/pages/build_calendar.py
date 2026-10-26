@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-18.43
+# GRANITE_VERSION: 2026-09-18.44
 """
 The General Court's week, one page per week.
 
@@ -1146,7 +1146,9 @@ WEEK_JS = r"""
       FIRST=keyMonday(app.getAttribute("data-first")),
       LAST=addDays(keyMonday(app.getAttribute("data-last")),6);
   // TODAY IS THE READER'S, not the build's: the page is read for a week after
-  // it is made, and "past" and "today" are about when it is read.
+  // it is made, and "past" and "today" are about when it is read. The
+  // reader's day on purpose; a testimony deadline is Concord's (TWO CLOCKS,
+  // ON PURPOSE, at app.js's nhDay).
   var now=new Date(), TODAY=iso(now.getFullYear(),now.getMonth()+1,now.getDate());
   var LASTMONTH=month(LAST)>month(TODAY)?month(LAST):month(TODAY);
   var DAYS={}, WEEKS={}, MONTHS={}, OPEN={list:{},week:{},day:{}}, NAMES=null;

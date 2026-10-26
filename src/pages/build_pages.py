@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.239
+# GRANITE_VERSION: 2026-09-04.240
 """
 Build the pages the navigation links to: legislators, town lookup, how it
 works, and about.
@@ -1278,9 +1278,11 @@ HEARING_NOTE = ("Anyone may attend a public hearing and ask to speak. You can "
 # House's form, which takes written testimony with a sign-in. The Senate's
 # takes a position and no testimony, and the page that confirms the sign-in
 # says how to send it (the Senate's Public Guidance for Committee Meetings,
-# which guides.TESTIMONY cites). So a Senate hearing's note says that, in the
-# words the bill page's Testify box and the emails use for the same form
-# (app.js testifyBox, mail.js testifyWords, 22 October 2026).
+# which guides.TESTIMONY cites). So a Senate hearing's note says that. The
+# bill page's Testify pane (app.js testifyButton) and the follow emails
+# (workers/follow/mail.js testifyWords) said it too until the person's
+# shorter wording of 26 October 2026, which both now share, and neither
+# carries this sentence any more.
 HEARING_NOTE_SENATE = ("Anyone may attend a public hearing and ask to speak. You can "
                        "also sign in online to register a position. The page that "
                        "confirms your sign-in says how to send written testimony.")
@@ -3245,7 +3247,8 @@ const REC=window.GR_LANG&&window.GR_LANG!=="en"?' lang="en"':"";
 // and this says how long ago it was as build_pages.past_rel does -- "today",
 // "yesterday", "3 days ago", nothing past a fortnight -- from the day the
 // reader is in, as Coming up's days say "tomorrow". Not from home.json, so it
-// holds with the fetch failing.
+// holds with the fetch failing. The reader's day on purpose; a testimony
+// deadline is Concord's (TWO CLOCKS, ON PURPOSE, at app.js's nhDay).
 const latRel=(d,now)=>{
   const p=String(d||"").split("-").map(Number);
   const off=Math.round((now-new Date(p[0],p[1]-1,p[2]))/86400000);
@@ -3363,6 +3366,8 @@ fetch(DATA("home.json")).then(r=>r.json()).then(H=>{
   // reader's clock the rail is the coming Monday's week, Monday to Sunday,
   // and its name says so; on a weekday it is today to Sunday, and its name
   // says This Week again for a rail built at the weekend.
+  // The reader's day on purpose; a testimony deadline is Concord's (TWO
+  // CLOCKS, ON PURPOSE, at app.js's nhDay).
   (function(){
     const now=new Date(); now.setHours(0,0,0,0);
     const dow=now.getDay(),ahead=dow===6||dow===0;

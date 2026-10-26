@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.44
+# GRANITE_VERSION: 2026-09-04.45
 """
 Write RSS feeds so people can follow bills without a login.
 
@@ -486,13 +486,26 @@ def main():
     # by its day and its count (FC.FLOOR_COUNT), and a line that matches none,
     # or two that disagree, carries none.
     rc_of = {}
+    # EVERY MEETING STILL TO COME, FROM THE BILL'S OWN RECORD (26 October
+    # 2026), for current.json's upcoming: the rows the Testify button reads,
+    # by its rules (follow_changes.bill_upcoming), so that an email counts
+    # the hearings the site counts -- each of them, not home.json's first
+    # eighty of the fortnight -- with the hearings on a proposed amendment,
+    # and says them as the button's pane does. Read in this same walk.
+    ahead_of, walked = {}, set()
     for year, bid, rec in (SR.records(site, years=current.split("-")) if current else ()):
+        walked.add(bid)
         got = [((r.get("date") or "")[:10], r.get("yeas"), r.get("nays"), FC.rollcall_detail(r))
                for r in rec.get("rollcalls") or []
                if isinstance(r, dict) and (r.get("vote_kind") or "RC") == "RC"]
         got = [g for g in got if g[3]]
         if got:
             rc_of[(year, bid)] = got
+        if (rec.get("term") or current) == current:
+            ahead = FC.bill_upcoming(rec, kind=(by_id.get((current, bid)) or {}).get("kind"),
+                                     today=TODAY, place=PA.place)
+            if ahead:
+                ahead_of[(year, bid)] = ahead
 
     def rollcall_for(year_bid, day, text):
         m = FC.FLOOR_COUNT.search(str(text or ""))
@@ -802,6 +815,27 @@ def main():
                  bills_page, f"{base}/feed/topic/{topic_slug(name)}.xml",
                  newest(items), base), encoding="utf-8")
 
+    # current.json's upcoming: each meeting still to come, filed under its
+    # bill and under the committee that will sit, by chamber and name. THE
+    # COMMITTEE BY ITS FOLLOW LABEL, THE ROOM IN WORDS (17 October 2026): the
+    # email names the committee as current.json does, so that it is the same
+    # name as the reader's own heading and links to the committee's page,
+    # and says "Granite Place 231" where the clerk wrote "GP 231", as every
+    # other line of the email does. FROM THE RECORDS, NOT home.json (26
+    # October 2026): home.json's rows are the home page's calendar, cut at
+    # eighty, and so were these (bill_upcoming, above, says why that is
+    # gone). A committee's followers are sent the meeting without the
+    # bill's own form and amendment link, and a hearing on an amendment
+    # naming the bill it is to, by the label its followers know it by
+    # (committee_row).
+    for (year, bid), ahead in sorted(ahead_of.items()):
+        label = FC.line((by_id.get((current, bid)) or {}).get("n") or bid, 120)
+        for one in ahead:
+            upcoming.setdefault(f"bill:{year}/{bid}", []).append(one["row"])
+            sits = cmte_code.get((one["body"], one["name"].lower())) if one["name"] else None
+            if sits:
+                upcoming.setdefault(f"committee:{sits}", []).append(FC.committee_row(one["row"], label))
+
     # Upcoming hearings. Dated in the FUTURE, which most readers handle by
     # showing the item now -- which is the point. An item nobody sees until
     # after the hearing is worthless.
@@ -820,7 +854,10 @@ def main():
                 bill_url(b) if b else bills_page,
                 f"{(b or {}).get('title','')}\n\n"
                 f"{u.get('committee','')} {u.get('what','')}"
-                + (f", {u['venue']}" if u.get("venue") else "")
+                # The room in words, as the email's row below has it and
+                # every page says it: "State Library Map Room", not "SL Map
+                # Room" (26 October 2026).
+                + (f", {PA.place(u['venue'])}" if u.get("venue") else "")
                 # build_pages' note, by the hearing's chamber (hearing_note): the
                 # person's words of 7 October 2026 (F2), and since 23 October
                 # 2026 the Senate's, whose online sign-in takes no testimony.
@@ -828,25 +865,21 @@ def main():
                 # prints neither.
                 + "\n\n" + BP.hearing_note(u.get("body")),
                 when, f"hearing:{u.get('bill')}:{when}:{u.get('time','')}"))
-            # current.json's upcoming: the same row, filed under its bill and
-            # under the committee that will sit, by chamber and name.
+            # A MEETING ON A BILL WITH NO PAGE still reaches the committee's
+            # followers, from the calendar's row as before: the records above
+            # have every other.
+            if str(u.get("bill") or "").upper() in walked:
+                continue
             body = str(u.get("body") or "").strip().upper()
             name = str(u.get("committee") or "").strip()
             sits = cmte_code.get((body, name.lower()))
             word = CHAMBER.get(body, "")
-            # THE COMMITTEE BY ITS FOLLOW LABEL, THE ROOM IN WORDS (17 October
-            # 2026). The email names the committee as current.json does, so
-            # that it is the same name as the reader's own heading and links
-            # to the committee's page, and says "Granite Place 231" where the
-            # clerk wrote "GP 231", as every other line of the email does.
             row = FC.upcoming_row(
                 when[:10], u.get("what") or "hearing", u.get("time") or "",
                 FC.committee_label(name, word) if name else "",
                 PA.place(u.get("venue") or ""))
-            if row:
-                for k in ([f"bill:{b.get('year')}/{b['id'].upper()}"] if b else []) + \
-                        ([f"committee:{sits}"] if sits else []):
-                    upcoming.setdefault(k, []).append(row)
+            if row and sits:
+                upcoming.setdefault(f"committee:{sits}", []).append(row)
         nhear = len(items)
         (fd / "hearings.xml").write_text(
             feed("Granite Record — upcoming hearings",

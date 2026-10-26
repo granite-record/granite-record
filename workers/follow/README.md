@@ -40,7 +40,10 @@ bill status's colour (`--st-*`) and the vote ring's two (`--yes`, `--no`) are
 `src/pages/app.css`'s light theme; the word each status chip is coloured by
 is `src/pages/words/chips.json`'s `chip`; the testimony forms are
 `src/pages/app.js`'s `TESTIFY_FORMS`; a study report's words are
-`src/pages/words/study_report.json`'s; the mark's file and size are
+`src/pages/words/study_report.json`'s; the line that says email following
+is in beta, and the day it stops (`FOLLOW_BETA`), is
+`src/pages/words/follow_beta.json`'s, which the site's Follow by email pane
+says too; the mark's file and size are
 `src/pages/build_brand.py`'s. To change one, change it there, run that
 command and commit `site.gen.js` with the change; `preflight` fails until
 the two agree, and names the command. The emails' own choices -- the white
@@ -59,6 +62,21 @@ day (the editor's account; no document on record states it). Each says it
 with the chamber's form as a button and what to choose on it, the hearing's
 date, the committee and the bill (`sender.testifyFor`, `mail.testifyWords`); a
 weekly reader has the same beside the hearing in the week ahead.
+
+**In step with the site's Testify button** (26 October 2026; the person:
+"Emails should stay in sync with how the site displays the testify
+button"). The hearings told are the ones a bill's Testify button counts as
+live, read by the build from the bill's own record by the button's rules
+(`follow_changes.bill_upcoming`; `CHANGES_FORMAT.md`, `form`) -- a hearing on
+a proposed amendment among them, its number a link to it on the Bill Text
+tab, and in the plain text an address on a line of its own -- and the block
+says what the button's live pane says, in its order and words. The line
+that set the hearing is not said again beneath the block (`setsHearing`).
+`preflight`'s `_testify_email_in_sync` draws the pane and the block for the
+same records -- its own, and every record another check draws a Testify
+button for -- and fails where they differ. A change to the pane's words is a
+change to `mail.js` too, and reaches inboxes once the sender is deployed
+again.
 
 **The logo** at the top of every email is `/mail-mark.png`: the site
 header's drawing on a white tile, so a mail app's dark mode cannot hide it.

@@ -1,4 +1,4 @@
-// GRANITE_VERSION: 2026-09-07.248
+// GRANITE_VERSION: 2026-09-07.249
 // esc, dateWords and dateSpan, clock, cmteLink and pchip are components.js's,
 // which every page loads before this file (the component plan's C1 and C2),
 // and so is WORDBOOK, the words of src/pages/words/ that the build writes into
@@ -2368,25 +2368,38 @@ function filterCombo(inp,o){
 // THE BILL SEARCH'S OFFERS: a Topic, or a Committee, of the bills in the
 // term, by name; each with the count it would list -- the filters already
 // chosen kept, this one added, and the words it does not stand for searched.
+// IN THE TERM AN OFFER LANDS IN (the review of 26 October 2026). With a bill
+// open on /bills and the picker turned, the list's term waits for the bill to
+// be closed (heldTerm), and taking an offer closes it (takeOffer, unfocus):
+// the offers were counted and chosen in the open bill's term and landed in
+// the held one -- 2023-2024's HB 104 open, 2025-2026 chosen, "housing" offered
+// "Topic Housing 62" and "House Special Committee on Housing 9", and they
+// listed 117 bills and none. So they are worked out in the held term, as the
+// list they lead to will be; `term` is put back at once, since the open bill
+// is still looked up in its own (render).
 function billOffers(q){
   if(!IDX.length)return [];
   const t=String(q||"").trim();
   if(billNumbers(t)||RSA_SHAPE.test(t))return [];
-  const inYear=IDX.filter(inTermOf);
-  const vals=k=>{const c={};inYear.forEach(b=>facetVals(b,k).forEach(v=>{
-    if(v&&!sel[k].has(v))c[v]=(c[v]||0)+1;}));return Object.keys(c).map(v=>[v,v,c[v]]);};
-  const offers=filterOffers(q,[
-    {key:"topic",values:vals("topic"),say:v=>`All bills with the topic <b>${esc(v)}</b>`},
-    // "House No Committee Assignment" is a filter, and no committee.
-    {key:"committee",values:vals("committee").filter(x=>!/\bno committee\b/i.test(x[0])),
-     say:v=>`All bills referred to the <b>${esc(v)}</b> committee`}]);
-  for(const o of offers){
-    const was=query;
-    query=o.rest;sel[o.key].add(o.v);
-    try{o.n=IDX.filter(b=>matches(b)).length;}
-    finally{sel[o.key].delete(o.v);query=was;}
-  }
-  return offers;
+  const own=term;
+  if(heldTerm!==null)term=heldTerm;
+  try{
+    const inYear=IDX.filter(inTermOf);
+    const vals=k=>{const c={};inYear.forEach(b=>facetVals(b,k).forEach(v=>{
+      if(v&&!sel[k].has(v))c[v]=(c[v]||0)+1;}));return Object.keys(c).map(v=>[v,v,c[v]]);};
+    const offers=filterOffers(q,[
+      {key:"topic",values:vals("topic"),say:v=>`All bills with the topic <b>${esc(v)}</b>`},
+      // "House No Committee Assignment" is a filter, and no committee.
+      {key:"committee",values:vals("committee").filter(x=>!/\bno committee\b/i.test(x[0])),
+       say:v=>`All bills referred to the <b>${esc(v)}</b> committee`}]);
+    for(const o of offers){
+      const was=query;
+      query=o.rest;sel[o.key].add(o.v);
+      try{o.n=IDX.filter(b=>matches(b)).length;}
+      finally{sel[o.key].delete(o.v);query=was;}
+    }
+    return offers;
+  }finally{term=own;}
 }
 // An offer taken, as ticking it in the list would be. Off the list -- a
 // bill's own page, a member's, a committee's -- it is taken where the list
@@ -2748,8 +2761,9 @@ const sel={committee:new Set(),topic:new Set(),sponsor:new Set(),status:new Set(
 // THE STATUTE FILTER (the person, 11 October 2026: the RSA search replaces the
 // floor vote day filter). A bill's index row carries `rsa`, the chapters and
 // sections its own text says it changes (rsa.py), each section's chapter with
-// it; a chapter or a section typed or picked here keeps the bills that change
-// it. RSA_SHAPE reads "RSA 91-A:4", "91-a:4" or "91-A" alike.
+// it; a chapter or a section chosen here (rsaGroup, Laws Changed) keeps the
+// bills that change it. RSA_SHAPE reads "RSA 91-A:4", "91-a:4" or "91-A"
+// alike, in the address (?rsa=) and in the search box.
 let rsaText="";
 const RSA_SHAPE=/^\s*(?:rsa\s*)?(\d{1,3}(?:-[a-z]{1,2})?)(?:\s*:\s*([0-9]{1,4}(?:\.[0-9]{1,2})?(?:-[a-z0-9]{1,4})?))?\s*$/i;
 function rsaNorm(t){const m=RSA_SHAPE.exec(String(t||""));return m?m[1].toUpperCase()+(m[2]?":"+m[2].toLowerCase():""):"";}
@@ -2763,8 +2777,18 @@ const LAW_FOLDERS=["404"];
 function lawPath(ch,sec){const s=String(ch).toLowerCase();
   return "/laws/"+s+(LAW_FOLDERS.includes(s)?"/":"")+(sec?"#s"+sec:"");}
 function rsaHref(a){const p=a.split(":");return lawPath(p[0],p[1]);}
-let HAS_RSA=null;
-function hasRsa(){if(HAS_RSA===null&&IDX&&IDX.length)HAS_RSA=IDX.some(b=>b.rsa);return !!HAS_RSA;}
+// WHETHER THE LISTED TERM'S BILLS SAY WHICH LAWS THEY CHANGE, asked of the
+// term on the list (the review of 26 October 2026). Every term's bills do but
+// the bill requests', which have no text yet. It was asked once, of whatever
+// was loaded first, so a page opened on ?term=2027-requests had no Laws
+// Changed filter in any term it was switched to. Kept for each term and for
+// what is loaded of it, since a term's rows arrive after it is chosen.
+const HAS_RSA={};
+function hasRsa(){
+  const k=term+" "+IDX.length;
+  if(!(k in HAS_RSA))HAS_RSA[k]=IDX.some(b=>b.rsa&&b.rsa.length&&inTermOf(b));
+  return HAS_RSA[k];
+}
 // On a phone the filter column stacks ABOVE the results, and an open
 // Committee group is 340 pixels of it -- so the first bill sat past a
 // screen and a half of filters on a 375-wide screen. Someone arriving on
@@ -2874,8 +2898,9 @@ function forgetCardState(){
   for (const k of Object.keys(segSel)) delete segSel[k];
 }
 // Which bill is filling the screen, and where the reader was standing when
-// they opened it.
-let focused=null,focusY=0;
+// they opened it. heldTerm is a term the picker chose while it was open,
+// taken when it is closed (the picker's change handler, and unfocus).
+let focused=null,focusY=0,heldTerm=null;
 // Bills whose procedural lines the reader has chosen to see.
 const showRoutine=new Set();
 
@@ -3016,21 +3041,31 @@ if(window.GR_STATIC){
      // On a record page there is no list to re-filter, and render() would
      // write one over the record.
      if(PAGE||window.GR_STATIC){location.href=BASE+"bills";return;}
+     // ON /bills WITH A BILL OPEN, THE PICKER CHOOSES THE TERM THE LIST WILL
+     // BE IN ONCE THE BILL IS CLOSED, AND NOTHING ELSE. (A bill's own page
+     // has no picker: staticChromeDown hides it.) Re-rendering here swapped
+     // the record under the reader: an open bill is found by its number
+     // alone, so changing the term redrew it as the bill with the SAME
+     // NUMBER in the new term -- a different bill, about a different subject,
+     // at an address still naming the old one. A bill number is only unique
+     // within a biennium, which is the whole reason every address on this
+     // site carries the year.
+     // AND THE OPEN BILL KEEPS ITS OWN TERM UNTIL IT IS CLOSED (the review of
+     // 25 October 2026). The term was taken at once, so the next redraw --
+     // a tab pressed -- did the swapping instead: 2023-2024's HB 104, the
+     // picker turned to 2025-2026, became 2025-2026's HB 104 under the old
+     // bill's row, its Cite still /bill/2023/hb104 and a live Testify for the
+     // other bill in it. The choice is held (heldTerm) and taken when the
+     // bill is closed (unfocus), which a search or an offer taken from the
+     // open bill does first; the offers under the box are the held term's
+     // meanwhile (billOffers). Its bills are fetched now, so the list is
+     // there to draw when the bill is closed.
+     if(focused){
+       heldTerm=e.target.value;
+       (heldTerm===ALL_TERMS?terms:[heldTerm]).forEach(ensureTerm);
+       return;}
      term=e.target.value;
      forgetCardState();
-     // ON A BILL'S OWN PAGE THE PICKER CHOOSES THE TERM THE NEXT SEARCH RUNS
-     // IN, AND NOTHING ELSE. Re-rendering here swapped the record under the
-     // reader: a focused view is found by bill number alone, so changing the
-     // term redrew the page as the bill with the SAME NUMBER in the new term
-     // -- a different bill, about a different subject, at an address still
-     // naming the old one. A bill number is only unique within a biennium,
-     // which is the whole reason every address on this site carries the year.
-     // The term is still taken, and its bills still fetched, so the search
-     // that follows runs in it immediately.
-     if(focused){
-       const t=term===ALL_TERMS?terms:[term];
-       t.forEach(ensureTerm);
-       return;}
      // The term's bills may not be here yet. Fetch, then draw -- and say so
      // meanwhile, because a picker that does nothing for a moment reads as
      // broken.
@@ -3146,7 +3181,11 @@ if(window.GR_STATIC){
    // open, so it takes over here rather than drawing the bill list first and
    // replacing it. The index is still loaded: a vote names a bill and not its
    // year, and yearOf needs the index to turn one into a link.
-   const h=decodeURIComponent(location.hash.slice(1))||(window.GR_BILL||"");
+   // A bill's own page whose fragment names a place in it, not a bill --
+   // /bill/2026/hb1560/text#amendment-2026-0422h (AMENDMENT_HASH, below) --
+   // is still that bill's page (26 October 2026).
+   const said=decodeURIComponent(location.hash.slice(1));
+   const h=said&&!(window.GR_BILL&&AMENDMENT_HASH.test(said))?said:(window.GR_BILL||"");
    const hm=/^(?:(\d{4})\/)?([A-Z]{2,5}\d+)$/i.exec(h);
    if(hm){
      const id=hm[2].toUpperCase(),hy=hm[1]||"";
@@ -3160,7 +3199,9 @@ if(window.GR_STATIC){
      // The tab this bill's own address names.
      if(window.GR_BILL){
        const t=BILL_TABS[tabFromPath()];
-       if(t){openTab[id]=t;if(t==="6"&&row)needVersions(row);TAB_JUMP=id;}
+       if(t){openTab[id]=t;
+         if(t==="6"&&row){amendmentAsked(row,said);needVersions(row);}
+         TAB_JUMP=id;}
      }
      openBill(id);
    }
@@ -3286,21 +3327,344 @@ function fgroup(key,label,vals,counts,searchable,paint,show){
     <span class="chev">▸</span></button><div class="fbody${whole?" whole":""}" ${open?"":"hidden"}>${inner}</div></div>`;
 }
 
+/* THE LAWS CHANGED FILTER (the person, 26 October 2026: "it's a bit unclear
+   what the most changed by these bills section means and those don't seem to
+   have any particular meaning. It's more of a power user filter for folks who
+   know a specific chapter of law they want to search for bills that change
+   it, but it should still be easily understandable"). It was headed "RSA
+   (Statute)" over ten pills of bare chapter numbers, "RSA 674 79", which said
+   nothing to anybody who did not already know chapter 674. Now:
+
+   ITS HEADING SAYS WHAT IT FILTERS BY, "Laws Changed (RSA)": the laws a bill
+   changes, said as a bill's own page says it ("Changes this chapter of state
+   law (RSA)", the person's words of 17 October 2026) and in the word the
+   site's Laws tab is named by, with the letters a reader who knows them looks
+   for. Title Case, as every filter's heading is (8 October 2026).
+
+   ITS BOX TAKES A NUMBER OR A NAME. As the reader types, the chapters some
+   bill of the list changes are offered -- by number ("91" offers RSA 91-A),
+   by a section ("91-A:4", or "91-A:" for each section of it a bill changes),
+   or by the words of the chapter's name, or of the name it is known by, or
+   of its topic ("right to know" and "governmental records" offer RSA 91-A,
+   Access to Governmental Records and Meetings) -- each with how many of the
+   bills it would list, the filters already chosen kept. Nothing is filtered
+   until one is chosen -- pressed, taken by Return, or a number typed whole
+   and the box left: typing "91-A" used to list RSA 9's bills, then RSA
+   91's, on the way. A chapter no bill changes is never offered; where what
+   was typed finds none a bill changes, one line under the box says so, and
+   nothing is chosen that would list no bill. Words name no law there ("No
+   bill in the 2025-2026 term changes a law whose name has “students” in
+   it."): the law of the whole list they fit best was named, and it was a
+   law nobody had asked about. A number names the chapter typed, since that
+   is the law asked about ("No bill ... changes RSA 404, Dog Licensing."), as
+   it does for a section no bill changes, its chapter offered above it
+   ("91-A:99"), and for Return on a number no bill changes ("91", where RSA
+   91-A is offered), which chooses nothing and would otherwise seem to do
+   nothing at all.
+
+   ONE CHOSEN, ONE LINE NAMES IT: "Bills that change RSA 91-A, Access to
+   Governmental Records and Meetings · Read the law · Clear". It was the
+   number alone, and "Read the statute", a word the heading no longer uses.
+
+   THE NAMES ARE THE LAWS PAGES' OWN LIST, laws/chapters.json (150 KB),
+   fetched once, when the group is opened -- never for a reader who does not
+   open it (the phone-speed work of 25 October 2026 keeps /bills light). The
+   numbers, the counts and the filter need nothing from it: without it the
+   offers are numbers alone and the words find nothing, which the line under
+   the box says. A COMBOBOX, as the address box and the bill search's offers
+   are (filterCombo): the box says it controls the list and whether it is
+   open; the arrow keys move through it, aria-activedescendant naming the one
+   they are on; Return takes it; Escape shuts the list and only the list; a
+   status line says how many there are. The list is drawn in place as the box
+   is typed in, so the box and the status line are not replaced under the
+   reader; choosing one draws the page. */
+const RSA_MOST=6;
+// The Laws pages' own lists, each asked for once, when it is first wanted:
+// chapters.json, the chapters' names (150 KB), when the group is opened, and
+// headings.json, every section's heading (1.1 MB, 295 KB as sent), only when a
+// colon is typed for a chapter's sections. A list that fails stays failed for
+// that opening of the group, so it is not asked for again on every letter;
+// the next opening asks again (the review of 26 October 2026: one failure kept
+// the words off for the rest of the visit, a phone a moment offline among the
+// ways to get one).
+const RSA_LAWS={data:null,loading:null,failed:false};
+const RSA_HEADS={data:null,loading:null,failed:false};
+function rsaFetch(o,file,take,then){
+  if(o.data||o.failed)return Promise.resolve();
+  if(!o.loading)o.loading=fetch(DATA(file))
+    .then(r=>{if(!r.ok)throw new Error(file+" returned "+r.status);return r.json();})
+    .then(j=>{o.data=take(j);},()=>{o.failed=true;})
+    .then(()=>{o.loading=null;if(!PAGE&&openGroups.has("rsa")&&!facetsShut())then();});
+  return o.loading;
+}
+// The names: the group drawn again with them; and where the reader is typing,
+// the status line told what they found, as a pause in typing tells it.
+function rsaLawsLoad(){
+  return rsaFetch(RSA_LAWS,"laws/chapters.json",j=>j&&typeof j==="object"?j:{},
+    ()=>{renderFacets();if(RSA_OFF.open)rsaPaint(true);});
+}
+// The headings, as {"91-A:4": "Minutes and Records Available for Public
+// Inspection."}: the offers drawn again with them.
+function rsaHeadsLoad(){
+  return rsaFetch(RSA_HEADS,"laws/headings.json",j=>{const m={};
+    (Array.isArray(j)?j:[]).forEach(x=>{if(Array.isArray(x)&&x[0])m[x[0]]=String(x[1]||"");});return m;},
+    ()=>{if(RSA_OFF.open)rsaPaint();});
+}
+// The next opening of the group asks again for a list that failed.
+function rsaReopen(){RSA_LAWS.failed=false;RSA_HEADS.failed=false;}
+// A chapter's row of the Laws pages' list, for a chapter or a section of it.
+function rsaLaw(a){const c=RSA_LAWS.data&&RSA_LAWS.data[String(a).split(":")[0]];return Array.isArray(c)?c:null;}
+// A section's heading as the Laws pages print it, without its full stop; ""
+// where it is not here (a section a bill would write anew has none).
+function rsaHead(a){const h=RSA_HEADS.data&&RSA_HEADS.data[a];
+  return h?String(h).replace(/\s+/g," ").trim().replace(/\.$/,""):"";}
+// ", Access to Governmental Records and Meetings" after RSA 91-A; a section
+// is "in" it; nothing where the name is not here.
+function rsaOf(a){const c=rsaLaw(a);return c&&c[0]?(a.indexOf(":")<0?", ":", in ")+c[0]:"";}
+const rsaNamed=a=>`RSA ${a}${rsaOf(a)}`;
+// Chapters and sections in the statute's own order: 9, 9-A, 91, 91-A, 91-A:2, 91-A:10.
+function rsaCmp(x,y){
+  const p=s=>{const m=/^(\d+)(?:-([A-Z]+))?(?::(\d+)?(.*))?$/.exec(s)||[];
+    return [+m[1]||0,m[2]||"",m[3]===undefined?-1:+m[3],m[4]||""];};
+  const a=p(x),b=p(y);
+  for(let i=0;i<4;i++)if(a[i]!==b[i])return a[i]<b[i]?-1:1;
+  return 0;
+}
+// What is typed, read: {num} -- the chapter, and the section after a colon,
+// as far as they are typed, "91a" and "91 a" read as 91-A, after "RSA",
+// "chapter" or both; `dash` where the chapter is begun, "21-" -- or {words};
+// or {odd}, a number no RSA number is shaped like, "1234" or "91-A:4:5",
+// with no word of three letters in it, which is told what one looks like
+// rather than read as words (the review of 26 October 2026).
+function rsaTyped(t){
+  t=String(t||"").trim().replace(/^(?:(?:rsa|chapter)(?=[\s.\d]|$)\.?\s*)+/i,"");
+  const m=/^(\d{1,3})(-?)([a-z]{0,2})(?::([0-9a-z.\-]*))?$/i.exec(t.replace(/\s+/g,""));
+  if(m){
+    const ch=m[1]+(m[3]?"-"+m[3].toUpperCase():""),sec=m[4]!==undefined;
+    return {num:ch+(sec?":"+m[4].toLowerCase():""),ch,sec,dash:!!m[2]&&!m[3]&&!sec};
+  }
+  if(/\d/.test(t)&&!/[a-z]{3}/i.test(t))return {odd:t};
+  const w=foWords(t);
+  return w.length&&t.length>=FO_MIN?{words:w,raw:t}:null;
+}
+// How well the words typed fit a chapter of the list: 0 its name, 1 the name
+// it is known by, 2 its topics; -1 not at all. The last word may be begun.
+function rsaFit(ws,open,c){
+  const last=ws.length-1,fits=text=>{const vs=foWords(text);
+    return ws.every((t,i)=>vs.some(v=>foWord(t,v,open&&i===last)));};
+  return fits(c[0]||"")?0:fits((c[0]||"")+" "+(c[4]||[]).join(" "))?1
+    :fits((c[0]||"")+" "+(c[4]||[]).join(" ")+" "+(c[5]||[]).join(" "))?2:-1;
+}
+// The bills each chapter and section would list, the other filters and the
+// search kept: worked out when the group is drawn, which every change to them
+// does, and read as the box is typed in.
+let RSA_N={};
+const rsaNarrowed=()=>!!String(query||"").trim()||Object.keys(sel).some(k=>k!=="rsa"&&sel[k].size);
+// "No bill in the 2025-2026 term changes RSA 404, Dog Licensing.", or "None
+// of these bills changes ..." with another filter or the search on. Said only
+// in a term whose bills say which laws they change (rsaGroup): of a bill
+// request, which has no text yet, it would be a guess stated as a fact (the
+// review of 26 October 2026: "No bill request for 2027 changes RSA 91-A",
+// while two of them are plainly about it).
+function rsaNone(what){
+  return (rsaNarrowed()?"None of these bills changes ":`No bill ${termPhrase()} changes `)+what+".";
+}
+// A NAME A TITLE'S FIRST CHAPTER IS KNOWN BY IS THE TITLE'S (the review of 26
+// October 2026). "criminal code" found RSA 625 alone, Preliminary, by the name
+// it is known by -- while bills change chapter after chapter of the Criminal
+// Code: RSA 625:1, "This title shall be known as the Criminal Code". So where
+// the words fit no law by its own name, and fit best the name a title's first
+// chapter is known by, the offers are the six chapters of that title the
+// bills change most, the most bills first -- 625 among them only where a bill
+// changes it and it is one of those six -- and where the bills change none of
+// the title, the line names it: "None of these bills changes the Criminal
+// Code." Anywhere else the name is the chapter's own (RSA 406-B is the
+// "Uniform Unlicensed Insurers Act"), and so it is where the chapter is its
+// title's only one (RSA 624, known as the Revised Statutes Annotated, is all
+// of title LXI). In the list of 26 October 2026, 625 is the one chapter this
+// applies to. null where it does not apply; else the name the title is known
+// by and the offers.
+function rsaTitleOf(best){
+  const L=RSA_LAWS.data,law=L[best.a],t=law[1];
+  if(best.how!==1||!t)return null;
+  const of=Object.keys(L).filter(a=>Array.isArray(L[a])&&L[a][1]===t);
+  if(of.length<2||of.some(a=>rsaCmp(a,best.a)<0))return null;
+  return {name:law[4][0],rows:of.filter(a=>RSA_N[a]).map(a=>({a,n:RSA_N[a]}))
+    .sort((x,y)=>y.n-x.n||rsaCmp(x.a,y.a)).slice(0,RSA_MOST)};
+}
+// The offers for what is typed: {rows:[{a, n}], note, miss}, `note` the line
+// that says why there are none, `miss` the one Return says where it finds
+// nothing to choose.
+function rsaOffers(t){
+  const T=rsaTyped(t),c=RSA_N;
+  let rows=[];
+  if(!T)return {rows,note:"",miss:""};
+  if(T.odd)return {rows,note:"RSA numbers look like 91-A or 91-A:4.",miss:""};
+  if(T.num){
+    // Sections after a colon, and the chapter itself after them, always, so
+    // its name is there; else the chapters whose number begins with what is
+    // typed -- "21-" with exactly that, 21-J and not 210 (the review of 26
+    // October 2026: "1-" offered 189 and 198) -- the one typed first.
+    const num=T.num.replace(/:$/,""),pre=T.sec?T.num:T.dash?T.ch+"-":T.ch;
+    rows=Object.keys(c).filter(a=>(a.indexOf(":")>=0)===T.sec&&a.startsWith(pre))
+      .map(a=>({a,n:c[a]})).sort((x,y)=>(y.a===num)-(x.a===num)||y.n-x.n||rsaCmp(x.a,y.a));
+    // A section no bill changes, typed whole: said so over its chapter.
+    const unchanged=T.sec&&num!==T.ch&&!rows.length;
+    rows=T.sec&&c[T.ch]?rows.slice(0,RSA_MOST-1).concat([{a:T.ch,n:c[T.ch]}]):rows.slice(0,RSA_MOST);
+    // "21-", begun, names no chapter: RSA 21 itself may well be changed.
+    const none=rsaNone(T.dash?`a law whose number begins “${T.ch}-”`:rsaNamed(num));
+    return {rows,note:rows.length&&!unchanged?"":none,miss:T.dash?"":none};
+  }
+  if(!RSA_LAWS.data)return {rows,miss:"",note:RSA_LAWS.failed
+    ?"The laws’ names could not be loaded. Type a chapter’s number, like 91-A."
+    :"Looking up the laws’ names…"};
+  // A last word begun and not yet three letters is not read until it is:
+  // "right to kn" said "No law matches" between "right to" and "right to kno"
+  // (found in Chromium on the preview, 26 October 2026). Now it offers what
+  // "right" does, a whole word.
+  const begun=!/\s$/.test(String(t||""));
+  const cut=begun&&T.words.length>1&&T.words[T.words.length-1].length<FO_MIN;
+  const ws=cut?T.words.slice(0,-1):T.words,open=begun&&!cut;
+  // Every law of the list the words fit: offered where a bill here changes
+  // it; and the one they fit best, for a title's name (rsaTitleOf).
+  let best=null;
+  for(const a of Object.keys(RSA_LAWS.data)){
+    const law=RSA_LAWS.data[a],how=Array.isArray(law)?rsaFit(ws,open,law):-1;
+    if(how<0)continue;
+    if(c[a])rows.push({a,n:c[a],how});
+    if(!best||how<best.how)best={a,how};
+  }
+  const title=best&&rsaTitleOf(best);
+  if(title)return {rows:title.rows,miss:"",note:title.rows.length?"":rsaNone("the "+title.name)};
+  rows.sort((x,y)=>x.how-y.how||y.n-x.n||rsaCmp(x.a,y.a));
+  // None a bill changes: said so, naming no law. The law of the whole list
+  // the words fit best was named, and "students" named RSA 110-E, "driving"
+  // RSA 287-G, laws nobody had asked about (the review of 26 October 2026).
+  return {rows:rows.slice(0,RSA_MOST),miss:"",
+    note:rows.length?"":rsaNone(`a law whose name has “${T.raw}” in it`)};
+}
+// The list and the line under the box as they stand: shut, or what is typed
+// offered, the one the arrow keys are on by its number. `miss` is what was
+// typed when Return found nothing to choose, until it is typed in again.
+const RSA_OFF={open:false,act:"",miss:null};
+let RSADRAW=null;
+function rsaState(){
+  if(!RSA_OFF.open)return {rows:[],note:"",act:-1};
+  const r=rsaOffers(rsaText);
+  if(!r.note&&RSA_OFF.miss===rsaText)r.note=r.miss;
+  return {...r,act:r.rows.findIndex(x=>x.a===RSA_OFF.act)};
+}
+// Each offer: the number, and under it a chapter's name or a section's
+// heading -- a section's chapter is offered with it, named once, rather than
+// the same name under every section -- and how many bills at the right. A
+// section was its number alone, "RSA 91-A:4 8", the bare numbers the person
+// asked to be rid of (the review of 26 October 2026).
+function rsaRows(st){
+  return st.rows.map((r,i)=>{const law=r.a.indexOf(":")<0&&rsaLaw(r.a);
+    const under=law?law[0]||"":r.a.indexOf(":")>=0?rsaHead(r.a):"";
+    return `<li role="option" class="qoffer" id="rsaoffers-${i}" data-rsapick="${esc(r.a)}"
+    aria-selected="${i===st.act}"><span class="rn"><b>RSA ${esc(r.a)}</b>${under
+      ?`<span class="sr">, </span><span class="rt">${esc(under)}</span>`:""}</span>
+    <span class="c">${Number(r.n).toLocaleString()}<span class="sr"> ${r.n===1?"bill":"bills"}</span></span></li>`;}).join("");
+}
+// The list drawn again in place, the box and the status line kept. `say`
+// where what is typed changed: the status line says how many, or the line
+// under the box. Shut, the status line is emptied with it: it went on saying
+// "6 laws match" after Tab had shut the six (the review of 26 October 2026).
+function rsaPaint(say){
+  const box=document.getElementById("rsabox"),list=document.getElementById("rsaoffers");
+  if(!box||!list)return;
+  const st=rsaState(),note=document.getElementById("rsanote");
+  list.innerHTML=rsaRows(st);list.hidden=!st.rows.length;
+  box.setAttribute("aria-expanded",st.rows.length?"true":"false");
+  if(st.act>=0){
+    box.setAttribute("aria-activedescendant","rsaoffers-"+st.act);
+    const on=document.getElementById("rsaoffers-"+st.act);
+    if(on&&on.scrollIntoView)on.scrollIntoView({block:"nearest"});
+  }else box.removeAttribute("aria-activedescendant");
+  if(note){note.textContent=st.note;note.hidden=!st.note;}
+  const s=document.getElementById("rsasay");
+  if(s&&(say||!RSA_OFF.open))s.textContent=st.note||(!st.rows.length?"":st.rows.length===1
+    ?"1 law matches; the down arrow chooses it.":`${st.rows.length} laws match; the down arrow chooses one.`);
+}
+// Return: the offer the arrow keys are on; else what was typed, where a bill
+// changes it -- "540:", its sections not begun, is RSA 540; else, for words,
+// the best of the offers.
+function rsaEnter(){
+  const r=rsaOffers(rsaText),T=rsaTyped(rsaText);
+  const on=r.rows.find(x=>x.a===RSA_OFF.act);
+  if(on)return on.a;
+  if(T&&T.num)return rsaNumber();
+  return T&&r.rows.length?r.rows[0].a:"";
+}
+// The number typed, where a bill here changes it: "91-A", "91-A:4", or
+// "540:", its sections not begun, for RSA 540; "" for words, for a number
+// begun ("21-") and for one no bill changes ("91").
+function rsaNumber(){
+  const T=rsaTyped(rsaText);if(!T||!T.num||T.dash)return "";
+  const a=T.num.replace(/:$/,"");return RSA_N[a]?a:"";
+}
+// A law chosen, or "" for Clear, and the list drawn. The focus stays where
+// the reader sent it (render keeps it, in the box drawn anew where it was in
+// the box), and is put in the box, after its last letter, only `into` it:
+// from the keyboard -- Return, or Clear's own button, which is gone once it
+// is pressed -- never from a finger or the mouse: on a phone that brought the
+// keyboard up over the bills just chosen (the review of 26 October 2026).
+// Where there is no box, in the bill requests, Clear takes the group with
+// it, and the focus goes to the head of the filter above it, which stays,
+// rather than to the page.
+function rsaChoose(a,into){
+  clearTimeout(RSADRAW);RSA_OFF.open=false;RSA_OFF.act="";RSA_OFF.miss=null;
+  sel.rsa.clear();if(a)sel.rsa.add(a);rsaText=a;
+  render();
+  const b=document.getElementById("rsabox");
+  if(b){if(into){b.focus({preventScroll:true});const n=b.value.length;b.setSelectionRange(n,n);}return;}
+  const hs=document.querySelectorAll("#facets .fhead"),h=hs[hs.length-1]||$("#year");
+  if(h&&h.focus)h.focus({preventScroll:true});
+}
 function rsaGroup(inYear){
-  const open=openGroups.has("rsa"),chosen=[...sel.rsa];
-  const c={};inYear.filter(b=>matches(b,"rsa")).forEach(b=>(b.rsa||[]).forEach(a=>{
-    if(a.indexOf(":")<0)c[a]=(c[a]||0)+1;}));
-  const top=Object.keys(c).sort((x,y)=>c[y]-c[x]||(x<y?-1:1)).slice(0,10);
-  const inner=`<input class="sbox" id="rsabox" aria-label="A chapter or section of the RSA"
-      placeholder="A chapter or section: 91-A or 91-A:4" value="${esc(rsaText||chosen[0]||"")}" autocomplete="off">`
-    +(chosen.length?`<p class="frsa">Bills that change <b>RSA ${esc(chosen[0])}</b> &middot; `
-      +`<a href="${esc(rsaHref(chosen[0]))}">Read the statute</a> &middot; <button class="link" data-rsapick="">Clear</button></p>`
-      :(rsaText.trim()?`<p class="fnone">Type a chapter (91-A) or a section (91-A:4)</p>`:""))
-    +(top.length?`<p class="frsa">Most changed by these bills:</p>`
-      +top.map(a=>`<button class="pill frsapick" data-rsapick="${esc(a)}">RSA ${esc(a)} <span class="c">${c[a]}</span></button>`).join(" "):"");
+  const open=openGroups.has("rsa"),chosen=sel.rsa.size?[...sel.rsa][0]:"";
+  // A TERM WHOSE BILLS SAY NO LAW, the bill requests (the review of 26
+  // October 2026): nothing can be offered there or said not to change, so
+  // there is no box; a law chosen in another term stays, as a ticked status
+  // does, named with a line that says why it lists none, so it can be undone
+  // where it was done.
+  const told=hasRsa();
+  if(!told&&!chosen)return "";
+  let inner="";
+  // Shut, nothing in it is drawn or counted, and the names are not fetched.
+  if(open){
+    rsaLawsLoad();
+    // The link to read it, where the Laws pages have the chapter: one a bill
+    // would write anew (RSA 194-G) has no page there yet.
+    const page=!RSA_LAWS.data||rsaLaw(chosen);
+    const line=chosen?`<p class="frsa">Bills that change <b>RSA ${esc(chosen)}</b>${esc(rsaOf(chosen))} &middot; `
+      +(page?`<a href="${esc(rsaHref(chosen))}">Read the law</a> &middot; `:"")
+      +`<button class="link" data-rsapick="">Clear</button></p>`:"";
+    if(!told){
+      inner=`<p class="fnone">${termNoun()==="bills"?"Which laws these bills change is not known."
+        :"A bill request has no text yet, so the laws it would change are not known."}</p>`+line;
+    }else{
+      const c={};inYear.filter(b=>matches(b,"rsa")).forEach(b=>(b.rsa||[]).forEach(a=>{c[a]=(c[a]||0)+1;}));
+      RSA_N=c;
+      const st=rsaState();
+      // "A few words", as the search box above says, rather than "a name",
+      // which under the Sponsor filter's "Type a name…" read as a person's
+      // (the review of 26 October 2026). Short enough for the box at 1280,
+      // which has 250px for it: "A number like 91-A, or a few words" took
+      // 257 and lost its last word; this takes 185 (measured in Chromium).
+      inner=`<input class="sbox" id="rsabox" role="combobox" aria-autocomplete="list" aria-controls="rsaoffers"
+        aria-expanded="${st.rows.length?"true":"false"}"${st.act>=0?` aria-activedescendant="rsaoffers-${st.act}"`:""}
+        aria-label="A law’s RSA number, like 91-A, or a few words from its name" placeholder="Like 91-A, or a few words"
+        value="${esc(rsaText)}" autocomplete="off" spellcheck="false">`
+        +`<ul class="rsaoffers" id="rsaoffers" role="listbox" aria-label="Laws these bills change"${st.rows.length?"":" hidden"}>${rsaRows(st)}</ul>`
+        +`<p class="fnone" id="rsanote"${st.note?"":" hidden"}>${esc(st.note)}</p><span class="sr" id="rsasay" role="status"></span>`
+        +line;
+    }
+  }
   return `<div class="fgroup ${open?'open':''}"><button class="fhead" data-g="rsa"
-    aria-expanded="${open}"><span>RSA (Statute)</span>${chosen.length?`<span class="badge">1</span>`:""}
-    <span class="chev">▸</span></button><div class="fbody" ${open?"":"hidden"}>${inner}</div></div>`;
+    aria-expanded="${open}"><span>Laws Changed (RSA)</span>${chosen?`<span class="badge">1</span>`:""}
+    <span class="chev">▸</span></button><div class="fbody whole" ${open?"":"hidden"}>${inner}</div></div>`;
 }
 
 function renderFacets(){
@@ -3342,10 +3706,12 @@ function renderFacets(){
   h+=fgroup("topic","Topic",present("topic"),cnt("topic","topic"));
   h+=fgroup("sponsor","Sponsor",present("sponsor"),cnt("sponsor","sponsor"),true);
   // THE STATUTE, where the Floor Vote Day filter was (the person, 11 October
-  // 2026). A box for a chapter or a section, the bills' most changed chapters
-  // under it as picks, and the statute itself one link away. A vote day an
-  // old address names still filters; the group is no longer drawn.
-  if(hasRsa())h+=rsaGroup(inYear);
+  // 2026): Laws Changed (RSA) since 26 October, a box that offers the laws
+  // these bills change by number or by name (rsaGroup), and the law itself
+  // one link away. A vote day an old address names still filters; the group
+  // is no longer drawn. Not drawn either in a term whose bills say no law,
+  // unless a law is chosen (rsaGroup).
+  h+=rsaGroup(inYear);
   if(Object.values(sel).some(s=>s.size))h+=`<button class="link" id="clear" style="margin-top:12px">Clear all filters</button>`;
   // Replacing innerHTML resets scrollTop to zero. Capture it first and put it
   // back in the same tick, before anything is painted, or every tick of a
@@ -3358,6 +3724,10 @@ function renderFacets(){
   // things replaced: focus goes back on its copy once the scroll is restored
   // (focusKey, by repaint).
   const held=focusKey();
+  // And the caret in the Laws Changed box, where the laws' names arrive
+  // while it is being typed in (rsaLawsLoad).
+  const ae=document.activeElement;
+  const caret=ae&&ae.id==="rsabox"&&ae.selectionStart!=null?[ae.selectionStart,ae.selectionEnd]:null;
   fx.innerHTML=h;
   fx.scrollTop=keep;
   facetBadge();
@@ -3365,6 +3735,8 @@ function renderFacets(){
     if(innerKeep[i]!==undefined)el.scrollTop=innerKeep[i];
   });
   refocus(held);
+  const rb=caret&&document.getElementById("rsabox");
+  if(rb&&rb===document.activeElement&&rb.setSelectionRange)rb.setSelectionRange(caret[0],caret[1]);
 }
 // THE COUNT HAS TO BE VISIBLE WITH THE PANEL SHUT. A reader who filtered by
 // topic, scrolled, and came back to a closed panel would otherwise have no
@@ -4176,64 +4548,393 @@ const gcSource=d=>d.docket_url?`<a href="${esc(d.docket_url)}" target="_blank" r
 // confirmation page says where to send it -- only once a bill's public
 // hearing is scheduled (the Senate's guidance, civics.SRC_SENATE_TESTIFY),
 // and in practice until midnight at the end of the hearing's day (the
-// editor's account, an observed() claim in guides.py). Neither form can be
-// opened at a bill, so the box links to the form of the chamber whose
+// editor's account, an observed() claim in guides.py; the live pane says it
+// plainly, the person's choice of 26 October 2026). Neither form can be
+// opened at a bill, so the control links to the form of the chamber whose
 // hearing is next.
-// A bill of an earlier term has no box. The term turns on 1 December of an
-// even year, the eve of Organization Day.
+// A BUTTON IN THE ROW, NOT A BOX ON THE SUMMARY (the person, 25 October
+// 2026: "The testify option should also be a button when it's active in the
+// same format as the print, share, and follow buttons instead of on the
+// summary page, and it will be greyed out when the deadline has passed or
+// hasn't yet opened and will tell you which one it is when you click on it
+// instead of linking you to the submission page with the instructions. When
+// it's active, the testify button could maybe be colored in so it's a more
+// clear indicator as to when it's live, and it should say when testimony
+// submissions close if it's scheduled."). Follow's form: a <details> whose
+// <summary> is the button and whose pane opens under it; mountTestify puts
+// it in the row. While a hearing is ahead the button is filled in pine and
+// says the hearing's day, "Testify until Jan 13" -- the day the sign-in
+// takes positions until, to its midnight -- and the pane says the hearing,
+// the chamber's form and what to choose on it, in the person's words of 26
+// October 2026 (THE LIVE PANE IN THE PERSON'S WORDS, below).
+// Otherwise the button is greyed, and its pane says which it is, passed or
+// not opened yet, in the box's sentences, with no form and no steps. Grey
+// is a colour and nothing more, so the button's own words tell a screen
+// reader that it is not open.
+// A bill of an earlier term has no control. The term turns on 1 December of
+// an even year, the eve of Organization Day.
 const TESTIFY_FORMS={H:["House","https://gc.nh.gov/house/committees/remotetestimony/"],
   S:["Senate","https://gc.nh.gov/remotecommittee/senate.aspx"]};
+// NEW HAMPSHIRE'S DAY, NOT THE READER'S (the review of 25 October 2026). The
+// button names the hearing's day in Concord, and it was live or shut by the
+// reader's own clock: in Los Angeles at 11:30 p.m. on 13 January, 2:30 a.m.
+// on the 14th in Concord, SB 406 still read "Testify until Jan 13", and in
+// London at 1 a.m. on the 14th, 8 p.m. on the 13th in Concord, it read shut.
+// The term turns by Concord's day too. The IANA zone carries the
+// daylight-saving rule, as workers/follow's nhClock does; a browser without
+// it falls back to its own day.
+// TWO CLOCKS, ON PURPOSE (the review of 25 October 2026). A DEADLINE IS
+// CONCORD'S: the online sign-in closes at midnight in New Hampshire wherever
+// the reader is ("Public testimony is open until midnight the day of the
+// hearing", the person's words of 26 October 2026, which name no zone), so
+// whether it is still open, the day the button names and which term is
+// sitting are asked of New Hampshire's day. A DAY'S NAME IS THE READER'S:
+// "today", "tomorrow", "in 3 days", "yesterday" and "this week" are words
+// about the calendar of the person reading, so a committee's Upcoming
+// (calendarBlock), the home page's Coming up and Latest Activity
+// (build_pages HOME_JS) and the Calendar (build_calendar WEEK_JS) read the
+// reader's own clock, and each of them points here. Those are not to be
+// made one: on Concord's clock a reader in London at 1 a.m. on the 14th
+// would be told a hearing on the 14th is "tomorrow"; on the reader's, a
+// reader in Los Angeles at 11:30 p.m. on the 13th would be sent to a sign-in
+// that closed two and a half hours earlier.
+// AND ONE THAT IS NEITHER (the review of 26 October 2026): what retires on a
+// day (components.js, data-until) names no day. It hides a member-elect from
+// the day they take office, an event in Concord of the same kind as a
+// testimony deadline, and it reads the reader's clock by a choice (the
+// members-elect, 16 October 2026), not by the rule above; it points here too.
+// Whether it should follow Concord's day is that choice's to revisit, and
+// nothing here forbids it.
+const NH_DAY=(()=>{try{return new Intl.DateTimeFormat("en-US",{timeZone:"America/New_York",
+  year:"numeric",month:"2-digit",day:"2-digit"});}catch(e){return null;}})();
+function nhDay(now){
+  try{
+    const p={};
+    NH_DAY.formatToParts(now).forEach(x=>{p[x.type]=x.value;});
+    if(p.year&&p.month&&p.day)return `${p.year}-${p.month}-${p.day}`;
+  }catch(e){}
+  return `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,"0")}-${String(now.getDate()).padStart(2,"0")}`;
+}
 function sittingTerm(now){
-  const y=now.getFullYear(), m=now.getMonth()+1;
+  const day=nhDay(now), y=+day.slice(0,4), m=+day.slice(5,7);
   const first=y%2?y:(m===12?y+1:y-1);
   return `${first}-${first+1}`;
 }
 // WHAT TO CHOOSE ON THE FORM (the person, 22 October 2026, asking the emails
 // for "instructions on how to select the bill"): neither form opens at a
-// bill, so the box says what to pick, in the order the Senate's guidance
+// bill, so the pane says what to pick, in the order the Senate's guidance
 // gives -- the hearing's day, then the committee, then the bill -- which the
-// House's form asks for too. workers/follow/mail.js testifyWords says it the
-// same way in the emails.
-function testifyBox(d,b){
+// House's form asks for too. workers/follow/mail.js testifyWords gives the
+// emails this pane's words, in its order (the person, 26 October 2026:
+// "Emails should stay in sync with how the site displays the testify
+// button"), for the hearings follow_changes.bill_upcoming reads from the
+// record by these functions' rules; preflight's _testify_email_in_sync holds
+// the two to one answer, so a change here is a change there.
+// A HEARING'S CHAMBER: the station's own body, and where it names neither
+// chamber, the chamber whose word the station uses (EACH CHAMBER'S WORD,
+// below: "public hearing" is the House's, "hearing" the Senate's). So every
+// hearing has a form, and one still to come is always the live button: with
+// the form looked up by body alone, a hearing ahead whose body was neither H
+// nor S fell through to the shut button, which could call it the hearing
+// that "has passed" (the review of 25 October 2026).
+const testifyBody=s=>TESTIFY_FORMS[s.body]?s.body:/^public /i.test(s.what||"")?"H":"S";
+// A HEARING ON A PROPOSED AMENDMENT IS A PUBLIC HEARING TOO (the review of 26
+// October 2026). The House's docket line "Public Hearing on non-germane
+// Amendment # 2026-0422h: 02/03/2026 11:20 am GP234" -- and SB 210 of 2025's
+// "Public Hearing on Amendment # 2025-2318h: ..." -- is a public hearing on
+// the bill, and the House's online sign-in takes positions for it: 1,904 for
+// HB 1560-FN's, 1,820 for CACR 12's. No station stands for it: a bill's
+// proceedings are read from its own hearing lines (docket_parser), and this
+// is not one. The Senate's, "Hearing: 02/18/2026, Room 103, SH, 09:00 am, on
+// proposed non-germane amendment # ...", is a station already. The button
+// read the stations alone, so on 47 such hearings of 44 bills of 2025-2026
+// it named the wrong last hearing -- CACR 12's "was Mar 9, 2026", where its
+// Summary has 1,820 signed in on April 15 -- and HB 1560-FN, heard on 27
+// January, would have read "has passed" the week before its second hearing.
+// So they are read here from the record's own events: the day a person
+// corrected the row to where there is one (date_as_recorded), and otherwise
+// the line's own -- SB 210's row was entered on 21 May for the 27th; the time
+// and the room from the line; the committee that has the bill on the day
+// (testifyHouseCommittee, below). A
+// line the docket called off (called_off) is no hearing, and one a House
+// station already stands for, that day at that time, is not counted twice.
+// The stations are left as they are, since the Hearings tab, the recordings
+// and their moments read them: this is Testify's reading alone.
+// ONE SITTING WITH TWO DATES IS ONE HEARING (the review of 26 October 2026).
+// A Senate committee's hearing report that gives a day the docket has no
+// Senate hearing of the bill on stands on a station of its own, dated by
+// the report (build_site_v2.report_station: dated_by "report", and
+// docket_heard the days the docket does record the bill's Senate hearing
+// on). Where the docket records one, the two are a single sitting with two
+// dates -- SB 76's, on 14 January 2025 by the docket and on the 30th by its
+// report -- and the person chose on 24 September that neither is corrected
+// to the other; the bill's Hearings tab says both. Testify read them as two
+// hearings, and on 14 bills of the sitting term said "its last public
+// hearing was" the report's day. So the docket's own station stands for
+// that sitting here, and a report's station counts only where the docket
+// has no Senate hearing of the bill at all (HB 183, HB 268-FN, HB 435). And
+// it is never the hearing ahead (testifyButton): it has no time and no
+// room, and a report is filed after the hearing it reports, so a day it
+// gives that is still to come is not one the sign-in is open for.
+const AMENDMENT_HEARING=new RegExp("^Public\\s+Hearing\\s+on\\s+(?:Proposed\\s+)?(Non-?\\s?Germane\\s+)?"
+  +"(?:Amendment|AM)\\b([^:]*):\\s*(\\d{1,2})/(\\d{1,2})/(\\d{4})\\b\\s*"
+  +"(?:(\\d{1,2}):(\\d{2})\\s*([ap])\\.?\\s?m\\b\\.?)?\\s*(.*)$","i");
+const reportDated=s=>s.dated_by==="report";
+// THE COMMITTEE THAT HAS THE BILL THAT DAY (the review of 26 October 2026).
+// A hearing on a proposed amendment is held by the committee the bill is in
+// on the day, which is often not the one it was first sent to: HB 71-FN,
+// referred to Education Policy and Administration and, once the House had
+// passed it, to Finance, whose hearing on 2025-0555h was at 1:00 pm on 17
+// March 2025 in LOB 210-211, before Finance's executive session there at
+// 1:15; HB 524-FN, referred to Health, Human Services and Elderly Affairs
+// and then to Ways and Means, whose hearing on 2025-3021h was at 10:10 on 29
+// October 2025 in GP 159, after Ways and Means' executive session there at
+// 10:00. The pane named the first referral -- the record's house_committee
+// -- and the House's form lists the bill under the committee holding the
+// hearing. So, in order:
+//  - the committee of a House meeting of the bill that day (an executive
+//    session, a work session, a hearing; not the floor, whose station names
+//    the chamber): where there are two, the one in the line's room, then the
+//    one nearest its time;
+//  - otherwise the later of the bill's last House referral on or before the
+//    day -- "Referred to Finance 02/06/2025", "Introduced ... and referred
+//    to ...", "Vacated and Referred to ...", a row citing the Senate's
+//    journal or calendar (SJ, SC) being the Senate's, and "Rereferred to
+//    Committee" or to interim study naming no committee -- and the committee
+//    of its last House meeting before the day, the referral where both fall
+//    on one day, since a committee meets on a bill before the House sends it
+//    on;
+//  - and only where neither exists, house_committee.
+const REFERRED=/\b(?:re-?)?referred\s+to\s+(.+?)\s*(?:[(:;]|\b\d{1,2}\/\d{1,2}\/\d{4}\b|$)/i;
+function testifyHouseCommittee(d,when,time,room){
+  const flat=v=>String(v||"").replace(/\s+/g,"").toLowerCase();
+  const mins=t=>{const m=/^(\d{1,2}):(\d{2})/.exec(String(t||""));return m?+m[1]*60+ +m[2]:null;};
+  const meets=(d.stations||[]).filter(s=>s.body==="H"&&s.when
+    &&String(s.committee||"").trim()&&!/^(house|senate)$/i.test(String(s.committee).trim()));
+  const near=s=>(room&&flat(s.venue)===flat(room)?0:1e5)
+    +(mins(s.time)==null||mins(time)==null?5e4:Math.abs(mins(s.time)-mins(time)));
+  const that=meets.filter(s=>s.when===when).sort((a,b)=>near(a)-near(b))[0];
+  if(that)return String(that.committee).trim();
+  const met=meets.filter(s=>s.when<when).sort(testifyOrder).pop();
+  let sent=null;
+  (d.events||[]).forEach(e=>{
+    if(e.called_off||/^S[JC]\b/.test(String(e.cite||"").trim())||!e.date||String(e.date)>when)return;
+    const m=REFERRED.exec(String(e.text||"").trim());
+    if(!m||/^(committee|interim study)\b/i.test(m[1]))return;
+    if(!sent||String(e.date)>=sent.date)sent={date:String(e.date),committee:m[1].trim()};
+  });
+  if(sent&&(!met||sent.date>=met.when))return sent.committee;
+  if(met)return String(met.committee).trim();
+  return d.house_committee||"";
+}
+function testifyHearings(d){
+  const heard=(d.stations||[]).filter(s=>/^(public )?hearing$/i.test(s.what||"")&&s.when
+    &&!(reportDated(s)&&(s.docket_heard||[]).length));
+  (d.events||[]).forEach(e=>{
+    const m=AMENDMENT_HEARING.exec(String(e.text||"").trim());
+    if(!m||e.called_off)return;
+    const when=e.date_as_recorded&&e.date?String(e.date)
+      :`${m[5]}-${m[3].padStart(2,"0")}-${m[4].padStart(2,"0")}`;
+    const time=m[6]?`${String(+m[6]%12+(/p/i.test(m[8])?12:0)).padStart(2,"0")}:${m[7]}`:"";
+    if(heard.some(s=>testifyBody(s)==="H"&&s.when===when&&String(s.time||"")===time))return;
+    const room=String(m[9]||"").split(/\s*(?:[([;*]|https?:)/)[0].trim();
+    const num=(/(?:\d{4}-)?\d{3,4}[a-z]+/i.exec(m[2])||[""])[0];
+    heard.push({what:"public hearing",body:"H",when,time,committee:testifyHouseCommittee(d,when,time,room),
+      venue:/^[A-Za-z0-9-][A-Za-z0-9 ,.'&-]{0,79}$/.test(room)?room:"",
+      amendment:`a proposed ${m[1]?"non-germane ":""}amendment${num?` (${num})`:""}`,amendment_num:num});
+  });
+  return heard;
+}
+// Two hearings on one day are two (HB 1300 of 2026's at 10:00, and its
+// hearing on 2026-0093h at 10:15): ordered by the day, then the time.
+const testifyOrder=(a,b)=>a.when.localeCompare(b.when)||String(a.time||"").localeCompare(String(b.time||""));
+// WHETHER A HEARING CAN STILL COME (the review of 25 October 2026). The
+// rail's last mark alone said a bill had ended, and missed 46 of the sitting
+// term's 2,243 on the preview of 26 October 2026: HR 17, which died on the
+// table unheard (its rail ends in the pause), and HR 48, adopted, whose rail
+// is empty, were told testimony
+// "opens once a public hearing is scheduled"; CACRs, HCRs and an HR whose
+// rails end in a stop not reached were told "It opens again" in another
+// chamber after they had died, and an HR has no other chamber. So this asks
+// what the site already asks to say a bill has stopped moving, in order:
+//  - THE TERM HAS STOPPED SITTING: the record's session_over, the last
+//    session day (build_site_v2 writes it on a bill that ran out of days),
+//    is before New Hampshire's today. Nothing is scheduled after it.
+//  - THE INDEX ROW'S KIND, the row of the record's own term, which
+//    mountTestify chooses: "active" is a bill still moving, and every other
+//    kind has ended -- became law ("law"), adopted ("adopted"), vetoed
+//    ("veto"), held for interim study ("study"), or killed, withdrawn, died
+//    on the table or with the session ("done"). build_site_v2's
+//    bill_disposition gives it, and turns every "active" of the sitting term
+//    to "done" once its session is over. Follow's shell.still_moving reads
+//    the same kind, and keeps "study" followable too, since the study
+//    committee's report is news; a bill sent to study is not heard again
+//    this term, so here "active" alone is still moving.
+//  - WHERE NO ROW SAYS, THE RAIL: still moving while a chamber's stop is the
+//    ring of a bill there now ("h") and nothing on it is crossed. Not the
+//    pause ("t"): it is a bill on the table while the session sits and the
+//    chamber whose table a bill died on alike (journey_rail), and HR 17's
+//    rail, [Introduced p, House t], is the same either way. A rail with no
+//    stops, or none of those, has ended: a record with nothing to say it is
+//    moving is not told testimony will open. The record's next_step is the
+//    General Court's own words, and is not read for this.
+function testifyMoving(d,b,today){
+  if(d.session_over&&String(d.session_over)<today)return false;
+  if(b&&b.kind)return b.kind==="active";
+  const rail=((d.journey||{}).rail)||[];
+  return !rail.some(s=>s.mark==="x")
+    &&rail.some(s=>(s.stop==="House"||s.stop==="Senate")&&s.mark==="h");
+}
+// THE LIVE PANE IN THE PERSON'S WORDS (26 October 2026: "The testify button
+// explanation is overly wordy. It could read more like: 'The public hearing
+// on SB 123 is scheduled for Tuesday, April 2nd at 10:30AM in the
+// Legislative Office Building Room 123. Public testimony is open until
+// midnight the day of the hearing.' ----- 'To submit online testimony,
+// choose the hearing date, committee, and bill number as shown below.'
+// Submit Online Testimony (LINK) 'Tuesday, April 2nd, 2026' / 'House Housing
+// Committee' / 'SB 123'"). Filled from the record: the day as the site
+// writes days, with no ordinal; the time as it writes times (clock); the
+// room in the words every room on the site is in (roomWords, S7), with
+// "Room" only where those words have it; and a part the record lacks left
+// out, never "at undefined". Then a rule; the sentence; the chamber's form
+// as a button; and the three things the form asks for, each on a line of
+// its own: the hearing's date in full, the committee with its chamber, and
+// the bill's number as the index has it.
+// THE COMMITTEE AS THE PERSON WROTE IT, "House Housing Committee": the
+// chamber, the name the station carries (the name its page has, "House
+// Housing", less the chamber), and "Committee". A name that says
+// "Committee" itself takes only the chamber -- "House Special Committee on
+// Housing", not "... on Housing Committee", as cmteTitle has it -- and one
+// that already names its chamber is not given it twice.
+const testifyCommittee=(house,c)=>{
+  const n=String(c||"").trim();
+  if(!n)return "";
+  const named=n.toLowerCase().startsWith(house.toLowerCase()+" ")?n:`${house} ${n}`;
+  return /\bcommittee\b/i.test(n)?named:`${named} Committee`;
+};
+function testifyButton(d,b,now=new Date()){
   if(!d||!d.term)return "";
-  const now=new Date();
   if(d.term!==sittingTerm(now))return "";
-  const today=`${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,"0")}-${String(now.getDate()).padStart(2,"0")}`;
+  const today=nhDay(now);
   // EACH CHAMBER'S WORD (the audit of 25 October 2026, M2): the House's
   // hearings are "public hearing" and the Senate's "hearing", and the box
   // read the House's alone -- SB 406 of 2026, heard on 13 January, said
-  // testimony had not opened. workers/follow reads both the same way.
-  const heard=(d.stations||[]).filter(s=>/^(public )?hearing$/i.test(s.what||"")&&s.when);
-  const next=heard.filter(s=>s.when>=today).sort((a,b)=>a.when.localeCompare(b.when))[0];
-  const rail=((d.journey||{}).rail)||[];
-  const ended=!!rail.length&&/^[px]$/.test(rail[rail.length-1].mark||"");
-  if(next&&TESTIFY_FORMS[next.body]){
-    const [house,url]=TESTIFY_FORMS[next.body];
-    return section("Testify on This Bill",`<div class="tbox">
-      <p>The ${esc(house)} public hearing is <b>${esc(dateWords(next.when,"long"))}</b>${
-        next.committee?`, before ${esc(next.committee)}`:""}. Until then, anyone may sign
-      in online to ${next.body==="S"?"register support, opposition or a neutral position"
-        :"register support, opposition or a neutral position and submit written testimony"}, or come
-      and ask to speak.</p>
-      <p><a class="tgo" href="${esc(url)}" target="_blank" rel="noopener">${esc(house)} online
-      testimony</a></p>
-      <p class="tsteps">On the form, choose the hearing&rsquo;s date, ${esc(dateWords(next.when,"long"))};
-      then the committee${next.committee?`, ${esc(next.committee)}`:""}; then the bill${
-        b&&b.n?`, ${esc(b.n)}`:""}. In practice the online sign-in stays open until midnight
-      at the end of the hearing&rsquo;s day.${next.body==="S"?" The page that confirms your sign-in says how to send"
-        +" written testimony.":""}</p></div>`,"testify");
+  // testimony had not opened. workers/follow reads both the same way. And a
+  // hearing on a proposed amendment (testifyHearings).
+  const heard=testifyHearings(d);
+  const moving=testifyMoving(d,b,today);
+  // A hearing still to come, for a bill that can still be heard: a bill that
+  // has stopped moving keeps no hearing ahead, whatever a station says; and
+  // never a day a committee's report gives (ONE SITTING WITH TWO DATES, at
+  // testifyHearings).
+  const next=moving?heard.filter(s=>s.when>=today&&!reportDated(s)).sort(testifyOrder)[0]:null;
+  const bill=b&&b.n?String(b.n):"";
+  // The words beside the drawing are in a span of their own, as Report's
+  // are, so the button's gap does not part them.
+  const button=(cls,words)=>`<details class="testify ${cls}"><summary>${icon("testify")}<span>${words}</span></summary>`;
+  if(next){
+    const body=testifyBody(next);
+    const [house,url]=TESTIFY_FORMS[body];
+    const room=next.venue?roomWords(next.venue):"";
+    // THE COMMITTEE WHERE THE STATION NAMES NONE (the review of 26 October
+    // 2026): the pane says to choose the committee "as shown below", and
+    // three hearings of 2025 -- HB 154's and HB 382's in the Senate, HR 18's
+    // in the House -- showed none, where the record names the committee of
+    // the bill's referral in that chamber (house_committee, senate_committee),
+    // the name the bill's page gives it -- in the House, the committee that
+    // has the bill that day (testifyHouseCommittee), which is house_committee
+    // where nothing on the record says it has moved.
+    const cmte=testifyCommittee(house,next.committee||(body==="H"
+      ?testifyHouseCommittee(d,next.when,next.time,next.venue):d.senate_committee));
+    // A hearing on a proposed amendment says so (testifyHearings): the bill
+    // has had its own, and this one is on "a proposed non-germane amendment
+    // (2026-0422h)", in the words the bill's Summary uses for it.
+    // ITS NUMBER OPENS IT (the person, 26 October 2026: "the amendment number
+    // should link to open it on the bill text tab"): the Bill Text tab, at
+    // that amendment, open (AMENDMENT_HASH). Where the record says the tab
+    // has amendments to open (namd); otherwise the number is words alone.
+    const num=next.amendment_num||"", yr=d.year||(b&&b.year), bid=d.id||(b&&b.id);
+    const amd=!next.amendment?"":num&&d.namd&&yr&&bid&&AMENDMENT_HASH.test("amendment-"+num)
+      ?esc(next.amendment).replace(`(${esc(num)})`,
+        `(<a href="${esc(amendmentHref(yr,bid,num))}">${esc(num)}</a>)`)
+      :esc(next.amendment);
+    const on=(amd?amd+" to ":"")+(bill?esc(bill):"this bill");
+    return button("tlive",`Testify<span class="tuntil"> until ${esc(dateWords(next.when,"short"))}</span>`)
+      +`<div class="testifypane">
+      <p>The public hearing on ${on} is scheduled for ${esc(dateWords(next.when,"day"))}${
+        next.time?` at ${esc(clock(next.time))}`:""}${room?` in ${esc(room)}`:""}. Public testimony is open
+      until midnight the day of the hearing.</p>
+      <hr class="trule">
+      <p>To submit online testimony, choose the hearing date, committee, and bill number as shown below.</p>
+      <p><a class="tgo" href="${esc(url)}" target="_blank" rel="noopener">Submit Online Testimony</a></p>
+      <ul class="tvals"><li>${esc(dateWords(next.when,"long"))}</li>${cmte?`<li>${esc(cmte)}</li>`:""}${
+        bill?`<li>${esc(bill)}</li>`:""}</ul></div></details>`;
   }
-  const last=heard.sort((a,b)=>b.when.localeCompare(a.when))[0];
-  // "The other chamber" only while one chamber alone has heard it: CACR 13
-  // of 2026, heard in both, was told it opens again in the other.
-  const one=new Set(heard.map(s=>s.body)).size===1;
+  // Only a hearing whose day has gone is one that has passed.
+  const past=heard.filter(s=>s.when<today).sort((a,b)=>testifyOrder(b,a));
+  const last=past[0];
+  // "IT OPENS AGAIN" ONLY WHERE IT CAN: a bill still moving (testifyMoving),
+  // heard by one chamber alone -- CACR 13 of 2026, heard in both, was told it
+  // opens again in the other -- whose rail has the other chamber's stop and
+  // that chamber has not yet decided it. A resolution of one chamber has no
+  // such stop: an HR or an SR is never told of another chamber.
+  const rail=((d.journey||{}).rail)||[];
+  const bodies=new Set(past.map(testifyBody));
+  const other=last&&bodies.size===1
+    &&rail.find(s=>s.stop===(testifyBody(last)==="H"?"Senate":"House"));
+  const again=moving&&!!other&&/^[ht-]$/.test(other.mark||"");
+  // ENDED WITHOUT A HEARING (the review of 25 October 2026): HR 2 of 2025,
+  // adopted by the House the day it was introduced, and HB 1786 of 2026,
+  // whose hearing was cancelled and which died on the table, were never
+  // heard, and the pane told their readers testimony "opens once a public
+  // hearing is scheduled", which will not happen. It did not open, and the
+  // pane says so. The button stays, greyed, since every bill of the sitting
+  // term has one (the person, 22 October 2026: "Bills that are from the
+  // current year should have the testimony box but greyed out").
   const why=last
-    ?`Online testimony for this bill has passed: its ${heard.length>1?"last ":""}public hearing was ${
+    ?`Online testimony for this bill has passed: its ${past.length>1?"last ":""}public hearing was ${
       esc(dateWords(last.when))}.`
-      +(ended||!one?"":" It opens again if the bill is scheduled for a hearing in the other chamber.")
-    :"Online testimony has not opened yet: it opens once a public hearing is scheduled.";
-  return section("Testify on This Bill",`<div class="tbox off" aria-disabled="true">
-    <p>${why}</p><p><span class="tgo">Online testimony</span></p></div>`,"testify");
+      +(again?" It opens again if the bill is scheduled for a hearing in the other chamber.":"")
+    :moving?"Online testimony has not opened yet: it opens once a public hearing is scheduled."
+    :"Online testimony did not open for this bill: it had no public hearing.";
+  const shut=last?", not open: its hearing has passed":moving?", not open yet":", not open: no hearing was held";
+  return button("toff",`Testify<span class="sr">${shut}</span>`)
+    +`<div class="testifypane"><p>${why}</p></div></details>`;
+}
+// IN THE ROW AFTER FOLLOW (25 October 2026), or after Cite where a bill has
+// none (a bill whose story has ended has no feed): Follow and Testify are the two ways
+// to take part in what the bill does next, and Print, Share and Report a
+// problem are about this page. Drawn once the bill's record has come, since
+// what it says is the record's, and drawn again only when that changes, so
+// a pane the reader opened is not shut under them by the next redraw.
+// THE ROW OF THE RECORD'S OWN TERM (the review of 25 October 2026): a bill
+// number is unique only within its term, and focusActions found HB 104's row
+// with no term, so the 2025-2026 bill opened from the search said "then the
+// bill, HB 104", the 2023-2024 bill's label, and the next redraw, with the
+// right one, drew the button again and shut the pane. The label is the
+// row's of the record's term, as Print takes it, whatever row a caller has.
+// THIS IS THE ONE PLACE THAT DECIDES THE ROW (the review of 25 October
+// 2026): render() and focusActions hand in what they have, and the row of
+// the record's own term is chosen here, its label and its kind (whether the
+// bill is still moving, testifyMoving) with it. A caller's row is used only
+// where the index has none for that term.
+const TESTIFY_DRAWN=new WeakMap();
+function mountTestify(b,d){
+  const acts=document.getElementById("pageacts");
+  if(!acts)return;
+  if(b&&d&&d.term)b=IDX.find(x=>x.id===b.id&&x.term===d.term)||b;
+  const html=b&&d&&!d._error?testifyButton(d,b):"";
+  const had=acts.querySelector(".testifyin");
+  if(had&&TESTIFY_DRAWN.get(had)===html)return;
+  if(had)had.remove();
+  if(!html)return;
+  const box=document.createElement("div");
+  // The open one stands out on a phone too: a row of its own (app.css).
+  box.className=html.includes('class="testify tlive"')?"testifyin tliverow":"testifyin";
+  box.innerHTML=html;
+  TESTIFY_DRAWN.set(box,html);
+  const after=acts.querySelector("#followbox")||acts.querySelector(".pcite");
+  acts.insertBefore(box,after&&after.parentNode===acts?after.nextSibling:acts.firstChild);
 }
 function renderSummary(b,d,rsa){
   const S=[];
@@ -4246,8 +4947,6 @@ function renderSummary(b,d,rsa){
   if(an)S.push(section("Official Legislative Analysis",
     `<div class="anbox" data-an="1"><div class="antext" translate="no">${rsa?rsa(esc(an)):esc(an)}</div></div>
      <p class="src">Source: ${gcSource(d)}</p>${rsaLine(d)}`,"analysis"));
-  const tb=testifyBox(d,b);
-  if(tb)S.push(tb);
   const jl=journeyList(b,d);
   if(jl)S.push(section("How It Got Here",jl+(an?"":`<p class="src">Source: ${gcSource(d)}</p>${rsaLine(d)}`),"journey"));
   else if(!an&&(d.docket_url||rsaChapters(d).length||(d.constitution||[]).length))
@@ -4669,7 +5368,7 @@ const NOT_NAMED=`The recording&rsquo;s captions never name this bill, by
 
 // A ROOM AS THE DOCUMENTS TAB SAYS IT (the person, approved 17 October 2026):
 // "Legislative Office Building 210-211" for the clerk's "LOB 210-211", with
-// plain_action.BUILDINGS' three buildings.
+// plain_action.BUILDINGS' buildings.
 //
 // THE SAME WORDS AS plain_action.place, AND EVERYWHERE A ROOM IS SHOWN (the
 // audit of 25 October 2026, S7): the Calendar, a committee's meetings,
@@ -4681,17 +5380,30 @@ const NOT_NAMED=`The recording&rsquo;s captions never name this bill, by
 // building alone, "Room 100, SH", the House chamber -- and preflight holds it
 // to plain_action.place's own cases. "GP Room 230" is "Granite Place 230",
 // the room the docket calls "GP 230", so one room reads one way.
+//
+// SL IS THE STATE LIBRARY (the person, 26 October 2026: "SL is the state
+// library map room"), and a room with a name is said after its building
+// whichever side the clerk wrote it: "SL Map Room", "SL Rm Map Room", "Room
+// Map Room, SL" and "Map Room, SL" are all "State Library Map Room", where
+// Testify, the Hearings tab and a Senate Education meeting said "SL Map
+// Room". And "Rm" is "Room": a Senate committee Meets In "SH Rm 100", its
+// hearings "State House 100". plain_action.BUILDINGS, _named and
+// _PLACE_BLDG, in the same order.
 const ROOM_BUILDINGS={LOB:"Legislative Office Building",LOBO:"Legislative Office Building",
-  SH:"State House",GP:"Granite Place"};
+  SH:"State House",GP:"Granite Place",SL:"State Library"};
 const roomWords=v=>{
   const t=String(v||"").split(/\s+/).filter(Boolean).join(" ");
   if(/^(?:SH,?\s+)?(?:Reps|Representatives)'?\s+Hall(?:,?\s*SH)?$/i.test(t))
     return "Representatives' Hall, State House";
-  if(/^(?:LOBO|LOB|SH|GP)$/.test(t))return ROOM_BUILDINGS[t];
-  return t.replace(/\bRoom\s+(\w[\w .\-]*?)\s*,\s*([A-Z]{2,3})\b/gi,
+  if(/^(?:LOBO|LOB|SH|GP|SL)$/.test(t))return ROOM_BUILDINGS[t];
+  return t.replace(/\b(?:Room\s+)?((?:[A-Z][\w']*\s+)+Room)\s*,\s*(LOBO|LOB|SH|GP|SL)\b/g,
+      (m,n,k)=>`${ROOM_BUILDINGS[k]} ${n}`)
+    .replace(/\b(LOBO|LOB|SH|GP|SL)\s+(?:Rm\.?\s+|Room\s+)?((?:[A-Z][\w']*\s+)+Room)\b/g,
+      (m,k,n)=>`${ROOM_BUILDINGS[k]} ${n}`)
+    .replace(/\bRoom\s+(\w[\w .\-]*?)\s*,\s*([A-Z]{2,3})\b/gi,
       (m,r,k)=>`Room ${r.trim()}, ${ROOM_BUILDINGS[k.toUpperCase()]&&k.toUpperCase()!=="LOBO"
         ?ROOM_BUILDINGS[k.toUpperCase()]:k}`)
-    .replace(/\b(LOBO|LOB|SH|GP) ?(?:Room )?([0-9][0-9A-Za-z\-]*)\b(?!:)/g,
+    .replace(/\b(LOBO|LOB|SH|GP|SL) ?(?:Room |Rm\.? ?)?([0-9][0-9A-Za-z\-]*)\b(?!:)/g,
       (m,k,n)=>`${ROOM_BUILDINGS[k]} ${n}`);
 };
 // "approximate", the one word an inferred moment carries (CLAUDE.md,
@@ -5724,7 +6436,8 @@ function renderVersions(b,d){
   const amdblock=amds.length?`<h2 class="amdsec">The amendments themselves</h2>
     <p class="note">Each amendment as the General Court published it; these are
     not versions of the bill.</p>
-    <ul class="vamds">${amds.map((a,j)=>`<li><button class="link"
+    <ul class="vamds">${amds.map((a,j)=>`<li${AMENDMENT_FOUND[a.text_url]
+      ?` id="amendment-${esc(AMENDMENT_FOUND[a.text_url])}"`:""}><button class="link"
       data-vamd="${esc(key)}|${j}">Amendment of ${esc(recordDay(a.date))}</button>
       <span class="dim">${(a.chars||0).toLocaleString()} characters</span>${
       VTEXT[a.text_url]!==undefined
@@ -5794,7 +6507,83 @@ function wantVersionBody(b){
       .then(x=>{VTEXT[url]=json?(x.blocks||x):x;repaint();})
       .catch(()=>{VTEXT[url]=null;repaint();});
   });
+  seekAmendment(key);
 }
+
+// AN AMENDMENT BY ITS NUMBER, FROM THE ADDRESS (the person, 26 October 2026:
+// "the amendment number should link to open it on the bill text tab").
+// /bill/2026/hb1560/text#amendment-2026-0422h opens HB 1560-FN's Bill Text
+// tab with that amendment open and brought into view, as "Amendment of
+// January 30, 2026" opens when it is pressed; Testify's pane links its
+// number there (testifyButton). The version index lists a bill's amendments
+// by their day and length, not their number, and the number is in each one's
+// own text, the first thing in it with that shape: "January 30, 2026
+// 2026-0422h 05/08 Amendment to HB 1560-FN". So the texts are read in turn
+// until the one whose first number is this one, which alone is opened. On
+// the preview of 26 October 2026 that found the amendment of every one of
+// the 46 hearings on one that the sitting term's records hold. A number none
+// of them carries leaves the tab as it always opens.
+const AMENDMENT_HASH=/^amendment-((?:\d{4}-)?\d{3,4}[a-z]{1,2})$/i;
+const amendmentHref=(year,id,num)=>`bill/${year}/${String(id).toLowerCase()}/text#amendment-${num}`;
+// "2026-0422h"; a committee of conference's "2026-2109-CofC" is its own.
+const amendmentOwn=t=>{
+  const m=/\b(\d{4}-\d{4})(-?[a-z]*)/i.exec(String(t||"").slice(0,1000));
+  return m?(m[1]+m[2]).toLowerCase():"";
+};
+let AMENDMENT_WANT=null;     // {key, num}: the one the address names, until it is looked for
+let AMENDMENT_JUMP=null;     // its text's address once found, until it is in view
+const AMENDMENT_FOUND={};    // text address -> the number it was found by
+function amendmentAsked(b,said){
+  const m=AMENDMENT_HASH.exec(String(said||""));
+  AMENDMENT_WANT=m?{key:verKey(b),num:m[1].toLowerCase()}:null;
+}
+async function seekAmendment(key){
+  const w=AMENDMENT_WANT, ix=VERS[key];
+  if(!w||w.key!==key||!ix||ix._error)return;
+  AMENDMENT_WANT=null;
+  for(const a of ix.amendments||[]){
+    let t=VTEXT[a.text_url];
+    if(typeof t!=="string"){
+      try{
+        const r=await fetch(DATA(a.text_url.replace(/^\//,"")));
+        if(!r.ok)continue;
+        t=await r.text();
+      }catch(_){continue;}
+    }
+    const own=amendmentOwn(t);
+    if(own&&(own===w.num||own.endsWith("-"+w.num))){
+      VTEXT[a.text_url]=t;AMENDMENT_FOUND[a.text_url]=w.num;AMENDMENT_JUMP=a.text_url;
+      repaint();return;
+    }
+  }
+}
+// Brought into view once, when the version's own text above it has come, so
+// that text arriving after cannot push it back down the page; and below the
+// tab strip, which a bill's own page holds at the top of the window as it
+// scrolls: brought to the top, "Amendment of January 30, 2026" and the
+// text's first line were under it (the preview, 26 October 2026).
+function jumpToAmendment(){
+  if(!AMENDMENT_JUMP)return;
+  const li=document.getElementById("amendment-"+AMENDMENT_FOUND[AMENDMENT_JUMP]);
+  const pane=li&&li.closest(".pane");
+  if(!li||!pane||pane.querySelector(".spin"))return;
+  AMENDMENT_JUMP=null;
+  const card=li.closest(".card"), strip=card&&card.querySelector(".tabs");
+  const held=strip&&getComputedStyle(strip).position==="sticky"?strip.getBoundingClientRect().height:0;
+  window.scrollTo(0,Math.max(0,li.getBoundingClientRect().top+window.scrollY-held-16));
+}
+// The same link followed on the Bill Text tab's own address moves only the
+// fragment, and the page is not loaded again: the fragment is read then too.
+window.addEventListener("hashchange",()=>{
+  if(!window.GR_BILL)return;
+  let said="";
+  try{said=decodeURIComponent(location.hash.slice(1));}catch(_){return;}
+  const gm=/^(\d{4})\/([A-Z]{2,5}\d+)$/i.exec(String(window.GR_BILL));
+  const row=gm&&AMENDMENT_HASH.test(said)
+    ?IDX.find(x=>x.id===gm[2].toUpperCase()&&String(x.year)===gm[1]):null;
+  if(!row)return;
+  openTab[row.id]="6";amendmentAsked(row,said);needVersions(row);repaint();
+});
 
 
 // A TAB'S COUNT AS A BADGE (the person's choice A, 14 October 2026). The
@@ -6004,8 +6793,10 @@ function shareBox(){
 // Follow, Print (a bill's), Share and Report a problem, in that order, each
 // the quiet action button. shell.py writes the row (#pageacts) with Cite in
 // it; Follow goes in after Cite (mountFollow), and Print, Share and Report a
-// problem after Follow, here. The row is moved into the head each time the
-// head is drawn (placeActions) and out of the way before the record is drawn
+// problem after Follow, here; a bill of the sitting term has Testify between
+// Follow and Print (mountTestify, 25 October 2026). The row is moved into
+// the head each time the head is drawn (placeActions) and out of the way
+// before the record is drawn
 // again (parkActions), so it is one row a page, whatever is open in it or
 // typed into it. A page from an older build, with no row, keeps the old
 // arrangement below the record.
@@ -6061,6 +6852,11 @@ function focusActions(id){
     res.before(row);
     mountFollow(feed?"bill":"",feed?feed.getAttribute("href"):"",`${y}/${id}`);
     mountReport("bill",`${y}/${id}`);
+    // Testify too, for a bill of the sitting term, as render() draws it on
+    // the bill's own page (the person, 25 October 2026). Which row -- HB 104
+    // is a bill of every term -- is mountTestify's to decide, by the record's
+    // own term, and nobody else's: this hands it the number alone.
+    mountTestify({id,n:id},detail[dkey(id)]);
     placeActions();
   }).catch(()=>{if(focusActs===id)focusActs=null;});
 }
@@ -6210,6 +7006,18 @@ function followRss(kind,href,folded){
   return folded?`<details class="followalt"><summary>Follow by RSS instead</summary>
     <div class="followaltbody">${body}</div></details>`:body;
 }
+// EMAIL FOLLOWING IS IN BETA UNTIL THE WEBINAR (the person, 26 October
+// 2026: "Email following can maybe have a disclosure that email following is
+// in beta testing right now until the webinar so folks know that even though
+// it's live, things may be changing day by day"). One line in the small
+// print, src/pages/words/follow_beta.json's, which every email that follows
+// sends says too (site.gen.js's FOLLOW_BETA). It retires on its "until", the
+// day after the webinar of 10 November, as the home page's webinar box does:
+// data-until, which components.js's behaviour judges by the reader's date.
+function followBeta(){
+  const b=WORDBOOK.follow_beta;
+  return b&&b.note?`<p class="panfine followbeta"${untilAttrs(b.until)}>${esc(b.note)}</p>`:"";
+}
 function followMailForm(key){
   // ONE PANEL WITH CHOOSING YOUR TOWN (the person's choice A, 14 October
   // 2026): a heading, one sentence, one field and its button, and the
@@ -6233,6 +7041,7 @@ function followMailForm(key){
       <button type="submit" class="followsend">Email me updates</button></div>
     <p class="panfine">Nothing is sent until you confirm. Every email lets you change what you follow or
       unsubscribe.</p>
+    ${followBeta()}
     <p style="position:absolute;left:-9999px" aria-hidden="true"><label>Leave this empty
     <input name="website" tabindex="-1" autocomplete="off"></label></p>
     <div class="followcheck"></div>
@@ -6328,8 +7137,9 @@ document.addEventListener("toggle",e=>{
     const box=d.closest("#followbox,.followbox");
     if(box)followMail(box);
   }
-  if(d.open&&d.classList&&(d.classList.contains("follow")||d.classList.contains("pcite")))
-    paneInView(d.querySelector(".followpane,.citebody"));
+  if(d.open&&d.classList&&(d.classList.contains("follow")||d.classList.contains("pcite")
+      ||d.classList.contains("testify")))
+    paneInView(d.querySelector(".followpane,.citebody,.testifypane"));
   // The feed opened under the email box lengthens the pane in the same way.
   if(d.open&&d.classList&&d.classList.contains("followalt"))
     paneInView(d.closest(".followpane"));
@@ -6559,6 +7369,7 @@ const repaint=()=>{
   // bill list over the day.
   if(PAGE)renderPage();else if(SESSV)drawSessionVotes();else render();
   jumpToTab();
+  jumpToAmendment();
 };
 
 // A BILL'S ADDRESS THAT NAMES A TAB OPENS AT IT (the webinar pass of 23
@@ -8236,6 +9047,8 @@ function calendarBlock(rows,heading){
     if(!days.has(d))days.set(d,[]);
     days.get(d).push(k);
   });
+  // The reader's day, on purpose: "today" and "tomorrow" are theirs, where
+  // a testimony deadline is Concord's (TWO CLOCKS, ON PURPOSE, at nhDay).
   const today=new Date(); today.setHours(0,0,0,0);
   const when=d=>{
     const dd=new Date(d+"T00:00:00");
@@ -8924,7 +9737,8 @@ function render(more){
     }
   }
   syncCards(rows.filter(b=>openCards.has(b.id)).map(b=>b.id));
-  if(fb){focusActions(fb.id);placeActions();}else{dropFocusActions();addressList();}
+  if(fb){focusActions(fb.id);placeActions();mountTestify(fb,detail[dkey(fb.id)]);}
+  else{dropFocusActions();addressList();}
   showSelectedTab($("#results"));
   if(facetsShut())facetBadge();else renderFacets();
   refocus(held);
@@ -9060,6 +9874,8 @@ function unfocus(y){
   // belongs to a list that is no longer on screen.
   if(y===undefined)y=focusY;
   focused=null;
+  // The term the picker chose while the bill was open, taken now.
+  if(heldTerm!==null){term=heldTerm;heldTerm=null;forgetCardState();}
   // Leaving a bill named in the address would mean the next refresh reopened
   // it, which is not where the reader is standing.
   // Back to the list's own address rather than the bill's.
@@ -9270,7 +10086,8 @@ document.addEventListener("click",e=>{
   // The bill search's own groups. The Laws page draws its filters with the
   // same classes and opens them itself (build_rsa's LANDING_JS).
   const g=e.target.closest("#facets .fhead");
-  if(g){openGroups.has(g.dataset.g)?openGroups.delete(g.dataset.g):openGroups.add(g.dataset.g);renderFacets();return;}
+  if(g){if(g.dataset.g==="rsa"&&!openGroups.has("rsa"))rsaReopen();
+    openGroups.has(g.dataset.g)?openGroups.delete(g.dataset.g):openGroups.add(g.dataset.g);renderFacets();return;}
   // The phone's filter disclosure. The class goes on .shell rather than on
   // the panel because the stylesheet has to move three things -- the button,
   // the panel and the results -- and one of them is the element being shown.
@@ -9388,18 +10205,114 @@ document.addEventListener("click",e=>{
   if(jq){query=jq.dataset.q;$("#q").value=query;clearTimeout(QDRAW);addressSearch(query);render();
     if(e.detail===0)$("#q").focus();
     return;}
-  if(e.target.id==="clear"){Object.values(sel).forEach(s=>s.clear());render();return;}
+  // The Laws Changed box's words go with its filter: they named it.
+  if(e.target.id==="clear"){Object.values(sel).forEach(s=>s.clear());rsaText="";RSA_OFF.open=false;render();return;}
 });
 document.addEventListener("change",e=>{
   if(PAGE)return;                       // the facet checkboxes are not drawn there
   const f=e.target.dataset.f;if(!f)return;
   e.target.checked?sel[f].add(e.target.value):sel[f].delete(e.target.value);render();});
-let RSADRAW=null;
+// A law offered under the Laws Changed box, pressed, or its Clear (rsaGroup):
+// the keyboard into the box only for a click with no pointer behind it.
 document.addEventListener("click",e=>{
   const pk=e.target.closest&&e.target.closest("[data-rsapick]");
   if(!pk||PAGE)return;
-  const a=pk.dataset.rsapick;sel.rsa.clear();if(a)sel.rsa.add(a);rsaText=a;render();
+  rsaChoose(pk.dataset.rsapick||"",e.detail===0);
 });
+// THE LAWS CHANGED BOX, heard where it is drawn (rsaGroup, the person, 26
+// October 2026). #facets is drawn once and its groups into it, so these
+// outlive every drawing of the box; and Escape on an open list is the list's
+// before it reaches the document, whose Escape shuts the phone's panel.
+{const fx=$("#facets");if(fx&&fx.addEventListener){
+  const shut=()=>{clearTimeout(RSADRAW);RSA_OFF.open=false;RSA_OFF.act="";RSA_OFF.miss=null;rsaPaint();};
+  // THE BOX SAYS WHAT IS CHOSEN once the reader is done with it (the review
+  // of 26 October 2026). With RSA 91-A chosen, the box emptied, or "tax"
+  // typed and left, still listed 91-A's 29 bills under ?rsa=91-A while the
+  // box read as nothing chosen, or as tax. Now an emptied box takes the law
+  // away, as Clear does, after the pause in typing, on Return or on leaving
+  // it; and words that chose nothing give way to the chosen law's number when
+  // the box is left or Escape is pressed.
+  const back=()=>{const ch=sel.rsa.size?[...sel.rsa][0]:"";if(!ch||rsaText===ch)return;
+    rsaText=ch;const b=document.getElementById("rsabox");if(b)b.value=ch;};
+  const emptied=()=>!String(rsaText||"").trim()&&sel.rsa.size>0;
+  // A NUMBER TYPED WHOLE IS CHOSEN ON LEAVING, as Return chooses it (the
+  // review of 26 October 2026): "91-A" typed and the box left by a tap
+  // elsewhere still read 91-A over a list that it did not filter, with no
+  // badge and no line -- where before this filter's box, typing 91-A filtered
+  // by itself. A number no bill changes ("91") is not, and words stay as
+  // typed. The number is the one read as the box lost the focus (`was`), but
+  // only while the box still reads what it read then: left by ticking
+  // Withdrawn, the tick's click and change narrowed the list before the box
+  // was heard to be left, and no bill left in it changed 91-A; but an offer,
+  // a section, Clear or Clear all pressed after "540" or "91-A:" changes the
+  // box's words, and what was pressed is what is chosen (the review of 26
+  // October 2026), and a snapshot left by a press that brought no click is
+  // never taken for words typed since.
+  let was=null;
+  const leave=()=>{const w=was;was=null;if(RSA_OFF.open)shut();
+    if(emptied())return rsaChoose("");
+    const a=w&&w.t===rsaText?w.a:rsaNumber();
+    if(a&&!sel.rsa.has(a))return rsaChoose(a);
+    back();};
+  fx.addEventListener("input",e=>{
+    if(!e.target||e.target.id!=="rsabox")return;
+    rsaText=e.target.value;RSA_OFF.open=true;RSA_OFF.act="";RSA_OFF.miss=null;rsaLawsLoad();
+    // A colon typed asks for the sections, which are offered by heading.
+    const T=rsaTyped(rsaText);if(T&&T.sec)rsaHeadsLoad();
+    clearTimeout(RSADRAW);RSADRAW=setTimeout(()=>{if(emptied())rsaChoose("");else rsaPaint(true);},FO_WAIT);
+  });
+  fx.addEventListener("keydown",e=>{
+    if(!e.target||e.target.id!=="rsabox")return;
+    const k=e.key;
+    if(k==="ArrowDown"||k==="ArrowUp"){
+      clearTimeout(RSADRAW);RSA_OFF.open=true;
+      const rows=rsaOffers(rsaText).rows;
+      if(!rows.length){rsaPaint(true);return;}
+      e.preventDefault();
+      const i=rows.findIndex(r=>r.a===RSA_OFF.act);
+      RSA_OFF.act=rows[k==="ArrowDown"?(i+1)%rows.length:i<=0?rows.length-1:i-1].a;
+      rsaPaint();
+    }else if(k==="Enter"){
+      e.preventDefault();
+      const a=rsaEnter();
+      if(a||emptied())rsaChoose(a,true);
+      // Nothing to choose: the line under the box says why.
+      else{clearTimeout(RSADRAW);RSA_OFF.open=true;RSA_OFF.miss=rsaText;rsaPaint(true);}
+    }else if(k==="Escape"){
+      const st=rsaState();
+      if(st.rows.length||st.note){e.preventDefault();e.stopPropagation();shut();back();}
+    }else if(k==="Tab"){
+      // Tab leaves the box as its keydown is heard, before the focus moves:
+      // what that chooses is drawn with the focus still in the box, so Tab
+      // goes on from there to where it was sent (the review of 26 October
+      // 2026: chosen once the focus had gone on, the drawing took away Read
+      // the law, or the bill, it had gone to, and the focus fell to the page).
+      leave();
+    }
+  });
+  // Left otherwise -- a press, a tap, a phone's Done -- the list shuts and the
+  // box says what is chosen, the focus left where it went; but not when the
+  // box was only drawn again and the focus put back in it.
+  const left=()=>{const b=document.getElementById("rsabox");if(!b||b!==document.activeElement)leave();else was=null;};
+  // AND NOT UNTIL A PRESS'S CLICK IS HEARD (the review of 26 October 2026).
+  // Pressed with the list open, Clear, an offer, "Read the law" and Clear all
+  // filters took the focus from the box, the list shut under the pointer
+  // before it was let go, what was pressed moved up from under it, and no
+  // click came: Clear did not clear. A press and the focus it takes come in
+  // one task, so `pressing` is true for that task alone and cannot outlast it
+  // (a flag cleared by the release stayed set where the release never reached
+  // the page, and the box left later by the keyboard waited on a press long
+  // over). A tap's click comes in the same task as the focus it takes,
+  // before anything set going by it.
+  let pressing=false;
+  const heard=()=>setTimeout(left,0);
+  document.addEventListener("pointerdown",()=>{pressing=true;setTimeout(()=>{pressing=false;},0);},true);
+  fx.addEventListener("focusout",e=>{
+    if(!e.target||e.target.id!=="rsabox")return;
+    was={t:rsaText,a:rsaNumber()};
+    if(pressing)document.addEventListener("click",heard,{once:true});else heard();
+  });
+}}
 // THE SPONSOR FILTER OFFERED FOR A NAME IS TAKEN IN PLACE (sponsorHint, 17
 // October 2026). The name typed lists nothing, so it leaves the box, and the
 // person is ticked as the one sponsor chosen; the list and its address follow.
@@ -9416,7 +10329,7 @@ document.addEventListener("click",e=>{
 // THE VOTES TAB'S FIND, AS YOU TYPE (the webinar pass of 23 October 2026: it
 // filtered only on Return or on leaving the box, and after Return the focus
 // fell to the page). A pause in typing draws the list; the box keeps the
-// focus and the caret, as the statute search above does.
+// focus and the caret, as the sponsor box below does.
 let VQDRAW=null;
 document.addEventListener("input",e=>{
   if(PAGE&&e.target.dataset&&e.target.dataset.pf==="vq"){
@@ -9424,10 +10337,6 @@ document.addEventListener("input",e=>{
     VQDRAW=setTimeout(()=>{if(!PAGE||PAGE.vq===v)return;PAGE.vq=v;PAGE.vshow=0;renderPage();
       const b=document.querySelector('input[data-pf="vq"]');
       if(b){b.focus({preventScroll:true});const n=b.value.length;b.setSelectionRange(n,n);}},250);
-    return;}
-  if(e.target.id==="rsabox"){rsaText=e.target.value;clearTimeout(RSADRAW);
-    RSADRAW=setTimeout(()=>{const a=rsaNorm(rsaText);sel.rsa.clear();if(a)sel.rsa.add(a);render();
-      const b=document.getElementById("rsabox");if(b){b.focus();b.setSelectionRange(b.value.length,b.value.length);}},250);
     return;}
   if(e.target.id==="sbox"){sponsorFilter=e.target.value;renderFacets();
     const b=document.getElementById("sbox");if(b){b.focus();b.setSelectionRange(b.value.length,b.value.length);}}});
@@ -9471,9 +10380,9 @@ function submitSearch(){
   // address written for the search went onto the bill's own entry in history
   // instead, /bill/2025/hb2?q=housing (the review of 2 October 2026). It goes
   // where the others go, with the words -- and with the term, where the
-  // picker beside the box names one that is not the newest: on a bill's own
-  // page that picker chooses the term the next search runs in (its change
-  // handler, above), and /bills opens on the newest unless told.
+  // bill's is not the newest, since /bills opens on the newest unless told.
+  // The term picker is not on a bill's own page (staticChromeDown hides it),
+  // so the term is the bill's own.
   if(PAGE||window.GR_STATIC||window.GR_STANDALONE){
     const to=[];
     const newest=((META&&META.terms)||[])[0];

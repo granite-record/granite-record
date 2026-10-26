@@ -59,7 +59,12 @@ dropped by the sender and refused at sign-up.
   "upcoming": {
     "bill:2026/HB1442": [
       {"date": "2026-10-14", "time": "10:00", "what": "public hearing",
-       "committee": "House Education", "venue": "LOB 205"}
+       "committee": "House Education Committee", "venue": "Legislative Office Building 205",
+       "form": "H"},
+      {"date": "2026-10-21", "time": "11:20", "what": "public hearing",
+       "committee": "House Finance Committee", "venue": "Granite Place 234",
+       "amendment": "a proposed non-germane amendment (2026-0422h)",
+       "amendment_num": "2026-0422h", "form": "H"}
     ]
   }
 }
@@ -114,6 +119,34 @@ dropped by the sender and refused at sign-up.
   is the room in words, "Granite Place 231" for the clerk's "GP 231".
   The weekly email lists these; it is state, not news, so it lives here and
   not in a night.
+
+  **From each bill's own record** (26 October 2026): a bill's rows are every
+  committee meeting on it still to come, read from the record its page
+  carries (`follow_changes.bill_upcoming`), not from the home page's
+  calendar, which is cut at eighty rows; a meeting on a bill with no page
+  reaches its committee from the calendar as before. **The hearings the
+  bill's Testify button counts** carry what its live pane says, so that an
+  email says the same (the person: "Emails should stay in sync with how the
+  site displays the testify button"):
+  - `form`, `"H"` or `"S"`: a public hearing the button counts as live -- the
+    bill can still be heard -- and the chamber whose online sign-in takes
+    testimony for it. Only these are told as testimony; a row without it is
+    not. Its `committee` is the one the pane names (where the station names
+    none, the House committee that has the bill that day, or the Senate's of
+    its referral), and its `venue` the room in the pane's words.
+  - `amendment`, plain text of at most 120 characters: on a hearing on a
+    proposed amendment, which only the bill's docket lines set ("Public
+    Hearing on non-germane Amendment # 2026-0422h: ..."), its words as the
+    pane says them, "a proposed non-germane amendment (2026-0422h)".
+  - `amendment_num`: that amendment's number, `(YYYY-)NNNN` and one or two
+    letters, where the bill's Bill Text tab can open it
+    (`/bill/<year>/<bill>/text#amendment-<number>`), so the email links it.
+
+  A committee's own rows carry the meeting without the bill's `form` and
+  `amendment_num`, and since they name no bill, their `amendment` names the
+  bill it is to: "a proposed non-germane amendment (2026-0422h) to HB
+  1560-FN" (the review of 26 October 2026: an amendment's number alone means
+  nothing to a reader).
 
 A **law** (`law:<chapter>`) is listed for every chapter of the statute
 table. Its items are the sitting term's bills that say they change the
