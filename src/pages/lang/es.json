@@ -2299,6 +2299,11 @@
    "es": "afirmar que un producto o servicio tiene una aprobación, una certificación, una calidad o un beneficio que no tiene, o que la empresa está relacionada con alguien con quien no lo está;",
    "state": "draft"
   },
+  "guide.consumer-rights.common-questions": {
+   "en": "Common Questions",
+   "es": "Preguntas frecuentes",
+   "state": "draft"
+  },
   "guide.consumer-rights.complain-to-the-attorney-general": {
    "en": "Complain to the Attorney General",
    "es": "Presentar una queja ante el Fiscal General",
@@ -2414,9 +2419,24 @@
    "state": "draft",
    "es": "Para cancelar, envíe al vendedor un aviso por escrito, de preferencia por correo certificado o registrado, o devuelva los productos en persona dentro de ese plazo. El vendedor debe devolverle entonces, dentro de los 15 días, todo lo que pagó, cualquier artículo entregado como parte de pago y cualquier pagaré que haya firmado. Si el vendedor ya había hecho un trabajo que modificó su propiedad, usted recupera todo su dinero, o puede pedir en su lugar que la propiedad quede como estaba. El vendedor debe ir a buscar sus productos o pagar su devolución, y una vez que le haya reembolsado, usted debe permitir que los recupere dentro de los mismos 15 días. Si no intenta recuperarlos dentro de los 90 días posteriores a la venta, pasan a ser suyos."
   },
+  "guide.consumer-rights.what-about-a-bank-an-insurance": {
+   "en": "What about a bank, an insurance company or a utility?",
+   "es": "¿Y si se trata de un banco, una compañía de seguros o una empresa de servicios públicos?",
+   "state": "draft"
+  },
+  "guide.consumer-rights.what-about-contests-and-sweepstakes": {
+   "en": "What about contests and sweepstakes?",
+   "es": "¿Y los concursos y sorteos?",
+   "state": "draft"
+  },
   "guide.consumer-rights.what-happened": {
    "en": "What happened?",
    "es": "¿Qué pasó?",
+   "state": "draft"
+  },
+  "guide.consumer-rights.what-must-a-seller-by-mail": {
+   "en": "What must a seller by mail, phone or online tell me?",
+   "es": "¿Qué tiene que decirme un vendedor por correo, por teléfono o en línea?",
    "state": "draft"
   },
   "guide.consumer-rights.who-to-contact-about-an-issue": {
@@ -2894,6 +2914,11 @@
    "es": "Están cubiertos los empleadores con 6 o más empleados, el estado y todos los municipios.",
    "state": "draft"
   },
+  "guide.discrimination.are-there-exceptions-in-housing": {
+   "en": "Are there exceptions in housing?",
+   "es": "¿Hay excepciones en la vivienda?",
+   "state": "draft"
+  },
   "guide.discrimination.at-work": {
    "en": "At work",
    "es": "En el trabajo",
@@ -2909,6 +2934,11 @@
    "es": "En el trabajo, o al solicitar un empleo",
    "state": "draft"
   },
+  "guide.discrimination.can-i-file-with-the-federal": {
+   "en": "Can I file with the federal government too?",
+   "es": "¿Puedo presentar la queja también ante el gobierno federal?",
+   "state": "draft"
+  },
   "guide.discrimination.commission-for-human-rights": {
    "en": "Commission for Human Rights",
    "es": "Comisión de Derechos Humanos",
@@ -2919,9 +2949,19 @@
    "es": "Comisión de Derechos Humanos (New Hampshire)",
    "state": "draft"
   },
+  "guide.discrimination.common-questions": {
+   "en": "Common Questions",
+   "es": "Preguntas frecuentes",
+   "state": "draft"
+  },
   "guide.discrimination.discrimination-because-of-sex-includes": {
    "en": "Discrimination because of sex includes <b>pregnancy</b>. An employer must give a leave of absence for a disability caused by pregnancy or childbirth, and hold your job or a comparable one for your return unless business necessity makes that impossible or unreasonable.",
    "es": "La discriminación por sexo incluye el <b>embarazo</b>. Un empleador debe dar una licencia por la incapacidad que causen el embarazo o el parto, y guardarle su puesto o uno comparable para cuando regrese, a menos que una necesidad del negocio lo haga imposible o poco razonable.",
+   "state": "draft"
+  },
+  "guide.discrimination.does-the-law-cover-pregnancy": {
+   "en": "Does the law cover pregnancy?",
+   "es": "¿La ley protege el embarazo?",
    "state": "draft"
   },
   "guide.discrimination.every-place-that-serves-the-public": {
@@ -2982,6 +3022,11 @@
   "guide.discrimination.lead": {
    "en": "What New Hampshire's Law Against Discrimination protects at work, in renting or buying a home, and in stores, restaurants and other places open to the public, and how to file a complaint with the Commission for Human Rights.",
    "es": "Lo que la Ley contra la Discriminación de New Hampshire protege en el trabajo, al alquilar o comprar una vivienda, y en tiendas, restaurantes y otros lugares abiertos al público, y cómo presentar una queja ante la Comisión de Derechos Humanos.",
+   "state": "draft"
+  },
+  "guide.discrimination.must-an-employer-adjust-my-job": {
+   "en": "Must an employer adjust my job for a disability?",
+   "es": "¿Tiene un empleador que adaptar mi trabajo por una discapacidad?",
    "state": "draft"
   },
   "guide.discrimination.new-hampshire-law-forbids-discrimination": {
@@ -3069,6 +3114,11 @@
    "es": "¿Dónde ocurrió?",
    "state": "draft"
   },
+  "guide.discrimination.which-employers-does-the-law-cover": {
+   "en": "Which employers does the law cover?",
+   "es": "¿A qué empleadores se aplica la ley?",
+   "state": "draft"
+  },
   "guide.discrimination.write-down-what-happened-when-and": {
    "en": "Write down what happened, when, and who was there. Keep any letters, messages or notices.",
    "es": "Anote qué pasó, cuándo y quién estaba presente. Guarde las cartas, los mensajes o los avisos.",
@@ -3129,9 +3179,19 @@
    "es": "Llame a la línea de ayuda de 24 horas, 1-866-644-3574. Es gratuita y confidencial.",
    "state": "draft"
   },
+  "guide.domestic-violence-help.can-i-keep-a-new-address": {
+   "en": "Can I keep a new address private?",
+   "es": "¿Puedo mantener privado un domicilio nuevo?",
+   "state": "draft"
+  },
   "guide.domestic-violence-help.care-after-a-sexual-assault": {
    "en": "Care after a sexual assault",
    "es": "Atención después de una agresión sexual",
+   "state": "draft"
+  },
+  "guide.domestic-violence-help.common-questions": {
+   "en": "Common Questions",
+   "es": "Preguntas frecuentes",
    "state": "draft"
   },
   "guide.domestic-violence-help.contact-your-local-crisis-center-the": {
@@ -3220,9 +3280,24 @@
    "es": "¿Está en peligro ahora? Llame al 911.",
    "state": "draft"
   },
+  "guide.domestic-violence-help.is-there-a-line-for-sexual": {
+   "en": "Is there a line for sexual assault or stalking, or for someone outside New Hampshire?",
+   "es": "¿Hay una línea para la agresión sexual o el acecho, o para alguien fuera de New Hampshire?",
+   "state": "draft"
+  },
+  "guide.domestic-violence-help.is-there-help-with-the-costs": {
+   "en": "Is there help with the costs of a crime?",
+   "es": "¿Hay ayuda con los costos de un delito?",
+   "state": "draft"
+  },
   "guide.domestic-violence-help.keeping-a-new-address-private-if": {
    "en": "<b>Keeping a new address private.</b> If you have moved, or are about to move, somewhere the person who harmed you does not know, the Attorney General&rsquo;s Address Confidentiality Program gives you a substitute address to use for state and local services, such as a driver&rsquo;s license or car registration, and forwards your first-class mail. You do not need a restraining order, criminal charges or a police report. Apply before you create any records at the new address, and with a crisis center&rsquo;s help, as the law requires. Mail can be delayed by as much as 5 to 7 days. A certification lasts 4 years.",
    "es": "<b>Mantener privado un domicilio nuevo.</b> Si se ha mudado, o está por mudarse, a un lugar que la persona que le hizo daño no conoce, el Programa de Confidencialidad de Domicilio (Address Confidentiality Program) del Fiscal General le da una dirección sustituta para usar en servicios estatales y locales, como la licencia de conducir o el registro de un auto, y le reenvía su correo de primera clase. No necesita una orden de restricción, cargos penales ni una denuncia policial. Solicítelo antes de crear cualquier registro con la dirección nueva, y con la ayuda de un centro de crisis, como exige la ley. El correo puede retrasarse hasta 5 a 7 días. Una certificación dura 4 años.",
+   "state": "draft"
+  },
+  "guide.domestic-violence-help.keeping-a-new-address-private-the": {
+   "en": "<b>Keeping a new address private:</b> the Attorney General&rsquo;s Address Confidentiality Program, and <b>costs of a crime:</b> the Victims&rsquo; Compensation Program. The questions below say more.",
+   "es": "<b>Mantener privado un domicilio nuevo:</b> el Programa de Confidencialidad de Domicilio (Address Confidentiality Program) del Fiscal General, y <b>los costos de un delito:</b> el Programa de Compensación para Víctimas (Victims&rsquo; Compensation Program). Las preguntas de abajo dicen más.",
    "state": "draft"
   },
   "guide.domestic-violence-help.lead": {
@@ -3320,9 +3395,19 @@
    "es": "Cómo obtener ayuda después de violencia doméstica, agresión sexual o acecho",
    "state": "draft"
   },
+  "guide.domestic-violence-help.what-can-the-police-do-when": {
+   "en": "What can the police do when they respond?",
+   "es": "¿Qué puede hacer la policía cuando acude?",
+   "state": "draft"
+  },
   "guide.domestic-violence-help.what-do-you-need": {
    "en": "What do you need?",
    "es": "¿Qué necesita?",
+   "state": "draft"
+  },
+  "guide.domestic-violence-help.what-if-someone-is-stalking-me": {
+   "en": "What if someone is stalking me, and can I get help at the hearing?",
+   "es": "¿Y si alguien me acecha, y puedo recibir ayuda en la audiencia?",
    "state": "draft"
   },
   "guide.domestic-violence-help.what-to-expect-at-the-hospital": {
@@ -4381,6 +4466,16 @@
    "es": "Llame al 2-1-1 o a la oficina de asistencia social de su municipio",
    "state": "draft"
   },
+  "guide.homelessness-help.can-i-appeal-if-i-lose": {
+   "en": "Can I appeal if I lose an eviction case?",
+   "es": "¿Puedo apelar si pierdo un caso de desalojo?",
+   "state": "draft"
+  },
+  "guide.homelessness-help.common-questions": {
+   "en": "Common Questions",
+   "es": "Preguntas frecuentes",
+   "state": "draft"
+  },
   "guide.homelessness-help.education-for-homeless-children-and": {
    "en": "Education for Homeless Children and Youth Program (Department of Education)",
    "es": "Programa de Educación para Niños y Jóvenes sin Hogar (Departamento de Educación)",
@@ -4446,9 +4541,19 @@
    "es": "<b>Si el caso es solo por renta no pagada,</b> se desestima si, antes de la audiencia, usted paga toda la renta que debe, $15 y los costos de presentación y de notificación del arrendador. Puede hacerlo hasta 3 veces en un período de 12 meses.",
    "state": "draft"
   },
+  "guide.homelessness-help.if-you-are-asked-to-prove": {
+   "en": "If you are asked to prove where you live and have no lease or bill, a signed statement from the welfare official, a police or fire official, an emergency medical provider or a social services provider who knows you counts.",
+   "es": "Si le piden probar dónde vive y no tiene contrato de arrendamiento ni factura, vale una declaración firmada por el funcionario de asistencia social, un funcionario de policía o de bomberos, un proveedor de servicios médicos de emergencia o un proveedor de servicios sociales que lo conozca.",
+   "state": "draft"
+  },
   "guide.homelessness-help.if-you-are-leaving-someone-who": {
    "en": "If you are leaving someone who hurts you, the crisis centers run emergency shelters: call 1-866-644-3574, at any hour.",
    "es": "Si está dejando a alguien que le hace daño, los centros de crisis tienen refugios de emergencia: llame al 1-866-644-3574, a cualquier hora.",
+   "state": "draft"
+  },
+  "guide.homelessness-help.if-you-are-only-staying-in": {
+   "en": "If you are only staying in a town for now, it must still give you the temporary help that is reasonable and necessary.",
+   "es": "Si solo se está quedando en un municipio por ahora, la oficina aun así debe darle la ayuda temporal que sea razonable y necesaria.",
    "state": "draft"
   },
   "guide.homelessness-help.if-you-are-served-court-papers": {
@@ -4531,6 +4636,16 @@
    "es": "Según la ley federal McKinney-Vento, un niño o joven sin un hogar fijo puede seguir en su <b>escuela de origen</b>, la escuela a la que iba antes, cuando eso sea lo mejor para él, o ir a la escuela local del lugar donde se está quedando ahora. La escuela debe <b>inscribirlo de inmediato</b>, aunque no tenga expedientes escolares o de salud, prueba de domicilio u otros documentos, y debe proporcionar u organizar el transporte a la escuela de origen.",
    "state": "draft"
   },
+  "guide.homelessness-help.what-if-i-am-only-staying": {
+   "en": "What if I am only staying in a town for now?",
+   "es": "¿Y si solo me estoy quedando en un municipio por ahora?",
+   "state": "draft"
+  },
+  "guide.homelessness-help.what-if-i-have-no-lease": {
+   "en": "What if I have no lease or bill to prove where I live?",
+   "es": "¿Y si no tengo contrato de arrendamiento ni factura para probar dónde vivo?",
+   "state": "draft"
+  },
   "guide.homelessness-help.what-is-happening": {
    "en": "What is happening?",
    "es": "¿Qué está pasando?",
@@ -4552,8 +4667,8 @@
    "state": "draft"
   },
   "guide.homelessness-help.your-town-or-city-welfare-office": {
-   "en": "<b>Your town or city welfare office</b> must help a person who is poor and unable to support themselves, under the written guidelines every town and city adopts: how to apply, who is eligible, and how to appeal a decision. If you are only staying in a town for now, it must still give you the temporary help that is reasonable and necessary. If you are asked to prove where you live and have no lease or bill, a signed statement from the welfare official, a police or fire official, an emergency medical provider or a social services provider who knows you counts.",
-   "es": "<b>La oficina de asistencia social (welfare) de su municipio o ciudad</b> debe ayudar a una persona que sea pobre y no pueda mantenerse, según las pautas escritas que adopta cada municipio y ciudad: cómo solicitar, quién reúne los requisitos y cómo apelar una decisión. Si solo se está quedando en un municipio por ahora, la oficina aun así debe darle la ayuda temporal que sea razonable y necesaria. Si le piden probar dónde vive y no tiene contrato de arrendamiento ni factura, vale una declaración firmada por el funcionario de asistencia social, un funcionario de policía o de bomberos, un proveedor de servicios médicos de emergencia o un proveedor de servicios sociales que lo conozca.",
+   "en": "<b>Your town or city welfare office</b> must help a person who is poor and unable to support themselves, under the written guidelines every town and city adopts: how to apply, who is eligible, and how to appeal a decision.",
+   "es": "<b>La oficina de asistencia social (welfare) de su municipio o ciudad</b> debe ayudar a una persona que sea pobre y no pueda mantenerse, según las pautas escritas que adopta cada municipio y ciudad: cómo solicitar, quién reúne los requisitos y cómo apelar una decisión.",
    "state": "draft"
   },
   "guide.how-to-vote.a-physical-disability-or-illness": {
@@ -5261,9 +5376,24 @@
    "es": "Antes de alquilar",
    "state": "draft"
   },
+  "guide.landlord-duties.can-i-charge-an-application-fee": {
+   "en": "Can I charge an application fee, or require rent online?",
+   "es": "¿Puedo cobrar una cuota de solicitud, o exigir que el alquiler se pague en línea?",
+   "state": "draft"
+  },
   "guide.landlord-duties.close-out-after-a-tenant-leaves": {
    "en": "Close out after a tenant leaves",
    "es": "Cerrar cuentas cuando un inquilino se va",
+   "state": "draft"
+  },
+  "guide.landlord-duties.common-questions": {
+   "en": "Common Questions",
+   "es": "Preguntas frecuentes",
+   "state": "draft"
+  },
+  "guide.landlord-duties.do-i-need-someone-to-accept": {
+   "en": "Do I need someone to accept court papers for me?",
+   "es": "¿Necesito a alguien que reciba documentos judiciales por mí?",
    "state": "draft"
   },
   "guide.landlord-duties.end-a-tenancy": {
@@ -5449,6 +5579,16 @@
   "guide.landlord-duties.what-do-you-need-to-do": {
    "en": "What do you need to do?",
    "es": "¿Qué necesita hacer?",
+   "state": "draft"
+  },
+  "guide.landlord-duties.what-does-a-lockout-or-a": {
+   "en": "What does a lockout or a utility shut-off cost a landlord?",
+   "es": "¿Cuánto le puede costar a un arrendador un cambio de cerraduras o un corte de servicios?",
+   "state": "draft"
+  },
+  "guide.landlord-duties.what-if-i-sell-the-property": {
+   "en": "What if I sell the property?",
+   "es": "¿Y si vendo la propiedad?",
    "state": "draft"
   },
   "guide.landlord-duties.what-you-may-not-do-you": {
@@ -9692,6 +9832,26 @@
    "es": "<b>Antes de cualquier caso judicial,</b> el Programa de Desvío de Desalojos (Eviction Diversion Program) del tribunal, que es gratuito, ofrece un mediador para ayudarle a usted y a su arrendador a llegar a un acuerdo.",
    "state": "draft"
   },
+  "guide.tenant-rights.can-i-hold-back-rent-until": {
+   "en": "Can I hold back rent until repairs are made?",
+   "es": "¿Puedo retener el alquiler hasta que hagan las reparaciones?",
+   "state": "draft"
+  },
+  "guide.tenant-rights.common-questions": {
+   "en": "Common Questions",
+   "es": "Preguntas frecuentes",
+   "state": "draft"
+  },
+  "guide.tenant-rights.do-i-get-interest-on-my": {
+   "en": "Do I get interest on my deposit?",
+   "es": "¿Recibo intereses por mi depósito?",
+   "state": "draft"
+  },
+  "guide.tenant-rights.do-the-deposit-rules-apply-to": {
+   "en": "Do the deposit rules apply to every landlord?",
+   "es": "¿Las reglas del depósito se aplican a todos los arrendadores?",
+   "state": "draft"
+  },
   "guide.tenant-rights.enter-your-home-without-your-consent": {
    "en": "<b>enter your home without your consent</b>, except to make emergency repairs or with a court&rsquo;s order.",
    "es": "<b>entrar a su vivienda sin su consentimiento</b>, salvo para hacer reparaciones de emergencia o con una orden del tribunal.",
@@ -9715,6 +9875,11 @@
   "guide.tenant-rights.housing-standards-rsa-48-a": {
    "en": "Housing Standards, RSA 48-A",
    "es": "Normas de vivienda, RSA 48-A",
+   "state": "draft"
+  },
+  "guide.tenant-rights.how-do-i-end-a-month": {
+   "en": "How do I end a month-to-month tenancy myself?",
+   "es": "¿Cómo termino yo mismo un alquiler de mes a mes?",
    "state": "draft"
   },
   "guide.tenant-rights.how-to-get-help-after-domestic": {
@@ -9880,6 +10045,11 @@
   "guide.tenant-rights.title": {
    "en": "Your Rights as a Tenant",
    "es": "Sus derechos como inquilino",
+   "state": "draft"
+  },
+  "guide.tenant-rights.what-happens-to-things-i-leave": {
+   "en": "What happens to things I leave behind?",
+   "es": "¿Qué pasa con las cosas que dejo?",
    "state": "draft"
   },
   "guide.tenant-rights.what-is-happening": {

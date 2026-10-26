@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-10-11.47
+# GRANITE_VERSION: 2026-10-11.48
 """
 The how-to guides: their words, their sources, and what each was checked
 against. Read by build_civics.py, which draws them on the Resources hub's
@@ -3997,10 +3997,7 @@ VIOLENCE = guide(
           "shelter, support groups, money, medical care, legal referrals and other services. "
           "The crisis centers serve victims of domestic violence, sexual assault, stalking, "
           "child abuse and human trafficking, and their services are free and confidential and "
-          "open to all. If no advocate speaks Spanish, they use an interpreter.</p>"
-          "<p>For sexual assault or stalking, you can also call 1-800-277-5570. Outside New "
-          "Hampshire, call the National Domestic Violence Hotline, 1-800-799-SAFE, or RAINN for "
-          "sexual assault, 1-800-656-HOPE.</p>",
+          "open to all. If no advocate speaks Spanish, they use an interpreter.</p>",
           actions=[("Find your local crisis center", NHCADSV_CENTERS)]),
      step("Make a safety plan",
           "<p>A safety plan is a practical plan for your own situation: how to avoid danger "
@@ -4024,16 +4021,7 @@ VIOLENCE = guide(
           "business day ends, so go to a circuit court before then to ask for an order that "
           "lasts longer.</li>"
           "<li>The court holds a hearing within 30 days of the petition, or 10 days after the "
-          "other person is served, whichever is later.</li></ul>"
-          "<p>If someone is <b>stalking</b> you, you can ask the court for a stalking order the "
-          "same way, whatever your relationship to them. Court staff cannot tell you which order "
-          "is best for you, but an advocate or legal aid can. The court&rsquo;s checklist for the "
-          "petition comes in Spanish and other languages. The DOVE Project gives free lawyers to "
-          "qualifying survivors of domestic violence at the final hearing; ask your crisis "
-          "center.</p>"
-          "<p>When the police respond to abuse, they must help keep you safe: you can ask them "
-          "to request an emergency order, to help you collect clothing, medication and other "
-          "essentials, to take you to a safe place, and to get you an ambulance.</p>",
+          "other person is served, whichever is later.</li></ul>",
           actions=[("Orders of protection (Judicial Branch)", COURTS_PROTECT),
                    ("Legal help, from the Coalition", NHCADSV_LEGAL)],
           law=["RSA 173-B:1", "RSA 173-B:2", "RSA 173-B:3", "RSA 173-B:4", "RSA 173-B:10",
@@ -4051,18 +4039,9 @@ VIOLENCE = guide(
           actions=[("What to expect at the hospital", NHCADSV_EXAMS)],
           law=["RSA 21-M:8-c"]),
      step("Other protections and help",
-          "<ul><li><b>Keeping a new address private.</b> If you have moved, or are about to move, "
-          "somewhere the person who harmed you does not know, the Attorney General&rsquo;s "
-          "Address Confidentiality Program gives you a substitute address to use for state and "
-          "local services, such as a driver&rsquo;s license or car registration, and forwards "
-          "your first-class mail. You do not need a restraining order, criminal charges or a "
-          "police report. Apply before you create any records at the new address, and with a "
-          "crisis center&rsquo;s help, as the law requires. Mail can be delayed by as much as 5 "
-          "to 7 days. A certification lasts 4 years.</li>"
-          "<li><b>Costs of a crime.</b> The Victims&rsquo; Compensation Program helps victims of "
-          "violent crime with costs that come from their injuries. Claims are generally filed "
-          "within 2 years of the crime, and you can still qualify if no one is arrested or "
-          "convicted.</li>"
+          "<ul><li><b>Keeping a new address private:</b> the Attorney General&rsquo;s Address "
+          "Confidentiality Program, and <b>costs of a crime:</b> the Victims&rsquo; Compensation "
+          "Program. The questions below say more.</li>"
           "<li><b>Free legal help</b> with housing, family law, benefits and more: 603 Legal "
           "Aid, 1-800-639-5290.</li></ul>",
           actions=[("Address Confidentiality Program (Attorney General)", DOJ_ACP),
@@ -4146,7 +4125,37 @@ VIOLENCE = guide(
            "unless good cause; not ineligible for failure to apprehend or convict.",
            "RSA 21-M:8-h", DV_READ)]
     + help_claims("legal_aid"),
-    more="<h2>Who Can Help</h2>"
+    more=civics.faq(
+        ("Is there a line for sexual assault or stalking, or for someone outside New Hampshire?",
+         "<p>For sexual assault or stalking, you can also call 1-800-277-5570. Outside New "
+         "Hampshire, call the National Domestic Violence Hotline, 1-800-799-SAFE, or RAINN for "
+         "sexual assault, 1-800-656-HOPE.</p>"),
+        ("What can the police do when they respond?",
+         "<p>When the police respond to abuse, they must help keep you safe: you can ask them "
+         "to request an emergency order, to help you collect clothing, medication and other "
+         "essentials, to take you to a safe place, and to get you an ambulance.</p>"),
+        ("What if someone is stalking me, and can I get help at the hearing?",
+         "<p>If someone is <b>stalking</b> you, you can ask the court for a stalking order the "
+         "same way, whatever your relationship to them. Court staff cannot tell you which order "
+         "is best for you, but an advocate or legal aid can. The court&rsquo;s checklist for the "
+         "petition comes in Spanish and other languages. The DOVE Project gives free lawyers to "
+         "qualifying survivors of domestic violence at the final hearing; ask your crisis "
+         "center.</p>"),
+        ("Can I keep a new address private?",
+         "<p><b>Keeping a new address private.</b> If you have moved, or are about to move, "
+         "somewhere the person who harmed you does not know, the Attorney General&rsquo;s "
+         "Address Confidentiality Program gives you a substitute address to use for state and "
+         "local services, such as a driver&rsquo;s license or car registration, and forwards "
+         "your first-class mail. You do not need a restraining order, criminal charges or a "
+         "police report. Apply before you create any records at the new address, and with a "
+         "crisis center&rsquo;s help, as the law requires. Mail can be delayed by as much as 5 "
+         "to 7 days. A certification lasts 4 years.</p>"),
+        ("Is there help with the costs of a crime?",
+         "<p><b>Costs of a crime.</b> The Victims&rsquo; Compensation Program helps victims of "
+         "violent crime with costs that come from their injuries. Claims are generally filed "
+         "within 2 years of the crime, and you can still qualify if no one is arrested or "
+         "convicted.</p>"))
+         + "<h2>Who Can Help</h2>"
          "<p>Your local crisis center, through the 24-hour helpline at <a href=\"tel:+18666443574\">1-866-644-3574</a>, "
          "is the "
          "place to start for anything on this page. Its advocates can go with you to the "
@@ -4219,13 +4228,7 @@ DISCRIMINATION = guide(
           "under 18 living with you.</p>"
           "<ul><li><b>Sexual harassment</b>, such as unwelcome sexual advances or requests for "
           "sexual favors, is discrimination because of sex.</li>"
-          "<li>Discrimination because of sex includes <b>pregnancy</b>. An employer must give a "
-          "leave of absence for a disability caused by pregnancy or childbirth, and hold your "
-          "job or a comparable one for your return unless business necessity makes that "
-          "impossible or unreasonable.</li>"
-          "<li>An employer must make <b>reasonable accommodations</b> for a qualified employee "
-          "or applicant with a disability, such as a changed schedule or equipment, unless "
-          "doing so would be an undue hardship.</li>"
+
           "<li><b>Retaliation</b> is against the law: no one may fire, expel or otherwise punish "
           "you because you opposed discrimination, filed a complaint, or testified or helped in "
           "a case.</li></ul>",
@@ -4234,21 +4237,12 @@ DISCRIMINATION = guide(
           "<p>An employer may not refuse to hire you, fire you, or treat you differently in pay "
           "or in the terms of your job because of any of the reasons above, unless the reason is "
           "a genuine requirement of the job. Job advertisements and applications may not state "
-          "such a preference.</p>"
-          "<p>The law covers employers with 6 or more employees, and the state and its cities, "
-          "towns, boards and departments. It does not cover a nonprofit social "
-          "club, or a nonprofit fraternal or religious organization, as an employer, or work "
-          "for your own parent, spouse or child, or in someone&rsquo;s home as a domestic "
-          "worker.</p>",
+          "such a preference.</p>",
           law=["RSA 354-A:2", "RSA 354-A:6", "RSA 354-A:7"]),
      step("Renting or buying a home",
           "<p>No one may refuse to rent or sell to you, offer you different terms, tell you a "
           "home is not available when it is, or advertise a preference, because of any of the "
-          "reasons above or because you have children under 18.</p>"
-          "<p>There are a few exceptions. They include renting a unit in a building of no more "
-          "than 4 units where the owner lives in one of them, renting a room in the "
-          "owner&rsquo;s own home, and some sales of a single-family home by its owner without "
-          "a real estate agent.</p>",
+          "reasons above or because you have children under 18.</p>",
           law=["RSA 354-A:8", "RSA 354-A:10", "RSA 354-A:15"]),
      step("Stores, restaurants and other places open to the public",
           "<p>A place of <b>public accommodation</b> is any place that offers its goods or "
@@ -4272,12 +4266,7 @@ DISCRIMINATION = guide(
           "it is not settled, a hearing may be held before 3 commissioners, who can order the "
           "discrimination to stop and order hiring, reinstatement, back pay and damages. You "
           "have 30 days after the Commission&rsquo;s order is served to ask the Superior Court "
-          "to review it.</p>"
-          "<p><b>At work, federal law protects you too.</b> The U.S. Equal Employment "
-          "Opportunity Commission says that where a state agency enforces a law like this one, "
-          "its own deadline is extended to 300 days, and that a charge filed with a state "
-          "agency that works with it can be filed with both at once. Tell the Commission if you "
-          "want yours filed with the federal agency as well.</p>",
+          "to review it.</p>",
           actions=[("Commission for Human Rights", HRC_HOME),
                    ("File a federal charge (EEOC)", EEOC_FILE)],
           law=["RSA 354-A:5", "RSA 354-A:21", "RSA 354-A:22"]),
@@ -4372,7 +4361,34 @@ DISCRIMINATION = guide(
            "Drive, Suite 8, Concord, NH 03301; (603) 271-2767; Monday - Friday, 8AM - 4PM.",
            HRC_HOME, DISC_PAGES_READ)]
     + help_claims("lawyer"),
-    more="<h2>Who Can Help</h2>"
+    more=civics.faq(
+        ("Does the law cover pregnancy?",
+         "<p>Discrimination because of sex includes <b>pregnancy</b>. An employer must give a "
+         "leave of absence for a disability caused by pregnancy or childbirth, and hold your "
+         "job or a comparable one for your return unless business necessity makes that "
+         "impossible or unreasonable.</p>"),
+        ("Must an employer adjust my job for a disability?",
+         "<p>An employer must make <b>reasonable accommodations</b> for a qualified employee "
+         "or applicant with a disability, such as a changed schedule or equipment, unless "
+         "doing so would be an undue hardship.</p>"),
+        ("Which employers does the law cover?",
+         "<p>The law covers employers with 6 or more employees, and the state and its cities, "
+         "towns, boards and departments. It does not cover a nonprofit social "
+         "club, or a nonprofit fraternal or religious organization, as an employer, or work "
+         "for your own parent, spouse or child, or in someone&rsquo;s home as a domestic "
+         "worker.</p>"),
+        ("Are there exceptions in housing?",
+         "<p>There are a few exceptions. They include renting a unit in a building of no more "
+         "than 4 units where the owner lives in one of them, renting a room in the "
+         "owner&rsquo;s own home, and some sales of a single-family home by its owner without "
+         "a real estate agent.</p>"),
+        ("Can I file with the federal government too?",
+         "<p><b>At work, federal law protects you too.</b> The U.S. Equal Employment "
+         "Opportunity Commission says that where a state agency enforces a law like this one, "
+         "its own deadline is extended to 300 days, and that a charge filed with a state "
+         "agency that works with it can be filed with both at once. Tell the Commission if you "
+         "want yours filed with the federal agency as well.</p>"))
+         + "<h2>Who Can Help</h2>"
          "<p>The Commission for Human Rights can tell you how to file a complaint. For advice "
          "on your own case, talk to a lawyer:</p>"
          + helps("lawyer"),
@@ -4438,11 +4454,7 @@ HOMELESS = guide(
           "health crisis, call 988.</p>"
           "<p><b>Your town or city welfare office</b> must help a person who is poor and unable "
           "to support themselves, under the written guidelines every town and city adopts: how "
-          "to apply, who is eligible, and how to appeal a decision. If you are only staying in a "
-          "town for now, it must still give you the temporary help that is reasonable and "
-          "necessary. If you are asked to prove where you live and have no lease or bill, a "
-          "signed statement from the welfare official, a police or fire official, an emergency "
-          "medical provider or a social services provider who knows you counts.</p>",
+          "to apply, who is eligible, and how to appeal a decision.</p>",
           actions=[("2-1-1 New Hampshire", NH211_HOME)],
           law=["RSA 165:1", "RSA 165:1-c"]),
      step("Find a shelter",
@@ -4467,10 +4479,7 @@ HOMELESS = guide(
           "the landlord take back the home.</li>"
           "<li><b>If the case is only about unpaid rent,</b> it is dismissed if, before the "
           "hearing, you pay all the rent you owe, $15, and the landlord&rsquo;s filing and "
-          "service costs. You can do this up to 3 times in a 12-month period.</li>"
-          "<li><b>If you lose,</b> you have 7 days from the Notice of Judgment to file a Notice "
-          "of Intent to Appeal, and you will have to pay rent each week while the appeal goes "
-          "on.</li></ul>"
+          "service costs. You can do this up to 3 times in a 12-month period.</li></ul>"
           "<p>Get free legal help as early as you can, from 603 Legal Aid or New Hampshire "
           "Legal Assistance.</p>",
           actions=[("Landlord and tenant cases (Judicial Branch)", COURTS_LLT)],
@@ -4560,7 +4569,19 @@ HOMELESS = guide(
            "landlord's filing fee and service charges; not more than 3 times within a 12-month "
            "period.", "RSA 540:9", HL_READ)]
     + help_claims("legal_aid"),
-    more="<h2>Who Can Help</h2>"
+    more=civics.faq(
+        ("What if I am only staying in a town for now?",
+         "<p>If you are only staying in a town for now, it must still give you the temporary "
+         "help that is reasonable and necessary.</p>"),
+        ("What if I have no lease or bill to prove where I live?",
+         "<p>If you are asked to prove where you live and have no lease or bill, a signed "
+         "statement from the welfare official, a police or fire official, an emergency medical "
+         "provider or a social services provider who knows you counts.</p>"),
+        ("Can I appeal if I lose an eviction case?",
+         "<p><b>If you lose,</b> you have 7 days from the Notice of Judgment to file a Notice "
+         "of Intent to Appeal, and you will have to pay rent each week while the appeal goes "
+         "on.</p>"))
+         + "<h2>Who Can Help</h2>"
          "<p>2-1-1 New Hampshire, at any hour, and your town or city welfare office are the "
          "places to start. For a housing voucher, call New Hampshire Housing at (603) 472-8623. "
          "For help with an eviction or a denial of town assistance:</p>"
@@ -4641,18 +4662,12 @@ TENANT = guide(
           actions=[("Landlord and tenant cases (Judicial Branch)", COURTS_LLT)],
           law=["RSA 540-A:2", "RSA 540-A:3", "RSA 540-A:4"]),
      step("Your security deposit",
-          "<p>The deposit rules apply to most landlords. They do not apply to someone who rents "
-          "out a single-family home and owns no other rental property, or who rents units in a "
-          "building of 5 units or fewer that they live in themselves, unless the tenant is 60 "
-          "or older.</p>"
           "<ul><li><b>The limit:</b> one month&rsquo;s rent or $100, whichever is more.</li>"
           "<li><b>A receipt</b> stating the amount and where the deposit is held, unless you "
           "paid by check.</li>"
           "<li><b>Within 5 days of moving in,</b> give your landlord a written list of anything "
           "in the home that needs repair, and keep a copy. Your landlord must tell you that you "
           "can.</li>"
-          "<li><b>It stays your money,</b> held in trust. If it is held for a year or longer, "
-          "the landlord pays you the interest it earned.</li>"
           "<li><b>When you move out,</b> the landlord returns it within 30 days, with any "
           "interest. A landlord who keeps any of it for damage beyond reasonable wear and tear, "
           "unpaid rent or other charges must give you a written, itemized list.</li></ul>"
@@ -4669,12 +4684,7 @@ TENANT = guide(
           "degrees. Towns with a housing code enforce their own standards.</p>"
           "<p><b>Tell your landlord in writing</b> what needs fixing, and keep a copy. If it is "
           "not fixed, ask your town&rsquo;s code enforcement or health officer to inspect. A "
-          "landlord must look into a report of bed bugs or other pests within 7 days.</p>"
-          "<p>If you are evicted for not paying rent, the court may refuse the eviction when "
-          "the home has a serious health or safety violation that you reported in writing "
-          "while you were not behind on rent, and the landlord did not fix it within 14 days. "
-          "The court may require you to pay the rent into court meanwhile. Holding back rent is "
-          "risky: talk to legal aid before you do.</p>",
+          "landlord must look into a report of bed bugs or other pests within 7 days.</p>",
           law=["RSA 48-A:14", "RSA 540-A:3", "RSA 540:13-d"]),
      step("Rent increases, the end of a lease, and retaliation",
           "<p><b>When a landlord needs a reason.</b> For most rentals, a landlord can end your "
@@ -4692,10 +4702,7 @@ TENANT = guide(
           "for going to court under the tenant protection law, or for meeting with other "
           "tenants, unless you owe a week&rsquo;s rent or more. An eviction, a rent increase or "
           "a big change in your terms within 6 months of that is presumed to be retaliation, "
-          "and the court can award you up to 3 months&rsquo; rent.</p>"
-          "<p><b>Moving out yourself.</b> To end a month-to-month tenancy, give 30 days&rsquo; "
-          "written notice. A victim of domestic violence, sexual assault or stalking can end a "
-          "lease early, with verification, and may not be evicted for being a victim.</p>",
+          "and the court can award you up to 3 months&rsquo; rent.</p>",
           law=["RSA 540:1-a", "RSA 540:2", "RSA 540:11", "RSA 540:11-b", "RSA 540:13-a",
                "RSA 540:13-b", "RSA 540:14"]),
      step("If you get an eviction notice or court papers",
@@ -4713,10 +4720,7 @@ TENANT = guide(
           "no more than 5 days after it. If you do not, you can lose without a hearing.</li>"
           "<li><b>If you lose,</b> the court may give you up to 60 days to move, if you pay "
           "the rent each week. To appeal, file a notice of intent to appeal within 7 days of "
-          "the decision, and pay rent as it comes due.</li></ul>"
-          "<p>After you leave, your landlord must store anything you left behind, with "
-          "reasonable care, for 7 days, and let you take it without paying rent or storage "
-          "fees.</p>",
+          "the decision, and pay rent as it comes due.</li></ul>",
           actions=[("Landlord and tenant cases (Judicial Branch)", COURTS_LLT)],
           law=["RSA 540:3", "RSA 540:9", "RSA 540:13", "RSA 540:13-c", "RSA 540-A:3"])],
     [("Landlord/Tenant, District Division (Judicial Branch)", COURTS_LLT),
@@ -4826,7 +4830,30 @@ TENANT = guide(
            "date not later than 60 days, the tenant paying the weekly former rent in advance.",
            "RSA 540:13-c", RENT_READ)]
     + help_claims("legal_aid"),
-    more="<h2>Who Can Help</h2>"
+    more=civics.faq(
+        ("Do the deposit rules apply to every landlord?",
+         "<p>The deposit rules apply to most landlords. They do not apply to someone who rents "
+         "out a single-family home and owns no other rental property, or who rents units in a "
+         "building of 5 units or fewer that they live in themselves, unless the tenant is 60 "
+         "or older.</p>"),
+        ("Do I get interest on my deposit?",
+         "<p><b>It stays your money,</b> held in trust. If it is held for a year or longer, "
+         "the landlord pays you the interest it earned.</p>"),
+        ("Can I hold back rent until repairs are made?",
+         "<p>If you are evicted for not paying rent, the court may refuse the eviction when "
+         "the home has a serious health or safety violation that you reported in writing "
+         "while you were not behind on rent, and the landlord did not fix it within 14 days. "
+         "The court may require you to pay the rent into court meanwhile. Holding back rent is "
+         "risky: talk to legal aid before you do.</p>"),
+        ("How do I end a month-to-month tenancy myself?",
+         "<p><b>Moving out yourself.</b> To end a month-to-month tenancy, give 30 days&rsquo; "
+         "written notice. A victim of domestic violence, sexual assault or stalking can end a "
+         "lease early, with verification, and may not be evicted for being a victim.</p>"),
+        ("What happens to things I leave behind?",
+         "<p>After you leave, your landlord must store anything you left behind, with "
+         "reasonable care, for 7 days, and let you take it without paying rent or storage "
+         "fees.</p>"))
+         + "<h2>Who Can Help</h2>"
          "<p>Get help as early as you can, before a deadline passes. Your town or city&rsquo;s "
          "code enforcement or health officer handles unsafe conditions. For an eviction, a "
          "lockout or a deposit:</p>"
@@ -4881,15 +4908,7 @@ LANDLORD = guide(
           "<p><b>Know which rules apply to your property.</b> Most residential rentals are "
           "&ldquo;restricted property&rdquo;, where you need a reason the law lists to end a "
           "tenancy. A single-family house is not, if you own no more than 3, and neither is a "
-          "unit in a building of 4 units or fewer that you live in.</p>"
-          "<p>If you own restricted property, file a statement with the town or city clerk, "
-          "within 30 days of becoming the owner, naming a person in New Hampshire who can "
-          "accept court papers for you; it may be you.</p>"
-          "<p>Before you charge an application fee, tell the applicant in writing how much it "
-          "is and whether you require a background or credit check. If you do not rent to "
-          "them, return whatever is beyond the actual cost of those checks and reasonable "
-          "costs within 30 days. You may not require rent to be paid only electronically: "
-          "accept at least one other way.</p>",
+          "unit in a building of 4 units or fewer that you live in.</p>",
           law=["RSA 540:1-a", "RSA 540:1-b", "RSA 540-A:3"]),
      step("Security deposits",
           "<p>These rules apply unless you rent out a single-family home and own no other "
@@ -4905,9 +4924,7 @@ LANDLORD = guide(
           "<li><b>Return it within 30 days</b> of the end of the tenancy, with any interest. "
           "You may deduct the cost of damage beyond reasonable wear and tear, unpaid rent and "
           "other lawful charges, with a written, itemized list and evidence of the repairs, "
-          "such as receipts or estimates.</li>"
-          "<li><b>If you sell the property,</b> turn the deposits over to the buyer and tell "
-          "each tenant by registered or certified mail.</li></ul>"
+          "such as receipts or estimates.</li></ul>"
           "<p>A landlord who does not return a deposit as required can owe the tenant twice "
           "the amount.</p>",
           law=["RSA 540-A:5", "RSA 540-A:6", "RSA 540-A:7", "RSA 540-A:8"]),
@@ -4961,10 +4978,7 @@ LANDLORD = guide(
           "with the eviction.</p>"
           "<p>If you win, the court issues a writ of possession, and the sheriff, not you, "
           "removes the tenant. The court may give the tenant up to 60 days, with rent paid "
-          "weekly.</p>"
-          "<p>A lockout, a utility shut-off or removing a tenant&rsquo;s things instead of "
-          "going to court can cost you the tenant&rsquo;s damages, costs and attorney&rsquo;s "
-          "fees, and no less than $3,000 if you have already re-let the home.</p>",
+          "weekly.</p>",
           actions=[("Landlord and tenant cases (Judicial Branch)", COURTS_LLT)],
           law=["RSA 540:9", "RSA 540:13", "RSA 540:13-c", "RSA 540:14", "RSA 540-A:4"]),
      step("After the tenant leaves",
@@ -5078,7 +5092,25 @@ LANDLORD = guide(
      claim("A writ of possession authorizes the sheriff to remove the defendant from the "
            "premises.", "RSA 540:14", RENT_READ)]
     + help_claims("lawyer"),
-    more="<h2>Who Can Help</h2>"
+    more=civics.faq(
+        ("Do I need someone to accept court papers for me?",
+         "<p>If you own restricted property, file a statement with the town or city clerk, "
+         "within 30 days of becoming the owner, naming a person in New Hampshire who can "
+         "accept court papers for you; it may be you.</p>"),
+        ("Can I charge an application fee, or require rent online?",
+         "<p>Before you charge an application fee, tell the applicant in writing how much it "
+         "is and whether you require a background or credit check. If you do not rent to "
+         "them, return whatever is beyond the actual cost of those checks and reasonable "
+         "costs within 30 days. You may not require rent to be paid only electronically: "
+         "accept at least one other way.</p>"),
+        ("What if I sell the property?",
+         "<p><b>If you sell the property,</b> turn the deposits over to the buyer and tell "
+         "each tenant by registered or certified mail.</p>"),
+        ("What does a lockout or a utility shut-off cost a landlord?",
+         "<p>A lockout, a utility shut-off or removing a tenant&rsquo;s things instead of "
+         "going to court can cost you the tenant&rsquo;s damages, costs and attorney&rsquo;s "
+         "fees, and no less than $3,000 if you have already re-let the home.</p>"))
+         + "<h2>Who Can Help</h2>"
          "<p>The district court&rsquo;s clerks have the forms for a demand for rent, an "
          "eviction notice and a Landlord/Tenant Writ, but cannot give legal advice. For advice "
          "about your own situation, talk to a lawyer:</p>"
@@ -5318,11 +5350,7 @@ CONSUMER = guide(
           "not;</li>"
           "<li>selling used, reconditioned or secondhand goods as new;</li>"
           "<li>advertising something with no intent to sell it as advertised;</li>"
-          "<li>false or misleading claims about a sale price or a price reduction.</li></ul>"
-          "<p>A business that sells by mail, by phone or online from a post office box or an "
-          "answering service must say in its advertising its legal name, the street address "
-          "it actually works from, and a phone number for complaints. A seller who will not "
-          "say who and where it is is a warning sign.</p>",
+          "<li>false or misleading claims about a sale price or a price reduction.</li></ul>",
           law=["RSA 358-A:2", "RSA 361-B:2-a"]),
      step("A prize should never cost you anything",
           "<p>If a seller tells you that you have won something, with words such as "
@@ -5330,10 +5358,7 @@ CONSUMER = guide(
           "prize to be yours without any obligation, delivered at no cost to you within 10 days. "
           "A &ldquo;prize&rdquo; that asks you to pay a handling, registration, redemption or "
           "delivery fee, or to buy something first, is not one the law allows. Do not pay, and "
-          "report it (step 5).</p>"
-          "<p>A promotion that offers only a chance to win must say who runs it and every "
-          "condition you must meet, and, in writing, each prize&rsquo;s value, how many there "
-          "are and your odds.</p>",
+          "report it (step 5).</p>",
           law=["RSA 358-O:3", "RSA 358-O:4"]),
      step("Cancel a sale made at your door",
           "<p>A sale of goods or services priced at $150 or more, made anywhere other than the "
@@ -5366,10 +5391,7 @@ CONSUMER = guide(
           "send it to the business to answer in writing. It is not a formal legal process, it "
           "can take time, and it does not guarantee an answer or a resolution; the Bureau "
           "cannot represent you or give you legal advice. If you are not satisfied, consider a "
-          "private lawyer or small claims court.</p>"
-          "<p>Some businesses answer to their own regulator instead: for a bank, an insurance "
-          "company or a utility, complain to the Bank Commissioner, the Insurance Commissioner "
-          "or the Public Utilities Commission.</p>",
+          "private lawyer or small claims court.</p>",
           actions=[("File a consumer complaint (Attorney General)", AG_COMPLAINT)],
           law=["RSA 358-A:4", "RSA 358-A:3"]),
      step("Take the business to court",
@@ -5451,7 +5473,21 @@ CONSUMER = guide(
            "consider speaking to a private lawyer or seeking relief in small claims court.",
            AG_COMPLAINT, CP_AG_READ)]
     + help_claims("lawyer"),
-    more="<h2>Who Can Help</h2>"
+    more=civics.faq(
+        ("What must a seller by mail, phone or online tell me?",
+         "<p>A business that sells by mail, by phone or online from a post office box or an "
+         "answering service must say in its advertising its legal name, the street address "
+         "it actually works from, and a phone number for complaints. A seller who will not "
+         "say who and where it is is a warning sign.</p>"),
+        ("What about contests and sweepstakes?",
+         "<p>A promotion that offers only a chance to win must say who runs it and every "
+         "condition you must meet, and, in writing, each prize&rsquo;s value, how many there "
+         "are and your odds.</p>"),
+        ("What about a bank, an insurance company or a utility?",
+         "<p>Some businesses answer to their own regulator instead: for a bank, an insurance "
+         "company or a utility, complain to the Bank Commissioner, the Insurance Commissioner "
+         "or the Public Utilities Commission.</p>"))
+         + "<h2>Who Can Help</h2>"
          "<p>The Attorney General&rsquo;s Consumer Protection and Antitrust Bureau takes "
          "complaints on its consumer complaint form; the Attorney General&rsquo;s office "
          "answers at (603) 271-3658. For advice on your own case:</p>"
