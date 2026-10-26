@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-08.65
+# GRANITE_VERSION: 2026-09-08.66
 """
 The topics of the civics section: their order, their names, and their prose.
 
@@ -558,7 +558,7 @@ TOWN_FORMS = boxes("Who decides, and who carries it out", [
         ("Decides", "The council, which enacts the policies."),
         ("Carries it out", "A city manager the council appoints, heading the administrative "
                            "branch; the mayor chairs the council. "
-                           + _RSA.format("RSA 49-C:16, 49-C:17"))])])
+                           + _RSA.format("RSA 49-C:12, 49-C:16, 49-C:17"))])])
 
 # HOW A CHARTER IS ADOPTED: the page's own sentences, with its two thresholds.
 FLOW_CHARTER = [
@@ -1194,8 +1194,7 @@ BODY_GENERAL_COURT = """
 <h2>The Largest State Legislature</h2>
 <p>New Hampshire's legislature is called the <b>General Court</b>, the name the
 state constitution gives it. It is made up of [[house_seats]] representatives and
-[[senate_districts]] senators. It is the largest state legislature in the country: the last
-redistricting drew House districts to <b>3,444 residents a seat</b>.</p>
+[[senate_districts]] senators. It is the largest state legislature in the country.</p>
 
 <p>The House's [[house_seats]] is the number of seats, not the number of members. Seats fall
 vacant and are filled at special elections through the term, so the working size of
@@ -1203,10 +1202,12 @@ the House moves.</p>
 [[fig_seats]]
 
 <h2>A Term Is Two Years</h2>
-<p>The General Court sits in two-year terms beginning in odd years. A term
-begins on <b>Organization Day</b>, the first Wednesday of December after the
-November election, when the newly elected members are sworn in and elect the
-Speaker and the Senate President. [[org_day]] Bill
+<p>The General Court sits in two-year terms. A term begins on
+<b>Organization Day</b>, the first Wednesday of December after the November
+election, in an even-numbered year, when the newly elected members are sworn in
+and elect the Speaker and the Senate President; the two chambers then assemble
+each January of the two years the term is named for (Part Second, Article 3).
+[[org_day]] Bill
 numbers are unique across the whole term, so there is only ever one HB 84 in
 2025&ndash;2026, and there will be another in the next term. That is why every
 address on this site carries the year.
@@ -1229,8 +1230,7 @@ suggests.</p>
 [[fig_term]]
 
 <h2>Every Bill Gets a Public Hearing</h2>
-<p>This is unusual. In most states a committee chair can decline to hear a
-bill and it dies without anyone speaking on it. In New Hampshire every bill
+<p>In New Hampshire every bill
 introduced is referred to a committee and given a public hearing that anyone
 may attend and speak at.</p>
 
@@ -1249,7 +1249,8 @@ any law.</td></tr>
 Resolution:</b> similar to an HR or SR, but voted on by both chambers.</td></tr>
 <tr><th scope="row"><b>CACR</b></th><td><b>Constitutional Amendment Concurrent
 Resolution:</b> a proposed change to the state constitution, requiring a
-three-fifths vote in both chambers and a two-thirds majority of voters. See
+three-fifths vote of the entire membership of each chamber and approval by
+two-thirds of the voters voting on it (Part Second, Article 100). See
 <a href="learn/the-constitution.html">The Constitution</a>.</td></tr>
 </tbody></table>
 
@@ -1267,11 +1268,8 @@ recommendations, but [[follows_committee]]% of the bills it decided in the
 <h2>Common Questions</h2>
 <div class="l-faq">
 <details><summary>What are legislators paid?</summary>
-<p>Members are paid <b>$200 for the two-year term</b> plus mileage &mdash; one
-payment, in January of the first year, less withholding. It is often quoted as
-$100 a year, which is the same money divided by two. Almost none have staff.
-Most have other jobs, and the session is arranged around that: the House meets
-on a small number of full days, and committee work fills the rest.</p>
+<p>Members are paid <b>$200 for the two-year term</b> plus mileage, and the
+presiding officers of the two chambers $250 (Part Second, Article 15).</p>
 </details>
 <details><summary>Why can&rsquo;t I find a bill that was filed last year?</summary>
 <p>If it was retained, it survived into the second year and kept its number. Those show as <b>carried over</b> here, and they are the ones people most often fail to find, because they search the current year for a bill filed in the previous one.</p>
@@ -1957,9 +1955,8 @@ publishes notice of it, with a summary of the budget, in a newspaper at least
 
 <p><b>The executive committee examines it.</b> The convention may designate
 the executive committee to sit as a subcommittee on the budget and report
-recommendations back to the full convention (RSA 24:2). That is where a county
-budget is gone through line by line, but the committee recommends: it does not
-appropriate.</p>
+recommendations back to the full convention (RSA 24:2). Where it does, the
+committee recommends: it does not appropriate (RSA 24:13).</p>
 
 <p><b>The delegation votes.</b> Raising county taxes and making appropriations
 are the convention's powers, not the commissioners' (RSA 24:13), so the figure
@@ -2014,10 +2011,11 @@ deputies have the same authority throughout the state as in their own county
 to serve process, investigate crimes and apprehend, and may enforce civil
 orders issued by any court (RSA 104:6).</p>
 
-<p><b>County attorney:</b> the county's prosecutor. The office acts under the
-direction of the Attorney General, performs the Attorney General's duties for
-the county in the Attorney General's absence, and prosecutes or defends suits
-in which the county has an interest (RSA 7:34).</p>
+<p><b>County attorney:</b> acts under the direction of the Attorney General,
+performs the Attorney General's duties for the county in the Attorney General's
+absence, and, if no other representation is provided, prosecutes or defends
+suits in which the county has an interest, under the direction of the county
+commissioners (RSA 7:34).</p>
 
 <p><b>County treasurer:</b> has custody of all money belonging to the county,
 pays it out only on the commissioners' orders, keeps the account of what comes
@@ -2153,11 +2151,9 @@ unsafe (RSA 40:4).</p>
 
 <h2>A City: A Council Decides, a Mayor or a Manager Carries It Out</h2>
 <p>A city has no town meeting. The powers the law vests in towns, or in the
-inhabitants of them, are exercised by the city council (RSA 47:1). The council
-may be called a <b>city council</b> or a <b>board of aldermen</b>; the name is
-the city's and the function is the same. How many members there are, and
-whether they are elected by ward or at large or both, is set by the city's
-charter.</p>
+inhabitants of them, are exercised by the city council (RSA 47:1). Depending on
+its charter, a city's elected body may be a <b>mayor and board of aldermen</b>,
+a <b>mayor and council</b>, or a <b>city council</b> (RSA 49-B:2).</p>
 
 <p><b>Mayor:</b> under the general law the mayor is the chief executive
 officer of the city (RSA 45:7), presides in the board of aldermen, and has a
@@ -2172,7 +2168,7 @@ carrying out the policies the elected body enacts (RSA 49-C:16). The council
 appoints the manager for an indefinite term and fixes the salary, by a vote of
 at least a majority of the council, and the charter sets out how the manager
 may be removed (RSA 49-C:17). Where a city runs this way, the mayor chairs the
-council and the manager runs the administration.</p>
+council (RSA 49-C:12) and the manager runs the administration.</p>
 
 <h2>Town Managers</h2>
 <p>A town may adopt the town manager form under RSA 37. It takes a vote: the
@@ -2205,14 +2201,14 @@ elected members of a planning board, zoning board of adjustment, budget
 committee or conservation commission (RSA 669:17).</p>
 
 <table><tbody>
-<tr><th scope="row"><b>Town clerk</b></th><td>Keeps the town's records, issues the
-licenses and registrations, and runs the mechanics of elections. A town may
+<tr><th scope="row"><b>Town clerk</b></th><td>Records every vote the town passes and
+carries out the other duties the law gives the office (RSA 41:16). A town may
 vote to make the term 3 years (RSA 41:16-b).</td></tr>
 <tr><th scope="row"><b>Tax collector</b></th><td>Collects the taxes the selectmen commit,
 remits them to the treasurer at least weekly, and daily once receipts reach
 $3,500, keeps the account of what was collected
 and abated, and reports at year end (RSA 41:35).</td></tr>
-<tr><th scope="row"><b>Clerk/tax collector</b></th><td>Many towns have combined the two
+<tr><th scope="row"><b>Clerk/tax collector</b></th><td>A town may combine the two
 into one office. It takes a petitioned article and a majority at the annual
 meeting, and the combined officer is then elected for a term of one year or
 three (RSA 41:45-a).</td></tr>
@@ -2297,12 +2293,13 @@ offices on your neighbor's.</p>
 <h2>Common Questions</h2>
 <div class="l-faq">
 <details><summary>Is a town administrator the same as a town manager?</summary>
-<p>A <b>town administrator</b> is a different thing, and the difference
-matters when you are working out who decides. There is no statutory office of
-town administrator. The selectmen hire one to help them run the town's
-business, and the administrator works under their direct supervision. Adopting
-RSA 37 moves authority from the elected board to an appointed officer; hiring
-an administrator does not, and needs no vote of the meeting.</p>
+<p>No, and the difference matters when you are working out who decides. A
+<b>town manager</b> is an office RSA 37 creates: adopting it takes a vote of
+the meeting (RSA 37:11), and the manager becomes the administrative head of all
+the town's departments (RSA 37:5), so authority moves from the elected board to
+an appointed officer. A <b>town administrator</b> is not that office. Where a
+town has one, the selectmen still manage the town's prudential affairs
+(RSA 41:8).</p>
 </details>
 <details><summary>What is a village district?</summary>
 <p><b>Village district:</b> a smaller unit inside one or more towns, formed to
@@ -2320,8 +2317,7 @@ business as a town's moderator, clerk, treasurer and selectmen have over the
 town's (RSA 52:8). A village district may adopt the manager form too, but
 only once the town it lies in (or, if it spans towns, the one holding most of
 its taxable value) has adopted it, and it must then appoint that town's
-manager as its own (RSA 37:14). If you live in one, it is a separate line on
-your tax bill.</p>
+manager as its own (RSA 37:14).</p>
 </details>
 <details><summary>How does a charter already in force change?</summary>
 <p>A charter already in force changes by one of two routes. A revision, which
