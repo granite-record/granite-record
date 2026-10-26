@@ -1915,12 +1915,6 @@ of the Grafton County convention.</p>
 
 <div class="yt" data-yt="county" hidden></div>
 
-<p>You will meet it under two names. The statutes say convention; legislators,
-county staff and county budget papers usually say <b>delegation</b>. They are
-the same body, and the statute itself uses both words in one sentence:
-RSA 24:9-a gives the chair of the county delegation the job of setting the
-time and place of the first meeting of the county convention.</p>
-
 <p>A House district carries its county in its name &mdash; Rockingham 13,
 Hillsborough 44 &mdash; and that name is what places its members. In the
 present map every House district, floterial districts included, lies within a
@@ -1978,19 +1972,6 @@ budget as recommended by the commissioners takes effect as the county budget
 county officers may not pay out money that has not been appropriated, or
 exceed what was appropriated (RSA 24:15).</p>
 
-<p><b>Supplemental appropriation:</b> a further appropriation made after the
-annual budget has been adopted. The commissioners may apply to the convention
-for one, or the convention may take one up on its own initiative. It needs
-notice to the members, towns and cities, a public hearing within 30 days of
-that notice, and its own vote of the convention (RSA 24:14-a). A narrower
-emergency route runs through the executive committee, again after a public
-hearing (RSA 24:15).</p>
-
-<p>The convention also sets what the elected county officers are paid. It
-establishes their salaries, benefits and other compensation every two years,
-acting on the executive committee's recommendation, before the filing period
-for the next election (RSA 23:7).</p>
-
 <p>These are the same people this site already holds pages for. A state
 representative has a second job most residents never see: the member who voted
 on a bill in Concord in the morning may spend the evening setting a county
@@ -2041,26 +2022,6 @@ not been recorded does not hold against a later buyer who paid for the land in
 good faith (RSA 477:3-a, 478:4). The register keeps the records safe in the
 office the county provides (RSA 478:1).</p>
 
-<p><b>Register of probate:</b> still elected, though almost all of the duties
-are gone. On July 1, 2011 the probate court became the probate division of the
-Circuit Court (RSA 490-F:3), and the registers' duties passed to the circuit
-court clerks, apart from a few the statute leaves with the register
-(RSA 490-F:13). Among those, the register works with the Secretary of State
-and the administrative judge of the Circuit Court on preserving closed files
-that may be of historical significance, and keeps an index of any files
-removed from the court (RSA 548:5). The office is named in the constitution,
-in articles 71 and 81 of Part Second, so removing it takes an amendment and
-not a bill: <a href="bill/2022/cacr21.html">CACR 21 (2022)</a> would have
-struck it out, passed both chambers, and went to the voters, where it did not
-reach the <a href="learn/the-constitution.html">two thirds of those
-voting</a> an amendment needs. [[probate_vote]]</p>
-
-<p><b>Coroner:</b> New Hampshire elects none. Sudden, unexpected or unnatural
-deaths are investigated by medical examiners of the Office of the Chief
-Medical Examiner, a state office within the Department of Justice, rather than
-by a county officer (RSA 611-B:2, 611-B:11). RSA 611-B replaced RSA 611, the
-earlier medical examiners chapter, which was repealed in 2007.</p>
-
 <h2>What the County Pays For, and Where the Money Comes From</h2>
 <p>Two things dominate a county budget. A county may provide, keep and
 maintain facilities for the confinement of prisoners, administered by a county
@@ -2081,6 +2042,54 @@ that town's share of the county tax and pay it over (RSA 29:11). The town
 raises it in the property tax. That is why a tax bill carries a county line
 beside the town, school and state education lines, and why a budget the
 delegation adopts turns up on a tax bill months later.</p>
+
+<h2>Common Questions</h2>
+<div class="l-faq">
+<details><summary>Why is it called both a convention and a delegation?</summary>
+<p>You will meet it under two names. The statutes say convention; legislators,
+county staff and county budget papers usually say <b>delegation</b>. They are
+the same body, and the statute itself uses both words in one sentence:
+RSA 24:9-a gives the chair of the county delegation the job of setting the
+time and place of the first meeting of the county convention.</p>
+</details>
+<details><summary>Can the county spend more after its budget is adopted?</summary>
+<p><b>Supplemental appropriation:</b> a further appropriation made after the
+annual budget has been adopted. The commissioners may apply to the convention
+for one, or the convention may take one up on its own initiative. It needs
+notice to the members, towns and cities, a public hearing within 30 days of
+that notice, and its own vote of the convention (RSA 24:14-a). A narrower
+emergency route runs through the executive committee, again after a public
+hearing (RSA 24:15).</p>
+</details>
+<details><summary>Who sets the county officers&rsquo; pay?</summary>
+<p>The convention also sets what the elected county officers are paid. It
+establishes their salaries, benefits and other compensation every two years,
+acting on the executive committee's recommendation, before the filing period
+for the next election (RSA 23:7).</p>
+</details>
+<details><summary>What does the register of probate still do?</summary>
+<p>The register of probate is still elected, though almost all of the duties
+are gone. On July 1, 2011 the probate court became the probate division of the
+Circuit Court (RSA 490-F:3), and the registers' duties passed to the circuit
+court clerks, apart from a few the statute leaves with the register
+(RSA 490-F:13). Among those, the register works with the Secretary of State
+and the administrative judge of the Circuit Court on preserving closed files
+that may be of historical significance, and keeps an index of any files
+removed from the court (RSA 548:5). The office is named in the constitution,
+in articles 71 and 81 of Part Second, so removing it takes an amendment and
+not a bill: <a href="bill/2022/cacr21.html">CACR 21 (2022)</a> would have
+struck it out, passed both chambers, and went to the voters, where it did not
+reach the <a href="learn/the-constitution.html">two thirds of those
+voting</a> an amendment needs. [[probate_vote]]</p>
+</details>
+<details><summary>Does New Hampshire elect a coroner?</summary>
+<p>No. New Hampshire elects none. Sudden, unexpected or unnatural
+deaths are investigated by medical examiners of the Office of the Chief
+Medical Examiner, a state office within the Department of Justice, rather than
+by a county officer (RSA 611-B:2, 611-B:11). RSA 611-B replaced RSA 611, the
+earlier medical examiners chapter, which was repealed in 2007.</p>
+</details>
+</div>
 """ + SHOWS.format("""
 <p><a href="officials.html">Every member of both chambers</a> has a page
 here, with the county and district they were elected from. The House members
@@ -2157,7 +2166,7 @@ at least a majority of the council, and the charter sets out how the manager
 may be removed (RSA 49-C:17). Where a city runs this way, the mayor chairs the
 council and the manager runs the administration.</p>
 
-<h2>Town Managers and Town Administrators</h2>
+<h2>Town Managers</h2>
 <p>A town may adopt the town manager form under RSA 37. It takes a vote: the
 chapter does not operate in a town until a majority of the voters present and
 voting at an annual meeting adopt it (RSA 37:11), and on the written
@@ -2173,31 +2182,6 @@ meetings, making bylaws, borrowing money, assessing or collecting taxes,
 granting licenses and laying out highways; nor does the manager supervise the
 town clerk or the town treasurer (RSA 37:5).</p>
 
-<p>A <b>town administrator</b> is a different thing, and the difference
-matters when you are working out who decides. There is no statutory office of
-town administrator. The selectmen hire one to help them run the town's
-business, and the administrator works under their direct supervision. Adopting
-RSA 37 moves authority from the elected board to an appointed officer; hiring
-an administrator does not, and needs no vote of the meeting.</p>
-
-<h2>Village Districts</h2>
-<p><b>Village district:</b> a smaller unit inside one or more towns, formed to
-provide one service or a few. On the petition of 10 or more voters domiciled
-in a village the selectmen fix the district's bounds, and the statute lists
-the purposes one may be formed for: fire protection, street lighting, water
-supply, sidewalks and drains, sewage, parks, police, roads and ambulance
-service among them (RSA 52:1). Once formed it is a body corporate and politic,
-with the same powers a town has in relation to the same objects
-(RSA 52:3).</p>
-
-<p>A district holds its own meeting and has its own moderator, clerk,
-treasurer and commissioners, who have the same powers over the district's
-business as a town's moderator, clerk, treasurer and selectmen have over the
-town's (RSA 52:8). A village district may adopt the manager form too, but
-only once the town it lies in (or, if it spans towns, the one holding most of
-its taxable value) has adopted it, and it must then appoint that town's
-manager as its own (RSA 37:14). If you live in one, it is a separate line on
-your tax bill.</p>
 
 <h2>The Other Names on a Town Ballot</h2>
 <p>Some offices every town governed by selectmen elects by ballot: the
@@ -2296,6 +2280,42 @@ effect only if three fifths of the ballots cast on the question favor it
 (RSA 49-B:6).</p>
 """ + flow_diagram(FLOW_CHARTER, "How a charter is adopted", level_names=True) + """
 
+
+
+<p>This is why two towns of the same size, ten miles apart, can be run in
+entirely different ways, and why the offices on your ballot are not the
+offices on your neighbor's.</p>
+
+<h2>Common Questions</h2>
+<div class="l-faq">
+<details><summary>Is a town administrator the same as a town manager?</summary>
+<p>A <b>town administrator</b> is a different thing, and the difference
+matters when you are working out who decides. There is no statutory office of
+town administrator. The selectmen hire one to help them run the town's
+business, and the administrator works under their direct supervision. Adopting
+RSA 37 moves authority from the elected board to an appointed officer; hiring
+an administrator does not, and needs no vote of the meeting.</p>
+</details>
+<details><summary>What is a village district?</summary>
+<p><b>Village district:</b> a smaller unit inside one or more towns, formed to
+provide one service or a few. On the petition of 10 or more voters domiciled
+in a village the selectmen fix the district's bounds, and the statute lists
+the purposes one may be formed for: fire protection, street lighting, water
+supply, sidewalks and drains, sewage, parks, police, roads and ambulance
+service among them (RSA 52:1). Once formed it is a body corporate and politic,
+with the same powers a town has in relation to the same objects
+(RSA 52:3).</p>
+
+<p>A district holds its own meeting and has its own moderator, clerk,
+treasurer and commissioners, who have the same powers over the district's
+business as a town's moderator, clerk, treasurer and selectmen have over the
+town's (RSA 52:8). A village district may adopt the manager form too, but
+only once the town it lies in (or, if it spans towns, the one holding most of
+its taxable value) has adopted it, and it must then appoint that town's
+manager as its own (RSA 37:14). If you live in one, it is a separate line on
+your tax bill.</p>
+</details>
+<details><summary>How does a charter already in force change?</summary>
 <p>A charter already in force changes by one of two routes. A revision, which
 changes the form of government, goes through a charter commission of its own:
 the question of establishing one reaches the ballot by order of the municipal
@@ -2307,7 +2327,8 @@ least 15 percent of those ballots, put it on the ballot with no commission,
 and a majority adopts it (RSA 49-B:5, 49-B:6). A town may also repeal its
 charter and return to the form of government it had before, on a petition of
 its voters put to the ballot the same way as an amendment (RSA 49-B:12).</p>
-
+</details>
+<details><summary>Does a town charter have to end town meeting?</summary>
 <p>A town charter does not have to abolish the town meeting. RSA 49-D:3 sets
 out the forms a town charter may choose between: a town council; an official
 ballot town council; a budgetary town meeting, which keeps the meeting but
@@ -2316,10 +2337,8 @@ and a representative town meeting, where members elected from districts vote
 in place of the whole electorate. A charter may also make a <b>town
 manager</b> the chief administrative officer, under the town council-town
 manager form (RSA 49-D:2).</p>
-
-<p>This is why two towns of the same size, ten miles apart, can be run in
-entirely different ways, and why the offices on your ballot are not the
-offices on your neighbor's.</p>
+</details>
+</div>
 """ + SHOWS.format("""
 <p><a href="directory/towns.html">Every town and ward</a> is listed here with
 the House and Senate districts that cover it, which is the route from where
@@ -2383,9 +2402,6 @@ start of the next term, and Granite Place to drop out of the rotation when it is
 <b>Go by the notice for the
 hearing you are attending</b> &mdash; it names the building and the room, and
 it is right about the day it was published whatever this page says.</p>
-<p>Both chambers live stream the hearings of their standing committees, the
-permanent committees bills are referred to, so a hearing can be watched as it
-happens.</p>
 
 <h2>Signing In</h2>
 <p><b>Both chambers take sign-ins online</b>, each through its own form on the
@@ -2396,9 +2412,6 @@ published after the hearing.</p>
 <p>The window is not open indefinitely. <!-- guides:window --> If the bill
 passes one chamber and gets a hearing in the other, there is a second window
 on the same terms.</p>
-<p>The sign-ins are not part of the bill's docket, the General Court's list of
-every action on it, and no link on the docket leads to them. They are kept in the General Court's own sign-in records, which
-its website offers as a lookup of its own.</p>
 
 <h2>The Steps, in Order</h2>
 """ + flow_diagram(FLOW_TESTIFY, "How to testify, in order") + """
@@ -2431,13 +2444,29 @@ sign-in.</p>
 
 <h2>What Happens After the Hearing</h2>
 <!-- guides:exec-session -->
-<p>No testimony is taken at an executive session, and one can be hard to
-catch.</p>
 <!-- guides:throughout-the-day -->
 <p>The committee then reports its recommendation to the chamber, and
 where it was split the majority and the minority each write a report. Whether
 you spoke or only signed in, the counts and any written testimony stay in the
 record.</p>
+
+<h2>Common Questions</h2>
+<div class="l-faq">
+<details><summary>Can I watch a hearing instead of going?</summary>
+<p>Both chambers live stream the hearings of their standing committees, the
+permanent committees bills are referred to, so a hearing can be watched as it
+happens.</p>
+</details>
+<details><summary>Where are the sign-ins kept?</summary>
+<p>The sign-ins are not part of the bill's docket, the General Court's list of
+every action on it, and no link on the docket leads to them. They are kept in the General Court's own sign-in records, which
+its website offers as a lookup of its own.</p>
+</details>
+<details><summary>Can I speak at an executive session?</summary>
+<p>No testimony is taken at an executive session, and one can be hard to
+catch.</p>
+</details>
+</div>
 """ + SHOWS.format("""
 <p>This site holds <b>[[hearings]] public hearings</b>, each with the committee
 and the day. Every bill's page shows its own hearings. Where a hearing was
@@ -2481,10 +2510,6 @@ it.</p>
 Hillsborough 44, or abbreviated to <b>Rock 13</b>. The number is not a rank or
 a size. It is an index within that county, and the map is redrawn every ten
 years after the federal census.</p>
-<p>A district may be a single town, one or more wards of a city, several towns
-together, or a city's wards joined with neighboring towns. Where it has more
-than one seat, its members are elected at large across the whole of it, not
-one to each town. The largest elects [[largest]] representatives.</p>
 <p>Senate districts are numbered 1 to [[senate_districts]] across the whole
 state rather than by county, and many cross county lines. Each elects one
 senator, and district 22 is written <b>SD22</b>.</p>
@@ -2503,18 +2528,30 @@ members of your own district, and the floterial members you share with the
 towns or wards around you. [[floterial]] of the [[house_districts]] House
 districts are floterial, and they account for [[floterial_seats]] of the
 [[house_seats]] seats.</p>
+
+<h2>Common Questions</h2>
+<div class="l-faq">
+<details><summary>Are a district&rsquo;s members elected one to each town?</summary>
+<p>A district may be a single town, one or more wards of a city, several towns
+together, or a city's wards joined with neighboring towns. Where it has more
+than one seat, its members are elected at large across the whole of it, not
+one to each town. The largest elects [[largest]] representatives.</p>
+</details>
+<details><summary>Where does the law say which districts are floterial?</summary>
 <p>The statute that sets out the districts, RSA 662:5, never uses the word
 <i>floterial</i>. It simply lists each district's towns and its seats. A
 floterial shows up there as a district covering exactly the same towns as two
 or more of the county's other districts put together &mdash; [[reps_flot]] is
 [[reps_flot_under]] combined. Every one of the [[floterial]] districts this
 site marks as floterial passes that test against the statute.</p>
-
-<h2>How to Contact a Member</h2>
+</details>
+<details><summary>Will a representative read my email?</summary>
 <p>[[members_email]] of the [[members_sitting]] sitting members publish an
 email address in the General Court's directory. Almost none have staff, so a
 message to a representative is read by that representative. Most have other
 jobs.</p>
+</details>
+</div>
 """ + SHOWS.format("""
 <p><a href="officials.html">Every member of both chambers</a>, with their
 district, party and county, and every recorded vote they have cast.</p>
@@ -2585,8 +2622,6 @@ voted on, and where in the recording that happened. It is built by machine
 from the General Court's published files, and this page was last built on
 [[built_on]].</p>
 
-<p>Older terms hold less, and every bill's page says what its term carries and
-what is not on the site yet.</p>
 
 <h2>How to Find a Bill, a Member or a Town</h2>
 <p>The <b>Search</b> button in the header, drawn as a magnifier, finds
@@ -2609,8 +2644,7 @@ linked to the journal or calendar that recorded it.</li>
 was published.</li>
 <li><b>Votes</b> &mdash; every roll call this record holds, by member, from
 [[rollcall_first_year]] on, and each voice or division vote on the bill, a
-division with its count. A voice or division vote has no member-by-member
-record to show, because none was made.</li>
+division with its count.</li>
 <li><b>Hearings</b> &mdash; each meeting that took the bill up, with its day,
 time and room, and the recording where there is one, opened at the moment
 the bill was taken up.</li>
@@ -2637,10 +2671,6 @@ and marked <b>approximate</b>. It can be several minutes out.</li>
 <li>Where no moment has been found, the page says so and offers the whole
 recording.</li>
 </ul>
-<p>Captions are never quoted here. Automatic transcription renders "HB 1381"
-as "HP 1381" often enough that a quotation would be a transcription error
-wearing the clothes of a citation. The timestamp is the claim. The recording
-is the evidence.</p>
 
 <h2>Reading the Shorthand</h2>
 """ + SHORTHAND_TABLE + """
@@ -2658,6 +2688,24 @@ button beside its heading, because this will be wrong somewhere. It sends nothin
 which also means we cannot reply. For an answer, or for an error on these
 explanatory pages, write to
 <a href="mailto:contact@graniterecord.org">contact@graniterecord.org</a>.</p>
+
+<h2>Common Questions</h2>
+<div class="l-faq">
+<details><summary>Does every term hold as much?</summary>
+<p>Older terms hold less, and every bill's page says what its term carries and
+what is not on the site yet.</p>
+</details>
+<details><summary>Why do some votes show no names?</summary>
+<p>A voice or division vote has no member-by-member
+record to show, because none was made.</p>
+</details>
+<details><summary>Why are captions never quoted?</summary>
+<p>Captions are never quoted here. Automatic transcription renders "HB 1381"
+as "HP 1381" often enough that a quotation would be a transcription error
+wearing the clothes of a citation. The timestamp is the claim. The recording
+is the evidence.</p>
+</details>
+</div>
 """
 
 # The official addresses these pages send a reader to. Kept in one place
