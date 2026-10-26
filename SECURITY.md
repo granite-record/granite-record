@@ -27,7 +27,7 @@ request, which is why a contact address on the page only resolves once a
 Cloudflare script has run. Those two are dashboard switches rather than
 anything this repository emits, and `src/checks/check_live.py` reports both.
 
-**In this project's own code there are three exceptions**, and each says so
+**In this project's own code there are four exceptions**, and each says so
 in its own header or README:
 
 - `functions/api/report.js`, the endpoint behind the "report a problem" box
@@ -47,6 +47,13 @@ in its own header or README:
   `workers/follow/README.md` says how, and what each endpoint answers.
 - `workers/night-timer/`, a Worker with no address that starts the nightly
   build on GitHub at its hour. It answers no request and stores nothing.
+- `workers/live/`, the live layer's Worker (approved 26 October 2026), being
+  built and not yet deployed. What is here so far is its reader of the
+  General Court's public SQL database: SELECT only, with the login the
+  General Court publishes, through a small TDS client (`tds.js`) that refuses
+  any host but the loopback address outside production, and stops before the
+  login if the server asks for encryption, which a Worker cannot carry. It
+  will have no address and answer no request.
 
 If you are looking for something to attack, it is the first two.
 

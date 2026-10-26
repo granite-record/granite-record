@@ -79668,6 +79668,291 @@ def _night_timer():
     return "ok", f"{count['pass']} tests of the timer, its cron the workflow's"
 
 
+# ---- the live layer's reader of the General Court's public SQL database ----------
+# The live layer's design (26 October 2026, approved by the person as
+# "defaults"), sections 2.1, 2.2, 2.7 and 6.2: workers/live/tds.js, sql.js and
+# test_mode.js, tests/live/, and workers/live/live.gen.js.
+LIVE_DIRS = ("workers/live", "tests/live", "functions/api/live")
+LIVE_VIEWS = ("RollCallSummary", "RollCallHistory", "legislators", "Docket")
+LIVE_TDS_CASES = ("logs in with the published login", "LOGIN7, decoded field by field",
+                  "many 4,096-byte packets", "two statements on one connection",
+                  "encryption REQ stops the client before LOGIN7", "the server's ERROR is `query`",
+                  "dropped halfway through a reply", "a fixed-length INT4 column",
+                  "LOGINACK older than TDS 7.2", "never answers fails inside the deadline",
+                  "never opens, each fail inside the deadline", "loopback is refused without ENV production",
+                  "day 1 reads 11 March 2026", "day 2 reads veto day", "compare_test finds a changed ballot",
+                  "requires encryption: the file says so")
+
+
+@check("build", "the live votes reader passes its tests in node against a fake SQL Server on the "
+                "loopback address: login, a batch, replies over many packets, two statements on one "
+                "connection, the server's errors, a dropped connection, forced encryption stopped "
+                "before the password, and the November test equal to the record")
+def _live_tds():
+    """workers/live/tds.js is a TDS client this project owns, about 250 lines,
+    and the design's one gate (section 2.7) rests on it behaving as it says.
+    tests/live/tds.test.js holds it against tests/live/fake_tds.js, a fake SQL
+    Server on 127.0.0.1 that a real driver (tedious) also accepts; and
+    tests/live/sql.test.js holds the statements, and runs the November test
+    end to end against the fake answering from records/rollcalls/, with
+    compare_test.mjs finding the file equal to the record -- and finding a
+    changed ballot when one is changed. Run here in node; the cases the design
+    names are looked for by name, so that one taken out is missed."""
+    files = [Path("tests/live/tds.test.js"), Path("tests/live/sql.test.js")]
+    if not all(f.is_file() for f in files):
+        return "skip", "tests/live/ is not here"
+    node = shutil.which("node") or shutil.which("node.exe")
+    if not node:
+        return "skip", "node is not on PATH"
+    r = _run([node, "--test", "--test-reporter=tap", *[f.as_posix() for f in files]],
+             capture_output=True, text=True, timeout=300)
+    out = (r.stdout or "") + (r.stderr or "")
+    count = {k: int(v) for k, v in re.findall(r"^# (tests|pass|fail) (\d+)$", out, re.M)}
+    fails = _tap_failures(out)
+    passed = [m.replace("\\#", "#") for m in re.findall(r"^ok \d+ - (.*)$", out, re.M)]
+    missing = [c for c in LIVE_TDS_CASES if not any(c in n for n in passed)]
+    assert not fails and r.returncode == 0 and count.get("pass", 0) >= 31, (
+        f"the live votes reader fails {len(fails)}: " + "; ".join(repr(n) for n, _s in fails[:5])
+        + f" ({count or out.strip()[-300:]}). `node --test {' '.join(f.as_posix() for f in files)}` shows each")
+    assert not missing, "these cases no longer pass, or no longer exist: " + "; ".join(missing)
+    return "ok", f"{count['pass']} tests of the reader and the November test, against the fake"
+
+
+def _live_host_problems(root, host):
+    """Where the General Court's SQL host is named under `root` and should not
+    be: nowhere in the live layer's code or tests, and in
+    workers/live/wrangler.toml only as production's SQL_HOST, equal to
+    probe_db.HOST; the top level and every other environment on the loopback
+    address, and ENV = "production" under production alone (design 6.2)."""
+    import tomllib
+    root, bad = Path(root), []
+    for top in LIVE_DIRS:
+        d = root / top
+        for p in sorted(d.rglob("*")) if d.is_dir() else []:
+            if p.is_file() and p.name != "wrangler.toml" and \
+                    host in p.read_text(encoding="utf-8", errors="replace"):
+                bad.append(f"{p.relative_to(root).as_posix()} names the SQL host")
+    toml = root / "workers" / "live" / "wrangler.toml"
+    if toml.is_file():
+        text = toml.read_text(encoding="utf-8")
+        conf = tomllib.loads(text)
+        envs = conf.get("env", {})
+        prod = envs.get("production", {}).get("vars", {})
+        if sum(host in ln for ln in text.splitlines()) > 1:
+            bad.append("workers/live/wrangler.toml names the SQL host on more than one line")
+        if host in text and prod.get("SQL_HOST") != host:
+            bad.append("workers/live/wrangler.toml names the SQL host somewhere but production's SQL_HOST")
+        if prod.get("SQL_HOST") not in (None, host, "127.0.0.1", "::1"):
+            bad.append(f"production's SQL_HOST is {prod.get('SQL_HOST')}, not probe_db.HOST")
+        for name, v in [("the top level", conf.get("vars", {}))] + \
+                [(f"[env.{n}]", e.get("vars", {})) for n, e in envs.items() if n != "production"]:
+            if v.get("SQL_HOST") not in (None, "127.0.0.1", "::1"):
+                bad.append(f"{name} of workers/live/wrangler.toml sets SQL_HOST to {v['SQL_HOST']}, "
+                           f"not the loopback address")
+            if "ENV" in v:
+                bad.append(f"{name} of workers/live/wrangler.toml sets ENV, which production's vars alone may")
+    return bad
+
+
+def _sql_split(s):
+    """`s` cut at its commas outside brackets and quotes."""
+    parts, depth, quote, cur = [], 0, False, ""
+    for ch in s:
+        if ch == "'":
+            quote = not quote
+        elif not quote and ch == "(":
+            depth += 1
+        elif not quote and ch == ")":
+            depth -= 1
+        if ch == "," and not depth and not quote:
+            parts.append(cur.strip())
+            cur = ""
+        else:
+            cur += ch
+    return parts + [cur.strip()]
+
+
+def _sql_textual(e):
+    """Whether an output column comes back as nvarchar(n), n at most 4000: a
+    CAST to it, a date as CONVERT(nvarchar(19), x, 126), or an ISNULL of such
+    a column and either '' or another."""
+    e = e.strip()
+    m = re.fullmatch(r"CAST\((.*) AS nvarchar\((\d+)\)\)", e, re.S)
+    if m and _sql_split(m.group(1)) == [m.group(1).strip()] and m.group(1).count("(") == m.group(1).count(")"):
+        return 1 <= int(m.group(2)) <= 4000
+    if re.fullmatch(r"CONVERT\(nvarchar\(19\), [a-z]\.\w+, 126\)", e):
+        return True
+    m = re.fullmatch(r"ISNULL\((.*)\)", e, re.S)
+    if m:
+        args = _sql_split(m.group(1))
+        return len(args) == 2 and _sql_textual(args[0]) and (args[1] == "''" or _sql_textual(args[1]))
+    return False
+
+
+def _live_statement_problems(name, sql, views, width, refused):
+    """What is wrong with one of sql.js's statements as written, {NAME} where a
+    value goes: one SELECT over the four views, every column it names one the
+    view has (`views`: {view: [columns]}), every output column nvarchar(n),
+    `width` of them, no statement end, comment, star or variable, no word of
+    fetch_past_db's refused list (JOIN alone, as Q2's one LEFT JOIN of the
+    roster), and no literal but '' and Q3's '%RC [0-9]%'."""
+    bad = []
+    places = set(re.findall(r"\{([A-Z0-9]+)\}", sql))
+    if places - {"Y", "FIRST", "UNTIL", "CHAMBERS", "BODY", "SEQS", "DAY", "NEXT", "SINCE", "MDY"}:
+        bad.append(f"{name} has a place no builder fills: {sorted(places)}")
+    literals = re.findall(r"'(?:[^']|'')*'", sql)
+    odd = [x for x in literals if x not in ("''", "'%RC [0-9]%'")]
+    if odd:
+        bad.append(f"{name} carries the literal {odd[0]}: a value goes in through fill() and lit()")
+    # A literal or a place is set aside before the words are read: '%RC [0-9]%'
+    # is no identifier, and {UNTIL} no keyword.
+    bare = re.sub(r"\{[A-Z0-9]+\}", "0", re.sub(r"'(?:[^']|'')*'", "''", sql))
+    if not re.match(r"SELECT\s", bare):
+        bad.append(f"{name} is not a SELECT")
+    if re.search(r";|--|/\*|\*/|\*|@|#|\\", bare):
+        bad.append(f"{name} holds a statement end, a comment, a star or a variable")
+    said = [w for w in refused if re.search(rf"\b{w}\b", bare, re.I)]
+    if said:
+        bad.append(f"{name} says {said[0]}")
+    joins = re.findall(r"\b\w+\s+JOIN\b[^\n]*", bare)
+    if joins and (name != "Q2" or joins != ["LEFT JOIN legislators l ON l.Employeeno = h.EmployeeNumber"]):
+        bad.append(f"{name} joins: {joins}")
+    called = {c.upper() for c in re.findall(r"([A-Za-z_]\w*)\s*\(", bare)}
+    if called - {"CAST", "CONVERT", "ISNULL", "NVARCHAR", "IN", "AND", "OR"}:
+        bad.append(f"{name} calls {sorted(called - {'CAST', 'CONVERT', 'ISNULL', 'NVARCHAR', 'IN', 'AND', 'OR'})}")
+    if len(re.findall(r"\bFROM\b", bare)) != 1 or len(re.findall(r"\bSELECT\b", bare)) != 1:
+        bad.append(f"{name} is not one SELECT with one FROM")
+    aliases = dict((a, v) for v, a in re.findall(r"\b(?:FROM|JOIN)\s+(\w+)\s+([a-z])\b", bare))
+    known = {v.lower(): v for v in views}
+    for a, v in aliases.items():
+        if v not in LIVE_VIEWS or v.lower() not in known:
+            bad.append(f"{name} reads {v}, which is not one of {', '.join(LIVE_VIEWS)}")
+    for a, col in re.findall(r"\b([a-z])\.(\w+)", bare):
+        v = aliases.get(a)
+        if v is None:
+            bad.append(f"{name} names {a}.{col}, and {a} is no view it reads")
+        elif v.lower() in known and col not in views[known[v.lower()]]:
+            bad.append(f"{name} names {v}.{col}, which the view's columns do not include")
+    head = re.match(r"SELECT\s(.*?)\nFROM\s", bare, re.S)
+    items = _sql_split(head.group(1)) if head else []
+    if len(items) != width:
+        bad.append(f"{name} returns {len(items)} columns, and its reader takes {width}")
+    plain = [x for x in items if not _sql_textual(x)]
+    if plain:
+        bad.append(f"{name}'s column {plain[0]!r} is not cast to nvarchar(n), n at most 4000")
+    return bad
+
+
+@check("code", "the live votes reader's statements are SELECTs over four views that cast every "
+               "column to nvarchar and take values only through one builder; its login is the one "
+               "probe_db.py publishes and its host is production's alone; its test hours miss the "
+               "night's windows", needs=("live_gen", "dayfiles_from_db", "fetch_past_db", "refusal"))
+def _live_sql(live_gen, dayfiles_from_db, fetch_past_db, refusal):
+    """The design's section 6.2 and 7.1, for the half of the live Worker that
+    reads the General Court's public SQL database:
+
+    LIVE.GEN.JS is what src/pages/live_gen.py writes from the repository, and
+    its SQL_LOGIN is probe_db.py's DATABASE, USER and PASSWORD -- the login the
+    General Court publishes -- read here again from the committed file.
+
+    THE HOST is named in no file of the live layer's code or tests, and in
+    workers/live/wrangler.toml, once there is one, only as production's
+    SQL_HOST, equal to probe_db.HOST, with every other level on the loopback
+    address; tds.js refuses any other host without ENV = "production" too.
+    The rule is tried on fixtures first, so that a rule that stopped biting
+    is caught along with a file that breaks it.
+
+    THE STATEMENTS in workers/live/sql.js: each one SELECT over the four views,
+    every column it names one db/_columns.json lists (dayfiles_from_db.VIEWS,
+    which keeps that file's names, where the dump is not on this disk), every
+    output column nvarchar(n) so that tds.js reads one type, as many as its
+    reader takes, and no literal but '' and '%RC [0-9]%': a value goes in
+    through fill() and lit() alone. fetch_past_db.select_only's refused words
+    are refused here, all but JOIN, which Q2's one LEFT JOIN of the roster
+    needs (HISTORY_SQL's own). And no word of gc.nh.gov or gencourt in
+    workers/live/: the Worker never asks the web server.
+
+    THE TEST HOURS of workers/live/test_mode.js, weekdays from TEST_HOURS[0]
+    to TEST_HOURS[1] in New Hampshire, meet no window of refusal.NIGHT_WINDOWS
+    nor START_MARGIN_MINUTES before one, in standard time or daylight time."""
+    gen, sql_js, test_js = (Path("workers/live") / n for n in ("live.gen.js", "sql.js", "test_mode.js"))
+    if not gen.is_file():
+        return "skip", "workers/live/ is not here"
+    ok, why = live_gen.current()
+    assert ok, f"{why}: run {live_gen.COMMAND}"
+    m = re.search(r"^export const SQL_LOGIN = (\{.*\});$", gen.read_text(encoding="utf-8"), re.M)
+    assert m and json.loads(m.group(1)) == live_gen.published_login(), \
+        "live.gen.js's SQL_LOGIN is not probe_db.py's DATABASE, USER and PASSWORD"
+    host = live_gen.assigned(live_gen.PROBE_DB, ("HOST",))["HOST"]
+
+    import tempfile
+    with tempfile.TemporaryDirectory() as tmp:
+        fx = Path(tmp)
+        (fx / "workers" / "live").mkdir(parents=True)
+        (fx / "workers" / "live" / "wrangler.toml").write_text(
+            'name = "x-local"\n[vars]\nSQL_HOST = "127.0.0.1"\n[env.production.vars]\nENV = "production"\n'
+            f'SQL_HOST = "{host}"\n', encoding="utf-8")
+        assert not _live_host_problems(fx, host), _live_host_problems(fx, host)
+        for path, text in (("workers/live/x.js", f'const h = "{host}";'),
+                           ("workers/live/wrangler.toml", f'[vars]\nSQL_HOST = "{host}"\n'),
+                           ("workers/live/wrangler.toml", '[vars]\nENV = "production"\nSQL_HOST = "127.0.0.1"\n')):
+            (fx / path).write_text(text, encoding="utf-8")
+            assert _live_host_problems(fx, host), f"the host rule no longer bites on {path}: {text}"
+            (fx / path).unlink()
+    bad = _live_host_problems(".", host)
+    assert not bad, "; ".join(bad)
+
+    said = [p.as_posix() for p in sorted(Path("workers/live").rglob("*.js"))
+            if re.search(r"gc\.nh\.gov|gencourt", p.read_text(encoding="utf-8"), re.I)]
+    assert not said, "these name the General Court's web server, which the live Worker never asks: " + ", ".join(said)
+
+    src = sql_js.read_text(encoding="utf-8")
+    t = dict(re.findall(r"^export const (Q1|Q2|Q2_CHAMBER|Q3|VERSION) = `([^`]*)`;", src, re.M))
+    assert set(t) == {"Q1", "Q2", "Q2_CHAMBER", "Q3", "VERSION"}, \
+        f"sql.js no longer writes its statements where this reads them (found {sorted(t)})"
+    width = {k: int(v) for k, v in re.findall(r"(\w+): (\d+)", re.search(r"export const WIDTH = \{([^}]*)\}", src).group(1))}
+    assert t["VERSION"] == "SELECT @@VERSION", "the test's version statement is not SELECT @@VERSION"
+    cols_file = Path("db/_columns.json")
+    if cols_file.is_file():
+        views, whose = json.loads(cols_file.read_text(encoding="utf-8")), "db/_columns.json"
+        views = {v: [c if isinstance(c, str) else c.get("name") for c in cs] for v, cs in views.items()}
+    else:
+        views, whose = dayfiles_from_db.VIEWS, "dayfiles_from_db.VIEWS (db/ is not on this disk)"
+    refused = [w for w in re.findall(r"[A-Z]+", fetch_past_db._NOT_READ.pattern) if w != "JOIN"]
+    chambers = f"{t['Q2_CHAMBER']} OR {t['Q2_CHAMBER']}"
+    statements = {"Q1": (t["Q1"], width["q1"]), "Q2": (t["Q2"].replace("{CHAMBERS}", chambers), width["q2"]),
+                  "Q3": (t["Q3"], width["q3"])}
+    bad = [p for name, (sql, w) in statements.items()
+           for p in _live_statement_problems(name, sql, views, w, refused)]
+    assert not bad, "; ".join(bad[:6])
+    # The rule bites: a star, a varchar, a column the view lacks, a second statement, a literal.
+    for wrong in ("SELECT CAST(d.Description AS nvarchar(9)), *\nFROM Docket d",
+                  "SELECT CAST(d.Description AS varchar(9))\nFROM Docket d",
+                  "SELECT CAST(d.Nothing AS nvarchar(9))\nFROM Docket d",
+                  "SELECT CAST(d.Description AS nvarchar(9))\nFROM Docket d; DROP TABLE x",
+                  "SELECT CAST(d.Description AS nvarchar(9))\nFROM Docket d WHERE d.LSR = 'x'",
+                  "SELECT CAST(d.Description AS nvarchar(9))\nFROM Docket d WHERE d.LSR IN (SELECT 1)"):
+        assert _live_statement_problems("X", wrong, views, 1, refused), f"the statement rule lets through: {wrong}"
+
+    hours = re.search(r"export const TEST_HOURS = \[(\d+), (\d+)\];", test_js.read_text(encoding="utf-8"))
+    assert hours, "test_mode.js no longer says TEST_HOURS where this reads it"
+    start, end = int(hours.group(1)) * 60, int(hours.group(2)) * 60
+    margin = refusal.START_MARGIN_MINUTES
+    met = []
+    for offset in (4, 5):                                   # daylight time, standard time
+        for weekday in range(5):
+            for minute in range(start, end):
+                utc = minute + offset * 60
+                day, at = (weekday + utc // 1440) % 7, utc % 1440
+                for wd, (h1, m1), (h2, m2), what in refusal.NIGHT_WINDOWS:
+                    if (wd is None or wd == day) and h1 * 60 + m1 - margin <= at < h2 * 60 + m2:
+                        met.append(f"UTC{-offset:+d} {minute // 60:02d}:{minute % 60:02d} meets {what}")
+    assert not met, "the November test's hours meet the night's window: " + "; ".join(sorted(set(met))[:3])
+    return "ok", (f"live.gen.js current, its login probe_db.py's; the host production's alone; Q1, Q2 and "
+                  f"Q3 cast every column and name only columns {whose} lists; the test's "
+                  f"{start // 60:02d}:00-{end // 60:02d}:00 misses the night's windows")
+
+
 # The sign-up box's daily or weekly drawn and sent by app.js under node, with
 # a form of the box's own parts: the Turnstile token already in hand, the
 # answer a 202, and every request the box makes kept for the check to read.

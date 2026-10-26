@@ -39,7 +39,7 @@ export const Q1 = `SELECT CAST(s.LegislativeBody AS nvarchar(1)), CAST(s.VoteSeq
        ISNULL(CONVERT(nvarchar(19), s.DateModified, 126), ''),
        CAST(ISNULL(s.UserName, '') AS nvarchar(40))
 FROM RollCallSummary s
-WHERE s.SessionYear = {Y} AND s.VoteDate >= {FROM} AND s.VoteDate < {UNTIL}
+WHERE s.SessionYear = {Y} AND s.VoteDate >= {FIRST} AND s.VoteDate < {UNTIL}
 ORDER BY s.LegislativeBody, s.VoteSequenceNumber`;
 
 export const Q2 = `SELECT CAST(h.LegislativeBody AS nvarchar(1)), CAST(h.VoteSequenceNumber AS nvarchar(8)),
@@ -125,7 +125,7 @@ export function fill(template, values) {
 // ---- the statements ------------------------------------------------------------
 // Roll calls dated from `from` up to, not including, `until`.
 export function q1({ year, from, until }) {
-  return fill(Q1, { Y: ["int", year], FROM: ["day", from], UNTIL: ["day", until] });
+  return fill(Q1, { Y: ["int", year], FIRST: ["day", from], UNTIL: ["day", until] });
 }
 
 // The ballots of `rollcalls`, [{body, seq}], at most MAX_ROLLCALLS of them.

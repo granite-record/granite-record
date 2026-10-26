@@ -68,7 +68,7 @@ test("a value reaches a statement only through lit(): whole numbers, real dates,
                            ["mdy", "11/03/2026"], ["body", "h"], ["body", "'H'"], ["text", "anything"]]) {
     assert.throws(() => lit(kind, v), RangeError, `${kind} ${String(v)}`);
   }
-  assert.throws(() => fill(Q1, { Y: ["int", 2026], FROM: ["day", "2026-03-11"] }), /no value for \{UNTIL\}/);
+  assert.throws(() => fill(Q1, { Y: ["int", 2026], FIRST: ["day", "2026-03-11"] }), /no value for \{UNTIL\}/);
   assert.throws(() => fill(Q2_CHAMBER, { BODY: ["body", "H"], SEQS: ["ints", [1]], Y: ["int", 1] }), /no place for Y/);
   for (const t of [Q1, Q2, Q3, Q2_CHAMBER]) assert.equal(t.match(/'(?:[^']|'')*'/g)?.filter(l => !ALLOWED.test(l)).length ?? 0, 0);
   assert.equal(VERSION, "SELECT @@VERSION");
