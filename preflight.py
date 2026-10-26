@@ -22247,6 +22247,99 @@ def _find_pages_officials(BI, G, civics, BC):
                   "Calendar, and Concord once above its wards, each a Ward")
 
 
+# The header's panel and /search's list over find.json as build_indexes writes
+# it (26 October 2026): findDraw's addresses in order, the bills as BILLS, and
+# findMatch's with the cap off, which is what /search reads.
+_FIND_WARDS_JS = r"""
+require("./stub.js");
+const fs = require("fs"), vm = require("vm");
+globalThis.fetch = async () => ({ ok: false, status: 404, json: async () => { throw new Error("404"); } });
+globalThis.chip = (t, cls) => `<span class="${cls}">${t}</span>`;
+vm.runInThisContext(fs.readFileSync("./find.js", "utf8"), { filename: "find.js" });
+const F = vm.runInThisContext("({FIND, findDraw, findMatch})");
+const go = JSON.parse(fs.readFileSync("./go.json", "utf8"));
+F.FIND.rows = go.rows;
+const panel = document.getElementById("findout");
+const out = {panel: {}, search: {}};
+for (const q of go.cases) {
+  F.findDraw(q);
+  out.panel[q] = (panel.innerHTML.match(/<a class="fbills"|<a href="[^"]*"/g) || []).map(a =>
+    a.startsWith('<a class="fbills"') ? "BILLS" : a.slice(9, -1));
+  out.search[q] = F.findMatch(q, Infinity).map(r => r[3]);
+}
+console.log(JSON.stringify(out));
+"""
+
+
+@check("frontend", "the header's search shows a city with wards once, its bills under it, and its "
+       "wards only where a ward is asked for; /search still lists every ward",
+       needs=("build_indexes", "build_pages"))
+def _find_city_without_wards(BI, BP):
+    """The owner, 26 October 2026 (C): typing "Concord" into the header's
+    search filled the dropdown with the city and seven of its ten wards,
+    pushing its bills out of sight. find.js's findDraw now leaves a ward out
+    of the panel where its city's row is among the answers (_ffold), unless
+    what was typed asks for a ward -- "ward", or a number -- and the same for
+    every city with wards. The city's row opens the Officials page's town
+    view, which lists the wards, and /search, which reads findMatch with the
+    cap off, still lists each one. Here: find_index over two cities with
+    wards and a town without, and find.js in node, as the header draws it."""
+    if shutil.which("node") is None:
+        return "skip", "node is not installed"
+    site = Path(tempfile.mkdtemp(prefix="gr-wards-"))
+    try:
+        (site / "town").mkdir()
+        towns = {"Concord": [{"county": "Merrimack", "ward": str(w)} for w in range(1, 11)],
+                 "Manchester": [{"county": "Hillsborough", "ward": str(w)} for w in (1, 2, 3)],
+                 "Andover": [{"county": "Merrimack", "ward": ""}]}
+        for t, seats in towns.items():
+            for s in seats:
+                stem = t.lower() + (f"-ward-{s['ward']}" if s["ward"] else "")
+                (site / "town" / f"{stem}.html").write_text("<p>", encoding="utf-8")
+        rows = BI.find_index(site, [], towns)
+    finally:
+        shutil.rmtree(site, ignore_errors=True)
+    cases = ["concord", "Concord", "manchester", "andover", "concord ward", "concord 3", "ward 2"]
+    root = Path(tempfile.mkdtemp(prefix="gr-wards-js-"))
+    try:
+        (root / "stub.js").write_text(Path("tests/dom_stub.js").read_text(encoding="utf-8"),
+                                      encoding="utf-8")
+        (root / "find.js").write_text(Path("src/pages/find.js").read_text(encoding="utf-8"),
+                                      encoding="utf-8")
+        (root / "go.json").write_text(json.dumps({"rows": rows, "cases": cases}), encoding="utf-8")
+        (root / "go.js").write_text(_FIND_WARDS_JS, encoding="utf-8")
+        r = _run(["node", "go.js"], cwd=root, capture_output=True, text=True, timeout=60)
+        said = (r.stdout + r.stderr).strip()
+        last = (said.splitlines() or ["no output"])[-1]
+        assert r.returncode == 0 and last.startswith("{"), "node go.js: " + said[-300:]
+        got = json.loads(last)
+    finally:
+        shutil.rmtree(root, ignore_errors=True)
+    panel, search = got["panel"], got["search"]
+    bad = []
+    for q, city in (("concord", "Concord"), ("Concord", "Concord"), ("manchester", "Manchester")):
+        drawn = panel[q]
+        if drawn[:2] != [f"/officials?town={city}", "BILLS"] or any("-ward-" in h for h in drawn):
+            bad.append(f"{q!r}: the panel draws {drawn[:6]}, not the city alone with its bills "
+                       "under it")
+        wards = [h for h in search[q] if h.startswith(f"town/{city.lower()}-ward-")]
+        if search[q][:1] != [f"officials?town={city}"] or len(wards) != len(towns[city]):
+            bad.append(f"{q!r}: /search lists {search[q][:4]} and {len(wards)} wards, not the city "
+                       f"over all {len(towns[city])}")
+    if panel["andover"][:1] != ["/town/andover"]:
+        bad.append(f"'andover', a town without wards, draws {panel['andover'][:3]}")
+    for q, want in (("concord ward", "/town/concord-ward-1"), ("concord 3", "/town/concord-ward-3"),
+                    ("ward 2", "/town/manchester-ward-2")):
+        if want not in panel[q]:
+            bad.append(f"{q!r} asks for a ward and the panel draws {panel[q][:6]}, without {want}")
+    assert not bad, "; ".join(bad[:4])
+    assert "_ffold" not in BP.SEARCH_JS and "findMatch(s,Infinity)" in BP.SEARCH_JS, (
+        "/search no longer reads every answer, its wards with them")
+    return "ok", ("'Concord' and 'Manchester' draw the city alone and the bills under it; "
+                  "'concord ward', 'concord 3' and 'ward 2' still draw wards; /search lists "
+                  "every ward under its city")
+
+
 @check("frontend", "the search names a committee with its chamber, House Housing Committee, so "
        "it is not taken for the subject of the same name; it is still found by its own name",
        needs=("build_pages",))
