@@ -9766,13 +9766,18 @@ document.addEventListener("click",e=>{
   // elsewhere still read 91-A over a list that it did not filter, with no
   // badge and no line -- where before this filter's box, typing 91-A filtered
   // by itself. A number no bill changes ("91") is not, and words stay as
-  // typed. The number is the one read as the box lost the focus (`was`): left
-  // by ticking Withdrawn, the tick's click and change narrowed the list before
-  // the box was heard to be left, and no bill left in it changed 91-A.
-  let was="";
-  const leave=()=>{const w=was;was="";if(RSA_OFF.open)shut();
+  // typed. The number is the one read as the box lost the focus (`was`), but
+  // only while the box still reads what it read then: left by ticking
+  // Withdrawn, the tick's click and change narrowed the list before the box
+  // was heard to be left, and no bill left in it changed 91-A; but an offer,
+  // a section, Clear or Clear all pressed after "540" or "91-A:" changes the
+  // box's words, and what was pressed is what is chosen (the review of 26
+  // October 2026), and a snapshot left by a press that brought no click is
+  // never taken for words typed since.
+  let was=null;
+  const leave=()=>{const w=was;was=null;if(RSA_OFF.open)shut();
     if(emptied())return rsaChoose("");
-    const a=w||rsaNumber();
+    const a=w&&w.t===rsaText?w.a:rsaNumber();
     if(a&&!sel.rsa.has(a))return rsaChoose(a);
     back();};
   fx.addEventListener("input",e=>{
@@ -9814,7 +9819,7 @@ document.addEventListener("click",e=>{
   // Left otherwise -- a press, a tap, a phone's Done -- the list shuts and the
   // box says what is chosen, the focus left where it went; but not when the
   // box was only drawn again and the focus put back in it.
-  const left=()=>{const b=document.getElementById("rsabox");if(!b||b!==document.activeElement)leave();else was="";};
+  const left=()=>{const b=document.getElementById("rsabox");if(!b||b!==document.activeElement)leave();else was=null;};
   // AND NOT UNTIL A PRESS'S CLICK IS HEARD (the review of 26 October 2026).
   // Pressed with the list open, Clear, an offer, "Read the law" and Clear all
   // filters took the focus from the box, the list shut under the pointer
@@ -9830,7 +9835,7 @@ document.addEventListener("click",e=>{
   document.addEventListener("pointerdown",()=>{pressing=true;setTimeout(()=>{pressing=false;},0);},true);
   fx.addEventListener("focusout",e=>{
     if(!e.target||e.target.id!=="rsabox")return;
-    was=rsaNumber();
+    was={t:rsaText,a:rsaNumber()};
     if(pressing)document.addEventListener("click",heard,{once:true});else heard();
   });
 }}

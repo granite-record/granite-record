@@ -51453,6 +51453,24 @@ const head = async () => { press("#facets .fhead", {dataset: {g: "rsa"}}); await
     // not taken for the words.
     press("[data-rsapick]", {dataset: {rsapick: ""}}); await ticks(10);
     await type("91-A"); s.render(); await ticks(10); await type("tax"); out.staleTab = await tab();
+    // What is pressed is what is chosen, whatever number the box read as it
+    // was left (the review of 26 October 2026): a section pressed after
+    // "91-A:", and Clear and Clear all pressed after "540" typed over 91-A.
+    press("[data-rsapick]", {dataset: {rsapick: ""}}); await ticks(10);
+    await type("91-A:"); await click("[data-rsapick]", {dataset: {rsapick: "91-A:4"}}, null, document.body);
+    out.secPressed = look();
+    press("[data-rsapick]", {dataset: {rsapick: ""}}); await ticks(10);
+    await type("91-A"); await key("Enter"); await type("540");
+    await click("[data-rsapick]", {dataset: {rsapick: ""}}); out.clearPressed = look();
+    await type("91-A"); await key("Enter"); await type("540");
+    await click(null, null, "clear"); out.clearAllPressed = look();
+    // A press that brings no click (a right button), the box come back to,
+    // its words replaced and left by Tab: the number read at the press is
+    // not taken for the words typed since.
+    press("[data-rsapick]", {dataset: {rsapick: ""}}); await ticks(10);
+    await type("91-A"); fire("pointerdown", {target: {}}); ACTIVE = elsewhere;
+    fx.fire("focusout", {target: rb}); await ticks(10);
+    await type("tax"); out.noClickTab = await tab();
   } catch (e) { out.threw = e.constructor.name + ": " + e.message + " " + (e.stack || "").split("\n")[1]; }
   process.stdout.write("\n@@" + JSON.stringify(out));
 })().catch(e => { console.log("RUN " + e.message); process.exit(1); });
@@ -51912,6 +51930,16 @@ def _laws_changed_chosen():
             bad.append(f"'{t}' typed and the box left by ticking Withdrawn, none of whose bills changes it: "
                        f"chose {r['rsa']} at {r['address']!r}, the box {r['value']!r} under {r['line']!r}, "
                        f"the focus {r['focus']} -- the number read again from the list the tick narrowed")
+    for k, want, what in (("secPressed", ["91-A:4"], "'91-A:' typed and section 91-A:4 pressed"),
+                          ("clearPressed", [], "'540' typed over 91-A and the line's Clear pressed"),
+                          ("clearAllPressed", [], "'540' typed over 91-A and Clear all filters pressed")):
+        if got[k]["rsa"] != want:
+            bad.append(f"{what}: chose {got[k]['rsa']}, not {want} -- the number the box read as it was "
+                       "left was taken over what was pressed")
+    nc = got["noClickTab"]
+    if nc["rsa"] or nc["value"] != "tax":
+        bad.append(f"'91-A' typed, a press with no click, then 'tax' and Tab: chose {nc['rsa']}, the box "
+                   f"{nc['value']!r} -- the number read at the press outlived the words typed since")
     st = got["staleTab"]
     if st["rsa"] or st["value"] != "tax":
         bad.append(f"'91-A' typed, the panel drawn again with the focus kept in the box, then 'tax' and Tab: "
