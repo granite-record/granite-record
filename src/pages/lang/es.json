@@ -4710,6 +4710,401 @@
    "es": "Voto y elecciones",
    "state": "draft"
   },
+  "guide.health-insurance.a-health-insurance-policy-covers-a": {
+   "en": "A health insurance policy covers a newborn from the moment of birth. If adding a child costs more, the policy may require you to tell the company about the birth and pay within 31 days after it for the coverage to continue; there is no extra premium for those first 31 days.",
+   "es": "Una póliza de seguro médico cubre a un recién nacido desde el momento del nacimiento. Si añadir un hijo cuesta más, la póliza puede exigir que avise a la compañía del nacimiento y pague dentro de los 31 días siguientes para que la cobertura continúe; esos primeros 31 días no tienen prima adicional.",
+   "state": "draft"
+  },
+  "guide.health-insurance.accident-and-health-insurance-rsa-415": {
+   "en": "Accident and Health Insurance, RSA 415",
+   "es": "Seguro de Accidentes y de Salud, RSA 415",
+   "state": "draft"
+  },
+  "guide.health-insurance.appeal-a-denied-claim-to-your": {
+   "en": "Appeal a denied claim to your insurance company",
+   "es": "Apele ante su compañía de seguros un reclamo denegado",
+   "state": "draft"
+  },
+  "guide.health-insurance.apply": {
+   "en": "Apply",
+   "es": "Presente la solicitud",
+   "state": "draft"
+  },
+  "guide.health-insurance.apply-for-a-marketplace-plan-and": {
+   "en": "Apply for a Marketplace plan, and see if you can get help paying.",
+   "es": "Solicite un plan del Mercado y vea si puede recibir ayuda para pagarlo.",
+   "state": "draft"
+  },
+  "guide.health-insurance.ask-the-employers-benefits-office-how": {
+   "en": "Ask the employer&rsquo;s benefits office how and when to sign up.",
+   "es": "Pregunte a la oficina de beneficios del empleador cómo y cuándo inscribirse.",
+   "state": "draft"
+  },
+  "guide.health-insurance.ask-the-insurance-department-for-an": {
+   "en": "Ask the Insurance Department for an external review",
+   "es": "Pida al Departamento de Seguros una revisión externa",
+   "state": "draft"
+  },
+  "guide.health-insurance.by-phone-with-free-help-in": {
+   "en": "by phone, with free help, in other languages too;",
+   "es": "por teléfono, con ayuda gratuita, también en otros idiomas;",
+   "state": "draft"
+  },
+  "guide.health-insurance.can-an-insurance-company-turn-me": {
+   "en": "Can an insurance company turn me down because of a health condition?",
+   "es": "¿Puede una compañía de seguros rechazarme por una condición de salud?",
+   "state": "draft"
+  },
+  "guide.health-insurance.can-someone-appeal-for-me": {
+   "en": "Can someone appeal for me?",
+   "es": "¿Puede otra persona apelar por mí?",
+   "state": "draft"
+  },
+  "guide.health-insurance.choosing-to-drop-coverage-yourself-such": {
+   "en": "Choosing to drop coverage yourself, such as stopping your COBRA payments, does not open one. You may be asked for documents that show the change. Medicaid and CHIP can be applied for at any time.",
+   "es": "Dejar la cobertura por decisión propia, por ejemplo dejar de pagar COBRA, no abre uno. Es posible que le pidan documentos que muestren el cambio. Medicaid y CHIP se pueden solicitar en cualquier momento.",
+   "state": "draft"
+  },
+  "guide.health-insurance.cobra-a-federal-law-lets-you": {
+   "en": "<b>COBRA</b>, a federal law, lets you and your family keep your employer&rsquo;s group health insurance for a limited time after an event such as losing your job or having your hours cut. When your COBRA coverage ends, you have 60 days to enroll in a Marketplace plan.",
+   "es": "<b>COBRA</b>, una ley federal, le permite a usted y a su familia mantener el seguro médico de grupo de su empleador por un tiempo limitado después de un hecho como perder el empleo o una reducción de horas. Cuando termina su cobertura de COBRA, tiene 60 días para inscribirse en un plan del Mercado.",
+   "state": "draft"
+  },
+  "guide.health-insurance.common-questions": {
+   "en": "Common Questions",
+   "es": "Preguntas frecuentes",
+   "state": "draft"
+  },
+  "guide.health-insurance.complain-to-the-insurance-department": {
+   "en": "Complain to the Insurance Department",
+   "es": "Presente una queja ante el Departamento de Seguros",
+   "state": "draft"
+  },
+  "guide.health-insurance.coverage-through-a-job-cobra-or": {
+   "en": "Coverage through a job, COBRA, or a parent’s plan",
+   "es": "Cobertura por el empleo, COBRA o el plan de un padre o una madre",
+   "state": "draft"
+  },
+  "guide.health-insurance.dates-and-deadlines-healthcare-gov": {
+   "en": "Dates and deadlines (HealthCare.gov)",
+   "es": "Fechas y plazos (HealthCare.gov)",
+   "state": "draft"
+  },
+  "guide.health-insurance.dates-and-deadlines-healthcare-gov-2": {
+   "en": "Dates and Deadlines (HealthCare.gov)",
+   "es": "Fechas y plazos (HealthCare.gov)",
+   "state": "draft"
+  },
+  "guide.health-insurance.depending-on-your-income-you-may": {
+   "en": "Depending on your income, you may get savings on your Marketplace premiums, or qualify for Medicaid or CHIP instead. Savings are based on your estimate of your income for the year you want coverage, not last year. Count yourself, your spouse if you are married, and everyone you will claim as a tax dependent. You see the exact prices and savings when you fill out the application.",
+   "es": "Según sus ingresos, puede recibir ahorros en las primas de su plan del Mercado, o reunir los requisitos para Medicaid o CHIP. Los ahorros se basan en su estimado de ingresos para el año en que quiere la cobertura, no en los del año pasado. Cuéntese a usted, a su cónyuge si está casado, y a todas las personas que declarará como dependientes en sus impuestos. Verá los precios y ahorros exactos al llenar la solicitud.",
+   "state": "draft"
+  },
+  "guide.health-insurance.every-health-insurance-company-must-have": {
+   "en": "Every health insurance company must have a written procedure for appealing a denied claim, with a full and fair review by someone other than the person who denied it. You have at least 180 days after you are told of the denial to appeal, and you may send written comments, documents and records. The company must decide an appeal of a prior authorization or of care already given within 30 days, and an urgent care appeal within 72 hours. You, or someone you authorize, can make the appeal.",
+   "es": "Toda compañía de seguros médicos debe tener un procedimiento escrito para apelar un reclamo denegado, con una revisión completa y justa a cargo de alguien que no sea quien lo denegó. Tiene al menos 180 días después de que le notifiquen la denegación para apelar, y puede enviar comentarios, documentos y expedientes por escrito. La compañía debe decidir la apelación de una autorización previa o de una atención ya recibida dentro de 30 días, y la apelación de una atención urgente dentro de 72 horas. Puede apelar usted o alguien a quien autorice.",
+   "state": "draft"
+  },
+  "guide.health-insurance.external-review-healthcare-gov": {
+   "en": "External Review (HealthCare.gov)",
+   "es": "Revisión externa (HealthCare.gov)",
+   "state": "draft"
+  },
+  "guide.health-insurance.for-a-plan-through-the-marketplace": {
+   "en": "For a plan through the Marketplace, <b>Open Enrollment</b> runs from November 1 to January 15. Enroll by December 15 and your coverage can start January 1; enroll from December 16 to January 15 and it starts February 1, once you pay your first premium. These are HealthCare.gov&rsquo;s dates. How you apply depends on whether your state has its own Marketplace: HealthCare.gov&rsquo;s Marketplace in Your State page shows how residents of each state apply.",
+   "es": "Para un plan del Mercado, la <b>Inscripción Abierta</b> va del 1 de noviembre al 15 de enero. Si se inscribe a más tardar el 15 de diciembre, su cobertura puede empezar el 1 de enero; si se inscribe del 16 de diciembre al 15 de enero, empieza el 1 de febrero, una vez que pague su primera prima. Estas son las fechas de HealthCare.gov. Cómo se solicita depende de si su estado tiene su propio Mercado: la página «The Marketplace in Your State» de HealthCare.gov muestra cómo solicitan los residentes de cada estado.",
+   "state": "draft"
+  },
+  "guide.health-insurance.for-a-plan-through-your-job": {
+   "en": "For a plan through your job, ask your employer&rsquo;s benefits office how and when to sign up.",
+   "es": "Para un plan por su empleo, pregunte a la oficina de beneficios de su empleador cómo y cuándo inscribirse.",
+   "state": "draft"
+  },
+  "guide.health-insurance.from-january-16-to-october-31": {
+   "en": "From January 16 to October 31 you can enroll only with a <b>Special Enrollment Period</b>, which certain life changes open. Among them, in the past 60 days:",
+   "es": "Del 16 de enero al 31 de octubre solo puede inscribirse con un <b>Período Especial de Inscripción</b>, que abren ciertos cambios en su vida. Entre ellos, en los últimos 60 días:",
+   "state": "draft"
+  },
+  "guide.health-insurance.getting-married-having-a-baby-adopting": {
+   "en": "getting married, having a baby, adopting a child or placing a child in foster care;",
+   "es": "casarse, tener un bebé, adoptar a un niño o recibir a un niño en cuidado de crianza;",
+   "state": "draft"
+  },
+  "guide.health-insurance.getting-or-staying-on-a-parents": {
+   "en": "Getting or staying on a parent’s plan (HealthCare.gov)",
+   "es": "Entrar o quedarse en el plan de un padre o una madre (HealthCare.gov)",
+   "state": "draft"
+  },
+  "guide.health-insurance.health-insurance-appeals-insurance": {
+   "en": "Health insurance appeals (Insurance Department)",
+   "es": "Apelaciones de seguros médicos (Departamento de Seguros)",
+   "state": "draft"
+  },
+  "guide.health-insurance.healthcare-and-long-term-care-appeals": {
+   "en": "Healthcare and Long Term Care Appeals (Insurance Department)",
+   "es": "Apelaciones de atención médica y de cuidado a largo plazo (Departamento de Seguros)",
+   "state": "draft"
+  },
+  "guide.health-insurance.how-to-apply-for-food-or": {
+   "en": "How to apply for food or health assistance",
+   "es": "Cómo solicitar asistencia de alimentos o de salud",
+   "state": "draft"
+  },
+  "guide.health-insurance.how-to-get-or-stay-on": {
+   "en": "How to Get or Stay on a Parent’s Plan (HealthCare.gov)",
+   "es": "Cómo entrar o quedarse en el plan de un padre o una madre (HealthCare.gov)",
+   "state": "draft"
+  },
+  "guide.health-insurance.how-to-report-a-scam-or": {
+   "en": "How to report a scam or file a consumer complaint",
+   "es": "Cómo denunciar una estafa o presentar una queja como consumidor",
+   "state": "draft"
+  },
+  "guide.health-insurance.how-to-sign-up-for-medicare": {
+   "en": "How to sign up for Medicare and Social Security, and get help with the costs",
+   "es": "Cómo inscribirse en Medicare y el Seguro Social, y recibir ayuda con los costos",
+   "state": "draft"
+  },
+  "guide.health-insurance.how-will-you-get-coverage": {
+   "en": "How will you get coverage?",
+   "es": "¿Cómo obtendrá cobertura?",
+   "state": "draft"
+  },
+  "guide.health-insurance.if-a-parents-plan-covers-dependents": {
+   "en": "If a parent&rsquo;s plan covers dependents, you can usually be added to it and stay on it until you turn 26, even if you are married, have a child, live away from home or are not claimed as a tax dependent. On a parent&rsquo;s Marketplace plan, you can stay through December 31 of the year you turn 26.",
+   "es": "Si el plan de su padre o su madre cubre a dependientes, por lo general usted puede ser añadido y quedarse en él hasta cumplir 26 años, aunque esté casado, tenga un hijo, viva fuera de casa o no lo declaren como dependiente en los impuestos. En el plan del Mercado de su padre o su madre, puede quedarse hasta el 31 de diciembre del año en que cumple 26 años.",
+   "state": "draft"
+  },
+  "guide.health-insurance.if-the-company-still-says-no": {
+   "en": "If the company still says no, or misses its deadline, you can ask for an <b>independent external review</b>: send a written request to the Insurance Commissioner within 180 days of the company&rsquo;s final denial. An independent review organization decides. The insurance company pays for the review, it must follow the decision, and it may not retaliate against you for asking.",
+   "es": "Si la compañía sigue diciendo que no, o no cumple su plazo, puede pedir una <b>revisión externa independiente</b>: envíe una solicitud por escrito al Comisionado de Seguros dentro de 180 días de la denegación final de la compañía. Decide una organización de revisión independiente. La compañía de seguros paga la revisión, debe acatar la decisión y no puede tomar represalias contra usted por pedirla.",
+   "state": "draft"
+  },
+  "guide.health-insurance.if-you-have-job-based-insurance": {
+   "en": "If you have job-based insurance (HealthCare.gov)",
+   "es": "Si tiene seguro por su empleo (HealthCare.gov)",
+   "state": "draft"
+  },
+  "guide.health-insurance.if-you-have-job-based-insurance-2": {
+   "en": "If You Have Job-Based Insurance (HealthCare.gov)",
+   "es": "Si tiene seguro por su empleo (HealthCare.gov)",
+   "state": "draft"
+  },
+  "guide.health-insurance.if-you-have-or-are-offered": {
+   "en": "If you have, or are offered, a job-based plan that is considered affordable and meets minimum standards, you will not get savings on a Marketplace plan; most job-based plans meet them. If you already have a Marketplace plan and get an offer of coverage through a job, it may end your savings even if you turn the offer down, so update your Marketplace application.",
+   "es": "Si tiene, o le ofrecen, un plan por su empleo que se considera asequible y cumple los estándares mínimos, no recibirá ahorros en un plan del Mercado; la mayoría de los planes de empleo los cumplen. Si ya tiene un plan del Mercado y le ofrecen cobertura por un empleo, la oferta puede terminar sus ahorros aunque la rechace; por eso, actualice su solicitud del Mercado.",
+   "state": "draft"
+  },
+  "guide.health-insurance.if-your-doctor-or-other-provider": {
+   "en": "If your doctor or other provider certifies that waiting would seriously endanger your life or health, or your ability to regain full function, you can ask for an <b>expedited</b> review, even while the company&rsquo;s own appeal is under way; it is decided within 72 hours. It is not available for care already given.",
+   "es": "Si su médico u otro proveedor certifica que esperar pondría en grave peligro su vida o su salud, o su capacidad de recuperar todas sus funciones, puede pedir una revisión <b>acelerada</b>, incluso mientras sigue en curso la apelación ante la compañía; se decide dentro de 72 horas. No está disponible para una atención ya recibida.",
+   "state": "draft"
+  },
+  "guide.health-insurance.if-your-insurance-company-denies-a": {
+   "en": "If your insurance company denies a claim, appeal to it first, then ask the Insurance Department for an external review within 180 days.",
+   "es": "Si su compañía de seguros deniega un reclamo, apele primero ante ella y luego pida al Departamento de Seguros una revisión externa dentro de 180 días.",
+   "state": "draft"
+  },
+  "guide.health-insurance.income-levels-and-savings-healthcare-gov": {
+   "en": "Income levels and savings (HealthCare.gov)",
+   "es": "Niveles de ingresos y ahorros (HealthCare.gov)",
+   "state": "draft"
+  },
+  "guide.health-insurance.income-levels-and-savings-healthcare-gov-2": {
+   "en": "Income Levels and Savings (HealthCare.gov)",
+   "es": "Niveles de ingresos y ahorros (HealthCare.gov)",
+   "state": "draft"
+  },
+  "guide.health-insurance.independent-external-review-insurance": {
+   "en": "Independent external review (Insurance Department)",
+   "es": "Revisión externa independiente (Departamento de Seguros)",
+   "state": "draft"
+  },
+  "guide.health-insurance.independent-external-review-insurance-2": {
+   "en": "Independent External Review (Insurance Department)",
+   "es": "Revisión externa independiente (Departamento de Seguros)",
+   "state": "draft"
+  },
+  "guide.health-insurance.insurance-department-rsa-400-a": {
+   "en": "Insurance Department, RSA 400-A",
+   "es": "Departamento de Seguros, RSA 400-A",
+   "state": "draft"
+  },
+  "guide.health-insurance.is-my-new-baby-covered": {
+   "en": "Is my new baby covered?",
+   "es": "¿Está cubierto mi bebé recién nacido?",
+   "state": "draft"
+  },
+  "guide.health-insurance.know-when-you-can-sign-up": {
+   "en": "Know when you can sign up",
+   "es": "Sepa cuándo puede inscribirse",
+   "state": "draft"
+  },
+  "guide.health-insurance.lead": {
+   "en": "Buying a plan through the Health Insurance Marketplace, when you can enroll, help paying premiums, coverage through a job or a parent’s plan, and what to do if your insurance company denies a claim in New Hampshire.",
+   "es": "Cómo comprar un plan en el Mercado de Seguros Médicos (Health Insurance Marketplace), cuándo puede inscribirse, la ayuda para pagar las primas, la cobertura por el empleo o por el plan de un padre o una madre, y qué hacer si su compañía de seguros deniega un reclamo en New Hampshire.",
+   "state": "draft"
+  },
+  "guide.health-insurance.losing-qualifying-health-coverage-such": {
+   "en": "losing qualifying health coverage, such as a job&rsquo;s plan or a parent&rsquo;s plan when you turn 26, or expecting to lose it in the next 60 days. A loss of Medicaid or CHIP counts within 90 days.",
+   "es": "perder una cobertura médica que cuenta para esto, como el plan de un empleo o el de su padre o su madre al cumplir 26 años, o esperar perderla en los próximos 60 días. La pérdida de Medicaid o CHIP cuenta dentro de 90 días.",
+   "state": "draft"
+  },
+  "guide.health-insurance.managed-care-law-rsa-420-j": {
+   "en": "Managed Care Law, RSA 420-J",
+   "es": "Ley de Atención Médica Administrada (Managed Care Law), RSA 420-J",
+   "state": "draft"
+  },
+  "guide.health-insurance.medicaid-a-federal-and-state-program": {
+   "en": "<b>Medicaid</b>, a federal and state program, gives free or low-cost coverage to some people with low incomes, families, children, pregnant women, older people and people with disabilities; CHIP covers children and pregnant women in families that earn too much for Medicaid. In New Hampshire you apply through the Department of Health and Human Services. <b>Medicare</b> is the federal health program for people 65 and older and some younger people with disabilities or kidney failure. Each has its own guide (below).",
+   "es": "<b>Medicaid</b>, un programa federal y estatal, da cobertura gratuita o de bajo costo a algunas personas de bajos ingresos, familias, niños, mujeres embarazadas, personas mayores y personas con discapacidades; CHIP cubre a niños y mujeres embarazadas de familias que ganan demasiado para Medicaid. En New Hampshire se solicita a través del Departamento de Salud y Servicios Humanos. <b>Medicare</b> es el programa federal de salud para personas de 65 años o más y algunas personas más jóvenes con discapacidades o con insuficiencia renal. Cada uno tiene su propia guía (abajo).",
+   "state": "draft"
+  },
+  "guide.health-insurance.medicaid-or-medicare-may-cover-you": {
+   "en": "Medicaid or Medicare may cover you (step 8).",
+   "es": "Medicaid o Medicare pueden cubrirle (paso 8).",
+   "state": "draft"
+  },
+  "guide.health-insurance.most-people-get-private-health-insurance": {
+   "en": "Most people get private health insurance through a job, or buy a plan through the Health Insurance Marketplace, whose official site is HealthCare.gov. You can enroll in a Marketplace plan during Open Enrollment, November 1 to January 15, or after a life change such as losing other coverage, moving or having a baby, and you may get help paying your premiums based on your income. If your insurance company denies a claim, you can appeal to it, and then ask the New Hampshire Insurance Department for an independent external review, which the insurance company pays for.",
+   "es": "La mayoría de las personas obtiene un seguro médico privado por su empleo, o compra un plan en el Mercado de Seguros Médicos (Health Insurance Marketplace), cuyo sitio oficial es HealthCare.gov. Puede inscribirse en un plan del Mercado durante la Inscripción Abierta, del 1 de noviembre al 15 de enero, o después de un cambio en su vida como perder otra cobertura, mudarse o tener un bebé, y puede recibir ayuda para pagar sus primas según sus ingresos. Si su compañía de seguros deniega un reclamo, puede apelar ante ella y luego pedir al Departamento de Seguros de New Hampshire una revisión externa independiente, que paga la compañía de seguros.",
+   "state": "draft"
+  },
+  "guide.health-insurance.moving-to-a-new-zip-code": {
+   "en": "moving to a new ZIP code or county;",
+   "es": "mudarse a un nuevo código postal o condado;",
+   "state": "draft"
+  },
+  "guide.health-insurance.new-hampshire-insurance-department": {
+   "en": "New Hampshire Insurance Department",
+   "es": "Departamento de Seguros de New Hampshire",
+   "state": "draft"
+  },
+  "guide.health-insurance.nh-easy-lawyer-referral-service": {
+   "en": "<a class=\"g-btn\" href=\"https://nheasy.nh.gov/#/\" target=\"_blank\" rel=\"noopener\">NH Easy</a> <a class=\"g-btn\" href=\"https://www.nhbar.org/lawyer-referral-service/\" target=\"_blank\" rel=\"noopener\">Lawyer Referral Service</a>",
+   "es": "<a class=\"g-btn\" href=\"https://nheasy.nh.gov/#/\" target=\"_blank\" rel=\"noopener\">NH Easy</a> <a class=\"g-btn\" href=\"https://www.nhbar.org/lawyer-referral-service/\" target=\"_blank\" rel=\"noopener\">Servicio de Referencia de Abogados</a>",
+   "state": "draft"
+  },
+  "guide.health-insurance.no-new-hampshire-law-forbids-a": {
+   "en": "No. New Hampshire law forbids a health insurance company to base whether you can get or keep coverage on your health, a medical condition, your medical history, genetic information or a disability. It may cancel your coverage only for fraud or for lying about something important on purpose.",
+   "es": "No. La ley de New Hampshire prohíbe que una compañía de seguros médicos decida si usted puede obtener o mantener su cobertura según su salud, una condición médica, su historial médico, su información genética o una discapacidad. Solo puede cancelar su cobertura por fraude o por mentir a propósito sobre algo importante.",
+   "state": "draft"
+  },
+  "guide.health-insurance.on-a-low-income-at-65": {
+   "en": "On a low income, at 65, or with a disability",
+   "es": "Con bajos ingresos, a los 65 años o con una discapacidad",
+   "state": "draft"
+  },
+  "guide.health-insurance.on-a-paper-application-mailed-in": {
+   "en": "on a paper application, mailed in. Eligibility results come by mail within 2 weeks.",
+   "es": "en una solicitud en papel, enviada por correo. Los resultados de elegibilidad llegan por correo dentro de 2 semanas.",
+   "state": "draft"
+  },
+  "guide.health-insurance.on-your-own": {
+   "en": "On your own",
+   "es": "Por su cuenta",
+   "state": "draft"
+  },
+  "guide.health-insurance.online-at-healthcare-gov-the-fastest": {
+   "en": "online at HealthCare.gov, the fastest way;",
+   "es": "en línea en HealthCare.gov, la forma más rápida;",
+   "state": "draft"
+  },
+  "guide.health-insurance.portability-availability-and": {
+   "en": "Portability, Availability, and Renewability of Health Coverage, RSA 420-G",
+   "es": "Portabilidad, Disponibilidad y Renovación de la Cobertura Médica, RSA 420-G",
+   "state": "draft"
+  },
+  "guide.health-insurance.see-if-you-can-get-help": {
+   "en": "See if you can get help paying",
+   "es": "Vea si puede recibir ayuda para pagar",
+   "state": "draft"
+  },
+  "guide.health-insurance.special-enrollment-periods-healthcare": {
+   "en": "Special Enrollment Periods (HealthCare.gov)",
+   "es": "Períodos Especiales de Inscripción (HealthCare.gov)",
+   "state": "draft"
+  },
+  "guide.health-insurance.the-insurance-department-investigates": {
+   "en": "The <b>Insurance Department</b> investigates complaints about insurance companies and agents, through a toll-free number and a complaint form. It may tell the company about your complaint, ask it for relief for you, and meet with both of you to settle it, but it cannot decide a claim. When you ask, it helps you through an insurance company&rsquo;s appeal and an external review. Its Consumer Services line is 1-800-852-3416.",
+   "es": "El <b>Departamento de Seguros</b> investiga quejas sobre compañías y agentes de seguros, mediante un número gratuito y un formulario de queja. Puede informar a la compañía de su queja, pedirle una solución para usted y reunirse con ambos para resolverla, pero no puede decidir un reclamo. Si usted lo pide, le ayuda con la apelación ante una compañía de seguros y con una revisión externa. Su línea de Servicios al Consumidor es el 1-800-852-3416.",
+   "state": "draft"
+  },
+  "guide.health-insurance.the-insurance-departments-consumer": {
+   "en": "The Insurance Department&rsquo;s Consumer Services, at 1-800-852-3416, for questions and complaints about an insurance company, and help with an appeal. For Medicaid, or advice on your own case:",
+   "es": "Los Servicios al Consumidor del Departamento de Seguros, en el 1-800-852-3416, para preguntas y quejas sobre una compañía de seguros, y ayuda con una apelación. Para Medicaid, o asesoría sobre su propio caso:",
+   "state": "draft"
+  },
+  "guide.health-insurance.the-marketplace-in-your-state-healthcare": {
+   "en": "The Marketplace in your state (HealthCare.gov)",
+   "es": "El Mercado en su estado (HealthCare.gov)",
+   "state": "draft"
+  },
+  "guide.health-insurance.the-marketplace-in-your-state-healthcare-2": {
+   "en": "The Marketplace in Your State (HealthCare.gov)",
+   "es": "El Mercado en su estado (HealthCare.gov)",
+   "state": "draft"
+  },
+  "guide.health-insurance.this-review-is-not-for-medicaid": {
+   "en": "This review is not for Medicaid, CHIP or Medicare, except Granite Advantage coverage through a private insurer; for a self-funded employer plan run by an administrator; or for a federal employee plan. Those have their own appeals. Nor is it for a claim of malpractice. Your Explanation of Benefits or the company&rsquo;s final denial names who handles your external review.",
+   "es": "Esta revisión no es para Medicaid, CHIP ni Medicare, salvo la cobertura de Granite Advantage a través de una aseguradora privada; ni para un plan autofinanciado de un empleador que maneja un administrador; ni para un plan de empleados federales. Esos tienen sus propias apelaciones. Tampoco es para un reclamo por negligencia médica. Su Explicación de Beneficios o la denegación final de la compañía indica quién se encarga de su revisión externa.",
+   "state": "draft"
+  },
+  "guide.health-insurance.through-a-certified-enrollment-partner": {
+   "en": "through a certified enrollment partner, such as an insurance company or an online health insurance seller;",
+   "es": "a través de un socio de inscripción certificado, como una compañía de seguros o un vendedor de seguros médicos en línea;",
+   "state": "draft"
+  },
+  "guide.health-insurance.through-a-job": {
+   "en": "Through a job",
+   "es": "Por un empleo",
+   "state": "draft"
+  },
+  "guide.health-insurance.title": {
+   "en": "How to Get Private Health Insurance",
+   "es": "Cómo obtener un seguro médico privado",
+   "state": "draft"
+  },
+  "guide.health-insurance.ways-to-apply-and-enroll-healthcare": {
+   "en": "Ways to Apply and Enroll (HealthCare.gov)",
+   "es": "Formas de solicitar e inscribirse (HealthCare.gov)",
+   "state": "draft"
+  },
+  "guide.health-insurance.ways-to-apply-healthcare-gov": {
+   "en": "Ways to apply (HealthCare.gov)",
+   "es": "Formas de solicitar (HealthCare.gov)",
+   "state": "draft"
+  },
+  "guide.health-insurance.what-if-i-am-turned-down": {
+   "en": "What if I am turned down for a Special Enrollment Period?",
+   "es": "¿Y si me niegan un Período Especial de Inscripción?",
+   "state": "draft"
+  },
+  "guide.health-insurance.where-medicaid-and-medicare-fit": {
+   "en": "Where Medicaid and Medicare fit",
+   "es": "Dónde entran Medicaid y Medicare",
+   "state": "draft"
+  },
+  "guide.health-insurance.with-a-local-person-or-organization": {
+   "en": "with a local person or organization that helps people apply;",
+   "es": "con una persona u organización local que ayuda a solicitar;",
+   "state": "draft"
+  },
+  "guide.health-insurance.yes-someone-you-authorize-to-act": {
+   "en": "Yes. Someone you authorize to act for you, such as your doctor, can make an appeal to the insurance company or ask for an external review on your behalf.",
+   "es": "Sí. Alguien a quien usted autorice para actuar en su nombre, como su médico, puede apelar ante la compañía de seguros o pedir una revisión externa por usted.",
+   "state": "draft"
+  },
+  "guide.health-insurance.you-can-appeal-the-decision-healthcare": {
+   "en": "You can appeal the decision. HealthCare.gov&rsquo;s Special Enrollment Periods page explains how.",
+   "es": "Puede apelar la decisión. La página de Períodos Especiales de Inscripción de HealthCare.gov explica cómo.",
+   "state": "draft"
+  },
+  "guide.health-insurance.you-can-apply-for-a-marketplace": {
+   "en": "You can apply for a Marketplace plan:",
+   "es": "Puede solicitar un plan del Mercado:",
+   "state": "draft"
+  },
   "guide.heating-and-electric-help.211-new-hampshire": {
    "en": "211 New Hampshire",
    "es": "211 New Hampshire",
@@ -11235,6 +11630,21 @@
   "guide.task.food-and-health-assistance.line": {
    "en": "SNAP and Medicaid, online at NH Easy or on paper.",
    "es": "SNAP y Medicaid, en línea en NH Easy o en papel.",
+   "state": "draft"
+  },
+  "guide.task.health-insurance.does": {
+   "en": "Get private health insurance",
+   "es": "Obtener un seguro médico privado",
+   "state": "draft"
+  },
+  "guide.task.health-insurance.head": {
+   "en": "How to get private health insurance",
+   "es": "Cómo obtener un seguro médico privado",
+   "state": "draft"
+  },
+  "guide.task.health-insurance.line": {
+   "en": "The Marketplace and when to enroll, help paying premiums, coverage through a job or a parent&rsquo;s plan, and appealing a denied claim.",
+   "es": "El Mercado y cuándo inscribirse, la ayuda para pagar las primas, la cobertura por el empleo o por el plan de un padre o una madre, y cómo apelar un reclamo denegado.",
    "state": "draft"
   },
   "guide.task.heating-and-electric-help.does": {
