@@ -4303,16 +4303,82 @@ const testifyBody=s=>TESTIFY_FORMS[s.body]?s.body:/^public /i.test(s.what||"")?"
 // So they are read here from the record's own events: the day a person
 // corrected the row to where there is one (date_as_recorded), and otherwise
 // the line's own -- SB 210's row was entered on 21 May for the 27th; the time
-// and the room from the line; the committee of the bill's House referral. A
+// and the room from the line; the committee that has the bill on the day
+// (testifyHouseCommittee, below). A
 // line the docket called off (called_off) is no hearing, and one a House
 // station already stands for, that day at that time, is not counted twice.
 // The stations are left as they are, since the Hearings tab, the recordings
 // and their moments read them: this is Testify's reading alone.
+// ONE SITTING WITH TWO DATES IS ONE HEARING (the review of 26 October 2026).
+// A Senate committee's hearing report that gives a day the docket has no
+// Senate hearing of the bill on stands on a station of its own, dated by
+// the report (build_site_v2.report_station: dated_by "report", and
+// docket_heard the days the docket does record the bill's Senate hearing
+// on). Where the docket records one, the two are a single sitting with two
+// dates -- SB 76's, on 14 January 2025 by the docket and on the 30th by its
+// report -- and the person chose on 24 September that neither is corrected
+// to the other; the bill's Hearings tab says both. Testify read them as two
+// hearings, and on 14 bills of the sitting term said "its last public
+// hearing was" the report's day. So the docket's own station stands for
+// that sitting here, and a report's station counts only where the docket
+// has no Senate hearing of the bill at all (HB 183, HB 268-FN, HB 435). And
+// it is never the hearing ahead (testifyButton): it has no time and no
+// room, and a report is filed after the hearing it reports, so a day it
+// gives that is still to come is not one the sign-in is open for.
 const AMENDMENT_HEARING=new RegExp("^Public\\s+Hearing\\s+on\\s+(?:Proposed\\s+)?(Non-?\\s?Germane\\s+)?"
   +"(?:Amendment|AM)\\b([^:]*):\\s*(\\d{1,2})/(\\d{1,2})/(\\d{4})\\b\\s*"
   +"(?:(\\d{1,2}):(\\d{2})\\s*([ap])\\.?\\s?m\\b\\.?)?\\s*(.*)$","i");
+const reportDated=s=>s.dated_by==="report";
+// THE COMMITTEE THAT HAS THE BILL THAT DAY (the review of 26 October 2026).
+// A hearing on a proposed amendment is held by the committee the bill is in
+// on the day, which is often not the one it was first sent to: HB 71-FN,
+// referred to Education Policy and Administration and, once the House had
+// passed it, to Finance, whose hearing on 2025-0555h was at 1:00 pm on 17
+// March 2025 in LOB 210-211, before Finance's executive session there at
+// 1:15; HB 524-FN, referred to Health, Human Services and Elderly Affairs
+// and then to Ways and Means, whose hearing on 2025-3021h was at 10:10 on 29
+// October 2025 in GP 159, after Ways and Means' executive session there at
+// 10:00. The pane named the first referral -- the record's house_committee
+// -- and the House's form lists the bill under the committee holding the
+// hearing. So, in order:
+//  - the committee of a House meeting of the bill that day (an executive
+//    session, a work session, a hearing; not the floor, whose station names
+//    the chamber): where there are two, the one in the line's room, then the
+//    one nearest its time;
+//  - otherwise the later of the bill's last House referral on or before the
+//    day -- "Referred to Finance 02/06/2025", "Introduced ... and referred
+//    to ...", "Vacated and Referred to ...", a row citing the Senate's
+//    journal or calendar (SJ, SC) being the Senate's, and "Rereferred to
+//    Committee" or to interim study naming no committee -- and the committee
+//    of its last House meeting before the day, the referral where both fall
+//    on one day, since a committee meets on a bill before the House sends it
+//    on;
+//  - and only where neither exists, house_committee.
+const REFERRED=/\b(?:re-?)?referred\s+to\s+(.+?)\s*(?:[(:;]|\b\d{1,2}\/\d{1,2}\/\d{4}\b|$)/i;
+function testifyHouseCommittee(d,when,time,room){
+  const flat=v=>String(v||"").replace(/\s+/g,"").toLowerCase();
+  const mins=t=>{const m=/^(\d{1,2}):(\d{2})/.exec(String(t||""));return m?+m[1]*60+ +m[2]:null;};
+  const meets=(d.stations||[]).filter(s=>s.body==="H"&&s.when&&s.when<=when
+    &&String(s.committee||"").trim()&&!/^(house|senate)$/i.test(String(s.committee).trim()));
+  const near=s=>(room&&flat(s.venue)===flat(room)?0:1e5)
+    +(mins(s.time)==null||mins(time)==null?5e4:Math.abs(mins(s.time)-mins(time)));
+  const that=meets.filter(s=>s.when===when).sort((a,b)=>near(a)-near(b))[0];
+  if(that)return String(that.committee).trim();
+  const met=meets.filter(s=>s.when<when).sort(testifyOrder).pop();
+  let sent=null;
+  (d.events||[]).forEach(e=>{
+    if(e.called_off||/^S[JC]\b/.test(String(e.cite||"").trim())||!e.date||String(e.date)>when)return;
+    const m=REFERRED.exec(String(e.text||"").trim());
+    if(!m||/^(committee|interim study)\b/i.test(m[1]))return;
+    if(!sent||String(e.date)>=sent.date)sent={date:String(e.date),committee:m[1].trim()};
+  });
+  if(sent&&(!met||sent.date>=met.when))return sent.committee;
+  if(met)return String(met.committee).trim();
+  return d.house_committee||"";
+}
 function testifyHearings(d){
-  const heard=(d.stations||[]).filter(s=>/^(public )?hearing$/i.test(s.what||"")&&s.when);
+  const heard=(d.stations||[]).filter(s=>/^(public )?hearing$/i.test(s.what||"")&&s.when
+    &&!(reportDated(s)&&(s.docket_heard||[]).length));
   (d.events||[]).forEach(e=>{
     const m=AMENDMENT_HEARING.exec(String(e.text||"").trim());
     if(!m||e.called_off)return;
@@ -4322,7 +4388,7 @@ function testifyHearings(d){
     if(heard.some(s=>testifyBody(s)==="H"&&s.when===when&&String(s.time||"")===time))return;
     const room=String(m[9]||"").split(/\s*(?:[([;*]|https?:)/)[0].trim();
     const num=(/(?:\d{4}-)?\d{3,4}[a-z]+/i.exec(m[2])||[""])[0];
-    heard.push({what:"public hearing",body:"H",when,time,committee:d.house_committee||"",
+    heard.push({what:"public hearing",body:"H",when,time,committee:testifyHouseCommittee(d,when,time,room),
       venue:/^[A-Za-z0-9-][A-Za-z0-9 ,.'&-]{0,79}$/.test(room)?room:"",
       amendment:`a proposed ${m[1]?"non-germane ":""}amendment${num?` (${num})`:""}`});
   });
@@ -4407,8 +4473,10 @@ function testifyButton(d,b,now=new Date()){
   const heard=testifyHearings(d);
   const moving=testifyMoving(d,b,today);
   // A hearing still to come, for a bill that can still be heard: a bill that
-  // has stopped moving keeps no hearing ahead, whatever a station says.
-  const next=moving?heard.filter(s=>s.when>=today).sort(testifyOrder)[0]:null;
+  // has stopped moving keeps no hearing ahead, whatever a station says; and
+  // never a day a committee's report gives (ONE SITTING WITH TWO DATES, at
+  // testifyHearings).
+  const next=moving?heard.filter(s=>s.when>=today&&!reportDated(s)).sort(testifyOrder)[0]:null;
   const bill=b&&b.n?String(b.n):"";
   // The words beside the drawing are in a span of their own, as Report's
   // are, so the button's gap does not part them.
@@ -4422,8 +4490,11 @@ function testifyButton(d,b,now=new Date()){
     // three hearings of 2025 -- HB 154's and HB 382's in the Senate, HR 18's
     // in the House -- showed none, where the record names the committee of
     // the bill's referral in that chamber (house_committee, senate_committee),
-    // the name the bill's page gives it.
-    const cmte=testifyCommittee(house,next.committee||(body==="H"?d.house_committee:d.senate_committee));
+    // the name the bill's page gives it -- in the House, the committee that
+    // has the bill that day (testifyHouseCommittee), which is house_committee
+    // where nothing on the record says it has moved.
+    const cmte=testifyCommittee(house,next.committee||(body==="H"
+      ?testifyHouseCommittee(d,next.when,next.time,next.venue):d.senate_committee));
     // A hearing on a proposed amendment says so (testifyHearings): the bill
     // has had its own, and this one is on "a proposed non-germane amendment
     // (2026-0422h)", in the words the bill's Summary uses for it.

@@ -69908,39 +69908,88 @@ def _testify_in_the_row():
     # it, none sets an outline-offset below nothing, and the outline and the
     # ring measured below are the ones that win.
     RING = ".testify.tlive[open] > summary"
-    def _reaching(focused):
-        el = lambda tag, ids=(), classes=(), attrs=None, states=(): {
-            "tag": tag, "ids": set(ids), "classes": set(classes), "attrs": attrs or {},
-            "states": set(states) | ({"focus-within"} if focused else set())}
-        chain = [el("summary", states=("focus", "focus-visible") if focused else ()),
-                 el("details", classes=("testify", "tlive"), attrs={"open": ""}, states=("open",)),
-                 el("div", classes=("testifyin", "tliverow")),
-                 el("div", ids=("pageacts",), classes=("pageacts", "inhead")),
-                 el("div", classes=("racts",)),
-                 el("header", classes=("rhead", "rh-bill")),
-                 el("article", classes=("card", "focus", "rec"), attrs={"data-id": "SB406"}),
-                 el("div", ids=("results",)),
-                 el("main", ids=("main",)),
-                 el("div", classes=("shell", "nofacets", "focused")),
-                 el("body", classes=("pg",)),
-                 el("html", classes=("js",), attrs={"lang": "en", "data-theme": None})]
+    # THE OUTLINE THAT WINS, ITS STYLE TOO (the review of 26 October 2026).
+    # This read the winning outline's width alone, so a later
+    # ".testify.tlive > summary:focus-visible{outline-style:none}" took the
+    # keyboard's focus ring off the live button with every check passing; and
+    # the cascade kept no !important, since _css_decls takes the mark off a
+    # value. So each rule's declarations keep it, the outline shorthand is
+    # its three longhands (what it leaves out is reset, as a browser resets
+    # it), and the winning outline-style, outline-width and outline-offset
+    # are the ones measured: a style of none or hidden, or no width, is no
+    # focus ring at all.
+    OUTLINE_STYLES = ("none", "hidden", "dotted", "dashed", "solid", "double", "groove", "ridge",
+                      "inset", "outset", "auto")
+    def _decls_kept(body):
+        out = {}
+        for k, v in _css_decls(body):
+            imp = bool(re.search(r"(?:^|[;{\s])" + re.escape(k) + r"\s*:[^;]*!\s*important", body, re.I))
+            if k == "outline":
+                width, style, colour = "medium", "none", "currentcolor"
+                for tok in re.findall(r"[\w-]+\([^)]*\)|\S+", v):
+                    if tok.lower() in OUTLINE_STYLES:
+                        style = tok.lower()
+                    elif re.fullmatch(r"-?\d*\.?\d+(?:px|em|rem)?|thin|medium|thick", tok):
+                        width = tok
+                    else:
+                        colour = tok
+                out.update({"outline-width": (width, imp), "outline-style": (style, imp),
+                            "outline-color": (colour, imp)})
+            else:
+                out[k] = (v, imp)
+        return out
+    el = lambda tag, ids=(), classes=(), attrs=None, states=(), focused=False: {
+        "tag": tag, "ids": set(ids), "classes": set(classes), "attrs": attrs or {},
+        "states": set(states) | ({"focus-within"} if focused else set())}
+    def _chain(focused):
+        return [el("summary", states=("focus", "focus-visible") if focused else (), focused=focused),
+                el("details", classes=("testify", "tlive"), attrs={"open": ""}, states=("open",), focused=focused),
+                el("div", classes=("testifyin", "tliverow"), focused=focused),
+                el("div", ids=("pageacts",), classes=("pageacts", "inhead"), focused=focused),
+                el("div", classes=("racts",), focused=focused),
+                el("header", classes=("rhead", "rh-bill"), focused=focused),
+                el("article", classes=("card", "focus", "rec"), attrs={"data-id": "SB406"}, focused=focused),
+                el("div", ids=("results",), focused=focused),
+                el("main", ids=("main",), focused=focused),
+                el("div", classes=("shell", "nofacets", "focused"), focused=focused),
+                el("body", classes=("pg",), focused=focused),
+                el("html", classes=("js",), attrs={"lang": "en", "data-theme": None}, focused=focused)]
+    on_screen = [(order, r) for order, r in enumerate(_css_rules(text)) if not any("print" in c for c in r[0])]
+    def _reaching(focused, at=0):
+        chain = _chain(focused)[at:]
         hits = []
-        for order, (ctx, sel, body, line) in enumerate(_css_rules(text)):
-            if any("print" in c for c in ctx):
-                continue
+        for order, (ctx, sel, body, line) in on_screen:
             for one in _css_selectors(sel):
                 if _css_can_reach(one, chain):
-                    hits.append(((_css_specificity(one), order), ctx, one, dict(_css_decls(body)), line))
+                    hits.append(((_css_specificity(one), order), ctx, one, _decls_kept(body), line))
         hits.sort(key=lambda h: h[0])
         won = {}
         for _key, ctx, one, decls, line in hits:
-            for k, v in decls.items():
-                imp = "!important" in v
+            for k, (v, imp) in decls.items():
                 if k not in won or imp or not won[k][1]:
-                    won[k] = (v.replace("!important", "").strip(), imp, one, line)
-        return hits, won
+                    won[k] = (v, imp, one, line)
+        return [(key, ctx, one, {k: v for k, (v, _i) in d.items()}, line)
+                for key, ctx, one, d, line in hits], won
     shut_hits, shut_won = _reaching(False)
     focus_hits, focus_won = _reaching(True)
+    # A TOKEN AS IT STANDS ON THE BUTTON: a custom property a rule sets on the
+    # button or any element round it below the root -- where the palette's
+    # own blocks set them -- is inherited, the nearest winning; then the
+    # palette of the scheme. So a rule that turns --on-pine to the pine
+    # under focus is a ring of the pine on the pine, and is measured so.
+    def _tokens(focused):
+        mine = {}
+        for at in range(len(_chain(focused)) - 2, -1, -1):
+            mine.update({k: v[0] for k, v in _reaching(focused, at)[1].items() if k.startswith("--")})
+        return mine
+    def _colour(value, mine, scheme, depth=0):
+        v = str(value or "").strip()
+        m = re.fullmatch(r"var\(\s*(--[\w-]+)\s*(?:,[^)]*)?\)", v)
+        if m and depth < 8:
+            tok = m.group(1)
+            return _colour(mine[tok], mine, scheme, depth + 1) if tok in mine \
+                else _colour(pal[scheme].get(tok, ""), {}, scheme, depth + 1)
+        return _css_hex(v) if re.fullmatch(r"#[0-9A-Fa-f]{3}|#[0-9A-Fa-f]{6}", v) else None
     assert any(one == RING and not ctx for _k, ctx, one, _d, _l in shut_hits), (
         f"{RING} is not among the rules that reach the open Testify button: the reach is not read right")
     others = sorted({(one, d["box-shadow"], line) for _k, ctx, one, d, line in focus_hits
@@ -69953,12 +70002,18 @@ def _testify_in_the_row():
     assert not inward, (
         "a rule puts the focus ring inside the filled Testify button, open, where it lies over the ring that "
         f"marks it open: {inward}")
-    ow = re.search(r"(\d+)px", (focus_won.get("outline-width") or focus_won.get("outline") or ("",))[0])
+    style = (focus_won.get("outline-style") or ("none",))[0]
+    assert style not in ("none", "hidden"), (
+        f"the winning outline-style on the focused Testify button is {style!r} "
+        f"({(focus_won.get('outline-style') or ('', '', 'no rule'))[2]}): the keyboard's focus ring is gone")
+    wv = (focus_won.get("outline-width") or ("",))[0]
+    ow = {"thin": 1, "medium": 3, "thick": 5}.get(wv) or (
+        int(float(re.match(r"(-?\d*\.?\d+)", wv).group(1))) if re.match(r"-?\d*\.?\d+(px)?$", wv) else 0)
     oo = re.search(r"(-?\d+)px", (focus_won.get("outline-offset") or ("0px",))[0])
-    assert ow and oo, (
+    assert ow >= 1 and oo, (
         f"no outline reaches the focused Testify button to measure the open ring against: "
-        f"{focus_won.get('outline')}, {focus_won.get('outline-offset')}")
-    off, reach = int(oo.group(1)), int(oo.group(1)) + int(ow.group(1))
+        f"{focus_won.get('outline-width')}, {focus_won.get('outline-style')}, {focus_won.get('outline-offset')}")
+    off, reach = int(oo.group(1)), int(oo.group(1)) + ow
     ring = (shut_won.get("box-shadow") or ("",))[0]
     fring = (focus_won.get("box-shadow") or ("",))[0]
     def _ring(shadow):
@@ -69992,12 +70047,23 @@ def _testify_in_the_row():
             r = _css_ratio(_css_token_colour(ink, pal[scheme]), _css_token_colour(ground, pal[scheme]))
             assert r >= 4.5, f"{ink} on {ground} is {r:.2f}:1 in the {scheme} palette, under 4.5:1"
             ratios.append(f"{r:.2f}")
-    where, band, ink = _ring(ring)
-    ground = "--pine" if where == "inset" else "--paper"
-    for scheme in ("light", "dark"):
-        r = _css_ratio(_css_token_colour(ink, pal[scheme]), _css_token_colour(ground, pal[scheme]))
-        assert r >= 3, f"the open ring, {ink} on {ground}, is {r:.2f}:1 in the {scheme} palette, under 3:1"
-        ratios.append(f"{r:.2f}")
+    # The ring on what it lies on, each as it stands on the button, open and
+    # open and focused: inside, the button's own winning ground; outside, the
+    # paper round it.
+    for focused, won, shadow in ((False, shut_won, ring), (True, focus_won, fring)):
+        where, band, ink = _ring(shadow)
+        mine = _tokens(focused)
+        ground = (won.get("background-color") or won.get("background") or ("",))[0] if where == "inset" \
+            else "var(--paper)"
+        for scheme in ("light", "dark"):
+            a, g = _colour(f"var({ink})", mine, scheme), _colour(ground, mine, scheme)
+            assert a and g, (f"the open ring, {ink} on {ground}, is not a colour this check can read in the "
+                             f"{scheme} palette")
+            r = _css_ratio(a, g)
+            assert r >= 3, (f"the open ring{', focused,' if focused else ''} {ink} on {ground} is {r:.2f}:1 in "
+                            f"the {scheme} palette as it stands on the button, under 3:1")
+            if not focused:
+                ratios.append(f"{r:.2f}")
     # THE PANE'S RULE AND ITS VALUES: the site's divider in a panel, and the
     # ink on the wash, set apart.
     hr = rules.get(((), ".testifypane .trule"), {})
@@ -70358,7 +70424,7 @@ def _testify_hears_an_amendment():
       30 JANUARY: live, "Testify until Feb 3", the House's form, its pane
         "The public hearing on a proposed non-germane amendment (2026-0422h)
         to HB 1560-FN is scheduled for Tuesday, February 3 at 11:20 AM in
-        Granite Place 234", and the committee of its House referral to choose.
+        Granite Place 234", and the committee that has the bill to choose.
       5 FEBRUARY: greyed, its last public hearing Feb 3, 2026.
       CACR 12's, at 03:00 pm in "SH Reps Hall" after hearings in both
         chambers: live on 13 April "at 3:00 PM in Representatives' Hall, State
@@ -70370,7 +70436,39 @@ def _testify_hears_an_amendment():
       A ROW A PERSON CORRECTED (date_as_recorded): the corrected day.
       A HOUSE STATION ALREADY AT THAT DAY AND TIME: one hearing, not two.
       TWO ON ONE DAY, the amendment's first (09:30, the bill's own at 10:00):
-        the pane names the first."""
+        the pane names the first.
+
+    THE COMMITTEE THAT HAS THE BILL THAT DAY (the review of 26 October
+    2026). The committee to choose was the record's house_committee, the
+    bill's first House referral, and the House's form lists the bill under
+    the committee holding the hearing. Staged on the preview, HB 71-FN on 14
+    March 2025 named Education Policy and Administration for Finance's
+    hearing of the 17th, and HB 524-FN on 27 October 2025 Health, Human
+    Services and Elderly Affairs for Ways and Means' of the 29th (5,441
+    signed in). So, on their shapes:
+
+      HB 524-FN, referred to Ways and Means on 6 March 2025, which held its
+        executive session at 10:00 on 29 October in GP 159, the hearing on
+        2025-3021h at 10:10 in the same room: "House Ways and Means
+        Committee". With a second meeting that day, of another committee in
+        another room nearer the time, the line's room decides; with no
+        referral on the record, that day's meeting alone says Ways and Means;
+        and with neither, the last House meeting before the day, which a
+        station of the floor, naming the chamber, is not.
+      HB 71-FN, referred to Finance on 6 February 2025, the day Education
+        Policy and Administration's executive session is also dated, Finance
+        meeting on the 17th: "House Finance Committee"; with no Finance
+        meeting on the record, the referral alone says Finance, a referral
+        and a meeting on one day taken as the referral, since the committee
+        meets before the House sends the bill on. A row citing the Senate's
+        journal, or one naming no committee ("Rereferred to Committee"), or
+        dated after the hearing, or one to interim study, is not a House
+        referral of that day. And a House hearing whose station names no
+        committee is given the same: Finance, not the first referral.
+      A 12:30 PM LINE, HB 1199-FN's "02/03/2026 12:30 pm SH Representatives
+        Hall": "at 12:30 PM in Representatives' Hall, State House", not
+        "24:30" -- the noon hour is the one wrap of the line's clock no
+        other case runs."""
     got = _app_js("""(() => {
   const moving = {rail: [{stop: "Introduced", mark: "p"}, {stop: "House", mark: "h"}, {stop: "Senate", mark: "-"},
                          {stop: "Governor", mark: "-"}, {stop: "Law", mark: "-"}]};
@@ -70402,7 +70500,68 @@ def _testify_hears_an_amendment():
                {what: "public hearing", when: "2026-03-09", time: "10:45", body: "H", committee: "Ways and Means",
                 venue: "GP 159"}],
     events: [ev("2026-04-15", "Public Hearing on non-germane Amendment # 2026-1134h: 04/15/2026 03:00 pm SH Reps Hall")]};
+  // THE COMMITTEE THAT HAS THE BILL THAT DAY. A House journal's row carries
+  // its citation, as the record's do.
+  const hj = (date, text) => ev(date, text, {cite: "HJ 7, page 57"});
+  const H = (what, when, time, committee, venue) => ({what, when, time, body: "H", committee, venue});
+  const HHS = "Health, Human Services and Elderly Affairs";
+  // HB 524-FN of 2025-2026: its own hearing in HHS, sent to Ways and Means on
+  // 6 March, Ways and Means' executive session at 10:00 on 29 October in GP
+  // 159 and the hearing on 2025-3021h at 10:10 there.
+  const hb524 = (stations, referred) => ({term: "2025-2026", house_committee: HHS,
+    senate_committee: "Health and Human Services", journey: moving,
+    stations: [H("public hearing", "2025-02-12", "10:30", HHS, "LOB 301-303"),
+               {what: "floor debate", when: "2025-03-06", time: null, body: null, committee: "House"}].concat(stations),
+    events: [hj("2025-01-09", "Introduced (in recess of) 01/09/2025 and referred to " + HHS)]
+      .concat(referred === false ? [] : [hj("2025-03-06", "Referred to Ways and Means 03/06/2025")])
+      .concat([ev("2025-10-29", "==CANCELLED== Public Hearing on non-germane Amendment # 2025-2982h: 10/29/2025 10:10 am GP159",
+                  {called_off: true}),
+               ev("2025-10-29", "Public Hearing on non-germane Amendment # 2025-3021h: 10/29/2025 10:10 am GP 159")])});
+  const wmExec = H("executive session", "2025-10-29", "10:00", "Ways and Means", "GP 159");
+  const r524 = {id: "HB524", n: "HB 524-FN", kind: "active"};
+  // HB 71-FN of 2025-2026: heard and reported by Education Policy and
+  // Administration, passed and sent to Finance on 6 February, the hearing on
+  // 2025-0555h at 1:00 pm on 17 March in LOB 210-211, Finance's executive
+  // session there at 1:15.
+  const EPA = "Education Policy and Administration";
+  const hb71 = (stations, more) => ({term: "2025-2026", house_committee: EPA, senate_committee: "Judiciary",
+    journey: moving,
+    stations: [H("public hearing", "2025-01-22", "09:30", EPA, "LOB 205-207"),
+               H("executive session", "2025-02-06", "09:00", EPA, "LOB 205-207")].concat(stations),
+    events: [hj("2025-01-08", "Introduced 01/08/2025 and referred to " + EPA),
+             hj("2025-02-06", "Referred to Finance 02/06/2025")].concat(more || [],
+            [ev("2025-03-17", "Public Hearing on non-germane Amendment # 2025-0555h: 03/17/2025 01:00 pm LOB 210-211")])});
+  const r71 = {id: "HB71", n: "HB 71-FN", kind: "active"};
+  // HB 1199-FN of 2026: the hearing on 2026-0340h at 12:30 pm in the House
+  // chamber, the committee's executive session there at the same time.
+  const hb1199 = {term: "2025-2026", house_committee: "Fish and Game and Marine Resources",
+    senate_committee: "Energy and Natural Resources", journey: moving,
+    stations: [H("public hearing", "2026-01-28", "11:45", "Fish and Game and Marine Resources", "GP 153"),
+               H("executive session", "2026-02-03", "12:30", "Fish and Game and Marine Resources",
+                 "SH Representatives Hall")],
+    events: [ev("2026-02-03", "Public Hearing on non-germane Amendment # 2026-0340h: 02/03/2026 12:30 pm SH Representatives Hall")]};
   return {
+    hb524: at(hb524([wmExec]), "2025-10-27T16:00:00Z", r524),
+    hb524Rooms: at(hb524([wmExec, H("work session", "2025-10-29", "10:10", HHS, "LOB 301-303")]),
+                   "2025-10-27T16:00:00Z", r524),
+    hb524Met: at(hb524([wmExec], false), "2025-10-27T16:00:00Z", r524),
+    // A station of the chamber's floor, which names the chamber, is no
+    // committee's meeting.
+    hb524Before: at(hb524([H("public hearing", "2025-03-18", "10:30", "Ways and Means", "LOB 202-204"),
+                           H("consent calendar", "2025-10-01", null, "House", null)], false),
+                    "2025-10-27T16:00:00Z", r524),
+    hb71: at(hb71([H("work session", "2025-02-14", "10:00", "Finance", "LOB 210-211"),
+                   H("executive session", "2025-03-17", "13:15", "Finance", "LOB 210-211")]), "2025-03-14T16:00:00Z", r71),
+    hb71Sent: at(hb71([]), "2025-03-14T16:00:00Z", r71),
+    hb71NotTheHouse: at(hb71([], [ev("2025-03-10", "HB 71 is vacated from Finance and referred to Judiciary; (In recess 03/10/2025)",
+                                     {cite: "SJ 9"}),
+                                  ev("2025-03-11", "Rereferred to Committee, MA, VV; 03/11/2025"),
+                                  ev("2025-03-12", "Committee Report: Referred to Interim Study, 03/12/2025; Vote 5-0; CC"),
+                                  hj("2025-03-20", "Referred to Ways and Means 03/20/2025")]), "2025-03-14T16:00:00Z", r71),
+    // A House hearing whose station names no committee (HR 18's of 2025
+    // did), after the referral: the committee that has the bill that day.
+    hb71Nameless: at(hb71([H("public hearing", "2025-03-17", "13:00", "", "LOB 210-211")]), "2025-03-14T16:00:00Z", r71),
+    hb1199: at(hb1199, "2026-02-01T17:00:00Z", {id: "HB1199", n: "HB 1199-FN", kind: "active"}),
     cacr12: at(cacr12, "2026-04-13T17:00:00Z", {id: "CACR12", n: "CACR 12", kind: "active"}),
     cacr12After: at(cacr12, "2026-04-16T17:00:00Z", {id: "CACR12", n: "CACR 12", kind: "active"}),
     before: at(rec([ev("2026-02-03", amd)]), "2026-01-30T17:00:00Z"),
@@ -70462,10 +70621,111 @@ def _testify_hears_an_amendment():
     assert " at 9:30 AM in Granite Place 158." in pane(got["twoOneDay"]) \
         and pane(got["twoOneDay"]).startswith("The public hearing on a proposed non-germane amendment (2026-0093h)"), (
             f"of two hearings on one day the pane does not name the first: {pane(got['twoOneDay'])[:200]!r}")
+    # THE COMMITTEE THAT HAS THE BILL THAT DAY
+    for name, day, cmte, num, said in (
+            ("hb524", "Wednesday, October 29, 2025", "House Ways and Means Committee", "HB 524-FN",
+             "that day's Ways and Means meeting in its room, and its referral"),
+            ("hb524Rooms", "Wednesday, October 29, 2025", "House Ways and Means Committee", "HB 524-FN",
+             "the meeting in the line's room, over another committee's nearer the time"),
+            ("hb524Met", "Wednesday, October 29, 2025", "House Ways and Means Committee", "HB 524-FN",
+             "that day's Ways and Means meeting, with no referral on the record"),
+            ("hb524Before", "Wednesday, October 29, 2025", "House Ways and Means Committee", "HB 524-FN",
+             "the last House meeting before the day, Ways and Means', not the floor's, with nothing that day "
+             "or referred"),
+            ("hb71", "Monday, March 17, 2025", "House Finance Committee", "HB 71-FN",
+             "Finance's meeting that day, and its referral"),
+            ("hb71Sent", "Monday, March 17, 2025", "House Finance Committee", "HB 71-FN",
+             "the referral to Finance, on the day of the last meeting of the committee it left"),
+            ("hb71NotTheHouse", "Monday, March 17, 2025", "House Finance Committee", "HB 71-FN",
+             "the House's referral, not a Senate row, a row naming no committee or one after the day"),
+            ("hb71Nameless", "Monday, March 17, 2025", "House Finance Committee", "HB 71-FN",
+             "the referral, for a House hearing whose station names no committee")):
+        h = got[name]
+        assert h.startswith('<details class="testify tlive">') and vals(h) == [day, cmte, num], (
+            f"{name}: the committee to choose is not {cmte!r}, from {said}: {vals(h)} {pane(h)[:120]!r}")
+    assert pane(got["hb71Nameless"]).startswith("The public hearing on HB 71-FN is scheduled for Monday, March 17 "
+                                                "at 1:00 PM"), f"HB 71-FN's own hearing reads {pane(got['hb71Nameless'])!r}"
+    assert pane(got["hb71"]).startswith("The public hearing on a proposed non-germane amendment (2025-0555h) to "
+                                        "HB 71-FN is scheduled for Monday, March 17 at 1:00 PM in Legislative "
+                                        "Office Building 210-211."), f"HB 71-FN's live pane reads {pane(got['hb71'])!r}"
+    # A 12:30 PM LINE
+    assert pane(got["hb1199"]).startswith(
+        "The public hearing on a proposed non-germane amendment (2026-0340h) to HB 1199-FN is scheduled for "
+        "Tuesday, February 3 at 12:30 PM in Representatives' Hall, State House. Public testimony is open") \
+        and vals(got["hb1199"]) == ["Tuesday, February 3, 2026", "House Fish and Game and Marine Resources Committee",
+                                    "HB 1199-FN"], (
+            f"HB 1199-FN's hearing at 12:30 pm on 3 February reads {pane(got['hb1199'])[:200]!r} {vals(got['hb1199'])}")
     return "ok", ("HB 1560-FN live on 30 January for its hearing on a proposed amendment of 3 February, and "
                   "passed on Feb 3 after it; a line called off, none; SB 210's on the line's day, a corrected "
                   "row on the person's; one hearing where a station stands for the line; two on one day in "
-                  "order")
+                  "order; HB 524-FN's and HB 71-FN's committee the one that has the bill that day, Ways and "
+                  "Means and Finance; HB 1199-FN's at 12:30 PM")
+
+
+@check("frontend", "Testify takes a hearing a Senate committee's report dates apart from the docket as the "
+                   "docket's one hearing, and never as one ahead")
+def _testify_report_dated():
+    """The review of 26 October 2026. A Senate committee's hearing report
+    that gives a day the docket has no Senate hearing of the bill on stands
+    on a station of its own (build_site_v2.report_station: dated_by
+    "report", docket_heard the days the docket does record), shown as the
+    person decided on 24 September, neither date corrected to the other.
+    testifyHearings read it as a second hearing, and on 14 bills of the
+    sitting term the greyed pane said "its last public hearing was" the
+    report's day, where the docket records one hearing on another: SB 76's
+    "Jan 30, 2025", its Hearings tab saying "The docket records no Senate
+    hearing of this bill on this day; it records one on January 14, 2025".
+    And with no time and no room, nothing kept such a station from being the
+    live hearing ahead. Run in node:
+
+      SB 76'S SHAPE, the docket's hearing on 14 January 2025 and the report's
+        station on the 30th naming it: on 5 February, "its public hearing was
+        Jan 14, 2025", no "last"; and on the 20th, between the two days, not
+        live -- the hearing has passed.
+      HB 183'S SHAPE, the House's hearing on 24 January 2025 and a report's
+        station on 2 April where the docket has no Senate hearing: counted,
+        "its last public hearing was Apr 2, 2025" once it has gone; but on 30
+        March not live for it -- a report is filed after the hearing, so a
+        day it gives that is still to come is not a sign-in that is open."""
+    got = _app_js("""(() => {
+  const moving = {rail: [{stop: "Introduced", mark: "p"}, {stop: "Senate", mark: "h"}, {stop: "House", mark: "-"},
+                         {stop: "Governor", mark: "-"}, {stop: "Law", mark: "-"}]};
+  const report = (when, docket) => ({when, time: null, what: "hearing", committee: "Children and Family Law",
+    body: "S", venue: null, video_id: "", state: "novideo", dated_by: "report", docket_heard: docket});
+  const sb76 = {term: "2025-2026", senate_committee: "Children and Family Law", journey: moving,
+    stations: [{what: "hearing", when: "2025-01-14", time: "10:00", body: "S", committee: "Children and Family Law",
+                venue: "SH 103"}, report("2025-01-30", ["2025-01-14"]),
+               {what: "floor debate", when: "2025-02-13", time: null, body: null, committee: "Senate"}]};
+  const hb183 = {term: "2025-2026", house_committee: "Executive Departments and Administration",
+    senate_committee: "Executive and Administration",
+    journey: {rail: [{stop: "Introduced", mark: "p"}, {stop: "House", mark: "p"}, {stop: "Senate", mark: "h"},
+                     {stop: "Governor", mark: "-"}, {stop: "Law", mark: "-"}]},
+    stations: [{what: "public hearing", when: "2025-01-24", time: "10:00", body: "H",
+                committee: "Executive Departments and Administration", venue: "LOB 306-308"},
+               Object.assign(report("2025-04-02", []), {committee: "Executive and Administration"})]};
+  const sb = {id: "SB76", n: "SB 76", kind: "active"}, hb = {id: "HB183", n: "HB 183", kind: "active"};
+  return {
+    sb76: scope.testifyButton(sb76, sb, new Date("2025-02-05T17:00:00Z")),
+    sb76Between: scope.testifyButton(sb76, sb, new Date("2025-01-20T17:00:00Z")),
+    hb183: scope.testifyButton(hb183, hb, new Date("2025-04-10T16:00:00Z")),
+    hb183Ahead: scope.testifyButton(hb183, hb, new Date("2025-03-30T16:00:00Z")),
+  };
+})()""", names=("testifyButton",))
+    if got is None:
+        return "skip", "node, app.js or dom_stub.js is not here"
+    flat = lambda h: " ".join(re.sub(r"<[^>]+>", " ", h).replace("&rsquo;", "’").split())
+    pane = lambda h: flat((re.search(r'<div class="testifypane">(.*?)</div></details>', h, re.S) or [None, ""])[1])
+    for name, said in (
+            ("sb76", "Online testimony for this bill has passed: its public hearing was Jan 14, 2025."),
+            ("sb76Between", "Online testimony for this bill has passed: its public hearing was Jan 14, 2025."),
+            ("hb183", "Online testimony for this bill has passed: its last public hearing was Apr 2, 2025."),
+            ("hb183Ahead", "Online testimony for this bill has passed: its public hearing was Jan 24, 2025.")):
+        h = got[name]
+        assert h.startswith('<details class="testify toff">'), (
+            f"{name}: a day a committee's report gives is taken as a hearing ahead: {pane(h)[:200]!r}")
+        assert pane(h).startswith(said), f"{name}'s pane says {pane(h)!r}, not {said!r}"
+    return "ok", ("SB 76's report-dated sitting the docket's one hearing, Jan 14, 2025, no \"last\"; HB 183's, "
+                  "where the docket has no Senate hearing, counted once it has gone and never live ahead")
 
 
 @check("frontend", "a testimony deadline is Concord's and a day's name the reader's, and each place that "
