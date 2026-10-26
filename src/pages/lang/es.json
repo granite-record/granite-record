@@ -1548,9 +1548,9 @@
    "es": "Una embarcación con cualquier motor, o un velero de 12 pies o más",
    "state": "draft"
   },
-  "guide.boating.a-certificate-from-another-state-the": {
-   "en": "A certificate from another state, the U.S. Coast Guard Auxiliary, the U.S. Power Squadron, or an approved Canadian card counts instead.",
-   "es": "Sirve en su lugar un certificado de otro estado, de la Reserva Auxiliar de la Guardia Costera de EE. UU. (U.S. Coast Guard Auxiliary), del U.S. Power Squadron o una tarjeta canadiense aprobada.",
+  "guide.boating.a-certificate-from-another-state-whose": {
+   "en": "A certificate from another state whose course meets New Hampshire&rsquo;s standard, or one from the U.S. Coast Guard Auxiliary, the U.S. Power Squadron, or an approved Canadian card, counts instead.",
+   "es": "Sirve en su lugar un certificado de otro estado cuyo curso cumpla con el estándar de New Hampshire, o uno de la Reserva Auxiliar de la Guardia Costera de EE. UU. (U.S. Coast Guard Auxiliary), del U.S. Power Squadron o una tarjeta canadiense aprobada.",
    "state": "draft"
   },
   "guide.boating.a-child-12-or-under-must": {
@@ -1733,9 +1733,9 @@
    "es": "Más de 45 pies",
    "state": "draft"
   },
-  "guide.boating.register-by-mail-or-the-drop": {
-   "en": "Register by mail or the drop box at the DMV in Concord, or with an authorized boat agent. Bring the registration application, proof you own the boat (a bill of sale signed by you and the seller), your driver&rsquo;s license and the fees.",
-   "es": "Regístrela por correo o en el buzón del DMV en Concord, o con un agente de embarcaciones autorizado. Lleve la solicitud de registro, prueba de que la embarcación es suya (un contrato de compraventa firmado por usted y el vendedor), su licencia de conducir y las cuotas.",
+  "guide.boating.register-through-the-dmvs-drop-box": {
+   "en": "Register through the DMV&rsquo;s drop box service, with an authorized boat agent, or by mail to the DMV in Concord. Bring the registration application, proof you own the boat (a bill of sale signed by you and the seller), your driver&rsquo;s license and the fees.",
+   "es": "Regístrela mediante el servicio de buzón del DMV, con un agente de embarcaciones autorizado o por correo al DMV en Concord. Lleve la solicitud de registro, prueba de que la embarcación es suya (un contrato de compraventa firmado por usted y el vendedor), su licencia de conducir y las cuotas.",
    "state": "draft"
   },
   "guide.boating.register-your-boat-every-year": {
@@ -1779,8 +1779,8 @@
    "state": "draft"
   },
   "guide.boating.to-run-a-boat-with-a": {
-   "en": "To run a boat with a motor of more than 25 horsepower you need a <b>safe boater education certificate</b>, which lasts for life and costs $10. A boat with a motor, and a sailboat 12 feet or longer, must also be <b>registered</b> every year, at the DMV or a boat agent; every registration ends on December 31.",
-   "es": "Para manejar una embarcación con un motor de más de 25 caballos de fuerza necesita un <b>certificado de educación para la navegación segura</b> (safe boater education certificate), que dura toda la vida y cuesta $10. Una embarcación con motor, y un velero de 12 pies o más, también debe <b>registrarse</b> cada año, en el DMV o con un agente de embarcaciones; todo registro vence el 31 de diciembre.",
+   "en": "To run a boat with a motor of more than 25 horsepower you need a <b>safe boater education certificate</b>, which lasts for life; the state&rsquo;s fee for it is $10, and all fees together, the course included, may not exceed $50. A boat with a motor, and a sailboat 12 feet or longer, must also be <b>registered</b> every year, at the DMV or a boat agent; every registration ends on December 31.",
+   "es": "Para manejar una embarcación con un motor de más de 25 caballos de fuerza necesita un <b>certificado de educación para la navegación segura</b> (safe boater education certificate), que dura toda la vida; la cuota del estado por el certificado es de $10, y todas las cuotas juntas, el curso incluido, no pueden pasar de $50. Una embarcación con motor, y un velero de 12 pies o más, también debe <b>registrarse</b> cada año, en el DMV o con un agente de embarcaciones; todo registro vence el 31 de diciembre.",
    "state": "draft"
   },
   "guide.boating.up-to-16-feet": {
@@ -2644,9 +2644,9 @@
    "es": "Una empresa lo engañó o lo estafó",
    "state": "draft"
   },
-  "guide.consumer-rights.a-business-that-sells-by-mail": {
-   "en": "A business that sells by mail, by phone or online from a post office box or an answering service must say in its advertising its legal name, the street address it actually works from, and a phone number for complaints. A seller who will not say who and where it is is a warning sign.",
-   "es": "Una empresa que vende por correo, por teléfono o en línea desde una casilla en la oficina postal o un servicio de contestador debe indicar en su publicidad su nombre legal, la dirección física desde donde realmente trabaja y un número de teléfono para quejas. Un vendedor que no dice quién es ni dónde está es una señal de alerta.",
+  "guide.consumer-rights.a-business-that-gives-only-a": {
+   "en": "A business that gives only a post office box, a mail drop or an answering service in its advertising must also give its legal name, the street address it actually works from, and a phone number for complaints, with some exceptions, such as a shop open to the public (<a href=\"/laws/361-b#s2-a\">RSA 361-B:2-a</a>). A seller who will not say who and where it is is a warning sign.",
+   "es": "Una empresa que en su publicidad da solo una casilla en la oficina postal, una dirección para recibir correo o un servicio de contestador también debe indicar su nombre legal, la dirección física desde donde realmente trabaja y un número de teléfono para quejas, con algunas excepciones, como una tienda abierta al público (<a href=\"/laws/361-b#s2-a\">RSA 361-B:2-a</a>). Un vendedor que no dice quién es ni dónde está es una señal de alerta.",
    "state": "draft"
   },
   "guide.consumer-rights.a-call-or-letter-says-you": {
@@ -2679,14 +2679,14 @@
    "es": "Un premio que la ley permite no le cuesta nada. No pague.",
    "state": "draft"
   },
-  "guide.consumer-rights.a-promotion-that-offers-only-a": {
-   "en": "A promotion that offers only a chance to win must say who runs it and every condition you must meet, and, in writing, each prize&rsquo;s value, how many there are and your odds.",
-   "es": "Una promoción que solo ofrece la posibilidad de ganar debe decir quién la organiza y todas las condiciones que usted debe cumplir, y, por escrito, el valor de cada premio, cuántos hay y sus probabilidades de ganar.",
-   "state": "draft"
-  },
   "guide.consumer-rights.a-sale-of-goods-or-services": {
    "en": "A sale of goods or services priced at $150 or more, made anywhere other than the seller&rsquo;s permanent place of business, such as at your home, is a <b>home solicitation sale</b>. You may cancel it until <b>midnight of the third business day</b> after the sale. The seller must give you a receipt or contract that says so, with its name and address.",
    "es": "Una venta de bienes o servicios con un precio de $150 o más, hecha en cualquier lugar que no sea el local comercial permanente del vendedor, como su casa, es una <b>venta a domicilio</b>. Puede cancelarla hasta la <b>medianoche del tercer día hábil</b> después de la venta. El vendedor debe darle un recibo o contrato que lo diga, con su nombre y dirección.",
+   "state": "draft"
+  },
+  "guide.consumer-rights.a-sales-promotion-that-tells-you": {
+   "en": "A sales promotion that tells you that you have a chance to win must say who runs it and every condition you must meet, and, in writing, each prize&rsquo;s value, how many there are and your odds. The rule does not apply where you need only send in or phone in an entry, or where you never have to listen to a sales pitch or pay anything.",
+   "es": "Una promoción de ventas que le dice que tiene la posibilidad de ganar debe decir quién la organiza y todas las condiciones que usted debe cumplir, y, por escrito, el valor de cada premio, cuántos hay y sus probabilidades de ganar. La regla no se aplica cuando basta con enviar o llamar para participar, o cuando nunca tiene que escuchar una presentación de ventas ni pagar nada.",
    "state": "draft"
   },
   "guide.consumer-rights.advertising-something-with-no-intent-to": {
@@ -2744,9 +2744,9 @@
    "es": "Presentar una queja de consumidor (Fiscal General)",
    "state": "draft"
   },
-  "guide.consumer-rights.gift-certificates-do-not-expire": {
-   "en": "Gift certificates do not expire",
-   "es": "Los certificados de regalo no vencen",
+  "guide.consumer-rights.gift-certificates-of-250-or-less": {
+   "en": "Gift certificates of $250 or less do not expire",
+   "es": "Los certificados de regalo de $250 o menos no vencen",
    "state": "draft"
   },
   "guide.consumer-rights.if-a-seller-tells-you-that": {
@@ -2770,8 +2770,8 @@
    "state": "draft"
   },
   "guide.consumer-rights.new-hampshires-consumer-protection-act": {
-   "en": "New Hampshire&rsquo;s Consumer Protection Act forbids unfair and deceptive business practices, and the Attorney General&rsquo;s Consumer Protection and Antitrust Bureau enforces it. If a seller came to your door, you can usually cancel the sale until midnight of the third business day after it. A real prize never costs you a fee. If a business cheated you, you can complain to the Bureau, and you can take the business to court yourself.",
-   "es": "La Ley de Protección al Consumidor de New Hampshire prohíbe las prácticas comerciales injustas y engañosas, y la Oficina de Protección al Consumidor y Antimonopolio del Fiscal General la hace cumplir. Si un vendedor vino a su puerta, por lo general puede cancelar la venta hasta la medianoche del tercer día hábil después de hacerla. Un premio de verdad nunca le cobra una cuota. Si una empresa lo estafó, puede presentar una queja ante la Oficina, y puede llevar a la empresa a los tribunales usted mismo.",
+   "en": "New Hampshire&rsquo;s Consumer Protection Act forbids unfair and deceptive business practices, and the Attorney General&rsquo;s Consumer Protection and Antitrust Bureau enforces it. If a seller came to your door, you can usually cancel the sale until midnight of the third business day after it. A prize you are told you have won must cost you nothing. If a business cheated you, you can complain to the Bureau, and you can take the business to court yourself.",
+   "es": "La Ley de Protección al Consumidor de New Hampshire prohíbe las prácticas comerciales injustas y engañosas, y la Oficina de Protección al Consumidor y Antimonopolio del Fiscal General la hace cumplir. Si un vendedor vino a su puerta, por lo general puede cancelar la venta hasta la medianoche del tercer día hábil después de hacerla. Un premio que le dicen que ganó no debe costarle nada. Si una empresa lo estafó, puede presentar una queja ante la Oficina, y puede llevar a la empresa a los tribunales usted mismo.",
    "state": "draft"
   },
   "guide.consumer-rights.prizes-and-gifts-act-rsa-358": {
@@ -2825,9 +2825,9 @@
    "state": "draft"
   },
   "guide.consumer-rights.to-cancel-mail-the-seller-a": {
-   "en": "To cancel, mail the seller a written notice, preferably by certified or registered mail, or return the goods in person within that time. The seller must then return, within 15 days, everything you paid, any trade-in, and any note you signed. If the seller had already done work that changed your property, you get all your money back, or you may ask instead for the property to be put back as it was. The seller must come for its goods or pay to have them returned, and once it has refunded you, you must let it have them back within the same 15 days. If it makes no effort to get them back within 90 days of the sale, they are yours.",
-   "state": "draft",
-   "es": "Para cancelar, envíe al vendedor un aviso por escrito, de preferencia por correo certificado o registrado, o devuelva los productos en persona dentro de ese plazo. El vendedor debe devolverle entonces, dentro de los 15 días, todo lo que pagó, cualquier artículo entregado como parte de pago y cualquier pagaré que haya firmado. Si el vendedor ya había hecho un trabajo que modificó su propiedad, usted recupera todo su dinero, o puede pedir en su lugar que la propiedad quede como estaba. El vendedor debe ir a buscar sus productos o pagar su devolución, y una vez que le haya reembolsado, usted debe permitir que los recupere dentro de los mismos 15 días. Si no intenta recuperarlos dentro de los 90 días posteriores a la venta, pasan a ser suyos."
+   "en": "To cancel, mail the seller a written notice, preferably by certified or registered mail, or return the goods in person within that time. The seller must then return, within 15 days, everything you paid, any trade-in, and any note you signed. If the seller had already done work that changed your property, you get all your money back, or, if it can reasonably be done, you may ask instead for the property to be put back as it was. The seller must come for its goods or pay to have them returned, and once it has refunded you, you must let it have them back within the same 15 days. If it makes no effort to get them back within 90 days of the sale, they are yours.",
+   "es": "Para cancelar, envíe al vendedor un aviso por escrito, de preferencia por correo certificado o registrado, o devuelva los productos en persona dentro de ese plazo. El vendedor debe devolverle entonces, dentro de los 15 días, todo lo que pagó, cualquier artículo entregado como parte de pago y cualquier pagaré que haya firmado. Si el vendedor ya había hecho un trabajo que modificó su propiedad, usted recupera todo su dinero, o, si se puede hacer razonablemente, puede pedir en su lugar que la propiedad quede como estaba. El vendedor debe ir a buscar sus productos o pagar su devolución, y una vez que le haya reembolsado, usted debe permitir que los recupere dentro de los mismos 15 días. Si no intenta recuperarlos dentro de los 90 días posteriores a la venta, pasan a ser suyos.",
+   "state": "draft"
   },
   "guide.consumer-rights.what-about-a-bank-an-insurance": {
    "en": "What about a bank, an insurance company or a utility?",
@@ -2860,8 +2860,8 @@
    "state": "draft"
   },
   "guide.consumer-rights.you-can-also-take-the-business": {
-   "en": "You can also take the business to court yourself, within 3 years of learning what it did.",
-   "es": "También puede llevar a la empresa a los tribunales usted mismo, dentro de los 3 años después de enterarse de lo que hizo.",
+   "en": "You can also take the business to court yourself, unless the sale was more than 3 years before you knew, or should have known, what it did.",
+   "es": "También puede llevar a la empresa a los tribunales usted mismo, salvo que la venta haya sido más de 3 años antes de que usted supiera, o debiera haber sabido, lo que hizo.",
    "state": "draft"
   },
   "guide.consumer-rights.you-can-sue-a-business-that": {
@@ -5251,8 +5251,8 @@
    "state": "draft"
   },
   "guide.heating-and-electric-help.fuel-assistance-helps-with-heating-costs": {
-   "en": "<b>Fuel assistance</b> helps with heating costs as funds become available. It is a grant, not a loan.",
-   "es": "<b>La ayuda para combustible</b> ayuda con los costos de calefacción a medida que hay fondos disponibles. Es una subvención, no un préstamo.",
+   "en": "<b>Fuel assistance</b> helps with heating costs. It is a grant, not a loan.",
+   "es": "<b>La ayuda para combustible</b> ayuda con los costos de calefacción. Es una subvención, no un préstamo.",
    "state": "draft"
   },
   "guide.heating-and-electric-help.fuel-assistance-program": {
@@ -6952,8 +6952,8 @@
    "state": "draft"
   },
   "guide.medicare-and-social-security.extra-help-is-a-federal-program": {
-   "en": "<b>Extra Help</b> is a federal program that pays part of your drug plan&rsquo;s costs. You get it automatically if you have Medicaid, a Medicare Savings Program or SSI. Otherwise apply through Social Security.",
-   "es": "La <b>Ayuda Adicional</b> es un programa federal que paga parte de los costos de su plan de medicamentos. La recibe automáticamente si tiene Medicaid, un Programa de Ahorros de Medicare o SSI. Si no, solicítela a través del Seguro Social.",
+   "en": "<b>Extra Help</b> is a federal program that pays part of your drug plan&rsquo;s costs. You get it automatically if you have full-benefit Medicaid, a Medicare Savings Program or SSI. Otherwise apply through Social Security.",
+   "es": "La <b>Ayuda Adicional</b> es un programa federal que paga parte de los costos de su plan de medicamentos. La recibe automáticamente si tiene Medicaid con todos los beneficios (full-benefit Medicaid), un Programa de Ahorros de Medicare o SSI. Si no, solicítela a través del Seguro Social.",
    "state": "draft"
   },
   "guide.medicare-and-social-security.extra-help-medicare": {
@@ -7007,8 +7007,8 @@
    "state": "draft"
   },
   "guide.medicare-and-social-security.if-you-miss-your-first-chance": {
-   "en": "<b>If you miss your first chance,</b> you may have to wait for the General Enrollment Period, January 1 to March 31, and pay a monthly late enrollment penalty for as long as you have Part B. Some situations, such as losing coverage through a job, open a Special Enrollment Period without the penalty.",
-   "es": "<b>Si pierde su primera oportunidad,</b> quizá tenga que esperar al Período de Inscripción General, del 1 de enero al 31 de marzo, y pagar una multa mensual por inscripción tardía mientras tenga la Parte B. Algunas situaciones, como perder la cobertura de un empleo, abren un Período de Inscripción Especial sin la multa.",
+   "en": "<b>If you miss your first chance,</b> you may have to wait for the General Enrollment Period, January 1 to March 31, and pay a monthly late enrollment penalty for as long as you have Part B. Some situations open a Special Enrollment Period.",
+   "es": "<b>Si pierde su primera oportunidad,</b> quizá tenga que esperar al Período de Inscripción General, del 1 de enero al 31 de marzo, y pagar una multa mensual por inscripción tardía mientras tenga la Parte B. Algunas situaciones abren un Período de Inscripción Especial.",
    "state": "draft"
   },
   "guide.medicare-and-social-security.joining-a-plan-medicare": {
@@ -7052,9 +7052,9 @@
    "state": "draft"
   },
   "guide.medicare-and-social-security.medicare-savings-programs-are-run-by": {
-   "en": "<b>Medicare Savings Programs</b> are run by the state. Depending on your income and savings, they pay your Part B premium, and the most generous one also pays your deductibles, coinsurance and copayments, so that Medicare providers may not bill you for covered care. In New Hampshire they are the <b>Medicare Beneficiaries Savings Program</b>, also called the Buy-In program: QMB, SLMB and, for people with disabilities who work, QDWI. Your home and vehicles do not count against its limits. Apply to the Department of Health and Human Services through NH Easy, under Medicare beneficiary assistance; its Customer Service Center answers at 1-844-ASK-DHHS (1-844-275-3447), Monday through Friday, 8 a.m. to 4 p.m. Medicare advises applying even if you do not think you qualify.",
-   "state": "draft",
-   "es": "Los <b>Programas de Ahorros de Medicare</b> los administra el estado. Según sus ingresos y ahorros, pagan su prima de la Parte B, y el más amplio también paga sus deducibles, coseguros y copagos, de modo que los proveedores de Medicare no pueden cobrarle por la atención cubierta. En New Hampshire se llaman <b>Programa de Ahorros para Beneficiarios de Medicare</b> (Medicare Beneficiaries Savings Program), también conocido como programa Buy-In: QMB, SLMB y, para personas con discapacidad que trabajan, QDWI. Su vivienda y sus vehículos no cuentan para sus límites. Solicítelo al Departamento de Salud y Servicios Humanos a través de NH Easy, en la ayuda para beneficiarios de Medicare (Medicare beneficiary assistance); su Centro de Servicio al Cliente atiende en el 1-844-ASK-DHHS (1-844-275-3447), de lunes a viernes, de 8 a.m. a 4 p.m. Medicare aconseja solicitarlo aunque no crea que reúne los requisitos."
+   "en": "<b>Medicare Savings Programs</b> are run by the state. Depending on your income and savings, they help pay your Medicare premiums, and the most generous one also pays your deductibles, coinsurance and copayments, so that Medicare providers may not bill you for covered care. In New Hampshire they are the <b>Medicare Beneficiaries Savings Program</b>, also called the Buy-In program: QMB, SLMB, and QDWI, which pays the Part A premium of people with disabilities who work and have lost Medicare because of their earnings. Your home and vehicles do not count against its limits. Apply to the Department of Health and Human Services through NH Easy, under Medicare beneficiary assistance; its Customer Service Center answers at 1-844-ASK-DHHS (1-844-275-3447), Monday through Friday, 8 a.m. to 4 p.m. Medicare advises applying even if you do not think you qualify.",
+   "es": "Los <b>Programas de Ahorros de Medicare</b> los administra el estado. Según sus ingresos y ahorros, ayudan a pagar sus primas de Medicare, y el más amplio también paga sus deducibles, coseguros y copagos, de modo que los proveedores de Medicare no pueden cobrarle por la atención cubierta. En New Hampshire se llaman <b>Programa de Ahorros para Beneficiarios de Medicare</b> (Medicare Beneficiaries Savings Program), también conocido como programa Buy-In: QMB, SLMB y QDWI, que paga la prima de la Parte A de las personas con discapacidad que trabajan y han perdido Medicare por sus ingresos. Su vivienda y sus vehículos no cuentan para sus límites. Solicítelo al Departamento de Salud y Servicios Humanos a través de NH Easy, en la ayuda para beneficiarios de Medicare (Medicare beneficiary assistance); su Centro de Servicio al Cliente atiende en el 1-844-ASK-DHHS (1-844-275-3447), de lunes a viernes, de 8 a.m. a 4 p.m. Medicare aconseja solicitarlo aunque no crea que reúne los requisitos.",
+   "state": "draft"
   },
   "guide.medicare-and-social-security.medicare-savings-programs-medicare": {
    "en": "Medicare Savings Programs (Medicare)",
@@ -7711,11 +7711,6 @@
    "es": "Un niño menor de 16 años (Departamento de Estado)",
    "state": "draft"
   },
-  "guide.passport.a-childs-passport-is-valid-for": {
-   "en": "A child&rsquo;s passport is valid for 5 years; an adult&rsquo;s, for 10.",
-   "es": "El pasaporte de un niño vale por 5 años; el de un adulto, por 10.",
-   "state": "draft"
-  },
   "guide.passport.a-first-passport-a-passport-for": {
    "en": "A first passport, a passport for a child under 16, and one for anyone who cannot renew are applied for in person. Fill out Form DS-11 with the State Department&rsquo;s form filler and print it on one side of the paper, but <b>do not sign it</b>: you sign it in front of the acceptance agent, under oath.",
    "es": "El primer pasaporte, el pasaporte de un niño menor de 16 años y el de quien no puede renovarlo se solicitan en persona. Llene el formulario DS-11 con la herramienta para llenar formularios del Departamento de Estado e imprímalo por un solo lado del papel, pero <b>no lo firme</b>: lo firma delante del agente de aceptación, bajo juramento.",
@@ -7724,6 +7719,11 @@
   "guide.passport.a-passport-for-a-child-under": {
    "en": "A passport for a child under 16",
    "es": "El pasaporte de un niño menor de 16 años",
+   "state": "draft"
+  },
+  "guide.passport.a-passport-issued-to-someone-under": {
+   "en": "A passport issued to someone under 16 is valid for 5 years; one issued at 16 or older, for 10.",
+   "es": "Un pasaporte expedido a alguien menor de 16 años vale por 5 años; uno expedido a los 16 años o más, por 10.",
    "state": "draft"
   },
   "guide.passport.a-photo-id-such-as-a": {
@@ -8001,9 +8001,9 @@
    "es": "Sí",
    "state": "draft"
   },
-  "guide.passport.you-can-renew-by-mail-if": {
-   "en": "You can renew by mail if all of these are true: your most recent passport was issued for 10 years, when you were 16 or older; it was issued no more than 15 years ago; and you can send it in with your application.",
-   "es": "Puede renovarlo por correo si se cumple todo esto: su pasaporte más reciente se expidió por 10 años, cuando usted tenía 16 años o más; se expidió hace no más de 15 años; y puede enviarlo junto con su solicitud.",
+  "guide.passport.you-can-renew-by-mail-only": {
+   "en": "You can renew by mail only if your most recent passport was issued for 10 years, when you were 16 or older; it was issued no more than 15 years ago; it is undamaged, apart from normal wear; and you can send it in with your application.",
+   "es": "Puede renovarlo por correo solo si su pasaporte más reciente se expidió por 10 años, cuando usted tenía 16 años o más; se expidió hace no más de 15 años; no está dañado, aparte del desgaste normal; y puede enviarlo junto con su solicitud.",
    "state": "draft"
   },
   "guide.passport.you-can-renew-online-instead-if": {
@@ -8012,8 +8012,8 @@
    "state": "draft"
   },
   "guide.passport.you-can-usually-renew-by-mail": {
-   "en": "You can usually renew by mail or online. You cannot renew in person.",
-   "es": "Por lo general puede renovarlo por correo o en línea. No se puede renovar en persona.",
+   "en": "You can usually renew by mail or online. You cannot renew at a post office.",
+   "es": "Por lo general puede renovarlo por correo o en línea. No se puede renovar en una oficina postal.",
    "state": "draft"
   },
   "guide.passport.you-pay-two-separate-fees-the": {
@@ -8366,14 +8366,14 @@
    "es": "Un veterano que sirvió al menos 90 días en una guerra o conflicto que da derecho al crédito y fue dado de baja con honores, o el cónyuge o cónyuge sobreviviente del veterano",
    "state": "draft"
   },
-  "guide.property-tax-bill.apply-for-an-exemption-credit-or": {
-   "en": "Apply for an exemption, credit or deferral by April 15",
-   "es": "Solicite una exención, un crédito o un aplazamiento a más tardar el 15 de abril",
+  "guide.property-tax-bill.apply-for-an-exemption-or-credit": {
+   "en": "Apply for an exemption or credit by April 15, or a deferral by March 1",
+   "es": "Solicite una exención o un crédito a más tardar el 15 de abril, o un aplazamiento a más tardar el 1 de marzo",
    "state": "draft"
   },
   "guide.property-tax-bill.apply-to-your-town-by-april": {
-   "en": "Apply to your town by April 15 for an exemption, credit or deferral.",
-   "es": "Presente la solicitud a su municipio a más tardar el 15 de abril para una exención, un crédito o un aplazamiento.",
+   "en": "Apply to your town by April 15 for an exemption or credit, or by March 1 for a deferral.",
+   "es": "Presente la solicitud a su municipio a más tardar el 15 de abril para una exención o un crédito, o a más tardar el 1 de marzo para un aplazamiento.",
    "state": "draft"
   },
   "guide.property-tax-bill.apportionment-assessment-and-abatement": {
@@ -8492,13 +8492,13 @@
    "state": "draft"
   },
   "guide.property-tax-bill.lead": {
-   "en": "How your town or city assesses your property, how the tax rate is set, what your property tax bill must show, when it is due, and the exemptions, credits and deferrals you can apply for by April 15.",
-   "es": "Cómo su municipio o ciudad hace el avalúo de su propiedad, cómo se fija la tasa del impuesto, qué tiene que mostrar su factura del impuesto a la propiedad, cuándo vence, y las exenciones, los créditos y los aplazamientos que puede solicitar a más tardar el 15 de abril.",
+   "en": "How your town or city assesses your property, how the tax rate is set, what your property tax bill must show, when it is due, and the exemptions, credits and deferrals you can apply for.",
+   "es": "Cómo su municipio o ciudad hace el avalúo de su propiedad, cómo se fija la tasa del impuesto, qué tiene que mostrar su factura del impuesto a la propiedad, cuándo vence, y las exenciones, los créditos y los aplazamientos que puede solicitar.",
    "state": "draft"
   },
   "guide.property-tax-bill.new-hampshire-law-lets-each-town": {
-   "en": "New Hampshire law lets each town and city offer relief to some owners, and the town&rsquo;s voters or council decide which it offers and, within the law&rsquo;s limits, how much. Ask your assessing office or the selectmen what yours offers. You apply once, on the state&rsquo;s form, to your selectmen or assessors, <b>by April 15</b>, and the application stands from year to year.",
-   "es": "La ley de New Hampshire permite a cada municipio y ciudad ofrecer un alivio a algunos propietarios, y los votantes o el concejo del municipio deciden cuál ofrece y, dentro de los límites de la ley, de cuánto. Pregunte a la oficina de avalúos o a los concejales (selectmen) qué ofrece el suyo. Usted presenta la solicitud una sola vez, en el formulario del estado, a los concejales o a los tasadores, <b>a más tardar el 15 de abril</b>, y la solicitud sigue vigente año tras año.",
+   "en": "New Hampshire law lets each town and city offer relief to some owners, and the town&rsquo;s voters or council decide which it offers and, within the law&rsquo;s limits, how much. Ask your assessing office or the selectmen what yours offers. You apply once, on the state&rsquo;s form, to your selectmen or assessors, <b>by April 15</b>, and the application stands from year to year while you live in the same home, though your town may ask you to update your information as often as once a year.",
+   "es": "La ley de New Hampshire permite a cada municipio y ciudad ofrecer un alivio a algunos propietarios, y los votantes o el concejo del municipio deciden cuál ofrece y, dentro de los límites de la ley, de cuánto. Pregunte a la oficina de avalúos o a los concejales (selectmen) qué ofrece el suyo. Usted presenta la solicitud una sola vez, en el formulario del estado, a los concejales o a los tasadores, <b>a más tardar el 15 de abril</b>, y la solicitud sigue vigente año tras año mientras viva en la misma vivienda, aunque su municipio puede pedirle que ponga al día su información hasta una vez al año.",
    "state": "draft"
   },
   "guide.property-tax-bill.other-credits-exist-among-them-for": {
@@ -8512,8 +8512,8 @@
    "state": "draft"
   },
   "guide.property-tax-bill.owners-eligible-for-social-security": {
-   "en": "Owners eligible for Social Security disability benefits (SSDI or SSI), where the town has adopted it",
-   "es": "Propietarios que reúnen los requisitos para recibir beneficios por discapacidad del Seguro Social (SSDI o SSI), donde el municipio la ha adoptado",
+   "en": "Owners eligible for Social Security disability benefits (SSDI or SSI) who have lived in New Hampshire at least 5 years and live in the home, under the town&rsquo;s limits on income and assets, where the town has adopted it",
+   "es": "Propietarios que reúnen los requisitos para recibir beneficios por discapacidad del Seguro Social (SSDI o SSI), que han vivido en New Hampshire por lo menos 5 años y viven en la vivienda, dentro de los límites de ingresos y bienes del municipio, donde el municipio la ha adoptado",
    "state": "draft"
   },
   "guide.property-tax-bill.owners-who-are-legally-blind": {
@@ -8577,8 +8577,8 @@
    "state": "draft"
   },
   "guide.property-tax-bill.the-rates-for-the-municipal-local": {
-   "en": "<b>The rates</b> for the municipal, local education, state education and county taxes, each separately. Your tax is your assessed value multiplied by their total.",
-   "es": "<b>Las tasas</b> de los impuestos municipal, de educación local, estatal para la educación y del condado, cada una por separado. Su impuesto es el valor de su avalúo multiplicado por la suma de las tasas.",
+   "en": "<b>The rates</b> for the municipal, local education, state education and county taxes, each separately.",
+   "es": "<b>Las tasas</b> de los impuestos municipal, de educación local, estatal para la educación y del condado, cada una por separado.",
    "state": "draft"
   },
   "guide.property-tax-bill.the-state-education-tax-rate-is": {
@@ -8652,9 +8652,9 @@
    "state": "draft"
   },
   "guide.property-tax-bill.your-property-tax-pays-for-four": {
-   "en": "Your property tax pays for four things: your town or city, your local schools, the state&rsquo;s education tax, and your county, and a village district&rsquo;s where there is one. Each is voted by its own body: town meeting or the city council, the school district meeting or board, the <a href=\"/learn/county-government.html\">county convention</a>. The state&rsquo;s Department of Revenue Administration checks each budget and estimate of revenue, then computes and sets the tax rate for each town and city.",
-   "state": "draft",
-   "es": "Su impuesto a la propiedad paga cuatro cosas: su municipio o ciudad, sus escuelas locales, el impuesto estatal para la educación y su condado, y un distrito de aldea donde lo hay. Cada una la vota su propio órgano: la asamblea municipal o el concejo municipal, la asamblea o la junta del distrito escolar, la <a href=\"/learn/county-government.html\">convención del condado</a>. El Departamento de Administración de Ingresos del estado revisa cada presupuesto y cada estimación de ingresos, y luego calcula y fija la tasa del impuesto de cada municipio y ciudad."
+   "en": "Your property tax pays for four things: your town or city, your local schools, the state&rsquo;s education tax, and your county, and a village district&rsquo;s where there is one. Each is voted by its own body: town meeting or the city council, the school district meeting, the <a href=\"/learn/county-government.html\">county convention</a>. The state&rsquo;s Department of Revenue Administration checks each budget and estimate of revenue, then computes and sets the tax rate for each town and city.",
+   "es": "Su impuesto a la propiedad paga cuatro cosas: su municipio o ciudad, sus escuelas locales, el impuesto estatal para la educación y su condado, y un distrito de aldea donde lo hay. Cada una la vota su propio órgano: la asamblea municipal o el concejo municipal, la asamblea del distrito escolar, la <a href=\"/learn/county-government.html\">convención del condado</a>. El Departamento de Administración de Ingresos del estado revisa cada presupuesto y cada estimación de ingresos, y luego calcula y fija la tasa del impuesto de cada municipio y ciudad.",
+   "state": "draft"
   },
   "guide.property-tax-bill.your-right-to-ask-for-an": {
    "en": "<b>Your right to ask for an abatement</b>, in writing, from your selectmen or assessors.",
@@ -8672,8 +8672,8 @@
    "state": "draft"
   },
   "guide.property-tax-bill.your-town-or-city-assesses-your": {
-   "en": "Your town or city assesses your property at its market value as of April 1, and must revalue every property at least every fifth year. The voters and officials of your town, school district and county set their budgets, and the state works out the rate that raises them. Your bill shows your assessment and four rates: town, local school, state education and county. If the tax is hard to pay, you may qualify for an exemption, credit or deferral: apply to your town by April 15.",
-   "es": "Su municipio o ciudad hace el avalúo de su propiedad según su valor de mercado al 1 de abril, y tiene que revaluar cada propiedad por lo menos cada cinco años. Los votantes y los funcionarios de su municipio, su distrito escolar y su condado fijan sus presupuestos, y el estado calcula la tasa que los recauda. Su factura muestra su avalúo y cuatro tasas: la municipal, la de la escuela local, la estatal para la educación y la del condado. Si le cuesta pagar el impuesto, puede reunir los requisitos para una exención, un crédito o un aplazamiento: presente la solicitud a su municipio a más tardar el 15 de abril.",
+   "en": "Your town or city assesses your property at its market value as of April 1, and must revalue every property at least every fifth year. The voters and officials of your town, school district and county set their budgets, and the state works out the rate that raises them. Your bill shows your assessment and four rates: town, local school, state education and county. If the tax is hard to pay, you may qualify for an exemption or credit, for which you apply to your town by April 15, or a deferral, by March 1 after the final bill.",
+   "es": "Su municipio o ciudad hace el avalúo de su propiedad según su valor de mercado al 1 de abril, y tiene que revaluar cada propiedad por lo menos cada cinco años. Los votantes y los funcionarios de su municipio, su distrito escolar y su condado fijan sus presupuestos, y el estado calcula la tasa que los recauda. Su factura muestra su avalúo y cuatro tasas: la municipal, la de la escuela local, la estatal para la educación y la del condado. Si le cuesta pagar el impuesto, puede reunir los requisitos para una exención o un crédito, que se solicitan a su municipio a más tardar el 15 de abril, o para un aplazamiento, a más tardar el 1 de marzo después de la factura final.",
    "state": "draft"
   },
   "guide.property-tax-bill.your-town-or-citys-assessing-office": {
@@ -12867,11 +12867,6 @@
    "es": "¿Va a llevar a una clase?",
    "state": "draft"
   },
-  "guide.tour-the-state-house.call-the-visitor-center-to-arrange": {
-   "en": "Call the Visitor Center to arrange a tour for your group or class.",
-   "es": "Llame al Centro de Visitantes para organizar una visita para su grupo o su clase.",
-   "state": "draft"
-  },
   "guide.tour-the-state-house.cameras-only-adults-use-cameras": {
    "en": "<b>Cameras.</b> Only adults use cameras.",
    "es": "<b>Cámaras.</b> Solo los adultos pueden usar cámaras.",
@@ -12890,6 +12885,11 @@
   "guide.tour-the-state-house.common-questions": {
    "en": "Common Questions",
    "es": "Preguntas frecuentes",
+   "state": "draft"
+  },
+  "guide.tour-the-state-house.contact-the-visitor-center-about-a": {
+   "en": "Contact the Visitor Center about a tour for your group or class.",
+   "es": "Comuníquese con el Centro de Visitantes sobre una visita para su grupo o su clase.",
    "state": "draft"
   },
   "guide.tour-the-state-house.contact-your-legislators": {
@@ -13018,13 +13018,13 @@
    "state": "draft"
   },
   "guide.tour-the-state-house.the-state-house-visitor-center-in": {
-   "en": "The State House Visitor Center in Concord schedules tours of the State House for groups, school classes among them, and a tour is generally an hour. To arrange one, call the Visitor Center at (603) 271-2154. Before a class visits, share the Visitor Center&rsquo;s rules for tours with every adult coming: arrive on time, leave backpacks behind, and bring no food, drink or gum. To visit with your own representative or senator, contact them directly.",
-   "es": "El Centro de Visitantes del Capitolio (State House Visitor Center), en Concord, programa visitas guiadas al Capitolio para grupos, entre ellos clases escolares, y una visita dura por lo general una hora. Para organizar una, llame al Centro de Visitantes al (603) 271-2154. Antes de que venga una clase, comparta las normas de las visitas del Centro de Visitantes con todos los adultos que vengan: llegar a tiempo, dejar las mochilas y no traer comida, bebida ni chicle. Para visitar a su representante o senador, comuníquese directamente con su oficina.",
+   "en": "The State House Visitor Center in Concord schedules tours of the State House for groups, school classes among them, and a tour is generally an hour. With any question about a tour, call the Visitor Center at (603) 271-2154. Before a class visits, share the Visitor Center&rsquo;s rules for tours with every adult coming: arrive on time, leave backpacks behind, and bring no food, drink or gum. To visit with your own representative or senator, contact them directly.",
+   "es": "El Centro de Visitantes del Capitolio (State House Visitor Center), en Concord, programa visitas guiadas al Capitolio para grupos, entre ellos clases escolares, y una visita dura por lo general una hora. Con cualquier pregunta sobre una visita, llame al Centro de Visitantes al (603) 271-2154. Antes de que venga una clase, comparta las normas de las visitas del Centro de Visitantes con todos los adultos que vengan: llegar a tiempo, dejar las mochilas y no traer comida, bebida ni chicle. Para visitar a su representante o senador, comuníquese directamente con su oficina.",
    "state": "draft"
   },
   "guide.tour-the-state-house.the-state-house-visitor-center-schedules": {
-   "en": "The State House Visitor Center schedules the tours, many groups each day. Call it at (603) 271-2154 to ask for a date and with any question, or start from its page.",
-   "es": "El Centro de Visitantes del Capitolio programa las visitas, de muchos grupos cada día. Llame al (603) 271-2154 para pedir una fecha o hacer cualquier pregunta, o empiece por su página.",
+   "en": "The State House Visitor Center schedules the tours, many groups each day. Call it at (603) 271-2154 with any question, including how to book, or start from its page.",
+   "es": "El Centro de Visitantes del Capitolio programa las visitas, de muchos grupos cada día. Llame al (603) 271-2154 con cualquier pregunta, también sobre cómo reservar, o empiece por su página.",
    "state": "draft"
   },
   "guide.tour-the-state-house.the-tour-takes-about-an-hour": {
@@ -13174,8 +13174,8 @@
    "state": "draft"
   },
   "guide.town-warrant-article.in-a-town-selectmen-who-refuse": {
-   "en": "In a town, selectmen who refuse are guilty of a violation, and if they unreasonably refuse, a Superior Court justice can order the article inserted on the written application of 25 or more voters.",
-   "es": "En un municipio, los concejales que se nieguen cometen una infracción (<span lang=\"en\">violation</span>), y si se niegan sin razón, un juez del Tribunal Superior puede ordenar que se incluya el artículo a solicitud por escrito de 25 o más votantes.",
+   "en": "In a town, selectmen who refuse are guilty of a violation, and if they unreasonably refuse, a Superior Court justice can order the article inserted on the written application of 25 or more voters, or of one-sixth of the town&rsquo;s voters.",
+   "es": "En un municipio, los concejales que se nieguen cometen una infracción (<span lang=\"en\">violation</span>), y si se niegan sin razón, un juez del Tribunal Superior puede ordenar que se incluya el artículo a solicitud por escrito de 25 o más votantes, o de la sexta parte de los votantes del municipio.",
    "state": "draft"
   },
   "guide.town-warrant-article.lead": {
@@ -13275,8 +13275,8 @@
    "state": "draft"
   },
   "guide.town-warrant-article.town-due-by-the-fifth-tuesday": {
-   "en": "Town: due by the fifth Tuesday before the meeting. School district: 30 days before it.",
-   "es": "Municipio: a más tardar el quinto martes antes de la asamblea. Distrito escolar: 30 días antes de ella.",
+   "en": "Town: due by the fifth Tuesday before the meeting. School district: 30 days before it, or the second Tuesday in March if that is earlier.",
+   "es": "Municipio: a más tardar el quinto martes antes de la asamblea. Distrito escolar: 30 días antes de ella, o el segundo martes de marzo si esa fecha es anterior.",
    "state": "draft"
   },
   "guide.town-warrant-article.town-meeting-and-local-government": {
@@ -14510,6 +14510,11 @@
    "es": "Escuelas",
    "state": "draft"
   },
+  "guide.who-to-contact.solid-waste-management-rsa-149-m": {
+   "en": "Solid waste management, RSA 149-M",
+   "es": "Manejo de residuos sólidos, RSA 149-M",
+   "state": "draft"
+  },
   "guide.who-to-contact.start-with-the-agency-that-runs": {
    "en": "Start with the agency that runs the program: the Division of Motor Vehicles for a license, the Department of Health and Human Services for SNAP or Medicaid, and so on. Each guide here links the agency&rsquo;s page.",
    "es": "Empiece por la agencia que administra el programa: la División de Vehículos Motorizados para una licencia, el Departamento de Salud y Servicios Humanos para SNAP o Medicaid, y así sucesivamente. Cada guía de este sitio enlaza la página de la agencia.",
@@ -14521,8 +14526,8 @@
    "state": "draft"
   },
   "guide.who-to-contact.start-with-whoever-runs-the-thing": {
-   "en": "Start with whoever runs the thing. Roads, sidewalks, trash and local rules are your town or city&rsquo;s: its departments, then the selectboard or city council. Schools are the school board&rsquo;s. A state program is the state agency&rsquo;s that runs it, and a state law or bill is your state representatives&rsquo; and senator&rsquo;s. A problem with a federal agency, such as Social Security, veterans&rsquo; benefits or a passport, is what your U.S. senators&rsquo; and representative&rsquo;s offices help with.",
-   "es": "Empiece por quien está a cargo del asunto. Las calles, las aceras, la basura y las reglas locales le corresponden a su municipio o ciudad: primero a sus departamentos y luego a la junta de concejales o al concejo municipal. Las escuelas le corresponden a la junta escolar. Un programa estatal le corresponde a la agencia estatal que lo administra, y una ley o un proyecto de ley estatal, a sus representantes estatales y a su senador estatal. Con un problema con una agencia federal, como el Seguro Social, los beneficios para veteranos o un pasaporte, ayudan las oficinas de sus senadores y su representante en el Congreso de EE. UU.",
+   "en": "Start with whoever runs the thing. Town roads, sidewalks, trash and local rules are your town or city&rsquo;s: its departments, then the selectboard or city council. Schools are the school board&rsquo;s. A state program is the state agency&rsquo;s that runs it, and a state law or bill is your state representatives&rsquo; and senator&rsquo;s. A problem with a federal agency, such as Social Security, veterans&rsquo; benefits or a passport, is what your U.S. senators&rsquo; and representative&rsquo;s offices help with.",
+   "es": "Empiece por quien está a cargo del asunto. Las calles del municipio, las aceras, la basura y las reglas locales le corresponden a su municipio o ciudad: primero a sus departamentos y luego a la junta de concejales o al concejo municipal. Las escuelas le corresponden a la junta escolar. Un programa estatal le corresponde a la agencia estatal que lo administra, y una ley o un proyecto de ley estatal, a sus representantes estatales y a su senador estatal. Con un problema con una agencia federal, como el Seguro Social, los beneficios para veteranos o un pasaporte, ayudan las oficinas de sus senadores y su representante en el Congreso de EE. UU.",
    "state": "draft"
   },
   "guide.who-to-contact.the-county": {
@@ -14606,8 +14611,8 @@
    "state": "draft"
   },
   "guide.who-to-contact.your-two-u-s-senators-and": {
-   "en": "Your two <b>U.S. senators</b> and your <b>U.S. representative</b> each have staff in New Hampshire who help residents with federal agencies: Social Security, veterans&rsquo; benefits, passports, the IRS, immigration and others. Contact them too about a federal law or bill.",
-   "es": "Sus dos <b>senadores de EE. UU.</b> y su <b>representante de EE. UU.</b> tienen personal en New Hampshire que ayuda a los residentes con las agencias federales: el Seguro Social, los beneficios para veteranos, los pasaportes, el IRS, la inmigración y otras. Contáctelos también sobre una ley o un proyecto de ley federal.",
+   "en": "Your two <b>U.S. senators</b> and your <b>U.S. representative</b> help residents with federal agencies: Social Security, veterans&rsquo; benefits, passports, the IRS, citizenship and others. Contact them too about a federal law or bill.",
+   "es": "Sus dos <b>senadores de EE. UU.</b> y su <b>representante de EE. UU.</b> ayudan a los residentes con las agencias federales: el Seguro Social, los beneficios para veteranos, los pasaportes, el IRS, la ciudadanía y otras. Contáctelos también sobre una ley o un proyecto de ley federal.",
    "state": "draft"
   },
   "guide.who-to-contact.your-u-s-senators-and-u": {
@@ -17192,8 +17197,8 @@
    "state": "draft"
   },
   "learn.governor-and-council.five-councilors-each-elected-by-district": {
-   "en": "Five councilors, each elected by district, meeting with the Governor. Almost no state has anything like it, and not many people can describe what it does.",
-   "es": "Cinco consejeros, cada uno elegido por distrito, que se reúnen con el Gobernador. Casi ningún estado tiene algo parecido, y no mucha gente sabe describir lo que hace.",
+   "en": "Five councilors, each elected by district, meeting with the Governor.",
+   "es": "Cinco consejeros, cada uno elegido por distrito, que se reúnen con el Gobernador.",
    "state": "draft"
   },
   "learn.governor-and-council.five-days-pass": {
@@ -17244,6 +17249,11 @@
   "learn.governor-and-council.overridden-it-becomes-law-over-the": {
    "en": "<b>Overridden:</b> it becomes law over the Governor&rsquo;s objection.",
    "es": "<b>Veto anulado:</b> se convierte en ley a pesar de la objeción del Gobernador.",
+   "state": "draft"
+  },
+  "learn.governor-and-council.rsa-9-budget-and-appropriations": {
+   "en": "RSA 9, Budget and Appropriations; Revolving Funds, on this site's Laws pages",
+   "es": "RSA 9, Budget and Appropriations; Revolving Funds (presupuesto y asignaciones; fondos rotatorios), en las páginas de leyes de este sitio",
    "state": "draft"
   },
   "learn.governor-and-council.starting-with-the-chamber-the-bill": {
@@ -17732,8 +17742,8 @@
    "state": "draft"
   },
   "learn.how-a-bill-becomes-law.the-longer-road-at-the-end": {
-   "en": "The longer road at the end of the course. It went to a Special Committee on Housing, then to a second chamber that changed it. On the motion to accept that change the House divided <b>172 to 180</b>, and the bill went to a <b>committee of conference</b>. It dealt with how long an approved development keeps the rules it was approved under, and where a building code dispute may be appealed: local control of what gets built against the time and cost of getting anything built. Six of its proceedings are on video, the conference among them. The House then rejected the conference report <b>102 to 261</b>, and the bill did not become law.",
-   "es": "El camino más largo al final del recorrido. Pasó por un Comité Especial de Vivienda (Special Committee on Housing) y después por una segunda cámara que lo cambió. En la moción para aceptar ese cambio la Cámara se dividió <b>172 a 180</b>, y el proyecto de ley fue a un <b>comité de conferencia</b>. Trataba de cuánto tiempo una urbanización aprobada conserva las reglas con las que se aprobó, y de dónde se puede apelar una disputa sobre el código de construcción: el control local de lo que se construye frente al tiempo y el costo de construir cualquier cosa. Seis de sus sesiones están en video, la conferencia entre ellas. Después la Cámara rechazó el informe de la conferencia <b>102 a 261</b>, y el proyecto de ley no se convirtió en ley.",
+   "en": "The longer road at the end of the course. It went to a Special Committee on Housing, then to a second chamber that changed it. On the motion to accept that change the House voted <b>172 to 180</b>, on a roll call, and the bill went to a <b>committee of conference</b>. It dealt with how long an approved development keeps the rules it was approved under, and where a building code dispute may be appealed: local control of what gets built against the time and cost of getting anything built. Six of its proceedings are on video, the conference among them. The House then rejected the conference report <b>102 to 261</b>, and the bill did not become law.",
+   "es": "El camino más largo al final del recorrido. Pasó por un Comité Especial de Vivienda (Special Committee on Housing) y después por una segunda cámara que lo cambió. En la moción para aceptar ese cambio la Cámara votó <b>172 a 180</b>, en una votación nominal, y el proyecto de ley fue a un <b>comité de conferencia</b>. Trataba de cuánto tiempo una urbanización aprobada conserva las reglas con las que se aprobó, y de dónde se puede apelar una disputa sobre el código de construcción: el control local de lo que se construye frente al tiempo y el costo de construir cualquier cosa. Seis de sus sesiones están en video, la conferencia entre ellas. Después la Cámara rechazó el informe de la conferencia <b>102 a 261</b>, y el proyecto de ley no se convirtió en ley.",
    "state": "draft"
   },
   "learn.how-a-bill-becomes-law.the-members-voting": {
@@ -18379,6 +18389,11 @@
   "learn.state-agencies.nominated-by-the-governor-confirmed-by": {
    "en": "Nominated by the Governor, confirmed by the Executive Council. That is the same route as a judge, and it is the most concrete answer to <a href=\"learn/governor-and-council.html\">what the Council does</a>. A commissioner serves a fixed term.",
    "es": "Lo propone el Gobernador y lo confirma el Consejo Ejecutivo. Es el mismo camino que el de un juez, y es la respuesta más concreta a <a href=\"learn/governor-and-council.html\">lo que hace el Consejo</a>. Un comisionado ejerce el cargo por un período fijo.",
+   "state": "draft"
+  },
+  "learn.state-agencies.rsa-21-g-organization-of-executive": {
+   "en": "RSA 21-G, Organization of Executive Branch, on this site's Laws pages",
+   "es": "RSA 21-G, Organization of Executive Branch (organización del poder ejecutivo), en las páginas de leyes de este sitio",
    "state": "draft"
   },
   "learn.state-agencies.state-agencies-a-to-z": {

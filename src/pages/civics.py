@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-08.65
+# GRANITE_VERSION: 2026-09-08.66
 """
 The topics of the civics section: their order, their names, and their prose.
 
@@ -1382,7 +1382,7 @@ sessions, the work session between them, and the Senate hearing.</p>
 <h3>HB 1215 (2024): A Bill That Went to a Committee of Conference</h3>
 <p>The longer road at the end of the course. It went to a Special Committee on
 Housing, then to a second chamber that changed it. On the motion to accept
-that change the House divided <b>172 to 180</b>, and the bill went to a
+that change the House voted <b>172 to 180</b>, on a roll call, and the bill went to a
 <b>committee of conference</b>. It dealt with how long an approved development
 keeps the rules it was approved under, and where a building code dispute may
 be appealed: local control of what gets built against the time and cost of
@@ -1542,9 +1542,7 @@ overridden and the bill became law over the Governor's objection.[[veto_pending]
 [[fig_vetoes]]
 
 <h2>The Executive Council</h2>
-<p>Five councilors, each elected by district, meeting with the Governor.
-Almost no state has anything like it, and not many people can describe what it
-does.</p>
+<p>Five councilors, each elected by district, meeting with the Governor.</p>
 <p>Its approval is required for a great deal of what the executive branch
 does: state contracts above a threshold, the appointment of commissioners and
 judges, and pardons. A commissioner nominated by the Governor takes office
@@ -3160,6 +3158,12 @@ SRC_FIND_MEMBER = ("Find your legislators, by town",
 # reads (26 October 2026): chapter 3 as the Laws pages carry it, and the
 # bills since 1989.
 SRC_LAWS_3 = ("RSA 3, State Emblems, Flag, Etc., on this site's Laws pages", "/laws/3")
+# The Governor's budget (RSA 9:8) and a commissioner's term (RSA 21-G:8), on
+# this site's Laws pages (the audit of 26 October 2026).
+SRC_LAWS_9 = ("RSA 9, Budget and Appropriations; Revolving Funds, on this site's Laws pages",
+              "/laws/9")
+SRC_LAWS_21G = ("RSA 21-G, Organization of Executive Branch, on this site's Laws pages",
+                "/laws/21-g")
 SRC_BILL_RECORD = ("This site's bill record, 1989 to 2026", "/bills.html")
 SRC_TESTIFY = ("House online testimony sign-in",
                GC + "/house/committees/remotetestimony/")
@@ -3310,7 +3314,7 @@ TOPICS = [
           "The Governor signs or vetoes. The Council -- five members, elected "
           "by district -- approves contracts, nominations and pardons.",
           BODY_GOVERNOR,
-          [SRC_CONSTITUTION, SRC_GOVERNOR, SRC_COUNCIL],
+          [SRC_CONSTITUTION, SRC_GOVERNOR, SRC_COUNCIL, SRC_LAWS_9],
           BODY_GOVERNOR_HOLDS),
 
     topic("the-courts", "The Courts", HOW,
@@ -3331,7 +3335,7 @@ TOPICS = [
           "Who actually carries out what the legislature passes, and how a "
           "commissioner gets the job.",
           BODY_AGENCIES,
-          [SRC_AGENCIES, SRC_COUNCIL, SRC_CONSTITUTION]),
+          [SRC_AGENCIES, SRC_COUNCIL, SRC_CONSTITUTION, SRC_LAWS_21G]),
 
     topic("administrative-rules", "Administrative Rules", HOW,
           "A statute says what shall happen; the rules say how, and the "
