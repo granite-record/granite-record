@@ -79676,12 +79676,14 @@ LIVE_DIRS = ("workers/live", "tests/live", "functions/api/live")
 LIVE_VIEWS = ("RollCallSummary", "RollCallHistory", "legislators", "Docket")
 LIVE_TDS_CASES = ("logs in with the published login", "LOGIN7, decoded field by field",
                   "many 4,096-byte packets", "two statements on one connection",
-                  "encryption REQ stops the client before LOGIN7", "the server's ERROR is `query`",
-                  "dropped halfway through a reply", "a fixed-length INT4 column",
+                  "encryption REQ stops the client before LOGIN7", "a refused login is `login`; 4060",
+                  "the server's ERROR is `query`", "dropped halfway through a reply", "a fixed-length INT4 column",
                   "LOGINACK older than TDS 7.2", "never answers fails inside the deadline",
                   "never opens, each fail inside the deadline", "loopback is refused without ENV production",
                   "day 1 reads 11 March 2026", "day 2 reads veto day", "compare_test finds a changed ballot",
-                  "requires encryption: the file says so")
+                  "compare_test finds each difference the go rests on", "compare_test's time rule",
+                  "requires encryption: the file says so", "the sitting is not asked again",
+                  "the run's 45 s SQL budget bounds the test")
 
 
 @check("build", "the live votes reader passes its tests in node against a fake SQL Server on the "
@@ -79697,10 +79699,29 @@ def _live_tds():
     end to end against the fake answering from records/rollcalls/, with
     compare_test.mjs finding the file equal to the record -- and finding a
     changed ballot when one is changed. Run here in node; the cases the design
-    names are looked for by name, so that one taken out is missed."""
+    names are looked for by name, so that one taken out is missed.
+
+    What the tests import is named here by its path and held equal to their
+    imports as they stand, so that preflight --changed (check_select.py reads
+    this file's strings) runs this check when any of it changes."""
     files = [Path("tests/live/tds.test.js"), Path("tests/live/sql.test.js")]
     if not all(f.is_file() for f in files):
         return "skip", "tests/live/ is not here"
+    held = {"workers/live/tds.js", "workers/live/sql.js", "workers/live/test_mode.js",
+            "workers/live/live.gen.js", "workers/follow/common.js", "tests/live/fake_tds.js",
+            "tests/live/compare_test.mjs"}
+    imported, todo = set(), list(files)
+    while todo:
+        f = todo.pop()
+        for rel in re.findall(r"""^\s*import\s[^;]*?\sfrom\s+["'](\.{1,2}/[^"']+)["']""",
+                              f.read_text(encoding="utf-8"), re.M | re.S):
+            p = Path(os.path.relpath(f.parent / rel)).as_posix()
+            if p not in imported:
+                imported.add(p)
+                todo.append(Path(p))
+    assert imported == held, (
+        f"the tests import {sorted(imported - held)} unnamed here, or no longer import "
+        f"{sorted(held - imported)}: name each in _live_tds's `held`, so preflight --changed runs it")
     node = shutil.which("node") or shutil.which("node.exe")
     if not node:
         return "skip", "node is not on PATH"
@@ -79711,7 +79732,7 @@ def _live_tds():
     fails = _tap_failures(out)
     passed = [m.replace("\\#", "#") for m in re.findall(r"^ok \d+ - (.*)$", out, re.M)]
     missing = [c for c in LIVE_TDS_CASES if not any(c in n for n in passed)]
-    assert not fails and r.returncode == 0 and count.get("pass", 0) >= 33, (
+    assert not fails and r.returncode == 0 and count.get("pass", 0) >= 46, (
         f"the live votes reader fails {len(fails)}: " + "; ".join(repr(n) for n, _s in fails[:5])
         + f" ({count or out.strip()[-300:]}). `node --test {' '.join(f.as_posix() for f in files)}` shows each")
     assert not missing, "these cases no longer pass, or no longer exist: " + "; ".join(missing)
@@ -79847,10 +79868,14 @@ def _live_statement_problems(name, sql, views, width, refused):
 def _live_web_named(root):
     """The live layer's code under `root` (workers/live/ and functions/api/live/)
     that names the General Court's web server, which it never asks."""
-    root = Path(root)
-    return [p.relative_to(root).as_posix() for top in ("workers/live", "functions/api/live")
-            for p in sorted((root / top).rglob("*.js")) if (root / top).is_dir()
-            and re.search(r"gc\.nh\.gov|gencourt", p.read_text(encoding="utf-8", errors="replace"), re.I)]
+    root, said = Path(root), []
+    for top in ("workers/live", "functions/api/live"):
+        d = root / top
+        for p in sorted(d.rglob("*")) if d.is_dir() else []:
+            if p.is_file() and p.suffix in (".js", ".mjs") and re.search(
+                    r"gc\.nh\.gov|gencourt", p.read_text(encoding="utf-8", errors="replace"), re.I):
+                said.append(p.relative_to(root).as_posix())
+    return said
 
 
 def _live_hours_meet(start, end, windows, margin):
@@ -79896,11 +79921,16 @@ def _live_sql(live_gen, dayfiles_from_db, fetch_past_db, refusal):
     through fill() and lit() alone. fetch_past_db.select_only's refused words
     are refused here, all but JOIN, which Q2's one LEFT JOIN of the roster
     needs (HISTORY_SQL's own). And no word of gc.nh.gov or gencourt in
-    workers/live/: the Worker never asks the web server.
+    workers/live/ or functions/api/live/: the live layer never asks the web
+    server.
 
     THE TEST HOURS of workers/live/test_mode.js, weekdays from TEST_HOURS[0]
     to TEST_HOURS[1] in New Hampshire, meet no window of refusal.NIGHT_WINDOWS
-    nor START_MARGIN_MINUTES before one, in standard time or daylight time."""
+    nor START_MARGIN_MINUTES before one, in standard time or daylight time.
+
+    Every rule is first tried on a fixture that breaks it alone, and must say
+    so in its own words, so that a rule which stopped catching anything fails
+    here along with a file that breaks it."""
     gen, sql_js, test_js = (Path("workers/live") / n for n in ("live.gen.js", "sql.js", "test_mode.js"))
     if not gen.is_file():
         return "skip", "workers/live/ is not here"
@@ -79962,32 +79992,44 @@ def _live_sql(live_gen, dayfiles_from_db, fetch_past_db, refusal):
     bad = [p for name, (sql, w) in statements.items()
            for p in _live_statement_problems(name, sql, views, w, refused)]
     assert not bad, "; ".join(bad[:6])
-    # The rule bites: a star, a varchar, a column the view lacks, a second statement, a literal.
-    for wrong in ("SELECT CAST(d.Description AS nvarchar(9)), *\nFROM Docket d",
-                  "SELECT CAST(d.Description AS varchar(9))\nFROM Docket d",
-                  "SELECT CAST(d.Nothing AS nvarchar(9))\nFROM Docket d",
-                  "SELECT CAST(d.Description AS nvarchar(9))\nFROM Docket d; DROP TABLE x",
-                  "SELECT CAST(d.Description AS nvarchar(9))\nFROM Docket d WHERE d.LSR = 'x'",
-                  "SELECT CAST(d.Description AS nvarchar(9))\nFROM Docket d WHERE d.LSR IN (SELECT 1)"):
-        assert _live_statement_problems("X", wrong, views, 1, refused), f"the statement rule lets through: {wrong}"
+    # Each rule bites, by its own words: a fixture that breaks it alone.
+    one = "SELECT CAST(d.Description AS nvarchar(9))\nFROM Docket d"
+    q2 = statements["Q2"][0]
+    for name, wrong, width, says in (
+            ("X", one.replace("nvarchar(9))", "nvarchar(9)), *"), 2, "a star"),
+            ("X", one.replace("nvarchar", "varchar"), 1, "is not cast to nvarchar"),
+            ("X", one.replace("Description", "Nothing"), 1, "which the view's columns do not include"),
+            ("X", one + "; SELECT 1", 1, "a statement end"),
+            ("X", one + " WHERE d.SessionYear = 'x'", 1, "carries the literal 'x'"),
+            ("X", one + " WHERE d.SessionYear = {EVIL}", 1, "a place no builder fills"),
+            ("X", one + " WHERE d.SessionYear IN (SELECT 1)", 1, "not one SELECT with one FROM"),
+            ("X", "SELECT CAST(x.Name AS nvarchar(9))\nFROM Sessions x", 1, "reads Sessions, which is not one of"),
+            ("X", one + " JOIN Docket e ON e.SessionYear = d.SessionYear", 1, "X joins"),
+            ("Q2", q2.replace("h.EmployeeNumber\n", "h.EmployeeNumber\n  LEFT JOIN legislators m "
+                                                   "ON m.Employeeno = h.EmployeeNumber\n"), 4, "Q2 joins"),
+            ("X", one.replace("CAST(d.Description", "CAST(LEN(d.Description)"), 1, "calls ['LEN']"),
+            ("X", one + "\nEXEC xp_cmdshell", 1, "says EXEC"),
+            ("X", one, 2, "returns 1 columns, and its reader takes 2")):
+        got = _live_statement_problems(name, wrong, views, width, refused)
+        assert any(says in p for p in got), f"the statement rule no longer says {says!r} of {wrong!r}: {got}"
 
     hours = re.search(r"export const TEST_HOURS = \[(\d+), (\d+)\];", test_js.read_text(encoding="utf-8"))
     assert hours, "test_mode.js no longer says TEST_HOURS where this reads it"
-    start, end = int(hours.group(1)) * 60, int(hours.group(2)) * 60
+    start, end = int(hours.group(1)), int(hours.group(2))
     margin = refusal.START_MARGIN_MINUTES
-    met = []
-    for offset in (4, 5):                                   # daylight time, standard time
-        for weekday in range(5):
-            for minute in range(start, end):
-                utc = minute + offset * 60
-                day, at = (weekday + utc // 1440) % 7, utc % 1440
-                for wd, (h1, m1), (h2, m2), what in refusal.NIGHT_WINDOWS:
-                    if (wd is None or wd == day) and h1 * 60 + m1 - margin <= at < h2 * 60 + m2:
-                        met.append(f"UTC{-offset:+d} {minute // 60:02d}:{minute % 60:02d} meets {what}")
-    assert not met, "the November test's hours meet the night's window: " + "; ".join(sorted(set(met))[:3])
+    # The rule bites: hours over the nightly, past midnight into Monday's
+    # weekly job, and a window's margin before it opens.
+    assert _live_hours_meet(4, 10, refusal.NIGHT_WINDOWS, margin), "the hours rule misses the nightly"
+    assert any("Monday" in m for m in _live_hours_meet(0, 2, refusal.NIGHT_WINDOWS, margin)), \
+        "the hours rule misses Monday's weekly job"
+    edge = ((None, (9, 10), (9, 20), "a window at 09:10 UTC"),)
+    assert _live_hours_meet(3, 4, edge, 30) and not _live_hours_meet(3, 4, edge, 0), \
+        "the hours rule no longer keeps the margin before a window"
+    met = _live_hours_meet(start, end, refusal.NIGHT_WINDOWS, margin)
+    assert not met, "the November test's hours meet the night's window: " + "; ".join(met[:3])
     return "ok", (f"live.gen.js current, its login probe_db.py's; the host production's alone; Q1, Q2 and "
                   f"Q3 cast every column and name only columns {whose} lists; the test's "
-                  f"{start // 60:02d}:00-{end // 60:02d}:00 misses the night's windows")
+                  f"{start:02d}:00-{end:02d}:00 misses the night's windows")
 
 
 # The sign-up box's daily or weekly drawn and sent by app.js under node, with

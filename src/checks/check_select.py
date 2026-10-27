@@ -81,7 +81,7 @@ SCAN_WORDS = ("ls-files",)
 # Whose change is a change to the runner itself.
 RUNNER = {"main", "check", "imp", "_run", "CHECKS"}
 
-FILE_RX = re.compile(r"[\w./-]*?[\w-]+\.(?:py|js|css|html|json|jsonl|csv|psv|txt|md|yml|yaml"
+FILE_RX = re.compile(r"[\w./-]*?[\w-]+\.(?:py|js|mjs|css|html|json|jsonl|csv|psv|txt|md|yml|yaml"
                      r"|bat|toml|xml|webmanifest)\b")
 IMPORT_RX = re.compile(r"^[ \t]*(?:from[ \t]+([A-Za-z_]\w*)|import[ \t]+([A-Za-z_][\w \t,.]*))",
                        re.M)
