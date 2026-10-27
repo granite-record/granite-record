@@ -468,8 +468,16 @@ def old_room(room):
 def meetings_of(c, recent, today):
     """The committee's meetings, newest first, each {"date", "time", "venue",
     "type", "chips", "notes", "video", "id"}; a meeting the database holds
-    twice is one. `recent` is {MeetingID: the Calendar's row}, whose venue
-    and recording are the Calendar's own reading of the meeting."""
+    twice is one. `recent` is {(CommitteeID, MeetingID): the Calendar's row},
+    whose venue and recording are the Calendar's own reading of the meeting.
+
+    ONE RECORDING, ONE MEETING (the Videos section's scout, 26 October 2026).
+    `recent` was keyed by MeetingID alone, and a MeetingID repeats across
+    committees and eras: the Cyanobacteria Mitigation Loan and Grant Fund
+    Task Force's meeting of 23 October 2026 lent its room and its recording
+    to the Nuclear Decommissioning Financing Committee's meeting of 14 June
+    2002, a recording eighteen years before the channels began. A row is this
+    meeting's only where it is this committee's and of this meeting's day."""
     out, seen = [], set()
     for r in c["meetings"]:
         try:
@@ -478,7 +486,9 @@ def meetings_of(c, recent, today):
             continue
         room, mtype = BC._where(r["MeetingLocation"])
         chips, notes = marks_of(r["webtext"], r["MeetingLocation"])
-        cal = recent.get(r["MeetingID"].strip()) or {}
+        cal = recent.get((c["cid"], r["MeetingID"].strip())) or {}
+        if cal.get("date") != when.date().isoformat():
+            cal = {}
         if cal:
             venue = cal["venue"]
         else:
@@ -676,6 +686,45 @@ def meetings_html(c, ms, today):
     return "".join(out)
 
 
+def videos_html(c, ms, ctx):
+    """THE VIDEOS SECTION (the owner, 26 October 2026: "Same goes for ...
+    study committees, commissions, etc that are livestreamed"): the
+    committee's recorded meetings as one player and its playlist, newest
+    first, drawn by app.js's videoView -- the renderer a committee's Videos
+    tab and a chamber's use -- from the rows this writes into the page, so
+    no file is added. Each row is a meeting this page lists with the
+    recording the Calendar matched to it (meetings_of): its day, the time it
+    was set for, its room and kind of meeting, the fold it opens (anchor) and
+    its day on the Calendar; and when the recording began and how long it
+    ran, where the index says. "" where no meeting has a recording: no
+    section. Without script the section says the meetings below each have
+    their player, which they do."""
+    rows, seen = [], set()
+    for m in ms:
+        f = ctx["facts"].get(m["video"]) or {}
+        # A stream the index has as still to come (no start, no length) is
+        # not listed until it has run.
+        if not m["video"] or m["video"] in seen or (f and not f.get("streamed")):
+            continue
+        seen.add(m["video"])
+        rows.append({"id": m["video"], "date": m["date"], "time": m["time"],
+                     "venue": PA.place(m["venue"]), "type": m["type"], "anchor": m["id"],
+                     **({"calendar": f"calendar?week={BC.week_key(datetime.date.fromisoformat(m['date']))}"
+                                     f"&day={m['date']}&committee={quote_plus(c['name'])}"}
+                        if m["date"] >= BC.FROM else {}),
+                     **({"began": f["began"]} if f.get("began") else {}),
+                     **({"seconds": f["seconds"]} if f.get("seconds") else {})})
+    if not rows:
+        return ""
+    data = json.dumps({"kind": "study", "who": c["name"], "key": c["cid"],
+                       "path": "/" + BC.study_page(c["cid"]).removesuffix(".html"), "rows": rows},
+                      separators=(",", ":"), ensure_ascii=False).replace("</", "<\\/")
+    return (C.section("Videos", '<div class="vwhere" data-vwview="gr-videos"><p class="src">Each '
+                      "recorded meeting below has its own player.</p></div>"
+                      f'<script type="application/json" id="gr-videos">{data}</script>', "videos")
+            .replace('<section class="w4"', '<section class="w4 w4wide"', 1))
+
+
 def facts_of(c, by, described, ms, ctx, today):
     nleg = len(by["S"]) + len(by["H"])
     nother = sum(g["n"] for g in described)
@@ -759,6 +808,10 @@ def page_body(c, ctx, today, path):
     if rep:
         parts.append(C.section("Report", rep, "report"))
     parts.append(C.section("Members", members_html(c, by, described), "members"))
+    vids = videos_html(c, ms, ctx)
+    if vids:
+        parts.append(vids)
+        ctx["videos"] += 1
     parts.append(C.section("Meetings", meetings_html(c, ms, today), "meetings"))
     return head + '<div class="w4s ssbody">' + "".join(parts) + "</div>"
 
@@ -930,11 +983,15 @@ def context(site, base, today):
     if rows:
         on_bills = {(r.get("video_id") or "").strip() for r in proceedings.load()} - {""}
         BC.study_recordings(rows, BC.recordings_by_day(), on_bills, today.isoformat())
-    recent = {r["mid"]: r for r in rows if r.get("mid")}
+    # By committee and meeting: a MeetingID alone repeats (meetings_of).
+    recent = {(r.get("cid") or "", r["mid"]): r for r in rows if r.get("mid")}
     return {"site": site, "base": base, "legs": legs, "former": former, "bills": bills,
             "headings": headings, "chapters": chapters, "recent": recent,
+            # When each recording began and how long it ran, for the Videos
+            # section (videos_html).
+            "facts": proceedings.video_facts() if rows else {},
             "vocab": Words(known), "parted": Counter(), "statutes": 0, "chips": 0,
-            "left": 0, "meetings": 0, "recorded": 0}
+            "left": 0, "meetings": 0, "recorded": 0, "videos": 0}
 
 
 def main():
@@ -978,7 +1035,8 @@ def main():
           + (f"; sitemap: {added} added, {dropped} taken out" if added or dropped else ""))
     print(f"  {ctx['chips']:,} legislators' seats drawn as their chips; {ctx['left']:,} seats of "
           "members who have left the General Court left off")
-    print(f"  {ctx['meetings']:,} meetings, {ctx['recorded']:,} with their recording; "
+    print(f"  {ctx['meetings']:,} meetings, {ctx['recorded']:,} with their recording, on "
+          f"{ctx['videos']} pages with a Videos section; "
           f"{ctx['statutes']} committees' statutes linked to their Laws page")
     if ctx["parted"]:
         print(f"  {sum(ctx['parted'].values())} words the copy ran together parted, the "

@@ -9011,7 +9011,8 @@ const VW_DOT='<span aria-hidden="true"> &middot; </span><span class="sr">, </spa
 const vwWhen=r=>[r.began?clock(r.began):"",r.seconds?vwLength(r.seconds):""].filter(Boolean);
 function vwPlayer(o,r){
   const pid=o.pid(r), day=dateWords(r.date), what=o.what||o.who;
-  const cap=[`<b>${esc(o.who)}</b>`,esc(day)].concat(vwWhen(r).map(esc));
+  // A date, a time or a length is not broken across two lines.
+  const cap=[`<b>${esc(o.who)}</b>`].concat([day,...vwWhen(r)].map(x=>`<span class="vwn">${esc(x)}</span>`));
   return `<div class="player vwplay" data-player="${esc(pid)}"><button type="button" class="pstub"`
     +` data-title="${esc(recTitle(what,r.date))}" aria-label="${esc(`Play the recording of ${what}, ${day}`)}"`
     +` data-embed="${esc(r.id)}|0|${esc(pid)}"><span>${icon("play")}</span><span>Play the recording</span></button>`
@@ -9019,13 +9020,15 @@ function vwPlayer(o,r){
       esc(r.id)}" target="_blank" rel="noopener">On YouTube</a></p></div></div>`;
 }
 const vwDetail=r=>typeof r.detail==="function"?r.detail():String(r.detail||"");
+// A row's second line is text, or its parts, which take the middle dot.
+const vwLine=l=>Array.isArray(l)?l.filter(Boolean).map(esc).join(VW_DOT):esc(l||"");
 function vwRow(o,r,i,cap){
-  const when=vwWhen(r);
+  const when=vwWhen(r), line=vwLine(r.line);
   return `<li${i>=cap?' class="vwrest"':""}><a class="vwrow" href="${esc(o.href(r.id))}" data-vwpick="${
       esc(r.id)}"${r.id===o.chosen?' aria-current="true"':""}><span class="vwd">${esc(dateWords(r.date))}</span>${
     when.length?`<span class="vwt"><span class="sr">, </span>${when.map(esc).join(VW_DOT)}</span>`:""}${
-    r.kinds||r.line?`<span class="vwb"><span class="sr">, </span>${r.kinds||""}${r.kinds&&r.line?" ":""}${
-      r.line?`<span class="vwl">${esc(r.line)}</span>`:""}</span>`:""}</a></li>`;
+    r.kinds||line?`<span class="vwb"><span class="sr">, </span>${r.kinds||""}${r.kinds&&line?" ":""}${
+      line?`<span class="vwl">${line}</span>`:""}</span>`:""}</a></li>`;
 }
 function videoView(o){
   const rows=o.rows||[];
@@ -9216,6 +9219,58 @@ document.addEventListener("click",e=>{
   dayLanded="";
   renderPage();
 });
+
+// ------------------------------------- a page that carries its own recordings
+/* A STUDY OR STATUTORY COMMITTEE'S VIDEOS SECTION (build_study_committees,
+   videos_html) and a chamber's Videos tab (build_full_sessions) carry their
+   rows as JSON in the page, under a slot [data-vwview] naming it; this draws
+   the view there when the page loads. Without script the slot keeps its one
+   line, and each meeting or day below keeps its own player. The address can
+   name a recording (#v-<id>), which is then the one chosen, and the view is
+   brought into view; /videos at the end of a study committee's address
+   (the committee rewrite serves it) is its Videos section. */
+// A study committee's rows: the room and the kind of meeting under the day,
+// and under the player the time it was set for where the recording's own
+// start is not known, and the way to the meeting on this page and on the
+// Calendar.
+function studyVideoRows(d){
+  return (d.rows||[]).map(r=>({id:r.id,date:r.date,began:r.began,seconds:r.seconds,
+    line:[r.venue,r.type],
+    detail:()=>{
+      const facts=[r.venue,r.type,!r.began&&r.time?`Set for ${clock(r.time)}`:""].filter(Boolean);
+      const here=location.pathname+location.search;
+      const links=[`<a href="${esc(here)}#${esc(r.anchor)}">This meeting</a>`]
+        .concat(r.calendar?[`<a href="${esc(r.calendar)}">This meeting on the Calendar</a>`]:[]);
+      return (facts.length?`<p class="vwkinds">${facts.map(esc).join(VW_DOT)}</p>`:"")
+        +`<p class="src vwlinks">${links.join(VW_DOT)}</p>`;}}));
+}
+// The view each kind of page draws from its JSON: `d` and the slot.
+const VW_STATIC={
+  study:d=>{const rows=studyVideoRows(d), n=rows.length;
+    return {who:d.who,what:`the ${d.who}`,key:`ss|${d.key}`,rows,
+      heading:`${n.toLocaleString()} recording${n===1?"":"s"}, newest first`,
+      href:id=>`${d.path}/videos#v-${id}`,pid:r=>`v${String(r.date).replace(/-/g,"")}_${r.id}`,
+      source:"The recordings are the General Court&rsquo;s own, from its House and Senate YouTube channels."};}};
+function staticVideos(){
+  document.querySelectorAll("[data-vwview]").forEach(slot=>{
+    const node=document.getElementById(slot.dataset.vwview);
+    let d=null;
+    try{d=node?JSON.parse(node.textContent):null;}catch(_){d=null;}
+    const make=d&&VW_STATIC[d.kind];
+    if(!make)return;
+    const o=make(d,slot), want=vwWanted();
+    if(o.rows.some(r=>r.id===want)){o.chosen=want;vwTried=vwLanded=want;}
+    slot.innerHTML=videoView(o);
+    if(o.chosen===want){
+      const a=[...slot.querySelectorAll("a[data-vwpick]")].find(x=>x.dataset.vwpick===want);
+      vwListShow(a);
+      slot.scrollIntoView({block:"start"});
+    }else if(/\/videos\/?$/.test(location.pathname)){
+      const sec=slot.closest("section");
+      if(sec)sec.scrollIntoView({block:"start"});
+    }
+  });
+}
 
 // What the committee reported on a bill, for its card on the Bills tab: each
 // act, with the day the docket dates it and a link to that meeting.
@@ -11103,3 +11158,9 @@ document.addEventListener("keydown",e=>{
   const s=back&&back.querySelector("summary");
   if(s&&s.focus)s.focus();
 });
+
+// A PAGE THAT CARRIES ITS OWN RECORDINGS -- a study committee's Videos section,
+// a chamber's Videos tab -- draws them once the whole of this script has run
+// (staticVideos): the parts of the view are defined above, after the branch
+// that takes the search down on such a page.
+if(window.GR_STATIC)staticVideos();

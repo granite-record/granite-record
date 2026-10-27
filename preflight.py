@@ -32832,7 +32832,11 @@ FIXTURE_VIDEOS = {"house": [
     ("cmteSoonV02", "House Commerce (11/30/2026)", "yes", "Commerce", "2026-11-30", "", "P0D"),
     ("cmteOldV003", "Commerce 1/26/21", "NO", "", "", "2021-01-26 10:00:00", "PT1H"),
     ("financeDiv2", "House Finance - Division II (02/24/2026)", "yes", "Finance - Division II",
-     "2026-02-24", "2026-02-24 13:00:00", "PT2H")]}
+     "2026-02-24", "2026-02-24 13:00:00", "PT2H"),
+    # The fixture commission's meeting of 10 March 2026, which the Calendar's
+    # matcher gives it by name and day (build_calendar.study_recordings).
+    ("agingVid001", "State Commission on Aging (03/10/2026)", "yes", "State Commission on Aging",
+     "2026-03-10", "2026-03-10 10:02:11", "PT1H2M")]}
 
 
 def _fixture_videos(root):
@@ -33246,7 +33250,14 @@ def _study_fixture(root):
              dict(MeetingID=12, CommitteeID=1451, MeetingDate="01/11/1993 10:00:00",
                   MeetingLocation="RM103, ST"),
              dict(MeetingID=7003, CommitteeID=44, MeetingDate="03/11/2026 10:00:00",
-                  MeetingLocation="LOB Room 103  Regular Meeting")]
+                  MeetingLocation="LOB Room 103  Regular Meeting"),
+             # ANOTHER COMMITTEE'S MEETING UNDER THE SAME MeetingID, eighteen
+             # years earlier, as the Nuclear Decommissioning Financing
+             # Committee's of 2002 is beside a task force's of 2026: it takes
+             # nothing of the commission's meeting -- not its room, not its
+             # recording (build_study_committees.meetings_of).
+             dict(MeetingID=7001, CommitteeID=1740, MeetingDate="06/14/2002 10:00:00",
+                  MeetingLocation="LOB Room 104  Regular Meeting")]
     (db / "StatStudMeetings.psv").write_text(
         "\n".join(row(SC.MEETINGS, **m) for m in meets) + "\n", encoding="utf-8")
     (db / "vStatStudTemp.psv").write_text(
@@ -63719,6 +63730,92 @@ def _clean_links(html):
     return shell.clean_links(html)
 
 
+@check("build", "a study or statutory committee's recorded meetings are a Videos section between "
+       "Members and Meetings, drawn by the one Videos view, and a recording plays on its own "
+       "committee's meeting of its own day and no other", needs=("build_study_committees",))
+def _study_committee_videos(SC):
+    """The owner, 26 October 2026: "Same goes for session days, or study
+    committees, commissions, etc that are livestreamed from those channels."
+    build_study_committees.videos_html writes the committee's recorded
+    meetings as rows in the page, full width under its own heading
+    (.w4wide), and app.js's videoView draws them; without script the section
+    says the meetings below each have their player. And ONE RECORDING, ONE
+    MEETING: the Calendar's rows were keyed by MeetingID alone, which
+    repeats, so the Nuclear Decommissioning Financing Committee's meeting of
+    14 June 2002 played a task force's recording of 23 October 2026 and
+    stood in its room. The fixture's study committee has a meeting of 2002
+    under the commission's MeetingID: it takes nothing, and no study page
+    puts a recording on a meeting before the channels began."""
+    import about_figures as AF
+    c = {"cid": "85", "meetings": [
+        {"MeetingID": "7001", "MeetingDate": "06/14/2002 10:00:00", "MeetingLocation": "RM100,LOB",
+         "webtext": ""},
+        {"MeetingID": "7002", "MeetingDate": "03/10/2026 10:00:00",
+         "MeetingLocation": "LOB Room 101  Regular Meeting", "webtext": ""}]}
+    recent = {("1741", "7001"): {"date": "2002-06-14", "venue": "State House 100", "video_id": "wL_4WYC1M6g"},
+              ("85", "7002"): {"date": "2026-03-11", "venue": "Elsewhere", "video_id": "otherDay001"}}
+    got = {m["date"]: (m["video"], m["venue"]) for m in SC.meetings_of(c, recent, None)}
+    assert got["2002-06-14"][0] == "" and "State House 100" not in got["2002-06-14"][1] \
+        and got["2026-03-10"][0] == "" and got["2026-03-10"][1] != "Elsewhere", (
+            f"a meeting takes another committee's, or another day's, room or recording: {got}")
+    recent[("85", "7002")]["date"] = "2026-03-10"
+    got = {m["date"]: m["video"] for m in SC.meetings_of(c, recent, None)}
+    assert got == {"2002-06-14": "", "2026-03-10": "otherDay001"}, (
+        f"a meeting does not take its own committee's recording of its own day: {got}")
+    absent = [x for x in CHAIN_NEEDS if not _paths.locate(x).exists()]
+    if absent:
+        return "ok", "a recording plays on its own meeting; not here to build the fixture: " + ", ".join(absent)
+    shared, _base, _ran, _days = _fixture_site_shared()
+    site = shared / "site"
+    t = (site / "committee" / "ss1451.html").read_text(encoding="utf-8")
+    order = [m.group(1) for m in re.finditer(r'<section class="w4[^"]*" id="([a-z]+)"', t)]
+    assert order[-3:] == ["members", "videos", "meetings"], (
+        f"the commission's sections are {order}: Videos is not between Members and Meetings")
+    sec = t[t.index('id="videos"'):t.index('id="meetings"')]
+    assert sec.startswith('id="videos"><h2 class="w4h">Videos</h2>') and \
+        '<section class="w4 w4wide" id="videos">' in t and \
+        '<div class="vwhere" data-vwview="gr-videos"><p class="src">Each recorded meeting below has ' \
+        'its own player.</p></div>' in sec, "the Videos section is not full width, with its line for no script"
+    data = json.loads(re.search(r'<script type="application/json" id="gr-videos">(.*?)</script>', sec,
+                                re.S).group(1))
+    want_row = {"id": "agingVid001", "date": "2026-03-10", "time": "10:00",
+                "venue": "Legislative Office Building 101", "type": "Regular meeting",
+                "anchor": "day-2026-03-10",
+                "calendar": "calendar?week=2026-W11&day=2026-03-10&committee=State+Commission+on+Aging",
+                "began": "10:02", "seconds": 3720}
+    assert data == {"kind": "study", "who": "State Commission on Aging", "key": "1451",
+                    "path": "/committee/ss1451", "rows": [want_row]}, f"the section's rows read {data}"
+    early, stray = [], []
+    for f in sorted((site / "committee").glob("ss*.html")):
+        page = f.read_text(encoding="utf-8")
+        for day, body in re.findall(r'<details class="cmeet" id="day-([0-9-]{10})[^"]*"[^>]*>(.*?)</details>',
+                                    page, re.S):
+            if "data-embed=" in body and day < AF.STREAM_START:
+                early.append(f"{f.stem} {day}")
+        if f.stem != "ss1451" and 'id="videos"' in page:
+            stray.append(f.stem)
+    assert not early, f"a study meeting before the channels began plays a recording: {early}"
+    assert not stray, f"a committee with no recorded meeting has a Videos section: {stray}"
+    drawn = _app_js('(location.pathname="/committee/ss1451/videos", scope.videoView(scope.VW_STATIC.study('
+                    + json.dumps(data) + ")))", names=("videoView", "VW_STATIC"))
+    if drawn is None:
+        return "ok", "the commission's Videos section is written; node is not here to draw it"
+    import html as _html
+    flat = _html.unescape(re.sub(r"<[^>]+>", "", drawn))
+    assert "<iframe" not in drawn and 'data-embed="agingVid001|0|v20260310_agingVid001"' in drawn, (
+        "the section's player is not a still of its recording")
+    assert "State Commission on Aging · , Mar 10, 2026 · , 10:02 AM · , 1 h 2 min · , On YouTube" in flat \
+        and "1 recording, newest first" in flat, f"the section draws {flat[:300]!r}"
+    assert '<a href="/committee/ss1451/videos#day-2026-03-10">This meeting</a>' in drawn and \
+        '<a href="calendar?week=2026-W11&amp;day=2026-03-10&amp;committee=State+Commission+on+Aging">' \
+        'This meeting on the Calendar</a>' in drawn and \
+        'href="/committee/ss1451/videos#v-agingVid001"' in drawn, (
+            "the section does not lead to its meeting on the page and on the Calendar, or its row to itself")
+    return "ok", ("a meeting takes only its own committee's recording of its own day; the "
+                  "commission's Videos section between Members and Meetings, full width, drawn as a "
+                  "still and its playlist; no study meeting before May 2020 plays one")
+
+
 @check("build", "the study committees' record is read as it was written: a lost break parted only "
        "where the record says so, an old room read as its room, a kind from its name, and the "
        "statute and the session law put back where the record swapped them",
@@ -75590,7 +75687,7 @@ def _committee_recordings(BCM, P):
     assert got.get("H34") == [{"id": "financeDiv2", "date": "2026-02-24", "term": "2025-2026",
                                "began": "13:00", "seconds": 7200, "label": "Division II"}], (
         f"House Finance's division is listed as {got.get('H34')}")
-    assert "H99" not in got and dict(found) == {"by_bills": 2, "by_titles": 2}, (
+    assert "H99" not in got and dict(found) == {"by_bills": 2, "by_titles": 2, "no_page": 1}, (
         f"a page with no page, or the counts: {dict(found)}")
     # A recording a row carries is not added to a page by its title.
     got2, _ = BCM.committee_recordings({}, {"cmteTitleV1"}, facts, code_of, pages)

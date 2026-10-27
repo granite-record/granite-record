@@ -6905,10 +6905,12 @@ grid-template-areas:"main" "det" "side" "src"}
 .vwcap{display:block}
 .vwcap p{margin:0;color:var(--ink-2);line-height:1.5}
 .vwcap b{color:var(--ink);font-weight:600}
+.vwcap .vwn{white-space:nowrap}
 .vwdet{grid-area:det;min-width:0}
-.vwkinds{display:flex;flex-wrap:wrap;gap:var(--sp-2) var(--sp-4);align-items:center;
-margin:0 0 var(--sp-4);font-size:var(--t-ui);color:var(--ink-2)}
-.vwchips{display:inline-flex;flex-wrap:wrap;gap:var(--sp-2)}
+/* What the recording is of, in a line: its kinds as chips, then the room or
+   the kind of meeting in words. */
+.vwkinds{margin:0 0 var(--sp-4);font-size:var(--t-ui);line-height:1.8;color:var(--ink-2)}
+.vwkinds .chip{margin-right:var(--sp-3)}
 /* No bill tied to it: said once, here, in muted text (review, 3). */
 .vwnone{margin:0;font-size:var(--t-ui);color:var(--ink-2)}
 .vwbills{list-style:none;margin:0;padding:0}
@@ -6945,8 +6947,6 @@ color:var(--ink);text-decoration:none}
    they fit and wraps as words do where they do not. */
 .vwb{grid-column:1 / -1;font-size:var(--t-sm);line-height:1.6;color:var(--ink-2)}
 .vwb .chip{margin-right:var(--sp-3);vertical-align:baseline}
-/* In the order written: a phone's calendar moves its chips last (.calkind). */
-.vwkinds .calkind{order:0}
 .vwall{margin-top:var(--sp-3)}
 .vwsrc{grid-area:src;margin:0}
 /* On paper every row prints: this is a screen's. */
@@ -7201,6 +7201,11 @@ font-size:var(--t-ui)}
 @media (min-width:60em){
   .w4{display:grid;grid-template-columns:minmax(10rem,1fr) minmax(0,51.1875rem);column-gap:2rem;align-items:start}
   .w4h{margin:0;padding-top:var(--sp-1)}
+  /* A SECTION THAT TAKES THE PAGE'S WIDTH, its heading over it as on a
+     phone: a study committee's Videos, whose player in the margin's grid
+     had 455px of 1,132 (the Videos view, 26 October 2026). */
+  .w4.w4wide{display:block}
+  .w4wide .w4h{margin:0 0 var(--sp-5)}
 }
 
 /* A MEMBER'S TERM AT A GLANCE (item 7): the term's control, then its
