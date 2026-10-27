@@ -29,7 +29,11 @@ committees' meetings, the current term's data, and the statutes on the nights
 a new law takes effect), next session's bill requests (fetch_lsrs.py) and the
 two index pages of its calendars and journals (fetch_calendar_archive.py
 --listing). Every other network step build_all has (bill pages, testimony,
-committee pages) stays out of the nightly; the build runs --local.
+committee pages) stays out of the nightly; the build runs --local. Sunday
+night's weekly job (weekly(), on GitHub's machine only) asks for more: the
+database's views of the committee rosters, the members who have left, the
+study committees and the statutes, then two pages of gc.nh.gov for
+committees.json.
 
 IT ASKS ONLY WHEN NOTHING ELSE IS ASKING. This address has blocked the project
 twice, the second time for two fetches at once, and the bill-text lane runs for
@@ -145,7 +149,8 @@ night itself does is here, and what differs on that machine is behind --runner:
                       morning triage pulls them
   the log             the whole log to logs/nightly-<date>.log, which goes to
                       R2; GitHub's log, which is public, gets each step's name
-                      and result, and a failing step's last lines
+                      and result, a failing step's last lines, and preflight's
+                      line of its slowest checks (SLOWEST_LINE)
   the verdict         archive/last-night.json (R2's state/last-night.json):
                       what the night did and whether it was clean, finished
                       by --close with the workflow's own step results. A dry
@@ -1222,13 +1227,38 @@ def run(args, label, cwd=None):
     for ln in proc.stdout:
         say("  " + ln.rstrip(), echo=False)
     proc.wait()
-    if QUIET and proc.returncode:
+    if QUIET:
+        public = slowest_said(args, LOG[mark:])
         # GitHub's log says why a step failed without anyone opening the
         # whole log: its failure lines and its last few.
-        for ln in failure_lines(LOG[mark:]):
+        if proc.returncode:
+            public += [ln for ln in failure_lines(LOG[mark:]) if ln not in public]
+        for ln in public:
             print(ln, flush=True)
     say(f"  ({time.time() - t0:.0f}s, exit {proc.returncode})")
     return proc.returncode
+
+
+# PREFLIGHT'S SLOWEST CHECKS IN GITHUB'S LOG (27 October 2026). Every
+# preflight run ends on a line naming its ten slowest checks
+# (preflight._slowest), so that growth like the night's --code, from 110 s on
+# 9 October to 285 s on 26 October, is seen. But with --runner a step's own
+# lines go to the log file only (say), and GitHub's job log, where that growth
+# went unseen, showed the step's header and its seconds. So that one line of
+# a preflight step is printed there too, and only in exactly its shape:
+# counts, seconds and the names of preflight's own functions, nothing a check
+# read. preflight's _slowest_reaches_the_job_log holds the two together.
+SLOWEST_LINE = re.compile(
+    r"slowest \d+ of \d+ checks, of \d+ s in all \(\d+ s of it compiling and loading "
+    r"preflight\.py\): [A-Za-z_]\w* \d+\.\d s(?:; [A-Za-z_]\w* \d+\.\d s)*", re.ASCII)
+
+
+def slowest_said(args, lines):
+    """The lines of `lines`, a step's stretch of LOG, that are preflight's
+    line of its slowest checks, where the step `args` runs preflight.py."""
+    if Path(args[0]).name != "preflight.py":
+        return []
+    return [ln for ln in lines if SLOWEST_LINE.fullmatch(ln.strip())]
 
 
 def failure_lines(lines, tail=6):

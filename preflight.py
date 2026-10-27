@@ -216,7 +216,7 @@ def _sealed_run(cmd, env=None, **kw):
         return seal.run(cmd, env=env, **kw)
 
 
-def check(group, name, needs=(), expect_fail=None):
+def check(group, name, needs=(), expect_fail=None, last=False):
     """Register a check. `needs` names modules that must import for it to run.
 
     `expect_fail` is for a check written AHEAD of the change that makes it
@@ -227,12 +227,22 @@ def check(group, name, needs=(), expect_fail=None):
     mark that outlived its change would excuse the next regression of what
     the check now holds. An exception other than an assertion is an ERROR
     either way, because a check that crashes has not found the failure it
-    expects. See _settle()."""
+    expects. See _settle().
+
+    `last` runs it after every check without the mark, wherever in this file
+    it is defined (_in_order): for a check of what the run as a whole left
+    behind, which a check added below it later would otherwise escape."""
     def deco(fn):
         CHECKS.append({"group": group, "name": name, "fn": fn, "needs": needs,
-                       "expect_fail": expect_fail})
+                       "expect_fail": expect_fail, "last": last})
         return fn
     return deco
+
+
+def _in_order(checks):
+    """`checks` in the order main() runs them: as defined, but those marked
+    `last` after all the rest."""
+    return [c for c in checks if not c.get("last")] + [c for c in checks if c.get("last")]
 
 
 def _settle(status, msg, expect_fail):
@@ -110502,18 +110512,59 @@ def _empty_view_read(FT, SHR, BTD):
 # `preflight.py --code` took 110 s on 9 October and 285 s on 26 October, and
 # nobody saw it grow: the night's log gave the step's seconds and never which
 # checks took them. Now every run says its ten slowest, by function, under its
-# count, which the night's log carries for --code and for --built; and every
-# check's seconds go into the run's record (handoff.record_run's "timings")
-# and into --built's list (BUILT_OUT, "seconds").
+# count, which the night prints in GitHub's own log as well as its log file
+# for --code and for --built (nightly.SLOWEST_LINE); and every check's seconds
+# go into the run's record (handoff.record_run's "timings") and into --built's
+# list (BUILT_OUT, "seconds").
+#
+# The seconds in all are the whole run's, and say how many of them came
+# before main() began (_loading): compiling this file, 14 s and more and
+# growing faster than the file does (the codebase review, 26 October 2026),
+# and defining its checks. main()'s own clock starts after both: a run the
+# review of this branch timed at 778 s said 754.
 SLOWEST = 10
 
 
-def _slowest(took, wall, n=SLOWEST):
+def _slowest(took, wall, loading, n=SLOWEST):
     """The line naming the `n` slowest of `took`, [(seconds, check)], slowest
-    first, with how many ran and the run's seconds in all (`wall`)."""
+    first, with how many ran and the run's seconds in all (`wall`), `loading`
+    of them before main() began."""
     top = sorted(took, key=lambda x: -x[0])[:n]
-    return (f"slowest {len(top)} of {len(took)} checks, of {wall:.0f} s in all: "
+    return (f"slowest {len(top)} of {len(took)} checks, of {wall:.0f} s in all "
+            f"({loading:.0f} s of it compiling and loading preflight.py): "
             + "; ".join(f"{c['fn'].__name__} {s:.1f} s" for s, c in top))
+
+
+def _loading(began):
+    """The seconds this process ran before `began`, main()'s start by
+    time.time(): Python starting, compiling this file and running it down to
+    main(). Linux's /proc says when the process began. Elsewhere, Windows
+    among them, it is the CPU seconds its main thread has used, which on a
+    busy machine run a little behind the clock (13.1 against 13.9 s for the
+    compile alone, on a loaded Linux box) -- and the same where /proc gives
+    an answer that cannot be right."""
+    import time
+    # The main thread's: it began with the process, so its CPU seconds can be
+    # no more than the process's seconds so far, as all threads' could.
+    cpu = time.thread_time()
+    try:
+        start = _began_from(Path("/proc/self/stat").read_text(encoding="ascii"),
+                            Path("/proc/uptime").read_text(encoding="ascii"),
+                            os.sysconf("SC_CLK_TCK"), time.time())
+    except (OSError, ValueError, IndexError, AttributeError):
+        return cpu
+    # No sooner than the CPU it used allows, nor longer ago than a day.
+    return began - start if cpu - 0.5 <= began - start < 86400 else cpu
+
+
+def _began_from(stat, uptime, hz, now):
+    """When a process began, by the clock that reads `now`: from its
+    /proc/<pid>/stat, whose 22nd field is the ticks from boot to its start
+    (counted from the last ")", because the name in field 2 may hold spaces
+    and parentheses), /proc/uptime's seconds since boot, and `hz` ticks a
+    second."""
+    ticks = int(stat.rsplit(")", 1)[1].split()[19])
+    return now - (float(uptime.split()[0]) - ticks / hz)
 
 
 def main():
@@ -110563,6 +110614,7 @@ def main():
     import time as _time
     handoff = imp("handoff")
     began, tree = _time.time(), (handoff.tree_state() if handoff else (None, None))
+    loading = _loading(began)
     data = handoff.data_state() if handoff else None
     print("=" * 74)
     print(f"preflight   {Path('.').resolve()}")
@@ -110575,7 +110627,7 @@ def main():
         handoff = None
 
     results, group, built, took = [], None, [], []
-    for c in CHECKS:
+    for c in _in_order(CHECKS):
         if a.code and c["group"] == "data":
             continue
         if a.data and c["group"] != "data":
@@ -110639,7 +110691,7 @@ def main():
     print("\n" + "=" * 74)
     print(f"{len(ok)} passed, {len(bad)} failed, {len(skipped)} skipped"
           + (f", {len(expected)} expected to fail" if expected else ""))
-    print(_slowest(took, _time.time() - began))
+    print(_slowest(took, loading + _time.time() - began, loading))
     if bad:
         print("\nWhat is broken:")
         for g, n, s, m in bad:
@@ -111834,29 +111886,40 @@ def _published_scripts_run_the_same(BP, SJ):
 
 # ---- what a run leaves behind, and what it says of its time (26 October 2026)
 #
-# AFTER _published_scripts_run_the_same, and last, ON PURPOSE: the first of
-# these counts the machine watches every check before it left going.
+# The first of these counts the machine watches every other check of the run
+# left going, so it is marked `last`: main() runs it after all of them,
+# wherever a check is added in this file (_in_order).
 
 @check("pipeline", "a run of preflight leaves no machine watch going: nightly.main() stops the "
        "one it starts on GitHub's machine however it returns, and no check before this one "
-       "left one", needs=("nightly",))
+       "left one", needs=("nightly",), last=True)
 def _no_watch_left(NI):
     """nightly.machine_watch() started a thread that printed a [machine ...]
     line once a minute and had no way to stop. Every check that ran the night
     or the week in this process left one behind, printing into whatever came
     next: 222 of them after one --code run (the codebase review, 26 October
     2026). main() stops it now however it returns (nightly._watch_ends).
-    Here the week runs with weekly() replaced by one that counts the watches
-    going -- the one main() started, and no other -- and none is going once
-    main() has returned; and none was going before, from any check this run
-    ran ahead of this one, which is why this registers last."""
+    Held here, in this order, so that each failure gives its own reason: no
+    watch is going as this begins, which in a run of the suite is every other
+    check's leaving (this one is marked `last`, and main() runs it after all
+    of them, wherever they are defined); then the week runs with weekly()
+    replaced by one that counts the watches going -- the one main() started,
+    and no other -- and none is going once main() has returned."""
     import contextlib
+    import inspect
     import io
     import threading
+
+    order = _in_order(CHECKS)
+    assert order[-1]["fn"] is _no_watch_left and "_in_order(CHECKS)" in inspect.getsource(main), (
+        f"main() runs {order[-1]['fn'].__name__} after this one, or no longer runs the checks in "
+        "_in_order's order: what that one leaves going is never counted")
 
     def going():
         return [t for t in threading.enumerate() if t.name == "machine-watch" and t.is_alive()]
     before, seen = going(), []
+    assert not before, (f"{len(before)} machine watches were left going by the checks this run "
+                        "ran before this one: something starts one that main() does not stop")
     here = os.getcwd()
     tmp = Path(tempfile.mkdtemp(prefix="gr-watch-"))
     saved = (NI.weekly, NI.QUIET, NI.LOG, sys.argv)
@@ -111878,14 +111941,11 @@ def _no_watch_left(NI):
         NI.weekly, NI.QUIET, NI.LOG, sys.argv = saved
         shutil.rmtree(tmp, ignore_errors=True)
     after = going()
-    assert seen == [len(before) + 1], (
-        f"the week saw {seen} machine watches going, with {len(before)} going before main() "
-        f"ran: main() did not start its one (exit {code})")
+    assert seen == [1], (f"the week saw {seen} machine watches going, with none going before "
+                         f"main() ran: main() did not start its one (exit {code})")
     assert not after, (f"{len(after)} machine watches are still going after nightly.main() "
                        "returned: it no longer stops the one it starts (_watch_ends)")
-    assert not before, (f"{len(before)} machine watches were left going by the checks this run "
-                        "ran before this one: something starts one that main() does not stop")
-    return "ok", "the week ran with its watch going, and none is going after it or was before it"
+    return "ok", "none was going before it, the week ran with its watch, and none is going after"
 
 
 @check("files", "every run ends on its ten slowest checks, and the run's record keeps every "
@@ -111893,24 +111953,56 @@ def _no_watch_left(NI):
 def _slowest_said(H):
     """EVERY RUN ENDS ON ITS SLOWEST CHECKS (above main()). Held here: the
     line names the ten slowest of a run, slowest first, by function and
-    seconds, with how many ran and the run's seconds in all; main() prints it
-    under the count and hands every check's seconds to handoff.record_run;
-    and the record keeps them as "timings", one for each check in its order,
-    beside "checks" as handoff.last_run reads it."""
+    seconds, with how many ran and the whole run's seconds, and how many of
+    those came before main() began; main() prints it under the count and
+    hands every check's seconds to handoff.record_run; and the record keeps
+    them as "timings", one for each check in its order, beside "checks" as
+    handoff.last_run reads it. And the seconds before main(): read right from
+    a fixture /proc line whose process name holds spaces and parentheses;
+    where this machine has a /proc, read from it for this process, no fewer
+    than the CPU its main thread has used and no more than a day, and taken
+    by _loading rather than its fallback; and elsewhere that fallback, the
+    main thread's CPU seconds."""
     import inspect
+    import time
     import types
 
     def fake(name):
         return {"fn": types.SimpleNamespace(__name__=name)}
     took = [(float(i), fake(f"_c{i}")) for i in (3, 14, 1, 5, 9, 2, 6, 5, 3, 5, 8, 9, 7, 9, 3, 2)]
-    line = _slowest(took, 123.4)
-    want = ("slowest 10 of 16 checks, of 123 s in all: _c14 14.0 s; _c9 9.0 s; _c9 9.0 s; "
-            "_c9 9.0 s; _c8 8.0 s; _c7 7.0 s; _c6 6.0 s; _c5 5.0 s; _c5 5.0 s; _c5 5.0 s")
+    line = _slowest(took, 123.4, 21.6)
+    want = ("slowest 10 of 16 checks, of 123 s in all (22 s of it compiling and loading "
+            "preflight.py): _c14 14.0 s; _c9 9.0 s; _c9 9.0 s; _c9 9.0 s; _c8 8.0 s; _c7 7.0 s; "
+            "_c6 6.0 s; _c5 5.0 s; _c5 5.0 s; _c5 5.0 s")
     assert line == want, f"the slowest line reads {line!r}, not {want!r}"
     assert "passed," not in line, "handoff.py takes a line with 'passed,' in it for the count"
     src = inspect.getsource(main)
-    assert "print(_slowest(took" in src and "timings=[" in src, (
-        "main() no longer says its slowest checks, or no longer records every check's seconds")
+    assert "print(_slowest(took, loading + " in src and "loading = _loading(began)" in src \
+        and "timings=[" in src, (
+            "main() no longer says its slowest checks with the whole run's seconds, or no longer "
+            "records every check's seconds")
+    # Field 22 of /proc/<pid>/stat is 52,000 ticks (520 s at 100 a second)
+    # after boot; the system has been up 600.25 s, so the process began
+    # 80.25 s before `now`. The name, "(py (pre) flight)", splits wrongly at
+    # its first ")" or at its spaces.
+    stat = ("4242 (py (pre) flight) R 1 4242 4242 0 -1 4194304 100 0 0 0 1300 40 0 0 20 0 1 0 "
+            "52000 100000 2000 18446744073709551615")
+    began = _began_from(stat, "600.25 2000.00\n", 100, 10_000.0)
+    assert abs(began - 9_919.75) < 1e-6, f"a process 80.25 s old read as begun at {began}"
+    now = time.time()
+    if Path("/proc/self/stat").is_file():
+        start = _began_from(Path("/proc/self/stat").read_text(encoding="ascii"),
+                            Path("/proc/uptime").read_text(encoding="ascii"),
+                            os.sysconf("SC_CLK_TCK"), now)
+        cpu = time.thread_time()
+        assert cpu - 0.5 <= now - start < 86400, (
+            f"/proc says this process began {now - start:.2f} s ago, and its main thread has "
+            f"used {cpu:.2f} s of CPU since")
+        assert abs(_loading(now) - (now - start)) < 0.1, (
+            f"_loading took {_loading(now):.2f} s where /proc says {now - start:.2f} s")
+    else:
+        assert abs(_loading(now) - time.thread_time()) < 0.5, (
+            f"_loading took {_loading(now):.2f} s, not the main thread's CPU seconds")
     here = os.getcwd()
     tmp = Path(tempfile.mkdtemp(prefix="gr-timings-"))
     results = [("files", "one", "ok", ""), ("build", "two", "FAIL", "broken")]
@@ -111926,6 +112018,76 @@ def _slowest_said(H):
         rec.get("timings") == [["_one", 0.12], ["_two", 1.99]], (
         f"the record keeps {rec.get('checks')} and {rec.get('timings')}")
     return "ok", "the slowest ten said in order; every check's seconds kept beside its status"
+
+
+@check("pipeline", "on GitHub's machine the night prints preflight's slowest-checks line in "
+       "GitHub's own log, and no other line of the step's, nor that line from another step",
+       needs=("nightly",))
+def _slowest_reaches_the_job_log(NI):
+    """PREFLIGHT'S SLOWEST CHECKS IN GITHUB'S LOG (nightly.py). With --runner
+    a step's own lines go to the log file only, and GitHub's job log, where
+    the night's --code grew from 110 s to 285 s unseen, showed the step's
+    header and its seconds. Held here with nightly.run() itself, its child
+    replaced by one that prints what it is given: the line as _slowest makes
+    it reaches GitHub's log from a preflight step, between the step's header
+    and its seconds, and none of the step's other lines does; from a failing
+    one it comes once, ahead of the failure lines; from a step that is not
+    preflight, not at all; and a line of its shape that names something other
+    than a function, not at all."""
+    import contextlib
+    import io
+    import types
+
+    def fake(name):
+        return {"fn": types.SimpleNamespace(__name__=name)}
+    line = _slowest([(249.04, fake("_published_scripts_run_the_same")),
+                     (22.91, fake("_links_resolve"))], 778.2, 24.3)
+    ran_ok = ["FRONTEND", "  [  ok  ] a check's name, and what a reader typed: HB 1", "",
+              "=" * 74, "2 passed, 0 failed, 0 skipped", line, "", "=" * 74]
+    ran_bad = ["FRONTEND", "  [ FAIL ] a check's name", "           what it found", "",
+               "=" * 74, "1 passed, 1 failed, 0 skipped", line, "", "What is broken:",
+               "  frontend/a check's name", "    what it found", "=" * 74]
+
+    class Child:
+        def __init__(self, out, rc):
+            self.stdout, self.returncode, self.rc = iter(f"{o}\n" for o in out), None, rc
+
+        def wait(self):
+            self.returncode = self.rc
+            return self.rc
+
+    def printed(args, out, rc=0):
+        """What GitHub's log shows of the step, its blank lines left out."""
+        NI.child = types.SimpleNamespace(popen=lambda *a, **k: Child(out, rc))
+        NI.LOG = []
+        said = io.StringIO()
+        with contextlib.redirect_stdout(said):
+            assert NI.run(args, "the step") == rc
+        got = [ln for ln in said.getvalue().splitlines() if ln.strip()]
+        assert got[0] == "--- the step ---" and re.fullmatch(rf"  \(\d+s, exit {rc}\)", got[-1]) \
+            and len(NI.LOG) > len(out), f"run() no longer logs a step as it did: {got}"
+        return got[1:-1]
+
+    saved = (NI.child, NI.QUIET, NI.LOG, NI.WATCH.get("step"))
+    try:
+        NI.QUIET = True
+        got = printed(["preflight.py", "--code"], ran_ok)
+        assert got == ["  " + line], (
+            f"GitHub's log shows {got} of a preflight step, not its slowest line alone")
+        got = printed(["preflight.py", "--built"], ran_bad, rc=1)
+        assert got[0] == "  " + line and got.count("  " + line) == 1 \
+            and "    [ FAIL ] a check's name" in got, (
+                f"GitHub's log shows {got} of a failed preflight step")
+        got = printed(["build_all.py", "--local"], ran_ok)
+        assert got == [], f"GitHub's log shows {got} of a step that is not preflight"
+        odd = line.replace("_links_resolve 22.9 s", "what a reader typed 22.9 s")
+        got = printed(["preflight.py", "--code"], ran_ok[:5] + [odd])
+        assert got == [], f"GitHub's log shows {got}: a line that names more than functions"
+    finally:
+        NI.child, NI.QUIET, NI.LOG = saved[:3]
+        NI.WATCH["step"] = saved[3]
+    return "ok", ("a preflight step's slowest line, and that alone, reaches GitHub's log; once "
+                  "from a failed one; never from another step, nor in another shape")
 
 
 if __name__ == "__main__":
