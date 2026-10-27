@@ -255,6 +255,9 @@ MEMBER_TAB_SLUGS = ("cosponsored", "votes")
 # statutory committee's /committee/ss<id>/videos too, which opens that page
 # at its Videos section.
 COMMITTEE_TAB_SLUGS = ("sessions", "videos")
+# The chambers' pages (build_full_sessions.SLUG), whose Videos tab is
+# /session/<chamber>/videos.
+CHAMBER_TAB_PAGES = ("house", "senate")
 # THE LEARN HUB MOVED. /learn was the hub of the Learn pages and is now the
 # first tab of the Resources hub, /resources (the person, 8 October 2026,
 # decision 128: "/learn redirects to /resources ... the articles keep their
@@ -296,6 +299,8 @@ REDIRECTS = ("# Written by build_pages.py. Not an asset; Pages reads it.\n"
              + "".join(f"/bill/:year/:bill/{s} /bill/:year/:bill 200\n" for s in BILL_TAB_SLUGS)
              + "".join(f"/legislator/:who/{s} /legislator/:who 200\n" for s in MEMBER_TAB_SLUGS)
              + "".join(f"/committee/:code/{s} /committee/:code 200\n" for s in COMMITTEE_TAB_SLUGS)
+             # A chamber's Videos tab (build_full_sessions), its page's.
+             + "".join(f"/session/{c}/videos /session/{c} 200\n" for c in CHAMBER_TAB_PAGES)
              + "".join(f"{old} {new} 301\n" for old, new in MOVED))
 
 

@@ -9244,32 +9244,131 @@ function studyVideoRows(d){
       return (facts.length?`<p class="vwkinds">${facts.map(esc).join(VW_DOT)}</p>`:"")
         +`<p class="src vwlinks">${links.join(VW_DOT)}</p>`;}}));
 }
-// The view each kind of page draws from its JSON: `d` and the slot.
+// A CHAMBER'S SESSION DAYS (build_full_sessions, videos_json): a row a
+// recording, newest first, its line the day's counts and not its bills (the
+// person, 10 October 2026), and under the player what the chamber did that
+// day, its full page and its journal, as the day's entry on Session Days says
+// them.
+const vwPlural=(n,w)=>`${Number(n).toLocaleString()} ${w}${Number(n)===1?"":"s"}`;
+const vwJournal=j=>{const m=/^(HJ|SJ)\s*0*(\d+)/.exec(String(j||""));
+  return m?`${m[1]==="HJ"?"House":"Senate"} Journal ${m[2]}`:String(j||"");};
+function chamberRows(d){
+  const rows=[];
+  (d.days||[]).slice().sort((a,b)=>String(b.date).localeCompare(String(a.date))).forEach(day=>{
+    const c=day.counts||{};
+    (day.recordings||(day.videos||[]).map(id=>({id}))).forEach(r=>rows.push({
+      id:r.id,date:day.date,began:r.began,seconds:r.seconds,
+      line:[c.bills?vwPlural(c.bills,"bill"):"",c.roll_calls?vwPlural(c.roll_calls,"roll call"):""],
+      detail:()=>(day.summary?`<p class="cmsaid">${esc(day.summary)}</p>`:"")
+        +`<p class="src vwlinks"><a class="daylink" href="session/${esc(d.body)}/${esc(day.date)}">The full session day</a>${
+          day.journal_url?`${VW_DOT}<a href="${esc(day.journal_url)}">${esc(vwJournal(day.journal))} (PDF)</a>`:""}</p>`}));
+  });
+  return rows;
+}
+// The view each kind of page draws from its JSON.
 const VW_STATIC={
   study:d=>{const rows=studyVideoRows(d), n=rows.length;
     return {who:d.who,what:`the ${d.who}`,key:`ss|${d.key}`,rows,
       heading:`${n.toLocaleString()} recording${n===1?"":"s"}, newest first`,
       href:id=>`${d.path}/videos#v-${id}`,pid:r=>`v${String(r.date).replace(/-/g,"")}_${r.id}`,
-      source:"The recordings are the General Court&rsquo;s own, from its House and Senate YouTube channels."};}};
+      source:"The recordings are the General Court&rsquo;s own, from its House and Senate YouTube channels."};},
+  chamber:d=>{const rows=chamberRows(d), n=rows.length, word=d.body==="S"?"Senate":"House";
+    const q=d.term&&d.term!==d.latest?`?term=${d.term}`:"";
+    return {who:`The ${word}`,what:`the ${word}`,key:`${d.body}|${d.term}`,rows,
+      heading:`${n.toLocaleString()} recording${n===1?"":"s"} in ${termDash(d.term)}`,
+      href:id=>`/session/${d.slug}/videos${q}#v-${id}`,pid:r=>`v${String(r.date).replace(/-/g,"")}_${r.id}`,
+      empty:`No recording of the ${word}&rsquo;s session days in ${esc(termDash(d.term))} is on file.${
+        String(d.term)<="2019-2020"?" "+STREAM_BEGIN_SAID:""}`,
+      source:"The recordings are the General Court&rsquo;s own, from its House and Senate YouTube "
+        +"channels; what each day did is from its journal."};}};
+// Draw one slot from its JSON; `d` in place of the slot's own, for another
+// term (chamberVideos). Returns whether the address's recording was chosen.
+function vwDraw(slot,d){
+  const make=d&&VW_STATIC[d.kind];
+  if(!make)return false;
+  const o=make(d,slot), want=vwWanted();
+  if(o.rows.some(r=>r.id===want)){o.chosen=want;vwTried=vwLanded=want;}
+  slot.innerHTML=o.rows.length?videoView(o):`<p class="src fill">${o.empty||""}</p>`;
+  return !!want&&o.chosen===want;
+}
 function staticVideos(){
   document.querySelectorAll("[data-vwview]").forEach(slot=>{
     const node=document.getElementById(slot.dataset.vwview);
     let d=null;
     try{d=node?JSON.parse(node.textContent):null;}catch(_){d=null;}
-    const make=d&&VW_STATIC[d.kind];
-    if(!make)return;
-    const o=make(d,slot), want=vwWanted();
-    if(o.rows.some(r=>r.id===want)){o.chosen=want;vwTried=vwLanded=want;}
-    slot.innerHTML=videoView(o);
-    if(o.chosen===want){
-      const a=[...slot.querySelectorAll("a[data-vwpick]")].find(x=>x.dataset.vwpick===want);
+    if(!d||!VW_STATIC[d.kind])return;
+    if(d.kind==="chamber"){
+      VW_CHAMBER=d;chamberStrip(d);
+      // Another term the page's script had already fetched before this ran.
+      const T=window.GR_CHAMBER_TERM;
+      if(T&&T.term&&T.term!==d.term){chamberVideos(T);return;}
+    }
+    const chosen=vwDraw(slot,d);
+    const pane=slot.closest(".chpane");
+    if(chosen){
+      if(pane)chamberShow(1,true);
+      const a=[...slot.querySelectorAll("a[data-vwpick]")].find(x=>x.dataset.vwpick===vwWanted());
       vwListShow(a);
       slot.scrollIntoView({block:"start"});
-    }else if(/\/videos\/?$/.test(location.pathname)){
+    }else if(!pane&&/\/videos\/?$/.test(location.pathname)){
       const sec=slot.closest("section");
       if(sec)sec.scrollIntoView({block:"start"});
     }
   });
+}
+/* A CHAMBER'S TWO TABS, Session Days | Videos, put above the two panes the
+   page carries (build_full_sessions), as a committee's are drawn: the same
+   role="tab" buttons, so the arrow keys move along them, each with its
+   count. The address names the tab -- /session/house/videos, which the
+   site's rewrite serves as the chamber's page -- with the term the page's
+   script keeps in it; a day it names (#day-<date>) is on Session Days. */
+let VW_CHAMBER=null;
+function chamberStrip(d){
+  const ctl=document.querySelector(".chamberctl");
+  if(!ctl||document.querySelector(".chtabs"))return;
+  ctl.insertAdjacentHTML("afterend",`<div class="tabs chtabs" role="tablist">${
+    [["Session Days","chdays"],["Videos","chvids"]].map(([w,p],i)=>
+      `<button class="tab" role="tab" id="chtab_${i}" aria-controls="${p}" data-chtab="${i}" aria-selected="false">${w}</button>`).join("")}</div>`);
+  ["chdays","chvids"].forEach((p,i)=>{const el=document.getElementById(p);
+    if(el){el.setAttribute("role","tabpanel");el.setAttribute("aria-labelledby",`chtab_${i}`);el.tabIndex=0;}});
+  chamberCounts(d);
+  chamberShow(/\/videos\/?$/.test(location.pathname)&&!/^#day-/.test(location.hash)?1:0,false);
+}
+function chamberCounts(d){
+  const n=[(d.days_all||document.querySelectorAll(".chdays > details").length),
+           chamberRows(d).length];
+  document.querySelectorAll(".chtabs .tab").forEach((t,i)=>{
+    const w=i?"Videos":"Session Days";
+    t.innerHTML=esc(w)+(n[i]?tabN(Number(n[i]).toLocaleString()):"");});
+}
+function chamberShow(i,write){
+  document.querySelectorAll(".chtabs .tab").forEach((t,k)=>t.setAttribute("aria-selected",String(k===i)));
+  const days=document.getElementById("chdays"), vids=document.getElementById("chvids");
+  if(days)days.hidden=i!==0;
+  if(vids)vids.hidden=i!==1;
+  if(!write||!VW_CHAMBER)return;
+  const path=`/session/${VW_CHAMBER.slug}${i?"/videos":""}`;
+  try{history.replaceState(history.state,"",path+location.search+(i&&/^#v-/.test(location.hash)?location.hash:""));}catch(_){}
+  addressed();
+}
+document.addEventListener("click",e=>{
+  const t=e.target&&e.target.closest&&e.target.closest("[data-chtab]");
+  if(t)chamberShow(+t.dataset.chtab,true);
+});
+// Another term, as the page's script fetched it: its Videos tab drawn from
+// the same days, and the two counts. A recording the address named is the
+// old term's, so the address stops naming it.
+function chamberVideos(T){
+  if(!VW_CHAMBER)return;
+  const slot=document.querySelector("#chvids [data-vwview]");
+  if(!slot)return;
+  if(/^#v-/.test(location.hash)&&!(T.days||[]).some(x=>(x.videos||[]).includes(vwWanted()))){
+    try{history.replaceState(history.state,"",location.pathname+location.search);}catch(_){}
+  }
+  const d=Object.assign({},VW_CHAMBER,{term:T.term,days:(T.days||[]).filter(x=>(x.videos||[]).length),
+    days_all:(T.days||[]).length});
+  vwDraw(slot,d);
+  chamberCounts(d);
 }
 
 // What the committee reported on a bill, for its card on the Bills tab: each
@@ -10571,7 +10670,8 @@ document.addEventListener("click",e=>{
     if(term===ALL_TERMS){const own=head.closest(".card").querySelector("a.cnum");
       if(own){location.href=own.href;return;}}
     if(openCards.has(id)){openCards.delete(id);render();}else openBill(id);return;}
-  const tab=e.target.closest(".tab");
+  // A card's own tab: a chamber's page has tabs of its own (chamberStrip).
+  const tab=e.target.closest(".card .tab");
   if(tab){
     const cid=tab.closest(".card").dataset.id;
     openTab[cid]=tab.dataset.t;

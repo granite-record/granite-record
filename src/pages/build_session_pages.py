@@ -3426,10 +3426,34 @@ def day_record(day, narrative, jurl, ctx):
     # The chamber's page draws the day from these two (build_full_sessions):
     # what it did in general, and its recordings.
     rec["summary"] = day_summary(rec, day.body)
-    vids = day_videos(day, ctx.get("moments") or {})
+    # ITS RECORDINGS: those a bill's moment of the day is in, and where no
+    # moment names one -- every day before 2025, whose floor debates have no
+    # moments, and a few since -- the recording the chamber's own channel
+    # titles as that day's session, "House Session (03/06/2026)" (the Videos
+    # tab, 26 October 2026: the chamber's folds said "No recording of this day
+    # is on file" on 108 days the channel has). The chamber's page plays them
+    # in the day's fold and lists them on its Videos tab, from these two
+    # lists, which hold the same recordings in the same order.
+    vids = day_videos(day, ctx.get("moments") or {}) \
+        or list((ctx.get("session_videos") or {}).get((day.body, day.date)) or [])
     if vids:
+        facts = ctx.get("facts") or {}
         rec["videos"] = vids
+        rec["recordings"] = [{"id": v, **{k: (facts.get(v) or {})[k] for k in ("began", "seconds")
+                                          if (facts.get(v) or {}).get(k)}} for v in vids]
     return rec
+
+
+def session_videos(facts):
+    """{(chamber, date): [video_id, ...]} of the recordings each chamber's
+    channel titles as a day's session ("Senate Session (01/07/2026)", parsed
+    "Session"), that have streamed, in the order they began."""
+    out = collections.defaultdict(list)
+    for vid, v in sorted(facts.items(), key=lambda kv: (kv[1].get("began") or "", kv[0])):
+        if v.get("parsed_committee") == "Session" and v.get("streamed") and v.get("date") \
+                and v.get("chamber") in ("H", "S"):
+            out[(v["chamber"], v["date"])].append(vid)
+    return out
 
 
 TERM_ABOUT = (
@@ -3568,6 +3592,18 @@ def chamber(a, site, base, body, days):
            "amendments": amendments, "cards": fr["cards"], "presided": fr["presiding"],
            "offices": published_officers(site), "acts": acts_of, "floor": floor,
            "data": data, "moments": fr.get("moments") or {}, "nobill": fr.get("nobill") or {}}
+    # Each recording's start and length, and the channel's session recordings
+    # by day, for the term file's `videos` and `recordings` (day_record).
+    # SILENCE IS NOT SUCCESS: the index is in git (collected/videos/), so moments
+    # that name recordings beside an index that reads as nothing is a broken
+    # checkout, and every day before 2025 would lose its recording unsaid.
+    ctx["facts"] = proceedings.video_facts()
+    ctx["session_videos"] = session_videos(ctx["facts"])
+    if ctx["moments"] and not ctx["facts"]:
+        raise SystemExit(
+            f"the floor record names recordings and the video index ({proceedings.VIDEO_DIR.as_posix()}"
+            "/videos_*.csv, and the night's videos_*.csv beside it) reads as empty: the index is in "
+            "git, so this checkout is missing it, and the chamber's days would lose their recordings.")
     # WHAT THE PAGE'S CARDS ARE DRAWN FROM (the record pages' bill cards,
     # 10 October 2026): each bill's index row, for its chip, byline and rail;
     # meta.json's committee codes, for a committee's link; and each floor
@@ -3690,6 +3726,13 @@ def chamber(a, site, base, body, days):
               f"who presided, {sum(1 for v in records.values() for d in v if d['excused']):,}"
               f" count the excused by party; {len(unplaced_amendments):,} amendment row(s) "
               "on no sitting")
+        # Their recordings, said (day_record): by a bill's moment, or by the
+        # channel's own title for the day's session.
+        days_ = [d for v in records.values() for d in v]
+        by_title = sum(1 for d in days_ if d.get("videos")
+                       and not day_videos(days[(body, d["date"])], ctx["moments"]))
+        print(f"  {sum(1 for d in days_ if d.get('videos')):,} of {len(days_):,} days with a "
+              f"recording: {by_title:,} of them by the channel's title for the day's session")
 
     # This chamber's days only, and all of them unless --limit cut the run
     # short: a limited run takes out only entries that were never an address.

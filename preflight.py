@@ -32836,7 +32836,12 @@ FIXTURE_VIDEOS = {"house": [
     # The fixture commission's meeting of 10 March 2026, which the Calendar's
     # matcher gives it by name and day (build_calendar.study_recordings).
     ("agingVid001", "State Commission on Aging (03/10/2026)", "yes", "State Commission on Aging",
-     "2026-03-10", "2026-03-10 10:02:11", "PT1H2M")]}
+     "2026-03-10", "2026-03-10 10:02:11", "PT1H2M")],
+    # The Senate's session of 19 February 2026, which no bill's moment names:
+    # the chamber's page takes it by the channel's own title for the day.
+    "senate": [
+    ("senSessV001", "Senate Session (02/19/2026)", "yes", "Session", "2026-02-19",
+     "2026-02-19 09:58:00", "PT3H4M")]}
 
 
 def _fixture_videos(root):
@@ -68650,6 +68655,93 @@ def _committees_full_sessions():
                   "first, each on a built page; the script draws a day as the page does")
 
 
+@check("build", "a chamber's session days carry their recordings -- a bill's moments', or the "
+       "channel's own session recording of the day -- and its page lists them on a Videos tab "
+       "beside Session Days", needs=("build_session_pages", "build_full_sessions", "build_pages"))
+def _chamber_videos(BSP, FS, BP):
+    """The owner, 26 October 2026: "Same goes for session days". A day's
+    `videos` were only the recordings a bill's moment of it is in, so every
+    day before 2025 and a few since said "No recording of this day is on
+    file" on the chamber's page, 108 of them over a recording the channel has
+    and titles as the day's session. build_session_pages.day_record takes that
+    recording where no moment names one, and writes `recordings` beside
+    `videos`, the same in the same order, with when each began and ran; the
+    chamber's page plays them in each day's fold, as before, and writes the
+    latest term's days into the page for app.js to draw as its Videos tab,
+    Session Days | Videos, at /session/<chamber>/videos, which _redirects
+    serves. On the fixture: the Senate's 19 February 2026 by its title, the
+    House's 6 March by its moment."""
+    import about_figures as AF
+    root = Path(tempfile.mkdtemp())
+    try:
+        _fixture_videos(root)
+        facts = __import__("proceedings").video_facts(root)
+    finally:
+        shutil.rmtree(root, ignore_errors=True)
+    sv = BSP.session_videos(facts)
+    assert dict(sv) == {("H", "2026-03-06"): ["VID2"], ("S", "2026-02-19"): ["senSessV001"]}, (
+        f"the channel's session recordings read {dict(sv)}")
+    red = BP.REDIRECTS
+    for slug in FS.SLUG.values():
+        assert f"\n/session/{slug}/videos /session/{slug} 200\n" in red, (
+            f"_redirects does not serve /session/{slug}/videos as the chamber's page")
+    absent = [x for x in CHAIN_NEEDS if not _paths.locate(x).exists()]
+    if absent:
+        return "ok", "the channel's session recordings read; not here to build: " + ", ".join(absent)
+    shared, _base, _ran, _days = _fixture_site_shared()
+    site = shared / "site"
+    by = {}
+    early = []
+    for b in ("H", "S"):
+        for f in (site / "session" / b).glob("*.json"):
+            for d in json.loads(f.read_text(encoding="utf-8"))["days"]:
+                by[(b, d["date"])] = d
+                assert [r["id"] for r in d.get("recordings") or []] == (d.get("videos") or []), (
+                    f"{b} {d['date']}: recordings {d.get('recordings')} are not its videos {d.get('videos')}")
+                if d.get("videos") and d["date"] < AF.STREAM_START:
+                    early.append(f"{b} {d['date']}")
+    assert not early, f"a session day before the channels began has a recording: {early}"
+    s = by[("S", "2026-02-19")]
+    assert s.get("videos") == ["senSessV001"] and s.get("recordings") == [
+        {"id": "senSessV001", "began": "09:58", "seconds": 11040}], (
+            f"the Senate's 19 February has no recording, though its channel titles one its session: {s}")
+    assert by[("H", "2026-03-06")].get("videos") == ["VID2"], "the House's day lost its moments' recording"
+    page = (site / "session" / "senate.html").read_text(encoding="utf-8")
+    fold = page[page.index('id="day-2026-02-19"'):]
+    fold = fold[:fold.index("</details>")]
+    assert 'data-embed="senSessV001|0|' in fold and "No recording of this day" not in fold, (
+        "the Senate's 19 February still says no recording is on file in its fold")
+    assert re.search(r'<div class="chpane" id="chdays"><div class="bfilt chorder"><label>Order ', page) and \
+        '<div class="chpane" id="chvids" hidden><div class="vwhere" data-vwview="gr-videos">' in page, (
+            "the chamber's page does not carry its two panes, the Videos one hidden until app.js draws it")
+    data = json.loads(re.search(r'<script type="application/json" id="gr-videos">(.*?)</script>', page,
+                                re.S).group(1))
+    assert (data["kind"], data["body"], data["slug"], data["term"] == data["latest"]) == (
+        "chamber", "S", "senate", True) and [d["date"] for d in data["days"]] == ["2026-02-19"] \
+        and data["days"][0]["recordings"] == s["recordings"], f"the page's Videos rows read {data}"
+    drawn = _app_js("[scope.videoView(scope.VW_STATIC.chamber(" + json.dumps(data) + ")),"
+                    " scope.VW_STATIC.chamber(" + json.dumps(dict(data, term="2019-2020", days=[]))
+                    + ").empty]", names=("videoView", "VW_STATIC"))
+    if drawn is None:
+        return "ok", "the days carry their recordings and the page its panes; node is not here to draw them"
+    import html as _html
+    view, empty = drawn
+    flat = _html.unescape(re.sub(r"<[^>]+>", "", view))
+    assert "<iframe" not in view and 'data-embed="senSessV001|0|v20260219_senSessV001"' in view, (
+        "the chamber's Videos tab is not a still of its newest recording")
+    assert "The Senate · , Feb 19, 2026 · , 9:58 AM · , 3 h 4 min · , On YouTube" in flat \
+        and "1 recording in 2025–2026" in flat and "1 bill · , 1 roll call" in flat \
+        and not re.search(r"\b[HS]B\s?\d", flat), f"the chamber's Videos tab reads {flat[:400]!r}"
+    assert '<a class="daylink" href="session/S/2026-02-19">The full session day</a>' in view, (
+        "the chamber's Videos tab does not lead to the day's own page")
+    assert empty == ("No recording of the Senate&rsquo;s session days in 2019–2020 is on file. "
+                     "Recordings here begin in May 2020, with the General Court&rsquo;s YouTube channels."), (
+        f"a term with none says {empty!r}")
+    return "ok", ("a day takes its channel's session recording where no moment names one; the "
+                  "folds play it and the Videos tab, at its own address, lists the term's, counts "
+                  "and no bills; a term before the channels says so")
+
+
 @check("frontend", "the header's five tabs are one row from 1008px, in the flow between the "
                    "wordmark and the controls, and a row of their own on a tablet")
 def _nav_ladder():
@@ -75665,7 +75757,7 @@ def _committee_recordings(BCM, P):
         facts = P.video_facts(root)
     finally:
         shutil.rmtree(root, ignore_errors=True)
-    assert set(facts) == {r[0] for r in FIXTURE_VIDEOS["house"]}, f"the index reads {sorted(facts)}"
+    assert set(facts) == {r[0] for rows in FIXTURE_VIDEOS.values() for r in rows}, f"the index reads {sorted(facts)}"
     assert facts["VID1"] == {"date": "2026-02-03", "chamber": "H", "title": "House Commerce (02/03/2026)",
                              "parsed_committee": "Commerce", "began": "09:58", "seconds": 6723,
                              "streamed": True}, f"a recording reads {facts['VID1']}"

@@ -6963,6 +6963,11 @@ color:var(--ink);text-decoration:none}
 @media (forced-colors:active){
   .vwrow[aria-current="true"]{border-left-color:Highlight}
 }
+/* A CHAMBER'S TWO TABS, Session Days | Videos (app.js, chamberStrip), under
+   the term as a committee's are, each pane below them. */
+.chtabs{margin-top:var(--sp-6)}
+.chpane{margin-top:var(--sp-6)}
+.chpane > .chorder:first-child{margin-top:0}
 @media print{
   .vwall,.vwskip{display:none}
 }
