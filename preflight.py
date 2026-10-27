@@ -13763,12 +13763,17 @@ def _rollcall_refiled(RP):
         RP.REFILED_SEEN.update(keep[2])
         shutil.rmtree(d, ignore_errors=True)
     # build_data names every ballot's bill through the same function, and says
-    # what the file did, so the members' Votes tabs move with the bill's page.
+    # what the file did, so the members' Votes tabs move with the bill's page;
+    # and so does the floor index, so the day's recording moves with them.
     src = _paths.locate("build_data.py").read_text(encoding="utf-8")
     assert "RP.roll_call_bill(r[0], r[1], r[2], r[4])" in src and \
         "RP.refiled_report(complete=False)" in src, (
         "build_data.py no longer names a ballot's bill through rollcall_parser.roll_call_bill, or "
         "no longer says what rollcall_corrections.json did")
+    assert "RP.roll_call_bill(p[0], p[1], p[2], p[4])" in \
+        _paths.locate("build_floor_index.py").read_text(encoding="utf-8"), (
+        "build_floor_index.py no longer names a roll call's bill through rollcall_parser.roll_call_bill, "
+        "so a roll call a person moved keeps its recording on the bill it was filed under")
     # THE PERSON'S OWN FILE, read and never written: each entry still matches
     # the roll call the files on disk hold (records/rollcalls/ is in git).
     real = _paths.ROOT / "corrections" / "rollcall_corrections.json"
