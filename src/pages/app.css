@@ -6890,6 +6890,82 @@ transition:transform .15s}
 .cmplay .pwho{flex:1 1 100%;color:var(--ink-2)}
 .cmplay .pwho b{color:var(--ink);font-weight:600}
 .cmplay .tolnote{margin-left:0}
+/* THE VIDEOS VIEW (app.js, THE VIDEOS VIEW): a committee's Videos tab, a
+   chamber's and a study committee's Videos section. The player and its one
+   caption, then what the chosen recording covers, then the list of
+   recordings; on a wide screen the list stands beside the player, as tall
+   as the player block and scrolling inside it, so it never runs past it
+   (the manager's review of 26 October 2026, 6). On a phone everything is one
+   column in that order and the list flows on the page, twenty rows and a
+   button for the rest: no box that scrolls inside a page that scrolls. */
+.vw{display:grid;grid-template-columns:minmax(0,1fr);gap:var(--sp-5);
+grid-template-areas:"main" "det" "side" "src"}
+.vwmain{grid-area:main;min-width:0}
+.vw .vwplay{margin-top:0}
+.vwcap{display:block}
+.vwcap p{margin:0;color:var(--ink-2);line-height:1.5}
+.vwcap b{color:var(--ink);font-weight:600}
+.vwdet{grid-area:det;min-width:0}
+.vwkinds{display:flex;flex-wrap:wrap;gap:var(--sp-2) var(--sp-4);align-items:center;
+margin:0 0 var(--sp-4);font-size:var(--t-ui);color:var(--ink-2)}
+.vwchips{display:inline-flex;flex-wrap:wrap;gap:var(--sp-2)}
+/* No bill tied to it: said once, here, in muted text (review, 3). */
+.vwnone{margin:0;font-size:var(--t-ui);color:var(--ink-2)}
+.vwbills{list-style:none;margin:0;padding:0}
+.vwbills li{display:grid;grid-template-columns:7.5rem minmax(0,1fr);gap:var(--sp-1) var(--sp-4);
+padding:var(--sp-3) 0;border-top:1px solid var(--rule)}
+.vwbills li:first-child{border-top:0;padding-top:0}
+.vwbn{font-weight:600;white-space:nowrap}
+.vwbt{font-size:var(--t-ui);line-height:1.45}
+.vwbills .mjumps{grid-column:2;display:flex;flex-wrap:wrap;gap:var(--sp-2) var(--sp-3);align-items:center;margin-left:0}
+.vwlinks{margin:var(--sp-4) 0 0}
+/* Past the bills to the list, for a keyboard: shown when it has focus. */
+.vwskip:not(:focus){position:absolute;width:1px;height:1px;margin:-1px;overflow:hidden;
+clip:rect(0 0 0 0);white-space:nowrap}
+.vwskip:focus{display:inline-block;margin-top:var(--sp-4)}
+.vwside{grid-area:side;min-width:0}
+.vwh{margin:0 0 var(--sp-3);font-size:var(--t-label);font-weight:600;letter-spacing:.06em;
+text-transform:uppercase;color:var(--ink-2)}
+.vwlist{list-style:none;margin:0;padding:0;border:1px solid var(--rule);border-radius:var(--r-out);
+background:var(--surface)}
+.vwlist li+li{border-top:1px solid var(--rule)}
+/* A row: the date and when it began and ran on one line, its kinds and
+   bills on the next. The chosen one carries a bar as well as a ground, so
+   it is not told by colour alone (review, 7). */
+.vwrow{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:var(--sp-1) var(--sp-3);
+padding:var(--sp-3) var(--sp-4) var(--sp-3) calc(var(--sp-4) - 4px);border-left:4px solid transparent;
+color:var(--ink);text-decoration:none}
+.vwrow:hover{background:var(--wash)}
+.vwrow[aria-current="true"]{border-left-color:var(--pine);background:var(--wash)}
+/* The ring inside the row, so the list's own edge does not clip it. */
+.vwrow:focus-visible{outline:2px solid var(--pine);outline-offset:-2px}
+.vwd{font-weight:600;white-space:nowrap}
+.vwt{font-size:var(--t-sm);color:var(--ink-2);text-align:right;white-space:nowrap}
+/* The kinds and the bills in one run of text, so a row is two lines where
+   they fit and wraps as words do where they do not. */
+.vwb{grid-column:1 / -1;font-size:var(--t-sm);line-height:1.6;color:var(--ink-2)}
+.vwb .chip{margin-right:var(--sp-3);vertical-align:baseline}
+/* In the order written: a phone's calendar moves its chips last (.calkind). */
+.vwkinds .calkind{order:0}
+.vwall{margin-top:var(--sp-3)}
+.vwsrc{grid-area:src;margin:0}
+/* On paper every row prints: this is a screen's. */
+@media screen and (max-width:59.99em){
+  .vwlist:not(.vwopen) .vwrest{display:none}
+}
+@media screen and (min-width:60em){
+  .vw{grid-template-columns:minmax(0,1fr) 22rem;grid-template-areas:"main side" "det ." "src src"}
+  .vwside{position:relative}
+  .vwin{position:absolute;inset:0;display:flex;flex-direction:column}
+  .vwin .vwlist{flex:1 1 auto;min-height:0;overflow:auto}
+  .vwall{display:none}
+}
+@media (forced-colors:active){
+  .vwrow[aria-current="true"]{border-left-color:Highlight}
+}
+@media print{
+  .vwall,.vwskip{display:none}
+}
 /* A STATUTORY OR STUDY COMMITTEE'S PAGE (18 October 2026,
    build_study_committees.py): the record head, then W4 sections -- What It
    Does, Report, Members, Meetings -- each meeting folded as a committee's is.

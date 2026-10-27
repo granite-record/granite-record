@@ -32806,6 +32806,46 @@ def _site_fixture(root):
     r = _run([sys.executable, "build_proceedings.py"], cwd=root,
                        capture_output=True, text=True)
     assert r.returncode == 0, "fixture proceedings: " + (r.stderr or r.stdout)[-200:]
+    _fixture_videos(root)
+
+
+# THE FIXTURE'S VIDEO INDEX (the Videos tab, 26 October 2026), as
+# fetch_channel_index writes collected/videos/videos_<chamber>_*.csv: the
+# three recordings proceedings.csv names (VID1 and VID4, House Commerce's;
+# VID2, the House's session of 6 March), and four it does not -- a House
+# Commerce meeting no bill row places (the Videos tab lists it by its title),
+# a stream of Commerce's still to come (not listed: it has not run), a title
+# in the older form (not listed: the index could not parse it) and a
+# division of House Finance, a committee the fixture has no page for.
+FIXTURE_VIDEO_COLS = ["video_id", "title", "title_parsed", "parsed_committee", "parsed_date",
+                      "date_from", "has_start_time", "start_eastern", "actual_start_utc",
+                      "actual_end_utc", "duration_iso", "published_at"]
+FIXTURE_VIDEOS = {"house": [
+    ("VID1", "House Commerce (02/03/2026)", "yes", "Commerce", "2026-02-03",
+     "2026-02-03 09:58:00", "PT1H52M3S"),
+    ("VID4", "House Commerce (02/10/2026)", "yes", "Commerce", "2026-02-10",
+     "2026-02-10 12:58:00", "PT45M"),
+    ("VID2", "House Session (03/06/2026)", "yes", "Session", "2026-03-06",
+     "2026-03-06 09:58:51", "PT5H2M45S"),
+    ("cmteTitleV1", "House Commerce (02/24/2026)", "yes", "Commerce", "2026-02-24",
+     "", "PT36M10S"),
+    ("cmteSoonV02", "House Commerce (11/30/2026)", "yes", "Commerce", "2026-11-30", "", "P0D"),
+    ("cmteOldV003", "Commerce 1/26/21", "NO", "", "", "2021-01-26 10:00:00", "PT1H"),
+    ("financeDiv2", "House Finance - Division II (02/24/2026)", "yes", "Finance - Division II",
+     "2026-02-24", "2026-02-24 13:00:00", "PT2H")]}
+
+
+def _fixture_videos(root):
+    """collected/videos/videos_<chamber>_fixture.csv, FIXTURE_VIDEOS."""
+    d = Path(root) / "collected" / "videos"
+    d.mkdir(parents=True, exist_ok=True)
+    for ch, rows in FIXTURE_VIDEOS.items():
+        with open(d / f"videos_{ch}_fixture.csv", "w", newline="", encoding="utf-8") as fh:
+            w = csv.writer(fh)
+            w.writerow(FIXTURE_VIDEO_COLS)
+            for vid, title, parsed, cmte, day, start, length in rows:
+                w.writerow([vid, title, parsed, cmte, day, "title", "yes" if start else "no",
+                            start, "", "", length, ""])
 
 
 # What build_proceedings.py needs beside it to run in a folder of its own: the
@@ -75503,6 +75543,239 @@ def _committee_days_met(BCM):
         "a day still to come is said to have no recording on file")
     return "ok", ("a day after the build is marked and counted apart, on the tab, the index "
                   "and the description")
+
+
+@check("build", "a committee's Videos tab lists the recordings its bills name and the ones its own "
+       "title names on its chamber's channel, newest first, and none still to come, in the older "
+       "form, of a session day or on another page", needs=("build_committees", "proceedings"))
+def _committee_recordings(BCM, P):
+    """The owner, 26 October 2026: "Committee pages should have a videos tab
+    that essentially compiles the youtube playlist of that committee's
+    meetings". build_committees.committee_recordings gives each page its
+    `recordings` (THE VIDEOS TAB'S LIST) out of proceedings.video_facts:
+    every recording one of its items names, and every streamed one no row of
+    proceedings.csv carries whose parsed title is this committee in the
+    channel's chamber -- House Finance's divisions marked -- and nothing
+    fuzzy. Read here from rows written as the index writes them, then from
+    the fixture's build, where H43 lists VID1 and VID4 by their bills and a
+    recording by its title, and not the stream still to come, the title in
+    the older form, the House's session or House Finance's division (no
+    page). SILENCE IS NOT SUCCESS: an index that reads as nothing beside a
+    table naming recordings stops the build."""
+    root = Path(tempfile.mkdtemp())
+    try:
+        _fixture_videos(root)
+        facts = P.video_facts(root)
+    finally:
+        shutil.rmtree(root, ignore_errors=True)
+    assert set(facts) == {r[0] for r in FIXTURE_VIDEOS["house"]}, f"the index reads {sorted(facts)}"
+    assert facts["VID1"] == {"date": "2026-02-03", "chamber": "H", "title": "House Commerce (02/03/2026)",
+                             "parsed_committee": "Commerce", "began": "09:58", "seconds": 6723,
+                             "streamed": True}, f"a recording reads {facts['VID1']}"
+    assert (facts["cmteSoonV02"]["streamed"], facts["cmteOldV003"]["parsed_committee"],
+            facts["cmteTitleV1"]["began"], P.iso_seconds("PT1H52M3S"), P.iso_seconds("P0D")) == (
+        False, "", "", 6723, 0), "a stream to come, a title in the older form or a length read wrong"
+    pages = {"H43", "H34"}
+    code_of = lambda nm, ch, term: {("H", "Commerce"): "H43", ("H", "Finance"): "H34"}.get((ch, nm))
+    days = {"H43": {("2025-2026", "2026-02-03"): [{"video_id": "VID1"}],
+                    ("2025-2026", "2026-02-10"): [{"video_id": "VID4"}, {"video_id": "VID4"}]},
+            "H99": {("2025-2026", "2026-02-11"): [{"video_id": "VIDX"}]}}
+    got, found = BCM.committee_recordings(days, {"VID1", "VID4", "VID2"}, facts, code_of, pages)
+    assert [r["id"] for r in got.get("H43", [])] == ["cmteTitleV1", "VID4", "VID1"], (
+        f"House Commerce lists {got.get('H43')}")
+    assert got["H43"][0] == {"id": "cmteTitleV1", "date": "2026-02-24", "term": "2025-2026",
+                             "seconds": 2170}, f"a recording by its title is listed as {got['H43'][0]}"
+    assert got["H43"][-1] == {"id": "VID1", "date": "2026-02-03", "term": "2025-2026", "began": "09:58",
+                              "seconds": 6723}, f"a recording by its bills is listed as {got['H43'][-1]}"
+    assert got.get("H34") == [{"id": "financeDiv2", "date": "2026-02-24", "term": "2025-2026",
+                               "began": "13:00", "seconds": 7200, "label": "Division II"}], (
+        f"House Finance's division is listed as {got.get('H34')}")
+    assert "H99" not in got and dict(found) == {"by_bills": 2, "by_titles": 2}, (
+        f"a page with no page, or the counts: {dict(found)}")
+    # A recording a row carries is not added to a page by its title.
+    got2, _ = BCM.committee_recordings({}, {"cmteTitleV1"}, facts, code_of, pages)
+    assert "cmteTitleV1" not in [r["id"] for r in got2.get("H43", [])], (
+        "a recording proceedings.csv carries is listed again by its title")
+    import inspect
+    src = inspect.getsource(BCM.main)
+    assert "if carried and not facts:" in src and "raise SystemExit(" in src[src.index("if carried and not facts:"):][:200], (
+        "build_committees no longer stops on an empty index beside a table naming recordings")
+    absent = [x for x in CHAIN_NEEDS if not _paths.locate(x).exists()]
+    if absent:
+        return "ok", "the list is read and made; not here to build the fixture: " + ", ".join(absent)
+    shared, _base, _ran, _days = _fixture_site_shared()
+    rec = json.loads((shared / "site" / "committee" / "H43.json").read_text(encoding="utf-8"))
+    assert [r["id"] for r in rec.get("recordings") or []] == ["cmteTitleV1", "VID4", "VID1"], (
+        f"the fixture's House Commerce lists {rec.get('recordings')}")
+    return "ok", ("the index read once, a stream to come and a title in the older form left off; "
+                  "House Commerce lists 2 recordings by its bills and 1 by its title, newest first; "
+                  "House Finance's division marked; an empty index stops the build")
+
+
+@check("frontend", "no page the build writes asks YouTube for anything before a person presses Play: "
+                   "no frame, image, script or style of YouTube's, and every recording a still on a "
+                   "button")
+def _nothing_from_youtube():
+    """The privacy page's promise ("a player only loads if you press play"),
+    held over every page of the fixture's build since the Videos views (26
+    October 2026) put a still at the top of a committee's, a chamber's and a
+    study committee's pages: no <iframe> at all, no tag of any kind whose
+    address is YouTube's, its images' (ytimg) or its video servers', and every
+    data-embed -- the still app.js turns into the player when pressed -- on a
+    <button>. A script's text is left out: app.js and a page's inline script
+    write the player when asked, and the checks of the players hold them."""
+    absent = [x for x in CHAIN_NEEDS if not _paths.locate(x).exists()]
+    if absent:
+        return "skip", "not here: " + ", ".join(absent)
+    shared, _base, _ran, _days = _fixture_site_shared()
+    bad, stills, pages = [], 0, 0
+    for f in sorted((shared / "site").rglob("*.html")):
+        text = re.sub(r"(<script\b[^>]*>).*?</script>", r"\1</script>",
+                      f.read_text(encoding="utf-8", errors="replace"), flags=re.S | re.I)
+        pages += 1
+        rel = f.relative_to(shared / "site").as_posix()
+        if re.search(r"<iframe\b", text, re.I):
+            bad.append(f"{rel} carries a frame")
+        for tag in re.findall(r"<(?:img|script|link|source|video|audio|embed|object)\b[^>]*>", text, re.I):
+            if re.search(r"youtube|ytimg|googlevideo", tag, re.I):
+                bad.append(f"{rel}: {tag[:80]}")
+        for name in re.findall(r"<(\w+)\b[^>]*\sdata-embed=", text):
+            stills += 1
+            if name.lower() != "button":
+                bad.append(f"{rel}: a still on a <{name}>")
+    assert pages, "the fixture's build wrote no page, so this read nothing"
+    assert not bad, "a page asks YouTube for something before Play: " + "; ".join(bad[:6])
+    return "ok", f"{pages} pages; {stills} stills, each a button; nothing of YouTube's before Play"
+
+
+@check("frontend", "a committee's Videos tab is a still and its playlist: the newest chosen, nothing "
+                   "from YouTube before Play, a moment the Meetings tab's own button, no bill line "
+                   "where none is known, and a tab only where there is a recording")
+def _committee_videos_tab():
+    """The owner, 26 October 2026, and the manager's review of the design the
+    same day (app.js, THE VIDEOS VIEW): the tab is "Videos" with the count
+    chip Bills and Meetings carry; the kinds are the Meetings tab's chips;
+    a recording the docket ties no bill to has no bill line, and the detail
+    says so once, in muted text; a start or a length the index lacks is left
+    out with its separator; one caption under the player; on a phone the
+    newest twenty and a button for the rest; the chosen row aria-current.
+    Drawn by renderPage in node over a committee like the fixture's."""
+    items = lambda vid, kind, start, state: [{
+        "bill": "HB1442", "n": "HB 1442-FN", "title": "relative to insurance coverage", "year": 2026,
+        "term": "2025-2026", "kind": kind, "video_id": vid, "start": start, "state": state,
+        "time": "10:00", "venue": "LOB 302"}]
+    sess = lambda date, its, kinds: {"date": date, "term": "2025-2026",
+                                     "video_id": its[0]["video_id"], "items": its,
+                                     "outcomes": [{"bill": "HB1442", "kinds": kinds, "outcome": "heard"}]}
+    rec = lambda i, d, **k: dict({"id": i, "date": d, "term": "2025-2026"}, **k)
+    cmte = {"code": "H43", "name": "Commerce", "chamber": "H", "bills": {"2025-2026": []},
+            "sessions": [sess("2026-02-17", items("", "work session", None, "candidates"), ["work session"]),
+                         sess("2026-02-10", items("VID4", "executive session", 300, "stated"),
+                              ["executive session"]),
+                         sess("2026-02-03", items("VID1", "public hearing", 150.0, "located"),
+                              ["public hearing"])],
+            "recordings": [rec("-titleOnly1", "2026-02-24", seconds=2170),
+                           rec("divOne", "2026-02-17", began="13:00", seconds=7200, label="Division I"),
+                           rec("VID4", "2026-02-10", began="12:58", seconds=2700),
+                           rec("VID1", "2026-02-03", began="09:58", seconds=6723)]}
+    many = dict(cmte, code="H34", recordings=[rec(f"m{i:02d}", f"2026-03-{i:02d}") for i in range(1, 26)])
+    later = dict(cmte, code="H05", bills={"2017-2018": [], "2021-2022": []}, sessions=[],
+                 recordings=[rec("late1", "2021-03-01", term="2021-2022")])
+    none = dict(cmte, code="H01", recordings=[])
+    harness = _HEARD_PRELUDE + r"""
+load("renderPage, recordTerms, setPage: (p) => { PAGE = p; }, getPage: () => PAGE,"
+  + " setTab: (t) => { PAGE_TAB = t; }, getTab: () => PAGE_TAB, setUp: (u) => { UPCOMING = u; }");
+const fx = JSON.parse(fs.readFileSync("./fx.json", "utf8"));
+const results = document.querySelector("#results");
+const draw = (c, tab, extra) => {
+  const terms = s.recordTerms("committee", c);
+  s.setPage(Object.assign({kind: "committee", data: c, terms, term: terms[0], status: "",
+    vfilter: "", vshow: 0, bshow: 0, mshow: 0, vid: ""}, extra || {}));
+  s.setTab(tab); s.renderPage(); return results.innerHTML; };
+const out = {};
+try {
+  s.setUp([]);
+  out.videos = draw(fx.cmte, 2);
+  out.vid1 = draw(fx.cmte, 2, {vid: "VID1"});
+  out.meetings = draw(fx.cmte, 1);
+  out.many = draw(fx.many, 2);
+  out.later = draw(fx.later, 2, {term: "2017-2018"});
+  out.none = draw(fx.none, 2); out.noneTab = s.getTab();
+} catch (e) { out.threw = e.constructor.name + ": " + e.message + " " + e.stack; }
+process.stdout.write("\n@@" + JSON.stringify(out));
+"""
+    got = _node_app(harness, {"fx.json": json.dumps({"cmte": cmte, "many": many, "later": later,
+                                                     "none": none})})
+    if got is None:
+        return "skip", "node, app.js or dom_stub.js is not here"
+    assert "threw" not in got, "the Videos tab would not draw: " + got.get("threw", "")[:400]
+    flat = {k: re.sub(r"[ \t\r\n]+", " ", v) if isinstance(v, str) else v for k, v in got.items()}
+    v = flat["videos"]
+    tabs = re.findall(r'<button class="tab" role="tab"[^>]*>(.*?)</button>', v)
+    assert len(tabs) == 3 and tabs[2] == ('Videos<span class="tn"><span class="tnp"> (</span>4'
+                                         '<span class="tnp">)</span></span>'), (
+        f"the tabs read {tabs}: Videos is not the third, with the count chip the others carry")
+    pane = v[v.index('id="ppane"'):]
+    # NOTHING FROM YOUTUBE BEFORE PLAY: a still, its embed on a button, and no frame.
+    assert "<iframe" not in pane and "ytimg" not in pane and "<img" not in pane, (
+        "the Videos tab draws a frame or an image before Play")
+    embeds = re.findall(r"<(\w+)[^>]*\sdata-embed=\"([^\"]*)\"", pane)
+    assert embeds == [("button", "-titleOnly1|0|m20260224_-titleOnly1")], (
+        f"the still is not the newest recording's, from 0, on a button: {embeds}")
+    rows = re.findall(r'<li(?: class="vwrest")?><a class="vwrow" href="([^"]*)" data-vwpick="([^"]*)"'
+                      r'( aria-current="true")?>(.*?)</a></li>', pane)
+    assert [(h, i, bool(c)) for h, i, c, _ in rows] == [
+        ("/committee/H43/videos#v--titleOnly1", "-titleOnly1", True),
+        ("/committee/H43/videos#v-divOne", "divOne", False),
+        ("/committee/H43/videos#v-VID4", "VID4", False), ("/committee/H43/videos#v-VID1", "VID1", False)], (
+        f"the rows are not the term's recordings newest first, each its own address, the newest "
+        f"chosen: {[(h, i, c) for h, i, c, _ in rows]}")
+    import html as _html
+    say = {i: _html.unescape(re.sub(r"<[^>]+>", "", body)) for _h, i, _c, body in rows}
+    want = {"-titleOnly1": "Feb 24, 2026, 36 min",
+            "divOne": "Feb 17, 2026, 1:00 PM · , 2 h, Work Session Division I",
+            "VID4": "Feb 10, 2026, 12:58 PM · , 45 min, Executive Session 1 bill: HB 1442",
+            "VID1": "Feb 3, 2026, 9:58 AM · , 1 h 52 min, Public Hearing 1 bill: HB 1442"}
+    assert say == want, f"the rows read {say!r}, not {want!r}"
+    # Its kinds are the Meetings tab's chips, in their words and colours.
+    assert '<span class="chip calkind k-exec">Executive Session</span>' in pane \
+        and '<span class="chip calkind k-meet">Work Session</span>' in pane, (
+        "a row's kind is not the Meetings tab's chip")
+    cap = _html.unescape(re.sub(r"<[^>]+>", "", re.search(r'<div class="pbar vwcap">(.*?)</div>', pane).group(1)))
+    assert cap == "House Commerce · , Feb 24, 2026 · , 36 min · , On YouTube", (
+        f"the caption under the player reads {cap!r}: one line, a missing start left out with its dot")
+    assert pane.count("The docket ties no bill to this recording.") == 1 and "No bill" not in pane \
+        and 'class="note"' not in pane, (
+            "a recording with no bill is not said so once, plainly, under the player")
+    assert flat["videos"].count("its newest recording, on the <a") == 1 and \
+        "Its last meeting on the record was on" in flat["videos"], (
+            "the head names a last meeting older than the newest recording and does not say both")
+    # THE MOMENTS ARE THE MEETINGS TAB'S OWN BUTTONS, byte for byte.
+    det = flat["vid1"][flat["vid1"].index('class="vwdetin"'):]
+    vj = re.search(r'<span class="mjumps">(.*?)</span></li>', det).group(1)
+    day = flat["meetings"][flat["meetings"].index('id="day-2026-02-03"'):]
+    mj = re.search(r'<span class="mjumps">(.*?)</span></div>', day).group(1)
+    assert vj == mj and "approximate" in vj and "|150" in vj, (
+        f"the Videos tab's moment for VID1 is {vj!r}, the Meetings tab's {mj!r}")
+    assert '<a href="/committee/H43/sessions#day-2026-02-03" data-vwday="2026-02-03">What the committee ' \
+        'did at this meeting</a>' in det, "the detail does not lead to the meeting on the Meetings tab"
+    # On a phone, twenty and a button for the rest; every row in the page.
+    m = flat["many"]
+    assert m.count('class="vwrest"') == 5 and m.count('class="vwrow"') == 25 and \
+        re.search(r'data-vwall aria-controls="vwlist">Show all 25</button>', m), (
+            "a list of 25 is not twenty and a button for the rest")
+    # A term with none: the tab, with no count, and the pane says so.
+    lt = flat["later"]
+    assert re.search(r'role="tab" id="ptab_2"[^>]*>Videos</button>', lt) and \
+        "No recording of this committee from 2017–2018 is on file. Recordings here begin in May " \
+        "2020, with the General Court&rsquo;s YouTube channels." in lt, (
+            "a term with no recording does not keep the tab without a count and say so")
+    assert "Videos" not in re.sub(r"<[^>]+>", " ", flat["none"].split('id="ppane"')[0].split('role="tablist"')[-1]) \
+        and flat["noneTab"] == 0, "a committee with no recording has a Videos tab, or opens on it"
+    return "ok", ("the third tab, counted; a still of the newest, nothing from YouTube before Play; "
+                  "rows of the term with the Meetings tab's chips, no bill line where none is known; "
+                  "one caption with nothing missing said; the moment the Meetings tab's own button; "
+                  "twenty and Show all 25; a term with none says so; no tab with no recording")
 
 
 @check("frontend", "the committees index says its counts of bills and sessions are every "

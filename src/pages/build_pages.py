@@ -251,7 +251,10 @@ HEADERS = """# Written by build_pages.py. Not an asset; Pages reads it.
 BILL_TAB_SLUGS = ("text", "votes", "hearings", "videos", "reports",
                   "sponsors", "documents", "related")
 MEMBER_TAB_SLUGS = ("cosponsored", "votes")
-COMMITTEE_TAB_SLUGS = ("sessions",)
+# A committee's Videos tab (26 October 2026); its rule serves a study or
+# statutory committee's /committee/ss<id>/videos too, which opens that page
+# at its Videos section.
+COMMITTEE_TAB_SLUGS = ("sessions", "videos")
 # THE LEARN HUB MOVED. /learn was the hub of the Learn pages and is now the
 # first tab of the Resources hub, /resources (the person, 8 October 2026,
 # decision 128: "/learn redirects to /resources ... the articles keep their

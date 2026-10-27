@@ -856,6 +856,73 @@ def static_record(code, name, chamber_word, rec, sessions):
     out.append("<h2>Sources</h2><ul>" + "".join(f"<li>{x}</li>" for x in links) + "</ul></div>")
     return "".join(out)
 
+
+# THE VIDEOS TAB'S LIST (the owner, 26 October 2026: "Committee pages should
+# have a videos tab that essentially compiles the youtube playlist of that
+# committee's meetings in a structured table with the date, list of bills,
+# and other pertinent information"). A page's `recordings`, newest first, are
+# every recording one of its own bill rows names (the video_id on an item),
+# and every recording in the video index that NO row of proceedings.csv
+# carries, that has streamed, and whose own title names this committee in the
+# channel's chamber, read through code_of with the term of its day. The
+# House's "Finance Division I/II/III" is House Finance's, marked with its
+# division. Nothing is weighed or guessed: a title in the older form
+# ("Education 1/26/21") names no committee the index could parse, so it stays
+# off unless a bill row places it. The Senate's docket lists hearings only,
+# so its committees' executive sessions are on their channel and on no row:
+# Senate Finance's of April and May 2026 are listed this way, with no bill.
+# Each entry is {"id", "date", "term"} and "began" ("13:13"), "seconds" and
+# "label" ("Division II") where the recording says them. The bills, their
+# kinds and their moments are the page's own items, which it holds already,
+# so an entry carries none: about ninety bytes a recording, in the file the
+# page loads already, and no file of its own.
+DIVISION = re.compile(r"^Finance\s*-?\s*Division\s+(I{1,3})(?:\s*,.*)?$")
+
+
+def committee_recordings(days, carried, facts, code_of, pages):
+    """({code: [entry, ...] newest first}, Counter of how each was found:
+    by_bills, by_titles, no_page). `days` is {code: {(term, date): [items]}},
+    `carried` every video_id on any row of proceedings.csv, `facts`
+    proceedings.video_facts(), `code_of` who_sits' and `pages` the codes that
+    get a page."""
+    out = collections.defaultdict(dict)
+    # A recording any page's items name is that page's, and no title adds it
+    # to another.
+    carried = set(carried) | {it.get("video_id") for by_day in days.values()
+                              for items in by_day.values() for it in items} - {"", None}
+
+    def entry(vid, date, term, label=""):
+        v = facts.get(vid) or {}
+        return {"id": vid, "date": date, "term": term,
+                **({"began": v["began"]} if v.get("began") else {}),
+                **({"seconds": v["seconds"]} if v.get("seconds") else {}),
+                **({"label": label} if label else {})}
+    for code, by_day in days.items():
+        if code not in pages:
+            continue
+        for (term, date), items in sorted(by_day.items(), key=lambda kv: kv[0][1] or ""):
+            for it in items:
+                vid = it.get("video_id") or ""
+                if vid and vid not in out[code]:
+                    out[code][vid] = entry(vid, date, term)
+    found = collections.Counter(by_bills=sum(len(v) for v in out.values()))
+    for vid, v in sorted(facts.items()):
+        name = v.get("parsed_committee") or ""
+        if vid in carried or not v.get("streamed") or not v.get("date") or not name \
+                or name == "Session":
+            continue
+        m = DIVISION.match(name) if v.get("chamber") == "H" else None
+        term = P.term_on(v["date"])
+        code = code_of("Finance" if m else name, v.get("chamber"), term)
+        if code not in pages:
+            found["no_page"] += 1
+            continue
+        out[code][vid] = entry(vid, v["date"], term, f"Division {m.group(1)}" if m else "")
+        found["by_titles"] += 1
+    return ({code: sorted(recs.values(), key=lambda r: (r["date"], r.get("began") or "", r["id"]),
+                          reverse=True)
+             for code, recs in out.items() if recs}, found)
+
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--site", default="site")
@@ -928,6 +995,10 @@ def main():
     # SUCCESS: with no histories here every notice would be filed as a
     # sitting and nothing would say so.
     rows, histories = P.load(), load("narratives.json", {})
+    # Every recording a row of the table names, the floor's included: the
+    # Videos tab adds by its title only a recording no row carries (THE
+    # VIDEOS TAB'S LIST).
+    carried = {(r.get("video_id") or "").strip() for r in rows} - {""}
     if rows and not histories:
         raise SystemExit("narratives.json is not there, or holds nothing. A docket "
                          "notice for a bill withdrawn or never introduced is told "
@@ -1083,7 +1154,23 @@ def main():
     index, written, urls, skipped = [], 0, [], []
     span_of = {}
 
-    for code in sorted(set(list(seats) + list(referred) + list(days))):
+    codes_ = sorted(set(list(seats) + list(referred) + list(days)))
+    # THE VIDEOS TAB'S LIST. SILENCE IS NOT SUCCESS: the index is in git
+    # (collected/videos/), so a table naming recordings beside an index that
+    # reads as nothing is a broken checkout, and every page would lose its
+    # Videos tab with nothing to say why.
+    facts = P.video_facts()
+    if carried and not facts:
+        raise SystemExit(
+            f"proceedings.csv names {len(carried):,} recordings and the video index "
+            f"({P.VIDEO_DIR.as_posix()}/videos_*.csv, and the night's videos_*.csv beside "
+            "it) reads as empty: the index is in git, so this checkout is missing it, and no "
+            "committee page would list its recordings.")
+    recordings, vfound = committee_recordings(
+        days, carried, facts, code_of,
+        {c for c in codes_ if presentable(committee_name(c, lead, codes))})
+
+    for code in codes_:
         info = lead.get(code, {})
         name = committee_name(code, lead, codes)
         # A code with no name, or H29's, is not a committee this site can
@@ -1204,6 +1291,10 @@ def main():
             "members": members,
             "bills": bills_in_order(referred.get(code, {})),
             "sessions": sessions,
+            # Its recordings, newest first, for the Videos tab (THE VIDEOS
+            # TAB'S LIST); absent where it has none, and then the page has no
+            # such tab.
+            **({"recordings": recordings[code]} if recordings.get(code) else {}),
         }
         (out / f"{code}.json").write_text(json.dumps(rec), encoding="utf-8")
 
@@ -1440,6 +1531,10 @@ def main():
           f"{sum(i['n_sessions'] for i in index):,} sitting days")
     lead_n = sum(1 for i in index if i["chair"])
     print(f"  {lead_n} of {written} have a chair on file")
+    # The Videos tab's lists, said (SILENCE IS NOT SUCCESS).
+    print(f"  {sum(len(v) for v in recordings.values()):,} recordings on {len(recordings)} "
+          f"committee pages: {vfound['by_bills']:,} by their bills, {vfound['by_titles']:,} by "
+          f"their titles; {vfound['no_page']:,} named for no page")
     # WHAT HAPPENED AT EACH MEETING, said (committee_acts): nothing voted at
     # any meeting would be the docket's vote dates no longer read, and every
     # bill would read as heard and nothing more.

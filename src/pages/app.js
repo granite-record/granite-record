@@ -2829,17 +2829,23 @@ const jOpen=new Set();
 const BILL_TABS={text:"6",votes:"1",hearings:"2",videos:"2",
                  reports:"3",sponsors:"4",documents:"5",related:"7"};
 const MEMBER_TABS={cosponsored:1,votes:2};
-const COMMITTEE_TABS={sessions:1};
+// A committee's Videos tab (the owner, 26 October 2026) is "videos", a slug
+// a bill's page keeps for its Hearings tab too: TAB_PATH tells a bill's
+// address from a committee's, so the two never meet.
+const COMMITTEE_TABS={sessions:1,videos:2};
 const TAB_PATH=/^(\/(?:bill\/\d{4}\/[a-z]{2,5}\d+|legislator\/[^\/]+|committee\/[^\/]+))\/([a-z]+)\/?$/i;
 const isTabSlug=s=>!!(BILL_TABS[s]||MEMBER_TABS[s]||COMMITTEE_TABS[s]);
 function tabFromPath(){
   const m=TAB_PATH.exec(location.pathname);
   return m&&isTabSlug(m[2].toLowerCase())?m[2].toLowerCase():"";
 }
-function tabAddress(slug){
+// `hash`: the fragment kept, where the address named a place on the tab it
+// asked for -- a day (showDay) or a recording (showVideo).
+function tabAddress(slug,hash){
   const m=TAB_PATH.exec(location.pathname);
   const base=m&&isTabSlug(m[2].toLowerCase())?m[1]:location.pathname.replace(/\/$/,"");
-  try{history.replaceState(history.state,"",base+(slug?"/"+slug:"")+location.search);}catch(_){}
+  try{history.replaceState(history.state,"",base+(slug?"/"+slug:"")+location.search
+    +(hash?location.hash:""));}catch(_){}
   addressed();
 }
 
@@ -5406,6 +5412,11 @@ const roomWords=v=>{
     .replace(/\b(LOBO|LOB|SH|GP|SL) ?(?:Room |Rm\.? ?)?([0-9][0-9A-Za-z\-]*)\b(?!:)/g,
       (m,k,n)=>`${ROOM_BUILDINGS[k]} ${n}`);
 };
+// WHERE THIS SITE'S RECORDINGS BEGIN, in one sentence for every page that
+// says it: a bill's Hearings tab and a Videos view with nothing in a term
+// before then. The month is about_figures.STREAM_START_WORDS, and preflight
+// holds the two together.
+const STREAM_BEGIN_SAID="Recordings here begin in May 2020, with the General Court&rsquo;s YouTube channels.";
 // "approximate", the one word an inferred moment carries (CLAUDE.md,
 // Timestamps), on a floor card: where the clerk was not heard to open the
 // bill -- a weak marker's start, or no start at all and Play opening shortly
@@ -5440,8 +5451,7 @@ function renderHearings(b,d){
   // both claims the record contradicts. The month is
   // about_figures.STREAM_START_WORDS, and preflight holds the two together.
   const pre=(d.stations||[]).some(s=>s.state==="prestream")
-    ?`<p class="note">Recordings here begin in May 2020, with the General
-      Court&rsquo;s YouTube channels.</p>`:"";
+    ?`<p class="note">${STREAM_BEGIN_SAID}</p>`:"";
   return (d.stations||[]).length?pre+d.stations.map((s,si)=>{
     let inner;
     // Whether this station ends up pointing at a moment. It was a list of
@@ -6896,7 +6906,8 @@ document.addEventListener("click",e=>{
 });
 
 // The address shared is the one in the bar -- a tab's own address where a
-// tab is open -- without a fragment, which only scrolls this reader's page.
+// tab is open -- without a fragment, which only scrolls this reader's page;
+// but with #v-<id>, which names the recording chosen on a Videos view.
 function shareCopy(b,url){
   const st=b.parentNode&&b.parentNode.querySelector(".sharestate");
   const say=t=>{if(st)st.textContent=t;};
@@ -6910,7 +6921,7 @@ function shareCopy(b,url){
 document.addEventListener("click",e=>{
   const b=e.target.closest&&e.target.closest("[data-share]");
   if(!b)return;
-  const url=location.href.split("#")[0];
+  const url=/^#v-/.test(location.hash)?location.href:location.href.split("#")[0];
   if(navigator.share){
     navigator.share({title:document.title,url}).catch(err=>{
       if(!err||err.name!=="AbortError")shareCopy(b,url);});
@@ -8779,18 +8790,27 @@ const kindChips=ks=>(ks||[]).map(k=>{
 // in the recording where each was taken up (the same times and the same
 // "approximate" as before; nothing about a timestamp changes), and what
 // happened.
-function meetingLine(s,o,items){
-  const mine=items.filter(i=>String(i.bill)===String(o.bill));
-  const at=mine.map(i=>i.time).filter(Boolean).sort()[0]||"";
-  const jumps=mine.filter(i=>i.start!=null).map(i=>{
+// A BILL'S MOMENTS IN ITS RECORDINGS, as the buttons that move a player there:
+// one drawing for a meeting's card on the Meetings tab and for the Videos
+// tab's list of bills (videoDetail), so the two give the same times and the
+// same "approximate" from the same items, and nothing about a timestamp
+// changes. `mine` is the bill's items; `pidOf(item)` names the player each
+// one moves.
+function jumpButtons(mine,pidOf){
+  return mine.filter(i=>i.start!=null).map(i=>{
     const t=Math.max(0,Math.floor(i.start));
     // A weak marker's start is an inference, as the bill page says.
     const said=/^(stated|floor_stated|floor_precise)$/.test(i.state||"")&&!i.inferred;
-    const pid=meetingPid(s,i.video_id||s.video_id);
+    const pid=pidOf(i);
     const kind=mine.length>1?`${(MEET_KIND[String(i.kind||"").toLowerCase()]||[kindTitle(i.kind)])[0]} `:"";
     return `<button type="button" class="jump" data-seek="${esc(pid)}|${t}" aria-label="Play ${
       esc(kind||"this bill ")}from ${hms(t)}">${icon("play")}${esc(kind)}${hms(t)}</button>${
       said?"":`<i class="approx">approximate</i>`}`;}).join("");
+}
+function meetingLine(s,o,items){
+  const mine=items.filter(i=>String(i.bill)===String(o.bill));
+  const at=mine.map(i=>i.time).filter(Boolean).sort()[0]||"";
+  const jumps=jumpButtons(mine,i=>meetingPid(s,i.video_id||s.video_id));
   const who="The committee";
   let what="";
   if(o.outcome==="voted")what=(o.votes||[]).map(a=>actSaid(a,who)).join("");
@@ -8930,6 +8950,272 @@ function renderCommitteeSessions(c){
     <div class="cmeets" id="pmeets">${order.map((s,i)=>meetingHtml(s,isOpen(s),i>=cap)).join("")}</div>${
       pagedMore("mshow","pmeets",Math.min(cap,order.length),order.length)}`;
 }
+
+// ========================================================== THE VIDEOS VIEW
+/* A BODY'S RECORDINGS AS ONE PLAYER AND ITS PLAYLIST (the owner, 26 October
+   2026: "Committee pages should have a videos tab that essentially compiles
+   the youtube playlist of that committee's meetings in a structured table
+   with the date, list of bills, and other pertinent information that can fit
+   in a relatively compact table. The embedded player could potentially take
+   up most of the tab, and the other videos persist in a scrollable playlist
+   on the right side, with the most recent entry in the playlist as the
+   default. Same goes for session days, or study committees, commissions,
+   etc"). One renderer for every page whose body is livestreamed: a
+   committee's Videos tab (renderCommitteeVideos), a chamber's
+   (/session/house and /session/senate) and a study or statutory committee's
+   Videos section, the last two drawn from the JSON their pages carry
+   (staticVideos).
+
+   o:     {who, what, key, heading, rows, chosen, href(id), pid(row), source, all}
+          who is the player's bar ("Senate Finance", "The House"), what the
+          same in a sentence ("Recording of the House, ..."), where it
+          differs; key the term or the page, so a list kept open stays open.
+   a row: {id, date, began, seconds, kinds (chips' HTML), line (text),
+          detail (HTML, or a function that gives it)}
+
+   THE PLAYER IS THE SITE'S STILL. Nothing loads from YouTube -- no
+   thumbnail, no frame, no script -- until a person presses Play (the privacy
+   page's promise), and the one handler that plays every other recording
+   plays this one. It starts at 0: a bill's moment is a button of its own
+   (jumpButtons), the Meetings tab's own, so a moment is shown only as the
+   record has it -- a stated boundary plain, an inferred one "approximate".
+
+   ONE CAPTION UNDER THE PLAYER (the manager's review of 26 October 2026,
+   5): "Senate Finance · May 12, 2026 · 12:58 PM · 1 h 49 min · On YouTube",
+   with the outside-link mark app.css gives every link that leaves the
+   site. A start or a length the index does not have is left out with its
+   separator (the owner's fix S9): never a lone dot, never a dot at the end
+   of a line.
+
+   THE LIST IS ROWS OF LINKS, each to its own address (#v-<id>), the chosen
+   one aria-current and marked by a bar as well as its colour (review, 7),
+   in the document after what plays and what it covers, which is the Tab
+   order. Beside the player on a wide screen, as tall as the player and
+   scrolling inside; on a phone it flows on the page, the newest twenty and a
+   button for the rest, as the bill search brings its next twenty-five
+   (review, 6): no box that scrolls inside a page that scrolls. */
+const VW_SHOWN=20;
+// The view on this page, for choosing a row in it: one a page.
+let VVIEW=null;
+// A row's lists kept whole after "Show all", by the view's key.
+const VW_ALL={};
+// "1 h 49 min", "36 min": a recording's length to the nearest minute, and
+// never under one.
+function vwLength(s){
+  const m=Math.max(1,Math.round((Number(s)||0)/60));
+  return m>=60?`${Math.floor(m/60)} h${m%60?` ${m%60} min`:""}`:`${m} min`;
+}
+// The middle dot the eye reads and the comma a screen reader says.
+const VW_DOT='<span aria-hidden="true"> &middot; </span><span class="sr">, </span>';
+// When it began and how long it ran, each only where the index says it.
+const vwWhen=r=>[r.began?clock(r.began):"",r.seconds?vwLength(r.seconds):""].filter(Boolean);
+function vwPlayer(o,r){
+  const pid=o.pid(r), day=dateWords(r.date), what=o.what||o.who;
+  const cap=[`<b>${esc(o.who)}</b>`,esc(day)].concat(vwWhen(r).map(esc));
+  return `<div class="player vwplay" data-player="${esc(pid)}"><button type="button" class="pstub"`
+    +` data-title="${esc(recTitle(what,r.date))}" aria-label="${esc(`Play the recording of ${what}, ${day}`)}"`
+    +` data-embed="${esc(r.id)}|0|${esc(pid)}"><span>${icon("play")}</span><span>Play the recording</span></button>`
+    +`<div class="pbar vwcap"><p>${cap.join(VW_DOT)}${VW_DOT}<a href="https://www.youtube.com/watch?v=${
+      esc(r.id)}" target="_blank" rel="noopener">On YouTube</a></p></div></div>`;
+}
+const vwDetail=r=>typeof r.detail==="function"?r.detail():String(r.detail||"");
+function vwRow(o,r,i,cap){
+  const when=vwWhen(r);
+  return `<li${i>=cap?' class="vwrest"':""}><a class="vwrow" href="${esc(o.href(r.id))}" data-vwpick="${
+      esc(r.id)}"${r.id===o.chosen?' aria-current="true"':""}><span class="vwd">${esc(dateWords(r.date))}</span>${
+    when.length?`<span class="vwt"><span class="sr">, </span>${when.map(esc).join(VW_DOT)}</span>`:""}${
+    r.kinds||r.line?`<span class="vwb"><span class="sr">, </span>${r.kinds||""}${r.kinds&&r.line?" ":""}${
+      r.line?`<span class="vwl">${esc(r.line)}</span>`:""}</span>`:""}</a></li>`;
+}
+function videoView(o){
+  const rows=o.rows||[];
+  if(!rows.length)return "";
+  const on=rows.find(r=>r.id===o.chosen)||rows[0];
+  o.chosen=on.id;
+  VVIEW=o;
+  const all=o.all||VW_ALL[o.key];
+  const cap=all?rows.length:Math.max(VW_SHOWN,rows.indexOf(on)+1);
+  return `<div class="vw" data-vwkey="${esc(o.key||"")}"><div class="vwmain">${vwPlayer(o,on)}`
+    +'<p class="vwsay sr" role="status" aria-live="polite"></p></div>'
+    +`<div class="vwdet"><div class="vwdetin">${vwDetail(on)}</div>`
+    +`<a class="vwskip" href="${esc(location.pathname+location.search)}#vwlist" data-vwskip>Skip to the list of recordings</a></div>`
+    +`<div class="vwside"><div class="vwin"><h3 class="vwh" id="vwh">${esc(o.heading)}</h3>`
+    +`<ol class="vwlist${all?" vwopen":""}" id="vwlist" aria-labelledby="vwh">${rows.map((r,i)=>vwRow(o,r,i,cap)).join("")}</ol>`
+    +(rows.length>cap?`<button type="button" class="discl pgmore vwall" data-vwall aria-controls="vwlist">Show all ${
+      rows.length.toLocaleString()}</button>`:"")
+    +"</div></div>"
+    +(o.source?`<p class="src vwsrc">${o.source}</p>`:"")+"</div>";
+}
+// The chosen row in view INSIDE its list, the least that shows it, and never
+// by scrollIntoView, which would move the page as well. A list that does not
+// scroll (a phone's) is left alone.
+function vwListShow(a){
+  const list=a&&a.closest(".vwlist"), li=a&&a.closest("li");
+  if(!list||!li||list.scrollHeight<=list.clientHeight)return;
+  const top=li.offsetTop-list.offsetTop, end=top+li.offsetHeight;
+  if(top<list.scrollTop)list.scrollTop=top;
+  else if(end>list.scrollTop+list.clientHeight)list.scrollTop=end-list.clientHeight;
+}
+/* CHOOSING A ROW (a plain click, or Return on it; a click with a key held or
+   the middle button opens the row's own address in a new tab). Everything
+   changes in place -- the row marked, the player, its caption and what is
+   under it -- and nothing else is drawn again, so the list keeps its place.
+   The address becomes the row's (replaceState: no history entry a row).
+
+   BEFORE ANYONE HAS PRESSED PLAY in this view the still becomes the chosen
+   recording's still, nothing is asked of YouTube, and the keyboard goes to
+   Play, whose name says what was chosen, so one more Return plays it. ONCE
+   A FRAME IS OPEN, the reader has pressed Play here, and choosing a row is
+   choosing what plays: the new still is pressed through the one handler,
+   which builds the frame, the status line says so, and the keyboard stays on
+   the row to choose again. The player is brought into view either way: on a
+   phone it is above the list. */
+function vwChoose(a){
+  const box=a.closest(".vw"), o=VVIEW;
+  const r=o&&box&&o.rows.find(x=>x.id===a.dataset.vwpick);
+  if(!r)return;
+  const playing=!!box.querySelector(".vwplay iframe");
+  o.chosen=r.id;
+  if(o.onChoose)o.onChoose(r.id);
+  // Chosen here, so the address it is about to name is not an arrival
+  // (showVideo) to be landed on again.
+  vwTried=vwLanded=r.id;
+  box.querySelectorAll(".vwlist a[aria-current]").forEach(x=>x.removeAttribute("aria-current"));
+  a.setAttribute("aria-current","true");
+  const old=box.querySelector(".vwplay");
+  old.insertAdjacentHTML("beforebegin",vwPlayer(o,r));
+  old.remove();
+  box.querySelector(".vwdetin").innerHTML=vwDetail(r);
+  try{history.replaceState(history.state,"",o.href(r.id));}catch(_){}
+  addressed();
+  const player=box.querySelector(".vwplay"), stub=player.querySelector(".pstub"),
+    say=box.querySelector(".vwsay");
+  if(say)say.textContent="";
+  if(playing){
+    stub.click();
+    if(say)say.textContent=`Playing: ${dateWords(r.date)}`;
+  }else stub.focus({preventScroll:true});
+  player.scrollIntoView({block:"nearest"});
+}
+document.addEventListener("click",e=>{
+  const t=e.target&&e.target.closest?e.target:null;
+  if(!t||e.defaultPrevented)return;
+  const pick=t.closest("a[data-vwpick]");
+  if(pick){
+    if(e.button||e.metaKey||e.ctrlKey||e.shiftKey||e.altKey)return;
+    e.preventDefault();vwChoose(pick);return;}
+  // The rest of a phone's list, and the keyboard on the first it brought.
+  const all=t.closest("[data-vwall]");
+  if(all){
+    const list=document.getElementById(all.getAttribute("aria-controls"));
+    const first=list&&list.querySelector(".vwrest a");
+    if(list)list.classList.add("vwopen");
+    if(VVIEW)VW_ALL[VVIEW.key]=true;
+    all.remove();
+    if(first)first.focus();
+    return;}
+  // Past what is under the player, to the row that is chosen.
+  const skip=t.closest("a[data-vwskip]");
+  if(skip){
+    const on=document.querySelector('.vwlist a[aria-current="true"]')||document.querySelector(".vwlist a");
+    if(on){e.preventDefault();on.focus();vwListShow(on);}
+    return;}
+});
+
+// ------------------------------------------------- a committee's Videos tab
+// THE TERM'S RECORDINGS, newest first: build_committees' `recordings` (THE
+// VIDEOS TAB'S LIST), each a bill row's or one the committee's own title
+// names on its channel. Each one's bills, kinds and moments are the page's
+// own items that name it, so nothing more is fetched.
+const cmteRecordings=c=>(c.recordings||[]).filter(r=>r.term===pageTerm());
+// "HB 1042", without the "-FN-LOCAL" the record carries, and on one line.
+const vwBill=i=>String(i.n||i.bill||"").replace(/-.*$/,"").replace(/ /g,"\u00a0");
+// The kinds of meeting, in the Meetings tab's words and colours (review, 2).
+const vwKinds=items=>[...new Set(items.map(i=>String(i.kind||"").trim().toLowerCase()).filter(Boolean))];
+// A meeting of this committee on the recording's day, as the Meetings tab
+// has it: the address of that day there, which works in a new tab and as a
+// copied link.
+const vwDayHref=(c,date)=>`/committee/${encodeURIComponent(c.code)}/sessions#${dayId(date)}`;
+function cmteVideoRows(c){
+  const by=new Map(), met=new Map();
+  (c.sessions||[]).forEach(s=>{
+    if(!s.ahead)met.set(s.date,s);
+    (s.items||[]).forEach(i=>{
+      if(!i.video_id)return;
+      if(!by.has(i.video_id))by.set(i.video_id,{s,items:[]});
+      by.get(i.video_id).items.push(i);
+    });
+  });
+  return cmteRecordings(c).map(r=>{
+    const got=by.get(r.id), items=got?got.items:[], day=got?got.s:met.get(r.date)||null;
+    // NO BILL TIED TO IT: where the committee's meeting that day is in no
+    // other recording, that meeting's kind is the Calendar's for it, and is
+    // shown (review, 3); where nothing is known, nothing is.
+    const kinds=items.length?vwKinds(items)
+      :day&&!(day.items||[]).some(i=>i.video_id)?vwKinds(day.items||[]):[];
+    // A space between chips, so their names are not run together when read.
+    const chips=kinds.map(k=>kindChips([k])).concat(r.label?[chip(r.label,"calkind k-other")]:[]).join(" ");
+    const bills=[...new Set(items.map(vwBill))];
+    const line=bills.length?`${nBills(bills.length)}: ${bills.slice(0,3).join(", ")}${
+      bills.length>3?` and ${(bills.length-3).toLocaleString()} more`:""}`:"";
+    return {id:r.id,date:r.date,began:r.began,seconds:r.seconds,kinds:chips,line,
+            detail:()=>cmteVideoDetail(c,r,items,day,chips)};
+  });
+}
+// What is under the player: the kinds and the room; the bills in the order
+// they were taken up, each with its moments, the Meetings tab's own buttons;
+// or, where the docket ties none, that, once and plainly (review, 3); and the
+// way to the meeting on the Meetings tab, where the committee had one that
+// day.
+function cmteVideoDetail(c,r,items,day,chips){
+  const pid=meetingPid({date:r.date},r.id);
+  const rooms=[...new Set(items.map(i=>i.venue||"").filter(Boolean))];
+  const facts=[chips?`<span class="vwchips">${chips}</span>`:"",rooms.length===1?esc(roomWords(rooms[0])):""].filter(Boolean);
+  const out=[facts.length?`<p class="vwkinds">${facts.join(" ")}</p>`:""];
+  if(items.length){
+    const order=[...new Set(items.map(i=>String(i.bill)))];
+    out.push(`<ol class="vwbills">${order.map(b=>{
+      const mine=items.filter(i=>String(i.bill)===b), it=mine[0];
+      const href=it.year?`bill/${esc(it.year)}/${esc(b.toLowerCase())}.html`:esc(billHref(b));
+      const jumps=jumpButtons(mine,()=>pid);
+      return `<li><a class="vwbn" href="${href}">${esc(it.n||b)}</a>${
+        it.title?`<span class="vwbt">${esc(it.title)}</span>`:""}${
+        jumps?`<span class="mjumps">${jumps}</span>`:""}</li>`;}).join("")}</ol>`);
+  }else out.push(`<p class="vwnone">The docket ties no bill to this recording.</p>`);
+  if(day)out.push(`<p class="src vwlinks"><a href="${esc(vwDayHref(c,day.date))}" data-vwday="${
+    esc(day.date)}">${items.length?"What the committee did at this meeting":"This committee&rsquo;s meeting that day"}</a></p>`);
+  return out.join("");
+}
+function renderCommitteeVideos(c){
+  const t=pageTerm(), rows=cmteVideoRows(c);
+  if(!rows.length)return `<p class="src fill">No recording of this committee from ${
+    esc(termDash(t))} is on file.${t&&t<="2019-2020"?" "+STREAM_BEGIN_SAID:""}</p>`;
+  const ch=c.chamber==="S"?"Senate":c.chamber==="H"?"House":"";
+  const want=PAGE&&PAGE.vid;
+  return videoView({who:[ch,c.name||""].filter(Boolean).join(" ")||"Committee",key:`${c.code}|${t}`,
+    heading:`${rows.length.toLocaleString()} recording${rows.length===1?"":"s"} in ${termDash(t)}`,
+    rows,chosen:rows.some(r=>r.id===want)?want:rows[0].id,
+    href:id=>`/committee/${encodeURIComponent(c.code)}/videos#v-${id}`,
+    pid:r=>meetingPid({date:r.date},r.id),
+    onChoose:id=>{if(PAGE)PAGE.vid=id;},
+    source:"The recordings are the General Court&rsquo;s own, from its House and Senate YouTube "
+      +"channels; which bills each covers is from its docket."});
+}
+// A meeting's link under the player, pressed: the Meetings tab, opened at
+// that day (showDay), with its address in the bar.
+// And the head's "Videos tab", pressed: that tab, on the recording it names
+// (showVideo), as the address would open it.
+document.addEventListener("click",e=>{
+  const a=e.target&&e.target.closest&&e.target.closest("a[data-vwday],a[data-vwgo]");
+  if(!a||!PAGE||e.defaultPrevented||e.button||e.metaKey||e.ctrlKey||e.shiftKey||e.altKey)return;
+  e.preventDefault();
+  try{history.replaceState(history.state,"",a.getAttribute("href"));}catch(_){}
+  addressed();
+  if(a.dataset.vwgo!==undefined){vwTried=vwLanded="";showVideo();return;}
+  PAGE_TAB=COMMITTEE_TABS.sessions;
+  dayLanded="";
+  renderPage();
+});
 
 // What the committee reported on a bill, for its card on the Bills tab: each
 // act, with the day the docket dates it and a link to that meeting.
@@ -9197,9 +9483,18 @@ function renderCommitteeHead(c){
       esc(String(c.phone).replace(/[^\d+]/g,""))}">${esc(c.phone)}</a>`:""],
     ["Committee Aide",esc(c.aide||"")],["Researcher",esc(c.researcher||"")]];
   const met=(c.sessions||[]).filter(s=>!s.ahead).map(s=>s.date).sort().pop();
+  // ITS CHANNEL CAN BE AHEAD OF ITS DOCKET. The Senate's docket lists its
+  // committees' hearings and not their executive sessions, so Senate
+  // Finance's last meeting on the record is 7 April 2026 and its newest
+  // recording 12 May (the Videos tab's list, build_committees). Both are
+  // said, so the head and the tab below it do not disagree.
+  const rec=(c.recordings||[]).reduce((a,r)=>!a||r.date>a.date?r:a,null);
+  const ahead=rec&&met&&rec.date>met?`; its newest recording, on the <a href="${
+    esc(`/committee/${encodeURIComponent(c.code)}/videos#v-${rec.id}`)}" data-vwgo="${esc(rec.id)}">Videos tab</a>, is from ${
+    esc(dateWords(rec.date))}`:"";
   const next=UPCOMING===null?"":cmteUpcoming(c).length?""
-    :`Nothing is scheduled in the next two weeks.${met?` Its last meeting was on <a href="${
-      esc(dayHref(met))}">${esc(dateWords(met,"long"))}</a>.`:""}`;
+    :`Nothing is scheduled in the next two weeks.${met?` Its last meeting${ahead?" on the record":""} was on <a href="${
+      esc(dayHref(met))}">${esc(dateWords(met,"long"))}</a>${ahead}.`:""}`;
   // "The House Special Committee on Housing", not "The House Committee on
   // Special Committee on Housing" (components.js's cmteTitle, 16 October 2026).
   const line=`The ${esc(cmteTitle(c.name||"",ch))}${chair?`, chaired by ${chair}`:""}.`;
@@ -9238,20 +9533,44 @@ function committeeSections(c){
   return S.length?`<div class="w4s">${S.join("")}</div>`:"";
 }
 
-function renderCommittee(c){
+// Everything above the tab's pane: the head, the sections, what is coming,
+// the term and the tabs. renderPage draws this alone while a recording plays
+// in the Videos pane (vwPaneKept).
+function committeeTop(c){
   // Counted for the term the page is showing, not across every term. "Bills
   // (107)" over a list of 32 is the tab disagreeing with itself.
   const tabs=[["Bills",cmteBills(c).length],["Meetings",cmteSessions(c).length]];
-  const body=[()=>renderCommitteeBills(c),()=>renderCommitteeSessions(c)][PAGE_TAB]
-    ||(()=>"");
+  // VIDEOS, WHERE THE COMMITTEE HAS A RECORDING IN ANY TERM, counted as the
+  // other two are, for the term shown: a term with none keeps the tab, with
+  // no count, and its pane says so. A committee with none has no such tab,
+  // and an address asking for it opens on Bills.
+  if((c.recordings||[]).length)tabs.push(["Videos",cmteRecordings(c).length]);
+  else if(PAGE_TAB===COMMITTEE_TABS.videos){PAGE_TAB=0;tabAddress("");}
   // Who they are, then what is coming, then the record. The calendar sits
   // above the term control because it is not about a term: it is about this
   // week, and a reader who came to find out whether they can still turn up
   // and speak should not have to scroll past nineteen years of bills. Where
   // nothing is coming the head says so, and when it last met.
   const up=UPCOMING!==null&&cmteUpcoming(c).length?renderCommitteeUpcoming(c):"";
-  return renderCommitteeHead(c) + committeeSections(c) + up
-    + termControl() + tabStrip(tabs) + pagePane(body());
+  return renderCommitteeHead(c) + committeeSections(c) + up + termControl() + tabStrip(tabs);
+}
+function renderCommittee(c){
+  const top=committeeTop(c);
+  const body=[()=>renderCommitteeBills(c),()=>renderCommitteeSessions(c),
+              ()=>renderCommitteeVideos(c)][PAGE_TAB]||(()=>"");
+  return top + pagePane(body());
+}
+/* THE PANE IS LEFT AS IT IS WHILE A RECORDING PLAYS IN IT. The page is drawn
+   again as the term's index, home.json and the officers arrive after the
+   record, and a frame that is made again, or moved, starts over: so where the
+   Videos pane of the term shown holds a frame, only what is above the pane is
+   drawn again. Changing the term or the tab ends the playing, as it ends any
+   other. */
+function vwPaneKept(el){
+  if(!PAGE||PAGE.kind!=="committee"||PAGE_TAB!==COMMITTEE_TABS.videos||!PAGE.data)return null;
+  const pane=el.querySelector("#ppane"), box=pane&&pane.querySelector(".vw");
+  return box&&box.querySelector("iframe")
+    &&box.dataset.vwkey===`${PAGE.data.code}|${pageTerm()}`&&pane.parentNode===el?pane:null;
 }
 
 // ------------------------------------------------------------------ boot ---
@@ -9261,11 +9580,23 @@ function renderPage(){
   if(!el)return;
   const held=focusKey();
   parkActions();
-  el.innerHTML = PAGE.kind==="member" ? renderMember(PAGE.data)
-                                      : renderCommittee(PAGE.data);
+  const kept=vwPaneKept(el);
+  if(kept){
+    while(el.firstChild&&el.firstChild!==kept)el.removeChild(el.firstChild);
+    kept.insertAdjacentHTML("beforebegin",committeeTop(PAGE.data));
+  }else{
+    // The list's own place, kept through the drawing of the same list.
+    const list=el.querySelector(".vwlist"), vw=list&&list.closest(".vw");
+    const was=vw?[vw.dataset.vwkey,list.scrollTop]:null;
+    el.innerHTML = PAGE.kind==="member" ? renderMember(PAGE.data)
+                                        : renderCommittee(PAGE.data);
+    const now=was&&el.querySelector(".vw");
+    if(now&&now.dataset.vwkey===was[0])now.querySelector(".vwlist").scrollTop=was[1];
+  }
   placeActions();
   syncCards([...openCards]);
   showDay();
+  showVideo();
   showSelectedTab(el);
   refocus(held);
 }
@@ -9344,7 +9675,10 @@ document.addEventListener("change",e=>{
   // on the sponsored tabs as well as this one. Nothing asked for that term's
   // index because nothing on a record page ever had.
   if(f==="term"){PAGE.status="";term=PAGE.term;
-    ensureTerm(PAGE.term).then(renderPage);}
+    ensureTerm(PAGE.term).then(renderPage);
+    // A recording the address named is the old term's: the new term's
+    // Videos tab opens on its newest, and the address stops naming it.
+    if(/^#v-/.test(location.hash))tabAddress(slugOf(COMMITTEE_TABS,PAGE_TAB));}
   // A narrower filter over a list already expanded to 800 rows left the
   // reader at the bottom of a list of 40.
   if(f==="vfilter"||f==="vside"||f==="vq"||f==="term")PAGE.vshow=0;
@@ -9445,6 +9779,8 @@ function recordTerms(kind,d){
   }else{
     Object.keys(d.bills||{}).forEach(x=>x&&t.add(x));
     (d.sessions||[]).forEach(s=>s.term&&t.add(s.term));
+    // A term the committee is on its channel in and on no bill row.
+    (d.recordings||[]).forEach(r=>r.term&&t.add(r.term));
   }
   return [...t].sort().reverse();
 }
@@ -9489,6 +9825,8 @@ function showDay(){
      && PAGE_TAB !== COMMITTEE_TABS.sessions && dayTried !== want){
     dayTried = want;
     PAGE_TAB = COMMITTEE_TABS.sessions;
+    // And the address names the tab it shows, the day kept.
+    tabAddress("sessions", true);
     renderPage();                      // which calls this again, tab in hand
     return;
   }
@@ -9509,7 +9847,42 @@ function showDay(){
   el.scrollIntoView({block:"start"});
 }
 
-window.addEventListener("hashchange", function(){ if(PAGE) showDay(); });
+/* LANDING ON A RECORDING. #v-<id> asks for the Videos tab, as #day-<date>
+   asks for the Meetings tab (showDay), and for the term the recording is in,
+   since the term is not in the address: tried once an address, so a reader
+   is not bounced. A recording the page does not hold leaves the newest
+   chosen and says nothing. The row is shown inside its list, and the view on
+   the page, once. An id may begin with a dash (#v--vjHAnQ1eXM), so it is
+   matched as a string and never put in a selector. */
+const vwWanted=()=>{const m=/^#v-(.+)$/.exec(location.hash||"");
+  try{return m?decodeURIComponent(m[1]):"";}catch(_){return "";}};
+let vwTried="", vwLanded="";
+function showVideo(){
+  const want=vwWanted();
+  if(!want||!PAGE||PAGE.kind!=="committee"||!PAGE.data){vwTried=vwLanded="";return;}
+  const r=(PAGE.data.recordings||[]).find(x=>x.id===want);
+  if(!r)return;
+  if(vwTried!==want){
+    vwTried=want;
+    PAGE.vid=want;
+    if(r.term&&r.term!==pageTerm()&&(PAGE.terms||[]).includes(r.term)){
+      // As choosing the term does (the change handler, data-pf="term").
+      PAGE.term=r.term;term=r.term;PAGE.status="";PAGE.bshow=0;PAGE.mshow=0;PAGE.vshow=0;
+      ensureTerm(PAGE.term).then(renderPage);
+    }
+    if(PAGE_TAB!==COMMITTEE_TABS.videos){PAGE_TAB=COMMITTEE_TABS.videos;tabAddress("videos",true);}
+    renderPage();                      // which calls this again, the tab in hand
+    return;
+  }
+  if(vwLanded===want)return;
+  const a=[...document.querySelectorAll(".vwlist a[data-vwpick]")].find(x=>x.dataset.vwpick===want);
+  const box=a&&a.closest(".vw");
+  if(!box)return;
+  vwLanded=want;
+  vwListShow(a);
+  box.scrollIntoView({block:"start"});
+}
+window.addEventListener("hashchange", function(){ if(PAGE){ showDay(); showVideo(); } });
 // A MEETING THE READER OPENED OR SHUT STAYS SO through the page's next
 // drawing -- the term's index, home.json and the officers each arrive after
 // the record and draw it again.
@@ -9520,7 +9893,7 @@ document.addEventListener("toggle",e=>{
 },true);
 
 function openPage(kind,ref){
-  PAGE={kind,data:null,terms:[],term:"",status:"",vfilter:"",
+  PAGE={kind,data:null,terms:[],term:"",status:"",vfilter:"",vid:"",
         vside:"",vq:"",vopen:{},vshow:0,bshow:0,mshow:0};
   // A member's page has three tabs and a committee's two. Carried over, a
   // member's Votes tab (2) opened a committee on a tab it does not have, and
