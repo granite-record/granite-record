@@ -79726,13 +79726,14 @@ def _live_host_problems(root, host):
     address, and ENV = "production" under production alone (design 6.2)."""
     import tomllib
     root, bad = Path(root), []
+    # Exempt by its path, not its name: a wrangler.toml anywhere else under
+    # these folders is a configuration `wrangler dev --config` could run.
+    toml = root / "workers" / "live" / "wrangler.toml"
     for top in LIVE_DIRS:
         d = root / top
         for p in sorted(d.rglob("*")) if d.is_dir() else []:
-            if p.is_file() and p.name != "wrangler.toml" and \
-                    host in p.read_text(encoding="utf-8", errors="replace"):
+            if p.is_file() and p != toml and host in p.read_text(encoding="utf-8", errors="replace"):
                 bad.append(f"{p.relative_to(root).as_posix()} names the SQL host")
-    toml = root / "workers" / "live" / "wrangler.toml"
     if toml.is_file():
         text = toml.read_text(encoding="utf-8")
         conf = tomllib.loads(text)
@@ -79843,6 +79844,31 @@ def _live_statement_problems(name, sql, views, width, refused):
     return bad
 
 
+def _live_web_named(root):
+    """The live layer's code under `root` (workers/live/ and functions/api/live/)
+    that names the General Court's web server, which it never asks."""
+    root = Path(root)
+    return [p.relative_to(root).as_posix() for top in ("workers/live", "functions/api/live")
+            for p in sorted((root / top).rglob("*.js")) if (root / top).is_dir()
+            and re.search(r"gc\.nh\.gov|gencourt", p.read_text(encoding="utf-8", errors="replace"), re.I)]
+
+
+def _live_hours_meet(start, end, windows, margin):
+    """Where weekdays from hour `start` to hour `end` in New Hampshire, in
+    daylight time and in standard time, meet one of `windows`
+    (refusal.NIGHT_WINDOWS, in UTC) or the `margin` minutes before one."""
+    met = []
+    for offset in (4, 5):                                   # daylight time, standard time
+        for weekday in range(5):
+            for minute in range(start * 60, end * 60):
+                utc = minute + offset * 60
+                day, at = (weekday + utc // 1440) % 7, utc % 1440
+                for wd, (h1, m1), (h2, m2), what in windows:
+                    if (wd is None or wd == day) and h1 * 60 + m1 - margin <= at < h2 * 60 + m2:
+                        met.append(f"UTC{-offset:+d} {minute // 60:02d}:{minute % 60:02d} meets {what}")
+    return sorted(set(met))
+
+
 @check("code", "the live votes reader's statements are SELECTs over four views that cast every "
                "column to nvarchar and take values only through one builder; its login is the one "
                "probe_db.py publishes and its host is production's alone; its test hours miss the "
@@ -79888,23 +79914,34 @@ def _live_sql(live_gen, dayfiles_from_db, fetch_past_db, refusal):
     import tempfile
     with tempfile.TemporaryDirectory() as tmp:
         fx = Path(tmp)
-        (fx / "workers" / "live").mkdir(parents=True)
-        (fx / "workers" / "live" / "wrangler.toml").write_text(
-            'name = "x-local"\n[vars]\nSQL_HOST = "127.0.0.1"\n[env.production.vars]\nENV = "production"\n'
-            f'SQL_HOST = "{host}"\n', encoding="utf-8")
+        main_toml = fx / "workers" / "live" / "wrangler.toml"
+        good = ('name = "x-local"\n[vars]\nSQL_HOST = "127.0.0.1"\n[env.production.vars]\nENV = "production"\n'
+                f'SQL_HOST = "{host}"\n')
+        main_toml.parent.mkdir(parents=True)
+        main_toml.write_text(good, encoding="utf-8")
         assert not _live_host_problems(fx, host), _live_host_problems(fx, host)
+        prod = f'[env.production.vars]\nENV = "production"\nSQL_HOST = "{host}"\n'
         for path, text in (("workers/live/x.js", f'const h = "{host}";'),
+                           ("tests/live/x.js", f'const h = "{host}";'),
+                           ("functions/api/live/x.js", f'const h = "{host}";'),
+                           ("tests/live/wrangler.toml", prod),
+                           ("workers/live/sub/wrangler.toml", prod),
                            ("workers/live/wrangler.toml", f'[vars]\nSQL_HOST = "{host}"\n'),
                            ("workers/live/wrangler.toml", '[vars]\nENV = "production"\nSQL_HOST = "127.0.0.1"\n')):
+            (fx / path).parent.mkdir(parents=True, exist_ok=True)
             (fx / path).write_text(text, encoding="utf-8")
             assert _live_host_problems(fx, host), f"the host rule no longer bites on {path}: {text}"
-            (fx / path).unlink()
+            if fx / path == main_toml:
+                main_toml.write_text(good, encoding="utf-8")
+            else:
+                (fx / path).unlink()
+        (fx / "functions" / "api" / "live" / "x.js").write_text('fetch("https://gc.nh.gov/x")', encoding="utf-8")
+        assert _live_web_named(fx) == ["functions/api/live/x.js"], "the web server rule no longer bites"
     bad = _live_host_problems(".", host)
     assert not bad, "; ".join(bad)
 
-    said = [p.as_posix() for p in sorted(Path("workers/live").rglob("*.js"))
-            if re.search(r"gc\.nh\.gov|gencourt", p.read_text(encoding="utf-8"), re.I)]
-    assert not said, "these name the General Court's web server, which the live Worker never asks: " + ", ".join(said)
+    said = _live_web_named(".")
+    assert not said, "these name the General Court's web server, which the live layer never asks: " + ", ".join(said)
 
     src = sql_js.read_text(encoding="utf-8")
     t = dict(re.findall(r"^export const (Q1|Q2|Q2_CHAMBER|Q3|VERSION) = `([^`]*)`;", src, re.M))
