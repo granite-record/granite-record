@@ -9312,18 +9312,23 @@ function staticVideos(){
       const T=window.GR_CHAMBER_TERM;
       if(T&&T.term&&T.term!==d.term){chamberVideos(T);return;}
     }
-    const chosen=vwDraw(slot,d);
-    const pane=slot.closest(".chpane");
-    if(chosen){
-      if(pane)chamberShow(1,true);
-      const a=[...slot.querySelectorAll("a[data-vwpick]")].find(x=>x.dataset.vwpick===vwWanted());
-      vwListShow(a);
-      slot.scrollIntoView({block:"start"});
-    }else if(!pane&&/\/videos\/?$/.test(location.pathname)){
+    if(vwDraw(slot,d))vwLand(slot);
+    else if(!slot.closest(".chpane")&&/\/videos\/?$/.test(location.pathname)){
       const sec=slot.closest("section");
       if(sec)sec.scrollIntoView({block:"start"});
     }
   });
+}
+// ARRIVING AT THE RECORDING THE ADDRESS NAMES, once its view is drawn: on a
+// chamber's page its tab shown, then its row in view inside the list and the
+// view on the page. The same for the term the page carries and for another
+// that its script fetched (chamberVideos), whose rows had been chosen and
+// left at the top of their list.
+function vwLand(slot){
+  if(slot.closest(".chpane"))chamberShow(1,true);
+  const want=vwWanted();
+  vwListShow([...slot.querySelectorAll("a[data-vwpick]")].find(x=>x.dataset.vwpick===want));
+  slot.scrollIntoView({block:"start"});
 }
 /* A CHAMBER'S TWO TABS, Session Days | Videos, put above the two panes the
    page carries (build_full_sessions), as a committee's are drawn: the same
@@ -9376,8 +9381,8 @@ function chamberVideos(T){
   }
   const d=Object.assign({},VW_CHAMBER,{term:T.term,days:(T.days||[]).filter(x=>(x.videos||[]).length),
     days_all:(T.days||[]).length});
-  vwDraw(slot,d);
   chamberCounts(d);
+  if(vwDraw(slot,d))vwLand(slot);
 }
 
 // What the committee reported on a bill, for its card on the Bills tab: each

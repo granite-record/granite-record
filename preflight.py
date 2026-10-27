@@ -68737,9 +68737,49 @@ def _chamber_videos(BSP, FS, BP):
     assert empty == ("No recording of the Senate&rsquo;s session days in 2019–2020 is on file. "
                      "Recordings here begin in May 2020, with the General Court&rsquo;s YouTube channels."), (
         f"a term with none says {empty!r}")
+    # ANOTHER TERM'S RECORDING, NAMED BY THE ADDRESS, is landed on as the
+    # page's own term's is: /session/senate/videos?term=2023-2024#v-<id>
+    # chose its row and left it at the top of a list of 39. Here the term's
+    # file arrives (chamberVideos) and the row must be scrolled to inside a
+    # list that scrolls, and the view brought into sight.
+    landed = _node_app(r"""
+require("./stub.js");
+const fs = require("fs");
+location.pathname = "/session/senate/videos"; location.search = "?term=2023-2024"; location.hash = "#v-mid2";
+const s = (0, eval)(fs.readFileSync("./page.js", "utf8")
+  + "; ({chamberVideos, setChamber: (d) => { VW_CHAMBER = d; }})");
+const slot = document.querySelector("#chvids [data-vwview]");
+const list = {scrollHeight: 2400, clientHeight: 440, scrollTop: 0, offsetTop: 0};
+let seen = 0;
+slot.closest = (sel) => sel === ".chpane" ? {} : null;
+slot.scrollIntoView = () => { seen += 1; };
+slot.querySelectorAll = () => [...slot.innerHTML.matchAll(/data-vwpick="([^"]*)"/g)].map((m, i) => {
+  const li = {offsetTop: 60 * i, offsetHeight: 60};
+  return {dataset: {vwpick: m[1]}, closest: (sel) => sel === ".vwlist" ? list : sel === "li" ? li : null};
+});
+const out = {};
+try {
+  s.setChamber({kind: "chamber", body: "S", slug: "senate", term: "2025-2026", latest: "2025-2026", days: []});
+  const days = Array.from({length: 30}, (_, i) => ({date: `2023-${String(1 + Math.floor(i / 3)).padStart(2, "0")}-${
+    String(10 + i % 3).padStart(2, "0")}`, videos: [i === 18 ? "mid2" : `v${i}`], counts: {}}));
+  s.chamberVideos({term: "2023-2024", days});
+  out.chosen = /data-vwpick="mid2" aria-current="true"/.test(slot.innerHTML);
+  out.scrollTop = list.scrollTop; out.seen = seen; out.hash = location.hash;
+} catch (e) { out.threw = e.constructor.name + ": " + e.message; }
+process.stdout.write("\n@@" + JSON.stringify(out));
+""")
+    if landed is not None:
+        assert "threw" not in landed and landed["chosen"] and landed["hash"] == "#v-mid2", (
+            f"another term's recording named by the address is not chosen: {landed}")
+        # Newest first, mid2 (day 18 of 30) is the twelfth row: 11 x 60px down
+        # its top, 720px its end, so the list moves 280px to show it whole.
+        assert landed["scrollTop"] == 280 and landed["seen"] >= 1, (
+            f"another term's recording named by the address is chosen but not shown: its list at "
+            f"{landed['scrollTop']}px (280 shows it), the view brought into sight {landed['seen']} times")
     return "ok", ("a day takes its channel's session recording where no moment names one; the "
                   "folds play it and the Videos tab, at its own address, lists the term's, counts "
-                  "and no bills; a term before the channels says so")
+                  "and no bills; a term before the channels says so; another term's recording the "
+                  "address names is chosen and shown in its list")
 
 
 @check("frontend", "the header's five tabs are one row from 1008px, in the flow between the "
