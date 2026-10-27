@@ -6949,9 +6949,15 @@ color:var(--ink);text-decoration:none}
 .vwb .chip{margin-right:var(--sp-3);vertical-align:baseline}
 .vwall{margin-top:var(--sp-3)}
 .vwsrc{grid-area:src;margin:0}
-/* On paper every row prints: this is a screen's. */
+/* On paper every row prints: this is a screen's. The bills under the
+   player the same way, a phone's first few and a button. */
 @media screen and (max-width:59.99em){
-  .vwlist:not(.vwopen) .vwrest{display:none}
+  .vwlist:not(.vwopen) .vwrest,.vwbills:not(.vwopen) .vwrest{display:none}
+}
+/* A bill's number over its title on a phone, its moments under them. */
+@media (max-width:45em){
+  .vwbills li{grid-template-columns:minmax(0,1fr)}
+  .vwbills .mjumps{grid-column:1}
 }
 @media screen and (min-width:60em){
   .vw{grid-template-columns:minmax(0,1fr) 22rem;grid-template-areas:"main side" "det ." "src src"}

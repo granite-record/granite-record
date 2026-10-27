@@ -8995,6 +8995,8 @@ function renderCommitteeSessions(c){
    button for the rest, as the bill search brings its next twenty-five
    (review, 6): no box that scrolls inside a page that scrolls. */
 const VW_SHOWN=20;
+// And the bills under the player, on a phone (cmteVideoDetail).
+const VW_BILLS=6;
 // The view on this page, for choosing a row in it: one a page.
 let VVIEW=null;
 // A row's lists kept whole after "Show all", by the view's key.
@@ -9107,13 +9109,14 @@ document.addEventListener("click",e=>{
   if(pick){
     if(e.button||e.metaKey||e.ctrlKey||e.shiftKey||e.altKey)return;
     e.preventDefault();vwChoose(pick);return;}
-  // The rest of a phone's list, and the keyboard on the first it brought.
+  // The rest of a phone's list -- the recordings, or a recording's bills --
+  // and the keyboard on the first it brought.
   const all=t.closest("[data-vwall]");
   if(all){
     const list=document.getElementById(all.getAttribute("aria-controls"));
     const first=list&&list.querySelector(".vwrest a");
     if(list)list.classList.add("vwopen");
-    if(VVIEW)VW_ALL[VVIEW.key]=true;
+    if(VVIEW&&all.dataset.vwall!=="bills")VW_ALL[VVIEW.key]=true;
     all.remove();
     if(first)first.focus();
     return;}
@@ -9177,13 +9180,19 @@ function cmteVideoDetail(c,r,items,day,chips){
   const out=[facts.length?`<p class="vwkinds">${facts.join(" ")}</p>`:""];
   if(items.length){
     const order=[...new Set(items.map(i=>String(i.bill)))];
-    out.push(`<ol class="vwbills">${order.map(b=>{
+    // ON A PHONE, THE FIRST FEW AND A BUTTON FOR THE REST, as the list of
+    // recordings below them has: House Commerce's 26 bills were 2,500px
+    // between the player and the playlist at 390px. Every one is in the
+    // page, on a wide screen and on paper.
+    out.push(`<ol class="vwbills" id="vwbills">${order.map((b,k)=>{
       const mine=items.filter(i=>String(i.bill)===b), it=mine[0];
       const href=it.year?`bill/${esc(it.year)}/${esc(b.toLowerCase())}.html`:esc(billHref(b));
       const jumps=jumpButtons(mine,()=>pid);
-      return `<li><a class="vwbn" href="${href}">${esc(it.n||b)}</a>${
+      return `<li${k>=VW_BILLS?' class="vwrest"':""}><a class="vwbn" href="${href}">${esc(it.n||b)}</a>${
         it.title?`<span class="vwbt">${esc(it.title)}</span>`:""}${
-        jumps?`<span class="mjumps">${jumps}</span>`:""}</li>`;}).join("")}</ol>`);
+        jumps?`<span class="mjumps">${jumps}</span>`:""}</li>`;}).join("")}</ol>${
+      order.length>VW_BILLS?`<button type="button" class="discl pgmore vwall" data-vwall="bills" aria-controls="vwbills">Show all ${
+        order.length.toLocaleString()} bills</button>`:""}`);
   }else out.push(`<p class="vwnone">The docket ties no bill to this recording.</p>`);
   if(day)out.push(`<p class="src vwlinks"><a href="${esc(vwDayHref(c,day.date))}" data-vwday="${
     esc(day.date)}">${items.length?"What the committee did at this meeting":"This committee&rsquo;s meeting that day"}</a></p>`);
