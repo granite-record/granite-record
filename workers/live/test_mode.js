@@ -20,10 +20,18 @@
  *   Later   one connection that logs in and closes, recording how long each
  *           took: test/login/<today>.json. That is how reachability from
  *           Cloudflare's addresses shows over the following weeks.
- * A past sitting is read once. A day whose read failed -- no connection, or a
- * statement that failed -- is asked again on the next weekday, and its file
- * says what failed, including an encryption answer this reader cannot meet:
- * the result the test exists to find.
+ * A PAST SITTING IS READ ONCE (about 22 connections and 14 statements in all).
+ * Once a statement has gone to the server on a logged-in connection, the
+ * sitting is done, whatever the statements returned: its file says what
+ * failed, compare_test.mjs calls any failure or slow statement a no-go, and
+ * asking again would send the same statements to the same database -- a
+ * sorting query the server keeps running after the client has gone among
+ * them. Only a day on which no statement was sent (no connection, a refused
+ * login, TDS older than 7.2, or an encryption answer this reader cannot meet
+ * -- the result the test exists to find) asks for the same sitting on the
+ * next weekday: one connection, which the login test would make anyway.
+ * Reading a sitting again is a person's decision: state.json's test.done is
+ * what records it.
  *
  * The comparison is offline: the person downloads the file
  *     npx wrangler r2 object get graniterecord-live/test/2026-03-11.json --file test-2026-03-11.json --remote
@@ -55,10 +63,12 @@ export function testDue(now, test = {}) {
 }
 
 // null when nothing is due; otherwise {test: the new state, key, file}.
-export async function runTest(env, { connect, now = new Date(), test = {} } = {}) {
+// `budget` is the run's SQL part, SQL_BUDGET_MS: the login and every
+// statement end inside it (a test passes a shorter one).
+export async function runTest(env, { connect, now = new Date(), test = {}, budget = SQL_BUDGET_MS } = {}) {
   const job = testDue(now, test);
   if (!job) return null;
-  const until = Date.now() + SQL_BUDGET_MS;
+  const until = Date.now() + budget;
   const next = { ...test, done: [...(test?.done || [])], last: job.today };
   const readAt = isoSeconds(now);
   let conn = null;
@@ -78,12 +88,14 @@ export async function runTest(env, { connect, now = new Date(), test = {} } = {}
 
   const year = Number(job.day.slice(0, 4));
   const statements = [];
+  let sent = 0;
   const run = async (name, sql, read) => {
     if (!conn?.open) {
       statements.push({ name, ms: null, bytes: null, rows: null, problem: "query",
                         error: "not run: the connection had closed" });
       return null;
     }
+    sent++;
     let res;
     try {
       res = await conn.query(sql, { until });
@@ -121,9 +133,10 @@ export async function runTest(env, { connect, now = new Date(), test = {} } = {}
   }
 
   const problem = refused?.code || statements.find(s => s.problem)?.problem || null;
-  // Roll calls past three Q2 statements are listed in `unread`, and
-  // compare_test.mjs calls that a no-go; asking again would find the same.
-  if (!problem) next.done.push(job.day);
+  // Read once (the header): a statement sent is the sitting done, whatever
+  // came back -- a failure, a timeout, roll calls past three Q2 statements
+  // listed in `unread`. Asking again would find the same.
+  if (sent) next.done.push(job.day);
   const shape = liveShape({ readAt, summary, ballots });
   return {
     test: next,

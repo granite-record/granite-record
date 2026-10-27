@@ -3,9 +3,12 @@
 // into 4,096-byte packets as a real server splits them -- and keeps what each
 // client sent, decoded, for a test to read. Its answers are the test's own: a
 // function of the SQL it was sent. It can also misbehave on purpose: answer
-// that encryption is required, refuse the login, answer with an ERROR or a
-// fixed-length INT4 column, say it speaks TDS 7.1, fall silent, or drop the
-// connection halfway through a reply.
+// that encryption is required, or leave the encryption option out; refuse the
+// login, or accept it with no LOGINACK; answer with an ERROR or a fixed-length
+// INT4 column, two result sets, no DONE, or packets of the wrong type; say it
+// speaks TDS 7.1; fall silent; or drop the connection halfway through a reply.
+// And it holds the client to the packet size: one longer than the size in
+// force (4,096 until the login's answer sets another) ends the connection.
 //
 // nodeConnect() is the client's side of the wire: node's net socket in the
 // shape cloudflare:sockets' connect() returns ({readable, writable, opened,
@@ -47,8 +50,10 @@ function loginack(tds, [major, minor, build]) {
 
 // A result set: columns [{name, type: "nvarchar" | "int4", len}], rows of
 // strings (or numbers for int4), null for NULL; NBCROW when `nbc` and a row
-// has a NULL in it.
-export function resultSet(columns, rows, { nbc = true, order = false } = {}) {
+// has a NULL in it, otherwise a plain ROW with the NULL as length 0xffff.
+// Ended by a DONE of `status` (0x10, the count is good; 0x11, more to come),
+// or by none when `done` is false.
+export function resultSet(columns, rows, { nbc = true, order = false, done: ends = true, status = 0x10 } = {}) {
   const parts = [Buffer.from([0x81]), u16(columns.length)];
   for (const c of columns) {
     parts.push(u32(0), u16(0x0009));
@@ -73,7 +78,7 @@ export function resultSet(columns, rows, { nbc = true, order = false } = {}) {
       parts.push(u16(s.length), s);
     });
   }
-  parts.push(done(0x10, rows.length));
+  if (ends) parts.push(done(status, rows.length));
   return Buffer.concat(parts);
 }
 
@@ -117,15 +122,23 @@ export function decodeLogin7(b) {
 }
 
 // The fake. Options:
-//   encryption  PRELOGIN's answer: 2 not supported (the default), 0 off, 1 on, 3 required
+//   encryption  PRELOGIN's answer: 2 not supported (the default), 0 off, 1 on, 3 required,
+//               or "none" to leave the encryption option out of the answer
 //   tds         LOGINACK's TDS version (0x74000004)
+//   loginack    false: accept the login with no LOGINACK in the answer
 //   login       (decoded LOGIN7) => null to accept, or [{number, message}] to refuse
-//   answer      (sql, n) => {columns, rows, nbc, order} | {error: {number, message}}
-//               | {drop: true} | {silent: true}
+//   answer      (sql, n) => {columns, rows, nbc, order, done, sets, packetType}
+//               | {error: {number, message}} | {drop: true} | {silent: true}
+//               (done: false leaves the DONE out; sets: 2 sends the result set
+//               twice; packetType sends the reply in packets of another type)
 //   silent      "prelogin" or "login": never answer that message
-//   packet      the packet size it splits replies into (4096)
+//   packet      the packet size it splits replies into, and sets at the login (4096)
+// `seen.packets` is every packet the client sent, {type, length}; `seen.oversize`
+// the lengths of any longer than the size in force, each of which ended its
+// connection.
 export async function startFakeTds(opts = {}) {
-  const seen = { connections: 0, prelogin: [], login7: [], batches: [], afterRefusal: 0, raw: [] };
+  const seen = { connections: 0, prelogin: [], login7: [], batches: [], afterRefusal: 0, raw: [],
+                 packets: [], oversize: [] };
   const sockets = new Set();
   const size = opts.packet || 4096;
   const server = net.createServer(sock => {
@@ -136,6 +149,7 @@ export async function startFakeTds(opts = {}) {
     let buf = Buffer.alloc(0);
     let parts = [];
     let refused = false;
+    let limit = 4096;                              // until the login's answer sets `size`
     sock.on("data", d => {
       seen.raw.push(Buffer.from(d));
       if (refused) { seen.afterRefusal += d.length; return; }
@@ -144,12 +158,16 @@ export async function startFakeTds(opts = {}) {
         const len = buf.readUInt16BE(2);
         const type = buf[0];
         const eom = buf[1] & 0x01;
+        seen.packets.push({ type, length: len });
+        if (len > limit) { seen.oversize.push(len); sock.destroy(); return; }
         parts.push(buf.subarray(8, len));
         buf = buf.subarray(len);
         if (!eom) continue;
         const body = Buffer.concat(parts);
         parts = [];
-        refused = handle(sock, type, body) === "refused";
+        const said = handle(sock, type, body);
+        if (said === "logged in") limit = size;
+        refused = said === "refused";
         if (refused) { seen.afterRefusal += buf.length; return; }
       }
     });
@@ -160,8 +178,9 @@ export async function startFakeTds(opts = {}) {
       seen.prelogin.push(decodePrelogin(body));
       if (opts.silent === "prelogin") return;
       const enc = opts.encryption ?? 0x02;
-      const data = [[0x00, Buffer.from([15, 0, 0x10, 0x00, 0, 0])], [0x01, Buffer.from([enc])],
-                    [0x02, Buffer.from([0])], [0x03, Buffer.alloc(0)], [0x04, Buffer.from([0])]];
+      const data = [[0x00, Buffer.from([15, 0, 0x10, 0x00, 0, 0])], [0x01, Buffer.from([enc === "none" ? 0 : enc])],
+                    [0x02, Buffer.from([0])], [0x03, Buffer.alloc(0)], [0x04, Buffer.from([0])]]
+        .filter(([t]) => !(t === 0x01 && enc === "none"));
       const head = data.length * 5 + 1;
       let at = head;
       const index = Buffer.alloc(head);
@@ -188,10 +207,10 @@ export async function startFakeTds(opts = {}) {
         envchange(1, login.database, "master"),
         message(0xab, { number: 5701, message: `Changed database context to '${login.database}'.`, cls: 0 }),
         envchange(4, String(size), "4096"),
-        loginack(opts.tds ?? 0x74000004, [15, 0, 4096]),
+        ...(opts.loginack === false ? [] : [loginack(opts.tds ?? 0x74000004, [15, 0, 4096])]),
         done(0x00, 0),
       ]), size));
-      return;
+      return "logged in";
     }
     if (type === 0x01) {
       const sql = body.subarray(body.readUInt32LE(0)).toString("utf16le");
@@ -205,7 +224,10 @@ export async function startFakeTds(opts = {}) {
         sock.write(packets(Buffer.concat([message(0xaa, a.error), done(0x02, 0)]), size));
         return;
       }
-      const whole = packets(resultSet(a.columns, a.rows, a), size);
+      const set = a.sets === 2 ? Buffer.concat([resultSet(a.columns, a.rows, { ...a, status: 0x11 }),
+                                                resultSet(a.columns, a.rows, a)])
+        : resultSet(a.columns, a.rows, a);
+      const whole = packets(set, size, a.packetType ?? 0x04);
       if (a.drop) { sock.write(whole.subarray(0, Math.min(whole.length - 1, size + 100))); sock.destroy(); return; }
       sock.write(whole);
       return;

@@ -1,8 +1,9 @@
 // The live Worker's TDS client (workers/live/tds.js) against a fake SQL Server
 // on the loopback address (fake_tds.js): login, a batch, replies over many
-// packets, two statements on one connection, the server's errors, a dropped
-// connection, a silent server, forced encryption (stopped before the password
-// is sent), the loopback guard. No test reaches anything but 127.0.0.1.
+// packets in the packet size in force, two statements on one connection, the
+// server's errors, a dropped connection, a silent server, every deadline,
+// forced encryption (stopped before the password is sent), each reply it
+// refuses, the loopback guard. No test reaches anything but 127.0.0.1.
 // preflight runs this file (_live_tds).
 import { test } from "node:test";
 import assert from "node:assert/strict";
@@ -88,6 +89,21 @@ test("a smaller packet size the server sets is the one the client sends in", () 
     conn.close();
     assert.equal(fake.seen.batches[0], sql);
     assert.equal(res.rows[0][0], "y".repeat(900));
+    const batch = fake.seen.packets.filter(p => p.type === 0x01);
+    assert.ok(batch.length > 1, `the statement went in ${batch.length} packet`);
+    assert.ok(batch.every(p => p.length <= 512), JSON.stringify(batch));
+    assert.equal(batch.slice(0, -1).every(p => p.length === 512), true, "every packet but the last is full");
+    assert.deepEqual(fake.seen.oversize, []);
+  }));
+
+test("before the login sets a size, nothing goes out longer than 4,096 bytes", () =>
+  withFake({}, async fake => {
+    const conn = await open(local(fake.port), { connect: nodeConnect });
+    await conn.query(`SELECT ${"z".repeat(5000)}`);
+    conn.close();
+    assert.ok(fake.seen.packets.length >= 4);
+    assert.ok(fake.seen.packets.every(p => p.length <= 4096));
+    assert.deepEqual(fake.seen.oversize, []);
   }));
 
 test("two statements on one connection", () =>
@@ -172,6 +188,65 @@ test("LOGINACK older than TDS 7.2 is refused", () =>
     assert.match(e.message, /7\.1/);
   }));
 
+test("LOGINACK of TDS 7.2 itself is taken, and reads", () =>
+  withFake({ tds: 0x72090002 }, async fake => {
+    const conn = await open(local(fake.port), { connect: nodeConnect });
+    assert.equal(conn.info.tds, "7.2");
+    assert.deepEqual((await conn.query("SELECT 1")).rows, [["1"]]);
+    conn.close();
+  }));
+
+test("a login answer with no LOGINACK, and a PRELOGIN answer with no encryption option, are `connect`", async () => {
+  await withFake({ loginack: false }, async fake => {
+    const e = await refusal(open(local(fake.port), { connect: nodeConnect }));
+    assert.equal(e.code, "connect");
+    assert.match(e.message, /LOGINACK/);
+  });
+  await withFake({ encryption: "none" }, async fake => {
+    const e = await refusal(open(local(fake.port), { connect: nodeConnect }));
+    assert.equal(e.code, "connect");
+    assert.match(e.message, /no encryption option/);
+    await new Promise(ok => setTimeout(ok, 100));
+    assert.equal(fake.seen.login7.length, 0, "an answer that does not say is not taken as no encryption");
+  });
+});
+
+test("a plain ROW's NULL (length 0xffff) reads as null", () =>
+  withFake({ answer: () => ({ columns: text("a", "b", "c"), rows: [["x", null, "z"], [null, "y", null]], nbc: false }) },
+    async fake => {
+      const conn = await open(local(fake.port), { connect: nodeConnect });
+      assert.deepEqual((await conn.query("SELECT 1")).rows, [["x", null, "z"], [null, "y", null]]);
+      conn.close();
+    }));
+
+test("a reply with no DONE, a second result set, or a packet not of type 4 is `query`, never data", () =>
+  withFake({ answer: sql => ({ columns: text("x"), rows: [["1"]],
+                               ...(sql === "SELECT nodone" ? { done: false } : sql === "SELECT twice" ? { sets: 2 }
+                                 : sql === "SELECT type" ? { packetType: 0x01 } : {}) }) }, async fake => {
+    const conn = await open(local(fake.port), { connect: nodeConnect });
+    const nodone = await refusal(conn.query("SELECT nodone"));
+    assert.equal(nodone.code, "query");
+    assert.match(nodone.message, /without its DONE/);
+    const twice = await refusal(conn.query("SELECT twice"));
+    assert.equal(twice.code, "query");
+    assert.match(twice.message, /a second result set/);
+    const type = await refusal(conn.query("SELECT type"));
+    assert.equal(type.code, "query");
+    assert.match(type.message, /a packet of type 1/);
+    assert.equal(conn.open, false, "a packet it cannot trust ends the connection");
+  }));
+
+test("a reply larger than 8 MiB is refused, and the connection closed", () => {
+  const rows = Array.from({ length: 1100 }, () => ["w".repeat(4000)]);             // 8.8 MB in UTF-16
+  return withFake({ answer: () => ({ columns: text("x"), rows }) }, async fake => {
+    const conn = await open(local(fake.port), { connect: nodeConnect });
+    const e = await refusal(conn.query("SELECT a lot"));
+    assert.equal(e.code, "query");
+    assert.match(e.message, /larger than 8 MiB/);
+    assert.equal(conn.open, false);
+  });
+});
+
 test("a connection dropped halfway through a reply is `query`, and the connection is closed", () =>
   withFake({ answer: () => ({ columns: text("x"), rows: Array.from({ length: 2000 }, (_, i) => [String(i)]), drop: true }) },
     async fake => {
@@ -183,13 +258,15 @@ test("a connection dropped halfway through a reply is `query`, and the connectio
       assert.equal((await refusal(conn.query("SELECT again"))).code, "query");
     }));
 
+// The time bounds below are loose on purpose (a busy machine runs late), and
+// each is far under the 15 s STEP_MS that a deadline not honoured would take.
 test("a server that never answers fails inside the deadline", async () => {
   await withFake({ silent: "prelogin" }, async fake => {
     const t0 = Date.now();
     const e = await refusal(open(local(fake.port), { connect: nodeConnect, ms: 300 }));
     const took = Date.now() - t0;
     assert.equal(e.code, "connect");
-    assert.ok(took >= 250 && took < 1500, `${took} ms`);
+    assert.ok(took >= 250 && took < 5000, `${took} ms`);
   });
   await withFake({ answer: () => ({ silent: true }) }, async fake => {
     const conn = await open(local(fake.port), { connect: nodeConnect });
@@ -197,7 +274,7 @@ test("a server that never answers fails inside the deadline", async () => {
     const e = await refusal(conn.query("SELECT 1", { ms: 300 }));
     const took = Date.now() - t0;
     assert.equal(e.code, "query");
-    assert.ok(took >= 250 && took < 1500, `${took} ms`);
+    assert.ok(took >= 250 && took < 5000, `${took} ms`);
     assert.equal(conn.open, false);
   });
 });
@@ -207,8 +284,19 @@ test("the run's own deadline bounds the login however long a step may take", () 
     const t0 = Date.now();
     const e = await refusal(open(local(fake.port), { connect: nodeConnect, until: t0 + 250 }));
     assert.equal(e.code, "connect");
-    assert.ok(Date.now() - t0 < 1500);
+    assert.ok(Date.now() - t0 < 5000);
     assert.equal(fake.seen.login7.length, 1);
+  }));
+
+test("the run's own deadline bounds a statement too, though its step allows 15 s", () =>
+  withFake({ answer: () => ({ silent: true }) }, async fake => {
+    const conn = await open(local(fake.port), { connect: nodeConnect });
+    const t0 = Date.now();
+    const e = await refusal(conn.query("SELECT 1", { until: t0 + 300 }));
+    const took = Date.now() - t0;
+    assert.equal(e.code, "query");
+    assert.ok(took >= 250 && took < 5000, `${took} ms`);
+    assert.equal(conn.open, false);
   }));
 
 test("an address that refuses, and one that never opens, each fail inside the deadline", async () => {
@@ -224,7 +312,7 @@ test("an address that refuses, and one that never opens, each fail inside the de
   const t0 = Date.now();
   const e2 = await refusal(open(local(1433), { connect: hanging, ms: 300 }));
   assert.equal(e2.code, "connect");
-  assert.ok(Date.now() - t0 < 1500);
+  assert.ok(Date.now() - t0 < 5000);
 });
 
 test("a host other than loopback is refused without ENV production, before any connect", async () => {

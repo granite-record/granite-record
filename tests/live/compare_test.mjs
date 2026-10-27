@@ -16,13 +16,17 @@
 // means it runs on one hot run in five). Exit 0 when all of that holds.
 import { readFileSync } from "node:fs";
 import { pathToFileURL } from "node:url";
-import { BALLOT_CHAR, VOTE_WORD } from "../../workers/live/live.gen.js";
 import { nhLocal } from "../../workers/live/test_mode.js";
 import { addDays } from "../../workers/live/sql.js";
 
 const RECORDS = new URL("../../records/rollcalls/", import.meta.url);
-// The record's word for a ballot as the live file's character.
-const CHAR_OF_WORD = Object.fromEntries(Object.entries(VOTE_WORD).map(([code, word]) => [word, BALLOT_CHAR[code]]));
+// The record's word for a ballot as the live file's character: the design's
+// section 2.5 written out here, and not taken from live.gen.js, so that a
+// mapping the Worker has wrong is not also the one it is compared with.
+export const CHAR_OF_WORD = Object.freeze({
+  "Yea": "Y", "Nay": "N", "Not Voting/Excused": "E", "Not Voting/Not Excused": "X", "Presiding": "P",
+  "No vote recorded": ".", "": ".",
+});
 
 // "3/11/2026 9:23:27 AM", the record's way, as 2026-03-11T09:23:27.
 export function recordTime(s) {
@@ -37,8 +41,16 @@ function lines(url) {
   return readFileSync(url, "utf8").replace(/^﻿/, "").split(/\r?\n/).filter(l => l.trim()).map(l => l.split("|"));
 }
 
-// The record's roll calls dated `day`: Map id -> {..., ballots: Map member -> character}.
+// The record's roll calls dated `day`: Map id -> {..., ballots: Map member -> character},
+// read once a process for each folder and day (the tests compare many copies).
+const DAYS = new Map();
 export function recordDay(day, dir = RECORDS) {
+  const key = `${dir}|${day}`;
+  if (!DAYS.has(key)) DAYS.set(key, readDay(day, dir));
+  return DAYS.get(key);
+}
+
+function readDay(day, dir) {
   const year = day.slice(0, 4);
   const out = new Map();
   for (const f of lines(new URL(`RollCallSummary_${year}.txt`, dir))) {
@@ -77,6 +89,7 @@ export function compare(file, { dir = RECORDS } = {}) {
   if (t.version) said.push(`SELECT @@VERSION: ${t.version.split("\n")[0]}`);
   if (t.problem) {
     no(`the test did not read: ${t.problem}: ${t.error}`);
+    said.push("no-go: the differences above");
     return { ok, said, counts };
   }
   for (const s of t.statements || []) {
