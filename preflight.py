@@ -93248,8 +93248,8 @@ def _preflight_not_the_runs(NI, CL):
         for k, val in saved.items():
             os.environ.pop(k, None) if val is None else os.environ.__setitem__(k, val)
     src = inspect.getsource(main)
-    at = src.find("_not_the_runs()")
-    assert at != -1 and at < src.find("for c in CHECKS"), \
+    at, loop = src.find("_not_the_runs()"), src.find("for c in _in_order(CHECKS)")
+    assert at != -1 and loop != -1 and at < loop, \
         "preflight's main() runs its checks without first taking out the workflow's words"
     return "ok", (f"{', '.join(WORKFLOW_WORDS)} are taken out before any check runs, so the "
                   "fixtures' kit-ups, state-ups and nights are not a dry run's on GitHub's "
