@@ -78,8 +78,9 @@ CORE = (
 SCAN_CALLS = {"_paths.code_files", "_paths.code_dirs", "os.walk", "_tracked",
               "_project_modules", "_runner_names", "_scripts_run"}
 SCAN_WORDS = ("ls-files",)
-# Whose change is a change to the runner itself.
-RUNNER = {"main", "check", "imp", "_run", "CHECKS"}
+# Whose change is a change to the runner itself: _in_order is the order
+# main() runs the checks in, and which of them it runs.
+RUNNER = {"main", "check", "imp", "_run", "CHECKS", "_in_order"}
 
 FILE_RX = re.compile(r"[\w./-]*?[\w-]+\.(?:py|js|css|html|json|jsonl|csv|psv|txt|md|yml|yaml"
                      r"|bat|toml|xml|webmanifest)\b")

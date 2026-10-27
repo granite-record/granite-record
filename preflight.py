@@ -110788,8 +110788,8 @@ def _changed_selects():
       _rows_one_at_a_time, and fewer than half of the checks;
       a change to narrative.py chooses a check that needs it and _chain,
       whose fixture build_site_v2 builds, which imports it;
-      a change to a check's own lines chooses it, and a change to main's
-      chooses every check;
+      a change to a check's own lines chooses it, and a change to main's,
+      or to _in_order's, chooses every check;
       comments and docstrings are not read as imports or launches; and
       the files and lines a change moved are read off git: a commit, an
       edit to it and a file git does not track.
@@ -110828,6 +110828,8 @@ def _changed_selects():
         "the two")
     assert len(chosen([rel], [index.info["main"]["span"]])) == len(CHECKS), (
         "a change to main() did not choose every check")
+    assert len(chosen([rel], [index.info["_in_order"]["span"]])) == len(CHECKS), (
+        "a change to _in_order, the order main() runs the checks in, did not choose every check")
     imports, strings = CS._code_of('"""import narrative, "narrative.py"."""\n'
                                    '# run("build_x.py")\nimport child\nrun("a.py")\n')
     assert imports == ["import child"] and strings == ['"a.py"'], (
@@ -111911,6 +111913,8 @@ def _no_watch_left(NI):
     import threading
 
     order = _in_order(CHECKS)
+    assert sorted(map(id, order)) == sorted(map(id, CHECKS)), (
+        f"_in_order hands main() {len(order)} checks of {len(CHECKS)}: it drops or repeats some")
     assert order[-1]["fn"] is _no_watch_left and "_in_order(CHECKS)" in inspect.getsource(main), (
         f"main() runs {order[-1]['fn'].__name__} after this one, or no longer runs the checks in "
         "_in_order's order: what that one leaves going is never counted")
