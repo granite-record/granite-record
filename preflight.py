@@ -250,6 +250,42 @@ def _settle(status, msg, expect_fail):
     return status, msg
 
 
+def _run_check(c, mods, verbose=False):
+    """(status, message) of one check, run as main() runs every one: "FAIL"
+    on an assertion, "ERROR" on any other exception, before any expect_fail
+    mark is read.
+
+    AND THE TEST CLOCK PUT BACK (the review of 27 October 2026). A check
+    that drives a night states a time inside the night's hours
+    (CHECKS_CLOCK) and must put back what it found. Six of them did so only
+    by naming the clock among the variables they save, and taking it out of
+    any of the six failed nothing: the clock stayed set for every check
+    after, which then answered at 09:00 UTC on 27 October whatever the hour
+    it ran -- the very thing the clock's checks are there to stop. So a
+    check that leaves the clock other than it found it fails here, saying
+    so, and the clock is put back before the next one runs."""
+    clock = os.environ.get(CHECKS_CLOCK[0])
+    try:
+        status, msg = c["fn"](*mods)
+    except AssertionError as e:
+        status, msg = "FAIL", str(e) or "assertion failed"
+    except Exception as e:                                      # noqa: BLE001
+        status, msg = "ERROR", f"{type(e).__name__}: {e}"
+        if verbose:
+            traceback.print_exc()
+    left = os.environ.get(CHECKS_CLOCK[0])
+    if left != clock:
+        if clock is None:
+            os.environ.pop(CHECKS_CLOCK[0], None)
+        else:
+            os.environ[CHECKS_CLOCK[0]] = clock
+        said = (f"it left {CHECKS_CLOCK[0]} at {left!r} where it found {clock!r}, so every "
+                "check after it would have run at that time, not the hour it runs: put it "
+                "back in a finally (put back here)")
+        status, msg = ("FAIL", said) if status in ("ok", "skip") else (status, f"{msg}\n{said}")
+    return status, msg
+
+
 def imp(name):
     """Import a project module, or None. Import errors are a finding, not a crash."""
     try:
@@ -92076,7 +92112,7 @@ try {
 
 
 @check("build", "on GitHub's machine the steps after the day's files that ask the General "
-       "Court's site start only inside the night's own window and only if they can end by "
+       "Court's site start only inside the night's own window and only if they can end before "
        "12:00 UTC, read by refusal's own clock whatever the machine's",
        needs=("nightly", "refusal"))
 def _night_clock(NI, R):
@@ -92088,9 +92124,14 @@ def _night_clock(NI, R):
 
       - inside the daily window only: not at 07:59, nor on a Monday at 04:30,
         inside the weekly's own window, nor at 16:00;
-      - and only if the step can end by ASK_UNTIL, 12:00 UTC: 08:01 and 11:40
-        with fifteen minutes to go may ask, 11:50 with fifteen and 12:01 with
-        one may not;
+      - and only if the step can end BEFORE ASK_UNTIL, 12:00 UTC: 08:01 and
+        11:40 with fifteen minutes to go may ask, 11:50 with fifteen and 12:01
+        with one may not, and a step that would end at 12:00 exactly, 11:45
+        with fifteen, may not, where one a second earlier may (the review of
+        27 October 2026: one allowed to end on 12:00 and killed milliseconds
+        after its gate read the clock was still asking at 12:00:00.0xx);
+      - a step allowed is given its deadline, the gate's own reading of the
+        clock and its minutes, which its kill is counted to;
       - by refusal's own clock, in UTC, with no argument: the runner's clock
         is Eastern (nightly.yml sets it), so a test time written as Eastern,
         nine in the morning at -04:00, is 13:00 UTC and may not ask, and one
@@ -92099,23 +92140,29 @@ def _night_clock(NI, R):
       - and nightly.py's docstring says what it holds: the two steps that ask
         it, and not the day's files, which keep their own rule (the review of
         26 October 2026: it said the night's asking all fell before 12:00)."""
-    from datetime import datetime
+    from datetime import datetime, timedelta
     saved = os.environ.get(R.CLOCK_ENV)
     try:
         for t, minutes, want in (("2026-10-27T07:59:00Z", 1, False),
                                  ("2026-10-27T08:01:00Z", 1, True),
                                  ("2026-10-27T11:40:00Z", 15, True),
                                  ("2026-10-27T11:50:00Z", 15, False),
+                                 ("2026-10-27T11:45:00Z", 15, False),     # ends on 12:00
+                                 ("2026-10-27T11:44:59Z", 15, True),      # a second before
                                  ("2026-10-27T12:01:00Z", 1, False),
                                  ("2026-10-27T16:00:00Z", 1, False),
                                  ("2026-10-26T04:30:00Z", 1, False),      # a Monday: the weekly's
                                  ("2026-10-27T09:00:00-04:00", 1, False),  # 13:00 UTC
                                  ("2026-10-27T09:00:00", 1, True)):        # no zone: UTC
             os.environ[R.CLOCK_ENV] = t
-            ok, why = NI.asking_left(minutes)
+            deadline, why = NI.asking_left(minutes)
+            ok = deadline is not None
             assert ok is want, (f"at {t}, a step of {minutes} minutes {'may' if ok else 'may not'} "
                                 f"ask the General Court ({why}); it {'may' if want else 'may not'}")
             assert ok or (why and re.fullmatch(r"[A-Za-z0-9 ,.:;'()/-]{1,200}", why)), why
+            assert not ok or deadline == R._utc() + timedelta(minutes=minutes), (
+                f"at {t}, a step of {minutes} minutes was given {deadline} to end by, not the "
+                "gate's own reading of the clock and its minutes")
     finally:
         if saved is None:
             os.environ.pop(R.CLOCK_ENV, None)
@@ -92152,11 +92199,11 @@ def _night_clock(NI, R):
             "nightly.py's THE NIGHT'S CLOCK no longer says that only the bill requests and the "
             "lists keep the hours, and that the day's files keep their own rule")
     return "ok", ("08:00 to 12:00 UTC by refusal's own clock, never a Monday's weekly window, "
-                  "each step only if it can end by 12:00")
+                  "each step only if it can end before 12:00, by the gate's own reading")
 
 
-@check("build", "the night's bill requests and lists are asked only where they can end by 12:00 "
-       "UTC and are killed at their own limits, keeping the copies on file either way; and a "
+@check("build", "the night's bill requests and lists are asked only where they can end before "
+       "12:00 UTC and are killed at their own limits, keeping the copies on file either way; and a "
        "step the night's clock did not ask for never holds the night for the gate, where one "
        "not asked for for another reason still does",
        needs=("nightly", "refusal", "fetch_calendar_archive", "fetch_lsrs"))
@@ -92171,8 +92218,10 @@ def _clock_steps(NI, R, CA, FL):
         minutes as its limit;
       - AT THE EDGE OF THE HOURS each gates on its own minutes (the review of
         26 October 2026: a step asking asking_left(0), or the other step's
-        minutes, passed every case above): each may start at 12:00 less its
-        minutes and not a minute later, alone and in the night's order;
+        minutes, passed every case above): each may start a second before
+        12:00 less its minutes and not at it, alone and in the night's order
+        (the review of 27 October 2026: a step allowed to end on 12:00 itself
+        was killed milliseconds after it);
       - a step's minutes cover its own limits and its last request's timeout,
         read off the fetches themselves: every request fetch_lsrs's main()
         makes, at its timeout, and every pause between them; the listing's
@@ -92184,7 +92233,16 @@ def _clock_steps(NI, R, CA, FL):
         kills a child still running at its limit and ends the step on
         RUN_KILLED (124, as timeout(1) says it); a step killed keeps the copy
         on file whatever its child had half written, says so, and stops the
-        chain (EXITS). A step given no limit ends as it did before.
+        chain (EXITS). A step given no limit ends as it did before;
+      - AND KILLED AT ITS GATE'S DEADLINE (the review of 27 October 2026: the
+        kill was counted from the child's start, milliseconds after the gate
+        read the clock, so a step started on the edge was still asking at
+        12:00:00.0xx): run() counts its seconds from its own call, not from
+        the child's start, which here takes a second and a half; and each
+        step gives run() the seconds left until asking_left's deadline, so
+        with a clock that moves 16 ms between readings, started 10 ms inside
+        its edge, each is killed by its gate's reading and its minutes, before
+        12:00, by every reading of the clock after the gate's.
 
     A LATE NIGHT STILL PUBLISHES ITSELF (the review of 26 October 2026). The
     clock's "not asked for" warns, as the night's warnings name it, and never
@@ -92216,11 +92274,27 @@ def _clock_steps(NI, R, CA, FL):
         Path("slow.py").write_text("import time\nprint('started', flush=True)\ntime.sleep(60)\n",
                                    encoding="utf-8")
         Path("quick.py").write_text("raise SystemExit(3)\n", encoding="utf-8")
-        t0 = time.time()
-        with contextlib.redirect_stdout(io.StringIO()):
-            code = NI.run([str(tmp / "slow.py")], "a step that does not end", timeout=2)
-        assert code == NI.RUN_KILLED == 124 and time.time() - t0 < 30 and any(
+        # Started slowly, a second and a half, and killed two seconds after
+        # run() was called, not two after the child started.
+        real_child = NI.child
+
+        def slow_start(*a, **k):
+            time.sleep(1.5)
+            return real_child.popen(*a, **k)
+        NI.child = types.SimpleNamespace(popen=slow_start)
+        try:
+            t0 = time.monotonic()
+            with contextlib.redirect_stdout(io.StringIO()):
+                code = NI.run([str(tmp / "slow.py")], "a step that does not end", timeout=2)
+            took = time.monotonic() - t0
+        finally:
+            NI.child = real_child
+        assert code == NI.RUN_KILLED == 124 and any(
             "STOPPED: still running after 2 seconds" in ln for ln in NI.LOG), (code, NI.LOG[-3:])
+        assert 1.9 <= took < 3.0, (
+            f"a step given 2 seconds, whose child took 1.5 to start, ended after {took:.1f}: "
+            "run() counts its limit from the child's start, not from its own call, so a gated "
+            "step's kill falls after the deadline its gate set")
         NI.LOG = []
         with contextlib.redirect_stdout(io.StringIO()):
             code = NI.run([str(tmp / "quick.py")], "a step that ends")
@@ -92266,10 +92340,12 @@ def _clock_steps(NI, R, CA, FL):
         # The steps, with a fake child: what ran, with which limit, and what a
         # child killed part way had half written.
         ran, limits, answer = [], [], {"rc": 0}
+        read, read_at_run = [], []          # a moving clock's readings (below)
 
         def fake_run(args, label, cwd=None, timeout=None):
             ran.append(args[0])
             limits.append(timeout)
+            read_at_run.append(read[-1] if read else None)
             if answer["rc"] == NI.RUN_KILLED:
                 if args[0] == "fetch_lsrs.py":
                     NI.LSRS.write_text("[{\"lsr\": ", encoding="utf-8")
@@ -92314,8 +92390,9 @@ def _clock_steps(NI, R, CA, FL):
             "the bill requests or the lists are not killed at their own minutes, so a slow "
             f"answer could ask past 12:00 UTC: limits {limits}")
         # At the edge of the hours, each by its own minutes: alone, at 12:00
-        # less its minutes it starts and a minute later it does not; and in
-        # the night's order, a minute either side of the bill requests' last.
+        # less its minutes it does not start and a second earlier it does;
+        # and in the night's order, at the bill requests' edge and a second
+        # before it.
         until = datetime(2026, 10, 27, *NI.ASK_UNTIL, tzinfo=timezone.utc)
         steps = ((NI.take_lsrs, NI.LSRS_MINUTES, "fetch_lsrs.py"),
                  (lambda: NI.take_documents({}), NI.LISTING_MINUTES, "fetch_calendar_archive.py"))
@@ -92329,17 +92406,49 @@ def _clock_steps(NI, R, CA, FL):
                     t()
             return list(ran)
         for take, minutes, name in steps:
-            last = until - timedelta(minutes=minutes)
-            for when, want in ((last, [name]), (last + timedelta(minutes=1), [])):
+            edge = until - timedelta(minutes=minutes)
+            for when, want in ((edge - timedelta(seconds=1), [name]), (edge, [])):
                 assert at(when, take) == want, (
-                    f"at {when:%H:%M} UTC {name} {'ran' if ran else 'did not run'}: a step of "
-                    f"{minutes} minutes may start until {last:%H:%M} and not after, to end by "
-                    f"{until:%H:%M}")
-        last = until - timedelta(minutes=NI.LSRS_MINUTES)
-        for when in (last - timedelta(minutes=1), last + timedelta(minutes=1)):
-            want = [n for _, m, n in steps if when + timedelta(minutes=m) <= until]
+                    f"at {when:%H:%M:%S} UTC {name} {'ran' if ran else 'did not run'}: a step "
+                    f"of {minutes} minutes may start before {edge:%H:%M:%S} and not at it, to "
+                    f"end before {until:%H:%M}")
+        edge = until - timedelta(minutes=NI.LSRS_MINUTES)
+        for when in (edge - timedelta(seconds=1), edge):
+            want = [n for _, m, n in steps if when + timedelta(minutes=m) < until]
             got = at(when, *(t for t, _, _ in steps))
-            assert got == want, f"at {when:%H:%M} UTC the night's two steps ran {got}, not {want}"
+            assert got == want, (f"at {when:%H:%M:%S} UTC the night's two steps ran {got}, "
+                                 f"not {want}")
+        # Killed at the deadline its gate set, by a clock that moves: 16 ms a
+        # reading, as the real one moves between the gate and the child, the
+        # first reading 10 ms inside each step's edge.
+        assert NI.refusal is R, "nightly reads another refusal's clock than this check moves"
+        real_utc = R._utc
+        try:
+            for take, minutes, name in steps:
+                first = until - timedelta(minutes=minutes, milliseconds=10)
+
+                def moving(now=None, first=first):
+                    if now is not None:
+                        return real_utc(now)
+                    read.append(first + timedelta(milliseconds=16 * len(read)))
+                    return read[-1]
+                del read[:], ran[:], limits[:], read_at_run[:]
+                R._utc = moving
+                NI.EXITS.clear()
+                with contextlib.redirect_stdout(io.StringIO()):
+                    take()
+                R._utc = real_utc
+                assert ran == [name], (f"{name}, started 10 ms inside its edge, did not run: "
+                                       f"{ran}")
+                killed = read_at_run[0] + timedelta(seconds=limits[0])
+                assert killed <= first + timedelta(minutes=minutes) < until, (
+                    f"{name}, its gate reading {first:%H:%M:%S.%f} UTC, is killed at "
+                    f"{killed:%H:%M:%S.%f} by the clock's last reading before it started, "
+                    f"not by its gate's reading and its {minutes} minutes: a step started on the "
+                    "edge would still be asking at 12:00")
+        finally:
+            R._utc = real_utc
+            del read[:]
         os.environ[R.CLOCK_ENV] = "2026-10-27T09:00:00Z"
         # Killed: the copy on file stays, the step says so, and the chain stops.
         del ran[:], limits[:]
@@ -92376,10 +92485,10 @@ def _clock_steps(NI, R, CA, FL):
     assert NI.WATCH["step"] == saved_step, (
         f"this check's real run() left the machine watch on {NI.WATCH['step']!r}, which every "
         "later watch line of the run would name as its step")
-    return "ok", ("past 12:00 UTC and before 08:00 nothing is asked; each step starts only if it "
-                  "can end by 12:00 by its own minutes, which hold its fetch's longest run, and "
-                  "is killed at them keeping its copy; the clock's not asked for never holds "
-                  "the night")
+    return "ok", ("past 12:00 UTC and before 08:00 nothing is asked; each step starts only if "
+                  "it can end before 12:00 by its own minutes, which hold its fetch's longest "
+                  "run, and is killed at them, counted from its gate's reading of the clock, "
+                  "keeping its copy; the clock's not asked for never holds the night")
 
 
 @check("build", "every fake of nightly.run, here and under tests/, takes run()'s timeout, and "
@@ -92407,9 +92516,87 @@ def _clock_fakes(NI):
         other than the weekly's alone, sets the test clock in os.environ
         (CHECKS_CLOCK here); a weekly harness that answers the bill requests
         or the lists counts as one that reaches them.
+
+    AND NO CHECK LEAVES THE CLOCK SET FOR THE NEXT (the review of 27 October
+    2026). Six harnesses put the clock back only by naming it among the
+    variables they save, and taking it out of any one failed nothing, here
+    or in either of the clock's other checks, while every check after it ran
+    at 09:00 UTC on 27 October. main() runs every check through _run_check,
+    which fails one that leaves the clock other than it found it and puts it
+    back: held here on made-up checks -- one that leaves it set fails, and
+    the clock is as it was; one that puts it back passes; one that fails and
+    leaves it keeps its own failure and says so too -- and on main()'s
+    source, which calls no check but through it. And the rehearsal's
+    tests/rehearse_turn.py, which sets the clock in its own process for its
+    nights, gives none to the builds and checks it starts (env()), which ask
+    nobody and ran by the real clock before the clock came in.
     """
+    import importlib.util
     import inspect
     assert "timeout" in inspect.signature(NI.run).parameters, "nightly.run takes no timeout"
+    # No check leaves the clock set for the next.
+    found = os.environ.get(CHECKS_CLOCK[0])
+    elsewhere = "2026-01-02T03:04:05Z"
+    elsewhere = elsewhere if found != elsewhere else "2026-01-03T00:00:00Z"
+
+    def leaves():
+        os.environ[CHECKS_CLOCK[0]] = elsewhere
+        return "ok", "fine"
+
+    def puts_back():
+        saved = os.environ.get(CHECKS_CLOCK[0])
+        os.environ[CHECKS_CLOCK[0]] = elsewhere
+        try:
+            return "ok", "fine"
+        finally:
+            if saved is None:
+                os.environ.pop(CHECKS_CLOCK[0], None)
+            else:
+                os.environ[CHECKS_CLOCK[0]] = saved
+
+    def fails_and_leaves():
+        os.environ[CHECKS_CLOCK[0]] = elsewhere
+        raise AssertionError("its own failure")
+    try:
+        got = {f.__name__: _run_check({"fn": f}, []) for f in (leaves, puts_back,
+                                                                fails_and_leaves)}
+        clock_after = os.environ.get(CHECKS_CLOCK[0])
+    finally:
+        if found is None:
+            os.environ.pop(CHECKS_CLOCK[0], None)
+        else:
+            os.environ[CHECKS_CLOCK[0]] = found
+    assert got["leaves"][0] == "FAIL" and CHECKS_CLOCK[0] in got["leaves"][1] and \
+        clock_after == found, (
+            "a check that leaves the test clock set passes main()'s run of it, or the clock is "
+            f"not put back for the next: {got['leaves']}, the clock {clock_after!r}")
+    assert got["puts_back"] == ("ok", "fine"), got["puts_back"]
+    assert got["fails_and_leaves"][0] == "FAIL" and "its own failure" in \
+        got["fails_and_leaves"][1] and CHECKS_CLOCK[0] in got["fails_and_leaves"][1], \
+        got["fails_and_leaves"]
+    me_tree = _parsed(Path(__file__).resolve())
+    main_fn = next(n for n in me_tree.body if isinstance(n, ast.FunctionDef) and n.name == "main")
+    calls = [ast.unparse(n.func) for n in ast.walk(main_fn) if isinstance(n, ast.Call)]
+    assert "_run_check" in calls and not any(re.match(r"\w+\[.fn.\]$", f) for f in calls), (
+        "main() runs a check other than through _run_check, so a check that leaves the test "
+        "clock set passes and every check after it runs at that time")
+    # The rehearsal's builds and checks are given no clock.
+    path = _paths.locate("tests/rehearse_turn.py")
+    spec = importlib.util.spec_from_file_location("_rehearse_turn_for_clock", path)
+    RT = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(RT)
+    assert RT.CLOCK[0] == CHECKS_CLOCK[0], "the rehearsal names its test clock otherwise"
+    os.environ[CHECKS_CLOCK[0]] = RT.CLOCK[1]
+    try:
+        handed = RT.env()
+    finally:
+        if found is None:
+            os.environ.pop(CHECKS_CLOCK[0], None)
+        else:
+            os.environ[CHECKS_CLOCK[0]] = found
+    assert CHECKS_CLOCK[0] not in handed, (
+        "tests/rehearse_turn.py's env() hands the clock its nights are stated at to the builds "
+        "and checks it starts, which ran by the real clock before the clock came in")
     me = Path(__file__).resolve()
     files = [me] + sorted((me.parent / "tests").glob("*.py"))
 
@@ -92506,7 +92693,9 @@ def _clock_fakes(NI):
         f"found only {fakes} fakes of nightly.run and {len(harnesses)} harnesses that reach the "
         "bill requests: this check no longer reads them")
     return "ok", (f"{fakes} fakes of nightly.run take timeout=; {len(harnesses)} harnesses "
-                  f"state a time inside the night's hours ({', '.join(harnesses)})")
+                  f"state a time inside the night's hours ({', '.join(harnesses)}); a check "
+                  "that leaves the clock set fails main()'s run of it, and the rehearsal's "
+                  "builds are given none")
 
 
 @check("build", "on a stood-down laptop no General Court request starts in GitHub's night "
@@ -111413,14 +111602,7 @@ def main():
         if missing:
             status, msg = "skip", f"{missing}.py will not import"
         else:
-            try:
-                status, msg = c["fn"](*mods)
-            except AssertionError as e:
-                status, msg = "FAIL", str(e) or "assertion failed"
-            except Exception as e:
-                status, msg = "ERROR", f"{type(e).__name__}: {e}"
-                if a.verbose:
-                    traceback.print_exc()
+            status, msg = _run_check(c, mods, verbose=a.verbose)
             _OUTCOMES[c["fn"].__name__] = (status, msg)
             status, msg = _settle(status, msg, c.get("expect_fail"))
         results.append((c["group"], c["name"], status, msg))
@@ -112582,12 +112764,7 @@ def _check_outcome(c):
         if m is None:
             return "skip", f"{n}.py will not import"
         mods.append(m)
-    try:
-        return tuple(c["fn"](*mods))
-    except AssertionError as e:
-        return "FAIL", str(e) or "assertion failed"
-    except Exception as e:                                      # noqa: BLE001
-        return "ERROR", f"{type(e).__name__}: {e}"
+    return tuple(_run_check(c, mods))
 
 
 @check("frontend", "every node harness that runs a page's script gets from the published "

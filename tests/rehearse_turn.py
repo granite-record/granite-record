@@ -154,7 +154,9 @@ DAY = "2026-10-05"                     # the stated day of every build here
 # stated at a time inside those hours, as preflight's CHECKS_CLOCK states its
 # own: what a rehearsal exercises does not depend on the hour it is run. The
 # copy has no stand-down, so no laptop guard reads it; and the builds and
-# checks a night starts are given none (env), since they ask nobody.
+# checks a night starts are given none (env), since they ask nobody and ran
+# by the real clock before the clock came in (preflight's _clock_fakes
+# holds it).
 CLOCK = ("GRANITE_CLOCK_UTC", "2026-10-27T09:00:00Z")
 RESULTS = {"nights": [], "checks": [], "failed": []}
 

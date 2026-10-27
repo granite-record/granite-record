@@ -449,15 +449,16 @@ THE NIGHT'S CLOCK (26 October 2026)
 Nothing on GitHub read refusal.NIGHT_WINDOWS: only a laptop that has stood
 down was held by it, and a night GitHub started hours late asked the General
 Court whenever it ran. Now the steps after the day's files that ask its site
--- the bill requests and the lists -- each start only if they can end by
-ASK_UNTIL, 12:00 UTC, inside the night's own window (asking_left); otherwise
-"not asked for", a warning, and tomorrow, with the copy on file kept. That
-warning never holds the night for the gate (clock_kind): a night GitHub
-started late publishes itself, as it did before the clock, a day behind on
-what was not asked for. Each step is also killed at its own minutes
-(LSRS_MINUTES, LISTING_MINUTES; run(timeout=)), because a socket's timeout
-bounds one read, not a request. The person approved it: "The existing bill
-request and list page steps can stay within 4-8am". The night starts at
+-- the bill requests and the lists -- each start only if they can end
+before ASK_UNTIL, 12:00 UTC, inside the night's own window (asking_left);
+otherwise "not asked for", a warning, and tomorrow, with the copy on file
+kept. That warning never holds the night for the gate (clock_kind): a night
+GitHub started late publishes itself, as it did before the clock, a day
+behind on what was not asked for. Each step is also killed at its own
+minutes (LSRS_MINUTES, LISTING_MINUTES; run(timeout=)), counted from the
+moment its gate read the clock, because a socket's timeout bounds one read,
+not a request. The person approved it: "The existing bill request and list
+page steps can stay within 4-8am". The night starts at
 08:17 UTC, so those two steps ask between then and 12:00 UTC: 4:17 to 8 a.m.
 Eastern in summer, and 3:17 to 7 a.m. in winter, since the hours are kept in
 UTC. The day's files keep their own rule and not these hours: a night GitHub
@@ -709,9 +710,9 @@ EXITS = {}
 
 # THE NIGHT'S CLOCK (the person, 26 October 2026: "The existing bill request
 # and list page steps can stay within 4-8am"). No step that asks the General
-# Court's site after the day's files starts unless it can end by ASK_UNTIL,
-# UTC, inside GitHub's own night window (refusal.NIGHT_WINDOWS' daily one):
-# asking_left. Why 12:00 and not the window's 13:30: a refusal met on the
+# Court's site after the day's files starts unless it can end before
+# ASK_UNTIL, UTC, inside GitHub's own night window (refusal.NIGHT_WINDOWS'
+# daily one): asking_left. Why 12:00 and not the window's 13:30: a refusal met on the
 # night reaches the bucket only once nightly.py exits, after the build, and a
 # stood-down laptop may pull and start from 13:30, so the hour and a half
 # before that is the build's and asks nothing. The runner's clock is Eastern
@@ -1244,11 +1245,15 @@ def run(args, label, cwd=None, timeout=None):
 
     `timeout`, in seconds: a child still running then is killed, and the step
     ends on RUN_KILLED (26 October 2026). A step with none has the job's
-    hours, and the night's lock with them (THE NIGHT'S CLOCK).
+    hours, and the night's lock with them (THE NIGHT'S CLOCK). The seconds
+    are counted from this call, not from the child's start (the review of 27
+    October 2026): a gated step passes the seconds left until the deadline
+    asking_left gave it (seconds_left), and starting the child takes
+    milliseconds that would otherwise carry its kill past that deadline.
     """
+    t0 = time.time()
     say(f"\n--- {label} ---")
     WATCH["step"] = label
-    t0 = time.time()
     mark = len(LOG)
     # The script by its bare name, in whichever code folder holds it
     # (_paths.script): "fetch_lsrs.py" finds src/fetch/gc_web/fetch_lsrs.py
@@ -1269,7 +1274,7 @@ def run(args, label, cwd=None, timeout=None):
         def kill():
             killed.set()
             proc.kill()
-        timer = threading.Timer(timeout, kill)
+        timer = threading.Timer(max(0.0, timeout - (time.time() - t0)), kill)
         timer.daemon = True
         timer.start()
     try:
@@ -1281,7 +1286,7 @@ def run(args, label, cwd=None, timeout=None):
             timer.cancel()
     code = RUN_KILLED if killed.is_set() else proc.returncode
     if killed.is_set():
-        say(f"  STOPPED: still running after {timeout:g} seconds, its limit here, so it was "
+        say(f"  STOPPED: still running after {timeout:.0f} seconds, its limit here, so it was "
             "killed")
     if QUIET and code:
         # GitHub's log says why a step failed without anyone opening the
@@ -3916,12 +3921,21 @@ def not_moving_of(v):
 
 
 def asking_left(minutes):
-    """(True, "") when a step of up to `minutes` that asks the General Court's
-    site may start now: inside GitHub's daily night window, and ending by
-    ASK_UNTIL, UTC (THE NIGHT'S CLOCK); (False, why) otherwise, in this
-    project's words. refusal.night_window() is called with no argument, so
-    it reads its own clock, in UTC -- the runner's is Eastern -- or the
-    tests' GRANITE_CLOCK_UTC. A Monday's weekly window is not the night's."""
+    """(deadline, "") when a step of up to `minutes` that asks the General
+    Court's site may start now: inside GitHub's daily night window, and
+    ending before ASK_UNTIL, UTC (THE NIGHT'S CLOCK); (None, why) otherwise,
+    in this project's words. refusal.night_window() is called with no
+    argument, so it reads its own clock, in UTC -- the runner's is Eastern --
+    or the tests' GRANITE_CLOCK_UTC. A Monday's weekly window is not the
+    night's.
+
+    `deadline` is this reading of the clock and the step's minutes, and the
+    step is killed at it (seconds_left; run(timeout=)), so the kill is
+    counted from the reading the gate judged, not from the child's start
+    some milliseconds later. And it must fall BEFORE ASK_UNTIL, not on it
+    (the review of 27 October 2026): a step allowed to end exactly at 12:00,
+    killed a few milliseconds after its gate read the clock, was still
+    asking at 12:00:00.0xx."""
     from datetime import timedelta
     now = refusal._utc()
     daily = next(w for w in refusal.NIGHT_WINDOWS if w[0] is None)
@@ -3930,13 +3944,22 @@ def asking_left(minutes):
     w = refusal.night_window()
     it_is = ASK_CLOCK_SAID.format(hm=f"{now:%H:%M}")
     if not w or daily[3] not in w[2]:
-        return False, f"{it_is}, outside the hours the night asks the General Court in, {hours}"
+        return None, f"{it_is}, outside the hours the night asks the General Court in, {hours}"
     until = now.replace(hour=ASK_UNTIL[0], minute=ASK_UNTIL[1], second=0, microsecond=0)
-    if now + timedelta(minutes=minutes) > until:
-        return False, (f"{it_is}, and a step of up to {minutes} minutes would "
-                       f"ask past {ASK_UNTIL[0]:02d}:{ASK_UNTIL[1]:02d} UTC, the last the night "
-                       "asks the General Court")
-    return True, ""
+    deadline = now + timedelta(minutes=minutes)
+    if deadline >= until:
+        return None, (f"{it_is}, and a step of up to {minutes} minutes could still be asking "
+                      f"at {ASK_UNTIL[0]:02d}:{ASK_UNTIL[1]:02d} UTC, when the night stops "
+                      "asking the General Court")
+    return deadline, ""
+
+
+def seconds_left(deadline):
+    """The seconds from now, by refusal's clock, to `deadline` (asking_left's):
+    the limit a gated step's child is given, so that it is killed at the
+    deadline its gate set and not that many minutes after the child started.
+    Read just before run(), which counts them from its own start."""
+    return (deadline - refusal._utc()).total_seconds()
 
 
 def clock_kind(kind):
@@ -3954,19 +3977,20 @@ def take_lsrs():
     line saying what happened: "installed, ...", "not taken: ..." or "not
     asked for: ...". The fetch runs here, in the working folder, so that a
     refusal it meets is recorded in the refusal record every other fetch
-    reads. Not asked for where it could not end by ASK_UNTIL, and killed at
-    LSRS_MINUTES (THE NIGHT'S CLOCK)."""
+    reads. Not asked for where it could not end before ASK_UNTIL, and killed
+    at LSRS_MINUTES from its gate's reading of the clock (THE NIGHT'S
+    CLOCK)."""
     before = LSRS.read_bytes() if LSRS.exists() else None
     old = load_json(LSRS) if before is not None else []
     old = old if isinstance(old, list) else []
     standing = {r.get("lsr") for r in old if isinstance(r, dict) and not r.get("withdrawn")}
-    ok, why = asking_left(LSRS_MINUTES)
-    if not ok:
+    deadline, why = asking_left(LSRS_MINUTES)
+    if deadline is None:
         say(f"  bill requests not asked for: {why}")
         return (f"not asked for: {why}; "
                 + (f"the earlier {len(standing)} kept" if before is not None else "none on file"))
     rc = run(["fetch_lsrs.py"], "next session's bill requests, from the General Court",
-             timeout=LSRS_MINUTES * 60)
+             timeout=seconds_left(deadline))
     EXITS["fetch_lsrs.py"] = rc
     new = load_json(LSRS)
     gone = [r for r in (new if isinstance(new, list) else [])
@@ -4027,8 +4051,9 @@ def take_documents(v=None):
     on night LIST_SAME_NIGHTS it is taken as the page's own.
 
     THE NIGHT'S HOURS (26 October 2026). Not asked for where it could not end
-    by ASK_UNTIL (asking_left), which the person approved for this step too,
-    and killed at LISTING_MINUTES (THE NIGHT'S CLOCK).
+    before ASK_UNTIL (asking_left), which the person approved for this step
+    too, and killed at LISTING_MINUTES from its gate's reading of the clock
+    (THE NIGHT'S CLOCK).
 
     Every sentence this returns is this project's own -- counts and the
     lists' names -- because a warning is shown on the run's public page.
@@ -4052,13 +4077,13 @@ def take_documents(v=None):
                "more is asked of it tonight")
         say(f"  the list of calendars and journals not asked for: {why}")
         return f"not asked for: {why}; {kept}"
-    ok, why = asking_left(LISTING_MINUTES)
-    if not ok:
+    deadline, why = asking_left(LISTING_MINUTES)
+    if deadline is None:
         say(f"  the list of calendars and journals not asked for: {why}")
         return f"not asked for: {why}; {kept}"
     rc = run(["fetch_calendar_archive.py", "--listing", "--out", str(new)],
              "the calendars and journals the General Court lists",
-             timeout=LISTING_MINUTES * 60)
+             timeout=seconds_left(deadline))
     why, got, rec, settled = "", [], None, 0
     if rc == RUN_KILLED:
         why = (f"the listing was still asking after {LISTING_MINUTES} minutes, its limit here, "

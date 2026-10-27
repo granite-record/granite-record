@@ -115,7 +115,7 @@ looks for new livestreams (`src/ops/livestreams.py --since-state`), and runs
 `nightly.py --runner`: the day's bulk files from gc.nh.gov, asked only when no
 refusal is on file; then, under the same lock, next session's bill requests
 and the two index pages' lists of calendars and journals, each only if it can
-finish by 12:00 UTC and each stopped at its own time limit (THE NIGHT'S CLOCK
+finish before 12:00 UTC and each stopped at its own time limit (THE NIGHT'S CLOCK
 in `nightly.py`), or else a warning and tomorrow; the rebuild,
 `build_all.py --local --no-captions`, since
 that machine holds no caption files; and the gates -- `preflight.py --code`,
