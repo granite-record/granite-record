@@ -3467,7 +3467,10 @@ TERM_ABOUT = (
     "consent: the calendar's outcomes, the bills taken off it and its counted vote. bills: "
     "every bill voted on that day, each vote in order (rollcall is the roll-call file's id; "
     "card is the vote's place on the bill's Votes tab), and the committee recommendation "
-    "the chamber acted on.")
+    "the chamber acted on. videos: the day's recordings, those a bill's moment of the day is "
+    "in or else the one the chamber's YouTube channel titles as the day's session; "
+    "recordings: the same, with when each began (began, Eastern) and how long it ran "
+    "(seconds), where the channel's index says.")
 
 
 def write_term_records(site, body, records):
