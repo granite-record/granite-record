@@ -6905,7 +6905,9 @@ grid-template-areas:"main" "det" "side" "src"}
 .vwcap{display:block}
 .vwcap p{margin:0;color:var(--ink-2);line-height:1.5}
 .vwcap b{color:var(--ink);font-weight:600}
-.vwcap .vwn{white-space:nowrap}
+/* A date, a time, a length and "On YouTube" each kept whole: at 390px the
+   link broke between its two words. */
+.vwcap .vwn,.vwcap a{white-space:nowrap}
 .vwdet{grid-area:det;min-width:0}
 /* What the recording is of, in a line: its kinds as chips, then the room or
    the kind of meeting in words. */

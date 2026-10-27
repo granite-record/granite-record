@@ -75785,6 +75785,13 @@ def _committee_recordings(BCM, P):
     got2, _ = BCM.committee_recordings({}, {"cmteTitleV1"}, facts, code_of, pages)
     assert "cmteTitleV1" not in [r["id"] for r in got2.get("H43", [])], (
         "a recording proceedings.csv carries is listed again by its title")
+    # A division's recording that a bill row places keeps the division its own
+    # title names, as House Finance's of 4 May 2026 does (seven bills).
+    got3, _ = BCM.committee_recordings({"H34": {("2025-2026", "2026-02-24"): [{"video_id": "financeDiv2"}]}},
+                                       {"financeDiv2"}, facts, code_of, pages)
+    assert got3.get("H34") == [{"id": "financeDiv2", "date": "2026-02-24", "term": "2025-2026",
+                                "began": "13:00", "seconds": 7200, "label": "Division II"}], (
+        f"a division's recording placed by its bills is listed as {got3.get('H34')}, without its division")
     import inspect
     src = inspect.getsource(BCM.main)
     assert "if carried and not facts:" in src and "raise SystemExit(" in src[src.index("if carried and not facts:"):][:200], (
@@ -75796,9 +75803,27 @@ def _committee_recordings(BCM, P):
     rec = json.loads((shared / "site" / "committee" / "H43.json").read_text(encoding="utf-8"))
     assert [r["id"] for r in rec.get("recordings") or []] == ["cmteTitleV1", "VID4", "VID1"], (
         f"the fixture's House Commerce lists {rec.get('recordings')}")
+    # Every page the build wrote: each recording its items name listed, and
+    # once; and none from before the channels began.
+    import about_figures as AF
+    twice, unlisted, early = [], [], []
+    for f in sorted((shared / "site" / "committee").glob("*.json")):
+        d = json.loads(f.read_text(encoding="utf-8"))
+        if not isinstance(d, dict):
+            continue
+        ids = [r["id"] for r in d.get("recordings") or []]
+        twice += [f"{f.stem} {i}" for i in sorted(set(ids)) if ids.count(i) > 1]
+        named = {i.get("video_id") for s in d.get("sessions") or [] for i in s.get("items") or []} - {"", None}
+        unlisted += [f"{f.stem} {i}" for i in sorted(named - set(ids))]
+        early += [f"{f.stem} {r['id']} {r['date']}" for r in d.get("recordings") or []
+                  if r["date"] < AF.STREAM_START]
+    assert not twice and not unlisted and not early, (
+        f"a page lists a recording twice {twice}, leaves out one its items name {unlisted}, or lists "
+        f"one before the channels began {early}")
     return "ok", ("the index read once, a stream to come and a title in the older form left off; "
                   "House Commerce lists 2 recordings by its bills and 1 by its title, newest first; "
-                  "House Finance's division marked; an empty index stops the build")
+                  "a division marked, by its bills or its title; every page's recordings once and none "
+                  "before May 2020; an empty index stops the build")
 
 
 @check("frontend", "no page the build writes asks YouTube for anything before a person presses Play: "
@@ -75933,6 +75958,12 @@ process.stdout.write("\n@@" + JSON.stringify(out));
     cap = _html.unescape(re.sub(r"<[^>]+>", "", re.search(r'<div class="pbar vwcap">(.*?)</div>', pane).group(1)))
     assert cap == "House Commerce · , Feb 24, 2026 · , 36 min · , On YouTube", (
         f"the caption under the player reads {cap!r}: one line, a missing start left out with its dot")
+    # Each of its parts kept whole where the line wraps: at 390px "On
+    # YouTube" broke between its two words.
+    css = Path("src/pages/app.css").read_text(encoding="utf-8")
+    keep = re.search(r"\n([^{}\n]*\.vwcap a\b[^{}\n]*)\{([^}]*)\}", css)
+    assert keep and ".vwcap .vwn" in keep.group(1) and "white-space:nowrap" in keep.group(2), (
+        "the caption's date, time, length or YouTube link can break across two lines")
     assert pane.count("The docket ties no bill to this recording.") == 1 and "No bill" not in pane \
         and 'class="note"' not in pane, (
             "a recording with no bill is not said so once, plainly, under the player")

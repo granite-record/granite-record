@@ -865,8 +865,8 @@ def static_record(code, name, chamber_word, rec, sessions):
 # and every recording in the video index that NO row of proceedings.csv
 # carries, that has streamed, and whose own title names this committee in the
 # channel's chamber, read through code_of with the term of its day. The
-# House's "Finance Division I/II/III" is House Finance's, marked with its
-# division. Nothing is weighed or guessed: a title in the older form
+# House's "Finance Division I/II/III" is House Finance's, and any recording
+# whose own title names a division is marked with it. Nothing is weighed or guessed: a title in the older form
 # ("Education 1/26/21") names no committee the index could parse, so it stays
 # off unless a bill row places it. The Senate's docket lists hearings only,
 # so its committees' executive sessions are on their channel and on no row:
@@ -891,8 +891,14 @@ def committee_recordings(days, carried, facts, code_of, pages):
     carried = set(carried) | {it.get("video_id") for by_day in days.values()
                               for items in by_day.values() for it in items} - {"", None}
 
-    def entry(vid, date, term, label=""):
+    def entry(vid, date, term):
         v = facts.get(vid) or {}
+        # The division its own title names, whether a bill row or the title
+        # placed it: House Finance's division days stream one recording a
+        # division, the tied ones among them ("Finance - Division I", 4 May
+        # 2026, seven bills).
+        m = DIVISION.match(v.get("parsed_committee") or "") if v.get("chamber") == "H" else None
+        label = f"Division {m.group(1)}" if m else ""
         return {"id": vid, "date": date, "term": term,
                 **({"began": v["began"]} if v.get("began") else {}),
                 **({"seconds": v["seconds"]} if v.get("seconds") else {}),
@@ -917,7 +923,7 @@ def committee_recordings(days, carried, facts, code_of, pages):
         if code not in pages:
             found["no_page"] += 1
             continue
-        out[code][vid] = entry(vid, v["date"], term, f"Division {m.group(1)}" if m else "")
+        out[code][vid] = entry(vid, v["date"], term)
         found["by_titles"] += 1
     return ({code: sorted(recs.values(), key=lambda r: (r["date"], r.get("began") or "", r["id"]),
                           reverse=True)
