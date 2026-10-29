@@ -1,4 +1,4 @@
-// GRANITE_VERSION: 2026-09-07.251
+// GRANITE_VERSION: 2026-09-07.252
 // esc, dateWords and dateSpan, clock, cmteLink and pchip are components.js's,
 // which every page loads before this file (the component plan's C1 and C2),
 // and so is WORDBOOK, the words of src/pages/words/ that the build writes into
@@ -9754,15 +9754,16 @@ function renderCommitteeHead(c){
   // recording 12 May (the Videos tab's list, build_committees). Both are
   // said, so the head and the tab below it do not disagree.
   const rec=(c.recordings||[]).reduce((a,r)=>!a||r.date>a.date?r:a,null);
-  // Both dates in the one style, the long one the last meeting has: "on
-  // Tuesday, April 7, 2026 ... from Tuesday, May 12, 2026", where the second
-  // was "May 12, 2026" (the review of 29 October 2026).
+  // Both dates in the one style, the site's: "on Apr 7, 2026 ... from May
+  // 12, 2026", where the sentence mixed "Tuesday, April 7, 2026" with "May
+  // 12, 2026" (the review of 29 October 2026; the manager's choice of style,
+  // pending the owner's). A last meeting said alone keeps its long form.
   const ahead=rec&&met&&rec.date>met?`; its newest recording, on the <a href="${
     esc(`/committee/${encodeURIComponent(c.code)}/videos#v-${rec.id}`)}" data-vwgo="${esc(rec.id)}">Videos tab</a>, is from ${
-    esc(dateWords(rec.date,"long"))}`:"";
+    esc(dateWords(rec.date))}`:"";
   const next=UPCOMING===null?"":cmteUpcoming(c).length?""
     :`Nothing is scheduled in the next two weeks.${met?` Its last meeting${ahead?" on the record":""} was on <a href="${
-      esc(dayHref(met))}">${esc(dateWords(met,"long"))}</a>${ahead}.`:""}`;
+      esc(dayHref(met))}">${esc(ahead?dateWords(met):dateWords(met,"long"))}</a>${ahead}.`:""}`;
   // "The House Special Committee on Housing", not "The House Committee on
   // Special Committee on Housing" (components.js's cmteTitle, 16 October 2026).
   const line=`The ${esc(cmteTitle(c.name||"",ch))}${chair?`, chaired by ${chair}`:""}.`;

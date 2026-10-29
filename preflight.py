@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.722
+# GRANITE_VERSION: 2026-09-04.723
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -76497,10 +76497,11 @@ process.stdout.write("\n@@" + JSON.stringify(out));
     assert flat["videos"].count("its newest recording, on the <a") == 1 and \
         "Its last meeting on the record was on" in flat["videos"], (
             "the head names a last meeting older than the newest recording and does not say both")
-    # BOTH DATES IN THE ONE STYLE: "on Tuesday, April 7, 2026 ... from May 12,
-    # 2026" mixed two (the review of 29 October 2026).
-    assert re.search(r"was on <a [^>]*>Tuesday, February 17, 2026</a>; its newest recording, on the "
-                     r"<a [^>]*>Videos tab</a>, is from Tuesday, February 24, 2026\.", flat["videos"]), (
+    # BOTH DATES IN THE ONE STYLE, THE SITE'S: "on Tuesday, April 7, 2026 ...
+    # from May 12, 2026" mixed two (the review of 29 October 2026), and the
+    # style is the site's "May 12, 2026" (the manager, 29 October 2026).
+    assert re.search(r"was on <a [^>]*>Feb 17, 2026</a>; its newest recording, on the "
+                     r"<a [^>]*>Videos tab</a>, is from Feb 24, 2026\.", flat["videos"]), (
         "the head's last meeting and newest recording are not dated in the one style: "
         + re.search(r"Its last meeting.{0,300}", flat["videos"]).group(0))
     # THE SKIP LINK STRAIGHT AFTER THE PLAYER AND ITS CAPTION, before what the
