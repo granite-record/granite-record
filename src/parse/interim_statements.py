@@ -50,6 +50,12 @@ WHAT A STATEMENT HOLDS
         "committee": "Fish and Game and Marine Resources",
         "text": "This is a bill that ...", "vote_yeas": 10, "vote_nays": 0}]}}
 
+KNOWN HOLD: a committee that split prints a majority's and a minority's
+statement under one title -- HB 1164 of 2000, "MAJORITY: NOT RECOMMENDED
+...", then each side's member and reasons. It is held back, not shown as
+one statement; showing both, as the tab shows a split report, is a later
+change (the manager, 29 October 2026).
+
 `rec` is "rec", "not" or "without" from the words printed, or "" where the
 calendar prints none: 2004's statements give the bill, the member and the
 reasons, and say what they recommend only in the prose, which is never read
