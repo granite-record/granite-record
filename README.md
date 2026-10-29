@@ -343,10 +343,13 @@ Clerk's office.
 
 Fetches run one at a time, slowly, and a refusal ends the run rather than being
 retried around: `refusal.py` records it in `archive/refused.json`. A fetch
-started by hand stops at it for 24 hours; the fetch lane, `build_all.py`'s
-General Court steps and the nightly stop at it for as long as it is on file,
-because clearing it is a person's decision (`python3 refusal.py --clear`,
-after `python3 netcheck.py` has said what kind of refusal it was). Every
+started by hand stops at it for 24 hours, and for as long as it is on file
+if GitHub's night met it; the fetch lane, `build_all.py`'s General Court
+steps and the nightly stop at it for as long as it is on file, because
+clearing it is a person's decision (`python3 refusal.py --clear`, after
+`python3 netcheck.py` has said what kind of refusal it was; on the laptop
+that has handed the nightly to GitHub, the next fetch after a clear reads
+the bucket's refusal record first). Every
 script that asks gc.nh.gov, but `netcheck.py`, consults the record before
 its first request and records a refusal it meets, and `preflight` fails one
 that does not; those scripts live in `src/fetch/gc_web/`. The machinery stops

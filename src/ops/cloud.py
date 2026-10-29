@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-25.29
+# GRANITE_VERSION: 2026-09-25.30
 """
 The nightly's kit and the laptop's backup, in the project's private R2 bucket.
 
@@ -3037,6 +3037,22 @@ def _refusal_doc(data):
         return {}
 
 
+def _stops_here(m):
+    """What a refusal record on file here stops, from its fields: a sentence,
+    as refusal.check() and the lane read it -- a hand fetch for QUIET_HOURS,
+    or at any age for a record GitHub's machine met that names its kind
+    (refusal.any_age); the lane for as long as it is on file."""
+    import refusal
+    if refusal.any_age(m):
+        return "GitHub's machine met it, so every fetch and the lane here stop at it at any age"
+    left = refusal.hours_left(m)
+    if left is not None:
+        return (f"It stops every fetch here for {left:.1f} more hours, and the lane here for as "
+                "long as it is on file")
+    return (f"It is older than {refusal.QUIET_HOURS} hours, so hand fetches here are not stopped "
+            "by it; the lane here is")
+
+
 def pull_refusal(bucket, root, kit, dry, day):
     """The bucket's refusal record against this laptop's. ([lines], [failures],
     what the bucket holds). A refusal only ever arrives or stays here; the
@@ -3059,9 +3075,10 @@ def pull_refusal(bucket, root, kit, dry, day):
     A LIFT IS READ FROM THE BUCKET (29 October 2026): a copy here whose sha
     the bucket's state/knocks.json lists as lifted by the night's knock is
     said to be so, at any age -- never the "IS NOT IN THE BUCKET" failure,
-    never the advice to send it -- and stays on file, stopping the lane here
-    until a person runs refusal.py --clear, and a hand fetch for QUIET_HOURS
-    from when it was met; its unsent marker is lifted. state/refused.json is
+    never the advice to send it -- and stays on file, stopping the lane and
+    every fetch here until a person runs refusal.py --clear (a copy of a
+    record GitHub's machine met stops a hand fetch at any age,
+    refusal.any_age); its unsent marker is lifted. state/refused.json is
     read BEFORE state/knocks.json, so a lift that lands between the two
     reads is seen: in the other order the copy taken just now would meet a
     bucket with no refusal and a "lifted" without it.
@@ -3105,9 +3122,8 @@ def pull_refusal(bucket, root, kit, dry, day):
         if _sha(mine) in lifts:
             lines.append(f"THE NIGHT LIFTED THIS REFUSAL ({_who(m)}): it was "
                          f"{lift_said(lifts[_sha(mine)])}. It is still on file here, as "
-                         f"{entry['path']}: the lane here stops at it until python3 refusal.py "
-                         f"--clear, and a fetch started by hand here for {refusal.QUIET_HOURS} "
-                         "hours from when it was met")
+                         f"{entry['path']}: the lane and every fetch here stop at it until "
+                         "python3 refusal.py --clear")
         elif cleared == _sha(mine):
             lines.append(f"{entry['path']} ({_who(m)}) is on file here and the bucket holds "
                          "none: a person cleared this one from the bucket, and python3 "
@@ -3121,8 +3137,7 @@ def pull_refusal(bucket, root, kit, dry, day):
                        f"here, if a person has decided it is over")
         else:
             lines.append(f"{entry['path']} ({_who(m)}) is on file here and the bucket holds "
-                         f"none. It is older than {refusal.QUIET_HOURS} hours, so hand fetches "
-                         "here are not stopped by it; the lane here is, and GitHub's night "
+                         f"none. {_stops_here(m)}, and GitHub's night "
                          "never sees it: python3 src/ops/cloud.py send-refusal sends it if it should "
                          "stop the night too, and python3 refusal.py --clear lifts it here")
     elif behind:
@@ -3137,9 +3152,8 @@ def pull_refusal(bucket, root, kit, dry, day):
                        "refusal.py --clear lifts it here, if a person has decided it is over")
         else:
             lines.append(f"{entry['path']} ({_who(m)}) is on file here, and the bucket holds "
-                         f"GitHub's refusal ({what}) instead: {why}. It is older than "
-                         f"{refusal.QUIET_HOURS} hours, so hand fetches here are not stopped by "
-                         "it; the lane here is: python3 src/ops/cloud.py send-refusal puts it in "
+                         f"GitHub's refusal ({what}) instead: {why}. {_stops_here(m)}: "
+                         "python3 src/ops/cloud.py send-refusal puts it in "
                          "the bucket's place if it should stop the night too, and python3 "
                          "refusal.py --clear lifts it here")
     elif _sha(theirs) in lifts:
@@ -3149,13 +3163,12 @@ def pull_refusal(bucket, root, kit, dry, day):
             after = theirs              # created here above, unless dry
         lines.append(f"the bucket's refusal ({what}) was {lift_said(lifts[_sha(theirs)])}, and "
                      "is still in the bucket until GitHub's next state-up moves it"
-                     + ("" if mine is None or mine == theirs else
-                        f"; this laptop's ({_who(_refusal_doc(mine))}) stays")
                      + (f". {'It would go' if dry else 'It is now'} on file here too, as "
                         f"{entry['path']}" if mine is None else "")
-                     + ": the lane here stops at a copy on file until python3 refusal.py "
-                       f"--clear, and a fetch started by hand here for {refusal.QUIET_HOURS} "
-                       "hours from when it was met")
+                     + (": the lane and every fetch here stop at a copy on file until python3 "
+                        "refusal.py --clear" if mine is None or mine == theirs else
+                        f"; this laptop's ({_who(_refusal_doc(mine))}) stays. "
+                        + _stops_here(_refusal_doc(mine))))
     elif mine is None:
         after = theirs                  # created here above, unless dry
         lines.append(f"THE BUCKET HOLDS A REFUSAL ({what}): "

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.735
+# GRANITE_VERSION: 2026-09-04.736
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -55857,14 +55857,17 @@ def _cloud_pull_lifted(CL, R):
                     "send-refusal" not in said and "refusal.py --clear" in said, \
                     f"a copy {age} hours old of a lifted refusal: {lines}, {bad}"
                 # What a lifted copy stops, said as check() reads it: the
-                # lane until --clear, and a hand fetch for QUIET_HOURS from
-                # when it was met -- not "every fetch", which holds only once
-                # check() stops at a GitHub record at any age (build plan 8).
+                # lane and every fetch here until --clear, since check()
+                # stops at a record GitHub's machine met at any age
+                # (refusal.any_age, the addendum's build plan 9) -- and
+                # held to it: such a copy, 40 days old, stops check().
                 entry = CL.bucket_lifted(CL.FolderBucket(bucket))[R._sha(raw)]
                 for who, line in (("pull", said), ("refusal.force", R.force({}, lift=entry))):
-                    assert "every fetch" not in line and "lane here" in line and \
-                        f"{R.QUIET_HOURS} hours from when it was met" in line, \
+                    assert "the lane and every fetch here" in line and \
+                        "hours from when it was met" not in line, \
                         f"{who} says a lifted copy stops what it does not: {line}"
+                assert R.any_age(json.loads(raw)), \
+                    "a copy of a lifted record GitHub's night met does not stop a hand fetch at any age"
                 assert (laptop / "archive/refused.json").read_bytes() == raw and not m.exists(), \
                     "pull set the lifted copy aside, or left its unsent marker"
                 m = marker(laptop)
@@ -83761,6 +83764,171 @@ def _knock_settles(R):
                       "pull")
     finally:
         R.MARK = saved
+        shutil.rmtree(tmp, ignore_errors=True)
+
+
+@check("build", "a fetch started by hand stops at a refusal GitHub's machine met at any age, and "
+                "after refusal.py --clear on the stood-down laptop the next one waits for a read "
+                "of the bucket", needs=("refusal", "cloud"))
+def _refusal_check_laptop(R, CL):
+    """C10 of design_final, as the hourly addendum amends it (its build plan
+    9; refusal.py, AT ANY AGE, and ONE FETCH AT A TIME).
+
+    At any age: check(), which every fetch started by hand calls, stops with
+    2 at a record GitHub's machine wrote that names its kind -- a drop 2
+    hours, 30 hours and 40 days old, a 403 and a dry run's drop 30 hours old
+    -- and says it stops at any age; a record without a kind, and one this
+    laptop met, 30 hours old, pass as they always did, and the laptop's own
+    2 hours old stops.
+
+    --clear pulls first: on a stood-down laptop whose pull read the bucket at
+    13:45 UTC, refusal.py --clear at 13:50 makes gc_turn() say "pull" and
+    check() exit 4, naming the clear; a pull at 13:55 of a folder bucket
+    holding the record (its read marked "r2", as this check's fake of the
+    real one) brings the copy back, and check() exits 2; a clear and a pull
+    of a bucket holding none, and check() passes. Off a stood-down laptop,
+    --clear writes no record of itself and gc_turn() says nothing."""
+    import contextlib
+    import io
+    import time
+    real = json.loads(Path(CL.KIT_FILE).read_text(encoding="utf-8"))
+    tmp = Path(tempfile.mkdtemp(prefix="gr-checklaptop-"))
+    saved, saved_argv = R.MARK, sys.argv
+    saved_env = os.environ.get(CL.NO_BUCKET)
+    H = 3600
+
+    def exits(fn):
+        err = io.StringIO()
+        with contextlib.redirect_stderr(err), contextlib.redirect_stdout(io.StringIO()):
+            try:
+                fn()
+            except SystemExit as e:
+                return e.code, err.getvalue()
+        return None, err.getvalue()
+
+    def cli(*args):
+        out = io.StringIO()
+        sys.argv = ["refusal.py", *args]
+        with contextlib.redirect_stdout(out), contextlib.redirect_stderr(out):
+            rc = R.main()
+        return rc, out.getvalue()
+    wrong = []
+    try:
+        with _KnockEnv():
+            os.environ[CL.NO_BUCKET] = "1"
+            # At any age, on a laptop that has not stood down.
+            away = tmp / "away" / "archive"
+            away.mkdir(parents=True)
+            R.MARK = away / "refused.json"
+            now = time.time()
+            kindless = json.dumps({"at": "x", "epoch": now - 30 * H, "where": "w",
+                                   "why": "RemoteDisconnected"}).encode()
+            cases = {
+                "GitHub's drop, 2 hours old": (_knock_record(epoch=now - 2 * H), 2),
+                "GitHub's drop, 30 hours old": (_knock_record(epoch=now - 30 * H), 2),
+                "GitHub's drop, 40 days old": (_knock_record(epoch=now - 40 * 86400), 2),
+                "GitHub's 403, 30 hours old": (_knock_record(epoch=now - 30 * H, kind="refused"), 2),
+                "a dry run's drop on GitHub, 30 hours old":
+                    (_knock_record(epoch=now - 30 * H, ref="refs/heads/dev", dry=True), 2),
+                "a record without a kind, 30 hours old": (kindless, None),
+                "this laptop's own drop, 30 hours old":
+                    (_knock_record(epoch=now - 30 * H, machine="laptop"), None),
+                "this laptop's own drop, 2 hours old":
+                    (_knock_record(epoch=now - 2 * H, machine="laptop"), 2),
+            }
+            for what, (raw, want) in cases.items():
+                R.MARK.write_bytes(raw)
+                code, said = exits(lambda: R.check("The test fetch"))
+                github = json.loads(raw).get("machine") == "github"
+                if code != want or (want == 2 and github and "at any age" not in said) \
+                        or (want == 2 and not github and "at any age" in said):
+                    wrong.append(f"{what}: check() exited {code}, not {want}: {said[-200:]!r}")
+            old = json.loads(cases["GitHub's drop, 30 hours old"][0])
+            if "not stopped" in R.force(old) or "every General Court fetch here" not in R.force(old):
+                wrong.append(f"force() of GitHub's drop 30 hours old: {R.force(old)}")
+
+            # --clear pulls first, on the stood-down laptop.
+            laptop = tmp / "laptop"
+            laptop.mkdir()
+            _lift_fixture(laptop, real)
+            arch = laptop / "archive"
+            (arch / "cloud").mkdir(parents=True, exist_ok=True)
+            (arch / R.STANDDOWN.name).write_text("{}", encoding="utf-8")
+            R.MARK = arch / "refused.json"
+            thu = _at(2026, 11, 5)
+
+            def at(h, m):
+                os.environ["GRANITE_CLOCK_UTC"] = _utc_iso(thu + h * H + m * 60)
+
+            def read_at(h, m):
+                (arch / "cloud" / "pull.json").write_text(json.dumps(
+                    {"refusal": {"kind": "r2", "read": thu + h * H + m * 60}}), encoding="utf-8")
+
+            def pull(bucket):
+                with contextlib.redirect_stdout(io.StringIO()):
+                    return CL.pull_refusal(CL.FolderBucket(bucket), laptop, CL.load_kit(laptop),
+                                           False, "2026-11-05")
+            rec = _knock_record(epoch=thu + 8 * H + 27 * 60)
+            bucket = tmp / "bucket"
+            (bucket / "state").mkdir(parents=True)
+            (bucket / "state" / "refused.json").write_bytes(rec)
+            R.MARK.write_bytes(rec)
+            read_at(13, 45)
+            at(13, 50)
+            if R.gc_turn() is not None or exits(lambda: R.check("t"))[0] != 2:
+                wrong.append(f"before the clear: gc_turn {R.gc_turn()}, the record not stopping "
+                             "the fetch")
+            rc, out = cli("--clear")
+            if rc != 0 or R.MARK.exists() or not R.cleared_file().exists() or \
+                    "pull --changes-only" not in out:
+                wrong.append(f"--clear on the stood-down laptop: exit {rc}, the record "
+                             f"{'kept' if R.MARK.exists() else 'gone'}, its note "
+                             f"{'written' if R.cleared_file().exists() else 'not written'}: {out!r}")
+            turn = R.gc_turn()
+            code, said = exits(lambda: R.check("t"))
+            if not turn or turn[0] != "pull" or "cleared" not in turn[1] or code != R.STOOD_DOWN:
+                wrong.append(f"after --clear at 13:50, read at 13:45: gc_turn {turn}, check() "
+                             f"exited {code}")
+            at(13, 55)
+            lines, bad, _ = pull(bucket)
+            read_at(13, 55)
+            at(13, 56)
+            code, said = exits(lambda: R.check("t"))
+            if not R.MARK.exists() or R.MARK.read_bytes() != rec or code != 2:
+                wrong.append(f"a pull of a bucket still holding the record: the copy "
+                             f"{'back' if R.MARK.exists() else 'not back'}, check() exited "
+                             f"{code} ({lines}, {bad})")
+            (bucket / "state" / "refused.json").unlink()
+            rc, out = cli("--clear")
+            at(13, 58)
+            lines, bad, _ = pull(bucket)
+            read_at(13, 58)
+            at(13, 59)
+            code, said = exits(lambda: R.check("t"))
+            if R.MARK.exists() or code is not None or R.gc_turn() is not None:
+                wrong.append(f"a clear, then a pull of a bucket holding none: check() exited "
+                             f"{code}, gc_turn {R.gc_turn()} ({lines}, {bad})")
+
+            # Off a stood-down laptop: --clear notes nothing, gc_turn() nothing.
+            R.MARK = away / "refused.json"
+            R.MARK.write_bytes(rec)
+            rc, out = cli("--clear")
+            if rc != 0 or R.MARK.exists() or R.cleared_file().exists() or R.gc_turn() is not None \
+                    or "pull --changes-only" in out:
+                wrong.append(f"--clear off a stood-down laptop: exit {rc}, its note "
+                             f"{'written' if R.cleared_file().exists() else 'not written'}, "
+                             f"gc_turn {R.gc_turn()}: {out!r}")
+        assert not wrong, "a fetch by hand on the laptop: " + "; ".join(wrong)
+        return "ok", (f"{len(cases)} records: GitHub's stop a fetch by hand at any age, the "
+                      "laptop's and the kindless keep their 24 hours; --clear on the stood-down "
+                      "laptop makes the next fetch wait for a pull, which brings the bucket's "
+                      "back, and off it notes nothing")
+    finally:
+        R.MARK, sys.argv = saved, saved_argv
+        if saved_env is None:
+            os.environ.pop(CL.NO_BUCKET, None)
+        else:
+            os.environ[CL.NO_BUCKET] = saved_env
         shutil.rmtree(tmp, ignore_errors=True)
 
 

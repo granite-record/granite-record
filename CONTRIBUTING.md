@@ -23,9 +23,10 @@ Three things follow, and they are not negotiable:
    start anything.
 2. **A refusal ends the run.** `refusal.py` records one in
    `archive/refused.json`. A fetch started by hand that consults it stops for
-   24 hours and then resumes on its own; the lane, `build_all.py`'s General
-   Court steps and the nightly test only whether a refusal is on file, so they
-   stay stopped for as long as it is. Clearing it --
+   24 hours and then resumes on its own -- unless GitHub's night met it, when
+   it stops for as long as the record is on file; the lane, `build_all.py`'s
+   General Court steps and the nightly test only whether a refusal is on
+   file, so they stay stopped for as long as it is. Clearing it --
    `python3 refusal.py --clear`, or `python3 src/ops/cloud.py clear-refusal` for the
    copy the nightly keeps in its bucket -- is the maintainer's decision, after
    `python3 netcheck.py` has said what kind of refusal it was.

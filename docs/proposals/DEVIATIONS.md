@@ -472,3 +472,49 @@ that made it.
     stage's one full run found it, and it has a commit of its own after
     commit 7. `_KnockEnv` puts the variable back, so no check is left with
     the clock set.
+
+## Commit 9 of the addendum (built before 8): the laptop tightening
+
+76. **"A GitHub record with a kind" is `refusal.any_age()`: `machine ==
+    "github"` and a `kind` key that is not null**, whatever the kind and
+    whatever its `ref` or `dry` (design_final §2.10 says "any kind"). A dry
+    run's drop, or GitHub's 403, stops a hand fetch at any age too: the
+    stricter reading. `standing()` carries the rule, so `check()` and
+    `refusal.py`'s status read it alike. cloud.py's decisions about
+    *sending* a laptop record (`clear-refusal`'s check, `refusal_unsent`,
+    pull's "IS NOT IN THE BUCKET" failure) still read its age
+    (`hours_left`): they ask whether a record should go to the bucket, not
+    what it stops here. Their sentences that said "hand fetches here are not
+    stopped by it" now come from `cloud._stops_here()`, which says so only
+    where it is true.
+77. **`--clear` writes `archive/refusal-cleared.json` before it removes the
+    record, and clears nothing (exit 1) when the note cannot be written.**
+    The addendum §7 item 2 gives the file, not the order; in the other order
+    a failed write would leave the laptop free to ask with the bucket's
+    record unread.
+78. **On a stood-down laptop `--clear` writes the note even when no record
+    was on file**, as "also writes" reads: the next fetch reads the bucket
+    first all the same.
+79. **The note's time is refusal's clock** (`_utc()`, `GRANITE_CLOCK_UTC`
+    when set, as every gate reads it); a note that does not read counts as
+    a clear after every read, so the next fetch pulls first; and a read in
+    the same second as a clear is no read (`cleared >= read`).
+80. **"Stood down" for `--clear` is `_governing()`** -- the stand-down file
+    beside the record, which `gc_turn()` reads -- not `stood_down()`'s file
+    in the working folder: the same there, and a check's folder is governed
+    by itself, never by the laptop it runs on. The line naming
+    `clear-refusal` for the bucket's copy follows it too.
+81. **DEVIATIONS 26 is closed.** `force(lift=)`, pull's two lift lines and
+    `watchers/README.md` say design_final §2.6's sentence again: the lane
+    and every fetch here stop at a lifted copy until `refusal.py --clear`.
+    `_cloud_pull_lifted` asserts that wording, and that such a copy is
+    `any_age`.
+82. **C10's pull is `cloud.pull_refusal()` on a folder bucket, with the
+    read written into `archive/cloud/pull.json` by the check, marked `r2`**
+    as `cmd_pull` records a read of R2 -- the addendum's "the read marked r2
+    as the test's fake". `cmd_pull` itself refuses a bucket that holds no
+    night (`bucket_is_the_nights`).
+83. **`check()`'s stop for a record the night may test names the switch**:
+    "to check or clear it sooner yourself, first set the GitHub variable
+    NIGHT_KNOCK to off" (addendum §7 item 4), from this commit, since a
+    hand fetch now meets such a copy at any age.

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-09.27
+# GRANITE_VERSION: 2026-09-09.28
 """
 One refusal stops the fetch lane, not just the run that was refused.
 
@@ -31,6 +31,14 @@ HOW IT BEHAVES
 note() writes archive/refused.json. check() reads it and stops the caller dead
 while it is less than QUIET hours old, printing when the refusal came, what it
 said, and how to clear it. The file is small, plain and meant to be read.
+
+AT ANY AGE, FOR ONE GITHUB'S MACHINE MET (29 October 2026, design_final
+2.10). A record GitHub's machine wrote that says what kind it was (any_age)
+stops check() for as long as it is on file, not for QUIET hours: GitHub's
+night may be testing it itself, and only the bucket's copy is lifted or
+cleared there, so a copy here a day old that let a hand fetch through would
+be a second machine asking beside the test. Every other record -- one met
+here, and every one that says nothing of its kind -- keeps its QUIET hours.
 
 Clearing it is a person's decision, deliberately: `python3 refusal.py --clear`,
 after netcheck.py has said what kind of refusal it was. Nothing clears a
@@ -125,6 +133,12 @@ So on a stood-down laptop, and only there:
     --local-bucket folder never counts) since the last window ended, which
     is never more than 24 hours ago: a refusal the night met is recorded in
     the bucket, not here, and would otherwise be invisible;
+  - nor since a person last cleared a refusal here (29 October 2026, the
+    red team's first finding): `refusal.py --clear` writes
+    archive/refusal-cleared.json, and a read of the bucket from before it is
+    no read (refusal_read), so the next request waits for a pull, which
+    brings the bucket's refusal back if it still stands -- a clear here
+    alone never lets this laptop ask beside a test GitHub is making;
   - a refusal recorded here is sent to the bucket's state/refused.json when
     the bucket holds none, so the night stops too (note(), through
     cloud.send_refusal) -- from the repository that holds secrets.json only;
@@ -275,37 +289,50 @@ def tell_the_bucket():
 
 
 def hours_left(d, now=None):
-    """Hours the refusal record `d` still stops check() for, or None once it
-    is older than QUIET_HOURS. standing() is this, for the record on file."""
+    """Hours the refusal record `d` still stops check() for by its age, or
+    None once it is older than QUIET_HOURS. standing() is this, for the
+    record on file, with any_age() beside it: a record GitHub's machine met
+    that names its kind stops check() at any age."""
     age = ((time.time() if now is None else now) - float((d or {}).get("epoch") or 0)) / 3600
     return None if age > QUIET_HOURS else QUIET_HOURS - age
+
+
+def any_age(d):
+    """Whether check() stops at refusal record `d` -- its fields, a dict --
+    for as long as it is on file rather than for QUIET_HOURS: GitHub's
+    machine met it (machine "github") and it says what kind it was (the
+    docstring's AT ANY AGE). Every other record keeps its QUIET_HOURS: one
+    met here, and every one that names no kind."""
+    return isinstance(d, dict) and d.get("machine") == "github" and d.get("kind") is not None
 
 
 def force(d, now=None, lift=None):
     """What a refusal record held in the bucket stops, in the words pull and
     clear-refusal print. Three things read one, each its own way: check(),
-    which every hand-started fetch calls, for QUIET_HOURS; the lane, which
-    stops at any archive/refused.json; and GitHub's night, which stops at any
-    state/refused.json in the bucket until a person lifts it -- or, for a
-    record of a kind GitHub's own night on main met (whose() conditions 1 to
-    5), until its own knock lifts it, when the person has switched that on.
-    Off GitHub the switch cannot be read, so for such a record this says the
-    night decides, and its run page says what it decided. `lift`, knocks.json's
-    "lifted" entry for this record, says who lifted it and when, and what a
-    copy still on file here stops: the lane, at any age, and a hand fetch for
-    QUIET_HOURS from when it was met, as check() reads any record."""
+    which every hand-started fetch calls, for QUIET_HOURS -- or at any age
+    for a record GitHub's machine met that names its kind (any_age); the
+    lane, which stops at any archive/refused.json; and GitHub's night, which
+    stops at any state/refused.json in the bucket until a person lifts it --
+    or, for a record of a kind GitHub's own night on main met (whose()
+    conditions 1 to 5), until its own knock lifts it, when the person has
+    switched that on. Off GitHub the switch cannot be read, so for such a
+    record this says the night decides, and its run page says what it
+    decided. `lift`, knocks.json's "lifted" entry for this record, says who
+    lifted it and when, and what a copy still on file here stops: the lane
+    and every fetch here, at any age, until a person clears it here."""
     if lift:
-        return (lift_line(lift) + f". A copy on file here still stops the lane here until "
-                f"python3 refusal.py --clear, and a fetch started by hand here for "
-                f"{QUIET_HOURS} hours from when it was met")
+        return (lift_line(lift) + ". A copy on file here still stops the lane and every fetch "
+                "here until python3 refusal.py --clear")
     if _its_own(d or {})[0]:
-        left = hours_left(d, now)
-        return ((f"in force for {left:.1f} more hours for every General Court fetch here, "
-                 if left is not None else
-                 f"older than {QUIET_HOURS} hours, so hand fetches here are not stopped by it; ")
-                + f"the lane here stops at it until a person lifts it. GitHub's night met it "
+        return ("in force for every General Court fetch here and the lane here, at any age, "
+                "until a person lifts it here (python3 refusal.py --clear). GitHub's night met it "
                 f"(a {d.get('kind')} on {MAIN_REF}) and decides whether it tests it itself, one "
                 "request at a time; its run page says")
+    if any_age(d or {}):
+        return ("in force for every General Court fetch here and the lane here, at any age, "
+                f"because GitHub's machine met it (a {d.get('kind')}), until a person lifts it "
+                "here (python3 refusal.py --clear); and GitHub's night stops at it until python3 "
+                "src/ops/cloud.py clear-refusal")
     left = hours_left(d, now)
     if left is not None:
         return (f"in force for {left:.1f} more hours: every General Court fetch here stops at "
@@ -330,7 +357,8 @@ def _lifter(lift):
 
 
 def standing():
-    """The refusal still in force, or None."""
+    """The refusal still in force for check(), (record, hours old), or None:
+    one less than QUIET_HOURS old, or one any_age() keeps at any age."""
     if not MARK.exists():
         return None
     try:
@@ -338,7 +366,7 @@ def standing():
     except (ValueError, OSError):
         return None
     hours = (time.time() - float(d.get("epoch") or 0)) / 3600
-    return None if hours > QUIET_HOURS else (d, hours)
+    return None if hours > QUIET_HOURS and not any_age(d) else (d, hours)
 
 
 def check(who="", knock=False):
@@ -375,6 +403,18 @@ def check(who="", knock=False):
             print(f"\nNote: {soon}\n", file=sys.stderr)
         return
     d, hours = s
+    # GitHub's machine met it, so it stops a hand fetch at any age (the
+    # docstring's AT ANY AGE): said, whatever its age, with what clears it.
+    github = ""
+    if any_age(d):
+        github = (f"GitHub's machine met this refusal (a {d.get('kind')}), so a copy on file "
+                  f"here stops every fetch here at any age, not only for {QUIET_HOURS} hours"
+                  + (": GitHub's night may be testing it itself, one request at a time, and "
+                     "lifts the bucket's copy when one is answered. To check or clear it sooner "
+                     "yourself, first set the GitHub variable NIGHT_KNOCK to off: two machines "
+                     "asking at once is how the second block happened"
+                     if _its_own(d)[0] else "")
+                  + ". python3 src/ops/cloud.py pull says whether the bucket's still stands.\n\n")
     # Status 2, which every fetcher and the lane read as "refused".
     print(
         f"\nThis address was refused {hours:.1f} hours ago and nothing has "
@@ -385,6 +425,7 @@ def check(who="", knock=False):
         f"{who or 'This fetch'} is stopping. A refusal is a fact about the "
         "address, not about\nthe run that found it, so it applies to every "
         "fetch and not only that one.\n\n"
+        + github +
         "  python3 netcheck.py          what kind of refusal it was\n"
         "  python3 refusal.py --clear   when a person has decided to go on\n",
         file=sys.stderr)
@@ -1712,10 +1753,10 @@ def _clock_note():
     return f" (The time is {CLOCK_ENV}'s, {raw}, not the clock's.)" if raw else ""
 
 
-def refusal_read():
-    """When this machine last read the REAL bucket's refusal record, as an
-    epoch, or None: `cloud.py pull` records it in archive/cloud/pull.json,
-    with the kind of bucket it read. Only a read of R2 counts. A pull from a
+def _pull_read():
+    """When `cloud.py pull` last read the REAL bucket's refusal record, as an
+    epoch, or None: it records that in archive/cloud/pull.json, with the
+    kind of bucket it read. Only a read of R2 counts. A pull from a
     --local-bucket folder is a test, and a folder cannot know of a refusal
     the night met, so a read of one freeing this laptop's fetches would be
     trusting it about something it could not know."""
@@ -1727,6 +1768,47 @@ def refusal_read():
         return float(r.get("read") or 0) or None
     except (OSError, ValueError, TypeError, AttributeError):
         return None
+
+
+# A REFUSAL CLEARED HERE IS READ AGAIN FROM THE BUCKET FIRST (29 October
+# 2026, the hourly addendum's 7, item 2). On a stood-down laptop --clear
+# writes this, beside the record, and a read of the bucket from before it is
+# no read: the next General Court request here waits for a pull, which
+# brings the bucket's refusal back if it still stands. cloud.py's pull.json
+# stays cloud.py's alone.
+CLEARED = Path("archive/refusal-cleared.json")
+
+
+def cleared_file():
+    """CLEARED, beside the refusal record it is about."""
+    return MARK.parent / CLEARED.name
+
+
+def cleared_at():
+    """When a person last cleared a refusal on this stood-down laptop, as an
+    epoch, or None when none is recorded; infinity when the record of it
+    does not read, the stricter way: the next fetch pulls first."""
+    try:
+        raw = cleared_file().read_text(encoding="utf-8")
+    except FileNotFoundError:
+        return None
+    except OSError:
+        return float("inf")
+    try:
+        return float(json.loads(raw)["epoch"])
+    except (ValueError, KeyError, TypeError):
+        return float("inf")
+
+
+def refusal_read():
+    """When this machine last read the REAL bucket's refusal record, as an
+    epoch, or None (_pull_read): None too while a person has cleared a
+    refusal here since that read (cleared_at), so that the clear is never
+    taken for the bucket's word."""
+    read, cleared = _pull_read(), cleared_at()
+    if read is not None and cleared is not None and cleared >= read:
+        return None
+    return read
 
 
 def _window_or_soon(now):
@@ -1765,9 +1847,16 @@ def gc_turn(now=None):
             f"laptop in the {START_MARGIN_MINUTES} minutes before it, so that none is still "
             f"asking when it opens. Start this again after {_clock(e)}." + _clock_note())
     closed = last_window_end(now)
-    read = refusal_read()
+    read, pulled = refusal_read(), _pull_read()
     if read is None or _utc(read) < closed:
-        when = ("has never read that record from the real bucket (a --local-bucket "
+        cleared = cleared_at()
+        when = ((f"had a refusal cleared by hand (python3 refusal.py --clear) "
+                 + (f"at {_clock(_utc(cleared), weekday=True)} " if cleared != float("inf") else
+                    f"({cleared_file()} does not say when) ")
+                 + f"after it last read that record, at {_clock(_utc(pulled), weekday=True)}: "
+                   "the bucket's may still stand, and the pull brings it back if it does")
+                if read is None and pulled is not None else
+                "has never read that record from the real bucket (a --local-bucket "
                 "pull does not count)" if read is None else
                 f"last read that record at {_clock(_utc(read), weekday=True)} "
                 f"({_utc(read):%Y-%m-%d %H:%M} UTC), before the last night window closed "
@@ -1873,10 +1962,11 @@ def main():
         elif n:
             print(f"GitHub's night window is closed; the next is {describe_window(*n)}."
                   + _clock_note())
-        read, turn = refusal_read(), gc_turn()
+        read, pulled, turn = refusal_read(), _pull_read(), gc_turn()
         print("the bucket's refusal record "
-              + ("has never been read here from the real bucket" if read is None else
-                 f"was last read here at {_clock(_utc(read), weekday=True)}")
+              + ("has never been read here from the real bucket" if pulled is None else
+                 f"was last read here at {_clock(_utc(pulled), weekday=True)}"
+                 + (", before a refusal was cleared here by hand" if read is None else ""))
               + ("; General Court fetches here wait for python3 src/ops/cloud.py pull --changes-only"
                  if turn and turn[0] == "pull" else
                  f"; nothing starts in the {START_MARGIN_MINUTES} minutes before the window"
@@ -1894,11 +1984,32 @@ def main():
     if not a.clear:
         say_whose()
     if a.clear:
+        # ON A STOOD-DOWN LAPTOP THE NEXT FETCH PULLS FIRST (CLEARED): written
+        # before the record goes, so that a clear whose note cannot be
+        # written clears nothing.
+        governed = _governing() is not None
+        if governed:
+            try:
+                t = _utc().timestamp()
+                cleared_file().parent.mkdir(exist_ok=True)
+                cleared_file().write_text(json.dumps({"utc": _stamp(t), "epoch": t}, indent=1),
+                                          encoding="utf-8")
+            except OSError as e:
+                print(f"nothing cleared: {cleared_file()}, which makes the next fetch here read "
+                      f"the bucket first, could not be written ({type(e).__name__}: {e}).",
+                      file=sys.stderr)
+                return 1
         if MARK.exists():
             MARK.unlink()
-            print("refusal cleared here. Fetches on this machine may run again.")
+            print("refusal cleared here. " + (
+                "The next General Court request here waits for python3 src/ops/cloud.py pull "
+                "--changes-only, which brings the bucket's refusal back if it still stands: "
+                "clear that one first with python3 src/ops/cloud.py clear-refusal."
+                if governed else "Fetches on this machine may run again."))
         else:
-            print("there was no refusal on record here.")
+            print("there was no refusal on record here."
+                  + (" The next General Court request here waits for python3 src/ops/cloud.py "
+                     "pull --changes-only all the same." if governed else ""))
         # A refusal lifted by a person needs no sending: the marker that says
         # the bucket was never told of it goes with it.
         if unsent_marker().exists():
@@ -1909,10 +2020,10 @@ def main():
         # takes its refusal record from R2's state/refused.json, so clearing
         # this file leaves that one stopping every night until it is lifted
         # too -- and cloud.py, which talks to the bucket, is what lifts it.
-        if stood_down() is not None:
+        if governed:
             print("The nightly runs on GitHub and takes its refusal record from the "
-                  "bucket's state/refused.json. Lift that one too: "
-                  "python3 src/ops/cloud.py clear-refusal")
+                  "bucket's state/refused.json, not this one: python3 src/ops/cloud.py "
+                  "clear-refusal lifts that one.")
         return 0
     if not s:
         print("no refusal on file." if not MARK.exists() else
@@ -1995,8 +2106,8 @@ def say_whose(now=None):
               + f" If each fails: {knock_schedule(raw)}.")
     elif _its_own(_record(raw)[0])[0] and os.environ.get("GITHUB_ACTIONS") != "true":
         print("GitHub's night met this refusal, and decides whether it tests it itself; its "
-              "run page says. A copy on file here is a person's to clear: python3 refusal.py "
-              "--clear.")
+              "run page says. A copy on file here stops every fetch here, at any age, and is a "
+              "person's to clear: python3 refusal.py --clear.")
     else:
         print(f"this refusal is a person's to clear: {why}.")
 

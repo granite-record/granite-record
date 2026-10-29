@@ -73,8 +73,16 @@ both machines now. On a stood-down laptop:
   the bucket, not here. `python3 src/ops/cloud.py pull --changes-only` reads it (a
   full `python3 src/ops/cloud.py pull` does too), and brings the refusal down as
   `archive/refused.json` if the night met one -- which then stops the lane
-  and every fetch here, as a refusal met here always has. Only a read of the
-  real bucket counts: a pull from a `--local-bucket` folder is a test.
+  and every fetch here, as a refusal met here always has -- at any age, since
+  GitHub's machine met it, where one met here stops a hand fetch for 24
+  hours. Only a read of the real bucket counts: a pull from a
+  `--local-bucket` folder is a test.
+- **After `python3 refusal.py --clear` here, the next request waits for a
+  pull again.** The clear writes `archive/refusal-cleared.json`, and a read
+  of the bucket from before it no longer counts, so the next fetch or lane
+  step waits for `python3 src/ops/cloud.py pull --changes-only`, which brings
+  the bucket's refusal back if it still stands. Clear that one first:
+  `python3 src/ops/cloud.py clear-refusal`.
 - **A refusal met here goes to the bucket at once** (`refusal.note()`, in the
   fetchers that record one), so the night stops too. Where the bucket holds
   a refusal GitHub's own night met -- one its knock may lift, or has lifted
@@ -90,9 +98,9 @@ both machines now. On a stood-down laptop:
   knock lifted (`refusal.py`, THE NIGHT'S KNOCK: the night's knock, at its
   start on each morning one is due). A pull
   that finds the copy here among them says THE NIGHT LIFTED THIS REFUSAL, at
-  any age, and leaves it on file, so the lane here still stops at it until
-  `python3 refusal.py --clear`, and a fetch started by hand here for 24 hours
-  from when it was met; `send-refusal` never sends one back.
+  any age, and leaves it on file, so the lane and every fetch here still stop
+  at it until `python3 refusal.py --clear`; `send-refusal` never sends one
+  back.
 
 `python3 refusal.py` says whether the window is open, when the bucket was last
 read, and whether a refusal is waiting to be sent. So a lane started in the

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.18
+# GRANITE_VERSION: 2026-09-04.19
 """
 Daily snapshot of the NH General Court bulk data files.
 
@@ -879,7 +879,8 @@ def run(a, held):
                   "files arrived, and a build from some of tonight's files and some "
                   "of an earlier day's is a record of no day.")
     if stopped == "refused":
-        print("\nRefused, and recorded. A fetch started by hand waits a day for it; the lane "
+        print("\nRefused, and recorded. A fetch started by hand waits a day for it, and for as "
+              "long as it is on file where GitHub's machine met it; the lane "
               "and GitHub's night wait until a person clears it, or, for one GitHub's night "
               "tests itself, until its one request is answered (refusal.py, THE NIGHT'S "
               "KNOCK); netcheck.py says what kind it was.")
