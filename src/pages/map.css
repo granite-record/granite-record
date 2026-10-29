@@ -1,4 +1,4 @@
-/* GRANITE_VERSION: 2026-10-09.3 */
+/* GRANITE_VERSION: 2026-10-09.4 */
 /* THE DISTRICT MAP (map v1): the stylesheet map.js draws against. A page that
    mounts the map links /map.css and /map.js and nothing else; every rule here
    is under .gm, the class mount() gives its element, so nothing here reaches
@@ -163,7 +163,12 @@
 .gm .dtag{pointer-events:none}
 .gm .dtag rect{fill:var(--surface);stroke:var(--pine);stroke-width:1.5;vector-effect:non-scaling-stroke}
 .gm .dtag text{font-size:var(--n-tag);font-weight:600;fill:var(--pine);text-anchor:middle;dominant-baseline:central}
-@media (forced-colors:active){.gm .labels text,.gm .dtag text{forced-color-adjust:none}}
+/* A district's number in a circle of the card's colour (a design trial,
+   29 October 2026): the circle in place of the halo, its edge a hairline
+   that holds on either party's fill and on the stripes. map.js sizes it. */
+.gm .labels .labc{fill:var(--surface);stroke:var(--ink-2);stroke-width:1;vector-effect:non-scaling-stroke;pointer-events:none}
+.gm .labels.circled .lab{stroke:none}
+@media (forced-colors:active){.gm .labels text,.gm .labels .labc,.gm .dtag text{forced-color-adjust:none}}
 
 /* The panel. */
 .gm .gmpanel{background:var(--surface);border:1px solid var(--rule-2);border-radius:3px;padding:1rem 1.125rem;min-height:12rem;

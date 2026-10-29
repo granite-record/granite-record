@@ -1,4 +1,4 @@
-// GRANITE_VERSION: 2026-10-09.10
+// GRANITE_VERSION: 2026-10-09.11
 /* THE DISTRICT MAP (map v1), as a module a page mounts:
 
      <link rel="stylesheet" href="/map.css">
@@ -236,18 +236,24 @@ function layout(M,V,S){
   return namesLayout(M,V,S);
 }
 
-/* ALL OR NONE, A GROUP AT A TIME. Each number's box on screen: its figures
-   in the label's face at 13px, a quarter of that again for its halo, 13px
-   tall, and GAP kept clear around it. Only the numbers at least partly in
-   view count, and one under the zoom buttons counts as out of view. */
+/* ALL OR NONE, A GROUP AT A TIME. Each number sits in a circle (a design
+   trial, 29 October 2026), one size for the whole layer: the layer's
+   longest number in the label's face at 13px, with room round it, and never
+   narrower than 1.6 times the type. Its box on screen is the circle's
+   square, with GAP kept clear around it. The counties' names are words, not
+   numbers, and keep the halo: their box is the name, a quarter of the type
+   again, 13px tall. Only the labels at least partly in view count, and one
+   under the zoom buttons counts as out of view. */
 function numbersLayout(M,V,S){
-  const lk=S.layer,out={mode:"numbers",shown:[],tag:null,stats:{groups:0,groupsShown:0}};
+  const lk=S.layer,out={mode:"numbers",shown:[],tag:null,circle:0,stats:{groups:0,groupsShown:0}};
   if(lk==="towns")return out;
   const px=SIZE.num*S.rootPx,X=x=>V.ox+(x-V.vb[0])*V.s,Y=y=>V.oy+(y-V.vb[1])*V.s;
-  const obst=V.obstacles||[],by={};
-  for(const fid in M.T.layers[lk].f){
-    const f=M.T.layers[lk].f[fid],text=numText(lk,fid),w=S.measure(text,WEIGHT.num,px)+px/4,cx=X(f.l[0]),cy=Y(f.l[1]);
-    const b=[cx-w/2,cy-px/2,cx+w/2,cy+px/2];
+  const obst=V.obstacles||[],by={},fs=M.T.layers[lk].f;
+  if(lk!=="county")out.circle=Math.max(px*1.6,Math.max(...Object.keys(fs).map(fid=>S.measure(numText(lk,fid),WEIGHT.num,px)))+px*0.6);
+  for(const fid in fs){
+    const f=fs[fid],text=numText(lk,fid),cx=X(f.l[0]),cy=Y(f.l[1]);
+    const w=out.circle||S.measure(text,WEIGHT.num,px)+px/4,h=out.circle||px;
+    const b=[cx-w/2,cy-h/2,cx+w/2,cy+h/2];
     if(!(b[2]>0&&b[0]<V.vw&&b[3]>0&&b[1]<V.vh)||obst.some(o=>overlaps(b,o,0)))continue;
     const g=M.group[lk][fid]||"";(by[g]=by[g]||[]).push({id:"n:"+fid,k:"num",cls:"lab",text,x:f.l[0],y:f.l[1],box:b,group:g});
   }
@@ -770,8 +776,10 @@ function mount(root,opts){
     const g=svg.querySelector("g.labels"),tg=svg.querySelector("g.dtag");if(!g||!tg)return;
     last=layout(M,view(),{mode,layer,here:opts.frame||townPicked,ward:opts.ward,frame:opts.frame,dim:opts.dim,
       picked:mode==="names"?picked:null,rootPx:rootPx(),measure,zoom});
-    g.textContent="";
-    last.shown.forEach(l=>{const t=el("text",{class:l.cls,x:l.x,y:l.y});t.textContent=l.text;g.appendChild(t);});
+    g.textContent="";g.classList.toggle("circled",!!last.circle);
+    const r=last.circle?last.circle/2/scale():0;
+    last.shown.forEach(l=>{if(r)g.appendChild(el("circle",{class:"labc",cx:l.x,cy:l.y,r}));
+      const t=el("text",{class:l.cls,x:l.x,y:l.y});t.textContent=l.text;g.appendChild(t);});
     tg.textContent="";
     if(last.tag){const s=scale(),b=last.tag;
       tg.appendChild(el("rect",{class:"tagr",x:b.x-b.w/2,y:b.y-b.h/2,width:b.w,height:b.h,rx:3/s}));
