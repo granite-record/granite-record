@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.723
+# GRANITE_VERSION: 2026-09-04.724
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -79846,59 +79846,6 @@ LIVE_TDS_CASES = ("logs in with the published login", "LOGIN7, decoded field by 
                   "a packet size past TDS's 32,767 is not taken", "a statement on a closed connection is `query`")
 
 
-@check("build", "the live votes reader passes its tests in node against a fake SQL Server on the "
-                "loopback address: login, a batch, replies over many packets, two statements on one "
-                "connection, the server's errors, a dropped connection, forced encryption stopped "
-                "before the password, and the November test equal to the record")
-def _live_tds():
-    """workers/live/tds.js is a TDS client this project owns, about 250 lines,
-    and the design's one gate (section 2.7) rests on it behaving as it says.
-    tests/live/tds.test.js holds it against tests/live/fake_tds.js, a fake SQL
-    Server on 127.0.0.1 that a real driver (tedious) also accepts; and
-    tests/live/sql.test.js holds the statements, and runs the November test
-    end to end against the fake answering from records/rollcalls/, with
-    compare_test.mjs finding the file equal to the record -- and finding a
-    changed ballot when one is changed. Run here in node; the cases the design
-    names are looked for by name, so that one taken out is missed.
-
-    What the tests import is named here by its path and held equal to their
-    imports as they stand, so that preflight --changed (check_select.py reads
-    this file's strings) runs this check when any of it changes."""
-    files = [Path("tests/live/tds.test.js"), Path("tests/live/sql.test.js")]
-    if not all(f.is_file() for f in files):
-        return "skip", "tests/live/ is not here"
-    held = {"workers/live/tds.js", "workers/live/sql.js", "workers/live/test_mode.js",
-            "workers/live/live.gen.js", "workers/follow/common.js", "tests/live/fake_tds.js",
-            "tests/live/compare_test.mjs"}
-    imported, todo = set(), list(files)
-    while todo:
-        f = todo.pop()
-        for rel in re.findall(r"""^\s*import\s[^;]*?\sfrom\s+["'](\.{1,2}/[^"']+)["']""",
-                              f.read_text(encoding="utf-8"), re.M | re.S):
-            p = Path(os.path.relpath(f.parent / rel)).as_posix()
-            if p not in imported:
-                imported.add(p)
-                todo.append(Path(p))
-    assert imported == held, (
-        f"the tests import {sorted(imported - held)} unnamed here, or no longer import "
-        f"{sorted(held - imported)}: name each in _live_tds's `held`, so preflight --changed runs it")
-    node = shutil.which("node") or shutil.which("node.exe")
-    if not node:
-        return "skip", "node is not on PATH"
-    r = _run([node, "--test", "--test-reporter=tap", *[f.as_posix() for f in files]],
-             capture_output=True, text=True, timeout=300)
-    out = (r.stdout or "") + (r.stderr or "")
-    count = {k: int(v) for k, v in re.findall(r"^# (tests|pass|fail) (\d+)$", out, re.M)}
-    fails = _tap_failures(out)
-    passed = [m.replace("\\#", "#") for m in re.findall(r"^ok \d+ - (.*)$", out, re.M)]
-    missing = [c for c in LIVE_TDS_CASES if not any(c in n for n in passed)]
-    assert not fails and r.returncode == 0 and count.get("pass", 0) >= 48, (
-        f"the live votes reader fails {len(fails)}: " + "; ".join(repr(n) for n, _s in fails[:5])
-        + f" ({count or out.strip()[-300:]}). `node --test {' '.join(f.as_posix() for f in files)}` shows each")
-    assert not missing, "these cases no longer pass, or no longer exist: " + "; ".join(missing)
-    return "ok", f"{count['pass']} tests of the reader and the November test, against the fake"
-
-
 def _live_host_problems(root, host):
     """Where the General Court's SQL host is named under `root` and should not
     be: nowhere in the live layer's code or tests, and in
@@ -80054,12 +80001,8 @@ def _live_hours_meet(start, end, windows, margin):
     return sorted(set(met))
 
 
-@check("code", "the live votes reader's statements are SELECTs over four views that cast every "
-               "column to nvarchar and take values only through one builder; its login is the one "
-               "probe_db.py publishes and its host is production's alone; its test hours miss the "
-               "night's windows", needs=("live_gen", "dayfiles_from_db", "fetch_past_db", "refusal"))
 def _live_sql(live_gen, dayfiles_from_db, fetch_past_db, refusal):
-    """The design's section 6.2 and 7.1, for the half of the live Worker that
+    """Part of _live_layer, which calls it: The design's section 6.2 and 7.1, for the half of the live Worker that
     reads the General Court's public SQL database:
 
     LIVE.GEN.JS is what src/pages/live_gen.py writes from the repository, and
@@ -80199,7 +80142,7 @@ def _live_sql(live_gen, dayfiles_from_db, fetch_past_db, refusal):
 # The live Worker's suite, and how many tests it had when this was written: a
 # count that falls means a file stopped loading or a test was lost.
 LIVE_TESTS = "tests/live/index.js"
-LIVE_TESTS_AT_LEAST = 102
+LIVE_TESTS_AT_LEAST = 109
 # The person's ready-made switches (workers/live/control/), each as the Worker
 # must read it; and the values control.json may hold (store.js CONTROL_VALUES).
 LIVE_CONTROL = {"all-off.json": {"youtube": "off", "sql": "off"},
@@ -80241,6 +80184,29 @@ def _live_tests():
                          "runs it: add an import line for each")
     assert imported and imported[0] == "no_network.js", (
         f"{LIVE_TESTS} must import no_network.js first, so that no test can reach the network")
+    # What the suite imports, named here by path and held equal to its imports
+    # as they stand, so that preflight --changed (check_select.py reads this
+    # function's strings) runs this check when any of it changes.
+    held = {"workers/live/index.js", "workers/live/clock.js", "workers/live/youtube.js",
+            "workers/live/store.js", "workers/live/tds.js", "workers/live/sql.js",
+            "workers/live/test_mode.js", "workers/live/live.gen.js", "workers/follow/common.js",
+            "tests/live/no_network.js", "tests/live/clock.test.js", "tests/live/sql.test.js",
+            "tests/live/store.test.js", "tests/live/tds.test.js", "tests/live/youtube.test.js",
+            "tests/live/fake_r2.js", "tests/live/fake_youtube.js", "tests/live/fake_tds.js",
+            "tests/live/world.js", "tests/live/compare_test.mjs", "tests/live/wire.test.js",
+            "tests/live/from_records.js"}
+    reached, todo = set(), [index]
+    while todo:
+        f = todo.pop()
+        for rel in re.findall(r"""^\s*import\s+(?:[^;]*?\sfrom\s+)?["'](\.{1,2}/[^"']+)["']""",
+                              f.read_text(encoding="utf-8"), re.M | re.S):
+            p = Path(os.path.relpath(f.parent / rel)).as_posix()
+            if p not in reached:
+                reached.add(p)
+                todo.append(Path(p))
+    assert reached == held, (
+        f"tests/live/ reaches {sorted(reached - held)} unnamed here, or no longer reaches "
+        f"{sorted(held - reached)}: name each in _live_tests's `held`, so preflight --changed runs it")
     node = shutil.which("node") or shutil.which("node.exe")
     if not node:
         return "skip", f"node is not on PATH, so the {len(files)} test files in tests/live/ did not run"
@@ -80259,6 +80225,9 @@ def _live_tests():
         and count.get("pass", 0) >= LIVE_TESTS_AT_LEAST, (
         f"node --test {index.as_posix()} exited {r.returncode} with {count or 'no count'}, and "
         f"{LIVE_TESTS_AT_LEAST} or more must pass: " + out.strip()[-500:])
+    passed = [m.replace("\\#", "#") for m in re.findall(r"^ok \d+ - (.*)$", out, re.M)]
+    gone = [c for c in LIVE_TDS_CASES if not any(c in n for n in passed)]
+    assert not gone, "these cases the design names no longer pass, or no longer exist: " + "; ".join(gone)
     week = re.search(r"quota by Pacific day: (.*)$", out, re.M)
     spent = [(int(u), int(s)) for u, s in re.findall(r"(\d+)u/(\d+)s", week.group(1))] if week else []
     busiest = max(spent, default=None)
@@ -80350,12 +80319,17 @@ def _live_problems(root):
         if p.suffix in (".js", ".toml", ".json") and LIVE_NEVER.search(text):
             bad.append(f"{rel} names {LIVE_NEVER.search(text).group(0)!r}: the live code asks neither the "
                        "General Court's web server nor the follow database")
-    # The Worker's code imports its own folder, and common.js's clock, and nothing else.
+    # The Worker's code imports its own folder, common.js's clock and
+    # cloudflare:sockets (the database's socket, imported when a run needs it),
+    # and nothing else; an import() is read as an import.
     for p in sorted(live.glob("*.js")):
-        for spec in re.findall(r'^\s*import\s[^;]*?from\s+"([^"]+)"', p.read_text(encoding="utf-8"), re.M | re.S):
-            if not (re.fullmatch(r"\./[\w.-]+\.js", spec) or spec == "../follow/common.js"):
-                bad.append(f"workers/live/{p.name} imports {spec}: the Worker imports its own folder and "
-                           "../follow/common.js, nothing else")
+        text = p.read_text(encoding="utf-8")
+        specs = re.findall(r'^\s*import\s[^;]*?from\s+"([^"]+)"', text, re.M | re.S) + \
+            re.findall(r'\bimport\(\s*["\']([^"\']+)["\']\s*\)', text)
+        for spec in specs:
+            if not (re.fullmatch(r"\./[\w.-]+\.js", spec) or spec in ("../follow/common.js", "cloudflare:sockets")):
+                bad.append(f"workers/live/{p.name} imports {spec}: the Worker imports its own folder, "
+                           "../follow/common.js and cloudflare:sockets, nothing else")
     # The README's commands: every one reaches the real bucket and production.
     readme = (live / "README.md").read_text(encoding="utf-8")
     # The commands are the lines of its fenced blocks: prose may name them.
@@ -80421,9 +80395,8 @@ def _live_problems_bite(root):
     cases = (
         ("wrangler.toml", lambda t: t + '\nroutes = [{ pattern = "x.org/*" }]\n', "declares a route"),
         ("wrangler.toml", lambda t: t + '\n[env.staging]\nname = "x"\n', "has the environments"),
-        ("wrangler.toml", lambda t: t.replace('workers_dev = false\n\n[[r2', 'workers_dev = false\n'
-                                              '[triggers]\ncrons = ["*/2 * * * *"]\n\n[[r2', 1),
-         "a cron at the top level"),
+        ("wrangler.toml", lambda t: t.replace("[[r2_buckets]]", '[triggers]\ncrons = ["*/2 * * * *"]\n\n'
+                                              "[[r2_buckets]]", 1), "a cron at the top level"),
         ("wrangler.toml", lambda t: t.replace('"*/2 * * * *"', '"*/5 * * * *"'), "not every 2 minutes"),
         ("wrangler.toml", lambda t: t.replace("workers_dev = false\n", "", 1),
          "the top level does not set workers_dev = false"),
@@ -80436,14 +80409,14 @@ def _live_problems_bite(root):
         ("wrangler.toml", lambda t: t.replace('bucket_name = "graniterecord-live-local"',
                                               'bucket_name = "graniterecord-live"'), "the top level binds"),
         ("wrangler.toml", lambda t: t + '\n[[kv_namespaces]]\nbinding = "K"\nid = "x"\n', "binds kv_namespaces"),
-        ("wrangler.toml", lambda t: t.replace("workers_dev = false\n\n[[r2", 'workers_dev = false\n'
-                                              '[vars]\nSQL_HOST = "192.0.2.1"\n\n[[r2', 1),
+        ("wrangler.toml", lambda t: t.replace('SQL_HOST = "127.0.0.1"', 'SQL_HOST = "192.0.2.1"', 1),
          "top-level SQL_HOST"),
         ("clock.js", lambda t: t.replace("export const STEP = 2 * MINUTE;", "export const STEP = 3 * MINUTE;"),
          "STEP is not the cron's 2 minutes"),
         ("x.js", lambda t: f'const h = "{host}";\n', "names the General Court's SQL host"),
         ("x.js", lambda t: 'fetch("https://gc.nh.gov/x");\n', "names 'gc.nh.gov'"),
         ("x.js", lambda t: 'import { y } from "../../src/y.js";\n', "imports ../../src/y.js"),
+        ("x.js", lambda t: 'const m = await import("node:net");\n', "imports node:net"),
         ("README.md", lambda t: t.replace("--file workers/live/control/on.json --remote",
                                           "--file workers/live/control/on.json"), "lacks --remote"),
         ("README.md", lambda t: t.replace("wrangler deploy --config workers/live/wrangler.toml --env production",
@@ -80480,8 +80453,11 @@ def _live_problems_bite(root):
 @check("build", "the live Worker: live.gen.js is what live_gen.py writes, the cron and the bucket are "
        "production's alone, the General Court's host is named nowhere it may not be, the README's "
        "commands reach the real bucket, its switch's files are ones it reads, and it reads a title "
-       "and a stream as the Python does", needs=("live_gen", "livestreams"))
-def _live_layer(LG, LS):
+       "and a stream as the Python does; the votes reader's statements are SELECTs over four views "
+       "that cast every column to nvarchar and take values through one builder, and its test hours "
+       "miss the night's windows",
+       needs=("live_gen", "livestreams", "dayfiles_from_db", "fetch_past_db", "refusal"))
+def _live_layer(LG, LS, DF, FP, RF):
     """workers/live/ (the person, 26 October 2026: "defaults"; the design's
     §6.2 and §7.1). What its node suite cannot see, held here:
 
@@ -80533,6 +80509,8 @@ def _live_layer(LG, LS):
     assert not bad, "; ".join(bad[:6]) + (f" (+{len(bad) - 6} more)" if len(bad) > 6 else "")
     missed = _live_problems_bite(root)
     assert not missed, "these rules no longer catch a file that breaks them: " + "; ".join(missed)
+    # The votes reader's statements, login, host and test hours.
+    _live_sql(LG, DF, FP, RF)
 
     # The synthetic answers, read by the night's Python as the file says.
     items = json.loads((root / "tests/live/youtube_items.json").read_text(encoding="utf-8"))["items"]

@@ -26,9 +26,15 @@
  *      person meant: a typed "of" for "off").
  * Each run's codes also go to Workers Logs as one line.
  *
- * THIS BRANCH IS THE YOUTUBE HALF ALONE. control.json's "sql" is read and
- * reported and nothing more: this Worker has no database half, asks the
- * General Court nothing, and names none of its addresses.
+ * THE DATABASE HALF, SO FAR: THE NOVEMBER TEST (test_mode.js, design 2.7).
+ * While control.json says "sql": "test", the first run between 10:00 and
+ * 16:00 on a weekday makes the test's one connection, before anything else
+ * it does, and writes the test's file at once, under the lease; in test mode
+ * nothing else reads the database. "sql": "on" is read and reported and
+ * nothing more until the session reads land (a later branch); "off", or a
+ * missing or unreadable control.json, asks the database nothing. The host is
+ * named only in wrangler.toml's production vars, and tds.js refuses any
+ * other but the loopback address.
  *
  * Its secrets are YOUTUBE_API_KEY, a second key in the existing Google
  * project restricted to the YouTube Data API v3, and HEALTHCHECK_URL; README.md
@@ -44,6 +50,7 @@
 import { clock } from "../follow/common.js";
 import { iso, nh, youtubeDue } from "./clock.js";
 import { FAILS_TO_TELL, forget, look, offFile, streamsKey } from "./youtube.js";
+import { runTest, testDue } from "./test_mode.js";
 import { CONTROL_DEFAULT, WAITS_TO_TELL, WRITE_BY_MS, emptyState, leaseHeld, noteWait, putJSON,
          readControl, readJSON, readState, releaseLease, sweep, takeLease } from "./store.js";
 
@@ -64,6 +71,7 @@ export function plan(now, state, control) {
     held: (due && due.held) || null,
     off: off && yt.off !== c.date,
     sweep: s.swept !== c.date && c.hour >= SWEEP_HOUR,
+    test: control.sql === "test" ? testDue(now, s.test || {}) : null,
   };
 }
 
@@ -76,11 +84,13 @@ function stamp(when) {
 // What Healthchecks is told: the run's codes, what control.json says and that
 // it is honoured, and the day's spend.
 export function pingBody(out, control) {
-  const sql = `sql ${control.sql}${control.sql === "off" ? "" : " (not read: this Worker has no database half)"}`;
+  const sql = `sql ${control.sql}${control.sql === "on" ? " (not read: the session reads are a later branch)" : ""}`;
   const said = control.source === "control.json"
     ? `youtube ${control.youtube}, ${sql} by control.json, uploaded ${stamp(control.uploaded)}`
     : `youtube ${control.youtube}, ${sql}: control.json ${control.source}, so shadow`;
-  const count = out.count ? `today ${out.count.units} units, ${out.count.searches} searches` : "today not counted";
+  const count = out.count ? `today ${out.count.units} units, ${out.count.searches} searches` +
+    (out.count.connections ? `, ${out.count.connections} connections, ${out.count.statements} statements` : "")
+    : "today not counted";
   return [`run ${out.run.slice(0, 8)} ${out.codes.join(" ")}`, said, count,
           out.fail ? `FAIL: ${out.fail}` : ""].filter(Boolean).join(" | ");
 }
@@ -122,8 +132,43 @@ async function blocked(bucket, now, out) {
   return out;
 }
 
-// One run. opts (tests): now, fetchImpl, run (its id), elapsed() (ms since the
-// run began), timeoutMs, log.
+// The November test's part of a run: one connection, and its file written at
+// once while the lease holds. If the file cannot be written the sitting is
+// not counted as read and is asked again on the next weekday (never the same
+// day): a lost file is the one case a past sitting is read twice.
+async function test(env, bucket, s, p, now, out, opts, elapsed) {
+  let connect = opts.connect;
+  if (!connect) ({ connect } = await import("cloudflare:sockets"));
+  const before = s.test || {};
+  const r = await runTest(env, { connect, now, test: before });
+  if (!r) return;
+  // A refused connection is the test's own finding (the login file's problem,
+  // or the sitting file's test.problem); a failed statement is its status's.
+  const refused = (r.file.test ? r.file.test.problem : r.file.problem) || null;
+  const problem = refused || (r.file.status && r.file.status.problem) || null;
+  const sent = r.file.test ? r.file.test.statements.filter(x => !/^not run/.test(x.error || "")).length : 0;
+  s.count = { ...s.count, connections: (s.count.connections || 0) + (refused === "guard" ? 0 : 1),
+              statements: (s.count.statements || 0) + sent };
+  out.count = s.count;
+  out.codes.push(`sql_test_${p.test.kind}_${problem || "ok"}`);
+  let wrote = false;
+  if (elapsed() < WRITE_BY_MS) {
+    try { await putJSON(bucket, r.key, r.file); wrote = true; out.wrote.push(r.key); }
+    catch { out.codes.push(`write_failed_${r.key}`); }
+  } else {
+    out.codes.push("lease_lapsed");
+  }
+  s.test = wrote ? r.test : { ...before, done: [...(before.done || [])], last: r.test.last };
+  if (!wrote) {
+    out.fail = `the November test's file ${r.key} was not written: it is asked again on the next weekday`;
+  } else if (refused) {
+    out.fail = `the November test could not read (${refused}): ${r.key} says why`;
+  }
+}
+
+// One run. opts (tests): now, fetchImpl, connect (the socket opener for the
+// database; the Worker's own is cloudflare:sockets'), run (its id), elapsed()
+// (ms since the run began), timeoutMs, log.
 export async function run(env, opts = {}) {
   const now = opts.now !== undefined ? new Date(+opts.now) : clock(env);
   const fetchImpl = opts.fetchImpl || fetch;
@@ -145,7 +190,7 @@ export async function run(env, opts = {}) {
     if (s.day !== p.today) { s.day = p.today; s.count = { units: 0, searches: 0 }; }
     out.count = s.count;
     if (p.held) out.codes.push(`youtube_held_${p.held.why}`);
-    if (!p.youtube && !p.off && !p.sweep) {
+    if (!p.youtube && !p.off && !p.sweep && !p.test) {
       out.codes.push("nothing_due");
       return out;
     }
@@ -156,6 +201,7 @@ export async function run(env, opts = {}) {
     const lease = await takeLease(bucket, s, etag, runId, now);
     if (!lease) return await blocked(bucket, now, out);
 
+    if (p.test) await test(env, bucket, s, p, now, out, opts, elapsed);
     const ytBefore = structuredClone(s.yt);
     const writes = [];
     if (p.off) {

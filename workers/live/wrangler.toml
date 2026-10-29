@@ -16,13 +16,22 @@
 # no cron at the top level, workers_dev = false at both, no route anywhere,
 # production's name and bucket.
 #
-# NO SECRET IS IN THIS FILE. YOUTUBE_API_KEY and HEALTHCHECK_URL are set by the
-# person with `wrangler secret put ... --env production` (README.md).
+# NO SECRET IS IN THIS FILE. YOUTUBE_API_KEY and HEALTHCHECK_URL are set by
+# the person with `wrangler secret put ... --env production` (README.md). The
+# database login is the one the General Court publishes (live.gen.js, from
+# probe_db.py), and is not a secret.
 
 name = "graniterecord-live-local"
 main = "index.js"
 compatibility_date = "2026-09-04"
 workers_dev = false
+
+# The database half, run here, reaches the loopback address alone: a fake SQL
+# Server (tests/live/fake_tds.js) on this machine. tds.js refuses any other
+# host without ENV = "production", which only production's vars set.
+[vars]
+SQL_HOST = "127.0.0.1"
+SQL_PORT = "24817"
 
 [[r2_buckets]]
 binding = "LIVE"
@@ -39,6 +48,14 @@ workers_dev = false
 # clock what is due (clock.js), and a run with nothing due writes nothing.
 [env.production.triggers]
 crons = ["*/2 * * * *"]
+
+# The General Court's public SQL database: named here and nowhere else in the
+# live code, and held by preflight to probe_db.HOST. Asked only as
+# control.json allows: never while "sql" is "off".
+[env.production.vars]
+ENV = "production"
+SQL_HOST = "66.211.150.69"
+SQL_PORT = "1433"
 
 [[env.production.r2_buckets]]
 binding = "LIVE"

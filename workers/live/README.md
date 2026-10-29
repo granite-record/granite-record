@@ -145,7 +145,7 @@ Missing or unreadable means shadow. Four ready-made files:
 | File | YouTube | Database |
 |---|---|---|
 | `control/sql-off.json` | on | off (shadow, the same as no file) |
-| `control/sql-test.json` | on | the November test (a later branch) |
+| `control/sql-test.json` | on | the November test (below) |
 | `control/on.json` | on | on (a later branch) |
 | `control/all-off.json` | off | off |
 
@@ -175,6 +175,33 @@ To read what it wrote, for example a day's streams and their `seen` times:
 npx wrangler r2 object get graniterecord-live/streams/2026-11-16.json --file streams-2026-11-16.json --remote
 ```
 
+## The November test (`sql-test`)
+
+The one gate before any sitting (DESIGN.md 2.7), on the person's word and
+after the courtesy note to the General Court's IT office. With `sql-test.json`
+in place, the first run between 10:00 and 16:00 on each weekday makes one
+connection to the General Court's public SQL database, and nothing else in
+the Worker reads it:
+
+- the first weekday reads 11 March 2026 and writes `test/2026-03-11.json`;
+- the next, 19 August 2026 (veto day), `test/2026-08-19.json`;
+- every weekday after, a login alone: `test/login/<date>.json`.
+
+Each past sitting is read once. A day the server refused (no connection, the
+login refused, encryption required) sends `/fail` and asks the same sitting
+on the next weekday; a statement that failed is the file's to say, and the
+sitting is not asked again. Read the files and compare them on the laptop:
+
+```
+npx wrangler r2 object get graniterecord-live/test/2026-03-11.json --file test-2026-03-11.json --remote
+node tests/live/compare_test.mjs test-2026-03-11.json
+npx wrangler r2 object get graniterecord-live/test/2026-08-19.json --file test-2026-08-19.json --remote
+node tests/live/compare_test.mjs test-2026-08-19.json
+```
+
+`compare_test.mjs` says go or no-go, and why. Put `sql-off.json` back when
+the test is done; `on.json` waits for the session reads (a later branch).
+
 ## When Healthchecks says it failed
 
 The ping body says why. `/fail` is sent when:
@@ -184,7 +211,9 @@ The ping body says why. `/fail` is sent when:
   playlists are still read;
 - three ticks in a row found another run's lease: the cron firing twice, or
   a second Worker on this bucket;
-- a run had something due and wrote nothing.
+- a run had something due and wrote nothing;
+- the November test could not read (the server refused), or its file could
+  not be written.
 
 And on every run, until it is mended, so the check stays down rather than
 flapping:

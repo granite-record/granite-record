@@ -8,4 +8,5 @@ import "./clock.test.js";
 import "./sql.test.js";
 import "./store.test.js";
 import "./tds.test.js";
+import "./wire.test.js";
 import "./youtube.test.js";
