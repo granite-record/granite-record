@@ -1,4 +1,4 @@
-/* GRANITE_VERSION: 2026-09-07.325 */
+/* GRANITE_VERSION: 2026-09-07.326 */
 /* ONE STYLESHEET FOR EVERY PAGE (23 October 2026). Every page of the site
    links this file, /app.css: the record pages shell.page() makes from
    bills.html, and the five build_pages.py writes -- the home page, Officials,
@@ -5032,7 +5032,9 @@ a.l-pgm{font-weight:600;text-decoration:underline;text-decoration-thickness:1px;
 .g-btn:hover{background:var(--ink);color:var(--paper)}
 .g-btn:focus-visible{outline:2px solid var(--pine);outline-offset:2px}
 .g-step .g-law{font:400 var(--t-sm)/1.45 var(--sans);color:var(--ink-2);margin:.25rem 0 0}
-.g-step .g-law a{color:var(--pine)}
+.g-step .g-law a{color:var(--pine);white-space:nowrap}
+.g-yrp{margin:.25rem 0 .5rem;font:400 var(--t-sm)/1.45 var(--sans);color:var(--ink-2)}
+.g-yrp select{font:inherit;color:var(--ink);background:var(--surface);border:1px solid var(--rule-2);border-radius:var(--r-in);padding:.25rem .5rem;margin-left:.375rem;min-height:2.25rem}
 .g-step .g-note{border:2px solid var(--ink);border-radius:var(--r-in);padding:.75rem 1rem;background:var(--wash);
   margin:.75rem 0}
 .g-sample{border:1px dashed var(--edge);border-radius:var(--r-in);padding:.75rem 1rem;margin:.75rem 0;

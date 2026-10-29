@@ -16235,9 +16235,14 @@
    "es": "Capítulo {n}",
    "state": "draft"
   },
-  "guides.rec_none": {
-   "en": "No bill has changed it since {year}, and none now before the General Court would.",
-   "es": "Ningún proyecto de ley la ha cambiado desde {year}, y ninguno de los que están ahora ante la Legislatura la cambiaría.",
+  "guides.rec_laws": {
+   "en": "Laws that changed it, newest first:",
+   "es": "Leyes que la cambiaron, de la más reciente a la más antigua:",
+   "state": "draft"
+  },
+  "guides.rec_none_any": {
+   "en": "No law in the record has changed it, and none now before the General Court would.",
+   "es": "Ninguna ley del registro la ha cambiado, y ninguno de los proyectos que están ahora ante la Legislatura la cambiaría.",
    "state": "draft"
   },
   "guides.rec_now": {
@@ -16250,9 +16255,14 @@
    "es": "Aprobados, todavía no en vigor:",
    "state": "draft"
   },
-  "guides.rec_since": {
-   "en": "Laws that changed it since {year}, newest first:",
-   "es": "Leyes que la cambiaron desde {year}, de la más reciente a la más antigua:",
+  "guides.rec_year": {
+   "en": "Year",
+   "es": "Año",
+   "state": "draft"
+  },
+  "guides.rec_years_all": {
+   "en": "All years",
+   "es": "Todos los años",
    "state": "draft"
   },
   "guides.record": {
