@@ -1,0 +1,390 @@
+# THE HOURLY KNOCK (the person's decision of 29 October 2026: "hourly, so
+# that the site can get back to live sooner"). refusal.py, THE NIGHT'S KNOCK,
+# says what a knock is and when one is due. This workflow is the second of
+# its two callers. The night knocks once at its start; this one knocks at
+# :47 past the hour OUTSIDE the night's window (refusal.HOURLY_MINUTE, which
+# preflight holds to the cron line below). Neither knocks twice in one rung,
+# and only while the bucket holds a refusal the night is testing. In any
+# hour without one, it reads the state files and stops. Its knock waits in
+# gc-night like every night and weekly job, and it never queues there while
+# a night, a weekly, a dry run or another knock is running or waiting (job
+# "quiet"): GitHub keeps one waiting job per group, and a newer one cancels
+# the one waiting (nightly.yml's ONE DRY RUN AT A TIME). A re-run never
+# reaches gc-night: re-run alone, the knock job would wait there on the
+# earlier jobs' old answers, so it runs only on a first attempt. A lift
+# clears the record in the bucket; the full fetch waits for the next night.
+# There is no mid-day run. To stop only this: Actions -> knock -> "..." ->
+# Disable workflow. To stop all testing: the variable NIGHT_KNOCK set to
+# off. Either, BEFORE netcheck.py or clearing a refusal early on the laptop:
+# two machines asking at once is how the second block happened. Starting
+# this by hand on main asks the General Court when a knock is due, and is a
+# person's to do; on any other branch it is a dry run, which reads the
+# bucket and the runs and knocks nothing.
+
+name: knock
+run-name: >-
+  knock ${{ github.event.schedule == '23 15 * * *' && '(keepalive)'
+  || github.event_name == 'schedule' && '(hourly)'
+  || (github.ref != 'refs/heads/main' && '(dry run: not main)' || '(by hand)') }}
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: "47 * * * *"
+    # keepalive only (job keepalive); look skips this run
+    - cron: "23 15 * * *"
+
+# The workflow's own token reads the repository and nothing else. quiet asks
+# to list Actions runs, and keepalive, once a day, to re-enable this workflow.
+permissions:
+  contents: read
+
+# A knock dry run never reaches gc-night (the knock job's if requires main),
+# so it waits in a group of its own and never replaces a nightly or weekly
+# dry run waiting in "dry-runs"; a run of main has its run's id.
+concurrency:
+  group: ${{ github.ref != 'refs/heads/main' && 'knock-dry-runs' || github.run_id }}
+  cancel-in-progress: false
+
+env:
+  PYTHONUTF8: "1"
+  PYTHONIOENCODING: utf-8
+  # Every run off main is a dry run (the person's decision of 7 October 2026),
+  # as in weekly.yml: it reads, and knocks and pings nothing.
+  DRY_RUN: ${{ github.ref != 'refs/heads/main' }}
+  # THE NIGHT'S OWN TEST OF A REFUSAL (refusal.py, THE KNOCK'S GATE): the
+  # five lines every workflow with a gc-night job carries, the same in each.
+  NIGHT_KNOCK: ${{ vars.NIGHT_KNOCK || 'on' }}
+  NIGHT_PERSON_CHECK: ${{ secrets.HEALTHCHECKS_PERSON_URL != '' && 'set' || 'none' }}
+  KNOCK_HOURLY_HOURS: ${{ vars.KNOCK_HOURLY_HOURS }}
+  KNOCK_EVERY_HOURS: ${{ vars.KNOCK_EVERY_HOURS }}
+  KNOCK_DAYS: ${{ vars.KNOCK_DAYS }}
+
+defaults:
+  run:
+    shell: pwsh
+
+jobs:
+  look:
+    name: is a refusal waiting for a knock
+    if: github.event.schedule != '23 15 * * *'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    outputs:
+      go: ${{ steps.look.outputs.go }}
+      until: ${{ steps.look.outputs.until }}
+    steps:
+      - name: Check out main, only what the look reads
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
+        with:
+          fetch-depth: 1
+          persist-credentials: false
+          sparse-checkout-cone-mode: false
+          sparse-checkout: |
+            refusal.py
+            _paths.py
+            cloud_kit.json
+            requirements-r2.txt
+            src/ops/
+            src/lib/
+      - name: Python 3.14
+        uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97  # v7.0.0
+        with:
+          python-version: "3.14"
+      - name: boto3 and its dependencies, each by its hash
+        shell: bash
+        run: python -m pip install --disable-pip-version-check --no-input --require-hashes -r requirements-r2.txt
+      # A READ-ONLY KEY (the red team of 29 October 2026): this job runs about
+      # 24 times a day and writes nothing to the bucket, so it never holds the
+      # keys that write the kit main's nights build and publish from. Without
+      # the read-only key it says so and looks no further; the night notices
+      # the silence (refusal.HOURLY_SILENT_HOURS).
+      - name: Read the state files from R2, with a key that cannot write
+        id: statedown
+        shell: bash
+        env:
+          R2_ACCOUNT_ID: ${{ secrets.R2_ACCOUNT_ID }}
+          R2_ACCESS_KEY_ID: ${{ secrets.R2_READ_ACCESS_KEY_ID }}
+          R2_SECRET_ACCESS_KEY: ${{ secrets.R2_READ_SECRET_ACCESS_KEY }}
+          R2_BUCKET: ${{ secrets.R2_BUCKET }}
+        run: |
+          if [ -z "$R2_ACCESS_KEY_ID" ] || [ -z "$R2_SECRET_ACCESS_KEY" ]; then
+            echo "read=none" >> "$GITHUB_OUTPUT"
+            echo "No read-only R2 key (R2_READ_ACCESS_KEY_ID, R2_READ_SECRET_ACCESS_KEY): no hourly knock."
+            exit 0
+          fi
+          python src/ops/cloud.py state-down
+          echo "read=ok" >> "$GITHUB_OUTPUT"
+      - name: Whose is the refusal, and is a knock due now
+        id: look
+        if: steps.statedown.outputs.read == 'ok'
+        shell: bash
+        run: python refusal.py --knock-look --person-file logs/alert-person.txt >> "$GITHUB_OUTPUT"
+      - name: Tell the "refusal is yours" check when one has become a person's
+        if: always() && env.DRY_RUN == 'false' && steps.look.outcome == 'success'
+        shell: bash
+        env:
+          HC_PERSON_URL: ${{ secrets.HEALTHCHECKS_PERSON_URL }}
+        run: |
+          if [ "$GITHUB_REF" != "refs/heads/main" ]; then
+            echo "A run of $GITHUB_REF, not refs/heads/main, is a dry run: no ping."
+            exit 0
+          fi
+          if [ -z "$HC_PERSON_URL" ]; then
+            echo "No HEALTHCHECKS_PERSON_URL secret, so no ping."
+            exit 0
+          fi
+          if [ -s logs/alert-person.txt ]; then
+            if ! curl -fsS -m 15 --retry 3 -o /dev/null --data-binary @logs/alert-person.txt "$HC_PERSON_URL/fail"; then
+              echo "Healthchecks did not answer."
+            fi
+          fi
+          exit 0
+
+  quiet:
+    name: is a night, a weekly, a dry run or another knock running or waiting
+    needs: look
+    if: ${{ !cancelled() && needs.look.outputs.go == 'true' }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 3
+    permissions:
+      actions: read
+    outputs:
+      quiet: ${{ steps.runs.outputs.quiet }}
+    steps:
+      # The LAST thing before the knock joins gc-night: nothing may follow it
+      # in this job, and the knock job needs this job's answer. It lists the
+      # runs of the three workflows with a gc-night job, then the jobs of
+      # each one not completed, and says quiet=true only when none of those
+      # holds or waits for gc-night ("the night", "Sunday's fetches", "the
+      # knock") and the knock could still end before the night's hours. A
+      # run with no such job listed yet -- one waiting at its workflow's own
+      # level, or a scheduled night whose "started" has not decided -- is
+      # busy; a night whose publish job waits for approval is not. Any list
+      # that cannot be read is busy: a knock skipped for an hour costs
+      # nothing.
+      - name: List the runs that hold gc-night or wait for it
+        id: runs
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
+          SELF: ${{ github.run_id }}
+          UNTIL: ${{ needs.look.outputs.until }}
+        run: |
+          d=$(mktemp -d)
+          since=$(date -u -d '2 days ago' +%F)
+          busy() { echo "quiet=false" >> "$GITHUB_OUTPUT"; echo "$1: no knock this hour"; exit 0; }
+          cat > "$d/decide.py" <<'PY'
+          # Whether the knock may join gc-night (knock.yml's quiet job).
+          import json
+          import sys
+          import time
+          GC_NIGHT_JOBS = ("the night", "Sunday's fetches", "the knock")
+          WORKFLOWS = ("nightly.yml", "weekly.yml", "knock.yml")
+          mode, d, me = sys.argv[1], sys.argv[2], sys.argv[3]
+
+
+          def load(name):
+              with open(f"{d}/{name}", encoding="utf-8") as f:
+                  return json.load(f)
+
+
+          if mode == "open":
+              ids = []
+              for wf in WORKFLOWS:
+                  doc = load(f"{wf}.json")
+                  runs = doc.get("workflow_runs")
+                  if not isinstance(runs, list) or int(doc.get("total_count") or 0) > len(runs):
+                      sys.exit(f"the runs of {wf} were not all listed")
+                  ids += [str(r.get("id")) for r in runs
+                          if r.get("status") != "completed" and str(r.get("id")) != me]
+              print("\n".join(ids))
+              sys.exit(0)
+          why = ""
+          with open(f"{d}/open.txt", encoding="utf-8") as f:
+              open_ids = [x.strip() for x in f if x.strip()]
+          for rid in open_ids:
+              doc = load(f"jobs-{rid}.json")
+              jobs = doc.get("jobs")
+              if not isinstance(jobs, list) or int(doc.get("total_count") or 0) > len(jobs):
+                  why = f"the jobs of run {rid} were not all listed"
+                  break
+              night = [j for j in jobs if j.get("name") in GC_NIGHT_JOBS]
+              if not night:
+                  why = f"run {rid} has no job of gc-night listed yet"
+                  break
+              waiting = [j for j in night if j.get("status") != "completed"]
+              if waiting:
+                  why = f"run {rid}'s {waiting[0].get('name')!r} is {waiting[0].get('status')}"
+                  break
+          if not why:
+              try:
+                  until = int(sys.argv[4])
+              except (IndexError, ValueError):
+                  why = "the look gave no time the knock must end by"
+              else:
+                  if time.time() >= until:
+                      why = "the knock could no longer end before the night's hours"
+          print("quiet=" + ("false" if why else "true"))
+          print(why or "nothing of gc-night is running or waiting", file=sys.stderr)
+          PY
+          gh api -X GET "repos/$REPO/actions/workflows/nightly.yml/runs" -f created=">=$since" -f per_page=100 > "$d/nightly.yml.json" || busy "the nightly's runs could not be listed"
+          gh api -X GET "repos/$REPO/actions/workflows/weekly.yml/runs" -f created=">=$since" -f per_page=100 > "$d/weekly.yml.json" || busy "the weekly's runs could not be listed"
+          gh api -X GET "repos/$REPO/actions/workflows/knock.yml/runs" -f created=">=$since" -f per_page=100 > "$d/knock.yml.json" || busy "the knock's runs could not be listed"
+          python3 "$d/decide.py" open "$d" "$SELF" > "$d/open.txt" || busy "the runs could not be read"
+          while read -r id; do
+            [ -n "$id" ] || continue
+            gh api -X GET "repos/$REPO/actions/runs/$id/jobs" -f per_page=100 > "$d/jobs-$id.json" || busy "the jobs of run $id could not be listed"
+          done < "$d/open.txt"
+          python3 "$d/decide.py" quiet "$d" "$SELF" "$UNTIL" >> "$GITHUB_OUTPUT" || busy "the jobs could not be read"
+
+  knock:
+    name: the knock
+    needs: [look, quiet]
+    # NO RE-RUN REACHES GC-NIGHT (the red team of 29 October 2026): re-run on
+    # its own, up to 30 days later, this job would join gc-night without a
+    # fresh look by quiet. The next hourly run does the work instead.
+    if: ${{ !cancelled() && github.run_attempt == '1' && needs.quiet.outputs.quiet == 'true' && github.ref == 'refs/heads/main' }}
+    runs-on: windows-2022
+    timeout-minutes: 15
+    concurrency:
+      group: gc-night
+      cancel-in-progress: false
+    steps:
+      - name: Check out main
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
+        with:
+          fetch-depth: 1
+          persist-credentials: false
+      - name: Set the clock to New Hampshire's
+        run: |
+          tzutil /s "Eastern Standard Time"
+          exit $LASTEXITCODE
+      - name: Python 3.14
+        uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97  # v7.0.0
+        with:
+          python-version: "3.14"
+      - name: boto3 and its dependencies, each by its hash
+        run: |
+          python -m pip install --disable-pip-version-check --no-input --require-hashes -r requirements-r2.txt
+          exit $LASTEXITCODE
+      - name: Bring the state files down from R2
+        id: statedown
+        env:
+          R2_ACCOUNT_ID: ${{ secrets.R2_ACCOUNT_ID }}
+          R2_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
+          R2_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
+          R2_BUCKET: ${{ secrets.R2_BUCKET }}
+        run: |
+          python src/ops/cloud.py state-down
+          exit $LASTEXITCODE
+      - name: Claim the knock here, if it may go now
+        id: claim
+        env:
+          GRANITE_KNOCK_BY: hourly
+        run: |
+          python refusal.py --knock-claim >> $env:GITHUB_OUTPUT
+          exit $LASTEXITCODE
+      - name: The claim goes to R2 before anything is asked
+        id: claimsent
+        if: steps.claim.outputs.claimed == 'true'
+        env:
+          R2_ACCOUNT_ID: ${{ secrets.R2_ACCOUNT_ID }}
+          R2_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
+          R2_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
+          R2_BUCKET: ${{ secrets.R2_BUCKET }}
+        run: |
+          python src/ops/cloud.py state-up
+          exit $LASTEXITCODE
+      # Every General Court request in this workflow is this one step's child,
+      # under refusal.hold("the knock"): one request, never retried, following
+      # no redirect, killed at refusal.KNOCK_MINUTES by itself and at three
+      # minutes by this step. Its statuses are answers, so the step is green.
+      - name: The knock, one request
+        id: knock
+        if: steps.claimsent.outcome == 'success'
+        timeout-minutes: 3
+        env:
+          GRANITE_KNOCK_BY: hourly
+        run: |
+          python src/fetch/gc_web/snapshot_gencourt.py --knock
+          $rc = $LASTEXITCODE
+          Write-Output "The knock ended $rc: 0 lifted, 1 not answered, 2 a person's, 4 not asked."
+          if ($rc -in 0, 1, 2, 4) { exit 0 }
+          exit $rc
+      # A CLAIM THE CHILD DID NOT USE IS NOT A KNOCK. knocking() turns this
+      # run's "claimed" into "no answer" before its request, so one still
+      # "claimed" now was never asked: it becomes "not asked", and the next
+      # look does not take it for a lost answer.
+      - name: A claim the knock did not use is marked not asked
+        if: always() && steps.claimsent.outcome == 'success'
+        env:
+          GRANITE_KNOCK_BY: hourly
+        run: |
+          python refusal.py --knock-unclaim
+          exit $LASTEXITCODE
+      - name: Send the knock, and a lift, to R2
+        if: always() && steps.claimsent.outcome == 'success'
+        env:
+          R2_ACCOUNT_ID: ${{ secrets.R2_ACCOUNT_ID }}
+          R2_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
+          R2_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
+          R2_BUCKET: ${{ secrets.R2_BUCKET }}
+        run: |
+          python src/ops/cloud.py state-up
+          exit $LASTEXITCODE
+      - name: What the refusal is now
+        if: always() && steps.statedown.outcome == 'success'
+        run: |
+          python refusal.py --person-line --person-file logs/alert-person.txt
+          exit $LASTEXITCODE
+      # /fail only, never a plain ping: "up" comes only from the night, the
+      # morning after a person clears the record. After the state-up, so the
+      # email says what the bucket was told; always(), so a failed state-up
+      # does not silence it.
+      - name: Tell the "refusal is yours" check when this knock made it a person's
+        if: always() && env.DRY_RUN == 'false' && steps.statedown.outcome == 'success'
+        env:
+          HC_PERSON_URL: ${{ secrets.HEALTHCHECKS_PERSON_URL }}
+        run: |
+          if ($env:GITHUB_REF -cne 'refs/heads/main') {
+            Write-Output "A run of $env:GITHUB_REF, not refs/heads/main, is a dry run: no ping."
+            exit 0
+          }
+          if (-not $env:HC_PERSON_URL) {
+            Write-Output "No HEALTHCHECKS_PERSON_URL secret, so no ping."
+            exit 0
+          }
+          $said = (Test-Path 'logs/alert-person.txt') -and ((Get-Item 'logs/alert-person.txt').Length -gt 0)
+          if ($said) {
+            curl.exe -fsS -m 15 --retry 3 -o NUL --data-binary "@logs/alert-person.txt" "$env:HC_PERSON_URL/fail"
+          }
+          exit 0
+
+  # GitHub switches a public repository's scheduled workflows off after 60
+  # days without activity in it, and nightly.yml's keepalive re-enables only
+  # itself. This one re-enables knock.yml, from its own daily cron line only,
+  # so the token that may write is minted once a day and not every hour. A
+  # workflow the person switched off runs no keepalive, so it stays off.
+  keepalive:
+    name: keep the schedule alive
+    # Only the daily line's run: the write token is minted once a day.
+    if: github.event.schedule == '23 15 * * *'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    permissions:
+      actions: write
+    steps:
+      - name: Re-enable this workflow, once a day
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
+        run: |
+          if gh api --method PUT "repos/$REPO/actions/workflows/knock.yml/enable" > /dev/null; then
+            echo "knock.yml re-enabled"
+          else
+            echo "knock.yml could not be re-enabled"
+            exit 1
+          fi

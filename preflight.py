@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.737
+# GRANITE_VERSION: 2026-09-04.738
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -83049,7 +83049,8 @@ def _the_knock(SG, R):
         the repository passes knock=True; knock() calls the opener once, in
         no loop, and its judges call it never; GRANITE_KNOCK_BY is set only
         by nightly.knock(), to "night", and by knock.yml's claim, knock and
-        unclaim steps, to "hourly" (knock.yml does not exist yet).
+        unclaim steps, to "hourly" (_workflows_knock_order holds that the
+        knock step runs the child once, in no loop).
     """
     import ast
     import hashlib
@@ -83335,7 +83336,10 @@ def _knock_hours(R):
     hour later in NIGHT_WINDOWS (a copy, put back after): the hourly hours,
     the night's start and knock_anchor() follow it -- the one definition,
     never a copy of its hours. Any other caller, or none, may never ask.
-    (knock.yml's two cron lines are held here once that workflow exists.)"""
+    And knock.yml has two cron lines: the hourly one at
+    refusal.HOURLY_MINUTE, never :00, :17 or :30, and one daily line, the
+    only one keepalive's if names and the one look's if leaves out
+    (_wf_knock_cron_problems; _workflows_knock carries its mutants)."""
     from datetime import datetime, timezone
     start, end = _at(2026, 11, 2), _at(2026, 11, 9)
     saved = R.NIGHT_WINDOWS
@@ -83379,6 +83383,10 @@ def _knock_hours(R):
         bad, _, merged_night = sweep(start, start + 86400, (9, 0))
         assert not bad and merged_night == 2 * 60 + 18, \
             f"Monday's window running into the night's: {merged_night} minutes, {bad[:4]}"
+        text = _knock_text()
+        if text is not None:
+            found = _wf_knock_cron_problems(text, R.HOURLY_MINUTE)
+            assert not found, "knock.yml's cron lines: " + "; ".join(found)
         return "ok", (f"a week minute by minute: the hourly knock may ask {n_hourly:,} minutes, "
                       f"the night's {n_night:,}, never the same one; both follow the windows moved, "
                       "and the night's starts at its own window's opening")
@@ -85929,6 +85937,40 @@ def _rings(n, at, run_id, code, **env):
             None if person is None else "down" if person else "up")
 
 
+def _knock_step_file(n, at, run_id, *argv):
+    """refusal.py's knock workflow step `argv` (--knock-look or --person-line)
+    run in-process at `at`, as knock.yml runs it on main, and the text of
+    the person file it writes: what that step's ping sends the third check
+    as /fail, and nothing when it is empty."""
+    import contextlib
+    import io
+    _KnockEnv.set(**dict(_KNOCK_MAIN, GITHUB_RUN_ID=run_id))
+    n.clock(at)
+    p = Path("logs") / "alert-person-step.txt"
+    p.unlink(missing_ok=True)
+    sys.argv = ["refusal.py", *argv, "--person-file", str(p)]
+    with contextlib.redirect_stdout(io.StringIO()), contextlib.redirect_stderr(io.StringIO()):
+        n.R.main()
+    return p.read_text(encoding="utf-8") if p.exists() else ""
+
+
+def _hourly_knock_job(n, at, answer, run_id):
+    """knock.yml's knock job at `at`, in-process, its request answered
+    `answer` (_KNOCK_SAID): the claim, the child's own gate, knocking() and
+    knocked(), the unclaim, then "What the refusal is now" -- whose person
+    file it returns."""
+    R = n.R
+    _KnockEnv.set(**dict(_KNOCK_MAIN, GITHUB_RUN_ID=run_id, GRANITE_KNOCK_BY="hourly"))
+    n.clock(at)
+    claimed, _why = R.knock_claim()
+    if claimed:
+        if R.knock_gate("hourly")[0]:
+            R.knocking(_KNOCK_URL)
+            R.knocked(answer, _KNOCK_SAID[answer])
+        R.knock_unclaim()
+    return _knock_step_file(n, at, run_id, "--person-line")
+
+
 @check("build", "the \"a refusal is yours\" check changes state, and so emails, the night a "
        "refusal becomes a person's, whatever the night's own check is doing",
        needs=("nightly", "probe_db", "dayfiles_from_db"))
@@ -85951,7 +85993,22 @@ def _person_check_rings(NI, PD, DF):
          down from the seventh, DB_NIGHTS_MOST's error, which names the
          website held, so that it is already down when the sixteenth comes;
       3. day 0; the next morning, the knock not answered; the morning after,
-         NIGHT_KNOCK turned off: the third check up, up, then down."""
+         NIGHT_KNOCK turned off: the third check up, up, then down;
+      4. day 0; that afternoon at 14:47 the hourly knock (knock.yml's knock
+         job, its claim, gate, knock and unclaim in this process) answered
+         with the firewall's page: its "What the refusal is now" file says
+         the refusal is the person's, and the IT office -- /fail, a change
+         from the "up" day 0 left, the same day;
+      5. a chain reaching its sixteenth day at 08:27: up on the fifteenth
+         morning, down on the sixteenth (a change); the knock workflow's looks
+         from 08:47 to 12:47, inside the night's hours, write nothing, and the
+         13:47 look's /fail is a repeat. A chain the weekly began at 04:20 on
+         a Monday ends at 04:20 on the Wednesday sixteen days on: the 03:47
+         look writes nothing, the 04:47 look the change.
+
+    Sequence 2's held nights have the hourly knock's trace between them (a
+    claim of its marked "not asked"), as they would with knock.yml running;
+    _knock_silent has the mornings without one."""
     H = 3600
     wrong = []
     with _KnockNights(NI, PD, DF) as n:
@@ -85997,7 +86054,19 @@ def _person_check_rings(NI, PD, DF):
         seen = [_rings(n, day0 + 600, "s1", code)]
         n.knob.update(export="whole")
         alarm = ""
+
+        def hourly_ran(at):
+            # The hourly knock running between nights: a claim of its that it
+            # marked "not asked", which counts nowhere on the ladder, so the
+            # night is not told it has fallen silent (_knock_silent).
+            k, _ok = n.R.read_knocks()
+            if isinstance(k.get("current"), dict):
+                k["current"].setdefault("knocks", []).append(
+                    {"utc": "-", "epoch": at, "run_id": "hourly", "attempt": "1",
+                     "by": "hourly", "answer": "not asked"})
+                n.R._write_knocks(k)
         for d in range(1, 17):
+            hourly_ran(day0 + d * 24 * H - 6 * H)
             code, v, _ = n.night(day0 + d * 24 * H + 180, run_id=f"s{d + 1}")
             seen.append(_rings(n, day0 + d * 24 * H + 600, f"s{d + 1}", code))
             if d == NI.DB_NIGHTS_MOST:
@@ -86012,11 +86081,184 @@ def _person_check_rings(NI, PD, DF):
         if f"{NI.DB_NIGHTS_MOST} nights in a row" not in alarm or \
                 "its website has not been asked since" not in alarm:
             wrong.append(f"the seventh held night's error does not say the website is held: {alarm!r}")
+
+        # 4: day 0; that afternoon the hourly knock (knock.yml's knock job) is
+        # answered with the firewall's page. Its person file says so: /fail,
+        # a change from the "up" day 0's night left, the same day.
+        n.fresh()
+        day0 += 30 * 24 * H
+        n.knob.update(export="whole")
+        n.night(day0 - 24 * H, run_id="u0")
+        n.knob.update(export="drop", knock="dropped")
+        code, v, _ = n.night(day0, run_id="u1")
+        _night, third = _rings(n, day0 + 600, "u1", code)
+        told = _hourly_knock_job(n, day0 + 6 * H + 20 * 60, "refused", "u-h1")   # 14:47:15
+        if third != "up" or not told.startswith("A REFUSAL IS YOURS") or "IT office" not in told:
+            wrong.append(f"the hourly knock answered with the firewall's page: the third check "
+                         f"{third} after day 0, then told {told!r}")
+
+        # 5: a chain reaching its sixteenth day at 08:27. The night before
+        # leaves the third check up; that morning's night tells it /fail, a
+        # change; the looks from 08:47 to 12:47, inside the night's hours,
+        # write nothing; the 13:47 look's /fail is a repeat, no new email.
+        n.fresh()
+        start = day0 + 30 * 24 * H
+        rec = _knock_record(epoch=start)
+        n.fresh(rec=rec, knocks={"current": {"refusal": n.R._sha(rec), "since": start,
+                                             "relapses": 0, "person": None,
+                                             "carried_from": None, "knocks": []},
+                                 "lifted": []})
+        n.knob.update(export="whole", knock="dropped")
+        states = []
+        for d in (15, 16):
+            code, v, _ = n.night(start + d * 24 * H + 180, run_id=f"w{d}")
+            states.append(_rings(n, start + d * 24 * H + 600, f"w{d}", code)[1])
+        looks = [_knock_step_file(n, start + 16 * 24 * H + h * H + 20 * 60, f"w-l{h}",
+                                  "--knock-look") for h in range(6)]          # 08:47 to 13:47
+        if states != ["up", "down"] or any(looks[:5]) or \
+                not looks[5].startswith("A REFUSAL IS YOURS"):
+            wrong.append(f"the sixteenth day at 08:27: the third check {states} on the 15th and "
+                         f"16th mornings, then the looks from 08:47 to 13:47 wrote "
+                         f"{[bool(x) for x in looks]}")
+        # ... and a chain the weekly started, at 04:20 on a Monday, ends at
+        # 04:20 on the Wednesday sixteen days on: the 03:47 look writes
+        # nothing, the 04:47 one /fail -- the change.
+        mon = _at(2026, 11, 2, 4, 20)
+        rec = _knock_record(epoch=mon, where="fetch_committees")
+        n.fresh(rec=rec, knocks={"current": {"refusal": n.R._sha(rec), "since": mon,
+                                             "relapses": 0, "person": None,
+                                             "carried_from": None, "knocks": []},
+                                 "lifted": []})
+        before = _knock_step_file(n, mon + 16 * 24 * H - 33 * 60, "w-l3", "--knock-look")
+        after = _knock_step_file(n, mon + 16 * 24 * H + 27 * 60, "w-l4", "--knock-look")
+        if before or not after.startswith("A REFUSAL IS YOURS"):
+            wrong.append(f"a chain the weekly started, at its sixteenth day: the 03:47 look wrote "
+                         f"{before!r}, the 04:47 one {after!r}")
     assert not wrong, "the \"a refusal is yours\" check: " + "; ".join(wrong)
     return "ok", ("the third check goes down, an email, the morning a knock is answered with "
                   "the firewall's page, the morning NIGHT_KNOCK is turned off and the sixteenth "
                   "day, and stays up while the night tests the refusal, the night's own check "
                   "down from the seventh held night")
+
+
+@check("build", "the night says once, through its own check, when the hourly knock has left no "
+       "trace in hours it could have knocked, and then only beside the held line",
+       needs=("nightly", "probe_db", "dayfiles_from_db"))
+def _knock_silent(NI, PD, DF):
+    """H12 of the hourly addendum (its 6.1; the red team's fifth finding).
+    refusal.hourly_silent(), on a record GitHub's night on main dropped at
+    08:27 on a Thursday, read the next morning at 08:30: the sentence, with
+    no hourly entry in the eighteen hours from 13:30 to 07:30; none with one
+    hourly claim marked "not asked" at 02:47; none for a record noted at
+    14:35, which the settle rule holds from the hourly knock that day; none
+    for a 503 whose Retry-After reaches to 01:00, six open hours; none for a
+    person's record. An hourly entry two days before is no trace for the
+    eighteen hours, and the sentence names it as the last.
+
+    Then through --runner and --close on fakes (_KnockNights): the drops on
+    day 0; on day 1 a held night, its knock not answered and no hourly
+    trace, has the sentence among its alarms, is not clean, holds no
+    review for it, and its alert file says it, while the third check is
+    told nothing; on day 2, the same silence, it is only the warnings'
+    check's line beside the held one, and the night is clean; on day 3,
+    with an hourly claim at 02:47 between, nothing is said of it."""
+    H = 3600
+    thu = _KNOCK_SINCE                                       # Thursday 29 October, 08:27:15
+    nxt = thu + 24 * H + 3 * 60 + 15                         # Friday, 08:30:30
+    wrong = []
+    import refusal as R
+    tmp = Path(tempfile.mkdtemp(prefix="gr-silent-"))
+    saved = R.MARK
+    try:
+        R.MARK = tmp / "refused.json"
+
+        def silent(rec, knocks=(), at=nxt, **env):
+            R.MARK.write_bytes(rec)
+            R._write_knocks({"current": {"refusal": R._sha(rec),
+                                         "since": json.loads(rec)["epoch"], "relapses": 0,
+                                         "person": None, "carried_from": None,
+                                         "knocks": [dict(x) for x in knocks]}, "lifted": []})
+            with _KnockEnv(**dict(_KNOCK_MAIN, GRANITE_CLOCK_UTC=_utc_iso(at), **env)):
+                return R.hourly_silent()
+
+        def entry(at, answer="not asked", by="hourly"):
+            return {"utc": "-", "epoch": at, "run_id": "h", "attempt": "1", "by": by,
+                    "answer": answer}
+        said = silent(_knock_record(epoch=thu))
+        if "the hourly knock has not run since the refusal began" not in said or \
+                "knock.yml" not in said:
+            wrong.append(f"no trace in the eighteen hours: {said!r}")
+        if silent(_knock_record(epoch=thu), [entry(nxt - 5 * H - 43 * 60)]):
+            wrong.append("a claim marked not asked at 02:47 was no trace")
+        if silent(_knock_record(epoch=thu + 6 * H + 7 * 60 + 45)):            # 14:35:00
+            wrong.append("a record noted at 14:35, which the settle rule held, was said silent")
+        ra = int(nxt - 7 * H - 30 * 60 - thu)              # due from 01:00
+        if silent(_knock_record(epoch=thu, kind="unavailable", retry_after=ra)):
+            wrong.append("a Retry-After reaching to 01:00, six open hours, was said silent")
+        if silent(_knock_record(epoch=thu, kind="refused")):
+            wrong.append("a person's record was said silent")
+        old = silent(_knock_record(epoch=thu - 2 * 24 * H), [entry(thu - 24 * H + 6 * H)])
+        if "its last entry" not in old:
+            wrong.append(f"an hourly entry two days before counted for the eighteen hours: {old!r}")
+    finally:
+        R.MARK = saved
+        shutil.rmtree(tmp, ignore_errors=True)
+
+    with _KnockNights(NI, PD, DF) as n:
+        _dbday_install(".")
+        n.fresh()
+        n.knob.update(export="whole")
+        n.night(thu - 24 * H + 180, run_id="q0")
+        n.knob.update(export="drop", knock="dropped")
+        n.night(thu, run_id="q1")
+        n.close(thu + 600, "night=failure", run_id="q1")
+        n.knob.update(export="whole")
+        nights = []
+        for d in (1, 2, 3):
+            if d == 3:
+                k, _ok = n.R.read_knocks()
+                k["current"]["knocks"].append(
+                    {"utc": "-", "epoch": thu + 3 * 24 * H - 6 * H, "run_id": "h", "attempt": "1",
+                     "by": "hourly", "answer": "not asked"})
+                n.R._write_knocks(k)
+            code, v, _ = n.night(thu + d * 24 * H + 180, run_id=f"q{d + 1}")
+            alert, person, warn = n.close(thu + d * 24 * H + 600,
+                                          "night=success" if code == 0 else "night=failure",
+                                          run_id=f"q{d + 1}")
+            nights.append((code, v, alert or "", person or "", warn or ""))
+        quiet = "the hourly knock has not run since"
+        (c1, v1, a1, p1, w1), (c2, v2, a2, p2, w2), (c3, v3, a3, p3, w3) = nights
+        reasons = " ".join(str(x) for x in (v1.get("review") or {}).get("why") or [])
+        if not any(quiet in x for x in v1.get("alarms") or []) or v1.get("clean") or \
+                quiet in reasons or quiet in " ".join(v1.get("warnings") or []) or \
+                quiet not in a1 or p1 or quiet in w1:
+            wrong.append(f"the first silent morning: alarms {v1.get('alarms')}, clean "
+                         f"{v1.get('clean')}, review {reasons!r}, the night's alert {a1!r}, the "
+                         f"third check's {p1!r}, the warnings' {w1!r}")
+        if any(quiet in x for x in v2.get("alarms") or []) or not v2.get("clean") or \
+                quiet in a2 or p2 or quiet not in w2 or "website was held" not in w2:
+            wrong.append(f"the second silent morning: alarms {v2.get('alarms')}, clean "
+                         f"{v2.get('clean')}, the night's alert {a2!r}, the warnings' {w2!r}")
+        if quiet in " ".join(v3.get("alarms") or []) + a3 + w3 or not v3.get("clean"):
+            wrong.append(f"a morning after an hourly trace: alarms {v3.get('alarms')}, the "
+                         f"warnings' {w3!r}")
+    # DB_NIGHTS_MOST's held sentence names the hourly knock while its rungs
+    # are an hour (the addendum's 4.3), and only then.
+    held = {"db_nights": NI.DB_NIGHTS_MOST, "day_files": {"source": NI.DB_SOURCE},
+            "web": {"state": "held", "since": "2026-10-29 08:27 UTC",
+                    "next": "2026-10-30 13:30 UTC", "until": "2026-11-14 08:27 UTC",
+                    "hourly_until": "2026-10-31 08:27 UTC"}}
+    said = " ".join(NI.data_alarms(held))
+    later = " ".join(NI.data_alarms(dict(held, web=dict(held["web"], hourly_until=None))))
+    if "one an hour after that outside the night's hours until 2026-10-31 08:27 UTC" not in said \
+            or "one an hour" in later:
+        wrong.append(f"the held nights' error does not name the hourly knock in its first two "
+                     f"days alone: {said!r}, then {later!r}")
+    assert not wrong, "the hourly knock's silence: " + "; ".join(wrong)
+    return "ok", ("hourly_silent() says so with no trace in the eighteen hours, and not for a "
+                  "claim marked not asked, the settle rule, a Retry-After or a person's record; "
+                  "the first silent morning is an error and an email, the next a warning, and a "
+                  "trace silences it")
 
 
 # ---- the gate: which nights wait for a person (6 October 2026) -------------------
@@ -93390,7 +93632,9 @@ def _nightly_falls_back(NI, DF, PD, SG):
         # gone ten minutes before. No export: the database once, installed,
         # and next session's bill requests and the lists not asked for;
         # clean and publishable. The verdict is put back after, so that the
-        # nights below count as they always did.
+        # nights below count as they always did. The hourly knock is running
+        # (a claim of its marked "not asked" at 02:47), so the night is not
+        # told it has fallen silent (_knock_silent holds that case).
         reset()
         before = NI.VERDICT.read_bytes()
         late = _at(2026, 10, 26, 8, 27, 15)
@@ -93401,7 +93645,9 @@ def _nightly_falls_back(NI, DF, PD, SG):
             refusal._write_knocks({"current": {
                 "refusal": hashlib.sha256(rec).hexdigest(), "since": late, "relapses": 0,
                 "person": None, "carried_from": None,
-                "knocks": [{"utc": "-", "epoch": _at(2026, 10, 27, 8, 50), "run_id": "earlier",
+                "knocks": [{"utc": "-", "epoch": _at(2026, 10, 27, 2, 47), "run_id": "hourly",
+                            "attempt": "1", "by": "hourly", "answer": "not asked"},
+                           {"utc": "-", "epoch": _at(2026, 10, 27, 8, 50), "run_id": "earlier",
                             "attempt": "1", "by": "night", "answer": "dropped"}]}, "lifted": []})
             code, _ = night("--runner", run_id="310h")
         v = verdict()
@@ -96831,7 +97077,11 @@ WORKFLOW_SECRETS = {"R2_ACCOUNT_ID", "R2_ACCESS_KEY_ID", "R2_SECRET_ACCESS_KEY",
                     # The "a refusal is yours" check (29 October 2026,
                     # nightly.ALERT_PERSON_FILE): the person's to create, and
                     # the night tests no refusal itself without it.
-                    "HEALTHCHECKS_PERSON_URL"}
+                    "HEALTHCHECKS_PERSON_URL",
+                    # The hourly knock's look reads the bucket with a key that
+                    # cannot write (29 October 2026, knock.yml's job look; the
+                    # red team's fourth finding): the person's to create.
+                    "R2_READ_ACCESS_KEY_ID", "R2_READ_SECRET_ACCESS_KEY"}
 # THE ONE EXPRESSION OVER A SECRET (29 October 2026, refusal.knock_on). Whether
 # the third check exists reaches the night as "set" or "none" -- never its
 # address -- from this line, two spaces in under the top-level env: of each
@@ -97249,6 +97499,11 @@ def _wf_moved_person_ping(text):
     return "".join(lines[:start] + lines[stop:after] + block + lines[after:])
 
 
+# The jobs whose token may list Actions runs, (workflow, job): the night's
+# "started" and the hourly knock's "quiet" (_workflows_permissions).
+WF_ACTIONS_READERS = {("nightly.yml", "started"), ("knock.yml", "quiet")}
+
+
 @check("workflows", "each workflow's token reads the repository and no more, and nothing a "
        "stranger does can start one")
 def _workflows_permissions():
@@ -97256,9 +97511,11 @@ def _workflows_permissions():
     workflow that names none gets the repository's default. So each workflow
     says `contents: read` at the top and nothing more; a job asks for more only
     to re-enable its own schedule (`actions: write`, and then it checks out
-    nothing and runs nothing else), or to list the night's own runs
-    (`actions: read`, whether the night's timer has started tonight's night).
-    And no workflow is started by a pull
+    nothing and runs nothing else), or to list Actions runs and their jobs
+    (`actions: read`, only in the jobs WF_ACTIONS_READERS names: whether the
+    night's timer has started tonight's night, and whether anything holds or
+    waits for gc-night before the hourly knock joins it), every gh in them a
+    GET of a workflow's runs or a run's jobs. And no workflow is started by a pull
     request, a comment or another workflow: a fork's code must never run with
     these keys in reach."""
     files = _workflows()
@@ -97293,23 +97550,35 @@ def _workflows_permissions():
                         break
                 bad = [x for x in asks if x not in ("contents: read", "actions: write", "actions: read")]
                 assert not bad, f"{f.name}: job {j} asks for {', '.join(bad)}"
-                # actions: read ONLY TO SEE WHETHER THE TIMER STARTED TONIGHT'S
-                # NIGHT (23 October 2026, nightly.yml's job "started"): it lists
-                # this workflow's own runs, checks out nothing and runs nothing.
+                # actions: read ONLY TO LIST RUNS AND THEIR JOBS (23 October
+                # 2026, nightly.yml's job "started": whether the timer started
+                # tonight's night; 29 October 2026, knock.yml's job "quiet":
+                # whether anything holds or waits for gc-night). Only those two
+                # jobs, which check out nothing and run nothing else, and every
+                # gh in them a GET of a workflow's runs or a run's jobs.
                 if "actions: read" in asks:
                     body = "\n".join(_wf_code(jl))
-                    assert "uses:" not in body and "gh api -X GET" in body \
+                    assert (f.name, j) in WF_ACTIONS_READERS, (
+                        f"{f.name}: job {j} holds actions: read, which only "
+                        f"{sorted(WF_ACTIONS_READERS)} may")
+                    gh = [m.group(0) for m in re.finditer(r"\bgh\s+\S+(?:\s+\S+){0,3}", body)]
+                    bad = [g for g in gh if not re.match(
+                        r'gh api -X GET "repos/\$REPO/actions/(?:workflows/[\w.-]+\.yml/runs'
+                        r'|runs/\$\w+/jobs)"', g)]
+                    assert "uses:" not in body and gh and not bad \
                         and "actions/workflows/nightly.yml/runs" in body \
-                        and not re.search(r"--method|-X (?:POST|PUT|PATCH|DELETE)", body), \
-                        f"{f.name}: job {j} holds actions: read and does more than list the night's runs"
+                        and not re.search(r"--method|-X (?:POST|PUT|PATCH|DELETE)", body), (
+                            f"{f.name}: job {j} holds actions: read and does more than list "
+                            f"runs and their jobs: {bad or 'it lists nothing'}")
                 if "actions: write" in asks:
                     body = "\n".join(_wf_code(jl))
                     assert "uses:" not in body and "gh api" in body and "/enable" in body \
                         and "--method PUT" in body, \
                         f"{f.name}: job {j} holds actions: write and does more than re-enable its schedule"
     return "ok", (f"{len(files)} workflow(s): contents: read, actions: write only to re-enable a "
-                  "schedule and actions: read only to list the night's runs, started only by "
-                  "hand or by the clock")
+                  "schedule and actions: read only in "
+                  f"{', '.join(f'{w}:{j}' for w, j in sorted(WF_ACTIONS_READERS))}, to GET runs "
+                  "and their jobs; started only by hand or by the clock")
 
 
 @check("workflows", "production is deployed only by the job behind the production environment, "
@@ -98018,9 +98287,19 @@ WF_RUNS = {
         ("workflow_dispatch", "refs/heads/dev", {"fetch": True, "new_term": True}, True,
          "weekly (dry run: not main, new term: refused)"),
     ],
+    # THE HOURLY KNOCK (29 October 2026; knock.yml): no boxes. Its two cron
+    # lines are told apart by the run's github.event.schedule ("event." keys
+    # here, _wf_run_ctx), the daily one running only the keepalive; and every
+    # run off main is a dry run, by its branch.
+    "knock.yml": [
+        ("schedule", MAIN_REF, {"event.schedule": "47 * * * *"}, False, "knock (hourly)"),
+        ("schedule", MAIN_REF, {"event.schedule": "23 15 * * *"}, False, "knock (keepalive)"),
+        ("workflow_dispatch", MAIN_REF, {}, False, "knock (by hand)"),
+        ("workflow_dispatch", "refs/heads/dev", {}, True, "knock (dry run: not main)"),
+    ],
 }
 
-_GH_TOKEN = re.compile(r"\s*(?:(\|\||&&|==|!=|!|\(|\))|('(?:[^']|'')*')|([A-Za-z_][\w.\-]*)"
+_GH_TOKEN =re.compile(r"\s*(?:(\|\||&&|==|!=|!|\(|\))|('(?:[^']|'')*')|([A-Za-z_][\w.\-]*)"
                        r"|(-?\d+(?:\.\d+)?))")
 
 
@@ -98203,8 +98482,12 @@ def _wf_dry_run_sets(text):
 
 
 def _wf_run_ctx(event, ref, boxes):
+    """A kind of run's context: its event and ref, its boxes as inputs, and
+    a box named "event.<key>" as github.event.<key> (a scheduled run's cron
+    line, github.event.schedule)."""
     return {"github.event_name": event, "github.ref": ref,
-            **{f"inputs.{k}": v for k, v in boxes.items()}}
+            **{(f"github.{k}" if k.startswith("event.") else f"inputs.{k}"): v
+               for k, v in boxes.items()}}
 
 
 def _not_the_runs():
@@ -98685,43 +98968,94 @@ def _workflows_dry_runs_wait():
     night and a real run of main never wait there. Evaluated for every kind
     of run in WF_RUNS, as GitHub would. (A dry run started while a real run of
     main holds gc-night can still cancel a night waiting behind that: GitHub
-    has no queue longer than one, and the dead-man's switch reports it.)"""
-    files = {f.name: f for f in _workflows()}
+    has no queue longer than one, and the dead-man's switch reports it.)
+
+    A WORKFLOW WHOSE DRY RUNS NEVER REACH GC-NIGHT (29 October 2026; the
+    hourly addendum's 8.2, the red team's sixth finding). knock.yml's knock
+    job runs only on main, so its dry runs read and never join gc-night; in
+    DRY_RUNS_GROUP a knock dry run would replace a nightly or weekly dry run
+    waiting there. So DRY_RUNS_GROUP is required only of a workflow one of
+    whose gc-night jobs can run on one of its dry runs -- its if, as GitHub
+    reads it, true for some value of the outputs it reads of the jobs before
+    it, on a first attempt -- and the others' dry runs wait in a group of
+    their own: one group for both run ids, never DRY_RUNS_GROUP or gc-night.
+    The check runs itself on its two mutants: knock.yml's dry runs back in
+    DRY_RUNS_GROUP, and the main test dropped from the knock job's if while
+    its dry runs keep their own group -- a dry run that could then reach
+    gc-night without waiting in line."""
+    files = {f.name: f.read_text(encoding="utf-8") for f in _workflows()}
     if not files:
         return "skip", "no .github/workflows here"
-    gated = sorted(n for n, f in files.items()
-                   if re.search(r"^      group: gc-night\s*$", f.read_text(encoding="utf-8"), re.M))
+    gated = sorted(n for n, t in files.items() if re.search(r"^      group: gc-night\s*$", t, re.M))
     assert gated and set(gated) <= set(WF_RUNS), \
         f"{sorted(set(gated) - set(WF_RUNS))} wait in gc-night and are not held to this"
-    held = []
+    held, apart = [], []
     for name in gated:
-        lines = files[name].read_text(encoding="utf-8").splitlines()
-        block = _wf_code(_wf_block(lines, "concurrency"))
-        group = next((m.group(1) for ln in block
-                      for m in [re.match(r"^  group:\s*(.+?)\s*$", ln)] if m), None)
-        assert group and "  cancel-in-progress: false" in block, (
-            f"{name} puts no dry run in line behind the others before gc-night, or cancels the "
-            "one running")
-        dry_line = _wf_value(lines, "DRY_RUN")
-        wrong = []
-        for event, ref, boxes, dry, _title in WF_RUNS[name]:
-            # Each run by hand with its boxes as booleans, and as strings
-            # (nightly.yml: A BOX MAY ARRIVE AS A STRING, 25 October 2026).
-            for bx in [boxes] + ([{k: (str(v).lower() if isinstance(v, bool) else v)
-                                   for k, v in boxes.items()}]
-                                 if event == "workflow_dispatch" and boxes else []):
-                ctx = _wf_run_ctx(event, ref, bx)
-                ids = {_gh_render(group, dict(ctx, **{"github.run_id": rid}))
-                       for rid in ("101", "102")}
-                said = _gh_render(dry_line, ctx) == "true"
-                if dry != said or (dry and ids != {DRY_RUNS_GROUP}) or \
-                        (not dry and (len(ids) != 2 or DRY_RUNS_GROUP in ids or "gc-night" in ids)):
-                    wrong.append(f"{event} of {ref} with {bx or 'no boxes'}: waits in "
-                                 f"{sorted(ids)}, and is {'a' if dry else 'not a'} dry run")
-        assert not wrong, f"{name}: " + "; ".join(wrong)
-        held.append(name)
+        problems, can = _wf_dry_runs_problems(name, files[name])
+        assert not problems, f"{name}: " + "; ".join(problems)
+        (held if can else apart).append(name)
+    knock = files.get("knock.yml")
+    if knock is not None:
+        own = "group: ${{ github.ref != 'refs/heads/main' && 'knock-dry-runs' || github.run_id }}"
+        main = " && github.ref == 'refs/heads/main' }}"
+        mutants = {"knock.yml's dry runs back in dry-runs": knock.replace(
+                       own, own.replace("knock-dry-runs", DRY_RUNS_GROUP)),
+                   "the main test dropped from the knock job's if": knock.replace(main, " }}")}
+        missed = [what for what, t in mutants.items()
+                  if t == knock or not _wf_dry_runs_problems("knock.yml", t)[0]]
+        assert not missed, f"_workflows_dry_runs_wait did not catch: {missed}"
     return "ok", (f"{', '.join(held)}: every dry run waits in {DRY_RUNS_GROUP!r}, one at a time, "
-                  "before gc-night, and every other run in a group of its own")
+                  "before gc-night, and every other run in a group of its own"
+                  + (f"; {', '.join(apart)}: dry runs that never reach gc-night wait in a group "
+                     "of their own, not that one" if apart else ""))
+
+
+def _wf_job_can_run(cond, ctx):
+    """Whether a job's if, as GitHub reads it in the run `ctx`, can be true
+    on a first attempt for some value of what it reads of the jobs before it
+    (needs.<job>.outputs.<name>, needs.<job>.result)."""
+    import itertools
+    c = _gh_unwrap(cond) if cond else "true"
+    paths = sorted(set(re.findall(r"needs\.[\w-]+\.(?:outputs\.[\w-]+|result)", c)))
+    for vals in itertools.product(("true", "false", "0", "1", "success", ""), repeat=len(paths)):
+        v = _gh_eval(c, dict(ctx, **{"github.run_attempt": "1"}, **dict(zip(paths, vals))))
+        if not (v is None or v is False or v == "" or (type(v) is float and v == 0)):
+            return True
+    return False
+
+
+def _wf_dry_runs_problems(name, text):
+    """(what _workflows_dry_runs_wait finds wrong in one gated workflow's
+    text, whether its gc-night jobs can run on a dry run)."""
+    lines = text.splitlines()
+    block = _wf_code(_wf_block(lines, "concurrency"))
+    group = next((m.group(1) for ln in block
+                  for m in [re.match(r"^  group:\s*(.+?)\s*$", ln)] if m), None)
+    if not group or "  cancel-in-progress: false" not in block:
+        return [f"{name} puts no dry run in line before gc-night, or cancels the one running"], True
+    dry_line = _wf_value(lines, "DRY_RUN")
+    conds = [_wf_job_heads(jl)[1] for jl in _wf_jobs(text).values()
+             if any(re.match(r"^      group: gc-night\s*$", ln) for ln in _wf_code(jl))]
+    can = any(_wf_job_can_run(cond, _wf_run_ctx(event, ref, boxes))
+              for event, ref, boxes, dry, _t in WF_RUNS[name] if dry for cond in conds)
+    wrong = []
+    for event, ref, boxes, dry, _title in WF_RUNS[name]:
+        # Each run by hand with its boxes as booleans, and as strings
+        # (nightly.yml: A BOX MAY ARRIVE AS A STRING, 25 October 2026).
+        for bx in [boxes] + ([{k: (str(v).lower() if isinstance(v, bool) else v)
+                               for k, v in boxes.items()}]
+                             if event == "workflow_dispatch" and boxes else []):
+            ctx = _wf_run_ctx(event, ref, bx)
+            ids = {_gh_render(group, dict(ctx, **{"github.run_id": rid}))
+                   for rid in ("101", "102")}
+            said = _gh_render(dry_line, ctx) == "true" if dry_line else None
+            if dry != said or (dry and can and ids != {DRY_RUNS_GROUP}) or \
+                    (dry and not can and (len(ids) != 1 or ids & {DRY_RUNS_GROUP, "gc-night", ""})) \
+                    or (not dry and (len(ids) != 2 or DRY_RUNS_GROUP in ids or "gc-night" in ids)):
+                wrong.append(f"{event} of {ref} with {bx or 'no boxes'}: waits in "
+                             f"{sorted(ids)}, and is {'a' if dry else 'not a'} dry run whose "
+                             f"gc-night job {'can' if can else 'cannot'} run")
+    return wrong, can
 
 
 def _wf_job_heads(job_lines):
@@ -98770,6 +99104,658 @@ def _workflows_skipped_ancestors():
     assert not bad, "\n  ".join(bad)
     return "ok", (f"{len(held)} jobs after one that can be skipped, each with a status function: "
                   + ", ".join(held))
+
+
+# ---- the hourly knock's workflow (29 October 2026) ------------------------------
+#
+# .github/workflows/knock.yml, the knock's second caller (refusal.py, THE KNOCK'S
+# GATE; the hourly addendum's 3). Each check here runs itself on its mutants,
+# as _workflows_night_knock does: a copy of the text with its rule taken out,
+# which must fail it.
+
+KNOCK_WF = "knock.yml"
+# The jobs that hold or wait for gc-night, by their names on the Actions tab,
+# as knock.yml's quiet job looks for them (_knock_quiet_decides holds the two
+# equal).
+GC_NIGHT_JOBS = ("the night", "Sunday's fetches", "the knock")
+
+
+def _knock_text():
+    """knock.yml's text, or None where there is none."""
+    p = WORKFLOW_DIR / KNOCK_WF
+    return p.read_text(encoding="utf-8") if p.is_file() else None
+
+
+def _gh_true(v):
+    """A value as GitHub's if reads it."""
+    return not (v is None or v is False or v == "" or (type(v) is float and v == 0))
+
+
+def _wf_named_steps(job_lines):
+    """[(name, lines)] of a job's steps, comments taken out."""
+    return [(re.sub(r"^\s*- name:\s*", "", st[0]).strip(), st)
+            for st in _wf_steps(_wf_code(job_lines))]
+
+
+def _wf_step_if(step):
+    m = re.search(r"^        if:\s*(.+?)\s*$", "\n".join(step), re.M)
+    return _gh_unwrap(m.group(1)) if m else ""
+
+
+def _wf_step_id(step):
+    m = re.search(r"^        id:\s*(\S+)\s*$", "\n".join(step), re.M)
+    return m.group(1) if m else None
+
+
+def _wf_cut(text, block):
+    """`text` without `block` (exactly once), for a mutant."""
+    assert text.count(block) == 1, f"a mutant's block is not in the text once: {block[:60]!r}"
+    return text.replace(block, "")
+
+
+def _wf_knock_cron_problems(text, hourly_minute):
+    """H3's half in the workflow: knock.yml's two cron lines, the hourly one
+    at refusal.HOURLY_MINUTE and never :00, :17 or :30, and the daily one the
+    only one keepalive's if names and the one look's if leaves out."""
+    lines = text.splitlines()
+    crons = [m.group(1) for ln in _wf_code(_wf_block(lines, "on"))
+             if (m := re.match(r'^    - cron:\s*"([^"]+)"\s*$', ln))]
+    hourly = [c for c in crons if re.fullmatch(r"\d+ \* \* \* \*", c)]
+    daily = [c for c in crons if re.fullmatch(r"\d+ \d+ \* \* \*", c)]
+    out = []
+    if len(crons) != 2 or len(hourly) != 1 or len(daily) != 1:
+        return [f"knock.yml's cron lines are {crons}, not one hourly line and one daily one"]
+    minute = int(hourly[0].split()[0])
+    if minute in (0, 17, 30) or minute != hourly_minute:
+        out.append(f"the hourly line runs at :{minute:02d}, not refusal.HOURLY_MINUTE "
+                   f"(:{hourly_minute:02d}), or at :00, :17 or :30")
+    jobs = _wf_jobs(text)
+    keep = _gh_unwrap(_wf_job_heads(jobs.get("keepalive", []))[1] or "")
+    look = _gh_unwrap(_wf_job_heads(jobs.get("look", []))[1] or "")
+    if keep != f"github.event.schedule == '{daily[0]}'":
+        out.append(f"keepalive runs on {keep!r}, not on the daily line alone")
+    if look != f"github.event.schedule != '{daily[0]}'":
+        out.append(f"look runs on {look!r}, not on every run but the daily line's")
+    return out
+
+
+def _wf_knock_order_problems(text):
+    """What _workflows_knock_order finds wrong in knock.yml: one sentence each."""
+    out = []
+    jobs = _wf_jobs(text)
+    gated = [j for j, jl in jobs.items()
+             if any(re.match(r"^      group: gc-night\s*$", ln) for ln in _wf_code(jl))]
+    if gated != ["knock"] or "quiet" not in jobs or "look" not in jobs:
+        return [f"the jobs in gc-night are {gated}, not the knock job alone after look and quiet"]
+    kj = _wf_code(jobs["knock"])
+    if not any(re.match(r"^      cancel-in-progress: false\s*$", ln) for ln in kj):
+        out.append("the knock job's place in gc-night cancels the one running")
+    needs, cond = _wf_job_heads(jobs["knock"])
+    cond = _gh_unwrap(cond)
+    if "quiet" not in needs:
+        out.append(f"the knock job needs {needs}, not quiet")
+    if "!cancelled()" not in cond.replace(" ", ""):
+        out.append("the knock job's if says no !cancelled()")
+
+    def runs(quiet, attempt):
+        return _gh_true(_gh_eval(cond, {"needs.quiet.outputs.quiet": quiet, "github.ref": MAIN_REF,
+                                        "github.run_attempt": attempt,
+                                        "github.event_name": "schedule"}))
+    if not runs("true", "1") or any(runs(q, "1") for q in ("false", "")) or \
+            any(runs("true", a) for a in ("2", "3")):
+        out.append("the knock job does not run only on a run's first attempt, with quiet's true")
+    q = jobs["quiet"]
+    qcond = _gh_unwrap(_wf_job_heads(q)[1] or "")
+    qrun = [_gh_true(_gh_eval(qcond, {"needs.look.outputs.go": go})) for go in ("true", "false", "")]
+    if qrun != [True, False, False]:
+        out.append(f"quiet runs for look's go of true, false and nothing: {qrun}")
+    if any(re.match(r"^    concurrency:", ln) for ln in _wf_code(q)):
+        out.append("quiet waits in a concurrency group: the listing must be the last thing "
+                   "before the knock joins gc-night")
+    qsteps = _wf_named_steps(q)
+    named = re.search(r"^      quiet: \$\{\{ steps\.(\w+)\.outputs\.quiet \}\}\s*$", "\n".join(q), re.M)
+    last = "\n".join(qsteps[-1][1]) if qsteps else ""
+    if not qsteps or "gh api -X GET" not in last or not named or \
+            _wf_step_id(qsteps[-1][1]) != named.group(1):
+        out.append("quiet's last step is not the listing that sets its answer")
+    for j, jl in jobs.items():
+        if j != "knock" and "snapshot_gencourt.py" in "\n".join(_wf_code(jl)):
+            out.append(f"job {j} runs snapshot_gencourt.py: only the knock job asks")
+    steps = _wf_named_steps(jobs["knock"])
+
+    def at(pred):
+        return [i for i, (_n, st) in enumerate(steps) if pred("\n".join(st))]
+    claim = at(lambda s: "refusal.py --knock-claim" in s)
+    knock = at(lambda s: "snapshot_gencourt.py" in s)
+    unclaim = at(lambda s: "refusal.py --knock-unclaim" in s)
+    ups = at(lambda s: "cloud.py state-up" in s)
+    if len(claim) != 1 or len(knock) != 1 or len(ups) != 2:
+        return out + [f"the knock job's claim, knock and two state-ups are {claim}, {knock}, {ups}"]
+    sent = ups[0]
+    cid, sid = _wf_step_id(steps[claim[0]][1]), _wf_step_id(steps[sent][1])
+    if not (claim[0] < sent < knock[0] < ups[1]):
+        out.append("the knock job's steps are not the claim, its state-up, the knock, then the "
+                   "last state-up")
+    if _wf_step_if(steps[sent][1]) != f"steps.{cid}.outputs.claimed == 'true'":
+        out.append(f"the claim goes to R2 on {_wf_step_if(steps[sent][1])!r}, not on the claim's "
+                   "own word")
+    if _wf_step_if(steps[knock[0]][1]) != f"steps.{sid}.outcome == 'success'":
+        out.append(f"the knock asks on {_wf_step_if(steps[knock[0]][1])!r}, not only once its "
+                   "claim reached R2")
+    body = "\n".join(steps[knock[0]][1])
+    if body.count("snapshot_gencourt.py") != 1 or \
+            re.search(r"\b(for|foreach|while)\b|Start-Sleep", body, re.I):
+        out.append("the knock step runs the child more than once, or in a loop")
+    if len(unclaim) != 1 or not (knock[0] < unclaim[0] < ups[1]) or \
+            "always()" not in _wf_step_if(steps[unclaim[0]][1]):
+        out.append("no unclaim step, always(), after the knock and before the last state-up")
+    return out
+
+
+@check("workflows", "the hourly knock joins gc-night only after its quiet job found nothing "
+       "there, on a run's first attempt, claims in the bucket before it asks, and marks a claim "
+       "it did not use")
+def _workflows_knock_order():
+    """H1 of the hourly addendum, with H6's and H7's halves in the workflow.
+    In knock.yml exactly one job, the knock, holds gc-night, waiting rather
+    than cancelling; it needs quiet and runs only when quiet said "true",
+    !cancelled(), and only on a run's first attempt (2 and 3 never: a re-run
+    would join gc-night on an old answer). quiet runs only when look said
+    go, waits in no group, and its last step is the listing that sets its
+    answer. No other job runs snapshot_gencourt.py, and the knock step runs
+    it once, in no loop. In the knock job the claim (refusal.py
+    --knock-claim) comes first, then the state-up that sends it, on the
+    claim's own word; the knock only once that succeeded; the unclaim,
+    always(), after the knock and before the last state-up. Its mutants:
+    quiet dropped from the knock's needs; the quiet test, or the first
+    attempt's, dropped from its if; gc-night moved to quiet; a step after
+    the listing; the knock run in look; the unclaim dropped, or after the
+    state-up; the child run twice, or with a sleep; the knock asked on the
+    claim alone; the claim sent whatever it said."""
+    text = _knock_text()
+    if text is None:
+        return "skip", "no .github/workflows/knock.yml here"
+    problems = _wf_knock_order_problems(text)
+    assert not problems, "knock.yml: " + "; ".join(problems)
+    group = "    concurrency:\n      group: gc-night\n      cancel-in-progress: false\n"
+    unclaim = text[text.index("      - name: A claim the knock did not use"):
+                   text.index("      - name: Send the knock, and a lift, to R2")]
+    up_end = text.index("      - name: What the refusal is now")
+    after_up = text[:up_end] + unclaim + text[up_end:]
+    knock_run = "          python src/fetch/gc_web/snapshot_gencourt.py --knock\n"
+    mutants = {
+        "quiet dropped from the knock's needs": text.replace("    needs: [look, quiet]",
+                                                             "    needs: [look]"),
+        "the quiet test dropped": text.replace(" && needs.quiet.outputs.quiet == 'true'", ""),
+        "the first attempt's test dropped": text.replace(" && github.run_attempt == '1'", ""),
+        "gc-night moved to quiet": _wf_cut(text, group).replace(
+            "    timeout-minutes: 3\n", "    timeout-minutes: 3\n" + group, 1),
+        "a step after the listing": text.replace(
+            "\n  knock:\n", "\n      - name: After the listing\n        run: echo later\n\n  knock:\n"),
+        "the knock run in look": text.replace(
+            "      - name: Tell the \"refusal is yours\" check when one has become a person's\n",
+            "      - name: A knock\n        run: python src/fetch/gc_web/snapshot_gencourt.py "
+            "--knock\n      - name: Tell the \"refusal is yours\" check when one has become a "
+            "person's\n"),
+        "the unclaim dropped": _wf_cut(text, unclaim),
+        "the unclaim after the state-up": after_up.replace(unclaim, "", 1),
+        "the child run twice": text.replace(knock_run, knock_run + knock_run),
+        "the child run with a sleep": text.replace(knock_run, knock_run + "          Start-Sleep 60\n"),
+        "the knock asked on the claim alone": text.replace(
+            "        if: steps.claimsent.outcome == 'success'\n        timeout-minutes: 3",
+            "        if: steps.claim.outcome == 'success'\n        timeout-minutes: 3"),
+        "the claim sent whatever it said": text.replace(
+            "        if: steps.claim.outputs.claimed == 'true'", "        if: always()"),
+    }
+    missed = [what for what, t in mutants.items() if t == text or not _wf_knock_order_problems(t)]
+    assert not missed, f"_workflows_knock_order did not catch: {missed}"
+    return "ok", (f"the knock alone in gc-night, after quiet, on a first attempt; the claim in "
+                  f"the bucket before the one request; the unclaim before the last state-up; "
+                  f"{len(mutants)} mutants caught")
+
+
+def _knock_decide_source(text):
+    """The quiet job's inline Python (decide.py), as its step writes it."""
+    lines = text.splitlines()
+    start = next(i for i, ln in enumerate(lines) if ln.strip().startswith('cat > "$d/decide.py"'))
+    end = next(i for i in range(start + 1, len(lines)) if lines[i].strip() == "PY")
+    body = lines[start + 1:end]
+    pad = min(len(ln) - len(ln.lstrip(" ")) for ln in body if ln.strip())
+    return "\n".join(ln[pad:] for ln in body) + "\n"
+
+
+def _knock_quiet_problems(texts):
+    """What _knock_quiet_decides finds wrong, {name: text} of the workflows:
+    one sentence each."""
+    import ast
+    import contextlib
+    import io
+    import time
+    out = []
+    knock = texts.get(KNOCK_WF)
+    try:
+        src = _knock_decide_source(knock)
+    except (StopIteration, ValueError):
+        return ["knock.yml's quiet job writes no decide.py to run"]
+    # The names it looks for, against every gc-night job's name.
+    named = set()
+    for t in texts.values():
+        for jl in _wf_jobs(t).values():
+            code = _wf_code(jl)
+            if any(re.match(r"^      group: gc-night\s*$", ln) for ln in code):
+                m = next((re.match(r"^    name:\s*(.+?)\s*$", ln) for ln in code
+                          if re.match(r"^    name:", ln)), None)
+                named.add(m.group(1).strip("'\"") if m else "")
+    looked = next((ast.literal_eval(n.value) for n in ast.walk(ast.parse(src))
+                   if isinstance(n, ast.Assign) and any(getattr(t, "id", "") == "GC_NIGHT_JOBS"
+                                                        for t in n.targets)), ())
+    if set(looked) != named or set(looked) != set(GC_NIGHT_JOBS):
+        out.append(f"quiet looks for {sorted(looked)}, and the gc-night jobs are named "
+                   f"{sorted(named)} (GC_NIGHT_JOBS {sorted(GC_NIGHT_JOBS)})")
+    # Every call that can fail stands the knock down.
+    step = next((st for jl in _wf_jobs(knock).values() for st in _wf_steps(_wf_code(jl))
+                 if any("decide.py" in ln for ln in st)), [])
+    calls = [ln.strip() for ln in step if re.search(r"\bgh api\b|python3 \"\$d/decide\.py\"", ln)]
+    if len(calls) < 5 or any(not re.search(r'\|\| busy "[^"]+"$', c) for c in calls):
+        out.append(f"a call in quiet's listing that fails does not stand the knock down: {calls}")
+    if not any(re.match(r'busy\(\) \{ echo "quiet=false" >> "\$GITHUB_OUTPUT"; .*exit 0; \}$',
+                        ln.strip()) for ln in step):
+        out.append("quiet's busy() does not say quiet=false")
+    tmp = Path(tempfile.mkdtemp(prefix="gr-quiet-"))
+    try:
+        script = tmp / "decide.py"
+        script.write_text(src, encoding="utf-8")
+
+        def decide(runs, jobs, until, total=None, jobs_total=None):
+            d = tmp / f"case{len(list(tmp.iterdir()))}"
+            d.mkdir()
+            for wf in ("nightly.yml", "weekly.yml", "knock.yml"):
+                rs = runs.get(wf, [])
+                (d / f"{wf}.json").write_text(json.dumps(
+                    {"total_count": total if total is not None else len(rs),
+                     "workflow_runs": rs}), encoding="utf-8")
+
+            def run(*argv):
+                o, e = io.StringIO(), io.StringIO()
+                saved = sys.argv
+                sys.argv = [str(script), *argv]
+                code = 0
+                try:
+                    with contextlib.redirect_stdout(o), contextlib.redirect_stderr(e):
+                        exec(compile(src, str(script), "exec"), {"__name__": "__main__"})
+                except SystemExit as x:
+                    code = x.code if isinstance(x.code, int) else 1
+                finally:
+                    sys.argv = saved
+                return code, o.getvalue()
+            code, said = run("open", str(d), "999")
+            if code:
+                return "false (open)"
+            (d / "open.txt").write_text(said, encoding="utf-8")
+            for rid in [x for x in said.split() if x]:
+                js = jobs.get(rid, [])
+                (d / f"jobs-{rid}.json").write_text(json.dumps(
+                    {"total_count": jobs_total if jobs_total is not None else len(js),
+                     "jobs": js}), encoding="utf-8")
+            code, said = run("quiet", str(d), "999", str(until))
+            return said.strip().splitlines()[-1].split("=", 1)[1] if not code and said.strip() \
+                else f"failed ({code})"
+        later, past = int(time.time()) + 3600, int(time.time()) - 1
+
+        def r(rid, status):
+            return {"id": int(rid), "status": status}
+        cases = {
+            "nothing open": (({}, {}, later), "true"),
+            "a night built, its publish waiting for approval": (
+                ({"nightly.yml": [r("1", "waiting")]},
+                 {"1": [{"name": "the night", "status": "completed"},
+                        {"name": "publish to production", "status": "waiting"}]}, later), "true"),
+            "this run itself, in progress": (({"knock.yml": [r("999", "in_progress")]}, {}, later),
+                                             "true"),
+            "a night in progress": (({"nightly.yml": [r("2", "in_progress")]},
+                                     {"2": [{"name": "the night", "status": "in_progress"}]}, later),
+                                    "false"),
+            "a night queued": (({"nightly.yml": [r("3", "queued")]},
+                                {"3": [{"name": "the night", "status": "queued"}]}, later), "false"),
+            "a weekly in progress": (({"weekly.yml": [r("4", "in_progress")]},
+                                      {"4": [{"name": "Sunday's fetches", "status": "in_progress"}]},
+                                      later), "false"),
+            "a dry run waiting at its workflow's level, no jobs listed": (
+                ({"nightly.yml": [r("5", "pending")]}, {"5": []}, later), "false"),
+            "another knock in progress": (({"knock.yml": [r("6", "in_progress")]},
+                                           {"6": [{"name": "the knock", "status": "in_progress"}]},
+                                           later), "false"),
+            "now past until": (({}, {}, past), "false"),
+        }
+        for what, (args, want) in cases.items():
+            got = decide(*args)
+            if got != want:
+                out.append(f"{what}: quiet={got}, not {want}")
+        got = decide({"nightly.yml": [r("7", "completed")]}, {}, later, total=150)
+        if got == "true":
+            out.append("a list of runs longer than its page was taken as quiet")
+        got = decide({"nightly.yml": [r("8", "in_progress")]},
+                     {"8": [{"name": "the night", "status": "completed"}]}, later, jobs_total=40)
+        if got == "true":
+            out.append("a list of jobs longer than its page was taken as quiet")
+    finally:
+        shutil.rmtree(tmp, ignore_errors=True)
+    return out
+
+
+@check("workflows", "the hourly knock's quiet job queues no knock while anything holds or waits "
+       "for gc-night, a night's publish waiting for approval aside, and a list it cannot read "
+       "stands the knock down")
+def _knock_quiet_decides():
+    """H2 of the hourly addendum. knock.yml's quiet job writes its decision
+    as a short Python of the standard library (decide.py), which this runs
+    on canned answers of the Actions API: quiet=true only with nothing open,
+    a run whose night has finished while its publish job waits for approval,
+    or only this run itself; false for a night in progress or queued, a
+    weekly in progress, a dry run waiting at its workflow's level with no
+    jobs listed yet, another knock in progress, a list longer than its page,
+    and the knock's time to end gone (until). GC_NIGHT_JOBS, the names it
+    looks for, are every gc-night job's name in every workflow; every gh
+    call and run of decide.py ends `|| busy`, whose answer is quiet=false.
+    Its mutants: a job's name changed in the workflow alone; a waiting
+    publish job counted as busy (that would stop every knock while a night
+    waits for approval); a list cut short taken as read; a failed listing
+    not standing the knock down."""
+    texts = {f.name: f.read_text(encoding="utf-8") for f in _workflows()}
+    if KNOCK_WF not in texts:
+        return "skip", "no .github/workflows/knock.yml here"
+    problems = _knock_quiet_problems(texts)
+    assert not problems, "knock.yml's quiet job: " + "; ".join(problems)
+    k = texts[KNOCK_WF]
+    mutants = {
+        "the knock job renamed in the workflow alone": dict(texts, **{KNOCK_WF: k.replace(
+            "    name: the knock\n", "    name: the hourly knock\n")}),
+        "a waiting publish job counted as busy": dict(texts, **{KNOCK_WF: k.replace(
+            "waiting = [j for j in night if j.get(\"status\") != \"completed\"]",
+            "waiting = [j for j in jobs if j.get(\"status\") != \"completed\"]")}),
+        "a list cut short taken as read": dict(texts, **{KNOCK_WF: k.replace(
+            " or int(doc.get(\"total_count\") or 0) > len(runs):", ":")}),
+        "a failed listing not standing the knock down": dict(texts, **{KNOCK_WF: k.replace(
+            ' > "$d/weekly.yml.json" || busy "the weekly\'s runs could not be listed"',
+            ' > "$d/weekly.yml.json"')}),
+    }
+    missed = [what for what, t in mutants.items() if t == texts or not _knock_quiet_problems(t)]
+    assert not missed, f"_knock_quiet_decides did not catch: {missed}"
+    return "ok", (f"decide.py on canned answers: quiet only with nothing holding or waiting for "
+                  f"gc-night; {', '.join(GC_NIGHT_JOBS)} named alike; every failed call busy; "
+                  f"{len(mutants)} mutants caught")
+
+
+def _wf_knock_problems(text, nightly, requirements, r2, hourly_minute, job_minutes):
+    """What _workflows_knock finds wrong in knock.yml: one sentence each."""
+    out = []
+    jobs = _wf_jobs(text)
+    if sorted(jobs) != ["keepalive", "knock", "look", "quiet"]:
+        return [f"knock.yml's jobs are {sorted(jobs)}, not look, quiet, knock and keepalive"]
+    lines = text.splitlines()
+    on = {m.group(1) for ln in _wf_block(lines, "on")[1:] if (m := re.match(r"^  ([a-z_]+):", ln))}
+    if on != {"schedule", "workflow_dispatch"}:
+        out.append(f"knock.yml is started by {sorted(on)}")
+    out += _wf_knock_cron_problems(text, hourly_minute)
+    if WEEKLY_DRY_RUN_ENV not in _wf_block(lines, "env") or \
+            _wf_dry_run_sets(text) != [WEEKLY_DRY_RUN_ENV.strip()]:
+        out.append("knock.yml's DRY_RUN is not the weekly's line, once, in its top-level env")
+    dry_line, title = _wf_value(lines, "DRY_RUN"), _wf_value(lines, "run-name")
+    for event, ref, boxes, dry, want in WF_RUNS[KNOCK_WF]:
+        ctx = _wf_run_ctx(event, ref, boxes)
+        if _gh_render(dry_line or "", ctx) != str(dry).lower() or _gh_render(title or "", ctx) != want:
+            out.append(f"{event} of {ref} {boxes}: DRY_RUN {_gh_render(dry_line or '', ctx)}, "
+                       f"titled {_gh_render(title or '', ctx)!r}, not {want!r}")
+    kc = _wf_code(jobs["knock"])
+    ro = next((ln.split(":", 1)[1].strip() for ln in kc if re.match(r"^    runs-on:", ln)), "")
+    to = next((int(m.group(1)) for ln in kc if (m := re.match(r"^    timeout-minutes:\s*(\d+)", ln))),
+              None)
+    if ro != "windows-2022" or to != job_minutes:
+        out.append(f"the knock job runs on {ro} for {to} minutes, not windows-2022 for "
+                   f"refusal.KNOCK_JOB_MINUTES ({job_minutes})")
+    ks = [st for _n, st in _wf_named_steps(jobs["knock"])
+          if any("snapshot_gencourt.py" in ln for ln in st)]
+    sto = [int(m.group(1)) for st in ks for ln in st
+           if (m := re.match(r"^        timeout-minutes:\s*(\d+)", ln))]
+    if len(ks) != 1 or not sto or sto[0] > 3:
+        out.append(f"the knock step has no limit of its own of 3 minutes at most: {sto}")
+    # The secrets, step by step.
+    write = {"R2_ACCOUNT_ID", "R2_ACCESS_KEY_ID", "R2_SECRET_ACCESS_KEY", "R2_BUCKET"}
+    read = {"R2_ACCOUNT_ID", "R2_BUCKET", "R2_READ_ACCESS_KEY_ID", "R2_READ_SECRET_ACCESS_KEY"}
+    for j, jl in jobs.items():
+        for name, st in _wf_named_steps(jl):
+            body = "\n".join(st)
+            named = set(re.findall(r"secrets\.([A-Z0-9_]+)", body))
+            if not named:
+                continue
+            state = re.search(r"cloud\.py state-(?:down|up)", body)
+            ping = "curl" in body and "HC_PERSON_URL" in body
+            if j == "look" and state:
+                ok = named == read
+            elif j == "knock" and state:
+                ok = named == write
+            elif j in ("look", "knock") and ping:
+                ok = named == {"HEALTHCHECKS_PERSON_URL"}
+            else:
+                ok = False
+            if not ok:
+                out.append(f"{j}: {name!r} names {sorted(named)}")
+    if re.search(r"secrets\.R2_(?:ACCESS_KEY_ID|SECRET_ACCESS_KEY)\b",
+                 "\n".join(_wf_code(jobs["look"]))):
+        out.append("look holds the keys that write the bucket")
+    for j, jl in jobs.items():
+        perms = "\n".join(_wf_code(jl))
+        if "actions: write" in perms and j != "keepalive":
+            out.append(f"job {j} may write Actions")
+        if "actions: read" in perms and j != "quiet":
+            out.append(f"job {j} may read Actions")
+    # The packages.
+    pips = [ln.strip() for ln in _wf_code(lines) if "pip install" in ln]
+    if not pips or any(not ln.endswith("--require-hashes -r requirements-r2.txt") for ln in pips):
+        out.append(f"knock.yml installs without requirements-r2.txt's hashes: {pips}")
+    reqs = [ln.strip() for ln in r2.splitlines() if ln.strip() and not ln.lstrip().startswith("#")]
+    bad = [ln for ln in reqs if not re.fullmatch(
+        r"[A-Za-z0-9_.-]+==[0-9][\w.]*( --hash=sha256:[0-9a-f]{64})+", ln)]
+    if not reqs or bad:
+        out.append(f"requirements-r2.txt has lines that are not name==version with a sha256: {bad}")
+    pin = {m.group(1) for ln in reqs if (m := re.match(r"boto3==(\S+)", ln))}
+    there = {m.group(1) for ln in requirements.splitlines() if (m := re.match(r"boto3==(\S+)", ln))}
+    night = set(re.findall(r"\bboto3==([0-9][\w.]*)", nightly))
+    if len(pin) != 1 or pin != there or pin != night:
+        out.append(f"boto3 is {pin} in requirements-r2.txt, {there} in requirements.txt and "
+                   f"{night} in nightly.yml")
+    return out
+
+
+def _wf_sparse_paths(text):
+    """The paths look's checkout takes."""
+    lines = text.splitlines()
+    i = next(i for i, ln in enumerate(lines) if ln.strip() == "sparse-checkout: |")
+    out = []
+    for ln in lines[i + 1:]:
+        if not ln.startswith("            ") or not ln.strip():
+            break
+        out.append(ln.strip())
+    return out
+
+
+def _wf_sparse_runs(paths):
+    """(refusal.py --knock-look --help, cloud.py --help) in a tree of only
+    `paths`, each sealed: (exit, said) of each."""
+    tree = Path(tempfile.mkdtemp(prefix="gr-sparse-"))
+    try:
+        for p in paths:
+            src = Path(p.rstrip("/"))
+            if src.is_dir():
+                shutil.copytree(src, tree / src, ignore=shutil.ignore_patterns("__pycache__"))
+            elif src.is_file():
+                (tree / src).parent.mkdir(parents=True, exist_ok=True)
+                shutil.copy2(src, tree / src)
+        out = []
+        for cmd in (["refusal.py", "--knock-look", "--help"], ["src/ops/cloud.py", "--help"]):
+            r = _sealed_run([sys.executable, str(tree / cmd[0]), *cmd[1:]], cwd=str(tree),
+                            capture_output=True, text=True, timeout=120)
+            out.append((r.returncode, (r.stdout + r.stderr)[-300:]))
+        return out
+    finally:
+        shutil.rmtree(tree, ignore_errors=True)
+
+
+@check("workflows", "the hourly knock's workflow has the approved shape: its look holds only a "
+       "key that cannot write, its knock the write keys only in its state steps, the token "
+       "writes only to re-enable itself once a day, and every package comes by its hash",
+       needs=("refusal",))
+def _workflows_knock(R):
+    """H8 of the hourly addendum (its 3.1 and 3.2). knock.yml's four jobs --
+    look, quiet, knock, keepalive -- started by the clock and by hand only;
+    its two cron lines (H3: the hourly one at refusal.HOURLY_MINUTE, the
+    daily one keepalive's alone); its DRY_RUN the weekly's line, and every
+    kind of run in WF_RUNS dry or not, and titled, as GitHub reads the
+    lines. The knock job on windows-2022 for refusal.KNOCK_JOB_MINUTES, its
+    knock step limited to three minutes. Secrets: look's state-down names
+    R2_ACCOUNT_ID, R2_BUCKET and the read-only pair alone, never a key that
+    writes; the knock job names the four write secrets in its state steps
+    alone; HEALTHCHECKS_PERSON_URL only in the two ping steps; none other.
+    actions: write only in keepalive, actions: read only in quiet. Every
+    pip install is --require-hashes -r requirements-r2.txt, whose every line
+    is name==version with a sha256, its boto3 requirements.txt's and the
+    publish job's. And refusal.py --knock-look --help and cloud.py --help
+    run in a tree holding only look's sparse checkout. Its mutants: the
+    write keys in look; keepalive on the hourly line; an install unhashed;
+    the knock job's limit not refusal's; the cron at :00; a sparse path
+    missing."""
+    text = _knock_text()
+    if text is None:
+        return "skip", "no .github/workflows/knock.yml here"
+    nightly = (WORKFLOW_DIR / "nightly.yml").read_text(encoding="utf-8")
+    requirements = Path("requirements.txt").read_text(encoding="utf-8")
+    r2 = Path("requirements-r2.txt").read_text(encoding="utf-8")
+
+    def problems(t, r2_text=r2):
+        return _wf_knock_problems(t, nightly, requirements, r2_text, R.HOURLY_MINUTE,
+                                  R.KNOCK_JOB_MINUTES)
+    found = problems(text)
+    assert not found, "knock.yml: " + "; ".join(found)
+    paths = _wf_sparse_paths(text)
+    ran = _wf_sparse_runs(paths)
+    assert all(code == 0 for code, _ in ran), \
+        f"look's sparse checkout {paths} does not hold what it runs: {ran}"
+    mutants = {
+        "the write keys in look": text.replace(
+            "          R2_ACCESS_KEY_ID: ${{ secrets.R2_READ_ACCESS_KEY_ID }}",
+            "          R2_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}"),
+        "keepalive on the hourly line": text.replace(
+            "    if: github.event.schedule == '23 15 * * *'",
+            "    if: github.event_name == 'schedule'"),
+        "an install unhashed": text.replace(
+            "          python -m pip install --disable-pip-version-check --no-input --require-hashes "
+            "-r requirements-r2.txt\n", "          python -m pip install boto3==1.43.103\n"),
+        "the knock job's limit not refusal's": text.replace(
+            "    runs-on: windows-2022\n    timeout-minutes: 15",
+            "    runs-on: windows-2022\n    timeout-minutes: 20"),
+        "the cron at :00": text.replace('- cron: "47 * * * *"', '- cron: "0 * * * *"'),
+    }
+    missed = [what for what, t in mutants.items() if t == text or not problems(t)]
+    if problems(text, r2.replace("--hash=sha256:", "", 1)) == []:
+        missed.append("a requirement without its hash")
+    if all(code == 0 for code, _ in _wf_sparse_runs([p for p in paths if p != "src/lib/"])):
+        missed.append("a sparse path missing")
+    assert not missed, f"_workflows_knock did not catch: {missed}"
+    return "ok", (f"knock.yml's four jobs, two cron lines, DRY_RUN and titles; the read-only key in "
+                  f"look alone; packages by hash, boto3 pinned alike; look runs in its {len(paths)} "
+                  f"sparse paths; {len(mutants) + 2} mutants caught")
+
+
+def _wf_person_ping_problems(texts):
+    """What _workflows_person_pings finds wrong, {name: text}: one sentence
+    each, and the steps held."""
+    import itertools
+    out, held = [], []
+    for name, text in sorted(texts.items()):
+        lines = text.splitlines()
+        dry_line = _wf_value(lines, "DRY_RUN")
+        for j, jl in _wf_jobs(text).items():
+            for step, st in _wf_named_steps(jl):
+                if not any("secrets.HEALTHCHECKS_PERSON_URL" in ln for ln in st):
+                    continue
+                held.append(f"{name}:{step}")
+                cond = _wf_step_if(st) or "true"
+                if not re.search(r"\b(?:always|success|failure)\(\)", cond):
+                    cond = f"success() && ({cond})"
+                paths = sorted(set(re.findall(r"steps\.[\w-]+\.(?:outcome|outputs\.[\w-]+)", cond)))
+                for event, ref, boxes, dry, _t in WF_RUNS.get(name, []):
+                    ctx = _wf_run_ctx(event, ref, boxes)
+                    ctx["env.DRY_RUN"] = _gh_render(dry_line or "", ctx)
+                    can = any(_gh_true(_gh_eval(cond, dict(ctx, **{"success()": not f,
+                                                                   "failure()": f},
+                                                           **dict(zip(paths, vals)))))
+                              for f in (False, True)
+                              for vals in itertools.product(("success", "failure", "skipped",
+                                                             "true", ""), repeat=len(paths)))
+                    if dry and can:
+                        out.append(f"{name}: {step!r} pings for a dry run ({event} of {ref})")
+                    if not dry and not can:
+                        out.append(f"{name}: {step!r} never pings for {event} of {ref}")
+                code = [ln.rstrip() for ln in st]
+                guard = [i for i, ln in enumerate(code) if ln in (
+                    HC_REF_GUARD, '          if [ "$GITHUB_REF" != "refs/heads/main" ]; then')]
+                curl = [i for i, ln in enumerate(code) if "curl" in ln]
+                if not guard or not curl or guard[0] > curl[0] or not any(
+                        ln.strip() == "exit 0" for ln in code[guard[0] + 1:guard[0] + 4]):
+                    out.append(f"{name}: {step!r} pings without first comparing the ref with main's "
+                               "exactly")
+                if name == KNOCK_WF:
+                    sends = [ln.strip() for ln in code if "curl" in ln]
+                    if not sends or any("logs/alert-person.txt" not in s or "/fail" not in s
+                                        for s in sends):
+                        out.append(f"knock.yml: {step!r} sends something but /fail with "
+                                   f"logs/alert-person.txt: {sends}")
+    return out, held
+
+
+@check("workflows", "the \"a refusal is yours\" check is pinged by no dry run, each ping after "
+       "the exact-ref guard, and the knock workflow only ever tells it /fail")
+def _workflows_person_pings():
+    """H9 of the hourly addendum. Every step naming HEALTHCHECKS_PERSON_URL,
+    in any workflow, is read as GitHub would read its if for every kind of
+    run in WF_RUNS, the job going well or failed and its earlier steps
+    having ended any way: it pings for no dry run and can ping for every run
+    that is not one; it compares the ref with main's exactly before its curl
+    (HC_REF_GUARD, or the same in bash); and in knock.yml it sends only /fail
+    with logs/alert-person.txt, never a plain ping, which only the night
+    sends (_workflows_night_knock holds the night's three cases). Its
+    mutants: a plain ping from knock.yml; a ping for a dry run; the guard
+    after the curl."""
+    texts = {f.name: f.read_text(encoding="utf-8") for f in _workflows()}
+    if not texts:
+        return "skip", "no .github/workflows here"
+    problems, held = _wf_person_ping_problems(texts)
+    assert not problems, "; ".join(problems[:5])
+    assert any(h.startswith("nightly.yml:") for h in held), \
+        "nightly.yml pings the \"a refusal is yours\" check from no step"
+    k = texts.get(KNOCK_WF)
+    if k is not None:
+        guard = ('          if [ "$GITHUB_REF" != "refs/heads/main" ]; then\n'
+                 '            echo "A run of $GITHUB_REF, not refs/heads/main, is a dry run: no ping."\n'
+                 '            exit 0\n          fi\n')
+        mutants = {
+            "a plain ping from knock.yml": k.replace(
+                '            curl.exe -fsS -m 15 --retry 3 -o NUL --data-binary '
+                '"@logs/alert-person.txt" "$env:HC_PERSON_URL/fail"\n          }\n',
+                '            curl.exe -fsS -m 15 --retry 3 -o NUL --data-binary '
+                '"@logs/alert-person.txt" "$env:HC_PERSON_URL/fail"\n          } else {\n'
+                '            curl.exe -fsS -m 15 --retry 3 -o NUL "$env:HC_PERSON_URL"\n          }\n'),
+            "a ping for a dry run": k.replace(
+                "        if: always() && env.DRY_RUN == 'false' && steps.look.outcome == 'success'",
+                "        if: always() && steps.look.outcome == 'success'"),
+            "the guard after the curl": _wf_cut(k, guard).replace(
+                "          exit 0\n\n  quiet:\n", guard + "          exit 0\n\n  quiet:\n"),
+        }
+        missed = [what for what, t in mutants.items()
+                  if t == k or not _wf_person_ping_problems(dict(texts, **{KNOCK_WF: t}))[0]]
+        assert not missed, f"_workflows_person_pings did not catch: {missed}"
+    return "ok", (f"{len(held)} steps ping the third check, none for a dry run, each after the "
+                  "exact-ref guard; knock.yml's only /fail")
 
 
 PULLED_NIGHTLY = re.compile(r"^logs/nightly-\d{4}-\d\d-\d\d\.log$")
@@ -114518,8 +115504,13 @@ def _alarm_stays_able_to_ring(NI):
             alerts, person = NI.alerts_of(day0), NI.person_alerts_of(day0)
             calm, calm_person = NI.alerts_of(clean), NI.person_alerts_of(clean)
         first = alerts[0] if alerts else ""
-        missing = [w for w in ("GitHub's own night tests itself", "the night knocks once at its "
-                               "start", "until 2026-11-14 08:27 UTC, when the record is yours",
+        # The knock's pattern is refusal.knock_schedule()'s (the hourly
+        # addendum's 4.3): an hour's rungs outside the night's hours for the
+        # first two days, then six hours', and the night's own at its start.
+        missing = [w for w in ("of a kind GitHub tests itself", "one request an hour outside "
+                               "07:30-13:30 UTC", "until 2026-10-31 08:27 UTC, then one in each "
+                               "6-hour span", "and one from the night itself at its start",
+                               "until 2026-11-14 08:27 UTC, when the record is yours",
                                "Nothing is needed from you on GitHub's side",
                                "the \"a refusal is yours\" check", "Nothing is needed on the laptop",
                                "first set NIGHT_KNOCK to off") if w not in first]

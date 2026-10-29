@@ -136,7 +136,11 @@ permissions:
 # run waiting here; a run that is not a dry run has a group of its own, its
 # run's id, and never waits here. Still open: a dry run started while a real
 # run of main holds gc-night and the scheduled night waits behind it cancels
-# that night, which the dead-man's switch then reports. preflight holds this
+# that night, which the dead-man's switch then reports. Since 29 October 2026
+# the hourly knock's job (knock.yml) is a third kind that holds gc-night, for
+# a few minutes outside the night's hours; its quiet job queues no knock while
+# a night, a weekly, a dry run or another knock runs or waits, and its own dry
+# runs wait in knock-dry-runs, never here. preflight holds this
 # line beside DRY_RUN. The box is ticked only when it is true or "true", so
 # the line reads the same whether GitHub hands the box over as a boolean or
 # as a string (A BOX MAY ARRIVE AS A STRING, at DRY_RUN).

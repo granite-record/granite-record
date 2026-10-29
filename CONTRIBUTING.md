@@ -61,6 +61,9 @@ Three things follow, and they are not negotiable:
    refusal is lifted by a knock (`archive/knocks.json`), one dropped
    connection ends them (`refusal.drops_allowed()`). A record without a kind
    is a person's to clear, as every record always was (`refusal.whose()`).
+   `.github/workflows/knock.yml` is the knock's second caller, hourly, outside
+   the night's hours; starting it by hand on `main` asks the General Court
+   when a knock is due, and is the maintainer's to do.
 
 The `fetch_*_db.py` scripts in `src/fetch/gc_db/` are the exception worth
 knowing: they read the SQL host the General Court publishes credentials for at

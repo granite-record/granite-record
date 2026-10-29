@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.83
+# GRANITE_VERSION: 2026-09-04.84
 """
 The nightly run. Fetch the day's bulk files, rebuild, check, compile what
 readers reported and what changed -- and publish only if told to.
@@ -540,6 +540,18 @@ builds is clean, and its line goes to the warnings' check (warns_of) -- and
 the day it is met says the knock's pattern and the day it becomes theirs at
 the latest, that nothing is needed of them on GitHub's side or the laptop's,
 and to set NIGHT_KNOCK to off before checking or clearing it early.
+
+THE HOURLY KNOCK. Between the nights, .github/workflows/knock.yml knocks too,
+at refusal.HOURLY_MINUTE past each hour outside the night's hours, on the same
+ladder and the same knocks.json (refusal.py, THE KNOCK'S GATE). Its lift
+clears the record in the bucket; the full fetch still waits for the next
+night, which finds no record and asks as any night. Nothing here starts it.
+What the night does about it is one sentence: the first morning the hourly
+knock has left no trace in hours it could have knocked
+(refusal.hourly_silent; the verdict's web "silent" and "silent_new"), that
+is an error on the run's page (Night.alarms) and so one email through the
+night's own check; the mornings after, a line beside the held one, for the
+warnings' check (warns_of), and the night is clean again.
 
 THE GATE, IN SHADOW (6 October 2026)
 
@@ -1486,10 +1498,20 @@ def web_state(lifted=False):
         due, at = refusal.knock_due()
         tried = [x for x in c["counted"] if x.get("answer") != "claimed"]
         last = tried[-1] if tried else {}
+        hourly, _every, days, _bad = refusal.knock_settings()
+        now = refusal._utc().timestamp()
+        # THE HOURLY KNOCK FALLEN SILENT (refusal.hourly_silent): its
+        # sentence, and whether this is the first morning it holds -- it did
+        # not the morning before -- which alone makes it an alarm (alarms).
+        silent = refusal.hourly_silent()
         return {"state": "held", "kind": kind, "since": refusal._stamp(c["since"]),
                 "knocks": len(tried), "last": last.get("utc"), "by": last.get("by"),
                 "next": refusal._stamp(at) if at else None,
-                "until": refusal._stamp(c["since"] + refusal.knock_settings()[2] * refusal.DAY)}
+                "until": refusal._stamp(c["since"] + days * refusal.DAY),
+                "hourly_until": (refusal._stamp(c["since"] + hourly * refusal.HOUR)
+                                 if now < c["since"] + hourly * refusal.HOUR else None),
+                "silent": silent,
+                "silent_new": bool(silent) and not refusal.hourly_silent(now=now - refusal.DAY)}
     except Exception as e:                                      # noqa: BLE001
         return {"state": "unknown", "why": f"it could not be read ({type(e).__name__})"}
 
@@ -5972,33 +5994,13 @@ class Night:
 
     def alarms(self):
         """What is an error on the run's page and does not stop the night:
-        the build still goes out, and somebody has to act."""
-        n = int(self.v.get("db_nights") or 0)
+        the build still goes out, and somebody has to act. And, the first
+        morning it holds, that the hourly knock has fallen silent
+        (refusal.hourly_silent; THE NIGHT'S KNOCK): one email through the
+        night's own check, and the held line after (warns_of)."""
         web = self.v.get("web") if isinstance(self.v.get("web"), dict) else {}
-        if from_db(self.v) and n >= DB_NIGHTS_MOST and web.get("state") == "held":
-            # A held night's (THE NIGHT'S KNOCK): the cause is the website
-            # held, not the export, and the knock says when it ends.
-            return [f"the day's files have come from the General Court's database {n} nights "
-                    f"in a row: its website has not been asked since {web.get('since')} but for "
-                    "the knock, for a refusal the night tests itself; the next knock is due from "
-                    f"{web.get('next') or 'no time yet'}, and the refusal becomes yours by "
-                    f"{web.get('until')} at the latest. The committee list and the other lookups "
-                    "are that old"]
-        if from_db(self.v) and n >= DB_NIGHTS_MOST:
-            return [f"the day's files have come from the General Court's database {n} nights "
-                    "in a row: its export came back empty on each of them, the committee list "
-                    "and the other lookups are that old, and it is time to tell the General "
-                    "Court's IT office"]
-        df = self.v.get("day_files") if isinstance(self.v.get("day_files"), dict) else {}
-        n = int(self.v.get("db_stopped") or 0)
-        if df.get("why_code") == "guard" and n >= DB_STOPPED_MOST:
-            return [f"the fallback on the General Court's database has been stopped by the "
-                    f"night's own checks on {n} nights since the installed files last moved, "
-                    "and the site has not moved in that time: the files it is compared with "
-                    f"are the installed ones, {stopped_next(df)}. What stopped it is named "
-                    "in the verdict (day_files, stops), and whether that is a wrong file or a "
-                    "busy day is a person's to read"]
-        return []
+        silent = web.get("silent") if web.get("state") == "held" and web.get("silent_new") else ""
+        return data_alarms(self.v) + ([silent] if silent else [])
 
     def exit_code(self):
         """0 when the night did what it was asked. A dry run is asked for a build
@@ -6360,6 +6362,41 @@ def held_for_approval(v):
             "older one's site is kept only three days.")
 
 
+def data_alarms(v):
+    """Night.alarms() but the hourly knock's silence: the errors on the run's
+    page about where the day's files came from -- the database too many
+    nights in a row, and the fallback stopped by its own checks too often."""
+    n = int(v.get("db_nights") or 0)
+    web = v.get("web") if isinstance(v.get("web"), dict) else {}
+    if from_db(v) and n >= DB_NIGHTS_MOST and web.get("state") == "held":
+        # A held night's (THE NIGHT'S KNOCK): the cause is the website held,
+        # not the export, and the knock says when it ends: within the hour
+        # outside the night's hours while the hourly rungs last.
+        return [f"the day's files have come from the General Court's database {n} nights "
+                f"in a row: its website has not been asked since {web.get('since')} but for "
+                "the knock, for a refusal the night tests itself; the next knock is due from "
+                f"{web.get('next') or 'no time yet'}"
+                + (f", and one an hour after that outside the night's hours until "
+                   f"{web['hourly_until']}" if web.get("hourly_until") else "")
+                + f"; the refusal becomes yours by {web.get('until')} at the latest. The "
+                "committee list and the other lookups are that old"]
+    if from_db(v) and n >= DB_NIGHTS_MOST:
+        return [f"the day's files have come from the General Court's database {n} nights "
+                "in a row: its export came back empty on each of them, the committee list "
+                "and the other lookups are that old, and it is time to tell the General "
+                "Court's IT office"]
+    df = v.get("day_files") if isinstance(v.get("day_files"), dict) else {}
+    n = int(v.get("db_stopped") or 0)
+    if df.get("why_code") == "guard" and n >= DB_STOPPED_MOST:
+        return [f"the fallback on the General Court's database has been stopped by the "
+                f"night's own checks on {n} nights since the installed files last moved, "
+                "and the site has not moved in that time: the files it is compared with "
+                f"are the installed ones, {stopped_next(df)}. What stopped it is named "
+                "in the verdict (day_files, stops), and whether that is a wrong file or a "
+                "busy day is a person's to read"]
+    return []
+
+
 def warns_of(v):
     """What warns and stands until a person acts, for the warnings' own check
     (WARN_FILE): the checks of tonight's build against the record that
@@ -6367,13 +6404,16 @@ def warns_of(v):
     stopped moving (WHEN THE RECORD STOPS MOVING), the laptop's record of its
     caption runs missing or old among them; and a held night's line while
     the night tests a refusal itself (held_line; THE NIGHT'S KNOCK), which
-    is no alarm of the night's and no refusal of the person's yet. [] for
-    none."""
+    is no alarm of the night's and no refusal of the person's yet -- with,
+    after the first morning, when it was an alarm (Night.alarms), that the
+    hourly knock has fallen silent (refusal.hourly_silent). [] for none."""
     said = built_warn_alert(v.get("built_checks"))
     held = held_for_approval(v)
     web = held_line(v.get("web"))
+    w = v.get("web") if isinstance(v.get("web"), dict) else {}
+    silent = w.get("silent") if web and not w.get("silent_new") else ""
     return ([held] if held else []) + ([said] if said else []) + ([web] if web else []) + \
-        [s for _kind, s in not_moving_of(v)]
+        ([silent] if silent else []) + [s for _kind, s in not_moving_of(v)]
 
 
 def refusal_alert(v):
@@ -6404,30 +6444,18 @@ def refusal_alert(v):
                 "then python3 src/ops/cloud.py clear-refusal.")
     if v.get("clean"):
         return ""
-    return (f"A refusal from the General Court has been on file since {at}, of a kind GitHub's "
-            f"own night tests itself, one request at a time: {knock_pattern()}. Nothing is "
-            "needed from you on GitHub's side: if the night cannot settle it, the \"a refusal "
+    try:
+        pattern = refusal.knock_schedule()
+    except Exception:                                           # noqa: BLE001
+        pattern = ""
+    return (f"A refusal from the General Court has been on file since {at}, of a kind GitHub "
+            "tests itself, one request at a time"
+            + (f": {pattern}" if pattern else "") + ". Nothing is "
+            "needed from you on GitHub's side: if GitHub cannot settle it, the \"a refusal "
             "is yours\" check will email you. Nothing is needed on the laptop either: its copy "
             "stops its fetches until GitHub lifts the record, and its next pull then says so. "
             "To check or clear it sooner yourself, first set NIGHT_KNOCK to off (a GitHub "
-            "variable), so that two machines never ask at once.")
-
-
-def knock_pattern():
-    """When the knock may come for the refusal on file, if each fails, and
-    the day it becomes a person's at the latest (refusal.knock_settings'
-    KNOCK_DAYS from the chain's start): the night's own knock, at its start
-    on each morning one is due."""
-    try:
-        days = refusal.knock_settings()[2]
-        c = refusal.chain()
-        due, at = refusal.knock_due()
-    except Exception:                                           # noqa: BLE001
-        c, at = None, None
-    return ("the night knocks once at its start, on each morning a knock is due"
-            + (f", the next from {refusal._stamp(at)}" if at else "")
-            + (f", until {refusal._stamp(c['since'] + days * refusal.DAY)}, when the record is "
-               "yours" if c else ""))
+            "variable) or disable the knock workflow, so that two machines never ask at once.")
 
 
 def alerts_of(v):
@@ -6436,8 +6464,10 @@ def alerts_of(v):
     the General Court on file (refusal_alert: a person's every night, one
     the night tests itself on a night not clean), a hold on the SQL host, a
     check of tonight's build that holds the night (BUILT_CHECKS), and a
-    night that was not clean, in that order. [] for none. A failed check
-    against the record, and a night waiting for approval, are warns_of's."""
+    night that was not clean, in that order -- one not clean for an error on
+    the page alone (Night.alarms) saying the error itself. [] for none. A
+    failed check against the record, and a night waiting for approval, are
+    warns_of's."""
     out = []
     said = refusal_alert(v)
     if said:
@@ -6452,7 +6482,14 @@ def alerts_of(v):
     said = built_alert(v.get("built_checks"))
     if said:
         out.append(said)
-    if not v.get("clean"):
+    alarms = [str(x) for x in (v.get("alarms") or [])]
+    if not v.get("clean") and alarms and list(v.get("not_clean") or []) == alarms:
+        # Not clean for an error on the page alone (Night.alarms): the build
+        # went out, and the email says what to act on, as the run's page does
+        # (close_verdict) -- the hourly knock fallen silent among them.
+        out.append("The night was built, with an error to act on: " + "; ".join(alarms)
+                   + ". The build was not held back for it.")
+    elif not v.get("clean"):
         out.append("The night was not clean: " + plain_why(v))
     return out
 

@@ -14,7 +14,10 @@ night down if it has. The Worker asks the same in reverse before it starts
 one, so the two never both run a night. Healthchecks, pinged by the night
 itself, still says so when no night starts at all.
 
-`index.js` is the whole of it. It holds one secret and stores nothing.
+`index.js` is the whole of it. It holds one secret and stores nothing. It
+starts the night only: the hourly knock (`.github/workflows/knock.yml`) runs
+on GitHub's own cron. Starting that from here too is a later step, if
+GitHub's hourly cron proves unreliable.
 
 ## Deploying it (the person, once)
 

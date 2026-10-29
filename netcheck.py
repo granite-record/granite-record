@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.5
+# GRANITE_VERSION: 2026-09-04.6
 """
 Why is the General Court refusing us?
 
@@ -182,11 +182,12 @@ def not_now(knock_stopped=False):
     except OSError:
         raw = None
     if raw is not None and not knock_stopped and refusal._its_own(refusal._record(raw)[0])[0]:
-        return ("netcheck is not starting. GitHub's night may be testing the refusal on file "
-                f"here ({refusal.MARK}) itself, one request at a time. Two machines asking at "
-                "once is how the second block happened. Set the GitHub variable NIGHT_KNOCK to "
-                "off, wait until the Actions tab shows no night running, then run python3 "
-                "netcheck.py --knock-stopped.")
+        return ("netcheck is not starting. GitHub may be testing the refusal on file here "
+                f"({refusal.MARK}) itself, once an hour. Two machines asking at once is how the "
+                "second block happened. Set the GitHub variable NIGHT_KNOCK to off, or disable "
+                "the knock workflow, wait until the Actions tab shows no knock run and no night "
+                f"in progress (a knock job lasts {refusal.KNOCK_JOB_MINUTES} minutes at most), "
+                "then run python3 netcheck.py --knock-stopped.")
     return ""
 
 

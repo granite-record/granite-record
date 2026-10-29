@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-09.28
+# GRANITE_VERSION: 2026-09-09.29
 """
 One refusal stops the fetch lane, not just the run that was refused.
 
@@ -69,11 +69,14 @@ and tells the laptop of one. whose() takes a record's bytes, never its dict
 (_record), because knocks.json names a record by the sha of its bytes.
 
 THE NIGHT'S KNOCK (29 October 2026, the person's decision). A record the
-night may test (whose() "night") is not left for a person: GitHub's night
-asks the General Court one small file for it, once, at its start, on each
-morning a knock is due on the ladder below (nightly.knock), and a knock
-answered with the file lifts it -- moved, whole, into knocks.json, and out of
-the bucket by the night's state-up (cloud.lift_refusal). A knock the address
+night may test (whose() "night") is not left for a person: GitHub asks the
+General Court one small file for it, one request at a time, whenever a
+knock is due on the ladder below -- the night once at its start
+(nightly.knock), and .github/workflows/knock.yml at HOURLY_MINUTE past each
+hour outside the night's hours -- and a knock answered with the file lifts
+it -- moved, whole, into knocks.json, and out of the bucket by the state-up
+that follows (cloud.lift_refusal). The night says once, by its own check,
+when the hourly knock has fallen silent (hourly_silent). A knock the address
 answers no to, a fourth relapse, KNOCK_DAYS, an answer that never reached the
 bucket, the switch turned off or a setting typed wrong: the record is a
 person's, as every other always was, and the "a refusal is yours" check is
@@ -409,10 +412,10 @@ def check(who="", knock=False):
     if any_age(d):
         github = (f"GitHub's machine met this refusal (a {d.get('kind')}), so a copy on file "
                   f"here stops every fetch here at any age, not only for {QUIET_HOURS} hours"
-                  + (": GitHub's night may be testing it itself, one request at a time, and "
-                     "lifts the bucket's copy when one is answered. To check or clear it sooner "
-                     "yourself, first set the GitHub variable NIGHT_KNOCK to off: two machines "
-                     "asking at once is how the second block happened"
+                  + (": GitHub may be testing it itself, once an hour, and lifts the bucket's "
+                     "copy when one is answered. To check or clear it sooner yourself, first "
+                     "set the GitHub variable NIGHT_KNOCK to off, or disable the knock "
+                     "workflow: two machines asking at once is how the second block happened"
                      if _its_own(d)[0] else "")
                   + ". python3 src/ops/cloud.py pull says whether the bucket's still stands.\n\n")
     # Status 2, which every fetcher and the lane read as "refused".
@@ -703,8 +706,8 @@ def _its_own(doc):
 # record and written only here, keeps the chain: every knock, each written
 # down BEFORE it is made (knocking) and answered after (knocked), and every
 # record a knock lifted, its exact text kept, never pruned. GitHub's night
-# knocks on it (nightly.knock); the hourly knock, its second caller, is to
-# come.
+# knocks on it (nightly.knock), and so does its second caller, the hourly
+# knock (.github/workflows/knock.yml), each in its own hours.
 
 KNOCKS = Path("archive/knocks.json")
 DAY = 24 * HOUR
@@ -738,6 +741,14 @@ KNOCK_SETTLE_MINUTES = 60
 # The hourly claim asks the gate at this much later too, so that the child,
 # seconds after it, does not decline on the clock or the rung.
 CLAIM_SLACK_MINUTES = 5
+# WHEN THE HOURLY KNOCK FALLS SILENT (the red team's fifth finding,
+# hourly_silent): the minute past each hour the knock workflow runs at --
+# .github/workflows/knock.yml's cron, which preflight holds to this -- and
+# how many of those minutes, open to an hourly knock that was due, may pass
+# with no trace of it before the night says it has stopped. Ten allows for
+# GitHub's scheduler running five to seven hours late, as it did in October.
+HOURLY_MINUTE = 47
+HOURLY_SILENT_HOURS = 10
 
 
 def knock_settings():
@@ -953,6 +964,73 @@ def knock_schedule(d=None, k=None):
     return ", ".join(out) + "; and one from the night itself at its start, whenever its span allows"
 
 
+def hourly_silent(d=None, k=None, now=None):
+    """The sentence that says the hourly knock has stopped, or "" (the
+    addendum's 6.1). The knock workflow leaves no trace of an hour it found
+    nothing to do, so the only sign of it running is an entry `by` "hourly" in
+    knocks.json -- a knock, a claim, or a claim marked "not asked". A
+    sentence only when the refusal on file (`d`, refused.json's bytes, or
+    None for the one on file) is the night's to test (whose()), and in the
+    eighteen hours from the last daily window's close to its next start less
+    its margin -- 13:30 to 07:30 UTC today, the span before `now`'s morning
+    -- at least HOURLY_SILENT_HOURS of the HOURLY_MINUTE minutes were open to
+    an hourly knock that was due (knock_due() then, with only the knocks made
+    by then; knock_hours("hourly"); the settle rule, by the record's own
+    time), and no hourly entry of any answer falls in those eighteen hours.
+    A record the settle rule holds, a Retry-After, and a person's record give
+    fewer open hours, so nothing is said."""
+    from datetime import datetime, timedelta, timezone
+    doc, raw = _record(d)
+    if raw is None:
+        return ""
+    if k is None:
+        k, ok = read_knocks()
+        if not ok:
+            return ""
+    u = _utc(now)
+    if whose(raw, k, u)[0] != "night":
+        return ""
+    c = chain(raw, k)
+    if c is None:
+        return ""
+    # The span: from the daily window's close the day before this morning's
+    # anchor (knock_anchor's time of day) to that anchor.
+    a = datetime.fromtimestamp(knock_anchor(), timezone.utc)
+    anchor = u.replace(hour=a.hour, minute=a.minute, second=0, microsecond=0)
+    if anchor > u:
+        anchor -= timedelta(days=1)
+    eh, em = next(end for wd, _s, end, _w in NIGHT_WINDOWS if wd is None)
+    start = (anchor - timedelta(days=1)).replace(hour=eh, minute=em)
+    lo, hi = start.timestamp(), anchor.timestamp()
+    hourly = [x for x in c["knocks"] if x.get("by") == "hourly"]
+    if any(lo <= float(x.get("epoch") or 0) < hi for x in hourly):
+        return ""
+    cur = k.get("current") if c["named"] else None
+    t = start.replace(minute=HOURLY_MINUTE)
+    if t < start:
+        t += timedelta(hours=1)
+    opened = 0
+    while t < anchor:
+        te = t.timestamp()
+        # The ladder as it stood then: only the knocks made by then.
+        kt = k if cur is None else dict(k, current=dict(cur, knocks=[
+            x for x in cur.get("knocks") or [] if isinstance(x, dict)
+            and float(x.get("epoch") or 0) <= te]))
+        if knock_due(raw, kt, te)[0] and knock_hours("hourly", te)[0] and \
+                _settled(doc.get("epoch") or 0, te)[0]:
+            opened += 1
+        t += timedelta(hours=1)
+    if opened < HOURLY_SILENT_HOURS:
+        return ""
+    last = max((float(x.get("epoch") or 0) for x in hourly), default=0)
+    return (f"the hourly knock has not run since "
+            + (f"{_stamp(last)}, its last entry" if last else
+               f"the refusal began, {_stamp(c['since'])}")
+            + f": none in the {opened} hours before this morning it could have knocked. "
+            ".github/workflows/knock.yml may be disabled, paused by GitHub, or without its "
+            "read-only R2 key; the night still knocks once each morning")
+
+
 def _start_chain(rec):
     """note()'s, on GitHub, for a record whose own fields the night may test:
     knocks.json's "current" for it. Within RELAPSE_HOURS of the last lift it
@@ -1113,7 +1191,8 @@ def drops_allowed(now=None):
 # the night's inside its daily window, the hourly ones outside every window
 # and its margin -- so a caller named wrongly by a mistake refuses; it never
 # asks at an hour that is not its own. The night's caller is nightly.knock(),
-# at the night's start; the hourly one, the knock workflow, is to come.
+# at the night's start; the hourly one is .github/workflows/knock.yml's knock
+# job, which claims the knock in the bucket before it asks.
 # snapshot_gencourt.py --knock is the knock, and check(knock=True) the gate
 # it asks first. The workflow's three steps around it are refusal.py's own
 # options (main): --knock-look, --knock-claim and --knock-unclaim, and

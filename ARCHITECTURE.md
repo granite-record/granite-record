@@ -182,7 +182,18 @@ production or whose job failed, can no longer make a night waiting for
 approval unapprovable. The weekly workflow, `weekly.yml`, runs on Sunday
 night: the committee rosters, the members who have left and the study
 committees, each fetch whole or not at all. It publishes nothing; Monday's
-night builds what it took.
+night builds what it took. The knock workflow, `knock.yml` (since 29 October
+2026), runs at :47 past every hour and does nothing unless the bucket holds a
+refusal the night is testing (THE NIGHT'S KNOCK in `nightly.py`): its `look`
+job reads the state files with an R2 key that cannot write and asks
+`refusal.py --knock-look` whether a knock is due now, outside the night's
+hours; its `quiet` job lists the Actions runs and queues nothing while a
+night, a weekly, a dry run or another knock holds or waits for `gc-night`;
+and its `knock` job, in `gc-night` on the night's own Windows image and only
+on a run's first attempt, claims the knock in the bucket, asks one small file
+once (`snapshot_gencourt.py --knock`), marks a claim it did not use "not
+asked", and sends the answer, and a lift, back. A daily line of its own runs
+only `keepalive`. It pings no `HEALTHCHECKS_URL`: a knock is no night.
 
 **The current term's data, from the database** (since 16 October 2026). After
 the day's files and the study committees, a night that fetches takes from the
@@ -313,7 +324,15 @@ pattern and the day the refusal becomes the person's at the latest, and to
 set `NIGHT_KNOCK` to `off` before checking or clearing it early
 (`refusal_alert()`); a held night that builds is clean, and its line -- the
 knocks unanswered, the next due, the day it becomes the person's -- goes to
-the warnings' check (`warns_of()`). The publish check
+the warnings' check (`warns_of()`). The knock workflow is the third check's
+second pinger, and sends only `/fail`, never a plain ping, so that a run
+reading the bucket before a failing night has written it cannot bring the
+check back up: its `look` job when a refusal it was testing has become a
+person's, outside the night's hours, and its `knock` job when its own knock
+made it one. The first morning the hourly knock has left no trace in hours it
+could have knocked (`refusal.hourly_silent()`), the night says so as an
+error on its page, one email through its own check, and then only beside the
+held line. The publish check
 (`HEALTHCHECKS_PUBLISH_URL`) is pinged only once production has been
 deployed, so it goes quiet -- and Healthchecks writes -- when the live site
 has stood still longer than its period allows: a held night nobody approved,
@@ -432,10 +451,12 @@ each morning a knock is due, under its own lock,
 `src/fetch/gc_web/snapshot_gencourt.py --knock` asks one small file once, never
 retried and following no redirect, behind `refusal.check(knock=True)`,
 whose gate (`refusal.knock_gate()`) holds the night's caller to 08:00-11:18
-UTC and an hourly one, still to come, to outside every night window, and
-asks nothing, exit 4, otherwise. Answered with the file, the refusal is
-lifted, and that night asks the export once. Then `state-up` on main's own
-night, with the night's testing switched on
+UTC and the hourly one, `knock.yml`'s, to outside every night window and its
+margin, for a record that reached the bucket an hour before the last window
+closed, and asks nothing, exit 4, otherwise. Answered with the file, the
+refusal is lifted, and the night's knock asks the export once; the hourly
+knock's lift waits for the next night. Then `state-up` on main's own run,
+with the night's testing switched on
 (`NIGHT_KNOCK`), sends `knocks.json` with the lift in it and only then moves
 the bucket's `state/refused.json` to `replaced/`, when that night's knock
 lifted that very record; with it off, every `state/refused.json` stops the

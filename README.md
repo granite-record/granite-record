@@ -349,7 +349,13 @@ steps and the nightly stop at it for as long as it is on file, because
 clearing it is a person's decision (`python3 refusal.py --clear`, after
 `python3 netcheck.py` has said what kind of refusal it was; on the laptop
 that has handed the nightly to GitHub, the next fetch after a clear reads
-the bucket's refusal record first). Every
+the bucket's refusal record first). One kind GitHub tests itself: dropped
+connections, or a 503 that is not the firewall's page, met by its own night
+on `main`. While the night tests such a refusal, GitHub asks one small file
+once an hour for two days, then every six hours, outside the night's own
+hours (`.github/workflows/knock.yml`), and once at the night's start, for
+sixteen days at most; a refusal answered with the file clears itself
+(`refusal.py`, THE NIGHT'S KNOCK). Every
 script that asks gc.nh.gov, but `netcheck.py`, consults the record before
 its first request and records a refusal it meets, and `preflight` fails one
 that does not; those scripts live in `src/fetch/gc_web/`. The machinery stops

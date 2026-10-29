@@ -549,3 +549,102 @@ that made it.
     the Actions tab shows no night running, then run python3 netcheck.py
     --knock-stopped". Commit 8 adds the knock workflow to it, as the
     addendum §7 item 3 words it.
+
+## Commit 8 of the addendum (built after 9 and 10): the hourly knock
+
+90. **`knock.yml` is the addendum's §3.1 as written, with two additions.**
+    `defaults: run: shell: pwsh` at the top, as `nightly.yml` and
+    `weekly.yml` say (windows-2022's default already; every step of the
+    ubuntu jobs names bash). And the elided part of `quiet` (§3.4 steps 2 to
+    4) is one inline standard-library Python, `decide.py`, written by a
+    quoted heredoc and run twice: `open` lists the ids of the runs not
+    completed (this one aside), each list's `total_count` checked against
+    what came back; `quiet` reads each open run's jobs and decides. Each
+    list is saved as `<workflow>.json` (`nightly.yml.json`, not the sketch's
+    `nightly.json`). Every `gh api` call and both runs of `decide.py` end
+    `|| busy "..."`, and H2 holds that by the text of each line as well as
+    by running `decide.py` on canned answers.
+91. **The span and the open hours of `hourly_silent()`.** The eighteen hours
+    are from the daily window's close (13:30) the day before to this
+    morning's anchor (`knock_anchor()`'s time of day, 07:30), whatever time
+    the night reads it. An hour is open when, at its :47, `knock_due()` was
+    true **with only the knocks made by then**, `knock_hours("hourly")`
+    allowed it (so Monday's weekly window counts too), and the settle rule
+    held by the record's own `epoch`. The filter is there because the night
+    reads the silence in `web_state()`, after its own knock at its start
+    (the addendum says "read by the night at its start"): unfiltered, the
+    morning's own knock would make every hour of the night before look not
+    due. H12's nights fail without it (revert proof).
+92. **The sentence adds the count and the path**: "the hourly knock has not
+    run since <utc>, its last entry | the refusal began, <utc>: none in the
+    <n> hours before this morning it could have knocked.
+    .github/workflows/knock.yml may be disabled, paused by GitHub, or
+    without its read-only R2 key; the night still knocks once each morning".
+93. **The first morning's alarm comes from the verdict's `web`**:
+    `web_state()` keeps `silent` and `silent_new` (it holds this morning and
+    did not, `now` less a day), and `Night.alarms()` adds the sentence when
+    the night is held and `silent_new`. The alarms it had before are
+    `data_alarms(v)`, a module function, because an existing check calls
+    `Night.alarms` on a bare namespace. After the first morning the sentence
+    is its own line in `warns_of()`, after the held line, not inside it, and
+    not in `Night.warned()`: there it would be a warning kind of the night's,
+    which reaches the review gate (H12 holds it out of the reasons).
+94. **An alarm-only night's email says the alarm.** `alerts_of` gave such a
+    night `plain_why()`'s "The night stopped before it recorded what it
+    did", which is untrue of a night that built and published. A night not
+    clean only for its alarms now reads "The night was built, with an error
+    to act on: <alarms>. The build was not held back for it." This changes
+    the email for `DB_NIGHTS_MOST`'s and the fallback's alarms too.
+95. **`DB_NIGHTS_MOST`'s held sentence does not say "within the hour".**
+    It is read at the night's end, about 09:30 UTC, inside the night's
+    hours, where no hourly knock runs before 13:47; so it keeps "the next
+    knock is due from <utc>" and adds ", and one an hour after that outside
+    the night's hours until <utc>" while the hourly rungs last
+    (`web["hourly_until"]`), and nothing after.
+96. **The day-0 email's pattern is `refusal.knock_schedule()`** (§4.3), and
+    `nightly.knock_pattern()`, the night-only pattern, is gone; C11's
+    expected words follow it ("one request an hour outside 07:30-13:30
+    UTC", "and one from the night itself at its start"). The email and
+    `refusal.check()` name disabling the knock workflow beside
+    `NIGHT_KNOCK`; netcheck's refusal names it too (DEVIATIONS 89 closed),
+    and to wait for no knock run as well as no night.
+97. **Fixtures that model knock.yml running.** `_nightly_falls_back`'s 310h
+    record and C18's sequence 2 (sixteen held nights) get an hourly claim
+    marked "not asked" between nights, as the workflow running would leave;
+    without one the silence alarm rightly makes those nights not clean.
+    H12 has the mornings without one.
+98. **`_workflows_permissions` is amended, not "already allows"** (§3.2):
+    its `actions: read` shape was `nightly.yml`'s `started` alone. It is
+    now a table, `WF_ACTIONS_READERS`, of (workflow, job): `nightly.yml`'s
+    `started` and `knock.yml`'s `quiet`, each allowed only `gh api -X GET`
+    of runs and their jobs (a `gh api` with `-f` and no `-X GET` would
+    POST). The two read-only secrets join `WORKFLOW_SECRETS`.
+99. **`_workflows_dry_runs_wait` decides "can a dry run's gc-night job
+    run" by evaluating each gc-night job's `if` as GitHub would** for every
+    kind of dry run in `WF_RUNS`, on a first attempt, over the values
+    ("true", "false", "0", "1", "success", "") of each `needs` output it
+    reads (`_wf_job_can_run`). `WF_RUNS["knock.yml"]` carries the schedule
+    line as an `event.schedule` box, which `_wf_run_ctx` reads as
+    `github.event.schedule`.
+100. **H1 carries H6's and H7's halves in the workflow**: no job but the
+     knock runs `snapshot_gencourt.py`, once, in no loop; and the knock job
+     runs only on a first attempt. Their halves in `refusal.py` are stage
+     C's. H3's cron half (`_wf_knock_cron_problems`: the hourly line at
+     `refusal.HOURLY_MINUTE`, never :00, :17 or :30, the daily line
+     keepalive's alone) is shared by `_knock_hours` and H8.
+101. **H8 also runs `src/ops/cloud.py --help` in the sparse tree**, beside
+     `refusal.py --knock-look --help`: state-down is look's other script.
+102. **`requirements-r2.txt`'s versions and hashes are this machine's, and
+     its install on windows-2022 is unproved.** No `pip download` from PyPI
+     was allowed in this stage. The seven are the set installed together in
+     this machine's Python 3.14 (boto3 1.43.103, botocore 1.43.113,
+     s3transfer 0.19.2, jmespath 1.1.0, urllib3 2.8.0, python-dateutil
+     2.9.0.post0, six 1.17.0), closed by their own declared requirements;
+     each is a py3-none-any or py2.py3-none-any wheel. The hashes are uv's
+     cached PyPI index entries for those wheel files; four of the seven
+     were checked against the wheel's own bytes in pip's cache. pip's
+     offline `--no-index --dry-run --require-hashes` parsed the file and
+     stopped at resolution, having no wheels to install. The dev dry run of
+     knock.yml (§10 step 5) is the proof.
+103. **H10, the knocks-on-file reader, is not here**: the addendum's build
+     plan puts it in commit 11 with the docs.

@@ -88,8 +88,11 @@ both machines now. On a stood-down laptop:
   is not this laptop's turn, and nothing while the refusal on file is one
   GitHub's night on main met and may be testing itself, until
   `--knock-stopped` says a person has set the GitHub variable `NIGHT_KNOCK`
-  to `off` and no night is running: two machines asking at once is how the
-  second block happened. Its last line counts only a 2xx that is not the
+  to `off` (or disabled the knock workflow) and no knock or night is
+  running: two machines asking at once is how the second block happened.
+  GitHub tests such a refusal hourly only once it reached the bucket an hour
+  before the last night window closed, so every laptop that may ask has
+  pulled it and stops at it. Its last line counts only a 2xx that is not the
   firewall's page as getting through; a 403, a 429, a 503 or a redirect is
   the address being told no.
 - **A refusal met here goes to the bucket at once** (`refusal.note()`, in the
@@ -103,9 +106,10 @@ both machines now. On a stood-down laptop:
   refusal -- `python3 src/ops/cloud.py send-refusal` sends it once it can --
   or a person lifts it here.
 - **A refusal GitHub's own knock lifted stays here until a person clears
-  it.** The bucket's `state/knocks.json` lists every refusal the night's
-  knock lifted (`refusal.py`, THE NIGHT'S KNOCK: the night's knock, at its
-  start on each morning one is due). A pull
+  it.** The bucket's `state/knocks.json` lists every refusal a knock lifted
+  (`refusal.py`, THE NIGHT'S KNOCK: the night's knock, at its start on each
+  morning one is due, and the hourly one, `.github/workflows/knock.yml`, so a
+  lift can come at any hour outside 07:30 to 13:30 UTC). A pull
   that finds the copy here among them says THE NIGHT LIFTED THIS REFUSAL, at
   any age, and leaves it on file, so the lane and every fetch here still stop
   at it until `python3 refusal.py --clear`; `send-refusal` never sends one

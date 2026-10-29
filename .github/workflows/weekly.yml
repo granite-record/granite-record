@@ -64,7 +64,9 @@ permissions:
 # a group of its own, its run's id, and never waits here. Still open: a dry
 # run started while a real run of main holds gc-night and the scheduled
 # night waits behind it cancels that night, which the dead-man's switch then
-# reports. preflight holds this line beside DRY_RUN.
+# reports. The hourly knock's job (knock.yml) holds gc-night too, for a few
+# minutes outside the night's hours, and its quiet job queues no knock while
+# anything holds or waits for it. preflight holds this line beside DRY_RUN.
 concurrency:
   group: ${{ github.ref != 'refs/heads/main' && 'dry-runs' || github.run_id }}
   cancel-in-progress: false

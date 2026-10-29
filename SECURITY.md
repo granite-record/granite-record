@@ -96,7 +96,18 @@ Worth saying in advance, so you do not spend an evening on them:
   consults `refusal.py`'s record before its first request and records a
   refusal it meets, and the fetch lane, the pipeline's General
   Court steps and the nightly do not ask while one is on file; a way past
-  that, or a way to make two fetches run at once, is a real finding.
+  that, or a way to make two fetches run at once, is a real finding. The
+  one exception is the knock (`refusal.py`, THE NIGHT'S KNOCK): one request
+  for one small file, never retried and following no redirect, for a
+  refusal of a kind GitHub's own night met and tests itself. The hourly one,
+  `.github/workflows/knock.yml`, is started only by its schedule or by hand,
+  never by anything a stranger does; its `look` job, which runs every hour,
+  holds only an R2 key that cannot write; its `knock` job holds the keys
+  that write the bucket and the "a refusal is yours" check's address on at
+  most 19 runs a day, joins `gc-night` only on a run's first attempt, and
+  installs boto3 and its dependencies by their hashes
+  (`requirements-r2.txt`); its token lists Actions runs, and re-enables the
+  workflow once a day.
 - A credential or key findable in the repository or its history. `preflight.py`
   has three checks aimed at this — one for key shapes in tracked files, one for
   the contact address, and one that every commit is authored by the project
