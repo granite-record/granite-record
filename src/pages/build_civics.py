@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-08.85
+# GRANITE_VERSION: 2026-09-08.86
 """
 The civics section: a hub and one page per topic, in order.
 
@@ -1748,6 +1748,12 @@ def guides_tab(lang, published=(), articles=()):
     function for every language, so the English tab and the Spanish one can
     never be laid out differently.
 
+    LAID OUT AS LEARN IS (the person, 29 October 2026: "I generally prefer
+    the formatting of the hub of the learn tab over the how to tab"): Most
+    Common as Learn's Start Here cards, a badge, the headline and its line
+    (cards()), and each group's guides in Learn's two-column list
+    (r-topics), where they had been small boxes and a single column.
+
     WITHOUT JAVASCRIPT the search is a form that asks the site's own search
     (/search?q=), and every group opens when its heading is pressed, so nothing
     on the tab needs the script. The suggestions read a list of the tab's
@@ -1762,8 +1768,11 @@ def guides_tab(lang, published=(), articles=()):
             return E(got) if plain else got
         return f'<span lang="en">{E(text) if plain else text}</span>'
 
+    def raw(slug):
+        return guide_href(slug) if en else I.href(lang, guide_href(slug))
+
     def href(slug):
-        return E(guide_href(slug) if en else I.href(lang, guide_href(slug)))
+        return E(raw(slug))
 
     def bare(h):
         return html.unescape(re.sub(r"<[^>]+>", "", h))
@@ -1796,11 +1805,10 @@ def guides_tab(lang, published=(), articles=()):
             + E(html.unescape(I.say(lang, "guides.find_list", "Suggested guides")))
             + '" hidden></ul></div><p id="gfind-status" class="g-findstat" aria-live="polite">'
             '</p></form>')
-    # MOST COMMON, by headline, as a row of short boxes.
+    # MOST COMMON, by headline and line, as Learn's Start Here cards.
     by_slug = {r[2]: r for r in rows}
-    common = "".join(f'<li><a href="{href(s)}">{badge(CARD_ICON.get(s, by_slug[s][0]))}'
-                     f'<span>{by_slug[s][3]}</span></a></li>'
-                     for s in G.COMMON if s in by_slug)
+    common = cards([(raw(s), CARD_ICON.get(s, by_slug[s][0]), by_slug[s][3], by_slug[s][4])
+                    for s in G.COMMON if s in by_slug])
     # EVERY GUIDE BY TOPIC, each group a <details> shut until opened.
     topics, order = [], []
     for r in rows:
@@ -1808,10 +1816,10 @@ def guides_tab(lang, published=(), articles=()):
             order.append(r[0])
     for group in order:
         mine = [r for r in rows if r[0] == group]
-        lis = "".join(f'<li><a href="{href(r[2])}">{r[3]}</a><span>{dashes(r[4])}</span></li>'
+        lis = "".join(f'<li><a href="{href(r[2])}">{r[3]}</a><p>{dashes(r[4])}</p></li>'
                       for r in mine)
         topics.append(fold(f"g-{_slug(group)}", group, mine[0][1], len(mine),
-                           f'<ul class="g-list">{lis}</ul>'))
+                           f'<ul class="r-topics">{lis}</ul>'))
     # What the suggestions read: each guide's headline and line as shown, and
     # every word it is known by, in English and, on another language's tab,
     # in that language too, so a reader may type either.
@@ -1838,8 +1846,7 @@ def guides_tab(lang, published=(), articles=()):
         "taking part in the legislature. Each step-by-step guide links the official page that has the "
         "final word, and says when it was last checked against it.") + "</p>")
     return (intro + find
-            + hub_section("g-common", I.say(lang, "guides.common", "Most Common"),
-                          f'<ul class="g-common">{common}</ul>')
+            + hub_section("g-common", I.say(lang, "guides.common", "Most Common"), common)
             + hub_section("g-topics", I.say(lang, "guides.by_topic", "All Guides by Topic"),
                           "".join(topics))
             + f'<script type="application/json" id="gfind-data">{blob}</script>' + GFIND_JS)
