@@ -71858,7 +71858,8 @@ def _css_screen_rules(text):
     shorthand is its three longhands, what it leaves out reset as a browser
     resets it ("outline:none" is a style of none and a width of medium);
     padding and margin, and their -block and -inline forms, are their four
-    sides (_css_sides)."""
+    sides (_css_sides); the font shorthand's size is font-size too, which
+    it sets."""
     out = []
     for order, (ctx, sel, body, line) in enumerate(_css_rules(text)):
         if any(re.search(r"\bprint\b", c) and not re.search(r"\bnot\s+print\b", c) for c in ctx):
@@ -71881,6 +71882,8 @@ def _css_screen_rules(text):
                 decls.update({side: (x, imp) for side, x in _css_sides(k, v).items()})
             else:
                 decls[k] = (v, imp)
+                if k == "font" and _css_font_size(k, v):
+                    decls["font-size"] = (_css_font_size(k, v), imp)
         if decls:
             out.extend((order, ctx, one, decls, line) for one in _css_selectors(sel))
     return out
@@ -72214,6 +72217,102 @@ def _vote_tick_said(I):
                      + "; ".join(bad[:4]))
     return "ok", (f"3 tallies in English and in Spanish, each tick hidden and followed by "
                   f"\"(prevailed)\" or \"{es['vote.won_sr']}\"; app.js writes the tick once, in wonMark")
+
+
+def _css_font_px(rules, chain, tokens, memo=None):
+    """(px, selector, line) of the size app.css's cascade draws chain[0]'s
+    text at, at the browser's 16px (_css_px): from the nearest element
+    outward that a rule sizes, an em or % of its parent's; None for a size
+    this cannot read."""
+    for j in range(len(chain)):
+        got = _css_inherited(rules, chain[j:], ("font-size",), memo)
+        if not got:
+            return 16.0, "the browser's", 0
+        v, one, line, far = got["font-size"]
+        px, how = _css_px(v, tokens)
+        if px is not None:
+            return px, one, line
+        m = re.fullmatch(r"(\d*\.?\d+)(em|%)", v.strip())
+        if not m:
+            return None, one, line
+        parent = _css_font_px(rules, chain[j + far + 1:], tokens, memo) if j + far + 1 < len(chain) \
+            else (16.0, "the browser's", 0)
+        if parent[0] is None:
+            return parent
+        return parent[0] * float(m.group(1)) / (100 if m.group(2) == "%" else 1), one, line
+    return 16.0, "the browser's", 0
+
+
+@check("frontend", "a heading is drawn no smaller than the text it heads: a member's ATTENDANCE and BILLS, "
+       "and a Laws chapter's parts", needs=("build_rsa", "rsa", "shell"))
+def _headings_outrank(B, RSA, S):
+    """The accessibility sweep of the R1 preview (29 October 2026): a
+    member's term at a glance headed its figures ATTENDANCE and BILLS at
+    13px over labels at 16px, and a Laws chapter headed its parts ("HOURS OF
+    POLLING", h2.rs-sub, the Constitution tab's h4s too) at 13px over the
+    law at 16px. app.css's own rule (A HEADING OUTRANKS WHAT IT HEADS) is
+    that no heading reads smaller than the text under it.
+
+    So each is drawn where the pages draw it -- termGlance in node for a
+    member with figures, in bills.html's #results; a chapter with a part
+    through build_rsa's chapter page -- and the cascade's size for the
+    heading (_css_font_px: font-size and the font shorthand's size, the
+    tokens at the browser's 16px) must be at least the size of each run of
+    text it heads: the figures' labels, and the law's paragraphs."""
+    css = Path("src/pages/app.css").read_text(encoding="utf-8")
+    rules = _css_screen_rules(css)
+    tokens = _css_palette(css)["light"]
+    memo = {}
+    held_in = []
+    _html_walk(Path("src/pages/bills.html").read_text(encoding="utf-8"),
+               element=lambda c: held_in.append(c) if "results" in c[0]["ids"] else None)
+    assert held_in, "bills.html has no #results"
+    glance = _app_js('scope.termGlance({term_figures:{"2025-2026":{bills_filed:12,prime:4,cosponsored:8,'
+                     'bills_passed:3,became_law:2}},attendance:{"2025-2026":{attended:40,days:42,voted:300,'
+                     'presided:0,conflict:1,roll_calls:310}}},"2025-2026")', names=("termGlance",))
+    pages = []
+    if glance is not None:
+        pages.append(("a member's term at a glance (termGlance)", glance, held_in[0],
+                      lambda c: c[0]["tag"] == "h3" and "mfgrp" in c[1]["classes"],
+                      lambda c: c[0]["tag"] in ("span", "small", "p") and any(
+                          "mf" in e["classes"] or "mfnone" in e["classes"] for e in c[:2])))
+    cols = ["id", "TitleNo", "ChapterNo", "SectionNo", "Title", "Chapter", "Section", "SourceNote",
+            "rsa", "EntireRSA", "titleNumber", "url"]
+    t = RSA.Table([dict(zip(cols, (
+        "0", "LXIII", "659", "659-1", "TITLE LXIII ELECTIONS", "CHAPTER 659 ELECTION PROCEDURE",
+        "Section 659:1 Hours of Polling.", "",
+        "<center><h2>CHAPTER 659<br>ELECTION PROCEDURE</h2></center><h2>Hours of Polling</h2>",
+        "<codesect> <br> I. The polls shall be open at least 8 hours. <br> II. The moderator shall "
+        "announce the hours.</codesect>", "63", "LXIII\\659\\659-1.htm")))])
+    data = {"bills": {}, "enacted": {}, "statute": {}, "asof": {"laws_through": 2025}}
+    root = Path(tempfile.mkdtemp(prefix="gr-rsasub-"))
+    try:
+        (root / "idx").mkdir()
+        page = B.chapter_page(S.template(Path("site")), t, data, B.Bills(root, "2025-2026"), "659",
+                              "https://graniterecord.org")
+    finally:
+        shutil.rmtree(root, ignore_errors=True)
+    pages.append(("a Laws chapter's part (h2.rs-sub)", page, [],
+                  lambda c: "rs-sub" in c[0]["classes"],
+                  lambda c: c[0]["tag"] == "p" and len(c) > 1 and "rs-text" in c[1]["classes"]))
+    bad, said = [], []
+    for what, html, outer, is_head, is_body in pages:
+        heads, bodies = [], []
+        _html_walk(html, text=lambda d, c: (heads if is_head(c) else bodies if is_body(c) else []).append(c)
+                   if d.strip() and c else None)
+        assert heads and bodies, f"{what}: no heading or no text under it was drawn ({len(heads)}, {len(bodies)})"
+        h = [_css_font_px(rules, c + outer, tokens, memo) for c in heads]
+        b = [_css_font_px(rules, c + outer, tokens, memo) for c in bodies]
+        if any(x[0] is None for x in h + b):
+            bad.append(f"{what}: a size this cannot read ({[x for x in h + b if x[0] is None][:2]})")
+            continue
+        hmin, bmax = min(h), max(b)
+        if hmin[0] < bmax[0]:
+            bad.append(f"{what}: the heading is {hmin[0]:g}px ({hmin[1]}, app.css line {hmin[2]}) over text "
+                       f"at {bmax[0]:g}px ({bmax[1]}, app.css line {bmax[2]})")
+        said.append(f"{what} {hmin[0]:g}px over {bmax[0]:g}px")
+    assert not bad, "a heading is drawn smaller than the text it heads: " + "; ".join(bad)
+    return "ok", "; ".join(said) + ("" if glance is not None else " (node is not here for termGlance)")
 
 
 @check("frontend", "a bill's Testify button counts the Senate's hearings, and says testimony opens again "
