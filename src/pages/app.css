@@ -1,4 +1,4 @@
-/* GRANITE_VERSION: 2026-09-07.330 */
+/* GRANITE_VERSION: 2026-09-07.331 */
 /* ONE STYLESHEET FOR EVERY PAGE (23 October 2026). Every page of the site
    links this file, /app.css: the record pages shell.page() makes from
    bills.html, and the five build_pages.py writes -- the home page, Officials,
@@ -8773,19 +8773,21 @@ font-size:var(--t-sm);color:var(--ink-2)}
   color:var(--ink-2);font-variant-numeric:tabular-nums;white-space:nowrap}
 /* THE WHOLE CARD IS STILL THE LINK (the review of 29 October 2026), as every
    chip's is ("THE WHOLE CHIP IS THE LINK", above): the card fills its column
-   now and the name does not, so the link's ::after is laid over the whole
-   card, its number included, and the focus ring is drawn round the card
-   rather than round the name. */
-:where(body.pg) #seatlist .seatrow .mchip > a::after{content:"";position:absolute;inset:0}
+   now and the name does not, so the link's ::before is laid over the whole
+   card, its number included (::after is the outside-link mark's, and is left
+   alone). A ring on it marks the card: lit, for a seat chosen on the chart,
+   from Go to a seat or by a search down to one name -- the card covers its
+   row, whose colour and bar barely showed, and forced colours keep a ring
+   where they keep no background -- and focused, round the card rather than
+   round the name. The ring is the overlay's, not the chip's: the chip's own
+   frame stays the one chip's. */
+:where(body.pg) #seatlist .seatrow .mchip > a::before{content:"";position:absolute;inset:0;
+  border-radius:var(--r-in)}
+:where(body.pg) #seatlist .seatrow.on .mchip{background:var(--pine-soft)}
+:where(body.pg) #seatlist .seatrow.on .mchip > a::before{outline:2px solid var(--pine);outline-offset:1px}
 :where(body.pg) #seatlist .seatrow .mchip > a:focus-visible{outline:none}
-:where(body.pg) #seatlist .seatrow .mchip > a:focus-visible::after{outline:2px solid var(--pine);
-  outline-offset:2px;border-radius:var(--r-in)}
-/* A LIT CARD (a seat chosen on the chart, from Go to a seat, or a search
-   down to one name): the card covers its row, so the card itself takes the
-   row's colour and a ring, which forced colours keep as they do not keep
-   the row's background and inset bar (the review of 29 October 2026). */
-:where(body.pg) #seatlist .seatrow.on .mchip{background:var(--pine-soft);outline:2px solid var(--pine);
-  outline-offset:1px}
+:where(body.pg) #seatlist .seatrow .mchip > a:focus-visible::before{outline:2px solid var(--pine);
+  outline-offset:2px}
 /* Copied, a card reads as its member's name: the ")" and the number that are
    the eye's alone are not selected with it. */
 :where(body.pg) #seatlist .mtag > [aria-hidden],:where(body.pg) #seatlist .mseat{-webkit-user-select:none;

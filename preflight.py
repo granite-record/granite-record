@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.728
+# GRANITE_VERSION: 2026-09-04.729
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -54839,19 +54839,21 @@ def _seat_number_in_card(BP, SEAT):
     # 29 October 2026).
     flat = re.sub(r"\s+", " ", re.sub(r"/\*.*?\*/", "", css, flags=re.S))
     for rule, what in (
-            (":where(body.pg) #seatlist .seatrow .mchip > a::after{content:\"\";position:absolute;inset:0}",
+            (":where(body.pg) #seatlist .seatrow .mchip > a::before{content:\"\";position:absolute;inset:0;",
              "the link is not laid over the whole card, so its number and the space after the name do nothing"),
-            (":where(body.pg) #seatlist .seatrow .mchip > a:focus-visible::after{outline:2px solid var(--pine);",
+            (":where(body.pg) #seatlist .seatrow .mchip > a:focus-visible::before{outline:2px solid var(--pine);",
              "the focus ring is not drawn round the card"),
-            (":where(body.pg) #seatlist .seatrow.on .mchip{background:var(--pine-soft);outline:2px solid var(--pine);",
+            (":where(body.pg) #seatlist .seatrow.on .mchip{background:var(--pine-soft)}",
              "a lit card is not lit itself, and the card covers its row's colour"),
+            (":where(body.pg) #seatlist .seatrow.on .mchip > a::before{outline:2px solid var(--pine);",
+             "a lit card has no ring, which is all forced colours keep of it"),
             (":where(body.pg) #seatlist .mtag > [aria-hidden],:where(body.pg) #seatlist .mseat{-webkit-user-select:none;",
              "the eye's own \")\" and number are copied with the name")):
         if rule not in flat:
             bad.append(what)
     if "position:relative" not in (re.search(r":where\(body\.pg\) #seatlist \.seatrow \.mchip\{([^}]*)\}", flat)
                                    or [None, ""])[1]:
-        bad.append("the card is not the box its link's ::after is laid over")
+        bad.append("the card is not the box its link's ::before is laid over")
     assert not bad, "the seat number in the card: " + "; ".join(bad[:5])
     return "ok", ("each card on the floor ends in its seat's number, aria-hidden, the Speaker's in none, and so "
                   f"do the fixture page's own {len(own) - len(unseated)} seated row(s); a screen reader hears "
