@@ -1,46 +1,37 @@
 # Keeping the site current when the General Court's website drops out
 
-**What it does.** When the General Court's website drops our connections, the nightly no longer waits for you. For up to 16 days it builds the site from their database, which their IT office said we may use any time. It tests the website with one request for one small file: the next morning, then 2, 4 and 7 days later. When the website answers, everything goes back to normal by itself.
+**What it does.** When the General Court's website drops our connections, the nightly no longer waits for you. For up to 16 days it builds the site from their database, which their IT office said we may use. Meanwhile GitHub tests the website with one request for one small file: **once an hour for the first two days, then every six hours**, never during the night's own run (2:30 to 8:30 a.m. Eastern from 1 November; also Sunday 10:30 p.m. to 1:30 a.m., the weekly's). When the website answers, the refusal clears itself, and the next morning's night fetches as usual.
 
-**What would have happened on 29 October.**
-- **4:27 a.m.** Two dropped connections. As today, nothing more asked, nothing built. One email says what happened and when the test comes.
-- **30 October, about 4:25 a.m.** One request for a file the night fetches anyway.
-  - If it answers: a normal night, the site current by about 5:30 a.m.
-  - If not: the site is built from the database. The website is tried again on 1, 5 and 12 November.
-- **So:** the site is one day behind, not behind until you act. Whether the website would have answered is a guess.
+**Yours to change**: GitHub variables `KNOCK_HOURLY_HOURS` (48 if unset), `KNOCK_EVERY_HOURS` (6) and `KNOCK_DAYS` (16 at most). A nonsense value turns testing off and emails you.
 
-**What still comes to you.**
-- **A real block:** "forbidden", "too many requests", the firewall's block page, or a redirect, on any night or on the test. Everything stops at once, the database too.
-- **A long outage:** four tests unanswered, or 16 days. The site then stops updating until you look, as some parts would be too old.
-- **Anything met on your laptop or by a test run,** anything recorded before this change, and, as now, the new term (2 December) and nights held for approval.
+**On 29 October**: two dropped connections at 4:27 a.m., nothing more asked, one email; then one request an hour from 9:47 a.m. Either way the 30 October site is current by about 5:30 a.m.: a normal fetch if the website answered (another machine's test suggests so; a guess), the database if not.
 
-If it was really a block, the blocked machine sends at most six single requests, over about two weeks.
+**What hourly testing buys.** After a drop the site is about a day behind either way: the full fetch happens only in the morning, after the night's own test. What changes is a longer outage: the site recovers the morning after the website does, not days later. Hourly tests matter most when GitHub starts the night late, as on six October nights. A morning-only test would cost at most 18 requests, not 96; your choice of hourly stands.
+
+**What still comes to you.** A real block ("forbidden", "too many requests", the firewall's page, a redirect): everything stops at once, the database too. Sixteen days, or a fourth time the website answers a test and then drops the full fetch. Anything met on your laptop or by a test run or recorded before this change, a test whose answer was lost; as now, the new term and held nights.
+
+**The cost, said plainly.** If it is really a block that looks like dropped connections, the blocked machine could get up to **96 single requests over 16 days with the default settings** (about 19 a day for two days, then 4 a day), against 6 under the daily schedule. The settings can raise it: hourly throughout would be about 300. Each is one small file, with our name on it, never retried.
+
+**Your laptop and GitHub are kept from asking at once.**
+- GitHub tests hourly only a refusal that reached the bucket before the night's hours ended; one from a late night waits for the next morning.
+- **Before checking or clearing a refusal early yourself, set `NIGHT_KNOCK` to `off`** (or disable the "knock" workflow) and wait 15 minutes. netcheck refuses until you confirm it (`--knock-stopped`). Two machines asking at once is how the second block happened.
+- The laptop needs nothing meanwhile; after GitHub clears a refusal, its next pull says to run `python3 refusal.py --clear`.
 
 **How you would hear.**
-- **A new Healthchecks check, "a refusal is yours",** emails the moment something becomes yours, and says why.
-- Your night check emails the morning it happens, when the site is built again, and after seven database nights running.
-- **Your laptop:** if it pulled the refusal, its own fetching stays stopped until you run `python3 refusal.py --clear` there. Its next pull says so.
+- **A new Healthchecks check, "a refusal is yours,"** emails the moment something becomes yours, and says why.
+- Your night check emails the morning it happens, when the site is built again, after seven database nights running, and once if hourly testing stops.
+- The Actions tab shows about 25 short "knock" runs a day.
 
-**Your idea: let the live updates say when to resume.** Half of it is in, and half can't work.
-- **In: frequent light checks decide when the heavy job resumes.** That's the test request above. It's made by the machine that will fetch, just before it fetches, because only that proves anything.
-- **In: the other door stays open.** The live updates read the General Court's database, not its website. That same database is what keeps the site current while the website is out.
-- **In: on session days,** the live page and live votes keep the day current whatever the night's website does.
-- **Can't work:**
-  - The live updates never ask the website, so a healthy database doesn't show the website is back.
-  - Having them ask it would add a third machine knocking beside the night. Two fetches at once caused the second block.
-  - They also sleep outside the session, so on 29 October they would have seen nothing.
+**Your decisions** (approved 29 October, with the hourly change).
+1. Clear the refusal standing now: on the laptop, `python3 netcheck.py` (read the table, not the last line), then `python3 src/ops/cloud.py clear-refusal` and `python3 refusal.py --clear`.
+2. The night clears a dropped-connection refusal itself.
+3. The database while it tests, never during a block.
+4. A "503" treated like a drop.
+5. **Before it goes live:**
+   1. Healthchecks: **Add Check** `a refusal is yours`, Simple, Period **1 day**, Grace **1 day**, your email on. In GitHub, its ping URL as the **repository** secret `HEALTHCHECKS_PERSON_URL`. The morning after going live it should say "up"; "new" means a wrong URL: set `NIGHT_KNOCK` to `off` until fixed.
+   2. **New:** a Cloudflare R2 token with **Object Read only** on the kit's bucket, as repository secrets `R2_READ_ACCESS_KEY_ID` and `R2_READ_SECRET_ACCESS_KEY`. Then the hourly look, which runs all day, holds no key that can change the site's sources. Without it only the morning test runs.
+6. The safety settings (now also: ask before re-running or cancelling a GitHub run) and the CLAUDE.md paragraph.
 
-**Your decisions.**
-
-1. **Clear the refusal standing now.** It predates this change, so nothing will lift it. *Recommended: yes, today.*
-   - On the laptop, run `python3 netcheck.py`. Read the table, not the last line, which counts a "forbidden" as success.
-   - Then run `python3 src/ops/cloud.py clear-refusal` and `python3 refusal.py --clear`.
-2. **Let the night test and clear a dropped-connection refusal itself.** This changes "only a person clears a refusal", for this one kind. *Recommended: yes.*
-3. **Build from the database while the night is testing, 16 days at most.** This changes "carrying on by another door is a person's decision". Never during a block. *Recommended: yes.* If no, it stays stale up to 16 days.
-4. **"503 Service Unavailable"** (never yet seen from them): treat it like a dropped connection, but never test before the time the server names; over a week, and it is yours. *Recommended: yes.*
-5. **Create the "a refusal is yours" check** in Healthchecks, and save its ping address in GitHub as the secret `HEALTHCHECKS_PERSON_URL`. Until it exists, none of this runs. *Recommended: yes, before it goes live.*
-6. **Safety settings:** the assistant asks before clearing the night's refusal or running netcheck; netcheck's last line is fixed; CLAUDE.md gets a new paragraph. *Recommended: yes.*
-
-**Off switch:** set the GitHub variable `NIGHT_KNOCK` to `off` to restore today's behaviour.
+**Off switch:** the GitHub variable `NIGHT_KNOCK` set to `off` gives today's behaviour; a refusal being tested becomes yours, with one email. Disabling the "knock" workflow stops only hourly testing.
 
 **When.** It follows the night clock, due in early November. Nothing goes live until you say so.
