@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.17
+# GRANITE_VERSION: 2026-09-04.18
 """
 Daily snapshot of the NH General Court bulk data files.
 
@@ -69,8 +69,11 @@ leaving that entry "no answer": a failed knock. The answer decides:
   4  not asked: the gate, the lock, or a knock that could not be written
      down first.
 
-Nothing starts it yet. Every answer it records is in this project's words,
-a status number or a size, never a server's.
+GitHub's night starts it, at its start and under its own lock, with
+GRANITE_KNOCK_BY "night" (nightly.knock, THE NIGHT'S KNOCK there), and reads
+the status; the hourly knock workflow is to be its second caller. Every
+answer it records is in this project's words, a status number or a size,
+never a server's.
 
 AND IT FEEDS THE BUILD. The build reads Docket.txt and the rest from the
 repository root, and nothing refreshed those: on the 12th they were the copies
@@ -877,8 +880,9 @@ def run(a, held):
                   "of an earlier day's is a record of no day.")
     if stopped == "refused":
         print("\nRefused, and recorded. A fetch started by hand waits a day for it; the lane "
-              "and GitHub's night wait until a person clears it (refusal.py); netcheck.py "
-              "says what kind it was.")
+              "and GitHub's night wait until a person clears it, or, for one GitHub's night "
+              "tests itself, until its one request is answered (refusal.py, THE NIGHT'S "
+              "KNOCK); netcheck.py says what kind it was.")
         return 2
     if stopped or failed:
         print("\nA failure means that file was unreachable tonight, not that it is "

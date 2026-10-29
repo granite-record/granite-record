@@ -87,7 +87,8 @@ both machines now. On a stood-down laptop:
   or a person lifts it here.
 - **A refusal GitHub's own knock lifted stays here until a person clears
   it.** The bucket's `state/knocks.json` lists every refusal the night's
-  knock lifted (`refusal.py`, the knock's ladder; nothing knocks yet). A pull
+  knock lifted (`refusal.py`, THE NIGHT'S KNOCK: the night's knock, at its
+  start on each morning one is due). A pull
   that finds the copy here among them says THE NIGHT LIFTED THIS REFUSAL, at
   any age, and leaves it on file, so the lane here still stops at it until
   `python3 refusal.py --clear`, and a fetch started by hand here for 24 hours

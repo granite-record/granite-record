@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.81
+# GRANITE_VERSION: 2026-09-04.82
 """
 The nightly run. Fetch the day's bulk files, rebuild, check, compile what
 readers reported and what changed -- and publish only if told to.
@@ -26,7 +26,9 @@ no refusal handling or budget and stays out of the nightly; the build runs
 IT ASKS ONLY WHEN NOTHING ELSE IS ASKING. This address has blocked the project
 twice, the second time for two fetches at once, and the bill-text lane runs for
 days. So before any request: a refusal on file, at any age, means no fetch
-tonight (a run nobody watches does not decide a refusal is over); the lane's
+tonight (a run nobody watches does not decide a refusal is over) -- unless it
+is the one kind the night tests itself and its one request is answered (THE
+NIGHT'S KNOCK, below); the lane's
 lock held means no fetch tonight; a build already running means no run at all.
 Deferring is not a failure and the log's first line says why. The lock is taken
 for the fetch and released before the hour of building, which asks nothing.
@@ -448,24 +450,72 @@ THE NIGHT'S CLOCK (26 October 2026)
 
 Nothing on GitHub read refusal.NIGHT_WINDOWS: only a laptop that has stood
 down was held by it, and a night GitHub started hours late asked the General
-Court whenever it ran. Now the steps after the day's files that ask its site
--- the bill requests and the lists -- each start only if they can end
+Court whenever it ran. Now the steps that ask its site besides the day's
+files -- the knock, before them (THE NIGHT'S KNOCK, below), and the bill
+requests and the lists after them -- each start only if they can end
 before ASK_UNTIL, 12:00 UTC, inside the night's own window (asking_left);
-otherwise "not asked for", a warning, and tomorrow, with the copy on file
-kept. That warning never holds the night for the gate (clock_kind): a night
+otherwise "not asked for", and tomorrow, with the copy on file kept: a
+warning for the bill requests and the lists, and for the knock the line the
+verdict's "knock" carries. That warning never holds the night for the gate
+(clock_kind): a night
 GitHub started late publishes itself, as it did before the clock, a day
 behind on what was not asked for. Each step is also killed at its own
-minutes (LSRS_MINUTES, LISTING_MINUTES; run(timeout=)), counted from the
+minutes (KNOCK_MINUTES, LSRS_MINUTES, LISTING_MINUTES; run(timeout=)),
+counted from the
 moment its gate read the clock, because a socket's timeout bounds one read,
-not a request. The person approved it: "The existing bill request and list
-page steps can stay within 4-8am". The night starts at
-08:17 UTC, so those two steps ask between then and 12:00 UTC: 4:17 to 8 a.m.
+not a request. The knock asks for its own minutes and the export's
+(EXPORT_MINUTES), the forty a lift opens, so that both end before 12:00 on
+the export's worst case. The person approved it: "The existing bill request
+and list page steps can stay within 4-8am". The night starts at
+08:17 UTC, so those three steps ask between then and 12:00 UTC: 4:17 to 8 a.m.
 Eastern in summer, and 3:17 to 7 a.m. in winter, since the hours are kept in
 UTC. The day's files keep their own rule and not these hours: a night GitHub
 starts late still asks the export whenever it runs, and a New term run tries
 it as refusal.NIGHT_WINDOWS describes. The hour and a half before the
 window's 13:30 is the build's: a refusal the night meets reaches the bucket
 only when this exits.
+
+THE NIGHT'S KNOCK (29 October 2026, the person's decision)
+
+On 29 October two dropped connections, met by the night's own export, put a
+refusal on file, and every night after stopped at it until a person cleared
+it -- for what the log shows was an outage. One kind of refusal is now the
+night's to test itself (refusal.whose, the one reader): dropped connections,
+or a 503 that is not the firewall's page, met by GitHub's own night on main,
+not a dry run, while the person's switch NIGHT_KNOCK is on and the "a refusal
+is yours" check exists. The night that meets them ends as it always did:
+nothing more asked, nothing built, and the record goes to the bucket within
+seconds. Each night after, before the day's files:
+
+  the knock       knock(), the one place the night knocks: on GitHub's night
+                  of main, not a dry run nor a New term run, with no other
+                  fetch holding archive/.lock, a knock due on refusal.py's
+                  ladder, and the knock and the export a lift opens able to
+                  end before ASK_UNTIL (asking_left(KNOCK_MINUTES +
+                  EXPORT_MINUTES)). Under the night's lock,
+                  snapshot_gencourt.py --knock asks one small file once,
+                  GRANITE_KNOCK_BY "night" -- the night's hours in the
+                  child's own gate, which ends at refusal.KNOCK_LATEST, 11:18
+                  UTC, this gate's copy -- killed at KNOCK_MINUTES
+  answered        with the file, at any size: the refusal is lifted -- moved
+                  into archive/knocks.json, which the bucket is told -- and
+                  the night goes on as any night, but with ONE try of the
+                  export: an empty one still goes to the database, and nothing
+                  waits half an hour to ask again past 12:00. A drop then is a
+                  relapse, and ends the export as it ended the night of the
+                  drops
+  a person's      a 403, a 429, the firewall's page, a redirect: the record is
+                  a person's for good, nothing more is asked, and the "a
+                  refusal is yours" check is told (person_alerts_of)
+  not answered,   the record stands, and the night is a night with a refusal
+  or not asked    on file: nothing asked, nothing built. The verdict's
+                  "knock" says which, and when the next is due
+
+What the person hears follows whose the record is (alerts_of): one the night
+tests is no email of its own once the night is clean, and the day it is met
+says the knock's pattern and the day it becomes theirs at the latest, that
+nothing is needed of them on GitHub's side or the laptop's, and to set
+NIGHT_KNOCK to off before checking or clearing it early.
 
 THE GATE, IN SHADOW (6 October 2026)
 
@@ -732,6 +782,16 @@ ASK_CLOCK_SAID = "it is {hm} UTC"
 # requests past ASK_UNTIL.
 LSRS_MINUTES = 5
 LISTING_MINUTES = 7
+# THE NIGHT'S KNOCK (the docstring). The knock's own minutes -- refusal's,
+# the child's own kill -- and the minutes of the export a lift opens, which
+# the knock asks the clock for with its own: the page's PAGE_TIMEOUT, then
+# fifteen requests (fourteen files and one retried) at get()'s timeout with
+# their pauses, and the minute's wait before the retry -- 37.25 minutes,
+# rounded up (preflight's _knock_export_minutes reads them off the snapshot).
+# ASK_UNTIL less both is refusal.KNOCK_LATEST, 11:18 UTC, the child's own
+# copy of this gate, which preflight holds equal to it.
+KNOCK_MINUTES = refusal.KNOCK_MINUTES
+EXPORT_MINUTES = 40
 
 # RECORDINGS WAITING FOR THEIR START TIMES (30 September 2026; the night's own
 # since 10 October 2026). The night's livestream step captions the new
@@ -1236,12 +1296,13 @@ def mark_reports_failed(day, log_name):
     return out
 
 
-def run(args, label, cwd=None, timeout=None):
+def run(args, label, cwd=None, timeout=None, env=None):
     """Stream the step's output as it happens, and log it too. The exit code.
 
     A child of this process, run with this interpreter directly and no shell,
     so a fetch it starts sees this process as its parent and runs under the
-    lock this process holds.
+    lock this process holds. `env`, variables laid over this process's for
+    the child alone: the knock's GRANITE_KNOCK_BY (knock()).
 
     `timeout`, in seconds: a child still running then is killed, and the step
     ends on RUN_KILLED (26 October 2026). A step with none has the job's
@@ -1267,7 +1328,7 @@ def run(args, label, cwd=None, timeout=None):
     proc = child.popen([sys.executable, "-u"] + args,
                        stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
                        text=True, bufsize=1, cwd=cwd,
-                       env={SQL_HELD_ENV: str(SQL_HELD.resolve())})
+                       env={SQL_HELD_ENV: str(SQL_HELD.resolve())} | (env or {}))
     killed = threading.Event()
     timer = None
     if timeout is not None:
@@ -1306,19 +1367,150 @@ def failure_lines(lines, tail=6):
 
 
 def gc_quiet():
-    """Whether tonight may ask the General Court for anything: (ok, why)."""
+    """Whether tonight may ask the General Court for anything: (ok, why).
+
+    A refusal on file says no at any age, and its sentence begins "a refusal
+    is on file"; it then says whose the record is (refusal_whose): one the
+    night tests itself, and when its next knock is due (THE NIGHT'S KNOCK),
+    or a person's, and why."""
     if refusal.MARK.exists():
         try:
             d = json.loads(refusal.MARK.read_text(encoding="utf-8"))
             why = f"{d.get('where', '?')} at {d.get('at', '?')}"
-        except (ValueError, OSError):
+        except (ValueError, OSError, AttributeError):
             why = "unreadable"
-        return False, (f"a refusal is on file ({why}); clearing one is a person's "
-                       "decision, after netcheck.py")
+        return False, f"a refusal is on file ({why}); {refusal_whose()}"
     if refusal.LOCK.exists():
         held = refusal.LOCK.read_text(encoding="utf-8", errors="replace").strip()
         return False, f"archive/.lock is held (pid {held or '?'}): the lane or a fetch is running"
     return True, ""
+
+
+def refusal_whose():
+    """What the night says of the refusal on file, after "a refusal is on
+    file (...)": that GitHub's night tests it itself, and when the next knock
+    is due; or that it is a person's to clear, why, and that clearing one is a
+    person's decision. refusal.whose() is the one reader; a record it cannot
+    read is a person's."""
+    try:
+        who, why = refusal.whose()
+        if who == "night":
+            due, at = refusal.knock_due()
+            return ("GitHub's night tests it itself, one request at a time (THE NIGHT'S KNOCK): "
+                    + ("a knock is due now" if due else
+                       f"the next knock is due from {refusal._stamp(at)}" if at else
+                       "no knock is due"))
+    except Exception as e:                                      # noqa: BLE001
+        why = f"whose it is could not be read ({type(e).__name__})"
+    return f"a person's to clear ({why}); clearing one is a person's decision, after netcheck.py"
+
+
+def night_tests():
+    """Whether the refusal on file is one the night tests itself
+    (refusal.whose() "night") with no other fetch holding archive/.lock: the
+    knock's first condition (THE NIGHT'S KNOCK). False, the safe way, when
+    whose it is cannot be read."""
+    if not refusal.MARK.exists() or refusal.LOCK.exists():
+        return False
+    try:
+        return refusal.whose()[0] == "night"
+    except Exception:                                           # noqa: BLE001
+        return False
+
+
+def this_knock():
+    """This run's own knock of the night's, as knocks.json holds it -- the
+    chain's, or the lift's when it lifted -- or {}."""
+    k, ok = refusal.read_knocks()
+    if not ok:
+        return {}
+    rid = github("GITHUB_RUN_ID")
+    lifts = [x for x in k.get("lifted") or [] if isinstance(x, dict)]
+    entries = list(((k.get("current") or {}).get("knocks") or [])) + \
+        list((lifts[-1].get("knocks") or []) if lifts else [])
+    mine = [x for x in entries if isinstance(x, dict) and rid and str(x.get("run_id")) == rid
+            and x.get("by") == "night"]
+    return mine[-1] if mine else {}
+
+
+def knock(a, night):
+    """THE NIGHT'S KNOCK (the docstring): the one place the night knocks, for
+    the refusal on file, which the caller has found the night's to test
+    (night_tests) on GitHub's night, not a New term run. True when the knock
+    lifted it -- the record moved into knocks.json, archive/refused.json
+    gone -- and False otherwise. Either way the verdict's "knock" says what
+    happened, in this file's words and the knock's own ("said": a status or
+    a size, never a server's).
+
+    Not asked on a dry run, nor when no knock is due on refusal.py's
+    ladder; "not asked for" where the knock and the export a
+    lift opens could not both end before ASK_UNTIL (asking_left(KNOCK_MINUTES
+    + EXPORT_MINUTES)). The child, snapshot_gencourt.py --knock, runs under
+    the night's lock with GRANITE_KNOCK_BY "night", which its own gate
+    (refusal.knock_gate) holds to the night's hours, and is killed at
+    KNOCK_MINUTES, counted from the gate's reading of the clock. Its status:
+    0 lifted; 2 a person's for good; 4 not asked, by the child's own gate or
+    the lock; RUN_KILLED, or anything else, a knock not answered -- the
+    child wrote it down before it asked, and a knock killed counts."""
+    v = night.v
+
+    def said(line, lifted=False):
+        v["knock"] = line
+        say(f"\n  the knock: {line}")
+        return lifted
+
+    def next_due():
+        try:
+            who, why = refusal.whose()
+            if who == "night":
+                due, at = refusal.knock_due()
+                return (f"the next is due from {refusal._stamp(at)}" if at else
+                        "no knock is due")
+            return f"the refusal is a person's to clear now: {why}"
+        except Exception as e:                                  # noqa: BLE001
+            return f"whose the refusal is could not be read ({type(e).__name__})"
+    # A dry run: the box, or the workflow's word or a ref off main, which
+    # main() has made the box's (dry_by_workflow).
+    if a.dry_run:
+        return said("not asked: a dry run knocks nothing, and lifts nothing")
+    due, at = refusal.knock_due()
+    if not due:
+        return said("not asked: no knock is due"
+                    + (f"; the next is due from {refusal._stamp(at)}" if at else ""))
+    deadline, why = asking_left(KNOCK_MINUTES + EXPORT_MINUTES)
+    if deadline is None:
+        return said(f"not asked for: {why}")
+    try:
+        with refusal.hold("nightly"):
+            rc = run(["snapshot_gencourt.py", "--knock"], "the knock: one request, for one small file",
+                     timeout=min(KNOCK_MINUTES * 60, seconds_left(deadline)),
+                     env={refusal.KNOCK_BY_ENV: "night"})
+    except SystemExit as e:
+        code = e.code if isinstance(e.code, int) else 3
+        return said(f"not asked: archive/.lock was taken by another fetch first (exit {code})")
+    x = this_knock()
+    when = x.get("utc") or "this morning"
+    what = str(x.get("said") or "").strip()[:200]
+    if rc == 0 and not refusal.MARK.exists():
+        return said(f"lifted: the knock at {when} was answered with the file ({what or 'whole'}), "
+                    f"so the refusal is lifted -- moved into {refusal.knocks_file().as_posix()}, "
+                    "which the bucket is told -- and the night goes on as any night, with one "
+                    "try of the export. A copy of it on the laptop stays there until python3 "
+                    "refusal.py --clear; the laptop's next pull says THE NIGHT LIFTED THIS "
+                    "REFUSAL", lifted=True)
+    if rc == 2:
+        return said(f"a person's: the knock at {when} was answered: {what or 'the address said no'}. "
+                    "The refusal is a person's to clear now, and nothing more is asked")
+    if rc == refusal.KNOCK_NOT_NOW:
+        ok, why = refusal.knock_gate("night")
+        return said("not asked: the knock's own gate said no" + ("" if ok else f" ({why})"))
+    if rc == RUN_KILLED:
+        return said(f"not answered: no answer within {KNOCK_MINUTES * 60} seconds, its limit "
+                    f"here, so it was stopped; {next_due()}")
+    return said(f"not answered: the knock at {when}: "
+                + (what or f"it ended on {rc}" + (", with the refusal still on file" if rc == 0
+                                                  else ""))
+                + f"; {next_due()}")
 
 
 def build_running():
@@ -1614,6 +1806,19 @@ def main():
                 night.v["fetch"] = "not asked"
         else:
             ok, why = gc_quiet()
+            # THE NIGHT'S KNOCK (the docstring): a refusal on file the night
+            # tests itself is knocked for first, once, under the night's lock
+            # (knock). Answered with the file, it is lifted, and the night is
+            # any night -- but with ONE try of the export: the knock and that
+            # try are what the clock let it start, and a second try half an
+            # hour on could be asking past ASK_UNTIL. The loop below breaks
+            # after it whatever came back (`if lifted`), where `last = 1`
+            # would be undone by a database that could not be used.
+            lifted = False
+            if not ok and night and not a.new_term and night_tests():
+                lifted = knock(a, night)
+                if lifted:
+                    ok, why = gc_quiet()
             if ok and night and a.new_term:
                 # THE TERM BEING LEFT IS FROZEN FIRST (5 October 2026), before
                 # anything is asked: a New term run that took the new term's
@@ -1688,6 +1893,9 @@ def main():
                                     # of the export, and not the old five.
                                     last = min(EMPTY_TRIES, tries + TRIES_AFTER_DB)
                             if tries >= last:
+                                break
+                            if lifted:          # once, on a lift night (main(), above)
+                                night.v["tried"].append(EXPORT_ONCE_LIFTED)
                                 break
                             say(f"\n  {got}: the General Court's files are sometimes half "
                                 f"written in the early morning. Asking again in {EMPTY_WAIT} "
@@ -2390,7 +2598,10 @@ def plain_why(v, weekly=False):
                "nothing was installed or built, and the next night asks again.")
     elif fetch.startswith("deferred"):
         why = ("The day's files were not asked for: a refusal on file or another "
-               "fetch was in the way.")
+               "fetch was in the way."
+               # What the night's knock did for the refusal (THE NIGHT'S
+               # KNOCK): this file's words and the knock's own.
+               + (f" The knock: {v['knock']}." if v.get("knock") else ""))
     elif fetch.startswith("did not complete"):
         why = ("Not all of the General Court's daily files arrived, so nothing was "
                "installed or built." + db_tried(v))
@@ -2717,6 +2928,10 @@ DB_LOOKED_WRONG = ("guard", "shrink")
 # The line that ends such a night's "tried".
 EXPORT_NOT_AGAIN = ("the export: not asked again tonight, because what the database gave "
                     "looked wrong beside the installed files")
+# ... and the one that ends a night the knock lifted a refusal, which asks the
+# export once (THE NIGHT'S KNOCK).
+EXPORT_ONCE_LIFTED = ("the export: not asked again tonight, because a night the knock lifted "
+                      "a refusal asks it once")
 
 
 def db_looked_wrong(v):
@@ -5651,6 +5866,7 @@ class Night:
                    + [f"- **error: {x}**" for x in alarms]
                    # The gate's line, under what leads the page.
                    + ([f"- {line}"] if line else [])
+                   + ([f"- the knock: {v['knock']}"] if v.get("knock") else [])
                    + ([f"- the day's files arrived whole on try {tries}"]
                       if tries > 1 and v.get("fetch") == "installed" else [])
                    + tried_lines(v)
@@ -5890,9 +6106,9 @@ def upload_and_check(a, site, target, base):
 # sends it to HEALTHCHECKS_PERSON_URL -- /fail with the file as the body, a
 # plain ping when it is empty. Pinged "up" every night without one, its
 # first /fail is always a change, and so always an email. The night tests
-# no refusal itself unless that check exists (refusal.knock_on). Until the
-# night knocks, nothing tests one either, so a refusal of the kind it could
-# test is a person's here too (person_alerts_of: untested).
+# no refusal itself unless that check exists (refusal.knock_on); while it
+# tests one (THE NIGHT'S KNOCK) the file is empty, and the night's own alert
+# says the knock's pattern on a night that is not clean (refusal_alert).
 ALERT_FILE = Path("logs/alert.txt")
 WARN_FILE = Path("logs/alert-warn.txt")
 ALERT_PERSON_FILE = Path("logs/alert-person.txt")
@@ -5924,20 +6140,72 @@ def warns_of(v):
     return ([held] if held else []) + ([said] if said else []) + [s for _kind, s in not_moving_of(v)]
 
 
+def refusal_alert(v):
+    """The night's alert for the refusal on file, or "" for none.
+
+    A person's (refusal.whose; one whose owner cannot be read is a person's):
+    the line it has always been, naming clear-refusal, every night it
+    stands. One the night tests itself (THE NIGHT'S KNOCK): only on a night
+    that was not clean -- the night it was met, above all, when the night's
+    check goes down and emails -- saying the knock's pattern and the day the
+    record becomes the person's at the latest, that nothing is needed of
+    them on GitHub's side, where the "a refusal is yours" check tells them if
+    the night cannot settle it, nor on the laptop, whose copy stops its
+    fetches until it is lifted, and to set NIGHT_KNOCK to off before checking
+    or clearing it early (the hourly addendum's 7, item 4): two machines
+    asking at once is how the second block happened."""
+    if not refusal.MARK.exists():
+        return ""
+    d = load_json(refusal.MARK)
+    at = d.get("at", "an unknown time") if isinstance(d, dict) else "an unknown time"
+    try:
+        who = refusal.whose()[0]
+    except Exception:                                           # noqa: BLE001
+        who = "person"
+    if who != "night":
+        return (f"A refusal from the General Court has been on file since {at}. Every fetch "
+                "waits until a person clears it: python3 netcheck.py says what kind it was, "
+                "then python3 src/ops/cloud.py clear-refusal.")
+    if v.get("clean"):
+        return ""
+    return (f"A refusal from the General Court has been on file since {at}, of a kind GitHub's "
+            f"own night tests itself, one request at a time: {knock_pattern()}. Nothing is "
+            "needed from you on GitHub's side: if the night cannot settle it, the \"a refusal "
+            "is yours\" check will email you. Nothing is needed on the laptop either: its copy "
+            "stops its fetches until GitHub lifts the record, and its next pull then says so. "
+            "To check or clear it sooner yourself, first set NIGHT_KNOCK to off (a GitHub "
+            "variable), so that two machines never ask at once.")
+
+
+def knock_pattern():
+    """When the knock may come for the refusal on file, if each fails, and
+    the day it becomes a person's at the latest (refusal.knock_settings'
+    KNOCK_DAYS from the chain's start): the night's own knock, at its start
+    on each morning one is due."""
+    try:
+        days = refusal.knock_settings()[2]
+        c = refusal.chain()
+        due, at = refusal.knock_due()
+    except Exception:                                           # noqa: BLE001
+        c, at = None, None
+    return ("the night knocks once at its start, on each morning a knock is due"
+            + (f", the next from {refusal._stamp(at)}" if at else "")
+            + (f", until {refusal._stamp(c['since'] + days * refusal.DAY)}, when the record is "
+               "yours" if c else ""))
+
+
 def alerts_of(v):
     """What stops or holds the site after tonight, for the night's own
     check (ALERT_FILE), whether or not the night was clean: a refusal from
-    the General Court on file, a hold on the SQL host, a check of tonight's
-    build that holds the night (BUILT_CHECKS), and a night that was not
-    clean, in that order. [] for none. A failed check against the record,
-    and a night waiting for approval, are warns_of's."""
+    the General Court on file (refusal_alert: a person's every night, one
+    the night tests itself on a night not clean), a hold on the SQL host, a
+    check of tonight's build that holds the night (BUILT_CHECKS), and a
+    night that was not clean, in that order. [] for none. A failed check
+    against the record, and a night waiting for approval, are warns_of's."""
     out = []
-    if refusal.MARK.exists():
-        d = load_json(refusal.MARK)
-        at = d.get("at", "an unknown time") if isinstance(d, dict) else "an unknown time"
-        out.append(f"A refusal from the General Court has been on file since {at}. Every fetch "
-                   "waits until a person clears it: python3 netcheck.py says what kind it was, "
-                   "then python3 src/ops/cloud.py clear-refusal.")
+    said = refusal_alert(v)
+    if said:
+        out.append(said)
     try:
         import probe_db
         held = probe_db.hold_standing()
@@ -5956,14 +6224,13 @@ def alerts_of(v):
 def person_alerts_of(v):
     """What the "a refusal is yours" check is told after tonight
     (ALERT_PERSON_FILE): [refusal.person_line()'s sentence] while the
-    refusal on file is a person's to clear, [] when none is on file. `v`,
-    the verdict, is the alerts' signature; the record on file is what it
-    reads. Until the night knocks, a refusal of a kind it could test is a
-    person's all the same, because nothing tests it (person_line's
-    `untested`). An alert must not stop the verdict: a record that cannot
-    be judged is said to be a person's."""
+    refusal on file is a person's to clear, [] while none is on file or the
+    night tests the one on file itself (THE NIGHT'S KNOCK). `v`, the
+    verdict, is the alerts' signature; the record on file is what it reads.
+    An alert must not stop the verdict: a record that cannot be judged is
+    said to be a person's."""
     try:
-        line = refusal.person_line(untested=True)
+        line = refusal.person_line()
     except Exception as e:   # noqa: BLE001 -- an alert must not stop the verdict
         if not refusal.MARK.exists():
             return []

@@ -113,7 +113,10 @@ started on -- `main` on a schedule. Its first job brings the small state
 files and the kit down from R2 (`cloud.py state-down`, `cloud.py kit-down`),
 looks for new livestreams (`src/ops/livestreams.py --since-state`), and runs
 `nightly.py --runner`: the day's bulk files from gc.nh.gov, asked only when no
-refusal is on file; then, under the same lock, next session's bill requests
+refusal is on file -- or when one the night tests itself has just been lifted
+by its knock, one request for one small file at the night's start, after
+which the export is asked once (THE NIGHT'S KNOCK in `nightly.py`); then,
+under the same lock, next session's bill requests
 and the two index pages' lists of calendars and journals, each only if it can
 finish before 12:00 UTC and each stopped at its own time limit (THE NIGHT'S CLOCK
 in `nightly.py`), or else a warning and tomorrow; the rebuild,
@@ -293,8 +296,11 @@ workflows hand the night only whether that check exists
 (`NIGHT_PERSON_CHECK`, "set" or "none", never its address), and the night's
 own test of a refusal (`refusal.py`) stays off without it, and off when the
 repository variable `NIGHT_KNOCK` is set to anything but `on` (unset, the
-workflows read it as `on`). Until the night knocks, every
-refusal on file is a person's, and is told to it. The publish check
+workflows read it as `on`). A refusal the night tests itself is not told to
+it: the night's own alert says, on a night that is not clean, the knock's
+pattern and the day the refusal becomes the person's at the latest, and to
+set `NIGHT_KNOCK` to `off` before checking or clearing it early
+(`refusal_alert()`). The publish check
 (`HEALTHCHECKS_PUBLISH_URL`) is pinged only once production has been
 deployed, so it goes quiet -- and Healthchecks writes -- when the live site
 has stood still longer than its period allows: a held night nobody approved,
@@ -408,13 +414,15 @@ lives under `state/`, so a refusal the night meets outlives its machine and
 stops the laptop's fetches too. Beside the refusal, `knocks.json` (since 29
 October 2026) is where the night's own test of one keeps its state: the
 knocks made for it, and every refusal a knock lifted, its exact text kept.
-Nothing knocks yet. The knock itself is built --
-`src/fetch/gc_web/snapshot_gencourt.py --knock`, one request for one small file, never
+The night knocks (`nightly.knock()`, THE NIGHT'S KNOCK): at its start, on
+each morning a knock is due, under its own lock,
+`src/fetch/gc_web/snapshot_gencourt.py --knock` asks one small file once, never
 retried and following no redirect, behind `refusal.check(knock=True)`,
 whose gate (`refusal.knock_gate()`) holds the night's caller to 08:00-11:18
-UTC and an hourly one to outside every night window, and asks nothing, exit
-4, otherwise -- and nothing starts it. Once something
-does, `state-up` on main's own night, with the night's testing switched on
+UTC and an hourly one, still to come, to outside every night window, and
+asks nothing, exit 4, otherwise. Answered with the file, the refusal is
+lifted, and that night asks the export once. Then `state-up` on main's own
+night, with the night's testing switched on
 (`NIGHT_KNOCK`), sends `knocks.json` with the lift in it and only then moves
 the bucket's `state/refused.json` to `replaced/`, when that night's knock
 lifted that very record; with it off, every `state/refused.json` stops the

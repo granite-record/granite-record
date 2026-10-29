@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.732
+# GRANITE_VERSION: 2026-09-04.733
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -83046,7 +83046,7 @@ def _the_knock(SG, R):
         the repository passes knock=True; knock() calls the opener once, in
         no loop, and its judges call it never; GRANITE_KNOCK_BY is set only
         by nightly.knock(), to "night", and by knock.yml's claim, knock and
-        unclaim steps, to "hourly" (neither exists yet, so nothing sets it).
+        unclaim steps, to "hourly" (knock.yml does not exist yet).
     """
     import ast
     import hashlib
@@ -85033,6 +85033,450 @@ def _nightly_runner(NI):
     return "ok", ("gates from archive/census.json, and none is no production; no late-caption "
                   "check, changed code or an unchanged site is no production; a refusal "
                   "stops the fetch; no reports; production only this night's build, from main")
+
+
+# ---- the night knocks (29 October 2026) ----------------------------------------
+#
+# nightly.py's THE NIGHT'S KNOCK, driven through main() as _nightly_runner
+# drives a night: on GitHub's night of main with the night's testing switched
+# on (_KNOCK_MAIN), at the times each check names (_KnockClock), every step
+# faked. Nothing asks anyone: the knock child is the child's own logic --
+# its gate, knocking() and knocked() -- with the answer the check gives it.
+
+# What the faked knock is said to have heard: this project's words, as the
+# real child's judges write them (snapshot_gencourt.knock_body, knock_error).
+_KNOCK_SAID = {"whole": "Counties.txt, 195 bytes", "dropped": "no answer: RemoteDisconnected",
+               "refused": "the firewall's block page, served as 200"}
+
+
+class _KnockNights:
+    """with _KnockNights(NI, PD) as n: nights of nightly.py --runner, driven
+    through main() in a folder of their own. n.night(at, *argv, run_id=...,
+    **env) runs one at the epoch `at` -- refusal.py's own clock and
+    GRANITE_CLOCK_UTC (_KnockClock) -- with `env` laid over _KNOCK_MAIN (None
+    unsets one), and gives (exit, verdict, log); n.close(at, outcome,
+    run_id) runs that night's --close and gives the three alert files' text
+    (the night's, the third check's, the warnings'), None for one not written.
+
+    The export answers n.knob["export"]: "whole" (installed), "empty"
+    (thirteen files with no data in them) or "drop" (two dropped
+    connections, recorded as the snapshot records them, exit 2). The knock
+    child, in this process, under the environment the night hands it: its
+    gate, refusal.knock_gate() -- 4, having asked nothing, when it says no --
+    then knocking(), and n.knob["knock"]: "whole", "dropped" or "refused"
+    through knocked(); "killed" (RUN_KILLED, its entry left "no answer");
+    "notnow" (4 after the gate, nothing written). n.calls is every step
+    started, (args, env, timeout, whether the night's lock was held)."""
+
+    def __init__(self, NI, PD):
+        self.NI, self.PD = NI, PD
+        self.knob = {"export": "whole", "knock": "whole"}
+        self.calls, self.slept = [], []
+
+    def __enter__(self):
+        import refusal
+        import types
+        NI, PD = self.NI, self.PD
+        self.R = refusal
+        self.here = os.getcwd()
+        self.tmp = Path(tempfile.mkdtemp(prefix="gr-knocks-"))
+        self.saved = (NI.run, NI.LOG, NI.QUIET, NI.live_fingerprint, NI.tracked_changes,
+                      NI.captions_compared, NI.time, sys.argv, refusal.MARK, refusal.LOCK,
+                      PD.HELD)
+        # Never GitHub's own step outputs: a made-up night would write the
+        # real step's outputs and page (GH_STEP_ENV).
+        self.saved_env = {k: os.environ.get(k) for k in
+                          ("GITHUB_OUTPUT", "GITHUB_STEP_SUMMARY", "GITHUB_SHA", PD.HELD_ENV)}
+        for k in self.saved_env:
+            os.environ.pop(k, None)
+        self.env = _KnockEnv(**_KNOCK_MAIN)
+        self.env.__enter__()
+        self.clock = _KnockClock(refusal)
+        self.clock.__enter__()
+        os.chdir(self.tmp)
+        refusal.MARK, refusal.LOCK = self.tmp / "archive" / "refused.json", self.tmp / "archive" / ".lock"
+        PD.HELD = self.tmp / "archive" / "sql-held.json"
+        Path("archive").mkdir()
+        Path("db").mkdir()
+        (Path("work") / "abc123").mkdir(parents=True)
+        (Path("work") / "abc123" / "segments.json").write_text("[]", encoding="utf-8")
+        NI.run = self.fake
+        NI.time = types.SimpleNamespace(sleep=self.slept.append, time=__import__("time").time)
+        NI.live_fingerprint = lambda base, timeout=180: "an-older-build"
+        NI.tracked_changes = lambda: ([], [])
+        NI.captions_compared = lambda work="work", markers="candidate_segments.json": (2850, 2851)
+        return self
+
+    def __exit__(self, *exc):
+        NI, PD, R = self.NI, self.PD, self.R
+        os.chdir(self.here)
+        (NI.run, NI.LOG, NI.QUIET, NI.live_fingerprint, NI.tracked_changes,
+         NI.captions_compared, NI.time, sys.argv, R.MARK, R.LOCK, PD.HELD) = self.saved
+        self.clock.__exit__()
+        self.env.__exit__()
+        for k, v in self.saved_env.items():
+            os.environ.pop(k, None) if v is None else os.environ.__setitem__(k, v)
+        shutil.rmtree(self.tmp, ignore_errors=True)
+        return False
+
+    def fresh(self, rec=None, knocks=None, hold=False):
+        """The refusal record `rec` (bytes) on file, or none; knocks.json
+        `knocks`, or none; and a hold on the SQL host standing, or none."""
+        R, PD = self.R, self.PD
+        R.MARK.unlink(missing_ok=True)
+        R.knocks_file().unlink(missing_ok=True)
+        PD.HELD.unlink(missing_ok=True)
+        if rec is not None:
+            R.MARK.write_bytes(rec)
+        if knocks is not None:
+            R._write_knocks(knocks)
+        if hold:
+            PD.HELD.write_text(json.dumps(
+                {"held": True, "kind": "connection", "nights": 1, "at": "2026-10-30T04:50:00",
+                 "until_at": "later", "until": __import__("time").time() + 3600}),
+                encoding="utf-8")
+
+    def fake(self, args, label, cwd=None, timeout=None, env=None):
+        NI, R = self.NI, self.R
+        locked = R.LOCK.exists() and R.LOCK.read_text(encoding="utf-8").strip() == str(os.getpid())
+        self.calls.append((list(args), dict(env or {}), timeout, locked))
+        NI.say(f"\n--- {label} ---")
+        name = Path(args[0]).name
+        code = 0
+        if name == "snapshot_gencourt.py" and "--knock" in args:
+            code = self.knock_child(env or {})
+        elif name == "snapshot_gencourt.py":
+            code = self.export(args)
+        elif name == "build_all.py":
+            _runner_site(100)
+        elif name == "preflight.py" and "--built" in args:
+            _fake_built()
+        elif name in _TERM_FETCHERS:
+            _fake_term_file(args)
+        elif name == "fetch_archive_db.py":
+            _runner_fake_views(args, cwd)
+        elif name == "fetch_lsrs.py":
+            Path("lsrs.json").write_text(json.dumps([{"lsr": "2027-0001", "withdrawn": False}]),
+                                         encoding="utf-8")
+        elif name == "gc_changes.py":
+            out = Path(args[args.index("--out") + 1])
+            out.parent.mkdir(exist_ok=True)
+            out.write_text("# changes\n", encoding="utf-8")
+        NI.say(f"  (0s, exit {code})")
+        return code
+
+    def knock_child(self, env):
+        """snapshot_gencourt.py --knock's own logic, with the answer the knob
+        gives: its gate first, under the variables the night handed it."""
+        R = self.R
+        saved = os.environ.get(R.KNOCK_BY_ENV)
+        os.environ.pop(R.KNOCK_BY_ENV, None)
+        os.environ.update(env)
+        try:
+            ok, _why = R.knock_gate(os.environ.get(R.KNOCK_BY_ENV))
+            answer = self.knob["knock"]
+            if not ok or answer == "notnow":
+                return R.KNOCK_NOT_NOW
+            R.knocking(_KNOCK_URL)
+            if answer == "killed":
+                return self.NI.RUN_KILLED
+            return {"lifted": 0, "person": 2}.get(R.knocked(answer, _KNOCK_SAID[answer]), 1)
+        finally:
+            os.environ.pop(R.KNOCK_BY_ENV, None)
+            if saved is not None:
+                os.environ[R.KNOCK_BY_ENV] = saved
+
+    def export(self, args):
+        """The day's files, as the knob says they came back."""
+        from datetime import datetime
+        day = Path(args[args.index("--dir") + 1]) / "snapshots" / f"{datetime.now():%Y-%m-%d}"
+        day.mkdir(parents=True, exist_ok=True)
+        (day / "page.json").write_text(json.dumps({"status": "ok", "said": ""}), encoding="utf-8")
+        if self.knob["export"] == "drop":
+            self.R.note("snapshot_gencourt", "RemoteDisconnected: Remote end closed connection "
+                        "without response", kind="dropped")
+            return 2
+        if self.knob["export"] == "empty":
+            man = {f"F{i}.txt": {"error": "failed: not a data file (3 bytes)"} for i in range(13)}
+            man["Members.txt"] = {"sha256": "0" * 64, "bytes": 90000}
+            (day / "manifest.json").write_text(json.dumps(man), encoding="utf-8")
+            return 1
+        return 0
+
+    def knocks(self):
+        return [c for c in self.calls if c[0][0] == "snapshot_gencourt.py" and "--knock" in c[0]]
+
+    def exports(self):
+        return [c for c in self.calls if c[0][0] == "snapshot_gencourt.py"
+                and "--knock" not in c[0]]
+
+    def asked(self, name):
+        return [c for c in self.calls if Path(c[0][0]).name == name]
+
+    def night(self, at, *argv, run_id="k1", **env):
+        import contextlib
+        import io
+        NI = self.NI
+        _KnockEnv.set(**dict(_KNOCK_MAIN, GITHUB_RUN_ID=run_id, **env))
+        self.clock(at)
+        NI.LOG = []
+        del self.calls[:]
+        del self.slept[:]
+        sys.argv = ["nightly.py", "--runner", *argv]
+        with contextlib.redirect_stdout(io.StringIO()), contextlib.redirect_stderr(io.StringIO()):
+            try:
+                code = NI.main()
+            except SystemExit as e:
+                code = e.code
+        dry = "--dry-run" in argv or os.environ.get("DRY_RUN") == "true" or \
+            os.environ.get("GITHUB_REF") != "refs/heads/main"
+        v = NI.load_json(NI.DRY_VERDICT if dry else NI.VERDICT)
+        return code, (v if isinstance(v, dict) else {}), "\n".join(NI.LOG)
+
+    def close(self, at, outcome="night=success", run_id="k1", **env):
+        NI = self.NI
+        for f in (NI.ALERT_FILE, NI.ALERT_PERSON_FILE, NI.WARN_FILE):
+            f.unlink(missing_ok=True)
+        self.night(at, "--close", "--outcome", outcome, run_id=run_id, **env)
+
+        def text(p):
+            return p.read_text(encoding="utf-8") if p.exists() else None
+        return text(NI.ALERT_FILE), text(NI.ALERT_PERSON_FILE), text(NI.WARN_FILE)
+
+
+@check("build", "the night knocks once, at its start and under its own lock, for a refusal it "
+       "tests itself: lifted, it asks the export once; a person's, nothing more; and no knock "
+       "when none is due, past 11:18, on a dry run or a New term run, for a refusal it does not "
+       "test, or with the switch off", needs=("nightly", "probe_db"))
+def _nightly_knocks(NI, PD):
+    """C6 of design_final, as the hourly addendum amends it (its knock rows;
+    nightly.py's THE NIGHT'S KNOCK), on run 151's drop of 08:27:15 UTC on 29
+    October 2026 as GitHub's night on main would have recorded it, with the
+    night's testing on:
+
+      - the next morning at 08:30 UTC the night knocks ONCE -- the child with
+        GRANITE_KNOCK_BY "night", killed within KNOCK_MINUTES, under the
+        night's own lock -- and, answered with the file, the refusal is
+        lifted (gone from file, kept in knocks.json's "lifted"), the export
+        is asked and installed, the verdict's "knock" begins "lifted", and
+        the night carries no warning an ordinary night does not;
+      - lifted at 11:17, with the export empty and the database held: one
+        try of the export, no half-hour wait, nothing installed, and the
+        verdict's "tried" ends with the one-try line;
+      - at 11:18, 11:30 and 14:33: no knock, "not asked for: it is HH:MM
+        UTC", and nothing asked of the export;
+      - a knock not due (one twenty minutes before): no knock, and the
+        verdict names when the next is due;
+      - the knock answered with a drop, killed, or not asked by the child's
+        own gate: no export, "not answered" or "not asked", the record
+        still the night's; answered with the firewall's page: a person's
+        for good, nothing more asked;
+      - no knock and no "knock" at all for run 151's record as it stands
+        (no kind), a 403's, NIGHT_KNOCK off, "ON " or unset,
+        NIGHT_PERSON_CHECK unset or "none", a setting typed wrong, or a
+        record 16 days old -- FETCH DEFERRED, as ever, exit 1 -- nor while
+        another fetch holds archive/.lock;
+      - none on a dry run, by the box or by DRY_RUN, on a run of dev, or on
+        a New term run."""
+    H = 3600
+    rec = _knock_record()
+    sha = __import__("hashlib").sha256(rec).hexdigest()
+    morning = _at(2026, 10, 30, 8, 30)
+    wrong = []
+    with _KnockNights(NI, PD) as n:
+        R = n.R
+        _dbday_install(".")
+        n.fresh()
+        n.night(morning - 24 * H, "--no-fetch", run_id="k0")          # the baseline
+        n.knob.update(export="whole")
+        code, plain, _ = n.night(morning, run_id="k00")
+        if code != 0 or not plain.get("clean") or "knock" in plain:
+            wrong.append(f"an ordinary night with nothing on file was not clean, or knocked: "
+                         f"exit {code}, {plain.get('not_clean')}, {plain.get('knock')!r}")
+
+        # Lifted at 08:30: once, then the export.
+        n.fresh(rec)
+        n.knob.update(export="whole", knock="whole")
+        code, v, log = n.night(morning, run_id="k1")
+        k = n.knocks()
+        lift = (R.read_knocks()[0].get("lifted") or [{}])[-1]
+        if len(k) != 1 or k[0][1] != {R.KNOCK_BY_ENV: "night"} or not k[0][3] or \
+                not 0 < (k[0][2] or 0) <= NI.KNOCK_MINUTES * 60:
+            wrong.append(f"the night's knock was not one child, by the night, under its lock, "
+                         f"killed within {NI.KNOCK_MINUTES} minutes: {k}")
+        order = [c[0][1:2] for c in n.calls if c[0][0] == "snapshot_gencourt.py"]
+        if len(n.exports()) != 1 or v.get("fetch") != "installed" or R.MARK.exists() or \
+                lift.get("refusal") != sha or not str(v.get("knock", "")).startswith("lifted") or \
+                order[:1] != [["--knock"]]:
+            wrong.append(f"a knock answered with the file did not lift and go on to the export: "
+                         f"{v.get('fetch')}, {v.get('knock')!r}, the record "
+                         f"{'on file' if R.MARK.exists() else 'gone'}")
+        if code != 0 or sorted(v.get("warning_kinds") or []) != sorted(plain.get("warning_kinds")
+                                                                       or []):
+            wrong.append(f"the lift night was not clean, or carried a warning kind an ordinary "
+                         f"night does not (the lift adds none): exit {code}, "
+                         f"{v.get('warning_kinds')} against {plain.get('warning_kinds')}")
+
+        # Lifted at 11:17, the export empty and the database held: one try.
+        n.fresh(rec, hold=True)
+        n.knob.update(export="empty", knock="whole")
+        code, v, log = n.night(_at(2026, 10, 30, 11, 17), run_id="k2")
+        if len(n.knocks()) != 1 or len(n.exports()) != 1 or n.slept or v.get("built") or \
+                (v.get("day_files") or {}).get("why_code") != "held" or \
+                (v.get("tried") or [""])[-1] != NI.EXPORT_ONCE_LIFTED:
+            wrong.append(f"a lift at 11:17 then an empty export: {len(n.exports())} tries, waited "
+                         f"{n.slept}, built {v.get('built')}, tried {v.get('tried')}")
+
+        # The clock.
+        for hm in ((11, 18), (11, 30), (14, 33)):
+            n.fresh(rec)
+            code, v, _ = n.night(_at(2026, 10, 30, *hm), run_id=f"k3{hm[0]}{hm[1]}")
+            said = f"not asked for: it is {hm[0]:02d}:{hm[1]:02d} UTC"
+            if n.knocks() or n.exports() or not str(v.get("knock", "")).startswith(said) or \
+                    not R.MARK.exists():
+                wrong.append(f"at {hm[0]:02d}:{hm[1]:02d}: {len(n.knocks())} knocks, "
+                             f"{len(n.exports())} tries, {v.get('knock')!r}")
+
+        # Not due: a knock twenty minutes before.
+        n.fresh(rec, knocks={"current": {
+            "refusal": sha, "since": _KNOCK_SINCE, "relapses": 0, "person": None,
+            "carried_from": None, "knocks": [{"utc": "-", "epoch": morning - 20 * 60,
+                                              "run_id": "earlier", "attempt": "1", "by": "night",
+                                              "answer": "dropped"}]}, "lifted": []})
+        code, v, _ = n.night(morning, run_id="k4")
+        if n.knocks() or n.exports() or \
+                v.get("knock") != "not asked: no knock is due; the next is due from 2026-10-30 08:40 UTC":
+            wrong.append(f"a knock not due: {len(n.knocks())} knocks, {v.get('knock')!r}")
+
+        # The knock not answered, killed, not asked by its own gate, or a person's.
+        for answer, said, who in (("dropped", "not answered: the knock at", "night"),
+                                  ("killed", "not answered: no answer within 120 seconds", "night"),
+                                  ("notnow", "not asked: the knock's own gate said no", "night"),
+                                  ("refused", "a person's: the knock at", "person")):
+            n.fresh(rec)
+            n.knob.update(export="whole", knock=answer)
+            code, v, _ = n.night(morning, run_id=f"k5{answer}")
+            with _KnockEnv(**dict(_KNOCK_MAIN, GRANITE_CLOCK_UTC=_utc_iso(morning + 60))):
+                now = R.whose()[0]
+            if len(n.knocks()) != 1 or n.exports() or code != 1 or now != who or \
+                    not str(v.get("knock", "")).startswith(said) or \
+                    not str(v.get("fetch", "")).startswith("deferred"):
+                wrong.append(f"a knock {answer}: {len(n.knocks())} knocks, {len(n.exports())} "
+                             f"tries, exit {code}, {now}'s, {v.get('knock')!r}, {v.get('fetch')!r}")
+        n.knob.update(knock="whole")
+
+        # A refusal the night does not test, or the switch off: no knock at all.
+        for what, r, env, at in (
+                ("run 151's record, which says no kind", _RECORD_29_OCT, {}, morning),
+                ("a 403 the night met", _knock_record(kind="refused"), {}, morning),
+                ("NIGHT_KNOCK off", rec, {"NIGHT_KNOCK": "off"}, morning),
+                ("NIGHT_KNOCK 'ON '", rec, {"NIGHT_KNOCK": "ON "}, morning),
+                ("NIGHT_KNOCK unset", rec, {"NIGHT_KNOCK": None}, morning),
+                ("NIGHT_PERSON_CHECK unset", rec, {"NIGHT_PERSON_CHECK": None}, morning),
+                ("NIGHT_PERSON_CHECK none", rec, {"NIGHT_PERSON_CHECK": "none"}, morning),
+                ("KNOCK_DAYS 17", rec, {"KNOCK_DAYS": "17"}, morning),
+                ("a record 16 days old", rec, {}, _KNOCK_SINCE + 16 * 24 * H + H)):
+            n.fresh(r)
+            code, v, log = n.night(at, run_id="k6", **env)
+            if n.knocks() or n.exports() or "knock" in v or code != 1 or \
+                    "FETCH DEFERRED: a refusal is on file" not in log:
+                wrong.append(f"{what}: {len(n.knocks())} knocks, {len(n.exports())} tries, "
+                             f"exit {code}, {v.get('knock')!r}")
+        # ... nor while another fetch holds archive/.lock.
+        n.fresh(rec)
+        R.LOCK.write_text("1", encoding="utf-8")
+        try:
+            code, v, log = n.night(morning, run_id="k6l")
+        finally:
+            R.LOCK.unlink(missing_ok=True)
+        if n.knocks() or n.exports() or "knock" in v or code != 1:
+            wrong.append(f"archive/.lock held by another fetch: {len(n.knocks())} knocks, "
+                         f"{len(n.exports())} tries, exit {code}, {v.get('knock')!r}")
+
+        # No knock on a dry run, nor on a New term run.
+        for what, argv, env in (("--dry-run", ("--dry-run",), {}),
+                                ("DRY_RUN true", (), {"DRY_RUN": "true"}),
+                                ("a run of dev", (), {"GITHUB_REF": "refs/heads/dev"}),
+                                ("a New term run", ("--new-term",), {})):
+            n.fresh(rec)
+            code, v, _ = n.night(morning, *argv, run_id="k7", **env)
+            if n.knocks() or n.exports() or not R.MARK.exists():
+                wrong.append(f"{what}: {len(n.knocks())} knocks, {len(n.exports())} tries, "
+                             f"the record {'on file' if R.MARK.exists() else 'gone'}")
+    assert not wrong, "the night's knock: " + "; ".join(wrong)
+    return "ok", ("lifted at 08:30 and the export installed, with no new warning; a lift at "
+                  "11:17 asks the export once; no knock at 11:18, 11:30 or 14:33, not due, for "
+                  "a person's record, with the switch off, on a dry run or a New term run")
+
+
+def _rings(n, at, run_id, code, **env):
+    """(the night's check, the third check) after one night's --close, as the
+    workflow's ending step pings them: the night's "down" when its night
+    failed or logs/alert.txt says anything; the third check "down" (/fail)
+    when logs/alert-person.txt says anything, "up" when it is empty, None
+    when --close wrote none. Healthchecks emails on a change."""
+    alert, person, _warn = n.close(at, "night=success" if code == 0 else "night=failure",
+                                   run_id, **env)
+    return ("down" if code != 0 or alert else "up",
+            None if person is None else "down" if person else "up")
+
+
+@check("build", "the \"a refusal is yours\" check changes state, and so emails, the night a "
+       "refusal becomes a person's, whatever the night's own check is doing",
+       needs=("nightly", "probe_db"))
+def _person_check_rings(NI, PD):
+    """C18 of design_final, as the hourly addendum amends it. Nights driven
+    through --runner and --close on fakes (_KnockNights), on GitHub's night of
+    main with the night's testing on, the alert files read after each as the
+    workflow's ending step pings them (_rings):
+
+      1. a clean night; the night the export meets two drops (day 0); the
+         next morning, the knock answered with the firewall's page. The third
+         check is up, up, then down -- a change, so an email, the day the
+         refusal became the person's -- while the night's own check, down
+         since day 0, does not change that day, and would send nothing;
+      3. day 0; the next morning, the knock not answered; the morning after,
+         NIGHT_KNOCK turned off: the third check up, up, then down.
+
+    (Sequence 2, sixteen days of the night's testing, is the database's,
+    which held nights take.)"""
+    H = 3600
+    wrong = []
+    with _KnockNights(NI, PD) as n:
+        _dbday_install(".")
+        day0 = _KNOCK_SINCE                                  # 29 October, 08:27:15 UTC
+        n.fresh()
+        n.night(day0 - 2 * 24 * H, "--no-fetch", run_id="r0")        # the baseline
+        n.knob.update(export="whole", knock="whole")
+        code, v, _ = n.night(day0 - 24 * H, run_id="r1")
+        seen = [_rings(n, day0 - 24 * H + 600, "r1", code)]
+        n.knob.update(export="drop")
+        code, v, _ = n.night(day0, run_id="r2")
+        seen.append(_rings(n, day0 + 600, "r2", code))
+        n.knob.update(export="whole", knock="refused")
+        code, v, _ = n.night(day0 + 24 * H + 180, run_id="r3")
+        seen.append(_rings(n, day0 + 24 * H + 600, "r3", code))
+        if seen != [("up", "up"), ("down", "up"), ("down", "down")]:
+            wrong.append(f"a clean night, the drops, a knock answered with the firewall's page: "
+                         f"(the night's check, the third) {seen}")
+
+        n.fresh()
+        day0 += 7 * 24 * H
+        n.knob.update(export="drop", knock="dropped")
+        code, v, _ = n.night(day0, run_id="r4")
+        seen = [_rings(n, day0 + 600, "r4", code)]
+        n.knob.update(export="whole")
+        code, v, _ = n.night(day0 + 24 * H + 180, run_id="r5")
+        seen.append(_rings(n, day0 + 24 * H + 600, "r5", code))
+        code, v, _ = n.night(day0 + 48 * H + 180, run_id="r6", NIGHT_KNOCK="off")
+        seen.append(_rings(n, day0 + 48 * H + 600, "r6", code, NIGHT_KNOCK="off"))
+        if [third for _night, third in seen] != ["up", "up", "down"]:
+            wrong.append(f"the drops, a knock not answered, NIGHT_KNOCK turned off: (the night's "
+                         f"check, the third) {seen}")
+    assert not wrong, "the \"a refusal is yours\" check: " + "; ".join(wrong)
+    return "ok", ("the third check goes down, an email, the morning a knock is answered with "
+                  "the firewall's page and the morning NIGHT_KNOCK is turned off, and stays up "
+                  "while the night tests the refusal")
 
 
 # ---- the gate: which nights wait for a person (6 October 2026) -------------------
@@ -94578,9 +95022,11 @@ def _night_clock(NI, R):
         nine in the morning at -04:00, is 13:00 UTC and may not ask, and one
         written with no zone is UTC; the gate's source passes night_window()
         nothing and reads no datetime.now();
-      - and nightly.py's docstring says what it holds: the two steps that ask
-        it, and not the day's files, which keep their own rule (the review of
-        26 October 2026: it said the night's asking all fell before 12:00)."""
+      - and nightly.py's docstring says what it holds: the three steps that
+        ask it -- the knock (29 October 2026), the bill requests and the
+        lists -- and not the day's files, which keep their own rule (the
+        review of 26 October 2026: it said the night's asking all fell
+        before 12:00)."""
     from datetime import datetime, timedelta
     saved = os.environ.get(R.CLOCK_ENV)
     try:
@@ -94639,25 +95085,88 @@ def _night_clock(NI, R):
                                            "time.time" in ast.unparse(c) for c in calls), \
         "nightly.asking_left reads the window by an argument or the machine's own clock"
     # What the clock holds, as the docstring says it (the review of 26 October
-    # 2026): the bill requests and the lists, the two steps that ask the gate,
-    # and not the day's files, which a night started late still asks whenever
-    # it runs -- so "its asking falls between then and 12:00" was not so.
+    # 2026): the knock (THE NIGHT'S KNOCK, 29 October 2026; C12 of
+    # design_final), the bill requests and the lists, the three steps that
+    # ask the gate, and not the day's files, which a night started late
+    # still asks whenever it runs -- so "its asking falls between then and
+    # 12:00" was not so.
     gated = sorted(n.name for n in ast.walk(_parsed(_paths.locate("nightly.py")))
                    if isinstance(n, ast.FunctionDef)
                    and n.name != "asking_left" and any(
                        isinstance(c, ast.Call) and ast.unparse(c.func) == "asking_left"
                        for c in ast.walk(n)))
-    assert gated == ["take_documents", "take_lsrs"], (
-        f"nightly.asking_left gates {gated}, where THE NIGHT'S CLOCK names the bill requests "
-        "and the lists")
+    assert gated == ["knock", "take_documents", "take_lsrs"], (
+        f"nightly.asking_left gates {gated}, where THE NIGHT'S CLOCK names the knock, the bill "
+        "requests and the lists")
     said = " ".join(re.split(r"\n\n[A-Z][A-Z' ,]+\(", NI.__doc__.split("THE NIGHT'S CLOCK (", 1)[1],
                              maxsplit=1)[0].split())
-    assert re.search(r"those two steps ask between then and 12:00 UTC", said) and \
+    assert re.search(r"those three steps ask between then and 12:00 UTC", said) and \
         re.search(r"The day's files keep their own rule", said), (
-            "nightly.py's THE NIGHT'S CLOCK no longer says that only the bill requests and the "
-            "lists keep the hours, and that the day's files keep their own rule")
+            "nightly.py's THE NIGHT'S CLOCK no longer says that only the knock, the bill requests "
+            "and the lists keep the hours, and that the day's files keep their own rule")
     return "ok", ("08:00 to 12:00 UTC by refusal's own clock, never a Monday's weekly window, "
                   "each step only if it can end before 12:00, by the gate's own reading")
+
+
+@check("build", "the night's knock asks the clock for its own two minutes and the export's "
+       "worst case, read off the snapshot, and the knock child's own last minute, 11:18 UTC, "
+       "is that same gate", needs=("nightly", "refusal", "snapshot_gencourt"))
+def _knock_export_minutes(NI, R, SG):
+    """C13 of design_final. THE NIGHT'S KNOCK asks asking_left(KNOCK_MINUTES
+    + EXPORT_MINUTES): a lift opens the export, and both must end before
+    ASK_UNTIL on the export's worst case. That case is read off the
+    snapshot itself, so a timeout or a pause raised there fails here, not a
+    night: the page's PAGE_TIMEOUT, then every target and one retried, each
+    at get()'s timeout -- the one read_one() asks with -- and a pause of
+    --delay at its jitter's widest (1.25), and the minute's wait before the
+    retry, the one time.sleep of a literal in run(). And refusal.KNOCK_LATEST,
+    the child's own last minute (refusal.knock_hours), is ASK_UNTIL less
+    those minutes exactly: the parent's gate and the child's copy of it are
+    one, so a change that loses the parent's still asks nothing after it.
+    KNOCK_MINUTES is refusal's, the child's own kill."""
+    import inspect
+    tree = _parsed(SG.__file__)
+    run = next(n for n in tree.body if isinstance(n, ast.FunctionDef) and n.name == "run")
+    main = next(n for n in tree.body if isinstance(n, ast.FunctionDef) and n.name == "main")
+    delay = [c for c in ast.walk(main) if isinstance(c, ast.Call)
+             and ast.unparse(c.func).endswith("add_argument") and c.args
+             and ast.unparse(c.args[0]) == "'--delay'"]
+    assert len(delay) == 1, "snapshot_gencourt has no one --delay"
+    delay = next(k.value.value for k in delay[0].keywords if k.arg == "default")
+    jitter = [c for c in ast.walk(run) if isinstance(c, ast.Call)
+              and ast.unparse(c.func) == "random.uniform"]
+    assert len(jitter) == 1, "the snapshot's pause is no longer one random.uniform"
+    widest = max(n.value for n in jitter[0].args if isinstance(n, ast.Constant))
+    waits = [c.args[0].value for c in ast.walk(run) if isinstance(c, ast.Call)
+             and ast.unparse(c.func) == "time.sleep" and isinstance(c.args[0], ast.Constant)]
+    assert waits == [60], f"the snapshot's wait before a retry is {waits}, not one minute"
+    reads = [c for c in ast.walk(next(n for n in tree.body if isinstance(n, ast.FunctionDef)
+                                      and n.name == "read_one"))
+             if isinstance(c, ast.Call) and ast.unparse(c.func) == "get"]
+    assert len(reads) == 1 and not reads[0].keywords and len(reads[0].args) == 1, \
+        "read_one no longer asks get() with its own timeout"
+    per = inspect.signature(SG.get).parameters["timeout"].default
+    worst = SG.PAGE_TIMEOUT + (len(SG.targets()) + 1) * (per + widest * delay) + waits[0]
+    assert NI.EXPORT_MINUTES * 60 >= worst, (
+        f"nightly.EXPORT_MINUTES is {NI.EXPORT_MINUTES}, less than the export's worst case of "
+        f"{worst / 60:.2f} minutes: the page's {SG.PAGE_TIMEOUT} s, {len(SG.targets()) + 1} "
+        f"requests at {per} s with pauses of up to {widest * delay:g} s, and the minute's wait")
+    assert NI.KNOCK_MINUTES == R.KNOCK_MINUTES and SG.KNOCK_KILL_SECONDS == R.KNOCK_MINUTES * 60, \
+        "the night's knock minutes are not refusal's, which the child is killed at"
+    until = NI.ASK_UNTIL[0] * 60 + NI.ASK_UNTIL[1]
+    latest = R.KNOCK_LATEST[0] * 60 + R.KNOCK_LATEST[1]
+    assert latest == until - (NI.KNOCK_MINUTES + NI.EXPORT_MINUTES), (
+        f"refusal.KNOCK_LATEST is {R.KNOCK_LATEST}, not ASK_UNTIL {NI.ASK_UNTIL} less the "
+        f"knock's {NI.KNOCK_MINUTES} and the export's {NI.EXPORT_MINUTES} minutes: the child's "
+        "last minute and the night's gate are not one")
+    asks = [c for c in ast.walk(next(n for n in _parsed(NI.__file__).body
+                                     if isinstance(n, ast.FunctionDef) and n.name == "knock"))
+            if isinstance(c, ast.Call) and ast.unparse(c.func) == "asking_left"]
+    assert len(asks) == 1 and ast.unparse(asks[0].args[0]) == "KNOCK_MINUTES + EXPORT_MINUTES", \
+        "nightly.knock() does not ask the clock for the knock's minutes and the export's"
+    return "ok", (f"the export's worst case {worst / 60:.2f} minutes within EXPORT_MINUTES "
+                  f"{NI.EXPORT_MINUTES}; the knock's {NI.KNOCK_MINUTES} besides, and 11:18 UTC "
+                  "is 12:00 less both")
 
 
 @check("build", "the night's bill requests and lists are asked only where they can end before "
@@ -113289,12 +113798,17 @@ def _alarm_stays_able_to_ring(NI):
     that is a person's -- a 403 the night met (naming the IT office), run
     151's record that says no kind, GitHub's night's own drop with
     NIGHT_KNOCK off, with NIGHT_PERSON_CHECK unset, or with a setting typed
-    wrong, and, until the night knocks, that drop with everything on --
-    person_alerts_of() gives refusal.person_line()'s sentence, naming
-    clear-refusal and why, and the night's alert still names clear-refusal
-    and no knock; with none on file it gives nothing. --close writes
-    ALERT_PERSON_FILE every real night, empty with no refusal and the line
-    with one, and the ending step sends it to HEALTHCHECKS_PERSON_URL."""
+    wrong -- person_alerts_of() gives refusal.person_line()'s sentence,
+    naming clear-refusal and why, and the night's alert still names
+    clear-refusal and no knock; with none on file neither says anything.
+    That drop with everything on is the night's to test (THE NIGHT'S
+    KNOCK): the third check is told nothing; the night's alert, on the
+    night not clean that meets it, gives the knock's pattern and the day it
+    becomes the person's, says nothing is needed of them on GitHub's side or
+    the laptop's, and to set NIGHT_KNOCK off first for an early clear; and a
+    clean night under it alerts nothing. --close writes ALERT_PERSON_FILE
+    every real night, empty with no refusal and the line with one, and the
+    ending step sends it to HEALTHCHECKS_PERSON_URL."""
     import inspect
     here = Path(".").resolve()
     tmp = Path(tempfile.mkdtemp(prefix="gr-alarm-"))
@@ -113346,20 +113860,42 @@ def _alarm_stays_able_to_ring(NI):
         # of design_final as the hourly addendum amends it). A refusal that
         # is a person's is the "a refusal is yours" check's line, naming
         # clear-refusal and why it is a person's, and stays the night's alert,
-        # with no knock in it; with nothing on file the third check is told
-        # nothing. Until the night knocks, GitHub's night's own drop is a
-        # person's too: nothing tests it.
+        # with no knock in it; with nothing on file -- a lift's night among
+        # them -- neither is told of one.
         import refusal
         mark = Path(refusal.MARK)
         mark.parent.mkdir(parents=True, exist_ok=True)
         day0 = dict(clean, clean=False, not_clean=["the export: refused"])
         with _KnockEnv(**_KNOCK_MAIN):
-            if NI.person_alerts_of(day0):
-                bad.append(f"the third check is told of a refusal with none on file: "
-                           f"{NI.person_alerts_of(day0)}")
+            if NI.person_alerts_of(day0) or NI.refusal_alert(day0):
+                bad.append(f"a refusal is told with none on file: {NI.person_alerts_of(day0)}, "
+                           f"{NI.refusal_alert(day0)!r}")
+        # GitHub's night's own drop, with everything on, is the night's to
+        # test (THE NIGHT'S KNOCK). The night it is met, which is not clean,
+        # the night's alert gives the knock's pattern and the day it becomes
+        # the person's at the latest, sixteen days on; says nothing is needed
+        # of them on GitHub's side, naming the "a refusal is yours" check, nor
+        # on the laptop -- never the laptop's refusal.py --clear, nor
+        # clear-refusal -- and to set NIGHT_KNOCK off first for an early
+        # clear (the hourly addendum's 7, item 4). The third check is told
+        # nothing; and a clean night under it alerts nothing at all.
+        mark.write_bytes(_knock_record())
+        with _KnockEnv(**dict(_KNOCK_MAIN, GRANITE_CLOCK_UTC=_utc_iso(_KNOCK_SINCE + 3600))):
+            alerts, person = NI.alerts_of(day0), NI.person_alerts_of(day0)
+            calm, calm_person = NI.alerts_of(clean), NI.person_alerts_of(clean)
+        first = alerts[0] if alerts else ""
+        missing = [w for w in ("GitHub's own night tests itself", "the night knocks once at its "
+                               "start", "until 2026-11-14 08:27 UTC, when the record is yours",
+                               "Nothing is needed from you on GitHub's side",
+                               "the \"a refusal is yours\" check", "Nothing is needed on the laptop",
+                               "first set NIGHT_KNOCK to off") if w not in first]
+        if missing or "clear-refusal" in first or "refusal.py --clear" in first or person:
+            bad.append(f"the day GitHub's night meets a drop it tests itself, the night's alert is "
+                       f"{first!r} (missing {missing}) and the third check is told {person}")
+        if calm or calm_person:
+            bad.append(f"a clean night under a refusal the night tests alerts {calm}, and tells the "
+                       f"third check {calm_person}")
         for what, rec, env, says in (
-                ("GitHub's night's own drop, nothing in this build knocking", _knock_record(), {},
-                 "nothing in this build knocks"),
                 ("that drop with NIGHT_KNOCK off", _knock_record(), {"NIGHT_KNOCK": "off"},
                  "NIGHT_KNOCK"),
                 ("that drop with NIGHT_PERSON_CHECK unset", _knock_record(),

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-09.26
+# GRANITE_VERSION: 2026-09-09.27
 """
 One refusal stops the fetch lane, not just the run that was refused.
 
@@ -33,9 +33,10 @@ while it is less than QUIET hours old, printing when the refusal came, what it
 said, and how to clear it. The file is small, plain and meant to be read.
 
 Clearing it is a person's decision, deliberately: `python3 refusal.py --clear`,
-after netcheck.py has said what kind of refusal it was. Nothing clears it
-automatically, because "wait a bit and try again" is the behaviour that earns a
-longer block.
+after netcheck.py has said what kind of refusal it was. Nothing clears a
+person's refusal automatically, because "wait a bit and try again" is the
+behaviour that earns a longer block. One kind is the night's to test, with
+one request at a time at most: THE NIGHT'S KNOCK, below.
 
 WHAT KIND IT WAS (29 October 2026). The record says what it was, so that a
 reader can tell a dropped connection from the address saying no: `kind` is
@@ -52,19 +53,28 @@ reads the fields, and is the one reader of who a record belongs to: every
 record is a person's, as it always was, unless it is a kind GitHub's own
 night on main met (RESUMABLE) and the person has switched the night's own
 testing on (knock_on()). archive/knocks.json, beside the record, keeps the
-chain such a test would follow -- the ladder, below: every knock, written
-down before it is made, and every record a knock lifted, kept whole. Nothing
-knocks yet. What reads the lifts: drops_allowed(), which is 2 until a knock
-has lifted something, and cloud.py (THE BUCKET KNOWS A LIFT there), which
-carries a lift to the bucket and tells the laptop of one -- and both are idle
-until something knocks. whose() takes a record's bytes, never its dict
+chain such a test follows -- the ladder, below: every knock, written
+down before it is made, and every record a knock lifted, kept whole. What
+reads the lifts: drops_allowed(), which is 1 for a week after one, and
+cloud.py (THE BUCKET KNOWS A LIFT there), which carries a lift to the bucket
+and tells the laptop of one. whose() takes a record's bytes, never its dict
 (_record), because knocks.json names a record by the sha of its bytes.
 
-THE KNOCK'S GATE (29 October 2026). The knock itself is built, and nothing
-starts it yet: `python3 src/fetch/gc_web/snapshot_gencourt.py --knock`, one
-request for one small file, which asks check(knock=True) first. That gate
-is knock_gate(), the one for every knock: GitHub's machine, main's own run
-and no dry run, a
+THE NIGHT'S KNOCK (29 October 2026, the person's decision). A record the
+night may test (whose() "night") is not left for a person: GitHub's night
+asks the General Court one small file for it, once, at its start, on each
+morning a knock is due on the ladder below (nightly.knock), and a knock
+answered with the file lifts it -- moved, whole, into knocks.json, and out of
+the bucket by the night's state-up (cloud.lift_refusal). A knock the address
+answers no to, a fourth relapse, KNOCK_DAYS, an answer that never reached the
+bucket, the switch turned off or a setting typed wrong: the record is a
+person's, as every other always was, and the "a refusal is yours" check is
+told. Every request it makes is one knock_gate() let go.
+
+THE KNOCK'S GATE (29 October 2026). The knock itself is `python3
+src/fetch/gc_web/snapshot_gencourt.py --knock`, one request for one small
+file, which asks check(knock=True) first. That gate is knock_gate(), the one
+for every knock: GitHub's machine, main's own run and no dry run, a
 record on file the night may test (whose()), a knock due on the ladder, and
 the hours of the caller GRANITE_KNOCK_BY names -- "night", at the night's
 start, from its window's opening to KNOCK_LATEST; "hourly", the knock
@@ -509,10 +519,10 @@ def unavailable(err, head=None):
 # One rule, one answer. Every record is a person's to clear, as it always
 # was, except one GitHub's own night on main met and could not tell from a
 # passing outage -- RESUMABLE -- while the person has switched the night's
-# testing on. Nothing gates on it yet -- refusal.py's status says it, and the
-# checks hold it: it is the one gate the night's own test of a refusal will
-# open through, and anything else a reader needs to know about a record it
-# says in `why`.
+# testing on. It is the one gate the night's own test of a refusal opens
+# through: the night's knock (knock_gate, nightly.knock) asks it, and
+# refusal.py's status says it; anything else a reader needs to know about a
+# record it says in `why`.
 
 def knock_on():
     """Whether the person has switched the night's own testing of a refusal
@@ -651,8 +661,9 @@ def _its_own(doc):
 # night's own window covers is one rung of its own. knocks.json, beside the
 # record and written only here, keeps the chain: every knock, each written
 # down BEFORE it is made (knocking) and answered after (knocked), and every
-# record a knock lifted, its exact text kept, never pruned. Nothing knocks
-# yet: these are the ladder and its state, for the callers to come.
+# record a knock lifted, its exact text kept, never pruned. GitHub's night
+# knocks on it (nightly.knock); the hourly knock, its second caller, is to
+# come.
 
 KNOCKS = Path("archive/knocks.json")
 DAY = 24 * HOUR
@@ -1060,7 +1071,8 @@ def drops_allowed(now=None):
 # the knock workflow outside the night's hours. Their hours are disjoint --
 # the night's inside its daily window, the hourly ones outside every window
 # and its margin -- so a caller named wrongly by a mistake refuses; it never
-# asks at an hour that is not its own. Nothing starts either caller yet:
+# asks at an hour that is not its own. The night's caller is nightly.knock(),
+# at the night's start; the hourly one, the knock workflow, is to come.
 # snapshot_gencourt.py --knock is the knock, and check(knock=True) the gate
 # it asks first. The workflow's three steps around it are refusal.py's own
 # options (main): --knock-look, --knock-claim and --knock-unclaim, and
@@ -1244,7 +1256,7 @@ def knock_unclaim():
     return marked
 
 
-def person_line(d=None, k=None, now=None, tested=False, untested=False):
+def person_line(d=None, k=None, now=None, tested=False):
     """The one sentence that says a refusal is a person's: "" when no record
     is on file or the night may test it (whose()), else the record, why it
     is a person's, and what clears it, in this project's words and none of a
@@ -1255,16 +1267,11 @@ def person_line(d=None, k=None, now=None, tested=False, untested=False):
 
     `tested`: only a record the night was testing -- knocks.json's "current"
     names it -- for the knock workflow, which reports the records it tests
-    and leaves every other to the night. `untested`: a record the night may
-    test is a person's all the same, because nothing in this build knocks
-    for it (nightly.person_alerts_of, until the night knocks)."""
+    and leaves every other to the night."""
     doc, raw = _record(d)
     if raw is None:
         return ""
     who, why = whose(raw, k, now)
-    if who == "night" and untested:
-        who, why = "person", ("the night may test this kind of refusal itself, but nothing in "
-                              "this build knocks for it yet")
     if who != "person":
         return ""
     c = chain(raw, k)

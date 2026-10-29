@@ -326,3 +326,63 @@ that made it.
 48. **The operator checklist is not changed**: `reports/cloud/CLOUD_MOVE.md`
     is on the laptop, not in the repository. The owner's steps for the third
     check (D5) go into stage E's OWNER_STEPS.md.
+
+## Commit 6: the night knocks
+
+49. **Each of the knock's conditions lives in one place.** `main()` asks for
+    the runner's night, not a New term run, and `night_tests()` (a record on
+    file, no other fetch holding `archive/.lock`, `whose()` "night");
+    `knock()` asks the dry run (`a.dry_run`, which `main()` already makes the
+    workflow's `DRY_RUN` and a ref off main), `knock_due()` and
+    `asking_left(KNOCK_MINUTES + EXPORT_MINUTES)`. design_final §2.3 lists
+    them as one set; doubled, a condition removed in one place survives its
+    check (DEVIATIONS 11, 32), and split this way C6 catches each.
+50. **The knock and the export each take the night's lock.** `knock()`
+    holds `refusal.hold("nightly")` around the child and lets go; the export
+    takes it again a moment later, after `gc_quiet()` is read again, lock
+    included. design_final §2.3 gives the knock and the held path each
+    "under refusal.hold("nightly")". On GitHub's machine nothing else takes
+    the lock between: one job in `gc-night`, and no lane.
+51. **The day-0 alert names the night's own knock, not the hourly pattern**:
+    "the night knocks once at its start, on each morning a knock is due, the
+    next from <utc>, until <since + KNOCK_DAYS>, when the record is yours"
+    (`nightly.knock_pattern()`), not `refusal.knock_schedule()`'s "one
+    request an hour outside ...". Until `knock.yml` exists (build plan
+    commit 8) only the night knocks, and an email promising hourly requests
+    would be untrue were this the last commit. Commit 8 changes the
+    sentence to `knock_schedule()`'s, as the addendum §4.3 has it. The
+    docstrings say the same: "the hourly knock is to come".
+52. **The night's alert carries a refusal the night tests only on a night
+    that is not clean** (`refusal_alert()`): design_final §2.9's "only when
+    it is a person's or the night was not clean". Until commit 7 every night
+    under such a record builds nothing and is not clean, so the line stands
+    every night of the outage, one email (Healthchecks writes on the change).
+53. **The knock's line is the verdict's `knock` and a line on the run's
+    page, not a warning of its own.** design_final §2.5 calls the clock's
+    "not asked for: it is HH:MM UTC" a `clock_kind` warning; here it is said
+    in `knock`, and commit 7's held line (`KIND_WEB_HELD`, which never holds
+    the gate) carries it on a held night. The lift adds no warning kind: C6
+    compares a lift night's kinds with an ordinary night's.
+54. **`plain_why()`'s "deferred" sentence quotes the verdict's `knock`**, so
+    the night's alert ("The night was not clean: ...") says what the knock
+    did. design_final §5 names `plain_why` among the sentences to change.
+55. **The lift night's one try is `if lifted:` after `if tries >= last:`**,
+    with a line in `tried` (`EXPORT_ONCE_LIFTED`); design_final §2.3 puts
+    the test "beside" it. Placed after, the order `_nightly_falls_back` pins
+    (the database, then `last`, then `if tries >= last`, then the wait) is
+    unchanged, and the break still comes before the wait.
+56. **`run()` takes `env=`**, laid over the hold's variable as
+    `{SQL_HELD_ENV: ...} | (env or {})`, so the pin on `run()`'s environment
+    (`_nightly_falls_back`) reads it unchanged.
+57. **`nightly.KNOCK_MINUTES` is `refusal.KNOCK_MINUTES`**: one number for
+    the child's own kill and the parent's, where design_final §5 gives
+    nightly a `KNOCK_MINUTES = 2` of its own. C13 holds them equal.
+58. **Held for commit 7**: C6's database rows (here a knock not answered, not
+    asked or not due ends in FETCH DEFERRED, as design_final §9 says of this
+    commit), C11's held clean night (`warns_of()`'s held line), and C18's
+    sequence 2 (sixteen days of database nights).
+59. **C18 drives the third check's state from the files `--close` writes**,
+    read as the ending step pings them (`_rings`), through a night driver of
+    the checks' own (`_KnockNights`): the knock child there is the child's
+    own gate, `knocking()` and `knocked()` in-process, with the answer the
+    check gives; nothing is asked of anyone.
