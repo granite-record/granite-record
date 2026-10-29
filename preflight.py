@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.738
+# GRANITE_VERSION: 2026-09-04.739
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -84664,6 +84664,393 @@ def _nightly_log_selftest():
             "reached the reports step, and is never quoted")
 
 
+# ---- the knocks' record, read (H10, 29 October 2026) --------------------------
+#
+# The hourly addendum's H10, in place of design_final's reader of knock lines
+# in the night's logs: the signs that the knock's ladder or its gate failed
+# (the addendum's 11), read from knocks.json itself, which writes every knock
+# down before it is made and keeps every lift. A knock older than this many
+# days is not judged: the record keeps every one for good, and a finding the
+# person has read would otherwise fail the data checks for ever.
+KNOCKS_JUDGED_DAYS = 30
+KNOCKS_RUNG = "TWO KNOCKS IN ONE RUNG"
+KNOCKS_CLOSE = "TWO KNOCKS CLOSER THAN HALF A RUNG"
+KNOCKS_HOURS = "AN HOURLY KNOCK IN THE NIGHT'S HOURS"
+KNOCKS_CAP = "A KNOCK PAST THE LAST DAY"
+KNOCKS_CLAIM = "A CLAIM LEFT STANDING"
+KNOCKS_NOT_OURS = "A KNOCK FOR A REFUSAL THE NIGHT MAY NOT TEST"
+KNOCKS_UNSETTLED = "AN HOURLY KNOCK BEFORE ITS REFUSAL SETTLED"
+KNOCKS_REMEDY = (
+    "These are the signs that the knock's ladder or its gate failed. Turning the night's testing "
+    "off is the person's decision: tell them. The GitHub variable NIGHT_KNOCK set to off stops "
+    "every knock and makes a refusal being tested theirs, with one email; disabling "
+    ".github/workflows/knock.yml stops only the hourly one. Before it is turned on again, "
+    "refusal.py's ladder and gate (knock_due, knock_gate) and the knock runs' logs are read -- "
+    "for an hourly knock before its refusal settled, the laptop's logs too, since it may have "
+    "asked beside it; for a claim left standing, R2 failed after the claim, the refusal is "
+    "already theirs (the \"a refusal is yours\" check emailed), and that knock run's log says "
+    "why. Do not run nightly.py, src/fetch/gc_web/snapshot_gencourt.py --knock, netcheck.py, "
+    "refusal.py --clear or src/ops/cloud.py clear-refusal to clear this: each asks the General "
+    "Court or is the "
+    "person's. The record keeps every knock, so a finding clears once the knock it names is "
+    f"more than {KNOCKS_JUDGED_DAYS} days old.")
+
+
+def _knocks_on_file_findings(R, k, on_file, now):
+    """(problems, summary) for knocks.json's document `k` as of the epoch
+    `now`, read by refusal.py (`R`) and its settings as this process sees
+    them; `on_file` is refused.json's bytes, or None. problems is None when
+    no knock of the last KNOCKS_JUDGED_DAYS days is on record.
+
+    Each chain is read -- "current", and every "lifted" entry, the knocks a
+    relapse carried included -- and each knock of the last KNOCKS_JUDGED_DAYS
+    days is judged as the ladder judged it, by refusal's own definitions:
+
+      - one a rung, half a rung apart: each request -- every entry but one
+        "not asked" -- in a later rung than the one before it and at least
+        half a rung after it, the rung the size that applies at its time (an
+        hour within KNOCK_HOURLY_HOURS of the chain's start, KNOCK_EVERY_HOURS
+        after), aligned at knock_anchor();
+      - no hourly entry inside a night window or the margin before one
+        (refusal._window_or_soon, the hourly gate's own reading);
+      - none at or after the chain's start plus KNOCK_DAYS days;
+      - no "claimed" entry older than a day: an answer R2 never heard;
+      - none for a record the night may not test (refusal._its_own: a dry
+        run's, another ref's, the laptop's, a kind the address said no
+        with), read from the lifted entry's own text, or from the record on
+        file when "current" names it;
+      - no hourly entry for a record before it settled (refusal._settled),
+        judged by that record's own time, and only for the knocks made since
+        it: the ones a relapse carried were judged with their own record.
+
+    A knock is judged at its own time and at KNOCK_MINUTES before it, the
+    gate having read the ladder at most that long before the request that
+    knocking() timed. The settings here are the environment's: the
+    repository variables are GitHub's, so the summary names those judged
+    by."""
+    hourly, every, days, bad = R.knock_settings()
+    H, D = R.HOUR, R.DAY
+    anchor, slack = R.knock_anchor(), R.KNOCK_MINUTES * 60
+    horizon = now - KNOCKS_JUDGED_DAYS * D
+
+    def ep(x):
+        try:
+            return float(x.get("epoch") or 0)
+        except (TypeError, ValueError):
+            return 0.0
+
+    def said(x):
+        return f"{x.get('by') or 'no caller'}'s at {R._stamp(ep(x))}, {x.get('answer')}"
+
+    chains = []
+    cur = k.get("current")
+    if isinstance(cur, dict):
+        rec = (R._record(bytes(on_file))[0] if on_file is not None
+               and R._sha(bytes(on_file)) == cur.get("refusal") else None)
+        chains.append(("the refusal being tested", cur, rec))
+    for x in k.get("lifted") or []:
+        if isinstance(x, dict):
+            try:
+                rec = json.loads(x.get("text") or "")
+            except (TypeError, ValueError):
+                rec = None
+            chains.append((f"the refusal lifted at {x.get('utc')}", x,
+                           rec if isinstance(rec, dict) else None))
+    problems, judged, read, unread = [], 0, 0, []
+    for name, ch, rec in chains:
+        try:
+            since = float(ch.get("since") or 0)
+        except (TypeError, ValueError):
+            since = 0.0
+        entries = sorted((x for x in ch.get("knocks") or [] if isinstance(x, dict)), key=ep)
+        recent = [x for x in entries if ep(x) >= horizon]
+        if not recent:
+            continue
+        read += 1
+        judged += len(recent)
+        cap, switch = since + days * D, since + hourly * H
+
+        def size(t):
+            return H if t < switch else every * H
+
+        def later(ta, t):
+            return (t - anchor) // size(t) > (ta - anchor) // size(t)
+
+        def apart(ta, t):
+            return t - ta >= size(t) / 2
+
+        asked = [x for x in entries if x.get("answer") != "not asked"]
+        for a, b in zip(asked, asked[1:]):
+            ta, tb = ep(a), ep(b)
+            if tb < horizon or any(later(ta, t) and apart(ta, t) for t in (tb, tb - slack)):
+                continue
+            tag = KNOCKS_CLOSE if any(later(ta, t) for t in (tb, tb - slack)) else KNOCKS_RUNG
+            problems.append(f"{tag}: {name}, the {said(a)} and the {said(b)}")
+        for x in recent:
+            t = ep(x)
+            if x.get("by") == "hourly" and R._window_or_soon(R._utc(t)) is not None:
+                problems.append(f"{KNOCKS_HOURS}: {name}, the {said(x)}")
+            if t - slack >= cap:
+                problems.append(f"{KNOCKS_CAP}: {name}, the {said(x)}, its chain having begun "
+                                f"{R._stamp(since)}, {days} days before {R._stamp(cap)}")
+            if x.get("answer") == "claimed" and now - t > D:
+                problems.append(f"{KNOCKS_CLAIM}: {name}, the {said(x)} (run {x.get('run_id')}), "
+                                "no answer since")
+        if rec is None:
+            unread.append(name)
+            continue
+        ok, why = R._its_own(rec)
+        if not ok:
+            problems.append(f"{KNOCKS_NOT_OURS}: {name}, {len(recent)} knock(s) for a refusal "
+                            f"that {why}")
+        try:
+            own = float(rec.get("epoch") or 0)
+        except (TypeError, ValueError):
+            own = 0.0
+        for x in recent:
+            if x.get("by") == "hourly" and ep(x) >= own and not R._settled(own, ep(x))[0]:
+                problems.append(f"{KNOCKS_UNSETTLED}: {name}, noted {R._stamp(own)}, the {said(x)}")
+    by = (f"the settings here, one an hour for {hourly} hours, then one in each {every}-hour "
+          f"span, for {days} days" + (f" ({bad}: the defaults)" if bad else "")
+          + " -- the repository variables KNOCK_HOURLY_HOURS, KNOCK_EVERY_HOURS and KNOCK_DAYS "
+          "are GitHub's; where they differ, set the same here to judge by them")
+    if not read:
+        return None, f"no knock of the last {KNOCKS_JUDGED_DAYS} days is on record"
+    summary = (f"{judged} knock entries of the last {KNOCKS_JUDGED_DAYS} days in {read} "
+               f"chain{'s' if read != 1 else ''}, judged by {by}")
+    if unread:
+        summary += ("; not judged, the record not being on file here: whether "
+                    + " or ".join(unread) + " was the night's to test, and settled before its "
+                    "hourly knocks")
+    return problems, summary
+
+
+def _knocks_on_file_selftest(R):
+    """H10's reader on knocks.json documents whose answers are known.
+
+    First a ladder refusal.py's own writers kept: sixteen days from run 151's
+    drop, every knock failing, the night's at 08:23:40 and the hourly ones at
+    :47 claimed through knock_claim() as knock.yml claims them, one claim
+    marked "not asked" by knock_unclaim(); read as the refusal being tested,
+    and again as one lifted, it holds no sign. Then each sign in a chain
+    otherwise kept, found, and its near miss not: two knocks in one hour's
+    rung 34 minutes apart, and in one six-hour rung four hours apart; two
+    in the next rung 20 minutes and, in the six-hour phase, an hour apart;
+    an hourly knock in the daily window, in its margin and in Monday's
+    margin, where the night's own is none; a knock five minutes past the
+    sixteenth day, and not one a minute past it, inside the knock's own two;
+    a claim 24 hours and 13 minutes old, and not one of 23 hours and 53; a
+    lifted chain of a dry run's record and a chain being tested for dev's;
+    an hourly knock an hour after a record noted at 14:35, and not the next
+    morning's; a relapse judged by its own time and not its chain's start,
+    and the knocks it carried by their own record. A finding on a knock 31
+    days old is not one."""
+    tmp = Path(tempfile.mkdtemp(prefix="gr-knocksread-"))
+    saved = R.MARK
+    H, D = 3600, 86400
+    since = _KNOCK_SINCE                       # Thursday 29 October 2026, 08:27:15 UTC
+    day0 = since - (8 * H + 27 * 60 + 15)
+
+    def T(day, hh, mm=0):
+        return day0 + day * D + hh * H + mm * 60
+
+    def entry(t, by="hourly", answer="dropped"):
+        return {"utc": "-", "epoch": t, "run_id": "x", "attempt": "1", "by": by, "url": "",
+                "answer": answer, "said": "", "retry_after": None}
+
+    raw = _knock_record()
+
+    def doc(*knocks, start=since, rec=raw):
+        return {"current": {"refusal": R._sha(rec), "since": start, "knocks": list(knocks),
+                            "person": None, "carried_from": None, "relapses": 0}, "lifted": []}
+
+    def lifted(*knocks, rec=raw, start=since):
+        return {"current": None, "lifted": [{"refusal": R._sha(rec), "utc": "-", "epoch": 0,
+                                             "text": rec.decode("utf-8"), "knocks": list(knocks),
+                                             "since": start}]}
+
+    def found(d, now, on_file=raw):
+        return " | ".join(_knocks_on_file_findings(R, d, on_file, now)[0] or [])
+
+    try:
+        R.MARK = tmp / "refused.json"
+        with _KnockEnv(**_KNOCK_MAIN), _KnockClock(R) as clock:
+            R.MARK.write_bytes(raw)
+            n, unclaimed = 0, []
+
+            def knock(t, by):
+                nonlocal n
+                clock(t)
+                n += 1
+                _KnockEnv.set(**dict(_KNOCK_MAIN, GITHUB_RUN_ID=f"r{n}", GRANITE_KNOCK_BY=by,
+                                     GRANITE_CLOCK_UTC=_utc_iso(t)))
+                if by == "hourly":
+                    if not R.knock_claim(now=t)[0]:
+                        return
+                    if not unclaimed and t > since + 30 * H:
+                        unclaimed.append(R.knock_unclaim())
+                        return
+                elif not R.knock_gate(by, now=t)[0]:
+                    return
+                R.knocking(_KNOCK_URL)
+                R.knocked("dropped", "closed without a byte")
+            h = (since // H + 1) * H
+            while h < since + 17 * D:
+                night = (h // D) * D + 8 * H + 23 * 60 + 40
+                if h <= night < h + H:
+                    knock(night, "night")
+                knock(h + 47 * 60, "hourly")
+                h += H
+            k, ok = R.read_knocks()
+            kept = k["current"]["knocks"]
+            asked = [x for x in kept if x.get("answer") != "not asked"]
+            assert ok and unclaimed == [1] and len(asked) >= 90 and \
+                {x.get("by") for x in asked} == {"night", "hourly"}, (
+                f"the ladder the reader is held to was not kept: {len(asked)} knocks, "
+                f"unclaimed {unclaimed}")
+            now = since + 385 * H
+            got = found(k, now)
+            assert not got, f"a ladder refusal.py kept was read as failing: {got}"
+            got = found(lifted(*kept), now)
+            assert not got, f"the same ladder, lifted, was read as failing: {got}"
+            assert _knocks_on_file_findings(R, k, raw, now + 31 * D)[0] is None, \
+                f"knocks more than {KNOCKS_JUDGED_DAYS} days old were judged"
+
+        def sign(tag, d, now, on_file=raw, what=""):
+            got = found(d, now, on_file)
+            assert tag in got, f"{what or tag} was not found: {got or 'nothing'}"
+            others = [s for s in got.split(" | ") if not s.startswith(tag)]
+            assert not others, f"{what or tag}: found besides it: {others}"
+
+        def none(d, now, what, on_file=raw):
+            got = found(d, now, on_file)
+            assert not got, f"{what} was read as failing: {got}"
+
+        day = T(1, 12)
+        none(doc(entry(T(0, 14, 47)), entry(T(0, 15, 47)), entry(T(1, 8, 23), "night")), day,
+             "an hourly knock an hour after another and the night's next morning")
+        none(doc(entry(T(0, 14, 40), answer="not asked"), entry(T(0, 15))), day,
+             "a claim marked not asked, then a knock 20 minutes later in its rung")
+        late_start = T(0, 16, 10)
+        none(doc(entry(T(2, 14, 47)), entry(late_start + 48 * H + 30), start=late_start),
+             T(2, 18), "a knock timed 30 seconds into the six-hour phase, its gate having read "
+                       "the hourly one in the knock's two minutes before")
+        sign(KNOCKS_RUNG, doc(entry(T(0, 14, 31)), entry(T(0, 15, 5))), day,
+             what="two knocks 34 minutes apart in one hour's rung")
+        sign(KNOCKS_RUNG, doc(entry(T(3, 14, 47)), entry(T(3, 18, 47))), T(3, 20),
+             what="two knocks four hours apart in one six-hour rung")
+        sign(KNOCKS_CLOSE, doc(entry(T(0, 15, 20)), entry(T(0, 15, 40))), day,
+             what="two knocks 20 minutes apart either side of an hour's rung")
+        sign(KNOCKS_CLOSE, doc(entry(T(3, 19, 20)), entry(T(3, 20, 20))), T(3, 21),
+             what="two knocks an hour apart either side of a six-hour rung")
+        sign(KNOCKS_HOURS, doc(entry(T(0, 14, 47)), entry(T(1, 9, 47))), day,
+             what="an hourly knock in the daily window")
+        sign(KNOCKS_HOURS, doc(entry(T(0, 14, 47)), entry(T(1, 7, 35))), day,
+             what="an hourly knock in the half hour before the daily window")
+        sign(KNOCKS_HOURS, doc(entry(T(3, 19, 47)), entry(T(4, 3, 47))), T(4, 5),
+             what="an hourly knock in the half hour before Monday's weekly window")
+        cap = since + 384 * H
+        sign(KNOCKS_CAP, doc(entry(T(15, 19, 47)), entry(cap + 5 * 60, "night")), cap + H,
+             what="a knock five minutes past the sixteenth day")
+        none(doc(entry(T(15, 19, 47)), entry(cap + 60, "night")), cap + H,
+             "a knock a minute past the sixteenth day, inside the knock's own two minutes")
+        claim = doc(entry(T(0, 14, 47), answer="claimed"))
+        sign(KNOCKS_CLAIM, claim, T(1, 15), what="a claim 24 hours and 13 minutes old")
+        none(claim, T(1, 14, 40), "a claim 23 hours and 53 minutes old")
+        sign(KNOCKS_NOT_OURS, lifted(entry(T(0, 14, 47)), rec=_knock_record(dry=True)), day,
+             what="a lifted chain of a dry run's record")
+        dev = _knock_record(ref="refs/heads/dev")
+        sign(KNOCKS_NOT_OURS, doc(entry(T(0, 14, 47)), rec=dev), day, on_file=dev,
+             what="a chain being tested for dev's record")
+        none(doc(entry(T(0, 14, 47)), rec=dev), day, "a chain whose record is not on file here",
+             on_file=raw)
+        late = _knock_record(epoch=T(0, 14, 35))
+        sign(KNOCKS_UNSETTLED, doc(entry(T(0, 15, 47)), start=T(0, 14, 35), rec=late), day,
+             on_file=late, what="an hourly knock an hour after a record noted at 14:35")
+        none(doc(entry(T(1, 8, 23), "night"), entry(T(1, 13, 47)), start=T(0, 14, 35), rec=late),
+             T(1, 15), "the next morning's knocks for a record noted at 14:35", on_file=late)
+        relapse = _knock_record(epoch=T(1, 14, 35))
+        carried = entry(T(0, 15, 47))
+        sign(KNOCKS_UNSETTLED, doc(carried, entry(T(1, 15, 47)), rec=relapse), T(1, 16),
+             on_file=relapse, what="a relapse noted at 14:35 knocked an hour later, its chain "
+                                   "begun the day before")
+        none(doc(carried, rec=relapse), T(1, 16),
+             "a knock a relapse carried, judged by the relapse's time", on_file=relapse)
+        none(doc(entry(T(0, 14, 31)), entry(T(0, 15, 5))), T(0, 15) + 31 * D,
+             f"two knocks in one rung {KNOCKS_JUDGED_DAYS + 1} days ago")
+    finally:
+        R.MARK = saved
+        shutil.rmtree(tmp, ignore_errors=True)
+    return (f"a sixteen-day ladder refusal.py kept ({len(asked)} knocks, one claim not asked) "
+            "holds no sign, tested or lifted; two knocks in a rung or closer than half of one, in "
+            "each phase, an hourly one in the night's hours or before its refusal settled, one "
+            "past the last day, a claim a day old and a chain of a record the night may not test "
+            f"are each found, and their near misses not; nothing older than {KNOCKS_JUDGED_DAYS} "
+            "days is judged")
+
+
+@check("build", "the reader of the knocks' record finds each sign that the knock's ladder or gate "
+                "failed, and none in a ladder refusal.py kept", needs=("refusal",))
+def _knocks_on_file_reader(R):
+    """H10's reader (_knocks_on_file_findings) under --code, on documents
+    whose answers are known (_knocks_on_file_selftest), as _nightly_logs'
+    reader is: the data check reads what really happened, which only a
+    machine holding archive/knocks.json has. And the data check itself,
+    _knocks_on_file, on a record of its own beside a refusal of its own: no
+    knocks.json is a skip; a kept chain passes; a second knock in its rung
+    fails, naming the sign and that turning the testing off is the
+    person's; a knocks.json that does not read fails."""
+    detail = _knocks_on_file_selftest(R)
+    assert not built_selected(next(c for c in CHECKS if c["fn"] is _knocks_on_file)), (
+        "_knocks_on_file runs on the night (NOT_ON_THE_NIGHT): a failure there holds the site, "
+        "or warns under a new kind, over the knock's record when the site is sound")
+    tmp = Path(tempfile.mkdtemp(prefix="gr-knocksfile-"))
+    saved = R.MARK
+    day0 = _KNOCK_SINCE - (8 * 3600 + 27 * 60 + 15)
+
+    def knock(hh, mm, day=0):
+        t = day0 + day * 86400 + hh * 3600 + mm * 60
+        return {"utc": "-", "epoch": t, "run_id": "x", "attempt": "1", "by": "hourly", "url": "",
+                "answer": "dropped", "said": "", "retry_after": None}
+    try:
+        R.MARK = tmp / "archive" / "refused.json"
+        R.MARK.parent.mkdir()
+        raw = _knock_record()
+        R.MARK.write_bytes(raw)
+        with _KnockEnv(GRANITE_CLOCK_UTC=_utc_iso(day0 + 86400 + 12 * 3600)):
+            status, said = _knocks_on_file(R)
+            assert status == "skip" and "no " in said, f"no knocks.json gave {status}: {said}"
+            chain = {"refusal": R._sha(raw), "since": _KNOCK_SINCE, "person": None,
+                     "carried_from": None, "relapses": 0,
+                     "knocks": [knock(14, 47), knock(15, 47), knock(16, 47)]}
+            R.knocks_file().write_text(json.dumps({"current": chain, "lifted": []}),
+                                       encoding="utf-8")
+            status, said = _knocks_on_file(R)
+            assert status == "ok" and "3 knock entries" in said, \
+                f"a kept chain on file gave {status}: {said}"
+            chain["knocks"].insert(2, knock(15, 5))
+            R.knocks_file().write_text(json.dumps({"current": chain, "lifted": []}),
+                                       encoding="utf-8")
+            try:
+                _knocks_on_file(R)
+                raise RuntimeError("a second knock in one rung on file passed")
+            except AssertionError as e:
+                msg = str(e)
+            assert KNOCKS_RUNG in msg and "NIGHT_KNOCK" in msg and "person's" in msg \
+                and "Do not run" in msg, f"the failure does not say what it is and whose: {msg}"
+            R.knocks_file().write_text("{not json", encoding="utf-8")
+            try:
+                _knocks_on_file(R)
+                raise RuntimeError("a knocks.json that does not read passed")
+            except AssertionError as e:
+                assert "does not read" in str(e), str(e)
+    finally:
+        R.MARK = saved
+        shutil.rmtree(tmp, ignore_errors=True)
+    return "ok", (detail + "; the data check skips with no record, passes a kept chain, and "
+                  "fails a second knock in a rung and a record that does not read")
+
+
 @check("build", "a failed report pull is loud in the log and where the triage session looks, "
        "and changes nothing else", needs=("nightly",))
 def _nightly_reports_loud(NI):
@@ -100111,6 +100498,48 @@ def _nightly_logs():
     return ("ok" if scheduled else "skip"), summary
 
 
+@check("data", "the knocks' record shows the ladder kept: one knock a rung, none of the hourly ones "
+               "in the night's hours or before their refusal settled, none past the last day, no "
+               "claim left standing, none for a refusal the night may not test",
+       needs=("refusal",))
+def _knocks_on_file(R):
+    """H10 of the hourly addendum (29 October 2026), in place of design_final's
+    reader of knock lines in the night's logs: the signs that the knock's
+    ladder or gate failed, read from archive/knocks.json -- refusal.py's own
+    record, which writes every knock down before it is made and keeps every
+    lift -- by _knocks_on_file_findings, which _knocks_on_file_reader holds
+    under --code to documents whose answers are known. Each finding names
+    the chain and the knocks, never what a server said, and says that
+    turning the night's testing off is the person's (KNOCKS_REMEDY).
+
+    Skipped where no archive/knocks.json is on disk, which is this laptop:
+    the record is GitHub's, brought down by its state-down and kept in the
+    bucket as state/knocks.json, and the laptop's pull reads the bucket's
+    lifts without keeping a copy. Left off the night's own checks
+    (NOT_ON_THE_NIGHT), as _nightly_logs is: a failure there would hold the
+    site for approval, or warn under a new kind, over the knock's record,
+    when the site itself is sound."""
+    _knocks_on_file_selftest(R)
+    p = R.knocks_file()
+    if not p.exists():
+        return "skip", (f"no {p.as_posix()} here: the knocks' record is GitHub's, brought down by "
+                        "its state-down and kept in the bucket as state/knocks.json; the laptop's "
+                        "pull reads its lifts and keeps no copy")
+    k, ok = R.read_knocks()
+    assert ok, (f"{p.as_posix()} does not read, so whether the knock's ladder was kept is not "
+                "known. refusal.py never writes over it and reads every refusal as a person's "
+                "meanwhile; it is the person's to read and mend")
+    try:
+        on_file = R.MARK.read_bytes()
+    except OSError:
+        on_file = None
+    problems, summary = _knocks_on_file_findings(R, k, on_file, R._utc().timestamp())
+    if problems is None:
+        return "skip", f"{p.as_posix()}: {summary}"
+    assert not problems, "\n".join(problems) + "\n" + KNOCKS_REMEDY + f" (Judged: {summary}.)"
+    return "ok", summary
+
+
 @check("build", "what changed at the General Court is read from two copies of its files",
        needs=("gc_changes",))
 def _gc_changes(GC):
@@ -115269,6 +115698,8 @@ BUILT_CODE = {"_asset_headers", "_bill_shell", "_palette", "_one_stylesheet_link
               "_card_words_short", "_one_head"}
 NOT_ON_THE_NIGHT = {
     "_nightly_logs": "judges the nightly by its own logs: on the night, the run it is part of",
+    "_knocks_on_file": "judges the knock's ladder by its own record: on the night, a failure would "
+                       "hold or warn over the site when the site is sound",
     "_full_pull_fresh": "the laptop's last pull from the bucket",
     "_refusal_reached_the_bucket": "the laptop's refusal record against the bucket's",
     "_kit_entries_match": "the laptop's own copies against the kit's list; the night has what came "

@@ -648,3 +648,69 @@ that made it.
      knock.yml (§10 step 5) is the proof.
 103. **H10, the knocks-on-file reader, is not here**: the addendum's build
      plan puts it in commit 11 with the docs.
+
+## Commit 11 of the addendum: the docs and the knocks' record read (H10)
+
+104. **H10 is left off the night's own checks** (`NOT_ON_THE_NIGHT`, beside
+     `_nightly_logs`). The addendum says a data check "not in `--code`", but
+     every data check also runs on the night under `--built`, where a
+     failure holds the site for approval -- or, as a warning, adds a kind
+     the gate has not seen, which holds it too. A ladder that failed is no
+     reason to hold a sound site, and nothing in the design routes H10
+     there. `_knocks_on_file_reader` asserts it stays off.
+105. **So H10 reads real data almost nowhere yet.** It reads
+     `archive/knocks.json` (`refusal.knocks_file()`), as designed, and
+     skips without one. The laptop, where a full preflight runs, holds none:
+     its `pull` reads the bucket's `state/knocks.json` for lifts and keeps no
+     copy. GitHub's machine holds one after state-down, but runs only
+     `--code` and `--built`. **A later step, for the owner:** `pull` keeping
+     a copy (say `archive/cloud/knocks.json`, never `archive/knocks.json`,
+     which `refusal.py` reads as its own) for H10 to read. It is not built
+     here, because it adds a write to `pull`, which the design does not.
+106. **"None with a dry ref" is judged by the chain's record, not the
+     entry.** A knock entry carries no ref. A chain's record is the lifted
+     entry's own `text`, or the record on file when `current` names it by
+     sha. A chain holding a knock for a record `refusal._its_own()` refuses
+     (a dry run's, another ref's, the laptop's, a kind that said no, a long
+     Retry-After) is a finding. Where `current`'s record is not on file
+     (the laptop), this and the settle rule are not judged, and the summary
+     says so.
+107. **A knock is judged at its own time and at `KNOCK_MINUTES` before.**
+     `knocking()` stamps the request, which follows the gate's reading by
+     less than the child's two minutes. A request whose two minutes crossed
+     into the six-hour phase, or past the cap, was kept by the gate's
+     reading. The rule for rungs, gaps and the cap allows that; the window
+     and the settle rule need no allowance (the gate read them at the
+     request's two minutes ahead, and the last window end only grows).
+108. **Only the last `KNOCKS_JUDGED_DAYS` (30) days are judged.**
+     `knocks.json` keeps every knock and lift for good. Judging all of them
+     would fail the data checks for ever once one finding had been read and
+     dealt with, and CLAUDE.md has a session fix preflight first. Thirty
+     days is about as long as the bucket keeps the night's logs to read a
+     finding by.
+109. **The settle rule judges the hourly knocks made since the record's own
+     time.** Knocks a relapse carried were made for the earlier record, and
+     are judged with it in its `lifted` entry. A request is any entry but
+     one marked "not asked", a "claimed" one included, as `chain()` counts.
+110. **The settings are this process's.** The repository variables are
+     GitHub's; the summary names the settings it judged by and says to set
+     the same here where they differ.
+111. **design_final's log reader is not built.** Two knock lines on a date,
+     a dry run's knock line, and a knock outside 08:00-11:18: H10 replaces
+     it (addendum §10 item 11), on the state file rather than the logs.
+112. **H10's reader runs under `--code` too**, as `_knocks_on_file_reader`.
+     It runs on documents whose answers are known: a sixteen-day ladder
+     kept by `refusal.py`'s own writers, read as tested and as lifted, and
+     each sign beside its near miss. It also runs the data check on a
+     record of its own, as `_nightly_logs`' reader is held under `--code`.
+113. **ARCHITECTURE's alerts sentence**, "its recovery is the sign it was
+     cleared", gains "or lifted by the night's knock" (design_final §7). The
+     drift the design names is mended: a night the gate holds for approval
+     went to the warnings' check on 22 October 2026 (c310ee1,
+     `held_for_approval()` in `warns_of()`), and a refusal the night tests
+     reaches the night's alert only on a night that is not clean.
+     `src/ops/README.md` names the knock workflow among `cloud.py`'s callers,
+     and the three refusal commands. The rest of design_final §7 and
+     addendum §9's tables went in with the commits that changed the
+     behaviour. The operator checklist is on the laptop; its D5 steps are
+     in `OWNER_STEPS.md`.

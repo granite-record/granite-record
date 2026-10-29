@@ -5,7 +5,18 @@ workflows, the morning triage and a person run by its path.
 
 - `cloud.py` -- the private R2 bucket: the nightly's kit and state going down
   and up, the built site handed between jobs, the laptop's backup and its
-  pull. Both workflows run it as `python src/ops/cloud.py ...`.
+  pull. The workflows run it as `python src/ops/cloud.py ...`: the nightly
+  and the weekly, and since 29 October 2026 the hourly knock
+  (`.github/workflows/knock.yml`), whose `look` job brings the state down
+  with an R2 key that cannot write and whose `knock` job sends its claim and
+  its answer back up. The refusal record is the state the laptop meets
+  most: `pull` brings the bucket's down and says when a knock has lifted it
+  (`state/knocks.json`, THE NIGHT'S KNOCK in `refusal.py`); `send-refusal`
+  sends one met here that the bucket does not hold, never one a knock has
+  lifted; and `clear-refusal` lifts the bucket's, a person's decision after
+  `python3 netcheck.py` -- and while GitHub may be testing that refusal
+  itself, only once the GitHub variable `NIGHT_KNOCK` is `off` (or the knock
+  workflow disabled), so that two machines never ask at once.
 - `livestreams.py` -- the night's new livestreams, indexed, captioned and
   read into the start times (`--since-state` in the nightly workflow,
   `--markers` in the build, `--catch-up` by hand on the laptop). It is the

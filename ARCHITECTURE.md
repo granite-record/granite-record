@@ -293,15 +293,19 @@ checks are how a problem is heard of, and none is pinged by a dry run. The
 night's check is pinged at the end of every real night, as `/fail` when the
 night failed -- and also when `nightly.py --close` wrote anything to
 `logs/alert.txt` (`ALERT_FILE`, from `alerts_of()`): a refusal from the General
-Court on file, a hold on the SQL host, a night the gate holds for approval
-(with the gate's reasons, which GitHub otherwise tells only the reviewer), or
-a night that was not clean, one sentence each, sent as the ping's body so that
-Healthchecks puts it in its email. Healthchecks writes when a check goes down
-and again when it comes back, not every night between, so a refusal held for
-three nights is one email and its recovery is the sign it was cleared. That
-is also why a warning that stands is kept off this check (18 October 2026): a
-failed check of the built site against the record, and a reminder that fails
-on a date until a person acts, go to `logs/alert-warn.txt` (`WARN_FILE`, from
+Court on file -- every night while it is a person's, and one the night tests
+itself only on a night that was not clean -- a hold on the SQL host, a check
+of the built site that holds the night, or a night that was not clean, one
+sentence each, sent as the ping's body so that Healthchecks puts it in its
+email. Healthchecks writes when a check goes down and again when it comes
+back, not every night between, so a refusal held for three nights is one
+email and its recovery is the sign it was cleared, or lifted by the night's
+knock. That is also why a warning that stands is kept off this check (18
+October 2026): a night the gate holds for approval, with the gate's reasons,
+which GitHub otherwise tells only the reviewer (`held_for_approval()`, since
+22 October 2026), a failed check of the built site against the record, and a
+reminder that fails on a date until a person acts, go to
+`logs/alert-warn.txt` (`WARN_FILE`, from
 `warns_of()`) and to a check of their own, `HEALTHCHECKS_WARN_URL` -- `/fail`
 with the file as the body while one stands, a plain ping when none does --
 and with no such secret they stay on the run's page and in the verdict.
@@ -462,7 +466,15 @@ the bucket's `state/refused.json` to `replaced/`, when that night's knock
 lifted that very record; with it off, every `state/refused.json` stops the
 night as before. `pull` and `send-refusal` read the lifts, so a laptop
 holding a lifted refusal is told so and never sends it back; a dry run never
-sends `knocks.json`.
+sends `knocks.json`. Where `archive/knocks.json` is on disk, preflight's data
+check `_knocks_on_file` reads it for the signs that the ladder or its gate
+failed -- two knocks in one rung or closer than half of one, an hourly knock
+in the night's hours or before its refusal settled, one past the last day, a
+claim left standing a day, a knock for a refusal the night may not test --
+over the last 30 days, and says that turning the testing off is the
+person's. It is left off the night's own checks, where a failure would hold
+or warn over a sound site, and the laptop's pull keeps no copy, so on the
+laptop it skips.
 
 **The build's cache (23 October 2026).** Two steps keep what they worked out
 in `.build_cache/` (`src/lib/build_cache.py`), and the kit carries it as the
