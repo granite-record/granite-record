@@ -9871,8 +9871,11 @@ document.addEventListener("change",e=>{
   if(f==="term"){PAGE.status="";term=PAGE.term;
     ensureTerm(PAGE.term).then(renderPage);
     // A recording the address named is the old term's: the new term's
-    // Videos tab opens on its newest, and the address stops naming it.
-    if(/^#v-/.test(location.hash))tabAddress(slugOf(COMMITTEE_TABS,PAGE_TAB));}
+    // Videos tab opens on its newest, and the address stops naming it. A
+    // committee's only: a member's page, its tabs not a committee's, had
+    // its Votes tab's address rewritten as /videos (the review of 29
+    // October 2026).
+    if(PAGE.kind==="committee"&&/^#v-/.test(location.hash))tabAddress(slugOf(COMMITTEE_TABS,PAGE_TAB));}
   // A narrower filter over a list already expanded to 800 rows left the
   // reader at the bottom of a list of 40.
   if(f==="vfilter"||f==="vside"||f==="vq"||f==="term")PAGE.vshow=0;

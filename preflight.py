@@ -76331,6 +76331,38 @@ process.stdout.write("\n@@" + JSON.stringify(out));
             f"a recording that plays is kept while the address names another: {kept}")
         assert kept["drawn"] == "N1", (
             f"a term's Videos tab drawn asks for {kept['drawn']!r}, not the recording it drew")
+    # A TERM CHOSEN WHILE THE ADDRESS NAMES A RECORDING drops it from a
+    # committee's address, on its Videos tab; on a member's page, whose tabs
+    # are not a committee's, it had rewritten the Votes tab's address as
+    # /videos (the review of 29 October 2026). The record page's change
+    # listener, fired as the Term control fires it.
+    termed = _node_app(r"""
+require("./stub.js");
+const fs = require("fs");
+const heard = [];
+document.addEventListener = (t, f) => { if (t === "change") heard.push(f); };
+process.on("unhandledRejection", () => {});
+const s = (0, eval)(fs.readFileSync("./page.js", "utf8") + "; ({setState: (p, t) => { PAGE = p; PAGE_TAB = t; }})");
+const wrote = [];
+history.replaceState = (st, title, url) => wrote.push(url);
+const page = (kind, data) => ({kind, data, terms: ["2025-2026", "2023-2024"], term: "2025-2026", status: "",
+  vfilter: "", vside: "", vq: "", vopen: {}, vshow: 0, bshow: 0, mshow: 0, vid: ""});
+const fire = () => heard.forEach((f) => { try { f({target: {dataset: {pf: "term"}, value: "2023-2024",
+  closest: () => null, matches: () => false}}); } catch (_) {} });
+const out = {};
+location.pathname = "/legislator/jane-doe/votes"; location.hash = "#v-abc";
+s.setState(page("member", {}), 2); fire(); out.member = wrote.splice(0);
+location.pathname = "/committee/S07/videos"; location.hash = "#v-abc";
+s.setState(page("committee", {code: "S07"}), 2); fire(); out.committee = wrote.splice(0);
+process.stdout.write("\n@@" + JSON.stringify(out));
+""")
+    if termed is not None:
+        # The committee's first address is the listener's own; a second is
+        # the page drawn again for the new term, which this record (no
+        # recording in it) opens on Bills.
+        assert termed["member"] == [] and termed["committee"][:1] == ["/committee/S07/videos"], (
+            f"a term chosen while the address names a recording rewrites {termed}: a member's address "
+            "is left alone, and a committee's drops the recording")
     return "ok", ("the third tab, counted; a still of the newest, nothing from YouTube before Play; "
                   "rows of the term with the Meetings tab's chips, no bill line where none is known; "
                   "one caption with nothing missing said, no dot ending a line; the moment the "
