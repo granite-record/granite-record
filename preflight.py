@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.722
+# GRANITE_VERSION: 2026-09-04.723
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -81547,6 +81547,187 @@ def _report_pull_7403(CR):
     return "ok", "one 7403 asked again once, for a pull and a delete; a second 7403 or any other failure raised"
 
 
+# ---- whose a refusal is (29 October 2026) -------------------------------------
+#
+# refusal.py, WHAT KIND IT WAS: the record says what it was, and whose() is
+# the one reader of whose it is. Every check here states each variable it
+# reads, and puts back what it found: preflight runs on GitHub's machine too,
+# where GITHUB_ACTIONS and GITHUB_REF are the night's own.
+
+_KNOCK_ENVS = ("GITHUB_ACTIONS", "GITHUB_REF", "DRY_RUN", "GITHUB_RUN_ID", "GITHUB_RUN_ATTEMPT",
+               "NIGHT_KNOCK", "NIGHT_PERSON_CHECK", "KNOCK_HOURLY_HOURS", "KNOCK_EVERY_HOURS",
+               "KNOCK_DAYS", "GRANITE_KNOCK_BY", "GRANITE_CLOCK_UTC")
+# GitHub's night on main, with the person's switch on and the third check set.
+_KNOCK_MAIN = {"GITHUB_ACTIONS": "true", "GITHUB_REF": "refs/heads/main", "DRY_RUN": "false",
+               "GITHUB_RUN_ID": "151", "GITHUB_RUN_ATTEMPT": "1", "NIGHT_KNOCK": "on",
+               "NIGHT_PERSON_CHECK": "set"}
+# Run 151's refusal of 29 October 2026, byte for byte as the bucket holds it:
+# written before records said what they were, so it says nothing of its kind.
+_RECORD_29_OCT = (b'{\r\n "at": "2026-10-29T04:27:14",\r\n "epoch": 1793262435.0000901,\r\n'
+                  b' "where": "snapshot_gencourt",\r\n "why": "RemoteDisconnected: Remote end '
+                  b'closed connection without response"\r\n}')
+
+
+class _KnockEnv:
+    """with _KnockEnv(**env): exactly these of _KNOCK_ENVS set (None unsets
+    one), every other one of them unset, and all of them put back after."""
+
+    def __init__(self, **env):
+        self.env = env
+
+    def __enter__(self):
+        self.saved = {k: os.environ.get(k) for k in _KNOCK_ENVS}
+        self.set(**self.env)
+        return self
+
+    @staticmethod
+    def set(**env):
+        for k in _KNOCK_ENVS:
+            os.environ.pop(k, None)
+        for k, v in env.items():
+            assert k in _KNOCK_ENVS, f"{k} is not one of the variables _KnockEnv puts back"
+            if v is not None:
+                os.environ[k] = v
+
+    def __exit__(self, *exc):
+        for k, v in self.saved.items():
+            os.environ.pop(k, None) if v is None else os.environ.__setitem__(k, v)
+        return False
+
+
+@check("build", "a refusal record says what it was, and only a drop or a 503 GitHub's night on "
+                "main met is the night's to test: every other record is a person's, the one "
+                "standing on 29 October included", needs=("refusal",))
+def _refusal_kinds(R):
+    """refusal.note() writes what kind a refusal was, which machine met it,
+    for which ref, whether that run was a dry run, and the run; whose() reads
+    them, and is the one reader. "night" only for a "dropped" or
+    "unavailable" record GitHub's own night on refs/heads/main wrote, not dry,
+    with no Retry-After past RETRY_AFTER_MOST, while NIGHT_KNOCK is exactly
+    "on" and NIGHT_PERSON_CHECK exactly "set". Each other case is driven
+    through note() itself, under the variables that make it, and is a
+    person's: no GITHUB_ACTIONS, DRY_RUN true, a ref of dev or of Main, the
+    kind "refused", no kind at all, a Retry-After of 161 hours, the switch
+    unset or "ON ", the third check unset or "none" -- and run 151's record
+    of 29 October 2026, byte for byte, which no reader may ever take for the
+    night's."""
+    import contextlib
+    import io
+    tmp = Path(tempfile.mkdtemp(prefix="gr-kinds-"))
+    saved = R.MARK
+    try:
+        R.MARK = tmp / "refused.json"
+
+        def noted(kind="dropped", retry_after=None, **env):
+            with _KnockEnv(**dict(_KNOCK_MAIN, **env)):
+                R.MARK.unlink(missing_ok=True)
+                with contextlib.redirect_stderr(io.StringIO()):
+                    R.note("snapshot_gencourt", "RemoteDisconnected: Remote end closed "
+                           "connection without response", kind=kind, retry_after=retry_after)
+                return json.loads(R.MARK.read_text(encoding="utf-8")), R.MARK.read_bytes()
+
+        def whose(raw, **env):
+            with _KnockEnv(**dict(_KNOCK_MAIN, **env)):
+                return R.whose(raw)
+
+        d, raw = noted()
+        assert (d.get("kind"), d.get("machine"), d.get("ref"), d.get("dry"), d.get("run_id")) == \
+            ("dropped", "github", "refs/heads/main", False, "151"), \
+            f"note() on GitHub's night on main did not say what it was: {d}"
+        assert whose(raw)[0] == "night", f"GitHub's night's own drop is not the night's: {whose(raw)}"
+        with _KnockEnv(**_KNOCK_MAIN):
+            assert R.whose()[0] == "night", "whose() of the record on file differs from its bytes'"
+            assert R.whose(d)[0] == "night", "whose() of the record's dict differs from its bytes'"
+        d, raw = noted(kind="unavailable", retry_after=160 * 3600)
+        assert d.get("retry_after") == 160 * 3600 and whose(raw)[0] == "night", \
+            f"a 503 asking 160 hours is not the night's: {d}, {whose(raw)}"
+
+        person = {
+            "no GITHUB_ACTIONS": noted(GITHUB_ACTIONS=None)[1],
+            "DRY_RUN true": noted(DRY_RUN="true")[1],
+            "a ref of dev": noted(GITHUB_REF="refs/heads/dev")[1],
+            "a ref of Main": noted(GITHUB_REF="refs/heads/Main")[1],
+            "no ref": noted(GITHUB_REF=None)[1],
+            "the kind refused": noted(kind="refused")[1],
+            "no kind": noted(kind=None)[1],
+            "a Retry-After of 161 hours": noted(kind="unavailable", retry_after=161 * 3600)[1],
+            "run 151's record of 29 October": _RECORD_29_OCT,
+            "an unreadable record": b'{"kind": "dropped", ',
+        }
+        # And by the ref alone, where code not on main wrote a record that
+        # says it was not a dry run: main's night trusts only main's kind.
+        for ref in ("refs/heads/dev", "refs/heads/Main", ""):
+            person[f"a record of {ref or 'no ref'} that says it is not dry"] = json.dumps(
+                dict(json.loads(raw), ref=ref)).encode()
+        assert json.loads(person["no GITHUB_ACTIONS"]).get("machine") == "laptop"
+        assert json.loads(person["DRY_RUN true"]).get("dry") is True
+        assert json.loads(person["a ref of dev"]).get("dry") is True
+        good = noted()[1]
+        switches = {"NIGHT_KNOCK unset": {"NIGHT_KNOCK": None},
+                    "NIGHT_KNOCK 'ON '": {"NIGHT_KNOCK": "ON "},
+                    "NIGHT_PERSON_CHECK unset": {"NIGHT_PERSON_CHECK": None},
+                    "NIGHT_PERSON_CHECK none": {"NIGHT_PERSON_CHECK": "none"}}
+        wrong = [what for what, raw in person.items() if whose(raw)[0] != "person"] + \
+                [what for what, env in switches.items() if whose(good, **env)[0] != "person"]
+        assert not wrong, "these records are the night's to test, and must be a person's: " + \
+            "; ".join(wrong)
+        why = whose(_RECORD_29_OCT)[1]
+        assert "kind" in why, f"the 29 October record's why does not say it names no kind: {why}"
+        R.MARK.unlink()
+        with _KnockEnv(**_KNOCK_MAIN):
+            assert R.whose()[0] == "none", "whose() with nothing on file named someone"
+            R.MARK.write_bytes(_RECORD_29_OCT)
+            assert R.whose()[0] == "person", "the 29 October record on file is not a person's"
+        return "ok", (f"note() says what it was; GitHub's night's own drop or 503 on main is the "
+                      f"night's, and {len(person) + len(switches)} other cases are a person's, "
+                      "run 151's record among them")
+    finally:
+        R.MARK = saved
+        shutil.rmtree(tmp, ignore_errors=True)
+
+
+@check("build", "a 503 that is not the firewall's page is \"unavailable\", with its Retry-After; "
+                "the block page in a 503, a 429 and a 403 are not", needs=("refusal",))
+def _refusal_unavailable(R):
+    """refusal.classify() calls every 503 "refused" before it reads the body,
+    and still does, so a 503 still ends a run at once. unavailable() reads
+    the body: a 503 carrying the block page is the firewall, and so is any
+    429 or 403; a bare 503 is the server's own "not now", whose Retry-After
+    is kept in seconds, given as seconds or as an HTTP date. One that reads
+    as neither is the worst answer: None, the address saying no."""
+    import io
+    import urllib.error
+    from email.utils import format_datetime
+    from datetime import datetime, timedelta, timezone
+
+    def err(code, body=b"", headers=None):
+        return urllib.error.HTTPError("https://example.invalid/x", code, "x", headers or {},
+                                      io.BytesIO(body))
+    later = format_datetime(datetime.now(timezone.utc) + timedelta(hours=1), usegmt=True)
+    past = format_datetime(datetime.now(timezone.utc) - timedelta(hours=1), usegmt=True)
+    cases = {
+        "a 503 carrying the block page": (err(503, _BLOCK_PAGE.encode()), None),
+        "a 503 carrying the block page and a Retry-After":
+            (err(503, _BLOCK_PAGE.encode(), {"Retry-After": "120"}), None),
+        "a 429": (err(429, b"slow down", {"Retry-After": "120"}), None),
+        "a 403": (err(403, b"no"), None),
+        "a 404": (err(404), None),
+        "a dropped connection": (TimeoutError("timed out"), None),
+        "a bare 503": (err(503, b"<h1>Service Unavailable</h1>"), 0),
+        "a 503 asking 120 seconds": (err(503, b"", {"Retry-After": "120"}), 120),
+        "a 503 asking a date passed": (err(503, b"", {"Retry-After": past}), 0),
+        "a 503 asking what does not read": (err(503, b"", {"Retry-After": "soon"}), None),
+    }
+    bad = [f"{what}: {R.unavailable(e)!r}, not {want!r}" for what, (e, want) in cases.items()
+           if R.unavailable(e) != want]
+    assert not bad, "unavailable() read these wrong: " + "; ".join(bad)
+    secs = R.unavailable(err(503, b"", {"Retry-After": later}))
+    assert secs is not None and 3500 <= secs <= 3600, \
+        f"a 503 asking an hour as an HTTP date gave {secs!r} seconds"
+    assert R.classify(err(503, b"")) == "refused", "classify() no longer ends a run at a 503"
+    return "ok", f"{len(cases) + 1} answers read: only a bare 503 is \"unavailable\", with its wait"
+
+
 # ---- the nightly ---------------------------------------------------------------
 
 @check("build", "the daily snapshot stops when told no, and installs all of tonight's files or none",
@@ -81663,12 +81844,49 @@ def _snapshot_stops(SG):
             "a page slow to answer counted as a refusal, or kept the files from being taken"
         page[0] = healthy
         assert SG.page_said(healthy) == "", "a page with no error was read as reporting one"
+
+        # WHAT KIND IT WAS (29 October 2026): each refusal says so. Run 151's
+        # incident first -- the page dropped, then Docket.txt -- and then a
+        # 403, the block page inside a 503, and a bare 503, which still ends
+        # the run at once and keeps the server's Retry-After.
+        import http.client
+
+        def kind():
+            return json.loads(refusal.MARK.read_text(encoding="utf-8")) if refusal.MARK.exists() else {}
+
+        def gone():
+            return http.client.RemoteDisconnected("Remote end closed connection without response")
+
+        def e503(body, after=None):
+            return urllib.error.HTTPError("u", 503, "x", {"Retry-After": after} if after else {},
+                                          io.BytesIO(body))
+        page[0] = gone()
+        rc, asked, root = run([gone()] + [data] * n)
+        assert rc == 2 and len(asked) == 1 and kind().get("kind") == "dropped", \
+            f"the page and Docket.txt dropped did not end the run as a \"dropped\" refusal: {rc}, {kind()}"
+        page[0] = healthy
+        rc, asked, root = run([data, urllib.error.HTTPError("u", 403, "no", {}, None)] + [data] * n)
+        assert rc == 2 and kind().get("kind") == "refused", f"a 403's record: {kind()}"
+        rc, asked, root = run([data, e503(_BLOCK_PAGE.encode(), "60")] + [data] * n)
+        assert rc == 2 and len(asked) == 2 and kind().get("kind") == "refused", \
+            f"the block page inside a 503 was not \"refused\": {kind()}"
+        rc, asked, root = run([data, e503(b"<h1>Service Unavailable</h1>", "120")] + [data] * n)
+        assert rc == 2 and len(asked) == 2 and not any(root.iterdir()), \
+            f"a bare 503 did not end the run at once: {rc}, {len(asked)} asked"
+        assert (kind().get("kind"), kind().get("retry_after")) == ("unavailable", 120), \
+            f"a bare 503's record: {kind()}"
+        page[0] = e503(b"", "7200")
+        rc, asked, root = run([data] * n)
+        assert rc == 2 and not asked and (kind().get("kind"), kind().get("retry_after")) == \
+            ("unavailable", 7200), f"a bare 503 for the page: {rc}, {len(asked)} asked, {kind()}"
+        page[0] = healthy
         src = _paths.locate("snapshot_gencourt.py").read_text(encoding="utf-8")
         m = re.search(r'"--delay", type=float, default=([\d.]+)', src)
         assert m and float(m.group(1)) >= 3, "the snapshot's pause between files fell under 3 s"
         return "ok", ("the page first, its error kept and the files still taken; one 403 stops it, "
                       "block page and broken files not stored, all-or-none install, shrink guard, "
-                      "nightly lock respected")
+                      "nightly lock respected; each refusal says what kind it was, and a bare 503 "
+                      "stops it with its Retry-After")
     finally:
         refusal.MARK, refusal.LOCK, SG.get, SG.time = saved
         for t in tmps:
@@ -93198,10 +93416,25 @@ def _committees_fetch_stops(FC):
                     code = e.code
             return code, asked, refusal.MARK.exists()
 
+        def kind():
+            d = json.loads(refusal.MARK.read_text(encoding="utf-8"))
+            return d.get("kind"), d.get("retry_after")
+
         code, asked, noted = drive([urllib.error.HTTPError("u", 403, "no", {}, None), "<html></html>"])
         assert code == 2 and len(asked) == 1 and noted, (code, asked, noted)
+        assert kind() == ("refused", None), f"a 403's record: {kind()}"
         code, asked, noted = drive(["<h1>Web Page Blocked</h1> Attack ID: 7", "<html></html>"])
         assert code == 2 and len(asked) == 1 and noted, (code, asked, noted)
+        assert kind() == ("refused", None), f"the block page's record: {kind()}"
+        # WHAT KIND IT WAS (29 October 2026): two dropped connections are
+        # "dropped"; a bare 503 is "unavailable", ends it at once, and keeps
+        # its Retry-After.
+        code, asked, noted = drive([TimeoutError("timed out"), TimeoutError("timed out")])
+        assert code == 2 and len(asked) == 2 and kind() == ("dropped", None), (code, asked, kind())
+        code, asked, noted = drive([urllib.error.HTTPError(
+            "u", 503, "x", {"Retry-After": "90"}, io.BytesIO(b"busy")), "<html></html>"])
+        assert code == 2 and len(asked) == 1 and kind() == ("unavailable", 90), \
+            f"a bare 503: {code}, {len(asked)} asked, {kind()}"
         code, asked, noted = drive(["<html>nothing here</html>", "<html>nor here</html>"])
         assert code == 1 and len(asked) == 2 and not noted and not (tmp / "c.json").exists(), \
             (code, asked, noted)
@@ -93212,7 +93445,8 @@ def _committees_fetch_stops(FC):
         else:
             os.environ["GITHUB_ACTIONS"] = saved_env
         shutil.rmtree(tmp, ignore_errors=True)
-    return "ok", "a 403 or the block page ends it with a record; nothing found is exit 1"
+    return "ok", ("a 403, the block page, a bare 503 or two dropped connections end it with a "
+                  "record of its kind; nothing found is exit 1")
 
 
 # ---- the workflows ----------------------------------------------------------------

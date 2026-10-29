@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-09.19
+# GRANITE_VERSION: 2026-09-09.20
 """
 One refusal stops the fetch lane, not just the run that was refused.
 
@@ -36,6 +36,22 @@ Clearing it is a person's decision, deliberately: `python3 refusal.py --clear`,
 after netcheck.py has said what kind of refusal it was. Nothing clears it
 automatically, because "wait a bit and try again" is the behaviour that earns a
 longer block.
+
+WHAT KIND IT WAS (29 October 2026). The record says what it was, so that a
+reader can tell a dropped connection from the address saying no: `kind` is
+"dropped" (two dropped connections or timeouts), "unavailable" (an HTTP 503
+whose body is not the firewall's page, unavailable() below, with the
+server's Retry-After as `retry_after` when it named one) or "refused"
+(everything else that ends a run: a 403, a 429, the block page, a
+Retry-After on any other answer). Beside it: `machine` ("github" on GitHub's
+machine, else "laptop"), `ref` (GITHUB_REF), `dry` (a dry run, or any ref
+but MAIN_REF exactly) and `run_id`. Only the snapshot and the committee
+pages fetch pass a kind; a record without one -- every other fetcher's, and
+every record written before this -- says nothing about what it was. whose()
+reads the fields, and is the one reader of who a record belongs to: every
+record is a person's, as it always was, unless it is a kind GitHub's own
+night on main met (RESUMABLE) and the person has switched the night's own
+testing on (knock_on()). Nothing acts on that yet.
 
 ON GITHUB'S MACHINE (25 September 2026) it is the same file. GitHub's
 machines start empty every night, so the record has to outlive the machine:
@@ -109,20 +125,52 @@ QUIET_HOURS = 24
 # (cloud.py's --local-bucket). None is the real one, through keys.r2().
 CLOUD_BUCKET = None
 
+# WHAT KIND IT WAS (the docstring). The kinds a record can name, and the two
+# that are not the address saying no: the night's own to test, once the
+# person has switched that on (knock_on), and only when GitHub's night on
+# main met them.
+KINDS = ("dropped", "unavailable", "refused")
+RESUMABLE = ("dropped", "unavailable")
+# Main is this exactly, as nightly.MAIN_REF and cloud.MAIN_REF read it: a
+# missing ref is not, and nor is refs/heads/Main.
+MAIN_REF = "refs/heads/main"
+HOUR = 3600
+# A 503's Retry-After longer than this is "go away for a week": a person's.
+RETRY_AFTER_MOST = 160 * HOUR
+# The person's switch, and whether the third Healthchecks check -- the one
+# that emails "a refusal is yours" -- exists: the workflow hands only "set"
+# or "none", never its address. Both exact, or the night tests nothing.
+KNOCK_ENV = "NIGHT_KNOCK"
+PERSON_CHECK_ENV = "NIGHT_PERSON_CHECK"
 
-def note(where, why):
+
+def note(where, why, kind=None, retry_after=None):
     """Record that this address was refused. Called as a run gives up.
+
+    `kind` is one of KINDS when the caller can say (the docstring's WHAT KIND
+    IT WAS); `retry_after`, seconds, only for "unavailable" when the server
+    named them. The record also says which machine wrote it, for which ref,
+    whether that was a dry run, and the run: whose() reads them.
 
     On a stood-down laptop the refusal also goes to the bucket, so GitHub's
     night stops at it too -- after it is on file here, and without ever
     making this call fail (tell_the_bucket)."""
-    MARK.parent.mkdir(exist_ok=True)
-    MARK.write_text(json.dumps({
+    ref = os.environ.get("GITHUB_REF", "")
+    rec = {
         "at": time.strftime("%Y-%m-%dT%H:%M:%S"),
         "epoch": time.time(),
         "where": where,
         "why": str(why)[:300],
-    }, indent=1), encoding="utf-8")
+    }
+    if kind is not None:
+        rec["kind"] = str(kind)
+    rec.update(machine="github" if os.environ.get("GITHUB_ACTIONS") == "true" else "laptop",
+               ref=ref, dry=os.environ.get("DRY_RUN") == "true" or ref != MAIN_REF,
+               run_id=os.environ.get("GITHUB_RUN_ID", ""))
+    if kind == "unavailable" and retry_after:
+        rec["retry_after"] = int(retry_after)
+    MARK.parent.mkdir(exist_ok=True)
+    MARK.write_text(json.dumps(rec, indent=1), encoding="utf-8")
     if _governing() is not None:
         tell_the_bucket()
 
@@ -305,6 +353,125 @@ def classify(err=None, body=None):
         if BLOCKED.search(head):
             return "refused"
     return None
+
+
+def unavailable(err):
+    """The seconds a 503 asks us to wait, when the error is an HTTP 503 whose
+    body is not the firewall's page: 0 when it names no Retry-After. None for
+    anything else -- a 429, a 403, a 503 carrying the block page, and a 503
+    whose Retry-After reads as neither seconds nor a date, which is taken as
+    the worst answer.
+
+    classify() calls every 503 "refused" before it reads the body, and still
+    does, so a 503 still ends a run at once; this is what names the kind
+    ("unavailable", the server's own "not now") for the record."""
+    import urllib.error
+    if not isinstance(err, urllib.error.HTTPError) or err.code != 503:
+        return None
+    try:
+        head = err.read(4000).decode("utf-8", "replace")
+    except Exception:                                           # noqa: BLE001
+        head = ""
+    if BLOCKED.search(head):
+        return None
+    raw = str((err.headers or {}).get("Retry-After") or "").strip()
+    if not raw:
+        return 0
+    if raw.isascii() and raw.isdigit():
+        return int(raw)
+    try:
+        from email.utils import parsedate_to_datetime
+        then = parsedate_to_datetime(raw)
+    except (TypeError, ValueError, IndexError):
+        return None
+    if then is None:
+        return None
+    if then.tzinfo is None:
+        from datetime import timezone
+        then = then.replace(tzinfo=timezone.utc)
+    return max(0, int(then.timestamp() - time.time()))
+
+
+# ---- whose a refusal is ------------------------------------------------------
+#
+# One rule, one answer. Every record is a person's to clear, as it always
+# was, except one GitHub's own night on main met and could not tell from a
+# passing outage -- RESUMABLE -- while the person has switched the night's
+# testing on. Nothing reads this yet but the checks: it is the one gate the
+# night's own test of a refusal will open through, and anything else a reader
+# needs to know about a record it says in `why`.
+
+def knock_on():
+    """Whether the person has switched the night's own testing of a refusal
+    on: NIGHT_KNOCK exactly "on", and NIGHT_PERSON_CHECK exactly "set" (the
+    workflow's word that the "a refusal is yours" check exists, so the email
+    that says a record has become a person's can always be sent). Anything
+    else -- unset, "ON", "on " -- is off: the safe direction."""
+    return os.environ.get(KNOCK_ENV) == "on" and os.environ.get(PERSON_CHECK_ENV) == "set"
+
+
+def _record(d):
+    """(the record as a dict, its exact bytes or None) from refused.json's
+    bytes, a dict, or None for the one on file (({}, None) when none is)."""
+    if d is None:
+        try:
+            d = MARK.read_bytes()
+        except OSError:
+            return {}, None
+    if isinstance(d, (bytes, bytearray)):
+        raw = bytes(d)
+        try:
+            doc = json.loads(raw.decode("utf-8"))
+        except (ValueError, UnicodeDecodeError):
+            doc = None
+        return (doc if isinstance(doc, dict) else {"unreadable": True}), raw
+    return (d if isinstance(d, dict) else {"unreadable": True}), None
+
+
+def whose(d=None, k=None, now=None):
+    """("night" | "person", why) for a refusal record -- refused.json's
+    bytes, its dict, or None for the one on file -- or ("none", why) when no
+    record is on file. "night" only when all hold:
+
+      1. its kind is one of RESUMABLE;
+      2. GitHub's machine wrote it (machine "github");
+      3. for MAIN_REF exactly;
+      4. not a dry run (dry is False);
+      5. it names no Retry-After longer than RETRY_AFTER_MOST;
+      7. knock_on().
+
+    (6, the knocks so far, comes with the ladder.) Anything else is a
+    person's: every record without a kind, the ones written before records
+    said what they were among them."""
+    doc, raw = _record(d)
+    if d is None and raw is None:
+        return "none", "no refusal is on file"
+    if doc.get("unreadable"):
+        return "person", "the refusal record does not read"
+    kind = doc.get("kind")
+    if kind not in RESUMABLE:
+        return "person", ("it does not say what kind of refusal it was" if kind is None else
+                          f"it is a refusal of the kind {kind!r}: the address said no")
+    if doc.get("machine") != "github":
+        return "person", "it was met on the laptop, not by GitHub's night"
+    if doc.get("ref") != MAIN_REF:
+        return "person", f"it was met by a run of {doc.get('ref') or 'no ref'}, not {MAIN_REF}"
+    if doc.get("dry") is not False:
+        return "person", "it was met by a dry run"
+    ra = doc.get("retry_after")
+    if ra is not None:
+        try:
+            ra = float(ra)
+        except (TypeError, ValueError):
+            return "person", f"its Retry-After ({ra!r}) does not read"
+        if ra > RETRY_AFTER_MOST:
+            return "person", (f"the server asked for {ra / HOUR:.0f} hours, longer than "
+                              f"{RETRY_AFTER_MOST // HOUR}")
+    if not knock_on():
+        return "person", (f"the night's own testing is off ({KNOCK_ENV} is "
+                          f"{os.environ.get(KNOCK_ENV)!r}, {PERSON_CHECK_ENV} is "
+                          f"{os.environ.get(PERSON_CHECK_ENV)!r})")
+    return "night", f"a refusal of the kind {kind!r} GitHub's night on main met: the night's to test"
 
 
 # ---- one worker ------------------------------------------------------------

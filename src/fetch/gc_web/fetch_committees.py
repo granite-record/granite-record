@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.9
+# GRANITE_VERSION: 2026-09-04.10
 """
 Every standing committee, from the two pages that list them.
 
@@ -230,15 +230,22 @@ def main():
             # unattended in GitHub's weekly job now, which is where walking
             # through a refusal would go unseen longest.
             kind = refusal.classify(e)
+            # WHAT KIND IT WAS (refusal.py): a 503 that is not the block page
+            # is "unavailable", and ends the run as a refusal does.
+            ra = refusal.unavailable(e) if kind == "refused" else None
+            if ra is not None:
+                kind = "unavailable"
             dropped += kind == "dropped"
-            if kind == "refused" or dropped >= 2:
-                refusal.note("fetch_committees", f"{type(e).__name__}: {e}")
+            if kind in ("refused", "unavailable") or dropped >= 2:
+                refusal.note("fetch_committees", f"{type(e).__name__}: {e}", kind=kind,
+                             retry_after=ra)
                 print("  Refused. Recorded in the refusal file; nothing more is "
                       "asked, and every fetch now waits for a person.")
                 sys.exit(2)
             continue
         if refusal.classify(body=page[:4000]) == "refused":
-            refusal.note("fetch_committees", "the firewall's block page, served as 200")
+            refusal.note("fetch_committees", "the firewall's block page, served as 200",
+                         kind="refused")
             print("  The firewall's block page. Recorded; nothing more is asked.")
             sys.exit(2)
         if a.raw:

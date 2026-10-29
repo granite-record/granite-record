@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.13
+# GRANITE_VERSION: 2026-09-04.14
 """
 Daily snapshot of the NH General Court bulk data files.
 
@@ -35,6 +35,12 @@ request; every answer read once, by refusal.classify() -- a refusal ends the
 run and is recorded, two dropped connections end it and are recorded, a page
 that is not a data file is not stored; a pause between files; every write a
 part file and a rename.
+
+WHAT KIND IT WAS (29 October 2026). The refusal it records says so
+(refusal.py, WHAT KIND IT WAS): "dropped" for the second dropped connection,
+"refused" for a 403, a 429 or the block page, and "unavailable" for a 503
+whose body is not the block page, which still ends the run at once and keeps
+the server's Retry-After.
 
 AND IT FEEDS THE BUILD. The build reads Docket.txt and the rest from the
 repository root, and nothing refreshed those: on the 12th they were the copies
@@ -248,12 +254,18 @@ def page_said(body):
 
 def open_page():
     """{"status", "said"}: the page asked for once. status is "ok", "error" (the
-    page answered and reported a failed rebuild), or refusal.classify's word for
-    a request that did not come back as a page."""
+    page answered and reported a failed rebuild), "unavailable" (a 503 that is
+    not the firewall's page, with its "retry_after" in seconds beside it:
+    refusal.unavailable), or refusal.classify's word for a request that did
+    not come back as a page."""
     try:
         data = get(PAGE, timeout=PAGE_TIMEOUT)
     except Exception as e:                                  # noqa: BLE001
         kind = refusal.classify(e) or "failed"
+        ra = refusal.unavailable(e) if kind == "refused" else None
+        if ra is not None:
+            return {"status": "unavailable", "said": f"{type(e).__name__}: {e}"[:200],
+                    "retry_after": ra}
         # Slow, not refusing: the page rebuilds every table before it answers,
         # so a timeout here is not counted with the dropped connections that
         # end a run. A reset or an unanswered close still is.
@@ -331,21 +343,28 @@ def empty_is_data(names, fetched, failed, into):
 
 
 def read_one(url, name=None):
-    """(data, None) or (None, (kind, why)). One request; no retry of its own.
-    An empty body of a MAY_BE_EMPTY file comes back as data, for run() to
-    judge with the others (empty_is_data)."""
+    """(data, None) or (None, (kind, why, retry_after)). One request; no retry
+    of its own. kind is refusal.classify's word, or "unavailable" for a 503
+    that is not the firewall's page, whose Retry-After (seconds, 0 when it
+    named none) is retry_after; None for every other kind. An empty body of a
+    MAY_BE_EMPTY file comes back as data, for run() to judge with the others
+    (empty_is_data)."""
     try:
         data = get(url)
     except Exception as e:                                  # noqa: BLE001
-        return None, (refusal.classify(e) or "failed", f"{type(e).__name__}: {e}")
+        kind = refusal.classify(e) or "failed"
+        ra = refusal.unavailable(e) if kind == "refused" else None
+        if ra is not None:
+            return None, ("unavailable", f"{type(e).__name__}: {e}", ra)
+        return None, (kind, f"{type(e).__name__}: {e}", None)
     head = data[:4000].decode("utf-8", "replace")
     if refusal.classify(body=head) == "refused":
-        return None, ("refused", "the firewall's block page, served as 200")
+        return None, ("refused", "the firewall's block page, served as 200", None)
     if name in MAY_BE_EMPTY and is_empty(data):
         return data, None
     stripped = head.lstrip(LEADING).lower()
     if len(data) < MIN_BYTES or stripped.startswith(("<!doctype", "<html", "<?xml")):
-        return None, ("failed", f"not a data file ({len(data):,} bytes)")
+        return None, ("failed", f"not a data file ({len(data):,} bytes)", None)
     return data, None
 
 
@@ -581,8 +600,11 @@ def run(a, held):
         print(f"  page  {PAGE}: " + {"ok": "answered, and reported no error",
                                       "error": f"answered, and reported: {page['said'][:200]}"}.get(
             page["status"], f"{page['status']}: {page['said'][:100]}"), flush=True)
-        if page["status"] == "refused":
-            refusal.note("snapshot_gencourt", page["said"])
+        if page["status"] in ("refused", "unavailable"):
+            # A 503 that is not the block page ends the run as a refusal does:
+            # its kind is the record's, for whose() to read.
+            refusal.note("snapshot_gencourt", page["said"], kind=page["status"],
+                         retry_after=page.get("retry_after"))
             stopped = "refused"
         elif page["status"] == "dropped":
             dropped += 1
@@ -609,16 +631,16 @@ def run(a, held):
             i += 1
             continue
         if err:
-            kind, why = err
+            kind, why, ra = err
             print(f"  FAIL  {name}: {kind}: {why[:100]}", flush=True)
-            if kind == "refused":
-                refusal.note("snapshot_gencourt", why)
+            if kind in ("refused", "unavailable"):
+                refusal.note("snapshot_gencourt", why, kind=kind, retry_after=ra)
                 stopped = "refused"
                 break
             if kind == "dropped":
                 dropped += 1
                 if dropped >= 2:
-                    refusal.note("snapshot_gencourt", why)
+                    refusal.note("snapshot_gencourt", why, kind="dropped")
                     stopped = "refused"
                     break
                 # Once, after a pause: a lost day cannot be fetched later, and
