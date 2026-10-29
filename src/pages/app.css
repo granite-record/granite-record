@@ -1,4 +1,4 @@
-/* GRANITE_VERSION: 2026-09-07.326 */
+/* GRANITE_VERSION: 2026-09-07.327 */
 /* ONE STYLESHEET FOR EVERY PAGE (23 October 2026). Every page of the site
    links this file, /app.css: the record pages shell.page() makes from
    bills.html, and the five build_pages.py writes -- the home page, Officials,
@@ -4924,15 +4924,8 @@ a.l-pgm{font-weight:600;text-decoration:underline;text-decoration-thickness:1px;
 .g-ic{flex:none;display:inline-grid;place-items:center;width:2.25rem;height:2.25rem;
   border-radius:50%;background:var(--wash);color:var(--pine)}
 .g-ic .icon{width:1.25rem;height:1.25rem}
-/* MOST COMMON: a box each, its topic's badge beside its headline. */
-.g-common{list-style:none;margin:0;padding:0;display:grid;gap:.625rem .75rem;
-  grid-template-columns:repeat(auto-fill,minmax(min(100%,15.5rem),1fr))}
-.g-common a{display:flex;align-items:center;gap:.75rem;height:100%;box-sizing:border-box;
-  min-height:3.5rem;border:1px solid var(--rule-2);border-radius:var(--r-out);
-  padding:.625rem .875rem .625rem .625rem;background:var(--surface);
-  font:600 var(--t-ui)/1.35 var(--sans);color:var(--pine);text-decoration:none}
-.g-common a:hover{border-color:var(--pine);color:var(--ink)}
-/* CARDS (Learn's Start Here and Reference): a badge, a title and its line. */
+/* CARDS (Learn's Start Here and Reference, and the How-To tab's Most
+   Common): a badge, a title and its line. */
 .g-cards{list-style:none;margin:0;padding:0;display:grid;gap:.625rem .75rem;
   grid-template-columns:repeat(auto-fill,minmax(min(100%,17rem),1fr))}
 .g-cards a{display:flex;align-items:flex-start;gap:.75rem;height:100%;box-sizing:border-box;
@@ -4963,12 +4956,6 @@ a.l-pgm{font-weight:600;text-decoration:underline;text-decoration-thickness:1px;
 .g-body{padding:.25rem .5rem 1rem 3.5rem}
 .g-body > .r-intro{margin-bottom:.75rem}
 @media (max-width:40rem){.g-body{padding-left:.5rem}}
-.g-list{list-style:none;margin:0;padding:0}
-.g-list li{padding:.375rem 0}
-.g-list a{font:600 var(--t-ui)/1.4 var(--sans);color:var(--pine);text-decoration:underline;
-  text-decoration-thickness:1px;text-underline-offset:3px}
-.g-list a:hover{color:var(--ink)}
-.g-list span{display:block;margin-top:.125rem;font:400 var(--t-sm)/1.45 var(--sans);color:var(--ink-2)}
 @media (prefers-reduced-motion:reduce){.g-topic > summary::after{transition:none}}
 /* OTHER WAYS TO FOLLOW LEGISLATION (build_civics.follow_elsewhere): each
    site's name as the link, the line on what it offers, then its host. */
