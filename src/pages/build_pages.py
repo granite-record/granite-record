@@ -1805,6 +1805,10 @@ SEATING_JS = """
     if(note.getAttribute("data-said")===words)return;
     note.setAttribute("data-said",words);
     note.textContent="";
+    // A seat's words are a screen reader's alone, the callout's to the eye:
+    // the strip shows nothing, so it is drawn as an empty one, the box's foot
+    // with no rule (.seatnote.sronly; the review of 29 October 2026).
+    if(note.classList)note.classList.toggle("sronly",!!c);
     if(!c){note.textContent=words;return;}
     var sr=document.createElement("span");
     sr.className="sr";sr.textContent=words;
@@ -2058,7 +2062,8 @@ SEATING_JS = """
       picked=null;mark("");
       if(back&&c&&c.focus){quiet=c;stopAt(c);c.focus();quiet=null;}
       show(null);
-      if(note){note.setAttribute("data-said","");note.textContent="";}
+      if(note){note.setAttribute("data-said","");note.textContent="";
+        if(note.classList)note.classList.remove("sronly");}
     };
     host.addEventListener("keydown",dismiss);
     if(pop)pop.addEventListener("keydown",dismiss);

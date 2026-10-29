@@ -8593,7 +8593,14 @@ justify-content:space-between;gap:var(--sp-3) var(--sp-5);margin-top:var(--sp-5)
 min-height:calc(1lh + 2 * var(--sp-3) + 2px);text-align:center;color:var(--ink-2);font-size:var(--t-ui);
 background:var(--surface);border:1px solid var(--rule);
 border-radius:0 0 var(--r-in) var(--r-in)}
-:where(body.pg) .seatnote:empty{border-top-color:var(--surface)}
+/* Empty, or saying a seat to a screen reader alone (.sronly: the callout
+   above the seat shows it to the eye), the strip shows nothing, and is the
+   box's foot with no rule (the review of 29 October 2026: a chosen seat left
+   a ruled strip with nothing in it). The rule's pixel is the padding's, so
+   the strip keeps its height; drawn by its width and not its colour, it is
+   gone in forced colours too, where a border's colour is the system's. */
+:where(body.pg) .seatnote:empty,:where(body.pg) .seatnote.sronly{border-top-width:0;
+padding-top:calc(var(--sp-3) + 1px)}
 :where(body.pg) .seatnote a{font-weight:600;color:var(--ink)}
 /* THE NAME ABOVE THE SEAT (the owner, 29 October 2026). The term popovers'
    box (.termpop: the surface, its edge, its shadow, the small sans), placed

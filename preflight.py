@@ -54469,7 +54469,8 @@ const at = () => pop ? {hidden: pop.hidden, left: pop.style.left, top: pop.style
   arrow: pop.style.arrow || null, below: pop.classList.contains("below"), gone: pop.classList.contains("gone"),
   name: pop.kids[0] && pop.kids[0].textContent, href: pop.kids[0] && pop.kids[0].href,
   what: pop.kids[1] && pop.kids[1].textContent, seat: pop.kids[2] && pop.kids[2].textContent,
-  note: note.textContent} : null;
+  note: note.textContent, noteCls: note.className,
+  noteKids: note.kids.map(k => k.className || k.tag || "text")} : null;
 if (pop) pop.style.setProperty = (k, v) => { if (k === "--arrow") pop.style.arrow = v; };
 // A seat chosen by a tap, one near the top, one at each side.
 for (const [k, c] of [["tap", seats[0]], ["top", seats[1]], ["left", seats[2]], ["right", seats[3]]]) {
@@ -54570,6 +54571,15 @@ def _seat_callout(BP, SEAT):
             bad.append(f"the callout does not say the member, the party and district, and the seat: {t}")
         if t["note"] != "Rep. mid, Republican, Hillsborough 14, seat 2-096":
             bad.append(f"the note does not say the seat's member, party, district and seat: {t['note']!r}")
+        # Words for a screen reader alone: the strip is drawn as an empty one
+        # (the review of 29 October 2026), and is not once the seat is let go.
+        if t["noteKids"] != ["sr"] or "sronly" not in t["noteCls"].split() \
+                or "sronly" in got["letGo"]["noteCls"].split():
+            bad.append(f"the note holding a seat's words for a screen reader alone is not marked .sronly, or "
+                       f"stays marked once the seat is let go: {t['noteKids']} {t['noteCls']!r}, then "
+                       f"{got['letGo']['noteCls']!r}")
+        if "sronly" in got["escape"]["noteCls"].split():
+            bad.append("Escape empties the note and leaves it marked .sronly")
         tp = got["top"]
         if not tp["below"] or px(tp["top"]) != 1020 + 17 + GAP - 1000:
             bad.append(f"a seat at the top of the chart's box does not have its callout under it: {tp}")
@@ -54650,11 +54660,28 @@ def _seat_callout(BP, SEAT):
     if any(not re.fullmatch(r"\([A-Z]\)", x) for x in shown):
         bad.append(f"a row's tag shows the eye {[x for x in shown if not re.fullmatch(r'[(][A-Z][)]', x)][:3]}, "
                    f"not its party's letter alone")
+    # THE STRIP UNDER THE CHART, EMPTY TO THE EYE (the review of 29 October
+    # 2026): empty, or .sronly, it is the box's foot with no rule -- its top
+    # border's width 0 and its pixel the padding's, so it keeps its height --
+    # and it has its rule while it shows what a search has left.
+    def note(classes, states=()):
+        return _css_won(rules, [{"tag": "p", "ids": {"seatnote"}, "classes": set(classes), "attrs": {},
+                                 "states": set(states)},
+                                {"tag": "div", "ids": set(), "classes": {"seatstage"}, "attrs": {}, "states": set()},
+                                {"tag": "body", "ids": set(), "classes": {"pg"}, "attrs": {}, "states": set()}])
+    for what, won in (("empty", note({"seatnote"}, {"empty"})),
+                      ("saying a seat to a screen reader alone", note({"seatnote", "sronly"}))):
+        top = {k: "".join(won.get(k, ("",))[0].split()) for k in ("border-top-width", "padding-top")}
+        if top["border-top-width"] not in ("0", "0px") or top["padding-top"] != "calc(var(--sp-3)+1px)":
+            bad.append(f"the note under the chart, {what}, draws a ruled strip, or changes its height: {top}")
+    won = note({"seatnote"})
+    if "".join(won.get("border-top-width", ("",))[0].split()) in ("0", "0px"):
+        bad.append("the note under the chart has no rule while it shows what a search has left")
     assert not bad, "the seating chart's callout: " + "; ".join(bad[:5])
     return "ok", ("a seat tapped, focused or under the pointer has the popovers' box above it, its arrow at "
                   "the seat, below it at the top, inside 366px at either side; Tab from a seat reaches its "
                   "link and a mouseout, another seat and a scroll leave it there; Escape puts focus on the "
-                  f"seat; the note says it in words; the fixture's {len(tags)} row(s) under the chart are names and "
+                  f"seat; the note says it in words, an unruled strip to the eye; the fixture's {len(tags)} row(s) under the chart are names and "
                   f"{', '.join(shown)} to the eye, the district a screen reader's")
 
 
