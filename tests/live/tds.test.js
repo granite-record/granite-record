@@ -106,6 +106,28 @@ test("before the login sets a size, nothing goes out longer than 4,096 bytes", (
     assert.deepEqual(fake.seen.oversize, []);
   }));
 
+test("a packet size past TDS's 32,767 is not taken: the client keeps sending 4,096", () =>
+  withFake({ packet: 40000 }, async fake => {
+    const sql = `SELECT ${"z".repeat(20000)}`;
+    const conn = await open(local(fake.port), { connect: nodeConnect });
+    await conn.query(sql);
+    conn.close();
+    assert.equal(fake.seen.batches[0], sql);
+    const batch = fake.seen.packets.filter(p => p.type === 0x01);
+    assert.ok(batch.length >= 10 && batch.every(p => p.length <= 4096), JSON.stringify(batch.slice(0, 3)));
+  }));
+
+test("a statement on a closed connection is `query`, and nothing is sent", () =>
+  withFake({}, async fake => {
+    const conn = await open(local(fake.port), { connect: nodeConnect });
+    conn.close();
+    assert.equal(conn.open, false);
+    const e = await refusal(conn.query("SELECT 1"));
+    assert.equal(e.code, "query");
+    assert.match(e.message, /the connection has closed/);
+    assert.deepEqual(fake.seen.batches, []);
+  }));
+
 test("two statements on one connection", () =>
   withFake({ answer: (sql, n) => ({ columns: text("n"), rows: [[String(n)]] }) }, async fake => {
     const conn = await open(local(fake.port), { connect: nodeConnect });
@@ -324,6 +346,13 @@ test("a host other than loopback is refused without ENV production, before any c
                      { SQL_PORT: "1433" }, {}]) {
     const e = await refusal(open(env, { connect }));
     assert.equal(e.code, "guard", JSON.stringify(env));
+  }
+  assert.deepEqual(asked, [], "connect() was never called");
+  // Production with no host or no port says so, and asks nothing either.
+  for (const env of [{ ENV: "production", SQL_PORT: "1433" }, { ENV: "production", SQL_HOST: "192.0.2.1" }]) {
+    const e = await refusal(open(env, { connect }));
+    assert.equal(e.code, "guard", JSON.stringify(env));
+    assert.match(e.message, /SQL_HOST and SQL_PORT are not both set/);
   }
   assert.deepEqual(asked, [], "connect() was never called");
   // In production the same host is let through to connect(), which this test's refuses.

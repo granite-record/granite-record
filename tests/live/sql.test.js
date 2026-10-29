@@ -342,6 +342,13 @@ test("compare_test finds each difference the go rests on, every one a no-go", as
   differs(f => { f.rollcalls[1].ballots_complete = false; }, house, new RegExp(`${b.id}'s ballots are not complete`));
   differs(f => { f.rollcalls.push({ ...f.rollcalls[0], id: "2026-H-999", seq: 999 }); }, house,
           /2026-H-999 is in the test file and not in the record/);
+  differs(f => { f.rollcalls.shift(); }, house, new RegExp(`${a.id} is in the record and not in the test file`));
+  // Two members' ballots swapped: every count still agrees, and only the ballot rule can see it.
+  const y = a.ballots.indexOf("Y"), n = a.ballots.indexOf("N");
+  const swapped = [...a.ballots];
+  [swapped[y], swapped[n]] = [swapped[n], swapped[y]];
+  differs(f => { f.rollcalls[0].ballots = swapped.join(""); }, house,
+          new RegExp(`${a.id} member ${house.members.H[y]}: N, the record Y`));
   differs(f => { Object.assign(f.test.statements.find(x => x.name === "q3"), { problem: "query", error: "207 Invalid column" }); },
           house, /q3 failed \(query\): 207 Invalid column/);
   differs(f => { f.test.connection.prelogin.encryption = "REQ"; }, house, /the server answered encryption REQ/);

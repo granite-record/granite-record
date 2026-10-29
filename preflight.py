@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.721
+# GRANITE_VERSION: 2026-09-04.722
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -79842,7 +79842,8 @@ LIVE_TDS_CASES = ("logs in with the published login", "LOGIN7, decoded field by 
                   "day 1 reads 11 March 2026", "day 2 reads veto day", "compare_test finds a changed ballot",
                   "compare_test finds each difference the go rests on", "compare_test's time rule",
                   "requires encryption: the file says so", "the sitting is not asked again",
-                  "the run's 45 s SQL budget bounds the test")
+                  "the run's 45 s SQL budget bounds the test",
+                  "a packet size past TDS's 32,767 is not taken", "a statement on a closed connection is `query`")
 
 
 @check("build", "the live votes reader passes its tests in node against a fake SQL Server on the "
@@ -79891,7 +79892,7 @@ def _live_tds():
     fails = _tap_failures(out)
     passed = [m.replace("\\#", "#") for m in re.findall(r"^ok \d+ - (.*)$", out, re.M)]
     missing = [c for c in LIVE_TDS_CASES if not any(c in n for n in passed)]
-    assert not fails and r.returncode == 0 and count.get("pass", 0) >= 46, (
+    assert not fails and r.returncode == 0 and count.get("pass", 0) >= 48, (
         f"the live votes reader fails {len(fails)}: " + "; ".join(repr(n) for n, _s in fails[:5])
         + f" ({count or out.strip()[-300:]}). `node --test {' '.join(f.as_posix() for f in files)}` shows each")
     assert not missing, "these cases no longer pass, or no longer exist: " + "; ".join(missing)
