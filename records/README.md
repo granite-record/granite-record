@@ -27,6 +27,16 @@ edited by hand or rewritten by a build; a correction goes in `corrections/`.
   and are not tracked. Also the Senate's Public Guidance for Committee
   Meetings of September 7, 2021, which `src/pages/guides.py` cites for how
   the Senate takes sign-ins, written testimony and requests to speak.
+- `sources/printouts/` -- the person's printouts of the official pages the
+  How-To guides and Learn pages rest on (most nh.gov agencies refuse this
+  project's machines, so a person prints the page and the guide's claims
+  record what it says). `INDEX.csv` is tracked: each printout's file name,
+  the page's title and address, the day it was printed, the guides and Learn
+  pages citing that address, and the file's sha256. The PDFs themselves are
+  not tracked (about 75 MB; the person's decision of 26 October 2026) and
+  live on the person's computer; `python3 src/ops/file_printouts.py
+  <download folder>` copies them in under their indexed names, and
+  `--check` says which are missing.
 - `sources/constitution/` -- the state Constitution as nh.gov publishes it:
   the portal's list of its pages (`index.txt`) and one file a page, Part First
   and Part Second's eleven divisions. The host refuses a script, so each page was

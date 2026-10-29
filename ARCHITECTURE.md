@@ -961,7 +961,10 @@ its line that names it, a count the reader missed is read off the motion's own
 line, several roll calls of one count are told apart by what their questions
 name (the consent calendar, the bill, the member), a roll call filed under the
 wrong bill goes to the one docket row that states it (SB 287's conference report
-of 26 June 2025, filed under HB 287), and the file's own bill is drawn even where
+of 26 June 2025, filed under HB 287; since 26 October 2026 a person who has read
+the Journal can put such a roll call under its bill for the bill's page and the
+members' Votes tabs too, in `corrections/rollcall_corrections.json`, which
+`rollcall_parser.roll_call_bill` reads), and the file's own bill is drawn even where
 the docket holds no row for it (HB 476). A speech goes to a motion only by the
 journal's count, never by being the one motion of a run, and never to two
 motions of one count or to both sides of one; a name is said once.

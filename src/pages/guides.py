@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-10-11.59
+# GRANITE_VERSION: 2026-10-11.64
 """
 The how-to guides: their words, their sources, and what each was checked
 against. Read by build_civics.py, which draws them on the Resources hub's
@@ -510,8 +510,9 @@ VOTING = guide(
                "use as proof has changed more than once this year and may change again before "
                "the election. The Secretary of State's page is the official word: check it "
                "before you go. On October 24, 2026 it still said that if you lack the documents "
-               "to prove your citizenship, you may sign a qualified voter affidavit instead, as "
-               "a court order of May 28, 2026 allowed again. The affidavit covers citizenship and "
+               "to prove your citizenship, you may sign a qualified voter affidavit instead, "
+               "subject to the penalties for voter fraud, as a court order of May 28, 2026 "
+               "allowed again. The affidavit covers citizenship and "
                "nothing else: you still need proof of identity, age and domicile."),
      step("Vote",
           "<p>On election day, go to your polling place. Every voter must show proof of identity "
@@ -614,8 +615,9 @@ VOTING = guide(
          "signed by the owner, manager or tenant where you live, and a separate form for people "
          "who are homeless.</p>"),
         ("What if I am missing a document?",
-         "<p>Ask your clerk: with your permission, election officials can check New Hampshire "
-         "voter, motor vehicle and vital records to help prove your qualifications. A certified "
+         "<p>Ask your clerk: with your permission, local election officials may be able to "
+         "check New Hampshire voter, motor vehicle and vital records to help prove your "
+         "qualifications. A certified "
          "copy of a New Hampshire birth or other vital record is free when it is only for "
          "registering to vote.</p>"),
         ("How early can I ask for an absentee ballot, and can I track it?",
@@ -3553,14 +3555,15 @@ GUIDES += [MOTORCYCLE]
 # plate -- who qualifies and what it costs are the law's, and every dollar
 # printed is a fig() on its section -- and the DMV's Vehicle Registrations
 # page, as the person's printout of it read that day, for changing a plate
-# during the year. The person's printout of the DMV's Vanity Plates page
-# (vanityplates1) says where to apply, the mailing address, the character
-# rules of Saf-C 513.62 and how a denial is appealed, but prints no address of
-# its own, and a claim rests on an address a reader can open; its details
-# wait for that address. The decal plates that page lists have no section in
-# RSA 261 on this site's Laws page, so the guide leaves them out.
+# during the year. Where to apply, the mailing address, the character rules of
+# Saf-C 513.62 and how a denial is appealed are the DMV's Vanity Plates page,
+# the person's printout of it (vanityplates1), at the address the person gave
+# on 26 October 2026. The decal plates that page lists have no section in RSA
+# 261 on this site's Laws page, so the guide leaves them out.
 # ---------------------------------------------------------------------------
 PLATES_READ = "2026-10-26"
+DMV_VANITY = ("https://www.dmv.nh.gov/vehicles-boats-and-titles/vehicle-registrations/"
+              "vanity-plates")
 _PLATE_ROWS = [
     ("Veteran", "A veteran of the U.S. armed forces, or one discharged with a general discharge "
      "under honorable conditions, with proof of veteran status",
@@ -3606,24 +3609,61 @@ PLATES = guide(
      box("If the DMV turns down a vanity plate, it refunds or credits the vanity fee.")],
     [step("Choose your plate",
           "<p>A vanity plate carries the letters, or letters and numbers, that the DMV&rsquo;s "
-          "rules allow, and no two plates may be the same. The DMV&rsquo;s Vanity Plates page, "
-          "linked from its Vehicle Registrations page, gives those rules and its Vanity Plate "
-          "Search.</p>"
+          "rules allow, and no two plates may be the same. Under the DMV&rsquo;s rule (Saf-C "
+          "513.62), a vanity plate may not:</p><ul>"
+          "<li>include a zero;</li>"
+          "<li>have more than 7 characters;</li>"
+          "<li>have more than 2 ampersands, plus signs or minus signs, or two of them side by "
+          "side;</li>"
+          "<li>have any character other than letters, numerals, ampersands, plus signs and "
+          "minus signs;</li>"
+          "<li>be only numerals, or only numerals with those symbols;</li>"
+          "<li>have characters that are hard to tell apart;</li>"
+          "<li>refer to, in any language and read any way, intimate body parts, profane or "
+          "vulgar acts, profanity or obscenity, violence, illegal activities, illegal drugs, "
+          "gangs, or slurs, discrimination or bigotry.</li></ul>"
+          + table("The most characters each kind of vanity plate can have",
+                  ["Plate", "Characters"],
+                  [["Passenger", "7"],
+                   ["Apportioned, Conservation, Commercial, Trailer, Veteran, State Park, Active "
+                    "Duty Military", "6"],
+                   ["Antique", "6, or 4 with the Old Man replica"],
+                   ["National Guard, Decal, Veteran Decal", "5"],
+                   ["Motorcycle", "5, no ampersand"],
+                   ["Walking Disability, Purple Heart, Street Rod, Conservation State Park, "
+                    "Disabled Veteran", "4"],
+                   ["Veteran Motorcycle", "4, no ampersand"],
+                   ["Purple Heart Motorcycle, Walking Disability Motorcycle",
+                    "3, two of them letters, no ampersand"]])
+          + "<p>The DMV&rsquo;s Vanity Plate Search shows whether a choice looks available, but "
+          "it cannot save a plate for you, so it may be gone by the time you apply.</p>"
           "<p>For a special plate, find yours in the table in step 4: who may have it and what "
           "it costs.</p>",
-          actions=[("Vehicle registrations (DMV)", DMV_REG)], law=["RSA 261:89"]),
+          actions=[("Vanity plates (DMV)", DMV_VANITY)], law=["RSA 261:89"]),
      step("Apply when you register, or change your plate during the year",
-          "<p>A vanity plate is issued only on application. You can change your plate type at "
-          "any point during the year: the DMV asks for a completed Application for Replacement "
-          "Plates and Decals, the plate fees, a new registration fee, and any other fees for the "
-          "plate you want.</p>",
-          actions=[("Vehicle registrations (DMV)", DMV_REG)], law=["RSA 261:89"]),
+          "<p>A vanity plate is issued only on application. When you register or renew, bring "
+          "the DMV&rsquo;s <b>Application for Vanity Plates</b> to your town or city clerk&rsquo;s "
+          "office. Once the clerk has done the town&rsquo;s part of your registration, you can "
+          "also apply at any DMV office that processes registrations, or mail the application, "
+          "the town portion of your registration and a check for the fees to: NH Dept. of "
+          "Safety, DMV &ndash; Registration Bureau, 23 Hazen Drive, Concord NH 03305. An approved "
+          "plate is mailed to you.</p>"
+          "<p>To change to a vanity plate at another time, bring the application and your "
+          "current registration to your town or city clerk&rsquo;s office or a DMV location. To "
+          "change to another plate type during the year, the DMV asks for a completed "
+          "Application for Replacement Plates and Decals, the plate fees, a new registration "
+          "fee, and any other fees for the plate you want.</p>",
+          actions=[("Vanity plates (DMV)", DMV_VANITY),
+                   ("Vehicle registrations (DMV)", DMV_REG)], law=["RSA 261:89"]),
      step("Pay the fees",
           "<p>A vanity plate costs a special vanity plate service fee of $60, on top of your "
           "regular registration fee and the number plate fee of $4 a plate, and $60 a year for "
-          "each set when you renew.</p>"
-          "<p>If the DMV turns your choice down, the law has it refund or credit the vanity "
-          "fee, and you get a plate of the same kind.</p>",
+          "each set when you renew. The DMV prorates the vanity fee by the month. Changing your "
+          "plate before your next renewal adds a one-time plate fee and a certified registration "
+          "fee, which the DMV&rsquo;s Vanity Plates page lists.</p>"
+          "<p>If the DMV turns your choice down, you get a letter in the mail with a set of "
+          "number plates and a new registration. The vanity fee you paid is credited to your "
+          "customer account, and you can choose a new plate or ask for a refund.</p>",
           law=["RSA 261:89", "RSA 261:75"]),
      step("A special plate: show that you qualify",
           "<p>Each special plate is issued on application, and the plates for a group need "
@@ -3639,7 +3679,8 @@ PLATES = guide(
           "conservation or First for Veterans plate, for which you pay the vanity fee as well. "
           "The state park symbol can go on a vanity plate.</p>",
           law=["RSA 261:86", "RSA 261:87-b", "RSA 261:87-c", "RSA 261:91"])],
-    [("Vehicle Registrations (Division of Motor Vehicles)", DMV_REG),
+    [("Vanity Plates (Division of Motor Vehicles)", DMV_VANITY),
+     ("Vehicle Registrations (Division of Motor Vehicles)", DMV_REG),
      ("Certificates of Title and Registration of Vehicles, RSA 261", "/laws/261")],
     ["261"],
     [claim("Related Resources: Plate Types; Vanity Plates. Plate Changes: you may change your "
@@ -3649,6 +3690,43 @@ PLATES = guide(
            "With the exception of Mopeds, all motor vehicles must begin their registration "
            "process at the town or city clerk in the town or city in which they reside.",
            DMV_REG, PLATES_READ),
+     # The DMV's Vanity Plates page, the person's printout of 26 October 2026.
+     claim("For new and renewal registration, bring the Application for Vanity Plates to your "
+           "Town/City clerk's office; you can also apply for a new vanity plate at any DMV office "
+           "that processes registrations after processing the town/city portion of your "
+           "registration; you may also mail the application, town portion of the registration "
+           "and a check for the appropriate fees to the Concord DMV at: NH Dept. of Safety, DMV - "
+           "Registration Bureau, 23 Hazen Drive, Concord NH 03305. Changing your plate anytime "
+           "other than renewal: bring the application along with your current vehicle "
+           "registration to your Town/City clerk's office or nearest DMV location. If approved, "
+           "the plates will be mailed to you; if denied, a letter by mail along with a set of "
+           "number plates and a new registration; a credit for the paid vanity fees will be "
+           "credited to your customer account; a choice of selecting a new plate or applying for "
+           "a refund; pursuant to Saf-C 508.04, a person whose plate has been denied may submit "
+           "a written request to the Director setting forth a detailed explanation as to why it "
+           "should be issued. Vanity Plate fee (for 12 months, prorated per month); one-time "
+           "plate fee; changing before your next renewal includes the one-time plate fee and a "
+           "certified registration fee. Saf-C 513.62(c): a vanity plate shall not include a "
+           "zero; refer to intimate body parts or genitals, profane or vulgar sexual or excretory "
+           "acts, profanity or obscenity, advocating violence, illegal activities, illegal drugs "
+           "or intoxicants, gangs, racial, ethnic, religious, gender or sexual orientation slur, "
+           "discrimination, genocide, hatred or bigotry, in any language, forward, backward, by "
+           "mirror image or by phonetic spelling; have more than 7 characters; have more than 2 "
+           "ampersands, plus signs, or minus signs, not consecutive; have characters other than "
+           "ampersands, numerals, plus signs, minus signs, or letters; have only numerals or "
+           "only numerals and ampersands, plus signs, or minus signs; have characters which may "
+           "cause difficulty of distinction. Maximum characters: Passenger seven; Apportioned, "
+           "Conservation, Commercial, Trailer, Veteran, State Park, Active Duty Military six; "
+           "Antique six (four with Old Man Replica); Walking Disability, Purple Heart, Street "
+           "Rod, Conservation State Park, Disabled Veteran four; National Guard, Decal, Veteran "
+           "Decal five; Motorcycle five (ampersand not available); Veteran Motorcycle four "
+           "(ampersand not available); Purple Heart Motorcycle, Walking Disability Motorcycle "
+           "three (two must be letters, ampersand not available). The Vanity Plate Search may "
+           "indicate that your plate choice is available, but it cannot save the plate for you. "
+           "Plate Recall: pursuant to Saf-C 513.62(d) the Director may recall any vanity plate "
+           "found not to conform; complaints must be sent to the Director in letter form, signed, "
+           "with an explanation; anonymous letters will not be accepted.", DMV_VANITY,
+           PLATES_READ),
      # As the license guide read it.
      claim("The DMV is fully appointment based; book online or call 603-227-4000.", DMV_APPT, READ),
      claim("Vanity plates bearing such letters or letters and numbers as the director shall "
@@ -3704,10 +3782,14 @@ PLATES = guide(
          "plate can be a vanity plate if you pay the vanity fee as well.</p>"),
         ("What happens if my vanity plate is turned down?",
          "<p>The law has the DMV refund or credit the vanity fee you paid, and issue you a plate "
-         "of the same kind as the one you asked for.</p>"),
+         "of the same kind as the one you asked for. Under the DMV&rsquo;s rule (Saf-C 508.04), "
+         "you may also ask the Director in writing to issue the plate, explaining in detail why "
+         "it should be.</p>"),
         ("Can a vanity plate be taken back after it is issued?",
          "<p>Yes. The law has the DMV recall a vanity plate that does not meet the law and the "
-         "rules, whenever it was issued, and refund or credit the unused part of the fee.</p>"),
+         "rules, whenever it was issued, and refund or credit the unused part of the fee. A "
+         "complaint about a plate goes to the Director in a signed letter explaining why it "
+         "does not meet the rules; anonymous letters are not accepted.</p>"),
         ("Can my spouse keep my plate after I die?",
          "<p>For some plates, yes, until they remarry: a Veteran plate, a National Guard "
          "plate of a retired member, and a former prisoner of war, Purple Heart or Pearl Harbor "
@@ -4075,6 +4157,13 @@ GUIDES += [WARRANT]
 # workers have not been read here, so nothing is said of training or pay.
 # ---------------------------------------------------------------------------
 ELECTION_READ = "2026-10-26"
+# The Secretary of State's published procedures (RSA 660:17-c requires them),
+# read from the person's copies of 26 October 2026, at the addresses the
+# person gave that day.
+SOS_RECOUNT = ("https://www.sos.nh.gov/sites/g/files/ehbemt561/files/documents/2024-09/"
+               "2024-recount-procedures-primary.pdf")
+SOS_TOP_AUDIT = ("https://www.sos.nh.gov/sites/g/files/ehbemt561/files/documents/2024-10/"
+                 "audit-procedures-top-of-ticket.pdf")
 _OFFICER_ROWS = [
     ("Moderator",
      "Elected by the voters by ballot, for 2 or 3 years as the town decides; in a city, each "
@@ -4117,6 +4206,10 @@ def _law_links(cites):
         out.append(f'<a href="/laws/{ch}#s{sec}">{c}</a>')
     return "RSA " + ", ".join(out)
 
+
+# The sections on training, the manual and pay, read on the Laws pages on 26
+# October 2026 after the person's printout of Ballotpedia pointed to them.
+PW_READ = "2026-10-26"
 
 ELECTION = guide(
     "election-worker", "How to Work at the Polls on Election Day",
@@ -4164,9 +4257,18 @@ ELECTION = guide(
           "must be at least 17 years old, takes the oath, and serves only for that "
           "election.</p>"
           "<p>So to serve, ask your town&rsquo;s moderator, your party&rsquo;s state committee, "
-          "or your selectmen.</p>",
+          "or your selectmen.</p>"
+          "<p><b>The manual and training.</b> Before each state general election the Secretary "
+          "of State, with the Attorney General&rsquo;s approval, prepares a manual on New "
+          "Hampshire&rsquo;s election laws and how to conduct an election, written in "
+          "nontechnical language. It goes free to every moderator, board of selectmen, city "
+          "council, board of supervisors of the checklist and town, city and ward clerk, and the "
+          "Secretary of State may send it to anyone else who asks. The law also refers to the "
+          "online training on the Secretary of State&rsquo;s website, and has the Secretary of "
+          "State train the supervisors of the checklist in using the state&rsquo;s voter "
+          "database to confirm a voter&rsquo;s identity.</p>",
           law=["RSA 658:2", "RSA 658:3", "RSA 658:4", "RSA 658:5", "RSA 658:7", "RSA 658:7-a",
-               "RSA 658:8"]),
+               "RSA 658:8", "RSA 652:22", "RSA 659:13", "RSA 659:77"]),
      step("Know what an election officer may not do",
           "<p>A person whose name is on the ballot for an office other than an election office "
           "may not work as an election official in that election. A moderator, clerk, "
@@ -4215,6 +4317,29 @@ ELECTION = guide(
           "percent, and a candidate for governor $500. The Secretary of State and assistants "
           "recount the ballots in Concord, looking at each one; no machine may be used. The "
           "candidates may inspect the ballots and protest how any one is counted.</p>"
+          "<p><b>How a recount runs.</b> The Secretary of State publishes its recount "
+          "procedures; those for state primaries describe it this way. Every recount is open to "
+          "the public, and its time and place are posted on the Secretary of State&rsquo;s "
+          "website. At least one team of two people counts each race. Across the table from "
+          "them sits each candidate, or one person for the candidate, with other observers "
+          "standing behind; cameras show every ballot and the tally sheet on screens facing the "
+          "candidates, and do not record. Each box is opened in front of them and shown empty. "
+          "The ballots are sorted into piles, in a race for one seat one for each candidate and "
+          "piles for undervotes, overvotes and write-ins, and counted out loud in sets of 25, "
+          "each set checked by the second counter. A candidate may challenge how any ballot is "
+          "counted, without giving a reason; the Secretary of State rules on it, and a ballot "
+          "still disputed is kept with a memo of the ruling in case of an appeal. The "
+          "Secretary of State compares the recount with the election night results and "
+          "declares the result, which is final unless changed on an appeal to the Ballot Law "
+          "Commission within 10 days.</p>"
+          "<p><b>The top-of-the-ticket audit.</b> When state representative races are "
+          "recounted after a general election, the Secretary of State also audits the votes on "
+          "those same ballots for President, United States Senate, United States House or "
+          "Governor, choosing the office, for 10 of the recounted races picked at random (or "
+          "all of them, if fewer than 10 are recounted). A discrepancy of more than one percent "
+          "from the reported results allows a full recount of that race. The audit follows the "
+          "general election recount procedures, and its results are published on the "
+          "Secretary of State&rsquo;s website.</p>"
           "<p><b>The audit.</b> After each state primary, general election and presidential "
           "primary, the Secretary of State audits the counting devices. At least 8 devices "
           "are chosen at random, and which ones is not announced until the polls open. A team "
@@ -4224,11 +4349,15 @@ ELECTION = guide(
           "differences, the Secretary of State may look at more ballots or order a full hand "
           "recount. The results are published before noon on the Friday after the "
           "election.</p>",
-          law=["RSA 660:1", "RSA 660:2", "RSA 660:4", "RSA 660:5", "RSA 660:33",
-               "RSA 660:35"])],
+          actions=[("Recount procedures (Secretary of State)", SOS_RECOUNT),
+                   ("Top-of-the-ticket audit procedures (Secretary of State)", SOS_TOP_AUDIT)],
+          law=["RSA 660:1", "RSA 660:2", "RSA 660:4", "RSA 660:5", "RSA 660:17-b",
+               "RSA 660:17-c", "RSA 660:33", "RSA 660:35"])],
     [("Election Officers, RSA 658", "/laws/658"),
      ("Conduct of Elections, RSA 659", "/laws/659"),
      ("Recounts and Audits, RSA 660", "/laws/660"),
+     ("Recount Procedures, State Primary Elections (Secretary of State, 2024)", SOS_RECOUNT),
+     ("Audit Procedures, Top-of-the-Ticket Audits (Secretary of State)", SOS_TOP_AUDIT),
      ("Ballots and Counting Devices, RSA 656", "/laws/656"),
      ("Town Meetings and Moderators, RSA 40", "/laws/40"),
      ("Town Officers, RSA 41", "/laws/41")],
@@ -4239,6 +4368,24 @@ ELECTION = guide(
            ELECTION_READ),
      claim("The secretary of state shall be the chief election officer for the state.",
            "RSA 652:23", ELECTION_READ),
+     claim("The secretary of state, with the advice and approval of the attorney general, shall "
+           "prepare preceding each state general election an up-to-date manual on the New "
+           "Hampshire election laws and procedures for conducting elections, written in "
+           "nontechnical language, distributed free of charge to each moderator, board of "
+           "selectmen, city council, and board of supervisors of the checklist and to each town, "
+           "city, and ward clerk; the secretary of state may distribute it to any other person "
+           "who requests it.", "RSA 652:22", PW_READ),
+     claim("The secretary of state shall provide training for supervisors of the checklist on "
+           "how the nonpublic data in the statewide centralized voter registration database may "
+           "be used to satisfy voter identification requirements.", "RSA 659:13", PW_READ),
+     claim("An election monitor's report documents the extent to which the town or ward "
+           "complies with state law and utilizes the best practices set forth in the election "
+           "procedures manual and the on-line training available on the secretary of state's "
+           "website.", "RSA 659:77", PW_READ),
+     claim("When the ballot law commission directs the supervisors to revise and verify a "
+           "checklist, the supervisors and assistant supervisors shall receive such sums as may "
+           "be voted by the city government or town meeting of the city or town in which they "
+           "serve.", "RSA 654:38", PW_READ),
      claim("Every 2 years or 3 years a moderator shall be chosen by ballot, by plurality vote; "
            "the election of moderators in city wards shall be at every other regular city "
            "election.", "RSA 40:1", ELECTION_READ),
@@ -4352,6 +4499,50 @@ ELECTION = guide(
      claim("The secretary of state and assistants shall visually inspect each ballot; no "
            "mechanical, optical, or electronic device shall be used; the candidates may inspect "
            "the ballots and protest the counting of any ballot.", "RSA 660:5", ELECTION_READ),
+     claim("All recounts, including location and time, will be published on the Secretary of "
+           "State's website. All recounts are open to the public. The Secretary of State will "
+           "assign at least one team of two people for each scheduled recount. The space on the "
+           "opposite side of the table is reserved for each candidate, the candidate's counsel, "
+           "or the candidate's designee - one individual for each candidate - to sit, observe, "
+           "and exercise their right to protest. Additional observers may stand behind the "
+           "candidates or designees. The projection system shows the ballots and tally sheet; "
+           "the cameras do not record. The Secretary of State or designee will open all the "
+           "boxes from each race in view of the candidates, designees, and observers; the box "
+           "will be shown to be empty.", SOS_RECOUNT, ELECTION_READ),
+     claim("Sorting in a primary election with 'Vote for not more than 1.' - Recounters will "
+           "sort all ballots into the following piles: Candidate 1, Candidate 2, Candidate 3, "
+           "etc.; Undervote; Overvote; Write-in. The first recounter will show all ballots by "
+           "placing the ballot under the camera and audibly counting out 25 ballots. The second "
+           "recounter checks this count of 25 ballots. A candidate or designee does not need to "
+           "state a reason to challenge a ballot. The Secretary of State shall rule on the "
+           "voter's intention of the challenged ballot. If a candidate or their designee wishes "
+           "to further challenge the ballot, the Secretary of State will attach a memorandum to "
+           "the ballot stating the ruling; the ballots will be kept separate in case the results "
+           "are appealed to the Ballot Law Commission. The summary sheet will compare the "
+           "recount results to the election night results. The Secretary of State will declare "
+           "the result of the recount which shall be final unless the result is changed because "
+           "of a successful appeal made within 10 days to the Ballot Law Commission.",
+           SOS_RECOUNT, ELECTION_READ),
+     claim("For general election recounts of state representative races, the secretary of "
+           "state's office shall randomly select 10 of the state representative races to "
+           "conduct an audit of the votes cast on those ballots for President, United States "
+           "Senate, United States House of Representatives, or Governor. The Secretary of State "
+           "will select the office to be audited. The audit procedures for the selected race "
+           "will follow the same procedures used for a state general election recount. The "
+           "Secretary of State will announce the results of each audit and publish the results "
+           "of the audit on the Secretary of State's website.", SOS_TOP_AUDIT, ELECTION_READ),
+     claim("For general election recounts of state representative races, the secretary of "
+           "state's office shall conduct an audit of the votes cast on those ballots for "
+           "President, United States Senate, United States House of Representatives, or "
+           "governor, using the ballots for 10 of the state representative races to be "
+           "recounted, selected randomly; if less than 10 races are to be recounted, the "
+           "ballots for each recounted race shall be audited; select the office to be audited; "
+           "and allow a full recount of any race where there is a discrepancy of greater than "
+           "one percent from the election results reported to the secretary of state.",
+           "RSA 660:17-b", ELECTION_READ),
+     claim("The secretary of state shall publish all recount and audit procedures, as well as "
+           "the times to hold any recounts and audits that may take place.", "RSA 660:17-c",
+           ELECTION_READ),
      claim("The secretary of state shall conduct an audit of the devices used to tabulate ballots "
            "after each state primary, general elections, and after the presidential primary.",
            "RSA 660:33", ELECTION_READ),
@@ -4372,6 +4563,17 @@ ELECTION = guide(
          "<p>Not as an election official, if you are running for an office other than an "
          "election office. A moderator, clerk, selectman, inspector or supervisor who is on the "
          "ballot keeps their place but may not handle marked ballots or count votes.</p>"),
+        ("Is there training?",
+         "<p>The Secretary of State prepares a manual on the election laws and procedures before "
+         "each state general election, sends it free to moderators, clerks, selectmen and "
+         "supervisors of the checklist, and may send it to anyone who asks. The law also refers "
+         "to online training on the Secretary of State&rsquo;s website.</p>"),
+        ("Are election workers paid?",
+         "<p>The sections that create inspectors of election and the moderator&rsquo;s "
+         "assistants (RSA 658:2 to 658:8) say nothing about pay. One election law does: when the "
+         "Ballot Law Commission orders a checklist re-verified, the supervisors and their "
+         "assistants are paid what the town or city votes "
+         '(<a href="/laws/654#s38">RSA 654:38</a>).</p>'),
         ("Who decides a ballot whose mark is unclear?",
          "<p>The election officers counting the votes, by majority. If no way of counting it "
          "wins a majority, the ballot is not counted for that office.</p>"),
@@ -4384,7 +4586,8 @@ ELECTION = guide(
          "ballots, receives every town&rsquo;s return, and runs recounts and the audit.</p>")),
     see=[("How to vote", "/guides/how-to-vote.html"),
          ("How to run for office", "/guides/run-for-office.html")],
-    figures=[fig("2 or 3 years", "RSA 40:1", "Every 2 years or 3 years"),
+    figures=[fig("10 days", SOS_RECOUNT, "a successful appeal made within 10 days"),
+             fig("2 or 3 years", "RSA 40:1", "Every 2 years or 3 years"),
              fig("6 years", "RSA 41:46-a", "one supervisor for a term of 6 years"),
              fig("3-year", "RSA 41:46-a", "may adopt a 3-year term"),
              fig("17 years", "RSA 658:7-a", "at least 17 years of age"),
@@ -7456,9 +7659,13 @@ GUIDES += [WAGES]
 # 2026, at the addresses the printouts show -- the State Department had moved
 # them since the guide was drafted, so its links are the printouts' now. No
 # fee is printed: a dollar amount rests on a statute, and none of New
-# Hampshire's sets these (FIGURE above).
+# Hampshire's sets these (FIGURE above). Renewing by mail is the State
+# Department's "Renew Your Passport by Mail", the person's printout of 26
+# October 2026 (passport7), at the address it shows.
 # ---------------------------------------------------------------------------
 PP_READ = "2026-10-25"
+PP_MAIL_READ = "2026-10-26"          # the person's printout (passport7)
+STATE_MAIL = "https://travel.state.gov/en/passports/renew-replace/mail.html"
 PP_STATE_READ = "2026-10-25"         # the person's printouts of travel.state.gov
 STATE_ADULT = "https://travel.state.gov/en/passports/apply/adults.html"
 STATE_ONLINE = "https://travel.state.gov/en/passports/renew-replace/online.html"
@@ -7496,8 +7703,11 @@ PASSPORT = guide(
      box("Pay two fees there: one to the Department of State, one to the facility.")],
     [step("Check whether you can renew instead",
           "<p>You can renew by mail only if your most recent passport was issued for 10 years, "
-          "when you were 16 or older; it was issued no more than 15 years ago; it is undamaged, "
-          "apart from normal wear; and you can send it in with your application.</p>"
+          "when you were 16 or older; it was issued no more than 15 years ago; it has never been "
+          "reported lost or stolen; it is undamaged, apart from normal wear; it was issued in your "
+          "current name, or you can send a document such as a marriage certificate, divorce "
+          "decree or court order showing your name change; and you can send it in with your "
+          "application.</p>"
           "<p>You can <b>renew online</b> instead if that passport was valid for 10 years and "
           "expires within a year or expired less than 5 years ago; you are 25 or older; you are "
           "not changing your name or sex; you are not traveling for at least 6 weeks, since an "
@@ -7506,7 +7716,29 @@ PASSPORT = guide(
           "which is canceled once you apply.</p>"
           "<p>A renewal is never done in person at a post office. If you cannot renew, apply in "
           "person as a first-time applicant would, as the steps below describe.</p>",
-          actions=[("Renew online (State Department)", STATE_ONLINE)]),
+          actions=[("Renew by mail (State Department)", STATE_MAIL),
+                   ("Renew online (State Department)", STATE_ONLINE)]),
+     step("Renew by mail",
+          "<ul><li><b>Fill out Form DS-82</b> with the State Department&rsquo;s Form Filler, "
+          "print it on single-sided paper, and <b>sign and date it</b> before you mail it.</li>"
+          "<li><b>Send your most recent passport.</b> It comes back to you in a separate "
+          "mailing.</li>"
+          "<li><b>If your name has changed</b>, send a certified copy of the legal document that "
+          "changed it, such as a marriage certificate, divorce decree or court order. It comes "
+          "back to you too.</li>"
+          "<li><b>Staple one photo</b> to the application, with four staples in the corners, and "
+          "do not bend it.</li>"
+          "<li><b>Pay by personal check or money order</b> payable to the U.S. Department of "
+          "State, with the applicant&rsquo;s full name and date of birth on the front. Do not "
+          "send cash. The fee depends on whether you renew a book, a card or both; the page "
+          "below lists it.</li></ul>"
+          "<p>Mail it through the U.S. Postal Service. From New Hampshire, routine service goes "
+          "to National Passport Processing Center, Post Office Box 90155, Philadelphia, PA "
+          "19190-0155. For expedited service, for an extra fee, write &ldquo;EXPEDITE&rdquo; on "
+          "the envelope and mail it to National Passport Processing Center, Post Office Box "
+          "90955, Philadelphia, PA 19190-0955. A post office should not charge you its facility "
+          "fee or review a renewal form.</p>",
+          actions=[("Renew by mail (State Department)", STATE_MAIL)]),
      step("Fill out Form DS-11, and do not sign it yet",
           "<p>A first passport, a passport for a child under 16, and one for anyone who cannot "
           "renew are applied for in person. Fill out Form DS-11 with the State "
@@ -7566,6 +7798,7 @@ PASSPORT = guide(
           actions=[("Get your passport fast (State Department)", STATE_FAST),
                    ("Make an appointment at a passport agency", STATE_APPOINT)])],
     [("Apply for Your Adult Passport (U.S. Department of State)", STATE_ADULT),
+     ("Renew Your Passport by Mail (U.S. Department of State)", STATE_MAIL),
      ("Renew Your Passport Online (U.S. Department of State)", STATE_ONLINE),
      ("Apply for a Child's Passport Under 16 (U.S. Department of State)", STATE_CHILD),
      ("Get Your Passport Fast (U.S. Department of State)", STATE_FAST),
@@ -7630,6 +7863,28 @@ PASSPORT = guide(
            "memo, the acceptance fee to the facility; acceptance facilities such as a post "
            "office, library, or local government office, check with the facility to see if you "
            "need to make an appointment.", STATE_ADULT, PP_STATE_READ),
+     # The State Department's Renew by Mail page, the person's printout of 26 October 2026.
+     claim("You can renew by mail if: you can submit your most recent passport with your "
+           "application; your passport has never been reported lost or stolen; was issued "
+           "within the last 15 years; was issued when you were age 16 or older and was valid for "
+           "10 years; was issued in your current name, or you can provide a document like a "
+           "marriage certificate, divorce decree, or court order to show you have changed your "
+           "name; is not damaged, other than normal wear and tear. Fill out your form and print "
+           "it: Form Filler, single-sided paper; sign and date your renewal form before mailing "
+           "it; Form DS-82; you must mail your application; postal employees should not charge "
+           "you a facility fee or review your form and documents. We will return your most "
+           "recent passport book or card in a separate mailing. Name change: a certified copy "
+           "of the legal name change document, such as a marriage certificate, divorce decree, "
+           "court-ordered name change document, returned in a separate mailing. You must provide "
+           "1 photo; staple your photo to the application, four staples vertically in the "
+           "corners; do not bend the photo. Your fee depends on what document you are renewing; "
+           "pay using a personal check or money order payable to the U.S. Department of State; "
+           "do not send cash; write the full name and date of birth of the applicant on the "
+           "front. Mail your application using the United States Postal Service; routine "
+           "service, any other state: National Passport Processing Center, Post Office Box "
+           "90155, Philadelphia, PA 19190-0155; expedited service: write EXPEDITE on the outside "
+           "of the envelope, National Passport Processing Center, Post Office Box 90955, "
+           "Philadelphia, PA 19190-0955.", STATE_MAIL, PP_MAIL_READ),
      claim("Renew online if: the passport is (or was) valid for 10 years, expiring within 1 "
            "year or expired less than 5 years ago; you are age 25 or older; not changing your "
            "name or sex; not traveling for at least 6 weeks, online renewals cannot be "
@@ -7713,9 +7968,17 @@ GUIDES += [PASSPORT]
 # may be better to have a separate explanation for each with a bit of
 # groundwork on how the programs are structured before jumping into the step
 # by step"). Step 1 says what each program is and who runs it, from the same
-# printouts and pages, and the steps after it say only what to do. Part C's
-# name, and what Part A and Part B each cover beyond their one-line names,
-# are on no page on hand, so the guide does not say them.
+# printouts and pages, and the steps after it say only what to do. What each
+# part covers, Part C's name and what Original Medicare is are Medicare.gov's
+# "Parts of Medicare", the person's printout of 26 October 2026 (medicare4),
+# in its own words; it states no costs, so the guide prints none.
+#
+# WHAT IT COSTS. Medicare.gov's "Costs", the person's printout of 26 October
+# 2026 (medicare5): the kinds of cost each part carries -- premium,
+# deductible, coinsurance, copayment, the yearly out-of-pocket limits -- in
+# its words. Its dollar amounts and percentages are federal, set each year,
+# and not a statute's (guides.FIGURE), so none is printed: the guide links
+# the page, which lists the current year's.
 # ---------------------------------------------------------------------------
 MC_READ = "2026-10-25"
 SSA_PAGES_READ = "2026-10-25"        # the person's printouts of ssa.gov
@@ -7731,6 +7994,11 @@ MEDICARE_PLANS = ("https://www.medicare.gov/basics/get-started-with-medicare/get
 MEDICARE_MSP = "https://www.medicare.gov/basics/costs/help/medicare-savings-programs"
 MEDICARE_EXTRA = "https://www.medicare.gov/basics/costs/help/drug-costs"
 MEDICARE_CONTACT = "https://www.medicare.gov/talk-to-someone"
+MEDICARE_PARTS = ("https://www.medicare.gov/basics/get-started-with-medicare/medicare-basics/"
+                  "parts-of-medicare")
+MC_PARTS_READ = "2026-10-26"         # the person's printout (medicare4)
+MEDICARE_COSTS = "https://www.medicare.gov/basics/costs/medicare-costs"
+MC_COSTS_READ = "2026-10-26"         # the person's printout (medicare5)
 USA_SSA = "https://www.usa.gov/agencies/social-security-administration"
 SSA_APPLY = "https://www.ssa.gov/apply"
 SSA_MEDICARE = "https://www.ssa.gov/medicare/sign-up"
@@ -7776,26 +8044,56 @@ MEDICARE = guide(
           "older, and for some younger people (see Common Questions below). It comes in "
           "parts:</p>"
           + table("The parts of Medicare",
-                  ["Part", "What it is", "How you get it"],
-                  [["Part A", "Hospital insurance.",
+                  ["Part", "What it helps cover", "How you get it"],
+                  [["Part A (Hospital Insurance)", "Inpatient care in hospitals, skilled nursing "
+                    "facility care, hospice care, and home health care.",
                     "Through Social Security. Many people are enrolled automatically (step 2)."],
-                   ["Part B", "The second part of Medicare, which New Hampshire&rsquo;s Department of "
-                    "Health and Human Services calls supplemental insurance. It has a premium, and "
-                    "signing up late can add a penalty for as long as you have it.",
+                   ["Part B (Medical Insurance)", "Services from doctors and other health care "
+                    "providers, outpatient care, home health care, durable medical equipment "
+                    "(like wheelchairs, walkers and hospital beds), and many preventive services "
+                    "(like screenings, shots or vaccines, and yearly wellness visits). It has a "
+                    "premium, and signing up late can add a penalty for as long as you have it.",
                     "Through Social Security, with Part A, or later on its own. You can put it off "
                     "while a job&rsquo;s group health plan covers you."],
-                   ["Medicare Advantage Plan", "A plan you can choose instead of Original Medicare. "
-                    "You need both Part A and Part B to join one.",
+                   ["Part C (Medicare Advantage)", "An alternative to Original Medicare: a private "
+                    "health plan that Medicare approved, which bundles Part A, Part B and usually "
+                    "Part D. You may need to use the plan&rsquo;s network of doctors, and most plans "
+                    "offer extra benefits Original Medicare does not cover, like vision, hearing "
+                    "and dental. You need both Part A and Part B to join one.",
                     "You choose one on Medicare.gov (step 5)."],
-                   ["Drug coverage (Part D)", "A drug plan, which you can add to Original Medicare.",
-                    "You choose one on Medicare.gov (step 5)."]])
-          + "<p>You sign up for Part A and Part B through Social Security, which can take your "
+                   ["Part D (Drug coverage)", "The cost of prescription drugs. Plans are run by "
+                    "private insurance companies that follow rules set by Medicare.",
+                    "You add a drug plan to Original Medicare, or get it in a Medicare Advantage "
+                    "Plan with drug coverage, on Medicare.gov (step 5)."]])
+          + "<p><b>Original Medicare</b> is Part A and Part B. With it you can use any doctor or "
+          "hospital that takes Medicare, join a separate drug plan, and buy supplemental "
+          "coverage, called <b>Medigap</b>, from a private company to help pay your share of the "
+          "costs. The other way is a Medicare Advantage Plan. You choose when you first sign up, "
+          "and can change at certain times of the year.</p>"
+          "<p><b>What Medicare costs</b> depends on the coverage you have and the services you "
+          "use. The costs come in a few kinds:</p><ul>"
+          "<li>A <b>premium</b>, paid each month. Most people pay no premium for Part A, because "
+          "they or a spouse paid Medicare taxes long enough while working, and no one who gets "
+          "Medicare before turning 65 pays one. Part B has a monthly premium, which you pay even "
+          "if you use no Part B services, and which is higher for some people depending on "
+          "income.</li>"
+          "<li>A <b>deductible</b>, what you pay before Original Medicare starts to pay: for "
+          "Part A, once for each hospital benefit period, which can be more than once a year; "
+          "for Part B, once each year.</li>"
+          "<li><b>Coinsurance</b>, your share of the cost of each covered service after you have "
+          "paid your deductible, and <b>copayments</b>, such as the one a hospital charges for "
+          "each outpatient service.</li></ul>"
+          "<p>A Medicare Advantage Plan&rsquo;s and a drug plan&rsquo;s premiums and other costs "
+          "vary by plan. Medicare.gov&rsquo;s Costs page lists the current amounts, several of "
+          "which can change each year.</p>"
+          "<p>You sign up for Part A and Part B through Social Security, which can take your "
           "premiums out of your benefit payments. You choose a Medicare Advantage Plan or a drug "
           "plan on Medicare.gov.</p>"
           "<p><b>Help with the costs</b> comes from two programs: the state&rsquo;s <b>Medicare "
           "Savings Programs</b>, which help pay Medicare premiums and, for some people, other "
           "costs; and the federal <b>Extra Help</b> program, which pays part of the cost of drug "
-          "coverage. Step 6 says who qualifies and how to apply.</p>"),
+          "coverage. Step 6 says who qualifies and how to apply.</p>",
+          actions=[("What Medicare costs (Medicare)", MEDICARE_COSTS)]),
      step("Know when to sign up for Medicare",
           "<p>Your first chance is your Initial Enrollment Period: 7 months, starting 3 months "
           "before the month you turn 65 and ending 3 months after it. Coverage always starts on "
@@ -7870,6 +8168,8 @@ MEDICARE = guide(
      ("Medicare Savings Programs (Medicare)", MEDICARE_MSP),
      ("Help With Drug Costs (Medicare)", MEDICARE_EXTRA),
      ("Contact Medicare (Medicare)", MEDICARE_CONTACT),
+     ("Parts of Medicare (Medicare)", MEDICARE_PARTS),
+     ("Costs (Medicare)", MEDICARE_COSTS),
      ("Social Security Administration (USA.gov)", USA_SSA),
      ("Apply for Social Security Benefits (Social Security Administration)", SSA_APPLY),
      ("Sign Up for Medicare (Social Security Administration)", SSA_MEDICARE),
@@ -7910,6 +8210,67 @@ MEDICARE = guide(
            "contact SSA to sign up for Part A and Part B; contact your state for Medicare "
            "Savings Programs; SHIPs give free counseling.", MEDICARE_CONTACT, MC_READ),
      claim("Social Security Administration, toll-free number 1-800-772-1213.", USA_SSA, MC_READ),
+     # Medicare.gov's Parts of Medicare, the person's printout of 26 October 2026.
+     claim("Part A (Hospital Insurance) helps cover inpatient care in hospitals, skilled nursing "
+           "facility care, hospice care, and home health care. Part B (Medical Insurance) helps "
+           "cover services from doctors and other health care providers, outpatient care, home "
+           "health care, durable medical equipment (like wheelchairs, walkers, hospital beds), "
+           "and many preventive services (like screenings, shots or vaccines, and yearly "
+           "Wellness visits). Part D (Drug coverage) helps cover the cost of prescription drugs; "
+           "you join a Medicare drug plan in addition to Original Medicare, or get it by joining "
+           "a Medicare Advantage Plan with drug coverage; plans are run by private insurance "
+           "companies that follow rules set by Medicare. Medicare Supplemental Insurance "
+           "(Medigap): extra insurance you can buy from a private company that helps pay your "
+           "share of costs in Original Medicare. When you first sign up and during certain times "
+           "of the year, you can choose; 2 main ways: Original Medicare includes Part A and Part "
+           "B, any doctor or hospital that takes Medicare, a separate drug plan, supplemental "
+           "coverage; Medicare Advantage (also known as Part C) offers an alternative to "
+           "Original Medicare, a private health plan that Medicare approved, bundled plans "
+           "including Part A, Part B, and usually Part D; you may need to use doctors in the "
+           "plan's network; most plans offer extra benefits Original Medicare doesn't cover, "
+           "like vision, hearing, dental. Medicare is federal health insurance for anyone age 65 "
+           "and older, and some people under 65 with certain disabilities or conditions; "
+           "Medicaid is a joint federal and state program that provides health coverage for "
+           "certain low-income people, families and children, pregnant women, the elderly, and "
+           "people with disabilities; if you qualify, you can have both Medicare and Medicaid.",
+           MEDICARE_PARTS, MC_PARTS_READ),
+     # Medicare.gov's Costs, the person's printout of 26 October 2026.
+     claim("What you pay for Medicare depends on the coverage you have and services you use. "
+           "Part A premium: $0 for most people (because they or a spouse paid Medicare taxes "
+           "long enough while working); if you get Medicare earlier than age 65, you won't pay "
+           "a Part A premium; this is sometimes called premium-free Part A. If you don't qualify "
+           "for premium-free Part A you might be able to buy it, the amount depending on how "
+           "long you or your spouse worked and paid Medicare taxes; you also have to sign up for "
+           "Part B to buy Part A; if you don't buy Part A when you're first eligible for "
+           "Medicare (usually when you turn 65), you might pay a penalty. Part A deductible for "
+           "each inpatient hospital benefit period, before Original Medicare starts to pay; no "
+           "limit to the number of benefit periods you can have in a year, so you may pay the "
+           "deductible more than once in a year. Part B premium each month (or higher depending "
+           "on your income); the amount can change each year; you'll pay the premium each "
+           "month, even if you don't get any Part B-covered services. Part B deductible before "
+           "Original Medicare starts to pay; you pay this deductible once each year. "
+           "Coinsurance: usually a share of the cost for each Medicare-covered service or item "
+           "after you've paid your deductible. You'll also pay a copayment to the hospital for "
+           "each service you get in a hospital outpatient setting. Original Medicare: there's no "
+           "yearly limit on what you pay out-of-pocket, unless you have supplemental coverage, "
+           "like a Medicare Supplement Insurance (Medigap) policy or join a Medicare Advantage "
+           "Plan (Part C). Medicare Advantage: premiums and other costs vary by plan; these "
+           "amounts can change each year; you must have Part B and keep paying your Part B "
+           "premium to stay in your plan; out-of-pocket limit varies by plan; once you pay the "
+           "plan's limit, the plan pays your covered health services for the rest of the "
+           "calendar year. Part D: premium varies by plan; you may have to pay more, depending "
+           "on your income; 2 ways to avoid paying a Part D late enrollment penalty: get "
+           "Medicare drug coverage when you first get Medicare Part A and/or Part B, and don't "
+           "go 63 days or more without creditable drug coverage (coverage that's similar in "
+           "value to Part D); deductibles, copayments and coinsurance vary by plan and pharmacy; "
+           "a yearly out-of-pocket limit that includes your deductible, out-of-pocket spending, "
+           "and certain payments made on your behalf, like through the Extra Help program; if "
+           "you qualify for Extra Help, you won't have to pay the Part D late enrollment "
+           "penalty. Medigap: premium varies based on which policy you buy, where you live, and "
+           "other factors; the amount can change each year; you must have Part B and keep "
+           "paying your Part B premium to keep your Medigap policy; Medigap usually helps pay "
+           "your portion of the costs (like deductibles and coinsurance) for services that "
+           "Part A and Part B cover in Original Medicare.", MEDICARE_COSTS, MC_COSTS_READ),
      claim("Entitled to old-age benefits if at least 62 years old, fully insured, and you "
            "apply.", CFR_OLD_AGE, MC_READ),
      claim("The department shall administer the Medicare savings program as described in 42 "
@@ -7967,6 +8328,32 @@ MEDICARE = guide(
         ("Does applying for Extra Help also apply for a Medicare Savings Program?",
          "<p>Yes, unless you say not to: applying for Extra Help through Social Security also "
          "starts an application for a Medicare Savings Program.</p>"),
+        ("What is the difference between Medicare and Medicaid?",
+         "<p>Medicare is federal health insurance for people 65 and older and some younger people "
+         "with certain disabilities or conditions. Medicaid is a joint federal and state program "
+         "that provides health coverage for certain people with low incomes, families and "
+         "children, pregnant women, older people and people with disabilities. If you qualify, "
+         "you can have both.</p>"),
+        ("Is there a limit on what I pay out of pocket?",
+         "<p>Not in Original Medicare: there is no yearly limit on what you pay for Part A and "
+         "Part B services, unless you have a Medigap policy or join a Medicare Advantage Plan. "
+         "Each Medicare Advantage Plan sets its own yearly limit; once you have paid it, the plan "
+         "pays for your covered health services for the rest of the calendar year. Drug "
+         "coverage (Part D) has a yearly limit too, which counts your deductible, what you pay "
+         "yourself, and certain payments made for you, such as through Extra Help.</p>"),
+        ("What if I don't qualify for premium-free Part A?",
+         "<p>You might be able to buy it, for a monthly premium that depends on how long you or "
+         "your spouse worked and paid Medicare taxes. You also have to sign up for Part B to buy "
+         "Part A, and if you don't buy Part A when you are first eligible, usually when you turn "
+         "65, you might pay a penalty.</p>"),
+        ("How do I avoid a late penalty for drug coverage?",
+         "<p>Get Medicare drug coverage when you first get Part A, Part B or both, and don't go "
+         "63 days or more without creditable drug coverage, which is coverage similar in value "
+         "to Part D. If you qualify for Extra Help, you won't have to pay the Part D late "
+         "enrollment penalty.</p>"),
+        ("Do I still pay the Part B premium with a Medicare Advantage Plan or Medigap?",
+         "<p>Yes. You must have Part B and keep paying its premium to stay in a Medicare "
+         "Advantage Plan, or to keep a Medigap policy.</p>"),
         ("Can I manage Medicare online too?",
          "<p>Once you have your Medicare card, you can make a Medicare account on Medicare.gov "
          "with your Medicare Number.</p>"))
@@ -7983,7 +8370,8 @@ MEDICARE = guide(
              fig("24 months", MEDICARE_AUTO, "disability benefits for 24 months"),
              fig("age 62", CFR_OLD_AGE, "at least 62 years old"),
              fig("10 years", SSA_APPLY, "for at least 10 years"),
-             fig("24 hours", MEDICARE_CONTACT, "24 hours a day")])
+             fig("24 hours", MEDICARE_CONTACT, "24 hours a day"),
+             fig("63 days", MEDICARE_COSTS, "63 days or more without creditable drug coverage")])
 
 GUIDES += [MEDICARE]
 

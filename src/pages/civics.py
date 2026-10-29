@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-08.70
+# GRANITE_VERSION: 2026-09-08.71
 """
 The topics of the civics section: their order, their names, and their prose.
 
@@ -1199,7 +1199,9 @@ BODY_GENERAL_COURT = """
 <h2>The Largest State Legislature</h2>
 <p>New Hampshire's legislature is called the <b>General Court</b>, the name the
 state constitution gives it. It is made up of [[house_seats]] representatives and
-[[senate_districts]] senators. It is the largest state legislature in the country.</p>
+[[senate_districts]] senators. It is the largest state legislature in the country: the
+National Conference of State Legislatures&rsquo; table counts 424 seats in New
+Hampshire&rsquo;s, against 253 in the next largest, Pennsylvania&rsquo;s.</p>
 
 <p>The House's [[house_seats]] is the number of seats, not the number of members. Seats fall
 vacant and are filled at special elections through the term, so the working size of
@@ -3024,8 +3026,12 @@ is the evidence.</p>
 # line says only what that page says, and none of it disagrees with the
 # nomination. Nothing here comes from the Visitor Center's pages, which this
 # machine may not ask; the State House facts they hold wait for a printout. And no other
-# state is compared where no source read says so: the one comparison is the
-# nomination's own, dated as it is.
+# state is compared where no source read says so: the nomination's comparison
+# is dated as it is, and the others are the National Conference of State
+# Legislatures' two pages as the person printed them on 26 October 2026
+# (SRC_NCSL_SIZE, its table of June 19, 2024, and SRC_NCSL_TIME, updated July
+# 28, 2021). The facts of the state's earlier history are NH.gov's History
+# (SRC_NH_HISTORY), printed the same day, each in its own words.
 BODY_STATE_HOUSE = """
 <h2>A Granite Building of 1819</h2>
 <p>The <b>State House</b> in Concord, at 107 North Main Street, was built from
@@ -3103,6 +3109,30 @@ Pierce, John P. Hale and Commodore Perkins were cleaned and made
 tarnishproof.</li>
 </ul>
 
+<h2>From New Hampshire&rsquo;s History</h2>
+<p>The state&rsquo;s own history of New Hampshire, revised from the same 1977
+Manual, tells these.</p>
+<ul>
+<li>In 1623 Captain John Mason and others sent David Thomson, Edward Hilton and
+Thomas Hilton to found a fishing colony at the mouth of the Piscataqua River.
+Thomson&rsquo;s party settled at Little Harbor, or &ldquo;Pannaway,&rdquo; now
+Rye; the Hiltons, eight miles upriver, at a place they called Northam,
+afterwards named Dover.</li>
+<li>Captain John Smith first named the region &ldquo;North Virginia,&rdquo; but
+King James later changed it to &ldquo;New England.&rdquo; New Hampshire takes
+its name from Captain Mason&rsquo;s own English county of Hampshire.</li>
+<li>New Hampshire became a royal province in 1679, with John Cutt as
+president. From 1698 it was under the jurisdiction of Massachusetts, and it
+stayed so until 1741.</li>
+<li>Benning Wentworth was its chief magistrate from 1741 to 1766, and granted
+more than a hundred towns after 1761, some of them in what is now
+Vermont.</li>
+<li>Meshech Weare was elected the first state &ldquo;president.&rdquo;</li>
+<li>New Hampshire was the ninth and deciding state to accept the national
+Constitution, and its John Langdon was President of the Senate when
+Washington was elected the first President.</li>
+</ul>
+
 <h2>A House of Four Hundred</h2>
 <p>The constitution calls the legislature <b>the General Court of New
 Hampshire</b> (Part Second, Article 3). Its House of Representatives is to
@@ -3114,6 +3144,12 @@ Article 25). The Senate began in 1784 with 12 senators, and an amendment in
 [[house_sitting]] sitting members</b>, with [[house_vacant]] vacant, and the
 Senate [[senate_districts]] districts. Each member&rsquo;s page is on the
 <a href="officials.html">Officials page</a>.</p>
+<p>Against the other states: the National Conference of State Legislatures&rsquo;
+table of June 19, 2024 counts 424 seats in New Hampshire&rsquo;s legislature,
+the most of any state; the next largest, Pennsylvania&rsquo;s, has 253. Most
+states elect their
+senators for four years; New Hampshire&rsquo;s senators, like its
+representatives, serve two.</p>
 
 <h2>Paid $200 for a Two-Year Term</h2>
 <p>The pay of a legislator is written into the constitution. Part Second,
@@ -3124,6 +3160,13 @@ chambers $250. The figures were set by an amendment of 1889.</p>
 but not after the legislature has been in session for 45 legislative days or
 after July 1, whichever comes first. A special session adds $3 a day, for no
 more than 15 days, with the usual mileage.</p>
+<p>The National Conference of State Legislatures, in a page updated July 28,
+2021, puts New Hampshire&rsquo;s among the ten &ldquo;part-time lite&rdquo;
+legislatures, one of its two part-time groups. Of the part-time
+legislatures it says that lawmakers spend on average the equivalent of half
+of a full-time job on legislative work, for pay low enough that they need
+other income to make a living. It calls them traditional or citizen
+legislatures, found most often in the smallest, more rural states.</p>
 
 <h2>A Governor Elected Every Two Years</h2>
 <p>The Governor is the state&rsquo;s supreme executive magistrate, and the
@@ -3315,11 +3358,26 @@ SRC_NRHP_CIVIC = ("Concord Civic District, National Register of Historic Places 
                   "https://npgallery.nps.gov/NRHP/GetAsset/NRHP/83004203_text")
 # The state's History of the State House on NH.gov, "Revised from State of
 # New Hampshire Manual for the General Court 1977, pp.115-124", as the person
-# printed it on 26 October 2026. The printout does not show its address, so
-# the source is named and not linked (build_civics.sources_list) until the
-# person gives it; a source with no address is in no SOURCE_GROUPS group.
+# printed it on 26 October 2026; its address the person gave the same day.
 SRC_STATE_HOUSE_HISTORY = ("History of the State House, revised from the 1977 Manual for "
-                           "the General Court (NH.gov)", "")
+                           "the General Court (NH.gov)",
+                           "https://www.nh.gov/almanac/history/history-state-house")
+# NH.gov's History of the state, edited and revised from the same 1977 Manual
+# (pp. 115-124), as the person printed it on 26 October 2026, with its
+# address. The State House page takes a few of its facts in its own words.
+SRC_NH_HISTORY = ("History of New Hampshire, revised from the 1977 Manual for the General "
+                  "Court (NH.gov)", "https://www.nh.gov/almanac/history")
+# THE NATIONAL CONFERENCE OF STATE LEGISLATURES' two pages the person printed
+# on 26 October 2026, with the addresses the person gave: its table of every
+# legislature's members and terms (June 19, 2024), and its grouping of the
+# legislatures by the time, pay and staff of the job (updated July 28, 2021).
+# Not the state's own, so listed with NOT_OFFICIAL and named where cited.
+SRC_NCSL_SIZE = ("Number of Legislators and Length of Terms in Years (National Conference "
+                 "of State Legislatures)",
+                 "https://www.ncsl.org/resources/details/number-of-legislators-and-length-of-terms-in-years")
+SRC_NCSL_TIME = ("Full- and Part-Time Legislatures (National Conference of State "
+                 "Legislatures)",
+                 "https://www.ncsl.org/about-state-legislatures/full-and-part-time-legislatures")
 # The Executive Council's About Us page, as the person printed it on 25
 # October 2026 (it refuses this machine): the words guides.py's
 # who-to-contact guide already carries as a claim (guides.COUNCIL_ABOUT).
@@ -3342,12 +3400,12 @@ SOURCE_GROUPS = [
     ("The Courts", [SRC_COURTS]),
     (ELECTIONS_GROUP, [SRC_SOS, SRC_CONSTITUTION]),
     ("Towns and Counties", [SRC_NHMA, SRC_COUNTIES]),
-    ("History", [SRC_NRHP_CIVIC]),
+    ("History", [SRC_NRHP_CIVIC, SRC_STATE_HOUSE_HISTORY, SRC_NH_HISTORY]),
 ]
 # Cited, and not official: a third party's list, labelled so where it is
 # cited. The hub's tab lists the state's own sites and the two membership
 # bodies the officials themselves send a resident to.
-NOT_OFFICIAL = [SRC_BALLOT_LIST]
+NOT_OFFICIAL = [SRC_BALLOT_LIST, SRC_NCSL_SIZE, SRC_NCSL_TIME]
 
 
 # ---------------------------------------------------------------------------
@@ -3364,7 +3422,7 @@ TOPICS = [
           "term. The largest state legislature in the country.",
           BODY_GENERAL_COURT,
           [SRC_CONSTITUTION, SRC_HOUSE_RULES, SRC_SENATE_RULES,
-           SRC_FIND_MEMBER]),
+           SRC_FIND_MEMBER, SRC_NCSL_SIZE]),
 
     topic("how-a-bill-becomes-law", "How a Bill Becomes Law", HOW,
           "From an idea filed in the fall to a law that takes effect, and "
@@ -3447,8 +3505,8 @@ TOPICS = [
           "term, a Governor elected every two years beside an Executive Council, and judges who "
           "serve until seventy.",
           BODY_STATE_HOUSE,
-          [SRC_NRHP_CIVIC, SRC_STATE_HOUSE_HISTORY, SRC_CONSTITUTION, SRC_COUNCIL_ABOUT,
-           SRC_FIND_MEMBER]),
+          [SRC_NRHP_CIVIC, SRC_STATE_HOUSE_HISTORY, SRC_NH_HISTORY, SRC_CONSTITUTION,
+           SRC_COUNCIL_ABOUT, SRC_NCSL_SIZE, SRC_NCSL_TIME, SRC_FIND_MEMBER]),
     topic("state-symbols", "New Hampshire\u2019s State Symbols", ABOUT,
           "The purple finch, the purple lilac, granite and smoky quartz: every "
           "symbol the law names, and the ones proposed that did not pass.",

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.720
+# GRANITE_VERSION: 2026-09-04.721
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -13695,6 +13695,165 @@ def _rollcall_measure_kinds(RP):
                       "a rules vote stay procedural; 2009's SR 1 is on no 2010 page")
     finally:
         shutil.rmtree(d, ignore_errors=True)
+
+
+# Real rows of records/rollcalls/RollCallSummary_2025.txt: SB 287's own Senate
+# roll call of 27 March 2025, and the last two of the Senate's 26 June 2025,
+# the second of them SB 287's conference report as the file has it, under HB
+# 287 (Senate Journal 17, page 940, prints it as SB 287's).
+_RC_REFILED = [
+    "2025|S|39|3/27/2025 12:00:00 AM|SB287|16|8|24|0|||Ought to Pass|requiring applicants for absentee ballots to present a copy of their photo identification with their application.||3/27/2025 5:21:48 PM",
+    "2025|S|116|6/26/2025 12:00:00 AM|HB115|8|16|24|0|||Floor Amendment|(New Title) making temporary appropriations for the expenses and encumbrances of the state of New Hampshire.||6/27/2025 9:19:36 AM",
+    "2025|S|117|6/26/2025 12:00:00 AM|HB287|16|8|24|0|||Conference Committee Report|requiring police departments to provide fire departments with certain motorist personal and insurance information following a motor vehicle incident.||6/27/2025 9:16:09 AM",
+]
+
+
+@check("rollcalls", "a roll call a person shows is filed under the wrong bill is keyed to the bill "
+       "it belongs to, for the bill's page and the ballots alike, and only while the roll-call file "
+       "still files it as the entry says (corrections/rollcall_corrections.json)",
+       needs=("rollcall_parser",))
+def _rollcall_refiled(RP):
+    """P14 of the polish of 26 October 2026: the Senate's 16-8 adoption of
+    SB 287's conference report on 26 June 2025 is roll call 117 of 2025 in
+    the General Court's file, filed under HB 287, a House bill killed in
+    February; HB 287's page carried it and every senator's Votes tab linked
+    HB 287. No hand-made file could move a roll call to another bill:
+    docket_corrections.json's "misfiled" moves docket rows, and HB 287's
+    docket has none for this vote. rollcall_parser.roll_call_bill, where
+    rollcalls.json and build_data's ballots both name a roll call's bill,
+    now reads corrections/rollcall_corrections.json.
+
+    Driven here by a corrections folder of the check's own in a temporary
+    project, never the real one: an entry moves 2025-S-117 to SB 287 in
+    parse, through roll_call_bill and in the rollcalls.json the build's own
+    command writes; an entry the file no longer bears out (2025-S-39 is SB
+    287's already) is not applied and is said; one no file holds is said; a
+    malformed entry stops the run; no file changes nothing. Then the
+    person's own file, where there is one, is read against the roll-call
+    files on disk: an entry that has stopped matching fails here, as a
+    docket correction that has stopped matching does."""
+    import contextlib
+    import io
+    keep = (RP.REFILED, dict(RP._REFILED), {k: set(v) for k, v in RP.REFILED_SEEN.items()})
+
+    def reset(path):
+        RP.REFILED = path
+        RP._REFILED.clear()
+        RP.REFILED_SEEN.clear()
+
+    d = Path(tempfile.mkdtemp(prefix="gr-refiled-"))
+    try:
+        corr = _mk(d / "corrections" / "rollcall_corrections.json")
+        entry = {"says": "HB287", "belongs_to": "SB287", "why": "w", "evidence": ["e"],
+                 "checked": "2026-10-26"}
+        corr.write_text(json.dumps({"misfiled": {
+            "2025-S-117": entry, "2025-S-39": dict(entry, says="HB999"),
+            "2025-S-500": dict(entry, says="HB1", belongs_to="HB2")}}), encoding="utf-8")
+        (d / "RollCallSummary.txt").write_text("\n".join(_RC_REFILED) + "\n", encoding="utf-8")
+        reset(corr)
+        # The last asks for 2025-S-117 as a file that has since come to say
+        # another bill: the entry is out of date and must not move it (the
+        # review of 26 October 2026 removed the "says" guard and nothing
+        # failed).
+        got = [RP.roll_call_bill("2025", "S", 117, "HB287"), RP.roll_call_bill("2025", "S", "117", "HB 287"),
+               RP.roll_call_bill("2026", "S", 117, "HB287"), RP.roll_call_bill("2025", "H", 117, "HB287"),
+               RP.roll_call_bill("2025", "S", 117, "HB288")]
+        assert got == ["SB287", "SB287", "HB287", "HB287", "HB288"], (
+            f"roll_call_bill gives 2025-S-117 as typed twice, 2026-S-117, 2025-H-117 and 2025-S-117 "
+            f"filed under HB288 as {got}")
+        rows = {r["number"]: r for r in RP.parse(d / "RollCallSummary.txt")}
+        assert {n: r["bill"] for n, r in rows.items()} == {39: "SB287", 116: "HB115", 117: "SB287"} \
+            and not rows[117]["procedural"], f"parse files them under {[(n, r['bill']) for n, r in rows.items()]}"
+        out = io.StringIO()
+        with contextlib.redirect_stdout(out):
+            told = RP.refiled_report()
+            quiet = RP.refiled_report(complete=False)
+        assert told == (["2025-S-117"], ["2025-S-39"], ["2025-S-500"]) and \
+            quiet == (["2025-S-117"], ["2025-S-39"], []), (
+            f"the report says applied, stale, unread: {told}; where not every file was read {quiet}")
+        assert "NOT applied" in out.getvalue() and "did nothing" in out.getvalue(), out.getvalue()
+        # The command build_all runs, in the temporary project: it reads the
+        # corrections folder of the folder it runs in.
+        r = _run([sys.executable, _paths.script("rollcall_parser.py"), "--file", "RollCallSummary.txt",
+                  "--dir", "none", "--all", "--out", "rc.json"],
+                 cwd=d, capture_output=True, text=True, timeout=300)
+        assert r.returncode == 0, "rollcall_parser failed: " + (r.stderr or r.stdout)[-300:]
+        keyed = json.loads((d / "rc.json").read_text(encoding="utf-8")).get("2025-2026") or {}
+        assert sorted(keyed) == ["HB115", "SB287"] and \
+            sorted(x["number"] for x in keyed["SB287"]) == [39, 117], (
+            f"rollcalls.json keys 2025-2026 as {[(b, [x['number'] for x in xs]) for b, xs in keyed.items()]}")
+        assert "2025-S-117 is filed under HB287 in the roll-call file and drawn under SB287" in r.stdout, (
+            "rollcall_parser does not say what the corrections file did: " + r.stdout[-400:])
+        # An entry this cannot apply stops the run rather than passing.
+        for bad in ({"2025-S-117": dict(entry, belongs_to="HB287")}, {"S-117": entry},
+                    {"2025-S-117": dict(entry, says="")}, ["2025-S-117"]):
+            corr.write_text(json.dumps({"misfiled": bad}), encoding="utf-8")
+            reset(corr)
+            try:
+                RP.refiled()
+            except SystemExit:
+                continue
+            raise AssertionError(f"rollcall_corrections.json took {bad} rather than refusing it")
+        reset(d / "corrections" / "absent.json")
+        assert RP.refiled() == {} and RP.roll_call_bill("2025", "S", 117, "HB287") == "HB287", (
+            "with no corrections file a roll call still moved")
+    finally:
+        RP.REFILED = keep[0]
+        RP._REFILED.clear()
+        RP._REFILED.update(keep[1])
+        RP.REFILED_SEEN.clear()
+        RP.REFILED_SEEN.update(keep[2])
+        shutil.rmtree(d, ignore_errors=True)
+    # build_data names every ballot's bill through the same function, and says
+    # what the file did, so the members' Votes tabs move with the bill's page;
+    # and so does the floor index, so the day's recording moves with them.
+    src = _paths.locate("build_data.py").read_text(encoding="utf-8")
+    assert "RP.roll_call_bill(r[0], r[1], r[2], r[4])" in src and \
+        "RP.refiled_report(complete=False)" in src, (
+        "build_data.py no longer names a ballot's bill through rollcall_parser.roll_call_bill, or "
+        "no longer says what rollcall_corrections.json did")
+    assert "RP.roll_call_bill(p[0], p[1], p[2], p[4])" in \
+        _paths.locate("build_floor_index.py").read_text(encoding="utf-8"), (
+        "build_floor_index.py no longer names a roll call's bill through rollcall_parser.roll_call_bill, "
+        "so a roll call a person moved keeps its recording on the bill it was filed under")
+    # THE PERSON'S OWN FILE, read and never written: each entry still matches
+    # the roll call the files on disk hold (records/rollcalls/ is in git).
+    real = _paths.ROOT / "corrections" / "rollcall_corrections.json"
+    if not real.is_file():
+        return "ok", ("2025-S-117 moves to SB 287 in a project of the check's own, in parse, "
+                      "rollcalls.json and roll_call_bill; a stale entry is not applied, a malformed one "
+                      "stops; no corrections/rollcall_corrections.json of the person's yet")
+    try:
+        entries = dict(RP.refiled(real))
+    except SystemExit as e:
+        raise AssertionError(str(e)) from None
+    found, years = {}, set()
+    files = sorted((_paths.ROOT / "records" / "rollcalls").glob("RollCallSummary_*.txt"))
+    files.append(_paths.ROOT / "RollCallSummary.txt")
+    for f in files:
+        if not f.is_file():
+            continue
+        for line in f.read_text(encoding="utf-8-sig", errors="replace").splitlines():
+            p = line.split("|")
+            if len(p) < 13 or not p[2].strip().isdigit():
+                continue
+            k = (p[0].strip().lstrip("﻿"), p[1].strip(), int(p[2]))
+            years.add(k[0])
+            if k in entries:
+                found.setdefault(k, RP.bill_number(p[4]) or p[4].strip())
+    bad, unread = [], []
+    for k, e in sorted(entries.items()):
+        name = f"{k[0]}-{k[1]}-{k[2]}"
+        if k not in found:
+            (bad if k[0] in years else unread).append(f"{name} is in no roll-call file of {k[0]} here")
+        elif found[k] != RP.bill_number(e.get("says")):
+            bad.append(f"{name} is filed under {found[k]} in the roll-call file now, not "
+                       f"{RP.bill_number(e.get('says'))}: the entry is stale")
+    assert not bad, "corrections/rollcall_corrections.json: " + "; ".join(bad)
+    return "ok", (f"a project of the check's own moves 2025-S-117 to SB 287, refuses a malformed entry and "
+                  f"leaves a stale one; the person's {len(entries)} "
+                  f"entr{'y matches' if len(entries) == 1 else 'ies match'} the roll-call files here"
+                  + (f" ({'; '.join(unread)})" if unread else ""))
 
 
 # Every docket and Journal line below is copied from the files on disk, and
@@ -100515,7 +100674,9 @@ def _language_sweep_words(civics, C):
              "Choose a time on a card to jump the recording there."),
             ("app.js", app, 's.venue?" · "+esc(s.venue)', "roomWords(s.venue)"),
             ("chrome.py", src("chrome.py"), "MIT Open Source Licensed", "Open source (MIT License)"),
-            ("build_pages.py", pages, "/bill/&lt;year&gt;/&lt;number&gt;", "<code>/bill/2026/hb1</code>"),
+            # The example a page the build writes (not_found_example; P2 of the
+            # polish of 26 October 2026), held by _not_found_example_is_there.
+            ("build_pages.py", pages, "/bill/&lt;year&gt;/&lt;number&gt;", "<code>[[example]]</code>"),
             ("build_rsa.py", src("build_rsa.py"), "the bills now proposing to",
              "laws not yet included."),
             ("build_site_v2.py", src("build_site_v2.py"), '"text": f"Still in interim study when',
@@ -112342,6 +112503,78 @@ def _chapter_addresses_one_rule(BR, BSV, G, BP, RSA):
     return "ok", (f"bill records, guides, app.js and the not-found page give /laws/404/; "
                   f"{sum(good.values())} addresses of it across {len(good)} built files, none without "
                   "its slash" + ("; " + "; ".join(said) if said else ""))
+
+
+@check("build", "the not-found page's example address is a bill page the build writes: HB 1 of the "
+       "newest term with a page, else that term's first bill, at the year its page is under",
+       needs=("build_pages",))
+def _not_found_example_is_there(BP):
+    """P2 of the polish of 26 October 2026: every 404 said "for example
+    /bill/2026/hb1", and HB 1 of the 2025-2026 term was filed in 2025, so the
+    one address offered to a lost reader was itself a 404 (/bill/2025/hb1 is
+    the page). build_pages.not_found_example reads it off the bill index the
+    way build_bill_pages.py writes the pages: the index row's year, and only
+    a bill with a record to write its page from. Here, on a site of a few
+    files: HB 1 at its own year before a bill listed ahead of it; a term with
+    no record yet passed over for the term before it; a record already
+    inlined into its page counted; no index, no example and no "for example"
+    clause. Then, on the fixture site, the address its built 404.html offers
+    is a page the build wrote. On the preview of 26 October 2026 (the real
+    record) the rule gives /bill/2025/hb1, the budget, which answers 200."""
+    root = Path(tempfile.mkdtemp(prefix="gr-404ex-"))
+    site = root / "site"
+
+    def plant(rows, records=(), pages=()):
+        shutil.rmtree(site, ignore_errors=True)
+        terms = sorted({r["term"] for r in rows})
+        _mk(site / "meta.json").write_text(json.dumps({"terms": terms}), encoding="utf-8")
+        for t in terms:
+            _mk(site / "idx" / f"{t}.json").write_text(
+                json.dumps([r for r in rows if r["term"] == t]), encoding="utf-8")
+        for yr, bid in records:
+            _mk(site / "bills" / yr / f"{bid}.json").write_text("{}", encoding="utf-8")
+        for yr, bid in pages:
+            _mk(site / "bill" / yr / f"{bid.lower()}.html").write_text("<p>x</p>", encoding="utf-8")
+
+    try:
+        rows = [{"term": "2025-2026", "id": "HB561", "year": "2026"},
+                {"term": "2025-2026", "id": "HB1", "year": "2025"},
+                {"term": "2025-2026", "id": "HB2", "year": ""},
+                {"term": "2027-2028", "id": "HB1", "year": "2027"}]
+        plant(rows, records=[("2026", "HB561"), ("2025", "HB1")])
+        got = [BP.not_found_example(site)]
+        plant(rows, records=[("2026", "HB561")])
+        got.append(BP.not_found_example(site))
+        plant(rows, records=[("2027", "HB1")], pages=[("2025", "HB1")])
+        got.append(BP.not_found_example(site))
+        plant(rows, pages=[("2025", "HB1")])
+        got.append(BP.not_found_example(site))
+        shutil.rmtree(site, ignore_errors=True)
+        got.append(BP.not_found_example(site))
+    finally:
+        shutil.rmtree(root, ignore_errors=True)
+    want = ["/bill/2025/hb1", "/bill/2026/hb561", "/bill/2027/hb1", "/bill/2025/hb1", ""]
+    assert got == want, f"the not-found page's example on five sites is {got}, not {want}"
+    with_one = BP.not_found_body("/bill/2025/hb1")
+    without = BP.not_found_body("")
+    assert "<code>/bill/2025/hb1</code>, and a bill number" in with_one, \
+        "the not-found page does not give the example it was handed"
+    assert "for example" not in without and "has a page of its own, and a bill number" in without, \
+        "with no example the not-found page still says 'for example', or lost the sentence round it"
+    absent = [x for x in CHAIN_NEEDS if not _paths.locate(x).exists()]
+    if absent:
+        return "ok", "the example is chosen as held; the fixture site was not built: not here, " + \
+            ", ".join(absent)
+    shared, _base, _ran, _days = _fixture_site_shared()
+    built = shared / "site"
+    page = (built / "404.html").read_text(encoding="utf-8")
+    found = re.findall(r"for example\s*<code>(/bill/(\d{4})/([a-z0-9]+))</code>", page)
+    assert len(found) == 1, f"the fixture's 404.html offers {len(found)} bill addresses as its example"
+    addr, yr, bid = found[0]
+    assert (built / "bill" / yr / f"{bid}.html").is_file(), (
+        f"the fixture's 404.html offers {addr}, and the build wrote no page there")
+    return "ok", (f"HB 1 first, at its own year, from the newest term with a record; the fixture's "
+                  f"404.html offers {addr}, a page the build wrote")
 
 
 @check("build", "check_site holds the sitemap to the site both ways: an address only a folder answers "
