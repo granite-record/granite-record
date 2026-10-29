@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-18.15
+# GRANITE_VERSION: 2026-09-18.16
 """
 Where every seat on the New Hampshire House floor goes, as a diagram.
 
