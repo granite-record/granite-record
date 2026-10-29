@@ -9095,7 +9095,13 @@ function videoView(o){
   // keyboard back on Play (the review of 29 October 2026). Play, On YouTube,
   // this, then the detail, then the rows.
   const lv=o.level===2?2:3;
-  return `<div class="vw" data-vwkey="${esc(o.key||"")}"><div class="vwmain">${vwPlayer(o,on)}`
+  // THE LIVE STRIP'S PLACE (the live layer's design, approved; the manager,
+  // 29 October 2026): the first thing in the band that stays at the top on a
+  // phone, empty and hidden, so it is no height at all. The live layer's
+  // live.js fills it ("House Finance is live now · Watch") and draws it with
+  // its own .lv-strip rules, only on the Videos tab and only once the live
+  // card has scrolled away; nothing here writes or styles it.
+  return `<div class="vw" data-vwkey="${esc(o.key||"")}"><div class="vwmain"><div class="lv-strip" hidden></div>${vwPlayer(o,on)}`
     +'<p class="vwsay sr" role="status" aria-live="polite"></p>'
     +`<a class="vwskip" href="${esc(location.pathname+location.search)}#vwlist" data-vwskip>Skip to the list of recordings</a></div>`
     +`<div class="vwdet"><div class="vwdetin">${vwDetail(on)}</div></div>`

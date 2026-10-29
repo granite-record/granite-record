@@ -77270,6 +77270,41 @@ process.stdout.write("\n@@" + JSON.stringify(out));
 """
 
 
+@check("frontend", "a Videos view keeps the live strip's place first in the band that stays at the top: "
+                   "empty, hidden, no height, and nothing here styles it")
+def _videos_live_strip_place():
+    """From the live layer's design, approved (the manager, 29 October 2026):
+    the band that stays at the top of a phone's window (.vwmain, vwPlayer's
+    container) holds one empty first child, <div class="lv-strip" hidden>,
+    which the live layer's live.js fills ("House Finance is live now ·
+    Watch") and draws with its own .lv-strip rules. Hidden, it must not
+    change the band's height: so app.css has no rule for it, and none that
+    reaches it sets a display that would beat the browser's own [hidden]."""
+    got = _app_js('scope.videoView({rows:[{id:"abc",date:"2026-02-03",seconds:3600,count:"2 bills"},'
+                  '{id:"def",date:"2026-02-10"}],pid:r=>"vw-"+r.id,who:"House Finance",heading:"2 recordings",'
+                  'href:id=>"/committee/H34/videos/"+id,key:"H34"})', names=("videoView",))
+    if got is None:
+        return "skip", "node, app.js or tests/dom_stub.js is not here"
+    assert got.startswith('<div class="vw" data-vwkey="H34"><div class="vwmain"><div class="lv-strip" hidden></div>'
+                          '<div class="player vwplay"'), (
+        "the Videos band does not begin with the live strip's empty, hidden place: " + got[:200])
+    assert got.count("lv-strip") == 1, "the live strip's place is written more than once in a view"
+    css = Path("src/pages/app.css").read_text(encoding="utf-8")
+    assert "lv-strip" not in css, "app.css styles .lv-strip, which is the live layer's to draw"
+    for pin in ({}, {"data-vwpin": "", "data-vwstuck": ""}):
+        chain = [{"tag": "div", "ids": set(), "classes": {"lv-strip"}, "attrs": {"class": "lv-strip", "hidden": ""},
+                  "states": set()},
+                 {"tag": "div", "ids": set(), "classes": {"vwmain"}, "attrs": {"class": "vwmain"}, "states": set()},
+                 {"tag": "div", "ids": set(), "classes": {"vw"}, "attrs": {"class": "vw", **pin}, "states": set()},
+                 {"tag": "body", "ids": set(), "classes": {"pg"}, "attrs": {"class": "pg"}, "states": set()}]
+        shows = [(sel, line) for ctx, sel, body, line in _css_rules(css)
+                 if not any(re.search(r"\bprint\b", c) for c in ctx) and _css_can_reach(sel, chain)
+                 and any(k == "display" for k, _v in _css_decls(body))]
+        assert not shows, (
+            f"a rule sets the hidden live strip's display, so it takes height in the band: {shows[:3]}")
+    return "ok", "the band's first child is <div class=\"lv-strip\" hidden></div>, once, and no rule here draws it"
+
+
 @check("frontend", "on a phone a Videos view is a playlist as YouTube's: the player stays at the top under "
                    "the tab strip while every recording scrolls on the page beneath it, and nothing the "
                    "keyboard moves to is left under the player; a desktop's view as it was")
