@@ -19772,6 +19772,16 @@ F.FIND.rows = FIX["/find.json"];
 const panel = document.getElementById("findout");
 const draw = (s) => { F.findDraw(s); return panel.innerHTML; };
 (async () => {
+  // "cold": /search opened before any bill has arrived, so its first draw is
+  // made while the term's bills are on their way, as a reader's is.
+  if (MODE === "cold") {
+    script("./search.js");
+    location.search = "?q=firearms";
+    ready(); await ticks(40);
+    console.log(JSON.stringify({cold: {lead: document.getElementById("reslead").textContent,
+                                       say: document.getElementById("ressay").textContent}}));
+    return;
+  }
   const res = {q: {}, panel: {}};
   draw("");
   res.askedIdle = ASKED.slice();
@@ -19813,7 +19823,8 @@ const draw = (s) => { F.findDraw(s); return panel.innerHTML; };
     res.search = {};
     for (const s of ["firearms", "abbas", "voting", "xyzzy", "bail", "bailey", "SB 5", "pistal"]) {
       if (s !== "firearms") { box.value = s; box.fire("input"); await ticks(20); }
-      res.search[s] = {lead: lead.textContent, html: out.innerHTML};
+      res.search[s] = {lead: lead.textContent, html: out.innerHTML,
+                       say: document.getElementById("ressay").textContent};
     }
     // Every term's count, as /search makes it, for /bills?term=all to match.
     res.all = {state: F.FALL.rows ? "ready" : F.FALL.failed ? "failed" : "loading", q: {}};
@@ -20019,46 +20030,9 @@ def _find_bills(BP):
     need = [Path(f) for f in ("src/pages/app.js", "src/pages/find.js", "tests/dom_stub.js")]
     if not all(f.exists() for f in need):
         return "skip", "app.js, find.js or dom_stub.js not in this directory"
-    app = Path("src/pages/app.js").read_text(encoding="utf-8")
-    try:
-        matcher = BP.bill_matcher_js(app)
-    except SystemExit as e:
-        raise AssertionError(f"build_pages cannot cut the matcher out of "
-                             f"app.js: {e}")
-    m = re.search(r"<script>(.*?)</script>", BP.SEARCH_JS, re.S)
-    assert m, "build_pages.SEARCH_JS carries no <script>"
-    root = Path(tempfile.mkdtemp())
-    try:
-        files = {"stub.js": Path("tests/dom_stub.js").read_text(encoding="utf-8"),
-                 "app.js": _with_components(app), "billmatch.js": matcher,
-                 # components.js first, as every page loads it: the header's
-                 # panel draws each row's kind with its chip() (step 3).
-                 "find.js": _with_components(Path("src/pages/find.js").read_text(encoding="utf-8")),
-                 "search.js": m.group(1),
-                 "fixture.json": json.dumps(_find_bills_fixture()),
-                 "queries.json": json.dumps(_FIND_BILLS_QUERIES),
-                 "app_side.js": _FIND_BILLS_APP,
-                 "panel_side.js": _FIND_BILLS_PANEL}
-        for name, text in files.items():
-            (root / name).write_text(text, encoding="utf-8")
-
-        def node(*args):
-            r = _run(["node", *args], cwd=root, capture_output=True,
-                     text=True, timeout=90)
-            said = (r.stdout + r.stderr).strip()
-            assert r.returncode == 0 and said, (
-                f"node {' '.join(args)}: "
-                + (said.splitlines() or ["no output"])[-1][:200])
-            return json.loads(said.splitlines()[-1])
-
-        A = node("app_side.js")
-        AA = node("app_side.js", "all")
-        P = node("panel_side.js")
-        X = node("panel_side.js", "fail")
-        FO = node("panel_side.js", "failold")
-        SO = node("panel_side.js", "slowold")
-    finally:
-        shutil.rmtree(root, ignore_errors=True)
+    A, AA, P, X, FO, SO = _find_bills_run(
+        BP, ("app_side.js",), ("app_side.js", "all"), ("panel_side.js",), ("panel_side.js", "fail"),
+        ("panel_side.js", "failold"), ("panel_side.js", "slowold"))
 
     # The two sides agree, search by search.
     assert A["term"] == "2025-2026" and A["loaded"], (
@@ -20371,6 +20345,126 @@ def _find_bills(BP):
                   "sponsor, and /bills offers the Sponsor filter for it")
 
 
+def _find_bills_run(BP, *runs):
+    """_find_bills_fixture through _FIND_BILLS_APP (app_side.js) and
+    _FIND_BILLS_PANEL (panel_side.js, which runs /search's script too): each
+    of `runs` is the node arguments of one run, the file and its mode; their
+    JSON, in order."""
+    app = Path("src/pages/app.js").read_text(encoding="utf-8")
+    try:
+        matcher = BP.bill_matcher_js(app)
+    except SystemExit as e:
+        raise AssertionError(f"build_pages cannot cut the matcher out of "
+                             f"app.js: {e}")
+    m = re.search(r"<script>(.*?)</script>", BP.SEARCH_JS, re.S)
+    assert m, "build_pages.SEARCH_JS carries no <script>"
+    root = Path(tempfile.mkdtemp())
+    try:
+        files = {"stub.js": Path("tests/dom_stub.js").read_text(encoding="utf-8"),
+                 "app.js": _with_components(app), "billmatch.js": matcher,
+                 # components.js first, as every page loads it: the header's
+                 # panel draws each row's kind with its chip() (step 3).
+                 "find.js": _with_components(Path("src/pages/find.js").read_text(encoding="utf-8")),
+                 "search.js": m.group(1),
+                 "fixture.json": json.dumps(_find_bills_fixture()),
+                 "queries.json": json.dumps(_FIND_BILLS_QUERIES),
+                 "app_side.js": _FIND_BILLS_APP,
+                 "panel_side.js": _FIND_BILLS_PANEL}
+        for name, text in files.items():
+            (root / name).write_text(text, encoding="utf-8")
+        got = []
+        for args in runs:
+            r = _run(["node", *args], cwd=root, capture_output=True,
+                     text=True, timeout=90)
+            said = (r.stdout + r.stderr).strip()
+            # What a script threw, where node ends on its version line.
+            thrown = [x for x in said.splitlines() if re.match(r"\s*\w*Error\b|RUN |LOAD ", x)]
+            assert r.returncode == 0 and said, (
+                f"node {' '.join(args)}: "
+                + (thrown or said.splitlines() or ["no output"])[-1][:200])
+            got.append(json.loads(said.splitlines()[-1]))
+        return got
+    finally:
+        shutil.rmtree(root, ignore_errors=True)
+
+
+@check("frontend", "/search says what it found to a screen reader: one role=status line that counts "
+       "each group as the page lists it, or says nothing matched, once the bills are counted",
+       needs=("build_pages",))
+def _search_says_counts(BP):
+    """The accessibility sweep of the R1 preview (29 October 2026; WCAG
+    4.1.3, status messages): /search draws its results as the reader types,
+    and nothing told a screen reader that they had come, how many there
+    were, or that there were none. The header's panel has said so since 2
+    October (find.js, findSay); the page with the cap off said nothing.
+
+    So /search writes one line the eye does not see, <p class="sr"
+    id="ressay" role="status">, as the fixture's build writes the page, and
+    the page's script fills it each time it draws: each group it lists,
+    counted, in the page's own order, and the bills and next session's
+    requests where the page puts them -- "1 senator, 2 bills." -- or "No
+    matching results." It says nothing while the bills, the earlier terms or
+    the requests are still on their way, so the answer is said once, when
+    it is whole, and not "1 senator" and then "1 senator, 2 bills". The page
+    is in English alone: there is no /es/search (build_pages writes
+    search.html once), so the words are not the catalog's."""
+    if not shutil.which("node"):
+        return "skip", "node is not installed"
+    need = [Path(f) for f in ("src/pages/app.js", "src/pages/find.js", "tests/dom_stub.js")]
+    if not all(f.exists() for f in need):
+        return "skip", "app.js, find.js or dom_stub.js not in this directory"
+    shared, _base, _ran, _days = _fixture_site_shared()
+    page = (shared / "site" / "search.html").read_text(encoding="utf-8")
+    lines = []
+    _html_walk(page, element=lambda c: lines.append(c[0]) if "ressay" in c[0]["ids"] else None)
+    assert len(lines) == 1 and lines[0]["attrs"].get("role") == "status" \
+        and "sr" in lines[0]["classes"], (
+        f"the fixture's search.html does not carry one <p class=\"sr\" id=\"ressay\" "
+        f"role=\"status\">: {[e['attrs'] for e in lines]}")
+    P, SO, CO = _find_bills_run(BP, ("panel_side.js",), ("panel_side.js", "slowold"),
+                                ("panel_side.js", "cold"))
+    M, = _find_more_run(BP, ("panel", ""))
+    s, m = P["search"], M["search"]
+    n = P["all"]["q"]["firearms"]["n"]
+    want = {"firearms": f"{n} bills.", "xyzzy": "No matching results.",
+            "pistal": "No matching results. Did you mean pistol?"}
+    bad = [f"/search?q={q} says {s[q]['say']!r}, not {w!r}" for q, w in want.items() if s[q]["say"] != w]
+    # A name and the bills: each group counted, in the order the page draws them.
+    for q, page_ in (("abbas", s["abbas"]), ("bail", s["bail"]), ("bailey", s["bailey"]),
+                     ("RSA 91-A", m["RSA 91-A"]), ("data centers", m["data centers"])):
+        heads = re.findall(r"<h2>([^<]*?)(?:\s*<span class=\"resn\">([\d,]+)</span>)?\s*</h2>",
+                           page_["html"])
+        said = page_["say"]
+        if not said.endswith(".") or said == "No matching results.":
+            bad.append(f"/search?q={q} says {said!r} over the groups {heads}")
+            continue
+        got = [x.strip() for x in said[:-1].split(",")]
+        drawn = [f"{c} {t}" for t, c in heads if c]
+        shown = [g.split(" ", 1) for g in got]
+        if [c for c, _w in shown if not c.isdigit()] or \
+                [c.replace(",", "") for c, _w in shown][:len(drawn)] != \
+                [c.replace(",", "") for t, c in heads if c][:len(got)]:
+            bad.append(f"/search?q={q} says {said!r} where the page lists {drawn}")
+    assert "bill request" in m["data centers"]["say"] and "law" in m["RSA 91-A"]["say"].split(", ")[0], (
+        f"/search does not count the Law and the requests it lists: {m['RSA 91-A']['say']!r}, "
+        f"{m['data centers']['say']!r}")
+    # Opened before the bills have come: the first draw does not throw, and
+    # once they are counted the line says so.
+    assert CO["cold"]["say"] == f"{n} bills.", (
+        f"/search opened before the bills have arrived says {CO['cold']['say']!r} once they are "
+        f"counted ({CO['cold']['lead']!r})")
+    # The earlier terms on their way: nothing is said yet.
+    assert SO["search"]["firearms"]["say"] == "" and SO["search"]["xyzzy"]["say"] == "", (
+        f"while the earlier terms are being counted /search says "
+        f"{SO['search']['firearms']['say']!r} and {SO['search']['xyzzy']['say']!r}: it says the answer "
+        f"before it is whole, and then again")
+    assert not bad, "/search does not say what it found: " + "; ".join(bad[:4])
+    return "ok", ("/search's status line, as the fixture builds the page: " + "; ".join(
+        f"{q!r} {x['say']!r}" for q, x in (("firearms", s["firearms"]), ("abbas", s["abbas"]),
+                                           ("RSA 91-A", m["RSA 91-A"]), ("xyzzy", s["xyzzy"])))
+        + "; nothing while the earlier terms are counted")
+
+
 # THE FIXTURE FOR _find_laws_and_requests: _find_bills_fixture's, with what a
 # statute's number and a request's are read against -- the Laws pages' list
 # of chapters, two bills that say they change RSA 91-A (one this term, one
@@ -20453,7 +20547,8 @@ const draw = (s) => { F.findDraw(s); return panel.innerHTML; };
         out = document.getElementById("resout");
   for (const s of Q.search) {
     if (s !== Q.search[0]) { box.value = s; box.fire("input"); await ticks(40); }
-    res.search[s] = {lead: lead.textContent, html: out.innerHTML};
+    res.search[s] = {lead: lead.textContent, html: out.innerHTML,
+                     say: document.getElementById("ressay").textContent};
   }
   for (const s of Q.search) {
     const A = F.findBills(s, 40, true), R = F.findBills(s, 0, "requests");

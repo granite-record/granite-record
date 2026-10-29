@@ -2120,6 +2120,7 @@ document.addEventListener("DOMContentLoaded",function(){
 const esc=s=>String(s==null?"":s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
 const box=document.getElementById("resq");
 const out=document.getElementById("resout");
+const said=document.getElementById("ressay");
 const head=document.getElementById("reshead");
 const lead=document.getElementById("reslead");
 if(!box||!out)return;
@@ -2138,28 +2139,28 @@ const GROUPS=[
   // the bills.
   // A STATUTE ASKED FOR BY ITS NUMBER, FIRST (the audit of 25 October 2026,
   // M3): find.js's one Law row, "RSA 91-A" (findLawRow).
-  {t:"Laws",                k:r=>r[0]==="law"},
-  {t:"How-To Guides",       k:r=>r[0]==="guide"},
-  {t:"Senators",            k:r=>r[0]==="legislator"&&/^Senate/.test(r[2])},
-  {t:"Representatives",     k:r=>r[0]==="legislator"},
+  {t:"Laws",                w:["law","laws"],k:r=>r[0]==="law"},
+  {t:"How-To Guides",       w:["how-to guide","how-to guides"],k:r=>r[0]==="guide"},
+  {t:"Senators",            w:["senator","senators"],k:r=>r[0]==="legislator"&&/^Senate/.test(r[2])},
+  {t:"Representatives",     w:["representative","representatives"],k:r=>r[0]==="legislator"},
   // A committee that no longer sits goes with the people who have left, below
   // the ones that do (find.js, _fgone).
-  {t:"Committees",          k:r=>r[0]==="committee"&&!r[5]},
+  {t:"Committees",          w:["committee","committees"],k:r=>r[0]==="committee"&&!r[5]},
   // A city above its wards, each ward a Ward (find.json, 25 October 2026).
-  {t:"Towns and wards",     k:r=>r[0]==="town"||r[0]==="ward"},
-  {t:"Subjects",            k:r=>r[0]==="topic"},
+  {t:"Towns and wards",     w:["town or ward","towns and wards"],k:r=>r[0]==="town"||r[0]==="ward"},
+  {t:"Subjects",            w:["subject","subjects"],k:r=>r[0]==="topic"},
   // THE OFFICIALS PAGE AND ITS TABS, before the bills where a name of theirs
   // was typed (the audit of 25 October 2026, M3): "my senator" is the page,
   // "ayotte" its Executive Branch, "shaheen" its Federal Delegation.
-  {t:"Officials",           k:r=>r[0]==="page"&&/^[/]?officials([#?]|$)/.test(r[3])},
+  {t:"Officials",           w:["officials page","officials pages"],k:r=>r[0]==="page"&&/^[/]?officials([#?]|$)/.test(r[3])},
   // Their own group, after the bills (AFTER): find.js, _fstudy (18 October 2026).
-  {t:"Statutory and study committees",k:r=>r[0]==="statutory"||r[0]==="study"},
-  {t:"Former senators",     k:r=>r[0]==="former"&&/^Senate/.test(r[2])},
-  {t:"Former representatives",k:r=>r[0]==="former"&&/^House/.test(r[2])},
-  {t:"Former members",      k:r=>r[0]==="former"},
-  {t:"Former committees",   k:r=>r[0]==="committee"},
-  {t:"Learn",               k:r=>r[0]==="learn"},
-  {t:"Pages on this site",  k:r=>r[0]==="page"}
+  {t:"Statutory and study committees",w:["statutory or study committee","statutory and study committees"],k:r=>r[0]==="statutory"||r[0]==="study"},
+  {t:"Former senators",     w:["former senator","former senators"],k:r=>r[0]==="former"&&/^Senate/.test(r[2])},
+  {t:"Former representatives",w:["former representative","former representatives"],k:r=>r[0]==="former"&&/^House/.test(r[2])},
+  {t:"Former members",      w:["former member","former members"],k:r=>r[0]==="former"},
+  {t:"Former committees",   w:["former committee","former committees"],k:r=>r[0]==="committee"},
+  {t:"Learn",               w:["Learn page","Learn pages"],k:r=>r[0]==="learn"},
+  {t:"Pages on this site",  w:["page on this site","pages on this site"],k:r=>r[0]==="page"}
 ];
 
 // A committee by its chamber, as the header's rows show it (find.js, findName).
@@ -2267,6 +2268,7 @@ let waiting=false,waitingAll=false,waitingWords=false,waitingLaw=false,waitingRe
 function draw(q){
   const s=(q||"").trim();
   if(!s){
+    tell("");
     head.textContent="Search the record";
     lead.textContent="Every sitting legislator and every member who has left, "
       +"every committee, every town and ward, every subject bills are filed "
@@ -2339,19 +2341,28 @@ function draw(q){
   // October 2026): a guide found by its own words is never put above a bill
   // whose number was typed.
   const named=!findBill(s)&&rows.some(r=>r[0]==="law"||(r[0]!=="former"&&_fwhole(r,s)));
-  const left=rows.slice();
+  const left=rows.slice(),counts=[];
+  // The bills' part of the line a screen reader hears, where the page puts
+  // their group.
+  const billsSaid=()=>{
+    if(nB)counts.push(nB===1?"1 bill":`${nB.toLocaleString()} bills`);
+    if(nR)counts.push(nR===1?"1 bill request":`${nR.toLocaleString()} bill requests`);
+  };
   let html=named?"":bills(s,B,C,counting,R,mem),placed=!named;
+  if(placed)billsSaid();
   for(const g of GROUPS){
     const mine=[];
     for(let i=left.length-1;i>=0;i--)
       if(g.k(left[i]))mine.unshift(left.splice(i,1)[0]);
     if(!mine.length)continue;
-    if(!placed&&AFTER.has(g.t)){html+=bills(s,B,C,counting,R,mem);placed=true;}
+    if(!placed&&AFTER.has(g.t)){html+=bills(s,B,C,counting,R,mem);placed=true;billsSaid();}
+    counts.push(`${mine.length} ${g.w[mine.length===1?0:1]}`);
     html+=`<section class="resgrp"><h2>${esc(g.t)}
       <span class="resn">${mine.length}</span></h2>
       <div class="findout resout">${mine.map(r=>row(r,s)).join("")}</div></section>`;
   }
-  if(!placed)html+=bills(s,B,C,counting,R,mem);
+  if(!placed){html+=bills(s,B,C,counting,R,mem);billsSaid();}
+  let offered=[],offering=false;
   // Only when something close exists, and only when no bill matched either
   // ("voting" was offered "zoning" over 141 bills). find.js's findOffers
   // gives a name close to what was typed and the word of the bills that a
@@ -2364,11 +2375,28 @@ function draw(q){
       waitingWords=true;
       offer.wait.then(()=>draw(box.value));
     }
+    offered=offer.words;offering=!!offer.wait;
     const did=offer.words.map(d=>
       `<a href="/search?q=${_fenc(d)}">${esc(d)}</a>`);
     if(did.length)html=`<p class="note">Did you mean ${did.join(" or ")}?</p>`+html;
   }
   out.innerHTML=html;
+  // WHAT THE PAGE FOUND, SAID (the accessibility sweep of 29 October 2026,
+  // WCAG 4.1.3): the results are drawn as the reader types, and nothing told
+  // a screen reader they had come, or how many, or that there were none --
+  // the header's panel has said so since 2 October (find.js, findSay). One
+  // line the eye does not see, role="status", the groups in the page's own
+  // order: "1 town or ward, 19 bills." Nothing while the bills, the earlier
+  // terms, the requests or a word to offer are still on their way, so the
+  // answer is said once, when it is whole, and not once a step.
+  const unsure=(B&&B.state==="loading")||counting||(R&&R.state==="loading")||offering;
+  tell(unsure?"":counts.length?counts.join(", ")+"."
+    :"No matching results."+(offered.length?` Did you mean ${offered.join(" or ")}?`:""));
+}
+// Written only when it changes, so a redraw that finds what the last one
+// found is not said again.
+function tell(text){
+  if(said&&said.textContent!==text)said.textContent=text;
 }
 
 const q0=new URLSearchParams(location.search).get("q")||"";
@@ -4540,6 +4568,7 @@ under, and every bill since 1989.</p>
   <input id="resq" name="q" type="search" autocomplete="off"
     placeholder="Name, town, committee or bill" disabled>
 </form>
+<p class="sr" id="ressay" role="status"></p>
 <div id="resout"></div>
 <noscript><p class="note">This page needs JavaScript to search. Without it,
 the <a href="/bills">bill search</a>, the <a href="/officials">roster</a> and
