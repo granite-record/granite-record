@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-10-11.63
+# GRANITE_VERSION: 2026-10-11.64
 """
 The how-to guides: their words, their sources, and what each was checked
 against. Read by build_civics.py, which draws them on the Resources hub's
@@ -510,8 +510,9 @@ VOTING = guide(
                "use as proof has changed more than once this year and may change again before "
                "the election. The Secretary of State's page is the official word: check it "
                "before you go. On October 24, 2026 it still said that if you lack the documents "
-               "to prove your citizenship, you may sign a qualified voter affidavit instead, as "
-               "a court order of May 28, 2026 allowed again. The affidavit covers citizenship and "
+               "to prove your citizenship, you may sign a qualified voter affidavit instead, "
+               "subject to the penalties for voter fraud, as a court order of May 28, 2026 "
+               "allowed again. The affidavit covers citizenship and "
                "nothing else: you still need proof of identity, age and domicile."),
      step("Vote",
           "<p>On election day, go to your polling place. Every voter must show proof of identity "
@@ -614,8 +615,9 @@ VOTING = guide(
          "signed by the owner, manager or tenant where you live, and a separate form for people "
          "who are homeless.</p>"),
         ("What if I am missing a document?",
-         "<p>Ask your clerk: with your permission, election officials can check New Hampshire "
-         "voter, motor vehicle and vital records to help prove your qualifications. A certified "
+         "<p>Ask your clerk: with your permission, local election officials may be able to "
+         "check New Hampshire voter, motor vehicle and vital records to help prove your "
+         "qualifications. A certified "
          "copy of a New Hampshire birth or other vital record is free when it is only for "
          "registering to vote.</p>"),
         ("How early can I ask for an absentee ballot, and can I track it?",
