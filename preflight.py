@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.731
+# GRANITE_VERSION: 2026-09-04.732
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -106073,6 +106073,85 @@ def _elect_part(out, title):
     """One part of the step's report, from its title to the next blank line."""
     at = out.find(title)
     return "" if at < 0 else out[at:].split("\n\n")[0]
+
+
+@check("build", "election week's helper drafts from what the steps print, places the recount "
+       "schedule's races, reads one totals row of a question, asks nobody and writes only logs/",
+       needs=("election_week", "build_members_elect"))
+def _election_week_helper(EW, BME):
+    """src/ops/election_week.py (29 October 2026): the routine work around
+    saving the Secretary of State's files, which stays a person's. Its
+    drafts are read off build_members_elect.say_report's own printing, so a
+    change to that printing that the drafter no longer reads fails here, not
+    on election night; the recount schedule's races must be the race table's
+    keys; a question's count is read only from one totals row under one Yes
+    and one No; and the helper asks nobody and writes nothing outside logs/."""
+    import contextlib
+    import io
+    report = {"unlinked": [("H|Coos|5", "Peter Morency",
+                            "the first name fits only as the start of the sitting member's: "
+                            "Rep. Pete Morency (R - Coos 5) [8401] sits for Coos 5"),
+                           ("H|Merrimack|9", "Pat Smith", "two members: Rep. A [1]; Rep. B [2]")],
+              "new": [("H|Hillsborough|10", "Marty Jack", BME.NEW)],
+              "short": [("H|Coos|5", 1, 0, 0, 0, True)], "notes": ["a note"], "pending": ""}
+    buf = io.StringIO()
+    with contextlib.redirect_stdout(buf):
+        BME.say_report(report, Path("corrections/members_elect.json"), "2026-11-03")
+    rows = EW.step_rows(buf.getvalue())
+    assert [len(rows[k]) for k in ("NOT LINKED", "NEW", "DO NOT ADD UP", "NOTES")] == [2, 1, 1, 1], (
+        f"the drafter no longer reads build_members_elect's report: {rows}")
+    roster = [("733", "Jack, Martin", "H", "Hillsborough", "10", "sitting"),
+              ("9", "Jack, Other", "H", "Coos", "1", "sitting")]
+    d = EW.draft_matches(rows, "2026-11-03", roster)
+    m, ev = d["2026-11-03"]["matches"], d["_evidence"]
+    assert m == {"H|Coos|5": {"Peter Morency": "8401"}, "H|Merrimack|9": {"Pat Smith": None},
+                 "H|Hillsborough|10": {"Marty Jack": None}}, f"the drafted matches: {m}"
+    assert "Martin Jack [733]" in ev["H|Hillsborough|10"]["Marty Jack"] and \
+        "Other" not in ev["H|Hillsborough|10"]["Marty Jack"], (
+        f"a NEW name's same-surname member of its county is not named to check: {ev}")
+    races = {"H|Hillsborough|12": {}, "H|Hillsborough|40": {}, "S|24": {}}
+    sched = ("9:00 AM State Representative, Hillsborough County District 12 (Hudson)\n"
+             "1:00 PM Hillsborough County, District No. 40 - State Representatives\n"
+             "9:00 AM State Senate District 24\n2:00 PM Grafton Dist. 99\nTuesday, November 10\n")
+    draft, unplaced = EW.draft_recounts(sched, races, "2026-11-09", "2026-11-06", "2026-11-03")
+    assert sorted(draft["2026-11-03"]["not_final"]) == sorted(races) and \
+        draft["2026-11-03"]["recount_deadline"] == "2026-11-06" and \
+        unplaced == ["2:00 PM Grafton Dist. 99"], f"the recount draft: {draft} {unplaced}"
+    try:
+        import openpyxl
+    except ImportError:
+        openpyxl = None
+    if openpyxl is not None:
+        root = Path(tempfile.mkdtemp(prefix="ew_q_"))
+        try:
+            def book(name, totals):
+                wb = openpyxl.Workbook()
+                ws = wb.active
+                for r in ([["Question No. 1"], [], ["Town", "Yes", "No", "Blank", "Overvotes"],
+                           ["Concord", 9000, 3000, 800, 2]] + totals):
+                    ws.append(r)
+                wb.save(root / name)
+                return root / name
+            c = EW.question_count(book("one.xlsx", [["TOTALS", 14000, 5500, 1200, 3]]))
+            assert (c["yes"], c["no"], c["blank"], c["over"]) == (14000, 5500, 1200, 3), c
+            row = EW.draft_cacr(c, "https://www.sos.nh.gov/x", "CACR13", "2026-11-05")
+            assert row["two_thirds"]["ratified"] and row["row"]["yes"] == 14000, row
+            try:
+                EW.question_count(book("two.xlsx", [["TOTALS", 1, 2, 0, 0], ["Totals", 3, 4, 0, 0]]))
+                raise AssertionError("two totals rows were read as a count")
+            except SystemExit:
+                pass
+        finally:
+            shutil.rmtree(root, ignore_errors=True)
+    src = Path(_paths.script("election_week.py")).read_text(encoding="utf-8")
+    assert not re.search(r"urlopen|urllib\.request|requests\.|http\.client|socket", src), (
+        "election_week.py asks the network")
+    outs = re.findall(r'^[A-Z_]+ = LOGS / "([^"]+)"', src, re.M)
+    assert len(outs) >= 6 and "corrections/" not in "".join(re.findall(r"write_text|open\([^)]*w", src)) \
+        and not re.search(r"Path\(\s*[\"']corrections", src), (
+        "election_week.py writes outside logs/")
+    return "ok", ("drafts read off say_report, a recount schedule placed, one totals row "
+                  "read and two refused, no request, logs/ only")
 
 
 @check("build", "members-elect: a winner is linked to a page only on a certain match -- the "

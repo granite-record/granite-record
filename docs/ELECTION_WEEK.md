@@ -59,6 +59,46 @@ The night changes tense by itself. Check, once:
 - No Members-Elect tab on Officials, and no `/members_elect.json`. They come
   only from step 2 below.
 
+## The helper: `src/ops/election_week.py`
+
+It does the routine work around the one step that stays yours, saving the
+files in a browser (sos.nh.gov refuses scripted clients, and saving them
+stays a person's act: the decision of 16 October 2026). It asks nobody
+anything and writes only to `logs/`; every draft is yours to read and copy.
+
+- `status`: which of the eleven 2026 files are saved, which are missing, and
+  any later numbered upload the collected file has not read yet.
+- `check --url <the results page>`: until all eleven are saved, it says how
+  many are. With all eleven it runs steps 2 and 3 below, writes
+  `logs/election_week.md` (FILES, REFUSED, FLAGGED, NOT LINKED, NEW, DO NOT
+  ADD UP, NOTES, THE STEP SAID) and drafts the matches in
+  `logs/members_elect.matches.draft.json`: each NOT LINKED name with the
+  member the step names, or `null`, and each NEW name `null` with any member
+  of that surname in its county to CHECK ("Marty Jack": "Martin Jack [733]").
+  Then it is done, and later runs only say so, until a file it has not read
+  is saved (a recount's `_N`): then it runs once more.
+- `draft-recounts --schedule <the saved schedule> --day <its date>`: the
+  `"not_final"` block and `"recount_deadline": "2026-11-06"` in
+  `logs/members_elect.recounts.draft.json`, from the schedule's text (.txt,
+  .csv, or a PDF), and every line naming a district it could not place.
+- `draft-cacr --file <the question's spreadsheet> --url <the page>`: CACR
+  13's row in `logs/ballot_results.cacr.draft.json`, with whether two thirds
+  said yes. It reads the count only where the sheet has one header with a
+  Yes and a No and one totals row under it, and otherwise says to copy it by
+  hand. The 2026 layout has not been seen; read the draft against the page.
+
+To run `check` every hour from 4 November, 07:00 to 22:00, on the laptop
+(one line, in the repository's folder, `cmd` as yourself; delete the task
+with `schtasks /Delete /TN GraniteElectionWeek /F` once the results are in):
+
+```
+schtasks /Create /TN GraniteElectionWeek /SC HOURLY /MO 1 /ST 07:00 /ET 22:00 /SD 11/04/2026 /ED 11/20/2026 /TR "cmd /c cd /d %CD% && python3 src\ops\election_week.py check --url https://www.sos.nh.gov/2026-general-election-results >> logs\election_week.log 2>&1"
+```
+
+Check the results page's address on the day: if it is not
+`https://www.sos.nh.gov/2026-general-election-results`, give the one you
+saved the files from (the Officials tab cites it).
+
 ## When the Secretary of State has posted every results file
 
 Wait for all eleven: the ten county House spreadsheets and the Senate one. The
