@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.726
+# GRANITE_VERSION: 2026-09-04.727
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -54197,16 +54197,15 @@ def _review_of_audit_fixes(BP):
                    f"to be there when Tab reaches it and gone when focus has left both: {seat}")
     if seat.get("arrow") != {"focused": 1, "stops": [1]} or seat.get("end") != {"focused": 3, "stops": [3]}:
         bad.append(f"the arrow keys no longer walk the seats with one Tab stop among them: {seat}")
-    # A CHART IN A TAB NOT YET OPEN (the review of 7 October 2026): the
-    # legislators page opens on Towns, the chart's box is 0px wide when the
-    # script runs, and a phone that went Legislators, then By seat, got the
-    # whole floor at 100% with seats five pixels across.
+    # THE CHART OPENS ZOOMED TO FIT, ON A PHONE AS EVERYWHERE (the owner, 29
+    # October 2026, board item 7). It opened zoomed in, 315% at 390px, and a
+    # chart in a tab not yet open waited for its box's width to do it (the
+    # review of 7 October 2026); now the script writes no zoom until the
+    # reader asks, in a hidden tab or once it is shown, and watches nothing.
     hid = got.get("seatHidden") or {}
-    shown = str(hid.get("shown") or "")
-    if hid.get("zoom") != "100%" or hid.get("watching") != 1 or not shown.endswith("%") \
-            or abs(float(shown[:-1] or 0) - 1100 / 349 * 100) > 1e-6 or not hid.get("letGo"):
-        bad.append("a seat map drawn in a hidden tab does not wait for its box's width to "
-                   f"zoom a 349px phone in, and then stop watching: {hid}")
+    if hid != {"zoom": None, "watching": 0, "shown": None, "letGo": True}:
+        bad.append("the seat map does not open zoomed to fit: it writes a zoom of its own on "
+                   f"opening, or watches its box for one: {hid}")
     # THE SPEAKER'S CHAIR LIGHTS (the review of 7 October 2026): his number
     # is on the group round the circle, and choosing him named him and lit his
     # row but never the chair.
@@ -54216,8 +54215,8 @@ def _review_of_audit_fixes(BP):
     assert not bad, "; ".join(bad[:5])
     return "ok", ("Show more leaves the keyboard on the first row it brought, on the list and "
                   "on a member's votes; Play and a long analysis move focus when clicked; the "
-                  "seat map's svg hears no focus, its callout keeps its link, in a hidden tab "
-                  "it zooms once its box has a width and the Speaker's chair lights; a marked box is a "
+                  "seat map's svg hears no focus, its callout keeps its link, it opens zoomed to "
+                  "fit, in a hidden tab too, and the Speaker's chair lights; a marked box is a "
                   "stop only while it scrolls; the header's two widths are one, 1100px; and 7 "
                   "rules of the stylesheet and the pages stand")
 
@@ -54369,7 +54368,9 @@ document.querySelectorAll = all;
   out.seat = seat;
 
   // IN A TAB NOT YET OPEN the box is 0px wide when the script runs, as on the
-  // legislators page, which opens on Towns: the zoom waits for a width, once.
+  // legislators page, which opens on Towns. The chart opens zoomed to fit
+  // (the owner, 29 October 2026): no zoom written, there or once it is shown,
+  // and nothing watched for a width.
   const watched = [];
   globalThis.ResizeObserver = class { constructor(f) { this.f = f; this.off = false; watched.push(this); }
     observe(n) { this.n = n; } disconnect() { this.off = true; } };
@@ -54814,6 +54815,54 @@ def _seat_number_in_card(BP, SEAT):
     return "ok", ("each card on the floor ends in its seat's number, aria-hidden, the Speaker's in none, and "
                   f"the fixture's {len(unseated)} with no seat on file in none; a screen reader hears \"1-001\" "
                   f"and \"{heard}\", the eye \"{seen}\" and \"001\" at the card's right, on its first line")
+
+
+@check("frontend", "the seating chart's Zoom to fit is the four corners' icon in the box of - and +, "
+       "named and titled \"Zoom to fit\", in English and in Spanish")
+def _seat_zoom_fit_icon():
+    """The owner, 29 October 2026: the chart's "Fit", a word beside - and +,
+    is a zoom-to-fit icon, the map's four corners, in the same button size
+    and box as - and +, its accessible name and tooltip "Zoom to fit"; drawn
+    in currentColor, so forced colours draw it in the button's own colour.
+    Read on the fixture's built pages, English and Spanish, and app.css."""
+    import build_pages as BP
+    shared, _base, _ran, _days = _fixture_site_shared()
+    bad = []
+    icon = ('<svg viewBox="0 0 16 16" width="16" height="16" aria-hidden="true" focusable="false"><path '
+            'd="M1 5.5V1h4.5M10.5 1H15v4.5M15 10.5V15h-4.5M5.5 15H1v-4.5" fill="none" stroke="currentColor" '
+            'stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"/></svg>')
+    if BP.ZOOM_FIT_ICON != icon:
+        bad.append(f"the icon is not the four corners asked for: {BP.ZOOM_FIT_ICON}")
+    for page, name in (("officials.html", "Zoom to fit"), ("es/officials.html", None)):
+        f = shared / "site" / page
+        if not f.exists():
+            bad.append(f"the fixture has no {page}")
+            continue
+        html = f.read_text(encoding="utf-8")
+        m = re.search(r'<div class="seatzoom">(.*?)</div>', html, re.S)
+        btns = re.findall(r"<button ([^>]*)>(.*?)</button>", m.group(1), re.S) if m else []
+        if len(btns) != 3 or [re.search(r'id="(\w+)"', a).group(1) for a, _b in btns] != ["szout", "szin", "szfit"]:
+            bad.append(f"{page}: the zoom buttons are not -, + and Zoom to fit: {btns}")
+            continue
+        attrs, body = btns[2]
+        label = re.search(r'aria-label="([^"]*)"', attrs)
+        title = re.search(r'title="([^"]*)"', attrs)
+        if body != icon or not label or not title or label.group(1) != title.group(1) \
+                or (name and label.group(1) != name) or (not name and label.group(1) in ("", "Zoom to fit")):
+            bad.append(f"{page}: Zoom to fit is not the icon, named and titled alike in the page's "
+                       f"language: {attrs} {body[:80]}")
+        if "Fit<" in m.group(1) or ">Ajustar<" in m.group(1):
+            bad.append(f"{page}: the word Fit is still on the button")
+    css = Path("src/pages/app.css").read_text(encoding="utf-8")
+    box = re.search(r":where\(body\.pg\) \.seatzoom button\{([^}]*)\}", css)
+    if not box or "min-width:40px" not in box.group(1) or "min-height:40px" not in box.group(1):
+        bad.append("the zoom buttons are not one 40px box")
+    if re.search(r"#szfit\s*\{|\.seatzoom button:(?:last-child|nth-child)[^{]*\{", css):
+        bad.append("Zoom to fit has a box of its own, not - and +'s")
+    if ":where(body.pg) .seatzoom svg{display:block;margin:0 auto}" not in css:
+        bad.append("the icon is not centred in its box")
+    assert not bad, "the seating chart's Zoom to fit: " + "; ".join(bad[:4])
+    return "ok", "Zoom to fit is the four corners in - and +'s 40px box, named and titled in English and Spanish"
 
 
 @check("build", "a reports file keyed on bill number is refused, not ignored")
@@ -76690,7 +76739,8 @@ def _seat_chart_turned():
 @check("frontend", "the House seating chart prints whole, whatever the zoom on the screen it was loaded on")
 def _seat_chart_prints_whole():
     """The chart's width is the zoom's, written on the <svg> by the seat
-    script, and a screen under 1100px opens zoomed in -- 113% at 1024. A page
+    script, and a reader may have zoomed in (a screen under 1100px opened
+    zoomed in until 29 October 2026). A page
     printed after loading there kept that width inside a box that scrolls and
     clips, and the sheet lost the right of the floor, which since the turn is
     Division 5 and its caption (the review of 7 October 2026).

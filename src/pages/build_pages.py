@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.246
+# GRANITE_VERSION: 2026-09-04.247
 """
 Build the pages the navigation links to: legislators, town lookup, how it
 works, and about.
@@ -698,6 +698,17 @@ _SEAT_GAP = re.compile(r' (<span class="mtag">)')
 # the seat in full before the name, as it always has. The Speaker's card on
 # the rostrum carries none: the rostrum is no division, and its "6-002" is
 # a plate a reader has no use for.
+# ZOOM TO FIT, AN ICON (the owner, 29 October 2026): the seating chart's
+# "Fit" was a word between two signs; it is four corners, the map's zoom to
+# fit's icon too, in the box of the - and + beside it, named and titled
+# "Zoom to fit". Drawn in the button's own colour, so forced colours draw it
+# as they draw the button's text.
+ZOOM_FIT_ICON = ('<svg viewBox="0 0 16 16" width="16" height="16" aria-hidden="true" focusable="false">'
+                 '<path d="M1 5.5V1h4.5M10.5 1H15v4.5M15 10.5V15h-4.5M5.5 15H1v-4.5" fill="none" '
+                 'stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"/>'
+                 '</svg>')
+
+
 _SEAT_NUM = re.compile(r'<span class="sseat">(\d+)-(\d+)</span>')
 _ROW_END = "</span></li>"
 
@@ -1902,10 +1913,17 @@ SEATING_JS = """
   /* ZOOM, BECAUSE 400 SEATS DO NOT FIT A PHONE. The chart used to be pinned
      to a 680px minimum inside a sideways-scrolling box: on a 390px screen
      that is a seat about five pixels across, which is under half the
-     smallest thing a thumb can reliably hit. It is sized by zoom now, and a
-     narrow screen opens already zoomed in far enough for a seat to be a real
-     target -- the whole floor at once is no use if nothing on it can be
-     tapped. Fit puts it back. */
+     smallest thing a thumb can reliably hit. It is sized by zoom now, and
+     zooming in makes a seat a real target.
+
+     IT OPENS ZOOMED TO FIT, ON A PHONE AS EVERYWHERE (the owner, 29 October
+     2026, board item 7). A narrow screen used to open zoomed in, 315% at
+     390px, so a phone showed a corner of the floor and the reader had to
+     find the rest; now every screen opens on the whole floor, the box's
+     width (app.css, .seatmap), and + or a pinch brings a seat up to a
+     thumb's size. Zoom to fit puts it back. The script writes no zoom until
+     the reader asks for one, so a chart drawn in a tab not yet open (the
+     page opens on Towns) needs nothing waited for. */
   var zoom=1;
   function apply(){ if(svg)svg.style.width=(zoom*100)+"%"; soon(); }
   // ZOOM ABOUT A POINT, not about the top-left corner. Zooming toward the
@@ -1923,12 +1941,6 @@ SEATING_JS = """
     var sx=(wrap.scrollLeft+ox)*k-ox, sy=(wrap.scrollTop+oy)*k-oy;
     zoom=next; apply();
     wrap.scrollLeft=sx; wrap.scrollTop=sy;
-  }
-  function fit(){
-    var w=wrap?wrap.clientWidth:0;
-    zoom=w?Math.max(1,Math.min(3.5,1100/w)):1;
-    apply();
-    return !!w;
   }
   function step(by){ zoomAt(zoom*by); if(picked)centre(picked); }
 
@@ -1992,19 +2004,6 @@ SEATING_JS = """
   if(zi)zi.addEventListener("click",function(){step(1.35);});
   if(zo)zo.addEventListener("click",function(){step(1/1.35);});
   if(zf)zf.addEventListener("click",function(){zoomAt(1);});
-  /* A CHART IN A TAB NOT YET OPEN HAS NO WIDTH. The page opens on its Towns
-     tab, so the chart is hidden when this runs and fit() met a box 0px wide:
-     it left the zoom at 1, and a phone that went Legislators, then By seat,
-     was shown the whole floor with seats five pixels across, where the page
-     opened at #legislators was zoomed in to 315% (the review of 7 October
-     2026). So fit waits for the box to have a width, once, and then lets
-     go: after that the zoom is the reader's. */
-  if(!fit()&&wrap&&typeof ResizeObserver==="function"){
-    var sized=new ResizeObserver(function(){
-      if(wrap.clientWidth){sized.disconnect();fit();}
-    });
-    sized.observe(wrap);
-  }
 
   // A seat is a circle with a slug on it, not a link -- an <a> inside the SVG
   // would need its own focus and hit area. One handler on the map covers all
@@ -4473,7 +4472,7 @@ def main():
   <div class="seatzoom">
     <button type="button" id="szout" aria-label="{say(lang, "roster.zoom_out", "Show more of the floor")}">&minus;</button>
     <button type="button" id="szin" aria-label="{say(lang, "roster.zoom_in", "Show the seats larger")}">+</button>
-    <button type="button" id="szfit">{say(lang, "roster.fit", "Fit")}</button>
+    <button type="button" id="szfit" aria-label="{say(lang, "roster.zoom_fit", "Zoom to fit")}" title="{say(lang, "roster.zoom_fit", "Zoom to fit")}">{ZOOM_FIT_ICON}</button>
   </div>
 </div>
 <div class="seatstage">

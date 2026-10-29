@@ -23068,11 +23068,6 @@
    "es": "Nombre, condado o escaño",
    "state": "draft"
   },
-  "roster.fit": {
-   "en": "Fit",
-   "es": "Ajustar",
-   "state": "draft"
-  },
   "roster.go": {
    "en": "Go to a seat",
    "es": "Ir a un escaño",
@@ -23111,6 +23106,11 @@
   "roster.where": {
    "en": "Where they sit",
    "es": "Dónde se sientan",
+   "state": "draft"
+  },
+  "roster.zoom_fit": {
+   "en": "Zoom to fit",
+   "es": "Ajustar a la pantalla",
    "state": "draft"
   },
   "roster.zoom_in": {
