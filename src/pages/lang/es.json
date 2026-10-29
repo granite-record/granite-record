@@ -16490,6 +16490,11 @@
    "es": "Ninguna ley del registro la ha cambiado, y ninguno de los proyectos que están ahora ante la Legislatura la cambiaría.",
    "state": "draft"
   },
+  "guides.rec_none_year": {
+   "en": "None that year.",
+   "es": "Ninguna ese año.",
+   "state": "draft"
+  },
   "guides.rec_now": {
    "en": "Bills now before the General Court that would change it:",
    "es": "Proyectos de ley que están ahora ante la Legislatura y que la cambiarían:",
@@ -16500,9 +16505,9 @@
    "es": "Aprobados, todavía no en vigor:",
    "state": "draft"
   },
-  "guides.rec_year": {
-   "en": "Year",
-   "es": "Año",
+  "guides.rec_year_laws": {
+   "en": "Show the laws passed in",
+   "es": "Mostrar las leyes aprobadas en",
    "state": "draft"
   },
   "guides.rec_years_all": {

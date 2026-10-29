@@ -67893,8 +67893,26 @@ def _guide_record_passed(BC, BR):
     # chooser offers each year the list holds, hidden until its script runs.
     assert 'data-y="2024"' in since and '<span class="rs-yr">2024</span>' in since, (
         "a law that changed the chapter does not show the year it passed")
-    assert '<option value="2024">2024 (1)</option>' in since and 'class="g-yrp" hidden' in since, (
+    assert '<option value="2024">2024 (1)</option>' in got and 'class="g-yrp" hidden' in got, (
         "the laws that changed the chapter have no year to choose, or show it without its script")
+    # ONE CHOOSER FOR THE BLOCK, AND NO STATUS ON A LAW (the manager's review,
+    # 29 October 2026): a guide of two chapters draws one menu, before the
+    # first chapter, counting a law that changed both once; and a law in the
+    # list carries its number and year, not "Became Law" on every row.
+    two = BC.guide_record({"laws": ["654", "659"]}, {"bills": {}, "enacted": {
+        "654:1": [["2024", "5:1", "2023-2024/SB 9"]], "659:2": [["2024", "5:2", "2023-2024/SB 9"]]}},
+        Bills(), {"654": {"name": "Voters"}, "659": {"name": "Elections"}})
+    assert two.count('class="g-yr"') == 1 and two.index("g-yrp") < two.index("g-ch"), (
+        "In the Record draws a year menu a chapter, or after the first chapter")
+    assert '<option value="2024">2024 (1)</option>' in two, "a law that changed two chapters is counted twice"
+    BC_chip = Bills.chip
+    Bills.chip = lambda self, k, *a, **kw: f'<li><a href="#">{k}</a> <span class="rs-st">Became Law</span></li>'
+    try:
+        bare = BC.guide_record({"laws": ["654"]}, data, Bills(), {"654": {"name": "Voters"}})
+    finally:
+        Bills.chip = BC_chip
+    since_b = next((p for p in re.split(r'<p class="g-what">', bare) if p.startswith("Laws that changed")), "")
+    assert "SB 9" in since_b and "Became Law" not in since_b, "a law that changed it still says Became Law"
     old = BC.guide_record({"laws": ["654"]}, {"bills": {}, "enacted": {"654:3": [
         ["1995", "9:1", "1995/HB 7"]]}}, Bills(), {"654": {"name": "Voters"}})
     assert "1995/HB 7" in old, "a law older than the years once shown is left out"
@@ -68568,20 +68586,21 @@ def _spanish_guides(i18n, G, BC, chrome, civics):
         i18n.MISSES.clear()
         i18n.MISSES.update(misses)
     # In the Record, its sentences in Spanish and the record's words marked.
-    rec = ('<h3 class="g-ch"><a href="/laws/654">Chapter 654: Voters and Checklists</a></h3>'
+    rec = ('<p class="g-yrp" hidden><label>Show the laws passed in <select class="g-yr"><option '
+           'value="">All years</option><option value="2026">2026 (1)</option></select></label></p>'
+           '<h3 class="g-ch"><a href="/laws/654">Chapter 654: Voters and Checklists</a></h3>'
            '<p class="g-what">Bills now before the General Court that would change it:</p>'
            '<ul class="rs-list"><li>HB 1</li></ul>'
            '<p class="g-what">Passed, not yet in effect:</p><ul class="rs-list"><li>HB 4</li></ul>'
            '<div class="g-laws"><p class="g-what">Laws that changed it, newest first:</p>'
-           '<p class="g-yrp" hidden><label>Year <select class="g-yr"><option value="">All years'
-           '</option><option value="2026">2026 (1)</option></select></label></p>'
            '<ul class="rs-list"><li>HB 2</li></ul><details class="rs-more"><summary>Show all 9'
-           '</summary><ul class="rs-list"><li>HB 3</li></ul></details></div>'
+           '</summary><ul class="rs-list"><li>HB 3</li></ul></details>'
+           '<p class="g-what g-yrnone" hidden>None that year.</p></div>'
            '<p class="g-what">No law in the record has changed it, and none now before the '
            'General Court would.</p>')
     got = BC._record_lang(rec, "es")
     for english in ("Bills now before", "Passed, not yet", "Laws that changed", "No law in the record",
-                    "Show all", ">Chapter ", ">Year ", ">All years<"):
+                    "Show all", ">Chapter ", "Show the laws passed", ">All years<", "None that year"):
         if english in got:
             bad.append(f"In the Record keeps {english!r} in English")
     if '<span lang="en">Voters and Checklists</span>' not in got or got.count('lang="en"') != 5:
