@@ -17990,6 +17990,323 @@ def _inbox_night(livestreams):
         shutil.rmtree(root, ignore_errors=True)
 
 
+# WHAT THE LAPTOP CLOSED (29 October 2026; livestreams.py). The laptop had
+# closed kS2PBKXOkzA, the House Special Committee on COVID Response Efficacy
+# of 8 October 2026, as having no captions published, and sent nothing; the
+# night, refused by YouTube, kept it waiting and warned of it every night.
+# The laptop's run record now names what it closed, and the night records
+# each as it records its own closure. These checks hold that on made-up
+# states, asking nothing of YouTube or R2.
+
+def _closed_night(L, root, videos, at, record=None, entries=()):
+    """--since-state --inbox in `root`, the working folder, at `at`: the
+    state holding `videos` where given (else as the last night left it), the
+    night's own asks held by YouTube's refusal of GitHub's machine, the
+    laptop's newest run record as inbox-down brings it (`record`, None for
+    none), and a sound inbox entry for each of `entries`. (exit status, what
+    it printed, the state after)."""
+    import contextlib
+    import hashlib
+    import io
+    if videos is not None:
+        (root / "archive").mkdir(exist_ok=True)
+        (root / "archive" / "livestreams.json").write_text(json.dumps({
+            "version": 1, "last_run": {"at": "2026-10-17T08:30:00Z"},
+            "channels": {c: {"uploads": "UU" + c} for c in ("house", "senate")},
+            "refusals": {"runner": {"at": "2026-10-12T08:40:00Z", "count": 5,
+                                    "why": "Sign in to confirm you're not a bot",
+                                    "until": 4102444800, "until_iso": "2100-01-01T00:00:00Z"}},
+            "videos": videos}), encoding="utf-8")
+        api = root / "api"
+        api.mkdir(exist_ok=True)
+        idx = {}
+        for c in ("house", "senate"):
+            (api / f"pl-{c}.json").write_text('{"items": []}', encoding="utf-8")
+            idx[L.canonical("playlistItems", {"part": "contentDetails,snippet",
+                                              "playlistId": "UU" + c,
+                                              "maxResults": 50})] = f"pl-{c}.json"
+        (api / "index.json").write_text(json.dumps(idx), encoding="utf-8")
+        (root / "nosrc").mkdir(exist_ok=True)
+    # What inbox-down leaves: tonight's entries, and the laptop's newest record.
+    inbox = root / "inbox"
+    shutil.rmtree(inbox, ignore_errors=True)
+    inbox.mkdir()
+    body = _inbox_words().encode("utf-8")
+    for vid in entries:
+        (inbox / vid).mkdir()
+        (inbox / vid / "captions.en.json3").write_bytes(body)
+        (inbox / f"{vid}.json").write_text(json.dumps(
+            {"video": vid, "file": "captions.en.json3", "size": len(body),
+             "sha256": hashlib.sha256(body).hexdigest(), "fetched": at,
+             "key": f"inbox/captions/{vid}/x/captions.en.json3"}), encoding="utf-8")
+    run_rec = root / L.LAPTOP_RUN
+    run_rec.unlink(missing_ok=True)
+    if record is not None:
+        run_rec.write_text(json.dumps(record), encoding="utf-8")
+    out = io.StringIO()
+    with contextlib.redirect_stdout(out):
+        code = L.main(["--since-state", "--inbox", "inbox", "--replay", "api",
+                       "--captions-from", "nosrc", "--origin", "runner", "--now", at])
+    st = json.loads((root / "archive" / "livestreams.json").read_text(encoding="utf-8"))
+    return code, out.getvalue(), st
+
+
+def _closed_fixture(check):
+    """Runs check(L, NI, root, now, ended) in a working folder of its own,
+    with the environment a night's step reads emptied and put back after:
+    `now` the time to act as of, the real one so that the night's warnings,
+    which read the clock, see what the step saw; `ended` five days before
+    it, when the fixture's recordings finished."""
+    from datetime import datetime, timedelta, timezone
+    import livestreams as L
+    import nightly as NI
+    root = Path(tempfile.mkdtemp(prefix="gr-laptop-closed-"))
+    here = os.getcwd()
+    saved = {k: os.environ.get(k) for k in ("YOUTUBE_API_KEY", "GITHUB_ACTIONS", L.NEW_TERM_ENV)}
+    now = datetime.now(timezone.utc).replace(microsecond=0)
+    try:
+        for k in saved:
+            os.environ.pop(k, None)
+        os.chdir(root)
+        return check(L, NI, root, now, (now - timedelta(days=5)).strftime("%Y-%m-%dT%H:%M:%SZ"))
+    finally:
+        for k, v in saved.items():
+            os.environ.pop(k, None) if v is None else os.environ.__setitem__(k, v)
+        os.chdir(here)
+        shutil.rmtree(root, ignore_errors=True)
+
+
+def _iso_z(d):
+    return d.strftime("%Y-%m-%dT%H:%M:%SZ")
+
+
+@check("livestreams", "a recording the laptop closed with no captions published is recorded by "
+       "the night as none published, its approximate start kept, and warns no more",
+       needs=("livestreams", "nightly"))
+def _laptop_closed_recorded(livestreams, nightly):
+    """kS2PBKXOkzA's case. A recording finished five days ago that the night
+    lists as deferred, and the laptop's newest run record names as closed
+    with no captions published: after the night's step its state says
+    "none-published", by the laptop, the schedule's approximate start kept;
+    it is no longer counted late (nightly._captions_late), so neither the
+    waiting warning nor the silent inbox's names it, and the laptop no
+    longer asks for it (inbox_wants); the step's verdict counts it. And the
+    record must be where cloud.py inbox-down puts it."""
+    import types
+    import cloud as CL
+
+    def check(L, NI, root, now, ended):
+        assert L.LAPTOP_RUN.as_posix() == CL.INBOX_RUN_LOCAL, (L.LAPTOP_RUN, CL.INBOX_RUN_LOCAL)
+        fin = {"status": "finished", "chamber": "house", "title": "x", "ended": ended,
+               "captions": "deferred"}
+        rec = {"at": _iso_z(now), "by": "laptop", "code": 0, "sent": 0,
+               "none_published": ["PFCLOSE1"]}
+        code, said, st = _closed_night(L, root, {"PFCLOSE1": dict(fin)}, _iso_z(now), rec)
+        v = st["videos"]["PFCLOSE1"]
+        assert code == 0 and v.get("captions") == "none-published" and v.get("by") == "laptop" \
+            and "approximate start is kept" in str(v.get("why")), (code, v, said[-400:])
+        assert not L.inbox_wants(v), "the laptop would still ask for a recording it closed"
+        assert not NI._captions_late(st, now), "a recording the laptop closed is counted late"
+        assert not NI.inbox_silent(dict(st, inbox_arrived={"at": "2026-10-01T00:00:00Z"}),
+                                   rec, now), "the silent inbox still warns of it"
+        assert NI.KIND_CAPTIONS_WAIT not in dict(NI.Night.warned(types.SimpleNamespace(
+            v={"started": _iso_z(now)}))), "the waiting warning still names it"
+        assert st["last_run"]["captions"].get("none published, by the laptop") == 1 \
+            and "closed by the laptop" in said.strip().splitlines()[-1], (st["last_run"], said[-300:])
+        return "ok", ("the laptop's closure recorded as none published, its approximate start "
+                      "kept, counted in the verdict, and warned of no more")
+    return _closed_fixture(check)
+
+
+@check("livestreams", "a late recording the laptop did not close still warns: the night never "
+       "closes one on its own say-so", needs=("livestreams", "nightly"))
+def _laptop_closed_only_its_word(livestreams, nightly):
+    """Beside one the laptop closed: a recording as late that the laptop's
+    record does not name, and the same night with no record of the laptop's
+    at all. Each stays waiting and is counted late, the waiting warning
+    and the silent inbox's still count it, and the laptop still asks for
+    it."""
+    import types
+
+    def check(L, NI, root, now, ended):
+        fin = {"status": "finished", "chamber": "house", "title": "x", "ended": ended,
+               "captions": "deferred"}
+        rec = {"at": _iso_z(now), "by": "laptop", "none_published": ["PFCLOSE1"]}
+        for record in (rec, None):
+            code, said, st = _closed_night(
+                L, root, {"PFCLOSE1": dict(fin), "PFLATE01": dict(fin)}, _iso_z(now), record)
+            v = st["videos"]["PFLATE01"]
+            assert code == 0 and v.get("captions") == "deferred" and L.inbox_wants(v), \
+                (record, v, said[-300:])
+            late = {id(x) for x in NI._captions_late(st, now)}
+            assert id(v) in late, (record, v)
+            silent = NI.inbox_silent(dict(st, inbox_arrived={"at": "2026-10-01T00:00:00Z"}),
+                                     record, now)
+            n = 1 if record else 2
+            assert silent and f"{n} recording{'s' if n != 1 else ''} finished more than" \
+                in silent[0][1], (record, silent)
+            w = dict(NI.Night.warned(types.SimpleNamespace(v={"started": _iso_z(now)})))
+            assert w.get(NI.KIND_CAPTIONS_WAIT, "").startswith(f"{n} recording"), (record, w)
+        return "ok", ("a late recording the laptop's record does not name, and every late one "
+                      "on a night with no record, waits and warns as before")
+    return _closed_fixture(check)
+
+
+@check("livestreams", "captions that arrive for a recording the laptop closed are taken from the "
+       "inbox and read as any other", needs=("livestreams", "nightly"))
+def _laptop_closed_then_captioned(livestreams, nightly):
+    """A recording the laptop's record names as closed whose captions come
+    down in the inbox the same night is taken, not closed; and one the night
+    recorded closed on the laptop's word whose captions arrive on a later
+    night is taken then -- captioned "by inbox", its file in work/ -- and
+    --markers reads it under the guard as it reads every recording taken
+    from the inbox."""
+    import contextlib
+    import io
+    from datetime import timedelta
+
+    def check(L, NI, root, now, ended):
+        fin = {"status": "finished", "chamber": "house", "title": "x", "ended": ended,
+               "captions": "deferred"}
+        rec = {"at": _iso_z(now), "by": "laptop", "none_published": ["PFCLOSE1", "PFBOTH01"]}
+        code, said, st = _closed_night(L, root, {"PFCLOSE1": dict(fin), "PFBOTH01": dict(fin)},
+                                       _iso_z(now), rec, entries=["PFBOTH01"])
+        both, closed = st["videos"]["PFBOTH01"], st["videos"]["PFCLOSE1"]
+        assert code == 0 and both.get("captions") == "captioned" and both.get("by") == "inbox" \
+            and closed.get("captions") == "none-published", (both, closed, said[-300:])
+        later = _iso_z(now + timedelta(hours=1))
+        code, said, st = _closed_night(L, root, None, later, rec, entries=["PFCLOSE1"])
+        v = st["videos"]["PFCLOSE1"]
+        assert code == 0 and v.get("captions") == "captioned" and v.get("by") == "inbox" \
+            and (root / "work" / "PFCLOSE1" / "captions.en.json3").is_file(), (v, said[-400:])
+        seen, real = {}, (L.read_markers, L.summarize, L.guard)
+
+        def read(vids):
+            seen["read"] = list(vids)
+            return 0
+
+        def judged(copies, tonight):
+            seen["judged"] = sorted(tonight)
+            return "", None
+        L.read_markers, L.summarize, L.guard = read, (lambda vids, work=L.WORK: 0), judged
+        try:
+            with contextlib.redirect_stdout(io.StringIO()):
+                code = L.main(["--markers", "--origin", "runner", "--now", later])
+        finally:
+            L.read_markers, L.summarize, L.guard = real
+        assert code == 0 and "PFCLOSE1" in seen.get("read", []) \
+            and "PFCLOSE1" in seen.get("judged", []), seen
+        return "ok", ("captions in the inbox the night the laptop closes a recording win, and "
+                      "those that arrive after it are taken and read under the guard")
+    return _closed_fixture(check)
+
+
+@check("livestreams", "the laptop's closure settles only what waits: a recording the night closed "
+       "itself, one adopted, one left for a person and one captioned are as they were",
+       needs=("livestreams", "nightly"))
+def _laptop_closed_leaves_the_rest(livestreams, nightly):
+    """No command or document gives a person a way to accept an
+    approximate start (29 October 2026): what settles a recording without a
+    reading is the night's own closure ("none-published", taken at a
+    recording's last ask in a run that captioned something), the old
+    "adopted", and "for-laptop", which is left for a person and still
+    warns. The laptop's record naming each of them, and one already
+    captioned, changes none of them; a recording the night closed itself is
+    still not taken from the inbox; and a record naming a recording the
+    state does not hold, or a name of no recording's shape, is passed over."""
+    import types
+
+    def check(L, NI, root, now, ended):
+        fin = {"status": "finished", "chamber": "house", "title": "x", "ended": ended}
+        videos = {"PFSELF01": dict(fin, captions="none-published", why="taken to have none"),
+                  "PFADOPT1": dict(fin, captions="captioned", by="laptop", adopted="2026-10-01"),
+                  "PFLEFT01": dict(fin, captions="for-laptop", tries=L.MAX_TRIES),
+                  "PFREAD01": dict(fin, captions="captioned", by="runner", read="2026-10-20")}
+        rec = {"at": _iso_z(now), "by": "laptop",
+               "none_published": sorted(videos) + ["PFNONE01", "../../x", 7, None]}
+        code, said, st = _closed_night(L, root, json.loads(json.dumps(videos)), _iso_z(now), rec,
+                                       entries=["PFSELF01"])
+        moved = {k: st["videos"].get(k) for k in videos if st["videos"].get(k) != videos[k]}
+        assert code == 0 and not moved and "PFNONE01" not in st["videos"], (moved, said[-300:])
+        assert "none published, by the laptop" not in st["last_run"]["captions"], st["last_run"]
+        assert not (root / "work" / "PFSELF01").exists(), \
+            "captions were taken for a recording the night closed itself"
+        w = dict(NI.Night.warned(types.SimpleNamespace(v={"started": _iso_z(now)})))
+        assert w.get(NI.KIND_CAPTIONS_WAIT, "").startswith("1 recording"), \
+            f"the one left for a person no longer warns: {w}"
+        return "ok", ("the night's own closure, an adopted reading, one left for a person and one "
+                      "read are untouched by the laptop's record, and a name the state does not "
+                      "hold is passed over")
+    return _closed_fixture(check)
+
+
+@check("livestreams", "a laptop run's record names each waiting recording it closed with no "
+       "captions published, and none given up on, captioned or no longer listed",
+       needs=("livestreams", "cloud"))
+def _laptop_closed_in_its_record(livestreams, cloud):
+    """--to-inbox, from a bucket folder whose state lists four recordings
+    as waiting and two not, and the laptop's own record of what it asked
+    (archive/youtube.refused.json): closed with no captions published, given
+    up on, one it never asked for, and three closed none-published that the
+    night has captioned, left for a person or dropped. Its run's record
+    names the one waiting recording it closed with none published, and no
+    other; with a refusal standing, nothing is asked."""
+    import contextlib
+    import io
+    L, CL = livestreams, cloud
+    root = Path(tempfile.mkdtemp(prefix="gr-laptop-closed-rec-"))
+    here = os.getcwd()
+    saved = {k: os.environ.get(k) for k in ("GITHUB_ACTIONS", CL.NO_BUCKET)}
+    now = "2026-10-28T23:30:00Z"
+    try:
+        os.environ.pop("GITHUB_ACTIONS", None)
+        os.environ[CL.NO_BUCKET] = "1"
+        fin = {"status": "finished", "chamber": "house", "title": "x",
+               "ended": "2026-10-08T18:00:00Z"}
+        state = {"version": 1, "channels": {}, "last_run": {}, "refusals": {}, "videos": {
+            "kS2PBKXOkzA": dict(fin, captions="deferred"),
+            "PFGIVE01": dict(fin, captions="deferred"),
+            "PFWAIT01": dict(fin, captions="deferred"),
+            "PFYET001": dict(fin, captions="none-yet"),
+            "PFREAD01": dict(fin, captions="captioned", by="runner", read="2026-10-20"),
+            "PFLEFT01": dict(fin, captions="failed", tries=L.MAX_TRIES)}}
+        bucket, laptop = root / "bucket", root / "laptop"
+        (bucket / "state").mkdir(parents=True)
+        (bucket / "state" / "livestreams.json").write_text(json.dumps(state), encoding="utf-8")
+        (laptop / "archive").mkdir(parents=True)
+        (laptop / "src").mkdir()
+        closed = {"asks": 3, "tried": "2026-10-20T23:40:00Z", "closed": "none-published"}
+        (laptop / "archive" / "youtube.refused.json").write_text(json.dumps({
+            "laptop": {"at": "2026-10-28T19:00:00Z", "count": 1, "until": 4102444800.0,
+                       "until_iso": "2100-01-01T00:00:00Z", "why": "HTTP Error 429"},
+            "asked": {"kS2PBKXOkzA": dict(closed),
+                      "PFGIVE01": {"asks": 5, "tried": "2026-10-20T23:40:00Z",
+                                   "closed": "given-up"},
+                      "PFYET001": {"asks": 1, "tried": "2026-10-27T23:40:00Z",
+                                   "again": "2026-10-29T21:40:00Z"},
+                      "PFREAD01": dict(closed), "PFLEFT01": dict(closed),
+                      "PFGONE01": dict(closed)}}), encoding="utf-8")
+        os.chdir(laptop)
+        out = io.StringIO()
+        with contextlib.redirect_stdout(out):
+            code = L.main(["--to-inbox", "--local-bucket", str(bucket), "--captions-from",
+                           "src", "--origin", "laptop", "--now", now])
+        runs = CL.inbox_runs(CL.FolderBucket(bucket, create=False))
+        assert code == 0 and len(runs) == 1, (code, runs, out.getvalue()[-400:])
+        rec = json.loads((bucket / runs[0]).read_text(encoding="utf-8"))
+        assert rec.get("none_published") == ["kS2PBKXOkzA"], rec
+        assert set(rec.get("asked") or {}) <= {"deferred"}, \
+            f"a run with a refusal standing asked: {rec}"
+        return "ok", ("the record names the one waiting recording closed with none published, "
+                      "not the one given up on, the one not closed, or those the night captioned, "
+                      "left for a person or dropped")
+    finally:
+        for k, v in saved.items():
+            os.environ.pop(k, None) if v is None else os.environ.__setitem__(k, v)
+        os.chdir(here)
+        shutil.rmtree(root, ignore_errors=True)
+
+
 @check("cloud", "the captions inbox in the bucket: inbox-down writes nothing there, and "
        "inbox-clear removes only what the night's sent state no longer waits for, keeps a copy, "
        "and clears nothing on a dry night", needs=("cloud", "livestreams"))

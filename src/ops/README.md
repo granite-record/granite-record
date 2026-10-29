@@ -81,4 +81,7 @@ latest refusal by YouTube and its hold. The night's verdict prints that
 refusal beside GitHub's machine's, says what the run sent, and warns -- on
 the run's page and to the warnings' Healthchecks check -- when there is no
 record, when the newest is two evenings old, or when nothing has arrived in
-the inbox for three days while recordings wait.
+the inbox for three days while recordings wait. The record also names each
+waiting recording the laptop has closed with no captions published, and the
+night records it so -- the schedule's approximate start kept -- and warns of
+it no more (29 October 2026; `livestreams.py`, WHAT THE LAPTOP CLOSED).
