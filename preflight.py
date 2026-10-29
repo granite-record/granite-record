@@ -95576,9 +95576,9 @@ def _speakers_against_journal(root, jroot):
         ev += [("division", m.start(), (int(m.group("yeas")), int(m.group("nays"))), m.end())
                for m in J.DIVISION.finditer(block)]
         # EACH PATTERN WHERE IT CAN BEGIN (29 October 2026): decisions() and
-        # found() give finditer's own list (_journal_found_is_finditer holds
-        # them to it), and finditer from every character of every House day
-        # was 20 of this check's 53 seconds on the night.
+        # found() give finditer's own list (_speakers_check_found holds these
+        # three classes to their patterns), and finditer from every character
+        # of every House day was 20 of this check's 53 seconds on the night.
         ev += [("voice", m.start("s"), re.sub(r"\s+", " ", m.group("s")), m.end("s"))
                for m in J.decisions(text) if not J.NOT_DECIDED.search(m.group("s"))]
         for m in J.found(J.MOTION_EVENT, text, "[MmOoAaCcWwRr]"):
@@ -98266,6 +98266,50 @@ def _page_record_find(SR):
     return "ok", "six shapes of page, each read as INLINE reads it, the sidecar where none is inline"
 
 
+def _opening_letters(pattern):
+    """The letters a pattern's matches can open on, where each top-level
+    alternative opens on \\b and a letter, or on \\b and a group of such
+    words: "\\b(?:moved|offered)\\b|\\bwithdrew ..." gives m, o, w. Anything
+    else gives None, which fails the check that asks: it cannot say."""
+    def split(p):
+        out, depth, cur, i = [], 0, "", 0
+        while i < len(p):
+            c = p[i]
+            if c == "\\":
+                cur += p[i:i + 2]
+                i += 2
+                continue
+            depth += c == "("
+            depth -= c == ")"
+            if c == "|" and depth == 0:
+                out.append(cur)
+                cur = ""
+            else:
+                cur += c
+            i += 1
+        return out + [cur]
+    got = set()
+    for alt in split(pattern):
+        alt = alt[2:] if alt.startswith("\\b") else alt
+        if alt.startswith("(?:"):
+            depth, end = 0, None
+            for j, c in enumerate(alt):
+                depth += c == "("
+                depth -= c == ")"
+                if depth == 0:
+                    end = j
+                    break
+            inner = _opening_letters(alt[3:end])
+            if inner is None:
+                return None
+            got |= inner
+        elif alt[:1].isalpha():
+            got.add(alt[0])
+        else:
+            return None
+    return got
+
+
 @check("session", "the night's check of the House's speakers reads the Journal's patterns where "
        "they can begin")
 def _speakers_check_found():
@@ -98276,12 +98320,37 @@ def _speakers_check_found():
     on disk, 29 October 2026) in 7. Undone, the night is slower and nothing
     else would say so."""
     import inspect
+    import journal_days as J
     src = inspect.getsource(_speakers_against_journal)
     slow = [n for n in ("DECIDED", "MOTION_EVENT", "SPOKE", "MOVED_SPOKE")
             if f"J.{n}.finditer(" in src]
     assert not slow and "J.decisions(text)" in src, (
         f"the speakers check runs {slow or ['DECIDED']} from every character again")
-    return "ok", "decisions() and found() for the four patterns"
+    # AND EACH CLASS STILL HOLDS EVERY CHARACTER ITS PATTERN CAN BEGIN WITH.
+    # Every alternative opens on \b and a letter; a pattern given one that
+    # opens on another ("\blaid ...") would lose those matches here and
+    # nothing else would say so. The class is the one the check passes, read
+    # from its source; each letter a match can begin with is tried.
+    pairs = {n: re.search(r"J\.found\(J\." + n + r",\s*text,\s*\"([^\"]+)\"\)", src)
+             for n in ("MOTION_EVENT", "SPOKE", "MOVED_SPOKE")}
+    assert all(pairs.values()), f"the speakers check's classes are not where this reads: {pairs}"
+    every = "".join(map(chr, range(0x110000)))
+    for n, m in pairs.items():
+        rx, first = getattr(J, n), m.group(1)
+        # Where the pattern can begin: the code points a match of it can open
+        # on, each tried with the rest of a real match after it.
+        heads = {x.group(0)[0] for x in rx.finditer(" " + "  ".join(
+            (_JOURNAL_RECONSIDER, _JOURNAL_MOTION_AFTER, _JOURNAL_DECIDED, _JOURNAL_WALK,
+             _JOURNAL_WALK_MORE)))}
+        assert heads and all(re.fullmatch(first, c) for c in heads), (
+            f"{n} begins a match on {sorted(heads)}, and {first} misses one")
+        letters = _opening_letters(rx.pattern)
+        assert letters and all(re.fullmatch(first, c) for l in letters for c in (l.lower(), l.upper())), (
+            f"{n} opens on {sorted(letters)}, and {first} misses one")
+        read = set(re.findall(first, every, rx.flags & re.I))
+        assert all(re.fullmatch(first, c) for c in read), (
+            f"{first} misses a character {n} can begin with")
+    return "ok", "decisions() and found() for the four patterns, each class whole"
 
 
 @check("session", "a journal pattern found only where it can begin is finditer's own list",
