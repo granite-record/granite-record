@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-10-05.12
+# GRANITE_VERSION: 2026-10-05.13
 """
 The turn from one term to the next, rehearsed offline on a copy.
 
