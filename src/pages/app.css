@@ -6930,7 +6930,9 @@ padding:var(--sp-3) 0;border-top:1px solid var(--rule)}
 clip:rect(0 0 0 0);white-space:nowrap}
 .vwskip:focus{display:inline-block;margin-top:var(--sp-4)}
 .vwside{grid-area:side;min-width:0}
-.vwh{margin:0 0 var(--sp-3);font-size:var(--t-label);font-weight:600;letter-spacing:.06em;
+/* The list's heading, an h3 or a chamber's h2 (videoView, level), drawn the
+   one way whichever: an h2 had taken the page's serif. */
+.vwh{margin:0 0 var(--sp-3);font-family:var(--sans);font-size:var(--t-label);font-weight:600;letter-spacing:.06em;
 text-transform:uppercase;color:var(--ink-2)}
 .vwlist{list-style:none;margin:0;padding:0;border:1px solid var(--rule);border-radius:var(--r-out);
 background:var(--surface)}
@@ -6952,11 +6954,13 @@ color:var(--ink);text-decoration:none;line-height:1.35}
    and the first bills on one line, the bills cut short with an ellipsis
    where they do not fit, and a run of kinds too long for the line cut at
    its edge. The chips here a little smaller than a card's, the same words
-   and colours. */
+   and colours, and first in their line at every width: on a phone the
+   Calendar's rule for its own rows (.calkind{order:3}) had put them after
+   the bills. */
 .vwd .vwi{font-weight:400;font-size:var(--t-sm);color:var(--ink-2)}
 .vwb{grid-column:1 / -1;display:flex;align-items:center;min-width:0;font-size:var(--t-sm);line-height:1.5;
 color:var(--ink-2);white-space:nowrap;overflow:hidden}
-.vwb .chip{flex:none;margin-right:var(--sp-2);padding:0 var(--sp-3);line-height:1.4}
+.vwb .chip{flex:none;order:0;margin-right:var(--sp-2);padding:0 var(--sp-3);line-height:1.4}
 .vwl{flex:0 1 auto;min-width:0;overflow:hidden;text-overflow:ellipsis}
 .vwall{margin-top:var(--sp-3)}
 .vwsrc{grid-area:src;margin:0}

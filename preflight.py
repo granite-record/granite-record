@@ -69146,6 +69146,9 @@ def _static_videos_wiring(FS):
     assert '<h2 class="vwh" id="vwh">1 recording in 2025–2026</h2>' in got["view"], (
         "a chamber's list of recordings does not head the tab as an h2: "
         + (re.search(r"<h\d class=\"vwh\"[^>]*>", got["view"]) or [""])[0])
+    # Drawn as the committee's h3 is: as an h2 it took the page's serif.
+    assert re.search(r"\n\.vwh\{[^}]*font-family:var\(--sans\)", Path("src/pages/app.css").read_text(encoding="utf-8")), (
+        "app.css: a chamber's list heading, an h2, is not drawn in the committee's h3's face")
     strip = got["strip"] or ""
     assert strip.startswith("afterend ") and re.findall(r'<button class="tab" role="tab" id="chtab_(\d)" '
                                                          r'aria-controls="(\w+)" data-chtab="\1"', strip) == [
@@ -76571,8 +76574,9 @@ process.stdout.write("\n@@" + JSON.stringify(out));
             (".w4.w4wide{display:block}" in w4, "a study committee's Videos section is not the page's width"),
             (re.search(r"\n\.vwb\{[^}]*display:flex;[^}]*white-space:nowrap;overflow:hidden\}", css)
              and re.search(r"\n\.vwl\{flex:0 1 auto;min-width:0;overflow:hidden;text-overflow:ellipsis\}", css)
-             and re.search(r"\n\.vwb \.chip\{flex:none;", css),
-             "a row's kinds and bills can run onto a third line")):
+             and re.search(r"\n\.vwb \.chip\{flex:none;order:0;", css),
+             "a row's kinds and bills can run onto a third line, or its kinds follow its bills on a "
+             "phone (the Calendar's .calkind{order:3})")):
         assert ok, f"app.css: {why}"
     # What is cut is the bills' numbers: the count is on the first line, beside
     # the date, so the cut never takes it.
