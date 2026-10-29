@@ -2121,7 +2121,12 @@ border-radius:var(--r-in);background:var(--surface);color:var(--ink-2);cursor:po
 border-radius:var(--r-out);background:var(--surface);cursor:pointer}
 #q,#rsq{flex:1;height:42px;padding:0 var(--sp-5);font:inherit;font-size:var(--t-ui);border:1px solid var(--edge);
 border-radius:var(--r-out);background:var(--paper)}
-#q:focus,#rsq:focus{outline:none;border-color:var(--pine);box-shadow:0 0 0 3px var(--pine-soft);background:var(--surface)}
+/* THE FOCUS IS THE SITE'S 2px PINE OUTLINE, as the How-to tab's box draws it
+   (.g-find input:focus), not a soft ring in a box-shadow (the accessibility
+   sweep of 29 October 2026, WCAG 2.4.7): forced colours paint no shadow and
+   take the border's colour, so a reader in them saw nothing say which box
+   had the keyboard. _text_box_focus_shows holds every text box. */
+#q:focus,#rsq:focus{outline:2px solid var(--pine);outline-offset:1px;border-color:var(--pine);background:var(--surface)}
 /* The search list narrows as you type and needs no button. On one bill's own
    view it must not: re-running the search there takes the bill off the screen
    the reader is reading. So the query is held until they say so, and this and
@@ -7759,7 +7764,7 @@ padding:var(--sp-5) var(--sp-5);margin:0 0 var(--sp-5);line-height:1.6}
    and preflight holds it there. */
 :where(body.pg) input[type=search], :where(body.pg) input[type=text]{width:100%;height:42px;padding:0 var(--sp-5);font:inherit;font-size:var(--t-ui);
 border:1px solid var(--edge);border-radius:var(--r-out);background:var(--surface)}
-:where(body.pg) input:focus{outline:none;border-color:var(--pine);box-shadow:0 0 0 3px var(--pine-soft)}
+:where(body.pg) input:focus{outline:2px solid var(--pine);outline-offset:1px;border-color:var(--pine)}
 :where(body.pg) table{width:100%;border-collapse:collapse;font-size:var(--t-ui)}
 :where(body.pg) th{text-align:left;font-size:var(--t-sm);font-weight:600;color:var(--ink-2);padding:0 0 var(--sp-3);border-bottom:1px solid var(--rule)}
 :where(body.pg) td{padding:var(--sp-4) 0;border-bottom:1px solid var(--rule);vertical-align:top}

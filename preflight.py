@@ -71693,16 +71693,36 @@ def _css_specificity(sel):
 # model: specificity, then order, !important over both; an inherited
 # property from the nearest element outward that a rule sets it on).
 
+_OUTLINE_STYLES = ("none", "hidden", "dotted", "dashed", "solid", "double", "groove", "ridge",
+                   "inset", "outset", "auto")
+
+
 def _css_screen_rules(text):
     """[(order, at-rules, selector, {property: (value, important)}, line)]
     for every rule of a stylesheet that draws on a screen -- the printed
-    sheet's are left out -- one entry a selector of its list."""
+    sheet's are left out -- one entry a selector of its list. The outline
+    shorthand is its three longhands, what it leaves out reset as a browser
+    resets it ("outline:none" is a style of none and a width of medium)."""
     out = []
     for order, (ctx, sel, body, line) in enumerate(_css_rules(text)):
         if any(re.search(r"\bprint\b", c) and not re.search(r"\bnot\s+print\b", c) for c in ctx):
             continue
-        decls = {k: (v, bool(re.search(r"(?:^|[;{\s])" + re.escape(k) + r"\s*:[^;]*!\s*important", body, re.I)))
-                 for k, v in _css_decls(body)}
+        decls = {}
+        for k, v in _css_decls(body):
+            imp = bool(re.search(r"(?:^|[;{\s])" + re.escape(k) + r"\s*:[^;]*!\s*important", body, re.I))
+            if k == "outline":
+                width, style, colour = "medium", "none", "currentcolor"
+                for tok in re.findall(r"[\w-]+\([^)]*\)|\S+", v):
+                    if tok.lower() in _OUTLINE_STYLES:
+                        style = tok.lower()
+                    elif re.fullmatch(r"-?\d*\.?\d+(?:px|em|rem)?|thin|medium|thick", tok):
+                        width = tok
+                    else:
+                        colour = tok
+                decls.update({"outline-width": (width, imp), "outline-style": (style, imp),
+                              "outline-color": (colour, imp)})
+            else:
+                decls[k] = (v, imp)
         if decls:
             out.extend((order, ctx, one, decls, line) for one in _css_selectors(sel))
     return out
