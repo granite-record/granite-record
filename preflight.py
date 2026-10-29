@@ -71845,6 +71845,107 @@ def _html_text_chains(page, pattern):
     return found
 
 
+_TEXT_BOX_TYPES = ("", "text", "search", "email", "url", "tel", "number", "password")
+
+
+def _focus_outline(rules, chain):
+    """(what the cascade draws round chain[0] while it has the keyboard's
+    focus, or None where it draws nothing): its outline's (width, style,
+    colour) with the selector and app.css line that set the style. Focused
+    from a keyboard, a box matches :focus and :focus-visible both."""
+    el = dict(chain[0], states={"focus", "focus-visible"})
+    won = _css_won(rules, [el] + list(chain[1:]))
+    style = won.get("outline-style", ("none", "", 0))
+    width = won.get("outline-width", ("medium", "", 0))[0]
+    colour = won.get("outline-color", ("currentcolor", "", 0))[0]
+    if style[0] in ("none", "hidden") or re.fullmatch(r"0+(?:\.0+)?(?:px|em|rem)?", width) \
+            or colour == "transparent":
+        return None, style
+    return (width, style[0], colour), style
+
+
+@check("frontend", "every text box a page writes shows which one has the keyboard: app.css draws it an "
+       "outline while focused, which forced colours keep")
+def _text_box_focus_shows():
+    """The accessibility sweep of the R1 preview (29 October 2026; WCAG
+    2.4.7, focus visible): in forced colours the search boxes -- the home
+    page's #hq, the bill search's #q, the Laws page's #rsq, the roster's
+    #sq and /search's #resq -- showed no focus at all. Their :focus rules
+    set outline:none and drew a soft ring in a box-shadow instead, and
+    forced colours paint no shadow and give the border its system colour,
+    so nothing said which box had the keyboard. They take the site's 2px
+    pine outline now, as the How-to tab's box always did (.g-find
+    input:focus), and an outline is what forced colours keep.
+
+    Every text box of every page of the fixture's build is held -- an
+    <input> of a text type and a <textarea>, in the elements it is written
+    in -- and so is every one a script writes (find.js's header search, the
+    town panel's, app.js's sponsor and RSA boxes, the follow form's email),
+    whose ancestors this model does not know and takes as any. The cascade
+    (_css_won, every screen rule of app.css, forced colours' among them)
+    must leave each one, focused, an outline of a style other than none, a
+    width other than 0 and a colour other than transparent: a rule that
+    takes it away, ahead of the one that draws it, fails here."""
+    shared, _base, _ran, _days = _fixture_site_shared()
+    site = shared / "site"
+    rules = _css_screen_rules(Path("src/pages/app.css").read_text(encoding="utf-8"))
+
+    def text_box(chain):
+        el = chain[0]
+        return el["tag"] == "textarea" or (
+            el["tag"] == "input" and el["attrs"].get("type", "").lower() in _TEXT_BOX_TYPES)
+
+    def sig(chain):
+        return tuple((e["tag"], tuple(sorted(e["ids"])), tuple(sorted(e["classes"])),
+                      e["attrs"].get("type", "")) for e in chain)
+
+    boxes = {}
+    pages = 0
+    for f in sorted(site.rglob("*.html")):
+        page = f.read_text(encoding="utf-8", errors="replace")
+        if "<input" not in page and "<textarea" not in page:
+            continue
+        pages += 1
+        found = []
+        _html_walk(page, element=lambda chain: found.append(chain) if text_box(chain) else None)
+        for chain in found:
+            boxes.setdefault(sig(chain), (f.relative_to(site).as_posix(), chain))
+    # A script's boxes: each <input> or <textarea> its markup writes, in
+    # elements this model does not know (None: any).
+    scripted = 0
+    for name in ("app.js", "find.js", "components.js"):
+        js = Path("src/pages", name).read_text(encoding="utf-8")
+        for m in re.finditer(r"<(input|textarea)\b([^<>]*)>", js):
+            found = []
+            _html_walk(m.group(0).replace("\\", ""), element=found.append)
+            if found and text_box(found[0]) and "website" not in found[0][0]["attrs"].get("name", ""):
+                scripted += 1
+                boxes.setdefault(sig(found[0]) + (name,), (name, found[0] + [None] * 8))
+    want = {"hq", "q", "rsq", "sq", "resq"}
+    seen = {i for _w, chain in boxes.values() for i in chain[0]["ids"]}
+    assert want <= seen, (
+        f"the fixture's build no longer writes the search boxes this check holds by name: "
+        f"{sorted(want - seen)} not found in {pages} pages")
+    bad, drawn = [], Counter()
+    for where, chain in boxes.values():
+        got, style = _focus_outline(rules, chain)
+        el = chain[0]
+        name = el["tag"] + "".join("#" + i for i in sorted(el["ids"])) \
+            + "".join("." + c for c in sorted(el["classes"]))
+        if got is None:
+            bad.append(f"{name} on {where}: outline-style {style[0]}"
+                       + (f" from {style[1]} (app.css line {style[2]})" if style[1] else " (nothing sets one)"))
+        else:
+            drawn[" ".join(got)] += 1
+    assert not bad, (
+        "a text box shows no focus: nothing says which box has the keyboard, and in forced colours a "
+        "box-shadow or a border colour does not take its place (WCAG 2.4.7). Draw it the site's "
+        "outline:2px solid var(--pine), as .g-find input:focus does: " + "; ".join(bad[:6]))
+    return "ok", (f"{len(boxes)} kinds of text box ({pages} pages of the fixture's build, {scripted} written "
+                  f"by a script), each with an outline while focused: "
+                  + ", ".join(f"{k} ({n})" for k, n in drawn.most_common()))
+
+
 @check("frontend", "a bill's Testify button counts the Senate's hearings, and says testimony opens again "
        "only while one chamber has heard it")
 def _testify_box_senate():
