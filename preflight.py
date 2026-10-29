@@ -76531,7 +76531,7 @@ process.stdout.write("\n@@" + JSON.stringify(out));
             "way to that meeting: " + re.sub(r"<[^>]+>", " ", dv)[:300])
     # THE MOMENTS ARE THE MEETINGS TAB'S OWN BUTTONS, byte for byte.
     det = flat["vid1"][flat["vid1"].index('class="vwdetin"'):]
-    vj = re.search(r'<span class="mjumps">(.*?)</span></li>', det).group(1)
+    vj = re.search(r'<span class="mjumps">(.*?)</span><span class="vwbt">', det).group(1)
     day = flat["meetings"][flat["meetings"].index('id="day-2026-02-03"'):]
     mj = re.search(r'<span class="mjumps">(.*?)</span></div>', day).group(1)
     assert vj == mj and "approximate" in vj and "|150" in vj, (
@@ -77058,6 +77058,113 @@ def _videos_phone_playlist():
     return "ok", ("on a phone the player stays under the strip over the whole list, what is under it kept "
                   "clear of it by app.css and by app.js; a row chosen brings up its description; a "
                   "desktop's view untouched")
+
+
+@check("frontend", "a recording chosen on a Videos tab is described under the player: its kinds, how many "
+                   "bills the docket ties to it, and a line a bill -- the number, then its moments, the "
+                   "Meetings tab's own buttons, then its title -- in the order the recording reaches them")
+def _videos_description():
+    """The owner, 29 October 2026: "under the player, list the bills it
+    covers, each with its moment button ("HB 1042 at 00:03:45", with
+    "approximate" where inferred) that jumps the player there, reusing the
+    Meetings tab's moment buttons and labels ... Show the kind chips too",
+    "clear, scannable, the bill number then its moment". The detail had been
+    the number, the title, and the moments on a line of their own under the
+    title. Now (app.js, cmteVideoDetail): the kinds as the Meetings tab's
+    chips and the room; "The docket ties 3 bills to this recording. Choose a
+    time to jump the recording there." -- or, with no moment anywhere in it,
+    the Meetings tab's own "No moment in this recording has been identified
+    yet."; then each bill once, in the order the recording reaches it (its
+    first moment; none, after), its number, its moments -- jumpButtons, the
+    Meetings tab's bytes, "approximate" held to its button -- and its title
+    under them. A bill with no moment is its number and title. Drawn by
+    renderPage in node over a committee whose bills come in another order
+    than the recording reaches them."""
+    item = lambda bill, kind, start, state, vid="VID1", **k: dict({
+        "bill": bill, "n": bill[:2] + " " + bill[2:], "title": f"the title of {bill}", "year": 2026,
+        "term": "2025-2026", "kind": kind, "video_id": vid, "start": start, "state": state, "time": "10:00",
+        "venue": "LOB 302"}, **k)
+    items = [item("HB1442", "work session", 600, "stated"),
+             item("HB1442", "executive session", 3000, "located"),
+             item("HB1001", "work session", 120.0, "stated"),
+             item("HB1203", "work session", None, "prestream")]
+    quiet = [item("HB2001", "public hearing", None, "prestream", "VID9"),
+             item("HB2002", "public hearing", None, "prestream", "VID9")]
+    out = lambda its: [{"bill": b, "kinds": sorted({i["kind"] for i in its if i["bill"] == b}), "outcome": "worked"}
+                       for b in dict.fromkeys(i["bill"] for i in its)]
+    cmte = {"code": "H43", "name": "Commerce", "chamber": "H", "bills": {"2025-2026": []},
+            "sessions": [{"date": "2026-02-10", "term": "2025-2026", "video_id": "VID9", "items": quiet,
+                          "outcomes": out(quiet)},
+                         {"date": "2026-02-03", "term": "2025-2026", "video_id": "VID1", "items": items,
+                          "outcomes": out(items)}],
+            "recordings": [{"id": "VID9", "date": "2026-02-10", "term": "2025-2026"},
+                           {"id": "VID1", "date": "2026-02-03", "term": "2025-2026", "began": "09:58"}]}
+    harness = _HEARD_PRELUDE + r"""
+load("renderPage, recordTerms, setPage: (p) => { PAGE = p; }, setTab: (t) => { PAGE_TAB = t; },"
+  + " setUp: (u) => { UPCOMING = u; }");
+const fx = JSON.parse(fs.readFileSync("./fx.json", "utf8"));
+const results = document.querySelector("#results");
+const draw = (tab, vid) => {
+  const terms = s.recordTerms("committee", fx);
+  s.setPage({kind: "committee", data: fx, terms, term: terms[0], status: "", vfilter: "", vshow: 0, bshow: 0,
+    mshow: 0, vid, mopen: {"day-2026-02-03": true}});
+  s.setTab(tab); s.renderPage(); return results.innerHTML; };
+const out = {};
+try { s.setUp([]); out.vid1 = draw(2, "VID1"); out.vid9 = draw(2, "VID9"); out.meetings = draw(1, ""); }
+catch (e) { out.threw = e.constructor.name + ": " + e.message + " " + (e.stack || "").slice(0, 300); }
+process.stdout.write("\n@@" + JSON.stringify(out));
+"""
+    got = _node_app(harness, {"fx.json": json.dumps(cmte)})
+    if got is None:
+        return "skip", "node, app.js or dom_stub.js is not here"
+    assert "threw" not in got, "the Videos tab would not draw: " + got["threw"]
+    flat = {k: re.sub(r"[ \t\r\n]+", " ", v) for k, v in got.items()}
+    det = lambda h: h[h.index('class="vwdetin"'):h.index('<div class="vwside">')]
+    one = det(flat["vid1"])
+    assert '<p class="vwlead">The docket ties 3 bills to this recording. Choose a time to jump the recording ' \
+        'there.</p>' in one, "the description does not say how many bills the docket ties to the recording, " \
+        "and how its times are used: " + re.sub(r"<[^>]+>", " ", one)[:300]
+    # The kinds, as the Meetings tab's chips, before the bills.
+    kinds = re.search(r'<p class="vwkinds">(.*?)</p>', one)
+    assert kinds and '<span class="chip calkind k-meet">Work Session</span>' in kinds.group(1) and \
+        '<span class="chip calkind k-exec">Executive Session</span>' in kinds.group(1) and \
+        one.index('class="vwkinds"') < one.index('class="vwbills"'), "the description does not lead with its kinds' chips"
+    # A line a bill: the number, then its moments, then its title; in the order
+    # the recording reaches them, a bill with no moment after; each once.
+    lines = re.findall(r'<li(?: class="vwrest")?><a class="vwbn" href="[^"]*">([^<]*)</a>'
+                       r'(?:<span class="mjumps">(.*?)</span>)?<span class="vwbt">([^<]*)</span></li>', one)
+    assert [(n, t) for n, _j, t in lines] == [("HB 1001", "the title of HB1001"), ("HB 1442", "the title of HB1442"),
+                                             ("HB 1203", "the title of HB1203")] and one.count('class="vwbn"') == 3, (
+        "the bills are not a line each -- the number, its moments, its title -- in the order the recording "
+        f"reaches them: {[(n, t) for n, _j, t in lines]}")
+    jumps = {n: j for n, j, _t in lines}
+    assert jumps["HB 1203"] == "" and 'data-seek="m20260203_VID1|120"' in jumps["HB 1001"], (
+        f"a bill's moments are not beside its number, or a bill with none has some: {jumps}")
+    # THE MEETINGS TAB'S OWN BUTTONS, byte for byte, both of HB 1442's
+    # moments with their kinds, the inferred one "approximate".
+    meet = flat["meetings"]
+    card = meet[meet.index('id="day-2026-02-03"'):]
+    card = card[card.index('data-id="HB1442"'):]
+    mj = re.search(r'<span class="mjumps">(.*?)</span></div>', card).group(1)
+    assert jumps["HB 1442"] == mj and mj.count('class="mjump"') == 2 and \
+        "Work Session 00:10:00</button></span>" in mj and \
+        'Executive Session 00:50:00</button><i class="approx">approximate</i></span>' in mj, (
+            f"HB 1442's moments under the player are not the Meetings tab's: {jumps['HB 1442']!r} against {mj!r}")
+    quiet_det = det(flat["vid9"])
+    assert '<p class="vwlead">The docket ties 2 bills to this recording. No moment in this recording has been ' \
+        'identified yet.</p>' in quiet_det and 'class="mjumps"' not in quiet_det, (
+            "a recording none of whose bills has a moment does not say so: " + re.sub(r"<[^>]+>", " ", quiet_det)[:300])
+    css = Path("src/pages/app.css").read_text(encoding="utf-8")
+    at = css.find(".vwbills li{display:flex")
+    phone = _braced(css[css.rfind("@media (max-width:45em){", 0, at):], "@media (max-width:45em){") if at >= 0 else ""
+    assert re.search(r"\n\.vwbn\{grid-column:1;", css) and re.search(r"\n\.vwbt\{grid-column:2;", css) and \
+        "display:flex;flex-wrap:wrap" in phone and ".vwbills .mjumps{display:contents}" in phone and \
+        ".vwbt{flex:1 1 100%}" in phone, (
+            "app.css: a bill's moments are not beside its number with its title under them, on a wide screen "
+            "or a phone")
+    return "ok", ("the kinds, the count and how the times are used, then a line a bill -- number, the "
+                  "Meetings tab's own buttons, title -- in the order the recording reaches them; a recording "
+                  "with no moment says so")
 
 
 @check("frontend", "the committees index says its counts of bills and sessions are every "

@@ -6918,12 +6918,17 @@ grid-template-areas:"main" "det" "side" "src"}
 .vwkinds .chip{margin-right:var(--sp-3)}
 /* No bill tied to it: said once, here, in muted text (review, 3). */
 .vwnone{margin:0;font-size:var(--t-ui);color:var(--ink-2)}
+/* THE RECORDING'S DESCRIPTION (app.js, cmteVideoDetail): how many bills and
+   how the times are used, then a line a bill -- its number, its moments
+   beside it, and its title under them in smaller, quieter type -- so the eye
+   runs down the numbers and across to the times. */
+.vwlead{margin:0 0 var(--sp-3);font-size:var(--t-ui);color:var(--ink-2)}
 .vwbills{list-style:none;margin:0;padding:0}
-.vwbills li{display:grid;grid-template-columns:7.5rem minmax(0,1fr);gap:var(--sp-1) var(--sp-4);
-padding:var(--sp-3) 0;border-top:1px solid var(--rule)}
+.vwbills li{display:grid;grid-template-columns:7.5rem minmax(0,1fr);gap:var(--sp-2) var(--sp-4);
+align-items:center;padding:var(--sp-3) 0;border-top:1px solid var(--rule)}
 .vwbills li:first-child{border-top:0;padding-top:0}
-.vwbn{font-weight:600;white-space:nowrap}
-.vwbt{font-size:var(--t-ui);line-height:1.45}
+.vwbn{grid-column:1;font-weight:600;white-space:nowrap}
+.vwbt{grid-column:2;font-size:var(--t-sm);line-height:1.45;color:var(--ink-2)}
 .vwbills .mjumps{grid-column:2;display:flex;flex-wrap:wrap;gap:var(--sp-2) var(--sp-3);align-items:center;margin-left:0}
 .vwlinks{margin:var(--sp-4) 0 0}
 /* Past the bills to the list, for a keyboard: shown when it has focus. */
@@ -6988,10 +6993,14 @@ color:var(--ink-2);white-space:nowrap;overflow:hidden}
   .vw{scroll-margin-top:var(--vwtop,0px)}
   .vwdet,.vwdet :is(a,button),.vwside :is(a,button),.vwsrc a{scroll-margin-top:calc(var(--vwstick,0px) + var(--sp-3))}
 }
-/* A bill's number over its title on a phone, its moments under them. */
+/* On a phone the number and its moments run on one line as far as they fit,
+   a moment that does not fit going whole to the next, and the title takes
+   the width under them: in a column beside the number, "Full Committee Work
+   Session 01:23:11" broke over two lines inside its button at 390px. */
 @media (max-width:45em){
-  .vwbills li{grid-template-columns:minmax(0,1fr)}
-  .vwbills .mjumps{grid-column:1}
+  .vwbills li{display:flex;flex-wrap:wrap;align-items:center;gap:var(--sp-2) var(--sp-3)}
+  .vwbills .mjumps{display:contents}
+  .vwbt{flex:1 1 100%}
 }
 @media screen and (min-width:60em){
   .vw{grid-template-columns:minmax(0,1fr) 22rem;grid-template-areas:"main side" "det ." "src src"}

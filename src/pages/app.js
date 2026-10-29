@@ -9282,29 +9282,45 @@ function cmteVideoRows(c){
             detail:()=>cmteVideoDetail(c,r,items,day,chips)};
   });
 }
-// What is under the player: the kinds and the room; the bills in the order
-// they were taken up, each with its moments, the Meetings tab's own buttons;
-// or, where the docket ties none, that, once and plainly (review, 3); and the
-// way to the meeting on the Meetings tab, where the committee had one that
-// day.
+/* WHAT IS UNDER THE PLAYER, the recording's description (the owner, 29
+   October 2026: "under the player, list the bills it covers, each with its
+   moment button ... that jumps the player there", "the bill number then its
+   moment"): its kinds as the Meetings tab's chips and its room; how many
+   bills the docket ties to it, and how its times are used, in the Meetings
+   tab's own words; then a line a bill in the order the recording reaches
+   them -- the number, then its moments, the Meetings tab's own buttons
+   (jumpButtons) with "approximate" where a moment is inferred, then its title
+   in smaller type under them. It had been the number, then the title, then
+   the moments on a line of their own under it: the times, which are what
+   the list is for, were the last thing on each bill. A bill with no moment
+   is its number and title. Where the docket ties none, that, once and
+   plainly (review, 3); and the way to the meeting on the Meetings tab, where
+   the committee had one that day. */
 function cmteVideoDetail(c,r,items,day,chips){
   const pid=meetingPid({date:r.date},r.id);
   const rooms=[...new Set(items.map(i=>i.venue||"").filter(Boolean))];
   const facts=[chips?`<span class="vwchips">${chips}</span>`:"",rooms.length===1?esc(roomWords(rooms[0])):""].filter(Boolean);
   const out=[facts.length?`<p class="vwkinds">${facts.join(" ")}</p>`:""];
   if(items.length){
-    const order=[...new Set(items.map(i=>String(i.bill)))];
-    // ON A PHONE, THE FIRST FEW AND A BUTTON FOR THE REST, as the list of
-    // recordings below them has: House Commerce's 26 bills were 2,500px
-    // between the player and the playlist at 390px. Every one is in the
-    // page, on a wide screen and on paper.
+    // In the order the recording reaches them, by each bill's first moment;
+    // a bill with none after those, in the docket's order.
+    const at=b=>Math.min(...items.filter(i=>String(i.bill)===b&&i.start!=null).map(i=>+i.start));
+    const order=[...new Set(items.map(i=>String(i.bill)))].map((b,k)=>[b,k,at(b)])
+      .sort((x,y)=>(x[2]===y[2]?0:x[2]<y[2]?-1:1)||x[1]-y[1]).map(x=>x[0]);
+    const timed=items.some(i=>i.start!=null);
+    out.push(`<p class="vwlead">The docket ties ${nBills(order.length)} to this recording.${
+      timed?" Choose a time to jump the recording there.":" No moment in this recording has been identified yet."}</p>`);
+    // ON A PHONE, THE FIRST FEW AND A BUTTON FOR THE REST, as YouTube folds
+    // a description: House Commerce's 26 bills were 2,500px between the
+    // player and the playlist at 390px. Every one is in the page, on a wide
+    // screen and on paper.
     out.push(`<ol class="vwbills" id="vwbills">${order.map((b,k)=>{
       const mine=items.filter(i=>String(i.bill)===b), it=mine[0];
       const href=it.year?`bill/${esc(it.year)}/${esc(b.toLowerCase())}.html`:esc(billHref(b));
       const jumps=jumpButtons(mine,()=>pid);
       return `<li${k>=VW_BILLS?' class="vwrest"':""}><a class="vwbn" href="${href}">${esc(it.n||b)}</a>${
-        it.title?`<span class="vwbt">${esc(it.title)}</span>`:""}${
-        jumps?`<span class="mjumps">${jumps}</span>`:""}</li>`;}).join("")}</ol>${
+        jumps?`<span class="mjumps">${jumps}</span>`:""}${
+        it.title?`<span class="vwbt">${esc(it.title)}</span>`:""}</li>`;}).join("")}</ol>${
       order.length>VW_BILLS?`<button type="button" class="discl pgmore vwall" data-vwall="bills" aria-controls="vwbills">Show all ${
         order.length.toLocaleString()} bills</button>`:""}`);
   }else{
