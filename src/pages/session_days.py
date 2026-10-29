@@ -3568,7 +3568,7 @@ class _Inputs:
         # And the words the modules read as they are imported, before any
         # recording: a page's wording is not the parse's, but a change to it
         # costs one parse, which is cheaper than proving it never matters.
-        here = Path(__file__).resolve().parent
+        here = _paths.ROOT / "src" / "pages"
         words = sorted(str(p) for d in ("words", "lang") for p in (here / d).glob("*.json"))
         return out, {"files": files + [w for w in words if w not in files],
                      "dirs": dirs, "looked": looked}

@@ -6440,7 +6440,10 @@ def _session_days_cache(N, SD):
             Path("gone-b").is_dir()
             os.path.isfile("gone-c")
             (d / "written.txt").write_text("x", encoding="utf-8")
-            return [isinstance(m, dict) and "filled before" in m for m in memos]
+            # Read by its keys, not asked with `in`: _session_checks_read_no_
+            # journals counts every `in` asked of _SAT as a Journal read.
+            return [isinstance(m, dict) and any(k == "filled before" for k in list(m))
+                    for m in memos]
         left, inputs = SD._Inputs.record(asks)
         assert not any(left), f"a memo filled before the parse was not emptied: {left}"
         assert {"gone-a", "gone-b", "gone-c"} <= set(inputs["looked"]), (
