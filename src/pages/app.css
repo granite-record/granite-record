@@ -7420,9 +7420,16 @@ letter-spacing:.04em;text-transform:uppercase;color:var(--ink-2)}
 .rs-art{max-width:var(--rs-meas);padding-bottom:var(--sp-7,3rem)}
 /* A part of a chapter ("HOURS OF POLLING") is headed at the size of the
    law under it, 16px, not at 13 (the accessibility sweep of 29 October
-   2026), on the line it had, so the page does not move. */
-.rs-sub{font:600 var(--t-ui)/calc(var(--t-label) * 1.3) var(--sans);letter-spacing:.05em;text-transform:uppercase;
-  color:var(--ink-2);margin:2.25rem 0 .75rem;padding-top:.75rem;border-top:1px solid var(--rule-2)}
+   2026). Its lines are 1.25 apart: on the 13px label's line (16.9px), a
+   long part's heading that wraps at 390 -- RSA 126-A's "Commission to Study
+   Oversight, Regulation, and Reporting of Patient Safety..." -- ran six lines
+   at 1.06 (the review of the same day). The 3.1px the line grew comes out of
+   the padding above and the margin below, half each, so a heading of one
+   line keeps its text, its rule and what is under it where they were. */
+.rs-sub{--rs-lead:calc((1.25em - var(--t-label) * 1.3) / 2);
+  font:600 var(--t-ui)/1.25 var(--sans);letter-spacing:.05em;text-transform:uppercase;
+  color:var(--ink-2);margin:2.25rem 0 calc(.75rem - var(--rs-lead));padding-top:calc(.75rem - var(--rs-lead));
+  border-top:1px solid var(--rule-2)}
 .rs-sec{padding:1.25rem 0 1rem;border-bottom:1px solid var(--rule);scroll-margin-top:5rem}
 .rs-sec:target{background:linear-gradient(var(--pine-soft),var(--pine-soft)) left top/3px 100% no-repeat;
   padding-left:.875rem}

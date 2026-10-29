@@ -72616,8 +72616,38 @@ def _css_font_px(rules, chain, tokens, memo=None):
     return 16.0, "the browser's", 0
 
 
+def _css_calc_px(value, em, look):
+    """Pixels of a length as app.css writes one -- px, rem at the browser's
+    16px, em of `em`, a var() through `look(name)` (None where nothing sets
+    it), calc() and its + - * / -- or None where it cannot be read."""
+    import ast as _ast
+    v = value.strip()
+    for _ in range(12):
+        nxt = re.sub(r"var\(\s*(--[\w-]+)\s*(?:,\s*([^()]*))?\)",
+                     lambda m: "(" + (look(m.group(1)) or m.group(2) or "nan") + ")", v)
+        if nxt == v:
+            break
+        v = nxt
+    v = re.sub(r"\bcalc\(", "(", v)
+    v = re.sub(r"(\d*\.?\d+)(px|rem|em)\b",
+               lambda m: f"({float(m.group(1)) * {'px': 1, 'rem': 16, 'em': em}[m.group(2)]!r})", v)
+    try:
+        tree = _ast.parse(v, mode="eval")
+    except SyntaxError:
+        return None
+    ok = (_ast.Expression, _ast.BinOp, _ast.UnaryOp, _ast.Constant, _ast.Add, _ast.Sub, _ast.Mult, _ast.Div,
+          _ast.USub, _ast.UAdd)
+    if not all(isinstance(n, ok) for n in _ast.walk(tree)):
+        return None
+    try:
+        return float(eval(compile(tree, "<css>", "eval"), {"__builtins__": {}}))
+    except (ZeroDivisionError, TypeError, ValueError):
+        return None
+
+
 @check("frontend", "a heading is drawn no smaller than the text it heads: a member's ATTENDANCE and BILLS, "
-       "and a Laws chapter's parts", needs=("build_rsa", "rsa", "shell"))
+       "and a Laws chapter's parts, whose lines that wrap are 1.2 apart at the least and whose one line "
+       "takes the room it took", needs=("build_rsa", "rsa", "shell"))
 def _headings_outrank(B, RSA, S):
     """The accessibility sweep of the R1 preview (29 October 2026): a
     member's term at a glance headed its figures ATTENDANCE and BILLS at
@@ -72631,7 +72661,16 @@ def _headings_outrank(B, RSA, S):
     through build_rsa's chapter page -- and the cascade's size for the
     heading (_css_font_px: font-size and the font shorthand's size, the
     tokens at the browser's 16px) must be at least the size of each run of
-    text it heads: the figures' labels, and the law's paragraphs."""
+    text it heads: the figures' labels, and the law's paragraphs.
+
+    A PART'S HEADING THAT WRAPS IS NOT CRAMPED (the review of the same
+    day). h2.rs-sub kept the 13px label's line, calc(var(--t-label) * 1.3),
+    16.9px under 16px text: 1.06, and RSA 126-A's long part heading ran six
+    tight lines at 390. Its line must be 1.2 its size at the least, and a
+    heading of one line must take the room it took on that line -- its
+    padding above and margin below, each with half the line, what .75rem
+    and half of 16.9px are (_css_calc_px reads the cascade's calc()) -- so
+    that the page does not move."""
     css = Path("src/pages/app.css").read_text(encoding="utf-8")
     rules = _css_screen_rules(css)
     tokens = _css_palette(css)["light"]
@@ -72684,6 +72723,36 @@ def _headings_outrank(B, RSA, S):
             bad.append(f"{what}: the heading is {hmin[0]:g}px ({hmin[1]}, app.css line {hmin[2]}) over text "
                        f"at {bmax[0]:g}px ({bmax[1]}, app.css line {bmax[2]})")
         said.append(f"{what} {hmin[0]:g}px over {bmax[0]:g}px")
+        if "rs-sub" not in what:
+            continue
+        # Its line: the font shorthand's (which sets line-height, "normal"
+        # where it names none) or line-height's, whichever rule wins.
+        chain = heads[0] + outer
+        won = _css_won(rules, chain)
+        lead = won.get("line-height", (None,))[0]
+        if "font" in won and (lead is None or (_css_specificity(won["font"][1]), won["font"][2])
+                              >= (_css_specificity(won["line-height"][1]), won["line-height"][2])):
+            m = re.search(r"/\s*((?:[\w.-]+\((?:[^()]|\([^()]*\))*\))|[^\s/]+)", won["font"][0])
+            lead = m.group(1) if m else "normal"
+        size = hmin[0]
+
+        def look(name, won=won):
+            return won[name][0] if name in won else tokens.get(name)
+        line = (float(lead) * size if re.fullmatch(r"\d*\.?\d+", lead.strip())
+                else _css_calc_px(lead, size, look))
+        pad = _css_calc_px(won.get("padding-top", ("0",))[0], size, look)
+        below = _css_calc_px(won.get("margin-bottom", ("0",))[0], size, look)
+        was = _css_calc_px("calc(.75rem + var(--t-label) * 1.3 / 2)", size, look)
+        if line is None or pad is None or below is None:
+            bad.append(f"{what}: a line ({lead!r}), padding or margin this cannot read")
+        elif line < 1.2 * size - 1e-6:
+            bad.append(f"{what}: its lines are {line:g}px apart at {size:g}px, {line / size:.2f} (from {lead!r}): "
+                       f"a heading that wraps is cramped")
+        elif abs(pad + line / 2 - was) > .05 or abs(line / 2 + below - was) > .05:
+            bad.append(f"{what}: a heading of one line moves the page: {pad:g}px + half of {line:g}px above its "
+                       f"text's middle and {below:g}px under it, where it had {was:g}px each")
+        else:
+            said[-1] += f", its lines {line / size:.2f} apart"
     assert not bad, "a heading is drawn smaller than the text it heads: " + "; ".join(bad)
     return "ok", "; ".join(said) + ("" if glance is not None else " (node is not here for termGlance)")
 
