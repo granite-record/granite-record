@@ -68954,10 +68954,36 @@ process.stdout.write("\n@@" + JSON.stringify(out));
         assert landed["scrollTop"] == 280 and landed["seen"] >= 1, (
             f"another term's recording named by the address is chosen but not shown: its list at "
             f"{landed['scrollTop']}px (280 shows it), the view brought into sight {landed['seen']} times")
+    # A RECORDING PLAYING IN THE PANE A TAB HIDES IS PAUSED: the two panes are
+    # shown and hidden, not drawn again, so a day's fold left playing under
+    # the Videos tab, or the Videos tab's player under Session Days, played on
+    # unseen (the review of 29 October 2026).
+    paused = _node_app(r"""
+require("./stub.js");
+const fs = require("fs");
+const s = (0, eval)(fs.readFileSync("./page.js", "utf8") + "; ({chamberShow})");
+const sent = [];
+const pane = (name, hidden) => ({hidden, querySelectorAll: (sel) => sel === "iframe"
+  ? [{contentWindow: {postMessage: (m) => sent.push(name + " " + JSON.parse(m).func)}}] : []});
+const days = pane("days", false), vids = pane("vids", true);
+document.getElementById = (id) => id === "chdays" ? days : id === "chvids" ? vids : null;
+const out = {};
+try {
+  s.chamberShow(1, false); out.toVideos = sent.splice(0); out.shown = [days.hidden, vids.hidden];
+  s.chamberShow(0, false); out.toDays = sent.splice(0);
+  s.chamberShow(0, false); out.again = sent.splice(0);
+} catch (e) { out.threw = e.constructor.name + ": " + e.message; }
+process.stdout.write("\n@@" + JSON.stringify(out));
+""")
+    if paused is not None:
+        assert "threw" not in paused and paused["shown"] == [True, False] and paused["toVideos"] == [
+            "days pauseVideo"] and paused["toDays"] == ["vids pauseVideo"] and paused["again"] == [], (
+            f"a recording playing in the pane a chamber's tab hides is not paused, or one shown is: {paused}")
     return "ok", ("a day takes its channel's session recording where no moment names one; the "
                   "folds play it and the Videos tab, at its own address, lists the term's, counts "
                   "and no bills; a term before the channels says so; another term's recording the "
-                  "address names is chosen and shown in its list")
+                  "address names is chosen and shown in its list; one playing in a pane its tab "
+                  "hides is paused")
 
 
 @check("frontend", "the header's five tabs are one row from 1008px, in the flow between the "

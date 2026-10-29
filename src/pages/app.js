@@ -9373,6 +9373,14 @@ function chamberCounts(d){
 function chamberShow(i,write){
   document.querySelectorAll(".chtabs .tab").forEach((t,k)=>t.setAttribute("aria-selected",String(k===i)));
   const days=document.getElementById("chdays"), vids=document.getElementById("chvids");
+  // A RECORDING PLAYING IN THE PANE BEING HIDDEN IS PAUSED, not left playing
+  // where nobody can see it or stop it (the review of 29 October 2026; a
+  // committee's tabs draw their pane again, which ends it). The frames take
+  // YouTube's commands (enablejsapi=1), as a moment's button seeks them, and
+  // one paused is where it stopped when its tab is shown again.
+  const hide=i===0?vids:days;
+  if(hide&&!hide.hidden)hide.querySelectorAll("iframe").forEach(f=>{
+    try{f.contentWindow.postMessage(JSON.stringify({event:"command",func:"pauseVideo",args:[]}),"*");}catch(_){}});
   if(days)days.hidden=i!==0;
   if(vids)vids.hidden=i!==1;
   if(!write||!VW_CHAMBER)return;
