@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.728
+# GRANITE_VERSION: 2026-09-04.730
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -20136,6 +20136,16 @@ F.FIND.rows = FIX["/find.json"];
 const panel = document.getElementById("findout");
 const draw = (s) => { F.findDraw(s); return panel.innerHTML; };
 (async () => {
+  // "cold": /search opened before any bill has arrived, so its first draw is
+  // made while the term's bills are on their way, as a reader's is.
+  if (MODE === "cold") {
+    script("./search.js");
+    location.search = "?q=firearms";
+    ready(); await ticks(40);
+    console.log(JSON.stringify({cold: {lead: document.getElementById("reslead").textContent,
+                                       say: document.getElementById("ressay").textContent}}));
+    return;
+  }
   const res = {q: {}, panel: {}};
   draw("");
   res.askedIdle = ASKED.slice();
@@ -20177,7 +20187,8 @@ const draw = (s) => { F.findDraw(s); return panel.innerHTML; };
     res.search = {};
     for (const s of ["firearms", "abbas", "voting", "xyzzy", "bail", "bailey", "SB 5", "pistal"]) {
       if (s !== "firearms") { box.value = s; box.fire("input"); await ticks(20); }
-      res.search[s] = {lead: lead.textContent, html: out.innerHTML};
+      res.search[s] = {lead: lead.textContent, html: out.innerHTML,
+                       say: document.getElementById("ressay").textContent};
     }
     // Every term's count, as /search makes it, for /bills?term=all to match.
     res.all = {state: F.FALL.rows ? "ready" : F.FALL.failed ? "failed" : "loading", q: {}};
@@ -20383,46 +20394,9 @@ def _find_bills(BP):
     need = [Path(f) for f in ("src/pages/app.js", "src/pages/find.js", "tests/dom_stub.js")]
     if not all(f.exists() for f in need):
         return "skip", "app.js, find.js or dom_stub.js not in this directory"
-    app = Path("src/pages/app.js").read_text(encoding="utf-8")
-    try:
-        matcher = BP.bill_matcher_js(app)
-    except SystemExit as e:
-        raise AssertionError(f"build_pages cannot cut the matcher out of "
-                             f"app.js: {e}")
-    m = re.search(r"<script>(.*?)</script>", BP.SEARCH_JS, re.S)
-    assert m, "build_pages.SEARCH_JS carries no <script>"
-    root = Path(tempfile.mkdtemp())
-    try:
-        files = {"stub.js": Path("tests/dom_stub.js").read_text(encoding="utf-8"),
-                 "app.js": _with_components(app), "billmatch.js": matcher,
-                 # components.js first, as every page loads it: the header's
-                 # panel draws each row's kind with its chip() (step 3).
-                 "find.js": _with_components(Path("src/pages/find.js").read_text(encoding="utf-8")),
-                 "search.js": m.group(1),
-                 "fixture.json": json.dumps(_find_bills_fixture()),
-                 "queries.json": json.dumps(_FIND_BILLS_QUERIES),
-                 "app_side.js": _FIND_BILLS_APP,
-                 "panel_side.js": _FIND_BILLS_PANEL}
-        for name, text in files.items():
-            (root / name).write_text(text, encoding="utf-8")
-
-        def node(*args):
-            r = _run(["node", *args], cwd=root, capture_output=True,
-                     text=True, timeout=90)
-            said = (r.stdout + r.stderr).strip()
-            assert r.returncode == 0 and said, (
-                f"node {' '.join(args)}: "
-                + (said.splitlines() or ["no output"])[-1][:200])
-            return json.loads(said.splitlines()[-1])
-
-        A = node("app_side.js")
-        AA = node("app_side.js", "all")
-        P = node("panel_side.js")
-        X = node("panel_side.js", "fail")
-        FO = node("panel_side.js", "failold")
-        SO = node("panel_side.js", "slowold")
-    finally:
-        shutil.rmtree(root, ignore_errors=True)
+    A, AA, P, X, FO, SO = _find_bills_run(
+        BP, ("app_side.js",), ("app_side.js", "all"), ("panel_side.js",), ("panel_side.js", "fail"),
+        ("panel_side.js", "failold"), ("panel_side.js", "slowold"))
 
     # The two sides agree, search by search.
     assert A["term"] == "2025-2026" and A["loaded"], (
@@ -20735,6 +20709,143 @@ def _find_bills(BP):
                   "sponsor, and /bills offers the Sponsor filter for it")
 
 
+def _find_bills_run(BP, *runs):
+    """_find_bills_fixture through _FIND_BILLS_APP (app_side.js) and
+    _FIND_BILLS_PANEL (panel_side.js, which runs /search's script too): each
+    of `runs` is the node arguments of one run, the file and its mode; their
+    JSON, in order."""
+    app = Path("src/pages/app.js").read_text(encoding="utf-8")
+    try:
+        matcher = BP.bill_matcher_js(app)
+    except SystemExit as e:
+        raise AssertionError(f"build_pages cannot cut the matcher out of "
+                             f"app.js: {e}")
+    m = re.search(r"<script>(.*?)</script>", BP.SEARCH_JS, re.S)
+    assert m, "build_pages.SEARCH_JS carries no <script>"
+    root = Path(tempfile.mkdtemp())
+    try:
+        files = {"stub.js": Path("tests/dom_stub.js").read_text(encoding="utf-8"),
+                 "app.js": _with_components(app), "billmatch.js": matcher,
+                 # components.js first, as every page loads it: the header's
+                 # panel draws each row's kind with its chip() (step 3).
+                 "find.js": _with_components(Path("src/pages/find.js").read_text(encoding="utf-8")),
+                 "search.js": m.group(1),
+                 "fixture.json": json.dumps(_find_bills_fixture()),
+                 "queries.json": json.dumps(_FIND_BILLS_QUERIES),
+                 "app_side.js": _FIND_BILLS_APP,
+                 "panel_side.js": _FIND_BILLS_PANEL}
+        for name, text in files.items():
+            (root / name).write_text(text, encoding="utf-8")
+        got = []
+        for args in runs:
+            r = _run(["node", *args], cwd=root, capture_output=True,
+                     text=True, timeout=90)
+            said = (r.stdout + r.stderr).strip()
+            # What a script threw, where node ends on its version line.
+            thrown = [x for x in said.splitlines() if re.match(r"\s*\w*Error\b|RUN |LOAD ", x)]
+            assert r.returncode == 0 and said, (
+                f"node {' '.join(args)}: "
+                + (thrown or said.splitlines() or ["no output"])[-1][:200])
+            got.append(json.loads(said.splitlines()[-1]))
+        return got
+    finally:
+        shutil.rmtree(root, ignore_errors=True)
+
+
+@check("frontend", "/search says what it found to a screen reader: one role=status line that counts "
+       "each group as the page lists it, or says nothing matched, once the bills are counted",
+       needs=("build_pages",))
+def _search_says_counts(BP):
+    """The accessibility sweep of the R1 preview (29 October 2026; WCAG
+    4.1.3, status messages): /search draws its results as the reader types,
+    and nothing told a screen reader that they had come, how many there
+    were, or that there were none. The header's panel has said so since 2
+    October (find.js, findSay); the page with the cap off said nothing.
+
+    So /search writes one line the eye does not see, <p class="sr"
+    id="ressay" role="status">, as the fixture's build writes the page, and
+    the page's script fills it each time it draws: each group it lists,
+    counted, in the page's own order, and the bills and next session's
+    requests where the page puts them -- "1 senator, 2 bills." -- or "No
+    matching results." It says nothing while the bills, the earlier terms,
+    the requests or the Laws pages' list (fetched once a statute's number is
+    typed: "RSA 659" was said "No matching results." and then "1 law.", the
+    review of 29 October 2026) are still on their way, so the answer is said
+    once, when it is whole, and not "1 senator" and then "1 senator, 2
+    bills". The page
+    is in English alone: there is no /es/search (build_pages writes
+    search.html once), so the words are not the catalog's."""
+    if not shutil.which("node"):
+        return "skip", "node is not installed"
+    need = [Path(f) for f in ("src/pages/app.js", "src/pages/find.js", "tests/dom_stub.js")]
+    if not all(f.exists() for f in need):
+        return "skip", "app.js, find.js or dom_stub.js not in this directory"
+    shared, _base, _ran, _days = _fixture_site_shared()
+    page = (shared / "site" / "search.html").read_text(encoding="utf-8")
+    lines = []
+    _html_walk(page, element=lambda c: lines.append(c[0]) if "ressay" in c[0]["ids"] else None)
+    assert len(lines) == 1 and lines[0]["attrs"].get("role") == "status" \
+        and "sr" in lines[0]["classes"], (
+        f"the fixture's search.html does not carry one <p class=\"sr\" id=\"ressay\" "
+        f"role=\"status\">: {[e['attrs'] for e in lines]}")
+    P, SO, CO = _find_bills_run(BP, ("panel_side.js",), ("panel_side.js", "slowold"),
+                                ("panel_side.js", "cold"))
+    M, L404, L91 = _find_more_run(BP, ("panel", ""), ("panel", "slowlaw:RSA 404"),
+                                  ("panel", "slowlaw:RSA 91-A"))
+    s, m = P["search"], M["search"]
+    n = P["all"]["q"]["firearms"]["n"]
+    want = {"firearms": f"{n} bills.", "xyzzy": "No matching results.",
+            "pistal": "No matching results. Did you mean pistol?"}
+    bad = [f"/search?q={q} says {s[q]['say']!r}, not {w!r}" for q, w in want.items() if s[q]["say"] != w]
+    # A name and the bills: each group counted, in the order the page draws them.
+    for q, page_ in (("abbas", s["abbas"]), ("bail", s["bail"]), ("bailey", s["bailey"]),
+                     ("RSA 91-A", m["RSA 91-A"]), ("data centers", m["data centers"])):
+        heads = re.findall(r"<h2>([^<]*?)(?:\s*<span class=\"resn\">([\d,]+)</span>)?\s*</h2>",
+                           page_["html"])
+        said = page_["say"]
+        if not said.endswith(".") or said == "No matching results.":
+            bad.append(f"/search?q={q} says {said!r} over the groups {heads}")
+            continue
+        got = [x.strip() for x in said[:-1].split(",")]
+        drawn = [f"{c} {t}" for t, c in heads if c]
+        shown = [g.split(" ", 1) for g in got]
+        if [c for c, _w in shown if not c.isdigit()] or \
+                [c.replace(",", "") for c, _w in shown][:len(drawn)] != \
+                [c.replace(",", "") for t, c in heads if c][:len(got)]:
+            bad.append(f"/search?q={q} says {said!r} where the page lists {drawn}")
+    assert "bill request" in m["data centers"]["say"] and "law" in m["RSA 91-A"]["say"].split(", ")[0], (
+        f"/search does not count the Law and the requests it lists: {m['RSA 91-A']['say']!r}, "
+        f"{m['data centers']['say']!r}")
+    # Opened before the bills have come: the first draw does not throw, and
+    # once they are counted the line says so.
+    assert CO["cold"]["say"] == f"{n} bills.", (
+        f"/search opened before the bills have arrived says {CO['cold']['say']!r} once they are "
+        f"counted ({CO['cold']['lead']!r})")
+    # The earlier terms on their way: nothing is said yet.
+    assert SO["search"]["firearms"]["say"] == "" and SO["search"]["xyzzy"]["say"] == "", (
+        f"while the earlier terms are being counted /search says "
+        f"{SO['search']['firearms']['say']!r} and {SO['search']['xyzzy']['say']!r}: it says the answer "
+        f"before it is whole, and then again")
+    # THE LAWS PAGES' LIST ON ITS WAY (the review of 29 October 2026): it is
+    # fetched only once a statute's number is typed, and "RSA 659" was said
+    # "No matching results." and then "1 law."; "RSA 91-A" "242 bills." and
+    # then "1 law, 242 bills.". Typed with the list held back, the line says
+    # nothing; let go, it says the whole answer once.
+    for q, run, whole in (("RSA 404", L404, "1 law."), ("RSA 91-A", L91, m["RSA 91-A"]["say"])):
+        spoke = [x for x in run["heard"][1:] if x]
+        if not run["held"]["asked"]:
+            bad.append(f"/search?q={q} never asked for the Laws pages' list")
+        elif run["held"]["say"] != "" or spoke != [whole] or run["say"] != whole:
+            bad.append(f"/search typed {q!r} while the Laws pages' list is on its way says "
+                       f"{run['held']['say']!r}, and in turn {spoke}, where it should say nothing and "
+                       f"then {whole!r} once")
+    assert not bad, "/search does not say what it found: " + "; ".join(bad[:4])
+    return "ok", ("/search's status line, as the fixture builds the page: " + "; ".join(
+        f"{q!r} {x['say']!r}" for q, x in (("firearms", s["firearms"]), ("abbas", s["abbas"]),
+                                           ("RSA 91-A", m["RSA 91-A"]), ("xyzzy", s["xyzzy"])))
+        + "; nothing while the earlier terms are counted")
+
+
 # THE FIXTURE FOR _find_laws_and_requests: _find_bills_fixture's, with what a
 # statute's number and a request's are read against -- the Laws pages' list
 # of chapters, two bills that say they change RSA 91-A (one this term, one
@@ -20801,7 +20912,31 @@ catch (e) { console.log("LOAD " + e.message); process.exit(1); }
 F.FIND.rows = FIX["/find.json"];
 const panel = document.getElementById("findout");
 const draw = (s) => { F.findDraw(s); return panel.innerHTML; };
+// "slowlaw:<q>": the Laws pages' list, which find.js fetches only once a
+// statute's number is typed, held back while /search is typed <q> into and
+// listened to, then let go: what its status line says, step by step.
+let freeLaws = null;
+if (MODE.startsWith("slowlaw:")) {
+  const f0 = globalThis.fetch;
+  globalThis.fetch = (u) => new URL(u).pathname === "/laws/chapters.json"
+    ? new Promise(r => { freeLaws = () => r(f0(u)); }) : f0(u);
+}
 (async () => {
+  if (MODE.startsWith("slowlaw:")) {
+    script("./search.js");
+    location.search = "?q=firearms";
+    ready(); await ticks(40);
+    const box = document.getElementById("resq"), line = document.getElementById("ressay");
+    const heard = [line.textContent];
+    const listen = async (n) => { for (let i = 0; i < n; i++) { await ticks(1);
+      if (heard[heard.length - 1] !== line.textContent) heard.push(line.textContent); } };
+    box.value = MODE.slice(8); box.fire("input"); await listen(60);
+    const held = {asked: !!freeLaws, say: line.textContent};
+    if (freeLaws) freeLaws();
+    await listen(60);
+    console.log(JSON.stringify({held, heard, say: line.textContent}));
+    return;
+  }
   const res = {panel: {}, first: {}, search: {}, all: {}, req: {}};
   draw("firearms"); await F.findBillsLoad(); await ticks(10);
   res.idle = ASKED.filter(p => p.startsWith("/laws/") || p.includes("requests"));
@@ -20817,7 +20952,8 @@ const draw = (s) => { F.findDraw(s); return panel.innerHTML; };
         out = document.getElementById("resout");
   for (const s of Q.search) {
     if (s !== Q.search[0]) { box.value = s; box.fire("input"); await ticks(40); }
-    res.search[s] = {lead: lead.textContent, html: out.innerHTML};
+    res.search[s] = {lead: lead.textContent, html: out.innerHTML,
+                     say: document.getElementById("ressay").textContent};
   }
   for (const s of Q.search) {
     const A = F.findBills(s, 40, true), R = F.findBills(s, 0, "requests");
@@ -23046,7 +23182,12 @@ def _find_study_committees_rank(BP):
             assert all(i > order.index("BILLS") for i in study), (
                 f"{c['q']!r}: a statutory or study committee is drawn above the bills: {order}")
     js = BP.SEARCH_JS
-    g = js.index('{t:"Statutory and study committees",k:r=>r[0]==="statutory"||r[0]==="study"}')
+    # The group's own words for the line a screen reader hears (w:, 29
+    # October 2026) may stand between its title and its test.
+    m = re.search(r'\{t:"Statutory and study committees",(?:w:\[[^\]]*\],)?'
+                  r'k:r=>r\[0\]==="statutory"\|\|r\[0\]==="study"\}', js)
+    assert m, "/search has no group of statutory and study committees"
+    g = m.start()
     assert js.index('{t:"Subjects"') < g < js.index('{t:"Former senators"') and re.search(
         r'const AFTER=new Set\(\["Statutory and study committees",', js), (
         "/search does not list the statutory and study committees as their own group after the bills")
@@ -32992,7 +33133,10 @@ def _site_fixture(root):
          "party_code": "R", "county": "Rockingham", "county_abbr": "Rock",
          "district": "13", "label": "Nelson, Jodi(R) Rock 13", "email": "j@gc.nh.gov",
          "url": "", "towns": ["Raymond"], "committees": ["Commerce"], "title": "",
-         "phone": ""},
+         # A seat on the floor, so the roster under the seating chart is read
+         # on the page's own row (the review of 29 October 2026): Division 2,
+         # seat 7, which the card shows as "007".
+         "seat": "2007", "phone": ""},
         {"id": "377207", "name": "Altschiller, Debra", "chamber": "S",
          "party": "Democrat", "party_code": "D", "county": "Rockingham",
          "county_abbr": "Rock", "district": "24",
@@ -40279,6 +40423,131 @@ def _rsa_pages(B, RSA, S):
         "HB 286, in 91-A:4's history, is listed again as another bill that proposed changes"
     return "ok", ("91-A:4 tagged pending by HB 100, linked to 91-A:5 and not to 91-A:99, history 2019 then "
                   "1967 and HB 286 not repeated; titled Chapter 91-A, its sections in the sidebar")
+
+
+# RSA 659:27-a's challenge affidavit and 659:13's attestation, paragraph for
+# paragraph as the General Court's table holds them (the preview's /laws/659,
+# 29 October 2026), cut to the lines a form's blanks are in.
+_FORM_PASSAGES = (
+    ("659:13", "Identification of Voters at the Polls.", (
+        "I ____________________ (Printed Name), in accordance with the authority granted to me in RSA 659:13, "
+        "I(c) as a moderator, clerk, supervisor, or selectman of the checklist (circle one) do attest under the "
+        "penalty of perjury that:",
+        "____________________ (Printed Name of Voter) ____________________ (NH Voter Identification Number)",
+        "____________________ Signature ____________________ Office")),
+    ("659:27-a", "Challenge Affidavit.", (
+        "I. No challenge may be asserted except in the form of a signed affidavit, under oath administered by "
+        "an election official, in the following form:",
+        "Name being used by the voter who you wish to challenge:",
+        "_" * 70,
+        "Last Name First Name Middle Name",
+        "_____ The person seeking to vote has already voted in the election at (name polling place) "
+        "__________ at approximately (state time if known) __________",
+        "I hereby swear and affirm, under the penalties of perjury, that to the best of my knowledge and "
+        "belief the information above is true and correct.",
+        "_" * 70,
+        "(Signature of challenger)",
+        "On the date shown above, before me, _________________________ (print name of notary public, justice "
+        "of the peace, election officer), appeared _________________________ (print name of person whose "
+        "signature is being notarized), known to me or satisfactorily proven (circle one) to be the person "
+        "whose name appears above.")),
+)
+
+
+# RSA 200-J's name, as the preview's /laws/200-j prints it in its heading
+# (29 October 2026): one word of 29 letters and slashes.
+_LONG_TITLE = ("XV", "TITLE XV EDUCATION", "200-J", "VETERINARY/MEDICAL/OPTOMETRIC EDUCATION PROGRAM",
+               "200-J:1", "Definitions.", ("In this chapter:",))
+
+
+def _wrap_breaks(rules, chain, memo):
+    """(how a word may break in chain[0], or None, and what holds its line
+    whole, or None), from app.css's cascade and what the element inherits
+    (_css_inherited): overflow-wrap or word-wrap anywhere or break-word, or
+    word-break break-all; white-space nowrap or pre."""
+    props = ("overflow-wrap", "word-wrap", "word-break", "white-space", "text-wrap-mode", "text-wrap")
+    got = _css_inherited(rules, chain, props, memo)
+    breaks = [(p, got[p]) for p in ("overflow-wrap", "word-wrap") if p in got
+              and got[p][0].split()[0] in ("anywhere", "break-word")]
+    breaks += [("word-break", got["word-break"])] if got.get("word-break", ("",))[0] == "break-all" else []
+    whole = [(p, got[p]) for p in ("white-space", "text-wrap-mode", "text-wrap") if p in got
+             and got[p][0].split()[0] in ("nowrap", "pre")]
+    return (breaks[0] if breaks else None), (whole[0] if whole else None)
+
+
+@check("build", "a Laws page's long words wrap on a phone: every run of 20 or more underscores a "
+       "statute's form writes, and every word of 20 or more letters in a chapter's title, sits where "
+       "app.css lets a word break", needs=("build_rsa", "rsa", "shell"))
+def _statute_blanks_wrap(B, RSA, S):
+    """The accessibility sweep of the R1 preview (29 October 2026; WCAG
+    1.4.10, reflow): /laws/659 was 648px wide in a 390px phone's viewport,
+    and scrolled sideways. RSA 659:27-a prints its affidavit's lines to fill
+    in as seventy underscores in a row: one word, 636px at reading size
+    (measured on the preview, where the phone's column is 366px and twenty
+    are 181px), and nothing let the text break inside a word. With that
+    mended, every Laws page of the preview was measured at 390 with the
+    branch's sheet (1,801 of them, the index and every chapter): one more
+    scrolled, /laws/200-j, 425px wide, because its title's
+    "Veterinary/medical/optometric" is one word of 29 characters at the
+    title's size, which a slash does not break.
+
+    So the two sections' own words, and 200-J's name, go through build_rsa's
+    chapter page, and every run of twenty or more underscores it writes, and
+    every word of twenty or more characters in its <h1>, must sit in an
+    element on which app.css's cascade -- the element's own rules and what it
+    inherits (_wrap_breaks) -- lets a word break where it does not fit and
+    does not hold the line whole. A rule taken off, a statute's text or a
+    title moved into an element no rule reaches, or a later rule that undoes
+    it, each fails here. The renderer and the sheet are what is held, so a
+    section of any chapter with a longer blank, and a chapter with a longer
+    name, is held too; the sweep of every chapter's width on the preview is
+    the audit's, not this check's (it needs a browser and the real table)."""
+    cols = ["id", "TitleNo", "ChapterNo", "SectionNo", "Title", "Chapter", "Section", "SourceNote",
+            "rsa", "EntireRSA", "titleNumber", "url"]
+    tno, tname, ch, cname, addr0, head0, paras0 = _LONG_TITLE
+    rows = [("LXIII", "TITLE LXIII ELECTIONS", "659", "ELECTION PROCEDURE", addr, heading, paras)
+            for addr, heading, paras in _FORM_PASSAGES] + [(tno, tname, ch, cname, addr0, head0, paras0)]
+    t = RSA.Table([dict(zip(cols, (
+        str(n), tn, chn, addr.replace(":", "-"), title, f"CHAPTER {chn} {name}", f"Section {addr} {heading}", "",
+        f"<center><h2>CHAPTER {chn}<br>{name}</h2></center>",
+        "<codesect> <br> " + " <br> ".join(paras) + "</codesect>", "63",
+        f"{tn}\\{chn}\\{addr.replace(':', '-')}.htm")))
+        for n, (tn, title, chn, name, addr, heading, paras) in enumerate(rows)])
+    data = {"bills": {}, "enacted": {}, "statute": {}, "asof": {"laws_through": 2025}}
+    root = Path(tempfile.mkdtemp(prefix="gr-rsaform-"))
+    try:
+        (root / "idx").mkdir()
+        bills = B.Bills(root, "2025-2026")
+        pages = {c: B.chapter_page(S.template(Path("site")), t, data, bills, c, "https://graniterecord.org")
+                 for c in ("659", ch)}
+    finally:
+        shutil.rmtree(root, ignore_errors=True)
+    runs = _html_text_chains(pages["659"], r"_{20,}")
+    lengths = sorted(len(r) for r, _c in runs)
+    assert lengths.count(70) == 2 and len(runs) >= 8, (
+        f"the chapter page does not carry the form's blanks as the table has them: runs of {lengths}")
+    words = [(w, c) for p in pages.values() for w, c in _html_text_chains(p, r"[^\s]{20,}") if c[0]["tag"] == "h1"]
+    assert any("optometric" in w.lower() for w, _c in words), (
+        f"RSA 200-J's page does not carry its name's long word in its heading: {[w for w, _c in words]}")
+    rules = _css_screen_rules(Path("src/pages/app.css").read_text(encoding="utf-8"))
+    memo, held, bad = {}, Counter(), []
+    for what, run, chain in [("underscores", r, c) for r, c in runs] + [("title", w, c) for w, c in words]:
+        brk, whole = _wrap_breaks(rules, chain, memo)
+        where = " > ".join(e["tag"] + "".join("." + c for c in sorted(e["classes"])) for e in reversed(chain[:4]))
+        name = f"{len(run)} underscores" if what == "underscores" else f"the title's \"{run}\""
+        if not brk or whole:
+            bad.append(f"{name} in {where}: "
+                       + (f"{whole[0]}:{whole[1][0]} ({whole[1][1]}, app.css line {whole[1][2]})"
+                          if whole else "no rule lets a word break there"))
+        else:
+            held[f"{brk[0]}:{brk[1][0]} from {brk[1][1]}"] += 1
+    assert not bad, (
+        "a long word on a Laws page cannot wrap, and a 390px phone scrolls sideways past it (RSA "
+        "659:27-a's seventy underscores are 636px at reading size, 200-J's title 425px wide): "
+        + "; ".join(bad[:4]) + ". app.css's .rs-text and .l-head h1 {overflow-wrap:anywhere} are what let them")
+    return "ok", (f"{len(runs)} runs of 20 or more underscores ({lengths[-1]} the longest) in 659:13 and "
+                  f"659:27-a's forms and {len(words)} long word in 200-J's title, every one able to break: "
+                  + ", ".join(f"{k} ({n})" for k, n in held.items()))
 
 
 # DEFINED TERMS, ON THE STATUTES' OWN WORDS. Each passage is the General
@@ -54607,8 +54876,9 @@ def _review_of_audit_fixes(BP):
     The seat map. Its focus listeners sat on the <svg>, which made the chart
     itself a Tab stop, and leaving a seat emptied the note under the chart
     while focus was on its way to the link in it. Run: nothing on the svg
-    listens for focus, the note keeps its link while focus goes into it, and
-    the arrow keys still walk the seats.
+    listens for focus, the name's callout above the seat (the note's link
+    until 29 October 2026; _seat_callout) keeps its link while focus goes
+    into it, and the arrow keys still walk the seats.
 
     A box that scrolls sideways is a Tab stop while it scrolls: the exports
     page marks its coverage table's box and app.js gives it the stop only
@@ -54738,20 +55008,25 @@ def _review_of_audit_fixes(BP):
                    + ": Chrome makes an svg that does a Tab stop, round all 400 seats")
     if not (seat.get("named") and seat.get("keptGoingIn") and seat.get("clearedOnLeaving")
             and seat.get("namedGoingBack")):
-        bad.append("focus on a seat names its member under the chart, and that link has to "
-                   f"be there when Tab reaches it and gone when focus has left both: {seat}")
+        bad.append("focus on a seat names its member in the callout above it, and that link has "
+                   f"to be there when Tab reaches it and gone when focus has left both: {seat}")
     if seat.get("arrow") != {"focused": 1, "stops": [1]} or seat.get("end") != {"focused": 3, "stops": [3]}:
         bad.append(f"the arrow keys no longer walk the seats with one Tab stop among them: {seat}")
-    # A CHART IN A TAB NOT YET OPEN (the review of 7 October 2026): the
-    # legislators page opens on Towns, the chart's box is 0px wide when the
-    # script runs, and a phone that went Legislators, then By seat, got the
-    # whole floor at 100% with seats five pixels across.
+    # THE CHART OPENS ZOOMED TO FIT, ON A PHONE AS EVERYWHERE (the owner, 29
+    # October 2026, board item 7). It opened zoomed in, 315% at 390px, and a
+    # chart in a tab not yet open waited for its box's width to do it (the
+    # review of 7 October 2026); now the script writes no zoom until the
+    # reader asks, in a hidden tab or once it is shown, and watches nothing.
+    wh = got.get("seatWheel") or {}
+    zoomed = str(wh.get("zoomed") or "")
+    if wh.get("down") != 0 or wh.get("fitted") is not None or wh.get("up") != 1 \
+            or not zoomed.endswith("%") or float(zoomed[:-1] or 0) <= 100:
+        bad.append("a wheel turned down over the fitted chart keeps the page from scrolling, or turned up "
+                   f"does not zoom the chart in: {wh}")
     hid = got.get("seatHidden") or {}
-    shown = str(hid.get("shown") or "")
-    if hid.get("zoom") != "100%" or hid.get("watching") != 1 or not shown.endswith("%") \
-            or abs(float(shown[:-1] or 0) - 1100 / 349 * 100) > 1e-6 or not hid.get("letGo"):
-        bad.append("a seat map drawn in a hidden tab does not wait for its box's width to "
-                   f"zoom a 349px phone in, and then stop watching: {hid}")
+    if hid != {"zoom": None, "watching": 0, "shown": None, "letGo": True}:
+        bad.append("the seat map does not open zoomed to fit: it writes a zoom of its own on "
+                   f"opening, or watches its box for one: {hid}")
     # THE SPEAKER'S CHAIR LIGHTS (the review of 7 October 2026): his number
     # is on the group round the circle, and choosing him named him and lit his
     # row but never the chair.
@@ -54761,8 +55036,8 @@ def _review_of_audit_fixes(BP):
     assert not bad, "; ".join(bad[:5])
     return "ok", ("Show more leaves the keyboard on the first row it brought, on the list and "
                   "on a member's votes; Play and a long analysis move focus when clicked; the "
-                  "seat map's svg hears no focus, its note keeps its link, in a hidden tab "
-                  "it zooms once its box has a width and the Speaker's chair lights; a marked box is a "
+                  "seat map's svg hears no focus, its callout keeps its link, it opens zoomed to "
+                  "fit, in a hidden tab too, and the Speaker's chair lights; a marked box is a "
                   "stop only while it scrolls; the header's two widths are one, 1100px; and 7 "
                   "rules of the stylesheet and the pages stand")
 
@@ -54873,31 +55148,35 @@ document.querySelectorAll = all;
     return n; };
   const seats = [1, 2, 3, 4].map(i => node("circle", {"data-slug": "m" + i, "data-seat": "100" + i,
     "data-name": "Rep. " + i, tabindex: "-1"}));
-  const svg = node("svg"), wrap = node("div"), note = node("p"), list = node("div");
+  const svg = node("svg"), wrap = node("div"), note = node("p"), list = node("div"), stage = node("div");
   svg.querySelectorAll = q => q === "[data-slug]" || q === ".seat" ? seats : [];
-  svg.parentNode = wrap;
+  svg.parentNode = wrap; svg.kids = seats.slice();
   const doc = {createElement: t => node(t), createTextNode: t => ({text: t}),
     getElementById: id => ({seatlist: list, seatnote: note})[id] || null,
-    querySelector: q => ({".seatmap": svg, ".seatwrap": wrap})[q] || null};
+    querySelector: q => ({".seatmap": svg, ".seatwrap": wrap, ".seatstage": stage})[q] || null};
   new Function("document", "DATA", fs.readFileSync("./seat.js", "utf8"))(doc, f => "/" + f);
   const stops = () => seats.map((c, i) => c.attrs.tabindex === "0" ? i : -1).filter(i => i >= 0);
   const hears = n => ["focus", "blur", "focusin", "focusout"].filter(t => (n.on[t] || []).length);
   const seat = {svgHears: hears(svg), first: stops()};
-  // Tab reaches the one stop: the note names its member, as a link.
+  // THE NAME IS IN THE CALLOUT ABOVE THE SEAT (29 October 2026), where it
+  // was the note's under the chart.
+  const pop = stage.kids.find(k => k.id === "seatpop");
+  const link = () => pop && !pop.hidden ? pop.kids[0] : null;
+  // Tab reaches the one stop: the callout names its member, as a link.
   [svg, wrap].forEach(n => n.fire("focusin", {target: seats[0]}));
-  const named = note.kids[0];
+  const named = link();
   seat.named = !!(named && named.tag === "a" && /m1/.test(named.href || ""));
   // Tab again: focus leaves the seat for that link.
   [svg, wrap].forEach(n => n.fire("focusout", {target: seats[0], relatedTarget: named}));
-  seat.keptGoingIn = note.kids[0] === named;
+  seat.keptGoingIn = link() === named;
   // Shift+Tab from the link back to the seat: the seat's focus names it again.
-  note.fire("focusout", {target: named, relatedTarget: seats[0]});
+  if (pop) pop.fire("focusout", {target: named, relatedTarget: seats[0]});
   [svg, wrap].forEach(n => n.fire("focusin", {target: seats[0]}));
-  seat.namedGoingBack = !!(note.kids[0] && note.kids[0].tag === "a");
+  seat.namedGoingBack = !!(link() && link().tag === "a");
   // And on from the link to the list under the chart, whose rows carry a
-  // member's slug as a seat does: the note is put back as it was.
-  note.fire("focusout", {target: note.kids[0], relatedTarget: node("a", {"data-slug": "m9"})});
-  seat.clearedOnLeaving = note.kids.length === 0;
+  // member's slug as a seat does: the callout is let go.
+  if (pop) pop.fire("focusout", {target: link(), relatedTarget: node("a", {"data-slug": "m9"})});
+  seat.clearedOnLeaving = !!pop && pop.hidden;
   // The arrow keys, from the seat that has focus.
   const key = (k, from) => svg.fire("keydown", {key: k, target: seats[from]});
   key("ArrowRight", 0);
@@ -54910,7 +55189,9 @@ document.querySelectorAll = all;
   out.seat = seat;
 
   // IN A TAB NOT YET OPEN the box is 0px wide when the script runs, as on the
-  // legislators page, which opens on Towns: the zoom waits for a width, once.
+  // legislators page, which opens on Towns. The chart opens zoomed to fit
+  // (the owner, 29 October 2026): no zoom written, there or once it is shown,
+  // and nothing watched for a width.
   const watched = [];
   globalThis.ResizeObserver = class { constructor(f) { this.f = f; this.off = false; watched.push(this); }
     observe(n) { this.n = n; } disconnect() { this.off = true; } };
@@ -54927,6 +55208,14 @@ document.querySelectorAll = all;
   hidden.letGo = watched.every(o => o.off);
   delete globalThis.ResizeObserver;
   out.seatHidden = hidden;
+  // THE WHEEL AT THE FITTED OPENING (the review of 29 October 2026): turned
+  // down over a chart that cannot zoom out further, it is the page's; turned
+  // up, it zooms the chart and the page stays.
+  let down = 0, up = 0;
+  wrap2.fire("wheel", {deltaY: 100, clientX: 5, clientY: 5, preventDefault() { down++; }});
+  const fitted = svg2.style.width || null;
+  wrap2.fire("wheel", {deltaY: -100, clientX: 5, clientY: 5, preventDefault() { up++; }});
+  out.seatWheel = {down, up, fitted, zoomed: svg2.style.width || null};
 
   // THE SPEAKER'S CHAIR, whose number is on the group round it and the word
   // "Speaker", not on the circle: choosing him lights the circle.
@@ -54950,6 +55239,487 @@ document.querySelectorAll = all;
 })();
 process.stdout.write("\n@@" + JSON.stringify(out));
 """
+
+
+# The harness of _seat_callout: the seat map's own function (_seat_script) in
+# node, in a stub whose boxes have places, so where the callout is drawn can
+# be read. The chart's box is 366px wide, a 390px phone's column.
+_SEAT_CALLOUT_HARNESS = r"""
+const fs = require("fs");
+globalThis.tr = (k, en, v) => String(en).replace(/\{(\w+)\}/g, (m, x) => v && x in v ? v[x] : m);
+const node = (tag, attrs, box) => { const n = {tag, attrs: Object.assign({}, attrs), on: {}, kids: [],
+  hidden: false, style: {}, dataset: {}, focused: 0, clientWidth: 366, scrollLeft: 0, scrollTop: 0,
+  box: box || {left: 0, top: 0, width: 10, height: 10}, offsetWidth: 0, offsetHeight: 0,
+  classList: null, parentNode: null,
+  addEventListener(t, f) { (this.on[t] = this.on[t] || []).push(f); },
+  fire(t, e) { (this.on[t] || []).forEach(f => f(Object.assign({target: this, preventDefault() {}}, e))); },
+  setAttribute(k, v) { this.attrs[k] = String(v); },
+  getAttribute(k) { return k in this.attrs ? this.attrs[k] : null; },
+  appendChild(c) { if (this._t === "") this._t = undefined; this.kids.push(c); c.parentNode = this; return c; },
+  insertBefore(c, ref) { const i = this.kids.indexOf(ref); this.kids.splice(i < 0 ? this.kids.length : i, 0, c);
+    c.parentNode = this; return c; },
+  contains(x) { return x === this || this.kids.some(k => k === x || (k.contains && k.contains(x))); },
+  closest(q) { return q === "[data-slug]" && "data-slug" in this.attrs ? this : null; },
+  querySelectorAll() { return []; }, querySelector() { return null; },
+  getBoundingClientRect() { const b = this.box; return {left: b.left, top: b.top, width: b.width,
+    height: b.height, right: b.left + b.width, bottom: b.top + b.height}; },
+  setPointerCapture() {}, focus() { this.focused++; doc.activeElement = this; }};
+  const cls = new Set(); n.classList = {toggle(k, on) { (on === undefined ? !cls.has(k) : on) ? cls.add(k) : cls.delete(k); },
+    add(k) { cls.add(k); }, remove(k) { cls.delete(k); }, contains(k) { return cls.has(k); }};
+  Object.defineProperty(n, "className", {get() { return [...cls].join(" "); },
+    set(v) { cls.clear(); String(v).split(/\s+/).filter(Boolean).forEach(k => cls.add(k)); }});
+  Object.defineProperty(n, "textContent", {get() { return this._t !== undefined ? this._t
+      : this.kids.map(k => k.textContent !== undefined ? k.textContent : k.text || "").join(""); },
+    set(v) { this._t = String(v); this.kids = []; }});
+  return n; };
+// The stage: the chart's box (600px tall) and the note under it, at 1000px
+// down the page, 12px in. Seats where a test puts them.
+const stage = node("div", {}, {left: 12, top: 1000, width: 366, height: 640});
+const wrap = node("div", {}, {left: 12, top: 1000, width: 366, height: 600});
+const note = node("p"), list = node("div"), svg = node("svg");
+stage.appendChild(wrap); stage.appendChild(note); wrap.appendChild(svg);
+const seat = (n, slug, box, extra) => node("circle", Object.assign({"data-slug": slug, "data-seat": String(n),
+  "data-name": "Rep. " + slug, tabindex: "-1"}, extra || {}), box);
+const seats = [
+  seat(2096, "mid", {left: 180, top: 1300, width: 17, height: 17}, {"data-party": "Republican", "data-dist": "Hillsborough 14"}),
+  seat(1034, "top", {left: 150, top: 1020, width: 17, height: 17}, {"data-party": "Democrat", "data-dist": "Grafton 12"}),
+  seat(1001, "left", {left: 14, top: 1300, width: 17, height: 17}),
+  seat(5041, "right", {left: 360, top: 1300, width: 17, height: 17})];
+seats.forEach(c => svg.appendChild(c));
+svg.querySelectorAll = q => q === "[data-slug]" || q === ".seat" ? seats : [];
+const doc = {activeElement: null, createElement: t => node(t), createTextNode: t => ({text: t, textContent: t}),
+  getElementById: id => ({seatlist: list, seatnote: note})[id] || null,
+  querySelector: q => ({".seatmap": svg, ".seatwrap": wrap, ".seatstage": stage})[q] || null};
+new Function("document", "DATA", fs.readFileSync("./seat.js", "utf8"))(doc, f => "/" + f);
+const pop = stage.kids.find(k => k.id === "seatpop");
+if (pop) { pop.offsetWidth = 200; pop.offsetHeight = 64; }
+const out = {pop: !!pop, cls: pop ? pop.className : null,
+  order: stage.kids.map(k => k === wrap ? "chart" : k === note ? "note" : k === pop ? "callout" : "?")};
+const at = () => pop ? {hidden: pop.hidden, left: pop.style.left, top: pop.style.top,
+  arrow: pop.style.arrow || null, below: pop.classList.contains("below"), gone: pop.classList.contains("gone"),
+  name: pop.kids[0] && pop.kids[0].textContent, href: pop.kids[0] && pop.kids[0].href,
+  what: pop.kids[1] && pop.kids[1].textContent, seat: pop.kids[2] && pop.kids[2].textContent,
+  note: note.textContent, noteCls: note.className,
+  noteKids: note.kids.map(k => k.className || k.tag || "text")} : null;
+if (pop) pop.style.setProperty = (k, v) => { if (k === "--arrow") pop.style.arrow = v; };
+// A seat chosen by a tap, one near the top, one at each side.
+for (const [k, c] of [["tap", seats[0]], ["top", seats[1]], ["left", seats[2]], ["right", seats[3]]]) {
+  svg.fire("click", {target: c}); out[k] = at(); svg.fire("click", {target: c});
+}
+out.letGo = at();
+// THE KEYBOARD: Tab to a seat, and Tab again to the name in its callout.
+[svg, wrap].forEach(n => n.fire("focusin", {target: seats[0]}));
+doc.activeElement = seats[0];
+const link = pop && pop.kids[0];
+out.focusSeat = at();
+[svg, wrap].forEach(n => n.fire("focusout", {target: seats[0], relatedTarget: link}));
+doc.activeElement = link;
+// What took it away on 29 October 2026: the page scrolls as focus goes to the
+// name, the chart passes from under a resting pointer, and its mouseout says
+// again; the pointer then crosses another seat; the chart is scrolled, and
+// the seat with it out of the chart's box.
+svg.fire("mouseout", {relatedTarget: null});
+svg.fire("mouseover", {target: seats[3]});
+seats[0].box.top = 5000; wrap.fire("scroll", {});
+out.focusName = Object.assign(at(), {same: !!pop && pop.kids[0] === link, linkIn: !!pop && pop.contains(link),
+  noteLink: note.kids.some(k => k.tag === "a")});
+seats[0].box.top = 1300;
+// Escape lets it go, and puts the keyboard back on the seat.
+const before = seats[0].focused;
+if (pop) pop.fire("keydown", {key: "Escape"});
+out.escape = Object.assign(at(), {seatFocused: seats[0].focused - before, active: doc.activeElement === seats[0]});
+// The pointer: over a seat, then onto its callout, which stays; then off.
+svg.fire("mouseover", {target: seats[1]});
+const over = at();
+svg.fire("mouseout", {relatedTarget: pop});
+out.hover = {over, ontoIt: at()};
+if (pop) pop.fire("mouseleave", {relatedTarget: null});
+out.hover.off = at();
+process.stdout.write("\n@@" + JSON.stringify(out));
+"""
+
+
+@check("frontend", "the seating chart names a seat in a callout above it that the keyboard keeps: it "
+       "points at the seat, flips below it at the top, stays inside a phone's width, and Tab from a seat "
+       "reaches its link and is not dropped", needs=("build_pages", "seating"))
+def _seat_callout(BP, SEAT):
+    """The owner, 29 October 2026 (relayed): "a name callout ABOVE the
+    selected seat, not at the bottom of the screen", a small box with the
+    member's name and their party and district and a triangle pointing at
+    the seat, flipping below the seat near the top edge, inside the screen
+    at 390, following a seat chosen by the keyboard as well as by a tap, in
+    the site's popover style; #seatnote still announcing; and the roster
+    under the chart names only. And the accessibility sweep of the same day
+    (WCAG 2.4.3): Tab from a seat dropped focus to the page, because the
+    scroll that brought the name under the chart into view moved the chart
+    from under a resting pointer, and its mouseout wrote the note again,
+    taking out the link focus was on.
+
+    Run: the seat map's own function (_seat_script) in node, its boxes at
+    places (_SEAT_CALLOUT_HARNESS: the chart's box 366px wide). A seat tapped
+    has a callout -- the term popovers' box, .termpop -- whose link is the
+    member's page, the party and district under it and then the seat, the
+    callout above the seat with its arrow at the seat's middle, below a seat
+    at the top of the box, inside the box at either side; between the chart
+    and the note, so it is the next Tab stop from a seat. The note says it
+    all in words a screen reader hears and holds no link. Focus on a seat
+    shows it; with focus on its link, a mouseout, a pointer over another
+    seat and a scroll that takes the seat out of the box leave the same link
+    where it was, shown; Escape lets it go and puts focus on the seat. The
+    pointer can move onto it and it stays. Read: every seat the page's chart
+    writes carries data-party and data-dist (seating.svg), and under the
+    chart, on the fixture's legislators page, a row's tag is written
+    "(R<span class="mdist"> - Belk 6)</span><span aria-hidden="true">)</span>"
+    (build_pages.seat_row_tag) and
+    app.css hides the district from the eye alone and not the party's letter
+    (the review of 29 October 2026, WCAG 1.4.1: hidden too, the party was the
+    chip's colour alone, and nothing at all in forced colours)."""
+    if not shutil.which("node"):
+        return "skip", "node is not installed"
+    root = Path(tempfile.mkdtemp())
+    try:
+        (root / "seat.js").write_text(_seat_script(BP), encoding="utf-8")
+        (root / "go.js").write_text(_SEAT_CALLOUT_HARNESS, encoding="utf-8")
+        r = _run(["node", "go.js"], cwd=root, capture_output=True, text=True, timeout=60)
+        assert r.returncode == 0 and "@@" in (r.stdout or ""), (
+            "the seat script did not run under node: " + (r.stderr or r.stdout or "")[-500:])
+        got = json.loads(r.stdout.rsplit("@@", 1)[1])
+    finally:
+        shutil.rmtree(root, ignore_errors=True)
+    bad = []
+    px = lambda v: float(str(v or "nan").rstrip("px"))
+    W, H, GAP = 200, 64, 10
+    if not got["pop"] or "termpop" not in (got["cls"] or "").split() or got["order"] != ["chart", "callout", "note"]:
+        bad.append(f"the seat map writes no callout in the popovers' box between the chart and the note: {got}")
+    else:
+        t = got["tap"]
+        # The seat at 180..197 x 1300..1317 in a stage at 12, 1000: its middle is 176.5 in.
+        if t["hidden"] or t["below"] or px(t["top"]) != 1300 - GAP - H - 1000 \
+                or abs(px(t["left"]) - (188.5 - 12 - W / 2)) > .5 or px(t["arrow"]) != 100:
+            bad.append(f"a tapped seat's callout is not above it with its arrow at the seat's middle: {t}")
+        if t["name"] != "Rep. mid" or t["href"] != "/legislator/mid.html" \
+                or t["what"] != "Republican · Hillsborough 14" or t["seat"] != "Seat 2-096":
+            bad.append(f"the callout does not say the member, the party and district, and the seat: {t}")
+        if t["note"] != "Rep. mid, Republican, Hillsborough 14, seat 2-096":
+            bad.append(f"the note does not say the seat's member, party, district and seat: {t['note']!r}")
+        # Words for a screen reader alone: the strip is drawn as an empty one
+        # (the review of 29 October 2026), and is not once the seat is let go.
+        if t["noteKids"] != ["sr"] or "sronly" not in t["noteCls"].split() \
+                or "sronly" in got["letGo"]["noteCls"].split():
+            bad.append(f"the note holding a seat's words for a screen reader alone is not marked .sronly, or "
+                       f"stays marked once the seat is let go: {t['noteKids']} {t['noteCls']!r}, then "
+                       f"{got['letGo']['noteCls']!r}")
+        if "sronly" in got["escape"]["noteCls"].split():
+            bad.append("Escape empties the note and leaves it marked .sronly")
+        tp = got["top"]
+        if not tp["below"] or px(tp["top"]) != 1020 + 17 + GAP - 1000:
+            bad.append(f"a seat at the top of the chart's box does not have its callout under it: {tp}")
+        for side in ("left", "right"):
+            x = got[side]
+            if not (8 <= px(x["left"]) and px(x["left"]) + W <= 366 - 8) or not (14 <= px(x["arrow"]) <= W - 14):
+                bad.append(f"the callout of a seat at the {side} of the chart runs past the box: {x}")
+        if not got["letGo"]["hidden"]:
+            bad.append("a seat tapped again keeps its callout")
+        fs_, fn = got["focusSeat"], got["focusName"]
+        if fs_["hidden"] or fs_["name"] != "Rep. mid":
+            bad.append(f"focus on a seat does not show its callout: {fs_}")
+        if fn["hidden"] or not fn["same"] or not fn["linkIn"] or fn["gone"] or fn["name"] != "Rep. mid":
+            bad.append("with focus on the callout's link, a mouseout, the pointer over another seat or a "
+                       f"scroll took it away or moved it -- focus would drop to the page: {fn}")
+        if fn["noteLink"]:
+            bad.append("the note under the chart still holds a link, a second stop for the same name")
+        e = got["escape"]
+        if not e["hidden"] or e["seatFocused"] != 1 or not e["active"]:
+            bad.append(f"Escape on the callout's link does not let it go and put focus on the seat: {e}")
+        h = got["hover"]
+        if h["over"]["hidden"] or h["ontoIt"]["hidden"] or h["ontoIt"]["name"] != "Rep. top" or not h["off"]["hidden"]:
+            bad.append(f"the pointer cannot move from a seat onto its callout, or it stays after: {h}")
+    # Read: the seats carry the callout's words, and the rows under the chart
+    # their names only, for the eye.
+    drawn = SEAT.svg({1001: {"name": "Rep. A", "slug": "a", "party_code": "R", "party": "Republican",
+                             "dist": "Belknap 6"}, 6002: {"name": "Rep. S", "slug": "s", "party_code": "D",
+                                                         "party": "Democrat", "dist": "Coös 1"}})
+    for slug in ("a", "s"):
+        m = re.search(rf'data-slug="{slug}"[^>]*>', drawn)
+        if not m or "data-party=" not in m.group(0) or "data-dist=" not in m.group(0):
+            bad.append(f"seating.svg does not write a seat's party and district: {m.group(0) if m else slug}")
+    src = Path("src/pages/build_pages.py").read_text(encoding="utf-8")
+    if '"party": party_word(' not in src or '"dist": " ".join(' not in src:
+        bad.append("the roster does not hand seating.svg each member's party and district")
+    # THE ROWS UNDER THE CHART: the district for a screen reader alone, the
+    # party's letter to the eye (the review of 29 October 2026, WCAG 1.4.1:
+    # hidden with the district, the party was the chip's bar's colour alone,
+    # and nothing in forced colours). Read off the fixture's legislators page,
+    # each row's chip as the page writes it, through app.css's cascade.
+    rules = _css_screen_rules(Path("src/pages/app.css").read_text(encoding="utf-8"))
+    one = BP.seat_row_tag('<span class="mchip p-R"><a href="x">Rep. A <span class="mtag">(R - Belk 6)</span>'
+                          '</a></span>')
+    if '<span class="mtag">(R<span class="mdist"> - Belk 6)</span><span aria-hidden="true">)</span></span>' not in one:
+        bad.append(f"build_pages.seat_row_tag does not set a row's district apart from its party: {one}")
+    # NAMES WITHOUT "REP." TO THE EYE (the owner, 29 October 2026): the title
+    # set apart, for a screen reader alone, and the name kept whole.
+    if '<a href="x"><span class="mhon">Rep. </span>A' not in one:
+        bad.append(f"build_pages.seat_row_tag does not set a row's \"Rep.\" apart from its name: {one}")
+    # THE LETTER WITH THE SURNAME (the manager's polish, 29 October 2026): no
+    # line may end between a name and its "(R)".
+    if 'A&#160;<span class="mtag">' not in one:
+        bad.append(f"build_pages.seat_row_tag leaves a breakable space between a name and its party's letter: {one}")
+    shared, _base, _ran, _days = _fixture_site_shared()
+    page = (shared / "site" / "officials.html").read_text(encoding="utf-8")
+    tags, dists, texts, hons = [], [], [], []
+
+    def under_chart(c):
+        return any(e and "seatlist" in e["ids"] for e in c)
+    _html_walk(page, element=lambda c: (tags if "mtag" in c[0]["classes"] else dists if "mdist" in c[0]["classes"]
+                                        else hons if "mhon" in c[0]["classes"]
+                                        else []).append(c) if under_chart(c) else None,
+               text=lambda d, c: texts.append((d, c)) if c and under_chart(c)
+               and any(e and "mtag" in e["classes"] for e in c) and not any(e and "mdist" in e["classes"] for e in c)
+               else None)
+    if not tags or len(dists) != len(tags):
+        bad.append(f"the fixture's rows under the chart have {len(tags)} tags and {len(dists)} districts set "
+                   f"apart: a row's tag is not written (R<span class=\"mdist\"> - Belk 6)</span>"
+                   f"<span aria-hidden=\"true\">)</span>")
+    # What the eye reads of a tag: its text, less the district clipped for a
+    # screen reader, with the ")" that is the eye's alone.
+    shown = sorted({"".join(d for d, c in texts if next(e for e in c if e and "mtag" in e["classes"]) is t[0])
+                    for t in tags[:400]})
+    def clipped(c):
+        won = _css_won(rules, c)
+        hide = {k: won.get(k, ("",))[0] for k in ("position", "clip", "width", "height", "display", "visibility")}
+        return hide["position"] == "absolute" and hide["clip"].startswith("rect(0") and hide["width"] == "1px" \
+            and hide["display"] != "none" and hide["visibility"] != "hidden", hide
+    if len(hons) != len(tags):
+        bad.append(f"the fixture's rows under the chart have {len(tags)} names and {len(hons)} \"Rep.\" set apart: "
+                   "a row still shows the eye its title (the owner, 29 October 2026)")
+    for c in hons[:1]:
+        if not clipped(c)[0]:
+            bad.append(f"a row under the chart still shows the eye its \"Rep.\": {clipped(c)[1]}")
+    for c in dists[:1]:
+        # Clipped itself, or inside something clipped short of the list.
+        own = [clipped(c[j:]) for j in range(len(c)) if not (c[j] and "seatlist" in c[j]["ids"])][:4]
+        if not any(x for x, _h in own):
+            bad.append(f"a row under the chart still shows its district to the eye, or hides it from a screen "
+                       f"reader: {own[0][1]}")
+    for c in tags[:1]:
+        won = _css_won(rules, c)
+        if won.get("position", ("",))[0] == "absolute" or won.get("clip", ("",))[0].startswith("rect(0") \
+                or won.get("display", ("",))[0] == "none" or won.get("visibility", ("",))[0] == "hidden":
+            bad.append(f"a row under the chart hides its party's letter from the eye (from "
+                       f"{won.get('clip', won.get('position', ('', '?')))[1]}): the party is its bar's colour "
+                       f"alone, and nothing in forced colours (WCAG 1.4.1)")
+    if any(not re.fullmatch(r"\([A-Z]\)", x) for x in shown):
+        bad.append(f"a row's tag shows the eye {[x for x in shown if not re.fullmatch(r'[(][A-Z][)]', x)][:3]}, "
+                   f"not its party's letter alone")
+    # THE STRIP UNDER THE CHART, EMPTY TO THE EYE (the review of 29 October
+    # 2026): empty, or .sronly, it is the box's foot with no rule -- its top
+    # border's width 0 and its pixel the padding's, so it keeps its height --
+    # and it has its rule while it shows what a search has left.
+    def note(classes, states=()):
+        return _css_won(rules, [{"tag": "p", "ids": {"seatnote"}, "classes": set(classes), "attrs": {},
+                                 "states": set(states)},
+                                {"tag": "div", "ids": set(), "classes": {"seatstage"}, "attrs": {}, "states": set()},
+                                {"tag": "body", "ids": set(), "classes": {"pg"}, "attrs": {}, "states": set()}])
+    for what, won in (("empty", note({"seatnote"}, {"empty"})),
+                      ("saying a seat to a screen reader alone", note({"seatnote", "sronly"}))):
+        top = {k: "".join(won.get(k, ("",))[0].split()) for k in ("border-top-width", "padding-top")}
+        if top["border-top-width"] not in ("0", "0px") or top["padding-top"] != "calc(var(--sp-3)+1px)":
+            bad.append(f"the note under the chart, {what}, draws a ruled strip, or changes its height: {top}")
+    won = note({"seatnote"})
+    if "".join(won.get("border-top-width", ("",))[0].split()) in ("0", "0px"):
+        bad.append("the note under the chart has no rule while it shows what a search has left")
+    assert not bad, "the seating chart's callout: " + "; ".join(bad[:5])
+    return "ok", ("a seat tapped, focused or under the pointer has the popovers' box above it, its arrow at "
+                  "the seat, below it at the top, inside 366px at either side; Tab from a seat reaches its "
+                  "link and a mouseout, another seat and a scroll leave it there; Escape puts focus on the "
+                  f"seat; the note says it in words, an unruled strip to the eye; the fixture's {len(tags)} row(s) under the chart are names and "
+                  f"{', '.join(shown)} to the eye, the district a screen reader's")
+
+
+@check("frontend", "under the seating chart each card carries its seat's number, \"001\", for the eye alone, and "
+       "the Speaker's none; a screen reader hears \"1-001\" and the member's name whole", needs=("build_pages", "seating"))
+def _seat_number_in_card(BP, SEAT):
+    """The owner's choice of 29 October 2026, a blend of the two mock-ups put
+    to them: no gutter; each card under the chart carries its seat inside it
+    at the right, small and muted, "001" without the division its column is
+    headed with, on the name's first line when the name wraps; no "Rep."; the
+    Speaker's card on the rostrum no number, and as wide as a division's
+    cards. The number is the eye's alone (aria-hidden), the row's own "1-001"
+    a screen reader's (clipped), and the link's name what it was: "Rep. A B
+    (R - Belk 6)", with no space before its ")" (Chrome spaces a clipped
+    part, so the ")" is clipped with the district and the eye's own is
+    aria-hidden). Held on build_pages.seat_row_tag, on the fixture's
+    legislators page, and through app.css's cascade."""
+    import html as H
+    bad = []
+
+    def row(seat):
+        return (f'<li class="seatrow" data-seat="{seat}"><span class="sseat">{SEAT.plate(seat)}</span>'
+                '<span class="mchip p-R" translate="no"><a href="legislator/a.html">Rep. A B '
+                '<span class="mtag">(R - Belk 6)</span></a></span></li>')
+    one, spk = BP.seat_row_tag(row(1001)), BP.seat_row_tag(row(SEAT.SPEAKER_SEAT))
+    if not one.endswith('</a><span class="mseat" aria-hidden="true">001</span></span></li>') \
+            or '<span class="sseat">1-001</span>' not in one:
+        bad.append(f"a row's number is not in its chip after the name, aria-hidden, \"001\", beside its "
+                   f"\"1-001\": {one}")
+    if "mseat" in spk:
+        bad.append(f"the Speaker's card on the rostrum carries a number: {spk}")
+    link = re.search(r"<a [^>]*>(.*?)</a>", one).group(1)
+    # Heard as Chrome names a link: a part clipped for a screen reader is laid
+    # out as a block, and a block has a space either side of it.
+    heard = " ".join(H.unescape(re.sub(r"<[^>]+>", "", re.sub(r'<span aria-hidden="true">[^<]*</span>', "",
+                     re.sub(r'<span class="m(?:hon|dist)">([^<]*)</span>', r" \1 ", link)))).split())
+    seen = " ".join(H.unescape(re.sub(r"<[^>]+>", "", re.sub(r'<span class="m(?:hon|dist)">[^<]*</span>', "",
+                                                                link))).split())
+    if heard != "Rep. A B (R - Belk 6)":
+        bad.append(f"a screen reader is given the name {heard!r}, not \"Rep. A B (R - Belk 6)\"")
+    if seen != "A B (R)":
+        bad.append(f"the eye reads the name {seen!r}, not \"A B (R)\"")
+    # The columns as seat_columns draws them, of rows as the roster writes
+    # them (the fixture's House has one member, with no seat on file, so it
+    # is read for that alone below): every card on the floor numbered as its
+    # seat says, none on the rostrum, and the numbers the eye's alone.
+    house = [{"seat": str(n), "display_full": f"Rep. {w} (R - Belk 6)", "party": "R", "slug": f"m{n}"}
+             for n, w in ((SEAT.SPEAKER_SEAT, "S Speaker"), (1001, "A B"), (3045, "Katherine Prudhomme-O'Brien"))]
+    block = BP.seat_columns(house, lambda m: BP.seat_row_tag(
+        f'<li class="seatrow" data-seat="{m["seat"]}"><span class="sseat">{SEAT.plate(int(m["seat"]))}</span>'
+        f'{BP.pchip(m)}</li>'))
+    page = f'<html><body class="pg"><div class="seatcols" id="seatlist">{block}</div></body></html>'
+    lis = re.findall(r'<li class="seatrow" data-seat="(\d*)"[^>]*>(.*?)</li>', block, re.S)
+    floor = [(s_, body) for s_, body in lis if s_ and int(s_) // 1000 != SEAT.SPEAKER_SEAT // 1000]
+    rostrum = [(s_, body) for s_, body in lis if s_ and int(s_) // 1000 == SEAT.SPEAKER_SEAT // 1000]
+    if len(floor) != 2 or len(rostrum) != 1:
+        bad.append(f"seat_columns drew {len(floor)} card(s) on the floor and {len(rostrum)} on the rostrum, not 2 and 1")
+    # The page's own rows, as roster_section's li() and seat_row_tag write
+    # them on the fixture's legislators page: its House member sits in seat
+    # 2-007, and her card ends in "007" for the eye.
+    shared, _base, _ran, _days = _fixture_site_shared()
+    built = (shared / "site" / "officials.html").read_text(encoding="utf-8")
+    a, b = built.find('id="seatlist"'), built.find('<ol class="seatlist senate">')
+    own = re.findall(r'<li class="seatrow" data-seat="(\d*)"[^>]*>(.*?)</li>', built[a:b] if 0 <= a < b else "", re.S)
+    if not own or any(not s_ or not body.endswith(f'<span class="mseat" aria-hidden="true">{s_[-3:]}</span></span>')
+                      or f'<span class="sseat">{SEAT.plate(int(s_))}</span>' not in body
+                      or 'class="mhon"' not in body for s_, body in own):
+        bad.append(f"the fixture's own rows under the chart are not cards ending in their seat's number: "
+                   f"{[(s_, body[-140:]) for s_, body in own][:2]}")
+    unseated = [x for x in own if not x[0]]
+    for s_, body in floor:
+        m = re.search(r'<span class="mseat"( aria-hidden="true")?>([^<]*)</span></span>$', body)
+        if not m or not m.group(1) or m.group(2) != s_[-3:]:
+            bad.append(f"seat {s_}'s card does not end in its number {s_[-3:]!r}, aria-hidden: {body[-160:]}")
+            break
+    if any("mseat" in body for _s, body in rostrum):
+        bad.append("the Speaker's card on the fixture's rostrum carries a number")
+    # Through the cascade: the full number clipped, the chip a row on its
+    # baseline that its name gives way in, the number at its right on one line.
+    rules = _css_screen_rules(Path("src/pages/app.css").read_text(encoding="utf-8"))
+    found = {}
+
+    def keep(c):
+        if any(e and "seatlist" in e["ids"] for e in c):
+            for k in ("sseat", "mchip", "mseat"):
+                if k in c[0]["classes"] and k not in found and not any(e and "srost" in e["classes"] for e in c):
+                    found[k] = c
+            if c[0]["tag"] == "a" and "mchip" in c[1]["classes"] and "a" not in found:
+                found["a"] = c
+    _html_walk(page, element=keep)
+    won = {k: {p: v[0] for p, v in _css_won(rules, c).items()} for k, c in found.items()}
+    want = {"sseat": {"position": "absolute", "width": "1px", "height": "1px", "overflow": "hidden",
+                      "clip": "rect(0 0 0 0)"},
+            "mchip": {"display": "flex", "align-items": "baseline", "flex": "1 1 auto"},
+            "a": {"min-width": "0"},
+            "mseat": {"margin-left": "auto", "white-space": "nowrap", "flex": "0 0 auto"}}
+    for k, props in want.items():
+        got = {p: won.get(k, {}).get(p) for p in props}
+        if got != props:
+            bad.append(f"under the chart, {k} is drawn {got}, not {props}")
+    if won.get("mseat", {}).get("display") in ("none",) or won.get("mseat", {}).get("clip"):
+        bad.append("the number in the card is hidden from the eye")
+    # The rostrum's card a division's width: in a division's columns below five
+    # abreast, and five abreast one of the five wide, by the grid's own gap.
+    css = Path("src/pages/app.css").read_text(encoding="utf-8")
+    g = re.search(r"@media \(min-width:([\d.]+)em\)\{\s*:where\(body\.pg\) \.seatdivs\{display:grid;"
+                  r"gap:var\(--sp-(\d+)\);", css)
+    tail = css[g.end():g.end() + 1200] if g else ""
+    if not g or (f":where(body.pg) .seatcols .srost .seatlist{{max-width:calc((100% - 4 * var(--sp-{g.group(2)}))"
+                 " / 5)}") not in tail:
+        bad.append("five abreast, the rostrum's card is not one of the five columns wide")
+    if ".srost .seatlist{columns:auto}" in css:
+        bad.append("below five abreast, the rostrum's list is one column the page's width, so its card is too")
+    # THE WHOLE CARD IS THE LINK, its focus ring round the card; a lit card is
+    # lit itself; the eye's own ")" and number are not copied (the review of
+    # 29 October 2026).
+    flat = re.sub(r"\s+", " ", re.sub(r"/\*.*?\*/", "", css, flags=re.S))
+    for rule, what in (
+            (":where(body.pg) #seatlist .seatrow .mchip > a::before{content:\"\";position:absolute;inset:0;",
+             "the link is not laid over the whole card, so its number and the space after the name do nothing"),
+            (":where(body.pg) #seatlist .seatrow .mchip > a:focus-visible::before{outline:2px solid var(--pine);",
+             "the focus ring is not drawn round the card"),
+            (":where(body.pg) #seatlist .seatrow.on .mchip{background:var(--pine-soft)}",
+             "a lit card is not lit itself, and the card covers its row's colour"),
+            (":where(body.pg) #seatlist .seatrow.on .mchip > a::before{outline:2px solid var(--pine);",
+             "a lit card has no ring, which is all forced colours keep of it"),
+            (":where(body.pg) #seatlist .mtag > [aria-hidden],:where(body.pg) #seatlist .mseat{-webkit-user-select:none;",
+             "the eye's own \")\" and number are copied with the name")):
+        if rule not in flat:
+            bad.append(what)
+    if "position:relative" not in (re.search(r":where\(body\.pg\) #seatlist \.seatrow \.mchip\{([^}]*)\}", flat)
+                                   or [None, ""])[1]:
+        bad.append("the card is not the box its link's ::before is laid over")
+    assert not bad, "the seat number in the card: " + "; ".join(bad[:5])
+    return "ok", ("each card on the floor ends in its seat's number, aria-hidden, the Speaker's in none, and so "
+                  f"do the fixture page's own {len(own) - len(unseated)} seated row(s); a screen reader hears "
+                  f"\"1-001\" and \"{heard}\", the eye \"{seen}\" and \"001\" at the card's right, on its first "
+                  "line; the whole card is the link, a lit card lit, and the eye's own marks not copied")
+
+
+@check("frontend", "the seating chart's Zoom to fit is the four corners' icon in the box of - and +, "
+       "named by its title \"Zoom to fit\", in English and in Spanish")
+def _seat_zoom_fit_icon():
+    """The owner, 29 October 2026: the chart's "Fit", a word beside - and +,
+    is a zoom-to-fit icon, the map's four corners, in the same button size
+    and box as - and +, its accessible name and tooltip "Zoom to fit"; drawn
+    in currentColor, so forced colours draw it in the button's own colour.
+    Read on the fixture's built pages, English and Spanish, and app.css."""
+    import build_pages as BP
+    shared, _base, _ran, _days = _fixture_site_shared()
+    bad = []
+    icon = ('<svg viewBox="0 0 16 16" width="16" height="16" aria-hidden="true" focusable="false"><path '
+            'd="M1 5.5V1h4.5M10.5 1H15v4.5M15 10.5V15h-4.5M5.5 15H1v-4.5" fill="none" stroke="currentColor" '
+            'stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"/></svg>')
+    if BP.ZOOM_FIT_ICON != icon:
+        bad.append(f"the icon is not the four corners asked for: {BP.ZOOM_FIT_ICON}")
+    for page, name in (("officials.html", "Zoom to fit"), ("es/officials.html", None)):
+        f = shared / "site" / page
+        if not f.exists():
+            bad.append(f"the fixture has no {page}")
+            continue
+        html = f.read_text(encoding="utf-8")
+        m = re.search(r'<div class="seatzoom">(.*?)</div>', html, re.S)
+        btns = re.findall(r"<button ([^>]*)>(.*?)</button>", m.group(1), re.S) if m else []
+        if len(btns) != 3 or [re.search(r'id="(\w+)"', a).group(1) for a, _b in btns] != ["szout", "szin", "szfit"]:
+            bad.append(f"{page}: the zoom buttons are not -, + and Zoom to fit: {btns}")
+            continue
+        attrs, body = btns[2]
+        title = re.search(r'title="([^"]*)"', attrs)
+        # Its title is its name and its tooltip; an aria-label as well made a
+        # screen reader hear "Zoom to fit" twice (the review of 29 October 2026).
+        if body != icon or not title or "aria-label=" in attrs \
+                or (name and title.group(1) != name) or (not name and title.group(1) in ("", "Zoom to fit")):
+            bad.append(f"{page}: Zoom to fit is not the icon named by its title alone, in the page's "
+                       f"language: {attrs} {body[:80]}")
+        if "Fit<" in m.group(1) or ">Ajustar<" in m.group(1):
+            bad.append(f"{page}: the word Fit is still on the button")
+    css = Path("src/pages/app.css").read_text(encoding="utf-8")
+    box = re.search(r":where\(body\.pg\) \.seatzoom button\{([^}]*)\}", css)
+    if not box or "min-width:40px" not in box.group(1) or "min-height:40px" not in box.group(1):
+        bad.append("the zoom buttons are not one 40px box")
+    if re.search(r"#szfit\s*\{|\.seatzoom button:(?:last-child|nth-child)[^{]*\{", css):
+        bad.append("Zoom to fit has a box of its own, not - and +'s")
+    if ":where(body.pg) .seatzoom svg{display:block;margin:0 auto}" not in css:
+        bad.append("the icon is not centred in its box")
+    assert not bad, "the seating chart's Zoom to fit: " + "; ".join(bad[:4])
+    return "ok", "Zoom to fit is the four corners in - and +'s 40px box, named by its title in English and Spanish"
 
 
 @check("build", "a reports file keyed on bill number is refused, not ignored")
@@ -72419,6 +73189,631 @@ def _css_specificity(sel):
     return (a, b, c)
 
 
+# ---- what app.css sets on an element of a built page (29 October 2026) ---------
+#
+# The accessibility sweep of the R1 preview found what a page drew, and the
+# checks that hold its findings read the same thing without a browser: the
+# element a page's words sit in, as html.parser reads the page, and the
+# declarations app.css's cascade gives it on a screen (_css_can_reach's
+# model: specificity, then order, !important over both; an inherited
+# property from the nearest element outward that a rule sets it on).
+
+_OUTLINE_STYLES = ("none", "hidden", "dotted", "dashed", "solid", "double", "groove", "ridge",
+                   "inset", "outset", "auto")
+
+
+def _css_sides(prop, value):
+    """{padding-top: ..., ...} for a padding or margin shorthand, or its
+    -block or -inline pair, as the browser spreads it over the sides; {} for
+    any other property. A function's value (var(), calc(), max()) is one
+    value, however many spaces it has."""
+    m = re.fullmatch(r"(padding|margin)(?:-(block|inline))?", prop)
+    if not m:
+        return {}
+    vals, depth, cur = [], 0, ""
+    for c in value.strip() + " ":
+        depth += (c == "(") - (c == ")")
+        if c.isspace() and depth == 0:
+            if cur:
+                vals.append(cur)
+            cur = ""
+        else:
+            cur += c
+    if not vals:
+        return {}
+    kind, axis = m.group(1), m.group(2)
+    if axis:
+        a, b = vals[0], vals[1] if len(vals) > 1 else vals[0]
+        sides = ("top", "bottom") if axis == "block" else ("left", "right")
+        return {f"{kind}-{sides[0]}": a, f"{kind}-{sides[1]}": b}
+    t = vals[0]
+    r = vals[1] if len(vals) > 1 else t
+    b = vals[2] if len(vals) > 2 else t
+    left = vals[3] if len(vals) > 3 else r
+    return {f"{kind}-top": t, f"{kind}-right": r, f"{kind}-bottom": b, f"{kind}-left": left}
+
+
+def _css_screen_rules(text):
+    """[(order, at-rules, selector, {property: (value, important)}, line)]
+    for every rule of a stylesheet that draws on a screen -- the printed
+    sheet's are left out -- one entry a selector of its list. The outline
+    shorthand is its three longhands, what it leaves out reset as a browser
+    resets it ("outline:none" is a style of none and a width of medium);
+    padding and margin, and their -block and -inline forms, are their four
+    sides (_css_sides); the font shorthand's size is font-size too, which
+    it sets."""
+    out = []
+    for order, (ctx, sel, body, line) in enumerate(_css_rules(text)):
+        if any(re.search(r"\bprint\b", c) and not re.search(r"\bnot\s+print\b", c) for c in ctx):
+            continue
+        decls = {}
+        for k, v in _css_decls(body):
+            imp = bool(re.search(r"(?:^|[;{\s])" + re.escape(k) + r"\s*:[^;]*!\s*important", body, re.I))
+            if k == "outline":
+                width, style, colour = "medium", "none", "currentcolor"
+                for tok in re.findall(r"[\w-]+\([^)]*\)|\S+", v):
+                    if tok.lower() in _OUTLINE_STYLES:
+                        style = tok.lower()
+                    elif re.fullmatch(r"-?\d*\.?\d+(?:px|em|rem)?|thin|medium|thick", tok):
+                        width = tok
+                    else:
+                        colour = tok
+                decls.update({"outline-width": (width, imp), "outline-style": (style, imp),
+                              "outline-color": (colour, imp)})
+            elif _css_sides(k, v):
+                decls.update({side: (x, imp) for side, x in _css_sides(k, v).items()})
+            else:
+                decls[k] = (v, imp)
+                if k == "font" and _css_font_size(k, v):
+                    decls["font-size"] = (_css_font_size(k, v), imp)
+        if decls:
+            out.extend((order, ctx, one, decls, line) for one in _css_selectors(sel))
+    return out
+
+
+def _css_won(rules, chain):
+    """{property: (value, selector, line)} as the cascade leaves it on
+    chain[0], whose ancestors outward are chain[1:] (_css_can_reach's chain),
+    of _css_screen_rules' `rules`. What it inherits is _css_inherited's."""
+    won = {}
+    for order, _ctx, one, decls, line in rules:
+        if not _css_can_reach(one, chain):
+            continue
+        key = (_css_specificity(one), order)
+        for k, (v, imp) in decls.items():
+            if k not in won or (imp, key) >= won[k][0]:
+                won[k] = ((imp, key), v, one, line)
+    return {k: (v, one, line) for k, (_r, v, one, line) in won.items()}
+
+
+def _css_inherited(rules, chain, props, _memo=None):
+    """{property: (value, selector, line, how far out)} for inherited
+    properties on chain[0]: each from the nearest element outward that a
+    rule sets it on (0 for chain[0] itself), "inherit" and "unset" passed
+    through to the next. A property nothing sets is left out: its initial
+    value. `_memo` keeps each ancestry's cascade between calls."""
+    memo = {} if _memo is None else _memo
+    out = {}
+    for j in range(len(chain)):
+        sig = tuple((e["tag"], tuple(sorted(e["ids"])), tuple(sorted(e["classes"])),
+                     tuple(sorted((k, str(v)) for k, v in e["attrs"].items())), tuple(sorted(e["states"])))
+                    for e in chain[j:])
+        if sig not in memo:
+            memo[sig] = _css_won(rules, chain[j:])
+        for p in props:
+            if p not in out and p in memo[sig] and memo[sig][p][0] not in ("inherit", "unset"):
+                out[p] = memo[sig][p] + (j,)
+        if len(out) == len(props):
+            break
+    return out
+
+
+def _html_walk(page, text=None, element=None):
+    """A page read as html.parser reads it: each element as
+    _css_compound_fits reads one (no state: not hovered, not focused).
+    `text(data, chain)` for each run of a page's text and `element(chain)`
+    for each element as it opens, chain[0] the element the text is written
+    in, or the one opening, and then its ancestors out to the root. A
+    script's or a style's content is not text."""
+    from html.parser import HTMLParser
+
+    class Walk(HTMLParser):
+        VOID = {"area", "base", "br", "col", "embed", "hr", "img", "input", "link", "meta", "source",
+                "track", "wbr"}
+
+        def __init__(self):
+            super().__init__(convert_charrefs=True)
+            self.stack = []
+
+        def handle_starttag(self, tag, attrs):
+            a = {k: ("" if v is None else v) for k, v in attrs}
+            el = {"tag": tag, "ids": {a["id"]} if a.get("id") else set(),
+                  "classes": set((a.get("class") or "").split()), "attrs": a, "states": set()}
+            if element:
+                element([el] + list(reversed(self.stack)))
+            if tag not in self.VOID:
+                self.stack.append(el)
+
+        def handle_endtag(self, tag):
+            if any(e["tag"] == tag for e in self.stack):
+                while self.stack and self.stack.pop()["tag"] != tag:
+                    pass
+
+        def handle_data(self, data):
+            if self.stack and self.stack[-1]["tag"] in ("script", "style"):
+                return
+            if text:
+                text(data, list(reversed(self.stack)))
+
+    w = Walk()
+    w.feed(page)
+    w.close()
+
+
+def _html_text_chains(page, pattern):
+    """[(the text matched, chain)] for every match of `pattern` in a page's
+    text, chain[0] the element it is written in and then its ancestors out to
+    the root (_html_walk)."""
+    found = []
+    _html_walk(page, text=lambda data, chain: found.extend(
+        (m.group(0), chain) for m in re.finditer(pattern, data)))
+    return found
+
+
+_TEXT_BOX_TYPES = ("", "text", "search", "email", "url", "tel", "number", "password")
+
+
+def _focus_outline(rules, chain):
+    """(what the cascade draws round chain[0] while it has the keyboard's
+    focus, or None where it draws nothing): its outline's (width, style,
+    colour) with the selector and app.css line that set the style. Focused
+    from a keyboard, a box matches :focus and :focus-visible both."""
+    el = dict(chain[0], states={"focus", "focus-visible"})
+    won = _css_won(rules, [el] + list(chain[1:]))
+    style = won.get("outline-style", ("none", "", 0))
+    width = won.get("outline-width", ("medium", "", 0))[0]
+    colour = won.get("outline-color", ("currentcolor", "", 0))[0]
+    if style[0] in ("none", "hidden") or re.fullmatch(r"0+(?:\.0+)?(?:px|em|rem)?", width) \
+            or colour == "transparent":
+        return None, style
+    return (width, style[0], colour), style
+
+
+@check("frontend", "every text box a page writes shows which one has the keyboard: app.css draws it an "
+       "outline while focused, which forced colours keep")
+def _text_box_focus_shows():
+    """The accessibility sweep of the R1 preview (29 October 2026; WCAG
+    2.4.7, focus visible): in forced colours the search boxes -- the home
+    page's #hq, the bill search's #q, the Laws page's #rsq, the roster's
+    #sq and /search's #resq -- showed no focus at all. Their :focus rules
+    set outline:none and drew a soft ring in a box-shadow instead, and
+    forced colours paint no shadow and give the border its system colour,
+    so nothing said which box had the keyboard. They take the site's 2px
+    pine outline now, as the How-to tab's box always did (.g-find
+    input:focus), and an outline is what forced colours keep.
+
+    Every text box of every page of the fixture's build is held -- an
+    <input> of a text type and a <textarea>, in the elements it is written
+    in -- and so is every one a script writes (find.js's header search, the
+    town panel's, app.js's sponsor and RSA boxes, the follow form's email),
+    whose ancestors this model does not know and takes as any. The cascade
+    (_css_won, every screen rule of app.css, forced colours' among them)
+    must leave each one, focused, an outline of a style other than none, a
+    width other than 0 and a colour other than transparent: a rule that
+    takes it away, ahead of the one that draws it, fails here."""
+    shared, _base, _ran, _days = _fixture_site_shared()
+    site = shared / "site"
+    rules = _css_screen_rules(Path("src/pages/app.css").read_text(encoding="utf-8"))
+
+    def text_box(chain):
+        el = chain[0]
+        return el["tag"] == "textarea" or (
+            el["tag"] == "input" and el["attrs"].get("type", "").lower() in _TEXT_BOX_TYPES)
+
+    def sig(chain):
+        return tuple((e["tag"], tuple(sorted(e["ids"])), tuple(sorted(e["classes"])),
+                      e["attrs"].get("type", "")) for e in chain)
+
+    boxes = {}
+    pages = 0
+    for f in sorted(site.rglob("*.html")):
+        page = f.read_text(encoding="utf-8", errors="replace")
+        if "<input" not in page and "<textarea" not in page:
+            continue
+        pages += 1
+        found = []
+        _html_walk(page, element=lambda chain: found.append(chain) if text_box(chain) else None)
+        for chain in found:
+            boxes.setdefault(sig(chain), (f.relative_to(site).as_posix(), chain))
+    # A script's boxes: each <input> or <textarea> its markup writes, in
+    # elements this model does not know (None: any).
+    scripted = 0
+    for name in ("app.js", "find.js", "components.js"):
+        js = Path("src/pages", name).read_text(encoding="utf-8")
+        for m in re.finditer(r"<(input|textarea)\b([^<>]*)>", js):
+            found = []
+            _html_walk(m.group(0).replace("\\", ""), element=found.append)
+            if found and text_box(found[0]) and "website" not in found[0][0]["attrs"].get("name", ""):
+                scripted += 1
+                boxes.setdefault(sig(found[0]) + (name,), (name, found[0] + [None] * 8))
+    want = {"hq", "q", "rsq", "sq", "resq"}
+    seen = {i for _w, chain in boxes.values() for i in chain[0]["ids"]}
+    assert want <= seen, (
+        f"the fixture's build no longer writes the search boxes this check holds by name: "
+        f"{sorted(want - seen)} not found in {pages} pages")
+    bad, drawn = [], Counter()
+    for where, chain in boxes.values():
+        got, style = _focus_outline(rules, chain)
+        el = chain[0]
+        name = el["tag"] + "".join("#" + i for i in sorted(el["ids"])) \
+            + "".join("." + c for c in sorted(el["classes"]))
+        if got is None:
+            bad.append(f"{name} on {where}: outline-style {style[0]}"
+                       + (f" from {style[1]} (app.css line {style[2]})" if style[1] else " (nothing sets one)"))
+        else:
+            drawn[" ".join(got)] += 1
+    assert not bad, (
+        "a text box shows no focus: nothing says which box has the keyboard, and in forced colours a "
+        "box-shadow or a border colour does not take its place (WCAG 2.4.7). Draw it the site's "
+        "outline:2px solid var(--pine), as .g-find input:focus does: " + "; ".join(bad[:6]))
+    return "ok", (f"{len(boxes)} kinds of text box ({pages} pages of the fixture's build, {scripted} written "
+                  f"by a script), each with an outline while focused: "
+                  + ", ".join(f"{k} ({n})" for k, n in drawn.most_common()))
+
+
+# What a box one line high needs to be 24px tall, and an inline link whose
+# box is its letters: app.css's --tap-line and --tap-text, spaces aside.
+_TAP = {"--tap-line": "max(0px,(24px-1lh)/2)", "--tap-text": "max(0px,(24px-1em)/2)"}
+
+
+@check("frontend", "a link a finger taps is 24px tall at the least: a card's number and its committee, a "
+       "Laws chapter's RSA link, a player bar's link and a member named in a sentence take app.css's "
+       "--tap-line or --tap-text, and one that is a line of its own adds no height", needs=("components",
+                                                                                "build_session_pages"))
+def _tap_targets_24(C, BSP):
+    """The accessibility sweep of the R1 preview (29 October 2026; WCAG
+    2.5.8, target size): at 390 a card's number (a.cnum) was 20px tall, the
+    committee in its byline (.cmeta > a) 22px, a Laws chapter's "RSA 3-A ›"
+    (a.lw-go) 22px and a member named in a sentence (a.psent) 19px; a session
+    day's "On YouTube" in its player bar (.pbar > a), measured beside them,
+    22px. Each keeps the size of its words: what grows is the box a tap
+    lands in, by padding above and below, and a box with a line of its own
+    gives it back in margin, so nothing beside it moves.
+
+    The arithmetic is app.css's two tokens. --tap-line,
+    max(0px, (24px - 1lh) / 2), makes a one-line box 1lh + 2 x that, which
+    is 24px or more whatever the line's height; --tap-text,
+    max(0px, (24px - 1em) / 2), makes an inline link, whose box is its
+    letters (1em and a little more), 24px or more whatever its size. So the
+    check holds the tokens to those formulas, and each kind of link, where
+    the pages write it, to them: the fixture's Laws page and session days,
+    and a card as components.bill_card draws it (as components.js draws it
+    in the browser), in bills.html's #results, where app.js lists them.
+    The cascade (_css_won, every screen rule, padding and margin spread to
+    their sides) must give each kind's top and bottom padding the token, and
+    a line's box the token back as negative margin. A kind taken out of the
+    rule, or a later rule that sets its padding, fails here.
+
+    A LINK THAT IS A LINE OF ITS OWN ADDS NO HEIGHT (the review of 29
+    October 2026). A speaker in a printed debate is an a.psent, and .sdsp a
+    makes it a block: --tap-text grew each linked speaker by 8px and moved
+    every speech after it, and the speakers with no link kept the old gap.
+    So a link of these kinds that the cascade makes a block -- a debate's
+    speaker, drawn by build_session_pages._debate_html in a session day's
+    <main> -- is held to --tap-line, and to the margins it would have had
+    without the tap rules, each less the token: the box is a line's, 24px
+    at the least, and nothing beside it moves."""
+    css = Path("src/pages/app.css").read_text(encoding="utf-8")
+    rules = _css_screen_rules(css)
+    # What each side's margin would be without the tap rules, which a line's
+    # box gives its padding back from.
+    untapped = [r for r in rules if not any("--tap-" in str(v) for v, _i in r[3].values())]
+    tokens = {k: v for _o, _c, sel, d, _l in rules if sel.strip() == ":root"
+              for k, (v, _i) in d.items() if k in _TAP}
+    bad = [f"{k} is {tokens.get(k)!r}, not {want}" for k, want in _TAP.items()
+           if "".join(str(tokens.get(k)).split()) != want]
+    assert not bad, ("app.css's tap tokens are not the arithmetic that makes a box 24px: "
+                     + "; ".join(bad))
+    shared, _base, _ran, _days = _fixture_site_shared()
+    site = shared / "site"
+    kinds = {"a Laws chapter's RSA link (a.lw-go)": ("line", lambda c: "lw-go" in c[0]["classes"]),
+             "a card's number (a.cnum)": ("line", lambda c: c[0]["tag"] == "a" and "cnum" in c[0]["classes"]),
+             "a card's committee (.cmeta > a)": ("line", lambda c: c[0]["tag"] == "a" and len(c) > 1
+                                                  and "cmeta" in (c[1] or {"classes": ()})["classes"]),
+             "a player bar's link (.pbar > a)": ("line", lambda c: c[0]["tag"] == "a" and len(c) > 1
+                                                 and "pbar" in (c[1] or {"classes": ()})["classes"]),
+             "a member named in a sentence (a.psent)": ("text", lambda c: c[0]["tag"] == "a"
+                                                        and "psent" in c[0]["classes"])}
+    found = {k: {} for k in kinds}
+
+    def take(chain, where):
+        for k, (_how, test) in kinds.items():
+            if test(chain):
+                sig = tuple((e["tag"], tuple(sorted(e["classes"]))) if e else None for e in chain)
+                found[k].setdefault(sig, (where, chain))
+    for f in [site / "laws.html"] + sorted((site / "session").rglob("*.html"))[:6]:
+        if f.exists():
+            _html_walk(f.read_text(encoding="utf-8"), element=lambda c, w=f.name: take(c, w))
+    # A card as the pages draw it, in whatever holds it.
+    card = C.bill_card({"id": "HB1", "n": "HB 1", "year": "2026", "href": "bill/2026/hb1.html",
+                        "title": "relative to the state budget", "word": "Passed", "cls": "s-law",
+                        "byline": C.bill_byline({"display_full": "Rep. Alice Wade (D - Straf 15)",
+                                                 "party_code": "D", "slug": "alice-wade"},
+                                                ["House Judiciary"], "Courts", "2025-2026",
+                                                {"House Judiciary": "H37"})})
+    # bills.html's list, where app.js draws its cards: the ancestors a card
+    # is drawn in, out to the root.
+    held_in = []
+    _html_walk(Path("src/pages/bills.html").read_text(encoding="utf-8"),
+               element=lambda c: held_in.append(c) if "results" in c[0]["ids"] else None)
+    assert held_in, "bills.html has no #results for its cards"
+    _html_walk(card, element=lambda c: take(c + held_in[0], "a card in bills.html's #results"))
+    # A printed debate, its first speaker a member with a page (a.psent) and
+    # the chair without one, in a session day's <main>.
+    class Speakers:
+        by_slug = {"alice-wade": {"party": "D"}}
+
+        def slug(self, body, name):
+            return "alice-wade" if name == "Wade" else ""
+
+        def label(self, slug, body):
+            return "Rep. Alice Wade (D - Straf 15)"
+    debate = BSP._debate_html({"bill": "HB1", "speeches": [
+        ("Rep. Wade", "I rise in support of the committee report."),
+        ("Speaker Packard", "The question is on the committee report.")]}, "H", Speakers(),
+        __import__("html").escape)
+    day = sorted((site / "session" / "H").glob("*.html"))
+    in_day = []
+    if day:
+        _html_walk(day[0].read_text(encoding="utf-8"),
+                   element=lambda c: in_day.append(c) if c[0]["tag"] == "main" else None)
+    assert in_day and 'class="psent"' in debate, (
+        f"no session day's <main> to draw a debate in ({len(day)} days), or _debate_html wrote no linked "
+        f"speaker: {debate[:300]}")
+    _html_walk(debate, element=lambda c: take(c + in_day[0], "a printed debate on a session day"))
+    missing = [k for k, v in found.items() if not v]
+    assert not missing, f"the fixture's build and bill_card no longer write {missing}"
+    held, blocks = [], 0
+    for k, (how, _test) in kinds.items():
+        for where, chain in found[k].values():
+            won = _css_won(rules, chain)
+            # A box the cascade puts on a line of its own is a line's box.
+            alone = won.get("display", ("inline",))[0].strip() in ("block", "flex", "grid", "list-item",
+                                                                   "table")
+            tok = f"var(--tap-{'line' if alone else how})"
+            blocks += alone and how == "text"
+            pad = {s_: won.get(f"padding-{s_}", ("0",))[0] for s_ in ("top", "bottom")}
+            mar = {s_: won.get(f"margin-{s_}", ("0",))[0] for s_ in ("top", "bottom")}
+            had = _css_won(untapped, chain)
+            back = {s_: (f"calc(-1*{tok})" if "".join(had.get(f"margin-{s_}", ("0",))[0].split()) in ("0", "0px")
+                         else f"calc({''.join(had[f'margin-{s_}'][0].split())}-{tok})")
+                    for s_ in ("top", "bottom")}
+            if any("".join(v.split()) != tok for v in pad.values()):
+                bad.append(f"{k} on {where}: padding {pad['top']} / {pad['bottom']}, not {tok} "
+                           f"(from {won.get('padding-top', ('', 'no rule', 0))[1]})"
+                           + (", and it is a line of its own" if alone and how == "text" else ""))
+            elif (how == "line" or alone) and any("".join(mar[s_].split()) != back[s_] for s_ in mar):
+                bad.append(f"{k} on {where}: its padding is not given back from its margins ({mar}, where "
+                           f"{back} would), so what is under it moves")
+        held.append(f"{k} var(--tap-{how}) ({len(found[k])})")
+    assert blocks, "no debate's speaker was read as the line of its own .sdsp a makes it"
+    assert not bad, ("a link a finger taps is under 24px tall, or moves what is beside it (WCAG 2.5.8): "
+                     + "; ".join(bad[:5]))
+    return "ok", ("each takes the tap token: " + ", ".join(held)
+                  + f"; {blocks} on a line of its own (a debate's speaker) --tap-line, given back")
+
+
+@check("frontend", "a vote tally's tick is hidden from a screen reader and a word it does not see says "
+       "which side prevailed, in the page's language", needs=("i18n",))
+def _vote_tick_said(I):
+    """The accessibility sweep of the R1 preview (29 October 2026): the tick
+    beside a tally's winning side -- a division's Yes or No, each party's
+    row on a roll call's ring, the voters' Yes or No on an amendment -- was
+    read aloud as "check mark", or not at all, and nothing else on the row
+    said which side had won. app.js's wonMark is every tally's tick now:
+    aria-hidden on the tick, and beside it <span class="sr"> (prevailed)
+    </span>, both in the page's language through tr().
+
+    simpleDonut and ballotRing are drawn in node, once with no words of
+    another language and once with the Spanish the catalog gives for the
+    two keys, and each tick they draw must be hidden and followed by the
+    word; and no tick in app.js is written anywhere but wonMark."""
+    js = Path("src/pages/app.js").read_text(encoding="utf-8")
+    marks = re.findall(r'<span class="won"[^>]*>', js)
+    assert len(marks) == 1 and 'aria-hidden="true"' in marks[0], (
+        f"app.js writes a tally's tick {len(marks)} times, not once in wonMark, hidden: {marks[:3]}")
+    es = {k: I.say("es", k, en) for k, en in (("vote.won_sr", "(prevailed)"),
+                                              ("vote.won_title", "this side prevailed"))}
+    assert es["vote.won_sr"] != "(prevailed)", "the catalog has no Spanish for vote.won_sr"
+    draw = ('[scope.simpleDonut({yeas:191,nays:158,passed:true},"HB1",0,"Passage"),'
+            'scope.simpleDonut({yeas:12,nays:300,passed:false},"HB1",1,"Passage"),'
+            'scope.ballotRing(700000,200000,true)]')
+    got = _app_js("[" + draw + ",(globalThis.GR_WORDS=" + json.dumps(es, ensure_ascii=False) + ","
+                  + draw + ")]", names=("simpleDonut", "ballotRing"))
+    if got is None:
+        return "skip", "node, app.js or dom_stub.js is not here"
+    bad = []
+    for lang, said, title, pages in (("en", "(prevailed)", "this side prevailed", got[0]),
+                                     ("es", es["vote.won_sr"], es["vote.won_title"], got[1])):
+        for n, html in enumerate(pages):
+            ticks = re.findall(r'<span class="won"([^>]*)>\u2713</span>\s*<span class="sr"> ([^<]*)</span>', html)
+            side = re.findall(r"<span>(Yes|No)<span", html)
+            if len(ticks) != 1 or 'aria-hidden="true"' not in ticks[0][0] or ticks[0][1] != said \
+                    or f'title="{title}"' not in ticks[0][0]:
+                bad.append(f"{lang} tally {n}: {ticks or 'no tick'} beside {side}")
+            elif side != (["Yes"] if n != 1 else ["No"]):
+                bad.append(f"{lang} tally {n}: the tick is beside {side}")
+    assert not bad, ("a tally's tick is read aloud, or no word says which side prevailed: "
+                     + "; ".join(bad[:4]))
+    return "ok", (f"3 tallies in English and in Spanish, each tick hidden and followed by "
+                  f"\"(prevailed)\" or \"{es['vote.won_sr']}\"; app.js writes the tick once, in wonMark")
+
+
+def _css_font_px(rules, chain, tokens, memo=None):
+    """(px, selector, line) of the size app.css's cascade draws chain[0]'s
+    text at, at the browser's 16px (_css_px): from the nearest element
+    outward that a rule sizes, an em or % of its parent's; None for a size
+    this cannot read."""
+    for j in range(len(chain)):
+        got = _css_inherited(rules, chain[j:], ("font-size",), memo)
+        if not got:
+            return 16.0, "the browser's", 0
+        v, one, line, far = got["font-size"]
+        px, how = _css_px(v, tokens)
+        if px is not None:
+            return px, one, line
+        m = re.fullmatch(r"(\d*\.?\d+)(em|%)", v.strip())
+        if not m:
+            return None, one, line
+        parent = _css_font_px(rules, chain[j + far + 1:], tokens, memo) if j + far + 1 < len(chain) \
+            else (16.0, "the browser's", 0)
+        if parent[0] is None:
+            return parent
+        return parent[0] * float(m.group(1)) / (100 if m.group(2) == "%" else 1), one, line
+    return 16.0, "the browser's", 0
+
+
+def _css_calc_px(value, em, look):
+    """Pixels of a length as app.css writes one -- px, rem at the browser's
+    16px, em of `em`, a var() through `look(name)` (None where nothing sets
+    it), calc() and its + - * / -- or None where it cannot be read."""
+    import ast as _ast
+    v = value.strip()
+    for _ in range(12):
+        nxt = re.sub(r"var\(\s*(--[\w-]+)\s*(?:,\s*([^()]*))?\)",
+                     lambda m: "(" + (look(m.group(1)) or m.group(2) or "nan") + ")", v)
+        if nxt == v:
+            break
+        v = nxt
+    v = re.sub(r"\bcalc\(", "(", v)
+    v = re.sub(r"(\d*\.?\d+)(px|rem|em)\b",
+               lambda m: f"({float(m.group(1)) * {'px': 1, 'rem': 16, 'em': em}[m.group(2)]!r})", v)
+    try:
+        tree = _ast.parse(v, mode="eval")
+    except SyntaxError:
+        return None
+    ok = (_ast.Expression, _ast.BinOp, _ast.UnaryOp, _ast.Constant, _ast.Add, _ast.Sub, _ast.Mult, _ast.Div,
+          _ast.USub, _ast.UAdd)
+    if not all(isinstance(n, ok) for n in _ast.walk(tree)):
+        return None
+    try:
+        return float(eval(compile(tree, "<css>", "eval"), {"__builtins__": {}}))
+    except (ZeroDivisionError, TypeError, ValueError):
+        return None
+
+
+@check("frontend", "a heading is drawn no smaller than the text it heads: a member's ATTENDANCE and BILLS, "
+       "and a Laws chapter's parts, whose lines that wrap are 1.2 apart at the least and whose one line "
+       "takes the room it took", needs=("build_rsa", "rsa", "shell"))
+def _headings_outrank(B, RSA, S):
+    """The accessibility sweep of the R1 preview (29 October 2026): a
+    member's term at a glance headed its figures ATTENDANCE and BILLS at
+    13px over labels at 16px, and a Laws chapter headed its parts ("HOURS OF
+    POLLING", h2.rs-sub, the Constitution tab's h4s too) at 13px over the
+    law at 16px. app.css's own rule (A HEADING OUTRANKS WHAT IT HEADS) is
+    that no heading reads smaller than the text under it.
+
+    So each is drawn where the pages draw it -- termGlance in node for a
+    member with figures, in bills.html's #results; a chapter with a part
+    through build_rsa's chapter page -- and the cascade's size for the
+    heading (_css_font_px: font-size and the font shorthand's size, the
+    tokens at the browser's 16px) must be at least the size of each run of
+    text it heads: the figures' labels, and the law's paragraphs.
+
+    A PART'S HEADING THAT WRAPS IS NOT CRAMPED (the review of the same
+    day). h2.rs-sub kept the 13px label's line, calc(var(--t-label) * 1.3),
+    16.9px under 16px text: 1.06, and RSA 126-A's long part heading ran six
+    tight lines at 390. Its line must be 1.2 its size at the least, and a
+    heading of one line must take the room it took on that line -- its
+    padding above and margin below, each with half the line, what .75rem
+    and half of 16.9px are (_css_calc_px reads the cascade's calc()) -- so
+    that the page does not move."""
+    css = Path("src/pages/app.css").read_text(encoding="utf-8")
+    rules = _css_screen_rules(css)
+    tokens = _css_palette(css)["light"]
+    memo = {}
+    held_in = []
+    _html_walk(Path("src/pages/bills.html").read_text(encoding="utf-8"),
+               element=lambda c: held_in.append(c) if "results" in c[0]["ids"] else None)
+    assert held_in, "bills.html has no #results"
+    glance = _app_js('scope.termGlance({term_figures:{"2025-2026":{bills_filed:12,prime:4,cosponsored:8,'
+                     'bills_passed:3,became_law:2}},attendance:{"2025-2026":{attended:40,days:42,voted:300,'
+                     'presided:0,conflict:1,roll_calls:310}}},"2025-2026")', names=("termGlance",))
+    pages = []
+    if glance is not None:
+        pages.append(("a member's term at a glance (termGlance)", glance, held_in[0],
+                      lambda c: c[0]["tag"] == "h3" and "mfgrp" in c[1]["classes"],
+                      lambda c: c[0]["tag"] in ("span", "small", "p") and any(
+                          "mf" in e["classes"] or "mfnone" in e["classes"] for e in c[:2])))
+    cols = ["id", "TitleNo", "ChapterNo", "SectionNo", "Title", "Chapter", "Section", "SourceNote",
+            "rsa", "EntireRSA", "titleNumber", "url"]
+    t = RSA.Table([dict(zip(cols, (
+        "0", "LXIII", "659", "659-1", "TITLE LXIII ELECTIONS", "CHAPTER 659 ELECTION PROCEDURE",
+        "Section 659:1 Hours of Polling.", "",
+        "<center><h2>CHAPTER 659<br>ELECTION PROCEDURE</h2></center><h2>Hours of Polling</h2>",
+        "<codesect> <br> I. The polls shall be open at least 8 hours. <br> II. The moderator shall "
+        "announce the hours.</codesect>", "63", "LXIII\\659\\659-1.htm")))])
+    data = {"bills": {}, "enacted": {}, "statute": {}, "asof": {"laws_through": 2025}}
+    root = Path(tempfile.mkdtemp(prefix="gr-rsasub-"))
+    try:
+        (root / "idx").mkdir()
+        page = B.chapter_page(S.template(Path("site")), t, data, B.Bills(root, "2025-2026"), "659",
+                              "https://graniterecord.org")
+    finally:
+        shutil.rmtree(root, ignore_errors=True)
+    pages.append(("a Laws chapter's part (h2.rs-sub)", page, [],
+                  lambda c: "rs-sub" in c[0]["classes"],
+                  lambda c: c[0]["tag"] == "p" and len(c) > 1 and "rs-text" in c[1]["classes"]))
+    bad, said = [], []
+    for what, html, outer, is_head, is_body in pages:
+        heads, bodies = [], []
+        _html_walk(html, text=lambda d, c: (heads if is_head(c) else bodies if is_body(c) else []).append(c)
+                   if d.strip() and c else None)
+        assert heads and bodies, f"{what}: no heading or no text under it was drawn ({len(heads)}, {len(bodies)})"
+        h = [_css_font_px(rules, c + outer, tokens, memo) for c in heads]
+        b = [_css_font_px(rules, c + outer, tokens, memo) for c in bodies]
+        if any(x[0] is None for x in h + b):
+            bad.append(f"{what}: a size this cannot read ({[x for x in h + b if x[0] is None][:2]})")
+            continue
+        hmin, bmax = min(h), max(b)
+        if hmin[0] < bmax[0]:
+            bad.append(f"{what}: the heading is {hmin[0]:g}px ({hmin[1]}, app.css line {hmin[2]}) over text "
+                       f"at {bmax[0]:g}px ({bmax[1]}, app.css line {bmax[2]})")
+        said.append(f"{what} {hmin[0]:g}px over {bmax[0]:g}px")
+        if "rs-sub" not in what:
+            continue
+        # Its line: the font shorthand's (which sets line-height, "normal"
+        # where it names none) or line-height's, whichever rule wins.
+        chain = heads[0] + outer
+        won = _css_won(rules, chain)
+        lead = won.get("line-height", (None,))[0]
+        if "font" in won and (lead is None or (_css_specificity(won["font"][1]), won["font"][2])
+                              >= (_css_specificity(won["line-height"][1]), won["line-height"][2])):
+            m = re.search(r"/\s*((?:[\w.-]+\((?:[^()]|\([^()]*\))*\))|[^\s/]+)", won["font"][0])
+            lead = m.group(1) if m else "normal"
+        size = hmin[0]
+
+        def look(name, won=won):
+            return won[name][0] if name in won else tokens.get(name)
+        line = (float(lead) * size if re.fullmatch(r"\d*\.?\d+", lead.strip())
+                else _css_calc_px(lead, size, look))
+        pad = _css_calc_px(won.get("padding-top", ("0",))[0], size, look)
+        below = _css_calc_px(won.get("margin-bottom", ("0",))[0], size, look)
+        was = _css_calc_px("calc(.75rem + var(--t-label) * 1.3 / 2)", size, look)
+        if line is None or pad is None or below is None:
+            bad.append(f"{what}: a line ({lead!r}), padding or margin this cannot read")
+        elif line < 1.2 * size - 1e-6:
+            bad.append(f"{what}: its lines are {line:g}px apart at {size:g}px, {line / size:.2f} (from {lead!r}): "
+                       f"a heading that wraps is cramped")
+        elif abs(pad + line / 2 - was) > .05 or abs(line / 2 + below - was) > .05:
+            bad.append(f"{what}: a heading of one line moves the page: {pad:g}px + half of {line:g}px above its "
+                       f"text's middle and {below:g}px under it, where it had {was:g}px each")
+        else:
+            said[-1] += f", its lines {line / size:.2f} apart"
+    assert not bad, "a heading is drawn smaller than the text it heads: " + "; ".join(bad)
+    return "ok", "; ".join(said) + ("" if glance is not None else " (node is not here for termGlance)")
+
+
 @check("frontend", "a bill's Testify button counts the Senate's hearings, and says testimony opens again "
        "only while one chamber has heard it")
 def _testify_box_senate():
@@ -76221,7 +77616,8 @@ def _seat_chart_turned():
 @check("frontend", "the House seating chart prints whole, whatever the zoom on the screen it was loaded on")
 def _seat_chart_prints_whole():
     """The chart's width is the zoom's, written on the <svg> by the seat
-    script, and a screen under 1100px opens zoomed in -- 113% at 1024. A page
+    script, and a reader may have zoomed in (a screen under 1100px opened
+    zoomed in until 29 October 2026). A page
     printed after loading there kept that width inside a box that scrolls and
     clips, and the sheet lost the right of the floor, which since the turn is
     Division 5 and its caption (the review of 7 October 2026).
@@ -98426,6 +99822,30 @@ def _vote_identity():
                 default=(0, ""))
     return "ok", (f"{len(by_emp):,} distinct voters, every term named and "
                   f"partied; worst term {worst[1]} at {worst[0] * 100:.0f}%")
+
+
+@check("frontend", "a report with no reasoning says what it does record: the recommendation, the vote, both or neither")
+def _report_no_reasons_says_what():
+    """The Reports tab said "This report records the recommendation and the
+    vote, and gives no reasoning" of every report with no text, and HB 1547
+    of 2010's interim study statement records a recommendation and no vote
+    (the manager, 29 October 2026). app.js's reportNoReasons names what is
+    there, and renderReports asks it with the report's own recommendation and
+    tally."""
+    got = _app_js("[[true,true],[true,false],[false,true],[false,false]].map(a => scope.reportNoReasons(...a))",
+                  names=("reportNoReasons",))
+    if got is None:
+        return "skip", "node, app.js or tests/dom_stub.js is not here"
+    assert got == ["This report records the recommendation and the vote, and gives no reasoning.",
+                   "This report records the recommendation, and gives no reasoning.",
+                   "This report records the vote, and gives no reasoning.",
+                   "This report gives no reasoning."], got
+    src = Path("src/pages/app.js").read_text(encoding="utf-8")
+    assert "reportNoReasons(!!rec,!!committeeTally(e))" in src, (
+        "renderReports no longer asks reportNoReasons with the report's recommendation and tally")
+    assert "records the\n             recommendation and the vote" not in src, (
+        "the fixed sentence is back in renderReports")
+    return "ok", "both, the recommendation alone, the vote alone and neither each read as what the report records"
 
 
 # A HEAD THAT HAS GROWN PAST THE FIRST READ (29 October 2026). _one_head

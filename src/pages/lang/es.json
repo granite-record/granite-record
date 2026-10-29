@@ -23068,11 +23068,6 @@
    "es": "Nombre, condado o escaño",
    "state": "draft"
   },
-  "roster.fit": {
-   "en": "Fit",
-   "es": "Ajustar",
-   "state": "draft"
-  },
   "roster.go": {
    "en": "Go to a seat",
    "es": "Ir a un escaño",
@@ -23113,6 +23108,11 @@
    "es": "Dónde se sientan",
    "state": "draft"
   },
+  "roster.zoom_fit": {
+   "en": "Zoom to fit",
+   "es": "Ajustar a la pantalla",
+   "state": "draft"
+  },
   "roster.zoom_in": {
    "en": "Show the seats larger",
    "es": "Mostrar los escaños más grandes",
@@ -23126,6 +23126,11 @@
   "sc.seat": {
    "en": "seat {plate}",
    "es": "escaño {plate}",
+   "state": "draft"
+  },
+  "sc.seat_line": {
+   "en": "Seat {plate}",
+   "es": "Escaño {plate}",
    "state": "draft"
   },
   "sc.shown": {
@@ -23682,6 +23687,16 @@
   "vote.vote_reopened": {
    "en": "Vote Reopened",
    "es": "se reabrió la votación",
+   "state": "draft"
+  },
+  "vote.won_sr": {
+   "en": "(prevailed)",
+   "es": "(se impuso)",
+   "state": "draft"
+  },
+  "vote.won_title": {
+   "en": "this side prevailed",
+   "es": "este lado se impuso",
    "state": "draft"
   },
   "web.go": {
