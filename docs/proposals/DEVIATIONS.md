@@ -518,3 +518,34 @@ that made it.
     "to check or clear it sooner yourself, first set the GitHub variable
     NIGHT_KNOCK to off" (addendum §7 item 4), from this commit, since a
     hand fetch now meets such a copy at any age.
+
+## Commit 10 of the addendum (built before 8): netcheck
+
+84. **Test 8 is dropped, not relabelled**: seven requests, not eight.
+    design_final §5 allows either; it asked the fourth test's page over the
+    fourth's HTTP version, so dropping it is one request fewer at an address
+    that may be blocking, and tells nothing less.
+85. **netcheck's verdict reads its own answers through `answered()` and
+    `through()`**: a 2xx that is not the block page (`refusal.BLOCKED`) gets
+    through; a 3xx is "a redirect, not the page"; 4xx and 5xx "the server
+    ANSWERED, and said no", for urllib's HTTPError and a raw connection's
+    status alike (the raw socket never raised, so its 403 counted as
+    through). A line above the verdict counts the answers that said no.
+86. **netcheck asks through two seams a check can fake, `URLOPEN` and
+    `CONNECTIONS`**, and C15 also makes the process's sockets refuse to
+    connect while it runs, so a seam a change bypasses fails the check
+    rather than asking the General Court.
+87. **"A record GitHub may be testing" is `refusal._its_own()`** -- whose()
+    conditions 1 to 5: the addendum's machine, kind, ref and dry, plus a
+    `Retry-After` within `RETRY_AFTER_MOST` (a longer one is a person's,
+    which no knock tests). A copy the knock has already lifted still asks
+    for `--knock-stopped`: the laptop does not read the bucket's lifts
+    there, the stricter way.
+88. **Stood down, for netcheck, is `refusal._governing()`**, as `gc_turn()`
+    reads it (DEVIATIONS 80), and both refusals exit `STOOD_DOWN` (4),
+    having asked nothing.
+89. **Until the hourly knock exists, netcheck's sentence names only the
+    night's test**: "set the GitHub variable NIGHT_KNOCK to off, wait until
+    the Actions tab shows no night running, then run python3 netcheck.py
+    --knock-stopped". Commit 8 adds the knock workflow to it, as the
+    addendum §7 item 3 words it.

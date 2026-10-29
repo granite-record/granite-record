@@ -83,6 +83,15 @@ both machines now. On a stood-down laptop:
   step waits for `python3 src/ops/cloud.py pull --changes-only`, which brings
   the bucket's refusal back if it still stands. Clear that one first:
   `python3 src/ops/cloud.py clear-refusal`.
+- **`python3 netcheck.py` keeps the same turn, and never asks beside a test
+  GitHub may be making.** It asks nothing while `refusal.gc_turn()` says it
+  is not this laptop's turn, and nothing while the refusal on file is one
+  GitHub's night on main met and may be testing itself, until
+  `--knock-stopped` says a person has set the GitHub variable `NIGHT_KNOCK`
+  to `off` and no night is running: two machines asking at once is how the
+  second block happened. Its last line counts only a 2xx that is not the
+  firewall's page as getting through; a 403, a 429, a 503 or a redirect is
+  the address being told no.
 - **A refusal met here goes to the bucket at once** (`refusal.note()`, in the
   fetchers that record one), so the night stops too. Where the bucket holds
   a refusal GitHub's own night met -- one its knock may lift, or has lifted

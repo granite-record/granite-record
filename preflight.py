@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.736
+# GRANITE_VERSION: 2026-09-04.737
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -83929,6 +83929,187 @@ def _refusal_check_laptop(R, CL):
             os.environ.pop(CL.NO_BUCKET, None)
         else:
             os.environ[CL.NO_BUCKET] = saved_env
+        shutil.rmtree(tmp, ignore_errors=True)
+
+
+@check("build", "netcheck counts only a 2xx that is not the block page as getting through, and on "
+                "the stood-down laptop asks nothing out of its turn or beside a test GitHub may be "
+                "making", needs=("netcheck", "refusal"))
+def _netcheck_verdict(NC, R):
+    """C15 of design_final, as the hourly addendum amends it (its build plan
+    10; netcheck.py, WHAT COUNTS AS GETTING THROUGH and NOT BESIDE GITHUB).
+    Every request goes to fakes standing in for netcheck's URLOPEN and
+    CONNECTIONS, and the process's own sockets refuse to connect while the
+    check runs, so nothing here reaches anybody.
+
+    The verdict: seven requests, none of them the repeated "root" one; every
+    answer a 403 -- urllib's HTTPError and a raw connection's status alike
+    -- is "the server ANSWERED, and said no" and "Nothing got through"; every
+    answer the firewall's block page over a 200 is the block page and
+    "Nothing got through"; a 302 to the raw socket is a redirect, not the
+    page; every answer the page is "Everything got through"; 403s and pages
+    mixed are "Some got through". Never "Everything got through" over a
+    refusal.
+
+    On a stood-down laptop: no read of the bucket since the last window,
+    exit 4 and nothing asked; inside the window, the same with
+    --knock-stopped; the refusal on file a drop GitHub's night on main met,
+    exit 4 and nothing asked without --knock-stopped, and the seven with it;
+    a refusal cleared here after the last read, exit 4; a copy without a
+    kind, or one this laptop met, asks without the flag. Off a stood-down
+    laptop nothing of this applies, inside the window and beside GitHub's
+    record alike."""
+    import contextlib
+    import io
+    import socket
+    import types
+    import urllib.error
+    tmp = Path(tempfile.mkdtemp(prefix="gr-netcheck-"))
+    saved = (R.MARK, NC.URLOPEN, NC.CONNECTIONS, NC.time, socket.socket.connect,
+             socket.create_connection)
+    hits = []
+    answer = {"urllib": (200, b""), "raw": (200, b"")}
+
+    class Resp:
+        def __init__(self, status, body):
+            self.status, self.body, self.headers = status, body, {"Content-Type": "text/html"}
+
+        def read(self, n=-1):
+            return self.body if n is None or n < 0 else self.body[:n]
+
+        def __enter__(self):
+            return self
+
+        def __exit__(self, *exc):
+            return False
+
+    def urlopen(req, timeout=None):
+        hits.append(req.full_url)
+        status, body = answer["urllib"]
+        if status >= 300:
+            raise urllib.error.HTTPError(req.full_url, status, "x", {}, io.BytesIO(body))
+        return Resp(status, body)
+
+    class Conn:
+        def __init__(self, host, timeout=None, context=None):
+            self.host = host
+
+        def request(self, method, path, headers=None):
+            hits.append(f"{self.host}{path}")
+
+        def getresponse(self):
+            return Resp(*answer["raw"])
+
+        def close(self):
+            pass
+
+    def no_network(*_a, **_k):
+        raise AssertionError("netcheck reached past its fakes to the network")
+
+    def run(*argv, urllib_answer=(200, b"<p>About the Senate</p>"), raw_answer=None):
+        hits.clear()
+        NC.BODIES[:] = []
+        answer["urllib"], answer["raw"] = urllib_answer, raw_answer or urllib_answer
+        out = io.StringIO()
+        with contextlib.redirect_stdout(out), contextlib.redirect_stderr(out):
+            rc = NC.main(list(argv))
+        return rc, out.getvalue(), list(hits)
+    page = b"<html><title>About the Senate</title><p>The Senate</p></html>"
+    wrong = []
+    try:
+        NC.URLOPEN = urlopen
+        NC.CONNECTIONS = {"https": Conn, "http": Conn}
+        NC.time = types.SimpleNamespace(sleep=lambda s: None)
+        socket.socket.connect = no_network
+        socket.create_connection = no_network
+        with _KnockEnv():
+            away = tmp / "away" / "archive"
+            away.mkdir(parents=True)
+            R.MARK = away / "refused.json"
+            # The verdict.
+            rc, out, asked = run(urllib_answer=(403, b"Forbidden"))
+            if len(asked) != 7 or any("root" in a for a in asked) or "root" in out:
+                wrong.append(f"{len(asked)} requests, not seven without the repeated root: {asked}")
+            if "Everything got through" in out or "Nothing got through" not in out or \
+                    out.count("the server ANSWERED, and said no") != 7:
+                wrong.append(f"seven 403s: {out[-500:]!r}")
+            rc, out, asked = run(urllib_answer=(200, _BLOCK_PAGE.encode()))
+            if "Everything got through" in out or "Nothing got through" not in out or \
+                    out.count("block page, not the page") != 7:
+                wrong.append(f"seven block pages over 200: {out[-500:]!r}")
+            rc, out, asked = run(urllib_answer=(200, page), raw_answer=(302, b""))
+            if "Everything got through" in out or "a redirect, not the page" not in out or \
+                    "Some got through" not in out:
+                wrong.append(f"a 302 to the raw socket: {out[-500:]!r}")
+            rc, out, asked = run(urllib_answer=(200, page))
+            if "Everything got through" not in out or "said no" in out:
+                wrong.append(f"seven pages: {out[-500:]!r}")
+            rc, out, asked = run(urllib_answer=(403, b"no"), raw_answer=(200, page))
+            if "Some got through" not in out or "Everything got through" in out:
+                wrong.append(f"403s and pages: {out[-500:]!r}")
+
+            # On a stood-down laptop.
+            arch = tmp / "laptop" / "archive"
+            (arch / "cloud").mkdir(parents=True)
+            (arch / R.STANDDOWN.name).write_text("{}", encoding="utf-8")
+            R.MARK = arch / "refused.json"
+            thu = _at(2026, 11, 5)
+
+            def at(h, m):
+                os.environ["GRANITE_CLOCK_UTC"] = _utc_iso(thu + h * 3600 + m * 60)
+
+            def read_at(h, m):
+                (arch / "cloud" / "pull.json").write_text(json.dumps(
+                    {"refusal": {"kind": "r2", "read": thu + h * 3600 + m * 60}}), encoding="utf-8")
+            github = _knock_record(epoch=thu + 8 * 3600 + 27 * 60)
+
+            def case(what, argv, want_asked, record=None, clock=(14, 0), read=(13, 45),
+                     cleared=None):
+                at(*clock)
+                (arch / "cloud" / "pull.json").unlink(missing_ok=True)
+                if read:
+                    read_at(*read)
+                R.cleared_file().unlink(missing_ok=True)
+                if cleared:
+                    R.cleared_file().write_text(json.dumps(
+                        {"epoch": thu + cleared[0] * 3600 + cleared[1] * 60}), encoding="utf-8")
+                R.MARK.unlink(missing_ok=True)
+                if record is not None:
+                    R.MARK.write_bytes(record)
+                rc, out, asked = run(*argv)
+                if want_asked and len(asked) != 7:
+                    wrong.append(f"{what}: {len(asked)} asked, exit {rc}: {out[-300:]!r}")
+                if not want_asked and (asked or rc != R.STOOD_DOWN or "not starting" not in out):
+                    wrong.append(f"{what}: {len(asked)} asked, exit {rc}: {out[-300:]!r}")
+                return out
+            case("no read of the bucket since the last window", [], False, read=None)
+            case("inside GitHub's night window, with --knock-stopped", ["--knock-stopped"], False,
+                 clock=(9, 0), read=(8, 59))
+            case("a refusal cleared here after the last read", [], False, cleared=(13, 50))
+            said = case("GitHub's drop on file, no --knock-stopped", [], False, record=github)
+            if "NIGHT_KNOCK" not in said or "--knock-stopped" not in said:
+                wrong.append(f"the stop beside GitHub's test does not say what to do: {said!r}")
+            case("GitHub's drop on file, with --knock-stopped", ["--knock-stopped"], True,
+                 record=github)
+            case("a copy without a kind", [], True, record=_RECORD_29_OCT)
+            case("this laptop's own drop", [], True, record=_knock_record(machine="laptop"))
+            case("nothing on file, a read since the window", [], True)
+            # Off a stood-down laptop: nothing of this.
+            R.MARK = away / "refused.json"
+            R.MARK.write_bytes(github)
+            at(9, 0)
+            rc, out, asked = run()
+            if len(asked) != 7:
+                wrong.append(f"off a stood-down laptop, inside the window beside GitHub's record: "
+                             f"{len(asked)} asked, exit {rc}")
+        assert not wrong, "netcheck: " + "; ".join(wrong)
+        return "ok", ("seven requests; a 403, the block page and a redirect never get through; "
+                      "on the stood-down laptop nothing is asked out of its turn, after a clear, "
+                      "or beside GitHub's drop without --knock-stopped; off it, nothing of this")
+    finally:
+        R.MARK, NC.URLOPEN, NC.CONNECTIONS, NC.time = saved[0], saved[1], saved[2], saved[3]
+        socket.socket.connect, socket.create_connection = saved[4], saved[5]
+        NC.BODIES[:] = []
         shutil.rmtree(tmp, ignore_errors=True)
 
 
