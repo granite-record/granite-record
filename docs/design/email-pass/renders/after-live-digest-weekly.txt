@@ -1,0 +1,60 @@
+Subject: Your week: 10 updates on HB 1080-FN, HB 1410-FN and 4 more
+
+Weekly update — Monday, October 26, 2026
+
+10 updates on 3 bills, 1 law, 1 committee and 1 topic.
+
+BILLS YOU FOLLOW
+
+HB 1080-FN — prohibiting the sale of condoms and personal lubricant that contain intentionally added per and polyfluoroalkyl substances.
+https://dry-run.graniterecord.pages.dev/bill/2026/hb1080
+  Now: Interim Study
+  October 16, 2026  Interim study report: does not recommend future legislation, 11–0
+  No roll call votes or executive sessions this week.
+
+HB 1410-FN — creating a new classification for electric vehicles.
+https://dry-run.graniterecord.pages.dev/bill/2026/hb1410
+  Now: Interim Study
+  October 20, 2026  Interim study report: recommends future legislation, 8–0
+  No roll call votes or executive sessions this week.
+
+HB 1533-FN — relative to the use of electric bicycles and alternative electric micromobility devices.
+https://dry-run.graniterecord.pages.dev/bill/2026/hb1533
+  Now: Interim Study
+  October 20, 2026  Interim study report: recommends future legislation, 8–0
+  No roll call votes or executive sessions this week.
+
+LAWS YOU FOLLOW
+
+RSA 198: School Money
+https://dry-run.graniterecord.pages.dev/laws/198
+  October 16, 2026  HB 734-FN — Interim study report: does not recommend future legislation, 9–6
+  October 7, 2026  Newly recorded: HB 1787-FN — Interim study report: does not recommend future legislation, 13–1
+  October 7, 2026  Newly recorded: HB 1800-FN — Interim study report: does not recommend future legislation, 13–1
+
+COMMITTEES YOU FOLLOW
+
+House Transportation Committee
+https://dry-run.graniterecord.pages.dev/committee/H27
+  October 20, 2026  Executive session on HB 1410-FN and HB 1533-FN
+
+TOPICS YOU FOLLOW
+
+Motor Vehicles
+https://dry-run.graniterecord.pages.dev/bills?topic=Motor%20Vehicles
+  October 20, 2026  HB 1533-FN — Executive session set for 10:00 a.m., Granite Place 234
+  October 20, 2026  HB 1410-FN — Executive session set for 10:00 a.m., Granite Place 234
+  October 19, 2026  HB 454 — Interim study report: does not recommend future legislation, 11–0
+
+----
+Email following is in beta until the webinar on November 10: it is live, but details may change from day to day.
+
+Granite Record updates overnight, so this covers the record as of this morning.
+
+Change what you follow, how often, or pause:
+https://dry-run.graniterecord.pages.dev/api/follow/manage#t=#preview-manage
+
+Unsubscribe, deleting your address and everything you follow from our database at once:
+https://dry-run.graniterecord.pages.dev/api/follow/unsubscribe#u=#preview-unsubscribe
+
+This address takes no replies. If something here looks wrong, use “Report a problem” on the bill's, legislator's or committee's page, or the feedback form: https://forms.gle/PYw9c3xgpDDwvX7E9

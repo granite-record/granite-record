@@ -1,0 +1,15 @@
+Subject: Confirm: email updates on HB 9903-FN
+
+Someone asked graniterecord.org to send this address email updates on:
+
+  HB 9903-FN — relative to an example of the follow emails.
+
+Nothing is sent unless you confirm. To confirm, open this link and press Confirm:
+
+https://graniterecord.org/api/follow/confirm#t=preview-token
+
+If it was not you, ignore this email. The request, and this address with it, is deleted within 48 hours without being used.
+
+Email following is in beta until the webinar on November 10: it is live, but details may change from day to day.
+
+Granite Record is a public record of the New Hampshire General Court. This address takes no replies.
