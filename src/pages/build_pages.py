@@ -1691,24 +1691,106 @@ SEATING_JS = """
         (p&&p.getAttribute?p.getAttribute("data-seat"):null);
       c.classList.toggle("on",!!seat&&n===seat);});
   }
+  /* THE NAME ABOVE THE SEAT (the owner, 29 October 2026): "a name callout
+     ABOVE the selected seat, not at the bottom of the screen", a small box
+     with the member's name, their party and district, and a triangle that
+     points at the seat. It is the term popovers' box (.termpop), above the
+     seat, under it where there is no room above inside the chart or the
+     screen, never past the chart's sides, and it follows a seat chosen by a
+     tap, by the keyboard or from the list, and one the pointer is over. The
+     name in it is the link to the member's page, the next Tab stop after a
+     seat, as the note's link under the chart was. The note stays for a
+     screen reader, saying the same in words the eye does not see, and
+     still says what a search has left showing.
+
+     NEVER UNDER THE KEYBOARD (the accessibility sweep of 29 October 2026,
+     WCAG 2.4.3). Tab from a seat to the name under the chart, and focus fell
+     to the page: the scroll that brought the name into view moved the
+     chart from under a resting pointer, and its mouseout wrote the note
+     again, taking out the link focus was on. Nothing here writes the
+     callout or the note while focus is in the callout, and what is said
+     again unchanged is not written again. */
+  var stage=document.querySelector(".seatstage")||(wrap&&wrap.parentNode)||null;
+  var pop=null, popA=null, popWhat=null, popSeat=null, popFor=null, quiet=null;
+  if(stage&&document.createElement){
+    pop=document.createElement("div");
+    pop.className="termpop seatpop";pop.id="seatpop";pop.hidden=true;
+    popA=document.createElement("a");popA.className="spname";
+    popA.setAttribute("aria-describedby","seatpopwhat seatpopseat");
+    popWhat=document.createElement("span");popWhat.className="spwhat";popWhat.id="seatpopwhat";
+    popSeat=document.createElement("span");popSeat.className="spseat";popSeat.id="seatpopseat";
+    pop.appendChild(popA);pop.appendChild(popWhat);pop.appendChild(popSeat);
+    if(note&&note.parentNode===stage&&stage.insertBefore)stage.insertBefore(pop,note);
+    else stage.appendChild(pop);
+  }
+  function holds(){
+    var a=document.activeElement;
+    return !!(a&&pop&&a!==pop&&pop.contains(a));
+  }
+  // Republican, Belknap 6, seat 2-080: what the note says after the name.
+  function about(c){
+    return [c.getAttribute("data-party"),c.getAttribute("data-dist"),
+      tr("sc.seat","seat {plate}",{plate:plate(c.getAttribute("data-seat"))})].filter(Boolean);
+  }
+  // Above its seat, the arrow at the seat's middle (--arrow); below it where
+  // the box would rise past the top of the chart or of the screen; inside the
+  // chart's sides. Out of sight while its seat is scrolled out of the chart,
+  // unless focus is in it.
+  function place(){
+    if(!pop||pop.hidden||!popFor||!stage.getBoundingClientRect||!popFor.getBoundingClientRect)return;
+    var st=stage.getBoundingClientRect(), b=popFor.getBoundingClientRect(),
+        w=wrap&&wrap.getBoundingClientRect?wrap.getBoundingClientRect():st;
+    var cx=b.left+b.width/2, cy=b.top+b.height/2;
+    var off=cx<w.left||cx>w.left+w.width||cy<w.top||cy>w.top+w.height;
+    pop.classList.toggle("gone",off&&!holds());
+    var pw=pop.offsetWidth||0, ph=pop.offsetHeight||0, gap=10, edge=8;
+    var left=Math.max(edge,Math.min(cx-st.left-pw/2,st.width-pw-edge));
+    var below=b.top-gap-ph<Math.max(w.top,0);
+    var top=below?b.top+b.height+gap-st.top:b.top-gap-ph-st.top;
+    pop.style.left=Math.round(left)+"px";
+    pop.style.top=Math.round(top)+"px";
+    var arrow=Math.max(14,Math.min(pw-14,cx-st.left-left));
+    if(pop.style.setProperty)pop.style.setProperty("--arrow",Math.round(arrow)+"px");
+    pop.classList.toggle("below",below);
+  }
+  var placing=0;
+  function soon(){
+    if(placing||typeof requestAnimationFrame!=="function"){if(!placing)place();return;}
+    placing=requestAnimationFrame(function(){placing=0;place();});
+  }
+  function show(c){
+    if(!pop)return;
+    if(!c){pop.hidden=true;popFor=null;return;}
+    if(popFor!==c){
+      popFor=c;
+      popA.href=DATA("legislator/"+c.getAttribute("data-slug")+".html");
+      popA.textContent=c.getAttribute("data-name");
+      // The name, then "Republican \u00b7 Belknap 6", then the seat on a
+      // line of its own, its number the licence plate's.
+      popWhat.textContent=[c.getAttribute("data-party"),c.getAttribute("data-dist")]
+        .filter(Boolean).join(" \u00b7 ");
+      popSeat.textContent=tr("sc.seat_line","Seat {plate}",{plate:plate(c.getAttribute("data-seat"))});
+    }
+    pop.hidden=false;
+    place();
+  }
   // Built as nodes rather than markup: a member's name is theirs, and it is
   // not going through innerHTML on my say-so.
   function say(preview){
-    if(!note)return;
-    note.textContent="";
+    if(holds())return;
     var c=preview||picked;
-    if(c){
-      var a=document.createElement("a");
-      a.href=DATA("legislator/"+c.getAttribute("data-slug")+".html");
-      a.textContent=c.getAttribute("data-name");
-      note.appendChild(a);
-      note.appendChild(document.createTextNode(
-        " — "+tr("sc.seat","seat {plate}",{plate:plate(c.getAttribute("data-seat"))})));
-      return;
-    }
+    show(c);
+    if(!note)return;
     var shown=rows.filter(function(r){return !r.hidden;}).length;
-    note.textContent=shown===rows.length?""
-      :tr("sc.shown","{n} of {m} representatives",{n:shown,m:rows.length});
+    var words=c?[c.getAttribute("data-name")].concat(about(c)).join(", ")
+      :shown===rows.length?"":tr("sc.shown","{n} of {m} representatives",{n:shown,m:rows.length});
+    if(note.getAttribute("data-said")===words)return;
+    note.setAttribute("data-said",words);
+    note.textContent="";
+    if(!c){note.textContent=words;return;}
+    var sr=document.createElement("span");
+    sr.className="sr";sr.textContent=words;
+    note.appendChild(sr);
   }
   function centre(c){
     if(!wrap||!c.getBoundingClientRect)return;
@@ -1759,7 +1841,7 @@ SEATING_JS = """
      target -- the whole floor at once is no use if nothing on it can be
      tapped. Fit puts it back. */
   var zoom=1;
-  function apply(){ if(svg)svg.style.width=(zoom*100)+"%"; }
+  function apply(){ if(svg)svg.style.width=(zoom*100)+"%"; soon(); }
   // ZOOM ABOUT A POINT, not about the top-left corner. Zooming toward the
   // middle of the box moves whatever the reader was looking at out from under
   // them, which on a chart of 400 near-identical circles means losing your
@@ -1915,25 +1997,60 @@ SEATING_JS = """
        note under the chart -- which holds the link to the member's page, the
        next thing Tab reaches -- while focus was on its way to it, so that
        press landed on nothing and the link could not be reached from a seat
-       at all (the review of 2 October 2026). The note is left as it is while
-       focus goes into it, and put back when focus leaves it: for the list
-       under the chart it says again whatever is chosen, and for a seat the
-       seat's own focus names its member a moment later. */
+       at all (the review of 2 October 2026). The link is the callout's now
+       (29 October 2026), and the callout is left as it is while focus goes
+       into it, and put back when focus leaves it: for the list under the
+       chart it says again whatever is chosen, and for a seat the seat's own
+       focus names its member a moment later. */
     var host=wrap||svg.parentNode;
+    var inPop=function(n){return !!(n&&pop&&(n===pop||pop.contains(n)));};
+    // A seat of the chart's: the rows of the list under it carry a slug too.
+    var onSeat=function(n){var c=seatHit(n);return c&&svg.contains(c)?c:null;};
     host.addEventListener("focusin",function(e){
-      var c=seatHit(e.target); if(c){stopAt(c);say(c);}
+      var c=seatHit(e.target); if(c){stopAt(c);if(c!==quiet)say(c);}
     });
     host.addEventListener("focusout",function(e){
-      if(note&&e.relatedTarget&&note.contains(e.relatedTarget))return;
+      if(e.relatedTarget&&(inPop(e.relatedTarget)||(note&&note.contains(e.relatedTarget))))return;
       say();
     });
-    if(note)note.addEventListener("focusout",function(){say();});
+    if(pop)pop.addEventListener("focusout",function(e){
+      if(e.relatedTarget&&(inPop(e.relatedTarget)||onSeat(e.relatedTarget)))return;
+      say();
+    });
     // Hovering names who is in a seat without choosing it, so a mouse can
-    // read the floor quickly; leaving restores whatever was chosen.
+    // read the floor quickly; leaving restores whatever was chosen. The
+    // pointer can go from a seat onto its callout, and the callout stays
+    // (WCAG 1.4.13, hoverable).
     svg.addEventListener("mouseover",function(e){
       var c=seatHit(e.target); if(c)say(c);
     });
-    svg.addEventListener("mouseout",function(){say();});
+    svg.addEventListener("mouseout",function(e){
+      if(inPop(e.relatedTarget))return;
+      say();
+    });
+    if(pop)pop.addEventListener("mouseleave",function(e){
+      if(onSeat(e.relatedTarget))return;
+      say();
+    });
+    // Escape lets the callout go, and the keyboard stays where it was: on
+    // the seat, or back on it from the name (WCAG 1.4.13, dismissible).
+    var dismiss=function(e){
+      if(e.key!=="Escape"||!pop||pop.hidden)return;
+      var c=popFor, back=holds();
+      picked=null;mark("");
+      if(back&&c&&c.focus){quiet=c;stopAt(c);c.focus();quiet=null;}
+      show(null);
+      if(note){note.setAttribute("data-said","");note.textContent="";}
+    };
+    host.addEventListener("keydown",dismiss);
+    if(pop)pop.addEventListener("keydown",dismiss);
+  }
+  // The callout keeps to its seat while the floor is dragged, zoomed or
+  // scrolled, and the page is.
+  if(wrap)wrap.addEventListener("scroll",soon,{passive:true});
+  if(typeof window!=="undefined"&&window.addEventListener){
+    window.addEventListener("resize",soon);
+    window.addEventListener("scroll",soon,{passive:true});
   }
   // A CLICK ON THE FLOOR ITSELF LETS GO (the person, 24 September): anywhere
   // in the chart that is not a seat deselects whoever was chosen. A drag to
@@ -4148,8 +4265,15 @@ def main():
         # default grey.
         def pcode(m):
             return str(m.get("party_code") or m.get("party") or "").upper()[:1]
+        # THE PARTY AND THE DISTRICT, ON THE SEAT, for the name's callout
+        # above it (the owner, 29 October 2026): the party in the page's
+        # words, the district as the county's name and its number.
         by_seat = {int(m["seat"]): {"name": m.get("display_plain") or m.get("name"),
                                     "party_code": pcode(m),
+                                    "party": party_word(m.get("party") or "", lang)
+                                    if m.get("party") else "",
+                                    "dist": " ".join(str(x) for x in (m.get("county"), m.get("district"))
+                                                     if x),
                                     "slug": m.get("slug") or ""}
                    for m in H if m.get("seat")}
 

@@ -23128,6 +23128,11 @@
    "es": "escaño {plate}",
    "state": "draft"
   },
+  "sc.seat_line": {
+   "en": "Seat {plate}",
+   "es": "Escaño {plate}",
+   "state": "draft"
+  },
   "sc.shown": {
    "en": "{n} of {m} representatives",
    "es": "{n} de {m} representantes",

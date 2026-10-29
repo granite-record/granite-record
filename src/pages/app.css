@@ -8587,6 +8587,43 @@ background:var(--surface);border:1px solid var(--rule);
 border-radius:0 0 var(--r-in) var(--r-in)}
 :where(body.pg) .seatnote:empty{border-top-color:var(--surface)}
 :where(body.pg) .seatnote a{font-weight:600;color:var(--ink)}
+/* THE NAME ABOVE THE SEAT (the owner, 29 October 2026). The term popovers'
+   box (.termpop: the surface, its edge, its shadow, the small sans), placed
+   by the script over the chart: above the seat it names, or under it where
+   there is no room above, with a triangle in the box's own edge and ground
+   pointing at the seat from --arrow along it. The name is the link, in the
+   ink; the party, the district and the seat under it in the second ink. */
+:where(body.pg) .seatstage .seatpop{top:0;left:0;z-index:6;max-width:min(17rem,calc(100% - 1rem));
+  padding:var(--sp-3) var(--sp-4);font:400 var(--t-sm)/1.4 var(--sans)}
+:where(body.pg) .seatpop.gone{visibility:hidden}
+:where(body.pg) .seatpop .spname{display:block;font:600 var(--t-ui)/1.3 var(--sans);color:var(--ink)}
+:where(body.pg) .seatpop .spwhat,:where(body.pg) .seatpop .spseat{display:block;color:var(--ink-2)}
+:where(body.pg) .seatpop .spwhat{margin-top:var(--sp-1)}
+:where(body.pg) .seatpop .spwhat:empty{display:none}
+:where(body.pg) .seatpop::before,:where(body.pg) .seatpop::after{content:"";position:absolute;
+  left:var(--arrow,50%);width:0;height:0;border:8px solid transparent;transform:translateX(-50%)}
+:where(body.pg) .seatpop::before{top:100%;border-top-color:var(--rule-2)}
+:where(body.pg) .seatpop::after{top:calc(100% - 1px);border-top-color:var(--surface)}
+:where(body.pg) .seatpop.below::before{top:auto;bottom:100%;border-top-color:transparent;
+  border-bottom-color:var(--rule-2)}
+:where(body.pg) .seatpop.below::after{top:auto;bottom:calc(100% - 1px);border-top-color:transparent;
+  border-bottom-color:var(--surface)}
+/* In forced colours the triangle keeps its own two colours, the system's:
+   left to the browser, its clear sides were painted in the text's. */
+@media (forced-colors:active){
+  :where(body.pg) .seatpop::before,:where(body.pg) .seatpop::after{forced-color-adjust:none}
+  :where(body.pg) .seatpop::before{border-top-color:CanvasText}
+  :where(body.pg) .seatpop.below::before{border-top-color:transparent;border-bottom-color:CanvasText}
+  :where(body.pg) .seatpop::after{border-top-color:Canvas}
+  :where(body.pg) .seatpop.below::after{border-top-color:transparent;border-bottom-color:Canvas}
+}
+/* NAMES ONLY UNDER THE CHART (the owner, 29 October 2026: "names only,
+   without the full district, so the five columns are more compact"). The
+   chip keeps its party's bar; its "(R - Belk 6)" is for a screen reader
+   alone here, and the callout above a seat says the party and the district
+   in full, which is what tells two members of one name apart. */
+:where(body.pg) #seatlist .mtag{position:absolute;width:1px;height:1px;padding:0;margin:-1px;
+  overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap;border:0}
 :where(body.pg) .seatzoom{display:flex;gap:var(--sp-2);flex:0 0 auto}
 :where(body.pg) .seatzoom button{font:inherit;font-size:var(--t-ui);
 min-width:40px;min-height:40px;padding:0 var(--sp-4);cursor:pointer;

@@ -55,6 +55,7 @@ sys.path += [str(p) for p in Path(__file__).resolve().parents if (p / "_paths.py
 import _paths  # noqa: E402,F401
 
 import argparse
+import html
 import math
 
 # The highest seat number in each division, read off the Clerk's plan. On the
@@ -692,7 +693,9 @@ def svg(by_seat=None, title=None, lang="en"):
         attrs = f'data-seat="{seat}" data-div="{d}" data-n="{n}"'
         if m:
             attrs += (f' data-slug="{m.get("slug", "")}"'
-                      f' data-name="{m.get("name", "")}" tabindex="-1" role="button"')
+                      f' data-name="{m.get("name", "")}" tabindex="-1" role="button"'
+                      + "".join(f' data-{k}="{html.escape(str(m[k]))}"' for k in ("party", "dist")
+                                if m.get(k)))
         label = (I.say(lang, "seat.who", "{name} — seat {plate}", name=m.get("name"),
                        plate=plate(seat)) if m
                  else I.say(lang, "seat.vacant", "Vacant — seat {plate}", plate=plate(seat)))
@@ -713,7 +716,9 @@ def svg(by_seat=None, title=None, lang="en"):
     if sp:
         at = (f' data-seat="{SPEAKER_SEAT}" data-div="6" data-n="2"'
               f' data-slug="{sp.get("slug", "")}" data-name="{sp.get("name", "")}"'
-              f' tabindex="-1" role="button"')
+              f' tabindex="-1" role="button"'
+              + "".join(f' data-{k}="{html.escape(str(sp[k]))}"' for k in ("party", "dist")
+                        if sp.get(k)))
     inner = (I.say(lang, "seat.speaker_who", "{name} — Speaker, on the rostrum", name=sp["name"])
              if sp else I.say(lang, "seat.speaker_chair", "The Speaker’s chair"))
     out.append(

@@ -54015,8 +54015,9 @@ def _review_of_audit_fixes(BP):
     The seat map. Its focus listeners sat on the <svg>, which made the chart
     itself a Tab stop, and leaving a seat emptied the note under the chart
     while focus was on its way to the link in it. Run: nothing on the svg
-    listens for focus, the note keeps its link while focus goes into it, and
-    the arrow keys still walk the seats.
+    listens for focus, the name's callout above the seat (the note's link
+    until 29 October 2026; _seat_callout) keeps its link while focus goes
+    into it, and the arrow keys still walk the seats.
 
     A box that scrolls sideways is a Tab stop while it scrolls: the exports
     page marks its coverage table's box and app.js gives it the stop only
@@ -54146,8 +54147,8 @@ def _review_of_audit_fixes(BP):
                    + ": Chrome makes an svg that does a Tab stop, round all 400 seats")
     if not (seat.get("named") and seat.get("keptGoingIn") and seat.get("clearedOnLeaving")
             and seat.get("namedGoingBack")):
-        bad.append("focus on a seat names its member under the chart, and that link has to "
-                   f"be there when Tab reaches it and gone when focus has left both: {seat}")
+        bad.append("focus on a seat names its member in the callout above it, and that link has "
+                   f"to be there when Tab reaches it and gone when focus has left both: {seat}")
     if seat.get("arrow") != {"focused": 1, "stops": [1]} or seat.get("end") != {"focused": 3, "stops": [3]}:
         bad.append(f"the arrow keys no longer walk the seats with one Tab stop among them: {seat}")
     # A CHART IN A TAB NOT YET OPEN (the review of 7 October 2026): the
@@ -54169,7 +54170,7 @@ def _review_of_audit_fixes(BP):
     assert not bad, "; ".join(bad[:5])
     return "ok", ("Show more leaves the keyboard on the first row it brought, on the list and "
                   "on a member's votes; Play and a long analysis move focus when clicked; the "
-                  "seat map's svg hears no focus, its note keeps its link, in a hidden tab "
+                  "seat map's svg hears no focus, its callout keeps its link, in a hidden tab "
                   "it zooms once its box has a width and the Speaker's chair lights; a marked box is a "
                   "stop only while it scrolls; the header's two widths are one, 1100px; and 7 "
                   "rules of the stylesheet and the pages stand")
@@ -54281,31 +54282,35 @@ document.querySelectorAll = all;
     return n; };
   const seats = [1, 2, 3, 4].map(i => node("circle", {"data-slug": "m" + i, "data-seat": "100" + i,
     "data-name": "Rep. " + i, tabindex: "-1"}));
-  const svg = node("svg"), wrap = node("div"), note = node("p"), list = node("div");
+  const svg = node("svg"), wrap = node("div"), note = node("p"), list = node("div"), stage = node("div");
   svg.querySelectorAll = q => q === "[data-slug]" || q === ".seat" ? seats : [];
-  svg.parentNode = wrap;
+  svg.parentNode = wrap; svg.kids = seats.slice();
   const doc = {createElement: t => node(t), createTextNode: t => ({text: t}),
     getElementById: id => ({seatlist: list, seatnote: note})[id] || null,
-    querySelector: q => ({".seatmap": svg, ".seatwrap": wrap})[q] || null};
+    querySelector: q => ({".seatmap": svg, ".seatwrap": wrap, ".seatstage": stage})[q] || null};
   new Function("document", "DATA", fs.readFileSync("./seat.js", "utf8"))(doc, f => "/" + f);
   const stops = () => seats.map((c, i) => c.attrs.tabindex === "0" ? i : -1).filter(i => i >= 0);
   const hears = n => ["focus", "blur", "focusin", "focusout"].filter(t => (n.on[t] || []).length);
   const seat = {svgHears: hears(svg), first: stops()};
-  // Tab reaches the one stop: the note names its member, as a link.
+  // THE NAME IS IN THE CALLOUT ABOVE THE SEAT (29 October 2026), where it
+  // was the note's under the chart.
+  const pop = stage.kids.find(k => k.id === "seatpop");
+  const link = () => pop && !pop.hidden ? pop.kids[0] : null;
+  // Tab reaches the one stop: the callout names its member, as a link.
   [svg, wrap].forEach(n => n.fire("focusin", {target: seats[0]}));
-  const named = note.kids[0];
+  const named = link();
   seat.named = !!(named && named.tag === "a" && /m1/.test(named.href || ""));
   // Tab again: focus leaves the seat for that link.
   [svg, wrap].forEach(n => n.fire("focusout", {target: seats[0], relatedTarget: named}));
-  seat.keptGoingIn = note.kids[0] === named;
+  seat.keptGoingIn = link() === named;
   // Shift+Tab from the link back to the seat: the seat's focus names it again.
-  note.fire("focusout", {target: named, relatedTarget: seats[0]});
+  if (pop) pop.fire("focusout", {target: named, relatedTarget: seats[0]});
   [svg, wrap].forEach(n => n.fire("focusin", {target: seats[0]}));
-  seat.namedGoingBack = !!(note.kids[0] && note.kids[0].tag === "a");
+  seat.namedGoingBack = !!(link() && link().tag === "a");
   // And on from the link to the list under the chart, whose rows carry a
-  // member's slug as a seat does: the note is put back as it was.
-  note.fire("focusout", {target: note.kids[0], relatedTarget: node("a", {"data-slug": "m9"})});
-  seat.clearedOnLeaving = note.kids.length === 0;
+  // member's slug as a seat does: the callout is let go.
+  if (pop) pop.fire("focusout", {target: link(), relatedTarget: node("a", {"data-slug": "m9"})});
+  seat.clearedOnLeaving = !!pop && pop.hidden;
   // The arrow keys, from the seat that has focus.
   const key = (k, from) => svg.fire("keydown", {key: k, target: seats[from]});
   key("ArrowRight", 0);
@@ -54358,6 +54363,217 @@ document.querySelectorAll = all;
 })();
 process.stdout.write("\n@@" + JSON.stringify(out));
 """
+
+
+# The harness of _seat_callout: the seat map's own function (_seat_script) in
+# node, in a stub whose boxes have places, so where the callout is drawn can
+# be read. The chart's box is 366px wide, a 390px phone's column.
+_SEAT_CALLOUT_HARNESS = r"""
+const fs = require("fs");
+globalThis.tr = (k, en, v) => String(en).replace(/\{(\w+)\}/g, (m, x) => v && x in v ? v[x] : m);
+const node = (tag, attrs, box) => { const n = {tag, attrs: Object.assign({}, attrs), on: {}, kids: [],
+  hidden: false, style: {}, dataset: {}, focused: 0, clientWidth: 366, scrollLeft: 0, scrollTop: 0,
+  box: box || {left: 0, top: 0, width: 10, height: 10}, offsetWidth: 0, offsetHeight: 0,
+  classList: null, parentNode: null,
+  addEventListener(t, f) { (this.on[t] = this.on[t] || []).push(f); },
+  fire(t, e) { (this.on[t] || []).forEach(f => f(Object.assign({target: this, preventDefault() {}}, e))); },
+  setAttribute(k, v) { this.attrs[k] = String(v); },
+  getAttribute(k) { return k in this.attrs ? this.attrs[k] : null; },
+  appendChild(c) { if (this._t === "") this._t = undefined; this.kids.push(c); c.parentNode = this; return c; },
+  insertBefore(c, ref) { const i = this.kids.indexOf(ref); this.kids.splice(i < 0 ? this.kids.length : i, 0, c);
+    c.parentNode = this; return c; },
+  contains(x) { return x === this || this.kids.some(k => k === x || (k.contains && k.contains(x))); },
+  closest(q) { return q === "[data-slug]" && "data-slug" in this.attrs ? this : null; },
+  querySelectorAll() { return []; }, querySelector() { return null; },
+  getBoundingClientRect() { const b = this.box; return {left: b.left, top: b.top, width: b.width,
+    height: b.height, right: b.left + b.width, bottom: b.top + b.height}; },
+  setPointerCapture() {}, focus() { this.focused++; doc.activeElement = this; }};
+  const cls = new Set(); n.classList = {toggle(k, on) { (on === undefined ? !cls.has(k) : on) ? cls.add(k) : cls.delete(k); },
+    add(k) { cls.add(k); }, remove(k) { cls.delete(k); }, contains(k) { return cls.has(k); }};
+  Object.defineProperty(n, "className", {get() { return [...cls].join(" "); },
+    set(v) { cls.clear(); String(v).split(/\s+/).filter(Boolean).forEach(k => cls.add(k)); }});
+  Object.defineProperty(n, "textContent", {get() { return this._t !== undefined ? this._t
+      : this.kids.map(k => k.textContent !== undefined ? k.textContent : k.text || "").join(""); },
+    set(v) { this._t = String(v); this.kids = []; }});
+  return n; };
+// The stage: the chart's box (600px tall) and the note under it, at 1000px
+// down the page, 12px in. Seats where a test puts them.
+const stage = node("div", {}, {left: 12, top: 1000, width: 366, height: 640});
+const wrap = node("div", {}, {left: 12, top: 1000, width: 366, height: 600});
+const note = node("p"), list = node("div"), svg = node("svg");
+stage.appendChild(wrap); stage.appendChild(note); wrap.appendChild(svg);
+const seat = (n, slug, box, extra) => node("circle", Object.assign({"data-slug": slug, "data-seat": String(n),
+  "data-name": "Rep. " + slug, tabindex: "-1"}, extra || {}), box);
+const seats = [
+  seat(2096, "mid", {left: 180, top: 1300, width: 17, height: 17}, {"data-party": "Republican", "data-dist": "Hillsborough 14"}),
+  seat(1034, "top", {left: 150, top: 1020, width: 17, height: 17}, {"data-party": "Democrat", "data-dist": "Grafton 12"}),
+  seat(1001, "left", {left: 14, top: 1300, width: 17, height: 17}),
+  seat(5041, "right", {left: 360, top: 1300, width: 17, height: 17})];
+seats.forEach(c => svg.appendChild(c));
+svg.querySelectorAll = q => q === "[data-slug]" || q === ".seat" ? seats : [];
+const doc = {activeElement: null, createElement: t => node(t), createTextNode: t => ({text: t, textContent: t}),
+  getElementById: id => ({seatlist: list, seatnote: note})[id] || null,
+  querySelector: q => ({".seatmap": svg, ".seatwrap": wrap, ".seatstage": stage})[q] || null};
+new Function("document", "DATA", fs.readFileSync("./seat.js", "utf8"))(doc, f => "/" + f);
+const pop = stage.kids.find(k => k.id === "seatpop");
+if (pop) { pop.offsetWidth = 200; pop.offsetHeight = 64; }
+const out = {pop: !!pop, cls: pop ? pop.className : null,
+  order: stage.kids.map(k => k === wrap ? "chart" : k === note ? "note" : k === pop ? "callout" : "?")};
+const at = () => pop ? {hidden: pop.hidden, left: pop.style.left, top: pop.style.top,
+  arrow: pop.style.arrow || null, below: pop.classList.contains("below"), gone: pop.classList.contains("gone"),
+  name: pop.kids[0] && pop.kids[0].textContent, href: pop.kids[0] && pop.kids[0].href,
+  what: pop.kids[1] && pop.kids[1].textContent, seat: pop.kids[2] && pop.kids[2].textContent,
+  note: note.textContent} : null;
+if (pop) pop.style.setProperty = (k, v) => { if (k === "--arrow") pop.style.arrow = v; };
+// A seat chosen by a tap, one near the top, one at each side.
+for (const [k, c] of [["tap", seats[0]], ["top", seats[1]], ["left", seats[2]], ["right", seats[3]]]) {
+  svg.fire("click", {target: c}); out[k] = at(); svg.fire("click", {target: c});
+}
+out.letGo = at();
+// THE KEYBOARD: Tab to a seat, and Tab again to the name in its callout.
+[svg, wrap].forEach(n => n.fire("focusin", {target: seats[0]}));
+doc.activeElement = seats[0];
+const link = pop && pop.kids[0];
+out.focusSeat = at();
+[svg, wrap].forEach(n => n.fire("focusout", {target: seats[0], relatedTarget: link}));
+doc.activeElement = link;
+// What took it away on 29 October 2026: the page scrolls as focus goes to the
+// name, the chart passes from under a resting pointer, and its mouseout says
+// again; the pointer then crosses another seat; the chart is scrolled, and
+// the seat with it out of the chart's box.
+svg.fire("mouseout", {relatedTarget: null});
+svg.fire("mouseover", {target: seats[3]});
+seats[0].box.top = 5000; wrap.fire("scroll", {});
+out.focusName = Object.assign(at(), {same: !!pop && pop.kids[0] === link, linkIn: !!pop && pop.contains(link),
+  noteLink: note.kids.some(k => k.tag === "a")});
+seats[0].box.top = 1300;
+// Escape lets it go, and puts the keyboard back on the seat.
+const before = seats[0].focused;
+if (pop) pop.fire("keydown", {key: "Escape"});
+out.escape = Object.assign(at(), {seatFocused: seats[0].focused - before, active: doc.activeElement === seats[0]});
+// The pointer: over a seat, then onto its callout, which stays; then off.
+svg.fire("mouseover", {target: seats[1]});
+const over = at();
+svg.fire("mouseout", {relatedTarget: pop});
+out.hover = {over, ontoIt: at()};
+if (pop) pop.fire("mouseleave", {relatedTarget: null});
+out.hover.off = at();
+process.stdout.write("\n@@" + JSON.stringify(out));
+"""
+
+
+@check("frontend", "the seating chart names a seat in a callout above it that the keyboard keeps: it "
+       "points at the seat, flips below it at the top, stays inside a phone's width, and Tab from a seat "
+       "reaches its link and is not dropped", needs=("build_pages", "seating"))
+def _seat_callout(BP, SEAT):
+    """The owner, 29 October 2026 (relayed): "a name callout ABOVE the
+    selected seat, not at the bottom of the screen", a small box with the
+    member's name and their party and district and a triangle pointing at
+    the seat, flipping below the seat near the top edge, inside the screen
+    at 390, following a seat chosen by the keyboard as well as by a tap, in
+    the site's popover style; #seatnote still announcing; and the roster
+    under the chart names only. And the accessibility sweep of the same day
+    (WCAG 2.4.3): Tab from a seat dropped focus to the page, because the
+    scroll that brought the name under the chart into view moved the chart
+    from under a resting pointer, and its mouseout wrote the note again,
+    taking out the link focus was on.
+
+    Run: the seat map's own function (_seat_script) in node, its boxes at
+    places (_SEAT_CALLOUT_HARNESS: the chart's box 366px wide). A seat tapped
+    has a callout -- the term popovers' box, .termpop -- whose link is the
+    member's page, the party and district under it and then the seat, the
+    callout above the seat with its arrow at the seat's middle, below a seat
+    at the top of the box, inside the box at either side; between the chart
+    and the note, so it is the next Tab stop from a seat. The note says it
+    all in words a screen reader hears and holds no link. Focus on a seat
+    shows it; with focus on its link, a mouseout, a pointer over another
+    seat and a scroll that takes the seat out of the box leave the same link
+    where it was, shown; Escape lets it go and puts focus on the seat. The
+    pointer can move onto it and it stays. Read: every seat the page's chart
+    writes carries data-party and data-dist (seating.svg), and app.css hides
+    a row's "(R - Belk 6)" under the chart from the eye alone."""
+    if not shutil.which("node"):
+        return "skip", "node is not installed"
+    root = Path(tempfile.mkdtemp())
+    try:
+        (root / "seat.js").write_text(_seat_script(BP), encoding="utf-8")
+        (root / "go.js").write_text(_SEAT_CALLOUT_HARNESS, encoding="utf-8")
+        r = _run(["node", "go.js"], cwd=root, capture_output=True, text=True, timeout=60)
+        assert r.returncode == 0 and "@@" in (r.stdout or ""), (
+            "the seat script did not run under node: " + (r.stderr or r.stdout or "")[-500:])
+        got = json.loads(r.stdout.rsplit("@@", 1)[1])
+    finally:
+        shutil.rmtree(root, ignore_errors=True)
+    bad = []
+    px = lambda v: float(str(v or "nan").rstrip("px"))
+    W, H, GAP = 200, 64, 10
+    if not got["pop"] or "termpop" not in (got["cls"] or "").split() or got["order"] != ["chart", "callout", "note"]:
+        bad.append(f"the seat map writes no callout in the popovers' box between the chart and the note: {got}")
+    else:
+        t = got["tap"]
+        # The seat at 180..197 x 1300..1317 in a stage at 12, 1000: its middle is 176.5 in.
+        if t["hidden"] or t["below"] or px(t["top"]) != 1300 - GAP - H - 1000 \
+                or abs(px(t["left"]) - (188.5 - 12 - W / 2)) > .5 or px(t["arrow"]) != 100:
+            bad.append(f"a tapped seat's callout is not above it with its arrow at the seat's middle: {t}")
+        if t["name"] != "Rep. mid" or t["href"] != "/legislator/mid.html" \
+                or t["what"] != "Republican · Hillsborough 14" or t["seat"] != "Seat 2-096":
+            bad.append(f"the callout does not say the member, the party and district, and the seat: {t}")
+        if t["note"] != "Rep. mid, Republican, Hillsborough 14, seat 2-096":
+            bad.append(f"the note does not say the seat's member, party, district and seat: {t['note']!r}")
+        tp = got["top"]
+        if not tp["below"] or px(tp["top"]) != 1020 + 17 + GAP - 1000:
+            bad.append(f"a seat at the top of the chart's box does not have its callout under it: {tp}")
+        for side in ("left", "right"):
+            x = got[side]
+            if not (8 <= px(x["left"]) and px(x["left"]) + W <= 366 - 8) or not (14 <= px(x["arrow"]) <= W - 14):
+                bad.append(f"the callout of a seat at the {side} of the chart runs past the box: {x}")
+        if not got["letGo"]["hidden"]:
+            bad.append("a seat tapped again keeps its callout")
+        fs_, fn = got["focusSeat"], got["focusName"]
+        if fs_["hidden"] or fs_["name"] != "Rep. mid":
+            bad.append(f"focus on a seat does not show its callout: {fs_}")
+        if fn["hidden"] or not fn["same"] or not fn["linkIn"] or fn["gone"] or fn["name"] != "Rep. mid":
+            bad.append("with focus on the callout's link, a mouseout, the pointer over another seat or a "
+                       f"scroll took it away or moved it -- focus would drop to the page: {fn}")
+        if fn["noteLink"]:
+            bad.append("the note under the chart still holds a link, a second stop for the same name")
+        e = got["escape"]
+        if not e["hidden"] or e["seatFocused"] != 1 or not e["active"]:
+            bad.append(f"Escape on the callout's link does not let it go and put focus on the seat: {e}")
+        h = got["hover"]
+        if h["over"]["hidden"] or h["ontoIt"]["hidden"] or h["ontoIt"]["name"] != "Rep. top" or not h["off"]["hidden"]:
+            bad.append(f"the pointer cannot move from a seat onto its callout, or it stays after: {h}")
+    # Read: the seats carry the callout's words, and the rows under the chart
+    # their names only, for the eye.
+    drawn = SEAT.svg({1001: {"name": "Rep. A", "slug": "a", "party_code": "R", "party": "Republican",
+                             "dist": "Belknap 6"}, 6002: {"name": "Rep. S", "slug": "s", "party_code": "D",
+                                                         "party": "Democrat", "dist": "Coös 1"}})
+    for slug in ("a", "s"):
+        m = re.search(rf'data-slug="{slug}"[^>]*>', drawn)
+        if not m or "data-party=" not in m.group(0) or "data-dist=" not in m.group(0):
+            bad.append(f"seating.svg does not write a seat's party and district: {m.group(0) if m else slug}")
+    src = Path("src/pages/build_pages.py").read_text(encoding="utf-8")
+    if '"party": party_word(' not in src or '"dist": " ".join(' not in src:
+        bad.append("the roster does not hand seating.svg each member's party and district")
+    rules = _css_screen_rules(Path("src/pages/app.css").read_text(encoding="utf-8"))
+    tag = {"tag": "span", "ids": set(), "classes": {"mtag"}, "attrs": {}, "states": set()}
+    a = {"tag": "a", "ids": set(), "classes": set(), "attrs": {"href": "x"}, "states": set()}
+    chip = {"tag": "span", "ids": set(), "classes": {"mchip", "p-R"}, "attrs": {}, "states": set()}
+    li = {"tag": "li", "ids": set(), "classes": {"seatrow"}, "attrs": {}, "states": set()}
+    ol = {"tag": "ol", "ids": set(), "classes": {"seatlist"}, "attrs": {}, "states": set()}
+    cols = {"tag": "div", "ids": {"seatlist"}, "classes": {"seatcols"}, "attrs": {}, "states": set()}
+    body = {"tag": "body", "ids": set(), "classes": {"pg"}, "attrs": {}, "states": set()}
+    won = _css_won(rules, [tag, a, chip, li, ol, cols, body])
+    hide = {k: won.get(k, ("",))[0] for k in ("position", "clip", "width", "height", "display", "visibility")}
+    if hide["position"] != "absolute" or not hide["clip"].startswith("rect(0") or hide["width"] != "1px" \
+            or hide["display"] == "none" or hide["visibility"] == "hidden":
+        bad.append(f"a row under the chart still shows its district to the eye, or hides it from a screen "
+                   f"reader: {hide}")
+    assert not bad, "the seating chart's callout: " + "; ".join(bad[:5])
+    return "ok", ("a seat tapped, focused or under the pointer has the popovers' box above it, its arrow at "
+                  "the seat, below it at the top, inside 366px at either side; Tab from a seat reaches its "
+                  "link and a mouseout, another seat and a scroll leave it there; Escape puts focus on the "
+                  "seat; the note says it in words; the rows under the chart are names to the eye")
 
 
 @check("build", "a reports file keyed on bill number is refused, not ignored")
