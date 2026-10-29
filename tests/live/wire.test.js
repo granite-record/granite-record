@@ -128,3 +128,74 @@ test("the run's ping names the test and its counts; Healthchecks' URL is the pla
     assert.match(w.pings[0].body, /sql_test_sitting_ok/);
     assert.ok(T(w.pings[0].at) > 0);
   }));
+
+test("the day is in state.json before the server hears anything, so a run that dies after connecting never connects twice", async () => {
+  let stateAtLogin = null;
+  let w;
+  await withDb({ start: WED, control: TEST }, async (world_, fake) => {
+    w = world_;
+    // Every run from the first one on stops after the test, before it releases: R2 cannot list.
+    w.r2.list = async () => { throw new Error("R2 said 500"); };
+    const out = await w.runAt();
+    assert.ok(out.codes.includes("error"), out.codes.join(" "));
+    assert.equal(stateAtLogin.test.last, "2026-11-18", "put before the first statement reached the server");
+    assert.deepEqual(w.state().test, { done: ["2026-03-11"], last: "2026-11-18" }, "and the sitting once its file was");
+    await w.every("2026-11-18T15:32:00Z", "2026-11-18T21:00:00Z", null, 10 * MIN);
+    assert.equal(fake.seen.connections, 1, "the day's one connection, though every run after it failed");
+    await w.runAt("2026-11-19T15:30:00Z");
+    assert.equal(fake.seen.connections, 2);
+    assert.ok(w.r2.read("test/2026-08-19.json"), "the next weekday reads the next sitting, not the same one");
+  }, { answer: (() => { const a = fromRecords(); return (sql, n) => {
+    if (n === 1) stateAtLogin = w.r2.read("state.json");
+    return a(sql, n);
+  }; })() });
+});
+
+test("a run that loses the lease before the test starts does not connect", () =>
+  withDb({ start: WED, control: TEST }, async (w, fake) => {
+    let first = true;
+    w.r2.hooks.put = async (key, _v, opts) => {
+      if (key === "state.json" && opts.onlyIf && !first) {
+        w.r2.seed("state.json", { v: 1, lease: { run: "taker", until: "2026-11-18T15:33:00Z" }, yt: {} });
+      }
+      if (key === "state.json") first = false;
+    };
+    const out = await w.runAt();
+    assert.ok(out.codes.includes("sql_test_not_started_lease_lost"), out.codes.join(" "));
+    assert.equal(fake.seen.connections, 0);
+  }));
+
+test("a lost state.json reads no sitting twice: the test's own files say what was done", () =>
+  withDb({ start: WED, control: TEST }, async (w, fake) => {
+    await w.runAt();
+    w.r2.objects.delete("state.json");
+    await w.every("2026-11-18T15:32:00Z", "2026-11-18T21:00:00Z", null, 10 * MIN);
+    assert.equal(fake.seen.connections, 1, "not again today");
+    w.r2.seed("state.json", "{ broken");
+    await w.runAt("2026-11-19T15:30:00Z");
+    assert.equal(fake.seen.connections, 2);
+    assert.ok(w.r2.read("test/2026-08-19.json"), "the next weekday reads the next sitting");
+    assert.deepEqual(w.state().test.done, ["2026-03-11", "2026-08-19"]);
+  }));
+
+test("the run that connects asks YouTube nothing, and the next run looks", () =>
+  withDb({ start: WED, control: TEST }, async w => {
+    const out = await w.runAt();
+    assert.ok(out.codes.includes("youtube_next_run"), out.codes.join(" "));
+    assert.equal(w.yt.calls.length, 0);
+    await w.runAt("2026-11-18T15:32:00Z");
+    assert.ok(w.yt.calls.length > 0);
+  }));
+
+test("a statement of the test that fails is told to Healthchecks, and the sitting is not asked again", async () => {
+  const a = fromRecords();
+  await withDb({ start: WED, control: TEST }, async (w, fake) => {
+    const out = await w.runAt();
+    assert.match(out.fail || "", /a statement of the November test failed \(query\)/);
+    assert.deepEqual(w.state().test.done, ["2026-03-11"]);
+    await w.runAt("2026-11-19T15:30:00Z");
+    assert.ok(w.r2.read("test/2026-08-19.json"));
+    assert.equal(fake.seen.connections, 2);
+  }, { answer: (sql, n) => (/FROM Docket d/.test(sql) && n < 5
+    ? { error: { number: 207, message: "Invalid column name 'statusorder'." } } : a(sql, n)) });
+});

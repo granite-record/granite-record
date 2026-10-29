@@ -25,8 +25,9 @@
  * unconditionally: two runs at that exact moment is the one unguarded case.
  *
  * LOSING state.json IS HARMLESS: the day's counts start again, the upcoming
- * ids are found again by the playlists and search, and a hold that stood
- * costs one more failed try.
+ * ids are found again by the playlists and search, a hold that stood costs
+ * one more failed try, and the November test's progress is read again from
+ * its own files (index.js recovered()), so no past sitting is read twice.
  */
 import { addDays } from "../follow/common.js";
 import { iso, nh, since } from "./clock.js";
@@ -99,7 +100,17 @@ export async function takeLease(bucket, state, etag, run, now) {
   const body = { ...state, lease: { run, until: iso(+now + LEASE_MS) } };
   const opts = etag ? { onlyIf: { etagMatches: etag }, httpMetadata: JSON_TYPE } : { httpMetadata: JSON_TYPE };
   const put = await bucket.put(STATE, JSON.stringify(body), opts);
-  return put ? { etag: put.etag } : null;
+  return put ? { etag: put.etag, held: body.lease } : null;
+}
+
+// state.json put mid-run, the lease kept: what must not be lost if the run
+// dies before it releases (the November test's day, before it connects).
+// Whether it was put; the lease's etag moves with it.
+export async function checkpoint(bucket, state, lease) {
+  const put = await bucket.put(STATE, JSON.stringify({ ...state, lease: lease.held }),
+                               { onlyIf: { etagMatches: lease.etag }, httpMetadata: JSON_TYPE });
+  if (put) lease.etag = put.etag;
+  return Boolean(put);
 }
 
 // Whether state.json was put: false when another run has taken it since.

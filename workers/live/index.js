@@ -50,8 +50,8 @@
 import { clock } from "../follow/common.js";
 import { iso, nh, youtubeDue } from "./clock.js";
 import { FAILS_TO_TELL, forget, look, offFile, streamsKey } from "./youtube.js";
-import { runTest, testDue } from "./test_mode.js";
-import { CONTROL_DEFAULT, WAITS_TO_TELL, WRITE_BY_MS, emptyState, leaseHeld, noteWait, putJSON,
+import { TEST_SITTINGS, runTest, testDue } from "./test_mode.js";
+import { CONTROL_DEFAULT, WAITS_TO_TELL, WRITE_BY_MS, checkpoint, emptyState, leaseHeld, noteWait, putJSON,
          readControl, readJSON, readState, releaseLease, sweep, takeLease } from "./store.js";
 
 export const PING_TIMEOUT_MS = 8000;
@@ -132,16 +132,47 @@ async function blocked(bucket, now, out) {
   return out;
 }
 
+// What the bucket's own test files say was done, so that a lost or replaced
+// state.json never reads a sitting twice: a sitting whose file shows a
+// connection made is read, and a file written today (a sitting's or the
+// day's login) is today's one attempt.
+async function recovered(bucket, test, today) {
+  const t = { ...test, done: [...(test.done || [])] };
+  for (const day of TEST_SITTINGS) {
+    const f = await readJSON(bucket, `test/${day}.json`);
+    if (!f) continue;
+    if (f.test && !f.test.problem && !t.done.includes(day)) t.done.push(day);
+    if (f.read_at && nh(Date.parse(f.read_at)).date === today) t.last = today;
+  }
+  if (await readJSON(bucket, `test/login/${today}.json`)) t.last = today;
+  t.done = TEST_SITTINGS.filter(d => t.done.includes(d));
+  return t;
+}
+
 // The November test's part of a run: one connection, and its file written at
-// once while the lease holds. If the file cannot be written the sitting is
-// not counted as read and is asked again on the next weekday (never the same
-// day): a lost file is the one case a past sitting is read twice.
-async function test(env, bucket, s, p, now, out, opts, elapsed) {
+// once while the lease holds. AT MOST ONE CONNECTION A DAY, whatever happens
+// after it: the day is put into state.json under the lease before anything
+// connects, and a run that cannot put it does not connect. The sitting is
+// put as read as soon as its file is written. If the file cannot be written
+// the sitting is not counted as read and is asked again on the next weekday:
+// a lost file is the one case a past sitting is read twice.
+async function test(env, bucket, s, p, lease, now, out, opts, elapsed) {
   let connect = opts.connect;
   if (!connect) ({ connect } = await import("cloudflare:sockets"));
-  const before = s.test || {};
+  const before = await recovered(bucket, s.test || {}, p.test.today);
+  if (before.last === p.test.today || !testDue(now, before)) {
+    s.test = before;
+    out.codes.push("sql_test_already_done_today");
+    return false;
+  }
+  s.test = { ...before, last: p.test.today };
+  if (!(await checkpoint(bucket, s, lease))) {
+    s.test = before;
+    out.codes.push("sql_test_not_started_lease_lost");
+    return false;
+  }
   const r = await runTest(env, { connect, now, test: before });
-  if (!r) return;
+  if (!r) return false;
   // A refused connection is the test's own finding (the login file's problem,
   // or the sitting file's test.problem); a failed statement is its status's.
   const refused = (r.file.test ? r.file.test.problem : r.file.problem) || null;
@@ -158,12 +189,16 @@ async function test(env, bucket, s, p, now, out, opts, elapsed) {
   } else {
     out.codes.push("lease_lapsed");
   }
-  s.test = wrote ? r.test : { ...before, done: [...(before.done || [])], last: r.test.last };
+  s.test = wrote ? r.test : { ...before, last: r.test.last };
+  if (wrote && !(await checkpoint(bucket, s, lease))) out.codes.push("lease_lost");
   if (!wrote) {
     out.fail = `the November test's file ${r.key} was not written: it is asked again on the next weekday`;
   } else if (refused) {
     out.fail = `the November test could not read (${refused}): ${r.key} says why`;
+  } else if (problem) {
+    out.fail = `a statement of the November test failed (${problem}): ${r.key} says which; the sitting is not asked again`;
   }
+  return true;
 }
 
 // One run. opts (tests): now, fetchImpl, connect (the socket opener for the
@@ -201,7 +236,10 @@ export async function run(env, opts = {}) {
     const lease = await takeLease(bucket, s, etag, runId, now);
     if (!lease) return await blocked(bucket, now, out);
 
-    if (p.test) await test(env, bucket, s, p, now, out, opts, elapsed);
+    // A run that connects to the database asks YouTube nothing: the next run,
+    // 2 minutes on, looks. So the run stays well inside its lease.
+    const connected = p.test ? await test(env, bucket, s, p, lease, now, out, opts, elapsed) : false;
+    if (connected && p.youtube) { p.youtube = null; out.codes.push("youtube_next_run"); }
     const ytBefore = structuredClone(s.yt);
     const writes = [];
     if (p.off) {
