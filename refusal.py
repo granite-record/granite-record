@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-09.20
+# GRANITE_VERSION: 2026-09-09.21
 """
 One refusal stops the fetch lane, not just the run that was refused.
 
@@ -51,7 +51,11 @@ every record written before this -- says nothing about what it was. whose()
 reads the fields, and is the one reader of who a record belongs to: every
 record is a person's, as it always was, unless it is a kind GitHub's own
 night on main met (RESUMABLE) and the person has switched the night's own
-testing on (knock_on()). Nothing acts on that yet.
+testing on (knock_on()). archive/knocks.json, beside the record, keeps the
+chain such a test would follow -- the ladder, below: every knock, written
+down before it is made, and every record a knock lifted, kept whole. Nothing
+knocks yet, and nothing acts on any of it but drops_allowed(), which is 2
+until a knock has lifted something.
 
 ON GITHUB'S MACHINE (25 September 2026) it is the same file. GitHub's
 machines start empty every night, so the record has to outlive the machine:
@@ -171,6 +175,8 @@ def note(where, why, kind=None, retry_after=None):
         rec["retry_after"] = int(retry_after)
     MARK.parent.mkdir(exist_ok=True)
     MARK.write_text(json.dumps(rec, indent=1), encoding="utf-8")
+    if os.environ.get("GITHUB_ACTIONS") == "true" and _its_own(rec)[0]:
+        _start_chain(rec)
     if _governing() is not None:
         tell_the_bucket()
 
@@ -240,12 +246,29 @@ def hours_left(d, now=None):
     return None if age > QUIET_HOURS else QUIET_HOURS - age
 
 
-def force(d, now=None):
+def force(d, now=None, lift=None):
     """What a refusal record held in the bucket stops, in the words pull and
     clear-refusal print. Three things read one, each its own way: check(),
     which every hand-started fetch calls, for QUIET_HOURS; the lane, which
     stops at any archive/refused.json; and GitHub's night, which stops at any
-    state/refused.json in the bucket until a person lifts it."""
+    state/refused.json in the bucket until a person lifts it -- or, for a
+    record of a kind GitHub's own night on main met (whose() conditions 1 to
+    5), until its own knock lifts it, when the person has switched that on.
+    Off GitHub the switch cannot be read, so for such a record this says the
+    night decides, and its run page says what it decided. `lift`, knocks.json's
+    "lifted" entry for this record, says who lifted it and when."""
+    if lift:
+        return (f"lifted by GitHub's knock at {lift.get('utc')} ({_lifter(lift)}), after one "
+                "request was answered. A copy on file here still stops the lane and every "
+                "fetch here until python3 refusal.py --clear")
+    if _its_own(d or {})[0]:
+        left = hours_left(d, now)
+        return ((f"in force for {left:.1f} more hours for every General Court fetch here, "
+                 if left is not None else
+                 f"older than {QUIET_HOURS} hours, so hand fetches here are not stopped by it; ")
+                + f"the lane here stops at it until a person lifts it. GitHub's night met it "
+                f"(a {d.get('kind')} on {MAIN_REF}) and decides whether it tests it itself, one "
+                "request at a time; its run page says")
     left = hours_left(d, now)
     if left is not None:
         return (f"in force for {left:.1f} more hours: every General Court fetch here stops at "
@@ -254,6 +277,13 @@ def force(d, now=None):
     return (f"older than {QUIET_HOURS} hours: hand fetches here are not stopped by it, the "
             "lane is (it stops at any archive/refused.json), and GitHub's night stops at "
             "it until python3 src/ops/cloud.py clear-refusal")
+
+
+def _lifter(lift):
+    """Who lifted a record, from its "lifted" entry: the hourly knock or the
+    night's own."""
+    return {"hourly": "the hourly knock", "night": "the night's own knock"}.get(
+        str(lift.get("by") or ""), "a knock")
 
 
 def standing():
@@ -406,8 +436,10 @@ def knock_on():
     on: NIGHT_KNOCK exactly "on", and NIGHT_PERSON_CHECK exactly "set" (the
     workflow's word that the "a refusal is yours" check exists, so the email
     that says a record has become a person's can always be sent). Anything
-    else -- unset, "ON", "on " -- is off: the safe direction."""
-    return os.environ.get(KNOCK_ENV) == "on" and os.environ.get(PERSON_CHECK_ENV) == "set"
+    else -- unset, "ON", "on " -- is off: the safe direction. And the three
+    settings must read (knock_settings): a setting typed wrong is off too."""
+    return (os.environ.get(KNOCK_ENV) == "on" and os.environ.get(PERSON_CHECK_ENV) == "set"
+            and not knock_settings()[3])
 
 
 def _record(d):
@@ -431,47 +463,464 @@ def _record(d):
 def whose(d=None, k=None, now=None):
     """("night" | "person", why) for a refusal record -- refused.json's
     bytes, its dict, or None for the one on file -- or ("none", why) when no
-    record is on file. "night" only when all hold:
+    record is on file. `k` is knocks.json's document (None, the one on file),
+    whose "current" counts only when it names this record by sha. "night"
+    only when all hold:
 
       1. its kind is one of RESUMABLE;
       2. GitHub's machine wrote it (machine "github");
       3. for MAIN_REF exactly;
       4. not a dry run (dry is False);
       5. it names no Retry-After longer than RETRY_AFTER_MOST;
-      7. knock_on().
+      6. no knock has made it a person's (`person`), it is younger than
+         KNOCK_DAYS days from the chain's start (`since`), it has relapsed
+         fewer than RELAPSES_MOST times, and no knock's answer is lost --
+         an entry still "claimed" KNOCK_JOB_MINUTES after it was made,
+         other than this run's own;
+      7. knock_on(), its three settings reading.
 
-    (6, the knocks so far, comes with the ladder.) Anything else is a
-    person's: every record without a kind, the ones written before records
-    said what they were among them."""
+    Anything else is a person's: every record without a kind, the ones
+    written before records said what they were among them."""
     doc, raw = _record(d)
     if d is None and raw is None:
         return "none", "no refusal is on file"
+    ok, why = _its_own(doc)
+    if not ok:
+        return "person", why
+    t = _utc(now).timestamp()
+    hourly, every, days, bad = knock_settings()
+    c = chain(raw if raw is not None else doc, k)
+    if c is None:
+        return "person", f"{knocks_file()} does not read"
+    if c["person"]:
+        return "person", str(c["person"].get("why") or "a knock made it a person's")
+    if t >= c["since"] + days * DAY:
+        return "person", (f"it has stood since {_stamp(c['since'])}: the night tests a refusal "
+                          f"for {days} days at most")
+    if c["relapses"] >= RELAPSES_MOST:
+        return "person", (f"the website answered a knock and then dropped the night's export "
+                          f"{c['relapses']} times in this chain")
+    lost = [x for x in c["counted"] if x.get("answer") == "claimed"
+            and t - float(x.get("epoch") or 0) > KNOCK_JOB_MINUTES * 60]
+    if lost:
+        x = lost[-1]
+        return "person", (f"the answer to the knock claimed at {x.get('utc')} (run "
+                          f"{x.get('run_id')}) never reached the bucket, so it is taken as the "
+                          "worst answer")
+    if bad:
+        return "person", bad
+    if not knock_on():
+        return "person", (f"the night's own testing is off ({KNOCK_ENV} is "
+                          f"{os.environ.get(KNOCK_ENV)!r}, {PERSON_CHECK_ENV} is "
+                          f"{os.environ.get(PERSON_CHECK_ENV)!r})")
+    return "night", (f"a refusal of the kind {doc.get('kind')!r} GitHub's night on main met: "
+                     "the night's to test")
+
+
+def _its_own(doc):
+    """(True, "") when a record's own fields make it one the night may test
+    -- whose() conditions 1 to 5 -- else (False, why)."""
     if doc.get("unreadable"):
-        return "person", "the refusal record does not read"
+        return False, "the refusal record does not read"
     kind = doc.get("kind")
     if kind not in RESUMABLE:
-        return "person", ("it does not say what kind of refusal it was" if kind is None else
-                          f"it is a refusal of the kind {kind!r}: the address said no")
+        return False, ("it does not say what kind of refusal it was" if kind is None else
+                       f"it is a refusal of the kind {kind!r}: the address said no")
     if doc.get("machine") != "github":
-        return "person", "it was met on the laptop, not by GitHub's night"
+        return False, "it was met on the laptop, not by GitHub's night"
     if doc.get("ref") != MAIN_REF:
-        return "person", f"it was met by a run of {doc.get('ref') or 'no ref'}, not {MAIN_REF}"
+        return False, f"it was met by a run of {doc.get('ref') or 'no ref'}, not {MAIN_REF}"
     if doc.get("dry") is not False:
-        return "person", "it was met by a dry run"
+        return False, "it was met by a dry run"
     ra = doc.get("retry_after")
     if ra is not None:
         try:
             ra = float(ra)
         except (TypeError, ValueError):
-            return "person", f"its Retry-After ({ra!r}) does not read"
+            return False, f"its Retry-After ({ra!r}) does not read"
         if ra > RETRY_AFTER_MOST:
-            return "person", (f"the server asked for {ra / HOUR:.0f} hours, longer than "
-                              f"{RETRY_AFTER_MOST // HOUR}")
-    if not knock_on():
-        return "person", (f"the night's own testing is off ({KNOCK_ENV} is "
-                          f"{os.environ.get(KNOCK_ENV)!r}, {PERSON_CHECK_ENV} is "
-                          f"{os.environ.get(PERSON_CHECK_ENV)!r})")
-    return "night", f"a refusal of the kind {kind!r} GitHub's night on main met: the night's to test"
+            return False, (f"the server asked for {ra / HOUR:.0f} hours, longer than "
+                           f"{RETRY_AFTER_MOST // HOUR}")
+    return True, ""
+
+
+# ---- the night's knock: the ladder and its state (29 October 2026) -----------
+#
+# A record the night may test (whose() == "night") is tested by one request
+# at a time, on a ladder: a rung an hour for the first KNOCK_HOURLY_HOURS
+# after the chain began, then a rung every KNOCK_EVERY_HOURS, until
+# KNOCK_DAYS days, when the record is a person's. The rungs are aligned to
+# the UTC clock at knock_anchor() -- the daily window's start less its
+# START_MARGIN_MINUTES, 07:30 UTC today -- not to the record, so the span the
+# night's own window covers is one rung of its own. knocks.json, beside the
+# record and written only here, keeps the chain: every knock, each written
+# down BEFORE it is made (knocking) and answered after (knocked), and every
+# record a knock lifted, its exact text kept, never pruned. Nothing knocks
+# yet: these are the ladder and its state, for the callers to come.
+
+KNOCKS = Path("archive/knocks.json")
+DAY = 24 * HOUR
+# A record noted within this long of a lift carries the lifted record's
+# chain: its knocks, its start and one more relapse. For the same week one
+# dropped connection ends an export (drops_allowed).
+RELAPSE_HOURS = 168
+# The fourth relapse in a chain -- a knock answered, then the night's export
+# dropped -- makes the record a person's: the bound on a flapping server.
+RELAPSES_MOST = 4
+# How long a knock may take: the child's own limit, and the knock job's
+# timeout-minutes, which preflight will hold equal to this.
+KNOCK_MINUTES = 2
+KNOCK_JOB_MINUTES = 15
+# Who is knocking, "night" or "hourly", in the knock child's environment.
+KNOCK_BY_ENV = "GRANITE_KNOCK_BY"
+# What a knock's answer can be, as knocked() is told it: "whole" lifts the
+# record, "refused" makes it a person's, every other one is a failed knock.
+KNOCK_ANSWERS = ("whole", "refused", "dropped", "unavailable", "missing", "failed", "page")
+
+
+def knock_settings():
+    """(hourly_h, every_h, days, why): the three repository variables, as the
+    workflows pass them. Unset or empty is the default; anything else that is
+    not a plain decimal in range -- "48h", " 48", "-1", 17 days, 5 or 7 hours a
+    rung -- gives `why`, a sentence naming the variable and its value, and
+    the defaults beside it. knock_on() is then False: every record is a
+    person's, as with the switch off. The only place the numbers live."""
+    table = (("KNOCK_HOURLY_HOURS", 48, "a whole number of hours from 0 to 384",
+              lambda n: 0 <= n <= 384),
+             ("KNOCK_EVERY_HOURS", 6, "1, 2, 3, 4, 6, 8, 12 or 24 (a rung must divide a day)",
+              lambda n: n in (1, 2, 3, 4, 6, 8, 12, 24)),
+             ("KNOCK_DAYS", 16, "a whole number of days from 1 to 16", lambda n: 1 <= n <= 16))
+    out, bad = [], []
+    for name, default, allowed, fits in table:
+        raw = os.environ.get(name)
+        if raw is None or raw == "":
+            out.append(default)
+        elif re.fullmatch(r"[0-9]+", raw) and fits(int(raw)):
+            out.append(int(raw))
+        else:
+            out.append(default)
+            bad.append(f"{name} is {raw!r}, which is not {allowed}")
+    why = ("; ".join(bad) + ": the night's own testing is off until it reads") if bad else ""
+    return out[0], out[1], out[2], why
+
+
+def knock_anchor():
+    """KNOCK_ANCHOR, as an epoch: the daily window's start in NIGHT_WINDOWS
+    less START_MARGIN_MINUTES (07:30 UTC today), on 1 January 2026. Every
+    rung size divides a day, so any day's would do. Read from the window
+    each time, so that it moves with it."""
+    from datetime import datetime, timedelta, timezone
+    sh, sm = next(start for wd, start, _, _ in NIGHT_WINDOWS if wd is None)
+    return (datetime(2026, 1, 1, sh, sm, tzinfo=timezone.utc)
+            - timedelta(minutes=START_MARGIN_MINUTES)).timestamp()
+
+
+def knocks_file():
+    """KNOCKS, beside the refusal record: a test that points MARK at a folder
+    of its own keeps its knocks there too."""
+    return MARK.parent / KNOCKS.name
+
+
+def _sha(raw):
+    import hashlib
+    return hashlib.sha256(raw).hexdigest()
+
+
+def _stamp(epoch):
+    from datetime import datetime, timezone
+    return f"{datetime.fromtimestamp(float(epoch), timezone.utc):%Y-%m-%d %H:%M} UTC"
+
+
+def read_knocks():
+    """(knocks.json's document, True), the empty one when there is none; or
+    (the empty one, False) when it does not read -- which no writer here
+    overwrites, so that what it holds of past lifts is never lost."""
+    empty = {"current": None, "lifted": []}
+    try:
+        raw = knocks_file().read_bytes()
+    except FileNotFoundError:
+        return empty, True
+    except OSError:
+        return empty, False
+    try:
+        doc = json.loads(raw.decode("utf-8"))
+    except (ValueError, UnicodeDecodeError):
+        return empty, False
+    if not isinstance(doc, dict) or not isinstance(doc.get("lifted", []), list) \
+            or not isinstance(doc.get("current"), (dict, type(None))):
+        return empty, False
+    doc.setdefault("current", None)
+    doc.setdefault("lifted", [])
+    return doc, True
+
+
+def _write_knocks(doc):
+    """knocks.json, whole: a part file, then a rename."""
+    p = knocks_file()
+    p.parent.mkdir(exist_ok=True)
+    tmp = p.with_name(p.name + ".part")
+    tmp.write_text(json.dumps(doc, indent=1), encoding="utf-8")
+    os.replace(tmp, p)
+
+
+def _own_claim(x):
+    """Whether knock entry `x` is this run's own claim, which this run does
+    not count against itself (same GITHUB_RUN_ID and GITHUB_RUN_ATTEMPT)."""
+    rid = os.environ.get("GITHUB_RUN_ID", "")
+    return (bool(rid) and x.get("answer") == "claimed" and str(x.get("run_id")) == rid
+            and str(x.get("attempt") or "") == os.environ.get("GITHUB_RUN_ATTEMPT", ""))
+
+
+def chain(d=None, k=None):
+    """The ladder's state for a record -- refused.json's bytes, its dict, or
+    None for the one on file -- and knocks.json's document (None, the one on
+    file): {"sha", "epoch", "retry_after", "since", "knocks", "counted",
+    "relapses", "person", "carried_from", "named"}. The document's "current"
+    counts only when it names this record by sha ("named"); otherwise the
+    chain starts at the record itself, with no knocks. `counted` is every
+    knock but one marked "not asked" and this run's own claim. None when
+    knocks.json does not read, or there is no record."""
+    doc, raw = _record(d)
+    if d is None and raw is None:
+        return None
+    if k is None:
+        k, ok = read_knocks()
+        if not ok:
+            return None
+    sha = _sha(raw) if raw is not None else None
+    cur = k.get("current") if isinstance(k, dict) else None
+    named = isinstance(cur, dict) and sha is not None and cur.get("refusal") == sha
+    if not named:
+        cur = {}
+    knocks = [x for x in cur.get("knocks") or [] if isinstance(x, dict)]
+    return {"sha": sha, "epoch": float(doc.get("epoch") or 0),
+            "retry_after": doc.get("retry_after"),
+            "since": float(cur.get("since") or doc.get("epoch") or 0),
+            "knocks": knocks,
+            "counted": [x for x in knocks if x.get("answer") != "not asked" and not _own_claim(x)],
+            "relapses": int(cur.get("relapses") or 0), "person": cur.get("person"),
+            "carried_from": cur.get("carried_from"), "named": named}
+
+
+def knock_due(d=None, k=None, now=None):
+    """(due, due_epoch): whether a knock is due now for a record (as chain()
+    reads `d` and `k`), and the earliest time one is. Due when all hold:
+
+      1. now is before the chain's start plus KNOCK_DAYS days (the cap);
+      2. now is at least the last failed request plus its Retry-After, when
+         that request -- the record's or the last knock's -- carried one;
+      3. now is in a later rung than the last failed request, both measured
+         in the rung size that applies NOW: an hour while now is within
+         KNOCK_HOURLY_HOURS of the start, KNOCK_EVERY_HOURS after;
+      4. now is at least half a rung after it;
+      5. no other run's claim younger than KNOCK_JOB_MINUTES is in flight.
+
+    The last failed request is the latest of the record and every counted
+    knock (chain()). due_epoch is None once the cap comes first: the record
+    is then a person's. The hours a caller may knock in are the caller's, not
+    this function's."""
+    hourly, every, days, _ = knock_settings()
+    c = chain(d, k)
+    if c is None:
+        return False, None
+    t = _utc(now).timestamp()
+    last, wait = c["epoch"], c["retry_after"]
+    for x in c["counted"]:
+        if float(x.get("epoch") or 0) >= last:
+            last, wait = float(x.get("epoch") or 0), x.get("retry_after")
+    try:
+        wait = float(wait or 0)
+    except (TypeError, ValueError):
+        return False, None
+    cap, switch, anchor = c["since"] + days * DAY, c["since"] + hourly * HOUR, knock_anchor()
+    best = None
+    for start, end, size in ((c["since"], min(switch, cap), HOUR),
+                             (max(c["since"], switch), cap, every * HOUR)):
+        if end <= start:
+            continue
+        rung_after = anchor + ((last - anchor) // size + 1) * size
+        at = max(t, start, last + wait, rung_after, last + size / 2)
+        if at < end:
+            best = at
+            break
+    if best is None:
+        return False, None
+    flying = [float(x.get("epoch") or 0) + KNOCK_JOB_MINUTES * 60 for x in c["counted"]
+              if x.get("answer") == "claimed"
+              and t - float(x.get("epoch") or 0) < KNOCK_JOB_MINUTES * 60]
+    if flying:
+        best = max([best] + flying)
+    return best <= t, best
+
+
+def knock_schedule(d=None, k=None):
+    """When knocks may come for a record, if each fails, in words, for the
+    day-0 email and the run's page: the pattern, not a list of dates."""
+    from datetime import datetime, timedelta, timezone
+    hourly, every, days, _ = knock_settings()
+    c = chain(d, k)
+    if c is None:
+        return ""
+    cap, switch = c["since"] + days * DAY, c["since"] + hourly * HOUR
+
+    def hm(t):
+        return f"{t:%H:%M}"
+    quiet = []
+    for wd, (sh, sm), (eh, em), _ in NIGHT_WINDOWS:
+        s = datetime(2026, 1, 1, sh, sm, tzinfo=timezone.utc) - timedelta(minutes=START_MARGIN_MINUTES)
+        e = datetime(2026, 1, 1, eh, em, tzinfo=timezone.utc)
+        quiet.append(f"{hm(s)}-{hm(e)} UTC" + ("" if wd is None else " on a "
+                                                + ("Monday Tuesday Wednesday Thursday Friday "
+                                                   "Saturday Sunday").split()[wd]))
+    out = []
+    if switch > c["since"]:
+        out.append(f"one request an hour outside {' and '.join(quiet)} until {_stamp(min(switch, cap))}")
+    if switch < cap:
+        a = datetime.fromtimestamp(knock_anchor(), timezone.utc)
+        starts = [hm(a + timedelta(hours=every * i)) for i in range(int(DAY // (every * HOUR)))]
+        out.append(("then " if out else "")
+                   + (f"one in each {every}-hour span from {', '.join(starts)} UTC"
+                      if len(starts) > 1 else f"one a day from {starts[0]} UTC"))
+    out.append(f"until {_stamp(cap)}, when the record is yours")
+    return ", ".join(out) + "; and one from the night itself at its start, whenever its span allows"
+
+
+def _start_chain(rec):
+    """note()'s, on GitHub, for a record whose own fields the night may test:
+    knocks.json's "current" for it. Within RELAPSE_HOURS of the last lift it
+    carries that chain -- its knocks, the answered one included, its start,
+    and one more relapse -- so the ladder goes on where it was and the
+    KNOCK_DAYS count from the first drop. Never raises: note() is called as a
+    run gives up, and the record is on file already."""
+    try:
+        raw = MARK.read_bytes()
+        k, ok = read_knocks()
+        if not ok:
+            raise ValueError(f"{knocks_file()} does not read, and is not written over")
+        last = k["lifted"][-1] if k["lifted"] else None
+        new = {"refusal": _sha(raw), "since": float(rec["epoch"]), "knocks": [],
+               "person": None, "carried_from": None, "relapses": 0}
+        if isinstance(last, dict) and \
+                float(rec["epoch"]) - float(last.get("epoch") or 0) < RELAPSE_HOURS * HOUR:
+            new.update(since=float(last.get("since") or rec["epoch"]),
+                       knocks=list(last.get("knocks") or []), carried_from=last.get("refusal"),
+                       relapses=int(last.get("relapses") or 0) + 1)
+        k["current"] = new
+        _write_knocks(k)
+    except Exception as e:                                      # noqa: BLE001
+        print(f"\nTHE KNOCKS' RECORD WAS NOT STARTED for this refusal ({type(e).__name__}: "
+              f"{e}). The refusal is on file; the night will count its chain from the record "
+              "itself.\n", file=sys.stderr)
+
+
+def knocking(url):
+    """Write a knock down BEFORE it is made: an entry answering "no answer"
+    in knocks.json's "current" -- started from the record on file when it
+    names another -- so that a knock killed mid-request still counts.
+    Returns the entry. Raises, and so asks nothing, when there is no record
+    on file or knocks.json will not read."""
+    raw = MARK.read_bytes()
+    sha = _sha(raw)
+    k, ok = read_knocks()
+    if not ok:
+        raise RuntimeError(f"{knocks_file()} does not read, so the knock cannot be written "
+                           "down first, and is not made")
+    cur = k.get("current")
+    if not (isinstance(cur, dict) and cur.get("refusal") == sha):
+        doc = _record(raw)[0]
+        cur = {"refusal": sha, "since": float(doc.get("epoch") or 0), "knocks": [],
+               "person": None, "carried_from": None, "relapses": 0}
+        k["current"] = cur
+    t = _utc().timestamp()
+    entry = {"utc": _stamp(t), "epoch": t, "run_id": os.environ.get("GITHUB_RUN_ID", ""),
+             "attempt": os.environ.get("GITHUB_RUN_ATTEMPT", ""),
+             "by": os.environ.get(KNOCK_BY_ENV, ""), "url": url, "answer": "no answer",
+             "said": "", "retry_after": None}
+    cur.setdefault("knocks", []).append(entry)
+    _write_knocks(k)
+    return entry
+
+
+def knocked(answer, said, retry_after=None):
+    """What the knock knocking() wrote down was answered: one of
+    KNOCK_ANSWERS. Returns what became of the record:
+
+      "lifted"  answer "whole": the record's exact text goes into
+                knocks.json's "lifted" with the sha of the bytes the knock
+                was for, knocks.json is written, and only then is the record
+                removed -- moved, never lost;
+      "person"  answer "refused", or "unavailable" asking longer than
+                RETRY_AFTER_MOST: the chain's `person` is set, for good;
+      "failed"  any other answer: the next rung;
+      "kept"    "whole", but the record on file is not the one the knock was
+                for: nothing is lifted.
+
+    Raises when there is no knock of this run's written down to answer."""
+    if answer not in KNOCK_ANSWERS:
+        raise ValueError(f"{answer!r} is not a knock's answer ({', '.join(KNOCK_ANSWERS)})")
+    k, ok = read_knocks()
+    cur = k.get("current") if ok else None
+    last = (cur.get("knocks") or [None])[-1] if isinstance(cur, dict) else None
+    if not isinstance(last, dict) or last.get("answer") != "no answer" \
+            or str(last.get("run_id")) != os.environ.get("GITHUB_RUN_ID", ""):
+        raise RuntimeError("no knock of this run's is written down to answer")
+    t = _utc().timestamp()
+    last.update(answer=answer, said=str(said)[:300], retry_after=retry_after)
+    if answer == "whole":
+        try:
+            raw = MARK.read_bytes()
+        except OSError:
+            raw = None
+        if raw is None or _sha(raw) != cur.get("refusal"):
+            last["said"] = (last["said"] + "; nothing lifted: the refusal on file is not the "
+                            "one this knock was for")[:300]
+            _write_knocks(k)
+            return "kept"
+        k["lifted"].append({"refusal": cur["refusal"], "utc": _stamp(t), "epoch": t,
+                            "run_id": last.get("run_id"), "attempt": last.get("attempt"),
+                            "by": last.get("by"), "said": str(said)[:300],
+                            "text": raw.decode("utf-8"), "knocks": cur.get("knocks") or [],
+                            "since": cur.get("since"), "relapses": cur.get("relapses") or 0,
+                            "carried_from": cur.get("carried_from")})
+        k["current"] = None
+        _write_knocks(k)
+        MARK.unlink()
+        return "lifted"
+    if answer == "refused" or (answer == "unavailable" and retry_after is not None
+                               and float(retry_after) > RETRY_AFTER_MOST):
+        cur["person"] = {"utc": _stamp(t), "epoch": t,
+                         "why": f"the knock at {last.get('utc')} was answered: {str(said)[:200]}"}
+        _write_knocks(k)
+        return "person"
+    _write_knocks(k)
+    return "failed"
+
+
+def lifted_entry(raw, k=None):
+    """knocks.json's "lifted" entry for a record's exact bytes, or None."""
+    if raw is None:
+        return None
+    if k is None:
+        k, ok = read_knocks()
+        if not ok:
+            return None
+    sha = _sha(raw)
+    return next((x for x in reversed(k.get("lifted") or [])
+                 if isinstance(x, dict) and x.get("refusal") == sha), None)
+
+
+def drops_allowed(now=None):
+    """How many dropped connections end a fetch: 1 within RELAPSE_HOURS of
+    the last lift, when a drop is evidence and not bad luck, else 2. 1 too
+    when knocks.json will not read: the stricter way."""
+    k, ok = read_knocks()
+    if not ok:
+        return 1
+    last = k["lifted"][-1] if k["lifted"] else None
+    if not isinstance(last, dict):
+        return 2
+    age = _utc(now).timestamp() - float(last.get("epoch") or 0)
+    return 1 if age < RELAPSE_HOURS * HOUR else 2
 
 
 # ---- one worker ------------------------------------------------------------
@@ -1003,6 +1452,8 @@ def main():
                   + (f" ({why})" if why else "")
                   + ". python3 src/ops/cloud.py send-refusal sends it when the bucket holds none.")
     s = standing()
+    if not a.clear:
+        say_whose()
     if a.clear:
         if MARK.exists():
             MARK.unlink()
@@ -1025,14 +1476,42 @@ def main():
                   "python3 src/ops/cloud.py clear-refusal")
         return 0
     if not s:
-        print("no refusal in force." if not MARK.exists() else
-              f"the recorded refusal is older than {QUIET_HOURS}h and no "
-              "longer stops anything.")
+        print("no refusal on file." if not MARK.exists() else
+              f"the recorded refusal is older than {QUIET_HOURS}h: hand fetches here are no "
+              "longer stopped by it, but the lane and GitHub's night still are, for as long as "
+              "it is on file.")
         return 0
     d, hours = s
     print(f"refused {hours:.1f}h ago by {d.get('where')}: {d.get('why')}")
     print("every fetch is stopped until: python3 refusal.py --clear")
     return 0
+
+
+def say_whose(now=None):
+    """refusal.py's status: whose the record on file is, and, for one the
+    night is testing, when the next knock is due; for one a knock lifted,
+    who lifted it and when."""
+    try:
+        raw = MARK.read_bytes()
+    except OSError:
+        return
+    lift = lifted_entry(raw)
+    if lift:
+        print(f"this refusal was {force({}, now, lift)}.")
+        return
+    who, why = whose(raw, now=now)
+    if who == "night":
+        due, at = knock_due(raw, now=now)
+        print(f"the night is testing this refusal itself: {why}. "
+              + ("A knock is due now." if due else
+                 f"The next knock is due from {_stamp(at)}." if at else "")
+              + f" If each fails: {knock_schedule(raw)}.")
+    elif _its_own(_record(raw)[0])[0] and os.environ.get("GITHUB_ACTIONS") != "true":
+        print("GitHub's night met this refusal, and decides whether it tests it itself; its "
+              "run page says. A copy on file here is a person's to clear: python3 refusal.py "
+              "--clear.")
+    else:
+        print(f"this refusal is a person's to clear: {why}.")
 
 
 if __name__ == "__main__":

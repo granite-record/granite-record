@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.10
+# GRANITE_VERSION: 2026-09-04.11
 """
 Every standing committee, from the two pages that list them.
 
@@ -236,7 +236,8 @@ def main():
             if ra is not None:
                 kind = "unavailable"
             dropped += kind == "dropped"
-            if kind in ("refused", "unavailable") or dropped >= 2:
+            # In the week after a lift one drop ends it (refusal.drops_allowed).
+            if kind in ("refused", "unavailable") or dropped >= refusal.drops_allowed():
                 refusal.note("fetch_committees", f"{type(e).__name__}: {e}", kind=kind,
                              retry_after=ra)
                 print("  Refused. Recorded in the refusal file; nothing more is "

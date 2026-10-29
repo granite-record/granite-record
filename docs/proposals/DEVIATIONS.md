@@ -25,3 +25,50 @@ that made it.
    `_committees_fetch_stops`**, which the design does not name: it now
    asserts each record's kind (a 403 and the block page `"refused"`, two
    drops `"dropped"`, a bare 503 `"unavailable"` with its wait).
+
+## Commit 2: the ladder and the knock's state
+
+5. **`KNOCK_ANCHOR` is the function `knock_anchor()`**, read from
+   `NIGHT_WINDOWS` at each call. A constant computed at import would not
+   follow a window moved by a check's monkeypatch (H3, commit 4).
+6. **`knocks.json` lives beside the record: `knocks_file()` is
+   `MARK.parent / "knocks.json"`.** `KNOCKS` is `archive/knocks.json` as
+   the design names it, and that is what `knocks_file()` gives in the
+   working folder. A check that points `MARK` at a temp folder then keeps its
+   knocks there too, never in `archive/`: preflight runs on GitHub's
+   machine, where `note()` starts a chain.
+7. **`note()` starts `current` for a record whose own fields make it the
+   night's (whose() conditions 1 to 5), on GitHub only, whatever the switch
+   and the settings say at that moment.** The design says "for a record that
+   is the night's to test". The switch is read where it gates (`whose()`,
+   condition 7), so a record noted while the method is off, and switched on
+   within 16 days, resumes the same chain (design_final §2.11), and a
+   relapse noted while it is off still carries its count.
+8. **The knock's writers read the test clock.** `knocking()`, `knocked()`
+   and `drops_allowed()` take the time from `GRANITE_CLOCK_UTC` when it is
+   set, as every gate already does, so a check can drive a chain through
+   them. `note()` still stamps a record with the real clock, as before: a
+   check that sets the clock and notes a refusal reads its age as it always
+   did.
+9. **`knocked("whole")` lifts only the record the chain names.** If the
+   record on file no longer has the sha `current` names, nothing is lifted
+   (it returns `"kept"`). Under the lock this cannot happen; the design is
+   silent on it.
+10. **A `knocks.json` that does not read is never written over.**
+    `whose()` reads it as a person's, `drops_allowed()` as 1, `knocking()`
+    raises before any request, and `note()` prints that the chain was not
+    started. What it held of past lifts is not lost to a rewrite.
+11. **Condition 5 of `knock_due()` (a claim in flight) is implied by
+    conditions 3 and 4** for every rung the settings allow: a claim counts
+    as the last request (§1.3), and half the smallest rung, 30 minutes,
+    exceeds `KNOCK_JOB_MINUTES`. It is kept, as designed; H5's in-flight
+    case fails only when both rules are removed, and the proofs say so.
+    Likewise `note()`'s `GITHUB_ACTIONS` test and the record's `machine`
+    field are the same fact: C2b's laptop case fails with both removed.
+12. **A claim's reuse by `knocking()` is left to commit 4**, with the claim
+    itself (`--knock-claim`): commit 2 builds what reads a claimed entry
+    (the ladder, the lost-claim rule, a run's own claim not counted).
+13. **`force()` takes the lift** (`force(d, lift=entry)`), and
+    `refusal.py`'s status is a new `say_whose()`. The status line that said
+    an old record "no longer stops anything" now says the lane and GitHub's
+    night still stop at it (the drift design_final §16 names).

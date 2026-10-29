@@ -53,7 +53,12 @@ Three things follow, and they are not negotiable:
    the run stops with status 2, so every other fetch stops too. Fifteen
    scripts consulted a refusal and recorded none until 7 October 2026, and
    `preflight` fails a script that calls `refusal.check()` and never
-   `refusal.note()`.
+   `refusal.note()`. The daily snapshot and the committee pages fetch also
+   say what kind of refusal it was -- `"dropped"`, `"unavailable"` (a 503
+   that is not the firewall's page) or `"refused"` -- and for a week after a
+   refusal is lifted by a knock (`archive/knocks.json`), one dropped
+   connection ends them (`refusal.drops_allowed()`). A record without a kind
+   is a person's to clear, as every record always was (`refusal.whose()`).
 
 The `fetch_*_db.py` scripts in `src/fetch/gc_db/` are the exception worth
 knowing: they read the SQL host the General Court publishes credentials for at

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.723
+# GRANITE_VERSION: 2026-09-04.724
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -81728,6 +81728,410 @@ def _refusal_unavailable(R):
     return "ok", f"{len(cases) + 1} answers read: only a bare 503 is \"unavailable\", with its wait"
 
 
+# What a check's knock is written down as asking: a fixture's address on the
+# reserved .invalid domain, never the General Court's, and never asked.
+_KNOCK_URL = "https://example.invalid/dynamicdatadump/Counties.txt"
+# 29 October 2026, 08:27:15 UTC: run 151's drops, where every chain below starts.
+_KNOCK_SINCE = 1793262435.0
+
+
+def _knock_record(epoch=_KNOCK_SINCE, **over):
+    """A refusal record GitHub's night on main wrote, as note() writes one,
+    with `over` laid on it: bytes."""
+    d = {"at": "2026-10-29T04:27:15", "epoch": epoch, "where": "snapshot_gencourt",
+         "why": "RemoteDisconnected: Remote end closed connection without response",
+         "kind": "dropped", "machine": "github", "ref": "refs/heads/main", "dry": False,
+         "run_id": "151"}
+    d.update(over)
+    return json.dumps(d, indent=1).encode("utf-8")
+
+
+def _utc_iso(t):
+    from datetime import datetime, timezone
+    return datetime.fromtimestamp(t, timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+
+
+class _KnockClock:
+    """with _KnockClock(R) as clock: clock(t) sets the time refusal.py reads
+    to the epoch t -- its own time.time(), which note() stamps a record with,
+    and GRANITE_CLOCK_UTC, which every reader of the hours and the ladder
+    reads -- until the block ends. Inside a _KnockEnv, which puts the clock's
+    variable back."""
+
+    def __init__(self, R):
+        self.R = R
+
+    def __enter__(self):
+        import time as _time
+        import types
+        self.saved = self.R.time
+        self.t = _time.time()
+        self.R.time = types.SimpleNamespace(time=lambda: self.t, strftime=_time.strftime,
+                                            sleep=_time.sleep)
+        return self
+
+    def __call__(self, t):
+        self.t = float(t)
+        os.environ["GRANITE_CLOCK_UTC"] = _utc_iso(t)
+        return self.t
+
+    def __exit__(self, *exc):
+        self.R.time = self.saved
+        return False
+
+
+@check("build", "the knock's three settings are read in one place, the defaults 48 hours, 6 hours "
+                "and 16 days, and a setting typed wrong turns the night's testing off and says "
+                "which", needs=("refusal",))
+def _knock_settings(R):
+    """H4, refusal.py's half (29 October 2026, the person's choice of hourly
+    knocks). KNOCK_HOURLY_HOURS, KNOCK_EVERY_HOURS and KNOCK_DAYS are
+    repository variables the owner changes without a commit, and
+    refusal.knock_settings() is the only place their defaults live: no
+    numeric literal 24, 48, 6, 16 or 384 in knock_due(), whose() or
+    knock_schedule(), read from the code. Unset reads as (48, 6, 16). The
+    ladder follows each: 24 hourly hours make hour 25 a six-hour rung; 4
+    hours a rung put the second phase's knocks on four-hour boundaries from
+    the anchor; 10 days make the record a person's at 240 hours. And a value
+    that is not a plain decimal in range -- "5" or "7" hours a rung, "48h",
+    " 48", "-1", 17 days -- makes every record a person's, with a why naming
+    the variable: unexpected is off, as with NIGHT_KNOCK."""
+    import ast
+    tmp = Path(tempfile.mkdtemp(prefix="gr-ksettings-"))
+    saved = R.MARK
+    try:
+        R.MARK = tmp / "refused.json"
+        raw = _knock_record()
+        R.MARK.write_bytes(raw)
+        H = 3600
+        with _KnockEnv(**_KNOCK_MAIN):
+            assert R.knock_settings() == (48, 6, 16, ""), R.knock_settings()
+
+            def due_after(knock_at, **env):
+                """The next due time after one failed knock at knock_at."""
+                _KnockEnv.set(**dict(_KNOCK_MAIN, **env))
+                k = {"current": {"refusal": R._sha(raw), "since": _KNOCK_SINCE, "relapses": 0,
+                                 "person": None, "carried_from": None,
+                                 "knocks": [{"epoch": knock_at, "answer": "dropped"}]}}
+                return R.knock_due(raw, k, now=knock_at + 60)[1]
+            at = _KNOCK_SINCE + 24.5 * H
+            assert due_after(at) - at <= H, "at hour 24 the default ladder is not hourly"
+            gap = due_after(at, KNOCK_HOURLY_HOURS="24") - at
+            assert gap >= 3 * H, f"KNOCK_HOURLY_HOURS=24 left hour 25 an hourly rung ({gap / H:.2f} h)"
+            at = _KNOCK_SINCE + 60 * H
+            nxt = due_after(at, KNOCK_EVERY_HOURS="4")
+            assert (nxt - R.knock_anchor()) % (4 * H) == 0 and 2 * H <= nxt - at <= 4 * H, \
+                f"KNOCK_EVERY_HOURS=4 did not give four-hour rungs: next {(nxt - at) / H:.2f} h on"
+            assert (due_after(at) - R.knock_anchor()) % (6 * H) == 0, "the default rung is not six hours"
+            _KnockEnv.set(**dict(_KNOCK_MAIN, KNOCK_DAYS="10"))
+            assert R.whose(raw, now=_KNOCK_SINCE + 239.9 * H)[0] == "night" and \
+                R.whose(raw, now=_KNOCK_SINCE + 240 * H)[0] == "person", \
+                "KNOCK_DAYS=10 did not end the night's testing at 240 hours"
+            assert R.knock_due(raw, now=_KNOCK_SINCE + 240 * H) == (False, None)
+            bad = []
+            for name, value in (("KNOCK_EVERY_HOURS", "5"), ("KNOCK_EVERY_HOURS", "7"),
+                                ("KNOCK_HOURLY_HOURS", "48h"), ("KNOCK_HOURLY_HOURS", " 48"),
+                                ("KNOCK_HOURLY_HOURS", "-1"), ("KNOCK_HOURLY_HOURS", "385"),
+                                ("KNOCK_DAYS", "17"), ("KNOCK_DAYS", "0"), ("KNOCK_DAYS", "1.5")):
+                _KnockEnv.set(**dict(_KNOCK_MAIN, **{name: value}))
+                who, why = R.whose(raw, now=_KNOCK_SINCE + H)
+                if who != "person" or name not in why or R.knock_on():
+                    bad.append(f"{name}={value!r} gave {who}: {why}")
+            assert not bad, "a setting typed wrong did not turn testing off: " + "; ".join(bad)
+            _KnockEnv.set(**dict(_KNOCK_MAIN, KNOCK_HOURLY_HOURS="", KNOCK_EVERY_HOURS="",
+                                 KNOCK_DAYS=""))
+            assert R.knock_settings() == (48, 6, 16, "") and R.knock_on(), \
+                "an empty setting (a variable GitHub has none of) is not the default"
+            _KnockEnv.set(**dict(_KNOCK_MAIN, KNOCK_HOURLY_HOURS="0", KNOCK_EVERY_HOURS="24",
+                                 KNOCK_DAYS="1"))
+            assert R.knock_settings() == (0, 24, 1, ""), R.knock_settings()
+        tree = ast.parse(Path(R.__file__).read_text(encoding="utf-8"))
+        held = []
+        for fn in [n for n in tree.body if isinstance(n, ast.FunctionDef)
+                   and n.name in ("knock_due", "whose", "knock_schedule", "knock_gate")]:
+            for n in ast.walk(fn):
+                if isinstance(n, ast.Constant) and type(n.value) in (int, float) \
+                        and n.value in (24, 48, 6, 16, 384):
+                    held.append(f"{fn.name} line {n.lineno}: {n.value}")
+        assert not held, ("a number the settings own is written into the ladder, where changing "
+                          "the setting would not change it: " + "; ".join(held))
+        return "ok", ("defaults (48, 6, 16) from knock_settings() alone; each setting moves the "
+                      "ladder; nine values typed wrong each turn testing off, naming the variable")
+    finally:
+        R.MARK = saved
+        shutil.rmtree(tmp, ignore_errors=True)
+
+
+@check("build", "the knock's ladder: one an hour for 48 hours, then one in each six-hour span, "
+                "never two in a rung, never after 16 days -- 94 knocks at most, 96 requests with "
+                "the drops", needs=("refusal",))
+def _knock_ladder(R):
+    """H5 (it replaces C2 of design_final). The ladder driven from run 151's
+    drop, 29 October 2026 at 08:27:15 UTC, with every knock failing, through
+    refusal.py's own functions -- whose(), knock_due(), knocking(),
+    knocked() -- and the two callers' hours as the addendum gives them: the
+    night once a morning at 08:23:40 (08:00 to 11:18 UTC only, and not the
+    morning of the drops), the hourly workflow at :47 outside every window
+    and its margin, for the knock's two minutes too, and only for a record
+    noted an hour before the last window closed. 94 knocks: 38 in the first
+    48 hours, 56 after; at most 19 in a UTC day while hourly, 4 after; never
+    two in one rung, never closer than half a rung; no hourly one inside a
+    window; none at or after the 384th hour (the cap, in knock_due() and in
+    whose(), each asserted), the last near 383.9. And a 503's Retry-After of
+    50 hours holds the next knock past it; another run's claim 14 minutes old
+    holds it while in flight, and 16 minutes old makes the record a person's,
+    as an answer the bucket never heard; this run's own claim holds nothing."""
+    from collections import Counter
+    from datetime import datetime, timedelta, timezone
+    tmp = Path(tempfile.mkdtemp(prefix="gr-ladder-"))
+    saved = R.MARK
+    H = 3600
+    since = _KNOCK_SINCE
+    try:
+        R.MARK = tmp / "refused.json"
+        with _KnockEnv(**_KNOCK_MAIN), _KnockClock(R) as clock:
+            R.MARK.write_bytes(_knock_record())
+            knocks = []
+
+            def utc(t):
+                return datetime.fromtimestamp(t, timezone.utc)
+
+            def hourly_hours(t):
+                u = utc(t)
+                return (R._window_or_soon(u) is None and R._window_or_soon(
+                        u + timedelta(minutes=R.KNOCK_MINUTES)) is None
+                        and since <= R.last_window_end(u).timestamp() - 60 * 60)
+
+            def night_hours(t):
+                return (8, 0) <= (utc(t).hour, utc(t).minute) < (11, 18)
+
+            def knock(t, by):
+                clock(t)
+                if R.whose()[0] != "night" or not R.knock_due()[0]:
+                    return
+                _KnockEnv.set(**dict(_KNOCK_MAIN, GITHUB_RUN_ID=f"k{len(knocks)}",
+                                     GRANITE_KNOCK_BY=by, GRANITE_CLOCK_UTC=_utc_iso(t)))
+                R.knocking(_KNOCK_URL)
+                R.knocked("dropped", "closed without a byte")
+                knocks.append((t, by))
+            h = (since // H + 1) * H
+            while h < since + 17 * 24 * H:
+                day = utc(h).replace(hour=0, minute=0, second=0).timestamp()
+                nt = day + 8 * H + 23 * 60 + 40
+                if h <= nt < h + H and nt > since + 12 * H and night_hours(nt):
+                    knock(nt, "night")
+                if hourly_hours(h + 47 * 60):
+                    knock(h + 47 * 60, "hourly")
+                h += H
+            fast = [t for t, _ in knocks if t - since < 48 * H]
+            slow = [t for t, _ in knocks if t - since >= 48 * H]
+            assert (len(knocks), len(fast), len(slow)) == (94, 38, 56), (
+                f"{len(knocks)} knocks ({len(fast)} in the first 48 hours, {len(slow)} after), "
+                "not 94 (38 and 56)")
+            most_fast = max(Counter(utc(t).date() for t in fast).values())
+            most_slow = max(Counter(utc(t).date() for t in slow).values())
+            assert most_fast <= 19 and most_slow <= 4, (most_fast, most_slow)
+            anchor = R.knock_anchor()
+            for (a, _), (b, _) in zip(knocks, knocks[1:]):
+                size = H if b - since < 48 * H else 6 * H
+                assert (a - anchor) // size < (b - anchor) // size, \
+                    f"two knocks in one rung: {_utc_iso(a)} and {_utc_iso(b)}"
+                assert b - a >= size / 2, f"knocks {_utc_iso(a)} and {_utc_iso(b)} too close"
+            inside = [_utc_iso(t) for t, by in knocks if by == "hourly"
+                      and R._window_or_soon(utc(t)) is not None]
+            assert not inside, f"hourly knocks inside a window: {inside[:3]}"
+            assert all(t < since + 384 * H for t, _ in knocks) and \
+                knocks[-1][0] - since > 383.5 * H, \
+                f"the last knock came {(knocks[-1][0] - since) / H:.1f} hours on"
+            clock(since + 384 * H)
+            assert R.whose()[0] == "person", "the record was still the night's after 16 days"
+            assert R.knock_due() == (False, None), "a knock was due after 16 days"
+
+            # A Retry-After, and claims.
+            def fresh():
+                R.MARK.write_bytes(_knock_record())
+                R.knocks_file().unlink(missing_ok=True)
+            fresh()
+            clock(since + 5 * H)
+            _KnockEnv.set(**dict(_KNOCK_MAIN, GITHUB_RUN_ID="r1",
+                                 GRANITE_CLOCK_UTC=_utc_iso(since + 5 * H)))
+            R.knocking(_KNOCK_URL)
+            R.knocked("unavailable", "503, Retry-After 180000", retry_after=50 * H)
+            due, at = R.knock_due(now=since + 54 * H)
+            assert not due and at >= since + 55 * H, \
+                f"a 503 asking 50 hours did not hold the next knock: due {due}, from {at}"
+            fresh()
+            k = {"current": {"refusal": R._sha(R.MARK.read_bytes()), "since": since,
+                             "knocks": [], "person": None, "carried_from": None, "relapses": 0},
+                 "lifted": []}
+            t = since + 7 * H
+            assert R.knock_due(None, k, now=t)[0], "nothing on file, and no knock due"
+            # Half a rung apart at least: a knock at 13:29, in the 12:30-13:30
+            # rung, leaves 13:31 in the next rung but too close.
+            k["current"]["knocks"] = [{"epoch": since + 5 * H + 1 * 60 + 45, "answer": "dropped"}]
+            near = since + 5 * H + 3 * 60 + 45
+            due, at = R.knock_due(None, k, now=near)
+            assert not due and at == since + 5 * H + 31 * 60 + 45, \
+                f"two knocks either side of a rung's edge, two minutes apart: due {due}, from {at}"
+
+            def claim(age, run="other"):
+                k["current"]["knocks"] = [{"utc": "-", "epoch": t - age * 60, "run_id": run,
+                                           "attempt": "1", "by": "hourly", "answer": "claimed"}]
+                return R.knock_due(None, k, now=t)[0], R.whose(None, k, now=t)[0]
+            assert claim(14) == (False, "night"), \
+                f"another run's claim 14 minutes old did not hold the knock: {claim(14)}"
+            assert claim(16)[1] == "person", \
+                "a claim whose answer never reached the bucket did not make the record a person's"
+            _KnockEnv.set(**dict(_KNOCK_MAIN, GITHUB_RUN_ID="mine", GITHUB_RUN_ATTEMPT="1"))
+            assert claim(1, run="mine") == (True, "night"), \
+                f"this run's own claim held its own knock: {claim(1, run='mine')}"
+            _KnockEnv.set(**dict(_KNOCK_MAIN, GITHUB_RUN_ID="mine", GITHUB_RUN_ATTEMPT="2"))
+            assert claim(1, run="mine")[0] is False, \
+                "a claim of an earlier attempt of this run was taken as this attempt's own"
+        return "ok", (f"94 knocks ({len(fast)} hourly-phase, {len(slow)} after), at most "
+                      f"{most_fast} a day then {most_slow}, one a rung, none after 384 hours; a "
+                      "Retry-After and a claim in flight hold it, a lost claim is a person's")
+    finally:
+        R.MARK = saved
+        shutil.rmtree(tmp, ignore_errors=True)
+
+
+@check("build", "a refusal noted within a week of a lift carries the lifted chain -- its knocks, "
+                "its start, one more relapse -- and the fourth relapse is a person's; for that "
+                "week one dropped connection ends a fetch", needs=("refusal",))
+def _refusal_relapse(R):
+    """C2b, as the hourly addendum amends it. note() on GitHub's night, for a
+    record whose own fields the night may test, starts knocks.json's
+    "current". Within RELAPSE_HOURS of the last lift it carries that chain:
+    a lift 100 hours old with two knocks gives a relapse those two knocks,
+    the first drop's `since`, `carried_from` the lifted record and
+    `relapses` 1. The fourth relapse in a chain is a person's (RELAPSES_MOST),
+    and so is one noted past the carried start plus KNOCK_DAYS. A lift 169
+    hours old starts a fresh chain. drops_allowed() is 1 at 167 hours after a
+    lift and 2 at 169. A lift keeps the record's exact bytes, under the sha of
+    the bytes the knock was for, and only then removes it. Nothing starts a
+    chain on the laptop, or for a 403. And refusal.py's status says whose the
+    record is and when its next knock is due."""
+    import contextlib
+    import io
+    tmp = Path(tempfile.mkdtemp(prefix="gr-relapse-"))
+    saved = R.MARK
+    H = 3600
+    T0 = _KNOCK_SINCE
+    try:
+        R.MARK = tmp / "refused.json"
+        with _KnockEnv(**_KNOCK_MAIN), _KnockClock(R) as clock:
+            runs = iter(range(1000))
+
+            def noted(t):
+                clock(t)
+                with contextlib.redirect_stderr(io.StringIO()):
+                    R.note("snapshot_gencourt", "RemoteDisconnected: x", kind="dropped")
+                return R.read_knocks()[0]["current"]
+
+            def knock(t, answer):
+                clock(t)
+                os.environ["GITHUB_RUN_ID"] = f"r{next(runs)}"
+                R.knocking(_KNOCK_URL)
+                return R.knocked(answer, "Counties.txt, 195 bytes" if answer == "whole" else "x")
+            cur = noted(T0)
+            assert (cur["since"], cur["knocks"], cur["relapses"], cur["carried_from"]) == \
+                (T0, [], 0, None), f"a first drop did not start a fresh chain: {cur}"
+            first = R.MARK.read_bytes()
+            assert knock(T0 + 6 * H, "dropped") == "failed"
+            assert knock(T0 + 7 * H, "whole") == "lifted" and not R.MARK.exists(), \
+                "an answered knock did not lift the record"
+            lift = R.read_knocks()[0]["lifted"][-1]
+            assert lift["text"].encode("utf-8") == first and lift["refusal"] == R._sha(first), \
+                "the lift did not keep the record's exact bytes under the sha it was knocked for"
+            assert R.read_knocks()[0]["current"] is None
+            # Moved, never lost: knocks.json is written before the record goes,
+            # so a write that fails leaves the record on file.
+            R.MARK.write_bytes(first)
+            again = R.read_knocks()[0]
+            saved_write = R._write_knocks
+            clock(T0 + 8 * H)
+            os.environ["GITHUB_RUN_ID"] = "w1"
+            R.knocking(_KNOCK_URL)
+
+            def broken(doc):
+                raise OSError("the disk is full")
+            R._write_knocks = broken
+            try:
+                R.knocked("whole", "Counties.txt, 195 bytes")
+                raise AssertionError("a lift whose knocks.json write failed said nothing")
+            except OSError:
+                pass
+            finally:
+                R._write_knocks = saved_write
+            assert R.MARK.exists(), "the record went before knocks.json held its text"
+            R._write_knocks(again)
+            R.MARK.unlink()
+            cur = noted(T0 + 107 * H)
+            assert len(cur["knocks"]) == 2 and cur["since"] == T0 and cur["relapses"] == 1 \
+                and cur["carried_from"] == lift["refusal"], \
+                f"a relapse 100 hours after a lift did not carry its chain: {cur}"
+            assert R.whose()[0] == "night", R.whose()
+            out = io.StringIO()
+            with contextlib.redirect_stdout(out):
+                R.say_whose()
+            assert "testing this refusal itself" in out.getvalue() and "due" in out.getvalue(), \
+                f"refusal.py's status did not say the night tests it and when: {out.getvalue()}"
+            # Three more lifts and relapses: the fourth relapse is a person's.
+            t = T0 + 108 * H
+            for n in (2, 3, 4):
+                assert knock(t, "whole") == "lifted"
+                cur = noted(t + H)
+                assert cur["relapses"] == n, cur
+                t += 2 * H
+            assert R.whose()[0] == "person" and "4 times" in R.whose()[1], \
+                f"the fourth relapse is not a person's: {R.whose()}"
+            out = io.StringIO()
+            with contextlib.redirect_stdout(out):
+                R.say_whose()
+            assert "a person's to clear" in out.getvalue(), out.getvalue()
+            # Past the carried start plus 16 days, within a week of a lift.
+            R.MARK.unlink()
+            R.knocks_file().unlink()
+            noted(T0)
+            assert knock(T0 + 383 * H, "whole") == "lifted"
+            noted(T0 + 385 * H)
+            assert R.whose()[0] == "person", \
+                "a relapse past the carried start plus 16 days is the night's"
+            # A lift 169 hours old starts afresh, and the one-drop week ends.
+            R.MARK.unlink()
+            R.knocks_file().unlink()
+            noted(T0)
+            assert knock(T0 + 2 * H, "whole") == "lifted"
+            lifted_at = R.read_knocks()[0]["lifted"][-1]["epoch"]
+            assert R.drops_allowed(now=lifted_at + 167 * H) == 1 and \
+                R.drops_allowed(now=lifted_at + 169 * H) == 2, \
+                "one dropped connection does not end a fetch in the week after a lift, or after it"
+            cur = noted(lifted_at + 169 * H)
+            assert cur["knocks"] == [] and cur["since"] == lifted_at + 169 * H and \
+                cur["relapses"] == 0 and cur["carried_from"] is None, \
+                f"a drop 169 hours after a lift carried the old chain: {cur}"
+            R.knocks_file().write_text("{", encoding="utf-8")
+            assert R.drops_allowed() == 1 and R.whose()[0] == "person", \
+                "a knocks.json that does not read was not taken the strict way"
+            # Not on the laptop, and not a person's record: no chain at all.
+            R.knocks_file().unlink()
+            os.environ.pop("GITHUB_ACTIONS")
+            noted(T0 + 500 * H)
+            assert not R.knocks_file().exists(), "a laptop's note() started a knock chain"
+            os.environ["GITHUB_ACTIONS"] = "true"
+            clock(T0 + 501 * H)
+            with contextlib.redirect_stderr(io.StringIO()):
+                R.note("fetch_x", "HTTP Error 403: Forbidden", kind="refused")
+            assert not R.knocks_file().exists(), "a 403's note() started a knock chain"
+        return "ok", ("a relapse within a week carries the chain, the fourth is a person's, and "
+                      "so is one past 16 days; 169 hours on is a fresh chain; one drop ends a "
+                      "fetch for a week after a lift")
+    finally:
+        R.MARK = saved
+        shutil.rmtree(tmp, ignore_errors=True)
+
+
 # ---- the nightly ---------------------------------------------------------------
 
 @check("build", "the daily snapshot stops when told no, and installs all of tonight's files or none",
@@ -81762,12 +82166,15 @@ def _snapshot_stops(SG):
               b"Execution Timeout Expired.  The timeout period elapsed prior to completion of "
               b"the operation or the server is not responding.\r\nOperation cancelled by user."
               b"</span><br/><a href='LSRs.txt?x=20260928031030'>LSR Table</a></body></html>")
-    page, seen = [healthy], {}
+    page, seen, slept = [healthy], {}, []
 
-    def run(answers, installed=None, lock=None):
+    def run(answers, installed=None, lock=None, knocks=None):
         tmp = Path(tempfile.mkdtemp())
         tmps.append(tmp)
         refusal.MARK, refusal.LOCK = tmp / "refused.json", tmp / ".lock"
+        if knocks is not None:
+            refusal.knocks_file().write_text(json.dumps(knocks), encoding="utf-8")
+        slept.clear()
         root = tmp / "root"
         root.mkdir()
         for name, body in (installed or {}).items():
@@ -81802,7 +82209,7 @@ def _snapshot_stops(SG):
         return rc, asked, root
 
     try:
-        SG.time = types.SimpleNamespace(sleep=lambda s: None, time=time.time)
+        SG.time = types.SimpleNamespace(sleep=slept.append, time=time.time)
         rc, asked, root = run([data] * n)
         assert rc == 0 and len(asked) == n and (root / "Docket.txt").read_bytes() == data, rc
         rc, asked, root = run([data, urllib.error.HTTPError("u", 403, "no", {}, None)] + [data] * n)
@@ -81880,6 +82287,25 @@ def _snapshot_stops(SG):
         assert rc == 2 and not asked and (kind().get("kind"), kind().get("retry_after")) == \
             ("unavailable", 7200), f"a bare 503 for the page: {rc}, {len(asked)} asked, {kind()}"
         page[0] = healthy
+
+        # THE WEEK AFTER A LIFT (refusal.drops_allowed): one dropped
+        # connection ends the run -- the page's after that one request, a
+        # file's with no minute's wait and no second request for it. Outside
+        # the week, and with no lift at all, one drop is still retried.
+        lift = {"current": None, "lifted": [{"refusal": "0" * 64, "epoch": time.time() - 10 * 3600}]}
+        old = {"current": None, "lifted": [{"refusal": "0" * 64, "epoch": time.time() - 170 * 3600}]}
+        page[0] = gone()
+        rc, asked, root = run([data] * n, knocks=lift)
+        assert rc == 2 and not asked and seen["order"] == ["page"] and kind().get("kind") == "dropped", \
+            f"a dropped page in the week after a lift did not end the run: {rc}, {seen['order'][:3]}"
+        page[0] = healthy
+        rc, asked, root = run([data, gone()] + [data] * n, knocks=lift)
+        assert rc == 2 and len(asked) == 2 and 60 not in slept and kind().get("kind") == "dropped", \
+            f"a dropped file in the week after a lift was retried: {rc}, {len(asked)} asked, {slept}"
+        for k in (old, None):
+            rc, asked, root = run([data, gone()] + [data] * n, knocks=k)
+            assert rc == 0 and len(asked) == n + 1 and 60 in slept and not refusal.MARK.exists(), \
+                f"one dropped file outside the week after a lift was not retried once: {rc}, {slept}"
         src = _paths.locate("snapshot_gencourt.py").read_text(encoding="utf-8")
         m = re.search(r'"--delay", type=float, default=([\d.]+)', src)
         assert m and float(m.group(1)) >= 3, "the snapshot's pause between files fell under 3 s"
@@ -93435,6 +93861,17 @@ def _committees_fetch_stops(FC):
             "u", 503, "x", {"Retry-After": "90"}, io.BytesIO(b"busy")), "<html></html>"])
         assert code == 2 and len(asked) == 1 and kind() == ("unavailable", 90), \
             f"a bare 503: {code}, {len(asked)} asked, {kind()}"
+        # In the week after a lift one dropped connection ends it
+        # (refusal.drops_allowed); a lift older than the week does not.
+        import time as _time
+        for age, want in ((10, (2, 1)), (170, (1, 2))):
+            (tmp / "knocks.json").write_text(json.dumps(
+                {"current": None, "lifted": [{"refusal": "0", "epoch": _time.time() - age * 3600}]}),
+                encoding="utf-8")
+            code, asked, noted = drive([TimeoutError("timed out"), "<html>nothing</html>"])
+            assert (code, len(asked)) == want, \
+                f"a lift {age} hours old: one dropped page gave exit {code} after {len(asked)} asked"
+        (tmp / "knocks.json").unlink()
         code, asked, noted = drive(["<html>nothing here</html>", "<html>nor here</html>"])
         assert code == 1 and len(asked) == 2 and not noted and not (tmp / "c.json").exists(), \
             (code, asked, noted)

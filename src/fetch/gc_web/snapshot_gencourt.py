@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.14
+# GRANITE_VERSION: 2026-09-04.15
 """
 Daily snapshot of the NH General Court bulk data files.
 
@@ -40,7 +40,9 @@ WHAT KIND IT WAS (29 October 2026). The refusal it records says so
 (refusal.py, WHAT KIND IT WAS): "dropped" for the second dropped connection,
 "refused" for a 403, a 429 or the block page, and "unavailable" for a 503
 whose body is not the block page, which still ends the run at once and keeps
-the server's Retry-After.
+the server's Retry-After. In the week after GitHub's knock lifted a refusal
+(refusal.drops_allowed) one dropped connection ends the run, page or file,
+with no retry: a drop then is evidence, not bad luck.
 
 AND IT FEEDS THE BUILD. The build reads Docket.txt and the rest from the
 repository root, and nothing refreshed those: on the 12th they were the copies
@@ -586,6 +588,11 @@ def run(a, held):
         fetched[name] = data
         return new, same
 
+    # THE WEEK AFTER A LIFT (29 October 2026): one dropped connection ends the
+    # run, page or file, with no retry -- a drop then is evidence, not bad
+    # luck (refusal.drops_allowed); two, as ever, otherwise.
+    allowed = refusal.drops_allowed()
+
     # The page first: opening it is what rebuilds the files.
     if refusal.MARK.exists():
         stopped = "refused"
@@ -608,6 +615,9 @@ def run(a, held):
             stopped = "refused"
         elif page["status"] == "dropped":
             dropped += 1
+            if dropped >= allowed:
+                refusal.note("snapshot_gencourt", page["said"], kind="dropped")
+                stopped = "refused"
 
     while not stopped and i < len(work):
         url, name = work[i]
@@ -639,7 +649,7 @@ def run(a, held):
                 break
             if kind == "dropped":
                 dropped += 1
-                if dropped >= 2:
+                if dropped >= allowed:
                     refusal.note("snapshot_gencourt", why, kind="dropped")
                     stopped = "refused"
                     break
