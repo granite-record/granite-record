@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-10-10.11
+# GRANITE_VERSION: 2026-10-10.12
 """
 The House and the Senate as committees of the whole: a card at the top of
 each column of /committees, and a page for each chamber's session days.

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-10-18.3
+# GRANITE_VERSION: 2026-10-18.4
 """
 A page for every statutory and study committee the General Court lists as
 active, at /committee/ss<CommitteeID>.

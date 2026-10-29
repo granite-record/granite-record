@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-05.16
+# GRANITE_VERSION: 2026-09-05.17
 """
 Read proceedings.csv. Every tool that needs to know what happened on which
 recording imports this and nothing else.
