@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-08.84
+# GRANITE_VERSION: 2026-09-08.85
 """
 The civics section: a hub and one page per topic, in order.
 
@@ -2048,6 +2048,7 @@ def guide_record(g, data, bills, chapters, lang=I.DEFAULT):
     # page's own words, "Passed, not yet in effect", and out of the laws that
     # changed the chapter, which they have not yet done.
     passing = set(bills.passing(data))
+    when = {}                     # every law of the block: the year it passed
     for ch in g["laws"]:
         if ch not in chapters:
             continue
@@ -2070,52 +2071,67 @@ def guide_record(g, data, bills, chapters, lang=I.DEFAULT):
                         + BR.folded([bills.chip(k) for k in passed]))
         if past:
             bits.append(record_laws(past, recent, bills))
+            when.update({k: recent[k] for k in past})
         if not now and not passed and not past:
             bits.append('<p class="g-what">No law in the record has changed it, and none now '
                         'before the General Court would.</p>')
         rows.append("".join(bits))
-    return "".join(rows)
+    return (record_years(when) if when else "") + "".join(rows)
 
 
 # THE LAWS THAT CHANGED A CHAPTER, BY YEAR (the person's notes, 29 October
 # 2026: "laws changed since 2020" was an arbitrary cutoff, and the sitting
 # term's laws showed no year). Every law the record holds is listed, newest
-# first, each with the year it passed, and a year can be chosen; the list
-# folds after the first few, as the Laws pages' do. The chooser is hidden
-# until the page's script runs, so without it the whole list still reads.
+# first, each with the year it passed; the list folds after the newest 8, as
+# the Laws pages' do (build_rsa.SHOWN). Each is its number and its year and
+# no status: every law in the list became law, and the word said so on
+# every row (the manager's review of the screenshots, 29 October 2026).
 def record_laws(past, years, bills):
-    """The laws that changed one chapter: a year to choose, and each law with
-    the year it passed."""
+    """The laws that changed one chapter, each with the year it passed, and
+    a line for a year the reader chose that has none of them."""
     import build_rsa as BR
     items = []
     for k in past:
-        chip = bills.chip(k, with_year=False)
+        chip = re.sub(r' <span class="rs-st">[^<]*</span>', "", bills.chip(k, with_year=False))
         yr = f' <span class="rs-yr">{years[k]}</span>'
         chip = chip.replace("</a>", "</a>" + yr, 1) if "</a>" in chip else chip.replace(
             "</li>", yr + "</li>", 1)
         items.append(chip.replace("<li", f'<li data-y="{years[k]}"', 1))
+    return ('<div class="g-laws"><p class="g-what">Laws that changed it, newest first:</p>'
+            + BR.folded(items) + '<p class="g-what g-yrnone" hidden>None that year.</p></div>')
+
+
+# ONE CHOOSER FOR THE WHOLE OF IN THE RECORD (the same review: How to Vote
+# drew four identical menus in a row, one a chapter). It chooses among the
+# laws only -- a bill still before the General Court has no year it passed --
+# and says so. Each year counts its laws once, however many of the guide's
+# chapters one changed. Hidden until the page's script runs, so without it
+# every list still reads whole.
+def record_years(when):
+    """The year chooser over every chapter's laws: {law: year it passed}."""
     count = {}
-    for k in past:
-        count[years[k]] = count.get(years[k], 0) + 1
+    for y in when.values():
+        count[y] = count.get(y, 0) + 1
     opts = "".join(f'<option value="{y}">{y} ({n})</option>'
                    for y, n in sorted(count.items(), reverse=True))
-    return ('<div class="g-laws"><p class="g-what">Laws that changed it, newest first:</p>'
-            '<p class="g-yrp" hidden><label>Year <select class="g-yr">'
-            f'<option value="">All years</option>{opts}</select></label></p>'
-            + BR.folded(items) + "</div>")
+    return ('<p class="g-yrp" hidden><label>Show the laws passed in <select class="g-yr">'
+            f'<option value="">All years</option>{opts}</select></label></p>')
 
 
 YR_JS = """<script>
 (function(){
-  // The year to show of the laws that changed a chapter (record_laws).
-  document.querySelectorAll(".g-laws").forEach(function(box){
-    var p=box.querySelector(".g-yrp"), sel=box.querySelector(".g-yr");
-    if(!p||!sel)return;
-    p.hidden=false;
-    sel.addEventListener("change",function(){
-      var y=sel.value, more=box.querySelector(".rs-more");
-      box.querySelectorAll("li[data-y]").forEach(function(li){ li.hidden=!!y&&li.getAttribute("data-y")!==y; });
+  // The year of the laws to show, in every chapter at once (record_years).
+  var p=document.querySelector(".g-yrp"), sel=p&&p.querySelector(".g-yr");
+  if(!sel)return;
+  p.hidden=false;
+  sel.addEventListener("change",function(){
+    var y=sel.value;
+    document.querySelectorAll(".g-laws").forEach(function(box){
+      var more=box.querySelector(".rs-more"), none=box.querySelector(".g-yrnone"), shown=0;
+      box.querySelectorAll("li[data-y]").forEach(function(li){
+        li.hidden=!!y&&li.getAttribute("data-y")!==y; if(!li.hidden)shown++; });
       if(more){ if(y){more.open=true;} more.querySelector("summary").hidden=!!y; }
+      if(none)none.hidden=!y||shown>0;
     });
   });
 })();
@@ -2131,7 +2147,8 @@ def _record_lang(english, lang):
     since = I.say(lang, "guides.rec_laws", "Laws that changed it, newest first:")
     none = I.say(lang, "guides.rec_none_any", "No law in the record has changed it, and none now "
                  "before the General Court would.")
-    year = I.say(lang, "guides.rec_year", "Year")
+    year = I.say(lang, "guides.rec_year_laws", "Show the laws passed in")
+    none_yr = I.say(lang, "guides.rec_none_year", "None that year.")
     every = I.say(lang, "guides.rec_years_all", "All years")
     passed = I.say(lang, "guides.rec_passed", "Passed, not yet in effect:")
     out = english.replace(
@@ -2142,7 +2159,9 @@ def _record_lang(english, lang):
         f'<p class="g-what">{since}</p>').replace(
         '<p class="g-what">No law in the record has changed it, and none now before the '
         'General Court would.</p>', f'<p class="g-what">{none}</p>').replace(
-        '<label>Year <select class="g-yr">', f'<label>{year} <select class="g-yr">').replace(
+        '<label>Show the laws passed in <select class="g-yr">', f'<label>{year} <select class="g-yr">').replace(
+        '<p class="g-what g-yrnone" hidden>None that year.</p>',
+        f'<p class="g-what g-yrnone" hidden>{none_yr}</p>').replace(
         '<option value="">All years</option>', f'<option value="">{every}</option>')
     out = re.sub(r'<h3 class="g-ch"><a href="([^"]*)">Chapter ([^:<]+)(?:: ([^<]*))?</a></h3>',
                  lambda m: (f'<h3 class="g-ch"><a href="{m.group(1)}">'
