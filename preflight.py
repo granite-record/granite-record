@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.722
+# GRANITE_VERSION: 2026-09-04.723
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -54625,13 +54625,18 @@ def _seat_callout(BP, SEAT):
                           '</a></span>')
     if '<span class="mtag">(R<span class="mdist"> - Belk 6</span>)</span>' not in one:
         bad.append(f"build_pages.seat_row_tag does not set a row's district apart from its party: {one}")
+    # NAMES WITHOUT "REP." TO THE EYE (the owner, 29 October 2026): the title
+    # set apart, for a screen reader alone, and the name kept whole.
+    if '<a href="x"><span class="mhon">Rep. </span>A <span class="mtag">' not in one:
+        bad.append(f"build_pages.seat_row_tag does not set a row's \"Rep.\" apart from its name: {one}")
     shared, _base, _ran, _days = _fixture_site_shared()
     page = (shared / "site" / "officials.html").read_text(encoding="utf-8")
-    tags, dists, texts = [], [], []
+    tags, dists, texts, hons = [], [], [], []
 
     def under_chart(c):
         return any(e and "seatlist" in e["ids"] for e in c)
     _html_walk(page, element=lambda c: (tags if "mtag" in c[0]["classes"] else dists if "mdist" in c[0]["classes"]
+                                        else hons if "mhon" in c[0]["classes"]
                                         else []).append(c) if under_chart(c) else None,
                text=lambda d, c: texts.append((d, c)) if c and "mtag" in c[0]["classes"] and under_chart(c)
                else None)
@@ -54644,6 +54649,12 @@ def _seat_callout(BP, SEAT):
         hide = {k: won.get(k, ("",))[0] for k in ("position", "clip", "width", "height", "display", "visibility")}
         return hide["position"] == "absolute" and hide["clip"].startswith("rect(0") and hide["width"] == "1px" \
             and hide["display"] != "none" and hide["visibility"] != "hidden", hide
+    if len(hons) != len(tags):
+        bad.append(f"the fixture's rows under the chart have {len(tags)} names and {len(hons)} \"Rep.\" set apart: "
+                   "a row still shows the eye its title (the owner, 29 October 2026)")
+    for c in hons[:1]:
+        if not clipped(c)[0]:
+            bad.append(f"a row under the chart still shows the eye its \"Rep.\": {clipped(c)[1]}")
     for c in dists[:1]:
         # Clipped itself, or inside something clipped short of the list.
         own = [clipped(c[j:]) for j in range(len(c)) if not (c[j] and "seatlist" in c[j]["ids"])][:4]

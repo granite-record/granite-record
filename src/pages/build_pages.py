@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.243
+# GRANITE_VERSION: 2026-09-04.244
 """
 Build the pages the navigation links to: legislators, town lookup, how it
 works, and about.
@@ -667,10 +667,20 @@ def party_word(name, lang="en", plural=False):
 # tag whole, as everywhere else. A tag of another shape is left as it is.
 _SEAT_TAG = re.compile(r'(<span class="mtag">)\(([^()\s<]+)( - [^()<]+)\)(</span>)')
 
+# NAMES WITHOUT "REP." UNDER THE CHART (the owner, 29 October 2026: "the
+# roster under the seating chart drops 'Rep.' from each name and keeps the
+# party letter"). Every row under the chart is a representative, so the
+# title says nothing the heading does not; "Debra DeSimone (R)" is what the
+# eye reads. A screen reader still hears "Rep. Debra DeSimone (R - Rock 18)",
+# as everywhere else, and the callout above a seat keeps its "Rep.".
+_SEAT_HON = re.compile(r'(<span class="mchip[^"]*"[^>]*>(?:<a [^>]*>)?)(Rep\.) ')
+
 
 def seat_row_tag(row):
     """A row of the House by seat with its chip's district apart from its
-    party's letter (_SEAT_TAG)."""
+    party's letter (_SEAT_TAG), and its "Rep." apart from its name
+    (_SEAT_HON): app.css shows the eye neither."""
+    row = _SEAT_HON.sub(r'\1<span class="mhon">\2 </span>', row)
     return _SEAT_TAG.sub(r'\1(\2<span class="mdist">\3</span>)\4', row)
 
 

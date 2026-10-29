@@ -1,4 +1,4 @@
-/* GRANITE_VERSION: 2026-09-07.326 */
+/* GRANITE_VERSION: 2026-09-07.327 */
 /* ONE STYLESHEET FOR EVERY PAGE (23 October 2026). Every page of the site
    links this file, /app.css: the record pages shell.page() makes from
    bills.html, and the five build_pages.py writes -- the home page, Officials,
@@ -8646,8 +8646,9 @@ padding-top:calc(var(--sp-3) + 1px)}
    party and the district in full, which is what tells two members of one
    name apart. The party's letter stays, "(R)": hidden too, the party was the
    chip's bar's colour alone, and in forced colours nothing (the review of 29
-   October 2026, WCAG 1.4.1). */
-:where(body.pg) #seatlist .mtag .mdist{position:absolute;width:1px;height:1px;padding:0;margin:-1px;
+   October 2026, WCAG 1.4.1). Each name's "Rep." is a screen reader's alone
+   here too (the owner, 29 October 2026): "Debra DeSimone (R)". */
+:where(body.pg) #seatlist .mtag .mdist,:where(body.pg) #seatlist .mhon{position:absolute;width:1px;height:1px;padding:0;margin:-1px;
   overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap;border:0}
 :where(body.pg) .seatzoom{display:flex;gap:var(--sp-2);flex:0 0 auto}
 :where(body.pg) .seatzoom button{font:inherit;font-size:var(--t-ui);
