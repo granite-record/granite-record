@@ -126,3 +126,29 @@ that made it.
     `RELAPSES_MOST` sooner, so the record becomes a person's sooner, and the
     next knock is timed from the new record's own drop, which is later than
     every carried knock.
+
+## After the review of 62e7406: the lift's order, and the switch
+
+21. **`lift_refusal()` sends `state/knocks.json` with the lift in it, reads
+    it back, and only then keeps and deletes `state/refused.json`.**
+    design_final §2.6 lists the move and the "cleared" record but no order,
+    and commit 3 moved the record first, so a laptop's pull in between met a
+    bucket holding neither the record nor the lift: a FAIL for a copy under
+    24 hours, and the advice to send it back for an older one, which
+    `send_refusal` would then do. Addendum §7 rule 1's argument (pull reads
+    the record, then the lifts) holds only in this order. A put that fails
+    or does not read back moves nothing and is a failure in state-up's list;
+    the bucket's `knocks.json` is put over only where it is still the copy
+    this machine took down, as state-up's own loop would.
+22. **The switch gates the lift in the bucket and state-down's lifted skip**
+    (`knock_switched_on()`, i.e. `refusal.knock_on()`, on GitHub's machine).
+    With `NIGHT_KNOCK` not exactly `on`, the third check unset or a setting
+    typed wrong, every `state/refused.json` comes down and stops main's
+    night, a lifted one included, and none is moved: the night as it was
+    before this branch. Two things stay as they are with the switch off, and
+    are said here: `drops_allowed()` is still 1 for a week after a lift
+    (stricter: at most one request fewer on a night); and `send-refusal`
+    still never sends a lifted record (design_final §2.6), because the
+    laptop cannot read the switch. So a lifted record has no command that
+    puts it back; a person who wants the night stopped turns the method off,
+    and any refusal met afterwards stops it as before.

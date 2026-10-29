@@ -393,12 +393,16 @@ what readers typed -- are applied to every command. The small state the night
 must remember (`refused.json`, `census.json`, `first-seen.json`, the verdicts)
 lives under `state/`, so a refusal the night meets outlives its machine and
 stops the laptop's fetches too. Beside the refusal, `knocks.json` (since 29
-October 2026) keeps the night's own test of one: the knocks made for it, and
-every refusal a knock lifted, its exact text kept. `state-up` on main's own
-night moves the bucket's `state/refused.json` to `replaced/` when that night's
-knock lifted that very record, and `pull` and `send-refusal` read the lifts,
-so a laptop holding a lifted refusal is told so and never sends it back; a
-dry run never sends `knocks.json`.
+October 2026) is where the night's own test of one keeps its state: the
+knocks made for it, and every refusal a knock lifted, its exact text kept.
+Nothing knocks yet (`refusal.py`'s ladder has no caller). Once something
+does, `state-up` on main's own night, with the night's testing switched on
+(`NIGHT_KNOCK`), sends `knocks.json` with the lift in it and only then moves
+the bucket's `state/refused.json` to `replaced/`, when that night's knock
+lifted that very record; with it off, every `state/refused.json` stops the
+night as before. `pull` and `send-refusal` read the lifts, so a laptop
+holding a lifted refusal is told so and never sends it back; a dry run never
+sends `knocks.json`.
 
 **The build's cache (23 October 2026).** Two steps keep what they worked out
 in `.build_cache/` (`src/lib/build_cache.py`), and the kit carries it as the

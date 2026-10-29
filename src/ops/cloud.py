@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-25.27
+# GRANITE_VERSION: 2026-09-25.28
 """
 The nightly's kit and the laptop's backup, in the project's private R2 bucket.
 
@@ -1645,10 +1645,11 @@ def state_up(bucket, root, kit, rep, day, only=None):
     cleared from the bucket by a person is never sent back, and one absent
     here is never removed there: a refusal is cleared by a person, not by a
     machine that happens not to hold it -- or lifted by the night's knock,
-    which leaves state/knocks.json naming it: lift_refusal(), first, moves
-    the bucket's state/refused.json to replaced/ when this machine's knock
-    lifted that very record, and only then. Returns (sent, bytes, unchanged,
-    notes, failures).
+    which leaves state/knocks.json naming it: lift_refusal(), first, sends
+    state/knocks.json with the lift in it and then moves the bucket's
+    state/refused.json to replaced/, when this machine's knock lifted that
+    very record and the night's testing is switched on, and only then.
+    Returns (sent, bytes, unchanged, notes, failures).
     """
     notes, bad = [], []
     try:
@@ -1767,45 +1768,86 @@ def lift_said(entry):
     return refusal.lift_line(entry)
 
 
+def knock_switched_on():
+    """(True, "") while the night's own testing is switched on here
+    (refusal.knock_on: NIGHT_KNOCK exactly "on", the third check set, the
+    three settings reading); else (False, why). With it off, a lift is
+    nothing to the bucket: every state/refused.json stops main's night as it
+    did before the knock existed, a lifted one included, and none is moved."""
+    import refusal
+    if refusal.knock_on():
+        return True, ""
+    return False, ("the night's own testing is off here (NIGHT_KNOCK, NIGHT_PERSON_CHECK or a "
+                   "KNOCK_ setting), so every refusal in the bucket stops the night, as before")
+
+
 def lift_refusal(bucket, root, kit, rep, only=None):
     """state_up's first act: when the bucket's state/refused.json is the
     record this machine's knock lifted, move it to replaced/<day>/ (kept,
     then deleted, as clear-refusal does) and record it as cleared here, so no
     later state-up sends it back. Only when ALL hold: not a dry night (`only`
     is None); GitHub's machine, main exactly, not a dry run (lift_allowed);
-    the bucket holds the very bytes this machine's state-down took down; and
-    their sha is in this machine's knocks.json "lifted". Otherwise it moves
-    nothing and says why -- the safe direction: the next night finds the
-    record and knocks again when one is due. Returns the lines to print."""
+    the night's own testing switched on (knock_switched_on); the bucket holds
+    the very bytes this machine's state-down took down; and their sha is in
+    this machine's knocks.json "lifted". Otherwise it moves nothing and says
+    why -- the safe direction: the next night finds the record and knocks
+    again when one is due. Returns the lines to print.
+
+    THE LIFT FIRST, THE RECORD AFTER (the reviewers of 29 October 2026).
+    This machine's knocks.json goes to state/knocks.json and is read back
+    with the lift in it, and only then is state/refused.json kept and
+    deleted. pull reads state/refused.json before state/knocks.json, so a
+    laptop's pull at any moment of this finds the record still there, or the
+    lift beside its absence -- never a bucket holding neither, which it would
+    take for a refusal the bucket was never told of, and send it back. If the
+    put fails or does not read back, nothing is moved (a failure, for
+    state-up's list), and the record stays in the bucket for the next night.
+    The bucket's knocks.json is put over only where it is still what this
+    machine took down, as state-up's loop would."""
     kentry = _knocks_entry(kit)
     if kentry is None:
         return []
-    obj = "state/refused.json"
+    obj, kobj = "state/refused.json", "state/knocks.json"
     theirs = bucket.get_bytes(obj)
     if theirs is None:
         return []
     mine = local(root, kentry["path"])
-    lift = _knocks_doc(mine.read_bytes() if mine.exists() else None).get(_sha(theirs))
+    kdata = mine.read_bytes() if mine.exists() else None
+    lift = _knocks_doc(kdata).get(_sha(theirs))
     if lift is None:
         return []
     ok, why = (False, "a dry night lifts nothing") if only is not None else lift_allowed()
+    if ok:
+        ok, why = knock_switched_on()
     rec = load_state_record(root)
-    took = ((rec or {}).get("files") or {}).get("refused.json")
+    base = (rec or {}).get("files") or {}
+    took = base.get("refused.json")
     if ok and took != _sha(theirs):
         ok, why = False, ("this machine has no record of taking it down" if took is None else
                           "the bucket's copy changed since this machine took it down")
+    ktheirs = bucket.get_bytes(kobj) if ok else None
+    if ok and ktheirs is not None and ktheirs != kdata and _sha(ktheirs) != base.get("knocks.json"):
+        ok, why = False, f"the bucket's {kobj} changed since this machine took it down"
     who = _who(_refusal_doc(theirs))
     if not ok:
         return [f"{obj} ({who}) is the refusal a knock lifted, and is not moved: {why}. "
                 "It stays, and the next night tests it again when a knock is due"]
+    if ktheirs != kdata:
+        if ktheirs is not None:
+            rep.keep(kobj)
+        bucket.put_bytes(kobj, kdata)
+    if _sha(theirs) not in _knocks_doc(bucket.get_bytes(kobj)):
+        raise Failed(f"{kobj} did not read back with the lift of {obj} ({who}) in it, so "
+                     f"{obj} is not moved: it stays, and the next night tests it again")
+    rec = rec or {"files": {}}
+    rec.setdefault("files", {})["knocks.json"] = _sha(kdata)
     moved = rep.keep(obj)
     bucket.delete(obj)
-    rec = rec or {"files": {}}
-    rec.setdefault("files", {})["refused.json"] = None
+    rec["files"]["refused.json"] = None
     rec.setdefault("cleared", {})["refused.json"] = _sha(theirs)
     save_state_record(root, rec)
-    return [f"{obj} ({who}) moved to {moved}: it was {lift_said(lift)}. Nothing in the bucket "
-            "stops a fetch now"]
+    return [f"{obj} ({who}) moved to {moved}, after {kobj} reached the bucket with the lift: "
+            f"it was {lift_said(lift)}. Nothing in the bucket stops a fetch now"]
 
 
 def cmd_kit_up(a, root):
@@ -2117,9 +2159,12 @@ def cmd_state_down(a, root):
     # addendum, 29 October 2026). Lifted, then sent back by a laptop in the
     # moment between its read of the bucket and its send, it would stop the
     # night again: on main's own run it is not brought down -- recorded as
-    # taken, so this run's state-up moves it (lift_refusal).
+    # taken, so this run's state-up moves it (lift_refusal). Only while the
+    # night's own testing is switched on: with NIGHT_KNOCK off, every
+    # state/refused.json comes down and stops the night, as before.
     lifted = {}
-    if lift_allowed()[0] and not a.dry_run and _knocks_entry(kit) is not None:
+    if lift_allowed()[0] and knock_switched_on()[0] and not a.dry_run \
+            and _knocks_entry(kit) is not None:
         try:
             lifted = bucket_lifted(bucket)
         except Exception as e:                                  # noqa: BLE001
