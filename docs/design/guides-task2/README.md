@@ -15,8 +15,14 @@ widths, light and dark. Nothing here is built or read by the site.
 
 ## Laws that changed it, by year
 
-- `yr-all-{390,1280}-{light,dark}.png`: every law, newest first, with the Year menu.
+Retaken after the review (commit 8297242): one menu for the whole block,
+"Show the laws passed in", and no "Became Law" on a law. Drawn from the
+preview's How to Vote laws, which the preview itself caps at 8 a chapter,
+so no chapter here reaches "Show all".
+
+- `yr-all-{390,1280}-{light,dark}.png`: every law, newest first, with the menu.
 - `yr-2025-{390,1280}.png`: the menu set to 2025.
+- `yr-none-390.png`: the menu set to 2020: three chapters say "None that year."
 
 ## Law citations on phones
 
