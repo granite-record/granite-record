@@ -130,7 +130,9 @@ test("replay, 29-30 January 2026, the Senate: every roll call reaches the sittin
     start: "2026-01-29T12:00:00Z", to: "2026-01-30T23:00:00Z",          // Thursday 07:00 to Friday 18:00 EST
     streams: [{ id: "senateSes29", chamber: "S", title: "Senate Session (01/29/2026)",
                 start: T("2026-01-29T14:58:46Z"), end: T("2026-01-29T18:44:45Z") }],
-    docket: [["S", "HB751", "2026-01-19T10:00:00", "4", "Ought to Pass, RC 16Y-8N, MA; 01/29/2026"]] });
+    // HB751's S 10 and S 12 are both 16-8: two lines, paired in order.
+    docket: [["S", "HB751", "2026-01-19T10:00:00", "4", "Floor Amendment # 2026-0187s, AA, RC 16Y-8N; 01/29/2026"],
+             ["S", "HB751", "2026-01-19T10:00:00", "5", "Ought to Pass with Amendment, RC 16Y-8N, MA; 01/29/2026"]] });
   const file = w.r2.read(`votes/${day}.json`);
   const record = recordDay("2026", day, "S");
   assert.ok(record.length >= 10);
@@ -145,8 +147,8 @@ test("replay, 29-30 January 2026, the Senate: every roll call reaches the sittin
     assert.ok(T(rc.first_seen) > T("2026-01-30T16:00:00Z"), `S ${seq}, saved the next morning, read then`);
   }
   // The docket's line created ten days ahead attached to its roll call.
-  const s10 = file.rollcalls.find(r => r.id === "2026-S-10");
-  assert.equal(s10.docket && s10.docket.outcome, "Motion Adopted");
+  const by = id => file.rollcalls.find(r => r.id === id).docket;
+  assert.deepEqual([by("2026-S-10").outcome, by("2026-S-12").outcome], ["Amendment Adopted", "Motion Adopted"]);
   assert.ok(!w.r2.objects.has("votes/2026-01-30.json") || w.r2.read("votes/2026-01-30.json").rollcalls.length === 0,
             "nothing filed under the day it was saved");
 });

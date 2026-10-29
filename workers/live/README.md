@@ -229,7 +229,11 @@ Hampshire day it holds until the next day.
 
 It writes `votes/<date>.json`, filed under each roll call's own date, the
 public live votes file (DESIGN.md 5): a roll call once shown is never
-dropped; one the database stops listing gains a note. Holds end by the next
+dropped; one the database stops listing gains a note. Each docket tally
+carries, beside section 5's fields, `bill_as_recorded`, `abbrev` (the key's
+abbreviation), `order` (the docket's statusorder) and `entered` (when the
+clerk entered the line, UTC). A tally is attached to its roll call only when
+that is certain: as many lines as roll calls with the same bill and tally. Holds end by the next
 day at the latest and none needs a person; each sends `/fail` while it
 stands. To read a day's file:
 

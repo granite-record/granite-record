@@ -239,7 +239,9 @@ export async function readVotes({ env, connect, now, sq: before = {}, due, files
     codes.push(`sql_${e.code || "connect"}`);
     if (next.held && next.held !== sq.held) fail = `${holdSentence(next.held)} (${e.message})`;
     next.read = at;
-    return { sq: next, writes: await problemFile(files, today, next.held ? next.held.why : (e.code || "connect"), at, due),
+    const held = next.held && Date.parse(next.held.until) > t ? next.held : null;
+    return { sq: next, writes: await problemFile(files, today, held ? held.why : (e.code || "connect"), at, due,
+                                                 held ? (held.stage === 1 ? held.until : null) : nextRead(now, due.states)),
              spent, codes, fail };
   }
   sq.connfails = 0;
@@ -307,18 +309,22 @@ export async function readVotes({ env, connect, now, sq: before = {}, due, files
   // Merge by date: the dates Q1 and Q3 named, and today.
   const dates = new Set([today]);
   for (const r of summary || []) if (dayOfRow(r)) dates.add(dayOfRow(r));
-  for (const l of docket || []) if (dayOfLine(l)) dates.add(dayOfLine(l));
+  for (const l of docket || []) if (dayOfLine(l, today)) dates.add(dayOfLine(l, today));
+  // Every day the read covered that holds roll calls already shown, so a
+  // roll call the database stopped listing counts its miss.
+  if (summary) for (const v of Object.values(sq.saves || {})) if (v.day >= from && v.day <= today) dates.add(v.day);
   // A roll call whose ballots were read is merged into its own day's file,
   // whatever window this read covered: never read and thrown away.
   for (const a of asked) if (need[a.id] && need[a.id].day) dates.add(need[a.id].day);
-  const misses = { ...(sq.misses || {}) };
+  let misses = { ...(sq.misses || {}) };
   const saves = { ...(sq.saves || {}) };      // {id: {m: DateModified, day}}
   const firstSeenToday = new Set();
   const nextBy = nextRead(now, due.states);
   for (const date of [...dates].sort()) {
     const prev = await files(date);
+    if (prev === undefined) { codes.push(`sql_unreadable_${date}`); continue; }   // never rebuilt from one read
     const rows = (summary || []).filter(r => dayOfRow(r) === date);
-    const lines = (docket || []).filter(l => dayOfLine(l) === date);
+    const lines = (docket || []).filter(l => dayOfLine(l, today) === date);
     const mine = new Map([...ballots].filter(([id]) => rows.some(r => r.id === id)
                                                   || (prev && prev.rollcalls.some(x => x.id === id))));
     // Today's file is written when it exists, has something, or a chamber is
@@ -328,7 +334,7 @@ export async function readVotes({ env, connect, now, sq: before = {}, due, files
     const covered = Boolean(summary) && date >= from && date <= today;
     const flat = Object.fromEntries(Object.entries(saves).map(([id, v]) => [id, v.m]));
     const m = merge(prev, { date, rows, ballots: mine, lines, at, covered, misses, saves: flat });
-    Object.assign(misses, m.misses);
+    misses = m.misses;            // replaced: a roll call listed again starts its count over
     for (const r of rows) saves[r.id] = { m: r.modified, day: date };
     // A complete set needs nothing more; an incomplete one stays asked for,
     // its tries counting (two, then every 10 minutes).
@@ -356,7 +362,13 @@ export async function readVotes({ env, connect, now, sq: before = {}, due, files
   sq.saves = Object.fromEntries(Object.entries(saves).filter(([, v]) => v.day >= oldest));
   sq.misses = Object.fromEntries(Object.entries(misses).filter(([id]) => Object.hasOwn(sq.saves, id)));
   for (const c of CHAMBERS) {
-    if (due.states[c].state === "hot") sq.chambers[c] = { ...(sq.chambers[c] || {}), last_hot: at, hot_day: today };
+    if (due.states[c].state === "hot") {
+      sq.chambers[c] = { ...(sq.chambers[c] || {}), last_hot: at, hot_day: today };
+      if (sq.over === today) sq.over = null;          // sitting again: the day's end is said again later
+    }
+  }
+  if (sq.held && sq.held.why === "query" && sq.held.since === at) {
+    for (const w of writes) if (w[0] === votesKey(today)) w[1] = heldStatus(w[1], "query", at);
   }
   codes.push(`sql_read_${due.why}${due.wide ? "_wide" : ""}_${(summary || []).length}rc`);
   return { sq, writes, spent, codes, fail };
@@ -365,12 +377,23 @@ export async function readVotes({ env, connect, now, sq: before = {}, due, files
 // The file today's page reads when a read could not be made: what it said,
 // with the problem. Written only when there is a file, or reading was due
 // because a chamber is hot.
-async function problemFile(files, today, problem, at, due) {
+async function problemFile(files, today, problem, at, due, nextBy) {
   const prev = await files(today);
+  if (prev === undefined) return [];                  // unreadable: never written over
   if (!prev && !Object.values(due.states).some(s => s.state === "hot")) return [];
   const f = prev ? structuredClone(prev) : emptyFile(today);
   f.status = { state: "reading", problem, since: f.status && f.status.problem === problem ? f.status.since : at };
+  f.next_read_by = nextBy;
   return [[votesKey(today), f]];
+}
+
+// The day's file when a hold begins after a read (the budget, three failed
+// statements): its sentence, and no next read today.
+export function heldStatus(file, why, at) {
+  const f = structuredClone(file);
+  f.status = { state: "reading", problem: why, since: at };
+  f.next_read_by = null;
+  return f;
 }
 
 // The day's file says the person turned the votes half off, once a day.

@@ -21,13 +21,19 @@ const row = (seq, over = {}) => ({
 // ---- the docket -----------------------------------------------------------------
 test("a tally line's RC counts only before digits, in the House's form and the Senate's, with the key's outcome", () => {
   assert.deepEqual(parseTally("OTPA: MA RC 171-143 03/11/2026 HJ 8 P. 20", "H"),
-                   { yeas: 171, nays: 143, abbrev: "MA", outcome: "Motion Adopted", day: "2026-03-11" });
+                   { yeas: 171, nays: 143, abbrev: "MA", outcome: "Motion Adopted", day: "2026-03-11", days: ["2026-03-11"] });
   assert.deepEqual(parseTally("Ought to Pass, RC 16Y-8N, MA; 01/29/2026", "S"),
-                   { yeas: 16, nays: 8, abbrev: "MA", outcome: "Motion Adopted", day: "2026-01-29" });
+                   { yeas: 16, nays: 8, abbrev: "MA", outcome: "Motion Adopted", day: "2026-01-29", days: ["2026-01-29"] });
   assert.equal(parseTally("Special Order to RC", "H"), null, "bare RC is Regular Calendar");
   assert.equal(parseTally("Removed from RC and tabled", "S"), null);
   assert.deepEqual(parseTally("Floor Amendment # 2026-0412s, AF, RC 10Y-14N; 02/19/2026", "S"),
-                   { yeas: 10, nays: 14, abbrev: "AF", outcome: "Amendment Failed", day: "2026-02-19" });
+                   { yeas: 10, nays: 14, abbrev: "AF", outcome: "Amendment Failed", day: "2026-02-19", days: ["2026-02-19"] });
+  // The outcome is the tally's own clause's: a key word further along the line is not it.
+  assert.equal(parseTally("Lay on Table, RC 12Y-11N; 01/29/2027 (MA in committee)", "S").outcome, null);
+  // A line that writes two dates is the last one's, or today's when Q3 took it for today.
+  const re = { body: "S", line: "Reconsider vote of 01/22/2027, RC 12Y-11N, MF; 01/29/2027", entered: "2027-01-20T10:00:00" };
+  assert.equal(dayOfLine(re), "2027-01-29");
+  assert.equal(dayOfLine(re, "2027-01-22"), "2027-01-22");
   const unknown = parseTally("OT RC 200-150", "H");
   assert.deepEqual([unknown.abbrev, unknown.outcome], [null, null], "a word not in the key is kept as written, no outcome");
   assert.equal(dayOfLine({ body: "S", line: "Ought to Pass, RC 16Y-8N, MA; 01/29/2026", entered: "2026-01-19T10:00:00" }),
@@ -95,6 +101,22 @@ test("a Senate tally with no roll call yet stands alone, and is attached the mom
   assert.equal(f.rollcalls[0].taken, null, "the Senate's VoteDate is midnight: no time taken");
   assert.equal(f.rollcalls[0].saved, "2027-01-08T14:12:00Z");
   assert.equal(f.rollcalls[0].keyed_by, "clerk");
+});
+
+test("equal tallies on one bill with fewer roll calls saved than lines wait, rather than guess which is which", () => {
+  const f = emptyFile("2027-01-07");
+  f.rollcalls = [{ ...row(12, { body: "S", id: "2027-S-12" }), ballots: "", ballots_complete: false }];
+  f.tallies = [{ body: "S", bill_as_recorded: "HB2", yeas: 190, nays: 171, order: 1, line: "Floor Amendment #1, AA, RC 190Y-171N" },
+               { body: "S", bill_as_recorded: "HB2", yeas: 190, nays: 171, order: 2, line: "OTPA, RC 190Y-171N, MA" }];
+  attach(f);
+  assert.equal(f.rollcalls[0].docket, null, "S 11 is not saved yet: S 12 is not given the amendment's line");
+  assert.ok(f.tallies.every(t => t.rollcall === null));
+});
+
+test("a 0-0 roll call whose ballots are all no vote recorded is not complete", () => {
+  const m = merge(null, { date: "2027-01-07", rows: [row(1, { yeas: 0, nays: 0 })], at: "2027-01-07T15:02:00Z",
+                          ballots: new Map([["2027-H-1", new Map([["11", "."], ["12", "."]])]]) });
+  assert.equal(m.file.rollcalls[0].ballots_complete, false);
 });
 
 test("two equal tallies on one bill pair by order: statusorder against sequence", () => {
@@ -257,4 +279,16 @@ test("section 7.3's measurement: House lines entered on their roll call's day, S
   assert.equal(m.H.onDay, 0);
   assert.equal(report(m).ok, false);
   assert.match(report(m).said.at(-1), /widen Q3's text test/);
+});
+
+test("the miss count starts over when a roll call is listed again, across reads as readVotes carries it", () => {
+  let misses = {}, file = merge(null, { date: "2027-01-07", rows: [row(1)], at: "2027-01-07T15:00:00Z", covered: true }).file;
+  const read = (rows, t) => { const m = merge(file, { date: "2027-01-07", rows, at: t, covered: true, misses });
+                              file = m.file; misses = m.misses; };
+  read([], "2027-01-07T15:02:00Z");
+  read([], "2027-01-07T15:04:00Z");
+  read([row(1)], "2027-01-07T15:06:00Z");
+  assert.equal(misses["2027-H-1"], undefined);
+  read([], "2027-01-07T15:08:00Z");
+  assert.equal(file.rollcalls[0].note, null, "one miss after being listed again is not three in a row");
 });

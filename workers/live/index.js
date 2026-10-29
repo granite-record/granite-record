@@ -53,8 +53,8 @@ import { clock } from "../follow/common.js";
 import { NEW_YORK, iso, midnightAfter, nh, youtubeDue } from "./clock.js";
 import { FAILS_TO_TELL, forget, look, offFile, streamsKey } from "./youtube.js";
 import { TEST_SITTINGS, runTest, testDue } from "./test_mode.js";
-import { BUDGET, SQL_BUDGET_MS, freshStreams, holdSentence, liftHolds, offStatus, overBudget, overStatus,
-         readVotes, votesDue } from "./votes.js";
+import { BUDGET, SQL_BUDGET_MS, freshStreams, heldStatus, holdSentence, liftHolds, nextRead, offStatus, overBudget,
+         overStatus, readVotes, votesDue } from "./votes.js";
 import { votesKey } from "./merge.js";
 import { CONTROL_DEFAULT, WAITS_TO_TELL, WRITE_BY_MS, checkpoint, emptyState, leaseHeld, noteWait, putJSON,
          readControl, readJSON, readState, releaseLease, sweep, takeLease } from "./store.js";
@@ -212,6 +212,14 @@ async function test(env, bucket, s, p, lease, now, out, opts, elapsed) {
   return true;
 }
 
+// A votes file as it stands: null when there is none, undefined when R2
+// holds one this cannot read, which is then never written over from one read.
+async function readVotesFile(bucket, key) {
+  const o = await bucket.get(key);
+  if (!o) return null;
+  try { return JSON.parse(await o.text()); } catch { return undefined; }
+}
+
 // The votes half's part of a run (control.json "sql": "on"): its one
 // connection, the files it changed written at once under the lease, and
 // state.json put again before anything else happens. Whether it connected.
@@ -222,7 +230,7 @@ async function votes(env, bucket, s, v, lease, now, out, opts, elapsed) {
   if (!(await checkpoint(bucket, s, lease))) { out.codes.push("sql_not_started_lease_lost"); return false; }
   const room = Math.max(5_000, Math.min(SQL_BUDGET_MS, WRITE_BY_MS - elapsed() - 25_000));
   const r = await readVotes({ env, connect, now, sq: s.sql, due: v, until: Date.now() + room,
-                              files: d => readJSON(bucket, votesKey(d)) });
+                              files: d => readVotesFile(bucket, votesKey(d)) });
   s.sql = { ...r.sq, on: nh(now).date };
   s.count = { ...s.count, connections: (s.count.connections || 0) + r.spent.connections,
               statements: (s.count.statements || 0) + r.spent.statements,
@@ -241,6 +249,12 @@ async function votes(env, bucket, s, v, lease, now, out, opts, elapsed) {
     s.sql.held = { why: "budget", until: iso(midnightAfter(now, NEW_YORK)), since: out.at };
     out.fail = out.fail || `${holdSentence(s.sql.held)} (${BUDGET.connections} connections, ` +
       `${BUDGET.statements} statements or ${BUDGET.rows} rows)`;
+    // The day's file says so: the page's budget sentence, no next read today.
+    const today = await readVotesFile(bucket, votesKey(nh(now).date));
+    if (today) {
+      try { await putJSON(bucket, votesKey(nh(now).date), heldStatus(today, "budget", out.at)); }
+      catch { out.codes.push(`write_failed_${votesKey(nh(now).date)}`); }
+    }
   }
   if (!(await checkpoint(bucket, s, lease))) out.codes.push("lease_lost");
   return true;
@@ -279,7 +293,8 @@ export async function run(env, opts = {}) {
       if (v.held) out.codes.push(`sql_held_${v.held.why}`);
       const sitting = Object.values(v.states).some(x => x.state === "hot" || x.state === "warm");
       const hotToday = Object.values(s.sql.chambers || {}).some(c => c.hot_day === p.today);
-      sqlOver = !v.held && !sitting && hotToday && s.sql.over !== p.today;
+      // Said once both chambers are off, never while a heartbeat still reads.
+      sqlOver = !v.held && !sitting && !nextRead(now, v.states) && hotToday && s.sql.over !== p.today;
     } else {
       sqlOff = s.sql.on === p.today && s.sql.off !== p.today;
     }

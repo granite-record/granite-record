@@ -267,3 +267,48 @@ test("three failed statements in a row hold the day; a budget spent holds the da
     assert.equal(w.state().count.connections, n, "nothing more today");
   });
 });
+
+test("a morning sitting: the day's end is said once both chambers are off, not while the heartbeat still reads, and it stands", () =>
+  withDb({ start: "2027-01-07T13:58:00Z", control: ON }, async (w) => {
+    w.yt.add({ ...SESSION, start: T("2027-01-07T14:00:00Z"), end: T("2027-01-07T15:00:00Z") });
+    let saidAt = null;
+    await w.every("2027-01-07T13:58:00Z", "2027-01-08T03:00:00Z", (out, t) => {
+      if (out.codes.includes("sql_day_over_said")) saidAt = t;
+    });
+    assert.equal(new Date(saidAt).toISOString(), "2027-01-07T23:00:00.000Z", "18:00 EST, when the heartbeat's hours end");
+    const f = w.r2.read("votes/2027-01-07.json");
+    assert.deepEqual([f.status.state, f.next_read_by], ["day_over", null]);
+  }));
+
+test("a budget spent is the day's file's own sentence, with no next read", () =>
+  withDb({ start: "2027-01-07T15:02:00Z", control: ON }, async (w) => {
+    w.yt.add(SESSION);
+    await w.runAt();
+    await w.runAt("2027-01-07T15:04:00Z");
+    w.r2.seed("state.json", { ...w.state(), count: { ...w.state().count, statements: 1199 } });
+    await w.runAt("2027-01-07T15:06:00Z");
+    const f = w.r2.read("votes/2027-01-07.json");
+    assert.deepEqual([f.status.problem, f.next_read_by], ["budget", null]);
+  }));
+
+test("a 30-minute hold's file says when the next try is; a day's hold says none", async () => {
+  const w = world({ start: "2027-01-07T15:00:00Z", control: ON });
+  Object.assign(w.env, { SQL_HOST: "127.0.0.1", SQL_PORT: "1" });
+  w.yt.add(SESSION);
+  const runAt = w.runAt;
+  w.runAt = (when, o = {}) => runAt(when, { connect: nodeConnect, ...o });
+  await w.every("2027-01-07T15:00:00Z", "2027-01-07T15:06:00Z");
+  assert.equal(w.r2.read("votes/2027-01-07.json").next_read_by, "2027-01-07T15:34:00Z");
+  await w.runAt("2027-01-07T15:34:00Z");
+  assert.equal(w.r2.read("votes/2027-01-07.json").next_read_by, null);
+});
+
+test("a votes file R2 holds but this cannot read is never rebuilt from one read", () =>
+  withDb({ start: "2027-01-07T15:02:00Z", control: ON }, async (w) => {
+    w.yt.add(SESSION);
+    await w.runAt();
+    w.r2.seed("votes/2027-01-07.json", "{ half a file");
+    const out = await w.runAt("2027-01-07T15:04:00Z");
+    assert.ok(out.codes.includes("sql_unreadable_2027-01-07"), out.codes.join(" "));
+    assert.equal(w.r2.objects.get("votes/2027-01-07.json").body, "{ half a file");
+  }));

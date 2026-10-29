@@ -76,22 +76,32 @@ export function parseTally(line, body) {
   const text = String(line || "");
   const m = (body === "S" ? SENATE_RC : HOUSE_RC).exec(text) || HOUSE_RC.exec(text) || SENATE_RC.exec(text);
   if (!m) return null;
-  // The outcome is the key's abbreviation nearest the tally, either side.
+  // The outcome is the key's abbreviation nearest the tally, within the
+  // tally's own clause (between semicolons): "Ought to Pass, RC 16Y-8N, MA;"
+  // or "OTPA: MA RC 171-143 ...", never a word further along the line.
+  const from = text.lastIndexOf(";", m.index) + 1;
+  const end = text.indexOf(";", m.index);
+  const clause = text.slice(from, end < 0 ? text.length : end);
   let abbrev = null, best = Infinity;
-  for (const a of text.matchAll(/\b([A-Z]{2,4})\b/g)) {
+  for (const a of clause.matchAll(/\b([A-Z]{2,4})\b/g)) {
     if (!Object.hasOwn(DOCKET_OUTCOME, a[1])) continue;
-    const d = Math.abs(a.index - m.index);
+    const d = Math.abs(from + a.index - m.index);
     if (d < best) { best = d; abbrev = a[1]; }
   }
-  const d = MDY.exec(text);
+  // The line's date is the last it writes: "Reconsider vote of 01/22/2027,
+  // RC 12Y-11N, MF; 01/29/2027" is the 29th's.
+  const dates = [...text.matchAll(new RegExp(MDY.source, "g"))];
+  const d = dates.at(-1);
   return { yeas: Number(m[1]), nays: Number(m[2]), abbrev, outcome: abbrev ? DOCKET_OUTCOME[abbrev] : null,
-           day: d ? `${d[3]}-${d[1]}-${d[2]}` : null };
+           day: d ? `${d[3]}-${d[1]}-${d[2]}` : null, days: dates.map(x => `${x[3]}-${x[1]}-${x[2]}`) };
 }
 
-// The date a docket line belongs to: the one it writes, else the day it was
+// The date a docket line belongs to: `today` when the line writes it (Q3
+// took it for that), else the last date it writes, else the day it was
 // entered (session_days dates a row "by the one the row writes").
-export function dayOfLine(l) {
+export function dayOfLine(l, today = null) {
   const t = parseTally(l.line, l.body);
+  if (t && today && t.days.includes(today)) return today;
   return (t && t.day) || (l.entered ? l.entered.slice(0, 10) : null);
 }
 
@@ -156,7 +166,10 @@ export function merge(prev, { date, rows = [], ballots = new Map(), lines = [], 
     }
     delete rc.read;
     const count = c => [...(rc.ballots || "")].filter(x => x === c).length;
-    rc.ballots_complete = Boolean(rc.ballots) && count("Y") === rc.yeas && count("N") === rc.nays;
+    // Complete: Y and N agree with the tally, and something was recorded (a
+    // 0-0 set of nothing but "." is not yet keyed).
+    rc.ballots_complete = Boolean(rc.ballots) && count("Y") === rc.yeas && count("N") === rc.nays
+      && (rc.yeas + rc.nays > 0 || /[^.]/.test(rc.ballots));
   }
 
   // Misses: a roll call the window covered and did not list.
@@ -181,7 +194,7 @@ export function merge(prev, { date, rows = [], ballots = new Map(), lines = [], 
     tally.set(k, {
       body: l.body,
       bill: l.bill_as_recorded ? `${termOf(Number(date.slice(0, 4)))}/${l.bill_as_recorded}` : null,
-      bill_as_recorded: l.bill_as_recorded, order: l.order, entered: l.entered, line: l.line,
+      bill_as_recorded: l.bill_as_recorded, order: l.order, entered: nhToUtc(l.entered), line: l.line,
       yeas: p.yeas, nays: p.nays, abbrev: p.abbrev, outcome: p.outcome,
       first_seen: old ? old.first_seen : at, rollcall: null,
     });
@@ -209,9 +222,13 @@ export function attach(f) {
     if (rc.bill_as_recorded && groups.has(key(rc))) groups.get(key(rc)).r.push(rc);
   }
   for (const { t, r } of groups.values()) {
+    // Paired only when it is certain: as many lines as roll calls. Two equal
+    // tallies on one bill with one roll call saved so far (the Senate saves
+    // out of order) wait for the other, rather than guess which it is.
+    if (t.length !== r.length) continue;
     t.sort((a, b) => a.order - b.order);
     r.sort((a, b) => a.seq - b.seq);
-    for (let i = 0; i < Math.min(t.length, r.length); i++) {
+    for (let i = 0; i < t.length; i++) {
       t[i].rollcall = r[i].id;
       r[i].docket = { line: t[i].line, abbrev: t[i].abbrev, outcome: t[i].outcome };
     }
