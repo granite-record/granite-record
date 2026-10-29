@@ -278,6 +278,12 @@ records/sources/tiger/
 # library survey, the Census block assignments and GRANIT's 2014 survey, as
 # fetched. Re-fetchable; the parsers' collected/ files are what git holds.
 records/sources/directory/
+# The person's printouts of the official pages the guides and Learn pages rest
+# on (26 October 2026: "Index in git, PDFs on laptop"). About 75 MB, so the
+# PDFs stay on the person's computer; records/sources/printouts/INDEX.csv,
+# which is tracked, names each with its address, day and sha256, and
+# src/ops/file_printouts.py files them from wherever they were downloaded.
+records/sources/printouts/*.pdf
 
 # THE LICENSED LOGO (24 September 2026). Debra Caplan's drawing, the lockups
 # made from it and every file build_brand.py derives from them are licensed
