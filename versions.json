@@ -176,7 +176,7 @@
     "review.py": "2026-09-09.24",
     "queue_links.py": "2026-09-24.1",
     "rsa.py": "2026-10-11.2",
-    "related_bills.py": "2026-10-11.3",
+    "related_bills.py": "2026-10-11.4",
     "rollcall_outcomes.py": "2026-09-23.7",
     "rollcall_parser.py": "2026-09-04.19",
     "rollcalls_from_db.py": "2026-09-10.4",
