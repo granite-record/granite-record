@@ -39946,71 +39946,99 @@ _FORM_PASSAGES = (
 )
 
 
-@check("build", "a statute's form blanks wrap on a phone: every run of 20 or more underscores a Laws page "
-       "writes sits where app.css lets a word break", needs=("build_rsa", "rsa", "shell"))
+# RSA 200-J's name, as the preview's /laws/200-j prints it in its heading
+# (29 October 2026): one word of 29 letters and slashes.
+_LONG_TITLE = ("XV", "TITLE XV EDUCATION", "200-J", "VETERINARY/MEDICAL/OPTOMETRIC EDUCATION PROGRAM",
+               "200-J:1", "Definitions.", ("In this chapter:",))
+
+
+def _wrap_breaks(rules, chain, memo):
+    """(how a word may break in chain[0], or None, and what holds its line
+    whole, or None), from app.css's cascade and what the element inherits
+    (_css_inherited): overflow-wrap or word-wrap anywhere or break-word, or
+    word-break break-all; white-space nowrap or pre."""
+    props = ("overflow-wrap", "word-wrap", "word-break", "white-space", "text-wrap-mode", "text-wrap")
+    got = _css_inherited(rules, chain, props, memo)
+    breaks = [(p, got[p]) for p in ("overflow-wrap", "word-wrap") if p in got
+              and got[p][0].split()[0] in ("anywhere", "break-word")]
+    breaks += [("word-break", got["word-break"])] if got.get("word-break", ("",))[0] == "break-all" else []
+    whole = [(p, got[p]) for p in ("white-space", "text-wrap-mode", "text-wrap") if p in got
+             and got[p][0].split()[0] in ("nowrap", "pre")]
+    return (breaks[0] if breaks else None), (whole[0] if whole else None)
+
+
+@check("build", "a Laws page's long words wrap on a phone: every run of 20 or more underscores a "
+       "statute's form writes, and every word of 20 or more letters in a chapter's title, sits where "
+       "app.css lets a word break", needs=("build_rsa", "rsa", "shell"))
 def _statute_blanks_wrap(B, RSA, S):
     """The accessibility sweep of the R1 preview (29 October 2026; WCAG
     1.4.10, reflow): /laws/659 was 648px wide in a 390px phone's viewport,
     and scrolled sideways. RSA 659:27-a prints its affidavit's lines to fill
     in as seventy underscores in a row: one word, 636px at reading size
     (measured on the preview, where the phone's column is 366px and twenty
-    are 181px), and nothing let the text break inside a word.
+    are 181px), and nothing let the text break inside a word. With that
+    mended, every Laws page of the preview was measured at 390 with the
+    branch's sheet (1,801 of them, the index and every chapter): one more
+    scrolled, /laws/200-j, 425px wide, because its title's
+    "Veterinary/medical/optometric" is one word of 29 characters at the
+    title's size, which a slash does not break.
 
-    So the two sections' own words go through build_rsa's chapter page, and
-    every run of twenty or more underscores it writes must sit in an element
-    on which app.css's cascade -- the element's own rules and what it
-    inherits (_css_inherited) -- lets a word break where it does not fit
-    (overflow-wrap or word-wrap anywhere or break-word, or word-break
-    break-all) and does not hold the line whole (white-space nowrap or pre).
-    A rule taken off, a statute's text moved into an element no rule reaches,
-    or a later rule that undoes it, each fails here. The renderer and the
-    sheet are what is held, so a section of any chapter with a longer blank
-    is held too; the sweep of every chapter's width on the preview is the
-    audit's, not this check's (it needs a browser and the real table)."""
+    So the two sections' own words, and 200-J's name, go through build_rsa's
+    chapter page, and every run of twenty or more underscores it writes, and
+    every word of twenty or more characters in its <h1>, must sit in an
+    element on which app.css's cascade -- the element's own rules and what it
+    inherits (_wrap_breaks) -- lets a word break where it does not fit and
+    does not hold the line whole. A rule taken off, a statute's text or a
+    title moved into an element no rule reaches, or a later rule that undoes
+    it, each fails here. The renderer and the sheet are what is held, so a
+    section of any chapter with a longer blank, and a chapter with a longer
+    name, is held too; the sweep of every chapter's width on the preview is
+    the audit's, not this check's (it needs a browser and the real table)."""
     cols = ["id", "TitleNo", "ChapterNo", "SectionNo", "Title", "Chapter", "Section", "SourceNote",
             "rsa", "EntireRSA", "titleNumber", "url"]
+    tno, tname, ch, cname, addr0, head0, paras0 = _LONG_TITLE
+    rows = [("LXIII", "TITLE LXIII ELECTIONS", "659", "ELECTION PROCEDURE", addr, heading, paras)
+            for addr, heading, paras in _FORM_PASSAGES] + [(tno, tname, ch, cname, addr0, head0, paras0)]
     t = RSA.Table([dict(zip(cols, (
-        str(n), "LXIII", "659", addr.replace(":", "-"), "TITLE LXIII ELECTIONS",
-        "CHAPTER 659 ELECTION PROCEDURE", f"Section {addr} {heading}", "",
-        "<center><h2>CHAPTER 659<br>ELECTION PROCEDURE</h2></center>",
+        str(n), tn, chn, addr.replace(":", "-"), title, f"CHAPTER {chn} {name}", f"Section {addr} {heading}", "",
+        f"<center><h2>CHAPTER {chn}<br>{name}</h2></center>",
         "<codesect> <br> " + " <br> ".join(paras) + "</codesect>", "63",
-        f"LXIII\\659\\{addr.replace(':', '-')}.htm")))
-        for n, (addr, heading, paras) in enumerate(_FORM_PASSAGES)])
+        f"{tn}\\{chn}\\{addr.replace(':', '-')}.htm")))
+        for n, (tn, title, chn, name, addr, heading, paras) in enumerate(rows)])
     data = {"bills": {}, "enacted": {}, "statute": {}, "asof": {"laws_through": 2025}}
     root = Path(tempfile.mkdtemp(prefix="gr-rsaform-"))
     try:
         (root / "idx").mkdir()
         bills = B.Bills(root, "2025-2026")
-        page = B.chapter_page(S.template(Path("site")), t, data, bills, "659", "https://graniterecord.org")
+        pages = {c: B.chapter_page(S.template(Path("site")), t, data, bills, c, "https://graniterecord.org")
+                 for c in ("659", ch)}
     finally:
         shutil.rmtree(root, ignore_errors=True)
-    runs = _html_text_chains(page, r"_{20,}")
+    runs = _html_text_chains(pages["659"], r"_{20,}")
     lengths = sorted(len(r) for r, _c in runs)
     assert lengths.count(70) == 2 and len(runs) >= 8, (
         f"the chapter page does not carry the form's blanks as the table has them: runs of {lengths}")
+    words = [(w, c) for p in pages.values() for w, c in _html_text_chains(p, r"[^\s]{20,}") if c[0]["tag"] == "h1"]
+    assert any("optometric" in w.lower() for w, _c in words), (
+        f"RSA 200-J's page does not carry its name's long word in its heading: {[w for w, _c in words]}")
     rules = _css_screen_rules(Path("src/pages/app.css").read_text(encoding="utf-8"))
     memo, held, bad = {}, Counter(), []
-    props = ("overflow-wrap", "word-wrap", "word-break", "white-space", "text-wrap-mode", "text-wrap")
-    for run, chain in runs:
-        got = _css_inherited(rules, chain, props, memo)
+    for what, run, chain in [("underscores", r, c) for r, c in runs] + [("title", w, c) for w, c in words]:
+        brk, whole = _wrap_breaks(rules, chain, memo)
         where = " > ".join(e["tag"] + "".join("." + c for c in sorted(e["classes"])) for e in reversed(chain[:4]))
-        breaks = [(p, got[p]) for p in ("overflow-wrap", "word-wrap") if p in got
-                  and got[p][0].split()[0] in ("anywhere", "break-word")]
-        breaks += [("word-break", got["word-break"])] if got.get("word-break", ("",))[0] == "break-all" else []
-        whole = [(p, got[p]) for p in ("white-space", "text-wrap-mode", "text-wrap") if p in got
-                 and got[p][0].split()[0] in ("nowrap", "pre")]
-        if not breaks or whole:
-            bad.append(f"{len(run)} underscores in {where}: "
-                       + (f"{whole[0][0]}:{whole[0][1][0]} ({whole[0][1][1]}, app.css line {whole[0][1][2]})"
+        name = f"{len(run)} underscores" if what == "underscores" else f"the title's \"{run}\""
+        if not brk or whole:
+            bad.append(f"{name} in {where}: "
+                       + (f"{whole[0]}:{whole[1][0]} ({whole[1][1]}, app.css line {whole[1][2]})"
                           if whole else "no rule lets a word break there"))
         else:
-            held[f"{breaks[0][0]}:{breaks[0][1][0]} from {breaks[0][1][1]}"] += 1
+            held[f"{brk[0]}:{brk[1][0]} from {brk[1][1]}"] += 1
     assert not bad, (
-        "a run of underscores in a statute's text cannot wrap, and a 390px phone scrolls sideways past it "
-        "(RSA 659:27-a's seventy are 636px at reading size): " + "; ".join(bad[:4])
-        + ". app.css's .rs-text{overflow-wrap:anywhere} is what lets them")
+        "a long word on a Laws page cannot wrap, and a 390px phone scrolls sideways past it (RSA "
+        "659:27-a's seventy underscores are 636px at reading size, 200-J's title 425px wide): "
+        + "; ".join(bad[:4]) + ". app.css's .rs-text and .l-head h1 {overflow-wrap:anywhere} are what let them")
     return "ok", (f"{len(runs)} runs of 20 or more underscores ({lengths[-1]} the longest) in 659:13 and "
-                  f"659:27-a's forms, every one able to break: "
+                  f"659:27-a's forms and {len(words)} long word in 200-J's title, every one able to break: "
                   + ", ".join(f"{k} ({n})" for k, n in held.items()))
 
 
@@ -71765,11 +71793,13 @@ def _css_inherited(rules, chain, props, _memo=None):
     return out
 
 
-def _html_text_chains(page, pattern):
-    """[(the text matched, chain)] for every match of `pattern` in a page's
-    text, chain[0] the element it is written in and then its ancestors out to
-    the root, each as _css_compound_fits reads an element (no state: not
-    hovered, not focused). A script's or a style's content is not text."""
+def _html_walk(page, text=None, element=None):
+    """A page read as html.parser reads it: each element as
+    _css_compound_fits reads one (no state: not hovered, not focused).
+    `text(data, chain)` for each run of a page's text and `element(chain)`
+    for each element as it opens, chain[0] the element the text is written
+    in, or the one opening, and then its ancestors out to the root. A
+    script's or a style's content is not text."""
     from html.parser import HTMLParser
 
     class Walk(HTMLParser):
@@ -71778,12 +71808,14 @@ def _html_text_chains(page, pattern):
 
         def __init__(self):
             super().__init__(convert_charrefs=True)
-            self.stack, self.found = [], []
+            self.stack = []
 
         def handle_starttag(self, tag, attrs):
             a = {k: ("" if v is None else v) for k, v in attrs}
             el = {"tag": tag, "ids": {a["id"]} if a.get("id") else set(),
                   "classes": set((a.get("class") or "").split()), "attrs": a, "states": set()}
+            if element:
+                element([el] + list(reversed(self.stack)))
             if tag not in self.VOID:
                 self.stack.append(el)
 
@@ -71795,13 +71827,22 @@ def _html_text_chains(page, pattern):
         def handle_data(self, data):
             if self.stack and self.stack[-1]["tag"] in ("script", "style"):
                 return
-            for m in re.finditer(pattern, data):
-                self.found.append((m.group(0), list(reversed(self.stack))))
+            if text:
+                text(data, list(reversed(self.stack)))
 
     w = Walk()
     w.feed(page)
     w.close()
-    return w.found
+
+
+def _html_text_chains(page, pattern):
+    """[(the text matched, chain)] for every match of `pattern` in a page's
+    text, chain[0] the element it is written in and then its ancestors out to
+    the root (_html_walk)."""
+    found = []
+    _html_walk(page, text=lambda data, chain: found.extend(
+        (m.group(0), chain) for m in re.finditer(pattern, data)))
+    return found
 
 
 @check("frontend", "a bill's Testify button counts the Senate's hearings, and says testimony opens again "
