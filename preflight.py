@@ -19185,6 +19185,13 @@ def _class_collisions():
         # bills, so a phone never paints them there (the phone audit of 25
         # October 2026)
         "searchrow", "shell",
+        # A RECORD PAGE'S TABS: the strip, a tab, its count's badge and its
+        # pane, which app.js draws for a bill, a member and a committee
+        # (tabStrip, pagePane, tabN) and build_study_committees for a study
+        # or statutory committee, in the same words and classes at the
+        # owner's asking ("the same tab format as standing committees", 29
+        # October 2026; _study_committee_tabs)
+        "tabs", "tab", "tn", "tnp", "pane",
     }
     here = Path(".")
     # The components draw on both sides by design: components.js with the
