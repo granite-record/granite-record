@@ -63894,6 +63894,20 @@ def _clean_links(html):
     return shell.clean_links(html)
 
 
+# THE DOT GOES WITH THE PART AFTER IT (the owner's fix S9, and the manager's
+# review of the Videos view, 26 October 2026, 4): every middle dot in a Videos
+# view is drawn at the head of the part after it, held to it by a no-break
+# space (app.js, vwJoin), so no line ends on one. The caption had ended
+# "Senate Finance · May 5, 2026 · 1:28 PM ·" at 390px, and House Commerce's
+# "· 5 h 49 min ·" over "On YouTube" at 1280.
+_VW_DOT_HEAD = '<span class="vwi"><span aria-hidden="true">&middot;&nbsp;</span>'
+
+
+def _vw_loose_dots(html):
+    """How many of a Videos view's middle dots a line could end on."""
+    return html.count("&middot;") + html.count("\u00b7") - html.count(_VW_DOT_HEAD)
+
+
 @check("build", "a study or statutory committee's recorded meetings are a Videos section between "
        "Members and Meetings, drawn by the one Videos view, and a recording plays on its own "
        "committee's meeting of its own day and no other", needs=("build_study_committees",))
@@ -63968,8 +63982,11 @@ def _study_committee_videos(SC):
     flat = _html.unescape(re.sub(r"<[^>]+>", "", drawn))
     assert "<iframe" not in drawn and 'data-embed="agingVid001|0|v20260310_agingVid001"' in drawn, (
         "the section's player is not a still of its recording")
-    assert "State Commission on Aging · , Mar 10, 2026 · , 10:02 AM · , 1 h 2 min · , On YouTube" in flat \
+    assert "State Commission on Aging, ·\u00a0Mar 10, 2026, ·\u00a010:02 AM, ·\u00a01 h 2 min, ·\u00a0On YouTube" in flat \
         and "1 recording, newest first" in flat, f"the section draws {flat[:300]!r}"
+    assert _vw_loose_dots(drawn) == 0 and drawn.count(_VW_DOT_HEAD) >= 5, (
+        "a dot in the study committee's Videos section can end a line: it goes at the head of "
+        "the part after it")
     assert '<a href="/committee/ss1451/videos#day-2026-03-10">This meeting</a>' in drawn and \
         '<a href="calendar?week=2026-W11&amp;day=2026-03-10&amp;committee=State+Commission+on+Aging">' \
         'This meeting on the Calendar</a>' in drawn and \
@@ -68888,11 +68905,13 @@ def _chamber_videos(BSP, FS, BP):
     flat = _html.unescape(re.sub(r"<[^>]+>", "", view))
     assert "<iframe" not in view and 'data-embed="senSessV001|0|v20260219_senSessV001"' in view, (
         "the chamber's Videos tab is not a still of its newest recording")
-    assert "The Senate · , Feb 19, 2026 · , 9:58 AM · , 3 h 4 min · , On YouTube" in flat \
-        and "1 recording in 2025–2026" in flat and "1 bill · , 1 roll call" in flat \
+    assert "The Senate, ·\u00a0Feb 19, 2026, ·\u00a09:58 AM, ·\u00a03 h 4 min, ·\u00a0On YouTube" in flat \
+        and "1 recording in 2025–2026" in flat and "1 bill, ·\u00a01 roll call" in flat \
         and not re.search(r"\b[HS]B\s?\d", flat), f"the chamber's Videos tab reads {flat[:400]!r}"
     assert '<a class="daylink" href="session/S/2026-02-19">The full session day</a>' in view, (
         "the chamber's Videos tab does not lead to the day's own page")
+    assert _vw_loose_dots(view) == 0 and view.count(_VW_DOT_HEAD) >= 5, (
+        "a dot in the chamber's Videos tab can end a line: it goes at the head of the part after it")
     assert empty == ("No recording of the Senate&rsquo;s session days in 2019–2020 is on file. "
                      "Recordings here begin in May 2020, with the General Court&rsquo;s YouTube channels."), (
         f"a term with none says {empty!r}")
@@ -76146,23 +76165,27 @@ process.stdout.write("\n@@" + JSON.stringify(out));
     import html as _html
     say = {i: _html.unescape(re.sub(r"<[^>]+>", "", body)) for _h, i, _c, body in rows}
     want = {"-titleOnly1": "Feb 24, 2026, 36 min",
-            "divOne": "Feb 17, 2026, 1:00 PM · , 2 h, Work Session Division I",
-            "VID4": "Feb 10, 2026, 12:58 PM · , 45 min, Executive Session 1 bill: HB 1442",
-            "VID1": "Feb 3, 2026, 9:58 AM · , 1 h 52 min, Public Hearing 1 bill: HB 1442"}
+            "divOne": "Feb 17, 2026, 1:00 PM, ·\u00a02 h, Work Session Division I",
+            "VID4": "Feb 10, 2026, 12:58 PM, ·\u00a045 min, Executive Session 1 bill: HB 1442",
+            "VID1": "Feb 3, 2026, 9:58 AM, ·\u00a01 h 52 min, Public Hearing 1 bill: HB 1442"}
     assert say == want, f"the rows read {say!r}, not {want!r}"
     # Its kinds are the Meetings tab's chips, in their words and colours.
     assert '<span class="chip calkind k-exec">Executive Session</span>' in pane \
         and '<span class="chip calkind k-meet">Work Session</span>' in pane, (
         "a row's kind is not the Meetings tab's chip")
     cap = _html.unescape(re.sub(r"<[^>]+>", "", re.search(r'<div class="pbar vwcap">(.*?)</div>', pane).group(1)))
-    assert cap == "House Commerce · , Feb 24, 2026 · , 36 min · , On YouTube", (
+    assert cap == "House Commerce, ·\u00a0Feb 24, 2026, ·\u00a036 min, ·\u00a0On YouTube", (
         f"the caption under the player reads {cap!r}: one line, a missing start left out with its dot")
-    # Each of its parts kept whole where the line wraps: at 390px "On
-    # YouTube" broke between its two words.
+    # Every dot at the head of the part after it, and each of the caption's
+    # parts kept whole with its dot where the line wraps: at 390px "On
+    # YouTube" broke between its two words, and the caption ended a line on
+    # a dot.
+    assert _vw_loose_dots(pane) == 0 and pane.count(_VW_DOT_HEAD) >= 6, (
+        "a dot in the Videos tab can end a line: it goes at the head of the part after it")
     css = Path("src/pages/app.css").read_text(encoding="utf-8")
-    keep = re.search(r"\n([^{}\n]*\.vwcap a\b[^{}\n]*)\{([^}]*)\}", css)
-    assert keep and ".vwcap .vwn" in keep.group(1) and "white-space:nowrap" in keep.group(2), (
-        "the caption's date, time, length or YouTube link can break across two lines")
+    keep = re.search(r"\n([^{}\n]*\.vwcap \.vwi\b[^{}\n]*)\{([^}]*)\}", css)
+    assert keep and "white-space:nowrap" in keep.group(2), (
+        "the caption's date, time, length or YouTube link can break across two lines, or from its dot")
     assert pane.count("The docket ties no bill to this recording.") == 1 and "No bill" not in pane \
         and 'class="note"' not in pane, (
             "a recording with no bill is not said so once, plainly, under the player")

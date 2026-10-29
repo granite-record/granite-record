@@ -9007,28 +9007,36 @@ function vwLength(s){
   const m=Math.max(1,Math.round((Number(s)||0)/60));
   return m>=60?`${Math.floor(m/60)} h${m%60?` ${m%60} min`:""}`:`${m} min`;
 }
-// The middle dot the eye reads and the comma a screen reader says.
-const VW_DOT='<span aria-hidden="true"> &middot; </span><span class="sr">, </span>';
+/* THE DOT GOES WITH THE PART AFTER IT (the owner's fix S9, as a card's
+   byline has it in app.css). Parts (HTML) joined by the middle dot the eye
+   reads and the comma a screen reader says: each part after the first is
+   drawn with its dot at its head, held to it by a no-break space, so a line
+   breaks before a dot and never after one -- at 390px the caption had ended
+   "Senate Finance · May 5, 2026 · 1:28 PM ·" over "1 h 15 min", and at 1280
+   House Commerce's its length and a dot over "On YouTube". A part that is
+   not there is left out with its dot: never a lone one. */
+const vwJoin=parts=>parts.filter(Boolean).map((p,i)=>i?`<span class="sr">,</span> <span class="vwi"><span aria-hidden="true">&middot;&nbsp;</span>${p}</span>`:p).join("");
 // When it began and how long it ran, each only where the index says it.
 const vwWhen=r=>[r.began?clock(r.began):"",r.seconds?vwLength(r.seconds):""].filter(Boolean);
 function vwPlayer(o,r){
   const pid=o.pid(r), day=dateWords(r.date), what=o.what||o.who;
-  // A date, a time or a length is not broken across two lines.
-  const cap=[`<b>${esc(o.who)}</b>`].concat([day,...vwWhen(r)].map(x=>`<span class="vwn">${esc(x)}</span>`));
+  // A date, a time, a length or "On YouTube" is not broken across two lines
+  // (.vwcap .vwi): at 390px the link broke between its two words.
+  const cap=vwJoin([`<b>${esc(o.who)}</b>`,...[day,...vwWhen(r)].map(esc),
+    `<a href="https://www.youtube.com/watch?v=${esc(r.id)}" target="_blank" rel="noopener">On YouTube</a>`]);
   return `<div class="player vwplay" data-player="${esc(pid)}"><button type="button" class="pstub"`
     +` data-title="${esc(recTitle(what,r.date))}" aria-label="${esc(`Play the recording of ${what}, ${day}`)}"`
     +` data-embed="${esc(r.id)}|0|${esc(pid)}"><span>${icon("play")}</span><span>Play the recording</span></button>`
-    +`<div class="pbar vwcap"><p>${cap.join(VW_DOT)}${VW_DOT}<a href="https://www.youtube.com/watch?v=${
-      esc(r.id)}" target="_blank" rel="noopener">On YouTube</a></p></div></div>`;
+    +`<div class="pbar vwcap"><p>${cap}</p></div></div>`;
 }
 const vwDetail=r=>typeof r.detail==="function"?r.detail():String(r.detail||"");
 // A row's second line is text, or its parts, which take the middle dot.
-const vwLine=l=>Array.isArray(l)?l.filter(Boolean).map(esc).join(VW_DOT):esc(l||"");
+const vwLine=l=>Array.isArray(l)?vwJoin(l.filter(Boolean).map(esc)):esc(l||"");
 function vwRow(o,r,i,cap){
   const when=vwWhen(r), line=vwLine(r.line);
   return `<li${i>=cap?' class="vwrest"':""}><a class="vwrow" href="${esc(o.href(r.id))}" data-vwpick="${
       esc(r.id)}"${r.id===o.chosen?' aria-current="true"':""}><span class="vwd">${esc(dateWords(r.date))}</span>${
-    when.length?`<span class="vwt"><span class="sr">, </span>${when.map(esc).join(VW_DOT)}</span>`:""}${
+    when.length?`<span class="vwt"><span class="sr">, </span>${vwJoin(when.map(esc))}</span>`:""}${
     r.kinds||line?`<span class="vwb"><span class="sr">, </span>${r.kinds||""}${r.kinds&&line?" ":""}${
       line?`<span class="vwl">${line}</span>`:""}</span>`:""}</a></li>`;
 }
@@ -9250,8 +9258,8 @@ function studyVideoRows(d){
       const here=location.pathname+location.search;
       const links=[`<a href="${esc(here)}#${esc(r.anchor)}">This meeting</a>`]
         .concat(r.calendar?[`<a href="${esc(r.calendar)}">This meeting on the Calendar</a>`]:[]);
-      return (facts.length?`<p class="vwkinds">${facts.map(esc).join(VW_DOT)}</p>`:"")
-        +`<p class="src vwlinks">${links.join(VW_DOT)}</p>`;}}));
+      return (facts.length?`<p class="vwkinds">${vwJoin(facts.map(esc))}</p>`:"")
+        +`<p class="src vwlinks">${vwJoin(links)}</p>`;}}));
 }
 // A CHAMBER'S SESSION DAYS (build_full_sessions, videos_json): a row a
 // recording, newest first, its line the day's counts and not its bills (the
@@ -9269,8 +9277,8 @@ function chamberRows(d){
       id:r.id,date:day.date,began:r.began,seconds:r.seconds,
       line:[c.bills?vwPlural(c.bills,"bill"):"",c.roll_calls?vwPlural(c.roll_calls,"roll call"):""],
       detail:()=>(day.summary?`<p class="cmsaid">${esc(day.summary)}</p>`:"")
-        +`<p class="src vwlinks"><a class="daylink" href="session/${esc(d.body)}/${esc(day.date)}">The full session day</a>${
-          day.journal_url?`${VW_DOT}<a href="${esc(day.journal_url)}">${esc(vwJournal(day.journal))} (PDF)</a>`:""}</p>`}));
+        +`<p class="src vwlinks">${vwJoin([`<a class="daylink" href="session/${esc(d.body)}/${esc(day.date)}">The full session day</a>`,
+          day.journal_url?`<a href="${esc(day.journal_url)}">${esc(vwJournal(day.journal))} (PDF)</a>`:""])}</p>`}));
   });
   return rows;
 }
