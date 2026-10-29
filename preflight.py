@@ -22777,7 +22777,12 @@ def _find_study_committees_rank(BP):
             assert all(i > order.index("BILLS") for i in study), (
                 f"{c['q']!r}: a statutory or study committee is drawn above the bills: {order}")
     js = BP.SEARCH_JS
-    g = js.index('{t:"Statutory and study committees",k:r=>r[0]==="statutory"||r[0]==="study"}')
+    # The group's own words for the line a screen reader hears (w:, 29
+    # October 2026) may stand between its title and its test.
+    m = re.search(r'\{t:"Statutory and study committees",(?:w:\[[^\]]*\],)?'
+                  r'k:r=>r\[0\]==="statutory"\|\|r\[0\]==="study"\}', js)
+    assert m, "/search has no group of statutory and study committees"
+    g = m.start()
     assert js.index('{t:"Subjects"') < g < js.index('{t:"Former senators"') and re.search(
         r'const AFTER=new Set\(\["Statutory and study committees",', js), (
         "/search does not list the statutory and study committees as their own group after the bills")
