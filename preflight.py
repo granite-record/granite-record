@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.728
+# GRANITE_VERSION: 2026-09-04.729
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -6338,6 +6338,128 @@ _DOCKET_INTRODUCED_ADOPTED = [
         "2020|3140|6/11/2020 12:00:00 AM|HR16|H|Lay on Table (Rep. Almy): MA VV 06/11/2020 HJ 9 P. 38|6/11/2020 12:00:00 AM"],
      None),
 ]
+
+
+def _canon_days(o):
+    """A sitting-days answer as plain data, to compare two: dict and list
+    order kept, a set as a set, a Day or Item field by field."""
+    if isinstance(o, dict):
+        return ("dict", [(_canon_days(k), _canon_days(v)) for k, v in o.items()])
+    if isinstance(o, (list, tuple)):
+        return (type(o).__name__, [_canon_days(v) for v in o])
+    if isinstance(o, (set, frozenset)):
+        return ("set", sorted(repr(_canon_days(v)) for v in o))
+    if hasattr(type(o), "__slots__") or hasattr(o, "__dict__"):
+        slots = [s for c in type(o).__mro__ for s in getattr(c, "__slots__", ())]
+        d = {s: _canon_days(getattr(o, s, "<unset>")) for s in slots}
+        if hasattr(o, "__dict__"):
+            d.update({k: _canon_days(v) for k, v in vars(o).items()})
+        return (type(o).__name__, sorted(d.items()))
+    return o
+
+
+@check("session", "the sitting days are worked out once a build: kept, read back as the parse "
+       "gives them, worked out again when an input moves or the file will not read",
+       needs=("narrative", "session_days"))
+def _session_days_cache(N, SD):
+    """session_days.load() was the same half-minute parse in four steps of
+    the build and the night's checks (29 October 2026); the build's own call
+    now keeps its answer in .build_cache/session_days.pkl.gz under a sha256
+    of every file it read, every folder it listed, every path it looked for
+    and its code, and the steps after it read it back. This holds the four
+    things that make that safe: what is read back is what the parse gives,
+    the days the voting system began included; a byte moved in an input, or
+    a file added where the parse looks, is a miss; a cache that will not
+    read is worked out again with the same answer; and a check's call, which
+    names its own record, is never kept."""
+    narr = {}
+    for term, bill, lines, _want in _DOCKET_INTRODUCED_ADOPTED:
+        if term == "2025-2026":
+            narr.setdefault(term, {})[bill] = {
+                "events": _told_from_rows(N, term, bill, lines)["events"]}
+    here, d = Path.cwd(), Path(tempfile.mkdtemp(prefix="sd_cache_"))
+    began = dict(SD.ROLLCALLS_FROM)
+    try:
+        (d / "narratives.json").write_text(json.dumps(narr), encoding="utf-8")
+        (d / "rollcalls.json").write_text(json.dumps({"2025-2026": {"HR1": [_rc(
+            "1998", "H", 1, "1998-06-02", "HR1", "Adoption", 300, 10, True)]}}),
+            encoding="utf-8")
+        os.chdir(d)
+        cold = SD.load()
+        kept = d / ".build_cache" / SD.CACHE_FILE
+        assert kept.exists(), "the build's call kept nothing"
+        SD.ROLLCALLS_FROM.clear()
+        warm, why = SD.load_cache()
+        assert warm is not None, f"the kept days were not read back: {why}"
+        assert SD.ROLLCALLS_FROM == {"H": "1998-06-02", "S": SD.ROLLCALLS_BEGIN["S"]}, (
+            f"the days the voting system began were not read back: {SD.ROLLCALLS_FROM}")
+        fresh = SD._load()
+        assert _canon_days(warm) == _canon_days(fresh) == _canon_days(cold), (
+            "the days read back are not the days the parse gives")
+        n = (d / "narratives.json").read_text(encoding="utf-8")
+        (d / "narratives.json").write_text(n + " ", encoding="utf-8")
+        assert SD.load_cache()[0] is None, "a moved input was read from the cache"
+        (d / "narratives.json").write_text(n, encoding="utf-8")
+        assert SD.load_cache()[0] is not None, "the input put back missed"
+        # The fixture's sittings are of December 2024, so the parse looked
+        # for that year's Journals and found none: a folder of them now is
+        # an input that moved.
+        (d / "journals" / "2024").mkdir(parents=True)
+        (d / "journals" / "2024" / "x.txt").write_text("", encoding="utf-8")
+        assert SD.load_cache()[0] is None, "a file added where the parse looks was not a miss"
+        (d / "journals" / "2024" / "x.txt").unlink()
+        (d / "journals" / "2024").rmdir()
+        (d / "journals").rmdir()
+        kept.write_bytes(kept.read_bytes()[:200])
+        assert SD.load_cache()[0] is None, "a cache cut short was read"
+        again = SD.load()
+        assert _canon_days(again) == _canon_days(fresh), "worked out again, the days differ"
+        kept.unlink()
+        SD.load(d / "narratives.json")
+        assert not kept.exists(), "a call naming its own record kept its answer"
+    finally:
+        os.chdir(here)
+        SD.ROLLCALLS_FROM.clear()
+        SD.ROLLCALLS_FROM.update(began)
+        shutil.rmtree(d, ignore_errors=True)
+    return "ok", "kept, read back alike, missed on a moved byte and a new file, worked out again"
+
+
+@check("files", "the kit carries no pickle: the build's cache of the sitting days stays on the "
+       "machine that wrote it")
+def _kit_carries_no_pickle():
+    """session_days keeps a pickle in .build_cache (_session_days_cache).
+    Unpickling runs code, so a pickle must never come back from the bucket:
+    no path or glob of cloud_kit.json may take one (the manager, 29 October
+    2026)."""
+    import fnmatch
+    kit = json.loads(Path("cloud_kit.json").read_text(encoding="utf-8"))
+    probe = [".build_cache/session_days.pkl.gz", ".build_cache/x.pkl", "x.pickle"]
+    pats = []
+
+    def walk(o):
+        if isinstance(o, dict):
+            for k, v in o.items():
+                if k in ("globs", "paths") and isinstance(v, list):
+                    pats.extend(x for x in v if isinstance(x, str))
+                else:
+                    walk(v)
+        elif isinstance(o, list):
+            for v in o:
+                walk(v)
+    # What the bucket is sent: the kit, the state, the logs and a dry run's.
+    # The laptop's backup sends everything git does not track except what it
+    # leaves out, so there a pickle must be left out.
+    for part in ("kit", "state", "logs", "dry_run"):
+        walk(kit.get(part))
+    takes = lambda g, p: fnmatch.fnmatch(p, g.replace("**/", "*").replace("**", "*"))
+    bad = [f"{g} takes {p}" for g in pats for p in probe if takes(g, p)]
+    left = [g for e in (kit.get("backup") or {}).get("leave_out", [])
+            for g in e.get("globs", [])]
+    bad += [f"the backup takes {p}" for p in probe[:2] if not any(takes(g, p) for g in left)]
+    assert pats and not bad, "the kit would carry a pickle: " + "; ".join(bad or ["no globs read"])
+    return "ok", (f"none of the {len(pats)} paths and globs sent takes a pickle, and the "
+                  "backup leaves .build_cache out")
 
 
 @check("narrative", "a resolution introduced and adopted in one motion is told as adopted that day, "

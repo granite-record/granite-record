@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-19.38
+# GRANITE_VERSION: 2026-09-19.39
 """
 A sitting day of the House or Senate, assembled from what is already parsed.
 
@@ -3456,7 +3456,175 @@ def _fill_pages(grouped):
                 it.page = mine[-1].page
 
 
+# THE SITTING DAYS, WORKED OUT ONCE A BUILD (29 October 2026). load() is
+# the same half-minute parse of every docket row and every Journal, and four
+# steps of the build ask it in processes of their own -- the session pages,
+# the week pages, the directory lists, the session days as committees --
+# and the night's checks once more. The first to ask keeps what it worked
+# out in CACHE_FILE, in the build's cache folder; the rest read it back in
+# under a second, if, and only if, nothing it was worked out from has moved:
+#
+#   - every file the parse opened, by a sha256 of its bytes; every folder it
+#     listed, by its listing; every path it looked for, by whether it is
+#     there -- recorded while it ran (_Inputs), so the key is what the parse
+#     read and not a list kept by hand that the code could outgrow;
+#   - the code, by build_cache.signature: this module and every module of
+#     the project it imports, as tokens, with the Python that runs them.
+#
+# Only the build's own call, load() with nothing named, is kept; a check's
+# cut of the record never is. The file is a pickle, so it is never carried by
+# the kit (cloud_kit.json takes .build_cache/*.json.gz, and preflight holds
+# that no glob of it takes a pickle): what is read back is only ever what
+# this machine wrote in this build or an earlier one on the same disk. It is
+# written whole and then renamed into place, so a step never reads half of
+# one. Anything that will not read, or reads as another key's, is worked out
+# again, and the step's log says so: a cache never changes what is built and
+# never fails a build. load_cache() and keep() say which it was.
+CACHE_FILE = "session_days.pkl.gz"
+CACHE_FORMAT = 1
+
+
+class _Inputs:
+    """What one run of _load() read: the files it opened, the folders it
+    listed and the paths it looked for. Python's audit hook sees every open
+    and every listing; os.stat, which Path.exists and is_file ask, is
+    watched for the run's length."""
+    on = None
+    hooked = False
+
+    @classmethod
+    def record(cls, fn):
+        import os
+        if not cls.hooked:
+            def hook(event, args):
+                if cls.on is None:
+                    return
+                if event == "open" and args and isinstance(args[0], (str, bytes, os.PathLike)) \
+                        and (args[1] is None or "w" not in str(args[1])):
+                    cls.on["files"].add(os.fsdecode(args[0]))
+                elif event in ("os.listdir", "os.scandir") and args and args[0] is not None:
+                    cls.on["dirs"].add(os.fsdecode(args[0]))
+            sys.addaudithook(hook)
+            cls.hooked = True
+        stat = os.stat
+
+        def watched(p, *a, **k):
+            if cls.on is not None and isinstance(p, (str, bytes, os.PathLike)):
+                cls.on["looked"].add(os.fsdecode(p))
+            return stat(p, *a, **k)
+        cls.on = {"files": set(), "dirs": set(), "looked": set()}
+        os.stat = watched
+        try:
+            out = fn()
+        finally:
+            os.stat = stat
+            seen, cls.on = cls.on, None
+        # A folder listed that is not there, and a file opened that is not,
+        # are inputs too: the first Journal of a new year is a folder that
+        # appears. Each is kept as looked for, by whether it is there.
+        code = re.compile(r"\.py[co]?$")
+        files = sorted(f for f in seen["files"] if not code.search(f) and Path(f).is_file())
+        dirs = sorted(seen["dirs"])
+        looked = sorted((set(seen["looked"]) | set(seen["files"])) - set(files) - set(dirs))
+        looked = [x for x in looked if not code.search(x)]
+        return out, {"files": files, "dirs": dirs, "looked": looked}
+
+
+def _inputs_key(inputs):
+    """A sha256 of what the inputs hold now: each file's bytes, each folder's
+    listing, and whether each path looked for is there."""
+    import build_cache as BC
+    import os
+    parts = [BC.files_digest(inputs["files"])]
+    for d in inputs["dirs"]:
+        try:
+            parts.append(d + "\0" + "\0".join(sorted(os.listdir(d))))
+        except OSError:
+            parts.append(d + "\0<gone>")
+    parts += [x + ("\0+" if os.path.exists(x) else "\0-") for x in inputs["looked"]]
+    return BC.digest(*parts)
+
+
+def load_cache(folder=None):
+    """(days, why): the sitting days kept by an earlier load() of the same
+    inputs and code, or (None, why it was not)."""
+    import build_cache as BC
+    import gzip
+    import pickle
+    p = Path(folder if folder is not None else BC.CACHE) / CACHE_FILE
+    if not p.exists():
+        return None, "none kept"
+    try:
+        with gzip.open(p, "rb") as fh:
+            doc = pickle.load(fh)
+        if not isinstance(doc, dict) or doc.get("format") != CACHE_FORMAT:
+            return None, "kept in another format"
+        if doc.get("sig") != BC.signature("session_days.py"):
+            return None, "kept by other code"
+        if doc.get("key") != _inputs_key(doc.get("inputs") or {}):
+            return None, "its inputs have moved"
+        days, state = doc.get("days"), doc.get("state") or {}
+        if not isinstance(days, dict) or not days or \
+                not isinstance(state.get("ROLLCALLS_FROM"), dict):
+            return None, "kept empty"
+        # WHAT THE PARSE LEAVES BEHIND IT, as it left it: the days each
+        # chamber's voting system began (_roll_calls sets them from the
+        # roll calls), which the pages read after load(). Its other module
+        # state is caches of its own reading, which work out again alike.
+        ROLLCALLS_FROM.clear()
+        ROLLCALLS_FROM.update(state["ROLLCALLS_FROM"])
+        return days, f"{len(days):,} kept"
+    except Exception as e:                                          # noqa: BLE001
+        return None, f"it would not read ({type(e).__name__}: {e})"
+
+
+def keep(days, inputs, folder=None):
+    """Keep `days` as CACHE_FILE, whole, then renamed into place; (kept,
+    why)."""
+    import build_cache as BC
+    import gzip
+    import os
+    import pickle
+    p = Path(folder if folder is not None else BC.CACHE) / CACHE_FILE
+    tmp = p.with_name(f"{p.name}.{os.getpid()}.tmp")
+    try:
+        p.parent.mkdir(parents=True, exist_ok=True)
+        doc = {"format": CACHE_FORMAT, "sig": BC.signature("session_days.py"),
+               "inputs": inputs, "key": _inputs_key(inputs), "days": days,
+               "state": {"ROLLCALLS_FROM": dict(ROLLCALLS_FROM)}}
+        with open(tmp, "wb") as raw:
+            with gzip.GzipFile(filename="", fileobj=raw, mode="wb", compresslevel=6,
+                               mtime=0) as gz:
+                pickle.dump(doc, gz, protocol=pickle.HIGHEST_PROTOCOL)
+        os.replace(tmp, p)
+        return True, "kept"
+    except Exception as e:                                          # noqa: BLE001
+        try:
+            tmp.unlink()
+        except OSError:
+            pass
+        return False, f"not kept ({type(e).__name__}: {e})"
+
+
 def load(path=NARRATIVES, rollcalls=None, sat=None, journals=None):
+    """_load(), and for the build's own call -- nothing named -- once a
+    build: what an earlier call of the same inputs and code kept, or worked
+    out and kept for the next (CACHE_FILE). Every reading says which on
+    stderr, so a step's log shows it."""
+    if (path, rollcalls, sat, journals) != (NARRATIVES, None, None, None):
+        return _load(path, rollcalls, sat, journals)
+    days, why = load_cache()
+    if days is not None:
+        print(f"  session days: {why}, read from the build's cache", file=sys.stderr)
+        return days
+    days, inputs = _Inputs.record(_load)
+    kept, how = keep(days, inputs)
+    print(f"  session days: worked out ({why}); {how} for the steps after this one, "
+          f"from {len(inputs['files']):,} files", file=sys.stderr)
+    return days
+
+
+def _load(path=NARRATIVES, rollcalls=None, sat=None, journals=None):
     """Every sitting day, as {(body, date): Day}.
 
     The roll calls are the rollcalls.json beside the narratives.json read,
