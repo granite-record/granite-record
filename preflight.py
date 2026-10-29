@@ -110613,8 +110613,11 @@ def main():
     # the data files as it began (handoff.data_state), which git does not see.
     import time as _time
     handoff = imp("handoff")
-    began, tree = _time.time(), (handoff.tree_state() if handoff else (None, None))
+    began = _time.time()
+    # Before tree_state asks git: where there is no /proc, _loading is the
+    # main thread's CPU seconds at the moment it is asked.
     loading = _loading(began)
+    tree = handoff.tree_state() if handoff else (None, None)
     data = handoff.data_state() if handoff else None
     print("=" * 74)
     print(f"preflight   {Path('.').resolve()}")
@@ -111993,20 +111996,31 @@ def _slowest_said(H):
             "52000 100000 2000 18446744073709551615")
     began = _began_from(stat, "600.25 2000.00\n", 100, 10_000.0)
     assert abs(began - 9_919.75) < 1e-6, f"a process 80.25 s old read as begun at {began}"
+    # Each reading pairs the clock with /proc/uptime read a moment apart, so a
+    # pause between the two -- this process waiting its turn on a busy
+    # machine, or collecting its garbage -- moves it by that pause. Both
+    # pauses fall between `now` and the end of _loading, so the two readings
+    # agree to within those seconds and /proc's hundredths: a fixed 0.1 s
+    # failed here on a loaded box, 19.70 against 19.80 (29 October 2026).
+    # The CPU seconds are read first, so that none used after `now` counts.
+    cpu = time.thread_time()
     now = time.time()
     if Path("/proc/self/stat").is_file():
         start = _began_from(Path("/proc/self/stat").read_text(encoding="ascii"),
                             Path("/proc/uptime").read_text(encoding="ascii"),
                             os.sysconf("SC_CLK_TCK"), now)
-        cpu = time.thread_time()
         assert cpu - 0.5 <= now - start < 86400, (
-            f"/proc says this process began {now - start:.2f} s ago, and its main thread has "
-            f"used {cpu:.2f} s of CPU since")
-        assert abs(_loading(now) - (now - start)) < 0.1, (
-            f"_loading took {_loading(now):.2f} s where /proc says {now - start:.2f} s")
+            f"/proc says this process began {now - start:.2f} s ago, and its main thread had "
+            f"used {cpu:.2f} s of CPU by then")
+        got = _loading(now)
+        spent = time.time() - now
+        assert abs(got - (now - start)) <= spent + 0.02, (
+            f"_loading took {got:.2f} s where /proc says {now - start:.2f} s, "
+            f"{spent:.2f} s apart")
     else:
-        assert abs(_loading(now) - time.thread_time()) < 0.5, (
-            f"_loading took {_loading(now):.2f} s, not the main thread's CPU seconds")
+        got = _loading(now)
+        assert cpu <= got <= time.thread_time(), (
+            f"_loading took {got:.2f} s, not the main thread's CPU seconds")
     here = os.getcwd()
     tmp = Path(tempfile.mkdtemp(prefix="gr-timings-"))
     results = [("files", "one", "ok", ""), ("build", "two", "FAIL", "broken")]
