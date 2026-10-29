@@ -3671,7 +3671,7 @@ PLATES = guide(
                     "3, two of them letters, no ampersand"]])
           + "<p>The DMV&rsquo;s Vanity Plate Search shows whether a choice looks available, but "
           "it cannot save a plate for you, so it may be gone by the time you apply.</p>"
-          "<p>For a special plate, find yours in the table under A special plate, below: who may "
+          "<p>For a special plate, find yours in the table under &ldquo;A special plate&rdquo;, below: who may "
           "have it and what "
           "it costs.</p>",
           actions=[("Vanity plates (DMV)", DMV_VANITY)], law=["RSA 261:89"]),
@@ -3700,12 +3700,14 @@ PLATES = guide(
           "number plates and a new registration. The vanity fee you paid is credited to your "
           "customer account, and you can choose a new plate or ask for a refund.</p>",
           law=["RSA 261:89", "RSA 261:75"]),
-     step("A special plate: show that you qualify",
+     step("Show that you qualify",
           "<p>Each special plate is issued on application, and the plates for a group need "
           "proof that you belong to it. For a Gold Star plate, that is a report of casualty (DD "
           "Form 1300) or an official casualty notice; proof of your relationship, such as a "
           "birth certificate; or a marriage certificate or a letter from the U.S. Department of "
-          "Veterans Affairs.</p>"
+          "Veterans Affairs.</p><p>To change to a special plate during the year, the DMV asks "
+          "for a completed Application for Replacement Plates and Decals, the plate fees, a new "
+          "registration fee, and any other fees for the plate you want.</p>"
           + table("Special plates and who may have them (RSA 261)",
                   ["Plate", "Who qualifies", "What it costs", "The law"],
                   [(a, b, c, f'<a href="/laws/261#s{d.split(":")[1]}">{d}</a>')
@@ -6415,7 +6417,7 @@ LANDLORD = guide(
           "guests caused it, or extreme weather or the tenant&rsquo;s refusal of access "
           "prevented the repair.</p>",
           law=["RSA 540-A:3", "RSA 540-A:4", "RSA 48-A:14", "RSA 540:13-d"]),
-     step("Ending a tenancy",
+     step("Reasons and notice",
           "<p><b>The reasons.</b> For restricted property: unpaid rent, substantial damage, "
           "breaking a material term of the lease, behavior that threatens others&rsquo; health "
           "or safety, or other good cause, which can be a legitimate business or economic "
@@ -6869,7 +6871,7 @@ CONSUMER = guide(
           "prize to be yours without any obligation, delivered at no cost to you within 10 days. "
           "A &ldquo;prize&rdquo; that asks you to pay a handling, registration, redemption or "
           "delivery fee, or to buy something first, is not one the law allows. Do not pay, and "
-          "report it (see Complain to the Attorney General, below).</p>",
+          "report it (see &ldquo;Complain to the Attorney General&rdquo;, below).</p>",
           law=["RSA 358-O:3", "RSA 358-O:4"]),
      step("Cancel a sale made at your door",
           "<p>A sale of goods or services priced at $150 or more, made anywhere other than the "
@@ -7072,7 +7074,7 @@ HEALTH_INSURANCE = guide(
           ("On your own",
            "Apply for a Marketplace plan, and see if you can get help paying."),
           ("On a low income, at 65, or with a disability",
-           "Medicaid or Medicare may cover you (see Where Medicaid and Medicare fit, below).")]),
+           "Medicaid or Medicare may cover you (see &ldquo;Where Medicaid and Medicare fit&rdquo;, below).")]),
      box("If your insurance company denies a claim, appeal to it first, then ask the Insurance "
          "Department for an external review within 180 days.")],
     [step("Know when you can sign up",
@@ -7591,7 +7593,7 @@ WAGES = guide(
           "employer lets you.</p>",
           actions=[("Overtime pay (U.S. Department of Labor)", WHD_OVERTIME)],
           law=["RSA 279:21", "RSA 275:30-a"]),
-     step("If you were not paid: file a wage claim",
+     step("File a wage claim",
           "<p>You can file a <b>wage claim</b> with the New Hampshire Department of Labor, no "
           "later than 36 months after the wages were due. The Department sends a copy to your "
           "employer, who has 20 days to object; if it does not, the Department may order it to "
@@ -8183,7 +8185,8 @@ MEDICARE = guide(
           "<p><b>Help with the costs</b> comes from two programs: the state&rsquo;s <b>Medicare "
           "Savings Programs</b>, which help pay Medicare premiums and, for some people, other "
           "costs; and the federal <b>Extra Help</b> program, which pays part of the cost of drug "
-          "coverage. Get help paying the costs, below, says who qualifies and how to apply.</p>",
+          "coverage. The step &ldquo;Get help paying the costs&rdquo;, below, says who qualifies and how "
+          "to apply.</p>",
           actions=[("What Medicare costs (Medicare)", MEDICARE_COSTS)]),
      step("Know when to sign up for Medicare",
           "<p>Your first chance is your Initial Enrollment Period: 7 months, starting 3 months "
@@ -10248,7 +10251,7 @@ PARTS = {
                  "Fill out Form DS-11, and do not sign it yet": "Applying in person",
                  "If you travel soon": "Either way"},
     "vanity-and-special-plates": {"Choose your plate": "A vanity plate",
-                                  "A special plate: show that you qualify": "A special plate"},
+                                  "Show that you qualify": "A special plate"},
     "medicare-and-social-security": {"Know how the programs fit together": "Start here",
                                      "Know when to sign up for Medicare": "Medicare",
                                      "Apply for Social Security retirement benefits": "Social Security"},
@@ -10257,7 +10260,7 @@ PARTS = {
     "run-for-office": {"Check that you qualify": "An office on the state ballot",
                        "Town and city offices": "A town or city office"},
     "wage-rights": {"Know when you must be paid": "Your rights to your pay",
-                    "If you were not paid: file a wage claim": "If you were not paid"},
+                    "File a wage claim": "If your employer breaks the law"},
     "consumer-rights": {"Know what the law forbids": "What the law protects",
                         "Complain to the Attorney General": "If a business breaks the law"},
     "discrimination": {"Know what the law protects": "What the law protects",
@@ -10265,7 +10268,7 @@ PARTS = {
     "health-insurance": {"Know when you can sign up": "Getting coverage",
                          "Appeal a denied claim to your insurance company": "If a claim is denied, or you have a complaint",
                          "Where Medicaid and Medicare fit": "Medicaid and Medicare"},
-    "car-insurance": {"What the law requires": "What the law requires",
+    "car-insurance": {"What the law requires": "Financial responsibility",
                       "What a car insurance policy must include": "Your policy"},
     "renters-insurance": {"What renters insurance covers": "Your policy",
                           "If you have a loss: filing a claim": "After a loss, or a dispute"},
@@ -10287,12 +10290,12 @@ PARTS = {
     "tenant-rights": {"Only a court can make you leave": "Your rights as a tenant",
                       "If you get an eviction notice or court papers": "If you are facing eviction"},
     "landlord-duties": {"Before you rent": "Renting",
-                        "Ending a tenancy": "Ending a tenancy"},
+                        "Reasons and notice": "Ending a tenancy"},
     "property-tax-bill": {"How your property is assessed": "Understanding your bill",
                           "Apply for an exemption or credit by April 15, or a deferral by March 1":
-                              "Lowering or appealing it"},
+                              "Relief and appeals"},
     "disability-help": {"Apply to Social Security for SSDI or SSI": "Where to apply",
-                        "If you are turned down": "If you are turned down"},
+                        "If you are turned down": "Appealing a decision"},
 }
 
 
@@ -10300,6 +10303,8 @@ def _parts():
     import html as _h
     by = {g["slug"]: g for g in GUIDES}
     for slug, heads in PARTS.items():
+        # A step two guides share is copied, so one guide's heading is never the other's.
+        by[slug]["steps"] = [dict(s_) for s_ in by[slug]["steps"]]
         titles = {_h.unescape(s_["title"]): s_ for s_ in by[slug]["steps"]}
         for title, head in heads.items():
             assert title in titles, f"PARTS: {slug} has no step {title!r}"
@@ -10747,10 +10752,14 @@ def wording(slug):
         if node[0] == "ask":
             for a, then in node[2]:
                 out += [("At a Glance, the diagram", a, True), ("At a Glance, the diagram", then, True)]
-    for k, s_ in enumerate(g["steps"], 1):
-        where = f"step {k}"
+    part, k = "", 0
+    for s_ in g["steps"]:
         if s_.get("part"):
-            out.append((where + ", its heading", s_["part"], False))
+            part, k = s_["part"], 0
+        k += 1
+        where = f"{part}, step {k}" if part else f"step {k}"
+        if s_.get("part"):
+            out.append((f"{part}, its heading", s_["part"], False))
         out += [(where, s_["title"], False), (where, s_["text"], True), (where, s_["note"], True)]
         out += [(where, label, False) for label, _u in s_["actions"]]
     out.append(("after the steps", g["more"], True))
