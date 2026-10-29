@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.242
+# GRANITE_VERSION: 2026-09-04.243
 """
 Build the pages the navigation links to: legislators, town lookup, how it
 works, and about.
@@ -1480,7 +1480,14 @@ def not_found_body(example):
 # the artist's words are as they were. The repository's address is REPO's,
 # put in below, so the footer, the Data page and this page cannot point at two
 # places. Each line of What You Can Do Here links the page that does it (the
-# audit of 25 October 2026, S6), its words unchanged.
+# audit of 25 October 2026, S6), its words unchanged. "Neutrality and
+# Methods" replaced "Independence" by the person's approval of 29 October 2026
+# (docs/design/about-neutrality/draft.md on branch design/email-pass gives the
+# source of each sentence); its [[median]] is the Data page's figure, from
+# about_figures, and never typed. Its first sentence is Independence's own,
+# word for word, kept because nothing else on the page says the site is not
+# endorsed by the General Court or takes no position on any bill (the review
+# of 29 October 2026).
 ABOUT = """
 <h1>About Granite Record</h1>
 <p class="lead">Granite Record is a free, independent and searchable record of the New Hampshire
@@ -1580,9 +1587,31 @@ __PRIVACY__
 under the MIT License, and the whole record can be downloaded as spreadsheets
 from the <a href="data.html">Data page</a>.</p>
 
-<h2>Independence</h2>
+<h2>Neutrality and Methods</h2>
 <p>Granite Record is not affiliated with or endorsed by the New Hampshire General
-Court, and it takes no position on any bill.</p>
+Court, and it takes no position on any bill. I'm a sitting member of the House,
+so the site keeps to these rules.</p>
+<ul>
+<li>Nothing on it is editorialized. Dates, sponsors, vote tallies, committee
+assignments and hearing times are taken directly from the official record.
+Committee reports appear as filed, in the committee's own words, and summaries
+of a bill's progress are generated from the record by software.</li>
+<li>A report made with <i>Report a problem</i> holds nothing that identifies who
+sent it, so every one is checked against the official record in the same way,
+and corrected where the record bears it out. An email to
+<a href="mailto:contact@graniterecord.org">contact@graniterecord.org</a> is
+handled the same way, whoever sends it.</li>
+<li>On the Learn pages, where a concept needs an example bill, town or
+legislator, the site uses a less polarizing one when there is a choice. A list
+taken from the record, such as the hearings with the most sign-ins, is shown as
+the record has it.</li>
+</ul>
+<p>Each step-by-step guide links the official page that has the final word, and
+says when it was last checked against it.</p>
+<p>Hearing timestamps are measured against proceedings a person timed by
+watching the recording. On the ones the method places, the median is out by
+[[median]]. <a href="data.html#how-built">How the record is built</a>, on the
+Data page, gives every figure.</p>
 
 <h2>The Logo</h2>
 __LOGO__<p>The Granite Record logo was drawn by Debra Caplan, an artist in Peterborough,
