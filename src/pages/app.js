@@ -9215,10 +9215,13 @@ function renderCommitteeVideos(c){
   if(!rows.length)return `<p class="src fill">No recording of this committee from ${
     esc(termDash(t))} is on file.${t&&t<="2019-2020"?" "+STREAM_BEGIN_SAID:""}</p>`;
   const ch=c.chamber==="S"?"Senate":c.chamber==="H"?"House":"";
-  const want=PAGE&&PAGE.vid;
+  const want=PAGE&&PAGE.vid, chosen=rows.some(r=>r.id===want)?want:rows[0].id;
+  // What the page asks for is what is drawn: another term's recording, or
+  // none, gives way to this term's newest (vwPaneKept reads it).
+  if(PAGE)PAGE.vid=chosen;
   return videoView({who:[ch,c.name||""].filter(Boolean).join(" ")||"Committee",key:`${c.code}|${t}`,
     heading:`${rows.length.toLocaleString()} recording${rows.length===1?"":"s"} in ${termDash(t)}`,
-    rows,chosen:rows.some(r=>r.id===want)?want:rows[0].id,
+    rows,chosen,
     href:id=>`/committee/${encodeURIComponent(c.code)}/videos#v-${id}`,
     pid:r=>meetingPid({date:r.date},r.id),
     onChoose:id=>{if(PAGE)PAGE.vid=id;},
@@ -9745,12 +9748,15 @@ function renderCommittee(c){
    record, and a frame that is made again, or moved, starts over: so where the
    Videos pane of the term shown holds a frame, only what is above the pane is
    drawn again. Changing the term or the tab ends the playing, as it ends any
-   other. */
+   other; and so does an address that names another recording (the head's
+   "Videos tab", #v-<id>), which is a choice of it: the pane had been kept,
+   playing the old one under an address naming the new. */
 function vwPaneKept(el){
   if(!PAGE||PAGE.kind!=="committee"||PAGE_TAB!==COMMITTEE_TABS.videos||!PAGE.data)return null;
   const pane=el.querySelector("#ppane"), box=pane&&pane.querySelector(".vw");
   return box&&box.querySelector("iframe")
-    &&box.dataset.vwkey===`${PAGE.data.code}|${pageTerm()}`&&pane.parentNode===el?pane:null;
+    &&box.dataset.vwkey===`${PAGE.data.code}|${pageTerm()}`
+    &&!!VVIEW&&VVIEW.chosen===PAGE.vid&&pane.parentNode===el?pane:null;
 }
 
 // ------------------------------------------------------------------ boot ---

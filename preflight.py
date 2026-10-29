@@ -76244,11 +76244,44 @@ process.stdout.write("\n@@" + JSON.stringify(out));
             f"the row that is playing, pressed again, starts it over in a new frame: {chose}")
         assert chose["other"] == {"made": 1, "played": 1}, (
             f"another row pressed while one plays is not played through its still: {chose}")
+    # AN ADDRESS NAMING ANOTHER RECORDING while one plays is a choice of it:
+    # the pane was kept through renderPage, playing the old one under an
+    # address that named the new (the head's "Videos tab" link, pressed while
+    # Senate Finance's 28 April played, on real data). Kept while what plays is
+    # what the page asks for; and a term's tab drawn asks for what it drew, so
+    # a recording of the term left behind does not end the next one's playing.
+    kept = _node_app(r"""
+require("./stub.js");
+const fs = require("fs");
+const s = (0, eval)(fs.readFileSync("./page.js", "utf8") + "; ({vwPaneKept, renderCommitteeVideos,"
+  + " setState: (p, t, v) => { PAGE = p; PAGE_TAB = t; VVIEW = v; }, getVid: () => PAGE.vid})");
+const el = {};
+const box = {dataset: {vwkey: "S07|2025-2026"}, querySelector: (sel) => sel === "iframe" ? {} : null};
+const pane = {parentNode: el, querySelector: (sel) => sel === ".vw" ? box : null};
+el.querySelector = (sel) => sel === "#ppane" ? pane : null;
+const page = (vid) => ({kind: "committee", data: {code: "S07"}, term: "2025-2026", terms: ["2025-2026"], vid});
+const out = {};
+try {
+  s.setState(page("B"), 2, {chosen: "B"}); out.same = s.vwPaneKept(el) === pane;
+  s.setState(page("A"), 2, {chosen: "B"}); out.other = s.vwPaneKept(el) === pane;
+  s.setState(page("left2024"), 2, null);
+  s.renderCommitteeVideos({code: "S07", name: "Finance", chamber: "S", sessions: [],
+    recordings: [{id: "N1", date: "2026-05-12", term: "2025-2026"}]});
+  out.drawn = s.getVid();
+} catch (e) { out.threw = e.constructor.name + ": " + e.message; }
+process.stdout.write("\n@@" + JSON.stringify(out));
+""")
+    if kept is not None:
+        assert "threw" not in kept and kept["same"] and not kept["other"], (
+            f"a recording that plays is kept while the address names another: {kept}")
+        assert kept["drawn"] == "N1", (
+            f"a term's Videos tab drawn asks for {kept['drawn']!r}, not the recording it drew")
     return "ok", ("the third tab, counted; a still of the newest, nothing from YouTube before Play; "
                   "rows of the term with the Meetings tab's chips, no bill line where none is known; "
                   "one caption with nothing missing said, no dot ending a line; the moment the "
                   "Meetings tab's own button; twenty and Show all 25; a term with none says so; no "
-                  "tab with no recording; the row playing, pressed again, plays on")
+                  "tab with no recording; the row playing, pressed again, plays on; an address naming another "
+                  "recording ends it")
 
 
 @check("frontend", "the committees index says its counts of bills and sessions are every "
