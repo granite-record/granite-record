@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.722
+# GRANITE_VERSION: 2026-09-04.723
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -98975,6 +98975,82 @@ def _journal_clean_both(JD):
     assert "clean_both(" in src and "clean(raw" not in src, (
         "read_year cleans each journal twice again")
     return "ok", f"{len(texts)} texts the same both ways; read_year finds the heads once"
+
+
+_DEBATE_RUNON = """Rep. Nicholas Germana moved that the debate on HB 148, permitting classification of individuals based on
+biological sex in certain circumstances, be printed in the Journal. Motion adopted.
+
+                                                            DEBATE ON HB 148
+
+Representative Layon: Thank you, Mister Speaker. HB 148 is a common-sense bill. I urge my colleagues to press
+the green button and override the governor's veto of this bill. Thank you, Mister Speaker.
+                                           REGULAR CALENDAR (CONT'D)
+Representative Turer: Thank you, Mister Speaker. If I know that this exact language was vetoed by our
+previous governor, then wouldn't I press the red button to uphold this very prudent veto? Thank you.
+                                              HB 148 CONT'D
+Speaker Steven Smith: The question is whether HB 148, notwithstanding the governor's veto, should become
+law? This is a roll call vote. Failing to meet the two-thirds margin, the motion fails. 188 to 165.
+                    17DECEMBER2025HOUSERECORD                                                      13
+
+                                       GOVERNOR'S VETO MESSAGE ON HB 319-FN
+
+By the authority vested in me, pursuant to part II, Article 44 of the New Hampshire Constitution, on June
+3, 2025, I have vetoed House Bill 319, relative to the responsibility of local school districts to provide
+transportation for pupils in kindergarten.
+Representative Ammon: Thank you, Mister Speaker. I rise in favor of overriding the veto of HB 319 today.
+
+                                        YEAS 182 - NAYS 173
+"""
+
+
+@check("session", "a printed debate ends at the next heading, a heading that ends on a bill's "
+       "number among them, or at the next bill's report, and goes on over the page's continued "
+       "headings",
+       needs=("journal_days",))
+def _debate_ends_at_numbered_heading(JD):
+    """HB 148's override debate of 17 December 2025 ran on through
+    "GOVERNOR'S VETO MESSAGE ON HB 319-FN" -- the veto message, Rep. Ammon's
+    speech on HB 319 and its roll call -- because the heading pattern took no
+    digit (the owner's report, 29 October 2026). Nine debates on disk ran on
+    the same way. debates() ends a debate at DEBATE_END now, NEXT_HEAD with
+    a bill's number allowed at the end; a heading that goes on after the
+    number, or carries none -- REGULAR CALENDAR (CONT'D), HB 148 CONT'D -- is
+    the same debate over the page. The fixture is the Journal's own lines,
+    shortened."""
+    got = JD.debates(JD.clean(_DEBATE_RUNON))
+    assert [d["bill"] for d in got] == ["HB148"], f"the fixture's debates: {got}"
+    who = [w for w, _s in got[0]["speeches"]]
+    said = " ".join(s for _w, s in got[0]["speeches"])
+    assert who == ["Representative Layon", "Representative Turer", "Speaker Steven Smith"], (
+        f"HB 148's debate is spoken by {who}: a continued heading cut it short, or "
+        "HB 319's speaker was read into it")
+    assert said.endswith("188 to 165.") and "authority vested" not in said, (
+        "HB 148's debate runs on into HB 319's veto message: "
+        f"...{said[-120:]!r}")
+    # And where the calendar goes on with no heading: the next bill's report,
+    # its recommendation in capitals over a line end, ends the debate before
+    # it; a bill's number that a speech wraps onto a line of its own does
+    # not (HB 1555-FN of 30 January 2008; HB 1279's debate of 28 March 2024).
+    nxt = JD.debates(JD.clean(
+        "Rep. Wendelboe moved that the debate on HB 1428, naming a portion of the Franconia\n"
+        "Notch Parkway after Corporal Bruce McKay, be printed in the Journal. Motion adopted.\n\n"
+        "                                                DEBATE ON HB 1428\n\n"
+        "Rep. Gile: Thank you, Mister Speaker. We have a much more important bill to name than\n"
+        "HB 1279, which we sent on already, and I ask you to support Interim Study today.\n"
+        "Rep. Ward: Thank you very much. Please support Interim Study.\n"
+        "                                       REGULAR CALENDAR (CONT'D)\n\n"
+        "HB 1555-FN, relative to an E-Z Pass discount for residents of Merrimack. INEXPEDIENT\n"
+        "TO LEGISLATE.\n"
+        "Rep. Sprague: This bill would have given all E-Z Pass account holders a discount.\n"))
+    assert [w for w, _s in nxt[0]["speeches"]] == ["Rep. Gile", "Rep. Ward"] and \
+        "E-Z Pass" not in nxt[0]["speeches"][-1][1], (
+            f"a debate runs on into the next bill's report, or stops at a number a speech "
+            f"wrapped: {nxt[0]['speeches']}")
+    assert JD.NEXT_HEAD.pattern == r"^[ \t]{4,}[A-Z][A-Z' ’.,&-]{6,}[ \t]*$", (
+        "NEXT_HEAD changed: journal_bills and the consent and leave readers were "
+        "measured on it as it was, and only debates() takes a bill's number")
+    return "ok", ("HB 148's debate ends on its own vote, over two continued headings; "
+                  "HB 1428's at the next bill's report, not at a number a speech wrapped")
 
 
 @check("session", "a journal pattern found only where it can begin is finditer's own list",
