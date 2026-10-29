@@ -229,13 +229,21 @@ async function votes(env, bucket, s, v, lease, now, out, opts, elapsed) {
   s.sql = { ...s.sql, read: out.at };
   if (!(await checkpoint(bucket, s, lease))) { out.codes.push("sql_not_started_lease_lost"); return false; }
   const room = Math.max(5_000, Math.min(SQL_BUDGET_MS, WRITE_BY_MS - elapsed() - 25_000));
-  const r = await readVotes({ env, connect, now, sq: s.sql, due: v, until: Date.now() + room,
-                              files: d => readVotesFile(bucket, votesKey(d)) });
+  const spent = { connections: 0, statements: 0, rows: 0 };
+  let r;
+  try {
+    r = await readVotes({ env, connect, now, sq: s.sql, due: v, until: Date.now() + room, spent,
+                         files: d => readVotesFile(bucket, votesKey(d)) });
+  } finally {
+    // Counted whatever happened after connecting, and put at once if it threw,
+    // so a persistent error never escapes the day's budget.
+    s.count = { ...s.count, connections: (s.count.connections || 0) + spent.connections,
+                statements: (s.count.statements || 0) + spent.statements,
+                rows: (s.count.rows || 0) + spent.rows };
+    out.count = s.count;
+    if (!r) { try { await checkpoint(bucket, s, lease); } catch { /* the run's error says it */ } }
+  }
   s.sql = { ...r.sq, on: nh(now).date };
-  s.count = { ...s.count, connections: (s.count.connections || 0) + r.spent.connections,
-              statements: (s.count.statements || 0) + r.spent.statements,
-              rows: (s.count.rows || 0) + r.spent.rows };
-  out.count = s.count;
   out.codes.push(...r.codes);
   if (r.fail) out.fail = out.fail || r.fail;
   let missed = 0;

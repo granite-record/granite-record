@@ -174,8 +174,22 @@ class Wire {
   }
 
   fail(phase, why) {
-    this.close();
+    if (phase === "statement" && !this.dead) this.attention();
+    else this.close();
     return new TdsError(phase === "login" ? "connect" : "query", why);
+  }
+
+  // A statement given up on: SQL Server's own cancel, an ATTENTION packet
+  // (type 6, header only), so that the server stops the work rather than
+  // scanning on for a client that has gone; then the connection is closed.
+  // Best effort, bounded at a second, and nothing is read back.
+  attention() {
+    const p = new Uint8Array(8);
+    p[0] = 0x06; p[1] = 0x01; p[3] = 8; p[6] = 1;
+    const sent = Promise.resolve().then(() => this.writer.write(p)).catch(() => {});
+    this.dead = true;
+    const bounded = new Promise(ok => setTimeout(ok, 1000));
+    Promise.race([sent, bounded]).finally(() => { this.dead = false; this.close(); });
   }
 
   within(p, until, phase, doing) {

@@ -121,7 +121,7 @@ test("replay, 12 March 2020, the House with no stream: the heartbeat finds the s
   assert.ok(kinds.includes("sql_read_hot") && kinds.includes("sql_read_warm") && kinds.includes("sql_read_heartbeat"));
   const lastVote = Math.max(...record.map(savedAt));
   assert.ok(reads.some(r => r.t > lastVote), "the 23:58 roll call was read");
-  console.log(`# replay 2020-03-12: ${w.state().count.connections} connections, ${w.state().count.statements} statements`);
+  console.log(`# replay 2020-03-12: ${reads.length} connections to 01:00`);
 });
 
 test("replay, 29-30 January 2026, the Senate: every roll call reaches the sitting's file, the two saved next morning too", async () => {
@@ -160,4 +160,26 @@ test("replay, a non-sitting weekday in January: the heartbeat alone, a few conne
   assert.ok(![...w.r2.objects.keys()].some(k => k.startsWith("votes/")), "no file for a day with nothing");
   assert.equal(w.state().count.statements, reads.length, "Q1 alone, one a read");
   assert.equal(w.fails().length, 0);
+});
+
+test("replay, reading switched on in the middle of 11 March 2026: every earlier day's ballots land once, and the budget holds", async () => {
+  const { w, fake } = await replay({
+    start: "2026-03-11T16:00:00Z", to: "2026-03-11T21:00:00Z",
+    streams: [{ id: "houseSess11", chamber: "H", title: "House Session (03/11/2026)",
+                start: T("2026-03-11T12:58:46Z"), end: T("2026-03-12T00:49:01Z") }] });
+  const q2s = fake.batches.filter(b => /RollCallHistory/.test(b));
+  // How often each roll call's ballots were asked: a complete set is never asked twice.
+  const asked = new Map();
+  for (const b of q2s) for (const c of b.matchAll(/LegislativeBody = '([HS])' AND h\.VoteSequenceNumber IN \(([\d,]+)\)/g)) {
+    for (const seq of c[2].split(",")) asked.set(`${c[1]}-${seq}`, (asked.get(`${c[1]}-${seq}`) || 0) + 1);
+  }
+  const q2 = q2s.length;
+  const files = [...w.r2.objects.keys()].filter(k => k.startsWith("votes/")).map(k => w.r2.read(k));
+  const incomplete = files.flatMap(f => f.rollcalls.filter(r => !r.ballots_complete).map(r => r.id));
+  assert.deepEqual(incomplete, [], "every roll call's ballots landed in its own day's file");
+  const shown = files.reduce((n, f) => n + f.rollcalls.length, 0);
+  const twice = [...asked].filter(([, n]) => n > 1);
+  assert.deepEqual(twice, [], `${q2} Q2 statements for ${shown} roll calls; asked more than once: ${twice.slice(0, 5)}`);
+  assert.equal(w.state().sql.held, undefined);
+  assert.ok(w.state().count.rows < 60_000, `${w.state().count.rows} rows`);
 });

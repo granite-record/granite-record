@@ -312,3 +312,25 @@ test("a votes file R2 holds but this cannot read is never rebuilt from one read"
     assert.ok(out.codes.includes("sql_unreadable_2027-01-07"), out.codes.join(" "));
     assert.equal(w.r2.objects.get("votes/2027-01-07.json").body, "{ half a file");
   }));
+
+test("a Q3 that fails every run slows, and three failures in a row hold the day though Q1 succeeds", () =>
+  withDb({ start: "2027-01-07T15:02:00Z", control: ON }, async (w, fake) => {
+    w.yt.add(SESSION);
+    await w.every("2027-01-07T15:02:00Z", "2027-01-07T16:00:00Z");
+    const q3s = fake.seen.batches.filter(b => /FROM Docket d/.test(b)).length;
+    assert.ok(q3s <= 4, `${q3s} Q3s in an hour`);
+    assert.equal(w.state().sql.held.why, "query");
+  }, { answer: (() => { const a = fromRecords(); return (sql, n) => (/FROM Docket d/.test(sql)
+    ? { error: { number: 207, message: "Invalid column name 'statusorder'." } } : a(sql, n)); })() }));
+
+test("a run that fails after connecting still counts its connection and statements", () =>
+  withDb({ start: "2027-01-07T15:02:00Z", control: ON }, async (w) => {
+    w.yt.add(SESSION);
+    await w.runAt();
+    const before = w.state().count.connections;
+    w.r2.hooks.get = async key => { if (key.startsWith("votes/")) throw new Error("R2 said 500"); };
+    const out = await w.runAt("2027-01-07T15:04:00Z");
+    assert.ok(out.codes.includes("error"), out.codes.join(" "));
+    assert.equal(w.state().count.connections, before + 1);
+    assert.ok(w.state().count.statements > 0);
+  }));

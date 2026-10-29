@@ -292,3 +292,58 @@ test("the miss count starts over when a roll call is listed again, across reads 
   read([], "2027-01-07T15:08:00Z");
   assert.equal(file.rollcalls[0].note, null, "one miss after being listed again is not three in a row");
 });
+
+// ---- the load review's findings, as tests ------------------------------------------
+import { nodeConnect, startFakeTds } from "./fake_tds.js";
+import { fromRecords } from "./from_records.js";
+import { Q3_FAILED_MS, readVotes } from "../../workers/live/votes.js";
+
+const local = port => ({ SQL_HOST: "127.0.0.1", SQL_PORT: String(port) });
+const hotDue = (now, sq = {}) => votesDue(now, { ...sq, chambers: { H: { last_rc: new Date(+now - MIN).toISOString() } } });
+
+test("a Q3 that never answers: Q2 has already run, the server is sent its cancel, and Q3 slows to one hot run in five", async () => {
+  const base = fromRecords();
+  const fake = await startFakeTds({ answer: (sql, n) => (/FROM Docket d/.test(sql) ? { silent: true } : base(sql, n)) });
+  try {
+    const now = at("2026-03-11T19:00:00Z");
+    const due = hotDue(now);
+    const r = await readVotes({ env: local(fake.port), connect: nodeConnect, now, due, files: async () => null,
+                                until: Date.now() + 1500 });
+    const order = fake.seen.batches.map(b => (/RollCallHistory/.test(b) ? "q2" : /Docket/.test(b) ? "q3" : "q1"));
+    assert.deepEqual(order, ["q1", "q2", "q3"], "ballots before the docket");
+    await new Promise(ok => setTimeout(ok, 300));
+    assert.ok(fake.seen.packets.some(p => p.type === 0x06), "an ATTENTION packet: the server stops the scan");
+    assert.equal(r.sq.q3_ms, Q3_FAILED_MS);
+    assert.equal(votesDue(at("2026-03-11T19:02:00Z"), { ...r.sq, chambers: { H: { last_rc: "2026-03-11T19:01:00Z" } } }).q3, false);
+    assert.ok(r.writes.some(([k]) => k === "votes/2026-03-11.json"), "what Q1 and Q2 read is still written");
+  } finally { await fake.close(); }
+});
+
+test("a heartbeat run reads Q1 alone, ballots waiting or not", async () => {
+  const fake = await startFakeTds({ answer: fromRecords() });
+  try {
+    const now = at("2026-03-12T15:00:00Z");
+    const sq = { need: { "2026-H-150": { body: "H", seq: 150, day: "2026-03-11", tries: 0, last: null } } };
+    const due = votesDue(now, sq);
+    assert.equal(due.why, "heartbeat");
+    await readVotes({ env: local(fake.port), connect: nodeConnect, now, sq, due, files: async () => null,
+                      until: Date.now() + 10_000 });
+    assert.equal(fake.seen.batches.length, 1);
+    assert.match(fake.seen.batches[0], /FROM RollCallSummary/);
+  } finally { await fake.close(); }
+});
+
+test("a scheduled session stream that never starts stops counting an hour after its time; inside the night's window only a live one reads", () => {
+  const upcoming = (now) => ({ status: { ok: true }, next_check: new Date(+now + 2 * MIN).toISOString(), streams: [
+    { video: "x", chamber: "S", title: "Senate Session (11/12/2026)", status: "upcoming", scheduled: "2026-11-12T15:00:00Z" }] });
+  for (const [t, want] of [["2026-11-12T15:58:00Z", "hot"], ["2026-11-12T16:02:00Z", "off"]]) {
+    assert.equal(chamberState(at(t), "S", {}, upcoming(at(t))).state, want, t);
+  }
+  // 08:46 EDT, inside the window: scheduled for 09:00, not yet live.
+  const t = at("2026-04-08T12:46:00Z");
+  const f = { status: { ok: true }, next_check: "2026-04-08T12:48:00Z", streams: [
+    { video: "y", chamber: "H", title: "House Session (04/08/2026)", status: "upcoming", scheduled: "2026-04-08T13:00:00Z" }] };
+  assert.equal(chamberState(t, "H", {}, f).state, "off");
+  f.streams[0].status = "live";
+  assert.equal(chamberState(t, "H", {}, f).state, "hot");
+});

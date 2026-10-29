@@ -74,6 +74,12 @@ export const HEARTBEAT_UNTIL = 18;            // New Hampshire hour
 export const SEASON_LAST_MONTH = 6;           // January to June
 export const Q2_TRIES = 2;
 export const Q3_SLOW_MS = 1000;
+// What a failed or timed-out Q3 counts as, so it slows to one hot run in five.
+export const Q3_FAILED_MS = 60_000;
+// A scheduled stream that has not started counts as about to, from 15
+// minutes before its time to an hour after; never started by then, it is not
+// a sitting.
+export const STREAM_LATE = 60 * MINUTE;
 export const FAILS_TO_HOLD = 3;
 export const CONNECT_HOLD = 30 * MINUTE;
 export const SQL_BUDGET_MS = 45_000;
@@ -91,12 +97,21 @@ export function freshStreams(file, now) {
   return +now <= Date.parse(file.next_check) + 5 * MINUTE ? file : null;
 }
 
-// Whether chamber c's session stream is live (or about to be).
-export function sessionLive(streams, c, now) {
-  return Boolean(streams && (streams.streams || []).some(x => sessionOf(x.title) === c && x.chamber === c && (
-    x.status === "live" || (x.status === "upcoming" && x.scheduled
-                            && Date.parse(x.scheduled) - +now <= STREAM_LEAD))));
+// "live" when chamber c's session stream is live, "soon" when one is
+// scheduled to start within 15 minutes (or started late, up to an hour past
+// its time), else null.
+export function sessionStream(streams, c, now) {
+  let soon = false;
+  for (const x of (streams && streams.streams) || []) {
+    if (sessionOf(x.title) !== c || x.chamber !== c) continue;
+    if (x.status === "live") return "live";
+    const at = x.status === "upcoming" && x.scheduled ? Date.parse(x.scheduled) : NaN;
+    if (at - +now <= STREAM_LEAD && +now - at <= STREAM_LATE) soon = true;
+  }
+  return soon ? "soon" : null;
 }
+
+export const sessionLive = (streams, c, now) => sessionStream(streams, c, now) !== null;
 
 function heartbeatHours(now) {
   const c = nh(now);
@@ -110,16 +125,18 @@ function heartbeatHours(now) {
 export function chamberState(now, c, sq = {}, streams = null) {
   const t = +now, today = nh(now).date;
   const me = (sq.chambers || {})[c] || {};
-  const live = sessionLive(streams, c, now);
+  const stream = sessionStream(streams, c, now);
+  const live = stream !== null;
   const window = nightWindow(now);
   let state = "off";
   if (live || since(me.last_rc, t) < RC_HOT) state = "hot";
   else if (since(me.last_hot, t) < WARM_FOR && nh(Date.parse(me.last_hot)).date === today) state = "warm";
   else if (heartbeatHours(now) && (Number(today.slice(5, 7)) <= SEASON_LAST_MONTH
            || (me.hot_day && me.hot_day < today && me.hot_day >= addDays(today, -AFTER_HOT_DAYS)))) state = "heartbeat";
-  // The night's window: only a live session stream reads inside it.
-  if (window && !(state === "hot" && live)) state = "off";
-  return { state, live };
+  // The night's window: only a session stream already live reads inside it,
+  // not one about to start (design 2.3).
+  if (window && !(state === "hot" && stream === "live")) state = "off";
+  return { state, live: stream === "live" };
 }
 
 // ---- what a run reads ----------------------------------------------------------
@@ -219,13 +236,15 @@ function failedConnect(sq, code, now, print) {
 //   sq             state.json's sql, as read
 //   due            votesDue's answer, with due.read true
 //   until          the run's SQL deadline (epoch ms)
-export async function readVotes({ env, connect, now, sq: before = {}, due, files, count = {}, until }) {
+// `spent` is the caller's, and counted as it goes, so that a run that fails
+// after connecting still counts its connection and statements.
+export async function readVotes({ env, connect, now, sq: before = {}, due, files, until,
+                                  spent = { connections: 0, statements: 0, rows: 0 } }) {
   const t = +now, at = iso(now), today = nh(now).date, year = Number(today.slice(0, 4));
   const sq = structuredClone(before);
   sq.chambers = sq.chambers || {};
   const codes = [], writes = [];
   let fail = null;
-  const spent = { connections: 0, statements: 0, rows: 0 };
 
   // A login hold lifts if the published login changed.
   const print = await loginPrint();
@@ -246,10 +265,15 @@ export async function readVotes({ env, connect, now, sq: before = {}, due, files
   }
   sq.connfails = 0;
   sq.after_hold = false;
+  const need = { ...(sq.need || {}) };
+  let asked = [];
 
   let summary = null, docket = null;
   const ballots = new Map();
   const errors = [];
+  // Failures are counted per statement, so that one statement failing every
+  // run while another succeeds still reaches the hold.
+  const qfails = { ...(typeof sq.qfails === "object" && sq.qfails ? sq.qfails : {}) };
   const run = async (name, sql, read) => {
     if (!conn.open) { errors.push(`${name}: the connection had closed`); return null; }
     spent.statements++;
@@ -257,54 +281,64 @@ export async function readVotes({ env, connect, now, sq: before = {}, due, files
       const res = await conn.query(sql, { until });
       spent.rows += res.rows.length;
       const got = read(res);
-      sq.qfails = 0;
+      qfails[name] = 0;
       return { got, ms: res.ms };
     } catch (e) {
-      sq.qfails = (sq.qfails || 0) + 1;
+      qfails[name] = (qfails[name] || 0) + 1;
       errors.push(`${name}: ${e.code || "query"} ${String(e.message || e).slice(0, 120)}`);
       return null;
     }
   };
 
-  const from = due.wide ? addDays(today, -WIDE_DAYS) : today;
-  const r1 = await run("q1", q1({ year, from, until: addDays(today, 1) }), r => readSummary(r, year));
-  if (r1) { summary = r1.got; if (due.wide) sq.wide = at; }
-  if (due.q3) {
-    const r3 = await run("q3", q3({ year, day: today }), readDocket);
-    if (r3) { docket = r3.got; sq.q3 = at; sq.q3_ms = r3.ms; }
-  }
-  // Ballots for what the previous reads, and this one, found needing them.
-  const need = { ...(sq.need || {}) };
-  const known = sq.saves || {};
-  for (const r of summary || []) {
-    // A roll call never read before, or whose tally or save moved, has its
-    // ballots asked in this same run.
-    const k = known[r.id];
-    if (dayOfRow(r) >= addDays(today, -WIDE_DAYS) && (!k || k.m !== r.modified)) {
-      need[r.id] = { body: r.body, seq: r.seq, day: dayOfRow(r), tries: 0, last: null };
-    }
-  }
-  const asked = ballotsDue(now, need, today);
-  if (asked.length) {
-    const r2 = await run("q2", q2({ year, rollcalls: asked }), readBallots);
-    for (const a of asked) need[a.id] = { ...need[a.id], tries: need[a.id].tries + 1, last: at };
-    if (r2) {
-      for (const b of r2.got) {
-        const id = `${year}-${b.body}-${b.seq}`;
-        if (!ballots.has(id)) ballots.set(id, new Map());
-        ballots.get(id).set(b.member, b.vote);
+  try {
+    const from = due.wide ? addDays(today, -WIDE_DAYS) : today;
+    const r1 = await run("q1", q1({ year, from, until: addDays(today, 1) }), r => readSummary(r, year));
+    if (r1) summary = r1.got;
+    // A failed wide read waits its 10 minutes like a good one.
+    if (due.wide) sq.wide = at;
+    // Ballots before the docket: a slow Docket scan must not starve them. A
+    // heartbeat run reads Q1 alone (design 2.3).
+    const known = sq.saves || {};
+    for (const r of summary || []) {
+      // A roll call never read before, or whose save moved, has its ballots
+      // asked in this same run.
+      const k = known[r.id];
+      if (dayOfRow(r) >= addDays(today, -WIDE_DAYS) && (!k || k.m !== r.modified)) {
+        need[r.id] = { body: r.body, seq: r.seq, day: dayOfRow(r), tries: 0, last: null };
       }
     }
+    asked = due.why === "heartbeat" ? [] : ballotsDue(now, need, today);
+    if (asked.length) {
+      const r2 = await run("q2", q2({ year, rollcalls: asked }), readBallots);
+      for (const a of asked) need[a.id] = { ...need[a.id], tries: need[a.id].tries + 1, last: at };
+      if (r2) {
+        for (const b of r2.got) {
+          const id = `${year}-${b.body}-${b.seq}`;
+          if (!ballots.has(id)) ballots.set(id, new Map());
+          ballots.get(id).set(b.member, b.vote);
+        }
+      }
+    }
+    if (due.q3) {
+      const r3 = await run("q3", q3({ year, day: today }), readDocket);
+      // A Q3 that failed or ran out of time is a slow one: one hot run in five.
+      sq.q3 = at;
+      sq.q3_ms = r3 ? r3.ms : Q3_FAILED_MS;
+      if (r3) docket = r3.got;
+    }
+  } finally {
+    conn.close();
   }
-  conn.close();
   sq.read = at;
+  sq.qfails = qfails;
   if (errors.length) {
     codes.push(`sql_query_failed_${errors.length}`);
-    if ((sq.qfails || 0) >= FAILS_TO_HOLD) {
+    if (Object.values(qfails).some(n => n >= FAILS_TO_HOLD)) {
       sq.held = { why: "query", until: iso(midnightAfter(now, NEW_YORK)), since: at };
       fail = `${holdSentence(sq.held)} (${errors[0]})`;
     }
   }
+  const from = due.wide ? addDays(today, -WIDE_DAYS) : today;
 
   // Merge by date: the dates Q1 and Q3 named, and today.
   const dates = new Set([today]);
@@ -353,7 +387,7 @@ export async function readVotes({ env, connect, now, sq: before = {}, due, files
       f.status = { state: "reading", problem, since: problem ? (f.status && f.status.problem === problem
                                                                 ? f.status.since : at) : null };
     }
-    if (date === today || rows.length || lines.length || m.changed.length) writes.push([votesKey(date), f]);
+    if (date === today || rows.length || lines.length || m.changed.length || mine.size) writes.push([votesKey(date), f]);
   }
   for (const c of firstSeenToday) sq.chambers[c] = { ...(sq.chambers[c] || {}), last_rc: at };
   // Kept only for what the next read can still touch.
