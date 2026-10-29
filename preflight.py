@@ -42364,6 +42364,12 @@ responsibilities every three years. Vote 10-1.
 HB 541, relative to the obligation of religious leaders to report child abuse.
 Rep. Margaret D. Hallyburton for Commerce and Consumer Affairs: The state Supreme
 Court has before it an appeal that will likely address this issue. Vote 10-0.
+HB 908, relative to the practice of massage. NOT RECOMMENDED FOR FUTURE LEGISLATION.
+Rep. Lee Quandt for Commerce and Consumer Affairs. The committee found no need. Vote13-0.
+HB 1714, relative to prescription monitoring. RECOMMENDED FOR FUTURE LEGISLATION.
+Rep. Lee Quandt for Commerce and Consumer Affairs. Further study is warranted. 16-0.
+SJR 3, relative to the Pledge of Allegiance. NOT RECOMMENDED FOR FUTURE LEGISLATION.
+Rep. Lee Quandt for Commerce and Consumer Affairs: "under God" in the Pledge. Vote : 9-4.
 HB 1429-FN-A, establishing a procedure for the department of environmental services to transfer ownership
 of dams to municipalities or others, including making loans. WITHOUT RECOMMENDATION.
 HB 1382, relative to the state's guidance on fees. NOT RECOMMENDED FOR FUTURE LEGISLATION.
@@ -42412,7 +42418,8 @@ def _interim_statements(I, B):
     number inside NOT ... RECOMMENDED, a vote broken over a line, "FU-" over
     "TURE LEGISLATION", LEGISLATIVE ADMINISTRATION as a heading, a majority's
     and a minority's statement, a sentence of reasons opening on a bill, and
-    the section ending on a meeting day with no heading."""
+    the section ending on a meeting day with no heading; and the second
+    review's votes: "Vote13-0.", "Vote : 9-4." and a tally alone, "16-0."."""
     root = Path(tempfile.mkdtemp())
     try:
         (root / "calendars" / "2026").mkdir(parents=True)
@@ -42423,7 +42430,8 @@ def _interim_statements(I, B):
     got = data.get("2025-2026", {})
     assert dict(held) == {"held: a majority's and a minority's statement": 1} and \
         sorted(got) == sorted(["HB1188", "HB1404", "HB1429", "HB312", "HB541", "HB1779",
-                               "HB1382", "HB1464", "CACR11", "HB1680"]), (
+                               "HB1382", "HB1464", "CACR11", "HB1680", "HB908", "HB1714",
+                               "SJR3"]), (
         f"the fixture's statements: {sorted(got)}, held {dict(held)} -- HB 9, after the "
         "section's end, and HB 1348, a sentence of reasons, are none of them")
     s = {b: v[0] for b, v in got.items()}
@@ -42436,7 +42444,10 @@ def _interim_statements(I, B):
             "HB1382": ("not", "NOT RECOMMENDED FOR FUTURE LEGISLATION", "Rep Peter Bixby", 9, 2),
             "HB1464": ("not", "NOT RECOMMENDED FOR FUTURE LEGISLATION", "Rep. Wayne Moynihan", 11, 0),
             "CACR11": ("not", "NOT RECOMMENDED FOR FUTURE LEGISLATION", "Rep. Carol M. Williams", 8, 0),
-            "HB1680": ("rec", "RECOMMENDED FOR FUTURE LEGISLATION", "Rep. Nicole Klein-Knight", 12, 0)}
+            "HB1680": ("rec", "RECOMMENDED FOR FUTURE LEGISLATION", "Rep. Nicole Klein-Knight", 12, 0),
+            "HB908": ("not", "NOT RECOMMENDED FOR FUTURE LEGISLATION", "Rep. Lee Quandt", 13, 0),
+            "HB1714": ("rec", "RECOMMENDED FOR FUTURE LEGISLATION", "Rep. Lee Quandt", 16, 0),
+            "SJR3": ("not", "NOT RECOMMENDED FOR FUTURE LEGISLATION", "Rep. Lee Quandt", 9, 4)}
     for b, (rec, printed, who, y, n) in want.items():
         assert (s[b]["rec"], s[b]["printed"], s[b]["author"], s[b].get("vote_yeas"),
                 s[b].get("vote_nays")) == (rec, printed, who, y, n), f"{b} reads {s[b]}"
@@ -42482,7 +42493,8 @@ def _interim_statements(I, B):
         blk["reports"][0]["side"] == B.INTERIM_SIDE, f"HB 541 of 2004's card: {blk}"
     assert "HB1404" not in tab and "HB312" not in tab and \
         tab["HB1429"][0]["majority_recommendation"] == "WITHOUT RECOMMENDATION"
-    return "ok", ("ten statements in every form the calendars print; the docket fills 2004's "
+    assert s["HB1714"]["text"] == "Further study is warranted.", f"HB 1714's text: {s['HB1714']}"
+    return "ok", ("thirteen statements in every form the calendars print; the docket fills 2004's "
                   "recommendation, holds back a disagreement, and only the mis-filed report "
                   "gives way")
 

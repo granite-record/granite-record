@@ -220,6 +220,9 @@ def member_line(s, at, cmte, names):
     return _Line(m, m.group("who")[:tail.start()].strip(" ,"), name)
 
 
+BARE_TALLY = re.compile(r"(?<=\.)\s+(?P<y>\d{1,3})\s*[-\u2013]\s*(?P<n>\d{1,3})\.?\s*$")
+
+
 def statement(cmte, raw, source, names=None):
     """(bill, statement), or (why, None) where it cannot be read. `names`
     is {COMMITTEE HEADING: the committee's name as a member's line spells
@@ -281,10 +284,18 @@ def statement(cmte, raw, source, names=None):
            "committee": committee, **({"signed": True} if sig else {})}
     # The vote, as the report reader takes it: the last one with only page
     # furniture after it, cut out of the text, the sentence keeping its stop.
+    # And as a few statements print it: "Vote13-0." with no space (2008,
+    # 2010), "Votes 17-0." (2008), "Vote : 13-0." (2004), and the tally alone
+    # as the last sentence,
+    # "... legislation. 16-0." (2006, 2008). "Vote 161." (SB 387 of 2000) is
+    # left as printed: which digit the dash fell from is a guess.
+    body = re.sub(r"\bVotes?[ \t]*:?[ \t]*(?=\d{1,3}\s*[-\u2013]\s*\d)", "Vote ", body)
     v = None
     for cand in FCR.VOTE_TAIL.finditer(body):
         if len(body) - cand.end() <= FCR.VOTE_TAIL_SLACK:
             v = cand
+    if not v:
+        v = BARE_TALLY.search(body)
     if v:
         out["vote_yeas"], out["vote_nays"] = int(v.group("y")), int(v.group("n"))
         body = body[:v.start()].lstrip(" .;,").rstrip().rstrip(";,").rstrip()
