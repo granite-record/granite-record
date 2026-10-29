@@ -56,7 +56,10 @@ to draw itself: `functions/api/report.js`, which takes a reader's "this is
 wrong" report, is write-only, and the box on the page falls back to an email
 link when it is down; and email following -- the endpoints under
 `functions/api/follow/` and the sender Worker in `workers/follow/` -- which
-only a reader who asks for updates ever reaches.
+only a reader who asks for updates ever reaches. One more runs that no reader
+reaches at all: `workers/night-timer/`, which starts the nightly at 08:17 UTC
+because GitHub's own scheduler had begun starting it hours late; GitHub's
+cron stays as its fallback.
 
 *Nothing that cannot be checked is published as though it could be.* A
 timestamp taken from a chair saying "we'll open the hearing on House Bill 1123"
