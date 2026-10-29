@@ -98289,7 +98289,8 @@ Representative Ammon: Thank you, Mister Speaker. I rise in favor of overriding t
 
 
 @check("session", "a printed debate ends at the next heading, a heading that ends on a bill's "
-       "number among them, and goes on over the page's continued headings",
+       "number among them, or at the next bill's report, and goes on over the page's continued "
+       "headings",
        needs=("journal_days",))
 def _debate_ends_at_numbered_heading(JD):
     """HB 148's override debate of 17 December 2025 ran on through
@@ -98311,10 +98312,30 @@ def _debate_ends_at_numbered_heading(JD):
     assert said.endswith("188 to 165.") and "authority vested" not in said, (
         "HB 148's debate runs on into HB 319's veto message: "
         f"...{said[-120:]!r}")
+    # And where the calendar goes on with no heading: the next bill's report,
+    # its recommendation in capitals over a line end, ends the debate before
+    # it; a bill's number that a speech wraps onto a line of its own does
+    # not (HB 1555-FN of 30 January 2008; HB 1279's debate of 28 March 2024).
+    nxt = JD.debates(JD.clean(
+        "Rep. Wendelboe moved that the debate on HB 1428, naming a portion of the Franconia\n"
+        "Notch Parkway after Corporal Bruce McKay, be printed in the Journal. Motion adopted.\n\n"
+        "                                                DEBATE ON HB 1428\n\n"
+        "Rep. Gile: Thank you, Mister Speaker. We have a much more important bill to name than\n"
+        "HB 1279, which we sent on already, and I ask you to support Interim Study today.\n"
+        "Rep. Ward: Thank you very much. Please support Interim Study.\n"
+        "                                       REGULAR CALENDAR (CONT'D)\n\n"
+        "HB 1555-FN, relative to an E-Z Pass discount for residents of Merrimack. INEXPEDIENT\n"
+        "TO LEGISLATE.\n"
+        "Rep. Sprague: This bill would have given all E-Z Pass account holders a discount.\n"))
+    assert [w for w, _s in nxt[0]["speeches"]] == ["Rep. Gile", "Rep. Ward"] and \
+        "E-Z Pass" not in nxt[0]["speeches"][-1][1], (
+            f"a debate runs on into the next bill's report, or stops at a number a speech "
+            f"wrapped: {nxt[0]['speeches']}")
     assert JD.NEXT_HEAD.pattern == r"^[ \t]{4,}[A-Z][A-Z' ’.,&-]{6,}[ \t]*$", (
         "NEXT_HEAD changed: journal_bills and the consent and leave readers were "
         "measured on it as it was, and only debates() takes a bill's number")
-    return "ok", "HB 148's debate ends on its own vote, over two continued headings"
+    return "ok", ("HB 148's debate ends on its own vote, over two continued headings; "
+                  "HB 1428's at the next bill's report, not at a number a speech wrapped")
 
 
 @check("session", "a journal pattern found only where it can begin is finditer's own list",
