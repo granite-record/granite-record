@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-19.14
+# GRANITE_VERSION: 2026-09-19.15
 """
 What the House journal adds that the record does not: who spoke, and what.
 
@@ -407,6 +407,23 @@ UC_LINE = re.compile(
 # only as a hint -- leading whitespace ranges 0 to 58 across the corpus, so
 # centring is never the test.
 NEXT_HEAD = re.compile(r"^[ \t]{4,}[A-Z][A-Z' ’.,&-]{6,}[ \t]*$", re.M)
+
+# WHERE A PRINTED DEBATE ENDS: at the next heading, and a heading may end on a
+# bill's number. NEXT_HEAD's capitals take no digit, so "GOVERNOR'S VETO
+# MESSAGE ON HB 319-FN" was no heading to it, and HB 148's override debate of
+# 17 December 2025 ran on through HB 319's veto message and roll call to the
+# end of the day (the owner's report, 29 October 2026). Nine debates on disk,
+# 2011 to 2026 (one 2011 file is there twice), ran on the same way, each into
+# another bill's veto message or a committee of conference report; with the
+# number allowed each ends on the chair's announcement of its own vote, and
+# no other debate changes. Only the
+# number: what follows one -- "DEBATE ON HB 1419-FN CONTINUED", "HB 2-FN-A-L
+# CONT'D" -- is the same debate going on over the page, and digits anywhere
+# would end debates at those and at tallies. NEXT_HEAD itself is unchanged:
+# journal_bills and the consent and leave readers measured theirs on it.
+DEBATE_END = re.compile(
+    r"^[ \t]{4,}[A-Z][A-Z' ’.,&-]{6,}"
+    r"(?:[ \t]+(?:HB|SB|CACR|HR|SR|HCR|SCR|HJR)[ \t]?\d+(?:-[A-Z]+)*)?[ \t]*$", re.M)
 
 
 def _names(s):
@@ -864,7 +881,7 @@ def debates(block):
     for i, h in enumerate(heads):
         start = h.end()
         end = len(block)
-        for nh in NEXT_HEAD.finditer(block, start + 40):
+        for nh in DEBATE_END.finditer(block, start + 40):
             end = nh.start()
             break
         if i + 1 < len(heads):
