@@ -281,7 +281,20 @@ on a date until a person acts, go to `logs/alert-warn.txt` (`WARN_FILE`, from
 with the file as the body while one stands, a plain ping when none does --
 and with no such secret they stay on the run's page and in the verdict.
 Before, a reminder firing on 2 December would have held the night's check
-down, and no failure after it would have sent a new email. The publish check
+down, and no failure after it would have sent a new email. A third check,
+"a refusal is yours" (`HEALTHCHECKS_PERSON_URL`, since 29 October 2026), is
+told every real night whether a General Court refusal on file is a person's
+to clear: `logs/alert-person.txt` (`ALERT_PERSON_FILE`, from
+`person_alerts_of()` and `refusal.person_line()`) goes as its `/fail` while
+one is, and a plain ping goes when none is, so its first `/fail` is always a
+change and always an email, whatever the night's own check is doing -- which
+is often down already by the time a refusal becomes a person's. The
+workflows hand the night only whether that check exists
+(`NIGHT_PERSON_CHECK`, "set" or "none", never its address), and the night's
+own test of a refusal (`refusal.py`) stays off without it, and off when the
+repository variable `NIGHT_KNOCK` is set to anything but `on` (unset, the
+workflows read it as `on`). Until the night knocks, every
+refusal on file is a person's, and is told to it. The publish check
 (`HEALTHCHECKS_PUBLISH_URL`) is pinged only once production has been
 deployed, so it goes quiet -- and Healthchecks writes -- when the live site
 has stood still longer than its period allows: a held night nobody approved,

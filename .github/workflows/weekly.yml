@@ -86,6 +86,21 @@ env:
   # lane whichever branch met them. A dev weekly is for proving code.
   # A scheduled week is always main's. preflight holds this line.
   DRY_RUN: ${{ github.ref != 'refs/heads/main' }}
+  # THE NIGHT'S OWN TEST OF A REFUSAL (29 October 2026; refusal.py, THE
+  # KNOCK'S GATE). NIGHT_KNOCK is the person's switch, the repository
+  # variable, "on" where it is unset; anything but exactly "on" is off.
+  # NIGHT_PERSON_CHECK says only whether the "a refusal is yours" check
+  # exists (HEALTHCHECKS_PERSON_URL), never its address, and nothing is
+  # tested unless it is "set". The three KNOCK_ settings are the repository
+  # variables as they stand, empty where unset: refusal.knock_settings()
+  # holds the defaults, and a value typed wrong turns the testing off.
+  # refusal.py alone reads the five, and preflight holds them the same in
+  # every workflow with a gc-night job. The weekly never knocks.
+  NIGHT_KNOCK: ${{ vars.NIGHT_KNOCK || 'on' }}
+  NIGHT_PERSON_CHECK: ${{ secrets.HEALTHCHECKS_PERSON_URL != '' && 'set' || 'none' }}
+  KNOCK_HOURLY_HOURS: ${{ vars.KNOCK_HOURLY_HOURS }}
+  KNOCK_EVERY_HOURS: ${{ vars.KNOCK_EVERY_HOURS }}
+  KNOCK_DAYS: ${{ vars.KNOCK_DAYS }}
   # Only ever from the box, on a run by hand: never on a scheduled week.
   NEW_TERM: ${{ github.event_name == 'workflow_dispatch' && inputs.new_term }}
 

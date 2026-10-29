@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.80
+# GRANITE_VERSION: 2026-09-04.81
 """
 The nightly run. Fetch the day's bulk files, rebuild, check, compile what
 readers reported and what changed -- and publish only if told to.
@@ -5877,8 +5877,25 @@ def upload_and_check(a, site, target, base):
 # a database piece not taken, the laptop's share or its caption runs behind,
 # the captions inbox silent. Each stands until something moves, and none
 # stops or holds the site.
+#
+# A REFUSAL IS YOURS: THE THIRD CHECK (29 October 2026; refusal.py, THE
+# KNOCK'S GATE). The night's check cannot carry "this refusal is now a
+# person's": by the time a refusal becomes one -- a knock answered by the
+# address saying no, sixteen days, the switch turned off -- that check is
+# often down already (the day of the drops was not clean, and seven
+# database nights raise an alarm), and Healthchecks writes only on a change.
+# So --close writes ALERT_PERSON_FILE every real night, from
+# person_alerts_of(): refusal.person_line()'s sentence while a refusal on
+# file is a person's, and nothing otherwise, and the workflow's ending step
+# sends it to HEALTHCHECKS_PERSON_URL -- /fail with the file as the body, a
+# plain ping when it is empty. Pinged "up" every night without one, its
+# first /fail is always a change, and so always an email. The night tests
+# no refusal itself unless that check exists (refusal.knock_on). Until the
+# night knocks, nothing tests one either, so a refusal of the kind it could
+# test is a person's here too (person_alerts_of: untested).
 ALERT_FILE = Path("logs/alert.txt")
 WARN_FILE = Path("logs/alert-warn.txt")
+ALERT_PERSON_FILE = Path("logs/alert-person.txt")
 
 
 def held_for_approval(v):
@@ -5934,6 +5951,26 @@ def alerts_of(v):
     if not v.get("clean"):
         out.append("The night was not clean: " + plain_why(v))
     return out
+
+
+def person_alerts_of(v):
+    """What the "a refusal is yours" check is told after tonight
+    (ALERT_PERSON_FILE): [refusal.person_line()'s sentence] while the
+    refusal on file is a person's to clear, [] when none is on file. `v`,
+    the verdict, is the alerts' signature; the record on file is what it
+    reads. Until the night knocks, a refusal of a kind it could test is a
+    person's all the same, because nothing tests it (person_line's
+    `untested`). An alert must not stop the verdict: a record that cannot
+    be judged is said to be a person's."""
+    try:
+        line = refusal.person_line(untested=True)
+    except Exception as e:   # noqa: BLE001 -- an alert must not stop the verdict
+        if not refusal.MARK.exists():
+            return []
+        line = (f"A REFUSAL IS YOURS: the General Court refusal on file could not be read "
+                f"({type(e).__name__}), so it is taken as a person's to clear: python3 netcheck.py "
+                "on the laptop says what kind it was, then python3 src/ops/cloud.py clear-refusal.")
+    return [line] if line else []
 
 
 def close_verdict(a):
@@ -6016,8 +6053,10 @@ def close_verdict(a):
     v["closed"] = datetime.now().isoformat(timespec="seconds")
     if not a.weekly and not a.dry_run:
         v["alerts"], v["warn_alerts"] = alerts_of(v), warns_of(v)
+        v["person_alerts"] = person_alerts_of(v)
         # Not `path`, which is the verdict's own and is written below.
-        for alert, said in ((ALERT_FILE, v["alerts"]), (WARN_FILE, v["warn_alerts"])):
+        for alert, said in ((ALERT_FILE, v["alerts"]), (WARN_FILE, v["warn_alerts"]),
+                            (ALERT_PERSON_FILE, v["person_alerts"])):
             alert.parent.mkdir(parents=True, exist_ok=True)
             alert.write_text("".join(x + "\n" for x in said), encoding="utf-8")
     write_json(path, v)

@@ -287,3 +287,42 @@ that made it.
     a day", design_final §16's drift) now says what stops at a refusal
     today: a hand fetch a day, the lane and GitHub's night until a person
     clears it. The commit that wires the knock (6) adds the knock to it.
+
+## Commit 5: the third check and the switch
+
+41. **Until the night knocks, the third check is told of a refusal the
+    night could test** (`person_alerts_of` calls
+    `person_line(untested=True)`). design_final §9 says that from this
+    commit "every record that is a person's (which, until commit 6, is every
+    record) emails through the third check"; but with the five lines in the
+    workflows, the switch on and the secret set, `whose()` calls GitHub's own
+    drop the night's, and the third check would read "up" over a refusal
+    nothing will ever lift. So until commit 6 a record the night may test is
+    a person's here, with the sentence "nothing in this build knocks for it
+    yet". Commit 6 drops `untested`.
+42. **The third ping comes first in "Tell Healthchecks how the night
+    ended"**, after the exact-ref guard and before the step looks for
+    `HEALTHCHECKS_URL` (whose absence ends the step), so a night with no
+    night's check still tells the third one. design_final §2.9 gives the
+    three cases, not their place.
+43. **`person_alerts_of(v)` reads the record on file**, as `alerts_of()`
+    does; `v` is the alerts' signature. A record that raises while being
+    judged is said to be a person's (an alert must not stop the verdict).
+44. **C16's "nothing else reads either"** is held as: no workflow line
+    outside the five names any of them, and no Python file but `refusal.py`
+    (and preflight) holds any of the five names as a literal. `cloud.py`
+    names `NIGHT_KNOCK` only inside its sentences.
+45. **`_workflows_secrets` runs on its mutants**, the addendum §8.4's way:
+    its rules moved into `_wf_secret_problems()`, unchanged but for the one
+    allowed line, `WF_PERSON_CHECK_LINE`. C16 (`_workflows_night_knock`)
+    likewise carries nine mutants of its own.
+46. **C11's "no knock date" for the day-0 alert** is held as the night's
+    refusal line carrying no word "knock" at all: until commit 6 the
+    night's alert is today's line, naming `clear-refusal`.
+47. **A mutation of `knock_on()`'s settings test survives C11**:
+    `whose()` reads the settings first and gives their sentence. The rule
+    C11 holds is `whose()`'s (killed when removed); `knock_on()`'s own copy
+    is held by `_cloud_lift`, where `cloud.knock_switched_on()` reads it.
+48. **The operator checklist is not changed**: `reports/cloud/CLOUD_MOVE.md`
+    is on the laptop, not in the repository. The owner's steps for the third
+    check (D5) go into stage E's OWNER_STEPS.md.

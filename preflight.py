@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.731
+# GRANITE_VERSION: 2026-09-04.732
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -95685,7 +95685,17 @@ WORKFLOW_SECRETS = {"R2_ACCOUNT_ID", "R2_ACCESS_KEY_ID", "R2_SECRET_ACCESS_KEY",
                     "HEALTHCHECKS_URL", "HEALTHCHECKS_PUBLISH_URL",
                     # The warnings' own check (18 October 2026, nightly.WARN_FILE):
                     # optional, and the person's to create.
-                    "HEALTHCHECKS_WARN_URL"}
+                    "HEALTHCHECKS_WARN_URL",
+                    # The "a refusal is yours" check (29 October 2026,
+                    # nightly.ALERT_PERSON_FILE): the person's to create, and
+                    # the night tests no refusal itself without it.
+                    "HEALTHCHECKS_PERSON_URL"}
+# THE ONE EXPRESSION OVER A SECRET (29 October 2026, refusal.knock_on). Whether
+# the third check exists reaches the night as "set" or "none" -- never its
+# address -- from this line, two spaces in under the top-level env: of each
+# workflow with a gc-night job, and from nowhere else.
+WF_PERSON_CHECK_LINE = ("  NIGHT_PERSON_CHECK: ${{ secrets.HEALTHCHECKS_PERSON_URL != '' && 'set' "
+                        "|| 'none' }}")
 
 
 def _workflows():
@@ -95829,47 +95839,272 @@ def _workflows_secrets():
     environment (never the job's, never an action's input, never interpolated
     into a script, where a quoting slip prints it); and no line writes out a
     variable that holds one, or dumps the environment. GitHub masks a secret
-    it knows in its logs; this is for everything that masking does not see."""
+    it knows in its logs; this is for everything that masking does not see.
+
+    ONE EXPRESSION OVER A SECRET (29 October 2026, the hourly addendum's
+    8.1). Whether the "a refusal is yours" check exists reaches the night as
+    "set" or "none", never its address: WF_PERSON_CHECK_LINE, exactly, two
+    spaces in under the top-level env: of a workflow with a gc-night job, is
+    the one line besides a step's own env entry that may name a secret. The
+    check runs itself on its mutants: that expression in a step's env, over
+    another secret, giving the address itself, or in a workflow with no
+    gc-night job, each fails it."""
     files = _workflows()
     if not files:
         return "skip", "no .github/workflows here"
+    uses = Counter()
+    problems = []
+    for f in files:
+        problems += _wf_secret_problems(f.name, f.read_text(encoding="utf-8"), uses)
+    assert not problems, "; ".join(problems[:6])
+    assert uses, "no workflow names any secret, which cannot be right for the nightly"
+    nightly = WORKFLOW_DIR / "nightly.yml"
+    if nightly.is_file():
+        text = nightly.read_text(encoding="utf-8")
+        step = "          HC_PERSON_URL: ${{ secrets.HEALTHCHECKS_PERSON_URL }}"
+        assert WF_PERSON_CHECK_LINE in text.splitlines() and step in text.splitlines(), \
+            "nightly.yml has not the third check's line and its ping's env entry to test with"
+        bare = "\n".join(["name: x", "on:", "  workflow_dispatch:", "env:", WF_PERSON_CHECK_LINE,
+                          "jobs:", "  x:", "    runs-on: ubuntu-24.04", "    timeout-minutes: 1"])
+        mutants = {
+            "the expression in a step's env": text.replace(
+                step, "          " + WF_PERSON_CHECK_LINE.strip()),
+            "the expression over another secret": text.replace(
+                WF_PERSON_CHECK_LINE, WF_PERSON_CHECK_LINE.replace("PERSON_URL", "URL")),
+            "the address itself at the workflow's level": text.replace(
+                WF_PERSON_CHECK_LINE, "  NIGHT_PERSON_CHECK: ${{ secrets.HEALTHCHECKS_PERSON_URL }}"),
+            "the expression in a workflow with no gc-night job": bare,
+        }
+        missed = [what for what, t in mutants.items()
+                  if t == text or not _wf_secret_problems("a mutant", t)]
+        assert not missed, f"_workflows_secrets did not catch: {missed}"
+    return "ok", (f"{sum(uses.values())} uses of {len(uses)} secrets, every one listed, each a "
+                  "step's own env entry but the third check's one line, none written out; four "
+                  "mutants caught")
+
+
+def _wf_top_env_lines(lines):
+    """The indices of the lines under a workflow's top-level env:."""
+    out, inside = set(), False
+    for i, ln in enumerate(lines):
+        if re.match(r"^env:\s*$", ln):
+            inside = True
+            continue
+        if inside and ln and not ln[0].isspace() and not ln.startswith("#"):
+            break
+        if inside:
+            out.add(i)
+    return out
+
+
+def _wf_secret_problems(name, text, uses=None):
+    """What _workflows_secrets finds wrong in one workflow's text: one
+    sentence each, [] for nothing. `uses`, a Counter, counts the secrets
+    named."""
     OUT = re.compile(r"\b(echo|printf|print|Write-Output|Write-Host|Write-Information|Out-Host|"
                      r"Out-File|Add-Content|Set-Content|Tee-Object)\b|>>|"
                      r"GITHUB_(OUTPUT|ENV|STEP_SUMMARY)", re.I)
     DUMP = re.compile(r"set\s+-x|Set-PSDebug|printenv|\benv\s*\||"
                       r"(Get-ChildItem|gci|dir|ls)\s+env:|export\s+-p", re.I)
-    uses = Counter()
-    for f in files:
-        lines = f.read_text(encoding="utf-8").splitlines()
-        code = "\n".join(_wf_code(lines))
-        assert not re.search(r"toJSON\(\s*secrets\s*\)", code, re.I), \
-            f"{f.name} dumps every secret with toJSON(secrets)"
-        assert not re.search(r"secrets\s*\[", code), f"{f.name} reads a secret by a computed name"
-        bound = {"GH_TOKEN", "GITHUB_TOKEN"}
-        for i, ln in enumerate(lines, 1):
-            if ln.lstrip().startswith("#"):
-                continue
-            for m in re.finditer(r"secrets\.([A-Za-z_][A-Za-z0-9_]*)", ln):
+    out = []
+    lines = text.splitlines()
+    code = "\n".join(_wf_code(lines))
+    if re.search(r"toJSON\(\s*secrets\s*\)", code, re.I):
+        out.append(f"{name} dumps every secret with toJSON(secrets)")
+    if re.search(r"secrets\s*\[", code):
+        out.append(f"{name} reads a secret by a computed name")
+    gated = bool(re.search(r"^      group: gc-night\s*$", text, re.M))
+    top = _wf_top_env_lines(lines)
+    bound = {"GH_TOKEN", "GITHUB_TOKEN"}
+    for i, ln in enumerate(lines, 1):
+        if ln.lstrip().startswith("#"):
+            continue
+        for m in re.finditer(r"secrets\.([A-Za-z_][A-Za-z0-9_]*)", ln):
+            if uses is not None:
                 uses[m.group(1)] += 1
-                assert m.group(1) in WORKFLOW_SECRETS, (
-                    f"{f.name}:{i} names secrets.{m.group(1)}, which is not one of "
-                    f"{', '.join(sorted(WORKFLOW_SECRETS))}")
-                e = re.match(r"^ {10}([A-Z][A-Z0-9_]*): \$\{\{ secrets\.[A-Z0-9_]+ \}\}\s*$", ln)
-                parent = next((p for p in reversed(lines[:i - 1]) if re.match(r"^ {8}\S", p)), "")
-                assert e and parent.strip() == "env:", (
-                    f"{f.name}:{i}: a secret may reach a step only as that step's own env "
-                    "entry, NAME: ${{ secrets.NAME }}")
-                bound.add(e.group(1))
-        for i, ln in enumerate(lines, 1):
-            if ln.lstrip().startswith("#"):
+            if m.group(1) not in WORKFLOW_SECRETS:
+                out.append(f"{name}:{i} names secrets.{m.group(1)}, which is not one of "
+                           f"{', '.join(sorted(WORKFLOW_SECRETS))}")
+            if ln.rstrip() == WF_PERSON_CHECK_LINE:
+                if not (gated and i - 1 in top):
+                    out.append(f"{name}:{i}: the third check's line belongs only in the top-level "
+                               "env of a workflow with a gc-night job")
                 continue
-            assert not DUMP.search(ln), f"{f.name}:{i} would print the environment, secrets and all"
-            held = [n for n in bound if re.search(r"(\$env:|\$\{?|%)" + n + r"\b", ln)]
-            assert not (held and OUT.search(ln)), \
-                f"{f.name}:{i} writes out {', '.join(held)}, which holds a secret"
-    assert uses, "no workflow names any secret, which cannot be right for the nightly"
-    return "ok", (f"{sum(uses.values())} uses of {len(uses)} secrets, every one listed, each a "
-                  "step's own env entry, none written out")
+            e = re.match(r"^ {10}([A-Z][A-Z0-9_]*): \$\{\{ secrets\.[A-Z0-9_]+ \}\}\s*$", ln)
+            parent = next((p for p in reversed(lines[:i - 1]) if re.match(r"^ {8}\S", p)), "")
+            if not (e and parent.strip() == "env:"):
+                out.append(f"{name}:{i}: a secret may reach a step only as that step's own env "
+                           "entry, NAME: ${{ secrets.NAME }}")
+                continue
+            bound.add(e.group(1))
+    for i, ln in enumerate(lines, 1):
+        if ln.lstrip().startswith("#"):
+            continue
+        if DUMP.search(ln):
+            out.append(f"{name}:{i} would print the environment, secrets and all")
+        held = [n for n in bound if re.search(r"(\$env:|\$\{?|%)" + n + r"\b", ln)]
+        if held and OUT.search(ln):
+            out.append(f"{name}:{i} writes out {', '.join(held)}, which holds a secret")
+    return out
+
+
+# THE NIGHT'S OWN TEST OF A REFUSAL, SWITCHED (29 October 2026; refusal.py,
+# THE KNOCK'S GATE): the five lines every workflow with a gc-night job
+# carries, the same in each, in its top-level env.
+WF_KNOCK_ENV = ("  NIGHT_KNOCK: ${{ vars.NIGHT_KNOCK || 'on' }}",
+                WF_PERSON_CHECK_LINE,
+                "  KNOCK_HOURLY_HOURS: ${{ vars.KNOCK_HOURLY_HOURS }}",
+                "  KNOCK_EVERY_HOURS: ${{ vars.KNOCK_EVERY_HOURS }}",
+                "  KNOCK_DAYS: ${{ vars.KNOCK_DAYS }}")
+WF_KNOCK_NAMES = ("NIGHT_KNOCK", "NIGHT_PERSON_CHECK", "KNOCK_HOURLY_HOURS", "KNOCK_EVERY_HOURS",
+                  "KNOCK_DAYS")
+
+
+def _wf_night_knock_problems(texts, person_file):
+    """What _workflows_night_knock finds wrong, {name: text} of the
+    workflows and the night's ALERT_PERSON_FILE as posix: one sentence
+    each, [] for nothing."""
+    out = []
+    for name, text in sorted(texts.items()):
+        lines = text.splitlines()
+        top = _wf_top_env_lines(lines)
+        mine = [ln for i, ln in enumerate(lines) if i in top
+                and re.match(r"^  (" + "|".join(WF_KNOCK_NAMES) + r"):", ln)]
+        if re.search(r"^      group: gc-night\s*$", text, re.M) and mine != list(WF_KNOCK_ENV):
+            out.append(f"{name}'s top-level env carries {mine} where the five lines are "
+                       f"{list(WF_KNOCK_ENV)}")
+        for i, ln in enumerate(lines):
+            if ln.lstrip().startswith("#") or (i in top and ln in WF_KNOCK_ENV):
+                continue
+            named = [n for n in WF_KNOCK_NAMES if re.search(r"\b" + n + r"\b", ln)]
+            if named:
+                out.append(f"{name}:{i + 1} names {named} outside the five lines: refusal.py "
+                           "alone reads them, as the workflow sets them")
+    night = texts.get("nightly.yml")
+    if night is None:
+        return out + ["no nightly.yml to send the third check its ping"]
+    ends = [st for jl in _wf_jobs(night).values() for st in _wf_steps(_wf_code(jl))
+            if "Tell Healthchecks how the night ended" in st[0]]
+    if len(ends) != 1:
+        return out + ["nightly.yml has no one step telling Healthchecks how the night ended"]
+    st = [ln.rstrip() for ln in ends[0]]
+    at = {key: next((i for i, ln in enumerate(st) if want(ln)), None) for key, want in (
+        ("env", lambda ln: ln == "          HC_PERSON_URL: ${{ secrets.HEALTHCHECKS_PERSON_URL }}"),
+        ("guard", lambda ln: ln == HC_REF_GUARD),
+        ("file", lambda ln: ln.strip() == f"$person = '{person_file}'"),
+        ("there", lambda ln: "(Test-Path $person)" in ln and ln.strip().startswith(("if", "} elseif"))),
+        ("said", lambda ln: "(Get-Item $person).Length -gt 0" in ln),
+        ("fail", lambda ln: ln.strip() == 'curl.exe -fsS -m 15 --retry 3 -o NUL --data-binary '
+                                          '"@$person" "$env:HC_PERSON_URL/fail"'),
+        ("else", lambda ln: ln.strip() == "} else {"),
+        ("up", lambda ln: ln.strip() == 'curl.exe -fsS -m 15 --retry 3 -o NUL "$env:HC_PERSON_URL"'),
+        ("night", lambda ln: ln.strip() == "if (-not $env:HC_URL) {"))}
+    order = ("env", "guard", "file", "there", "said", "fail", "else", "up", "night")
+    if any(at[k] is None for k in order) or [at[k] for k in order] != sorted(at[k] for k in order):
+        out.append("the night's ending step does not, after the exact-ref guard and before it "
+                   "looks for HEALTHCHECKS_URL, send ALERT_PERSON_FILE to HEALTHCHECKS_PERSON_URL "
+                   f"as /fail when it says something and a plain ping when it is empty, and "
+                   f"nothing when there is no file: {at}")
+    if at["else"] is not None and at["fail"] is not None and \
+            any(ln.strip() == "} else {" for ln in st[at["said"] or 0:at["fail"]]):
+        out.append("the third check's /fail is not the branch for a file that says something")
+    for ln in st:
+        if "$env:HC_PERSON_URL" in ln and ("$alert" in ln or "$warn" in ln):
+            out.append(f"the third check is sent another check's file: {ln.strip()}")
+        if "@$person" in ln and "HC_PERSON_URL" not in ln:
+            out.append(f"the person's file is sent to another check: {ln.strip()}")
+    return out
+
+
+@check("workflows", "the night's own test of a refusal is switched by five lines, the same in the "
+       "nightly and the weekly, read by nothing else, and the night tells the \"a refusal is "
+       "yours\" check every night", needs=("nightly",))
+def _workflows_night_knock(NI):
+    """C16 of design_final, as the hourly addendum amends it, and H4's
+    workflow half. Every workflow with a gc-night job -- the nightly and the
+    weekly, and the knock workflow once it exists -- carries WF_KNOCK_ENV in
+    its top-level env, the same five lines in each: NIGHT_KNOCK from the
+    repository variable with "on" where it is unset, NIGHT_PERSON_CHECK
+    from whether HEALTHCHECKS_PERSON_URL is set (WF_PERSON_CHECK_LINE), and
+    the three KNOCK_ settings from their variables with no default of their
+    own, since refusal.knock_settings() holds the defaults. No other line of
+    any workflow names the five, and no code but refusal.py reads them from
+    the environment. And the nightly's "Tell Healthchecks how the night
+    ended" step, after its exact-ref guard and before it looks for
+    HEALTHCHECKS_URL -- so that a missing night's check silences nothing --
+    sends nightly.ALERT_PERSON_FILE to HEALTHCHECKS_PERSON_URL: /fail with
+    the file as the body when it says something, a plain ping when it is
+    empty, and nothing where --close wrote none; that file to no other
+    check, and no other file to that one. The check runs itself on its
+    mutants, each of which must fail it: the weekly missing a line; a
+    fallback of 'on' dropped, or one given to a setting; the third check
+    read from another secret; a step reading NIGHT_KNOCK; the /fail and the
+    plain ping swapped; the ping moved after the HEALTHCHECKS_URL exit; no
+    test that the file is there; the night's alert sent to the third check."""
+    import ast
+    files = {f.name: f.read_text(encoding="utf-8") for f in _workflows()}
+    if not files:
+        return "skip", "no .github/workflows here"
+    person = NI.ALERT_PERSON_FILE.as_posix()
+    problems = _wf_night_knock_problems(files, person)
+    assert not problems, "; ".join(problems[:5])
+    gated = sorted(n for n, t in files.items() if re.search(r"^      group: gc-night\s*$", t, re.M))
+    assert {"nightly.yml", "weekly.yml"} <= set(gated), gated
+    # No code but refusal.py reads the five from the environment.
+    readers = []
+    for p in _paths.code_files("*.py", dirs=_paths.SCRIPT_DIRS):
+        if p.name in ("refusal.py", "preflight.py"):
+            continue
+        src = p.read_text(encoding="utf-8", errors="replace")
+        if not any(n in src for n in WF_KNOCK_NAMES):
+            continue
+        for n in ast.walk(_parsed(p)):
+            if isinstance(n, ast.Constant) and n.value in WF_KNOCK_NAMES:
+                readers.append(f"{p.name}:{n.lineno} {n.value}")
+    assert not readers, ("the switch and the settings are read outside refusal.py, where the "
+                         "one definition of them lives: " + ", ".join(readers))
+    night, week = files["nightly.yml"], files["weekly.yml"]
+    on = WF_KNOCK_ENV[0]
+    fail = 'curl.exe -fsS -m 15 --retry 3 -o NUL --data-binary "@$person" "$env:HC_PERSON_URL/fail"'
+    up = 'curl.exe -fsS -m 15 --retry 3 -o NUL "$env:HC_PERSON_URL"'
+    mutants = {
+        "the weekly missing KNOCK_DAYS": {"weekly.yml": week.replace(WF_KNOCK_ENV[4] + "\n", "")},
+        "NIGHT_KNOCK with no 'on' where unset": {"nightly.yml": night.replace(
+            on, "  NIGHT_KNOCK: ${{ vars.NIGHT_KNOCK }}")},
+        "a setting given a default of its own": {"weekly.yml": week.replace(
+            WF_KNOCK_ENV[2], "  KNOCK_HOURLY_HOURS: ${{ vars.KNOCK_HOURLY_HOURS || '48' }}")},
+        "the third check read from another secret": {"nightly.yml": night.replace(
+            WF_PERSON_CHECK_LINE, WF_PERSON_CHECK_LINE.replace("PERSON_URL", "WARN_URL"))},
+        "a step reading NIGHT_KNOCK": {"nightly.yml": night.replace(
+            "          HC_PERSON_URL: ${{ secrets.HEALTHCHECKS_PERSON_URL }}",
+            "          HC_PERSON_URL: ${{ secrets.HEALTHCHECKS_PERSON_URL }}\n"
+            "          SWITCH: ${{ env.NIGHT_KNOCK }}")},
+        "the /fail and the plain ping swapped": {"nightly.yml": night.replace(
+            fail, "\x00").replace(up, fail).replace("\x00", up)},
+        "the ping after the HEALTHCHECKS_URL exit": {"nightly.yml": _wf_moved_person_ping(night)},
+        "no test that the file is there": {"nightly.yml": night.replace(
+            "} elseif (Test-Path $person) {", "} else {")},
+        "the night's alert sent to the third check": {"nightly.yml": night.replace(
+            '"@$person" "$env:HC_PERSON_URL/fail"', '"@$alert" "$env:HC_PERSON_URL/fail"')},
+    }
+    missed = [what for what, change in mutants.items()
+              if dict(files, **change) == files
+              or not _wf_night_knock_problems(dict(files, **change), person)]
+    assert not missed, f"_workflows_night_knock did not catch: {missed}"
+    return "ok", (f"{', '.join(gated)} carry the five lines alike, read by refusal.py alone; the "
+                  f"night sends {person} to the third check as /fail or a plain ping, first; "
+                  f"{len(mutants)} mutants caught")
+
+
+def _wf_moved_person_ping(text):
+    """nightly.yml with the third check's lines moved after the step's
+    HEALTHCHECKS_URL exit: a mutant of _workflows_night_knock's."""
+    lines = text.splitlines(keepends=True)
+    start = next(i for i, ln in enumerate(lines) if ln.strip() == "$person = 'logs/alert-person.txt'")
+    stop = next(i for i in range(start, len(lines)) if lines[i].strip() == "if (-not $env:HC_URL) {")
+    block = lines[start:stop]
+    after = next(i for i in range(stop, len(lines)) if lines[i].strip() == "}") + 1
+    return "".join(lines[:start] + lines[stop:after] + block + lines[after:])
 
 
 @check("workflows", "each workflow's token reads the repository and no more, and nothing a "
@@ -113047,7 +113282,19 @@ def _alarm_stays_able_to_ring(NI):
     gate routes the publish job, the night is fit for production and it is
     no New term run; --close writes both files; and the workflow's ending
     step reads ALERT_FILE for the night's check and WARN_FILE for
-    HEALTHCHECKS_WARN_URL's, and pings that one /fail with nothing else."""
+    HEALTHCHECKS_WARN_URL's, and pings that one /fail with nothing else.
+
+    And the third check, "a refusal is yours" (29 October 2026; C11 of
+    design_final, as the hourly addendum amends it): with a refusal on file
+    that is a person's -- a 403 the night met (naming the IT office), run
+    151's record that says no kind, GitHub's night's own drop with
+    NIGHT_KNOCK off, with NIGHT_PERSON_CHECK unset, or with a setting typed
+    wrong, and, until the night knocks, that drop with everything on --
+    person_alerts_of() gives refusal.person_line()'s sentence, naming
+    clear-refusal and why, and the night's alert still names clear-refusal
+    and no knock; with none on file it gives nothing. --close writes
+    ALERT_PERSON_FILE every real night, empty with no refusal and the line
+    with one, and the ending step sends it to HEALTHCHECKS_PERSON_URL."""
     import inspect
     here = Path(".").resolve()
     tmp = Path(tempfile.mkdtemp(prefix="gr-alarm-"))
@@ -113095,6 +113342,43 @@ def _alarm_stays_able_to_ring(NI):
         os.environ[NI.GATE_ENV] = NI.GATE_ON
         if len(NI.alerts_of(unrun)) != 1:
             bad.append(f"checks that did not run alert as {NI.alerts_of(unrun)}")
+        # THE THIRD CHECK (29 October 2026; nightly.ALERT_PERSON_FILE, C11
+        # of design_final as the hourly addendum amends it). A refusal that
+        # is a person's is the "a refusal is yours" check's line, naming
+        # clear-refusal and why it is a person's, and stays the night's alert,
+        # with no knock in it; with nothing on file the third check is told
+        # nothing. Until the night knocks, GitHub's night's own drop is a
+        # person's too: nothing tests it.
+        import refusal
+        mark = Path(refusal.MARK)
+        mark.parent.mkdir(parents=True, exist_ok=True)
+        day0 = dict(clean, clean=False, not_clean=["the export: refused"])
+        with _KnockEnv(**_KNOCK_MAIN):
+            if NI.person_alerts_of(day0):
+                bad.append(f"the third check is told of a refusal with none on file: "
+                           f"{NI.person_alerts_of(day0)}")
+        for what, rec, env, says in (
+                ("GitHub's night's own drop, nothing in this build knocking", _knock_record(), {},
+                 "nothing in this build knocks"),
+                ("that drop with NIGHT_KNOCK off", _knock_record(), {"NIGHT_KNOCK": "off"},
+                 "NIGHT_KNOCK"),
+                ("that drop with NIGHT_PERSON_CHECK unset", _knock_record(),
+                 {"NIGHT_PERSON_CHECK": None}, "NIGHT_PERSON_CHECK"),
+                ("that drop with a setting typed wrong", _knock_record(), {"KNOCK_DAYS": "17"},
+                 "KNOCK_DAYS"),
+                ("a 403 the night met", _knock_record(kind="refused"), {}, "IT office"),
+                ("run 151's record of 29 October", _RECORD_29_OCT, {}, "what kind")):
+            mark.write_bytes(rec)
+            with _KnockEnv(**dict(_KNOCK_MAIN, GRANITE_CLOCK_UTC=_utc_iso(_KNOCK_SINCE + 3600),
+                                  **env)):
+                alerts, person = NI.alerts_of(day0), NI.person_alerts_of(day0)
+            first = alerts[0] if alerts else ""
+            if "clear-refusal" not in first or "knock" in first.lower():
+                bad.append(f"{what}: the night's alert is {first!r}")
+            if len(person) != 1 or not person[0].startswith("A REFUSAL IS YOURS") or \
+                    "clear-refusal" not in person[0] or says not in person[0]:
+                bad.append(f"{what}: the third check is told {person}")
+        mark.unlink()
     finally:
         os.chdir(here)
         if saved is None:
@@ -113103,8 +113387,9 @@ def _alarm_stays_able_to_ring(NI):
             os.environ[NI.GATE_ENV] = saved
         shutil.rmtree(tmp, ignore_errors=True)
     src = inspect.getsource(NI.close_verdict)
-    if "(ALERT_FILE, v[\"alerts\"]), (WARN_FILE, v[\"warn_alerts\"])" not in src:
-        bad.append("--close does not write both ALERT_FILE and WARN_FILE")
+    if "(ALERT_FILE, v[\"alerts\"]), (WARN_FILE, v[\"warn_alerts\"])" not in src or \
+            "(ALERT_PERSON_FILE, v[\"person_alerts\"])" not in src:
+        bad.append("--close does not write ALERT_FILE, WARN_FILE and ALERT_PERSON_FILE")
     # And writes them, and the verdict where it belongs: --close, run on a
     # night that never started, in a folder of its own.
     tmp = Path(tempfile.mkdtemp(prefix="gr-alarm-close-"))
@@ -113127,6 +113412,29 @@ def _alarm_stays_able_to_ring(NI):
         if not NI.ALERT_FILE.read_text(encoding="utf-8").strip() or \
                 NI.WARN_FILE.read_text(encoding="utf-8") != "":
             bad.append("--close did not write the night's alert and an empty warnings' file")
+        if v.get("person_alerts") != [] or not NI.ALERT_PERSON_FILE.exists() or \
+                NI.ALERT_PERSON_FILE.read_text(encoding="utf-8") != "":
+            bad.append("--close with no refusal on file did not write the third check an empty "
+                       "file, its plain ping")
+        # ... and with a person's refusal on file, its line.
+        Path("archive").mkdir(exist_ok=True)
+        Path("archive/refused.json").write_bytes(_RECORD_29_OCT)
+        # Never with GitHub's own step environment, which on the real night
+        # would put this made-up night on its page (GH_STEP_ENV).
+        gh = {k: os.environ.pop(k, None) for k in GH_STEP_ENV}
+        try:
+            with _KnockEnv(GITHUB_RUN_ID="7002"), contextlib.redirect_stdout(io.StringIO()):
+                try:
+                    NI.main()
+                except SystemExit:
+                    pass
+        finally:
+            for k, val in gh.items():
+                os.environ.pop(k, None) if val is None else os.environ.__setitem__(k, val)
+        said = NI.ALERT_PERSON_FILE.read_text(encoding="utf-8") \
+            if NI.ALERT_PERSON_FILE.exists() else ""
+        if not said.startswith("A REFUSAL IS YOURS"):
+            bad.append(f"--close with a person's refusal on file told the third check {said!r}")
     finally:
         os.chdir(here)
         sys.argv = saved_argv
@@ -113151,6 +113459,9 @@ def _alarm_stays_able_to_ring(NI):
                   and '--data-binary "@$alert" "$env:HC_WARN_URL' not in body):
             bad.append("the ending step does not send WARN_FILE to HEALTHCHECKS_WARN_URL alone and "
                        "ALERT_FILE to the night's check alone")
+        elif not (f"$person = '{NI.ALERT_PERSON_FILE.as_posix()}'" in body
+                  and '--data-binary "@$person" "$env:HC_PERSON_URL/fail"' in body):
+            bad.append("the ending step does not send ALERT_PERSON_FILE to HEALTHCHECKS_PERSON_URL")
     assert not bad, "; ".join(bad)
     return "ok", ("a reminder alone leaves the night's check up and goes to the warnings' check; a "
                   "night not clean alerts the night's check beside it, once, with its reasons, "
