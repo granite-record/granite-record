@@ -3613,11 +3613,19 @@ def load(path=NARRATIVES, rollcalls=None, sat=None, journals=None):
     stderr, so a step's log shows it."""
     if (path, rollcalls, sat, journals) != (NARRATIVES, None, None, None):
         return _load(path, rollcalls, sat, journals)
+    return _cached(_load)
+
+
+def _cached(work):
+    """What `work` -- a call of _load -- gives, read from CACHE_FILE where an
+    earlier run of the same inputs and code kept it, or worked out and kept.
+    load()'s for the build's own call; a check gives it a call of its own
+    record, so that it reads no Journal on disk."""
     days, why = load_cache()
     if days is not None:
         print(f"  session days: {why}, read from the build's cache", file=sys.stderr)
         return days
-    days, inputs = _Inputs.record(_load)
+    days, inputs = _Inputs.record(work)
     kept, how = keep(days, inputs)
     print(f"  session days: worked out ({why}); {how} for the steps after this one, "
           f"from {len(inputs['files']):,} files", file=sys.stderr)

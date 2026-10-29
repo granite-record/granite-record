@@ -6385,7 +6385,11 @@ def _session_days_cache(N, SD):
             "1998", "H", 1, "1998-06-02", "HR1", "Adoption", 300, 10, True)]}}),
             encoding="utf-8")
         os.chdir(d)
-        cold = SD.load()
+        # The build's call, on this record and with no Journals: load() gives
+        # _cached a call of _load, and a check that read the Journals on disk
+        # would fail _session_checks_read_no_journals.
+        work = lambda: SD._load(SD.NARRATIVES, sat=lambda body, date: False, journals={})
+        cold = SD._cached(work)
         kept = d / ".build_cache" / SD.CACHE_FILE
         assert kept.exists(), "the build's call kept nothing"
         SD.ROLLCALLS_FROM.clear()
@@ -6393,7 +6397,7 @@ def _session_days_cache(N, SD):
         assert warm is not None, f"the kept days were not read back: {why}"
         assert SD.ROLLCALLS_FROM == {"H": "1998-06-02", "S": SD.ROLLCALLS_BEGIN["S"]}, (
             f"the days the voting system began were not read back: {SD.ROLLCALLS_FROM}")
-        fresh = SD._load()
+        fresh = work()
         assert _canon_days(warm) == _canon_days(fresh) == _canon_days(cold), (
             "the days read back are not the days the parse gives")
         n = (d / "narratives.json").read_text(encoding="utf-8")
@@ -6401,21 +6405,25 @@ def _session_days_cache(N, SD):
         assert SD.load_cache()[0] is None, "a moved input was read from the cache"
         (d / "narratives.json").write_text(n, encoding="utf-8")
         assert SD.load_cache()[0] is not None, "the input put back missed"
-        # The fixture's sittings are of December 2024, so the parse looked
-        # for that year's Journals and found none: a folder of them now is
-        # an input that moved.
-        (d / "journals" / "2024").mkdir(parents=True)
-        (d / "journals" / "2024" / "x.txt").write_text("", encoding="utf-8")
-        assert SD.load_cache()[0] is None, "a file added where the parse looks was not a miss"
-        (d / "journals" / "2024" / "x.txt").unlink()
-        (d / "journals" / "2024").rmdir()
-        (d / "journals").rmdir()
+        # A folder the parse listed that was not there, and a path it looked
+        # for and did not find, are keys too: the first Journal of a new
+        # year is a folder that appears (the build's own call lists the
+        # year folders; this record reads none, so the key is asked here).
+        inputs = {"files": [], "dirs": [str(d / "j" / "2024")], "looked": [str(d / "k.txt")]}
+        before = SD._inputs_key(inputs)
+        (d / "j" / "2024").mkdir(parents=True)
+        assert SD._inputs_key(inputs) != before, "a folder that appeared did not move the key"
+        (d / "j" / "2024").rmdir()
+        assert SD._inputs_key(inputs) == before, "the key moved with nothing changed"
+        (d / "k.txt").write_text("", encoding="utf-8")
+        assert SD._inputs_key(inputs) != before, "a path that appeared did not move the key"
+        (d / "k.txt").unlink()
         kept.write_bytes(kept.read_bytes()[:200])
         assert SD.load_cache()[0] is None, "a cache cut short was read"
-        again = SD.load()
+        again = SD._cached(work)
         assert _canon_days(again) == _canon_days(fresh), "worked out again, the days differ"
         kept.unlink()
-        SD.load(d / "narratives.json")
+        SD.load(d / "narratives.json", sat=lambda body, date: False, journals={})
         assert not kept.exists(), "a call naming its own record kept its answer"
     finally:
         os.chdir(here)
