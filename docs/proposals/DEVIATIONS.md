@@ -464,3 +464,11 @@ that made it.
     16 days, not the fourth knock). The third check is up through day 15
     and down on day 16; the night's own check is up on held nights 1 to 6
     and down from the seventh, whose error names the website held.
+75. **The checks' night driver (`_KnockNights`, commit 6) sets
+    `GRANITE_CLOCK_UTC` in its own `night()`** as well as through
+    `_KnockClock`. `_clock_fakes` reads each top-level harness that fakes
+    `nightly.run` and runs `--runner` for an assignment of the clock in that
+    harness itself, and failed on `_KnockNights` from commit 6 on; the
+    stage's one full run found it, and it has a commit of its own after
+    commit 7. `_KnockEnv` puts the variable back, so no check is left with
+    the clock set.

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.734
+# GRANITE_VERSION: 2026-09-04.735
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -85224,6 +85224,9 @@ class _KnockNights:
         NI = self.NI
         _KnockEnv.set(**dict(_KNOCK_MAIN, GITHUB_RUN_ID=run_id, **env))
         self.clock(at)
+        # Every night states its time, here as well as through the clock, so
+        # that the check of the harnesses' clocks reads it in this class.
+        os.environ["GRANITE_CLOCK_UTC"] = _utc_iso(at)
         NI.LOG = []
         del self.calls[:]
         del self.slept[:]
