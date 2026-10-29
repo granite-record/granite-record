@@ -1,4 +1,4 @@
-/* GRANITE_VERSION: 2026-09-07.327 */
+/* GRANITE_VERSION: 2026-09-07.328 */
 /* ONE STYLESHEET FOR EVERY PAGE (23 October 2026). Every page of the site
    links this file, /app.css: the record pages shell.page() makes from
    bills.html, and the five build_pages.py writes -- the home page, Officials,
@@ -8711,7 +8711,6 @@ text-transform:uppercase;color:var(--ink-2);margin:0 0 var(--sp-3);font-family:v
    room, and five columns was asked for). */
 :where(body.pg) .seatcols .sdiv{margin:0 0 var(--sp-8)}
 :where(body.pg) .seatcols .sdiv .seatlist{columns:270px;column-gap:var(--sp-7)}
-:where(body.pg) .seatcols .srost .seatlist{columns:auto}
 :where(body.pg) .seatcols .mchip{white-space:normal}
 @media (min-width:73.75em){
   :where(body.pg) .seatdivs{display:grid;gap:var(--sp-6);
@@ -8719,9 +8718,12 @@ text-transform:uppercase;color:var(--ink-2);margin:0 0 var(--sp-3);font-family:v
   margin:0 0 var(--sp-8)}
   :where(body.pg) .seatdivs > .sdiv{margin:0}
   :where(body.pg) .seatdivs .sdiv .seatlist{columns:auto}
-  :where(body.pg) .seatdivs .seatrow{gap:var(--sp-2) var(--sp-3);padding:var(--sp-2) var(--sp-1)}
-  :where(body.pg) .seatdivs .seatrow .sseat{flex:0 0 3.2em}
+  :where(body.pg) .seatdivs .seatrow,:where(body.pg) .seatcols .srost .seatrow{gap:var(--sp-2) var(--sp-3);
+  padding:var(--sp-2) var(--sp-1)}
   :where(body.pg) .seatdivs .mchip{margin:0}
+  /* The Speaker's card as wide as a division's, not the page's (the owner,
+     29 October 2026): the rostrum's list is one of the five columns wide. */
+  :where(body.pg) .seatcols .srost .seatlist{max-width:calc((100% - 4 * var(--sp-6)) / 5)}
 }
 :where(body.pg) .seatrow[hidden]{display:none}
 :where(body.pg) .seatrow{display:flex;align-items:baseline;gap:var(--sp-4);
@@ -8747,6 +8749,25 @@ font-size:var(--t-sm);color:var(--ink-2)}
 @media (max-width:35em){
   :where(body.pg) .seatrow{flex-wrap:wrap;gap:var(--sp-1) var(--sp-4)}
 }
+/* THE SEAT NUMBER INSIDE THE CARD (the owner, 29 October 2026, a blend of
+   the two mock-ups put to them). No gutter: under the chart each card fills
+   its column, and its seat, "001" without the division its column is headed
+   with, sits at the card's right, small and muted (mock-up B's size and
+   spacing), on the name's first line when the name wraps -- the chip a flex
+   row on its baseline, the name the part that gives way, so the two never
+   meet. That number is the eye's alone (aria-hidden, build_pages
+   .seat_row_tag); the row's own "1-001" (.sseat) is a screen reader's,
+   clipped, so it still hears the seat in full before the name. The
+   Speaker's card carries no number and is as wide as a division's cards:
+   the rostrum's list is in columns as a division's is, and five abreast it
+   is one of the five wide (the rule above). */
+:where(body.pg) #seatlist .seatrow{position:relative}
+:where(body.pg) #seatlist .seatrow > .sseat{position:absolute;width:1px;height:1px;padding:0;margin:-1px;
+  overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap;border:0}
+:where(body.pg) #seatlist .seatrow .mchip{display:flex;align-items:baseline;flex:1 1 auto;margin:0}
+:where(body.pg) #seatlist .seatrow .mchip > a{min-width:0}
+:where(body.pg) #seatlist .mseat{flex:0 0 auto;margin-left:auto;padding-left:.6em;font-size:.78em;
+  color:var(--ink-2);font-variant-numeric:tabular-nums;white-space:nowrap}
 
 /* THE ALL-RESULTS PAGE (/search). The header panel is a dropdown and stops
    at eight rows; this is the same index with the cap off, grouped by what

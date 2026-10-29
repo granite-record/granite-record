@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.245
+# GRANITE_VERSION: 2026-09-04.246
 """
 Build the pages the navigation links to: legislators, town lookup, how it
 works, and about.
@@ -665,6 +665,13 @@ def party_word(name, lang="en", plural=False):
 # "(R<span class="mdist"> - Belk 6</span>)": app.css hides the district from
 # the eye under the chart, the eye reads "(R)", and a screen reader hears the
 # tag whole, as everywhere else. A tag of another shape is left as it is.
+#
+# THE CLOSING BRACKET GOES WITH THE DISTRICT, and the eye's own is aria-hidden
+# (the blend's check, 29 October 2026). Clipped, the district is laid out as
+# a block, and Chrome puts a space either side of a block when it names the
+# link: "Rep. Debra DeSimone (R - Rock 18 )". With the ")" inside the clipped
+# part the name is "(R - Rock 18)" again, word for word as everywhere else,
+# and the ")" the eye sees is a second one a screen reader is not given.
 _SEAT_TAG = re.compile(r'(<span class="mtag">)\(([^()\s<]+)( - [^()<]+)\)(</span>)')
 
 # NAMES WITHOUT "REP." UNDER THE CHART (the owner, 29 October 2026: "the
@@ -683,14 +690,32 @@ _SEAT_HON = re.compile(r'(<span class="mchip[^"]*"[^>]*>(?:<a [^>]*>)?)(Rep\.) '
 _SEAT_GAP = re.compile(r' (<span class="mtag">)')
 
 
+# THE SEAT NUMBER INSIDE THE CARD (the owner, 29 October 2026, a blend of the
+# two mock-ups put to them): no gutter; each card carries its seat, "001",
+# right-aligned, small and muted, without the division its column is headed
+# with. That number is the eye's alone (aria-hidden), and the row's own
+# "1-001" stays where it was, clipped by app.css, so a screen reader hears
+# the seat in full before the name, as it always has. The Speaker's card on
+# the rostrum carries none: the rostrum is no division, and its "6-002" is
+# a plate a reader has no use for.
+_SEAT_NUM = re.compile(r'<span class="sseat">(\d+)-(\d+)</span>')
+_ROW_END = "</span></li>"
+
+
 def seat_row_tag(row):
     """A row of the House by seat with its chip's district apart from its
     party's letter (_SEAT_TAG), its "Rep." apart from its name (_SEAT_HON):
-    app.css shows the eye neither; and the letter held to the surname by a
-    no-break space (_SEAT_GAP)."""
+    app.css shows the eye neither; the letter held to the surname by a
+    no-break space (_SEAT_GAP); and, but on the rostrum, the seat's number
+    within its division written inside the chip for the eye (_SEAT_NUM)."""
     row = _SEAT_HON.sub(r'\1<span class="mhon">\2 </span>', row)
     row = _SEAT_GAP.sub(r'&#160;\1', row)
-    return _SEAT_TAG.sub(r'\1(\2<span class="mdist">\3</span>)\4', row)
+    row = _SEAT_TAG.sub(r'\1(\2<span class="mdist">\3)</span><span aria-hidden="true">)</span>\4', row)
+    num = _SEAT_NUM.search(row)
+    if num and int(num.group(1)) != seating.SPEAKER_SEAT // 1000 and row.endswith(_ROW_END):
+        row = (row[:-len(_ROW_END)] + f'<span class="mseat" aria-hidden="true">{num.group(2)}</span>'
+               + _ROW_END)
+    return row
 
 
 def seat_columns(house, row, lang="en"):

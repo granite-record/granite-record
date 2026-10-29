@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.725
+# GRANITE_VERSION: 2026-09-04.726
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -54539,7 +54539,8 @@ def _seat_callout(BP, SEAT):
     pointer can move onto it and it stays. Read: every seat the page's chart
     writes carries data-party and data-dist (seating.svg), and under the
     chart, on the fixture's legislators page, a row's tag is written
-    "(R<span class="mdist"> - Belk 6</span>)" (build_pages.seat_row_tag) and
+    "(R<span class="mdist"> - Belk 6)</span><span aria-hidden="true">)</span>"
+    (build_pages.seat_row_tag) and
     app.css hides the district from the eye alone and not the party's letter
     (the review of 29 October 2026, WCAG 1.4.1: hidden too, the party was the
     chip's colour alone, and nothing at all in forced colours)."""
@@ -54623,7 +54624,7 @@ def _seat_callout(BP, SEAT):
     rules = _css_screen_rules(Path("src/pages/app.css").read_text(encoding="utf-8"))
     one = BP.seat_row_tag('<span class="mchip p-R"><a href="x">Rep. A <span class="mtag">(R - Belk 6)</span>'
                           '</a></span>')
-    if '<span class="mtag">(R<span class="mdist"> - Belk 6</span>)</span>' not in one:
+    if '<span class="mtag">(R<span class="mdist"> - Belk 6)</span><span aria-hidden="true">)</span></span>' not in one:
         bad.append(f"build_pages.seat_row_tag does not set a row's district apart from its party: {one}")
     # NAMES WITHOUT "REP." TO THE EYE (the owner, 29 October 2026): the title
     # set apart, for a screen reader alone, and the name kept whole.
@@ -54642,12 +54643,17 @@ def _seat_callout(BP, SEAT):
     _html_walk(page, element=lambda c: (tags if "mtag" in c[0]["classes"] else dists if "mdist" in c[0]["classes"]
                                         else hons if "mhon" in c[0]["classes"]
                                         else []).append(c) if under_chart(c) else None,
-               text=lambda d, c: texts.append((d, c)) if c and "mtag" in c[0]["classes"] and under_chart(c)
+               text=lambda d, c: texts.append((d, c)) if c and under_chart(c)
+               and any(e and "mtag" in e["classes"] for e in c) and not any(e and "mdist" in e["classes"] for e in c)
                else None)
     if not tags or len(dists) != len(tags):
         bad.append(f"the fixture's rows under the chart have {len(tags)} tags and {len(dists)} districts set "
-                   f"apart: a row's tag is not written (R<span class=\"mdist\"> - Belk 6</span>)")
-    shown = sorted({"".join(d for d, c in texts if c[0] is t[0]) for t in tags[:400]})
+                   f"apart: a row's tag is not written (R<span class=\"mdist\"> - Belk 6)</span>"
+                   f"<span aria-hidden=\"true\">)</span>")
+    # What the eye reads of a tag: its text, less the district clipped for a
+    # screen reader, with the ")" that is the eye's alone.
+    shown = sorted({"".join(d for d, c in texts if next(e for e in c if e and "mtag" in e["classes"]) is t[0])
+                    for t in tags[:400]})
     def clipped(c):
         won = _css_won(rules, c)
         hide = {k: won.get(k, ("",))[0] for k in ("position", "clip", "width", "height", "display", "visibility")}
@@ -54698,6 +54704,116 @@ def _seat_callout(BP, SEAT):
                   "link and a mouseout, another seat and a scroll leave it there; Escape puts focus on the "
                   f"seat; the note says it in words, an unruled strip to the eye; the fixture's {len(tags)} row(s) under the chart are names and "
                   f"{', '.join(shown)} to the eye, the district a screen reader's")
+
+
+@check("frontend", "under the seating chart each card carries its seat's number, \"001\", for the eye alone, and "
+       "the Speaker's none; a screen reader hears \"1-001\" and the member's name whole", needs=("build_pages", "seating"))
+def _seat_number_in_card(BP, SEAT):
+    """The owner's choice of 29 October 2026, a blend of the two mock-ups put
+    to them: no gutter; each card under the chart carries its seat inside it
+    at the right, small and muted, "001" without the division its column is
+    headed with, on the name's first line when the name wraps; no "Rep."; the
+    Speaker's card on the rostrum no number, and as wide as a division's
+    cards. The number is the eye's alone (aria-hidden), the row's own "1-001"
+    a screen reader's (clipped), and the link's name what it was: "Rep. A B
+    (R - Belk 6)", with no space before its ")" (Chrome spaces a clipped
+    part, so the ")" is clipped with the district and the eye's own is
+    aria-hidden). Held on build_pages.seat_row_tag, on the fixture's
+    legislators page, and through app.css's cascade."""
+    import html as H
+    bad = []
+
+    def row(seat):
+        return (f'<li class="seatrow" data-seat="{seat}"><span class="sseat">{SEAT.plate(seat)}</span>'
+                '<span class="mchip p-R" translate="no"><a href="legislator/a.html">Rep. A B '
+                '<span class="mtag">(R - Belk 6)</span></a></span></li>')
+    one, spk = BP.seat_row_tag(row(1001)), BP.seat_row_tag(row(SEAT.SPEAKER_SEAT))
+    if not one.endswith('</a><span class="mseat" aria-hidden="true">001</span></span></li>') \
+            or '<span class="sseat">1-001</span>' not in one:
+        bad.append(f"a row's number is not in its chip after the name, aria-hidden, \"001\", beside its "
+                   f"\"1-001\": {one}")
+    if "mseat" in spk:
+        bad.append(f"the Speaker's card on the rostrum carries a number: {spk}")
+    link = re.search(r"<a [^>]*>(.*?)</a>", one).group(1)
+    # Heard as Chrome names a link: a part clipped for a screen reader is laid
+    # out as a block, and a block has a space either side of it.
+    heard = " ".join(H.unescape(re.sub(r"<[^>]+>", "", re.sub(r'<span aria-hidden="true">[^<]*</span>', "",
+                     re.sub(r'<span class="m(?:hon|dist)">([^<]*)</span>', r" \1 ", link)))).split())
+    seen = " ".join(H.unescape(re.sub(r"<[^>]+>", "", re.sub(r'<span class="m(?:hon|dist)">[^<]*</span>', "",
+                                                                link))).split())
+    if heard != "Rep. A B (R - Belk 6)":
+        bad.append(f"a screen reader is given the name {heard!r}, not \"Rep. A B (R - Belk 6)\"")
+    if seen != "A B (R)":
+        bad.append(f"the eye reads the name {seen!r}, not \"A B (R)\"")
+    # The columns as seat_columns draws them, of rows as the roster writes
+    # them (the fixture's House has one member, with no seat on file, so it
+    # is read for that alone below): every card on the floor numbered as its
+    # seat says, none on the rostrum, and the numbers the eye's alone.
+    house = [{"seat": str(n), "display_full": f"Rep. {w} (R - Belk 6)", "party": "R", "slug": f"m{n}"}
+             for n, w in ((SEAT.SPEAKER_SEAT, "S Speaker"), (1001, "A B"), (3045, "Katherine Prudhomme-O'Brien"))]
+    block = BP.seat_columns(house, lambda m: BP.seat_row_tag(
+        f'<li class="seatrow" data-seat="{m["seat"]}"><span class="sseat">{SEAT.plate(int(m["seat"]))}</span>'
+        f'{BP.pchip(m)}</li>'))
+    page = f'<html><body class="pg"><div class="seatcols" id="seatlist">{block}</div></body></html>'
+    lis = re.findall(r'<li class="seatrow" data-seat="(\d*)"[^>]*>(.*?)</li>', block, re.S)
+    floor = [(s_, body) for s_, body in lis if s_ and int(s_) // 1000 != SEAT.SPEAKER_SEAT // 1000]
+    rostrum = [(s_, body) for s_, body in lis if s_ and int(s_) // 1000 == SEAT.SPEAKER_SEAT // 1000]
+    if len(floor) != 2 or len(rostrum) != 1:
+        bad.append(f"seat_columns drew {len(floor)} card(s) on the floor and {len(rostrum)} on the rostrum, not 2 and 1")
+    shared, _base, _ran, _days = _fixture_site_shared()
+    built = (shared / "site" / "officials.html").read_text(encoding="utf-8")
+    a, b = built.find('id="seatlist"'), built.find('<ol class="seatlist senate">')
+    unseated = re.findall(r'<li class="seatrow" data-seat=""[^>]*>(.*?)</li>', built[a:b] if 0 <= a < b else "", re.S)
+    if not unseated or any("mseat" in u or 'class="mhon"' not in u for u in unseated):
+        bad.append(f"the fixture's member with no seat is not drawn as a card under the chart with no number: "
+                   f"{unseated[:1]}")
+    for s_, body in floor:
+        m = re.search(r'<span class="mseat"( aria-hidden="true")?>([^<]*)</span></span>$', body)
+        if not m or not m.group(1) or m.group(2) != s_[-3:]:
+            bad.append(f"seat {s_}'s card does not end in its number {s_[-3:]!r}, aria-hidden: {body[-160:]}")
+            break
+    if any("mseat" in body for _s, body in rostrum):
+        bad.append("the Speaker's card on the fixture's rostrum carries a number")
+    # Through the cascade: the full number clipped, the chip a row on its
+    # baseline that its name gives way in, the number at its right on one line.
+    rules = _css_screen_rules(Path("src/pages/app.css").read_text(encoding="utf-8"))
+    found = {}
+
+    def keep(c):
+        if any(e and "seatlist" in e["ids"] for e in c):
+            for k in ("sseat", "mchip", "mseat"):
+                if k in c[0]["classes"] and k not in found and not any(e and "srost" in e["classes"] for e in c):
+                    found[k] = c
+            if c[0]["tag"] == "a" and "mchip" in c[1]["classes"] and "a" not in found:
+                found["a"] = c
+    _html_walk(page, element=keep)
+    won = {k: {p: v[0] for p, v in _css_won(rules, c).items()} for k, c in found.items()}
+    want = {"sseat": {"position": "absolute", "width": "1px", "height": "1px", "overflow": "hidden",
+                      "clip": "rect(0 0 0 0)"},
+            "mchip": {"display": "flex", "align-items": "baseline", "flex": "1 1 auto"},
+            "a": {"min-width": "0"},
+            "mseat": {"margin-left": "auto", "white-space": "nowrap", "flex": "0 0 auto"}}
+    for k, props in want.items():
+        got = {p: won.get(k, {}).get(p) for p in props}
+        if got != props:
+            bad.append(f"under the chart, {k} is drawn {got}, not {props}")
+    if won.get("mseat", {}).get("display") in ("none",) or won.get("mseat", {}).get("clip"):
+        bad.append("the number in the card is hidden from the eye")
+    # The rostrum's card a division's width: in a division's columns below five
+    # abreast, and five abreast one of the five wide, by the grid's own gap.
+    css = Path("src/pages/app.css").read_text(encoding="utf-8")
+    g = re.search(r"@media \(min-width:([\d.]+)em\)\{\s*:where\(body\.pg\) \.seatdivs\{display:grid;"
+                  r"gap:var\(--sp-(\d+)\);", css)
+    tail = css[g.end():g.end() + 1200] if g else ""
+    if not g or (f":where(body.pg) .seatcols .srost .seatlist{{max-width:calc((100% - 4 * var(--sp-{g.group(2)}))"
+                 " / 5)}") not in tail:
+        bad.append("five abreast, the rostrum's card is not one of the five columns wide")
+    if ".srost .seatlist{columns:auto}" in css:
+        bad.append("below five abreast, the rostrum's list is one column the page's width, so its card is too")
+    assert not bad, "the seat number in the card: " + "; ".join(bad[:5])
+    return "ok", ("each card on the floor ends in its seat's number, aria-hidden, the Speaker's in none, and "
+                  f"the fixture's {len(unseated)} with no seat on file in none; a screen reader hears \"1-001\" "
+                  f"and \"{heard}\", the eye \"{seen}\" and \"001\" at the card's right, on its first line")
 
 
 @check("build", "a reports file keyed on bill number is refused, not ignored")
