@@ -42368,6 +42368,19 @@ def _related_bills_shared_in(RB):
         assert mask.dtype == bool and len(mask) == len(a) and \
             np.flatnonzero(mask).tolist() == sorted(ia.tolist()), (
                 f"shared_in({a.tolist()[:6]}, {b.tolist()[:6]}) is not intersect1d's answer")
+    # And relate()'s own sets are the kind shared_in needs: the Shingler's,
+    # boilerplate taken out as relate() takes it, sorted with no repeats.
+    sh = RB.Shingler(np)
+    made = [sh(RB.words_of(t)) for t in (
+        "", "too short", "Section 1 of RSA 21-J:1 is amended by striking out the word and "
+        "inserting in place thereof the following new paragraph about the state",
+        " ".join(rnd.choice(("the", "state", "shall", "rsa", "section", "amended"))
+                 for _ in range(400)))]
+    allh = np.concatenate(made)
+    u, cnt = np.unique(allh, return_counts=True)
+    made = [s[~np.isin(s, u[cnt > 1], assume_unique=True)] if len(s) else s for s in made]
+    assert all(s.dtype == np.uint64 and bool((np.diff(s.astype(object)) > 0).all())
+               for s in made), "a set relate() builds is not sorted with no repeats"
     src = inspect.getsource(RB.relate)
     assert "intersect1d" not in src and src.count("words_of(") == 1, (
         "relate() sorts each pair together again, or reads a text's words twice")
