@@ -76,17 +76,22 @@ both machines now. On a stood-down laptop:
   and every fetch here, as a refusal met here always has. Only a read of the
   real bucket counts: a pull from a `--local-bucket` folder is a test.
 - **A refusal met here goes to the bucket at once** (`refusal.note()`, in the
-  fetchers that record one), so the night stops too. If the bucket cannot be
-  reached, or already holds an older refusal this one waits behind, the fetch
-  says so loudly, and `archive/cloud/refusal-unsent.json` stays until the
-  bucket holds this refusal -- `python3 src/ops/cloud.py send-refusal` sends it once
-  the bucket holds none -- or a person lifts it here.
+  fetchers that record one), so the night stops too. Where the bucket holds
+  a refusal GitHub's own night met -- one its knock may lift, or has lifted
+  -- this one takes its place, and the old one is kept under `replaced/`:
+  nothing met here waits behind a record a machine may lift. If the bucket
+  cannot be reached, or holds another refusal only a person can lift, which
+  this one waits behind, the fetch says so loudly, and
+  `archive/cloud/refusal-unsent.json` stays until the bucket holds this
+  refusal -- `python3 src/ops/cloud.py send-refusal` sends it once it can --
+  or a person lifts it here.
 - **A refusal GitHub's own knock lifted stays here until a person clears
   it.** The bucket's `state/knocks.json` lists every refusal the night's
-  knock lifted (`refusal.py`, the knock's ladder). A pull that finds the copy
-  here among them says THE NIGHT LIFTED THIS REFUSAL, at any age, and leaves
-  it on file, so the lane and every fetch here still stop at it until
-  `python3 refusal.py --clear`; `send-refusal` never sends one back.
+  knock lifted (`refusal.py`, the knock's ladder; nothing knocks yet). A pull
+  that finds the copy here among them says THE NIGHT LIFTED THIS REFUSAL, at
+  any age, and leaves it on file, so the lane here still stops at it until
+  `python3 refusal.py --clear`, and a fetch started by hand here for 24 hours
+  from when it was met; `send-refusal` never sends one back.
 
 `python3 refusal.py` says whether the window is open, when the bucket was last
 read, and whether a refusal is waiting to be sent. So a lane started in the

@@ -152,3 +152,34 @@ that made it.
     laptop cannot read the switch. So a lifted record has no command that
     puts it back; a person who wants the night stopped turns the method off,
     and any refusal met afterwards stops it as before.
+
+## After the review of 62e7406: nothing of the laptop's waits behind a record a machine may lift
+
+23. **A laptop's own refusal takes the place of a record GitHub's night may
+    lift, and any refusal takes the place of one the knock has lifted**
+    (`cloud.waits_behind`, `send_refusal`). design_final §2.6 says only that
+    `send_refusal` never sends a sha in the bucket's `lifted`; the old rule
+    that a send never writes over the bucket's record assumed only a person
+    could lift that record, and a person's `clear-refusal` names the one
+    waiting. A knock's lift names nothing, so a 403 met on the laptop behind
+    GitHub's drop record was orphaned when the knock lifted it, and GitHub's
+    night then asked the General Court. Now the laptop's record is put in
+    the bucket's place, the old one kept under `replaced/<day>/` as
+    `clear-refusal` keeps it, and main's night stops at a person's record,
+    which nothing lifts. Behind a record only a person can lift (no kind, a
+    403, the laptop's, a dry run's) it still waits, marked, as before.
+    `pull`, state-up's `unsent_after` and the send-night check report the
+    waiting case as a failure naming `send-refusal`, and `pull` no longer
+    sets this laptop's own record aside because the bucket's GitHub record
+    is newer. One case still waits: a copy of a GitHub record here (the
+    night's to test too) behind another GitHub record not lifted -- both are
+    the night's own kind, and the bucket's is the one its chain names.
+24. **`send-refusal` reads `state/knocks.json` only where a record here or
+    in the bucket is one the night may lift (`cloud.liftable`, i.e.
+    `refusal._its_own`), and sends all the same when that read fails.**
+    Addendum §7 rule 2's order (the record, then the lifts, then the put)
+    stands for those records. A refusal met on the laptop is never lifted,
+    so its send no longer depends on the read at all; and a lifted record
+    sent back because the read failed stops nothing while the night's
+    testing is on (main's state-down leaves it in the bucket and its
+    state-up moves it) and stops the night when it is off, the safe way.

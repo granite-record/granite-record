@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-09.23
+# GRANITE_VERSION: 2026-09-09.24
 """
 One refusal stops the fetch lane, not just the run that was refused.
 
@@ -101,12 +101,16 @@ So on a stood-down laptop, and only there:
   - a refusal recorded here is sent to the bucket's state/refused.json when
     the bucket holds none, so the night stops too (note(), through
     cloud.send_refusal) -- from the repository that holds secrets.json only;
-    a test folder's refusal needs a folder bucket (CLOUD_BUCKET). If the
-    bucket cannot be reached, or holds another refusal this one waits
-    behind, it says so loudly and leaves archive/cloud/refusal-unsent.json,
-    which pull, state-up and preflight report until the bucket holds this
-    refusal or a person lifts it here. note() itself never fails for it: the
-    refusal is on file here first.
+    a test folder's refusal needs a folder bucket (CLOUD_BUCKET). Where the
+    bucket holds one the night's knock lifted, or one GitHub's night may
+    lift itself (cloud.waits_behind), this one takes its place, the old one
+    kept under replaced/: waiting behind a record a machine may lift would
+    keep nothing stopped. If the bucket cannot be reached, or holds another
+    refusal only a person can lift, which this one waits behind, it says so
+    loudly and leaves archive/cloud/refusal-unsent.json, which pull,
+    state-up and preflight report until the bucket holds this refusal or a
+    person lifts it here. note() itself never fails for it: the refusal is
+    on file here first.
 
 Exit 4, not 2: 2 is "refused", and the lane and every fetcher read it as the
 address saying no. Waiting for the other machine's turn is the stand-down's

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-25.28
+# GRANITE_VERSION: 2026-09-25.29
 """
 The nightly's kit and the laptop's backup, in the project's private R2 bucket.
 
@@ -2113,10 +2113,13 @@ def _who(doc):
 def unsent_after(bucket, root):
     """The sentence for a refusal met here that the bucket was never told of,
     or "". The marker goes once the bucket holds THIS refusal, or there is
-    none here any more. While the bucket holds another one it stays, and is
-    said, but is no failure: the night stops at any refusal the bucket holds,
-    so this one waits behind it rather than being lost -- until a person
-    lifts that one, when send-refusal sends this."""
+    none here any more, or it is one a person cleared or the knock lifted.
+    While the bucket holds another one only a person can lift it stays, and
+    is said, but is no failure: the night stops at that one until a person
+    lifts it, so this one waits behind it rather than being lost -- until
+    then, when send-refusal sends this. Behind one the knock lifted, or one
+    GitHub's night may lift itself (waits_behind), it is a failure, as with
+    none: send-refusal puts it in that one's place."""
     marker = local(root, UNSENT)
     if not marker.exists():
         return ""
@@ -2124,7 +2127,8 @@ def unsent_after(bucket, root):
     mine = here.read_bytes() if here.exists() else None
     theirs = bucket.get_bytes("state/refused.json")
     cleared = ((load_state_record(root) or {}).get("cleared") or {}).get("refused.json")
-    lifted = mine is not None and theirs is None and _sha(mine) in bucket_lifted(bucket)
+    lifts = bucket_lifted(bucket) if mine is not None else {}
+    lifted = mine is not None and _sha(mine) in lifts
     if mine is None or (theirs is not None and theirs == mine) or cleared == _sha(mine) or lifted:
         marker.unlink(missing_ok=True)
         say(f"  {UNSENT}: " + ("there is no refusal on file here any more" if mine is None else
@@ -2134,6 +2138,11 @@ def unsent_after(bucket, root):
                                "a person cleared this refusal from the bucket")
             + "; the marker is lifted")
         return ""
+    if waits_behind(mine, theirs, lifts, cleared):
+        return (f"{UNSENT} says a refusal met here ({_who(_refusal_doc(mine))}) never reached the "
+                f"bucket, which holds GitHub's refusal ({_who(_refusal_doc(theirs))}) instead: "
+                f"{behind_why(theirs, lifts)}. python3 src/ops/cloud.py send-refusal puts it in "
+                "that one's place")
     if theirs is not None:
         say(f"  {UNSENT} stays: this machine's refusal ({_who(_refusal_doc(mine))}) waits "
             f"behind the one the bucket holds ({_who(_refusal_doc(theirs))}), which stops the "
@@ -2315,20 +2324,80 @@ def _refusal_entry(kit):
     return entry
 
 
+# NOTHING OF THIS LAPTOP'S WAITS BEHIND A RECORD A MACHINE MAY LIFT (the
+# reviewers of 29 October 2026). A refusal met here used to wait behind any
+# other the bucket held, because that one stopped the night until a person
+# lifted it, and a person's clear-refusal names the one waiting. A record
+# GitHub's own night on main met is no longer only a person's to lift: the
+# night's knock may lift it once one request is answered, and nothing then
+# names this laptop's. So this laptop's own refusal -- one the night may not
+# lift (refusal._its_own false) -- takes the place of such a record in the
+# bucket, the old one kept under replaced/, and the night stops at a
+# person's; and any record here takes the place of one the knock has
+# already lifted, which stops nothing.
+
+def liftable(data):
+    """Whether refusal record bytes are of the kind GitHub's own night on
+    main met and may test, and so lift, itself (refusal._its_own: whose()
+    conditions 1 to 5). Only such a record can leave the bucket without a
+    person."""
+    import refusal
+    return data is not None and refusal._its_own(_refusal_doc(data))[0]
+
+
+def waits_behind(mine, theirs, lifts, cleared=None):
+    """Whether this laptop's refusal `mine` would wait behind `theirs`, the
+    bucket's, where waiting keeps nothing safe: theirs is one the knock has
+    lifted (`lifts`, the bucket's), or one GitHub's night may lift while
+    mine is this laptop's own. Never for a copy the knock lifted, or one a
+    person cleared from the bucket (`cleared`, its sha). send-refusal puts
+    mine in its place; pull, state-up and the send-night check fail until it
+    does."""
+    return (mine is not None and theirs is not None and mine != theirs
+            and _sha(mine) not in lifts and cleared != _sha(mine)
+            and (_sha(theirs) in lifts or (liftable(theirs) and not liftable(mine))))
+
+
+def behind_why(theirs, lifts):
+    """Why waiting behind the bucket's `theirs` keeps nothing safe."""
+    return ("the night's knock lifted that one, so it stops nothing" if _sha(theirs) in lifts
+            else "GitHub's night may lift that one itself once one request is answered, and "
+                 "would then ask the address this laptop was refused by")
+
+
+def _keep_over(bucket, obj):
+    """`obj` kept under replaced/<day>/ before it is put over; None when it
+    went in the meantime (a lift moved it), so there is nothing to keep."""
+    try:
+        return Replacer(bucket, f"{datetime.now():%Y-%m-%d}").keep(obj)
+    except Exception:                                           # noqa: BLE001
+        if bucket.get_bytes(obj) is None:
+            return None
+        raise
+
+
 def send_refusal(root, local_bucket=None, dry_run=False):
-    """This machine's refusal record to the bucket's state/refused.json, when
-    the bucket holds none, so GitHub's night stops at it too. (done, the
-    sentence to print); Failed when it could not be sent.
+    """This machine's refusal record to the bucket's state/refused.json, so
+    GitHub's night stops at it too. (done, the sentence to print); Failed
+    when it could not be sent.
 
     done is True when nothing is left to send: the bucket holds this refusal
-    (sent now, or before), there is none here, or it is the one a person
+    (sent now, or before), there is none here, it is the one a person
     cleared from the bucket (clear-refusal records it, and it is never sent
-    back). It is False while the bucket holds ANOTHER refusal: that one stops
-    the night already, and is never overwritten from here, so this one waits
-    behind it -- the unsent marker stays, saying so, until the bucket holds
-    this refusal or a person lifts it here. Giving up there, as this once
-    did, lost a newer laptop refusal the moment a person cleared the
-    bucket's older one.
+    back), or it is one the night's knock lifted. It is False while the
+    bucket holds ANOTHER refusal only a person can lift -- one with no kind,
+    a 403, one met on the laptop or by a dry run: that one stops the night
+    until a person lifts it with clear-refusal, which names this one, and is
+    never overwritten from here, so this one waits behind it -- the unsent
+    marker stays, saying so, until the bucket holds this refusal or a person
+    lifts it here. Giving up there, as this once did, lost a newer laptop
+    refusal the moment a person cleared the bucket's older one.
+
+    IN THE PLACE OF ONE A MACHINE MAY LIFT (the reviewers of 29 October
+    2026): where the bucket holds a refusal the knock lifted, or one GitHub's
+    night may lift itself while this one is the laptop's own (waits_behind),
+    waiting would keep nothing safe, so this one is put in its place and the
+    old one kept under replaced/<day>/.
 
     refusal.note() calls this on a stood-down laptop, the moment a fetch meets
     a refusal; `cloud.py send-refusal` is the same by hand. The real bucket
@@ -2336,11 +2405,16 @@ def send_refusal(root, local_bucket=None, dry_run=False):
     recorded in a test's temp folder beside a stand-down file must never
     reach the night, so anywhere else needs a folder bucket.
 
-    NEVER A LIFTED ONE (29 October 2026): it confirms the bucket holds no
-    refusal, THEN reads state/knocks.json, then puts -- and never sends a
-    refusal the night's knock lifted (its sha in "lifted"), at any age.
-    Read in the other order, a lift landing between the two reads would be
-    missed and the lifted record sent back.
+    NEVER A LIFTED ONE (29 October 2026): it reads state/refused.json, THEN
+    state/knocks.json, then puts -- and never sends a refusal the night's
+    knock lifted (its sha in "lifted"), at any age. Read in the other order,
+    a lift landing between the two reads would be missed and the lifted
+    record sent back. state/knocks.json is read only where a record here or
+    in the bucket is one the night may lift (liftable): a refusal met on this
+    laptop is never lifted, so its send never waits on that read. And a read
+    that fails sends the record all the same: main's state-down leaves a
+    lifted record put back where it is while the night's testing is on, so
+    sending one is harmless, and not sending a refusal is not.
     """
     root = Path(root)
     kit = load_kit(root)
@@ -2367,18 +2441,30 @@ def send_refusal(root, local_bucket=None, dry_run=False):
                      "A test gives a folder bucket (--local-bucket FOLDER, or "
                      "refusal.CLOUD_BUCKET)")
     obj = "state/refused.json"
+    over, kept, unread = False, None, ""
     try:
         bucket = make_bucket(local_bucket, 1, quick=True)
         theirs = bucket.get_bytes(obj)
-        lift = bucket_lifted(bucket).get(mine) if theirs is None else None
+        lifts = {}
+        if theirs != data and (liftable(data) or liftable(theirs)):
+            try:
+                lifts = bucket_lifted(bucket)
+            except Exception as e:                              # noqa: BLE001
+                unread = scrub(f"{type(e).__name__}: {e}")
+        lift = lifts.get(mine) if theirs != data else None
         if lift is not None:
             if not dry_run:
                 marker.unlink(missing_ok=True)
             return True, (f"{entry['path']} was {lift_said(lift)}, and is not sent back; "
                           "python3 refusal.py --clear lifts it here")
-        if theirs is None and dry_run:
-            return True, f"--dry-run: {entry['path']} would go to {obj} in {bucket.describe()}"
-        if theirs is None:
+        over = waits_behind(data, theirs, lifts)
+        if (theirs is None or over) and dry_run:
+            return True, (f"--dry-run: {entry['path']} would go to {obj} in {bucket.describe()}"
+                          + (f", in the place of GitHub's refusal ({_who(_refusal_doc(theirs))}): "
+                             f"{behind_why(theirs, lifts)}" if over else ""))
+        if theirs is None or over:
+            if over:
+                kept = _keep_over(bucket, obj)
             bucket.put_bytes(obj, data)
             if bucket.get_bytes(obj) != data:
                 raise Failed(f"{obj} did not read back as it was sent")
@@ -2386,29 +2472,36 @@ def send_refusal(root, local_bucket=None, dry_run=False):
         raise
     except (Exception, SystemExit) as e:                        # noqa: BLE001
         raise Failed(scrub(f"{type(e).__name__}: {e}"))
-    if theirs is not None and theirs != data:
+    if theirs is not None and theirs != data and not over:
         t, m = _refusal_doc(theirs), _refusal_doc(data)
         older = float(t.get("epoch") or 0) <= float(m.get("epoch") or 0)
+        lifter = ("until it is lifted, by a person with python3 src/ops/cloud.py clear-refusal "
+                  "or by GitHub's own knock" if liftable(theirs) else
+                  "until a person lifts it with python3 src/ops/cloud.py clear-refusal")
         why = (f"waiting behind the bucket's older refusal ({_who(t)}), which stops the night "
-               "until a person lifts it with python3 src/ops/cloud.py clear-refusal; python3 src/ops/cloud.py "
-               "send-refusal then sends this one" if older else
+               f"{lifter}; python3 src/ops/cloud.py send-refusal then sends this one" if older else
                f"the bucket holds a newer refusal ({_who(t)}), which stops the night; python3 "
                "src/ops/cloud.py pull takes it here and sets this one aside")
         if not dry_run:
             write_unsent(root, why)
         return False, (f"{bucket.describe()} holds another refusal at {obj}, so this one "
                        f"({_who(m)}) is not sent over it: {why}")
-    if theirs is None:
+    if theirs is None or over:
         rec = rec or {"files": {}, "cleared": {}}
         rec["files"]["refused.json"] = mine
         save_state_record(root, rec)
-        said = f"sent to {obj} in {bucket.describe()}, and GitHub's night stops at it too"
+        said = (f"sent to {obj} in {bucket.describe()}, and GitHub's night stops at it too"
+                + (f"; it took the place of GitHub's refusal ({_who(_refusal_doc(theirs))}), "
+                   f"kept at {kept or 'nothing: it had gone'}, because "
+                   f"{behind_why(theirs, lifts)}" if over else "")
+                + (f" (the bucket's state/knocks.json did not read, {unread}: sent all the "
+                   "same, since a lifted record put back stops nothing while the night's "
+                   "testing is on, and an unsent refusal would)" if unread else ""))
     else:
         said = f"{bucket.describe()} already holds this refusal at {obj}"
     if not dry_run:
         marker.unlink(missing_ok=True)
     return True, said
-
 
 def cmd_send_refusal(a, root):
     done, said = send_refusal(root, a.local_bucket, a.dry_run)
@@ -2966,12 +3059,19 @@ def pull_refusal(bucket, root, kit, dry, day):
     A LIFT IS READ FROM THE BUCKET (29 October 2026): a copy here whose sha
     the bucket's state/knocks.json lists as lifted by the night's knock is
     said to be so, at any age -- never the "IS NOT IN THE BUCKET" failure,
-    never the advice to send it -- and stays on file, stopping the lane and
-    every fetch here until a person runs refusal.py --clear; its unsent
-    marker is lifted. state/refused.json is read BEFORE state/knocks.json,
-    so a lift that lands between the two reads is seen: in the other order
-    the copy taken just now would meet a bucket with no refusal and a
-    "lifted" without it."""
+    never the advice to send it -- and stays on file, stopping the lane here
+    until a person runs refusal.py --clear, and a hand fetch for QUIET_HOURS
+    from when it was met; its unsent marker is lifted. state/refused.json is
+    read BEFORE state/knocks.json, so a lift that lands between the two
+    reads is seen: in the other order the copy taken just now would meet a
+    bucket with no refusal and a "lifted" without it.
+
+    NOT BEHIND ONE A MACHINE MAY LIFT (the reviewers of 29 October 2026): a
+    refusal here behind the bucket's lifted one, or this laptop's own behind
+    one GitHub's night may lift itself (waits_behind), is a refusal the
+    bucket does not hold -- a FAILURE while it stands or is marked unsent,
+    saying send-refusal puts it in that one's place -- and is never set
+    aside here for being older."""
     import refusal
     entry = _refusal_entry(kit)
     here_p, marker = local(root, entry["path"]), local(root, UNSENT)
@@ -2994,6 +3094,10 @@ def pull_refusal(bucket, root, kit, dry, day):
     cleared = ((load_state_record(root) or {}).get("cleared") or {}).get("refused.json")
     after = mine                    # what this laptop holds once this pull is done
     told = False                    # a failure already names send-refusal
+    # This laptop's refusal behind one a machine may lift, or has lifted: no
+    # wait keeps the night stopped at it, so it is said as a refusal the
+    # bucket does not hold (waits_behind), and never set aside here.
+    behind = waits_behind(mine, theirs, lifts, cleared)
     if theirs is None and mine is None:
         lines.append("no refusal on file in the bucket or here")
     elif theirs is None:
@@ -3001,8 +3105,9 @@ def pull_refusal(bucket, root, kit, dry, day):
         if _sha(mine) in lifts:
             lines.append(f"THE NIGHT LIFTED THIS REFUSAL ({_who(m)}): it was "
                          f"{lift_said(lifts[_sha(mine)])}. It is still on file here, as "
-                         f"{entry['path']}: the lane and every fetch here stop at it until "
-                         "python3 refusal.py --clear")
+                         f"{entry['path']}: the lane here stops at it until python3 refusal.py "
+                         f"--clear, and a fetch started by hand here for {refusal.QUIET_HOURS} "
+                         "hours from when it was met")
         elif cleared == _sha(mine):
             lines.append(f"{entry['path']} ({_who(m)}) is on file here and the bucket holds "
                          "none: a person cleared this one from the bucket, and python3 "
@@ -3020,6 +3125,23 @@ def pull_refusal(bucket, root, kit, dry, day):
                          "here are not stopped by it; the lane here is, and GitHub's night "
                          "never sees it: python3 src/ops/cloud.py send-refusal sends it if it should "
                          "stop the night too, and python3 refusal.py --clear lifts it here")
+    elif behind:
+        m = _refusal_doc(mine)
+        why = behind_why(theirs, lifts)
+        if marker.exists() or refusal.hours_left(m) is not None:
+            told = True
+            bad.append(f"THIS LAPTOP'S REFUSAL ({_who(m)}, {entry['path']}) IS NOT IN THE BUCKET, "
+                       f"which holds GitHub's refusal ({what}) instead: {why}. python3 "
+                       "src/ops/cloud.py send-refusal puts this one in its place (to the bucket, "
+                       "not the General Court; the bucket's is kept under replaced/); python3 "
+                       "refusal.py --clear lifts it here, if a person has decided it is over")
+        else:
+            lines.append(f"{entry['path']} ({_who(m)}) is on file here, and the bucket holds "
+                         f"GitHub's refusal ({what}) instead: {why}. It is older than "
+                         f"{refusal.QUIET_HOURS} hours, so hand fetches here are not stopped by "
+                         "it; the lane here is: python3 src/ops/cloud.py send-refusal puts it in "
+                         "the bucket's place if it should stop the night too, and python3 "
+                         "refusal.py --clear lifts it here")
     elif _sha(theirs) in lifts:
         # Lifted, and still in the bucket: sent back after the lift, or
         # its move not yet made. GitHub's next state-up of main moves it.
@@ -3031,8 +3153,9 @@ def pull_refusal(bucket, root, kit, dry, day):
                         f"; this laptop's ({_who(_refusal_doc(mine))}) stays")
                      + (f". {'It would go' if dry else 'It is now'} on file here too, as "
                         f"{entry['path']}" if mine is None else "")
-                     + ": the lane and every fetch here stop at a copy on file until python3 "
-                       "refusal.py --clear")
+                     + ": the lane here stops at a copy on file until python3 refusal.py "
+                       f"--clear, and a fetch started by hand here for {refusal.QUIET_HOURS} "
+                       "hours from when it was met")
     elif mine is None:
         after = theirs                  # created here above, unless dry
         lines.append(f"THE BUCKET HOLDS A REFUSAL ({what}): "
@@ -3074,7 +3197,7 @@ def pull_refusal(bucket, root, kit, dry, day):
                                           "the bucket holds this laptop's refusal, so the night "
                                           "stops at it")
                          + f"; the marker {'would be' if dry else 'is'} lifted")
-        elif theirs is not None:
+        elif theirs is not None and not behind:
             lines.append(f"{UNSENT} stays: this laptop's refusal is not the bucket's, and waits "
                          "behind it (above)")
         elif not told:
@@ -3714,15 +3837,22 @@ def refusal_unsent(bucket, root, kit):
     import refusal
     here = local(root, _refusal_entry(kit)["path"])
     mine = here.read_bytes() if here.exists() else None
-    if mine is None or bucket.get_bytes("state/refused.json") is not None:
+    if mine is None:
         return ""
+    theirs = bucket.get_bytes("state/refused.json")
     cleared = ((load_state_record(root) or {}).get("cleared") or {}).get("refused.json")
-    if cleared == _sha(mine) or _sha(mine) in bucket_lifted(bucket):
+    if cleared == _sha(mine):
+        return ""
+    lifts = bucket_lifted(bucket)
+    if _sha(mine) in lifts or (theirs is not None and not waits_behind(mine, theirs, lifts)):
         return ""
     if local(root, UNSENT).exists() or refusal.hours_left(_refusal_doc(mine)) is not None:
         return (f"a refusal on file here ({_who(_refusal_doc(mine))}) is not in the bucket, "
-                "which holds none, so GitHub's night would still ask the address this laptop "
-                "was refused by: python3 src/ops/cloud.py send-refusal first")
+                + ("which holds none" if theirs is None else
+                   f"which holds GitHub's refusal ({_who(_refusal_doc(theirs))}) instead: "
+                   + behind_why(theirs, lifts))
+                + ", so GitHub's night would ask the address this laptop was refused by: "
+                  "python3 src/ops/cloud.py send-refusal first")
     return ""
 
 

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.727
+# GRANITE_VERSION: 2026-09-04.728
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -55923,9 +55923,149 @@ def _cloud_pull_lifted(CL, R):
             lines, bad, _ = pull(bucket, laptop)
             assert bad and "IS NOT IN THE BUCKET" in bad[0], \
                 "a laptop refusal the bucket lacks, and no knock lifted, is no longer a failure"
+
+            # NOTHING OF THE LAPTOP'S WAITS BEHIND A RECORD A MACHINE MAY LIFT.
+            def laptop_403(epoch):
+                """A 403 met on the laptop, as note() writes it there: bytes."""
+                return json.dumps({"at": "t", "epoch": epoch, "where": "fetch_y",
+                                   "why": "HTTP Error 403: Forbidden", "kind": "refused",
+                                   "machine": "laptop", "ref": "", "dry": True,
+                                   "run_id": ""}, indent=1).encode("utf-8")
+
+            def kept_x(bucket):
+                return [p.read_bytes() for p in bucket.glob("replaced/*/state/refused.json*")]
+
+            def told(laptop, bucket):
+                """refusal.note()'s own send, as on a stood-down laptop."""
+                R.MARK, R.CLOUD_BUCKET = laptop / "archive" / "refused.json", str(bucket)
+                try:
+                    with contextlib.redirect_stderr(io.StringIO()) as err:
+                        marker(laptop)                     # note() writes it before the send
+                        return R.tell_the_bucket(), err.getvalue()
+                finally:
+                    R.CLOUD_BUCKET = saved_cloud
+
+            def night_down(bucket):
+                night = tmp / f"night{next(n)}"
+                night.mkdir()
+                _lift_fixture(night, real)
+                with contextlib.redirect_stdout(io.StringIO()):
+                    assert CL.main(["state-down", "--root", str(night), "--local-bucket",
+                                    str(bucket)]) == 0
+                return night
+            saved_cloud = R.CLOUD_BUCKET
+            # The reviewers' case: GitHub's drop record X in the bucket, taken
+            # down by main's night; a 403 met on the laptop (L) is sent, and
+            # takes X's place; the night's knock then lifts X; and the next
+            # night's state-down still finds a refusal, L, a person's.
+            bucket, laptop, x = setup(3, lifted=False, held=True)
+            _KnockEnv.set(**_KNOCK_MAIN)
+            night = night_down(bucket)
+            _KnockEnv.set()
+            l_ = laptop_403(time.time() - 60)
+            (laptop / "archive" / "refused.json").write_bytes(l_)
+            sent, err = told(laptop, bucket)
+            assert sent and (bucket / "state/refused.json").read_bytes() == l_ and \
+                kept_x(bucket) == [x] and not (laptop / CL.UNSENT).exists(), \
+                f"a 403 met on the laptop waited behind a record GitHub may lift: {err[-400:]}"
+            _KnockEnv.set(**dict(_KNOCK_MAIN, GITHUB_RUN_ID="lift1"))
+            R.MARK = night / "archive" / "refused.json"
+            R.knocking(_KNOCK_URL)
+            assert R.knocked("whole", "Counties.txt, 195 bytes") == "lifted"
+            with contextlib.redirect_stdout(io.StringIO()):
+                assert CL.main(["state-up", "--root", str(night), "--local-bucket",
+                                str(bucket)]) == 0
+            after = night_down(bucket)
+            down = after / "archive" / "refused.json"
+            assert down.exists() and down.read_bytes() == l_ and R.whose(l_)[0] == "person", \
+                "after the knock lifted X, the next night found no refusal: the laptop's 403 " \
+                "was orphaned"
+            _KnockEnv.set()
+            # Already waiting (sent before this rule, or while the bucket was
+            # out of reach): pull and the two other readers fail and name
+            # send-refusal, the laptop's copy is not set aside for being
+            # older, and send-refusal puts it in X's place.
+            for lifted_, older in ((False, True), (True, False)):
+                bucket, laptop, x = setup(3, lifted=False, held=True)
+                if lifted_:
+                    land(bucket, x)
+                    (bucket / "state" / "refused.json").write_bytes(x)
+                l_ = laptop_403(time.time() - (5 * 3600 if older else 60))
+                (laptop / "archive" / "refused.json").write_bytes(l_)
+                marker(laptop)
+                lines, bad, _ = pull(bucket, laptop)
+                fb = CL.FolderBucket(bucket)
+                with contextlib.redirect_stdout(io.StringIO()):
+                    state_up_said = CL.unsent_after(fb, laptop)
+                assert bad and "IS NOT IN THE BUCKET" in bad[0] and "send-refusal" in bad[0] \
+                    and (laptop / "archive" / "refused.json").read_bytes() == l_ \
+                    and CL.refusal_unsent(fb, laptop, CL.load_kit(laptop)) \
+                    and "send-refusal" in state_up_said, \
+                    (f"the laptop's 403 behind {'a lifted' if lifted_ else 'a liftable'} record "
+                     f"was not a failure, or was set aside: {lines} {bad} {state_up_said!r}")
+                done, said = CL.send_refusal(laptop, local_bucket=str(bucket))
+                assert done and (bucket / "state/refused.json").read_bytes() == l_ and \
+                    kept_x(bucket) == [x], f"send-refusal did not take X's place: {said}"
+                lines, bad, _ = pull(bucket, laptop)
+                assert not bad, bad
+            # Older than 24 hours and unmarked: a line, not a failure, naming it.
+            bucket, laptop, x = setup(3, lifted=False, held=True)
+            (laptop / "archive" / "refused.json").write_bytes(laptop_403(time.time() - 30 * 3600))
+            lines, bad, _ = pull(bucket, laptop)
+            assert not bad and "send-refusal puts it in the bucket's place" in " ".join(lines), \
+                (lines, bad)
+            # A lifted record in the bucket is absent to a copy of GitHub's
+            # too: one the knock has not lifted takes its place.
+            bucket, laptop, x = setup(3, lifted=False, held=True)
+            land(bucket, x)
+            (bucket / "state" / "refused.json").write_bytes(x)
+            y = _knock_record(epoch=time.time() - 600, why="RemoteDisconnected: again")
+            (laptop / "archive" / "refused.json").write_bytes(y)
+            done, said = CL.send_refusal(laptop, local_bucket=str(bucket))
+            assert done and (bucket / "state/refused.json").read_bytes() == y, \
+                f"a refusal waited behind one the knock had lifted: {said}"
+            # Only behind a record a machine may lift: one a person must
+            # clear -- run 151's, which says nothing of its kind -- still
+            # holds the bucket, and the laptop's waits behind it, marked.
+            bucket, laptop, x = setup(3, lifted=False)
+            (bucket / "state" / "refused.json").write_bytes(_RECORD_29_OCT)
+            (laptop / "archive" / "refused.json").write_bytes(laptop_403(time.time() - 60))
+            sent, err = told(laptop, bucket)
+            assert not sent and (bucket / "state/refused.json").read_bytes() == _RECORD_29_OCT \
+                and (laptop / CL.UNSENT).exists() and not kept_x(bucket), \
+                f"a refusal only a person can lift was put over: {err[-300:]}"
+
+            # The lifts are read only where a record may be lifted, and a read
+            # that fails sends all the same.
+            class Unread(CL.FolderBucket):
+                def get_bytes(self, key):
+                    if key == "state/knocks.json":
+                        raise ConnectionResetError(104, "Connection reset by peer")
+                    return super().get_bytes(key)
+            CL.make_bucket = lambda local_bucket, workers, quick=False: Unread(local_bucket)
+            try:
+                for what, theirs, here in (
+                        ("a 403 met here, the bucket holding none", None,
+                         laptop_403(time.time() - 60)),
+                        ("a 403 met here, the bucket holding GitHub's", "x",
+                         laptop_403(time.time() - 60)),
+                        ("a copy of GitHub's, the bucket holding none", None,
+                         _knock_record(epoch=time.time() - 3600))):
+                    bucket, laptop, x = setup(3, lifted=False, held=theirs is not None)
+                    (laptop / "archive" / "refused.json").write_bytes(here)
+                    try:
+                        done, said = CL.send_refusal(laptop, local_bucket=str(bucket))
+                    except CL.Failed as e:
+                        done, said = False, f"Failed: {e}"
+                    assert done and (bucket / "state/refused.json").read_bytes() == here, \
+                        f"{what}, state/knocks.json unreadable: not sent ({said})"
+            finally:
+                CL.make_bucket = saved[1]
         return "ok", ("a lifted copy is said so at 2 hours and 40 days, stays, its marker goes, "
                       "and is never sent; a lift landing between pull's reads, between "
-                      "send-refusal's, or between a pull and a send is seen")
+                      "send-refusal's, or between a pull and a send is seen; a 403 met here "
+                      "takes the place of a record GitHub may lift, or has, and the night after "
+                      "a lift still stops at it; an unreadable knocks.json never stops a send")
     finally:
         R.MARK, CL.make_bucket = saved
         if saved_env is None:
