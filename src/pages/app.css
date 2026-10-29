@@ -6830,6 +6830,14 @@ a.cnum:hover{text-decoration-thickness:2px}
 :root{--tap-line:max(0px,(24px - 1lh) / 2);--tap-text:max(0px,(24px - 1em) / 2)}
 .lw-go,a.cnum,.cmeta > a,.pbar > a{padding-block:var(--tap-line);margin-block:calc(-1 * var(--tap-line))}
 a.psent{padding-block:var(--tap-text)}
+/* A SPEAKER IN A PRINTED DEBATE is a block of its own line (.sdsp a), 24.8px
+   tall already, and --tap-text grew each linked one by 8px, so every speech
+   after it moved down and the gaps of a transcript went uneven against the
+   speakers with no link (the review of 29 October 2026). As a line's box it
+   takes --tap-line, 0 at that height, and gives it back from the margins it
+   had. */
+.sdsp a.psent{padding-block:var(--tap-line);margin-top:calc(-1 * var(--tap-line));
+margin-bottom:calc(var(--sp-2) - var(--tap-line))}
 /* THE TITLE IS THE BUTTON that opens the card in place, and reads as the
    title it is: the serif at the title's size, no button chrome. The head
    lights under the pointer as the whole head used to, and the button carries

@@ -72348,8 +72348,9 @@ _TAP = {"--tap-line": "max(0px,(24px-1lh)/2)", "--tap-text": "max(0px,(24px-1em)
 
 @check("frontend", "a link a finger taps is 24px tall at the least: a card's number and its committee, a "
        "Laws chapter's RSA link, a player bar's link and a member named in a sentence take app.css's "
-       "--tap-line or --tap-text", needs=("components",))
-def _tap_targets_24(C):
+       "--tap-line or --tap-text, and one that is a line of its own adds no height", needs=("components",
+                                                                                "build_session_pages"))
+def _tap_targets_24(C, BSP):
     """The accessibility sweep of the R1 preview (29 October 2026; WCAG
     2.5.8, target size): at 390 a card's number (a.cnum) was 20px tall, the
     committee in its byline (.cmeta > a) 22px, a Laws chapter's "RSA 3-A ›"
@@ -72371,9 +72372,22 @@ def _tap_targets_24(C):
     The cascade (_css_won, every screen rule, padding and margin spread to
     their sides) must give each kind's top and bottom padding the token, and
     a line's box the token back as negative margin. A kind taken out of the
-    rule, or a later rule that sets its padding, fails here."""
+    rule, or a later rule that sets its padding, fails here.
+
+    A LINK THAT IS A LINE OF ITS OWN ADDS NO HEIGHT (the review of 29
+    October 2026). A speaker in a printed debate is an a.psent, and .sdsp a
+    makes it a block: --tap-text grew each linked speaker by 8px and moved
+    every speech after it, and the speakers with no link kept the old gap.
+    So a link of these kinds that the cascade makes a block -- a debate's
+    speaker, drawn by build_session_pages._debate_html in a session day's
+    <main> -- is held to --tap-line, and to the margins it would have had
+    without the tap rules, each less the token: the box is a line's, 24px
+    at the least, and nothing beside it moves."""
     css = Path("src/pages/app.css").read_text(encoding="utf-8")
     rules = _css_screen_rules(css)
+    # What each side's margin would be without the tap rules, which a line's
+    # box gives its padding back from.
+    untapped = [r for r in rules if not any("--tap-" in str(v) for v, _i in r[3].values())]
     tokens = {k: v for _o, _c, sel, d, _l in rules if sel.strip() == ":root"
               for k, (v, _i) in d.items() if k in _TAP}
     bad = [f"{k} is {tokens.get(k)!r}, not {want}" for k, want in _TAP.items()
@@ -72414,25 +72428,59 @@ def _tap_targets_24(C):
                element=lambda c: held_in.append(c) if "results" in c[0]["ids"] else None)
     assert held_in, "bills.html has no #results for its cards"
     _html_walk(card, element=lambda c: take(c + held_in[0], "a card in bills.html's #results"))
+    # A printed debate, its first speaker a member with a page (a.psent) and
+    # the chair without one, in a session day's <main>.
+    class Speakers:
+        by_slug = {"alice-wade": {"party": "D"}}
+
+        def slug(self, body, name):
+            return "alice-wade" if name == "Wade" else ""
+
+        def label(self, slug, body):
+            return "Rep. Alice Wade (D - Straf 15)"
+    debate = BSP._debate_html({"bill": "HB1", "speeches": [
+        ("Rep. Wade", "I rise in support of the committee report."),
+        ("Speaker Packard", "The question is on the committee report.")]}, "H", Speakers(),
+        __import__("html").escape)
+    day = sorted((site / "session" / "H").glob("*.html"))
+    in_day = []
+    if day:
+        _html_walk(day[0].read_text(encoding="utf-8"),
+                   element=lambda c: in_day.append(c) if c[0]["tag"] == "main" else None)
+    assert in_day and 'class="psent"' in debate, (
+        f"no session day's <main> to draw a debate in ({len(day)} days), or _debate_html wrote no linked "
+        f"speaker: {debate[:300]}")
+    _html_walk(debate, element=lambda c: take(c + in_day[0], "a printed debate on a session day"))
     missing = [k for k, v in found.items() if not v]
     assert not missing, f"the fixture's build and bill_card no longer write {missing}"
-    held = []
+    held, blocks = [], 0
     for k, (how, _test) in kinds.items():
-        tok = f"var(--tap-{how})"
         for where, chain in found[k].values():
             won = _css_won(rules, chain)
+            # A box the cascade puts on a line of its own is a line's box.
+            alone = won.get("display", ("inline",))[0].strip() in ("block", "flex", "grid", "list-item",
+                                                                   "table")
+            tok = f"var(--tap-{'line' if alone else how})"
+            blocks += alone and how == "text"
             pad = {s_: won.get(f"padding-{s_}", ("0",))[0] for s_ in ("top", "bottom")}
             mar = {s_: won.get(f"margin-{s_}", ("0",))[0] for s_ in ("top", "bottom")}
+            had = _css_won(untapped, chain)
+            back = {s_: (f"calc(-1*{tok})" if "".join(had.get(f"margin-{s_}", ("0",))[0].split()) in ("0", "0px")
+                         else f"calc({''.join(had[f'margin-{s_}'][0].split())}-{tok})")
+                    for s_ in ("top", "bottom")}
             if any("".join(v.split()) != tok for v in pad.values()):
                 bad.append(f"{k} on {where}: padding {pad['top']} / {pad['bottom']}, not {tok} "
-                           f"(from {won.get('padding-top', ('', 'no rule', 0))[1]})")
-            elif how == "line" and any("".join(v.split()) != f"calc(-1*{tok})" for v in mar.values()):
-                bad.append(f"{k} on {where}: its padding is not given back as margin ({mar}), so the "
-                           f"line under it moves")
-        held.append(f"{k} {tok} ({len(found[k])})")
+                           f"(from {won.get('padding-top', ('', 'no rule', 0))[1]})"
+                           + (", and it is a line of its own" if alone and how == "text" else ""))
+            elif (how == "line" or alone) and any("".join(mar[s_].split()) != back[s_] for s_ in mar):
+                bad.append(f"{k} on {where}: its padding is not given back from its margins ({mar}, where "
+                           f"{back} would), so what is under it moves")
+        held.append(f"{k} var(--tap-{how}) ({len(found[k])})")
+    assert blocks, "no debate's speaker was read as the line of its own .sdsp a makes it"
     assert not bad, ("a link a finger taps is under 24px tall, or moves what is beside it (WCAG 2.5.8): "
                      + "; ".join(bad[:5]))
-    return "ok", "each takes the tap token: " + ", ".join(held)
+    return "ok", ("each takes the tap token: " + ", ".join(held)
+                  + f"; {blocks} on a line of its own (a debate's speaker) --tap-line, given back")
 
 
 @check("frontend", "a vote tally's tick is hidden from a screen reader and a word it does not see says "
