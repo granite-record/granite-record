@@ -58,6 +58,12 @@ in its own header or README:
   TDS client (`tds.js`) that refuses any host but the loopback address
   outside production, and stops before the login if the server asks for
   encryption, which a Worker cannot carry.
+- `functions/api/live/`, two read-only Pages Functions that serve what the
+  live Worker wrote: `/api/live/votes/<date>` (the public, provisional live
+  votes file) and `/api/live/streams` (Live Now's own data, with no CORS
+  header). They can read the bucket and nothing else -- `_store.js` hands
+  them `get` and `head` alone -- and every other object in it, the switch
+  and the Worker's state among them, is unreachable from them.
 
 If you are looking for something to attack, it is the first two.
 

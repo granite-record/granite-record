@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.725
+# GRANITE_VERSION: 2026-09-04.726
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -80142,7 +80142,7 @@ def _live_sql(live_gen, dayfiles_from_db, fetch_past_db, refusal):
 # The live Worker's suite, and how many tests it had when this was written: a
 # count that falls means a file stopped loading or a test was lost.
 LIVE_TESTS = "tests/live/index.js"
-LIVE_TESTS_AT_LEAST = 151
+LIVE_TESTS_AT_LEAST = 159
 # The person's ready-made switches (workers/live/control/), each as the Worker
 # must read it; and the values control.json may hold (store.js CONTROL_VALUES).
 LIVE_CONTROL = {"all-off.json": {"youtube": "off", "sql": "off"},
@@ -80195,7 +80195,8 @@ def _live_tests():
             "tests/live/fake_r2.js", "tests/live/fake_youtube.js", "tests/live/fake_tds.js",
             "tests/live/world.js", "tests/live/compare_test.mjs", "tests/live/wire.test.js",
             "tests/live/from_records.js", "workers/live/votes.js", "workers/live/merge.js",
-            "tests/live/votes.test.js", "tests/live/replay.test.js"}
+            "tests/live/votes.test.js", "tests/live/replay.test.js", "tests/live/functions.test.js",
+            "functions/api/live/_store.js", "functions/api/live/streams.js", "functions/api/live/votes/[day].js"}
     reached, todo = set(), [index]
     while todo:
         f = todo.pop()
@@ -80331,6 +80332,24 @@ def _live_problems(root):
             if not (re.fullmatch(r"\./[\w.-]+\.js", spec) or spec in ("../follow/common.js", "cloudflare:sockets")):
                 bad.append(f"workers/live/{p.name} imports {spec}: the Worker imports its own folder, "
                            "../follow/common.js and cloudflare:sockets, nothing else")
+    # The live Functions read the bucket and do nothing else (design 6.4):
+    # _store.js alone names env.LIVE, and hands back get and head; no file
+    # there writes, deletes, lists or uploads. Previews read the production
+    # bucket on the strength of this rule.
+    fdir = root / "functions/api/live"
+    for p in sorted(fdir.rglob("*.js")) if fdir.is_dir() else []:
+        rel = p.relative_to(root).as_posix()
+        text = p.read_text(encoding="utf-8", errors="replace")
+        m = re.search(r"(?<!cache)\.(put|delete|list|createMultipartUpload|resumeMultipartUpload)\s*\(", text)
+        if m:
+            bad.append(f"{rel} calls {m.group(1)}(): the live Functions read the bucket, through _store.js's "
+                       "get and head alone")
+        if p.name != "_store.js" and re.search(r"\benv\s*(?:\.\s*LIVE\b|\[\s*[\"']LIVE[\"']\s*\])", text):
+            bad.append(f"{rel} names env.LIVE: only functions/api/live/_store.js may")
+        if p.name == "_store.js":
+            other = sorted(set(re.findall(r"\bbucket\.(\w+)", text)) - {"get", "head"})
+            if other:
+                bad.append(f"{rel} hands the bucket's {', '.join(other)} on: the facade is get and head alone")
     # The README's commands: every one reaches the real bucket and production.
     readme = (live / "README.md").read_text(encoding="utf-8")
     # The commands are the lines of its fenced blocks: prose may name them.
@@ -80427,16 +80446,26 @@ def _live_problems_bite(root):
         ("control/extra.json", lambda t: "{}\n", "workers/live/control/ holds"),
         ("store.js", lambda t: t.replace('sql: ["off", "test", "on"]', 'sql: ["off", "on"]'),
          "store.js's CONTROL_VALUES is"),
+        ("fn:functions/api/live/x.js", lambda t: "export const f = s => s.put('state.json', '{}');\n", "calls put()"),
+        ("fn:functions/api/live/x.js", lambda t: "export const f = s => s.delete(['control.json']);\n", "calls delete()"),
+        ("fn:functions/api/live/x.js", lambda t: "export const f = s => s.list({ prefix: '' });\n", "calls list()"),
+        ("fn:functions/api/live/x.js", lambda t: "export const f = e => e.env.LIVE.get('state.json');\n", "names env.LIVE"),
+        ("fn:functions/api/live/_store.js", lambda t: t.replace("head: key => bucket.head(key),",
+                                                                "head: key => bucket.head(key),\n    w: k => bucket.put(k, ''),"),
+         "hands the bucket's put on"),
     )
     missed = []
     with tempfile.TemporaryDirectory() as tmp:
         fx = Path(tmp)
         shutil.copytree(root / "workers/live", fx / "workers/live")
+        if (root / "functions/api/live").is_dir():
+            shutil.copytree(root / "functions/api/live", fx / "functions/api/live")
         (fx / "src/fetch/gc_db").mkdir(parents=True)
         shutil.copy(root / "src/fetch/gc_db/probe_db.py", fx / "src/fetch/gc_db/probe_db.py")
         assert not _live_problems(fx), f"the copy itself breaks a rule: {_live_problems(fx)}"
         for name, change, says in cases:
-            p = fx / "workers/live" / name
+            p = fx / (name[3:] if name.startswith("fn:") else f"workers/live/{name}")
+            p.parent.mkdir(parents=True, exist_ok=True)
             before = p.read_text(encoding="utf-8") if p.is_file() else None
             after = change(before or "")
             assert after != before, f"the fixture for {says!r} no longer changes {name}"

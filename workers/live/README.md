@@ -244,6 +244,23 @@ npx wrangler r2 object get graniterecord-live/votes/2027-01-07.json --file votes
 Turning the database half off (`sql-off.json`) is honoured at the next run,
 and the day's file says so once.
 
+## The two Functions that serve it (functions/api/live/)
+
+Read-only Pages Functions on the site's own project, deployed with every
+Pages publish (DESIGN.md 5 and 6.4):
+
+| Address | Serves | Headers |
+|---|---|---|
+| `/api/live/votes/<YYYY-MM-DD>` | `votes/<date>.json`: public, provisional, API v1 beta | CORS open; `max-age=15`; ETag and 304; 404 (60 s) for a date with no file |
+| `/api/live/streams` | today's `streams/<date>.json` (yesterday's in the hour after midnight): Live Now's own data, not public API | no CORS; `X-Robots-Tag: noindex`; `max-age=30`; ETag and 304 |
+
+Both answer 404 everywhere until the site's `wrangler.toml` binds `LIVE`
+(after the bucket exists), GET and HEAD only, 503 when the bucket cannot be
+read, and keep a copy per data centre through the Cache API.
+`functions/api/live/_store.js` is the one file that names `env.LIVE`, and it
+hands back `get` and `head` alone; preflight fails if any file there writes,
+deletes, lists or uploads. No other object in the bucket is reachable.
+
 ## When Healthchecks says it failed
 
 The ping body says why. `/fail` is sent when:

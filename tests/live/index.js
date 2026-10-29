@@ -8,6 +8,7 @@ import "./clock.test.js";
 import "./sql.test.js";
 import "./store.test.js";
 import "./replay.test.js";
+import "./functions.test.js";
 import "./tds.test.js";
 import "./votes.test.js";
 import "./wire.test.js";
