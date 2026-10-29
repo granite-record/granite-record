@@ -67986,6 +67986,44 @@ def _neutral_voice(G, C):
     return "ok", f"{len(G.GUIDES)} guides and {len(C.TOPICS)} Learn pages say they"
 
 
+@check("build", "a guide whose steps change subject numbers each part from 1 under its own "
+                "heading, and a guide in one part keeps one list", needs=("build_civics", "guides"))
+def _guide_parts(BC, G):
+    """The person's notes, 29 October 2026: a guide would "finish explaining
+    how to do the first thing and switch to a different topic, but keep the
+    step by step format as though step 5 is a continuation". guides.PARTS
+    names the heading over each part, by the step that opens it; guide_steps
+    closes one numbered list and opens the next at each heading, so the
+    numbers start again (the counter is the list's, app.css .g-steps). Held
+    on every guide: one list per part and a heading before each, or one list
+    and no heading; and no step's words still point at a step by its old
+    running number, which would now name a step in another part."""
+    import html as _h
+    parted, bad = 0, []
+    for g in G.GUIDES:
+        got = BC.guide_steps(g)
+        heads = [s_["part"] for s_ in g["steps"] if s_.get("part")]
+        lists = got.count('<ol class="g-steps">')
+        shown = [_h.unescape(h) for h in re.findall(r'<h3 class="g-part">(.*?)</h3>', got)]
+        if heads:
+            parted += 1
+            if not g["steps"][0].get("part"):
+                bad.append(f"{g['slug']}: its first step has no heading")
+            if lists != len(heads) or shown != [_h.unescape(h) for h in heads]:
+                bad.append(f"{g['slug']}: {len(heads)} parts but {lists} lists and headings {shown}")
+            if '<h3 class="g-sh">' in got:
+                bad.append(f"{g['slug']}: a step title sits at the heading's level")
+            for s_ in g["steps"]:
+                for m in re.findall(r"\(steps? \d[^)]*\)", s_["text"]):
+                    if not re.search(r"\(\w[\w ]*, step \d", m):
+                        bad.append(f"{g['slug']}: {s_['title']!r} still says {m}")
+        elif lists != 1 or "g-part" in got:
+            bad.append(f"{g['slug']}: one part but {lists} lists")
+    assert parted, "no guide is in parts: PARTS was not applied"
+    assert not bad, "; ".join(bad[:8])
+    return "ok", f"{parted} of {len(G.GUIDES)} guides in parts, each numbered from 1"
+
+
 @check("code", "every phone number, email, office hours, street address and date a guide "
                "prints is in the words a claim of it records its source as saying, but for "
                "the few named as waiting for a printout", needs=("guides",))

@@ -1592,6 +1592,11 @@
    "es": "Registro de embarcaciones (DMV de NH)",
    "state": "draft"
   },
+  "guide.boating.boater-education": {
+   "en": "Boater education",
+   "es": "Educación para navegantes",
+   "state": "draft"
+  },
   "guide.boating.boating-education": {
    "en": "Boating education",
    "es": "Educación para la navegación",
@@ -1827,6 +1832,11 @@
    "es": "Navegantes jóvenes",
    "state": "draft"
   },
+  "guide.boating.your-boat": {
+   "en": "Your boat",
+   "es": "Su embarcación",
+   "state": "draft"
+  },
   "guide.building-permits.a-licensed-trade-or-you-in": {
    "en": "A licensed trade, or you, in a single-family home you own and live in (for gas, only an existing, stand-alone house that is your main home).",
    "es": "Un profesional con licencia, o usted mismo, en una casa unifamiliar que es suya y donde vive (para el gas, solo en una casa existente e independiente que sea su residencia principal).",
@@ -1862,6 +1872,11 @@
    "es": "Construir, ampliar, remodelar o reparar",
    "state": "draft"
   },
+  "guide.building-permits.building-work": {
+   "en": "Building work",
+   "es": "Obras de construcción",
+   "state": "draft"
+  },
   "guide.building-permits.cities-towns-and-who-runs-them": {
    "en": "Cities, towns and who runs them",
    "es": "Ciudades, municipios y quién los dirige",
@@ -1875,6 +1890,11 @@
   "guide.building-permits.digging-filling-dredging-or-building-in": {
    "en": "Digging, filling, dredging or building in or on a bank, marsh or swamp next to a lake, river or other water needs a <b>wetlands permit</b> from the Department, applied for through your town or city clerk, who signs the application.",
    "es": "Excavar, rellenar, dragar o construir en o sobre una orilla, un pantano o una ciénaga junto a un lago, un río u otra masa de agua requiere un <b>permiso de humedales</b> del Departamento, que se solicita a través del secretario de su municipio o ciudad, quien firma la solicitud.",
+   "state": "draft"
+  },
+  "guide.building-permits.electrical-plumbing-and-gas-work": {
+   "en": "Electrical, plumbing and gas work",
+   "es": "Trabajos de electricidad, plomería y gas",
    "state": "draft"
   },
   "guide.building-permits.electrical-plumbing-or-gas": {
@@ -1985,6 +2005,11 @@
   "guide.building-permits.septic-systems": {
    "en": "Septic systems",
    "es": "Sistemas sépticos",
+   "state": "draft"
+  },
+  "guide.building-permits.septic-systems-and-work-near-water": {
+   "en": "Septic systems and work near water",
+   "es": "Sistemas sépticos y obras cerca del agua",
    "state": "draft"
   },
   "guide.building-permits.shoreland-water-quality-protection-act": {
@@ -2323,8 +2348,8 @@
    "state": "draft"
   },
   "guide.car-insurance.the-financial-responsibility-law-decides": {
-   "en": "The <b>financial responsibility law</b> decides when the state requires proof that you can pay for damage you cause: after a crash you had to report and had no insurance for, or after certain convictions (steps 2 and 3).",
-   "es": "La <b>ley de responsabilidad financiera</b> (financial responsibility law) decide cuándo el estado exige una prueba de que usted puede pagar los daños que cause: después de un choque que tuvo que reportar y para el que no tenía seguro, o después de ciertas condenas (pasos 2 y 3).",
+   "en": "The <b>financial responsibility law</b> decides when the state requires proof that you can pay for damage you cause: after a crash you had to report and had no insurance for, or after certain convictions (the next two steps).",
+   "es": "La <b>ley de responsabilidad financiera</b> (financial responsibility law) decide cuándo el estado exige una prueba de que usted puede pagar los daños que cause: después de un choque que tuvo que reportar y para el que no tenía seguro, o después de ciertas condenas (los dos pasos siguientes).",
    "state": "draft"
   },
   "guide.car-insurance.the-insurance-departments-automobile": {
@@ -2400,6 +2425,11 @@
   "guide.car-insurance.you-receive-notice-at-least-10": {
    "en": "You receive notice at least 10 days before the suspension starts. The DMV may stop requiring the proof after 3 years, if you have no new conviction, crash or unpaid judgment.",
    "es": "Recibe un aviso al menos 10 días antes de que empiece la suspensión. El DMV puede dejar de exigir la prueba después de 3 años, si usted no tiene una nueva condena, un nuevo choque ni una sentencia sin pagar.",
+   "state": "draft"
+  },
+  "guide.car-insurance.your-policy": {
+   "en": "Your policy",
+   "es": "Su póliza",
    "state": "draft"
   },
   "guide.car-insurance.your-policy-carries-at-least-the": {
@@ -2773,9 +2803,14 @@
    "es": "Los certificados de regalo de $250 o menos no vencen",
    "state": "draft"
   },
+  "guide.consumer-rights.if-a-business-breaks-the-law": {
+   "en": "If a business breaks the law",
+   "es": "Si un negocio infringe la ley",
+   "state": "draft"
+  },
   "guide.consumer-rights.if-a-seller-tells-you-that": {
-   "en": "If a seller tells you that you have won something, with words such as &ldquo;Congratulations&rdquo; or &ldquo;You have won&rdquo;, the law requires the prize to be yours without any obligation, delivered at no cost to you within 10 days. A &ldquo;prize&rdquo; that asks you to pay a handling, registration, redemption or delivery fee, or to buy something first, is not one the law allows. Do not pay, and report it (step 5).",
-   "es": "Si un vendedor le dice que ganó algo, con palabras como &ldquo;Felicidades&rdquo; o &ldquo;Usted ganó&rdquo;, la ley exige que el premio sea suyo sin ninguna obligación, entregado sin costo para usted dentro de los 10 días. Un &ldquo;premio&rdquo; que le pide pagar una cuota de manejo, de inscripción, de canje o de envío, o comprar algo primero, no es uno que la ley permita. No pague, y denúncielo (paso 5).",
+   "en": "If a seller tells you that you have won something, with words such as &ldquo;Congratulations&rdquo; or &ldquo;You have won&rdquo;, the law requires the prize to be yours without any obligation, delivered at no cost to you within 10 days. A &ldquo;prize&rdquo; that asks you to pay a handling, registration, redemption or delivery fee, or to buy something first, is not one the law allows. Do not pay, and report it (see Complain to the Attorney General, below).",
+   "es": "Si un vendedor le dice que ganó algo, con palabras como &ldquo;Felicidades&rdquo; o &ldquo;Usted ganó&rdquo;, la ley exige que el premio sea suyo sin ninguna obligación, entregado sin costo para usted dentro de los 10 días. Un &ldquo;premio&rdquo; que le pide pagar una cuota de manejo, de inscripción, de canje o de envío, o comprar algo primero, no es uno que la ley permita. No pague, y denúncielo (vea Presentar una queja ante el Fiscal General, más abajo).",
    "state": "draft"
   },
   "guide.consumer-rights.know-what-the-law-forbids": {
@@ -2871,6 +2906,11 @@
   "guide.consumer-rights.what-must-a-seller-by-mail": {
    "en": "What must a seller by mail, phone or online tell me?",
    "es": "¿Qué tiene que decirme un vendedor por correo, por teléfono o en línea?",
+   "state": "draft"
+  },
+  "guide.consumer-rights.what-the-law-protects": {
+   "en": "What the law protects",
+   "es": "Lo que protege la ley",
    "state": "draft"
   },
   "guide.consumer-rights.who-to-contact-about-an-issue": {
@@ -3333,6 +3373,11 @@
    "es": "¿Cuándo empiezan los beneficios de SSDI, y cuándo empieza Medicare?",
    "state": "draft"
   },
+  "guide.disability-help.where-to-apply": {
+   "en": "Where to apply",
+   "es": "Dónde solicitar",
+   "state": "draft"
+  },
   "guide.disability-help.who-can-get-ssi-social-security": {
    "en": "Who can get SSI (Social Security)",
    "es": "Quién puede recibir el SSI (Seguro Social)",
@@ -3493,6 +3538,11 @@
    "es": "Lo que la Ley contra la Discriminación de New Hampshire protege en el trabajo, al alquilar o comprar una vivienda, y en tiendas, restaurantes y otros lugares abiertos al público, y cómo presentar una queja ante la Comisión de Derechos Humanos.",
    "state": "draft"
   },
+  "guide.discrimination.making-a-complaint": {
+   "en": "Making a complaint",
+   "es": "Cómo presentar una queja",
+   "state": "draft"
+  },
   "guide.discrimination.must-an-employer-adjust-my-job": {
    "en": "Must an employer adjust my job for a disability?",
    "es": "¿Tiene un empleador que adaptar mi trabajo por una discapacidad?",
@@ -3578,6 +3628,11 @@
    "es": "Si sufre discriminación: en el trabajo, la vivienda y los lugares públicos",
    "state": "draft"
   },
+  "guide.discrimination.what-the-law-protects": {
+   "en": "What the law protects",
+   "es": "Lo que protege la ley",
+   "state": "draft"
+  },
   "guide.discrimination.where-did-it-happen": {
    "en": "Where did it happen?",
    "es": "¿Dónde ocurrió?",
@@ -3616,6 +3671,11 @@
   "guide.domestic-violence-help.address-confidentiality-program-attorney": {
    "en": "Address Confidentiality Program (Attorney General)",
    "es": "Programa de Confidencialidad de Domicilio (Fiscal General)",
+   "state": "draft"
+  },
+  "guide.domestic-violence-help.after-a-sexual-assault": {
+   "en": "After a sexual assault",
+   "es": "Después de una agresión sexual",
    "state": "draft"
   },
   "guide.domestic-violence-help.after-a-sexual-assault-medical-care": {
@@ -3794,6 +3854,11 @@
    "es": "Exámenes médicos y forenses (la Coalición)",
    "state": "draft"
   },
+  "guide.domestic-violence-help.more-help": {
+   "en": "More help",
+   "es": "Más ayuda",
+   "state": "draft"
+  },
   "guide.domestic-violence-help.new-hampshire-coalition-against-domestic": {
    "en": "New Hampshire Coalition Against Domestic and Sexual Violence",
    "es": "Coalición de New Hampshire contra la Violencia Doméstica y Sexual (New Hampshire Coalition Against Domestic and Sexual Violence)",
@@ -3847,6 +3912,11 @@
   "guide.domestic-violence-help.services-and-programs-the-coalition": {
    "en": "Services and programs (the Coalition)",
    "es": "Servicios y programas (la Coalición)",
+   "state": "draft"
+  },
+  "guide.domestic-violence-help.staying-safe": {
+   "en": "Staying safe",
+   "es": "Mantenerse a salvo",
    "state": "draft"
   },
   "guide.domestic-violence-help.the-court-holds-a-hearing-within": {
@@ -5289,6 +5359,11 @@
    "es": "Del 16 de enero al 31 de octubre solo puede inscribirse con un <b>Período Especial de Inscripción</b>, que abren ciertos cambios en su vida. Entre ellos, en los últimos 60 días:",
    "state": "draft"
   },
+  "guide.health-insurance.getting-coverage": {
+   "en": "Getting coverage",
+   "es": "Cómo obtener cobertura",
+   "state": "draft"
+  },
   "guide.health-insurance.getting-married-having-a-baby-adopting": {
    "en": "getting married, having a baby, adopting a child or placing a child in foster care;",
    "es": "casarse, tener un bebé, adoptar a un niño o recibir a un niño en cuidado de crianza;",
@@ -5332,6 +5407,11 @@
   "guide.health-insurance.how-will-you-get-coverage": {
    "en": "How will you get coverage?",
    "es": "¿Cómo obtendrá cobertura?",
+   "state": "draft"
+  },
+  "guide.health-insurance.if-a-claim-is-denied-or": {
+   "en": "If a claim is denied, or you have a complaint",
+   "es": "Si le niegan un reclamo, o tiene una queja",
    "state": "draft"
   },
   "guide.health-insurance.if-a-parents-plan-covers-dependents": {
@@ -5424,9 +5504,14 @@
    "es": "<b>Medicaid</b>, un programa federal y estatal, da cobertura gratuita o de bajo costo a algunas personas de bajos ingresos, familias, niños, mujeres embarazadas, personas mayores y personas con discapacidades; CHIP cubre a niños y mujeres embarazadas de familias que ganan demasiado para Medicaid. En New Hampshire se solicita a través del Departamento de Salud y Servicios Humanos. <b>Medicare</b> es el programa federal de salud para personas de 65 años o más y algunas personas más jóvenes con discapacidades o con insuficiencia renal. Cada uno tiene su propia guía (abajo).",
    "state": "draft"
   },
+  "guide.health-insurance.medicaid-and-medicare": {
+   "en": "Medicaid and Medicare",
+   "es": "Medicaid y Medicare",
+   "state": "draft"
+  },
   "guide.health-insurance.medicaid-or-medicare-may-cover-you": {
-   "en": "Medicaid or Medicare may cover you (step 8).",
-   "es": "Medicaid o Medicare pueden cubrirle (paso 8).",
+   "en": "Medicaid or Medicare may cover you (see Where Medicaid and Medicare fit, below).",
+   "es": "Medicaid o Medicare pueden cubrirle (vea Dónde entran Medicaid y Medicare, más abajo).",
    "state": "draft"
   },
   "guide.health-insurance.moving-to-a-new-zip-code": {
@@ -5970,6 +6055,11 @@
    "es": "¿Puedo apelar si pierdo un caso de desalojo?",
    "state": "draft"
   },
+  "guide.homelessness-help.children-and-school": {
+   "en": "Children and school",
+   "es": "Los niños y la escuela",
+   "state": "draft"
+  },
   "guide.homelessness-help.common-questions": {
    "en": "Common Questions",
    "es": "Preguntas frecuentes",
@@ -5993,6 +6083,11 @@
   "guide.homelessness-help.find-a-shelter": {
    "en": "Find a shelter",
    "es": "Encuentre un refugio",
+   "state": "draft"
+  },
+  "guide.homelessness-help.finding-shelter-now": {
+   "en": "Finding shelter now",
+   "es": "Encontrar albergue ahora",
    "state": "draft"
   },
   "guide.homelessness-help.get-free-legal-help-as-early": {
@@ -6073,6 +6168,11 @@
   "guide.homelessness-help.keep-your-children-in-school": {
    "en": "Keep your children in school",
    "es": "Mantenga a sus hijos en la escuela",
+   "state": "draft"
+  },
+  "guide.homelessness-help.keeping-or-finding-a-home": {
+   "en": "Keeping or finding a home",
+   "es": "Conservar o encontrar una vivienda",
    "state": "draft"
   },
   "guide.homelessness-help.landlord-and-tenant-cases-judicial": {
@@ -6183,6 +6283,11 @@
   "guide.homeowners-insurance.a-homeowners-policy-covers-the-structure": {
    "en": "A homeowners policy covers the structure of your home, your belongings and your <b>liability</b> for injuries to others or their property while they are on your property, the Insurance Department explains. Most mortgage lenders require it for as long as you have a mortgage, and most homeowners policies do not cover flood damage. Once a policy has been in effect for 90 days, the insurer may cancel it only for the reasons the law lists, and it may not refuse to renew it solely because you filed a single valid claim in one policy term. If an insurer handles your claim unfairly, you can complain to the <b>Insurance Department</b>.",
    "es": "Una póliza de propietarios cubre la estructura de su vivienda, sus pertenencias y su <b>responsabilidad</b> por lesiones a otras personas o daños a su propiedad mientras están en su propiedad, según explica el Departamento de Seguros. La mayoría de los prestamistas hipotecarios la exigen mientras usted tenga una hipoteca, y la mayoría de las pólizas de propietarios no cubren los daños por inundación. Cuando una póliza lleva 90 días en vigor, la aseguradora solo puede cancelarla por las razones que indica la ley, y no puede negarse a renovarla solo porque usted presentó un único reclamo válido en un período de la póliza. Si una aseguradora maneja su reclamo de forma injusta, puede presentar una queja ante el <b>Departamento de Seguros</b>.",
+   "state": "draft"
+  },
+  "guide.homeowners-insurance.after-a-loss-or-a-dispute": {
+   "en": "After a loss, or a dispute",
+   "es": "Después de una pérdida, o en una disputa",
    "state": "draft"
   },
   "guide.homeowners-insurance.an-insurer-may-not-cancel-or": {
@@ -6393,6 +6498,16 @@
   "guide.homeowners-insurance.yes-if-the-home-received-federal": {
    "en": "Yes: if the home received federal disaster assistance before, it needs flood insurance to qualify for more, even after it is sold.",
    "es": "Sí: si la vivienda ya recibió asistencia federal por desastre, necesita un seguro contra inundaciones para volver a reunir los requisitos, incluso después de venderse.",
+   "state": "draft"
+  },
+  "guide.homeowners-insurance.your-policy": {
+   "en": "Your policy",
+   "es": "Su póliza",
+   "state": "draft"
+  },
+  "guide.how-to-vote.a-certified-copy-of-a-new": {
+   "en": "A certified copy of a New Hampshire birth or other vital record is free when it is only for registering to vote: fill in the application for a free certified copy and file it, with proof of identity, with your town or city clerk. That copy can be used only to register to vote, and you must surrender it to the election official who takes your registration. For a record from another state, the Secretary of State points to the CDC&rsquo;s National Center for Health Statistics for how to get vital records from each state.",
+   "es": "Una copia certificada de un acta de nacimiento u otro registro vital de New Hampshire es gratuita cuando es solo para inscribirse para votar: llene la solicitud de una copia certificada gratuita y preséntela, con prueba de identidad, ante el secretario de su municipio o ciudad. Esa copia solo puede usarse para inscribirse para votar, y debe entregarla al funcionario electoral que recibe su inscripción, quien se la queda. Para un registro de otro estado, la Secretaría de Estado remite al Centro Nacional de Estadísticas de Salud (National Center for Health Statistics) de los CDC para saber cómo obtener registros vitales de cada estado.",
    "state": "draft"
   },
   "guide.how-to-vote.a-physical-disability-or-illness": {
@@ -7275,6 +7390,11 @@
    "es": "Prácticas prohibidas y depósitos de garantía, RSA 540-A",
    "state": "draft"
   },
+  "guide.landlord-duties.renting": {
+   "en": "Renting",
+   "es": "Alquilar",
+   "state": "draft"
+  },
   "guide.landlord-duties.return-it-within-30-days-of": {
    "en": "<b>Return it within 30 days</b> of the end of the tenancy, with any interest. You may deduct the cost of damage beyond reasonable wear and tear, unpaid rent and other lawful charges, with a written, itemized list and evidence of the repairs, such as receipts or estimates.",
    "es": "<b>Devuélvalo dentro de 30 días</b> del fin del arrendamiento, con los intereses que correspondan. Puede descontar el costo de los daños que vayan más allá del desgaste razonable, la renta no pagada y otros cargos legales, con una lista escrita y detallada y pruebas de las reparaciones, como recibos o presupuestos.",
@@ -7516,8 +7636,8 @@
    "state": "draft"
   },
   "guide.medicare-and-social-security.help-with-the-costs-comes-from": {
-   "en": "<b>Help with the costs</b> comes from two programs: the state&rsquo;s <b>Medicare Savings Programs</b>, which help pay Medicare premiums and, for some people, other costs; and the federal <b>Extra Help</b> program, which pays part of the cost of drug coverage. Step 6 says who qualifies and how to apply.",
-   "es": "<b>La ayuda con los costos</b> viene de dos programas: los <b>Programas de Ahorros de Medicare</b> del estado, que ayudan a pagar las primas de Medicare y, para algunas personas, otros costos; y el programa federal de <b>Ayuda Adicional</b>, que paga parte del costo de la cobertura de medicamentos. El paso 6 dice quién reúne los requisitos y cómo solicitarlos.",
+   "en": "<b>Help with the costs</b> comes from two programs: the state&rsquo;s <b>Medicare Savings Programs</b>, which help pay Medicare premiums and, for some people, other costs; and the federal <b>Extra Help</b> program, which pays part of the cost of drug coverage. Get help paying the costs, below, says who qualifies and how to apply.",
+   "es": "<b>La ayuda con los costos</b> viene de dos programas: los <b>Programas de Ahorros de Medicare</b> del estado, que ayudan a pagar las primas de Medicare y, para algunas personas, otros costos; y el programa federal de <b>Ayuda Adicional</b>, que paga parte del costo de la cobertura de medicamentos. Obtenga ayuda para pagar los costos, más abajo, dice quién reúne los requisitos y cómo solicitarlos.",
    "state": "draft"
   },
   "guide.medicare-and-social-security.how-do-i-avoid-a-late": {
@@ -7603,6 +7723,11 @@
   "guide.medicare-and-social-security.manage-your-benefits-online": {
    "en": "Manage your benefits online",
    "es": "Maneje sus beneficios en línea",
+   "state": "draft"
+  },
+  "guide.medicare-and-social-security.medicare": {
+   "en": "Medicare",
+   "es": "Medicare",
    "state": "draft"
   },
   "guide.medicare-and-social-security.medicare-answers-at-1-800-medicare": {
@@ -7785,6 +7910,11 @@
    "es": "SLMB",
    "state": "draft"
   },
+  "guide.medicare-and-social-security.social-security": {
+   "en": "Social Security",
+   "es": "Seguro Social",
+   "state": "draft"
+  },
   "guide.medicare-and-social-security.social-security-administration-usa-gov": {
    "en": "Social Security Administration (USA.gov)",
    "es": "Administración del Seguro Social (USA.gov)",
@@ -7798,6 +7928,11 @@
   "guide.medicare-and-social-security.social-security-pays-benefits-to-people": {
    "en": "Social Security pays benefits to people who worked and paid Social Security taxes, when they retire or become disabled, and to some of their families. Medicare is health insurance for people 65 or older and some younger people with disabilities. You sign up for Medicare through Social Security, generally in the 7 months around your 65th birthday, and if you already get Social Security benefits you are usually enrolled automatically. Retirement benefits can start as early as age 62. If paying for Medicare is hard, state and federal programs can help with the costs: apply even if you are not sure you qualify. New Hampshire&rsquo;s Aging and Disability Resource Centers give free, one-on-one help.",
    "es": "El Seguro Social paga beneficios a quienes trabajaron y pagaron impuestos del Seguro Social, cuando se jubilan o quedan discapacitados, y a algunos de sus familiares. Medicare es el seguro de salud para personas de 65 años o más y para algunas personas más jóvenes con discapacidad. Usted se inscribe en Medicare a través del Seguro Social, generalmente en los 7 meses alrededor de su cumpleaños número 65, y si ya recibe beneficios del Seguro Social, por lo general queda inscrito automáticamente. Los beneficios de jubilación pueden empezar desde los 62 años. Si le resulta difícil pagar Medicare, hay programas estatales y federales que pueden ayudar con los costos: presente su solicitud aunque no esté seguro de reunir los requisitos. Los Aging and Disability Resource Centers de New Hampshire ofrecen ayuda gratuita y personal.",
+   "state": "draft"
+  },
+  "guide.medicare-and-social-security.start-here": {
+   "en": "Start here",
+   "es": "Empiece aquí",
    "state": "draft"
   },
   "guide.medicare-and-social-security.supplemental-security-income-ssi-a": {
@@ -7826,8 +7961,8 @@
    "state": "draft"
   },
   "guide.medicare-and-social-security.through-social-security-many-people-are": {
-   "en": "Through Social Security. Many people are enrolled automatically (step 2).",
-   "es": "A través del Seguro Social. Muchas personas quedan inscritas automáticamente (paso 2).",
+   "en": "Through Social Security. Many people are enrolled automatically (Medicare, step 1).",
+   "es": "A través del Seguro Social. Muchas personas quedan inscritas automáticamente (Medicare, paso 1).",
    "state": "draft"
   },
   "guide.medicare-and-social-security.through-social-security-with-part-a": {
@@ -7916,8 +8051,8 @@
    "state": "draft"
   },
   "guide.medicare-and-social-security.you-add-a-drug-plan-to": {
-   "en": "You add a drug plan to Original Medicare, or get it in a Medicare Advantage Plan with drug coverage, on Medicare.gov (step 5).",
-   "es": "Agrega un plan de medicamentos a Medicare Original, o lo obtiene en un Plan Medicare Advantage con cobertura de medicamentos, en Medicare.gov (paso 5).",
+   "en": "You add a drug plan to Original Medicare, or get it in a Medicare Advantage Plan with drug coverage, on Medicare.gov (Medicare, step 3).",
+   "es": "Agrega un plan de medicamentos a Medicare Original, o lo obtiene en un Plan Medicare Advantage con cobertura de medicamentos, en Medicare.gov (Medicare, paso 3).",
    "state": "draft"
   },
   "guide.medicare-and-social-security.you-are-enrolled-automatically-in-part": {
@@ -7936,8 +8071,8 @@
    "state": "draft"
   },
   "guide.medicare-and-social-security.you-choose-one-on-medicare-gov": {
-   "en": "You choose one on Medicare.gov (step 5).",
-   "es": "Se elige en Medicare.gov (paso 5).",
+   "en": "You choose one on Medicare.gov (Medicare, step 3).",
+   "es": "Se elige en Medicare.gov (Medicare, paso 3).",
    "state": "draft"
   },
   "guide.medicare-and-social-security.you-might-be-able-to-buy": {
@@ -7968,6 +8103,11 @@
   "guide.motorcycle-license.a-moped-is-registered-too-with": {
    "en": "A moped is registered too, with its own kind of plate. The state&rsquo;s fee is $14, and the town permit that a car or motorcycle needs first is not required. Ask the DMV or your clerk where to register it.",
    "es": "El ciclomotor también se registra, con su propio tipo de placa. La cuota del estado es de $14, y no hace falta el permiso municipal que un vehículo o una motocicleta necesitan primero. Pregunte al DMV o al secretario municipal dónde registrarlo.",
+   "state": "draft"
+  },
+  "guide.motorcycle-license.a-motorcycle": {
+   "en": "A motorcycle",
+   "es": "Una motocicleta",
    "state": "draft"
   },
   "guide.motorcycle-license.a-motorcycle-is-registered-the-way": {
@@ -8545,6 +8685,11 @@
    "es": "Solicítelo en persona con el formulario DS-11, en una oficina postal u otro centro de aceptación.",
    "state": "draft"
   },
+  "guide.passport.applying-in-person": {
+   "en": "Applying in person",
+   "es": "Solicitarlo en persona",
+   "state": "draft"
+  },
   "guide.passport.applying-in-person-gather-proof-of": {
    "en": "Applying in person? Gather proof of citizenship, a photo ID, a photocopy of each, and a photo.",
    "es": "¿Va a solicitarlo en persona? Reúna la prueba de ciudadanía, una identificación con foto, una fotocopia de cada una y una foto.",
@@ -8578,6 +8723,11 @@
   "guide.passport.common-questions": {
    "en": "Common Questions",
    "es": "Preguntas frecuentes",
+   "state": "draft"
+  },
+  "guide.passport.either-way": {
+   "en": "Either way",
+   "es": "En cualquier caso",
    "state": "draft"
   },
   "guide.passport.execution-of-passport-application-22-cfr": {
@@ -8763,6 +8913,11 @@
   "guide.passport.renew-your-passport-online-u-s": {
    "en": "Renew Your Passport Online (U.S. Department of State)",
    "es": "Renovar su pasaporte en línea (Departamento de Estado de EE. UU.)",
+   "state": "draft"
+  },
+  "guide.passport.renewing-an-adult-passport": {
+   "en": "Renewing an adult passport",
+   "es": "Renovar un pasaporte de adulto",
    "state": "draft"
   },
   "guide.passport.routine-processing-takes-4-to-6": {
@@ -9315,6 +9470,11 @@
    "es": "Cómo su municipio o ciudad hace el avalúo de su propiedad, cómo se fija la tasa del impuesto, qué tiene que mostrar su factura del impuesto a la propiedad, cuándo vence, y las exenciones, los créditos y los aplazamientos que puede solicitar.",
    "state": "draft"
   },
+  "guide.property-tax-bill.lowering-or-appealing-it": {
+   "en": "Lowering or appealing it",
+   "es": "Reducirla o apelarla",
+   "state": "draft"
+  },
   "guide.property-tax-bill.new-hampshire-law-lets-each-town": {
    "en": "New Hampshire law lets each town and city offer relief to some owners, and the town&rsquo;s voters or council decide which it offers and, within the law&rsquo;s limits, how much. Ask your assessing office or the selectmen what yours offers. You apply once, on the state&rsquo;s form, to your selectmen or assessors, <b>by April 15</b>, and the application stands from year to year while you live in the same home, though your town may ask you to update your information as often as once a year.",
    "es": "La ley de New Hampshire permite a cada municipio y ciudad ofrecer un alivio a algunos propietarios, y los votantes o el concejo del municipio deciden cuál ofrece y, dentro de los límites de la ley, de cuánto. Pregunte a la oficina de avalúos o a los concejales (selectmen) qué ofrece el suyo. Usted presenta la solicitud una sola vez, en el formulario del estado, a los concejales o a los tasadores, <b>a más tardar el 15 de abril</b>, y la solicitud sigue vigente año tras año mientras viva en la misma vivienda, aunque su municipio puede pedirle que ponga al día su información hasta una vez al año.",
@@ -9423,6 +9583,11 @@
   "guide.property-tax-bill.town-meeting-and-local-government": {
    "en": "Town meeting and local government",
    "es": "La asamblea municipal y el gobierno local",
+   "state": "draft"
+  },
+  "guide.property-tax-bill.understanding-your-bill": {
+   "en": "Understanding your bill",
+   "es": "Entender su factura",
    "state": "draft"
   },
   "guide.property-tax-bill.veterans-tax-credit": {
@@ -10940,6 +11105,11 @@
    "es": "Una póliza de inquilinos puede cubrir sus pertenencias, que el seguro del arrendador no cubre.",
    "state": "draft"
   },
+  "guide.renters-insurance.after-a-loss-or-a-dispute": {
+   "en": "After a loss, or a dispute",
+   "es": "Después de una pérdida, o en una disputa",
+   "state": "draft"
+  },
   "guide.renters-insurance.an-insurer-may-not-cancel-or": {
    "en": "An insurer may not cancel or refuse to write or renew your policy solely because of your age, where you live, your race, color, creed, national origin, ancestry, marital status or lawful occupation, because another insurer turned you down, or on your credit information alone.",
    "es": "Una aseguradora no puede cancelar su póliza, ni negarse a emitirla o a renovarla, solo por su edad, el lugar donde vive, su raza, color, credo, origen nacional, ascendencia, estado civil u ocupación lícita, porque otra aseguradora le rechazó, ni solo por su información de crédito.",
@@ -11108,6 +11278,11 @@
   "guide.renters-insurance.yes": {
    "en": "Yes",
    "es": "Sí",
+   "state": "draft"
+  },
+  "guide.renters-insurance.your-policy": {
+   "en": "Your policy",
+   "es": "Su póliza",
    "state": "draft"
   },
   "guide.renters-insurance.your-rights-as-a-tenant": {
@@ -11350,6 +11525,11 @@
    "es": "El departamento de obras públicas o de caminos de su municipio o ciudad es el lugar para preguntar por un camino municipal, y la oficina del municipio le puede decir cuál es. Para una reclamación por daños, un abogado puede decirle si tiene derecho a una:",
    "state": "draft"
   },
+  "guide.run-for-office.a-town-or-city-office": {
+   "en": "A town or city office",
+   "es": "Un cargo de municipio o ciudad",
+   "state": "draft"
+  },
   "guide.run-for-office.age": {
    "en": "Age",
    "es": "Edad",
@@ -11358,6 +11538,11 @@
   "guide.run-for-office.also": {
    "en": "Also",
    "es": "Además",
+   "state": "draft"
+  },
+  "guide.run-for-office.an-office-on-the-state-ballot": {
+   "en": "An office on the state ballot",
+   "es": "Un cargo en la boleta estatal",
    "state": "draft"
   },
   "guide.run-for-office.candidates-for-governor-u-s-senator": {
@@ -13116,6 +13301,11 @@
    "es": "Si lo desalojan por no pagar la renta, el tribunal puede negar el desalojo cuando la vivienda tiene una violación grave de salud o seguridad que usted avisó por escrito cuando no estaba atrasado en la renta, y el arrendador no la corrigió dentro de 14 días. Mientras tanto, el tribunal puede exigirle que pague la renta al tribunal. Retener la renta es arriesgado: hable con la asistencia legal antes de hacerlo.",
    "state": "draft"
   },
+  "guide.tenant-rights.if-you-are-facing-eviction": {
+   "en": "If you are facing eviction",
+   "es": "Si enfrenta un desalojo",
+   "state": "draft"
+  },
   "guide.tenant-rights.if-you-are-served-court-papers": {
    "en": "<b>If you are served court papers</b> (a Landlord/Tenant Writ), file an Appearance by the <em>return date</em> on the writ, and an answer with your defenses no more than 5 days after it. If you do not, you can lose without a hearing.",
    "es": "<b>Si le entregan documentos del tribunal</b> (una orden judicial llamada Landlord/Tenant Writ), presente un formulario de comparecencia (Appearance) a más tardar en la <em>fecha de respuesta</em> (return date) que indica la orden, y una contestación con sus defensas a más tardar 5 días después. Si no lo hace, puede perder sin audiencia.",
@@ -13314,6 +13504,11 @@
   "guide.tenant-rights.your-deposit-comes-back-within-30": {
    "en": "Your deposit comes back within 30 days, with a written list of any deductions.",
    "es": "Su depósito se le devuelve dentro de 30 días, con una lista escrita de cualquier descuento.",
+   "state": "draft"
+  },
+  "guide.tenant-rights.your-rights-as-a-tenant": {
+   "en": "Your rights as a tenant",
+   "es": "Sus derechos como inquilino",
    "state": "draft"
   },
   "guide.tenant-rights.your-security-deposit": {
@@ -14704,9 +14899,19 @@
    "es": "Una placa que apoya una causa",
    "state": "draft"
   },
+  "guide.vanity-and-special-plates.a-special-plate": {
+   "en": "A special plate",
+   "es": "Una placa especial",
+   "state": "draft"
+  },
   "guide.vanity-and-special-plates.a-special-plate-show-that-you": {
    "en": "A special plate: show that you qualify",
    "es": "Una placa especial: demuestre que reúne los requisitos",
+   "state": "draft"
+  },
+  "guide.vanity-and-special-plates.a-vanity-plate": {
+   "en": "A vanity plate",
+   "es": "Una placa personalizada",
    "state": "draft"
   },
   "guide.vanity-and-special-plates.a-vanity-plate-carries-letters-and": {
@@ -14830,8 +15035,8 @@
    "state": "draft"
   },
   "guide.vanity-and-special-plates.for-a-special-plate-find-yours": {
-   "en": "For a special plate, find yours in the table in step 4: who may have it and what it costs.",
-   "es": "Para una placa especial, búsquela en la tabla del paso 4: quién puede tenerla y cuánto cuesta.",
+   "en": "For a special plate, find yours in the table under A special plate, below: who may have it and what it costs.",
+   "es": "Para una placa especial, búsquela en la tabla bajo Una placa especial, más abajo: quién puede tenerla y cuánto cuesta.",
    "state": "draft"
   },
   "guide.vanity-and-special-plates.for-some-plates-yes-until-they": {
@@ -15474,6 +15679,11 @@
    "es": "Si renuncia o lo despiden por falta de trabajo, puede pedir que le envíen el último cheque por correo.",
    "state": "draft"
   },
+  "guide.wage-rights.if-you-were-not-paid": {
+   "en": "If you were not paid",
+   "es": "Si no le pagaron",
+   "state": "draft"
+  },
   "guide.wage-rights.if-you-were-not-paid-file": {
    "en": "If you were not paid: file a wage claim",
    "es": "Si no le pagaron: presente un reclamo de salarios",
@@ -15647,6 +15857,11 @@
   "guide.wage-rights.your-last-paycheck": {
    "en": "Your last paycheck",
    "es": "Su último cheque",
+   "state": "draft"
+  },
+  "guide.wage-rights.your-rights-to-your-pay": {
+   "en": "Your rights to your pay",
+   "es": "Sus derechos sobre su pago",
    "state": "draft"
   },
   "guide.wage-rights.your-wages-are-due-by-the": {
@@ -15854,6 +16069,11 @@
    "es": "Manejo de residuos sólidos, RSA 149-M",
    "state": "draft"
   },
+  "guide.who-to-contact.start-here": {
+   "en": "Start here",
+   "es": "Empiece aquí",
+   "state": "draft"
+  },
   "guide.who-to-contact.start-with-the-agency-that-runs": {
    "en": "Start with the agency that runs the program: the Division of Motor Vehicles for a license, the Department of Health and Human Services for SNAP or Medicaid, and so on. Each guide here links the agency&rsquo;s page.",
    "es": "Empiece por la agencia que administra el programa: la División de Vehículos Motorizados para una licencia, el Departamento de Salud y Servicios Humanos para SNAP o Medicaid, y así sucesivamente. Cada guía de este sitio enlaza la página de la agencia.",
@@ -15917,6 +16137,11 @@
   "guide.who-to-contact.what-is-it-about": {
    "en": "What is it about?",
    "es": "¿Sobre qué es?",
+   "state": "draft"
+  },
+  "guide.who-to-contact.who-handles-what": {
+   "en": "Who handles what",
+   "es": "Quién se encarga de qué",
    "state": "draft"
   },
   "guide.who-to-contact.who-runs-a-town-and-who": {
