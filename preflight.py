@@ -6425,6 +6425,28 @@ def _session_days_cache(N, SD):
         kept.unlink()
         SD.load(d / "narratives.json", sat=lambda body, date: False, journals={})
         assert not kept.exists(), "a call naming its own record kept its answer"
+        # THE RECORDING ITSELF (the review of 29 October 2026). Memos a step
+        # filled before load() are emptied, or the files they came from
+        # would be missing from the key; a path asked through Path.exists,
+        # is_dir or os.path.isfile -- what Windows asks without os.stat --
+        # is looked for; a file opened to write is no input.
+        memos = [getattr(sys.modules.get(m), n, None) for m, n in SD._Inputs.MEMOS]
+        for memo in memos:
+            if isinstance(memo, dict):
+                memo["filled before"] = True
+
+        def asks():
+            Path("gone-a").exists()
+            Path("gone-b").is_dir()
+            os.path.isfile("gone-c")
+            (d / "written.txt").write_text("x", encoding="utf-8")
+            return [isinstance(m, dict) and "filled before" in m for m in memos]
+        left, inputs = SD._Inputs.record(asks)
+        assert not any(left), f"a memo filled before the parse was not emptied: {left}"
+        assert {"gone-a", "gone-b", "gone-c"} <= set(inputs["looked"]), (
+            f"a path asked of without os.stat was not looked for: {inputs['looked']}")
+        assert not any("written.txt" in f for f in inputs["files"] + inputs["looked"]), (
+            "a file written was taken for an input")
     finally:
         os.chdir(here)
         SD.ROLLCALLS_FROM.clear()

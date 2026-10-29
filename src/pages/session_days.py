@@ -3462,7 +3462,8 @@ def _fill_pages(grouped):
 # the week pages, the directory lists, the session days as committees --
 # and the night's checks once more. The first to ask keeps what it worked
 # out in CACHE_FILE, in the build's cache folder; the rest read it back in
-# under a second, if, and only if, nothing it was worked out from has moved:
+# about three seconds, if, and only if, nothing it was worked out from has
+# moved:
 #
 #   - every file the parse opened, by a sha256 of its bytes; every folder it
 #     listed, by its listing; every path it looked for, by whether it is
@@ -3487,47 +3488,102 @@ CACHE_FORMAT = 1
 class _Inputs:
     """What one run of _load() read: the files it opened, the folders it
     listed and the paths it looked for. Python's audit hook sees every open
-    and every listing; os.stat, which Path.exists and is_file ask, is
-    watched for the run's length."""
+    and every listing; os.stat, os.path.exists, isdir and isfile and
+    Path.exists, is_dir and is_file are watched for the run's length."""
     on = None
     hooked = False
+
+    # THE PARSE'S OWN MEMOS, emptied before it runs (the review of 29 October
+    # 2026): a step that had filled one -- _sat's year of Journals, the
+    # Journal votes vote_passage keeps, a year's House divisions -- would
+    # have the parse read nothing for it, and the file it came from would be
+    # missing from the key. Each fills again alike as the parse asks.
+    MEMOS = (("session_days", "_SAT"), ("vote_passage", "_CACHE"),
+             ("rollcall_outcomes", "_DIVISIONS"), ("journal_days", "_YEARS"))
+    # What a path's existence is asked through. On Windows, Path.exists and
+    # os.path.exists do not go through os.stat (Python 3.12 on), so each is
+    # watched itself.
+    ASKS = (("os", "stat"), ("os.path", "exists"), ("os.path", "isdir"),
+            ("os.path", "isfile"))
+    PATH_ASKS = ("exists", "is_dir", "is_file")
 
     @classmethod
     def record(cls, fn):
         import os
+        import os.path
+        import pathlib
         if not cls.hooked:
+            writes = os.O_WRONLY | os.O_RDWR | os.O_CREAT | os.O_APPEND
+
             def hook(event, args):
                 if cls.on is None:
                     return
-                if event == "open" and args and isinstance(args[0], (str, bytes, os.PathLike)) \
-                        and (args[1] is None or "w" not in str(args[1])):
+                if event == "open" and args and isinstance(args[0], (str, bytes, os.PathLike)):
+                    mode, flags = (args[1] if len(args) > 1 else None,
+                                   args[2] if len(args) > 2 else 0)
+                    if mode is not None and any(c in str(mode) for c in "wax+"):
+                        return
+                    if mode is None and isinstance(flags, int) and flags & writes:
+                        return
                     cls.on["files"].add(os.fsdecode(args[0]))
                 elif event in ("os.listdir", "os.scandir") and args and args[0] is not None:
                     cls.on["dirs"].add(os.fsdecode(args[0]))
             sys.addaudithook(hook)
             cls.hooked = True
-        stat = os.stat
+        for mod, name in cls.MEMOS:
+            memo = getattr(sys.modules.get(mod), name, None)
+            if isinstance(memo, dict):
+                memo.clear()
 
-        def watched(p, *a, **k):
+        def note(p):
             if cls.on is not None and isinstance(p, (str, bytes, os.PathLike)):
                 cls.on["looked"].add(os.fsdecode(p))
-            return stat(p, *a, **k)
+        kept = []
+        for mod, name in cls.ASKS:
+            m = sys.modules[mod]
+            was = getattr(m, name)
+            kept.append((m, name, was))
+            setattr(m, name, (lambda was: lambda p, *a, **k: (note(p), was(p, *a, **k))[1])(was))
+        for name in cls.PATH_ASKS:
+            was = getattr(pathlib.Path, name)
+            kept.append((pathlib.Path, name, was))
+            setattr(pathlib.Path, name,
+                    (lambda was: lambda self, *a, **k: (note(self), was(self, *a, **k))[1])(was))
         cls.on = {"files": set(), "dirs": set(), "looked": set()}
-        os.stat = watched
         try:
             out = fn()
         finally:
-            os.stat = stat
+            for owner, name, was in kept:
+                setattr(owner, name, was)
             seen, cls.on = cls.on, None
         # A folder listed that is not there, and a file opened that is not,
         # are inputs too: the first Journal of a new year is a folder that
-        # appears. Each is kept as looked for, by whether it is there.
-        code = re.compile(r"\.py[co]?$")
+        # appears. Each is kept as looked for, by whether it is there. Code,
+        # and the bytecode Python writes beside it, is the signature's.
+        code = re.compile(r"\.py[co]?(?:\.\d+)?$|__pycache__")
         files = sorted(f for f in seen["files"] if not code.search(f) and Path(f).is_file())
-        dirs = sorted(seen["dirs"])
+        dirs = sorted(d for d in seen["dirs"] if not code.search(d))
         looked = sorted((set(seen["looked"]) | set(seen["files"])) - set(files) - set(dirs))
         looked = [x for x in looked if not code.search(x)]
-        return out, {"files": files, "dirs": dirs, "looked": looked}
+        # And the words the modules read as they are imported, before any
+        # recording: a page's wording is not the parse's, but a change to it
+        # costs one parse, which is cheaper than proving it never matters.
+        here = Path(__file__).resolve().parent
+        words = sorted(str(p) for d in ("words", "lang") for p in (here / d).glob("*.json"))
+        return out, {"files": files + [w for w in words if w not in files],
+                     "dirs": dirs, "looked": looked}
+
+
+_SIG = []
+
+
+def _signature():
+    """build_cache.signature("session_days.py"), once a process: it reads
+    every module of the project this one imports, two seconds."""
+    if not _SIG:
+        import build_cache as BC
+        _SIG.append(BC.signature("session_days.py"))
+    return _SIG[0]
 
 
 def _inputs_key(inputs):
@@ -3559,7 +3615,7 @@ def load_cache(folder=None):
             doc = pickle.load(fh)
         if not isinstance(doc, dict) or doc.get("format") != CACHE_FORMAT:
             return None, "kept in another format"
-        if doc.get("sig") != BC.signature("session_days.py"):
+        if doc.get("sig") != _signature():
             return None, "kept by other code"
         if doc.get("key") != _inputs_key(doc.get("inputs") or {}):
             return None, "its inputs have moved"
@@ -3589,7 +3645,16 @@ def keep(days, inputs, folder=None):
     tmp = p.with_name(f"{p.name}.{os.getpid()}.tmp")
     try:
         p.parent.mkdir(parents=True, exist_ok=True)
-        doc = {"format": CACHE_FORMAT, "sig": BC.signature("session_days.py"),
+        # A step killed while it wrote leaves its half behind; an hour on,
+        # no step is still writing it.
+        import time
+        for old in p.parent.glob(f"{p.name}.*.tmp"):
+            try:
+                if time.time() - old.stat().st_mtime > 3600:
+                    old.unlink()
+            except OSError:
+                pass
+        doc = {"format": CACHE_FORMAT, "sig": _signature(),
                "inputs": inputs, "key": _inputs_key(inputs), "days": days,
                "state": {"ROLLCALLS_FROM": dict(ROLLCALLS_FROM)}}
         with open(tmp, "wb") as raw:
