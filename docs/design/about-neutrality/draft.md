@@ -87,3 +87,22 @@ Corrections will be listed in a public corrections log.
    one.
 5. **Placement:** should this replace "Independence", or sit beside it? Its
    one sentence is already said under "Who Makes Granite Record".
+
+---
+
+## As built (29 October 2026)
+
+On branch `about/neutrality` (commit ede56d1), with the owner's answers:
+
+- the reason kept, with no party;
+- the contact@ sentence kept;
+- the examples sentence for the Learn pages only;
+- no corrections-log sentence;
+- the section in Independence's place.
+
+One correction to the premise of question 5: the review found that "not
+endorsed by the General Court" and "takes no position on any bill" were said
+only under "Independence". So the section opens with that sentence, word for
+word, and nothing is lost. `shots/` holds the section at 390 and 1280, light
+and dark, drawn into the preview's About page with the median the Data page
+gives today (1 second).
