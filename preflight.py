@@ -42333,6 +42333,115 @@ def _related_tab(B, RB):
                   "no fate, itself and an unknown bill left out")
 
 
+_INTERIM_CALENDAR = """
+                 HB 1375, establishing financial assurance. (Pending question is the adoption of the committee report - interim study.)
+
+           2026 INTERIM STUDY STATEMENTS
+CHILDREN AND FAMILY LAW
+HB 1404, establishing a study committee to study the equitable division of property in divorce proceedings.
+NOT RECOMMENDED FOR FUTURE LEGISLATION.
+Rep. Jay Markell for Children and Family Law. A commission is not needed. Statutory and case law presently
+deal with these divorce issues. Vote 7-1.
+HB 1779-FN, supporting the cultural background of children placed in foster care. RECOMMENDED FOR
+FUTURE LEG-
+ISLATION.
+Rep. Mark Pearson for Children and Family Law. We first voted not to accept the subcommittee's unanimous
+vote because in the deliberations of the whole committee, we learned the original prime sponsor of the bill
+would wish to refile her bill with the several changes the committee thought necessary. Vote 8-0.
+8 NOVEMBER2026HOUSERECORD  3
+
+COMMERCE AND CONSUMER AFFAIRS
+HB 312, relative to the right of intercollegiate student-athletes to earn compensation through the use of their
+name, image, or likeness. NOT RECOMMENDED FOR FUTURE LEGISLATION .
+Rep. Chris McAleer for Commerce and Consumer Affairs. The committee found that sur-
+rounding states have acted. Vote 11-0.
+HB 1188, relative to grounds for modification of parental rights and responsibilities. NOT
+RECOMMENDED FOR FUTURE LEGISLATION.
+The committee is opposed to the basic concept of allowing a review of parental rights and
+responsibilities every three years. Vote 10-1.
+
+                                                      Rep. Caroline Gargasz
+HB 541, relative to the obligation of religious leaders to report child abuse.
+Rep. Margaret D. Hallyburton for Commerce and Consumer Affairs: The state Supreme
+Court has before it an appeal that will likely address this issue. Vote 10-0.
+HB 1429-FN-A, establishing a procedure for the department of environmental services to transfer ownership
+of dams to municipalities or others, including making loans. WITHOUT RECOMMENDATION.
+
+                                   COMMITTEE MEETINGS
+HB 9, relative to nothing. NOT RECOMMENDED FOR FUTURE LEGISLATION.
+"""
+
+
+@check("build", "interim study statements are read off the calendar in every form it prints them, "
+       "and shown on the Reports tab only where the docket's line agrees",
+       needs=("interim_statements", "build_site_v2"))
+def _interim_statements(I, B):
+    """The owner, 29 October 2026: each committee's INTERIM STUDY STATEMENT on
+    its bill's Reports tab (interim_statements.py, build_site_v2.interim_cards).
+    The fixture is the calendars' own lines, 2004 to 2026: a recommendation
+    wrapped over two lines and broken in the word, a stray space before its
+    stop, a page's running head, a word broken at a line's end, a statement
+    signed below it (2006-2014), one that prints no recommendation (2004), one
+    that is its recommendation alone, and the section's end."""
+    root = Path(tempfile.mkdtemp())
+    try:
+        (root / "calendars" / "2026").mkdir(parents=True)
+        (root / "calendars" / "2026" / "HC040.txt").write_text(_INTERIM_CALENDAR, encoding="utf-8")
+        data, held, _per = I.read(root)
+    finally:
+        shutil.rmtree(root, ignore_errors=True)
+    got = data.get("2025-2026", {})
+    assert not held and sorted(got) == sorted(["HB1188", "HB1404", "HB1429", "HB312", "HB541",
+                                               "HB1779"]), (
+        f"the fixture's statements: {sorted(got)}, held {dict(held)} -- HB 9, after the "
+        "section's end, is none of them")
+    s = {b: v[0] for b, v in got.items()}
+    want = {"HB1404": ("not", "NOT RECOMMENDED FOR FUTURE LEGISLATION", "Rep. Jay Markell", 7, 1),
+            "HB1779": ("rec", "RECOMMENDED FOR FUTURE LEGISLATION", "Rep. Mark Pearson", 8, 0),
+            "HB312": ("not", "NOT RECOMMENDED FOR FUTURE LEGISLATION", "Rep. Chris McAleer", 11, 0),
+            "HB1188": ("not", "NOT RECOMMENDED FOR FUTURE LEGISLATION", "Rep. Caroline Gargasz", 10, 1),
+            "HB541": ("", "", "Rep. Margaret D. Hallyburton", 10, 0),
+            "HB1429": ("without", "WITHOUT RECOMMENDATION", "", None, None)}
+    for b, (rec, printed, who, y, n) in want.items():
+        assert (s[b]["rec"], s[b]["printed"], s[b]["author"], s[b].get("vote_yeas"),
+                s[b].get("vote_nays")) == (rec, printed, who, y, n), f"{b} reads {s[b]}"
+    assert s["HB1779"]["title"] == "supporting the cultural background of children placed in foster care" \
+        and "HOUSERECORD" not in s["HB1779"]["text"] and s["HB1779"]["text"].endswith("necessary."), (
+        f"HB 1779's statement: {s['HB1779']}")
+    assert "surrounding states" in s["HB312"]["text"] and s["HB312"]["title"].endswith("likeness"), (
+        f"HB 312's statement: {s['HB312']}")
+    assert s["HB1188"]["committee"] == "Commerce and Consumer Affairs" and \
+        s["HB1188"]["text"].startswith("The committee is opposed") and "Gargasz" not in s["HB1188"]["text"], (
+        f"a signed statement: {s['HB1188']}")
+    # On the tab: the docket's line fills what the calendar does not print, and
+    # a statement it disagrees with is held back; the calendar's report the
+    # fetch mis-filed for the bill gives way.
+    row = lambda raw: {"events": [{"type": "interim_report", "raw": raw, "date": "2026-10-20",
+                                   "body": "H", "cancelled": False}]}
+    narr = {"2025-2026": {
+        "HB541": row("Interim Study Report: Not Recommended for Future Legislation (Vote 10-0)"),
+        "HB1404": row("Interim Study Report: Not Recommended for Future Legislation (Vote 6-2)"),
+        "HB1779": row("Interim Study Report: Recommended for Future Legislation (Vote 8-0)")}}
+    reports = {"2025-2026": {"HB1779": [
+        {"source": "House Calendar 40, 2026", "majority_recommendation": "INTERIM STUDY",
+         "reports": [{"side": "Committee"}]},
+        {"source": "House Calendar 6, 2026", "majority_recommendation": "REFER FOR INTERIM STUDY",
+         "reports": [{"side": "Committee"}]}]}}
+    held = B.interim_cards(reports, data, narr)
+    assert [(b, "6-2" in w) for _t, b, _c, w in held] == [("HB1404", True)], f"held back: {held}"
+    tab = reports["2025-2026"]
+    assert [r["majority_recommendation"] for r in tab["HB1779"]] == [
+        "REFER FOR INTERIM STUDY", "RECOMMENDED FOR FUTURE LEGISLATION"], (
+        f"HB 1779's reports: {tab['HB1779']}")
+    blk = tab["HB541"][0]
+    assert blk["majority_recommendation"] == "NOT RECOMMENDED FOR FUTURE LEGISLATION" and \
+        blk["reports"][0]["note"] == B.INTERIM_FROM_DOCKET and \
+        blk["reports"][0]["side"] == B.INTERIM_SIDE, f"HB 541 of 2004's card: {blk}"
+    assert "HB1404" not in tab and tab["HB1429"][0]["majority_recommendation"] == "WITHOUT RECOMMENDATION"
+    return "ok", ("six statements in six forms; the docket fills 2004's recommendation, "
+                  "holds back a disagreement, and the mis-filed report gives way")
+
+
 @check("build", "related bills: the same text hashes the same everywhere, quoted law is not shared "
        "language, and an amendment's fate is the docket's", needs=("related_bills",))
 def _related_bills(RB):
