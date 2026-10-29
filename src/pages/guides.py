@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-10-11.65
+# GRANITE_VERSION: 2026-10-11.66
 """
 The how-to guides: their words, their sources, and what each was checked
 against. Read by build_civics.py, which draws them on the Resources hub's
@@ -4319,9 +4319,10 @@ ELECTION = guide(
           "does not use the device and reports it to the Attorney General and the Secretary "
           "of State.</p>"
           "<p><b>After the polls close.</b> The votes are counted in public and the count is "
-          "not stopped until it is finished. Where officers disagree on how to count a mark, "
-          "the majority of those counting decides; if no count has a majority, the ballot is "
-          "not counted for that office. The counting documents are open for public review "
+          "not stopped until it is finished. If a ballot is marked for an office in a way "
+          "that cannot readily be counted, or the officials counting disagree about it, they "
+          "vote, and the ballot is counted for that office the way the majority decides. If no way of "
+          "counting it gets a majority, that part of the ballot is not counted. The counting documents are open for public review "
           "when the results are announced, and a machine&rsquo;s printed results are posted "
           "within 60 minutes of the last ballot. The moderator announces the final count, and "
           "the clerk prepares the election return in front of the other officials, signs it, "
@@ -4356,8 +4357,11 @@ ELECTION = guide(
           "counted, without giving a reason; the Secretary of State rules on it, and a ballot "
           "still disputed is kept with a memo of the ruling in case of an appeal. The "
           "Secretary of State compares the recount with the election night results and "
-          "declares the result, which is final unless changed on an appeal to the Ballot Law "
-          "Commission within 10 days.</p>"
+          "declares the result. A candidate the recount declares did not win may appeal the "
+          "Secretary of State&rsquo;s rulings on the protested ballots to the Ballot Law "
+          "Commission, by a written appeal filed with the Secretary of State within 3 days of "
+          "that declaration. The commission reviews those rulings and cannot order a second "
+          "recount.</p>"
           "<p><b>The top-of-the-ticket audit.</b> When state representative races are "
           "recounted after a general election, the Secretary of State also audits the votes on "
           "those same ballots for President, United States Senate, United States House or "
@@ -4378,10 +4382,11 @@ ELECTION = guide(
           actions=[("Recount procedures (Secretary of State)", SOS_RECOUNT),
                    ("Top-of-the-ticket audit procedures (Secretary of State)", SOS_TOP_AUDIT)],
           law=["RSA 660:1", "RSA 660:2", "RSA 660:4", "RSA 660:5", "RSA 660:17-b",
-               "RSA 660:17-c", "RSA 660:33", "RSA 660:35"])],
+               "RSA 660:17-c", "RSA 660:33", "RSA 660:35", "RSA 665:8"])],
     [("Election Officers, RSA 658", "/laws/658"),
      ("Conduct of Elections, RSA 659", "/laws/659"),
      ("Recounts and Audits, RSA 660", "/laws/660"),
+     ("Ballot Law Commission, RSA 665", "/laws/665"),
      ("Recount Procedures, State Primary Elections (Secretary of State, 2024)", SOS_RECOUNT),
      ("Audit Procedures, Top-of-the-Ticket Audits (Secretary of State)", SOS_TOP_AUDIT),
      ("Ballots and Counting Devices, RSA 656", "/laws/656"),
@@ -4500,6 +4505,33 @@ ELECTION = guide(
      claim("Where the election officers disagree over how to count a ballot, it is counted by "
            "the majority vote of the officials present and counting; if no count has a "
            "majority, the ballot is defective for that office.", "RSA 659:64", ELECTION_READ),
+     claim("A ballot marked for any office in a way which does not readily admit of "
+           "counting is counted for that office in accordance with the majority vote of the "
+           "election officials present and counting (Determining Intention of Voter).",
+           "RSA 659:64", "2026-10-29"),
+     claim("A ballot is defective in part, and that part is not tabulated, where no count of "
+           "it for one or more (but less than all) offices received a majority vote of the "
+           "election officials; defective in whole where no count for any office did.",
+           "RSA 659:65", "2026-10-29"),
+     claim("Provided the voter did not overvote for that office, a write-in vote for a person "
+           "whose name is on the ballot shall be counted as a vote for that candidate; a ballot "
+           "marked beside a candidate's name and with the same name written in is one vote for "
+           "that candidate.", "RSA 659:64-a", "2026-10-29"),
+     claim("Any candidate who, upon recount, did not have the greatest number of votes may, "
+           "within 3 days after said declaration, appeal to the ballot law commission, which "
+           "shall consider and review all the rulings of the secretary of state on ballots "
+           "protested during the recount, the appeal filed in writing with the secretary of "
+           "state; in no case may it order a second recount; after a primary recount its "
+           "decision shall be final as to questions both of law and fact, and no court shall "
+           "have jurisdiction to review it.",
+           "RSA 665:8", "2026-10-29"),
+     claim("An appeal to the supreme court from the commission's decisions made under RSA "
+           "665:8, II is limited to questions of law and to contested elections for "
+           "presidential elector, governor, councilor, and town and city or city ward offices "
+           "voted for at general elections; none for United States senator, "
+           "representative in congress, state senator, or representative to the general court, "
+           "both houses having exclusive jurisdiction over the elections of their members.",
+           "RSA 665:16", "2026-10-29"),
      claim("The moderator shall announce the final count for each office and question.",
            "RSA 659:70", ELECTION_READ),
      claim("The town or ward clerk shall prepare the election return in the presence of the "
@@ -4600,9 +4632,33 @@ ELECTION = guide(
          "Ballot Law Commission orders a checklist re-verified, the supervisors and their "
          "assistants are paid what the town or city votes "
          '(<a href="/laws/654#s38">RSA 654:38</a>).</p>'),
-        ("Who decides a ballot whose mark is unclear?",
-         "<p>The election officers counting the votes, by majority. If no way of counting it "
-         "wins a majority, the ballot is not counted for that office.</p>"),
+        ("Who decides how to count a ballot whose mark is unclear?",
+         "<p>On election night, the election officials counting the votes. If a ballot is "
+         "marked for an office in a way that cannot readily be counted, or they disagree about "
+         "it, they vote, and it is counted the way the majority decides. If no way of counting it gets a majority, that "
+         "part of the ballot is not counted "
+         '(<a href="/laws/659#s64">RSA 659:64</a>, <a href="/laws/659#s65">659:65</a>).</p>'
+         "<p>If the race is recounted, a candidate may protest how any ballot is counted, and "
+         'the Secretary of State rules on it (<a href="/laws/660#s5">RSA 660:5</a>). A candidate '
+         "the recount declares did not win may appeal those rulings to the Ballot Law "
+         "Commission, by a written appeal filed with the Secretary of State within 3 days of "
+         'the declaration (<a href="/laws/665#s8">RSA 665:8</a>). After a primary recount, the '
+         "commission&rsquo;s decision is final. After a general election recount, it can be "
+         "appealed to the Supreme Court on questions of law only for presidential elector, "
+         "governor, executive councilor, and town, city or ward offices. For state "
+         "representative, state senator and Congress it cannot, because each house judges the "
+         'elections of its own members (<a href="/laws/665#s16">RSA 665:16</a>).</p>'),
+        ("Can a ballot with an unclear mark, or a write-in, still count?",
+         "<p>It can. The law&rsquo;s section on unclear marks is headed &ldquo;Determining "
+         "Intention of Voter&rdquo;. It says a ballot marked for an office in a way that cannot "
+         "readily be counted is counted as a majority of the officials counting decide, and "
+         "only if no way of counting it gets a majority is it left uncounted for that office "
+         '(<a href="/laws/659#s64">RSA 659:64</a>).</p>'
+         "<p>A write-in for someone whose name is already printed on the ballot counts as a "
+         "vote for that candidate, as long as the voter did not vote for too many people for "
+         "that office. A voter who filled in the oval beside a candidate and also wrote the "
+         "same name in gets one vote for that candidate, not two "
+         '(<a href="/laws/659#s64-a">RSA 659:64-a</a>).</p>'),
         ("Can I watch the count?",
          "<p>Yes. The law makes the counting public, and its documents are open for public "
          "review when the results are announced. The state audit of counting machines is open "
@@ -4612,7 +4668,7 @@ ELECTION = guide(
          "ballots, receives every town&rsquo;s return, and runs recounts and the audit.</p>")),
     see=[("How to vote", "/guides/how-to-vote.html"),
          ("How to run for office", "/guides/run-for-office.html")],
-    figures=[fig("10 days", SOS_RECOUNT, "a successful appeal made within 10 days"),
+    figures=[fig("3 days", "RSA 665:8", "within 3 days after said declaration"),
              fig("2 or 3 years", "RSA 40:1", "Every 2 years or 3 years"),
              fig("6 years", "RSA 41:46-a", "one supervisor for a term of 6 years"),
              fig("3-year", "RSA 41:46-a", "may adopt a 3-year term"),

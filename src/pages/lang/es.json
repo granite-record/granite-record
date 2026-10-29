@@ -3924,14 +3924,19 @@
    "es": "El secretario de un municipio se elige mediante boleta en la asamblea municipal anual",
    "state": "draft"
   },
+  "guide.election-worker.a-write-in-for-someone-whose": {
+   "en": "A write-in for someone whose name is already printed on the ballot counts as a vote for that candidate, as long as the voter did not vote for too many people for that office. A voter who filled in the oval beside a candidate and also wrote the same name in gets one vote for that candidate, not two (<a href=\"/laws/659#s64-a\">RSA 659:64-a</a>).",
+   "es": "Un voto por escrito por alguien cuyo nombre ya está impreso en la boleta cuenta como un voto por ese candidato, siempre que el votante no haya votado por más personas de las permitidas para ese cargo. Un votante que llenó el óvalo junto a un candidato y además escribió el mismo nombre obtiene un voto para ese candidato, no dos (<a href=\"/laws/659#s64-a\">RSA 659:64-a</a>).",
+   "state": "draft"
+  },
   "guide.election-worker.after-the-polls-close-the-votes": {
    "en": "After the polls close, the votes are counted in public, the moderator announces the result, and the ballots are sealed and kept for a recount or an audit.",
    "es": "Después del cierre de la votación, los votos se cuentan en público, el moderador anuncia el resultado y las boletas se sellan y se guardan para un recuento o una auditoría.",
    "state": "draft"
   },
   "guide.election-worker.after-the-polls-close-the-votes-2": {
-   "en": "<b>After the polls close.</b> The votes are counted in public and the count is not stopped until it is finished. Where officers disagree on how to count a mark, the majority of those counting decides; if no count has a majority, the ballot is not counted for that office. The counting documents are open for public review when the results are announced, and a machine&rsquo;s printed results are posted within 60 minutes of the last ballot. The moderator announces the final count, and the clerk prepares the election return in front of the other officials, signs it, and sends a copy to the Secretary of State by 8:00 a.m. the next day. The other copy is kept by the clerk, open to the public.",
-   "es": "<b>Después del cierre de la votación.</b> Los votos se cuentan en público y el conteo no se detiene hasta terminar. Cuando los funcionarios no están de acuerdo sobre cómo contar una marca, decide la mayoría de quienes cuentan; si ninguna forma de contarla obtiene mayoría, la boleta no se cuenta para ese cargo. Los documentos del conteo están disponibles para revisión pública cuando se anuncian los resultados, y los resultados impresos de una máquina se publican dentro de los 60 minutos de la última boleta. El moderador anuncia el conteo final, y el secretario prepara el acta de resultados frente a los demás funcionarios, la firma y envía una copia a la Secretaría de Estado antes de las 8:00 a.m. del día siguiente. El secretario guarda la otra copia, abierta al público.",
+   "en": "<b>After the polls close.</b> The votes are counted in public and the count is not stopped until it is finished. If a ballot is marked for an office in a way that cannot readily be counted, or the officials counting disagree about it, they vote, and the ballot is counted for that office the way the majority decides. If no way of counting it gets a majority, that part of the ballot is not counted. The counting documents are open for public review when the results are announced, and a machine&rsquo;s printed results are posted within 60 minutes of the last ballot. The moderator announces the final count, and the clerk prepares the election return in front of the other officials, signs it, and sends a copy to the Secretary of State by 8:00 a.m. the next day. The other copy is kept by the clerk, open to the public.",
+   "es": "<b>Después del cierre de la votación.</b> Los votos se cuentan en público y el conteo no se detiene hasta terminar. Si una boleta está marcada para un cargo de una forma que no se puede contar con facilidad, o los funcionarios que cuentan no están de acuerdo sobre ella, votan, y la boleta se cuenta para ese cargo como decida la mayoría. Si ninguna forma de contarla obtiene mayoría, esa parte de la boleta no se cuenta. Los documentos del conteo están disponibles para revisión pública cuando se anuncian los resultados, y los resultados impresos de una máquina se publican dentro de los 60 minutos de la última boleta. El moderador anuncia el conteo final, y el secretario prepara el acta de resultados frente a los demás funcionarios, la firma y envía una copia a la Secretaría de Estado antes de las 8:00 a.m. del día siguiente. El secretario guarda la otra copia, abierta al público.",
    "state": "draft"
   },
   "guide.election-worker.appointed-by-the-moderator-for-that": {
@@ -3984,6 +3989,11 @@
    "es": "Procedimientos de auditoría, auditorías de los cargos principales de la boleta (Secretaría de Estado)",
    "state": "draft"
   },
+  "guide.election-worker.ballot-law-commission-rsa-665": {
+   "en": "Ballot Law Commission, RSA 665",
+   "es": "Comisión de Leyes Electorales (Ballot Law Commission), RSA 665",
+   "state": "draft"
+  },
   "guide.election-worker.ballots-and-counting-devices-rsa-656": {
    "en": "Ballots and Counting Devices, RSA 656",
    "es": "Boletas y dispositivos de conteo, RSA 656",
@@ -3997,6 +4007,11 @@
   "guide.election-worker.bring-the-corrected-checklist-of-voters": {
    "en": "Bring the corrected checklist of voters and stay all day; may appoint assistant supervisors to register voters on election day",
    "es": "Llevan el padrón electoral corregido y permanecen todo el día; pueden nombrar supervisores asistentes para inscribir a votantes el día de la elección",
+   "state": "draft"
+  },
+  "guide.election-worker.can-a-ballot-with-an-unclear": {
+   "en": "Can a ballot with an unclear mark, or a write-in, still count?",
+   "es": "¿Puede contar una boleta con una marca que no está clara, o con un voto por escrito?",
    "state": "draft"
   },
   "guide.election-worker.can-i-watch-the-count": {
@@ -4050,8 +4065,8 @@
    "state": "draft"
   },
   "guide.election-worker.how-a-recount-runs-the-secretary": {
-   "en": "<b>How a recount runs.</b> The Secretary of State publishes its recount procedures; those for state primaries describe it this way. Every recount is open to the public, and its time and place are posted on the Secretary of State&rsquo;s website. At least one team of two people counts each race. Across the table from them sits each candidate, or one person for the candidate, with other observers standing behind; cameras show every ballot and the tally sheet on screens facing the candidates, and do not record. Each box is opened in front of them and shown empty. The ballots are sorted into piles, in a race for one seat one for each candidate and piles for undervotes, overvotes and write-ins, and counted out loud in sets of 25, each set checked by the second counter. A candidate may challenge how any ballot is counted, without giving a reason; the Secretary of State rules on it, and a ballot still disputed is kept with a memo of the ruling in case of an appeal. The Secretary of State compares the recount with the election night results and declares the result, which is final unless changed on an appeal to the Ballot Law Commission within 10 days.",
-   "es": "<b>Cómo se hace un recuento.</b> La Secretaría de Estado publica sus procedimientos de recuento; los de las primarias estatales lo describen así. Todo recuento está abierto al público, y su hora y lugar se publican en el sitio web de la Secretaría de Estado. Al menos un equipo de dos personas cuenta cada contienda. Al otro lado de la mesa se sienta cada candidato, o una persona en su nombre, y otros observadores se quedan de pie detrás; unas cámaras muestran cada boleta y la hoja de conteo en pantallas frente a los candidatos, y no graban. Cada caja se abre frente a ellos y se muestra vacía. Las boletas se separan en pilas, en una contienda por un solo puesto una por cada candidato y pilas para los votos en blanco (undervotes), los votos de más (overvotes) y los votos por escrito (write-ins), y se cuentan en voz alta en grupos de 25, cada grupo comprobado por el segundo contador. Un candidato puede impugnar cómo se cuenta cualquier boleta, sin dar una razón; la Secretaría de Estado decide, y una boleta que sigue en disputa se guarda con una nota de la decisión por si hay una apelación. La Secretaría de Estado compara el recuento con los resultados de la noche de la elección y declara el resultado, que es definitivo salvo que cambie por una apelación ante la Comisión de Leyes Electorales (Ballot Law Commission) dentro de los 10 días.",
+   "en": "<b>How a recount runs.</b> The Secretary of State publishes its recount procedures; those for state primaries describe it this way. Every recount is open to the public, and its time and place are posted on the Secretary of State&rsquo;s website. At least one team of two people counts each race. Across the table from them sits each candidate, or one person for the candidate, with other observers standing behind; cameras show every ballot and the tally sheet on screens facing the candidates, and do not record. Each box is opened in front of them and shown empty. The ballots are sorted into piles, in a race for one seat one for each candidate and piles for undervotes, overvotes and write-ins, and counted out loud in sets of 25, each set checked by the second counter. A candidate may challenge how any ballot is counted, without giving a reason; the Secretary of State rules on it, and a ballot still disputed is kept with a memo of the ruling in case of an appeal. The Secretary of State compares the recount with the election night results and declares the result. A candidate the recount declares did not win may appeal the Secretary of State&rsquo;s rulings on the protested ballots to the Ballot Law Commission, by a written appeal filed with the Secretary of State within 3 days of that declaration. The commission reviews those rulings and cannot order a second recount.",
+   "es": "<b>Cómo se hace un recuento.</b> La Secretaría de Estado publica sus procedimientos de recuento; los de las primarias estatales lo describen así. Todo recuento está abierto al público, y su hora y lugar se publican en el sitio web de la Secretaría de Estado. Al menos un equipo de dos personas cuenta cada contienda. Al otro lado de la mesa se sienta cada candidato, o una persona en su nombre, y otros observadores se quedan de pie detrás; unas cámaras muestran cada boleta y la hoja de conteo en pantallas frente a los candidatos, y no graban. Cada caja se abre frente a ellos y se muestra vacía. Las boletas se separan en pilas, en una contienda por un solo puesto una por cada candidato y pilas para los votos en blanco (undervotes), los votos de más (overvotes) y los votos por escrito (write-ins), y se cuentan en voz alta en grupos de 25, cada grupo comprobado por el segundo contador. Un candidato puede impugnar cómo se cuenta cualquier boleta, sin dar una razón; la Secretaría de Estado decide, y una boleta que sigue en disputa se guarda con una nota de la decisión por si hay una apelación. La Secretaría de Estado compara el recuento con los resultados de la noche de la elección y declara el resultado. Un candidato que, según el recuento, no ganó puede apelar las decisiones de la Secretaría de Estado sobre las boletas impugnadas ante la Comisión de Leyes Electorales (Ballot Law Commission), con una apelación por escrito presentada ante la Secretaría de Estado dentro de los 3 días siguientes a esa declaración. La comisión revisa esas decisiones y no puede ordenar un segundo recuento.",
    "state": "draft"
   },
   "guide.election-worker.how-chosen": {
@@ -4079,6 +4094,11 @@
    "es": "¿Cómo le gustaría servir?",
    "state": "draft"
   },
+  "guide.election-worker.if-the-race-is-recounted-a": {
+   "en": "If the race is recounted, a candidate may protest how any ballot is counted, and the Secretary of State rules on it (<a href=\"/laws/660#s5\">RSA 660:5</a>). A candidate the recount declares did not win may appeal those rulings to the Ballot Law Commission, by a written appeal filed with the Secretary of State within 3 days of the declaration (<a href=\"/laws/665#s8\">RSA 665:8</a>). After a primary recount, the commission&rsquo;s decision is final. After a general election recount, it can be appealed to the Supreme Court on questions of law only for presidential elector, governor, executive councilor, and town, city or ward offices. For state representative, state senator and Congress it cannot, because each house judges the elections of its own members (<a href=\"/laws/665#s16\">RSA 665:16</a>).",
+   "es": "Si la contienda se vuelve a contar, un candidato puede impugnar cómo se cuenta cualquier boleta, y la Secretaría de Estado decide (<a href=\"/laws/660#s5\">RSA 660:5</a>). Un candidato que, según el recuento, no ganó puede apelar esas decisiones ante la Comisión de Leyes Electorales, con una apelación por escrito presentada ante la Secretaría de Estado dentro de los 3 días siguientes a la declaración (<a href=\"/laws/665#s8\">RSA 665:8</a>). Después de un recuento de una primaria, la decisión de la comisión es definitiva. Después de un recuento de una elección general, puede apelarse ante la Corte Suprema en cuestiones de derecho solo para elector presidencial, gobernador, consejero ejecutivo y cargos de municipio, ciudad o distrito. Para representante estatal, senador estatal y el Congreso no se puede, porque cada cámara juzga las elecciones de sus propios miembros (<a href=\"/laws/665#s16\">RSA 665:16</a>).",
+   "state": "draft"
+  },
   "guide.election-worker.in-an-elected-office": {
    "en": "In an elected office",
    "es": "En un cargo electo",
@@ -4097,6 +4117,11 @@
   "guide.election-worker.is-there-training": {
    "en": "Is there training?",
    "es": "¿Hay capacitación?",
+   "state": "draft"
+  },
+  "guide.election-worker.it-can-the-laws-section-on": {
+   "en": "It can. The law&rsquo;s section on unclear marks is headed &ldquo;Determining Intention of Voter&rdquo;. It says a ballot marked for an office in a way that cannot readily be counted is counted as a majority of the officials counting decide, and only if no way of counting it gets a majority is it left uncounted for that office (<a href=\"/laws/659#s64\">RSA 659:64</a>).",
+   "es": "Puede. La sección de la ley sobre las marcas que no están claras se titula &ldquo;Determinación de la intención del votante&rdquo; (Determining Intention of Voter). Dice que una boleta marcada para un cargo de una forma que no se puede contar con facilidad se cuenta como decida la mayoría de los funcionarios que cuentan, y solo si ninguna forma de contarla obtiene mayoría queda sin contar para ese cargo (<a href=\"/laws/659#s64\">RSA 659:64</a>).",
    "state": "draft"
   },
   "guide.election-worker.know-what-an-election-officer-may": {
@@ -4132,6 +4157,11 @@
   "guide.election-worker.officer": {
    "en": "Officer",
    "es": "Funcionario",
+   "state": "draft"
+  },
+  "guide.election-worker.on-election-night-the-election-officials": {
+   "en": "On election night, the election officials counting the votes. If a ballot is marked for an office in a way that cannot readily be counted, or they disagree about it, they vote, and it is counted the way the majority decides. If no way of counting it gets a majority, that part of the ballot is not counted (<a href=\"/laws/659#s64\">RSA 659:64</a>, <a href=\"/laws/659#s65\">659:65</a>).",
+   "es": "La noche de la elección, los funcionarios electorales que cuentan los votos. Si una boleta está marcada para un cargo de una forma que no se puede contar con facilidad, o no están de acuerdo sobre ella, votan, y se cuenta como decida la mayoría. Si ninguna forma de contarla obtiene mayoría, esa parte de la boleta no se cuenta (<a href=\"/laws/659#s64\">RSA 659:64</a>, <a href=\"/laws/659#s65\">659:65</a>).",
    "state": "draft"
   },
   "guide.election-worker.opens-the-sealed-ballots-and-counts": {
@@ -4234,11 +4264,6 @@
    "es": "<b>La auditoría.</b> Después de cada elección primaria estatal, elección general y primaria presidencial, la Secretaría de Estado audita los dispositivos de conteo. Se eligen al azar al menos 8 dispositivos, y cuáles son no se anuncia hasta que abre la votación. Un equipo de al menos 2 personas pasa las boletas de papel por un equipo de auditoría aparte, compara sus resultados con los del dispositivo y examina a mano una muestra al azar de las boletas de papel. La auditoría está abierta al público. Si hay diferencias importantes, la Secretaría de Estado puede revisar más boletas u ordenar un recuento completo a mano. Los resultados se publican antes del mediodía del viernes siguiente a la elección.",
    "state": "draft"
   },
-  "guide.election-worker.the-election-officers-counting-the-votes": {
-   "en": "The election officers counting the votes, by majority. If no way of counting it wins a majority, the ballot is not counted for that office.",
-   "es": "Los funcionarios electorales que cuentan los votos, por mayoría. Si ninguna forma de contarla obtiene mayoría, la boleta no se cuenta para ese cargo.",
-   "state": "draft"
-  },
   "guide.election-worker.the-law": {
    "en": "The law",
    "es": "La ley",
@@ -4329,9 +4354,9 @@
    "es": "Qué hace",
    "state": "draft"
   },
-  "guide.election-worker.who-decides-a-ballot-whose-mark": {
-   "en": "Who decides a ballot whose mark is unclear?",
-   "es": "¿Quién decide sobre una boleta cuya marca no es clara?",
+  "guide.election-worker.who-decides-how-to-count-a": {
+   "en": "Who decides how to count a ballot whose mark is unclear?",
+   "es": "¿Quién decide cómo contar una boleta cuya marca no está clara?",
    "state": "draft"
   },
   "guide.election-worker.who-oversees-elections-across-the-state": {
