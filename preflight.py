@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.730
+# GRANITE_VERSION: 2026-09-04.731
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -42036,7 +42036,7 @@ def _guides_gate(BC, G, GS, RSA, S):
         page = (tmp / "site" / "guides" / "test-guide.html").read_text(encoding="utf-8")
         assert [g["slug"] for g in pub] == ["test-guide"] and urls, "a guide checked throughout was held back"
         assert "Checked against its sources" in page and 'class="g-stale"' not in page and "Draft" not in page
-        assert 'href="/laws/91-a"' in page and "Laws that changed it since" in page, \
+        assert 'href="/laws/91-a"' in page and "Laws that changed it, newest first" in page, \
             "the guide does not list the laws that changed its chapter"
         assert 'class="g-flow"' in page and page.count('class="g-step"') == 2 and 'class="g-btn"' in page \
             and '<a href="/laws/91-a#s4">RSA 91-A:4</a>' in page, "the guide is not drawn as steps with a diagram"
@@ -68654,11 +68654,40 @@ def _guide_record_passed(BC, BR):
     parts = re.split(r'<p class="g-what">', got)
     now = next((p for p in parts if p.startswith("Bills now before")), "")
     passed = next((p for p in parts if p.startswith("Passed, not yet in effect:")), "")
-    since = next((p for p in parts if p.startswith("Laws that changed it since")), "")
+    since = next((p for p in parts if p.startswith("Laws that changed it")), "")
     assert "HB 1" in now and "HB 2" not in now, f"the pending list is not the pending bill: {now[:120]}"
     assert "HB 2" in passed and "HB 1" not in passed, "the passed bill is not under Passed, not yet in effect"
     assert "SB 9" in since and "HB 2" not in since, "a law not yet in effect is listed as having changed it"
-    return "ok", "pending, passed and not yet in effect, and past laws each under their own words"
+    # BY YEAR, WITH NO CUTOFF (the person's notes, 29 October 2026): each law
+    # carries the year it passed, the sitting term's included, and the year
+    # chooser offers each year the list holds, hidden until its script runs.
+    assert 'data-y="2024"' in since and '<span class="rs-yr">2024</span>' in since, (
+        "a law that changed the chapter does not show the year it passed")
+    assert '<option value="2024">2024 (1)</option>' in got and 'class="g-yrp" hidden' in got, (
+        "the laws that changed the chapter have no year to choose, or show it without its script")
+    # ONE CHOOSER FOR THE BLOCK, AND NO STATUS ON A LAW (the manager's review,
+    # 29 October 2026): a guide of two chapters draws one menu, before the
+    # first chapter, counting a law that changed both once; and a law in the
+    # list carries its number and year, not "Became Law" on every row.
+    two = BC.guide_record({"laws": ["654", "659"]}, {"bills": {}, "enacted": {
+        "654:1": [["2024", "5:1", "2023-2024/SB 9"]], "659:2": [["2024", "5:2", "2023-2024/SB 9"]]}},
+        Bills(), {"654": {"name": "Voters"}, "659": {"name": "Elections"}})
+    assert two.count('class="g-yr"') == 1 and two.index("g-yrp") < two.index("g-ch"), (
+        "In the Record draws a year menu a chapter, or after the first chapter")
+    assert '<option value="2024">2024 (1)</option>' in two, "a law that changed two chapters is counted twice"
+    BC_chip = Bills.chip
+    Bills.chip = lambda self, k, *a, **kw: f'<li><a href="#">{k}</a> <span class="rs-st">Became Law</span></li>'
+    try:
+        bare = BC.guide_record({"laws": ["654"]}, data, Bills(), {"654": {"name": "Voters"}})
+    finally:
+        Bills.chip = BC_chip
+    since_b = next((p for p in re.split(r'<p class="g-what">', bare) if p.startswith("Laws that changed")), "")
+    assert "SB 9" in since_b and "Became Law" not in since_b, "a law that changed it still says Became Law"
+    old = BC.guide_record({"laws": ["654"]}, {"bills": {}, "enacted": {"654:3": [
+        ["1995", "9:1", "1995/HB 7"]]}}, Bills(), {"654": {"name": "Voters"}})
+    assert "1995/HB 7" in old, "a law older than the years once shown is left out"
+    return "ok", ("pending, passed and not yet in effect, and past laws each under their own words, "
+                  "every one with its year and a year to choose")
 
 
 @check("build", "every Laws link a guide makes is in lower case, as the Laws pages' addresses "
@@ -68743,6 +68772,63 @@ def _neutral_voice(G, C):
                   for m in pair.finditer(own(t["body"] + " " + t["blurb"]))]
     assert not found, "say they: " + "; ".join(found[:8])
     return "ok", f"{len(G.GUIDES)} guides and {len(C.TOPICS)} Learn pages say they"
+
+
+@check("build", "a guide whose steps change subject numbers each part from 1 under its own "
+                "heading, and a guide in one part keeps one list", needs=("build_civics", "guides"))
+def _guide_parts(BC, G):
+    """The person's notes, 29 October 2026: a guide would "finish explaining
+    how to do the first thing and switch to a different topic, but keep the
+    step by step format as though step 5 is a continuation". guides.PARTS
+    names the heading over each part, by the step that opens it; guide_steps
+    closes one numbered list and opens the next at each heading, so the
+    numbers start again (the counter is the list's, app.css .g-steps). Held
+    on every guide: one list per part and a heading before each, or one list
+    and no heading. And in a guide in parts, nothing the page says, in English
+    or Spanish -- a step, a note, the diagram, the questions -- points at a
+    step by number unless it names the part and a step that part has: "(Medicare,
+    step 3)". A bare "step 4" would name a step of another part. (The review
+    of the change found the first version of this read only steps, and only a
+    number in brackets, and would have passed three of the six it was for.)"""
+    import html as _h
+    import json as _j
+    es = _j.loads((_paths.ROOT / "src/pages/lang/es.json").read_text(encoding="utf-8"))["strings"]
+    num = re.compile(r"\b(?:steps?|pasos?) \d+", re.I)
+    named = re.compile(r"\(([^()]*?), (?:step|paso) (\d+)\)")
+    parted, bad = 0, []
+    for g in G.GUIDES:
+        got = BC.guide_steps(g)
+        heads = [s_["part"] for s_ in g["steps"] if s_.get("part")]
+        lists = got.count('<ol class="g-steps">')
+        shown = [_h.unescape(h) for h in re.findall(r'<h3 class="g-part">(.*?)</h3>', got)]
+        if heads:
+            parted += 1
+            if not g["steps"][0].get("part"):
+                bad.append(f"{g['slug']}: its first step has no heading")
+            if lists != len(heads) or shown != [_h.unescape(h) for h in heads]:
+                bad.append(f"{g['slug']}: {len(heads)} parts but {lists} lists and headings {shown}")
+            if '<h3 class="g-sh">' in got:
+                bad.append(f"{g['slug']}: a step title sits at the heading's level")
+            size, cur = {}, ""
+            for s_ in g["steps"]:
+                cur = s_.get("part") or cur
+                size[cur] = size.get(cur, 0) + 1
+            size_es = {es.get(k, {}).get("es", ""): n for h, n in size.items()
+                       for k in [G.page_keys(g["slug"]).get(h)] if k}
+            said = [t for _w, t, _h2 in G.wording(g["slug"]) if t]
+            said += [es[k]["es"] for k in G.page_keys(g["slug"]).values() if k in es]
+            for t in said:
+                plain = _h.unescape(re.sub(r"<[^>]+>", "", t))
+                ok = {m.start(2) for m in named.finditer(plain)
+                      if int(m.group(2)) <= {**size, **size_es}.get(m.group(1), 0)}
+                for m in num.finditer(plain):
+                    if not any(m.start() <= o <= m.end() for o in ok):
+                        bad.append(f"{g['slug']}: says {plain[max(0, m.start() - 40):m.end() + 5]!r}")
+        elif lists != 1 or "g-part" in got:
+            bad.append(f"{g['slug']}: one part but {lists} lists")
+    assert parted, "no guide is in parts: PARTS was not applied"
+    assert not bad, "; ".join(bad[:8])
+    return "ok", f"{parted} of {len(G.GUIDES)} guides in parts, each numbered from 1"
 
 
 @check("code", "every phone number, email, office hours, street address and date a guide "
@@ -69270,18 +69356,21 @@ def _spanish_guides(i18n, G, BC, chrome, civics):
         i18n.MISSES.clear()
         i18n.MISSES.update(misses)
     # In the Record, its sentences in Spanish and the record's words marked.
-    rec = ('<h3 class="g-ch"><a href="/laws/654">Chapter 654: Voters and Checklists</a></h3>'
+    rec = ('<p class="g-yrp" hidden><label>Show the laws passed in <select class="g-yr"><option '
+           'value="">All years</option><option value="2026">2026 (1)</option></select></label></p>'
+           '<h3 class="g-ch"><a href="/laws/654">Chapter 654: Voters and Checklists</a></h3>'
            '<p class="g-what">Bills now before the General Court that would change it:</p>'
            '<ul class="rs-list"><li>HB 1</li></ul>'
            '<p class="g-what">Passed, not yet in effect:</p><ul class="rs-list"><li>HB 4</li></ul>'
-           f'<p class="g-what">Laws that changed it since {BC.RECENT_FROM}, newest first:</p>'
+           '<div class="g-laws"><p class="g-what">Laws that changed it, newest first:</p>'
            '<ul class="rs-list"><li>HB 2</li></ul><details class="rs-more"><summary>Show all 9'
            '</summary><ul class="rs-list"><li>HB 3</li></ul></details>'
-           f'<p class="g-what">No bill has changed it since {BC.RECENT_FROM}, and none now before the '
+           '<p class="g-what g-yrnone" hidden>None that year.</p></div>'
+           '<p class="g-what">No law in the record has changed it, and none now before the '
            'General Court would.</p>')
     got = BC._record_lang(rec, "es")
-    for english in ("Bills now before", "Passed, not yet", "Laws that changed", "No bill has changed",
-                    "Show all", ">Chapter "):
+    for english in ("Bills now before", "Passed, not yet", "Laws that changed", "No law in the record",
+                    "Show all", ">Chapter ", "Show the laws passed", ">All years<", "None that year"):
         if english in got:
             bad.append(f"In the Record keeps {english!r} in English")
     if '<span lang="en">Voters and Checklists</span>' not in got or got.count('lang="en"') != 5:
