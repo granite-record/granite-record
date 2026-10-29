@@ -17990,6 +17990,323 @@ def _inbox_night(livestreams):
         shutil.rmtree(root, ignore_errors=True)
 
 
+# WHAT THE LAPTOP CLOSED (29 October 2026; livestreams.py). The laptop had
+# closed kS2PBKXOkzA, the House Special Committee on COVID Response Efficacy
+# of 8 October 2026, as having no captions published, and sent nothing; the
+# night, refused by YouTube, kept it waiting and warned of it every night.
+# The laptop's run record now names what it closed, and the night records
+# each as it records its own closure. These checks hold that on made-up
+# states, asking nothing of YouTube or R2.
+
+def _closed_night(L, root, videos, at, record=None, entries=()):
+    """--since-state --inbox in `root`, the working folder, at `at`: the
+    state holding `videos` where given (else as the last night left it), the
+    night's own asks held by YouTube's refusal of GitHub's machine, the
+    laptop's newest run record as inbox-down brings it (`record`, None for
+    none), and a sound inbox entry for each of `entries`. (exit status, what
+    it printed, the state after)."""
+    import contextlib
+    import hashlib
+    import io
+    if videos is not None:
+        (root / "archive").mkdir(exist_ok=True)
+        (root / "archive" / "livestreams.json").write_text(json.dumps({
+            "version": 1, "last_run": {"at": "2026-10-17T08:30:00Z"},
+            "channels": {c: {"uploads": "UU" + c} for c in ("house", "senate")},
+            "refusals": {"runner": {"at": "2026-10-12T08:40:00Z", "count": 5,
+                                    "why": "Sign in to confirm you're not a bot",
+                                    "until": 4102444800, "until_iso": "2100-01-01T00:00:00Z"}},
+            "videos": videos}), encoding="utf-8")
+        api = root / "api"
+        api.mkdir(exist_ok=True)
+        idx = {}
+        for c in ("house", "senate"):
+            (api / f"pl-{c}.json").write_text('{"items": []}', encoding="utf-8")
+            idx[L.canonical("playlistItems", {"part": "contentDetails,snippet",
+                                              "playlistId": "UU" + c,
+                                              "maxResults": 50})] = f"pl-{c}.json"
+        (api / "index.json").write_text(json.dumps(idx), encoding="utf-8")
+        (root / "nosrc").mkdir(exist_ok=True)
+    # What inbox-down leaves: tonight's entries, and the laptop's newest record.
+    inbox = root / "inbox"
+    shutil.rmtree(inbox, ignore_errors=True)
+    inbox.mkdir()
+    body = _inbox_words().encode("utf-8")
+    for vid in entries:
+        (inbox / vid).mkdir()
+        (inbox / vid / "captions.en.json3").write_bytes(body)
+        (inbox / f"{vid}.json").write_text(json.dumps(
+            {"video": vid, "file": "captions.en.json3", "size": len(body),
+             "sha256": hashlib.sha256(body).hexdigest(), "fetched": at,
+             "key": f"inbox/captions/{vid}/x/captions.en.json3"}), encoding="utf-8")
+    run_rec = root / L.LAPTOP_RUN
+    run_rec.unlink(missing_ok=True)
+    if record is not None:
+        run_rec.write_text(json.dumps(record), encoding="utf-8")
+    out = io.StringIO()
+    with contextlib.redirect_stdout(out):
+        code = L.main(["--since-state", "--inbox", "inbox", "--replay", "api",
+                       "--captions-from", "nosrc", "--origin", "runner", "--now", at])
+    st = json.loads((root / "archive" / "livestreams.json").read_text(encoding="utf-8"))
+    return code, out.getvalue(), st
+
+
+def _closed_fixture(check):
+    """Runs check(L, NI, root, now, ended) in a working folder of its own,
+    with the environment a night's step reads emptied and put back after:
+    `now` the time to act as of, the real one so that the night's warnings,
+    which read the clock, see what the step saw; `ended` five days before
+    it, when the fixture's recordings finished."""
+    from datetime import datetime, timedelta, timezone
+    import livestreams as L
+    import nightly as NI
+    root = Path(tempfile.mkdtemp(prefix="gr-laptop-closed-"))
+    here = os.getcwd()
+    saved = {k: os.environ.get(k) for k in ("YOUTUBE_API_KEY", "GITHUB_ACTIONS", L.NEW_TERM_ENV)}
+    now = datetime.now(timezone.utc).replace(microsecond=0)
+    try:
+        for k in saved:
+            os.environ.pop(k, None)
+        os.chdir(root)
+        return check(L, NI, root, now, (now - timedelta(days=5)).strftime("%Y-%m-%dT%H:%M:%SZ"))
+    finally:
+        for k, v in saved.items():
+            os.environ.pop(k, None) if v is None else os.environ.__setitem__(k, v)
+        os.chdir(here)
+        shutil.rmtree(root, ignore_errors=True)
+
+
+def _iso_z(d):
+    return d.strftime("%Y-%m-%dT%H:%M:%SZ")
+
+
+@check("livestreams", "a recording the laptop closed with no captions published is recorded by "
+       "the night as none published, its approximate start kept, and warns no more",
+       needs=("livestreams", "nightly"))
+def _laptop_closed_recorded(livestreams, nightly):
+    """kS2PBKXOkzA's case. A recording finished five days ago that the night
+    lists as deferred, and the laptop's newest run record names as closed
+    with no captions published: after the night's step its state says
+    "none-published", by the laptop, the schedule's approximate start kept;
+    it is no longer counted late (nightly._captions_late), so neither the
+    waiting warning nor the silent inbox's names it, and the laptop no
+    longer asks for it (inbox_wants); the step's verdict counts it. And the
+    record must be where cloud.py inbox-down puts it."""
+    import types
+    import cloud as CL
+
+    def check(L, NI, root, now, ended):
+        assert L.LAPTOP_RUN.as_posix() == CL.INBOX_RUN_LOCAL, (L.LAPTOP_RUN, CL.INBOX_RUN_LOCAL)
+        fin = {"status": "finished", "chamber": "house", "title": "x", "ended": ended,
+               "captions": "deferred"}
+        rec = {"at": _iso_z(now), "by": "laptop", "code": 0, "sent": 0,
+               "none_published": ["PFCLOSE1"]}
+        code, said, st = _closed_night(L, root, {"PFCLOSE1": dict(fin)}, _iso_z(now), rec)
+        v = st["videos"]["PFCLOSE1"]
+        assert code == 0 and v.get("captions") == "none-published" and v.get("by") == "laptop" \
+            and "approximate start is kept" in str(v.get("why")), (code, v, said[-400:])
+        assert not L.inbox_wants(v), "the laptop would still ask for a recording it closed"
+        assert not NI._captions_late(st, now), "a recording the laptop closed is counted late"
+        assert not NI.inbox_silent(dict(st, inbox_arrived={"at": "2026-10-01T00:00:00Z"}),
+                                   rec, now), "the silent inbox still warns of it"
+        assert NI.KIND_CAPTIONS_WAIT not in dict(NI.Night.warned(types.SimpleNamespace(
+            v={"started": _iso_z(now)}))), "the waiting warning still names it"
+        assert st["last_run"]["captions"].get("none published, by the laptop") == 1 \
+            and "closed by the laptop" in said.strip().splitlines()[-1], (st["last_run"], said[-300:])
+        return "ok", ("the laptop's closure recorded as none published, its approximate start "
+                      "kept, counted in the verdict, and warned of no more")
+    return _closed_fixture(check)
+
+
+@check("livestreams", "a late recording the laptop did not close still warns: the night never "
+       "closes one on its own say-so", needs=("livestreams", "nightly"))
+def _laptop_closed_only_its_word(livestreams, nightly):
+    """Beside one the laptop closed: a recording as late that the laptop's
+    record does not name, and the same night with no record of the laptop's
+    at all. Each stays waiting and is counted late, the waiting warning
+    and the silent inbox's still count it, and the laptop still asks for
+    it."""
+    import types
+
+    def check(L, NI, root, now, ended):
+        fin = {"status": "finished", "chamber": "house", "title": "x", "ended": ended,
+               "captions": "deferred"}
+        rec = {"at": _iso_z(now), "by": "laptop", "none_published": ["PFCLOSE1"]}
+        for record in (rec, None):
+            code, said, st = _closed_night(
+                L, root, {"PFCLOSE1": dict(fin), "PFLATE01": dict(fin)}, _iso_z(now), record)
+            v = st["videos"]["PFLATE01"]
+            assert code == 0 and v.get("captions") == "deferred" and L.inbox_wants(v), \
+                (record, v, said[-300:])
+            late = {id(x) for x in NI._captions_late(st, now)}
+            assert id(v) in late, (record, v)
+            silent = NI.inbox_silent(dict(st, inbox_arrived={"at": "2026-10-01T00:00:00Z"}),
+                                     record, now)
+            n = 1 if record else 2
+            assert silent and f"{n} recording{'s' if n != 1 else ''} finished more than" \
+                in silent[0][1], (record, silent)
+            w = dict(NI.Night.warned(types.SimpleNamespace(v={"started": _iso_z(now)})))
+            assert w.get(NI.KIND_CAPTIONS_WAIT, "").startswith(f"{n} recording"), (record, w)
+        return "ok", ("a late recording the laptop's record does not name, and every late one "
+                      "on a night with no record, waits and warns as before")
+    return _closed_fixture(check)
+
+
+@check("livestreams", "captions that arrive for a recording the laptop closed are taken from the "
+       "inbox and read as any other", needs=("livestreams", "nightly"))
+def _laptop_closed_then_captioned(livestreams, nightly):
+    """A recording the laptop's record names as closed whose captions come
+    down in the inbox the same night is taken, not closed; and one the night
+    recorded closed on the laptop's word whose captions arrive on a later
+    night is taken then -- captioned "by inbox", its file in work/ -- and
+    --markers reads it under the guard as it reads every recording taken
+    from the inbox."""
+    import contextlib
+    import io
+    from datetime import timedelta
+
+    def check(L, NI, root, now, ended):
+        fin = {"status": "finished", "chamber": "house", "title": "x", "ended": ended,
+               "captions": "deferred"}
+        rec = {"at": _iso_z(now), "by": "laptop", "none_published": ["PFCLOSE1", "PFBOTH01"]}
+        code, said, st = _closed_night(L, root, {"PFCLOSE1": dict(fin), "PFBOTH01": dict(fin)},
+                                       _iso_z(now), rec, entries=["PFBOTH01"])
+        both, closed = st["videos"]["PFBOTH01"], st["videos"]["PFCLOSE1"]
+        assert code == 0 and both.get("captions") == "captioned" and both.get("by") == "inbox" \
+            and closed.get("captions") == "none-published", (both, closed, said[-300:])
+        later = _iso_z(now + timedelta(hours=1))
+        code, said, st = _closed_night(L, root, None, later, rec, entries=["PFCLOSE1"])
+        v = st["videos"]["PFCLOSE1"]
+        assert code == 0 and v.get("captions") == "captioned" and v.get("by") == "inbox" \
+            and (root / "work" / "PFCLOSE1" / "captions.en.json3").is_file(), (v, said[-400:])
+        seen, real = {}, (L.read_markers, L.summarize, L.guard)
+
+        def read(vids):
+            seen["read"] = list(vids)
+            return 0
+
+        def judged(copies, tonight):
+            seen["judged"] = sorted(tonight)
+            return "", None
+        L.read_markers, L.summarize, L.guard = read, (lambda vids, work=L.WORK: 0), judged
+        try:
+            with contextlib.redirect_stdout(io.StringIO()):
+                code = L.main(["--markers", "--origin", "runner", "--now", later])
+        finally:
+            L.read_markers, L.summarize, L.guard = real
+        assert code == 0 and "PFCLOSE1" in seen.get("read", []) \
+            and "PFCLOSE1" in seen.get("judged", []), seen
+        return "ok", ("captions in the inbox the night the laptop closes a recording win, and "
+                      "those that arrive after it are taken and read under the guard")
+    return _closed_fixture(check)
+
+
+@check("livestreams", "the laptop's closure settles only what waits: a recording the night closed "
+       "itself, one adopted, one left for a person and one captioned are as they were",
+       needs=("livestreams", "nightly"))
+def _laptop_closed_leaves_the_rest(livestreams, nightly):
+    """No command or document gives a person a way to accept an
+    approximate start (29 October 2026): what settles a recording without a
+    reading is the night's own closure ("none-published", taken at a
+    recording's last ask in a run that captioned something), the old
+    "adopted", and "for-laptop", which is left for a person and still
+    warns. The laptop's record naming each of them, and one already
+    captioned, changes none of them; a recording the night closed itself is
+    still not taken from the inbox; and a record naming a recording the
+    state does not hold, or a name of no recording's shape, is passed over."""
+    import types
+
+    def check(L, NI, root, now, ended):
+        fin = {"status": "finished", "chamber": "house", "title": "x", "ended": ended}
+        videos = {"PFSELF01": dict(fin, captions="none-published", why="taken to have none"),
+                  "PFADOPT1": dict(fin, captions="captioned", by="laptop", adopted="2026-10-01"),
+                  "PFLEFT01": dict(fin, captions="for-laptop", tries=L.MAX_TRIES),
+                  "PFREAD01": dict(fin, captions="captioned", by="runner", read="2026-10-20")}
+        rec = {"at": _iso_z(now), "by": "laptop",
+               "none_published": sorted(videos) + ["PFNONE01", "../../x", 7, None]}
+        code, said, st = _closed_night(L, root, json.loads(json.dumps(videos)), _iso_z(now), rec,
+                                       entries=["PFSELF01"])
+        moved = {k: st["videos"].get(k) for k in videos if st["videos"].get(k) != videos[k]}
+        assert code == 0 and not moved and "PFNONE01" not in st["videos"], (moved, said[-300:])
+        assert "none published, by the laptop" not in st["last_run"]["captions"], st["last_run"]
+        assert not (root / "work" / "PFSELF01").exists(), \
+            "captions were taken for a recording the night closed itself"
+        w = dict(NI.Night.warned(types.SimpleNamespace(v={"started": _iso_z(now)})))
+        assert w.get(NI.KIND_CAPTIONS_WAIT, "").startswith("1 recording"), \
+            f"the one left for a person no longer warns: {w}"
+        return "ok", ("the night's own closure, an adopted reading, one left for a person and one "
+                      "read are untouched by the laptop's record, and a name the state does not "
+                      "hold is passed over")
+    return _closed_fixture(check)
+
+
+@check("livestreams", "a laptop run's record names each waiting recording it closed with no "
+       "captions published, and none given up on, captioned or no longer listed",
+       needs=("livestreams", "cloud"))
+def _laptop_closed_in_its_record(livestreams, cloud):
+    """--to-inbox, from a bucket folder whose state lists four recordings
+    as waiting and two not, and the laptop's own record of what it asked
+    (archive/youtube.refused.json): closed with no captions published, given
+    up on, one it never asked for, and three closed none-published that the
+    night has captioned, left for a person or dropped. Its run's record
+    names the one waiting recording it closed with none published, and no
+    other; with a refusal standing, nothing is asked."""
+    import contextlib
+    import io
+    L, CL = livestreams, cloud
+    root = Path(tempfile.mkdtemp(prefix="gr-laptop-closed-rec-"))
+    here = os.getcwd()
+    saved = {k: os.environ.get(k) for k in ("GITHUB_ACTIONS", CL.NO_BUCKET)}
+    now = "2026-10-28T23:30:00Z"
+    try:
+        os.environ.pop("GITHUB_ACTIONS", None)
+        os.environ[CL.NO_BUCKET] = "1"
+        fin = {"status": "finished", "chamber": "house", "title": "x",
+               "ended": "2026-10-08T18:00:00Z"}
+        state = {"version": 1, "channels": {}, "last_run": {}, "refusals": {}, "videos": {
+            "kS2PBKXOkzA": dict(fin, captions="deferred"),
+            "PFGIVE01": dict(fin, captions="deferred"),
+            "PFWAIT01": dict(fin, captions="deferred"),
+            "PFYET001": dict(fin, captions="none-yet"),
+            "PFREAD01": dict(fin, captions="captioned", by="runner", read="2026-10-20"),
+            "PFLEFT01": dict(fin, captions="failed", tries=L.MAX_TRIES)}}
+        bucket, laptop = root / "bucket", root / "laptop"
+        (bucket / "state").mkdir(parents=True)
+        (bucket / "state" / "livestreams.json").write_text(json.dumps(state), encoding="utf-8")
+        (laptop / "archive").mkdir(parents=True)
+        (laptop / "src").mkdir()
+        closed = {"asks": 3, "tried": "2026-10-20T23:40:00Z", "closed": "none-published"}
+        (laptop / "archive" / "youtube.refused.json").write_text(json.dumps({
+            "laptop": {"at": "2026-10-28T19:00:00Z", "count": 1, "until": 4102444800.0,
+                       "until_iso": "2100-01-01T00:00:00Z", "why": "HTTP Error 429"},
+            "asked": {"kS2PBKXOkzA": dict(closed),
+                      "PFGIVE01": {"asks": 5, "tried": "2026-10-20T23:40:00Z",
+                                   "closed": "given-up"},
+                      "PFYET001": {"asks": 1, "tried": "2026-10-27T23:40:00Z",
+                                   "again": "2026-10-29T21:40:00Z"},
+                      "PFREAD01": dict(closed), "PFLEFT01": dict(closed),
+                      "PFGONE01": dict(closed)}}), encoding="utf-8")
+        os.chdir(laptop)
+        out = io.StringIO()
+        with contextlib.redirect_stdout(out):
+            code = L.main(["--to-inbox", "--local-bucket", str(bucket), "--captions-from",
+                           "src", "--origin", "laptop", "--now", now])
+        runs = CL.inbox_runs(CL.FolderBucket(bucket, create=False))
+        assert code == 0 and len(runs) == 1, (code, runs, out.getvalue()[-400:])
+        rec = json.loads((bucket / runs[0]).read_text(encoding="utf-8"))
+        assert rec.get("none_published") == ["kS2PBKXOkzA"], rec
+        assert set(rec.get("asked") or {}) <= {"deferred"}, \
+            f"a run with a refusal standing asked: {rec}"
+        return "ok", ("the record names the one waiting recording closed with none published, "
+                      "not the one given up on, the one not closed, or those the night captioned, "
+                      "left for a person or dropped")
+    finally:
+        for k, v in saved.items():
+            os.environ.pop(k, None) if v is None else os.environ.__setitem__(k, v)
+        os.chdir(here)
+        shutil.rmtree(root, ignore_errors=True)
+
+
 @check("cloud", "the captions inbox in the bucket: inbox-down writes nothing there, and "
        "inbox-clear removes only what the night's sent state no longer waits for, keeps a copy, "
        "and clears nothing on a dry night", needs=("cloud", "livestreams"))
@@ -36645,7 +36962,7 @@ def _session_consent_only_the_calendar(SD):
         path = root / "narratives.json"
         path.write_text(json.dumps({"2025-2026": {
             b: {"events": e} for b, e in bills.items()}}), encoding="utf-8")
-        days = SD.load(path)
+        days = SD.load(path, journals={})
 
         def consent(body, date, bill):
             d = days.get((body, date))
@@ -36771,7 +37088,7 @@ def _session_corrected_dates(N, SD):
         def days_of(narr):
             p = root / "narratives.json"
             p.write_text(json.dumps(narr), encoding="utf-8")
-            return SD.load(p)
+            return SD.load(p, journals={})
 
         def reconsider(narr):
             return next(e for e in narr["2025-2026"]["HB1491"]["events"]
@@ -37366,7 +37683,7 @@ def _session_consent_removed_anywhere(JD, SD, BSP):
     root = Path(tempfile.mkdtemp())
     try:
         (root / "narratives.json").write_text(json.dumps(narr), encoding="utf-8")
-        day = SD.load(root / "narratives.json")[("H", "1999-04-14")]
+        day = SD.load(root / "narratives.json", journals={})[("H", "1999-04-14")]
         assert sorted(i.bill for i in day.items if i.consent) == ["HB522", "HB605"], (
             "the fixture's two bills are not both on the day's consent list")
         page = BSP.render(day, found, {}, {}, {}, _html.escape)[0]
@@ -37380,7 +37697,7 @@ def _session_consent_removed_anywhere(JD, SD, BSP):
         # Without HB 605 on the list, the same journal changes nothing.
         narr["1999-2000"].pop("HB605")
         (root / "narratives.json").write_text(json.dumps(narr), encoding="utf-8")
-        day = SD.load(root / "narratives.json")[("H", "1999-04-14")]
+        day = SD.load(root / "narratives.json", journals={})[("H", "1999-04-14")]
         assert BSP.render(day, found, {}, {}, {}, _html.escape)[0] == \
             BSP.render(day, {}, {}, {}, {}, _html.escape)[0], (
             "removals printed outside the segment, for bills not on the list, changed the page")
@@ -37400,7 +37717,7 @@ def _session_consent_removed_anywhere(JD, SD, BSP):
             ev("1999-04-14", "Special Order to after the bills removed from the Consent "
                "Calendar, Without Objection, MA", "floor", action="Special Order", motion="MA")]}
         (root / "narratives.json").write_text(json.dumps(narr), encoding="utf-8")
-        day = SD.load(root / "narratives.json")[("H", "1999-04-14")]
+        day = SD.load(root / "narratives.json", journals={})[("H", "1999-04-14")]
         assert sorted(i.bill for i in day.items if i.consent) == ["HB522"], (
             "HB 605's recommittal, read whole, is a consent item")
         page = BSP.render(day, found, {}, {}, {}, _html.escape)[0]
@@ -37661,7 +37978,7 @@ def _session_speech_before_its_motion(N, JD, SD, BSP):
     try:
         (root / "narratives.json").write_text(
             json.dumps({"1999-2000": {"HB110": {"events": rec["events"]}}}), encoding="utf-8")
-        day = SD.load(root / "narratives.json")[("H", "1999-02-10")]
+        day = SD.load(root / "narratives.json", journals={})[("H", "1999-02-10")]
         nobody = type("Nobody", (), {"slug": lambda self, body, name: None})()
         page = BSP.render(day, {"attributions": attrs}, {}, {}, nobody, _html.escape)[0]
     finally:
@@ -38390,7 +38707,7 @@ def _session_speech_on_its_motion(JD, SD, BSP):
     root = Path(tempfile.mkdtemp())
     try:
         (root / "narratives.json").write_text(json.dumps(narr), encoding="utf-8")
-        day = SD.load(root / "narratives.json")[("H", "1999-04-14")]
+        day = SD.load(root / "narratives.json", journals={})[("H", "1999-04-14")]
         nobody = type("Nobody", (), {"slug": lambda self, body, name: None})()
         page = BSP.render(day, {"attributions": attrs}, {}, {}, nobody, _html.escape)[0]
         txt = re.sub(r"\s+", " ", re.sub(r"<[^>]+>", " ", page))
@@ -43819,6 +44136,234 @@ def _session_rollcalls_reconciled(SD, BSP):
                   "sitting only where the journal opens one")
 
 
+# A SITTING FIXTURE READS ONLY WHAT IT IS GIVEN (29 October 2026). The check
+# above builds its own record (_sitting_fixture), and it failed on every tree
+# that had run a build: the page drew the build's journal_motions.json from
+# the working folder, so the fixture's House day of 8 January 2025 gained a
+# real "Votes on No Bill", and load() read the working folder's House
+# Journals for a CACR's division though it was given journals of its own. On
+# GitHub's night it passed only because the code checks run before the build.
+@check("session", "a sitting fixture draws the same from any working folder, a built tree's "
+       "files beside it or none", needs=("session_days", "build_session_pages", "vote_passage",
+                                         "rollcall_outcomes"))
+def _session_fixture_hermetic(SD, BSP, VP, RO):
+    """A cut of the record's sittings, drawn and rendered from an empty
+    working folder and again from one holding what a built tree holds, each
+    file saying something of the fixture's own days that would change what
+    is drawn if it were read: journal_motions.json, with a vote on no bill on
+    every sitting and a title, a line and a ruling for every roll call; the
+    House and Senate Journals of the fixture's years, printing every count as
+    a roll call and as a division adopted by the necessary three-fifths;
+    data/bills.json, which holds none of the fixture's bills; and
+    rollcalls.json. The two must be the same, day for day and byte for
+    byte, and a day made by hand from a fixture's must read nothing either.
+    And every decoy must be read by the readers that do take the working
+    folder (vote_passage's, rollcall_outcomes.journal_division_words,
+    session_days' journals, _held_bills, _read_rollcalls), or it proves
+    nothing."""
+    import datetime as _dt
+    import html as _html
+
+    def floor(date, body, raw, action, kind, y=None, n=None, **more):
+        e = {"type": "floor", "date": date, "body": body, "raw": raw, "action": action,
+             "motion": "MA", "vote_kind": kind, **more}
+        if y is not None:
+            e.update(yeas=str(y), nays=str(n))
+        return e
+    narr = {
+        "2025-2026": {"SB15": [floor("2026-01-07", "H", "Ought to Pass with Amendment 2025-3096h: "
+                                     "MA RC 179-159 01/07/2026", "Ought to Pass with Amendment "
+                                     "2025-3096h", "RC", 179, 159, cite="HJ 1")]},
+        # A CACR's division whose docket line names no fraction, where the
+        # Journal's sentence would (rollcall_outcomes.journal_division_words).
+        "1999-2000": {"CACR2": [floor("2000-04-13", "H", "Taken from the Table, Rep Mock MA "
+                                      "DIV(251-87)", "Taken from the Table", "DV", 251, 87)]},
+        # An appeal on a bill, under which the page says what the chair ruled.
+        "2015-2016": {"SB9": [floor("2015-09-16", "H", "Uphold Ruling of the Chair: MA RC 286-89",
+                                    "Uphold Ruling of the Chair", "RC", 286, 89, cite="HJ 57")]},
+        "2021-2022": {"HB100": [floor("2021-04-22", "S", "Ought to Pass, RC 23Y-1N, MA; OT3rdg; "
+                                      "04/22/2021", "Ought to Pass, RC 23Y-1N", "", cite="SJ 12")]}}
+    rolls = {
+        "2025-2026": {
+            "SB15": [_rc("2026", "H", 3, "2026-01-07", "SB15", "Ought to Pass with Amendment",
+                         179, 159, True)],
+            # A bill the docket holds no rows for: named, unless the term's
+            # list of bills (data/bills.json) holds no such bill.
+            "HB476": [_rc("2026", "H", 4, "2026-01-07", "HB476", "Reconsider", 15, 340, False)],
+            "_procedural": [_rc("2026", "H", 2, "2026-01-07", None, "Rules Suspension", 57, 280,
+                                False, 225),
+                            _rc("2025", "H", 1, "2025-01-08", None, "Amend H Rule 64", 200, 150,
+                                True)]},
+        "1999-2000": {"_procedural": [_rc("2000", "H", 60, "2000-04-13", None, "Call of the Roll",
+                                          380, 2, True, seated=398)]},
+        "2015-2016": {"SB9": [_rc("2015", "H", 188, "2015-09-16", "SB9",
+                                  "Uphold Ruling of the Chair", 286, 89, True)]},
+        "2021-2022": {"HB100": [_rc("2021", "S", 311, "2021-04-22", "HB100", "Ought to Pass",
+                                    23, 1, True)]}}
+    keys = {f'{r["year"]}-{r["body"]}-{r["number"]}': r
+            for bills in rolls.values() for rs in bills.values() for r in rs}
+    sittings = sorted({(r["body"], r["date"]) for r in keys.values()})
+    counts = sorted({(r["yeas"], r["nays"]) for r in keys.values()} | {(251, 87)})
+
+    def drawn():
+        days = _sitting_fixture(SD, narr, rolls, sat=lambda body, date: date == "2025-01-08")
+        out = {"left": sorted((SD.rollcall_key(r), w) for r, w in days.left)}
+        for key in sorted(days):
+            d = days[key]
+            by_hand = SD.Day(d.body, d.date, d.items, d.others)
+            out[key] = (d.printed, [
+                (i.bill, i.action, i.kind, i.yeas, i.nays, i.carried, i.need, i.fifths,
+                 i.outcome_words, i.rc and SD.rollcall_key(i.rc))
+                for i in list(d.items) + list(d.others)]) + tuple(
+                BSP.render(x, {}, {}, {}, BSP.Members(Path("no-such-site")), _html.escape)
+                for x in (d, by_hand))
+        return out
+
+    caches = (VP._CACHE, RO._DIVISIONS, SD._SAT)
+    kept = [dict(c) for c in caches]
+    here = os.getcwd()
+    root = Path(tempfile.mkdtemp(prefix="sitting-decoys-"))
+    try:
+        empty, built = root / "empty", root / "built"
+        empty.mkdir()
+        (built / "data").mkdir(parents=True)
+        said = [{"k": "outcome", "t": "The decoy carried."}]
+        (built / "journal_motions.json").write_text(json.dumps({
+            "rollcalls": {k: {"key": k, "body": r["body"], "date": r["date"], "held": [],
+                              "kind": "motion", "title": "A Decoy Motion", "line": "a decoy",
+                              "ruling": "A decoy ruling", "said": said}
+                          for k, r in keys.items()},
+            "journal_only": [{"key": f"{d}-{b}-decoy", "body": b, "date": d, "how": "division",
+                              "yeas": 7, "nays": 3, "passed": True, "kind": "motion",
+                              "title": "A Decoy Division", "said": said, "member": "", "bill": "",
+                              "bills": []} for b, d in sittings],
+            "kinds": {"motion": "A decoy kind"}, "groups": {}, "group_words": {},
+            "bill_votes": []}), encoding="utf-8")
+        for b, d in sittings:
+            on = _dt.date.fromisoformat(d)
+            dateline = f"{on:%B} {on.day}, {on.year}"
+            if b == "H":
+                f = built / "journals" / str(on.year) / f"HJ 1 {dateline}.txt"
+                text = (f"HOUSE JOURNAL NO. 1\n\n{on:%A}, {dateline}\n\nThe House met at 10:00 "
+                        "a.m.\n\nHB 9999, relative to a decoy.\n\n" + "\n\n".join(
+                            f"YEAS {y} - NAYS {n}\n\nOn a division vote, {y} members having "
+                            f"voted in the affirmative and {n} in the negative, the motion was "
+                            "adopted by the necessary three-fifths." for y, n in counts))
+            else:
+                f = built / "journals_senate" / str(on.year) / "SJ 1.txt"
+                text = (f"{dateline}\n\nThe Senate met at 10:00 a.m.\n\nSB 9999, relative to a "
+                        "decoy.\n\n" + "\n\n".join(
+                            f"The following Senators voted Yes: Sen. Decoy.\n\nYeas: {y} - Nays: "
+                            f"{n}\n\nA division vote was requested.\n\nYeas: {y} - Nays: {n}"
+                            for y, n in counts))
+            f.parent.mkdir(parents=True, exist_ok=True)
+            with open(f, "a", encoding="utf-8") as fh:
+                fh.write(text + "\n\n")
+        (built / "data" / "bills.json").write_text(json.dumps(
+            {t: {"HB9999": {}} for t in rolls}), encoding="utf-8")
+        (built / "rollcalls.json").write_text(json.dumps(
+            {t: {"_procedural": [_rc(r["year"], r["body"], 900, r["date"], None, "A Decoy Vote",
+                                     7, 3, True) for r in keys.values()]} for t in rolls}),
+            encoding="utf-8")
+
+        def from_(where, what):
+            # Each from nothing remembered: a reader that keeps what it read
+            # by a relative path would otherwise answer from another folder.
+            for c in caches:
+                c.clear()
+            os.chdir(where)
+            try:
+                return what()
+            finally:
+                os.chdir(here)
+        bare, beside = from_(empty, drawn), from_(built, drawn)
+        live = from_(built, lambda: {
+            "journal_motions.json": bool(VP.journal_only("H", "2025-01-08"))
+            and VP.ruling("2015-H-188") == "A decoy ruling",
+            "the House Journals": "three-fifths" in RO.journal_division_words(
+                ".", "H", "2000-04-13", 251, 87)
+            and (200, 150) in (SD._journal_day("H", "2025-01-08") or {}).get("rc", {}),
+            "the Senate Journals": (23, 1) in (SD._journal_day("S", "2021-04-22") or {}).get(
+                "rc", {}),
+            "data/bills.json": SD._held_bills(".") == {t: {"HB9999"} for t in rolls},
+            "rollcalls.json": bool(SD._read_rollcalls())})
+    finally:
+        os.chdir(here)
+        for c, k in zip(caches, kept):
+            c.clear()
+            c.update(k)
+        shutil.rmtree(root, ignore_errors=True)
+    dead = [k for k, v in live.items() if not v]
+    assert not dead, f"decoys the working folder's readers do not read, which prove nothing: {dead}"
+    assert len(bare) == len(sittings) + 1, sorted(bare)
+    moved = [k for k in bare if bare[k] != beside.get(k)]
+    if moved:
+        k = moved[0]
+        a, b = (repr(x[k]) for x in (bare, beside))
+        at = next((n for n, (p, q) in enumerate(zip(a, b)) if p != q), min(len(a), len(b)))
+        raise AssertionError(
+            f"the fixture's sittings change with the working folder's files: {moved}; "
+            f"{k} from an empty folder ...{a[max(0, at - 60):at + 120]!r}, beside a built "
+            f"tree's ...{b[max(0, at - 60):at + 120]!r}")
+    return "ok", (f"{len(sittings)} sittings, a vote on no bill, a CACR's division, an appeal's "
+                  "ruling and a bill no row names are drawn the same beside a built tree's "
+                  "journal_motions.json, Journals, data/bills.json and rollcalls.json as from "
+                  "an empty folder, and each of those is live")
+
+
+# NOR DOES A CHECK THAT CALLS load() ITSELF (29 October 2026). Seven checks
+# draw their sittings with session_days.load() on a narratives.json of their
+# own, not through _sitting_fixture, and gave it no journals, so
+# _journal_day read the working folder's journals/ and journals_senate/ for
+# each of their days: the owner's laptop holds every year of them, GitHub's
+# machine none. Nothing those checks assert changed with what it read, which
+# is why none of them failed; they now give load() journals={}, as the
+# fixture does.
+@check("session", "a check that draws sittings with load() on a record of its own reads none "
+       "of the Journals on disk", needs=("session_days", "rollcall_outcomes"))
+def _session_checks_read_no_journals(SD, RO):
+    """Every code check that calls session_days.load() itself is run again
+    with the two caches the disk's Journals are read through --
+    session_days._SAT, a chamber's year of journals/ or journals_senate/, and
+    rollcall_outcomes._DIVISIONS, a year's House divisions in words --
+    replaced by ones that note each year asked of them. None may be asked,
+    and each check must run to its end, or the silence proves nothing."""
+    import inspect
+
+    class Asked(dict):
+        def __init__(self, log):
+            super().__init__()
+            self.log = log
+
+        def __contains__(self, key):
+            self.log.append(key)
+            return super().__contains__(key)
+
+    calls = re.compile(r"\bSD\.load\(")
+    them = [c for c in CHECKS if c["group"] != "data"
+            and c["fn"] is not _session_checks_read_no_journals
+            and calls.search(inspect.getsource(c["fn"]))]
+    read, ended = {}, {}
+    for c in them:
+        log = []
+        kept = SD._SAT, RO._DIVISIONS
+        SD._SAT, RO._DIVISIONS = Asked(log), Asked(log)
+        try:
+            ended[c["fn"].__name__] = _check_outcome(c)
+        finally:
+            SD._SAT, RO._DIVISIONS = kept
+        if log:
+            read[c["fn"].__name__] = sorted({tuple(k) for k in log})
+    assert len(them) >= 8, f"only {len(them)} checks call session_days.load() themselves"
+    short = {n: o for n, o in ended.items() if o[0] in ("FAIL", "ERROR")}
+    assert not short, f"checks that did not run to their end, so read nothing by it: {short}"
+    assert not read, (f"{len(read)} checks read the Journals on disk for a record of their own; "
+                      f"give load() journals= (none: {{}}): "
+                      + "; ".join(f"{n} {ks[:4]}" for n, ks in read.items()))
+    return "ok", (f"{len(them)} checks that call load() on a record of their own read no "
+                  "chamber's year of Journals and no House divisions from the disk")
+
+
 @check("session", "before the roll-call file, every roll call the docket states is "
        "drawn from the docket", needs=("session_days",))
 def _session_rollcalls_docket_only(SD):
@@ -44474,7 +45019,7 @@ def _session_recess_and_rule_days(SD, BSP):
     root = Path(tempfile.mkdtemp())
     try:
         (root / "narratives.json").write_text(json.dumps(narr), encoding="utf-8")
-        days = SD.load(root / "narratives.json")
+        days = SD.load(root / "narratives.json", journals={})
 
         def bills(body, date):
             d = days.get((body, date))
@@ -44621,7 +45166,7 @@ def _session_unmarked_recess(SD, BSP, shell):
     root = Path(tempfile.mkdtemp())
     try:
         (root / "narratives.json").write_text(json.dumps(narr), encoding="utf-8")
-        days = SD.load(root / "narratives.json")
+        days = SD.load(root / "narratives.json", journals={})
 
         def bills(body, date):
             d = days.get((body, date))
