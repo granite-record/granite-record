@@ -43819,6 +43819,181 @@ def _session_rollcalls_reconciled(SD, BSP):
                   "sitting only where the journal opens one")
 
 
+# A SITTING FIXTURE READS ONLY WHAT IT IS GIVEN (29 October 2026). The check
+# above builds its own record (_sitting_fixture), and it failed on every tree
+# that had run a build: the page drew the build's journal_motions.json from
+# the working folder, so the fixture's House day of 8 January 2025 gained a
+# real "Votes on No Bill", and load() read the working folder's House
+# Journals for a CACR's division though it was given journals of its own. On
+# GitHub's night it passed only because the code checks run before the build.
+@check("session", "a sitting fixture draws the same from any working folder, a built tree's "
+       "files beside it or none", needs=("session_days", "build_session_pages", "vote_passage",
+                                         "rollcall_outcomes"))
+def _session_fixture_hermetic(SD, BSP, VP, RO):
+    """A cut of the record's sittings, drawn and rendered from an empty
+    working folder and again from one holding what a built tree holds, each
+    file saying something of the fixture's own days that would change what
+    is drawn if it were read: journal_motions.json, with a vote on no bill on
+    every sitting and a title, a line and a ruling for every roll call; the
+    House and Senate Journals of the fixture's years, printing every count as
+    a roll call and as a division adopted by the necessary three-fifths;
+    data/bills.json, which holds none of the fixture's bills; and
+    rollcalls.json. The two must be the same, day for day and byte for
+    byte, and a day made by hand from a fixture's must read nothing either.
+    And every decoy must be read by the readers that do take the working
+    folder (vote_passage's, rollcall_outcomes.journal_division_words,
+    session_days' journals, _held_bills, _read_rollcalls), or it proves
+    nothing."""
+    import datetime as _dt
+    import html as _html
+
+    def floor(date, body, raw, action, kind, y=None, n=None, **more):
+        e = {"type": "floor", "date": date, "body": body, "raw": raw, "action": action,
+             "motion": "MA", "vote_kind": kind, **more}
+        if y is not None:
+            e.update(yeas=str(y), nays=str(n))
+        return e
+    narr = {
+        "2025-2026": {"SB15": [floor("2026-01-07", "H", "Ought to Pass with Amendment 2025-3096h: "
+                                     "MA RC 179-159 01/07/2026", "Ought to Pass with Amendment "
+                                     "2025-3096h", "RC", 179, 159, cite="HJ 1")]},
+        # A CACR's division whose docket line names no fraction, where the
+        # Journal's sentence would (rollcall_outcomes.journal_division_words).
+        "1999-2000": {"CACR2": [floor("2000-04-13", "H", "Taken from the Table, Rep Mock MA "
+                                      "DIV(251-87)", "Taken from the Table", "DV", 251, 87)]},
+        # An appeal on a bill, under which the page says what the chair ruled.
+        "2015-2016": {"SB9": [floor("2015-09-16", "H", "Uphold Ruling of the Chair: MA RC 286-89",
+                                    "Uphold Ruling of the Chair", "RC", 286, 89, cite="HJ 57")]},
+        "2021-2022": {"HB100": [floor("2021-04-22", "S", "Ought to Pass, RC 23Y-1N, MA; OT3rdg; "
+                                      "04/22/2021", "Ought to Pass, RC 23Y-1N", "", cite="SJ 12")]}}
+    rolls = {
+        "2025-2026": {
+            "SB15": [_rc("2026", "H", 3, "2026-01-07", "SB15", "Ought to Pass with Amendment",
+                         179, 159, True)],
+            # A bill the docket holds no rows for: named, unless the term's
+            # list of bills (data/bills.json) holds no such bill.
+            "HB476": [_rc("2026", "H", 4, "2026-01-07", "HB476", "Reconsider", 15, 340, False)],
+            "_procedural": [_rc("2026", "H", 2, "2026-01-07", None, "Rules Suspension", 57, 280,
+                                False, 225),
+                            _rc("2025", "H", 1, "2025-01-08", None, "Amend H Rule 64", 200, 150,
+                                True)]},
+        "1999-2000": {"_procedural": [_rc("2000", "H", 60, "2000-04-13", None, "Call of the Roll",
+                                          380, 2, True, seated=398)]},
+        "2015-2016": {"SB9": [_rc("2015", "H", 188, "2015-09-16", "SB9",
+                                  "Uphold Ruling of the Chair", 286, 89, True)]},
+        "2021-2022": {"HB100": [_rc("2021", "S", 311, "2021-04-22", "HB100", "Ought to Pass",
+                                    23, 1, True)]}}
+    keys = {f'{r["year"]}-{r["body"]}-{r["number"]}': r
+            for bills in rolls.values() for rs in bills.values() for r in rs}
+    sittings = sorted({(r["body"], r["date"]) for r in keys.values()})
+    counts = sorted({(r["yeas"], r["nays"]) for r in keys.values()} | {(251, 87)})
+
+    def drawn():
+        days = _sitting_fixture(SD, narr, rolls, sat=lambda body, date: date == "2025-01-08")
+        out = {"left": sorted((SD.rollcall_key(r), w) for r, w in days.left)}
+        for key in sorted(days):
+            d = days[key]
+            by_hand = SD.Day(d.body, d.date, d.items, d.others)
+            out[key] = (d.printed, [
+                (i.bill, i.action, i.kind, i.yeas, i.nays, i.carried, i.need, i.fifths,
+                 i.outcome_words, i.rc and SD.rollcall_key(i.rc))
+                for i in list(d.items) + list(d.others)]) + tuple(
+                BSP.render(x, {}, {}, {}, BSP.Members(Path("no-such-site")), _html.escape)
+                for x in (d, by_hand))
+        return out
+
+    caches = (VP._CACHE, RO._DIVISIONS, SD._SAT)
+    kept = [dict(c) for c in caches]
+    here = os.getcwd()
+    root = Path(tempfile.mkdtemp(prefix="sitting-decoys-"))
+    try:
+        empty, built = root / "empty", root / "built"
+        empty.mkdir()
+        (built / "data").mkdir(parents=True)
+        said = [{"k": "outcome", "t": "The decoy carried."}]
+        (built / "journal_motions.json").write_text(json.dumps({
+            "rollcalls": {k: {"key": k, "body": r["body"], "date": r["date"], "held": [],
+                              "kind": "motion", "title": "A Decoy Motion", "line": "a decoy",
+                              "ruling": "A decoy ruling", "said": said}
+                          for k, r in keys.items()},
+            "journal_only": [{"key": f"{d}-{b}-decoy", "body": b, "date": d, "how": "division",
+                              "yeas": 7, "nays": 3, "passed": True, "kind": "motion",
+                              "title": "A Decoy Division", "said": said, "member": "", "bill": "",
+                              "bills": []} for b, d in sittings],
+            "kinds": {"motion": "A decoy kind"}, "groups": {}, "group_words": {},
+            "bill_votes": []}), encoding="utf-8")
+        for b, d in sittings:
+            on = _dt.date.fromisoformat(d)
+            dateline = f"{on:%B} {on.day}, {on.year}"
+            if b == "H":
+                f = built / "journals" / str(on.year) / f"HJ 1 {dateline}.txt"
+                text = (f"HOUSE JOURNAL NO. 1\n\n{on:%A}, {dateline}\n\nThe House met at 10:00 "
+                        "a.m.\n\nHB 9999, relative to a decoy.\n\n" + "\n\n".join(
+                            f"YEAS {y} - NAYS {n}\n\nOn a division vote, {y} members having "
+                            f"voted in the affirmative and {n} in the negative, the motion was "
+                            "adopted by the necessary three-fifths." for y, n in counts))
+            else:
+                f = built / "journals_senate" / str(on.year) / "SJ 1.txt"
+                text = (f"{dateline}\n\nThe Senate met at 10:00 a.m.\n\nSB 9999, relative to a "
+                        "decoy.\n\n" + "\n\n".join(
+                            f"The following Senators voted Yes: Sen. Decoy.\n\nYeas: {y} - Nays: "
+                            f"{n}\n\nA division vote was requested.\n\nYeas: {y} - Nays: {n}"
+                            for y, n in counts))
+            f.parent.mkdir(parents=True, exist_ok=True)
+            with open(f, "a", encoding="utf-8") as fh:
+                fh.write(text + "\n\n")
+        (built / "data" / "bills.json").write_text(json.dumps(
+            {t: {"HB9999": {}} for t in rolls}), encoding="utf-8")
+        (built / "rollcalls.json").write_text(json.dumps(
+            {t: {"_procedural": [_rc(r["year"], r["body"], 900, r["date"], None, "A Decoy Vote",
+                                     7, 3, True) for r in keys.values()]} for t in rolls}),
+            encoding="utf-8")
+
+        def from_(where, what):
+            # Each from nothing remembered: a reader that keeps what it read
+            # by a relative path would otherwise answer from another folder.
+            for c in caches:
+                c.clear()
+            os.chdir(where)
+            try:
+                return what()
+            finally:
+                os.chdir(here)
+        bare, beside = from_(empty, drawn), from_(built, drawn)
+        live = from_(built, lambda: {
+            "journal_motions.json": bool(VP.journal_only("H", "2025-01-08"))
+            and VP.ruling("2015-H-188") == "A decoy ruling",
+            "the House Journals": "three-fifths" in RO.journal_division_words(
+                ".", "H", "2000-04-13", 251, 87)
+            and (200, 150) in (SD._journal_day("H", "2025-01-08") or {}).get("rc", {}),
+            "the Senate Journals": (23, 1) in (SD._journal_day("S", "2021-04-22") or {}).get(
+                "rc", {}),
+            "data/bills.json": SD._held_bills(".") == {t: {"HB9999"} for t in rolls},
+            "rollcalls.json": bool(SD._read_rollcalls())})
+    finally:
+        os.chdir(here)
+        for c, k in zip(caches, kept):
+            c.clear()
+            c.update(k)
+        shutil.rmtree(root, ignore_errors=True)
+    dead = [k for k, v in live.items() if not v]
+    assert not dead, f"decoys the working folder's readers do not read, which prove nothing: {dead}"
+    assert len(bare) == len(sittings) + 1, sorted(bare)
+    moved = [k for k in bare if bare[k] != beside.get(k)]
+    if moved:
+        k = moved[0]
+        a, b = (repr(x[k]) for x in (bare, beside))
+        at = next((n for n, (p, q) in enumerate(zip(a, b)) if p != q), min(len(a), len(b)))
+        raise AssertionError(
+            f"the fixture's sittings change with the working folder's files: {moved}; "
+            f"{k} from an empty folder ...{a[max(0, at - 60):at + 120]!r}, beside a built "
+            f"tree's ...{b[max(0, at - 60):at + 120]!r}")
+    return "ok", (f"{len(sittings)} sittings, a vote on no bill, a CACR's division, an appeal's "
+                  "ruling and a bill no row names are drawn the same beside a built tree's "
+                  "journal_motions.json, Journals, data/bills.json and rollcalls.json as from "
+                  "an empty folder, and each of those is live")
+
+
 @check("session", "before the roll-call file, every roll call the docket states is "
        "drawn from the docket", needs=("session_days",))
 def _session_rollcalls_docket_only(SD):

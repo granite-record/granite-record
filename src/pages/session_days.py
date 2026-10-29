@@ -710,7 +710,7 @@ class Item:
 class Day:
     """One chamber, one date, and everything it did to bills that day."""
 
-    __slots__ = ("body", "date", "items", "journal", "ordered", "others", "printed")
+    __slots__ = ("body", "date", "items", "journal", "motions", "ordered", "others", "printed")
 
     def __init__(self, body, date, items, others=()):
         self.body = body
@@ -719,6 +719,13 @@ class Day:
         # The votes the chamber's journal prints in this sitting
         # (_journal_day), where load() read them; None otherwise.
         self.printed = None
+        # The journal_motions.json the page reads the Journal's words for a
+        # vote on no bill from (vote_passage): the one beside the
+        # narratives.json load() read, and none for a day made by hand. Never
+        # the working folder's: a check's sitting, built in a folder of its
+        # own, drew the build's "Votes on No Bill" from a tree that had been
+        # built (29 October 2026).
+        self.motions = None
         # The roll calls of the day that were on no bill -- the chamber's own
         # rules, a ruling of the chair, whether to print remarks -- as Items
         # whose bill is "". Never in `items`: they belong to no bill's card.
@@ -3566,11 +3573,15 @@ def load(path=NARRATIVES, rollcalls=None, sat=None, journals=None):
                 if got and len(got) == 1:
                     it.need = next(iter(got))
             if it.counted and not it.need and it.kind in ("DV", "DIV"):
+                # The Journal's sentence from the disk's House Journals, and
+                # never where `journals` gives a check's own cut of them,
+                # which holds counts and no sentences: a check's CACR
+                # division took the working folder's (29 October 2026).
                 d = RO.division_threshold(
                     it.bill, it.action, it.raw, it.yeas, it.nays, in_office.get((body, date)),
                     it.carried,
                     RO.journal_division_words(".", body, date, it.yeas, it.nays)
-                    if (it.bill or "").upper().startswith("CACR") else "")
+                    if (it.bill or "").upper().startswith("CACR") and journals is None else "")
                 if d.get("threshold_needed"):
                     it.need, it.fifths = d["threshold_needed"], False
                 elif d.get("threshold_unknown"):
@@ -3615,6 +3626,7 @@ def load(path=NARRATIVES, rollcalls=None, sat=None, journals=None):
             i.page if i.page is not None
             else batch.get(i.entered, last) if i.entered else -1, i.seq))
         days[key] = Day(key[0], key[1], items, others.get(key, ()))
+        days[key].motions = p.parent / VP.SOURCE
         was, _JOURNALS = _JOURNALS, journals
         try:
             days[key].printed = _journal_day(key[0], key[1])

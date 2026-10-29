@@ -452,7 +452,7 @@ def _ballots_here(it):
 
 
 def others_html(others, body, members, esc, payloads, day="", term="", years=None,
-                nobill=None):
+                nobill=None, motions=VP.SOURCE):
     """The day's votes on no bill -- the chamber's own rules, a ruling of the
     chair, printing a debate, a member allowed to go on speaking, a
     reprimand -- each as the roll-call file words it, and, where the Journal
@@ -462,8 +462,10 @@ def others_html(others, body, members, esc, payloads, day="", term="", years=Non
     just labeled something like voting whether to approve the committee
     report with no other context"). Then the divisions taken under the same
     headings, which the Journal records and the roll-call file does not.
-    No speaker and no debate: who spoke is the record's, on a bill's card."""
-    jo = VP.journal_only(body, day) if day else []
+    No speaker and no debate: who spoke is the record's, on a bill's card.
+    `motions` is the journal_motions.json read (session_days.Day.motions),
+    None for none."""
+    jo = VP.journal_only(body, day, motions) if day else []
     if not others and not jo:
         return ""
     H = ['<p class="note">Votes the '
@@ -475,30 +477,30 @@ def others_html(others, body, members, esc, payloads, day="", term="", years=Non
          + (f' <a href="session/nobill/{esc(term)}.html">Every vote on no bill in '
             f"{esc(term)}</a>." if term else "") + "</p>"]
     for it in others:
-        e = VP.entry(rollcall_id(it.rc)) if it.rc is not None else None
+        e = VP.entry(rollcall_id(it.rc), motions) if it.rc is not None else None
         # A ROLL CALL ON NO BILL IS DRAWN AS ONE ON A BILL IS (23 October
         # 2026): its card in nobill/<term>.json (`nobill`, {roll call: index})
         # holds the ballots, so the ring has the parties and the members, where
         # it had the count alone and called itself a division.
         block = vote_html(it, "", body, "", nobill or {}, members, esc, payloads, journal=e,
-                          key=f"nobill/{term}" if term else None)
+                          key=f"nobill/{term}" if term else None, motions=motions)
         if e:
             block += journal_extra_html(e, body, members, esc, term, years)
         H.append(block + "</div>")
     for e in jo:
-        H.append(journal_only_html(e, body, members, esc, payloads, term, years))
+        H.append(journal_only_html(e, body, members, esc, payloads, term, years, motions))
     return "".join(H)
 
 
-def continue_votes(others, body, day):
+def continue_votes(others, body, day, motions=VP.SOURCE):
     """{(member's surname, subject): (anchor, "failed, 91-82")} -- the day's
     votes on whether a member could go on speaking, each by the unanimous
     consent the Journal's passage ties it to, roll call or division."""
     out = {}
-    pairs = [(f"rc-{rollcall_id(it.rc)}", VP.entry(rollcall_id(it.rc)))
+    pairs = [(f"rc-{rollcall_id(it.rc)}", VP.entry(rollcall_id(it.rc), motions))
              for it in others if it.rc is not None]
     pairs += [(f"jv-{re.sub(r'[^\w-]', '', e.get('key') or '')}", e)
-              for e in VP.journal_only(body, day)]
+              for e in VP.journal_only(body, day, motions)]
     for anchor, e in pairs:
         if not e or e.get("kind") != "member_continue" or not e.get("member"):
             continue
@@ -541,10 +543,11 @@ def journal_extra_html(e, body, members, esc, term="", years=None):
     return "".join(out)
 
 
-def journal_only_html(e, body, members, esc, payloads, term="", years=None):
+def journal_only_html(e, body, members, esc, payloads, term="", years=None,
+                      motions=VP.SOURCE):
     """A vote the Journal records and the roll-call file does not: a division,
     with the count and no member's vote, or a voice vote, with neither."""
-    head = esc(VP.title(e))
+    head = esc(VP.title(e, motions))
     if e.get("line"):
         head += f'<span class="nbl">{esc(e["line"])}</span>'
     carried = e.get("passed")
@@ -2316,7 +2319,7 @@ def closing_html(items, bill, body, row, entry, esc, events=(), date="", rows=()
 
 
 def vote_html(it, bill, body, year, cards, members, esc, payloads, journal=None, key=None,
-              spoke="", notes="", mover_spoke=False):
+              spoke="", notes="", mover_spoke=False, motions=VP.SOURCE):
     """One motion of the day on a bill, in the approved vote words (the
     person, 8 October 2026): the motion's own name with only OTP, OTPA, ITL
     and IS abbreviated and a plain gloss; the chip saying what the vote did,
@@ -2346,16 +2349,19 @@ def vote_html(it, bill, body, year, cards, members, esc, payloads, journal=None,
 
     An appeal of a ruling on a bill is headed "Uphold the Ruling of the
     Chair", with what the chair ruled under it where the Journal says (the
-    owner, 23 October 2026: no "Back the presiding officer")."""
+    owner, 23 October 2026: no "Back the presiding officer"). `motions` is
+    the journal_motions.json both are read from (session_days.Day.motions),
+    None for none."""
     words_, k, chp = motion_chip(it, bill, body)
     head = (C.vote_head(k["mk"], words_, k["mf"]) if words_
             else "On a question the record does not name")
     if journal:
-        head = esc(VP.title(journal) or "") or head
+        head = esc(VP.title(journal, motions) or "") or head
         if journal.get("line"):
             head += f'<span class="nbl">{esc(journal["line"])}</span>'
     elif k.get("mk") == "uphold_ruling":
-        rul = getattr(it, "ruling", "") or (VP.ruling(rollcall_id(it.rc)) if it.rc else "")
+        rul = getattr(it, "ruling", "") or (VP.ruling(rollcall_id(it.rc), motions)
+                                            if it.rc else "")
         if rul:
             head += f'<span class="nbl">{esc(rul)}</span>'
     amds = amendment_numbers(words_)
@@ -2436,6 +2442,10 @@ def render(day, narrative, titles, years, members, esc, chair=None, rec=None, ct
     debates = {base_bill(d.get("bill")): d
                for d in (narrative.get("debates") or []) if d.get("bill")}
     payloads = []
+    # THE DAY'S OWN JOURNAL MOTIONS (session_days.Day.motions): the file
+    # beside the record load() read, none for a day made by hand -- never the
+    # working folder's, which a check's day once drew (29 October 2026).
+    motions = getattr(day, "motions", None)
     removed, seq_items, cons = day_parts(day, narrative)
     attrs = clerk_counts(attrs, [it for it in seq_items if not it.entered
                                  and getattr(it, "added", "") != "rollcall"])
@@ -2543,7 +2553,8 @@ def render(day, narrative, titles, years, members, esc, chair=None, rec=None, ct
                           "bills: the same vote is drawn under each of them, and counted "
                           "once.</p>")
             line.append(vote_html(it, bill, body, year, cards_here, members, esc, payloads,
-                                  spoke=spoke, notes=notes, mover_spoke=alone) + "</div>")
+                                  spoke=spoke, notes=notes, mover_spoke=alone,
+                                  motions=motions) + "</div>")
         # NAMED, BUT NOT TAKEN A SIDE FOR: the record does not tie the speech
         # to one of the day's motions, so no side is shown.
         grp = groups[id(items[0])]
@@ -2621,7 +2632,8 @@ def render(day, narrative, titles, years, members, esc, chair=None, rec=None, ct
 
     oth = others_html(getattr(day, "others", ()), body, members, esc, payloads,
                       day=day.date, term=term, years=years,
-                      nobill=((ctx or {}).get("nobill") or {}).get(term) or {})
+                      nobill=((ctx or {}).get("nobill") or {}).get(term) or {},
+                      motions=motions)
     if oth:
         add(C.section("Votes on No Bill", oth, "nobill"))
     # Debates whose bill is not among the day's actions, or is there only for
@@ -2641,7 +2653,7 @@ def render(day, narrative, titles, years, members, esc, chair=None, rec=None, ct
         # A MEMBER'S CONSENT AND THE VOTE ON IT, JOINED (23 October 2026):
         # where an objection ended a member's unanimous consent, the House
         # voted on whether they could go on, and the Journal ties the two.
-        cont = continue_votes(getattr(day, "others", ()), body, day.date)
+        cont = continue_votes(getattr(day, "others", ()), body, day.date, motions)
         for x in uc:
             about = x["about"]
             vote = continue_vote_for(cont, x["name"], about)
