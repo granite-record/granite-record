@@ -8973,10 +8973,11 @@ function renderCommitteeSessions(c){
    Videos section, the last two drawn from the JSON their pages carry
    (staticVideos).
 
-   o:     {who, what, key, heading, level, rows, chosen, href(id), pid(row), source, all}
+   o:     {who, what, key, heading, level, rows, chosen, href(id), pid(row), source}
           who is the player's bar ("Senate Finance", "The House"), what the
           same in a sentence ("Recording of the House, ..."), where it
-          differs; key the term or the page, so a list kept open stays open;
+          differs; key the term or the page, so a list drawn again for the
+          same keeps its place;
           level the list's heading's, 2 where nothing above it on the page is
           an h2 (a chamber's), or else 3.
    a row: {id, date, began, seconds, kinds (chips' HTML), line (text),
@@ -9000,16 +9001,26 @@ function renderCommitteeSessions(c){
    one aria-current and marked by a bar as well as its colour (review, 7),
    in the document after what plays and what it covers, which is the Tab
    order. Beside the player on a wide screen, as tall as the player and
-   scrolling inside; on a phone it flows on the page, the newest twenty and a
-   button for the rest, as the bill search brings its next twenty-five
-   (review, 6): no box that scrolls inside a page that scrolls. */
-const VW_SHOWN=20;
-// And the bills under the player, on a phone (cmteVideoDetail).
+   scrolling inside.
+
+   ON A PHONE, A PLAYLIST AS YOUTUBE'S IS (the owner, 29 October 2026: "the
+   player stays at the top (sticky) while the list of recordings scrolls
+   beneath it"). The player and its caption stay at the top of the window,
+   under the tab strip that stays there already (.rhead ~ .tabs), and what
+   the recording covers and then every recording of the term scroll on the
+   page beneath it: the whole list, where it had been the newest twenty and a
+   button for the rest, since the list is now what the page scrolls through
+   under what plays. House Finance's 106 rows are drawn in a few milliseconds
+   (measured 29 October 2026), so nothing is drawn later. Still no box that
+   scrolls inside a page that scrolls (review, 6): the page is what scrolls.
+   How far down the strip and the player reach is measured (vwStick), so a
+   row, a bill or a moment the keyboard moves to is scrolled clear of them
+   and never left under the player. */
+// The bills under the player, on a phone, the first few and a button for
+// the rest (cmteVideoDetail), as YouTube folds a description.
 const VW_BILLS=6;
 // The view on this page, for choosing a row in it: one a page.
 let VVIEW=null;
-// A row's lists kept whole after "Show all", by the view's key.
-const VW_ALL={};
 // "1 h 49 min", "36 min": a recording's length to the nearest minute, and
 // never under one.
 function vwLength(s){
@@ -9053,9 +9064,9 @@ function vwLine(l){
    is on the first line so that the cut never takes it; every bill is under
    the player once the row is chosen, and the row's whole text is its name to
    a screen reader. */
-function vwRow(o,r,i,cap){
+function vwRow(o,r){
   const when=vwWhen(r), line=vwLine(r.line);
-  return `<li${i>=cap?' class="vwrest"':""}><a class="vwrow" href="${esc(o.href(r.id))}" data-vwpick="${
+  return `<li><a class="vwrow" href="${esc(o.href(r.id))}" data-vwpick="${
       esc(r.id)}"${r.id===o.chosen?' aria-current="true"':""}><span class="vwd">${
     vwJoin([esc(dateWords(r.date)),r.count?`<span class="vwn">${esc(r.count)}</span>`:""])}</span>${
     when.length?`<span class="vwt"><span class="sr">, </span>${vwJoin(when.map(esc))}</span>`:""}${
@@ -9068,8 +9079,6 @@ function videoView(o){
   const on=rows.find(r=>r.id===o.chosen)||rows[0];
   o.chosen=on.id;
   VVIEW=o;
-  const all=o.all||VW_ALL[o.key];
-  const cap=all?rows.length:Math.max(VW_SHOWN,rows.indexOf(on)+1);
   // THE SKIP LINK COMES STRAIGHT AFTER THE PLAYER AND ITS CAPTION, before
   // what the recording covers: after it, as it stood, a keyboard passed House
   // Commerce's 37 bills and their moments -- 63 stops -- to reach the link
@@ -9082,9 +9091,7 @@ function videoView(o){
     +`<a class="vwskip" href="${esc(location.pathname+location.search)}#vwlist" data-vwskip>Skip to the list of recordings</a></div>`
     +`<div class="vwdet"><div class="vwdetin">${vwDetail(on)}</div></div>`
     +`<div class="vwside"><div class="vwin"><h${lv} class="vwh" id="vwh">${esc(o.heading)}</h${lv}>`
-    +`<ol class="vwlist${all?" vwopen":""}" id="vwlist" aria-labelledby="vwh">${rows.map((r,i)=>vwRow(o,r,i,cap)).join("")}</ol>`
-    +(rows.length>cap?`<button type="button" class="discl pgmore vwall" data-vwall aria-controls="vwlist">Show all ${
-      rows.length.toLocaleString()}</button>`:"")
+    +`<ol class="vwlist" id="vwlist" aria-labelledby="vwh">${rows.map(r=>vwRow(o,r)).join("")}</ol>`
     +"</div></div>"
     +(o.source?`<p class="src vwsrc">${o.source}</p>`:"")+"</div>";
 }
@@ -9110,8 +9117,13 @@ function vwListShow(a){
    A FRAME IS OPEN, the reader has pressed Play here, and choosing a row is
    choosing what plays: the new still is pressed through the one handler,
    which builds the frame, the status line says so, and the keyboard stays on
-   the row to choose again. The player is brought into view either way: on a
-   phone it is above the list. */
+   the row to choose again. The player is brought into view either way.
+
+   ON A PHONE the player stays at the top already (vwPinned), so it is what
+   it covers that is brought into view: chosen before a first press, the page
+   goes back up to the recording's bills and their moments, just under the
+   player, as YouTube opens a recording's description; once something plays,
+   the list stays where it is, the keyboard on the row, to choose again. */
 function vwChoose(a){
   const box=a.closest(".vw"), o=VVIEW;
   const r=o&&box&&o.rows.find(x=>x.id===a.dataset.vwpick);
@@ -9124,7 +9136,7 @@ function vwChoose(a){
   if(playing&&r.id===o.chosen){
     try{history.replaceState(history.state,"",o.href(r.id));}catch(_){}
     addressed();
-    box.querySelector(".vwplay").scrollIntoView({block:"nearest"});
+    if(!vwPinned(box))box.querySelector(".vwplay").scrollIntoView({block:"nearest"});
     return;}
   o.chosen=r.id;
   if(o.onChoose)o.onChoose(r.id);
@@ -9146,8 +9158,62 @@ function vwChoose(a){
     stub.click();
     if(say)say.textContent=`Playing: ${dateWords(r.date)}`;
   }else stub.focus({preventScroll:true});
-  player.scrollIntoView({block:"nearest"});
+  if(!vwPinned(box)){player.scrollIntoView({block:"nearest"});return;}
+  vwStick();
+  const det=box.querySelector(".vwdet");
+  if(!playing&&det&&det.getBoundingClientRect().top<vwUnder(box))det.scrollIntoView({block:"start"});
 }
+/* THE PLAYER THAT STAYS, MEASURED. On a phone the player and its caption
+   (.vwmain) stay at the top of the window, under the page's tab strip where
+   that strip stays too (.rhead ~ .tabs, 45px at 390px; it can wrap). How far
+   down the two reach is written on the view, --vwtop (the strip's foot, where
+   the player sticks) and --vwstick (the player's foot), and app.css keeps
+   every row, bill and moment that far from the top when it is scrolled to:
+   a keyboard moving down the list, or back up it, never has its place under
+   the player. Measured again whenever either changes size. */
+const vwPinned=box=>{const m=box&&box.querySelector(".vwmain");
+  return !!m&&getComputedStyle(m).position==="sticky";};
+// The strip above the view's pane, where it stays at the top of the window.
+function vwStrip(box){
+  const pane=box.closest("[role=tabpanel]");
+  const tab=pane&&document.getElementById(pane.getAttribute("aria-labelledby")||"");
+  const strip=tab&&tab.closest("[role=tablist]");
+  return strip&&getComputedStyle(strip).position==="sticky"?strip:null;
+}
+// Where the player's foot is, in the window, while it stays.
+const vwUnder=box=>{const m=box.querySelector(".vwmain");
+  return m?m.getBoundingClientRect().bottom:0;};
+let VW_SEEN=null, VW_WATCHED=[];
+function vwStick(){
+  document.querySelectorAll(".vw").forEach(box=>{
+    const main=box.querySelector(".vwmain"), strip=vwStrip(box);
+    const top=strip?Math.ceil(strip.getBoundingClientRect().height):0;
+    box.style.setProperty("--vwtop",`${top}px`);
+    box.style.setProperty("--vwstick",`${top+Math.ceil(main?main.getBoundingClientRect().height:0)}px`);
+    // Watched for a change of size, and only watched afresh when they are
+    // other elements: watching starts with a report, which runs this again.
+    const els=[main,strip].filter(Boolean);
+    if(typeof ResizeObserver==="undefined"||(els.length===VW_WATCHED.length&&els.every((x,i)=>x===VW_WATCHED[i])))return;
+    VW_SEEN=VW_SEEN||new ResizeObserver(()=>vwStick());
+    VW_SEEN.disconnect();
+    els.forEach(el=>VW_SEEN.observe(el));
+    VW_WATCHED=els;
+  });
+}
+window.addEventListener("resize",()=>vwStick());
+// AND WHERE THE BROWSER'S OWN SCROLLING LEAVES IT THERE: the focus, once
+// moved, is put clear of the player. Chromium keeps scroll-margin for
+// scrollIntoView and not for the Tab key: going back up House Finance's list
+// with Shift+Tab at 390px, 31 rows of 40 came to rest under the player with
+// app.css's margin alone, and none with this (measured 29 October 2026).
+document.addEventListener("focusin",e=>{
+  const t=e.target, box=t&&t.closest&&t.closest(".vw");
+  if(!box||t.closest(".vwmain")||!vwPinned(box))return;
+  requestAnimationFrame(()=>{
+    const under=vwUnder(box), top=t.getBoundingClientRect().top;
+    if(top<under)window.scrollBy(0,top-under-8);
+  });
+});
 document.addEventListener("click",e=>{
   const t=e.target&&e.target.closest?e.target:null;
   if(!t||e.defaultPrevented)return;
@@ -9155,14 +9221,13 @@ document.addEventListener("click",e=>{
   if(pick){
     if(e.button||e.metaKey||e.ctrlKey||e.shiftKey||e.altKey)return;
     e.preventDefault();vwChoose(pick);return;}
-  // The rest of a phone's list -- the recordings, or a recording's bills --
-  // and the keyboard on the first it brought.
+  // The rest of a recording's bills on a phone, and the keyboard on the
+  // first it brought.
   const all=t.closest("[data-vwall]");
   if(all){
     const list=document.getElementById(all.getAttribute("aria-controls"));
     const first=list&&list.querySelector(".vwrest a");
     if(list)list.classList.add("vwopen");
-    if(VVIEW&&all.dataset.vwall!=="bills")VW_ALL[VVIEW.key]=true;
     all.remove();
     if(first)first.focus();
     return;}
@@ -9383,6 +9448,7 @@ function vwDraw(slot,d){
   const o=make(d,slot), want=vwWanted();
   if(o.rows.some(r=>r.id===want)){o.chosen=want;vwTried=vwLanded=want;}
   slot.innerHTML=o.rows.length?videoView(o):`<p class="src fill">${o.empty||""}</p>`;
+  vwStick();
   return !!want&&o.chosen===want;
 }
 function staticVideos(){
@@ -9457,6 +9523,7 @@ function chamberShow(i,write){
     f.addEventListener("load",()=>{if(hide.hidden)pause(f);},{once:true});});
   if(days)days.hidden=i!==0;
   if(vids)vids.hidden=i!==1;
+  vwStick();
   if(!write||!VW_CHAMBER)return;
   const path=`/session/${VW_CHAMBER.slug}${i?"/videos":""}`;
   try{history.replaceState(history.state,"",path+location.search+(i&&/^#v-/.test(location.hash)?location.hash:""));}catch(_){}
@@ -9865,6 +9932,7 @@ function renderPage(){
     const now=was&&el.querySelector(".vw");
     if(now&&now.dataset.vwkey===was[0])now.querySelector(".vwlist").scrollTop=was[1];
   }
+  vwStick();
   placeActions();
   syncCards([...openCards]);
   showDay();

@@ -6896,8 +6896,9 @@ transition:transform .15s}
    recordings; on a wide screen the list stands beside the player, as tall
    as the player block and scrolling inside it, so it never runs past it
    (the manager's review of 26 October 2026, 6). On a phone everything is one
-   column in that order and the list flows on the page, twenty rows and a
-   button for the rest: no box that scrolls inside a page that scrolls. */
+   column in that order, the player staying at the top while the whole list
+   flows on the page beneath it: no box that scrolls inside a page that
+   scrolls. */
 .vw{display:grid;grid-template-columns:minmax(0,1fr);gap:var(--sp-5);
 grid-template-areas:"main" "det" "side" "src"}
 .vwmain{grid-area:main;min-width:0}
@@ -6964,10 +6965,28 @@ color:var(--ink-2);white-space:nowrap;overflow:hidden}
 .vwl{flex:0 1 auto;min-width:0;overflow:hidden;text-overflow:ellipsis}
 .vwall{margin-top:var(--sp-3)}
 .vwsrc{grid-area:src;margin:0}
-/* On paper every row prints: this is a screen's. The bills under the
-   player the same way, a phone's first few and a button. */
+/* The ground the player stands on where it stays: the pane's sheet on a
+   committee's page, the page's own on a chamber's. */
+.vw{--vwbg:var(--paper)}
+.pane .vw{--vwbg:var(--surface)}
+/* On paper every bill prints: this is a screen's, a phone's first few bills
+   under the player and a button for the rest. */
 @media screen and (max-width:59.99em){
-  .vwlist:not(.vwopen) .vwrest,.vwbills:not(.vwopen) .vwrest{display:none}
+  .vwbills:not(.vwopen) .vwrest{display:none}
+  /* ON A PHONE THE PLAYER STAYS AT THE TOP and the recordings scroll under
+     it, as a YouTube playlist does (the owner, 29 October 2026): the player
+     and its caption stick under the tab strip that stays there already
+     (--vwtop, its height, measured by app.js's vwStick), on a band of the
+     ground they stand on, so nothing scrolling under them shows through.
+     The band reaches a little below the caption without moving what follows
+     it. Whatever the keyboard or a link moves to under the player stops
+     clear of it (--vwstick, the player's foot), and the view itself, landed
+     on, stops under the strip. The page is what scrolls: no box scrolls
+     inside it (review, 6). */
+  .vwmain{position:sticky;top:var(--vwtop,0px);z-index:4;background:var(--vwbg);
+  padding-bottom:var(--sp-3);margin-bottom:calc(-1 * var(--sp-3))}
+  .vw{scroll-margin-top:var(--vwtop,0px)}
+  .vwdet,.vwdet :is(a,button),.vwside :is(a,button),.vwsrc a{scroll-margin-top:calc(var(--vwstick,0px) + var(--sp-3))}
 }
 /* A bill's number over its title on a phone, its moments under them. */
 @media (max-width:45em){

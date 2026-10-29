@@ -76390,9 +76390,10 @@ def _committee_videos_tab():
     chip Bills and Meetings carry; the kinds are the Meetings tab's chips;
     a recording the docket ties no bill to has no bill line, and the detail
     says so once, in muted text; a start or a length the index lacks is left
-    out with its separator; one caption under the player; on a phone the
-    newest twenty and a button for the rest; the chosen row aria-current.
-    Drawn by renderPage in node over a committee like the fixture's."""
+    out with its separator; one caption under the player; every row drawn
+    (on a phone the list scrolls under the player, _videos_phone_playlist);
+    the chosen row aria-current. Drawn by renderPage in node over a
+    committee like the fixture's."""
     items = lambda vid, kind, start, state: [{
         "bill": "HB1442", "n": "HB 1442-FN", "title": "relative to insurance coverage", "year": 2026,
         "term": "2025-2026", "kind": kind, "video_id": vid, "start": start, "state": state,
@@ -76548,22 +76549,19 @@ process.stdout.write("\n@@" + JSON.stringify(out));
             f"a moment's button and its \"approximate\" are not held together: {flat['jumps']}")
     assert re.search(r"\n\.mjump\{display:inline-flex;flex-wrap:nowrap;", css), (
         "app.css: a moment's button and its \"approximate\" can wrap apart")
-    # THE MANAGER'S LAYOUT (review, 6 and 7), each rule the tab stands on: on a
-    # phone the newest twenty and a button, no box scrolling inside the page;
-    # on a wide screen two columns, the list as tall as the player block and
-    # scrolling inside it; a study committee's section the page's width; the
-    # chosen row a bar as well as a colour, Highlight under forced colours;
-    # and a row two lines, its kinds and bills cut short on one (the review
-    # of 29 October 2026).
-    phone = _braced(css, "@media screen and (max-width:59.99em){")
+    # THE MANAGER'S LAYOUT (review, 6 and 7), each rule the tab stands on (a
+    # phone's, the player staying over the whole list, is
+    # _videos_phone_playlist's): on a wide screen two columns, the list as
+    # tall as the player block and scrolling inside it; a study committee's
+    # section the page's width; the chosen row a bar as well as a colour,
+    # Highlight under forced colours; and a row two lines, its kinds and
+    # bills cut short on one (the review of 29 October 2026).
     wide = _braced(css, "@media screen and (min-width:60em){")
     lit = css.find('.vwrow[aria-current="true"]{border-left-color:Highlight}')
     forced = css.rfind("@media (forced-colors:active){", 0, lit) if lit >= 0 else -1
     w4 = css.index("  .w4{display:grid;")
     w4 = _braced(css[css.rfind("@media (min-width:60em){", 0, w4):], "@media (min-width:60em){")
     for ok, why in (
-            (".vwlist:not(.vwopen) .vwrest" in phone and "{display:none}" in phone,
-             "on a phone the list is not the newest twenty and a button"),
             ("grid-template-columns:minmax(0,1fr) 22rem" in wide and '"main side"' in wide,
              "on a wide screen the list does not stand beside the player"),
             (".vwin{position:absolute;inset:0;" in wide and "overflow:auto" in wide,
@@ -76584,11 +76582,11 @@ process.stdout.write("\n@@" + JSON.stringify(out));
     assert '<span class="vwd">Feb 10, 2026<span class="sr">,</span> <span class="vwi"><span aria-hidden="true">' \
         '&middot;&nbsp;</span><span class="vwn">1 bill</span></span></span>' in pane, (
         "a row's count of bills is not beside its date, where the cut of its second line cannot take it")
-    # On a phone, twenty and a button for the rest; every row in the page.
+    # Every row in the page and shown, at every width: on a phone the list is
+    # what scrolls under the player (_videos_phone_playlist).
     m = flat["many"]
-    assert m.count('class="vwrest"') == 5 and m.count('class="vwrow"') == 25 and \
-        re.search(r'data-vwall aria-controls="vwlist">Show all 25</button>', m), (
-            "a list of 25 is not twenty and a button for the rest")
+    assert m.count('class="vwrow"') == 25 and "vwrest" not in m and "data-vwall" not in m, (
+        "a list of 25 is not drawn whole: some rows are held back behind a button")
     # A term with none: the tab, with no count, and the pane says so.
     lt = flat["later"]
     assert re.search(r'role="tab" id="ptab_2"[^>]*>Videos</button>', lt) and \
@@ -76705,7 +76703,7 @@ process.stdout.write("\n@@" + JSON.stringify(out));
     return "ok", ("the third tab, counted; a still of the newest, nothing from YouTube before Play; "
                   "rows of the term with the Meetings tab's chips, no bill line where none is known; "
                   "one caption with nothing missing said, no dot ending a line; the moment the "
-                  "Meetings tab's own button; twenty and Show all 25; a term with none says so; no "
+                  "Meetings tab's own button; all 25 rows drawn; a term with none says so; no "
                   "tab with no recording; the row playing, pressed again, plays on; an address naming another "
                   "recording ends it")
 
@@ -76751,7 +76749,7 @@ def _committee_videos_behaviour():
     harness = _HEARD_PRELUDE + r"""
 load("renderPage, recordTerms, tabAddress, openPage, addressed, getFocused: () => null,"
   + " setPage: (p) => { PAGE = p; }, getPage: () => PAGE, setTab: (t) => { PAGE_TAB = t; },"
-  + " getTab: () => PAGE_TAB, setUp: (u) => { UPCOMING = u; }, getView: () => VVIEW, vwAll: () => VW_ALL");
+  + " getTab: () => PAGE_TAB, setUp: (u) => { UPCOMING = u; }, getView: () => VVIEW");
 const fx = JSON.parse(fs.readFileSync("./fx.json", "utf8"));
 const results = document.querySelector("#results");
 const stubQuery = results.querySelector;
@@ -76835,14 +76833,14 @@ const out = {};
     const plain = click(pick);
     out.row = {prevented: plain.prevented, made: n.made, removed: n.removed, set: n.set, focus: n.focus,
                vid: s.getPage().vid, detail: det.innerHTML.includes("HB 1442"), at: at()};
-    // (e) SHOW ALL: the rest of the list shown, kept so, the keyboard on the first it brought.
+    // (e) SHOW ALL, a phone's rest of a recording's bills: shown, the keyboard on the first it brought.
     const list = {cls: [], classList: {add(c) { list.cls.push(c); }},
       querySelector: (q) => q === ".vwrest a" ? {focus() { list.focused = 1; }} : null};
-    byId.vwlist = list;
-    click((q) => q === "[data-vwall]" ? {getAttribute: (k) => k === "aria-controls" ? "vwlist" : null,
-      dataset: {vwall: ""}, remove() { list.gone = 1; }} : null);
-    out.all = {cls: list.cls, focused: !!list.focused, gone: !!list.gone, kept: !!s.vwAll()["H43|2025-2026"]};
-    delete byId.vwlist;
+    byId.vwbills = list;
+    click((q) => q === "[data-vwall]" ? {getAttribute: (k) => k === "aria-controls" ? "vwbills" : null,
+      dataset: {vwall: "bills"}, remove() { list.gone = 1; }} : null);
+    out.all = {cls: list.cls, focused: !!list.focused, gone: !!list.gone};
+    delete byId.vwbills;
     // (f) THE SKIP LINK: the keyboard to the chosen row.
     const cur = document.querySelector('.vwlist a[aria-current="true"]');
     cur.focus = () => { out.skipped = 1; }; cur.closest = () => null;
@@ -76909,8 +76907,8 @@ const out = {};
     assert got["row"] == {"prevented": 1, "made": 1, "removed": 1, "set": ["aria-current=true"], "focus": 1,
                           "vid": "VID4", "detail": True, "at": "/committee/H43/videos#v-VID4"}, (
         f"a row clicked is not chosen in place, the keyboard on Play: {got['row']}")
-    assert got["all"] == {"cls": ["vwopen"], "focused": True, "gone": True, "kept": True}, (
-        f"Show all does not show the rest, keep it shown, and take the keyboard to it: {got['all']}")
+    assert got["all"] == {"cls": ["vwopen"], "focused": True, "gone": True}, (
+        f"Show all does not show the rest of the bills and take the keyboard to it: {got['all']}")
     assert got["skip"] == 1 and got.get("skipped") == 1, "the skip link does not take the keyboard to the chosen row"
     assert got["share"] == ["Copy this address: https://x/committee/H43/videos#v-VID4",
                             "Copy this address: https://x/committee/H43/sessions"], (
@@ -76934,6 +76932,132 @@ const out = {};
                   "the keyboard on Play, a held key left to the link; Show all, the skip link, Share, "
                   "tabAddress and the meeting's link as they say; the tab turned to again names its "
                   "recording; a term of recordings alone opens on them")
+
+
+# A Videos view as app.js meets it on a phone, its parts stood up by hand: the
+# tab strip above its pane, which stays at the top of the window (sticky), and
+# the player that stays under it -- or, `wide`, that does not, as on a desktop.
+_VW_PHONE_HARNESS = _HEARD_PRELUDE + r"""
+load("videoView, vwStick, vwChoose, setView: (o) => { VVIEW = o; }");
+const css = (el) => ({position: (el && el.pos) || "static", getPropertyValue: () => ""});
+globalThis.getComputedStyle = css;
+const observed = [];
+globalThis.ResizeObserver = class { constructor(f) { this.f = f; } observe(el) { observed.push(el); } disconnect() {} };
+const scrolled = [];
+globalThis.scrollBy = (x, y) => scrolled.push(y);
+const out = {};
+const view = (wide) => {
+  const strip = {pos: "sticky", getBoundingClientRect: () => ({height: 45})};
+  const tab = {closest: (q) => q === "[role=tablist]" ? strip : null};
+  document.getElementById = (id) => id === "ptab_2" ? tab : null;
+  const pane = {getAttribute: (k) => k === "aria-labelledby" ? "ptab_2" : null};
+  const main = {pos: wide ? "static" : "sticky", getBoundingClientRect: () => ({height: 268, bottom: 313})};
+  const n = {det: [], player: [], focus: 0};
+  const det = {getBoundingClientRect: () => ({top: -900}), scrollIntoView(o) { n.det.push(o.block); }};
+  const player = {insertAdjacentHTML() {}, remove() {}, scrollIntoView(o) { n.player.push(o.block); },
+    querySelector: (q) => q === ".pstub" ? {focus() { n.focus += 1; }, click() {}} : null};
+  const box = {props: {}, style: {setProperty(k, v) { box.props[k] = v; }},
+    closest: (q) => q === "[role=tabpanel]" ? pane : null,
+    querySelector: (q) => q === ".vwmain" ? main : q === ".vwdet" ? det : q === ".vwplay" ? player
+      : q === ".vwdetin" ? {innerHTML: ""} : q === ".vwsay" ? {textContent: ""} : null,
+    querySelectorAll: () => []};
+  document.querySelectorAll = (q) => q === ".vw" ? [box] : [];
+  return {box, n, strip, main};
+};
+try {
+  // Every row drawn, nothing held back behind a button.
+  const rows = Array.from({length: 40}, (_, i) => ({id: "r" + i, date: "2026-03-01"}));
+  const html = s.videoView({who: "House Finance", key: "H34|2025-2026", heading: "40 recordings", rows,
+    href: (id) => "/committee/H34/videos#v-" + id, pid: (r) => "p_" + r.id});
+  out.rows = (html.match(/class="vwrow"/g) || []).length;
+  out.held = /vwrest|data-vwall/.test(html);
+  // How far down the strip and the player reach, written on the view; watched, and not afresh.
+  const v = view(false);
+  s.vwStick(); const first = observed.length; s.vwStick();
+  out.props = v.box.props; out.watched = [first, observed.length, observed.includes(v.strip), observed.includes(v.main)];
+  // The keyboard on a row under the player: scrolled clear of it. One below it, or a wide
+  // screen's (its player does not stay), left where it is.
+  const focus = (top) => (heard.document.focusin || []).forEach((f) => f({target: {
+    closest: (q) => q === ".vw" ? v.box : null, getBoundingClientRect: () => ({top})}}));
+  focus(200); focus(400);
+  out.under = scrolled.splice(0);
+  v.main.pos = "static"; focus(200);
+  out.wideFocus = scrolled.splice(0);
+  // A row chosen on a phone before anything plays: what it covers brought up under the player;
+  // on a wide screen the player brought into view, as before.
+  for (const wide of [false, true]) {
+    const w = view(wide);
+    s.setView({who: "House Finance", rows: [{id: "A", date: "2026-05-12"}, {id: "B", date: "2026-05-05"}],
+      chosen: "A", pid: (r) => "m_" + r.id, href: (id) => "/committee/H34/videos#v-" + id});
+    s.vwChoose({dataset: {vwpick: "B"}, closest: (q) => q === ".vw" ? w.box : null, setAttribute() {}});
+    out[wide ? "chooseWide" : "choosePhone"] = w.n;
+  }
+} catch (e) { out.threw = e.constructor.name + ": " + e.message + " " + (e.stack || "").slice(0, 300); }
+process.stdout.write("\n@@" + JSON.stringify(out));
+"""
+
+
+@check("frontend", "on a phone a Videos view is a playlist as YouTube's: the player stays at the top under "
+                   "the tab strip while every recording scrolls on the page beneath it, and nothing the "
+                   "keyboard moves to is left under the player; a desktop's view as it was")
+def _videos_phone_playlist():
+    """The owner, 29 October 2026: "on a phone the player stays at the top
+    (sticky) while the list of recordings scrolls beneath it". The player and
+    its caption (.vwmain) stick under the tab strip that stays at the top
+    already (.rhead ~ .tabs), at --vwtop, the strip's height, which app.js's
+    vwStick measures and writes on the view with --vwstick, the player's
+    foot; whatever is under the player -- what the recording covers, the
+    rows, a bill's moment -- keeps that far from the top when it is scrolled
+    to (scroll-margin-top), and where the Tab key leaves it under the player
+    app.js puts the focus clear (focusin): Chromium keeps the margin for
+    scrollIntoView and not for Tab, and with the margin alone 31 of 40 rows
+    gone back up through with Shift+Tab rested under the player at 390px
+    (Playwright on real data, 29 October 2026; none with app.js's). The whole list is drawn: it is what
+    the page scrolls through, where it had been twenty rows and a button
+    (House Finance has 106; videoView drew them in under a millisecond on
+    real data). Still no box that scrolls inside a page that scrolls: the
+    page scrolls. A row chosen before a first press brings the recording's
+    description up under the player. On a wide screen nothing of this
+    applies: the player does not stick, and the view is as it was (the same
+    pixels before and after at 1280, measured 29 October 2026)."""
+    css = Path("src/pages/app.css").read_text(encoding="utf-8")
+    phone = _braced(css, "@media screen and (max-width:59.99em){")
+    wide = _braced(css, "@media screen and (min-width:60em){")
+    stick = re.search(r"\.vwmain\{position:sticky;top:var\(--vwtop,0px\);z-index:\d+;background:var\(--vwbg\)", phone)
+    clear = re.search(r"\.vwdet,\.vwdet :is\(a,button\),\.vwside :is\(a,button\)[^{]*\{scroll-margin-top:calc\("
+                      r"var\(--vwstick,0px\)", phone)
+    for ok, why in (
+            (stick, "on a phone the player does not stay at the top, under the tab strip, on its ground"),
+            (clear, "on a phone what is under the player is not kept clear of it when scrolled to"),
+            (".vwlist" not in phone and ".vwrest" not in phone.replace(".vwbills:not(.vwopen) .vwrest", ""),
+             "on a phone rows of the list are held back"),
+            ("sticky" not in wide and "--vwtop" not in wide,
+             "on a wide screen the player is made to stay: the desktop's view is to be as it was"),
+            (re.search(r"\n\.vw\{--vwbg:var\(--paper\)\}\n\.pane \.vw\{--vwbg:var\(--surface\)\}", css),
+             "the player's band is not the ground it stands on")):
+        assert ok, f"app.css: {why}"
+    got = _node_app(_VW_PHONE_HARNESS)
+    if got is None:
+        return "ok", "app.css keeps the player at the top on a phone; node is not here to drive app.js"
+    assert "threw" not in got, "the Videos view on a phone could not be driven: " + got["threw"]
+    assert got["rows"] == 40 and not got["held"], (
+        f"a list of 40 draws {got['rows']} rows, or holds some back behind a button: the whole list is "
+        "what a phone scrolls through")
+    assert got["props"] == {"--vwtop": "45px", "--vwstick": "313px"}, (
+        f"the strip's and the player's reach are not written on the view: {got['props']}")
+    assert got["watched"] == [2, 2, True, True], (
+        f"the strip and the player are not watched for a change of size, or are watched afresh each "
+        f"time, which reports again without end: {got['watched']}")
+    assert got["under"] == [-121] and got["wideFocus"] == [], (
+        f"the keyboard on a row under the player is not scrolled clear of it ({got['under']}), or a "
+        f"wide screen's is moved ({got['wideFocus']})")
+    assert got["choosePhone"] == {"det": ["start"], "player": [], "focus": 1} and \
+        got["chooseWide"] == {"det": [], "player": ["nearest"], "focus": 1}, (
+            f"a row chosen does not bring up what it covers under a phone's player, or a wide screen's "
+            f"player into view: {got['choosePhone']}, {got['chooseWide']}")
+    return "ok", ("on a phone the player stays under the strip over the whole list, what is under it kept "
+                  "clear of it by app.css and by app.js; a row chosen brings up its description; a "
+                  "desktop's view untouched")
 
 
 @check("frontend", "the committees index says its counts of bills and sessions are every "
