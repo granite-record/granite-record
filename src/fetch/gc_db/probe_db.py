@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-06.19
+# GRANITE_VERSION: 2026-09-06.20
 """
 What is actually in the General Court's public database.
 
@@ -107,7 +107,10 @@ PASSWORD = "PublicAccess"
 # record travels in R2's state/ (cloud_kit.json), and the night is its one
 # writer: the laptop never sends state up, and a failed connection there is
 # the person's to see where they ran it. A refusal from the web server does
-# not hold this host, and the reverse.
+# not hold this host by this record, and the reverse. But a refusal a person
+# must clear holds the night off this host too (the person's decision of 29
+# October 2026; nightly.from_database); one the night is testing itself does
+# not, for sixteen days at most (nightly.py, THE NIGHT'S KNOCK).
 HELD = Path("archive/sql-held.json")
 # nightly.py names the record by its full path for the fetches it starts in a
 # scratch folder (take_views), where "archive/" would be somewhere else.

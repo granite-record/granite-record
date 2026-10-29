@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.82
+# GRANITE_VERSION: 2026-09-04.83
 """
 The nightly run. Fetch the day's bulk files, rebuild, check, compile what
 readers reported and what changed -- and publish only if told to.
@@ -28,7 +28,9 @@ twice, the second time for two fetches at once, and the bill-text lane runs for
 days. So before any request: a refusal on file, at any age, means no fetch
 tonight (a run nobody watches does not decide a refusal is over) -- unless it
 is the one kind the night tests itself and its one request is answered (THE
-NIGHT'S KNOCK, below); the lane's
+NIGHT'S KNOCK, below), and while that kind stands the night takes the day's
+files from the General Court's database and asks the website nothing more;
+the lane's
 lock held means no fetch tonight; a build already running means no run at all.
 Deferring is not a failure and the log's first line says why. The lock is taken
 for the fetch and released before the hour of building, which asks nothing.
@@ -316,7 +318,10 @@ approved the night asking it, gently, as the fallback. On GitHub's night only:
                       nothing else wrong (2 October 2026, DB_AFTER_TRIES:
                       until then it was asked EMPTY_TRIES times first, half
                       an hour apart, and the database only after the last);
-                      no refusal from the web server is on file; no hold on
+                      no refusal from the web server is on file -- but one
+                      the night tests itself, whose held night asks the
+                      database with no export at all (THE NIGHT'S KNOCK,
+                      below); no hold on
                       the SQL host is on file (probe_db.py's
                       archive/sql-held.json); the installed files are there
                       to take the years and the row order from; and it is not
@@ -507,15 +512,34 @@ seconds. Each night after, before the day's files:
   a person's      a 403, a 429, the firewall's page, a redirect: the record is
                   a person's for good, nothing more is asked, and the "a
                   refusal is yours" check is told (person_alerts_of)
-  not answered,   the record stands, and the night is a night with a refusal
-  or not asked    on file: nothing asked, nothing built. The verdict's
-                  "knock" says which, and when the next is due
+  not answered,   the record stands, and the night is HELD (held_night; the
+  or not asked    person's decision of 29 October 2026): the website is asked
+                  nothing more, and the day's files are asked of the General
+                  Court's database (from_database(held=True), which asks
+                  refusal.whose() again), then the study committees'
+                  meetings, the term's data and the statutes from the same
+                  host; next session's bill requests and the lists, which
+                  only the website gives, are "not asked for" (WEB_HELD_SAID),
+                  the copies on file kept, and Members.txt is the installed
+                  one. The build, its checks and the gate follow as on any
+                  database night. The verdict's "knock" says which, "web" how
+                  the website stands, and the held line (held_line) is a
+                  warning of a kind that never holds the night
+                  (KIND_WEB_HELD). Sixteen days, a fourth relapse, the switch
+                  turned off -- any reason the record becomes a person's --
+                  close this door with the knock's: one reader for both
+
+A Monday's weekly under such a refusal asks the database's pieces and not the
+committee pages, and never knocks. DB_NIGHTS_MOST held nights in a row is the
+error it is for an export that comes back empty, saying the website has not
+been asked since the refusal and when the next knock and the person's day are.
 
 What the person hears follows whose the record is (alerts_of): one the night
-tests is no email of its own once the night is clean, and the day it is met
-says the knock's pattern and the day it becomes theirs at the latest, that
-nothing is needed of them on GitHub's side or the laptop's, and to set
-NIGHT_KNOCK to off before checking or clearing it early.
+tests is no email of its own once the night is clean -- a held night that
+builds is clean, and its line goes to the warnings' check (warns_of) -- and
+the day it is met says the knock's pattern and the day it becomes theirs at
+the latest, that nothing is needed of them on GitHub's side or the laptop's,
+and to set NIGHT_KNOCK to off before checking or clearing it early.
 
 THE GATE, IN SHADOW (6 October 2026)
 
@@ -1052,7 +1076,15 @@ KIND_FROM_DB = "the day's files from the General Court's database"
 KIND_DB_FILES = "the database's files: "
 KIND_DB_NOTHING = "the export's files after the database installed nothing: "
 KIND_STUDY_NOT_AGAIN = "the study committees' meetings not asked for: not asked twice"
-KINDS_FALLBACK = (KIND_FROM_DB, KIND_DB_FILES, KIND_DB_NOTHING, KIND_STUDY_NOT_AGAIN)
+# ... and A HELD NIGHT (THE NIGHT'S KNOCK; the person's decision of 29 October
+# 2026): the website not asked while a refusal the night tests itself is on
+# file, the day's files from the database. Its line (held_line) is a warning
+# of this kind, and what it leaves unasked of the website says WEB_HELD_SAID
+# (held_kind): neither holds a night, as no note of the fallback does.
+KIND_WEB_HELD = "the General Court's website held, for a refusal the night tests itself"
+WEB_HELD_SAID = "the General Court's website is held: a refusal the night tests itself is on file"
+KINDS_FALLBACK = (KIND_FROM_DB, KIND_DB_FILES, KIND_DB_NOTHING, KIND_STUDY_NOT_AGAIN,
+                  KIND_WEB_HELD)
 #
 # THE CHECKS OF TONIGHT'S BUILD (15 October 2026, the person's decision).
 # preflight.py --code runs before the night fetches or builds, so every check
@@ -1405,17 +1437,137 @@ def refusal_whose():
     return f"a person's to clear ({why}); clearing one is a person's decision, after netcheck.py"
 
 
-def night_tests():
+def whose_night():
     """Whether the refusal on file is one the night tests itself
-    (refusal.whose() "night") with no other fetch holding archive/.lock: the
-    knock's first condition (THE NIGHT'S KNOCK). False, the safe way, when
-    whose it is cannot be read."""
-    if not refusal.MARK.exists() or refusal.LOCK.exists():
-        return False
+    (refusal.whose() "night"): the one reader, for the knock and the
+    database alike. False, the safe way, when whose it is cannot be read."""
     try:
         return refusal.whose()[0] == "night"
     except Exception:                                           # noqa: BLE001
         return False
+
+
+def night_tests():
+    """Whether the refusal on file is one the night tests itself
+    (whose_night) with no other fetch holding archive/.lock: the knock's
+    first condition, and the held night's (THE NIGHT'S KNOCK)."""
+    if not refusal.MARK.exists() or refusal.LOCK.exists():
+        return False
+    return whose_night()
+
+
+def web_state(lifted=False):
+    """The verdict's "web" (THE NIGHT'S KNOCK): how the General Court's
+    website stands for tonight's refusal, in this project's words and times.
+    {"state": "held", "kind", "since", "knocks", "last", "by", "next",
+    "until"} while the night tests the refusal on file -- the knocks counted
+    unanswered, the last and whose, the next due, and the day it becomes a
+    person's; {"state": "person", "kind", "why"} once it is a person's;
+    {"state": "lifted", "kind", "since", "knocks", "lifted"} the night a
+    knock lifted it. None with nothing on file and nothing lifted."""
+    try:
+        if lifted:
+            k, ok = refusal.read_knocks()
+            x = ((k.get("lifted") or [{}])[-1] if ok else {}) or {}
+            doc = json.loads(x.get("text") or "{}")
+            return {"state": "lifted", "kind": doc.get("kind") if isinstance(doc, dict) else None,
+                    "since": refusal._stamp(x.get("since") or 0),
+                    "knocks": len([y for y in x.get("knocks") or [] if isinstance(y, dict)
+                                   and y.get("answer") not in ("not asked", "claimed")]),
+                    "lifted": x.get("utc")}
+        if not refusal.MARK.exists():
+            return None
+        doc = load_json(refusal.MARK)
+        kind = doc.get("kind") if isinstance(doc, dict) else None
+        who, why = refusal.whose()
+        if who != "night":
+            return {"state": "person", "kind": kind, "why": why}
+        c = refusal.chain()
+        due, at = refusal.knock_due()
+        tried = [x for x in c["counted"] if x.get("answer") != "claimed"]
+        last = tried[-1] if tried else {}
+        return {"state": "held", "kind": kind, "since": refusal._stamp(c["since"]),
+                "knocks": len(tried), "last": last.get("utc"), "by": last.get("by"),
+                "next": refusal._stamp(at) if at else None,
+                "until": refusal._stamp(c["since"] + refusal.knock_settings()[2] * refusal.DAY)}
+    except Exception as e:                                      # noqa: BLE001
+        return {"state": "unknown", "why": f"it could not be read ({type(e).__name__})"}
+
+
+def held_line(web):
+    """A held night's line (THE NIGHT'S KNOCK), from the verdict's "web": since
+    when the refusal has stood, how many knocks went unanswered, the last and
+    whose, the next due, and the day it becomes a person's at the latest. A
+    warning (KIND_WEB_HELD), and the warnings' own check's line (warns_of);
+    "" for any night that is not held. Short: the run's page cuts a note at
+    300 characters."""
+    if not isinstance(web, dict) or web.get("state") != "held":
+        return ""
+    n = int(web.get("knocks") or 0)
+    return (f"the General Court's website was held tonight, for a refusal the night tests itself, "
+            f"standing since {web.get('since')}: {n} knock{'' if n == 1 else 's'} unanswered"
+            + (f", the last at {web['last']} ({'the night' if web.get('by') == 'night' else 'hourly' if web.get('by') == 'hourly' else 'a knock'})"
+               if web.get("last") else "")
+            + (f"; the next due from {web['next']}" if web.get("next") else "")
+            + (f"; a person's by {web['until']} at the latest" if web.get("until") else ""))
+
+
+def held_said(said):
+    """Whether a result is one a held night left unasked of the website."""
+    return str(said).startswith(f"not asked for: {WEB_HELD_SAID}")
+
+
+def held_night(a, night):
+    """THE NIGHT'S KNOCK, A HELD NIGHT (the person's decision of 29 October
+    2026, D3 of the design): the refusal on file is one the night tests
+    itself and it still stands -- its knock not answered, not asked, not due,
+    or past the hours -- so the website is asked nothing more tonight, and the
+    day's files are asked of the General Court's database instead, under
+    the night's lock and on every condition from_database() keeps (held:
+    its gate asks refusal.whose() again, so sixteen days, a fourth relapse
+    or the switch turned off close this door with the knock's). Once they
+    are in: the study committees' meetings, the current term's data and the
+    statutes on their nights, from the same host; next session's bill
+    requests and the lists of calendars and journals, which only the website
+    gives, are "not asked for" (WEB_HELD_SAID), the copies on file kept.
+    The export is not asked, and "fetch" says the website was held. True
+    when the database's files went in."""
+    v = night.v
+    v["tried"], v["fetch_tries"] = [], 0
+    v["fetch"] = f"held: {WEB_HELD_SAID}"
+    say(f"\nTHE WEBSITE IS HELD: {WEB_HELD_SAID}. The day's files are asked of its database "
+        "instead, and nothing more of the website.")
+    db_day = False
+    try:
+        with refusal.hold("nightly"):
+            db_day = from_database(a, night, 0, datetime.now(), held=True,
+                                   because=WEB_HELD_SAID)
+            if db_day:
+                v["study_meetings"] = take_views(
+                    STUDY_NIGHTLY, "the study committees' meetings, from the database",
+                    shrink=SWAP_SHRINK)
+                v["term_data"] = take_term_data()
+                if statute_night(datetime.now()):
+                    v["statutes"] = take_views(
+                        STATUTE_VIEWS, "the statutes, from the database, on a night a new law "
+                        "takes effect", shrink=STATUTE_SHRINK)
+                for key, what in (("lsrs", "next session's bill requests"),
+                                  ("documents", "the list of calendars and journals")):
+                    v[key] = f"not asked for: {WEB_HELD_SAID}; the copy on file kept"
+                    say(f"  {what} not asked for: {WEB_HELD_SAID}")
+    except SystemExit as e:
+        say(f"  the lock was taken by someone else first "
+            f"(exit {e.code if isinstance(e.code, int) else 3})")
+    v["files_from"] = DB_SOURCE if db_day else "none"
+    # The nights the fallback's own checks stopped it, by night, as the
+    # export's path counts them (main).
+    if db_day:
+        v["db_stopped"] = 0
+        v.pop("db_stopped_day", None)
+    elif (v.get("day_files") or {}).get("why_code") == "guard":
+        v["db_stopped"] += 0 if v.get("db_stopped_day") == night.day else 1
+        v["db_stopped_day"] = night.day
+    return db_day
 
 
 def this_knock():
@@ -1819,6 +1971,15 @@ def main():
                 lifted = knock(a, night)
                 if lifted:
                     ok, why = gc_quiet()
+            # A HELD NIGHT (THE NIGHT'S KNOCK; the person's decision of 29
+            # October 2026): the refusal the night tests itself still stands
+            # after its knock, so the day's files come from the database and
+            # the website is asked nothing more (held_night). Not on a New
+            # term run, nor once the refusal is a person's for any reason:
+            # whose() closes this door with the knock's.
+            held = not ok and night is not None and not a.new_term and night_tests()
+            if night and (lifted or refusal.MARK.exists()):
+                night.v["web"] = web_state(lifted)
             if ok and night and a.new_term:
                 # THE TERM BEING LEFT IS FROZEN FIRST (5 October 2026), before
                 # anything is asked: a New term run that took the new term's
@@ -1831,7 +1992,13 @@ def main():
                     say("\nSTOPPED: " + NEW_TERM_FREEZE)
                     night.v["new_term"]["refused"] = REFUSED_FREEZE
                     return 1
-            if not ok:
+            if held:
+                db_day = installed = held_night(a, night)
+                say("\nThe day's files were installed from the General Court's database while its "
+                    "website is held." if db_day else
+                    "\nThe website is held, and the database installed nothing, so tonight's build "
+                    "would be yesterday's.")
+            elif not ok:
                 say(f"\nFETCH DEFERRED: {why}")
                 if night:
                     night.v["fetch"] = f"deferred: {why}"
@@ -2556,8 +2723,8 @@ def plain_why(v, weekly=False):
                 + (f": {step}." if step else "; its summary lists what fell short."))
     fetch = str(v.get("fetch") or "")
     # A night whose files came from the database installed them: the export's
-    # failure is its warning, not why it was not clean.
-    if from_db(v) and fetch.startswith("empty"):
+    # failure, or the website held, is its warning, not why it was not clean.
+    if from_db(v) and fetch.startswith(("empty", "held")):
         fetch = "installed"
     if new_term.get("refused"):
         why = NEW_TERM_REFUSED.get(new_term["refused"], NEW_TERM_DRY)
@@ -2596,6 +2763,12 @@ def plain_why(v, weekly=False):
         why = (NEW_TERM_HINT + " " + NEW_TERM_HOW + unpublished_note(v)
                + " If no term has begun, a file came back cut short: "
                "nothing was installed or built, and the next night asks again.")
+    elif fetch.startswith("held"):
+        # A held night (THE NIGHT'S KNOCK) whose database installed nothing.
+        why = ("The General Court's website was held, for a refusal the night tests itself, so "
+               "nothing was installed or built from it."
+               + (f" The knock: {v['knock']}." if v.get("knock") else "")
+               + db_tried(v))
     elif fetch.startswith("deferred"):
         why = ("The day's files were not asked for: a refusal on file or another "
                "fetch was in the way."
@@ -2770,7 +2943,8 @@ def db_tried(v):
         return ""
     tries = int(v.get("fetch_tries") or 1)
     after = int(df.get("after_try") or tries)
-    when = (" The night then turned to" if after >= tries else
+    when = (" The night turned to" if str(v.get("fetch") or "").startswith("held") else
+            " The night then turned to" if after >= tries else
             " After the first empty try the night turned to" if after == 1 else
             f" After {after} empty tries the night turned to")
     said = f"{when} the General Court's database, and {why}."
@@ -2894,6 +3068,17 @@ EMPTY_WAIT = 30         # minutes
 # compare with the installed files, which after a run of database nights are
 # the database's own. A night that never asked the export would need an
 # answer to each. It is a person's decision, and a piece of work of its own.
+#
+# The person made it for one case, on 29 October 2026: a held night (THE
+# NIGHT'S KNOCK, held_night), while a refusal the night tests itself stands,
+# for sixteen days at most. Its answers: Members.txt and the six lookups stay
+# as installed, and its database note says the website was not asked; the
+# page's own error is not asked, so not said, and "fetch" says the website
+# was held; the archive gains no day of the website's files, and the gap is
+# the hold's length; a new session year waits as a warning, and a new term
+# never comes from the database (from_database's first refusal); and the
+# database compared with itself is what DB_NIGHTS_MOST's error is for, and
+# what the sixteen days end.
 DB_AFTER_TRIES = 1
 TRIES_AFTER_DB = 1
 
@@ -3263,12 +3448,19 @@ def keep_db_copy(archive, day, files, block, src, was=None):
     return root
 
 
-def from_database(a, night, tries, since):
+def from_database(a, night, tries, since, held=False, because=None):
     """A night the export came back empty -- on its first try, since
     2 October 2026 (DB_AFTER_TRIES); `tries` is how many had been made: the
     seven day files that change, from the General Court's database. True when
     they were installed -- all seven, with tonight's Members.txt -- and False
     when nothing was.
+
+    `held`: a held night (THE NIGHT'S KNOCK, held_night), which asked no
+    export: the one way past a refusal on file, and only while refusal.whose()
+    says the night tests it itself -- asked here again, so that nothing but
+    that one reader opens this door. `because` is why, for the verdict's
+    day_files and its "tried"; the website not asked, Members.txt is the
+    installed one.
 
     The verdict's "day_files" is written here: its source ("database", or
     "none" with why_code and why when the fallback was tried and installed
@@ -3283,7 +3475,8 @@ def from_database(a, night, tries, since):
     from the last good export, and the warnings; and, of a night the guards
     stopped, each stop ("stops") and how many of them are on a ceiling that
     widens with the nights ("stops_wider"). A night that may not fall back at
-    all -- a New term run, a refusal on file, no installed files -- gets no
+    all -- a New term run, a refusal on file but a held night's, no installed
+    files -- gets no
     "day_files" and one line in the log. Either way the verdict's "tried"
     gains a line in this file's own words, after the export try that sent the
     night here.
@@ -3298,11 +3491,13 @@ def from_database(a, night, tries, since):
         tried.append("the database: not asked, because a New term run takes its files from "
                      "the export or not at all")
         return False
-    if refusal.MARK.exists():
+    if refusal.MARK.exists() and not (held and whose_night()):
         say("  not asked: a refusal from the web server is on file, and carrying on by "
             "another door is a person's decision")
         tried.append("the database: not asked, because a refusal from the web server is on file")
         return False
+    if held:
+        tried.append(f"the export: not asked, because {because or WEB_HELD_SAID}")
     try:
         was = DF.installed_files(".")
         DF.scope(was)
@@ -3314,7 +3509,8 @@ def from_database(a, night, tries, since):
                      "compare its files with")
         return False
     block = night.v["day_files"] = {"source": "none", "after_try": tries,
-                                    "because": "the export came back empty" + on_tries(tries)}
+                                    "because": because or "the export came back empty"
+                                    + on_tries(tries)}
 
     def stop(code, detail=""):
         block.update(why_code=code, why=DB_WHY[code] + (f": {detail}" if detail else ""))
@@ -3325,9 +3521,10 @@ def from_database(a, night, tries, since):
         return False
 
     try:
-        held = probe_db.hold_standing()
-        if held:
-            return stop("held", probe_db.hold_sentence(held))
+        # (Not `held`, which is the website's, above: this is the SQL host's.)
+        sql_hold = probe_db.hold_standing()
+        if sql_hold:
+            return stop("held", probe_db.hold_sentence(sql_hold))
         shutil.rmtree(DB_DAY, ignore_errors=True)
         t0 = time.time()
         rc = run(["fetch_day_db.py", "--fetch-only"],
@@ -3356,7 +3553,7 @@ def from_database(a, night, tries, since):
         # Tonight's Members.txt, from the website: a changed roster is taken
         # when it names the database's (dayfiles_from_db.roster_named, the
         # person's decision of 5 October 2026). Never written to the verdict.
-        facts["members"] = tonights_members(a.archive, since)
+        facts["members"] = None if held else tonights_members(a.archive, since)
         result = DF.judge(files, was, facts)
         block.update(years=facts["years"], files=facts["rows"],
                      differences=result["differences"], held=result.get("held"),
@@ -3371,7 +3568,7 @@ def from_database(a, night, tries, since):
         notes = list(result["warnings"]) + DF.lookup_notes(DB_DAY, ".")
         fetched = dict(files)
         carried = sorted(set(snapshot_gencourt.FILES) - set(DF.DAY_FILES))
-        members = tonights_members(a.archive, since)
+        members = None if held else tonights_members(a.archive, since)
         # MEMBERS.TXT IS THE WEBSITE'S, AND IS JUDGED AS THE WEBSITE'S
         # (2 October 2026). It went into the one install() with the seven
         # rebuilt files, so a short Members.txt alone tripped the shrink
@@ -3391,6 +3588,11 @@ def from_database(a, night, tries, since):
         elif members is not None:
             fetched["Members.txt"] = members
             block["members"] = "tonight's, from the website"
+        elif held:
+            carried.append("Members.txt")
+            block["members"] = "the installed one: the website was not asked tonight"
+            notes.append("Members.txt was not asked for, the website being held, so the "
+                         "installed one stays")
         else:
             carried.append("Members.txt")
             block["members"] = "the installed one: tonight's did not arrive"
@@ -4192,6 +4394,15 @@ def clock_kind(kind):
     clock's words being a kind no published night had carried. A late
     night's steps wait a day; its publish does not."""
     return ("not asked for: " + kind_of(ASK_CLOCK_SAID.format(hm="00:00"))) in str(kind)
+
+
+def held_kind(kind):
+    """Whether a kind of warning is a step a held night did not ask of the
+    website (WEB_HELD_SAID; THE NIGHT'S KNOCK): it never holds a night, as
+    no note of the database's fallback does (KINDS_FALLBACK). The night's
+    files are the database's, and what it left unasked waits for the
+    website, as a late night's steps wait for the clock."""
+    return ("not asked for: " + kind_of(WEB_HELD_SAID)) in str(kind)
 
 
 def take_lsrs():
@@ -5197,7 +5408,8 @@ def warning_reasons(warned, served, recent=()):
     `served` that build's kinds, or None where they are not known, and
     `recent` the kinds of the recent published nights (recent_kinds()). A
     kind of the database fallback's is never one (KINDS_FALLBACK), nor a step
-    the night's clock did not ask for (clock_kind). Each
+    the night's clock did not ask for (clock_kind), nor one a held night left
+    unasked of the website (held_kind). Each
     quotes tonight's own sentence, cut short, which the run's page carries in
     full as a warning already."""
     said_as = REVIEW_WARNING if served is not None else REVIEW_WARNING_UNKNOWN
@@ -5208,7 +5420,8 @@ def warning_reasons(warned, served, recent=()):
         # nor a part of the record that has stopped moving (KIND_NOT_MOVING),
         # nor a step the night's clock did not ask for (clock_kind):
         # each warns and never holds.
-        if kind in seen or fallback_kind(kind) or clock_kind(kind) or \
+        # Nor a step a held night left unasked of the website (held_kind).
+        if kind in seen or fallback_kind(kind) or clock_kind(kind) or held_kind(kind) or \
                 str(kind).startswith((KIND_BUILT_WARN, KIND_TERM_DATA, KIND_NOT_MOVING)):
             continue
         seen.add(kind)
@@ -5644,10 +5857,14 @@ class Night:
             # First, so that it leads the run's page.
             df, n = self.v["day_files"], int(self.v.get("db_nights") or 0)
             # These kinds, and the two below, never hold a night (KINDS_FALLBACK).
+            # A held night's files are the database's because the website is
+            # held, not because the export came back empty: it was not asked.
             out.append((KIND_FROM_DB,
                         "the day's files were built from the General Court's database, because "
-                        "its export came back empty"
-                        + on_tries(int(self.v.get("fetch_tries") or 1))
+                        + ("its website is held: a refusal the night tests itself is on file"
+                           if str(self.v.get("fetch") or "").startswith("held") else
+                           "its export came back empty"
+                           + on_tries(int(self.v.get("fetch_tries") or 1)))
                         + (f" (night {n} in a row)" if n > 1 else "")))
             out += [(KIND_DB_FILES + kind_of(w), str(w))
                     for w in df.get("warnings") or []]
@@ -5661,6 +5878,10 @@ class Night:
                         f"{int(self.v.get('fetch_tries') or 1)}: it came back empty first, and "
                         "the General Court's database, turned to then, installed nothing ("
                         + DB_WHY[code] + ")"))
+        # A HELD NIGHT (THE NIGHT'S KNOCK): its line, a kind that never holds.
+        said = held_line(self.v.get("web"))
+        if said:
+            out.append((KIND_WEB_HELD, said))
         empty = self.v.get("empty_rollcalls")
         if isinstance(empty, dict) and empty.get("files"):
             out.append(("roll-call files empty and taken",
@@ -5753,6 +5974,16 @@ class Night:
         """What is an error on the run's page and does not stop the night:
         the build still goes out, and somebody has to act."""
         n = int(self.v.get("db_nights") or 0)
+        web = self.v.get("web") if isinstance(self.v.get("web"), dict) else {}
+        if from_db(self.v) and n >= DB_NIGHTS_MOST and web.get("state") == "held":
+            # A held night's (THE NIGHT'S KNOCK): the cause is the website
+            # held, not the export, and the knock says when it ends.
+            return [f"the day's files have come from the General Court's database {n} nights "
+                    f"in a row: its website has not been asked since {web.get('since')} but for "
+                    "the knock, for a refusal the night tests itself; the next knock is due from "
+                    f"{web.get('next') or 'no time yet'}, and the refusal becomes yours by "
+                    f"{web.get('until')} at the latest. The committee list and the other lookups "
+                    "are that old"]
         if from_db(self.v) and n >= DB_NIGHTS_MOST:
             return [f"the day's files have come from the General Court's database {n} nights "
                     "in a row: its export came back empty on each of them, the committee list "
@@ -6134,10 +6365,15 @@ def warns_of(v):
     (WARN_FILE): the checks of tonight's build against the record that
     failed, the reminders among them; and each part of the record that has
     stopped moving (WHEN THE RECORD STOPS MOVING), the laptop's record of its
-    caption runs missing or old among them. [] for none."""
+    caption runs missing or old among them; and a held night's line while
+    the night tests a refusal itself (held_line; THE NIGHT'S KNOCK), which
+    is no alarm of the night's and no refusal of the person's yet. [] for
+    none."""
     said = built_warn_alert(v.get("built_checks"))
     held = held_for_approval(v)
-    return ([held] if held else []) + ([said] if said else []) + [s for _kind, s in not_moving_of(v)]
+    web = held_line(v.get("web"))
+    return ([held] if held else []) + ([said] if said else []) + ([web] if web else []) + \
+        [s for _kind, s in not_moving_of(v)]
 
 
 def refusal_alert(v):
@@ -6379,6 +6615,9 @@ def weekly(a):
 
     One at a time, a few seconds apart, under the same lock and the same
     refusal record as the night; the database first, the web server last.
+    Under a refusal the night tests itself (THE NIGHT'S KNOCK) the
+    database's are asked and the committee pages are not, which is no
+    failure of the week; it never knocks. A person's refusal defers it all.
 
     --new-term, the week a term's committee assignments are cleared and made
     again: the rosters, the committee list and the study committees' views are
@@ -6445,10 +6684,19 @@ def weekly(a):
             v["clean"] = True
             return 0
         ok, why = gc_quiet()
-        if not ok:
+        # A HELD WEEK (THE NIGHT'S KNOCK): under a refusal the night tests
+        # itself the database's pieces are asked, as on a held night, and the
+        # committee pages, the website's, are not -- which is no failure of
+        # the week. The weekly never knocks; Tuesday's night does. A
+        # refusal that is a person's defers everything, as ever.
+        held = not ok and not a.new_term and night_tests()
+        if not ok and not held:
             say(f"\nFETCH DEFERRED: {why}")
             v["results"]["all"] = f"deferred: {why}"
             return 1
+        if held:
+            say(f"\nTHE WEBSITE IS HELD: {WEB_HELD_SAID}. The database's pieces are asked; the "
+                "committee pages are not.")
         res = v["results"]
         with refusal.hold("weekly"):
             res["committee_members"], _ = take_json(
@@ -6468,7 +6716,9 @@ def weekly(a):
                               shrink=STATUTE_SHRINK)
             res.update({f"statutes {k}": r for k, r in laws.items()})
             time.sleep(4)
-            if refusal.MARK.exists():
+            if held:
+                res["committees"] = f"not asked for: {WEB_HELD_SAID}"
+            elif refusal.MARK.exists():
                 res["committees"] = "not asked: a refusal is on file"
             else:
                 res["committees"], rc = take_json(
@@ -6479,7 +6729,8 @@ def weekly(a):
                     say("\nREFUSED while fetching. Recorded; every fetch now waits for a person.")
         report = write_weekly_report(day, before)
         say(f"\n  what changed: {report}")
-        bad = [f"{k}: {r}" for k, r in res.items() if not str(r).startswith("installed")]
+        bad = [f"{k}: {r}" for k, r in res.items()
+               if not str(r).startswith("installed") and not held_said(r)]
         v["not_clean"] = bad
         v["clean"] = not bad
         code = 0 if not bad else 1

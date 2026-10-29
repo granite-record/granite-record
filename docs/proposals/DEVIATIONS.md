@@ -386,3 +386,81 @@ that made it.
     the checks' own (`_KnockNights`): the knock child there is the child's
     own gate, `knocking()` and `knocked()` in-process, with the answer the
     check gives; nothing is asked of anyone.
+
+## Commit 7: the database while held (D3)
+
+60. **C1's gate part is a check of its own, `_held_database_door`**, not
+    rows in `_refusal_kinds`. That check needs only `refusal`; the door is
+    `nightly.from_database()`'s, and a mutation of nightly's gate has to
+    fail a check that loads nightly. It calls `from_database(held=True)` on
+    fakes for every record `_refusal_kinds` holds to be a person's (and for
+    `KNOCK_DAYS` typed wrong and sixteen days on): nothing asked, and its
+    `tried` says a refusal is on file. It also holds the night's own drop
+    without `held=True` shut, and the door open for it with `held=True`.
+61. **`v["web"]` is set in `main()`, after the knock, by `web_state()`**, not
+    in `knock()` (design_final §5). A night that does not knock -- not due,
+    past the hours, a dry run -- is held all the same and needs the same
+    line, so one place sets it for every night with a record on file or a
+    lift. A held night's carries `last`, `by` and `until` beside the design's
+    `{state, kind, since, knocks, next, lifted}`, for the held line
+    (`held_line()`): the last knock and whose, and the day the record
+    becomes a person's.
+62. **DEVIATIONS 53's "the held line carries it" is held as two lines**: the
+    held line (`KIND_WEB_HELD`) says when the next knock is due, and the
+    run's page's "- the knock:" line (commit 6) carries the clock's "not
+    asked for: it is HH:MM UTC". The held line does not repeat the clock's
+    sentence; the run's page cuts a note at 300 characters.
+63. **A dry run takes the held path**: it asks the database and builds, and
+    never knocks (C6's dry-run rows hold both). design_final §2.3 step 3
+    names `--runner`, not `--new-term` and no lock held; a dry run takes the
+    database on an empty export today, and a held night is the same night
+    with no export.
+64. **The held night's later steps follow the database only when it
+    installed**, as the export's path does (`rc == 0 or db_day`). The
+    study committees' meetings, the term's data and the statutes are asked
+    then. The bill requests and the lists are said "not asked for:
+    <WEB_HELD_SAID>; the copy on file kept" then too. A held night whose
+    database installed nothing builds nothing and says nothing of them;
+    `plain_why()`'s held sentence says why, with the knock's line.
+65. **No `db_open` variable**: `held_night()` is its own path (the export's
+    loop is not entered), so it asks the study views, term data and
+    statutes itself, which is what design_final §5's `db_open = not
+    MARK.exists() or held` amounts to on that path. The export's block
+    still reads `not refusal.MARK.exists()` for each, unchanged.
+66. **`from_database(held=True)` writes its own first `tried` line**, "the
+    export: not asked, because <because>", before the database's, so a held
+    night's `tried` says the export was not asked. `because` also goes to
+    `day_files.because` (design_final §5).
+67. **`from_database()`'s SQL-host hold is renamed `sql_hold`**: `held` is now
+    the parameter, the website's. Behaviour unchanged.
+68. **Members.txt on a held night is the installed one**, its database note
+    "the installed one: the website was not asked tonight" and its warning
+    "Members.txt was not asked for, the website being held, so the installed
+    one stays" (design_final §2.3's table: "not asked: the website is held").
+    `tonights_members()` is not read even when the archive holds a
+    Members.txt the website served earlier that day; C6's not-due row plants
+    one, so that a held night reading it fails the check.
+69. **Rule A is held by three guards, and C7's 311k fails only with the
+    loop's two and the door's `held and` removed together**: the export loop
+    breaks on anything but an empty export and on a refusal on file, and
+    `from_database()` opens only with `held=True`, which the loop never
+    passes. Any one left in place still stops the drop night before the
+    database, so the mutation proof takes all three away.
+70. **`_nightly_falls_back`'s pin on `from_database(` calls counts two**: the
+    export loop's and `held_night()`'s, the second required to pass
+    `held=True`. Its runs 310h (held, due later) and 311k (rule A) are new;
+    310, 311, 311b and 317 and the direct call are unchanged and green.
+71. **C14 is rows of `_nightly_weekly`**, as design_final names. Its held week
+    leaves `preflight.py` (the week's own code checks, run as a child) out of
+    the list of what was asked before comparing.
+72. **The held `DB_NIGHTS_MOST` sentence says "the next knock is due from"**,
+    the night's own next morning, and "the refusal becomes yours by". Until
+    commit 8 there is no hourly knock to promise (DEVIATIONS 51).
+73. **A held night counts `db_stopped` in `held_night()`**, by night as the
+    export's path does: a guard's stop once a night, nothing after a night
+    that installed.
+74. **C18's sequence 2 is sixteen days of held nights, each `--runner` then
+    `--close` read as the ending step pings them** (the addendum: it ends at
+    16 days, not the fourth knock). The third check is up through day 15
+    and down on day 16; the night's own check is up on held nights 1 to 6
+    and down from the seventh, whose error names the website held.

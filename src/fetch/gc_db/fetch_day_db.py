@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-10-01.6
+# GRANITE_VERSION: 2026-10-01.7
 """
 The day's records from the General Court's database, into .night/dbday/.
 
@@ -20,8 +20,10 @@ came back empty on every try and nothing was built. The person approved the
 night asking the database, gently, as the fallback. nightly.py starts this
 when, and only when, the export came back empty -- since 2 October 2026 on
 its first try (nightly.DB_AFTER_TRIES), and until then on its sixth -- with
-no refusal from the web server and no hold on this host on file, and once a
-night at most. This fetches;
+no refusal a person must clear and no hold on this host on file, and once a
+night at most; or, since 29 October 2026, on a held night, with no export,
+while a refusal the night tests itself stands, for sixteen days at most
+(nightly.py, THE NIGHT'S KNOCK). This fetches;
 dayfiles_from_db.py, which asks nobody, reshapes what came back into the
 seven day files and guards them; nightly.py installs.
 
@@ -62,8 +64,11 @@ WHAT STOPS IT
 
 The web server's refusal record does not govern this host, and this never
 calls refusal.check(): a refusal there is a different problem with a different
-cause. nightly.py will not START this with a refusal on file, which is the
-person's rule about carrying on by another door.
+cause. nightly.py will not START this with a refusal a person must clear on
+file, which is the person's rule about carrying on by another door; with one
+the night tests itself it does, on a held night, for sixteen days at most
+(the person's decision of 29 October 2026; refusal.whose() is the one reader
+of which a refusal is).
 
 WHAT IT WRITES
 

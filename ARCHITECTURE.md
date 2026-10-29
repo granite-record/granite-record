@@ -212,13 +212,24 @@ turns at once to the SQL host the General Court publishes credentials for:
 `src/parse/dayfiles_from_db.py` rebuilds the seven day files that change and
 guards them against the installed ones, and they go in through
 `snapshot_gencourt.install()`, shrink rule and all -- every one of them or
-none. It does not happen with a refusal on file, with a hold on the SQL host
+none. It does not happen with a refusal on file that is a person's, with a
+hold on the SQL host
 (`archive/sql-held.json`), without installed files to take the years and the
 row order from, or on a New term run. When the database cannot be used the
 export is asked once more, half an hour later. The verdict says where the
 installed files came from (`files_from`, `day_files`), a warning leads the
 run's page, and seven such nights in a row (`DB_NIGHTS_MOST`) is an error
-there, though the build still goes out.
+there, though the build still goes out. And while a refusal the night tests
+itself stands -- its knock not answered, or not due -- the night is held
+(THE NIGHT'S KNOCK in `nightly.py`, since 29 October 2026, the person's
+decision): the export is not asked, the day's files come from the database
+the same way, `Members.txt` and the lookups stay as installed, next session's
+bill requests and the lists are not asked for and keep their copies, and the
+build goes out as on any database night. `from_database()` asks
+`refusal.whose()` again, so the door shuts with the knock's: at sixteen days,
+a fourth relapse, the switch turned off, or any other reason the refusal
+becomes a person's. The weekly, under such a refusal, asks the database's
+pieces and not the committee pages, and never knocks.
 
 **The term turnover.** The General Court's files describe the current term
 only, so before they turn over, the finished term's inputs are frozen:
@@ -300,7 +311,9 @@ workflows read it as `on`). A refusal the night tests itself is not told to
 it: the night's own alert says, on a night that is not clean, the knock's
 pattern and the day the refusal becomes the person's at the latest, and to
 set `NIGHT_KNOCK` to `off` before checking or clearing it early
-(`refusal_alert()`). The publish check
+(`refusal_alert()`); a held night that builds is clean, and its line -- the
+knocks unanswered, the next due, the day it becomes the person's -- goes to
+the warnings' check (`warns_of()`). The publish check
 (`HEALTHCHECKS_PUBLISH_URL`) is pinged only once production has been
 deployed, so it goes quiet -- and Healthchecks writes -- when the live site
 has stood still longer than its period allows: a held night nobody approved,
