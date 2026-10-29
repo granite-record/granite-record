@@ -3935,7 +3935,14 @@ def asking_left(minutes):
     some milliseconds later. And it must fall BEFORE ASK_UNTIL, not on it
     (the review of 27 October 2026): a step allowed to end exactly at 12:00,
     killed a few milliseconds after its gate read the clock, was still
-    asking at 12:00:00.0xx."""
+    asking at 12:00:00.0xx.
+
+    A reading at or past ASK_UNTIL but still inside the window, 12:00 to
+    13:30, says it is outside the hours, as one past 13:30 does (the review
+    of 29 October 2026): the deadline's sentence, that a step "could still
+    be asking at 12:00", is untrue once 12:00 has passed, and a night GitHub
+    started a couple of hours late, the one the clock is for, is the one
+    that reaches these steps then."""
     from datetime import timedelta
     now = refusal._utc()
     daily = next(w for w in refusal.NIGHT_WINDOWS if w[0] is None)
@@ -3943,9 +3950,9 @@ def asking_left(minutes):
              f"{ASK_UNTIL[0]:02d}:{ASK_UNTIL[1]:02d} UTC")
     w = refusal.night_window()
     it_is = ASK_CLOCK_SAID.format(hm=f"{now:%H:%M}")
-    if not w or daily[3] not in w[2]:
-        return None, f"{it_is}, outside the hours the night asks the General Court in, {hours}"
     until = now.replace(hour=ASK_UNTIL[0], minute=ASK_UNTIL[1], second=0, microsecond=0)
+    if not w or daily[3] not in w[2] or now >= until:
+        return None, f"{it_is}, outside the hours the night asks the General Court in, {hours}"
     deadline = now + timedelta(minutes=minutes)
     if deadline >= until:
         return None, (f"{it_is}, and a step of up to {minutes} minutes could still be asking "

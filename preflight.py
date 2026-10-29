@@ -92132,6 +92132,12 @@ def _night_clock(NI, R):
         after its gate read the clock was still asking at 12:00:00.0xx);
       - a step allowed is given its deadline, the gate's own reading of the
         clock and its minutes, which its kill is counted to;
+      - a step kept out says why in words true at that reading (the review
+        of 29 October 2026): from 12:00 to the window's 13:30, still inside
+        refusal's window, it is outside the hours, as at 16:00 and 07:59,
+        and never "could still be asking at 12:00", which 12:01 and 12:30
+        had said of a 12:00 already passed; before 12:00, 11:50 with fifteen
+        minutes, it is the deadline's sentence, not the hours';
       - by refusal's own clock, in UTC, with no argument: the runner's clock
         is Eastern (nightly.yml sets it), so a test time written as Eastern,
         nine in the morning at -04:00, is 13:00 UTC and may not ask, and one
@@ -92143,23 +92149,40 @@ def _night_clock(NI, R):
     from datetime import datetime, timedelta
     saved = os.environ.get(R.CLOCK_ENV)
     try:
-        for t, minutes, want in (("2026-10-27T07:59:00Z", 1, False),
-                                 ("2026-10-27T08:01:00Z", 1, True),
-                                 ("2026-10-27T11:40:00Z", 15, True),
-                                 ("2026-10-27T11:50:00Z", 15, False),
-                                 ("2026-10-27T11:45:00Z", 15, False),     # ends on 12:00
-                                 ("2026-10-27T11:44:59Z", 15, True),      # a second before
-                                 ("2026-10-27T12:01:00Z", 1, False),
-                                 ("2026-10-27T16:00:00Z", 1, False),
-                                 ("2026-10-26T04:30:00Z", 1, False),      # a Monday: the weekly's
-                                 ("2026-10-27T09:00:00-04:00", 1, False),  # 13:00 UTC
-                                 ("2026-10-27T09:00:00", 1, True)):        # no zone: UTC
+        # (time, minutes, may ask, and where not, the sentence that says why:
+        # outside the hours, or the deadline's, still asking at 12:00)
+        hours ="outside the hours the night asks the General Court in, 08:00 to 12:00 UTC"
+        edge = "could still be asking at 12:00 UTC"
+        for t, minutes, want, said in (("2026-10-27T07:59:00Z", 1, False, hours),
+                                       ("2026-10-27T08:01:00Z", 1, True, None),
+                                       ("2026-10-27T11:40:00Z", 15, True, None),
+                                       ("2026-10-27T11:50:00Z", 15, False, edge),
+                                       ("2026-10-27T11:45:00Z", 15, False, edge),  # ends on 12:00
+                                       ("2026-10-27T11:44:59Z", 15, True, None),  # a second before
+                                       ("2026-10-27T11:59:59Z", 1, False, edge),
+                                       ("2026-10-27T12:00:00Z", 1, False, hours),
+                                       ("2026-10-27T12:01:00Z", 1, False, hours),
+                                       ("2026-10-27T12:01:00Z", NI.LSRS_MINUTES, False, hours),
+                                       ("2026-10-27T12:30:00Z", NI.LISTING_MINUTES, False, hours),
+                                       ("2026-10-27T13:29:00Z", 1, False, hours),
+                                       ("2026-10-27T16:00:00Z", 1, False, hours),
+                                       ("2026-10-26T04:30:00Z", 1, False, hours),  # the weekly's
+                                       ("2026-10-27T09:00:00-04:00", 1, False, hours),  # 13:00
+                                       ("2026-10-27T09:00:00", 1, True, None)):  # no zone: UTC
             os.environ[R.CLOCK_ENV] = t
             deadline, why = NI.asking_left(minutes)
             ok = deadline is not None
             assert ok is want, (f"at {t}, a step of {minutes} minutes {'may' if ok else 'may not'} "
                                 f"ask the General Court ({why}); it {'may' if want else 'may not'}")
             assert ok or (why and re.fullmatch(r"[A-Za-z0-9 ,.:;'()/-]{1,200}", why)), why
+            # And true at its reading (the review of 29 October 2026): from
+            # 12:00 to 13:30, inside refusal's window, a step "could still be
+            # asking at 12:00" had been said of a 12:00 already passed.
+            it_is = NI.ASK_CLOCK_SAID.format(hm=f"{R._utc():%H:%M}")
+            other = edge if said == hours else hours
+            assert ok or (why.startswith(it_is + ", ") and said in why and other not in why), (
+                f"at {t}, a step of {minutes} minutes kept out says {why!r}, where it should "
+                f"begin {it_is!r} and say {said!r}")
             assert not ok or deadline == R._utc() + timedelta(minutes=minutes), (
                 f"at {t}, a step of {minutes} minutes was given {deadline} to end by, not the "
                 "gate's own reading of the clock and its minutes")
@@ -92371,6 +92394,11 @@ def _clock_steps(NI, R, CA, FL):
             it_is = f"not asked for: it is {t[11:16]} UTC"
             assert lsrs.startswith(it_is) and lsrs.endswith("the earlier 1 kept") and \
                 docs.startswith(it_is) and docs.endswith("the earlier 3 kept"), (lsrs, docs)
+            # As the page and the verdict say it: outside the hours, at 12:30
+            # as at 07:30, never still asking at a 12:00 already passed (the
+            # review of 29 October 2026).
+            assert all(f"{it_is}, outside the hours" in x and "could still be asking" not in x
+                       for x in (lsrs, docs)), (lsrs, docs)
             assert all(f.read_bytes() == b for f, b in on_file.items()), "a copy on file moved"
             night.v.update(lsrs=lsrs, documents=docs)
             late = [w for w in night.warned() if "not asked for" in w[1]]
