@@ -36962,7 +36962,7 @@ def _session_consent_only_the_calendar(SD):
         path = root / "narratives.json"
         path.write_text(json.dumps({"2025-2026": {
             b: {"events": e} for b, e in bills.items()}}), encoding="utf-8")
-        days = SD.load(path)
+        days = SD.load(path, journals={})
 
         def consent(body, date, bill):
             d = days.get((body, date))
@@ -37088,7 +37088,7 @@ def _session_corrected_dates(N, SD):
         def days_of(narr):
             p = root / "narratives.json"
             p.write_text(json.dumps(narr), encoding="utf-8")
-            return SD.load(p)
+            return SD.load(p, journals={})
 
         def reconsider(narr):
             return next(e for e in narr["2025-2026"]["HB1491"]["events"]
@@ -37683,7 +37683,7 @@ def _session_consent_removed_anywhere(JD, SD, BSP):
     root = Path(tempfile.mkdtemp())
     try:
         (root / "narratives.json").write_text(json.dumps(narr), encoding="utf-8")
-        day = SD.load(root / "narratives.json")[("H", "1999-04-14")]
+        day = SD.load(root / "narratives.json", journals={})[("H", "1999-04-14")]
         assert sorted(i.bill for i in day.items if i.consent) == ["HB522", "HB605"], (
             "the fixture's two bills are not both on the day's consent list")
         page = BSP.render(day, found, {}, {}, {}, _html.escape)[0]
@@ -37697,7 +37697,7 @@ def _session_consent_removed_anywhere(JD, SD, BSP):
         # Without HB 605 on the list, the same journal changes nothing.
         narr["1999-2000"].pop("HB605")
         (root / "narratives.json").write_text(json.dumps(narr), encoding="utf-8")
-        day = SD.load(root / "narratives.json")[("H", "1999-04-14")]
+        day = SD.load(root / "narratives.json", journals={})[("H", "1999-04-14")]
         assert BSP.render(day, found, {}, {}, {}, _html.escape)[0] == \
             BSP.render(day, {}, {}, {}, {}, _html.escape)[0], (
             "removals printed outside the segment, for bills not on the list, changed the page")
@@ -37717,7 +37717,7 @@ def _session_consent_removed_anywhere(JD, SD, BSP):
             ev("1999-04-14", "Special Order to after the bills removed from the Consent "
                "Calendar, Without Objection, MA", "floor", action="Special Order", motion="MA")]}
         (root / "narratives.json").write_text(json.dumps(narr), encoding="utf-8")
-        day = SD.load(root / "narratives.json")[("H", "1999-04-14")]
+        day = SD.load(root / "narratives.json", journals={})[("H", "1999-04-14")]
         assert sorted(i.bill for i in day.items if i.consent) == ["HB522"], (
             "HB 605's recommittal, read whole, is a consent item")
         page = BSP.render(day, found, {}, {}, {}, _html.escape)[0]
@@ -37978,7 +37978,7 @@ def _session_speech_before_its_motion(N, JD, SD, BSP):
     try:
         (root / "narratives.json").write_text(
             json.dumps({"1999-2000": {"HB110": {"events": rec["events"]}}}), encoding="utf-8")
-        day = SD.load(root / "narratives.json")[("H", "1999-02-10")]
+        day = SD.load(root / "narratives.json", journals={})[("H", "1999-02-10")]
         nobody = type("Nobody", (), {"slug": lambda self, body, name: None})()
         page = BSP.render(day, {"attributions": attrs}, {}, {}, nobody, _html.escape)[0]
     finally:
@@ -38707,7 +38707,7 @@ def _session_speech_on_its_motion(JD, SD, BSP):
     root = Path(tempfile.mkdtemp())
     try:
         (root / "narratives.json").write_text(json.dumps(narr), encoding="utf-8")
-        day = SD.load(root / "narratives.json")[("H", "1999-04-14")]
+        day = SD.load(root / "narratives.json", journals={})[("H", "1999-04-14")]
         nobody = type("Nobody", (), {"slug": lambda self, body, name: None})()
         page = BSP.render(day, {"attributions": attrs}, {}, {}, nobody, _html.escape)[0]
         txt = re.sub(r"\s+", " ", re.sub(r"<[^>]+>", " ", page))
@@ -44311,6 +44311,59 @@ def _session_fixture_hermetic(SD, BSP, VP, RO):
                   "an empty folder, and each of those is live")
 
 
+# NOR DOES A CHECK THAT CALLS load() ITSELF (29 October 2026). Seven checks
+# draw their sittings with session_days.load() on a narratives.json of their
+# own, not through _sitting_fixture, and gave it no journals, so
+# _journal_day read the working folder's journals/ and journals_senate/ for
+# each of their days: the owner's laptop holds every year of them, GitHub's
+# machine none. Nothing those checks assert changed with what it read, which
+# is why none of them failed; they now give load() journals={}, as the
+# fixture does.
+@check("session", "a check that draws sittings with load() on a record of its own reads none "
+       "of the Journals on disk", needs=("session_days", "rollcall_outcomes"))
+def _session_checks_read_no_journals(SD, RO):
+    """Every code check that calls session_days.load() itself is run again
+    with the two caches the disk's Journals are read through --
+    session_days._SAT, a chamber's year of journals/ or journals_senate/, and
+    rollcall_outcomes._DIVISIONS, a year's House divisions in words --
+    replaced by ones that note each year asked of them. None may be asked,
+    and each check must run to its end, or the silence proves nothing."""
+    import inspect
+
+    class Asked(dict):
+        def __init__(self, log):
+            super().__init__()
+            self.log = log
+
+        def __contains__(self, key):
+            self.log.append(key)
+            return super().__contains__(key)
+
+    calls = re.compile(r"\bSD\.load\(")
+    them = [c for c in CHECKS if c["group"] != "data"
+            and c["fn"] is not _session_checks_read_no_journals
+            and calls.search(inspect.getsource(c["fn"]))]
+    read, ended = {}, {}
+    for c in them:
+        log = []
+        kept = SD._SAT, RO._DIVISIONS
+        SD._SAT, RO._DIVISIONS = Asked(log), Asked(log)
+        try:
+            ended[c["fn"].__name__] = _check_outcome(c)
+        finally:
+            SD._SAT, RO._DIVISIONS = kept
+        if log:
+            read[c["fn"].__name__] = sorted({tuple(k) for k in log})
+    assert len(them) >= 8, f"only {len(them)} checks call session_days.load() themselves"
+    short = {n: o for n, o in ended.items() if o[0] in ("FAIL", "ERROR")}
+    assert not short, f"checks that did not run to their end, so read nothing by it: {short}"
+    assert not read, (f"{len(read)} checks read the Journals on disk for a record of their own; "
+                      f"give load() journals= (none: {{}}): "
+                      + "; ".join(f"{n} {ks[:4]}" for n, ks in read.items()))
+    return "ok", (f"{len(them)} checks that call load() on a record of their own read no "
+                  "chamber's year of Journals and no House divisions from the disk")
+
+
 @check("session", "before the roll-call file, every roll call the docket states is "
        "drawn from the docket", needs=("session_days",))
 def _session_rollcalls_docket_only(SD):
@@ -44966,7 +45019,7 @@ def _session_recess_and_rule_days(SD, BSP):
     root = Path(tempfile.mkdtemp())
     try:
         (root / "narratives.json").write_text(json.dumps(narr), encoding="utf-8")
-        days = SD.load(root / "narratives.json")
+        days = SD.load(root / "narratives.json", journals={})
 
         def bills(body, date):
             d = days.get((body, date))
@@ -45113,7 +45166,7 @@ def _session_unmarked_recess(SD, BSP, shell):
     root = Path(tempfile.mkdtemp())
     try:
         (root / "narratives.json").write_text(json.dumps(narr), encoding="utf-8")
-        days = SD.load(root / "narratives.json")
+        days = SD.load(root / "narratives.json", journals={})
 
         def bills(body, date):
             d = days.get((body, date))
