@@ -1,0 +1,14 @@
+const { chromium } = require('playwright');
+(async () => { const b = await chromium.launch(); const p = await b.newPage({ viewport: { width: 1280, height: 900 } });
+  await p.goto((process.env.A11Y_BASE || 'https://dry-run.graniterecord.pages.dev') + '/bill/2026/hb1681', { waitUntil: 'networkidle' });
+  await p.click('#tab_HB1681_1'); await p.waitForTimeout(500);
+  const sel = '#pane_HB1681_1 button[aria-pressed]';
+  const read = () => p.$$eval(sel, bs => bs.slice(0, 3).map(b => b.getAttribute('aria-pressed')).join(','));
+  const count = () => p.evaluate(() => document.querySelectorAll('#pane_HB1681_1 li:not([hidden]), #pane_HB1681_1 tr:not([hidden])').length);
+  console.log('start', await read(), await count());
+  await p.click(sel); await p.waitForTimeout(500); console.log('after click', await read(), await count());
+  await p.click(sel); await p.waitForTimeout(500); console.log('after 2nd click', await read(), await count());
+  await (await p.$(sel)).focus(); await p.keyboard.press('Enter'); await p.waitForTimeout(500); console.log('after Enter', await read(), await count());
+  await p.keyboard.press('Space'); await p.waitForTimeout(500); console.log('after Space', await read(), await count());
+  console.log(await p.$eval(sel, e => e.outerHTML.slice(0, 300)));
+  await b.close(); })();

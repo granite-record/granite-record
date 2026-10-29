@@ -1,0 +1,5 @@
+node_modules/
+shots/run/
+results/sweep.json
+results/measure.json
+results/incomplete.json
