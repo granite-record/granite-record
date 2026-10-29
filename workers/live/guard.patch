@@ -1,0 +1,75 @@
+--- a/.claude/hooks/guard.py
++++ b/.claude/hooks/guard.py
+@@ -166,6 +166,58 @@
+     return None
+ 
+ 
++# What starts wrangler: the word itself, or a launcher before it (npx.cmd is
++# how PowerShell runs it), past any NAME=value and flags.
++LAUNCHERS = {"npx", "npx.cmd", "npx.exe", "bunx", "pnpm", "pnpm.cmd", "yarn", "yarn.cmd", "dlx",
++             "exec", "&", "call", "cmd", "cmd.exe", "/c"}
++
++
++def _wrangler(words):
++    """wrangler's own arguments when this segment runs it, else None."""
++    for i, w in enumerate(words):
++        b = w.rsplit("/", 1)[-1].lower()
++        if re.fullmatch(r"wrangler(?:\.cmd|\.exe)?", b):
++            return words[i + 1:]
++        if b in LAUNCHERS or w.startswith("-") or re.fullmatch(r"[A-Za-z_]\w*=\S*", w):
++            continue
++        return None
++    return None
++
++
++def _flag(args, long, short):
++    """The value of --long X, --long=X, -s X or -s=X, or None."""
++    for i, a in enumerate(args):
++        for f in (long, short):
++            if a == f and i + 1 < len(args):
++                return args[i + 1]
++            if a.startswith(f + "="):
++                return a[len(f) + 1:]
++    return None
++
++
++def _live_wrangler(args, seg, cwd):
++    """(decision, reason) for wrangler aimed at the live Worker, or None.
++    wrangler dev with its production environment, or --remote, runs the
++    Worker's own code against the General Court's database from here, so it
++    is denied; a put of control.json is the person's switch, so it asks."""
++    conf = _flag(args, "--config", "-c")
++    live = (conf is not None and re.search(r"(?:^|/)workers/live(?:/|$)", conf.replace("\\", "/"))) or (
++        conf is None and _under(_rel(".", cwd), ("workers/live",)))
++    env = _flag(args, "--env", "-e")
++    real = (env or "").strip("'\"") == "production" or "--remote" in args or re.search(
++        r"\bCLOUDFLARE_ENV=['\"]?production\b", seg)
++    sub = next((a for a in args if not a.startswith("-")), None)
++    if sub == "dev" and live and real:
++        return "deny", ("wrangler dev with the live Worker's production environment, or --remote, "
++                        "runs it from here against the General Court's database, the host only "
++                        "production may name (workers/live/DESIGN.md 6.2). Run it at the top level, "
++                        "against fake_tds.js on 127.0.0.1, or ask the person.")
++    if "graniterecord-live/control.json" in seg and re.search(r"\br2\s+object\s+put\b", seg):
++        return "ask", ("this turns the live layer's reads of the General Court's database on or "
++                       "off: control.json is the person's one switch (workers/live/README.md).")
++    return None
++
++
+ def bash(cmd, cwd):
+     """(decision, reason) for a shell command."""
+     flat = cmd.replace("\\", "/")
+@@ -279,8 +331,11 @@
+         if head in ("publish", "publish.bat", "publish.cmd") or re.search(
+                 r"(?:^|\s|/)publish\.bat\b", seg):
+             return "ask", "publish deploys the live site from this machine."
+-        if head in ("wrangler", "wrangler.cmd") or re.search(r"\b(?:npx|bunx|pnpm\s+dlx)\s+wrangler",
+-                                                             seg):
++        wargs = _wrangler(words)
++        if wargs is not None or re.search(r"\b(?:npx|bunx|pnpm\s+dlx)\s+wrangler", seg):
++            said = _live_wrangler(wargs or [], seg, cwd)
++            if said:
++                return said
+             return "ask", ("wrangler reaches the Cloudflare account: the live site, the D1 "
+                            "database of followers' emails, the R2 bucket, the Workers.")
+         if re.search(r"api\.cloudflare\.com|\.r2\.cloudflarestorage\.com", seg):

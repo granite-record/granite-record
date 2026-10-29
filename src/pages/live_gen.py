@@ -1,40 +1,55 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-10-26.1
+# GRANITE_VERSION: 2026-10-26.2
 """
-The constants the live Worker (workers/live/) takes from this repository,
-written into workers/live/live.gen.js from the files that hold them.
+What the live Worker (workers/live/) shares with the rest of this repository,
+written into workers/live/live.gen.js from where each value is kept.
 
     python3 src/pages/live_gen.py            # write it
     python3 src/pages/live_gen.py --check    # say whether it is current; write nothing
 
-ONE SOURCE EACH, as src/pages/follow_site.py does for the email sender: a
-value the Worker needs is read here from where the repository keeps it and
-written into one plain module the Worker imports, and preflight fails while
-the committed file differs from what this would write. The live layer's
-design (26 October 2026, approved by the person as "defaults") names this
-file and this pattern in its section 6.2.
+    CHANNELS       src/fetch/youtube/fetch_channel_index.py CHANNELS: the
+                   House's and the Senate's YouTube channel, by chamber
+    NIGHT_WINDOWS  refusal.py NIGHT_WINDOWS: the hours, in UTC, the night
+                   asks the General Court, which the Worker keeps out of
+                   (votes, a later branch: the YouTube half asks YouTube only)
+    SESSION_TITLE  here: the beginning of a stream's title stem that makes it
+                   a chamber's session stream, "House Session (01/07/2027)"
+    SQL_LOGIN      src/fetch/gc_db/probe_db.py DATABASE, USER and PASSWORD:
+                   the read-only login the General Court publishes for its
+                   public SQL database. Published, so not a secret
+                   (SECURITY.md says so). THE HOST IS DELIBERATELY NOT HERE:
+                   workers/live/wrangler.toml names it under production
+                   alone, so nothing a local run or a test imports can reach it.
+    VOTE_WORD      src/fetch/gc_db/fetch_rollcalls_db.py VOTE_WORD: a ballot's
+                   code in RollCallHistory, and the record's word for it
+    BALLOT_CHAR    VOTE_WORD's codes as the live votes file's one character a
+                   ballot (design section 2.5): Y Yea, N Nay, E excused, X not
+                   excused, P presiding, and . for no vote recorded. A word
+                   VOTE_WORD gains that BALLOT_CHARS below does not know stops
+                   this: what a new code means on the page is a decision, not
+                   a default.
 
-    SQL_LOGIN     probe_db.py's DATABASE, USER and PASSWORD: the read-only
-                  login the General Court publishes for its public SQL
-                  database. Published, so not a secret (SECURITY.md says
-                  so). THE HOST IS DELIBERATELY NOT HERE. It is named in
-                  workers/live/wrangler.toml under production alone, so
-                  that nothing a local run or a test imports can reach it.
-    VOTE_WORD     fetch_rollcalls_db.py's VOTE_WORD: a ballot's code in
-                  RollCallHistory, and the record's word for it
-    BALLOT_CHAR   VOTE_WORD's codes as the live votes file's one character
-                  a ballot (design section 2.5): Y Yea, N Nay, E excused,
-                  X not excused, P presiding, and . for no vote recorded
+THE PATTERN WRITTEN WITH ITS STEM. A title's stem is the title without its
+date, in lower case, with "&" said as "and" and every run of other
+characters made one space (stem() below): "Committee of Conference on SB 534
+(05/22/2026" is "committee of conference on sb 534". The Worker's stem
+(workers/live/youtube.js) is held to this one on every title in
+collected/videos/ by preflight's _live_layer, and SESSION_TITLE is held to
+match every title there that begins "House Session" or "Senate Session" and
+no other: "Full Committee Work Session" is not a sitting.
 
-probe_db.py and fetch_rollcalls_db.py are READ AS TEXT, never imported:
-both are scripts that ask the General Court's database, and writing a
-constants file should not load one. Their assignments are read with ast,
-so a value written another way stops this with its name rather than being
-guessed at. A word VOTE_WORD gains that BALLOT_CHARS below does not know
-stops it too: what a new code means on the page is a decision, not a
-default.
+READ, NOT IMPORTED. fetch_channel_index.py, probe_db.py and
+fetch_rollcalls_db.py are fetchers and refusal.py the fetch lane's guard,
+and the Worker needs literals from them; so each file is parsed (ast) and
+the assignment read as a literal, and none is imported. A source that no longer assigns its literal where this reads it
+stops this with its name rather than writing a file the Worker cannot use.
 
-Nothing here asks the network.
+WHAT A CHANGE TAKES. Change the value where it is kept, run this, and commit
+workers/live/live.gen.js with the change. preflight fails while the file
+differs from what this would write, and names this command. It is the
+workers/follow/site.gen.js pattern (follow_site.py), for the same reason: the
+Worker is bundled by wrangler from what git holds, with no build step before
+it, so it imports a plain module beside it. Nothing here asks the network.
 """
 
 # The bootstrap: _paths.py, found above this file, puts every code folder on the import path.
@@ -46,12 +61,17 @@ import _paths  # noqa: E402,F401
 import argparse
 import ast
 import json
+import re
 
 OUT = Path("workers/live/live.gen.js")
 COMMAND = "python3 src/pages/live_gen.py"
 
+CHANNEL_INDEX = Path("src/fetch/youtube/fetch_channel_index.py")
+REFUSAL = Path("refusal.py")
 PROBE_DB = Path("src/fetch/gc_db/probe_db.py")
 ROLLCALLS_DB = Path("src/fetch/gc_db/fetch_rollcalls_db.py")
+# Every file the written one is made from.
+SOURCES = (CHANNEL_INDEX, REFUSAL, PROBE_DB, ROLLCALLS_DB)
 
 # The record's words for a ballot, as the live file's one character each.
 # "" and "No vote recorded" are VOTE_WORD's words for codes 0, 5 and 7.
@@ -59,13 +79,94 @@ BALLOT_CHARS = {"Yea": "Y", "Nay": "N", "Not Voting/Excused": "E",
                 "Not Voting/Not Excused": "X", "Presiding": "P",
                 "": ".", "No vote recorded": "."}
 
+# The chambers by the letter the site and the Worker key them by.
+CHAMBER = {"house": "H", "senate": "S"}
+
+# The beginning of a session stream's stem, by chamber: 172 titles in the
+# committed indexes on 26 October 2026, Organization Day's among them
+# ("House Session (12/04/2024)", "Senate Session (12/04/24)"), and no other
+# title begins this way.
+SESSION_TITLE = {"H": r"^house session\b", "S": r"^senate session\b"}
+
+# A title's date and everything after it: "(01/07/2027)", "(1/7/27",
+# "(5/27/20 - morning session)", "(01/12/2026) (Full Stream)".
+_DATE_TAIL = re.compile(r"\(\s*[0-9]{1,2}/[0-9]{1,2}/[0-9]{2,4}.*$", re.S)
+_WORD = re.compile(r"[a-z0-9]+")
+
 
 class SourceError(ValueError):
     """A source no longer says a value where, or how, this reads it."""
 
 
+def stem(title):
+    """A stream title as comparable words: its date and what follows it
+    dropped, lower case, "&" as "and", and any other run of characters one
+    space. workers/live/youtube.js's stem() is this one, held to it on every
+    committed title."""
+    t = _DATE_TAIL.sub("", title or "").lower().replace("&", " and ")
+    return " ".join(_WORD.findall(t))
+
+
+def session_of(title):
+    """'H' or 'S' when the title is that chamber's session stream, else None."""
+    s = stem(title)
+    for chamber, pattern in SESSION_TITLE.items():
+        if re.search(pattern, s):
+            return chamber
+    return None
+
+
 def _base(root):
     return Path(root) if root is not None else _paths.ROOT
+
+
+def _literal(path, name):
+    """The value of the module-level `name = <literal>` in `path`, read by
+    parsing it."""
+    try:
+        tree = ast.parse(path.read_text(encoding="utf-8"), filename=str(path))
+    except (OSError, SyntaxError) as e:
+        raise SourceError(f"{path.as_posix()} could not be read: {e}") from None
+    for node in tree.body:
+        if isinstance(node, ast.Assign) and any(isinstance(t, ast.Name) and t.id == name
+                                                for t in node.targets):
+            try:
+                return ast.literal_eval(node.value)
+            except ValueError:
+                raise SourceError(f"{path.as_posix()} no longer assigns {name} a literal") from None
+    raise SourceError(f"{path.as_posix()} no longer assigns {name}")
+
+
+def channels(root=None):
+    raw = _literal(_base(root) / CHANNEL_INDEX, "CHANNELS")
+    out = {}
+    for name, letter in CHAMBER.items():
+        entry = raw.get(name) if isinstance(raw, dict) else None
+        cid = entry[0] if isinstance(entry, (tuple, list)) and entry else None
+        if not (isinstance(cid, str) and re.fullmatch(r"UC[0-9A-Za-z_-]{22}", cid)):
+            raise SourceError(f"{CHANNEL_INDEX.as_posix()} CHANNELS[{name!r}] is not a channel id "
+                              f"as YouTube writes one (UC and 22 more): {entry!r}")
+        out[letter] = cid
+    return out
+
+
+def night_windows(root=None):
+    raw = _literal(_base(root) / REFUSAL, "NIGHT_WINDOWS")
+    out = []
+    for w in raw:
+        try:
+            wd, (sh, sm), (eh, em), _what = w
+        except (TypeError, ValueError):
+            raise SourceError(f"{REFUSAL.as_posix()} NIGHT_WINDOWS has an entry this cannot read: "
+                              f"{w!r}") from None
+        if (wd is not None and wd not in range(7)) or not all(
+                isinstance(x, int) for x in (sh, sm, eh, em)):
+            raise SourceError(f"{REFUSAL.as_posix()} NIGHT_WINDOWS has an entry this cannot read: "
+                              f"{w!r}")
+        out.append([wd, [sh, sm], [eh, em]])
+    if not out:
+        raise SourceError(f"{REFUSAL.as_posix()} NIGHT_WINDOWS is empty")
+    return out
 
 
 def assigned(path, names, root=None):
@@ -99,7 +200,7 @@ def published_login(root=None):
 
 
 def values(root=None):
-    """{export name: (where it comes from, value)}, in the file's order."""
+    """{name: (where it comes from, value)}, in the order they are written."""
     words = assigned(ROLLCALLS_DB, ("VOTE_WORD",), root)["VOTE_WORD"]
     if not isinstance(words, dict) or not words or \
             not all(isinstance(k, str) and k.isdigit() and isinstance(w, str) for k, w in words.items()):
@@ -108,16 +209,26 @@ def values(root=None):
     if unknown:
         raise SourceError(f"VOTE_WORD has a word the live file has no character for: {unknown}; "
                           f"add it to live_gen.BALLOT_CHARS once its meaning on the page is decided")
+    codes = sorted(words.items(), key=lambda kv: int(kv[0]))
     return {
+        "CHANNELS": (f"{CHANNEL_INDEX.as_posix()} CHANNELS, by chamber: each one's YouTube "
+                     "channel; its uploads playlist is the id with UC made UU",
+                     channels(root)),
+        "NIGHT_WINDOWS": (f"{REFUSAL.as_posix()} NIGHT_WINDOWS, in UTC: [weekday (0 is Monday) "
+                          "or null for every day, [start hour, minute], [end hour, minute]]",
+                          night_windows(root)),
+        "SESSION_TITLE": ("src/pages/live_gen.py SESSION_TITLE: the beginning of a session "
+                          "stream's title stem, by chamber (a RegExp source)",
+                          SESSION_TITLE),
         "SQL_LOGIN": (f"{PROBE_DB.as_posix()}: DATABASE, USER and PASSWORD, the read-only login the "
                       f"General Court publishes. The host is not here: wrangler.toml names it under "
                       f"production alone", published_login(root)),
         "VOTE_WORD": (f"{ROLLCALLS_DB.as_posix()}: VOTE_WORD, a ballot's code and the record's word",
-                      dict(sorted(words.items(), key=lambda kv: int(kv[0])))),
+                      dict(codes)),
         "BALLOT_CHAR": ("VOTE_WORD's codes as the live file's one character: Y Yea, N Nay, "
                         "E excused, X not excused, P presiding, . no vote recorded "
                         "(src/pages/live_gen.py BALLOT_CHARS)",
-                        {k: BALLOT_CHARS[w] for k, w in sorted(words.items(), key=lambda kv: int(kv[0]))}),
+                        {k: BALLOT_CHARS[w] for k, w in codes}),
     }
 
 
@@ -144,7 +255,7 @@ def current(root=None):
     # read_text reads a checkout's CRLF as LF: autocrlf is on for the laptop.
     if path.read_text(encoding="utf-8") == render(root):
         return True, ""
-    return False, f"{OUT.as_posix()} is not what the repository's files say now"
+    return False, f"{OUT.as_posix()} is not what its sources say now"
 
 
 def main():
@@ -165,7 +276,7 @@ def main():
         print(f"{OUT.as_posix()} is current; nothing written")
         return 0
     path.parent.mkdir(parents=True, exist_ok=True)
-    path.write_text(text, encoding="utf-8")
+    path.write_text(text, encoding="utf-8", newline="\n")
     print(f"wrote {OUT.as_posix()}: {', '.join(values())}")
     return 0
 

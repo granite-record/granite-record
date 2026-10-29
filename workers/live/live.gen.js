@@ -4,6 +4,12 @@
 // and commit this file with the change. preflight fails while it differs from
 // what that command would write.
 
+// src/fetch/youtube/fetch_channel_index.py CHANNELS, by chamber: each one's YouTube channel; its uploads playlist is the id with UC made UU.
+export const CHANNELS = {"H": "UCxqjz56akoWRL_5vyaQDtvQ", "S": "UCjBZdtrjRnQdmg-2MPMiWrA"};
+// refusal.py NIGHT_WINDOWS, in UTC: [weekday (0 is Monday) or null for every day, [start hour, minute], [end hour, minute]].
+export const NIGHT_WINDOWS = [[null, [8, 0], [13, 30]], [0, [4, 0], [6, 30]]];
+// src/pages/live_gen.py SESSION_TITLE: the beginning of a session stream's title stem, by chamber (a RegExp source).
+export const SESSION_TITLE = {"H": "^house session\\b", "S": "^senate session\\b"};
 // src/fetch/gc_db/probe_db.py: DATABASE, USER and PASSWORD, the read-only login the General Court publishes. The host is not here: wrangler.toml names it under production alone.
 export const SQL_LOGIN = {"database": "NHLegislatureDB", "user": "publicuser", "password": "PublicAccess"};
 // src/fetch/gc_db/fetch_rollcalls_db.py: VOTE_WORD, a ballot's code and the record's word.

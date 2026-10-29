@@ -1,0 +1,48 @@
+# The live Worker: Live Now's data, from YouTube's Data API, into the private
+# R2 bucket graniterecord-live (index.js says what a run does, README.md how a
+# person deploys it and switches it).
+#
+# TWO CONFIGURATIONS IN ONE FILE. The top level is what `wrangler dev` runs on
+# this machine, against a local bucket: it has no cron and no secrets, and it
+# is never deployed. Production is [env.production], deployed by a person with
+#
+#   npx wrangler deploy --config workers/live/wrangler.toml --env production
+#
+# and nothing else deploys it: not `publish`, not the night. Cloudflare reads
+# `triggers` and `workers_dev` as inherited by an environment and `vars` and
+# bindings as not ("need to be defined explicitly", Wrangler configuration,
+# updated 20 October 2026), so the cron is declared under production alone and
+# each level names its own bucket. preflight's _live_layer holds all of it:
+# no cron at the top level, workers_dev = false at both, no route anywhere,
+# production's name and bucket.
+#
+# NO SECRET IS IN THIS FILE. YOUTUBE_API_KEY and HEALTHCHECK_URL are set by the
+# person with `wrangler secret put ... --env production` (README.md).
+
+name = "graniterecord-live-local"
+main = "index.js"
+compatibility_date = "2026-09-04"
+workers_dev = false
+
+[[r2_buckets]]
+binding = "LIVE"
+bucket_name = "graniterecord-live-local"
+
+[observability]
+enabled = true
+
+[env.production]
+name = "graniterecord-live"
+workers_dev = false
+
+# Every 2 minutes, UTC. Cron has no time zone; each run asks New Hampshire's
+# clock what is due (clock.js), and a run with nothing due writes nothing.
+[env.production.triggers]
+crons = ["*/2 * * * *"]
+
+[[env.production.r2_buckets]]
+binding = "LIVE"
+bucket_name = "graniterecord-live"
+
+[env.production.observability]
+enabled = true
