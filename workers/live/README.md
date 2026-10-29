@@ -146,7 +146,7 @@ Missing or unreadable means shadow. Four ready-made files:
 |---|---|---|
 | `control/sql-off.json` | on | off (shadow, the same as no file) |
 | `control/sql-test.json` | on | the November test (below) |
-| `control/on.json` | on | on (a later branch) |
+| `control/on.json` | on | on: the session reads (below) |
 | `control/all-off.json` | off | off |
 
 ```
@@ -200,7 +200,45 @@ node tests/live/compare_test.mjs test-2026-08-19.json
 ```
 
 `compare_test.mjs` says go or no-go, and why. Put `sql-off.json` back when
-the test is done; `on.json` waits for the session reads (a later branch).
+the test is done. Before Q3's comparison, measure the docket's own habits
+from the kit (DESIGN.md 7.3; no network):
+
+```
+node tests/live/measure_docket.mjs <the kit's Docket.txt> 2025 2026
+```
+
+Under 95% on either line, Q3's text test is widened before it is relied on.
+
+## The session reads (`on`)
+
+With `on.json` in place, each run works out each chamber's state
+(DESIGN.md 2.3) and reads the General Court's database only as that state
+calls for, one connection a run for both chambers, closed at once:
+
+| State | When | Reads |
+|---|---|---|
+| hot | its session stream is live or about to start, or a roll call dated today was first seen in the last 45 minutes | every run: Q1 (today; the last 14 days every 10 minutes), Q3, Q2 for up to 20 roll calls |
+| warm | for 5 hours after it was last hot, never past 23:59 | every 10 minutes: Q1 over 14 days, Q3, Q2 |
+| heartbeat | weekdays, 08:30 EST / 09:30 EDT to 18:00, January to June, and in the 14 days after a day it was hot | every 15 minutes: Q1 over 14 days alone |
+| off | otherwise | nothing |
+
+The night's windows (`refusal.NIGHT_WINDOWS`) start no warm or heartbeat
+read; a hot one goes ahead there only for a chamber whose session stream is
+live. At 600 connections, 1,200 statements or 150,000 rows in a New
+Hampshire day it holds until the next day.
+
+It writes `votes/<date>.json`, filed under each roll call's own date, the
+public live votes file (DESIGN.md 5): a roll call once shown is never
+dropped; one the database stops listing gains a note. Holds end by the next
+day at the latest and none needs a person; each sends `/fail` while it
+stands. To read a day's file:
+
+```
+npx wrangler r2 object get graniterecord-live/votes/2027-01-07.json --file votes-2027-01-07.json --remote
+```
+
+Turning the database half off (`sql-off.json`) is honoured at the next run,
+and the day's file says so once.
 
 ## When Healthchecks says it failed
 
@@ -213,7 +251,8 @@ The ping body says why. `/fail` is sent when:
   a second Worker on this bucket;
 - a run had something due and wrote nothing;
 - the November test could not read (the server refused), or its file could
-  not be written.
+  not be written;
+- a session read could not be made, or a votes file not written.
 
 And on every run, until it is mended, so the check stays down rather than
 flapping:
@@ -222,7 +261,8 @@ flapping:
 - YouTube refused the key: held to New Hampshire's midnight, or until
   YouTube is turned off and on with a new key;
 - five or more looks in a row have failed;
-- `control.json` cannot be read.
+- `control.json` cannot be read;
+- a votes hold (connect, login, encrypt, query, budget) stands.
 
 ## The guard's two entries (the person's to apply)
 

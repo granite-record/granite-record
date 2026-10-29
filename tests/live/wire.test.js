@@ -199,3 +199,71 @@ test("a statement of the test that fails is told to Healthchecks, and the sittin
   }, { answer: (sql, n) => (/FROM Docket d/.test(sql) && n < 5
     ? { error: { number: 207, message: "Invalid column name 'statusorder'." } } : a(sql, n)) });
 });
+
+// ---- the session reads, as the Worker runs them -------------------------------
+const ON = { youtube: "on", sql: "on" };
+const SESSION = { id: "houseSess07", chamber: "H", title: "House Session (01/07/2027)",
+                  start: T("2027-01-07T15:00:00Z"), end: T("2027-01-07T21:00:00Z") };
+
+test("sql on: a sitting's reads; turned off, the day's file says so once and nothing more is asked", () =>
+  withDb({ start: "2027-01-07T15:02:00Z", control: ON }, async (w, fake) => {
+    w.yt.add(SESSION);
+    await w.runAt();                                      // YouTube sees the stream
+    await w.every("2027-01-07T15:04:00Z", "2027-01-07T15:20:00Z");
+    assert.ok(fake.seen.connections >= 7, `${fake.seen.connections} connections`);
+    const f = w.r2.read("votes/2027-01-07.json");
+    assert.deepEqual([f.status.state, f.status.problem, f.next_read_by], ["reading", null, "2027-01-07T15:20:00Z"]);
+    w.r2.seed("control.json", { youtube: "on", sql: "off" });
+    const n = fake.seen.connections;
+    await w.every("2027-01-07T15:20:00Z", "2027-01-07T16:00:00Z");
+    assert.equal(fake.seen.connections, n, "nothing asked once it is off");
+    const off = w.r2.read("votes/2027-01-07.json");
+    assert.deepEqual([off.status.state, off.status.problem, off.next_read_by], ["off", "off", null]);
+    const said = w.logs.filter(l => l.includes("sql_off_said")).length;
+    assert.equal(said, 1, "said once");
+  }));
+
+test("the day's end is said once, when the warm tail runs out", () =>
+  withDb({ start: "2027-01-07T15:02:00Z", control: ON }, async (w) => {
+    w.yt.add(SESSION);
+    await w.every("2027-01-07T15:02:00Z", "2027-01-08T05:10:00Z", null, 2 * MIN);
+    const f = w.r2.read("votes/2027-01-07.json");
+    assert.deepEqual([f.status.state, f.status.problem], ["day_over", "day_over"]);
+    assert.equal(w.logs.filter(l => l.includes("sql_day_over_said")).length, 1);
+  }));
+
+test("a database that cannot be reached: three tries, a 30-minute hold, one try, the day; said on every run while it stands", async () => {
+  const w = world({ start: "2027-01-07T15:00:00Z", control: ON });
+  Object.assign(w.env, { SQL_HOST: "127.0.0.1", SQL_PORT: "1" });          // nothing listens there
+  w.yt.add(SESSION);
+  const runAt = w.runAt;
+  w.runAt = (when, o = {}) => runAt(when, { connect: nodeConnect, ...o });
+  await w.every("2027-01-07T15:00:00Z", "2027-01-07T15:08:00Z");
+  const held = w.state().sql.held;
+  assert.deepEqual([held.why, held.stage, held.until], ["connect", 1, "2027-01-07T15:34:00Z"]);
+  const f = w.r2.read("votes/2027-01-07.json");
+  assert.equal(f.status.problem, "connect", "the page can say the database could not be reached");
+  await w.every("2027-01-07T15:08:00Z", "2027-01-07T15:34:00Z");
+  assert.ok(w.pings.slice(-10).every(p => p.url.endsWith("/fail")), "every run while held");
+  await w.runAt("2027-01-07T15:34:00Z");
+  assert.deepEqual([w.state().sql.held.stage, w.state().sql.held.until], [2, "2027-01-08T05:00:00Z"]);
+});
+
+test("three failed statements in a row hold the day; a budget spent holds the day", async () => {
+  await withDb({ start: "2027-01-07T15:02:00Z", control: ON }, async (w) => {
+    w.yt.add(SESSION);
+    await w.every("2027-01-07T15:02:00Z", "2027-01-07T15:10:00Z");
+    assert.equal(w.state().sql.held.why, "query");
+    assert.match(w.fails()[0].body, /votes held for the day: three statements in a row failed/);
+  }, { answer: () => ({ error: { number: 207, message: "Invalid column name 'Yeas'." } }) });
+  await withDb({ start: "2027-01-07T15:02:00Z", control: ON }, async (w) => {
+    w.yt.add(SESSION);
+    await w.runAt();
+    w.r2.seed("state.json", { ...w.state(), count: { ...w.state().count, statements: 1199 } });
+    await w.runAt("2027-01-07T15:04:00Z");
+    assert.equal(w.state().sql.held.why, "budget");
+    const n = w.state().count.connections;
+    await w.every("2027-01-07T15:06:00Z", "2027-01-07T16:00:00Z");
+    assert.equal(w.state().count.connections, n, "nothing more today");
+  });
+});

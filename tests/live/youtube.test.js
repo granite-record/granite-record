@@ -310,7 +310,7 @@ test("a heavy week's quota: each weekday at most 1,300 units and 52 searches, a 
   for (let d = 11; d <= 17; d++) {
     const day = `2027-01-${d}`;
     const start = T(`${day}T05:00:00Z`);
-    assert.deepEqual(counted[day], w.yt.spent(start, start + DAY), day);
+    assert.deepEqual({ units: counted[day].units, searches: counted[day].searches }, w.yt.spent(start, start + DAY), day);
   }
   // And every stream that started in the window was seen live in time.
   for (const s of streams) {

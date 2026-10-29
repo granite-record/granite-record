@@ -7,6 +7,8 @@ import "./no_network.js";
 import "./clock.test.js";
 import "./sql.test.js";
 import "./store.test.js";
+import "./replay.test.js";
 import "./tds.test.js";
+import "./votes.test.js";
 import "./wire.test.js";
 import "./youtube.test.js";

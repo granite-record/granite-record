@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.724
+# GRANITE_VERSION: 2026-09-04.725
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -80142,7 +80142,7 @@ def _live_sql(live_gen, dayfiles_from_db, fetch_past_db, refusal):
 # The live Worker's suite, and how many tests it had when this was written: a
 # count that falls means a file stopped loading or a test was lost.
 LIVE_TESTS = "tests/live/index.js"
-LIVE_TESTS_AT_LEAST = 114
+LIVE_TESTS_AT_LEAST = 138
 # The person's ready-made switches (workers/live/control/), each as the Worker
 # must read it; and the values control.json may hold (store.js CONTROL_VALUES).
 LIVE_CONTROL = {"all-off.json": {"youtube": "off", "sql": "off"},
@@ -80194,7 +80194,8 @@ def _live_tests():
             "tests/live/store.test.js", "tests/live/tds.test.js", "tests/live/youtube.test.js",
             "tests/live/fake_r2.js", "tests/live/fake_youtube.js", "tests/live/fake_tds.js",
             "tests/live/world.js", "tests/live/compare_test.mjs", "tests/live/wire.test.js",
-            "tests/live/from_records.js"}
+            "tests/live/from_records.js", "workers/live/votes.js", "workers/live/merge.js",
+            "tests/live/votes.test.js", "tests/live/replay.test.js"}
     reached, todo = set(), [index]
     while todo:
         f = todo.pop()
@@ -80496,7 +80497,7 @@ def _live_layer(LG, LS, DF, FP, RF):
     # What live.gen.js is written from, by path here as in live_gen.py, so that
     # a change to either reaches this check under preflight --changed.
     sources = ("src/fetch/youtube/fetch_channel_index.py", "refusal.py", "src/fetch/gc_db/probe_db.py",
-               "src/fetch/gc_db/fetch_rollcalls_db.py")
+               "src/fetch/gc_db/fetch_rollcalls_db.py", "records/docket_abbrev.json")
     assert sorted(sources) == sorted(p.as_posix() for p in LG.SOURCES), (
         f"live_gen.py reads {sorted(p.as_posix() for p in LG.SOURCES)}, and this check names "
         f"{sorted(sources)}: name each here, so preflight --changed runs this when one moves")

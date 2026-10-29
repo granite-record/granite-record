@@ -246,13 +246,13 @@ test("control.json: missing or unreadable is shadow, and every file the person m
 });
 
 test("Healthchecks hears every run, what control.json says and that it is honoured; without its URL, nothing", async () => {
-  const w = world({ start: "2027-01-07T14:00:00Z", control: { youtube: "on", sql: "on" } });
+  const w = world({ start: "2027-01-07T14:00:00Z", control: { youtube: "on", sql: "test" } });
   w.yt.add(STREAM);
   await w.runAt();
   await w.runAt("2027-01-07T14:02:00Z");
   assert.equal(w.pings.length, 2);
   assert.ok(w.pings.every(p => p.url === HC));
-  assert.match(w.pings[1].body, /^run run-0000 youtube_ok_1_live \| youtube on, sql on \(not read: the session reads are a later branch\) by control\.json, uploaded 2027-01-07 09:00 New Hampshire time \| today \d+ units, 2 searches$/);
+  assert.match(w.pings[1].body, /^run run-0000 youtube_ok_1_live \| youtube on, sql test by control\.json, uploaded 2027-01-07 09:00 New Hampshire time \| today \d+ units, 2 searches$/);
   const quiet = world({ start: "2027-01-07T14:00:00Z", healthcheck: null });
   const out = await quiet.runAt();
   assert.deepEqual(out.wrote, ["streams/2027-01-07.json"]);

@@ -30,9 +30,11 @@
  * While control.json says "sql": "test", the first run between 10:00 and
  * 16:00 on a weekday makes the test's one connection, before anything else
  * it does, and writes the test's file at once, under the lease; in test mode
- * nothing else reads the database. "sql": "on" is read and reported and
- * nothing more until the session reads land (a later branch); "off", or a
- * missing or unreadable control.json, asks the database nothing. The host is
+ * nothing else reads the database. "sql": "on" runs the session reads
+ * (votes.js): while a chamber sits, the day's roll calls, ballots and docket
+ * tally lines, merged into votes/<date>.json, read before YouTube is asked
+ * and written at once under the lease. "off", or a missing or unreadable
+ * control.json, asks the database nothing. The host is
  * named only in wrangler.toml's production vars, and tds.js refuses any
  * other but the loopback address.
  *
@@ -48,15 +50,21 @@
  * honours it, so nothing of YouTube's is kept while the half is off.
  */
 import { clock } from "../follow/common.js";
-import { iso, nh, youtubeDue } from "./clock.js";
+import { NEW_YORK, iso, midnightAfter, nh, youtubeDue } from "./clock.js";
 import { FAILS_TO_TELL, forget, look, offFile, streamsKey } from "./youtube.js";
 import { TEST_SITTINGS, runTest, testDue } from "./test_mode.js";
+import { BUDGET, SQL_BUDGET_MS, freshStreams, holdSentence, liftHolds, offStatus, overBudget, overStatus,
+         readVotes, votesDue } from "./votes.js";
+import { votesKey } from "./merge.js";
 import { CONTROL_DEFAULT, WAITS_TO_TELL, WRITE_BY_MS, checkpoint, emptyState, leaseHeld, noteWait, putJSON,
          readControl, readJSON, readState, releaseLease, sweep, takeLease } from "./store.js";
 
 export const PING_TIMEOUT_MS = 8000;
 // The first run at or after this New Hampshire hour each day sweeps.
 export const SWEEP_HOUR = 3;
+// A session read that took longer than this leaves YouTube to the next run,
+// so the run stays inside its lease (YouTube's calls are 8 s each).
+export const SLOW_READ_MS = 30_000;
 
 // What this run is due to do, from the person's switch and state.json alone.
 export function plan(now, state, control) {
@@ -84,12 +92,13 @@ function stamp(when) {
 // What Healthchecks is told: the run's codes, what control.json says and that
 // it is honoured, and the day's spend.
 export function pingBody(out, control) {
-  const sql = `sql ${control.sql}${control.sql === "on" ? " (not read: the session reads are a later branch)" : ""}`;
+  const sql = `sql ${control.sql}`;
   const said = control.source === "control.json"
     ? `youtube ${control.youtube}, ${sql} by control.json, uploaded ${stamp(control.uploaded)}`
     : `youtube ${control.youtube}, ${sql}: control.json ${control.source}, so shadow`;
   const count = out.count ? `today ${out.count.units} units, ${out.count.searches} searches` +
-    (out.count.connections ? `, ${out.count.connections} connections, ${out.count.statements} statements` : "")
+    (out.count.connections ? `, ${out.count.connections} connections, ${out.count.statements} statements` +
+      (out.count.rows ? `, ${out.count.rows} rows` : "") : "")
     : "today not counted";
   return [`run ${out.run.slice(0, 8)} ${out.codes.join(" ")}`, said, count,
           out.fail ? `FAIL: ${out.fail}` : ""].filter(Boolean).join(" | ");
@@ -102,6 +111,8 @@ export function standing(env, s, control, now) {
   if (control.source === "unreadable") {
     return "control.json cannot be read, so it is honoured as shadow (youtube on, sql off): put one of control/*.json";
   }
+  const sh = s && s.sql && s.sql.held;
+  if (control.sql === "on" && sh && Date.parse(sh.until) > +now) return holdSentence(sh);
   if (control.youtube === "off") return null;
   if (!env.YOUTUBE_API_KEY) {
     return "there is no YOUTUBE_API_KEY secret, so YouTube is not asked: README.md says how to put it";
@@ -201,6 +212,40 @@ async function test(env, bucket, s, p, lease, now, out, opts, elapsed) {
   return true;
 }
 
+// The votes half's part of a run (control.json "sql": "on"): its one
+// connection, the files it changed written at once under the lease, and
+// state.json put again before anything else happens. Whether it connected.
+async function votes(env, bucket, s, v, lease, now, out, opts, elapsed) {
+  let connect = opts.connect;
+  if (!connect) ({ connect } = await import("cloudflare:sockets"));
+  s.sql = { ...s.sql, read: out.at };
+  if (!(await checkpoint(bucket, s, lease))) { out.codes.push("sql_not_started_lease_lost"); return false; }
+  const room = Math.max(5_000, Math.min(SQL_BUDGET_MS, WRITE_BY_MS - elapsed() - 25_000));
+  const r = await readVotes({ env, connect, now, sq: s.sql, due: v, until: Date.now() + room,
+                              files: d => readJSON(bucket, votesKey(d)) });
+  s.sql = { ...r.sq, on: nh(now).date };
+  s.count = { ...s.count, connections: (s.count.connections || 0) + r.spent.connections,
+              statements: (s.count.statements || 0) + r.spent.statements,
+              rows: (s.count.rows || 0) + r.spent.rows };
+  out.count = s.count;
+  out.codes.push(...r.codes);
+  if (r.fail) out.fail = out.fail || r.fail;
+  let missed = 0;
+  for (const [key, value] of r.writes) {
+    if (elapsed() >= WRITE_BY_MS) { out.codes.push("lease_lapsed"); missed++; continue; }
+    try { await putJSON(bucket, key, value); out.wrote.push(key); }
+    catch { out.codes.push(`write_failed_${key}`); missed++; }
+  }
+  if (missed) out.fail = out.fail || `${missed} votes file(s) were due and not written`;
+  if (overBudget(s.count) && !(s.sql.held && s.sql.held.why === "budget")) {
+    s.sql.held = { why: "budget", until: iso(midnightAfter(now, NEW_YORK)), since: out.at };
+    out.fail = out.fail || `${holdSentence(s.sql.held)} (${BUDGET.connections} connections, ` +
+      `${BUDGET.statements} statements or ${BUDGET.rows} rows)`;
+  }
+  if (!(await checkpoint(bucket, s, lease))) out.codes.push("lease_lost");
+  return true;
+}
+
 // One run. opts (tests): now, fetchImpl, connect (the socket opener for the
 // database; the Worker's own is cloudflare:sockets'), run (its id), elapsed()
 // (ms since the run began), timeoutMs, log.
@@ -222,10 +267,24 @@ export async function run(env, opts = {}) {
     s = state ? structuredClone(state) : emptyState();
     s.yt = s.yt || {};
     const p = plan(now, s, control);
-    if (s.day !== p.today) { s.day = p.today; s.count = { units: 0, searches: 0 }; }
+    if (s.day !== p.today) { s.day = p.today; s.count = { units: 0, searches: 0, connections: 0, statements: 0, rows: 0 }; }
     out.count = s.count;
     if (p.held) out.codes.push(`youtube_held_${p.held.why}`);
-    if (!p.youtube && !p.off && !p.sweep && !p.test) {
+    // The votes half: what it reads, and the two lines it writes once a day.
+    s.sql = s.sql || {};
+    let v = null, sqlOff = false, sqlOver = false;
+    if (control.sql === "on") {
+      s.sql = await liftHolds(s.sql, now);
+      v = votesDue(now, s.sql, freshStreams(await readJSON(bucket, streamsKey(p.today)), now));
+      if (v.held) out.codes.push(`sql_held_${v.held.why}`);
+      const sitting = Object.values(v.states).some(x => x.state === "hot" || x.state === "warm");
+      const hotToday = Object.values(s.sql.chambers || {}).some(c => c.hot_day === p.today);
+      sqlOver = !v.held && !sitting && hotToday && s.sql.over !== p.today;
+    } else {
+      sqlOff = s.sql.on === p.today && s.sql.off !== p.today;
+    }
+    const reads = Boolean(v && v.read);
+    if (!p.youtube && !p.off && !p.sweep && !p.test && !reads && !sqlOff && !sqlOver) {
       out.codes.push("nothing_due");
       return out;
     }
@@ -238,7 +297,23 @@ export async function run(env, opts = {}) {
 
     // A run that connects to the database asks YouTube nothing: the next run,
     // 2 minutes on, looks. So the run stays well inside its lease.
-    const connected = p.test ? await test(env, bucket, s, p, lease, now, out, opts, elapsed) : false;
+    let connected = p.test ? await test(env, bucket, s, p, lease, now, out, opts, elapsed) : false;
+    // A session read is every run while a chamber sits, and YouTube must keep
+    // looking then; only one that ran long leaves the look to the next run.
+    if (reads) await votes(env, bucket, s, v, lease, now, out, opts, elapsed);
+    if (reads && elapsed() > SLOW_READ_MS) connected = true;
+    // A file the person or the day's end should hear of, once.
+    for (const [due, mark, make, code] of [[sqlOff, "off", offStatus, "sql_off_said"],
+                                           [sqlOver, "over", overStatus, "sql_day_over_said"]]) {
+      if (!due) continue;
+      const f = await readJSON(bucket, votesKey(p.today));
+      if (f) {
+        try { await putJSON(bucket, votesKey(p.today), make(f, out.at)); out.wrote.push(votesKey(p.today)); }
+        catch { out.codes.push(`write_failed_${votesKey(p.today)}`); continue; }
+      }
+      s.sql = { ...s.sql, [mark]: p.today };
+      out.codes.push(code);
+    }
     if (connected && p.youtube) { p.youtube = null; out.codes.push("youtube_next_run"); }
     const ytBefore = structuredClone(s.yt);
     const writes = [];

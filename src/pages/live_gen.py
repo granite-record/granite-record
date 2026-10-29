@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-10-26.2
+# GRANITE_VERSION: 2026-10-26.3
 """
 What the live Worker (workers/live/) shares with the rest of this repository,
 written into workers/live/live.gen.js from where each value is kept.
@@ -28,6 +28,11 @@ written into workers/live/live.gen.js from where each value is kept.
                    VOTE_WORD gains that BALLOT_CHARS below does not know stops
                    this: what a new code means on the page is a decision, not
                    a default.
+    DOCKET_OUTCOME records/docket_abbrev.json: the General Court's own key
+                   to its docket, the abbreviations whose words are an
+                   outcome ("MA" Motion Adopted, "AF" Amendment Failed, ...),
+                   which the Worker sets beside a docket tally line. It never
+                   works out an outcome of its own (design section 2.4).
 
 THE PATTERN WRITTEN WITH ITS STEM. A title's stem is the title without its
 date, in lower case, with "&" said as "and" and every run of other
@@ -70,8 +75,11 @@ CHANNEL_INDEX = Path("src/fetch/youtube/fetch_channel_index.py")
 REFUSAL = Path("refusal.py")
 PROBE_DB = Path("src/fetch/gc_db/probe_db.py")
 ROLLCALLS_DB = Path("src/fetch/gc_db/fetch_rollcalls_db.py")
+DOCKET_ABBREV = Path("records/docket_abbrev.json")
 # Every file the written one is made from.
-SOURCES = (CHANNEL_INDEX, REFUSAL, PROBE_DB, ROLLCALLS_DB)
+SOURCES = (CHANNEL_INDEX, REFUSAL, PROBE_DB, ROLLCALLS_DB, DOCKET_ABBREV)
+# An abbreviation is an outcome when its word says one.
+OUTCOME_WORD = re.compile(r"\b(?:Adopted|Failed|Lost)$")
 
 # The record's words for a ballot, as the live file's one character each.
 # "" and "No vote recorded" are VOTE_WORD's words for codes 0, 5 and 7.
@@ -199,6 +207,18 @@ def published_login(root=None):
     return {"database": v["DATABASE"], "user": v["USER"], "password": v["PASSWORD"]}
 
 
+def docket_outcomes(root=None):
+    try:
+        key = json.loads((_base(root) / DOCKET_ABBREV).read_text(encoding="utf-8"))["abbrev"]
+    except (OSError, ValueError, KeyError, TypeError) as e:
+        raise SourceError(f"{DOCKET_ABBREV.as_posix()} has no abbrev key this can read ({e})") from None
+    out = {k: v for k, v in sorted(key.items()) if isinstance(v, str) and OUTCOME_WORD.search(v)
+           and re.fullmatch(r"[A-Z]{2,4}", k)}
+    if not {"MA", "MF", "AA", "AF"} <= set(out):
+        raise SourceError(f"{DOCKET_ABBREV.as_posix()} no longer gives MA, MF, AA and AF as outcomes")
+    return out
+
+
 def values(root=None):
     """{name: (where it comes from, value)}, in the order they are written."""
     words = assigned(ROLLCALLS_DB, ("VOTE_WORD",), root)["VOTE_WORD"]
@@ -229,6 +249,8 @@ def values(root=None):
                         "E excused, X not excused, P presiding, . no vote recorded "
                         "(src/pages/live_gen.py BALLOT_CHARS)",
                         {k: BALLOT_CHARS[w] for k, w in codes}),
+        "DOCKET_OUTCOME": (f"{DOCKET_ABBREV.as_posix()}: the docket's abbreviations whose words are "
+                           "an outcome, as the General Court's key writes them", docket_outcomes(root)),
     }
 
 
