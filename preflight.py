@@ -64020,9 +64020,10 @@ def _study_committee_videos(SC):
     assert _vw_loose_dots(drawn) == 0 and drawn.count(_VW_DOT_HEAD) >= 5, (
         "a dot in the study committee's Videos tab can end a line: it goes at the head of "
         "the part after it")
-    # "This meeting" is the meeting on the Meetings tab, at its own address,
-    # turned to in place (app.js, ssTabs).
-    assert '<a href="/committee/ss1451/sessions#day-2026-03-10" data-ssgo>This meeting</a>' in drawn and \
+    # "This meeting" is the meeting on the Meetings tab, at its own address --
+    # the page's, which lands on its Meetings -- turned to in place (app.js,
+    # ssTabs).
+    assert '<a href="/committee/ss1451#day-2026-03-10" data-ssgo>This meeting</a>' in drawn and \
         '<a href="calendar?week=2026-W11&amp;day=2026-03-10&amp;committee=State+Commission+on+Aging">' \
         'This meeting on the Calendar</a>' in drawn and \
         'href="/committee/ss1451/videos#v-agingVid001"' in drawn, (
@@ -64035,8 +64036,10 @@ def _study_committee_videos(SC):
 # A study committee's page as app.js meets it: its strip of three tabs, each
 # pane by its id, a meeting's fold inside the earlier meetings' fold, and a
 # frame playing in the Videos pane; every listener app.js registers kept to
-# be fired. app.js is loaded over it at /committee/ss1451/sessions, as a page
-# that carries its own record (GR_STATIC).
+# be fired. As the build writes it, the page lands on its Meetings, which has
+# no slug, Bills and Videos at theirs; the strip stays at the top of the
+# window, 44.5px high. app.js is loaded over it at /committee/ss1451/sessions,
+# as a page that carries its own record (GR_STATIC).
 _SS_TABS_HARNESS = _HEARD_PRELUDE + r"""
 const attrs = (o, a) => Object.assign(o, {a: Object.assign({}, a),
   getAttribute(k) { return k in this.a ? this.a[k] : null; }, setAttribute(k, v) { this.a[k] = String(v); },
@@ -64046,11 +64049,14 @@ const frame = {contentWindow: {postMessage: (m) => sent.push(JSON.parse(m).func)
 const panes = {};
 for (const id of ["bills", "meetings", "videos"])
   panes[id] = attrs({id, querySelectorAll: (q) => q === "iframe" && id === "videos" ? [frame] : []},
-                    id === "bills" ? {"data-on": ""} : {});
-const strip = {dataset: {base: "/committee/ss1451"}};
-const tabs = [["bills", ""], ["meetings", "sessions"], ["videos", "videos"]].map(([id, slug], i) =>
+                    id === "meetings" ? {"data-on": ""} : {});
+const strip = {dataset: {base: "/committee/ss1451"}, pos: "sticky", getBoundingClientRect: () => ({height: 44.5})};
+globalThis.getComputedStyle = (el) => ({position: (el && el.pos) || "static", getPropertyValue: () => ""});
+const rootVars = {};
+document.documentElement.style.setProperty = (k, v) => { rootVars[k] = v; };
+const tabs = [["bills", "bills"], ["meetings", ""], ["videos", "videos"]].map(([id, slug], i) =>
   attrs({id: "sstab-" + id, dataset: {sstab: slug}, closest: (q) => q === ".sstabs" ? strip : null},
-        {"aria-controls": id, "aria-selected": String(!i)}));
+        {"aria-controls": id, "aria-selected": String(i === 1)}));
 strip.querySelectorAll = (q) => q === "[data-sstab]" ? tabs : [];
 const earlier = {tagName: "DETAILS", open: false, parentElement: null};
 const day = {tagName: "DETAILS", open: false, parentElement: earlier, seen: 0, scrollIntoView() { this.seen += 1; }};
@@ -64068,12 +64074,14 @@ try {
   sent.length = 0;
   click((q) => q === "[data-sstab]" ? tabs[0] : null); out.clicked = state(); out.paused = sent.splice(0);
   place("/committee/ss1451#day-1993-01-11"); s.ssLand();
-  out.byDay = Object.assign(state(), {open: [earlier.open, day.open], seen: day.seen});
+  out.byDay = Object.assign(state(), {open: [earlier.open, day.open], seen: day.seen, held: rootVars["--ssheld"]});
   place("/committee/ss1451#videos"); (heard.window.hashchange || []).forEach((f) => f({})); out.byHash = state();
   earlier.open = day.open = false; day.seen = 0;
-  const go = click((q) => q === "a[data-ssgo]" ? {getAttribute: (k) => k === "href" ? "/committee/ss1451/sessions#day-1993-01-11" : null} : null);
+  const go = click((q) => q === "a[data-ssgo]" ? {getAttribute: (k) => k === "href" ? "/committee/ss1451#day-1993-01-11" : null} : null);
   out.go = Object.assign(state(), {prevented: go.prevented, open: day.open, seen: day.seen});
   place("/committee/ss1451/sessions"); s.ssLand(); out.bySlug = state();
+  place("/committee/ss1451/bills"); s.ssLand(); out.byBills = state();
+  place("/committee/ss1451"); s.ssLand(); out.bare = state();
 } catch (e) { out.threw = e.constructor.name + ": " + e.message + " " + (e.stack || "").slice(0, 300); }
 process.stdout.write("\n@@" + JSON.stringify(out));
 """
@@ -64098,7 +64106,20 @@ def _study_committee_tabs(SC, BP):
     with it the first shows from the first paint, and app.js (ssLand) turns
     to the tab the address names -- /sessions, /videos, a meeting's #day-,
     a recording's #v-, a pane's old #id -- and to the one pressed, pausing a
-    recording in the pane it leaves."""
+    recording in the pane it leaves.
+
+    THE PAGE LANDS ON ITS MEETINGS (the review of 29 October 2026, 4):
+    opened on Bills, the State Commission on Aging showed HB 621 of 2019 and
+    no more, and the Fiscal Committee four housekeeping bills, its 165
+    meetings a click away. The strip keeps the owner's order; the page's own
+    address is its Meetings (a body that has never met, the first tab with
+    something in it), Bills at /bills, which the committee rewrite serves.
+    A MEETING THE ADDRESS NAMES LANDS BELOW THE STRIP (2), which stays at the
+    top: its height written as --ssheld, which app.css keeps above a meeting.
+    AND THE BILLS ARE BY YEAR, NONE SAID TO COME "SINCE" (5): the record lists
+    bills amending a body that are older than the bill that set it up --
+    HB 746 of 1975 for a council set up by HB 317 of 1995 -- and the tab had
+    them as having changed it since; such a bill says it is older."""
     root = Path(tempfile.mkdtemp())
     try:
         (root / "bill" / "2026").mkdir(parents=True)
@@ -64115,34 +64136,59 @@ def _study_committee_tabs(SC, BP):
         # Administrative Rules, set up by HB 366 of 1983: before the site's bills.
         early = SC.bills_of({"cid": "61", "name": "Administrative Rules", "bill": "HB366", "year": "1983",
                              "amended": ""}, ctx)
+        # The record's amending bills older than the body: the Advisory Council
+        # on Unemployment Compensation, set up by HB 317 of 1995, lists HB 746 of
+        # 1975, HB 110 of 1981 and HB 317 itself; the New England Board of Higher
+        # Education Compact, set up in 1989 by no bill named, HB 576 of 1981.
+        council = SC.bills_of({"cid": "90", "name": "Advisory Council", "bill": "HB317", "year": "1995",
+                               "amended": "HB1142(2002), HB746(1975), HB110(1981), HB317(1995)"}, ctx)
+        board = SC.bills_of({"cid": "75", "name": "A Compact", "bill": "", "year": "1989",
+                             "amended": "SB51(2003) HB576(1981)"}, ctx)
     finally:
         shutil.rmtree(root, ignore_errors=True)
     assert [(r["n"], r["year"], r["href"], r["line"]) for r in rows] == [
-        ("SB 434", "2026", "bill/2026/sb434.html", "Set it up"), ("HB 1442", "2026", "", "Changed it")] and \
+        ("SB 434", "2026", "bill/2026/sb434.html", "Set it up"), ("HB 1442", "2026", "", "Amended it")] and \
         none == [], f"a study committee's bills are not the one that set it up and those that changed it, once: {rows}"
     assert early == [{"n": "HB 366", "year": "1983", "href": "", "line": "Set it up",
                       "title": "Before 1989, when this site's record of bills begins."}], (
         f"a bill from before the site's record stands blank, or says something else: {early}")
+    assert [(r["n"], r["line"]) for r in council] == [
+        ("HB 746", "Older than the bill that set it up"), ("HB 110", "Older than the bill that set it up"),
+        ("HB 317", "Set it up"), ("HB 1142", "Amended it")] and \
+        [(r["n"], r["line"]) for r in board] == [("HB 576", "Older than 1989, when it was set up"),
+                                                 ("SB 51", "Amended it")], (
+            "a body's bills are not by year, or one the record lists as amending it that is older than the "
+            f"body is said to have changed it: {[(r['n'], r['line']) for r in council + board]}")
     said = SC.bills_html(aging, rows)
-    assert said.startswith('<p class="src">The bill that set it up, and the bill that has changed it since, as '
-                           "the General Court&rsquo;s record names them.</p>") and \
+    assert said.startswith('<p class="src">The bill that set it up, and the bill the General Court&rsquo;s record '
+                           "lists as amending it, by year.</p>") and \
         '<a class="brnum" href="bill/2026/sb434.html" translate="no">SB 434<span class="byr">(2026)</span></a>' \
         in said and '<span class="brnum">HB 1442<span class="byr">(2026)</span></span>' in said and \
         "relative to insurance coverage." in said, "the Bills tab does not say what its bills are, each as a row: " + said[:300]
-    assert SC.bills_html({"year": "1965"}, fiscal).startswith(
-        '<p class="src">The 2 bills that have changed it since it was set up in 1965, as the General '
-        "Court&rsquo;s record names them.</p>"), "a committee set up by no bill named does not say so"
+    leads = [SC.bills_html({"year": "1965"}, fiscal), SC.bills_html(aging, rows[:1]), SC.bills_html({"year": "1995"}, council)]
+    assert leads[0].startswith('<p class="src">The 2 bills the General Court&rsquo;s record lists as amending it, by '
+                               "year. It was set up in 1965.</p>") and \
+        leads[1].startswith('<p class="src">The bill that set it up, as the General Court&rsquo;s record names it.</p>') \
+        and not any("since" in x[:x.index("</p>")] for x in leads), (
+            "a committee set up by no bill named does not say so, or the Bills tab says its bills came \"since\" "
+            "the body: " + " | ".join(x[:x.index("</p>")] for x in leads))
     page = SC.tabs_html(aging, {"meetings": (3, "MEETINGS"), "bills": (2, "BILLS"), "videos": (1, "VIDEOS")})
     strip = re.search(r'<div class="tabs sstabs" role="tablist" data-base="/committee/ss1451">(.*?)</div>', page).group(1)
     tabs = re.findall(r'<button type="button" class="tab" role="tab" id="sstab-(\w+)" aria-controls="\1" '
                       r'data-sstab="(\w*)" aria-selected="(true|false)">(\w+)(.*?)</button>', strip)
-    assert [t[:4] for t in tabs] == [("bills", "", "true", "Bills"), ("meetings", "sessions", "false", "Meetings"),
+    assert [t[:4] for t in tabs] == [("bills", "bills", "false", "Bills"), ("meetings", "", "true", "Meetings"),
                                      ("videos", "videos", "false", "Videos")], (
-        f"the strip is not Bills | Meetings | Videos, each at its address, the first chosen: {tabs}")
+        f"the strip is not Bills | Meetings | Videos, each at its address, the page landing on its Meetings: {tabs}")
     panes = re.findall(r'<div class="pane sspane" role="tabpanel" id="(\w+)" aria-labelledby="sstab-\1" '
                        r'tabindex="0"( data-on)?><h2 class="ssph">(\w+)</h2>(\w+)</div>', page)
-    assert panes == [("bills", " data-on", "Bills", "BILLS"), ("meetings", "", "Meetings", "MEETINGS"),
-                     ("videos", "", "Videos", "VIDEOS")], f"the panes are not each its tab's, the first shown: {panes}"
+    assert panes == [("bills", "", "Bills", "BILLS"), ("meetings", " data-on", "Meetings", "MEETINGS"),
+                     ("videos", "", "Videos", "VIDEOS")], f"the panes are not each its tab's, Meetings shown: {panes}"
+    # A body that has never met lands on the first tab with something in it.
+    unmet = SC.tabs_html(aging, {"meetings": (0, "M"), "bills": (2, "B")})
+    assert re.findall(r'id="sstab-(\w+)" aria-controls="\w+" data-sstab="(\w*)" aria-selected="(\w+)"', unmet) == [
+        ("bills", "", "true"), ("meetings", "sessions", "false")] and \
+        re.findall(r'id="(\w+)" aria-labelledby="[^"]*" tabindex="0" data-on', unmet) == ["bills"], (
+            "a body that has never met lands on an empty Meetings, or its Bills is not at the page's own address")
     assert re.findall(r'id="sstab-(\w+)"', SC.tabs_html(aging, {"meetings": (0, "M")})) == ["meetings"] and \
         "class=\"tn\"" not in SC.tabs_html(aging, {"meetings": (0, "M")}), "a tab with nothing in it is drawn"
     slugs = {slug for _p, _w, slug in SC.TABS if slug}
@@ -64152,10 +64198,24 @@ def _study_committee_tabs(SC, BP):
     for rule, why in (("\nhtml:not(.js) .sstabs{display:none}", "without JavaScript the strip is shown"),
                       ("\nhtml.js .sspane:not([data-on]){display:none}", "with JavaScript every pane is shown"),
                       (".rhead ~ #ppane,.rhead ~ .sspane{background:var(--surface)", "a pane is not the record's sheet"),
-                      (".rhead ~ .tabs{position:sticky;top:0;", "the strip is not pinned as a standing committee's is")):
+                      (".rhead ~ .tabs{position:sticky;top:0;", "the strip is not pinned as a standing committee's is"),
+                      ("\n.sspane .cmeet{scroll-margin-top:calc(var(--ssheld,3.25rem) + var(--sp-6))}",
+                       "a meeting the address names lands under the strip that stays at the top")):
         assert rule in css, f"app.css: {why}"
     tn = _app_js("scope.tabN((1234).toLocaleString())", names=("tabN",))
     assert tn is None or tn == SC.tab_n(1234), f"a study committee's count reads {SC.tab_n(1234)!r}, a standing one's {tn!r}"
+    # /bills, which a study committee's Bills tab is at, is a committee's tab
+    # address app.js reads as one -- Bills is tab 0, which a test of truth had
+    # passed over, and /committee/H34/bills/sessions would have been written
+    # from it -- while a standing committee's Bills is still written as its
+    # page's own address.
+    slugs = _app_js('(location.pathname="/committee/H34/bills", [scope.tabFromPath(), scope.isTabSlug("constructor"), '
+                    'scope.slugOf(scope.COMMITTEE_TABS,0), scope.slugOf(scope.COMMITTEE_TABS,1), '
+                    'scope.slugOf(scope.BILL_TABS,"6")])', names=("tabFromPath", "isTabSlug", "slugOf", "COMMITTEE_TABS",
+                                                                "BILL_TABS"))
+    assert slugs is None or slugs == ["bills", False, "", "sessions", "text"], (
+        f"/committee/H34/bills is not read as the Bills tab's address, or a standing committee's Bills is "
+        f"written with a slug: {slugs}")
     got = _node_app(_SS_TABS_HARNESS)
     if got is not None:
         assert "threw" not in got, "the study committee's tabs could not be driven: " + got["threw"]
@@ -64163,16 +64223,20 @@ def _study_committee_tabs(SC, BP):
             f"app.js, loaded at /committee/ss1451/sessions, does not open the page on its Meetings tab: {got['onLoad']}")
         assert got["byPath"] == {"tabs": "falsefalsetrue", "on": ["videos"], "at": "/committee/ss1451/videos", "wrote": []}, (
             f"/committee/ss1451/videos does not open on its Videos tab: {got['byPath']}")
-        assert got["clicked"] == {"tabs": "truefalsefalse", "on": ["bills"], "at": "/committee/ss1451", "wrote": [
-            "replace /committee/ss1451"]} and got["paused"] == ["pauseVideo"], (
+        assert got["clicked"] == {"tabs": "truefalsefalse", "on": ["bills"], "at": "/committee/ss1451/bills", "wrote": [
+            "replace /committee/ss1451/bills"]} and got["paused"] == ["pauseVideo"], (
             f"Bills pressed is not shown at its address, or the recording left playing: {got['clicked']}, {got['paused']}")
-        assert got["byDay"] == {"tabs": "falsetruefalse", "on": ["meetings"], "at": "/committee/ss1451/sessions#day-1993-01-11",
-                                "wrote": ["replace /committee/ss1451/sessions#day-1993-01-11"], "open": [True, True], "seen": 1}, (
-            f"a meeting the address names is not opened on the Meetings tab, named there: {got['byDay']}")
-        assert got["byHash"]["on"] == ["videos"] and got["bySlug"]["on"] == ["meetings"], (
-            f"the old #videos or /sessions does not open its tab: {got['byHash']}, {got['bySlug']}")
+        assert got["byDay"] == {"tabs": "falsetruefalse", "on": ["meetings"], "at": "/committee/ss1451#day-1993-01-11",
+                                "wrote": ["replace /committee/ss1451#day-1993-01-11"], "open": [True, True], "seen": 1,
+                                "held": "45px"}, (
+            f"a meeting the address names is not opened on the Meetings tab, named there, below the strip that "
+            f"stays at the top: {got['byDay']}")
+        assert got["byHash"]["on"] == ["videos"] and got["bySlug"]["on"] == ["meetings"] and \
+            got["byBills"]["on"] == ["bills"] and (got["bare"]["on"], got["bare"]["tabs"]) == (["meetings"], "falsetruefalse"), (
+            f"the old #videos or /sessions, /bills or the page's own address does not open its tab: {got['byHash']}, "
+            f"{got['bySlug']}, {got['byBills']}, {got['bare']}")
         assert got["go"]["prevented"] == 1 and got["go"]["on"] == ["meetings"] and got["go"]["open"] and \
-            got["go"]["seen"] == 1 and got["go"]["at"] == "/committee/ss1451/sessions#day-1993-01-11", (
+            got["go"]["seen"] == 1 and got["go"]["at"] == "/committee/ss1451#day-1993-01-11", (
                 f"the Videos tab's \"This meeting\" does not turn to the meeting in place: {got['go']}")
     absent = [x for x in CHAIN_NEEDS if not _paths.locate(x).exists()]
     if absent:
@@ -64191,16 +64255,28 @@ def _study_committee_tabs(SC, BP):
         drawn = [(pid, int(n or 0)) for pid, n in re.findall(
             r'id="sstab-(\w+)"[^>]*>\w+(?:<span class="tn"><span class="tnp"> \(</span>([\d,]+)<span)?', t)]
         assert drawn == tabs_want, f"{stem}'s tabs are {drawn}, not {tabs_want}"
+        # Each lands on its Meetings, at the page's own address, the pane shown from the first paint.
+        assert re.findall(r'id="sstab-(\w+)" aria-controls="\w+" data-sstab="" aria-selected="true"', t) == ["meetings"] \
+            and re.findall(r'<div class="pane sspane" role="tabpanel" id="(\w+)"[^>]* data-on>', t) == ["meetings"], (
+                f"{stem} does not land on its Meetings")
     bills = (site / "committee" / "ss1451.html").read_text(encoding="utf-8")
+    # What It Does says what the record says of them, by year, and not
+    # "Changed since by", which it had said of a council's bills of 1975 and
+    # 1981 set up in 1995 (5).
+    does = bills[bills.index('<section class="w4" id="does">'):]
+    does = does[:does.index("</section>")]
+    assert "The General Court&rsquo;s record lists it as amended by " in does and "since" not in does, (
+        "What It Does does not say what the record lists as amending the body, or says they came since: "
+        + re.sub(r"<[^>]+>", "", does)[:300])
     bills = bills[bills.index('id="bills"'):bills.index('id="meetings"')]
     assert 'href="bill/2026/sb434"' in bills and 'href="bill/2026/hb1442"' in bills and \
         bills.count('<span class="brline">Set it up</span>') == 1 and \
-        bills.count('<span class="brline">Changed it</span>') == 1, (
+        bills.count('<span class="brline">Amended it</span>') == 1, (
             "the commission's Bills tab is not the bill that set it up and the one that changed it")
     return "ok", ("Bills | Meetings | Videos under the sections, each counted and at its address, a "
-                  "standing committee's strip and sheet; the bills that made and changed it; no tab "
-                  "where it would be empty; the address's tab, a meeting or a recording turned to, a "
-                  "recording paused in the pane left")
+                  "standing committee's strip and sheet, landing on Meetings; the bills that made and changed "
+                  "it, by year, none said to come since; no tab where it would be empty; the address's tab, a "
+                  "meeting below the strip or a recording turned to, a recording paused in the pane left")
 
 
 @check("build", "the study committees' record is read as it was written: a lost break parted only "
@@ -77112,7 +77188,9 @@ const out = {};
 
 # A Videos view as app.js meets it on a phone, its parts stood up by hand: the
 # tab strip above its pane, which stays at the top of the window (sticky), and
-# the player that stays under it -- or, `wide`, that does not, as on a desktop.
+# the player that stays under it where the view is marked [data-vwpin], as
+# app.css has it below 60em -- or, `wide`, that does not, as on a desktop.
+# The window is 844px high, or `short`, 390: a phone held sideways.
 _VW_PHONE_HARNESS = _HEARD_PRELUDE + r"""
 load("videoView, vwStick, vwChoose, setView: (o) => { VVIEW = o; }");
 const css = (el) => ({position: (el && el.pos) || "static", getPropertyValue: () => ""});
@@ -77122,21 +77200,27 @@ globalThis.ResizeObserver = class { constructor(f) { this.f = f; } observe(el) {
 const scrolled = [];
 globalThis.scrollBy = (x, y) => scrolled.push(y);
 const out = {};
-const view = (wide) => {
-  const strip = {pos: "sticky", getBoundingClientRect: () => ({height: 45})};
+const view = (wide, short) => {
+  document.documentElement.clientHeight = short ? 390 : 844;
+  const strip = {pos: "sticky", getBoundingClientRect: () => ({height: 45, bottom: 45})};
   const tab = {closest: (q) => q === "[role=tablist]" ? strip : null};
   document.getElementById = (id) => id === "ptab_2" ? tab : null;
   const pane = {getAttribute: (k) => k === "aria-labelledby" ? "ptab_2" : null};
-  const main = {pos: wide ? "static" : "sticky", getBoundingClientRect: () => ({height: 268, bottom: 313})};
   const n = {det: [], player: [], focus: 0};
   const det = {getBoundingClientRect: () => ({top: -900}), scrollIntoView(o) { n.det.push(o.block); }};
   const player = {insertAdjacentHTML() {}, remove() {}, scrollIntoView(o) { n.player.push(o.block); },
     querySelector: (q) => q === ".pstub" ? {focus() { n.focus += 1; }, click() {}} : null};
-  const box = {props: {}, style: {setProperty(k, v) { box.props[k] = v; }},
+  const box = {props: {}, attrs: {}, top: 300, style: {setProperty(k, v) { box.props[k] = v; },
+      getPropertyValue: (k) => box.props[k] || ""},
+    setAttribute(k, v) { box.attrs[k] = v; }, removeAttribute(k) { delete box.attrs[k]; },
+    hasAttribute(k) { return k in box.attrs; }, getBoundingClientRect: () => ({top: box.top}),
     closest: (q) => q === "[role=tabpanel]" ? pane : null,
     querySelector: (q) => q === ".vwmain" ? main : q === ".vwdet" ? det : q === ".vwplay" ? player
       : q === ".vwdetin" ? {innerHTML: ""} : q === ".vwsay" ? {textContent: ""} : null,
     querySelectorAll: () => []};
+  // Sticky as app.css draws it: below 60em, where the view is marked.
+  const main = {get pos() { return !wide && "data-vwpin" in box.attrs ? "sticky" : "static"; },
+    getBoundingClientRect: () => ({height: 268, bottom: 313})};
   document.querySelectorAll = (q) => q === ".vw" ? [box] : [];
   return {box, n, strip, main};
 };
@@ -77150,19 +77234,32 @@ try {
   // How far down the strip and the player reach, written on the view; watched, and not afresh.
   const v = view(false);
   s.vwStick(); const first = observed.length; s.vwStick();
-  out.props = v.box.props; out.watched = [first, observed.length, observed.includes(v.strip), observed.includes(v.main)];
+  out.props = Object.assign({}, v.box.props); out.watched = [first, observed.length, observed.includes(v.strip), observed.includes(v.main)];
+  out.pinned = "data-vwpin" in v.box.attrs;
   // The keyboard on a row under the player: scrolled clear of it. One below it, or a wide
-  // screen's (its player does not stay), left where it is.
+  // screen's (its player does not stay, the strip ends at 45px), left where it is.
+  let at = v;
   const focus = (top) => (heard.document.focusin || []).forEach((f) => f({target: {
-    closest: (q) => q === ".vw" ? v.box : null, getBoundingClientRect: () => ({top})}}));
+    closest: (q) => q === ".vw" ? at.box : null, getBoundingClientRect: () => ({top})}}));
   focus(200); focus(400);
   out.under = scrolled.splice(0);
-  v.main.pos = "static"; focus(200);
+  // The foot of the player that stays: drawn once the view has gone up under the strip, and
+  // not while it rests where it stands.
+  const scroll = (top) => { at.box.top = top; (heard.window.scroll || []).forEach((f) => f({})); return "data-vwstuck" in at.box.attrs; };
+  out.edge = [scroll(300), scroll(-600), scroll(300)];
+  at = view(true); s.vwStick(); focus(200);
   out.wideFocus = scrolled.splice(0);
+  // A WINDOW TOO SHORT FOR IT: a phone held sideways, 390px high, where the strip and the
+  // player are 313px of it. The player is not made to stay; what is under it is kept clear
+  // of the strip alone, and the keyboard on a row under the strip is put clear of it.
+  at = view(false, true); s.vwStick();
+  out.short = {pinned: "data-vwpin" in at.box.attrs, props: Object.assign({}, at.box.props), edge: scroll(-600)};
+  focus(200); focus(30);
+  out.short.focus = scrolled.splice(0);
   // A row chosen on a phone before anything plays: what it covers brought up under the player;
   // on a wide screen the player brought into view, as before.
   for (const wide of [false, true]) {
-    const w = view(wide);
+    const w = view(wide); s.vwStick();
     s.setView({who: "House Finance", rows: [{id: "A", date: "2026-05-12"}, {id: "B", date: "2026-05-05"}],
       chosen: "A", pid: (r) => "m_" + r.id, href: (id) => "/committee/H34/videos#v-" + id});
     s.vwChoose({dataset: {vwpick: "B"}, closest: (q) => q === ".vw" ? w.box : null, setAttribute() {}});
@@ -77195,15 +77292,38 @@ def _videos_phone_playlist():
     page scrolls. A row chosen before a first press brings the recording's
     description up under the player. On a wide screen nothing of this
     applies: the player does not stick, and the view is as it was (the same
-    pixels before and after at 1280, measured 29 October 2026)."""
+    pixels before and after at 1280, measured 29 October 2026).
+
+    ONLY WHERE IT LEAVES THE LIST ROOM (the review of 29 October 2026, 1):
+    stuck at every width below 60em, the strip, the player and its caption
+    were 517px of a phone held sideways (844 by 390) and 548 of a 900 by 600
+    window, and not one of 80 Tab and Shift+Tab steps through House
+    Finance's list left its row in sight. app.css's sticky rule asks for
+    [data-vwpin], which vwStick sets only where the three take at most
+    three fifths of the window's height; elsewhere the player scrolls with
+    the page and what is under it is kept clear of the strip alone, the
+    focus too (80 of 80 steps in sight at 844 by 390, 900 by 600 and 667 by
+    375, and still at 390 by 844 and 768 by 1024; one step was under the
+    strip without the strip's guard). And while the player stays over the
+    list, a foot to it, once the view has gone up under the strip (7)."""
     css = Path("src/pages/app.css").read_text(encoding="utf-8")
     phone = _braced(css, "@media screen and (max-width:59.99em){")
     wide = _braced(css, "@media screen and (min-width:60em){")
-    stick = re.search(r"\.vwmain\{position:sticky;top:var\(--vwtop,0px\);z-index:\d+;background:var\(--vwbg\)", phone)
+    stick = re.search(r"\n\s*\.vw\[data-vwpin\] \.vwmain\{position:sticky;top:var\(--vwtop,0px\);z-index:\d+\}", phone)
+    band = re.search(r"\n\s*\.vwmain\{background:var\(--vwbg\);padding-bottom:var\(--sp-3\);"
+                     r"margin-bottom:calc\(-1 \* var\(--sp-3\)\)\}", phone)
+    foot = re.search(r"\n\s*\.vw\[data-vwstuck\] \.vwmain\{box-shadow:0 1px 0 var\(--rule-2\)", phone)
     clear = re.search(r"\.vwdet,\.vwdet :is\(a,button\),\.vwside :is\(a,button\)[^{]*\{scroll-margin-top:calc\("
                       r"var\(--vwstick,0px\)", phone)
     for ok, why in (
-            (stick, "on a phone the player does not stay at the top, under the tab strip, on its ground"),
+            (stick, "on a phone the player does not stay at the top, under the tab strip, where the view is "
+                    "marked as leaving the list room"),
+            (not re.search(r"(^|[\n}])\s*\.vwmain\{[^}]*position:sticky", phone),
+             "on a phone the player stays at the top whatever the window's height: a phone held sideways has "
+             "its list under the player"),
+            (band, "the player's band is not drawn the same pinned or not, so marking it changes the height it "
+                   "is measured by"),
+            (foot, "the player that stays over the list has no foot"),
             (clear, "on a phone what is under the player is not kept clear of it when scrolled to"),
             (".vwlist" not in phone and ".vwrest" not in phone.replace(".vwbills:not(.vwopen) .vwrest", ""),
              "on a phone rows of the list are held back"),
@@ -77219,21 +77339,30 @@ def _videos_phone_playlist():
     assert got["rows"] == 40 and not got["held"], (
         f"a list of 40 draws {got['rows']} rows, or holds some back behind a button: the whole list is "
         "what a phone scrolls through")
-    assert got["props"] == {"--vwtop": "45px", "--vwstick": "313px"}, (
-        f"the strip's and the player's reach are not written on the view: {got['props']}")
+    assert got["props"] == {"--vwtop": "45px", "--vwstick": "313px"} and got["pinned"], (
+        f"the strip's and the player's reach are not written on the view, or a 390 by 844 phone's player "
+        f"is not made to stay: {got['props']}, {got['pinned']}")
     assert got["watched"] == [2, 2, True, True], (
         f"the strip and the player are not watched for a change of size, or are watched afresh each "
         f"time, which reports again without end: {got['watched']}")
     assert got["under"] == [-121] and got["wideFocus"] == [], (
         f"the keyboard on a row under the player is not scrolled clear of it ({got['under']}), or a "
-        f"wide screen's is moved ({got['wideFocus']})")
+        f"wide screen's below the strip is moved ({got['wideFocus']})")
+    assert got["short"] == {"pinned": False, "props": {"--vwtop": "45px", "--vwstick": "45px"}, "edge": False,
+                            "focus": [-23]}, (
+        "in a window too short for it (390px high, the strip and the player 313px of it) the player is made "
+        "to stay, what is under it is not kept clear of the strip alone, or a row the keyboard leaves under "
+        f"the strip is not put clear of it: {got['short']}")
+    assert got["edge"] == [False, True, False], (
+        f"the player that stays has no foot once the list has gone up under it, or has one at rest: {got['edge']}")
     assert got["choosePhone"] == {"det": ["start"], "player": [], "focus": 1} and \
         got["chooseWide"] == {"det": [], "player": ["nearest"], "focus": 1}, (
             f"a row chosen does not bring up what it covers under a phone's player, or a wide screen's "
             f"player into view: {got['choosePhone']}, {got['chooseWide']}")
     return "ok", ("on a phone the player stays under the strip over the whole list, what is under it kept "
-                  "clear of it by app.css and by app.js; a row chosen brings up its description; a "
-                  "desktop's view untouched")
+                  "clear of it by app.css and by app.js, with a foot once the list goes under it; not in a "
+                  "window too short for it, where the focus is kept clear of the strip; a row chosen brings "
+                  "up its description; a desktop's view untouched")
 
 
 @check("frontend", "a recording chosen on a Videos tab is described under the player: its kinds, how many "
@@ -77260,10 +77389,14 @@ def _videos_description():
         "bill": bill, "n": bill[:2] + " " + bill[2:], "title": f"the title of {bill}", "year": 2026,
         "term": "2025-2026", "kind": kind, "video_id": vid, "start": start, "state": state, "time": "10:00",
         "venue": "LOB 302"}, **k)
+    # HB 675-FN-A-LOCAL: a number of 17 characters, 164px at 1280, which ran
+    # 36px under its first moment in a column of 7.5rem (the review of 29
+    # October 2026, 3).
     items = [item("HB1442", "work session", 600, "stated"),
              item("HB1442", "executive session", 3000, "located"),
              item("HB1001", "work session", 120.0, "stated"),
-             item("HB1203", "work session", None, "prestream")]
+             item("HB1203", "work session", None, "prestream"),
+             item("HB675", "work session", 1800, "located", n="HB 675-FN-A-LOCAL")]
     quiet = [item("HB2001", "public hearing", None, "prestream", "VID9"),
              item("HB2002", "public hearing", None, "prestream", "VID9")]
     out = lambda its: [{"bill": b, "kinds": sorted({i["kind"] for i in its if i["bill"] == b}), "outcome": "worked"}
@@ -77297,7 +77430,7 @@ process.stdout.write("\n@@" + JSON.stringify(out));
     flat = {k: re.sub(r"[ \t\r\n]+", " ", v) for k, v in got.items()}
     det = lambda h: h[h.index('class="vwdetin"'):h.index('<div class="vwside">')]
     one = det(flat["vid1"])
-    assert '<p class="vwlead">The docket ties 3 bills to this recording. Choose a time to jump the recording ' \
+    assert '<p class="vwlead">The docket ties 4 bills to this recording. Choose a time to jump the recording ' \
         'there.</p>' in one, "the description does not say how many bills the docket ties to the recording, " \
         "and how its times are used: " + re.sub(r"<[^>]+>", " ", one)[:300]
     # The kinds, as the Meetings tab's chips, before the bills.
@@ -77310,7 +77443,8 @@ process.stdout.write("\n@@" + JSON.stringify(out));
     lines = re.findall(r'<li(?: class="vwrest")?><a class="vwbn" href="[^"]*">([^<]*)</a>'
                        r'(?:<span class="mjumps">(.*?)</span>)?<span class="vwbt">([^<]*)</span></li>', one)
     assert [(n, t) for n, _j, t in lines] == [("HB 1001", "the title of HB1001"), ("HB 1442", "the title of HB1442"),
-                                             ("HB 1203", "the title of HB1203")] and one.count('class="vwbn"') == 3, (
+                                             ("HB 675-FN-A-LOCAL", "the title of HB675"),
+                                             ("HB 1203", "the title of HB1203")] and one.count('class="vwbn"') == 4, (
         "the bills are not a line each -- the number, its moments, its title -- in the order the recording "
         f"reaches them: {[(n, t) for n, _j, t in lines]}")
     jumps = {n: j for n, j, _t in lines}
@@ -77338,8 +77472,31 @@ process.stdout.write("\n@@" + JSON.stringify(out));
         ".vwbt{flex:1 1 100%}" in phone, (
             "app.css: a bill's moments are not beside its number with its title under them, on a wide screen "
             "or a phone")
+    # THE NUMBERS' COLUMN IS THE LONGEST NUMBER'S, THE SAME DOWN THE LIST
+    # (the review of 29 October 2026, 3): the list a grid whose first column
+    # is at least 7.5rem and as wide as its widest number, each line a
+    # subgrid of it, so HB 675-FN-A-LOCAL is never under its first moment and
+    # the moments start on one line; and each number on its line's first
+    # baseline, level with its moments or its title's first line, where it
+    # had been centred against a title of two or three lines (6). Node draws
+    # no boxes: these are the rules that place them, measured in Chromium on
+    # real data (no number under a moment in the 736 lines of House Finance,
+    # Education Funding and Children and Family Law, at 1280 and at 768,
+    # where there had been 32).
+    wide_list = re.search(r"\n\.vwbills\{[^}]*display:grid;[^}]*grid-template-columns:minmax\(7\.5rem,max-content\) "
+                          r"minmax\(0,1fr\)", css)
+    line = re.search(r"\n\.vwbills li\{([^}]*)\}", css)
+    assert wide_list and line and "grid-column:1 / -1" in line.group(1) and \
+        "grid-template-columns:subgrid" in line.group(1) and "align-items:baseline" in line.group(1) and \
+        "grid-template-columns:7.5rem" not in line.group(1) and "align-items:center" not in line.group(1), (
+            "app.css: a bill's number is in a fixed column, or one as wide as its own line's, where a long "
+            "number runs under its moments or the moments do not start on one line; or a number is not on "
+            "its line's first baseline")
+    assert '<a class="vwbn" href="bill/2026/hb675.html">HB 675-FN-A-LOCAL</a>' in one, (
+        "a long number is not drawn whole in the description")
     return "ok", ("the kinds, the count and how the times are used, then a line a bill -- number, the "
-                  "Meetings tab's own buttons, title -- in the order the recording reaches them; a recording "
+                  "Meetings tab's own buttons, title -- in the order the recording reaches them, the numbers "
+                  "in a column as wide as the longest and on their lines' first baseline; a recording "
                   "with no moment says so")
 
 

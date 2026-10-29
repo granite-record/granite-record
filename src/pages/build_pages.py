@@ -255,7 +255,10 @@ MEMBER_TAB_SLUGS = ("cosponsored", "votes")
 # A committee's Videos tab (26 October 2026); its rule serves a study or
 # statutory committee's /committee/ss<id>/videos too, which opens that page
 # on its Videos tab, and /committee/ss<id>/sessions on its Meetings tab.
-COMMITTEE_TAB_SLUGS = ("sessions", "videos")
+# And /bills (29 October 2026): a study committee's page opens on its
+# Meetings, so its Bills tab has an address of its own; a standing
+# committee's Bills is its page's own address, and /bills opens it too.
+COMMITTEE_TAB_SLUGS = ("bills", "sessions", "videos")
 # The chambers' pages (build_full_sessions.SLUG), whose Videos tab is
 # /session/<chamber>/videos.
 CHAMBER_TAB_PAGES = ("house", "senate")

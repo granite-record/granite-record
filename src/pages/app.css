@@ -6923,9 +6923,20 @@ grid-template-areas:"main" "det" "side" "src"}
    beside it, and its title under them in smaller, quieter type -- so the eye
    runs down the numbers and across to the times. */
 .vwlead{margin:0 0 var(--sp-3);font-size:var(--t-ui);color:var(--ink-2)}
-.vwbills{list-style:none;margin:0;padding:0}
-.vwbills li{display:grid;grid-template-columns:7.5rem minmax(0,1fr);gap:var(--sp-2) var(--sp-4);
-align-items:center;padding:var(--sp-3) 0;border-top:1px solid var(--rule)}
+/* THE NUMBERS' COLUMN IS AS WIDE AS THE LONGEST NUMBER IN THE LIST, and the
+   same for every bill (each line a subgrid of the list), so the moments
+   start on one line down the list and no number runs under its first
+   button: at a fixed 7.5rem, "HB 675-FN-A-LOCAL" (164px at 1280) ran 36px
+   under it and read "HB 675-FN-A-LO" (the review of 29 October 2026, 3; the
+   committees' recordings carry 122 numbers of 15 characters or more). And
+   each number sits on its line's first baseline, level with the first line
+   beside it -- its moments, or its title where it has none -- where it had
+   been centred against a title of two or three lines (6). */
+.vwbills{list-style:none;margin:0;padding:0;display:grid;
+grid-template-columns:minmax(7.5rem,max-content) minmax(0,1fr);column-gap:var(--sp-4)}
+.vwbills li{grid-column:1 / -1;display:grid;grid-template-columns:minmax(7.5rem,max-content) minmax(0,1fr);
+grid-template-columns:subgrid;gap:var(--sp-2) var(--sp-4);
+align-items:baseline;padding:var(--sp-3) 0;border-top:1px solid var(--rule)}
 .vwbills li:first-child{border-top:0;padding-top:0}
 .vwbn{grid-column:1;font-weight:600;white-space:nowrap}
 .vwbt{grid-column:2;font-size:var(--t-sm);line-height:1.45;color:var(--ink-2)}
@@ -6987,9 +6998,23 @@ color:var(--ink-2);white-space:nowrap;overflow:hidden}
      it. Whatever the keyboard or a link moves to under the player stops
      clear of it (--vwstick, the player's foot), and the view itself, landed
      on, stops under the strip. The page is what scrolls: no box scrolls
-     inside it (review, 6). */
-  .vwmain{position:sticky;top:var(--vwtop,0px);z-index:4;background:var(--vwbg);
-  padding-bottom:var(--sp-3);margin-bottom:calc(-1 * var(--sp-3))}
+     inside it (review, 6).
+
+     ONLY WHERE IT LEAVES THE LIST ROOM (the review of 29 October 2026, 1):
+     vwStick marks the view [data-vwpin] where the strip, the player and its
+     caption take no more than three fifths of the window's height. On a
+     phone held sideways (844 by 390) they were 468px of 390, and in a
+     900 by 600 window 548 of 600, and the list scrolled out of sight under
+     them; there the player scrolls with the page, as it did before. The
+     band is drawn the same pinned or not, so marking it does not change
+     the height it is measured by. */
+  .vwmain{background:var(--vwbg);padding-bottom:var(--sp-3);margin-bottom:calc(-1 * var(--sp-3))}
+  .vw[data-vwpin] .vwmain{position:sticky;top:var(--vwtop,0px);z-index:4}
+  /* And while it stays over the list, a foot to it (7): the rows went
+     under the caption with the tops of their chips cut off and nothing to
+     say the player was a layer above them. Drawn only once the view has
+     gone up under it (vwEdge), so the player at rest has no line under it. */
+  .vw[data-vwstuck] .vwmain{box-shadow:0 1px 0 var(--rule-2),0 6px 8px -6px var(--shadow)}
   .vw{scroll-margin-top:var(--vwtop,0px)}
   .vwdet,.vwdet :is(a,button),.vwside :is(a,button),.vwsrc a{scroll-margin-top:calc(var(--vwstick,0px) + var(--sp-3))}
 }
@@ -6998,6 +7023,7 @@ color:var(--ink-2);white-space:nowrap;overflow:hidden}
    the width under them: in a column beside the number, "Full Committee Work
    Session 01:23:11" broke over two lines inside its button at 390px. */
 @media (max-width:45em){
+  .vwbills{display:block}
   .vwbills li{display:flex;flex-wrap:wrap;align-items:center;gap:var(--sp-2) var(--sp-3)}
   .vwbills .mjumps{display:contents}
   .vwbt{flex:1 1 100%}
@@ -7040,6 +7066,12 @@ html.js .sspane:not([data-on]){display:none}
 html.js .ssph{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;
 clip:rect(0 0 0 0);white-space:nowrap;border:0}
 html:not(.js) .rhead ~ .sspane{border-top:1px solid var(--rule-2);border-radius:var(--r-out);margin-top:var(--sp-7)}
+/* A meeting the address names (#day-<date>, a Calendar card's link, the
+   Videos tab's "This meeting") lands below the strip, which stays at the top
+   of the window: its height as app.js measured it (ssClear, --ssheld; until
+   then about a strip's) and a little more. Brought to the top, the
+   meeting's date was under the strip (the review of 29 October 2026, 2). */
+.sspane .cmeet{scroll-margin-top:calc(var(--ssheld,3.25rem) + var(--sp-6))}
 .ssbody{margin-top:var(--sp-7)}
 .ssbody > .w4:first-child{border-top:1px solid var(--rule);padding-top:var(--sp-5)}
 .ssduty{font:400 var(--t-read)/1.65 var(--serif);color:var(--ink);max-width:51.1875rem;margin:0 0 var(--sp-4)}

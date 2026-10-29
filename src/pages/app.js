@@ -2832,9 +2832,16 @@ const MEMBER_TABS={cosponsored:1,votes:2};
 // A committee's Videos tab (the owner, 26 October 2026) is "videos", a slug
 // a bill's page keeps for its Hearings tab too: TAB_PATH tells a bill's
 // address from a committee's, so the two never meet.
-const COMMITTEE_TABS={sessions:1,videos:2};
+// AND "bills" (29 October 2026): a study committee's page lands on its
+// Meetings, so its Bills tab is at /committee/ss57/bills, which the
+// committee rewrite serves for every committee. A standing committee's
+// Bills is still its page's own address, the one this script writes
+// (slugOf gives tab 0 no slug), and /bills opens it there too.
+const COMMITTEE_TABS={bills:0,sessions:1,videos:2};
 const TAB_PATH=/^(\/(?:bill\/\d{4}\/[a-z]{2,5}\d+|legislator\/[^\/]+|committee\/[^\/]+))\/([a-z]+)\/?$/i;
-const isTabSlug=s=>!!(BILL_TABS[s]||MEMBER_TABS[s]||COMMITTEE_TABS[s]);
+// A slug is one a map names, whatever tab it stands for: Bills is tab 0.
+const ownSlug=(map,s)=>Object.prototype.hasOwnProperty.call(map,s);
+const isTabSlug=s=>ownSlug(BILL_TABS,s)||ownSlug(MEMBER_TABS,s)||ownSlug(COMMITTEE_TABS,s);
 function tabFromPath(){
   const m=TAB_PATH.exec(location.pathname);
   return m&&isTabSlug(m[2].toLowerCase())?m[2].toLowerCase():"";
@@ -2866,7 +2873,9 @@ function skipHere(){
   if(s)s.setAttribute("href",location.pathname+location.search+"#results");
 }
 // The skip link takes the keyboard with it: find.js, which every page runs.
-const slugOf=(map,v)=>Object.keys(map).find(k=>map[k]===v)||"";
+// The first tab is the record's own address: no slug, though a committee's
+// /bills names it too.
+const slugOf=(map,v)=>v===0?"":Object.keys(map).find(k=>map[k]===v)||"";
 // WHERE THE ADDRESS STOOD, WITHOUT ITS FRAGMENT, when this script last wrote
 // it or was last told it had moved. A link to a place on the page -- the skip
 // link is one -- adds an entry to history and fires popstate with no state,
@@ -9170,7 +9179,22 @@ function vwChoose(a){
    the player sticks) and --vwstick (the player's foot), and app.css keeps
    every row, bill and moment that far from the top when it is scrolled to:
    a keyboard moving down the list, or back up it, never has its place under
-   the player. Measured again whenever either changes size. */
+   the player. Measured again whenever either changes size.
+
+   AND ONLY WHERE IT LEAVES THE LIST ROOM (the review of 29 October 2026,
+   1). Stuck at every width below 60em whatever the height, the strip, the
+   player and its caption were 517px of a phone held sideways (844 by 390),
+   and 548 of a 900 by 600 window, and the list went out of sight under
+   them: no row the keyboard reached there was in view. The view is marked
+   [data-vwpin], which app.css's sticky rule asks for, only where the three
+   take at most VW_PIN_SHARE of the window's height -- 37% of a 390 by 844
+   phone, 56% of a small one (375 by 548) with its browser's bars showing,
+   46% of a 768 by 1024 tablet (measured on House Finance, 29 October 2026);
+   elsewhere the player scrolls with the page, as it did before. The height
+   is the document's, which on a phone is the window with the browser's
+   bars showing, so the bars folding away as the page scrolls do not pin and
+   unpin the player under the reader's thumb. */
+const VW_PIN_SHARE=0.6;
 const vwPinned=box=>{const m=box&&box.querySelector(".vwmain");
   return !!m&&getComputedStyle(m).position==="sticky";};
 // The strip above the view's pane, where it stays at the top of the window.
@@ -9180,16 +9204,24 @@ function vwStrip(box){
   const strip=tab&&tab.closest("[role=tablist]");
   return strip&&getComputedStyle(strip).position==="sticky"?strip:null;
 }
-// Where the player's foot is, in the window, while it stays.
-const vwUnder=box=>{const m=box.querySelector(".vwmain");
+// Where what stays at the top of the window ends: the player's foot while
+// it stays, or else the strip's, where the strip stays.
+const vwUnder=box=>{
+  const m=vwPinned(box)?box.querySelector(".vwmain"):vwStrip(box);
   return m?m.getBoundingClientRect().bottom:0;};
+const vwRoom=()=>document.documentElement.clientHeight||window.innerHeight||0;
 let VW_SEEN=null, VW_WATCHED=[];
 function vwStick(){
   document.querySelectorAll(".vw").forEach(box=>{
     const main=box.querySelector(".vwmain"), strip=vwStrip(box);
     const top=strip?Math.ceil(strip.getBoundingClientRect().height):0;
+    const band=top+Math.ceil(main?main.getBoundingClientRect().height:0);
+    const pin=!!main&&band<=vwRoom()*VW_PIN_SHARE;
+    if(pin)box.setAttribute("data-vwpin","");else box.removeAttribute("data-vwpin");
     box.style.setProperty("--vwtop",`${top}px`);
-    box.style.setProperty("--vwstick",`${top+Math.ceil(main?main.getBoundingClientRect().height:0)}px`);
+    // What is under the player is kept clear of its foot where it stays,
+    // and of the strip's where it does not.
+    box.style.setProperty("--vwstick",`${pin?band:top}px`);
     // Watched for a change of size, and only watched afresh when they are
     // other elements: watching starts with a report, which runs this again.
     const els=[main,strip].filter(Boolean);
@@ -9199,19 +9231,42 @@ function vwStick(){
     els.forEach(el=>VW_SEEN.observe(el));
     VW_WATCHED=els;
   });
+  vwEdge();
 }
+/* THE STAYING PLAYER'S FOOT (the review of 29 October 2026, 7): rows went
+   under the caption with nothing to say the player was a layer over them.
+   The view is marked [data-vwstuck], which draws a rule and a shadow at the
+   band's foot (app.css), once it has gone up past the strip's foot -- the
+   player is then held there over what scrolls -- and not while the player
+   rests where it stands, which needs no line under it. Read once a frame
+   while the page scrolls. */
+function vwEdge(){
+  document.querySelectorAll(".vw").forEach(box=>{
+    const top=parseFloat(box.style.getPropertyValue("--vwtop"))||0;
+    const stuck=box.hasAttribute("data-vwpin")&&vwPinned(box)&&box.getBoundingClientRect().top<top-1;
+    if(stuck)box.setAttribute("data-vwstuck","");else box.removeAttribute("data-vwstuck");
+  });
+}
+let vwEdgeAsked=false;
+window.addEventListener("scroll",()=>{
+  if(vwEdgeAsked)return;
+  vwEdgeAsked=true;
+  requestAnimationFrame(()=>{vwEdgeAsked=false;vwEdge();});
+},{passive:true});
 window.addEventListener("resize",()=>vwStick());
 // AND WHERE THE BROWSER'S OWN SCROLLING LEAVES IT THERE: the focus, once
 // moved, is put clear of the player. Chromium keeps scroll-margin for
 // scrollIntoView and not for the Tab key: going back up House Finance's list
 // with Shift+Tab at 390px, 31 rows of 40 came to rest under the player with
 // app.css's margin alone, and none with this (measured 29 October 2026).
+// Where the player does not stay (a wide screen, or a window too short for
+// it), what stays is the strip, and the focus is put clear of that.
 document.addEventListener("focusin",e=>{
   const t=e.target, box=t&&t.closest&&t.closest(".vw");
-  if(!box||t.closest(".vwmain")||!vwPinned(box))return;
+  if(!box||t.closest(".vwmain"))return;
   requestAnimationFrame(()=>{
     const under=vwUnder(box), top=t.getBoundingClientRect().top;
-    if(top<under)window.scrollBy(0,top-under-8);
+    if(under>0&&top<under)window.scrollBy(0,top-under-8);
   });
 });
 document.addEventListener("click",e=>{
@@ -9407,7 +9462,7 @@ function studyVideoRows(d){
     line:[r.venue,r.type],
     detail:()=>{
       const facts=[r.venue,r.type,!r.began&&r.time?`Set for ${clock(r.time)}`:""].filter(Boolean);
-      const links=[`<a href="${esc(`${d.path}/sessions#${r.anchor}`)}" data-ssgo>This meeting</a>`]
+      const links=[`<a href="${esc(`${d.path}#${r.anchor}`)}" data-ssgo>This meeting</a>`]
         .concat(r.calendar?[`<a href="${esc(r.calendar)}">This meeting on the Calendar</a>`]:[]);
       return (facts.length?`<p class="vwkinds">${vwJoin(facts.map(esc))}</p>`:"")
         +`<p class="src vwlinks">${vwJoin(links)}</p>`;}}));
@@ -9554,15 +9609,25 @@ function panePause(pane,gone){
    committees, commissions and boards get the same tab format as standing
    committees: Bills | Meetings | Videos"). build_study_committees writes the
    strip and the panes whole (tabs_html), the strip in a standing committee's
-   classes, and the first pane shown from the first paint (html.js); this
-   turns to the tab the address names and to the tab pressed. The address
-   names the tab as a standing committee's does -- /committee/ss57 its first,
-   /committee/ss57/sessions its Meetings, /videos its Videos, which the
-   committee rewrite serves -- and a place on one names that tab: a meeting
+   classes, and the pane it lands on shown from the first paint (html.js);
+   this turns to the tab the address names and to the tab pressed. The
+   address names the tab as a standing committee's does -- /committee/ss57
+   the one it lands on, /committee/ss57/bills, /sessions and /videos the
+   others, which the committee rewrite serves -- and a place on one names
+   that tab: a meeting
    (#day-<date>, as a Calendar card leads here, or the earlier meetings'
    fold), a recording (#v-<id>), or a pane by its id (#meetings, #videos,
    the sections' addresses before the tabs). A meeting named is opened and
-   brought into view. A recording playing in a pane turned from is paused. */
+   brought into view. A recording playing in a pane turned from is paused.
+
+   THE PAGE'S OWN ADDRESS OPENS ON ITS MEETINGS (the review of 29 October
+   2026, 4): opened on Bills, the State Commission on Aging showed one row,
+   HB 621 of 2019, which What It Does names just above, and the Fiscal
+   Committee four housekeeping bills, its 165 meetings a click away. The
+   strip keeps the owner's order, Bills | Meetings | Videos; the tab the
+   page lands on is the one the build writes with no slug (tabs_html,
+   landing) -- Meetings wherever the body has met -- and every other tab is
+   at its own: /bills, /sessions, /videos. */
 const ssTabsOf=strip=>[...strip.querySelectorAll("[data-sstab]")];
 const ssPaneOf=t=>document.getElementById(t.getAttribute("aria-controls")||"");
 function ssWanted(strip){
@@ -9571,7 +9636,19 @@ function ssWanted(strip){
   const placed=/^#(day-|earlier$)/.test(h)?pane("meetings"):/^#v-/.test(h)?pane("videos"):pane(h.slice(1));
   if(placed)return {tab:placed,placed:true};
   const m=/\/([a-z]+)\/?$/.exec(location.pathname);
-  return {tab:(m&&tabs.find(t=>t.dataset.sstab===m[1]))||tabs[0],placed:false};
+  return {tab:(m&&tabs.find(t=>t.dataset.sstab===m[1]))||tabs.find(t=>!t.dataset.sstab)||tabs[0],placed:false};
+}
+// A meeting brought to the top of the window lands below the strip, which
+// stays there (.rhead ~ .tabs): scrolled to the top, Friday, October 23's
+// summary was under the strip on the Fiscal Committee's page (the review of
+// 29 October 2026, 2). The strip's height is written on the page as
+// --ssheld, which app.css keeps above a meeting (scroll-margin-top) -- for
+// this script's scrolling and for the browser's own, which lands on the
+// address's #day- after this has run and had put the meeting back at 0px.
+function ssClear(el,strip){
+  const held=strip&&getComputedStyle(strip).position==="sticky"?Math.ceil(strip.getBoundingClientRect().height):0;
+  document.documentElement.style.setProperty("--ssheld",`${held}px`);
+  el.scrollIntoView({block:"start"});
 }
 function ssShow(tab,write,keep){
   const strip=tab.closest(".sstabs");
@@ -9600,7 +9677,7 @@ function ssLand(){
   try{day=/^#day-/.test(location.hash)?document.getElementById(decodeURIComponent(location.hash.slice(1))):null;}catch(_){}
   if(!day)return;
   for(let p=day;p;p=p.parentElement)if(p.tagName==="DETAILS")p.open=true;
-  day.scrollIntoView({block:"start"});
+  ssClear(day,strip);
 }
 document.addEventListener("click",e=>{
   const t=e.target&&e.target.closest?e.target:null;

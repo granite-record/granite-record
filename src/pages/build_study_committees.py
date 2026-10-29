@@ -557,15 +557,28 @@ def bills_of(c, ctx):
     A standing committee's Bills are the bills referred to it; nothing is
     referred to a study or statutory committee, and what the record does
     name are the bills that made it and changed it: the one that set it up
-    (CondensedBillNo) and those it lists as amending it since (AmendingBills,
-    "HB1442(2026)"), each once, in that order -- 143 of the 151 active name
+    (CondensedBillNo) and those it lists as amending it (AmendingBills,
+    "HB1442(2026)"), each once -- 143 of the 151 active name
     the first (measured on the preview, 29 October 2026), and the Fiscal
     Committee, set up in 1965 by no bill the record names, four of the
     second. Each is {n, year, href, title, line}: its page and title where the
     site has the bill. A committee whose record names none has no Bills tab
-    rather than an empty one."""
+    rather than an empty one.
+
+    BY YEAR, AND NONE SAID TO COME "SINCE" (the review of 29 October 2026,
+    5): the bills the record lists as amending a body can be older than the
+    one that set it up -- the Advisory Council on Unemployment Compensation,
+    set up by HB 317 of 1995, lists HB 746 of 1975 and HB 110 of 1981, and the
+    tab had them as "Changed it", after it. The rows are in the order of
+    their years, the bill that set it up first among its own year's, and a
+    bill older than it -- or than the year a body set up by no bill named
+    was set up -- says that, where the others say "Amended it"."""
+    founded = c["year"] if str(c["year"] or "").isdigit() else ""
+    older = ("Older than the bill that set it up" if c["bill"] else
+             f"Older than {founded}, when it was set up")
     named = ([(c["bill"], c["year"], "Set it up")] if c["bill"] else []) + [
-        (m.group(1).upper() + m.group(2), m.group(3), "Changed it")
+        (m.group(1).upper() + m.group(2), m.group(3),
+         older if founded and m.group(3) < founded else "Amended it")
         for m in BILL_YEAR.finditer(c["amended"] or "")]
     out, seen = [], set()
     # The year this site's bills begin (1989, context): a bill before it has
@@ -581,21 +594,25 @@ def bills_of(c, ctx):
             title = f"Before {first}, when this site's record of bills begins."
         out.append({"n": re.sub(r"^([A-Z]+)(\d)", r"\1 \2", bid), "year": str(year),
                     "href": bill_page(bid, year, ctx["bills"], ctx["site"]), "title": title, "line": role})
-    return out
+    return sorted(out, key=lambda r: (r["year"], r["line"] != "Set it up"))
 
 
 def bills_html(c, rows):
     """The Bills tab: what the list is, then a row a bill (components.bill_row),
     its number as text where the site has no page for it."""
     made = sum(r["line"] == "Set it up" for r in rows)
-    since = len(rows) - made
-    them = "them" if len(rows) > 1 else "it"
-    changed = ("the bill that has changed it since" if since == 1
-               else f"the {since:,} bills that have changed it since")
-    lead = (f"The bill that set it up, and {changed}" if made and since else
-            "The bill that set it up" if made else
-            changed[:1].upper() + changed[1:] + (f" it was set up in {E(c['year'])}" if c["year"] else ""))
-    out = [f'<p class="src">{lead}, as the General Court&rsquo;s record names {them}.</p><div class="ssbills">']
+    others = len(rows) - made
+    # What the record says of them and no more: it lists them as amending
+    # the body, in years that can come before the bill that set it up
+    # (bills_of), so nothing here says "since".
+    listed = (("the bill" if others == 1 else f"the {others:,} bills")
+              + " the General Court&rsquo;s record lists as amending it"
+              + (", by year" if len(rows) > 1 else ""))
+    lead = (f"The bill that set it up, and {listed}." if made and others else
+            "The bill that set it up, as the General Court&rsquo;s record names it." if made else
+            listed[:1].upper() + listed[1:] + "."
+            + (f" It was set up in {E(c['year'])}." if c["year"] else ""))
+    out = [f'<p class="src">{lead}</p><div class="ssbills">']
     for r in rows:
         if r["href"]:
             out.append(C.bill_row(r))
@@ -632,11 +649,15 @@ def what_it_does(c, ctx):
                    + (f'<a href="{E(st["href"])}">{name}</a>' if st["href"] else name)
                    + (f", {E(st['heading'].rstrip('.'))}" if st["heading"] else "")
                    + ".</p>")
+    # By year, and not "since": the record's amending bills can be older
+    # than the one that set the body up (bills_of; the review of 29 October
+    # 2026, 5), where this said "Changed since by HB 746 (1975)" of a council
+    # set up in 1995.
     amended = [bill_link(b.upper(), y, ctx["bills"], ctx["site"]) + f" ({E(y)})"
-               for b, n, y in ((m.group(1) + m.group(2), m.group(2), m.group(3))
-                               for m in BILL_YEAR.finditer(c["amended"] or ""))]
+               for b, y in sorted(((m.group(1) + m.group(2), m.group(3))
+                                   for m in BILL_YEAR.finditer(c["amended"] or "")), key=lambda x: x[1])]
     if amended:
-        out.append(f"<p>Changed since by {', '.join(amended)}.</p>")
+        out.append(f"<p>The General Court&rsquo;s record lists it as amended by {', '.join(amended)}.</p>")
     rules = [(w, prose(c[k], ctx["vocab"], ctx["parted"]))
              for w, k in (("First Meeting", "first"), ("Quorum", "quorum"), ("Ends", "ends"))]
     rules = [(w, t) for w, t in rules if t]
@@ -823,33 +844,58 @@ def tab_n(n):
 # what it does, its report and who sits on it stay above the strip, as a
 # standing committee keeps its members and its rule. Each tab is (pane id,
 # its name, the slug of its address, its count, its body); its address is
-# the page's own for the first, else /committee/ss<id>/<slug>, which the
-# committee rewrite serves (build_pages.COMMITTEE_TAB_SLUGS) -- so a tab to
+# the page's own for the one it lands on (landing), else
+# /committee/ss<id>/<slug>, which the committee rewrite serves
+# (build_pages.COMMITTEE_TAB_SLUGS) -- so a tab to
 # come, Reports, is a pane, a name and a slug. A tab with nothing in it is
 # not drawn: no Bills where the record names none, no Videos where no
 # meeting was recorded.
 #
 # WRITTEN WHOLE, SHOWN BY SCRIPT: the strip is hidden without JavaScript and
 # every pane is on the page in turn under its own heading; with it (html.js,
-# set before the first paint) the first pane alone is shown from the first
-# paint, and app.js (ssTabs) turns to the one the address names and to the
-# one pressed.
-TABS = (("bills", "Bills", ""), ("meetings", "Meetings", "sessions"), ("videos", "Videos", "videos"))
+# set before the first paint) the pane the page lands on alone is shown from
+# the first paint, and app.js (ssTabs) turns to the one the address names and
+# to the one pressed.
+#
+# IT LANDS ON MEETINGS (the review of 29 October 2026, 4): opened on Bills,
+# the first tab, the State Commission on Aging showed one row, HB 621 of 2019,
+# which What It Does names just above it, and the Fiscal Committee four
+# housekeeping bills with its 165 meetings a click away -- and 143 of the 151
+# bodies name a founding bill, so nearly every page opened so. Nothing is
+# referred to a study or statutory committee: what a reader comes for is
+# when it meets and what it did. The strip keeps the owner's order; the tab
+# landed on is at the page's own address and every other at its slug
+# (/committee/ss57/bills, which the committee rewrite serves). A body that has
+# never met lands on the first tab with something in it.
+TABS = (("bills", "Bills", "bills"), ("meetings", "Meetings", "sessions"), ("videos", "Videos", "videos"))
+LANDS_ON = "meetings"
+
+
+def landing(bodies):
+    """The pane a study committee's page opens on, from {pane id: (count,
+    body)}: its meetings where it has met, else the first tab with something
+    in it, else the first."""
+    if bodies.get(LANDS_ON, (0, ""))[0]:
+        return LANDS_ON
+    have = [pid for pid, _w, _s in TABS if pid in bodies]
+    return next((pid for pid in have if bodies[pid][0]), have[0])
 
 
 def tabs_html(c, bodies):
     """The strip and its panes, from {pane id: (count, body)}, the ones there
-    are, in TABS' order."""
-    panes = [(pid, word, slug, *bodies[pid]) for pid, word, slug in TABS if pid in bodies]
+    are, in TABS' order; the one it lands on (landing) chosen and shown, at
+    the page's own address."""
+    land = landing(bodies)
+    panes = [(pid, word, "" if pid == land else slug, *bodies[pid]) for pid, word, slug in TABS if pid in bodies]
     strip = (f'<div class="tabs sstabs" role="tablist" data-base="{E(page_path(c))}">'
              + "".join(f'<button type="button" class="tab" role="tab" id="sstab-{pid}" aria-controls="{pid}" '
-                       f'data-sstab="{slug}" aria-selected="{"true" if not i else "false"}">{E(word)}{tab_n(n)}'
-                       "</button>" for i, (pid, word, slug, n, _b) in enumerate(panes))
+                       f'data-sstab="{slug}" aria-selected="{"true" if pid == land else "false"}">{E(word)}{tab_n(n)}'
+                       "</button>" for pid, word, slug, n, _b in panes)
              + "</div>")
     return strip + "".join(
         f'<div class="pane sspane" role="tabpanel" id="{pid}" aria-labelledby="sstab-{pid}" tabindex="0"'
-        f'{"" if i else " data-on"}><h2 class="ssph">{E(word)}</h2>{body}</div>'
-        for i, (pid, word, _s, _n, body) in enumerate(panes))
+        f'{" data-on" if pid == land else ""}><h2 class="ssph">{E(word)}</h2>{body}</div>'
+        for pid, word, _s, _n, body in panes)
 
 
 def facts_of(c, by, described, ms, ctx, today):
