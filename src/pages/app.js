@@ -3765,6 +3765,16 @@ function facetsShut(){
 if(FACETS_NARROW&&FACETS_NARROW.addEventListener)
   FACETS_NARROW.addEventListener("change",()=>{if(!facetsShut())renderFacets();});
 
+// THE SIDE THAT PREVAILED, SAID AS WELL AS TICKED (the accessibility sweep
+// of 29 October 2026). The tick beside a vote's winning side was read aloud
+// as "check mark", or not at all, and nothing else on the row said which
+// side had won: the tick is hidden from a screen reader now, and a word the
+// eye does not see says it -- "Yes (prevailed)". Every tally's tick is this
+// one (simpleDonut, donut's party rows, ballotRing), in the page's language.
+function wonMark(){
+  return `<span class="won" title="${esc(tr("vote.won_title","this side prevailed"))}" aria-hidden="true">\u2713</span>`
+    +`<span class="sr"> ${esc(tr("vote.won_sr","(prevailed)"))}</span>`;
+}
 function simpleDonut(rc,bid,i,what){
   // A division vote is counted but anonymous. Same ring, same colours, same
   // threshold line as a roll call -- the difference between the two is who is
@@ -3798,10 +3808,10 @@ function simpleDonut(rc,bid,i,what){
     ${score(y,n,won)}</svg>
     <div class="legend">
       <div class="lrow"><span class="sw" style="background:var(--yes)"></span>
-        <span>Yes${won?`<span class="won" title="this side prevailed">\u2713</span>`:""}</span>
+        <span>Yes${won?wonMark():""}</span>
         <span class="c">${y}</span></div>
       <div class="lrow"><span class="sw" style="background:var(--no)"></span>
-        <span>No${won?"":`<span class="won" title="this side prevailed">\u2713</span>`}</span>
+        <span>No${won?"":wonMark()}</span>
         <span class="c">${n}</span></div></div></div>`;
 }
 
@@ -3935,7 +3945,7 @@ function donut(bid,i,rc){
     return `<button type="button" class="lrow ${chosen===s.key?'sel':''}" aria-pressed="${chosen===s.key}" data-seg="${key}|${s.key}">
     <span class="sw" style="background:var(--${s.side==="Yea"?"yes":"no"})"></span>
     <span>${PARTY_NAME[s.p]||s.p} — ${s.side==="Yea"?"Yes":"No"}${
-      winner?`<span class="won" title="this side prevailed">\u2713</span>`:""}</span>
+      winner?wonMark():""}</span>
     <span class="c">${s.n}</span></button>`;}).join("");
   const others=OTHER.map(([st,label])=>({st,label,n:(rc.members||[]).filter(m=>m.v===st).length})).filter(o=>o.n);
   const oTot=others.reduce((a,o)=>a+o.n,0);
@@ -5157,7 +5167,7 @@ function ballotRing(y,n,won){
   const a=(180+GAP/2+(360-GAP)*2/3)*Math.PI/180;
   const said=`The voters: ${thou(y)} yes to ${thou(n)} no, ${share(y,tot)} yes, `
     +`needing two thirds; ${won?"ratified":"not ratified"}`;
-  const check=`<span class="won" title="this side prevailed">\u2713</span>`;
+  const check=wonMark();
   return `<div class="votewrap"><svg class="donut" viewBox="0 0 172 206" width="172" height="206"
     role="img" aria-label="${esc(said)}">
     <g transform="rotate(90 86 86)">${seg(avail*y/tot,"var(--yes)",won)}</g>

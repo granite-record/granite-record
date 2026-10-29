@@ -72170,6 +72170,52 @@ def _tap_targets_24(C):
     return "ok", "each takes the tap token: " + ", ".join(held)
 
 
+@check("frontend", "a vote tally's tick is hidden from a screen reader and a word it does not see says "
+       "which side prevailed, in the page's language", needs=("i18n",))
+def _vote_tick_said(I):
+    """The accessibility sweep of the R1 preview (29 October 2026): the tick
+    beside a tally's winning side -- a division's Yes or No, each party's
+    row on a roll call's ring, the voters' Yes or No on an amendment -- was
+    read aloud as "check mark", or not at all, and nothing else on the row
+    said which side had won. app.js's wonMark is every tally's tick now:
+    aria-hidden on the tick, and beside it <span class="sr"> (prevailed)
+    </span>, both in the page's language through tr().
+
+    simpleDonut and ballotRing are drawn in node, once with no words of
+    another language and once with the Spanish the catalog gives for the
+    two keys, and each tick they draw must be hidden and followed by the
+    word; and no tick in app.js is written anywhere but wonMark."""
+    js = Path("src/pages/app.js").read_text(encoding="utf-8")
+    marks = re.findall(r'<span class="won"[^>]*>', js)
+    assert len(marks) == 1 and 'aria-hidden="true"' in marks[0], (
+        f"app.js writes a tally's tick {len(marks)} times, not once in wonMark, hidden: {marks[:3]}")
+    es = {k: I.say("es", k, en) for k, en in (("vote.won_sr", "(prevailed)"),
+                                              ("vote.won_title", "this side prevailed"))}
+    assert es["vote.won_sr"] != "(prevailed)", "the catalog has no Spanish for vote.won_sr"
+    draw = ('[scope.simpleDonut({yeas:191,nays:158,passed:true},"HB1",0,"Passage"),'
+            'scope.simpleDonut({yeas:12,nays:300,passed:false},"HB1",1,"Passage"),'
+            'scope.ballotRing(700000,200000,true)]')
+    got = _app_js("[" + draw + ",(globalThis.GR_WORDS=" + json.dumps(es, ensure_ascii=False) + ","
+                  + draw + ")]", names=("simpleDonut", "ballotRing"))
+    if got is None:
+        return "skip", "node, app.js or dom_stub.js is not here"
+    bad = []
+    for lang, said, title, pages in (("en", "(prevailed)", "this side prevailed", got[0]),
+                                     ("es", es["vote.won_sr"], es["vote.won_title"], got[1])):
+        for n, html in enumerate(pages):
+            ticks = re.findall(r'<span class="won"([^>]*)>\u2713</span>\s*<span class="sr"> ([^<]*)</span>', html)
+            side = re.findall(r"<span>(Yes|No)<span", html)
+            if len(ticks) != 1 or 'aria-hidden="true"' not in ticks[0][0] or ticks[0][1] != said \
+                    or f'title="{title}"' not in ticks[0][0]:
+                bad.append(f"{lang} tally {n}: {ticks or 'no tick'} beside {side}")
+            elif side != (["Yes"] if n != 1 else ["No"]):
+                bad.append(f"{lang} tally {n}: the tick is beside {side}")
+    assert not bad, ("a tally's tick is read aloud, or no word says which side prevailed: "
+                     + "; ".join(bad[:4]))
+    return "ok", (f"3 tallies in English and in Spanish, each tick hidden and followed by "
+                  f"\"(prevailed)\" or \"{es['vote.won_sr']}\"; app.js writes the tick once, in wonMark")
+
+
 @check("frontend", "a bill's Testify button counts the Senate's hearings, and says testimony opens again "
        "only while one chamber has heard it")
 def _testify_box_senate():

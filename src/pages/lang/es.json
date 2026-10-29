@@ -23684,6 +23684,16 @@
    "es": "se reabrió la votación",
    "state": "draft"
   },
+  "vote.won_sr": {
+   "en": "(prevailed)",
+   "es": "(se impuso)",
+   "state": "draft"
+  },
+  "vote.won_title": {
+   "en": "this side prevailed",
+   "es": "este lado se impuso",
+   "state": "draft"
+  },
   "web.go": {
    "en": "Register on Zoom",
    "es": "Inscribirse en Zoom",
