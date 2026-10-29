@@ -110518,10 +110518,17 @@ def _empty_view_read(FT, SHR, BTD):
 # list (BUILT_OUT, "seconds").
 #
 # The seconds in all are the whole run's, and say how many of them came
-# before main() began (_loading): compiling this file, 14 s and more and
-# growing faster than the file does (the codebase review, 26 October 2026),
-# and defining its checks. main()'s own clock starts after both: a run the
-# review of this branch timed at 778 s said 754.
+# before main() began (_loading): compiling this file and defining its
+# checks. main()'s own clock starts after both: a run the review of this
+# branch timed at 778 s said 754. How long the compile takes depends on how
+# the file is run. As `python3 preflight.py` it took about 1 s on a Linux box
+# with Python 3.14.0rc2 (29 October 2026); handed to compile() -- through
+# runpy, or an import with no .pyc to read -- it took 10 to 11 s, and the
+# codebase review's 14 s (26 October 2026) was timed by an import and by
+# compile(). The line says
+# whichever this run paid. What runs after it, as the process ends, it does
+# not count: the shared fixtures' folders, removed at exit, and Python's own
+# teardown, 8 s of a 277 s run on that box.
 SLOWEST = 10
 
 
