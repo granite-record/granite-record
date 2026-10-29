@@ -86,15 +86,19 @@ export function pingBody(out, control) {
 }
 
 // What stands and needs a person, said as /fail on every run until it is
-// mended, so Healthchecks does not flap between a failing look and the quiet
-// runs between looks.
-export function standing(env, s, control) {
+// mended (a refused key among them, for its day), so Healthchecks does not
+// flap between a failing look and the quiet runs between looks.
+export function standing(env, s, control, now) {
   if (control.source === "unreadable") {
     return "control.json cannot be read, so it is honoured as shadow (youtube on, sql off): put one of control/*.json";
   }
   if (control.youtube === "off") return null;
   if (!env.YOUTUBE_API_KEY) {
     return "there is no YOUTUBE_API_KEY secret, so YouTube is not asked: README.md says how to put it";
+  }
+  const held = s && s.yt && s.yt.held;
+  if (held && held.why === "key" && Date.parse(held.until) > +now) {
+    return `YouTube refused the key: the YouTube half waits for ${held.until}, or for YouTube off and on with a new key`;
   }
   const n = (s && s.yt && s.yt.fails) || 0;
   if (n >= FAILS_TO_TELL) return `${n} looks at YouTube in a row have failed`;
@@ -146,10 +150,12 @@ export async function run(env, opts = {}) {
       return out;
     }
     if (leaseHeld(state, now, runId)) return await blocked(bucket, now, out);
+    // Forgotten before the lease is written, so a run that fails after taking
+    // it still leaves state.json with nothing of YouTube's past 30 days.
+    forget(s.yt, now);
     const lease = await takeLease(bucket, s, etag, runId, now);
     if (!lease) return await blocked(bucket, now, out);
 
-    forget(s.yt, now);
     const ytBefore = structuredClone(s.yt);
     const writes = [];
     if (p.off) {
@@ -195,7 +201,7 @@ export async function run(env, opts = {}) {
     out.fail = out.fail || `the run stopped: ${(e && e.name) || "Error"}: ${String((e && e.message) || e).slice(0, 200)}`;
     return out;
   } finally {
-    if (!out.fail) out.fail = standing(env, s, control);
+    if (!out.fail) out.fail = standing(env, s, control, now);
     log(JSON.stringify({ live: out.codes, fail: out.fail, run: runId.slice(0, 8), count: out.count }));
     await ping(env, fetchImpl, out, control);
   }

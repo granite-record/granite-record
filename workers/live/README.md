@@ -179,8 +179,7 @@ npx wrangler r2 object get graniterecord-live/streams/2026-11-16.json --file str
 
 The ping body says why. `/fail` is sent when:
 
-- YouTube's quota is spent, or it refused the key: the YouTube half waits for
-  midnight Pacific, or for New Hampshire's midnight (or YouTube off and on);
+- YouTube's quota is spent: the YouTube half waits for midnight Pacific;
 - search's own allowance is spent: search waits for midnight Pacific, and the
   playlists are still read;
 - three ticks in a row found another run's lease: the cron firing twice, or
@@ -191,6 +190,8 @@ And on every run, until it is mended, so the check stays down rather than
 flapping:
 
 - there is no `YOUTUBE_API_KEY` (step 2);
+- YouTube refused the key: held to New Hampshire's midnight, or until
+  YouTube is turned off and on with a new key;
 - five or more looks in a row have failed;
 - `control.json` cannot be read.
 

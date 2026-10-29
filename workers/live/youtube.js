@@ -208,6 +208,11 @@ export function forget(yt, now) {
     const day = u && dayOf(u.at), seen = u && dayOf(u.seen);
     if ((day && day < today) || !seen || seen <= oldest) delete yt.upcoming[id];
   }
+  if (yt.gone) {
+    const known = new Set([...(yt.live || []), ...Object.keys(yt.upcoming || {})]);
+    for (const id of Object.keys(yt.gone)) if (!known.has(id)) delete yt.gone[id];
+    if (!Object.keys(yt.gone).length) delete yt.gone;
+  }
   const listed = dayOf(yt.listed);
   if (!listed || listed <= oldest) {
     for (const k of ["lists", "live", "gone", "uploads", "listed"]) delete yt[k];
@@ -337,7 +342,12 @@ export async function look({ key, fetchImpl = fetch, now, yt: before = {}, prev 
       }
     }
     yt.live = [...live];
-    if (missed) yt.gone = misses; else delete yt.gone;
+    // Misses carry over for ids not asked this look (an upcoming id is asked
+    // only at the day's refresh), and end with an answer or the drop.
+    const gone = {};
+    for (const [id, n] of Object.entries(yt.gone || {})) if (!asked.has(id)) gone[id] = n;
+    Object.assign(gone, misses);
+    if (Object.keys(gone).length) yt.gone = gone; else delete yt.gone;
     forget(yt, now);
     yt.fails = 0;
     if (yt.held) yt.held = null;

@@ -231,6 +231,7 @@ test("a live stream videos.list leaves out is kept as last seen for three looks,
     skip = i % 3 !== 0;                                     // two misses, then an answer
     await w2.runAt(T("2027-01-07T14:00:00Z") + i * 2 * MIN);
     assert.equal(w2.streams("2027-01-07").streams.length, 1, `look ${i}`);
+    assert.equal((w2.state().yt.gone || {})[V.id], skip ? (i % 3) : undefined, `look ${i}: the count`);
   }
   assert.equal(w2.fails().length, 0);
 });
@@ -627,6 +628,11 @@ test("a month of failed looks keeps nothing of YouTube's in state.json past 30 c
                  upcoming: { b: { at: "2027-03-01T15:00:00Z", seen: "2027-01-08T15:00:00Z" } } };
   assert.deepEqual(forget(structuredClone(kept), new Date(T("2027-02-06T15:00:00Z"))), kept, "29 days: kept");
   assert.deepEqual(forget(structuredClone(kept), new Date(T("2027-02-07T15:00:00Z"))), { upcoming: {} }, "30 days: gone");
+  // A miss counted for an id no longer kept goes with it.
+  const missed = { ...structuredClone(kept), gone: { b: 2, x: 1 },
+                   upcoming: { b: { at: "2027-01-08T15:00:00Z", seen: "2027-01-08T15:00:00Z" } } };
+  const after = forget(missed, new Date(T("2027-01-09T15:00:00Z")));
+  assert.deepEqual([after.upcoming, after.gone], [{}, undefined], "its day passed");
 });
 
 test("a bare 401, with no reason given, is a refused key", async () => {
@@ -666,5 +672,51 @@ test("with YouTube off, a missing key is nobody's failure", async () => {
   const w = world({ start: "2027-01-07T15:00:00Z", key: null, control: { youtube: "off", sql: "off" } });
   await w.every("2027-01-07T15:00:00Z", "2027-01-07T15:10:00Z");
   assert.equal(w.fails().length, 0);
+});
+
+test("a refused key keeps Healthchecks down for its hold, the quiet runs too, and up again once a look works", async () => {
+  const w = world({ start: "2027-01-07T15:00:00Z" });
+  w.yt.fail("*", "key_invalid");
+  await w.every("2027-01-07T15:00:00Z", "2027-01-07T16:00:00Z");
+  assert.ok(w.pings.length >= 30 && w.pings.every(p => p.url.endsWith("/fail")), w.pings.map(p => p.url).join(" "));
+  assert.match(w.pings.at(-1).body, /YouTube refused the key/);
+  await w.runAt("2027-01-08T05:00:00Z");
+  assert.equal(w.pings.at(-1).url, HC, "the next day's good look");
+});
+
+test("an upcoming id asked only at the day's refresh, and never answered, is dropped at its fourth refresh", async () => {
+  const w = world({ start: "2027-01-03T16:30:00Z" });          // a Sunday, before the fillers
+  const G = w.yt.add({ id: "fiscalLater", chamber: "H", title: "Fiscal Committee (01/29/2027)",
+                       scheduled: T("2027-01-29T15:00:00Z"), listedAt: T("2027-01-03T16:00:00Z") });
+  fillers(w, { from: "2027-01-03T17:00:00Z", n: 60, every: MIN });  // push it out of the 50 from 18:00
+  await w.runAt();
+  assert.ok(w.state().yt.upcoming[G.id], "kept");
+  w.yt.exists = (v, now) => v.id !== G.id && now >= Math.min(v.listedAt ?? Infinity, v.start ?? Infinity);
+  const days = ["04", "05", "06", "07"];
+  for (const [i, d] of days.entries()) {
+    await w.every(`2027-01-${d}T12:00:00Z`, `2027-01-${d}T13:00:00Z`);
+    const yt = w.state().yt;
+    if (i < 3) {
+      assert.ok(yt.upcoming[G.id], `refresh ${i + 1}: still kept`);
+      assert.equal(yt.gone[G.id], i + 1, `refresh ${i + 1}: the misses carry between refreshes`);
+    } else {
+      assert.equal(yt.upcoming[G.id], undefined, "dropped at the fourth");
+      assert.equal(yt.gone, undefined);
+    }
+  }
+});
+
+test("a run that fails after taking the lease, day after day, still leaves nothing of YouTube's past 30 days", async () => {
+  const w = world({ start: "2027-01-07T14:00:00Z" });
+  w.yt.add({ id: "fiscalNextW", chamber: "H", title: "Fiscal Committee (03/15/2027)",
+             scheduled: T("2027-03-15T15:00:00Z"), listedAt: T("2027-01-06T16:00:00Z") });
+  await w.runAt();
+  assert.ok(w.state().yt.upcoming.fiscalNextW);
+  // From here R2 cannot list, so every run after 03:00 sweeps and stops before it releases.
+  w.r2.list = async () => { throw new Error("R2 said 500"); };
+  for (let i = 0; i < 2000; i++) w.yt.fail("*", "backend");
+  await w.every("2027-01-08T09:00:00Z", "2027-02-10T09:00:00Z", null, 6 * HOUR);
+  const text = JSON.stringify(w.state().yt);
+  assert.ok(!/fiscalNextW|UU/.test(text), text);
 });
 
