@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-09.22
+# GRANITE_VERSION: 2026-09-09.23
 """
 One refusal stops the fetch lane, not just the run that was refused.
 
@@ -54,8 +54,11 @@ night on main met (RESUMABLE) and the person has switched the night's own
 testing on (knock_on()). archive/knocks.json, beside the record, keeps the
 chain such a test would follow -- the ladder, below: every knock, written
 down before it is made, and every record a knock lifted, kept whole. Nothing
-knocks yet, and nothing acts on any of it but drops_allowed(), which is 2
-until a knock has lifted something.
+knocks yet. What reads the lifts: drops_allowed(), which is 2 until a knock
+has lifted something, and cloud.py (THE BUCKET KNOWS A LIFT there), which
+carries a lift to the bucket and tells the laptop of one -- and both are idle
+until something knocks. whose() takes a record's bytes, never its dict
+(_record), because knocks.json names a record by the sha of its bytes.
 
 ON GITHUB'S MACHINE (25 September 2026) it is the same file. GitHub's
 machines start empty every night, so the record has to outlive the machine:
@@ -256,10 +259,13 @@ def force(d, now=None, lift=None):
     5), until its own knock lifts it, when the person has switched that on.
     Off GitHub the switch cannot be read, so for such a record this says the
     night decides, and its run page says what it decided. `lift`, knocks.json's
-    "lifted" entry for this record, says who lifted it and when."""
+    "lifted" entry for this record, says who lifted it and when, and what a
+    copy still on file here stops: the lane, at any age, and a hand fetch for
+    QUIET_HOURS from when it was met, as check() reads any record."""
     if lift:
-        return (lift_line(lift) + ". A copy on file here still stops the lane and every "
-                "fetch here until python3 refusal.py --clear")
+        return (lift_line(lift) + f". A copy on file here still stops the lane here until "
+                f"python3 refusal.py --clear, and a fetch started by hand here for "
+                f"{QUIET_HOURS} hours from when it was met")
     if _its_own(d or {})[0]:
         left = hours_left(d, now)
         return ((f"in force for {left:.1f} more hours for every General Court fetch here, "
@@ -432,9 +438,10 @@ def unavailable(err):
 # One rule, one answer. Every record is a person's to clear, as it always
 # was, except one GitHub's own night on main met and could not tell from a
 # passing outage -- RESUMABLE -- while the person has switched the night's
-# testing on. Nothing reads this yet but the checks: it is the one gate the
-# night's own test of a refusal will open through, and anything else a reader
-# needs to know about a record it says in `why`.
+# testing on. Nothing gates on it yet -- refusal.py's status says it, and the
+# checks hold it: it is the one gate the night's own test of a refusal will
+# open through, and anything else a reader needs to know about a record it
+# says in `why`.
 
 def knock_on():
     """Whether the person has switched the night's own testing of a refusal
@@ -448,29 +455,42 @@ def knock_on():
 
 
 def _record(d):
-    """(the record as a dict, its exact bytes or None) from refused.json's
-    bytes, a dict, or None for the one on file (({}, None) when none is)."""
+    """(the record as a dict, its exact bytes) from refused.json's bytes, or
+    None for the one on file (({}, None) when none is).
+
+    BYTES OR NOTHING (29 October 2026). Whose a record is turns on
+    knocks.json as well as its fields, and knocks.json names its record by
+    the sha of refused.json's exact bytes. A dict has no bytes, so read as
+    one a record could never be named: a knock that made it a person's, a
+    fourth relapse, an answer that never reached the bucket and the chain's
+    start would all be passed over, and the record read as the night's. So
+    a dict -- or anything else -- is refused here, TypeError, for whose(),
+    chain(), knock_due() and knock_schedule() alike. A caller holding only
+    the fields asks _its_own(), which says what the fields alone can."""
     if d is None:
         try:
             d = MARK.read_bytes()
         except OSError:
             return {}, None
-    if isinstance(d, (bytes, bytearray)):
-        raw = bytes(d)
-        try:
-            doc = json.loads(raw.decode("utf-8"))
-        except (ValueError, UnicodeDecodeError):
-            doc = None
-        return (doc if isinstance(doc, dict) else {"unreadable": True}), raw
-    return (d if isinstance(d, dict) else {"unreadable": True}), None
+    if not isinstance(d, (bytes, bytearray)):
+        raise TypeError(f"a refusal record is read from refused.json's bytes, or None for the "
+                        f"one on file, not a {type(d).__name__}: whose it is turns on "
+                        "knocks.json, which names a record by the sha of its bytes "
+                        "(_its_own reads the fields alone)")
+    raw = bytes(d)
+    try:
+        doc = json.loads(raw.decode("utf-8"))
+    except (ValueError, UnicodeDecodeError):
+        doc = None
+    return (doc if isinstance(doc, dict) else {"unreadable": True}), raw
 
 
 def whose(d=None, k=None, now=None):
     """("night" | "person", why) for a refusal record -- refused.json's
-    bytes, its dict, or None for the one on file -- or ("none", why) when no
-    record is on file. `k` is knocks.json's document (None, the one on file),
-    whose "current" counts only when it names this record by sha. "night"
-    only when all hold:
+    bytes, or None for the one on file; never a dict (_record: TypeError) --
+    or ("none", why) when no record is on file. `k` is knocks.json's document
+    (None, the one on file), whose "current" counts only when it names this
+    record by sha. "night" only when all hold:
 
       1. its kind is one of RESUMABLE;
       2. GitHub's machine wrote it (machine "github");
@@ -494,7 +514,7 @@ def whose(d=None, k=None, now=None):
         return "person", why
     t = _utc(now).timestamp()
     hourly, every, days, bad = knock_settings()
-    c = chain(raw if raw is not None else doc, k)
+    c = chain(raw, k)
     if c is None:
         return "person", f"{knocks_file()} does not read"
     if c["person"]:
@@ -677,24 +697,26 @@ def _own_claim(x):
 
 
 def chain(d=None, k=None):
-    """The ladder's state for a record -- refused.json's bytes, its dict, or
-    None for the one on file -- and knocks.json's document (None, the one on
-    file): {"sha", "epoch", "retry_after", "since", "knocks", "counted",
-    "relapses", "person", "carried_from", "named"}. The document's "current"
-    counts only when it names this record by sha ("named"); otherwise the
-    chain starts at the record itself, with no knocks. `counted` is every
-    knock but one marked "not asked" and this run's own claim. None when
-    knocks.json does not read, or there is no record."""
+    """The ladder's state for a record -- refused.json's bytes, or None for
+    the one on file; a dict is refused (_record: TypeError) -- and
+    knocks.json's document (None, the one on file): {"sha", "epoch",
+    "retry_after", "since", "knocks", "counted", "relapses", "person",
+    "carried_from", "named"}. The document's "current" counts only when it
+    names this record by the sha of its bytes ("named"); otherwise the chain
+    starts at the record itself, with no knocks, no `person` and its own
+    epoch as `since`. `counted` is every knock but one marked "not asked"
+    and this run's own claim. None when knocks.json does not read, or there
+    is no record."""
     doc, raw = _record(d)
-    if d is None and raw is None:
+    if raw is None:
         return None
     if k is None:
         k, ok = read_knocks()
         if not ok:
             return None
-    sha = _sha(raw) if raw is not None else None
+    sha = _sha(raw)
     cur = k.get("current") if isinstance(k, dict) else None
-    named = isinstance(cur, dict) and sha is not None and cur.get("refusal") == sha
+    named = isinstance(cur, dict) and cur.get("refusal") == sha
     if not named:
         cur = {}
     knocks = [x for x in cur.get("knocks") or [] if isinstance(x, dict)]
@@ -721,10 +743,14 @@ def knock_due(d=None, k=None, now=None):
       5. no other run's claim younger than KNOCK_JOB_MINUTES is in flight.
 
     The last failed request is the latest of the record and every counted
-    knock (chain()). due_epoch is None once the cap comes first: the record
-    is then a person's. The hours a caller may knock in are the caller's, not
-    this function's."""
+    knock (chain()). due_epoch is None once the cap comes first, and for any
+    record whose() does not call the night's -- a knock that made it a
+    person's, a fourth relapse, a lost claim, the switch off, its own fields:
+    no knock is ever due for a person's record, whoever asks. The hours a
+    caller may knock in are the caller's, not this function's."""
     hourly, every, days, _ = knock_settings()
+    if whose(d, k, now)[0] != "night":
+        return False, None
     c = chain(d, k)
     if c is None:
         return False, None

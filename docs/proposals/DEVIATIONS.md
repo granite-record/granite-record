@@ -98,3 +98,31 @@ that made it.
     directly on folder buckets, and a bucket that lands the lift right after
     its first read proves both orders. `_cloud_pull` keeps
     its own cases; its reader of what pull can reach still finds no write.
+
+## After the review of 62e7406: the one reader takes bytes
+
+18. **`whose()`, `chain()`, `knock_due()` and `knock_schedule()` refuse a
+    dict (`TypeError`).** design_final §2.2 gives `whose(d=None, ...)` with
+    `d` "refused.json", silent on its form, and commit 1 took a dict as well.
+    But `knocks.json` names its record by the sha of refused.json's exact
+    bytes, and a dict has none: read as one, a record's `person`, its
+    relapses, a lost claim and the chain's start were all passed over, and
+    `whose(dict)` said "night" where `whose(bytes)` said "person". A caller
+    holding only the fields asks `_its_own()`, which is conditions 1 to 5.
+19. **`knock_due()` is `(False, None)` for every record `whose()` does not
+    call the night's**, not only once the cap comes first (addendum §1.3).
+    A knock that made the record a person's, a fourth relapse, a lost claim,
+    the switch off, a setting typed wrong or the record's own fields: no
+    knock is ever due for a person's record, whoever asks, and the gate
+    (`whose()` and `knock_due()`) cannot be opened by asking only one half.
+20. **A relapse within `RELAPSE_HOURS` of a lift carries that chain even
+    when a person cleared a record in between** (`_start_chain`).
+    design_final §2.2 says "a person's clear never writes `lifted`, so
+    nothing is carried", reading a clear as starting afresh. GitHub's night
+    cannot see a person's clear: `clear-refusal` records it only on the
+    machine that ran it, and `knocks.json` is written by `refusal.py` alone.
+    The carry is the stricter reading, and is kept: the carried `since`
+    reaches `KNOCK_DAYS` sooner and the carried relapses reach
+    `RELAPSES_MOST` sooner, so the record becomes a person's sooner, and the
+    next knock is timed from the new record's own drop, which is later than
+    every carried knock.

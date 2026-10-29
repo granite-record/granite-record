@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.725
+# GRANITE_VERSION: 2026-09-04.726
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -81957,7 +81957,10 @@ def _refusal_kinds(R):
     kind "refused", no kind at all, a Retry-After of 161 hours, the switch
     unset or "ON ", the third check unset or "none" -- and run 151's record
     of 29 October 2026, byte for byte, which no reader may ever take for the
-    night's."""
+    night's. whose(), chain(), knock_due() and knock_schedule() take the
+    record's bytes or None, and refuse its dict (TypeError): knocks.json
+    names a record by the sha of its bytes, so a dict would be read past
+    every knock that made it a person's (_refusal_relapse holds that)."""
     import contextlib
     import io
     tmp = Path(tempfile.mkdtemp(prefix="gr-kinds-"))
@@ -81984,7 +81987,16 @@ def _refusal_kinds(R):
         assert whose(raw)[0] == "night", f"GitHub's night's own drop is not the night's: {whose(raw)}"
         with _KnockEnv(**_KNOCK_MAIN):
             assert R.whose()[0] == "night", "whose() of the record on file differs from its bytes'"
-            assert R.whose(d)[0] == "night", "whose() of the record's dict differs from its bytes'"
+            # Never a dict: knocks.json names a record by the sha of its
+            # bytes, and a dict has none, so a dict read as a record would
+            # pass over every knock that made it a person's.
+            took = []
+            for fn in (R.whose, R.chain, R.knock_due, R.knock_schedule):
+                try:
+                    took.append(f"{fn.__name__}() gave {fn(d)!r}")
+                except TypeError:
+                    pass
+            assert not took, "a record's dict was read as a record: " + "; ".join(took)
         d, raw = noted(kind="unavailable", retry_after=160 * 3600)
         assert d.get("retry_after") == 160 * 3600 and whose(raw)[0] == "night", \
             f"a 503 asking 160 hours is not the night's: {d}, {whose(raw)}"
@@ -82358,7 +82370,17 @@ def _refusal_relapse(R):
     lift and 2 at 169. A lift keeps the record's exact bytes, under the sha of
     the bytes the knock was for, and only then removes it. Nothing starts a
     chain on the laptop, or for a 403. And refusal.py's status says whose the
-    record is and when its next knock is due."""
+    record is and when its next knock is due.
+
+    What closes both doors (the reviewers of 29 October 2026): a knock
+    answered "refused", or a 503 asking more than RETRY_AFTER_MOST, sets the
+    chain's `person`, and the record is then a person's and no knock is ever
+    due, at once and days later, read from its bytes or from the file; so is
+    a fourth relapse and a claim whose answer never reached the bucket; a
+    503 asking 50 hours is only a failed knock. A knock answered "whole"
+    while another record is on file lifts nothing ("kept"), and that record
+    stays. And knocks.json's "current" naming another record's sha lends
+    this one none of its knocks, `person`, relapses or start."""
     import contextlib
     import io
     tmp = Path(tempfile.mkdtemp(prefix="gr-relapse-"))
@@ -82458,6 +82480,86 @@ def _refusal_relapse(R):
             assert cur["knocks"] == [] and cur["since"] == lifted_at + 169 * H and \
                 cur["relapses"] == 0 and cur["carried_from"] is None, \
                 f"a drop 169 hours after a lift carried the old chain: {cur}"
+
+            def afresh(t=T0):
+                R.MARK.unlink(missing_ok=True)
+                R.knocks_file().unlink(missing_ok=True)
+                noted(t)
+                return R.MARK.read_bytes()
+
+            def person_however(raw, what):
+                """whose() is a person's and no knock is ever due, from the
+                record's bytes and from the record on file alike."""
+                for how, d in (("its bytes", raw), ("the record on file", None)):
+                    if R.whose(d)[0] != "person" or R.knock_due(d) != (False, None):
+                        return f"{what}, read from {how}: {R.whose(d)}, due {R.knock_due(d)}"
+                return ""
+            # A block-type answer to a knock -- the address said no, or a 503
+            # asked for longer than RETRY_AFTER_MOST -- makes the record a
+            # person's for good, at once and days later: that is what closes
+            # the knock and the database. A 503 asking 50 hours does not.
+            wrong = []
+            for answer, ra in (("refused", None), ("unavailable", 161 * H)):
+                raw = afresh()
+                clock(T0 + 6 * H)
+                os.environ["GITHUB_RUN_ID"] = f"b{answer}"
+                R.knocking(_KNOCK_URL)
+                if R.knocked(answer, "HTTP Error 403: Forbidden", retry_after=ra) != "person":
+                    wrong.append(f"knocked({answer!r}, retry_after={ra}) is not a person's")
+                if not (R.read_knocks()[0]["current"] or {}).get("person"):
+                    wrong.append(f"knocked({answer!r}) set no `person` on the chain")
+                for t in (T0 + 6 * H + 60, T0 + 100 * H):
+                    clock(t)
+                    wrong.append(person_however(raw, f"after knocked({answer!r}), "
+                                                     f"{(t - T0) / H:.0f} hours on"))
+            raw = afresh()
+            clock(T0 + 6 * H)
+            os.environ["GITHUB_RUN_ID"] = "b503"
+            R.knocking(_KNOCK_URL)
+            if R.knocked("unavailable", "HTTP Error 503", retry_after=50 * H) != "failed" or \
+                    R.whose()[0] != "night":
+                wrong.append("a 503 asking 50 hours, answered to a knock, is not a failed knock")
+            # A relapsed chain and a lost claim, likewise, however it is read.
+            for what, change in (
+                    ("a fourth relapse", {"relapses": 4}),
+                    ("a claim 16 minutes old whose answer never reached the bucket",
+                     {"knocks": [{"utc": "-", "epoch": T0 + 6 * H - 16 * 60, "run_id": "gone",
+                                  "attempt": "1", "by": "hourly", "answer": "claimed"}]})):
+                raw = afresh()
+                k = R.read_knocks()[0]
+                k["current"].update(change)
+                R._write_knocks(k)
+                clock(T0 + 6 * H)
+                wrong.append(person_however(raw, what))
+            assert not [w for w in wrong if w], \
+                "a person's chain was read as the night's: " + "; ".join(w for w in wrong if w)
+            # A knock answered for one record lifts no other: the record on
+            # file changed under it, so nothing is lifted and it stays.
+            raw = afresh()
+            clock(T0 + 6 * H)
+            os.environ["GITHUB_RUN_ID"] = "kept"
+            R.knocking(_KNOCK_URL)
+            other = _knock_record(epoch=T0 + 60, why="RemoteDisconnected: another")
+            R.MARK.write_bytes(other)
+            assert R.knocked("whole", "Counties.txt, 195 bytes") == "kept" and \
+                R.MARK.read_bytes() == other and R.read_knocks()[0]["lifted"] == [], \
+                "a knock answered for one record lifted another"
+            # knocks.json's "current" counts only for the record it names by
+            # sha: another record is lent none of its knocks, its `person`,
+            # its relapses or its start.
+            raw = _knock_record(epoch=T0)
+            R.MARK.write_bytes(raw)
+            k = {"current": {"refusal": "0" * 64, "since": T0 - 380 * H, "relapses": 3,
+                             "knocks": [{"epoch": T0 + H, "answer": "dropped"}],
+                             "person": {"why": "a knock was answered: 403"},
+                             "carried_from": "1" * 64}, "lifted": []}
+            c = R.chain(raw, k)
+            assert (c["named"], c["knocks"], c["person"], c["since"], c["relapses"],
+                    c["carried_from"]) == (False, [], None, T0, 0, None), \
+                f"knocks.json's chain for another record was lent to this one: {c}"
+            clock(T0 + 5 * H)
+            assert R.whose(raw, k)[0] == "night" and R.knock_due(raw, k)[0], \
+                f"another record's chain made this one a person's: {R.whose(raw, k)}"
             R.knocks_file().write_text("{", encoding="utf-8")
             assert R.drops_allowed() == 1 and R.whose()[0] == "person", \
                 "a knocks.json that does not read was not taken the strict way"
