@@ -106,7 +106,8 @@ def video_indexes(root="."):
 # length of nothing ("P0D"): it is not `streamed`, and no page lists it.
 # Where two rows name one recording -- the night's livestreams beside the
 # channel's own -- the row that knows more is kept (a length once it is over,
-# a start while it was live), the first of equals in video_indexes' order.
+# a start while it was live), the first of equals in video_indexes' order,
+# and a start or a length that only the other row has is taken from it.
 _LENGTH = re.compile(r"P(?:(\d+)D)?(?:T(?:(\d+)H)?(?:(\d+)M)?(?:(\d+)S)?)?")
 
 
@@ -139,16 +140,25 @@ def video_facts(root="."):
                 start = (r.get("start_eastern") or "").strip()
                 secs = iso_seconds(r.get("duration_iso"))
                 began = start[11:16] if re.match(r"\d{4}-\d\d-\d\d \d\d:\d\d", start) else ""
-                rank = 2 if secs else 1 if began else 0
-                if vid in out and rank <= knows[vid]:
-                    continue
+                rank = 2 * bool(secs) + bool(began)
                 day = (r.get("parsed_date") or "").strip()[:10] or start[:10]
                 parsed = (r.get("title_parsed") or "").strip().lower() == "yes"
-                out[vid] = {"date": day if re.fullmatch(r"\d{4}-\d\d-\d\d", day) else "",
-                            "chamber": ch, "title": (r.get("title") or "").strip(),
-                            "parsed_committee": (r.get("parsed_committee") or "").strip()
-                            if parsed else "",
-                            "began": began, "seconds": secs, "streamed": bool(began or secs)}
+                row = {"date": day if re.fullmatch(r"\d{4}-\d\d-\d\d", day) else "",
+                       "chamber": ch, "title": (r.get("title") or "").strip(),
+                       "parsed_committee": (r.get("parsed_committee") or "").strip()
+                       if parsed else "",
+                       "began": began, "seconds": secs}
+                if vid in out:
+                    # The row that knows more is kept, and what it lacks is
+                    # taken from the other: a channel file's row can carry a
+                    # length and no start (93 of the committed ones do)
+                    # beside the night's row, which has both, and the start
+                    # was lost whenever the first of the two had a length.
+                    keep, other = (out[vid], row) if rank <= knows[vid] else (row, out[vid])
+                    row = dict(keep, began=keep["began"] or other["began"],
+                               seconds=keep["seconds"] or other["seconds"])
+                    rank = max(rank, knows[vid])
+                out[vid] = dict(row, streamed=bool(row["began"] or row["seconds"]))
                 knows[vid] = rank
     return out
 

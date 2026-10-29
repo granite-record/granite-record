@@ -76010,6 +76010,35 @@ def _committee_recordings(BCM, P):
     assert got3.get("H34") == [{"id": "financeDiv2", "date": "2026-02-24", "term": "2025-2026",
                                 "began": "13:00", "seconds": 7200, "label": "Division II"}], (
         f"a division's recording placed by its bills is listed as {got3.get('H34')}, without its division")
+    # THE OTHER SPELLINGS OF A DIVISION the channel's titles use, "1" and a
+    # lower-case "l": each is House Finance's, marked Division I, and not
+    # counted as a recording named for no page.
+    odd = dict(facts, **{vid: {"date": "2026-02-25", "chamber": "H", "title": title,
+                               "parsed_committee": title, "began": "", "seconds": 600, "streamed": True}
+                         for vid, title in (("div1V", "Finance - Division 1"), ("divlV", "Finance Division l"))})
+    got4, found4 = BCM.committee_recordings({}, set(facts), odd, code_of, pages)
+    labels = {r["id"]: r.get("label") for r in got4.get("H34", [])}
+    assert labels == {"div1V": "Division I", "divlV": "Division I"} and not found4["no_page"], (
+        f"House Finance's divisions in their other spellings are listed as {labels}, "
+        f"{found4['no_page']} named for no page")
+    # WHAT ONE ROW OF THE INDEX LACKS, THE OTHER GIVES: a channel file's row
+    # with a length and no start, before the night's row with both, kept the
+    # first and lost the start.
+    root = Path(tempfile.mkdtemp())
+    try:
+        d = root / "collected" / "videos"
+        d.mkdir(parents=True)
+        for name, start in (("videos_house_a.csv", ""), ("videos_house_livestreams.csv", "2026-02-25 10:00:00")):
+            with open(d / name, "w", newline="", encoding="utf-8") as fh:
+                w = csv.writer(fh)
+                w.writerow(FIXTURE_VIDEO_COLS)
+                w.writerow(["dupV", "House Commerce (02/25/2026)", "yes", "Commerce", "2026-02-25", "title",
+                            "yes" if start else "no", start, "", "", "PT1H", ""])
+        dup = P.video_facts(root)["dupV"]
+    finally:
+        shutil.rmtree(root, ignore_errors=True)
+    assert (dup["began"], dup["seconds"], dup["streamed"]) == ("10:00", 3600, True), (
+        f"a recording two rows of the index name reads {dup}: the start one of them has is lost")
     import inspect
     src = inspect.getsource(BCM.main)
     assert "if carried and not facts:" in src and "raise SystemExit(" in src[src.index("if carried and not facts:"):][:200], (
