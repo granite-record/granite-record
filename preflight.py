@@ -13715,10 +13715,16 @@ def _rollcall_refiled(RP):
             "2025-S-500": dict(entry, says="HB1", belongs_to="HB2")}}), encoding="utf-8")
         (d / "RollCallSummary.txt").write_text("\n".join(_RC_REFILED) + "\n", encoding="utf-8")
         reset(corr)
+        # The last asks for 2025-S-117 as a file that has since come to say
+        # another bill: the entry is out of date and must not move it (the
+        # review of 26 October 2026 removed the "says" guard and nothing
+        # failed).
         got = [RP.roll_call_bill("2025", "S", 117, "HB287"), RP.roll_call_bill("2025", "S", "117", "HB 287"),
-               RP.roll_call_bill("2026", "S", 117, "HB287"), RP.roll_call_bill("2025", "H", 117, "HB287")]
-        assert got == ["SB287", "SB287", "HB287", "HB287"], (
-            f"roll_call_bill gives 2025-S-117 as typed twice, 2026-S-117 and 2025-H-117 as {got}")
+               RP.roll_call_bill("2026", "S", 117, "HB287"), RP.roll_call_bill("2025", "H", 117, "HB287"),
+               RP.roll_call_bill("2025", "S", 117, "HB288")]
+        assert got == ["SB287", "SB287", "HB287", "HB287", "HB288"], (
+            f"roll_call_bill gives 2025-S-117 as typed twice, 2026-S-117, 2025-H-117 and 2025-S-117 "
+            f"filed under HB288 as {got}")
         rows = {r["number"]: r for r in RP.parse(d / "RollCallSummary.txt")}
         assert {n: r["bill"] for n, r in rows.items()} == {39: "SB287", 116: "HB115", 117: "SB287"} \
             and not rows[117]["procedural"], f"parse files them under {[(n, r['bill']) for n, r in rows.items()]}"
