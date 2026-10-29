@@ -226,6 +226,12 @@ test("control.json: missing or unreadable is shadow, and every file the person m
     await w.runAt();
     assert.ok(w.yt.calls.length > 0, `${source}: YouTube is asked`);
     assert.match(w.pings[0].body, new RegExp(`youtube on, sql off: control\\.json ${source}, so shadow`), body);
+    // Unreadable is said as a failure on every run until it is mended: it may
+    // be the person's "off" mistyped. Missing is the plain default.
+    await w.every("2027-01-07T14:02:00Z", "2027-01-07T14:08:00Z");
+    const want = source === "unreadable" ? `${HC}/fail` : HC;
+    assert.ok(w.pings.every(p => p.url === want), `${source}: ${w.pings.map(p => p.url)}`);
+    if (source === "unreadable") assert.match(w.pings[0].body, /control\.json cannot be read, so it is honoured as shadow/);
   }
   assert.deepEqual(parseControl('{"youtube": "off"}'), { youtube: "off", sql: "off" }, "a field left out takes its default");
   assert.deepEqual(parseControl('{"youtube": "on", "sql": "test", "note": "November"}'), { youtube: "on", sql: "test" });
@@ -254,3 +260,59 @@ test("Healthchecks hears every run, what control.json says and that it is honour
   assert.match(pingBody({ run: "abcdef123", codes: ["x"], count: null, fail: "why" },
                         { ...CONTROL_DEFAULT, source: "missing" }), /FAIL: why$/);
 });
+
+test("the lease's numbers are the design's (section 3.3): 110 s, writes under 90 s, both inside the cron's 120 s", () => {
+  assert.equal(LEASE_MS, 110_000);
+  assert.equal(WRITE_BY_MS, 90_000);
+  assert.ok(WRITE_BY_MS < LEASE_MS && LEASE_MS < 120_000);
+});
+
+test("a lease that has run out, or is this run's own, does not stop a run; and the release clears it", async () => {
+  for (const lease of [{ run: "other", until: "2027-01-07T13:59:59Z" }, { run: "run-mine", until: "2027-01-07T14:01:00Z" }]) {
+    const w = world({ start: "2027-01-07T14:00:00Z" });
+    w.yt.add(STREAM);
+    w.r2.seed("state.json", { v: 1, lease, day: "2027-01-07", count: { units: 0, searches: 0 }, yt: {}, swept: "2027-01-07" });
+    const out = await w.runAt(undefined, { run: "run-mine" });
+    assert.deepEqual(out.wrote, ["streams/2027-01-07.json"], JSON.stringify(lease));
+    assert.equal(w.state().lease, null, `released: ${JSON.stringify(lease)}`);
+  }
+});
+
+test("a run whose lease was taken from it while it worked does not release over the taker", async () => {
+  const w = world({ start: "2027-01-07T14:00:00Z" });
+  w.yt.add(STREAM);
+  w.r2.hooks.put = async key => {
+    if (key.startsWith("streams/")) {
+      w.r2.seed("state.json", { v: 1, lease: { run: "taker", until: iso(w.now + LEASE_MS) }, yt: {} });
+    }
+  };
+  const out = await w.runAt();
+  assert.ok(out.codes.includes("lease_lost"), out.codes.join(" "));
+  assert.equal(w.state().lease.run, "taker", "the taker's lease stands");
+});
+
+test("a lease is lapsed at WRITE_BY_MS itself, not only past it", async () => {
+  const w = world({ start: "2027-01-07T14:00:00Z" });
+  const out = await w.runAt(undefined, { elapsed: () => WRITE_BY_MS });
+  assert.ok(out.codes.includes("lease_lapsed"), out.codes.join(" "));
+  assert.deepEqual(out.wrote, []);
+});
+
+test("a control.json R2 cannot hand over is unreadable: shadow, and said as a failure", async () => {
+  const w = world({ start: "2027-01-07T14:00:00Z" });
+  w.r2.hooks.get = async key => { if (key === "control.json") throw new Error("R2 said 500"); };
+  const out = await w.runAt();
+  assert.deepEqual(out.wrote, ["streams/2027-01-07.json"], "the run went on as shadow");
+  assert.equal(w.fails().length, 1);
+  assert.match(w.fails()[0].body, /control\.json unreadable, so shadow/);
+});
+
+test("a state.json of another version is not read: its lease is not honoured and it is replaced", async () => {
+  const w = world({ start: "2027-01-07T14:00:00Z" });
+  w.r2.seed("state.json", { v: 2, lease: { run: "other", until: "2027-01-07T15:00:00Z" }, yt: { upcoming: { x: {} } } });
+  const out = await w.runAt();
+  assert.deepEqual(out.wrote, ["streams/2027-01-07.json"]);
+  assert.equal(w.state().v, 1);
+  assert.equal(w.state().yt.upcoming.x, undefined);
+});
+

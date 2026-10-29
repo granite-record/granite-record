@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.721
+# GRANITE_VERSION: 2026-09-04.722
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -79836,7 +79836,7 @@ def _night_timer():
 # The live Worker's suite, and how many tests it had when this was written: a
 # count that falls means a file stopped loading or a test was lost.
 LIVE_TESTS = "tests/live/index.js"
-LIVE_TESTS_AT_LEAST = 37
+LIVE_TESTS_AT_LEAST = 51
 # The person's ready-made switches (workers/live/control/), each as the Worker
 # must read it; and the values control.json may hold (store.js CONTROL_VALUES).
 LIVE_CONTROL = {"all-off.json": {"youtube": "off", "sql": "off"},
@@ -80049,6 +80049,71 @@ def _live_titles(root):
     return out
 
 
+def _live_problems_bite(root):
+    """Each rule of _live_problems, broken alone on a copy of workers/live/,
+    must be said in its own words: a rule that stopped catching anything fails
+    here, not in silence. [what failed to be said]."""
+    import tempfile
+    host = _live_host(root)
+    cases = (
+        ("wrangler.toml", lambda t: t + '\nroutes = [{ pattern = "x.org/*" }]\n', "declares a route"),
+        ("wrangler.toml", lambda t: t + '\n[env.staging]\nname = "x"\n', "has the environments"),
+        ("wrangler.toml", lambda t: t.replace('workers_dev = false\n\n[[r2', 'workers_dev = false\n'
+                                              '[triggers]\ncrons = ["*/2 * * * *"]\n\n[[r2', 1),
+         "a cron at the top level"),
+        ("wrangler.toml", lambda t: t.replace('"*/2 * * * *"', '"*/5 * * * *"'), "not every 2 minutes"),
+        ("wrangler.toml", lambda t: t.replace("workers_dev = false\n", "", 1),
+         "the top level does not set workers_dev = false"),
+        ("wrangler.toml", lambda t: t.replace("[env.production.observability]\nenabled = true", ""),
+         "production does not keep Workers Logs"),
+        ("wrangler.toml", lambda t: t.replace('name = "graniterecord-live"', 'name = "graniterecord-x"'),
+         "the production Worker is named"),
+        ("wrangler.toml", lambda t: t.replace('bucket_name = "graniterecord-live"\n', 'bucket_name = "x"\n'),
+         "production binds"),
+        ("wrangler.toml", lambda t: t.replace('bucket_name = "graniterecord-live-local"',
+                                              'bucket_name = "graniterecord-live"'), "the top level binds"),
+        ("wrangler.toml", lambda t: t + '\n[[kv_namespaces]]\nbinding = "K"\nid = "x"\n', "binds kv_namespaces"),
+        ("wrangler.toml", lambda t: t.replace("workers_dev = false\n\n[[r2", 'workers_dev = false\n'
+                                              '[vars]\nSQL_HOST = "192.0.2.1"\n\n[[r2', 1),
+         "top-level SQL_HOST"),
+        ("clock.js", lambda t: t.replace("export const STEP = 2 * MINUTE;", "export const STEP = 3 * MINUTE;"),
+         "STEP is not the cron's 2 minutes"),
+        ("x.js", lambda t: f'const h = "{host}";\n', "names the General Court's SQL host"),
+        ("x.js", lambda t: 'fetch("https://gc.nh.gov/x");\n', "names 'gc.nh.gov'"),
+        ("x.js", lambda t: 'import { y } from "../../src/y.js";\n', "imports ../../src/y.js"),
+        ("README.md", lambda t: t.replace("--file workers/live/control/on.json --remote",
+                                          "--file workers/live/control/on.json"), "lacks --remote"),
+        ("README.md", lambda t: t.replace("wrangler deploy --config workers/live/wrangler.toml --env production",
+                                          "wrangler deploy --config workers/live/wrangler.toml"),
+         "does not name --config workers/live/wrangler.toml --env"),
+        ("control/on.json", lambda t: '{"youtube": "on", "sql": "test"}\n', "control/on.json says"),
+        ("control/extra.json", lambda t: "{}\n", "workers/live/control/ holds"),
+        ("store.js", lambda t: t.replace('sql: ["off", "test", "on"]', 'sql: ["off", "on"]'),
+         "store.js's CONTROL_VALUES is"),
+    )
+    missed = []
+    with tempfile.TemporaryDirectory() as tmp:
+        fx = Path(tmp)
+        shutil.copytree(root / "workers/live", fx / "workers/live")
+        (fx / "src/fetch/gc_db").mkdir(parents=True)
+        shutil.copy(root / "src/fetch/gc_db/probe_db.py", fx / "src/fetch/gc_db/probe_db.py")
+        assert not _live_problems(fx), f"the copy itself breaks a rule: {_live_problems(fx)}"
+        for name, change, says in cases:
+            p = fx / "workers/live" / name
+            before = p.read_text(encoding="utf-8") if p.is_file() else None
+            after = change(before or "")
+            assert after != before, f"the fixture for {says!r} no longer changes {name}"
+            p.write_text(after, encoding="utf-8")
+            got = _live_problems(fx)
+            if not any(says in g for g in got):
+                missed.append(f"{says!r} ({name}: {got[:2]})")
+            if before is None:
+                p.unlink()
+            else:
+                p.write_text(before, encoding="utf-8")
+    return missed
+
+
 @check("build", "the live Worker: live.gen.js is what live_gen.py writes, the cron and the bucket are "
        "production's alone, the General Court's host is named nowhere it may not be, the README's "
        "commands reach the real bucket, its switch's files are ones it reads, and it reads a title "
@@ -80102,6 +80167,8 @@ def _live_layer(LG, LS):
     assert ok, f"{why}: run `{LG.COMMAND}` and commit workers/live/live.gen.js"
     bad = _live_problems(root)
     assert not bad, "; ".join(bad[:6]) + (f" (+{len(bad) - 6} more)" if len(bad) > 6 else "")
+    missed = _live_problems_bite(root)
+    assert not missed, "these rules no longer catch a file that breaks them: " + "; ".join(missed)
 
     # The synthetic answers, read by the night's Python as the file says.
     items = json.loads((root / "tests/live/youtube_items.json").read_text(encoding="utf-8"))["items"]

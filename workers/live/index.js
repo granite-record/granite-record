@@ -17,9 +17,13 @@
  *      what is 30 days old;
  *   5. writes streams/<today>.json while the lease holds, and releases it;
  *   6. pings Healthchecks with what it did, and /fail when a person should
- *      know: a hold beginning (YouTube's quota, or a refused key), five failed
- *      looks in a row, three runs in a row finding another run's lease, or a
- *      run that held the lease, had something due and wrote nothing.
+ *      know: a hold beginning (YouTube's quota, search's allowance, or a
+ *      refused key), three runs in a row finding another run's lease, or a
+ *      run that held the lease, had something due and wrote nothing; and on
+ *      every run, looking or not, while something stands that a person must
+ *      mend: five or more failed looks in a row, no key, or a control.json
+ *      that cannot be read (honoured as shadow, which may not be what the
+ *      person meant: a typed "of" for "off").
  * Each run's codes also go to Workers Logs as one line.
  *
  * THIS BRANCH IS THE YOUTUBE HALF ALONE. control.json's "sql" is read and
@@ -29,13 +33,17 @@
  * Its secrets are YOUTUBE_API_KEY, a second key in the existing Google
  * project restricted to the YouTube Data API v3, and HEALTHCHECK_URL; README.md
  * says how the person sets each. Without the key, YouTube is asked nothing and
- * every look says so, until the first run after the key is put; a key YouTube
- * refuses is held for the day, or until the person puts a new one. Without
- * the URL, nothing is pinged.
+ * every run says so, until the first run after the key is put; a key YouTube
+ * refuses is held for the rest of the day, or until the person turns YouTube
+ * off and on again. Without the URL, nothing is pinged.
+ *
+ * TURNING YOUTUBE OFF forgets what state.json kept of YouTube -- the upcoming
+ * ids, the ids live, the playlist reads, any hold -- on the first run that
+ * honours it, so nothing of YouTube's is kept while the half is off.
  */
 import { clock } from "../follow/common.js";
 import { iso, nh, youtubeDue } from "./clock.js";
-import { keyPrint, look, offFile, streamsKey } from "./youtube.js";
+import { FAILS_TO_TELL, forget, look, offFile, streamsKey } from "./youtube.js";
 import { CONTROL_DEFAULT, WAITS_TO_TELL, WRITE_BY_MS, emptyState, leaseHeld, noteWait, putJSON,
          readControl, readJSON, readState, releaseLease, sweep, takeLease } from "./store.js";
 
@@ -77,6 +85,22 @@ export function pingBody(out, control) {
           out.fail ? `FAIL: ${out.fail}` : ""].filter(Boolean).join(" | ");
 }
 
+// What stands and needs a person, said as /fail on every run until it is
+// mended, so Healthchecks does not flap between a failing look and the quiet
+// runs between looks.
+export function standing(env, s, control) {
+  if (control.source === "unreadable") {
+    return "control.json cannot be read, so it is honoured as shadow (youtube on, sql off): put one of control/*.json";
+  }
+  if (control.youtube === "off") return null;
+  if (!env.YOUTUBE_API_KEY) {
+    return "there is no YOUTUBE_API_KEY secret, so YouTube is not asked: README.md says how to put it";
+  }
+  const n = (s && s.yt && s.yt.fails) || 0;
+  if (n >= FAILS_TO_TELL) return `${n} looks at YouTube in a row have failed`;
+  return null;
+}
+
 async function ping(env, fetchImpl, out, control) {
   const url = env.HEALTHCHECK_URL;
   if (!url) return;
@@ -105,18 +129,14 @@ export async function run(env, opts = {}) {
   const log = opts.log || (line => console.log(line));
   const out = { run: runId, at: iso(now), codes: [], wrote: [], fail: null, count: null };
   let control = { ...CONTROL_DEFAULT, source: "unread", uploaded: null };
+  let s = null;
   try {
     const bucket = env.LIVE;
     if (!bucket) throw new Error("no LIVE bucket is bound");
     control = await readControl(bucket);
     const { state, etag } = await readState(bucket);
-    const s = state ? structuredClone(state) : emptyState();
+    s = state ? structuredClone(state) : emptyState();
     s.yt = s.yt || {};
-    // A refused key's hold lifts as soon as the person puts a new key.
-    if (s.yt.held && s.yt.held.why === "key" && s.yt.held.key !== await keyPrint(env.YOUTUBE_API_KEY)) {
-      s.yt.held = null;
-      out.codes.push("new_key");
-    }
     const p = plan(now, s, control);
     if (s.day !== p.today) { s.day = p.today; s.count = { units: 0, searches: 0 }; }
     out.count = s.count;
@@ -129,11 +149,12 @@ export async function run(env, opts = {}) {
     const lease = await takeLease(bucket, s, etag, runId, now);
     if (!lease) return await blocked(bucket, now, out);
 
-    const ytBefore = s.yt;
+    forget(s.yt, now);
+    const ytBefore = structuredClone(s.yt);
     const writes = [];
     if (p.off) {
       writes.push([streamsKey(p.today), offFile(await readJSON(bucket, streamsKey(p.today)), p.today, out.at)]);
-      s.yt = { ...s.yt, off: p.today };
+      s.yt = { off: p.today };
       out.codes.push("youtube_off");
     } else if (control.youtube !== "off" && s.yt.off) {
       s.yt = { ...s.yt, off: null };
@@ -174,6 +195,7 @@ export async function run(env, opts = {}) {
     out.fail = out.fail || `the run stopped: ${(e && e.name) || "Error"}: ${String((e && e.message) || e).slice(0, 200)}`;
     return out;
   } finally {
+    if (!out.fail) out.fail = standing(env, s, control);
     log(JSON.stringify({ live: out.codes, fail: out.fail, run: runId.slice(0, 8), count: out.count }));
     await ping(env, fetchImpl, out, control);
   }

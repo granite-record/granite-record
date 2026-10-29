@@ -14,7 +14,8 @@
  *   search.list          eventType=live on each channel, every 30 minutes in
  *                        the window: search's own allowance of 100 calls a day
  *   channels.list        once, to confirm each uploads playlist (1 unit), and
- *                        again only if state.json is lost
+ *                        again only if state.json is lost or has forgotten
+ *                        them (YouTube switched off, or 30 days unanswered)
  * About 1,270 units of the project's 10,000 on a weekday, and 52 searches
  * (tests/live/youtube.test.js counts them over a simulated week).
  *
@@ -38,6 +39,12 @@
  * failure is said as a failure and never read as "nothing is live". The key
  * is sent in the query string, as YouTube asks, and is never in a message, a
  * log line or a file: errors name the method and the status alone.
+ *
+ * WHAT state.json KEEPS OF YOUTUBE (forget) is only what the next look
+ * needs: the upcoming ids, the ids live, the last playlist reads and the
+ * uploads playlists. None of it outlives 30 calendar days unrefreshed, even
+ * through a month of failed looks, and all of it goes the day control.json
+ * turns YouTube off (index.js).
  */
 import { CHANNELS, SESSION_TITLE } from "./live.gen.js";
 import { addDays } from "../follow/common.js";
@@ -49,6 +56,9 @@ export const PAGE = 50;
 export const KEEP_DAYS = 30;
 // A failed look is counted; at this many in a row, Healthchecks hears /fail.
 export const FAILS_TO_TELL = 5;
+// A stream videos.list leaves out is kept as last seen for this many looks in
+// a row, and dropped at the next: deleted, made private, or YouTube's slip.
+export const MISSES_TO_DROP = 3;
 
 export const CHAMBERS = ["H", "S"];
 export const CHAMBER_OF = Object.fromEntries(Object.entries(CHANNELS).map(([c, id]) => [id, c]));
@@ -137,15 +147,6 @@ async function ask(fetchImpl, key, method, params, tally, timeoutMs) {
   return body;
 }
 
-// A refused key's hold is kept with this print of it, so a new key lifts the
-// hold at once: the first twelve hex digits of its SHA-256, which say whether
-// it changed and nothing of what it is.
-export async function keyPrint(key) {
-  if (!key) return null;
-  const d = new Uint8Array(await crypto.subtle.digest("SHA-256", new TextEncoder().encode(String(key))));
-  return [...d.slice(0, 6)].map(b => b.toString(16).padStart(2, "0")).join("");
-}
-
 // ---- the file -------------------------------------------------------------------
 export const streamsKey = day => `streams/${day}.json`;
 
@@ -183,7 +184,6 @@ function entry(item, old, chamberHint) {
     video: item.id,
     chamber: CHAMBER_OF[sn.channelId] || chamberHint || (old && old.chamber) || null,
     title: sn.title || (old && old.title) || "",
-    session: sessionOf(sn.title || (old && old.title)),
     status: statusOf(item),
     scheduled: ls.scheduledStartTime || null,
     started: ls.actualStartTime || null,
@@ -192,6 +192,27 @@ function entry(item, old, chamberHint) {
     seen: { playlist: (old && old.seen && old.seen.playlist) || null,
             search: (old && old.seen && old.seen.search) || null },
   };
+}
+
+// ---- what state.json keeps ------------------------------------------------------
+// YouTube's data in `yt`, dropped once 30 calendar days old (III.E.4.d): an
+// upcoming id by the day it was last answered, or once its day has passed;
+// the playlist reads, the ids live, the misses and the uploads playlists by
+// the last discovery that worked. Run on every run that holds the lease, so a
+// month of failed looks keeps nothing longer than a month. It changes `yt`
+// in place and returns it.
+export function forget(yt, now) {
+  if (!yt) return yt;
+  const today = nh(now).date, oldest = addDays(today, -KEEP_DAYS);
+  for (const [id, u] of Object.entries(yt.upcoming || {})) {
+    const day = u && dayOf(u.at), seen = u && dayOf(u.seen);
+    if ((day && day < today) || !seen || seen <= oldest) delete yt.upcoming[id];
+  }
+  const listed = dayOf(yt.listed);
+  if (!listed || listed <= oldest) {
+    for (const k of ["lists", "live", "gone", "uploads", "listed"]) delete yt[k];
+  }
+  return yt;
 }
 
 // ---- one look -------------------------------------------------------------------
@@ -207,6 +228,7 @@ export async function look({ key, fetchImpl = fetch, now, yt: before = {}, prev 
   yt.live = yt.live || [];
   const tally = { units: 0, searches: 0 };
   const notes = [];
+  let searchFail = null;
   const call = (method, params) => ask(fetchImpl, key, method, params, tally, timeoutMs);
   // Each interval runs from this look whether it worked or not, so a failing
   // YouTube is asked at the usual cadence and no faster.
@@ -229,6 +251,7 @@ export async function look({ key, fetchImpl = fetch, now, yt: before = {}, prev 
         if (got[c] !== uploadsOf(CHANNELS[c])) notes.push(`uploads ${c} is ${got[c]}, not UU of its channel`);
       }
       yt.uploads = got;
+      if (!yt.listed) yt.listed = at;     // so forget() keeps them while discovery is failing
     }
 
     // The uploads playlists, and which of their ids are new since the last read.
@@ -257,7 +280,10 @@ export async function look({ key, fetchImpl = fetch, now, yt: before = {}, prev 
         // Search has its own allowance: running out of it holds search alone.
         // A refused key is the whole half's; anything else waits 30 minutes.
         if (!(e instanceof YouTubeError) || e.problem === "key") throw e;
-        if (e.problem === "quota") yt.search_held = iso(midnightAfter(now, PACIFIC));
+        if (e.problem === "quota") {
+          yt.search_held = iso(midnightAfter(now, PACIFIC));
+          searchFail = `search's own allowance is spent: search waits for midnight Pacific, the playlists are still read (${e.detail})`;
+        }
         notes.push(e.problem === "quota" ? "search held to midnight Pacific" : `search failed (${e.detail})`);
       }
     }
@@ -282,11 +308,25 @@ export async function look({ key, fetchImpl = fetch, now, yt: before = {}, prev 
       for (const it of body.items || []) if (it && it.id) items.set(it.id, it);
     }
 
+    // A stream already known that videos.list left out is kept as last seen,
+    // up to MISSES_TO_DROP looks in a row; an id never known is let go.
+    const f = base(prev, today);
+    const byId = new Map(f.streams.map(s => [s.video, s]));
+    const misses = {};
+    for (const id of asked) {
+      if (items.has(id) || !(yt.live.includes(id) || id in yt.upcoming || byId.has(id))) continue;
+      const n = ((yt.gone || {})[id] || 0) + 1;
+      if (n <= MISSES_TO_DROP) misses[id] = n;
+    }
+    const missed = Object.keys(misses).length;
+    if (missed) notes.push(`${missed} known stream(s) left out by videos.list, kept as last seen`);
+
     // What state.json keeps for the next look.
-    if (due.discover) yt.lists = lists;
+    if (due.discover) { yt.lists = lists; yt.listed = at; }
     if (due.refresh) yt.refreshed = today;
     const live = new Set(yt.live);
     for (const id of asked) {
+      if (id in misses) continue;
       const it = items.get(id);
       const st = it ? statusOf(it) : "gone";
       if (st === "live") live.add(id); else live.delete(id);
@@ -297,21 +337,17 @@ export async function look({ key, fetchImpl = fetch, now, yt: before = {}, prev 
       }
     }
     yt.live = [...live];
-    const oldest = addDays(today, -KEEP_DAYS);
-    for (const [id, u] of Object.entries(yt.upcoming)) {
-      const day = dayOf(u.at);
-      if ((day && day < today) || !dayOf(u.seen) || dayOf(u.seen) <= oldest) delete yt.upcoming[id];
-    }
+    if (missed) yt.gone = misses; else delete yt.gone;
+    forget(yt, now);
     yt.fails = 0;
     if (yt.held) yt.held = null;
 
     // Today's file: what was there, with every stream asked about brought up
     // to date, and the time each path first saw it today.
-    const f = base(prev, today);
-    const byId = new Map(f.streams.map(s => [s.video, s]));
     const inList = new Map();
     for (const c of CHAMBERS) for (const id of lists[c] || []) inList.set(id, c);
     for (const id of asked) {
+      if (id in misses) continue;                         // kept as it was
       const it = items.get(id);
       const old = byId.get(id);
       if (!it) { byId.delete(id); continue; }            // gone: deleted or made private
@@ -334,7 +370,7 @@ export async function look({ key, fetchImpl = fetch, now, yt: before = {}, prev 
       order(a) < order(b) ? -1 : order(a) > order(b) ? 1 : a.video < b.video ? -1 : 1);
     const file = { kind: "live.streams", day: today, checked: at, next_check: iso(nextLook(now, yt)),
                    status: { ok: true, problem: null, since: null }, streams };
-    return { yt, file, tally, problem: null, detail: null, fail: null, notes };
+    return { yt, file, tally, problem: null, detail: null, fail: searchFail, notes };
   } catch (e) {
     if (!(e instanceof YouTubeError)) throw e;
     let fail = null;
@@ -346,9 +382,10 @@ export async function look({ key, fetchImpl = fetch, now, yt: before = {}, prev 
       // puts the secret uses it.
       fail = "there is no YOUTUBE_API_KEY secret, so YouTube was not asked: README.md says how to put it";
     } else if (e.problem === "key") {
-      // Held for the day, as a refused key should be; lifted at the next run
-      // if the person puts a new one (index.js compares the print).
-      yt.held = { why: "key", until: iso(midnightAfter(now, NEW_YORK)), since: at, key: await keyPrint(key) };
+      // Held for the rest of New Hampshire's day, as a refused key should be.
+      // To try a new key sooner, the person turns YouTube off and on again
+      // (README.md): turning it off clears the hold with the rest.
+      yt.held = { why: "key", until: iso(midnightAfter(now, NEW_YORK)), since: at };
       fail = `YouTube refused the key: the YouTube half waits for tomorrow, or a new key (${e.detail})`;
     } else {
       yt.fails = (yt.fails || 0) + 1;

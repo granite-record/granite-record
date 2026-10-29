@@ -6,7 +6,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { CHANNELS } from "../../workers/live/live.gen.js";
-import { PAGE, look, sessionOf, statusOf, stem } from "../../workers/live/youtube.js";
+import { FAILS_TO_TELL, MISSES_TO_DROP, PAGE, forget, look, sessionOf, statusOf, stem } from "../../workers/live/youtube.js";
 import { nh } from "../../workers/live/clock.js";
 import { ITEMS, KEY } from "./fake_youtube.js";
 import { DAY, HC, HOUR, MIN, T, iso, world } from "./world.js";
@@ -152,8 +152,8 @@ test("a day of streams: live, upcoming, ended, unscheduled and cancelled, each i
   assert.equal(by[B.id].seen.search, "2027-01-07T15:30:00Z");
   assert.equal(by[B.id].seen.playlist, "2027-01-07T17:40:00Z", "B was listed only once it ended");
   assert.ok(Date.parse(by[E.id].seen.playlist) - E.start <= 2 * MIN);
-  assert.equal(by[F.id].session, "H");
-  assert.equal(by[B.id].session, null);
+  assert.ok(late.streams.every(s => !("session" in s)), "the design's fields only: the page reads a session from its title");
+  assert.deepEqual([sessionOf(by[F.id].title), sessionOf(by[B.id].title)], ["H", null]);
   assert.deepEqual([by[B.id].chamber, by[F.id].chamber], ["S", "H"]);
   assert.deepEqual([by[F.id].scheduled, by[F.id].started, by[F.id].ended],
                    ["2027-01-07T14:00:00Z", "2027-01-07T13:58:00Z", "2027-01-08T02:12:00Z"]);
@@ -183,10 +183,56 @@ test("upcoming ids are kept until their day has passed, and not past 30 calendar
     nextWeek030: { at: "2027-01-15T15:00:00Z", seen: iso(+now - 30 * DAY) },
     yesterday01: { at: "2027-01-06T18:00:00Z", seen: iso(+now - HOUR) },
     stillToday1: { at: "2027-01-07T23:00:00Z", seen: iso(+now - HOUR) } } };
-  const r = await look({ key: KEY, fetchImpl, now, yt, due: { discover: true, live: false, search: false, refresh: false } });
+  const due = { discover: true, live: false, search: false, refresh: false };
+  let r = await look({ key: KEY, fetchImpl, now, yt, due });
   assert.deepEqual(asked.filter(m => m === "videos").length, 1, "the one due today is asked");
-  // stillToday1 was asked and not answered: deleted or made private, so dropped.
+  assert.deepEqual(Object.keys(r.yt.upcoming).sort(), ["nextWeek029", "stillToday1"]);
+  // stillToday1 is asked and never answered: kept as last seen for
+  // MISSES_TO_DROP looks in a row, then dropped as deleted or made private.
+  for (let i = 1; i <= MISSES_TO_DROP; i++) {
+    assert.equal(r.yt.gone.stillToday1, i);
+    r = await look({ key: KEY, fetchImpl, now: new Date(+now + i * 2 * MIN), yt: r.yt, due });
+  }
   assert.deepEqual(Object.keys(r.yt.upcoming).sort(), ["nextWeek029"]);
+  assert.equal(r.yt.gone, undefined);
+});
+
+test("a live stream videos.list leaves out is kept as last seen for three looks, said, and dropped at the fourth", async () => {
+  const w = world({ start: "2027-01-07T14:00:00Z" });
+  const V = { id: "houseFinanc", chamber: "H", title: "House Finance (01/07/2027)", scheduled: T("2027-01-07T14:00:00Z"),
+              listedAt: T("2027-01-05T14:00:00Z"), start: T("2027-01-07T14:00:00Z"), end: T("2027-01-07T18:00:00Z") };
+  w.yt.add(V);
+  await w.runAt();
+  const before = w.streams("2027-01-07").streams;
+  assert.deepEqual(before.map(s => [s.video, s.status]), [[V.id, "live"]]);
+  // YouTube stops answering for it, while it would still list it.
+  const exists = w.yt.exists.bind(w.yt);
+  w.yt.exists = (v, now) => v.id !== V.id && exists(v, now);
+  assert.equal(MISSES_TO_DROP, 3);
+  for (let i = 1; i <= 3; i++) {
+    const out = await w.runAt(T("2027-01-07T14:00:00Z") + i * 2 * MIN);
+    assert.ok(out.codes.includes("(1 known stream(s) left out by videos.list, kept as last seen)"), out.codes.join(" "));
+    const f = w.streams("2027-01-07");
+    assert.deepEqual(f.streams, before, `look ${i}: kept as last seen`);
+    assert.deepEqual(w.state().yt.live, [V.id]);
+  }
+  await w.runAt(T("2027-01-07T14:00:00Z") + 4 * 2 * MIN);
+  assert.deepEqual(w.streams("2027-01-07").streams, [], "dropped at the next");
+  assert.deepEqual(w.state().yt.live, []);
+  // One answer in between starts the count again.
+  w.yt.exists = exists;
+  const w2 = world({ start: "2027-01-07T14:00:00Z" });
+  w2.yt.add(V);
+  await w2.runAt();
+  let skip = true;
+  const e2 = w2.yt.exists.bind(w2.yt);
+  w2.yt.exists = (v, now) => (v.id === V.id && skip ? false : e2(v, now));
+  for (let i = 1; i <= 12; i++) {
+    skip = i % 3 !== 0;                                     // two misses, then an answer
+    await w2.runAt(T("2027-01-07T14:00:00Z") + i * 2 * MIN);
+    assert.equal(w2.streams("2027-01-07").streams.length, 1, `look ${i}`);
+  }
+  assert.equal(w2.fails().length, 0);
 });
 
 // A heavy week, built as the record's busiest weeks run: up to 22 recordings a
@@ -319,18 +365,26 @@ test("a refused key holds it for the rest of New Hampshire's day, and so does a 
   }
 });
 
-test("a new key lifts a refused key's hold at the next run; no key at all is said at every look and held for nothing", async () => {
+test("a refused key's hold keeps no print of the key, and lifts when the person turns YouTube off and on; no key at all is said at every run and held for nothing", async () => {
   const w = world({ start: "2027-01-07T15:00:00Z" });
   w.yt.fail("*", "key_invalid");
   await w.runAt();
-  assert.match(w.state().yt.held.key, /^[0-9a-f]{12}$/, "the hold keeps a print of the key, not the key");
+  assert.deepEqual(Object.keys(w.state().yt.held).sort(), ["since", "until", "why"], "nothing of the key in state.json");
   await w.runAt(T("2027-01-07T15:02:00Z"));
   const n = w.yt.calls.length;
+  assert.equal(n, 1, "held");
   w.env.YOUTUBE_API_KEY = w.yt.key = "a-new-synthetic-key";
-  const out = await w.runAt(T("2027-01-07T15:04:00Z"));
-  assert.ok(out.codes.includes("new_key") && w.yt.calls.length > n, out.codes.join(" "));
+  await w.runAt(T("2027-01-07T15:04:00Z"));
+  assert.equal(w.yt.calls.length, n, "a new key alone waits for the hold");
+  w.r2.seed("control.json", { youtube: "off", sql: "off" });
+  await w.runAt(T("2027-01-07T15:06:00Z"));
+  w.r2.seed("control.json", { youtube: "on", sql: "off" });
+  await w.runAt(T("2027-01-07T15:08:00Z"));
+  assert.ok(w.yt.calls.length > n, "off and on again asks at once");
   assert.equal(w.streams("2027-01-07").status.ok, true);
 
+  // With no key: nothing asked, nothing held, and every run says so -- the
+  // quiet runs between looks outside the window too, so the check stays down.
   const none = world({ start: "2027-01-07T15:00:00Z", key: null });
   await none.every("2027-01-07T15:00:00Z", "2027-01-07T15:06:00Z");
   assert.equal(none.yt.calls.length, 0, "with no key, nothing is asked");
@@ -338,10 +392,14 @@ test("a new key lifts a refused key's hold at the next run; no key at all is sai
   assert.equal(none.streams("2027-01-07").status.problem, "key");
   assert.equal(none.fails().length, 3, "every look says so");
   assert.match(none.fails()[0].body, /no YOUTUBE_API_KEY secret/);
+  await none.every("2027-01-08T02:00:00Z", "2027-01-08T03:00:00Z");      // 21:00 EST: a look every 30 minutes
+  assert.equal(none.pings.filter(p => p.at >= T("2027-01-08T02:00:00Z")).every(p => p.url.endsWith("/fail")), true,
+               "every run, looking or not");
   none.env.YOUTUBE_API_KEY = KEY;
-  await none.runAt(T("2027-01-07T15:06:00Z"));
+  await none.runAt(T("2027-01-08T03:00:00Z"));
   assert.ok(none.yt.calls.length > 0, "the first run after the key is put asks");
   assert.equal(none.streams("2027-01-07").status.ok, true);
+  assert.equal(none.pings.at(-1).url, HC);
 });
 
 test("five failed looks in a row tell Healthchecks, four do not, and a good look starts the count again", async () => {
@@ -358,6 +416,23 @@ test("five failed looks in a row tell Healthchecks, four do not, and a good look
   assert.equal(w.fails().length, 1, "the fifth");
   assert.match(w.fails()[0].body, /5 looks at YouTube in a row have failed \(playlistItems: HTTP 503 backendError\)/);
   assert.ok(w.pings.every(p => !p.body.includes(KEY)));
+});
+
+test("a failure that persists outside the window keeps Healthchecks down on every run, not only the runs that look", async () => {
+  const w = world({ start: "2027-01-08T01:00:00Z" });        // 20:00 EST: a look every 30 minutes
+  for (let i = 0; i < 40; i++) w.yt.fail("playlistItems", "backend");
+  await w.every("2027-01-08T01:00:00Z", "2027-01-08T06:00:00Z");
+  assert.ok(w.state().yt.fails >= FAILS_TO_TELL + 3, `${w.state().yt.fails} failed looks`);
+  const after = w.pings.filter(p => p.at >= T("2027-01-08T01:00:00Z") + (FAILS_TO_TELL - 1) * 30 * MIN);
+  assert.ok(after.length >= 60, `${after.length} runs`);
+  const flips = after.slice(1).filter((p, i) => p.url !== after[i].url).length;
+  assert.equal(flips, 0, "no run between the looks pings success");
+  assert.ok(after.every(p => p.url.endsWith("/fail") && /looks at YouTube in a row have failed/.test(p.body)));
+  w.yt.errors.length = 0;
+  await w.runAt("2027-01-08T06:00:00Z");
+  assert.equal(w.pings.at(-1).url, HC, "the first good look brings it up");
+  await w.runAt("2027-01-08T06:02:00Z");
+  assert.equal(w.pings.at(-1).url, HC, "and it stays up");
 });
 
 test("a failed look keeps what was last checked and says it failed; it is never written as a fresh look that found nothing", async () => {
@@ -462,10 +537,12 @@ test("search's own allowance running out holds search alone, to midnight Pacific
   assert.ok(out.codes.some(c => c.includes("search held to midnight Pacific")), out.codes.join(" "));
   assert.equal(w.streams("2027-01-07").status.ok, true, "the playlists were read");
   assert.equal(w.state().yt.search_held, "2027-01-08T08:00:00Z");
-  assert.equal(w.fails().length, 0);
+  assert.equal(w.fails().length, 1, "the hold beginning is told");
+  assert.match(w.fails()[0].body, /search's own allowance is spent/);
   await w.every("2027-01-07T15:02:00Z", "2027-01-07T17:00:00Z");
   assert.equal(w.yt.calls.filter(c => c.method === "search").length, 1, "the one that was refused");
   assert.ok(w.yt.calls.filter(c => c.method === "playlistItems").length >= 120);
+  assert.equal(w.fails().length, 1, "once: the runs during the hold are not failures");
 });
 
 test("the key is never written to the bucket, a log line or Healthchecks", async () => {
@@ -503,3 +580,91 @@ test("control.json saying youtube off: nothing is asked, and the day's file says
   assert.equal(w.yt.calls.filter(c => !c.keyed).length, 0);
   assert.ok(w.pings.every(p => p.url === HC), "nothing here is a failure");
 });
+
+test("control.json saying youtube off forgets everything state.json kept of YouTube, at its first run", async () => {
+  const w = world({ start: "2027-01-07T14:00:00Z" });
+  w.yt.add({ id: "houseFinanc", chamber: "H", title: "House Finance (01/07/2027)", scheduled: T("2027-01-07T14:00:00Z"),
+             listedAt: T("2027-01-05T14:00:00Z"), start: T("2027-01-07T14:00:00Z"), end: T("2027-01-07T18:00:00Z") });
+  w.yt.add({ id: "fiscalNextW", chamber: "H", title: "Fiscal Committee (01/15/2027)",
+             scheduled: T("2027-01-15T15:00:00Z"), listedAt: T("2027-01-06T16:00:00Z") });
+  fillers(w);
+  w.yt.fail("search", "quota");
+  await w.every("2027-01-07T14:00:00Z", "2027-01-07T14:10:00Z");
+  const yt = w.state().yt;
+  assert.ok(yt.upcoming.fiscalNextW && yt.live.length && yt.lists.H.length === 50 && yt.uploads && yt.search_held);
+  w.r2.seed("control.json", { youtube: "off", sql: "off" });
+  await w.runAt("2027-01-07T14:10:00Z");
+  assert.deepEqual(w.state().yt, { off: "2027-01-07" }, "no id, list, playlist or hold kept");
+  // Off for six weeks: still nothing of YouTube's anywhere but the day files, which the sweep takes.
+  await w.every("2027-01-07T14:12:00Z", "2027-02-18T14:00:00Z", null, 6 * HOUR);
+  assert.deepEqual(Object.keys(w.state().yt), ["off"]);
+  assert.deepEqual([...w.r2.objects.keys()].filter(k => k.startsWith("streams/")).sort()[0], "streams/2027-01-20.json", "the sweep took the rest");
+  assert.equal(w.yt.calls.filter(c => c.at >= T("2027-01-07T14:10:00Z")).length, 0);
+});
+
+test("a month of failed looks keeps nothing of YouTube's in state.json past 30 calendar days", async () => {
+  const w = world({ start: "2027-01-07T14:00:00Z" });
+  w.yt.add({ id: "houseFinanc", chamber: "H", title: "House Finance (01/07/2027)", scheduled: T("2027-01-07T14:00:00Z"),
+             listedAt: T("2027-01-05T14:00:00Z"), start: T("2027-01-07T14:00:00Z"), end: T("2027-03-07T18:00:00Z") });
+  w.yt.add({ id: "fiscalNextW", chamber: "H", title: "Fiscal Committee (03/15/2027)",
+             scheduled: T("2027-03-15T15:00:00Z"), listedAt: T("2027-01-06T16:00:00Z") });
+  await w.runAt();
+  assert.ok(w.state().yt.upcoming.fiscalNextW && w.state().yt.live.length && w.state().yt.lists);
+  // From here every look fails, YouTube's own trouble.
+  for (let i = 0; i < 2000; i++) w.yt.fail("*", "backend");
+  const check = async (_o, t) => {
+    const yt = w.state().yt;
+    const day = nh(t).date;
+    if (day >= "2027-02-06") {
+      const text = JSON.stringify(yt);
+      assert.ok(!/houseFinanc|fiscalNextW|UU/.test(text) && !yt.lists && !yt.uploads, `${day}: ${text}`);
+    }
+  };
+  await w.every("2027-01-07T14:30:00Z", "2027-02-10T14:00:00Z", check, 3 * HOUR);
+  assert.ok(w.state().yt.fails > 100);
+  // forget() alone, on the day of the rule's edge.
+  const kept = { listed: "2027-01-08T15:00:00Z", lists: { H: ["a"] }, live: ["a"], uploads: { H: "x" },
+                 upcoming: { b: { at: "2027-03-01T15:00:00Z", seen: "2027-01-08T15:00:00Z" } } };
+  assert.deepEqual(forget(structuredClone(kept), new Date(T("2027-02-06T15:00:00Z"))), kept, "29 days: kept");
+  assert.deepEqual(forget(structuredClone(kept), new Date(T("2027-02-07T15:00:00Z"))), { upcoming: {} }, "30 days: gone");
+});
+
+test("a bare 401, with no reason given, is a refused key", async () => {
+  const w = world({ start: "2027-01-07T15:00:00Z" });
+  w.yt.errors.push({ method: "*", status: 401, body: { error: { code: 401, message: "Unauthorized", errors: [] } } });
+  const out = await w.runAt();
+  assert.ok(out.codes.includes("youtube_problem_key"), out.codes.join(" "));
+  assert.equal(w.state().yt.held.why, "key");
+});
+
+test("an upcoming id is asked from two hours before its start to the end of today, and not a minute either side", async () => {
+  const now = new Date(T("2027-01-07T15:00:00Z"));
+  const endOfToday = T("2027-01-08T05:00:00Z");
+  const asked = [];
+  const fetchImpl = async url => {
+    const u = new URL(url);
+    if (u.pathname.endsWith("videos")) asked.push(...u.searchParams.get("id").split(","));
+    return Response.json({ items: [] });
+  };
+  const at = t => ({ at: iso(t), seen: iso(+now - HOUR) });
+  const yt = { uploads: { H: UU("H"), S: UU("S") }, lists: { H: [], S: [] }, upcoming: {
+    twoHoursAgo: at(+now - 2 * HOUR), justPast2h: at(+now - 2 * HOUR - MIN),
+    lastMinute1: at(endOfToday - MIN), midnight001: at(endOfToday) } };
+  await look({ key: KEY, fetchImpl, now, yt, due: { discover: true, live: false, search: false, refresh: false } });
+  assert.deepEqual(asked.sort(), ["lastMinute1", "twoHoursAgo"]);
+});
+
+test("a cron that fires a few seconds early is on time: the look due at the next tick is made", async () => {
+  const w = world({ start: "2027-01-07T15:00:00Z" });
+  await w.runAt();
+  const n = w.yt.calls.filter(c => c.method === "playlistItems").length;
+  await w.runAt(T("2027-01-07T15:02:00Z") - 5_000);
+  assert.ok(w.yt.calls.filter(c => c.method === "playlistItems").length > n, "discovered at 15:01:55");
+});
+
+test("with YouTube off, a missing key is nobody's failure", async () => {
+  const w = world({ start: "2027-01-07T15:00:00Z", key: null, control: { youtube: "off", sql: "off" } });
+  await w.every("2027-01-07T15:00:00Z", "2027-01-07T15:10:00Z");
+  assert.equal(w.fails().length, 0);
+});
+

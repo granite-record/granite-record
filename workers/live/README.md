@@ -61,7 +61,7 @@ Pacific.
  "checked": "2027-01-07T15:02:04Z", "next_check": "2027-01-07T15:04:04Z",
  "status": {"ok": true, "problem": null, "since": null},
  "streams": [
-   {"video": "AbCdEfGhIjK", "chamber": "H", "title": "House Finance (01/07/2027)", "session": null,
+   {"video": "AbCdEfGhIjK", "chamber": "H", "title": "House Finance (01/07/2027)",
     "status": "live", "scheduled": "2027-01-07T15:00:00Z", "started": "2027-01-07T15:01:37Z",
     "ended": null, "embeddable": true,
     "seen": {"playlist": "2027-01-07T15:02:04Z", "search": null}}]}
@@ -74,10 +74,10 @@ Pacific.
   current. `status.problem` says why, from `since`: `youtube` (a look failed;
   tried again at the next), `quota` (YouTube's quota is spent; held to
   midnight Pacific), `key` (no key, or YouTube refused it; a refused key is
-  held for the day, or until a new one is put) or `off` (`control.json`).
+  held for the rest of the day) or `off` (`control.json`).
 - `status` of a stream is `live`, `upcoming` (scheduled for today) or
-  `ended` (today, for "Earlier today"). `session` is `H` or `S` for a
-  chamber's session stream.
+  `ended` (today, for "Earlier today"). A stream YouTube leaves out of an
+  answer is kept as last seen for three looks in a row, then dropped.
 - `seen` is when each path, the playlist or search, first listed the stream
   that day: the measurement of whether the playlist carries a stream nobody
   scheduled while it is live.
@@ -85,6 +85,9 @@ Pacific.
 The Worker deletes every `streams/`, `votes/` and `test/` object last written
 30 calendar days ago, on its first run after 03:00: YouTube's developer
 policy keeps its data "not longer than 30 calendar days" (III.E.4.d).
+`state.json` keeps of YouTube only what the next look needs (upcoming ids,
+ids live, the last playlist reads), none of it past 30 days unrefreshed, and
+nothing at all once YouTube is switched off.
 
 ## Setting it up (the person, once)
 
@@ -156,8 +159,15 @@ npx wrangler r2 object put graniterecord-live/control.json --file workers/live/c
 **`--remote` every time:** without it, wrangler's `r2 object` commands write
 a local copy on this machine and the Worker never sees it. preflight fails if
 a line here lacks it. A switch takes effect at the next run, within 2
-minutes. With YouTube off, the day's file says `"problem": "off"` once and
-nothing is asked.
+minutes. With YouTube off, the day's file says `"problem": "off"` once,
+nothing is asked, and `state.json` forgets what it kept of YouTube, holds
+included. So after putting a new key in place of one YouTube refused, put
+`all-off.json`, wait one run (2 minutes), and put `sql-off.json`: the new key
+is tried at once rather than the next day.
+
+A `control.json` the Worker cannot read (bad JSON, or a value not in the
+table, such as `"of"`) is honoured as shadow, and every run sends `/fail`
+until it is replaced.
 
 To read what it wrote, for example a day's streams and their `seen` times:
 
@@ -170,12 +180,19 @@ npx wrangler r2 object get graniterecord-live/streams/2026-11-16.json --file str
 The ping body says why. `/fail` is sent when:
 
 - YouTube's quota is spent, or it refused the key: the YouTube half waits for
-  midnight Pacific, or for New Hampshire's midnight or a new key;
-- there is no `YOUTUBE_API_KEY` (step 2);
-- five looks in a row have failed;
+  midnight Pacific, or for New Hampshire's midnight (or YouTube off and on);
+- search's own allowance is spent: search waits for midnight Pacific, and the
+  playlists are still read;
 - three ticks in a row found another run's lease: the cron firing twice, or
   a second Worker on this bucket;
 - a run had something due and wrote nothing.
+
+And on every run, until it is mended, so the check stays down rather than
+flapping:
+
+- there is no `YOUTUBE_API_KEY` (step 2);
+- five or more looks in a row have failed;
+- `control.json` cannot be read.
 
 ## Trying it on this machine
 
