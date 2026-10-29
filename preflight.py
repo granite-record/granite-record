@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.721
+# GRANITE_VERSION: 2026-09-04.722
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -14417,6 +14417,43 @@ _JM_ROLLS = {"2025-2026": {"_procedural": [
     "2015-2016": {"_procedural": [
         _jm_rc("2015", "H", 188, "2015-09-16", "Uphold Ruling of the Chair", 286, 89, True),
         _jm_rc("2015", "H", 189, "2015-09-16", "Rules Suspension", 285, 93, True)]}}
+
+
+@check("rollcalls", "the Journal's sentences are found in one pass, and they are the pattern's own",
+       needs=("journal_motions",))
+def _journal_sentences_one_pass(JM):
+    """last_decision read each passage's sentences with SENTENCE.finditer,
+    which restarts one character on after every failed start: five and a half
+    minutes of every build, in a step that took six (29 October 2026). It
+    asks sentence_spans() now, which reads each stretch between full stops
+    once. This holds the two to each other: on the ends of the pattern (a
+    stop alone, a stop at the start, four line ends before a stop and three),
+    on 20,000 strings made of the characters that decide a match, and on the
+    Journal fixtures as written and cleaned. And it holds last_decision to the
+    one pass: undone, the step is six minutes again and nothing else says so."""
+    import inspect
+    import random
+    want = lambda s: [m.span() for m in JM.SENTENCE.finditer(s)]
+    got = lambda s: list(JM.sentence_spans(s))
+    texts = ["", ".", "..", "...", ".a", "a.", "\n.", "\n\n\n.", "\n\n\n\n.", "\n\n\n\n\n\n.",
+             "a\nb\nc\nd\ne.", "x\n\n\n\n\ny.z.", "no stop at all\n\n\n", "a.\n\n\n\n\nb.",
+             "\n" * 9 + "." + "\n" * 9 + ".", ". \n. \n\n\n\n\n.", "\f\r\n.\r\n\r\n\r\n\r\n."]
+    rnd = random.Random(20261029)
+    texts += ["".join(rnd.choice("a.\n \n.\r") for _ in range(rnd.randint(0, 60)))
+              for _ in range(20000)]
+    journal = [_JOURNAL_RECONSIDER, _JOURNAL_MOTION_AFTER, _JOURNAL_DECIDED, _JOURNAL_WALK,
+               _JOURNAL_WALK_MORE]
+    texts += journal + ["\n".join(journal)]
+    texts += [t.replace(".", "") + "." for t in journal]
+    bad = [t for t in texts if got(t) != want(t)]
+    assert not bad, (f"sentence_spans and SENTENCE.finditer disagree on {len(bad)} text(s), "
+                     f"the first {bad[0][:80]!r}: {got(bad[0])[:4]} against {want(bad[0])[:4]}")
+    src = inspect.getsource(JM.last_decision)
+    assert "sentence_spans(" in src and "finditer(r\"[^.\\n]" not in src \
+        and "SENTENCE.finditer" not in src, (
+        "last_decision reads its sentences with finditer again: six minutes of every build")
+    return "ok", (f"{len(texts):,} texts, every one the same spans both ways; last_decision "
+                  "reads them in one pass")
 
 
 @check("rollcalls", "a vote on no bill is shown in the Journal's own words only where its tally, "
