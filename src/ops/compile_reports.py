@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-12.13
+# GRANITE_VERSION: 2026-09-12.14
 """
 What readers reported, compiled for a person and for the session that triages.
 

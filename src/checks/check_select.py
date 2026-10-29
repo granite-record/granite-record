@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-10-09.1
+# GRANITE_VERSION: 2026-10-09.2
 """
 Which of preflight's checks a change can reach: `preflight.py --changed`.
 

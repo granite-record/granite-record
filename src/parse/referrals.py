@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-10.13
+# GRANITE_VERSION: 2026-09-10.14
 """The committee a bill was referred to, read out of the docket.
 
     python3 src/parse/referrals.py            # what it finds, by term, no network

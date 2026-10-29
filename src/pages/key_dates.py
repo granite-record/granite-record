@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-10-24.3
+# GRANITE_VERSION: 2026-10-24.4
 """
 The key dates: the elections, town meeting day, and the legislature's own
 landmarks and deadlines, each with where it comes from. The home page's
