@@ -187,6 +187,21 @@ def kind_of(name):
     return min(found)[1] if found else "Committee"
 
 
+def named(name):
+    """The committee as a sentence names it, in "Recording of ..." and "Play
+    the recording of ...": "the Fiscal Committee"; a name that carries its own
+    article keeps the one, small ("the Governor's Commission on Addiction,
+    Treatment and Prevention"); and a name that names no body is said bare, as
+    the player's bar says it -- "Administrative Rules", which "the" made "the
+    Administrative Rules" (the review of 29 October 2026)."""
+    name = (name or "").strip()
+    if re.match(r"the\s", name, re.I):
+        return "the " + name[4:].lstrip()
+    if any(re.search(rf"\b{k}\b", name, re.I) for k in KINDS):
+        return "the " + name
+    return name
+
+
 # ---- the record's prose, read as it was written ------------------------------
 #
 # THE DATABASE COPY LOST THE LINE BREAKS INSIDE ITS TEXT, as it did inside a
@@ -617,7 +632,7 @@ def player(c, m):
     """The meeting's recording, still until pressed, as a session day's is
     (build_full_sessions.day_players): app.js's one handler plays it."""
     pid = f"ss{c['cid']}_{m['date'].replace('-', '')}_{re.sub(r'[^\w-]', '', m['video'])}"
-    title = f"Recording of the {c['name']}, {C.date_words(m['date'])}"
+    title = f"Recording of {named(c['name'])}, {C.date_words(m['date'])}"
     return (f'<div class="player" data-player="{E(pid)}">'
             f'<button type="button" class="pstub" data-title="{E(title)}" '
             f'data-embed="{E(m["video"])}|0|{E(pid)}"><span>{C.icon("play")}</span>'
@@ -716,7 +731,7 @@ def videos_html(c, ms, ctx):
                      **({"seconds": f["seconds"]} if f.get("seconds") else {})})
     if not rows:
         return ""
-    data = json.dumps({"kind": "study", "who": c["name"], "key": c["cid"],
+    data = json.dumps({"kind": "study", "who": c["name"], "what": named(c["name"]), "key": c["cid"],
                        "path": "/" + BC.study_page(c["cid"]).removesuffix(".html"), "rows": rows},
                       separators=(",", ":"), ensure_ascii=False).replace("</", "<\\/")
     return (C.section("Videos", '<div class="vwhere" data-vwview="gr-videos"><p class="src">Each '

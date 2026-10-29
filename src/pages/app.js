@@ -8796,6 +8796,13 @@ const kindChips=ks=>(ks||[]).map(k=>{
 // same "approximate" from the same items, and nothing about a timestamp
 // changes. `mine` is the bill's items; `pidOf(item)` names the player each
 // one moves.
+// EACH BUTTON AND ITS "APPROXIMATE" ARE ONE (.mjump, which does not wrap):
+// drawn as two items of a row that wraps, the word could start the next line
+// on its own, beside the next button. At 390px House Environment and
+// Agriculture's HB 1157-FN of 3 February 2026 read "▸ Full Committee Work
+// Session 02:43:55" over "approximate ▸ Executive Session 02:46:00", the
+// inferred moment plain and the stated one approximate (the review of 29
+// October 2026).
 function jumpButtons(mine,pidOf){
   return mine.filter(i=>i.start!=null).map(i=>{
     const t=Math.max(0,Math.floor(i.start));
@@ -8803,9 +8810,9 @@ function jumpButtons(mine,pidOf){
     const said=/^(stated|floor_stated|floor_precise)$/.test(i.state||"")&&!i.inferred;
     const pid=pidOf(i);
     const kind=mine.length>1?`${(MEET_KIND[String(i.kind||"").toLowerCase()]||[kindTitle(i.kind)])[0]} `:"";
-    return `<button type="button" class="jump" data-seek="${esc(pid)}|${t}" aria-label="Play ${
+    return `<span class="mjump"><button type="button" class="jump" data-seek="${esc(pid)}|${t}" aria-label="Play ${
       esc(kind||"this bill ")}from ${hms(t)}">${icon("play")}${esc(kind)}${hms(t)}</button>${
-      said?"":`<i class="approx">approximate</i>`}`;}).join("");
+      said?"":`<i class="approx">approximate</i>`}</span>`;}).join("");
 }
 function meetingLine(s,o,items){
   const mine=items.filter(i=>String(i.bill)===String(o.bill));
@@ -8966,10 +8973,12 @@ function renderCommitteeSessions(c){
    Videos section, the last two drawn from the JSON their pages carry
    (staticVideos).
 
-   o:     {who, what, key, heading, rows, chosen, href(id), pid(row), source, all}
+   o:     {who, what, key, heading, level, rows, chosen, href(id), pid(row), source, all}
           who is the player's bar ("Senate Finance", "The House"), what the
           same in a sentence ("Recording of the House, ..."), where it
-          differs; key the term or the page, so a list kept open stays open.
+          differs; key the term or the page, so a list kept open stays open;
+          level the list's heading's, 2 where nothing above it on the page is
+          an h2 (a chamber's), or else 3.
    a row: {id, date, began, seconds, kinds (chips' HTML), line (text),
           detail (HTML, or a function that gives it)}
 
@@ -9048,11 +9057,18 @@ function videoView(o){
   VVIEW=o;
   const all=o.all||VW_ALL[o.key];
   const cap=all?rows.length:Math.max(VW_SHOWN,rows.indexOf(on)+1);
+  // THE SKIP LINK COMES STRAIGHT AFTER THE PLAYER AND ITS CAPTION, before
+  // what the recording covers: after it, as it stood, a keyboard passed House
+  // Commerce's 37 bills and their moments -- 63 stops -- to reach the link
+  // that was to spare them, and again after every row chosen, which puts the
+  // keyboard back on Play (the review of 29 October 2026). Play, On YouTube,
+  // this, then the detail, then the rows.
+  const lv=o.level===2?2:3;
   return `<div class="vw" data-vwkey="${esc(o.key||"")}"><div class="vwmain">${vwPlayer(o,on)}`
-    +'<p class="vwsay sr" role="status" aria-live="polite"></p></div>'
-    +`<div class="vwdet"><div class="vwdetin">${vwDetail(on)}</div>`
+    +'<p class="vwsay sr" role="status" aria-live="polite"></p>'
     +`<a class="vwskip" href="${esc(location.pathname+location.search)}#vwlist" data-vwskip>Skip to the list of recordings</a></div>`
-    +`<div class="vwside"><div class="vwin"><h3 class="vwh" id="vwh">${esc(o.heading)}</h3>`
+    +`<div class="vwdet"><div class="vwdetin">${vwDetail(on)}</div></div>`
+    +`<div class="vwside"><div class="vwin"><h${lv} class="vwh" id="vwh">${esc(o.heading)}</h${lv}>`
     +`<ol class="vwlist${all?" vwopen":""}" id="vwlist" aria-labelledby="vwh">${rows.map((r,i)=>vwRow(o,r,i,cap)).join("")}</ol>`
     +(rows.length>cap?`<button type="button" class="discl pgmore vwall" data-vwall aria-controls="vwlist">Show all ${
       rows.length.toLocaleString()}</button>`:"")
@@ -9210,7 +9226,20 @@ function cmteVideoDetail(c,r,items,day,chips){
         jumps?`<span class="mjumps">${jumps}</span>`:""}</li>`;}).join("")}</ol>${
       order.length>VW_BILLS?`<button type="button" class="discl pgmore vwall" data-vwall="bills" aria-controls="vwbills">Show all ${
         order.length.toLocaleString()} bills</button>`:""}`);
-  }else out.push(`<p class="vwnone">The docket ties no bill to this recording.</p>`);
+  }else{
+    // THE DAY'S BILLS WHOSE RECORDING IS NOT ESTABLISHED: the docket lists
+    // them, and which of the day's recordings each is in is not known -- a
+    // committee sitting in divisions that stream apart (House Finance), or a
+    // day the clock could not tell its recordings apart. Said as the Meetings
+    // tab says it of that day (meetingPlayers), where "The docket ties no
+    // bill" read as if no bill was before it: House Public Works and
+    // Highways' only recording of 5 May 2021, a four-bill public hearing (the
+    // review of 29 October 2026; 103 recordings).
+    const open=day?[...new Set((day.items||[]).filter(i=>!i.video_id&&i.state==="candidates").map(i=>String(i.bill)))]:[];
+    out.push(open.length?`<p class="vwnone">${nBills(open.length)} ${open.length===1?"was":"were"} before the committee that day; which of its recordings ${
+      open.length===1?"it is":"each is"} in has not been established.</p>`
+      :`<p class="vwnone">The docket ties no bill to this recording.</p>`);
+  }
   if(day)out.push(`<p class="src vwlinks"><a href="${esc(vwDayHref(c,day.date))}" data-vwday="${
     esc(day.date)}">${items.length?"What the committee did at this meeting":"This committee&rsquo;s meeting that day"}</a></p>`);
   return out.join("");
@@ -9232,6 +9261,21 @@ function renderCommitteeVideos(c){
     onChoose:id=>{if(PAGE)PAGE.vid=id;},
     source:"The recordings are the General Court&rsquo;s own, from its House and Senate YouTube "
       +"channels; which bills each covers is from its docket."});
+}
+// THE VIDEOS TAB TURNED TO AGAIN shows the recording the reader had chosen
+// there (PAGE.vid), and the address names it, as it did when it was chosen:
+// it named the tab alone, so Share, a copied link or a reload opened on the
+// newest and not on what was shown (the review of 29 October 2026). The
+// term's newest, which the tab's own address opens on, is left unnamed; a
+// recording of another term is not this term's tab's.
+function vwBackTo(){
+  if(!PAGE||PAGE.kind!=="committee"||PAGE_TAB!==COMMITTEE_TABS.videos||!PAGE.data||!PAGE.vid)return;
+  const rows=cmteRecordings(PAGE.data);
+  if(!rows.length||rows[0].id===PAGE.vid||!rows.some(r=>r.id===PAGE.vid))return;
+  try{history.replaceState(history.state,"",location.pathname+location.search+"#v-"+PAGE.vid);}catch(_){}
+  addressed();
+  // Already chosen: not an arrival (showVideo) to be scrolled to.
+  vwTried=vwLanded=PAGE.vid;
 }
 // A meeting's link under the player, pressed: the Meetings tab, opened at
 // that day (showDay), with its address in the bar.
@@ -9296,14 +9340,19 @@ function chamberRows(d){
 }
 // The view each kind of page draws from its JSON.
 const VW_STATIC={
+  // `what`, the committee in a sentence, is the build's (build_study_committees,
+  // named): "the Fiscal Committee", and "Administrative Rules", a name that
+  // names no body, bare.
   study:d=>{const rows=studyVideoRows(d), n=rows.length;
-    return {who:d.who,what:`the ${d.who}`,key:`ss|${d.key}`,rows,
+    return {who:d.who,what:d.what||d.who,key:`ss|${d.key}`,rows,
       heading:`${n.toLocaleString()} recording${n===1?"":"s"}, newest first`,
       href:id=>`${d.path}/videos#v-${id}`,pid:r=>`v${String(r.date).replace(/-/g,"")}_${r.id}`,
       source:"The recordings are the General Court&rsquo;s own, from its House and Senate YouTube channels."};},
+  // The chamber's page has its h1 and no h2 above the tab (build_full_sessions,
+  // page_head): the list's heading is an h2, where an h3 skipped a level.
   chamber:d=>{const rows=chamberRows(d), n=rows.length, word=d.body==="S"?"Senate":"House";
     const q=d.term&&d.term!==d.latest?`?term=${d.term}`:"";
-    return {who:`The ${word}`,what:`the ${word}`,key:`${d.body}|${d.term}`,rows,
+    return {who:`The ${word}`,what:`the ${word}`,key:`${d.body}|${d.term}`,rows,level:2,
       heading:`${n.toLocaleString()} recording${n===1?"":"s"} in ${termDash(d.term)}`,
       href:id=>`/session/${d.slug}/videos${q}#v-${id}`,pid:r=>`v${String(r.date).replace(/-/g,"")}_${r.id}`,
       empty:`No recording of the ${word}&rsquo;s session days in ${esc(termDash(d.term))} is on file.${
@@ -9689,9 +9738,12 @@ function renderCommitteeHead(c){
   // recording 12 May (the Videos tab's list, build_committees). Both are
   // said, so the head and the tab below it do not disagree.
   const rec=(c.recordings||[]).reduce((a,r)=>!a||r.date>a.date?r:a,null);
+  // Both dates in the one style, the long one the last meeting has: "on
+  // Tuesday, April 7, 2026 ... from Tuesday, May 12, 2026", where the second
+  // was "May 12, 2026" (the review of 29 October 2026).
   const ahead=rec&&met&&rec.date>met?`; its newest recording, on the <a href="${
     esc(`/committee/${encodeURIComponent(c.code)}/videos#v-${rec.id}`)}" data-vwgo="${esc(rec.id)}">Videos tab</a>, is from ${
-    esc(dateWords(rec.date))}`:"";
+    esc(dateWords(rec.date,"long"))}`:"";
   const next=UPCOMING===null?"":cmteUpcoming(c).length?""
     :`Nothing is scheduled in the next two weeks.${met?` Its last meeting${ahead?" on the record":""} was on <a href="${
       esc(dayHref(met))}">${esc(dateWords(met,"long"))}</a>${ahead}.`:""}`;
@@ -9812,6 +9864,7 @@ document.addEventListener("click",e=>{
   const t=e.target.closest("[data-pt]");
   if(t){PAGE_TAB=+t.dataset.pt;
     tabAddress(slugOf(PAGE.kind==="member"?MEMBER_TABS:COMMITTEE_TABS,PAGE_TAB));
+    vwBackTo();
     renderPage();return;}
   // Not data-more: that one belongs to the bill list, is read by the
   // handler above this in the file, and calls render(), which would draw the
@@ -10016,6 +10069,16 @@ function dayHref(date){ return location.pathname + location.search + "#" + dayId
    serves bills, and nothing else on a committee page has ever read the
    address. */
 let dayLanded = "", dayTried = "", dayPaged = "";
+// THE PAGE TURNED TO A TERM an address asks for without naming it -- the
+// term a day (showDay) or a recording (showVideo) is in -- as choosing it in
+// the Term control does (the change handler, data-pf="term"). Whether it
+// moved: not where the page shows that term already, or does not have it.
+function pageToTerm(t){
+  if(!t||!PAGE||t===pageTerm()||!(PAGE.terms||[]).includes(t))return false;
+  PAGE.term=t;term=t;PAGE.status="";PAGE.bshow=0;PAGE.mshow=0;PAGE.vshow=0;
+  ensureTerm(PAGE.term).then(renderPage);
+  return true;
+}
 function showDay(){
   const want = decodeURIComponent(location.hash.slice(1) || "");
   if(!/^day-\d{4}-\d{2}-\d{2}$/.test(want)){ dayLanded=""; dayTried=""; dayPaged=""; return; }
@@ -10027,14 +10090,22 @@ function showDay(){
   // all. Being asked for a day IS asking for that tab. Guarded so it is tried
   // once: a date the page genuinely does not hold must not bounce the reader
   // between tabs.
-  if(!el && PAGE && PAGE.kind === "committee"
-     && PAGE_TAB !== COMMITTEE_TABS.sessions && dayTried !== want){
+  // AND THE DAY IS IN ITS OWN TERM, which the address does not name: a link
+  // to a meeting of 2021 opened in a new tab landed on the Meetings tab of
+  // 2025-2026, where the day is not, and said nothing (the Videos tab's
+  // "This committee's meeting that day", the review of 29 October 2026). The
+  // term holding the day is turned to, as a recording's is (showVideo).
+  if(!el && PAGE && PAGE.kind === "committee" && PAGE.data && dayTried !== want){
     dayTried = want;
-    PAGE_TAB = COMMITTEE_TABS.sessions;
-    // And the address names the tab it shows, the day kept.
-    tabAddress("sessions", true);
-    renderPage();                      // which calls this again, tab in hand
-    return;
+    const s = (PAGE.data.sessions || []).find(x => dayId(x.date) === want);
+    const moved = !!s && pageToTerm(s.term);
+    if(moved || PAGE_TAB !== COMMITTEE_TABS.sessions){
+      PAGE_TAB = COMMITTEE_TABS.sessions;
+      // And the address names the tab it shows, the day kept.
+      tabAddress("sessions", true);
+      renderPage();                    // which calls this again, tab in hand
+      return;
+    }
   }
   if(!el) return;                      // no sitting of that date on this page
   // PAST THE TWENTY SHOWN (A COMMITTEE'S LONG LISTS): the address changed
@@ -10071,11 +10142,7 @@ function showVideo(){
   if(vwTried!==want){
     vwTried=want;
     PAGE.vid=want;
-    if(r.term&&r.term!==pageTerm()&&(PAGE.terms||[]).includes(r.term)){
-      // As choosing the term does (the change handler, data-pf="term").
-      PAGE.term=r.term;term=r.term;PAGE.status="";PAGE.bshow=0;PAGE.mshow=0;PAGE.vshow=0;
-      ensureTerm(PAGE.term).then(renderPage);
-    }
+    pageToTerm(r.term);
     if(PAGE_TAB!==COMMITTEE_TABS.videos){PAGE_TAB=COMMITTEE_TABS.videos;tabAddress("videos",true);}
     renderPage();                      // which calls this again, the tab in hand
     return;
@@ -10089,6 +10156,24 @@ function showVideo(){
   box.scrollIntoView({block:"start"});
 }
 window.addEventListener("hashchange", function(){ if(PAGE){ showDay(); showVideo(); } });
+/* BACK AND FORWARD ON A RECORD PAGE bring back the tab the address names.
+   Turning to a tab writes the address over the entry (tabAddress), so going
+   back from a day the head's link opened -- /committee/S07/sessions#day-...,
+   which had been /videos#day-... -- arrives at /committee/S07/videos#v-...
+   with a popstate and, the path having changed, no hashchange: the address
+   named the Videos tab and the Meetings tab stayed up (the review of 29
+   October 2026). The tab is read from the path again, and the day or the
+   recording the address names is landed on afresh. */
+window.addEventListener("popstate", function(){
+  if(!PAGE || !PAGE.data) return;
+  const tabs_ = PAGE.kind === "member" ? MEMBER_TABS : COMMITTEE_TABS;
+  let want = tabs_[tabFromPath()] || 0;
+  // A committee with no recording has no Videos tab (committeeTop).
+  if(want === COMMITTEE_TABS.videos && PAGE.kind === "committee" && !(PAGE.data.recordings || []).length) want = 0;
+  vwTried = vwLanded = ""; dayTried = "";
+  if(want !== PAGE_TAB){ PAGE_TAB = want; renderPage(); }
+  else { showDay(); showVideo(); }
+});
 // A MEETING THE READER OPENED OR SHUT STAYS SO through the page's next
 // drawing -- the term's index, home.json and the officers each arrive after
 // the record and draw it again.
@@ -10098,6 +10183,21 @@ document.addEventListener("toggle",e=>{
   PAGE.mopen=PAGE.mopen||{};PAGE.mopen[d.id]=d.open;
 },true);
 
+/* A TERM THAT HOLDS ONLY RECORDINGS OPENS ON THEM. A committee's recordings
+   add their terms to its Term control (recordTerms), and the page opens on
+   the newest: House Rules opened on 2025-2026 saying "No bills were referred
+   to this committee in the 2025-2026 term", its three recordings of that
+   term on a tab not shown, where before them it opened on 1997-1998 and its
+   one bill (the review of 29 October 2026; six pages). Arriving at the page's
+   own address, with no tab named, such a term opens on Videos, and the
+   address says so. */
+function landingTab(){
+  if(!PAGE||PAGE.kind!=="committee"||!PAGE.data||PAGE_TAB!==0||tabFromPath())return;
+  const c=PAGE.data;
+  if(cmteBills(c).length||cmteSessions(c).length||!cmteRecordings(c).length)return;
+  PAGE_TAB=COMMITTEE_TABS.videos;
+  tabAddress("videos",true);
+}
 function openPage(kind,ref){
   PAGE={kind,data:null,terms:[],term:"",status:"",vfilter:"",vid:"",
         vside:"",vq:"",vopen:{},vshow:0,bshow:0,mshow:0};
@@ -10126,6 +10226,7 @@ function openPage(kind,ref){
     // bill number inside it and a card opened here fetches by that key.
     PAGE.term=PAGE.terms[0]||"";
     if(PAGE.term)term=PAGE.term;
+    landingTab();
     renderPage();
     // And on the way in: a member whose newest term is not the site's opens
     // on their own, whose index nothing has asked for either.

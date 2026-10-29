@@ -6939,18 +6939,24 @@ background:var(--surface)}
    bills on the next. The chosen one carries a bar as well as a ground, so
    it is not told by colour alone (review, 7). */
 .vwrow{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:var(--sp-1) var(--sp-3);
-padding:var(--sp-3) var(--sp-4) var(--sp-3) calc(var(--sp-4) - 4px);border-left:4px solid transparent;
-color:var(--ink);text-decoration:none}
+padding:var(--sp-2) var(--sp-4) var(--sp-3) calc(var(--sp-4) - 4px);border-left:4px solid transparent;
+color:var(--ink);text-decoration:none;line-height:1.35}
 .vwrow:hover{background:var(--wash)}
 .vwrow[aria-current="true"]{border-left-color:var(--pine);background:var(--wash)}
 /* The ring inside the row, so the list's own edge does not clip it. */
 .vwrow:focus-visible{outline:2px solid var(--pine);outline-offset:-2px}
 .vwd{font-weight:600;white-space:nowrap}
 .vwt{font-size:var(--t-sm);color:var(--ink-2);text-align:right;white-space:nowrap}
-/* The kinds and the bills in one run of text, so a row is two lines where
-   they fit and wraps as words do where they do not. */
-.vwb{grid-column:1 / -1;font-size:var(--t-sm);line-height:1.6;color:var(--ink-2)}
-.vwb .chip{margin-right:var(--sp-3);vertical-align:baseline}
+/* THE KINDS AND THE BILLS ON ONE LINE, cut short with an ellipsis where they
+   do not fit, so every row is two lines: the chips had pushed the bills onto
+   a third, rows of 90px, and House Finance's list showed five of its 106
+   beside the player at 1280 (the review of 29 October 2026, "a relatively
+   compact table"). Every bill is under the player once the row is chosen,
+   and the row's whole text is its name to a screen reader. The chips here a
+   little smaller than a card's, the same words and colours. */
+.vwb{grid-column:1 / -1;font-size:var(--t-sm);line-height:1.5;color:var(--ink-2);
+white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.vwb .chip{margin-right:var(--sp-2);padding:0 var(--sp-3);line-height:1.4;vertical-align:baseline}
 .vwall{margin-top:var(--sp-3)}
 .vwsrc{grid-area:src;margin:0}
 /* On paper every row prints: this is a screen's. The bills under the
@@ -7035,6 +7041,11 @@ color:var(--ink-2);margin:var(--sp-6) 0 var(--sp-3)}
 .mkinds{display:inline-flex;flex-wrap:wrap;gap:var(--sp-2)}
 .mtime{font-weight:600;font-size:var(--t-ui);white-space:nowrap}
 .mjumps{display:inline-flex;flex-wrap:wrap;align-items:center;gap:var(--sp-2) var(--sp-3);margin-left:auto}
+/* A moment's button and its "approximate", kept on one line together
+   (app.js, jumpButtons): the row of moments wraps between moments, never
+   between a button and its word. Where the two are wider than the line,
+   the button's own words wrap inside it. */
+.mjump{display:inline-flex;flex-wrap:nowrap;align-items:center;gap:var(--sp-3);max-width:100%}
 .mjumps .jump{display:inline-flex;align-items:center;gap:var(--sp-2);background:var(--surface)}
 .mjumps .jump .icon{width:.75rem;height:.75rem}
 .mjumps .approx{font-style:normal;font-size:var(--t-sm);color:var(--ink-2)}
