@@ -258,11 +258,19 @@ def fig_faults(g):
     return faults
 
 
-def step(title, text, actions=(), law=(), note=""):
+def step(title, text, actions=(), law=(), note="", part=""):
     """One numbered step: its words (HTML), the buttons to the official pages
     it needs [(label, url)], the sections of law it rests on ["RSA 654:7"],
-    and a note to set apart, where something has changed or is disputed."""
-    return {"title": title, "text": text, "actions": list(actions), "law": list(law), "note": note}
+    and a note to set apart, where something has changed or is disputed.
+
+    `part` is a heading over this step and the ones after it, numbered from 1
+    again (the person's notes, 29 October 2026: a guide would "finish
+    explaining how to do the first thing and switch to a different topic, but
+    keep the step by step format as though step 5 is a continuation"). A guide
+    that has parts gives its first step one, so no step stands outside a
+    heading."""
+    return {"title": title, "text": text, "actions": list(actions), "law": list(law), "note": note,
+            "part": part}
 
 
 def box(text):
@@ -3663,7 +3671,8 @@ PLATES = guide(
                     "3, two of them letters, no ampersand"]])
           + "<p>The DMV&rsquo;s Vanity Plate Search shows whether a choice looks available, but "
           "it cannot save a plate for you, so it may be gone by the time you apply.</p>"
-          "<p>For a special plate, find yours in the table in step 4: who may have it and what "
+          "<p>For a special plate, find yours in the table under A special plate, below: who may "
+          "have it and what "
           "it costs.</p>",
           actions=[("Vanity plates (DMV)", DMV_VANITY)], law=["RSA 261:89"]),
      step("Apply when you register, or change your plate during the year",
@@ -6860,7 +6869,7 @@ CONSUMER = guide(
           "prize to be yours without any obligation, delivered at no cost to you within 10 days. "
           "A &ldquo;prize&rdquo; that asks you to pay a handling, registration, redemption or "
           "delivery fee, or to buy something first, is not one the law allows. Do not pay, and "
-          "report it (step 5).</p>",
+          "report it (see Complain to the Attorney General, below).</p>",
           law=["RSA 358-O:3", "RSA 358-O:4"]),
      step("Cancel a sale made at your door",
           "<p>A sale of goods or services priced at $150 or more, made anywhere other than the "
@@ -7063,7 +7072,7 @@ HEALTH_INSURANCE = guide(
           ("On your own",
            "Apply for a Marketplace plan, and see if you can get help paying."),
           ("On a low income, at 65, or with a disability",
-           "Medicaid or Medicare may cover you (step 8).")]),
+           "Medicaid or Medicare may cover you (see Where Medicaid and Medicare fit, below).")]),
      box("If your insurance company denies a claim, appeal to it first, then ask the Insurance "
          "Department for an external review within 180 days.")],
     [step("Know when you can sign up",
@@ -8129,7 +8138,7 @@ MEDICARE = guide(
                   ["Part", "What it helps cover", "How you get it"],
                   [["Part A (Hospital Insurance)", "Inpatient care in hospitals, skilled nursing "
                     "facility care, hospice care, and home health care.",
-                    "Through Social Security. Many people are enrolled automatically (step 2)."],
+                    "Through Social Security. Many people are enrolled automatically (Medicare, step 1)."],
                    ["Part B (Medical Insurance)", "Services from doctors and other health care "
                     "providers, outpatient care, home health care, durable medical equipment "
                     "(like wheelchairs, walkers and hospital beds), and many preventive services "
@@ -8142,11 +8151,11 @@ MEDICARE = guide(
                     "Part D. You may need to use the plan&rsquo;s network of doctors, and most plans "
                     "offer extra benefits Original Medicare does not cover, like vision, hearing "
                     "and dental. You need both Part A and Part B to join one.",
-                    "You choose one on Medicare.gov (step 5)."],
+                    "You choose one on Medicare.gov (Medicare, step 3)."],
                    ["Part D (Drug coverage)", "The cost of prescription drugs. Plans are run by "
                     "private insurance companies that follow rules set by Medicare.",
                     "You add a drug plan to Original Medicare, or get it in a Medicare Advantage "
-                    "Plan with drug coverage, on Medicare.gov (step 5)."]])
+                    "Plan with drug coverage, on Medicare.gov (Medicare, step 3)."]])
           + "<p><b>Original Medicare</b> is Part A and Part B. With it you can use any doctor or "
           "hospital that takes Medicare, join a separate drug plan, and buy supplemental "
           "coverage, called <b>Medigap</b>, from a private company to help pay your share of the "
@@ -8174,7 +8183,7 @@ MEDICARE = guide(
           "<p><b>Help with the costs</b> comes from two programs: the state&rsquo;s <b>Medicare "
           "Savings Programs</b>, which help pay Medicare premiums and, for some people, other "
           "costs; and the federal <b>Extra Help</b> program, which pays part of the cost of drug "
-          "coverage. Step 6 says who qualifies and how to apply.</p>",
+          "coverage. Get help paying the costs, below, says who qualifies and how to apply.</p>",
           actions=[("What Medicare costs (Medicare)", MEDICARE_COSTS)]),
      step("Know when to sign up for Medicare",
           "<p>Your first chance is your Initial Enrollment Period: 7 months, starting 3 months "
@@ -8199,12 +8208,6 @@ MEDICARE = guide(
           "make an appointment.</p>",
           actions=[("Sign up for Medicare (Medicare)", MEDICARE_SIGNUP),
                    ("Sign up for Medicare (Social Security)", SSA_MEDICARE)]),
-     step("Apply for Social Security retirement benefits",
-          "<p>You can get retirement benefits from age 62 if you have worked and paid Social "
-          "Security taxes for at least 10 years, and you must apply for them: they do not "
-          "start on their own. Apply online on Social Security&rsquo;s Apply page, which also "
-          "lets you enroll in Medicare, or call 1-800-772-1213.</p>",
-          actions=[("Apply for benefits (Social Security)", SSA_APPLY)]),
      step("Choose your coverage, and review it every fall",
           "<p>With Part A and Part B, you choose between Original Medicare, with or without a "
           "drug plan, and a Medicare Advantage Plan. Each fall, from <b>October 15 to December "
@@ -8236,6 +8239,12 @@ MEDICARE = guide(
                    ("Medicare Savings Programs (NH Department of Health and Human Services)", DHHS_MSP),
                    ("Extra Help (Medicare)", MEDICARE_EXTRA)],
           law=["RSA 167:4-g"]),
+     step("Apply for Social Security retirement benefits",
+          "<p>You can get retirement benefits from age 62 if you have worked and paid Social "
+          "Security taxes for at least 10 years, and you must apply for them: they do not "
+          "start on their own. Apply online on Social Security&rsquo;s Apply page, which also "
+          "lets you enroll in Medicare, or call 1-800-772-1213.</p>",
+          actions=[("Apply for benefits (Social Security)", SSA_APPLY)]),
      step("Manage your benefits online",
           "<p>A <b>my Social Security</b> account lets you change your address or direct "
           "deposit, print proof of your benefits or a tax form, request a replacement Social "
@@ -9793,7 +9802,7 @@ CAR_INSURANCE = guide(
           "explains.</p>"
           "<p>The <b>financial responsibility law</b> decides when the state requires proof that "
           "you can pay for damage you cause: after a crash you had to report and had no "
-          "insurance for, or after certain convictions (steps 2 and 3).</p>"
+          "insurance for, or after certain convictions (the next two steps).</p>"
           "<p>That proof means being able to pay $25,000 for injury to or death of one person, "
           "$50,000 for injury to or death of two or more people in one accident, and $25,000 "
           "for damage to property, for each vehicle registered in your name.</p>"
@@ -10226,6 +10235,81 @@ COMMON = ["how-to-vote", "renew-drivers-license", "register-a-car", "your-repres
           "submit-testimony", "new-to-new-hampshire"]
 
 
+# A GUIDE'S STEPS IN PARTS (the person's notes, 29 October 2026, through the
+# manager session: a guide would "finish explaining how to do the first thing
+# and switch to a different topic, but keep the step by step format as though
+# step 5 is a continuation"). Where a guide's steps change subject, each part
+# has a heading and is numbered from 1 (guides.step's `part`). Named by the
+# title of the step each part opens; a title that is not there stops the
+# build, so a renamed step cannot silently lose its heading. election-worker
+# waits until after the 3 November election, at the person's word.
+PARTS = {
+    "passport": {"Check whether you can renew instead": "Renewing an adult passport",
+                 "Fill out Form DS-11, and do not sign it yet": "Applying in person",
+                 "If you travel soon": "Either way"},
+    "vanity-and-special-plates": {"Choose your plate": "A vanity plate",
+                                  "A special plate: show that you qualify": "A special plate"},
+    "medicare-and-social-security": {"Know how the programs fit together": "Start here",
+                                     "Know when to sign up for Medicare": "Medicare",
+                                     "Apply for Social Security retirement benefits": "Social Security"},
+    "motorcycle-license": {"Get a learner's permit": "A motorcycle",
+                           "If you ride a moped": "A moped"},
+    "run-for-office": {"Check that you qualify": "An office on the state ballot",
+                       "Town and city offices": "A town or city office"},
+    "wage-rights": {"Know when you must be paid": "Your rights to your pay",
+                    "If you were not paid: file a wage claim": "If you were not paid"},
+    "consumer-rights": {"Know what the law forbids": "What the law protects",
+                        "Complain to the Attorney General": "If a business breaks the law"},
+    "discrimination": {"Know what the law protects": "What the law protects",
+                       "File a complaint with the Commission for Human Rights": "Making a complaint"},
+    "health-insurance": {"Know when you can sign up": "Getting coverage",
+                         "Appeal a denied claim to your insurance company": "If a claim is denied, or you have a complaint",
+                         "Where Medicaid and Medicare fit": "Medicaid and Medicare"},
+    "car-insurance": {"What the law requires": "What the law requires",
+                      "What a car insurance policy must include": "Your policy"},
+    "renters-insurance": {"What renters insurance covers": "Your policy",
+                          "If you have a loss: filing a claim": "After a loss, or a dispute"},
+    "homeowners-insurance": {"What homeowners insurance covers": "Your policy",
+                             "If you have a loss: filing a claim": "After a loss, or a dispute"},
+    "boating": {"Get your safe boater education certificate": "Boater education",
+                "Register your boat every year": "Your boat"},
+    "building-permits": {"Start with your town’s building office": "Building work",
+                         "Electrical work": "Electrical, plumbing and gas work",
+                         "Septic systems": "Septic systems and work near water"},
+    "homelessness-help": {"Call 2-1-1, or your town’s welfare office": "Finding shelter now",
+                          "If you may be evicted": "Keeping or finding a home",
+                          "Keep your children in school": "Children and school"},
+    "domestic-violence-help": {"Reach someone now": "Staying safe",
+                               "After a sexual assault: medical care": "After a sexual assault",
+                               "Other protections and help": "More help"},
+    "who-to-contact": {"Find who represents you": "Start here",
+                       "Your town or city: roads, sidewalks, trash and local rules": "Who handles what"},
+    "tenant-rights": {"Only a court can make you leave": "Your rights as a tenant",
+                      "If you get an eviction notice or court papers": "If you are facing eviction"},
+    "landlord-duties": {"Before you rent": "Renting",
+                        "Ending a tenancy": "Ending a tenancy"},
+    "property-tax-bill": {"How your property is assessed": "Understanding your bill",
+                          "Apply for an exemption or credit by April 15, or a deferral by March 1":
+                              "Lowering or appealing it"},
+    "disability-help": {"Apply to Social Security for SSDI or SSI": "Where to apply",
+                        "If you are turned down": "If you are turned down"},
+}
+
+
+def _parts():
+    import html as _h
+    by = {g["slug"]: g for g in GUIDES}
+    for slug, heads in PARTS.items():
+        titles = {_h.unescape(s_["title"]): s_ for s_ in by[slug]["steps"]}
+        for title, head in heads.items():
+            assert title in titles, f"PARTS: {slug} has no step {title!r}"
+            titles[title]["part"] = head
+        assert by[slug]["steps"][0].get("part"), f"PARTS: {slug}'s first step has no heading"
+
+
+_parts()
+
+
 TASKS = [
     ("Take Part in the Legislature", [
         task("your-representatives", "Find your representatives",
@@ -10574,7 +10658,8 @@ def text(g):
         if node[0] == "ask":
             bits += [f"{a} {b}" for a, b in node[2]]
     for s_ in g["steps"]:
-        bits += [s_["title"], s_["text"], s_["note"]] + [label for label, _u in s_["actions"]]
+        bits += [s_.get("part", ""), s_["title"], s_["text"], s_["note"]]
+        bits += [label for label, _u in s_["actions"]]
         bits += [f'href="{law_href(r)}"' for r in s_["law"]]
     return " ".join(bits)
 
@@ -10664,6 +10749,8 @@ def wording(slug):
                 out += [("At a Glance, the diagram", a, True), ("At a Glance, the diagram", then, True)]
     for k, s_ in enumerate(g["steps"], 1):
         where = f"step {k}"
+        if s_.get("part"):
+            out.append((where + ", its heading", s_["part"], False))
         out += [(where, s_["title"], False), (where, s_["text"], True), (where, s_["note"], True)]
         out += [(where, label, False) for label, _u in s_["actions"]]
     out.append(("after the steps", g["more"], True))

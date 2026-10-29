@@ -2215,17 +2215,28 @@ def guide_steps(g, w=Words()):
     language, which says so once at its top."""
     out = []
     the_law = I.say(w.lang, "guides.the_law", "The law:")
+    # IN PARTS, EACH NUMBERED FROM 1 (guides.step's `part`): a heading closes
+    # one list and opens the next, and a step under one is a level lower.
+    grouped = any(s_.get("part") for s_ in g["steps"])
+    sh = "h4" if grouped else "h3"
+    lists = []
     for s_ in g["steps"]:
+        if s_.get("part"):
+            if out:
+                lists.append(f'<ol class="g-steps">{"".join(out)}</ol>')
+                out = []
+            lists.append(f'<h3 class="g-part">{w.t(s_["part"])}</h3>')
         acts = "".join(f'<a class="g-btn" href="{E(u)}"'
                        + ('' if u.startswith("/") else ' target="_blank" rel="noopener"'
                           + ('' if w.lang == I.DEFAULT else ' hreflang="en"'))
                        + f'>{w.t(label)}</a>' for label, u in s_["actions"])
         law = ", ".join(f'<a href="{E(G.law_href(r))}">{E(r)}</a>' for r in s_["law"])
-        out.append(f'<li class="g-step"><h3 class="g-sh">{w.t(s_["title"])}</h3>{w.h(s_["text"])}'
+        out.append(f'<li class="g-step"><{sh} class="g-sh">{w.t(s_["title"])}</{sh}>{w.h(s_["text"])}'
                    + (f'<p class="g-note" role="note">{w.h(s_["note"])}</p>' if s_["note"] else "")
                    + (f'<p class="g-acts">{acts}</p>' if acts else "")
                    + (f'<p class="g-law">{the_law} {law}</p>' if law else "") + "</li>")
-    return f'<ol class="g-steps">{"".join(out)}</ol>'
+    lists.append(f'<ol class="g-steps">{"".join(out)}</ol>')
+    return "".join(lists)
 
 
 def guide_page(tmpl, g, base, record, draft_why=""):
