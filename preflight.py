@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.727
+# GRANITE_VERSION: 2026-09-04.728
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -32769,7 +32769,10 @@ def _site_fixture(root):
          "party_code": "R", "county": "Rockingham", "county_abbr": "Rock",
          "district": "13", "label": "Nelson, Jodi(R) Rock 13", "email": "j@gc.nh.gov",
          "url": "", "towns": ["Raymond"], "committees": ["Commerce"], "title": "",
-         "phone": ""},
+         # A seat on the floor, so the roster under the seating chart is read
+         # on the page's own row (the review of 29 October 2026): Division 2,
+         # seat 7, which the card shows as "007".
+         "seat": "2007", "phone": ""},
         {"id": "377207", "name": "Altschiller, Debra", "chamber": "S",
          "party": "Democrat", "party_code": "D", "county": "Rockingham",
          "county_abbr": "Rock", "district": "24",
@@ -54202,6 +54205,12 @@ def _review_of_audit_fixes(BP):
     # chart in a tab not yet open waited for its box's width to do it (the
     # review of 7 October 2026); now the script writes no zoom until the
     # reader asks, in a hidden tab or once it is shown, and watches nothing.
+    wh = got.get("seatWheel") or {}
+    zoomed = str(wh.get("zoomed") or "")
+    if wh.get("down") != 0 or wh.get("fitted") is not None or wh.get("up") != 1 \
+            or not zoomed.endswith("%") or float(zoomed[:-1] or 0) <= 100:
+        bad.append("a wheel turned down over the fitted chart keeps the page from scrolling, or turned up "
+                   f"does not zoom the chart in: {wh}")
     hid = got.get("seatHidden") or {}
     if hid != {"zoom": None, "watching": 0, "shown": None, "letGo": True}:
         bad.append("the seat map does not open zoomed to fit: it writes a zoom of its own on "
@@ -54387,6 +54396,14 @@ document.querySelectorAll = all;
   hidden.letGo = watched.every(o => o.off);
   delete globalThis.ResizeObserver;
   out.seatHidden = hidden;
+  // THE WHEEL AT THE FITTED OPENING (the review of 29 October 2026): turned
+  // down over a chart that cannot zoom out further, it is the page's; turned
+  // up, it zooms the chart and the page stays.
+  let down = 0, up = 0;
+  wrap2.fire("wheel", {deltaY: 100, clientX: 5, clientY: 5, preventDefault() { down++; }});
+  const fitted = svg2.style.width || null;
+  wrap2.fire("wheel", {deltaY: -100, clientX: 5, clientY: 5, preventDefault() { up++; }});
+  out.seatWheel = {down, up, fitted, zoomed: svg2.style.width || null};
 
   // THE SPEAKER'S CHAIR, whose number is on the group round it and the word
   // "Speaker", not on the circle: choosing him lights the circle.
@@ -54761,13 +54778,19 @@ def _seat_number_in_card(BP, SEAT):
     rostrum = [(s_, body) for s_, body in lis if s_ and int(s_) // 1000 == SEAT.SPEAKER_SEAT // 1000]
     if len(floor) != 2 or len(rostrum) != 1:
         bad.append(f"seat_columns drew {len(floor)} card(s) on the floor and {len(rostrum)} on the rostrum, not 2 and 1")
+    # The page's own rows, as roster_section's li() and seat_row_tag write
+    # them on the fixture's legislators page: its House member sits in seat
+    # 2-007, and her card ends in "007" for the eye.
     shared, _base, _ran, _days = _fixture_site_shared()
     built = (shared / "site" / "officials.html").read_text(encoding="utf-8")
     a, b = built.find('id="seatlist"'), built.find('<ol class="seatlist senate">')
-    unseated = re.findall(r'<li class="seatrow" data-seat=""[^>]*>(.*?)</li>', built[a:b] if 0 <= a < b else "", re.S)
-    if not unseated or any("mseat" in u or 'class="mhon"' not in u for u in unseated):
-        bad.append(f"the fixture's member with no seat is not drawn as a card under the chart with no number: "
-                   f"{unseated[:1]}")
+    own = re.findall(r'<li class="seatrow" data-seat="(\d*)"[^>]*>(.*?)</li>', built[a:b] if 0 <= a < b else "", re.S)
+    if not own or any(not s_ or not body.endswith(f'<span class="mseat" aria-hidden="true">{s_[-3:]}</span></span>')
+                      or f'<span class="sseat">{SEAT.plate(int(s_))}</span>' not in body
+                      or 'class="mhon"' not in body for s_, body in own):
+        bad.append(f"the fixture's own rows under the chart are not cards ending in their seat's number: "
+                   f"{[(s_, body[-140:]) for s_, body in own][:2]}")
+    unseated = [x for x in own if not x[0]]
     for s_, body in floor:
         m = re.search(r'<span class="mseat"( aria-hidden="true")?>([^<]*)</span></span>$', body)
         if not m or not m.group(1) or m.group(2) != s_[-3:]:
@@ -54811,14 +54834,33 @@ def _seat_number_in_card(BP, SEAT):
         bad.append("five abreast, the rostrum's card is not one of the five columns wide")
     if ".srost .seatlist{columns:auto}" in css:
         bad.append("below five abreast, the rostrum's list is one column the page's width, so its card is too")
+    # THE WHOLE CARD IS THE LINK, its focus ring round the card; a lit card is
+    # lit itself; the eye's own ")" and number are not copied (the review of
+    # 29 October 2026).
+    flat = re.sub(r"\s+", " ", re.sub(r"/\*.*?\*/", "", css, flags=re.S))
+    for rule, what in (
+            (":where(body.pg) #seatlist .seatrow .mchip > a::after{content:\"\";position:absolute;inset:0}",
+             "the link is not laid over the whole card, so its number and the space after the name do nothing"),
+            (":where(body.pg) #seatlist .seatrow .mchip > a:focus-visible::after{outline:2px solid var(--pine);",
+             "the focus ring is not drawn round the card"),
+            (":where(body.pg) #seatlist .seatrow.on .mchip{background:var(--pine-soft);outline:2px solid var(--pine);",
+             "a lit card is not lit itself, and the card covers its row's colour"),
+            (":where(body.pg) #seatlist .mtag > [aria-hidden],:where(body.pg) #seatlist .mseat{-webkit-user-select:none;",
+             "the eye's own \")\" and number are copied with the name")):
+        if rule not in flat:
+            bad.append(what)
+    if "position:relative" not in (re.search(r":where\(body\.pg\) #seatlist \.seatrow \.mchip\{([^}]*)\}", flat)
+                                   or [None, ""])[1]:
+        bad.append("the card is not the box its link's ::after is laid over")
     assert not bad, "the seat number in the card: " + "; ".join(bad[:5])
-    return "ok", ("each card on the floor ends in its seat's number, aria-hidden, the Speaker's in none, and "
-                  f"the fixture's {len(unseated)} with no seat on file in none; a screen reader hears \"1-001\" "
-                  f"and \"{heard}\", the eye \"{seen}\" and \"001\" at the card's right, on its first line")
+    return "ok", ("each card on the floor ends in its seat's number, aria-hidden, the Speaker's in none, and so "
+                  f"do the fixture page's own {len(own) - len(unseated)} seated row(s); a screen reader hears "
+                  f"\"1-001\" and \"{heard}\", the eye \"{seen}\" and \"001\" at the card's right, on its first "
+                  "line; the whole card is the link, a lit card lit, and the eye's own marks not copied")
 
 
 @check("frontend", "the seating chart's Zoom to fit is the four corners' icon in the box of - and +, "
-       "named and titled \"Zoom to fit\", in English and in Spanish")
+       "named by its title \"Zoom to fit\", in English and in Spanish")
 def _seat_zoom_fit_icon():
     """The owner, 29 October 2026: the chart's "Fit", a word beside - and +,
     is a zoom-to-fit icon, the map's four corners, in the same button size
@@ -54845,11 +54887,12 @@ def _seat_zoom_fit_icon():
             bad.append(f"{page}: the zoom buttons are not -, + and Zoom to fit: {btns}")
             continue
         attrs, body = btns[2]
-        label = re.search(r'aria-label="([^"]*)"', attrs)
         title = re.search(r'title="([^"]*)"', attrs)
-        if body != icon or not label or not title or label.group(1) != title.group(1) \
-                or (name and label.group(1) != name) or (not name and label.group(1) in ("", "Zoom to fit")):
-            bad.append(f"{page}: Zoom to fit is not the icon, named and titled alike in the page's "
+        # Its title is its name and its tooltip; an aria-label as well made a
+        # screen reader hear "Zoom to fit" twice (the review of 29 October 2026).
+        if body != icon or not title or "aria-label=" in attrs \
+                or (name and title.group(1) != name) or (not name and title.group(1) in ("", "Zoom to fit")):
+            bad.append(f"{page}: Zoom to fit is not the icon named by its title alone, in the page's "
                        f"language: {attrs} {body[:80]}")
         if "Fit<" in m.group(1) or ">Ajustar<" in m.group(1):
             bad.append(f"{page}: the word Fit is still on the button")
@@ -54862,7 +54905,7 @@ def _seat_zoom_fit_icon():
     if ":where(body.pg) .seatzoom svg{display:block;margin:0 auto}" not in css:
         bad.append("the icon is not centred in its box")
     assert not bad, "the seating chart's Zoom to fit: " + "; ".join(bad[:4])
-    return "ok", "Zoom to fit is the four corners in - and +'s 40px box, named and titled in English and Spanish"
+    return "ok", "Zoom to fit is the four corners in - and +'s 40px box, named by its title in English and Spanish"
 
 
 @check("build", "a reports file keyed on bill number is refused, not ignored")

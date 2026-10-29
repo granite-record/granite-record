@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.247
+# GRANITE_VERSION: 2026-09-04.248
 """
 Build the pages the navigation links to: legislators, town lookup, how it
 works, and about.
@@ -690,6 +690,19 @@ _SEAT_HON = re.compile(r'(<span class="mchip[^"]*"[^>]*>(?:<a [^>]*>)?)(Rep\.) '
 _SEAT_GAP = re.compile(r' (<span class="mtag">)')
 
 
+# ZOOM TO FIT, AN ICON (the owner, 29 October 2026): the seating chart's
+# "Fit" was a word between two signs; it is four corners, the usual sign for
+# zooming to fit, in the box of the - and + beside it. Its title is its name
+# and its tooltip, "Zoom to fit" (with an aria-label as well, a screen reader
+# heard the words twice: the review of 29 October 2026). Drawn in the
+# button's own colour, so forced colours draw it as they draw the button's
+# text.
+ZOOM_FIT_ICON = ('<svg viewBox="0 0 16 16" width="16" height="16" aria-hidden="true" focusable="false">'
+                 '<path d="M1 5.5V1h4.5M10.5 1H15v4.5M15 10.5V15h-4.5M5.5 15H1v-4.5" fill="none" '
+                 'stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"/>'
+                 '</svg>')
+
+
 # THE SEAT NUMBER INSIDE THE CARD (the owner, 29 October 2026, a blend of the
 # two mock-ups put to them): no gutter; each card carries its seat, "001",
 # right-aligned, small and muted, without the division its column is headed
@@ -698,18 +711,7 @@ _SEAT_GAP = re.compile(r' (<span class="mtag">)')
 # the seat in full before the name, as it always has. The Speaker's card on
 # the rostrum carries none: the rostrum is no division, and its "6-002" is
 # a plate a reader has no use for.
-# ZOOM TO FIT, AN ICON (the owner, 29 October 2026): the seating chart's
-# "Fit" was a word between two signs; it is four corners, the map's zoom to
-# fit's icon too, in the box of the - and + beside it, named and titled
-# "Zoom to fit". Drawn in the button's own colour, so forced colours draw it
-# as they draw the button's text.
-ZOOM_FIT_ICON = ('<svg viewBox="0 0 16 16" width="16" height="16" aria-hidden="true" focusable="false">'
-                 '<path d="M1 5.5V1h4.5M10.5 1H15v4.5M15 10.5V15h-4.5M5.5 15H1v-4.5" fill="none" '
-                 'stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"/>'
-                 '</svg>')
-
-
-_SEAT_NUM = re.compile(r'<span class="sseat">(\d+)-(\d+)</span>')
+_SEAT_NUM = re.compile(r'<span class="sseat"[^>]*>(\d+)-(\d+)</span>')
 _ROW_END = "</span></li>"
 
 
@@ -1919,9 +1921,10 @@ SEATING_JS = """
      IT OPENS ZOOMED TO FIT, ON A PHONE AS EVERYWHERE (the owner, 29 October
      2026, board item 7). A narrow screen used to open zoomed in, 315% at
      390px, so a phone showed a corner of the floor and the reader had to
-     find the rest; now every screen opens on the whole floor, the box's
-     width (app.css, .seatmap), and + or a pinch brings a seat up to a
-     thumb's size. Zoom to fit puts it back. The script writes no zoom until
+     find the rest; now every screen opens with the floor at the box's width
+     (app.css, .seatmap) -- where the box is shorter than the floor, as on a
+     phone held sideways, its foot is a scroll away -- and + or a pinch
+     brings a seat up to a thumb's size. Zoom to fit puts it back. The script writes no zoom until
      the reader asks for one, so a chart drawn in a tab not yet open (the
      page opens on Towns) needs nothing waited for. */
   var zoom=1;
@@ -1949,6 +1952,10 @@ SEATING_JS = """
     // what a reader expects of something they can drag around, and is what
     // was asked for. preventDefault stops the page moving underneath.
     wrap.addEventListener("wheel",function(e){
+      // Turned down over a chart that cannot zoom out further -- the fitted
+      // chart it opens as -- the wheel scrolls the page, as it would anywhere
+      // else (the review of 29 October 2026).
+      if(e.deltaY>0&&zoom<=1)return;
       e.preventDefault();
       zoomAt(zoom*(e.deltaY<0?1.12:1/1.12), e.clientX, e.clientY);
     },{passive:false});
@@ -4472,7 +4479,7 @@ def main():
   <div class="seatzoom">
     <button type="button" id="szout" aria-label="{say(lang, "roster.zoom_out", "Show more of the floor")}">&minus;</button>
     <button type="button" id="szin" aria-label="{say(lang, "roster.zoom_in", "Show the seats larger")}">+</button>
-    <button type="button" id="szfit" aria-label="{say(lang, "roster.zoom_fit", "Zoom to fit")}" title="{say(lang, "roster.zoom_fit", "Zoom to fit")}">{ZOOM_FIT_ICON}</button>
+    <button type="button" id="szfit" title="{say(lang, "roster.zoom_fit", "Zoom to fit")}">{ZOOM_FIT_ICON}</button>
   </div>
 </div>
 <div class="seatstage">

@@ -1,4 +1,4 @@
-/* GRANITE_VERSION: 2026-09-07.329 */
+/* GRANITE_VERSION: 2026-09-07.330 */
 /* ONE STYLESHEET FOR EVERY PAGE (23 October 2026). Every page of the site
    links this file, /app.css: the record pages shell.page() makes from
    bills.html, and the five build_pages.py writes -- the home page, Officials,
@@ -8530,10 +8530,10 @@ touch-action:pan-x pan-y;cursor:grab;
 border:1px solid var(--rule);border-bottom:0;border-radius:var(--r-in) var(--r-in) 0 0;
 background:var(--surface)}
 /* NO MINIMUM WIDTH. It was 680px inside a sideways-scrolling box, which on a
-   390px screen drew a seat about five pixels across -- under half the
-   smallest thing a thumb reliably hits, and the whole floor visible is no use
-   if nothing on it can be tapped. The width is the zoom's to set now, and the
-   script opens a narrow screen already zoomed in. */
+   390px screen drew a seat about five pixels across. The width is the
+   zoom's to set now: the chart opens at the box's width, zoomed to fit (the
+   owner, 29 October 2026), and + or a pinch brings a seat up to a thumb's
+   size. */
 :where(body.pg) .seatmap{width:100%;height:auto;display:block}
 :where(body.pg) .seatmap .seat{fill:var(--rule-2);stroke:var(--edge);stroke-width:1;
 cursor:pointer;transition:fill .12s}
@@ -8722,9 +8722,7 @@ text-transform:uppercase;color:var(--ink-2);margin:0 0 var(--sp-3);font-family:v
   margin:0 0 var(--sp-8)}
   :where(body.pg) .seatdivs > .sdiv{margin:0}
   :where(body.pg) .seatdivs .sdiv .seatlist{columns:auto}
-  :where(body.pg) .seatdivs .seatrow,:where(body.pg) .seatcols .srost .seatrow{gap:var(--sp-2) var(--sp-3);
-  padding:var(--sp-2) var(--sp-1)}
-  :where(body.pg) .seatdivs .mchip{margin:0}
+  :where(body.pg) .seatdivs .seatrow,:where(body.pg) .seatcols .srost .seatrow{padding:var(--sp-2) var(--sp-1)}
   /* The Speaker's card as wide as a division's, not the page's (the owner,
      29 October 2026): the rostrum's list is one of the five columns wide. */
   :where(body.pg) .seatcols .srost .seatlist{max-width:calc((100% - 4 * var(--sp-6)) / 5)}
@@ -8768,10 +8766,30 @@ font-size:var(--t-sm);color:var(--ink-2)}
 :where(body.pg) #seatlist .seatrow{position:relative}
 :where(body.pg) #seatlist .seatrow > .sseat{position:absolute;width:1px;height:1px;padding:0;margin:-1px;
   overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap;border:0}
-:where(body.pg) #seatlist .seatrow .mchip{display:flex;align-items:baseline;flex:1 1 auto;margin:0}
+:where(body.pg) #seatlist .seatrow .mchip{display:flex;align-items:baseline;flex:1 1 auto;margin:0;
+  position:relative}
 :where(body.pg) #seatlist .seatrow .mchip > a{min-width:0}
 :where(body.pg) #seatlist .mseat{flex:0 0 auto;margin-left:auto;padding-left:.6em;font-size:.78em;
   color:var(--ink-2);font-variant-numeric:tabular-nums;white-space:nowrap}
+/* THE WHOLE CARD IS STILL THE LINK (the review of 29 October 2026), as every
+   chip's is ("THE WHOLE CHIP IS THE LINK", above): the card fills its column
+   now and the name does not, so the link's ::after is laid over the whole
+   card, its number included, and the focus ring is drawn round the card
+   rather than round the name. */
+:where(body.pg) #seatlist .seatrow .mchip > a::after{content:"";position:absolute;inset:0}
+:where(body.pg) #seatlist .seatrow .mchip > a:focus-visible{outline:none}
+:where(body.pg) #seatlist .seatrow .mchip > a:focus-visible::after{outline:2px solid var(--pine);
+  outline-offset:2px;border-radius:var(--r-in)}
+/* A LIT CARD (a seat chosen on the chart, from Go to a seat, or a search
+   down to one name): the card covers its row, so the card itself takes the
+   row's colour and a ring, which forced colours keep as they do not keep
+   the row's background and inset bar (the review of 29 October 2026). */
+:where(body.pg) #seatlist .seatrow.on .mchip{background:var(--pine-soft);outline:2px solid var(--pine);
+  outline-offset:1px}
+/* Copied, a card reads as its member's name: the ")" and the number that are
+   the eye's alone are not selected with it. */
+:where(body.pg) #seatlist .mtag > [aria-hidden],:where(body.pg) #seatlist .mseat{-webkit-user-select:none;
+  user-select:none}
 
 /* THE ALL-RESULTS PAGE (/search). The header panel is a dropdown and stops
    at eight rows; this is the same index with the cap off, grouped by what
