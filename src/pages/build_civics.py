@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-08.83
+# GRANITE_VERSION: 2026-09-08.84
 """
 The civics section: a hub and one page per topic, in order.
 
@@ -2058,9 +2058,9 @@ def guide_record(g, data, bills, chapters, lang=I.DEFAULT):
         for addr, hist in data.get("enacted", {}).items():
             if addr == ch or addr.startswith(ch + ":"):
                 for y, _law, b in hist:
-                    if b and b not in passing and str(y).isdigit() and int(y) >= RECENT_FROM:
-                        recent[b] = int(y)
-        past = sorted(recent, key=lambda k: (-recent[k], BR.bill_order(k)))[:RECENT_SHOWN]
+                    if b and b not in passing and str(y).isdigit():
+                        recent[b] = max(recent.get(b, 0), int(y))
+        past = sorted(recent, key=lambda k: (-recent[k], BR.bill_order(k)))
         bits = [f'<h3 class="g-ch"><a href="{E(BR.chapter_path(ch))}">{E(name)}</a></h3>']
         if now:
             bits.append('<p class="g-what">Bills now before the General Court that would change it:</p>'
@@ -2069,17 +2069,57 @@ def guide_record(g, data, bills, chapters, lang=I.DEFAULT):
             bits.append('<p class="g-what">Passed, not yet in effect:</p>'
                         + BR.folded([bills.chip(k) for k in passed]))
         if past:
-            bits.append(f'<p class="g-what">Laws that changed it since {RECENT_FROM}, newest first:</p>'
-                        + BR.folded([bills.chip(k) for k in past]))
+            bits.append(record_laws(past, recent, bills))
         if not now and not passed and not past:
-            bits.append(f'<p class="g-what">No bill has changed it since {RECENT_FROM}, and none now '
+            bits.append('<p class="g-what">No law in the record has changed it, and none now '
                         'before the General Court would.</p>')
         rows.append("".join(bits))
     return "".join(rows)
 
 
-RECENT_FROM = 2020
-RECENT_SHOWN = 8
+# THE LAWS THAT CHANGED A CHAPTER, BY YEAR (the person's notes, 29 October
+# 2026: "laws changed since 2020" was an arbitrary cutoff, and the sitting
+# term's laws showed no year). Every law the record holds is listed, newest
+# first, each with the year it passed, and a year can be chosen; the list
+# folds after the first few, as the Laws pages' do. The chooser is hidden
+# until the page's script runs, so without it the whole list still reads.
+def record_laws(past, years, bills):
+    """The laws that changed one chapter: a year to choose, and each law with
+    the year it passed."""
+    import build_rsa as BR
+    items = []
+    for k in past:
+        chip = bills.chip(k, with_year=False)
+        yr = f' <span class="rs-yr">{years[k]}</span>'
+        chip = chip.replace("</a>", "</a>" + yr, 1) if "</a>" in chip else chip.replace(
+            "</li>", yr + "</li>", 1)
+        items.append(chip.replace("<li", f'<li data-y="{years[k]}"', 1))
+    count = {}
+    for k in past:
+        count[years[k]] = count.get(years[k], 0) + 1
+    opts = "".join(f'<option value="{y}">{y} ({n})</option>'
+                   for y, n in sorted(count.items(), reverse=True))
+    return ('<div class="g-laws"><p class="g-what">Laws that changed it, newest first:</p>'
+            '<p class="g-yrp" hidden><label>Year <select class="g-yr">'
+            f'<option value="">All years</option>{opts}</select></label></p>'
+            + BR.folded(items) + "</div>")
+
+
+YR_JS = """<script>
+(function(){
+  // The year to show of the laws that changed a chapter (record_laws).
+  document.querySelectorAll(".g-laws").forEach(function(box){
+    var p=box.querySelector(".g-yrp"), sel=box.querySelector(".g-yr");
+    if(!p||!sel)return;
+    p.hidden=false;
+    sel.addEventListener("change",function(){
+      var y=sel.value, more=box.querySelector(".rs-more");
+      box.querySelectorAll("li[data-y]").forEach(function(li){ li.hidden=!!y&&li.getAttribute("data-y")!==y; });
+      if(more){ if(y){more.open=true;} more.querySelector("summary").hidden=!!y; }
+    });
+  });
+})();
+</script>"""
 
 
 def _record_lang(english, lang):
@@ -2088,19 +2128,22 @@ def _record_lang(english, lang):
     if not english:
         return english
     now = I.say(lang, "guides.rec_now", "Bills now before the General Court that would change it:")
-    since = I.say(lang, "guides.rec_since", "Laws that changed it since {year}, newest first:",
-                  year=RECENT_FROM)
-    none = I.say(lang, "guides.rec_none", "No bill has changed it since {year}, and none now "
-                 "before the General Court would.", year=RECENT_FROM)
+    since = I.say(lang, "guides.rec_laws", "Laws that changed it, newest first:")
+    none = I.say(lang, "guides.rec_none_any", "No law in the record has changed it, and none now "
+                 "before the General Court would.")
+    year = I.say(lang, "guides.rec_year", "Year")
+    every = I.say(lang, "guides.rec_years_all", "All years")
     passed = I.say(lang, "guides.rec_passed", "Passed, not yet in effect:")
     out = english.replace(
         '<p class="g-what">Bills now before the General Court that would change it:</p>',
         f'<p class="g-what">{now}</p>').replace(
         '<p class="g-what">Passed, not yet in effect:</p>', f'<p class="g-what">{passed}</p>').replace(
-        f'<p class="g-what">Laws that changed it since {RECENT_FROM}, newest first:</p>',
+        '<p class="g-what">Laws that changed it, newest first:</p>',
         f'<p class="g-what">{since}</p>').replace(
-        f'<p class="g-what">No bill has changed it since {RECENT_FROM}, and none now before the '
-        'General Court would.</p>', f'<p class="g-what">{none}</p>')
+        '<p class="g-what">No law in the record has changed it, and none now before the '
+        'General Court would.</p>', f'<p class="g-what">{none}</p>').replace(
+        '<label>Year <select class="g-yr">', f'<label>{year} <select class="g-yr">').replace(
+        '<option value="">All years</option>', f'<option value="">{every}</option>')
     out = re.sub(r'<h3 class="g-ch"><a href="([^"]*)">Chapter ([^:<]+)(?:: ([^<]*))?</a></h3>',
                  lambda m: (f'<h3 class="g-ch"><a href="{m.group(1)}">'
                             + I.say(lang, "guides.rec_chapter", "Chapter {n}", n=m.group(2))
@@ -2234,7 +2277,8 @@ def guide_page(tmpl, g, base, record, draft_why=""):
     article = "".join(section(*s_) for s_ in secs)
     return p.replace('<div id="results"></div>',
                      '<div id="results"><div class="l-page g-page">' + hub_bar("guides") + headx
-                     + f'<div class="l-art">{article}</div></div>{OTP_JS}</div>', 1)
+                     + f'<div class="l-art">{article}</div></div>{OTP_JS}'
+                     + (YR_JS if 'class="g-yr"' in article else "") + '</div>', 1)
 
 
 # ---------------------------------------------------------------------------

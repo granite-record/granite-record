@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.720
+# GRANITE_VERSION: 2026-09-04.721
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -41244,7 +41244,7 @@ def _guides_gate(BC, G, GS, RSA, S):
         page = (tmp / "site" / "guides" / "test-guide.html").read_text(encoding="utf-8")
         assert [g["slug"] for g in pub] == ["test-guide"] and urls, "a guide checked throughout was held back"
         assert "Checked against its sources" in page and 'class="g-stale"' not in page and "Draft" not in page
-        assert 'href="/laws/91-a"' in page and "Laws that changed it since" in page, \
+        assert 'href="/laws/91-a"' in page and "Laws that changed it, newest first" in page, \
             "the guide does not list the laws that changed its chapter"
         assert 'class="g-flow"' in page and page.count('class="g-step"') == 2 and 'class="g-btn"' in page \
             and '<a href="/laws/91-a#s4">RSA 91-A:4</a>' in page, "the guide is not drawn as steps with a diagram"
@@ -66893,11 +66893,22 @@ def _guide_record_passed(BC, BR):
     parts = re.split(r'<p class="g-what">', got)
     now = next((p for p in parts if p.startswith("Bills now before")), "")
     passed = next((p for p in parts if p.startswith("Passed, not yet in effect:")), "")
-    since = next((p for p in parts if p.startswith("Laws that changed it since")), "")
+    since = next((p for p in parts if p.startswith("Laws that changed it")), "")
     assert "HB 1" in now and "HB 2" not in now, f"the pending list is not the pending bill: {now[:120]}"
     assert "HB 2" in passed and "HB 1" not in passed, "the passed bill is not under Passed, not yet in effect"
     assert "SB 9" in since and "HB 2" not in since, "a law not yet in effect is listed as having changed it"
-    return "ok", "pending, passed and not yet in effect, and past laws each under their own words"
+    # BY YEAR, WITH NO CUTOFF (the person's notes, 29 October 2026): each law
+    # carries the year it passed, the sitting term's included, and the year
+    # chooser offers each year the list holds, hidden until its script runs.
+    assert 'data-y="2024"' in since and '<span class="rs-yr">2024</span>' in since, (
+        "a law that changed the chapter does not show the year it passed")
+    assert '<option value="2024">2024 (1)</option>' in since and 'class="g-yrp" hidden' in since, (
+        "the laws that changed the chapter have no year to choose, or show it without its script")
+    old = BC.guide_record({"laws": ["654"]}, {"bills": {}, "enacted": {"654:3": [
+        ["1995", "9:1", "1995/HB 7"]]}}, Bills(), {"654": {"name": "Voters"}})
+    assert "1995/HB 7" in old, "a law older than the years once shown is left out"
+    return "ok", ("pending, passed and not yet in effect, and past laws each under their own words, "
+                  "every one with its year and a year to choose")
 
 
 @check("build", "every Laws link a guide makes is in lower case, as the Laws pages' addresses "
@@ -67513,14 +67524,16 @@ def _spanish_guides(i18n, G, BC, chrome, civics):
            '<p class="g-what">Bills now before the General Court that would change it:</p>'
            '<ul class="rs-list"><li>HB 1</li></ul>'
            '<p class="g-what">Passed, not yet in effect:</p><ul class="rs-list"><li>HB 4</li></ul>'
-           f'<p class="g-what">Laws that changed it since {BC.RECENT_FROM}, newest first:</p>'
+           '<div class="g-laws"><p class="g-what">Laws that changed it, newest first:</p>'
+           '<p class="g-yrp" hidden><label>Year <select class="g-yr"><option value="">All years'
+           '</option><option value="2026">2026 (1)</option></select></label></p>'
            '<ul class="rs-list"><li>HB 2</li></ul><details class="rs-more"><summary>Show all 9'
-           '</summary><ul class="rs-list"><li>HB 3</li></ul></details>'
-           f'<p class="g-what">No bill has changed it since {BC.RECENT_FROM}, and none now before the '
+           '</summary><ul class="rs-list"><li>HB 3</li></ul></details></div>'
+           '<p class="g-what">No law in the record has changed it, and none now before the '
            'General Court would.</p>')
     got = BC._record_lang(rec, "es")
-    for english in ("Bills now before", "Passed, not yet", "Laws that changed", "No bill has changed",
-                    "Show all", ">Chapter "):
+    for english in ("Bills now before", "Passed, not yet", "Laws that changed", "No law in the record",
+                    "Show all", ">Chapter ", ">Year ", ">All years<"):
         if english in got:
             bad.append(f"In the Record keeps {english!r} in English")
     if '<span lang="en">Voters and Checklists</span>' not in got or got.count('lang="en"') != 5:
