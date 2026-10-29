@@ -75,20 +75,31 @@ OUT = Path("interim_statements.json")
 # The section's heading, alone on its line: "2024 INTERIM STUDY STATEMENTS",
 # 1998's without the year, 2000's printout's "interim study STATEMENTS".
 HEAD = re.compile(r"(?im)^[ \t\f]*(?:\d{4}[ \t]+)?interim[ \t]+study[ \t]+statements[ \t]*$")
-# What the calendar goes on with after it, in every one of the fourteen.
-END = re.compile(r"(?m)^[ \t\f]*(?:COMMITTEE MEETINGS|OFFICIAL NOTICES|REVISED FISCAL NOTES?)[ \t]*$")
+# What the calendar goes on with after it: a heading, in any case -- 2000's
+# printout heads it "COMMITTEE meetiNGS" -- or, in 2016 and 2018, no heading
+# at all and straight into the meeting days, "THURSDAY, NOVEMBER 10".
+END = re.compile(r"(?mi)^[ \t\f]*(?:COMMITTEE MEETINGS|OFFICIAL NOTICES|REVISED FISCAL NOTES?"
+                 r"|(?:MON|TUES|WEDNES|THURS|FRI|SATUR|SUN)DAY,[ \t]+[A-Z]+[ \t]+\d{1,2})[ \t]*$")
 # A bill's statement opens a line: "HB 1779-FN, supporting the cultural ...".
-# Its title starts in lower case, which a sentence of reasons naming a bill
-# does not: "HB 1348, Chapter 253, Laws of 2002." (2002) is prose.
 # And 2024 prints "HB.1507," once.
 ENTRY = re.compile(r"(?m)^[ \t\f]*(?P<bill>(?:HB|SB|HJR|HCR|CACR|HR|SJR|SCR)[ \t.]?\d{1,4})"
-                   r"(?P<suf>(?:-[A-Z]+)*)[ \t]*,(?=\s*[a-z(])")
+                   r"(?P<suf>(?:-[A-Z]+)*)[ \t]*,")
+# A sentence of reasons can open a line on a bill too: "HB 1348, Chapter 253,
+# Laws of 2002." (2002). A statement's title starts in lower case, or, where
+# 2014 capitalises it ("HB 1464, Exempting ..."), the statement before it has
+# ended: its vote, its signature, a heading or a blank line stands above.
+TITLE_LOWER = re.compile(r"\s*[a-z(]")
+ENDED = re.compile(r"(?:\bVotes?[:\s]*\d{1,3}\s*-\s*\d{1,3}\.?|^[ \t\f]{12,}Re[po]s?\.?[ \t]+\S.*"
+                   r"|^[ \t\f]*[A-Z][A-Z,&'’ -]{3,}[A-Z]|^)[ \t]*$")
 # A committee's heading, alone on its line and in capitals: CHILDREN AND
 # FAMILY LAW. Never a line of the recommendation, which wraps in capitals
 # too ("FUTURE LEG-" / "ISLATION."), and never a page's running head, which
 # carries digits.
 CMTE = re.compile(r"(?m)^[ \t\f]*(?P<c>[A-Z][A-Z,&'’ -]{3,}[A-Z])[ \t]*$")
-NOT_CMTE = re.compile(r"RECOMMEND|LEGIS|LATION|FUTURE|STATEMENTS")
+# Only the recommendation's own pieces: LEGISLATIVE ADMINISTRATION and
+# STATE-FEDERAL RELATIONS AND VETERANS AFFAIRS are committees.
+NOT_CMTE = re.compile(r"RECOMMEND|FUTURE|LEGISLATION|STATEMENTS|^(?:LEG|LEGIS)?-?(?:IS)?LATION\.?$"
+                      r"|^LEG(?:IS)?-$")
 # The recommendation as printed, wherever the line breaks it: "FUTURE LEG-"
 # over "ISLATION.", and 2026's stray space before the stop.
 # And as the clerks varied it: RECOMMENDED FOR FURTHER LEGISLATION (SB 366 of
@@ -96,8 +107,10 @@ NOT_CMTE = re.compile(r"RECOMMEND|LEGIS|LATION|FUTURE|STATEMENTS")
 # FOR FUTURE RECOMMENDATION (HB 579 of 2000), NO RECOMMENDATION (HB 1592 of
 # 2014), and a footnote's number set inside the words where a page's note
 # is keyed: "NOT RECOMMENDED FOR FUTURE 2 LEGISLATION" (HB 1191 of 2010).
-_N = r"(?:\d{1,2}\s+)?"
-REC = re.compile(r"\b(?P<not>NOT\s+)?RECOMMENDED\s+" + _N + r"FOR\s+" + _N
+_N = r"(?:\d{1,3}\s+)?"
+# And a page's number between NOT and RECOMMENDED: "NOT" / "14" /
+# "RECOMMENDED FOR FUTURE LEGISLATION" (HB 543 of 2012).
+REC = re.compile(r"\b(?P<not>NOT\s+(?:\d{1,3}\s+)?)?RECOMMENDED\s+" + _N + r"FOR\s+" + _N
                  + r"(?:(?:FUTURE|FURTHER)\s+" + _N + r")?"
                  r"(?:LEG(?:-\s*)?ISLATION|RECOMMENDATION)\b"
                  r"|\b(?:WITHOUT|NO)\s+RECOMMENDATION\b")
@@ -112,9 +125,22 @@ def section(text):
     return text[m.end():e.start() if e else len(text)]
 
 
+def starts(sec, m):
+    """Whether the bill at `m` opens a statement (ENTRY, ENDED)."""
+    if TITLE_LOWER.match(sec, m.end()):
+        return True
+    # And it prints its recommendation within its first lines, as all four
+    # of 2014's do and "HB 1348, Chapter 253," does not.
+    if not REC.search(re.split(r"\n[ \t\f]*\n", sec[m.end():m.end() + 600])[0]):
+        return False
+    above = sec[:m.start()].rstrip(" \t\f").split("\n")
+    last = above[-2] if len(above) > 1 and not above[-1].strip() else above[-1]
+    return not above[-1].strip() or bool(ENDED.search(last))
+
+
 def chunks(sec):
     """[(committee heading, raw text of one bill's statement)] in order."""
-    marks = [(m.start(), "bill", m) for m in ENTRY.finditer(sec)]
+    marks = [(m.start(), "bill", m) for m in ENTRY.finditer(sec) if starts(sec, m)]
     marks += [(m.start(), "cmte", m) for m in CMTE.finditer(sec)
               if not NOT_CMTE.search(m.group("c"))]
     marks.sort(key=lambda x: x[0])
@@ -140,7 +166,7 @@ def printed_words(m):
     """The recommendation as the calendar prints it, one line: NOT RECOMMENDED
     FOR FUTURE LEGISLATION."""
     words = re.sub(r"\s+", " ", re.sub(r"-\s+", "", m.group(0))).strip().upper()
-    return re.sub(r" \d{1,2}(?= )", "", words)         # a footnote's number
+    return re.sub(r" \d{1,3}(?= )", "", words)         # a footnote's or a page's number
 
 
 # 2006 to 2014 sign a statement below it instead: the reasons and the vote,
@@ -192,6 +218,8 @@ def statement(cmte, raw, source, names=None):
     """(bill, statement), or (why, None) where it cannot be read. `names`
     is {COMMITTEE HEADING: the committee's name as a member's line spells
     it}, for a signed statement."""
+    # "Vote 16-" at a line's end and "1." on the next is 16-1 (seven of them).
+    raw = re.sub(r"(\bVote[:\s]\s*\d{1,3}\s*-)[ \t]*\n[ \t\f]*(?=\d)", r"\1", raw)
     sig = list(SIGNED.finditer(raw))
     if sig:
         raw = raw[:sig[-1].start()]
@@ -199,6 +227,12 @@ def statement(cmte, raw, source, names=None):
     b = ENTRY.match(s)
     if not b:
         return "no bill at its start", None
+    # A committee that split prints a majority's and a minority's statement
+    # under one title (HB 1164 of 2000, "MAJORITY:"): not one statement, and
+    # held back rather than shown as one.
+    first = re.search(r"\bReps?\.?\s", s[b.end():])
+    if re.search(r"\bMAJORITY\s*:", s[b.end():b.end() + (first.start() if first else len(s))]):
+        return "a majority's and a minority's statement", None
     a = FCR.AUTHOR.search(s, b.end()) or member_line(s, b.end(), cmte, names)
     if a and len(list(FCR.AUTHOR.finditer(s, a.end()))):
         return "more than one member's statement", None
@@ -317,7 +351,7 @@ def main():
           + ("; " + ", ".join(f"{n} {k}" for k, n in sorted(held.items())) if held else ""))
     # SILENCE IS NOT SUCCESS: fourteen calendars on disk carry the section.
     # A run that finds a few read the wrong folder, not a quiet decade.
-    if per and total < 10 * len(per):
+    if not per or total < 10 * len(per):
         sys.exit(f"only {total} statements in {len(per)} calendars: the section was "
                  "not read; interim_statements.json not written")
     if a.dry_run:

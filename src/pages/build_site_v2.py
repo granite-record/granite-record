@@ -3981,6 +3981,20 @@ INTERIM_FROM_DOCKET = ("The calendar prints no recommendation for this one; the 
                        "recommendation shown is the House docket's.")
 
 
+def _same_statement(r, s):
+    """Whether committee_reports.json's record `r` is the interim study
+    statement `s` mis-filed as a report: from the same calendar, and signed
+    by the same member or opening on the same words. Every one of the 39 on
+    29 October 2026's kit is; a report the calendar printed for the bill
+    beside the statement would not be, and stays."""
+    if r.get("source") != s.get("source"):
+        return False
+    lead = lambda x: re.sub(r"\W+", " ", x or "").strip().lower()[:80]
+    return any((x.get("author") and x.get("author") == s.get("author"))
+               or (lead(x.get("text")) and lead(x.get("text")) == lead(s.get("text")))
+               for x in r.get("reports") or [])
+
+
 def interim_cards(reports, statements, narratives):
     """Put each committee's INTERIM STUDY STATEMENT (interim_statements.py)
     on its bill's Reports tab, as a report of its own, in `reports` -- {term:
@@ -3995,7 +4009,7 @@ def interim_cards(reports, statements, narratives):
     HELD BACK where the docket's own Interim Study Report line disagrees --
     the recommendation, or the vote, both being stated: the calendar and the
     docket are the Clerk's two records of one report, and a page showing one
-    over the other would choose without saying so. Eight on 29 October
+    over the other would choose without saying so. Three on 29 October
     2026's kit, listed for the Clerk rather than shown.
 
     A statement the calendar prints no recommendation for (2004 prints none)
@@ -4004,7 +4018,8 @@ def interim_cards(reports, statements, narratives):
     The same calendar's report fetch_committee_reports.py mis-filed for the
     bill -- its split takes a statement for an ordinary report now and then,
     HB 1530 of 2024's RECOMMENDED FOR FUTURE LEGISLATION as one of "INTERIM
-    STUDY" -- gives way to the statement, so neither shows twice."""
+    STUDY" -- gives way to the statement, so neither shows twice; a report
+    of the same calendar that is not the statement (_same_statement) stays."""
     held = []
     for term, byb in (statements or {}).items():
         for bid, sts in byb.items():
@@ -4033,7 +4048,7 @@ def interim_cards(reports, statements, narratives):
                 if from_docket:
                     block["note"] = INTERIM_FROM_DOCKET
                 mine = [r for r in (reports.setdefault(term, {}).get(bid) or [])
-                        if r.get("source") != s.get("source")]
+                        if not _same_statement(r, s)]
                 mine.append({"bill": bid, "title": s.get("title", ""), "body": "H",
                              "source": s.get("source", ""), "interim": True,
                              "majority_recommendation": printed or None,

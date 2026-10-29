@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.721
+# GRANITE_VERSION: 2026-09-04.722
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -42366,8 +42366,33 @@ Rep. Margaret D. Hallyburton for Commerce and Consumer Affairs: The state Suprem
 Court has before it an appeal that will likely address this issue. Vote 10-0.
 HB 1429-FN-A, establishing a procedure for the department of environmental services to transfer ownership
 of dams to municipalities or others, including making loans. WITHOUT RECOMMENDATION.
+HB 1382, relative to the state's guidance on fees. NOT RECOMMENDED FOR FUTURE LEGISLATION.
+The committee found no need for the change. Vote 9-
+2.
 
-                                   COMMITTEE MEETINGS
+                                                      Rep Peter Bixby
+HB 1464, Exempting certain property from taxation. NOT RECOMMENDED FOR FUTURE LEGISLATION.
+HB 1464, as written, raised questions the committee could not settle. Vote 11-0.
+
+                                                      Rep. Wayne Moynihan
+HB 1348, Chapter 253, Laws of 2002. That chapter covers the subject. Vote 4-1.
+
+LEGISLATIVE ADMINISTRATION
+CACR 11, relating to the legislature. NOT
+14
+RECOMMENDED FOR FUTURE LEGISLATION.
+The committee prefers the present rules. Vote 8-0.
+
+                                                      Rep. Carol M. Williams
+HB 1680-FN, relative to the collection of personal information by businesses. RECOMMENDED FOR FU-
+TURE LEGISLATION.
+Rep. Nicole Klein-Knight for Legislative Administration. The subject deserves a bill of its own. Vote 12-0.
+HB 1164, relative to the property tax. MAJORITY: NOT RECOMMENDED FOR FUTURE LEGISLATION.
+Rep. Neal M. Kurk for the Majority of Legislative Administration: No. Vote 9-8.
+Rep. Paul Mirski for the Minority of Legislative Administration: Yes.
+
+                               THURSDAY, NOVEMBER 10
+
 HB 9, relative to nothing. NOT RECOMMENDED FOR FUTURE LEGISLATION.
 """
 
@@ -42382,7 +42407,12 @@ def _interim_statements(I, B):
     wrapped over two lines and broken in the word, a stray space before its
     stop, a page's running head, a word broken at a line's end, a statement
     signed below it (2006-2014), one that prints no recommendation (2004), one
-    that is its recommendation alone, and the section's end."""
+    that is its recommendation alone, and the section's end; and the review's
+    cases (29 October 2026): a capitalised title after a signature, a page's
+    number inside NOT ... RECOMMENDED, a vote broken over a line, "FU-" over
+    "TURE LEGISLATION", LEGISLATIVE ADMINISTRATION as a heading, a majority's
+    and a minority's statement, a sentence of reasons opening on a bill, and
+    the section ending on a meeting day with no heading."""
     root = Path(tempfile.mkdtemp())
     try:
         (root / "calendars" / "2026").mkdir(parents=True)
@@ -42391,17 +42421,22 @@ def _interim_statements(I, B):
     finally:
         shutil.rmtree(root, ignore_errors=True)
     got = data.get("2025-2026", {})
-    assert not held and sorted(got) == sorted(["HB1188", "HB1404", "HB1429", "HB312", "HB541",
-                                               "HB1779"]), (
+    assert dict(held) == {"held: a majority's and a minority's statement": 1} and \
+        sorted(got) == sorted(["HB1188", "HB1404", "HB1429", "HB312", "HB541", "HB1779",
+                               "HB1382", "HB1464", "CACR11", "HB1680"]), (
         f"the fixture's statements: {sorted(got)}, held {dict(held)} -- HB 9, after the "
-        "section's end, is none of them")
+        "section's end, and HB 1348, a sentence of reasons, are none of them")
     s = {b: v[0] for b, v in got.items()}
     want = {"HB1404": ("not", "NOT RECOMMENDED FOR FUTURE LEGISLATION", "Rep. Jay Markell", 7, 1),
             "HB1779": ("rec", "RECOMMENDED FOR FUTURE LEGISLATION", "Rep. Mark Pearson", 8, 0),
             "HB312": ("not", "NOT RECOMMENDED FOR FUTURE LEGISLATION", "Rep. Chris McAleer", 11, 0),
             "HB1188": ("not", "NOT RECOMMENDED FOR FUTURE LEGISLATION", "Rep. Caroline Gargasz", 10, 1),
             "HB541": ("", "", "Rep. Margaret D. Hallyburton", 10, 0),
-            "HB1429": ("without", "WITHOUT RECOMMENDATION", "", None, None)}
+            "HB1429": ("without", "WITHOUT RECOMMENDATION", "", None, None),
+            "HB1382": ("not", "NOT RECOMMENDED FOR FUTURE LEGISLATION", "Rep Peter Bixby", 9, 2),
+            "HB1464": ("not", "NOT RECOMMENDED FOR FUTURE LEGISLATION", "Rep. Wayne Moynihan", 11, 0),
+            "CACR11": ("not", "NOT RECOMMENDED FOR FUTURE LEGISLATION", "Rep. Carol M. Williams", 8, 0),
+            "HB1680": ("rec", "RECOMMENDED FOR FUTURE LEGISLATION", "Rep. Nicole Klein-Knight", 12, 0)}
     for b, (rec, printed, who, y, n) in want.items():
         assert (s[b]["rec"], s[b]["printed"], s[b]["author"], s[b].get("vote_yeas"),
                 s[b].get("vote_nays")) == (rec, printed, who, y, n), f"{b} reads {s[b]}"
@@ -42410,6 +42445,10 @@ def _interim_statements(I, B):
         f"HB 1779's statement: {s['HB1779']}")
     assert "surrounding states" in s["HB312"]["text"] and s["HB312"]["title"].endswith("likeness"), (
         f"HB 312's statement: {s['HB312']}")
+    assert s["CACR11"]["committee"] == "Legislative Administration" and \
+        s["HB1464"]["text"].startswith("HB 1464, as written"), (
+        f"a signed statement under LEGISLATIVE ADMINISTRATION, or a capitalised title: "
+        f"{s['CACR11']} {s['HB1464']}")
     assert s["HB1188"]["committee"] == "Commerce and Consumer Affairs" and \
         s["HB1188"]["text"].startswith("The committee is opposed") and "Gargasz" not in s["HB1188"]["text"], (
         f"a signed statement: {s['HB1188']}")
@@ -42421,25 +42460,31 @@ def _interim_statements(I, B):
     narr = {"2025-2026": {
         "HB541": row("Interim Study Report: Not Recommended for Future Legislation (Vote 10-0)"),
         "HB1404": row("Interim Study Report: Not Recommended for Future Legislation (Vote 6-2)"),
-        "HB1779": row("Interim Study Report: Recommended for Future Legislation (Vote 8-0)")}}
+        "HB1779": row("Interim Study Report: Recommended for Future Legislation (Vote 8-0)"),
+        "HB312": row("Interim Study Report: Recommended for Future Legislation (Vote 11-0)")}}
     reports = {"2025-2026": {"HB1779": [
         {"source": "House Calendar 40, 2026", "majority_recommendation": "INTERIM STUDY",
-         "reports": [{"side": "Committee"}]},
+         "reports": [{"side": "Committee", "author": "Rep. Mark Pearson"}]},
+        {"source": "House Calendar 40, 2026", "majority_recommendation": "OUGHT TO PASS",
+         "reports": [{"side": "Committee", "author": "Rep. Someone Else", "text": "Another."}]},
         {"source": "House Calendar 6, 2026", "majority_recommendation": "REFER FOR INTERIM STUDY",
          "reports": [{"side": "Committee"}]}]}}
     held = B.interim_cards(reports, data, narr)
-    assert [(b, "6-2" in w) for _t, b, _c, w in held] == [("HB1404", True)], f"held back: {held}"
+    assert sorted((b, "6-2" in w, "says NOT" in w) for _t, b, _c, w in held) == [
+        ("HB1404", True, False), ("HB312", False, True)], f"held back: {held}"
     tab = reports["2025-2026"]
     assert [r["majority_recommendation"] for r in tab["HB1779"]] == [
-        "REFER FOR INTERIM STUDY", "RECOMMENDED FOR FUTURE LEGISLATION"], (
+        "OUGHT TO PASS", "REFER FOR INTERIM STUDY", "RECOMMENDED FOR FUTURE LEGISLATION"], (
         f"HB 1779's reports: {tab['HB1779']}")
     blk = tab["HB541"][0]
     assert blk["majority_recommendation"] == "NOT RECOMMENDED FOR FUTURE LEGISLATION" and \
         blk["reports"][0]["note"] == B.INTERIM_FROM_DOCKET and \
         blk["reports"][0]["side"] == B.INTERIM_SIDE, f"HB 541 of 2004's card: {blk}"
-    assert "HB1404" not in tab and tab["HB1429"][0]["majority_recommendation"] == "WITHOUT RECOMMENDATION"
-    return "ok", ("six statements in six forms; the docket fills 2004's recommendation, "
-                  "holds back a disagreement, and the mis-filed report gives way")
+    assert "HB1404" not in tab and "HB312" not in tab and \
+        tab["HB1429"][0]["majority_recommendation"] == "WITHOUT RECOMMENDATION"
+    return "ok", ("ten statements in every form the calendars print; the docket fills 2004's "
+                  "recommendation, holds back a disagreement, and only the mis-filed report "
+                  "gives way")
 
 
 @check("build", "related bills: the same text hashes the same everywhere, quoted law is not shared "
