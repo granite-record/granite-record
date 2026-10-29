@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.242
+# GRANITE_VERSION: 2026-09-04.243
 """
 Build the pages the navigation links to: legislators, town lookup, how it
 works, and about.
@@ -209,11 +209,13 @@ HEADERS = """# Written by build_pages.py. Not an asset; Pages reads it.
 /find.json
   Cache-Control: public, max-age=0, must-revalidate
 
-# THE PUBLISHED RECORD IS READABLE FROM ANYWHERE, which is what /data already
-# tells programmers it is. Without this header a browser will not let a page on
-# another origin read these files, so the promise held for curl and for a
-# script on a server and quietly failed for anyone building in a browser --
-# which is most of the people that page is addressed to.
+# THE PUBLISHED RECORD IS READABLE FROM ANYWHERE, which is what /data tells
+# programmers it is: a page on another origin may read these files in a
+# browser, as curl and a script on a server can. Cloudflare Pages already
+# sends this header on every response, the HTML included (measured on /,
+# /about and a bill page, 26 October 2026), so these rules change nothing it
+# serves today. They say here which files the promise is made for, so that
+# it does not rest on a default of the host's.
 #
 # Nothing here is private: these are the same public files the site's own pages
 # fetch, and they are already served to anyone who asks for them directly. The
@@ -3644,12 +3646,6 @@ def card_words(lang="en"):
             "resources.html": (say(lang, "card.resources", "Resources"),
                                say(lang, "card.resources_line", "How-to guides, how the "
                                    "legislature works, and official sources"))}
-
-
-def _laws_has_constitution():
-    """Whether the Laws page carries its Constitution tab."""
-    import constitution_tab
-    return any(pid == "constitution" for pid, _name in constitution_tab.TABS)
 
 
 def home_cards(lang="en"):

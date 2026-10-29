@@ -471,8 +471,10 @@ CHANNELS = {c: cid for c, (cid, _name) in FCI.CHANNELS.items()}
 COLS = ["video_id", "title", "title_parsed", "parsed_committee", "parsed_date",
         "date_from", "has_start_time", "start_eastern", "actual_start_utc",
         "actual_end_utc", "duration_iso", "published_at"]
-# Quota units per call, from the API's own table. Nothing that costs more --
-# search.list at 100, the caption methods at 50 and 200 -- is ever called.
+# Quota units per call, from the API's own table. Nothing else is ever
+# called: not the caption methods, at 50 and 200 units, and not search.list,
+# which since 1 June 2026 is not charged to these units at all but to an
+# allowance of its own, 100 calls a day (the API's revision history).
 COST = {"channels": 1, "playlistItems": 1, "videos": 1}
 
 # yt-dlp, as fetch_archive_captions.fetch runs it but for the pauses and the
