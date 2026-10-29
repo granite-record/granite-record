@@ -6947,16 +6947,17 @@ color:var(--ink);text-decoration:none;line-height:1.35}
 .vwrow:focus-visible{outline:2px solid var(--pine);outline-offset:-2px}
 .vwd{font-weight:600;white-space:nowrap}
 .vwt{font-size:var(--t-sm);color:var(--ink-2);text-align:right;white-space:nowrap}
-/* THE KINDS AND THE BILLS ON ONE LINE, cut short with an ellipsis where they
-   do not fit, so every row is two lines: the chips had pushed the bills onto
-   a third, rows of 90px, and House Finance's list showed five of its 106
-   beside the player at 1280 (the review of 29 October 2026, "a relatively
-   compact table"). Every bill is under the player once the row is chosen,
-   and the row's whole text is its name to a screen reader. The chips here a
-   little smaller than a card's, the same words and colours. */
-.vwb{grid-column:1 / -1;font-size:var(--t-sm);line-height:1.5;color:var(--ink-2);
-white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.vwb .chip{margin-right:var(--sp-2);padding:0 var(--sp-3);line-height:1.4;vertical-align:baseline}
+/* TWO LINES A ROW (app.js, vwRow; the review of 29 October 2026): the
+   date and the count of bills, with when it began and ran; then the kinds
+   and the first bills on one line, the bills cut short with an ellipsis
+   where they do not fit, and a run of kinds too long for the line cut at
+   its edge. The chips here a little smaller than a card's, the same words
+   and colours. */
+.vwd .vwi{font-weight:400;font-size:var(--t-sm);color:var(--ink-2)}
+.vwb{grid-column:1 / -1;display:flex;align-items:center;min-width:0;font-size:var(--t-sm);line-height:1.5;
+color:var(--ink-2);white-space:nowrap;overflow:hidden}
+.vwb .chip{flex:none;margin-right:var(--sp-2);padding:0 var(--sp-3);line-height:1.4}
+.vwl{flex:0 1 auto;min-width:0;overflow:hidden;text-overflow:ellipsis}
 .vwall{margin-top:var(--sp-3)}
 .vwsrc{grid-area:src;margin:0}
 /* On paper every row prints: this is a screen's. The bills under the

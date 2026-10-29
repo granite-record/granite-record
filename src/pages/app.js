@@ -9040,14 +9040,27 @@ function vwPlayer(o,r){
 }
 const vwDetail=r=>typeof r.detail==="function"?r.detail():String(r.detail||"");
 // A row's second line is text, or its parts, which take the middle dot.
-const vwLine=l=>Array.isArray(l)?vwJoin(l.filter(Boolean).map(esc)):esc(l||"");
+function vwLine(l){
+  const t=Array.isArray(l)?vwJoin(l.filter(Boolean).map(esc)):esc(l||"");
+  return t?`<span class="vwl">${t}</span>`:"";
+}
+/* A ROW IS TWO LINES (the review of 29 October 2026, "a relatively compact
+   table"): the date, and beside it how many bills ("Oct 14, 2026 · 26
+   bills"), with when it began and how long it ran; under them its kinds,
+   then its first bills, cut short with an ellipsis where they do not fit. The
+   kinds had pushed the bills onto a third line, rows of 90px, and House
+   Finance's list showed five of its 106 beside the player at 1280. The count
+   is on the first line so that the cut never takes it; every bill is under
+   the player once the row is chosen, and the row's whole text is its name to
+   a screen reader. */
 function vwRow(o,r,i,cap){
   const when=vwWhen(r), line=vwLine(r.line);
   return `<li${i>=cap?' class="vwrest"':""}><a class="vwrow" href="${esc(o.href(r.id))}" data-vwpick="${
-      esc(r.id)}"${r.id===o.chosen?' aria-current="true"':""}><span class="vwd">${esc(dateWords(r.date))}</span>${
+      esc(r.id)}"${r.id===o.chosen?' aria-current="true"':""}><span class="vwd">${
+    vwJoin([esc(dateWords(r.date)),r.count?`<span class="vwn">${esc(r.count)}</span>`:""])}</span>${
     when.length?`<span class="vwt"><span class="sr">, </span>${vwJoin(when.map(esc))}</span>`:""}${
     r.kinds||line?`<span class="vwb"><span class="sr">, </span>${r.kinds||""}${r.kinds&&line?" ":""}${
-      line?`<span class="vwl">${line}</span>`:""}</span>`:""}</a></li>`;
+      line}</span>`:""}</a></li>`;
 }
 function videoView(o){
   const rows=o.rows||[];
@@ -9195,9 +9208,12 @@ function cmteVideoRows(c){
     // A space between chips, so their names are not run together when read.
     const chips=kinds.map(k=>kindChips([k])).concat(r.label?[chip(r.label,"calkind k-other")]:[]).join(" ");
     const bills=[...new Set(items.map(vwBill))];
-    const line=bills.length?`${nBills(bills.length)}: ${bills.slice(0,3).join(", ")}${
+    // The count beside the date, the numbers after the kinds (vwRow), so a
+    // line cut short loses numbers and never the count.
+    const count=bills.length?nBills(bills.length):"";
+    const line=bills.length?`${bills.slice(0,3).join(", ")}${
       bills.length>3?` and ${(bills.length-3).toLocaleString()} more`:""}`:"";
-    return {id:r.id,date:r.date,began:r.began,seconds:r.seconds,kinds:chips,line,
+    return {id:r.id,date:r.date,began:r.began,seconds:r.seconds,kinds:chips,count,line,
             detail:()=>cmteVideoDetail(c,r,items,day,chips)};
   });
 }

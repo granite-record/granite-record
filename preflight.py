@@ -69128,8 +69128,10 @@ def _static_videos_wiring(FS):
                          "summary": "The Senate took up 1 bill, with 1 roll call.",
                          "videos": ["senSessV001"],
                          "recordings": [{"id": "senSessV001", "began": "09:58", "seconds": 11040}]}]}
-    study = {"kind": "study", "who": "State Commission on Aging", "what": "the State Commission on Aging",
-             "key": "1451", "path": "/committee/ss1451",
+    # Its name in a sentence as the build gives it (build_study_committees,
+    # named): a name that names no body is said bare.
+    study = {"kind": "study", "who": "Administrative Rules", "what": "Administrative Rules",
+             "key": "61", "path": "/committee/ss61",
              "rows": [{"id": "agingVid001", "date": "2026-03-10", "time": "10:00", "venue": "LOB 101",
                        "type": "Regular meeting", "anchor": "day-2026-03-10", "began": "10:02",
                        "seconds": 3720}]}
@@ -69158,10 +69160,11 @@ def _static_videos_wiring(FS):
         got["tabsThen"] == ["Session Days" + tn(1), "Videos" + tn(1)], (
             f"another term's Videos tab is not drawn, or the address goes on naming the old term's "
             f"recording: {got['dropped']}, {got['tabsThen']}")
-    st = _node_app(_VW_STATIC_HARNESS, {"fx.json": json.dumps({"path": "/committee/ss1451/videos", "data": study})})
+    st = _node_app(_VW_STATIC_HARNESS, {"fx.json": json.dumps({"path": "/committee/ss61/videos", "data": study})})
     assert "threw" not in st, "the study committee's page would not draw its Videos section: " + st["threw"]
     assert 'data-embed="agingVid001|0|' in st["view"] and st["strip"] is None and st["section"] == 1 and \
-        'aria-label="Play the recording of the State Commission on Aging, Mar 10, 2026"' in st["view"] and \
+        'aria-label="Play the recording of Administrative Rules, Mar 10, 2026"' in st["view"] and \
+        'data-title="Recording of Administrative Rules, Mar 10, 2026"' in st["view"] and \
         '<h3 class="vwh" id="vwh">' in st["view"], (
             "app.js does not draw a study committee's Videos section when the page loads, in its words, "
             "and bring it into view at /videos")
@@ -76465,8 +76468,8 @@ process.stdout.write("\n@@" + JSON.stringify(out));
     say = {i: _html.unescape(re.sub(r"<[^>]+>", "", body)) for _h, i, _c, body in rows}
     want = {"-titleOnly1": "Feb 24, 2026, 36 min",
             "divOne": "Feb 17, 2026, 1:00 PM, ·\u00a02 h, Work Session Division I",
-            "VID4": "Feb 10, 2026, 12:58 PM, ·\u00a045 min, Executive Session 1 bill: HB 1442",
-            "VID1": "Feb 3, 2026, 9:58 AM, ·\u00a01 h 52 min, Public Hearing 1 bill: HB 1442"}
+            "VID4": "Feb 10, 2026, ·\u00a01 bill, 12:58\u00a0PM, ·\u00a045 min, Executive Session HB\u00a01442",
+            "VID1": "Feb 3, 2026, ·\u00a01 bill, 9:58\u00a0AM, ·\u00a01 h 52 min, Public Hearing HB\u00a01442"}
     assert say == want, f"the rows read {say!r}, not {want!r}"
     # Its kinds are the Meetings tab's chips, in their words and colours.
     assert '<span class="chip calkind k-exec">Executive Session</span>' in pane \
@@ -76550,8 +76553,8 @@ process.stdout.write("\n@@" + JSON.stringify(out));
     # of 29 October 2026).
     phone = _braced(css, "@media screen and (max-width:59.99em){")
     wide = _braced(css, "@media screen and (min-width:60em){")
-    lit = css.index('.vwrow[aria-current="true"]{border-left-color:Highlight}')
-    forced = css.rfind("@media (forced-colors:active){", 0, lit)
+    lit = css.find('.vwrow[aria-current="true"]{border-left-color:Highlight}')
+    forced = css.rfind("@media (forced-colors:active){", 0, lit) if lit >= 0 else -1
     w4 = css.index("  .w4{display:grid;")
     w4 = _braced(css[css.rfind("@media (min-width:60em){", 0, w4):], "@media (min-width:60em){")
     for ok, why in (
@@ -76566,9 +76569,16 @@ process.stdout.write("\n@@" + JSON.stringify(out));
             (forced >= 0 and "}" not in css[forced + len("@media (forced-colors:active){"):lit],
              "under forced colours the chosen row has no bar"),
             (".w4.w4wide{display:block}" in w4, "a study committee's Videos section is not the page's width"),
-            (re.search(r"\n\.vwb\{[^}]*white-space:nowrap;overflow:hidden;text-overflow:ellipsis", css),
+            (re.search(r"\n\.vwb\{[^}]*display:flex;[^}]*white-space:nowrap;overflow:hidden\}", css)
+             and re.search(r"\n\.vwl\{flex:0 1 auto;min-width:0;overflow:hidden;text-overflow:ellipsis\}", css)
+             and re.search(r"\n\.vwb \.chip\{flex:none;", css),
              "a row's kinds and bills can run onto a third line")):
         assert ok, f"app.css: {why}"
+    # What is cut is the bills' numbers: the count is on the first line, beside
+    # the date, so the cut never takes it.
+    assert '<span class="vwd">Feb 10, 2026<span class="sr">,</span> <span class="vwi"><span aria-hidden="true">' \
+        '&middot;&nbsp;</span><span class="vwn">1 bill</span></span></span>' in pane, (
+        "a row's count of bills is not beside its date, where the cut of its second line cannot take it")
     # On a phone, twenty and a button for the rest; every row in the page.
     m = flat["many"]
     assert m.count('class="vwrest"') == 5 and m.count('class="vwrow"') == 25 and \
