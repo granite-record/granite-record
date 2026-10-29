@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.723
+# GRANITE_VERSION: 2026-09-04.724
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -54627,8 +54627,12 @@ def _seat_callout(BP, SEAT):
         bad.append(f"build_pages.seat_row_tag does not set a row's district apart from its party: {one}")
     # NAMES WITHOUT "REP." TO THE EYE (the owner, 29 October 2026): the title
     # set apart, for a screen reader alone, and the name kept whole.
-    if '<a href="x"><span class="mhon">Rep. </span>A <span class="mtag">' not in one:
+    if '<a href="x"><span class="mhon">Rep. </span>A' not in one:
         bad.append(f"build_pages.seat_row_tag does not set a row's \"Rep.\" apart from its name: {one}")
+    # THE LETTER WITH THE SURNAME (the manager's polish, 29 October 2026): no
+    # line may end between a name and its "(R)".
+    if 'A&#160;<span class="mtag">' not in one:
+        bad.append(f"build_pages.seat_row_tag leaves a breakable space between a name and its party's letter: {one}")
     shared, _base, _ran, _days = _fixture_site_shared()
     page = (shared / "site" / "officials.html").read_text(encoding="utf-8")
     tags, dists, texts, hons = [], [], [], []

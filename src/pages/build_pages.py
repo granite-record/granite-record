@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.244
+# GRANITE_VERSION: 2026-09-04.245
 """
 Build the pages the navigation links to: legislators, town lookup, how it
 works, and about.
@@ -676,11 +676,20 @@ _SEAT_TAG = re.compile(r'(<span class="mtag">)\(([^()\s<]+)( - [^()<]+)\)(</span
 _SEAT_HON = re.compile(r'(<span class="mchip[^"]*"[^>]*>(?:<a [^>]*>)?)(Rep\.) ')
 
 
+# THE LETTER STAYS WITH THE SURNAME (the manager's polish, 29 October 2026):
+# "Debra DeSimone / (R)" wrapped the party's letter onto a line of its own.
+# The space before the tag is a no-break space, so a row too long for its
+# column breaks before the surname: "Debra / DeSimone (R)".
+_SEAT_GAP = re.compile(r' (<span class="mtag">)')
+
+
 def seat_row_tag(row):
     """A row of the House by seat with its chip's district apart from its
-    party's letter (_SEAT_TAG), and its "Rep." apart from its name
-    (_SEAT_HON): app.css shows the eye neither."""
+    party's letter (_SEAT_TAG), its "Rep." apart from its name (_SEAT_HON):
+    app.css shows the eye neither; and the letter held to the surname by a
+    no-break space (_SEAT_GAP)."""
     row = _SEAT_HON.sub(r'\1<span class="mhon">\2 </span>', row)
+    row = _SEAT_GAP.sub(r'&#160;\1', row)
     return _SEAT_TAG.sub(r'\1(\2<span class="mdist">\3</span>)\4', row)
 
 
