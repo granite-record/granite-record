@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.729
+# GRANITE_VERSION: 2026-09-04.730
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -55856,6 +55856,15 @@ def _cloud_pull_lifted(CL, R):
                 assert not bad and "THE NIGHT LIFTED THIS REFUSAL" in said and \
                     "send-refusal" not in said and "refusal.py --clear" in said, \
                     f"a copy {age} hours old of a lifted refusal: {lines}, {bad}"
+                # What a lifted copy stops, said as check() reads it: the
+                # lane until --clear, and a hand fetch for QUIET_HOURS from
+                # when it was met -- not "every fetch", which holds only once
+                # check() stops at a GitHub record at any age (build plan 8).
+                entry = CL.bucket_lifted(CL.FolderBucket(bucket))[R._sha(raw)]
+                for who, line in (("pull", said), ("refusal.force", R.force({}, lift=entry))):
+                    assert "every fetch" not in line and "lane here" in line and \
+                        f"{R.QUIET_HOURS} hours from when it was met" in line, \
+                        f"{who} says a lifted copy stops what it does not: {line}"
                 assert (laptop / "archive/refused.json").read_bytes() == raw and not m.exists(), \
                     "pull set the lifted copy aside, or left its unsent marker"
                 m = marker(laptop)

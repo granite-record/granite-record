@@ -204,3 +204,22 @@ that made it.
     refusal on file, after the export answered whole; the reviewers' finding
     named the snapshot and the committee pages, and these two are left for
     the next stage rather than changed unreviewed.
+
+## After the review of 62e7406: what a lifted copy is said to stop
+
+26. **The lift line says a copy on file stops the lane here until
+    `refusal.py --clear`, and a fetch started by hand here for 24 hours from
+    when it was met** (`refusal.force(lift=)`, `pull_refusal`,
+    `watchers/README.md`), not design_final §2.6's "the lane and every fetch
+    here stop at it". That sentence is true only once `check()` stops at a
+    GitHub record with a kind at any age (design_final §2.10, build plan
+    commit 8 of design_final, 9 of the addendum), which is not built yet;
+    until then a hand fetch passes such a copy after 24 hours. The commit
+    that builds the any-age rule restores §2.6's sentence, and
+    `_cloud_pull_lifted`'s assertion on it changes with it. Likewise
+    `cloud_kit.json`, `ARCHITECTURE.md` and `refusal.py` now say nothing
+    knocks yet; the commit that wires the knock says it does.
+27. **Finding 7 of the review (the carry across a person's clear) changes
+    no code**: DEVIATIONS 20 records it, and `_refusal_relapse` already
+    pins the carry of a record noted within `RELAPSE_HOURS` of a lift
+    whatever was cleared between (it removes the record and notes a new one).
