@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-10-23.5
+# GRANITE_VERSION: 2026-10-23.6
 """
 The Journal's words for a vote on no bill, as every page shows them.
 
