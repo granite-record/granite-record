@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.721
+# GRANITE_VERSION: 2026-09-04.722
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -98260,6 +98260,35 @@ def _page_record_find(SR):
     finally:
         shutil.rmtree(tmp, ignore_errors=True)
     return "ok", "six shapes of page, each read as INLINE reads it, the sidecar where none is inline"
+
+
+@check("session", "a House journal's running heads are found once, for the file flat and with "
+       "its lines, and give what clean() gives each way", needs=("journal_days",))
+def _journal_clean_both(JD):
+    """read_year cleaned every House journal twice, once flat and once with
+    its lines kept, and the running-head pattern read the whole file each
+    time (29 October 2026: 36 s of the sitting pages' 314 under a profiler;
+    the same answers on all 573 files on disk, 33 s to 20 s). clean_both()
+    finds the heads once. This holds it to clean()'s two answers on the
+    journal fixtures and on heads that stand mid-line, between lines, across
+    a page break, at the start and the end, with Windows line ends and next
+    to a word broken over the line; and holds read_year to the one pass."""
+    import inspect
+    heads = ("7MARCH2018HOUSERECORD", "6 MARCH 2013 HOUSE RECORD 12",
+             "12 14 FEBRUARY 2019 HOUSE RECORD", "  3  APRIL  2020  HOUSE   RECORD  ")
+    texts = [_JOURNAL_RECONSIDER, _JOURNAL_MOTION_AFTER, _JOURNAL_DECIDED, _JOURNAL_WALK,
+             _JOURNAL_WALK_MORE, "", "no head at all", "moved that the commit-\ntee adjourn"]
+    for h in heads:
+        texts += [h, f"{h} first line", f"the last line {h}", f"the motion was {h} adopted.",
+                  f"was adopted.\n{h}\nHB 422-FN, increasing", f"page one\f{h}\fpage two",
+                  f"a line\r\n{h}\r\nthe next", f"the commit-\n{h}\ntee met", f"{h}{h}\n{h}"]
+    texts.append("\n".join(texts))
+    bad = [t for t in texts if JD.clean_both(t) != (JD.clean(t), JD.clean(t, lines=True))]
+    assert not bad, f"clean_both and clean() differ on {len(bad)} text(s), the first {bad[0][:80]!r}"
+    src = inspect.getsource(JD.read_year)
+    assert "clean_both(" in src and "clean(raw" not in src, (
+        "read_year cleans each journal twice again")
+    return "ok", f"{len(texts)} texts the same both ways; read_year finds the heads once"
 
 
 @check("session", "a journal pattern found only where it can begin is finditer's own list",

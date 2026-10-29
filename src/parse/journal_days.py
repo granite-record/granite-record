@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-19.14
+# GRANITE_VERSION: 2026-09-19.15
 """
 What the House journal adds that the record does not: who spoke, and what.
 
@@ -99,6 +99,29 @@ def clean(text, lines=False):
                          if lines else " ", text)
     text = HYPHEN_WRAP.sub(r"\1\2", text)
     return text
+
+
+def clean_both(text):
+    """(clean(text), clean(text, lines=True)), with the running heads found
+    once.
+
+    read_year wants the file both ways, and the running-head pattern was run
+    over every House journal twice to get them (29 October 2026: 36 s of the
+    sitting pages' 314 under a profiler). The two differ only in what a head
+    is replaced with, so one finditer gives both: re.sub replaces the same
+    non-overlapping matches, left to right, and FURNITURE never matches
+    nothing. preflight holds the pair to clean()'s two answers."""
+    text = text.replace("\r\n", "\n").replace("\r", "\n")
+    flat, lined, at = [], [], 0
+    for m in FURNITURE.finditer(text):
+        piece = text[at:m.start()]
+        flat += (piece, " ")
+        lined += (piece, "\n" if re.search(r"[\n\f]", m.group(0)) else " ")
+        at = m.end()
+    flat.append(text[at:])
+    lined.append(text[at:])
+    return (HYPHEN_WRAP.sub(r"\1\2", "".join(flat)),
+            HYPHEN_WRAP.sub(r"\1\2", "".join(lined)))
 
 
 def joined(block):
@@ -1117,10 +1140,10 @@ def read_year(year, root=HOUSE):
                 raw = f.read_text(encoding="utf-8", errors="replace")
             except OSError:
                 continue
-            text = clean(raw)
+            text, lined = clean_both(raw)
             # The speeches from the file with its lines kept (clean): the
             # same sittings in the same order, or the block read for the rest.
-            lined = day_blocks(clean(raw, lines=True))
+            lined = day_blocks(lined)
             for i, (iso, block) in enumerate(day_blocks(text)):
                 got = out.setdefault(iso, {"date": iso, "attributions": [],
                                            "debates": [],
