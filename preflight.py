@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.721
+# GRANITE_VERSION: 2026-09-04.722
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -42331,6 +42331,47 @@ def _related_tab(B, RB):
         "the page does not draw the Related tab from d.related"
     return "ok", ("SB 184: rejected amendment, HB 377 once, SB 479 filed before; below the line, "
                   "no fate, itself and an unknown bill left out")
+
+
+@check("build", "related bills: which shingles two texts share is intersect1d's answer, and each "
+       "text's words are read once", needs=("related_bills",))
+def _related_bills_shared_in(RB):
+    """relate() asked np.intersect1d which of one text's shingles another
+    holds, for each of a quarter of a million pairs, and read every text's
+    words twice (29 October 2026: 26 s and 9 s of a two-minute step under a
+    profiler). shared_in() answers with one binary search a shingle, since
+    every set is np.unique's, filtered: sorted, no repeats. This holds it to
+    intersect1d's own positions on sets like those -- empty, one shingle,
+    disjoint, the same, nested, overlapping, and the largest and smallest
+    64-bit values -- and holds relate() to one read of each text."""
+    try:
+        import numpy as np
+    except ImportError:
+        return "skip", "numpy will not import"
+    import inspect
+    import random
+    rnd = random.Random(20261029)
+    top = np.iinfo(np.uint64).max
+    u = lambda xs: np.unique(np.array(xs, dtype=np.uint64))
+    pairs = [(u([]), u([])), (u([]), u([1])), (u([1]), u([])), (u([1]), u([1])),
+             (u([1]), u([2])), (u([0, top]), u([top])), (u([top]), u([0, top])),
+             (u(range(10)), u(range(5, 15))), (u(range(10)), u(range(3, 6))),
+             (u(range(3, 6)), u(range(10))), (u([5]), u(range(10)))]
+    for _ in range(3000):
+        pool = [rnd.randrange(0, 2 ** 64) for _ in range(rnd.randint(0, 40))] + [0, top]
+        a = u(rnd.sample(pool, rnd.randint(0, len(pool))))
+        b = u(rnd.sample(pool, rnd.randint(0, len(pool))))
+        pairs.append((a, b))
+    for a, b in pairs:
+        _, ia, _jb = np.intersect1d(a, b, assume_unique=True, return_indices=True)
+        mask = RB.shared_in(a, b)
+        assert mask.dtype == bool and len(mask) == len(a) and \
+            np.flatnonzero(mask).tolist() == sorted(ia.tolist()), (
+                f"shared_in({a.tolist()[:6]}, {b.tolist()[:6]}) is not intersect1d's answer")
+    src = inspect.getsource(RB.relate)
+    assert "intersect1d" not in src and src.count("words_of(") == 1, (
+        "relate() sorts each pair together again, or reads a text's words twice")
+    return "ok", f"{len(pairs):,} pairs of sets, every one intersect1d's answer"
 
 
 @check("build", "related bills: the same text hashes the same everywhere, quoted law is not shared "
