@@ -71820,12 +71820,45 @@ _OUTLINE_STYLES = ("none", "hidden", "dotted", "dashed", "solid", "double", "gro
                    "inset", "outset", "auto")
 
 
+def _css_sides(prop, value):
+    """{padding-top: ..., ...} for a padding or margin shorthand, or its
+    -block or -inline pair, as the browser spreads it over the sides; {} for
+    any other property. A function's value (var(), calc(), max()) is one
+    value, however many spaces it has."""
+    m = re.fullmatch(r"(padding|margin)(?:-(block|inline))?", prop)
+    if not m:
+        return {}
+    vals, depth, cur = [], 0, ""
+    for c in value.strip() + " ":
+        depth += (c == "(") - (c == ")")
+        if c.isspace() and depth == 0:
+            if cur:
+                vals.append(cur)
+            cur = ""
+        else:
+            cur += c
+    if not vals:
+        return {}
+    kind, axis = m.group(1), m.group(2)
+    if axis:
+        a, b = vals[0], vals[1] if len(vals) > 1 else vals[0]
+        sides = ("top", "bottom") if axis == "block" else ("left", "right")
+        return {f"{kind}-{sides[0]}": a, f"{kind}-{sides[1]}": b}
+    t = vals[0]
+    r = vals[1] if len(vals) > 1 else t
+    b = vals[2] if len(vals) > 2 else t
+    left = vals[3] if len(vals) > 3 else r
+    return {f"{kind}-top": t, f"{kind}-right": r, f"{kind}-bottom": b, f"{kind}-left": left}
+
+
 def _css_screen_rules(text):
     """[(order, at-rules, selector, {property: (value, important)}, line)]
     for every rule of a stylesheet that draws on a screen -- the printed
     sheet's are left out -- one entry a selector of its list. The outline
     shorthand is its three longhands, what it leaves out reset as a browser
-    resets it ("outline:none" is a style of none and a width of medium)."""
+    resets it ("outline:none" is a style of none and a width of medium);
+    padding and margin, and their -block and -inline forms, are their four
+    sides (_css_sides)."""
     out = []
     for order, (ctx, sel, body, line) in enumerate(_css_rules(text)):
         if any(re.search(r"\bprint\b", c) and not re.search(r"\bnot\s+print\b", c) for c in ctx):
@@ -71844,6 +71877,8 @@ def _css_screen_rules(text):
                         colour = tok
                 decls.update({"outline-width": (width, imp), "outline-style": (style, imp),
                               "outline-color": (colour, imp)})
+            elif _css_sides(k, v):
+                decls.update({side: (x, imp) for side, x in _css_sides(k, v).items()})
             else:
                 decls[k] = (v, imp)
         if decls:
@@ -72039,6 +72074,100 @@ def _text_box_focus_shows():
     return "ok", (f"{len(boxes)} kinds of text box ({pages} pages of the fixture's build, {scripted} written "
                   f"by a script), each with an outline while focused: "
                   + ", ".join(f"{k} ({n})" for k, n in drawn.most_common()))
+
+
+# What a box one line high needs to be 24px tall, and an inline link whose
+# box is its letters: app.css's --tap-line and --tap-text, spaces aside.
+_TAP = {"--tap-line": "max(0px,(24px-1lh)/2)", "--tap-text": "max(0px,(24px-1em)/2)"}
+
+
+@check("frontend", "a link a finger taps is 24px tall at the least: a card's number and its committee, a "
+       "Laws chapter's RSA link, a player bar's link and a member named in a sentence take app.css's "
+       "--tap-line or --tap-text", needs=("components",))
+def _tap_targets_24(C):
+    """The accessibility sweep of the R1 preview (29 October 2026; WCAG
+    2.5.8, target size): at 390 a card's number (a.cnum) was 20px tall, the
+    committee in its byline (.cmeta > a) 22px, a Laws chapter's "RSA 3-A ›"
+    (a.lw-go) 22px and a member named in a sentence (a.psent) 19px; a session
+    day's "On YouTube" in its player bar (.pbar > a), measured beside them,
+    22px. Each keeps the size of its words: what grows is the box a tap
+    lands in, by padding above and below, and a box with a line of its own
+    gives it back in margin, so nothing beside it moves.
+
+    The arithmetic is app.css's two tokens. --tap-line,
+    max(0px, (24px - 1lh) / 2), makes a one-line box 1lh + 2 x that, which
+    is 24px or more whatever the line's height; --tap-text,
+    max(0px, (24px - 1em) / 2), makes an inline link, whose box is its
+    letters (1em and a little more), 24px or more whatever its size. So the
+    check holds the tokens to those formulas, and each kind of link, where
+    the pages write it, to them: the fixture's Laws page and session days,
+    and a card as components.bill_card draws it (as components.js draws it
+    in the browser), in bills.html's #results, where app.js lists them.
+    The cascade (_css_won, every screen rule, padding and margin spread to
+    their sides) must give each kind's top and bottom padding the token, and
+    a line's box the token back as negative margin. A kind taken out of the
+    rule, or a later rule that sets its padding, fails here."""
+    css = Path("src/pages/app.css").read_text(encoding="utf-8")
+    rules = _css_screen_rules(css)
+    tokens = {k: v for _o, _c, sel, d, _l in rules if sel.strip() == ":root"
+              for k, (v, _i) in d.items() if k in _TAP}
+    bad = [f"{k} is {tokens.get(k)!r}, not {want}" for k, want in _TAP.items()
+           if "".join(str(tokens.get(k)).split()) != want]
+    assert not bad, ("app.css's tap tokens are not the arithmetic that makes a box 24px: "
+                     + "; ".join(bad))
+    shared, _base, _ran, _days = _fixture_site_shared()
+    site = shared / "site"
+    kinds = {"a Laws chapter's RSA link (a.lw-go)": ("line", lambda c: "lw-go" in c[0]["classes"]),
+             "a card's number (a.cnum)": ("line", lambda c: c[0]["tag"] == "a" and "cnum" in c[0]["classes"]),
+             "a card's committee (.cmeta > a)": ("line", lambda c: c[0]["tag"] == "a" and len(c) > 1
+                                                  and "cmeta" in (c[1] or {"classes": ()})["classes"]),
+             "a player bar's link (.pbar > a)": ("line", lambda c: c[0]["tag"] == "a" and len(c) > 1
+                                                 and "pbar" in (c[1] or {"classes": ()})["classes"]),
+             "a member named in a sentence (a.psent)": ("text", lambda c: c[0]["tag"] == "a"
+                                                        and "psent" in c[0]["classes"])}
+    found = {k: {} for k in kinds}
+
+    def take(chain, where):
+        for k, (_how, test) in kinds.items():
+            if test(chain):
+                sig = tuple((e["tag"], tuple(sorted(e["classes"]))) if e else None for e in chain)
+                found[k].setdefault(sig, (where, chain))
+    for f in [site / "laws.html"] + sorted((site / "session").rglob("*.html"))[:6]:
+        if f.exists():
+            _html_walk(f.read_text(encoding="utf-8"), element=lambda c, w=f.name: take(c, w))
+    # A card as the pages draw it, in whatever holds it.
+    card = C.bill_card({"id": "HB1", "n": "HB 1", "year": "2026", "href": "bill/2026/hb1.html",
+                        "title": "relative to the state budget", "word": "Passed", "cls": "s-law",
+                        "byline": C.bill_byline({"display_full": "Rep. Alice Wade (D - Straf 15)",
+                                                 "party_code": "D", "slug": "alice-wade"},
+                                                ["House Judiciary"], "Courts", "2025-2026",
+                                                {"House Judiciary": "H37"})})
+    # bills.html's list, where app.js draws its cards: the ancestors a card
+    # is drawn in, out to the root.
+    held_in = []
+    _html_walk(Path("src/pages/bills.html").read_text(encoding="utf-8"),
+               element=lambda c: held_in.append(c) if "results" in c[0]["ids"] else None)
+    assert held_in, "bills.html has no #results for its cards"
+    _html_walk(card, element=lambda c: take(c + held_in[0], "a card in bills.html's #results"))
+    missing = [k for k, v in found.items() if not v]
+    assert not missing, f"the fixture's build and bill_card no longer write {missing}"
+    held = []
+    for k, (how, _test) in kinds.items():
+        tok = f"var(--tap-{how})"
+        for where, chain in found[k].values():
+            won = _css_won(rules, chain)
+            pad = {s_: won.get(f"padding-{s_}", ("0",))[0] for s_ in ("top", "bottom")}
+            mar = {s_: won.get(f"margin-{s_}", ("0",))[0] for s_ in ("top", "bottom")}
+            if any("".join(v.split()) != tok for v in pad.values()):
+                bad.append(f"{k} on {where}: padding {pad['top']} / {pad['bottom']}, not {tok} "
+                           f"(from {won.get('padding-top', ('', 'no rule', 0))[1]})")
+            elif how == "line" and any("".join(v.split()) != f"calc(-1*{tok})" for v in mar.values()):
+                bad.append(f"{k} on {where}: its padding is not given back as margin ({mar}), so the "
+                           f"line under it moves")
+        held.append(f"{k} {tok} ({len(found[k])})")
+    assert not bad, ("a link a finger taps is under 24px tall, or moves what is beside it (WCAG 2.5.8): "
+                     + "; ".join(bad[:5]))
+    return "ok", "each takes the tap token: " + ", ".join(held)
 
 
 @check("frontend", "a bill's Testify button counts the Senate's hearings, and says testimony opens again "

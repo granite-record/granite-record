@@ -6816,6 +6816,20 @@ table.cov{display:table;border-collapse:collapse;width:100%;min-width:30rem;font
    ink inside it. */
 a.cnum{text-decoration:underline;text-decoration-thickness:1px;text-underline-offset:.18em}
 a.cnum:hover{text-decoration-thickness:2px}
+/* A LINK IS 24px TALL TO A FINGER AT THE LEAST (the accessibility sweep of
+   29 October 2026, WCAG 2.5.8). At 390 a card's number was 20px tall, the
+   committee in its byline 22px, a Laws chapter's "RSA 3-A ›" 22px and a
+   member named in a sentence 19px. Each keeps the size of its words and is
+   drawn where it was: what grows is the box a tap lands in, by padding above
+   and below, and a box that takes a line of its own gives the same back in
+   margin, so nothing beside or under it moves. --tap-line is what a box one
+   line high needs: 1lh + 2 x max(0, (24px - 1lh) / 2) is 24px or more at
+   any size. --tap-text is an inline link's, whose box is its letters, 1em
+   tall and a little more: 1em + 24px - 1em. _tap_targets_24 holds each one
+   to them. */
+:root{--tap-line:max(0px,(24px - 1lh) / 2);--tap-text:max(0px,(24px - 1em) / 2)}
+.lw-go,a.cnum,.cmeta > a,.pbar > a{padding-block:var(--tap-line);margin-block:calc(-1 * var(--tap-line))}
+a.psent{padding-block:var(--tap-text)}
 /* THE TITLE IS THE BUTTON that opens the card in place, and reads as the
    title it is: the serif at the title's size, no button chrome. The head
    lights under the pointer as the whole head used to, and the button carries
