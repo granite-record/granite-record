@@ -51,7 +51,7 @@ holds a guide back the day a figure's words leave the law.
   medicare.gov, healthcare.gov, usa.gov, nhla.org, 603legalaid.org and the
   rest. One honest request each would tell us.
 - **The captions system is the pattern to copy.** A Windows Task Scheduler job
-  on the laptop does the asking (`livestreams.py --to-inbox`, 7:30 pm). It
+  on the laptop does the asking (`src/ops/livestreams.py --to-inbox`, 7:30 pm). It
   only ever adds files to the private bucket's inbox (`cloud.py inbox_add`),
   and the night takes them from there. An evening the laptop is off is simply
   skipped.
