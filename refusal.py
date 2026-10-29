@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-09.25
+# GRANITE_VERSION: 2026-09-09.26
 """
 One refusal stops the fetch lane, not just the run that was refused.
 
@@ -60,6 +60,23 @@ carries a lift to the bucket and tells the laptop of one -- and both are idle
 until something knocks. whose() takes a record's bytes, never its dict
 (_record), because knocks.json names a record by the sha of its bytes.
 
+THE KNOCK'S GATE (29 October 2026). The knock itself is built, and nothing
+starts it yet: `python3 src/fetch/gc_web/snapshot_gencourt.py --knock`, one
+request for one small file, which asks check(knock=True) first. That gate
+is knock_gate(), the one for every knock: GitHub's machine, main's own run
+and no dry run, a
+record on file the night may test (whose()), a knock due on the ladder, and
+the hours of the caller GRANITE_KNOCK_BY names -- "night", at the night's
+start, from its window's opening to KNOCK_LATEST; "hourly", the knock
+workflow's, outside every window and its margin, and only for a record noted
+KNOCK_SETTLE_MINUTES before the last window closed, so that every laptop
+that may ask has pulled it. A gate that says no exits KNOCK_NOT_NOW (4),
+"not asked"; 2 stays a refusal that is a person's. The workflow's steps
+around the knock are options here: --knock-look (whether one may go this
+hour), --knock-claim (the claim the bucket holds before the request),
+--knock-unclaim (a claim no knock took up is "not asked") and --person-line
+(the "a refusal is yours" sentence, person_line()).
+
 ON GITHUB'S MACHINE (25 September 2026) it is the same file. GitHub's
 machines start empty every night, so the record has to outlive the machine:
 `cloud.py state-down` brings R2's state/refused.json down as archive/refused.json
@@ -114,7 +131,8 @@ So on a stood-down laptop, and only there:
 
 Exit 4, not 2: 2 is "refused", and the lane and every fetcher read it as the
 address saying no. Waiting for the other machine's turn is the stand-down's
-arrangement, so it takes the stand-down's status.
+arrangement, so it takes the stand-down's status -- and so does the knock's
+"not now" (KNOCK_NOT_NOW).
 """
 
 # The bootstrap: _paths.py, found above this file, puts every code folder on the import path.
@@ -313,11 +331,29 @@ def standing():
     return None if hours > QUIET_HOURS else (d, hours)
 
 
-def check(who=""):
+def check(who="", knock=False):
     """Stop the caller if this address was refused recently -- and, on a
     stood-down laptop, while GitHub's night may be running, in the half hour
     before it, or until this laptop has read the bucket's refusal record since
-    the last one (gc_turn)."""
+    the last one (gc_turn).
+
+    knock=True is the knock's, and only the knock's: snapshot_gencourt.py
+    --knock is the one caller that may pass it (preflight reads every other
+    call). It turns the rule round. The knock asks only while a refusal is on
+    file -- one the night may test, at any age, never through standing() --
+    and only when knock_gate() lets the caller GRANITE_KNOCK_BY names ask now;
+    anything else exits KNOCK_NOT_NOW (4), "not asked", having asked
+    nothing. Never 2: that is "refused", which the knock's callers read as a
+    refusal that has become a person's, and a gate that only says "not now"
+    would otherwise tell the person a refusal was theirs whenever the
+    night's window opened."""
+    if knock:
+        ok, why = knock_gate(os.environ.get(KNOCK_BY_ENV))
+        if not ok:
+            print(f"\n{who or 'The knock'} is not asked: {why}.{_clock_note()}\n",
+                  file=sys.stderr)
+            sys.exit(KNOCK_NOT_NOW)
+        return
     s = standing()
     if not s:
         turn = gc_turn()
@@ -428,7 +464,7 @@ def redirected(err):
     return isinstance(err, urllib.error.HTTPError) and 300 <= err.code < 400
 
 
-def unavailable(err):
+def unavailable(err, head=None):
     """The seconds a 503 asks us to wait, when the error is an HTTP 503 whose
     body is not the firewall's page: 0 when it names no Retry-After. None for
     anything else -- a 429, a 403, a 503 carrying the block page, and a 503
@@ -437,14 +473,17 @@ def unavailable(err):
 
     classify() calls every 503 "refused" before it reads the body, and still
     does, so a 503 still ends a run at once; this is what names the kind
-    ("unavailable", the server's own "not now") for the record."""
+    ("unavailable", the server's own "not now") for the record. `head`, the
+    body's first 4,000 characters, for a caller that has read them already
+    (the knock, which reads an answer once): the body is not read again."""
     import urllib.error
     if not isinstance(err, urllib.error.HTTPError) or err.code != 503:
         return None
-    try:
-        head = err.read(4000).decode("utf-8", "replace")
-    except Exception:                                           # noqa: BLE001
-        head = ""
+    if head is None:
+        try:
+            head = err.read(4000).decode("utf-8", "replace")
+        except Exception:                                       # noqa: BLE001
+            head = ""
     if BLOCKED.search(head):
         return None
     raw = str((err.headers or {}).get("Retry-After") or "").strip()
@@ -633,6 +672,20 @@ KNOCK_BY_ENV = "GRANITE_KNOCK_BY"
 # What a knock's answer can be, as knocked() is told it: "whole" lifts the
 # record, "refused" makes it a person's, every other one is a failed knock.
 KNOCK_ANSWERS = ("whole", "refused", "dropped", "unavailable", "missing", "failed", "page")
+# THE KNOCK'S GATE (knock_gate). The night knocks only from its daily
+# window's start to this, UTC: nightly.ASK_UNTIL, 12:00, less the knock's
+# KNOCK_MINUTES and the forty minutes of the export a lift opens -- the
+# child's own copy of the night's asking_left(42), so that a change that
+# lost the night's gate still asks nothing after 11:18.
+KNOCK_LATEST = (11, 18)
+# An hourly knock tests only a record noted at least this long before the
+# last night window closed: every laptop gc_turn() lets ask has pulled the
+# bucket since, so holds the record, and stops at it. A margin over the
+# minutes a drop night runs after its record, not a measurement.
+KNOCK_SETTLE_MINUTES = 60
+# The hourly claim asks the gate at this much later too, so that the child,
+# seconds after it, does not decline on the clock or the rung.
+CLAIM_SLACK_MINUTES = 5
 
 
 def knock_settings():
@@ -881,7 +934,15 @@ def knocking(url):
     in knocks.json's "current" -- started from the record on file when it
     names another -- so that a knock killed mid-request still counts.
     Returns the entry. Raises, and so asks nothing, when there is no record
-    on file or knocks.json will not read."""
+    on file or knocks.json will not read.
+
+    THIS RUN'S OWN CLAIM IS THE KNOCK (the addendum's 1.6, rule 4). The
+    hourly caller sent a "claimed" entry to the bucket before this
+    (--knock-claim); when the last entry is this run's own claim (_own_claim:
+    the same run and attempt), it becomes the knock -- "no answer", at this
+    moment, with its address -- rather than a second entry beside it, which
+    would count two knocks for one request. So an entry still "claimed"
+    after the child has gone was never asked (--knock-unclaim)."""
     raw = MARK.read_bytes()
     sha = _sha(raw)
     k, ok = read_knocks()
@@ -899,7 +960,12 @@ def knocking(url):
              "attempt": os.environ.get("GITHUB_RUN_ATTEMPT", ""),
              "by": os.environ.get(KNOCK_BY_ENV, ""), "url": url, "answer": "no answer",
              "said": "", "retry_after": None}
-    cur.setdefault("knocks", []).append(entry)
+    knocks = cur.setdefault("knocks", [])
+    if knocks and isinstance(knocks[-1], dict) and _own_claim(knocks[-1]):
+        entry["claimed"] = knocks[-1].get("utc")
+        knocks[-1] = entry
+    else:
+        knocks.append(entry)
     _write_knocks(k)
     return entry
 
@@ -984,6 +1050,288 @@ def drops_allowed(now=None):
         return 2
     age = _utc(now).timestamp() - float(last.get("epoch") or 0)
     return 1 if age < RELAPSE_HOURS * HOUR else 2
+
+
+# ---- the knock's gate (29 October 2026) -------------------------------------
+#
+# One gate for every knock, whoever asks: knock_gate(). Its callers are two,
+# each named by GRANITE_KNOCK_BY (KNOCK_BY_ENV) in the knock child's
+# environment: "night", the night's own knock at its start, and "hourly",
+# the knock workflow outside the night's hours. Their hours are disjoint --
+# the night's inside its daily window, the hourly ones outside every window
+# and its margin -- so a caller named wrongly by a mistake refuses; it never
+# asks at an hour that is not its own. Nothing starts either caller yet:
+# snapshot_gencourt.py --knock is the knock, and check(knock=True) the gate
+# it asks first. The workflow's three steps around it are refusal.py's own
+# options (main): --knock-look, --knock-claim and --knock-unclaim, and
+# --person-line for the sentence the "a refusal is yours" check is sent.
+
+KNOCK_BY = ("night", "hourly")
+
+
+def knock_hours(by, now=None):
+    """(True, "") when the clock alone lets `by` knock at `now`; else
+    (False, why).
+
+      night   inside the daily night window (NIGHT_WINDOWS' window for every
+              day, from its start that day) and before KNOCK_LATEST, UTC;
+      hourly  neither `now` nor the end of the knock's KNOCK_MINUTES falls
+              in a night window or the START_MARGIN_MINUTES before one
+              (_window_or_soon), the one definition the laptop is held by
+              too: never 07:30 to 13:30 UTC today, nor 03:30 to 06:30 on a
+              Monday;
+      else    never.
+
+    The settle rule, which the hourly caller also needs, turns on the record
+    as well as the clock: knock_gate() applies it."""
+    from datetime import timedelta
+    u = _utc(now)
+    if by == "night":
+        daily = next(w for w in NIGHT_WINDOWS if w[0] is None)
+        (sh, sm), latest = daily[1], KNOCK_LATEST
+        start = u.replace(hour=sh, minute=sm, second=0, microsecond=0)
+        until = u.replace(hour=latest[0], minute=latest[1], second=0, microsecond=0)
+        w = night_window(u)
+        if w and daily[3] in w[2] and start <= u < until:
+            return True, ""
+        return False, (f"it is {u:%H:%M} UTC, and the night knocks only from {sh:02d}:{sm:02d} "
+                       f"to {latest[0]:02d}:{latest[1]:02d} UTC, inside its own window, so that "
+                       "the knock and the export a lift opens both end before the night stops "
+                       "asking")
+    if by == "hourly":
+        for t in (u, u + timedelta(minutes=KNOCK_MINUTES)):
+            hit = _window_or_soon(t)
+            if hit:
+                kind, s, e, what = hit
+                return False, (f"it is {u:%H:%M} UTC, and the hourly knock asks nothing "
+                               + (f"inside a night window" if kind == "window" else
+                                  f"in the {START_MARGIN_MINUTES} minutes before one")
+                               + f" ({s:%H:%M} to {e:%H:%M} UTC, for {what}), for any of "
+                               f"its {KNOCK_MINUTES} minutes")
+        return True, ""
+    return False, (f"{KNOCK_BY_ENV} is {by!r}, not one of {', '.join(KNOCK_BY)}: only the "
+                   "night's knock and the hourly one ask, each in its own hours")
+
+
+def _settled(epoch, now=None):
+    """(True, "") when a record noted at `epoch` was noted at least
+    KNOCK_SETTLE_MINUTES before the last night window to close by `now`
+    (the hourly caller's settle rule); else (False, why).
+
+    WHY (the red team of 29 October 2026, its first finding). A stood-down
+    laptop starts a General Court request outside the windows only once its
+    pull read the bucket after the last window closed (gc_turn). A record
+    in the bucket before that is on every laptop that may ask, and stops it
+    there. A record a late night noted after it -- GitHub has started nights
+    past 12:30 UTC -- may not be, and an hourly knock beside such a laptop is
+    two machines asking at once. So the record's own `epoch`, the drop or
+    the relapse that wrote it and not the chain's start, is what is judged;
+    and such a record waits for the next morning's night knock, which asks
+    inside a window, where the laptop asks nothing."""
+    end = last_window_end(now)
+    if end is not None and float(epoch) <= end.timestamp() - KNOCK_SETTLE_MINUTES * 60:
+        return True, ""
+    return False, (f"the refusal was noted at {_stamp(epoch)}, less than {KNOCK_SETTLE_MINUTES} "
+                   f"minutes before the last night window closed"
+                   + (f" ({_stamp(end.timestamp())})" if end is not None else "")
+                   + ", so a laptop that may ask now may not hold it yet: the next morning's "
+                   "night knocks, and the hourly knock after the next window closes")
+
+
+def knock_gate(by, now=None):
+    """(True, "") when a knock by `by` ("night" or "hourly") may go now;
+    else (False, why), in this project's words. All must hold:
+
+      1. GitHub's machine (GITHUB_ACTIONS "true");
+      2. not a dry run: DRY_RUN not "true", and GITHUB_REF MAIN_REF exactly;
+      3. a refusal record on file that reads, at any age;
+      4. whose() says it is the night's to test (its kind, machine, ref and
+         run, the chain in knocks.json, the switch and the settings);
+      5. knock_due() says a knock is due now;
+      6. the clock lets `by` ask (knock_hours);
+      7. for "hourly", the record settled (_settled), by its own epoch.
+
+    check(knock=True), --knock-claim and --knock-look are its callers."""
+    if by not in KNOCK_BY:
+        return knock_hours(by, now)
+    if os.environ.get("GITHUB_ACTIONS") != "true":
+        return False, "only GitHub's machine knocks, and this is not it"
+    ref = os.environ.get("GITHUB_REF", "")
+    if os.environ.get("DRY_RUN") == "true" or ref != MAIN_REF:
+        return False, (f"a dry run knocks nothing (DRY_RUN {os.environ.get('DRY_RUN')!r}, a run "
+                       f"of {ref or 'no ref'}): only main's own run may")
+    try:
+        raw = MARK.read_bytes()
+    except OSError:
+        return False, "no refusal is on file, so there is nothing to knock for"
+    doc = _record(raw)[0]
+    who, why = whose(raw, now=now)
+    if who != "night":
+        return False, f"the refusal on file is a person's to clear, not the night's to test: {why}"
+    due, at = knock_due(raw, now=now)
+    if not due:
+        return False, ("no knock is due" + (f": the next is due from {_stamp(at)}" if at else ""))
+    ok, why = knock_hours(by, now)
+    if not ok:
+        return False, why
+    if by == "hourly":
+        ok, why = _settled(doc.get("epoch") or 0, now)
+        if not ok:
+            return False, why
+    return True, ""
+
+
+def knock_claim(now=None):
+    """--knock-claim, the hourly caller's: (claimed, why). The gate, for the
+    caller GRANITE_KNOCK_BY names, at `now` and again CLAIM_SLACK_MINUTES
+    later, with the same knocks.json; only when both pass is a "claimed"
+    entry of this run's appended to the chain, which the workflow then sends
+    to the bucket BEFORE the knock step may run (the addendum's 1.6). An
+    answer the bucket never hears of is then a person's, not a knock asked
+    again: a claim older than KNOCK_JOB_MINUTES that no answer replaced makes
+    the record a person's (whose(), condition 6). The claim names no address
+    -- this file names none of the General Court's -- and the knock writes its
+    own into the entry it takes over (knocking)."""
+    from datetime import timedelta
+    by = os.environ.get(KNOCK_BY_ENV)
+    u = _utc(now)
+    for t in (u, u + timedelta(minutes=CLAIM_SLACK_MINUTES)):
+        ok, why = knock_gate(by, now=t)
+        if not ok:
+            return False, (why if t == u else f"{CLAIM_SLACK_MINUTES} minutes from now, {why}")
+    raw = MARK.read_bytes()
+    k, ok = read_knocks()
+    if not ok:
+        return False, f"{knocks_file()} does not read, and is not written over"
+    sha = _sha(raw)
+    cur = k.get("current")
+    if not (isinstance(cur, dict) and cur.get("refusal") == sha):
+        doc = _record(raw)[0]
+        cur = {"refusal": sha, "since": float(doc.get("epoch") or 0), "knocks": [],
+               "person": None, "carried_from": None, "relapses": 0}
+        k["current"] = cur
+    t = u.timestamp()
+    cur.setdefault("knocks", []).append({
+        "utc": _stamp(t), "epoch": t, "run_id": os.environ.get("GITHUB_RUN_ID", ""),
+        "attempt": os.environ.get("GITHUB_RUN_ATTEMPT", ""), "by": by, "url": "",
+        "answer": "claimed", "said": "", "retry_after": None})
+    _write_knocks(k)
+    return True, f"claimed at {_stamp(t)}: the claim goes to the bucket before the knock"
+
+
+def knock_unclaim():
+    """--knock-unclaim: this run's own entries that still read "claimed"
+    become "not asked" ("the knock step ended before its request"); any
+    other entry is left as it is. knocking() turns a claim into the knock
+    BEFORE the request, so a claim still standing once the knock step has
+    ended -- the gate declined, the lock was held, a crash, the step's kill
+    before knocking() -- asked nothing, and counts nowhere once marked
+    (chain(): "not asked" is not counted). Returns how many were marked; 0
+    is nothing to do. Raises when knocks.json does not read: it is never
+    written over, and a claim left standing becomes a person's, the safe
+    way."""
+    k, ok = read_knocks()
+    if not ok:
+        raise RuntimeError(f"{knocks_file()} does not read, so no claim in it can be marked")
+    cur = k.get("current")
+    marked = 0
+    for x in (cur.get("knocks") or []) if isinstance(cur, dict) else []:
+        if isinstance(x, dict) and _own_claim(x):
+            x.update(answer="not asked", said="the knock step ended before its request")
+            marked += 1
+    if marked:
+        _write_knocks(k)
+    return marked
+
+
+def person_line(d=None, k=None, now=None, tested=False, untested=False):
+    """The one sentence that says a refusal is a person's: "" when no record
+    is on file or the night may test it (whose()), else the record, why it
+    is a person's, and what clears it, in this project's words and none of a
+    server's. For a block-type answer -- a record of the kind "refused", or a
+    knock answered that way -- it says the IT office or the Clerk's office may
+    need a message. The night sends it to the "a refusal is yours" check
+    (nightly.person_alerts_of), and so do the knock workflow's two pingers.
+
+    `tested`: only a record the night was testing -- knocks.json's "current"
+    names it -- for the knock workflow, which reports the records it tests
+    and leaves every other to the night. `untested`: a record the night may
+    test is a person's all the same, because nothing in this build knocks
+    for it (nightly.person_alerts_of, until the night knocks)."""
+    doc, raw = _record(d)
+    if raw is None:
+        return ""
+    who, why = whose(raw, k, now)
+    if who == "night" and untested:
+        who, why = "person", ("the night may test this kind of refusal itself, but nothing in "
+                              "this build knocks for it yet")
+    if who != "person":
+        return ""
+    c = chain(raw, k)
+    if tested and not (c and c["named"]):
+        return ""
+    told_no = doc.get("kind") == "refused" or bool(c and c.get("person"))
+    epoch = doc.get("epoch")
+    try:
+        when = _stamp(float(epoch))
+    except (TypeError, ValueError):
+        when = "an unknown time"
+    return (f"A REFUSAL IS YOURS: the General Court refusal met by {doc.get('where') or 'a fetch'} "
+            f"at {when} is a person's to clear: {why}. Nothing asks the General Court's website "
+            "or its database for it until a person does: python3 netcheck.py on the laptop says "
+            "what kind it was (read its table, not its last line), then python3 "
+            "src/ops/cloud.py clear-refusal, and python3 refusal.py --clear where a copy is on "
+            "file."
+            + (" The address was told no: the General Court's IT office or the Clerk's office "
+               "may need a message before anything asks again." if told_no else ""))
+
+
+def knock_look(now=None):
+    """--knock-look, the hourly workflow's look: {"go", "until", "why"}.
+
+    go     True only when knock_gate("hourly") passes now -- GitHub, main,
+           not a dry run, a record the night tests, a knock due, the hourly
+           hours and the settle rule -- and the knock job may still end
+           before the night's hours: now is no later than `until`;
+    until  the next window's start, less its START_MARGIN_MINUTES, the knock
+           job's KNOCK_JOB_MINUTES and the knock's KNOCK_MINUTES, as an
+           epoch: the quiet job queues no knock after it;
+    why    one line, for the run's log and its dry runs' proof: whose the
+           record is, when its next knock is due, the settings, and why not.
+    """
+    from datetime import timedelta
+    u = _utc(now)
+    hourly, every, days, bad = knock_settings()
+    n = next_window(u)
+    until = (n[0] - timedelta(minutes=START_MARGIN_MINUTES + KNOCK_JOB_MINUTES + KNOCK_MINUTES)
+             if n else None)
+    ok, gate = knock_gate("hourly", now=u)
+    go = ok and until is not None and u <= until
+    said = []
+    try:
+        raw = MARK.read_bytes()
+    except OSError:
+        raw = None
+    if raw is None:
+        said.append("no refusal is on file")
+    else:
+        who, why = whose(raw, now=u)
+        said.append(f"the refusal on file is {'the night' if who == 'night' else 'a person'}'s"
+                    f": {why}")
+        if who == "night":
+            due, at = knock_due(raw, now=u)
+            said.append("a knock is due now" if due else
+                        f"the next knock is due from {_stamp(at)}" if at else "no knock is due")
+    said.append(bad or f"the settings: one an hour for {hourly} hours from the refusal, then one "
+                       f"in each {every}-hour span, for {days} days")
+    if go:
+        said.append(f"the hourly knock may go now, its job ending by {_stamp(until.timestamp())}")
+    elif ok:
+        said.append("but the knock job could not end before the night's hours")
+    else:
+        said.append(f"no hourly knock now: {gate}")
+    return {"go": go, "until": int(until.timestamp()) if until is not None else "",
+            "why": "; ".join(s.replace("\n", " ") for s in said)}
 
 
 # ---- one worker ------------------------------------------------------------
@@ -1141,6 +1489,9 @@ def _tell_the_starter(who, w):
 
 STANDDOWN = Path("archive/runs-in-the-cloud.json")
 STOOD_DOWN = 4          # the exit status of a job this machine has handed over
+# The knock's "not asked" (check(knock=True)): the stand-down's status, for
+# the same reason -- waiting for a turn is not the address saying no.
+KNOCK_NOT_NOW = STOOD_DOWN
 
 
 def stood_down():
@@ -1475,7 +1826,25 @@ def main():
     ap.add_argument("--stand-down", action="store_true",
                     help="hand the nightly and publishing to GitHub: write "
                          f"{STANDDOWN}; a person's decision")
+    # The knock workflow's steps (THE KNOCK'S GATE): each prints what the
+    # step's outputs are, key=value lines for GITHUB_OUTPUT, on stdout, and
+    # its sentence on stderr, for the log. None asks anything of anyone.
+    ap.add_argument("--knock-look", action="store_true",
+                    help="whether an hourly knock may go now: go=, until= and why= lines")
+    ap.add_argument("--knock-claim", action="store_true",
+                    help="claim the knock for this run, if the gate lets it go now and "
+                         f"{CLAIM_SLACK_MINUTES} minutes from now: claimed= and why= lines")
+    ap.add_argument("--knock-unclaim", action="store_true",
+                    help="mark this run's claim that no knock took up as not asked")
+    ap.add_argument("--person-line", action="store_true",
+                    help="write the \"a refusal is yours\" sentence for a refusal the night "
+                         "was testing, or nothing, to --person-file")
+    ap.add_argument("--person-file", metavar="PATH",
+                    help="where --person-line and --knock-look write that sentence: "
+                         "logs/alert-person.txt, the body of the third check's /fail")
     a = ap.parse_args()
+    if a.knock_look or a.knock_claim or a.knock_unclaim or a.person_line:
+        return knock_step(a)
     if a.stand_down:
         if STANDDOWN.exists():
             print(f"{STANDDOWN} is already on file: this machine is stood down.")
@@ -1547,6 +1916,54 @@ def main():
     d, hours = s
     print(f"refused {hours:.1f}h ago by {d.get('where')}: {d.get('why')}")
     print("every fetch is stopped until: python3 refusal.py --clear")
+    return 0
+
+
+def knock_step(a):
+    """The knock workflow's steps, one per option: --knock-look, then
+    --knock-claim, --knock-unclaim, and --person-line, each optionally with
+    --person-file. Exit 0 whatever the answer; 1 only for what went wrong
+    (an unclaim that cannot read knocks.json), so a step fails visibly
+    rather than saying nothing."""
+    def out(**kv):
+        for key, value in kv.items():
+            print(f"{key}={str(value).replace(chr(10), ' ')}", flush=True)
+
+    def person(text):
+        if a.person_file:
+            p = Path(a.person_file)
+            p.parent.mkdir(parents=True, exist_ok=True)
+            p.write_text(text + ("\n" if text else ""), encoding="utf-8")
+    if a.knock_look:
+        look = knock_look()
+        out(go="true" if look["go"] else "false", until=look["until"], why=look["why"])
+        print(f"the knock's look: {look['why']}.{_clock_note()}", file=sys.stderr)
+        # Only outside the night's hours: inside them the bucket the look
+        # read can be minutes behind the night, which reports its own record.
+        line = person_line(tested=True) if knock_hours("hourly")[0] else ""
+        person(line)
+        if line:
+            print(line, file=sys.stderr)
+        return 0
+    if a.knock_claim:
+        claimed, why = knock_claim()
+        out(claimed="true" if claimed else "false", why=why)
+        print(f"the knock's claim: {why}.{_clock_note()}", file=sys.stderr)
+        return 0
+    if a.knock_unclaim:
+        try:
+            n = knock_unclaim()
+        except RuntimeError as e:
+            print(f"the knock's claim could not be marked: {e}. A claim still standing in the "
+                  f"bucket becomes a person's after {KNOCK_JOB_MINUTES} minutes, and the "
+                  "\"a refusal is yours\" check is told.", file=sys.stderr)
+            return 1
+        print(f"this run's claim, which no knock took up, is marked not asked ({n})." if n else
+              "no claim of this run's stands unanswered: nothing to mark.", file=sys.stderr)
+        return 0
+    line = person_line(tested=True)
+    person(line)
+    print(line or "no refusal the night was testing has become a person's.", file=sys.stderr)
     return 0
 
 

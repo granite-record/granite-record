@@ -395,7 +395,12 @@ lives under `state/`, so a refusal the night meets outlives its machine and
 stops the laptop's fetches too. Beside the refusal, `knocks.json` (since 29
 October 2026) is where the night's own test of one keeps its state: the
 knocks made for it, and every refusal a knock lifted, its exact text kept.
-Nothing knocks yet (`refusal.py`'s ladder has no caller). Once something
+Nothing knocks yet. The knock itself is built --
+`src/fetch/gc_web/snapshot_gencourt.py --knock`, one request for one small file, never
+retried and following no redirect, behind `refusal.check(knock=True)`,
+whose gate (`refusal.knock_gate()`) holds the night's caller to 08:00-11:18
+UTC and an hourly one to outside every night window, and asks nothing, exit
+4, otherwise -- and nothing starts it. Once something
 does, `state-up` on main's own night, with the night's testing switched on
 (`NIGHT_KNOCK`), sends `knocks.json` with the lift in it and only then moves
 the bucket's `state/refused.json` to `replaced/`, when that night's knock

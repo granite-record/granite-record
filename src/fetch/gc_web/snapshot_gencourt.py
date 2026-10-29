@@ -1,11 +1,12 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.16
+# GRANITE_VERSION: 2026-09-04.17
 """
 Daily snapshot of the NH General Court bulk data files.
 
     python3 src/fetch/gc_web/snapshot_gencourt.py --dir nh-archive              # archive only
     python3 src/fetch/gc_web/snapshot_gencourt.py --dir nh-archive --into .     # archive, then install for the build
     python3 src/fetch/gc_web/snapshot_gencourt.py --plan                        # what it would ask for; no request
+    python3 src/fetch/gc_web/snapshot_gencourt.py --knock                       # GitHub's knock: one request, or none
 
 Docket.txt and its siblings are LIVE views, not archives. Nothing guarantees
 last session's rows will still be there next year. Run this daily and you
@@ -45,6 +46,31 @@ whose body is not the block page, which still ends the run at once and keeps
 the server's Retry-After. In the week after GitHub's knock lifted a refusal
 (refusal.drops_allowed) one dropped connection ends the run, page or file,
 with no retry: a drop then is evidence, not bad luck.
+
+THE KNOCK (29 October 2026; refusal.py, THE KNOCK'S GATE). --knock is the
+one request GitHub makes to test a refusal its own night met and may lift
+itself: GET Counties.txt (KNOCK_NAME), a file the night asks for every
+night, with this script's own User-Agent, through the opener that follows
+no redirect, never retried, never the page that rebuilds the files. It asks
+refusal.check(knock=True) first, and nothing at all unless that gate lets
+the caller GRANITE_KNOCK_BY names ask now -- else exit 4, "not asked". The
+knock is written down before it is made (refusal.knocking), and the child
+ends itself KNOCK_KILL_SECONDS later, exit 124, if no answer has come,
+leaving that entry "no answer": a failed knock. The answer decides:
+
+  0  lifted: a 200 that is not the firewall's page and not a web page,
+     whatever its size -- the files are often empty until the page
+     rebuilds them, and an empty export is never a refusal;
+  2  a person's, for good: a 403, a 429, the block page at any status, any
+     redirect, a Retry-After on anything but a 503, a 503 with the block
+     page or one asking more than refusal.RETRY_AFTER_MOST;
+  1  a failed knock, the next rung: dropped, reset or timed out, a bare 503
+     (kept with its Retry-After), a 404 or 410, another error, a web page;
+  4  not asked: the gate, the lock, or a knock that could not be written
+     down first.
+
+Nothing starts it yet. Every answer it records is in this project's words,
+a status number or a size, never a server's.
 
 AND IT FEEDS THE BUILD. The build reads Docket.txt and the rest from the
 repository root, and nothing refreshed those: on the 12th they were the copies
@@ -104,6 +130,7 @@ import os
 import random
 import re
 import shutil
+import threading
 import time
 import urllib.error
 import urllib.request
@@ -303,6 +330,123 @@ def get(url, timeout=120):
     req = urllib.request.Request(url, headers=UA)
     with _OPENER.open(req, timeout=timeout) as r:
         return r.read()
+
+
+# THE KNOCK (the docstring; refusal.py, THE KNOCK'S GATE). One file, asked
+# once: Counties.txt, which the night asks for every night and is a couple
+# of hundred bytes. KNOCK_TIMEOUT bounds one read; the child's own kill,
+# KNOCK_KILL_SECONDS after the knock is written down, bounds the whole
+# request, and ends it with KNOCK_KILLED, the status the night's
+# run(timeout=) gives a step it kills (nightly.RUN_KILLED).
+KNOCK_NAME = "Counties.txt"
+KNOCK_TIMEOUT = 60
+KNOCK_KILLED = 124
+KNOCK_KILL_SECONDS = refusal.KNOCK_MINUTES * 60
+# What may open a knock's answer: an HTML page is not the file (a
+# maintenance page is an outage), as read_one() reads one.
+NOT_A_FILE = ("<!doctype", "<html", "<?xml")
+
+
+def knock_error(e):
+    """(answer, said, retry_after) for a knock that raised `e`: one of
+    refusal.KNOCK_ANSWERS, this project's words for it, and the seconds a
+    503 asked for. A redirect, a 403, a 429, the block page at any status, a
+    Retry-After on anything but a 503, and a 503 whose Retry-After does not
+    read are "refused" -- the address saying no, a person's; a 503 that is
+    not the block page is "unavailable", which refusal.knocked() makes a
+    person's when it asks longer than RETRY_AFTER_MOST; the rest is a
+    failed knock."""
+    if refusal.redirected(e):
+        return "refused", f"HTTP {e.code}, a redirect, which is not the file and is not followed", None
+    if isinstance(e, urllib.error.HTTPError):
+        try:
+            head = e.read(4000).decode("utf-8", "replace")
+        except Exception:                                   # noqa: BLE001
+            head = ""
+        if refusal.BLOCKED.search(head):
+            return "refused", f"the firewall's block page, with HTTP {e.code}", None
+        if e.code == 503:
+            ra = refusal.unavailable(e, head=head)
+            if ra is None:
+                return "refused", "HTTP 503 with a Retry-After that does not read", None
+            return "unavailable", "HTTP 503" + (f", asking {ra:,} seconds" if ra else ""), ra
+        if e.code in (403, 429):
+            return "refused", f"HTTP {e.code}", None
+        if (e.headers or {}).get("Retry-After"):
+            return "refused", f"HTTP {e.code} with a Retry-After", None
+        return ("missing" if e.code in (404, 410) else "failed"), f"HTTP {e.code}", None
+    kind = refusal.classify(e)
+    inner = getattr(e, "reason", None) or e
+    name = inner if isinstance(inner, str) else type(inner).__name__
+    if kind == "dropped":
+        return "dropped", f"no answer: {name}"[:200], None
+    return "failed", f"no answer that is a page: {name}"[:200], None
+
+
+def knock_body(status, body):
+    """(answer, said, None) for a knock answered with `status` and `body`:
+    "whole" for a 200 that is neither the firewall's page nor a web page,
+    whatever its size; "refused" for the block page; "page" for a web page;
+    "failed" for any other status."""
+    head = body[:4000].decode("utf-8", "replace")
+    if refusal.classify(body=head) == "refused":
+        return "refused", f"the firewall's block page, served as {status}", None
+    if status != 200:
+        return "failed", f"HTTP {status}, not the file", None
+    if head.lstrip(LEADING).lower().startswith(NOT_A_FILE):
+        return "page", f"a web page, not the file ({len(body):,} bytes)", None
+    return "whole", f"{KNOCK_NAME}, {len(body):,} bytes", None
+
+
+def _knock_killed(held):
+    """The child's own kill: no answer within KNOCK_KILL_SECONDS. The knock
+    stays "no answer", a failed knock, as written down before it was made."""
+    print(f"\nTHE KNOCK WAS STOPPED: no answer within {KNOCK_KILL_SECONDS:.0f} seconds, its "
+          f"limit. It counts as a failed knock (exit {KNOCK_KILLED}).", file=sys.stderr, flush=True)
+    sys.stdout.flush()
+    held.release()
+    os._exit(KNOCK_KILLED)
+
+
+def knock(held):
+    """The knock: one request, judged, and written down before and after.
+    0 lifted, 1 not answered, 2 a person's, 4 not asked (the docstring's THE
+    KNOCK). check(knock=True) has let it come here; this asks only the one
+    file, once, through _OPENER, which follows no redirect."""
+    url = BASE + KNOCK_NAME
+    if not held.still():
+        print("  the knock is not asked: the run holding archive/.lock is gone.", flush=True)
+        return refusal.KNOCK_NOT_NOW
+    try:
+        refusal.knocking(url)
+    except Exception as e:                                  # noqa: BLE001
+        print(f"  the knock is not asked: it could not be written down first ({type(e).__name__}: "
+              f"{e}).", flush=True)
+        return refusal.KNOCK_NOT_NOW
+    timer = threading.Timer(KNOCK_KILL_SECONDS, _knock_killed, args=(held,))
+    timer.daemon = True
+    timer.start()
+    try:
+        req = urllib.request.Request(url, headers=UA)
+        try:
+            with _OPENER.open(req, timeout=KNOCK_TIMEOUT) as r:
+                answer, said, ra = knock_body(getattr(r, "status", 200), r.read())
+        except Exception as e:                              # noqa: BLE001
+            answer, said, ra = knock_error(e)
+        try:
+            became = refusal.knocked(answer, said, ra)
+        except Exception as e:                              # noqa: BLE001
+            print(f"  the knock was answered ({said}), but the answer could not be written down "
+                  f"({type(e).__name__}: {e}): it stands as \"no answer\".", flush=True)
+            return 2 if answer == "refused" else 1
+    finally:
+        timer.cancel()
+    print(f"  the knock: {url} answered: {said}: "
+          + {"lifted": "the refusal is lifted",
+             "person": "the refusal is a person's to clear now",
+             "kept": "the refusal on file is not the one knocked for, and stays"}.get(
+              became, "not the file: the next knock waits for its rung"), flush=True)
+    return {"lifted": 0, "person": 2}.get(became, 1)
 
 
 # THE ROLL CALLS MAY HOLD NOTHING YET (5 October 2026). Between a new term's
@@ -532,6 +676,9 @@ def main():
     ap.add_argument("--delay", type=float, default=4.0,
                     help="seconds between files (default 4), jittered")
     ap.add_argument("--plan", action="store_true", help="list the requests; make none")
+    ap.add_argument("--knock", action="store_true",
+                    help=f"GitHub's knock: one request for {KNOCK_NAME}, only when "
+                         "refusal.check(knock=True) lets it go now; nothing else is asked")
     a = ap.parse_args()
 
     if a.plan:
@@ -546,6 +693,12 @@ def main():
     # until it is taken out of watchers/gc_lane.queue.
     refusal.stand_down("The daily snapshot", "GitHub's nightly takes the day's "
                        "files now, and they reach this machine from R2.")
+    if a.knock:
+        # THE KNOCK: its own gate first, which asks nothing and exits 4 unless
+        # a knock may go now; then the lock, as every fetch takes it.
+        refusal.check("The knock", knock=True)
+        with refusal.hold("the knock") as held:
+            return knock(held)
     refusal.check("The daily snapshot")
     with refusal.hold("the daily snapshot") as held:
         return run(a, held)
@@ -723,8 +876,9 @@ def run(a, held):
                   "files arrived, and a build from some of tonight's files and some "
                   "of an earlier day's is a record of no day.")
     if stopped == "refused":
-        print("\nRefused. refusal.py holds every fetch for a day; netcheck.py says "
-              "what kind it was.")
+        print("\nRefused, and recorded. A fetch started by hand waits a day for it; the lane "
+              "and GitHub's night wait until a person clears it (refusal.py); netcheck.py "
+              "says what kind it was.")
         return 2
     if stopped or failed:
         print("\nA failure means that file was unreachable tonight, not that it is "

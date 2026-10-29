@@ -224,3 +224,66 @@ that made it.
     no code**: DEVIATIONS 20 records it, and `_refusal_relapse` already
     pins the carry of a record noted within `RELAPSE_HOURS` of a lift
     whatever was cleared between (it removes the record and notes a new one).
+
+## Commit 4: the knock child
+
+28. **The knock asks through `snapshot_gencourt._OPENER`**
+    (`refusal.no_redirect_opener()`, DEVIATIONS 25), not a new
+    `_no_redirect_opener()`: one opener without any redirect handler, which
+    H6 reads as `_OPENER.handlers`.
+29. **C5's "a record 2 h old gives exit 4" does not hold under the hourly
+    ladder**: a record noted at 08:27 is due at 10:27 (an hour's rung from
+    its start, design_final's 16-hour first rung being gone). `_the_knock`
+    tests "a knock 20 minutes before, in the same rung" instead, and the
+    hourly caller's late-record cases are H11's (`_knock_settles`).
+30. **Only a 200 lifts.** design_final §2.4 says "200"; another 2xx is a
+    failed knock ("not the file"), the stricter reading of something it does
+    not name.
+31. **The knock reads its answer with its own judges** (`knock_error`,
+    `knock_body`), design_final §2.4's table, not `classify()` alone:
+    `classify()` calls a 503 "refused" before reading its body, and is
+    unchanged. `refusal.unavailable()` gained `head=`, so the knock reads a
+    body once. What the knock records (`said`) is this project's words -- a
+    status number, a size, an exception's type -- never a server's reason
+    phrase or body, so `person_line()` never carries one into an email.
+32. **The gate's own `whose()` test is implied by `knock_due()`'s**
+    (DEVIATIONS 19): the mutation that removes only the gate's survives
+    `_the_knock`, and removing both is killed. Kept, as designed, like
+    DEVIATIONS 11.
+33. **The claim names no address** (`"url": ""`): `refusal.py` holds no
+    literal General Court address (`_every_fetcher_checks_refusal` reads any
+    script with one as a fetcher). `knocking()` writes the address into the
+    claim it takes over, with the request's own time as `epoch` and the
+    claim's as `claimed`, so the ladder counts the request.
+34. **`--person-line` (the knock job's "What the refusal is now") reports
+    only a record the chain names** (`person_line(tested=True)`), as
+    `--knock-look` does: the addendum §6.1 says the knock workflow reports
+    "a record it was testing"; §6.1's `person_line` paragraph states the
+    restriction for the look only. The night (`person_alerts_of`, commit 5)
+    reports every record.
+35. **The look writes the person's line only where the hourly clock allows**
+    (`knock_hours("hourly")`: the windows and their margin, for the knock's
+    two minutes), not the settle rule, which is about which laptops may ask,
+    not whether the bucket the look read is behind the night.
+36. **A knock whose answer cannot be written down** (`knocked()` raising)
+    stays "no answer" (a failed knock) and exits 2 for a block-type answer,
+    1 otherwise, so the run that heard a refusal stops even when its record
+    failed. A lost lock before the request, or a knock that cannot be
+    written down first, exits 4: nothing was asked, and `--knock-unclaim`
+    marks a claim "not asked". The child's own kill releases a lock it took
+    before `os._exit(124)`.
+37. **Held when `knock.yml` exists (commit 8)**: H3's two cron lines, H6's
+    one invocation in the knock step, H7's two `if`s, and which steps set
+    `GRANITE_KNOCK_BY`. `_the_knock` already holds that no code but
+    `nightly.knock()` sets it, and no workflow line but a step env entry
+    `GRANITE_KNOCK_BY: hourly` in `knock.yml`.
+38. **H3 adds a merged-windows case** (Monday's weekly window running into
+    the daily one, which `night_window()` gives as one span): the night's
+    caller still starts at its own window's opening, a rule the moved-window
+    sweep alone could not tell from a copy of 08:00.
+39. **The look's `why` carries the settings in force**, or why they do not
+    read, as the addendum's §10 step 5 wants the dev dry run's log to show.
+40. **snapshot_gencourt's closing line** ("refusal.py holds every fetch for
+    a day", design_final §16's drift) now says what stops at a refusal
+    today: a hand fetch a day, the lane and GitHub's night until a person
+    clears it. The commit that wires the knock (6) adds the knock to it.
