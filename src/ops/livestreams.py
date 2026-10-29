@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-25.17
+# GRANITE_VERSION: 2026-09-25.18
 """
 New livestreams, every night: the recordings the House and Senate channels
 finished since the last run, indexed and captioned, and read into the start
@@ -357,6 +357,13 @@ GitHub's and warns when the record is missing or two evenings old
 state records when an entry last arrived ("inbox_arrived"), so the verdict
 can say the inbox has gone silent while recordings wait (nightly.inbox_silent).
 
+The record also names each waiting recording the laptop has closed with no
+captions published (29 October 2026, "none_published"), and the night
+records each as it records its own closure: none published, the schedule's
+approximate start kept, no longer waiting, so its warnings stop repeating
+(take_laptop_closed, WHAT THE LAPTOP CLOSED). Only on the laptop's word;
+and captions that arrive in the inbox for one later are taken as any other.
+
 The night brings the inbox down before this step (cloud.py inbox-down) and
 --since-state --inbox DIR takes a waiting recording's captions from it: only
 a recording its state lists as waiting, and only a file whose size and sha256
@@ -444,6 +451,11 @@ LAPTOP_REFUSAL = Path("archive/youtube.refused.json")
 # when it is asked again, whether a run that captioned something has heard
 # it say so ("vouched"), and "closed" once it is no longer asked.
 ASKED = "asked"
+# The laptop's newest run record (--to-inbox), where the night's cloud.py
+# inbox-down puts it beside the inbox (cloud.INBOX_RUN_LOCAL, which preflight
+# holds this to): what --since-state --inbox reads the laptop's closures from
+# (take_laptop_closed).
+LAPTOP_RUN = Path("archive/captions-laptop.json")
 WORK = Path("work")
 MARKERS = Path("candidate_segments.json")
 # yt-dlp's warnings and what it said about an ask that brought no captions,
@@ -459,8 +471,10 @@ CHANNELS = {c: cid for c, (cid, _name) in FCI.CHANNELS.items()}
 COLS = ["video_id", "title", "title_parsed", "parsed_committee", "parsed_date",
         "date_from", "has_start_time", "start_eastern", "actual_start_utc",
         "actual_end_utc", "duration_iso", "published_at"]
-# Quota units per call, from the API's own table. Nothing that costs more --
-# search.list at 100, the caption methods at 50 and 200 -- is ever called.
+# Quota units per call, from the API's own table. Nothing else is ever
+# called: not the caption methods, at 50 and 200 units, and not search.list,
+# which since 1 June 2026 is not charged to these units at all but to an
+# allowance of its own, 100 calls a day (the API's revision history).
 COST = {"channels": 1, "playlistItems": 1, "videos": 1}
 
 # yt-dlp, as fetch_archive_captions.fetch runs it but for the pauses and the
@@ -1826,6 +1840,57 @@ def inbox_wants(v):
     return not (c == "failed" and int(v.get("tries") or 0) >= MAX_TRIES)
 
 
+# WHAT THE LAPTOP CLOSED (29 October 2026). The laptop takes a recording to
+# have no captions published as a night does -- at its last ask, in a run
+# that captioned something (laptop_remember's "none-published") -- and then
+# asks for it no more and sends nothing. The night, refused by YouTube, went
+# on listing it as waiting and warned of it every night: kS2PBKXOkzA, the
+# House Special Committee on COVID Response Efficacy of 8 October 2026,
+# which the laptop had closed. So each run's record names what the laptop
+# has closed of what the night's state lists as waiting ("none_published"),
+# and the night records each as it records a closure of its own: none
+# published, the schedule's approximate start kept, asked for by neither
+# machine again. Only on the laptop's word, never on the night's own; only
+# a recording still waiting once the inbox is taken, so captions that came
+# with the same record win; and one whose captions arrive in the inbox
+# later is taken and read as any other (laptop_closed).
+
+def laptop_closed(v):
+    """Whether the night took a recording to have no captions on the
+    laptop's word alone (take_laptop_closed): captions arriving for it in the
+    inbox after all are news, and are taken."""
+    return isinstance(v, dict) and v.get("status") == "finished" \
+        and v.get("captions") == "none-published" and v.get("by") == "laptop"
+
+
+def take_laptop_closed(st, now, path=LAPTOP_RUN):
+    """The recordings the laptop's newest run record (`path`, as inbox-down
+    brought it) names as closed with no captions published, recorded so in
+    the state where the state still lists them as waiting: [video]. Nothing
+    where there is no record, or it will not read."""
+    try:
+        rec = json.loads(Path(path).read_text(encoding="utf-8"))
+    except (OSError, ValueError, UnicodeDecodeError):
+        return []
+    named = rec.get("none_published") if isinstance(rec, dict) else None
+    if not isinstance(named, list):
+        return []
+    at = str(rec.get("at") or "")[:16].replace("T", " ")
+    out = []
+    for vid in named:
+        v = st["videos"].get(vid) if isinstance(vid, str) and VIDEO_ID.match(vid) else None
+        if not inbox_wants(v):
+            continue
+        v.update(captions="none-published", by="laptop",
+                 why=f"no captions published, by the laptop's run of {at or 'an evening'} UTC: "
+                     "the schedule's approximate start is kept")
+        v.pop("again", None)
+        out.append(vid)
+        print(f"  {vid}: no captions published, by the laptop's word; the schedule's "
+              f"approximate start is kept   {str(v.get('title') or '')[:60]}")
+    return out
+
+
 def inbox_problem(vid, raw, folder):
     """Why an inbox entry, as cloud.py inbox-down brought it to `folder`, is
     not taken, or "" when it is sound: its manifest (`raw`) names this
@@ -1886,8 +1951,9 @@ def take_inbox(st, now, folder, work=WORK):
     """The night's take from the inbox in `folder`: a Counter of taken,
     refused, and the entries for recordings it does not wait for.
 
-    Only a recording the state lists as waiting (inbox_wants) is taken, and
-    only from a sound entry (inbox_problem). Its file goes into work/<video>/,
+    Only a recording the state lists as waiting (inbox_wants), or one it
+    closed on the laptop's word alone (laptop_closed), is taken, and only
+    from a sound entry (inbox_problem). Its file goes into work/<video>/,
     where --markers and caption_span look, and the recording is captioned "by
     inbox" with the entry's manifest named (its sha256), so --markers reads it
     exactly as one this step fetched. A refused entry is named in the state
@@ -1902,7 +1968,7 @@ def take_inbox(st, now, folder, work=WORK):
         if v is None:
             got["not in the state"] += 1
             continue
-        if not inbox_wants(v):
+        if not (inbox_wants(v) or laptop_closed(v)):
             got["not waiting"] += 1
             continue
         raw = mf.read_bytes()
@@ -2058,6 +2124,12 @@ def since_state(a):
             if inbox["taken"] or inbox["refused"]:
                 st["inbox_arrived"] = {"at": iso(now), "taken": inbox["taken"],
                                        "refused": inbox["refused"]}
+            # What the laptop closed with no captions published, from its
+            # newest run record, which came down with the inbox: after the
+            # take, so captions that came with it win (WHAT THE LAPTOP CLOSED).
+            closed = take_laptop_closed(st, now)
+            if closed:
+                inbox["closed by the laptop, none published"] = len(closed)
             save_state(st)
     first, again = caption_queue(st, now)
     kit = {}
@@ -2105,6 +2177,8 @@ def since_state(a):
         asked["from the inbox"] = inbox["taken"]
     if inbox["refused"]:
         asked["refused from the inbox"] = inbox["refused"]
+    if inbox["closed by the laptop, none published"]:
+        asked["none published, by the laptop"] = inbox["closed by the laptop, none published"]
     tail = [f"{waiting} wait for captions"] if waiting else []
     tail += [f"{carried} older reading(s) to fold into the caption results"] if carried else []
     tail.append(f"{units} API unit{'' if units == 1 else 's'}")
@@ -2401,9 +2475,14 @@ def to_inbox(a):
     # GitHub's (nightly.LAPTOP_RUN). A record not sent is a run that failed
     # to report, and the night says so once it is two evenings old.
     r = refusals.record()
+    # And what this machine has closed with no captions published, of what the
+    # night's state lists as waiting, for the night to record so (WHAT THE
+    # LAPTOP CLOSED). Never one given up on: that is no word on its captions.
     record = {"at": iso(now), "by": "laptop", "code": code, "waiting": len(waiting),
               "in_inbox": len(entered) + there, "asked": dict(+got), "sent": sent,
               "unsent": len(unsent),
+              "none_published": [vid for vid in waiting
+                                 if (mine.get(vid) or {}).get("closed") == "none-published"],
               "refusal": ({"at": r.get("at"), "why": str(r.get("why") or "")[:200],
                            "count": r.get("count"), "until": r.get("until"),
                            "until_iso": r.get("until_iso")} if r.get("count") else None),

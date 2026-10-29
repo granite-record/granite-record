@@ -163,11 +163,13 @@ test("a week of dailies from the fixtures: each night once, the ending told, the
     };
     let m = await morning("2026-10-05");
     assert.equal(m.length, 1);
-    assert.match(m[0].subject, /^1 update on what you follow$/, "no milestone, so the count");
+    assert.match(m[0].subject, /^1 update on HB 9901$/, "no milestone, so the count and the record");
     // The day once: the meeting's day, the entry's own date, is not printed
     // again (the language sweep, 17 October 2026), and the meeting is said in
     // plain words (the person's approval of the same day).
-    assert.match(m[0].text, /October 2, 2026 {2}HB 9901 — Full committee work session set for 10:00 a\.m\., Legislative Office Building 305\n/);
+    // Under its own bill a line starts with what happened, not the bill's
+    // number again (the email pass, 29 October 2026).
+    assert.match(m[0].text, /October 2, 2026 {2}Full committee work session set for 10:00 a\.m\., Legislative Office Building 305\n/);
     assert.match(m[0].text, /updates overnight/);
 
     m = await morning("2026-10-06");
@@ -178,14 +180,18 @@ test("a week of dailies from the fixtures: each night once, the ending told, the
 
     m = await morning("2026-10-07");
     assert.match(m[0].text, /HB 9902 — Signed into law\. There will be no more updates on it/);
-    assert.match(m[0].subject, /^HB 9902 — Signed into law, and \d+ more updates$/,
-      "the subject names how a bill ended before anything else");
-    assert.match(m[0].text, /October 6, 2026 {2}HB 9903-FN — Executive session set for 1:00 p\.m\., Legislative Office Building 305\n/);
+    // A SHORT SUBJECT (the email pass, 29 October 2026): how many, and the
+    // records, the one that ended first; the ending itself is the preheader.
+    assert.match(m[0].subject, /^\d+ updates on HB 9902[ ,]/,
+      "the subject names the bill that ended before anything else");
+    assert.match(m[0].html, /<div style="display:none;max-height:0;[^"]*">HB 9902 — Signed into law<\/div>/,
+      "the ending is the preheader");
+    assert.match(m[0].text, /October 6, 2026 {2}Executive session set for 1:00 p\.m\., Legislative Office Building 305\n/);
     assert.deepEqual(await followsOf(w, s.id), ["bill:2026/HB9901", "bill:2026/HB9903",
       "committee:H90", "member:990001", "topic:housing"], "the ended bill's follow is gone");
 
     m = await morning("2026-10-08");
-    assert.match(m[0].text, /HB 9901 — Interim study report: recommends future legislation/);
+    assert.match(m[0].text, /Interim study report: recommends future legislation/);
     assert.match(m[0].text, /Committee roll call: Ought to Pass, 11-9/);
     assert.match(m[0].text, /HB 9903-FN \(relative to an invented fee, written for these tests\) — On Ought to Pass \(OTP, Pass the bill\): voted yes; the motion passed, 11-9/,
       "a followed legislator's ballot is set beside the roll call's result");
@@ -221,7 +227,7 @@ test("the weekly: votes and executive sessions, hearings coming up, the study's 
     w.now = new Date("2026-10-10T12:00:00Z");      // Saturday, 8:00 EDT
     await run(w.env, w.now);
     const [m] = mailsTo(w, s.address);
-    assert.equal(m.subject, "Your week: 2 committee meetings coming up, and HB 9903-FN — Committee roll call: Ought to Pass, 11-9");
+    assert.equal(m.subject, "Your week: 2 meetings coming up and 7 updates on HB 9903-FN, HB 9901 and House Example Committee");
     assert.ok(m.text.indexOf("COMING UP") > 0 &&
       m.text.indexOf("COMING UP") < m.text.indexOf("BILLS YOU FOLLOW"), "the weekly opens with the week ahead");
     // Plain headings (the person, 17 October 2026: "'Bills: the week that
@@ -233,7 +239,7 @@ test("the weekly: votes and executive sessions, hearings coming up, the study's 
     // The committee that sits is named once, and not again after "For".
     assert.match(m.text, /Wednesday, October 14, 10:00 a\.m\.: Public hearing, House Example Committee, Legislative Office Building 305\. For HB 9903-FN\.\n/);
     assert.match(m.text, /HB 9901[\s\S]*No roll call votes or executive sessions this week\./);
-    assert.match(m.text, /HB 9901 — Interim study report: recommends future legislation/);
+    assert.match(m.text, /HB 9901[\s\S]*Interim study report: recommends future legislation/);
     assert.match(m.text, /Tuesday, October 13, 1:00 p\.m\.: Executive session, House Example Committee, Legislative Office Building 305\.\n/);
     assert.doesNotMatch(m.text, /HB 9904/);
     assert.match(m.html, /This week: 1 roll call vote and 1 executive session\./);
@@ -611,7 +617,8 @@ test("an interim study's report is said one way, in plain_action's words, naming
       summary: "Interim Study Report: Recommended for Future Legislation 10/07/2026 (Vote 12-2; )" })] });
     assert.equal(m.subject, `HB 9901 — ${sr.head}: ${said}, 12–2`, "the subject names the bill");
     assert.equal((m.text.match(/Interim study report/g) || []).length, 1, "said once in the text");
-    assert.match(m.text, new RegExp(`October 7, 2026 {2}HB 9901 — ${sr.head}: ${said}, 12–2\\n`));
+    assert.match(m.text, new RegExp(`October 7, 2026 {2}${sr.head}: ${said}, 12–2\\n`),
+      "under its own bill, the report without the bill's number again");
     assert.doesNotMatch(m.text + m.html, /Interim Study Report:|interim study committee|Vote 12-2/,
       "the clerk's line and the old sentence are gone");
   }
@@ -721,7 +728,7 @@ test("milestones only: the decisions and what is scheduled, not every docket lin
     assert.equal(a.length, 2);
     assert.match(a[0].text, /Full committee work session set for/, "everything has the work session");
     assert.equal(f.length, 1, "the 5th held no milestone, so nothing went");
-    assert.match(f[0].text, /October 6, 2026 {2}HB 9903-FN — Executive session set for 1:00 p\.m\./);
+    assert.match(f[0].text, /October 6, 2026 {2}Executive session set for 1:00 p\.m\./);
     // The hearing set for the 14th is told once, by the testimony block in
     // the Testify pane's words and with its day, and not again beneath it as
     // the line that set it (mail.js setsHearing; the review of 26 October
@@ -888,7 +895,8 @@ test("a study report under its bill is not said again under a law the bill chang
                 plain: "HB 9901 — Interim study report: recommends future legislation, 8–0",
                 url: "/bill/2026/hb9901", seen: "2026-10-21T09:00:00Z" }] }] });
   assert.equal((m.text.match(/Interim study report/g) || []).length, 1, m.text);
-  assert.match(m.text, /HB 9901 — Interim study report: recommends future legislation, 8–0/);
+  assert.match(m.text, /HB 9901\n\S+\n {2}October 20, 2026 {2}Interim study report: recommends future legislation, 8–0/,
+    "told once, under its bill");
 });
 
 test("a weekly's \"this week\" counts the seven days to today, not an old session newly recorded", async () => {

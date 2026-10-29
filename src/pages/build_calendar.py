@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-18.44
+# GRANITE_VERSION: 2026-09-18.45
 """
 The General Court's week, one page per week.
 
@@ -2236,20 +2236,6 @@ def every_week(weeks, today):
     return added
 
 
-def week_keys(site, today=None):
-    """{"2026-W21", ...}: every week main() writes a page for.
-
-    FOR A STEP THAT RUNS BEFORE THIS ONE AND LINKS A WEEK. A sitting's page
-    leads up to its week on the Calendar (build_session_pages.py), and it is
-    written before the weeks are, so on a machine that starts empty it cannot
-    read them off the disk. This is main()'s own reading, in main()'s order:
-    the proceedings and the study committees' meetings, then every week from
-    the first to the last. None when there are no weeks, which is when main()
-    stops without writing one. week_labels gives each its name as well.
-    """
-    return set(week_labels(site, today))
-
-
 # ---- the official documents behind a card ----------------------------------
 #
 # A meeting's notice is printed in the House or Senate Calendar, and a
@@ -2638,9 +2624,16 @@ def pager_html(key, weeks, order, at, today):
 
 def week_labels(site, today=None):
     """{"2026-W21": "May 18–22, 2026", ...}: every week main() writes a page
-    for, by the name its page gives it. week_keys's reading, for a session
-    day's pager, whose middle link names the day's week as the Calendar does
-    ("The Week of February 16–20, 2026")."""
+    for, by the name its page gives it, for a session day's pager, whose
+    middle link names the day's week as the Calendar does ("The Week of
+    February 16–20, 2026").
+
+    FOR A STEP THAT RUNS BEFORE THIS ONE AND LINKS A WEEK. A sitting's page
+    (build_session_pages.py) is written before the weeks are, so on a machine
+    that starts empty it cannot read them off the disk. This is main()'s own
+    reading, in main()'s order: the proceedings and the study committees'
+    meetings, then every week from the first to the last. {} when there are
+    no weeks, which is when main() stops without writing one."""
     weeks = collect(Path(site), statstud()[0])[0]
     if not weeks:
         return {}

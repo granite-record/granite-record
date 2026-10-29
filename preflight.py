@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.729
+# GRANITE_VERSION: 2026-09-04.730
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -216,7 +216,7 @@ def _sealed_run(cmd, env=None, **kw):
         return seal.run(cmd, env=env, **kw)
 
 
-def check(group, name, needs=(), expect_fail=None):
+def check(group, name, needs=(), expect_fail=None, last=False):
     """Register a check. `needs` names modules that must import for it to run.
 
     `expect_fail` is for a check written AHEAD of the change that makes it
@@ -227,12 +227,22 @@ def check(group, name, needs=(), expect_fail=None):
     mark that outlived its change would excuse the next regression of what
     the check now holds. An exception other than an assertion is an ERROR
     either way, because a check that crashes has not found the failure it
-    expects. See _settle()."""
+    expects. See _settle().
+
+    `last` runs it after every check without the mark, wherever in this file
+    it is defined (_in_order): for a check of what the run as a whole left
+    behind, which a check added below it later would otherwise escape."""
     def deco(fn):
         CHECKS.append({"group": group, "name": name, "fn": fn, "needs": needs,
-                       "expect_fail": expect_fail})
+                       "expect_fail": expect_fail, "last": last})
         return fn
     return deco
+
+
+def _in_order(checks):
+    """`checks` in the order main() runs them: as defined, but those marked
+    `last` after all the rest."""
+    return [c for c in checks if not c.get("last")] + [c for c in checks if c.get("last")]
 
 
 def _settle(status, msg, expect_fail):
@@ -14419,6 +14429,43 @@ _JM_ROLLS = {"2025-2026": {"_procedural": [
         _jm_rc("2015", "H", 189, "2015-09-16", "Rules Suspension", 285, 93, True)]}}
 
 
+@check("rollcalls", "the Journal's sentences are found in one pass, and they are the pattern's own",
+       needs=("journal_motions",))
+def _journal_sentences_one_pass(JM):
+    """last_decision read each passage's sentences with SENTENCE.finditer,
+    which restarts one character on after every failed start: five and a half
+    minutes of every build, in a step that took six (29 October 2026). It
+    asks sentence_spans() now, which reads each stretch between full stops
+    once. This holds the two to each other: on the ends of the pattern (a
+    stop alone, a stop at the start, four line ends before a stop and three),
+    on 20,000 strings made of the characters that decide a match, and on the
+    Journal fixtures as written and cleaned. And it holds last_decision to the
+    one pass: undone, the step is six minutes again and nothing else says so."""
+    import inspect
+    import random
+    want = lambda s: [m.span() for m in JM.SENTENCE.finditer(s)]
+    got = lambda s: list(JM.sentence_spans(s))
+    texts = ["", ".", "..", "...", ".a", "a.", "\n.", "\n\n\n.", "\n\n\n\n.", "\n\n\n\n\n\n.",
+             "a\nb\nc\nd\ne.", "x\n\n\n\n\ny.z.", "no stop at all\n\n\n", "a.\n\n\n\n\nb.",
+             "\n" * 9 + "." + "\n" * 9 + ".", ". \n. \n\n\n\n\n.", "\f\r\n.\r\n\r\n\r\n\r\n."]
+    rnd = random.Random(20261029)
+    texts += ["".join(rnd.choice("a.\n \n.\r") for _ in range(rnd.randint(0, 60)))
+              for _ in range(20000)]
+    journal = [_JOURNAL_RECONSIDER, _JOURNAL_MOTION_AFTER, _JOURNAL_DECIDED, _JOURNAL_WALK,
+               _JOURNAL_WALK_MORE]
+    texts += journal + ["\n".join(journal)]
+    texts += [t.replace(".", "") + "." for t in journal]
+    bad = [t for t in texts if got(t) != want(t)]
+    assert not bad, (f"sentence_spans and SENTENCE.finditer disagree on {len(bad)} text(s), "
+                     f"the first {bad[0][:80]!r}: {got(bad[0])[:4]} against {want(bad[0])[:4]}")
+    src = inspect.getsource(JM.last_decision)
+    assert "sentence_spans(" in src and "finditer(r\"[^.\\n]" not in src \
+        and "SENTENCE.finditer" not in src, (
+        "last_decision reads its sentences with finditer again: six minutes of every build")
+    return "ok", (f"{len(texts):,} texts, every one the same spans both ways; last_decision "
+                  "reads them in one pass")
+
+
 @check("rollcalls", "a vote on no bill is shown in the Journal's own words only where its tally, "
        "page date, question and outcome agree, a summary never names two bills, a vote that names "
        "a member is summed up only by a person, a report is kept whole only where it is bounded, "
@@ -17984,6 +18031,323 @@ def _inbox_night(livestreams):
                       "when an entry last arrived kept in the state")
     finally:
         L.read_markers, L.summarize, L.guard = real
+        for k, v in saved.items():
+            os.environ.pop(k, None) if v is None else os.environ.__setitem__(k, v)
+        os.chdir(here)
+        shutil.rmtree(root, ignore_errors=True)
+
+
+# WHAT THE LAPTOP CLOSED (29 October 2026; livestreams.py). The laptop had
+# closed kS2PBKXOkzA, the House Special Committee on COVID Response Efficacy
+# of 8 October 2026, as having no captions published, and sent nothing; the
+# night, refused by YouTube, kept it waiting and warned of it every night.
+# The laptop's run record now names what it closed, and the night records
+# each as it records its own closure. These checks hold that on made-up
+# states, asking nothing of YouTube or R2.
+
+def _closed_night(L, root, videos, at, record=None, entries=()):
+    """--since-state --inbox in `root`, the working folder, at `at`: the
+    state holding `videos` where given (else as the last night left it), the
+    night's own asks held by YouTube's refusal of GitHub's machine, the
+    laptop's newest run record as inbox-down brings it (`record`, None for
+    none), and a sound inbox entry for each of `entries`. (exit status, what
+    it printed, the state after)."""
+    import contextlib
+    import hashlib
+    import io
+    if videos is not None:
+        (root / "archive").mkdir(exist_ok=True)
+        (root / "archive" / "livestreams.json").write_text(json.dumps({
+            "version": 1, "last_run": {"at": "2026-10-17T08:30:00Z"},
+            "channels": {c: {"uploads": "UU" + c} for c in ("house", "senate")},
+            "refusals": {"runner": {"at": "2026-10-12T08:40:00Z", "count": 5,
+                                    "why": "Sign in to confirm you're not a bot",
+                                    "until": 4102444800, "until_iso": "2100-01-01T00:00:00Z"}},
+            "videos": videos}), encoding="utf-8")
+        api = root / "api"
+        api.mkdir(exist_ok=True)
+        idx = {}
+        for c in ("house", "senate"):
+            (api / f"pl-{c}.json").write_text('{"items": []}', encoding="utf-8")
+            idx[L.canonical("playlistItems", {"part": "contentDetails,snippet",
+                                              "playlistId": "UU" + c,
+                                              "maxResults": 50})] = f"pl-{c}.json"
+        (api / "index.json").write_text(json.dumps(idx), encoding="utf-8")
+        (root / "nosrc").mkdir(exist_ok=True)
+    # What inbox-down leaves: tonight's entries, and the laptop's newest record.
+    inbox = root / "inbox"
+    shutil.rmtree(inbox, ignore_errors=True)
+    inbox.mkdir()
+    body = _inbox_words().encode("utf-8")
+    for vid in entries:
+        (inbox / vid).mkdir()
+        (inbox / vid / "captions.en.json3").write_bytes(body)
+        (inbox / f"{vid}.json").write_text(json.dumps(
+            {"video": vid, "file": "captions.en.json3", "size": len(body),
+             "sha256": hashlib.sha256(body).hexdigest(), "fetched": at,
+             "key": f"inbox/captions/{vid}/x/captions.en.json3"}), encoding="utf-8")
+    run_rec = root / L.LAPTOP_RUN
+    run_rec.unlink(missing_ok=True)
+    if record is not None:
+        run_rec.write_text(json.dumps(record), encoding="utf-8")
+    out = io.StringIO()
+    with contextlib.redirect_stdout(out):
+        code = L.main(["--since-state", "--inbox", "inbox", "--replay", "api",
+                       "--captions-from", "nosrc", "--origin", "runner", "--now", at])
+    st = json.loads((root / "archive" / "livestreams.json").read_text(encoding="utf-8"))
+    return code, out.getvalue(), st
+
+
+def _closed_fixture(check):
+    """Runs check(L, NI, root, now, ended) in a working folder of its own,
+    with the environment a night's step reads emptied and put back after:
+    `now` the time to act as of, the real one so that the night's warnings,
+    which read the clock, see what the step saw; `ended` five days before
+    it, when the fixture's recordings finished."""
+    from datetime import datetime, timedelta, timezone
+    import livestreams as L
+    import nightly as NI
+    root = Path(tempfile.mkdtemp(prefix="gr-laptop-closed-"))
+    here = os.getcwd()
+    saved = {k: os.environ.get(k) for k in ("YOUTUBE_API_KEY", "GITHUB_ACTIONS", L.NEW_TERM_ENV)}
+    now = datetime.now(timezone.utc).replace(microsecond=0)
+    try:
+        for k in saved:
+            os.environ.pop(k, None)
+        os.chdir(root)
+        return check(L, NI, root, now, (now - timedelta(days=5)).strftime("%Y-%m-%dT%H:%M:%SZ"))
+    finally:
+        for k, v in saved.items():
+            os.environ.pop(k, None) if v is None else os.environ.__setitem__(k, v)
+        os.chdir(here)
+        shutil.rmtree(root, ignore_errors=True)
+
+
+def _iso_z(d):
+    return d.strftime("%Y-%m-%dT%H:%M:%SZ")
+
+
+@check("livestreams", "a recording the laptop closed with no captions published is recorded by "
+       "the night as none published, its approximate start kept, and warns no more",
+       needs=("livestreams", "nightly"))
+def _laptop_closed_recorded(livestreams, nightly):
+    """kS2PBKXOkzA's case. A recording finished five days ago that the night
+    lists as deferred, and the laptop's newest run record names as closed
+    with no captions published: after the night's step its state says
+    "none-published", by the laptop, the schedule's approximate start kept;
+    it is no longer counted late (nightly._captions_late), so neither the
+    waiting warning nor the silent inbox's names it, and the laptop no
+    longer asks for it (inbox_wants); the step's verdict counts it. And the
+    record must be where cloud.py inbox-down puts it."""
+    import types
+    import cloud as CL
+
+    def check(L, NI, root, now, ended):
+        assert L.LAPTOP_RUN.as_posix() == CL.INBOX_RUN_LOCAL, (L.LAPTOP_RUN, CL.INBOX_RUN_LOCAL)
+        fin = {"status": "finished", "chamber": "house", "title": "x", "ended": ended,
+               "captions": "deferred"}
+        rec = {"at": _iso_z(now), "by": "laptop", "code": 0, "sent": 0,
+               "none_published": ["PFCLOSE1"]}
+        code, said, st = _closed_night(L, root, {"PFCLOSE1": dict(fin)}, _iso_z(now), rec)
+        v = st["videos"]["PFCLOSE1"]
+        assert code == 0 and v.get("captions") == "none-published" and v.get("by") == "laptop" \
+            and "approximate start is kept" in str(v.get("why")), (code, v, said[-400:])
+        assert not L.inbox_wants(v), "the laptop would still ask for a recording it closed"
+        assert not NI._captions_late(st, now), "a recording the laptop closed is counted late"
+        assert not NI.inbox_silent(dict(st, inbox_arrived={"at": "2026-10-01T00:00:00Z"}),
+                                   rec, now), "the silent inbox still warns of it"
+        assert NI.KIND_CAPTIONS_WAIT not in dict(NI.Night.warned(types.SimpleNamespace(
+            v={"started": _iso_z(now)}))), "the waiting warning still names it"
+        assert st["last_run"]["captions"].get("none published, by the laptop") == 1 \
+            and "closed by the laptop" in said.strip().splitlines()[-1], (st["last_run"], said[-300:])
+        return "ok", ("the laptop's closure recorded as none published, its approximate start "
+                      "kept, counted in the verdict, and warned of no more")
+    return _closed_fixture(check)
+
+
+@check("livestreams", "a late recording the laptop did not close still warns: the night never "
+       "closes one on its own say-so", needs=("livestreams", "nightly"))
+def _laptop_closed_only_its_word(livestreams, nightly):
+    """Beside one the laptop closed: a recording as late that the laptop's
+    record does not name, and the same night with no record of the laptop's
+    at all. Each stays waiting and is counted late, the waiting warning
+    and the silent inbox's still count it, and the laptop still asks for
+    it."""
+    import types
+
+    def check(L, NI, root, now, ended):
+        fin = {"status": "finished", "chamber": "house", "title": "x", "ended": ended,
+               "captions": "deferred"}
+        rec = {"at": _iso_z(now), "by": "laptop", "none_published": ["PFCLOSE1"]}
+        for record in (rec, None):
+            code, said, st = _closed_night(
+                L, root, {"PFCLOSE1": dict(fin), "PFLATE01": dict(fin)}, _iso_z(now), record)
+            v = st["videos"]["PFLATE01"]
+            assert code == 0 and v.get("captions") == "deferred" and L.inbox_wants(v), \
+                (record, v, said[-300:])
+            late = {id(x) for x in NI._captions_late(st, now)}
+            assert id(v) in late, (record, v)
+            silent = NI.inbox_silent(dict(st, inbox_arrived={"at": "2026-10-01T00:00:00Z"}),
+                                     record, now)
+            n = 1 if record else 2
+            assert silent and f"{n} recording{'s' if n != 1 else ''} finished more than" \
+                in silent[0][1], (record, silent)
+            w = dict(NI.Night.warned(types.SimpleNamespace(v={"started": _iso_z(now)})))
+            assert w.get(NI.KIND_CAPTIONS_WAIT, "").startswith(f"{n} recording"), (record, w)
+        return "ok", ("a late recording the laptop's record does not name, and every late one "
+                      "on a night with no record, waits and warns as before")
+    return _closed_fixture(check)
+
+
+@check("livestreams", "captions that arrive for a recording the laptop closed are taken from the "
+       "inbox and read as any other", needs=("livestreams", "nightly"))
+def _laptop_closed_then_captioned(livestreams, nightly):
+    """A recording the laptop's record names as closed whose captions come
+    down in the inbox the same night is taken, not closed; and one the night
+    recorded closed on the laptop's word whose captions arrive on a later
+    night is taken then -- captioned "by inbox", its file in work/ -- and
+    --markers reads it under the guard as it reads every recording taken
+    from the inbox."""
+    import contextlib
+    import io
+    from datetime import timedelta
+
+    def check(L, NI, root, now, ended):
+        fin = {"status": "finished", "chamber": "house", "title": "x", "ended": ended,
+               "captions": "deferred"}
+        rec = {"at": _iso_z(now), "by": "laptop", "none_published": ["PFCLOSE1", "PFBOTH01"]}
+        code, said, st = _closed_night(L, root, {"PFCLOSE1": dict(fin), "PFBOTH01": dict(fin)},
+                                       _iso_z(now), rec, entries=["PFBOTH01"])
+        both, closed = st["videos"]["PFBOTH01"], st["videos"]["PFCLOSE1"]
+        assert code == 0 and both.get("captions") == "captioned" and both.get("by") == "inbox" \
+            and closed.get("captions") == "none-published", (both, closed, said[-300:])
+        later = _iso_z(now + timedelta(hours=1))
+        code, said, st = _closed_night(L, root, None, later, rec, entries=["PFCLOSE1"])
+        v = st["videos"]["PFCLOSE1"]
+        assert code == 0 and v.get("captions") == "captioned" and v.get("by") == "inbox" \
+            and (root / "work" / "PFCLOSE1" / "captions.en.json3").is_file(), (v, said[-400:])
+        seen, real = {}, (L.read_markers, L.summarize, L.guard)
+
+        def read(vids):
+            seen["read"] = list(vids)
+            return 0
+
+        def judged(copies, tonight):
+            seen["judged"] = sorted(tonight)
+            return "", None
+        L.read_markers, L.summarize, L.guard = read, (lambda vids, work=L.WORK: 0), judged
+        try:
+            with contextlib.redirect_stdout(io.StringIO()):
+                code = L.main(["--markers", "--origin", "runner", "--now", later])
+        finally:
+            L.read_markers, L.summarize, L.guard = real
+        assert code == 0 and "PFCLOSE1" in seen.get("read", []) \
+            and "PFCLOSE1" in seen.get("judged", []), seen
+        return "ok", ("captions in the inbox the night the laptop closes a recording win, and "
+                      "those that arrive after it are taken and read under the guard")
+    return _closed_fixture(check)
+
+
+@check("livestreams", "the laptop's closure settles only what waits: a recording the night closed "
+       "itself, one adopted, one left for a person and one captioned are as they were",
+       needs=("livestreams", "nightly"))
+def _laptop_closed_leaves_the_rest(livestreams, nightly):
+    """No command or document gives a person a way to accept an
+    approximate start (29 October 2026): what settles a recording without a
+    reading is the night's own closure ("none-published", taken at a
+    recording's last ask in a run that captioned something), the old
+    "adopted", and "for-laptop", which is left for a person and still
+    warns. The laptop's record naming each of them, and one already
+    captioned, changes none of them; a recording the night closed itself is
+    still not taken from the inbox; and a record naming a recording the
+    state does not hold, or a name of no recording's shape, is passed over."""
+    import types
+
+    def check(L, NI, root, now, ended):
+        fin = {"status": "finished", "chamber": "house", "title": "x", "ended": ended}
+        videos = {"PFSELF01": dict(fin, captions="none-published", why="taken to have none"),
+                  "PFADOPT1": dict(fin, captions="captioned", by="laptop", adopted="2026-10-01"),
+                  "PFLEFT01": dict(fin, captions="for-laptop", tries=L.MAX_TRIES),
+                  "PFREAD01": dict(fin, captions="captioned", by="runner", read="2026-10-20")}
+        rec = {"at": _iso_z(now), "by": "laptop",
+               "none_published": sorted(videos) + ["PFNONE01", "../../x", 7, None]}
+        code, said, st = _closed_night(L, root, json.loads(json.dumps(videos)), _iso_z(now), rec,
+                                       entries=["PFSELF01"])
+        moved = {k: st["videos"].get(k) for k in videos if st["videos"].get(k) != videos[k]}
+        assert code == 0 and not moved and "PFNONE01" not in st["videos"], (moved, said[-300:])
+        assert "none published, by the laptop" not in st["last_run"]["captions"], st["last_run"]
+        assert not (root / "work" / "PFSELF01").exists(), \
+            "captions were taken for a recording the night closed itself"
+        w = dict(NI.Night.warned(types.SimpleNamespace(v={"started": _iso_z(now)})))
+        assert w.get(NI.KIND_CAPTIONS_WAIT, "").startswith("1 recording"), \
+            f"the one left for a person no longer warns: {w}"
+        return "ok", ("the night's own closure, an adopted reading, one left for a person and one "
+                      "read are untouched by the laptop's record, and a name the state does not "
+                      "hold is passed over")
+    return _closed_fixture(check)
+
+
+@check("livestreams", "a laptop run's record names each waiting recording it closed with no "
+       "captions published, and none given up on, captioned or no longer listed",
+       needs=("livestreams", "cloud"))
+def _laptop_closed_in_its_record(livestreams, cloud):
+    """--to-inbox, from a bucket folder whose state lists four recordings
+    as waiting and two not, and the laptop's own record of what it asked
+    (archive/youtube.refused.json): closed with no captions published, given
+    up on, one it never asked for, and three closed none-published that the
+    night has captioned, left for a person or dropped. Its run's record
+    names the one waiting recording it closed with none published, and no
+    other; with a refusal standing, nothing is asked."""
+    import contextlib
+    import io
+    L, CL = livestreams, cloud
+    root = Path(tempfile.mkdtemp(prefix="gr-laptop-closed-rec-"))
+    here = os.getcwd()
+    saved = {k: os.environ.get(k) for k in ("GITHUB_ACTIONS", CL.NO_BUCKET)}
+    now = "2026-10-28T23:30:00Z"
+    try:
+        os.environ.pop("GITHUB_ACTIONS", None)
+        os.environ[CL.NO_BUCKET] = "1"
+        fin = {"status": "finished", "chamber": "house", "title": "x",
+               "ended": "2026-10-08T18:00:00Z"}
+        state = {"version": 1, "channels": {}, "last_run": {}, "refusals": {}, "videos": {
+            "kS2PBKXOkzA": dict(fin, captions="deferred"),
+            "PFGIVE01": dict(fin, captions="deferred"),
+            "PFWAIT01": dict(fin, captions="deferred"),
+            "PFYET001": dict(fin, captions="none-yet"),
+            "PFREAD01": dict(fin, captions="captioned", by="runner", read="2026-10-20"),
+            "PFLEFT01": dict(fin, captions="failed", tries=L.MAX_TRIES)}}
+        bucket, laptop = root / "bucket", root / "laptop"
+        (bucket / "state").mkdir(parents=True)
+        (bucket / "state" / "livestreams.json").write_text(json.dumps(state), encoding="utf-8")
+        (laptop / "archive").mkdir(parents=True)
+        (laptop / "src").mkdir()
+        closed = {"asks": 3, "tried": "2026-10-20T23:40:00Z", "closed": "none-published"}
+        (laptop / "archive" / "youtube.refused.json").write_text(json.dumps({
+            "laptop": {"at": "2026-10-28T19:00:00Z", "count": 1, "until": 4102444800.0,
+                       "until_iso": "2100-01-01T00:00:00Z", "why": "HTTP Error 429"},
+            "asked": {"kS2PBKXOkzA": dict(closed),
+                      "PFGIVE01": {"asks": 5, "tried": "2026-10-20T23:40:00Z",
+                                   "closed": "given-up"},
+                      "PFYET001": {"asks": 1, "tried": "2026-10-27T23:40:00Z",
+                                   "again": "2026-10-29T21:40:00Z"},
+                      "PFREAD01": dict(closed), "PFLEFT01": dict(closed),
+                      "PFGONE01": dict(closed)}}), encoding="utf-8")
+        os.chdir(laptop)
+        out = io.StringIO()
+        with contextlib.redirect_stdout(out):
+            code = L.main(["--to-inbox", "--local-bucket", str(bucket), "--captions-from",
+                           "src", "--origin", "laptop", "--now", now])
+        runs = CL.inbox_runs(CL.FolderBucket(bucket, create=False))
+        assert code == 0 and len(runs) == 1, (code, runs, out.getvalue()[-400:])
+        rec = json.loads((bucket / runs[0]).read_text(encoding="utf-8"))
+        assert rec.get("none_published") == ["kS2PBKXOkzA"], rec
+        assert set(rec.get("asked") or {}) <= {"deferred"}, \
+            f"a run with a refusal standing asked: {rec}"
+        return "ok", ("the record names the one waiting recording closed with none published, "
+                      "not the one given up on, the one not closed, or those the night captioned, "
+                      "left for a person or dropped")
+    finally:
         for k, v in saved.items():
             os.environ.pop(k, None) if v is None else os.environ.__setitem__(k, v)
         os.chdir(here)
@@ -35987,7 +36351,7 @@ def _session_bill_term(BSP, SD, shell):
         rc = item("HB1102", "2015-2016", 1, vote_kind="RC", yeas="200",
                   nays="150", cite_page="10")
         # the roll call on record it is: a motion the docket alone states has
-        # no ballots anywhere, and no pointer (BSP._ballots_here)
+        # no ballots anywhere, and no pointer
         rc.rc = {"year": "2016", "body": "H", "number": 1, "bill": "HB1102",
                  "yeas": 200, "nays": 150}
         cons = item("HB1300", "2015-2016", 2, vote_kind="VV", cite_page="11")
@@ -36789,7 +37153,7 @@ def _session_consent_only_the_calendar(SD):
         path = root / "narratives.json"
         path.write_text(json.dumps({"2025-2026": {
             b: {"events": e} for b, e in bills.items()}}), encoding="utf-8")
-        days = SD.load(path)
+        days = SD.load(path, journals={})
 
         def consent(body, date, bill):
             d = days.get((body, date))
@@ -36915,7 +37279,7 @@ def _session_corrected_dates(N, SD):
         def days_of(narr):
             p = root / "narratives.json"
             p.write_text(json.dumps(narr), encoding="utf-8")
-            return SD.load(p)
+            return SD.load(p, journals={})
 
         def reconsider(narr):
             return next(e for e in narr["2025-2026"]["HB1491"]["events"]
@@ -37510,7 +37874,7 @@ def _session_consent_removed_anywhere(JD, SD, BSP):
     root = Path(tempfile.mkdtemp())
     try:
         (root / "narratives.json").write_text(json.dumps(narr), encoding="utf-8")
-        day = SD.load(root / "narratives.json")[("H", "1999-04-14")]
+        day = SD.load(root / "narratives.json", journals={})[("H", "1999-04-14")]
         assert sorted(i.bill for i in day.items if i.consent) == ["HB522", "HB605"], (
             "the fixture's two bills are not both on the day's consent list")
         page = BSP.render(day, found, {}, {}, {}, _html.escape)[0]
@@ -37524,7 +37888,7 @@ def _session_consent_removed_anywhere(JD, SD, BSP):
         # Without HB 605 on the list, the same journal changes nothing.
         narr["1999-2000"].pop("HB605")
         (root / "narratives.json").write_text(json.dumps(narr), encoding="utf-8")
-        day = SD.load(root / "narratives.json")[("H", "1999-04-14")]
+        day = SD.load(root / "narratives.json", journals={})[("H", "1999-04-14")]
         assert BSP.render(day, found, {}, {}, {}, _html.escape)[0] == \
             BSP.render(day, {}, {}, {}, {}, _html.escape)[0], (
             "removals printed outside the segment, for bills not on the list, changed the page")
@@ -37544,7 +37908,7 @@ def _session_consent_removed_anywhere(JD, SD, BSP):
             ev("1999-04-14", "Special Order to after the bills removed from the Consent "
                "Calendar, Without Objection, MA", "floor", action="Special Order", motion="MA")]}
         (root / "narratives.json").write_text(json.dumps(narr), encoding="utf-8")
-        day = SD.load(root / "narratives.json")[("H", "1999-04-14")]
+        day = SD.load(root / "narratives.json", journals={})[("H", "1999-04-14")]
         assert sorted(i.bill for i in day.items if i.consent) == ["HB522"], (
             "HB 605's recommittal, read whole, is a consent item")
         page = BSP.render(day, found, {}, {}, {}, _html.escape)[0]
@@ -37805,7 +38169,7 @@ def _session_speech_before_its_motion(N, JD, SD, BSP):
     try:
         (root / "narratives.json").write_text(
             json.dumps({"1999-2000": {"HB110": {"events": rec["events"]}}}), encoding="utf-8")
-        day = SD.load(root / "narratives.json")[("H", "1999-02-10")]
+        day = SD.load(root / "narratives.json", journals={})[("H", "1999-02-10")]
         nobody = type("Nobody", (), {"slug": lambda self, body, name: None})()
         page = BSP.render(day, {"attributions": attrs}, {}, {}, nobody, _html.escape)[0]
     finally:
@@ -38534,7 +38898,7 @@ def _session_speech_on_its_motion(JD, SD, BSP):
     root = Path(tempfile.mkdtemp())
     try:
         (root / "narratives.json").write_text(json.dumps(narr), encoding="utf-8")
-        day = SD.load(root / "narratives.json")[("H", "1999-04-14")]
+        day = SD.load(root / "narratives.json", journals={})[("H", "1999-04-14")]
         nobody = type("Nobody", (), {"slug": lambda self, body, name: None})()
         page = BSP.render(day, {"attributions": attrs}, {}, {}, nobody, _html.escape)[0]
         txt = re.sub(r"\s+", " ", re.sub(r"<[^>]+>", " ", page))
@@ -41887,7 +42251,7 @@ def _follow_site_current(FS):
     # under preflight --changed (check_select.py reads this file's strings).
     sources = ("src/pages/app.css", "src/pages/app.js", "src/pages/words/chips.json",
                "src/pages/words/study_report.json", "src/pages/words/follow_beta.json",
-               "src/pages/build_brand.py")
+               "src/pages/words/meeting_kinds.json", "src/pages/build_brand.py")
     assert sorted(sources) == sorted(p.as_posix() for p in FS.SOURCES), (
         f"follow_site.py reads {sorted(p.as_posix() for p in FS.SOURCES)}, and this check names "
         f"{sorted(sources)}: name each here, so preflight --changed runs this when one moves")
@@ -42600,6 +42964,226 @@ def _related_tab(B, RB):
         "the page does not draw the Related tab from d.related"
     return "ok", ("SB 184: rejected amendment, HB 377 once, SB 479 filed before; below the line, "
                   "no fate, itself and an unknown bill left out")
+
+
+@check("build", "related bills: which shingles two texts share is intersect1d's answer, and each "
+       "text's words are read once", needs=("related_bills",))
+def _related_bills_shared_in(RB):
+    """relate() asked np.intersect1d which of one text's shingles another
+    holds, for each of a quarter of a million pairs, and read every text's
+    words twice (29 October 2026: 26 s and 9 s of a two-minute step under a
+    profiler). shared_in() answers with one binary search a shingle, since
+    every set is np.unique's, filtered: sorted, no repeats. This holds it to
+    intersect1d's own positions on sets like those -- empty, one shingle,
+    disjoint, the same, nested, overlapping, and the largest and smallest
+    64-bit values -- and holds relate() to one read of each text."""
+    try:
+        import numpy as np
+    except ImportError:
+        return "skip", "numpy will not import"
+    import inspect
+    import random
+    rnd = random.Random(20261029)
+    top = np.iinfo(np.uint64).max
+    u = lambda xs: np.unique(np.array(xs, dtype=np.uint64))
+    pairs = [(u([]), u([])), (u([]), u([1])), (u([1]), u([])), (u([1]), u([1])),
+             (u([1]), u([2])), (u([0, top]), u([top])), (u([top]), u([0, top])),
+             (u(range(10)), u(range(5, 15))), (u(range(10)), u(range(3, 6))),
+             (u(range(3, 6)), u(range(10))), (u([5]), u(range(10)))]
+    for _ in range(3000):
+        pool = [rnd.randrange(0, 2 ** 64) for _ in range(rnd.randint(0, 40))] + [0, top]
+        a = u(rnd.sample(pool, rnd.randint(0, len(pool))))
+        b = u(rnd.sample(pool, rnd.randint(0, len(pool))))
+        pairs.append((a, b))
+    for a, b in pairs:
+        _, ia, _jb = np.intersect1d(a, b, assume_unique=True, return_indices=True)
+        mask = RB.shared_in(a, b)
+        assert mask.dtype == bool and len(mask) == len(a) and \
+            np.flatnonzero(mask).tolist() == sorted(ia.tolist()), (
+                f"shared_in({a.tolist()[:6]}, {b.tolist()[:6]}) is not intersect1d's answer")
+    # And relate()'s own sets are the kind shared_in needs: the Shingler's,
+    # boilerplate taken out as relate() takes it, sorted with no repeats.
+    sh = RB.Shingler(np)
+    made = [sh(RB.words_of(t)) for t in (
+        "", "too short", "Section 1 of RSA 21-J:1 is amended by striking out the word and "
+        "inserting in place thereof the following new paragraph about the state",
+        " ".join(rnd.choice(("the", "state", "shall", "rsa", "section", "amended"))
+                 for _ in range(400)))]
+    allh = np.concatenate(made)
+    u, cnt = np.unique(allh, return_counts=True)
+    made = [s[~np.isin(s, u[cnt > 1], assume_unique=True)] if len(s) else s for s in made]
+    assert all(s.dtype == np.uint64 and bool((np.diff(s.astype(object)) > 0).all())
+               for s in made), "a set relate() builds is not sorted with no repeats"
+    src = inspect.getsource(RB.relate)
+    assert "intersect1d" not in src and src.count("words_of(") == 1, (
+        "relate() sorts each pair together again, or reads a text's words twice")
+    return "ok", f"{len(pairs):,} pairs of sets, every one intersect1d's answer"
+
+
+_INTERIM_CALENDAR = """
+                 HB 1375, establishing financial assurance. (Pending question is the adoption of the committee report - interim study.)
+
+           2026 INTERIM STUDY STATEMENTS
+CHILDREN AND FAMILY LAW
+HB 1404, establishing a study committee to study the equitable division of property in divorce proceedings.
+NOT RECOMMENDED FOR FUTURE LEGISLATION.
+Rep. Jay Markell for Children and Family Law. A commission is not needed. Statutory and case law presently
+deal with these divorce issues. Vote 7-1.
+HB 1779-FN, supporting the cultural background of children placed in foster care. RECOMMENDED FOR
+FUTURE LEG-
+ISLATION.
+Rep. Mark Pearson for Children and Family Law. We first voted not to accept the subcommittee's unanimous
+vote because in the deliberations of the whole committee, we learned the original prime sponsor of the bill
+would wish to refile her bill with the several changes the committee thought necessary. Vote 8-0.
+8 NOVEMBER2026HOUSERECORD  3
+
+COMMERCE AND CONSUMER AFFAIRS
+HB 312, relative to the right of intercollegiate student-athletes to earn compensation through the use of their
+name, image, or likeness. NOT RECOMMENDED FOR FUTURE LEGISLATION .
+Rep. Chris McAleer for Commerce and Consumer Affairs. The committee found that sur-
+rounding states have acted. Vote 11-0.
+HB 1188, relative to grounds for modification of parental rights and responsibilities. NOT
+RECOMMENDED FOR FUTURE LEGISLATION.
+The committee is opposed to the basic concept of allowing a review of parental rights and
+responsibilities every three years. Vote 10-1.
+
+                                                      Rep. Caroline Gargasz
+HB 541, relative to the obligation of religious leaders to report child abuse.
+Rep. Margaret D. Hallyburton for Commerce and Consumer Affairs: The state Supreme
+Court has before it an appeal that will likely address this issue. Vote 10-0.
+HB 908, relative to the practice of massage. NOT RECOMMENDED FOR FUTURE LEGISLATION.
+Rep. Lee Quandt for Commerce and Consumer Affairs. The committee found no need. Vote13-0.
+HB 1714, relative to prescription monitoring. RECOMMENDED FOR FUTURE LEGISLATION.
+Rep. Lee Quandt for Commerce and Consumer Affairs. Further study is warranted. 16-0.
+SJR 3, relative to the Pledge of Allegiance. NOT RECOMMENDED FOR FUTURE LEGISLATION.
+Rep. Lee Quandt for Commerce and Consumer Affairs: "under God" in the Pledge. Vote : 9-4.
+HB 1429-FN-A, establishing a procedure for the department of environmental services to transfer ownership
+of dams to municipalities or others, including making loans. WITHOUT RECOMMENDATION.
+HB 1382, relative to the state's guidance on fees. NOT RECOMMENDED FOR FUTURE LEGISLATION.
+The committee found no need for the change. Vote 9-
+2.
+
+                                                      Rep Peter Bixby
+HB 1464, Exempting certain property from taxation. NOT RECOMMENDED FOR FUTURE LEGISLATION.
+HB 1464, as written, raised questions the committee could not settle. Vote 11-0.
+
+                                                      Rep. Wayne Moynihan
+HB 1348, Chapter 253, Laws of 2002. That chapter covers the subject. Vote 4-1.
+
+LEGISLATIVE ADMINISTRATION
+CACR 11, relating to the legislature. NOT
+14
+RECOMMENDED FOR FUTURE LEGISLATION.
+The committee prefers the present rules. Vote 8-0.
+
+                                                      Rep. Carol M. Williams
+HB 1680-FN, relative to the collection of personal information by businesses. RECOMMENDED FOR FU-
+TURE LEGISLATION.
+Rep. Nicole Klein-Knight for Legislative Administration. The subject deserves a bill of its own. Vote 12-0.
+HB 1164, relative to the property tax. MAJORITY: NOT RECOMMENDED FOR FUTURE LEGISLATION.
+Rep. Neal M. Kurk for the Majority of Legislative Administration: No. Vote 9-8.
+Rep. Paul Mirski for the Minority of Legislative Administration: Yes.
+
+                               THURSDAY, NOVEMBER 10
+
+HB 9, relative to nothing. NOT RECOMMENDED FOR FUTURE LEGISLATION.
+"""
+
+
+@check("build", "interim study statements are read off the calendar in every form it prints them, "
+       "and shown on the Reports tab only where the docket's line agrees",
+       needs=("interim_statements", "build_site_v2"))
+def _interim_statements(I, B):
+    """The owner, 29 October 2026: each committee's INTERIM STUDY STATEMENT on
+    its bill's Reports tab (interim_statements.py, build_site_v2.interim_cards).
+    The fixture is the calendars' own lines, 2004 to 2026: a recommendation
+    wrapped over two lines and broken in the word, a stray space before its
+    stop, a page's running head, a word broken at a line's end, a statement
+    signed below it (2006-2014), one that prints no recommendation (2004), one
+    that is its recommendation alone, and the section's end; and the review's
+    cases (29 October 2026): a capitalised title after a signature, a page's
+    number inside NOT ... RECOMMENDED, a vote broken over a line, "FU-" over
+    "TURE LEGISLATION", LEGISLATIVE ADMINISTRATION as a heading, a majority's
+    and a minority's statement, a sentence of reasons opening on a bill, and
+    the section ending on a meeting day with no heading; and the second
+    review's votes: "Vote13-0.", "Vote : 9-4." and a tally alone, "16-0."."""
+    root = Path(tempfile.mkdtemp())
+    try:
+        (root / "calendars" / "2026").mkdir(parents=True)
+        (root / "calendars" / "2026" / "HC040.txt").write_text(_INTERIM_CALENDAR, encoding="utf-8")
+        data, held, _per = I.read(root)
+    finally:
+        shutil.rmtree(root, ignore_errors=True)
+    got = data.get("2025-2026", {})
+    assert dict(held) == {"held: a majority's and a minority's statement": 1} and \
+        sorted(got) == sorted(["HB1188", "HB1404", "HB1429", "HB312", "HB541", "HB1779",
+                               "HB1382", "HB1464", "CACR11", "HB1680", "HB908", "HB1714",
+                               "SJR3"]), (
+        f"the fixture's statements: {sorted(got)}, held {dict(held)} -- HB 9, after the "
+        "section's end, and HB 1348, a sentence of reasons, are none of them")
+    s = {b: v[0] for b, v in got.items()}
+    want = {"HB1404": ("not", "NOT RECOMMENDED FOR FUTURE LEGISLATION", "Rep. Jay Markell", 7, 1),
+            "HB1779": ("rec", "RECOMMENDED FOR FUTURE LEGISLATION", "Rep. Mark Pearson", 8, 0),
+            "HB312": ("not", "NOT RECOMMENDED FOR FUTURE LEGISLATION", "Rep. Chris McAleer", 11, 0),
+            "HB1188": ("not", "NOT RECOMMENDED FOR FUTURE LEGISLATION", "Rep. Caroline Gargasz", 10, 1),
+            "HB541": ("", "", "Rep. Margaret D. Hallyburton", 10, 0),
+            "HB1429": ("without", "WITHOUT RECOMMENDATION", "", None, None),
+            "HB1382": ("not", "NOT RECOMMENDED FOR FUTURE LEGISLATION", "Rep Peter Bixby", 9, 2),
+            "HB1464": ("not", "NOT RECOMMENDED FOR FUTURE LEGISLATION", "Rep. Wayne Moynihan", 11, 0),
+            "CACR11": ("not", "NOT RECOMMENDED FOR FUTURE LEGISLATION", "Rep. Carol M. Williams", 8, 0),
+            "HB1680": ("rec", "RECOMMENDED FOR FUTURE LEGISLATION", "Rep. Nicole Klein-Knight", 12, 0),
+            "HB908": ("not", "NOT RECOMMENDED FOR FUTURE LEGISLATION", "Rep. Lee Quandt", 13, 0),
+            "HB1714": ("rec", "RECOMMENDED FOR FUTURE LEGISLATION", "Rep. Lee Quandt", 16, 0),
+            "SJR3": ("not", "NOT RECOMMENDED FOR FUTURE LEGISLATION", "Rep. Lee Quandt", 9, 4)}
+    for b, (rec, printed, who, y, n) in want.items():
+        assert (s[b]["rec"], s[b]["printed"], s[b]["author"], s[b].get("vote_yeas"),
+                s[b].get("vote_nays")) == (rec, printed, who, y, n), f"{b} reads {s[b]}"
+    assert s["HB1779"]["title"] == "supporting the cultural background of children placed in foster care" \
+        and "HOUSERECORD" not in s["HB1779"]["text"] and s["HB1779"]["text"].endswith("necessary."), (
+        f"HB 1779's statement: {s['HB1779']}")
+    assert "surrounding states" in s["HB312"]["text"] and s["HB312"]["title"].endswith("likeness"), (
+        f"HB 312's statement: {s['HB312']}")
+    assert s["CACR11"]["committee"] == "Legislative Administration" and \
+        s["HB1464"]["text"].startswith("HB 1464, as written"), (
+        f"a signed statement under LEGISLATIVE ADMINISTRATION, or a capitalised title: "
+        f"{s['CACR11']} {s['HB1464']}")
+    assert s["HB1188"]["committee"] == "Commerce and Consumer Affairs" and \
+        s["HB1188"]["text"].startswith("The committee is opposed") and "Gargasz" not in s["HB1188"]["text"], (
+        f"a signed statement: {s['HB1188']}")
+    # On the tab: the docket's line fills what the calendar does not print, and
+    # a statement it disagrees with is held back; the calendar's report the
+    # fetch mis-filed for the bill gives way.
+    row = lambda raw: {"events": [{"type": "interim_report", "raw": raw, "date": "2026-10-20",
+                                   "body": "H", "cancelled": False}]}
+    narr = {"2025-2026": {
+        "HB541": row("Interim Study Report: Not Recommended for Future Legislation (Vote 10-0)"),
+        "HB1404": row("Interim Study Report: Not Recommended for Future Legislation (Vote 6-2)"),
+        "HB1779": row("Interim Study Report: Recommended for Future Legislation (Vote 8-0)"),
+        "HB312": row("Interim Study Report: Recommended for Future Legislation (Vote 11-0)")}}
+    reports = {"2025-2026": {"HB1779": [
+        {"source": "House Calendar 40, 2026", "majority_recommendation": "INTERIM STUDY",
+         "reports": [{"side": "Committee", "author": "Rep. Mark Pearson"}]},
+        {"source": "House Calendar 40, 2026", "majority_recommendation": "OUGHT TO PASS",
+         "reports": [{"side": "Committee", "author": "Rep. Someone Else", "text": "Another."}]},
+        {"source": "House Calendar 6, 2026", "majority_recommendation": "REFER FOR INTERIM STUDY",
+         "reports": [{"side": "Committee"}]}]}}
+    held = B.interim_cards(reports, data, narr)
+    assert sorted((b, "6-2" in w, "says NOT" in w) for _t, b, _c, w in held) == [
+        ("HB1404", True, False), ("HB312", False, True)], f"held back: {held}"
+    tab = reports["2025-2026"]
+    assert [r["majority_recommendation"] for r in tab["HB1779"]] == [
+        "OUGHT TO PASS", "REFER FOR INTERIM STUDY", "RECOMMENDED FOR FUTURE LEGISLATION"], (
+        f"HB 1779's reports: {tab['HB1779']}")
+    blk = tab["HB541"][0]
+    assert blk["majority_recommendation"] == "NOT RECOMMENDED FOR FUTURE LEGISLATION" and \
+        blk["reports"][0]["note"] == B.INTERIM_FROM_DOCKET and \
+        blk["reports"][0]["side"] == B.INTERIM_SIDE, f"HB 541 of 2004's card: {blk}"
+    assert "HB1404" not in tab and "HB312" not in tab and \
+        tab["HB1429"][0]["majority_recommendation"] == "WITHOUT RECOMMENDATION"
+    assert s["HB1714"]["text"] == "Further study is warranted.", f"HB 1714's text: {s['HB1714']}"
+    return "ok", ("thirteen statements in every form the calendars print; the docket fills 2004's "
+                  "recommendation, holds back a disagreement, and only the mis-filed report "
+                  "gives way")
 
 
 @check("build", "related bills: the same text hashes the same everywhere, quoted law is not shared "
@@ -44088,6 +44672,234 @@ def _session_rollcalls_reconciled(SD, BSP):
                   "sitting only where the journal opens one")
 
 
+# A SITTING FIXTURE READS ONLY WHAT IT IS GIVEN (29 October 2026). The check
+# above builds its own record (_sitting_fixture), and it failed on every tree
+# that had run a build: the page drew the build's journal_motions.json from
+# the working folder, so the fixture's House day of 8 January 2025 gained a
+# real "Votes on No Bill", and load() read the working folder's House
+# Journals for a CACR's division though it was given journals of its own. On
+# GitHub's night it passed only because the code checks run before the build.
+@check("session", "a sitting fixture draws the same from any working folder, a built tree's "
+       "files beside it or none", needs=("session_days", "build_session_pages", "vote_passage",
+                                         "rollcall_outcomes"))
+def _session_fixture_hermetic(SD, BSP, VP, RO):
+    """A cut of the record's sittings, drawn and rendered from an empty
+    working folder and again from one holding what a built tree holds, each
+    file saying something of the fixture's own days that would change what
+    is drawn if it were read: journal_motions.json, with a vote on no bill on
+    every sitting and a title, a line and a ruling for every roll call; the
+    House and Senate Journals of the fixture's years, printing every count as
+    a roll call and as a division adopted by the necessary three-fifths;
+    data/bills.json, which holds none of the fixture's bills; and
+    rollcalls.json. The two must be the same, day for day and byte for
+    byte, and a day made by hand from a fixture's must read nothing either.
+    And every decoy must be read by the readers that do take the working
+    folder (vote_passage's, rollcall_outcomes.journal_division_words,
+    session_days' journals, _held_bills, _read_rollcalls), or it proves
+    nothing."""
+    import datetime as _dt
+    import html as _html
+
+    def floor(date, body, raw, action, kind, y=None, n=None, **more):
+        e = {"type": "floor", "date": date, "body": body, "raw": raw, "action": action,
+             "motion": "MA", "vote_kind": kind, **more}
+        if y is not None:
+            e.update(yeas=str(y), nays=str(n))
+        return e
+    narr = {
+        "2025-2026": {"SB15": [floor("2026-01-07", "H", "Ought to Pass with Amendment 2025-3096h: "
+                                     "MA RC 179-159 01/07/2026", "Ought to Pass with Amendment "
+                                     "2025-3096h", "RC", 179, 159, cite="HJ 1")]},
+        # A CACR's division whose docket line names no fraction, where the
+        # Journal's sentence would (rollcall_outcomes.journal_division_words).
+        "1999-2000": {"CACR2": [floor("2000-04-13", "H", "Taken from the Table, Rep Mock MA "
+                                      "DIV(251-87)", "Taken from the Table", "DV", 251, 87)]},
+        # An appeal on a bill, under which the page says what the chair ruled.
+        "2015-2016": {"SB9": [floor("2015-09-16", "H", "Uphold Ruling of the Chair: MA RC 286-89",
+                                    "Uphold Ruling of the Chair", "RC", 286, 89, cite="HJ 57")]},
+        "2021-2022": {"HB100": [floor("2021-04-22", "S", "Ought to Pass, RC 23Y-1N, MA; OT3rdg; "
+                                      "04/22/2021", "Ought to Pass, RC 23Y-1N", "", cite="SJ 12")]}}
+    rolls = {
+        "2025-2026": {
+            "SB15": [_rc("2026", "H", 3, "2026-01-07", "SB15", "Ought to Pass with Amendment",
+                         179, 159, True)],
+            # A bill the docket holds no rows for: named, unless the term's
+            # list of bills (data/bills.json) holds no such bill.
+            "HB476": [_rc("2026", "H", 4, "2026-01-07", "HB476", "Reconsider", 15, 340, False)],
+            "_procedural": [_rc("2026", "H", 2, "2026-01-07", None, "Rules Suspension", 57, 280,
+                                False, 225),
+                            _rc("2025", "H", 1, "2025-01-08", None, "Amend H Rule 64", 200, 150,
+                                True)]},
+        "1999-2000": {"_procedural": [_rc("2000", "H", 60, "2000-04-13", None, "Call of the Roll",
+                                          380, 2, True, seated=398)]},
+        "2015-2016": {"SB9": [_rc("2015", "H", 188, "2015-09-16", "SB9",
+                                  "Uphold Ruling of the Chair", 286, 89, True)]},
+        "2021-2022": {"HB100": [_rc("2021", "S", 311, "2021-04-22", "HB100", "Ought to Pass",
+                                    23, 1, True)]}}
+    keys = {f'{r["year"]}-{r["body"]}-{r["number"]}': r
+            for bills in rolls.values() for rs in bills.values() for r in rs}
+    sittings = sorted({(r["body"], r["date"]) for r in keys.values()})
+    counts = sorted({(r["yeas"], r["nays"]) for r in keys.values()} | {(251, 87)})
+
+    def drawn():
+        days = _sitting_fixture(SD, narr, rolls, sat=lambda body, date: date == "2025-01-08")
+        out = {"left": sorted((SD.rollcall_key(r), w) for r, w in days.left)}
+        for key in sorted(days):
+            d = days[key]
+            by_hand = SD.Day(d.body, d.date, d.items, d.others)
+            out[key] = (d.printed, [
+                (i.bill, i.action, i.kind, i.yeas, i.nays, i.carried, i.need, i.fifths,
+                 i.outcome_words, i.rc and SD.rollcall_key(i.rc))
+                for i in list(d.items) + list(d.others)]) + tuple(
+                BSP.render(x, {}, {}, {}, BSP.Members(Path("no-such-site")), _html.escape)
+                for x in (d, by_hand))
+        return out
+
+    caches = (VP._CACHE, RO._DIVISIONS, SD._SAT)
+    kept = [dict(c) for c in caches]
+    here = os.getcwd()
+    root = Path(tempfile.mkdtemp(prefix="sitting-decoys-"))
+    try:
+        empty, built = root / "empty", root / "built"
+        empty.mkdir()
+        (built / "data").mkdir(parents=True)
+        said = [{"k": "outcome", "t": "The decoy carried."}]
+        (built / "journal_motions.json").write_text(json.dumps({
+            "rollcalls": {k: {"key": k, "body": r["body"], "date": r["date"], "held": [],
+                              "kind": "motion", "title": "A Decoy Motion", "line": "a decoy",
+                              "ruling": "A decoy ruling", "said": said}
+                          for k, r in keys.items()},
+            "journal_only": [{"key": f"{d}-{b}-decoy", "body": b, "date": d, "how": "division",
+                              "yeas": 7, "nays": 3, "passed": True, "kind": "motion",
+                              "title": "A Decoy Division", "said": said, "member": "", "bill": "",
+                              "bills": []} for b, d in sittings],
+            "kinds": {"motion": "A decoy kind"}, "groups": {}, "group_words": {},
+            "bill_votes": []}), encoding="utf-8")
+        for b, d in sittings:
+            on = _dt.date.fromisoformat(d)
+            dateline = f"{on:%B} {on.day}, {on.year}"
+            if b == "H":
+                f = built / "journals" / str(on.year) / f"HJ 1 {dateline}.txt"
+                text = (f"HOUSE JOURNAL NO. 1\n\n{on:%A}, {dateline}\n\nThe House met at 10:00 "
+                        "a.m.\n\nHB 9999, relative to a decoy.\n\n" + "\n\n".join(
+                            f"YEAS {y} - NAYS {n}\n\nOn a division vote, {y} members having "
+                            f"voted in the affirmative and {n} in the negative, the motion was "
+                            "adopted by the necessary three-fifths." for y, n in counts))
+            else:
+                f = built / "journals_senate" / str(on.year) / "SJ 1.txt"
+                text = (f"{dateline}\n\nThe Senate met at 10:00 a.m.\n\nSB 9999, relative to a "
+                        "decoy.\n\n" + "\n\n".join(
+                            f"The following Senators voted Yes: Sen. Decoy.\n\nYeas: {y} - Nays: "
+                            f"{n}\n\nA division vote was requested.\n\nYeas: {y} - Nays: {n}"
+                            for y, n in counts))
+            f.parent.mkdir(parents=True, exist_ok=True)
+            with open(f, "a", encoding="utf-8") as fh:
+                fh.write(text + "\n\n")
+        (built / "data" / "bills.json").write_text(json.dumps(
+            {t: {"HB9999": {}} for t in rolls}), encoding="utf-8")
+        (built / "rollcalls.json").write_text(json.dumps(
+            {t: {"_procedural": [_rc(r["year"], r["body"], 900, r["date"], None, "A Decoy Vote",
+                                     7, 3, True) for r in keys.values()]} for t in rolls}),
+            encoding="utf-8")
+
+        def from_(where, what):
+            # Each from nothing remembered: a reader that keeps what it read
+            # by a relative path would otherwise answer from another folder.
+            for c in caches:
+                c.clear()
+            os.chdir(where)
+            try:
+                return what()
+            finally:
+                os.chdir(here)
+        bare, beside = from_(empty, drawn), from_(built, drawn)
+        live = from_(built, lambda: {
+            "journal_motions.json": bool(VP.journal_only("H", "2025-01-08"))
+            and VP.ruling("2015-H-188") == "A decoy ruling",
+            "the House Journals": "three-fifths" in RO.journal_division_words(
+                ".", "H", "2000-04-13", 251, 87)
+            and (200, 150) in (SD._journal_day("H", "2025-01-08") or {}).get("rc", {}),
+            "the Senate Journals": (23, 1) in (SD._journal_day("S", "2021-04-22") or {}).get(
+                "rc", {}),
+            "data/bills.json": SD._held_bills(".") == {t: {"HB9999"} for t in rolls},
+            "rollcalls.json": bool(SD._read_rollcalls())})
+    finally:
+        os.chdir(here)
+        for c, k in zip(caches, kept):
+            c.clear()
+            c.update(k)
+        shutil.rmtree(root, ignore_errors=True)
+    dead = [k for k, v in live.items() if not v]
+    assert not dead, f"decoys the working folder's readers do not read, which prove nothing: {dead}"
+    assert len(bare) == len(sittings) + 1, sorted(bare)
+    moved = [k for k in bare if bare[k] != beside.get(k)]
+    if moved:
+        k = moved[0]
+        a, b = (repr(x[k]) for x in (bare, beside))
+        at = next((n for n, (p, q) in enumerate(zip(a, b)) if p != q), min(len(a), len(b)))
+        raise AssertionError(
+            f"the fixture's sittings change with the working folder's files: {moved}; "
+            f"{k} from an empty folder ...{a[max(0, at - 60):at + 120]!r}, beside a built "
+            f"tree's ...{b[max(0, at - 60):at + 120]!r}")
+    return "ok", (f"{len(sittings)} sittings, a vote on no bill, a CACR's division, an appeal's "
+                  "ruling and a bill no row names are drawn the same beside a built tree's "
+                  "journal_motions.json, Journals, data/bills.json and rollcalls.json as from "
+                  "an empty folder, and each of those is live")
+
+
+# NOR DOES A CHECK THAT CALLS load() ITSELF (29 October 2026). Seven checks
+# draw their sittings with session_days.load() on a narratives.json of their
+# own, not through _sitting_fixture, and gave it no journals, so
+# _journal_day read the working folder's journals/ and journals_senate/ for
+# each of their days: the owner's laptop holds every year of them, GitHub's
+# machine none. Nothing those checks assert changed with what it read, which
+# is why none of them failed; they now give load() journals={}, as the
+# fixture does.
+@check("session", "a check that draws sittings with load() on a record of its own reads none "
+       "of the Journals on disk", needs=("session_days", "rollcall_outcomes"))
+def _session_checks_read_no_journals(SD, RO):
+    """Every code check that calls session_days.load() itself is run again
+    with the two caches the disk's Journals are read through --
+    session_days._SAT, a chamber's year of journals/ or journals_senate/, and
+    rollcall_outcomes._DIVISIONS, a year's House divisions in words --
+    replaced by ones that note each year asked of them. None may be asked,
+    and each check must run to its end, or the silence proves nothing."""
+    import inspect
+
+    class Asked(dict):
+        def __init__(self, log):
+            super().__init__()
+            self.log = log
+
+        def __contains__(self, key):
+            self.log.append(key)
+            return super().__contains__(key)
+
+    calls = re.compile(r"\bSD\.load\(")
+    them = [c for c in CHECKS if c["group"] != "data"
+            and c["fn"] is not _session_checks_read_no_journals
+            and calls.search(inspect.getsource(c["fn"]))]
+    read, ended = {}, {}
+    for c in them:
+        log = []
+        kept = SD._SAT, RO._DIVISIONS
+        SD._SAT, RO._DIVISIONS = Asked(log), Asked(log)
+        try:
+            ended[c["fn"].__name__] = _check_outcome(c)
+        finally:
+            SD._SAT, RO._DIVISIONS = kept
+        if log:
+            read[c["fn"].__name__] = sorted({tuple(k) for k in log})
+    assert len(them) >= 8, f"only {len(them)} checks call session_days.load() themselves"
+    short = {n: o for n, o in ended.items() if o[0] in ("FAIL", "ERROR")}
+    assert not short, f"checks that did not run to their end, so read nothing by it: {short}"
+    assert not read, (f"{len(read)} checks read the Journals on disk for a record of their own; "
+                      f"give load() journals= (none: {{}}): "
+                      + "; ".join(f"{n} {ks[:4]}" for n, ks in read.items()))
+    return "ok", (f"{len(them)} checks that call load() on a record of their own read no "
+                  "chamber's year of Journals and no House divisions from the disk")
+
+
 @check("session", "before the roll-call file, every roll call the docket states is "
        "drawn from the docket", needs=("session_days",))
 def _session_rollcalls_docket_only(SD):
@@ -44743,7 +45555,7 @@ def _session_recess_and_rule_days(SD, BSP):
     root = Path(tempfile.mkdtemp())
     try:
         (root / "narratives.json").write_text(json.dumps(narr), encoding="utf-8")
-        days = SD.load(root / "narratives.json")
+        days = SD.load(root / "narratives.json", journals={})
 
         def bills(body, date):
             d = days.get((body, date))
@@ -44890,7 +45702,7 @@ def _session_unmarked_recess(SD, BSP, shell):
     root = Path(tempfile.mkdtemp())
     try:
         (root / "narratives.json").write_text(json.dumps(narr), encoding="utf-8")
-        days = SD.load(root / "narratives.json")
+        days = SD.load(root / "narratives.json", journals={})
 
         def bills(body, date):
             d = days.get((body, date))
@@ -65479,9 +66291,29 @@ def _with_components(js, here="."):
     page loads it, then the script. Both without their comments, as the
     site publishes them, while _PUBLISHED_SCRIPTS is set."""
     if _PUBLISHED_SCRIPTS:
-        import strip_js
-        return strip_js.strip(_components_js(here)) + "\n" + strip_js.strip(js)
+        return _stripped(_components_js(here)) + "\n" + _stripped(js)
     return _components_js(here) + "\n" + js
+
+
+# EACH SCRIPT IS STRIPPED ONCE A RUN (26 October 2026). The published pass of
+# _published_scripts_run_the_same hands node about a hundred harnesses, and
+# each stripped components.js and its page's script afresh: 260 calls to
+# strip_js.strip, 101 s of a 195 s check, for a few texts. strip() is a pure
+# function of its text, so each is stripped once and the answer kept, keyed by
+# a sha256 of the text and by the strip() that made it: a check that put
+# another strip() in place would not be handed this one's answer. A text
+# strip() refuses is refused again on every call, as before.
+_STRIPPED = {}
+
+
+def _stripped(js):
+    """strip_js.strip(js), worked out once a run for each text."""
+    import hashlib
+    import strip_js
+    key = (strip_js.strip, hashlib.sha256(js.encode("utf-8")).digest())
+    if key not in _STRIPPED:
+        _STRIPPED[key] = strip_js.strip(js)
+    return _STRIPPED[key]
 
 
 def _camel(name):
@@ -81297,7 +82129,13 @@ def _follow_signup_frequency():
     assert "0003_pending_frequency.sql" in migrations, "the sign-up's frequency migration is gone"
     untold = [f"{m} on {db}" for m in migrations
               for db in ("graniterecord-follow-preview", "graniterecord-follow")
-              if f"npx wrangler d1 execute {db} --remote --file workers/follow/migrations/{m}" not in readme]
+              # With the sender's own settings file, and the preview's environment:
+              # without them wrangler reads the root wrangler.toml, finds no such
+              # database by name and calls it an authentication error (the
+              # person, 26 October 2026).
+              if f"npx wrangler d1 execute {db} --remote --config workers/follow/wrangler.toml"
+                 f"{' --env preview' if db.endswith('-preview') else ''}"
+                 f" --file workers/follow/migrations/{m}" not in readme]
     assert not untold, "workers/follow/README.md gives no command for " + ", ".join(untold)
     begin = readme.find("sign-up box's daily or weekly")
     told = readme[begin:readme.find("migrations/0003_pending_frequency.sql", begin)] if begin >= 0 else ""
@@ -95156,8 +95994,8 @@ def _preflight_not_the_runs(NI, CL):
         for k, val in saved.items():
             os.environ.pop(k, None) if val is None else os.environ.__setitem__(k, val)
     src = inspect.getsource(main)
-    at = src.find("_not_the_runs()")
-    assert at != -1 and at < src.find("for c in CHECKS"), \
+    at, loop = src.find("_not_the_runs()"), src.find("for c in _in_order(CHECKS)")
+    assert at != -1 and loop != -1 and at < loop, \
         "preflight's main() runs its checks without first taking out the workflow's words"
     return "ok", (f"{', '.join(WORKFLOW_WORDS)} are taken out before any check runs, so the "
                   "fixtures' kit-ups, state-ups and nights are not a dry run's on GitHub's "
@@ -96971,18 +97809,22 @@ def _speakers_against_journal(root, jroot):
               for m in J.TALLY.finditer(block)]
         ev += [("division", m.start(), (int(m.group("yeas")), int(m.group("nays"))), m.end())
                for m in J.DIVISION.finditer(block)]
+        # EACH PATTERN WHERE IT CAN BEGIN (29 October 2026): decisions() and
+        # found() give finditer's own list (_speakers_check_found holds these
+        # three classes to their patterns), and finditer from every character
+        # of every House day was 20 of this check's 53 seconds on the night.
         ev += [("voice", m.start("s"), re.sub(r"\s+", " ", m.group("s")), m.end("s"))
-               for m in J.DECIDED.finditer(text) if not J.NOT_DECIDED.search(m.group("s"))]
-        for m in J.MOTION_EVENT.finditer(text):
+               for m in J.decisions(text) if not J.NOT_DECIDED.search(m.group("s"))]
+        for m in J.found(J.MOTION_EVENT, text, "[MmOoAaCcWwRr]"):
             w = J.MOVED_SINCE.match(block, m.start()) if m.group(0).lower() == "moved" else None
             ev.append(("move", m.start(), re.sub(r"\s+", " ", w.group(0) if w else m.group(0)),
                        w.end() if w else m.end()))
         ev.sort(key=lambda e: e[1])
         side = lambda m: "for" if "favor" in m.group("side").lower() else "against"
         sp = [(m.start(), J.SPOKE_END.search(text, m.start()).end(), side(m),
-               J._names(m.group("names"))) for m in J.SPOKE.finditer(text)]
+               J._names(m.group("names"))) for m in J.found(J.SPOKE, text, "[Rr]")]
         sp += [(m.start(), J.SPOKE_END.search(text, m.start()).end(), side(m),
-                J._names(m.group("name"))) for m in J.MOVED_SPOKE.finditer(text)]
+                J._names(m.group("name"))) for m in J.found(J.MOVED_SPOKE, text, "[Rr]")]
 
         def bill_at(pos):
             cur = None
@@ -99006,6 +99848,57 @@ def _report_no_reasons_says_what():
     return "ok", "both, the recommendation alone, the vote alone and neither each read as what the report records"
 
 
+# A HEAD THAT HAS GROWN PAST THE FIRST READ (29 October 2026). _one_head
+# reads the first 16,384 bytes of each of some 38,000 pages to find the end of
+# its head. The election worker's guide carries a HowTo of 10,962 bytes in
+# its structured data, and its head ended at byte 16,408: the R1 dry run
+# (153) held the night on it although the page was right. Only a page whose
+# head has not ended in the first read is read on, to HEAD_MOST, so the
+# night still reads 16 KB of nearly every page.
+HEAD_MOST = 262144
+
+
+def _head_bytes(path, first, most=None):
+    """The first `first` bytes of `path`, or, where no </head> ends in them,
+    on to `most` (HEAD_MOST) bytes or the file's end."""
+    most = HEAD_MOST if most is None else most
+    with open(path, "rb") as fh:
+        raw = fh.read(first)
+        if b"</head>" not in raw and len(raw) == first and most > first:
+            raw += fh.read(most - first)
+    return raw
+
+
+@check("frontend", "a page's head is read to its end however long it has grown, up to "
+       "HEAD_MOST, and only such a page is read past the first 16 KB")
+def _head_bytes_read_on():
+    """_one_head's reading, without a built site: a head ending at byte
+    16,408 (the election worker's guide on 29 October 2026) is read to its
+    end; a head that ends early costs one 16 KB read; a page with no head end
+    in HEAD_MOST bytes stops there."""
+    d = Path(tempfile.mkdtemp(prefix="heads_"))
+    try:
+        body = b"<p>" + b"x" * 40000 + b"</p></body></html>"
+        long_head = b"<html><head><title>t</title>" + b"<!--" + b"h" * 16360 + b"-->" + b"</head><body>" + body
+        short_head = b"<html><head><title>t</title></head><body>" + body
+        endless = b"<html><head><title>t</title>" + b"y" * 300000
+        for name, data in (("long", long_head), ("short", short_head), ("endless", endless)):
+            (d / f"{name}.html").write_bytes(data)
+        assert long_head.find(b"</head>") > 16384, "the long head ends inside the first read"
+        got = _head_bytes(d / "long.html", 16384)
+        assert b"</head>" in got and len(got) > 16384, (
+            "a head ending past byte 16,384 is not read to its end")
+        got = _head_bytes(d / "short.html", 16384)
+        assert len(got) == 16384, f"a head that ended early was read on ({len(got):,} bytes)"
+        got = _head_bytes(d / "endless.html", 16384)
+        assert len(got) == HEAD_MOST and b"</head>" not in got, (
+            "a page with no head end was not read to HEAD_MOST and stopped")
+    finally:
+        shutil.rmtree(d, ignore_errors=True)
+    return "ok", (f"a head ending at byte {long_head.find(b'</head>'):,} is read to its end, "
+                  f"a short one costs 16 KB, a page with none stops at {HEAD_MOST:,}")
+
+
 @check("frontend", "a page says what it is once, and says where it lives")
 def _one_head():
     """Exactly one title, one description and one canonical per page.
@@ -99030,8 +99923,7 @@ def _one_head():
         return "skip", "site is not built"
     bad, n = [], 0
     for p in sorted(site.rglob("*.html")):
-        with open(p, "rb") as fh:
-            raw = fh.read(HEAD_BYTES)
+        raw = _head_bytes(p, HEAD_BYTES)
         # A line's end is one character however the file writes it, as it was
         # when the page was read as text: the built pages end their lines
         # with two here, and counting both put the 6,000th character a line's
@@ -99043,10 +99935,10 @@ def _one_head():
             h = p.read_text(encoding="utf-8", errors="replace")
             end = h.find("</head>")
         n += 1
-        if end < 0 and len(raw) == HEAD_BYTES:
+        if end < 0 and len(raw) >= HEAD_BYTES:
             bad.append(f"{p.relative_to(site)}'s head does not end in its first "
-                       f"{HEAD_BYTES:,} bytes, so its tags were not all read (raise "
-                       "HEAD_BYTES in this check if a head has really grown that long)")
+                       f"{len(raw):,} bytes, so its tags were not all read (raise "
+                       "HEAD_MOST in _head_bytes if a head has really grown that long)")
             continue
         h = h[:max(6000, end + len("</head>"))]
         for what, pat in (("title", r"<title>"),
@@ -99680,6 +100572,198 @@ def _page_record_find(SR):
     finally:
         shutil.rmtree(tmp, ignore_errors=True)
     return "ok", "six shapes of page, each read as INLINE reads it, the sidecar where none is inline"
+
+
+@check("session", "a House journal's running heads are found once, for the file flat and with "
+       "its lines, and give what clean() gives each way", needs=("journal_days",))
+def _journal_clean_both(JD):
+    """read_year cleaned every House journal twice, once flat and once with
+    its lines kept, and the running-head pattern read the whole file each
+    time (29 October 2026: 36 s of the sitting pages' 314 under a profiler;
+    the same answers on all 573 files on disk, 33 s to 20 s). clean_both()
+    finds the heads once. This holds it to clean()'s two answers on the
+    journal fixtures and on heads that stand mid-line, between lines, across
+    a page break, at the start and the end, with Windows line ends and next
+    to a word broken over the line; and holds read_year to the one pass."""
+    import inspect
+    heads = ("7MARCH2018HOUSERECORD", "6 MARCH 2013 HOUSE RECORD 12",
+             "12 14 FEBRUARY 2019 HOUSE RECORD", "  3  APRIL  2020  HOUSE   RECORD  ")
+    texts = [_JOURNAL_RECONSIDER, _JOURNAL_MOTION_AFTER, _JOURNAL_DECIDED, _JOURNAL_WALK,
+             _JOURNAL_WALK_MORE, "", "no head at all", "moved that the commit-\ntee adjourn"]
+    for h in heads:
+        texts += [h, f"{h} first line", f"the last line {h}", f"the motion was {h} adopted.",
+                  f"was adopted.\n{h}\nHB 422-FN, increasing", f"page one\f{h}\fpage two",
+                  f"a line\r\n{h}\r\nthe next", f"the commit-\n{h}\ntee met", f"{h}{h}\n{h}"]
+    texts.append("\n".join(texts))
+    bad = [t for t in texts if JD.clean_both(t) != (JD.clean(t), JD.clean(t, lines=True))]
+    assert not bad, f"clean_both and clean() differ on {len(bad)} text(s), the first {bad[0][:80]!r}"
+    src = inspect.getsource(JD.read_year)
+    assert "clean_both(" in src and "clean(raw" not in src, (
+        "read_year cleans each journal twice again")
+    return "ok", f"{len(texts)} texts the same both ways; read_year finds the heads once"
+
+
+_DEBATE_RUNON = """Rep. Nicholas Germana moved that the debate on HB 148, permitting classification of individuals based on
+biological sex in certain circumstances, be printed in the Journal. Motion adopted.
+
+                                                            DEBATE ON HB 148
+
+Representative Layon: Thank you, Mister Speaker. HB 148 is a common-sense bill. I urge my colleagues to press
+the green button and override the governor's veto of this bill. Thank you, Mister Speaker.
+                                           REGULAR CALENDAR (CONT'D)
+Representative Turer: Thank you, Mister Speaker. If I know that this exact language was vetoed by our
+previous governor, then wouldn't I press the red button to uphold this very prudent veto? Thank you.
+                                              HB 148 CONT'D
+Speaker Steven Smith: The question is whether HB 148, notwithstanding the governor's veto, should become
+law? This is a roll call vote. Failing to meet the two-thirds margin, the motion fails. 188 to 165.
+                    17DECEMBER2025HOUSERECORD                                                      13
+
+                                       GOVERNOR'S VETO MESSAGE ON HB 319-FN
+
+By the authority vested in me, pursuant to part II, Article 44 of the New Hampshire Constitution, on June
+3, 2025, I have vetoed House Bill 319, relative to the responsibility of local school districts to provide
+transportation for pupils in kindergarten.
+Representative Ammon: Thank you, Mister Speaker. I rise in favor of overriding the veto of HB 319 today.
+
+                                        YEAS 182 - NAYS 173
+"""
+
+
+@check("session", "a printed debate ends at the next heading, a heading that ends on a bill's "
+       "number among them, or at the next bill's report, and goes on over the page's continued "
+       "headings",
+       needs=("journal_days",))
+def _debate_ends_at_numbered_heading(JD):
+    """HB 148's override debate of 17 December 2025 ran on through
+    "GOVERNOR'S VETO MESSAGE ON HB 319-FN" -- the veto message, Rep. Ammon's
+    speech on HB 319 and its roll call -- because the heading pattern took no
+    digit (the owner's report, 29 October 2026). Nine debates on disk ran on
+    the same way. debates() ends a debate at DEBATE_END now, NEXT_HEAD with
+    a bill's number allowed at the end; a heading that goes on after the
+    number, or carries none -- REGULAR CALENDAR (CONT'D), HB 148 CONT'D -- is
+    the same debate over the page. The fixture is the Journal's own lines,
+    shortened."""
+    got = JD.debates(JD.clean(_DEBATE_RUNON))
+    assert [d["bill"] for d in got] == ["HB148"], f"the fixture's debates: {got}"
+    who = [w for w, _s in got[0]["speeches"]]
+    said = " ".join(s for _w, s in got[0]["speeches"])
+    assert who == ["Representative Layon", "Representative Turer", "Speaker Steven Smith"], (
+        f"HB 148's debate is spoken by {who}: a continued heading cut it short, or "
+        "HB 319's speaker was read into it")
+    assert said.endswith("188 to 165.") and "authority vested" not in said, (
+        "HB 148's debate runs on into HB 319's veto message: "
+        f"...{said[-120:]!r}")
+    # And where the calendar goes on with no heading: the next bill's report,
+    # its recommendation in capitals over a line end, ends the debate before
+    # it; a bill's number that a speech wraps onto a line of its own does
+    # not (HB 1555-FN of 30 January 2008; HB 1279's debate of 28 March 2024).
+    nxt = JD.debates(JD.clean(
+        "Rep. Wendelboe moved that the debate on HB 1428, naming a portion of the Franconia\n"
+        "Notch Parkway after Corporal Bruce McKay, be printed in the Journal. Motion adopted.\n\n"
+        "                                                DEBATE ON HB 1428\n\n"
+        "Rep. Gile: Thank you, Mister Speaker. We have a much more important bill to name than\n"
+        "HB 1279, which we sent on already, and I ask you to support Interim Study today.\n"
+        "Rep. Ward: Thank you very much. Please support Interim Study.\n"
+        "                                       REGULAR CALENDAR (CONT'D)\n\n"
+        "HB 1555-FN, relative to an E-Z Pass discount for residents of Merrimack. INEXPEDIENT\n"
+        "TO LEGISLATE.\n"
+        "Rep. Sprague: This bill would have given all E-Z Pass account holders a discount.\n"))
+    assert [w for w, _s in nxt[0]["speeches"]] == ["Rep. Gile", "Rep. Ward"] and \
+        "E-Z Pass" not in nxt[0]["speeches"][-1][1], (
+            f"a debate runs on into the next bill's report, or stops at a number a speech "
+            f"wrapped: {nxt[0]['speeches']}")
+    assert JD.NEXT_HEAD.pattern == r"^[ \t]{4,}[A-Z][A-Z' ’.,&-]{6,}[ \t]*$", (
+        "NEXT_HEAD changed: journal_bills and the consent and leave readers were "
+        "measured on it as it was, and only debates() takes a bill's number")
+    return "ok", ("HB 148's debate ends on its own vote, over two continued headings; "
+                  "HB 1428's at the next bill's report, not at a number a speech wrapped")
+
+
+def _opening_letters(pattern):
+    """The letters a pattern's matches can open on, where each top-level
+    alternative opens on \\b and a letter, or on \\b and a group of such
+    words: "\\b(?:moved|offered)\\b|\\bwithdrew ..." gives m, o, w. Anything
+    else gives None, which fails the check that asks: it cannot say."""
+    def split(p):
+        out, depth, cur, i = [], 0, "", 0
+        while i < len(p):
+            c = p[i]
+            if c == "\\":
+                cur += p[i:i + 2]
+                i += 2
+                continue
+            depth += c == "("
+            depth -= c == ")"
+            if c == "|" and depth == 0:
+                out.append(cur)
+                cur = ""
+            else:
+                cur += c
+            i += 1
+        return out + [cur]
+    got = set()
+    for alt in split(pattern):
+        alt = alt[2:] if alt.startswith("\\b") else alt
+        if alt.startswith("(?:"):
+            depth, end = 0, None
+            for j, c in enumerate(alt):
+                depth += c == "("
+                depth -= c == ")"
+                if depth == 0:
+                    end = j
+                    break
+            inner = _opening_letters(alt[3:end])
+            if inner is None:
+                return None
+            got |= inner
+        elif alt[:1].isalpha():
+            got.add(alt[0])
+        else:
+            return None
+    return got
+
+
+@check("session", "the night's check of the House's speakers reads the Journal's patterns where "
+       "they can begin")
+def _speakers_check_found():
+    """_every_speaker_where_the_journal_decides read DECIDED, MOTION_EVENT,
+    SPOKE and MOVED_SPOKE with finditer from every character of every House
+    day: 20 of its 53 seconds on the night. decisions() and found() give the
+    same matches (_journal_found_is_finditer; the same rows on all 538 days
+    on disk, 29 October 2026) in 7. Undone, the night is slower and nothing
+    else would say so."""
+    import inspect
+    import journal_days as J
+    src = inspect.getsource(_speakers_against_journal)
+    slow = [n for n in ("DECIDED", "MOTION_EVENT", "SPOKE", "MOVED_SPOKE")
+            if f"J.{n}.finditer(" in src]
+    assert not slow and "J.decisions(text)" in src, (
+        f"the speakers check runs {slow or ['DECIDED']} from every character again")
+    # AND EACH CLASS STILL HOLDS EVERY CHARACTER ITS PATTERN CAN BEGIN WITH.
+    # Every alternative opens on \b and a letter; a pattern given one that
+    # opens on another ("\blaid ...") would lose those matches here and
+    # nothing else would say so. The class is the one the check passes, read
+    # from its source; each letter a match can begin with is tried.
+    pairs = {n: re.search(r"J\.found\(J\." + n + r",\s*text,\s*\"([^\"]+)\"\)", src)
+             for n in ("MOTION_EVENT", "SPOKE", "MOVED_SPOKE")}
+    assert all(pairs.values()), f"the speakers check's classes are not where this reads: {pairs}"
+    every = "".join(map(chr, range(0x110000)))
+    for n, m in pairs.items():
+        rx, first = getattr(J, n), m.group(1)
+        # Where the pattern can begin: the code points a match of it can open
+        # on, each tried with the rest of a real match after it.
+        heads = {x.group(0)[0] for x in rx.finditer(" " + "  ".join(
+            (_JOURNAL_RECONSIDER, _JOURNAL_MOTION_AFTER, _JOURNAL_DECIDED, _JOURNAL_WALK,
+             _JOURNAL_WALK_MORE)))}
+        assert heads and all(re.fullmatch(first, c) for c in heads), (
+            f"{n} begins a match on {sorted(heads)}, and {first} misses one")
+        letters = _opening_letters(rx.pattern)
+        assert letters and all(re.fullmatch(first, c) for l in letters for c in (l.lower(), l.upper())), (
+            f"{n} opens on {sorted(letters)}, and {first} misses one")
+        read = set(re.findall(first, every, rx.flags & re.I))
+        assert all(re.fullmatch(first, c) for c in read), (
+            f"{first} misses a character {n} can begin with")
+    return "ok", "decisions() and found() for the four patterns, each class whole"
 
 
 @check("session", "a journal pattern found only where it can begin is finditer's own list",
@@ -112442,6 +113526,72 @@ def _empty_view_read(FT, SHR, BTD):
 
 # ======================================================================= main ==
 
+# EVERY RUN ENDS ON ITS SLOWEST CHECKS (26 October 2026). The night's
+# `preflight.py --code` took 110 s on 9 October and 285 s on 26 October, and
+# nobody saw it grow: the night's log gave the step's seconds and never which
+# checks took them. Now every run says its ten slowest, by function, under its
+# count, which the night prints in GitHub's own log as well as its log file
+# for --code and for --built (nightly.SLOWEST_LINE); and every check's seconds
+# go into the run's record (handoff.record_run's "timings") and into --built's
+# list (BUILT_OUT, "seconds").
+#
+# The seconds in all are the whole run's, and say how many of them came
+# before main() began (_loading): compiling this file and defining its
+# checks. main()'s own clock starts after both: a run the review of this
+# branch timed at 778 s said 754. How long the compile takes depends on how
+# the file is run. As `python3 preflight.py` it took about 1 s on a Linux box
+# with Python 3.14.0rc2 (29 October 2026); handed to compile() -- through
+# runpy, or an import with no .pyc to read -- it took 10 to 11 s, and the
+# codebase review's 14 s (26 October 2026) was timed by an import and by
+# compile(). The line says
+# whichever this run paid. What runs after it, as the process ends, it does
+# not count: the shared fixtures' folders, removed at exit, and Python's own
+# teardown, 8 s of a 277 s run on that box.
+SLOWEST = 10
+
+
+def _slowest(took, wall, loading, n=SLOWEST):
+    """The line naming the `n` slowest of `took`, [(seconds, check)], slowest
+    first, with how many ran and the run's seconds in all (`wall`), `loading`
+    of them before main() began."""
+    top = sorted(took, key=lambda x: -x[0])[:n]
+    return (f"slowest {len(top)} of {len(took)} checks, of {wall:.0f} s in all "
+            f"({loading:.0f} s of it compiling and loading preflight.py): "
+            + "; ".join(f"{c['fn'].__name__} {s:.1f} s" for s, c in top))
+
+
+def _loading(began):
+    """The seconds this process ran before `began`, main()'s start by
+    time.time(): Python starting, compiling this file and running it down to
+    main(). Linux's /proc says when the process began. Elsewhere, Windows
+    among them, it is the CPU seconds its main thread has used, which on a
+    busy machine run a little behind the clock (13.1 against 13.9 s for the
+    compile alone, on a loaded Linux box) -- and the same where /proc gives
+    an answer that cannot be right."""
+    import time
+    # The main thread's: it began with the process, so its CPU seconds can be
+    # no more than the process's seconds so far, as all threads' could.
+    cpu = time.thread_time()
+    try:
+        start = _began_from(Path("/proc/self/stat").read_text(encoding="ascii"),
+                            Path("/proc/uptime").read_text(encoding="ascii"),
+                            os.sysconf("SC_CLK_TCK"), time.time())
+    except (OSError, ValueError, IndexError, AttributeError):
+        return cpu
+    # No sooner than the CPU it used allows, nor longer ago than a day.
+    return began - start if cpu - 0.5 <= began - start < 86400 else cpu
+
+
+def _began_from(stat, uptime, hz, now):
+    """When a process began, by the clock that reads `now`: from its
+    /proc/<pid>/stat, whose 22nd field is the ticks from boot to its start
+    (counted from the last ")", because the name in field 2 may hold spaces
+    and parentheses), /proc/uptime's seconds since boot, and `hz` ticks a
+    second."""
+    ticks = int(stat.rsplit(")", 1)[1].split()[19])
+    return now - (float(uptime.split()[0]) - ticks / hz)
+
+
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--code", action="store_true", help="skip the data checks")
@@ -112488,7 +113638,11 @@ def main():
     # the data files as it began (handoff.data_state), which git does not see.
     import time as _time
     handoff = imp("handoff")
-    began, tree = _time.time(), (handoff.tree_state() if handoff else (None, None))
+    began = _time.time()
+    # Before tree_state asks git: where there is no /proc, _loading is the
+    # main thread's CPU seconds at the moment it is asked.
+    loading = _loading(began)
+    tree = handoff.tree_state() if handoff else (None, None)
     data = handoff.data_state() if handoff else None
     print("=" * 74)
     print(f"preflight   {Path('.').resolve()}")
@@ -112500,8 +113654,8 @@ def main():
         # suite, and handoff.py reads a record as a run of all of it.
         handoff = None
 
-    results, group, built = [], None, []
-    for c in CHECKS:
+    results, group, built, took = [], None, [], []
+    for c in _in_order(CHECKS):
         if a.code and c["group"] == "data":
             continue
         if a.data and c["group"] != "data":
@@ -112513,6 +113667,7 @@ def main():
         if c["group"] != group:
             group = c["group"]
             print(f"\n{group.upper()}")
+        t0 = _time.perf_counter()
         mods = []
         missing = None
         for n in c["needs"]:
@@ -112534,10 +113689,12 @@ def main():
                     traceback.print_exc()
             _OUTCOMES[c["fn"].__name__] = (status, msg)
             status, msg = _settle(status, msg, c.get("expect_fail"))
+        took.append((_time.perf_counter() - t0, c))
         results.append((c["group"], c["name"], status, msg))
         if a.built:
             built.append({"fn": c["fn"].__name__, "group": c["group"], "name": c["name"],
-                          "status": status, "msg": str(msg)[:600], "tier": built_tier(c)})
+                          "status": status, "msg": str(msg)[:600], "tier": built_tier(c),
+                          "seconds": round(took[-1][0], 2)})
         mark = {"ok": "  ok  ", "skip": " skip ", "FAIL": " FAIL ",
                 "ERROR": "ERROR ", "xfail": "xfail "}[status]
         print(f"  [{mark}] {c['name']}")
@@ -112556,11 +113713,13 @@ def main():
         BUILT_OUT.write_text(json.dumps(built, indent=1), encoding="utf-8")
     if handoff:
         handoff.record_run("code" if a.code else "data" if a.data else "all", results,
-                           tree, _time.time() - began, data=data)
+                           tree, _time.time() - began, data=data,
+                           timings=[(c["fn"].__name__, s) for s, c in took])
 
     print("\n" + "=" * 74)
     print(f"{len(ok)} passed, {len(bad)} failed, {len(skipped)} skipped"
           + (f", {len(expected)} expected to fail" if expected else ""))
+    print(_slowest(took, loading + _time.time() - began, loading))
     if bad:
         print("\nWhat is broken:")
         for g, n, s, m in bad:
@@ -112657,8 +113816,8 @@ def _changed_selects():
       _rows_one_at_a_time, and fewer than half of the checks;
       a change to narrative.py chooses a check that needs it and _chain,
       whose fixture build_site_v2 builds, which imports it;
-      a change to a check's own lines chooses it, and a change to main's
-      chooses every check;
+      a change to a check's own lines chooses it, and a change to main's,
+      or to _in_order's, chooses every check;
       comments and docstrings are not read as imports or launches; and
       the files and lines a change moved are read off git: a commit, an
       edit to it and a file git does not track.
@@ -112697,6 +113856,8 @@ def _changed_selects():
         "the two")
     assert len(chosen([rel], [index.info["main"]["span"]])) == len(CHECKS), (
         "a change to main() did not choose every check")
+    assert len(chosen([rel], [index.info["_in_order"]["span"]])) == len(CHECKS), (
+        "a change to _in_order, the order main() runs the checks in, did not choose every check")
     imports, strings = CS._code_of('"""import narrative, "narrative.py"."""\n'
                                    '# run("build_x.py")\nimport child\nrun("a.py")\n')
     assert imports == ["import child"] and strings == ['"a.py"'], (
@@ -113823,6 +114984,225 @@ def _published_scripts_run_the_same(BP, SJ):
                         + " | ".join(differ[:4]))
     return "ok", (f"{len(chosen)} checks that run a page's script in node came out the same on "
                   f"the published copy ({', '.join(f'{n} {k}' for k, n in sorted(ran.items()))})")
+
+
+# ---- what a run leaves behind, and what it says of its time (26 October 2026)
+#
+# The first of these counts the machine watches every other check of the run
+# left going, so it is marked `last`: main() runs it after all of them,
+# wherever a check is added in this file (_in_order).
+
+@check("pipeline", "a run of preflight leaves no machine watch going: nightly.main() stops the "
+       "one it starts on GitHub's machine however it returns, and no check before this one "
+       "left one", needs=("nightly",), last=True)
+def _no_watch_left(NI):
+    """nightly.machine_watch() started a thread that printed a [machine ...]
+    line once a minute and had no way to stop. Every check that ran the night
+    or the week in this process left one behind, printing into whatever came
+    next: 222 of them after one --code run (the codebase review, 26 October
+    2026). main() stops it now however it returns (nightly._watch_ends).
+    Held here, in this order, so that each failure gives its own reason: no
+    watch is going as this begins, which in a run of the suite is every other
+    check's leaving (this one is marked `last`, and main() runs it after all
+    of them, wherever they are defined); then the week runs with weekly()
+    replaced by one that counts the watches going -- the one main() started,
+    and no other -- and none is going once main() has returned."""
+    import contextlib
+    import inspect
+    import io
+    import threading
+
+    order = _in_order(CHECKS)
+    assert sorted(map(id, order)) == sorted(map(id, CHECKS)), (
+        f"_in_order hands main() {len(order)} checks of {len(CHECKS)}: it drops or repeats some")
+    assert order[-1]["fn"] is _no_watch_left and "_in_order(CHECKS)" in inspect.getsource(main), (
+        f"main() runs {order[-1]['fn'].__name__} after this one, or no longer runs the checks in "
+        "_in_order's order: what that one leaves going is never counted")
+
+    def going():
+        return [t for t in threading.enumerate() if t.name == "machine-watch" and t.is_alive()]
+    before, seen = going(), []
+    assert not before, (f"{len(before)} machine watches were left going by the checks this run "
+                        "ran before this one: something starts one that main() does not stop")
+    here = os.getcwd()
+    tmp = Path(tempfile.mkdtemp(prefix="gr-watch-"))
+    saved = (NI.weekly, NI.QUIET, NI.LOG, sys.argv)
+
+    def week(a):
+        seen.append(len(going()))
+        return 0
+    try:
+        os.chdir(tmp)
+        NI.weekly, NI.LOG = week, []
+        sys.argv = ["nightly.py", "--runner", "--weekly"]
+        with contextlib.redirect_stdout(io.StringIO()), contextlib.redirect_stderr(io.StringIO()):
+            try:
+                code = NI.main()
+            except SystemExit as e:
+                code = e.code
+    finally:
+        os.chdir(here)
+        NI.weekly, NI.QUIET, NI.LOG, sys.argv = saved
+        shutil.rmtree(tmp, ignore_errors=True)
+    after = going()
+    assert seen == [1], (f"the week saw {seen} machine watches going, with none going before "
+                         f"main() ran: main() did not start its one (exit {code})")
+    assert not after, (f"{len(after)} machine watches are still going after nightly.main() "
+                       "returned: it no longer stops the one it starts (_watch_ends)")
+    return "ok", "none was going before it, the week ran with its watch, and none is going after"
+
+
+@check("files", "every run ends on its ten slowest checks, and the run's record keeps every "
+       "check's seconds", needs=("handoff",))
+def _slowest_said(H):
+    """EVERY RUN ENDS ON ITS SLOWEST CHECKS (above main()). Held here: the
+    line names the ten slowest of a run, slowest first, by function and
+    seconds, with how many ran and the whole run's seconds, and how many of
+    those came before main() began; main() prints it under the count and
+    hands every check's seconds to handoff.record_run; and the record keeps
+    them as "timings", one for each check in its order, beside "checks" as
+    handoff.last_run reads it. And the seconds before main(): read right from
+    a fixture /proc line whose process name holds spaces and parentheses;
+    where this machine has a /proc, read from it for this process, no fewer
+    than the CPU its main thread has used and no more than a day, and taken
+    by _loading rather than its fallback; and elsewhere that fallback, the
+    main thread's CPU seconds."""
+    import inspect
+    import time
+    import types
+
+    def fake(name):
+        return {"fn": types.SimpleNamespace(__name__=name)}
+    took = [(float(i), fake(f"_c{i}")) for i in (3, 14, 1, 5, 9, 2, 6, 5, 3, 5, 8, 9, 7, 9, 3, 2)]
+    line = _slowest(took, 123.4, 21.6)
+    want = ("slowest 10 of 16 checks, of 123 s in all (22 s of it compiling and loading "
+            "preflight.py): _c14 14.0 s; _c9 9.0 s; _c9 9.0 s; _c9 9.0 s; _c8 8.0 s; _c7 7.0 s; "
+            "_c6 6.0 s; _c5 5.0 s; _c5 5.0 s; _c5 5.0 s")
+    assert line == want, f"the slowest line reads {line!r}, not {want!r}"
+    assert "passed," not in line, "handoff.py takes a line with 'passed,' in it for the count"
+    src = inspect.getsource(main)
+    assert "print(_slowest(took, loading + " in src and "loading = _loading(began)" in src \
+        and "timings=[" in src, (
+            "main() no longer says its slowest checks with the whole run's seconds, or no longer "
+            "records every check's seconds")
+    # Field 22 of /proc/<pid>/stat is 52,000 ticks (520 s at 100 a second)
+    # after boot; the system has been up 600.25 s, so the process began
+    # 80.25 s before `now`. The name, "(py (pre) flight)", splits wrongly at
+    # its first ")" or at its spaces.
+    stat = ("4242 (py (pre) flight) R 1 4242 4242 0 -1 4194304 100 0 0 0 1300 40 0 0 20 0 1 0 "
+            "52000 100000 2000 18446744073709551615")
+    began = _began_from(stat, "600.25 2000.00\n", 100, 10_000.0)
+    assert abs(began - 9_919.75) < 1e-6, f"a process 80.25 s old read as begun at {began}"
+    # Each reading pairs the clock with /proc/uptime read a moment apart, so a
+    # pause between the two -- this process waiting its turn on a busy
+    # machine, or collecting its garbage -- moves it by that pause. Both
+    # pauses fall between `now` and the end of _loading, so the two readings
+    # agree to within those seconds and /proc's hundredths: a fixed 0.1 s
+    # failed here on a loaded box, 19.70 against 19.80 (29 October 2026).
+    # The CPU seconds are read first, so that none used after `now` counts.
+    cpu = time.thread_time()
+    now = time.time()
+    if Path("/proc/self/stat").is_file():
+        start = _began_from(Path("/proc/self/stat").read_text(encoding="ascii"),
+                            Path("/proc/uptime").read_text(encoding="ascii"),
+                            os.sysconf("SC_CLK_TCK"), now)
+        assert cpu - 0.5 <= now - start < 86400, (
+            f"/proc says this process began {now - start:.2f} s ago, and its main thread had "
+            f"used {cpu:.2f} s of CPU by then")
+        got = _loading(now)
+        spent = time.time() - now
+        assert abs(got - (now - start)) <= spent + 0.02, (
+            f"_loading took {got:.2f} s where /proc says {now - start:.2f} s, "
+            f"{spent:.2f} s apart")
+    else:
+        got = _loading(now)
+        assert cpu <= got <= time.thread_time(), (
+            f"_loading took {got:.2f} s, not the main thread's CPU seconds")
+    here = os.getcwd()
+    tmp = Path(tempfile.mkdtemp(prefix="gr-timings-"))
+    results = [("files", "one", "ok", ""), ("build", "two", "FAIL", "broken")]
+    try:
+        os.chdir(tmp)
+        assert H.record_run("code", results, (None, None), 2.0,
+                            timings=[("_one", 0.123), ("_two", 1.987)]), "no record was written"
+        rec = json.loads(H.RUN.read_text(encoding="utf-8"))
+    finally:
+        os.chdir(here)
+        shutil.rmtree(tmp, ignore_errors=True)
+    assert rec.get("checks") == [["files", "one", "ok"], ["build", "two", "FAIL"]] and \
+        rec.get("timings") == [["_one", 0.12], ["_two", 1.99]], (
+        f"the record keeps {rec.get('checks')} and {rec.get('timings')}")
+    return "ok", "the slowest ten said in order; every check's seconds kept beside its status"
+
+
+@check("pipeline", "on GitHub's machine the night prints preflight's slowest-checks line in "
+       "GitHub's own log, and no other line of the step's, nor that line from another step",
+       needs=("nightly",))
+def _slowest_reaches_the_job_log(NI):
+    """PREFLIGHT'S SLOWEST CHECKS IN GITHUB'S LOG (nightly.py). With --runner
+    a step's own lines go to the log file only, and GitHub's job log, where
+    the night's --code grew from 110 s to 285 s unseen, showed the step's
+    header and its seconds. Held here with nightly.run() itself, its child
+    replaced by one that prints what it is given: the line as _slowest makes
+    it reaches GitHub's log from a preflight step, between the step's header
+    and its seconds, and none of the step's other lines does; from a failing
+    one it comes once, ahead of the failure lines; from a step that is not
+    preflight, not at all; and a line of its shape that names something other
+    than a function, not at all."""
+    import contextlib
+    import io
+    import types
+
+    def fake(name):
+        return {"fn": types.SimpleNamespace(__name__=name)}
+    line = _slowest([(249.04, fake("_published_scripts_run_the_same")),
+                     (22.91, fake("_links_resolve"))], 778.2, 24.3)
+    ran_ok = ["FRONTEND", "  [  ok  ] a check's name, and what a reader typed: HB 1", "",
+              "=" * 74, "2 passed, 0 failed, 0 skipped", line, "", "=" * 74]
+    ran_bad = ["FRONTEND", "  [ FAIL ] a check's name", "           what it found", "",
+               "=" * 74, "1 passed, 1 failed, 0 skipped", line, "", "What is broken:",
+               "  frontend/a check's name", "    what it found", "=" * 74]
+
+    class Child:
+        def __init__(self, out, rc):
+            self.stdout, self.returncode, self.rc = iter(f"{o}\n" for o in out), None, rc
+
+        def wait(self):
+            self.returncode = self.rc
+            return self.rc
+
+    def printed(args, out, rc=0):
+        """What GitHub's log shows of the step, its blank lines left out."""
+        NI.child = types.SimpleNamespace(popen=lambda *a, **k: Child(out, rc))
+        NI.LOG = []
+        said = io.StringIO()
+        with contextlib.redirect_stdout(said):
+            assert NI.run(args, "the step") == rc
+        got = [ln for ln in said.getvalue().splitlines() if ln.strip()]
+        assert got[0] == "--- the step ---" and re.fullmatch(rf"  \(\d+s, exit {rc}\)", got[-1]) \
+            and len(NI.LOG) > len(out), f"run() no longer logs a step as it did: {got}"
+        return got[1:-1]
+
+    saved = (NI.child, NI.QUIET, NI.LOG, NI.WATCH.get("step"))
+    try:
+        NI.QUIET = True
+        got = printed(["preflight.py", "--code"], ran_ok)
+        assert got == ["  " + line], (
+            f"GitHub's log shows {got} of a preflight step, not its slowest line alone")
+        got = printed(["preflight.py", "--built"], ran_bad, rc=1)
+        assert got[0] == "  " + line and got.count("  " + line) == 1 \
+            and "    [ FAIL ] a check's name" in got, (
+                f"GitHub's log shows {got} of a failed preflight step")
+        got = printed(["build_all.py", "--local"], ran_ok)
+        assert got == [], f"GitHub's log shows {got} of a step that is not preflight"
+        odd = line.replace("_links_resolve 22.9 s", "what a reader typed 22.9 s")
+        got = printed(["preflight.py", "--code"], ran_ok[:5] + [odd])
+        assert got == [], f"GitHub's log shows {got}: a line that names more than functions"
+    finally:
+        NI.child, NI.QUIET, NI.LOG = saved[:3]
+        NI.WATCH["step"] = saved[3]
+    return "ok", ("a preflight step's slowest line, and that alone, reaches GitHub's log; once "
+                  "from a failed one; never from another step, nor in another shape")
 
 
 if __name__ == "__main__":
