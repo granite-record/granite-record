@@ -106,3 +106,8 @@ only under "Independence". So the section opens with that sentence, word for
 word, and nothing is lost. `shots/` holds the section at 390 and 1280, light
 and dark, drawn into the preview's About page with the median the Data page
 gives today (1 second).
+
+Later the same day, at the owner's word ("not affiliated" is enough), the
+opening sentence lost "or endorsed by": "Granite Record is not affiliated with
+the New Hampshire General Court, and it takes no position on any bill." Only
+`shots/about-neutrality-390-light.png` was taken again.
