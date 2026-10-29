@@ -89,7 +89,10 @@ dropped by the sender and refused at sign-up.
   Each entry has a `label` (at most 120 characters, plain text: what the
   record is called in an email and on the manage page), an optional `title`
   (at most 300, plain text), an optional `now` (at most 120, plain text: where
-  a bill stands tonight, "In committee", as its search row says), and an
+  a bill stands tonight, in its card's chip word -- "In Committee", "Passed
+  House" -- as components.card_word says it; until 29 October 2026 it was
+  the search row's "In committee", which the email still reads, as the chip
+  word), and an
   optional `url`, a path on the site
   beginning with one `/`, with any query already percent-encoded (a topic's
   is the bill search narrowed to it, `/bills?topic=Banking%20and%20Finance`).
