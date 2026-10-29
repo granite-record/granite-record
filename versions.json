@@ -119,7 +119,7 @@
     "gap_excerpts.py": "2026-10-23.1",
     "gc_changes.py": "2026-09-12.9",
     "ground_truth.py": "2026-09-05.4",
-    ".claude/hooks/guard.py": "2026-10-26.3",
+    ".claude/hooks/guard.py": "2026-10-26.4",
     "handoff.py": "2026-09-05.21",
     "i18n.py": "2026-10-23.21",
     "interim_statements.py": "2026-10-29.1",
