@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-10-11.24
+# GRANITE_VERSION: 2026-10-11.25
 """
 The official pages the how-to guides cite, onto this disk, to check them by.
 
@@ -385,6 +385,7 @@ OTHER = {
         "https://www.medicare.gov/talk-to-someone",
         # the person's printout of 26 October 2026
         "https://www.medicare.gov/basics/get-started-with-medicare/medicare-basics/parts-of-medicare",
+        "https://www.medicare.gov/basics/costs/medicare-costs",
         "https://www.usa.gov/agencies/social-security-administration",
         "https://www.ssa.gov/apply",
         "https://www.ssa.gov/medicare/sign-up",

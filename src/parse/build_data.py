@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.58
+# GRANITE_VERSION: 2026-09-04.59
 """
 Turn the General Court's bulk files into the data the site runs on.
 
@@ -2634,6 +2634,11 @@ def main():
             "question": r[11], "title": r[12],
         }
     print(f"roll call summaries: {len(summary):,}")
+    # A roll call a person showed is filed under the wrong bill
+    # (corrections/rollcall_corrections.json), said here as rollcall_parser
+    # says it, so the ballots and the bill's page are seen to move together.
+    # Not "in no file read": a run of the frozen terms reads only theirs.
+    RP.refiled_report(complete=False)
 
     member_votes, vote_kinds, hist_bodies = [], Counter(), Counter()
     vnums, unmatched_votes, no_person = set(), 0, Counter()
