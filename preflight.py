@@ -20403,9 +20403,12 @@ def _search_says_counts(BP):
     the page's script fills it each time it draws: each group it lists,
     counted, in the page's own order, and the bills and next session's
     requests where the page puts them -- "1 senator, 2 bills." -- or "No
-    matching results." It says nothing while the bills, the earlier terms or
-    the requests are still on their way, so the answer is said once, when
-    it is whole, and not "1 senator" and then "1 senator, 2 bills". The page
+    matching results." It says nothing while the bills, the earlier terms,
+    the requests or the Laws pages' list (fetched once a statute's number is
+    typed: "RSA 659" was said "No matching results." and then "1 law.", the
+    review of 29 October 2026) are still on their way, so the answer is said
+    once, when it is whole, and not "1 senator" and then "1 senator, 2
+    bills". The page
     is in English alone: there is no /es/search (build_pages writes
     search.html once), so the words are not the catalog's."""
     if not shutil.which("node"):
@@ -20423,7 +20426,8 @@ def _search_says_counts(BP):
         f"role=\"status\">: {[e['attrs'] for e in lines]}")
     P, SO, CO = _find_bills_run(BP, ("panel_side.js",), ("panel_side.js", "slowold"),
                                 ("panel_side.js", "cold"))
-    M, = _find_more_run(BP, ("panel", ""))
+    M, L404, L91 = _find_more_run(BP, ("panel", ""), ("panel", "slowlaw:RSA 404"),
+                                  ("panel", "slowlaw:RSA 91-A"))
     s, m = P["search"], M["search"]
     n = P["all"]["q"]["firearms"]["n"]
     want = {"firearms": f"{n} bills.", "xyzzy": "No matching results.",
@@ -20458,6 +20462,19 @@ def _search_says_counts(BP):
         f"while the earlier terms are being counted /search says "
         f"{SO['search']['firearms']['say']!r} and {SO['search']['xyzzy']['say']!r}: it says the answer "
         f"before it is whole, and then again")
+    # THE LAWS PAGES' LIST ON ITS WAY (the review of 29 October 2026): it is
+    # fetched only once a statute's number is typed, and "RSA 659" was said
+    # "No matching results." and then "1 law."; "RSA 91-A" "242 bills." and
+    # then "1 law, 242 bills.". Typed with the list held back, the line says
+    # nothing; let go, it says the whole answer once.
+    for q, run, whole in (("RSA 404", L404, "1 law."), ("RSA 91-A", L91, m["RSA 91-A"]["say"])):
+        spoke = [x for x in run["heard"][1:] if x]
+        if not run["held"]["asked"]:
+            bad.append(f"/search?q={q} never asked for the Laws pages' list")
+        elif run["held"]["say"] != "" or spoke != [whole] or run["say"] != whole:
+            bad.append(f"/search typed {q!r} while the Laws pages' list is on its way says "
+                       f"{run['held']['say']!r}, and in turn {spoke}, where it should say nothing and "
+                       f"then {whole!r} once")
     assert not bad, "/search does not say what it found: " + "; ".join(bad[:4])
     return "ok", ("/search's status line, as the fixture builds the page: " + "; ".join(
         f"{q!r} {x['say']!r}" for q, x in (("firearms", s["firearms"]), ("abbas", s["abbas"]),
@@ -20531,7 +20548,31 @@ catch (e) { console.log("LOAD " + e.message); process.exit(1); }
 F.FIND.rows = FIX["/find.json"];
 const panel = document.getElementById("findout");
 const draw = (s) => { F.findDraw(s); return panel.innerHTML; };
+// "slowlaw:<q>": the Laws pages' list, which find.js fetches only once a
+// statute's number is typed, held back while /search is typed <q> into and
+// listened to, then let go: what its status line says, step by step.
+let freeLaws = null;
+if (MODE.startsWith("slowlaw:")) {
+  const f0 = globalThis.fetch;
+  globalThis.fetch = (u) => new URL(u).pathname === "/laws/chapters.json"
+    ? new Promise(r => { freeLaws = () => r(f0(u)); }) : f0(u);
+}
 (async () => {
+  if (MODE.startsWith("slowlaw:")) {
+    script("./search.js");
+    location.search = "?q=firearms";
+    ready(); await ticks(40);
+    const box = document.getElementById("resq"), line = document.getElementById("ressay");
+    const heard = [line.textContent];
+    const listen = async (n) => { for (let i = 0; i < n; i++) { await ticks(1);
+      if (heard[heard.length - 1] !== line.textContent) heard.push(line.textContent); } };
+    box.value = MODE.slice(8); box.fire("input"); await listen(60);
+    const held = {asked: !!freeLaws, say: line.textContent};
+    if (freeLaws) freeLaws();
+    await listen(60);
+    console.log(JSON.stringify({held, heard, say: line.textContent}));
+    return;
+  }
   const res = {panel: {}, first: {}, search: {}, all: {}, req: {}};
   draw("firearms"); await F.findBillsLoad(); await ticks(10);
   res.idle = ASKED.filter(p => p.startsWith("/laws/") || p.includes("requests"));

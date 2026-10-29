@@ -2504,9 +2504,13 @@ function draw(q){
   // the header's panel has said so since 2 October (find.js, findSay). One
   // line the eye does not see, role="status", the groups in the page's own
   // order: "1 town or ward, 19 bills." Nothing while the bills, the earlier
-  // terms, the requests or a word to offer are still on their way, so the
-  // answer is said once, when it is whole, and not once a step.
-  const unsure=(B&&B.state==="loading")||counting||(R&&R.state==="loading")||offering;
+  // terms, the requests, the Laws pages' list or a word to offer are still
+  // on their way, so the answer is said once, when it is whole, and not once
+  // a step. The Laws list is fetched only once a statute's number is typed,
+  // and "RSA 659" said "No matching results." and then "1 law." (the review
+  // of 29 October 2026).
+  const unsure=!!(law&&law.loading)||(B&&B.state==="loading")||counting
+    ||(R&&R.state==="loading")||offering;
   tell(unsure?"":counts.length?counts.join(", ")+"."
     :"No matching results."+(offered.length?` Did you mean ${offered.join(" or ")}?`:""));
 }
