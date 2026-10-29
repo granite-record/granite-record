@@ -76214,10 +76214,41 @@ process.stdout.write("\n@@" + JSON.stringify(out));
             "a term with no recording does not keep the tab without a count and say so")
     assert "Videos" not in re.sub(r"<[^>]+>", " ", flat["none"].split('id="ppane"')[0].split('role="tablist"')[-1]) \
         and flat["noneTab"] == 0, "a committee with no recording has a Videos tab, or opens on it"
+    # THE ROW THAT IS PLAYING, pressed again, goes on playing: choosing it
+    # built a new frame from 0 over the one that was playing. Another row
+    # pressed while one plays is played, through the one handler (its still
+    # drawn, then pressed). vwChoose over a view whose player holds a frame.
+    chose = _node_app(r"""
+require("./stub.js");
+const fs = require("fs");
+const s = (0, eval)(fs.readFileSync("./page.js", "utf8") + "; ({vwChoose, setView: (o) => { VVIEW = o; }})");
+const n = {made: 0, played: 0};
+const player = {insertAdjacentHTML: () => { n.made += 1; }, remove() {}, scrollIntoView() {},
+  querySelector: () => ({click: () => { n.played += 1; }, focus() {}})};
+const box = {querySelector: (sel) => sel === ".vwplay iframe" ? {} : sel === ".vwplay" ? player
+  : sel === ".vwdetin" ? {innerHTML: ""} : sel === ".vwsay" ? {textContent: ""} : null,
+  querySelectorAll: () => []};
+const row = (id) => ({dataset: {vwpick: id}, closest: (sel) => sel === ".vw" ? box : null,
+  setAttribute() {}, removeAttribute() {}});
+const out = {};
+try {
+  s.setView({who: "Senate Finance", rows: [{id: "A", date: "2026-05-12"}, {id: "B", date: "2026-05-05"}],
+    chosen: "A", pid: (r) => "m_" + r.id, href: (id) => "/committee/S07/videos#v-" + id});
+  s.vwChoose(row("A")); out.again = Object.assign({}, n);
+  s.vwChoose(row("B")); out.other = Object.assign({}, n);
+} catch (e) { out.threw = e.constructor.name + ": " + e.message; }
+process.stdout.write("\n@@" + JSON.stringify(out));
+""")
+    if chose is not None:
+        assert "threw" not in chose and chose["again"] == {"made": 0, "played": 0}, (
+            f"the row that is playing, pressed again, starts it over in a new frame: {chose}")
+        assert chose["other"] == {"made": 1, "played": 1}, (
+            f"another row pressed while one plays is not played through its still: {chose}")
     return "ok", ("the third tab, counted; a still of the newest, nothing from YouTube before Play; "
                   "rows of the term with the Meetings tab's chips, no bill line where none is known; "
-                  "one caption with nothing missing said; the moment the Meetings tab's own button; "
-                  "twenty and Show all 25; a term with none says so; no tab with no recording")
+                  "one caption with nothing missing said, no dot ending a line; the moment the "
+                  "Meetings tab's own button; twenty and Show all 25; a term with none says so; no "
+                  "tab with no recording; the row playing, pressed again, plays on")
 
 
 @check("frontend", "the committees index says its counts of bills and sessions are every "

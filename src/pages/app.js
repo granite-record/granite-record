@@ -9088,6 +9088,10 @@ function vwChoose(a){
   const r=o&&box&&o.rows.find(x=>x.id===a.dataset.vwpick);
   if(!r)return;
   const playing=!!box.querySelector(".vwplay iframe");
+  // THE ROW THAT IS PLAYING, pressed again, goes on playing: a new frame
+  // over it would start the recording over from its beginning. It is only
+  // brought into view.
+  if(playing&&r.id===o.chosen){box.querySelector(".vwplay").scrollIntoView({block:"nearest"});return;}
   o.chosen=r.id;
   if(o.onChoose)o.onChoose(r.id);
   // Chosen here, so the address it is about to name is not an arrival
