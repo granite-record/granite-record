@@ -67996,9 +67996,17 @@ def _guide_parts(BC, G):
     closes one numbered list and opens the next at each heading, so the
     numbers start again (the counter is the list's, app.css .g-steps). Held
     on every guide: one list per part and a heading before each, or one list
-    and no heading; and no step's words still point at a step by its old
-    running number, which would now name a step in another part."""
+    and no heading. And in a guide in parts, nothing the page says, in English
+    or Spanish -- a step, a note, the diagram, the questions -- points at a
+    step by number unless it names the part and a step that part has: "(Medicare,
+    step 3)". A bare "step 4" would name a step of another part. (The review
+    of the change found the first version of this read only steps, and only a
+    number in brackets, and would have passed three of the six it was for.)"""
     import html as _h
+    import json as _j
+    es = _j.loads((_paths.ROOT / "src/pages/lang/es.json").read_text(encoding="utf-8"))["strings"]
+    num = re.compile(r"\b(?:steps?|pasos?) \d+", re.I)
+    named = re.compile(r"\(([^()]*?), (?:step|paso) (\d+)\)")
     parted, bad = 0, []
     for g in G.GUIDES:
         got = BC.guide_steps(g)
@@ -68013,10 +68021,21 @@ def _guide_parts(BC, G):
                 bad.append(f"{g['slug']}: {len(heads)} parts but {lists} lists and headings {shown}")
             if '<h3 class="g-sh">' in got:
                 bad.append(f"{g['slug']}: a step title sits at the heading's level")
+            size, cur = {}, ""
             for s_ in g["steps"]:
-                for m in re.findall(r"\(steps? \d[^)]*\)", s_["text"]):
-                    if not re.search(r"\(\w[\w ]*, step \d", m):
-                        bad.append(f"{g['slug']}: {s_['title']!r} still says {m}")
+                cur = s_.get("part") or cur
+                size[cur] = size.get(cur, 0) + 1
+            size_es = {es.get(k, {}).get("es", ""): n for h, n in size.items()
+                       for k in [G.page_keys(g["slug"]).get(h)] if k}
+            said = [t for _w, t, _h2 in G.wording(g["slug"]) if t]
+            said += [es[k]["es"] for k in G.page_keys(g["slug"]).values() if k in es]
+            for t in said:
+                plain = _h.unescape(re.sub(r"<[^>]+>", "", t))
+                ok = {m.start(2) for m in named.finditer(plain)
+                      if int(m.group(2)) <= {**size, **size_es}.get(m.group(1), 0)}
+                for m in num.finditer(plain):
+                    if not any(m.start() <= o <= m.end() for o in ok):
+                        bad.append(f"{g['slug']}: says {plain[max(0, m.start() - 40):m.end() + 5]!r}")
         elif lists != 1 or "g-part" in got:
             bad.append(f"{g['slug']}: one part but {lists} lists")
     assert parted, "no guide is in parts: PARTS was not applied"

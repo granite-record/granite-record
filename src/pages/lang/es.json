@@ -2242,6 +2242,11 @@
    "es": "Cómo presentar la prueba de responsabilidad financiera",
    "state": "draft"
   },
+  "guide.car-insurance.financial-responsibility": {
+   "en": "Financial responsibility",
+   "es": "Responsabilidad financiera",
+   "state": "draft"
+  },
   "guide.car-insurance.financial-responsibility-rsa-264": {
    "en": "Financial responsibility, RSA 264",
    "es": "Responsabilidad financiera, RSA 264",
@@ -2809,8 +2814,8 @@
    "state": "draft"
   },
   "guide.consumer-rights.if-a-seller-tells-you-that": {
-   "en": "If a seller tells you that you have won something, with words such as &ldquo;Congratulations&rdquo; or &ldquo;You have won&rdquo;, the law requires the prize to be yours without any obligation, delivered at no cost to you within 10 days. A &ldquo;prize&rdquo; that asks you to pay a handling, registration, redemption or delivery fee, or to buy something first, is not one the law allows. Do not pay, and report it (see Complain to the Attorney General, below).",
-   "es": "Si un vendedor le dice que ganó algo, con palabras como &ldquo;Felicidades&rdquo; o &ldquo;Usted ganó&rdquo;, la ley exige que el premio sea suyo sin ninguna obligación, entregado sin costo para usted dentro de los 10 días. Un &ldquo;premio&rdquo; que le pide pagar una cuota de manejo, de inscripción, de canje o de envío, o comprar algo primero, no es uno que la ley permita. No pague, y denúncielo (vea Presentar una queja ante el Fiscal General, más abajo).",
+   "en": "If a seller tells you that you have won something, with words such as &ldquo;Congratulations&rdquo; or &ldquo;You have won&rdquo;, the law requires the prize to be yours without any obligation, delivered at no cost to you within 10 days. A &ldquo;prize&rdquo; that asks you to pay a handling, registration, redemption or delivery fee, or to buy something first, is not one the law allows. Do not pay, and report it (see &ldquo;Complain to the Attorney General&rdquo;, below).",
+   "es": "Si un vendedor le dice que ganó algo, con palabras como &ldquo;Felicidades&rdquo; o &ldquo;Usted ganó&rdquo;, la ley exige que el premio sea suyo sin ninguna obligación, entregado sin costo para usted dentro de los 10 días. Un &ldquo;premio&rdquo; que le pide pagar una cuota de manejo, de inscripción, de canje o de envío, o comprar algo primero, no es uno que la ley permita. No pague, y denúncielo (vea &ldquo;Presentar una queja ante el Fiscal General&rdquo;, más abajo).",
    "state": "draft"
   },
   "guide.consumer-rights.know-what-the-law-forbids": {
@@ -3096,6 +3101,11 @@
   "guide.disability-help.any-new-hampshire-resident-with-a": {
    "en": "Any New Hampshire resident with a disability may qualify, whether looking for a first job or wanting to keep working after a disability. Its help includes career counseling, job training, help finding a job, and assistive technology. To apply, fill in the online referral form on its page.",
    "es": "Cualquier residente de New Hampshire con una discapacidad puede reunir los requisitos, ya sea que busque su primer empleo o quiera seguir trabajando después de una discapacidad. Su ayuda incluye orientación profesional, capacitación laboral, ayuda para encontrar empleo y tecnología de asistencia. Para presentar una solicitud, llene el formulario de remisión en línea de su página.",
+   "state": "draft"
+  },
+  "guide.disability-help.appealing-a-decision": {
+   "en": "Appealing a decision",
+   "es": "Apelar una decisión",
    "state": "draft"
   },
   "guide.disability-help.apply-as-soon-as-you-can": {
@@ -5510,8 +5520,8 @@
    "state": "draft"
   },
   "guide.health-insurance.medicaid-or-medicare-may-cover-you": {
-   "en": "Medicaid or Medicare may cover you (see Where Medicaid and Medicare fit, below).",
-   "es": "Medicaid o Medicare pueden cubrirle (vea Dónde entran Medicaid y Medicare, más abajo).",
+   "en": "Medicaid or Medicare may cover you (see &ldquo;Where Medicaid and Medicare fit&rdquo;, below).",
+   "es": "Medicaid o Medicare pueden cubrirle (vea &ldquo;Dónde entran Medicaid y Medicare&rdquo;, más abajo).",
    "state": "draft"
   },
   "guide.health-insurance.moving-to-a-new-zip-code": {
@@ -7390,9 +7400,14 @@
    "es": "Prácticas prohibidas y depósitos de garantía, RSA 540-A",
    "state": "draft"
   },
+  "guide.landlord-duties.reasons-and-notice": {
+   "en": "Reasons and notice",
+   "es": "Razones y aviso",
+   "state": "draft"
+  },
   "guide.landlord-duties.renting": {
    "en": "Renting",
-   "es": "Alquilar",
+   "es": "Alquilar su propiedad",
    "state": "draft"
   },
   "guide.landlord-duties.return-it-within-30-days-of": {
@@ -7636,8 +7651,8 @@
    "state": "draft"
   },
   "guide.medicare-and-social-security.help-with-the-costs-comes-from": {
-   "en": "<b>Help with the costs</b> comes from two programs: the state&rsquo;s <b>Medicare Savings Programs</b>, which help pay Medicare premiums and, for some people, other costs; and the federal <b>Extra Help</b> program, which pays part of the cost of drug coverage. Get help paying the costs, below, says who qualifies and how to apply.",
-   "es": "<b>La ayuda con los costos</b> viene de dos programas: los <b>Programas de Ahorros de Medicare</b> del estado, que ayudan a pagar las primas de Medicare y, para algunas personas, otros costos; y el programa federal de <b>Ayuda Adicional</b>, que paga parte del costo de la cobertura de medicamentos. Obtenga ayuda para pagar los costos, más abajo, dice quién reúne los requisitos y cómo solicitarlos.",
+   "en": "<b>Help with the costs</b> comes from two programs: the state&rsquo;s <b>Medicare Savings Programs</b>, which help pay Medicare premiums and, for some people, other costs; and the federal <b>Extra Help</b> program, which pays part of the cost of drug coverage. The step &ldquo;Get help paying the costs&rdquo;, below, says who qualifies and how to apply.",
+   "es": "<b>La ayuda con los costos</b> viene de dos programas: los <b>Programas de Ahorros de Medicare</b> del estado, que ayudan a pagar las primas de Medicare y, para algunas personas, otros costos; y el programa federal de <b>Ayuda Adicional</b>, que paga parte del costo de la cobertura de medicamentos. El paso &ldquo;Obtenga ayuda para pagar los costos&rdquo;, más abajo, dice quién reúne los requisitos y cómo solicitarlos.",
    "state": "draft"
   },
   "guide.medicare-and-social-security.how-do-i-avoid-a-late": {
@@ -9470,11 +9485,6 @@
    "es": "Cómo su municipio o ciudad hace el avalúo de su propiedad, cómo se fija la tasa del impuesto, qué tiene que mostrar su factura del impuesto a la propiedad, cuándo vence, y las exenciones, los créditos y los aplazamientos que puede solicitar.",
    "state": "draft"
   },
-  "guide.property-tax-bill.lowering-or-appealing-it": {
-   "en": "Lowering or appealing it",
-   "es": "Reducirla o apelarla",
-   "state": "draft"
-  },
   "guide.property-tax-bill.new-hampshire-law-lets-each-town": {
    "en": "New Hampshire law lets each town and city offer relief to some owners, and the town&rsquo;s voters or council decide which it offers and, within the law&rsquo;s limits, how much. Ask your assessing office or the selectmen what yours offers. You apply once, on the state&rsquo;s form, to your selectmen or assessors, <b>by April 15</b>, and the application stands from year to year while you live in the same home, though your town may ask you to update your information as often as once a year.",
    "es": "La ley de New Hampshire permite a cada municipio y ciudad ofrecer un alivio a algunos propietarios, y los votantes o el concejo del municipio deciden cuál ofrece y, dentro de los límites de la ley, de cuánto. Pregunte a la oficina de avalúos o a los concejales (selectmen) qué ofrece el suyo. Usted presenta la solicitud una sola vez, en el formulario del estado, a los concejales o a los tasadores, <b>a más tardar el 15 de abril</b>, y la solicitud sigue vigente año tras año mientras viva en la misma vivienda, aunque su municipio puede pedirle que ponga al día su información hasta una vez al año.",
@@ -9518,6 +9528,11 @@
   "guide.property-tax-bill.relief": {
    "en": "Relief",
    "es": "Alivio",
+   "state": "draft"
+  },
+  "guide.property-tax-bill.relief-and-appeals": {
+   "en": "Relief and appeals",
+   "es": "Alivio y apelaciones",
    "state": "draft"
   },
   "guide.property-tax-bill.set-by-the-town": {
@@ -14904,11 +14919,6 @@
    "es": "Una placa especial",
    "state": "draft"
   },
-  "guide.vanity-and-special-plates.a-special-plate-show-that-you": {
-   "en": "A special plate: show that you qualify",
-   "es": "Una placa especial: demuestre que reúne los requisitos",
-   "state": "draft"
-  },
   "guide.vanity-and-special-plates.a-vanity-plate": {
    "en": "A vanity plate",
    "es": "Una placa personalizada",
@@ -15035,8 +15045,8 @@
    "state": "draft"
   },
   "guide.vanity-and-special-plates.for-a-special-plate-find-yours": {
-   "en": "For a special plate, find yours in the table under A special plate, below: who may have it and what it costs.",
-   "es": "Para una placa especial, búsquela en la tabla bajo Una placa especial, más abajo: quién puede tenerla y cuánto cuesta.",
+   "en": "For a special plate, find yours in the table under &ldquo;A special plate&rdquo;, below: who may have it and what it costs.",
+   "es": "Para una placa especial, búsquela en la tabla bajo &ldquo;Una placa especial&rdquo;, más abajo: quién puede tenerla y cuánto cuesta.",
    "state": "draft"
   },
   "guide.vanity-and-special-plates.for-some-plates-yes-until-they": {
@@ -15189,6 +15199,11 @@
    "es": "RSA 261:97-g",
    "state": "draft"
   },
+  "guide.vanity-and-special-plates.show-that-you-qualify": {
+   "en": "Show that you qualify",
+   "es": "Demuestre que reúne los requisitos",
+   "state": "draft"
+  },
   "guide.vanity-and-special-plates.some-special-plates-can-carry-letters": {
    "en": "Some special plates can carry letters you choose too: a Gold Star plate, and a conservation or First for Veterans plate, for which you pay the vanity fee as well. The state park symbol can go on a vanity plate.",
    "es": "Algunas placas especiales también pueden llevar letras que usted elige: una placa Gold Star, y una placa de conservación o First for Veterans, por la que además paga la cuota de placa personalizada. El símbolo de los parques estatales puede ir en una placa personalizada.",
@@ -15252,6 +15267,11 @@
   "guide.vanity-and-special-plates.title": {
    "en": "How to Get a Vanity or Special Plate",
    "es": "Cómo obtener una placa personalizada o especial",
+   "state": "draft"
+  },
+  "guide.vanity-and-special-plates.to-change-to-a-special-plate": {
+   "en": "To change to a special plate during the year, the DMV asks for a completed Application for Replacement Plates and Decals, the plate fees, a new registration fee, and any other fees for the plate you want.",
+   "es": "Para cambiar a una placa especial durante el año, el DMV pide la Application for Replacement Plates and Decals (solicitud de placas y calcomanías de reemplazo) completa, las cuotas de placa, una nueva cuota de registro y cualquier otra cuota de la placa que desea.",
    "state": "draft"
   },
   "guide.vanity-and-special-plates.to-change-to-a-vanity-plate": {
@@ -15629,6 +15649,11 @@
    "es": "En cada período de pago en que se le descuente algo, su empleador tiene que darle un detalle de las deducciones.",
    "state": "draft"
   },
+  "guide.wage-rights.file-a-wage-claim": {
+   "en": "File a wage claim",
+   "es": "Presente un reclamo de salarios",
+   "state": "draft"
+  },
   "guide.wage-rights.file-a-wage-claim-online-department": {
    "en": "File a wage claim online (Department of Labor)",
    "es": "Presentar un reclamo de salario en línea (Departamento de Trabajo)",
@@ -15679,14 +15704,9 @@
    "es": "Si renuncia o lo despiden por falta de trabajo, puede pedir que le envíen el último cheque por correo.",
    "state": "draft"
   },
-  "guide.wage-rights.if-you-were-not-paid": {
-   "en": "If you were not paid",
-   "es": "Si no le pagaron",
-   "state": "draft"
-  },
-  "guide.wage-rights.if-you-were-not-paid-file": {
-   "en": "If you were not paid: file a wage claim",
-   "es": "Si no le pagaron: presente un reclamo de salarios",
+  "guide.wage-rights.if-your-employer-breaks-the-law": {
+   "en": "If your employer breaks the law",
+   "es": "Si su empleador infringe la ley",
    "state": "draft"
   },
   "guide.wage-rights.in-new-hampshire-your-employer-must": {
