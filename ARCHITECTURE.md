@@ -191,7 +191,7 @@ hours; its `quiet` job lists the Actions runs and queues nothing while a
 night, a weekly, a dry run or another knock holds or waits for `gc-night`;
 and its `knock` job, in `gc-night` on the night's own Windows image and only
 on a run's first attempt, claims the knock in the bucket, asks one small file
-once (`snapshot_gencourt.py --knock`), marks a claim it did not use "not
+once (`src/fetch/gc_web/snapshot_gencourt.py --knock`), marks a claim it did not use "not
 asked", and sends the answer, and a lift, back. A daily line of its own runs
 only `keepalive`. It pings no `HEALTHCHECKS_URL`: a knock is no night.
 
