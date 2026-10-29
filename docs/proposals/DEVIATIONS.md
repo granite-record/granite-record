@@ -198,9 +198,10 @@ that made it.
     own); the two night fetchers ask `redirected()` first. The opener holds
     no `HTTPRedirectHandler` of any kind, so the knock (build plan commit 4)
     can take the same one and meet H6 as written. **Not changed here:** the
-    night's other two General Court fetches, `fetch_lsrs.py` (`get()`, its
-    two `urlopen` calls) and `fetch_calendar_archive.py --listing`
-    (`_get()`), still follow a redirect. They ask only on a night with no
+    night's other two General Court fetches,
+    `src/fetch/gc_web/fetch_lsrs.py` (`get()`, its two `urlopen` calls) and
+    `src/fetch/gc_web/fetch_calendar_archive.py --listing` (`_get()`), still
+    follow a redirect. They ask only on a night with no
     refusal on file, after the export answered whole; the reviewers' finding
     named the snapshot and the committee pages, and these two are left for
     the next stage rather than changed unreviewed.
