@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-09.21
+# GRANITE_VERSION: 2026-09-09.22
 """
 One refusal stops the fetch lane, not just the run that was refused.
 
@@ -258,8 +258,7 @@ def force(d, now=None, lift=None):
     night decides, and its run page says what it decided. `lift`, knocks.json's
     "lifted" entry for this record, says who lifted it and when."""
     if lift:
-        return (f"lifted by GitHub's knock at {lift.get('utc')} ({_lifter(lift)}), after one "
-                "request was answered. A copy on file here still stops the lane and every "
+        return (lift_line(lift) + ". A copy on file here still stops the lane and every "
                 "fetch here until python3 refusal.py --clear")
     if _its_own(d or {})[0]:
         left = hours_left(d, now)
@@ -277,6 +276,12 @@ def force(d, now=None, lift=None):
     return (f"older than {QUIET_HOURS} hours: hand fetches here are not stopped by it, the "
             "lane is (it stops at any archive/refused.json), and GitHub's night stops at "
             "it until python3 src/ops/cloud.py clear-refusal")
+
+
+def lift_line(lift):
+    """A lift, from its knocks.json "lifted" entry: who, when, and why."""
+    return (f"lifted by GitHub's knock at {lift.get('utc')} ({_lifter(lift)}), after one "
+            "request was answered")
 
 
 def _lifter(lift):

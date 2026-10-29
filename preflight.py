@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.724
+# GRANITE_VERSION: 2026-09-04.725
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -55454,6 +55454,353 @@ def _cloud_state_and_site(CL):
         shutil.rmtree(tmp, ignore_errors=True)
 
 
+def _lift_fixture(root, real):
+    """_cloud_fixture's working folder, its kit's state list carrying the
+    knocks' record beside the refusal, as cloud_kit.json's does."""
+    _cloud_fixture(root, real)
+    kit = json.loads((root / "cloud_kit.json").read_text(encoding="utf-8"))
+    kit["state"].insert(1, {"path": "archive/knocks.json", "key": "knocks.json", "what": "x"})
+    (root / "cloud_kit.json").write_text(json.dumps(kit), encoding="utf-8")
+
+
+@check("cloud", "the bucket knows a lift: state-up moves the refusal the night's knock lifted, "
+                "on main's own run and only then, and a lifted record sent back is absent to "
+                "main's next night", needs=("cloud", "refusal"))
+def _cloud_lift(CL, R):
+    """C8, with the hourly addendum's case. A knock that is answered lifts the
+    record on the machine that made it (refusal.knocked): its exact text
+    goes into archive/knocks.json's "lifted", and only then is
+    archive/refused.json removed. state-up then moves the bucket's
+    state/refused.json to replaced/<day>/ -- kept, never deleted -- and sends
+    state/knocks.json, and a second state-up changes nothing. It moves
+    nothing when the lifted sha is not the bucket's, when the bucket's is
+    not what this machine's state-down took, on a dry night (and sends no
+    knocks.json then), off GitHub's machine, off main, or with DRY_RUN true.
+    A relapse -- a new refusal noted after the lift of the old -- moves the
+    old and sends the new. With no lift, a refusal absent here is still
+    never removed there. And a record the bucket still holds whose sha its
+    knocks.json lists as lifted -- sent back by a laptop in the moment of the
+    lift -- is not brought down by main's own state-down, so main's night
+    does not stop at it, and that run's state-up moves it; a dry run's
+    state-down brings it down as ever. knocks.json is one of DRY_NEVER, and
+    the kit's dry_run may not name it."""
+    import contextlib
+    import io
+    real = json.loads(Path(CL.KIT_FILE).read_text(encoding="utf-8"))
+    tmp = Path(tempfile.mkdtemp(prefix="gr-lift-"))
+    saved = R.MARK
+    try:
+        n = iter(range(1000))
+
+        def setup(record=None):
+            """A bucket holding `record` and a night that took it down, on
+            GitHub's night on main: (bucket, night)."""
+            case = tmp / f"case{next(n)}"
+            bucket, night = case / "bucket", case / "night"
+            night.mkdir(parents=True)
+            _lift_fixture(night, real)
+            (bucket / "state").mkdir(parents=True)
+            raw = record or _knock_record()
+            (bucket / "state" / "refused.json").write_bytes(raw)
+            assert call(night, bucket, "state-down")[0] == 0
+            assert (night / "archive/refused.json").read_bytes() == raw
+            R.MARK = night / "archive" / "refused.json"
+            return bucket, night
+
+        def call(root, bucket, *argv):
+            return _cloud_call(CL, *argv, "--root", str(root), "--local-bucket", str(bucket))
+
+        def lift(run="k1"):
+            os.environ["GITHUB_RUN_ID"] = run
+            R.knocking(_KNOCK_URL)
+            assert R.knocked("whole", "Counties.txt, 195 bytes") == "lifted"
+
+        def held(bucket):
+            f = bucket / "state" / "refused.json"
+            return f.read_bytes() if f.exists() else None
+
+        def kept(bucket):
+            return [p.read_bytes() for p in bucket.glob("replaced/*/state/refused.json*")]
+
+        with _KnockEnv(**_KNOCK_MAIN):
+            bucket, night = setup()
+            raw = held(bucket)
+            lift()
+            assert not R.MARK.exists()
+            code, out = call(night, bucket, "state-up")
+            assert code == 0 and held(bucket) is None and kept(bucket) == [raw], \
+                f"state-up did not move the lifted refusal to replaced/: {out[-400:]}"
+            assert (bucket / "state" / "knocks.json").read_bytes() == R.knocks_file().read_bytes(), \
+                "state-up did not send the knocks' record with its lift"
+            assert "moved" in out and "lifted by GitHub's knock" in out, out[-400:]
+            before = {p.relative_to(bucket).as_posix(): p.read_bytes()
+                      for p in bucket.rglob("*") if p.is_file()}
+            assert call(night, bucket, "state-up")[0] == 0
+            after = {p.relative_to(bucket).as_posix(): p.read_bytes()
+                     for p in bucket.rglob("*") if p.is_file()}
+            assert after == before, "a second state-up after a lift changed the bucket"
+            # Recorded as cleared here: the same record back on this machine
+            # is never sent back to the bucket.
+            R.MARK.write_bytes(raw)
+            code, out = call(night, bucket, "state-up")
+            assert held(bucket) is None, "a lifted refusal on this machine was sent back"
+            R.MARK.unlink()
+
+            # Nothing moves: the lifted record is not the bucket's.
+            bucket, night = setup(_knock_record(epoch=_KNOCK_SINCE + 60))
+            other = held(bucket)
+            R.MARK.write_bytes(_knock_record())
+            lift()
+            code, out = call(night, bucket, "state-up")
+            assert held(bucket) == other and not kept(bucket), \
+                "state-up moved a refusal the knock did not lift"
+            # ... nor the bucket's, when it is not what this machine took down.
+            for took in (None, "0" * 64):
+                bucket, night = setup()
+                lift()
+                rec_p = night / CL.STATE_RECORD
+                rec = json.loads(rec_p.read_text(encoding="utf-8"))
+                rec["files"]["refused.json"] = took
+                rec_p.write_text(json.dumps(rec), encoding="utf-8")
+                code, out = call(night, bucket, "state-up")
+                assert held(bucket) is not None and not kept(bucket) and "not moved" in out, \
+                    f"a lift moved a record this machine did not take down ({took}): {out[-300:]}"
+            # ... nor on a dry night, which sends no knocks.json either.
+            bucket, night = setup()
+            lift()
+            code, out = call(night, bucket, "state-up", "--dry-night")
+            assert held(bucket) is not None and not kept(bucket) and \
+                not (bucket / "state" / "knocks.json").exists(), \
+                f"a dry night lifted a refusal, or sent the knocks' record: {out[-300:]}"
+            # ... nor off GitHub, off main, or on a dry run, even told it is no dry night.
+            for env in ({"GITHUB_ACTIONS": None}, {"GITHUB_REF": "refs/heads/dev"},
+                        {"GITHUB_REF": "refs/heads/Main"}, {"DRY_RUN": "true"}):
+                bucket, night = setup()
+                lift()
+                _KnockEnv.set(**dict(_KNOCK_MAIN, **env))
+                rep = CL.Replacer(CL.FolderBucket(bucket), "2026-10-30")
+                with contextlib.redirect_stdout(io.StringIO()):
+                    CL.state_up(CL.FolderBucket(bucket), night, CL.load_kit(night), rep,
+                                "2026-10-30", only=None)
+                _KnockEnv.set(**_KNOCK_MAIN)
+                assert held(bucket) is not None and not kept(bucket), \
+                    f"a lift was moved in the bucket with {env}"
+            # A relapse: the old moves, the new goes up.
+            bucket, night = setup()
+            raw = held(bucket)
+            lift()
+            with contextlib.redirect_stderr(io.StringIO()):
+                R.note("snapshot_gencourt", "RemoteDisconnected: again", kind="dropped")
+            new = R.MARK.read_bytes()
+            code, out = call(night, bucket, "state-up")
+            assert code == 0 and held(bucket) == new and kept(bucket) == [raw], \
+                f"a relapse did not move the old refusal and send the new: {out[-400:]}"
+            # Absent here is never removed there, without a lift.
+            bucket, night = setup()
+            R.MARK.unlink()
+            code, out = call(night, bucket, "state-up")
+            assert held(bucket) is not None and not kept(bucket), \
+                "a refusal absent here was removed from the bucket without a lift"
+            # A lifted record sent back into the bucket: absent to main's night.
+            bucket, night = setup()
+            raw = held(bucket)
+            lift()
+            assert call(night, bucket, "state-up")[0] == 0 and held(bucket) is None
+            (bucket / "state" / "refused.json").write_bytes(raw)
+            fresh = bucket.parent / "fresh"
+            fresh.mkdir()
+            _lift_fixture(fresh, real)
+            code, out = call(fresh, bucket, "state-down")
+            assert code == 0 and not (fresh / "archive/refused.json").exists() and \
+                (fresh / "archive/knocks.json").exists(), \
+                f"main's state-down brought back a refusal its knock lifted: {out[-300:]}"
+            code, out = call(fresh, bucket, "state-up")
+            assert code == 0 and held(bucket) is None and len(kept(bucket)) == 2, \
+                f"the next state-up of main did not move the lifted record sent back: {out[-300:]}"
+            (bucket / "state" / "refused.json").write_bytes(raw)
+            dry = bucket.parent / "dry"
+            dry.mkdir()
+            _lift_fixture(dry, real)
+            _KnockEnv.set(**dict(_KNOCK_MAIN, GITHUB_REF="refs/heads/dev"))
+            assert call(dry, bucket, "state-down")[0] == 0
+            _KnockEnv.set(**_KNOCK_MAIN)
+            assert (dry / "archive/refused.json").exists() and \
+                (dry / "archive/refused.json").read_bytes() == raw, \
+                "a dry run's state-down did not bring down the refusal the bucket holds"
+        assert "knocks.json" in CL.DRY_NEVER and \
+            "knocks.json" not in (real.get("dry_run") or {}).get("state", []), \
+            "the knocks' record is not one a dry night never sends"
+        assert any(s["key"] == "knocks.json" and s["path"] == "archive/knocks.json"
+                   for s in real["state"]) and R.KNOCKS == Path("archive/knocks.json"), \
+            "cloud_kit.json's state list does not carry archive/knocks.json"
+        bad_kit = tmp / "badkit"
+        bad_kit.mkdir()
+        k = json.loads(json.dumps(real))
+        k["dry_run"]["state"] = list(k["dry_run"]["state"]) + ["knocks.json"]
+        (bad_kit / "cloud_kit.json").write_text(json.dumps(k), encoding="utf-8")
+        try:
+            CL.load_kit(bad_kit)
+            raise AssertionError("a kit whose dry run sends knocks.json was accepted")
+        except CL.Failed:
+            pass
+        return "ok", ("a lift moves the bucket's record to replaced/ on main's own run and only "
+                      "then; a relapse moves the old and sends the new; a lifted record sent "
+                      "back is absent to main's night and moved by its state-up")
+    finally:
+        R.MARK = saved
+        shutil.rmtree(tmp, ignore_errors=True)
+
+
+@check("cloud", "a laptop holding a refusal the night's knock lifted is told so at any age, keeps "
+                "its copy, and never sends it back -- whenever the lift lands",
+       needs=("cloud", "refusal"))
+def _cloud_pull_lifted(CL, R):
+    """C9, as the hourly addendum amends it (pull_refusal and send_refusal;
+    _cloud_pull holds the rest of pull). A laptop copy of a refusal GitHub's
+    night met, the bucket holding none, and the bucket's state/knocks.json
+    listing its sha as lifted: pull says THE NIGHT LIFTED THIS REFUSAL --
+    not the "IS NOT IN THE BUCKET" failure, and never the advice that
+    send-refusal sends it -- at 2 hours old and at 40 days; the copy stays on
+    file; its unsent marker is lifted; send-refusal returns done without
+    sending; the send-night check and clear-refusal do not ask for it to be
+    sent. And the order: pull reads state/refused.json before
+    state/knocks.json, so a lift landing between its two reads is seen;
+    send-refusal confirms the bucket holds none BEFORE it reads the lifts,
+    so a lift landing between them is never undone; and a lift landing
+    between a pull and a send is not sent back."""
+    import contextlib
+    import io
+    import time
+    from datetime import date
+    real = json.loads(Path(CL.KIT_FILE).read_text(encoding="utf-8"))
+    tmp = Path(tempfile.mkdtemp(prefix="gr-pulllift-"))
+    saved = (R.MARK, CL.make_bucket)
+    saved_env = os.environ.get(CL.NO_BUCKET)
+    try:
+        n = iter(range(1000))
+        day = f"{date.today():%Y-%m-%d}"
+
+        def setup(age_hours, lifted=True, held=False):
+            """A laptop holding a copy of GitHub's refusal `age_hours` old, and a
+            bucket that lifted it (or not yet), holding it (or not): (bucket,
+            laptop, raw)."""
+            case = tmp / f"case{next(n)}"
+            bucket, laptop = case / "bucket", case / "laptop"
+            laptop.mkdir(parents=True)
+            _lift_fixture(laptop, real)
+            raw = _knock_record(epoch=time.time() - age_hours * 3600)
+            (laptop / "archive" / "refused.json").write_bytes(raw)
+            (bucket / "state").mkdir(parents=True)
+            if held:
+                (bucket / "state" / "refused.json").write_bytes(raw)
+            if lifted:
+                land(bucket, raw)
+            return bucket, laptop, raw
+
+        def land(bucket, raw):
+            """The lift, as GitHub's state-up leaves the bucket."""
+            (bucket / "state" / "refused.json").unlink(missing_ok=True)
+            (bucket / "state" / "knocks.json").write_text(json.dumps({"current": None, "lifted": [
+                {"refusal": R._sha(raw), "utc": "2026-10-30 14:47 UTC", "epoch": time.time(),
+                 "by": "hourly", "said": "Counties.txt, 195 bytes", "text": raw.decode()}]}),
+                encoding="utf-8")
+
+        def pull(bucket, laptop):
+            with contextlib.redirect_stdout(io.StringIO()):
+                return CL.pull_refusal(CL.FolderBucket(bucket), laptop, CL.load_kit(laptop),
+                                       False, day)
+
+        def marker(laptop):
+            p = laptop / CL.UNSENT
+            p.parent.mkdir(parents=True, exist_ok=True)
+            p.write_text("{}", encoding="utf-8")
+            return p
+
+        with _KnockEnv():
+            # Never the real bucket: every call here names a folder.
+            os.environ[CL.NO_BUCKET] = "1"
+            for age in (2, 40 * 24):
+                bucket, laptop, raw = setup(age)
+                m = marker(laptop)
+                lines, bad, _ = pull(bucket, laptop)
+                said = " ".join(lines)
+                assert not bad and "THE NIGHT LIFTED THIS REFUSAL" in said and \
+                    "send-refusal" not in said and "refusal.py --clear" in said, \
+                    f"a copy {age} hours old of a lifted refusal: {lines}, {bad}"
+                assert (laptop / "archive/refused.json").read_bytes() == raw and not m.exists(), \
+                    "pull set the lifted copy aside, or left its unsent marker"
+                m = marker(laptop)
+                done, said = CL.send_refusal(laptop, local_bucket=str(bucket))
+                assert done and not (bucket / "state" / "refused.json").exists() and \
+                    not m.exists() and "not sent back" in said, \
+                    f"send-refusal sent a lifted refusal back: {done}, {said}"
+                assert CL.refusal_unsent(CL.FolderBucket(bucket), laptop, CL.load_kit(laptop)) == "", \
+                    "the send-night check asks for a lifted refusal to be sent"
+                code, out = _cloud_call(CL, "clear-refusal", "--root", str(laptop),
+                                        "--local-bucket", str(bucket))
+                assert code == 0 and "send-refusal" not in out and "refusal.py --clear" in out, \
+                    f"clear-refusal asked for a lifted refusal to be sent: {out[-300:]}"
+
+            class Landing(CL.FolderBucket):
+                """A bucket the lift lands in right after the first read of it."""
+                raw, landed = None, False
+
+                def get_bytes(self, key):
+                    out = super().get_bytes(key)
+                    if not Landing.landed:
+                        Landing.landed = True
+                        land(self.root, Landing.raw)
+                    return out
+            # pull: the record read first, then the lifts.
+            bucket, laptop, raw = setup(2, lifted=False, held=True)
+            Landing.raw, Landing.landed = raw, False
+            with contextlib.redirect_stdout(io.StringIO()):
+                lines, bad, _ = CL.pull_refusal(Landing(bucket), laptop, CL.load_kit(laptop),
+                                                False, day)
+            assert Landing.landed and not bad and "send-refusal" not in " ".join(lines), \
+                f"a lift landing between pull's two reads was missed: {lines}, {bad}"
+            # send-refusal: none confirmed, then the lifts, then the put.
+            bucket, laptop, raw = setup(2, lifted=False, held=True)
+            Landing.raw, Landing.landed = raw, False
+            CL.make_bucket = lambda local_bucket, workers, quick=False: Landing(local_bucket)
+            try:
+                done, said = CL.send_refusal(laptop, local_bucket=str(bucket))
+            finally:
+                CL.make_bucket = saved[1]
+            assert Landing.landed and not (bucket / "state" / "refused.json").exists(), \
+                f"send-refusal undid a lift that landed between its reads: {said}"
+            # A lift landing between a pull and a send.
+            bucket, laptop, raw = setup(2, lifted=False, held=True)
+            lines, bad, _ = pull(bucket, laptop)
+            assert not bad
+            land(bucket, raw)
+            done, said = CL.send_refusal(laptop, local_bucket=str(bucket))
+            assert done and not (bucket / "state" / "refused.json").exists(), \
+                f"a lift between a pull and a send was sent back: {said}"
+            # A lifted record still in the bucket: said so, and the copy taken.
+            bucket, laptop, raw = setup(2, lifted=True)
+            (bucket / "state" / "refused.json").write_bytes(raw)
+            (laptop / "archive/refused.json").unlink()
+            lines, bad, _ = pull(bucket, laptop)
+            assert not bad and "lifted by GitHub's knock" in " ".join(lines) and \
+                (laptop / "archive/refused.json").read_bytes() == raw, (lines, bad)
+            # Not lifted: the failure stands, as ever.
+            bucket, laptop, raw = setup(2, lifted=False)
+            lines, bad, _ = pull(bucket, laptop)
+            assert bad and "IS NOT IN THE BUCKET" in bad[0], \
+                "a laptop refusal the bucket lacks, and no knock lifted, is no longer a failure"
+        return "ok", ("a lifted copy is said so at 2 hours and 40 days, stays, its marker goes, "
+                      "and is never sent; a lift landing between pull's reads, between "
+                      "send-refusal's, or between a pull and a send is seen")
+    finally:
+        R.MARK, CL.make_bucket = saved
+        if saved_env is None:
+            os.environ.pop(CL.NO_BUCKET, None)
+        else:
+            os.environ[CL.NO_BUCKET] = saved_env
+        shutil.rmtree(tmp, ignore_errors=True)
+
+
 @check("cloud", "a dry run sends back only what it fetched -- the day's files as the export "
                 "served them, their archive, its logs apart, a refusal or a hold and its own "
                 "verdict -- so nothing its branch's code made reaches main's next night",
@@ -55516,7 +55863,7 @@ def _cloud_dry_night(CL, BA, SG):
     assert set(d.get("state", [])) == {"refused.json", "sql-held.json", "last-dry-run.json",
                                        "last-dry-weekly.json"} and \
         set(CL.DRY_NEVER) == {"census.json", "last-night.json", "last-weekly.json",
-                              "first-seen.json"}, \
+                              "first-seen.json", "knocks.json"}, \
         (d.get("state"), CL.DRY_NEVER)
     # Every night file a dry night sends is an archived copy of what was served.
     store_sha = hashlib.sha256(b"x").hexdigest()

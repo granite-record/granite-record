@@ -72,3 +72,29 @@ that made it.
     `refusal.py`'s status is a new `say_whose()`. The status line that said
     an old record "no longer stops anything" now says the lane and GitHub's
     night still stop at it (the drift design_final §16 names).
+
+## Commit 3: the bucket knows a lift
+
+14. **"A lifted record in the bucket is absent to GitHub" is built in
+    `state-down`, on main's own run only.** The addendum (§7, item 3) says
+    `gc_quiet()` and `whose()` treat it as absent "for every GitHub reader".
+    Every fetcher reads `archive/refused.json` itself (the snapshot asks
+    `MARK.exists()` before each request), so the one place that makes it
+    absent to all of them is the copy never coming down: on GitHub's
+    machine, main exactly, not a dry run -- `lift_refusal()`'s own
+    conditions -- `state-down` leaves a record whose sha the bucket's
+    `knocks.json` lists as lifted in the bucket, records it as taken, and
+    that run's `state-up` moves it. A dry run still brings it down and stops
+    at it: the narrower reading, and the safe one.
+15. **`clear-refusal`, `refusal_unsent()` (the send-night check) and
+    `unsent_after()` (state-up's marker) read the lifts too.** The design
+    names `pull_refusal` and `send_refusal`; these three gave the same
+    "send it" advice for a lifted copy, and now do not.
+16. **A lifted record still in the bucket, met by a pull, is brought down
+    as before** (when the laptop holds none) and said to be lifted: the
+    laptop then stops at it until a person clears it, the stricter way.
+17. **C9 is a new check, `_cloud_pull_lifted`**, beside `_cloud_pull`
+    rather than inside it. It drives `pull_refusal` and `send_refusal`
+    directly on folder buckets, and a bucket that lands the lift right after
+    its first read proves both orders. `_cloud_pull` keeps
+    its own cases; its reader of what pull can reach still finds no write.

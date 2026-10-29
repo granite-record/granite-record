@@ -81,6 +81,12 @@ both machines now. On a stood-down laptop:
   says so loudly, and `archive/cloud/refusal-unsent.json` stays until the
   bucket holds this refusal -- `python3 src/ops/cloud.py send-refusal` sends it once
   the bucket holds none -- or a person lifts it here.
+- **A refusal GitHub's own knock lifted stays here until a person clears
+  it.** The bucket's `state/knocks.json` lists every refusal the night's
+  knock lifted (`refusal.py`, the knock's ladder). A pull that finds the copy
+  here among them says THE NIGHT LIFTED THIS REFUSAL, at any age, and leaves
+  it on file, so the lane and every fetch here still stop at it until
+  `python3 refusal.py --clear`; `send-refusal` never sends one back.
 
 `python3 refusal.py` says whether the window is open, when the bucket was last
 read, and whether a refusal is waiting to be sent. So a lane started in the
