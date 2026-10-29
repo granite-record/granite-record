@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.241
+# GRANITE_VERSION: 2026-09-04.242
 """
 Build the pages the navigation links to: legislators, town lookup, how it
 works, and about.
@@ -48,6 +48,7 @@ import committee_acts as CA
 # clerk's "GP 231"), for the Calendar's cards: plain_action.place.
 import plain_action as PA
 import seating
+import site_read as SR
 import strip_js
 import json
 import legislative_year as _year
@@ -1400,7 +1401,7 @@ NOT_FOUND = """
 <h1>Nothing is published here</h1>
 <p class="lead">The address may be mistyped, or name a bill in a year it does
 not exist in: every bill since 1989 has a page of its own, for example
-<code>/bill/2026/hb1</code>, and a bill number starts again every two years.</p>
+<code>[[example]]</code>, and a bill number starts again every two years.</p>
 <p id="nf-bill" hidden></p>
 <p><a href="bills.html">Search every bill</a> &middot;
 <a href="officials.html">Officials</a> &middot;
@@ -1430,6 +1431,41 @@ not exist in: every bill since 1989 has a page of its own, for example
 })();
 </script>
 """
+
+# THE EXAMPLE IS A PAGE THERE IS (the polish of 26 October 2026, P2). The
+# page said "for example /bill/2026/hb1", and HB 1 of the 2025-2026 term was
+# filed in 2025: the one address offered to a reader who is lost was itself
+# not found. It is now read off the bill index build_site_v2.py has already
+# written, as build_bill_pages.py reads it to write /bill/<year>/<id>.
+NOT_FOUND_EXAMPLE = ", for example\n<code>[[example]]</code>"
+
+
+def not_found_example(out):
+    """The address of a bill page this build writes, for the not-found page:
+    HB 1 of the newest term that has a page, or that term's first bill. A
+    bill's page is written under the year its index row gives, and only from
+    its record (site/bills/<year>/<id>.json, or the page an earlier run
+    inlined it into); "" where no bill has either."""
+    try:
+        rows = SR.bill_index(out) or []
+    except SR.Broken:
+        return ""
+    for term in sorted({r.get("term") or "" for r in rows}, reverse=True):
+        have = [r for r in rows if r.get("term") == term and r.get("year") and r.get("id")
+                and ((out / "bills" / str(r["year"]) / f"{r['id']}.json").is_file()
+                     or (out / "bill" / str(r["year"]) / f"{r['id'].lower()}.html").is_file())]
+        if have:
+            pick = next((r for r in have if r["id"] == "HB1"), have[0])
+            return f"/bill/{pick['year']}/{pick['id'].lower()}"
+    return ""
+
+
+def not_found_body(example):
+    """NOT_FOUND with its example, or without the clause where there is none."""
+    body = (NOT_FOUND.replace("[[example]]", example) if example
+            else NOT_FOUND.replace(NOT_FOUND_EXAMPLE, ""))
+    assert "[[example]]" not in body, "the not-found page's example was left unfilled"
+    return body
 
 # THE ABOUT PAGE AS THE PERSON APPROVED IT, word for word (9 October 2026;
 # private/design/ABOUT_FINAL_2026-10-09.md). Its headings are in Title Case,
@@ -4530,7 +4566,8 @@ the <a href="/committees">committee list</a> are all plain pages.</p></noscript>
     # must be absolute: from /bill/2026/hb99999 a relative "about.html" is
     # /bill/2026/about.html. And it is not a page to index, so it carries no
     # canonical address and asks not to be.
-    page404 = shell("No page at this address | Granite Record", "", NOT_FOUND,
+    example404 = not_found_example(out)
+    page404 = shell("No page at this address | Granite Record", "", not_found_body(example404),
                     desc="There is no page at this address.")
     page404 = re.sub(r'(href|src)="(?!https?:|/|#|mailto:)([^"]+)"', r'\1="/\2"',
                      page404)
@@ -4540,6 +4577,8 @@ the <a href="/committees">committee list</a> are all plain pages.</p></noscript>
 
     print(f"wrote officials.html ({len(legs)} members), "
           f"about.html, search.html, 404.html -> {out}/  (learn.html: build_civics.py)")
+    print(f"  404.html's example: {example404}" if example404 else
+          "  404.html gives no example: no bill in the index has a record to write a page from")
     if not legs:
         print("  legislators.json missing — run build_site_v2.py first")
     if no_brand:

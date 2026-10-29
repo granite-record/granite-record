@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.11
+# GRANITE_VERSION: 2026-09-04.12
 """
 Build a per-bill index of floor debates, keyed to the session recordings.
 
@@ -228,10 +228,14 @@ def main():
                 # The bill as rollcall_parser keys it, so "HB 315", "sb136" or
                 # "SB115-FN" is the bill's own debate; a label that names no
                 # bill ("HRULE64") is kept as typed, so it still closes the
-                # window of the bill after it.
+                # window of the bill after it. Through roll_call_bill, as
+                # rollcalls.json and the ballots name it: a roll call a person
+                # has put under its bill (corrections/rollcall_corrections.json)
+                # is that bill's debate too -- the Senate's recording of 26 June
+                # 2025 was HB 287's, for SB 287's conference report (P14).
                 calls[(p[1].strip(), when.date().isoformat())].append({
                     "num": int(p[2] or 0), "when": when,
-                    "bill": RP.bill_number(p[4]) or p[4].strip().upper(),
+                    "bill": RP.roll_call_bill(p[0], p[1], p[2], p[4]) or p[4].strip().upper(),
                     "q": p[11].strip(), "y": p[5].strip(), "n": p[6].strip()})
     print(f"{len(read):,} roll calls read")
 

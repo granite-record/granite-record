@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-10-11.61
+# GRANITE_VERSION: 2026-10-11.64
 """
 The how-to guides: their words, their sources, and what each was checked
 against. Read by build_civics.py, which draws them on the Resources hub's
@@ -510,8 +510,9 @@ VOTING = guide(
                "use as proof has changed more than once this year and may change again before "
                "the election. The Secretary of State's page is the official word: check it "
                "before you go. On October 24, 2026 it still said that if you lack the documents "
-               "to prove your citizenship, you may sign a qualified voter affidavit instead, as "
-               "a court order of May 28, 2026 allowed again. The affidavit covers citizenship and "
+               "to prove your citizenship, you may sign a qualified voter affidavit instead, "
+               "subject to the penalties for voter fraud, as a court order of May 28, 2026 "
+               "allowed again. The affidavit covers citizenship and "
                "nothing else: you still need proof of identity, age and domicile."),
      step("Vote",
           "<p>On election day, go to your polling place. Every voter must show proof of identity "
@@ -614,8 +615,9 @@ VOTING = guide(
          "signed by the owner, manager or tenant where you live, and a separate form for people "
          "who are homeless.</p>"),
         ("What if I am missing a document?",
-         "<p>Ask your clerk: with your permission, election officials can check New Hampshire "
-         "voter, motor vehicle and vital records to help prove your qualifications. A certified "
+         "<p>Ask your clerk: with your permission, local election officials may be able to "
+         "check New Hampshire voter, motor vehicle and vital records to help prove your "
+         "qualifications. A certified "
          "copy of a New Hampshire birth or other vital record is free when it is only for "
          "registering to vote.</p>"),
         ("How early can I ask for an absentee ballot, and can I track it?",
@@ -4205,6 +4207,10 @@ def _law_links(cites):
     return "RSA " + ", ".join(out)
 
 
+# The sections on training, the manual and pay, read on the Laws pages on 26
+# October 2026 after the person's printout of Ballotpedia pointed to them.
+PW_READ = "2026-10-26"
+
 ELECTION = guide(
     "election-worker", "How to Work at the Polls on Election Day",
     "Serving as an election officer at your polling place in New Hampshire: who runs an "
@@ -4251,9 +4257,18 @@ ELECTION = guide(
           "must be at least 17 years old, takes the oath, and serves only for that "
           "election.</p>"
           "<p>So to serve, ask your town&rsquo;s moderator, your party&rsquo;s state committee, "
-          "or your selectmen.</p>",
+          "or your selectmen.</p>"
+          "<p><b>The manual and training.</b> Before each state general election the Secretary "
+          "of State, with the Attorney General&rsquo;s approval, prepares a manual on New "
+          "Hampshire&rsquo;s election laws and how to conduct an election, written in "
+          "nontechnical language. It goes free to every moderator, board of selectmen, city "
+          "council, board of supervisors of the checklist and town, city and ward clerk, and the "
+          "Secretary of State may send it to anyone else who asks. The law also refers to the "
+          "online training on the Secretary of State&rsquo;s website, and has the Secretary of "
+          "State train the supervisors of the checklist in using the state&rsquo;s voter "
+          "database to confirm a voter&rsquo;s identity.</p>",
           law=["RSA 658:2", "RSA 658:3", "RSA 658:4", "RSA 658:5", "RSA 658:7", "RSA 658:7-a",
-               "RSA 658:8"]),
+               "RSA 658:8", "RSA 652:22", "RSA 659:13", "RSA 659:77"]),
      step("Know what an election officer may not do",
           "<p>A person whose name is on the ballot for an office other than an election office "
           "may not work as an election official in that election. A moderator, clerk, "
@@ -4353,6 +4368,24 @@ ELECTION = guide(
            ELECTION_READ),
      claim("The secretary of state shall be the chief election officer for the state.",
            "RSA 652:23", ELECTION_READ),
+     claim("The secretary of state, with the advice and approval of the attorney general, shall "
+           "prepare preceding each state general election an up-to-date manual on the New "
+           "Hampshire election laws and procedures for conducting elections, written in "
+           "nontechnical language, distributed free of charge to each moderator, board of "
+           "selectmen, city council, and board of supervisors of the checklist and to each town, "
+           "city, and ward clerk; the secretary of state may distribute it to any other person "
+           "who requests it.", "RSA 652:22", PW_READ),
+     claim("The secretary of state shall provide training for supervisors of the checklist on "
+           "how the nonpublic data in the statewide centralized voter registration database may "
+           "be used to satisfy voter identification requirements.", "RSA 659:13", PW_READ),
+     claim("An election monitor's report documents the extent to which the town or ward "
+           "complies with state law and utilizes the best practices set forth in the election "
+           "procedures manual and the on-line training available on the secretary of state's "
+           "website.", "RSA 659:77", PW_READ),
+     claim("When the ballot law commission directs the supervisors to revise and verify a "
+           "checklist, the supervisors and assistant supervisors shall receive such sums as may "
+           "be voted by the city government or town meeting of the city or town in which they "
+           "serve.", "RSA 654:38", PW_READ),
      claim("Every 2 years or 3 years a moderator shall be chosen by ballot, by plurality vote; "
            "the election of moderators in city wards shall be at every other regular city "
            "election.", "RSA 40:1", ELECTION_READ),
@@ -4530,6 +4563,17 @@ ELECTION = guide(
          "<p>Not as an election official, if you are running for an office other than an "
          "election office. A moderator, clerk, selectman, inspector or supervisor who is on the "
          "ballot keeps their place but may not handle marked ballots or count votes.</p>"),
+        ("Is there training?",
+         "<p>The Secretary of State prepares a manual on the election laws and procedures before "
+         "each state general election, sends it free to moderators, clerks, selectmen and "
+         "supervisors of the checklist, and may send it to anyone who asks. The law also refers "
+         "to online training on the Secretary of State&rsquo;s website.</p>"),
+        ("Are election workers paid?",
+         "<p>The sections that create inspectors of election and the moderator&rsquo;s "
+         "assistants (RSA 658:2 to 658:8) say nothing about pay. One election law does: when the "
+         "Ballot Law Commission orders a checklist re-verified, the supervisors and their "
+         "assistants are paid what the town or city votes "
+         '(<a href="/laws/654#s38">RSA 654:38</a>).</p>'),
         ("Who decides a ballot whose mark is unclear?",
          "<p>The election officers counting the votes, by majority. If no way of counting it "
          "wins a majority, the ballot is not counted for that office.</p>"),
@@ -7928,6 +7972,13 @@ GUIDES += [PASSPORT]
 # part covers, Part C's name and what Original Medicare is are Medicare.gov's
 # "Parts of Medicare", the person's printout of 26 October 2026 (medicare4),
 # in its own words; it states no costs, so the guide prints none.
+#
+# WHAT IT COSTS. Medicare.gov's "Costs", the person's printout of 26 October
+# 2026 (medicare5): the kinds of cost each part carries -- premium,
+# deductible, coinsurance, copayment, the yearly out-of-pocket limits -- in
+# its words. Its dollar amounts and percentages are federal, set each year,
+# and not a statute's (guides.FIGURE), so none is printed: the guide links
+# the page, which lists the current year's.
 # ---------------------------------------------------------------------------
 MC_READ = "2026-10-25"
 SSA_PAGES_READ = "2026-10-25"        # the person's printouts of ssa.gov
@@ -7946,6 +7997,8 @@ MEDICARE_CONTACT = "https://www.medicare.gov/talk-to-someone"
 MEDICARE_PARTS = ("https://www.medicare.gov/basics/get-started-with-medicare/medicare-basics/"
                   "parts-of-medicare")
 MC_PARTS_READ = "2026-10-26"         # the person's printout (medicare4)
+MEDICARE_COSTS = "https://www.medicare.gov/basics/costs/medicare-costs"
+MC_COSTS_READ = "2026-10-26"         # the person's printout (medicare5)
 USA_SSA = "https://www.usa.gov/agencies/social-security-administration"
 SSA_APPLY = "https://www.ssa.gov/apply"
 SSA_MEDICARE = "https://www.ssa.gov/medicare/sign-up"
@@ -8017,13 +8070,30 @@ MEDICARE = guide(
           "coverage, called <b>Medigap</b>, from a private company to help pay your share of the "
           "costs. The other way is a Medicare Advantage Plan. You choose when you first sign up, "
           "and can change at certain times of the year.</p>"
+          "<p><b>What Medicare costs</b> depends on the coverage you have and the services you "
+          "use. The costs come in a few kinds:</p><ul>"
+          "<li>A <b>premium</b>, paid each month. Most people pay no premium for Part A, because "
+          "they or a spouse paid Medicare taxes long enough while working, and no one who gets "
+          "Medicare before turning 65 pays one. Part B has a monthly premium, which you pay even "
+          "if you use no Part B services, and which is higher for some people depending on "
+          "income.</li>"
+          "<li>A <b>deductible</b>, what you pay before Original Medicare starts to pay: for "
+          "Part A, once for each hospital benefit period, which can be more than once a year; "
+          "for Part B, once each year.</li>"
+          "<li><b>Coinsurance</b>, your share of the cost of each covered service after you have "
+          "paid your deductible, and <b>copayments</b>, such as the one a hospital charges for "
+          "each outpatient service.</li></ul>"
+          "<p>A Medicare Advantage Plan&rsquo;s and a drug plan&rsquo;s premiums and other costs "
+          "vary by plan. Medicare.gov&rsquo;s Costs page lists the current amounts, several of "
+          "which can change each year.</p>"
           "<p>You sign up for Part A and Part B through Social Security, which can take your "
           "premiums out of your benefit payments. You choose a Medicare Advantage Plan or a drug "
           "plan on Medicare.gov.</p>"
           "<p><b>Help with the costs</b> comes from two programs: the state&rsquo;s <b>Medicare "
           "Savings Programs</b>, which help pay Medicare premiums and, for some people, other "
           "costs; and the federal <b>Extra Help</b> program, which pays part of the cost of drug "
-          "coverage. Step 6 says who qualifies and how to apply.</p>"),
+          "coverage. Step 6 says who qualifies and how to apply.</p>",
+          actions=[("What Medicare costs (Medicare)", MEDICARE_COSTS)]),
      step("Know when to sign up for Medicare",
           "<p>Your first chance is your Initial Enrollment Period: 7 months, starting 3 months "
           "before the month you turn 65 and ending 3 months after it. Coverage always starts on "
@@ -8099,6 +8169,7 @@ MEDICARE = guide(
      ("Help With Drug Costs (Medicare)", MEDICARE_EXTRA),
      ("Contact Medicare (Medicare)", MEDICARE_CONTACT),
      ("Parts of Medicare (Medicare)", MEDICARE_PARTS),
+     ("Costs (Medicare)", MEDICARE_COSTS),
      ("Social Security Administration (USA.gov)", USA_SSA),
      ("Apply for Social Security Benefits (Social Security Administration)", SSA_APPLY),
      ("Sign Up for Medicare (Social Security Administration)", SSA_MEDICARE),
@@ -8163,6 +8234,43 @@ MEDICARE = guide(
            "certain low-income people, families and children, pregnant women, the elderly, and "
            "people with disabilities; if you qualify, you can have both Medicare and Medicaid.",
            MEDICARE_PARTS, MC_PARTS_READ),
+     # Medicare.gov's Costs, the person's printout of 26 October 2026.
+     claim("What you pay for Medicare depends on the coverage you have and services you use. "
+           "Part A premium: $0 for most people (because they or a spouse paid Medicare taxes "
+           "long enough while working); if you get Medicare earlier than age 65, you won't pay "
+           "a Part A premium; this is sometimes called premium-free Part A. If you don't qualify "
+           "for premium-free Part A you might be able to buy it, the amount depending on how "
+           "long you or your spouse worked and paid Medicare taxes; you also have to sign up for "
+           "Part B to buy Part A; if you don't buy Part A when you're first eligible for "
+           "Medicare (usually when you turn 65), you might pay a penalty. Part A deductible for "
+           "each inpatient hospital benefit period, before Original Medicare starts to pay; no "
+           "limit to the number of benefit periods you can have in a year, so you may pay the "
+           "deductible more than once in a year. Part B premium each month (or higher depending "
+           "on your income); the amount can change each year; you'll pay the premium each "
+           "month, even if you don't get any Part B-covered services. Part B deductible before "
+           "Original Medicare starts to pay; you pay this deductible once each year. "
+           "Coinsurance: usually a share of the cost for each Medicare-covered service or item "
+           "after you've paid your deductible. You'll also pay a copayment to the hospital for "
+           "each service you get in a hospital outpatient setting. Original Medicare: there's no "
+           "yearly limit on what you pay out-of-pocket, unless you have supplemental coverage, "
+           "like a Medicare Supplement Insurance (Medigap) policy or join a Medicare Advantage "
+           "Plan (Part C). Medicare Advantage: premiums and other costs vary by plan; these "
+           "amounts can change each year; you must have Part B and keep paying your Part B "
+           "premium to stay in your plan; out-of-pocket limit varies by plan; once you pay the "
+           "plan's limit, the plan pays your covered health services for the rest of the "
+           "calendar year. Part D: premium varies by plan; you may have to pay more, depending "
+           "on your income; 2 ways to avoid paying a Part D late enrollment penalty: get "
+           "Medicare drug coverage when you first get Medicare Part A and/or Part B, and don't "
+           "go 63 days or more without creditable drug coverage (coverage that's similar in "
+           "value to Part D); deductibles, copayments and coinsurance vary by plan and pharmacy; "
+           "a yearly out-of-pocket limit that includes your deductible, out-of-pocket spending, "
+           "and certain payments made on your behalf, like through the Extra Help program; if "
+           "you qualify for Extra Help, you won't have to pay the Part D late enrollment "
+           "penalty. Medigap: premium varies based on which policy you buy, where you live, and "
+           "other factors; the amount can change each year; you must have Part B and keep "
+           "paying your Part B premium to keep your Medigap policy; Medigap usually helps pay "
+           "your portion of the costs (like deductibles and coinsurance) for services that "
+           "Part A and Part B cover in Original Medicare.", MEDICARE_COSTS, MC_COSTS_READ),
      claim("Entitled to old-age benefits if at least 62 years old, fully insured, and you "
            "apply.", CFR_OLD_AGE, MC_READ),
      claim("The department shall administer the Medicare savings program as described in 42 "
@@ -8226,6 +8334,26 @@ MEDICARE = guide(
          "that provides health coverage for certain people with low incomes, families and "
          "children, pregnant women, older people and people with disabilities. If you qualify, "
          "you can have both.</p>"),
+        ("Is there a limit on what I pay out of pocket?",
+         "<p>Not in Original Medicare: there is no yearly limit on what you pay for Part A and "
+         "Part B services, unless you have a Medigap policy or join a Medicare Advantage Plan. "
+         "Each Medicare Advantage Plan sets its own yearly limit; once you have paid it, the plan "
+         "pays for your covered health services for the rest of the calendar year. Drug "
+         "coverage (Part D) has a yearly limit too, which counts your deductible, what you pay "
+         "yourself, and certain payments made for you, such as through Extra Help.</p>"),
+        ("What if I don't qualify for premium-free Part A?",
+         "<p>You might be able to buy it, for a monthly premium that depends on how long you or "
+         "your spouse worked and paid Medicare taxes. You also have to sign up for Part B to buy "
+         "Part A, and if you don't buy Part A when you are first eligible, usually when you turn "
+         "65, you might pay a penalty.</p>"),
+        ("How do I avoid a late penalty for drug coverage?",
+         "<p>Get Medicare drug coverage when you first get Part A, Part B or both, and don't go "
+         "63 days or more without creditable drug coverage, which is coverage similar in value "
+         "to Part D. If you qualify for Extra Help, you won't have to pay the Part D late "
+         "enrollment penalty.</p>"),
+        ("Do I still pay the Part B premium with a Medicare Advantage Plan or Medigap?",
+         "<p>Yes. You must have Part B and keep paying its premium to stay in a Medicare "
+         "Advantage Plan, or to keep a Medigap policy.</p>"),
         ("Can I manage Medicare online too?",
          "<p>Once you have your Medicare card, you can make a Medicare account on Medicare.gov "
          "with your Medicare Number.</p>"))
@@ -8242,7 +8370,8 @@ MEDICARE = guide(
              fig("24 months", MEDICARE_AUTO, "disability benefits for 24 months"),
              fig("age 62", CFR_OLD_AGE, "at least 62 years old"),
              fig("10 years", SSA_APPLY, "for at least 10 years"),
-             fig("24 hours", MEDICARE_CONTACT, "24 hours a day")])
+             fig("24 hours", MEDICARE_CONTACT, "24 hours a day"),
+             fig("63 days", MEDICARE_COSTS, "63 days or more without creditable drug coverage")])
 
 GUIDES += [MEDICARE]
 

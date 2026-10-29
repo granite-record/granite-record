@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.18
+# GRANITE_VERSION: 2026-09-04.19
 """
 Parse RollCallSummary.txt into per-bill voting records.
 
@@ -153,15 +153,105 @@ def bill_number(raw):
 OTHER_MEASURE = {("2009", "S", 32): "SR1 (2009)", ("2009", "S", 33): "SR1 (2009)"}
 
 
+# A ROLL CALL FILED UNDER THE WRONG BILL, PUT RIGHT BY A PERSON
+# (corrections/rollcall_corrections.json; P14 of the polish of 26 October
+# 2026). The Senate's 16-8 adoption of SB 287's conference report on 26 June
+# 2025 is roll call 117 of 2025 in the General Court's file, filed there
+# under HB 287, a House bill killed on 20 February 2025: HB 287's page
+# carried a Senate conference report, every senator's Votes tab linked HB
+# 287, and SB 287's page lacked its last Senate vote. OTHER_MEASURE above is
+# code, for a measure no record of the term carries; this is a hand-made
+# file in the family of docket_corrections.json, for a roll call whose bill
+# is another bill the term holds, with the evidence beside each entry. Read
+# here, in roll_call_bill, because that is the one place a roll call's bill
+# is named -- for rollcalls.json (parse) and for every ballot (build_data) --
+# so the bill's page and the members' Votes tabs cannot disagree. An entry is
+# applied only while the roll-call file still files the vote under the bill
+# the entry says it does; one that has stopped matching is reported by
+# refiled_report and not applied, and preflight fails on it. Found from the
+# folder the build runs in, as build_data finds member_corrections.json and
+# narrative.py docket_corrections.json: a fixture project has its own.
+REFILED = Path("corrections") / "rollcall_corrections.json"
+REFILED_KEY = re.compile(r"(\d{4})-([HS])-(\d+)")
+_REFILED = {}
+# {(year, body, number): {the bill the file gave it, each time it was read}}
+REFILED_SEEN = defaultdict(set)
+
+
+def refiled(path=None):
+    """{(year, body, number): entry} from the file's "misfiled", keyed as the
+    site names a roll call ("2025-S-117"), or {} where there is no file. An
+    entry this cannot apply stops the run rather than being passed over."""
+    p = Path(path or REFILED)
+    # By where it resolves to, so a process that changes folder reads the
+    # file of the folder it is in.
+    key = str(p.resolve())
+    if key not in _REFILED:
+        out = {}
+        if p.is_file():
+            try:
+                doc = json.loads(p.read_text(encoding="utf-8"))
+            except ValueError as e:
+                raise SystemExit(f"{p} will not read: {e}") from None
+            got = doc.get("misfiled") if isinstance(doc, dict) else None
+            if got is not None and not isinstance(got, dict):
+                raise SystemExit(f"{p}: \"misfiled\" is keyed by the roll call, as the site "
+                                 "names it (\"2025-S-117\")")
+            for k, e in (got or {}).items():
+                m = REFILED_KEY.fullmatch(str(k).strip())
+                says = bill_number(e.get("says")) if isinstance(e, dict) else ""
+                to = bill_number(e.get("belongs_to")) if isinstance(e, dict) else ""
+                if not (m and says and to and says != to):
+                    raise SystemExit(
+                        f"{p}: {k!r} is not an entry this can apply: the key is the roll call "
+                        "as the site names it (\"2025-S-117\"), and \"says\" and \"belongs_to\" "
+                        "are two different bill numbers")
+                out[(m.group(1), m.group(2), int(m.group(3)))] = e
+        _REFILED[key] = out
+    return _REFILED[key]
+
+
 def roll_call_bill(year, body, number, raw):
     """The bill a roll call is filed under: bill_number(raw), or for a roll
     call on a measure that shares its number with another measure's record
-    in the same term, the name OTHER_MEASURE gives it."""
+    in the same term, the name OTHER_MEASURE gives it, or for one a person
+    has shown is filed under the wrong bill (rollcall_corrections.json), the
+    bill it belongs to -- while the file still says what the entry says."""
     try:
         k = (str(year).strip(), str(body).strip(), int(number))
     except (TypeError, ValueError):
         k = None
+    e = refiled().get(k) if k else None
+    if e is not None:
+        REFILED_SEEN[k].add(bill_number(raw) or (raw or "").strip())
+        if bill_number(raw) == bill_number(e.get("says")):
+            return bill_number(e.get("belongs_to"))
     return OTHER_MEASURE.get(k) or bill_number(raw)
+
+
+def refiled_report(complete=True, who="rollcall_corrections.json"):
+    """Say what the file did to this run, and what it did not: (applied,
+    stale, unread) as "2025-S-117" keys. Stale is an entry whose roll call the
+    file now files under another bill than the entry says; unread, one whose
+    roll call no file read holds -- only said where every file was read."""
+    entries = refiled()
+    applied, stale, unread = [], [], []
+    for k, e in sorted(entries.items()):
+        name = f"{k[0]}-{k[1]}-{k[2]}"
+        seen = REFILED_SEEN.get(k) or set()
+        if bill_number(e.get("says")) in seen:
+            applied.append(name)
+            print(f"  {who}: {name} is filed under {bill_number(e.get('says'))} in the "
+                  f"roll-call file and drawn under {bill_number(e.get('belongs_to'))}")
+        elif seen:
+            stale.append(name)
+            print(f"  ! {who}: {name} is filed under {', '.join(sorted(seen))} in the roll-call "
+                  f"file now, not {bill_number(e.get('says'))}: the entry was NOT applied and "
+                  "is the thing that is out of date")
+        elif complete:
+            unread.append(name)
+            print(f"  ! {who}: {name} is in no roll-call file read, so the entry did nothing")
+    return applied, stale, unread
 
 
 def other_measure(r):
@@ -422,6 +512,8 @@ def parse_all(current, extra_dir):
             out.append(r)
             kept += 1
         print(f"  {f}: {kept:,} roll calls")
+    # Every file is read here, so an entry no file holds is said too.
+    refiled_report()
     print(f"  who did not vote, from the ballots: {from_ballots:,} roll calls"
           + (f"; {differ:,} where the General Court's summary and its ballots "
              "disagree now take the headline from the ballots, and keep the "
