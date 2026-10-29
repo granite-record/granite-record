@@ -8970,7 +8970,7 @@ function renderCommitteeSessions(c){
    etc"). One renderer for every page whose body is livestreamed: a
    committee's Videos tab (renderCommitteeVideos), a chamber's
    (/session/house and /session/senate) and a study or statutory committee's
-   Videos section, the last two drawn from the JSON their pages carry
+   Videos tab, the last two drawn from the JSON their pages carry
    (staticVideos).
 
    o:     {who, what, key, heading, level, rows, chosen, href(id), pid(row), source}
@@ -9391,25 +9391,23 @@ document.addEventListener("click",e=>{
 });
 
 // ------------------------------------- a page that carries its own recordings
-/* A STUDY OR STATUTORY COMMITTEE'S VIDEOS SECTION (build_study_committees,
-   videos_html) and a chamber's Videos tab (build_full_sessions) carry their
-   rows as JSON in the page, under a slot [data-vwview] naming it; this draws
-   the view there when the page loads. Without script the slot keeps its one
-   line, and each meeting or day below keeps its own player. The address can
-   name a recording (#v-<id>), which is then the one chosen, and the view is
-   brought into view; /videos at the end of a study committee's address
-   (the committee rewrite serves it) is its Videos section. */
+/* A STUDY OR STATUTORY COMMITTEE'S VIDEOS TAB (build_study_committees,
+   videos_html) and a chamber's (build_full_sessions) carry their rows as
+   JSON in the page, under a slot [data-vwview] naming it; this draws the
+   view there when the page loads. Without script the slot keeps its one
+   line, and each meeting or day keeps its own player. The address can name
+   a recording (#v-<id>), which is then the one chosen, and the view is
+   brought into view. */
 // A study committee's rows: the room and the kind of meeting under the day,
 // and under the player the time it was set for where the recording's own
-// start is not known, and the way to the meeting on this page and on the
-// Calendar.
+// start is not known, and the way to the meeting on the Meetings tab and on
+// the Calendar.
 function studyVideoRows(d){
   return (d.rows||[]).map(r=>({id:r.id,date:r.date,began:r.began,seconds:r.seconds,
     line:[r.venue,r.type],
     detail:()=>{
       const facts=[r.venue,r.type,!r.began&&r.time?`Set for ${clock(r.time)}`:""].filter(Boolean);
-      const here=location.pathname+location.search;
-      const links=[`<a href="${esc(here)}#${esc(r.anchor)}">This meeting</a>`]
+      const links=[`<a href="${esc(`${d.path}/sessions#${r.anchor}`)}" data-ssgo>This meeting</a>`]
         .concat(r.calendar?[`<a href="${esc(r.calendar)}">This meeting on the Calendar</a>`]:[]);
       return (facts.length?`<p class="vwkinds">${vwJoin(facts.map(esc))}</p>`:"")
         +`<p class="src vwlinks">${vwJoin(links)}</p>`;}}));
@@ -9480,10 +9478,6 @@ function staticVideos(){
       if(T&&T.term&&T.term!==d.term){chamberVideos(T);return;}
     }
     if(vwDraw(slot,d))vwLand(slot);
-    else if(!slot.closest(".chpane")&&/\/videos\/?$/.test(location.pathname)){
-      const sec=slot.closest("section");
-      if(sec)sec.scrollIntoView({block:"start"});
-    }
   });
 }
 // ARRIVING AT THE RECORDING THE ADDRESS NAMES, once its view is drawn: on a
@@ -9533,10 +9527,7 @@ function chamberShow(i,write){
   // still loading cannot hear yet, so it is told again once it has loaded,
   // if its pane is still hidden then.
   const hide=i===0?vids:days;
-  const pause=f=>{try{f.contentWindow.postMessage(JSON.stringify({event:"command",func:"pauseVideo",args:[]}),"*");}catch(_){}};
-  if(hide&&!hide.hidden)hide.querySelectorAll("iframe").forEach(f=>{
-    pause(f);
-    f.addEventListener("load",()=>{if(hide.hidden)pause(f);},{once:true});});
+  if(hide&&!hide.hidden)panePause(hide,()=>hide.hidden);
   if(days)days.hidden=i!==0;
   if(vids)vids.hidden=i!==1;
   vwStick();
@@ -9549,6 +9540,83 @@ document.addEventListener("click",e=>{
   const t=e.target&&e.target.closest&&e.target.closest("[data-chtab]");
   if(t)chamberShow(+t.dataset.chtab,true);
 });
+// The frames in a pane being hidden, paused (chamberShow, ssShow); `gone()`
+// says whether the pane is still hidden when a frame still loading has
+// loaded.
+function panePause(pane,gone){
+  const pause=f=>{try{f.contentWindow.postMessage(JSON.stringify({event:"command",func:"pauseVideo",args:[]}),"*");}catch(_){}};
+  pane.querySelectorAll("iframe").forEach(f=>{
+    pause(f);
+    f.addEventListener("load",()=>{if(gone())pause(f);},{once:true});});
+}
+
+/* A STUDY OR STATUTORY COMMITTEE'S TABS (the owner, 29 October 2026: "study
+   committees, commissions and boards get the same tab format as standing
+   committees: Bills | Meetings | Videos"). build_study_committees writes the
+   strip and the panes whole (tabs_html), the strip in a standing committee's
+   classes, and the first pane shown from the first paint (html.js); this
+   turns to the tab the address names and to the tab pressed. The address
+   names the tab as a standing committee's does -- /committee/ss57 its first,
+   /committee/ss57/sessions its Meetings, /videos its Videos, which the
+   committee rewrite serves -- and a place on one names that tab: a meeting
+   (#day-<date>, as a Calendar card leads here, or the earlier meetings'
+   fold), a recording (#v-<id>), or a pane by its id (#meetings, #videos,
+   the sections' addresses before the tabs). A meeting named is opened and
+   brought into view. A recording playing in a pane turned from is paused. */
+const ssTabsOf=strip=>[...strip.querySelectorAll("[data-sstab]")];
+const ssPaneOf=t=>document.getElementById(t.getAttribute("aria-controls")||"");
+function ssWanted(strip){
+  const tabs=ssTabsOf(strip), h=location.hash||"";
+  const pane=id=>tabs.find(t=>t.getAttribute("aria-controls")===id);
+  const placed=/^#(day-|earlier$)/.test(h)?pane("meetings"):/^#v-/.test(h)?pane("videos"):pane(h.slice(1));
+  if(placed)return {tab:placed,placed:true};
+  const m=/\/([a-z]+)\/?$/.exec(location.pathname);
+  return {tab:(m&&tabs.find(t=>t.dataset.sstab===m[1]))||tabs[0],placed:false};
+}
+function ssShow(tab,write,keep){
+  const strip=tab.closest(".sstabs");
+  ssTabsOf(strip).forEach(t=>{
+    const on=t===tab, pane=ssPaneOf(t);
+    t.setAttribute("aria-selected",String(on));
+    if(!pane)return;
+    if(!on&&pane.hasAttribute("data-on"))panePause(pane,()=>!pane.hasAttribute("data-on"));
+    if(on)pane.setAttribute("data-on","");else pane.removeAttribute("data-on");
+  });
+  vwStick();
+  if(!write)return;
+  const slug=tab.dataset.sstab;
+  try{history.replaceState(history.state,"",strip.dataset.base+(slug?`/${slug}`:"")+location.search
+    +(keep?location.hash:""));}catch(_){}
+  addressed();
+}
+// The tab the address names, and the meeting it names opened and in view.
+function ssLand(){
+  const strip=document.querySelector(".sstabs");
+  if(!strip)return;
+  const w=ssWanted(strip);
+  if(!w.tab)return;
+  ssShow(w.tab,w.placed,true);
+  let day=null;
+  try{day=/^#day-/.test(location.hash)?document.getElementById(decodeURIComponent(location.hash.slice(1))):null;}catch(_){}
+  if(!day)return;
+  for(let p=day;p;p=p.parentElement)if(p.tagName==="DETAILS")p.open=true;
+  day.scrollIntoView({block:"start"});
+}
+document.addEventListener("click",e=>{
+  const t=e.target&&e.target.closest?e.target:null;
+  if(!t)return;
+  const tab=t.closest("[data-sstab]");
+  if(tab){ssShow(tab,true);return;}
+  // A meeting on the Meetings tab, from the Videos tab's "This meeting":
+  // turned to in place, as a standing committee's is.
+  const a=t.closest("a[data-ssgo]");
+  if(!a||e.defaultPrevented||e.button||e.metaKey||e.ctrlKey||e.shiftKey||e.altKey)return;
+  e.preventDefault();
+  try{history.replaceState(history.state,"",a.getAttribute("href"));}catch(_){}
+  addressed();
+  ssLand();
+});
+window.addEventListener("hashchange",()=>ssLand());
 // Another term, as the page's script fetched it: its Videos tab drawn from
 // the same days, and the two counts. A recording the address named is the
 // old term's, so the address stops naming it.
@@ -11513,8 +11581,9 @@ document.addEventListener("keydown",e=>{
   if(s&&s.focus)s.focus();
 });
 
-// A PAGE THAT CARRIES ITS OWN RECORDINGS -- a study committee's Videos section,
-// a chamber's Videos tab -- draws them once the whole of this script has run
+// A PAGE THAT CARRIES ITS OWN RECORDINGS -- a study committee's Videos tab, a
+// chamber's -- draws them once the whole of this script has run
 // (staticVideos): the parts of the view are defined above, after the branch
-// that takes the search down on such a page.
-if(window.GR_STATIC)staticVideos();
+// that takes the search down on such a page. A study committee's tabs first
+// (ssLand), so the view is drawn in the pane the address shows.
+if(window.GR_STATIC){ssLand();staticVideos();}

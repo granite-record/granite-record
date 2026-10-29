@@ -6891,7 +6891,7 @@ transition:transform .15s}
 .cmplay .pwho b{color:var(--ink);font-weight:600}
 .cmplay .tolnote{margin-left:0}
 /* THE VIDEOS VIEW (app.js, THE VIDEOS VIEW): a committee's Videos tab, a
-   chamber's and a study committee's Videos section. The player and its one
+   chamber's and a study committee's Videos tab. The player and its one
    caption, then what the chosen recording covers, then the list of
    recordings; on a wide screen the list stands beside the player, as tall
    as the player block and scrolling inside it, so it never runs past it
@@ -7022,10 +7022,24 @@ color:var(--ink-2);white-space:nowrap;overflow:hidden}
 }
 /* A STATUTORY OR STUDY COMMITTEE'S PAGE (18 October 2026,
    build_study_committees.py): the record head, then W4 sections -- What It
-   Does, Report, Members, Meetings -- each meeting folded as a committee's is.
-   The rules it meets by and its report's due date are a short list of label
-   and value, the legislators a row of chips by chamber, and every other seat
-   a line of the statute's own description with how many hold it. */
+   Does, Report, Members -- and then a standing committee's tabs, Bills |
+   Meetings | Videos (29 October 2026), each meeting folded as a committee's
+   is. The rules it meets by and its report's due date are a short list of
+   label and value, the legislators a row of chips by chamber, and every
+   other seat a line of the statute's own description with how many hold it.
+
+   THE TABS ARE A STANDING COMMITTEE'S (.rhead ~ .tabs, the panes the
+   record's white sheet), written whole by the build: without JavaScript the
+   strip is hidden and every pane is on the page in turn under its own
+   heading, a sheet of its own; with it (html.js, before the first paint) the
+   first pane alone shows until app.js (ssTabs) turns to another, and a
+   pane's heading is the tab's, kept for a screen reader. */
+html:not(.js) .sstabs{display:none}
+html.js .sspane:not([data-on]){display:none}
+.ssph{font-size:var(--t-h2);line-height:1.25;margin:0 0 var(--sp-5)}
+html.js .ssph{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;
+clip:rect(0 0 0 0);white-space:nowrap;border:0}
+html:not(.js) .rhead ~ .sspane{border-top:1px solid var(--rule-2);border-radius:var(--r-out);margin-top:var(--sp-7)}
 .ssbody{margin-top:var(--sp-7)}
 .ssbody > .w4:first-child{border-top:1px solid var(--rule);padding-top:var(--sp-5)}
 .ssduty{font:400 var(--t-read)/1.65 var(--serif);color:var(--ink);max-width:51.1875rem;margin:0 0 var(--sp-4)}
@@ -7230,10 +7244,10 @@ border-radius:var(--r-in);background:var(--surface);font-size:var(--t-ui)}
     linear-gradient(to left,var(--lift),transparent) 100% 0/32px 100% no-repeat;
     background-color:var(--paper)}
 }
-.card.focus.rec > .cbody > .pane,.rhead ~ #ppane{background:var(--surface);border:1px solid var(--rule-2);
+.card.focus.rec > .cbody > .pane,.rhead ~ #ppane,.rhead ~ .sspane{background:var(--surface);border:1px solid var(--rule-2);
 border-top:0;border-radius:0 0 var(--r-out) var(--r-out);padding:var(--sp-7) var(--sp-8) var(--sp-8)}
 @media (max-width:45em){
-  .card.focus.rec > .cbody > .pane,.rhead ~ #ppane{padding:var(--sp-5) var(--sp-4) var(--sp-6)}
+  .card.focus.rec > .cbody > .pane,.rhead ~ #ppane,.rhead ~ .sspane{padding:var(--sp-5) var(--sp-4) var(--sp-6)}
 }
 
 /* W4 SECTIONS (C7): the heading in a left margin level with its first line,
@@ -7260,11 +7274,6 @@ font-size:var(--t-ui)}
 @media (min-width:60em){
   .w4{display:grid;grid-template-columns:minmax(10rem,1fr) minmax(0,51.1875rem);column-gap:2rem;align-items:start}
   .w4h{margin:0;padding-top:var(--sp-1)}
-  /* A SECTION THAT TAKES THE PAGE'S WIDTH, its heading over it as on a
-     phone: a study committee's Videos, whose player in the margin's grid
-     had 455px of 1,132 (the Videos view, 26 October 2026). */
-  .w4.w4wide{display:block}
-  .w4wide .w4h{margin:0 0 var(--sp-5)}
 }
 
 /* A MEMBER'S TERM AT A GLANCE (item 7): the term's control, then its

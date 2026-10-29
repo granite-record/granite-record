@@ -63908,16 +63908,17 @@ def _vw_loose_dots(html):
     return html.count("&middot;") + html.count("\u00b7") - html.count(_VW_DOT_HEAD)
 
 
-@check("build", "a study or statutory committee's recorded meetings are a Videos section between "
-       "Members and Meetings, drawn by the one Videos view, and a recording plays on its own "
-       "committee's meeting of its own day and no other", needs=("build_study_committees",))
+@check("build", "a study or statutory committee's recorded meetings are its Videos tab, drawn by the "
+       "one Videos view, and a recording plays on its own committee's meeting of its own day and "
+       "no other", needs=("build_study_committees",))
 def _study_committee_videos(SC):
     """The owner, 26 October 2026: "Same goes for session days, or study
     committees, commissions, etc that are livestreamed from those channels."
     build_study_committees.videos_html writes the committee's recorded
-    meetings as rows in the page, full width under its own heading
-    (.w4wide), and app.js's videoView draws them; without script the section
-    says the meetings below each have their player. And ONE RECORDING, ONE
+    meetings as rows in the page, the body of its Videos tab (tabs_html, the
+    owner's tabs of 29 October 2026, which _study_committee_tabs holds), and
+    app.js's videoView draws them; without script the tab's pane says each
+    recorded meeting under Meetings has its player. And ONE RECORDING, ONE
     MEETING: the Calendar's rows were keyed by MeetingID alone, which
     repeats, so the Nuclear Decommissioning Financing Committee's meeting of
     14 June 2002 played a task force's recording of 23 October 2026 and
@@ -63950,10 +63951,10 @@ def _study_committee_videos(SC):
           {"date": "2026-10-13", "time": "10:00", "venue": "LOB 101", "type": "Regular meeting",
            "id": "day-2026-10-13", "video": "notIndexed1"}]
     facts = {"soonStream1": {"streamed": False}, "ranStream01": {"streamed": True, "began": "10:01", "seconds": 600}}
-    sec = SC.videos_html({"cid": "85", "name": "Fiscal Committee"}, ms, {"facts": facts})
+    sec, n = SC.videos_html({"cid": "85", "name": "Fiscal Committee"}, ms, {"facts": facts})
     listed = [r["id"] for r in json.loads(re.search(r'id="gr-videos">(.*?)</script>', sec, re.S).group(1))["rows"]]
-    assert listed == ["ranStream01", "notIndexed1"], (
-        f"the Videos section lists {listed}: a stream that has not run is listed, or one it has is not")
+    assert listed == ["ranStream01", "notIndexed1"] and n == 2, (
+        f"the Videos tab lists {listed} ({n}): a stream that has not run is listed, or one it has is not")
     # THE COMMITTEE IN A SENTENCE: "Play the recording of the Fiscal Committee",
     # its own article kept small, and a name that names no body bare --
     # "the Administrative Rules" was what the player said (the review of 29
@@ -63964,24 +63965,21 @@ def _study_committee_videos(SC):
                        ("Administrative Rules", "Administrative Rules")):
         assert SC.named(name) == want, f"{name!r} is named {SC.named(name)!r} in a sentence, not {want!r}"
     assert '"what":"Administrative Rules"' in SC.videos_html({"cid": "61", "name": "Administrative Rules"},
-                                                             ms[1:2], {"facts": facts}) and \
+                                                             ms[1:2], {"facts": facts})[0] and \
         'data-title="Recording of Administrative Rules, Oct 20, 2026"' in SC.player(
             {"cid": "61", "name": "Administrative Rules"}, ms[1]), (
-        "the Videos section or a meeting's player names Administrative Rules as \"the Administrative Rules\"")
+        "the Videos tab or a meeting's player names Administrative Rules as \"the Administrative Rules\"")
     absent = [x for x in CHAIN_NEEDS if not _paths.locate(x).exists()]
     if absent:
         return "ok", "a recording plays on its own meeting; not here to build the fixture: " + ", ".join(absent)
     shared, _base, _ran, _days = _fixture_site_shared()
     site = shared / "site"
     t = (site / "committee" / "ss1451.html").read_text(encoding="utf-8")
-    order = [m.group(1) for m in re.finditer(r'<section class="w4[^"]*" id="([a-z]+)"', t)]
-    assert order[-3:] == ["members", "videos", "meetings"], (
-        f"the commission's sections are {order}: Videos is not between Members and Meetings")
-    sec = t[t.index('id="videos"'):t.index('id="meetings"')]
-    assert sec.startswith('id="videos"><h2 class="w4h">Videos</h2>') and \
-        '<section class="w4 w4wide" id="videos">' in t and \
-        '<div class="vwhere" data-vwview="gr-videos"><p class="src">Each recorded meeting below has ' \
-        'its own player.</p></div>' in sec, "the Videos section is not full width, with its line for no script"
+    sec = t[t.index('<div class="pane sspane" role="tabpanel" id="videos"'):]
+    assert sec.startswith('<div class="pane sspane" role="tabpanel" id="videos" aria-labelledby="sstab-videos" '
+                          'tabindex="0"><h2 class="ssph">Videos</h2><div class="vwhere" data-vwview="gr-videos">'
+                          '<p class="src">Each recorded meeting under Meetings has its own player.</p></div>'), (
+        "the commission's Videos tab is not its pane, with its line for no script: " + sec[:200])
     data = json.loads(re.search(r'<script type="application/json" id="gr-videos">(.*?)</script>', sec,
                                 re.S).group(1))
     want_row = {"id": "agingVid001", "date": "2026-03-10", "time": "10:00",
@@ -64001,28 +63999,201 @@ def _study_committee_videos(SC):
         if f.stem != "ss1451" and 'id="videos"' in page:
             stray.append(f.stem)
     assert not early, f"a study meeting before the channels began plays a recording: {early}"
-    assert not stray, f"a committee with no recorded meeting has a Videos section: {stray}"
+    assert not stray, f"a committee with no recorded meeting has a Videos tab: {stray}"
     drawn = _app_js('(location.pathname="/committee/ss1451/videos", scope.videoView(scope.VW_STATIC.study('
                     + json.dumps(data) + ")))", names=("videoView", "VW_STATIC"))
     if drawn is None:
-        return "ok", "the commission's Videos section is written; node is not here to draw it"
+        return "ok", "the commission's Videos tab is written; node is not here to draw it"
     import html as _html
     flat = _html.unescape(re.sub(r"<[^>]+>", "", drawn))
     assert "<iframe" not in drawn and 'data-embed="agingVid001|0|v20260310_agingVid001"' in drawn, (
-        "the section's player is not a still of its recording")
+        "the tab's player is not a still of its recording")
     assert "State Commission on Aging, ·\u00a0Mar 10, 2026, ·\u00a010:02 AM, ·\u00a01 h 2 min, ·\u00a0On YouTube" in flat \
-        and "1 recording, newest first" in flat, f"the section draws {flat[:300]!r}"
+        and "1 recording, newest first" in flat, f"the tab draws {flat[:300]!r}"
     assert _vw_loose_dots(drawn) == 0 and drawn.count(_VW_DOT_HEAD) >= 5, (
-        "a dot in the study committee's Videos section can end a line: it goes at the head of "
+        "a dot in the study committee's Videos tab can end a line: it goes at the head of "
         "the part after it")
-    assert '<a href="/committee/ss1451/videos#day-2026-03-10">This meeting</a>' in drawn and \
+    # "This meeting" is the meeting on the Meetings tab, at its own address,
+    # turned to in place (app.js, ssTabs).
+    assert '<a href="/committee/ss1451/sessions#day-2026-03-10" data-ssgo>This meeting</a>' in drawn and \
         '<a href="calendar?week=2026-W11&amp;day=2026-03-10&amp;committee=State+Commission+on+Aging">' \
         'This meeting on the Calendar</a>' in drawn and \
         'href="/committee/ss1451/videos#v-agingVid001"' in drawn, (
-            "the section does not lead to its meeting on the page and on the Calendar, or its row to itself")
+            "the tab does not lead to its meeting on the Meetings tab and on the Calendar, or its row to itself")
     return "ok", ("a meeting takes only its own committee's recording of its own day; the "
-                  "commission's Videos section between Members and Meetings, full width, drawn as a "
-                  "still and its playlist; no study meeting before May 2020 plays one")
+                  "commission's Videos tab drawn as a still and its playlist; no study meeting before "
+                  "May 2020 plays one")
+
+
+# A study committee's page as app.js meets it: its strip of three tabs, each
+# pane by its id, a meeting's fold inside the earlier meetings' fold, and a
+# frame playing in the Videos pane; every listener app.js registers kept to
+# be fired. app.js is loaded over it at /committee/ss1451/sessions, as a page
+# that carries its own record (GR_STATIC).
+_SS_TABS_HARNESS = _HEARD_PRELUDE + r"""
+const attrs = (o, a) => Object.assign(o, {a: Object.assign({}, a),
+  getAttribute(k) { return k in this.a ? this.a[k] : null; }, setAttribute(k, v) { this.a[k] = String(v); },
+  hasAttribute(k) { return k in this.a; }, removeAttribute(k) { delete this.a[k]; }});
+const sent = [];
+const frame = {contentWindow: {postMessage: (m) => sent.push(JSON.parse(m).func)}, addEventListener() {}};
+const panes = {};
+for (const id of ["bills", "meetings", "videos"])
+  panes[id] = attrs({id, querySelectorAll: (q) => q === "iframe" && id === "videos" ? [frame] : []},
+                    id === "bills" ? {"data-on": ""} : {});
+const strip = {dataset: {base: "/committee/ss1451"}};
+const tabs = [["bills", ""], ["meetings", "sessions"], ["videos", "videos"]].map(([id, slug], i) =>
+  attrs({id: "sstab-" + id, dataset: {sstab: slug}, closest: (q) => q === ".sstabs" ? strip : null},
+        {"aria-controls": id, "aria-selected": String(!i)}));
+strip.querySelectorAll = (q) => q === "[data-sstab]" ? tabs : [];
+const earlier = {tagName: "DETAILS", open: false, parentElement: null};
+const day = {tagName: "DETAILS", open: false, parentElement: earlier, seen: 0, scrollIntoView() { this.seen += 1; }};
+const stubQ = document.querySelector, stubId = document.getElementById;
+document.querySelector = (q) => q === ".sstabs" ? strip : stubQ(q);
+document.getElementById = (id) => panes[id] || (id === "day-1993-01-11" ? day : /^day-/.test(id) ? null : stubId(id));
+const state = () => ({tabs: tabs.map((t) => t.a["aria-selected"]).join(""),
+  on: Object.keys(panes).filter((k) => panes[k].hasAttribute("data-on")), at: location.pathname + location.hash,
+  wrote: wrote.splice(0)});
+go("/committee/ss1451/sessions"); window.GR_STATIC = true;
+load("ssLand, addressed");
+const out = {onLoad: state()};
+try {
+  place("/committee/ss1451/videos"); s.ssLand(); out.byPath = state();
+  sent.length = 0;
+  click((q) => q === "[data-sstab]" ? tabs[0] : null); out.clicked = state(); out.paused = sent.splice(0);
+  place("/committee/ss1451#day-1993-01-11"); s.ssLand();
+  out.byDay = Object.assign(state(), {open: [earlier.open, day.open], seen: day.seen});
+  place("/committee/ss1451#videos"); (heard.window.hashchange || []).forEach((f) => f({})); out.byHash = state();
+  earlier.open = day.open = false; day.seen = 0;
+  const go = click((q) => q === "a[data-ssgo]" ? {getAttribute: (k) => k === "href" ? "/committee/ss1451/sessions#day-1993-01-11" : null} : null);
+  out.go = Object.assign(state(), {prevented: go.prevented, open: day.open, seen: day.seen});
+  place("/committee/ss1451/sessions"); s.ssLand(); out.bySlug = state();
+} catch (e) { out.threw = e.constructor.name + ": " + e.message + " " + (e.stack || "").slice(0, 300); }
+process.stdout.write("\n@@" + JSON.stringify(out));
+"""
+
+
+@check("build", "a study or statutory committee has a standing committee's tabs -- Bills, Meetings, "
+       "Videos, each counted and at its own address -- under what it does, its report and its members; "
+       "no tab where it would be empty", needs=("build_study_committees", "build_pages"))
+def _study_committee_tabs(SC, BP):
+    """The owner, 29 October 2026, reversing the full-width Videos section
+    (Q5): "study committees, commissions and boards get the same tab format as
+    standing committees: Bills | Meetings | Videos", with room for tabs to
+    come, such as Reports. build_study_committees.tabs_html writes a
+    standing committee's strip in its own classes (.rhead ~ .tabs: on the
+    head's foot rule, pinned as a pane scrolls) and a pane each, after the
+    W4 sections that stay above it -- What It Does, Report, Members -- as a
+    standing committee keeps its members and its rule above its tabs. Bills
+    are the bills that made it and changed it, which is what the record
+    names for a body nothing is referred to (bills_of); a body whose record
+    names none has no Bills tab, and one with no recorded meeting no Videos
+    tab. Without JavaScript every pane is on the page under its heading;
+    with it the first shows from the first paint, and app.js (ssLand) turns
+    to the tab the address names -- /sessions, /videos, a meeting's #day-,
+    a recording's #v-, a pane's old #id -- and to the one pressed, pausing a
+    recording in the pane it leaves."""
+    root = Path(tempfile.mkdtemp())
+    try:
+        (root / "bill" / "2026").mkdir(parents=True)
+        (root / "bill" / "2026" / "sb434.html").write_text("", encoding="utf-8")
+        ctx = {"bills": {("SB434", "2026"): 2026, ("HB1442", "2026"): 2026}, "site": root,
+               "titles": {("SB434", "2026"): "establishing a commission on aging.",
+                          ("HB1442", "2026"): "relative to insurance coverage."}, "first_year": "1989"}
+        aging = {"cid": "1451", "name": "State Commission on Aging", "bill": "SB434", "year": "2026",
+                 "amended": "HB1442(2026), SB434(2026)"}
+        rows = SC.bills_of(aging, ctx)
+        fiscal = SC.bills_of({"cid": "57", "name": "Fiscal Committee", "bill": "", "year": "1965",
+                              "amended": "HB10(1995) HB2(2009)"}, ctx)
+        none = SC.bills_of({"cid": "69", "name": "A Board", "bill": "", "year": "1967", "amended": ""}, ctx)
+        # Administrative Rules, set up by HB 366 of 1983: before the site's bills.
+        early = SC.bills_of({"cid": "61", "name": "Administrative Rules", "bill": "HB366", "year": "1983",
+                             "amended": ""}, ctx)
+    finally:
+        shutil.rmtree(root, ignore_errors=True)
+    assert [(r["n"], r["year"], r["href"], r["line"]) for r in rows] == [
+        ("SB 434", "2026", "bill/2026/sb434.html", "Set it up"), ("HB 1442", "2026", "", "Changed it")] and \
+        none == [], f"a study committee's bills are not the one that set it up and those that changed it, once: {rows}"
+    assert early == [{"n": "HB 366", "year": "1983", "href": "", "line": "Set it up",
+                      "title": "Before 1989, when this site's record of bills begins."}], (
+        f"a bill from before the site's record stands blank, or says something else: {early}")
+    said = SC.bills_html(aging, rows)
+    assert said.startswith('<p class="src">The bill that set it up, and the bill that has changed it since, as '
+                           "the General Court&rsquo;s record names them.</p>") and \
+        '<a class="brnum" href="bill/2026/sb434.html" translate="no">SB 434<span class="byr">(2026)</span></a>' \
+        in said and '<span class="brnum">HB 1442<span class="byr">(2026)</span></span>' in said and \
+        "relative to insurance coverage." in said, "the Bills tab does not say what its bills are, each as a row: " + said[:300]
+    assert SC.bills_html({"year": "1965"}, fiscal).startswith(
+        '<p class="src">The 2 bills that have changed it since it was set up in 1965, as the General '
+        "Court&rsquo;s record names them.</p>"), "a committee set up by no bill named does not say so"
+    page = SC.tabs_html(aging, {"meetings": (3, "MEETINGS"), "bills": (2, "BILLS"), "videos": (1, "VIDEOS")})
+    strip = re.search(r'<div class="tabs sstabs" role="tablist" data-base="/committee/ss1451">(.*?)</div>', page).group(1)
+    tabs = re.findall(r'<button type="button" class="tab" role="tab" id="sstab-(\w+)" aria-controls="\1" '
+                      r'data-sstab="(\w*)" aria-selected="(true|false)">(\w+)(.*?)</button>', strip)
+    assert [t[:4] for t in tabs] == [("bills", "", "true", "Bills"), ("meetings", "sessions", "false", "Meetings"),
+                                     ("videos", "videos", "false", "Videos")], (
+        f"the strip is not Bills | Meetings | Videos, each at its address, the first chosen: {tabs}")
+    panes = re.findall(r'<div class="pane sspane" role="tabpanel" id="(\w+)" aria-labelledby="sstab-\1" '
+                       r'tabindex="0"( data-on)?><h2 class="ssph">(\w+)</h2>(\w+)</div>', page)
+    assert panes == [("bills", " data-on", "Bills", "BILLS"), ("meetings", "", "Meetings", "MEETINGS"),
+                     ("videos", "", "Videos", "VIDEOS")], f"the panes are not each its tab's, the first shown: {panes}"
+    assert re.findall(r'id="sstab-(\w+)"', SC.tabs_html(aging, {"meetings": (0, "M")})) == ["meetings"] and \
+        "class=\"tn\"" not in SC.tabs_html(aging, {"meetings": (0, "M")}), "a tab with nothing in it is drawn"
+    slugs = {slug for _p, _w, slug in SC.TABS if slug}
+    assert slugs <= set(BP.COMMITTEE_TAB_SLUGS), (
+        f"a study committee's tab is at an address the committee rewrite does not serve: {slugs - set(BP.COMMITTEE_TAB_SLUGS)}")
+    css = Path("src/pages/app.css").read_text(encoding="utf-8")
+    for rule, why in (("\nhtml:not(.js) .sstabs{display:none}", "without JavaScript the strip is shown"),
+                      ("\nhtml.js .sspane:not([data-on]){display:none}", "with JavaScript every pane is shown"),
+                      (".rhead ~ #ppane,.rhead ~ .sspane{background:var(--surface)", "a pane is not the record's sheet"),
+                      (".rhead ~ .tabs{position:sticky;top:0;", "the strip is not pinned as a standing committee's is")):
+        assert rule in css, f"app.css: {why}"
+    tn = _app_js("scope.tabN((1234).toLocaleString())", names=("tabN",))
+    assert tn is None or tn == SC.tab_n(1234), f"a study committee's count reads {SC.tab_n(1234)!r}, a standing one's {tn!r}"
+    got = _node_app(_SS_TABS_HARNESS)
+    if got is not None:
+        assert "threw" not in got, "the study committee's tabs could not be driven: " + got["threw"]
+        assert (got["onLoad"]["tabs"], got["onLoad"]["on"]) == ("falsetruefalse", ["meetings"]), (
+            f"app.js, loaded at /committee/ss1451/sessions, does not open the page on its Meetings tab: {got['onLoad']}")
+        assert got["byPath"] == {"tabs": "falsefalsetrue", "on": ["videos"], "at": "/committee/ss1451/videos", "wrote": []}, (
+            f"/committee/ss1451/videos does not open on its Videos tab: {got['byPath']}")
+        assert got["clicked"] == {"tabs": "truefalsefalse", "on": ["bills"], "at": "/committee/ss1451", "wrote": [
+            "replace /committee/ss1451"]} and got["paused"] == ["pauseVideo"], (
+            f"Bills pressed is not shown at its address, or the recording left playing: {got['clicked']}, {got['paused']}")
+        assert got["byDay"] == {"tabs": "falsetruefalse", "on": ["meetings"], "at": "/committee/ss1451/sessions#day-1993-01-11",
+                                "wrote": ["replace /committee/ss1451/sessions#day-1993-01-11"], "open": [True, True], "seen": 1}, (
+            f"a meeting the address names is not opened on the Meetings tab, named there: {got['byDay']}")
+        assert got["byHash"]["on"] == ["videos"] and got["bySlug"]["on"] == ["meetings"], (
+            f"the old #videos or /sessions does not open its tab: {got['byHash']}, {got['bySlug']}")
+        assert got["go"]["prevented"] == 1 and got["go"]["on"] == ["meetings"] and got["go"]["open"] and \
+            got["go"]["seen"] == 1 and got["go"]["at"] == "/committee/ss1451/sessions#day-1993-01-11", (
+                f"the Videos tab's \"This meeting\" does not turn to the meeting in place: {got['go']}")
+    absent = [x for x in CHAIN_NEEDS if not _paths.locate(x).exists()]
+    if absent:
+        return "ok", "the tabs are written and turned to; not here to build the fixture: " + ", ".join(absent)
+    shared, _base, _ran, _days = _fixture_site_shared()
+    site = shared / "site"
+    want = {"ss1451": [("bills", 2), ("meetings", 3), ("videos", 1)], "ss1740": [("bills", 1), ("meetings", 1)],
+            "ss69": [("meetings", 0)]}
+    for stem, tabs_want in want.items():
+        t = (site / "committee" / f"{stem}.html").read_text(encoding="utf-8")
+        m = re.search(r'</header><div class="w4s ssbody">(.*?)</div><div class="tabs sstabs" role="tablist" '
+                      r'data-base="/committee/' + stem + '">', t, re.S)
+        assert m, f"{stem}: the strip does not follow the head and its sections, where a standing committee's is"
+        above = re.findall(r'<section class="w4" id="([a-z]+)">', m.group(1))
+        assert above[0] == "does" and above[-1] == "members", f"{stem}: above the tabs are {above}"
+        drawn = [(pid, int(n or 0)) for pid, n in re.findall(
+            r'id="sstab-(\w+)"[^>]*>\w+(?:<span class="tn"><span class="tnp"> \(</span>([\d,]+)<span)?', t)]
+        assert drawn == tabs_want, f"{stem}'s tabs are {drawn}, not {tabs_want}"
+    bills = (site / "committee" / "ss1451.html").read_text(encoding="utf-8")
+    bills = bills[bills.index('id="bills"'):bills.index('id="meetings"')]
+    assert 'href="bill/2026/sb434"' in bills and 'href="bill/2026/hb1442"' in bills and \
+        bills.count('<span class="brline">Set it up</span>') == 1 and \
+        bills.count('<span class="brline">Changed it</span>') == 1, (
+            "the commission's Bills tab is not the bill that set it up and the one that changed it")
+    return "ok", ("Bills | Meetings | Videos under the sections, each counted and at its address, a "
+                  "standing committee's strip and sheet; the bills that made and changed it; no tab "
+                  "where it would be empty; the address's tab, a meeting or a recording turned to, a "
+                  "recording paused in the pane left")
 
 
 @check("build", "the study committees' record is read as it was written: a lost break parted only "
@@ -69108,7 +69279,7 @@ process.stdout.write("\n@@" + JSON.stringify(out));
 
 @check("frontend", "a chamber's and a study committee's Videos views are drawn when the page loads: "
        "the chamber's strip of two tabs, counted, each pane its tab's, a click on it heard without "
-       "error; its script's order, term and Videos tab; a study committee's section in place",
+       "error; its script's order, term and Videos tab; a study committee's Videos tab in place",
        needs=("build_full_sessions",))
 def _static_videos_wiring(FS):
     """The second review of the Videos views (29 October 2026) took each piece
@@ -69164,13 +69335,13 @@ def _static_videos_wiring(FS):
             f"another term's Videos tab is not drawn, or the address goes on naming the old term's "
             f"recording: {got['dropped']}, {got['tabsThen']}")
     st = _node_app(_VW_STATIC_HARNESS, {"fx.json": json.dumps({"path": "/committee/ss61/videos", "data": study})})
-    assert "threw" not in st, "the study committee's page would not draw its Videos section: " + st["threw"]
-    assert 'data-embed="agingVid001|0|' in st["view"] and st["strip"] is None and st["section"] == 1 and \
+    assert "threw" not in st, "the study committee's page would not draw its Videos tab: " + st["threw"]
+    assert 'data-embed="agingVid001|0|' in st["view"] and st["strip"] is None and st["section"] == 0 and \
         'aria-label="Play the recording of Administrative Rules, Mar 10, 2026"' in st["view"] and \
         'data-title="Recording of Administrative Rules, Mar 10, 2026"' in st["view"] and \
         '<h3 class="vwh" id="vwh">' in st["view"], (
-            "app.js does not draw a study committee's Videos section when the page loads, in its words, "
-            "and bring it into view at /videos")
+            "app.js does not draw a study committee's Videos tab when the page loads, in its words, "
+            "or scrolls the page to it at /videos, where its tab is shown as a standing committee's is")
     # THE PAGE'S OWN SCRIPT: its Order select is under Session Days now, out of
     # the term's box; another term fetched goes to the Videos tab.
     js = re.search(r"<script>(.*?)</script>", FS.SCRIPT, re.S).group(1)
@@ -69218,7 +69389,7 @@ const out = {};
     return "ok", ("a chamber's Videos tab and strip drawn on load, counted, each pane its tab's, a click on "
                   "it heard without error, another term's drawn and the old recording dropped from the "
                   "address; the page's script orders its days and hands another term over; a study "
-                  "committee's section drawn in its words and brought into view")
+                  "committee's Videos tab drawn in its words, the page left where it is")
 
 
 @check("frontend", "the header's five tabs are one row from 1008px, in the flow between the "
@@ -76552,15 +76723,14 @@ process.stdout.write("\n@@" + JSON.stringify(out));
     # THE MANAGER'S LAYOUT (review, 6 and 7), each rule the tab stands on (a
     # phone's, the player staying over the whole list, is
     # _videos_phone_playlist's): on a wide screen two columns, the list as
-    # tall as the player block and scrolling inside it; a study committee's
-    # section the page's width; the chosen row a bar as well as a colour,
-    # Highlight under forced colours; and a row two lines, its kinds and
-    # bills cut short on one (the review of 29 October 2026).
+    # tall as the player block and scrolling inside it; the chosen row a bar
+    # as well as a colour, Highlight under forced colours; and a row two
+    # lines, its kinds and bills cut short on one (the review of 29 October
+    # 2026). A study committee's view is in a tab's pane, the page's width
+    # (_study_committee_tabs).
     wide = _braced(css, "@media screen and (min-width:60em){")
     lit = css.find('.vwrow[aria-current="true"]{border-left-color:Highlight}')
     forced = css.rfind("@media (forced-colors:active){", 0, lit) if lit >= 0 else -1
-    w4 = css.index("  .w4{display:grid;")
-    w4 = _braced(css[css.rfind("@media (min-width:60em){", 0, w4):], "@media (min-width:60em){")
     for ok, why in (
             ("grid-template-columns:minmax(0,1fr) 22rem" in wide and '"main side"' in wide,
              "on a wide screen the list does not stand beside the player"),
@@ -76570,7 +76740,6 @@ process.stdout.write("\n@@" + JSON.stringify(out));
              "the chosen row is told by its colour alone"),
             (forced >= 0 and "}" not in css[forced + len("@media (forced-colors:active){"):lit],
              "under forced colours the chosen row has no bar"),
-            (".w4.w4wide{display:block}" in w4, "a study committee's Videos section is not the page's width"),
             (re.search(r"\n\.vwb\{[^}]*display:flex;[^}]*white-space:nowrap;overflow:hidden\}", css)
              and re.search(r"\n\.vwl\{flex:0 1 auto;min-width:0;overflow:hidden;text-overflow:ellipsis\}", css)
              and re.search(r"\n\.vwb \.chip\{flex:none;order:0;", css),

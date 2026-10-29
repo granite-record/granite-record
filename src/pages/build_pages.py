@@ -254,7 +254,7 @@ BILL_TAB_SLUGS = ("text", "votes", "hearings", "videos", "reports",
 MEMBER_TAB_SLUGS = ("cosponsored", "votes")
 # A committee's Videos tab (26 October 2026); its rule serves a study or
 # statutory committee's /committee/ss<id>/videos too, which opens that page
-# at its Videos section.
+# on its Videos tab, and /committee/ss<id>/sessions on its Meetings tab.
 COMMITTEE_TAB_SLUGS = ("sessions", "videos")
 # The chambers' pages (build_full_sessions.SLUG), whose Videos tab is
 # /session/<chamber>/videos.
