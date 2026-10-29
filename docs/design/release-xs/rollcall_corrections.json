@@ -1,0 +1,35 @@
+{
+  "_whose": "This file belongs to the person who runs Granite Record, like docket_corrections.json and member_corrections.json. Claude drafted the one entry below on 26 October 2026 for that person's review (P14 of the polish of 26 October 2026). rollcall_parser.py applies every entry until the person removes it. Read it; the file is yours.",
+
+  "_what": "Roll calls the General Court's roll-call file files under the wrong bill (RollCallSummary.txt, and records/rollcalls/RollCallSummary_<year>.txt for past years), put under the bill they were on by a person, with the evidence for each beside it. Edited by hand. No generator writes it, and preflight fails if any build_* or fetch_* script opens it for writing.",
+
+  "_why": "A roll call's bill decides which bill's Votes tab draws it, which bill each member's Votes tab links, and which of the docket's rows the sitting's page pairs it with. The file types that bill by hand, and one mistyped number puts a vote on a bill that never had it and takes it off the bill that did. A correction is made only where the record settles it and nothing points the other way: the Journal page that prints the vote, the docket rows of both bills, and the roll call's own fields.",
+
+  "_how": "Key each entry by the roll call as the site names it: year, H or S, number (\"2025-S-117\"). \"says\" is the bill the roll-call file gives it, as the file types it; \"belongs_to\" is the bill it was on. rollcall_parser.roll_call_bill is the only reader: it names a roll call's bill for rollcalls.json, for every member's ballot (build_data.py) and for the floor-debate index (build_floor_index.py), so the bill's Votes and Hearings tabs and the members' Votes tabs move together. An entry is applied only while the file still files that roll call under \"says\". One that has stopped matching is reported by rollcall_parser.py and build_data.py and NOT applied, and preflight fails on it (_rollcall_refiled): it means the General Court has changed the file and this entry is now the thing that is stale. An entry with no such key, or with \"says\" and \"belongs_to\" not two different bill numbers, stops the build. Nothing on the page says the vote was moved; \"why\" and \"evidence\" are for the next person to read.",
+
+  "_fields": {
+    "says": "The bill the roll-call file files the vote under, as it types it.",
+    "belongs_to": "The bill the vote was on.",
+    "why": "What the evidence shows, in a sentence or two.",
+    "evidence": "Each line of the record that settles it, quoted with where it is.",
+    "checked": "The day a person read the evidence (YYYY-MM-DD)."
+  },
+
+  "misfiled": {
+    "2025-S-117": {
+      "says": "HB287",
+      "belongs_to": "SB287",
+      "why": "Filed under the wrong bill: HB 287 for SB 287. The vote is the Senate's 16-8 adoption of the committee of conference report on SB 287 (2025-2797c) on 26 June 2025, which Senate Journal 17 prints on page 940 and SB 287's docket records. HB 287 was killed by the House on 20 February 2025, never reached the Senate and had no committee of conference; Senate Journal 17 does not name it. The file's title for the roll call is HB 287's, joined on the mistyped number.",
+      "evidence": [
+        "records/rollcalls/RollCallSummary_2025.txt line 379: '2025|S|117|6/26/2025 12:00:00 AM|HB287|16|8|24|0|||Conference Committee Report|requiring police departments to provide fire departments with certain motorist personal and insurance information following a motor vehicle incident.||6/27/2025 9:16:09 AM'",
+        "journals_senate/2025/SJ 17 June 26, 2025.txt, page 940 (between the running heads 'SENATEJOURNAL26JUNE2025 940' and '941 SENATEJOURNAL26JUNE2025'): 'Committee of Conference Report on SB 287, requiring applicants for absentee ballots to present a copy of their photo identification with their application. ... The question is on the adoption of the Committee of Conference Report. A roll call was requested by Senator Altschiller, seconded by Senator Rosenwald. The following Senators voted Yes: Rochefort, Lang, McConkey, Gray, Innis, Ward, Ricciardi, McGough, Avard, Murphy, Pearl, Sullivan, Birdsell, Abbas, Gannon, Carson. The following Senators voted No: Watters, Prentiss, Fenton, Rosenwald, Reardon, Long, Perkins Kwoka, Altschiller. Roll Call, Yeas: 16 - Nays: 8. Adopted.'",
+        "records/rollcalls/RollCallHistory_2025.txt, the 24 ballots of 2025|S|117: the 16 Yeas and 8 Nays are the senators the Journal names, each on the side it names",
+        "The Senate's roll calls of 26 June 2025 in the file, 2025-S-107 to 117, and the eleven the Journal prints that day, in the Journal's order and with the same tallies: HB 282 24-0 and 24-0, HB 60, HB 71, HB 377, HB 506, HB 712, HB 1 and HB 2 each 16-8, HB 115 8-16, then SB 287 16-8 on page 940. The file's eleventh is 'HB287'",
+        "Docket.txt (the copy of 26 October 2026) line 10663, SB 287's own row: '2025|1097|6/26/2025 3:59:58 PM|SB287|S|Conference Committee Report # 2025-2797c; RC 16Y-8N, Adopted; 06/26/2025;  SJ 17|6/26/2025 3:59:58 PM'. No Senate roll call of 2025 is filed under SB 287 but its 16-8 of 27 March (2025-S-39)",
+        "Docket.txt lines 292 to 3587, HB 287's six rows: introduced 8 January 2025 and referred to House Transportation, heard 21 January, reported Inexpedient to Legislate 9-7, and last 'Inexpedient to Legislate: MA DV 201-163 02/20/2025  HJ 6  P. 19'. No Senate row, and no committee of conference",
+        "journals_senate/2025/SJ 17 June 26, 2025.txt does not contain 'HB 287'"
+      ],
+      "checked": "2026-10-26"
+    }
+  }
+}
