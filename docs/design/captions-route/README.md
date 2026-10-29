@@ -165,7 +165,8 @@ could move timestamps either way. That is what the timestamp bar is for.
 > House's or Senate's YouTube recording where its hearing began. We find that
 > moment from the recording's automatic captions, which we never publish.
 > Would the [House/Senate] grant our project's Google account the channel's
-> Subtitle Editor (or Viewer-with-captions) role, so that we can read those
+> Subtitle Editor role (or whichever role YouTube
+> requires for reading caption files), so that we can read those
 > caption files through YouTube's official API rather than by other means?
 > We ask nothing else of the channel and change nothing on it.
 
