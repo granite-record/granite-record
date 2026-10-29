@@ -154,10 +154,10 @@ def video_facts(root="."):
                     # length and no start (93 of the committed ones do)
                     # beside the night's row, which has both, and the start
                     # was lost whenever the first of the two had a length.
+                    # Its day, its parsed name or its chamber the same way.
                     keep, other = (out[vid], row) if rank <= knows[vid] else (row, out[vid])
-                    row = dict(keep, began=keep["began"] or other["began"],
-                               seconds=keep["seconds"] or other["seconds"])
-                    rank = max(rank, knows[vid])
+                    row = {k: keep[k] or other[k] for k in row}
+                    rank = 2 * bool(row["seconds"]) + bool(row["began"])
                 out[vid] = dict(row, streamed=bool(row["began"] or row["seconds"]))
                 knows[vid] = rank
     return out

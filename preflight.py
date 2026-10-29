@@ -68963,15 +68963,21 @@ require("./stub.js");
 const fs = require("fs");
 const s = (0, eval)(fs.readFileSync("./page.js", "utf8") + "; ({chamberShow})");
 const sent = [];
-const pane = (name, hidden) => ({hidden, querySelectorAll: (sel) => sel === "iframe"
-  ? [{contentWindow: {postMessage: (m) => sent.push(name + " " + JSON.parse(m).func)}}] : []});
+const frame = (name) => ({onload: [], addEventListener(t, f) { if (t === "load") this.onload.push(f); },
+  loaded() { this.onload.splice(0).forEach((f) => f()); },
+  contentWindow: {postMessage: (m) => sent.push(name + " " + JSON.parse(m).func)}});
+const pane = (name, hidden) => { const f = frame(name);
+  return {hidden, f, querySelectorAll: (sel) => sel === "iframe" ? [f] : []}; };
 const days = pane("days", false), vids = pane("vids", true);
 document.getElementById = (id) => id === "chdays" ? days : id === "chvids" ? vids : null;
 const out = {};
 try {
   s.chamberShow(1, false); out.toVideos = sent.splice(0); out.shown = [days.hidden, vids.hidden];
+  days.f.loaded(); out.loadedHidden = sent.splice(0);
   s.chamberShow(0, false); out.toDays = sent.splice(0);
   s.chamberShow(0, false); out.again = sent.splice(0);
+  s.chamberShow(1, false); s.chamberShow(0, false); sent.splice(0);
+  days.f.loaded(); out.loadedShown = sent.splice(0);
 } catch (e) { out.threw = e.constructor.name + ": " + e.message; }
 process.stdout.write("\n@@" + JSON.stringify(out));
 """)
@@ -68979,6 +68985,10 @@ process.stdout.write("\n@@" + JSON.stringify(out));
         assert "threw" not in paused and paused["shown"] == [True, False] and paused["toVideos"] == [
             "days pauseVideo"] and paused["toDays"] == ["vids pauseVideo"] and paused["again"] == [], (
             f"a recording playing in the pane a chamber's tab hides is not paused, or one shown is: {paused}")
+        # A frame still loading when its pane is hidden cannot hear yet: it
+        # is told again once loaded, and not if its pane is shown by then.
+        assert paused["loadedHidden"] == ["days pauseVideo"] and paused["loadedShown"] == [], (
+            f"a frame that loads after its pane is hidden plays on, or one shown again is paused: {paused}")
     return "ok", ("a day takes its channel's session recording where no moment names one; the "
                   "folds play it and the Videos tab, at its own address, lists the term's, counts "
                   "and no bills; a term before the channels says so; another term's recording the "
@@ -76038,33 +76048,44 @@ def _committee_recordings(BCM, P):
         f"a division's recording placed by its bills is listed as {got3.get('H34')}, without its division")
     # THE OTHER SPELLINGS OF A DIVISION the channel's titles use, "1" and a
     # lower-case "l": each is House Finance's, marked Division I, and not
-    # counted as a recording named for no page.
+    # counted as a recording named for no page; and "ll", were it written,
+    # Division II.
     odd = dict(facts, **{vid: {"date": "2026-02-25", "chamber": "H", "title": title,
                                "parsed_committee": title, "began": "", "seconds": 600, "streamed": True}
-                         for vid, title in (("div1V", "Finance - Division 1"), ("divlV", "Finance Division l"))})
+                         for vid, title in (("div1V", "Finance - Division 1"), ("divlV", "Finance Division l"),
+                                            ("divllV", "Finance Division ll"))})
     got4, found4 = BCM.committee_recordings({}, set(facts), odd, code_of, pages)
     labels = {r["id"]: r.get("label") for r in got4.get("H34", [])}
-    assert labels == {"div1V": "Division I", "divlV": "Division I"} and not found4["no_page"], (
+    assert labels == {"div1V": "Division I", "divlV": "Division I", "divllV": "Division II"} \
+        and not found4["no_page"], (
         f"House Finance's divisions in their other spellings are listed as {labels}, "
         f"{found4['no_page']} named for no page")
     # WHAT ONE ROW OF THE INDEX LACKS, THE OTHER GIVES: a channel file's row
     # with a length and no start, before the night's row with both, kept the
-    # first and lost the start.
+    # first and lost the start (dupV); and of two rows that know as much, the
+    # first is kept and takes the day only the second has (tieV), where the
+    # recording had been left with no day and off every page.
     root = Path(tempfile.mkdtemp())
     try:
         d = root / "collected" / "videos"
         d.mkdir(parents=True)
-        for name, start in (("videos_house_a.csv", ""), ("videos_house_livestreams.csv", "2026-02-25 10:00:00")):
+        for name, rows in (("videos_house_a.csv", (("dupV", "", ""), ("tieV", "", ""))),
+                           ("videos_house_livestreams.csv", (("dupV", "2026-02-25 10:00:00", "2026-02-25"),
+                                                             ("tieV", "", "2026-02-26")))):
             with open(d / name, "w", newline="", encoding="utf-8") as fh:
                 w = csv.writer(fh)
                 w.writerow(FIXTURE_VIDEO_COLS)
-                w.writerow(["dupV", "House Commerce (02/25/2026)", "yes", "Commerce", "2026-02-25", "title",
-                            "yes" if start else "no", start, "", "", "PT1H", ""])
-        dup = P.video_facts(root)["dupV"]
+                for vid, start, day in rows:
+                    w.writerow([vid, "House Commerce", "yes", "Commerce", day, "title",
+                                "yes" if start else "no", start, "", "", "PT1H", ""])
+        two = P.video_facts(root)
     finally:
         shutil.rmtree(root, ignore_errors=True)
-    assert (dup["began"], dup["seconds"], dup["streamed"]) == ("10:00", 3600, True), (
-        f"a recording two rows of the index name reads {dup}: the start one of them has is lost")
+    dup, tie = two["dupV"], two["tieV"]
+    assert (dup["date"], dup["began"], dup["seconds"], dup["streamed"]) == ("2026-02-25", "10:00", 3600, True) \
+        and (tie["date"], tie["seconds"]) == ("2026-02-26", 3600), (
+            f"recordings two rows of the index name read {dup} and {tie}: the start or the day one of "
+            "them has is lost")
     import inspect
     src = inspect.getsource(BCM.main)
     assert "if carried and not facts:" in src and "raise SystemExit(" in src[src.index("if carried and not facts:"):][:200], (
@@ -76285,11 +76306,13 @@ const box = {querySelector: (sel) => sel === ".vwplay iframe" ? {} : sel === ".v
   querySelectorAll: () => []};
 const row = (id) => ({dataset: {vwpick: id}, closest: (sel) => sel === ".vw" ? box : null,
   setAttribute() {}, removeAttribute() {}});
+const wrote = [];
+history.replaceState = (st, title, url) => wrote.push(url);
 const out = {};
 try {
   s.setView({who: "Senate Finance", rows: [{id: "A", date: "2026-05-12"}, {id: "B", date: "2026-05-05"}],
     chosen: "A", pid: (r) => "m_" + r.id, href: (id) => "/committee/S07/videos#v-" + id});
-  s.vwChoose(row("A")); out.again = Object.assign({}, n);
+  s.vwChoose(row("A")); out.again = Object.assign({}, n); out.againWrote = wrote.splice(0);
   s.vwChoose(row("B")); out.other = Object.assign({}, n);
 } catch (e) { out.threw = e.constructor.name + ": " + e.message; }
 process.stdout.write("\n@@" + JSON.stringify(out));
@@ -76297,6 +76320,10 @@ process.stdout.write("\n@@" + JSON.stringify(out));
     if chose is not None:
         assert "threw" not in chose and chose["again"] == {"made": 0, "played": 0}, (
             f"the row that is playing, pressed again, starts it over in a new frame: {chose}")
+        # And the address names it, as a row pressed does: one that arrived
+        # naming a recording not on file had gone on naming that.
+        assert chose["againWrote"] == ["/committee/S07/videos#v-A"], (
+            f"the row that is playing, pressed again, leaves the address as it was: {chose}")
         assert chose["other"] == {"made": 1, "played": 1}, (
             f"another row pressed while one plays is not played through its still: {chose}")
     # AN ADDRESS NAMING ANOTHER RECORDING while one plays is a choice of it:
@@ -76342,16 +76369,19 @@ const fs = require("fs");
 const heard = [];
 document.addEventListener = (t, f) => { if (t === "change") heard.push(f); };
 process.on("unhandledRejection", () => {});
-const s = (0, eval)(fs.readFileSync("./page.js", "utf8") + "; ({setState: (p, t) => { PAGE = p; PAGE_TAB = t; }})");
+const s = (0, eval)(fs.readFileSync("./page.js", "utf8")
+  + "; ({setState: (p, t) => { PAGE = p; PAGE_TAB = t; }, getPage: () => PAGE})");
 const wrote = [];
 history.replaceState = (st, title, url) => wrote.push(url);
 const page = (kind, data) => ({kind, data, terms: ["2025-2026", "2023-2024"], term: "2025-2026", status: "",
-  vfilter: "", vside: "", vq: "", vopen: {}, vshow: 0, bshow: 0, mshow: 0, vid: ""});
+  vfilter: "", vside: "", vq: "", vopen: {}, vshow: 5, bshow: 5, mshow: 0, vid: ""});
 const fire = () => heard.forEach((f) => { try { f({target: {dataset: {pf: "term"}, value: "2023-2024",
   closest: () => null, matches: () => false}}); } catch (_) {} });
 const out = {};
 location.pathname = "/legislator/jane-doe/votes"; location.hash = "#v-abc";
 s.setState(page("member", {}), 2); fire(); out.member = wrote.splice(0);
+// The listener ran on past the line, to the lists it starts again.
+out.memberRan = [s.getPage().term, s.getPage().bshow];
 location.pathname = "/committee/S07/videos"; location.hash = "#v-abc";
 s.setState(page("committee", {code: "S07"}), 2); fire(); out.committee = wrote.splice(0);
 process.stdout.write("\n@@" + JSON.stringify(out));
@@ -76360,6 +76390,8 @@ process.stdout.write("\n@@" + JSON.stringify(out));
         # The committee's first address is the listener's own; a second is
         # the page drawn again for the new term, which this record (no
         # recording in it) opens on Bills.
+        assert termed["memberRan"] == ["2023-2024", 0], (
+            f"the term's change listener did not run through on a member's page: {termed}")
         assert termed["member"] == [] and termed["committee"][:1] == ["/committee/S07/videos"], (
             f"a term chosen while the address names a recording rewrites {termed}: a member's address "
             "is left alone, and a committee's drops the recording")

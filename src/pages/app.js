@@ -9090,8 +9090,13 @@ function vwChoose(a){
   const playing=!!box.querySelector(".vwplay iframe");
   // THE ROW THAT IS PLAYING, pressed again, goes on playing: a new frame
   // over it would start the recording over from its beginning. It is only
-  // brought into view.
-  if(playing&&r.id===o.chosen){box.querySelector(".vwplay").scrollIntoView({block:"nearest"});return;}
+  // brought into view, and the address named it, as a row pressed does --
+  // one that had arrived naming a recording not on file still named that.
+  if(playing&&r.id===o.chosen){
+    try{history.replaceState(history.state,"",o.href(r.id));}catch(_){}
+    addressed();
+    box.querySelector(".vwplay").scrollIntoView({block:"nearest"});
+    return;}
   o.chosen=r.id;
   if(o.onChoose)o.onChoose(r.id);
   // Chosen here, so the address it is about to name is not an arrival
@@ -9377,10 +9382,14 @@ function chamberShow(i,write){
   // where nobody can see it or stop it (the review of 29 October 2026; a
   // committee's tabs draw their pane again, which ends it). The frames take
   // YouTube's commands (enablejsapi=1), as a moment's button seeks them, and
-  // one paused is where it stopped when its tab is shown again.
+  // one paused is where it stopped when its tab is shown again. A frame
+  // still loading cannot hear yet, so it is told again once it has loaded,
+  // if its pane is still hidden then.
   const hide=i===0?vids:days;
+  const pause=f=>{try{f.contentWindow.postMessage(JSON.stringify({event:"command",func:"pauseVideo",args:[]}),"*");}catch(_){}};
   if(hide&&!hide.hidden)hide.querySelectorAll("iframe").forEach(f=>{
-    try{f.contentWindow.postMessage(JSON.stringify({event:"command",func:"pauseVideo",args:[]}),"*");}catch(_){}});
+    pause(f);
+    f.addEventListener("load",()=>{if(hide.hidden)pause(f);},{once:true});});
   if(days)days.hidden=i!==0;
   if(vids)vids.hidden=i!==1;
   if(!write||!VW_CHAMBER)return;

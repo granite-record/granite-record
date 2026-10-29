@@ -879,9 +879,14 @@ def static_record(code, name, chamber_word, rec, sessions):
 # The division's numeral as the channel's titles write it: I, II or III, and
 # twice otherwise -- "Finance - Division 1" and "Finance Division l", a
 # lower-case L -- which fell to code_of under the whole name, found no page,
-# and left House Finance's list (the review of 29 October 2026).
-DIVISION = re.compile(r"^Finance\s*-?\s*Division\s+(I{1,3}|[1-3]|l)(?:\s*,.*)?$")
-DIVISION_NUMERAL = {"1": "I", "2": "II", "3": "III", "l": "I"}
+# and left House Finance's list (the review of 29 October 2026). A run of
+# I's or l's is counted, as "ll" for II would be; a figure is its numeral.
+DIVISION = re.compile(r"^Finance\s*-?\s*Division\s+([Il]{1,3}|[1-3])(?:\s*,.*)?$")
+
+
+def division_label(numeral):
+    """"Division II" for "II", "ll" or "2"."""
+    return "Division " + ("I" * int(numeral) if numeral.isdigit() else "I" * len(numeral))
 
 
 def committee_recordings(days, carried, facts, code_of, pages):
@@ -903,7 +908,7 @@ def committee_recordings(days, carried, facts, code_of, pages):
         # division, the tied ones among them ("Finance - Division I", 4 May
         # 2026, seven bills).
         m = DIVISION.match(v.get("parsed_committee") or "") if v.get("chamber") == "H" else None
-        label = f"Division {DIVISION_NUMERAL.get(m.group(1), m.group(1))}" if m else ""
+        label = division_label(m.group(1)) if m else ""
         return {"id": vid, "date": date, "term": term,
                 **({"began": v["began"]} if v.get("began") else {}),
                 **({"seconds": v["seconds"]} if v.get("seconds") else {}),
