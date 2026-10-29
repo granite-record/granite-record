@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.721
+# GRANITE_VERSION: 2026-09-04.722
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -79901,7 +79901,13 @@ def _follow_signup_frequency():
     assert "0003_pending_frequency.sql" in migrations, "the sign-up's frequency migration is gone"
     untold = [f"{m} on {db}" for m in migrations
               for db in ("graniterecord-follow-preview", "graniterecord-follow")
-              if f"npx wrangler d1 execute {db} --remote --file workers/follow/migrations/{m}" not in readme]
+              # With the sender's own settings file, and the preview's environment:
+              # without them wrangler reads the root wrangler.toml, finds no such
+              # database by name and calls it an authentication error (the
+              # person, 26 October 2026).
+              if f"npx wrangler d1 execute {db} --remote --config workers/follow/wrangler.toml"
+                 f"{' --env preview' if db.endswith('-preview') else ''}"
+                 f" --file workers/follow/migrations/{m}" not in readme]
     assert not untold, "workers/follow/README.md gives no command for " + ", ".join(untold)
     begin = readme.find("sign-up box's daily or weekly")
     told = readme[begin:readme.find("migrations/0003_pending_frequency.sql", begin)] if begin >= 0 else ""
