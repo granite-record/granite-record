@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.18
+# GRANITE_VERSION: 2026-09-04.19
 """
 Parse RollCallSummary.txt into per-bill voting records.
 

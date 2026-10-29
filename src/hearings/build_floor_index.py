@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.11
+# GRANITE_VERSION: 2026-09-04.12
 """
 Build a per-bill index of floor debates, keyed to the session recordings.
 
