@@ -183,3 +183,24 @@ that made it.
     sent back because the read failed stops nothing while the night's
     testing is on (main's state-down leaves it in the bucket and its
     state-up moves it) and stops the night when it is off, the safe way.
+
+## After the review of 62e7406: the night follows no redirect
+
+25. **The snapshot and the committee pages fetch follow no redirect, and
+    read a 3xx as "refused"** (`refusal.no_redirect_opener()`, kept as each
+    module's `_OPENER`; `refusal.redirected()`). design_final names a
+    no-redirect opener for the knock only (§2.4), while for_owner tells the
+    owner that a redirect stops everything at once; on the night urlopen
+    followed a 302 to its Location and read the answer as a failed file, so
+    the snapshot asked every other file and recorded nothing. `classify()`
+    is unchanged, as design_final §5 has it, and as `fetch_legislation`'s own
+    check pins (its 3xx is an ordinary failure, through an opener of its
+    own); the two night fetchers ask `redirected()` first. The opener holds
+    no `HTTPRedirectHandler` of any kind, so the knock (build plan commit 4)
+    can take the same one and meet H6 as written. **Not changed here:** the
+    night's other two General Court fetches, `fetch_lsrs.py` (`get()`, its
+    two `urlopen` calls) and `fetch_calendar_archive.py --listing`
+    (`_get()`), still follow a redirect. They ask only on a night with no
+    refusal on file, after the export answered whole; the reviewers' finding
+    named the snapshot and the committee pages, and these two are left for
+    the next stage rather than changed unreviewed.

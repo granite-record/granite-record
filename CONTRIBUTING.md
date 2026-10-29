@@ -55,7 +55,8 @@ Three things follow, and they are not negotiable:
    `preflight` fails a script that calls `refusal.check()` and never
    `refusal.note()`. The daily snapshot and the committee pages fetch also
    say what kind of refusal it was -- `"dropped"`, `"unavailable"` (a 503
-   that is not the firewall's page) or `"refused"` -- and for a week after a
+   that is not the firewall's page) or `"refused"`, a redirect among them:
+   they follow none (`refusal.no_redirect_opener()`) -- and for a week after a
    refusal is lifted by a knock (`archive/knocks.json`), one dropped
    connection ends them (`refusal.drops_allowed()`). A record without a kind
    is a person's to clear, as every record always was (`refusal.whose()`).

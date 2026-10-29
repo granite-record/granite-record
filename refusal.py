@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-09.24
+# GRANITE_VERSION: 2026-09-09.25
 """
 One refusal stops the fetch lane, not just the run that was refused.
 
@@ -398,6 +398,34 @@ def classify(err=None, body=None):
         if BLOCKED.search(head):
             return "refused"
     return None
+
+
+def no_redirect_opener():
+    """An opener with urlopen's handlers for http and https but no
+    HTTPRedirectHandler (nor a subclass of one): a 3xx comes back as an
+    HTTPError (redirected(), below), and nothing follows it -- one request,
+    to the address asked and no other. The night's fetchers keep one as
+    _OPENER (snapshot_gencourt, fetch_committees), the name a check stands a
+    fake in for."""
+    import urllib.request
+    o = urllib.request.OpenerDirector()
+    for h in (urllib.request.ProxyHandler(), urllib.request.UnknownHandler(),
+              urllib.request.HTTPHandler(), urllib.request.HTTPSHandler(),
+              urllib.request.HTTPDefaultErrorHandler(), urllib.request.HTTPErrorProcessor()):
+        o.add_handler(h)
+    return o
+
+
+def redirected(err):
+    """Whether `err` is an HTTPError whose status is a redirect (3xx), as an
+    opener without a redirect handler raises one. The night's fetchers read
+    it as "refused", the address saying no, and a person's: a data file's
+    address that answers with another address is not the file, and
+    following it would be a request to a target nobody chose. classify() is
+    unchanged, so a fetch that wants a 3xx as an ordinary failure
+    (fetch_legislation, which keeps its own opener) still has one."""
+    import urllib.error
+    return isinstance(err, urllib.error.HTTPError) and 300 <= err.code < 400
 
 
 def unavailable(err):

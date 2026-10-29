@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.728
+# GRANITE_VERSION: 2026-09-04.729
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -94607,6 +94607,157 @@ def _committees_fetch_stops(FC):
         shutil.rmtree(tmp, ignore_errors=True)
     return "ok", ("a 403, the block page, a bare 503 or two dropped connections end it with a "
                   "record of its kind; nothing found is exit 1")
+
+
+@check("build", "the night's two fetchers follow no redirect: a 3xx from a server of the "
+                "check's own is one request, read as a refusal, and ends the run with a record",
+       needs=("snapshot_gencourt", "fetch_committees"))
+def _night_fetchers_no_redirect(SG, FC):
+    """The reviewers of 29 October 2026: on the night a redirect stopped
+    nothing. urlopen followed a 302 on a data file to its Location -- two
+    requests -- and read the answer as "not a data file", a failed file, so
+    the snapshot went on to every other file and recorded nothing; the
+    committee pages fetch the same. Against a server this check starts on
+    127.0.0.1 -- never the General Court: while it runs every other
+    connection is refused before it is tried -- the snapshot's get() and
+    read_one() and the committee pages fetch's get() each make ONE request
+    for a 301, 302, 303, 307 or 308 and raise its HTTPError
+    (refusal.redirected), and read_one() reads it as "refused". The
+    snapshot's run() ends at a redirected page after that one request, and
+    at a redirected first file after the page and that file, with status 2,
+    a refusal of the kind "refused" on file and nothing installed; the
+    committee pages fetch ends at a redirected first page the same way. Each
+    keeps its opener as _OPENER, and neither holds a redirect handler of any
+    kind (refusal.no_redirect_opener)."""
+    import argparse
+    import contextlib
+    import http.server
+    import io
+    import socket
+    import threading
+    import time
+    import types
+    import urllib.error
+    import urllib.request
+    import refusal
+    data = b"2026|0001|12/4/2024 10:44:26 AM|SR1|S|Introduced and Adopted, VV\n" * 3
+    page = b"<html><body><h1>DYNAMIC DATA FILES</h1></body></html>"
+    hits = []
+
+    class Here(http.server.BaseHTTPRequestHandler):
+        def do_GET(self):
+            hits.append(self.path)
+            parts = self.path.split("/")
+            if parts[1] == "to":
+                self.send_response(int(parts[2]))
+                self.send_header("Location", "/elsewhere")
+                self.send_header("Content-Length", "0")
+                self.end_headers()
+                return
+            body = page if self.path in ("/page", "/committees") else data
+            self.send_response(200)
+            self.send_header("Content-Length", str(len(body)))
+            self.end_headers()
+            self.wfile.write(body)
+
+        def log_message(self, *a):
+            pass
+    srv = http.server.ThreadingHTTPServer(("127.0.0.1", 0), Here)
+    port = srv.server_address[1]
+    base = f"http://127.0.0.1:{port}"
+    threading.Thread(target=srv.serve_forever, daemon=True).start()
+    real_connect = socket.socket.connect
+
+    def own_server_only(sock, address, *a, **k):
+        if not (isinstance(address, tuple) and tuple(address[:2]) == ("127.0.0.1", port)):
+            raise AssertionError(f"a fetch driven by this check reached for {address!r}, "
+                                 "not the check's own server")
+        return real_connect(sock, address, *a, **k)
+    tmp = Path(tempfile.mkdtemp(prefix="gr-noredirect-"))
+    saved = (SG.PAGE, SG.BASE, SG.EXTRA, SG.time, FC.PAGES, refusal.MARK, refusal.LOCK, sys.argv)
+    env_keys = ("no_proxy", "NO_PROXY", "GITHUB_ACTIONS")
+    saved_env = {k: os.environ.get(k) for k in env_keys}
+    try:
+        socket.socket.connect = own_server_only
+        os.environ["no_proxy"] = os.environ["NO_PROXY"] = "127.0.0.1"
+        os.environ["GITHUB_ACTIONS"] = "true"      # never stood down, whatever this folder holds
+        SG.EXTRA, SG.time = [], types.SimpleNamespace(sleep=lambda s: None, time=time.time)
+        for M in (SG, FC):
+            held = [type(h).__name__ for h in M._OPENER.handlers
+                    if isinstance(h, urllib.request.HTTPRedirectHandler)]
+            assert not held, f"{M.__name__}'s opener follows redirects: {held}"
+        wrong = []
+        for code in (301, 302, 303, 307, 308):
+            for what, call in (("the snapshot's get()", SG.get), ("the committee pages' get()", FC.get)):
+                hits.clear()
+                try:
+                    call(f"{base}/to/{code}/Docket.txt")
+                    wrong.append(f"{what}: a {code} came back as a page")
+                except urllib.error.HTTPError as e:
+                    if e.code != code or not refusal.redirected(e):
+                        wrong.append(f"{what}: a {code} raised {e.code}")
+                if hits != [f"/to/{code}/Docket.txt"]:
+                    wrong.append(f"{what}: a {code} asked {hits}")
+            hits.clear()
+            got = SG.read_one(f"{base}/to/{code}/Docket.txt", "Docket.txt")
+            if got[0] is not None or got[1][0] != "refused" or len(hits) != 1:
+                wrong.append(f"read_one(): a {code} gave {got[1]} after {len(hits)} requests")
+        assert not wrong, "a redirect was followed, or not read as a refusal: " + "; ".join(wrong)
+
+        def snapshot(page_url, files_base):
+            run_dir = Path(tempfile.mkdtemp(dir=tmp))
+            refusal.MARK, refusal.LOCK = run_dir / "refused.json", run_dir / ".lock"
+            SG.PAGE, SG.BASE = page_url, files_base
+            root = run_dir / "root"
+            root.mkdir()
+            hits.clear()
+            a = argparse.Namespace(dir=str(run_dir / "arch"), into=str(root),
+                                   allow_shrink=False, delay=0.0, plan=False)
+            with contextlib.redirect_stdout(io.StringIO()), \
+                    contextlib.redirect_stderr(io.StringIO()):
+                try:
+                    with refusal.hold("t") as held_:
+                        rc = SG.run(a, held_)
+                except SystemExit as e:
+                    rc = e.code if isinstance(e.code, int) else 1
+            kind = (json.loads(refusal.MARK.read_text(encoding="utf-8")).get("kind")
+                    if refusal.MARK.exists() else None)
+            return rc, list(hits), kind, sorted(p.name for p in root.iterdir())
+        first = SG.FILES[0]
+        for what, page_url, files_base, want in (
+                ("a redirected page", f"{base}/to/302/page", f"{base}/files/",
+                 ["/to/302/page"]),
+                ("a redirected first file", f"{base}/page", f"{base}/to/302/",
+                 ["/page", f"/to/302/{first}"])):
+            rc, asked, kind, installed = snapshot(page_url, files_base)
+            assert (rc, asked, kind, installed) == (2, want, "refused", []), \
+                (f"the snapshot, {what}: exit {rc}, asked {asked}, a refusal of the kind {kind!r}, "
+                 f"installed {installed}")
+        refusal.MARK = tmp / "committees-refused.json"
+        FC.PAGES = [("S", f"{base}/to/302/senate"), ("H", f"{base}/committees")]
+        sys.argv = ["fetch_committees.py", "--out", str(tmp / "c.json"), "--delay", "0"]
+        hits.clear()
+        with contextlib.redirect_stdout(io.StringIO()), contextlib.redirect_stderr(io.StringIO()):
+            try:
+                rc = FC.main()
+            except SystemExit as e:
+                rc = e.code
+        kind = (json.loads(refusal.MARK.read_text(encoding="utf-8")).get("kind")
+                if refusal.MARK.exists() else None)
+        assert (rc, hits, kind) == (2, ["/to/302/senate"], "refused"), \
+            f"the committee pages fetch, a redirected page: exit {rc}, asked {hits}, {kind!r}"
+    finally:
+        socket.socket.connect = real_connect
+        (SG.PAGE, SG.BASE, SG.EXTRA, SG.time, FC.PAGES, refusal.MARK, refusal.LOCK,
+         sys.argv) = saved
+        for k, v in saved_env.items():
+            os.environ.pop(k, None) if v is None else os.environ.__setitem__(k, v)
+        srv.shutdown()
+        srv.server_close()
+        shutil.rmtree(tmp, ignore_errors=True)
+    return "ok", ("five redirect codes are one request each and a refusal, in both fetchers; the "
+                  "snapshot and the committee pages fetch end at one with a record, and their "
+                  "openers hold no redirect handler")
 
 
 # ---- the workflows ----------------------------------------------------------------

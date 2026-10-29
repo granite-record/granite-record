@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.15
+# GRANITE_VERSION: 2026-09-04.16
 """
 Daily snapshot of the NH General Court bulk data files.
 
@@ -38,7 +38,9 @@ part file and a rename.
 
 WHAT KIND IT WAS (29 October 2026). The refusal it records says so
 (refusal.py, WHAT KIND IT WAS): "dropped" for the second dropped connection,
-"refused" for a 403, a 429 or the block page, and "unavailable" for a 503
+"refused" for a 403, a 429, the block page or a redirect -- which nothing
+follows: the opener has no redirect handler (refusal.no_redirect_opener) --
+and "unavailable" for a 503
 whose body is not the block page, which still ends the run at once and keeps
 the server's Retry-After. In the week after GitHub's knock lifted a refusal
 (refusal.drops_allowed) one dropped connection ends the run, page or file,
@@ -263,7 +265,7 @@ def open_page():
     try:
         data = get(PAGE, timeout=PAGE_TIMEOUT)
     except Exception as e:                                  # noqa: BLE001
-        kind = refusal.classify(e) or "failed"
+        kind = "refused" if refusal.redirected(e) else (refusal.classify(e) or "failed")
         ra = refusal.unavailable(e) if kind == "refused" else None
         if ra is not None:
             return {"status": "unavailable", "said": f"{type(e).__name__}: {e}"[:200],
@@ -288,9 +290,18 @@ def write_atomically(path, data):
     os.replace(tmp, path)
 
 
+# NO REDIRECT IS FOLLOWED (29 October 2026). urlopen follows a 3xx without
+# a word: a 302 on a data file was a second request, to wherever it pointed,
+# and came back "not a data file" -- a failed file, so the run went on to ask
+# every other one, and recorded nothing. The opener has no redirect handler
+# (refusal.no_redirect_opener): a 3xx is an HTTPError, read as "refused"
+# (refusal.redirected), and the run ends at it with a record, as at a 403.
+_OPENER = refusal.no_redirect_opener()
+
+
 def get(url, timeout=120):
     req = urllib.request.Request(url, headers=UA)
-    with urllib.request.urlopen(req, timeout=timeout) as r:
+    with _OPENER.open(req, timeout=timeout) as r:
         return r.read()
 
 
@@ -354,7 +365,7 @@ def read_one(url, name=None):
     try:
         data = get(url)
     except Exception as e:                                  # noqa: BLE001
-        kind = refusal.classify(e) or "failed"
+        kind = "refused" if refusal.redirected(e) else (refusal.classify(e) or "failed")
         ra = refusal.unavailable(e) if kind == "refused" else None
         if ra is not None:
             return None, ("unavailable", f"{type(e).__name__}: {e}", ra)

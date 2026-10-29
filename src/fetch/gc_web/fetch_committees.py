@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.11
+# GRANITE_VERSION: 2026-09-04.12
 """
 Every standing committee, from the two pages that list them.
 
@@ -78,9 +78,15 @@ PHONE = re.compile(r"Phone:\s*(?:<[^>]+>)*\s*\(?(\d{3})\)?[\s.-]?(\d{3})[\s.-]?(
 PLACE = re.compile(r"Location:\s*(?:<[^>]+>)*\s*([^<\n]{1,40})", re.I)
 
 
+# NO REDIRECT IS FOLLOWED (29 October 2026): a 3xx is an HTTPError here
+# (refusal.no_redirect_opener), and ends the run as a refusal
+# (refusal.redirected), where urlopen asked wherever it pointed.
+_OPENER = refusal.no_redirect_opener()
+
+
 def get(url):
     req = urllib.request.Request(url, headers=UA)
-    with urllib.request.urlopen(req, timeout=60) as r:
+    with _OPENER.open(req, timeout=60) as r:
         return r.read().decode("utf-8", errors="replace")
 
 
@@ -229,7 +235,7 @@ def main():
             # recorded nothing, so the next fetch to start asked again. It runs
             # unattended in GitHub's weekly job now, which is where walking
             # through a refusal would go unseen longest.
-            kind = refusal.classify(e)
+            kind = "refused" if refusal.redirected(e) else refusal.classify(e)
             # WHAT KIND IT WAS (refusal.py): a 503 that is not the block page
             # is "unavailable", and ends the run as a refusal does.
             ra = refusal.unavailable(e) if kind == "refused" else None
