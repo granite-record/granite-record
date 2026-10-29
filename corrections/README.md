@@ -8,6 +8,7 @@ it is, what it is for and how an entry is added.
 | File | What a person put in it | Read by |
 |---|---|---|
 | `docket_corrections.json` | dates the docket states wrongly, and rows it files under the wrong bill, with the journal and roll call that settle each | `src/parse/narrative.py` |
+| `rollcall_corrections.json` | roll calls the roll-call file files under the wrong bill, put under the bill they were on, with the Journal page, the docket rows and the roll call's own fields that settle each | `src/parse/rollcall_parser.py` (`roll_call_bill`, for `rollcalls.json`, for every ballot `build_data.py` keys and for `build_floor_index.py`) |
 | `member_corrections.json` | a member's name or party a generator got wrong, with the evidence | `src/parse/build_data.py` |
 | `place_corrections.json` | a polling place the Secretary of State's list states wrongly, and the second source | `src/towns/parse_clerks_csv.py` |
 | `bill_notes.json` | what a recurring bill number means: HB 1 has been the budget since 1993 | `src/pages/build_site_v2.py` |

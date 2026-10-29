@@ -98273,6 +98273,57 @@ def _vote_identity():
                   f"partied; worst term {worst[1]} at {worst[0] * 100:.0f}%")
 
 
+# A HEAD THAT HAS GROWN PAST THE FIRST READ (29 October 2026). _one_head
+# reads the first 16,384 bytes of each of some 38,000 pages to find the end of
+# its head. The election worker's guide carries a HowTo of 10,962 bytes in
+# its structured data, and its head ended at byte 16,408: the R1 dry run
+# (153) held the night on it although the page was right. Only a page whose
+# head has not ended in the first read is read on, to HEAD_MOST, so the
+# night still reads 16 KB of nearly every page.
+HEAD_MOST = 262144
+
+
+def _head_bytes(path, first, most=None):
+    """The first `first` bytes of `path`, or, where no </head> ends in them,
+    on to `most` (HEAD_MOST) bytes or the file's end."""
+    most = HEAD_MOST if most is None else most
+    with open(path, "rb") as fh:
+        raw = fh.read(first)
+        if b"</head>" not in raw and len(raw) == first and most > first:
+            raw += fh.read(most - first)
+    return raw
+
+
+@check("frontend", "a page's head is read to its end however long it has grown, up to "
+       "HEAD_MOST, and only such a page is read past the first 16 KB")
+def _head_bytes_read_on():
+    """_one_head's reading, without a built site: a head ending at byte
+    16,408 (the election worker's guide on 29 October 2026) is read to its
+    end; a head that ends early costs one 16 KB read; a page with no head end
+    in HEAD_MOST bytes stops there."""
+    d = Path(tempfile.mkdtemp(prefix="heads_"))
+    try:
+        body = b"<p>" + b"x" * 40000 + b"</p></body></html>"
+        long_head = b"<html><head><title>t</title>" + b"<!--" + b"h" * 16360 + b"-->" + b"</head><body>" + body
+        short_head = b"<html><head><title>t</title></head><body>" + body
+        endless = b"<html><head><title>t</title>" + b"y" * 300000
+        for name, data in (("long", long_head), ("short", short_head), ("endless", endless)):
+            (d / f"{name}.html").write_bytes(data)
+        assert long_head.find(b"</head>") > 16384, "the long head ends inside the first read"
+        got = _head_bytes(d / "long.html", 16384)
+        assert b"</head>" in got and len(got) > 16384, (
+            "a head ending past byte 16,384 is not read to its end")
+        got = _head_bytes(d / "short.html", 16384)
+        assert len(got) == 16384, f"a head that ended early was read on ({len(got):,} bytes)"
+        got = _head_bytes(d / "endless.html", 16384)
+        assert len(got) == HEAD_MOST and b"</head>" not in got, (
+            "a page with no head end was not read to HEAD_MOST and stopped")
+    finally:
+        shutil.rmtree(d, ignore_errors=True)
+    return "ok", (f"a head ending at byte {long_head.find(b'</head>'):,} is read to its end, "
+                  f"a short one costs 16 KB, a page with none stops at {HEAD_MOST:,}")
+
+
 @check("frontend", "a page says what it is once, and says where it lives")
 def _one_head():
     """Exactly one title, one description and one canonical per page.
@@ -98297,8 +98348,7 @@ def _one_head():
         return "skip", "site is not built"
     bad, n = [], 0
     for p in sorted(site.rglob("*.html")):
-        with open(p, "rb") as fh:
-            raw = fh.read(HEAD_BYTES)
+        raw = _head_bytes(p, HEAD_BYTES)
         # A line's end is one character however the file writes it, as it was
         # when the page was read as text: the built pages end their lines
         # with two here, and counting both put the 6,000th character a line's
@@ -98310,10 +98360,10 @@ def _one_head():
             h = p.read_text(encoding="utf-8", errors="replace")
             end = h.find("</head>")
         n += 1
-        if end < 0 and len(raw) == HEAD_BYTES:
+        if end < 0 and len(raw) >= HEAD_BYTES:
             bad.append(f"{p.relative_to(site)}'s head does not end in its first "
-                       f"{HEAD_BYTES:,} bytes, so its tags were not all read (raise "
-                       "HEAD_BYTES in this check if a head has really grown that long)")
+                       f"{len(raw):,} bytes, so its tags were not all read (raise "
+                       "HEAD_MOST in _head_bytes if a head has really grown that long)")
             continue
         h = h[:max(6000, end + len("</head>"))]
         for what, pat in (("title", r"<title>"),
