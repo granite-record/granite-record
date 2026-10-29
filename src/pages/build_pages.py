@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.243
+# GRANITE_VERSION: 2026-09-04.244
 """
 Build the pages the navigation links to: legislators, town lookup, how it
 works, and about.
@@ -1485,9 +1485,9 @@ def not_found_body(example):
 # (docs/design/about-neutrality/draft.md on branch design/email-pass gives the
 # source of each sentence); its [[median]] is the Data page's figure, from
 # about_figures, and never typed. Its first sentence is Independence's own,
-# word for word, kept because nothing else on the page says the site is not
-# endorsed by the General Court or takes no position on any bill (the review
-# of 29 October 2026).
+# kept because nothing else on the page says the site is not affiliated with
+# the General Court or takes no position on any bill (the review of 29 October
+# 2026); "or endorsed by" was cut at the owner's word the same day.
 ABOUT = """
 <h1>About Granite Record</h1>
 <p class="lead">Granite Record is a free, independent and searchable record of the New Hampshire
@@ -1588,8 +1588,8 @@ under the MIT License, and the whole record can be downloaded as spreadsheets
 from the <a href="data.html">Data page</a>.</p>
 
 <h2>Neutrality and Methods</h2>
-<p>Granite Record is not affiliated with or endorsed by the New Hampshire General
-Court, and it takes no position on any bill. I'm a sitting member of the House,
+<p>Granite Record is not affiliated with the New Hampshire General Court, and it
+takes no position on any bill. I'm a sitting member of the House,
 so the site keeps to these rules.</p>
 <ul>
 <li>Nothing on it is editorialized. Dates, sponsors, vote tallies, committee
