@@ -6441,8 +6441,8 @@
    "state": "draft"
   },
   "guide.how-to-vote.ask-your-clerk-with-your-permission": {
-   "en": "Ask your clerk: with your permission, election officials can check New Hampshire voter, motor vehicle and vital records to help prove your qualifications. A certified copy of a New Hampshire birth or other vital record is free when it is only for registering to vote.",
-   "es": "Pregúntele a su secretario: con su permiso, los funcionarios electorales pueden consultar los registros de votantes, de vehículos motorizados y vitales de New Hampshire para ayudarle a probar que reúne los requisitos. Una copia certificada de un acta de nacimiento u otro registro vital de New Hampshire es gratuita cuando es solo para inscribirse para votar.",
+   "en": "Ask your clerk: with your permission, local election officials may be able to check New Hampshire voter, motor vehicle and vital records to help prove your qualifications. A certified copy of a New Hampshire birth or other vital record is free when it is only for registering to vote.",
+   "es": "Pregúntele a su secretario: con su permiso, los funcionarios electorales locales quizá puedan consultar los registros de votantes, de vehículos motorizados y vitales de New Hampshire para ayudarle a probar que reúne los requisitos. Una copia certificada de un acta de nacimiento u otro registro vital de New Hampshire es gratuita cuando es solo para inscribirse para votar.",
    "state": "draft"
   },
   "guide.how-to-vote.at-least-18-years-old": {
@@ -6661,8 +6661,8 @@
    "state": "draft"
   },
   "guide.how-to-vote.this-changed-in-2026-and-the": {
-   "en": "<b>This changed in 2026, and the courts are still involved.</b> What you may use as proof has changed more than once this year and may change again before the election. The Secretary of State's page is the official word: check it before you go. On October 24, 2026 it still said that if you lack the documents to prove your citizenship, you may sign a qualified voter affidavit instead, as a court order of May 28, 2026 allowed again. The affidavit covers citizenship and nothing else: you still need proof of identity, age and domicile.",
-   "es": "<b>Esto cambió en 2026, y los tribunales siguen interviniendo.</b> Lo que puede usar como prueba ha cambiado más de una vez este año y puede volver a cambiar antes de la elección. La página de la Secretaría de Estado es la fuente oficial: consúltela antes de ir. El 24 de octubre de 2026 seguía diciendo que, si le faltan los documentos para probar su ciudadanía, puede firmar en su lugar una declaración jurada de votante calificado (qualified voter affidavit), como volvió a permitirlo una orden judicial del 28 de mayo de 2026. La declaración jurada cubre la ciudadanía y nada más: sigue necesitando pruebas de identidad, edad y domicilio.",
+   "en": "<b>This changed in 2026, and the courts are still involved.</b> What you may use as proof has changed more than once this year and may change again before the election. The Secretary of State's page is the official word: check it before you go. On October 24, 2026 it still said that if you lack the documents to prove your citizenship, you may sign a qualified voter affidavit instead, subject to the penalties for voter fraud, as a court order of May 28, 2026 allowed again. The affidavit covers citizenship and nothing else: you still need proof of identity, age and domicile.",
+   "es": "<b>Esto cambió en 2026, y los tribunales siguen interviniendo.</b> Lo que puede usar como prueba ha cambiado más de una vez este año y puede volver a cambiar antes de la elección. La página de la Secretaría de Estado es la fuente oficial: consúltela antes de ir. El 24 de octubre de 2026 seguía diciendo que, si le faltan los documentos para probar su ciudadanía, puede firmar en su lugar una declaración jurada de votante calificado (qualified voter affidavit), sujeta a las sanciones por fraude electoral, como volvió a permitirlo una orden judicial del 28 de mayo de 2026. La declaración jurada cubre la ciudadanía y nada más: sigue necesitando pruebas de identidad, edad y domicilio.",
    "state": "draft"
   },
   "guide.how-to-vote.title": {
