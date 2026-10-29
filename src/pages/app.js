@@ -1,4 +1,4 @@
-// GRANITE_VERSION: 2026-09-07.251
+// GRANITE_VERSION: 2026-09-07.252
 // esc, dateWords and dateSpan, clock, cmteLink and pchip are components.js's,
 // which every page loads before this file (the component plan's C1 and C2),
 // and so is WORDBOOK, the words of src/pages/words/ that the build writes into
@@ -5771,6 +5771,15 @@ const reportCount=d=>(d.reports||[]).reduce((n,r)=>n+((r.reports||[]).length),0)
 // was told its calendar "has not been read into the site yet", and no
 // calendar before 1997 is online to read).
 const termStartOf=d=>parseInt(String((d&&(d.term||d.year))||"").slice(0,4),10)||0;
+// A REPORT WITH NO REASONING SAYS WHAT IT DOES RECORD (the manager, 29 October
+// 2026). "Records the recommendation and the vote" was said of every report
+// with no text, and an interim study statement such as HB 1547 of 2010's
+// records a recommendation and no vote. The sentence names what the report
+// carries: the recommendation, the vote, both or neither.
+function reportNoReasons(hasRec,hasVote){
+  const what=hasRec&&hasVote?"the recommendation and the vote":hasRec?"the recommendation":hasVote?"the vote":"";
+  return what?`This report records ${what}, and gives no reasoning.`:"This report gives no reasoning.";
+}
 function renderReports(b,d,rsa){
   const recFor=(r,side)=>side==="Minority"
       ? (r.minority_recommendation||"") : (r.majority_recommendation||"");
@@ -5865,8 +5874,8 @@ function renderReports(b,d,rsa){
           // is better than an empty space under a heading. Not where a note
           // above has said why there is none: that report did give reasons,
           // and they are not the ones the calendar printed.
-          : e.note?"":`<p class="note" style="margin:0">This report records the
-             recommendation and the vote, and gives no reasoning.</p>`}
+          : e.note?"":`<p class="note" style="margin:0">${
+             reportNoReasons(!!rec,!!committeeTally(e))}</p>`}
         </div>`;}).join("");
     return between(r.date)+rep(head(r,cmte,r.body==="S"?"Senate":"House"),
       (divided?`<p class="note">The committee split. Both reports are printed

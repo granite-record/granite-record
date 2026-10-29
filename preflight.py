@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.724
+# GRANITE_VERSION: 2026-09-04.725
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -98769,6 +98769,30 @@ def _vote_identity():
                 default=(0, ""))
     return "ok", (f"{len(by_emp):,} distinct voters, every term named and "
                   f"partied; worst term {worst[1]} at {worst[0] * 100:.0f}%")
+
+
+@check("frontend", "a report with no reasoning says what it does record: the recommendation, the vote, both or neither")
+def _report_no_reasons_says_what():
+    """The Reports tab said "This report records the recommendation and the
+    vote, and gives no reasoning" of every report with no text, and HB 1547
+    of 2010's interim study statement records a recommendation and no vote
+    (the manager, 29 October 2026). app.js's reportNoReasons names what is
+    there, and renderReports asks it with the report's own recommendation and
+    tally."""
+    got = _app_js("[[true,true],[true,false],[false,true],[false,false]].map(a => scope.reportNoReasons(...a))",
+                  names=("reportNoReasons",))
+    if got is None:
+        return "skip", "node, app.js or tests/dom_stub.js is not here"
+    assert got == ["This report records the recommendation and the vote, and gives no reasoning.",
+                   "This report records the recommendation, and gives no reasoning.",
+                   "This report records the vote, and gives no reasoning.",
+                   "This report gives no reasoning."], got
+    src = Path("src/pages/app.js").read_text(encoding="utf-8")
+    assert "reportNoReasons(!!rec,!!committeeTally(e))" in src, (
+        "renderReports no longer asks reportNoReasons with the report's recommendation and tally")
+    assert "records the\n             recommendation and the vote" not in src, (
+        "the fixed sentence is back in renderReports")
+    return "ok", "both, the recommendation alone, the vote alone and neither each read as what the report records"
 
 
 @check("frontend", "a page says what it is once, and says where it lives")
