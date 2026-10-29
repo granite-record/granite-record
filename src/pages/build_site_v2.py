@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-05.240
+# GRANITE_VERSION: 2026-09-05.241
 """
 Generate the faceted site from real General Court data.
 
@@ -3962,6 +3962,92 @@ def _mdy(s):
     """The docket's 03/17/2026 as 2026-03-17."""
     m = re.match(r"(\d{1,2})/(\d{1,2})/(\d{4})$", (s or "").strip())
     return f"{m.group(3)}-{int(m.group(1)):02d}-{int(m.group(2)):02d}" if m else ""
+
+
+# THE DOCKET'S RECOMMENDATION, in the calendar's words, for a statement the
+# calendar printed none for (2004's): interim_report's "rec", "not", "without".
+INTERIM_WORDS = {"rec": "RECOMMENDED FOR FUTURE LEGISLATION",
+                 "not": "NOT RECOMMENDED FOR FUTURE LEGISLATION",
+                 "without": "WITHOUT RECOMMENDATION"}
+INTERIM_SIDE = "Interim study report"
+INTERIM_FROM_DOCKET = ("The calendar prints no recommendation for this one; the "
+                       "recommendation shown is the House docket's.")
+
+
+def _same_statement(r, s):
+    """Whether committee_reports.json's record `r` is the interim study
+    statement `s` mis-filed as a report: from the same calendar, and signed
+    by the same member or opening on the same words. Every one of the 39 on
+    29 October 2026's kit is; a report the calendar printed for the bill
+    beside the statement would not be, and stays."""
+    if r.get("source") != s.get("source"):
+        return False
+    lead = lambda x: re.sub(r"\W+", " ", x or "").strip().lower()[:80]
+    return any((x.get("author") and x.get("author") == s.get("author"))
+               or (lead(x.get("text")) and lead(x.get("text")) == lead(s.get("text")))
+               for x in r.get("reports") or [])
+
+
+def interim_cards(reports, statements, narratives):
+    """Put each committee's INTERIM STUDY STATEMENT (interim_statements.py)
+    on its bill's Reports tab, as a report of its own, in `reports` -- {term:
+    {bill: [report]}}, committee_reports.json's shape -- and return the ones
+    held back: [(term, bill, calendar, why)].
+
+    The owner, 29 October 2026: what the committee said, the recommendation
+    in plain words, the vote and the calendar, because it matters to anyone
+    deciding whether to file the subject again. The docket's one-line
+    "Interim Study Report" stays where it is.
+
+    HELD BACK where the docket's own Interim Study Report line disagrees --
+    the recommendation, or the vote, both being stated: the calendar and the
+    docket are the Clerk's two records of one report, and a page showing one
+    over the other would choose without saying so. Three on 29 October
+    2026's kit, listed for the Clerk rather than shown.
+
+    A statement the calendar prints no recommendation for (2004 prints none)
+    takes the docket's and says so; neither, and it states none.
+
+    The same calendar's report fetch_committee_reports.py mis-filed for the
+    bill -- its split takes a statement for an ordinary report now and then,
+    HB 1530 of 2024's RECOMMENDED FOR FUTURE LEGISLATION as one of "INTERIM
+    STUDY" -- gives way to the statement, so neither shows twice; a report
+    of the same calendar that is not the statement (_same_statement) stays."""
+    held = []
+    for term, byb in (statements or {}).items():
+        for bid, sts in byb.items():
+            narr = (narratives.get(term) or {}).get(bid)
+            d = interim_report(narr, term) if narr else None
+            for s in sts:
+                why = []
+                if d and s.get("rec") and d.get("rec") and s["rec"] != d["rec"]:
+                    why.append(f"the calendar says {s.get('printed')}, the docket "
+                               f"{INTERIM_WORDS.get(d['rec'], d['rec'])}")
+                if d and d.get("vote") and s.get("vote_yeas") is not None and \
+                        f"{s['vote_yeas']}–{s['vote_nays']}" != d["vote"]:
+                    why.append(f"the calendar's vote is {s['vote_yeas']}-{s['vote_nays']}, "
+                               f"the docket's {d['vote'].replace('–', '-')}")
+                if why:
+                    held.append((term, bid, s.get("source", ""), "; ".join(why)))
+                    continue
+                printed = s.get("printed") or ""
+                from_docket = not printed and bool(d and d.get("rec"))
+                if from_docket:
+                    printed = INTERIM_WORDS.get(d["rec"], "")
+                block = {"side": INTERIM_SIDE, "author": s.get("author", ""),
+                         "committee": s.get("committee", ""), "text": s.get("text", "")}
+                if s.get("vote_yeas") is not None:
+                    block["vote_yeas"], block["vote_nays"] = s["vote_yeas"], s["vote_nays"]
+                if from_docket:
+                    block["note"] = INTERIM_FROM_DOCKET
+                mine = [r for r in (reports.setdefault(term, {}).get(bid) or [])
+                        if not _same_statement(r, s)]
+                mine.append({"bill": bid, "title": s.get("title", ""), "body": "H",
+                             "source": s.get("source", ""), "interim": True,
+                             "majority_recommendation": printed or None,
+                             "minority_recommendation": None, "reports": [block]})
+                reports[term][bid] = mine
+    return held
 
 
 def committee_reports(recs, narr, sources, house_cmte, senate_cmte):
@@ -11737,6 +11823,7 @@ def parse_args():
                     help="governor's veto messages, from extract_vetoes.py; "
                          "skipped if the file is not there")
     ap.add_argument("--senate-reports", default="senate_reports.json")
+    ap.add_argument("--interim", default="interim_statements.json")
     ap.add_argument("--hearing-reports", default="senate_hearing_reports.json",
                     help="the Senate committees' hearing reports, from "
                          "senate_hearing_reports.py; skipped if not there")
@@ -12008,6 +12095,19 @@ def main():
         n_bills = sum(len(byb) for byb in senate.values())
         print(f"Senate committee reports: {n_bills:,} bills, "
               f"{n_prose:,} with the committee's reasoning")
+    # Each committee's interim study statement, a report of its own on the
+    # Reports tab, held back where the docket's line disagrees (interim_cards).
+    interim = load(a.interim, {})
+    if interim and not N.is_term_keyed(interim):
+        sys.exit(f"{a.interim} is not keyed on term. Run interim_statements.py again.")
+    if interim:
+        held = interim_cards(reports, interim, narratives)
+        n_int = sum(len(v) for byb in interim.values() for v in byb.values())
+        print(f"Interim study statements: {n_int - len(held):,} on the Reports tab, "
+              f"{len(held)} held back where the docket's line disagrees"
+              + "".join(f"\n    {t_} {b_} ({c_}): {w_}" for t_, b_, c_, w_ in held))
+    else:
+        print(f"  ({a.interim} is not here: no interim study statements on the Reports tab)")
     # The Senate's reports of its public hearings: who spoke and what the
     # report says they said. {term: {bill: [report]}}, refused in any other
     # shape for the reason above.
