@@ -54536,8 +54536,12 @@ def _seat_callout(BP, SEAT):
     seat and a scroll that takes the seat out of the box leave the same link
     where it was, shown; Escape lets it go and puts focus on the seat. The
     pointer can move onto it and it stays. Read: every seat the page's chart
-    writes carries data-party and data-dist (seating.svg), and app.css hides
-    a row's "(R - Belk 6)" under the chart from the eye alone."""
+    writes carries data-party and data-dist (seating.svg), and under the
+    chart, on the fixture's legislators page, a row's tag is written
+    "(R<span class="mdist"> - Belk 6</span>)" (build_pages.seat_row_tag) and
+    app.css hides the district from the eye alone and not the party's letter
+    (the review of 29 October 2026, WCAG 1.4.1: hidden too, the party was the
+    chip's colour alone, and nothing at all in forced colours)."""
     if not shutil.which("node"):
         return "skip", "node is not installed"
     root = Path(tempfile.mkdtemp())
@@ -54601,25 +54605,57 @@ def _seat_callout(BP, SEAT):
     src = Path("src/pages/build_pages.py").read_text(encoding="utf-8")
     if '"party": party_word(' not in src or '"dist": " ".join(' not in src:
         bad.append("the roster does not hand seating.svg each member's party and district")
+    # THE ROWS UNDER THE CHART: the district for a screen reader alone, the
+    # party's letter to the eye (the review of 29 October 2026, WCAG 1.4.1:
+    # hidden with the district, the party was the chip's bar's colour alone,
+    # and nothing in forced colours). Read off the fixture's legislators page,
+    # each row's chip as the page writes it, through app.css's cascade.
     rules = _css_screen_rules(Path("src/pages/app.css").read_text(encoding="utf-8"))
-    tag = {"tag": "span", "ids": set(), "classes": {"mtag"}, "attrs": {}, "states": set()}
-    a = {"tag": "a", "ids": set(), "classes": set(), "attrs": {"href": "x"}, "states": set()}
-    chip = {"tag": "span", "ids": set(), "classes": {"mchip", "p-R"}, "attrs": {}, "states": set()}
-    li = {"tag": "li", "ids": set(), "classes": {"seatrow"}, "attrs": {}, "states": set()}
-    ol = {"tag": "ol", "ids": set(), "classes": {"seatlist"}, "attrs": {}, "states": set()}
-    cols = {"tag": "div", "ids": {"seatlist"}, "classes": {"seatcols"}, "attrs": {}, "states": set()}
-    body = {"tag": "body", "ids": set(), "classes": {"pg"}, "attrs": {}, "states": set()}
-    won = _css_won(rules, [tag, a, chip, li, ol, cols, body])
-    hide = {k: won.get(k, ("",))[0] for k in ("position", "clip", "width", "height", "display", "visibility")}
-    if hide["position"] != "absolute" or not hide["clip"].startswith("rect(0") or hide["width"] != "1px" \
-            or hide["display"] == "none" or hide["visibility"] == "hidden":
-        bad.append(f"a row under the chart still shows its district to the eye, or hides it from a screen "
-                   f"reader: {hide}")
+    one = BP.seat_row_tag('<span class="mchip p-R"><a href="x">Rep. A <span class="mtag">(R - Belk 6)</span>'
+                          '</a></span>')
+    if '<span class="mtag">(R<span class="mdist"> - Belk 6</span>)</span>' not in one:
+        bad.append(f"build_pages.seat_row_tag does not set a row's district apart from its party: {one}")
+    shared, _base, _ran, _days = _fixture_site_shared()
+    page = (shared / "site" / "officials.html").read_text(encoding="utf-8")
+    tags, dists, texts = [], [], []
+
+    def under_chart(c):
+        return any(e and "seatlist" in e["ids"] for e in c)
+    _html_walk(page, element=lambda c: (tags if "mtag" in c[0]["classes"] else dists if "mdist" in c[0]["classes"]
+                                        else []).append(c) if under_chart(c) else None,
+               text=lambda d, c: texts.append((d, c)) if c and "mtag" in c[0]["classes"] and under_chart(c)
+               else None)
+    if not tags or len(dists) != len(tags):
+        bad.append(f"the fixture's rows under the chart have {len(tags)} tags and {len(dists)} districts set "
+                   f"apart: a row's tag is not written (R<span class=\"mdist\"> - Belk 6</span>)")
+    shown = sorted({"".join(d for d, c in texts if c[0] is t[0]) for t in tags[:400]})
+    def clipped(c):
+        won = _css_won(rules, c)
+        hide = {k: won.get(k, ("",))[0] for k in ("position", "clip", "width", "height", "display", "visibility")}
+        return hide["position"] == "absolute" and hide["clip"].startswith("rect(0") and hide["width"] == "1px" \
+            and hide["display"] != "none" and hide["visibility"] != "hidden", hide
+    for c in dists[:1]:
+        # Clipped itself, or inside something clipped short of the list.
+        own = [clipped(c[j:]) for j in range(len(c)) if not (c[j] and "seatlist" in c[j]["ids"])][:4]
+        if not any(x for x, _h in own):
+            bad.append(f"a row under the chart still shows its district to the eye, or hides it from a screen "
+                       f"reader: {own[0][1]}")
+    for c in tags[:1]:
+        won = _css_won(rules, c)
+        if won.get("position", ("",))[0] == "absolute" or won.get("clip", ("",))[0].startswith("rect(0") \
+                or won.get("display", ("",))[0] == "none" or won.get("visibility", ("",))[0] == "hidden":
+            bad.append(f"a row under the chart hides its party's letter from the eye (from "
+                       f"{won.get('clip', won.get('position', ('', '?')))[1]}): the party is its bar's colour "
+                       f"alone, and nothing in forced colours (WCAG 1.4.1)")
+    if any(not re.fullmatch(r"\([A-Z]\)", x) for x in shown):
+        bad.append(f"a row's tag shows the eye {[x for x in shown if not re.fullmatch(r'[(][A-Z][)]', x)][:3]}, "
+                   f"not its party's letter alone")
     assert not bad, "the seating chart's callout: " + "; ".join(bad[:5])
     return "ok", ("a seat tapped, focused or under the pointer has the popovers' box above it, its arrow at "
                   "the seat, below it at the top, inside 366px at either side; Tab from a seat reaches its "
                   "link and a mouseout, another seat and a scroll leave it there; Escape puts focus on the "
-                  "seat; the note says it in words; the rows under the chart are names to the eye")
+                  f"seat; the note says it in words; the fixture's {len(tags)} row(s) under the chart are names and "
+                  f"{', '.join(shown)} to the eye, the district a screen reader's")
 
 
 @check("build", "a reports file keyed on bill number is refused, not ignored")

@@ -656,6 +656,24 @@ def party_word(name, lang="en", plural=False):
     return (many if plural else one).get(name, one.get(name, name) if plural else name)
 
 
+# THE PARTY'S LETTER STAYS UNDER THE CHART (the review of 29 October 2026).
+# The owner asked for the rows under the seating chart to be "names only,
+# without the full district, so the five columns are more compact", and the
+# whole "(R - Belk 6)" was hidden from the eye: the party was then only the
+# chip's coloured bar (WCAG 1.4.1), and in forced colours, where every bar is
+# the one system colour, nothing at all. So a row's tag is written
+# "(R<span class="mdist"> - Belk 6</span>)": app.css hides the district from
+# the eye under the chart, the eye reads "(R)", and a screen reader hears the
+# tag whole, as everywhere else. A tag of another shape is left as it is.
+_SEAT_TAG = re.compile(r'(<span class="mtag">)\(([^()\s<]+)( - [^()<]+)\)(</span>)')
+
+
+def seat_row_tag(row):
+    """A row of the House by seat with its chip's district apart from its
+    party's letter (_SEAT_TAG)."""
+    return _SEAT_TAG.sub(r'\1(\2<span class="mdist">\3</span>)\4', row)
+
+
 def seat_columns(house, row, lang="en"):
     """The House by seat, one column per division, as markup; `house` the
     members in seat order and `row(m)` the row that draws one.
@@ -4362,7 +4380,7 @@ def main():
         by_last = (alpha_block(S, say(lang, "comp.senate", "Senate"))
                    + alpha_block(H, say(lang, "comp.house", "House")))
         by_seat_rows = seat_columns(
-            H, lambda m: li(m, seating.plate(m["seat"]) if m.get("seat") else ""), lang)
+            H, lambda m: seat_row_tag(li(m, seating.plate(m["seat"]) if m.get("seat") else "")), lang)
         senate_rows = "".join(li(m, say(lang, "off.district", "District {d}", d=m.get("district")))
                               for m in S)
 
