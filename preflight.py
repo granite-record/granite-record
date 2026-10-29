@@ -39917,6 +39917,103 @@ def _rsa_pages(B, RSA, S):
                   "1967 and HB 286 not repeated; titled Chapter 91-A, its sections in the sidebar")
 
 
+# RSA 659:27-a's challenge affidavit and 659:13's attestation, paragraph for
+# paragraph as the General Court's table holds them (the preview's /laws/659,
+# 29 October 2026), cut to the lines a form's blanks are in.
+_FORM_PASSAGES = (
+    ("659:13", "Identification of Voters at the Polls.", (
+        "I ____________________ (Printed Name), in accordance with the authority granted to me in RSA 659:13, "
+        "I(c) as a moderator, clerk, supervisor, or selectman of the checklist (circle one) do attest under the "
+        "penalty of perjury that:",
+        "____________________ (Printed Name of Voter) ____________________ (NH Voter Identification Number)",
+        "____________________ Signature ____________________ Office")),
+    ("659:27-a", "Challenge Affidavit.", (
+        "I. No challenge may be asserted except in the form of a signed affidavit, under oath administered by "
+        "an election official, in the following form:",
+        "Name being used by the voter who you wish to challenge:",
+        "_" * 70,
+        "Last Name First Name Middle Name",
+        "_____ The person seeking to vote has already voted in the election at (name polling place) "
+        "__________ at approximately (state time if known) __________",
+        "I hereby swear and affirm, under the penalties of perjury, that to the best of my knowledge and "
+        "belief the information above is true and correct.",
+        "_" * 70,
+        "(Signature of challenger)",
+        "On the date shown above, before me, _________________________ (print name of notary public, justice "
+        "of the peace, election officer), appeared _________________________ (print name of person whose "
+        "signature is being notarized), known to me or satisfactorily proven (circle one) to be the person "
+        "whose name appears above.")),
+)
+
+
+@check("build", "a statute's form blanks wrap on a phone: every run of 20 or more underscores a Laws page "
+       "writes sits where app.css lets a word break", needs=("build_rsa", "rsa", "shell"))
+def _statute_blanks_wrap(B, RSA, S):
+    """The accessibility sweep of the R1 preview (29 October 2026; WCAG
+    1.4.10, reflow): /laws/659 was 648px wide in a 390px phone's viewport,
+    and scrolled sideways. RSA 659:27-a prints its affidavit's lines to fill
+    in as seventy underscores in a row: one word, 636px at reading size
+    (measured on the preview, where the phone's column is 366px and twenty
+    are 181px), and nothing let the text break inside a word.
+
+    So the two sections' own words go through build_rsa's chapter page, and
+    every run of twenty or more underscores it writes must sit in an element
+    on which app.css's cascade -- the element's own rules and what it
+    inherits (_css_inherited) -- lets a word break where it does not fit
+    (overflow-wrap or word-wrap anywhere or break-word, or word-break
+    break-all) and does not hold the line whole (white-space nowrap or pre).
+    A rule taken off, a statute's text moved into an element no rule reaches,
+    or a later rule that undoes it, each fails here. The renderer and the
+    sheet are what is held, so a section of any chapter with a longer blank
+    is held too; the sweep of every chapter's width on the preview is the
+    audit's, not this check's (it needs a browser and the real table)."""
+    cols = ["id", "TitleNo", "ChapterNo", "SectionNo", "Title", "Chapter", "Section", "SourceNote",
+            "rsa", "EntireRSA", "titleNumber", "url"]
+    t = RSA.Table([dict(zip(cols, (
+        str(n), "LXIII", "659", addr.replace(":", "-"), "TITLE LXIII ELECTIONS",
+        "CHAPTER 659 ELECTION PROCEDURE", f"Section {addr} {heading}", "",
+        "<center><h2>CHAPTER 659<br>ELECTION PROCEDURE</h2></center>",
+        "<codesect> <br> " + " <br> ".join(paras) + "</codesect>", "63",
+        f"LXIII\\659\\{addr.replace(':', '-')}.htm")))
+        for n, (addr, heading, paras) in enumerate(_FORM_PASSAGES)])
+    data = {"bills": {}, "enacted": {}, "statute": {}, "asof": {"laws_through": 2025}}
+    root = Path(tempfile.mkdtemp(prefix="gr-rsaform-"))
+    try:
+        (root / "idx").mkdir()
+        bills = B.Bills(root, "2025-2026")
+        page = B.chapter_page(S.template(Path("site")), t, data, bills, "659", "https://graniterecord.org")
+    finally:
+        shutil.rmtree(root, ignore_errors=True)
+    runs = _html_text_chains(page, r"_{20,}")
+    lengths = sorted(len(r) for r, _c in runs)
+    assert lengths.count(70) == 2 and len(runs) >= 8, (
+        f"the chapter page does not carry the form's blanks as the table has them: runs of {lengths}")
+    rules = _css_screen_rules(Path("src/pages/app.css").read_text(encoding="utf-8"))
+    memo, held, bad = {}, Counter(), []
+    props = ("overflow-wrap", "word-wrap", "word-break", "white-space", "text-wrap-mode", "text-wrap")
+    for run, chain in runs:
+        got = _css_inherited(rules, chain, props, memo)
+        where = " > ".join(e["tag"] + "".join("." + c for c in sorted(e["classes"])) for e in reversed(chain[:4]))
+        breaks = [(p, got[p]) for p in ("overflow-wrap", "word-wrap") if p in got
+                  and got[p][0].split()[0] in ("anywhere", "break-word")]
+        breaks += [("word-break", got["word-break"])] if got.get("word-break", ("",))[0] == "break-all" else []
+        whole = [(p, got[p]) for p in ("white-space", "text-wrap-mode", "text-wrap") if p in got
+                 and got[p][0].split()[0] in ("nowrap", "pre")]
+        if not breaks or whole:
+            bad.append(f"{len(run)} underscores in {where}: "
+                       + (f"{whole[0][0]}:{whole[0][1][0]} ({whole[0][1][1]}, app.css line {whole[0][1][2]})"
+                          if whole else "no rule lets a word break there"))
+        else:
+            held[f"{breaks[0][0]}:{breaks[0][1][0]} from {breaks[0][1][1]}"] += 1
+    assert not bad, (
+        "a run of underscores in a statute's text cannot wrap, and a 390px phone scrolls sideways past it "
+        "(RSA 659:27-a's seventy are 636px at reading size): " + "; ".join(bad[:4])
+        + ". app.css's .rs-text{overflow-wrap:anywhere} is what lets them")
+    return "ok", (f"{len(runs)} runs of 20 or more underscores ({lengths[-1]} the longest) in 659:13 and "
+                  f"659:27-a's forms, every one able to break: "
+                  + ", ".join(f"{k} ({n})" for k, n in held.items()))
+
+
 # DEFINED TERMS, ON THE STATUTES' OWN WORDS. Each passage is the General
 # Court's table as it read on 24 October 2026, paragraph for paragraph (a
 # section is cut short where the rest says nothing to the case): RSA 153:1's
@@ -71585,6 +71682,106 @@ def _css_specificity(sel):
                 else:
                     b += 1
     return (a, b, c)
+
+
+# ---- what app.css sets on an element of a built page (29 October 2026) ---------
+#
+# The accessibility sweep of the R1 preview found what a page drew, and the
+# checks that hold its findings read the same thing without a browser: the
+# element a page's words sit in, as html.parser reads the page, and the
+# declarations app.css's cascade gives it on a screen (_css_can_reach's
+# model: specificity, then order, !important over both; an inherited
+# property from the nearest element outward that a rule sets it on).
+
+def _css_screen_rules(text):
+    """[(order, at-rules, selector, {property: (value, important)}, line)]
+    for every rule of a stylesheet that draws on a screen -- the printed
+    sheet's are left out -- one entry a selector of its list."""
+    out = []
+    for order, (ctx, sel, body, line) in enumerate(_css_rules(text)):
+        if any(re.search(r"\bprint\b", c) and not re.search(r"\bnot\s+print\b", c) for c in ctx):
+            continue
+        decls = {k: (v, bool(re.search(r"(?:^|[;{\s])" + re.escape(k) + r"\s*:[^;]*!\s*important", body, re.I)))
+                 for k, v in _css_decls(body)}
+        if decls:
+            out.extend((order, ctx, one, decls, line) for one in _css_selectors(sel))
+    return out
+
+
+def _css_won(rules, chain):
+    """{property: (value, selector, line)} as the cascade leaves it on
+    chain[0], whose ancestors outward are chain[1:] (_css_can_reach's chain),
+    of _css_screen_rules' `rules`. What it inherits is _css_inherited's."""
+    won = {}
+    for order, _ctx, one, decls, line in rules:
+        if not _css_can_reach(one, chain):
+            continue
+        key = (_css_specificity(one), order)
+        for k, (v, imp) in decls.items():
+            if k not in won or (imp, key) >= won[k][0]:
+                won[k] = ((imp, key), v, one, line)
+    return {k: (v, one, line) for k, (_r, v, one, line) in won.items()}
+
+
+def _css_inherited(rules, chain, props, _memo=None):
+    """{property: (value, selector, line, how far out)} for inherited
+    properties on chain[0]: each from the nearest element outward that a
+    rule sets it on (0 for chain[0] itself), "inherit" and "unset" passed
+    through to the next. A property nothing sets is left out: its initial
+    value. `_memo` keeps each ancestry's cascade between calls."""
+    memo = {} if _memo is None else _memo
+    out = {}
+    for j in range(len(chain)):
+        sig = tuple((e["tag"], tuple(sorted(e["ids"])), tuple(sorted(e["classes"])),
+                     tuple(sorted((k, str(v)) for k, v in e["attrs"].items())), tuple(sorted(e["states"])))
+                    for e in chain[j:])
+        if sig not in memo:
+            memo[sig] = _css_won(rules, chain[j:])
+        for p in props:
+            if p not in out and p in memo[sig] and memo[sig][p][0] not in ("inherit", "unset"):
+                out[p] = memo[sig][p] + (j,)
+        if len(out) == len(props):
+            break
+    return out
+
+
+def _html_text_chains(page, pattern):
+    """[(the text matched, chain)] for every match of `pattern` in a page's
+    text, chain[0] the element it is written in and then its ancestors out to
+    the root, each as _css_compound_fits reads an element (no state: not
+    hovered, not focused). A script's or a style's content is not text."""
+    from html.parser import HTMLParser
+
+    class Walk(HTMLParser):
+        VOID = {"area", "base", "br", "col", "embed", "hr", "img", "input", "link", "meta", "source",
+                "track", "wbr"}
+
+        def __init__(self):
+            super().__init__(convert_charrefs=True)
+            self.stack, self.found = [], []
+
+        def handle_starttag(self, tag, attrs):
+            a = {k: ("" if v is None else v) for k, v in attrs}
+            el = {"tag": tag, "ids": {a["id"]} if a.get("id") else set(),
+                  "classes": set((a.get("class") or "").split()), "attrs": a, "states": set()}
+            if tag not in self.VOID:
+                self.stack.append(el)
+
+        def handle_endtag(self, tag):
+            if any(e["tag"] == tag for e in self.stack):
+                while self.stack and self.stack.pop()["tag"] != tag:
+                    pass
+
+        def handle_data(self, data):
+            if self.stack and self.stack[-1]["tag"] in ("script", "style"):
+                return
+            for m in re.finditer(pattern, data):
+                self.found.append((m.group(0), list(reversed(self.stack))))
+
+    w = Walk()
+    w.feed(page)
+    w.close()
+    return w.found
 
 
 @check("frontend", "a bill's Testify button counts the Senate's hearings, and says testimony opens again "

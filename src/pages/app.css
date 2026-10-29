@@ -7392,6 +7392,13 @@ letter-spacing:.04em;text-transform:uppercase;color:var(--ink-2)}
   margin-right:.375rem}
 .rs-h a:hover{text-decoration-thickness:2px}
 .rs-text p{font:400 var(--t-ui)/1.65 var(--sans);color:var(--ink);margin:0 0 .625rem;max-width:var(--rs-meas)}
+/* A FORM'S BLANKS WRAP (the accessibility sweep of 29 October 2026, WCAG
+   1.4.10). The statutes print a form's lines to fill in as underscores, and
+   RSA 659:27-a's are seventy in a row: one word, 560px wide, so /laws/659
+   scrolled sideways on a 390px phone. The text may break inside a word that
+   does not fit its line, and only there; _statute_blanks_wrap holds every
+   long run the renderer writes to a rule that lets it. */
+.rs-text{overflow-wrap:anywhere}
 .rs-text a{color:var(--pine)}
 /* A DEFINED TERM WHERE IT IS USED (the person, 24 October 2026): the word in
    the text's own ink, underlined in dots as the site's term popovers are
