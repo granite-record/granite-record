@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-10-11.64
+# GRANITE_VERSION: 2026-10-11.65
 """
 The how-to guides: their words, their sources, and what each was checked
 against. Read by build_civics.py, which draws them on the Resources hub's
@@ -511,8 +511,8 @@ VOTING = guide(
                "the election. The Secretary of State's page is the official word: check it "
                "before you go. On October 24, 2026 it still said that if you lack the documents "
                "to prove your citizenship, you may sign a qualified voter affidavit instead, "
-               "subject to the penalties for voter fraud, as a court order of May 28, 2026 "
-               "allowed again. The affidavit covers citizenship and "
+               "subject to the penalties for voter fraud. A court order of May 28, 2026 allowed "
+               "this again. The affidavit covers citizenship and "
                "nothing else: you still need proof of identity, age and domicile."),
      step("Vote",
           "<p>On election day, go to your polling place. Every voter must show proof of identity "
@@ -577,6 +577,23 @@ VOTING = guide(
            "certified NH vital record for voter registration only; a free photo ID for voting "
            "from the DMV with a voucher from the clerk or Secretary of State; every voter shows "
            "proof of identity to get a ballot.", SOS_PROOF, CHECKED),
+     # The person's PDF of the page, 24 October 2026; the same words in the
+     # printout of 27-28 October that the manager session compared.
+     claim("Local election officials may be able to assist you with proving your "
+           "qualifications. You can prove your Age and United States Citizenship by proving "
+           "that you are currently registered or were previously registered to vote in any New "
+           "Hampshire municipality; for certain voters, Vital Records information may help "
+           "prove your citizenship or a name change; for individuals who have obtained a New "
+           "Hampshire Driver's License or Non-Driver ID, for certain voters, Division of Motor "
+           "Vehicles information may prove your citizenship, age, domicile, or name change; "
+           "with your permission, local election officials may search these records. The "
+           "certified copies can only be used when registering to vote and must be surrendered "
+           "to the election official intaking the voter registration application; complete the "
+           "Application for a Free Certified Copy of a New Hampshire Vital Record for Voter "
+           "Registration and file it with proof of identification with your local town or city "
+           "clerk. For a vital event in another state, use the CDC's National Center for Health "
+           "Statistics for information on obtaining vital records for each state.", SOS_PROOF,
+           "2026-10-24"),
      # Read again on 24 October 2026, in the person's PDF of the page that day.
      claim("Citizenship only may be proven by a qualified voter affidavit, subject to the "
            "penalties for voter fraud, by a citizen without some or all of the documents; no "
@@ -617,9 +634,18 @@ VOTING = guide(
         ("What if I am missing a document?",
          "<p>Ask your clerk: with your permission, local election officials may be able to "
          "check New Hampshire voter, motor vehicle and vital records to help prove your "
-         "qualifications. A certified "
-         "copy of a New Hampshire birth or other vital record is free when it is only for "
-         "registering to vote.</p>"),
+         "qualifications. Being registered now, or before, in any New Hampshire town or city "
+         "proves your age and citizenship. For certain voters, vital records may help prove "
+         "citizenship or a name change, and, for certain voters who have obtained a New "
+         "Hampshire driver&rsquo;s license or non-driver ID, motor vehicle records may help "
+         "prove citizenship, age, domicile or a name change.</p>"
+         "<p>A certified copy of a New Hampshire birth or other vital record is free when it is "
+         "only for registering to vote: fill in the application for a free certified copy and "
+         "file it, with proof of identity, with your town or city clerk. That copy can be used "
+         "only to register to vote, and you must surrender it to the election official who "
+         "takes your registration. For a record from another state, the Secretary of State "
+         "points to the CDC&rsquo;s National Center for Health Statistics for how to get vital "
+         "records from each state.</p>"),
         ("How early can I ask for an absentee ballot, and can I track it?",
          "<p>You can apply up to six months before the election. The voter information lookup "
          "shows when your clerk got your request, sent your ballot, and received it back.</p>"))
