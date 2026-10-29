@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.721
+# GRANITE_VERSION: 2026-09-04.722
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -95575,18 +95575,22 @@ def _speakers_against_journal(root, jroot):
               for m in J.TALLY.finditer(block)]
         ev += [("division", m.start(), (int(m.group("yeas")), int(m.group("nays"))), m.end())
                for m in J.DIVISION.finditer(block)]
+        # EACH PATTERN WHERE IT CAN BEGIN (29 October 2026): decisions() and
+        # found() give finditer's own list (_journal_found_is_finditer holds
+        # them to it), and finditer from every character of every House day
+        # was 20 of this check's 53 seconds on the night.
         ev += [("voice", m.start("s"), re.sub(r"\s+", " ", m.group("s")), m.end("s"))
-               for m in J.DECIDED.finditer(text) if not J.NOT_DECIDED.search(m.group("s"))]
-        for m in J.MOTION_EVENT.finditer(text):
+               for m in J.decisions(text) if not J.NOT_DECIDED.search(m.group("s"))]
+        for m in J.found(J.MOTION_EVENT, text, "[MmOoAaCcWwRr]"):
             w = J.MOVED_SINCE.match(block, m.start()) if m.group(0).lower() == "moved" else None
             ev.append(("move", m.start(), re.sub(r"\s+", " ", w.group(0) if w else m.group(0)),
                        w.end() if w else m.end()))
         ev.sort(key=lambda e: e[1])
         side = lambda m: "for" if "favor" in m.group("side").lower() else "against"
         sp = [(m.start(), J.SPOKE_END.search(text, m.start()).end(), side(m),
-               J._names(m.group("names"))) for m in J.SPOKE.finditer(text)]
+               J._names(m.group("names"))) for m in J.found(J.SPOKE, text, "[Rr]")]
         sp += [(m.start(), J.SPOKE_END.search(text, m.start()).end(), side(m),
-                J._names(m.group("name"))) for m in J.MOVED_SPOKE.finditer(text)]
+                J._names(m.group("name"))) for m in J.found(J.MOVED_SPOKE, text, "[Rr]")]
 
         def bill_at(pos):
             cur = None
@@ -98260,6 +98264,24 @@ def _page_record_find(SR):
     finally:
         shutil.rmtree(tmp, ignore_errors=True)
     return "ok", "six shapes of page, each read as INLINE reads it, the sidecar where none is inline"
+
+
+@check("session", "the night's check of the House's speakers reads the Journal's patterns where "
+       "they can begin")
+def _speakers_check_found():
+    """_every_speaker_where_the_journal_decides read DECIDED, MOTION_EVENT,
+    SPOKE and MOVED_SPOKE with finditer from every character of every House
+    day: 20 of its 53 seconds on the night. decisions() and found() give the
+    same matches (_journal_found_is_finditer; the same rows on all 538 days
+    on disk, 29 October 2026) in 7. Undone, the night is slower and nothing
+    else would say so."""
+    import inspect
+    src = inspect.getsource(_speakers_against_journal)
+    slow = [n for n in ("DECIDED", "MOTION_EVENT", "SPOKE", "MOVED_SPOKE")
+            if f"J.{n}.finditer(" in src]
+    assert not slow and "J.decisions(text)" in src, (
+        f"the speakers check runs {slow or ['DECIDED']} from every character again")
+    return "ok", "decisions() and found() for the four patterns"
 
 
 @check("session", "a journal pattern found only where it can begin is finditer's own list",
