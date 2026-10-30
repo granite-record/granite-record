@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-10.62
+# GRANITE_VERSION: 2026-09-10.63
 """
 The record as CSV, for anyone who wants to work with it rather than read it.
 
@@ -1335,6 +1335,30 @@ def bill_files(out, site, collect=None):
     return rows
 
 
+def database_file(out, collector, joined):
+    """The data API's database (api_db.py): every table above and the
+    record's committee reports, in one SQLite file in xz. Says each table's
+    rows, and stops on a table that should hold rows and holds none."""
+    import api_db
+    if not collector.bills:
+        print(f"  {api_db.NAME:<28} not written: no bill records were read")
+        return {"path": f"/data/{api_db.NAME}", "kind": "database", "rows": 0, "bytes": 0,
+                "skipped": "no bill records"}
+    row = api_db.write(out, collector, (joined or ([], None))[0],
+                       build_date.now().replace(microsecond=0).isoformat())
+    empty = [t for t in ("bills", "rollcalls", "votes", "committee_reports", "proceedings")
+             if not row["counts"].get(t)]
+    if empty:
+        raise SystemExit(f"The database's {', '.join(empty)} came out empty; not publishing it.")
+    flag = "  OVER THE 25 MiB CAP" if row["bytes"] > SAFE else ""
+    print(f"  {api_db.NAME:<28} {row['rows']:>9,} rows  {row['bytes'] / 1e6:>7.1f} MB "
+          f"({row['opened_bytes'] / 1e6:,.1f} MB opened){flag}")
+    print("    " + ", ".join(f"{t} {n:,}" for t, n in row["counts"].items()))
+    if not row["counts"].get("meetings"):
+        print("    meetings: none, because meetings.json is not here")
+    return row
+
+
 def people_join(site, data, db="db", careers="generated/careers.json",
                 register="generated/person_numbers.json"):
     """Every number the General Court uses for a person, joined to one person
@@ -1464,7 +1488,10 @@ def main():
     # of 30 October 2026). Built unlinked until the announcement: listed here,
     # under a key of their own, and not on the data page, so that nothing a
     # reader sees today moves while they are built.
-    manifest["files"] = people_files(out, joined) + bill_files(out, site)
+    import api_db
+    collector = api_db.Collector()
+    manifest["files"] = people_files(out, joined) + bill_files(out, site, collect=collector.add)
+    manifest["files"].append(database_file(out, collector, joined))
     over += [{"file": f["path"].rsplit("/", 1)[-1], "bytes": f["bytes"]}
              for f in manifest["files"] if f["bytes"] > SAFE]
     (out / "manifest.json").write_text(
