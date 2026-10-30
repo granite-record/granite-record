@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-10.58
+# GRANITE_VERSION: 2026-09-10.59
 """
 The record as CSV, for anyone who wants to work with it rather than read it.
 
@@ -1213,6 +1213,20 @@ def bill_indexes(site, origin):
     }
 
 
+def api_record(rec):
+    """A bill's record as the bill files publish it: the page's own, less
+    the Senate's hearing reports (stations[].reports), which name the
+    members of the public who testified and summarise what each said.
+    The bill's page shows them, one bill at a time; a file of every bill is
+    a list of private people's positions, which is the owner's call to make
+    (docs/design/api/DESIGN.md, Q21) and until then is not made here."""
+    st = rec.get("stations")
+    if not st or not any(isinstance(s, dict) and s.get("reports") for s in st):
+        return rec
+    return {**rec, "stations": [{k: v for k, v in s.items() if k != "reports"}
+                                if isinstance(s, dict) else s for s in st]}
+
+
 def bill_files(out, site, collect=None):
     """Every bill's full record, one gzipped JSON Lines file a term:
     bills-<term>.jsonl.gz (the data API's branch 3; docs/design/api/DESIGN.md,
@@ -1268,7 +1282,8 @@ def bill_files(out, site, collect=None):
             for r in recs:
                 collect(term, r)
         body = "".join(
-            json.dumps({"key": f'{term}/{r["id"]}', **{k: v for k, v in r.items() if k != "key"}},
+            json.dumps({"key": f'{term}/{r["id"]}',
+                        **{k: v for k, v in api_record(r).items() if k != "key"}},
                        ensure_ascii=False, separators=(",", ":")) + "\n"
             for r in recs).encode("utf-8")
         name = f"bills-{term}.jsonl.gz"
