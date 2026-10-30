@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.739
+# GRANITE_VERSION: 2026-09-04.740
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -27844,7 +27844,7 @@ def _scrollstop_tables():
 
 
 @check("frontend", "a table cut off on a phone shows its edge, a byline's dot wraps with what it leads "
-                   "to, a cut vote title fades out, and Report a problem fits half a phone's row")
+                   "to, a cut vote title ends in an ellipsis, and Report a problem fits half a phone's row")
 def _small_visual_s9():
     """The audit of 25 October 2026 (S9), approved by the owner, each a rule
     a browser reads right and nothing here measured:
@@ -27896,14 +27896,14 @@ def _small_visual_s9():
     dot = decl(".cmeta > .cdot + *::before")
     if not dot.get("content", "").startswith('"\\00b7') or dot.get("display") != "inline-block":
         bad.append(f"the item after a byline's dot does not draw it at its head: {dot}")
-    # The fade.
+    # The cut: two lines and an ellipsis (the cohesion audit of 30 October
+    # 2026, B-7), where the fade's third line had sat on the motion's line.
     vt = decl(".votes .vt")
-    fade = re.fullmatch(r"linear-gradient\(#000 2\.7em,\s*transparent ([\d.]+em)\)",
-                        vt.get("mask-image", ""))
-    if not fade or vt.get("max-height") != fade.group(1) or vt.get("overflow") != "hidden" \
-            or vt.get("-webkit-mask-image") != vt.get("mask-image"):
-        bad.append("a vote title cut at two lines does not fade out below them, or fades "
-                   f"a title of two lines: {vt}")
+    want = {"display": "-webkit-box", "-webkit-box-orient": "vertical", "-webkit-line-clamp": "2",
+            "line-clamp": "2", "max-height": "2.7em", "overflow": "hidden"}
+    if any(vt.get(k) != v for k, v in want.items()) or "mask-image" in vt or "-webkit-mask-image" in vt:
+        bad.append("a vote title is not cut at two whole lines with an ellipsis, or a fade "
+                   f"is still drawn over a third: {vt}")
     # Report.
     if '<summary>${icon("report")}<span>Report<span class="rpw"> a problem</span></span></summary>' \
             not in js_p.read_text(encoding="utf-8") or \
@@ -27911,7 +27911,7 @@ def _small_visual_s9():
         bad.append("Report a problem is not \"Report\" in half a phone's row of actions")
     assert not bad, "; ".join(bad[:5])
     return "ok", ("two scrolling boxes with their edge, tables laid out as tables; a byline's dot "
-                  "with what it leads to; a cut title faded below two whole lines; Report on a phone")
+                  "with what it leads to; a cut title two lines and an ellipsis; Report on a phone")
 
 
 # ============================================================= code: pipeline ==
