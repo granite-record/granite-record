@@ -1,4 +1,4 @@
-// GRANITE_VERSION: 2026-10-30.1
+// GRANITE_VERSION: 2026-10-30.2
 /* LIVE NOW, IN THE BROWSER (the live layer's design, sections 1.4, 2.6 and
    4.1). Loaded by /live after components.js, whose clock(), esc() and tr()
    it draws with, so a time reads "10:02 AM" as every page's does and every
@@ -160,9 +160,10 @@ L.view = function (file, schedule, now, http) {
       out.earlier.push('<li>' + C.esc(L.name(s, row)) + " &middot; " + youtube(s) + "</li>");
     }
   });
-  rows.forEach(function (r) {
-    if (!seen[r.id]) out.nostream.push('<li>' + (r.href ? '<a href="' + C.esc(r.href) + '">' + C.esc(r.name) + "</a>"
-      : C.esc(r.name)) + "</li>");
+  // Today's meetings with no stream found, as the Calendar draws them; only
+  // from a fresh look (otherwise the night's list stands, unjudged).
+  if (status.kind === "fresh") rows.forEach(function (r) {
+    if (!seen[r.id]) out.nostream.push('<li class="lv-meet">' + (r.card || C.esc(r.name)) + "</li>");
   });
   out.live.sort(function (a, b) { return a.name < b.name ? -1 : a.name > b.name ? 1 : 0; });
   return out;
@@ -264,6 +265,16 @@ L.start = function (doc, opts) {
     Array.prototype.slice.call(box.querySelectorAll("[data-video]")).forEach(function (card) {
       if (!keep[card.getAttribute("data-video")]) card.remove();
     });
+    // With a fresh look, the night's list of today's meetings gives way to the
+    // ones no stream was found for; otherwise it stands as the night wrote it.
+    var fresh = v.status.kind === "fresh";
+    var today = doc.getElementById("live-now-today"), calH = doc.getElementById("live-now-cal-h");
+    if (today) today.hidden = fresh;
+    if (calH) calH.hidden = fresh && !v.nostream.length;     // every meeting found: nothing to head
+    if (calH) calH.textContent = fresh
+      ? C.tr("live.nostream_h", "On today's calendar, no stream found (checked {time})",
+             { time: L.timeOf(file && file.checked) })
+      : C.tr("live.cal_h", "On today's calendar");
     [["live-now-scheduled", v.scheduled], ["live-now-nostream", v.nostream], ["live-now-earlier", v.earlier]]
       .forEach(function (x) {
         var el = doc.getElementById(x[0]);

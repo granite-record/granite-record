@@ -1,0 +1,23 @@
+/* GRANITE_VERSION: 2026-10-30.1 */
+/* LIVE NOW'S OWN RULES (/live, src/pages/live.js). Only .lv* classes, drawn in
+   the site's tokens (app.css), so both themes work and nothing here reaches
+   another page. The player and its stub are the site's own (.player, .pstub);
+   today's cards are the Calendar's (.calmeet), styled where they always are. */
+.lvpage{max-width:var(--measure);margin:0 auto;padding:var(--sp-6) var(--sp-5)}
+.lvpage h1{font-size:var(--t-h2);margin:0 0 var(--sp-4)}
+.lvpage h2{font-size:var(--t-h3);margin:var(--sp-7,32px) 0 var(--sp-4)}
+.lv-status{font-size:var(--t-ui);color:var(--ink-2);margin:0 0 var(--sp-5)}
+.lv-streams{display:grid;gap:var(--sp-5)}
+.lv-card{background:var(--surface);border:1px solid var(--rule-2);border-left:4px solid var(--brick);
+border-radius:var(--r-out);padding:var(--sp-5) var(--sp-6);box-shadow:0 3px 10px var(--shadow)}
+.lv-card h3{font-size:var(--t-card);margin:0}
+.lv-card .lv-since{font-size:var(--t-sm);color:var(--ink-2);margin:var(--sp-1) 0 0}
+.lv-card .lv-since::before{content:"";display:inline-block;width:.6em;height:.6em;border-radius:50%;
+background:var(--brick);margin-right:.45em;vertical-align:.05em}
+.lv-foot{margin-top:var(--sp-4);font-size:var(--t-ui)}
+.lv-agenda{margin-top:var(--sp-4)}
+.lv-list,.lv-today{list-style:none;margin:0;padding:0}
+.lv-list li{padding:var(--sp-3,8px) 0;border-bottom:1px solid var(--rule);font-size:var(--t-ui)}
+.lv-today .lv-meet{margin:0}
+.lv-channels{font-size:var(--t-sm);color:var(--ink-2);margin-top:var(--sp-6)}
+@media (max-width:600px){.lvpage{padding:var(--sp-5) var(--sp-4)}.lv-card{padding:var(--sp-4) var(--sp-5)}}

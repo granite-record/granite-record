@@ -21655,6 +21655,11 @@
    "es": "programada para las {time}",
    "state": "draft"
   },
+  "live.cal_h": {
+   "en": "On today's calendar",
+   "es": "En el calendario de hoy",
+   "state": "draft"
+  },
   "live.checked": {
    "en": "Checked {time}",
    "es": "Comprobado a las {time}",
@@ -21663,6 +21668,11 @@
   "live.none_found": {
    "en": "No stream found right now (checked {time})",
    "es": "No se encontró ninguna transmisión en este momento (comprobado a las {time})",
+   "state": "draft"
+  },
+  "live.nostream_h": {
+   "en": "On today's calendar, no stream found (checked {time})",
+   "es": "En el calendario de hoy, sin transmisión encontrada (comprobado a las {time})",
    "state": "draft"
   },
   "live.off": {
