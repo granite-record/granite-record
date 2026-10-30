@@ -4,7 +4,8 @@ The branch is `cohesion`, cut from dev c9a5964. It carries the manager's share o
 cohesion audit (`design/cohesion-audit` 03a24ee, `docs/design/cohesion-audit/REPORT.md`).
 
 - **In this batch:** the BROKEN items, the S-effort top-ten items, and the term years (I-2).
-- **Not yet:** the search box (I-7) and the rest of the heading levels (I-1 beyond B-1).
+- **Part 2, below:** the search box (I-7) and the rest of the heading levels (I-1 beyond B-1).
+  Its "before" is part 1's head, a5e56494.
 
 One commit per item, then two commits from the two-lens review and two that finish the
 term years.
@@ -122,3 +123,86 @@ Each shot is `<item>-<view>-<before|after>-<390|1280>-<light|dark>.png`.
   The one left on each page is built HTML, which the check below covers.
 - **The new check:** `_terms_with_a_dash` reads every page the fixture builds, its text and
   its spoken names, and allows a hyphenated term only inside an address or a file's name.
+
+# Part 2: one search box (I-7) and one look per heading level (I-1)
+
+Four commits on top of part 1, each with a preflight check. The shots follow the same
+naming. "Before" is part 1's head (a5e56494), and "after" is this branch.
+
+## I-7 One search box (`i7-*`)
+
+| Box | Before | After |
+|---|---|---|
+| Officials (`#lq`) | 52px, 20px text | 44px, 16px |
+| /search (`#resq`) | 52px, 20px text | 44px, 16px |
+| A member's Votes | grey ground; 35px at 1280 | white, 44px |
+| Calendar (`#wkfind`, `#cpfind`) | 40px | 44px |
+| Bills and a bill's page (`#q`) | 42px, on the page's grey | 44px, white |
+
+- **The Bills page's term menu** (`#year`) is 44px too, so it lines up with the box beside
+  it.
+- **Hints, the manager's option A:**
+  - the owner's three bill hints stay as they are;
+  - a member's Votes box now says "Bill number or title words" (it said "HB 1442, or
+    words");
+  - the Calendar's box now says "Bill number or committee" (it said "HB 1234, or
+    Judiciary").
+  - Neither box has a Spanish layer.
+- **The search button** inside the box is centred on a phone too. The pages' 44px least
+  height for a button had stretched it 5px past the box's foot (fixed in review).
+- **The check:** `_one_search_box`.
+
+## I-1 A bill's tabs head their sections one way (`i1-bill-*`)
+
+| Tab | Before | After |
+|---|---|---|
+| Summary, Votes | 19px serif, Title Case | unchanged |
+| Reports | 20px serif capitals ("HOUSE JUDICIARY COMMITTEE") | 19px serif, "House Judiciary Committee" |
+| Sponsors | 20px capitals, bare count | 19px serif, count in small sans |
+| Documents | h3, 14px sans capitals, no h2 | h2, 19px serif |
+| Related | 16px sans, sentence case | 19px serif, Title Case |
+| Bill Text | "BILL TEXT" in 20px capitals | "Bill Text", 19px serif |
+
+- **The class:** `.sech` draws all of these, as Summary's `.w4h` and a vote's `.rcq`
+  already did.
+- **The capital label** stays for a group inside a section: THE BILL, FISCAL IMPACT and
+  HOW IT GOT HERE under the bill text. Under "Bill Text" these labels are now 16px, so
+  they no longer outrank the heading above them (fixed in review).
+- **A report's committee:** a report is now headed with its committee's name in Title Case,
+  part by part, so a name stored in capitals reads in Title Case. "Committee" is added only
+  where the name lacks it, so "House Joint Committee on Address" no longer gets a second
+  "Committee" (fixed in review).
+- **The heading map:** the map beside the tokens in app.css names this level ("pane").
+- **The check:** `_bill_panes_one_heading` holds the three rules together. It also reads
+  every h2 the pane renderers write, and draws Sponsors and Documents in node.
+
+## I-1 The rest (`i1-home-*`, `i1-committees-*`)
+
+- **Home:** "Coming up" was typed in sentence case. Capitals hid it at 1280, and a phone
+  showed it. It is now "Coming Up", in English and in es.json's English. The Spanish is
+  unchanged.
+- **Titles in Title Case:** "Calendars and Journals of the General Court" and "The Whole
+  Record, as Lists".
+- **/search:** its group names are in Title Case ("Towns and Wards", "Statutory and Study
+  Committees", "Former Senators"…), to match "How-To Guides".
+- **/committees:** the statutory and study fold's heading takes the page's other section
+  headings' look, 20px serif capitals. It was 16px sans in pine. The caret and the box
+  still show that it opens.
+- **A Laws chapter without parts:** it went from its h1 to an h3 for every section. Its
+  sections are now h2, and h3 only under a part's h2, as the Constitution tab's articles
+  already were. The look is unchanged. The check is `_laws_chapter_outline`.
+
+## Left as it was
+
+- **About's headings** stay at 24px, stacked. That size is the rule for every plain prose
+  page (About, Officials, /search, 404), and the audit counts it as a section heading.
+  Moving About into /data's left-margin layout would change its width and its body text.
+  The manager decided to leave it (30 October).
+- **The Hearings tab's hearing-report fold** ("Who took a position") sits inside a
+  sitting's fold rather than opening the pane, so it is unchanged (the manager, 30
+  October).
+- **A Laws chapter's box of pending bills** ("Passed, not yet in effect") keeps its 16px
+  sans headings in sentence case. It is a box beside the chapter's text, and was not part
+  of the audit's row.
+- **The search results' own rows** for the site's pages ("The whole record, as lists",
+  "The data, as tables") stay as written. They are link labels in a list, not headings.
