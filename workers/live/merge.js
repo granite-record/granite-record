@@ -32,7 +32,7 @@
  * arrives. THE WORKER NEVER WORKS OUT WHETHER A MOTION CARRIED: a threshold
  * or a two-thirds vote is the night's (vote_passage.py).
  */
-import { DOCKET_OUTCOME } from "./live.gen.js";
+import { BILL_NUMBER, DOCKET_OUTCOME } from "./live.gen.js";
 import { nhToUtc, termOf } from "./test_mode.js";
 
 export const MISSES_TO_NOTE = 3;
@@ -64,6 +64,19 @@ export function emptyFile(date) {
 export const dayOfRow = r => (r.vote_date ? r.vote_date.slice(0, 10) : null);
 
 const billKey = b => String(b || "").replace(/\s+/g, "").toUpperCase();
+
+// The bill a roll call's bill field names, as the record reads it
+// (rollcall_parser.bill_number, its patterns through live.gen.js): spaces
+// out, upper case, the flags off, HCACR read as CACR; "" where the field
+// names no bill ("SUSPRULE", "RULE 1-2", "HRULE64"). The file's `bill` is
+// then null, and bill_as_recorded keeps the words.
+const BILL_NO = new RegExp(BILL_NUMBER.pattern, "i");
+const FLAGS_OFF = new RegExp(BILL_NUMBER.flags_off);
+export function billNumber(raw) {
+  const b = billKey(raw).replace(FLAGS_OFF, "").replace(/^HCACR(?=\d)/, "CACR");
+  return BILL_NO.test(b) ? b : "";
+}
+const billOf = (raw, year) => (billNumber(raw) ? `${termOf(year)}/${billNumber(raw)}` : null);
 
 // ---- the docket ---------------------------------------------------------------
 const HOUSE_RC = /\bRC (\d+)-(\d+)\b/;
@@ -136,7 +149,7 @@ export function merge(prev, { date, rows = [], ballots = new Map(), lines = [], 
     const rc = old || { id: r.id, first_seen: at, ballots: "", ballots_complete: false, docket: null, note: null };
     Object.assign(rc, {
       body: r.body, seq: r.seq,
-      bill: r.bill_as_recorded ? `${termOf(r.year)}/${r.bill_as_recorded}` : null,
+      bill: billOf(r.bill_as_recorded, r.year),
       bill_as_recorded: r.bill_as_recorded, question: r.question,
       taken: r.body === "H" ? nhToUtc(r.vote_date) : null,
       saved: r.body === "S" ? nhToUtc(r.modified) : null,
@@ -193,7 +206,7 @@ export function merge(prev, { date, rows = [], ballots = new Map(), lines = [], 
     const old = tally.get(k);
     tally.set(k, {
       body: l.body,
-      bill: l.bill_as_recorded ? `${termOf(Number(date.slice(0, 4)))}/${l.bill_as_recorded}` : null,
+      bill: billOf(l.bill_as_recorded, Number(date.slice(0, 4))),
       bill_as_recorded: l.bill_as_recorded, order: l.order, entered: nhToUtc(l.entered), line: l.line,
       yeas: p.yeas, nays: p.nays, abbrev: p.abbrev, outcome: p.outcome,
       first_seen: old ? old.first_seen : at, rollcall: null,

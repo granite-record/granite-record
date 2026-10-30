@@ -171,8 +171,12 @@ test("a roll call's bill links to the page of the year it was introduced, throug
   }
   // A key the index would only hold by inheritance is not a bill.
   assert.equal(L.billHref(rc("HB1", "constructor"), bills), null);
-  assert.equal(L.billHref({ ...rc("HB1"), bill_as_recorded: "<b>x" }, bills), null);
-  assert.match(L.votesItems({ rollcalls: [{ ...rc("HB1"), bill_as_recorded: "<b>x" }] }, "H", bills)[0], /&lt;b&gt;x/);
+  assert.equal(L.billHref({ ...rc("HB1"), bill: null, bill_as_recorded: "<b>x" }, bills), null);
+  assert.match(L.votesItems({ rollcalls: [{ ...rc("HB1"), bill: null, bill_as_recorded: "<b>x" }] }, "H", bills)[0], /&lt;b&gt;x/);
+  // A procedural vote: the words as typed, no bill, no link.
+  assert.equal(L.billHref({ ...rc("SUSPRULE"), bill: null }, bills), null);
+  // The link follows the record's reading of the field, not its words.
+  assert.equal(L.billHref({ ...rc("HB 1-FN"), bill: "2025-2026/HB1" }, bills), "/bill/2025/hb1.html");
 });
 
 // ---- the votes file's rings, union and session card ----------------------------

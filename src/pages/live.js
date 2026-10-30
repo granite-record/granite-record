@@ -1,4 +1,4 @@
-// GRANITE_VERSION: 2026-10-30.7
+// GRANITE_VERSION: 2026-10-30.8
 /* LIVE NOW, IN THE BROWSER (the live layer's design, sections 1.4, 2.6 and
    4.1). Loaded by /live after components.js, whose clock(), esc() and tr()
    it draws with, so a time reads "10:02 AM" as every page's does and every
@@ -221,8 +221,11 @@ L.votesSentence = function (file, now, body, http) {
 // index; a bill it does not hold gets no link, since a wrong link is worse
 // than none.
 L.billHref = function (r, bills) {
-  var term = String((r && r.bill) || "").split("/")[0];
-  var id = String((r && r.bill_as_recorded) || "").replace(/\s+/g, "").toUpperCase();
+  // `bill` is the term and the bill as the record reads the field (merge.js
+  // billNumber), null for a vote on no bill; bill_as_recorded is the words.
+  var parts = String((r && r.bill) || "").split("/");
+  var term = parts[0];
+  var id = String(parts[1] || "").replace(/\s+/g, "").toUpperCase();
   var years = bills && Object.prototype.hasOwnProperty.call(bills, term) ? bills[term] : null;
   if (!id || !years) return null;
   for (var y in years) {

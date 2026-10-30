@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-10-26.3
+# GRANITE_VERSION: 2026-10-26.4
 """
 What the live Worker (workers/live/) shares with the rest of this repository,
 written into workers/live/live.gen.js from where each value is kept.
@@ -33,6 +33,11 @@ written into workers/live/live.gen.js from where each value is kept.
                    outcome ("MA" Motion Adopted, "AF" Amendment Failed, ...),
                    which the Worker sets beside a docket tally line. It never
                    works out an outcome of its own (design section 2.4).
+    BILL_NUMBER    src/parse/rollcall_parser.py BILL_NO and FLAGS: what makes
+                   a roll call's bill field a bill (bill_number): spaces out,
+                   upper case, the -FN/-L/-A/-LOCAL flags off, HCACR read as
+                   CACR. "SUSPRULE", "RULE 1-2" and "HRULE64" name no bill,
+                   and the live file's `bill` is then null, as the record's is.
 
 THE PATTERN WRITTEN WITH ITS STEM. A title's stem is the title without its
 date, in lower case, with "&" said as "and" and every run of other
@@ -219,6 +224,20 @@ def docket_outcomes(root=None):
     return out
 
 
+def bill_number_rule():
+    """rollcall_parser's BILL_NO and FLAGS as RegExp sources. A parser, so
+    imported (it asks nobody anything). Its HCACR rule is code, which the
+    Worker's billNumber (merge.js) repeats; this stops if it changes."""
+    import inspect
+    import rollcall_parser as RP
+    if not RP.BILL_NO.flags & re.I:
+        raise SourceError("rollcall_parser.BILL_NO is no longer case-blind; merge.js's billNumber reads it so")
+    src = inspect.getsource(RP.bill_number)
+    if 're.sub(r"^HCACR(?=\\d)", "CACR", b)' not in src or "FLAGS.sub" not in src:
+        raise SourceError("rollcall_parser.bill_number has changed: bring merge.js's billNumber along, then this")
+    return {"pattern": RP.BILL_NO.pattern, "flags_off": RP.FLAGS.pattern}
+
+
 def values(root=None):
     """{name: (where it comes from, value)}, in the order they are written."""
     words = assigned(ROLLCALLS_DB, ("VOTE_WORD",), root)["VOTE_WORD"]
@@ -251,6 +270,8 @@ def values(root=None):
                         {k: BALLOT_CHARS[w] for k, w in codes}),
         "DOCKET_OUTCOME": (f"{DOCKET_ABBREV.as_posix()}: the docket's abbreviations whose words are "
                            "an outcome, as the General Court's key writes them", docket_outcomes(root)),
+        "BILL_NUMBER": ("src/parse/rollcall_parser.py BILL_NO (case-blind) and FLAGS: a roll call's bill "
+                        "field read as a bill, as bill_number reads it", bill_number_rule()),
     }
 
 

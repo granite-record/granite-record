@@ -5,7 +5,7 @@
 // replay.test.js. preflight runs this suite (_live_tests).
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { MISSES_TO_NOTE, attach, dayOfLine, emptyFile, merge, parseTally } from "../../workers/live/merge.js";
+import { MISSES_TO_NOTE, attach, billNumber, dayOfLine, emptyFile, merge, parseTally } from "../../workers/live/merge.js";
 import { BUDGET, EVERY, Q2_TRIES, _failedConnect, ballotsDue, chamberState, freshStreams, liftHolds, loginPrint,
          nextRead, overBudget, sessionLive, votesDue } from "../../workers/live/votes.js";
 
@@ -346,4 +346,23 @@ test("a scheduled session stream that never starts stops counting an hour after 
   assert.equal(chamberState(t, "H", {}, f).state, "off");
   f.streams[0].status = "live";
   assert.equal(chamberState(t, "H", {}, f).state, "hot");
+});
+
+test("a roll call's bill is the record's reading of the field: a procedural vote names no bill", () => {
+  assert.equal(billNumber("HB 1-FN-A"), "HB1");
+  assert.equal(billNumber("HCACR13"), "CACR13");
+  for (const raw of ["SUSPRULE", "RULE 1-2", "HRULE64", "SR1 (2009)", "", null]) assert.equal(billNumber(raw), "", String(raw));
+  const { file } = merge(emptyFile("2027-01-07"), {
+    date: "2027-01-07", at: "2027-01-07T15:42:58Z", covered: true, misses: {}, saves: {},
+    rows: [{ id: "2027-H-3", body: "H", seq: 3, year: 2027, bill_as_recorded: "SUSPRULE", question: "Suspend the Rules",
+             vote_date: "2027-01-07T10:41:07", modified: "2027-01-07T10:41:30", user: "VOTE SYSTEM",
+             yeas: 250, nays: 100, present: 0, absent: 50 },
+           { id: "2027-H-4", body: "H", seq: 4, year: 2027, bill_as_recorded: "HB 2-FN", question: "Ought to Pass",
+             vote_date: "2027-01-07T10:45:07", modified: "2027-01-07T10:45:30", user: "VOTE SYSTEM",
+             yeas: 190, nays: 171, present: 0, absent: 39 }],
+    ballots: new Map(), lines: [{ body: "H", bill_as_recorded: "SUSPRULE", order: 1, entered: "2027-01-07T10:43:00", line: "MA RC 250-100" }],
+  });
+  assert.deepEqual(file.rollcalls.map(r => [r.bill, r.bill_as_recorded]), [[null, "SUSPRULE"], ["2027-2028/HB2", "HB 2-FN"]]);
+  assert.equal(file.tallies[0].bill, null);
+  assert.equal(file.rollcalls[0].docket.outcome, "Motion Adopted", "the docket line still attaches by the field as typed");
 });
