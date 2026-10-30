@@ -41,7 +41,7 @@ function setup({ bound = true, now = "2027-01-07T15:00:00Z" } = {}) {
   w.env = bound ? { LIVE: w.r2 } : {};
   w.get = (path, init = {}) => {
     const request = new Request(SITE + path, init);
-    const m = /^\/api\/live\/votes\/(.*)$/.exec(path);
+    const m = /^\/api\/live\/votes\/([^?]*)/.exec(path);          // Pages hands the route its path, not the query
     return m ? votes({ request, env: w.env, params: { day: decodeURIComponent(m[1]) }, waitUntil: () => {} })
              : streams({ request, env: w.env, waitUntil: () => {} }, { now: w.now });
   };
@@ -179,4 +179,40 @@ test("a bucket that cannot be read is a 503, never a 404 and never kept", async 
     assert.equal(r.headers.get("Cache-Control"), "no-store");
   }
   assert.equal(w.cache.store.size, 0);
+});
+
+test("a page elsewhere can poll the votes file with If-None-Match: its preflight is answered, and it can read the ETag", async () => {
+  const w = setup();
+  w.r2.seed("votes/2027-01-07.json", VOTES);
+  const pre = await w.get("/api/live/votes/2027-01-07", { method: "OPTIONS",
+    headers: { Origin: "https://example.org", "Access-Control-Request-Headers": "if-none-match" } });
+  assert.equal(pre.status, 204);
+  assert.equal(pre.headers.get("Access-Control-Allow-Origin"), "*");
+  assert.equal(pre.headers.get("Access-Control-Allow-Methods"), "GET, HEAD");
+  assert.equal(pre.headers.get("Access-Control-Allow-Headers"), "If-None-Match");
+  const r = await w.get("/api/live/votes/2027-01-07");
+  assert.equal(r.headers.get("Access-Control-Expose-Headers"), "ETag");
+  const again = await w.get("/api/live/votes/2027-01-07", { headers: { "If-None-Match": r.headers.get("ETag") } });
+  assert.equal(again.headers.get("Access-Control-Expose-Headers"), "ETag", "on the 304 too");
+  const s = await w.get("/api/live/streams", { method: "OPTIONS" });
+  assert.equal(s.status, 405, "the streams answer no preflight");
+  assert.equal(s.headers.get("Access-Control-Allow-Origin"), null);
+});
+
+test("a query string is no way round the copy to the bucket; If-None-Match: * matches; every answer says nosniff", async () => {
+  const w = setup();
+  w.r2.seed("votes/2027-01-07.json", VOTES);
+  w.r2.seed("streams/2027-01-07.json", STREAMS("2027-01-07"));
+  for (let i = 0; i < 5; i++) { await w.get(`/api/live/votes/2027-01-07?r=${i}`); await w.get(`/api/live/streams?x=${i}`); }
+  const reads = key => w.r2.ops.filter(([op, k]) => op === "get" && k === key).length;
+  assert.deepEqual([reads("votes/2027-01-07.json"), reads("streams/2027-01-07.json")], [1, 1]);
+  assert.equal((await w.get("/api/live/votes/2027-01-07", { headers: { "If-None-Match": "*" } })).status, 304);
+  for (const [p, init] of [["/api/live/votes/2027-01-07", {}], ["/api/live/votes/2027-01-09", {}],
+                           ["/api/live/votes/2027-01-07", { method: "POST" }], ["/api/live/streams", {}],
+                           ["/api/live/votes/2027-01-07", { method: "OPTIONS" }]]) {
+    assert.equal((await w.get(p, init)).headers.get("X-Content-Type-Options"), "nosniff", `${init.method || "GET"} ${p}`);
+  }
+  w.r2.hooks.get = async () => { throw new Error("R2 said 500"); };
+  w.now += 60_000;
+  assert.equal((await w.get("/api/live/votes/2027-01-07")).headers.get("X-Content-Type-Options"), "nosniff", "503");
 });

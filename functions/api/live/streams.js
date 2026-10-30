@@ -11,7 +11,8 @@
  * page reads the file's own `day` and `next_check`, so it is never taken
  * for today's.
  *
- *   200  the file, cached 30 s per data centre (section 1.6), with its ETag
+ *   200  the file, cached 30 s per data centre (section 1.6, the committee pages,
+ *        which poll it too), with its ETag
  *   304  If-None-Match holds the ETag
  *   404  no file, or no binding
  *   405  anything but GET or HEAD
@@ -45,6 +46,7 @@ export async function onRequest({ request, env, waitUntil }, opts = {}) {
     });
   } catch {
     return new Response("Live status could not be read\n", { status: 503, headers: {
-      "Content-Type": "text/plain; charset=utf-8", "Cache-Control": "no-store", ...PRIVATE } });
+      "Content-Type": "text/plain; charset=utf-8", "Cache-Control": "no-store", "X-Content-Type-Options": "nosniff",
+      ...PRIVATE } });
   }
 }
