@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-10.56
+# GRANITE_VERSION: 2026-09-10.57
 """
 The record as CSV, for anyone who wants to work with it rather than read it.
 
@@ -174,9 +174,9 @@ def legislators(out, site, person_of=None):
             for m in sorted(legs, key=lambda m: str(m.get("name"))))
     return write(out, "legislators.csv", cols, rows,
                  "The sitting roster, with district, contact details and "
-                 "committee seats. person is the member's person number in "
-                 "people.json, which joins every number the General Court "
-                 "has used for them.")
+                 "committee seats. person is one number for the member across "
+                 "every number the General Court has given them: their earliest "
+                 "PersonID, else their earliest employee number.")
 
 
 def rollcalls(out):
@@ -225,10 +225,19 @@ def iso_day(d):
     own month/day/year ("1/7/2026"), and every other table here writes ISO
     (the data API's branch 2, 30 October 2026: one shape for every date, the
     column's name and meaning unchanged). Anything not in that shape is
-    returned as it is rather than guessed at."""
+    returned as it is rather than guessed at -- a two-digit year, a day that
+    is no day -- and votes() counts and says them, so a column of two shapes
+    is never silent."""
     import re
-    m = re.fullmatch(r"(\d{1,2})/(\d{1,2})/(\d{4})", str(d or "").strip())
-    return f"{m[3]}-{int(m[1]):02d}-{int(m[2]):02d}" if m else (d or "")
+    from datetime import date
+    t = str(d or "").strip()
+    m = re.fullmatch(r"(\d{1,2})/(\d{1,2})/(\d{4})", t)
+    if not m:
+        return t
+    try:
+        return date(int(m[3]), int(m[1]), int(m[2])).isoformat()
+    except ValueError:
+        return t
 
 
 def votes(out, data):
@@ -258,8 +267,13 @@ def votes(out, data):
             f"How every member voted on every roll call of {term}. "
             "Join to rollcalls.csv on roll_call. date is YYYY-MM-DD, as in "
             "every other table here; before October 30, 2026 it was the "
-            "General Court's month, day and year. A member's person number "
-            "is in people.csv, by member_id."))
+            "General Court's month, day and year."))
+    import re
+    odd = [v.get("date") for v in mv if v.get("date")
+           and not re.fullmatch(r"\d{4}-\d{2}-\d{2}", iso_day(v.get("date")))]
+    if odd:
+        print(f"    WARNING: {len(odd):,} ballot date(s) are in no shape iso_day reads and are "
+              f"written as they came: {', '.join(sorted(set(map(str, odd)))[:5])}")
     return made
 
 
@@ -445,8 +459,10 @@ def sponsors(out, data, person_of=None):
                  "1999, when the roll-call files it matches against begin, "
                  "and a few after; a sponsor from the sponsor record carries "
                  "the id its number votes under where any roll call was cast "
-                 "under it, in any term. person is the member's person number "
-                 "in people.json, empty where member_id is.")
+                 "under it, in any term. person is one number for the member "
+                 "across every number the General Court has given them, their "
+                 "earliest PersonID, else their earliest employee number; empty "
+                 "where member_id is.")
 
 
 # How the tables join, said once here rather than guessed at by everyone
