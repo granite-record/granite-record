@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-10.60
+# GRANITE_VERSION: 2026-09-10.61
 """
 The record as CSV, for anyone who wants to work with it rather than read it.
 
@@ -1258,8 +1258,8 @@ def bill_files(out, site, collect=None):
     file it wrote before, and the manifest's sha256 says so.
 
     EVERY BILL OR NONE. Each term is written under a temporary name and
-    checked against its bill index; only when every term holds every bill,
-    and no page is left that no index names, do the files take their names.
+    checked against its bill index; only when every term holds every bill do
+    the files take their names. A page no index names is left out and said.
     Otherwise the build stops with the counts and none is published
     (CLAUDE.md, a writer run on a subset)."""
     import gzip
@@ -1293,16 +1293,20 @@ def bill_files(out, site, collect=None):
         if collect:
             for r in recs:
                 collect(term, r)
-        body = "".join(
-            json.dumps({"key": f'{term}/{r["id"]}',
-                        **{k: v for k, v in api_record(r).items() if k != "key"}},
-                       ensure_ascii=False, separators=(",", ":")) + "\n"
-            for r in recs).encode("utf-8")
+        # A LINE AT A TIME into the gzip stream: the same bytes as one write
+        # (deflate does not depend on how its input is cut), without a second
+        # whole copy of the term in memory.
         name = f"bills-{term}.jsonl.gz"
         part = out / (name + ".part")
+        opened = 0
         with part.open("wb") as fh, \
                 gzip.GzipFile(filename="", mode="wb", fileobj=fh, compresslevel=9, mtime=0) as gz:
-            gz.write(body)
+            for r in recs:
+                line = (json.dumps({"key": f'{term}/{r["id"]}',
+                                    **{k: v for k, v in api_record(r).items() if k != "key"}},
+                                   ensure_ascii=False, separators=(",", ":")) + "\n").encode("utf-8")
+                gz.write(line)
+                opened += len(line)
         parts.append((part, out / name))
         size = part.stat().st_size
         rows.append({"path": f"/data/{name}", "kind": "bills", "term": term,
@@ -1311,14 +1315,20 @@ def bill_files(out, site, collect=None):
                      "encoding": "gzip", "media_type": "application/x-ndjson"})
         flag = "  OVER THE 25 MiB CAP" if size > SAFE else ""
         print(f"  {name:<28} {len(recs):>9,} bills {size / 1e6:>7.1f} MB "
-              f"({len(body) / 1e6:,.1f} MB opened){flag}")
-        del recs, body
-    if stray or short:
+              f"({opened / 1e6:,.1f} MB opened){flag}")
+        del recs
+    # A PAGE NO INDEX NAMES is no bill of any term: a page left in a laptop's
+    # site/ by a bill that has since moved or gone (build_bill_pages writes
+    # pages and removes none). It is left out, and said, with what to do.
+    if stray:
+        print(f"    WARNING: {len(stray)} bill page(s) no term's index names, left out of the "
+              f"bill files: {', '.join(stray[:5])}. A page left from an earlier build; "
+              "delete it, or build site/ afresh.")
+    if short:
         for part, _ in parts:
             part.unlink(missing_ok=True)
         raise SystemExit(
             "The bill files would not hold every bill, so none is written: "
-            + (f"{len(stray)} page(s) no bill index names ({', '.join(stray[:5])}); " if stray else "")
             + "; ".join(f"{t} has {got:,} records of {n:,}" for t, (got, n) in sorted(short.items())))
     for part, final in parts:
         part.replace(final)
