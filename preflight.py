@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.748
+# GRANITE_VERSION: 2026-09-04.749
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -90612,8 +90612,11 @@ class _KnockNights:
     through knocked(); "killed" (RUN_KILLED, its entry left "no answer" for
     the night to write); "lost" (2, the entry left "no answer": the address
     said no and the answer could not be written down); "notnow" (4 after
-    the gate, nothing written). With DF (dayfiles_from_db),
-    fetch_day_db.py leaves the fixture's views (_dbday_views), so a night
+    the gate, nothing written); "liftkilled" (the lift written through
+    knocked("whole"), then RUN_KILLED: the night's kill landing between the
+    lift and the child's exit, the verification of 30 October 2026). With
+    DF (dayfiles_from_db), fetch_day_db.py leaves the fixture's views
+    (_dbday_views), so a night
     that turns to the database installs the fixture's files. n.calls is
     every step started, (args, env, timeout, whether the night's lock was
     held)."""
@@ -90732,6 +90735,9 @@ class _KnockNights:
             R.knocking(_KNOCK_URL)
             if answer == "killed":
                 return self.NI.RUN_KILLED
+            if answer == "liftkilled":
+                R.knocked("whole", _KNOCK_SAID["whole"])
+                return self.NI.RUN_KILLED
             if answer == "lost":
                 # The address said no, and the child could not write that
                 # down (snapshot_gencourt.knock): "no answer" stays, exit 2.
@@ -90827,6 +90833,12 @@ def _nightly_knocks(NI, PD, DF):
       - lifted at 11:17, with the export empty and the database held: one
         try of the export, no half-hour wait, nothing installed, and the
         verdict's "tried" ends with the one-try line;
+      - lifted at 08:30 and then killed by the night before the child exits
+        (RUN_KILLED, the record gone, the lift in knocks.json; the
+        verification of 30 October 2026), the export empty and the database
+        held: still a lift -- one try, no wait, the one-try line, "web"
+        lifted and the knock line "lifted" -- not an ordinary night asking
+        twice half an hour apart;
       - at 11:18, 11:30 and 14:33: no knock, "not asked for: it is HH:MM
         UTC", and a held night;
       - a knock not due (one twenty minutes before): no knock, the verdict
@@ -90926,6 +90938,25 @@ def _nightly_knocks(NI, PD, DF):
                 (v.get("tried") or [""])[-1] != NI.EXPORT_ONCE_LIFTED:
             wrong.append(f"a lift at 11:17 then an empty export: {len(n.exports())} tries, waited "
                          f"{n.slept}, built {v.get('built')}, tried {v.get('tried')}")
+
+        # A LIFT THE NIGHT'S KILL INTERRUPTS (nightly.knock(); the
+        # verification of 30 October 2026): the child writes the lift, then
+        # the night's own timeout fires before it exits. Still a lift: the
+        # export once, no half-hour wait, "web" lifted -- not the ordinary
+        # night that asked twice and said no refusal was on file.
+        n.fresh(rec, hold=True)
+        n.knob.update(export="empty", knock="liftkilled")
+        code, v, log = n.night(morning, run_id="k2k")
+        if len(n.knocks()) != 1 or R.MARK.exists() or len(n.exports()) != 1 or n.slept or \
+                (v.get("web") or {}).get("state") != "lifted" or \
+                NI.EXPORT_ONCE_LIFTED not in (v.get("tried") or []) or \
+                not str(v.get("knock", "")).startswith("lifted"):
+            wrong.append(f"a lift the night's kill interrupted, then an empty export: "
+                         f"{len(n.knocks())} knocks, the record "
+                         f"{'on file' if R.MARK.exists() else 'gone'}, {len(n.exports())} tries, "
+                         f"waited {n.slept}, web {(v.get('web') or {}).get('state')!r}, tried "
+                         f"{v.get('tried')}, {v.get('knock')!r}")
+        n.knob.update(knock="whole")
 
         # The clock.
         for hm in ((11, 18), (11, 30), (14, 33)):
@@ -91077,7 +91108,8 @@ def _nightly_knocks(NI, PD, DF):
                 wrong += held(n, v, what)
     assert not wrong, "the night's knock: " + "; ".join(wrong)
     return "ok", ("lifted at 08:30 and the export installed, with no new warning; a lift at "
-                  "11:17 asks the export once; held nights build from the database and ask "
+                  "11:17 asks the export once, and so does a lift the night's kill interrupted; "
+                  "held nights build from the database and ask "
                   "the website nothing more; no knock at 11:18, 11:30 or 14:33, not due, or on "
                   "a dry run; nothing for a person's record, with the switch off, or on a New "
                   "term run")

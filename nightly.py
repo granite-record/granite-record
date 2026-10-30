@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.87
+# GRANITE_VERSION: 2026-09-04.88
 """
 The nightly run. Fetch the day's bulk files, rebuild, check, compile what
 readers reported and what changed -- and publish only if told to.
@@ -1658,6 +1658,21 @@ def this_knock():
     return mine[-1] if mine else {}
 
 
+def lifted_here(before):
+    """Whether this run's own knock lifted the record whose exact bytes were
+    `before`, on file when the knock began: the record gone from file, and
+    knocks.json's "lifted" entry for those bytes (refusal.lifted_entry) made
+    by the night's knock of this run and attempt. How the child ended does
+    not enter into it: a lift written down and then killed is a lift
+    (knock(), A LIFT THE NIGHT'S KILL INTERRUPTS)."""
+    rid = github("GITHUB_RUN_ID")
+    if before is None or not rid or refusal.MARK.exists():
+        return False
+    x = refusal.lifted_entry(before) or {}
+    return str(x.get("run_id")) == rid and x.get("by") == "night" and \
+        str(x.get("attempt") or "") == github("GITHUB_RUN_ATTEMPT")
+
+
 def knock(a, night):
     """THE NIGHT'S KNOCK (the docstring): the one place the night knocks, for
     the refusal on file, which the caller has found the night's to test
@@ -1678,7 +1693,19 @@ def knock(a, night):
     child could write its answer down; 4 not asked, by the child's own gate
     or the lock; RUN_KILLED, or anything else, a knock not answered -- the
     child wrote it down before it asked, and a knock killed counts, its
-    entry written "dropped" here."""
+    entry written "dropped" here.
+
+    A LIFT THE NIGHT'S KILL INTERRUPTS (the verification of 30 October
+    2026) is a lift. run()'s timeout counts from the run() call, so it can
+    fire after the child has written the lift -- the record moved into
+    knocks.json's "lifted", archive/refused.json gone -- and before the
+    child has exited: RUN_KILLED, with nothing left to answer. Taken as a
+    knock not answered, the night went on as an ordinary night (main() reads
+    gc_quiet() again after the knock): the export asked twice, half an hour
+    apart, past the lift night's one try (EXPORT_ONCE_LIFTED), the verdict's
+    "web" None, and this line saying "the refusal is a person's to clear
+    now: no refusal is on file". So whatever the status, the record gone
+    and its lift this run's own knock (lifted_here) is lifted, here."""
     v = night.v
 
     def said(line, lifted=False):
@@ -1708,6 +1735,10 @@ def knock(a, night):
     if deadline is None:
         return said(f"not asked for: {why}")
     try:
+        before = refusal.MARK.read_bytes()          # the record the knock is for (lifted_here)
+    except OSError:
+        before = None
+    try:
         with refusal.hold("nightly"):
             rc = run(["snapshot_gencourt.py", "--knock"], "the knock: one request, for one small file",
                      timeout=min(KNOCK_MINUTES * 60, seconds_left(deadline)),
@@ -1718,7 +1749,7 @@ def knock(a, night):
     x = this_knock()
     when = x.get("utc") or "this morning"
     what = str(x.get("said") or "").strip()[:200]
-    if rc == 0 and not refusal.MARK.exists():
+    if (rc == 0 and not refusal.MARK.exists()) or lifted_here(before):
         return said(f"lifted: the knock at {when} was answered with the file ({what or 'whole'}), "
                     f"so the refusal is lifted -- moved into {refusal.knocks_file().as_posix()}, "
                     "which the bucket is told -- and the night goes on as any night, with one "
@@ -2075,7 +2106,11 @@ def main():
             # try are what the clock let it start, and a second try half an
             # hour on could be asking past ASK_UNTIL. The loop below breaks
             # after it whatever came back (`if lifted`), where `last = 1`
-            # would be undone by a database that could not be used.
+            # would be undone by a database that could not be used. A lift
+            # the night's kill interrupted is a lift too (knock(); the
+            # verification of 30 October 2026), so a lift this run's knock
+            # wrote down comes with `lifted` however the child ended, and the
+            # night never goes on from it as an ordinary night.
             lifted = False
             if not ok and night and not a.new_term and night_tests():
                 lifted = knock(a, night)
