@@ -5036,7 +5036,12 @@ a.l-pgm{font-weight:600;text-decoration:underline;text-decoration-thickness:1px;
    it do. A question and its answers share one panel, so the arrow out of it
    leaves the whole decision -- the next box follows either answer -- and
    never seems to hang from the answer nearest it (the polish, 25 October
-   2026). */
+   2026).
+   AT THE LEAD'S SIZE UNDER A 19px HEADING, ON PURPOSE: the glance is 20px
+   regular under At a Glance's 19px bold (.l-sech), 1px over what heads it.
+   The accessibility sweep of 29 October 2026 noted it; the manager kept it
+   on 30 October as the person's choice of 11 October, the weight carrying
+   the heading. Not a defect for the next audit to reopen. */
 .g-glance{font:400 var(--t-lead)/1.5 var(--serif);color:var(--ink);margin:0 0 1rem;max-width:46rem}
 .g-flow{margin:.5rem 0 0}
 .g-flow > ol{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;align-items:center;gap:1.75rem;
