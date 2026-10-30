@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-10-30.2
+# GRANITE_VERSION: 2026-10-30.3
 """
 /api: the data API's documentation page, drawn in the data page's own
 components and counted from tonight's manifest.
@@ -214,8 +214,9 @@ def body(manifest):
             "cannot be made by adding becomes a new file beside the old one, and both are published "
             "for a year. <code>schema.json</code> marks what the promise covers.</p>", ""),
         "using": (
-            "<p>The record is the State of New Hampshire&rsquo;s and is public. What this site adds "
-            "&mdash; its ids, its joins and its corrections &mdash; is dedicated to the public "
+            "<p>The record is the State of New Hampshire&rsquo;s and is public, and so are the "
+            "numbers it gives people and bills. What this site adds &mdash; the keys and joins it "
+            "makes and the corrections made here by hand &mdash; is dedicated to the public "
             "domain under CC0: use it for anything, with no need to ask. The plain-English "
             "histories are this site&rsquo;s writing, offered under the MIT License like the code "
             "that builds all of it. A link back to graniterecord.org helps somebody check your "
