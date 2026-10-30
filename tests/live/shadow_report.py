@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-10-30.1
+# GRANITE_VERSION: 2026-10-30.2
 """
 What the live Worker saw on one day in shadow, against that day's calendar.
 Offline: it reads files the person downloaded and asks nobody anything.
@@ -10,9 +10,11 @@ Offline: it reads files the person downloaded and asks nobody anything.
         --calendar <the House calendar's .txt> [--calendar <the Senate's> --chamber S]
     python3 tests/live/shadow_report.py streams-2026-10-30.json --meetings meetings.txt
 
-`--meetings` takes plain lines, "09:30 | HHS Oversight" (a chamber may follow:
-"09:30 | HHS Oversight | H"), for meetings a calendar file does not hold or
-this reader does not parse (commissions, task forces).
+`--meetings` takes plain lines, "09:30 | HHS Oversight | Room 103, SH", for
+meetings a calendar file does not hold or this reader does not parse
+(commissions, task forces). The third field is where it meets; a field that is
+H or S alone is the chamber. Where each meeting is, streamed or not, is
+reported as the calendar wrote it, with no guess about which places stream.
 
 FOR EACH STREAM: its status and times; when the uploads playlist and the
 search backstop each first saw it, against YouTube's own actualStartTime
@@ -74,7 +76,10 @@ def meetings_from_lines(path, day):
         parts = [p.strip() for p in line.split("|")]
         if len(parts) < 2 or not parts[1]:
             continue
-        out.append({"time": parts[0], "name": parts[1], "body": parts[2] if len(parts) > 2 else "",
+        rest = parts[2:]
+        body = next((x for x in rest if x in ("H", "S")), "")
+        where = " | ".join(x for x in rest if x not in ("H", "S"))
+        out.append({"time": parts[0], "name": parts[1], "body": body, "where": where,
                     "from": Path(path).name, "date": day})
     return out
 
@@ -93,7 +98,7 @@ def meetings_from_calendar(path, chamber, day):
             continue
         seen.add(key)
         out.append({"time": str(r.get("time") or ""), "name": r.get("committee") or "", "body": chamber,
-                    "from": Path(path).name, "date": day})
+                    "where": r.get("room") or r.get("venue") or "", "from": Path(path).name, "date": day})
     return out
 
 
@@ -151,12 +156,15 @@ def report(streams_file, state_file, meetings, history):
                   f"    first seen: playlist {clock(when(seen.get('playlist')))} "
                   f"({minutes(when(seen.get('playlist')), started)} from its start), "
                   f"search {clock(when(seen.get('search')))} ({minutes(when(seen.get('search')), started)})",
-                  f"    meeting: {m['time']} {m['name']} [{m['from']}], by {how}" if m
+                  f"    meeting: {m['time']} {m['name']} ({m.get('where') or 'place not given'}), by {how}" if m
                   else "    meeting: NONE MATCHED"]
     lines += ["", f"{len(f.get('streams', []))} streams, {unmatched} matched to no meeting.", ""]
     missing = [m for m in meetings if id(m) not in matched]
     lines.append(f"Meetings on the calendar with no stream found ({len(missing)} of {len(meetings)}):")
-    lines += [f"- {m['time']} {m['name']} {m['body']} [{m['from']}]" for m in missing] or ["- none"]
+    lines += [f"- {m['time']} {m['name']} ({m.get('where') or 'place not given'})" for m in missing] or ["- none"]
+    streamed = [m for m in meetings if id(m) in matched]
+    lines += ["", f"Meetings with a stream matched ({len(streamed)}):"]
+    lines += [f"- {m['time']} {m['name']} ({m.get('where') or 'place not given'})" for m in streamed] or ["- none"]
     if state_file:
         st = json.loads(Path(state_file).read_text(encoding="utf-8"))
         yt = st.get("yt") or {}
