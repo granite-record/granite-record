@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.738
+# GRANITE_VERSION: 2026-09-04.739
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -55891,6 +55891,39 @@ def _seat_number_in_card(BP, SEAT):
                   f"do the fixture page's own {len(own) - len(unseated)} seated row(s); a screen reader hears "
                   f"\"1-001\" and \"{heard}\", the eye \"{seen}\" and \"001\" at the card's right, on its first "
                   "line; the whole card is the link, a lit card lit, and the eye's own marks not copied")
+
+
+@check("frontend", "the district map's Zoom to fit is the seating chart's four corners' icon, in the "
+       "box of - and +, named by its title alone, \"Zoom to fit\", in English and in Spanish")
+def _map_zoom_fit_icon():
+    """The owner, 29 October 2026: the map's "Fit" is the same zoom-to-fit
+    icon as the seating chart's, in the button size and box of - and +. Its
+    title is its name and its tooltip, with no aria-label beside it, which made
+    a screen reader hear "Zoom to fit" twice (the review of the seating chart,
+    29 October 2026, and of the map, 30 October). Read in map.js, map.css and
+    lang/es.json: the button is drawn by the script."""
+    import build_pages as BP
+    js = Path("src/pages/map.js").read_text(encoding="utf-8")
+    css = Path("src/pages/map.css").read_text(encoding="utf-8")
+    bad = []
+    m = re.search(r'<button type="button" class="zf"([^>]*)>(.*?)</button>', js, re.S)
+    assert m, "map.js draws no Zoom to fit button (class zf)"
+    attrs, body = m.groups()
+    if body != BP.ZOOM_FIT_ICON:
+        bad.append(f"the icon is not the seating chart's: {body[:120]}")
+    if "aria-label=" in attrs or 'title="${tr("map.zoom_fit","Zoom to fit")}"' not in attrs:
+        bad.append(f"it is not named by its title alone, map.zoom_fit: {attrs}")
+    if re.search(r'\.gm \.gmzoom \.zf\s*\{|\.gmzoom button:(?:last-child|nth-child)[^{]*\{', css):
+        bad.append("Zoom to fit has a box of its own, not - and +'s")
+    es = json.loads(Path("src/pages/lang/es.json").read_text(encoding="utf-8"))["strings"]
+    e = es.get("map.zoom_fit") or {}
+    if e.get("en") != "Zoom to fit" or not e.get("es") or e.get("es") == "Zoom to fit":
+        bad.append(f"map.zoom_fit has no Spanish of its own: {e}")
+    for k in ("map.fit", "map.fit_all"):
+        if k in es or f'"{k}"' in js:
+            bad.append(f"the retired {k} is still asked for or kept")
+    assert not bad, "; ".join(bad)
+    return "ok", "the four corners, titled Zoom to fit alone, in the box of - and +, in English and in Spanish"
 
 
 @check("frontend", "the seating chart's Zoom to fit is the four corners' icon in the box of - and +, "

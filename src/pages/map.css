@@ -1,4 +1,4 @@
-/* GRANITE_VERSION: 2026-10-09.3 */
+/* GRANITE_VERSION: 2026-10-09.4 */
 /* THE DISTRICT MAP (map v1): the stylesheet map.js draws against. A page that
    mounts the map links /map.css and /map.js and nothing else; every rule here
    is under .gm, the class mount() gives its element, so nothing here reaches
@@ -98,6 +98,9 @@
 .gm .gmzoom{position:absolute;top:.5rem;right:.5rem;display:flex;gap:.25rem}
 .gm .gmzoom button{font:600 1rem var(--sans);min-width:2.75rem;height:2.75rem;border:1px solid var(--edge);border-radius:3px;
   background:var(--surface);color:var(--ink);cursor:pointer}
+/* the zoom-to-fit icon (the owner's ask, 29 October 2026): drawn in the
+   button's own colour, so forced colours give it ButtonText */
+.gm .gmzoom .zf svg{display:block;margin:0 auto}
 .gm .gmzoom button:focus-visible{outline:2px solid var(--pine);outline-offset:2px}
 .gm .gmcredit{font-size:var(--gm-sm);color:var(--ink-2);margin:.375rem .625rem .5rem;line-height:1.4}
 .gm .gmfail{font-size:var(--gm-ui);margin:.75rem;color:var(--ink)}

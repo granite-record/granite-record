@@ -21990,16 +21990,6 @@
    "es": "No se pudo cargar el mapa. Los distritos de cada municipio están en su propia página, en la lista de <a href=\"/directory/towns.html\">todos los municipios y barrios electorales</a>.",
    "state": "draft"
   },
-  "map.fit": {
-   "en": "Fit",
-   "es": "Ajustar",
-   "state": "draft"
-  },
-  "map.fit_all": {
-   "en": "Fit the whole map",
-   "es": "Ver todo el mapa",
-   "state": "draft"
-  },
   "map.flo_legend": {
    "en": "Floterial district, framed in its members&rsquo; party",
    "es": "Distrito flotante, enmarcado con el partido de sus miembros",
@@ -22288,6 +22278,11 @@
   "map.who_reps": {
    "en": "Who represents {place}",
    "es": "Quién representa a {place}",
+   "state": "draft"
+  },
+  "map.zoom_fit": {
+   "en": "Zoom to fit",
+   "es": "Ajustar a la pantalla",
    "state": "draft"
   },
   "map.zoom_in": {

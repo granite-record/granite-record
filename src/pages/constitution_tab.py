@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-10-17.2
+# GRANITE_VERSION: 2026-10-17.3
 """
 The state Constitution as a tab on the Laws page, and the links to its articles
 from the rest of the site.
@@ -137,7 +137,7 @@ def tabbed(statutes, statutes_lead, con):
     labelled by their tab, and without JavaScript both panels in order, each
     under its own heading."""
     panes = {"statutes": f'<p class="l-lead">{statutes_lead}</p>{statutes}', "constitution": panel(con)}
-    strip = ('<div class="twntabs lw-tabs" role="tablist" aria-label="New Hampshire laws" hidden>'
+    strip = ('<div class="twntabs lw-tabs" role="tablist" aria-label="New Hampshire Laws" hidden>'
              + "".join(
                  f'<button type="button" role="tab" id="tab-{pid}" data-pane="{pid}" aria-controls="{pid}" '
                  f'aria-selected="{"true" if k == 0 else "false"}" tabindex="{0 if k == 0 else -1}">'
