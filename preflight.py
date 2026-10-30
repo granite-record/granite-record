@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.739
+# GRANITE_VERSION: 2026-09-04.740
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -102959,6 +102959,40 @@ def _journal_clean_both(JD):
     assert "clean_both(" in src and "clean(raw" not in src, (
         "read_year cleans each journal twice again")
     return "ok", f"{len(texts)} texts the same both ways; read_year finds the heads once"
+
+
+@check("session", "a House journal's running heads are looked for only just before a HOUSE "
+       "RECORD, and found exactly where the pattern tried at every character finds them",
+       needs=("journal_days",))
+def _journal_furniture(JD):
+    """furniture() tries FURNITURE only where the walk back from a HOUSE
+    RECORD can reach (30 October 2026: the same 31,281 heads in all 3,632
+    journal and calendar files on disk, 45 s to 4 s). Held here to
+    FURNITURE.finditer, and clean() to FURNITURE.sub, on the heads the
+    journals print and on what would trip the walk: the longest month and a
+    word run into it, page numbers either side, heads back to back, long runs
+    of white space, a head split over lines and pages, other scripts' spaces
+    and digits, the words without a date, and none at all."""
+    heads = ("7MARCH2018HOUSERECORD", "6 MARCH 2013 HOUSE RECORD 12",
+             "12 14 FEBRUARY 2019 HOUSE RECORD", "  3  APRIL  2020  HOUSE   RECORD  ",
+             "110 21 SEPTEMBER 2016 HOUSE RECORD 111", "21september2016houserecord",
+             "4 MAY\n2017\fHOUSE\nRECORD", "7\u2003MARCH\u20032018\u2003HOUSE RECORD",
+             "\u0667 MARCH 2018 HOUSE RECORD")
+    texts = [_JOURNAL_RECONSIDER, _JOURNAL_MOTION_AFTER, _JOURNAL_DECIDED, _JOURNAL_WALK,
+             _JOURNAL_WALK_MORE, "", "no head at all", "HOUSE RECORD", "the HOUSE RECORD of 2018",
+             "MARCH 2018 HOUSE RECORD", "7 MARCH 18 HOUSE RECORD"]
+    for h in heads:
+        texts += [h, f"word{h}", f"SEPTEMBERX{h}", f"OCTOBERNOVEMBER{h}", f"{h}{h}", f"{h} {h}",
+                  " " * 300 + h, f"12345 {h}", f"the motion was {h} adopted.", f"{h}\n{h}12"]
+    texts.append("\n".join(texts))
+    bad = [t for t in texts
+           if [m.span() for m in JD.furniture(t)] != [m.span() for m in JD.FURNITURE.finditer(t)]]
+    assert not bad, f"furniture() and FURNITURE.finditer differ on {len(bad)}, the first {bad[0][:80]!r}"
+    norm = lambda t: t.replace("\r\n", "\n").replace("\r", "\n")
+    for t in texts:
+        want = JD.HYPHEN_WRAP.sub(r"\1\2", JD.FURNITURE.sub(" ", norm(t)))
+        assert JD.clean(t) == want, f"clean() is not FURNITURE.sub's on {t[:80]!r}"
+    return "ok", f"{len(texts)} texts, the same heads found either way"
 
 
 _DEBATE_RUNON = """Rep. Nicholas Germana moved that the debate on HB 148, permitting classification of individuals based on

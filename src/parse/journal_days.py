@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-19.16
+# GRANITE_VERSION: 2026-09-19.17
 """
 What the House journal adds that the record does not: who spoke, and what.
 
@@ -77,6 +77,42 @@ FURNITURE = re.compile(
     rf"\s*+\d{{0,4}}\s*+\d{{1,2}}\s*+(?i:{_MON})\s*+\d{{4}}\s*+HOUSE\s*+RECORD\s*+\d{{0,4}}",
     re.I)
 
+# AND IT IS TRIED ONLY JUST BEFORE A "HOUSE RECORD" (30 October 2026). Tried
+# at every character, FURNITURE took 14 s of the 24 s cleaning every House
+# journal, nearly all of it where no running head is: none before 2013. Every
+# match holds HOUSE RECORD, and what comes before that in a match is white
+# space, digits and one month's name -- nine letters at most, and never the
+# word HOUSE -- so a match can begin no earlier than the walk back from a
+# HOUSE RECORD over white space, digits and up to nine letters. furniture()
+# tries the pattern from there, as finditer would, and only there.
+_HEAD_WORDS = re.compile(r"HOUSE\s*+RECORD", re.I)
+_MONTH_LETTERS = max(len(m) for m in _MON.split("|"))
+
+
+def furniture(text):
+    """FURNITURE.finditer(text): the same matches, in the same order."""
+    pos = 0
+    for h in _HEAD_WORDS.finditer(text):
+        h = h.start()
+        if h < pos:
+            continue
+        lo, letters = h, 0
+        while lo > pos:
+            c = text[lo - 1]
+            if c.isalpha():
+                letters += 1
+                if letters > _MONTH_LETTERS:
+                    break
+            elif not (c.isspace() or c.isdigit()):
+                break
+            lo -= 1
+        for q in range(lo, h):
+            m = FURNITURE.match(text, q)
+            if m:
+                yield m
+                pos = m.end()
+                break
+
 # A word broken by the page break and resumed hyphenated on the next line.
 HYPHEN_WRAP = re.compile(r"([A-Za-z])-\n([a-z])")
 
@@ -95,10 +131,13 @@ def clean(text, lines=False):
     the consent calendar, which were measured without them, are not yet.
     """
     text = text.replace("\r\n", "\n").replace("\r", "\n")
-    text = FURNITURE.sub((lambda m: "\n" if re.search(r"[\n\f]", m.group(0)) else " ")
-                         if lines else " ", text)
-    text = HYPHEN_WRAP.sub(r"\1\2", text)
-    return text
+    out, at = [], 0
+    for m in furniture(text):
+        out += (text[at:m.start()],
+                "\n" if lines and re.search(r"[\n\f]", m.group(0)) else " ")
+        at = m.end()
+    out.append(text[at:])
+    return HYPHEN_WRAP.sub(r"\1\2", "".join(out))
 
 
 def clean_both(text):
@@ -113,7 +152,7 @@ def clean_both(text):
     nothing. preflight holds the pair to clean()'s two answers."""
     text = text.replace("\r\n", "\n").replace("\r", "\n")
     flat, lined, at = [], [], 0
-    for m in FURNITURE.finditer(text):
+    for m in furniture(text):
         piece = text[at:m.start()]
         flat += (piece, " ")
         lined += (piece, "\n" if re.search(r"[\n\f]", m.group(0)) else " ")
